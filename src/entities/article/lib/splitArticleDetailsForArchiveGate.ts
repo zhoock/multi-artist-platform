@@ -1,5 +1,8 @@
 import type { ArticledetailsProps } from '@models';
 
+const SHORT_TEXT_MAX_CHARS = 180;
+const SHORT_LIST_MAX_ITEMS = 2;
+
 function blockHasHeroMedia(block: ArticledetailsProps): boolean {
   if (block.images && Array.isArray(block.images) && block.images.length > 0) {
     return true;
@@ -27,6 +30,27 @@ function blockHasReadableText(block: ArticledetailsProps): boolean {
   return false;
 }
 
+function readableTextLength(block: ArticledetailsProps): number {
+  if (typeof block.content === 'string') {
+    return block.content.trim().length;
+  }
+  if (Array.isArray(block.content)) {
+    return block.content.reduce((total, item) => {
+      const text = typeof item === 'string' ? item : item.text;
+      return total + (typeof text === 'string' ? text.trim().length : 0);
+    }, 0);
+  }
+  return 0;
+}
+
+function isShortTextBlock(block: ArticledetailsProps): boolean {
+  if (!blockHasReadableText(block)) return false;
+  if (Array.isArray(block.content) && block.content.length > SHORT_LIST_MAX_ITEMS) {
+    return false;
+  }
+  return readableTextLength(block) <= SHORT_TEXT_MAX_CHARS;
+}
+
 function findFirstParagraphIndex(details: ArticledetailsProps[]): number {
   return details.findIndex(blockHasReadableText);
 }
@@ -35,15 +59,41 @@ function findFirstImageIndex(details: ArticledetailsProps[]): number {
   return details.findIndex(blockHasHeroMedia);
 }
 
+function tryAddExtraShortTextBlock(
+  details: ArticledetailsProps[],
+  previewIndices: Set<number>
+): void {
+  const anchorIndex = Math.max(...previewIndices);
+  const remainingContentCount = details
+    .slice(anchorIndex + 1)
+    .filter((block) => blockHasReadableText(block) || blockHasHeroMedia(block)).length;
+
+  if (remainingContentCount < 2) {
+    return;
+  }
+
+  for (let i = anchorIndex + 1; i < details.length; i += 1) {
+    if (blockHasReadableText(details[i]) && isShortTextBlock(details[i])) {
+      previewIndices.add(i);
+      return;
+    }
+    if (blockHasReadableText(details[i]) || blockHasHeroMedia(details[i])) {
+      return;
+    }
+  }
+}
+
 export type ArticleDetailsArchiveSplit = {
-  /** Blocks through the first paragraph and first image (inclusive), shown above the gate. */
+  /** Free preview blocks shown above the gate (structure-based, not height-based). */
   previewDetails: ArticledetailsProps[];
   /** Remaining blocks, rendered below the gate with a visual lock. */
   lockedDetails: ArticledetailsProps[];
 };
 
 /**
- * Splits article body for archive paywall: first readable paragraph + first image, then gate.
+ * Splits article body for paywall:
+ * first text block + first image (if in a different block) + at most one extra short text.
+ * Section headings and other structural blocks stay locked.
  */
 export function splitArticleDetailsForArchiveGate(
   details: ArticledetailsProps[]
@@ -52,18 +102,31 @@ export function splitArticleDetailsForArchiveGate(
     return { previewDetails: [], lockedDetails: [] };
   }
 
-  const paragraphIndex = findFirstParagraphIndex(details);
-  const imageIndex = findFirstImageIndex(details);
+  const firstTextIndex = findFirstParagraphIndex(details);
+  const firstImageIndex = findFirstImageIndex(details);
+  const previewIndices = new Set<number>();
 
-  if (paragraphIndex < 0 && imageIndex < 0) {
+  if (firstTextIndex < 0 && firstImageIndex < 0) {
     return { previewDetails: [], lockedDetails: details };
   }
 
-  const previewEndIndex = Math.max(paragraphIndex, imageIndex);
+  if (firstTextIndex >= 0) {
+    previewIndices.add(firstTextIndex);
+  }
+  if (firstImageIndex >= 0 && firstImageIndex !== firstTextIndex) {
+    previewIndices.add(firstImageIndex);
+  }
+
+  const lockedCount = details.length - previewIndices.size;
+  if (lockedCount >= 2) {
+    tryAddExtraShortTextBlock(details, previewIndices);
+  }
+
+  const sortedPreviewIndices = [...previewIndices].sort((a, b) => a - b);
 
   return {
-    previewDetails: details.slice(0, previewEndIndex + 1),
-    lockedDetails: details.slice(previewEndIndex + 1),
+    previewDetails: sortedPreviewIndices.map((index) => details[index]),
+    lockedDetails: details.filter((_, index) => !previewIndices.has(index)),
   };
 }
 

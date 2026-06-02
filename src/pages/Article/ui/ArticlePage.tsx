@@ -21,13 +21,19 @@ import {
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 import { withPublicArtistQuery } from '@shared/lib/artistQuery';
 import { ArtistArchiveLockIcon } from '@shared/ui/icons/ArtistArchiveLockIcon';
+import { SubscriberContentLockIcon } from '@shared/ui/icons/SubscriberContentLockIcon';
 import { useArchiveAccessModal } from '@shared/lib/archiveAccessModal';
+import { usePremiumSubscription } from '@features/premiumSubscription';
 import { refreshPremiumContentForArchiveChange } from '@features/artistArchive';
 import {
   resolveArticleLockedBodySize,
   resolveLockedArticleBodyBlocks,
   splitArticleDetailsForArchiveGate,
 } from '@entities/article/lib/splitArticleDetailsForArchiveGate';
+import {
+  resolveArticlePaywallKind,
+  type ArticlePaywallKind,
+} from '@entities/article/lib/resolveArticlePaywallKind';
 import '@entities/article/ui/style.scss';
 
 export function ArticlePage() {
@@ -216,8 +222,52 @@ function ArticleContent({
 }: ArticleContentProps) {
   const dispatch = useAppDispatch();
   const ui = useAppSelector((state) => selectUiDictionaryFirst(state, lang));
-  const { requestAccess } = useArchiveAccessModal();
-  const handleLockedContentAccess = () => {
+  const { isPremium, loading: premiumLoading } = usePremiumSubscription();
+  const { open, requestAccess } = useArchiveAccessModal();
+
+  const paywallKind = useMemo(
+    () =>
+      resolveArticlePaywallKind({
+        articleLocked: article?.articleLocked,
+        isPremium,
+        premiumLoading,
+      }),
+    [article?.articleLocked, isPremium, premiumLoading]
+  );
+
+  const isPaywalled = paywallKind !== 'none';
+
+  const subscriptionGateTitle =
+    ui?.titles?.articleSubscriptionLockedOverlayTitle ??
+    (lang === 'en' ? 'Continue Reading' : 'Продолжить чтение');
+  const subscriptionGateHint =
+    ui?.titles?.articleSubscriptionLockedOverlayHint ??
+    (lang === 'en'
+      ? 'This article is available to subscribers.'
+      : 'Эта статья доступна подписчикам.');
+  const subscriptionCtaLabel =
+    ui?.buttons?.articleSubscriptionLockedCta ??
+    (lang === 'en' ? 'Start Subscription' : 'Оформить подписку');
+
+  const archiveGateTitle =
+    ui?.titles?.articleArchiveLockedOverlayTitle ??
+    (lang === 'en' ? 'Artist not in your Archive' : 'Артист не в вашем архиве');
+  const archiveGateHint =
+    ui?.titles?.articleArchiveLockedOverlayHint ??
+    (lang === 'en'
+      ? 'Add this artist to your Archive to continue reading.'
+      : 'Добавьте артиста в архив, чтобы продолжить чтение.');
+  const archiveCtaLabel =
+    ui?.buttons?.artistArchiveAdd ?? (lang === 'en' ? 'Add to Archive' : 'Добавить в архив');
+
+  const handleSubscriptionGate = () => {
+    open({
+      artistUserId: article?.userId,
+      artistSlug: artistSlug ?? undefined,
+    });
+  };
+
+  const handleArchiveGate = () => {
     void requestAccess({
       artistUserId: article?.userId,
       artistSlug,
@@ -227,52 +277,24 @@ function ArticleContent({
     });
   };
 
-  const overlayTitle =
-    ui?.titles?.articleArchiveLockedOverlayTitle ??
-    (lang === 'en' ? 'Artist not in your Archive' : 'Артист не в вашем архиве');
-  const overlayHint =
-    ui?.titles?.articleArchiveLockedOverlayHint ??
-    (lang === 'en'
-      ? 'Add this artist to your Archive to continue reading.'
-      : 'Добавьте артиста в архив, чтобы продолжить чтение.');
-  const ctaLabel =
-    ui?.buttons?.artistArchiveAdd ?? (lang === 'en' ? 'Add to Archive' : 'Добавить в архив');
-
-  const isArchiveLocked = article?.articleLocked === true;
   const articleDetailsSplit = useMemo(
     () =>
-      article && isArchiveLocked
+      article && isPaywalled
         ? splitArticleDetailsForArchiveGate(article.details)
         : { previewDetails: [], lockedDetails: [] },
-    [article, isArchiveLocked]
+    [article, isPaywalled]
   );
   const { previewDetails } = articleDetailsSplit;
   const lockedBodyBlocks = useMemo(
     () =>
-      article && isArchiveLocked
+      article && isPaywalled
         ? resolveLockedArticleBodyBlocks(article.details, articleDetailsSplit)
         : [],
-    [article, articleDetailsSplit, isArchiveLocked]
+    [article, articleDetailsSplit, isPaywalled]
   );
   const lockedBodySize = useMemo(
     () => resolveArticleLockedBodySize(lockedBodyBlocks, article?.description?.length ?? 0),
     [lockedBodyBlocks, article?.description]
-  );
-
-  const paywallTeaserCount = useMemo(() => {
-    if (lockedBodyBlocks.length > 2) return 2;
-    if (lockedBodyBlocks.length > 0) return 1;
-    return 0;
-  }, [lockedBodyBlocks.length]);
-
-  const paywallTeaserBlocks = useMemo(
-    () => lockedBodyBlocks.slice(0, paywallTeaserCount),
-    [lockedBodyBlocks, paywallTeaserCount]
-  );
-
-  const paywallTailBlocks = useMemo(
-    () => lockedBodyBlocks.slice(paywallTeaserCount),
-    [lockedBodyBlocks, paywallTeaserCount]
   );
 
   if (!article) {
@@ -294,7 +316,13 @@ function ArticleContent({
   }
 
   const seoTitle = article.nameArticle;
-  const seoDesc = isArchiveLocked ? overlayHint : article.description;
+  const paywallSeoHint =
+    paywallKind === 'subscription'
+      ? subscriptionGateHint
+      : paywallKind === 'archive'
+        ? archiveGateHint
+        : article.description;
+  const seoDesc = isPaywalled ? paywallSeoHint : article.description;
   const canonical =
     lang === 'en'
       ? `https://smolyanoechuchelko.ru/en/articles/${article.articleId}`
@@ -307,31 +335,44 @@ function ArticleContent({
       </Fragment>
     ));
 
-  const archiveGate = (
-    <div
-      className="article__archive-gate article__archive-gate--inline"
-      role="region"
-      aria-labelledby="article-archive-gate-title"
-    >
-      <div className="article__archive-gate-rule" aria-hidden="true" />
-      <ArtistArchiveLockIcon className="article__archive-gate-icon" size={28} />
-      <h3 id="article-archive-gate-title" className="article__archive-gate-title">
-        {overlayTitle}
-      </h3>
-      <p className="article__archive-gate-hint">{overlayHint}</p>
-      <button
-        type="button"
-        className="article__archive-gate-cta"
-        onClick={handleLockedContentAccess}
+  const renderPaywallGate = (kind: Exclude<ArticlePaywallKind, 'none' | 'pending'>) => {
+    const isSubscription = kind === 'subscription';
+    const gateTitle = isSubscription ? subscriptionGateTitle : archiveGateTitle;
+    const gateHint = isSubscription ? subscriptionGateHint : archiveGateHint;
+    const gateCta = isSubscription ? subscriptionCtaLabel : archiveCtaLabel;
+    const gateTitleId = isSubscription
+      ? 'article-subscription-gate-title'
+      : 'article-archive-gate-title';
+    const GateIcon = isSubscription ? SubscriberContentLockIcon : ArtistArchiveLockIcon;
+
+    return (
+      <div
+        className={`article__archive-gate article__archive-gate--inline${
+          isSubscription ? ' article__archive-gate--subscription' : ''
+        }`}
+        role="region"
+        aria-labelledby={gateTitleId}
       >
-        {ctaLabel}
-      </button>
-      <div className="article__archive-gate-rule" aria-hidden="true" />
-    </div>
-  );
+        <div className="article__archive-gate-rule" aria-hidden="true" />
+        <GateIcon className="article__archive-gate-icon" size={28} />
+        <h3 id={gateTitleId} className="article__archive-gate-title">
+          {gateTitle}
+        </h3>
+        <p className="article__archive-gate-hint">{gateHint}</p>
+        <button
+          type="button"
+          className="article__archive-gate-cta"
+          onClick={isSubscription ? handleSubscriptionGate : handleArchiveGate}
+        >
+          {gateCta}
+        </button>
+        <div className="article__archive-gate-rule" aria-hidden="true" />
+      </div>
+    );
+  };
 
   let articleBody: ReactNode;
-  if (isArchiveLocked) {
+  if (isPaywalled) {
     articleBody = (
       <>
         <div className="article__paywall">
@@ -341,19 +382,21 @@ function ArticleContent({
                 {renderDetailBlocks(previewDetails, 'preview')}
               </div>
             )}
-            {paywallTeaserBlocks.length > 0 && (
-              <div className="article__paywall-teaser" aria-hidden="true">
-                {renderDetailBlocks(paywallTeaserBlocks, 'teaser')}
-              </div>
-            )}
           </div>
-          {archiveGate}
+          {paywallKind === 'pending' ? (
+            <div
+              className="article__archive-gate article__archive-gate--inline article__archive-gate--pending"
+              aria-hidden="true"
+            />
+          ) : (
+            renderPaywallGate(paywallKind)
+          )}
           <div
             className={`article__paywall-tail article__paywall-tail--${lockedBodySize}`}
             aria-hidden="true"
           >
-            {paywallTailBlocks.length > 0 ? (
-              renderDetailBlocks(paywallTailBlocks, 'locked')
+            {lockedBodyBlocks.length > 0 ? (
+              renderDetailBlocks(lockedBodyBlocks, 'locked')
             ) : article.description ? (
               <p className="article__paywall-tail-fallback">{article.description}</p>
             ) : (

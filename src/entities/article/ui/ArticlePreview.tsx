@@ -8,7 +8,10 @@ import { ArticleCoverImage } from './ArticleCoverImage';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 import { SubscriberContentLockIcon } from '@shared/ui/icons/SubscriberContentLockIcon';
+import { ArtistArchiveLockIcon } from '@shared/ui/icons/ArtistArchiveLockIcon';
 import { useArchiveAccessModal } from '@shared/lib/archiveAccessModal';
+import { usePremiumSubscription } from '@features/premiumSubscription';
+import { resolveArticlePaywallKind } from '@entities/article/lib/resolveArticlePaywallKind';
 import './style.scss';
 
 export function ArticlePreview({
@@ -27,6 +30,7 @@ export function ArticlePreview({
   const articlePath = withPublicArtistQuery(`/articles/${articleId}`, artistSlug);
   const ui = useAppSelector((state) => selectUiDictionaryFirst(state, lang));
   const navigate = useNavigate();
+  const { isPremium, loading: premiumLoading } = usePremiumSubscription();
   const { requestAccess } = useArchiveAccessModal();
   const handleLockedClick = () => {
     void requestAccess({
@@ -36,12 +40,50 @@ export function ArticlePreview({
     });
   };
 
-  const overlayTitle =
+  const paywallKind = resolveArticlePaywallKind({
+    articleLocked,
+    isPremium,
+    premiumLoading,
+  });
+
+  const subscriptionOverlayTitle =
+    ui?.titles?.articleSubscriptionLockedOverlayTitle ??
+    (lang === 'en' ? 'Continue Reading' : 'Продолжить чтение');
+  const subscriptionOverlayHint =
+    ui?.titles?.articleSubscriptionLockedOverlayHint ??
+    (lang === 'en'
+      ? 'This article is available to subscribers.'
+      : 'Эта статья доступна подписчикам.');
+
+  const archiveOverlayTitle =
+    ui?.titles?.articleArchiveLockedOverlayTitle ??
+    (lang === 'en' ? 'Artist not in your Archive' : 'Артист не в вашем архиве');
+  const archiveOverlayHint =
+    ui?.titles?.articleArchiveLockedOverlayHint ??
+    (lang === 'en'
+      ? 'Add this artist to your Archive to continue reading.'
+      : 'Добавьте артиста в архив, чтобы продолжить чтение.');
+
+  const legacyOverlayTitle =
     ui?.titles?.articleLockedOverlayTitle ??
     (lang === 'en' ? 'Subscribers only' : 'Только для подписчиков');
-  const overlayHint =
+  const legacyOverlayHint =
     ui?.titles?.articleLockedOverlayHint ??
     (lang === 'en' ? 'Purchase an album to read this content.' : 'Оформите подписку, чтобы читать');
+
+  const overlayTitle =
+    paywallKind === 'archive'
+      ? archiveOverlayTitle
+      : paywallKind === 'subscription' || paywallKind === 'pending'
+        ? subscriptionOverlayTitle
+        : legacyOverlayTitle;
+  const overlayHint =
+    paywallKind === 'archive'
+      ? archiveOverlayHint
+      : paywallKind === 'subscription' || paywallKind === 'pending'
+        ? subscriptionOverlayHint
+        : legacyOverlayHint;
+  const OverlayIcon = paywallKind === 'archive' ? ArtistArchiveLockIcon : SubscriberContentLockIcon;
 
   const visibilityNorm = normalizeTrackVisibility(visibility);
   /** API явно ставит `false`, если есть доступ (в т.ч. владелец артиста). `undefined` трактуем как «нет поля» — для subscribers_only безопаснее показать замок. */
@@ -92,7 +134,7 @@ export function ArticlePreview({
             debugLabel={`ArticlePreview:${articleId}`}
           />
           <div className="articles__subscriber-overlay" aria-hidden="true">
-            <SubscriberContentLockIcon className="articles__subscriber-lock-icon" size={28} />
+            <OverlayIcon className="articles__subscriber-lock-icon" size={28} />
             <p className="articles__subscriber-overlay-title">{overlayTitle}</p>
             <p className="articles__subscriber-overlay-hint">{overlayHint}</p>
           </div>

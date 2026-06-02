@@ -299,6 +299,12 @@
       box-shadow: none;
       pointer-events: auto;
     }
+
+    &--pending {
+      min-block-size: 12rem;
+      pointer-events: none;
+      visibility: hidden;
+    }
   }
 
   .article__archive-gate-rule {
