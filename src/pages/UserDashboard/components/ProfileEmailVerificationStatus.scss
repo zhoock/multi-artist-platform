@@ -23,6 +23,7 @@
   }
 
   &__icon {
+    display: block;
     flex-shrink: 0;
 
     .profile-email-verification--verified & {

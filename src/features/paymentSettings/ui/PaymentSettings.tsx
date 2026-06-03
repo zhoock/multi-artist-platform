@@ -1,7 +1,7 @@
-import React from 'react';
 import { useLang } from '@app/providers/lang';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
+import { InfoCircleIcon } from '@shared/ui/icons/InfoCircleIcon';
 import { usePaymentSettings } from '../model/usePaymentSettings';
 import { PAYMENT_PROVIDERS } from '../lib/constants';
 import { fillPaymentSettingsTemplate } from '../lib/fillPaymentSettingsTemplate';
@@ -123,9 +123,7 @@ export function PaymentSettings({ userId }: PaymentSettingsProps) {
             </div>
 
             <p className="payment-settings__disconnect-note">
-              <span className="payment-settings__disconnect-note-icon" aria-hidden="true">
-                i
-              </span>
+              <InfoCircleIcon className="payment-settings__disconnect-note-icon" size={18} />
               <span>
                 {copy?.disconnectNote ??
                   'If you disconnect YooKassa, payment acceptance will be unavailable. Your payment data will be saved.'}

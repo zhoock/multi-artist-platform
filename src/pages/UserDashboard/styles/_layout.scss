@@ -96,8 +96,18 @@ dialog {
       }
     }
 
+    &__nav-item-icon {
+      display: block;
+      flex-shrink: 0;
+      color: inherit;
+      opacity: 0.85;
+      pointer-events: none;
+    }
+
     &__nav-item {
-      display: flex;
+      display: inline-flex;
+      align-items: center;
+      gap: var(--ms-02);
       width: auto;
       min-width: auto;
       padding: var(--ms-01) var(--ms-0);
@@ -106,7 +116,9 @@ dialog {
       border: none;
       border-radius: var(--ms-02);
       cursor: pointer;
-      transition: all 0.2s;
+      transition:
+        color 0.2s ease,
+        background-color 0.2s ease;
       margin-right: var(--ms-01);
       margin-bottom: var(--ms-01);
 
@@ -118,6 +130,11 @@ dialog {
       &--active {
         color: var(--dashboard-text-primary);
         background: var(--dashboard-btn-secondary-hover-bg);
+
+        .user-dashboard__nav-item-icon {
+          color: var(--dark-greenish-yellow);
+          opacity: 1;
+        }
       }
 
       &:focus {
@@ -211,10 +228,16 @@ dialog {
 
     &__avatar-edit-icon {
       display: inline-flex;
+      align-items: center;
+      justify-content: center;
       color: inherit;
-      font-size: 0.95em;
-      line-height: 1;
+      line-height: 0;
       flex-shrink: 0;
+      pointer-events: none;
+
+      svg {
+        display: block;
+      }
     }
 
     &__avatar-menu {

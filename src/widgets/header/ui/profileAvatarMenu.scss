@@ -85,8 +85,10 @@
 }
 
 .header__profile-menu-icon {
+  display: block;
   flex-shrink: 0;
   opacity: 0.9;
+  pointer-events: none;
 
   &--upgrade {
     color: var(--dark-greenish-yellow, #c8b06d);

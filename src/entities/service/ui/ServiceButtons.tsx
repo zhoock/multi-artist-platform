@@ -1,8 +1,10 @@
 import { useLang } from '@app/providers/lang';
+import { Download as DownloadIcon } from 'lucide-react';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 import type { String, IAlbums } from '@models';
 import { useEffect, useState } from 'react';
+import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 import { downloadOwnedAlbumZipByAuth } from '@shared/api/purchases';
 import { getAlbumKeyForPaymentApis } from '@shared/lib/payment/albumPaymentKey';
 import { useAuthSessionUser } from '@shared/lib/hooks/useAuthSessionUser';
@@ -214,20 +216,7 @@ function ServiceButtonsContent({
                   onClick={handlePurchaseButtonClick}
                 >
                   <span className="service-buttons__download-icon" aria-hidden="true">
-                    <svg
-                      width="20"
-                      height="20"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                      <polyline points="7 10 12 15 17 10" />
-                      <line x1="12" y1="15" x2="12" y2="3" />
-                    </svg>
+                    <DownloadIcon {...dashboardActionIconProps({ size: 18 })} />
                   </span>
                   <span className="service-buttons__download-copy">
                     <span className="service-buttons__download-title">{purchaseTitle}</span>

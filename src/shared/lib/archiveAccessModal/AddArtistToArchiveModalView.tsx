@@ -1,4 +1,5 @@
 import { useCallback, useState, type RefObject } from 'react';
+import { X as XIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 import { useLang } from '@app/providers/lang';
@@ -9,6 +10,7 @@ import { useSiteArtistDisplayName } from '@shared/lib/hooks/useSiteArtistDisplay
 import { ArchiveApiError } from '@shared/api/archive';
 import { AlertModal } from '@shared/ui/alertModal';
 import { LocalModal } from '@shared/ui/localModal';
+import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 import { dispatchArchiveArtistAdded, awaitPremiumContentRefresh } from '@features/artistArchive';
 import { useArtistArchiveStatus } from '@features/artistArchive/lib/useArtistArchiveStatus';
 
@@ -125,7 +127,7 @@ export function AddArtistToArchiveModalView({ dialogRef, pendingAccess, onClose 
             aria-label={closeLabel}
             onClick={dismiss}
           >
-            <span aria-hidden>×</span>
+            <XIcon {...dashboardActionIconProps({ size: 18 })} />
           </button>
 
           <header className="archive-access-modal__header archive-access-modal__header--add-artist">

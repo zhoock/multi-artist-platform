@@ -101,6 +101,8 @@ import { EditAlbumModal, type AlbumFormData } from './components/modals/album/Ed
 import { EditArticleModalV2 } from './components/modals/article/EditArticleModalV2';
 import { ArticlesListSkeleton } from './components/articles/ArticlesListSkeleton';
 import { ArticleAccessControl } from './components/articles/ArticleAccessControl';
+import { DashboardNavTabIcon } from './lib/dashboardNavTabIcon';
+import { DashboardExpandChevron } from './lib/dashboardExpandChevron';
 import { DashboardTabContentSkeleton } from './components/DashboardTabContentSkeleton';
 import { ProfileTabSkeleton } from './components/ProfileTabSkeleton';
 import { SyncLyricsModal } from './components/modals/lyrics/SyncLyricsModal';
@@ -152,6 +154,12 @@ import {
   type TrackVisibility,
 } from '@shared/lib/tracks/trackVisibility';
 import { TrackVisibilityIcon } from '@shared/ui/icons/TrackVisibilityIcon';
+import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
+import {
+  ExternalLink as ExternalLinkIcon,
+  Pencil as PencilIcon,
+  Trash2 as Trash2Icon,
+} from 'lucide-react';
 
 /** Сообщение об успешной загрузке треков: RU — формы 1 трек / 2 трека / 5 треков. */
 function formatUploadedTracksSuccessMessage(
@@ -652,29 +660,7 @@ function SortableTrackItem({
                   }}
                   aria-label={ui?.dashboard?.editTrack ?? 'Edit track'}
                 >
-                  <svg
-                    width="18"
-                    height="18"
-                    viewBox="0 0 20 20"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                    aria-hidden
-                  >
-                    <path
-                      d="M11.5 3.5L16.5 8.5L6.5 18.5H1.5V13.5L11.5 3.5Z"
-                      stroke="currentColor"
-                      strokeWidth="1.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                    <path
-                      d="M14.5 1.5L18.5 5.5"
-                      stroke="currentColor"
-                      strokeWidth="1.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
+                  <PencilIcon {...dashboardActionIconProps()} />
                 </button>
                 <button
                   type="button"
@@ -685,36 +671,7 @@ function SortableTrackItem({
                   }}
                   aria-label={ui?.dashboard?.deleteTrack ?? 'Delete track'}
                 >
-                  <svg
-                    width="18"
-                    height="18"
-                    viewBox="0 0 20 20"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                    aria-hidden
-                  >
-                    <path
-                      d="M2.5 5.5H17.5M7.5 5.5V3.5C7.5 2.94772 7.94772 2.5 8.5 2.5H11.5C12.0523 2.5 12.5 2.94772 12.5 3.5V5.5M15.5 5.5V16.5C15.5 17.0523 15.0523 17.5 14.5 17.5H5.5C4.94772 17.5 4.5 17.0523 4.5 16.5V5.5H15.5Z"
-                      stroke="currentColor"
-                      strokeWidth="1.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                    <path
-                      d="M8.5 9.5V14.5"
-                      stroke="currentColor"
-                      strokeWidth="1.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                    <path
-                      d="M11.5 9.5V14.5"
-                      stroke="currentColor"
-                      strokeWidth="1.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
+                  <Trash2Icon {...dashboardActionIconProps()} />
                 </button>
               </div>
             ) : (
@@ -2884,12 +2841,7 @@ function UserDashboard() {
                     )}
                     onClick={() => goDashboard(`/dashboard-new/${tab}`)}
                   >
-                    {tab === 'archive' ? (
-                      <SubscriberContentLockIcon
-                        className="user-dashboard__nav-item-icon"
-                        size={14}
-                      />
-                    ) : null}
+                    <DashboardNavTabIcon tab={tab} />
                     {dashboardHeadingForTab(tab, ui)}
                   </button>
                 ))}
@@ -3082,10 +3034,8 @@ function UserDashboard() {
                                               </div>
                                             )}
                                           </div>
-                                          <div
-                                            className={`user-dashboard__album-arrow ${isExpanded ? 'user-dashboard__album-arrow--expanded' : ''}`}
-                                          >
-                                            {isExpanded ? '⌃' : '›'}
+                                          <div className="user-dashboard__album-arrow">
+                                            <DashboardExpandChevron expanded={isExpanded} />
                                           </div>
                                         </div>
 
@@ -3556,7 +3506,11 @@ function UserDashboard() {
                                               </div>
                                             ) : null}
                                           </div>
-                                          <div className="user-dashboard__album-item-actions">
+                                          <div
+                                            className="user-dashboard__album-item-actions"
+                                            onClick={(e) => e.stopPropagation()}
+                                            onMouseDown={(e) => e.stopPropagation()}
+                                          >
                                             <ArticleAccessControl
                                               articleId={article.articleId}
                                               visibility={articleVisibility}
@@ -3582,10 +3536,8 @@ function UserDashboard() {
                                                 )
                                               }
                                             />
-                                            <div
-                                              className={`user-dashboard__album-arrow ${isExpanded ? 'user-dashboard__album-arrow--expanded' : ''}`}
-                                            >
-                                              {isExpanded ? '⌃' : '›'}
+                                            <div className="user-dashboard__album-arrow">
+                                              <DashboardExpandChevron expanded={isExpanded} />
                                             </div>
                                           </div>
                                         </div>
@@ -3890,8 +3842,11 @@ function UserDashboard() {
                                     aria-expanded={isAvatarMenuOpen}
                                     id="user-dashboard-avatar-edit-button"
                                   >
-                                    <span className="user-dashboard__avatar-edit-icon" aria-hidden>
-                                      ✎
+                                    <span
+                                      className="user-dashboard__avatar-edit-icon"
+                                      aria-hidden={true}
+                                    >
+                                      <PencilIcon {...dashboardActionIconProps({ size: 16 })} />
                                     </span>
                                   </button>
                                   {isAvatarMenuOpen && (
@@ -3979,17 +3934,9 @@ function UserDashboard() {
                                 >
                                   <span
                                     className="user-dashboard__profile-hero-open-icon"
-                                    aria-hidden
+                                    aria-hidden={true}
                                   >
-                                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none">
-                                      <path
-                                        d="M14 3h7v7M10 14L21 3M21 14v7H3V3h7"
-                                        stroke="currentColor"
-                                        strokeWidth="1.75"
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                      />
-                                    </svg>
+                                    <ExternalLinkIcon {...dashboardActionIconProps()} />
                                   </span>
                                   {ui?.dashboard?.profileHero?.openArtistPage ?? 'Open artist page'}
                                 </button>

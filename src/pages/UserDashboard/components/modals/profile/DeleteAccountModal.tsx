@@ -1,8 +1,10 @@
 import { useState, FormEvent } from 'react';
+import { Lock as LockIcon } from 'lucide-react';
 import { Popup } from '@shared/ui/popup';
 import { deleteAccount } from '@shared/lib/auth';
 import { markAccountDeletedSession } from '@shared/lib/accountDeletedSession';
 import { queueAccountDeletedToast } from '@shared/lib/accountDeletedToast';
+import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 import './DeleteAccountModal.style.scss';
 
 export interface DeleteAccountModalCopy {
@@ -54,20 +56,6 @@ function TrashIcon() {
         strokeLinejoin="round"
       />
       <path d="M10 11v6M14 11v6" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function LockIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <rect x="5" y="11" width="14" height="10" rx="2" stroke="currentColor" strokeWidth="1.75" />
-      <path
-        d="M8 11V8a4 4 0 0 1 8 0v3"
-        stroke="currentColor"
-        strokeWidth="1.75"
-        strokeLinecap="round"
-      />
     </svg>
   );
 }
@@ -188,7 +176,7 @@ export function DeleteAccountModal({ isOpen, onClose, onDeleted, copy }: DeleteA
             </label>
             <div className="delete-account-modal__input-wrapper">
               <span className="delete-account-modal__input-icon" aria-hidden="true">
-                <LockIcon />
+                <LockIcon {...dashboardActionIconProps({ size: 18, strokeWidth: 1.75 })} />
               </span>
               <input
                 id="delete-account-password"
@@ -239,7 +227,7 @@ export function DeleteAccountModal({ isOpen, onClose, onDeleted, copy }: DeleteA
 
           <p className="delete-account-modal__final">
             <span className="delete-account-modal__final-icon" aria-hidden="true">
-              <LockIcon />
+              <LockIcon {...dashboardActionIconProps({ size: 18, strokeWidth: 1.75 })} />
             </span>
             {copy.finalWarning}
           </p>

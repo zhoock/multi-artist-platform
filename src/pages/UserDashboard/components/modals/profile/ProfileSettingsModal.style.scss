@@ -191,10 +191,13 @@ dialog {
         outline-offset: 2px;
       }
 
-      svg {
+      svg,
+      .profile-settings-modal__password-toggle-icon {
+        display: block;
         width: 20px;
         height: 20px;
         flex-shrink: 0;
+        pointer-events: none;
       }
     }
 

@@ -7,8 +7,10 @@ import {
   useState,
   type KeyboardEvent as ReactKeyboardEvent,
 } from 'react';
+import { Search as SearchIcon } from 'lucide-react';
 import type { SceneArtist } from '@components/view/Universe3D';
 import { useLang } from '@app/providers/lang';
+import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 import {
   filterArtistsForSearch,
   matchedSlugsFromQuery,
@@ -196,17 +198,12 @@ export function UniverseFloatingSearch({
           tabIndex={!expanded ? 0 : undefined}
           aria-label={!expanded ? 'Search artists' : undefined}
         >
-          <svg
-            className="universe-search__icon"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            aria-hidden
-          >
-            <circle cx="11" cy="11" r="7" />
-            <path d="M20 20L16 16" />
-          </svg>
+          <SearchIcon
+            {...dashboardActionIconProps({
+              size: 16,
+              className: 'universe-search__icon',
+            })}
+          />
 
           {!expanded ? (
             <span className="universe-search__collapsed-label" aria-hidden>

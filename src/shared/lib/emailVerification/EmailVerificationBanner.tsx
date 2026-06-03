@@ -1,29 +1,15 @@
 import { useState } from 'react';
+import { CircleAlert as CircleAlertIcon } from 'lucide-react';
 import { ChangeEmailModal } from '@features/auth/ui/ChangeEmailModal';
 import { isEmailVerified, refreshAuthSession, resendVerificationEmail } from '@shared/lib/auth';
 import { useAuthSessionUser } from '@shared/lib/hooks/useAuthSessionUser';
+import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 import { useEmailVerificationCopy } from './useEmailVerificationCopy';
 import { useResendCooldown } from './useResendCooldown';
 import { resolveVerificationEmailSend } from './resolveVerificationEmailSendResult';
 import './style.scss';
 
 const BANNER_DISMISSED_KEY = 'email-verification-banner-dismissed';
-
-function BannerIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <circle cx="12" cy="12" r="9.25" stroke="currentColor" strokeWidth="1.35" />
-      <path
-        d="M12 7.85 15.85 15.5H8.15L12 7.85Z"
-        stroke="currentColor"
-        strokeWidth="1.25"
-        strokeLinejoin="round"
-      />
-      <path d="M12 10.35v2.35" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-      <circle cx="12" cy="14.65" r="0.55" fill="currentColor" />
-    </svg>
-  );
-}
 
 function BannerSubtitle({ template, email }: { template: string; email: string }) {
   const parts = template.split('{{email}}');
@@ -96,7 +82,7 @@ export function EmailVerificationBanner() {
       <section className="email-verification-banner" role="status" aria-live="polite">
         <div className="email-verification-banner__inner">
           <span className="email-verification-banner__icon" aria-hidden="true">
-            <BannerIcon />
+            <CircleAlertIcon {...dashboardActionIconProps({ size: 20 })} />
           </span>
 
           <div className="email-verification-banner__copy">

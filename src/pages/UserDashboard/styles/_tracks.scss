@@ -245,6 +245,7 @@ dialog {
 
       &-icon {
         display: inline-flex;
+        pointer-events: none;
       }
 
       &:hover {
@@ -269,6 +270,7 @@ dialog {
       }
 
       svg {
+        display: block;
         width: 18px;
         height: 18px;
         fill: none;
@@ -370,6 +372,7 @@ dialog {
       }
 
       svg {
+        display: block;
         width: 18px;
         height: 18px;
         fill: none;

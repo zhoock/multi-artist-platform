@@ -277,6 +277,7 @@ dialog {
       display: inline-flex;
       flex-shrink: 0;
       line-height: 0;
+      align-items: center;
     }
 
     &__section-title {
@@ -333,6 +334,7 @@ dialog {
       &-icon {
         display: inline-flex;
         translate: 0 0.06em;
+        pointer-events: none;
       }
 
       &:hover {
@@ -392,22 +394,22 @@ dialog {
     }
 
     &__album-arrow {
-      display: flex;
+      display: inline-flex;
       align-items: center;
       justify-content: center;
       width: var(--ms-1);
       height: var(--ms-1);
       padding: 0;
       color: var(--dashboard-text-secondary);
-      font-size: var(--ms-1);
-      font-weight: 300;
       flex-shrink: 0;
-      transition: transform 0.2s;
       pointer-events: none;
+    }
 
-      &--expanded {
-        transform: rotate(180deg);
-      }
+    &__album-arrow-icon {
+      display: block;
+      flex-shrink: 0;
+      color: inherit;
+      pointer-events: none;
     }
 
     &__delete-album-container {

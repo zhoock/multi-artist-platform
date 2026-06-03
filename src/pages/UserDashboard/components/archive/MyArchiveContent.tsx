@@ -12,9 +12,8 @@ import {
   type MyArchiveArtist,
   type MyArchiveData,
 } from '@shared/api/archive';
-import { SubscriberContentLockIcon } from '@shared/ui/icons/SubscriberContentLockIcon';
-import { TrashIcon } from '@shared/ui/icons/TrashIcon';
-import { CalendarIcon } from '@shared/ui/icons/CalendarIcon';
+import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
+import { Calendar as CalendarIcon, Lock as LockIcon, Trash2 as Trash2Icon } from 'lucide-react';
 import { InfoCircleIcon } from '@shared/ui/icons/InfoCircleIcon';
 import {
   dispatchArchiveArtistRemoved,
@@ -192,9 +191,11 @@ export function MyArchiveContent({ active }: Props) {
             style={{ '--archive-slots-progress': `${slotsProgress}%` } as CSSProperties}
             aria-hidden
           >
-            <SubscriberContentLockIcon
-              className="user-dashboard__archive-slots-ring-icon"
-              size={18}
+            <LockIcon
+              {...dashboardActionIconProps({
+                size: 18,
+                className: 'user-dashboard__archive-slots-ring-icon',
+              })}
             />
           </div>
           <div className="user-dashboard__archive-slots-meta">
@@ -253,7 +254,12 @@ export function MyArchiveContent({ active }: Props) {
                   aria-busy={isRemoving}
                   onClick={() => void handleRemove(artist)}
                 >
-                  <TrashIcon className="user-dashboard__archive-remove-icon" size={14} />
+                  <Trash2Icon
+                    {...dashboardActionIconProps({
+                      size: 14,
+                      className: 'user-dashboard__archive-remove-icon',
+                    })}
+                  />
                   {isRemoving
                     ? (t?.removing ?? (lang === 'en' ? 'Removing…' : 'Удаляем…'))
                     : removeLabel}
@@ -276,7 +282,13 @@ export function MyArchiveContent({ active }: Props) {
             <article className="user-dashboard__archive-card user-dashboard__archive-card--full">
               <div className="user-dashboard__archive-card-body user-dashboard__archive-card-body--empty">
                 <p className="user-dashboard__archive-empty-title">
-                  <SubscriberContentLockIcon size={16} /> {archiveFullLabel}
+                  <LockIcon
+                    {...dashboardActionIconProps({
+                      size: 16,
+                      className: 'user-dashboard__archive-inline-icon',
+                    })}
+                  />{' '}
+                  {archiveFullLabel}
                 </p>
               </div>
             </article>
@@ -290,7 +302,12 @@ export function MyArchiveContent({ active }: Props) {
           {cooldownInfo} {cooldownNext}
         </p>
         <p className="user-dashboard__archive-info-days">
-          <CalendarIcon className="user-dashboard__archive-info-calendar" size={14} />
+          <CalendarIcon
+            {...dashboardActionIconProps({
+              size: 14,
+              className: 'user-dashboard__archive-info-calendar',
+            })}
+          />
           {cooldownDays}
         </p>
       </footer>

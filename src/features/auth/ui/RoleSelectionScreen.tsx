@@ -1,13 +1,51 @@
 import { useMemo } from 'react';
+import {
+  ArrowRight as ArrowRightIcon,
+  Bookmark as BookmarkIcon,
+  CloudUpload as CloudUploadIcon,
+  Disc as DiscIcon,
+  Headphones as HeadphonesIcon,
+  Music as MusicIcon,
+  SlidersHorizontal as SlidersHorizontalIcon,
+  type LucideIcon,
+} from 'lucide-react';
+
 import { useLang } from '@app/providers/lang';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 import type { AccountType } from '@shared/lib/accountType';
+import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
+
 import './RoleSelectionScreen.scss';
 
 interface RoleSelectionScreenProps {
   onSelect: (accountType: AccountType) => void;
   onSwitchToLogin?: () => void;
+}
+
+const roleHeroIconProps = (className: string) =>
+  dashboardActionIconProps({ size: 40, strokeWidth: 1.75, className });
+
+const roleFeatureIconProps = dashboardActionIconProps({
+  size: 18,
+  className: 'role-selection__feature-icon-svg',
+});
+
+const roleCtaIconProps = dashboardActionIconProps({
+  size: 18,
+  className: 'role-selection__cta-icon',
+});
+
+function RoleHeroIcon({ icon: Icon, className }: { icon: LucideIcon; className: string }) {
+  return <Icon {...roleHeroIconProps(className)} />;
+}
+
+function RoleFeatureIcon({ icon: Icon }: { icon: LucideIcon }) {
+  return <Icon {...roleFeatureIconProps} />;
+}
+
+function stripTrailingArrow(label: string): string {
+  return label.replace(/\s*→\s*$/, '').trim();
 }
 
 export function RoleSelectionScreen({ onSelect, onSwitchToLogin }: RoleSelectionScreenProps) {
@@ -25,12 +63,12 @@ export function RoleSelectionScreen({ onSelect, onSwitchToLogin }: RoleSelection
           listenerDescription: 'Buy music, save albums, and get access to releases.',
           listenerFeatureBuy: 'Buy music',
           listenerFeatureSave: 'Save albums',
-          listenerCta: 'Continue as listener →',
+          listenerCta: 'Continue as listener',
           artistTitle: 'Artist',
           artistDescription: 'Upload releases and create interactive albums.',
           artistFeatureUpload: 'Publish releases',
           artistFeatureAlbums: 'Create interactive albums',
-          artistCta: 'Continue as artist →',
+          artistCta: 'Continue as artist',
           roleChangeHint: 'You can change your role later in profile settings.',
           hasAccount: 'Already have an account?',
           signIn: 'Sign in',
@@ -42,12 +80,12 @@ export function RoleSelectionScreen({ onSelect, onSwitchToLogin }: RoleSelection
           listenerDescription: 'Покупайте музыку, сохраняйте альбомы и получайте доступ к релизам.',
           listenerFeatureBuy: 'Покупайте музыку',
           listenerFeatureSave: 'Сохраняйте альбомы',
-          listenerCta: 'Продолжить как слушатель →',
+          listenerCta: 'Продолжить как слушатель',
           artistTitle: 'Артист',
           artistDescription: 'Загружайте релизы и создавайте интерактивные альбомы.',
           artistFeatureUpload: 'Публикуйте релизы',
           artistFeatureAlbums: 'Создавайте интерактивные альбомы',
-          artistCta: 'Продолжить как артист →',
+          artistCta: 'Продолжить как артист',
           roleChangeHint: 'Вы всегда сможете изменить роль в настройках профиля.',
           hasAccount: 'Уже есть аккаунт?',
           signIn: 'Войти',
@@ -64,21 +102,20 @@ export function RoleSelectionScreen({ onSelect, onSwitchToLogin }: RoleSelection
 
       <div className="role-selection__cards">
         <article className="role-selection__card role-selection__card--listener">
-          <div className="role-selection__icon" aria-hidden>
-            ♫
-          </div>
+          <RoleHeroIcon icon={HeadphonesIcon} className="role-selection__icon" />
           <h3 className="role-selection__card-title">{copy.listenerTitle}</h3>
           <p className="role-selection__card-text">{copy.listenerDescription}</p>
+          <div className="role-selection__card-divider" aria-hidden />
           <ul className="role-selection__features">
             <li className="role-selection__feature">
               <span className="role-selection__feature-icon" aria-hidden>
-                ♪
+                <RoleFeatureIcon icon={MusicIcon} />
               </span>
               {copy.listenerFeatureBuy}
             </li>
             <li className="role-selection__feature">
               <span className="role-selection__feature-icon" aria-hidden>
-                ★
+                <RoleFeatureIcon icon={BookmarkIcon} />
               </span>
               {copy.listenerFeatureSave}
             </li>
@@ -88,32 +125,33 @@ export function RoleSelectionScreen({ onSelect, onSwitchToLogin }: RoleSelection
             className="role-selection__cta"
             onClick={() => onSelect('listener')}
           >
-            {copy.listenerCta}
+            <span>{stripTrailingArrow(copy.listenerCta)}</span>
+            <ArrowRightIcon {...roleCtaIconProps} />
           </button>
         </article>
 
         <article className="role-selection__card role-selection__card--artist">
-          <div className="role-selection__icon" aria-hidden>
-            ☰
-          </div>
+          <RoleHeroIcon icon={SlidersHorizontalIcon} className="role-selection__icon" />
           <h3 className="role-selection__card-title">{copy.artistTitle}</h3>
           <p className="role-selection__card-text">{copy.artistDescription}</p>
+          <div className="role-selection__card-divider" aria-hidden />
           <ul className="role-selection__features">
             <li className="role-selection__feature">
               <span className="role-selection__feature-icon" aria-hidden>
-                ↑
+                <RoleFeatureIcon icon={CloudUploadIcon} />
               </span>
               {copy.artistFeatureUpload}
             </li>
             <li className="role-selection__feature">
               <span className="role-selection__feature-icon" aria-hidden>
-                ✎
+                <RoleFeatureIcon icon={DiscIcon} />
               </span>
               {copy.artistFeatureAlbums}
             </li>
           </ul>
           <button type="button" className="role-selection__cta" onClick={() => onSelect('artist')}>
-            {copy.artistCta}
+            <span>{stripTrailingArrow(copy.artistCta)}</span>
+            <ArrowRightIcon {...roleCtaIconProps} />
           </button>
         </article>
       </div>

@@ -1,10 +1,12 @@
 import React, { useEffect, useMemo } from 'react';
 import clsx from 'clsx';
+import { Lock as LockIcon } from 'lucide-react';
 import type { TracksProps, IAlbums } from '@models';
 import { normalizeTrackVisibility } from '@shared/lib/tracks/trackVisibility';
 import { isTrackPlaybackBlocked } from '@shared/lib/tracks/trackPlayback';
 import type { AppStore, RootState } from '@shared/model/appStore/types';
 import { fallbackAlbumClientId } from '@shared/lib/albumClientId';
+import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 
 function formatDuration(duration?: number | string): string {
   // Если duration не задан или не является валидным числом
@@ -163,22 +165,12 @@ export function TrackList({ tracks, album, store, onSelectTrack }: TrackListProp
             <span className="tracks__symbol">
               {playbackLocked ? (
                 <span className="tracks__symbol-lock" aria-hidden>
-                  <svg
-                    className="tracks__lock-icon tracks__lock-icon--lead"
-                    width={18}
-                    height={18}
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <path
-                      d="M7 11V8a5 5 0 0110 0v3M6 11h12a1 1 0 011 1v7a2 2 0 01-2 2H7a2 2 0 01-2-2v-7a1 1 0 011-1z"
-                      stroke="currentColor"
-                      strokeWidth="1.6"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
+                  <LockIcon
+                    {...dashboardActionIconProps({
+                      size: 18,
+                      className: 'tracks__lock-icon tracks__lock-icon--lead',
+                    })}
+                  />
                 </span>
               ) : (
                 <>

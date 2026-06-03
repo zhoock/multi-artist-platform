@@ -13,6 +13,7 @@ import {
 import { getUserUserId } from '@config/user';
 import { fetchWithAuthSession } from '@shared/lib/authFetch';
 import { Waveform } from '@shared/ui/waveform';
+import { DashboardExpandChevron } from '../../lib/dashboardExpandChevron';
 
 interface MixerAdminProps {
   ui?: IInterface;
@@ -792,10 +793,8 @@ export function MixerAdmin({ ui, userId, albums = [] }: MixerAdminProps) {
                       <div className="user-dashboard__album-year">{album.year}</div>
                     )}
                   </div>
-                  <div
-                    className={`user-dashboard__album-arrow ${isAlbumOpen ? 'user-dashboard__album-arrow--expanded' : ''}`}
-                  >
-                    {isAlbumOpen ? '⌃' : '›'}
+                  <div className="user-dashboard__album-arrow">
+                    <DashboardExpandChevron expanded={isAlbumOpen} />
                   </div>
                 </div>
 

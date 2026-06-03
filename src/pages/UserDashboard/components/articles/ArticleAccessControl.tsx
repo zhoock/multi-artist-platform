@@ -210,6 +210,7 @@ export function ArticleAccessControl({
         type="button"
         className={buttonClassName ?? 'user-dashboard__article-access-button'}
         onClick={toggleAccessMenu}
+        onMouseDown={(e) => e.stopPropagation()}
         aria-expanded={menuOpen}
         aria-haspopup="menu"
         aria-label={trackAccessAria}

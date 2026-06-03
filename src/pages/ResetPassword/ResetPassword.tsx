@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState, FormEvent } from 'react';
+import { Lock as LockIcon } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { resetPassword } from '@shared/lib/auth';
 import { useLang } from '@app/providers/lang';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
+import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 import { computePasswordStrength } from './passwordStrength';
 import { ModalBackdrop } from '@shared/ui/localModal';
 import '@features/auth/ui/AuthForm.scss';
@@ -52,20 +54,6 @@ function EyeOffIcon() {
         strokeWidth="1.6"
         strokeLinecap="round"
         strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-function LockIcon() {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <rect x="4" y="11" width="16" height="10" rx="2" stroke="currentColor" strokeWidth="1.5" />
-      <path
-        d="M8 11V8a4 4 0 0 1 8 0v3"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
       />
     </svg>
   );
@@ -291,7 +279,7 @@ export default function ResetPassword() {
       <ModalBackdrop className="reset-password-page__backdrop" />
       <div className="reset-password-page__container">
         <div className="reset-password-page__icon-ring" aria-hidden="true">
-          <LockIcon />
+          <LockIcon {...dashboardActionIconProps({ size: 22, strokeWidth: 1.5 })} />
         </div>
         <h1 id="reset-password-title" className="reset-password-page__title">
           {copy.title}

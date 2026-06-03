@@ -4,17 +4,6 @@
 
 dialog {
   .user-dashboard {
-    &__nav-item {
-      align-items: center;
-      gap: var(--ms-02);
-    }
-
-    &__nav-item-icon {
-      flex-shrink: 0;
-      color: var(--dark-greenish-yellow);
-      opacity: 0.9;
-    }
-
     &__archive-tab {
       display: flex;
       flex-direction: column;
@@ -345,7 +334,8 @@ dialog {
     }
 
     &__archive-info-icon,
-    &__archive-info-calendar {
+    &__archive-info-calendar,
+    &__archive-inline-icon {
       display: inline-flex;
       vertical-align: middle;
       flex-shrink: 0;

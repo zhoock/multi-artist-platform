@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Mail as MailIcon } from 'lucide-react';
 import { Popup } from '@shared/ui/popup';
 import { refreshAuthSession, resendVerificationEmail } from '@shared/lib/auth';
 import { useAuthSessionUser } from '@shared/lib/hooks/useAuthSessionUser';
@@ -7,6 +8,7 @@ import {
   useResendCooldown,
   resolveVerificationEmailSend,
 } from '@shared/lib/emailVerification';
+import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 import { ChangeEmailModal } from './ChangeEmailModal';
 import './VerifyEmailModal.style.scss';
 
@@ -14,21 +16,6 @@ interface VerifyEmailModalProps {
   isOpen: boolean;
   onContinueLater: () => void;
   onClose?: () => void;
-}
-
-function MailIcon() {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <rect x="3" y="5" width="18" height="14" rx="2" stroke="currentColor" strokeWidth="1.75" />
-      <path
-        d="m3 7 9 6 9-6"
-        stroke="currentColor"
-        strokeWidth="1.75"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
 }
 
 function CheckIcon() {
@@ -100,7 +87,7 @@ export function VerifyEmailModal({ isOpen, onContinueLater, onClose }: VerifyEma
           <div className="verify-email-modal__header">
             <div className="verify-email-modal__title-row">
               <span className="verify-email-modal__icon" aria-hidden="true">
-                <MailIcon />
+                <MailIcon {...dashboardActionIconProps({ size: 22, strokeWidth: 1.75 })} />
               </span>
               <h2 className="verify-email-modal__title">{copy.verifyTitle}</h2>
             </div>

@@ -1,49 +1,20 @@
+import { CircleAlert as CircleAlertIcon, CircleCheck as CircleCheckIcon } from 'lucide-react';
+
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { useLang } from '@app/providers/lang';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
+import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
+
 import './ProfileEmailVerificationStatus.scss';
 
 type ProfileEmailVerificationStatusProps = {
   verified: boolean;
 };
 
-function IconVerified() {
-  return (
-    <svg
-      className="profile-email-verification__icon"
-      viewBox="0 0 16 16"
-      width="16"
-      height="16"
-      fill="none"
-      aria-hidden
-    >
-      <circle cx="8" cy="8" r="7" stroke="currentColor" strokeWidth="1.25" />
-      <path
-        d="M5 8.2 7 10.2 11 6"
-        stroke="currentColor"
-        strokeWidth="1.25"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-function IconUnverified() {
-  return (
-    <svg
-      className="profile-email-verification__icon"
-      viewBox="0 0 16 16"
-      width="16"
-      height="16"
-      fill="none"
-      aria-hidden
-    >
-      <circle cx="8" cy="8" r="7" stroke="currentColor" strokeWidth="1.25" />
-      <path d="M8 5v4M8 11.2v.8" stroke="currentColor" strokeWidth="1.35" strokeLinecap="round" />
-    </svg>
-  );
-}
+const emailVerificationIconProps = {
+  ...dashboardActionIconProps({ size: 16 }),
+  className: 'profile-email-verification__icon',
+};
 
 export function ProfileEmailVerificationStatus({ verified }: ProfileEmailVerificationStatusProps) {
   const { lang } = useLang();
@@ -56,7 +27,7 @@ export function ProfileEmailVerificationStatus({ verified }: ProfileEmailVerific
         className="profile-email-verification profile-email-verification--verified"
         role="status"
       >
-        <IconVerified />
+        <CircleCheckIcon {...emailVerificationIconProps} />
         <span>{copy?.verified ?? 'Verified'}</span>
       </div>
     );
@@ -68,7 +39,7 @@ export function ProfileEmailVerificationStatus({ verified }: ProfileEmailVerific
       role="status"
     >
       <div className="profile-email-verification__row">
-        <IconUnverified />
+        <CircleAlertIcon {...emailVerificationIconProps} />
         <span className="profile-email-verification__title">
           {copy?.notVerified ?? 'Email not verified'}
         </span>

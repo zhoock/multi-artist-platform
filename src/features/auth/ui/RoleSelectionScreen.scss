@@ -8,12 +8,14 @@
   color: var(--white);
 
   &__intro {
-    text-align: center;
     margin-bottom: var(--ms-0);
+    text-align: center;
   }
 
   &__title {
     margin: 0 0 var(--ms-01);
+    color: var(--dark-greenish-yellow, #c8b06d);
+    font-family: var(--base-accent-font, inherit);
     font-size: clamp(1.5rem, 3vw, 1.75rem);
     font-weight: 500;
     letter-spacing: -0.02em;
@@ -39,9 +41,11 @@
   &__card {
     display: flex;
     flex-direction: column;
+    align-items: center;
     gap: var(--ms-0);
     min-height: 100%;
     padding: var(--ms-2) var(--ms-1);
+    text-align: center;
     background: rgb(255 255 255 / 2%);
     border: 1px solid rgb(255 255 255 / 8%);
     border-radius: var(--ms-01);
@@ -51,67 +55,85 @@
 
     &--listener {
       --role-accent: #8fa0b3;
-      --cta-text: #c8d2dc;
-      --cta-border: rgb(143 160 179 / 35%);
-      --cta-border-hover: rgb(143 160 179 / 55%);
     }
 
     &--artist {
       --role-accent: #b89a5a;
-      --cta-text: #dcc99a;
-      --cta-border: rgb(184 154 90 / 35%);
-      --cta-border-hover: rgb(184 154 90 / 55%);
     }
   }
 
   &__icon {
-    display: grid;
-    place-items: center;
-    width: 2.5rem;
-    height: 2.5rem;
+    display: block;
+    flex-shrink: 0;
     color: var(--role-accent, var(--warm-concrete));
-    font-size: 1.35rem;
-    line-height: 1;
+    pointer-events: none;
   }
 
   &__card-title {
+    width: 100%;
     margin: 0;
     font-size: 1.125rem;
     font-weight: 500;
   }
 
+  &__card--artist &__card-title {
+    color: var(--role-accent);
+  }
+
   &__card-text {
+    width: 100%;
     margin: 0;
     color: var(--warm-concrete);
     font-size: 0.9375rem;
     line-height: 1.45;
   }
 
+  &__card-divider {
+    width: 2.5rem;
+    height: 1px;
+    margin: 0.15rem 0 0.1rem;
+    background: rgb(255 255 255 / 14%);
+  }
+
   &__features {
     display: flex;
     flex-direction: column;
-    gap: 0.45rem;
+    gap: 0.55rem;
+    align-self: center;
+    width: max-content;
+    max-width: 100%;
     margin: 0;
     padding: 0;
     list-style: none;
+    text-align: left;
   }
 
   &__feature {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.55rem;
     color: rgb(255 255 255 / 78%);
     font-size: 0.875rem;
   }
 
   &__feature-icon {
+    display: inline-flex;
     flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
     color: var(--role-accent, var(--warm-concrete));
-    font-size: 0.95rem;
-    line-height: 1;
+    pointer-events: none;
+  }
+
+  &__feature-icon-svg {
+    display: block;
   }
 
   &__cta {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
     margin-top: auto;
     width: 100%;
     text-transform: none;
@@ -122,6 +144,12 @@
       $padding: var(--ms-01) var(--ms-0),
       $font-size: 0.9375rem
     );
+  }
+
+  &__cta-icon {
+    display: block;
+    flex-shrink: 0;
+    pointer-events: none;
   }
 
   &__card--listener &__cta {
