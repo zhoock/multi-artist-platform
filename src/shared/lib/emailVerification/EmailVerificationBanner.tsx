@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { CircleAlert as CircleAlertIcon } from 'lucide-react';
+import { TriangleAlert as TriangleAlertIcon } from 'lucide-react';
 import { ChangeEmailModal } from '@features/auth/ui/ChangeEmailModal';
 import { isEmailVerified, refreshAuthSession, resendVerificationEmail } from '@shared/lib/auth';
 import { useAuthSessionUser } from '@shared/lib/hooks/useAuthSessionUser';
@@ -82,7 +82,7 @@ export function EmailVerificationBanner() {
       <section className="email-verification-banner" role="status" aria-live="polite">
         <div className="email-verification-banner__inner">
           <span className="email-verification-banner__icon" aria-hidden="true">
-            <CircleAlertIcon {...dashboardActionIconProps({ size: 20 })} />
+            <TriangleAlertIcon {...dashboardActionIconProps({ size: 22, strokeWidth: 1.75 })} />
           </span>
 
           <div className="email-verification-banner__copy">

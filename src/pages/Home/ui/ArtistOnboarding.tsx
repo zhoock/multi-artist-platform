@@ -1,69 +1,30 @@
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import {
+  FileText as FileTextIcon,
+  SlidersHorizontal as SlidersHorizontalIcon,
+  Upload as UploadIcon,
+  User as UserIcon,
+  type LucideIcon,
+} from 'lucide-react';
 import { useLang } from '@app/providers/lang';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { useSiteArtistDisplayName } from '@shared/lib/hooks/useSiteArtistDisplayName';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 import type { DashboardOpenIntent } from '@shared/lib/dashboardOpenIntent';
+import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 import './ArtistOnboarding.scss';
 
 type SecondaryFeatureId = 'article' | 'mixer' | 'profile';
 
-function UploadIcon() {
-  return (
-    <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden>
-      <path
-        d="M12 16V4m0 0l-4 4m4-4l4 4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.75"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
+const FEATURE_ICONS: Record<SecondaryFeatureId, LucideIcon> = {
+  profile: UserIcon,
+  article: FileTextIcon,
+  mixer: SlidersHorizontalIcon,
+};
 
 function FeatureIcon({ id }: { id: SecondaryFeatureId }) {
-  switch (id) {
-    case 'article':
-      return (
-        <svg viewBox="0 0 24 24" aria-hidden>
-          <path
-            d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinejoin="round"
-          />
-        </svg>
-      );
-    case 'mixer':
-      return (
-        <svg viewBox="0 0 24 24" aria-hidden>
-          <path
-            d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M2 14h4M10 12h4M18 16h4"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-          />
-        </svg>
-      );
-    case 'profile':
-    default:
-      return (
-        <svg viewBox="0 0 24 24" aria-hidden>
-          <circle cx="12" cy="8" r="4" fill="none" stroke="currentColor" strokeWidth="1.5" />
-          <path
-            d="M4 20c0-3.314 3.582-6 8-6s8 2.686 8 6"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-          />
-        </svg>
-      );
-  }
+  const Icon = FEATURE_ICONS[id];
+  return <Icon {...dashboardActionIconProps({ size: 18, strokeWidth: 1.5 })} />;
 }
 
 export function ArtistOnboarding() {
@@ -153,7 +114,7 @@ export function ArtistOnboarding() {
               className="artist-onboarding-hero__cta"
               onClick={() => openDashboard('albums', { openEditAlbumModal: true })}
             >
-              <UploadIcon />
+              <UploadIcon {...dashboardActionIconProps({ size: 20, strokeWidth: 1.75 })} />
               <span>{copy?.primaryCta ?? 'Загрузить альбом'}</span>
             </button>
           </div>

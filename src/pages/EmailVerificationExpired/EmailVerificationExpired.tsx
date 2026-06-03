@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { TriangleAlert as TriangleAlertIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { isAuthenticated, refreshAuthSession, resendVerificationEmail } from '@shared/lib/auth';
@@ -7,21 +8,8 @@ import {
   useResendCooldown,
   resolveVerificationEmailSend,
 } from '@shared/lib/emailVerification';
+import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 import '@features/auth/ui/VerifyEmailModal.style.scss';
-
-function WarningIcon() {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path
-        d="M12 9v4m0 4h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"
-        stroke="currentColor"
-        strokeWidth="1.75"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
 
 function CheckIcon() {
   return (
@@ -84,7 +72,7 @@ export default function EmailVerificationExpired() {
               className="verify-email-modal__icon verify-email-modal__icon--error"
               aria-hidden="true"
             >
-              <WarningIcon />
+              <TriangleAlertIcon {...dashboardActionIconProps({ size: 22, strokeWidth: 1.75 })} />
             </span>
             <h1 className="verify-email-modal__title">{copy.expiredTitle}</h1>
           </div>
