@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { TriangleAlert as TriangleAlertIcon } from 'lucide-react';
+import { Check as CheckIcon, TriangleAlert as TriangleAlertIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { isAuthenticated, refreshAuthSession, resendVerificationEmail } from '@shared/lib/auth';
@@ -10,20 +10,6 @@ import {
 } from '@shared/lib/emailVerification';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 import '@features/auth/ui/VerifyEmailModal.style.scss';
-
-function CheckIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path
-        d="m5 12 5 5L20 7"
-        stroke="currentColor"
-        strokeWidth="1.85"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
 
 export default function EmailVerificationExpired() {
   const navigate = useNavigate();
@@ -81,7 +67,7 @@ export default function EmailVerificationExpired() {
         {success ? (
           <div className="verify-email-modal__success" role="status" aria-live="polite">
             <span className="verify-email-modal__success-icon" aria-hidden="true">
-              <CheckIcon />
+              <CheckIcon {...dashboardActionIconProps({ size: 18, strokeWidth: 1.85 })} />
             </span>
             <div className="verify-email-modal__success-copy">
               <p className="verify-email-modal__success-title">{copy.verificationSentTitle}</p>

@@ -82,7 +82,9 @@
 
   &__plus,
   &__check {
-    font-size: 0.95em;
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
     line-height: 1;
   }
 

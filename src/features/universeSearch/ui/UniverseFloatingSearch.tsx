@@ -7,7 +7,7 @@ import {
   useState,
   type KeyboardEvent as ReactKeyboardEvent,
 } from 'react';
-import { Search as SearchIcon } from 'lucide-react';
+import { ArrowUpRight as ArrowUpRightIcon, Search as SearchIcon } from 'lucide-react';
 import type { SceneArtist } from '@components/view/Universe3D';
 import { useLang } from '@app/providers/lang';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
@@ -293,16 +293,12 @@ export function UniverseFloatingSearch({
                     <div className="universe-search__name">{artist.name}</div>
                     {subtitle ? <div className="universe-search__sub">{subtitle}</div> : null}
                   </div>
-                  <svg
-                    className="universe-search__arrow"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    aria-hidden
-                  >
-                    <path d="M7 17L17 7M17 7H9M17 7v8" />
-                  </svg>
+                  <ArrowUpRightIcon
+                    {...dashboardActionIconProps({
+                      size: 14,
+                      className: 'universe-search__arrow',
+                    })}
+                  />
                 </li>
               );
             })}

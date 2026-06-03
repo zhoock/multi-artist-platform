@@ -19,6 +19,7 @@
  */
 
 import React, { useEffect, useState } from 'react';
+import { Check as CheckIcon } from 'lucide-react';
 import { Link, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import type { IAlbums } from '@models';
 import AlbumCover from '@entities/album/ui/AlbumCover';
@@ -35,6 +36,7 @@ import { formatAlbumDisplayFullName } from '@shared/lib/profileDisplayName';
 import { useSiteArtistDisplayName } from '@shared/lib/hooks/useSiteArtistDisplayName';
 import { beginAlbumCheckoutAuthIntent } from '@shared/lib/authIntent';
 import { sanitizeReturnPath } from '@shared/lib/authReturnUrl';
+import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 import { getAlbumPrice } from '../lib/getAlbumPrice';
 import { useAlbumOwnedByViewer } from '../lib/useAlbumOwnedByViewer';
 import './AlbumCheckoutModal.style.scss';
@@ -242,6 +244,12 @@ export function AlbumCheckoutModal({ isOpen, album, onClose }: AlbumCheckoutModa
   const { formatted: formattedPrice, currency, price } = getAlbumPrice(album);
   const numericPrice = parseFloat(price) || 0.99;
   const albumKey = getAlbumKeyForPaymentApis(album);
+  const authGateBenefits = [
+    labels.authGateBenefitLibrary,
+    labels.authGateBenefitDevices,
+    labels.authGateBenefitSecure,
+  ];
+  const authGateBenefitCheckProps = dashboardActionIconProps({ size: 18 });
 
   const validate = (): boolean => {
     const next: ValidationErrors = {};
@@ -460,57 +468,17 @@ export function AlbumCheckoutModal({ isOpen, album, onClose }: AlbumCheckoutModa
                 {labels.authGateDescription}
               </p>
               <ul className="album-checkout-modal__auth-gate-benefits">
-                <li className="album-checkout-modal__auth-gate-benefit">
-                  <span className="album-checkout-modal__auth-gate-benefit-icon" aria-hidden="true">
-                    <svg
-                      width="18"
-                      height="18"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
+                {authGateBenefits.map((benefit) => (
+                  <li key={benefit} className="album-checkout-modal__auth-gate-benefit">
+                    <span
+                      className="album-checkout-modal__auth-gate-benefit-icon"
+                      aria-hidden="true"
                     >
-                      <polyline points="20 6 9 17 4 12" />
-                    </svg>
-                  </span>
-                  <span>{labels.authGateBenefitLibrary}</span>
-                </li>
-                <li className="album-checkout-modal__auth-gate-benefit">
-                  <span className="album-checkout-modal__auth-gate-benefit-icon" aria-hidden="true">
-                    <svg
-                      width="18"
-                      height="18"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <polyline points="20 6 9 17 4 12" />
-                    </svg>
-                  </span>
-                  <span>{labels.authGateBenefitDevices}</span>
-                </li>
-                <li className="album-checkout-modal__auth-gate-benefit">
-                  <span className="album-checkout-modal__auth-gate-benefit-icon" aria-hidden="true">
-                    <svg
-                      width="18"
-                      height="18"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <polyline points="20 6 9 17 4 12" />
-                    </svg>
-                  </span>
-                  <span>{labels.authGateBenefitSecure}</span>
-                </li>
+                      <CheckIcon {...authGateBenefitCheckProps} />
+                    </span>
+                    <span>{benefit}</span>
+                  </li>
+                ))}
               </ul>
               {paymentError && (
                 <div className="album-checkout-modal__error" role="alert">

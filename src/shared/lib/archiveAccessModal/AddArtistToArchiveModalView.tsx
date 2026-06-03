@@ -10,6 +10,7 @@ import { useSiteArtistDisplayName } from '@shared/lib/hooks/useSiteArtistDisplay
 import { ArchiveApiError } from '@shared/api/archive';
 import { AlertModal } from '@shared/ui/alertModal';
 import { LocalModal } from '@shared/ui/localModal';
+import { ArtistArchiveLockIcon } from '@shared/ui/icons/ArtistArchiveLockIcon';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 import { dispatchArchiveArtistAdded, awaitPremiumContentRefresh } from '@features/artistArchive';
 import { useArtistArchiveStatus } from '@features/artistArchive/lib/useArtistArchiveStatus';
@@ -131,10 +132,7 @@ export function AddArtistToArchiveModalView({ dialogRef, pendingAccess, onClose 
           </button>
 
           <header className="archive-access-modal__header archive-access-modal__header--add-artist">
-            <span className="archive-access-modal__header-cluster" aria-hidden>
-              <span className="archive-access-modal__header-cluster-icon">♪</span>
-              <span className="archive-access-modal__header-cluster-icon">⊕</span>
-            </span>
+            <ArtistArchiveLockIcon className="archive-access-modal__header-icon" size={26} />
             <h2 id="add-artist-to-archive-modal-title" className="archive-access-modal__title">
               {title}
             </h2>

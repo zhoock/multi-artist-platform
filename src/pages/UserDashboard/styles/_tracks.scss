@@ -360,11 +360,14 @@ dialog {
     }
 
     &__track-delete-button {
-      color: #ff6b6b;
+      color: var(--error-color, #cf807d);
 
       &:hover {
-        color: #ff6b6b;
-        background: rgb(var(--soft-red-rgb) / 10%);
+        color: var(--error-color, #cf807d);
+        background: var(
+          --dashboard-btn-destructive-hover-bg,
+          rgb(var(--pink-terracotta-rgb) / 12%)
+        );
       }
 
       &:active {

@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react';
+import { Check as CheckIcon, Plus as PlusIcon } from 'lucide-react';
 
 import { useLang } from '@app/providers/lang';
 import { useAppDispatch } from '@shared/lib/hooks/useAppDispatch';
@@ -8,6 +9,7 @@ import { selectPublicArtistSlug } from '@shared/model/currentArtist';
 import { useArchiveAccessModal } from '@shared/lib/archiveAccessModal';
 import { AlertModal } from '@shared/ui/alertModal';
 import { SubscriberContentLockIcon } from '@shared/ui/icons/SubscriberContentLockIcon';
+import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 import { ArchiveApiError } from '@shared/api/archive';
 
 import {
@@ -145,7 +147,7 @@ export function ArtistArchiveButton({ artistUserId }: Props) {
         >
           {buttonState === 'can_add' ? (
             <span className="artist-archive-button__plus" aria-hidden>
-              +
+              <PlusIcon {...dashboardActionIconProps({ size: 14 })} />
             </span>
           ) : null}
           {buttonState === 'not_premium' || buttonState === 'archive_full' ? (
@@ -153,7 +155,7 @@ export function ArtistArchiveButton({ artistUserId }: Props) {
           ) : null}
           {buttonState === 'in_archive' ? (
             <span className="artist-archive-button__check" aria-hidden>
-              ✓
+              <CheckIcon {...dashboardActionIconProps({ size: 14 })} />
             </span>
           ) : null}
           <span>{buttonLabel}</span>

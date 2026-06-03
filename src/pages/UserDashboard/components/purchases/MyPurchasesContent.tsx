@@ -1,8 +1,10 @@
 // src/pages/UserDashboard/components/purchases/MyPurchasesContent.tsx
 import React, { useCallback, useEffect, useState } from 'react';
+import { Download as DownloadIcon } from 'lucide-react';
 import { useLang } from '@app/providers/lang';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
+import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 import {
   downloadAlbumZip,
   getMyPurchases,
@@ -277,22 +279,9 @@ export function MyPurchasesContent() {
                       </>
                     ) : (
                       <>
-                        <svg
-                          width="14"
-                          height="14"
-                          viewBox="0 0 14 14"
-                          fill="none"
-                          xmlns="http://www.w3.org/2000/svg"
-                          aria-hidden
-                        >
-                          <path
-                            d="M7 2v7M4 6l3 3 3-3M3 11h8"
-                            stroke="currentColor"
-                            strokeWidth="1.5"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                        </svg>
+                        <DownloadIcon
+                          {...dashboardActionIconProps({ size: 14, strokeWidth: 1.5 })}
+                        />
                         {copy?.downloadAll ?? 'Download all'}
                       </>
                     )}
