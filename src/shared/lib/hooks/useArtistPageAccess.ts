@@ -242,14 +242,21 @@ export function useArtistPageAccess(artistSlug: string) {
       albumsFetchContextKey !== desiredFetchKey &&
       cachedPublicRowCount === 0);
 
-  const articlesPending =
-    articlesCacheStale || articlesStatus === 'idle' || articlesStatus === 'loading';
+  const visitorProfilePending = !isOwner && visitorProfileHasPublicBody === null;
 
-  const visitorAccessPending =
-    !isOwner && (articlesPending || visitorProfileHasPublicBody === null);
+  /** 404 по контенту артиста: ждём статьи только если в каталоге ещё нет альбомов. */
+  const visitorArticlesGatePending =
+    !isOwner &&
+    publicAlbums.length === 0 &&
+    (articlesCacheStale || articlesStatus === 'idle' || articlesStatus === 'loading');
 
-  const isLoading =
-    !ownerResolved || albumsPending || visitorAccessPending || (isOwner && !ownerContentLoaded);
+  const visitorAccessPending = visitorProfilePending || visitorArticlesGatePending;
+
+  /**
+   * Блокировка списка/страницы альбома. Не включаем `articlesStatus === 'idle'` глобально
+   * (/albums/:id не грузит статьи) и не ждём owner onboarding — он только для Home.
+   */
+  const isLoading = !ownerResolved || albumsPending || visitorAccessPending;
 
   const hasVisitorVisibleContent = hasVisitorVisibleArtistContent({
     albums: publicAlbums,
@@ -267,7 +274,9 @@ export function useArtistPageAccess(artistSlug: string) {
   const showOnboardingSkeleton = false;
 
   const showNotFound =
-    !isLoading && (catalogArtistMissing || (!isOwner && !hasVisitorVisibleContent));
+    !isLoading &&
+    !visitorArticlesGatePending &&
+    (catalogArtistMissing || (!isOwner && !hasVisitorVisibleContent));
   const showPublished =
     !isLoading &&
     !catalogArtistMissing &&

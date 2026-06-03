@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState, useRef } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { WrapperAlbumCover, AlbumCover } from '@entities/album';
+import { useAppDispatch } from '@shared/lib/hooks/useAppDispatch';
+import { fetchArticles } from '@entities/article';
 import { ErrorI18n } from '@shared/ui/error-message';
 import { AlbumsSkeleton } from '@shared/ui/skeleton/AlbumsSkeleton';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
@@ -28,6 +30,7 @@ import { filterAlbumsForArtistPageSurface } from '@shared/lib/artistPageContent'
 const BATCH_SIZE = 16;
 
 export function AllAlbumsPage() {
+  const dispatch = useAppDispatch();
   const { lang } = useLang();
   const [searchParams] = useSearchParams();
   const artistSlug = searchParams.get('artist') ?? '';
@@ -102,6 +105,11 @@ export function AllAlbumsPage() {
   useEffect(() => {
     window.scrollTo({ top: 0 });
   }, []);
+
+  useEffect(() => {
+    if (!artistSlug) return;
+    void dispatch(fetchArticles({ publicArtistSlug: artistSlug }));
+  }, [artistSlug, dispatch]);
 
   if (hideArtistPageAfterOwnDelete) {
     return null;

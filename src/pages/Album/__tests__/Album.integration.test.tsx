@@ -35,6 +35,8 @@ describe('Album integration tests', () => {
     ],
     buttons: {},
     details: [],
+    isPublished: true,
+    isPublic: true,
   };
 
   test('должен отобразить Loader во время загрузки', () => {
