@@ -10,6 +10,8 @@ import { STEMS_MANIFEST_VERSION, type StemMeta, type StemsManifest } from '../mo
 import { isStemCategory } from '../lib/category';
 
 const MANIFEST_FILE = 'stems.json';
+/** Bucket user-media accepts image/* and audio/* only — not application/json. */
+const MANIFEST_UPLOAD_MIME = 'audio/wav';
 
 /** Путь к папке с аудио стемами трека в bucket. */
 export function getStemsFolderPath(userId: string, albumId: string, trackId: string): string {
@@ -89,13 +91,24 @@ async function putToSignedUrl(
   body: Blob | File,
   contentType: string
 ): Promise<void> {
+  // Supabase signed upload expects multipart FormData + x-upsert (same as track uploads).
+  const formData = new FormData();
+  formData.append('cacheControl', '3600');
+  formData.append(
+    '',
+    body instanceof File ? body : new File([body], 'upload', { type: contentType })
+  );
+
   const response = await fetch(signedUrl, {
     method: 'PUT',
-    headers: { 'Content-Type': contentType },
-    body,
+    headers: { 'x-upsert': 'true' },
+    body: formData,
   });
   if (!response.ok) {
-    throw new Error(`Ошибка загрузки: ${response.status} ${response.statusText}`);
+    const errorText = await response.text().catch(() => '');
+    throw new Error(
+      `Ошибка загрузки: ${response.status}${errorText ? ` — ${errorText.slice(0, 200)}` : ''}`
+    );
   }
 }
 
@@ -119,9 +132,9 @@ export async function saveStemsManifest(
   stems: StemMeta[]
 ): Promise<void> {
   const manifest: StemsManifest = { version: STEMS_MANIFEST_VERSION, stems };
-  const blob = new Blob([JSON.stringify(manifest, null, 2)], { type: 'application/json' });
+  const blob = new Blob([JSON.stringify(manifest, null, 2)], { type: MANIFEST_UPLOAD_MIME });
   const { signedUrl } = await getSignedUploadUrl(albumId, trackId, MANIFEST_FILE);
-  await putToSignedUrl(signedUrl, blob, 'application/json');
+  await putToSignedUrl(signedUrl, blob, MANIFEST_UPLOAD_MIME);
 }
 
 /** Удалить файл стема из Storage. */
