@@ -123,7 +123,7 @@ export function useEmailVerificationCopy() {
           close: 'Закрыть',
           restrictedPremium: 'Подтвердите email, чтобы оформить Premium',
           restrictedUpload: 'Подтвердите email, чтобы загружать контент',
-          restrictedPaymentSettings: 'Настройки оплаты',
+          restrictedPaymentSettings: 'Платежи',
           restrictedPaymentSettingsHint: 'Подтвердите email, чтобы настроить приём платежей',
           restrictedMixer: 'Миксер',
           restrictedMixerHint: 'Подтвердите email, чтобы загружать стемы и управлять миксером',

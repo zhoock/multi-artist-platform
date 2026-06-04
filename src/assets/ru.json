@@ -129,7 +129,7 @@
         "restrictedHint": "Подтвердите email для доступа к этой функции",
         "restrictedPremium": "Подтвердите email, чтобы оформить Premium",
         "restrictedUpload": "Подтвердите email, чтобы загружать контент",
-        "restrictedPaymentSettings": "Настройки оплаты",
+        "restrictedPaymentSettings": "Платежи",
         "restrictedPaymentSettingsHint": "Подтвердите email, чтобы настроить приём платежей",
         "restrictedMixer": "Миксер",
         "restrictedMixerHint": "Подтвердите email, чтобы загружать стемы и управлять миксером",
@@ -270,7 +270,7 @@
       "tabs": {
         "albums": "Альбомы",
         "posts": "Статьи",
-        "paymentSettings": "Настройки оплаты",
+        "paymentSettings": "Платежи",
         "myPurchases": "Мои покупки",
         "mixer": "Миксер",
         "archive": "Архив",
