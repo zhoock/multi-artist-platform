@@ -391,6 +391,8 @@
         "deleteStemTitle": "Delete stem?",
         "deleteStemMessage": "Stem \"{name}\" will be deleted.",
         "deleteStemHint": "This action cannot be undone.",
+        "deleteStemSuccessToast": "Stem \"{name}\" deleted",
+        "addStemSuccessToast": "Stem \"{name}\" added",
         "stemCovers": "Stem Covers",
         "stemCoversDescription": "Upload photos of musicians for each stem.",
         "contentTitle": "Page content (RU / EN)",

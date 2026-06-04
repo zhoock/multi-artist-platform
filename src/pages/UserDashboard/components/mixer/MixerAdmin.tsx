@@ -24,6 +24,10 @@ import { useLang } from '@app/providers/lang';
 import { uniqueUploadFileSuffix } from '@shared/lib/uniqueUploadFileSuffix';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 import { ConfirmationModal } from '@shared/ui/confirmationModal';
+import { StemAddedToast } from '@shared/ui/stemAddedToast/StemAddedToast';
+import { StemDeletedToast } from '@shared/ui/stemDeletedToast/StemDeletedToast';
+import { queueStemAddedToast } from '@shared/lib/stemAddedToast';
+import { queueStemDeletedToast } from '@shared/lib/stemDeletedToast';
 import {
   type StemMeta,
   type StemCategory,
@@ -71,6 +75,25 @@ interface DeleteTarget {
  */
 const stemKey = (albumId: string, trackId: string) => `${albumId}:${trackId}`;
 
+function formatStemToastMessage(
+  stemName: string,
+  template: string | undefined,
+  lang: 'ru' | 'en',
+  kind: 'added' | 'deleted'
+): string {
+  const fallbacks = {
+    added: {
+      en: `Stem "${stemName}" added`,
+      ru: `Стем «${stemName}» добавлен`,
+    },
+    deleted: {
+      en: `Stem "${stemName}" deleted`,
+      ru: `Стем «${stemName}» удалён`,
+    },
+  } as const;
+  return (template ?? fallbacks[kind][lang]).replace('{name}', stemName);
+}
+
 export function MixerAdmin({ ui, userId, albums = [] }: MixerAdminProps) {
   // ui.dashboard.mixer пока не полностью описан в типах IInterface, берём через any.
   const t = useMemo(() => (ui as any)?.dashboard?.mixer ?? {}, [ui]);
@@ -83,6 +106,8 @@ export function MixerAdmin({ ui, userId, albums = [] }: MixerAdminProps) {
   const [busyStems, setBusyStems] = useState<Record<string, boolean>>({});
   const [addModal, setAddModal] = useState<{ albumId: string; trackId: string } | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
+  const [stemAddedToastTrigger, setStemAddedToastTrigger] = useState(0);
+  const [stemDeletedToastTrigger, setStemDeletedToastTrigger] = useState(0);
   const [playingStemId, setPlayingStemId] = useState<string | null>(null);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -220,8 +245,10 @@ export function MixerAdmin({ ui, userId, albums = [] }: MixerAdminProps) {
       await saveStemsManifest(storageAlbumId, trackId, next);
       setTrackStems((prev) => ({ ...prev, [key]: next }));
       setAddModal(null);
+      queueStemAddedToast(formatStemToastMessage(name, t.addStemSuccessToast, lang, 'added'));
+      setStemAddedToastTrigger((n) => n + 1);
     },
-    [trackStems]
+    [trackStems, t, lang]
   );
 
   const handleReplaceFile = useCallback(
@@ -271,6 +298,7 @@ export function MixerAdmin({ ui, userId, albums = [] }: MixerAdminProps) {
   const handleConfirmDelete = useCallback(async () => {
     if (!deleteTarget) return;
     const { albumId: storageAlbumId, trackId, stem } = deleteTarget;
+    const deletedStemName = stem.name;
     const key = stemKey(storageAlbumId, trackId);
     setDeleteTarget(null);
     setBusy(storageAlbumId, trackId, stem.id, true);
@@ -284,12 +312,16 @@ export function MixerAdmin({ ui, userId, albums = [] }: MixerAdminProps) {
       const next = (trackStems[key] ?? []).filter((s) => s.id !== stem.id);
       await saveStemsManifest(storageAlbumId, trackId, next);
       setTrackStems((prev) => ({ ...prev, [key]: next }));
+      queueStemDeletedToast(
+        formatStemToastMessage(deletedStemName, t.deleteStemSuccessToast, lang, 'deleted')
+      );
+      setStemDeletedToastTrigger((n) => n + 1);
     } catch (error) {
       console.error('[MixerAdmin] Failed to delete stem:', error);
     } finally {
       setBusy(storageAlbumId, trackId, stem.id, false);
     }
-  }, [deleteTarget, trackStems, playingStemId, stopPlayback, storageUserId]);
+  }, [deleteTarget, trackStems, playingStemId, stopPlayback, storageUserId, t, lang]);
 
   const handleDragEnd = useCallback(
     async (event: DragEndEvent, storageAlbumId: string, trackId: string) => {
@@ -562,6 +594,9 @@ export function MixerAdmin({ ui, userId, albums = [] }: MixerAdminProps) {
         onConfirm={handleConfirmDelete}
         onCancel={() => setDeleteTarget(null)}
       />
+
+      <StemDeletedToast triggerKey={stemDeletedToastTrigger} />
+      <StemAddedToast triggerKey={stemAddedToastTrigger} />
     </>
   );
 }

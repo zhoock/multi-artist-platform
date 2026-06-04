@@ -131,7 +131,6 @@ export function SortableStemRow({
             {stem.name}
           </button>
         )}
-        <span className="mixer-stem__file">{stem.originalFileName || stem.file}</span>
       </div>
 
       {fileSize && <span className="mixer-stem__size">{fileSize}</span>}

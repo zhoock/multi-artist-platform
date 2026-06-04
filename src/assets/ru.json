@@ -391,6 +391,8 @@
         "deleteStemTitle": "Удалить стем?",
         "deleteStemMessage": "Стем «{name}» будет удалён.",
         "deleteStemHint": "Это действие нельзя отменить.",
+        "deleteStemSuccessToast": "Стем «{name}» удалён",
+        "addStemSuccessToast": "Стем «{name}» добавлен",
         "stemCovers": "Обложки стемов",
         "stemCoversDescription": "Загрузите фотографии музыкантов для каждого стема.",
         "contentTitle": "Контент страницы (RU / EN)",

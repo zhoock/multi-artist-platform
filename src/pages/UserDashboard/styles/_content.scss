@@ -932,7 +932,6 @@ dialog {
     margin: 0 0 var(--ms-02);
     color: var(--dashboard-text-primary);
     font-size: var(--ms-0);
-    font-weight: 600;
   }
 
   &__stems-header {
@@ -989,7 +988,7 @@ dialog {
     margin: 0;
     color: var(--dashboard-text-primary);
     font-size: var(--ms-1);
-    font-weight: 600;
+    font-weight: 400;
   }
 
   &__empty-description {
@@ -1048,7 +1047,6 @@ dialog {
   &__info {
     display: flex;
     flex-direction: column;
-    gap: 2px;
     flex: 1;
     min-width: 0;
   }
@@ -1059,7 +1057,6 @@ dialog {
     padding: 0;
     color: var(--dashboard-text-primary);
     font-size: var(--ms-0);
-    font-weight: 500;
     text-align: left;
     background: transparent;
     border: none;
@@ -1079,14 +1076,6 @@ dialog {
     background: var(--dashboard-hover-bg);
     border: 1px solid var(--accent-color, var(--dark-greenish-yellow));
     border-radius: var(--ms-02);
-  }
-
-  &__file {
-    color: var(--dashboard-text-secondary);
-    font-size: 12px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
   }
 
   &__size {
