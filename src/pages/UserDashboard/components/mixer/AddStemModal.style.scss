@@ -1,0 +1,178 @@
+// src/pages/UserDashboard/components/mixer/AddStemModal.style.scss
+@use '../../../../scss/abstracts/mixins' as *;
+@use '../../../../scss/components/modal' as *;
+
+dialog {
+  @include dashboard-modal-dialog-buttons;
+
+  .add-stem-modal {
+    @include dashboard-modal-shell;
+
+    &__card {
+      display: flex;
+      flex-direction: column;
+
+      @include dashboard-modal-panel(
+        $padding: 0,
+        $gap: 0,
+        $desktop-width: 480px,
+        $desktop-height: auto,
+        $mobile-max-height: 90vh
+      );
+
+      min-height: auto;
+
+      @include breakpoint(tablet) {
+        height: auto;
+        min-height: auto;
+        max-height: 90vh;
+      }
+    }
+
+    &__header {
+      flex-shrink: 0;
+
+      @include dashboard-modal-header(
+        $gap: var(--ms-0),
+        $padding: var(--ms-1) var(--ms-2),
+        $border-bottom: var(--dashboard-divider),
+        $background: var(--dashboard-card-bg)
+      );
+    }
+
+    &__title {
+      @include dashboard-modal-title($margin: 0, $padding: 0, $font-weight: 700);
+    }
+
+    &__close {
+      @include dashboard-modal-close(
+        $font-size: var(--dashboard-heading-font-size),
+        $focus-visible: true,
+        $reset-text: true,
+        $flex-shrink: 0
+      );
+    }
+
+    &__body {
+      display: flex;
+      flex-direction: column;
+      gap: var(--ms-0);
+      flex: 1;
+      padding: var(--ms-1) var(--ms-2);
+      overflow-y: auto;
+    }
+
+    &__field {
+      @include dashboard-form-field;
+    }
+
+    &__label {
+      @include dashboard-form-label;
+    }
+
+    &__input,
+    &__select {
+      @include dashboard-form-input;
+    }
+
+    &__select {
+      @include dashboard-form-select;
+    }
+
+    &__choose {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.55em;
+      align-self: flex-start;
+
+      @include dashboard-btn-secondary($margin: 0, $padding: var(--ms-01) var(--ms-1));
+    }
+
+    &__hint {
+      margin: 0;
+      color: var(--dashboard-text-secondary);
+      font-size: calc(var(--dashboard-font-size) * 0.875);
+      line-height: 1.4;
+    }
+
+    &__file {
+      display: flex;
+      align-items: center;
+      gap: var(--ms-02);
+      padding: var(--ms-0);
+      color: var(--dashboard-text-primary);
+      background: var(--dashboard-hover-bg);
+      border: 1px solid var(--dashboard-card-border);
+      border-radius: 8px;
+    }
+
+    &__file-name {
+      flex: 1;
+      min-width: 0;
+      font-size: var(--dashboard-font-size);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    &__file-size {
+      flex-shrink: 0;
+      color: var(--dashboard-text-secondary);
+      font-size: calc(var(--dashboard-font-size) * 0.875);
+      font-variant-numeric: tabular-nums;
+    }
+
+    &__file-remove {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      padding: 0;
+      color: var(--dashboard-text-secondary);
+      background: transparent;
+      border: none;
+      border-radius: var(--ms-02);
+      cursor: pointer;
+
+      @media (hover: hover) and (pointer: fine) {
+        &:hover {
+          color: var(--soft-red);
+        }
+      }
+    }
+
+    &__error {
+      margin: 0;
+      color: var(--error-color, var(--soft-red));
+      font-size: var(--dashboard-font-size);
+    }
+
+    &__divider {
+      @include dashboard-modal-divider;
+    }
+
+    &__actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: var(--ms-0);
+      flex-shrink: 0;
+      padding: var(--ms-1) var(--ms-2);
+    }
+
+    &__button {
+      &--cancel {
+        @include dashboard-btn-ghost;
+      }
+
+      &--primary {
+        @include dashboard-btn-primary;
+      }
+
+      &--primary-loading {
+        @include dashboard-modal-inline-loading;
+      }
+    }
+  }
+}
+
+@include dashboard-nested-modal-backdrop;

@@ -143,10 +143,21 @@ dialog {
         gap: var(--ms-01);
       }
 
+      &[role='button'] {
+        cursor: pointer;
+
+        @media (hover: hover) and (pointer: fine) {
+          &:hover {
+            background: var(--dashboard-hover-bg);
+          }
+        }
+      }
+
       &--dragging {
         opacity: 0.5;
       }
 
+      &--expanded,
       &--access-menu-open {
         background: var(--dashboard-hover-bg);
       }

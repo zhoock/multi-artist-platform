@@ -17,7 +17,7 @@
    - **Name**: `user-media`
    - **Public bucket**: ✅ Включите (чтобы файлы были доступны публично)
    - **File size limit**: Установите максимальный размер (например, 10 MB)
-   - **Allowed MIME types**: Оставьте пустым или укажите `image/*,audio/*`
+   - **Allowed MIME types**: `image/*,audio/*,application/json` (JSON нужен для `stems.json` в микшере)
 5. Нажмите **"Create bucket"**
 
 ## 🔐 Шаг 2: Настройка политик безопасности (RLS)
@@ -261,7 +261,7 @@ user-media/
 2. **Name**: `user-media`
 3. ✅ **Public bucket**
 4. **File size limit**: 50 MB (или как у старого bucket)
-5. **Allowed MIME types**: `image/*,audio/*`
+5. **Allowed MIME types**: `image/*,audio/*,application/json`
 6. **Create bucket**
 
 ### Шаг 2: Скопируйте RLS политики
@@ -395,8 +395,14 @@ migrateLocalFilesToStorage();
 ### Файлы не загружаются
 
 - Проверьте размер файла (не превышает лимит bucket)
-- Проверьте MIME типы (если указаны ограничения)
+- Проверьте MIME типы (если указаны ограничения). Для микшера в allowlist должен быть `application/json` — иначе `stems.json` вернёт `415 invalid_mime_type`
 - Проверьте логи в Netlify Functions
+
+### Обновить Allowed MIME types у существующего bucket
+
+1. Supabase Dashboard → **Storage** → **user-media** → **Configuration**
+2. В поле **Allowed MIME types** добавьте `application/json` к текущему списку (например: `image/*,audio/*,application/json`)
+3. Сохраните. Уже загруженные файлы не затрагиваются; меняются только правила для новых upload
 
 ## 📚 Дополнительные ресурсы
 

@@ -10,8 +10,7 @@ import { STEMS_MANIFEST_VERSION, type StemMeta, type StemsManifest } from '../mo
 import { isStemCategory } from '../lib/category';
 
 const MANIFEST_FILE = 'stems.json';
-/** Bucket user-media accepts image/* and audio/* only — not application/json. */
-const MANIFEST_UPLOAD_MIME = 'audio/wav';
+const MANIFEST_MIME = 'application/json';
 
 /** Путь к папке с аудио стемами трека в bucket. */
 export function getStemsFolderPath(userId: string, albumId: string, trackId: string): string {
@@ -132,9 +131,11 @@ export async function saveStemsManifest(
   stems: StemMeta[]
 ): Promise<void> {
   const manifest: StemsManifest = { version: STEMS_MANIFEST_VERSION, stems };
-  const blob = new Blob([JSON.stringify(manifest, null, 2)], { type: MANIFEST_UPLOAD_MIME });
+  const file = new File([JSON.stringify(manifest, null, 2)], MANIFEST_FILE, {
+    type: MANIFEST_MIME,
+  });
   const { signedUrl } = await getSignedUploadUrl(albumId, trackId, MANIFEST_FILE);
-  await putToSignedUrl(signedUrl, blob, MANIFEST_UPLOAD_MIME);
+  await putToSignedUrl(signedUrl, file, MANIFEST_MIME);
 }
 
 /** Удалить файл стема из Storage. */

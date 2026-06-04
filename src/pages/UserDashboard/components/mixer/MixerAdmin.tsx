@@ -98,6 +98,7 @@ export function MixerAdmin({ ui, userId, albums = [] }: MixerAdminProps) {
       categoryLabel: t.modalCategoryLabel ?? 'Тип инструмента',
       submit: t.modalSubmit ?? 'Добавить',
       submitting: t.modalSubmitting ?? 'Сохранение…',
+      cancel: t.cancel ?? 'Отмена',
       closeLabel: t.close ?? 'Закрыть',
       nameRequired: t.modalNameRequired ?? 'Введите название стема',
       fileRequired: t.modalFileRequired ?? 'Выберите аудиофайл',
@@ -347,32 +348,48 @@ export function MixerAdmin({ ui, userId, albums = [] }: MixerAdminProps) {
                         const stems = trackStems[track.id] ?? [];
                         const isLoading = loadingTracks[track.id];
                         return (
-                          <div key={track.id}>
-                            <button
-                              type="button"
-                              className="user-dashboard__track-item"
-                              onClick={() => {
-                                if (isTrackOpen) {
-                                  setExpandedTrackId(null);
-                                } else {
-                                  setExpandedTrackId(track.id);
-                                  ensureTrackStems(storageAlbumId, track.id);
-                                }
-                              }}
-                              style={{ width: '100%', textAlign: 'left' }}
-                            >
-                              <div className="user-dashboard__track-number">
-                                {String(trackIndex + 1).padStart(2, '0')}
-                              </div>
-                              <div className="user-dashboard__track-title">
-                                {track.title || (track as any).trackTitle || (track as any).trackId}
-                              </div>
-                              <div className="user-dashboard__track-duration-container">
-                                <div className="user-dashboard__track-duration">
-                                  {track.duration}
+                          <div key={track.id} className="user-dashboard__track-item-wrapper">
+                            <div className="user-dashboard__track-item-content">
+                              <div
+                                className={`user-dashboard__track-item${isTrackOpen ? ' user-dashboard__track-item--expanded' : ''}`}
+                                role="button"
+                                tabIndex={0}
+                                aria-expanded={isTrackOpen}
+                                onClick={() => {
+                                  if (isTrackOpen) {
+                                    setExpandedTrackId(null);
+                                  } else {
+                                    setExpandedTrackId(track.id);
+                                    ensureTrackStems(storageAlbumId, track.id);
+                                  }
+                                }}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter' || e.key === ' ') {
+                                    e.preventDefault();
+                                    if (isTrackOpen) {
+                                      setExpandedTrackId(null);
+                                    } else {
+                                      setExpandedTrackId(track.id);
+                                      ensureTrackStems(storageAlbumId, track.id);
+                                    }
+                                  }
+                                }}
+                              >
+                                <div className="user-dashboard__track-number">
+                                  {String(trackIndex + 1).padStart(2, '0')}
+                                </div>
+                                <div className="user-dashboard__track-title">
+                                  {track.title ||
+                                    (track as any).trackTitle ||
+                                    (track as any).trackId}
+                                </div>
+                                <div className="user-dashboard__track-duration-container">
+                                  <div className="user-dashboard__track-duration">
+                                    {track.duration}
+                                  </div>
                                 </div>
                               </div>
-                            </button>
+                            </div>
 
                             {isTrackOpen && (
                               <div className="mixer-admin__stems">
@@ -387,7 +404,7 @@ export function MixerAdmin({ ui, userId, albums = [] }: MixerAdminProps) {
                                   </div>
                                   <button
                                     type="button"
-                                    className="mixer-admin__add-stem"
+                                    className="user-dashboard__choose-files-button mixer-admin__add-stem"
                                     onClick={() =>
                                       setAddModal({ albumId: storageAlbumId, trackId: track.id })
                                     }
@@ -413,7 +430,7 @@ export function MixerAdmin({ ui, userId, albums = [] }: MixerAdminProps) {
                                     </p>
                                     <button
                                       type="button"
-                                      className="mixer-admin__add-stem"
+                                      className="user-dashboard__tab-empty-cta mixer-admin__add-stem"
                                       onClick={() =>
                                         setAddModal({ albumId: storageAlbumId, trackId: track.id })
                                       }
