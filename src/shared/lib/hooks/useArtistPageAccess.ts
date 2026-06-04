@@ -7,6 +7,7 @@ import {
   selectAlbumsFetchContextKey,
   selectCatalogArtistMissing,
   selectDashboardAlbumsData,
+  selectDashboardAlbumsStatus,
   selectPublicAlbumsDataResolvedForSurface,
   selectPublicAlbumsCacheIsStale,
   selectPublicCatalogCachedRowCount,
@@ -45,6 +46,7 @@ export function useArtistPageAccess(artistSlug: string) {
   const publicAlbums = useAppSelector(selectPublicAlbumsDataResolvedForSurface);
   const catalogAlbums = useAppSelector(selectAlbumsData);
   const dashboardAlbums = useAppSelector(selectDashboardAlbumsData);
+  const dashboardAlbumsStatus = useAppSelector(selectDashboardAlbumsStatus);
   const cachedPublicRowCount = useAppSelector(selectPublicCatalogCachedRowCount);
   const articlesStatus = useAppSelector(selectArticlesStatus);
   const articlesCacheStale = useAppSelector(selectArticlesCacheIsStale);
@@ -271,7 +273,27 @@ export function useArtistPageAccess(artistSlug: string) {
   const showOnboarding =
     !catalogArtistMissing && isOwner && ownerContentLoaded && ownerStillNeedsOnboarding;
 
-  const showOnboardingSkeleton = false;
+  /**
+   * Дашборд-альбомы владельца уже загружены (succeeded/failed) — значит ownerAlbumCount
+   * отражает реальное число альбомов, а не транзиентный 0 на старте. Без этой проверки
+   * у обычного артиста (есть релизы) при холодной загрузке каталог ещё пуст, ownerAlbumCount
+   * кратко равен 0 и скелетон онбординга ошибочно мигал перед страницей.
+   */
+  const ownerAlbumsKnown =
+    dashboardAlbumsStatus === 'succeeded' || dashboardAlbumsStatus === 'failed';
+
+  /**
+   * Окно подтверждения онбординга владельца: личность подтверждена (ownerResolved),
+   * дашборд достоверно сообщил об отсутствии альбомов, но fetchOwnArtistPageState ещё
+   * в полёте (ownerContentLoaded === false). Без скелетона Home кратко рисует опубликованную
+   * поверхность (hero + скелетон альбомов) перед экраном онбординга — «грязные» кадры при
+   * переходе из дашборда «Открыть страницу артиста». Условие срабатывает только для владельца
+   * без альбомов, поэтому у артистов с релизами поведение не меняется.
+   */
+  const ownerOnboardingResolutionPending =
+    isOwner && ownerResolved && ownerAlbumsKnown && ownerAlbumCount === 0 && !ownerContentLoaded;
+
+  const showOnboardingSkeleton = !catalogArtistMissing && ownerOnboardingResolutionPending;
 
   const showNotFound =
     !isLoading &&
