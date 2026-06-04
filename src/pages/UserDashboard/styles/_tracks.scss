@@ -4,6 +4,9 @@
 
 @use '../../../scss/abstracts/mixins' as *;
 
+// Shared column layout: track | meta (duration / status) | actions
+$album-tracks-grid-columns: minmax(0, 1fr) minmax(5.5rem, max-content) 11rem;
+
 dialog {
   .user-dashboard {
     .track-visibility-icon {
@@ -80,14 +83,15 @@ dialog {
 
     &__tracks-header {
       display: grid;
-      grid-template-columns: minmax(0, 1fr) 132px 52px;
+      grid-template-columns: $album-tracks-grid-columns;
       gap: var(--ms-0);
       align-items: center;
       padding: 0 var(--ms-01) var(--ms-01);
       border-bottom: 1px solid var(--dashboard-divider);
     }
 
-    &__tracks-header-cell {
+    &__tracks-header-cell,
+    &__lyrics-header-cell {
       color: var(--dashboard-text-secondary);
       font-size: var(--ms-01);
       font-weight: 500;
@@ -97,8 +101,10 @@ dialog {
         text-align: center;
       }
 
-      &--duration {
+      &--duration,
+      &--status {
         text-align: right;
+        white-space: nowrap;
       }
     }
 
@@ -125,7 +131,7 @@ dialog {
 
     &__track-item {
       display: grid;
-      grid-template-columns: minmax(0, 1fr) 132px 52px;
+      grid-template-columns: $album-tracks-grid-columns;
       gap: var(--ms-0);
       align-items: center;
       min-height: 56px;
@@ -435,21 +441,11 @@ dialog {
 
       @include breakpoint(tablet) {
         display: grid;
-        grid-template-columns: 2fr 2fr 2fr;
+        grid-template-columns: $album-tracks-grid-columns;
         gap: var(--ms-0);
-        padding: var(--ms-0);
+        align-items: center;
+        padding: 0 var(--ms-01) var(--ms-01);
         border-bottom: 1px solid var(--dashboard-divider);
-      }
-    }
-
-    &__lyrics-header-cell {
-      color: var(--dashboard-text-secondary);
-      font-size: var(--ms-01);
-      font-weight: 500;
-      text-transform: uppercase;
-
-      &:last-child {
-        text-align: right;
       }
     }
 
@@ -462,9 +458,10 @@ dialog {
 
       @include breakpoint(tablet) {
         display: grid;
-        grid-template-columns: 2fr 2fr 2fr;
+        grid-template-columns: $album-tracks-grid-columns;
         gap: var(--ms-0);
-        padding: var(--ms-0);
+        align-items: center;
+        padding: var(--ms-01);
       }
     }
 
@@ -502,9 +499,9 @@ dialog {
         align-items: flex-start;
 
         @include breakpoint(tablet) {
-          flex-direction: row;
-          justify-content: flex-end;
-          align-items: center;
+          flex-direction: column;
+          align-items: stretch;
+          justify-content: center;
         }
       }
     }
@@ -517,8 +514,9 @@ dialog {
       width: 100%;
 
       @include breakpoint(tablet) {
-        justify-content: flex-end;
-        width: auto;
+        flex-direction: column;
+        align-items: stretch;
+        width: 100%;
       }
     }
 

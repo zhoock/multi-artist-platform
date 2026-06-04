@@ -639,6 +639,10 @@ function SortableTrackItem({
               )}
             </div>
 
+            <div className="user-dashboard__track-cell user-dashboard__track-cell--duration">
+              <span className="user-dashboard__track-duration">{track.duration}</span>
+            </div>
+
             {!isEditing ? (
               <div className="user-dashboard__track-cell user-dashboard__track-cell--actions">
                 <button
@@ -683,10 +687,6 @@ function SortableTrackItem({
                 aria-hidden
               />
             )}
-
-            <div className="user-dashboard__track-cell user-dashboard__track-cell--duration">
-              <span className="user-dashboard__track-duration">{track.duration}</span>
-            </div>
           </div>
         </div>
       </div>
@@ -3176,11 +3176,11 @@ function UserDashboard() {
                                                   <div className="user-dashboard__tracks-header-cell user-dashboard__tracks-header-cell--track">
                                                     {ui?.dashboard?.track ?? 'Track'}
                                                   </div>
-                                                  <div className="user-dashboard__tracks-header-cell user-dashboard__tracks-header-cell--actions">
-                                                    {ui?.dashboard?.actions ?? 'Actions'}
-                                                  </div>
                                                   <div className="user-dashboard__tracks-header-cell user-dashboard__tracks-header-cell--duration">
                                                     {ui?.dashboard?.duration ?? 'Duration'}
+                                                  </div>
+                                                  <div className="user-dashboard__tracks-header-cell user-dashboard__tracks-header-cell--actions">
+                                                    {ui?.dashboard?.actions ?? 'Actions'}
                                                   </div>
                                                 </div>
                                                 <div className="user-dashboard__tracks-list">
@@ -3210,13 +3210,13 @@ function UserDashboard() {
                                             </h4>
                                             <div className="user-dashboard__lyrics-table">
                                               <div className="user-dashboard__lyrics-header">
-                                                <div className="user-dashboard__lyrics-header-cell">
+                                                <div className="user-dashboard__lyrics-header-cell user-dashboard__lyrics-header-cell--track">
                                                   {ui?.dashboard?.track ?? 'Track'}
                                                 </div>
-                                                <div className="user-dashboard__lyrics-header-cell">
+                                                <div className="user-dashboard__lyrics-header-cell user-dashboard__lyrics-header-cell--status">
                                                   {ui?.dashboard?.status ?? 'Status'}
                                                 </div>
-                                                <div className="user-dashboard__lyrics-header-cell">
+                                                <div className="user-dashboard__lyrics-header-cell user-dashboard__lyrics-header-cell--actions">
                                                   {ui?.dashboard?.actions ?? 'Actions'}
                                                 </div>
                                               </div>
@@ -3789,19 +3789,21 @@ function UserDashboard() {
                                       >
                                         {ui?.dashboard?.uploadAvatarPhoto ?? 'Upload the photo...'}
                                       </button>
-                                      <button
-                                        type="button"
-                                        role="menuitem"
-                                        className="user-dashboard__avatar-menu-item"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          setIsAvatarMenuOpen(false);
-                                          void handleAvatarRemove();
-                                        }}
-                                        disabled={isUploadingAvatar}
-                                      >
-                                        {ui?.dashboard?.removeAvatarPhoto ?? 'Remove photo'}
-                                      </button>
+                                      {!isProfileAvatarPlaceholderUrl(avatarSrc) ? (
+                                        <button
+                                          type="button"
+                                          role="menuitem"
+                                          className="user-dashboard__avatar-menu-item"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setIsAvatarMenuOpen(false);
+                                            void handleAvatarRemove();
+                                          }}
+                                          disabled={isUploadingAvatar}
+                                        >
+                                          {ui?.dashboard?.removeAvatarPhoto ?? 'Remove photo'}
+                                        </button>
+                                      ) : null}
                                     </div>
                                   )}
                                 </div>
