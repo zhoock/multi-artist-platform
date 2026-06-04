@@ -3,67 +3,37 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import clsx from 'clsx';
 import { Waveform } from '@shared/ui/waveform';
 import { useLang } from '@app/providers/lang';
-import { getUserImageUrl, getUserAudioUrl } from '@shared/api/albums';
+import { getUserAudioUrl } from '@shared/api/albums';
 import { optionalMediaSrc } from '@shared/lib/media/optionalMediaUrl';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { useAppDispatch } from '@shared/lib/hooks/useAppDispatch';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
-import { StemEngine, StemKind } from '@audio/stemsEngine';
+import { StemEngine } from '@audio/stemsEngine';
+import { loadStems, getStemAudioUrl, StemIcon, type StemCategory } from '@entities/stem';
 import { Text } from '@shared/ui/text';
 import { Helmet } from 'react-helmet-async';
 import { useLocation } from 'react-router-dom';
 import { fetchAlbums } from '@entities/album/model/albumsSlice';
 import { selectAlbumsDataResolved, selectAlbumsStatus } from '@entities/album/model/selectors';
-import { listStorageByPrefix } from '@shared/api/storage';
-import {
-  buildStoragePublicObjectUrl,
-  createSupabaseClient,
-  STORAGE_BUCKET_NAME,
-} from '@config/supabase';
 import { getUserUserId } from '@config/user';
 import { selectPublicArtistSlug } from '@shared/model/currentArtist';
 import { useShowSurfaceAlbumsLoadingShell } from '@shared/lib/hooks/useShowAlbumsLoadingShell';
 import './style.scss';
 
+/** Стем, готовый к воспроизведению в плеере (динамический, без фиксированных ключей). */
+type PlayableStem = {
+  id: string;
+  name: string;
+  category: StemCategory;
+  url: string;
+};
+
 type Song = {
   id: string;
   title: string;
   mix?: string;
-  stems: Partial<Record<StemKind, string>>; // Не все стемы обязательны
-  portraits?: Partial<Record<StemKind, string>>;
+  stems: PlayableStem[];
 };
-
-// Маппинг ключей стемов из админки в ключи StemKind
-const STEM_KEY_MAP: Record<string, StemKind> = {
-  drums: 'drums',
-  bass: 'bass',
-  guitars: 'guitar', // В админке 'guitars', в StemKind 'guitar'
-  vocals: 'vocal', // В админке 'vocals', в StemKind 'vocal'
-};
-
-/** Публичный URL объекта в bucket: достаточно VITE_SUPABASE_URL (как в MixerAdmin). */
-function resolveStoragePublicUrl(storagePath: string): string | null {
-  const built = buildStoragePublicObjectUrl(storagePath);
-  if (built) return built;
-  const supabase = createSupabaseClient();
-  if (supabase) {
-    const { data } = supabase.storage.from(STORAGE_BUCKET_NAME).getPublicUrl(storagePath);
-    return data?.publicUrl ?? null;
-  }
-  return null;
-}
-
-// Дефолтная обложка стема из папки Mixer (нужен ownerUserId — без сессии/fallback user URL не строим)
-function getDefaultStemPortrait(stemKind: StemKind, ownerUserId: string): string | null {
-  const fileNameMap: Record<StemKind, string> = {
-    drums: 'drums',
-    bass: 'bass',
-    guitar: 'guitars',
-    vocal: 'vocals',
-  };
-  const fileName = fileNameMap[stemKind];
-  return getUserImageUrl(`Mixer/${fileName}`, 'stems', '.png', undefined, ownerUserId);
-}
 
 export default function StemsPlayground() {
   const dispatch = useAppDispatch();
@@ -76,11 +46,6 @@ export default function StemsPlayground() {
 
   /** Метка момента смены артиста/языка: не строим список из кэша альбомов до свежего fetchAlbums.fulfilled. */
   const stemsSyncEpochRef = useRef(0);
-
-  const fallbackOwnerUserId = useMemo(
-    () => albums?.[0]?.userId ?? getUserUserId() ?? null,
-    [albums]
-  );
 
   const [dynamicSongs, setDynamicSongs] = useState<Song[]>([]);
   const [loadingSongs, setLoadingSongs] = useState(true);
@@ -95,12 +60,8 @@ export default function StemsPlayground() {
 
   const [selectedId, setSelectedId] = useState<string>('');
   const [isPlaying, setIsPlaying] = useState(false);
-  const [muted, setMuted] = useState<Record<StemKind, boolean>>({
-    drums: false,
-    bass: false,
-    guitar: false,
-    vocal: false,
-  });
+  // Мьюты адресуются по id стема (динамический набор).
+  const [muted, setMuted] = useState<Record<string, boolean>>({});
 
   const { pathname } = useLocation();
   const origin =
@@ -120,19 +81,6 @@ export default function StemsPlayground() {
   const wasPlayingRef = useRef(false);
 
   const currentSong = useMemo(() => SONGS.find((s) => s.id === selectedId), [selectedId, SONGS]);
-
-  const defaultPortraits = useMemo(() => {
-    const id = fallbackOwnerUserId;
-    if (!id) {
-      return { drums: null, bass: null, guitar: null, vocal: null };
-    }
-    return {
-      drums: getDefaultStemPortrait('drums', id),
-      bass: getDefaultStemPortrait('bass', id),
-      guitar: getDefaultStemPortrait('guitar', id),
-      vocal: getDefaultStemPortrait('vocal', id),
-    };
-  }, [fallbackOwnerUserId]);
 
   // Смена артиста/языка: сразу очищаем каталог стемов, чтобы не мигали треки другого артиста
   useEffect(() => {
@@ -229,91 +177,25 @@ export default function StemsPlayground() {
             continue;
           }
 
-          // Проверяем наличие стемов в Storage
-          const audioFolderPath = `users/${storageUserId}/audio/${albumId}/${trackId}`;
-          console.log('🔍 [StemsPlayground] Проверка стемов для трека:', {
-            albumId,
-            trackId,
-            trackTitle: track.title,
-            audioFolderPath,
-          });
-
-          const stemsFiles = await listStorageByPrefix(audioFolderPath);
+          // Динамический список стемов из манифеста (с миграцией старых проектов).
+          const stemMetas = await loadStems(storageUserId, albumId, trackId);
 
           // Если стемов нет, пропускаем трек
-          if (!stemsFiles || stemsFiles.length === 0) {
-            console.log('⚠️ [StemsPlayground] Стемы не найдены для трека:', {
-              albumId,
-              trackId,
-              trackTitle: track.title,
-            });
+          if (!stemMetas || stemMetas.length === 0) {
             continue;
           }
 
-          console.log('✅ [StemsPlayground] Найдены стемы для трека:', {
-            albumId,
-            trackId,
-            trackTitle: track.title,
-            stemsCount: stemsFiles.length,
-            stemsFiles,
-          });
-
-          // Формируем объект со стемами
-          const stems: Partial<Record<StemKind, string>> = {};
-          for (const [adminKey, stemKind] of Object.entries(STEM_KEY_MAP)) {
-            // Ищем файл, который начинается с ключа стема (например, "drums-", "bass-")
-            const matchingFile = stemsFiles.find((fileName) => fileName.startsWith(`${adminKey}-`));
-            if (matchingFile) {
-              const storagePath = `${audioFolderPath}/${matchingFile}`;
-              const url = resolveStoragePublicUrl(storagePath);
-              if (url) {
-                stems[stemKind] = url;
-              }
+          // Строим воспроизводимые стемы с публичными URL (сохраняем порядок из манифеста).
+          const stems: PlayableStem[] = [];
+          for (const meta of stemMetas) {
+            const url = getStemAudioUrl(storageUserId, albumId, trackId, meta);
+            if (url) {
+              stems.push({ id: meta.id, name: meta.name, category: meta.category, url });
             }
           }
 
-          // Если хотя бы один стем найден, добавляем песню
-          if (Object.keys(stems).length > 0) {
-            // Загружаем портреты стемов из админки
-            const portraitsFolderPath = `users/${storageUserId}/stems/${albumId}/${trackId}`;
-            const portraitFiles = await listStorageByPrefix(portraitsFolderPath);
-            const portraits: Partial<Record<StemKind, string>> = {};
-
-            // Для каждого загруженного стема пытаемся найти пользовательский портрет,
-            // если нет - используем дефолтный из папки Mixer
-            for (const [adminKey, stemKind] of Object.entries(STEM_KEY_MAP)) {
-              // Сначала проверяем, есть ли пользовательский портрет
-              let portraitUrl: string | undefined;
-
-              if (portraitFiles && portraitFiles.length > 0) {
-                // Ищем файл обложки: может быть в формате "drums.jpg" или "drums-{timestamp}.jpg"
-                const matchingFile = portraitFiles.find(
-                  (fileName) =>
-                    fileName.startsWith(`${adminKey}-`) ||
-                    fileName.startsWith(`${adminKey}.`) ||
-                    fileName === adminKey
-                );
-                if (matchingFile) {
-                  const portraitStoragePath = `users/${storageUserId}/stems/${albumId}/${trackId}/${matchingFile}`;
-                  portraitUrl = resolveStoragePublicUrl(portraitStoragePath) ?? undefined;
-                }
-              }
-
-              // Если нет пользовательского портрета, используем дефолтный из Mixer
-              // Но только если стем загружен (иначе карточка будет disabled)
-              if (!portraitUrl && stems[stemKind]) {
-                portraitUrl = optionalMediaSrc(
-                  getDefaultStemPortrait(stemKind, storageUserId),
-                  'StemsPlayground:defaultPortrait',
-                  { stemKind, albumId, trackId }
-                );
-              }
-
-              if (portraitUrl) {
-                portraits[stemKind] = portraitUrl;
-              }
-            }
-
+          // Если хотя бы один стем доступен, добавляем песню
+          if (stems.length > 0) {
             // Формируем URL для микса (полный трек)
             const mixUrl = track.src
               ? optionalMediaSrc(
@@ -327,8 +209,7 @@ export default function StemsPlayground() {
               id: `track-${albumId}-${trackId}`,
               title: track.title || `Track ${trackId}`,
               mix: mixUrl,
-              stems, // Partial - не все стемы обязательны
-              portraits: Object.keys(portraits).length > 0 ? portraits : undefined,
+              stems,
             });
           }
         }
@@ -376,12 +257,11 @@ export default function StemsPlayground() {
     const song = currentSong;
     if (!song) return;
 
-    // Фильтруем стемы: оставляем только те, у которых есть валидный URL
-    const validStems: Partial<Record<StemKind, string>> = {};
-    (Object.keys(song.stems) as StemKind[]).forEach((kind) => {
-      const url = song.stems[kind];
-      if (url && typeof url === 'string' && url.trim() !== '') {
-        validStems[kind] = url;
+    // Карта id стема → URL (динамический набор, без фиксированных ключей)
+    const validStems: Record<string, string> = {};
+    song.stems.forEach((stem) => {
+      if (stem.url && stem.url.trim() !== '') {
+        validStems[stem.id] = stem.url;
       }
     });
 
@@ -392,11 +272,8 @@ export default function StemsPlayground() {
       return;
     }
 
-    console.log('🎵 [StemsPlayground] Загрузка стемов для песни:', {
-      songId: song.id,
-      songTitle: song.title,
-      stems: validStems,
-    });
+    // Сбрасываем мьюты при смене песни (другой набор стемов)
+    setMuted({});
 
     setLoading(true);
     setLoadProgress(0);
@@ -409,15 +286,11 @@ export default function StemsPlayground() {
     (async () => {
       try {
         await engine.loadAll((p) => setLoadProgress(p));
-        console.log('✅ [StemsPlayground] Стемы успешно загружены');
         setLoading(false);
         if (isPlaying) engine.play();
-        (Object.keys(muted) as StemKind[]).forEach((k) => engine.setMuted(k, muted[k]));
       } catch (error) {
         console.error('❌ [StemsPlayground] Ошибка при загрузке стемов:', error);
-        console.error('Стемы, которые пытались загрузить:', validStems);
         setLoading(false);
-        // Можно показать ошибку пользователю
       }
     })();
 
@@ -447,7 +320,7 @@ export default function StemsPlayground() {
   }, []);
 
   const progress = time.duration > 0 ? time.current / time.duration : 0;
-  const waveformSrc = currentSong?.mix ?? currentSong?.stems.vocal ?? currentSong?.stems.drums;
+  const waveformSrc = currentSong?.mix ?? currentSong?.stems[0]?.url;
 
   // Транспорт
   const togglePlay = async () => {
@@ -462,13 +335,13 @@ export default function StemsPlayground() {
     }
   };
 
-  // Mute
-  const toggleMute = (stem: StemKind) => {
+  // Mute по id стема
+  const toggleMute = (stemId: string) => {
     const e = engineRef.current;
     if (!e) return;
     setMuted((m) => {
-      const next = { ...m, [stem]: !m[stem] };
-      e.setMuted(stem, next[stem]);
+      const next = { ...m, [stemId]: !m[stemId] };
+      e.setMuted(stemId, next[stemId]);
       return next;
     });
   };
@@ -516,10 +389,6 @@ export default function StemsPlayground() {
   const labels = {
     play: (b.playButton as string) ?? 'Play',
     pause: (b.pause as string) ?? 'Pause',
-    drums: (b.drums as string) ?? 'Drums',
-    bass: (b.bass as string) ?? 'Bass',
-    guitar: (b.guitar as string) ?? 'Guitar',
-    vocals: (b.vocals as string) ?? 'Vocals',
     pageTitle,
     pageText,
     notice,
@@ -622,48 +491,17 @@ export default function StemsPlayground() {
           )}
         </div>
 
-        {/* портреты-мутизаторы */}
+        {/* мутизаторы стемов (динамический набор) */}
         <div className="stems__grid item-type-a">
-          <StemCard
-            title={labels.drums}
-            img={
-              currentSong?.portraits?.drums ||
-              (currentSong?.stems?.drums ? (defaultPortraits.drums ?? undefined) : undefined)
-            }
-            active={!muted.drums}
-            disabled={!currentSong?.stems?.drums}
-            onClick={() => toggleMute('drums')}
-          />
-          <StemCard
-            title={labels.bass}
-            img={
-              currentSong?.portraits?.bass ||
-              (currentSong?.stems?.bass ? (defaultPortraits.bass ?? undefined) : undefined)
-            }
-            active={!muted.bass}
-            disabled={!currentSong?.stems?.bass}
-            onClick={() => toggleMute('bass')}
-          />
-          <StemCard
-            title={labels.guitar}
-            img={
-              currentSong?.portraits?.guitar ||
-              (currentSong?.stems?.guitar ? (defaultPortraits.guitar ?? undefined) : undefined)
-            }
-            active={!muted.guitar}
-            disabled={!currentSong?.stems?.guitar}
-            onClick={() => toggleMute('guitar')}
-          />
-          <StemCard
-            title={labels.vocals}
-            img={
-              currentSong?.portraits?.vocal ||
-              (currentSong?.stems?.vocal ? (defaultPortraits.vocal ?? undefined) : undefined)
-            }
-            active={!muted.vocal}
-            disabled={!currentSong?.stems?.vocal}
-            onClick={() => toggleMute('vocal')}
-          />
+          {(currentSong?.stems ?? []).map((stem) => (
+            <StemCard
+              key={stem.id}
+              title={stem.name}
+              category={stem.category}
+              active={!muted[stem.id]}
+              onClick={() => toggleMute(stem.id)}
+            />
+          ))}
         </div>
       </div>
     </section>
@@ -672,13 +510,13 @@ export default function StemsPlayground() {
 
 function StemCard({
   title,
-  img,
+  category,
   active,
   disabled = false,
   onClick,
 }: {
   title: string;
-  img?: string;
+  category: StemCategory;
   active: boolean;
   disabled?: boolean;
   onClick: () => void;
@@ -701,10 +539,9 @@ function StemCard({
           : `${title} — ${active ? 'звук включён' : 'звук выключен (mute)'}`
       }
     >
-      <div
-        className="stem-card__img"
-        style={{ backgroundImage: img ? `url(${img})` : undefined }}
-      />
+      <div className="stem-card__img">
+        <StemIcon category={category} className="stem-card__icon" />
+      </div>
       <div className="stem-card__label">
         <span className="dot" />
         {title}

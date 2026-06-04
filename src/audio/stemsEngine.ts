@@ -1,6 +1,11 @@
 // src/audio/stemsEngine.ts
-export type StemKind = 'drums' | 'bass' | 'guitar' | 'vocal';
-type StemMap = Partial<Record<StemKind, string>>;
+
+/**
+ * Движок воспроизведения стемов.
+ * Стемы адресуются произвольными строковыми идентификаторами (id стема),
+ * количество и набор не ограничены фиксированными ключами.
+ */
+type StemMap = Record<string, string>;
 
 type Nodes = {
   buffer: AudioBuffer;
@@ -11,7 +16,7 @@ type Nodes = {
 export class StemEngine {
   private ctx: AudioContext;
   private masterGain: GainNode;
-  private nodes = new Map<StemKind, Nodes>();
+  private nodes = new Map<string, Nodes>();
   private startAt = 0; // момент запуска в time аудиоконтекста
   private startOffset = 0; // смещение (сек) от начала буфера
   private playing = false;
@@ -39,7 +44,7 @@ export class StemEngine {
   async loadAll(progress?: (p: number) => void) {
     const entries = Object.entries(this.stems).filter(
       ([, url]) => url && typeof url === 'string' && url.trim() !== ''
-    ) as [StemKind, string][];
+    ) as [string, string][];
 
     if (entries.length === 0) {
       console.warn('[StemEngine] Нет валидных стемов для загрузки');
@@ -126,9 +131,9 @@ export class StemEngine {
     return this.playing;
   }
 
-  /** Мьют/анмьют отдельного stem’а */
-  setMuted(kind: StemKind, muted: boolean) {
-    const n = this.nodes.get(kind);
+  /** Мьют/анмьют отдельного stem’а по его id */
+  setMuted(id: string, muted: boolean) {
+    const n = this.nodes.get(id);
     if (n) n.gain.gain.value = muted ? 0 : 1;
   }
 
