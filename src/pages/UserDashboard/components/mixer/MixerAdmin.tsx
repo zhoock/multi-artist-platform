@@ -744,270 +744,210 @@ export function MixerAdmin({ ui, userId, albums = [] }: MixerAdminProps) {
     [trackStemCovers, stemsInitial]
   );
 
+  if (albums.length === 0) {
+    return null;
+  }
+
   return (
     <>
-      {albums.length === 0 ? (
-        <div className="mixer-admin__placeholder">
-          {t?.noAlbums ?? 'Нет доступных альбомов для миксера'}
-        </div>
-      ) : (
-        <div className="user-dashboard__albums-list">
-          {albums.map((album, index) => {
-            const tracks = getAlbumTracks(album.id);
-            const isAlbumOpen = expandedAlbumId === album.id;
-            return (
-              <React.Fragment key={album.id}>
-                <div
-                  className={`user-dashboard__album-item ${isAlbumOpen ? 'user-dashboard__album-item--expanded' : ''}`}
-                  onClick={() => setExpandedAlbumId(isAlbumOpen ? null : album.id)}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      setExpandedAlbumId(isAlbumOpen ? null : album.id);
-                    }
-                  }}
-                  aria-label={isAlbumOpen ? 'Collapse album' : 'Expand album'}
-                >
-                  <div className="user-dashboard__album-thumbnail">
-                    {album.cover ? (
-                      <AlbumCoverImage
-                        cover={album.cover}
-                        userId={album.userId ?? userId}
-                        alt={album.title}
-                        contextAlbumId={album.id}
-                        logContext="mixer"
-                        loading="lazy"
-                        decoding="async"
-                      />
-                    ) : (
-                      <img src="/images/album-placeholder.png" alt={album.title} />
-                    )}
-                  </div>
-                  <div className="user-dashboard__album-info">
-                    <div className="user-dashboard__album-title">{album.title}</div>
-                    {album.releaseDate ? (
-                      <div className="user-dashboard__album-date">{album.releaseDate}</div>
-                    ) : (
-                      <div className="user-dashboard__album-year">{album.year}</div>
-                    )}
-                  </div>
-                  <div className="user-dashboard__album-arrow">
-                    <DashboardExpandChevron expanded={isAlbumOpen} />
-                  </div>
+      <div className="user-dashboard__albums-list">
+        {albums.map((album, index) => {
+          const tracks = getAlbumTracks(album.id);
+          const isAlbumOpen = expandedAlbumId === album.id;
+          return (
+            <React.Fragment key={album.id}>
+              <div
+                className={`user-dashboard__album-item ${isAlbumOpen ? 'user-dashboard__album-item--expanded' : ''}`}
+                onClick={() => setExpandedAlbumId(isAlbumOpen ? null : album.id)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    setExpandedAlbumId(isAlbumOpen ? null : album.id);
+                  }
+                }}
+                aria-label={isAlbumOpen ? 'Collapse album' : 'Expand album'}
+              >
+                <div className="user-dashboard__album-thumbnail">
+                  {album.cover ? (
+                    <AlbumCoverImage
+                      cover={album.cover}
+                      userId={album.userId ?? userId}
+                      alt={album.title}
+                      contextAlbumId={album.id}
+                      logContext="mixer"
+                      loading="lazy"
+                      decoding="async"
+                    />
+                  ) : (
+                    <img src="/images/album-placeholder.png" alt={album.title} />
+                  )}
                 </div>
+                <div className="user-dashboard__album-info">
+                  <div className="user-dashboard__album-title">{album.title}</div>
+                  {album.releaseDate ? (
+                    <div className="user-dashboard__album-date">{album.releaseDate}</div>
+                  ) : (
+                    <div className="user-dashboard__album-year">{album.year}</div>
+                  )}
+                </div>
+                <div className="user-dashboard__album-arrow">
+                  <DashboardExpandChevron expanded={isAlbumOpen} />
+                </div>
+              </div>
 
-                {isAlbumOpen && (
-                  <div className="user-dashboard__album-expanded">
-                    <div className="user-dashboard__tracks-list">
-                      {tracks.length === 0 ? (
-                        <div className="mixer-admin__placeholder">
-                          {t?.noTracks ?? 'Нет треков в альбоме'}
-                        </div>
-                      ) : (
-                        tracks.map((track, trackIndex) => {
-                          const isTrackOpen = expandedTrackId === track.id;
-                          return (
-                            <div key={track.id}>
-                              <button
-                                type="button"
-                                className="user-dashboard__track-item"
-                                onClick={() => {
-                                  ensureTrackStems(album.albumId || album.id, track.id);
-                                  setExpandedTrackId(isTrackOpen ? null : track.id);
-                                }}
-                                style={{ width: '100%', textAlign: 'left' }}
-                              >
-                                <div className="user-dashboard__track-number">
-                                  {String(trackIndex + 1).padStart(2, '0')}
+              {isAlbumOpen && (
+                <div className="user-dashboard__album-expanded">
+                  <div className="user-dashboard__tracks-list">
+                    {tracks.length === 0 ? (
+                      <div className="mixer-admin__placeholder">
+                        {t?.noTracks ?? 'Нет треков в альбоме'}
+                      </div>
+                    ) : (
+                      tracks.map((track, trackIndex) => {
+                        const isTrackOpen = expandedTrackId === track.id;
+                        return (
+                          <div key={track.id}>
+                            <button
+                              type="button"
+                              className="user-dashboard__track-item"
+                              onClick={() => {
+                                ensureTrackStems(album.albumId || album.id, track.id);
+                                setExpandedTrackId(isTrackOpen ? null : track.id);
+                              }}
+                              style={{ width: '100%', textAlign: 'left' }}
+                            >
+                              <div className="user-dashboard__track-number">
+                                {String(trackIndex + 1).padStart(2, '0')}
+                              </div>
+                              <div className="user-dashboard__track-title">
+                                {track.title || (track as any).trackTitle || (track as any).trackId}
+                              </div>
+                              <div className="user-dashboard__track-duration-container">
+                                <div className="user-dashboard__track-duration">
+                                  {track.duration}
                                 </div>
-                                <div className="user-dashboard__track-title">
-                                  {track.title ||
-                                    (track as any).trackTitle ||
-                                    (track as any).trackId}
-                                </div>
-                                <div className="user-dashboard__track-duration-container">
-                                  <div className="user-dashboard__track-duration">
-                                    {track.duration}
-                                  </div>
-                                </div>
-                              </button>
-                              {isTrackOpen && (
-                                <>
-                                  <h4 className="mixer-admin__subsection-title">
-                                    {t?.stems ?? 'Партии'}
-                                  </h4>
-                                  <div className="mixer-admin__stems-list">
-                                    {(trackStems[track.id] || stemsInitial).map((stem) => (
-                                      <div
-                                        key={stem.key}
-                                        className={`mixer-admin__stem-row ${stem.status === 'uploading' || stem.status === 'deleting' ? 'mixer-admin__stem-row--uploading' : ''} ${stem.url && stem.status === 'uploaded' ? 'mixer-admin__stem-row--uploaded' : ''}`}
-                                      >
-                                        <div className="mixer-admin__stem-name">{stem.label}</div>
-                                        <div className="mixer-admin__stem-waveform">
-                                          {stem.url && stem.status === 'uploaded' ? (
-                                            <div
-                                              style={{
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: '8px',
-                                                width: '100%',
-                                              }}
-                                            >
-                                              <div style={{ flex: 1 }}>
-                                                <Waveform src={stem.url} progress={0} height={56} />
-                                              </div>
-                                              <button
-                                                type="button"
-                                                onClick={async (e) => {
-                                                  e.stopPropagation();
-                                                  e.preventDefault();
-                                                  console.log('🗑️ [MixerAdmin] Deleting stem:', {
-                                                    trackId: track.id,
-                                                    stemKey: stem.key,
-                                                    fileName: stem.fileName,
-                                                    currentState: trackStems[track.id],
-                                                  });
+                              </div>
+                            </button>
+                            {isTrackOpen && (
+                              <>
+                                <h4 className="mixer-admin__subsection-title">
+                                  {t?.stems ?? 'Партии'}
+                                </h4>
+                                <div className="mixer-admin__stems-list">
+                                  {(trackStems[track.id] || stemsInitial).map((stem) => (
+                                    <div
+                                      key={stem.key}
+                                      className={`mixer-admin__stem-row ${stem.status === 'uploading' || stem.status === 'deleting' ? 'mixer-admin__stem-row--uploading' : ''} ${stem.url && stem.status === 'uploaded' ? 'mixer-admin__stem-row--uploaded' : ''}`}
+                                    >
+                                      <div className="mixer-admin__stem-name">{stem.label}</div>
+                                      <div className="mixer-admin__stem-waveform">
+                                        {stem.url && stem.status === 'uploaded' ? (
+                                          <div
+                                            style={{
+                                              display: 'flex',
+                                              alignItems: 'center',
+                                              gap: '8px',
+                                              width: '100%',
+                                            }}
+                                          >
+                                            <div style={{ flex: 1 }}>
+                                              <Waveform src={stem.url} progress={0} height={56} />
+                                            </div>
+                                            <button
+                                              type="button"
+                                              onClick={async (e) => {
+                                                e.stopPropagation();
+                                                e.preventDefault();
+                                                console.log('🗑️ [MixerAdmin] Deleting stem:', {
+                                                  trackId: track.id,
+                                                  stemKey: stem.key,
+                                                  fileName: stem.fileName,
+                                                  currentState: trackStems[track.id],
+                                                });
 
-                                                  // Сначала обновляем локальное состояние на 'deleting'
-                                                  setTrackStems((prev) => {
-                                                    const currentTrackStems =
-                                                      prev[track.id] || stemsInitial;
-                                                    const updated = currentTrackStems.map((s) => {
-                                                      if (s.key === stem.key) {
-                                                        return {
-                                                          ...s,
-                                                          status: 'deleting' as const,
-                                                        };
-                                                      }
-                                                      return s;
-                                                    });
-                                                    return {
-                                                      ...prev,
-                                                      [track.id]: [...updated],
-                                                    };
-                                                  });
-
-                                                  // Удаляем файл из Supabase Storage
-                                                  if (stem.fileName) {
-                                                    const storageUserId = userId || getUserUserId();
-                                                    if (!storageUserId) {
-                                                      throw new Error('No userId available');
+                                                // Сначала обновляем локальное состояние на 'deleting'
+                                                setTrackStems((prev) => {
+                                                  const currentTrackStems =
+                                                    prev[track.id] || stemsInitial;
+                                                  const updated = currentTrackStems.map((s) => {
+                                                    if (s.key === stem.key) {
+                                                      return {
+                                                        ...s,
+                                                        status: 'deleting' as const,
+                                                      };
                                                     }
-                                                    // ВАЖНО: Используем album.albumId (строковый ID, например "smolyanoechuchelko") вместо album.id (UUID)
-                                                    const albumIdForPath =
-                                                      album.albumId || album.id;
-                                                    const storagePath = `users/${storageUserId}/audio/${albumIdForPath}/${track.id}/${stem.fileName}`;
+                                                    return s;
+                                                  });
+                                                  return {
+                                                    ...prev,
+                                                    [track.id]: [...updated],
+                                                  };
+                                                });
+
+                                                // Удаляем файл из Supabase Storage
+                                                if (stem.fileName) {
+                                                  const storageUserId = userId || getUserUserId();
+                                                  if (!storageUserId) {
+                                                    throw new Error('No userId available');
+                                                  }
+                                                  // ВАЖНО: Используем album.albumId (строковый ID, например "smolyanoechuchelko") вместо album.id (UUID)
+                                                  const albumIdForPath = album.albumId || album.id;
+                                                  const storagePath = `users/${storageUserId}/audio/${albumIdForPath}/${track.id}/${stem.fileName}`;
+                                                  console.log(
+                                                    '🗑️ [MixerAdmin] Deleting file from Storage:',
+                                                    {
+                                                      storagePath,
+                                                      albumId: album.id,
+                                                      albumAlbumId: album.albumId,
+                                                      albumIdForPath,
+                                                      trackId: track.id,
+                                                      fileName: stem.fileName,
+                                                    }
+                                                  );
+
+                                                  try {
+                                                    // Получаем токен из localStorage
+                                                    const { getToken } = await import(
+                                                      '@shared/lib/auth'
+                                                    );
+                                                    const token = getToken();
+                                                    if (!token) {
+                                                      throw new Error('No auth token found');
+                                                    }
+
+                                                    // Вызываем Netlify Function для удаления файла
+                                                    const deleteResponse =
+                                                      await fetchWithAuthSession(
+                                                        '/api/stems/delete',
+                                                        {
+                                                          method: 'DELETE',
+                                                          headers: {
+                                                            'Content-Type': 'application/json',
+                                                            Authorization: `Bearer ${token}`,
+                                                          },
+                                                          body: JSON.stringify({ storagePath }),
+                                                        }
+                                                      );
+
+                                                    if (!deleteResponse.ok) {
+                                                      const errorData = await deleteResponse
+                                                        .json()
+                                                        .catch(() => ({}));
+                                                      throw new Error(
+                                                        errorData.message ||
+                                                          `HTTP ${deleteResponse.status}`
+                                                      );
+                                                    }
+
+                                                    const result = await deleteResponse.json();
                                                     console.log(
-                                                      '🗑️ [MixerAdmin] Deleting file from Storage:',
-                                                      {
-                                                        storagePath,
-                                                        albumId: album.id,
-                                                        albumAlbumId: album.albumId,
-                                                        albumIdForPath,
-                                                        trackId: track.id,
-                                                        fileName: stem.fileName,
-                                                      }
+                                                      '✅ [MixerAdmin] File successfully deleted from Storage:',
+                                                      result
                                                     );
 
-                                                    try {
-                                                      // Получаем токен из localStorage
-                                                      const { getToken } = await import(
-                                                        '@shared/lib/auth'
-                                                      );
-                                                      const token = getToken();
-                                                      if (!token) {
-                                                        throw new Error('No auth token found');
-                                                      }
-
-                                                      // Вызываем Netlify Function для удаления файла
-                                                      const deleteResponse =
-                                                        await fetchWithAuthSession(
-                                                          '/api/stems/delete',
-                                                          {
-                                                            method: 'DELETE',
-                                                            headers: {
-                                                              'Content-Type': 'application/json',
-                                                              Authorization: `Bearer ${token}`,
-                                                            },
-                                                            body: JSON.stringify({ storagePath }),
-                                                          }
-                                                        );
-
-                                                      if (!deleteResponse.ok) {
-                                                        const errorData = await deleteResponse
-                                                          .json()
-                                                          .catch(() => ({}));
-                                                        throw new Error(
-                                                          errorData.message ||
-                                                            `HTTP ${deleteResponse.status}`
-                                                        );
-                                                      }
-
-                                                      const result = await deleteResponse.json();
-                                                      console.log(
-                                                        '✅ [MixerAdmin] File successfully deleted from Storage:',
-                                                        result
-                                                      );
-
-                                                      // Обновляем состояние на 'idle' после успешного удаления
-                                                      setTrackStems((prev) => {
-                                                        const currentTrackStems =
-                                                          prev[track.id] || stemsInitial;
-                                                        const updated = currentTrackStems.map(
-                                                          (s) => {
-                                                            if (s.key === stem.key) {
-                                                              return {
-                                                                ...s,
-                                                                status: 'idle' as const,
-                                                                url: null,
-                                                                fileName: null,
-                                                                error: null,
-                                                              };
-                                                            }
-                                                            return s;
-                                                          }
-                                                        );
-                                                        return {
-                                                          ...prev,
-                                                          [track.id]: [...updated],
-                                                        };
-                                                      });
-                                                    } catch (error) {
-                                                      console.error(
-                                                        '❌ [MixerAdmin] Exception while deleting file:',
-                                                        error
-                                                      );
-                                                      // Восстанавливаем состояние при ошибке
-                                                      setTrackStems((prev) => {
-                                                        const currentTrackStems =
-                                                          prev[track.id] || stemsInitial;
-                                                        const updated = currentTrackStems.map(
-                                                          (s) => {
-                                                            if (s.key === stem.key) {
-                                                              return {
-                                                                ...s,
-                                                                status: 'uploaded' as const,
-                                                                url: stem.url,
-                                                                fileName: stem.fileName,
-                                                                error:
-                                                                  error instanceof Error
-                                                                    ? error.message
-                                                                    : 'Ошибка при удалении файла',
-                                                              };
-                                                            }
-                                                            return s;
-                                                          }
-                                                        );
-                                                        return {
-                                                          ...prev,
-                                                          [track.id]: [...updated],
-                                                        };
-                                                      });
-                                                    }
-                                                  } else {
-                                                    // Если fileName нет, просто сбрасываем состояние
+                                                    // Обновляем состояние на 'idle' после успешного удаления
                                                     setTrackStems((prev) => {
                                                       const currentTrackStems =
                                                         prev[track.id] || stemsInitial;
@@ -1028,259 +968,304 @@ export function MixerAdmin({ ui, userId, albums = [] }: MixerAdminProps) {
                                                         [track.id]: [...updated],
                                                       };
                                                     });
-                                                  }
-                                                }}
-                                                style={{
-                                                  padding: '4px 8px',
-                                                  background:
-                                                    'var(--dashboard-btn-secondary-hover-bg)',
-                                                  color: 'var(--dashboard-text-primary)',
-                                                  border: '1px solid var(--dashboard-border)',
-                                                  borderRadius: '4px',
-                                                  cursor: 'pointer',
-                                                  fontSize: '12px',
-                                                }}
-                                                title="Удалить стем"
-                                              >
-                                                ✕
-                                              </button>
-                                            </div>
-                                          ) : (
-                                            <label className="mixer-admin__stem-upload-area">
-                                              <input
-                                                type="file"
-                                                accept="audio/*"
-                                                onChange={(e) => {
-                                                  const file = e.target.files?.[0];
-                                                  if (file) {
-                                                    handleStemUpload(
-                                                      album.albumId || album.id,
-                                                      track,
-                                                      stem.key,
-                                                      file
+                                                  } catch (error) {
+                                                    console.error(
+                                                      '❌ [MixerAdmin] Exception while deleting file:',
+                                                      error
                                                     );
-                                                    e.target.value = '';
+                                                    // Восстанавливаем состояние при ошибке
+                                                    setTrackStems((prev) => {
+                                                      const currentTrackStems =
+                                                        prev[track.id] || stemsInitial;
+                                                      const updated = currentTrackStems.map((s) => {
+                                                        if (s.key === stem.key) {
+                                                          return {
+                                                            ...s,
+                                                            status: 'uploaded' as const,
+                                                            url: stem.url,
+                                                            fileName: stem.fileName,
+                                                            error:
+                                                              error instanceof Error
+                                                                ? error.message
+                                                                : 'Ошибка при удалении файла',
+                                                          };
+                                                        }
+                                                        return s;
+                                                      });
+                                                      return {
+                                                        ...prev,
+                                                        [track.id]: [...updated],
+                                                      };
+                                                    });
                                                   }
-                                                }}
-                                                disabled={stem.status === 'uploading'}
-                                              />
-                                              {stem.status === 'uploading' ? (
-                                                <div className="mixer-admin__stem-upload-loading">
-                                                  <span className="mixer-admin__stem-spinner">
-                                                    ⟳
-                                                  </span>
-                                                  {t?.uploading ?? 'Загрузка...'}
-                                                </div>
-                                              ) : (
-                                                <div className="mixer-admin__stem-upload-placeholder">
-                                                  {t?.upload ?? 'Загрузить'}
-                                                </div>
-                                              )}
-                                            </label>
-                                          )}
-                                        </div>
-                                        {stem.error && (
-                                          <div className="mixer-admin__stem-error">
-                                            {stem.error}
-                                          </div>
-                                        )}
-                                      </div>
-                                    ))}
-                                  </div>
-
-                                  <h4 className="mixer-admin__subsection-title">
-                                    {t?.stemCovers ?? 'Обложки стемов'}
-                                  </h4>
-                                  <div className="mixer-admin__stems-grid">
-                                    {(
-                                      trackStemCovers[track.id] ||
-                                      stemsInitial.map((s) => ({ ...s, status: 'idle' as const }))
-                                    ).map((cover) => {
-                                      const getStemIcon = (key: StemKey) => {
-                                        switch (key) {
-                                          case 'vocals':
-                                            return (
-                                              <svg
-                                                width="24"
-                                                height="24"
-                                                viewBox="0 0 24 24"
-                                                fill="none"
-                                                stroke="currentColor"
-                                                strokeWidth="2"
-                                              >
-                                                <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z" />
-                                                <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
-                                                <line x1="12" y1="19" x2="12" y2="23" />
-                                                <line x1="8" y1="23" x2="16" y2="23" />
-                                              </svg>
-                                            );
-                                          case 'guitars':
-                                            return (
-                                              <svg
-                                                width="24"
-                                                height="24"
-                                                viewBox="0 0 24 24"
-                                                fill="none"
-                                                stroke="currentColor"
-                                                strokeWidth="2"
-                                              >
-                                                <path d="M20 7h-3a2 2 0 0 0-2 2v2a2 2 0 0 0 2 2h3v-6z" />
-                                                <path d="M7 13h6" />
-                                                <circle cx="7" cy="13" r="2" />
-                                                <circle cx="17" cy="13" r="2" />
-                                                <path d="M17 5v2a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2V5" />
-                                              </svg>
-                                            );
-                                          case 'bass':
-                                            return (
-                                              <svg
-                                                width="24"
-                                                height="24"
-                                                viewBox="0 0 24 24"
-                                                fill="none"
-                                                stroke="currentColor"
-                                                strokeWidth="2"
-                                              >
-                                                <path d="M18 5h-4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h4v-14z" />
-                                                <path d="M6 13h4" />
-                                                <circle cx="6" cy="13" r="2" />
-                                                <circle cx="14" cy="13" r="2" />
-                                                <path d="M14 3v2a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V3" />
-                                              </svg>
-                                            );
-                                          case 'drums':
-                                            return (
-                                              <svg
-                                                width="24"
-                                                height="24"
-                                                viewBox="0 0 24 24"
-                                                fill="none"
-                                                stroke="currentColor"
-                                                strokeWidth="2"
-                                              >
-                                                <circle cx="12" cy="12" r="8" />
-                                                <circle cx="12" cy="12" r="3" />
-                                                <line x1="4" y1="12" x2="8" y2="12" />
-                                                <line x1="16" y1="12" x2="20" y2="12" />
-                                                <line x1="12" y1="4" x2="12" y2="8" />
-                                                <line x1="12" y1="16" x2="12" y2="20" />
-                                              </svg>
-                                            );
-                                          default:
-                                            return null;
-                                        }
-                                      };
-
-                                      return (
-                                        <div
-                                          key={cover.key}
-                                          className={`mixer-admin__stem-card ${cover.status === 'uploading' ? 'mixer-admin__stem-card--uploading' : ''} ${cover.url ? 'mixer-admin__stem-card--uploaded' : ''}`}
-                                        >
-                                          {/* input вынесен за пределы label, чтобы кнопка удаления не триггерила его */}
-                                          <input
-                                            id={`stem-cover-${album.id}-${track.id}-${cover.key}`}
-                                            type="file"
-                                            accept="image/*"
-                                            style={{ display: 'none' }}
-                                            onChange={(e) => {
-                                              const file = e.target.files?.[0];
-                                              if (file) {
-                                                handleStemCoverUpload(
-                                                  album.id,
-                                                  track,
-                                                  cover.key,
-                                                  file
-                                                );
-                                                e.target.value = '';
-                                              }
-                                            }}
-                                            disabled={cover.status === 'uploading'}
-                                          />
-                                          {/* label используется только для клика по карточке (кроме кнопки удаления) */}
-                                          <label
-                                            htmlFor={`stem-cover-${album.id}-${track.id}-${cover.key}`}
-                                            className="mixer-admin__stem-card-label"
-                                            onClick={(e) => {
-                                              // Предотвращаем клик на label, если кликнули на кнопку удаления
-                                              const target = e.target as HTMLElement;
-                                              if (
-                                                target.closest('.mixer-admin__stem-delete') ||
-                                                target.classList.contains(
-                                                  'mixer-admin__stem-delete'
-                                                )
-                                              ) {
-                                                e.preventDefault();
-                                                e.stopPropagation();
-                                                return false;
-                                              }
-                                            }}
-                                          >
-                                            <div className="mixer-admin__stem-icon">
-                                              {getStemIcon(cover.key)}
-                                            </div>
-                                            <div className="mixer-admin__stem-label">
-                                              {cover.label}
-                                            </div>
-                                            <div className="mixer-admin__stem-indicator">
-                                              {cover.status === 'uploading' ? (
-                                                <span className="mixer-admin__stem-spinner">⟳</span>
-                                              ) : cover.url ? (
-                                                <span className="mixer-admin__stem-arrow">⌄</span>
-                                              ) : (
-                                                <span className="mixer-admin__stem-arrow">⌄</span>
-                                              )}
-                                            </div>
-                                          </label>
-                                          {/* Кнопка удаления вынесена за пределы label */}
-                                          {cover.url && cover.status !== 'uploading' && (
-                                            <button
-                                              type="button"
-                                              className="mixer-admin__stem-delete"
-                                              onClick={(e) => {
-                                                e.stopPropagation();
-                                                e.preventDefault();
-                                                handleStemCoverDelete(
-                                                  album.albumId || album.id,
-                                                  track,
-                                                  cover.key
-                                                );
+                                                } else {
+                                                  // Если fileName нет, просто сбрасываем состояние
+                                                  setTrackStems((prev) => {
+                                                    const currentTrackStems =
+                                                      prev[track.id] || stemsInitial;
+                                                    const updated = currentTrackStems.map((s) => {
+                                                      if (s.key === stem.key) {
+                                                        return {
+                                                          ...s,
+                                                          status: 'idle' as const,
+                                                          url: null,
+                                                          fileName: null,
+                                                          error: null,
+                                                        };
+                                                      }
+                                                      return s;
+                                                    });
+                                                    return {
+                                                      ...prev,
+                                                      [track.id]: [...updated],
+                                                    };
+                                                  });
+                                                }
                                               }}
-                                              onMouseDown={(e) => {
-                                                // Предотвращаем всплытие еще на этапе mousedown
-                                                e.stopPropagation();
-                                                e.preventDefault();
+                                              style={{
+                                                padding: '4px 8px',
+                                                background:
+                                                  'var(--dashboard-btn-secondary-hover-bg)',
+                                                color: 'var(--dashboard-text-primary)',
+                                                border: '1px solid var(--dashboard-border)',
+                                                borderRadius: '4px',
+                                                cursor: 'pointer',
+                                                fontSize: '12px',
                                               }}
-                                              title="Удалить обложку"
-                                              aria-label="Удалить обложку"
+                                              title="Удалить стем"
                                             >
                                               ✕
                                             </button>
-                                          )}
-                                          {cover.error && (
-                                            <div className="mixer-admin__stem-error">
-                                              {cover.error}
-                                            </div>
-                                          )}
-                                        </div>
-                                      );
-                                    })}
-                                  </div>
-                                </>
-                              )}
-                            </div>
-                          );
-                        })
-                      )}
-                    </div>
-                  </div>
-                )}
+                                          </div>
+                                        ) : (
+                                          <label className="mixer-admin__stem-upload-area">
+                                            <input
+                                              type="file"
+                                              accept="audio/*"
+                                              onChange={(e) => {
+                                                const file = e.target.files?.[0];
+                                                if (file) {
+                                                  handleStemUpload(
+                                                    album.albumId || album.id,
+                                                    track,
+                                                    stem.key,
+                                                    file
+                                                  );
+                                                  e.target.value = '';
+                                                }
+                                              }}
+                                              disabled={stem.status === 'uploading'}
+                                            />
+                                            {stem.status === 'uploading' ? (
+                                              <div className="mixer-admin__stem-upload-loading">
+                                                <span className="mixer-admin__stem-spinner">⟳</span>
+                                                {t?.uploading ?? 'Загрузка...'}
+                                              </div>
+                                            ) : (
+                                              <div className="mixer-admin__stem-upload-placeholder">
+                                                {t?.upload ?? 'Загрузить'}
+                                              </div>
+                                            )}
+                                          </label>
+                                        )}
+                                      </div>
+                                      {stem.error && (
+                                        <div className="mixer-admin__stem-error">{stem.error}</div>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
 
-                {index < albums.length - 1 && <div className="user-dashboard__album-divider"></div>}
-              </React.Fragment>
-            );
-          })}
-        </div>
-      )}
+                                <h4 className="mixer-admin__subsection-title">
+                                  {t?.stemCovers ?? 'Обложки стемов'}
+                                </h4>
+                                <div className="mixer-admin__stems-grid">
+                                  {(
+                                    trackStemCovers[track.id] ||
+                                    stemsInitial.map((s) => ({ ...s, status: 'idle' as const }))
+                                  ).map((cover) => {
+                                    const getStemIcon = (key: StemKey) => {
+                                      switch (key) {
+                                        case 'vocals':
+                                          return (
+                                            <svg
+                                              width="24"
+                                              height="24"
+                                              viewBox="0 0 24 24"
+                                              fill="none"
+                                              stroke="currentColor"
+                                              strokeWidth="2"
+                                            >
+                                              <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z" />
+                                              <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                                              <line x1="12" y1="19" x2="12" y2="23" />
+                                              <line x1="8" y1="23" x2="16" y2="23" />
+                                            </svg>
+                                          );
+                                        case 'guitars':
+                                          return (
+                                            <svg
+                                              width="24"
+                                              height="24"
+                                              viewBox="0 0 24 24"
+                                              fill="none"
+                                              stroke="currentColor"
+                                              strokeWidth="2"
+                                            >
+                                              <path d="M20 7h-3a2 2 0 0 0-2 2v2a2 2 0 0 0 2 2h3v-6z" />
+                                              <path d="M7 13h6" />
+                                              <circle cx="7" cy="13" r="2" />
+                                              <circle cx="17" cy="13" r="2" />
+                                              <path d="M17 5v2a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2V5" />
+                                            </svg>
+                                          );
+                                        case 'bass':
+                                          return (
+                                            <svg
+                                              width="24"
+                                              height="24"
+                                              viewBox="0 0 24 24"
+                                              fill="none"
+                                              stroke="currentColor"
+                                              strokeWidth="2"
+                                            >
+                                              <path d="M18 5h-4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h4v-14z" />
+                                              <path d="M6 13h4" />
+                                              <circle cx="6" cy="13" r="2" />
+                                              <circle cx="14" cy="13" r="2" />
+                                              <path d="M14 3v2a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V3" />
+                                            </svg>
+                                          );
+                                        case 'drums':
+                                          return (
+                                            <svg
+                                              width="24"
+                                              height="24"
+                                              viewBox="0 0 24 24"
+                                              fill="none"
+                                              stroke="currentColor"
+                                              strokeWidth="2"
+                                            >
+                                              <circle cx="12" cy="12" r="8" />
+                                              <circle cx="12" cy="12" r="3" />
+                                              <line x1="4" y1="12" x2="8" y2="12" />
+                                              <line x1="16" y1="12" x2="20" y2="12" />
+                                              <line x1="12" y1="4" x2="12" y2="8" />
+                                              <line x1="12" y1="16" x2="12" y2="20" />
+                                            </svg>
+                                          );
+                                        default:
+                                          return null;
+                                      }
+                                    };
+
+                                    return (
+                                      <div
+                                        key={cover.key}
+                                        className={`mixer-admin__stem-card ${cover.status === 'uploading' ? 'mixer-admin__stem-card--uploading' : ''} ${cover.url ? 'mixer-admin__stem-card--uploaded' : ''}`}
+                                      >
+                                        {/* input вынесен за пределы label, чтобы кнопка удаления не триггерила его */}
+                                        <input
+                                          id={`stem-cover-${album.id}-${track.id}-${cover.key}`}
+                                          type="file"
+                                          accept="image/*"
+                                          style={{ display: 'none' }}
+                                          onChange={(e) => {
+                                            const file = e.target.files?.[0];
+                                            if (file) {
+                                              handleStemCoverUpload(
+                                                album.id,
+                                                track,
+                                                cover.key,
+                                                file
+                                              );
+                                              e.target.value = '';
+                                            }
+                                          }}
+                                          disabled={cover.status === 'uploading'}
+                                        />
+                                        {/* label используется только для клика по карточке (кроме кнопки удаления) */}
+                                        <label
+                                          htmlFor={`stem-cover-${album.id}-${track.id}-${cover.key}`}
+                                          className="mixer-admin__stem-card-label"
+                                          onClick={(e) => {
+                                            // Предотвращаем клик на label, если кликнули на кнопку удаления
+                                            const target = e.target as HTMLElement;
+                                            if (
+                                              target.closest('.mixer-admin__stem-delete') ||
+                                              target.classList.contains('mixer-admin__stem-delete')
+                                            ) {
+                                              e.preventDefault();
+                                              e.stopPropagation();
+                                              return false;
+                                            }
+                                          }}
+                                        >
+                                          <div className="mixer-admin__stem-icon">
+                                            {getStemIcon(cover.key)}
+                                          </div>
+                                          <div className="mixer-admin__stem-label">
+                                            {cover.label}
+                                          </div>
+                                          <div className="mixer-admin__stem-indicator">
+                                            {cover.status === 'uploading' ? (
+                                              <span className="mixer-admin__stem-spinner">⟳</span>
+                                            ) : cover.url ? (
+                                              <span className="mixer-admin__stem-arrow">⌄</span>
+                                            ) : (
+                                              <span className="mixer-admin__stem-arrow">⌄</span>
+                                            )}
+                                          </div>
+                                        </label>
+                                        {/* Кнопка удаления вынесена за пределы label */}
+                                        {cover.url && cover.status !== 'uploading' && (
+                                          <button
+                                            type="button"
+                                            className="mixer-admin__stem-delete"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              e.preventDefault();
+                                              handleStemCoverDelete(
+                                                album.albumId || album.id,
+                                                track,
+                                                cover.key
+                                              );
+                                            }}
+                                            onMouseDown={(e) => {
+                                              // Предотвращаем всплытие еще на этапе mousedown
+                                              e.stopPropagation();
+                                              e.preventDefault();
+                                            }}
+                                            title="Удалить обложку"
+                                            aria-label="Удалить обложку"
+                                          >
+                                            ✕
+                                          </button>
+                                        )}
+                                        {cover.error && (
+                                          <div className="mixer-admin__stem-error">
+                                            {cover.error}
+                                          </div>
+                                        )}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {index < albums.length - 1 && <div className="user-dashboard__album-divider"></div>}
+            </React.Fragment>
+          );
+        })}
+      </div>
     </>
   );
 }

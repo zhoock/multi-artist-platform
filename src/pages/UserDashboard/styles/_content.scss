@@ -729,41 +729,71 @@ dialog {
       @include dashboard-btn-secondary($margin: 0 0 var(--ms-0) 0);
     }
 
-    &__albums-prompt {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: var(--ms-0) var(--ms-1);
-      border-radius: var(--ms-01);
-      gap: var(--ms-0);
-    }
+    // Shared empty state (Albums, Posts, Mixer, My Purchases).
+    // Top-anchored stack: CTA/no-CTA blocks share the same icon position (My Purchases reference).
+    &__tab-empty {
+      --dashboard-tab-empty-top: clamp(3.25rem, 15vh, 4.5rem);
 
-    &__albums-prompt-text {
-      color: var(--dashboard-text-secondary);
+      position: relative;
       flex: 1;
+      width: 100%;
+      min-height: min(480px, 58vh);
+      padding: 0 var(--ms-1) var(--ms-2);
+      box-sizing: border-box;
     }
 
-    &__new-album-button {
-      @include dashboard-btn-secondary($margin: 0, $padding: var(--ms-01) var(--ms-1));
-    }
-
-    // Posts section
-    &__posts-prompt {
+    &__tab-empty-inner {
+      position: absolute;
+      top: var(--dashboard-tab-empty-top);
+      left: 50%;
       display: flex;
-      justify-content: space-between;
+      flex-direction: column;
       align-items: center;
-      padding: var(--ms-0) var(--ms-1);
-      border-radius: var(--ms-01);
-      gap: var(--ms-0);
+      width: min(100%, 26rem);
+      text-align: center;
+      transform: translateX(-50%);
     }
 
-    &__posts-prompt-text {
+    &__tab-empty-icon {
+      flex-shrink: 0;
+      margin-bottom: var(--ms-0);
       color: var(--dashboard-text-secondary);
-      flex: 1;
     }
 
-    &__new-post-button {
-      @include dashboard-btn-secondary($margin: 0, $padding: var(--ms-01) var(--ms-1));
+    &__tab-empty-title {
+      margin: 0 0 var(--ms-01);
+      color: var(--dashboard-text-primary);
+      font-size: clamp(1.35rem, 3vw, 1.65rem);
+      font-weight: 600;
+      line-height: 1.25;
+    }
+
+    &__tab-empty-description {
+      margin: 0 0 var(--ms-1);
+      color: var(--dashboard-text-secondary);
+      font-size: var(--dashboard-font-size);
+      line-height: 1.55;
+
+      &--multiline {
+        white-space: pre-line;
+      }
+
+      &:last-child {
+        margin-bottom: 0;
+      }
+    }
+
+    &__tab-empty-cta {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.55em;
+      width: auto;
+      max-width: 100%;
+      text-transform: none;
+      letter-spacing: normal;
+
+      @include dashboard-btn-primary($margin: 0, $padding: var(--ms-01) var(--ms-1));
     }
 
     &__upload-action {

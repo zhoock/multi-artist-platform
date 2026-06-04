@@ -712,10 +712,23 @@ export interface IInterface {
     errorNotAuthorized: string;
     errorArticleIdNotFound: string;
     uploadAndPublishAlbums: string;
+    albumsEmptyTitle: string;
+    albumsEmptyDescription: string;
+    createYourFirstAlbum: string;
+    articlesEmptyTitle: string;
+    articlesEmptyDescription: string;
+    createArticle: string;
     uploading: string;
     dragImageHereOr: string;
     loading?: string;
     saving?: string;
+    mixer?: {
+      title: string;
+      emptyTitle: string;
+      emptyDescription: string;
+      createAlbum: string;
+      noAlbums?: string;
+    };
     archive?: {
       title: string;
       subtitle: string;

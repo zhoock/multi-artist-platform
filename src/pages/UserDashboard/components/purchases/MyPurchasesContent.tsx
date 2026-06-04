@@ -14,6 +14,7 @@ import {
 } from '@shared/api/purchases';
 import { getUserImageUrl } from '@shared/api/albums';
 import { ConfirmationModal } from '@shared/ui/confirmationModal';
+import { MyPurchasesEmptyState } from './MyPurchasesEmptyState';
 import '../../UserDashboard.style.scss';
 
 function triggerBlobDownload(blob: Blob, filename: string) {
@@ -175,197 +176,196 @@ export function MyPurchasesContent() {
   };
 
   return (
-    <div className="user-dashboard__my-purchases">
-      {loading && (
-        <p className="user-dashboard__my-purchases-loading">
-          {copy?.loadingPurchases ?? 'Loading purchases...'}
-        </p>
-      )}
+    <>
+      {!loading && !error && purchases.length === 0 ? (
+        <MyPurchasesEmptyState ui={ui} />
+      ) : (
+        <div className="user-dashboard__my-purchases">
+          {loading && (
+            <p className="user-dashboard__my-purchases-loading">
+              {copy?.loadingPurchases ?? 'Loading purchases...'}
+            </p>
+          )}
 
-      {error && !loading && <div className="user-dashboard__my-purchases-error">{error}</div>}
+          {error && !loading && <div className="user-dashboard__my-purchases-error">{error}</div>}
 
-      {!loading && !error && purchases.length === 0 && (
-        <div className="user-dashboard__my-purchases-empty">
-          <p className="user-dashboard__my-purchases-empty-title">
-            {copy?.emptyTitle ?? 'No purchases yet'}
-          </p>
-          <p className="user-dashboard__my-purchases-empty-text">
-            {copy?.emptyDescription ?? 'Albums you buy will appear here for download.'}
-          </p>
-        </div>
-      )}
-
-      {!loading && !error && purchases.length > 0 && (
-        <div className="user-dashboard__my-purchases-list">
-          {purchases.map((purchase) => (
-            <div key={purchase.id} className="user-dashboard__my-purchases-purchase">
-              <div className="user-dashboard__my-purchases-purchase-header">
-                {purchase.cover && (
-                  <div className="user-dashboard__my-purchases-purchase-cover">
-                    <img
-                      src={(() => {
-                        const ownerId = purchase.albumUserId ?? undefined;
-                        const imageUrl = getUserImageUrl(
-                          purchase.cover,
-                          'albums',
-                          '.jpg',
-                          true,
-                          ownerId
-                        );
-                        if (imageUrl == null) {
-                          return '/images/album-placeholder.png';
-                        }
-                        return imageUrl;
-                      })()}
-                      alt={`${purchase.artist} — ${purchase.album}`}
-                      className="user-dashboard__my-purchases-purchase-cover-image"
-                    />
-                  </div>
-                )}
-                <div className="user-dashboard__my-purchases-purchase-info">
-                  <h4 className="user-dashboard__my-purchases-purchase-title">
-                    {purchase.artist} — {purchase.album}
-                  </h4>
-                  <p className="user-dashboard__my-purchases-purchase-date">
-                    {copy?.purchased ?? 'Purchased:'} {formatDate(purchase.purchasedAt)}
-                  </p>
-                  {purchase.downloadCount > 0 && (
-                    <p className="user-dashboard__my-purchases-purchase-downloads">
-                      {copy?.downloads ?? 'Downloads:'} {purchase.downloadCount}
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              <div className="user-dashboard__my-purchases-tracks">
-                <div className="user-dashboard__my-purchases-tracks-grid">
-                  <h5 className="user-dashboard__my-purchases-tracks-title">
-                    {copy?.tracks ?? 'Tracks'}
-                  </h5>
-                  <button
-                    type="button"
-                    className="user-dashboard__my-purchases-download-all"
-                    aria-label={copy?.downloadAll ?? 'Download all'}
-                    disabled={downloadingAlbums.has(purchase.id) || purchase.tracks.length === 0}
-                    onClick={() => void handleDownloadAlbum(purchase)}
-                  >
-                    {downloadingAlbums.has(purchase.id) ? (
-                      <>
-                        <svg
-                          className="user-dashboard__download-spinner"
-                          width="14"
-                          height="14"
-                          viewBox="0 0 14 14"
-                          fill="none"
-                          xmlns="http://www.w3.org/2000/svg"
-                          aria-hidden
-                        >
-                          <circle
-                            cx="7"
-                            cy="7"
-                            r="6"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeOpacity="0.3"
-                          />
-                          <path
-                            d="M 7 1 A 6 6 0 0 1 13 7"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                          />
-                        </svg>
-                        {copy?.preparingDownload ?? 'Preparing download...'}
-                      </>
-                    ) : (
-                      <>
-                        <DownloadIcon
-                          {...dashboardActionIconProps({ size: 14, strokeWidth: 1.5 })}
+          {!loading && !error && purchases.length > 0 && (
+            <div className="user-dashboard__my-purchases-list">
+              {purchases.map((purchase) => (
+                <div key={purchase.id} className="user-dashboard__my-purchases-purchase">
+                  <div className="user-dashboard__my-purchases-purchase-header">
+                    {purchase.cover && (
+                      <div className="user-dashboard__my-purchases-purchase-cover">
+                        <img
+                          src={(() => {
+                            const ownerId = purchase.albumUserId ?? undefined;
+                            const imageUrl = getUserImageUrl(
+                              purchase.cover,
+                              'albums',
+                              '.jpg',
+                              true,
+                              ownerId
+                            );
+                            if (imageUrl == null) {
+                              return '/images/album-placeholder.png';
+                            }
+                            return imageUrl;
+                          })()}
+                          alt={`${purchase.artist} — ${purchase.album}`}
+                          className="user-dashboard__my-purchases-purchase-cover-image"
                         />
-                        {copy?.downloadAll ?? 'Download all'}
-                      </>
+                      </div>
                     )}
-                  </button>
+                    <div className="user-dashboard__my-purchases-purchase-info">
+                      <h4 className="user-dashboard__my-purchases-purchase-title">
+                        {purchase.artist} — {purchase.album}
+                      </h4>
+                      <p className="user-dashboard__my-purchases-purchase-date">
+                        {copy?.purchased ?? 'Purchased:'} {formatDate(purchase.purchasedAt)}
+                      </p>
+                      {purchase.downloadCount > 0 && (
+                        <p className="user-dashboard__my-purchases-purchase-downloads">
+                          {copy?.downloads ?? 'Downloads:'} {purchase.downloadCount}
+                        </p>
+                      )}
+                    </div>
+                  </div>
 
-                  {purchase.tracks.map((track, index) => {
-                    const downloadKey = `${purchase.purchaseToken}-${track.trackId}`;
-                    const isDownloading = downloadingTracks.has(downloadKey);
-                    const isDownloaded = downloadedItems.has(downloadKey);
+                  <div className="user-dashboard__my-purchases-tracks">
+                    <div className="user-dashboard__my-purchases-tracks-grid">
+                      <h5 className="user-dashboard__my-purchases-tracks-title">
+                        {copy?.tracks ?? 'Tracks'}
+                      </h5>
+                      <button
+                        type="button"
+                        className="user-dashboard__my-purchases-download-all"
+                        aria-label={copy?.downloadAll ?? 'Download all'}
+                        disabled={
+                          downloadingAlbums.has(purchase.id) || purchase.tracks.length === 0
+                        }
+                        onClick={() => void handleDownloadAlbum(purchase)}
+                      >
+                        {downloadingAlbums.has(purchase.id) ? (
+                          <>
+                            <svg
+                              className="user-dashboard__download-spinner"
+                              width="14"
+                              height="14"
+                              viewBox="0 0 14 14"
+                              fill="none"
+                              xmlns="http://www.w3.org/2000/svg"
+                              aria-hidden
+                            >
+                              <circle
+                                cx="7"
+                                cy="7"
+                                r="6"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeOpacity="0.3"
+                              />
+                              <path
+                                d="M 7 1 A 6 6 0 0 1 13 7"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                              />
+                            </svg>
+                            {copy?.preparingDownload ?? 'Preparing download...'}
+                          </>
+                        ) : (
+                          <>
+                            <DownloadIcon
+                              {...dashboardActionIconProps({ size: 14, strokeWidth: 1.5 })}
+                            />
+                            {copy?.downloadAll ?? 'Download all'}
+                          </>
+                        )}
+                      </button>
 
-                    return (
-                      <React.Fragment key={track.trackId}>
-                        <div className="user-dashboard__my-purchases-track">
-                          <span className="user-dashboard__my-purchases-track-number">
-                            {index + 1}.
-                          </span>
-                          <span className="user-dashboard__my-purchases-track-title">
-                            {track.title}
-                          </span>
-                        </div>
-                        <button
-                          type="button"
-                          className="user-dashboard__my-purchases-track-download"
-                          onClick={() => handleDownloadTrack(purchase.purchaseToken, track.trackId)}
-                          title={copy?.downloadTrack ?? 'Download track'}
-                          disabled={isDownloading}
-                        >
-                          {isDownloading ? (
-                            <>
-                              <svg
-                                className="user-dashboard__download-spinner"
-                                width="14"
-                                height="14"
-                                viewBox="0 0 14 14"
-                                fill="none"
-                                xmlns="http://www.w3.org/2000/svg"
-                                aria-hidden
-                              >
-                                <circle
-                                  cx="7"
-                                  cy="7"
-                                  r="6"
-                                  stroke="currentColor"
-                                  strokeWidth="2"
-                                  strokeOpacity="0.3"
-                                />
-                                <path
-                                  d="M 7 1 A 6 6 0 0 1 13 7"
-                                  stroke="currentColor"
-                                  strokeWidth="2"
-                                  strokeLinecap="round"
-                                />
-                              </svg>
-                              {copy?.downloading ?? 'Downloading...'}
-                            </>
-                          ) : isDownloaded ? (
-                            (copy?.downloaded ?? 'Downloaded')
-                          ) : (
-                            (copy?.download ?? 'Download')
-                          )}
-                        </button>
-                      </React.Fragment>
-                    );
-                  })}
+                      {purchase.tracks.map((track, index) => {
+                        const downloadKey = `${purchase.purchaseToken}-${track.trackId}`;
+                        const isDownloading = downloadingTracks.has(downloadKey);
+                        const isDownloaded = downloadedItems.has(downloadKey);
+
+                        return (
+                          <React.Fragment key={track.trackId}>
+                            <div className="user-dashboard__my-purchases-track">
+                              <span className="user-dashboard__my-purchases-track-number">
+                                {index + 1}.
+                              </span>
+                              <span className="user-dashboard__my-purchases-track-title">
+                                {track.title}
+                              </span>
+                            </div>
+                            <button
+                              type="button"
+                              className="user-dashboard__my-purchases-track-download"
+                              onClick={() =>
+                                handleDownloadTrack(purchase.purchaseToken, track.trackId)
+                              }
+                              title={copy?.downloadTrack ?? 'Download track'}
+                              disabled={isDownloading}
+                            >
+                              {isDownloading ? (
+                                <>
+                                  <svg
+                                    className="user-dashboard__download-spinner"
+                                    width="14"
+                                    height="14"
+                                    viewBox="0 0 14 14"
+                                    fill="none"
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    aria-hidden
+                                  >
+                                    <circle
+                                      cx="7"
+                                      cy="7"
+                                      r="6"
+                                      stroke="currentColor"
+                                      strokeWidth="2"
+                                      strokeOpacity="0.3"
+                                    />
+                                    <path
+                                      d="M 7 1 A 6 6 0 0 1 13 7"
+                                      stroke="currentColor"
+                                      strokeWidth="2"
+                                      strokeLinecap="round"
+                                    />
+                                  </svg>
+                                  {copy?.downloading ?? 'Downloading...'}
+                                </>
+                              ) : isDownloaded ? (
+                                (copy?.downloaded ?? 'Downloaded')
+                              ) : (
+                                (copy?.download ?? 'Download')
+                              )}
+                            </button>
+                          </React.Fragment>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="user-dashboard__my-purchases-purchase-footer">
+                    <button
+                      type="button"
+                      className="user-dashboard__my-purchases-remove"
+                      aria-label={copy?.removePurchase ?? 'Remove purchase'}
+                      disabled={isRemoving && purchaseToRemove?.id === purchase.id}
+                      onClick={() => setPurchaseToRemove(purchase)}
+                    >
+                      {copy?.removePurchase ?? 'Remove purchase'}
+                    </button>
+                    <p className="user-dashboard__my-purchases-remove-hint">
+                      {copy?.removePurchaseHint ??
+                        'You will lose access to this album and all downloads.'}
+                    </p>
+                  </div>
                 </div>
-              </div>
-
-              <div className="user-dashboard__my-purchases-purchase-footer">
-                <button
-                  type="button"
-                  className="user-dashboard__my-purchases-remove"
-                  aria-label={copy?.removePurchase ?? 'Remove purchase'}
-                  disabled={isRemoving && purchaseToRemove?.id === purchase.id}
-                  onClick={() => setPurchaseToRemove(purchase)}
-                >
-                  {copy?.removePurchase ?? 'Remove purchase'}
-                </button>
-                <p className="user-dashboard__my-purchases-remove-hint">
-                  {copy?.removePurchaseHint ??
-                    'You will lose access to this album and all downloads.'}
-                </p>
-              </div>
+              ))}
             </div>
-          ))}
+          )}
         </div>
       )}
 
@@ -387,6 +387,6 @@ export function MyPurchasesContent() {
         }}
         onConfirm={() => void handleConfirmRemove()}
       />
-    </div>
+    </>
   );
 }
