@@ -11,6 +11,7 @@ dialog {
     &__card {
       display: flex;
       flex-direction: column;
+      min-height: auto;
 
       @include dashboard-modal-panel(
         $padding: 0,
@@ -19,8 +20,6 @@ dialog {
         $desktop-height: auto,
         $mobile-max-height: 90vh
       );
-
-      min-height: auto;
 
       @include breakpoint(tablet) {
         height: auto;

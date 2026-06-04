@@ -50,6 +50,27 @@ interface DeleteTarget {
   stem: StemMeta;
 }
 
+/**
+ * Составной ключ для любого клиентского кэша/стейта, привязанного к треку в микшере.
+ *
+ * Откуда берётся track.id в UI (TrackData.id / IAlbums.tracks[].id):
+ * - В БД: колонка `tracks.track_id` (VARCHAR), уникальность только в паре с альбомом —
+ *   `UNIQUE(album_id, track_id)` (см. database/migrations/003_create_users_albums_tracks.sql).
+ * - Это НЕ глобальный PK строки `tracks.id` (UUID) и не slug названия трека.
+ * - API: `netlify/functions/albums.ts` → `mapAlbumToApiFormat` кладёт `track.track_id` в поле `id`.
+ * - UI: `transformAlbumToAlbumData` → `id: String(track.id)`.
+ * - Legacy-альбомы из JSON: позиционные id `"1"`, `"2"`, … (одинаковые между разными альбомами).
+ * - Новые загрузки: стабильный UUID (`UserDashboard` → `newStableTrackId()`), но по-прежнему
+ *   scoped к альбому в БД и в Storage, не глобально уникален без albumId.
+ *
+ * Пути стемов в Storage уже корректны: `users/{userId}/audio/{albumId}/{trackId}/…`.
+ * Ошибка была только в React-стейте: индексация по голому trackId без albumId.
+ *
+ * Не используйте track.id как единственный ключ в Record/Map/setState — всегда stemKey(albumId, trackId),
+ * где albumId — storage-ключ альбома (`album.albumId || album.id`, как getStorageAlbumId).
+ */
+const stemKey = (albumId: string, trackId: string) => `${albumId}:${trackId}`;
+
 export function MixerAdmin({ ui, userId, albums = [] }: MixerAdminProps) {
   // ui.dashboard.mixer пока не полностью описан в типах IInterface, берём через any.
   const t = useMemo(() => (ui as any)?.dashboard?.mixer ?? {}, [ui]);
@@ -123,25 +144,27 @@ export function MixerAdmin({ ui, userId, albums = [] }: MixerAdminProps) {
 
   const getStorageAlbumId = (album: AlbumData): string => album.albumId || album.id;
 
-  const setBusy = (trackId: string, stemId: string, value: boolean) => {
-    const key = `${trackId}:${stemId}`;
+  const setBusy = (albumId: string, trackId: string, stemId: string, value: boolean) => {
+    const key = `${stemKey(albumId, trackId)}:${stemId}`;
     setBusyStems((prev) => ({ ...prev, [key]: value }));
   };
-  const isBusy = (trackId: string, stemId: string) => !!busyStems[`${trackId}:${stemId}`];
+  const isBusy = (albumId: string, trackId: string, stemId: string) =>
+    !!busyStems[`${stemKey(albumId, trackId)}:${stemId}`];
 
   const ensureTrackStems = useCallback(
     async (storageAlbumId: string, trackId: string) => {
       if (!storageUserId) return;
-      if (trackStems[trackId]) return;
-      setLoadingTracks((prev) => ({ ...prev, [trackId]: true }));
+      const key = stemKey(storageAlbumId, trackId);
+      if (trackStems[key]) return;
+      setLoadingTracks((prev) => ({ ...prev, [key]: true }));
       try {
         const stems = await loadStems(storageUserId, storageAlbumId, trackId);
-        setTrackStems((prev) => ({ ...prev, [trackId]: stems }));
+        setTrackStems((prev) => ({ ...prev, [key]: stems }));
       } catch (error) {
         console.error('[MixerAdmin] Failed to load stems:', error);
-        setTrackStems((prev) => ({ ...prev, [trackId]: prev[trackId] ?? [] }));
+        setTrackStems((prev) => ({ ...prev, [key]: prev[key] ?? [] }));
       } finally {
-        setLoadingTracks((prev) => ({ ...prev, [trackId]: false }));
+        setLoadingTracks((prev) => ({ ...prev, [key]: false }));
       }
     },
     [storageUserId, trackStems]
@@ -192,9 +215,10 @@ export function MixerAdmin({ ui, userId, albums = [] }: MixerAdminProps) {
         size: file.size,
         originalFileName: file.name,
       };
-      const next = [...(trackStems[trackId] ?? []), newStem];
+      const key = stemKey(storageAlbumId, trackId);
+      const next = [...(trackStems[key] ?? []), newStem];
       await saveStemsManifest(storageAlbumId, trackId, next);
-      setTrackStems((prev) => ({ ...prev, [trackId]: next }));
+      setTrackStems((prev) => ({ ...prev, [key]: next }));
       setAddModal(null);
     },
     [trackStems]
@@ -202,16 +226,17 @@ export function MixerAdmin({ ui, userId, albums = [] }: MixerAdminProps) {
 
   const handleReplaceFile = useCallback(
     async (storageAlbumId: string, trackId: string, stem: StemMeta, file: File) => {
-      setBusy(trackId, stem.id, true);
+      const key = stemKey(storageAlbumId, trackId);
+      setBusy(storageAlbumId, trackId, stem.id, true);
       try {
         const { fileName } = await uploadStemAudio(storageAlbumId, trackId, file);
-        const next = (trackStems[trackId] ?? []).map((s) =>
+        const next = (trackStems[key] ?? []).map((s) =>
           s.id === stem.id
             ? { ...s, file: fileName, size: file.size, originalFileName: file.name }
             : s
         );
         await saveStemsManifest(storageAlbumId, trackId, next);
-        setTrackStems((prev) => ({ ...prev, [trackId]: next }));
+        setTrackStems((prev) => ({ ...prev, [key]: next }));
         if (playingStemId === stem.id) stopPlayback();
         // Старый файл удаляем по возможности (не критично при ошибке).
         if (stem.file && stem.file !== fileName) {
@@ -222,7 +247,7 @@ export function MixerAdmin({ ui, userId, albums = [] }: MixerAdminProps) {
       } catch (error) {
         console.error('[MixerAdmin] Failed to replace stem file:', error);
       } finally {
-        setBusy(trackId, stem.id, false);
+        setBusy(storageAlbumId, trackId, stem.id, false);
       }
     },
     [trackStems, playingStemId, stopPlayback, storageUserId]
@@ -231,8 +256,9 @@ export function MixerAdmin({ ui, userId, albums = [] }: MixerAdminProps) {
   const handleRename = useCallback(
     async (storageAlbumId: string, trackId: string, stem: StemMeta, name: string) => {
       // Переименование НЕ меняет категорию автоматически.
-      const next = (trackStems[trackId] ?? []).map((s) => (s.id === stem.id ? { ...s, name } : s));
-      setTrackStems((prev) => ({ ...prev, [trackId]: next }));
+      const key = stemKey(storageAlbumId, trackId);
+      const next = (trackStems[key] ?? []).map((s) => (s.id === stem.id ? { ...s, name } : s));
+      setTrackStems((prev) => ({ ...prev, [key]: next }));
       try {
         await saveStemsManifest(storageAlbumId, trackId, next);
       } catch (error) {
@@ -245,8 +271,9 @@ export function MixerAdmin({ ui, userId, albums = [] }: MixerAdminProps) {
   const handleConfirmDelete = useCallback(async () => {
     if (!deleteTarget) return;
     const { albumId: storageAlbumId, trackId, stem } = deleteTarget;
+    const key = stemKey(storageAlbumId, trackId);
     setDeleteTarget(null);
-    setBusy(trackId, stem.id, true);
+    setBusy(storageAlbumId, trackId, stem.id, true);
     if (playingStemId === stem.id) stopPlayback();
     try {
       if (stem.file) {
@@ -254,13 +281,13 @@ export function MixerAdmin({ ui, userId, albums = [] }: MixerAdminProps) {
           getStemStoragePath(storageUserId, storageAlbumId, trackId, stem.file)
         ).catch(() => undefined);
       }
-      const next = (trackStems[trackId] ?? []).filter((s) => s.id !== stem.id);
+      const next = (trackStems[key] ?? []).filter((s) => s.id !== stem.id);
       await saveStemsManifest(storageAlbumId, trackId, next);
-      setTrackStems((prev) => ({ ...prev, [trackId]: next }));
+      setTrackStems((prev) => ({ ...prev, [key]: next }));
     } catch (error) {
       console.error('[MixerAdmin] Failed to delete stem:', error);
     } finally {
-      setBusy(trackId, stem.id, false);
+      setBusy(storageAlbumId, trackId, stem.id, false);
     }
   }, [deleteTarget, trackStems, playingStemId, stopPlayback, storageUserId]);
 
@@ -268,12 +295,13 @@ export function MixerAdmin({ ui, userId, albums = [] }: MixerAdminProps) {
     async (event: DragEndEvent, storageAlbumId: string, trackId: string) => {
       const { active, over } = event;
       if (!over || active.id === over.id) return;
-      const stems = trackStems[trackId] ?? [];
+      const key = stemKey(storageAlbumId, trackId);
+      const stems = trackStems[key] ?? [];
       const oldIndex = stems.findIndex((s) => s.id === active.id);
       const newIndex = stems.findIndex((s) => s.id === over.id);
       if (oldIndex === -1 || newIndex === -1) return;
       const next = arrayMove(stems, oldIndex, newIndex);
-      setTrackStems((prev) => ({ ...prev, [trackId]: next }));
+      setTrackStems((prev) => ({ ...prev, [key]: next }));
       try {
         await saveStemsManifest(storageAlbumId, trackId, next);
       } catch (error) {
@@ -289,7 +317,7 @@ export function MixerAdmin({ ui, userId, albums = [] }: MixerAdminProps) {
 
   return (
     <>
-      <div className="user-dashboard__albums-list">
+      <div className="user-dashboard__albums-list mixer-admin__albums">
         {albums.map((album, index) => {
           const tracks = getAlbumTracks(album.id);
           const isAlbumOpen = expandedAlbumId === album.id;
@@ -339,60 +367,59 @@ export function MixerAdmin({ ui, userId, albums = [] }: MixerAdminProps) {
 
               {isAlbumOpen && (
                 <div className="user-dashboard__album-expanded">
-                  <div className="user-dashboard__tracks-list">
+                  <div className="user-dashboard__tracks-list mixer-admin__tracks">
                     {tracks.length === 0 ? (
                       <div className="mixer-admin__placeholder">{labels.noTracks}</div>
                     ) : (
                       tracks.map((track, trackIndex) => {
-                        const isTrackOpen = expandedTrackId === track.id;
-                        const stems = trackStems[track.id] ?? [];
-                        const isLoading = loadingTracks[track.id];
+                        const trackKey = stemKey(storageAlbumId, track.id);
+                        const isTrackOpen = expandedTrackId === trackKey;
+                        const stems = trackStems[trackKey] ?? [];
+                        const isLoading = loadingTracks[trackKey];
                         return (
-                          <div key={track.id} className="user-dashboard__track-item-wrapper">
-                            <div className="user-dashboard__track-item-content">
-                              <div
-                                className={`user-dashboard__track-item${isTrackOpen ? ' user-dashboard__track-item--expanded' : ''}`}
-                                role="button"
-                                tabIndex={0}
-                                aria-expanded={isTrackOpen}
-                                onClick={() => {
+                          <article
+                            key={track.id}
+                            className={`mixer-admin__track-card${isTrackOpen ? ' mixer-admin__track-card--expanded' : ''}`}
+                          >
+                            <div
+                              className="mixer-admin__track-header"
+                              role="button"
+                              tabIndex={0}
+                              aria-expanded={isTrackOpen}
+                              onClick={() => {
+                                if (isTrackOpen) {
+                                  setExpandedTrackId(null);
+                                } else {
+                                  setExpandedTrackId(trackKey);
+                                  ensureTrackStems(storageAlbumId, track.id);
+                                }
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                  e.preventDefault();
                                   if (isTrackOpen) {
                                     setExpandedTrackId(null);
                                   } else {
-                                    setExpandedTrackId(track.id);
+                                    setExpandedTrackId(trackKey);
                                     ensureTrackStems(storageAlbumId, track.id);
                                   }
-                                }}
-                                onKeyDown={(e) => {
-                                  if (e.key === 'Enter' || e.key === ' ') {
-                                    e.preventDefault();
-                                    if (isTrackOpen) {
-                                      setExpandedTrackId(null);
-                                    } else {
-                                      setExpandedTrackId(track.id);
-                                      ensureTrackStems(storageAlbumId, track.id);
-                                    }
-                                  }
-                                }}
-                              >
-                                <div className="user-dashboard__track-number">
-                                  {String(trackIndex + 1).padStart(2, '0')}
-                                </div>
-                                <div className="user-dashboard__track-title">
-                                  {track.title ||
-                                    (track as any).trackTitle ||
-                                    (track as any).trackId}
-                                </div>
-                                <div className="user-dashboard__track-duration-container">
-                                  <div className="user-dashboard__track-duration">
-                                    {track.duration}
-                                  </div>
-                                </div>
-                              </div>
+                                }
+                              }}
+                            >
+                              <span className="mixer-admin__track-chevron" aria-hidden>
+                                <DashboardExpandChevron expanded={isTrackOpen} />
+                              </span>
+                              <span className="mixer-admin__track-number">
+                                {String(trackIndex + 1).padStart(2, '0')}
+                              </span>
+                              <span className="mixer-admin__track-title">
+                                {track.title || (track as any).trackTitle || (track as any).trackId}
+                              </span>
+                              <span className="mixer-admin__track-duration">{track.duration}</span>
                             </div>
 
                             {isTrackOpen && (
-                              <div className="mixer-admin__stems">
+                              <div className="mixer-admin__track-body">
                                 <div className="mixer-admin__stems-header">
                                   <div>
                                     <h4 className="mixer-admin__subsection-title">
@@ -402,16 +429,18 @@ export function MixerAdmin({ ui, userId, albums = [] }: MixerAdminProps) {
                                       {labels.stemsDescription}
                                     </p>
                                   </div>
-                                  <button
-                                    type="button"
-                                    className="user-dashboard__choose-files-button mixer-admin__add-stem"
-                                    onClick={() =>
-                                      setAddModal({ albumId: storageAlbumId, trackId: track.id })
-                                    }
-                                  >
-                                    <PlusIcon {...dashboardActionIconProps({ size: 18 })} />
-                                    {labels.addStem}
-                                  </button>
+                                  {!isLoading && stems.length > 0 && (
+                                    <button
+                                      type="button"
+                                      className="user-dashboard__choose-files-button mixer-admin__add-stem"
+                                      onClick={() =>
+                                        setAddModal({ albumId: storageAlbumId, trackId: track.id })
+                                      }
+                                    >
+                                      <PlusIcon {...dashboardActionIconProps({ size: 18 })} />
+                                      {labels.addStem}
+                                    </button>
+                                  )}
                                 </div>
 
                                 {isLoading ? (
@@ -457,7 +486,7 @@ export function MixerAdmin({ ui, userId, albums = [] }: MixerAdminProps) {
                                             key={stem.id}
                                             stem={stem}
                                             labels={rowLabels}
-                                            busy={isBusy(track.id, stem.id)}
+                                            busy={isBusy(storageAlbumId, track.id, stem.id)}
                                             isPlaying={playingStemId === stem.id}
                                             onTogglePlay={() =>
                                               handleTogglePlay(storageAlbumId, track.id, stem)
@@ -488,7 +517,7 @@ export function MixerAdmin({ ui, userId, albums = [] }: MixerAdminProps) {
                                 )}
                               </div>
                             )}
-                          </div>
+                          </article>
                         );
                       })
                     )}

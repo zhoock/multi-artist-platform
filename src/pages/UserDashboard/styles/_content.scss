@@ -843,22 +843,96 @@ dialog {
 
 // Mixer tab (классы mixer-admin__* на элементах внутри MixerAdmin)
 .mixer-admin {
+  &__albums {
+    .user-dashboard__album-item--expanded {
+      background: transparent;
+    }
+
+    .user-dashboard__album-expanded {
+      background: transparent;
+      padding-block: 0;
+    }
+  }
+
   &__placeholder {
     color: var(--dashboard-text-secondary);
     font-size: 13px;
     line-height: 1.5;
   }
 
+  &__tracks {
+    gap: var(--ms-0);
+    padding: var(--ms-0) var(--ms-01) var(--ms-01);
+  }
+
+  &__track-card {
+    background: rgb(255 255 255 / 2%);
+    border: 1px solid var(--dashboard-card-border);
+    border-radius: var(--ms-01);
+    overflow: hidden;
+  }
+
+  &__track-header {
+    display: flex;
+    align-items: center;
+    gap: var(--ms-01);
+    width: 100%;
+    min-height: 52px;
+    padding: var(--ms-0) var(--ms-01);
+    color: inherit;
+    text-align: left;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+
+    @media (hover: hover) and (pointer: fine) {
+      &:hover {
+        background: rgb(255 255 255 / 4%);
+      }
+    }
+  }
+
+  &__track-chevron {
+    display: inline-flex;
+    flex-shrink: 0;
+    color: var(--dashboard-text-secondary);
+  }
+
+  &__track-number {
+    flex-shrink: 0;
+    min-width: 1.75rem;
+    color: var(--dashboard-text-secondary);
+    font-size: var(--dashboard-font-size);
+    font-variant-numeric: tabular-nums;
+  }
+
+  &__track-title {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    color: var(--dashboard-text-primary);
+    font-size: var(--dashboard-font-size);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__track-duration {
+    flex-shrink: 0;
+    color: var(--dashboard-text-secondary);
+    font-size: var(--dashboard-font-size);
+    font-variant-numeric: tabular-nums;
+  }
+
+  &__track-body {
+    padding: 0 var(--ms-01) var(--ms-01);
+  }
+
   &__subsection-title {
-    margin: var(--ms-1) 0 var(--ms-0) 0;
+    margin: 0 0 var(--ms-02);
     color: var(--dashboard-text-primary);
     font-size: var(--ms-0);
     font-weight: 600;
-  }
-
-  // Динамический список стемов (новый интерфейс)
-  &__stems {
-    padding: var(--ms-1);
   }
 
   &__stems-header {
@@ -866,6 +940,7 @@ dialog {
     flex-direction: column;
     gap: var(--ms-0);
     margin-bottom: var(--ms-1);
+    padding-top: var(--ms-1);
 
     @include breakpoint(tablet) {
       flex-direction: row;
@@ -902,7 +977,6 @@ dialog {
     gap: var(--ms-0);
     padding: var(--ms-3) var(--ms-1);
     text-align: center;
-    background: var(--dashboard-card-bg);
     border: 1px dashed var(--dashboard-card-border);
     border-radius: var(--ms-01);
   }
@@ -932,7 +1006,7 @@ dialog {
   align-items: center;
   gap: var(--ms-0);
   padding: var(--ms-01) var(--ms-0);
-  background: var(--dashboard-card-bg);
+  background: var(--dashboard-hover-bg);
   border: 1px solid var(--dashboard-card-border);
   border-radius: var(--ms-01);
 
