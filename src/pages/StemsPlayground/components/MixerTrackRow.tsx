@@ -1,4 +1,5 @@
 // src/pages/StemsPlayground/components/MixerTrackRow.tsx
+import { ChevronRight as ChevronRightIcon } from 'lucide-react';
 import type { MixerTrack } from '../lib/types';
 import { formatTrackDuration } from '../lib/formatTrackDuration';
 
@@ -8,7 +9,7 @@ type MixerTrackRowProps = {
   onSelect: (trackId: string) => void;
 };
 
-/** Строка трека: номер, название, длительность, иконка воспроизведения. */
+/** Строка трека: номер, название, длительность, стрелка перехода. */
 export function MixerTrackRow({ track, index, onSelect }: MixerTrackRowProps) {
   return (
     <button
@@ -20,7 +21,7 @@ export function MixerTrackRow({ track, index, onSelect }: MixerTrackRowProps) {
       <span className="mixer-track-row__number">{String(index + 1).padStart(2, '0')}</span>
       <span className="mixer-track-row__title">{track.title}</span>
       <span className="mixer-track-row__duration">{formatTrackDuration(track.duration)}</span>
-      <span className="mixer-track-row__play icon-controller-play" aria-hidden />
+      <ChevronRightIcon className="mixer-track-row__arrow" aria-hidden size={22} />
     </button>
   );
 }

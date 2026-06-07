@@ -4,6 +4,7 @@ import clsx from 'clsx';
 import { Waveform } from '@shared/ui/waveform';
 import { StemEngine } from '@audio/stemsEngine';
 import type { MixerTrack } from '../lib/types';
+import { formatTrackDuration } from '../lib/formatTrackDuration';
 import { MixerStemRow } from './MixerStemRow';
 
 type StemMixState = {
@@ -185,28 +186,55 @@ export function MixerPlayerPanel({ track, labels }: MixerPlayerPanelProps) {
         </button>
       </div>
 
-      <div
-        ref={waveWrapRef}
-        className={clsx('stems__wave-wrap', { 'is-loading': loading })}
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={onPointerUp}
-      >
-        {loading ? (
-          <div className="stems__loader in-wave" aria-live="polite" aria-busy="true">
-            <div className="stems__loader-bar">
-              <div
-                className="stems__loader-fill"
-                style={{ transform: `scaleX(${loadProgress})` }}
-              />
-            </div>
+      <div className="mixer-player__waveform">
+        <div className={clsx('stems__wave-wrap', { 'is-loading': loading })}>
+          <button
+            className="mixer-player__wave-play"
+            onClick={togglePlay}
+            type="button"
+            disabled={loading}
+            aria-pressed={isPlaying}
+            aria-label={isPlaying ? labels.pause : labels.play}
+          >
+            <span
+              className={clsx(isPlaying ? 'icon-controller-pause' : 'icon-controller-play')}
+              aria-hidden
+            />
+          </button>
+
+          <div
+            ref={waveWrapRef}
+            className="stems__wave-track"
+            onPointerDown={onPointerDown}
+            onPointerMove={onPointerMove}
+            onPointerUp={onPointerUp}
+          >
+            {loading ? (
+              <div className="stems__loader in-wave" aria-live="polite" aria-busy="true">
+                <div className="stems__loader-bar">
+                  <div
+                    className="stems__loader-fill"
+                    style={{ transform: `scaleX(${loadProgress})` }}
+                  />
+                </div>
+              </div>
+            ) : (
+              <>
+                <Waveform src={waveformSrc} progress={progress} height={64} />
+                <div className="stems__wave-cursor" style={{ left: `${progress * 100}%` }} />
+              </>
+            )}
           </div>
-        ) : (
-          <>
-            <Waveform src={waveformSrc} progress={progress} height={64} />
-            <div className="stems__wave-cursor" style={{ left: `${progress * 100}%` }} />
-          </>
-        )}
+        </div>
+
+        <div className="mixer-player__time">
+          <time dateTime={`PT${Math.floor(time.current)}S`}>
+            {formatTrackDuration(time.current)}
+          </time>
+          <time dateTime={`PT${Math.floor(time.duration)}S`}>
+            {formatTrackDuration(time.duration)}
+          </time>
+        </div>
       </div>
 
       <div className="mixer-stem-list">

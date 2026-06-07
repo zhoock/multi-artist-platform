@@ -83,55 +83,61 @@ export default function StemsPlayground() {
         <meta name="twitter:description" content={selectAlbumHint || pageTitle} />
       </Helmet>
 
-      <div className="wrapper mixer">
-        <h2 className="mixer__title">{pageTitle}</h2>
+      <div className="wrapper">
+        <h2>{pageTitle}</h2>
 
-        {view === 'albums' && (
-          <>
-            {selectAlbumHint ? <p className="mixer-level__hint">{selectAlbumHint}</p> : null}
-            <MixerAlbumList
-              albums={albums}
-              loading={loading}
-              lang={lang}
-              trackCountLabels={trackCountLabels}
-              emptyLabel={noAlbumsLabel}
-              loadingLabel={loadingLabel}
-              onSelectAlbum={selectAlbum}
-            />
-          </>
-        )}
+        <div className="mixer">
+          {view === 'albums' && (
+            <>
+              {selectAlbumHint ? <p className="mixer-level__hint">{selectAlbumHint}</p> : null}
+              <MixerAlbumList
+                albums={albums}
+                loading={loading}
+                lang={lang}
+                trackCountLabels={trackCountLabels}
+                emptyLabel={noAlbumsLabel}
+                loadingLabel={loadingLabel}
+                onSelectAlbum={selectAlbum}
+              />
+            </>
+          )}
 
-        {view === 'tracks' && selectedAlbum && (
-          <>
-            <MixerBackNav onBack={backToAlbums} ariaLabel={selectAlbumHint || pageTitle}>
-              <span className="mixer-back__title">{selectedAlbum.title}</span>
-              <span className="mixer-back__meta">
-                {[
-                  selectedAlbum.year,
-                  pluralizeTracks(selectedAlbum.tracks.length, lang, trackCountLabels),
-                ]
-                  .filter(Boolean)
-                  .join(' · ')}
-              </span>
-            </MixerBackNav>
-            <MixerTrackList tracks={selectedAlbum.tracks} onSelectTrack={selectTrack} />
-            {selectTrackHint ? <p className="mixer-level__hint">{selectTrackHint}</p> : null}
-          </>
-        )}
+          {view === 'tracks' && selectedAlbum && (
+            <>
+              <MixerBackNav onBack={backToAlbums} ariaLabel={selectAlbumHint || pageTitle}>
+                <span className="mixer-back__title">{selectedAlbum.title}</span>
+                <span className="mixer-back__meta">
+                  {[
+                    selectedAlbum.year,
+                    pluralizeTracks(selectedAlbum.tracks.length, lang, trackCountLabels),
+                  ]
+                    .filter(Boolean)
+                    .join(' · ')}
+                </span>
+              </MixerBackNav>
+              <MixerTrackList tracks={selectedAlbum.tracks} onSelectTrack={selectTrack} />
+              {selectTrackHint ? <p className="mixer-level__hint">{selectTrackHint}</p> : null}
+            </>
+          )}
 
-        {view === 'mixer' && selectedAlbum && selectedTrack && (
-          <>
-            <MixerBackNav onBack={backToTracks} ariaLabel={selectTrackHint || pageTitle}>
-              <span className="mixer-back__title">{selectedTrack.title}</span>
-              <span className="mixer-back__meta">
-                {[selectedAlbum.title, formatTrackDuration(selectedTrack.duration)]
-                  .filter(Boolean)
-                  .join(' · ')}
-              </span>
-            </MixerBackNav>
-            <MixerPlayerPanel key={selectedTrack.id} track={selectedTrack} labels={playerLabels} />
-          </>
-        )}
+          {view === 'mixer' && selectedAlbum && selectedTrack && (
+            <>
+              <MixerBackNav onBack={backToTracks} ariaLabel={selectTrackHint || pageTitle}>
+                <span className="mixer-back__title">{selectedTrack.title}</span>
+                <span className="mixer-back__meta">
+                  {[selectedAlbum.title, formatTrackDuration(selectedTrack.duration)]
+                    .filter(Boolean)
+                    .join(' · ')}
+                </span>
+              </MixerBackNav>
+              <MixerPlayerPanel
+                key={selectedTrack.id}
+                track={selectedTrack}
+                labels={playerLabels}
+              />
+            </>
+          )}
+        </div>
       </div>
     </section>
   );

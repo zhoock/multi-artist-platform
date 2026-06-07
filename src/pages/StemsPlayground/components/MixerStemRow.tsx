@@ -47,7 +47,13 @@ export function MixerStemRow({
         value={percent}
         disabled={disabled}
         aria-label={`${name}: ${percent}%`}
+        style={{ '--progress-width': `${percent}%` } as React.CSSProperties}
         onChange={(e) => onVolumeChange(Number(e.target.value) / 100)}
+        onInput={(e) => {
+          const next = Number(e.currentTarget.value);
+          e.currentTarget.style.setProperty('--progress-width', `${next}%`);
+          onVolumeChange(next / 100);
+        }}
       />
       <span className="mixer-stem__percent">{percent}%</span>
       <button
