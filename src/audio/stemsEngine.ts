@@ -21,6 +21,11 @@ export class StemEngine {
   private startOffset = 0; // смещение (сек) от начала буфера
   private playing = false;
 
+  // Состояние микса по id стема (хранится отдельно от узлов, применяется при пересчёте).
+  private volumes = new Map<string, number>(); // 0..1, по умолчанию 1
+  private mutedSet = new Set<string>();
+  private soloSet = new Set<string>();
+
   constructor(
     private stems: StemMap,
     ctx?: AudioContext
@@ -92,6 +97,9 @@ export class StemEngine {
       })
     );
 
+    // Применяем накопленное состояние микса к загруженным узлам.
+    this.recomputeGains();
+
     // Проверяем результаты загрузки
     const failed = results.filter((r) => r.status === 'rejected');
     if (failed.length > 0) {
@@ -131,10 +139,36 @@ export class StemEngine {
     return this.playing;
   }
 
-  /** Мьют/анмьют отдельного stem’а по его id */
+  /** Громкость отдельного stem’а (0..1). */
+  setVolume(id: string, volume: number) {
+    const clamped = Math.max(0, Math.min(1, volume));
+    this.volumes.set(id, clamped);
+    this.recomputeGains();
+  }
+
+  /** Мьют/анмьют отдельного stem’а по его id. */
   setMuted(id: string, muted: boolean) {
-    const n = this.nodes.get(id);
-    if (n) n.gain.gain.value = muted ? 0 : 1;
+    if (muted) this.mutedSet.add(id);
+    else this.mutedSet.delete(id);
+    this.recomputeGains();
+  }
+
+  /** Solo/un-solo отдельного stem’а: при наличии solo слышны только solo-стемы. */
+  setSolo(id: string, soloed: boolean) {
+    if (soloed) this.soloSet.add(id);
+    else this.soloSet.delete(id);
+    this.recomputeGains();
+  }
+
+  /** Пересчёт эффективного gain каждого узла из volume/mute/solo. */
+  private recomputeGains() {
+    const anySolo = this.soloSet.size > 0;
+    for (const [id, n] of this.nodes) {
+      const inSoloMix = anySolo ? this.soloSet.has(id) : true;
+      const audible = inSoloMix && !this.mutedSet.has(id);
+      const volume = this.volumes.get(id) ?? 1;
+      n.gain.gain.value = audible ? volume : 0;
+    }
   }
 
   /** Запуск синхронно с общего такта */

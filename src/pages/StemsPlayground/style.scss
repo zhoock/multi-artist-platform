@@ -4,224 +4,333 @@
 @use '../../scss/abstracts/mixins' as *;
 
 .stems-page {
-  //   --control-height: 56px; /* мобильная высота как у кнопки */
   --margin: 0;
 
-  .stems__wrapper {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: var(--ms-1);
+  .mixer {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ms-0);
   }
 
-  .item {
-    grid-column: span 2;
-
-    @include breakpoint(tablet) {
-      grid-column: initial;
-    }
-
-    &-type-a {
-      grid-column: span 2;
-    }
-
-    .select-control {
-      position: relative;
-
-      &:has(select:disabled) {
-        opacity: 0.6;
-      }
-
-      &::after {
-        content: '';
-        position: absolute;
-        top: 47%;
-        right: var(--ms-1);
-        border: 6px solid transparent;
-        border-top-color: var(--text-color);
-        pointer-events: none;
-      }
-
-      select {
-        width: 100%;
-        height: 51.375px;
-        padding-inline: var(--ms-1) calc(var(--ms-1) * 1.5);
-        min-width: 260px;
-        color: var(--text-color);
-        background: var(--link-button-background-color);
-        border: 1px solid var(--hr-color);
-        border-radius: var(--ms-01);
-        appearance: none;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        cursor: pointer;
-
-        &:disabled {
-          cursor: not-allowed;
-        }
-      }
-    }
-
-    .wrapper-transport-controls {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-
-      .btn {
-        display: flex;
-        margin: 0 !important;
-        color: var(--button-color-hover) !important;
-        background: var(--button-background-color-hover) !important;
-        align-items: center;
-        justify-content: center;
-        gap: 4px;
-        grid-column: 1 / 3;
-        text-transform: capitalize;
-
-        @include button-variant;
-
-        // Состояния (ставим ПОСЛЕ mixin, чтобы перекрыть его)
-        &[aria-pressed='true'] {
-          color: var(--link-color-hover);
-          background: var(--error-color) !important;
-        }
-
-        &:disabled {
-          opacity: 0.6;
-          cursor: not-allowed;
-          filter: grayscale(100%);
-        }
-
-        .icon-controller-play {
-          color: currentcolor;
-          font-size: 25px;
-        }
-
-        @include breakpoint(tablet) {
-          grid-column: 1 / 2;
-        }
-      }
-    }
+  .mixer__title {
+    margin: 0;
   }
 
-  .notice {
-    padding: var(--ms-01);
+  .mixer-level__hint {
+    margin: 0;
     color: var(--text-color);
-    background: rgba(var(--extra-background-color), 0.7);
-    align-items: start;
-    border: 1px solid var(--hr-color);
-    border-left: 6px solid var(--accent-color, #998238);
-    border-radius: var(--ms-01);
+    opacity: 0.65;
 
     @include adjust-font-size-to($ms-01, 0.382, $ms-01);
+  }
 
-    &--warning {
-      border-left-color: var(--error-color, #cf807d);
-      background: rgb(255 77 77 / 8%);
+  /* ─────────────── Уровень 1: альбомы ─────────────── */
+
+  .mixer-album-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ms-01);
+  }
+
+  .mixer-album-card {
+    display: flex;
+    align-items: center;
+    gap: var(--ms-0);
+    width: 100%;
+    padding: var(--ms-01);
+    color: var(--text-color);
+    text-align: left;
+    background: rgb(255 255 255 / 2%);
+    border: 1px solid var(--hr-color);
+    border-radius: var(--ms-01);
+    cursor: pointer;
+    transition:
+      background-color 0.2s ease,
+      transform 0.15s ease;
+
+    @media (hover: hover) and (pointer: fine) {
+      &:hover {
+        background: rgb(255 255 255 / 4%);
+      }
+    }
+
+    @include breakpoint(tablet) {
+      padding: var(--ms-0);
+    }
+
+    &__thumb {
+      width: calc(var(--ms-1) * 2.4);
+      height: calc(var(--ms-1) * 2.4);
+      flex-shrink: 0;
+      overflow: hidden;
+      border-radius: var(--ms-01);
+
+      picture,
+      img {
+        display: block;
+        width: 100%;
+        height: 100%;
+      }
+
+      img {
+        object-fit: cover;
+      }
+    }
+
+    &__info {
+      display: flex;
+      flex: 1;
+      flex-direction: column;
+      gap: var(--ms-02);
+      min-width: 0;
+    }
+
+    &__title {
+      font-weight: var(--medium);
+      color: var(--text-color);
+    }
+
+    &__year,
+    &__count {
+      color: var(--text-color);
+      opacity: 0.6;
+
+      @include adjust-font-size-to($ms-01, 0.382, $ms-01);
+    }
+
+    &__arrow {
+      flex-shrink: 0;
+      color: var(--accent-color);
     }
   }
 
-  .stems__grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: var(--ms-1);
-    margin-block-end: $ms-1;
+  /* ─────────────── Навигация назад ─────────────── */
 
-    @include breakpoint(desktops) {
-      grid-template-columns: repeat(4, 1fr);
+  .mixer-back {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--ms-01);
+    align-self: flex-start;
+    padding: var(--ms-02) 0;
+    color: var(--text-color);
+    background: transparent;
+    border: 0;
+    cursor: pointer;
+
+    @media (hover: hover) and (pointer: fine) {
+      &:hover .mixer-back__title {
+        color: var(--accent-color);
+      }
+    }
+
+    &__icon {
+      flex-shrink: 0;
+      color: var(--accent-color);
+    }
+
+    &__crumb {
+      display: inline-flex;
+      align-items: baseline;
+      gap: var(--ms-01);
+      min-width: 0;
+    }
+
+    &__title {
+      font-weight: var(--medium);
+    }
+
+    &__meta {
+      opacity: 0.6;
+
+      @include adjust-font-size-to($ms-01, 0.382, $ms-01);
     }
   }
 
-  .stem-card {
-    position: relative;
+  /* ─────────────── Уровень 2: треки ─────────────── */
+
+  .mixer-track-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ms-02);
+  }
+
+  .mixer-track-row {
     display: grid;
+    grid-template-columns: auto 1fr auto auto;
+    align-items: center;
+    gap: var(--ms-01);
+    width: 100%;
+    padding: var(--ms-01);
+    color: var(--text-color);
+    text-align: left;
+    background: rgb(255 255 255 / 2%);
+    border: 1px solid var(--hr-color);
+    border-radius: var(--ms-01);
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+
+    @media (hover: hover) and (pointer: fine) {
+      &:hover {
+        background: rgb(255 255 255 / 4%);
+      }
+    }
+
+    &__number {
+      opacity: 0.5;
+      font-variant-numeric: tabular-nums;
+    }
+
+    &__title {
+      min-width: 0;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+
+    &__duration {
+      opacity: 0.6;
+      font-variant-numeric: tabular-nums;
+    }
+
+    &__play {
+      color: var(--accent-color);
+      font-size: 18px;
+    }
+  }
+
+  /* ─────────────── Уровень 3: микшер ─────────────── */
+
+  .mixer-player {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ms-0);
+  }
+
+  .mixer-player__transport {
+    display: flex;
+
+    .btn {
+      display: flex;
+      flex: 1;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      color: var(--button-color-hover) !important;
+      text-transform: capitalize;
+      background: var(--button-background-color-hover) !important;
+
+      @include button-variant($margin: 0);
+
+      &[aria-pressed='true'] {
+        color: var(--link-color-hover);
+        background: var(--error-color) !important;
+      }
+
+      &:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        filter: grayscale(100%);
+      }
+
+      .icon-controller-play,
+      .icon-controller-pause {
+        color: currentcolor;
+        font-size: 25px;
+      }
+
+      @include breakpoint(tablet) {
+        flex: 0 0 auto;
+        min-width: 200px;
+      }
+    }
+  }
+
+  .mixer-stem-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ms-01);
+  }
+
+  .mixer-stem {
+    display: grid;
+    grid-template-columns: auto minmax(4.5rem, 7rem) 1fr auto auto auto;
+    align-items: center;
     gap: var(--ms-01);
     padding: var(--ms-01);
     background: rgba(var(--extra-background-color), 0.8);
     border: 1px solid var(--hr-color);
     border-radius: var(--ms-01);
-    cursor: pointer;
-    transition: transform 0.15s ease;
-
-    // Ховер-эффект — ТОЛЬКО на устройствах с настоящим hover
-    @media (hover: hover) and (pointer: fine) {
-      &:hover {
-        transform: translateY(-2px);
-      }
-    }
-
-    &.muted {
-      .stem-card__img {
-        filter: grayscale(100%) brightness(80%);
-      }
-
-      .stem-card__label {
-        opacity: 0.85;
-
-        .dot {
-          background: transparent;
-          border: 2px solid var(--error-color);
-        }
-      }
-    }
 
     &.is-disabled {
       opacity: 0.5;
-      cursor: not-allowed;
       pointer-events: none;
-
-      .stem-card__img {
-        filter: grayscale(100%) brightness(60%);
-      }
-
-      .stem-card__label {
-        opacity: 0.6;
-
-        .dot {
-          background: transparent;
-          border: 2px solid var(--text-color);
-          opacity: 0.5;
-        }
-      }
-    }
-
-    &:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-      pointer-events: none;
-    }
-
-    /* stylelint-disable-next-line no-descending-specificity */
-    &__img {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      aspect-ratio: 1 / 1;
-      color: var(--accent-color);
-      background: center / cover no-repeat;
-      border-radius: var(--ms-01);
     }
 
     &__icon {
-      width: 38%;
-      height: 38%;
-      opacity: 0.7;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--accent-color);
     }
 
-    /* stylelint-disable-next-line no-descending-specificity */
-    &__label {
-      display: flex;
-      align-items: center;
-      gap: var(--ms-01);
-      justify-content: center;
+    &__name {
+      min-width: 0;
+      overflow: hidden;
       font-weight: var(--medium);
-      color: var(--text-color);
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
 
-      /* stylelint-disable-next-line no-descending-specificity */
-      .dot {
-        width: 10px;
-        height: 10px;
+    &--muted {
+      .mixer-stem__icon,
+      .mixer-stem__name {
+        opacity: 0.5;
+      }
+    }
+
+    &__slider {
+      width: 100%;
+      min-width: 0;
+      accent-color: var(--accent-color);
+      cursor: pointer;
+    }
+
+    &__percent {
+      width: 3.2em;
+      color: var(--text-color);
+      text-align: right;
+      opacity: 0.7;
+      font-variant-numeric: tabular-nums;
+
+      @include adjust-font-size-to($ms-01, 0.382, $ms-01);
+    }
+
+    &__toggle {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 30px;
+      height: 30px;
+      color: var(--text-color);
+      font-weight: var(--medium);
+      background: transparent;
+      border: 1px solid var(--hr-color);
+      border-radius: 50%;
+      cursor: pointer;
+      transition:
+        color 0.2s ease,
+        background-color 0.2s ease,
+        border-color 0.2s ease;
+
+      &.is-active {
+        color: var(--button-color-hover);
         background: var(--accent-color);
-        border-radius: 50%;
+        border-color: var(--accent-color);
+      }
+
+      &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
       }
     }
   }
@@ -230,14 +339,12 @@
 /* Waveform */
 .stems__wave-wrap {
   position: relative;
-  margin: var(--ms-1) 0 var(--ms-2);
+  margin: 0;
   cursor: pointer;
   touch-action: none;
   background: var(--wave-bg);
   border-radius: var(--ms-01);
   overflow: hidden;
-
-  //   min-block-size: 72px; // чтобы лоадер и канвас имели высоту
 
   &.is-loading {
     cursor: default;

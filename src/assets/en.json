@@ -263,8 +263,15 @@
     },
     "stems": {
       "pageTitle": "Mixer",
-      "text": "Mixer: turn on/off parts, rewind and listen to the song in layers.",
-      "notice": "For now, I don't have access to the original stems, so I'm temporarily using tracks extracted from the master with AI. This is solely for testing and demonstrating the mixer, so the audio quality may differ from the final version. Once the original stems are available, I'll update the audio."
+      "selectAlbumHint": "Choose an album to open its tracks and stems",
+      "selectTrackHint": "Choose a track to open its stems",
+      "noAlbums": "No albums with stems yet",
+      "loading": "Loading…",
+      "tracksCountOne": "{count} track",
+      "tracksCountFew": "{count} tracks",
+      "tracksCountMany": "{count} tracks",
+      "solo": "Solo",
+      "mute": "Mute"
     },
     "dashboard": {
       "tabs": {
