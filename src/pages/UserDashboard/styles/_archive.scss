@@ -37,7 +37,6 @@ dialog {
       margin: 0;
       max-width: 42rem;
       color: var(--dashboard-text-secondary);
-      font-size: var(--ms-0);
       line-height: 1.5;
     }
 
@@ -194,7 +193,6 @@ dialog {
     &__archive-card-name {
       margin: 0 0 0.2rem;
       font-size: var(--ms-0);
-      font-weight: 600;
       line-height: 1.25;
 
       a {
@@ -262,7 +260,6 @@ dialog {
       margin: 0 0 0.25rem;
       color: var(--dashboard-text-primary);
       font-size: var(--ms-0);
-      font-weight: 600;
     }
 
     &__archive-empty-hint {
