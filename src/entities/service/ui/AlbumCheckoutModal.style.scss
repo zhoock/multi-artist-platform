@@ -263,14 +263,22 @@
     }
   }
 
-  &__row {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: var(--ms-1);
+  &__identity {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
 
-    @include breakpoint(tablet) {
-      grid-template-columns: 1fr 1fr;
-    }
+  &__identity-value {
+    margin: 0;
+    padding: 12px;
+    color: var(--dashboard-text-primary);
+    font-size: var(--dashboard-font-size, 14px);
+    font-family: var(--base-font-family, arial, sans-serif);
+    background: var(--dashboard-hover-bg);
+    border: 1px solid var(--dashboard-input-border);
+    border-radius: var(--ms-01);
+    user-select: text;
   }
 
   &__field {

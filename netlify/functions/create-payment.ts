@@ -50,8 +50,7 @@ interface CreatePaymentRequest {
   orderId?: string; // ID существующего заказа (для повторной оплаты)
   paymentToken?: string; // Токен от Checkout.js для оплаты на сайте
   billingData?: {
-    firstName: string;
-    lastName: string;
+    buyerDisplayName: string;
     phone?: string;
     country?: string;
     zip?: string;
@@ -496,12 +495,14 @@ export const handler: Handler = async (
       });
 
       try {
+        const buyerDisplayName = data.billingData?.buyerDisplayName?.trim() || null;
+
         const orderResult = await query<{ id: string }>(
           `INSERT INTO orders (
-            user_id, album_id, amount, currency, customer_email, 
-            customer_first_name, customer_last_name, customer_phone,
+            user_id, album_id, amount, currency, customer_email,
+            buyer_display_name, customer_phone,
             status, payment_provider
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
           RETURNING id`,
           [
             sellerUserId,
@@ -509,8 +510,7 @@ export const handler: Handler = async (
             data.amount,
             'RUB', // YooKassa работает только с рублями
             data.customerEmail,
-            data.billingData?.firstName || null,
-            data.billingData?.lastName || null,
+            buyerDisplayName,
             data.billingData?.phone || null,
             'pending_payment',
             'yookassa',
@@ -647,16 +647,13 @@ export const handler: Handler = async (
         orderId: orderId,
         albumId: data.albumId,
         customerEmail: data.customerEmail,
-        ...(data.billingData?.firstName && { firstName: data.billingData.firstName }),
-        ...(data.billingData?.lastName && { lastName: data.billingData.lastName }),
       },
       receipt: {
         customer: {
           email: data.customerEmail,
-          ...(data.billingData?.firstName &&
-            data.billingData?.lastName && {
-              full_name: `${data.billingData.firstName} ${data.billingData.lastName}`,
-            }),
+          ...(data.billingData?.buyerDisplayName && {
+            full_name: data.billingData.buyerDisplayName,
+          }),
           // Передаём телефон только если он нормализован и валиден
           ...(normalizedPhone && { phone: normalizedPhone }),
         },

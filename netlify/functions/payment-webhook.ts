@@ -490,10 +490,9 @@ async function tryPurchaseSideEffects(
     const orderResult = await query<{
       album_id: string;
       customer_email: string;
-      customer_first_name: string | null;
-      customer_last_name: string | null;
+      buyer_display_name: string | null;
     }>(
-      `SELECT album_id, customer_email, customer_first_name, customer_last_name
+      `SELECT album_id, customer_email, buyer_display_name
        FROM orders WHERE id = $1`,
       [orderId]
     );
@@ -525,10 +524,7 @@ async function tryPurchaseSideEffects(
     try {
       const { sendPurchaseEmail } = await import('./lib/email');
       const { resolveEmailLocaleForAddress } = await import('./lib/user-preferred-language');
-      const customerName =
-        row.customer_first_name && row.customer_last_name
-          ? `${row.customer_first_name} ${row.customer_last_name}`
-          : row.customer_first_name || undefined;
+      const customerName = row.buyer_display_name?.trim() || undefined;
 
       const locale = await resolveEmailLocaleForAddress(customerEmail, album.lang);
 

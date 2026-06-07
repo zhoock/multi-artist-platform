@@ -18,7 +18,7 @@
  *   тот же контракт, что и раньше, чтобы не ломать `PaymentSuccess` и webhook.
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Check as CheckIcon } from 'lucide-react';
 import { Link, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import type { IAlbums } from '@models';
@@ -39,6 +39,7 @@ import { sanitizeReturnPath } from '@shared/lib/authReturnUrl';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 import { getAlbumPrice } from '../lib/getAlbumPrice';
 import { useAlbumOwnedByViewer } from '../lib/useAlbumOwnedByViewer';
+import { resolveCheckoutBuyerIdentity } from '../lib/resolveCheckoutBuyerIdentity';
 import './AlbumCheckoutModal.style.scss';
 
 interface AlbumCheckoutModalProps {
@@ -49,8 +50,6 @@ interface AlbumCheckoutModalProps {
 
 interface ValidationErrors {
   email?: string;
-  firstName?: string;
-  lastName?: string;
   agreeToOffer?: string;
   agreeToPrivacy?: string;
 }
@@ -68,8 +67,6 @@ const labelsFor = (
   downloadingCta: string;
   close: string;
   email: string;
-  firstName: string;
-  lastName: string;
   agreeToOffer: string;
   publicOffer: string;
   agreeToPrivacy: string;
@@ -79,8 +76,6 @@ const labelsFor = (
   secureNote: string;
   emailRequired: string;
   emailInvalid: string;
-  firstNameRequired: string;
-  lastNameRequired: string;
   agreeToOfferRequired: string;
   agreeToPrivacyRequired: string;
   paymentErrorGeneric: string;
@@ -136,8 +131,6 @@ const labelsFor = (
       authGate?.switchToCreateAccount ??
       (en ? 'New here? Create an account' : 'Ещё нет аккаунта? Создайте'),
     email: checkout?.checkout?.emailAddress ?? (en ? 'Email address' : 'Email'),
-    firstName: checkout?.checkout?.firstName ?? (en ? 'First name' : 'Имя'),
-    lastName: checkout?.checkout?.lastName ?? (en ? 'Last name' : 'Фамилия'),
     agreeToOffer: checkout?.checkout?.agreeToOffer ?? (en ? 'I agree to the' : 'Согласен с'),
     publicOffer: checkout?.checkout?.publicOffer ?? (en ? 'public offer' : 'публичной офертой'),
     agreeToPrivacy: checkout?.checkout?.agreeToPrivacy ?? (en ? 'I consent to' : 'Даю согласие на'),
@@ -157,10 +150,6 @@ const labelsFor = (
     emailInvalid:
       checkout?.validation?.emailInvalid ??
       (en ? 'Please enter a valid email' : 'Некорректный email'),
-    firstNameRequired:
-      checkout?.validation?.firstNameRequired ?? (en ? 'First name is required' : 'Введите имя'),
-    lastNameRequired:
-      checkout?.validation?.lastNameRequired ?? (en ? 'Last name is required' : 'Введите фамилию'),
     agreeToOfferRequired:
       checkout?.validation?.agreeToOfferRequired ??
       (en ? 'You must agree to the offer' : 'Подтвердите согласие с офертой'),
@@ -173,17 +162,8 @@ const labelsFor = (
   };
 };
 
-function readInitialIdentity(): { email: string; firstName: string; lastName: string } {
-  const user = getUser();
-  if (!user?.email) {
-    return { email: '', firstName: '', lastName: '' };
-  }
-  const nameParts = user.name?.split(' ') ?? [];
-  return {
-    email: user.email,
-    firstName: nameParts[0] ?? '',
-    lastName: nameParts.slice(1).join(' '),
-  };
+function readInitialEmail(): string {
+  return getUser()?.email ?? '';
 }
 
 export function AlbumCheckoutModal({ isOpen, album, onClose }: AlbumCheckoutModalProps) {
@@ -202,8 +182,15 @@ export function AlbumCheckoutModal({ isOpen, album, onClose }: AlbumCheckoutModa
     lang,
     { artistSlug }
   );
+  const { displayName: buyerProfileName } = useSiteArtistDisplayName(lang, {
+    variant: 'authenticated',
+  });
 
   const labels = labelsFor(lang, ui);
+  const buyerIdentity = useMemo(
+    () => resolveCheckoutBuyerIdentity(viewer, lang, buyerProfileName),
+    [viewer, lang, buyerProfileName]
+  );
 
   // Ownership check — active only while modal is open AND viewer is auth'd,
   // чтобы не дёргать API на каждой странице с не-открытым модалом.
@@ -213,8 +200,6 @@ export function AlbumCheckoutModal({ isOpen, album, onClose }: AlbumCheckoutModa
   );
 
   const [email, setEmail] = useState('');
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
   const [agreeToOffer, setAgreeToOffer] = useState(false);
   const [agreeToPrivacy, setAgreeToPrivacy] = useState(false);
   const [errors, setErrors] = useState<ValidationErrors>({});
@@ -225,10 +210,7 @@ export function AlbumCheckoutModal({ isOpen, album, onClose }: AlbumCheckoutModa
   // При каждом открытии — пре-заполнение из auth-сессии и сброс ошибок.
   useEffect(() => {
     if (!isOpen) return;
-    const identity = readInitialIdentity();
-    setEmail(identity.email);
-    setFirstName(identity.firstName);
-    setLastName(identity.lastName);
+    setEmail(readInitialEmail());
     setAgreeToOffer(false);
     setAgreeToPrivacy(false);
     setErrors({});
@@ -255,8 +237,6 @@ export function AlbumCheckoutModal({ isOpen, album, onClose }: AlbumCheckoutModa
     const next: ValidationErrors = {};
     if (!email.trim()) next.email = labels.emailRequired;
     else if (!EMAIL_REGEX.test(email)) next.email = labels.emailInvalid;
-    if (!firstName.trim()) next.firstName = labels.firstNameRequired;
-    if (!lastName.trim()) next.lastName = labels.lastNameRequired;
     if (!agreeToOffer) next.agreeToOffer = labels.agreeToOfferRequired;
     if (!agreeToPrivacy) next.agreeToPrivacy = labels.agreeToPrivacyRequired;
     setErrors(next);
@@ -296,7 +276,7 @@ export function AlbumCheckoutModal({ isOpen, album, onClose }: AlbumCheckoutModa
         albumId: albumKey,
         customerEmail: email,
         returnUrl,
-        billingData: { firstName, lastName },
+        billingData: { buyerDisplayName: buyerIdentity.displayName },
       });
 
       if (!result.success) {
@@ -527,56 +507,9 @@ export function AlbumCheckoutModal({ isOpen, album, onClose }: AlbumCheckoutModa
                 )}
               </div>
 
-              <div className="album-checkout-modal__row">
-                <div className="album-checkout-modal__field">
-                  <label
-                    htmlFor="album-checkout-first-name"
-                    className="album-checkout-modal__label"
-                  >
-                    {labels.firstName}
-                  </label>
-                  <input
-                    type="text"
-                    id="album-checkout-first-name"
-                    className={`album-checkout-modal__input${
-                      errors.firstName ? ' album-checkout-modal__input--error' : ''
-                    }`}
-                    value={firstName}
-                    onChange={(e) => {
-                      setFirstName(e.target.value);
-                      if (errors.firstName)
-                        setErrors((prev) => ({ ...prev, firstName: undefined }));
-                    }}
-                    autoComplete="given-name"
-                    required
-                  />
-                  {errors.firstName && (
-                    <span className="album-checkout-modal__field-error">{errors.firstName}</span>
-                  )}
-                </div>
-
-                <div className="album-checkout-modal__field">
-                  <label htmlFor="album-checkout-last-name" className="album-checkout-modal__label">
-                    {labels.lastName}
-                  </label>
-                  <input
-                    type="text"
-                    id="album-checkout-last-name"
-                    className={`album-checkout-modal__input${
-                      errors.lastName ? ' album-checkout-modal__input--error' : ''
-                    }`}
-                    value={lastName}
-                    onChange={(e) => {
-                      setLastName(e.target.value);
-                      if (errors.lastName) setErrors((prev) => ({ ...prev, lastName: undefined }));
-                    }}
-                    autoComplete="family-name"
-                    required
-                  />
-                  {errors.lastName && (
-                    <span className="album-checkout-modal__field-error">{errors.lastName}</span>
-                  )}
-                </div>
+              <div className="album-checkout-modal__identity" aria-readonly="true">
+                <span className="album-checkout-modal__label">{buyerIdentity.label}</span>
+                <p className="album-checkout-modal__identity-value">{buyerIdentity.displayName}</p>
               </div>
 
               <label className="album-checkout-modal__agreement">

@@ -10,8 +10,7 @@ CREATE TABLE IF NOT EXISTS orders (
   amount DECIMAL(10, 2) NOT NULL,
   currency VARCHAR(3) DEFAULT 'RUB',
   customer_email VARCHAR(255) NOT NULL,
-  customer_first_name VARCHAR(255),
-  customer_last_name VARCHAR(255),
+  buyer_display_name VARCHAR(255),
   customer_phone VARCHAR(50),
   payment_provider VARCHAR(20) DEFAULT 'yookassa' CHECK (payment_provider IN ('yookassa', 'stripe', 'paypal')),
   payment_id VARCHAR(255), -- ID платежа от провайдера (yookassa payment id)

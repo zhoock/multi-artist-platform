@@ -839,8 +839,6 @@
     "checkout": {
       "checkout": {
         "emailAddress": "Email address",
-        "firstName": "First name",
-        "lastName": "Last name",
         "agreeToOffer": "I agree to the",
         "publicOffer": "public offer",
         "agreeToPrivacy": "I consent to",
@@ -854,8 +852,6 @@
       "validation": {
         "emailRequired": "Email is required",
         "emailInvalid": "Please enter a valid email address",
-        "firstNameRequired": "First name is required",
-        "lastNameRequired": "Last name is required",
         "agreeToOfferRequired": "You must agree to the offer",
         "agreeToPrivacyRequired": "You must agree to the privacy policy"
       },

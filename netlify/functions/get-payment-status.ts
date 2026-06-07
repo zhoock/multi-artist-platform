@@ -259,10 +259,9 @@ async function updateOrderAndPaymentStatus(paymentStatus: YooKassaPaymentStatus)
                       }
 
                       const orderMetaResult = await query<{
-                        customer_first_name: string | null;
-                        customer_last_name: string | null;
+                        buyer_display_name: string | null;
                       }>(
-                        `SELECT customer_first_name, customer_last_name
+                        `SELECT buyer_display_name
                          FROM orders
                          WHERE id = $1
                          LIMIT 1`,
@@ -270,10 +269,7 @@ async function updateOrderAndPaymentStatus(paymentStatus: YooKassaPaymentStatus)
                       );
                       const orderMeta = orderMetaResult.rows[0];
 
-                      const customerName =
-                        orderMeta?.customer_first_name && orderMeta?.customer_last_name
-                          ? `${orderMeta.customer_first_name} ${orderMeta.customer_last_name}`
-                          : orderMeta?.customer_first_name || undefined;
+                      const customerName = orderMeta?.buyer_display_name?.trim() || undefined;
 
                       const { resolveEmailLocaleForAddress } = await import(
                         './lib/user-preferred-language'

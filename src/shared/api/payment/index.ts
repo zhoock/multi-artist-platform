@@ -15,8 +15,7 @@ export interface CreatePaymentRequest {
   userId?: string;
   paymentToken?: string; // Токен от Checkout.js для оплаты на сайте
   billingData?: {
-    firstName: string;
-    lastName: string;
+    buyerDisplayName: string;
     phone?: string;
     country?: string;
     zip?: string;

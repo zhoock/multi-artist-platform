@@ -839,8 +839,6 @@
     "checkout": {
       "checkout": {
         "emailAddress": "Email",
-        "firstName": "Имя",
-        "lastName": "Фамилия",
         "agreeToOffer": "Согласен с",
         "publicOffer": "публичной офертой",
         "agreeToPrivacy": "Даю согласие на",
@@ -854,8 +852,6 @@
       "validation": {
         "emailRequired": "Введите email",
         "emailInvalid": "Введите корректный email",
-        "firstNameRequired": "Введите имя",
-        "lastNameRequired": "Введите фамилию",
         "agreeToOfferRequired": "Подтвердите согласие с офертой",
         "agreeToPrivacyRequired": "Подтвердите согласие на обработку данных"
       },

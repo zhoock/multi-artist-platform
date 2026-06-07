@@ -975,8 +975,6 @@ export interface IInterface {
   checkout?: {
     checkout?: {
       emailAddress?: string;
-      firstName?: string;
-      lastName?: string;
       agreeToOffer?: string;
       publicOffer?: string;
       agreeToPrivacy?: string;
@@ -990,8 +988,6 @@ export interface IInterface {
     validation?: {
       emailRequired?: string;
       emailInvalid?: string;
-      firstNameRequired?: string;
-      lastNameRequired?: string;
       agreeToOfferRequired?: string;
       agreeToPrivacyRequired?: string;
     };

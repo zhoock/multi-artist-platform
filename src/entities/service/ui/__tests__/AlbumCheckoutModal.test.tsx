@@ -6,7 +6,7 @@
  *  - валидный submit идёт в createPayment с правильными аргументами
  *  - ошибка createPayment остаётся в форме (не редиректит)
  *  - ownership branch: уже куплено → форма скрыта, виден Download
- *  - пре-заполнение email/имени из auth-сессии
+ *  - пре-заполнение email из auth-сессии и read-only buyer identity
  *  - defensive: album=null не рендерит ничего
  *
  * Сам редирект (`window.location.href = ...`) проверять в jsdom неудобно
@@ -48,12 +48,18 @@ jest.mock('@entities/service/lib/useAlbumOwnedByViewer', () => ({
   useAlbumOwnedByViewer: () => ownershipState,
 }));
 
-let mockUser: { id: string; email: string; name?: string } | null = null;
+let mockUser: {
+  id: string;
+  email: string;
+  name?: string | null;
+  accountType?: 'listener' | 'artist';
+} | null = null;
 jest.mock('@shared/lib/auth', () => ({
   getUser: () => mockUser,
   isAuthenticated: () => mockUser !== null,
   subscribeAuthSession: () => () => {},
   getAuthSessionIdentityKey: () => (mockUser ? `user:${mockUser.id}` : ''),
+  readAccountTypeFromStoredToken: () => null,
 }));
 
 jest.mock('@shared/lib/hooks/useSiteArtistDisplayName', () => ({
@@ -87,12 +93,6 @@ const testAlbum = {
 function fillValidForm() {
   fireEvent.change(screen.getByLabelText(/email/i), {
     target: { value: 'fan@example.com' },
-  });
-  fireEvent.change(screen.getByLabelText(/first name|имя/i), {
-    target: { value: 'Pat' },
-  });
-  fireEvent.change(screen.getByLabelText(/last name|фамилия/i), {
-    target: { value: 'Doe' },
   });
   const checkboxes = screen.getAllByRole('checkbox');
   checkboxes.forEach((cb) => fireEvent.click(cb));
@@ -151,7 +151,7 @@ describe('AlbumCheckoutModal', () => {
       currency: 'RUB',
       albumId: 'album-1',
       customerEmail: 'fan@example.com',
-      billingData: { firstName: 'Pat', lastName: 'Doe' },
+      billingData: { buyerDisplayName: 'Test Artist' },
     });
     expect(typeof payload.returnUrl).toBe('string');
     expect(payload.returnUrl).toContain('/pay/success?returnTo=');
@@ -175,14 +175,21 @@ describe('AlbumCheckoutModal', () => {
     expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
   });
 
-  test('prefills email and split name from auth session', () => {
-    mockUser = { id: 'u1', email: 'me@example.com', name: 'Anna Smith' };
+  test('prefills email and shows read-only buyer identity from profile', () => {
+    mockUser = {
+      id: 'u1',
+      email: 'me@example.com',
+      name: 'Zhuk',
+      accountType: 'listener',
+    };
 
     renderWithProviders(<AlbumCheckoutModal isOpen album={testAlbum} onClose={() => {}} />);
 
     expect(screen.getByLabelText(/email/i)).toHaveValue('me@example.com');
-    expect(screen.getByLabelText(/first name|имя/i)).toHaveValue('Anna');
-    expect(screen.getByLabelText(/last name|фамилия/i)).toHaveValue('Smith');
+    expect(screen.getByText('Name')).toBeInTheDocument();
+    expect(screen.getByText('Test Artist')).toBeInTheDocument();
+    expect(screen.queryByLabelText(/first name|имя/i)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/last name|фамилия/i)).not.toBeInTheDocument();
   });
 
   test('shows already-owned state and download CTA when isOwned=true', async () => {
