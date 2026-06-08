@@ -248,6 +248,34 @@
   status = 200
   force = true
 
+# Saved mixes: list
+[[redirects]]
+  from = "/api/my-saved-mixes*"
+  to = "/.netlify/functions/my-saved-mixes"
+  status = 200
+  force = true
+
+# Saved mixes: create
+[[redirects]]
+  from = "/api/save-mix*"
+  to = "/.netlify/functions/save-mix"
+  status = 200
+  force = true
+
+# Saved mixes: delete
+[[redirects]]
+  from = "/api/delete-saved-mix*"
+  to = "/.netlify/functions/delete-saved-mix"
+  status = 200
+  force = true
+
+# Saved mixes: shared (public, read-only)
+[[redirects]]
+  from = "/api/get-shared-mix*"
+  to = "/.netlify/functions/get-shared-mix"
+  status = 200
+  force = true
+
 # Test email (для тестирования отправки email)
 [[redirects]]
   from = "/api/test-email*"

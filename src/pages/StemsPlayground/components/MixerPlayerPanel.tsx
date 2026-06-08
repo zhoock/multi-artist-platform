@@ -1,17 +1,19 @@
 // src/pages/StemsPlayground/components/MixerPlayerPanel.tsx
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
+import type { ReactNode } from 'react';
 import clsx from 'clsx';
 import { Waveform } from '@shared/ui/waveform';
 import { StemEngine } from '@audio/stemsEngine';
+import {
+  panelStateToSettings,
+  type PanelStemState,
+  type SavedMixSetting,
+} from '@entities/savedMix';
 import type { MixerTrack } from '../lib/types';
 import { formatTrackDuration } from '../lib/formatTrackDuration';
 import { MixerStemRow } from './MixerStemRow';
 
-type StemMixState = {
-  volume: number;
-  muted: boolean;
-  soloed: boolean;
-};
+type StemMixState = PanelStemState;
 
 type MixerPlayerPanelLabels = {
   play: string;
@@ -20,13 +22,27 @@ type MixerPlayerPanelLabels = {
   mute: string;
 };
 
+export type MixerPlayerPanelHandle = {
+  /** Текущая конфигурация микшера для сохранения. */
+  getMixSettings: () => SavedMixSetting[];
+  /** Применить сохранённые настройки к движку и UI (мгновенно). */
+  applyMix: (settings: SavedMixSetting[]) => void;
+};
+
 type MixerPlayerPanelProps = {
   track: MixerTrack;
   labels: MixerPlayerPanelLabels;
+  /** Настройки shared-микса, применяются один раз после загрузки стемов. */
+  initialMix?: SavedMixSetting[];
+  /** Лёгкий индикатор над waveform (например, «Shared Mix»). */
+  sharedNote?: ReactNode;
 };
 
 /** Полноценный микшер трека: Play, Waveform, список стемов с громкостью и Solo/Mute. */
-export function MixerPlayerPanel({ track, labels }: MixerPlayerPanelProps) {
+function MixerPlayerPanelInner(
+  { track, labels, initialMix, sharedNote }: MixerPlayerPanelProps,
+  ref: React.ForwardedRef<MixerPlayerPanelHandle>
+) {
   const engineRef = useRef<StemEngine | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -38,8 +54,43 @@ export function MixerPlayerPanel({ track, labels }: MixerPlayerPanelProps) {
   const draggingRef = useRef(false);
   const wasPlayingRef = useRef(false);
   const isPlayingRef = useRef(false);
+  const mixRef = useRef<Record<string, StemMixState>>({});
+  const initialMixRef = useRef<SavedMixSetting[] | undefined>(initialMix);
 
   isPlayingRef.current = isPlaying;
+  mixRef.current = mix;
+  initialMixRef.current = initialMix;
+
+  /** Применяет настройки к движку и состоянию UI; недостающие стемы — дефолт. */
+  const applyMix = (settings: SavedMixSetting[]) => {
+    const byId = new Map(settings.map((s) => [s.stemId, s]));
+    const engine = engineRef.current;
+    const next: Record<string, StemMixState> = {};
+    for (const stem of track.stems) {
+      const s = byId.get(stem.id);
+      const state: StemMixState = {
+        volume: s ? Math.max(0, Math.min(1, s.volume)) : 1,
+        muted: s?.muted ?? false,
+        soloed: s?.solo ?? false,
+      };
+      next[stem.id] = state;
+      engine?.setVolume(stem.id, state.volume);
+      engine?.setMuted(stem.id, state.muted);
+      engine?.setSolo(stem.id, state.soloed);
+    }
+    setMix(next);
+  };
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      getMixSettings: () => panelStateToSettings(mixRef.current),
+      applyMix,
+    }),
+    // applyMix замыкает актуальный track через ref-стейт движка; пересоздаём при смене трека.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [track.id]
+  );
 
   const validStems = useMemo(() => {
     const map: Record<string, string> = {};
@@ -75,7 +126,13 @@ export function MixerPlayerPanel({ track, labels }: MixerPlayerPanelProps) {
     (async () => {
       try {
         await engine.loadAll((p) => setLoadProgress(p));
-        if (!disposed) setLoading(false);
+        if (disposed) return;
+        // Shared-микс: применяем сохранённые настройки один раз после загрузки.
+        const preset = initialMixRef.current;
+        if (preset && preset.length > 0) {
+          applyMix(preset);
+        }
+        setLoading(false);
       } catch (error) {
         console.error('❌ [MixerPlayerPanel] Ошибка при загрузке стемов:', error);
         if (!disposed) setLoading(false);
@@ -87,6 +144,8 @@ export function MixerPlayerPanel({ track, labels }: MixerPlayerPanelProps) {
       engine.dispose();
       engineRef.current = null;
     };
+    // applyMix стабилен в рамках монтирования трека (компонент пересоздаётся по key={track.id}).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [track.id, validStems, track.stems]);
 
   // RAF-цикл прогресса воспроизведения.
@@ -173,6 +232,7 @@ export function MixerPlayerPanel({ track, labels }: MixerPlayerPanelProps) {
 
   return (
     <div className="mixer-player">
+      {sharedNote ? <div className="mixer-player__shared-note">{sharedNote}</div> : null}
       <div className="mixer-player__transport">
         <button
           className="btn"
@@ -261,3 +321,7 @@ export function MixerPlayerPanel({ track, labels }: MixerPlayerPanelProps) {
     </div>
   );
 }
+
+export const MixerPlayerPanel = forwardRef<MixerPlayerPanelHandle, MixerPlayerPanelProps>(
+  MixerPlayerPanelInner
+);

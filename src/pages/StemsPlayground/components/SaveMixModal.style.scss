@@ -1,0 +1,103 @@
+// src/pages/StemsPlayground/components/SaveMixModal.style.scss
+@use '../../../scss/abstracts/mixins' as *;
+
+.save-mix-modal {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-block-size: 100dvb;
+  padding: var(--ms-1);
+
+  &__container {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ms-0);
+    inline-size: 100%;
+    max-inline-size: 26rem;
+    padding: var(--ms-1);
+    color: var(--text-color);
+    background: var(--main-background-color, #20201d);
+    border: 1px solid var(--hr-color);
+    border-radius: var(--ms-01);
+    box-shadow: 0 12px 32px rgb(0 0 0 / 45%);
+  }
+
+  &__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--ms-0);
+  }
+
+  &__title {
+    margin: 0;
+  }
+
+  &__close {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    inline-size: calc(var(--ms-1) * 1.5);
+    block-size: calc(var(--ms-1) * 1.5);
+    padding: 0;
+    color: var(--text-color);
+    font-size: var(--ms-1);
+    line-height: 1;
+    background: transparent;
+    border: none;
+    border-radius: var(--ms-02);
+    cursor: pointer;
+
+    @media (hover: hover) and (pointer: fine) {
+      &:hover {
+        color: var(--accent-color);
+      }
+    }
+  }
+
+  &__body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ms-02);
+  }
+
+  &__label {
+    opacity: 0.7;
+
+    @include adjust-font-size-to($ms-01, 0.382, $ms-01);
+  }
+
+  &__input {
+    inline-size: 100%;
+    padding: var(--ms-01);
+    color: var(--text-color);
+    background: rgb(255 255 255 / 2%);
+    border: 1px solid var(--hr-color);
+    border-radius: var(--ms-02);
+
+    &:focus-visible {
+      outline: 2px solid var(--accent-color);
+      outline-offset: 1px;
+    }
+  }
+
+  &__actions {
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  &__button {
+    color: var(--button-color-hover) !important;
+    text-transform: capitalize;
+    background: var(--button-background-color-hover) !important;
+
+    @include button-variant($margin: 0);
+
+    &:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      filter: grayscale(100%);
+    }
+  }
+}

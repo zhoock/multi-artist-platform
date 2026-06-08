@@ -1,0 +1,166 @@
+// src/pages/StemsPlayground/components/MyMixesModal.style.scss
+@use '../../../scss/abstracts/mixins' as *;
+
+.my-mixes-modal {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-block-size: 100dvb;
+  padding: var(--ms-1);
+
+  &__container {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ms-0);
+    inline-size: 100%;
+    max-inline-size: 34rem;
+    max-block-size: min(80dvb, 40rem);
+    padding: var(--ms-1);
+    color: var(--text-color);
+    background: var(--main-background-color, #20201d);
+    border: 1px solid var(--hr-color);
+    border-radius: var(--ms-01);
+    box-shadow: 0 12px 32px rgb(0 0 0 / 45%);
+  }
+
+  &__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--ms-0);
+    flex-shrink: 0;
+  }
+
+  &__title {
+    margin: 0;
+  }
+
+  &__close {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    inline-size: calc(var(--ms-1) * 1.5);
+    block-size: calc(var(--ms-1) * 1.5);
+    padding: 0;
+    color: var(--text-color);
+    font-size: var(--ms-1);
+    line-height: 1;
+    background: transparent;
+    border: none;
+    border-radius: var(--ms-02);
+    cursor: pointer;
+
+    @media (hover: hover) and (pointer: fine) {
+      &:hover {
+        color: var(--accent-color);
+      }
+    }
+  }
+
+  &__body {
+    flex: 1;
+    min-block-size: 0;
+    overflow-y: auto;
+  }
+
+  &__empty {
+    margin: 0;
+    padding-block: var(--ms-1);
+    opacity: 0.7;
+    text-align: center;
+  }
+
+  &__list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ms-01);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  &__item {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--ms-01);
+    padding: var(--ms-01);
+    background: rgb(255 255 255 / 2%);
+    border: 1px solid var(--hr-color);
+    border-radius: var(--ms-01);
+  }
+
+  &__info {
+    min-inline-size: 0;
+    flex: 1 1 12rem;
+  }
+
+  &__name {
+    margin: 0;
+    overflow: hidden;
+    font-weight: var(--medium);
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  &__meta {
+    margin: 0;
+    opacity: 0.7;
+
+    @include adjust-font-size-to($ms-01, 0.382, $ms-01);
+  }
+
+  &__date {
+    margin: 0;
+    opacity: 0.5;
+    font-variant-numeric: tabular-nums;
+
+    @include adjust-font-size-to($ms-01, 0.382, $ms-01);
+  }
+
+  &__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--ms-02);
+  }
+
+  &__action {
+    padding: var(--ms-02) var(--ms-0);
+    color: var(--text-color);
+    background: rgb(255 255 255 / 4%);
+    border: 1px solid var(--hr-color);
+    border-radius: var(--ms-02);
+    cursor: pointer;
+    transition:
+      color 0.2s ease,
+      border-color 0.2s ease;
+
+    @media (hover: hover) and (pointer: fine) {
+      &:hover {
+        color: var(--accent-color);
+        border-color: var(--accent-color);
+      }
+    }
+
+    &--apply {
+      color: var(--accent-color);
+      border-color: var(--accent-color);
+    }
+
+    &--delete {
+      @media (hover: hover) and (pointer: fine) {
+        &:hover {
+          color: var(--error-color, #cf807d);
+          border-color: var(--error-color, #cf807d);
+        }
+      }
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+}

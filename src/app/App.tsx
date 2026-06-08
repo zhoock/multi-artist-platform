@@ -295,6 +295,7 @@ function Layout() {
     '/offer',
     '/forms',
     '/stems',
+    '/stems/mix/:mixId',
     '/dashboard',
     '/dashboard/:tab',
     '/dashboard-new',
@@ -478,6 +479,14 @@ function Layout() {
       <Route path="/forms" element={<Form />} />
       <Route
         path="/stems"
+        element={
+          <Suspense fallback={<PageLoader />}>
+            <StemsPlayground />
+          </Suspense>
+        }
+      />
+      <Route
+        path="/stems/mix/:mixId"
         element={
           <Suspense fallback={<PageLoader />}>
             <StemsPlayground />

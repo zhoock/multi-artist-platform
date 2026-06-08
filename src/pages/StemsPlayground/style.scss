@@ -149,6 +149,50 @@
     }
   }
 
+  .mixer-track-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--ms-01);
+
+    &__actions {
+      display: flex;
+      flex-shrink: 0;
+      gap: var(--ms-02);
+    }
+
+    &__btn {
+      padding: var(--ms-02) var(--ms-0);
+      color: var(--text-color);
+      background: rgb(255 255 255 / 4%);
+      border: 1px solid var(--hr-color);
+      border-radius: var(--ms-02);
+      cursor: pointer;
+      transition:
+        color 0.2s ease,
+        border-color 0.2s ease;
+
+      @media (hover: hover) and (pointer: fine) {
+        &:hover {
+          color: var(--accent-color);
+          border-color: var(--accent-color);
+        }
+      }
+    }
+  }
+
+  .mixer-player__shared-note {
+    align-self: flex-start;
+    padding: var(--ms-02) var(--ms-0);
+    color: var(--accent-color);
+    background: rgb(255 255 255 / 4%);
+    border: 1px solid var(--hr-color);
+    border-radius: var(--ms-02);
+
+    @include adjust-font-size-to($ms-01, 0.382, $ms-01);
+  }
+
   /* ─────────────── Уровень 2: треки ─────────────── */
 
   .mixer-track-list {
@@ -337,13 +381,6 @@
       text-overflow: ellipsis;
     }
 
-    &--muted {
-      .mixer-stem__icon,
-      .mixer-stem__name {
-        opacity: 0.5;
-      }
-    }
-
     &__slider {
       --progress-width: 0%;
 
@@ -358,7 +395,9 @@
       );
       border-radius: var(--ms-02);
       cursor: pointer;
-      transition: transform 0.2s ease;
+      transition:
+        transform 0.2s ease,
+        opacity 0.2s ease;
       transform-origin: center;
 
       &:active {
@@ -400,6 +439,7 @@
       text-align: right;
       opacity: 0.7;
       font-variant-numeric: tabular-nums;
+      transition: opacity 0.2s ease;
 
       @include adjust-font-size-to($ms-01, 0.382, $ms-01);
     }
@@ -430,6 +470,26 @@
       &:disabled {
         opacity: 0.5;
         cursor: not-allowed;
+      }
+    }
+
+    &--muted {
+      .mixer-stem__icon,
+      .mixer-stem__name {
+        opacity: 0.5;
+      }
+
+      .mixer-stem__slider {
+        opacity: 0.35;
+        background: linear-gradient(
+          to right,
+          rgb(255 255 255 / 30%) var(--progress-width),
+          rgb(255 255 255 / 10%) var(--progress-width)
+        );
+      }
+
+      .mixer-stem__percent {
+        opacity: 0.35;
       }
     }
   }
