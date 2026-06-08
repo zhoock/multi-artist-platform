@@ -1,103 +1,92 @@
 // src/pages/StemsPlayground/components/SaveMixModal.style.scss
 @use '../../../scss/abstracts/mixins' as *;
+@use '../../../scss/components/modal' as *;
 
-.save-mix-modal {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-block-size: 100dvb;
-  padding: var(--ms-1);
+dialog {
+  @include dashboard-modal-dialog-buttons;
 
-  &__container {
-    display: flex;
-    flex-direction: column;
-    gap: var(--ms-0);
-    inline-size: 100%;
-    max-inline-size: 26rem;
-    padding: var(--ms-1);
-    color: var(--text-color);
-    background: var(--main-background-color, #20201d);
-    border: 1px solid var(--hr-color);
-    border-radius: var(--ms-01);
-    box-shadow: 0 12px 32px rgb(0 0 0 / 45%);
-  }
+  .save-mix-modal {
+    @include dashboard-modal-shell;
 
-  &__header {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: var(--ms-0);
-  }
+    &__card {
+      display: flex;
+      flex-direction: column;
+      min-height: auto;
 
-  &__title {
-    margin: 0;
-  }
+      @include dashboard-modal-panel(
+        $padding: 0,
+        $gap: 0,
+        $desktop-width: 480px,
+        $desktop-height: auto,
+        $mobile-max-height: 90vh
+      );
 
-  &__close {
-    display: flex;
-    flex-shrink: 0;
-    align-items: center;
-    justify-content: center;
-    inline-size: calc(var(--ms-1) * 1.5);
-    block-size: calc(var(--ms-1) * 1.5);
-    padding: 0;
-    color: var(--text-color);
-    font-size: var(--ms-1);
-    line-height: 1;
-    background: transparent;
-    border: none;
-    border-radius: var(--ms-02);
-    cursor: pointer;
+      @include breakpoint(tablet) {
+        height: auto;
+        min-height: auto;
+        max-height: 90vh;
+      }
+    }
 
-    @media (hover: hover) and (pointer: fine) {
-      &:hover {
-        color: var(--accent-color);
+    &__header {
+      flex-shrink: 0;
+
+      @include dashboard-modal-header(
+        $gap: var(--ms-0),
+        $padding: var(--ms-1) var(--ms-2),
+        $border-bottom: var(--dashboard-divider),
+        $background: var(--dashboard-card-bg)
+      );
+    }
+
+    &__title {
+      @include dashboard-modal-title($margin: 0, $padding: 0, $font-weight: 700);
+    }
+
+    &__close {
+      @include dashboard-modal-close(
+        $font-size: var(--dashboard-heading-font-size),
+        $focus-visible: true,
+        $reset-text: true,
+        $flex-shrink: 0
+      );
+    }
+
+    &__body {
+      display: flex;
+      flex-direction: column;
+      gap: var(--ms-0);
+      flex: 1;
+      padding: var(--ms-1) var(--ms-2);
+      overflow-y: auto;
+    }
+
+    &__field {
+      @include dashboard-form-field;
+    }
+
+    &__label {
+      @include dashboard-form-label;
+    }
+
+    &__input {
+      @include dashboard-form-input;
+    }
+
+    &__actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: var(--ms-0);
+      flex-shrink: 0;
+      padding: var(--ms-1) var(--ms-2);
+    }
+
+    &__button {
+      &--primary {
+        @include dashboard-btn-primary;
       }
     }
   }
-
-  &__body {
-    display: flex;
-    flex-direction: column;
-    gap: var(--ms-02);
-  }
-
-  &__label {
-    opacity: 0.7;
-
-    @include adjust-font-size-to($ms-01, 0.382, $ms-01);
-  }
-
-  &__input {
-    inline-size: 100%;
-    padding: var(--ms-01);
-    color: var(--text-color);
-    background: rgb(255 255 255 / 2%);
-    border: 1px solid var(--hr-color);
-    border-radius: var(--ms-02);
-
-    &:focus-visible {
-      outline: 2px solid var(--accent-color);
-      outline-offset: 1px;
-    }
-  }
-
-  &__actions {
-    display: flex;
-    justify-content: flex-end;
-  }
-
-  &__button {
-    color: var(--button-color-hover) !important;
-    text-transform: capitalize;
-    background: var(--button-background-color-hover) !important;
-
-    @include button-variant($margin: 0);
-
-    &:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-      filter: grayscale(100%);
-    }
-  }
 }
+
+@include dashboard-nested-modal-backdrop;

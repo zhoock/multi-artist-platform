@@ -55,7 +55,7 @@ export function MyMixesModal({
   return (
     <Popup isActive={isOpen} onClose={onClose} publicBackdrop>
       <div className="my-mixes-modal">
-        <div className="my-mixes-modal__container">
+        <div className="my-mixes-modal__card">
           <div className="my-mixes-modal__header">
             <h2 className="my-mixes-modal__title">{labels.title}</h2>
             <button
@@ -88,7 +88,7 @@ export function MyMixesModal({
                       <div className="my-mixes-modal__actions">
                         <button
                           type="button"
-                          className="my-mixes-modal__action my-mixes-modal__action--apply"
+                          className="my-mixes-modal__button my-mixes-modal__button--primary"
                           onClick={() => onApply(mix)}
                           disabled={busy}
                         >
@@ -96,7 +96,7 @@ export function MyMixesModal({
                         </button>
                         <button
                           type="button"
-                          className="my-mixes-modal__action"
+                          className="my-mixes-modal__button my-mixes-modal__button--secondary"
                           onClick={() => onCopyLink(mix)}
                           disabled={busy}
                         >
@@ -104,7 +104,7 @@ export function MyMixesModal({
                         </button>
                         <button
                           type="button"
-                          className="my-mixes-modal__action my-mixes-modal__action--delete"
+                          className="my-mixes-modal__button my-mixes-modal__button--destructive"
                           onClick={() => onDelete(mix)}
                           disabled={busy}
                         >

@@ -135,7 +135,7 @@ export function Hero() {
       try {
         // Для публичных страниц не передаем useAuth=true, API вернет данные админа
         const images = await loadHeaderImagesFromDatabase(false, {
-          artistSlugOverride: publicArtistSlug,
+          artistSlugOverride: heroPublicArtistSlug || null,
         });
         console.log('📸 [Hero] Загружены header images из БД:', images);
 
@@ -175,7 +175,7 @@ export function Hero() {
       }
     };
     loadImages();
-  }, [heroSearchString, publicArtistSlug]);
+  }, [heroSearchString, heroPublicArtistSlug]);
 
   useEffect(() => {
     if (!hasArtistParam || !artistParamKey) {
@@ -241,24 +241,24 @@ export function Hero() {
     };
   }, []);
 
-  // Выбираем случайное изображение при загрузке данных или изменении пути
+  // Выбираем случайное изображение при загрузке данных, смене пути или артиста
+  const heroVisualKey = `${heroPathname}|${heroPublicArtistSlug}`;
+
   useEffect(() => {
     // Выбираем изображение только если данные загружены
     if (!imagesLoadedRef.current) {
       return;
     }
 
-    // Выбираем случайное изображение при изменении пути
-    // При перезагрузке страницы компонент монтируется заново, поэтому будет новое случайное изображение
-    const pathChanged = lastPathRef.current !== heroPathname;
+    const visualContextChanged = lastPathRef.current !== heroVisualKey;
 
-    if (!pathChanged && imageSelectedForPathRef.current === heroPathname) {
-      // Изображение уже выбрано для этого пути, не меняем
+    if (!visualContextChanged && imageSelectedForPathRef.current === heroVisualKey) {
+      // Изображение уже выбрано для этого контекста, не меняем
       return;
     }
 
-    lastPathRef.current = heroPathname;
-    imageSelectedForPathRef.current = heroPathname;
+    lastPathRef.current = heroVisualKey;
+    imageSelectedForPathRef.current = heroVisualKey;
 
     // Выбираем изображение из БД
     if (headerImages.length > 0) {
@@ -348,7 +348,7 @@ export function Hero() {
       console.warn('⚠️ [Hero] Нет изображений для отображения (headerImages пустой)');
       setBackgroundImage('');
     }
-  }, [heroPathname, headerImages]);
+  }, [heroVisualKey, headerImages]);
 
   // Пока грузим профиль в artist-режиме — пустой заголовок; иначе имя из API/хранилища либо пусто.
   const catalogArtistMissing = useAppSelector(selectCatalogArtistMissing);

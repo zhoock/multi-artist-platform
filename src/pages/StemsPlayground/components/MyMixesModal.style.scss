@@ -1,166 +1,152 @@
 // src/pages/StemsPlayground/components/MyMixesModal.style.scss
 @use '../../../scss/abstracts/mixins' as *;
+@use '../../../scss/components/modal' as *;
 
-.my-mixes-modal {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-block-size: 100dvb;
-  padding: var(--ms-1);
+dialog {
+  @include dashboard-modal-dialog-buttons;
 
-  &__container {
-    display: flex;
-    flex-direction: column;
-    gap: var(--ms-0);
-    inline-size: 100%;
-    max-inline-size: 34rem;
-    max-block-size: min(80dvb, 40rem);
-    padding: var(--ms-1);
-    color: var(--text-color);
-    background: var(--main-background-color, #20201d);
-    border: 1px solid var(--hr-color);
-    border-radius: var(--ms-01);
-    box-shadow: 0 12px 32px rgb(0 0 0 / 45%);
-  }
+  .my-mixes-modal {
+    @include dashboard-modal-shell;
 
-  &__header {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: var(--ms-0);
-    flex-shrink: 0;
-  }
+    &__card {
+      display: flex;
+      flex-direction: column;
+      min-height: auto;
 
-  &__title {
-    margin: 0;
-  }
+      @include dashboard-modal-panel(
+        $padding: 0,
+        $gap: 0,
+        $desktop-width: 520px,
+        $desktop-height: auto,
+        $mobile-max-height: 90vh
+      );
 
-  &__close {
-    display: flex;
-    flex-shrink: 0;
-    align-items: center;
-    justify-content: center;
-    inline-size: calc(var(--ms-1) * 1.5);
-    block-size: calc(var(--ms-1) * 1.5);
-    padding: 0;
-    color: var(--text-color);
-    font-size: var(--ms-1);
-    line-height: 1;
-    background: transparent;
-    border: none;
-    border-radius: var(--ms-02);
-    cursor: pointer;
-
-    @media (hover: hover) and (pointer: fine) {
-      &:hover {
-        color: var(--accent-color);
-      }
-    }
-  }
-
-  &__body {
-    flex: 1;
-    min-block-size: 0;
-    overflow-y: auto;
-  }
-
-  &__empty {
-    margin: 0;
-    padding-block: var(--ms-1);
-    opacity: 0.7;
-    text-align: center;
-  }
-
-  &__list {
-    display: flex;
-    flex-direction: column;
-    gap: var(--ms-01);
-    margin: 0;
-    padding: 0;
-    list-style: none;
-  }
-
-  &__item {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--ms-01);
-    padding: var(--ms-01);
-    background: rgb(255 255 255 / 2%);
-    border: 1px solid var(--hr-color);
-    border-radius: var(--ms-01);
-  }
-
-  &__info {
-    min-inline-size: 0;
-    flex: 1 1 12rem;
-  }
-
-  &__name {
-    margin: 0;
-    overflow: hidden;
-    font-weight: var(--medium);
-    white-space: nowrap;
-    text-overflow: ellipsis;
-  }
-
-  &__meta {
-    margin: 0;
-    opacity: 0.7;
-
-    @include adjust-font-size-to($ms-01, 0.382, $ms-01);
-  }
-
-  &__date {
-    margin: 0;
-    opacity: 0.5;
-    font-variant-numeric: tabular-nums;
-
-    @include adjust-font-size-to($ms-01, 0.382, $ms-01);
-  }
-
-  &__actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--ms-02);
-  }
-
-  &__action {
-    padding: var(--ms-02) var(--ms-0);
-    color: var(--text-color);
-    background: rgb(255 255 255 / 4%);
-    border: 1px solid var(--hr-color);
-    border-radius: var(--ms-02);
-    cursor: pointer;
-    transition:
-      color 0.2s ease,
-      border-color 0.2s ease;
-
-    @media (hover: hover) and (pointer: fine) {
-      &:hover {
-        color: var(--accent-color);
-        border-color: var(--accent-color);
+      @include breakpoint(tablet) {
+        height: auto;
+        min-height: auto;
+        max-height: 90vh;
       }
     }
 
-    &--apply {
-      color: var(--accent-color);
-      border-color: var(--accent-color);
+    &__header {
+      flex-shrink: 0;
+
+      @include dashboard-modal-header(
+        $gap: var(--ms-0),
+        $padding: var(--ms-1) var(--ms-2),
+        $border-bottom: var(--dashboard-divider),
+        $background: var(--dashboard-card-bg)
+      );
     }
 
-    &--delete {
-      @media (hover: hover) and (pointer: fine) {
-        &:hover {
-          color: var(--error-color, #cf807d);
-          border-color: var(--error-color, #cf807d);
-        }
+    &__title {
+      @include dashboard-modal-title($margin: 0, $padding: 0, $font-weight: 700);
+    }
+
+    &__close {
+      @include dashboard-modal-close(
+        $font-size: var(--dashboard-heading-font-size),
+        $focus-visible: true,
+        $reset-text: true,
+        $flex-shrink: 0
+      );
+    }
+
+    &__body {
+      flex: 1;
+      min-block-size: 0;
+      padding: var(--ms-0) var(--ms-2) var(--ms-1);
+      overflow-y: auto;
+    }
+
+    &__empty {
+      margin: 0;
+      padding-block: var(--ms-1);
+      color: var(--dashboard-text-secondary);
+      font-size: var(--dashboard-font-size);
+      text-align: center;
+    }
+
+    &__list {
+      display: flex;
+      flex-direction: column;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    &__item {
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      gap: var(--ms-0);
+      padding-block: var(--ms-0);
+
+      & + & {
+        border-block-start: 1px solid var(--dashboard-divider);
+        margin-block-start: var(--ms-0);
+        padding-block-start: var(--ms-0);
       }
     }
 
-    &:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
+    &__info {
+      display: flex;
+      flex-direction: column;
+      gap: 0.2rem;
+      min-inline-size: 0;
+    }
+
+    &__name {
+      margin: 0;
+      overflow: hidden;
+      color: var(--dashboard-text-primary);
+      font-size: var(--dashboard-font-size);
+      font-weight: 600;
+      line-height: 1.35;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+
+    &__meta {
+      margin: 0;
+      overflow: hidden;
+      color: var(--dashboard-text-secondary);
+      font-size: calc(var(--dashboard-font-size) * 0.875);
+      line-height: 1.4;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+
+    &__date {
+      margin: 0;
+      color: var(--dashboard-text-secondary);
+      font-size: calc(var(--dashboard-font-size) * 0.8125);
+      font-variant-numeric: tabular-nums;
+      line-height: 1.4;
+      opacity: 0.85;
+    }
+
+    &__actions {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: var(--ms-02);
+    }
+
+    &__button {
+      &--primary {
+        @include dashboard-btn-primary($padding: var(--ms-01) var(--ms-1));
+      }
+
+      &--secondary {
+        @include dashboard-btn-secondary($padding: var(--ms-01) var(--ms-1));
+      }
+
+      &--destructive {
+        @include dashboard-btn-destructive($padding: var(--ms-01) var(--ms-1));
+      }
     }
   }
 }
+
+@include dashboard-nested-modal-backdrop;

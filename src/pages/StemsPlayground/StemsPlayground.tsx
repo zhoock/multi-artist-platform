@@ -8,6 +8,7 @@ import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 import { selectPublicArtistSlug, setPublicArtistSlug } from '@shared/model/currentArtist';
 import { isAuthenticated } from '@shared/lib/auth';
+import { withPublicArtistQuery } from '@shared/lib/artistQuery';
 import { sanitizeReturnPath } from '@shared/lib/authReturnUrl';
 import { queueMixToast } from '@shared/lib/mixToast';
 import { MixToast } from '@shared/ui/mixToast';
@@ -135,6 +136,14 @@ export default function StemsPlayground() {
         sharedAppliedRef.current = false;
         setSharedMix(mix);
         dispatch(setPublicArtistSlug(mix.artistSlug || null));
+
+        const slug = mix.artistSlug?.trim();
+        if (slug) {
+          const currentArtist = new URLSearchParams(window.location.search).get('artist')?.trim();
+          if (currentArtist !== slug) {
+            navigate(withPublicArtistQuery(window.location.pathname, slug), { replace: true });
+          }
+        }
       })
       .catch((error) => {
         console.error('[stems] shared mix load failed', error);
@@ -142,7 +151,7 @@ export default function StemsPlayground() {
     return () => {
       cancelled = true;
     };
-  }, [mixId, dispatch]);
+  }, [mixId, dispatch, navigate]);
 
   // Как только каталог построен — открываем нужный альбом/трек shared-микса.
   useEffect(() => {

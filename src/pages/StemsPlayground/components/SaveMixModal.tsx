@@ -37,7 +37,7 @@ export function SaveMixModal({ isOpen, busy, labels, onClose, onSave }: SaveMixM
   return (
     <Popup isActive={isOpen} onClose={onClose} publicBackdrop closeBlocked={busy}>
       <div className="save-mix-modal">
-        <form className="save-mix-modal__container" onSubmit={handleSubmit} aria-busy={busy}>
+        <form className="save-mix-modal__card" onSubmit={handleSubmit} aria-busy={busy}>
           <div className="save-mix-modal__header">
             <h2 className="save-mix-modal__title">{labels.title}</h2>
             <button
@@ -52,23 +52,29 @@ export function SaveMixModal({ isOpen, busy, labels, onClose, onSave }: SaveMixM
           </div>
 
           <div className="save-mix-modal__body">
-            <label className="save-mix-modal__label" htmlFor="save-mix-name">
-              {labels.nameLabel}
-            </label>
-            <input
-              id="save-mix-name"
-              type="text"
-              className="save-mix-modal__input"
-              value={name}
-              placeholder={labels.namePlaceholder}
-              onChange={(e) => setName(e.target.value)}
-              disabled={busy}
-              autoComplete="off"
-            />
+            <div className="save-mix-modal__field">
+              <label className="save-mix-modal__label" htmlFor="save-mix-name">
+                {labels.nameLabel}
+              </label>
+              <input
+                id="save-mix-name"
+                type="text"
+                className="save-mix-modal__input"
+                value={name}
+                placeholder={labels.namePlaceholder}
+                onChange={(e) => setName(e.target.value)}
+                disabled={busy}
+                autoComplete="off"
+              />
+            </div>
           </div>
 
           <div className="save-mix-modal__actions">
-            <button type="submit" className="save-mix-modal__button" disabled={busy}>
+            <button
+              type="submit"
+              className="save-mix-modal__button save-mix-modal__button--primary"
+              disabled={busy}
+            >
               {busy ? labels.saving : labels.save}
             </button>
           </div>
