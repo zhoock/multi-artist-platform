@@ -163,6 +163,9 @@
     }
 
     &__btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45em;
       padding: var(--ms-02) var(--ms-0);
       color: var(--text-color);
       background: rgb(255 255 255 / 4%);
@@ -172,6 +175,11 @@
       transition:
         color 0.2s ease,
         border-color 0.2s ease;
+
+      svg {
+        flex-shrink: 0;
+        color: var(--accent-color);
+      }
 
       @media (hover: hover) and (pointer: fine) {
         &:hover {
@@ -342,6 +350,15 @@
       align-items: center;
       justify-content: space-between;
       padding-inline: var(--ms-01);
+      color: var(--text-color);
+      opacity: 0.65;
+      font-variant-numeric: tabular-nums;
+
+      @include adjust-font-size-to($ms-01, 0.382, $ms-01);
+
+      time {
+        line-height: 1.2;
+      }
     }
   }
 
@@ -353,13 +370,17 @@
 
   .mixer-stem {
     display: grid;
-    grid-template-columns: auto minmax(4.5rem, 7rem) 1fr auto auto auto;
+    grid-template-columns: auto 4rem minmax(0, 1fr) auto auto auto;
     align-items: center;
     gap: var(--ms-01);
     padding: var(--ms-01);
     background: rgba(var(--extra-background-color), 0.8);
     border: 1px solid var(--hr-color);
     border-radius: var(--ms-01);
+
+    @include breakpoint(tablet) {
+      grid-template-columns: auto minmax(4.5rem, 7rem) 1fr auto auto auto;
+    }
 
     &.is-disabled {
       opacity: 0.5;
@@ -379,6 +400,11 @@
       font-weight: var(--medium);
       white-space: nowrap;
       text-overflow: ellipsis;
+      padding-inline-end: var(--ms-02);
+
+      @include breakpoint(tablet) {
+        padding-inline-end: 0;
+      }
     }
 
     &__slider {

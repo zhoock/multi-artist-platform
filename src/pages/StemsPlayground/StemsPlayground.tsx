@@ -1,5 +1,6 @@
 // src/pages/StemsPlayground/StemsPlayground.tsx
 import { useEffect, useRef, useState } from 'react';
+import { List as ListIcon, Save as SaveIcon } from 'lucide-react';
 import { Helmet } from 'react-helmet-async';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useLang } from '@app/providers/lang';
@@ -13,6 +14,7 @@ import { sanitizeReturnPath } from '@shared/lib/authReturnUrl';
 import { queueMixToast } from '@shared/lib/mixToast';
 import { MixToast } from '@shared/ui/mixToast';
 import { ConfirmationModal } from '@shared/ui/confirmationModal';
+import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 import {
   createMix,
   deleteMix,
@@ -350,14 +352,16 @@ export default function StemsPlayground() {
                 </MixerBackNav>
                 <div className="mixer-track-head__actions">
                   <button type="button" className="mixer-track-head__btn" onClick={handleSaveClick}>
-                    {stems.saveMix ?? 'Save mix'}
+                    <SaveIcon {...dashboardActionIconProps({ size: 16 })} />
+                    <span>{stems.saveMix ?? 'Save mix'}</span>
                   </button>
                   <button
                     type="button"
                     className="mixer-track-head__btn"
                     onClick={handleMyMixesClick}
                   >
-                    {stems.myMixes ?? 'My mixes'}
+                    <ListIcon {...dashboardActionIconProps({ size: 16 })} />
+                    <span>{stems.myMixes ?? 'My mixes'}</span>
                   </button>
                 </div>
               </div>
