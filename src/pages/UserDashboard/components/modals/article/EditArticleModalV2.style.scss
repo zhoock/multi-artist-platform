@@ -24,6 +24,69 @@
   object-fit: cover;
 }
 
+// Portal-меню: компактный overlay, не растягивается в flex-контейнере dialog
+.edit-article-v2__vk-plus-menu {
+  position: absolute;
+  top: calc(100% + 10px);
+  left: 0;
+  z-index: 10001;
+  display: flex;
+  width: max-content;
+  height: max-content;
+  max-width: calc(100vw - 16px);
+  padding: 10px 0;
+  background: var(--dashboard-card-bg, #2b2b2b);
+  border: 1px solid var(--dashboard-card-border, rgb(255 255 255 / 12%));
+  border-radius: 12px;
+  box-shadow: 0 8px 28px rgb(0 0 0 / 40%);
+  pointer-events: auto;
+}
+
+.edit-article-v2__vk-plus-menu-arrow {
+  position: absolute;
+  top: -6px;
+  left: 18px;
+  width: 12px;
+  height: 12px;
+  background: var(--dashboard-card-bg, #2b2b2b);
+  border-top: 1px solid var(--dashboard-card-border, rgb(255 255 255 / 12%));
+  border-left: 1px solid var(--dashboard-card-border, rgb(255 255 255 / 12%));
+  transform: translateX(-50%) rotate(45deg);
+}
+
+.edit-article-v2__vk-plus-menu-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  min-width: 88px;
+  padding: 6px 16px;
+  color: var(--dashboard-text-secondary, #aaaaaa);
+  font-size: 13px;
+  line-height: 1.2;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
+
+  &:not(:last-child) {
+    border-right: 1px solid var(--dashboard-divider, rgb(255 255 255 / 12%));
+  }
+
+  svg {
+    width: 28px;
+    height: 28px;
+  }
+
+  &:hover,
+  &:focus-visible {
+    color: var(--dashboard-text-primary, #f0f0f0);
+    background: var(--dashboard-hover-bg, rgb(255 255 255 / 6%));
+  }
+}
+
 // Редактор статьи — на всю ширину (и высоту) окна; инset dialog мешает full-bleed
 dialog.popup:has(.edit-article-v2) {
   padding: 0;
@@ -395,10 +458,6 @@ dialog {
     }
 
     &__drag-handle {
-      position: absolute;
-      top: var(--ms-01);
-      left: calc(var(--ms-0) * -2);
-      z-index: 10;
       display: flex;
       width: calc(var(--ms-0) * 1.5);
       height: calc(var(--ms-0) * 1.5);
@@ -426,16 +485,40 @@ dialog {
       }
     }
 
+    &__block-gutter {
+      position: relative;
+      display: flex;
+      flex: 0 0 calc(var(--ms-0) * 1.5);
+      width: calc(var(--ms-0) * 1.5);
+      height: calc(var(--ms-0) * 1.5);
+      flex-shrink: 0;
+      align-items: center;
+      justify-content: center;
+
+      // Центр хэндла / «+» совпадает с центром первой строки (line-height: 1.6 → 0.8em)
+      margin-top: calc(0.8em - var(--ms-0) * 0.75);
+      overflow: visible;
+
+      &:has(.edit-article-v2__vk-plus) {
+        flex-basis: 36px;
+        width: 36px;
+        height: 36px;
+        margin-top: calc(0.8em - var(--ms-0));
+      }
+    }
+
     &__block-wrapper {
       position: relative;
       display: flex;
       align-items: flex-start;
+      gap: var(--ms-01);
       padding: var(--ms-01);
       border-radius: var(--ms-01);
       transition: background-color 0.2s;
+      overflow: visible;
 
       &.is-focused {
-        background: var(--dashboard-hover-bg);
+        background: transparent;
       }
 
       &.is-dragging {
@@ -477,75 +560,44 @@ dialog {
 
     // VK-стиль плюса (показывается только после Enter в конце блока)
     &__vk-plus {
-      position: absolute;
-      top: 50%;
-      left: -40px;
+      position: relative;
       z-index: 10;
-      display: flex;
-      transform: translateY(-50%);
-      align-items: center;
+      width: 36px;
+      height: 36px;
+      flex-shrink: 0;
     }
 
     &__vk-plus-button {
       display: flex;
-      width: calc(var(--ms-0) * 1.5);
-      height: calc(var(--ms-0) * 1.5);
+      width: 36px;
+      height: 36px;
+      padding: 0;
       color: var(--dashboard-text-primary);
-      font-size: var(--ms-0);
-      line-height: 1;
       background: var(--dashboard-hover-bg);
       border: 1px solid var(--dashboard-card-border);
       border-radius: 50%;
-      transition: all 0.2s;
-      font-weight: 300;
+      transition:
+        background-color 0.15s ease,
+        border-color 0.15s ease;
       cursor: pointer;
       align-items: center;
       justify-content: center;
 
+      svg {
+        width: 18px;
+        height: 18px;
+        flex-shrink: 0;
+      }
+
       &:hover {
-        color: var(--dashboard-text-primary);
         background: var(--dashboard-btn-primary-hover-bg);
         border-color: var(--dark-greenish-yellow);
       }
-    }
 
-    &__vk-plus-menu {
-      position: absolute;
-      top: calc(var(--ms-0) * 1.5);
-      left: 0;
-      z-index: 1000;
-      padding: var(--ms-01) 0;
-      background: var(--dashboard-card-bg);
-      border: 1px solid var(--dashboard-card-border);
-      border-radius: var(--ms-01);
-      box-shadow: 0 4px 12px var(--dashboard-shadow);
-      min-width: 200px;
-      margin-top: var(--ms-02);
-    }
-
-    &__vk-plus-menu-item {
-      display: flex;
-      width: 100%;
-      padding: var(--ms-01) var(--ms-0);
-      color: var(--dashboard-text-primary);
-      font-size: var(--ms-0);
-      text-align: left;
-      background: transparent;
-      border: none;
-      transition: background-color 0.2s;
-      cursor: pointer;
-      align-items: center;
-      gap: var(--ms-01);
-
-      &:hover {
-        background: var(--dashboard-hover-bg);
+      &--active {
+        background: var(--dashboard-btn-primary-hover-bg);
+        border-color: var(--dark-greenish-yellow);
       }
-    }
-
-    &__vk-plus-menu-icon {
-      width: calc(var(--ms-0) * 1.2);
-      font-size: var(--ms-0);
-      text-align: center;
     }
 
     &__block {

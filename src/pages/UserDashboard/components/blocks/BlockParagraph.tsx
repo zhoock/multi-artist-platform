@@ -59,7 +59,7 @@ export function BlockParagraph({
   onRichEnter,
   onRichBackspace,
   onRichPasteMultiline,
-  placeholder = 'Начните вводить текст...',
+  placeholder = '',
   blockId,
 }: BlockParagraphProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);

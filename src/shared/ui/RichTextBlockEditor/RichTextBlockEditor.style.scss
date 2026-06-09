@@ -40,7 +40,8 @@
   }
 
   &__rich {
-    min-height: 1.5em;
+    min-height: 1.6em;
+    line-height: inherit;
     white-space: pre-wrap;
     word-break: break-word;
     outline: none;

@@ -1934,83 +1934,6 @@ export function EditArticleModalV2({ isOpen, article, onClose }: EditArticleModa
   };
 
   // Компонент VK-стиля плюса (показывается только после Enter в конце блока)
-  const VkPlusInserter = ({
-    onSelect,
-    onClose,
-  }: {
-    onSelect: (type: string) => void;
-    onClose: () => void;
-  }) => {
-    const [isOpen, setIsOpen] = useState(false);
-    const menuRef = useRef<HTMLDivElement>(null);
-
-    useEffect(() => {
-      const handleClickOutside = (event: MouseEvent) => {
-        if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-          setIsOpen(false);
-          onClose();
-        }
-      };
-
-      const handleEscape = (event: KeyboardEvent) => {
-        if (event.key === 'Escape') {
-          setIsOpen(false);
-          onClose();
-        }
-      };
-
-      if (isOpen) {
-        document.addEventListener('mousedown', handleClickOutside);
-        document.addEventListener('keydown', handleEscape);
-        return () => {
-          document.removeEventListener('mousedown', handleClickOutside);
-          document.removeEventListener('keydown', handleEscape);
-        };
-      }
-    }, [isOpen, onClose]);
-
-    const blockTypes = [
-      { type: 'paragraph', label: 'Текст', icon: '📝' },
-      { type: 'title', label: 'Заголовок', icon: '📌' },
-      { type: 'subtitle', label: 'Подзаголовок', icon: '📍' },
-      { type: 'quote', label: 'Цитата', icon: '💬' },
-      { type: 'list', label: 'Список', icon: '📋' },
-      { type: 'divider', label: 'Разделитель', icon: '➖' },
-      { type: 'image', label: 'Изображение', icon: '🖼️' },
-      { type: 'carousel', label: 'Карусель', icon: '🎠' },
-    ];
-
-    return (
-      <div ref={menuRef} className="edit-article-v2__vk-plus">
-        <button
-          type="button"
-          className="edit-article-v2__vk-plus-button"
-          onClick={() => setIsOpen(!isOpen)}
-        >
-          +
-        </button>
-        {isOpen && (
-          <div className="edit-article-v2__vk-plus-menu">
-            {blockTypes.map(({ type, label, icon }) => (
-              <button
-                key={type}
-                type="button"
-                className="edit-article-v2__vk-plus-menu-item"
-                onClick={() => {
-                  onSelect(type);
-                  setIsOpen(false);
-                }}
-              >
-                <span className="edit-article-v2__vk-plus-menu-icon">{icon}</span>
-                <span>{label}</span>
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-    );
-  };
-
   return (
     <>
       <Popup
@@ -2102,16 +2025,6 @@ export function EditArticleModalV2({ isOpen, article, onClose }: EditArticleModa
                             index={index}
                             isFocused={focusBlockId === block.id}
                             isSelected={selectedBlockId === block.id}
-                            showVkPlus={
-                              (vkInserter?.afterBlockId === block.id ||
-                                focusBlockId === block.id) &&
-                              (((block.type === 'paragraph' ||
-                                block.type === 'title' ||
-                                block.type === 'subtitle' ||
-                                block.type === 'quote') &&
-                                isRichTextEmpty(block.content)) ||
-                                (block.type === 'list' && isListBlockEmpty(block.items)))
-                            }
                             onUpdate={updateBlock}
                             onDelete={deleteBlock}
                             onFocus={() => {
@@ -2134,15 +2047,23 @@ export function EditArticleModalV2({ isOpen, article, onClose }: EditArticleModa
                               setTimeout(() => {
                                 const activeElement = document.activeElement;
 
-                                // Проверяем, находится ли фокус на плюсе
+                                // Проверяем, находится ли фокус на плюсе или открытом меню (portal)
                                 const isClickingOnVkPlus =
-                                  activeElement?.closest('.edit-article-v2__vk-plus') !== null;
+                                  activeElement?.closest('.edit-article-v2__vk-plus') !== null ||
+                                  activeElement?.closest('.edit-article-v2__vk-plus-menu') !==
+                                    null ||
+                                  document.querySelector('.edit-article-v2__vk-plus-menu') !== null;
 
                                 // Проверяем, находится ли фокус на textarea этого блока
                                 const blockTextarea = document.querySelector(
                                   `[data-block-id="${block.id}"] textarea`
                                 ) as HTMLTextAreaElement;
                                 const isFocusOnBlockTextarea = activeElement === blockTextarea;
+
+                                const blockRichEditor = document.querySelector(
+                                  `[data-block-id="${block.id}"][data-testid="rich-text-block-editor-rich"]`
+                                );
+                                const isFocusOnBlockRichEditor = activeElement === blockRichEditor;
 
                                 // Проверяем, находится ли активный элемент в том же блоке
                                 const blockElement = activeElement?.closest(
@@ -2161,6 +2082,7 @@ export function EditArticleModalV2({ isOpen, article, onClose }: EditArticleModa
                                 if (
                                   !isClickingOnVkPlus &&
                                   !isFocusOnBlockTextarea &&
+                                  !isFocusOnBlockRichEditor &&
                                   !isFocusInSameBlock &&
                                   !isFocusOnAnotherBlock
                                 ) {

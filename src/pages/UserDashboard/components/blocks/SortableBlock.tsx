@@ -1,7 +1,13 @@
 // src/pages/UserDashboard/components/blocks/SortableBlock.tsx
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import {
+  Image as ImageIcon,
+  Plus as PlusIcon,
+  SeparatorHorizontal,
+  type LucideIcon,
+} from 'lucide-react';
 import { isRichTextEmpty, type RichText } from '@shared/lib/richText';
 import type {
   RichBackspaceDetail,
@@ -26,7 +32,6 @@ interface SortableBlockProps {
   index: number;
   isFocused: boolean;
   isSelected?: boolean;
-  showVkPlus?: boolean;
   onUpdate: (blockId: string, updates: Partial<Block>) => void;
   onDelete: (blockId: string) => void;
   onFocus: (blockId: string) => void;
@@ -58,7 +63,6 @@ export function SortableBlock({
   index,
   isFocused,
   isSelected,
-  showVkPlus,
   onUpdate,
   onDelete,
   onFocus,
@@ -247,25 +251,25 @@ export function SortableBlock({
         isDragging ? 'is-dragging' : ''
       } ${isSelected ? 'edit-article-v2__block-wrapper--selected' : ''} ${isBlockEmpty ? 'is-empty' : ''}`}
     >
-      {/* Drag handle - показываем только если блок не пустой */}
-      {!isBlockEmpty && (
-        <div
-          className="edit-article-v2__drag-handle"
-          {...attributes}
-          {...listeners}
-          style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
-        >
-          <span className="edit-article-v2__drag-handle-icon">⠿</span>
-        </div>
-      )}
+      {/* Drag handle / VK plus — колонка слева, в потоке документа (не обрезается overflow) */}
+      <div className="edit-article-v2__block-gutter">
+        {!isBlockEmpty && (
+          <div
+            className="edit-article-v2__drag-handle"
+            {...attributes}
+            {...listeners}
+            style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
+          >
+            <span className="edit-article-v2__drag-handle-icon">⠿</span>
+          </div>
+        )}
+        {isBlockEmpty && onVkPlusSelect && onVkPlusClose && (
+          <VkPlusInserter onSelect={onVkPlusSelect} onClose={onVkPlusClose} />
+        )}
+      </div>
 
       {/* Block content */}
       <div className="edit-article-v2__block-content">{renderBlock()}</div>
-
-      {/* VK-стиль плюс: показывается для пустых блоков */}
-      {showVkPlus && isBlockEmpty && onVkPlusSelect && onVkPlusClose && (
-        <VkPlusInserter onSelect={onVkPlusSelect} onClose={onVkPlusClose} />
-      )}
     </div>
   );
 }
@@ -279,79 +283,104 @@ function VkPlusInserter({
   onClose: () => void;
 }) {
   const [isOpen, setIsOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const skipOutsideCloseRef = useRef(false);
+
+  const openMenu = useCallback(() => {
+    skipOutsideCloseRef.current = true;
+    setIsOpen(true);
+  }, []);
+
+  const closeMenu = useCallback(() => {
+    setIsOpen(false);
+  }, []);
 
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        // Проверяем, не находится ли клик внутри того же блока
-        // (например, на textarea блока, чтобы пользователь мог кликнуть на блок для фокуса)
-        const target = event.target as HTMLElement;
-        const blockWrapper = menuRef.current.closest('.edit-article-v2__block-wrapper');
-        const isClickInSameBlock = blockWrapper && blockWrapper.contains(target);
+    if (!isOpen) return;
 
-        if (!isClickInSameBlock) {
-          setIsOpen(false);
-          onClose();
-        }
+    const handlePointerDown = (event: PointerEvent) => {
+      if (skipOutsideCloseRef.current) {
+        skipOutsideCloseRef.current = false;
+        return;
+      }
+
+      const target = event.target as Node;
+      if (rootRef.current?.contains(target)) {
+        return;
+      }
+
+      closeMenu();
+
+      const blockWrapper = rootRef.current?.closest('.edit-article-v2__block-wrapper');
+      const isClickInSameBlock = blockWrapper && blockWrapper.contains(event.target as Node);
+
+      if (!isClickInSameBlock) {
+        onClose();
       }
     };
 
     const handleEscape = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
-        setIsOpen(false);
-        onClose();
+        event.stopPropagation();
+        closeMenu();
       }
     };
 
-    if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-      document.addEventListener('keydown', handleEscape);
-      return () => {
-        document.removeEventListener('mousedown', handleClickOutside);
-        document.removeEventListener('keydown', handleEscape);
-      };
-    }
-  }, [isOpen, onClose]);
+    document.addEventListener('pointerdown', handlePointerDown);
+    document.addEventListener('keydown', handleEscape, true);
 
-  const blockTypes = [
-    { type: 'paragraph', label: 'Текст', icon: '📝' },
-    { type: 'title', label: 'Заголовок', icon: '📌' },
-    { type: 'subtitle', label: 'Подзаголовок', icon: '📍' },
-    { type: 'quote', label: 'Цитата', icon: '💬' },
-    { type: 'list', label: 'Список', icon: '📋' },
-    { type: 'divider', label: 'Разделитель', icon: '➖' },
-    { type: 'image', label: 'Изображение', icon: '🖼️' },
-    { type: 'carousel', label: 'Карусель', icon: '🎠' },
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown);
+      document.removeEventListener('keydown', handleEscape, true);
+    };
+  }, [isOpen, closeMenu, onClose]);
+
+  const blockTypes: { type: string; label: string; Icon: LucideIcon }[] = [
+    { type: 'image', label: 'Фотография', Icon: ImageIcon },
+    { type: 'divider', label: 'Разделитель', Icon: SeparatorHorizontal },
   ];
 
   return (
-    <div ref={menuRef} className="edit-article-v2__vk-plus">
+    <div ref={rootRef} className="edit-article-v2__vk-plus">
       <button
         type="button"
-        className="edit-article-v2__vk-plus-button"
-        onClick={() => setIsOpen(!isOpen)}
+        className={`edit-article-v2__vk-plus-button${
+          isOpen ? ' edit-article-v2__vk-plus-button--active' : ''
+        }`}
+        aria-label="Добавить блок"
+        aria-expanded={isOpen}
+        aria-haspopup="menu"
+        onClick={(e) => {
+          e.stopPropagation();
+          if (isOpen) {
+            closeMenu();
+          } else {
+            openMenu();
+          }
+        }}
         onMouseDown={(e) => {
-          // Предотвращаем потерю фокуса textarea при клике на кнопку плюса
-          // Это позволяет избежать скрытия плюса при клике на него
           e.preventDefault();
+          e.stopPropagation();
         }}
       >
-        +
+        <PlusIcon size={18} strokeWidth={2} aria-hidden />
       </button>
       {isOpen && (
-        <div className="edit-article-v2__vk-plus-menu">
-          {blockTypes.map(({ type, label, icon }) => (
+        <div className="edit-article-v2__vk-plus-menu" role="menu">
+          <span className="edit-article-v2__vk-plus-menu-arrow" aria-hidden="true" />
+          {blockTypes.map(({ type, label, Icon }) => (
             <button
               key={type}
               type="button"
               className="edit-article-v2__vk-plus-menu-item"
+              role="menuitem"
+              onMouseDown={(e) => e.preventDefault()}
               onClick={() => {
                 onSelect(type);
-                setIsOpen(false);
+                closeMenu();
               }}
             >
-              <span className="edit-article-v2__vk-plus-menu-icon">{icon}</span>
+              <Icon aria-hidden="true" />
               <span>{label}</span>
             </button>
           ))}
