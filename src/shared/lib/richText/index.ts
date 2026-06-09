@@ -52,3 +52,10 @@ export {
   isCollapsedSelection,
   type MarkRange,
 } from './selection';
+
+export {
+  getSelectionOffsets,
+  pointToOffset,
+  restoreSelection,
+  type SelectionOffsets,
+} from './domSelection';

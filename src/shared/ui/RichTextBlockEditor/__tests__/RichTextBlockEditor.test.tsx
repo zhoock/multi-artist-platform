@@ -23,7 +23,7 @@ describe('RichTextBlockEditor', () => {
       <RichTextBlockEditor
         content={markdownToRichText('**abc**')}
         onChange={jest.fn()}
-        previewMode
+        mode="preview"
       />
     );
 
@@ -36,7 +36,7 @@ describe('RichTextBlockEditor', () => {
       <RichTextBlockEditor
         content={markdownToRichText('**_abc_**')}
         onChange={jest.fn()}
-        previewMode
+        mode="preview"
       />
     );
 
@@ -49,7 +49,7 @@ describe('RichTextBlockEditor', () => {
       <RichTextBlockEditor
         content={markdownToRichText('[OpenAI](https://openai.com)')}
         onChange={jest.fn()}
-        previewMode
+        mode="preview"
       />
     );
 
@@ -64,11 +64,33 @@ describe('RichTextBlockEditor', () => {
       <RichTextBlockEditor
         content={markdownToRichText('~~abc~~')}
         onChange={jest.fn()}
-        previewMode
+        mode="preview"
       />
     );
 
     const preview = screen.getByTestId('rich-text-block-editor-preview');
     expect(preview.querySelector('s')?.textContent).toBe('abc');
+  });
+
+  test('rich mode renders contentEditable with rendered RichText', () => {
+    render(
+      <RichTextBlockEditor
+        content={markdownToRichText('**_abc_**')}
+        onChange={jest.fn()}
+        mode="rich"
+      />
+    );
+
+    const rich = screen.getByTestId('rich-text-block-editor-rich');
+    expect(rich.getAttribute('contenteditable')).toBe('true');
+    expect(rich.innerHTML).toBe('<strong><em>abc</em></strong>');
+  });
+
+  test('switching to rich mode swaps textarea for contentEditable', () => {
+    render(<RichTextBlockEditor content={markdownToRichText('abc')} onChange={jest.fn()} />);
+
+    expect(screen.getByRole('textbox')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Rich' }));
+    expect(screen.getByTestId('rich-text-block-editor-rich')).toBeTruthy();
   });
 });

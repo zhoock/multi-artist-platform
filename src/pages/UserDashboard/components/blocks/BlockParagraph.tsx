@@ -1,7 +1,7 @@
 // src/pages/UserDashboard/components/blocks/BlockParagraph.tsx
 import React, { useRef, useEffect, useState } from 'react';
 import type { RichText } from '@shared/lib/richText';
-import { RichTextBlockEditor } from '@shared/ui/RichTextBlockEditor';
+import { RichTextBlockEditor, type RichTextBlockEditorMode } from '@shared/ui/RichTextBlockEditor';
 import {
   emptyFormatMenuActiveState,
   getFormatMenuActiveState,
@@ -51,7 +51,7 @@ export function BlockParagraph({
 }: BlockParagraphProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [showFormatMenu, setShowFormatMenu] = useState(false);
-  const [previewMode, setPreviewMode] = useState(false);
+  const [mode, setMode] = useState<RichTextBlockEditorMode>('textarea');
 
   const handleChange = (newValue: string, e: React.ChangeEvent<HTMLTextAreaElement>) => {
     // Проверка на "/" в начале строки для slash-меню
@@ -231,10 +231,10 @@ export function BlockParagraph({
         <RichTextBlockEditor
           content={value}
           onChange={onChange}
-          previewMode={previewMode}
-          onPreviewModeChange={(next) => {
-            setPreviewMode(next);
-            if (next) {
+          mode={mode}
+          onModeChange={(next) => {
+            setMode(next);
+            if (next !== 'textarea') {
               setShowFormatMenu(false);
             }
           }}
@@ -263,7 +263,7 @@ export function BlockParagraph({
           }}
         />
       </p>
-      {showFormatMenu && !previewMode && (
+      {showFormatMenu && mode === 'textarea' && (
         <FormatMenu
           textarea={textareaRef.current}
           content={value}

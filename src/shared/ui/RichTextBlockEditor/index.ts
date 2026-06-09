@@ -1,1 +1,5 @@
-export { RichTextBlockEditor, type RichTextBlockEditorProps } from './RichTextBlockEditor';
+export {
+  RichTextBlockEditor,
+  type RichTextBlockEditorMode,
+  type RichTextBlockEditorProps,
+} from './RichTextBlockEditor';
