@@ -1,10 +1,12 @@
 // src/pages/UserDashboard/components/blocks/BlockQuote.tsx
 import React, { useRef, useEffect, useState } from 'react';
+import type { RichText } from '@shared/lib/richText';
 import { FormatMenu, type FormatType } from './BlockParagraph';
+import { useLocalMarkdownBuffer } from './useLocalMarkdownBuffer';
 
 interface BlockQuoteProps {
-  value: string;
-  onChange: (text: string) => void;
+  value: RichText;
+  onChange: (content: RichText) => void;
   onFocus?: () => void;
   onBlur?: () => void;
   onEnter?: (atEnd: boolean) => void;
@@ -27,6 +29,10 @@ export function BlockQuote({
 }: BlockQuoteProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [showFormatMenu, setShowFormatMenu] = useState(false);
+  const { localMarkdown, handleChange: handleMarkdownChange } = useLocalMarkdownBuffer(
+    value,
+    onChange
+  );
 
   useEffect(() => {
     const textarea = textareaRef.current;
@@ -34,7 +40,7 @@ export function BlockQuote({
       textarea.style.height = 'auto';
       textarea.style.height = `${textarea.scrollHeight}px`;
     }
-  }, [value]);
+  }, [localMarkdown]);
 
   // Обработчики для отслеживания выделения текста (включая существующий текст)
   useEffect(() => {
@@ -91,7 +97,7 @@ export function BlockQuote({
   }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    onChange(e.target.value);
+    handleMarkdownChange(e.target.value);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -103,7 +109,7 @@ export function BlockQuote({
     } else if (e.key === 'Backspace') {
       const textarea = e.currentTarget;
       const isAtStart = textarea.selectionStart === 0;
-      const isEmpty = value === '';
+      const isEmpty = textarea.value === '';
 
       if (isEmpty) {
         e.preventDefault();
@@ -122,7 +128,7 @@ export function BlockQuote({
         ref={textareaRef}
         className="edit-article-v2__block edit-article-v2__block--quote"
         data-block-id={blockId}
-        value={value}
+        value={localMarkdown}
         onChange={handleChange}
         onKeyDown={handleKeyDown}
         onFocus={onFocus}
@@ -144,6 +150,7 @@ export function BlockQuote({
       {showFormatMenu && (
         <FormatMenu
           textarea={textareaRef.current}
+          content={value}
           onFormat={onFormat}
           onClose={() => setShowFormatMenu(false)}
         />

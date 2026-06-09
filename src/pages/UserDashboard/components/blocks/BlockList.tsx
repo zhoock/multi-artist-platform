@@ -1,6 +1,9 @@
 // src/pages/UserDashboard/components/blocks/BlockList.tsx
 import React, { useRef, useEffect } from 'react';
+import type { RichText } from '@shared/lib/richText';
+import { isRichTextEmpty } from '@shared/lib/richText';
 import { createListItem, type ArticleListItem } from '../modals/article/EditArticleModalV2.utils';
+import { useLocalMarkdownBuffer } from './useLocalMarkdownBuffer';
 
 interface BlockListProps {
   value: ArticleListItem[];
@@ -13,10 +16,10 @@ interface BlockListProps {
 export function BlockList({ value, onChange, onFocus, onBlur, onBackspace }: BlockListProps) {
   const items = value.length > 0 ? value : [createListItem('')];
 
-  const handleItemChange = (index: number, text: string) => {
+  const handleItemChange = (index: number, content: RichText) => {
     const newItems = [...items];
-    newItems[index] = { ...newItems[index], text };
-    onChange(newItems.filter((item) => item.text.trim() !== ''));
+    newItems[index] = { ...newItems[index], content };
+    onChange(newItems.filter((item) => !isRichTextEmpty(item.content)));
   };
 
   const handleItemKeyDown = (index: number, e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -59,8 +62,8 @@ export function BlockList({ value, onChange, onFocus, onBlur, onBackspace }: Blo
       {items.map((item, index) => (
         <ListItem
           key={item.id}
-          value={item.text}
-          onChange={(text) => handleItemChange(index, text)}
+          value={item.content}
+          onChange={(content) => handleItemChange(index, content)}
           onKeyDown={(e) => handleItemKeyDown(index, e)}
           onFocus={onFocus}
           onBlur={onBlur}
@@ -72,8 +75,8 @@ export function BlockList({ value, onChange, onFocus, onBlur, onBackspace }: Blo
 }
 
 interface ListItemProps {
-  value: string;
-  onChange: (text: string) => void;
+  value: RichText;
+  onChange: (content: RichText) => void;
   onKeyDown: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
   onFocus?: () => void;
   onBlur?: () => void;
@@ -82,6 +85,7 @@ interface ListItemProps {
 
 function ListItem({ value, onChange, onKeyDown, onFocus, onBlur, placeholder }: ListItemProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const { localMarkdown, handleChange } = useLocalMarkdownBuffer(value, onChange);
 
   useEffect(() => {
     const textarea = textareaRef.current;
@@ -89,15 +93,15 @@ function ListItem({ value, onChange, onKeyDown, onFocus, onBlur, placeholder }: 
       textarea.style.height = 'auto';
       textarea.style.height = `${textarea.scrollHeight}px`;
     }
-  }, [value]);
+  }, [localMarkdown]);
 
   return (
     <li className="edit-article-v2__block--list-item">
       <textarea
         ref={textareaRef}
         className="edit-article-v2__block"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
+        value={localMarkdown}
+        onChange={(e) => handleChange(e.target.value)}
         onKeyDown={onKeyDown}
         onFocus={onFocus}
         onBlur={onBlur}

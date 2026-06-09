@@ -1,5 +1,12 @@
 // src/pages/UserDashboard/components/blocks/BlockParagraph.tsx
 import React, { useRef, useEffect, useState } from 'react';
+import type { RichText } from '@shared/lib/richText';
+import { useLocalMarkdownBuffer } from './useLocalMarkdownBuffer';
+import {
+  emptyFormatMenuActiveState,
+  getFormatMenuActiveState,
+  type FormatMenuActiveState,
+} from './formatMenuSelection';
 
 /**
  * Набор действий floating-тулбара выделения — строго как в редакторе статей ВКонтакте.
@@ -16,8 +23,8 @@ export type FormatType =
   | 'quote';
 
 interface BlockParagraphProps {
-  value: string;
-  onChange: (text: string) => void;
+  value: RichText;
+  onChange: (content: RichText) => void;
   onFocus?: () => void;
   onBlur?: () => void;
   onEnter?: (atEnd: boolean) => void;
@@ -44,6 +51,10 @@ export function BlockParagraph({
 }: BlockParagraphProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [showFormatMenu, setShowFormatMenu] = useState(false);
+  const { localMarkdown, handleChange: handleMarkdownChange } = useLocalMarkdownBuffer(
+    value,
+    onChange
+  );
 
   // Автоматический рост textarea
   useEffect(() => {
@@ -52,11 +63,11 @@ export function BlockParagraph({
       textarea.style.height = 'auto';
       textarea.style.height = `${textarea.scrollHeight}px`;
     }
-  }, [value]);
+  }, [localMarkdown]);
 
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newValue = e.target.value;
-    onChange(newValue);
+    handleMarkdownChange(newValue);
 
     // Проверка на "/" в начале строки для slash-меню
     const cursorPos = e.target.selectionStart;
@@ -106,7 +117,7 @@ export function BlockParagraph({
     } else if (e.key === 'Backspace') {
       const textarea = e.currentTarget;
       const isAtStart = textarea.selectionStart === 0;
-      const isEmpty = value === '';
+      const isEmpty = textarea.value === '';
 
       if (isEmpty) {
         e.preventDefault();
@@ -236,7 +247,7 @@ export function BlockParagraph({
           ref={textareaRef}
           className="edit-article-v2__block edit-article-v2__block--paragraph"
           data-block-id={blockId}
-          value={value}
+          value={localMarkdown}
           onChange={handleChange}
           onKeyDown={handleKeyDown}
           onPaste={handlePaste}
@@ -263,6 +274,7 @@ export function BlockParagraph({
       {showFormatMenu && (
         <FormatMenu
           textarea={textareaRef.current}
+          content={value}
           onFormat={onFormat}
           onClose={() => setShowFormatMenu(false)}
         />
@@ -273,8 +285,19 @@ export function BlockParagraph({
 
 export interface FormatMenuProps {
   textarea: HTMLTextAreaElement | null;
+  content: RichText;
   onFormat?: (type: FormatType, url?: string) => void;
   onClose: () => void;
+}
+
+function formatMenuItemClass(isActive: boolean, extraClass?: string): string {
+  return [
+    'edit-article-v2__format-menu-item',
+    extraClass,
+    isActive ? 'edit-article-v2__format-menu-item--active' : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
 }
 
 /** Иконка «ссылка» (цепочка) — повторяет глиф из тулбара ВК. */
@@ -324,13 +347,16 @@ function CloseGlyph() {
   );
 }
 
-export function FormatMenu({ textarea, onFormat, onClose }: FormatMenuProps) {
+export function FormatMenu({ textarea, content, onFormat, onClose }: FormatMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
   const measureRef = useRef<HTMLDivElement | null>(null);
   const selectionRef = useRef<{ start: number; end: number } | null>(null);
   const linkInputRef = useRef<HTMLInputElement>(null);
   const [mode, setMode] = useState<'toolbar' | 'link'>('toolbar');
   const [linkValue, setLinkValue] = useState('');
+  const [activeState, setActiveState] = useState<FormatMenuActiveState>(() =>
+    emptyFormatMenuActiveState()
+  );
 
   useEffect(() => {
     if (!textarea) return;
@@ -343,6 +369,10 @@ export function FormatMenu({ textarea, onFormat, onClose }: FormatMenuProps) {
 
       // Сохраняем позицию выделения
       selectionRef.current = { start: selectionStart, end: selectionEnd };
+
+      setActiveState(
+        getFormatMenuActiveState(content, textarea.value, selectionStart, selectionEnd)
+      );
 
       // Если нет выделения, не показываем меню
       if (selectionStart === selectionEnd) {
@@ -478,7 +508,7 @@ export function FormatMenu({ textarea, onFormat, onClose }: FormatMenuProps) {
         measureRef.current = null;
       }
     };
-  }, [textarea, onClose, mode]);
+  }, [textarea, onClose, mode, content]);
 
   // При входе в режим ввода ссылки автофокусируем встроенное поле.
   useEffect(() => {
@@ -521,8 +551,16 @@ export function FormatMenu({ textarea, onFormat, onClose }: FormatMenuProps) {
         start: textarea.selectionStart,
         end: textarea.selectionEnd,
       };
+      const state = getFormatMenuActiveState(
+        content,
+        textarea.value,
+        textarea.selectionStart,
+        textarea.selectionEnd
+      );
+      setLinkValue(state.linkHref ?? '');
+    } else {
+      setLinkValue('');
     }
-    setLinkValue('');
     setMode('link');
   };
 
@@ -560,7 +598,8 @@ export function FormatMenu({ textarea, onFormat, onClose }: FormatMenuProps) {
         <>
           <button
             type="button"
-            className="edit-article-v2__format-menu-item"
+            className={formatMenuItemClass(activeState.isBoldActive)}
+            aria-pressed={activeState.isBoldActive}
             onMouseDown={keepSelection}
             onClick={(e) => {
               e.preventDefault();
@@ -573,7 +612,8 @@ export function FormatMenu({ textarea, onFormat, onClose }: FormatMenuProps) {
           </button>
           <button
             type="button"
-            className="edit-article-v2__format-menu-item"
+            className={formatMenuItemClass(activeState.isItalicActive)}
+            aria-pressed={activeState.isItalicActive}
             onMouseDown={keepSelection}
             onClick={(e) => {
               e.preventDefault();
@@ -586,7 +626,8 @@ export function FormatMenu({ textarea, onFormat, onClose }: FormatMenuProps) {
           </button>
           <button
             type="button"
-            className="edit-article-v2__format-menu-item"
+            className={formatMenuItemClass(activeState.isStrikeActive)}
+            aria-pressed={activeState.isStrikeActive}
             onMouseDown={keepSelection}
             onClick={(e) => {
               e.preventDefault();
@@ -599,7 +640,8 @@ export function FormatMenu({ textarea, onFormat, onClose }: FormatMenuProps) {
           </button>
           <button
             type="button"
-            className="edit-article-v2__format-menu-item"
+            className={formatMenuItemClass(activeState.isLinkActive)}
+            aria-pressed={activeState.isLinkActive}
             onMouseDown={keepSelection}
             onClick={(e) => {
               e.preventDefault();

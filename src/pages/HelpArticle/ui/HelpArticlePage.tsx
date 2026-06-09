@@ -4,7 +4,7 @@ import { Helmet } from 'react-helmet-async';
 
 import { getUserImageUrl } from '@shared/api/albums';
 import { optionalMediaSrc } from '@shared/lib/media/optionalMediaUrl';
-import { renderInlineMarkdown } from '@shared/lib/renderInlineMarkdown';
+import { renderMarkdownViaRichText } from '@shared/lib/richText';
 import type { ArticledetailsProps } from '@models';
 import { ArticleSkeleton } from '@pages/Article/ui/ArticleSkeleton';
 import { ErrorMessage } from '@shared/ui/error-message';
@@ -352,7 +352,7 @@ function ArticleContent({
 
     return (
       <>
-        {details.title && <h3 id={titleId}>{renderInlineMarkdown(details.title)}</h3>}
+        {details.title && <h3 id={titleId}>{renderMarkdownViaRichText(details.title)}</h3>}
         {details.img && (
           <div className="uncollapse">
             {Array.isArray(details.img) ? (
@@ -376,16 +376,16 @@ function ArticleContent({
             )}
           </div>
         )}
-        {details.subtitle && <h4 id={subtitleId}>{renderInlineMarkdown(details.subtitle)}</h4>}
+        {details.subtitle && <h4 id={subtitleId}>{renderMarkdownViaRichText(details.subtitle)}</h4>}
 
         {typeof details.content === 'string' ? (
-          <p>{renderInlineMarkdown(details.content)}</p>
+          <p>{renderMarkdownViaRichText(details.content)}</p>
         ) : (
           <ul>
             {details.content?.map((item, i) => {
               const text = typeof item === 'string' ? item : item.text;
               const key = typeof item === 'string' ? i : item.id;
-              return <li key={key}>{renderInlineMarkdown(text)}</li>;
+              return <li key={key}>{renderMarkdownViaRichText(text)}</li>;
             })}
           </ul>
         )}

@@ -4,7 +4,7 @@ import { Helmet } from 'react-helmet-async';
 
 import { getImageUrl } from '@shared/api/albums';
 import { optionalMediaSrc } from '@shared/lib/media/optionalMediaUrl';
-import { renderInlineMarkdown } from '@shared/lib/renderInlineMarkdown';
+import { renderMarkdownViaRichText } from '@shared/lib/richText';
 import type { ArticledetailsProps } from '@models';
 import { ArticleSkeleton } from './ArticleSkeleton';
 import { ErrorMessage } from '@shared/ui/error-message';
@@ -110,7 +110,7 @@ export function ArticlePage() {
 
     return (
       <>
-        {title && <h3>{renderInlineMarkdown(title)}</h3>}
+        {title && <h3>{renderMarkdownViaRichText(title)}</h3>}
         {carouselImages && carouselImages.length > 0 && (
           <div className="uncollapse">
             {/* #region agent log */}
@@ -144,19 +144,19 @@ export function ArticlePage() {
             />
           </div>
         )}
-        {subtitle && <h4>{renderInlineMarkdown(subtitle)}</h4>}
+        {subtitle && <h4>{renderMarkdownViaRichText(subtitle)}</h4>}
 
         {/* Разделитель */}
         {typeof content === 'string' && content === '---' ? (
           <hr />
         ) : typeof content === 'string' ? (
-          <p>{renderInlineMarkdown(content)}</p>
+          <p>{renderMarkdownViaRichText(content)}</p>
         ) : (
           <ul>
             {content?.map((item, i) => {
               const text = typeof item === 'string' ? item : item.text;
               const key = typeof item === 'string' ? i : item.id;
-              return <li key={key}>{renderInlineMarkdown(text)}</li>;
+              return <li key={key}>{renderMarkdownViaRichText(text)}</li>;
             })}
           </ul>
         )}

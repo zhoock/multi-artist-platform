@@ -1,8 +1,18 @@
 import { describe, test, expect } from '@jest/globals';
 import { screen } from '@testing-library/react';
+import { Route, Routes } from 'react-router-dom';
 import { ArticlePage } from '../ui/ArticlePage';
 import { renderWithProviders } from '@shared/lib/test-utils';
 import type { IArticles } from '@models';
+
+function renderArticlePage(options: NonNullable<Parameters<typeof renderWithProviders>[1]>) {
+  return renderWithProviders(
+    <Routes>
+      <Route path="/articles/:articleId" element={<ArticlePage />} />
+    </Routes>,
+    options
+  );
+}
 
 describe('ArticlePage integration tests', () => {
   const mockArticle: IArticles = {
@@ -357,5 +367,111 @@ describe('ArticlePage integration tests', () => {
     if (item1) {
       expect(item1).toBeInTheDocument();
     }
+  });
+
+  test('должен отрендерить nested bold+italic через RichText bridge', () => {
+    const articleWithNestedMarkdown: IArticles = {
+      ...mockArticle,
+      details: [
+        {
+          id: 1,
+          title: 'Section 1',
+          content: '**Жирный _внутри_**',
+        },
+      ],
+    };
+
+    const { container } = renderArticlePage({
+      initialEntries: ['/articles/test-article'],
+      preloadedState: {
+        lang: { current: 'en' },
+        articles: {
+          status: 'succeeded',
+          error: null,
+          data: [articleWithNestedMarkdown],
+          lastUpdated: Date.now(),
+          lastPublicArtistSlug: null,
+          inFlightFetchContextKey: null,
+          dashboard: {
+            status: 'idle',
+            error: null,
+            data: [],
+            lastUpdated: null,
+            inFlightFetchContextKey: null,
+          },
+        },
+        uiDictionary: {
+          en: {
+            status: 'idle',
+            error: null,
+            data: [],
+            lastUpdated: null,
+          },
+          ru: {
+            status: 'idle',
+            error: null,
+            data: [],
+            lastUpdated: null,
+          },
+        },
+      },
+    });
+
+    const paragraph = container.querySelector('p');
+    expect(paragraph?.innerHTML).toBe('<strong>Жирный <em>внутри</em></strong>');
+  });
+
+  test('должен отрендерить link inside bold через RichText bridge', () => {
+    const articleWithLinkInBold: IArticles = {
+      ...mockArticle,
+      details: [
+        {
+          id: 1,
+          title: 'Section 1',
+          content: '**текст [ссылка](https://x.dev)**',
+        },
+      ],
+    };
+
+    const { container } = renderArticlePage({
+      initialEntries: ['/articles/test-article'],
+      preloadedState: {
+        lang: { current: 'en' },
+        articles: {
+          status: 'succeeded',
+          error: null,
+          data: [articleWithLinkInBold],
+          lastUpdated: Date.now(),
+          lastPublicArtistSlug: null,
+          inFlightFetchContextKey: null,
+          dashboard: {
+            status: 'idle',
+            error: null,
+            data: [],
+            lastUpdated: null,
+            inFlightFetchContextKey: null,
+          },
+        },
+        uiDictionary: {
+          en: {
+            status: 'idle',
+            error: null,
+            data: [],
+            lastUpdated: null,
+          },
+          ru: {
+            status: 'idle',
+            error: null,
+            data: [],
+            lastUpdated: null,
+          },
+        },
+      },
+    });
+
+    const paragraph = container.querySelector('p');
+    expect(paragraph?.innerHTML).toBe(
+      '<strong>текст <a href="https://x.dev" target="_blank" rel="noopener noreferrer">ссылка</a></strong>'
+    );
   });
 });

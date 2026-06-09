@@ -1,5 +1,7 @@
 // src/pages/UserDashboard/components/EditArticleModalV2.utils.ts
 import type { ArticledetailsProps } from '@models';
+import type { RichText } from '@shared/lib/richText';
+import { isRichTextEmpty, markdownToRichText, richTextToMarkdown } from '@shared/lib/richText';
 
 /**
  * Типы блоков редактора (block-based, как VK)
@@ -14,20 +16,29 @@ export type BlockType =
   | 'image'
   | 'carousel';
 
+/**
+ * Элемент списка. Inline-содержимое хранится как каноническая RichText-модель;
+ * markdown остаётся форматом сериализации (см. serializeListItemsToDetailContent).
+ */
 export type ArticleListItem = {
   id: string;
-  text: string;
+  content: RichText;
 };
 
 export type Block =
-  | { id: string; type: 'paragraph'; text: string }
-  | { id: string; type: 'title'; text: string }
-  | { id: string; type: 'subtitle'; text: string }
-  | { id: string; type: 'quote'; text: string }
+  | { id: string; type: 'paragraph'; content: RichText }
+  | { id: string; type: 'title'; content: RichText }
+  | { id: string; type: 'subtitle'; content: RichText }
+  | { id: string; type: 'quote'; content: RichText }
   | { id: string; type: 'list'; items: ArticleListItem[] }
   | { id: string; type: 'divider' }
   | { id: string; type: 'image'; imageKey: string; caption?: string }
   | { id: string; type: 'carousel'; imageKeys: string[]; caption?: string };
+
+/** Пустое inline-содержимое для нового/пустого текстового блока. */
+export function emptyRichText(): RichText {
+  return markdownToRichText('');
+}
 
 export interface ArticleMeta {
   title: string;
@@ -48,12 +59,12 @@ export function generateListItemId(): string {
   return `list_item_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
 }
 
-export function createListItem(text = ''): ArticleListItem {
-  return { id: generateListItemId(), text };
+export function createListItem(markdown = ''): ArticleListItem {
+  return { id: generateListItemId(), content: markdownToRichText(markdown) };
 }
 
 export function isListBlockEmpty(items: ArticleListItem[]): boolean {
-  return items.every((item) => item.text.trim() === '');
+  return items.every((item) => isRichTextEmpty(item.content));
 }
 
 function cleanLegacyText(text: string): string {
@@ -66,7 +77,7 @@ export function parseListItemsFromDetailContent(content: unknown[]): ArticleList
     if (typeof item === 'string') {
       const text = cleanLegacyText(item).trim();
       if (!text) continue;
-      out.push(createListItem(text));
+      out.push({ id: generateListItemId(), content: markdownToRichText(text) });
       continue;
     }
     if (item && typeof item === 'object' && 'text' in item) {
@@ -74,7 +85,7 @@ export function parseListItemsFromDetailContent(content: unknown[]): ArticleList
       const text = cleanLegacyText(String(raw.text ?? '')).trim();
       if (!text) continue;
       const id = typeof raw.id === 'string' && raw.id.trim() ? raw.id.trim() : generateListItemId();
-      out.push({ id, text });
+      out.push({ id, content: markdownToRichText(text) });
     }
   }
   return out;
@@ -86,7 +97,7 @@ function serializeListItemsToDetailContent(
   return items
     .map((item) => ({
       id: item.id,
-      text: cleanLegacyText(item.text),
+      text: cleanLegacyText(richTextToMarkdown(item.content)),
     }))
     .filter((item) => item.text.trim());
 }
@@ -112,11 +123,15 @@ function detailWithBlockIdToBlock(detail: ArticledetailsProps): Block | null {
   }
 
   if (detail.title) {
-    return { id, type: 'title', text: cleanLegacyText(detail.title) };
+    return { id, type: 'title', content: markdownToRichText(cleanLegacyText(detail.title)) };
   }
 
   if (detail.subtitle) {
-    return { id, type: 'subtitle', text: cleanLegacyText(detail.subtitle) };
+    return {
+      id,
+      type: 'subtitle',
+      content: markdownToRichText(cleanLegacyText(detail.subtitle)),
+    };
   }
 
   if (detail.content === '---') {
@@ -125,9 +140,13 @@ function detailWithBlockIdToBlock(detail: ArticledetailsProps): Block | null {
 
   if (typeof detail.content === 'string') {
     if (detail.blockKind === 'quote') {
-      return { id, type: 'quote', text: cleanLegacyText(detail.content) };
+      return { id, type: 'quote', content: markdownToRichText(cleanLegacyText(detail.content)) };
     }
-    return { id, type: 'paragraph', text: cleanLegacyText(detail.content) };
+    return {
+      id,
+      type: 'paragraph',
+      content: markdownToRichText(cleanLegacyText(detail.content)),
+    };
   }
 
   if (Array.isArray(detail.content)) {
@@ -146,7 +165,7 @@ function legacyDetailToBlocks(detail: ArticledetailsProps): Block[] {
     blocks.push({
       id: detail.blockId?.trim() || generateId(),
       type: 'title',
-      text: cleanLegacyText(detail.title),
+      content: markdownToRichText(cleanLegacyText(detail.title)),
     });
   }
 
@@ -154,7 +173,7 @@ function legacyDetailToBlocks(detail: ArticledetailsProps): Block[] {
     blocks.push({
       id: generateId(),
       type: 'subtitle',
-      text: cleanLegacyText(detail.subtitle),
+      content: markdownToRichText(cleanLegacyText(detail.subtitle)),
     });
   }
 
@@ -190,7 +209,7 @@ function legacyDetailToBlocks(detail: ArticledetailsProps): Block[] {
         blocks.push({
           id: generateId(),
           type: 'paragraph',
-          text: cleanLegacyText(detail.content),
+          content: markdownToRichText(cleanLegacyText(detail.content)),
         });
       }
     } else if (Array.isArray(detail.content)) {
@@ -209,7 +228,7 @@ function legacyDetailToBlocks(detail: ArticledetailsProps): Block[] {
     detail.type !== 'image' &&
     detail.type !== 'carousel'
   ) {
-    blocks.push({ id: generateId(), type: 'paragraph', text: '' });
+    blocks.push({ id: generateId(), type: 'paragraph', content: emptyRichText() });
   }
 
   return blocks;
@@ -220,7 +239,7 @@ function legacyDetailToBlocks(detail: ArticledetailsProps): Block[] {
  */
 export function normalizeDetailsToBlocks(details: ArticledetailsProps[]): Block[] {
   if (!details || !Array.isArray(details) || details.length === 0) {
-    return [{ id: generateId(), type: 'paragraph', text: '' }];
+    return [{ id: generateId(), type: 'paragraph', content: emptyRichText() }];
   }
 
   const blocks: Block[] = [];
@@ -239,7 +258,7 @@ export function normalizeDetailsToBlocks(details: ArticledetailsProps[]): Block[
   }
 
   if (blocks.length === 0) {
-    blocks.push({ id: generateId(), type: 'paragraph', text: '' });
+    blocks.push({ id: generateId(), type: 'paragraph', content: emptyRichText() });
   }
 
   return blocks;
@@ -248,18 +267,28 @@ export function normalizeDetailsToBlocks(details: ArticledetailsProps[]): Block[
 function blockToDetail(block: Block): ArticledetailsProps | null {
   switch (block.type) {
     case 'title':
-      return { type: 'text', blockId: block.id, blockKind: 'title', title: block.text };
+      return {
+        type: 'text',
+        blockId: block.id,
+        blockKind: 'title',
+        title: richTextToMarkdown(block.content),
+      };
     case 'subtitle':
-      return { type: 'text', blockId: block.id, blockKind: 'subtitle', subtitle: block.text };
+      return {
+        type: 'text',
+        blockId: block.id,
+        blockKind: 'subtitle',
+        subtitle: richTextToMarkdown(block.content),
+      };
     case 'quote':
       return {
         type: 'text',
         blockId: block.id,
         blockKind: 'quote',
-        content: cleanLegacyText(block.text) || undefined,
+        content: cleanLegacyText(richTextToMarkdown(block.content)) || undefined,
       };
     case 'paragraph': {
-      const text = cleanLegacyText(block.text);
+      const text = cleanLegacyText(richTextToMarkdown(block.content));
       return {
         type: 'text',
         blockId: block.id,

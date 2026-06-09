@@ -37,7 +37,22 @@ import {
   debounce,
   createListItem,
   isListBlockEmpty,
+  emptyRichText,
 } from './EditArticleModalV2.utils';
+import type { InlineMark, RichText } from '@shared/lib/richText';
+import {
+  cloneRichText,
+  insertText,
+  isRichTextEmpty,
+  mapMarkdownOffsetToPlain,
+  mapPlainOffsetToMarkdown,
+  markdownToRichText,
+  normalizeRichText,
+  richTextToMarkdown,
+  setLink,
+  splitRichTextAt,
+  toggleMark,
+} from '@shared/lib/richText';
 import { SortableBlock } from '../../blocks/SortableBlock';
 import type { FormatType } from '../../blocks/BlockParagraph';
 import { SlashMenu } from '../../blocks/SlashMenu';
@@ -244,7 +259,9 @@ export function EditArticleModalV2({ isOpen, article, onClose }: EditArticleModa
         setIsLoading(false);
         setCurrentArticle(article);
         setOriginalIsDraft(true);
-        const initialBlocksValue: Block[] = [{ id: generateId(), type: 'paragraph', text: '' }];
+        const initialBlocksValue: Block[] = [
+          { id: generateId(), type: 'paragraph', content: emptyRichText() },
+        ];
         const initialMetaValue = {
           title: '',
           description: '',
@@ -458,7 +475,7 @@ export function EditArticleModalV2({ isOpen, article, onClose }: EditArticleModa
       case 'title':
       case 'subtitle':
       case 'quote':
-        return block1.text === (block2 as typeof block1).text;
+        return JSON.stringify(block1.content) === JSON.stringify((block2 as typeof block1).content);
 
       case 'list':
         return JSON.stringify(block1.items) === JSON.stringify((block2 as typeof block1).items);
@@ -691,13 +708,13 @@ export function EditArticleModalV2({ isOpen, article, onClose }: EditArticleModa
   const createBlock = useCallback((type: BlockType): Block => {
     switch (type) {
       case 'paragraph':
-        return { id: generateId(), type: 'paragraph', text: '' };
+        return { id: generateId(), type: 'paragraph', content: emptyRichText() };
       case 'title':
-        return { id: generateId(), type: 'title', text: '' };
+        return { id: generateId(), type: 'title', content: emptyRichText() };
       case 'subtitle':
-        return { id: generateId(), type: 'subtitle', text: '' };
+        return { id: generateId(), type: 'subtitle', content: emptyRichText() };
       case 'quote':
-        return { id: generateId(), type: 'quote', text: '' };
+        return { id: generateId(), type: 'quote', content: emptyRichText() };
       case 'list':
         return { id: generateId(), type: 'list', items: [createListItem('')] };
       case 'divider':
@@ -774,7 +791,7 @@ export function EditArticleModalV2({ isOpen, article, onClose }: EditArticleModa
               block.type === 'quote')
           ) {
             // Правило 2: Приоритет новым пустым блокам (созданным Return)
-            if (block.text.trim() === '') {
+            if (isRichTextEmpty(block.content)) {
               emptyBlockCandidate = block;
             } else if (!filledBlockCandidate) {
               filledBlockCandidate = block;
@@ -805,7 +822,7 @@ export function EditArticleModalV2({ isOpen, article, onClose }: EditArticleModa
             block.type === 'quote')
         ) {
           // Правило 2: Приоритет новым пустым блокам (созданным Return)
-          if (block.text.trim() === '') {
+          if (isRichTextEmpty(block.content)) {
             emptyBlockCandidate = block;
           } else if (!filledBlockCandidate) {
             filledBlockCandidate = block;
@@ -1021,7 +1038,11 @@ export function EditArticleModalV2({ isOpen, article, onClose }: EditArticleModa
         const deletedBlock = prev.find((b) => b.id === blockId);
         const filtered = prev.filter((b) => b.id !== blockId);
         // Если блоков не осталось, создаем пустой paragraph
-        const newParagraph: Block = { id: generateId(), type: 'paragraph', text: '' };
+        const newParagraph: Block = {
+          id: generateId(),
+          type: 'paragraph',
+          content: emptyRichText(),
+        };
         const newBlocks = filtered.length > 0 ? filtered : [newParagraph];
 
         // IMPORTANT: если forcedFocus уже задан — НЕ переопределяем его автологикой
@@ -1036,7 +1057,11 @@ export function EditArticleModalV2({ isOpen, article, onClose }: EditArticleModa
             pendingFocusRef.current = { blockId: targetBlock.id, position: 'end' };
           } else {
             // Если не нашли целевой блок, создаем новый пустой paragraph
-            const newEmptyParagraph: Block = { id: generateId(), type: 'paragraph', text: '' };
+            const newEmptyParagraph: Block = {
+              id: generateId(),
+              type: 'paragraph',
+              content: emptyRichText(),
+            };
             pendingFocusRef.current = { blockId: newEmptyParagraph.id, position: 'start' };
             // Добавляем новый блок в массив
             return [...newBlocks, newEmptyParagraph];
@@ -1186,7 +1211,7 @@ export function EditArticleModalV2({ isOpen, article, onClose }: EditArticleModa
   const updateBlock = useCallback(
     (blockId: string, updates: Partial<Block>, shouldSaveHistory = false) => {
       // Если это текстовое изменение, группируем через debounce
-      const isTextChange = 'text' in updates || 'items' in updates || 'caption' in updates;
+      const isTextChange = 'content' in updates || 'items' in updates || 'caption' in updates;
 
       if (isTextChange && !shouldSaveHistory) {
         // Отменяем предыдущий таймер
@@ -1217,14 +1242,14 @@ export function EditArticleModalV2({ isOpen, article, onClose }: EditArticleModa
                 updatedBlock.type === 'title' ||
                 updatedBlock.type === 'subtitle' ||
                 updatedBlock.type === 'quote') &&
-              updatedBlock.text.trim() !== ''
+              !isRichTextEmpty(updatedBlock.content)
             ) {
               setVkInserter(null);
             }
             // Для списка проверяем, что есть непустые элементы
             if (
               updatedBlock.type === 'list' &&
-              updatedBlock.items.some((item) => item.text.trim() !== '')
+              updatedBlock.items.some((item) => !isRichTextEmpty(item.content))
             ) {
               setVkInserter(null);
             }
@@ -1285,23 +1310,23 @@ export function EditArticleModalV2({ isOpen, article, onClose }: EditArticleModa
 
           const textarea = document.activeElement as HTMLTextAreaElement;
           if (textarea) {
-            const cursorPos = textarea.selectionStart;
-            const text = block.type === 'paragraph' ? block.text : block.text;
-            const beforeText = text.substring(0, cursorPos);
-            const afterText = text.substring(cursorPos);
+            // Каретка в textarea — это offset по markdown-буферу; переводим в
+            // plain-offset, чтобы разрезать каноническую RichText через operations.ts.
+            const plainPos = mapMarkdownOffsetToPlain(textarea.value, textarea.selectionStart);
+            const [before, after] = splitRichTextAt(block.content, plainPos);
 
             // Обновляем текущий блок
-            updateBlock(blockId, { text: beforeText } as Partial<Block>, true);
+            updateBlock(blockId, { content: before } as Partial<Block>, true);
 
             // Вставляем новый блок после
             const newBlock: Block =
               block.type === 'paragraph'
-                ? { id: generateId(), type: 'paragraph', text: afterText }
+                ? { id: generateId(), type: 'paragraph', content: after }
                 : block.type === 'title'
-                  ? { id: generateId(), type: 'title', text: afterText }
+                  ? { id: generateId(), type: 'title', content: after }
                   : block.type === 'subtitle'
-                    ? { id: generateId(), type: 'subtitle', text: afterText }
-                    : { id: generateId(), type: 'quote', text: afterText };
+                    ? { id: generateId(), type: 'subtitle', content: after }
+                    : { id: generateId(), type: 'quote', content: after };
 
             setBlocks((prev) => {
               const newBlocks = [...prev];
@@ -1378,12 +1403,13 @@ export function EditArticleModalV2({ isOpen, article, onClose }: EditArticleModa
             prevBlock.type === 'subtitle' ||
             prevBlock.type === 'quote')
         ) {
-          const mergedText = prevBlock.text + currentBlock.text;
-          const mergedType = prevBlock.type; // Сохраняем тип предыдущего блока
-          const prevTextLength = prevBlock.text.length; // Сохраняем длину текста до слияния
+          const merged = normalizeRichText([...prevBlock.content, ...currentBlock.content]);
+          // Каретка после слияния — в markdown-координатах буфера, на стыке;
+          // это длина markdown предыдущего блока до слияния.
+          const prevTextLength = richTextToMarkdown(prevBlock.content).length;
 
           // Обновляем предыдущий блок
-          updateBlock(prevBlock.id, { text: mergedText } as Partial<Block>);
+          updateBlock(prevBlock.id, { content: merged } as Partial<Block>);
 
           // Удаляем текущий блок с явным указанием фокуса в место слияния
           deleteBlock(blockId, { blockId: prevBlock.id, position: prevTextLength });
@@ -1429,7 +1455,8 @@ export function EditArticleModalV2({ isOpen, article, onClose }: EditArticleModa
       if (blockIndex === -1) return;
 
       const block = blocks[blockIndex];
-      const duplicatedBlock = { ...block, id: generateId() };
+      // Глубокая копия, чтобы дубликат не делил вложенные content/items с оригиналом.
+      const duplicatedBlock: Block = JSON.parse(JSON.stringify({ ...block, id: generateId() }));
 
       setBlocks((prev) => {
         const newBlocks = [...prev];
@@ -1509,16 +1536,16 @@ export function EditArticleModalV2({ isOpen, article, onClose }: EditArticleModa
       let newBlock: Block;
       switch (newType) {
         case 'paragraph':
-          newBlock = { id: blockId, type: 'paragraph', text: '' };
+          newBlock = { id: blockId, type: 'paragraph', content: emptyRichText() };
           break;
         case 'title':
-          newBlock = { id: blockId, type: 'title', text: '' };
+          newBlock = { id: blockId, type: 'title', content: emptyRichText() };
           break;
         case 'subtitle':
-          newBlock = { id: blockId, type: 'subtitle', text: '' };
+          newBlock = { id: blockId, type: 'subtitle', content: emptyRichText() };
           break;
         case 'quote':
-          newBlock = { id: blockId, type: 'quote', text: '' };
+          newBlock = { id: blockId, type: 'quote', content: emptyRichText() };
           break;
         case 'list':
           newBlock = { id: blockId, type: 'list', items: [createListItem('')] };
@@ -1545,7 +1572,7 @@ export function EditArticleModalV2({ isOpen, article, onClose }: EditArticleModa
           newBlock.type === 'subtitle' ||
           newBlock.type === 'quote')
       ) {
-        (newBlock as any).text = block.text;
+        newBlock.content = cloneRichText(block.content);
       }
 
       const blockIndex = blocks.findIndex((b) => b.id === blockId);
@@ -1629,15 +1656,19 @@ export function EditArticleModalV2({ isOpen, article, onClose }: EditArticleModa
         return;
       }
 
-      // Удаляем "/" из текста
-      const textBefore = block.text.substring(0, slashMenu.cursorPos - 1);
-      const textAfter = block.text.substring(slashMenu.cursorPos);
-      const newText = textBefore + textAfter;
+      // Удаляем "/" из markdown-буфера (cursorPos — offset по markdown textarea),
+      // затем пересобираем каноническую RichText.
+      const textarea = document.querySelector(
+        `[data-block-id="${slashMenu.blockId}"] textarea`
+      ) as HTMLTextAreaElement | null;
+      const md = textarea?.value ?? richTextToMarkdown(block.content);
+      const newMd = md.slice(0, slashMenu.cursorPos - 1) + md.slice(slashMenu.cursorPos);
+      const newContent = markdownToRichText(newMd);
 
       // Преобразуем текущий блок в выбранный тип
       if (type === block.type) {
         // Если тип совпадает, просто удаляем "/"
-        updateBlock(slashMenu.blockId, { text: newText } as Partial<Block>);
+        updateBlock(slashMenu.blockId, { content: newContent } as Partial<Block>);
       } else {
         // Преобразуем блок в новый тип
         const newBlock = createBlock(type as BlockType);
@@ -1647,7 +1678,7 @@ export function EditArticleModalV2({ isOpen, article, onClose }: EditArticleModa
           newBlock.type === 'subtitle' ||
           newBlock.type === 'quote'
         ) {
-          (newBlock as any).text = newText;
+          newBlock.content = newContent;
         }
 
         const blockIndex = blocks.findIndex((b) => b.id === slashMenu.blockId);
@@ -1717,12 +1748,10 @@ export function EditArticleModalV2({ isOpen, article, onClose }: EditArticleModa
         ) {
           const textarea = document.activeElement as HTMLTextAreaElement;
           if (textarea) {
-            const cursorPos = textarea.selectionStart;
-            const newText =
-              block.text.substring(0, cursorPos) +
-              text +
-              block.text.substring(textarea.selectionEnd);
-            updateBlock(blockId, { text: newText } as Partial<Block>);
+            const md = textarea.value;
+            const newMd =
+              md.slice(0, textarea.selectionStart) + text + md.slice(textarea.selectionEnd);
+            updateBlock(blockId, { content: markdownToRichText(newMd) } as Partial<Block>);
           }
         }
       } else if (text) {
@@ -1755,14 +1784,12 @@ export function EditArticleModalV2({ isOpen, article, onClose }: EditArticleModa
           ) {
             const textarea = document.activeElement as HTMLTextAreaElement;
             if (textarea) {
+              const md = textarea.value;
               const cursorPos = textarea.selectionStart;
-              const newText =
-                block.text.substring(0, cursorPos) +
-                text +
-                block.text.substring(textarea.selectionEnd);
-              updateBlock(blockId, { text: newText } as Partial<Block>);
+              const newMd = md.slice(0, cursorPos) + text + md.slice(textarea.selectionEnd);
+              updateBlock(blockId, { content: markdownToRichText(newMd) } as Partial<Block>);
 
-              // Устанавливаем курсор после вставленного текста
+              // Устанавливаем курсор после вставленного текста (markdown-offset)
               setTimeout(() => {
                 textarea.focus();
                 const newCursorPos = cursorPos + text.length;
@@ -1807,75 +1834,63 @@ export function EditArticleModalV2({ isOpen, article, onClose }: EditArticleModa
       ) as HTMLTextAreaElement;
       if (!textarea) return;
 
+      // Inline-форматирование применяется к канонической RichText через
+      // operations.ts. Выделение в textarea — markdown-offsets; переводим их в
+      // plain-offsets, применяем toggleMark/setLink, затем ресинкаем буфер
+      // (через content) и восстанавливаем выделение в новых markdown-координатах.
+      const inlineMarkFor = (formatType: FormatType): InlineMark | null => {
+        if (formatType === 'bold') return { type: 'bold' };
+        if (formatType === 'italic') return { type: 'italic' };
+        if (formatType === 'strikethrough') return { type: 'strike' };
+        return null;
+      };
+
+      const content = block.content;
+
       // Восстанавливаем фокус на textarea перед получением позиции курсора
       // Используем requestAnimationFrame чтобы убедиться, что событие клика обработано
       requestAnimationFrame(() => {
         textarea.focus();
 
-        const selectionStart = textarea.selectionStart;
-        const selectionEnd = textarea.selectionEnd;
+        const md = textarea.value;
+        const plainStart = mapMarkdownOffsetToPlain(md, textarea.selectionStart);
+        const plainEnd = mapMarkdownOffsetToPlain(md, textarea.selectionEnd);
 
-        if (selectionStart === selectionEnd) {
-          // Нет выделения - вставляем шаблон
-          let template = '';
-          let cursorOffset = 0;
+        let newContent: RichText;
+        let selPlainStart = plainStart;
+        let selPlainEnd: number;
 
-          if (type === 'bold') {
-            template = '**текст**';
-            cursorOffset = 2;
-          } else if (type === 'italic') {
-            template = '_текст_';
-            cursorOffset = 1;
-          } else if (type === 'strikethrough') {
-            template = '~~текст~~';
-            cursorOffset = 2;
-          } else if (type === 'link') {
-            template = url ? `[текст](${url})` : '[текст](url)';
-            cursorOffset = 1;
+        if (plainStart === plainEnd) {
+          // Нет выделения — вставляем плейсхолдер и применяем mark к нему.
+          const placeholder = 'текст';
+          const withText = insertText(content, plainStart, placeholder);
+          selPlainEnd = plainStart + placeholder.length;
+          if (type === 'link') {
+            newContent = setLink(withText, plainStart, selPlainEnd, url ?? 'url');
+          } else {
+            const mark = inlineMarkFor(type);
+            newContent = mark ? toggleMark(withText, plainStart, selPlainEnd, mark) : withText;
           }
-
-          const newText =
-            block.text.substring(0, selectionStart) + template + block.text.substring(selectionEnd);
-
-          updateBlock(blockId, { text: newText } as Partial<Block>);
-
-          // Устанавливаем курсор внутрь шаблона
-          setTimeout(() => {
-            textarea.focus();
-            textarea.setSelectionRange(
-              selectionStart + cursorOffset,
-              selectionStart + cursorOffset + 6
-            );
-          }, 0);
         } else {
-          // Есть выделение - оборачиваем в markdown
-          const selectedText = block.text.substring(selectionStart, selectionEnd);
-          let wrappedText = '';
-
-          if (type === 'bold') {
-            wrappedText = `**${selectedText}**`;
-          } else if (type === 'italic') {
-            wrappedText = `_${selectedText}_`;
-          } else if (type === 'strikethrough') {
-            wrappedText = `~~${selectedText}~~`;
-          } else if (type === 'link') {
-            wrappedText = `[${selectedText}](${url ?? 'url'})`;
+          selPlainEnd = plainEnd;
+          if (type === 'link') {
+            newContent = setLink(content, plainStart, plainEnd, url ?? 'url');
+          } else {
+            const mark = inlineMarkFor(type);
+            newContent = mark ? toggleMark(content, plainStart, plainEnd, mark) : content;
           }
-
-          const newText =
-            block.text.substring(0, selectionStart) +
-            wrappedText +
-            block.text.substring(selectionEnd);
-
-          updateBlock(blockId, { text: newText } as Partial<Block>);
-
-          // Устанавливаем курсор после обёрнутого текста
-          setTimeout(() => {
-            textarea.focus();
-            const newCursorPos = selectionStart + wrappedText.length;
-            textarea.setSelectionRange(newCursorPos, newCursorPos);
-          }, 0);
         }
+
+        updateBlock(blockId, { content: newContent } as Partial<Block>, true);
+
+        // Восстанавливаем выделение в новом (ресинкнутом) markdown-буфере.
+        const newMd = richTextToMarkdown(newContent);
+        const newMdStart = mapPlainOffsetToMarkdown(newMd, selPlainStart);
+        const newMdEnd = mapPlainOffsetToMarkdown(newMd, selPlainEnd);
+        setTimeout(() => {
+          textarea.focus();
+          textarea.setSelectionRange(newMdStart, newMdEnd);
+        }, 0);
       });
     },
     [blocks, updateBlock, convertBlockType]
@@ -2041,7 +2056,7 @@ export function EditArticleModalV2({ isOpen, article, onClose }: EditArticleModa
                                 block.type === 'title' ||
                                 block.type === 'subtitle' ||
                                 block.type === 'quote') &&
-                                block.text.trim() === '') ||
+                                isRichTextEmpty(block.content)) ||
                                 (block.type === 'list' && isListBlockEmpty(block.items)))
                             }
                             onUpdate={updateBlock}
@@ -2054,7 +2069,7 @@ export function EditArticleModalV2({ isOpen, article, onClose }: EditArticleModa
                                   block.type === 'title' ||
                                   block.type === 'subtitle' ||
                                   block.type === 'quote') &&
-                                  block.text.trim() === '') ||
+                                  isRichTextEmpty(block.content)) ||
                                 (block.type === 'list' && isListBlockEmpty(block.items));
                               if (isBlockEmpty && vkInserter?.afterBlockId !== block.id) {
                                 setVkInserter({ afterBlockId: block.id });
@@ -2104,7 +2119,7 @@ export function EditArticleModalV2({ isOpen, article, onClose }: EditArticleModa
                                         block.type === 'title' ||
                                         block.type === 'subtitle' ||
                                         block.type === 'quote') &&
-                                      block.text.trim() === '';
+                                      isRichTextEmpty(block.content);
                                     const isListEmpty =
                                       block.type === 'list' && isListBlockEmpty(block.items);
                                     if (!isBlockEmpty && !isListEmpty) {

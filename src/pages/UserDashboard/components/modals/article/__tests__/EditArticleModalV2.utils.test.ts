@@ -4,6 +4,7 @@ import {
   generateId,
   normalizeDetailsToBlocks,
 } from '../EditArticleModalV2.utils';
+import { markdownToRichText, richTextToPlainText } from '@shared/lib/richText';
 
 describe('EditArticleModalV2.utils stable ids', () => {
   it('persists blockId and list item ids through save/load roundtrip', () => {
@@ -14,13 +15,14 @@ describe('EditArticleModalV2.utils stable ids', () => {
     itemB.id = 'item-b';
 
     const blocks = [
-      { id: blockId, type: 'title' as const, text: 'Section title' },
+      { id: blockId, type: 'title' as const, content: markdownToRichText('Section title') },
       { id: generateId(), type: 'list' as const, items: [itemA, itemB] },
     ];
 
     const details = blocksToDetails(blocks);
     expect(details[0].blockId).toBe(blockId);
     expect(details[0].blockKind).toBe('title');
+    expect(details[0].title).toBe('Section title');
     expect(details[1].blockKind).toBe('list');
     expect(details[1].content).toEqual([
       { id: 'item-a', text: 'First' },
@@ -29,11 +31,14 @@ describe('EditArticleModalV2.utils stable ids', () => {
 
     const loaded = normalizeDetailsToBlocks(details);
     expect(loaded[0].id).toBe(blockId);
+    if (loaded[0].type !== 'title') throw new Error('expected title block');
+    expect(richTextToPlainText(loaded[0].content)).toBe('Section title');
     expect(loaded[1].type).toBe('list');
     if (loaded[1].type === 'list') {
-      expect(loaded[1].items).toEqual([
-        { id: 'item-a', text: 'First' },
-        { id: 'item-b', text: 'Second' },
+      expect(loaded[1].items.map((item) => item.id)).toEqual(['item-a', 'item-b']);
+      expect(loaded[1].items.map((item) => richTextToPlainText(item.content))).toEqual([
+        'First',
+        'Second',
       ]);
     }
   });
@@ -53,8 +58,8 @@ describe('EditArticleModalV2.utils stable ids', () => {
     expect(loaded[0].id).toBe(listBlockId);
     if (loaded[0].type !== 'list') throw new Error('expected list block');
     expect(loaded[0].items).toHaveLength(2);
-    expect(loaded[0].items[0].text).toBe('Alpha');
-    expect(loaded[0].items[1].text).toBe('Beta');
+    expect(richTextToPlainText(loaded[0].items[0].content)).toBe('Alpha');
+    expect(richTextToPlainText(loaded[0].items[1].content)).toBe('Beta');
     expect(loaded[0].items[0].id).toEqual(expect.any(String));
     expect(loaded[0].items[1].id).toEqual(expect.any(String));
   });
@@ -63,8 +68,8 @@ describe('EditArticleModalV2.utils stable ids', () => {
     const paragraphId = generateId();
     const quoteId = generateId();
     const details = blocksToDetails([
-      { id: paragraphId, type: 'paragraph', text: 'Body' },
-      { id: quoteId, type: 'quote', text: 'Quote text' },
+      { id: paragraphId, type: 'paragraph', content: markdownToRichText('Body') },
+      { id: quoteId, type: 'quote', content: markdownToRichText('Quote text') },
     ]);
 
     expect(details).toHaveLength(2);
@@ -78,6 +83,18 @@ describe('EditArticleModalV2.utils stable ids', () => {
       blockKind: 'quote',
       content: 'Quote text',
     });
+  });
+
+  it('preserves inline markdown through the content round-trip', () => {
+    const blockId = generateId();
+    const details = blocksToDetails([
+      { id: blockId, type: 'paragraph', content: markdownToRichText('**bold** and _italic_') },
+    ]);
+    expect(details[0].content).toBe('**bold** and _italic_');
+
+    const loaded = normalizeDetailsToBlocks(details);
+    if (loaded[0].type !== 'paragraph') throw new Error('expected paragraph block');
+    expect(richTextToPlainText(loaded[0].content)).toBe('bold and italic');
   });
 
   it('assigns ids to pasted list lines', () => {

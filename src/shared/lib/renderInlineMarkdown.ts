@@ -1,6 +1,8 @@
 // src/shared/lib/renderInlineMarkdown.ts
 import { createElement, Fragment, type ReactNode } from 'react';
 
+import { sanitizeHref } from './richText/sanitizeHref';
+
 /**
  * Безопасный рендеринг inline-markdown для статей.
  *
@@ -41,31 +43,6 @@ const DELIMITERS: DelimiterRule[] = [
 ];
 
 const LINK_PATTERN = /^\[([^\]]*)\]\(([^)\s]+)\)/;
-
-/**
- * Разрешаем только безопасные схемы ссылок. Всё потенциально опасное
- * (javascript:, data:, vbscript: и т.п.) отбрасываем, чтобы не было XSS.
- * Относительные ссылки и якоря считаются безопасными.
- */
-function sanitizeHref(rawHref: string): string | null {
-  const href = rawHref.trim();
-  if (href === '') return null;
-
-  // Относительные пути, якоря и protocol-relative — безопасны.
-  if (/^(\/|#|\.|\?)/.test(href) || /^\/\//.test(href)) {
-    return href;
-  }
-
-  const schemeMatch = /^([a-zA-Z][a-zA-Z0-9+.-]*):/.exec(href);
-  if (!schemeMatch) {
-    // Нет схемы (например, "example.com/path") — трактуем как внешнюю https-ссылку.
-    return `https://${href}`;
-  }
-
-  const scheme = schemeMatch[1].toLowerCase();
-  const allowed = ['http', 'https', 'mailto', 'tel'];
-  return allowed.includes(scheme) ? href : null;
-}
 
 function findClosing(text: string, from: number, marker: string): number {
   let index = from;

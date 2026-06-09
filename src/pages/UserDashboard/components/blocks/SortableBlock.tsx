@@ -2,6 +2,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { isRichTextEmpty } from '@shared/lib/richText';
 import type { Block } from '../modals/article/EditArticleModalV2.utils';
 import { isListBlockEmpty } from '../modals/article/EditArticleModalV2.utils';
 import { BlockParagraph, type FormatType } from './BlockParagraph';
@@ -83,8 +84,8 @@ export function SortableBlock({
         return (
           <BlockParagraph
             blockId={block.id}
-            value={block.text}
-            onChange={(text) => onUpdate(block.id, { text } as Partial<Block>)}
+            value={block.content}
+            onChange={(content) => onUpdate(block.id, { content } as Partial<Block>)}
             onFocus={() => onFocus(block.id)}
             onBlur={onBlur}
             onEnter={(atEnd) => onEnter(block.id, atEnd)}
@@ -98,8 +99,8 @@ export function SortableBlock({
         return (
           <BlockTitle
             blockId={block.id}
-            value={block.text}
-            onChange={(text) => onUpdate(block.id, { text } as Partial<Block>)}
+            value={block.content}
+            onChange={(content) => onUpdate(block.id, { content } as Partial<Block>)}
             onFocus={() => onFocus(block.id)}
             onBlur={onBlur}
             onEnter={(atEnd) => onEnter(block.id, atEnd)}
@@ -111,8 +112,8 @@ export function SortableBlock({
         return (
           <BlockSubtitle
             blockId={block.id}
-            value={block.text}
-            onChange={(text) => onUpdate(block.id, { text } as Partial<Block>)}
+            value={block.content}
+            onChange={(content) => onUpdate(block.id, { content } as Partial<Block>)}
             onFocus={() => onFocus(block.id)}
             onBlur={onBlur}
             onEnter={(atEnd) => onEnter(block.id, atEnd)}
@@ -124,8 +125,8 @@ export function SortableBlock({
         return (
           <BlockQuote
             blockId={block.id}
-            value={block.text}
-            onChange={(text) => onUpdate(block.id, { text } as Partial<Block>)}
+            value={block.content}
+            onChange={(content) => onUpdate(block.id, { content } as Partial<Block>)}
             onFocus={() => onFocus(block.id)}
             onBlur={onBlur}
             onEnter={(atEnd) => onEnter(block.id, atEnd)}
@@ -191,7 +192,7 @@ export function SortableBlock({
       block.type === 'subtitle' ||
       block.type === 'quote'
     ) {
-      return block.text.trim() === '';
+      return isRichTextEmpty(block.content);
     }
     if (block.type === 'list') {
       return isListBlockEmpty(block.items);
