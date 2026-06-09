@@ -1,6 +1,6 @@
 // src/pages/UserDashboard/components/blocks/BlockTitle.tsx
 import React, { useRef, useEffect, useState } from 'react';
-import { FormatMenu } from './BlockParagraph';
+import { FormatMenu, type FormatType } from './BlockParagraph';
 
 interface BlockTitleProps {
   value: string;
@@ -9,7 +9,7 @@ interface BlockTitleProps {
   onBlur?: () => void;
   onEnter?: (atEnd: boolean) => void;
   onBackspace?: (isEmpty: boolean, atStart?: boolean) => void;
-  onFormat?: (type: 'bold' | 'italic' | 'link') => void;
+  onFormat?: (type: FormatType, url?: string) => void;
   placeholder?: string;
   blockId?: string;
 }
@@ -128,7 +128,11 @@ export function BlockTitle({
         onFocus={onFocus}
         onBlur={(e) => {
           setTimeout(() => {
-            if (document.activeElement !== textareaRef.current) {
+            const active = document.activeElement;
+            if (
+              active !== textareaRef.current &&
+              !active?.closest('.edit-article-v2__format-menu')
+            ) {
               setShowFormatMenu(false);
             }
           }, 100);

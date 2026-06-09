@@ -257,12 +257,6 @@ function getArticlePreviewText(article: IArticles): string {
     // Старый формат: type: 'text' с content
     if (blockType === 'text') {
       const content = (block as any).content;
-      const strong = (block as any).strong;
-
-      // Добавляем strong, если есть
-      if (strong && typeof strong === 'string' && strong.trim()) {
-        textParts.push(strong.trim());
-      }
 
       // Добавляем content
       if (typeof content === 'string' && content.trim()) {
@@ -281,6 +275,7 @@ function getArticlePreviewText(article: IArticles): string {
         // Убираем markdown разметку для превью
         const cleanText = text
           .replace(/\*\*(.*?)\*\*/g, '$1') // Убираем **bold**
+          .replace(/~~(.*?)~~/g, '$1') // Убираем ~~strikethrough~~
           .replace(/_(.*?)_/g, '$1') // Убираем _italic_
           .replace(/\[(.*?)\]\(.*?\)/g, '$1') // Убираем [link](url)
           .trim();

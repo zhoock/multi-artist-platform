@@ -127,11 +127,7 @@ function detailWithBlockIdToBlock(detail: ArticledetailsProps): Block | null {
     if (detail.blockKind === 'quote') {
       return { id, type: 'quote', text: cleanLegacyText(detail.content) };
     }
-    let text = cleanLegacyText(detail.content);
-    if (detail.strong) {
-      text = `**${detail.strong}** ${text}`;
-    }
-    return { id, type: 'paragraph', text };
+    return { id, type: 'paragraph', text: cleanLegacyText(detail.content) };
   }
 
   if (Array.isArray(detail.content)) {
@@ -191,11 +187,11 @@ function legacyDetailToBlocks(detail: ArticledetailsProps): Block[] {
       if (detail.content === '---') {
         blocks.push({ id: generateId(), type: 'divider' });
       } else {
-        let text = cleanLegacyText(detail.content);
-        if (detail.strong) {
-          text = `**${detail.strong}** ${text}`;
-        }
-        blocks.push({ id: generateId(), type: 'paragraph', text });
+        blocks.push({
+          id: generateId(),
+          type: 'paragraph',
+          text: cleanLegacyText(detail.content),
+        });
       }
     } else if (Array.isArray(detail.content)) {
       const items = parseListItemsFromDetailContent(detail.content);
@@ -263,19 +259,12 @@ function blockToDetail(block: Block): ArticledetailsProps | null {
         content: cleanLegacyText(block.text) || undefined,
       };
     case 'paragraph': {
-      let text = cleanLegacyText(block.text);
-      let strong: string | undefined;
-      const strongMatch = text.match(/^\*\*(.+?)\*\*\s*(.*)$/);
-      if (strongMatch) {
-        strong = strongMatch[1];
-        text = strongMatch[2];
-      }
+      const text = cleanLegacyText(block.text);
       return {
         type: 'text',
         blockId: block.id,
         blockKind: 'paragraph',
         content: text || undefined,
-        ...(strong ? { strong } : {}),
       };
     }
     case 'list': {
@@ -327,7 +316,6 @@ function hasContent(detail: Partial<ArticledetailsProps>): boolean {
     detail.title ||
     detail.subtitle ||
     detail.content ||
-    detail.strong ||
     detail.type === 'image' ||
     detail.type === 'carousel'
   );

@@ -737,29 +737,60 @@ dialog {
       position: relative;
     }
 
+    // Floating selection toolbar — поведение и геометрия как в редакторе статей ВК,
+    // но в тёмной палитре сайта.
+    @keyframes edit-article-format-menu-in {
+      from {
+        opacity: 0;
+        transform: translateY(6px) scale(0.98);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
     &__format-menu {
       position: fixed;
       z-index: 1000;
       display: flex;
-      padding: var(--ms-02);
+      height: 44px;
+      padding: 0 6px;
       background: var(--dashboard-card-bg);
       border: 1px solid var(--dashboard-card-border);
-      border-radius: var(--ms-01);
-      box-shadow: 0 4px 12px var(--dashboard-shadow);
-      gap: var(--ms-02);
+      border-radius: 12px;
+      box-shadow:
+        0 6px 20px var(--dashboard-shadow),
+        0 2px 6px rgb(0 0 0 / 25%);
+      gap: 2px;
       pointer-events: auto;
+      align-items: center;
+      transform-origin: center bottom;
+      animation: edit-article-format-menu-in 0.12s ease-out;
+      user-select: none;
+
+      // Режим ввода ссылки: панель превращается в поле ввода.
+      &--link {
+        height: 44px;
+        padding: 0 8px 0 14px;
+        gap: 8px;
+      }
     }
 
     &__format-menu-item {
       display: flex;
-      width: calc(var(--ms-0) * 1.5);
-      height: calc(var(--ms-0) * 1.5);
+      width: 34px;
+      height: 34px;
+      padding: 0;
       color: var(--dashboard-text-primary);
-      font-size: var(--ms-0);
+      font-size: 17px;
+      font-family: 'Georgia', 'Times New Roman', serif;
+      line-height: 1;
       background: transparent;
       border: none;
-      border-radius: var(--ms-01);
-      transition: background-color 0.2s;
+      border-radius: 8px;
+      transition: background-color 0.15s ease;
       cursor: pointer;
       align-items: center;
       justify-content: center;
@@ -768,8 +799,79 @@ dialog {
         background: var(--dashboard-hover-bg);
       }
 
-      em {
-        font-style: italic;
+      svg {
+        display: block;
+      }
+
+      // Заголовок (H) и подзаголовок (h) — разница в кегле, как в ВК.
+      &--h1 span {
+        font-weight: 700;
+        font-size: 19px;
+      }
+
+      &--h2 span {
+        font-weight: 700;
+        font-size: 14px;
+      }
+    }
+
+    // Вертикальный разделитель групп кнопок.
+    &__format-menu-divider {
+      width: 1px;
+      height: 22px;
+      margin: 0 4px;
+      background: var(--dashboard-divider);
+      flex: 0 0 auto;
+    }
+
+    // Встроенное поле ввода ссылки (link-mode).
+    &__format-menu-link-field {
+      display: flex;
+      width: 260px;
+      align-items: center;
+      gap: 6px;
+    }
+
+    &__format-menu-link-input {
+      flex: 1 1 auto;
+      min-width: 0;
+      height: 28px;
+      padding: 0;
+      color: var(--dashboard-text-primary);
+      font-size: 15px;
+      background: transparent;
+      border: none;
+      outline: none;
+
+      &::placeholder {
+        color: var(--dashboard-text-secondary);
+      }
+    }
+
+    &__format-menu-link-close {
+      display: flex;
+      width: 28px;
+      height: 28px;
+      padding: 0;
+      color: var(--dashboard-text-secondary);
+      background: transparent;
+      border: none;
+      border-radius: 8px;
+      transition:
+        background-color 0.15s ease,
+        color 0.15s ease;
+      cursor: pointer;
+      align-items: center;
+      justify-content: center;
+      flex: 0 0 auto;
+
+      &:hover {
+        color: var(--dashboard-text-primary);
+        background: var(--dashboard-hover-bg);
+      }
+
+      svg {
+        display: block;
       }
     }
 

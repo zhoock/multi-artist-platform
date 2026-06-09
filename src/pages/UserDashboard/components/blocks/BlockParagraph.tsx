@@ -1,6 +1,20 @@
 // src/pages/UserDashboard/components/blocks/BlockParagraph.tsx
 import React, { useRef, useEffect, useState } from 'react';
 
+/**
+ * Набор действий floating-тулбара выделения — строго как в редакторе статей ВКонтакте.
+ * Инлайн-форматирование (bold/italic/strikethrough/link) + блочные стили
+ * (heading-large/heading-small/quote).
+ */
+export type FormatType =
+  | 'bold'
+  | 'italic'
+  | 'strikethrough'
+  | 'link'
+  | 'heading-large'
+  | 'heading-small'
+  | 'quote';
+
 interface BlockParagraphProps {
   value: string;
   onChange: (text: string) => void;
@@ -9,7 +23,7 @@ interface BlockParagraphProps {
   onEnter?: (atEnd: boolean) => void;
   onBackspace?: (isEmpty: boolean, atStart?: boolean) => void;
   onSlash?: (position: { top: number; left: number }, cursorPos: number) => void;
-  onFormat?: (type: 'bold' | 'italic' | 'link') => void;
+  onFormat?: (type: FormatType, url?: string) => void;
   onPaste?: (text: string, files: File[]) => void;
   placeholder?: string;
   blockId?: string;
@@ -230,8 +244,13 @@ export function BlockParagraph({
           onBlur={(e) => {
             // Скрываем меню при потере фокуса с небольшой задержкой
             // на случай, если пользователь кликает на кнопки меню
+            // или вводит ссылку во встроенном поле link-режима.
             setTimeout(() => {
-              if (document.activeElement !== textareaRef.current) {
+              const active = document.activeElement;
+              if (
+                active !== textareaRef.current &&
+                !active?.closest('.edit-article-v2__format-menu')
+              ) {
                 setShowFormatMenu(false);
               }
             }, 100);
@@ -254,14 +273,64 @@ export function BlockParagraph({
 
 export interface FormatMenuProps {
   textarea: HTMLTextAreaElement | null;
-  onFormat?: (type: 'bold' | 'italic' | 'link') => void;
+  onFormat?: (type: FormatType, url?: string) => void;
   onClose: () => void;
+}
+
+/** Иконка «ссылка» (цепочка) — повторяет глиф из тулбара ВК. */
+function LinkGlyph() {
+  return (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M9.5 13.5a4 4 0 0 0 6 .4l2.5-2.5a4 4 0 0 0-5.7-5.7l-1.4 1.4" />
+      <path d="M14.5 10.5a4 4 0 0 0-6-.4L6 12.6a4 4 0 0 0 5.7 5.7l1.4-1.4" />
+    </svg>
+  );
+}
+
+/** Иконка «цитата» (кавычки) — повторяет глиф из тулбара ВК. */
+function QuoteGlyph() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M6 7h4.2v4.2c0 2.5-1.4 4.2-4 4.8l-.6-1.7c1.4-.4 2.1-1.1 2.2-2.1H6V7zm8 0h4.2v4.2c0 2.5-1.4 4.2-4 4.8l-.6-1.7c1.4-.4 2.1-1.1 2.2-2.1H14V7z" />
+    </svg>
+  );
+}
+
+/** Иконка «крестик» для выхода из режима ввода ссылки. */
+function CloseGlyph() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      aria-hidden="true"
+    >
+      <path d="M6 6l12 12M18 6L6 18" />
+    </svg>
+  );
 }
 
 export function FormatMenu({ textarea, onFormat, onClose }: FormatMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
   const measureRef = useRef<HTMLDivElement | null>(null);
   const selectionRef = useRef<{ start: number; end: number } | null>(null);
+  const linkInputRef = useRef<HTMLInputElement>(null);
+  const [mode, setMode] = useState<'toolbar' | 'link'>('toolbar');
+  const [linkValue, setLinkValue] = useState('');
 
   useEffect(() => {
     if (!textarea) return;
@@ -409,7 +478,16 @@ export function FormatMenu({ textarea, onFormat, onClose }: FormatMenuProps) {
         measureRef.current = null;
       }
     };
-  }, [textarea, onClose]);
+  }, [textarea, onClose, mode]);
+
+  // При входе в режим ввода ссылки автофокусируем встроенное поле.
+  useEffect(() => {
+    if (mode === 'link') {
+      requestAnimationFrame(() => {
+        linkInputRef.current?.focus();
+      });
+    }
+  }, [mode]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -421,91 +499,199 @@ export function FormatMenu({ textarea, onFormat, onClose }: FormatMenuProps) {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [onClose]);
 
+  // Восстанавливаем выделение в textarea (оно визуально сохраняется,
+  // но фокус мог уйти на кнопку/поле ввода тулбара).
+  const restoreSelection = () => {
+    if (textarea && selectionRef.current) {
+      textarea.focus();
+      textarea.setSelectionRange(selectionRef.current.start, selectionRef.current.end);
+    }
+  };
+
+  const applyFormat = (type: FormatType) => {
+    restoreSelection();
+    onFormat?.(type);
+    onClose();
+  };
+
+  const openLinkMode = () => {
+    // Фиксируем текущее выделение, чтобы применить ссылку после ввода URL.
+    if (textarea) {
+      selectionRef.current = {
+        start: textarea.selectionStart,
+        end: textarea.selectionEnd,
+      };
+    }
+    setLinkValue('');
+    setMode('link');
+  };
+
+  const confirmLink = () => {
+    const url = linkValue.trim();
+    if (!url) {
+      setMode('toolbar');
+      return;
+    }
+    restoreSelection();
+    onFormat?.('link', url);
+    onClose();
+  };
+
+  // Общие обработчики для кнопок: не теряем выделение textarea при клике.
+  const keepSelection = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
   return (
     <div
       ref={menuRef}
-      className="edit-article-v2__format-menu"
+      className={`edit-article-v2__format-menu${
+        mode === 'link' ? ' edit-article-v2__format-menu--link' : ''
+      }`}
       onMouseDown={(e) => {
-        // Предотвращаем всплытие события клика на контейнер меню
         e.stopPropagation();
       }}
       onClick={(e) => {
-        // Предотвращаем всплытие события клика на контейнер меню
         e.stopPropagation();
       }}
     >
-      <button
-        type="button"
-        className="edit-article-v2__format-menu-item"
-        onMouseDown={(e) => {
-          // Предотвращаем потерю фокуса textarea при клике на кнопку
-          e.preventDefault();
-          e.stopPropagation();
-        }}
-        onClick={(e) => {
-          // Предотвращаем всплытие события
-          e.preventDefault();
-          e.stopPropagation();
-          // Восстанавливаем выделение перед форматированием
-          if (textarea && selectionRef.current) {
-            textarea.focus();
-            textarea.setSelectionRange(selectionRef.current.start, selectionRef.current.end);
-          }
-          onFormat?.('bold');
-          onClose();
-        }}
-        title="Жирный (Ctrl+B)"
-      >
-        <strong>B</strong>
-      </button>
-      <button
-        type="button"
-        className="edit-article-v2__format-menu-item"
-        onMouseDown={(e) => {
-          // Предотвращаем потерю фокуса textarea при клике на кнопку
-          e.preventDefault();
-          e.stopPropagation();
-        }}
-        onClick={(e) => {
-          // Предотвращаем всплытие события
-          e.preventDefault();
-          e.stopPropagation();
-          // Восстанавливаем выделение перед форматированием
-          if (textarea && selectionRef.current) {
-            textarea.focus();
-            textarea.setSelectionRange(selectionRef.current.start, selectionRef.current.end);
-          }
-          onFormat?.('italic');
-          onClose();
-        }}
-        title="Курсив (Ctrl+I)"
-      >
-        <em>I</em>
-      </button>
-      <button
-        type="button"
-        className="edit-article-v2__format-menu-item"
-        onMouseDown={(e) => {
-          // Предотвращаем потерю фокуса textarea при клике на кнопку
-          e.preventDefault();
-          e.stopPropagation();
-        }}
-        onClick={(e) => {
-          // Предотвращаем всплытие события
-          e.preventDefault();
-          e.stopPropagation();
-          // Восстанавливаем выделение перед форматированием
-          if (textarea && selectionRef.current) {
-            textarea.focus();
-            textarea.setSelectionRange(selectionRef.current.start, selectionRef.current.end);
-          }
-          onFormat?.('link');
-          onClose();
-        }}
-        title="Ссылка (Ctrl+K)"
-      >
-        🔗
-      </button>
+      {mode === 'toolbar' ? (
+        <>
+          <button
+            type="button"
+            className="edit-article-v2__format-menu-item"
+            onMouseDown={keepSelection}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              applyFormat('bold');
+            }}
+            title="Жирный (Ctrl+B)"
+          >
+            <strong>B</strong>
+          </button>
+          <button
+            type="button"
+            className="edit-article-v2__format-menu-item"
+            onMouseDown={keepSelection}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              applyFormat('italic');
+            }}
+            title="Курсив (Ctrl+I)"
+          >
+            <em>I</em>
+          </button>
+          <button
+            type="button"
+            className="edit-article-v2__format-menu-item"
+            onMouseDown={keepSelection}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              applyFormat('strikethrough');
+            }}
+            title="Зачёркнутый"
+          >
+            <s>S</s>
+          </button>
+          <button
+            type="button"
+            className="edit-article-v2__format-menu-item"
+            onMouseDown={keepSelection}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              openLinkMode();
+            }}
+            title="Ссылка (Ctrl+K)"
+          >
+            <LinkGlyph />
+          </button>
+
+          <span className="edit-article-v2__format-menu-divider" aria-hidden="true" />
+
+          <button
+            type="button"
+            className="edit-article-v2__format-menu-item edit-article-v2__format-menu-item--h1"
+            onMouseDown={keepSelection}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              applyFormat('heading-large');
+            }}
+            title="Заголовок"
+          >
+            <span>H</span>
+          </button>
+          <button
+            type="button"
+            className="edit-article-v2__format-menu-item edit-article-v2__format-menu-item--h2"
+            onMouseDown={keepSelection}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              applyFormat('heading-small');
+            }}
+            title="Подзаголовок"
+          >
+            <span>H</span>
+          </button>
+
+          <span className="edit-article-v2__format-menu-divider" aria-hidden="true" />
+
+          <button
+            type="button"
+            className="edit-article-v2__format-menu-item"
+            onMouseDown={keepSelection}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              applyFormat('quote');
+            }}
+            title="Цитата"
+          >
+            <QuoteGlyph />
+          </button>
+        </>
+      ) : (
+        <div className="edit-article-v2__format-menu-link-field">
+          <input
+            ref={linkInputRef}
+            type="text"
+            className="edit-article-v2__format-menu-link-input"
+            placeholder="Введите ссылку"
+            value={linkValue}
+            onChange={(e) => setLinkValue(e.target.value)}
+            onMouseDown={(e) => e.stopPropagation()}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                confirmLink();
+              } else if (e.key === 'Escape') {
+                e.preventDefault();
+                setMode('toolbar');
+              }
+            }}
+          />
+          <button
+            type="button"
+            className="edit-article-v2__format-menu-link-close"
+            onMouseDown={keepSelection}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setMode('toolbar');
+            }}
+            aria-label="Отменить ввод ссылки"
+            title="Отменить"
+          >
+            <CloseGlyph />
+          </button>
+        </div>
+      )}
     </div>
   );
 }

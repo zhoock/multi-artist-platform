@@ -16,7 +16,6 @@ describe('ArticlePage integration tests', () => {
         id: 1,
         title: 'Section 1',
         subtitle: 'Subtitle 1',
-        strong: 'Strong text',
         content: 'Article content',
         img: 'image.jpg',
         alt: 'Image alt',

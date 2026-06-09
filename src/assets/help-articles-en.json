@@ -37,7 +37,7 @@
       },
       {
         "id": 6,
-        "strong": "Note: A \"Personal\" PayPal account will not work."
+        "content": "**Note: A \"Personal\" PayPal account will not work.**"
       },
       {
         "id": 7,
@@ -133,7 +133,7 @@
       },
       {
         "id": 20,
-        "strong": "Note: If you click the \"Update\" button and experience issues, check if all pop-up blockers are disabled."
+        "content": "**Note: If you click the \"Update\" button and experience issues, check if all pop-up blockers are disabled.**"
       },
       {
         "id": 21,

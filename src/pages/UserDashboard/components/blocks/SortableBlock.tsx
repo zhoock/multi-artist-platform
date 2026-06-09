@@ -4,7 +4,7 @@ import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { Block } from '../modals/article/EditArticleModalV2.utils';
 import { isListBlockEmpty } from '../modals/article/EditArticleModalV2.utils';
-import { BlockParagraph } from './BlockParagraph';
+import { BlockParagraph, type FormatType } from './BlockParagraph';
 import { BlockTitle } from './BlockTitle';
 import { BlockSubtitle } from './BlockSubtitle';
 import { BlockQuote } from './BlockQuote';
@@ -33,7 +33,7 @@ interface SortableBlockProps {
   onMoveUp: (blockId: string) => void;
   onMoveDown: (blockId: string) => void;
   onSlash?: (blockId: string, position: { top: number; left: number }, cursorPos: number) => void;
-  onFormat?: (blockId: string, type: 'bold' | 'italic' | 'link') => void;
+  onFormat?: (blockId: string, type: FormatType, url?: string) => void;
   onPaste?: (blockId: string, text: string, files: File[]) => void;
   onConvertToCarousel?: (blockId: string) => void;
   onVkPlusSelect?: (type: string) => void;
@@ -90,7 +90,7 @@ export function SortableBlock({
             onEnter={(atEnd) => onEnter(block.id, atEnd)}
             onBackspace={(isEmpty, atStart) => onBackspace(isEmpty, atStart)}
             onSlash={(position, cursorPos) => onSlash?.(block.id, position, cursorPos)}
-            onFormat={(type) => onFormat?.(block.id, type)}
+            onFormat={(type, url) => onFormat?.(block.id, type, url)}
             onPaste={(text, files) => onPaste?.(block.id, text, files)}
           />
         );
@@ -104,7 +104,7 @@ export function SortableBlock({
             onBlur={onBlur}
             onEnter={(atEnd) => onEnter(block.id, atEnd)}
             onBackspace={(isEmpty, atStart) => onBackspace(isEmpty, atStart)}
-            onFormat={(type) => onFormat?.(block.id, type)}
+            onFormat={(type, url) => onFormat?.(block.id, type, url)}
           />
         );
       case 'subtitle':
@@ -117,7 +117,7 @@ export function SortableBlock({
             onBlur={onBlur}
             onEnter={(atEnd) => onEnter(block.id, atEnd)}
             onBackspace={(isEmpty, atStart) => onBackspace(isEmpty, atStart)}
-            onFormat={(type) => onFormat?.(block.id, type)}
+            onFormat={(type, url) => onFormat?.(block.id, type, url)}
           />
         );
       case 'quote':
@@ -130,7 +130,7 @@ export function SortableBlock({
             onBlur={onBlur}
             onEnter={(atEnd) => onEnter(block.id, atEnd)}
             onBackspace={(isEmpty, atStart) => onBackspace(isEmpty, atStart)}
-            onFormat={(type) => onFormat?.(block.id, type)}
+            onFormat={(type, url) => onFormat?.(block.id, type, url)}
           />
         );
       case 'list':

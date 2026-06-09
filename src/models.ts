@@ -242,7 +242,6 @@ export interface ArticledetailsProps {
   img?: string; // для одиночного изображения
   images?: string[]; // для карусели (массив изображений)
   subtitle?: string;
-  strong?: string;
   content?: string | Array<string | { id: string; text: string }>;
   alt?: string;
 }

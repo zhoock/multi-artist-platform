@@ -39,6 +39,7 @@ import {
   isListBlockEmpty,
 } from './EditArticleModalV2.utils';
 import { SortableBlock } from '../../blocks/SortableBlock';
+import type { FormatType } from '../../blocks/BlockParagraph';
 import { SlashMenu } from '../../blocks/SlashMenu';
 import { CarouselEditModal } from '../../articles/CarouselEditModal';
 import { ArticleEditSkeleton } from '../../articles/ArticleEditSkeleton';
@@ -1777,7 +1778,7 @@ export function EditArticleModalV2({ isOpen, article, onClose }: EditArticleModa
 
   // Обработчик форматирования
   const handleFormat = useCallback(
-    (blockId: string, type: 'bold' | 'italic' | 'link') => {
+    (blockId: string, type: FormatType, url?: string) => {
       const block = blocks.find((b) => b.id === blockId);
       if (
         !block ||
@@ -1786,6 +1787,16 @@ export function EditArticleModalV2({ isOpen, article, onClose }: EditArticleModa
           block.type !== 'subtitle' &&
           block.type !== 'quote')
       ) {
+        return;
+      }
+
+      // Блочные стили (заголовок/подзаголовок/цитата) — как в редакторе ВК:
+      // повторное нажатие на активный стиль возвращает блок к обычному тексту.
+      if (type === 'heading-large' || type === 'heading-small' || type === 'quote') {
+        const targetType: BlockType =
+          type === 'heading-large' ? 'title' : type === 'heading-small' ? 'subtitle' : 'quote';
+        const nextType: BlockType = block.type === targetType ? 'paragraph' : targetType;
+        convertBlockType(blockId, nextType);
         return;
       }
 
@@ -1815,8 +1826,11 @@ export function EditArticleModalV2({ isOpen, article, onClose }: EditArticleModa
           } else if (type === 'italic') {
             template = '_текст_';
             cursorOffset = 1;
+          } else if (type === 'strikethrough') {
+            template = '~~текст~~';
+            cursorOffset = 2;
           } else if (type === 'link') {
-            template = '[текст](url)';
+            template = url ? `[текст](${url})` : '[текст](url)';
             cursorOffset = 1;
           }
 
@@ -1842,8 +1856,10 @@ export function EditArticleModalV2({ isOpen, article, onClose }: EditArticleModa
             wrappedText = `**${selectedText}**`;
           } else if (type === 'italic') {
             wrappedText = `_${selectedText}_`;
+          } else if (type === 'strikethrough') {
+            wrappedText = `~~${selectedText}~~`;
           } else if (type === 'link') {
-            wrappedText = `[${selectedText}](url)`;
+            wrappedText = `[${selectedText}](${url ?? 'url'})`;
           }
 
           const newText =
@@ -1862,7 +1878,7 @@ export function EditArticleModalV2({ isOpen, article, onClose }: EditArticleModa
         }
       });
     },
-    [blocks, updateBlock]
+    [blocks, updateBlock, convertBlockType]
   );
 
   // Статус сохранения
