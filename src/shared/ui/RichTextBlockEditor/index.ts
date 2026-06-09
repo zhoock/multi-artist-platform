@@ -1,6 +1,7 @@
 export {
   RichTextBlockEditor,
   type RichBackspaceDetail,
+  type RichBlockFormatType,
   type RichEnterDetail,
   type RichPasteMultilineDetail,
   type RichTextBlockEditorMode,

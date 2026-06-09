@@ -1,6 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
 import type { RichText } from '@shared/lib/richText';
-import { restoreSelection } from '@shared/lib/richText';
+import {
+  getDefaultEditorMode,
+  isMarkdownEditorEnabled,
+  restoreSelection,
+} from '@shared/lib/richText';
 import {
   RichTextBlockEditor,
   type RichBackspaceDetail,
@@ -43,10 +47,12 @@ export function BlockListItemField({
 }: BlockListItemFieldProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [showFormatMenu, setShowFormatMenu] = useState(false);
-  const [mode, setMode] = useState<RichTextBlockEditorMode>('textarea');
+  const [mode, setMode] = useState(getDefaultEditorMode);
+  const markdownDebug = isMarkdownEditorEnabled();
   const editorBlockId = `${listBlockId}:${itemId}`;
 
   useEffect(() => {
+    if (!markdownDebug) return;
     const textarea = textareaRef.current;
     if (!textarea || mode !== 'textarea') return;
 
@@ -83,7 +89,7 @@ export function BlockListItemField({
       textarea.removeEventListener('keyup', handleNativeMouseUp, true);
       document.removeEventListener('selectionchange', handleSelectionChange);
     };
-  }, [mode]);
+  }, [markdownDebug, mode]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if ((e.ctrlKey || e.metaKey) && e.key === 'b') {
@@ -138,10 +144,10 @@ export function BlockListItemField({
         textareaRef={textareaRef}
         blockId={editorBlockId}
         placeholder={placeholder}
-        onKeyDown={handleKeyDown}
-        onRichEnter={mode === 'rich' ? onRichEnter : undefined}
-        onRichBackspace={mode === 'rich' ? onRichBackspace : undefined}
-        onRichPasteMultiline={mode === 'rich' ? onRichPasteMultiline : undefined}
+        onKeyDown={markdownDebug ? handleKeyDown : undefined}
+        onRichEnter={onRichEnter}
+        onRichBackspace={onRichBackspace}
+        onRichPasteMultiline={onRichPasteMultiline}
         onFocus={onFocus}
         onBlur={() => {
           setTimeout(() => {
@@ -156,7 +162,7 @@ export function BlockListItemField({
           onBlur?.();
         }}
       />
-      {showFormatMenu && mode === 'textarea' && (
+      {showFormatMenu && markdownDebug && mode === 'textarea' && (
         <FormatMenu
           textarea={textareaRef.current}
           content={value}

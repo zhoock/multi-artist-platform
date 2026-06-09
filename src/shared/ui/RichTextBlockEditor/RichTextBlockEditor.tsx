@@ -35,11 +35,20 @@ import {
   type SelectionOffsets,
 } from '@shared/lib/richText/richInput';
 
+import {
+  getDefaultEditorMode,
+  getVisibleEditorModes,
+  isMarkdownEditorEnabled,
+  type RichTextBlockEditorMode,
+} from '@shared/lib/richText/editorConfig';
+
 import { useLocalMarkdownBuffer } from '@shared/lib/richText/useLocalMarkdownBuffer';
 
 import './RichTextBlockEditor.style.scss';
 
-export type RichTextBlockEditorMode = 'textarea' | 'preview' | 'rich';
+export type { RichTextBlockEditorMode };
+
+export type RichBlockFormatType = 'heading-large' | 'heading-small' | 'quote';
 
 export type RichTextBlockEditorVariant = 'paragraph' | 'title' | 'subtitle' | 'quote' | 'list-item';
 
@@ -90,6 +99,7 @@ export type RichTextBlockEditorProps = {
   onRichEnter?: (detail: RichEnterDetail) => void;
   onRichBackspace?: (detail: RichBackspaceDetail) => void;
   onRichPasteMultiline?: (detail: RichPasteMultilineDetail) => void;
+  onBlockFormat?: (type: RichBlockFormatType) => void;
 };
 
 const MODE_LABELS: Record<RichTextBlockEditorMode, string> = {
@@ -98,7 +108,9 @@ const MODE_LABELS: Record<RichTextBlockEditorMode, string> = {
   rich: 'Rich',
 };
 
-const MODE_ORDER: RichTextBlockEditorMode[] = ['textarea', 'preview', 'rich'];
+function getModeOrder(): RichTextBlockEditorMode[] {
+  return getVisibleEditorModes();
+}
 
 const BLOCKED_INPUT_TYPES = new Set([
   'historyUndo',
@@ -155,8 +167,9 @@ export function RichTextBlockEditor({
   onRichEnter,
   onRichBackspace,
   onRichPasteMultiline,
+  onBlockFormat,
 }: RichTextBlockEditorProps) {
-  const [internalMode, setInternalMode] = useState<RichTextBlockEditorMode>('textarea');
+  const [internalMode, setInternalMode] = useState<RichTextBlockEditorMode>(getDefaultEditorMode);
   const isModeControlled = mode !== undefined;
   const currentMode = isModeControlled ? mode : internalMode;
 
@@ -193,11 +206,21 @@ export function RichTextBlockEditor({
   );
 
   const setMode = (next: RichTextBlockEditorMode) => {
+    if (!isMarkdownEditorEnabled() && next === 'textarea') {
+      next = 'rich';
+    }
     if (!isModeControlled) {
       setInternalMode(next);
     }
     onModeChange?.(next);
   };
+
+  useEffect(() => {
+    if (isModeControlled) return;
+    if (isMarkdownEditorEnabled() || currentMode !== 'textarea') return;
+    setInternalMode('rich');
+    onModeChange?.('rich');
+  }, [currentMode, isModeControlled, onModeChange]);
 
   useEffect(() => {
     if (currentMode !== 'textarea') return;
@@ -373,6 +396,46 @@ export function RichTextBlockEditor({
     };
   }, [currentMode, editable]);
 
+  // Rich keyboard shortcuts (Ctrl/Cmd+B/I/K/U)
+  useEffect(() => {
+    if (currentMode !== 'rich' || !editable) return;
+    const root = editableRef.current;
+    if (!root) return;
+
+    const handleKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (!(event.ctrlKey || event.metaKey)) return;
+      const key = event.key.toLowerCase();
+      if (key !== 'b' && key !== 'i' && key !== 'k' && key !== 'u') return;
+
+      const selection = getSelectionOffsets(root);
+      if (!selection) return;
+
+      event.preventDefault();
+      const { from, to } = selection;
+      const model = contentRef.current;
+
+      if (key === 'k') {
+        const existing = getLinkAtSelection(model, from, to);
+        if (existing) {
+          emitContent(removeLink(model, from, to), from, to);
+        } else {
+          setLinkValue('');
+          setLinkEditing(true);
+          setRichToolbar({ from, to, rect: root.getBoundingClientRect() });
+        }
+        return;
+      }
+
+      const markType =
+        key === 'b' ? 'bold' : key === 'i' ? 'italic' : key === 'u' ? 'underline' : null;
+      if (!markType) return;
+      emitContent(toggleMark(model, from, to, { type: markType } as InlineMark), from, to);
+    };
+
+    root.addEventListener('keydown', handleKeyDown);
+    return () => root.removeEventListener('keydown', handleKeyDown);
+  }, [currentMode, editable]);
+
   const handleCompositionStart = () => {
     isComposingRef.current = true;
     const root = editableRef.current;
@@ -488,7 +551,7 @@ export function RichTextBlockEditor({
     <div className="rich-text-block-editor">
       {editable && (
         <div className="rich-text-block-editor__modes" role="group" aria-label="Режим блока">
-          {MODE_ORDER.map((value) => (
+          {getModeOrder().map((value) => (
             <button
               key={value}
               type="button"
@@ -617,6 +680,41 @@ export function RichTextBlockEditor({
                   >
                     Link
                   </button>
+                  {variant === 'paragraph' && onBlockFormat && (
+                    <>
+                      <span
+                        className="rich-text-block-editor__toolbar-divider"
+                        aria-hidden="true"
+                      />
+                      <button
+                        type="button"
+                        className="rich-text-block-editor__toolbar-btn rich-text-block-editor__toolbar-btn--block"
+                        onMouseDown={keepSelection}
+                        onClick={() => onBlockFormat('heading-large')}
+                        title="Заголовок"
+                      >
+                        H
+                      </button>
+                      <button
+                        type="button"
+                        className="rich-text-block-editor__toolbar-btn rich-text-block-editor__toolbar-btn--block"
+                        onMouseDown={keepSelection}
+                        onClick={() => onBlockFormat('heading-small')}
+                        title="Подзаголовок"
+                      >
+                        H
+                      </button>
+                      <button
+                        type="button"
+                        className="rich-text-block-editor__toolbar-btn rich-text-block-editor__toolbar-btn--block"
+                        onMouseDown={keepSelection}
+                        onClick={() => onBlockFormat('quote')}
+                        title="Цитата"
+                      >
+                        "
+                      </button>
+                    </>
+                  )}
                 </>
               )}
             </div>

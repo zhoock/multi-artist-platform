@@ -108,6 +108,10 @@
     border-radius: 4px;
     cursor: pointer;
 
+    &--block {
+      font-weight: 700;
+    }
+
     &:hover {
       background: var(--dashboard-hover-bg, rgb(255 255 255 / 8%));
     }
@@ -116,6 +120,13 @@
       color: var(--link-color, #6ea8fe);
       background: var(--dashboard-hover-bg, rgb(255 255 255 / 12%));
     }
+  }
+
+  &__toolbar-divider {
+    width: 1px;
+    height: 20px;
+    margin: 0 4px;
+    background: var(--dashboard-card-border, rgb(255 255 255 / 18%));
   }
 
   &__toolbar-link {

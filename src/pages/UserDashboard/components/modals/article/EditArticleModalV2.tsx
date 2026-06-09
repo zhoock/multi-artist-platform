@@ -42,7 +42,9 @@ import {
 import type { InlineMark, RichText } from '@shared/lib/richText';
 import {
   cloneRichText,
+  getSelectionOffsets,
   insertText,
+  isMarkdownEditorEnabled,
   isRichTextEmpty,
   mapMarkdownOffsetToPlain,
   mapPlainOffsetToMarkdown,
@@ -52,6 +54,7 @@ import {
   setLink,
   splitRichTextAt,
   toggleMark,
+  restoreSelection,
   richTextToPlainText,
 } from '@shared/lib/richText';
 import {
@@ -1791,7 +1794,7 @@ export function EditArticleModalV2({ isOpen, article, onClose }: EditArticleModa
     [blocks, updateBlock]
   );
 
-  // Обработчик форматирования
+  // Обработчик форматирования (rich-native; textarea — только ?editor=markdown)
   const handleFormat = useCallback(
     (blockId: string, type: FormatType, url?: string) => {
       const block = blocks.find((b) => b.id === blockId);
@@ -1805,8 +1808,6 @@ export function EditArticleModalV2({ isOpen, article, onClose }: EditArticleModa
         return;
       }
 
-      // Блочные стили (заголовок/подзаголовок/цитата) — как в редакторе ВК:
-      // повторное нажатие на активный стиль возвращает блок к обычному тексту.
       if (type === 'heading-large' || type === 'heading-small' || type === 'quote') {
         const targetType: BlockType =
           type === 'heading-large' ? 'title' : type === 'heading-small' ? 'subtitle' : 'quote';
@@ -1815,17 +1816,6 @@ export function EditArticleModalV2({ isOpen, article, onClose }: EditArticleModa
         return;
       }
 
-      // Находим textarea по blockId, а не через activeElement
-      // Это важно, так как при клике на кнопку тултипа activeElement может измениться
-      const textarea = document.querySelector(
-        `[data-block-id="${blockId}"] textarea`
-      ) as HTMLTextAreaElement;
-      if (!textarea) return;
-
-      // Inline-форматирование применяется к канонической RichText через
-      // operations.ts. Выделение в textarea — markdown-offsets; переводим их в
-      // plain-offsets, применяем toggleMark/setLink, затем ресинкаем буфер
-      // (через content) и восстанавливаем выделение в новых markdown-координатах.
       const inlineMarkFor = (formatType: FormatType): InlineMark | null => {
         if (formatType === 'bold') return { type: 'bold' };
         if (formatType === 'italic') return { type: 'italic' };
@@ -1833,10 +1823,76 @@ export function EditArticleModalV2({ isOpen, article, onClose }: EditArticleModa
         return null;
       };
 
-      const content = block.content;
+      const applyToSelection = (
+        content: RichText,
+        plainStart: number,
+        plainEnd: number
+      ): { content: RichText; selFrom: number; selTo: number } => {
+        let selPlainStart = plainStart;
+        let selPlainEnd = plainEnd;
 
-      // Восстанавливаем фокус на textarea перед получением позиции курсора
-      // Используем requestAnimationFrame чтобы убедиться, что событие клика обработано
+        if (plainStart === plainEnd) {
+          const placeholder = 'текст';
+          const withText = insertText(content, plainStart, placeholder);
+          selPlainEnd = plainStart + placeholder.length;
+          if (type === 'link') {
+            return {
+              content: setLink(withText, plainStart, selPlainEnd, url ?? 'url'),
+              selFrom: selPlainStart,
+              selTo: selPlainEnd,
+            };
+          }
+          const mark = inlineMarkFor(type);
+          return {
+            content: mark ? toggleMark(withText, plainStart, selPlainEnd, mark) : withText,
+            selFrom: selPlainStart,
+            selTo: selPlainEnd,
+          };
+        }
+
+        if (type === 'link') {
+          return {
+            content: setLink(content, plainStart, plainEnd, url ?? 'url'),
+            selFrom: selPlainStart,
+            selTo: plainEnd,
+          };
+        }
+        const mark = inlineMarkFor(type);
+        return {
+          content: mark ? toggleMark(content, plainStart, plainEnd, mark) : content,
+          selFrom: selPlainStart,
+          selTo: plainEnd,
+        };
+      };
+
+      const rich = document.querySelector(
+        `[data-block-id="${blockId}"][data-testid="rich-text-block-editor-rich"]`
+      ) as HTMLElement | null;
+
+      if (rich) {
+        const selection = getSelectionOffsets(rich);
+        if (!selection) return;
+
+        const {
+          content: newContent,
+          selFrom,
+          selTo,
+        } = applyToSelection(block.content, selection.from, selection.to);
+        updateBlock(blockId, { content: newContent } as Partial<Block>, true);
+        requestAnimationFrame(() => {
+          rich.focus();
+          restoreSelection(rich, selFrom, selTo);
+        });
+        return;
+      }
+
+      if (!isMarkdownEditorEnabled()) return;
+
+      const textarea = document.querySelector(
+        `textarea[data-block-id="${blockId}"], [data-block-id="${blockId}"] textarea`
+      ) as HTMLTextAreaElement | null;
+      if (!textarea) return;
+
       requestAnimationFrame(() => {
         textarea.focus();
 
@@ -1844,37 +1900,16 @@ export function EditArticleModalV2({ isOpen, article, onClose }: EditArticleModa
         const plainStart = mapMarkdownOffsetToPlain(md, textarea.selectionStart);
         const plainEnd = mapMarkdownOffsetToPlain(md, textarea.selectionEnd);
 
-        let newContent: RichText;
-        let selPlainStart = plainStart;
-        let selPlainEnd: number;
-
-        if (plainStart === plainEnd) {
-          // Нет выделения — вставляем плейсхолдер и применяем mark к нему.
-          const placeholder = 'текст';
-          const withText = insertText(content, plainStart, placeholder);
-          selPlainEnd = plainStart + placeholder.length;
-          if (type === 'link') {
-            newContent = setLink(withText, plainStart, selPlainEnd, url ?? 'url');
-          } else {
-            const mark = inlineMarkFor(type);
-            newContent = mark ? toggleMark(withText, plainStart, selPlainEnd, mark) : withText;
-          }
-        } else {
-          selPlainEnd = plainEnd;
-          if (type === 'link') {
-            newContent = setLink(content, plainStart, plainEnd, url ?? 'url');
-          } else {
-            const mark = inlineMarkFor(type);
-            newContent = mark ? toggleMark(content, plainStart, plainEnd, mark) : content;
-          }
-        }
-
+        const {
+          content: newContent,
+          selFrom,
+          selTo,
+        } = applyToSelection(block.content, plainStart, plainEnd);
         updateBlock(blockId, { content: newContent } as Partial<Block>, true);
 
-        // Восстанавливаем выделение в новом (ресинкнутом) markdown-буфере.
         const newMd = richTextToMarkdown(newContent);
-        const newMdStart = mapPlainOffsetToMarkdown(newMd, selPlainStart);
-        const newMdEnd = mapPlainOffsetToMarkdown(newMd, selPlainEnd);
+        const newMdStart = mapPlainOffsetToMarkdown(newMd, selFrom);
+        const newMdEnd = mapPlainOffsetToMarkdown(newMd, selTo);
         setTimeout(() => {
           textarea.focus();
           textarea.setSelectionRange(newMdStart, newMdEnd);

@@ -2,6 +2,15 @@ import { describe, test, expect, jest } from '@jest/globals';
 import { fireEvent, render, screen } from '@testing-library/react';
 import React, { useState } from 'react';
 
+jest.mock('@shared/lib/richText', () => {
+  const actual = jest.requireActual('@shared/lib/richText') as Record<string, unknown>;
+  return {
+    ...actual,
+    getDefaultEditorMode: () => 'textarea',
+    isMarkdownEditorEnabled: () => true,
+  };
+});
+
 import { markdownToRichText, richTextToPlainText, type RichText } from '@shared/lib/richText';
 import { createListItem } from '../../modals/article/EditArticleModalV2.utils';
 import { BlockList } from '../BlockList';

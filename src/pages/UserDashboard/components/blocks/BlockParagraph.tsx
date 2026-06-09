@@ -1,6 +1,7 @@
 // src/pages/UserDashboard/components/blocks/BlockParagraph.tsx
 import React, { useRef, useEffect, useState } from 'react';
 import type { RichText } from '@shared/lib/richText';
+import { getDefaultEditorMode, isMarkdownEditorEnabled } from '@shared/lib/richText';
 import {
   RichTextBlockEditor,
   type RichBackspaceDetail,
@@ -63,7 +64,8 @@ export function BlockParagraph({
 }: BlockParagraphProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [showFormatMenu, setShowFormatMenu] = useState(false);
-  const [mode, setMode] = useState<RichTextBlockEditorMode>('textarea');
+  const [mode, setMode] = useState(getDefaultEditorMode);
+  const markdownDebug = isMarkdownEditorEnabled();
 
   const handleChange = (newValue: string, e: React.ChangeEvent<HTMLTextAreaElement>) => {
     // Проверка на "/" в начале строки для slash-меню
@@ -134,8 +136,9 @@ export function BlockParagraph({
 
   // Обработчики для отслеживания выделения текста (включая существующий текст)
   useEffect(() => {
+    if (!markdownDebug) return;
     const textarea = textareaRef.current;
-    if (!textarea) return;
+    if (!textarea || mode !== 'textarea') return;
 
     const checkSelection = () => {
       // Используем requestAnimationFrame для гарантии, что выделение обновлено
@@ -191,7 +194,7 @@ export function BlockParagraph({
       textarea.removeEventListener('keyup', handleNativeKeyUp, true);
       document.removeEventListener('selectionchange', handleSelectionChange);
     };
-  }, []); // Убираем value из зависимостей, чтобы обработчики не пересоздавались
+  }, [markdownDebug, mode]); // Убираем value из зависимостей, чтобы обработчики не пересоздавались
 
   const handlePaste = async (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
     const clipboardData = e.clipboardData;
@@ -254,12 +257,13 @@ export function BlockParagraph({
           textareaRef={textareaRef}
           blockId={blockId}
           placeholder={placeholder}
-          onTextareaChange={handleChange}
-          onKeyDown={handleKeyDown}
-          onPaste={handlePaste}
-          onRichEnter={mode === 'rich' ? onRichEnter : undefined}
-          onRichBackspace={mode === 'rich' ? onRichBackspace : undefined}
-          onRichPasteMultiline={mode === 'rich' ? onRichPasteMultiline : undefined}
+          onTextareaChange={markdownDebug ? handleChange : undefined}
+          onKeyDown={markdownDebug ? handleKeyDown : undefined}
+          onPaste={markdownDebug ? handlePaste : undefined}
+          onRichEnter={onRichEnter}
+          onRichBackspace={onRichBackspace}
+          onRichPasteMultiline={onRichPasteMultiline}
+          onBlockFormat={onFormat}
           onFocus={onFocus}
           onBlur={(e) => {
             // Скрываем меню при потере фокуса с небольшой задержкой
@@ -278,7 +282,7 @@ export function BlockParagraph({
           }}
         />
       </p>
-      {showFormatMenu && mode === 'textarea' && (
+      {showFormatMenu && markdownDebug && mode === 'textarea' && (
         <FormatMenu
           textarea={textareaRef.current}
           content={value}

@@ -31,6 +31,15 @@ export function getFormatMenuActiveState(
 ): FormatMenuActiveState {
   const plainFrom = mapMarkdownOffsetToPlain(localMarkdown, selectionStart);
   const plainTo = mapMarkdownOffsetToPlain(localMarkdown, selectionEnd);
+  return getFormatMenuActiveStateByPlain(content, plainFrom, plainTo);
+}
+
+/** Активность кнопок по plain offsets (rich mode). */
+export function getFormatMenuActiveStateByPlain(
+  content: RichText,
+  plainFrom: number,
+  plainTo: number
+): FormatMenuActiveState {
   const activeMarks = getActiveMarks(content, plainFrom, plainTo);
   const linkHref = getLinkAtSelection(content, plainFrom, plainTo);
 

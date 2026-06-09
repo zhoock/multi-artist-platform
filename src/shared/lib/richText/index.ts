@@ -59,3 +59,11 @@ export {
   restoreSelection,
   type SelectionOffsets,
 } from './domSelection';
+
+export {
+  ENABLE_MARKDOWN_DEBUG,
+  getDefaultEditorMode,
+  getVisibleEditorModes,
+  isMarkdownEditorEnabled,
+  type RichTextBlockEditorMode,
+} from './editorConfig';
