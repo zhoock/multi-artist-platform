@@ -108,6 +108,53 @@ dialog {
       white-space: nowrap;
     }
 
+    &__header-actions {
+      display: flex;
+      flex-shrink: 0;
+      align-items: center;
+      gap: var(--ms-01);
+    }
+
+    &__history {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+    }
+
+    &__history-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 6px 10px;
+      color: var(--dashboard-text-primary);
+      font-size: var(--ms-0);
+      font-family: var(--base-font-family, arial, sans-serif);
+      line-height: 1.2;
+      white-space: nowrap;
+      background: transparent;
+      border: 1px solid var(--dashboard-card-border);
+      border-radius: 8px;
+      transition:
+        background-color 0.15s ease,
+        border-color 0.15s ease,
+        opacity 0.15s ease;
+      cursor: pointer;
+
+      &:focus-visible {
+        outline: 2px solid var(--dashboard-accent, #6ea8fe);
+        outline-offset: 2px;
+      }
+
+      &:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+      }
+
+      &:hover:not(:disabled) {
+        background: var(--dashboard-hover-bg, rgb(255 255 255 / 6%));
+      }
+    }
+
     &__footer {
       @include dashboard-modal-footer($padding: var(--ms-1) var(--ms-2), $margin-top: 0);
     }

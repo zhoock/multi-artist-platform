@@ -55,6 +55,8 @@ import {
   richTextToPlainText,
 } from '@shared/lib/richText';
 import {
+  canRedo,
+  canUndo,
   captureEditorSelectionOrFallback,
   cloneSnapshot,
   createHistoryState,
@@ -124,6 +126,9 @@ const LANG_TEXTS = {
     savingError: 'Ошибка при сохранении',
     addBlock: 'Добавить блок',
     close: 'Закрыть',
+    undo: 'Отменить',
+    redo: 'Повторить',
+    historyActions: 'История редактирования',
   },
   en: {
     editArticle: 'Edit Article',
@@ -144,6 +149,9 @@ const LANG_TEXTS = {
     savingError: 'Error saving article',
     addBlock: 'Add Block',
     close: 'Close',
+    undo: 'Undo',
+    redo: 'Redo',
+    historyActions: 'Edit history',
   },
 };
 
@@ -1998,15 +2006,45 @@ export function EditArticleModalV2({ isOpen, article, onClose }: EditArticleModa
                   />
                   <div className="edit-article-v2__status">{getStatusText()}</div>
                 </div>
-                <button
-                  type="button"
-                  className="edit-article-v2__close"
-                  onClick={() => articleCloseGuard.requestClose()}
-                  disabled={isArticleSaveBusy}
-                  aria-label={texts.close}
-                >
-                  ×
-                </button>
+                <div className="edit-article-v2__header-actions">
+                  <div
+                    className="edit-article-v2__history"
+                    role="group"
+                    aria-label={texts.historyActions}
+                  >
+                    <button
+                      type="button"
+                      className="edit-article-v2__history-btn"
+                      onMouseDown={(event) => event.preventDefault()}
+                      onClick={undo}
+                      disabled={!canUndo(historyState) || isArticleSaveBusy}
+                      aria-label={texts.undo}
+                      title={texts.undo}
+                    >
+                      ↶ {texts.undo}
+                    </button>
+                    <button
+                      type="button"
+                      className="edit-article-v2__history-btn"
+                      onMouseDown={(event) => event.preventDefault()}
+                      onClick={redo}
+                      disabled={!canRedo(historyState) || isArticleSaveBusy}
+                      aria-label={texts.redo}
+                      title={texts.redo}
+                    >
+                      ↷ {texts.redo}
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    className="edit-article-v2__close"
+                    onClick={() => articleCloseGuard.requestClose()}
+                    disabled={isArticleSaveBusy}
+                    aria-label={texts.close}
+                  >
+                    ×
+                  </button>
+                </div>
               </div>
 
               {/* Content */}
