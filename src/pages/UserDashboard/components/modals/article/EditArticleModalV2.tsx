@@ -52,9 +52,20 @@ import {
   setLink,
   splitRichTextAt,
   toggleMark,
-  restoreSelection,
   richTextToPlainText,
 } from '@shared/lib/richText';
+import {
+  captureEditorSelectionOrFallback,
+  cloneSnapshot,
+  createHistoryState,
+  pushSnapshot as pushHistorySnapshot,
+  redo as redoHistory,
+  restoreEditorCaret,
+  restoreEditorSelection,
+  undo as undoHistory,
+  type EditorSelection,
+  type EditorSnapshot,
+} from '@shared/lib/editorHistory';
 import type {
   RichBackspaceDetail,
   RichEnterDetail,
@@ -72,51 +83,18 @@ import { toLocalYYYYMMDD } from '@shared/lib/dateCalendar';
 import '@shared/ui/dashboard-save/dashboard-save.scss';
 import './EditArticleModalV2.style.scss';
 
+type ArticleEditorSnapshot = EditorSnapshot<Block> & {
+  meta: ArticleMeta;
+  selectedBlockId: string | null;
+};
+
 type PendingFocus = {
   blockId: string;
   position: 'start' | 'end' | number;
   /** true — position в plain-offset (rich mode); false — markdown-offset (textarea) */
   plainCaret?: boolean;
+  selectionTo?: number;
 };
-
-function focusTextBlockCaret(
-  blockId: string,
-  position: 'start' | 'end' | number,
-  plainCaret = false
-): boolean {
-  const rich = document.querySelector(
-    `[data-block-id="${blockId}"][data-testid="rich-text-block-editor-rich"]`
-  ) as HTMLElement | null;
-  if (rich) {
-    rich.focus();
-    if (position === 'start') {
-      restoreSelection(rich, 0, 0);
-    } else if (position === 'end') {
-      restoreSelection(rich, rich.innerText.length, rich.innerText.length);
-    } else {
-      restoreSelection(rich, position, position);
-    }
-    return true;
-  }
-
-  const textarea = document.querySelector(
-    `[data-block-id="${blockId}"] textarea`
-  ) as HTMLTextAreaElement | null;
-  if (!textarea) return false;
-
-  textarea.focus();
-  if (position === 'start') {
-    textarea.setSelectionRange(0, 0);
-  } else if (position === 'end') {
-    textarea.setSelectionRange(textarea.value.length, textarea.value.length);
-  } else {
-    const pos = plainCaret
-      ? mapPlainOffsetToMarkdown(textarea.value, position)
-      : Math.min(position, textarea.value.length);
-    textarea.setSelectionRange(pos, pos);
-  }
-  return true;
-}
 
 interface EditArticleModalV2Props {
   isOpen: boolean;
@@ -222,21 +200,11 @@ export function EditArticleModalV2({ isOpen, article, onClose }: EditArticleModa
   const [initialBlocks, setInitialBlocks] = useState<Block[]>([]);
   const [initialMeta, setInitialMeta] = useState<ArticleMeta>({ title: '', description: '' });
 
-  // История для Undo/Redo
-  type CaretPosition = {
-    blockId: string;
-    position: 'start' | 'end' | number; // 'start', 'end' или точная позиция в тексте
-  };
-
-  type EditorSnapshot = {
-    blocks: Block[];
-    meta: ArticleMeta;
-    focusBlockId: string | null;
-    selectedBlockId: string | null;
-    caretPosition?: CaretPosition | null; // Позиция каретки перед операцией
-  };
-  const [undoStack, setUndoStack] = useState<EditorSnapshot[]>([]);
-  const [redoStack, setRedoStack] = useState<EditorSnapshot[]>([]);
+  // История Undo/Redo (единый стек операций редактора)
+  const [historyState, setHistoryState] = useState(() =>
+    createHistoryState<ArticleEditorSnapshot>()
+  );
+  const typingSnapshotPendingRef = useRef(false);
   const textChangeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [slashMenu, setSlashMenu] = useState<{
     blockId: string;
@@ -321,6 +289,8 @@ export function EditArticleModalV2({ isOpen, article, onClose }: EditArticleModa
         setMeta(initialMetaValue);
         setInitialBlocks(JSON.parse(JSON.stringify(initialBlocksValue))); // Deep copy
         setInitialMeta({ ...initialMetaValue });
+        setHistoryState(createHistoryState());
+        typingSnapshotPendingRef.current = false;
         return;
       }
 
@@ -370,6 +340,8 @@ export function EditArticleModalV2({ isOpen, article, onClose }: EditArticleModa
             };
             setMeta(loadedMeta);
             setInitialMeta({ ...loadedMeta });
+            setHistoryState(createHistoryState());
+            typingSnapshotPendingRef.current = false;
           }
         }
       } catch (error) {
@@ -777,50 +749,68 @@ export function EditArticleModalV2({ isOpen, article, onClose }: EditArticleModa
     }
   }, []);
 
-  // Функции для работы с кареткой
-  const saveCaretPosition = useCallback((): CaretPosition | null => {
-    const activeElement = document.activeElement;
-    if (
-      activeElement &&
-      (activeElement.tagName === 'TEXTAREA' || activeElement.tagName === 'INPUT')
-    ) {
-      const textarea = activeElement as HTMLTextAreaElement | HTMLInputElement;
-      const blockId = textarea.getAttribute('data-block-id');
-      if (blockId) {
-        const position = textarea.selectionStart ?? 0;
-        const textLength = textarea.value.length;
-        if (position === 0) {
-          return { blockId, position: 'start' };
-        } else if (position === textLength) {
-          return { blockId, position: 'end' };
-        } else {
-          return { blockId, position: position as number };
-        }
-      }
+  const buildCurrentSnapshot = useCallback((): ArticleEditorSnapshot => {
+    return {
+      blocks: cloneSnapshot(blocks),
+      meta: { ...meta },
+      selectedBlockId,
+      selection: captureEditorSelectionOrFallback(focusBlockId, selectedBlockId),
+    };
+  }, [blocks, meta, selectedBlockId, focusBlockId]);
+
+  const applySnapshot = useCallback((snapshot: ArticleEditorSnapshot) => {
+    setBlocks(cloneSnapshot(snapshot.blocks));
+    setMeta({ ...snapshot.meta });
+    setSelectedBlockId(snapshot.selectedBlockId);
+
+    if (snapshot.selection) {
+      const { blockId, from, to } = snapshot.selection;
+      const listBlockId = blockId.includes(':') ? blockId.split(':')[0] : blockId;
+      setFocusBlockId(listBlockId);
+      pendingFocusRef.current = {
+        blockId,
+        position: from,
+        plainCaret: true,
+        selectionTo: to,
+      };
+    } else if (snapshot.selectedBlockId) {
+      setFocusBlockId(snapshot.selectedBlockId);
     }
-    // Если фокус на блоке (image/carousel), сохраняем blockId
-    if (selectedBlockId) {
-      return { blockId: selectedBlockId, position: 'end' };
-    }
-    // Если есть focusBlockId, но нет активного textarea, сохраняем его
-    if (focusBlockId) {
-      const block = blocks.find((b) => b.id === focusBlockId);
-      if (block && (block.type === 'image' || block.type === 'carousel')) {
-        return { blockId: focusBlockId, position: 'end' };
-      }
-      // Для текстовых блоков без активного textarea - конец блока
-      if (
-        block &&
-        (block.type === 'paragraph' ||
-          block.type === 'title' ||
-          block.type === 'subtitle' ||
-          block.type === 'quote')
-      ) {
-        return { blockId: focusBlockId, position: 'end' };
-      }
-    }
-    return null;
-  }, [selectedBlockId, focusBlockId, blocks]);
+  }, []);
+
+  const saveSnapshot = useCallback(
+    (selectionOverride?: EditorSelection | null) => {
+      const snapshot: ArticleEditorSnapshot = {
+        blocks: cloneSnapshot(blocks),
+        meta: { ...meta },
+        selectedBlockId,
+        selection:
+          selectionOverride !== undefined
+            ? selectionOverride
+            : captureEditorSelectionOrFallback(focusBlockId, selectedBlockId),
+      };
+      setHistoryState((prev) => pushHistorySnapshot(prev, cloneSnapshot(snapshot)));
+    },
+    [blocks, meta, selectedBlockId, focusBlockId]
+  );
+
+  const undo = useCallback(() => {
+    const current = buildCurrentSnapshot();
+    const result = undoHistory(historyState, cloneSnapshot(current));
+    if (!result) return;
+    setHistoryState(result.state);
+    applySnapshot(result.snapshot);
+    typingSnapshotPendingRef.current = false;
+  }, [historyState, buildCurrentSnapshot, applySnapshot]);
+
+  const redo = useCallback(() => {
+    const current = buildCurrentSnapshot();
+    const result = redoHistory(historyState, cloneSnapshot(current));
+    if (!result) return;
+    setHistoryState(result.state);
+    applySnapshot(result.snapshot);
+    typingSnapshotPendingRef.current = false;
+  }, [historyState, buildCurrentSnapshot, applySnapshot]);
 
   // Функция для вычисления целевого блока после удаления
   const findTargetBlockAfterDelete = useCallback(
@@ -911,143 +901,6 @@ export function EditArticleModalV2({ isOpen, article, onClose }: EditArticleModa
     });
   }, []);
 
-  const restoreCaretPosition = useCallback(
-    (caretPosition: CaretPosition | null | undefined, newBlocks: Block[]) => {
-      if (!caretPosition) return;
-
-      // Если блок всё ещё существует
-      const targetBlock = newBlocks.find((b) => b.id === caretPosition.blockId);
-      if (targetBlock) {
-        // Для текстовых блоков
-        if (
-          targetBlock.type === 'paragraph' ||
-          targetBlock.type === 'title' ||
-          targetBlock.type === 'subtitle' ||
-          targetBlock.type === 'quote'
-        ) {
-          setTimeout(() => {
-            setFocusBlockId(caretPosition.blockId);
-            const textarea = document.querySelector(
-              `[data-block-id="${caretPosition.blockId}"] textarea`
-            ) as HTMLTextAreaElement;
-            if (textarea) {
-              textarea.focus();
-              let position: number;
-              if (caretPosition.position === 'start') {
-                position = 0;
-              } else if (caretPosition.position === 'end') {
-                position = textarea.value.length;
-              } else {
-                position = Math.min(caretPosition.position as number, textarea.value.length);
-              }
-              textarea.setSelectionRange(position, position);
-            }
-          }, 0);
-          return;
-        }
-        // Для image/carousel блоков
-        if (targetBlock.type === 'image' || targetBlock.type === 'carousel') {
-          setTimeout(() => {
-            setSelectedBlockId(caretPosition.blockId);
-            setFocusBlockId(caretPosition.blockId);
-          }, 0);
-          return;
-        }
-      }
-
-      // Если блок удалился, ищем ближайший подходящий текстовый блок
-      // Ищем первый доступный текстовый блок в новом массиве
-      const targetTextBlock = newBlocks.find(
-        (block) =>
-          block &&
-          (block.type === 'paragraph' ||
-            block.type === 'title' ||
-            block.type === 'subtitle' ||
-            block.type === 'quote')
-      );
-      if (targetTextBlock) {
-        setTimeout(() => {
-          setFocusBlockId(targetTextBlock.id);
-          const textarea = document.querySelector(
-            `[data-block-id="${targetTextBlock.id}"] textarea`
-          ) as HTMLTextAreaElement;
-          if (textarea) {
-            textarea.focus();
-            textarea.setSelectionRange(textarea.value.length, textarea.value.length);
-          }
-        }, 0);
-      }
-    },
-    []
-  );
-
-  // Функции для работы с историей Undo/Redo
-  const saveSnapshot = useCallback(
-    (caretPosition?: CaretPosition | null) => {
-      const snapshot: EditorSnapshot = {
-        blocks: JSON.parse(JSON.stringify(blocks)), // Deep clone
-        meta: { ...meta },
-        focusBlockId,
-        selectedBlockId,
-        caretPosition: caretPosition !== undefined ? caretPosition : saveCaretPosition(),
-      };
-      setUndoStack((prev) => [...prev, snapshot].slice(-50)); // Ограничиваем историю 50 шагами
-      setRedoStack([]); // Очищаем redo при новом действии
-    },
-    [blocks, meta, focusBlockId, selectedBlockId, saveCaretPosition]
-  );
-
-  const restoreSnapshot = useCallback(
-    (snapshot: EditorSnapshot) => {
-      const newBlocks = JSON.parse(JSON.stringify(snapshot.blocks)) as Block[]; // Deep clone
-      setBlocks(newBlocks);
-      setMeta({ ...snapshot.meta });
-      setFocusBlockId(snapshot.focusBlockId);
-      setSelectedBlockId(snapshot.selectedBlockId);
-      // Восстанавливаем позицию каретки
-      restoreCaretPosition(snapshot.caretPosition, newBlocks);
-    },
-    [restoreCaretPosition]
-  );
-
-  const undo = useCallback(() => {
-    if (undoStack.length === 0) return;
-
-    // Сохраняем текущую позицию каретки перед undo
-    const currentCaretPosition = saveCaretPosition();
-    const currentSnapshot: EditorSnapshot = {
-      blocks: JSON.parse(JSON.stringify(blocks)),
-      meta: { ...meta },
-      focusBlockId,
-      selectedBlockId,
-      caretPosition: currentCaretPosition,
-    };
-    setRedoStack((prev) => [currentSnapshot, ...prev]);
-
-    const previousSnapshot = undoStack[undoStack.length - 1];
-    restoreSnapshot(previousSnapshot);
-    setUndoStack((prev) => prev.slice(0, -1));
-  }, [undoStack, blocks, meta, focusBlockId, selectedBlockId, restoreSnapshot, saveCaretPosition]);
-
-  const redo = useCallback(() => {
-    if (redoStack.length === 0) return;
-
-    // Сохраняем текущую позицию каретки перед redo
-    const currentCaretPosition = saveCaretPosition();
-    const currentSnapshot: EditorSnapshot = {
-      blocks: JSON.parse(JSON.stringify(blocks)),
-      meta: { ...meta },
-      focusBlockId,
-      selectedBlockId,
-      caretPosition: currentCaretPosition,
-    };
-    setUndoStack((prev) => [...prev, currentSnapshot]);
-
-    const nextSnapshot = redoStack[0];
-    restoreSnapshot(nextSnapshot);
-    setRedoStack((prev) => prev.slice(1));
-  }, [redoStack, blocks, meta, focusBlockId, selectedBlockId, restoreSnapshot, saveCaretPosition]);
-
   // Управление блоками
   const insertBlock = useCallback(
     (index: number, type: BlockType) => {
@@ -1074,10 +927,8 @@ export function EditArticleModalV2({ isOpen, article, onClose }: EditArticleModa
 
   const deleteBlock = useCallback(
     (blockId: string, forcedFocus?: DeleteFocus) => {
-      // Сохраняем позицию каретки перед удалением (для undo/redo)
-      const caretPosition = saveCaretPosition();
       // Сохраняем снимок перед удалением
-      saveSnapshot(caretPosition);
+      saveSnapshot();
 
       // Если мы заранее знаем куда ставить каретку — фиксируем это ДО setBlocks
       if (forcedFocus) {
@@ -1122,7 +973,7 @@ export function EditArticleModalV2({ isOpen, article, onClose }: EditArticleModa
         return newBlocks;
       });
     },
-    [saveSnapshot, saveCaretPosition, findTargetBlockAfterDelete]
+    [saveSnapshot, findTargetBlockAfterDelete]
   );
 
   // Конвертация image в carousel
@@ -1215,12 +1066,16 @@ export function EditArticleModalV2({ isOpen, article, onClose }: EditArticleModa
   // Установка фокуса после удаления блока (useLayoutEffect выполняется синхронно после обновления DOM)
   useLayoutEffect(() => {
     if (pendingFocusRef.current) {
-      const { blockId, position, plainCaret } = pendingFocusRef.current;
+      const { blockId, position, plainCaret, selectionTo } = pendingFocusRef.current;
       pendingFocusRef.current = null;
 
       requestAnimationFrame(() => {
-        setFocusBlockId(blockId);
-        focusTextBlockCaret(blockId, position, plainCaret ?? false);
+        setFocusBlockId(blockId.includes(':') ? blockId.split(':')[0] : blockId);
+        if (selectionTo !== undefined && plainCaret) {
+          restoreEditorSelection(blockId, position as number, selectionTo);
+        } else {
+          restoreEditorCaret(blockId, position, plainCaret ?? false);
+        }
       });
     }
   }, [blocks]);
@@ -1251,18 +1106,27 @@ export function EditArticleModalV2({ isOpen, article, onClose }: EditArticleModa
       const isTextChange = 'content' in updates || 'items' in updates || 'caption' in updates;
 
       if (isTextChange && !shouldSaveHistory) {
-        // Отменяем предыдущий таймер
+        if (!typingSnapshotPendingRef.current) {
+          saveSnapshot();
+          typingSnapshotPendingRef.current = true;
+        }
+
         if (textChangeTimeoutRef.current) {
           clearTimeout(textChangeTimeoutRef.current);
         }
 
-        // Сохраняем снимок через 500ms после последнего изменения
         textChangeTimeoutRef.current = setTimeout(() => {
-          saveSnapshot();
+          typingSnapshotPendingRef.current = false;
         }, 500);
-      } else if (shouldSaveHistory) {
-        // Для не-текстовых изменений (например, изменение caption) сохраняем сразу
-        saveSnapshot();
+      } else {
+        if (shouldSaveHistory) {
+          saveSnapshot();
+        }
+        typingSnapshotPendingRef.current = false;
+        if (textChangeTimeoutRef.current) {
+          clearTimeout(textChangeTimeoutRef.current);
+          textChangeTimeoutRef.current = null;
+        }
       }
 
       setBlocks((prev) =>

@@ -191,7 +191,7 @@ export function focusListItemField(
   }
 
   const textarea = document.querySelector(
-    `[data-block-id="${blockId}"] textarea`
+    `textarea[data-block-id="${blockId}"], [data-block-id="${blockId}"] textarea`
   ) as HTMLTextAreaElement | null;
   if (!textarea) return false;
 
