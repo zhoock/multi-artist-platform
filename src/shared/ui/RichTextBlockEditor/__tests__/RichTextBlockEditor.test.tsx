@@ -1,23 +1,50 @@
+import { useState } from 'react';
 import { describe, test, expect, jest } from '@jest/globals';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 
-import { markdownToRichText } from '@shared/lib/richText';
+import { getSelectionOffsets, markdownToRichText, restoreSelection } from '@shared/lib/richText';
 import { RichTextBlockEditor } from '@shared/ui/RichTextBlockEditor';
 
+function RichHarness({ initial = 'abc' }: { initial?: string }) {
+  const [content, setContent] = useState(() => markdownToRichText(initial));
+  return <RichTextBlockEditor content={content} onChange={setContent} mode="rich" />;
+}
+
 describe('RichTextBlockEditor', () => {
-  test('shows rich editor by default with Rich and Preview mode toggles', async () => {
+  test('deleteContentForward keeps caret at end after deleting last character (abc| → ab|)', async () => {
+    render(<RichHarness />);
+
+    const root = await waitFor(() => screen.getByTestId('rich-text-block-editor-rich'));
+    await waitFor(() => {
+      expect(root.textContent).toBe('abc');
+    });
+
+    root.focus();
+    restoreSelection(root, 2, 2);
+
+    act(() => {
+      root.dispatchEvent(
+        new InputEvent('beforeinput', {
+          inputType: 'deleteContentForward',
+          bubbles: true,
+          cancelable: true,
+        })
+      );
+    });
+
+    await waitFor(() => {
+      expect(root.textContent).toBe('ab');
+    });
+    expect(getSelectionOffsets(root)).toEqual({ from: 2, to: 2 });
+  });
+
+  test('shows rich editor by default without mode toggles', async () => {
     render(<RichTextBlockEditor content={markdownToRichText('**abc**')} onChange={jest.fn()} />);
 
     expect(screen.queryByRole('button', { name: 'Markdown' })).toBeNull();
-    expect(screen.getByRole('button', { name: 'Rich' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Preview' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Rich' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Preview' })).toBeNull();
     expect(screen.getByTestId('rich-text-block-editor-rich')).toBeTruthy();
-
-    fireEvent.click(screen.getByRole('button', { name: 'Preview' }));
-
-    expect(screen.queryByTestId('rich-text-block-editor-rich')).toBeNull();
-    const preview = screen.getByTestId('rich-text-block-editor-preview');
-    expect(preview.querySelector('strong')?.textContent).toBe('abc');
   });
 
   test('renders bold in preview', () => {
@@ -90,11 +117,15 @@ describe('RichTextBlockEditor', () => {
     });
   });
 
-  test('switching to preview mode hides contentEditable', () => {
-    render(<RichTextBlockEditor content={markdownToRichText('abc')} onChange={jest.fn()} />);
+  test('preview mode hides contentEditable when set via prop', () => {
+    render(
+      <RichTextBlockEditor
+        content={markdownToRichText('abc')}
+        onChange={jest.fn()}
+        mode="preview"
+      />
+    );
 
-    expect(screen.getByTestId('rich-text-block-editor-rich')).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: 'Preview' }));
     expect(screen.queryByTestId('rich-text-block-editor-rich')).toBeNull();
     expect(screen.getByTestId('rich-text-block-editor-preview')).toBeTruthy();
   });

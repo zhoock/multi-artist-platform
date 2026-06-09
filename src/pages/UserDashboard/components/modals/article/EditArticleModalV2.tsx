@@ -1794,7 +1794,7 @@ export function EditArticleModalV2({ isOpen, article, onClose }: EditArticleModa
     [blocks, updateBlock]
   );
 
-  // Обработчик форматирования (rich-native; textarea — только ?editor=markdown)
+  // Обработчик форматирования (rich-native; textarea — только ?editor=debug)
   const handleFormat = useCallback(
     (blockId: string, type: FormatType, url?: string) => {
       const block = blocks.find((b) => b.id === blockId);

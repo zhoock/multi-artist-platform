@@ -13,6 +13,7 @@ import {
   type Ref,
 } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
+import { flushSync } from 'react-dom';
 
 import type { InlineMark, InlineMarkType, RichText } from '@shared/lib/richText';
 import {
@@ -193,6 +194,7 @@ export function RichTextBlockEditor({
   onRichPasteMultilineRef.current = onRichPasteMultiline;
 
   const pendingSelectionRef = useRef<SelectionOffsets | null>(null);
+  const lastSyncedPlainRef = useRef<string | null>(null);
 
   const [richToolbar, setRichToolbar] = useState<RichToolbarState | null>(null);
   const [linkEditing, setLinkEditing] = useState(false);
@@ -236,6 +238,7 @@ export function RichTextBlockEditor({
       setLinkEditing(false);
       richRootRef.current?.unmount();
       richRootRef.current = null;
+      lastSyncedPlainRef.current = null;
     }
   }, [currentMode]);
 
@@ -243,8 +246,39 @@ export function RichTextBlockEditor({
     pendingSelectionRef.current = { from, to };
   };
 
+  const syncRichDom = (next: RichText, caret: number | null): boolean => {
+    const root = editableRef.current;
+    if (currentMode !== 'rich' || !editable || !root || isComposingRef.current) {
+      return false;
+    }
+
+    if (!richRootRef.current) {
+      richRootRef.current = createRoot(root);
+    }
+
+    flushSync(() => {
+      richRootRef.current!.render(<>{renderRichText(next)}</>);
+    });
+
+    lastSyncedPlainRef.current = richTextToPlainText(next);
+
+    if (caret != null) {
+      root.focus({ preventScroll: true });
+      restoreSelection(root, caret, caret);
+    }
+
+    return true;
+  };
+
   const emitContent = (next: RichText, from: number, to: number = from) => {
-    scheduleSelection(from, to);
+    const caret = Math.min(from, richTextToPlainText(next).length);
+
+    if (syncRichDom(next, caret)) {
+      pendingSelectionRef.current = null;
+    } else {
+      scheduleSelection(caret, caret);
+    }
+
     onChangeRef.current(next);
   };
 
@@ -301,15 +335,22 @@ export function RichTextBlockEditor({
       richRootRef.current = createRoot(root);
     }
 
-    if (!isComposingRef.current) {
+    const plain = richTextToPlainText(content);
+    const pending = pendingSelectionRef.current;
+
+    if (!isComposingRef.current && (plain !== lastSyncedPlainRef.current || pending)) {
       richRootRef.current.render(<>{renderRichText(content)}</>);
+      lastSyncedPlainRef.current = plain;
     }
 
-    const pending = pendingSelectionRef.current;
     if (pending && !isComposingRef.current) {
       pendingSelectionRef.current = null;
       root.focus({ preventScroll: true });
-      restoreSelection(root, pending.from, pending.to);
+      const caret = Math.min(pending.from, plain.length);
+      queueMicrotask(() => {
+        if (editableRef.current !== root) return;
+        restoreSelection(root, caret, caret);
+      });
     }
   }, [content, currentMode, editable]);
 
@@ -367,7 +408,8 @@ export function RichTextBlockEditor({
 
         if (range.from === range.to) return;
         const next = deleteRange(model, range.from, range.to);
-        emitContent(next, range.from, range.from);
+        const caret = Math.min(range.from, richTextToPlainText(next).length);
+        emitContent(next, caret, caret);
         return;
       }
 
@@ -549,7 +591,7 @@ export function RichTextBlockEditor({
 
   return (
     <div className="rich-text-block-editor">
-      {editable && (
+      {editable && getVisibleEditorModes().length > 0 && (
         <div className="rich-text-block-editor__modes" role="group" aria-label="Режим блока">
           {getModeOrder().map((value) => (
             <button
@@ -760,21 +802,26 @@ function resolveDeleteRange(
   model: RichText,
   inputType: string
 ): SelectionOffsets | null {
+  const selection = getSelectionOffsets(root);
+  const length = richTextToPlainText(model).length;
+
   const targetRanges = typeof event.getTargetRanges === 'function' ? event.getTargetRanges() : [];
   if (targetRanges.length > 0) {
     const range = targetRanges[0];
     const a = pointToOffsetSafe(root, range.startContainer, range.startOffset);
     const b = pointToOffsetSafe(root, range.endContainer, range.endOffset);
-    return a <= b ? { from: a, to: b } : { from: b, to: a };
+    const from = Math.min(a, b);
+    const to = Math.max(a, b);
+    if (from !== to) {
+      return { from, to };
+    }
   }
 
-  const selection = getSelectionOffsets(root);
   if (!selection) return null;
   if (selection.from !== selection.to) return selection;
 
-  const length = richTextToPlainText(model).length;
   if (inputType === 'deleteContentForward') {
-    if (selection.from >= length) return { from: length, to: length };
+    if (selection.from >= length) return null;
     return { from: selection.from, to: Math.min(selection.from + 1, length) };
   }
 

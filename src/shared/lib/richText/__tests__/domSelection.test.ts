@@ -37,6 +37,9 @@ describe('domSelection', () => {
   });
 
   test('restoreSelection clamps offsets beyond the end', () => {
+    restoreSelection(root, 4, 4);
+    expect(getSelectionOffsets(root)).toEqual({ from: 4, to: 4 });
+
     restoreSelection(root, 0, 99);
     expect(getSelectionOffsets(root)).toEqual({ from: 0, to: 4 });
   });

@@ -1,13 +1,16 @@
-/** Режимы RichTextBlockEditor. Markdown (textarea) — только для отладки. */
+/** Режимы RichTextBlockEditor. Markdown (textarea) и Preview — только для отладки. */
 export type RichTextBlockEditorMode = 'textarea' | 'preview' | 'rich';
 
-/** Скрытый markdown-режим для отладки сериализации. Включить: ?editor=markdown */
-export const ENABLE_MARKDOWN_DEBUG = false;
+/** Скрытые режимы Preview/Markdown. Включить: ?editor=debug */
+export const ENABLE_EDITOR_DEBUG = false;
+
+/** @deprecated use ENABLE_EDITOR_DEBUG */
+export const ENABLE_MARKDOWN_DEBUG = ENABLE_EDITOR_DEBUG;
 
 export function isMarkdownEditorEnabled(): boolean {
-  if (ENABLE_MARKDOWN_DEBUG) return true;
+  if (ENABLE_EDITOR_DEBUG) return true;
   if (typeof window !== 'undefined') {
-    return new URLSearchParams(window.location.search).get('editor') === 'markdown';
+    return new URLSearchParams(window.location.search).get('editor') === 'debug';
   }
   return false;
 }
@@ -20,5 +23,5 @@ export function getVisibleEditorModes(): RichTextBlockEditorMode[] {
   if (isMarkdownEditorEnabled()) {
     return ['textarea', 'preview', 'rich'];
   }
-  return ['rich', 'preview'];
+  return [];
 }
