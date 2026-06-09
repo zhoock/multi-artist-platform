@@ -14,6 +14,19 @@ import {
 } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { flushSync } from 'react-dom';
+import {
+  Bold as BoldIcon,
+  Check as CheckIcon,
+  Heading1 as Heading1Icon,
+  Heading2 as Heading2Icon,
+  Italic as ItalicIcon,
+  Link as LinkIcon,
+  Quote as QuoteIcon,
+  Strikethrough as StrikethroughIcon,
+  Underline as UnderlineIcon,
+} from 'lucide-react';
+
+import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 
 import type { InlineMark, InlineMarkType, RichText } from '@shared/lib/richText';
 import {
@@ -102,6 +115,8 @@ export type RichTextBlockEditorProps = {
   onRichPasteMultiline?: (detail: RichPasteMultilineDetail) => void;
   onBlockFormat?: (type: RichBlockFormatType) => void;
 };
+
+const TOOLBAR_ICON_PROPS = dashboardActionIconProps({ size: 16 });
 
 const MODE_LABELS: Record<RichTextBlockEditorMode, string> = {
   textarea: 'Markdown',
@@ -195,12 +210,17 @@ export function RichTextBlockEditor({
 
   const pendingSelectionRef = useRef<SelectionOffsets | null>(null);
   const lastSyncedPlainRef = useRef<string | null>(null);
+  const toolbarSelectionRef = useRef<SelectionOffsets | null>(null);
+  const toolbarRef = useRef<HTMLDivElement | null>(null);
+  const suppressToolbarDismissRef = useRef(false);
+  const toolbarVisibleRef = useRef(false);
 
   const [richToolbar, setRichToolbar] = useState<RichToolbarState | null>(null);
   const [linkEditing, setLinkEditing] = useState(false);
   const [linkValue, setLinkValue] = useState('');
   const linkEditingRef = useRef(linkEditing);
   linkEditingRef.current = linkEditing;
+  toolbarVisibleRef.current = richToolbar != null;
 
   const { localMarkdown, handleChange: handleMarkdownChange } = useLocalMarkdownBuffer(
     content,
@@ -236,11 +256,37 @@ export function RichTextBlockEditor({
     if (currentMode !== 'rich') {
       setRichToolbar(null);
       setLinkEditing(false);
+      toolbarSelectionRef.current = null;
       richRootRef.current?.unmount();
       richRootRef.current = null;
       lastSyncedPlainRef.current = null;
     }
   }, [currentMode]);
+
+  const closeToolbar = () => {
+    setRichToolbar(null);
+    setLinkEditing(false);
+    toolbarSelectionRef.current = null;
+    toolbarVisibleRef.current = false;
+  };
+
+  const updateToolbarRect = (from: number, to: number) => {
+    const root = editableRef.current;
+    if (!root) return;
+    const selection = root.ownerDocument.getSelection?.() ?? window.getSelection();
+    const range = selection?.rangeCount ? selection.getRangeAt(0) : null;
+    if (!range || !root.contains(range.commonAncestorContainer)) return;
+    toolbarSelectionRef.current = { from, to };
+    toolbarVisibleRef.current = true;
+    setRichToolbar({ from, to, rect: range.getBoundingClientRect() });
+  };
+
+  const maintainToolbarSelection = (from: number, to: number) => {
+    const root = editableRef.current;
+    if (!root) return;
+    restoreSelection(root, from, to);
+    updateToolbarRect(from, to);
+  };
 
   const scheduleSelection = (from: number, to: number = from) => {
     pendingSelectionRef.current = { from, to };
@@ -460,10 +506,12 @@ export function RichTextBlockEditor({
         const existing = getLinkAtSelection(model, from, to);
         if (existing) {
           emitContent(removeLink(model, from, to), from, to);
+          maintainToolbarSelection(from, to);
         } else {
           setLinkValue('');
           setLinkEditing(true);
-          setRichToolbar({ from, to, rect: root.getBoundingClientRect() });
+          toolbarSelectionRef.current = { from, to };
+          updateToolbarRect(from, to);
         }
         return;
       }
@@ -472,6 +520,7 @@ export function RichTextBlockEditor({
         key === 'b' ? 'bold' : key === 'i' ? 'italic' : key === 'u' ? 'underline' : null;
       if (!markType) return;
       emitContent(toggleMark(model, from, to, { type: markType } as InlineMark), from, to);
+      maintainToolbarSelection(from, to);
     };
 
     root.addEventListener('keydown', handleKeyDown);
@@ -511,23 +560,29 @@ export function RichTextBlockEditor({
     if (!root) return;
 
     const update = () => {
-      if (linkEditingRef.current || isComposingRef.current) return;
+      if (linkEditingRef.current || isComposingRef.current || suppressToolbarDismissRef.current) {
+        return;
+      }
+
       const selection = root.ownerDocument.getSelection?.() ?? window.getSelection();
       if (!selection || selection.rangeCount === 0) {
-        setRichToolbar(null);
+        if (toolbarVisibleRef.current) closeToolbar();
         return;
       }
+
       const range = selection.getRangeAt(0);
       if (!root.contains(range.commonAncestorContainer)) {
-        setRichToolbar(null);
+        if (toolbarVisibleRef.current) closeToolbar();
         return;
       }
+
       const offsets = getSelectionOffsets(root);
       if (!offsets || offsets.from === offsets.to) {
-        setRichToolbar(null);
+        if (toolbarVisibleRef.current) closeToolbar();
         return;
       }
-      setRichToolbar({ from: offsets.from, to: offsets.to, rect: range.getBoundingClientRect() });
+
+      updateToolbarRect(offsets.from, offsets.to);
     };
 
     document.addEventListener('selectionchange', update);
@@ -540,49 +595,111 @@ export function RichTextBlockEditor({
     };
   }, [currentMode]);
 
+  useEffect(() => {
+    if (currentMode !== 'rich' || !richToolbar) return;
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (suppressToolbarDismissRef.current) return;
+
+      const target = event.target as Node;
+      const root = editableRef.current;
+      if (root?.contains(target)) return;
+      if (toolbarRef.current?.contains(target)) return;
+      closeToolbar();
+    };
+
+    const handleKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      if (linkEditingRef.current) {
+        event.preventDefault();
+        setLinkEditing(false);
+        return;
+      }
+      if (richToolbar) {
+        event.preventDefault();
+        closeToolbar();
+      }
+    };
+
+    document.addEventListener('pointerdown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown, true);
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown, true);
+    };
+  }, [currentMode, richToolbar]);
+
   const handleTextareaChange = (event: ChangeEvent<HTMLTextAreaElement>) => {
     handleMarkdownChange(event.target.value);
     onTextareaChange?.(event.target.value, event);
   };
 
-  const emitWithSelection = (next: RichText, from: number, to: number) => {
-    scheduleSelection(from, to);
-    onChange(next);
-  };
-
   const applyMark = (markType: InlineMarkType) => {
-    if (!richToolbar) return;
-    const { from, to } = richToolbar;
-    emitWithSelection(toggleMark(content, from, to, { type: markType } as InlineMark), from, to);
+    const selection = toolbarSelectionRef.current;
+    if (!selection) return;
+
+    const { from, to } = selection;
+    suppressToolbarDismissRef.current = true;
+    emitContent(
+      toggleMark(contentRef.current, from, to, { type: markType } as InlineMark),
+      from,
+      to
+    );
+    maintainToolbarSelection(from, to);
+    suppressToolbarDismissRef.current = false;
   };
 
   const handleLinkButton = () => {
-    if (!richToolbar) return;
-    const { from, to } = richToolbar;
-    const existing = getLinkAtSelection(content, from, to);
+    const selection = toolbarSelectionRef.current;
+    if (!selection) return;
+
+    const { from, to } = selection;
+    const existing = getLinkAtSelection(contentRef.current, from, to);
     if (existing) {
-      emitWithSelection(removeLink(content, from, to), from, to);
+      suppressToolbarDismissRef.current = true;
+      emitContent(removeLink(contentRef.current, from, to), from, to);
+      maintainToolbarSelection(from, to);
+      suppressToolbarDismissRef.current = false;
       return;
     }
+
     setLinkValue('');
     setLinkEditing(true);
   };
 
   const confirmLink = () => {
-    setLinkEditing(false);
-    if (!richToolbar) return;
-    const { from, to } = richToolbar;
+    const selection = toolbarSelectionRef.current;
+    if (!selection) return;
+
+    const { from, to } = selection;
     const url = linkValue.trim();
+    setLinkEditing(false);
     if (!url) return;
-    emitWithSelection(setLink(content, from, to, url), from, to);
+
+    suppressToolbarDismissRef.current = true;
+    emitContent(setLink(contentRef.current, from, to, url), from, to);
+    maintainToolbarSelection(from, to);
+    suppressToolbarDismissRef.current = false;
+  };
+
+  const handleBlockFormat = (type: RichBlockFormatType) => {
+    const selection = toolbarSelectionRef.current;
+    if (!selection || !onBlockFormat) return;
+
+    suppressToolbarDismissRef.current = true;
+    onBlockFormat(type);
+    queueMicrotask(() => {
+      suppressToolbarDismissRef.current = false;
+    });
   };
 
   const keepSelection = (event: MouseEvent) => {
     event.preventDefault();
   };
 
-  const activeMarks = richToolbar
-    ? getActiveMarks(content, richToolbar.from, richToolbar.to)
+  const selectionForMarks = toolbarSelectionRef.current ?? richToolbar;
+  const activeMarks = selectionForMarks
+    ? getActiveMarks(contentRef.current, selectionForMarks.from, selectionForMarks.to)
     : new Set<InlineMarkType>();
 
   const blockClassName = VARIANT_BLOCK_CLASS[variant];
@@ -634,6 +751,7 @@ export function RichTextBlockEditor({
 
           {richToolbar && (
             <div
+              ref={toolbarRef}
               className="rich-text-block-editor__toolbar"
               style={{
                 top: `${richToolbar.rect.top}px`,
@@ -666,8 +784,9 @@ export function RichTextBlockEditor({
                     className="rich-text-block-editor__toolbar-btn"
                     onMouseDown={keepSelection}
                     onClick={confirmLink}
+                    aria-label="Подтвердить"
                   >
-                    OK
+                    <CheckIcon {...TOOLBAR_ICON_PROPS} />
                   </button>
                 </div>
               ) : (
@@ -679,8 +798,9 @@ export function RichTextBlockEditor({
                     onMouseDown={keepSelection}
                     onClick={() => applyMark('bold')}
                     title="Жирный"
+                    aria-label="Жирный"
                   >
-                    <strong>B</strong>
+                    <BoldIcon {...TOOLBAR_ICON_PROPS} />
                   </button>
                   <button
                     type="button"
@@ -689,8 +809,9 @@ export function RichTextBlockEditor({
                     onMouseDown={keepSelection}
                     onClick={() => applyMark('italic')}
                     title="Курсив"
+                    aria-label="Курсив"
                   >
-                    <em>I</em>
+                    <ItalicIcon {...TOOLBAR_ICON_PROPS} />
                   </button>
                   <button
                     type="button"
@@ -699,8 +820,9 @@ export function RichTextBlockEditor({
                     onMouseDown={keepSelection}
                     onClick={() => applyMark('underline')}
                     title="Подчёркнутый"
+                    aria-label="Подчёркнутый"
                   >
-                    <u>U</u>
+                    <UnderlineIcon {...TOOLBAR_ICON_PROPS} />
                   </button>
                   <button
                     type="button"
@@ -709,8 +831,9 @@ export function RichTextBlockEditor({
                     onMouseDown={keepSelection}
                     onClick={() => applyMark('strike')}
                     title="Зачёркнутый"
+                    aria-label="Зачёркнутый"
                   >
-                    <s>S</s>
+                    <StrikethroughIcon {...TOOLBAR_ICON_PROPS} />
                   </button>
                   <button
                     type="button"
@@ -719,10 +842,11 @@ export function RichTextBlockEditor({
                     onMouseDown={keepSelection}
                     onClick={handleLinkButton}
                     title="Ссылка"
+                    aria-label="Ссылка"
                   >
-                    Link
+                    <LinkIcon {...TOOLBAR_ICON_PROPS} />
                   </button>
-                  {variant === 'paragraph' && onBlockFormat && (
+                  {onBlockFormat && (
                     <>
                       <span
                         className="rich-text-block-editor__toolbar-divider"
@@ -731,29 +855,35 @@ export function RichTextBlockEditor({
                       <button
                         type="button"
                         className="rich-text-block-editor__toolbar-btn rich-text-block-editor__toolbar-btn--block"
+                        aria-pressed={variant === 'title'}
                         onMouseDown={keepSelection}
-                        onClick={() => onBlockFormat('heading-large')}
+                        onClick={() => handleBlockFormat('heading-large')}
                         title="Заголовок"
+                        aria-label="Заголовок"
                       >
-                        H
+                        <Heading1Icon {...TOOLBAR_ICON_PROPS} />
                       </button>
                       <button
                         type="button"
                         className="rich-text-block-editor__toolbar-btn rich-text-block-editor__toolbar-btn--block"
+                        aria-pressed={variant === 'subtitle'}
                         onMouseDown={keepSelection}
-                        onClick={() => onBlockFormat('heading-small')}
+                        onClick={() => handleBlockFormat('heading-small')}
                         title="Подзаголовок"
+                        aria-label="Подзаголовок"
                       >
-                        H
+                        <Heading2Icon {...TOOLBAR_ICON_PROPS} />
                       </button>
                       <button
                         type="button"
                         className="rich-text-block-editor__toolbar-btn rich-text-block-editor__toolbar-btn--block"
+                        aria-pressed={variant === 'quote'}
                         onMouseDown={keepSelection}
-                        onClick={() => onBlockFormat('quote')}
+                        onClick={() => handleBlockFormat('quote')}
                         title="Цитата"
+                        aria-label="Цитата"
                       >
-                        "
+                        <QuoteIcon {...TOOLBAR_ICON_PROPS} />
                       </button>
                     </>
                   )}

@@ -1812,7 +1812,26 @@ export function EditArticleModalV2({ isOpen, article, onClose }: EditArticleModa
         const targetType: BlockType =
           type === 'heading-large' ? 'title' : type === 'heading-small' ? 'subtitle' : 'quote';
         const nextType: BlockType = block.type === targetType ? 'paragraph' : targetType;
+
+        const rich = document.querySelector(
+          `[data-block-id="${blockId}"][data-testid="rich-text-block-editor-rich"]`
+        ) as HTMLElement | null;
+        const selection = rich ? getSelectionOffsets(rich) : null;
+
         convertBlockType(blockId, nextType);
+
+        if (selection && selection.from !== selection.to) {
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+              const nextRich = document.querySelector(
+                `[data-block-id="${blockId}"][data-testid="rich-text-block-editor-rich"]`
+              ) as HTMLElement | null;
+              if (!nextRich) return;
+              nextRich.focus({ preventScroll: true });
+              restoreSelection(nextRich, selection.from, selection.to);
+            });
+          });
+        }
         return;
       }
 

@@ -99,18 +99,19 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-width: 28px;
+    width: 28px;
     height: 28px;
-    padding: 0 6px;
+    padding: 0;
     color: var(--dashboard-text-primary, #f0f0f0);
-    font-size: 0.85rem;
     background: transparent;
     border: none;
     border-radius: 4px;
     cursor: pointer;
 
-    &--block {
-      font-weight: 700;
+    svg {
+      width: 16px;
+      height: 16px;
+      flex-shrink: 0;
     }
 
     &:hover {

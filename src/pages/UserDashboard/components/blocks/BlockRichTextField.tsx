@@ -144,6 +144,7 @@ export function BlockRichTextField({
         onRichEnter={onRichEnter}
         onRichBackspace={onRichBackspace}
         onRichPasteMultiline={onRichPasteMultiline}
+        onBlockFormat={onFormat}
         onFocus={onFocus}
         onBlur={() => {
           setTimeout(() => {
