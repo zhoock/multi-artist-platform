@@ -1,7 +1,7 @@
 // src/pages/UserDashboard/components/blocks/BlockParagraph.tsx
 import React, { useRef, useEffect, useState } from 'react';
 import type { RichText } from '@shared/lib/richText';
-import { useLocalMarkdownBuffer } from './useLocalMarkdownBuffer';
+import { RichTextBlockEditor } from '@shared/ui/RichTextBlockEditor';
 import {
   emptyFormatMenuActiveState,
   getFormatMenuActiveState,
@@ -51,24 +51,9 @@ export function BlockParagraph({
 }: BlockParagraphProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [showFormatMenu, setShowFormatMenu] = useState(false);
-  const { localMarkdown, handleChange: handleMarkdownChange } = useLocalMarkdownBuffer(
-    value,
-    onChange
-  );
+  const [previewMode, setPreviewMode] = useState(false);
 
-  // Автоматический рост textarea
-  useEffect(() => {
-    const textarea = textareaRef.current;
-    if (textarea) {
-      textarea.style.height = 'auto';
-      textarea.style.height = `${textarea.scrollHeight}px`;
-    }
-  }, [localMarkdown]);
-
-  const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const newValue = e.target.value;
-    handleMarkdownChange(newValue);
-
+  const handleChange = (newValue: string, e: React.ChangeEvent<HTMLTextAreaElement>) => {
     // Проверка на "/" в начале строки для slash-меню
     const cursorPos = e.target.selectionStart;
     const textBeforeCursor = newValue.substring(0, cursorPos);
@@ -243,12 +228,21 @@ export function BlockParagraph({
   return (
     <div className="edit-article-v2__block-wrapper-text">
       <p>
-        <textarea
-          ref={textareaRef}
-          className="edit-article-v2__block edit-article-v2__block--paragraph"
-          data-block-id={blockId}
-          value={localMarkdown}
-          onChange={handleChange}
+        <RichTextBlockEditor
+          content={value}
+          onChange={onChange}
+          previewMode={previewMode}
+          onPreviewModeChange={(next) => {
+            setPreviewMode(next);
+            if (next) {
+              setShowFormatMenu(false);
+            }
+          }}
+          textareaRef={textareaRef}
+          textareaClassName="edit-article-v2__block edit-article-v2__block--paragraph"
+          blockId={blockId}
+          placeholder={placeholder}
+          onTextareaChange={handleChange}
           onKeyDown={handleKeyDown}
           onPaste={handlePaste}
           onFocus={onFocus}
@@ -267,11 +261,9 @@ export function BlockParagraph({
             }, 100);
             onBlur?.();
           }}
-          placeholder={placeholder}
-          rows={1}
         />
       </p>
-      {showFormatMenu && (
+      {showFormatMenu && !previewMode && (
         <FormatMenu
           textarea={textareaRef.current}
           content={value}
