@@ -1,7 +1,13 @@
 // src/pages/UserDashboard/components/EditArticleModalV2.utils.ts
 import type { ArticledetailsProps } from '@models';
 import type { RichText } from '@shared/lib/richText';
-import { isRichTextEmpty, markdownToRichText, richTextToMarkdown } from '@shared/lib/richText';
+import {
+  isRichTextEmpty,
+  markdownToRichText,
+  normalizeRichText,
+  richTextToMarkdown,
+  cloneRichText,
+} from '@shared/lib/richText';
 
 /**
  * Типы блоков редактора (block-based, как VK)
@@ -61,6 +67,14 @@ export function generateListItemId(): string {
 
 export function createListItem(markdown = ''): ArticleListItem {
   return { id: generateListItemId(), content: markdownToRichText(markdown) };
+}
+
+export function createListItemFromRichText(content: RichText): ArticleListItem {
+  return { id: generateListItemId(), content: cloneRichText(content) };
+}
+
+export function mergeListItemContents(first: RichText, second: RichText): RichText {
+  return normalizeRichText([...first, ...second]);
 }
 
 export function isListBlockEmpty(items: ArticleListItem[]): boolean {

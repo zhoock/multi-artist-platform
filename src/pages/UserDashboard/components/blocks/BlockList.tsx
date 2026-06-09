@@ -1,113 +1,183 @@
 // src/pages/UserDashboard/components/blocks/BlockList.tsx
-import React, { useRef, useEffect } from 'react';
+import React, { useLayoutEffect, useRef } from 'react';
 import type { RichText } from '@shared/lib/richText';
-import { isRichTextEmpty } from '@shared/lib/richText';
-import { createListItem, type ArticleListItem } from '../modals/article/EditArticleModalV2.utils';
-import { useLocalMarkdownBuffer } from './useLocalMarkdownBuffer';
+import { isRichTextEmpty, richTextToPlainText } from '@shared/lib/richText';
+import type {
+  RichBackspaceDetail,
+  RichEnterDetail,
+  RichPasteMultilineDetail,
+} from '@shared/ui/RichTextBlockEditor';
+import {
+  createListItem,
+  createListItemFromRichText,
+  mergeListItemContents,
+  type ArticleListItem,
+} from '../modals/article/EditArticleModalV2.utils';
+import { BlockListItemField, focusListItemField } from './BlockListItemField';
 
 interface BlockListProps {
+  blockId: string;
   value: ArticleListItem[];
   onChange: (items: ArticleListItem[]) => void;
   onFocus?: () => void;
   onBlur?: () => void;
-  onBackspace?: (isEmpty: boolean, atStart?: boolean) => void;
+  onConvertToParagraph?: (content: RichText) => void;
+  onInsertParagraphAfter?: () => void;
 }
 
-export function BlockList({ value, onChange, onFocus, onBlur, onBackspace }: BlockListProps) {
+type PendingItemFocus = {
+  itemId: string;
+  offset: number | 'start' | 'end';
+};
+
+export function BlockList({
+  blockId,
+  value,
+  onChange,
+  onFocus,
+  onBlur,
+  onConvertToParagraph,
+  onInsertParagraphAfter,
+}: BlockListProps) {
   const items = value.length > 0 ? value : [createListItem('')];
+  const pendingFocusRef = useRef<PendingItemFocus | null>(null);
+
+  const scheduleFocus = (itemId: string, offset: number | 'start' | 'end' = 'start') => {
+    pendingFocusRef.current = { itemId, offset };
+  };
+
+  useLayoutEffect(() => {
+    const pending = pendingFocusRef.current;
+    if (!pending) return;
+    pendingFocusRef.current = null;
+    requestAnimationFrame(() => {
+      focusListItemField(blockId, pending.itemId, pending.offset);
+    });
+  }, [blockId, items]);
+
+  const mergeAllItemContents = (): RichText => {
+    let merged = createListItem('').content;
+    for (const item of items) {
+      merged = mergeListItemContents(merged, item.content);
+    }
+    return merged;
+  };
 
   const handleItemChange = (index: number, content: RichText) => {
     const newItems = [...items];
     newItems[index] = { ...newItems[index], content };
-    onChange(newItems.filter((item) => !isRichTextEmpty(item.content)));
+    const filtered = newItems.filter((item) => !isRichTextEmpty(item.content));
+    onChange(filtered.length > 0 ? filtered : [createListItem('')]);
   };
 
-  const handleItemKeyDown = (index: number, e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      const newItems = [...items];
-      newItems.splice(index + 1, 0, createListItem(''));
-      onChange(newItems);
-      setTimeout(() => {
-        const nextInput = document.querySelector(
-          `.edit-article-v2__block--list-item:nth-child(${index + 2}) textarea`
-        ) as HTMLTextAreaElement;
-        nextInput?.focus();
-      }, 0);
-    } else if (e.key === 'Backspace') {
-      const textarea = e.currentTarget;
-      if (textarea.value === '' && items.length > 1) {
-        e.preventDefault();
-        const newItems = items.filter((_, i) => i !== index);
-        onChange(newItems);
-        if (index > 0) {
-          setTimeout(() => {
-            const prevInput = document.querySelector(
-              `.edit-article-v2__block--list-item:nth-child(${index}) textarea`
-            ) as HTMLTextAreaElement;
-            prevInput?.focus();
-          }, 0);
-        } else {
-          onBackspace?.(newItems.length === 0, false);
-        }
-      } else if (textarea.value === '' && items.length === 1) {
-        e.preventDefault();
-        onBackspace?.(true, false);
-      }
+  const insertItemAfter = (index: number, item: ArticleListItem) => {
+    const newItems = [...items];
+    newItems.splice(index + 1, 0, item);
+    onChange(newItems);
+    scheduleFocus(item.id, 'start');
+  };
+
+  const handleEmptyItemEnter = (index: number) => {
+    if (items.length === 1) {
+      onConvertToParagraph?.(createListItem('').content);
+      return;
     }
+
+    const newItems = items.filter((_, i) => i !== index);
+    onChange(newItems);
+    onInsertParagraphAfter?.();
+  };
+
+  const handleItemEnter = (index: number, atEnd: boolean) => {
+    const item = items[index];
+    if (isRichTextEmpty(item.content)) {
+      handleEmptyItemEnter(index);
+      return;
+    }
+
+    if (atEnd) {
+      const newItem = createListItem('');
+      insertItemAfter(index, newItem);
+    }
+  };
+
+  const handleRichItemEnter = (index: number, detail: RichEnterDetail) => {
+    const item = items[index];
+    if (isRichTextEmpty(item.content) && detail.atEnd) {
+      handleEmptyItemEnter(index);
+      return;
+    }
+
+    if (detail.atEnd) {
+      insertItemAfter(index, createListItem(''));
+      return;
+    }
+
+    if (detail.after) {
+      const newItem = createListItemFromRichText(detail.after);
+      insertItemAfter(index, newItem);
+    }
+  };
+
+  const handleEmptyItemBackspace = (index: number) => {
+    if (index === 0) {
+      onConvertToParagraph?.(mergeAllItemContents());
+      return;
+    }
+
+    const prev = items[index - 1];
+    const merged = mergeListItemContents(prev.content, items[index].content);
+    const newItems = [...items];
+    newItems[index - 1] = { ...prev, content: merged };
+    newItems.splice(index, 1);
+    onChange(newItems);
+    scheduleFocus(prev.id, richTextToPlainText(prev.content).length);
+  };
+
+  const handleItemBackspace = (index: number, isEmpty: boolean) => {
+    if (!isEmpty) return;
+    handleEmptyItemBackspace(index);
+  };
+
+  const handleRichItemBackspace = (index: number, detail: RichBackspaceDetail) => {
+    if (!detail.isEmpty || !detail.atStart) return;
+    handleEmptyItemBackspace(index);
+  };
+
+  const handleRichItemPasteMultiline = (index: number, detail: RichPasteMultilineDetail) => {
+    const newItems = [...items];
+    newItems[index] = { ...newItems[index], content: detail.leadingContent };
+
+    const inserted: ArticleListItem[] = [
+      ...detail.middleBlocks.map((content) => createListItemFromRichText(content)),
+      createListItemFromRichText(detail.trailingContent),
+    ];
+    newItems.splice(index + 1, 0, ...inserted);
+    onChange(newItems);
+
+    const focusItem = inserted[inserted.length - 1];
+    scheduleFocus(focusItem.id, detail.focusOffset);
   };
 
   return (
     <ul className="edit-article-v2__block edit-article-v2__block--list">
       {items.map((item, index) => (
-        <ListItem
+        <BlockListItemField
           key={item.id}
+          listBlockId={blockId}
+          itemId={item.id}
           value={item.content}
           onChange={(content) => handleItemChange(index, content)}
-          onKeyDown={(e) => handleItemKeyDown(index, e)}
+          onEnter={(atEnd) => handleItemEnter(index, atEnd)}
+          onBackspace={(isEmpty) => handleItemBackspace(index, isEmpty)}
+          onRichEnter={(detail) => handleRichItemEnter(index, detail)}
+          onRichBackspace={(detail) => handleRichItemBackspace(index, detail)}
+          onRichPasteMultiline={(detail) => handleRichItemPasteMultiline(index, detail)}
           onFocus={onFocus}
           onBlur={onBlur}
           placeholder={`Элемент ${index + 1}`}
         />
       ))}
     </ul>
-  );
-}
-
-interface ListItemProps {
-  value: RichText;
-  onChange: (content: RichText) => void;
-  onKeyDown: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
-  onFocus?: () => void;
-  onBlur?: () => void;
-  placeholder?: string;
-}
-
-function ListItem({ value, onChange, onKeyDown, onFocus, onBlur, placeholder }: ListItemProps) {
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const { localMarkdown, handleChange } = useLocalMarkdownBuffer(value, onChange);
-
-  useEffect(() => {
-    const textarea = textareaRef.current;
-    if (textarea) {
-      textarea.style.height = 'auto';
-      textarea.style.height = `${textarea.scrollHeight}px`;
-    }
-  }, [localMarkdown]);
-
-  return (
-    <li className="edit-article-v2__block--list-item">
-      <textarea
-        ref={textareaRef}
-        className="edit-article-v2__block"
-        value={localMarkdown}
-        onChange={(e) => handleChange(e.target.value)}
-        onKeyDown={onKeyDown}
-        onFocus={onFocus}
-        onBlur={onBlur}
-        placeholder={placeholder}
-        rows={1}
-      />
-    </li>
   );
 }

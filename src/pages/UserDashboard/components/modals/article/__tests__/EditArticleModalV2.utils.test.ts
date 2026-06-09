@@ -1,7 +1,9 @@
 import {
   blocksToDetails,
   createListItem,
+  createListItemFromRichText,
   generateId,
+  mergeListItemContents,
   normalizeDetailsToBlocks,
 } from '../EditArticleModalV2.utils';
 import { markdownToRichText, richTextToPlainText } from '@shared/lib/richText';
@@ -95,6 +97,21 @@ describe('EditArticleModalV2.utils stable ids', () => {
     const loaded = normalizeDetailsToBlocks(details);
     if (loaded[0].type !== 'paragraph') throw new Error('expected paragraph block');
     expect(richTextToPlainText(loaded[0].content)).toBe('bold and italic');
+  });
+
+  it('mergeListItemContents concatenates rich text nodes', () => {
+    const first = markdownToRichText('Hello');
+    const second = markdownToRichText(' world');
+    const merged = mergeListItemContents(first, second);
+    expect(richTextToPlainText(merged)).toBe('Hello world');
+  });
+
+  it('createListItemFromRichText clones content with new id', () => {
+    const content = markdownToRichText('**bold**');
+    const item = createListItemFromRichText(content);
+    expect(item.id).toEqual(expect.any(String));
+    expect(richTextToPlainText(item.content)).toBe('bold');
+    expect(item.content).not.toBe(content);
   });
 
   it('assigns ids to pasted list lines', () => {

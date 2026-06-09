@@ -1,7 +1,13 @@
 // src/pages/UserDashboard/components/blocks/BlockParagraph.tsx
 import React, { useRef, useEffect, useState } from 'react';
 import type { RichText } from '@shared/lib/richText';
-import { RichTextBlockEditor, type RichTextBlockEditorMode } from '@shared/ui/RichTextBlockEditor';
+import {
+  RichTextBlockEditor,
+  type RichBackspaceDetail,
+  type RichEnterDetail,
+  type RichPasteMultilineDetail,
+  type RichTextBlockEditorMode,
+} from '@shared/ui/RichTextBlockEditor';
 import {
   emptyFormatMenuActiveState,
   getFormatMenuActiveState,
@@ -32,6 +38,9 @@ interface BlockParagraphProps {
   onSlash?: (position: { top: number; left: number }, cursorPos: number) => void;
   onFormat?: (type: FormatType, url?: string) => void;
   onPaste?: (text: string, files: File[]) => void;
+  onRichEnter?: (detail: RichEnterDetail) => void;
+  onRichBackspace?: (detail: RichBackspaceDetail) => void;
+  onRichPasteMultiline?: (detail: RichPasteMultilineDetail) => void;
   placeholder?: string;
   blockId?: string;
 }
@@ -46,6 +55,9 @@ export function BlockParagraph({
   onSlash,
   onFormat,
   onPaste,
+  onRichEnter,
+  onRichBackspace,
+  onRichPasteMultiline,
   placeholder = 'Начните вводить текст...',
   blockId,
 }: BlockParagraphProps) {
@@ -231,6 +243,7 @@ export function BlockParagraph({
         <RichTextBlockEditor
           content={value}
           onChange={onChange}
+          variant="paragraph"
           mode={mode}
           onModeChange={(next) => {
             setMode(next);
@@ -239,12 +252,14 @@ export function BlockParagraph({
             }
           }}
           textareaRef={textareaRef}
-          textareaClassName="edit-article-v2__block edit-article-v2__block--paragraph"
           blockId={blockId}
           placeholder={placeholder}
           onTextareaChange={handleChange}
           onKeyDown={handleKeyDown}
           onPaste={handlePaste}
+          onRichEnter={mode === 'rich' ? onRichEnter : undefined}
+          onRichBackspace={mode === 'rich' ? onRichBackspace : undefined}
+          onRichPasteMultiline={mode === 'rich' ? onRichPasteMultiline : undefined}
           onFocus={onFocus}
           onBlur={(e) => {
             // Скрываем меню при потере фокуса с небольшой задержкой

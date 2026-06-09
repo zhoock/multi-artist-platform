@@ -1,5 +1,5 @@
 import { describe, test, expect, jest } from '@jest/globals';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 
 import { markdownToRichText } from '@shared/lib/richText';
 import { RichTextBlockEditor } from '@shared/ui/RichTextBlockEditor';
@@ -72,7 +72,7 @@ describe('RichTextBlockEditor', () => {
     expect(preview.querySelector('s')?.textContent).toBe('abc');
   });
 
-  test('rich mode renders contentEditable with rendered RichText', () => {
+  test('rich mode renders contentEditable with rendered RichText', async () => {
     render(
       <RichTextBlockEditor
         content={markdownToRichText('**_abc_**')}
@@ -83,7 +83,9 @@ describe('RichTextBlockEditor', () => {
 
     const rich = screen.getByTestId('rich-text-block-editor-rich');
     expect(rich.getAttribute('contenteditable')).toBe('true');
-    expect(rich.innerHTML).toBe('<strong><em>abc</em></strong>');
+    await waitFor(() => {
+      expect(rich.innerHTML).toBe('<strong><em>abc</em></strong>');
+    });
   });
 
   test('switching to rich mode swaps textarea for contentEditable', () => {
@@ -92,5 +94,29 @@ describe('RichTextBlockEditor', () => {
     expect(screen.getByRole('textbox')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Rich' }));
     expect(screen.getByTestId('rich-text-block-editor-rich')).toBeTruthy();
+  });
+
+  test('applies variant-specific block class on textarea', () => {
+    render(
+      <RichTextBlockEditor
+        content={markdownToRichText('Title')}
+        onChange={jest.fn()}
+        variant="title"
+      />
+    );
+
+    expect(screen.getByRole('textbox').className).toContain('edit-article-v2__block--title');
+  });
+
+  test('applies list-item variant class on textarea', () => {
+    render(
+      <RichTextBlockEditor
+        content={markdownToRichText('Item')}
+        onChange={jest.fn()}
+        variant="list-item"
+      />
+    );
+
+    expect(screen.getByRole('textbox').className).toContain('edit-article-v2__block');
   });
 });

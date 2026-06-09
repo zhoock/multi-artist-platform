@@ -2,7 +2,12 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { isRichTextEmpty } from '@shared/lib/richText';
+import { isRichTextEmpty, type RichText } from '@shared/lib/richText';
+import type {
+  RichBackspaceDetail,
+  RichEnterDetail,
+  RichPasteMultilineDetail,
+} from '@shared/ui/RichTextBlockEditor';
 import type { Block } from '../modals/article/EditArticleModalV2.utils';
 import { isListBlockEmpty } from '../modals/article/EditArticleModalV2.utils';
 import { BlockParagraph, type FormatType } from './BlockParagraph';
@@ -36,6 +41,11 @@ interface SortableBlockProps {
   onSlash?: (blockId: string, position: { top: number; left: number }, cursorPos: number) => void;
   onFormat?: (blockId: string, type: FormatType, url?: string) => void;
   onPaste?: (blockId: string, text: string, files: File[]) => void;
+  onRichEnter?: (blockId: string, detail: RichEnterDetail) => void;
+  onRichBackspace?: (blockId: string, detail: RichBackspaceDetail) => void;
+  onRichPasteMultiline?: (blockId: string, detail: RichPasteMultilineDetail) => void;
+  onListConvertToParagraph?: (blockId: string, content: RichText) => void;
+  onListInsertParagraphAfter?: (blockId: string) => void;
   onConvertToCarousel?: (blockId: string) => void;
   onVkPlusSelect?: (type: string) => void;
   onVkPlusClose?: () => void;
@@ -63,6 +73,11 @@ export function SortableBlock({
   onSlash,
   onFormat,
   onPaste,
+  onRichEnter,
+  onRichBackspace,
+  onRichPasteMultiline,
+  onListConvertToParagraph,
+  onListInsertParagraphAfter,
   onConvertToCarousel,
   onVkPlusSelect,
   onVkPlusClose,
@@ -93,6 +108,9 @@ export function SortableBlock({
             onSlash={(position, cursorPos) => onSlash?.(block.id, position, cursorPos)}
             onFormat={(type, url) => onFormat?.(block.id, type, url)}
             onPaste={(text, files) => onPaste?.(block.id, text, files)}
+            onRichEnter={(detail) => onRichEnter?.(block.id, detail)}
+            onRichBackspace={(detail) => onRichBackspace?.(block.id, detail)}
+            onRichPasteMultiline={(detail) => onRichPasteMultiline?.(block.id, detail)}
           />
         );
       case 'title':
@@ -106,6 +124,9 @@ export function SortableBlock({
             onEnter={(atEnd) => onEnter(block.id, atEnd)}
             onBackspace={(isEmpty, atStart) => onBackspace(isEmpty, atStart)}
             onFormat={(type, url) => onFormat?.(block.id, type, url)}
+            onRichEnter={(detail) => onRichEnter?.(block.id, detail)}
+            onRichBackspace={(detail) => onRichBackspace?.(block.id, detail)}
+            onRichPasteMultiline={(detail) => onRichPasteMultiline?.(block.id, detail)}
           />
         );
       case 'subtitle':
@@ -119,6 +140,9 @@ export function SortableBlock({
             onEnter={(atEnd) => onEnter(block.id, atEnd)}
             onBackspace={(isEmpty, atStart) => onBackspace(isEmpty, atStart)}
             onFormat={(type, url) => onFormat?.(block.id, type, url)}
+            onRichEnter={(detail) => onRichEnter?.(block.id, detail)}
+            onRichBackspace={(detail) => onRichBackspace?.(block.id, detail)}
+            onRichPasteMultiline={(detail) => onRichPasteMultiline?.(block.id, detail)}
           />
         );
       case 'quote':
@@ -132,16 +156,21 @@ export function SortableBlock({
             onEnter={(atEnd) => onEnter(block.id, atEnd)}
             onBackspace={(isEmpty, atStart) => onBackspace(isEmpty, atStart)}
             onFormat={(type, url) => onFormat?.(block.id, type, url)}
+            onRichEnter={(detail) => onRichEnter?.(block.id, detail)}
+            onRichBackspace={(detail) => onRichBackspace?.(block.id, detail)}
+            onRichPasteMultiline={(detail) => onRichPasteMultiline?.(block.id, detail)}
           />
         );
       case 'list':
         return (
           <BlockList
+            blockId={block.id}
             value={block.items}
             onChange={(items) => onUpdate(block.id, { items } as Partial<Block>)}
             onFocus={() => onFocus(block.id)}
             onBlur={onBlur}
-            onBackspace={(isEmpty, atStart) => onBackspace(isEmpty, atStart)}
+            onConvertToParagraph={(content) => onListConvertToParagraph?.(block.id, content)}
+            onInsertParagraphAfter={() => onListInsertParagraphAfter?.(block.id)}
           />
         );
       case 'divider':

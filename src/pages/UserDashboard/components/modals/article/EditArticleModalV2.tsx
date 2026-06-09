@@ -52,7 +52,14 @@ import {
   setLink,
   splitRichTextAt,
   toggleMark,
+  restoreSelection,
+  richTextToPlainText,
 } from '@shared/lib/richText';
+import type {
+  RichBackspaceDetail,
+  RichEnterDetail,
+  RichPasteMultilineDetail,
+} from '@shared/ui/RichTextBlockEditor';
 import { SortableBlock } from '../../blocks/SortableBlock';
 import type { FormatType } from '../../blocks/BlockParagraph';
 import { SlashMenu } from '../../blocks/SlashMenu';
@@ -64,6 +71,52 @@ import { sanitizeFileName } from '@shared/lib/sanitizeFileName';
 import { toLocalYYYYMMDD } from '@shared/lib/dateCalendar';
 import '@shared/ui/dashboard-save/dashboard-save.scss';
 import './EditArticleModalV2.style.scss';
+
+type PendingFocus = {
+  blockId: string;
+  position: 'start' | 'end' | number;
+  /** true — position в plain-offset (rich mode); false — markdown-offset (textarea) */
+  plainCaret?: boolean;
+};
+
+function focusTextBlockCaret(
+  blockId: string,
+  position: 'start' | 'end' | number,
+  plainCaret = false
+): boolean {
+  const rich = document.querySelector(
+    `[data-block-id="${blockId}"][data-testid="rich-text-block-editor-rich"]`
+  ) as HTMLElement | null;
+  if (rich) {
+    rich.focus();
+    if (position === 'start') {
+      restoreSelection(rich, 0, 0);
+    } else if (position === 'end') {
+      restoreSelection(rich, rich.innerText.length, rich.innerText.length);
+    } else {
+      restoreSelection(rich, position, position);
+    }
+    return true;
+  }
+
+  const textarea = document.querySelector(
+    `[data-block-id="${blockId}"] textarea`
+  ) as HTMLTextAreaElement | null;
+  if (!textarea) return false;
+
+  textarea.focus();
+  if (position === 'start') {
+    textarea.setSelectionRange(0, 0);
+  } else if (position === 'end') {
+    textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+  } else {
+    const pos = plainCaret
+      ? mapPlainOffsetToMarkdown(textarea.value, position)
+      : Math.min(position, textarea.value.length);
+    textarea.setSelectionRange(pos, pos);
+  }
+  return true;
+}
 
 interface EditArticleModalV2Props {
   isOpen: boolean;
@@ -201,9 +254,7 @@ export function EditArticleModalV2({ isOpen, article, onClose }: EditArticleModa
   } | null>(null);
 
   // Ref для отложенной установки фокуса после удаления блока
-  const pendingFocusRef = useRef<{ blockId: string; position: 'start' | 'end' | number } | null>(
-    null
-  );
+  const pendingFocusRef = useRef<PendingFocus | null>(null);
 
   // Обработка Escape для скрытия VK-плюса
   useEffect(() => {
@@ -1019,7 +1070,7 @@ export function EditArticleModalV2({ isOpen, article, onClose }: EditArticleModa
     [createBlock, saveSnapshot]
   );
 
-  type DeleteFocus = { blockId: string; position: 'start' | 'end' | number };
+  type DeleteFocus = { blockId: string; position: 'start' | 'end' | number; plainCaret?: boolean };
 
   const deleteBlock = useCallback(
     (blockId: string, forcedFocus?: DeleteFocus) => {
@@ -1164,29 +1215,15 @@ export function EditArticleModalV2({ isOpen, article, onClose }: EditArticleModa
   // Установка фокуса после удаления блока (useLayoutEffect выполняется синхронно после обновления DOM)
   useLayoutEffect(() => {
     if (pendingFocusRef.current) {
-      const { blockId, position } = pendingFocusRef.current;
-      pendingFocusRef.current = null; // Очищаем ref
+      const { blockId, position, plainCaret } = pendingFocusRef.current;
+      pendingFocusRef.current = null;
 
-      // Используем requestAnimationFrame для гарантии, что DOM обновлен
       requestAnimationFrame(() => {
-        const textarea = document.querySelector(
-          `[data-block-id="${blockId}"] textarea`
-        ) as HTMLTextAreaElement;
-        if (textarea) {
-          setFocusBlockId(blockId);
-          textarea.focus();
-          if (position === 'start') {
-            textarea.setSelectionRange(0, 0);
-          } else if (position === 'end') {
-            textarea.setSelectionRange(textarea.value.length, textarea.value.length);
-          } else {
-            const pos = Math.min(position, textarea.value.length);
-            textarea.setSelectionRange(pos, pos);
-          }
-        }
+        setFocusBlockId(blockId);
+        focusTextBlockCaret(blockId, position, plainCaret ?? false);
       });
     }
-  }, [blocks]); // Зависимость от blocks, чтобы эффект срабатывал после обновления
+  }, [blocks]);
 
   // Снятие выделения при клике вне блока
   useEffect(() => {
@@ -1264,17 +1301,19 @@ export function EditArticleModalV2({ isOpen, article, onClose }: EditArticleModa
 
   // Обработчики для блоков
   const handleBlockEnter = useCallback(
-    (blockId: string, atEnd: boolean) => {
+    (
+      blockId: string,
+      atEnd: boolean,
+      richOptions?: { afterContent?: RichText; plainOffset?: number }
+    ) => {
       const blockIndex = blocks.findIndex((b) => b.id === blockId);
       if (blockIndex === -1) return;
 
       const block = blocks[blockIndex];
 
       if (atEnd) {
-        // Сохраняем снимок перед созданием нового блока
         saveSnapshot();
 
-        // Вставляем новый paragraph после текущего блока
         const newBlock = createBlock('paragraph');
         setBlocks((prev) => {
           const newBlocks = [...prev];
@@ -1282,79 +1321,61 @@ export function EditArticleModalV2({ isOpen, article, onClose }: EditArticleModa
           return newBlocks;
         });
 
-        // Показываем VK-плюс у нового блока
         setVkInserter({ afterBlockId: newBlock.id });
 
-        // Фокус на новый блок и перемещаем каретку в начало
-        setTimeout(() => {
-          setFocusBlockId(newBlock.id);
-          // Находим textarea нового блока и устанавливаем курсор в начало
-          const newBlockElement = document.querySelector(
-            `[data-block-id="${newBlock.id}"] textarea`
-          ) as HTMLTextAreaElement;
-          if (newBlockElement) {
-            newBlockElement.focus();
-            newBlockElement.setSelectionRange(0, 0);
-          }
-        }, 0);
-      } else {
-        // Разрезаем блок на два (только для текстовых блоков)
-        if (
-          block.type === 'paragraph' ||
-          block.type === 'title' ||
-          block.type === 'subtitle' ||
-          block.type === 'quote'
-        ) {
-          // Сохраняем снимок перед разрезанием
-          saveSnapshot();
+        pendingFocusRef.current = {
+          blockId: newBlock.id,
+          position: 'start',
+          plainCaret: !!richOptions,
+        };
+      } else if (
+        block.type === 'paragraph' ||
+        block.type === 'title' ||
+        block.type === 'subtitle' ||
+        block.type === 'quote'
+      ) {
+        saveSnapshot();
 
+        let after: RichText;
+
+        if (richOptions?.afterContent !== undefined) {
+          after = richOptions.afterContent;
+        } else {
           const textarea = document.activeElement as HTMLTextAreaElement;
-          if (textarea) {
-            // Каретка в textarea — это offset по markdown-буферу; переводим в
-            // plain-offset, чтобы разрезать каноническую RichText через operations.ts.
-            const plainPos = mapMarkdownOffsetToPlain(textarea.value, textarea.selectionStart);
-            const [before, after] = splitRichTextAt(block.content, plainPos);
-
-            // Обновляем текущий блок
-            updateBlock(blockId, { content: before } as Partial<Block>, true);
-
-            // Вставляем новый блок после
-            const newBlock: Block =
-              block.type === 'paragraph'
-                ? { id: generateId(), type: 'paragraph', content: after }
-                : block.type === 'title'
-                  ? { id: generateId(), type: 'title', content: after }
-                  : block.type === 'subtitle'
-                    ? { id: generateId(), type: 'subtitle', content: after }
-                    : { id: generateId(), type: 'quote', content: after };
-
-            setBlocks((prev) => {
-              const newBlocks = [...prev];
-              newBlocks.splice(blockIndex + 1, 0, newBlock);
-              return newBlocks;
-            });
-
-            // Фокус на новый блок и перемещаем каретку в начало
-            setTimeout(() => {
-              setFocusBlockId(newBlock.id);
-              // Находим textarea нового блока и устанавливаем курсор в начало
-              const newBlockElement = document.querySelector(
-                `[data-block-id="${newBlock.id}"] textarea`
-              ) as HTMLTextAreaElement;
-              if (newBlockElement) {
-                newBlockElement.focus();
-                newBlockElement.setSelectionRange(0, 0);
-              }
-            }, 0);
-          }
+          if (!textarea) return;
+          const plainPos = mapMarkdownOffsetToPlain(textarea.value, textarea.selectionStart);
+          const [before, splitAfter] = splitRichTextAt(block.content, plainPos);
+          updateBlock(blockId, { content: before } as Partial<Block>, true);
+          after = splitAfter;
         }
+
+        const newBlock: Block =
+          block.type === 'paragraph'
+            ? { id: generateId(), type: 'paragraph', content: after }
+            : block.type === 'title'
+              ? { id: generateId(), type: 'title', content: after }
+              : block.type === 'subtitle'
+                ? { id: generateId(), type: 'subtitle', content: after }
+                : { id: generateId(), type: 'quote', content: after };
+
+        setBlocks((prev) => {
+          const newBlocks = [...prev];
+          newBlocks.splice(blockIndex + 1, 0, newBlock);
+          return newBlocks;
+        });
+
+        pendingFocusRef.current = {
+          blockId: newBlock.id,
+          position: 0,
+          plainCaret: !!richOptions,
+        };
       }
     },
     [blocks, createBlock, updateBlock, saveSnapshot]
   );
 
   const handleBlockBackspace = useCallback(
-    (blockId: string, isEmpty: boolean, atStart: boolean = false) => {
+    (blockId: string, isEmpty: boolean, atStart: boolean = false, plainCaret = false) => {
       const blockIndex = blocks.findIndex((b) => b.id === blockId);
       if (blockIndex === -1) return;
 
@@ -1404,19 +1425,114 @@ export function EditArticleModalV2({ isOpen, article, onClose }: EditArticleModa
             prevBlock.type === 'quote')
         ) {
           const merged = normalizeRichText([...prevBlock.content, ...currentBlock.content]);
-          // Каретка после слияния — в markdown-координатах буфера, на стыке;
-          // это длина markdown предыдущего блока до слияния.
-          const prevTextLength = richTextToMarkdown(prevBlock.content).length;
+          const mergeCaret = plainCaret
+            ? richTextToPlainText(prevBlock.content).length
+            : richTextToMarkdown(prevBlock.content).length;
 
-          // Обновляем предыдущий блок
           updateBlock(prevBlock.id, { content: merged } as Partial<Block>);
 
-          // Удаляем текущий блок с явным указанием фокуса в место слияния
-          deleteBlock(blockId, { blockId: prevBlock.id, position: prevTextLength });
+          deleteBlock(blockId, {
+            blockId: prevBlock.id,
+            position: mergeCaret,
+            plainCaret,
+          });
         }
       }
     },
     [blocks, deleteBlock, updateBlock]
+  );
+
+  const handleRichBlockEnter = useCallback(
+    (blockId: string, detail: RichEnterDetail) => {
+      if (detail.atEnd) {
+        handleBlockEnter(blockId, true, { plainOffset: detail.offset });
+      } else {
+        handleBlockEnter(blockId, false, {
+          afterContent: detail.after,
+          plainOffset: detail.offset,
+        });
+      }
+    },
+    [handleBlockEnter]
+  );
+
+  const handleRichBlockBackspace = useCallback(
+    (blockId: string, detail: RichBackspaceDetail) => {
+      handleBlockBackspace(blockId, detail.isEmpty, detail.atStart, true);
+    },
+    [handleBlockBackspace]
+  );
+
+  const handleRichPasteMultiline = useCallback(
+    (blockId: string, detail: RichPasteMultilineDetail) => {
+      const blockIndex = blocks.findIndex((b) => b.id === blockId);
+      if (blockIndex === -1) return;
+      const block = blocks[blockIndex];
+      if (
+        block.type !== 'paragraph' &&
+        block.type !== 'title' &&
+        block.type !== 'subtitle' &&
+        block.type !== 'quote'
+      ) {
+        return;
+      }
+
+      saveSnapshot();
+
+      const trailingId = generateId();
+      const inserted: Block[] = [
+        ...detail.middleBlocks.map(
+          (content): Block => ({
+            id: generateId(),
+            type: 'paragraph',
+            content,
+          })
+        ),
+        { id: trailingId, type: 'paragraph', content: detail.trailingContent },
+      ];
+
+      setBlocks((prev) => {
+        const next = [...prev];
+        const idx = next.findIndex((b) => b.id === blockId);
+        if (idx === -1) return prev;
+        next[idx] = { ...next[idx], content: detail.leadingContent } as Block;
+        next.splice(idx + 1, 0, ...inserted);
+        return next;
+      });
+
+      pendingFocusRef.current = {
+        blockId: trailingId,
+        position: detail.focusOffset,
+        plainCaret: true,
+      };
+    },
+    [blocks, saveSnapshot]
+  );
+
+  const handleListConvertToParagraph = useCallback(
+    (blockId: string, content: RichText) => {
+      saveSnapshot();
+      updateBlock(blockId, { type: 'paragraph', content } as Partial<Block>, true);
+      pendingFocusRef.current = { blockId, position: 'start', plainCaret: true };
+    },
+    [saveSnapshot, updateBlock]
+  );
+
+  const handleListInsertParagraphAfter = useCallback(
+    (blockId: string) => {
+      saveSnapshot();
+      const blockIndex = blocks.findIndex((b) => b.id === blockId);
+      if (blockIndex === -1) return;
+
+      const newBlock = createBlock('paragraph');
+      setBlocks((prev) => {
+        const next = [...prev];
+        next.splice(blockIndex + 1, 0, newBlock);
+        return next;
+      });
+      pendingFocusRef.current = { blockId: newBlock.id, position: 'start', plainCaret: true };
+    },
+    [blocks, createBlock, saveSnapshot]
   );
 
   // Drag-and-drop handlers
@@ -2141,6 +2257,11 @@ export function EditArticleModalV2({ isOpen, article, onClose }: EditArticleModa
                             onSlash={handleSlash}
                             onFormat={handleFormat}
                             onPaste={handlePaste}
+                            onRichEnter={handleRichBlockEnter}
+                            onRichBackspace={handleRichBlockBackspace}
+                            onRichPasteMultiline={handleRichPasteMultiline}
+                            onListConvertToParagraph={handleListConvertToParagraph}
+                            onListInsertParagraphAfter={handleListInsertParagraphAfter}
                             onConvertToCarousel={convertImageToCarousel}
                             onVkPlusSelect={(type) => {
                               convertBlockType(block.id, type as BlockType);

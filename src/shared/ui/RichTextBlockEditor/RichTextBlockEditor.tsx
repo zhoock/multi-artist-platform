@@ -5,20 +5,21 @@ import {
   useState,
   type ChangeEvent,
   type ClipboardEvent,
+  type CompositionEvent,
   type FocusEvent,
   type KeyboardEvent,
   type MouseEvent,
   type MutableRefObject,
   type Ref,
 } from 'react';
+import { createRoot, type Root } from 'react-dom/client';
 
 import type { InlineMark, InlineMarkType, RichText } from '@shared/lib/richText';
 import {
   getActiveMarks,
   getLinkAtSelection,
   getSelectionOffsets,
-  insertText,
-  normalizeRichText,
+  isRichTextEmpty,
   removeLink,
   renderRichText,
   restoreSelection,
@@ -26,8 +27,13 @@ import {
   setLink,
   splitRichTextAt,
   toggleMark,
-  type SelectionOffsets,
 } from '@shared/lib/richText';
+import {
+  applyPlainTextInsert,
+  deleteRange,
+  planMultilinePaste,
+  type SelectionOffsets,
+} from '@shared/lib/richText/richInput';
 
 import { useLocalMarkdownBuffer } from '@shared/lib/richText/useLocalMarkdownBuffer';
 
@@ -35,9 +41,38 @@ import './RichTextBlockEditor.style.scss';
 
 export type RichTextBlockEditorMode = 'textarea' | 'preview' | 'rich';
 
+export type RichTextBlockEditorVariant = 'paragraph' | 'title' | 'subtitle' | 'quote' | 'list-item';
+
+const VARIANT_BLOCK_CLASS: Record<RichTextBlockEditorVariant, string> = {
+  paragraph: 'edit-article-v2__block edit-article-v2__block--paragraph',
+  title: 'edit-article-v2__block edit-article-v2__block--title',
+  subtitle: 'edit-article-v2__block edit-article-v2__block--subtitle',
+  quote: 'edit-article-v2__block edit-article-v2__block--quote',
+  'list-item': 'edit-article-v2__block',
+};
+
+export type RichEnterDetail = {
+  atEnd: boolean;
+  offset: number;
+  after?: RichText;
+};
+
+export type RichBackspaceDetail = {
+  isEmpty: boolean;
+  atStart: boolean;
+};
+
+export type RichPasteMultilineDetail = {
+  leadingContent: RichText;
+  middleBlocks: RichText[];
+  trailingContent: RichText;
+  focusOffset: number;
+};
+
 export type RichTextBlockEditorProps = {
   content: RichText;
   onChange: (content: RichText) => void;
+  variant?: RichTextBlockEditorVariant;
   editable?: boolean;
   mode?: RichTextBlockEditorMode;
   onModeChange?: (mode: RichTextBlockEditorMode) => void;
@@ -52,6 +87,9 @@ export type RichTextBlockEditorProps = {
   onKeyDown?: (event: KeyboardEvent<HTMLTextAreaElement>) => void;
   onPaste?: (event: ClipboardEvent<HTMLTextAreaElement>) => void;
   onTextareaChange?: (markdown: string, event: ChangeEvent<HTMLTextAreaElement>) => void;
+  onRichEnter?: (detail: RichEnterDetail) => void;
+  onRichBackspace?: (detail: RichBackspaceDetail) => void;
+  onRichPasteMultiline?: (detail: RichPasteMultilineDetail) => void;
 };
 
 const MODE_LABELS: Record<RichTextBlockEditorMode, string> = {
@@ -61,6 +99,16 @@ const MODE_LABELS: Record<RichTextBlockEditorMode, string> = {
 };
 
 const MODE_ORDER: RichTextBlockEditorMode[] = ['textarea', 'preview', 'rich'];
+
+const BLOCKED_INPUT_TYPES = new Set([
+  'historyUndo',
+  'historyRedo',
+  'formatBold',
+  'formatItalic',
+  'formatUnderline',
+  'formatStrikeThrough',
+  'formatInsertLink',
+]);
 
 function assignRef<T>(ref: Ref<T> | undefined, value: T | null): void {
   if (typeof ref === 'function') {
@@ -72,15 +120,12 @@ function assignRef<T>(ref: Ref<T> | undefined, value: T | null): void {
   }
 }
 
-/**
- * Удаляет плоский диапазон [from, to) из RichText, сохраняя marks остального
- * текста. Композиция splitRichTextAt — без правок operations.ts.
- */
-function deleteRange(content: RichText, from: number, to: number): RichText {
-  if (from === to) return content;
-  const before = splitRichTextAt(content, from)[0];
-  const after = splitRichTextAt(content, to)[1];
-  return normalizeRichText([...before, ...after]);
+function isBlockedBrowserInput(inputType: string): boolean {
+  return (
+    BLOCKED_INPUT_TYPES.has(inputType) ||
+    inputType.startsWith('history') ||
+    inputType.startsWith('format')
+  );
 }
 
 type RichToolbarState = {
@@ -92,6 +137,7 @@ type RichToolbarState = {
 export function RichTextBlockEditor({
   content,
   onChange,
+  variant = 'paragraph',
   editable = true,
   mode,
   onModeChange,
@@ -106,6 +152,9 @@ export function RichTextBlockEditor({
   onKeyDown,
   onPaste,
   onTextareaChange,
+  onRichEnter,
+  onRichBackspace,
+  onRichPasteMultiline,
 }: RichTextBlockEditorProps) {
   const [internalMode, setInternalMode] = useState<RichTextBlockEditorMode>('textarea');
   const isModeControlled = mode !== undefined;
@@ -115,16 +164,21 @@ export function RichTextBlockEditor({
     null
   ) as MutableRefObject<HTMLTextAreaElement | null>;
   const editableRef = useRef<HTMLDivElement | null>(null);
+  const richRootRef = useRef<Root | null>(null);
+  const isComposingRef = useRef(false);
+  const compositionRangeRef = useRef<SelectionOffsets | null>(null);
 
-  // Последние значения content/onChange для нативных слушателей contentEditable,
-  // привязанных один раз (deps [currentMode]).
   const contentRef = useRef(content);
   contentRef.current = content;
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
+  const onRichEnterRef = useRef(onRichEnter);
+  onRichEnterRef.current = onRichEnter;
+  const onRichBackspaceRef = useRef(onRichBackspace);
+  onRichBackspaceRef.current = onRichBackspace;
+  const onRichPasteMultilineRef = useRef(onRichPasteMultiline);
+  onRichPasteMultilineRef.current = onRichPasteMultiline;
 
-  // Каретка/выделение, которое нужно восстановить после очередного onChange
-  // (rich-режим: ввод/удаление/форматирование меняют content → перерисовка).
   const pendingSelectionRef = useRef<SelectionOffsets | null>(null);
 
   const [richToolbar, setRichToolbar] = useState<RichToolbarState | null>(null);
@@ -145,7 +199,6 @@ export function RichTextBlockEditor({
     onModeChange?.(next);
   };
 
-  // Автоувеличение высоты textarea.
   useEffect(() => {
     if (currentMode !== 'textarea') return;
     const textarea = textareaInternalRef.current;
@@ -154,25 +207,119 @@ export function RichTextBlockEditor({
     textarea.style.height = `${textarea.scrollHeight}px`;
   }, [localMarkdown, currentMode]);
 
-  // Сброс floating-тулбара при выходе из rich-режима.
   useEffect(() => {
     if (currentMode !== 'rich') {
       setRichToolbar(null);
       setLinkEditing(false);
+      richRootRef.current?.unmount();
+      richRootRef.current = null;
     }
   }, [currentMode]);
 
-  // contentEditable engine: перехватываем beforeinput и применяем правки к
-  // RichText-модели (ввод текста / удаление символов). Всё остальное (Enter,
-  // paste, IME, форматные команды браузера) пока запрещаем.
+  const scheduleSelection = (from: number, to: number = from) => {
+    pendingSelectionRef.current = { from, to };
+  };
+
+  const emitContent = (next: RichText, from: number, to: number = from) => {
+    scheduleSelection(from, to);
+    onChangeRef.current(next);
+  };
+
+  const handleRichEnter = (root: HTMLElement, model: RichText) => {
+    const selection = getSelectionOffsets(root);
+    if (!selection) return;
+    const plainLen = richTextToPlainText(model).length;
+
+    if (selection.from === plainLen && selection.to === plainLen) {
+      onRichEnterRef.current?.({ atEnd: true, offset: plainLen });
+      return;
+    }
+
+    const [before, after] = splitRichTextAt(model, selection.from);
+    onChangeRef.current(before);
+    onRichEnterRef.current?.({ atEnd: false, offset: selection.from, after });
+    return;
+  };
+
+  const handleRichBackspaceAtStart = (model: RichText) => {
+    onRichBackspaceRef.current?.({
+      isEmpty: isRichTextEmpty(model),
+      atStart: true,
+    });
+  };
+
+  const handlePastePlainText = (root: HTMLElement, model: RichText, text: string) => {
+    const selection = getSelectionOffsets(root);
+    if (!selection) return;
+
+    const multilinePlan = planMultilinePaste(model, text, selection);
+    if (multilinePlan) {
+      onChangeRef.current(multilinePlan.leadingContent);
+      onRichPasteMultilineRef.current?.({
+        leadingContent: multilinePlan.leadingContent,
+        middleBlocks: multilinePlan.middleBlocks,
+        trailingContent: multilinePlan.trailingContent,
+        focusOffset: multilinePlan.focusOffset,
+      });
+      return;
+    }
+
+    const { content: next, caret } = applyPlainTextInsert(model, text, selection);
+    emitContent(next, caret, caret);
+  };
+
+  // Rich DOM sync + selection restore (createRoot — не ломаем IME перерисовкой React children).
+  useLayoutEffect(() => {
+    if (currentMode !== 'rich' || !editable) return;
+    const root = editableRef.current;
+    if (!root) return;
+
+    if (!richRootRef.current) {
+      richRootRef.current = createRoot(root);
+    }
+
+    if (!isComposingRef.current) {
+      richRootRef.current.render(<>{renderRichText(content)}</>);
+    }
+
+    const pending = pendingSelectionRef.current;
+    if (pending && !isComposingRef.current) {
+      pendingSelectionRef.current = null;
+      root.focus({ preventScroll: true });
+      restoreSelection(root, pending.from, pending.to);
+    }
+  }, [content, currentMode, editable]);
+
+  // contentEditable engine
   useEffect(() => {
     if (currentMode !== 'rich' || !editable) return;
     const root = editableRef.current;
     if (!root) return;
 
     const handler = (event: InputEvent) => {
+      if (isComposingRef.current) return;
+
       const inputType = event.inputType;
+
+      if (isBlockedBrowserInput(inputType)) {
+        event.preventDefault();
+        return;
+      }
+
       const model = contentRef.current;
+
+      if (inputType === 'insertParagraph' || inputType === 'insertLineBreak') {
+        event.preventDefault();
+        handleRichEnter(root, model);
+        return;
+      }
+
+      if (inputType === 'insertFromPaste' || inputType === 'insertFromDrop') {
+        event.preventDefault();
+        const text = event.data ?? '';
+        if (text) handlePastePlainText(root, model, text);
+        return;
+      }
 
       if (inputType === 'insertText') {
         event.preventDefault();
@@ -180,55 +327,86 @@ export function RichTextBlockEditor({
         if (!data) return;
         const selection = getSelectionOffsets(root);
         if (!selection) return;
-        const cleared =
-          selection.from === selection.to
-            ? model
-            : deleteRange(model, selection.from, selection.to);
-        const next = insertText(cleared, selection.from, data);
-        const caret = selection.from + data.length;
-        pendingSelectionRef.current = { from: caret, to: caret };
-        onChangeRef.current(next);
+        const { content: next, caret } = applyPlainTextInsert(model, data, selection);
+        emitContent(next, caret, caret);
         return;
       }
 
       if (inputType.startsWith('delete')) {
         event.preventDefault();
         const range = resolveDeleteRange(root, event, model, inputType);
-        if (!range || range.from === range.to) return;
+        if (!range) return;
+
+        if (range.from === 0 && range.to === 0) {
+          handleRichBackspaceAtStart(model);
+          return;
+        }
+
+        if (range.from === range.to) return;
         const next = deleteRange(model, range.from, range.to);
-        pendingSelectionRef.current = { from: range.from, to: range.from };
-        onChangeRef.current(next);
+        emitContent(next, range.from, range.from);
         return;
       }
 
-      // Enter, вставка, IME, форматные команды и т.п. — пока не поддерживаются.
       event.preventDefault();
     };
 
+    const handlePaste = (event: Event) => {
+      if (isComposingRef.current) return;
+      event.preventDefault();
+      const clip = event as globalThis.ClipboardEvent;
+
+      const items = Array.from(clip.clipboardData?.items ?? []);
+      const hasImage = items.some((item) => item.type.startsWith('image/'));
+      if (hasImage) return;
+
+      const text = clip.clipboardData?.getData('text/plain') ?? '';
+      if (!text) return;
+      handlePastePlainText(root, contentRef.current, text);
+    };
+
     root.addEventListener('beforeinput', handler);
-    return () => root.removeEventListener('beforeinput', handler);
+    root.addEventListener('paste', handlePaste);
+    return () => {
+      root.removeEventListener('beforeinput', handler);
+      root.removeEventListener('paste', handlePaste);
+    };
   }, [currentMode, editable]);
 
-  // Восстанавливаем выделение после перерисовки, вызванной нашей же правкой.
-  useLayoutEffect(() => {
-    if (currentMode !== 'rich') return;
-    const pending = pendingSelectionRef.current;
-    if (!pending) return;
-    pendingSelectionRef.current = null;
+  const handleCompositionStart = () => {
+    isComposingRef.current = true;
     const root = editableRef.current;
-    if (!root) return;
-    root.focus({ preventScroll: true });
-    restoreSelection(root, pending.from, pending.to);
-  }, [content, currentMode]);
+    if (root) {
+      compositionRangeRef.current = getSelectionOffsets(root);
+    }
+  };
 
-  // Floating-тулбар: показываем при непустом выделении внутри contentEditable.
+  const handleCompositionEnd = (event: CompositionEvent<HTMLDivElement>) => {
+    isComposingRef.current = false;
+    const range = compositionRangeRef.current;
+    compositionRangeRef.current = null;
+
+    const data = event.data;
+    if (!range || !data) return;
+
+    const base =
+      range.from === range.to
+        ? contentRef.current
+        : deleteRange(contentRef.current, range.from, range.to);
+    const { content: next, caret } = applyPlainTextInsert(base, data, {
+      from: range.from,
+      to: range.from,
+    });
+    emitContent(next, caret, caret);
+  };
+
   useEffect(() => {
     if (currentMode !== 'rich') return;
     const root = editableRef.current;
     if (!root) return;
 
     const update = () => {
-      if (linkEditingRef.current) return; // не прячем тулбар во время ввода ссылки
+      if (linkEditingRef.current || isComposingRef.current) return;
       const selection = root.ownerDocument.getSelection?.() ?? window.getSelection();
       if (!selection || selection.rangeCount === 0) {
         setRichToolbar(null);
@@ -263,7 +441,7 @@ export function RichTextBlockEditor({
   };
 
   const emitWithSelection = (next: RichText, from: number, to: number) => {
-    pendingSelectionRef.current = { from, to };
+    scheduleSelection(from, to);
     onChange(next);
   };
 
@@ -298,10 +476,13 @@ export function RichTextBlockEditor({
     event.preventDefault();
   };
 
-  const previewContent = renderRichText(content);
   const activeMarks = richToolbar
     ? getActiveMarks(content, richToolbar.from, richToolbar.to)
     : new Set<InlineMarkType>();
+
+  const blockClassName = VARIANT_BLOCK_CLASS[variant];
+  const resolvedTextareaClassName = textareaClassName ?? blockClassName;
+  const resolvedRichClassName = richClassName ?? blockClassName;
 
   return (
     <div className="rich-text-block-editor">
@@ -331,7 +512,9 @@ export function RichTextBlockEditor({
         <>
           <div
             ref={editableRef}
-            className={['rich-text-block-editor__rich', richClassName].filter(Boolean).join(' ')}
+            className={['rich-text-block-editor__rich', resolvedRichClassName]
+              .filter(Boolean)
+              .join(' ')}
             data-block-id={blockId}
             data-testid="rich-text-block-editor-rich"
             data-placeholder={placeholder}
@@ -340,9 +523,9 @@ export function RichTextBlockEditor({
             role="textbox"
             aria-multiline="true"
             onFocus={onFocus}
-          >
-            {previewContent}
-          </div>
+            onCompositionStart={handleCompositionStart}
+            onCompositionEnd={handleCompositionEnd}
+          />
 
           {richToolbar && (
             <div
@@ -444,7 +627,7 @@ export function RichTextBlockEditor({
           className="rich-text-block-editor__preview"
           data-testid="rich-text-block-editor-preview"
         >
-          {previewContent ?? (
+          {renderRichText(content) ?? (
             <span className="rich-text-block-editor__preview-empty">{placeholder}</span>
           )}
         </div>
@@ -454,7 +637,7 @@ export function RichTextBlockEditor({
             textareaInternalRef.current = node;
             assignRef(textareaRef, node);
           }}
-          className={['rich-text-block-editor__textarea', textareaClassName]
+          className={['rich-text-block-editor__textarea', resolvedTextareaClassName]
             .filter(Boolean)
             .join(' ')}
           data-block-id={blockId}
@@ -473,11 +656,6 @@ export function RichTextBlockEditor({
   );
 }
 
-/**
- * Диапазон, который браузер собирается удалить. Предпочитаем нативный
- * getTargetRanges() (корректно для слов/выделения), иначе — fallback на текущее
- * выделение и один символ для backward/forward.
- */
 function resolveDeleteRange(
   root: HTMLElement,
   event: InputEvent,
@@ -498,12 +676,14 @@ function resolveDeleteRange(
 
   const length = richTextToPlainText(model).length;
   if (inputType === 'deleteContentForward') {
+    if (selection.from >= length) return { from: length, to: length };
     return { from: selection.from, to: Math.min(selection.from + 1, length) };
   }
-  return { from: Math.max(selection.from - 1, 0), to: selection.from };
+
+  if (selection.from === 0) return { from: 0, to: 0 };
+  return { from: selection.from - 1, to: selection.from };
 }
 
-// Локальная обёртка, чтобы не тянуть pointToOffset в публичную поверхность тут.
 function pointToOffsetSafe(root: HTMLElement, node: Node, offset: number): number {
   const range = root.ownerDocument.createRange();
   range.selectNodeContents(root);
