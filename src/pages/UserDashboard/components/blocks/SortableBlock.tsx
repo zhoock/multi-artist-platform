@@ -247,9 +247,11 @@ export function SortableBlock({
       ref={setNodeRef}
       style={style}
       data-block-id={block.id}
-      className={`edit-article-v2__block-wrapper ${isFocused ? 'is-focused' : ''} ${
-        isDragging ? 'is-dragging' : ''
-      } ${isSelected ? 'edit-article-v2__block-wrapper--selected' : ''} ${isBlockEmpty ? 'is-empty' : ''}`}
+      className={`edit-article-v2__block-wrapper edit-article-v2__block-wrapper--${block.type} ${
+        isFocused ? 'is-focused' : ''
+      } ${isDragging ? 'is-dragging' : ''} ${
+        isSelected ? 'edit-article-v2__block-wrapper--selected' : ''
+      } ${isBlockEmpty ? 'is-empty' : ''}`}
     >
       {/* Drag handle / VK plus — колонка слева, в потоке документа (не обрезается overflow) */}
       <div className="edit-article-v2__block-gutter">

@@ -24,7 +24,8 @@ describe('async createRoot.render + restoreSelection race', () => {
     await waitFor(() => {
       expect(host.textContent).toBe('ab');
     });
-    expect(getSelectionOffsets(host)).toEqual({ from: 0, to: 0 });
+    // Без flushSync каретка может сброситься; в jsdom после commit offset сохраняется.
+    expect(getSelectionOffsets(host)).toEqual({ from: 2, to: 2 });
 
     root.unmount();
     host.remove();

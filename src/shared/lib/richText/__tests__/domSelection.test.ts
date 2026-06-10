@@ -44,6 +44,42 @@ describe('domSelection', () => {
     expect(getSelectionOffsets(root)).toEqual({ from: 0, to: 4 });
   });
 
+  test('counts <br> as one character in flat offsets', () => {
+    root.innerHTML = 'abc<br>def';
+    expect(getSelectionOffsets(root)).toBeNull();
+
+    restoreSelection(root, 3, 3);
+    expect(getSelectionOffsets(root)).toEqual({ from: 3, to: 3 });
+
+    restoreSelection(root, 4, 4);
+    expect(getSelectionOffsets(root)).toEqual({ from: 4, to: 4 });
+
+    restoreSelection(root, 7, 7);
+    expect(getSelectionOffsets(root)).toEqual({ from: 7, to: 7 });
+  });
+
+  test('restoreSelection places caret after trailing <br>', () => {
+    root.innerHTML = 'abc<br>';
+    restoreSelection(root, 4, 4);
+    expect(getSelectionOffsets(root)).toEqual({ from: 4, to: 4 });
+  });
+
+  test('sentinel <br data-rich-trailing> is excluded from flat offsets', () => {
+    root.innerHTML = 'abc<br><br data-rich-trailing="true">';
+
+    // Полная длина — 4 (sentinel не считается): клампится к 4.
+    restoreSelection(root, 99, 99);
+    expect(getSelectionOffsets(root)).toEqual({ from: 4, to: 4 });
+
+    // Каретка на offset 4 встаёт между настоящим <br> и sentinel.
+    restoreSelection(root, 4, 4);
+    const selection = window.getSelection()!;
+    const range = selection.getRangeAt(0);
+    expect(range.startContainer).toBe(root);
+    expect(range.startOffset).toBe(2);
+    expect(getSelectionOffsets(root)).toEqual({ from: 4, to: 4 });
+  });
+
   test('getSelectionOffsets returns null when selection is outside root', () => {
     const outside = document.createElement('div');
     outside.textContent = 'zzz';

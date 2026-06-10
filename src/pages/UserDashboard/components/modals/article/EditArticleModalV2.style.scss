@@ -430,6 +430,26 @@ dialog {
         }
       }
 
+      // В редакторе блоки — отдельные строки; внешние отступы заголовков сбрасываем,
+      // типографика совпадает с help-article__body.
+      h3 {
+        margin: 0;
+        color: var(--text-color, var(--dashboard-text-primary));
+        font-size: 1.5rem;
+        line-height: 1.3;
+        font-weight: 700;
+        font-family: inherit;
+      }
+
+      h4 {
+        margin: 0;
+        color: var(--text-color, var(--dashboard-text-primary));
+        font-size: 1.25rem;
+        line-height: 1.3;
+        font-weight: 700;
+        font-family: inherit;
+      }
+
       ul {
         margin: 0 0 var(--ms-2);
         list-style-type: disc;
@@ -495,7 +515,7 @@ dialog {
       align-items: center;
       justify-content: center;
 
-      // Центр хэндла / «+» совпадает с центром первой строки (line-height: 1.6 → 0.8em)
+      // Центр хэндла / «+» совпадает с центром первой строки (paragraph: lh 1.6 → 0.8em)
       margin-top: calc(0.8em - var(--ms-0) * 0.75);
       overflow: visible;
 
@@ -539,6 +559,24 @@ dialog {
       &:hover .edit-article-v2__drag-handle:hover,
       &.is-focused .edit-article-v2__drag-handle:hover {
         opacity: 1;
+      }
+
+      // h3: 1.5rem × line-height 1.3 → центр первой строки 0.975rem
+      &--title .edit-article-v2__block-gutter {
+        margin-top: calc(0.975rem - var(--ms-0) * 0.75);
+      }
+
+      // h4: 1.25rem × line-height 1.3 → центр первой строки 0.8125rem
+      &--subtitle .edit-article-v2__block-gutter {
+        margin-top: calc(0.8125rem - var(--ms-0) * 0.75);
+      }
+
+      &--title .edit-article-v2__block-gutter:has(.edit-article-v2__vk-plus) {
+        margin-top: calc(0.975rem - var(--ms-0));
+      }
+
+      &--subtitle .edit-article-v2__block-gutter:has(.edit-article-v2__vk-plus) {
+        margin-top: calc(0.8125rem - var(--ms-0));
       }
     }
 

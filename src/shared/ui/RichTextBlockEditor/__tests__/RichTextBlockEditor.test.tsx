@@ -2,12 +2,43 @@ import { useState } from 'react';
 import { describe, test, expect, jest } from '@jest/globals';
 import { act, render, screen, waitFor } from '@testing-library/react';
 
-import { getSelectionOffsets, markdownToRichText, restoreSelection } from '@shared/lib/richText';
+import {
+  getSelectionOffsets,
+  markdownToRichText,
+  restoreSelection,
+  richTextToPlainText,
+} from '@shared/lib/richText';
+import type { RichText } from '@shared/lib/richText';
 import { RichTextBlockEditor } from '@shared/ui/RichTextBlockEditor';
 
 function RichHarness({ initial = 'abc' }: { initial?: string }) {
   const [content, setContent] = useState(() => markdownToRichText(initial));
   return <RichTextBlockEditor content={content} onChange={setContent} mode="rich" />;
+}
+
+function dispatchShiftEnter(root: HTMLElement): void {
+  root.dispatchEvent(
+    new KeyboardEvent('keydown', {
+      key: 'Enter',
+      shiftKey: true,
+      bubbles: true,
+      cancelable: true,
+    })
+  );
+  root.dispatchEvent(
+    new InputEvent('beforeinput', {
+      inputType: 'insertLineBreak',
+      bubbles: true,
+      cancelable: true,
+    })
+  );
+  root.dispatchEvent(
+    new InputEvent('beforeinput', {
+      inputType: 'insertParagraph',
+      bubbles: true,
+      cancelable: true,
+    })
+  );
 }
 
 describe('RichTextBlockEditor', () => {
@@ -160,5 +191,112 @@ describe('RichTextBlockEditor', () => {
         'edit-article-v2__block'
       );
     });
+  });
+
+  test('Shift+Enter inserts soft line break on first keydown (abc| → abc\\n|)', async () => {
+    render(<RichHarness initial="abc" />);
+
+    const root = await waitFor(() => screen.getByTestId('rich-text-block-editor-rich'));
+    await waitFor(() => {
+      expect(root.textContent).toBe('abc');
+    });
+
+    root.focus();
+    restoreSelection(root, 3, 3);
+
+    act(() => {
+      dispatchShiftEnter(root);
+    });
+
+    // Настоящий <br> + sentinel: иначе contentEditable не показывает каретку на новой строке.
+    await waitFor(() => {
+      expect(root.querySelectorAll('br').length).toBe(2);
+    });
+    expect(root.querySelector('br[data-rich-trailing]')).toBeTruthy();
+    expect(getSelectionOffsets(root)).toEqual({ from: 4, to: 4 });
+
+    // Каретка стоит между настоящим <br> и sentinel — браузер рисует её на новой строке.
+    const selection = window.getSelection()!;
+    const range = selection.getRangeAt(0);
+    expect(range.startContainer).toBe(root);
+    expect(range.startOffset).toBe(2);
+  });
+
+  test('Shift+Enter is not reverted when parent props lag behind optimistic DOM sync', async () => {
+    let latestContent: RichText = markdownToRichText('abc');
+    const onChange = jest.fn((next: RichText) => {
+      latestContent = next;
+    });
+
+    const { rerender } = render(
+      <RichTextBlockEditor content={latestContent} onChange={onChange} mode="rich" />
+    );
+
+    const root = await waitFor(() => screen.getByTestId('rich-text-block-editor-rich'));
+    root.focus();
+    restoreSelection(root, 3, 3);
+
+    act(() => {
+      dispatchShiftEnter(root);
+    });
+
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(richTextToPlainText(latestContent)).toBe('abc\n');
+    expect(root.querySelector('br')).toBeTruthy();
+    expect(getSelectionOffsets(root)).toEqual({ from: 4, to: 4 });
+
+    act(() => {
+      rerender(
+        <RichTextBlockEditor content={markdownToRichText('abc')} onChange={onChange} mode="rich" />
+      );
+    });
+
+    expect(root.querySelector('br')).toBeTruthy();
+    expect(getSelectionOffsets(root)).toEqual({ from: 4, to: 4 });
+
+    act(() => {
+      rerender(<RichTextBlockEditor content={latestContent} onChange={onChange} mode="rich" />);
+    });
+
+    expect(root.querySelector('br')).toBeTruthy();
+    expect(getSelectionOffsets(root)).toEqual({ from: 4, to: 4 });
+  });
+
+  test('Enter at end of multiline block requests new block without splitting (abc\\ndef| → new block)', async () => {
+    const onRichEnter = jest.fn();
+    const onChange = jest.fn();
+    const content: RichText = [{ text: 'abc\ndef', marks: [] }];
+
+    render(
+      <RichTextBlockEditor
+        content={content}
+        onChange={onChange}
+        onRichEnter={onRichEnter}
+        mode="rich"
+      />
+    );
+
+    const root = await waitFor(() => screen.getByTestId('rich-text-block-editor-rich'));
+    await waitFor(() => {
+      expect(root.querySelectorAll('br').length).toBe(1);
+    });
+
+    root.focus();
+    restoreSelection(root, 7, 7);
+
+    act(() => {
+      root.dispatchEvent(
+        new KeyboardEvent('keydown', {
+          key: 'Enter',
+          shiftKey: false,
+          bubbles: true,
+          cancelable: true,
+        })
+      );
+    });
+
+    expect(onRichEnter).toHaveBeenCalledWith({ atEnd: true, offset: 7 });
+    expect(onChange).not.toHaveBeenCalled();
+    expect(richTextToPlainText(content)).toBe('abc\ndef');
   });
 });

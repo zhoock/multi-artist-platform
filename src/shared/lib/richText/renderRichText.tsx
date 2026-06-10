@@ -64,11 +64,30 @@ function wrapMark(mark: InlineMark, children: ReactNode, key: string): ReactNode
   }
 }
 
+function renderPlainText(text: string, key: string): ReactNode {
+  if (!text.includes('\n')) {
+    return text;
+  }
+
+  const parts = text.split('\n');
+  const children: ReactNode[] = [];
+  parts.forEach((part, index) => {
+    if (index > 0) {
+      children.push(createElement('br', { key: `${key}-br-${index}` }));
+    }
+    if (part !== '') {
+      children.push(part);
+    }
+  });
+
+  return createElement(Fragment, { key }, children);
+}
+
 function renderNodes(nodes: RenderNode[], keyPrefix: string): ReactNode[] {
   return nodes.map((node, index) => {
     const key = `${keyPrefix}-${index}`;
     if (node.kind === 'text') {
-      return createElement(Fragment, { key }, node.text);
+      return renderPlainText(node.text, key);
     }
     return wrapMark(node.mark, renderNodes(node.children, key), key);
   });
@@ -79,6 +98,11 @@ function renderNodes(nodes: RenderNode[], keyPrefix: string): ReactNode[] {
  *
  * Пустой вход (null/undefined/[]/только пустые runs) → null. Никаких
  * zero-width символов и плейсхолдеров — empty state решает редактор.
+ *
+ * Завершающий `\n` дополняется sentinel-`<br data-rich-trailing>`: contentEditable
+ * не отображает каретку на новой строке после последнего «настоящего» `<br>`,
+ * пока за ним нет ещё одного узла. Sentinel не участвует в плоских offset'ах
+ * (см. domSelection.collectSlices).
  */
 export function renderRichText(richText: RichText | null | undefined): ReactNode {
   if (richText == null || richText.length === 0) return null;
@@ -86,5 +110,12 @@ export function renderRichText(richText: RichText | null | undefined): ReactNode
   const tree = groupRuns(richText);
   if (tree.length === 0) return null;
 
-  return createElement(Fragment, null, ...renderNodes(tree, 'rt'));
+  const children = renderNodes(tree, 'rt');
+
+  const plain = richText.map((run) => run.text).join('');
+  if (plain.endsWith('\n')) {
+    children.push(createElement('br', { key: 'rt-trailing', 'data-rich-trailing': 'true' }));
+  }
+
+  return createElement(Fragment, null, ...children);
 }

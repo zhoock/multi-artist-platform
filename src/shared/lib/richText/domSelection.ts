@@ -10,9 +10,8 @@
  *   DOM Selection → { from, to }   (getSelectionOffsets)
  *   { from, to }  → DOM Range      (restoreSelection)
  *
- * Предполагается, что содержимое блока — только inline-узлы (text + span/strong/
- * em/u/s/a) без блочных переносов: тогда длина Range.toString() совпадает с
- * длиной плоского текста. Это инвариант renderRichText.
+ * Символ `\n` в модели рендерится как `<br>` (см. renderRichText). Каждый
+ * `<br>` считается одним символом в плоском тексте.
  */
 
 export type SelectionOffsets = {
@@ -20,8 +19,47 @@ export type SelectionOffsets = {
   to: number;
 };
 
+type RichDomSlice =
+  | { kind: 'text'; node: Text; length: number }
+  | { kind: 'break'; node: HTMLBRElement };
+
+function collectSlices(root: HTMLElement): RichDomSlice[] {
+  const slices: RichDomSlice[] = [];
+
+  const walk = (node: Node): void => {
+    if (node.nodeType === Node.TEXT_NODE) {
+      const text = node as Text;
+      if (text.data.length > 0) {
+        slices.push({ kind: 'text', node: text, length: text.data.length });
+      }
+      return;
+    }
+    if (node.nodeName === 'BR') {
+      // Sentinel после завершающего \n (см. renderRichText) — не считается символом.
+      if ((node as HTMLBRElement).hasAttribute('data-rich-trailing')) {
+        return;
+      }
+      slices.push({ kind: 'break', node: node as HTMLBRElement });
+      return;
+    }
+    node.childNodes.forEach(walk);
+  };
+
+  walk(root);
+  return slices;
+}
+
+function sliceLength(slice: RichDomSlice): number {
+  return slice.kind === 'text' ? slice.length : 1;
+}
+
 function getPlainTextLength(root: HTMLElement): number {
-  return root.textContent?.length ?? 0;
+  return collectSlices(root).reduce((sum, slice) => sum + sliceLength(slice), 0);
+}
+
+function breakParentIndex(br: HTMLBRElement): { parent: Node; index: number } {
+  const parent = br.parentNode ?? br;
+  return { parent, index: Array.prototype.indexOf.call(parent.childNodes, br) };
 }
 
 /**
@@ -31,10 +69,32 @@ function getPlainTextLength(root: HTMLElement): number {
  */
 export function pointToOffset(root: HTMLElement, node: Node, offset: number): number {
   if (!root.contains(node)) return 0;
-  const range = root.ownerDocument.createRange();
-  range.selectNodeContents(root);
-  range.setEnd(node, offset);
-  return range.toString().length;
+
+  let accumulated = 0;
+  for (const slice of collectSlices(root)) {
+    if (slice.kind === 'text' && node === slice.node) {
+      return accumulated + Math.max(0, Math.min(offset, slice.length));
+    }
+
+    if (slice.kind === 'break') {
+      const { parent, index } = breakParentIndex(slice.node);
+      if (node === slice.node) {
+        return accumulated + 1;
+      }
+      if (node === parent) {
+        if (offset === index + 1) {
+          return accumulated + 1;
+        }
+        if (offset === index) {
+          return accumulated;
+        }
+      }
+    }
+
+    accumulated += sliceLength(slice);
+  }
+
+  return getPlainTextLength(root);
 }
 
 /** Текущее выделение как плоские offset'ы относительно root, либо null. */
@@ -54,34 +114,33 @@ export function getSelectionOffsets(root: HTMLElement): SelectionOffsets | null 
 
 type DomPoint = { node: Node; offset: number };
 
-/** Находит DOM-точку (text node + offset) по плоскому offset внутри root. */
+/** Находит DOM-точку по плоскому offset внутри root. */
 function locate(root: HTMLElement, target: number): DomPoint {
   const clamped = Math.max(0, Math.min(target, getPlainTextLength(root)));
+  const slices = collectSlices(root);
 
-  const walker = root.ownerDocument.createTreeWalker(root, NodeFilter.SHOW_TEXT);
   let accumulated = 0;
-  let lastText: Text | null = null;
-  let lastNonEmptyText: Text | null = null;
-
-  let current = walker.nextNode() as Text | null;
-  while (current) {
-    const length = current.data.length;
-    lastText = current;
-    if (length > 0) {
-      lastNonEmptyText = current;
+  for (const slice of slices) {
+    const len = sliceLength(slice);
+    if (clamped <= accumulated + len) {
+      if (slice.kind === 'text') {
+        return { node: slice.node, offset: clamped - accumulated };
+      }
+      const { parent, index } = breakParentIndex(slice.node);
+      return { node: parent, offset: index + 1 };
     }
-
-    if (clamped <= accumulated + length) {
-      return { node: current, offset: clamped - accumulated };
-    }
-    accumulated += length;
-    current = walker.nextNode() as Text | null;
+    accumulated += len;
   }
 
-  const fallback = lastNonEmptyText ?? lastText;
-  if (fallback) {
-    return { node: fallback, offset: fallback.data.length };
+  const last = slices[slices.length - 1];
+  if (last?.kind === 'text') {
+    return { node: last.node, offset: last.length };
   }
+  if (last?.kind === 'break') {
+    const { parent, index } = breakParentIndex(last.node);
+    return { node: parent, offset: index + 1 };
+  }
+
   return { node: root, offset: 0 };
 }
 

@@ -165,6 +165,7 @@ export function BlockRichTextField({
           content={value}
           onFormat={onFormat}
           onClose={() => setShowFormatMenu(false)}
+          hideBoldItalic={variant === 'title' || variant === 'subtitle'}
         />
       )}
     </>
@@ -176,5 +177,5 @@ export function BlockRichTextField({
   if (variant === 'subtitle') {
     return <h4>{editor}</h4>;
   }
-  return <p className="edit-article-v2__block edit-article-v2__block--quote">{editor}</p>;
+  return <p>{editor}</p>;
 }

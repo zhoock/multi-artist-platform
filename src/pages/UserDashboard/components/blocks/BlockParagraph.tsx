@@ -1,5 +1,6 @@
 // src/pages/UserDashboard/components/blocks/BlockParagraph.tsx
 import React, { useRef, useEffect, useState } from 'react';
+import { TextQuote as TextQuoteIcon } from 'lucide-react';
 import type { RichText } from '@shared/lib/richText';
 import { getDefaultEditorMode, isMarkdownEditorEnabled } from '@shared/lib/richText';
 import {
@@ -14,6 +15,7 @@ import {
   getFormatMenuActiveState,
   type FormatMenuActiveState,
 } from './formatMenuSelection';
+import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 
 /**
  * Набор действий floating-тулбара выделения — строго как в редакторе статей ВКонтакте.
@@ -299,6 +301,7 @@ export interface FormatMenuProps {
   content: RichText;
   onFormat?: (type: FormatType, url?: string) => void;
   onClose: () => void;
+  hideBoldItalic?: boolean;
 }
 
 function formatMenuItemClass(isActive: boolean, extraClass?: string): string {
@@ -331,15 +334,6 @@ function LinkGlyph() {
   );
 }
 
-/** Иконка «цитата» (кавычки) — повторяет глиф из тулбара ВК. */
-function QuoteGlyph() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-      <path d="M6 7h4.2v4.2c0 2.5-1.4 4.2-4 4.8l-.6-1.7c1.4-.4 2.1-1.1 2.2-2.1H6V7zm8 0h4.2v4.2c0 2.5-1.4 4.2-4 4.8l-.6-1.7c1.4-.4 2.1-1.1 2.2-2.1H14V7z" />
-    </svg>
-  );
-}
-
 /** Иконка «крестик» для выхода из режима ввода ссылки. */
 function CloseGlyph() {
   return (
@@ -358,7 +352,13 @@ function CloseGlyph() {
   );
 }
 
-export function FormatMenu({ textarea, content, onFormat, onClose }: FormatMenuProps) {
+export function FormatMenu({
+  textarea,
+  content,
+  onFormat,
+  onClose,
+  hideBoldItalic = false,
+}: FormatMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
   const measureRef = useRef<HTMLDivElement | null>(null);
   const selectionRef = useRef<{ start: number; end: number } | null>(null);
@@ -607,34 +607,38 @@ export function FormatMenu({ textarea, content, onFormat, onClose }: FormatMenuP
     >
       {mode === 'toolbar' ? (
         <>
-          <button
-            type="button"
-            className={formatMenuItemClass(activeState.isBoldActive)}
-            aria-pressed={activeState.isBoldActive}
-            onMouseDown={keepSelection}
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              applyFormat('bold');
-            }}
-            title="Жирный (Ctrl+B)"
-          >
-            <strong>B</strong>
-          </button>
-          <button
-            type="button"
-            className={formatMenuItemClass(activeState.isItalicActive)}
-            aria-pressed={activeState.isItalicActive}
-            onMouseDown={keepSelection}
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              applyFormat('italic');
-            }}
-            title="Курсив (Ctrl+I)"
-          >
-            <em>I</em>
-          </button>
+          {!hideBoldItalic && (
+            <>
+              <button
+                type="button"
+                className={formatMenuItemClass(activeState.isBoldActive)}
+                aria-pressed={activeState.isBoldActive}
+                onMouseDown={keepSelection}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  applyFormat('bold');
+                }}
+                title="Жирный (Ctrl+B)"
+              >
+                <strong>B</strong>
+              </button>
+              <button
+                type="button"
+                className={formatMenuItemClass(activeState.isItalicActive)}
+                aria-pressed={activeState.isItalicActive}
+                onMouseDown={keepSelection}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  applyFormat('italic');
+                }}
+                title="Курсив (Ctrl+I)"
+              >
+                <em>I</em>
+              </button>
+            </>
+          )}
           <button
             type="button"
             className={formatMenuItemClass(activeState.isStrikeActive)}
@@ -675,7 +679,8 @@ export function FormatMenu({ textarea, content, onFormat, onClose }: FormatMenuP
               e.stopPropagation();
               applyFormat('heading-large');
             }}
-            title="Заголовок"
+            title="Большой заголовок"
+            aria-label="Большой заголовок"
           >
             <span>H</span>
           </button>
@@ -688,7 +693,8 @@ export function FormatMenu({ textarea, content, onFormat, onClose }: FormatMenuP
               e.stopPropagation();
               applyFormat('heading-small');
             }}
-            title="Подзаголовок"
+            title="Малый заголовок"
+            aria-label="Малый заголовок"
           >
             <span>H</span>
           </button>
@@ -706,7 +712,7 @@ export function FormatMenu({ textarea, content, onFormat, onClose }: FormatMenuP
             }}
             title="Цитата"
           >
-            <QuoteGlyph />
+            <TextQuoteIcon {...dashboardActionIconProps({ size: 18 })} />
           </button>
         </>
       ) : (

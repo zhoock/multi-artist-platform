@@ -103,4 +103,12 @@ describe('renderRichText', () => {
   test('returns null when all runs are empty strings', () => {
     expect(renderRichText([{ text: '', marks: [{ type: 'bold' }] }])).toBeNull();
   });
+
+  test('preserves newline characters as <br> elements', () => {
+    expect(html([{ text: 'abc\ndef', marks: [] }])).toBe('abc<br>def');
+  });
+
+  test('trailing newline gets a sentinel <br> so the caret can render on the new line', () => {
+    expect(html([{ text: 'abc\n', marks: [] }])).toBe('abc<br><br data-rich-trailing="true">');
+  });
 });

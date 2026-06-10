@@ -17,12 +17,10 @@ import { flushSync } from 'react-dom';
 import {
   Bold as BoldIcon,
   Check as CheckIcon,
-  Heading1 as Heading1Icon,
-  Heading2 as Heading2Icon,
   Italic as ItalicIcon,
   Link as LinkIcon,
-  Quote as QuoteIcon,
   Strikethrough as StrikethroughIcon,
+  TextQuote as TextQuoteIcon,
   Underline as UnderlineIcon,
 } from 'lucide-react';
 
@@ -198,7 +196,6 @@ export function RichTextBlockEditor({
   const compositionRangeRef = useRef<SelectionOffsets | null>(null);
 
   const contentRef = useRef(content);
-  contentRef.current = content;
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
   const onRichEnterRef = useRef(onRichEnter);
@@ -213,6 +210,8 @@ export function RichTextBlockEditor({
   const toolbarSelectionRef = useRef<SelectionOffsets | null>(null);
   const toolbarRef = useRef<HTMLDivElement | null>(null);
   const suppressToolbarDismissRef = useRef(false);
+  /** Plain text already flushed to DOM before parent props catch up. */
+  const optimisticPlainRef = useRef<string | null>(null);
   const toolbarVisibleRef = useRef(false);
 
   const [richToolbar, setRichToolbar] = useState<RichToolbarState | null>(null);
@@ -307,6 +306,7 @@ export function RichTextBlockEditor({
     });
 
     lastSyncedPlainRef.current = richTextToPlainText(next);
+    optimisticPlainRef.current = lastSyncedPlainRef.current;
 
     if (caret != null) {
       root.focus({ preventScroll: true });
@@ -318,6 +318,7 @@ export function RichTextBlockEditor({
 
   const emitContent = (next: RichText, from: number, to: number = from) => {
     const caret = Math.min(from, richTextToPlainText(next).length);
+    contentRef.current = next;
 
     if (syncRichDom(next, caret)) {
       pendingSelectionRef.current = null;
@@ -341,7 +342,13 @@ export function RichTextBlockEditor({
     const [before, after] = splitRichTextAt(model, selection.from);
     onChangeRef.current(before);
     onRichEnterRef.current?.({ atEnd: false, offset: selection.from, after });
-    return;
+  };
+
+  const handleRichSoftBreak = (root: HTMLElement, model: RichText) => {
+    const selection = getSelectionOffsets(root);
+    if (!selection) return;
+    const { content: next, caret } = applyPlainTextInsert(model, '\n', selection);
+    emitContent(next, caret, caret);
   };
 
   const handleRichBackspaceAtStart = (model: RichText) => {
@@ -383,10 +390,24 @@ export function RichTextBlockEditor({
 
     const plain = richTextToPlainText(content);
     const pending = pendingSelectionRef.current;
+    const synced = lastSyncedPlainRef.current;
+    const optimistic = optimisticPlainRef.current;
 
-    if (!isComposingRef.current && (plain !== lastSyncedPlainRef.current || pending)) {
-      richRootRef.current.render(<>{renderRichText(content)}</>);
-      lastSyncedPlainRef.current = plain;
+    if (optimistic !== null && plain === optimistic) {
+      optimisticPlainRef.current = null;
+    }
+
+    const propsAreStale = optimistic !== null && plain !== optimistic;
+
+    if (!propsAreStale) {
+      contentRef.current = content;
+    }
+
+    if (!isComposingRef.current && !propsAreStale && (plain !== synced || pending)) {
+      if (plain !== synced) {
+        richRootRef.current.render(<>{renderRichText(content)}</>);
+        lastSyncedPlainRef.current = plain;
+      }
     }
 
     if (pending && !isComposingRef.current) {
@@ -419,8 +440,8 @@ export function RichTextBlockEditor({
       const model = contentRef.current;
 
       if (inputType === 'insertParagraph' || inputType === 'insertLineBreak') {
+        // Enter / Shift+Enter обрабатываются только в keydown.
         event.preventDefault();
-        handleRichEnter(root, model);
         return;
       }
 
@@ -478,9 +499,23 @@ export function RichTextBlockEditor({
 
     root.addEventListener('beforeinput', handler);
     root.addEventListener('paste', handlePaste);
+
+    const handleEnterKey = (event: globalThis.KeyboardEvent) => {
+      if (event.key !== 'Enter' || isComposingRef.current) return;
+
+      event.preventDefault();
+      if (event.shiftKey) {
+        handleRichSoftBreak(root, contentRef.current);
+      } else {
+        handleRichEnter(root, contentRef.current);
+      }
+    };
+
+    root.addEventListener('keydown', handleEnterKey);
     return () => {
       root.removeEventListener('beforeinput', handler);
       root.removeEventListener('paste', handlePaste);
+      root.removeEventListener('keydown', handleEnterKey);
     };
   }, [currentMode, editable]);
 
@@ -701,6 +736,7 @@ export function RichTextBlockEditor({
   const activeMarks = selectionForMarks
     ? getActiveMarks(contentRef.current, selectionForMarks.from, selectionForMarks.to)
     : new Set<InlineMarkType>();
+  const hideBoldItalic = variant === 'title' || variant === 'subtitle';
 
   const blockClassName = VARIANT_BLOCK_CLASS[variant];
   const resolvedTextareaClassName = textareaClassName ?? blockClassName;
@@ -791,28 +827,32 @@ export function RichTextBlockEditor({
                 </div>
               ) : (
                 <>
-                  <button
-                    type="button"
-                    className="rich-text-block-editor__toolbar-btn"
-                    aria-pressed={activeMarks.has('bold')}
-                    onMouseDown={keepSelection}
-                    onClick={() => applyMark('bold')}
-                    title="Жирный"
-                    aria-label="Жирный"
-                  >
-                    <BoldIcon {...TOOLBAR_ICON_PROPS} />
-                  </button>
-                  <button
-                    type="button"
-                    className="rich-text-block-editor__toolbar-btn"
-                    aria-pressed={activeMarks.has('italic')}
-                    onMouseDown={keepSelection}
-                    onClick={() => applyMark('italic')}
-                    title="Курсив"
-                    aria-label="Курсив"
-                  >
-                    <ItalicIcon {...TOOLBAR_ICON_PROPS} />
-                  </button>
+                  {!hideBoldItalic && (
+                    <>
+                      <button
+                        type="button"
+                        className="rich-text-block-editor__toolbar-btn"
+                        aria-pressed={activeMarks.has('bold')}
+                        onMouseDown={keepSelection}
+                        onClick={() => applyMark('bold')}
+                        title="Жирный"
+                        aria-label="Жирный"
+                      >
+                        <BoldIcon {...TOOLBAR_ICON_PROPS} />
+                      </button>
+                      <button
+                        type="button"
+                        className="rich-text-block-editor__toolbar-btn"
+                        aria-pressed={activeMarks.has('italic')}
+                        onMouseDown={keepSelection}
+                        onClick={() => applyMark('italic')}
+                        title="Курсив"
+                        aria-label="Курсив"
+                      >
+                        <ItalicIcon {...TOOLBAR_ICON_PROPS} />
+                      </button>
+                    </>
+                  )}
                   <button
                     type="button"
                     className="rich-text-block-editor__toolbar-btn"
@@ -854,25 +894,35 @@ export function RichTextBlockEditor({
                       />
                       <button
                         type="button"
-                        className="rich-text-block-editor__toolbar-btn rich-text-block-editor__toolbar-btn--block"
+                        className="rich-text-block-editor__toolbar-btn rich-text-block-editor__toolbar-btn--block rich-text-block-editor__toolbar-btn--heading-large"
                         aria-pressed={variant === 'title'}
                         onMouseDown={keepSelection}
                         onClick={() => handleBlockFormat('heading-large')}
-                        title="Заголовок"
-                        aria-label="Заголовок"
+                        title="Большой заголовок"
+                        aria-label="Большой заголовок"
                       >
-                        <Heading1Icon {...TOOLBAR_ICON_PROPS} />
+                        <span
+                          className="rich-text-block-editor__toolbar-heading"
+                          aria-hidden="true"
+                        >
+                          H
+                        </span>
                       </button>
                       <button
                         type="button"
-                        className="rich-text-block-editor__toolbar-btn rich-text-block-editor__toolbar-btn--block"
+                        className="rich-text-block-editor__toolbar-btn rich-text-block-editor__toolbar-btn--block rich-text-block-editor__toolbar-btn--heading-small"
                         aria-pressed={variant === 'subtitle'}
                         onMouseDown={keepSelection}
                         onClick={() => handleBlockFormat('heading-small')}
-                        title="Подзаголовок"
-                        aria-label="Подзаголовок"
+                        title="Малый заголовок"
+                        aria-label="Малый заголовок"
                       >
-                        <Heading2Icon {...TOOLBAR_ICON_PROPS} />
+                        <span
+                          className="rich-text-block-editor__toolbar-heading"
+                          aria-hidden="true"
+                        >
+                          H
+                        </span>
                       </button>
                       <button
                         type="button"
@@ -883,7 +933,7 @@ export function RichTextBlockEditor({
                         title="Цитата"
                         aria-label="Цитата"
                       >
-                        <QuoteIcon {...TOOLBAR_ICON_PROPS} />
+                        <TextQuoteIcon {...TOOLBAR_ICON_PROPS} />
                       </button>
                     </>
                   )}

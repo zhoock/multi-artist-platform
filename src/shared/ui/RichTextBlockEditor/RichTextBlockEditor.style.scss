@@ -122,6 +122,24 @@
       color: var(--link-color, #6ea8fe);
       background: var(--dashboard-hover-bg, rgb(255 255 255 / 12%));
     }
+
+    // Большой / малый заголовок — буква H разного кегля, как в тулбаре ВК.
+    &--heading-large,
+    &--heading-small {
+      font-family: 'Georgia', 'Times New Roman', serif;
+    }
+
+    &--heading-large .rich-text-block-editor__toolbar-heading {
+      font-size: 19px;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    &--heading-small .rich-text-block-editor__toolbar-heading {
+      font-size: 14px;
+      font-weight: 700;
+      line-height: 1;
+    }
   }
 
   &__toolbar-divider {
