@@ -55,6 +55,8 @@ interface SortableBlockProps {
   onVkPlusSelect?: (type: string) => void;
   onVkPlusClose?: () => void;
   onEditCarousel?: (blockId: string) => void;
+  autoFocusCaret?: boolean;
+  onAutoFocusCaret?: () => void;
 }
 
 export function SortableBlock({
@@ -86,6 +88,8 @@ export function SortableBlock({
   onVkPlusSelect,
   onVkPlusClose,
   onEditCarousel,
+  autoFocusCaret,
+  onAutoFocusCaret,
 }: SortableBlockProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: block.id,
@@ -115,6 +119,8 @@ export function SortableBlock({
             onRichEnter={(detail) => onRichEnter?.(block.id, detail)}
             onRichBackspace={(detail) => onRichBackspace?.(block.id, detail)}
             onRichPasteMultiline={(detail) => onRichPasteMultiline?.(block.id, detail)}
+            autoFocusCaret={autoFocusCaret}
+            onAutoFocusCaret={onAutoFocusCaret}
           />
         );
       case 'title':
@@ -369,7 +375,6 @@ function VkPlusInserter({
       </button>
       {isOpen && (
         <div className="edit-article-v2__vk-plus-menu" role="menu">
-          <span className="edit-article-v2__vk-plus-menu-arrow" aria-hidden="true" />
           {blockTypes.map(({ type, label, Icon }) => (
             <button
               key={type}
@@ -377,9 +382,10 @@ function VkPlusInserter({
               className="edit-article-v2__vk-plus-menu-item"
               role="menuitem"
               onMouseDown={(e) => e.preventDefault()}
-              onClick={() => {
+              onClick={(e) => {
                 onSelect(type);
                 closeMenu();
+                e.currentTarget.blur();
               }}
             >
               <Icon aria-hidden="true" />

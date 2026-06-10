@@ -90,6 +90,7 @@ import { EditAlbumModalStep4 } from '../../steps/EditAlbumModalStep4';
 import { EditAlbumModalStep5 } from '../../steps/EditAlbumModalStep5';
 import './EditAlbumModal.style.scss';
 import { useYooKassaPaymentConnected } from '@shared/lib/payment/useYooKassaPaymentConnected';
+import { EditAlbumCloseIcon } from '../../steps/EditAlbumStepIcons';
 
 // Re-export types for backward compatibility
 export type {
@@ -3320,7 +3321,7 @@ export function EditAlbumModal({
                 disabled={isSaving}
                 aria-label={ui?.dashboard?.close ?? 'Close'}
               >
-                ×
+                <EditAlbumCloseIcon />
               </button>
             </div>
 

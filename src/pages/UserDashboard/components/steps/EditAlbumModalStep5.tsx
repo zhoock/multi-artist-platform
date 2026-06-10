@@ -5,6 +5,7 @@ import type { IInterface } from '@models';
 import { PURCHASE_SERVICES, STREAMING_SERVICES } from '../modals/album/EditAlbumModal.constants';
 import { EMPTY_LINK, linkEditHasChanges } from '../modals/album/EditAlbumModal.utils';
 import { InlineEditDiscardDialog, getInlineEditDiscardLabels } from '../shared/EditableCardField';
+import { EditAlbumEditIcon, EditAlbumRemoveIcon } from './EditAlbumStepIcons';
 
 interface EditAlbumModalStep5Props {
   formData: AlbumFormData;
@@ -230,7 +231,7 @@ export function EditAlbumModalStep5({
                         onClick={() => onEditPurchaseLink(index)}
                         aria-label={`Edit ${service ? service.name : link.service}`}
                       >
-                        ✎
+                        <EditAlbumEditIcon />
                       </button>
                       <button
                         type="button"
@@ -238,7 +239,7 @@ export function EditAlbumModalStep5({
                         onClick={() => onRemovePurchaseLink(index)}
                         aria-label={`Remove ${service ? service.name : link.service}`}
                       >
-                        ×
+                        <EditAlbumRemoveIcon />
                       </button>
                     </div>
                   </>
@@ -393,7 +394,7 @@ export function EditAlbumModalStep5({
                         onClick={() => onEditStreamingLink(index)}
                         aria-label={`Edit ${service ? service.name : link.service}`}
                       >
-                        ✎
+                        <EditAlbumEditIcon />
                       </button>
                       <button
                         type="button"
@@ -401,7 +402,7 @@ export function EditAlbumModalStep5({
                         onClick={() => onRemoveStreamingLink(index)}
                         aria-label={`Remove ${service ? service.name : link.service}`}
                       >
-                        ×
+                        <EditAlbumRemoveIcon />
                       </button>
                     </div>
                   </>

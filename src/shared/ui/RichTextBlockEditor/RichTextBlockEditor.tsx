@@ -113,6 +113,9 @@ export type RichTextBlockEditorProps = {
   onRichBackspace?: (detail: RichBackspaceDetail) => void;
   onRichPasteMultiline?: (detail: RichPasteMultilineDetail) => void;
   onBlockFormat?: (type: RichBlockFormatType) => void;
+  /** После mount — фокус и каретка в начале (rich/textarea). */
+  autoFocusCaret?: boolean;
+  onAutoFocusCaret?: () => void;
 };
 
 const TOOLBAR_ICON_PROPS = dashboardActionIconProps({ size: 16 });
@@ -183,6 +186,8 @@ export function RichTextBlockEditor({
   onRichBackspace,
   onRichPasteMultiline,
   onBlockFormat,
+  autoFocusCaret = false,
+  onAutoFocusCaret,
 }: RichTextBlockEditorProps) {
   const [internalMode, setInternalMode] = useState<RichTextBlockEditorMode>(getDefaultEditorMode);
   const isModeControlled = mode !== undefined;
@@ -214,6 +219,7 @@ export function RichTextBlockEditor({
   /** Plain text already flushed to DOM before parent props catch up. */
   const optimisticPlainRef = useRef<string | null>(null);
   const toolbarVisibleRef = useRef(false);
+  const autoFocusHandledRef = useRef(false);
 
   const [richToolbar, setRichToolbar] = useState<RichToolbarState | null>(null);
   const [linkEditing, setLinkEditing] = useState(false);
@@ -378,6 +384,65 @@ export function RichTextBlockEditor({
     const { content: next, caret } = applyPlainTextInsert(model, text, selection);
     emitContent(next, caret, caret);
   };
+
+  useEffect(() => {
+    if (!autoFocusCaret) {
+      autoFocusHandledRef.current = false;
+    }
+  }, [autoFocusCaret]);
+
+  useLayoutEffect(() => {
+    if (!autoFocusCaret || autoFocusHandledRef.current || !editable) return;
+
+    const completeAutoFocus = () => {
+      autoFocusHandledRef.current = true;
+      onAutoFocusCaret?.();
+    };
+
+    const applyAutoFocus = (): boolean => {
+      if (currentMode === 'textarea') {
+        const textarea = textareaInternalRef.current;
+        if (!textarea) return false;
+        textarea.focus({ preventScroll: true });
+        textarea.setSelectionRange(0, 0);
+        return document.activeElement === textarea;
+      }
+
+      if (currentMode !== 'rich') return false;
+      const root = editableRef.current;
+      if (!root) return false;
+
+      if (!richRootRef.current) {
+        richRootRef.current = createRoot(root);
+      }
+
+      flushSync(() => {
+        richRootRef.current!.render(<>{renderRichText(content)}</>);
+      });
+      lastSyncedPlainRef.current = richTextToPlainText(content);
+      contentRef.current = content;
+
+      root.focus({ preventScroll: true });
+      restoreSelection(root, 0, 0);
+      return document.activeElement === root;
+    };
+
+    const tryApply = () => {
+      if (autoFocusHandledRef.current) return;
+      if (applyAutoFocus()) {
+        completeAutoFocus();
+      }
+    };
+
+    tryApply();
+    const retrySoon = setTimeout(tryApply, 0);
+    const retryLater = setTimeout(tryApply, 50);
+
+    return () => {
+      clearTimeout(retrySoon);
+      clearTimeout(retryLater);
+    };
+  }, [autoFocusCaret, currentMode, editable, content, onAutoFocusCaret]);
 
   // Rich DOM sync + selection restore (createRoot — не ломаем IME перерисовкой React children).
   useLayoutEffect(() => {

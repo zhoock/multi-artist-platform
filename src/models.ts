@@ -37,6 +37,8 @@ export interface PopupProps extends HamburgerProps {
   closeBlocked?: boolean;
   /** Shared public-site modal backdrop (`--public-modal-backdrop-*`). */
   publicBackdrop?: boolean;
+  /** При открытии dialog фокусировать первый интерактивный элемент (по умолчанию true). */
+  autoFocusFirstElement?: boolean;
 }
 
 /**

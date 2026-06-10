@@ -1,6 +1,7 @@
 // src/pages/UserDashboard/components/shared/EditableCardField.tsx
 import React, { useState } from 'react';
 import type { IInterface } from '@models';
+import { EditAlbumEditIcon, EditAlbumRemoveIcon } from '../steps/EditAlbumStepIcons';
 import './EditableCardField.style.scss';
 
 export interface EditableCardFieldData {
@@ -266,7 +267,7 @@ export function EditableCardField({
           onClick={onEdit}
           aria-label="Edit"
         >
-          ✎
+          <EditAlbumEditIcon />
         </button>
         <button
           type="button"
@@ -274,7 +275,7 @@ export function EditableCardField({
           onClick={onRemove}
           aria-label="Remove"
         >
-          ×
+          <EditAlbumRemoveIcon />
         </button>
       </div>
     </div>

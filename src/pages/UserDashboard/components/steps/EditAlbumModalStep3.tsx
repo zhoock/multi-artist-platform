@@ -19,6 +19,12 @@ import {
 } from '../modals/album/EditAlbumModal.utils';
 import { recordingEntryEditHasChanges } from '../modals/album/recordingEntryEditHasChanges';
 import { InlineEditDiscardDialog, getInlineEditDiscardLabels } from '../shared/EditableCardField';
+import {
+  EditAlbumEditIcon,
+  EditAlbumPlusIcon,
+  EditAlbumRemoveIcon,
+  editAlbumAddButtonLabel,
+} from './EditAlbumStepIcons';
 
 interface EditAlbumModalStep3Props {
   formData: AlbumFormData;
@@ -225,7 +231,7 @@ function RecordingEntryEditor({
           onClick={onEdit}
           aria-label="Edit"
         >
-          ✎
+          <EditAlbumEditIcon />
         </button>
         <button
           type="button"
@@ -233,7 +239,7 @@ function RecordingEntryEditor({
           onClick={onRemove}
           aria-label="Remove"
         >
-          ×
+          <EditAlbumRemoveIcon />
         </button>
       </div>
     </div>
@@ -412,7 +418,8 @@ export function EditAlbumModalStep3({
             }
             onClick={() => onFormDataChange('showAddRecordedAtInputs', true)}
           >
-            {ui?.dashboard?.editAlbumModal?.step3?.addButton ?? '+ Add'}
+            <EditAlbumPlusIcon size={14} />
+            {editAlbumAddButtonLabel(ui?.dashboard?.editAlbumModal?.step3?.addButton ?? '+ Add')}
           </button>
         )}
       </div>
@@ -558,7 +565,8 @@ export function EditAlbumModalStep3({
             }
             onClick={() => onFormDataChange('showAddMixedAtInputs', true)}
           >
-            {ui?.dashboard?.editAlbumModal?.step3?.addButton ?? '+ Add'}
+            <EditAlbumPlusIcon size={14} />
+            {editAlbumAddButtonLabel(ui?.dashboard?.editAlbumModal?.step3?.addButton ?? '+ Add')}
           </button>
         )}
       </div>
@@ -708,7 +716,8 @@ export function EditAlbumModalStep3({
             }
             onClick={() => onFormDataChange('showAddMasteringInputs', true)}
           >
-            {ui?.dashboard?.editAlbumModal?.step3?.addButton ?? '+ Add'}
+            <EditAlbumPlusIcon size={14} />
+            {editAlbumAddButtonLabel(ui?.dashboard?.editAlbumModal?.step3?.addButton ?? '+ Add')}
           </button>
         )}
       </div>

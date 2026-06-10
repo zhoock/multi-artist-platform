@@ -15,6 +15,7 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
+import { Redo2 as Redo2Icon, Undo2 as Undo2Icon } from 'lucide-react';
 import { Popup } from '@shared/ui/popup';
 import { useAppDispatch } from '@shared/lib/hooks/useAppDispatch';
 import { useLang } from '@app/providers/lang';
@@ -77,6 +78,7 @@ import type {
   RichPasteMultilineDetail,
 } from '@shared/ui/RichTextBlockEditor';
 import { SortableBlock } from '../../blocks/SortableBlock';
+import { uploadArticleBlockImage } from '../../blocks/uploadArticleBlockImage';
 import type { FormatType } from '../../blocks/BlockParagraph';
 import { SlashMenu } from '../../blocks/SlashMenu';
 import { CarouselEditModal } from '../../articles/CarouselEditModal';
@@ -225,6 +227,8 @@ export function EditArticleModalV2({ isOpen, article, onClose }: EditArticleModa
   const [slashMenuSelectedIndex, setSlashMenuSelectedIndex] = useState(0);
   // VK-стиль инсертера: показывается только после Enter в конце блока
   const [vkInserter, setVkInserter] = useState<{ afterBlockId: string } | null>(null);
+  /** ID paragraph-блока, в который нужно поставить каретку при открытии новой статьи. */
+  const [autofocusParagraphBlockId, setAutofocusParagraphBlockId] = useState<string | null>(null);
   // Модал редактирования карусели
   const [carouselEditModal, setCarouselEditModal] = useState<{
     blockId: string;
@@ -234,6 +238,8 @@ export function EditArticleModalV2({ isOpen, article, onClose }: EditArticleModa
 
   // Ref для отложенной установки фокуса после удаления блока
   const pendingFocusRef = useRef<PendingFocus | null>(null);
+  const imageUploadBlockIdRef = useRef<string | null>(null);
+  const imageUploadInputRef = useRef<HTMLInputElement>(null);
 
   // Обработка Escape для скрытия VK-плюса
   useEffect(() => {
@@ -289,13 +295,17 @@ export function EditArticleModalV2({ isOpen, article, onClose }: EditArticleModa
         setIsLoading(false);
         setCurrentArticle(article);
         setOriginalIsDraft(true);
+        const firstBlockId = generateId();
         const initialBlocksValue: Block[] = [
-          { id: generateId(), type: 'paragraph', content: emptyRichText() },
+          { id: firstBlockId, type: 'paragraph', content: emptyRichText() },
         ];
         const initialMetaValue = {
           title: '',
           description: '',
         };
+        setAutofocusParagraphBlockId(firstBlockId);
+        setFocusBlockId(firstBlockId);
+        setVkInserter({ afterBlockId: firstBlockId });
         setBlocks(initialBlocksValue);
         setMeta(initialMetaValue);
         setInitialBlocks(JSON.parse(JSON.stringify(initialBlocksValue))); // Deep copy
@@ -369,6 +379,9 @@ export function EditArticleModalV2({ isOpen, article, onClose }: EditArticleModa
   useEffect(() => {
     isMountedRef.current = isOpen;
     if (!isOpen) {
+      setAutofocusParagraphBlockId(null);
+      setFocusBlockId(null);
+      setVkInserter(null);
       // Отменяем автосохранение
       if (autoSaveTimeoutRef.current) {
         clearTimeout(autoSaveTimeoutRef.current);
@@ -1174,6 +1187,32 @@ export function EditArticleModalV2({ isOpen, article, onClose }: EditArticleModa
     [vkInserter, saveSnapshot]
   );
 
+  const requestImageUpload = useCallback((blockId: string) => {
+    imageUploadBlockIdRef.current = blockId;
+    imageUploadInputRef.current?.click();
+  }, []);
+
+  const handleImageUploadFile = useCallback(
+    async (event: React.ChangeEvent<HTMLInputElement>) => {
+      const blockId = imageUploadBlockIdRef.current;
+      const file = event.target.files?.[0];
+      imageUploadBlockIdRef.current = null;
+      event.target.value = '';
+
+      if (!blockId || !file) return;
+
+      try {
+        const imageKey = await uploadArticleBlockImage(file);
+        if (imageKey) {
+          updateBlock(blockId, { imageKey } as Partial<Block>);
+        }
+      } catch (error) {
+        console.error('Error uploading image:', error);
+      }
+    },
+    [updateBlock]
+  );
+
   // Обработчики для блоков
   const handleBlockEnter = useCallback(
     (
@@ -1682,11 +1721,15 @@ export function EditArticleModalV2({ isOpen, article, onClose }: EditArticleModa
         setTimeout(() => {
           setFocusBlockId(newBlock.id);
         }, 0);
+
+        if (newBlock.type === 'image') {
+          requestImageUpload(newBlock.id);
+        }
       }
 
       setSlashMenu(null);
     },
-    [slashMenu, blocks, updateBlock, createBlock]
+    [slashMenu, blocks, updateBlock, createBlock, requestImageUpload]
   );
 
   // Обработчик paste
@@ -1959,6 +2002,7 @@ export function EditArticleModalV2({ isOpen, article, onClose }: EditArticleModa
         isActive={isOpen}
         onClose={() => articleCloseGuard.requestClose()}
         closeBlocked={isArticleSaveBusy || articleCloseGuard.discardDialogOpen}
+        autoFocusFirstElement={false}
       >
         {isLoading ? (
           //   {true ? (
@@ -1973,45 +2017,36 @@ export function EditArticleModalV2({ isOpen, article, onClose }: EditArticleModa
             >
               {/* Sticky Header */}
               <div className="edit-article-v2__header">
-                <div className="edit-article-v2__header-content">
-                  <input
-                    type="text"
-                    className="edit-article-v2__title-input"
-                    value={meta.title}
-                    onChange={(e) => setMeta((prev) => ({ ...prev, title: e.target.value }))}
-                    placeholder={texts.title}
-                  />
-                  <div className="edit-article-v2__status">{getStatusText()}</div>
-                </div>
-                <div className="edit-article-v2__header-actions">
-                  <div
-                    className="edit-article-v2__history"
-                    role="group"
-                    aria-label={texts.historyActions}
+                <div
+                  className="edit-article-v2__history"
+                  role="group"
+                  aria-label={texts.historyActions}
+                >
+                  <button
+                    type="button"
+                    className="edit-article-v2__history-btn"
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={undo}
+                    disabled={!canUndo(historyState) || isArticleSaveBusy}
+                    aria-label={texts.undo}
+                    title={texts.undo}
                   >
-                    <button
-                      type="button"
-                      className="edit-article-v2__history-btn"
-                      onMouseDown={(event) => event.preventDefault()}
-                      onClick={undo}
-                      disabled={!canUndo(historyState) || isArticleSaveBusy}
-                      aria-label={texts.undo}
-                      title={texts.undo}
-                    >
-                      ↶ {texts.undo}
-                    </button>
-                    <button
-                      type="button"
-                      className="edit-article-v2__history-btn"
-                      onMouseDown={(event) => event.preventDefault()}
-                      onClick={redo}
-                      disabled={!canRedo(historyState) || isArticleSaveBusy}
-                      aria-label={texts.redo}
-                      title={texts.redo}
-                    >
-                      ↷ {texts.redo}
-                    </button>
-                  </div>
+                    <Undo2Icon size={18} strokeWidth={2} aria-hidden />
+                  </button>
+                  <button
+                    type="button"
+                    className="edit-article-v2__history-btn"
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={redo}
+                    disabled={!canRedo(historyState) || isArticleSaveBusy}
+                    aria-label={texts.redo}
+                    title={texts.redo}
+                  >
+                    <Redo2Icon size={18} strokeWidth={2} aria-hidden />
+                  </button>
+                </div>
+                <div className="edit-article-v2__header-end">
+                  <div className="edit-article-v2__status">{getStatusText()}</div>
                   <button
                     type="button"
                     className="edit-article-v2__close"
@@ -2026,152 +2061,171 @@ export function EditArticleModalV2({ isOpen, article, onClose }: EditArticleModa
 
               {/* Content */}
               <div className="edit-article-v2__content article">
-                <DndContext
-                  sensors={sensors}
-                  collisionDetection={closestCenter}
-                  onDragEnd={handleDragEnd}
-                >
-                  <SortableContext
-                    items={blocks.map((b) => b.id)}
-                    strategy={verticalListSortingStrategy}
+                <div className="edit-article-v2__content-column">
+                  <h1 className="edit-article-v2__article-title">
+                    <input
+                      type="text"
+                      className="edit-article-v2__article-title-input"
+                      value={meta.title}
+                      onChange={(e) => setMeta((prev) => ({ ...prev, title: e.target.value }))}
+                      placeholder={texts.title}
+                      aria-label={texts.title}
+                    />
+                  </h1>
+                  <DndContext
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    onDragEnd={handleDragEnd}
                   >
-                    <div className="edit-article-v2__blocks">
-                      {blocks.map((block, index) => (
-                        <React.Fragment key={block.id}>
-                          <SortableBlock
-                            articleOwnerUserId={article.userId ?? undefined}
-                            block={block}
-                            index={index}
-                            isFocused={focusBlockId === block.id}
-                            isSelected={selectedBlockId === block.id}
-                            onUpdate={updateBlock}
-                            onDelete={deleteBlock}
-                            onFocus={() => {
-                              setFocusBlockId(block.id);
-                              // Если блок пустой и vkInserter не установлен, устанавливаем его
-                              const isBlockEmpty =
-                                ((block.type === 'paragraph' ||
-                                  block.type === 'title' ||
-                                  block.type === 'subtitle' ||
-                                  block.type === 'quote') &&
-                                  isRichTextEmpty(block.content)) ||
-                                (block.type === 'list' && isListBlockEmpty(block.items));
-                              if (isBlockEmpty && vkInserter?.afterBlockId !== block.id) {
-                                setVkInserter({ afterBlockId: block.id });
-                              }
-                            }}
-                            onBlur={() => {
-                              // Используем setTimeout, чтобы проверить, куда перешел фокус
-                              // Если фокус перешел на плюс или внутри того же блока, не скрываем плюс
-                              setTimeout(() => {
-                                const activeElement = document.activeElement;
+                    <SortableContext
+                      items={blocks.map((b) => b.id)}
+                      strategy={verticalListSortingStrategy}
+                    >
+                      <div className="edit-article-v2__blocks">
+                        {blocks.map((block, index) => (
+                          <React.Fragment key={block.id}>
+                            <SortableBlock
+                              articleOwnerUserId={article.userId ?? undefined}
+                              block={block}
+                              index={index}
+                              isFocused={focusBlockId === block.id}
+                              isSelected={selectedBlockId === block.id}
+                              onUpdate={updateBlock}
+                              onDelete={deleteBlock}
+                              onFocus={() => {
+                                setFocusBlockId(block.id);
+                                // Если блок пустой и vkInserter не установлен, устанавливаем его
+                                const isBlockEmpty =
+                                  ((block.type === 'paragraph' ||
+                                    block.type === 'title' ||
+                                    block.type === 'subtitle' ||
+                                    block.type === 'quote') &&
+                                    isRichTextEmpty(block.content)) ||
+                                  (block.type === 'list' && isListBlockEmpty(block.items));
+                                if (isBlockEmpty && vkInserter?.afterBlockId !== block.id) {
+                                  setVkInserter({ afterBlockId: block.id });
+                                }
+                              }}
+                              onBlur={() => {
+                                // Используем setTimeout, чтобы проверить, куда перешел фокус
+                                // Если фокус перешел на плюс или внутри того же блока, не скрываем плюс
+                                setTimeout(() => {
+                                  const activeElement = document.activeElement;
 
-                                // Проверяем, находится ли фокус на плюсе или открытом меню (portal)
-                                const isClickingOnVkPlus =
-                                  activeElement?.closest('.edit-article-v2__vk-plus') !== null ||
-                                  activeElement?.closest('.edit-article-v2__vk-plus-menu') !==
-                                    null ||
-                                  document.querySelector('.edit-article-v2__vk-plus-menu') !== null;
+                                  // Проверяем, находится ли фокус на плюсе или открытом меню (portal)
+                                  const isClickingOnVkPlus =
+                                    activeElement?.closest('.edit-article-v2__vk-plus') !== null ||
+                                    activeElement?.closest('.edit-article-v2__vk-plus-menu') !==
+                                      null ||
+                                    document.querySelector('.edit-article-v2__vk-plus-menu') !==
+                                      null;
 
-                                // Проверяем, находится ли фокус на textarea этого блока
-                                const blockTextarea = document.querySelector(
-                                  `[data-block-id="${block.id}"] textarea`
-                                ) as HTMLTextAreaElement;
-                                const isFocusOnBlockTextarea = activeElement === blockTextarea;
+                                  // Проверяем, находится ли фокус на textarea этого блока
+                                  const blockTextarea = document.querySelector(
+                                    `[data-block-id="${block.id}"] textarea`
+                                  ) as HTMLTextAreaElement;
+                                  const isFocusOnBlockTextarea = activeElement === blockTextarea;
 
-                                const blockRichEditor = document.querySelector(
-                                  `[data-block-id="${block.id}"][data-testid="rich-text-block-editor-rich"]`
-                                );
-                                const isFocusOnBlockRichEditor = activeElement === blockRichEditor;
+                                  const blockRichEditor = document.querySelector(
+                                    `[data-block-id="${block.id}"][data-testid="rich-text-block-editor-rich"]`
+                                  );
+                                  const isFocusOnBlockRichEditor =
+                                    activeElement === blockRichEditor;
 
-                                // Проверяем, находится ли активный элемент в том же блоке
-                                const blockElement = activeElement?.closest(
-                                  `.edit-article-v2__block-wrapper[data-block-id="${block.id}"]`
-                                );
-                                const isFocusInSameBlock = blockElement !== null;
+                                  // Проверяем, находится ли активный элемент в том же блоке
+                                  const blockElement = activeElement?.closest(
+                                    `.edit-article-v2__block-wrapper[data-block-id="${block.id}"]`
+                                  );
+                                  const isFocusInSameBlock = blockElement !== null;
 
-                                // Проверяем, не перешел ли фокус на другой блок редактора
-                                const isFocusOnAnotherBlock =
-                                  activeElement?.tagName === 'TEXTAREA' &&
-                                  activeElement?.getAttribute('data-block-id') !== null &&
-                                  activeElement?.getAttribute('data-block-id') !== block.id;
+                                  // Проверяем, не перешел ли фокус на другой блок редактора
+                                  const isFocusOnAnotherBlock =
+                                    activeElement?.tagName === 'TEXTAREA' &&
+                                    activeElement?.getAttribute('data-block-id') !== null &&
+                                    activeElement?.getAttribute('data-block-id') !== block.id;
 
-                                // Если фокус не на плюсе, не на textarea этого блока, не в том же блоке
-                                // и не перешел на другой блок редактора, скрываем плюс
-                                if (
-                                  !isClickingOnVkPlus &&
-                                  !isFocusOnBlockTextarea &&
-                                  !isFocusOnBlockRichEditor &&
-                                  !isFocusInSameBlock &&
-                                  !isFocusOnAnotherBlock
-                                ) {
-                                  setFocusBlockId(null);
-                                  // Скрываем плюс при потере фокуса, если блок не пустой
-                                  if (vkInserter?.afterBlockId === block.id) {
-                                    const isBlockEmpty =
-                                      (block.type === 'paragraph' ||
-                                        block.type === 'title' ||
-                                        block.type === 'subtitle' ||
-                                        block.type === 'quote') &&
-                                      isRichTextEmpty(block.content);
-                                    const isListEmpty =
-                                      block.type === 'list' && isListBlockEmpty(block.items);
-                                    if (!isBlockEmpty && !isListEmpty) {
-                                      setVkInserter(null);
+                                  // Если фокус не на плюсе, не на textarea этого блока, не в том же блоке
+                                  // и не перешел на другой блок редактора, скрываем плюс
+                                  if (
+                                    !isClickingOnVkPlus &&
+                                    !isFocusOnBlockTextarea &&
+                                    !isFocusOnBlockRichEditor &&
+                                    !isFocusInSameBlock &&
+                                    !isFocusOnAnotherBlock
+                                  ) {
+                                    setFocusBlockId(null);
+                                    // Скрываем плюс при потере фокуса, если блок не пустой
+                                    if (vkInserter?.afterBlockId === block.id) {
+                                      const isBlockEmpty =
+                                        (block.type === 'paragraph' ||
+                                          block.type === 'title' ||
+                                          block.type === 'subtitle' ||
+                                          block.type === 'quote') &&
+                                        isRichTextEmpty(block.content);
+                                      const isListEmpty =
+                                        block.type === 'list' && isListBlockEmpty(block.items);
+                                      if (!isBlockEmpty && !isListEmpty) {
+                                        setVkInserter(null);
+                                      }
                                     }
                                   }
-                                }
-                              }, 0);
-                            }}
-                            onSelect={setSelectedBlockId}
-                            onEnter={handleBlockEnter}
-                            onBackspace={(isEmpty: boolean, atStart?: boolean) =>
-                              handleBlockBackspace(block.id, isEmpty, atStart ?? false)
-                            }
-                            onInsertAfter={insertBlockAfter}
-                            onDuplicate={duplicateBlock}
-                            onMoveUp={moveBlockUp}
-                            onMoveDown={moveBlockDown}
-                            onSlash={handleSlash}
-                            onFormat={handleFormat}
-                            onPaste={handlePaste}
-                            onRichEnter={handleRichBlockEnter}
-                            onRichBackspace={handleRichBlockBackspace}
-                            onRichPasteMultiline={handleRichPasteMultiline}
-                            onListConvertToParagraph={handleListConvertToParagraph}
-                            onListInsertParagraphAfter={handleListInsertParagraphAfter}
-                            onConvertToCarousel={convertImageToCarousel}
-                            onVkPlusSelect={(type) => {
-                              convertBlockType(block.id, type as BlockType);
-                              setVkInserter(null);
-                            }}
-                            onVkPlusClose={() => setVkInserter(null)}
-                            onEditCarousel={(blockId) => {
-                              const carouselBlock = blocks.find((b) => b.id === blockId);
-                              if (carouselBlock && carouselBlock.type === 'carousel') {
-                                setCarouselEditModal({
-                                  blockId: carouselBlock.id,
-                                  imageKeys: carouselBlock.imageKeys,
-                                  caption: carouselBlock.caption,
-                                });
+                                }, 0);
+                              }}
+                              onSelect={setSelectedBlockId}
+                              onEnter={handleBlockEnter}
+                              onBackspace={(isEmpty: boolean, atStart?: boolean) =>
+                                handleBlockBackspace(block.id, isEmpty, atStart ?? false)
                               }
-                            }}
-                          />
-                        </React.Fragment>
-                      ))}
-                    </div>
-                  </SortableContext>
-                </DndContext>
+                              onInsertAfter={insertBlockAfter}
+                              onDuplicate={duplicateBlock}
+                              onMoveUp={moveBlockUp}
+                              onMoveDown={moveBlockDown}
+                              onSlash={handleSlash}
+                              onFormat={handleFormat}
+                              onPaste={handlePaste}
+                              onRichEnter={handleRichBlockEnter}
+                              onRichBackspace={handleRichBlockBackspace}
+                              onRichPasteMultiline={handleRichPasteMultiline}
+                              onListConvertToParagraph={handleListConvertToParagraph}
+                              onListInsertParagraphAfter={handleListInsertParagraphAfter}
+                              onConvertToCarousel={convertImageToCarousel}
+                              onVkPlusSelect={(type) => {
+                                convertBlockType(block.id, type as BlockType);
+                                if (type === 'image') {
+                                  requestImageUpload(block.id);
+                                }
+                                setVkInserter(null);
+                              }}
+                              onVkPlusClose={() => setVkInserter(null)}
+                              onEditCarousel={(blockId) => {
+                                const carouselBlock = blocks.find((b) => b.id === blockId);
+                                if (carouselBlock && carouselBlock.type === 'carousel') {
+                                  setCarouselEditModal({
+                                    blockId: carouselBlock.id,
+                                    imageKeys: carouselBlock.imageKeys,
+                                    caption: carouselBlock.caption,
+                                  });
+                                }
+                              }}
+                              autoFocusCaret={autofocusParagraphBlockId === block.id}
+                              onAutoFocusCaret={() => setAutofocusParagraphBlockId(null)}
+                            />
+                          </React.Fragment>
+                        ))}
+                      </div>
+                    </SortableContext>
+                  </DndContext>
 
-                {/* Slash menu */}
-                {slashMenu && (
-                  <SlashMenu
-                    position={slashMenu!.position}
-                    onSelect={handleSlashSelect}
-                    onClose={() => setSlashMenu(null)}
-                    selectedIndex={slashMenuSelectedIndex}
-                  />
-                )}
+                  {/* Slash menu */}
+                  {slashMenu && (
+                    <SlashMenu
+                      position={slashMenu!.position}
+                      onSelect={handleSlashSelect}
+                      onClose={() => setSlashMenu(null)}
+                      selectedIndex={slashMenuSelectedIndex}
+                    />
+                  )}
+                </div>
               </div>
 
               {/* Footer с кнопками - показывается только при наличии изменений */}
@@ -2251,6 +2305,13 @@ export function EditArticleModalV2({ isOpen, article, onClose }: EditArticleModa
           titleId={articleCloseGuard.discardTitleDomId}
           onStay={articleCloseGuard.dismissDiscardDialog}
           onDiscard={articleCloseGuard.finalizeCloseWithoutSaving}
+        />
+        <input
+          ref={imageUploadInputRef}
+          type="file"
+          accept="image/*"
+          hidden
+          onChange={handleImageUploadFile}
         />
       </Popup>
     </>

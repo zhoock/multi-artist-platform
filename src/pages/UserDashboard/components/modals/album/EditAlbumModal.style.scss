@@ -585,10 +585,11 @@ dialog {
     }
 
     &__multiselect-arrow {
+      display: inline-flex;
       margin-left: auto;
       color: var(--dashboard-text-secondary);
-      font-size: var(--ms-0);
       flex-shrink: 0;
+      align-items: center;
     }
 
     &__multiselect-dropdown {

@@ -4,6 +4,13 @@ import type { AlbumFormData } from '../modals/album/EditAlbumModal.types';
 import type { IInterface } from '@models';
 import { GENRE_OPTIONS, MAX_TAGS } from '../modals/album/EditAlbumModal.constants';
 import type { SupportedLang } from '@shared/model/lang';
+import {
+  EditAlbumChevronDownIcon,
+  EditAlbumChevronUpIcon,
+  EditAlbumPlusIcon,
+  EditAlbumRemoveIcon,
+  editAlbumAddButtonLabel,
+} from './EditAlbumStepIcons';
 
 interface EditAlbumModalStep2Props {
   formData: AlbumFormData;
@@ -85,7 +92,7 @@ export function EditAlbumModalStep2({
                       }}
                       aria-label={`${ui?.dashboard?.editAlbumModal?.step2?.removeTag ?? 'Remove'} ${getGenreLabelByCode(genreCode)}`}
                     >
-                      ×
+                      <EditAlbumRemoveIcon />
                     </button>
                   </span>
                 ))}
@@ -97,7 +104,7 @@ export function EditAlbumModalStep2({
             )}
 
             <span className="edit-album-modal__multiselect-arrow">
-              {genreDropdownOpen ? '⌃' : '⌄'}
+              {genreDropdownOpen ? <EditAlbumChevronUpIcon /> : <EditAlbumChevronDownIcon />}
             </span>
           </div>
 
@@ -140,7 +147,7 @@ export function EditAlbumModalStep2({
                     onClick={() => onRemoveTag(tag)}
                     aria-label={`${ui?.dashboard?.editAlbumModal?.step2?.removeTag ?? 'Remove'} ${tag}`}
                   >
-                    ×
+                    <EditAlbumRemoveIcon />
                   </button>
                 </span>
               ))}
@@ -170,7 +177,10 @@ export function EditAlbumModalStep2({
               onClick={onAddTag}
               disabled={formData.tags.length >= MAX_TAGS || !tagInput.trim()}
             >
-              {ui?.dashboard?.editAlbumModal?.step2?.addTagButton ?? 'Add +'}
+              <EditAlbumPlusIcon size={14} />
+              {editAlbumAddButtonLabel(
+                ui?.dashboard?.editAlbumModal?.step2?.addTagButton ?? 'Add +'
+              )}
             </button>
           </div>
 

@@ -12,6 +12,7 @@ const PopupComponent = ({
   onClose,
   closeBlocked,
   publicBackdrop,
+  autoFocusFirstElement = true,
   'aria-labelledby': ariaLabelledBy,
 }: PopupProps) => {
   const dialogRef = useRef<HTMLDialogElement>(null);
@@ -33,18 +34,20 @@ const PopupComponent = ({
 
     if (isActive && !dialog.open) {
       dialog.showModal();
-      // Фокус на первом фокусируемом элементе внутри dialog для доступности
-      // Используем setTimeout для предотвращения конфликтов с расширениями браузера
-      setTimeout(() => {
-        const firstFocusable = dialog.querySelector<HTMLElement>(
-          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-        );
-        firstFocusable?.focus();
-      }, 0);
+      if (autoFocusFirstElement) {
+        // Фокус на первом фокусируемом элементе внутри dialog для доступности
+        // Используем setTimeout для предотвращения конфликтов с расширениями браузера
+        setTimeout(() => {
+          const firstFocusable = dialog.querySelector<HTMLElement>(
+            'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+          );
+          firstFocusable?.focus();
+        }, 0);
+      }
     } else if (!isActive && dialog.open) {
       dialog.close();
     }
-  }, [isActive]);
+  }, [isActive, autoFocusFirstElement]);
 
   useEffect(() => {
     const dialog = dialogRef.current;

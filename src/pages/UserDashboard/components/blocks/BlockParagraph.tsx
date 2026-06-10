@@ -46,6 +46,8 @@ interface BlockParagraphProps {
   onRichPasteMultiline?: (detail: RichPasteMultilineDetail) => void;
   placeholder?: string;
   blockId?: string;
+  autoFocusCaret?: boolean;
+  onAutoFocusCaret?: () => void;
 }
 
 export function BlockParagraph({
@@ -63,6 +65,8 @@ export function BlockParagraph({
   onRichPasteMultiline,
   placeholder = '',
   blockId,
+  autoFocusCaret,
+  onAutoFocusCaret,
 }: BlockParagraphProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [showFormatMenu, setShowFormatMenu] = useState(false);
@@ -267,6 +271,8 @@ export function BlockParagraph({
           onRichPasteMultiline={onRichPasteMultiline}
           onBlockFormat={onFormat}
           onFocus={onFocus}
+          autoFocusCaret={autoFocusCaret}
+          onAutoFocusCaret={onAutoFocusCaret}
           onBlur={(e) => {
             // Скрываем меню при потере фокуса с небольшой задержкой
             // на случай, если пользователь кликает на кнопки меню

@@ -1,9 +1,8 @@
 // src/pages/UserDashboard/components/blocks/BlockImage.tsx
 import React, { useRef, useState } from 'react';
 import { getUserImageUrl } from '@shared/api/albums';
-import { uploadFile } from '@shared/api/storage';
 import { getUser } from '@shared/lib/auth';
-import { uniqueUploadFileSuffix } from '@shared/lib/uniqueUploadFileSuffix';
+import { uploadArticleBlockImage } from './uploadArticleBlockImage';
 
 interface BlockImageProps {
   imageKey?: string;
@@ -39,19 +38,9 @@ export function BlockImage({
 
     setIsUploading(true);
     try {
-      const fileExtension = file.name.split('.').pop() || 'jpg';
-      const baseFileName = file.name.replace(/\.[^/.]+$/, '');
-      const fileName = `article_${uniqueUploadFileSuffix()}_${baseFileName}.${fileExtension}`;
-      const imageKey = fileName;
-
-      const url = await uploadFile({
-        file,
-        category: 'articles',
-        fileName,
-      });
-
-      if (url) {
-        onChange(imageKey, captionValue);
+      const uploadedKey = await uploadArticleBlockImage(file);
+      if (uploadedKey) {
+        onChange(uploadedKey, captionValue);
       }
     } catch (error) {
       console.error('Error uploading image:', error);
@@ -129,14 +118,22 @@ export function BlockImage({
           )}
         </div>
       ) : (
-        <button
-          type="button"
-          className="edit-article-v2__image-upload"
-          onClick={() => fileInputRef.current?.click()}
-          disabled={isUploading}
-        >
-          {isUploading ? 'Загрузка...' : '+ Загрузить изображение'}
-        </button>
+        <div
+          className="edit-article-v2__image-empty"
+          role="button"
+          tabIndex={0}
+          aria-label={isUploading ? 'Загрузка изображения' : 'Загрузить изображение'}
+          aria-busy={isUploading}
+          onClick={() => !isUploading && fileInputRef.current?.click()}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              if (!isUploading) {
+                fileInputRef.current?.click();
+              }
+            }
+          }}
+        />
       )}
       {imageKey && (
         <input

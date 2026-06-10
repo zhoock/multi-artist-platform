@@ -7,6 +7,7 @@ import { MAX_BAND_MEMBERS } from '../modals/album/EditAlbumModal.constants';
 import { bandMemberEditHasChanges, EMPTY_BAND_MEMBER } from '../modals/album/EditAlbumModal.utils';
 import { EditableCardField } from '../shared/EditableCardField';
 import '../shared/EditableCardField.style.scss';
+import { EditAlbumPlusIcon, editAlbumAddButtonLabel } from './EditAlbumStepIcons';
 
 interface EditAlbumModalStep4Props {
   formData: AlbumFormData;
@@ -290,7 +291,8 @@ export function EditAlbumModalStep4({
             disabled={editingBandMemberIndex !== null || formData.showAddBandMemberInputs === true}
             onClick={() => onFormDataChange('showAddBandMemberInputs', true)}
           >
-            {ui?.dashboard?.editAlbumModal?.step4?.addButton ?? '+ Add'}
+            <EditAlbumPlusIcon size={14} />
+            {editAlbumAddButtonLabel(ui?.dashboard?.editAlbumModal?.step4?.addButton ?? '+ Add')}
           </button>
         )}
         {step4Err('bandMembers') ? (
@@ -396,7 +398,8 @@ export function EditAlbumModalStep4({
               }
               onClick={() => onFormDataChange('showAddSessionMusicianInputs', true)}
             >
-              {ui?.dashboard?.editAlbumModal?.step4?.addButton ?? '+ Add'}
+              <EditAlbumPlusIcon size={14} />
+              {editAlbumAddButtonLabel(ui?.dashboard?.editAlbumModal?.step4?.addButton ?? '+ Add')}
             </button>
           )}
       </div>
@@ -493,7 +496,8 @@ export function EditAlbumModalStep4({
             disabled={editingProducerIndex !== null || formData.showAddProducerInputs === true}
             onClick={() => onFormDataChange('showAddProducerInputs', true)}
           >
-            {ui?.dashboard?.editAlbumModal?.step4?.addButton ?? '+ Add'}
+            <EditAlbumPlusIcon size={14} />
+            {editAlbumAddButtonLabel(ui?.dashboard?.editAlbumModal?.step4?.addButton ?? '+ Add')}
           </button>
         )}
         {step4Err('producer') ? (

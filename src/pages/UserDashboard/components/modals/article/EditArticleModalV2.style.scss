@@ -3,6 +3,127 @@
 @use '../../../../../scss/abstracts/mixins' as *;
 @use '../../../../../scss/components/modal' as *;
 
+// Кнопки поверх изображений: dashboard primary + непрозрачный фон карточки
+@mixin edit-article-media-btn(
+  $padding: var(--dashboard-btn-padding-y) var(--dashboard-btn-padding-x)
+) {
+  @include dashboard-btn-primary($margin: 0, $padding: $padding);
+
+  & {
+    background: var(--dashboard-card-bg);
+    box-shadow: 0 2px 10px rgb(0 0 0 / 25%);
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    &:hover:not(:disabled) {
+      color: var(--dashboard-btn-primary-text);
+      background: var(--dashboard-btn-primary-hover-bg);
+      border-color: var(--dashboard-btn-primary-border);
+    }
+  }
+
+  &:active:not(:disabled) {
+    color: var(--dashboard-btn-primary-active-text);
+    background: var(--dashboard-btn-primary-active-bg);
+    border-color: var(--dashboard-btn-primary-active-bg);
+  }
+}
+
+@mixin edit-article-media-icon-btn($size: var(--dashboard-btn-height)) {
+  @include dashboard-btn-primary($margin: 0, $padding: 0);
+
+  & {
+    width: $size;
+    height: $size;
+    min-height: $size;
+    background: var(--dashboard-card-bg);
+    border-radius: 50%;
+    box-shadow: 0 2px 10px rgb(0 0 0 / 25%);
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    &:hover:not(:disabled) {
+      color: var(--dashboard-btn-primary-text);
+      background: var(--dashboard-btn-primary-hover-bg);
+      border-color: var(--dashboard-btn-primary-border);
+    }
+  }
+
+  &:active:not(:disabled) {
+    color: var(--dashboard-btn-primary-active-text);
+    background: var(--dashboard-btn-primary-active-bg);
+    border-color: var(--dashboard-btn-primary-active-bg);
+  }
+}
+
+@mixin edit-article-icon-btn($size: var(--dashboard-btn-height), $border-radius: null) {
+  @include dashboard-btn-secondary($margin: 0, $padding: 0);
+
+  & {
+    width: $size;
+    height: $size;
+    min-height: $size;
+
+    @if $border-radius {
+      border-radius: $border-radius;
+    }
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    &:hover:not(:disabled) {
+      color: var(--dashboard-btn-secondary-text);
+      background: var(--dashboard-btn-secondary-active-bg);
+      border-color: var(--dashboard-btn-secondary-active-border);
+    }
+  }
+
+  &:active:not(:disabled) {
+    color: var(--dashboard-btn-secondary-active-text);
+    background: var(--dashboard-btn-secondary-active-bg);
+    border-color: var(--dashboard-btn-secondary-active-border);
+  }
+}
+
+@mixin edit-article-toolbar-btn(
+  $size: var(--dashboard-btn-height),
+  $font-size: null,
+  $font-family: null,
+  $border-radius: null,
+  $flex: null
+) {
+  @include dashboard-btn-ghost($margin: 0, $padding: 0);
+
+  & {
+    width: $size;
+    height: $size;
+    min-height: $size;
+
+    @if $font-size {
+      font-size: $font-size;
+    }
+
+    @if $font-family {
+      font-family: $font-family;
+    }
+
+    @if $border-radius {
+      border-radius: $border-radius;
+    }
+
+    @if $flex {
+      flex: $flex;
+    }
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    &:hover:not(:disabled) {
+      color: var(--dashboard-btn-ghost-hover-text);
+      background: var(--dashboard-btn-secondary-active-bg);
+      border-color: transparent;
+    }
+  }
+}
+
 // Общие селекторы img (должны быть перед более специфичными)
 // Селекторы img из вложенных блоков (менее специфичные, чем dialog .edit-article-v2__content.article .uncollapse img)
 .edit-article-v2__image-container img {
@@ -24,66 +145,76 @@
   object-fit: cover;
 }
 
-// Portal-меню: компактный overlay, не растягивается в flex-контейнере dialog
+// Portal-меню: компактный overlay в стиле VK
 .edit-article-v2__vk-plus-menu {
   position: absolute;
-  top: calc(100% + 10px);
+  top: calc(100% + 8px);
   left: 0;
   z-index: 10001;
   display: flex;
   width: max-content;
   height: max-content;
   max-width: calc(100vw - 16px);
-  padding: 10px 0;
+  padding: 4px;
   background: var(--dashboard-card-bg, #2b2b2b);
   border: 1px solid var(--dashboard-card-border, rgb(255 255 255 / 12%));
-  border-radius: 12px;
-  box-shadow: 0 8px 28px rgb(0 0 0 / 40%);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgb(0 0 0 / 32%);
   pointer-events: auto;
-}
 
-.edit-article-v2__vk-plus-menu-arrow {
-  position: absolute;
-  top: -6px;
-  left: 18px;
-  width: 12px;
-  height: 12px;
-  background: var(--dashboard-card-bg, #2b2b2b);
-  border-top: 1px solid var(--dashboard-card-border, rgb(255 255 255 / 12%));
-  border-left: 1px solid var(--dashboard-card-border, rgb(255 255 255 / 12%));
-  transform: translateX(-50%) rotate(45deg);
+  &::before {
+    content: '';
+    position: absolute;
+    top: -5px;
+    left: 14px;
+    width: 10px;
+    height: 10px;
+    background: var(--dashboard-card-bg, #2b2b2b);
+    border-top: 1px solid var(--dashboard-card-border, rgb(255 255 255 / 12%));
+    border-left: 1px solid var(--dashboard-card-border, rgb(255 255 255 / 12%));
+    transform: rotate(45deg);
+  }
 }
 
 .edit-article-v2__vk-plus-menu-item {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
-  min-width: 88px;
-  padding: 6px 16px;
+  gap: 6px;
+  min-width: 80px;
+  padding: 8px 12px;
   color: var(--dashboard-text-secondary, #aaaaaa);
-  font-size: 13px;
+  font-size: 12px;
   line-height: 1.2;
   background: transparent;
   border: none;
+  border-radius: 6px;
   cursor: pointer;
   transition:
-    background-color 0.15s ease,
-    color 0.15s ease;
+    background-color 0.12s ease,
+    color 0.12s ease;
 
   &:not(:last-child) {
-    border-right: 1px solid var(--dashboard-divider, rgb(255 255 255 / 12%));
+    margin-right: 2px;
   }
 
   svg {
-    width: 28px;
-    height: 28px;
+    width: 24px;
+    height: 24px;
   }
 
-  &:hover,
+  &:hover {
+    color: var(--dashboard-text-primary, #f0f0f0);
+    background: rgb(255 255 255 / 5%);
+  }
+
+  &:focus {
+    outline: none;
+  }
+
   &:focus-visible {
     color: var(--dashboard-text-primary, #f0f0f0);
-    background: var(--dashboard-hover-bg, rgb(255 255 255 / 6%));
+    box-shadow: inset 0 0 0 1px rgb(255 255 255 / 18%);
   }
 }
 
@@ -128,7 +259,7 @@ dialog {
       z-index: 10;
 
       @include dashboard-modal-header(
-        $justify-content: flex-start,
+        $justify-content: space-between,
         $gap: var(--ms-0),
         $padding: var(--ms-1) var(--ms-1),
         $border-bottom: var(--dashboard-divider),
@@ -136,33 +267,15 @@ dialog {
       );
     }
 
-    &__header-content {
-      flex: 1;
+    &__header-end {
       display: flex;
+      flex-shrink: 0;
       align-items: center;
-      gap: var(--ms-0);
+      gap: var(--ms-01);
     }
 
     &__close {
       @include dashboard-modal-close($focus-visible: true, $reset-text: true, $flex-shrink: 0);
-    }
-
-    &__title-input {
-      padding: var(--ms-01) 0;
-      color: var(--dashboard-text-primary);
-      font-size: var(--dashboard-heading-font-size);
-      background: transparent;
-      border: none;
-      flex: 1;
-      outline: none;
-      font-weight: 700;
-      font-family: var(--base-font-family, arial, sans-serif);
-      text-transform: none !important;
-      letter-spacing: normal !important;
-
-      &::placeholder {
-        color: var(--dashboard-text-secondary);
-      }
     }
 
     &__status {
@@ -171,50 +284,20 @@ dialog {
       white-space: nowrap;
     }
 
-    &__header-actions {
-      display: flex;
-      flex-shrink: 0;
-      align-items: center;
-      gap: var(--ms-01);
-    }
-
     &__history {
       display: flex;
+      flex-shrink: 0;
       align-items: center;
       gap: 2px;
     }
 
     &__history-btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      padding: 6px 10px;
-      color: var(--dashboard-text-primary);
-      font-size: var(--ms-0);
-      font-family: var(--base-font-family, arial, sans-serif);
-      line-height: 1.2;
-      white-space: nowrap;
-      background: transparent;
-      border: 1px solid var(--dashboard-card-border);
-      border-radius: 8px;
-      transition:
-        background-color 0.15s ease,
-        border-color 0.15s ease,
-        opacity 0.15s ease;
-      cursor: pointer;
+      @include edit-article-icon-btn(36px);
 
-      &:focus-visible {
-        outline: 2px solid var(--dashboard-accent, #6ea8fe);
-        outline-offset: 2px;
-      }
-
-      &:disabled {
-        opacity: 0.4;
-        cursor: not-allowed;
-      }
-
-      &:hover:not(:disabled) {
-        background: var(--dashboard-hover-bg, rgb(255 255 255 / 6%));
+      svg {
+        width: 18px;
+        height: 18px;
+        flex-shrink: 0;
       }
     }
 
@@ -393,16 +476,58 @@ dialog {
     }
 
     &__content {
+      position: relative;
       flex: 1 1 0;
       overflow-y: auto;
       padding: var(--ms-2);
       min-height: 0;
     }
 
+    // Колонка контента — та же ширина, что у .wrapper на ArticlePage (min(100vi, 1000px)).
+    &__content-column {
+      --edit-article-gutter-inline-size: 36px;
+      --edit-article-gutter-gap: var(--ms-01);
+
+      inline-size: min(100%, 1000px);
+      max-inline-size: 1000px;
+      margin-inline: auto;
+      position: relative;
+    }
+
+    &__article-title {
+      margin: 0 0 var(--ms-2);
+    }
+
+    &__article-title-input {
+      display: block;
+      width: 100%;
+      padding: 0;
+      color: var(--text-color, var(--dashboard-text-primary));
+      font-size: clamp(1.75rem, 4vw, 2.5rem);
+      line-height: 1.2;
+      font-weight: 700;
+      font-family: var(--base-font-family, arial, sans-serif);
+      background: transparent;
+      border: none;
+      outline: none;
+      text-transform: none !important;
+      letter-spacing: normal !important;
+
+      &::placeholder {
+        color: var(--dashboard-text-secondary);
+      }
+    }
+
     &__blocks {
+      --edit-article-gutter-offset: calc(
+        var(--edit-article-gutter-inline-size) + var(--edit-article-gutter-gap)
+      );
+
       display: flex;
       flex-direction: column;
       gap: 8px;
+      margin-inline-start: calc(-1 * var(--edit-article-gutter-offset));
+      padding-inline-start: var(--edit-article-gutter-offset);
     }
 
     // Используем реальные стили статьи из HelpArticle (скопированы из help-article__body)
@@ -506,33 +631,26 @@ dialog {
     }
 
     &__block-gutter {
-      position: relative;
+      position: absolute;
+      top: 0;
+      left: calc(-1 * var(--edit-article-gutter-offset));
+      z-index: 1;
       display: flex;
-      flex: 0 0 calc(var(--ms-0) * 1.5);
-      width: calc(var(--ms-0) * 1.5);
-      height: calc(var(--ms-0) * 1.5);
+      width: var(--edit-article-gutter-inline-size);
+      height: var(--edit-article-gutter-inline-size);
       flex-shrink: 0;
       align-items: center;
       justify-content: center;
 
       // Центр хэндла / «+» совпадает с центром первой строки (paragraph: lh 1.6 → 0.8em)
-      margin-top: calc(0.8em - var(--ms-0) * 0.75);
+      margin-top: calc(0.8em - var(--edit-article-gutter-inline-size) * 0.5);
       overflow: visible;
-
-      &:has(.edit-article-v2__vk-plus) {
-        flex-basis: 36px;
-        width: 36px;
-        height: 36px;
-        margin-top: calc(0.8em - var(--ms-0));
-      }
     }
 
     &__block-wrapper {
       position: relative;
-      display: flex;
-      align-items: flex-start;
-      gap: var(--ms-01);
-      padding: var(--ms-01);
+      display: block;
+      padding: 0;
       border-radius: var(--ms-01);
       transition: background-color 0.2s;
       overflow: visible;
@@ -563,20 +681,12 @@ dialog {
 
       // h3: 1.5rem × line-height 1.3 → центр первой строки 0.975rem
       &--title .edit-article-v2__block-gutter {
-        margin-top: calc(0.975rem - var(--ms-0) * 0.75);
+        margin-top: calc(0.975rem - var(--edit-article-gutter-inline-size) * 0.5);
       }
 
       // h4: 1.25rem × line-height 1.3 → центр первой строки 0.8125rem
       &--subtitle .edit-article-v2__block-gutter {
-        margin-top: calc(0.8125rem - var(--ms-0) * 0.75);
-      }
-
-      &--title .edit-article-v2__block-gutter:has(.edit-article-v2__vk-plus) {
-        margin-top: calc(0.975rem - var(--ms-0));
-      }
-
-      &--subtitle .edit-article-v2__block-gutter:has(.edit-article-v2__vk-plus) {
-        margin-top: calc(0.8125rem - var(--ms-0));
+        margin-top: calc(0.8125rem - var(--edit-article-gutter-inline-size) * 0.5);
       }
     }
 
@@ -592,7 +702,7 @@ dialog {
     }
 
     &__block-content {
-      flex: 1;
+      width: 100%;
       min-width: 0;
     }
 
@@ -606,20 +716,7 @@ dialog {
     }
 
     &__vk-plus-button {
-      display: flex;
-      width: 36px;
-      height: 36px;
-      padding: 0;
-      color: var(--dashboard-text-primary);
-      background: var(--dashboard-hover-bg);
-      border: 1px solid var(--dashboard-card-border);
-      border-radius: 50%;
-      transition:
-        background-color 0.15s ease,
-        border-color 0.15s ease;
-      cursor: pointer;
-      align-items: center;
-      justify-content: center;
+      @include edit-article-icon-btn(36px, $border-radius: 50%);
 
       svg {
         width: 18px;
@@ -627,14 +724,10 @@ dialog {
         flex-shrink: 0;
       }
 
-      &:hover {
-        background: var(--dashboard-btn-primary-hover-bg);
-        border-color: var(--dark-greenish-yellow);
-      }
-
       &--active {
+        color: var(--dashboard-btn-primary-text);
         background: var(--dashboard-btn-primary-hover-bg);
-        border-color: var(--dark-greenish-yellow);
+        border-color: var(--dashboard-btn-primary-border);
       }
     }
 
@@ -712,13 +805,13 @@ dialog {
       // Стили img определены выше для соблюдения специфичности
     }
 
-    &__image-upload {
-      @include dashboard-btn-secondary;
-
-      &:disabled {
-        opacity: 0.6;
-        cursor: not-allowed;
-      }
+    &__image-empty {
+      min-height: 1px;
+      margin: 0;
+      padding: 0;
+      background: transparent;
+      border: none;
+      cursor: default;
     }
 
     &__image-convert-to-carousel {
@@ -726,15 +819,8 @@ dialog {
       top: var(--ms-01);
       right: var(--ms-01);
       z-index: 10;
-      font-size: var(--ms-01);
-      opacity: 0.9;
-      transition: opacity 0.2s;
 
-      @include dashboard-btn-secondary($padding: var(--ms-01) var(--ms-0));
-
-      &:hover {
-        opacity: 1;
-      }
+      @include edit-article-media-btn($padding: var(--ms-01) var(--ms-0));
     }
 
     &__image-caption {
@@ -786,12 +872,13 @@ dialog {
     // Бейдж "1 из N"
     &__carousel-badge {
       padding: var(--ms-02) var(--ms-01);
-      color: var(--dashboard-text-primary);
+      color: var(--dashboard-btn-secondary-text);
       font-size: var(--ms-01);
-      background: rgb(var(--white-rgb) / 90%);
-      border-radius: var(--ms-02);
       font-weight: 500;
-      backdrop-filter: blur(4px);
+      background: var(--dashboard-card-bg);
+      border: 1px solid var(--dashboard-btn-primary-border);
+      border-radius: var(--dashboard-btn-radius);
+      box-shadow: 0 2px 10px rgb(0 0 0 / 25%);
     }
 
     // Стрелки навигации
@@ -799,27 +886,11 @@ dialog {
       position: absolute;
       top: 50%;
       z-index: 3;
-      display: flex;
-      width: 40px;
-      height: 40px;
-      color: var(--dashboard-text-primary);
-      font-size: 24px;
+      font-size: 22px;
       line-height: 1;
-      background: rgb(var(--white-rgb) / 80%);
-      border: none;
-      border-radius: 50%;
-      transition:
-        background 0.2s,
-        opacity 0.2s;
       transform: translateY(-50%);
-      cursor: pointer;
-      align-items: center;
-      justify-content: center;
-      backdrop-filter: blur(4px);
 
-      &:hover {
-        background: rgb(var(--white-rgb) / 95%);
-      }
+      @include edit-article-media-icon-btn(40px);
 
       &--prev {
         left: var(--ms-01);
@@ -832,23 +903,7 @@ dialog {
 
     // Кнопка "Редактировать карусель"
     &__carousel-edit {
-      padding: var(--ms-01) var(--ms-0);
-      color: var(--dashboard-text-primary);
-      font-size: var(--ms-01);
-      background: rgb(var(--white-rgb) / 90%);
-      border: 1px solid var(--dashboard-card-border);
-      border-radius: var(--ms-01);
-      transition:
-        background 0.2s,
-        border-color 0.2s;
-      cursor: pointer;
-      backdrop-filter: blur(4px);
-      white-space: nowrap;
-
-      &:hover {
-        background: var(--dashboard-btn-primary-hover-bg);
-        border-color: var(--mango-sorbet);
-      }
+      @include edit-article-media-btn($padding: var(--ms-01) var(--ms-0));
     }
 
     // Пустая карусель
@@ -916,25 +971,12 @@ dialog {
     }
 
     &__format-menu-item {
-      display: flex;
-      width: 34px;
-      height: 34px;
-      padding: 0;
-      color: var(--dashboard-text-primary);
-      font-size: 17px;
-      font-family: 'Georgia', 'Times New Roman', serif;
-      line-height: 1;
-      background: transparent;
-      border: none;
-      border-radius: 8px;
-      transition: background-color 0.15s ease;
-      cursor: pointer;
-      align-items: center;
-      justify-content: center;
-
-      &:hover {
-        background: var(--dashboard-hover-bg);
-      }
+      @include edit-article-toolbar-btn(
+        34px,
+        $font-size: 17px,
+        $font-family: ('Georgia', 'Times New Roman', serif),
+        $border-radius: var(--dashboard-btn-radius)
+      );
 
       svg {
         display: block;
@@ -986,26 +1028,7 @@ dialog {
     }
 
     &__format-menu-link-close {
-      display: flex;
-      width: 28px;
-      height: 28px;
-      padding: 0;
-      color: var(--dashboard-text-secondary);
-      background: transparent;
-      border: none;
-      border-radius: 8px;
-      transition:
-        background-color 0.15s ease,
-        color 0.15s ease;
-      cursor: pointer;
-      align-items: center;
-      justify-content: center;
-      flex: 0 0 auto;
-
-      &:hover {
-        color: var(--dashboard-text-primary);
-        background: var(--dashboard-hover-bg);
-      }
+      @include edit-article-toolbar-btn(28px, $flex: 0 0 auto);
 
       svg {
         display: block;
@@ -1146,49 +1169,35 @@ dialog {
       position: absolute;
       top: var(--ms-02);
       right: var(--ms-02);
-      display: flex;
-      width: 24px;
-      height: 24px;
-      color: var(--dashboard-text-primary);
-      font-size: 18px;
+      width: 28px;
+      height: 28px;
+      min-height: 28px;
+      font-size: 16px;
       line-height: 1;
-      background: rgb(var(--soft-red-rgb) / 80%);
-      border: none;
-      border-radius: 50%;
-      transition: background 0.2s;
-      cursor: pointer;
-      align-items: center;
-      justify-content: center;
-      backdrop-filter: blur(4px);
 
-      &:hover {
-        background: var(--soft-red);
-      }
+      @include dashboard-btn-destructive($margin: 0, $padding: 0);
     }
 
     &__carousel-edit-add {
-      display: flex;
-      color: var(--dashboard-text-secondary);
-      font-size: 32px;
-      line-height: 1;
-      background: transparent;
-      border: 2px dashed var(--dashboard-card-border);
-      border-radius: var(--ms-01);
-      transition: all 0.2s;
-      aspect-ratio: 1;
-      cursor: pointer;
-      align-items: center;
-      justify-content: center;
+      @include dashboard-btn-secondary($margin: 0);
 
-      &:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
+      @at-root #{&} {
+        aspect-ratio: 1;
+        font-size: var(--ms-0);
+        border-style: dashed;
       }
 
-      &:hover:not(:disabled) {
-        border-color: var(--dark-greenish-yellow);
-        color: var(--dark-greenish-yellow);
-        background: var(--dashboard-hover-bg);
+      @media (hover: hover) and (pointer: fine) {
+        &:hover:not(:disabled) {
+          color: var(--dashboard-btn-secondary-text);
+          background: var(--dashboard-btn-secondary-active-bg);
+          border-color: var(--dashboard-btn-secondary-active-border);
+        }
+      }
+
+      &:disabled {
+        opacity: var(--dashboard-btn-disabled-opacity);
+        cursor: not-allowed;
       }
     }
 
