@@ -41,6 +41,21 @@ function dispatchShiftEnter(root: HTMLElement): void {
   );
 }
 
+function MultilineHarness() {
+  const [content, setContent] = useState<RichText>(() => [{ text: 'abc\ndef', marks: [] }]);
+  return <RichTextBlockEditor content={content} onChange={setContent} mode="rich" />;
+}
+
+function dispatchBackspace(root: HTMLElement): void {
+  root.dispatchEvent(
+    new InputEvent('beforeinput', {
+      inputType: 'deleteContentBackward',
+      bubbles: true,
+      cancelable: true,
+    })
+  );
+}
+
 describe('RichTextBlockEditor', () => {
   test('deleteContentForward keeps caret at end after deleting last character (abc| → ab|)', async () => {
     render(<RichHarness />);
@@ -298,5 +313,40 @@ describe('RichTextBlockEditor', () => {
     expect(onRichEnter).toHaveBeenCalledWith({ atEnd: true, offset: 7 });
     expect(onChange).not.toHaveBeenCalled();
     expect(richTextToPlainText(content)).toBe('abc\ndef');
+  });
+
+  test('deleteContentBackward after newline removes each character (abc\\ndef| Backspace×3 → abc\\n|)', async () => {
+    render(<MultilineHarness />);
+
+    const root = await waitFor(() => screen.getByTestId('rich-text-block-editor-rich'));
+    await waitFor(() => {
+      expect(root.querySelector('br')).toBeTruthy();
+    });
+
+    root.focus();
+    restoreSelection(root, 7, 7);
+    expect(getSelectionOffsets(root)).toEqual({ from: 7, to: 7 });
+
+    act(() => {
+      dispatchBackspace(root);
+    });
+    await waitFor(() => {
+      expect(getSelectionOffsets(root)).toEqual({ from: 6, to: 6 });
+    });
+
+    act(() => {
+      dispatchBackspace(root);
+    });
+    await waitFor(() => {
+      expect(getSelectionOffsets(root)).toEqual({ from: 5, to: 5 });
+    });
+
+    act(() => {
+      dispatchBackspace(root);
+    });
+    await waitFor(() => {
+      expect(getSelectionOffsets(root)).toEqual({ from: 4, to: 4 });
+    });
+    expect(root.querySelector('br[data-rich-trailing]')).toBeTruthy();
   });
 });

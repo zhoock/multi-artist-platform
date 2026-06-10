@@ -58,6 +58,17 @@ describe('domSelection', () => {
     expect(getSelectionOffsets(root)).toEqual({ from: 7, to: 7 });
   });
 
+  test('pointToOffset counts <br> where Range.toString() does not', () => {
+    root.innerHTML = 'abc<br>def';
+    const defText = root.childNodes[2] as Text;
+
+    const range = document.createRange();
+    range.selectNodeContents(root);
+    range.setEnd(defText, 3);
+    expect(range.toString().length).toBe(6);
+    expect(pointToOffset(root, defText, 3)).toBe(7);
+  });
+
   test('restoreSelection places caret after trailing <br>', () => {
     root.innerHTML = 'abc<br>';
     restoreSelection(root, 4, 4);

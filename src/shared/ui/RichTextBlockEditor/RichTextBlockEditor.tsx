@@ -32,6 +32,7 @@ import {
   getLinkAtSelection,
   getSelectionOffsets,
   isRichTextEmpty,
+  pointToOffset,
   removeLink,
   renderRichText,
   restoreSelection,
@@ -988,8 +989,8 @@ function resolveDeleteRange(
   const targetRanges = typeof event.getTargetRanges === 'function' ? event.getTargetRanges() : [];
   if (targetRanges.length > 0) {
     const range = targetRanges[0];
-    const a = pointToOffsetSafe(root, range.startContainer, range.startOffset);
-    const b = pointToOffsetSafe(root, range.endContainer, range.endOffset);
+    const a = pointToOffset(root, range.startContainer, range.startOffset);
+    const b = pointToOffset(root, range.endContainer, range.endOffset);
     const from = Math.min(a, b);
     const to = Math.max(a, b);
     if (from !== to) {
@@ -1007,15 +1008,4 @@ function resolveDeleteRange(
 
   if (selection.from === 0) return { from: 0, to: 0 };
   return { from: selection.from - 1, to: selection.from };
-}
-
-function pointToOffsetSafe(root: HTMLElement, node: Node, offset: number): number {
-  const range = root.ownerDocument.createRange();
-  range.selectNodeContents(root);
-  try {
-    range.setEnd(node, offset);
-  } catch {
-    return 0;
-  }
-  return range.toString().length;
 }
