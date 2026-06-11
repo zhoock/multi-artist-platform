@@ -1452,6 +1452,51 @@ export function EditArticleModalV2({
     [handleBlockEnter]
   );
 
+  const focusEditorBlock = useCallback((blockId: string, position: PendingFocus['position']) => {
+    setFocusBlockId(blockId);
+    requestAnimationFrame(() => {
+      restoreEditorCaret(blockId, position, true);
+    });
+  }, []);
+
+  const insertParagraphBelowArticleTitle = useCallback(() => {
+    const first = blocks[0];
+
+    if (first?.type === 'paragraph') {
+      focusEditorBlock(first.id, 'start');
+      return;
+    }
+
+    saveSnapshot();
+    const newBlock = createBlock('paragraph');
+    setBlocks((prev) => {
+      const next = [...prev];
+      next.splice(0, 0, newBlock);
+      return next;
+    });
+    setVkInserter({ afterBlockId: newBlock.id });
+    pendingFocusRef.current = {
+      blockId: newBlock.id,
+      position: 'start',
+      plainCaret: true,
+    };
+  }, [blocks, createBlock, focusEditorBlock, saveSnapshot]);
+
+  const handleArticleTitleKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLInputElement>) => {
+      if (event.key !== 'Enter' || event.shiftKey) return;
+
+      const input = event.currentTarget;
+      const cursorAtEnd =
+        input.selectionStart === input.selectionEnd && input.selectionStart === input.value.length;
+      if (!cursorAtEnd) return;
+
+      event.preventDefault();
+      insertParagraphBelowArticleTitle();
+    },
+    [insertParagraphBelowArticleTitle]
+  );
+
   const handleRichBlockBackspace = useCallback(
     (blockId: string, detail: RichBackspaceDetail) => {
       handleBlockBackspace(blockId, detail.isEmpty, detail.atStart, true);
@@ -2189,6 +2234,7 @@ export function EditArticleModalV2({
                       className="edit-article-v2__article-title-input"
                       value={meta.title}
                       onChange={(e) => setMeta((prev) => ({ ...prev, title: e.target.value }))}
+                      onKeyDown={handleArticleTitleKeyDown}
                       placeholder={texts.title}
                       aria-label={texts.title}
                     />
