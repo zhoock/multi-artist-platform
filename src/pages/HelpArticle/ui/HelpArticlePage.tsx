@@ -13,6 +13,7 @@ import { useLang } from '@app/providers/lang';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { useAppDispatch } from '@shared/lib/hooks/useAppDispatch';
 import { formatDateInWords, type LocaleKey } from '@entities/article/lib/formatDate';
+import { resolveDetailCaption } from '@entities/article';
 import {
   selectHelpArticleById,
   selectHelpArticlesError,
@@ -349,32 +350,39 @@ function ArticleContent({
     const titleId = details.title ? createAnchor(details.title) : undefined;
     const subtitleId = details.subtitle ? createAnchor(details.subtitle) : undefined;
     const mediaOwnerId = details.userId ?? article.userId ?? undefined;
+    const mediaCaption = resolveDetailCaption(details) ?? '';
+    const isCarousel = Array.isArray(details.img) && details.img.length >= 2;
 
     return (
       <>
         {details.title && <h3 id={titleId}>{renderMarkdownViaRichText(details.title)}</h3>}
         {details.img && (
-          <div className="uncollapse">
-            {Array.isArray(details.img) ? (
-              <ImageCarousel
-                images={details.img}
-                alt={details.alt ?? ''}
-                category="articles"
-                userId={mediaOwnerId}
-              />
-            ) : (
-              <img
-                src={optionalMediaSrc(
-                  getUserImageUrl(details.img, 'articles', '.jpg', undefined, mediaOwnerId),
-                  'HelpArticlePage:blockImage',
-                  { articleId: article.articleId, hasMediaOwnerId: !!mediaOwnerId }
-                )}
-                alt={details.alt ?? ''}
-                loading="lazy"
-                decoding="async"
-              />
-            )}
-          </div>
+          <>
+            <div className="uncollapse">
+              {Array.isArray(details.img) ? (
+                <ImageCarousel
+                  images={details.img}
+                  alt={mediaCaption}
+                  category="articles"
+                  userId={mediaOwnerId}
+                />
+              ) : (
+                <img
+                  src={optionalMediaSrc(
+                    getUserImageUrl(details.img, 'articles', '.jpg', undefined, mediaOwnerId),
+                    'HelpArticlePage:blockImage',
+                    { articleId: article.articleId, hasMediaOwnerId: !!mediaOwnerId }
+                  )}
+                  alt={mediaCaption}
+                  loading="lazy"
+                  decoding="async"
+                />
+              )}
+            </div>
+            {isCarousel && mediaCaption ? (
+              <p className="article__carousel-caption">{mediaCaption}</p>
+            ) : null}
+          </>
         )}
         {details.subtitle && <h4 id={subtitleId}>{renderMarkdownViaRichText(details.subtitle)}</h4>}
 

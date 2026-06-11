@@ -14,6 +14,7 @@ import { useAppDispatch } from '@shared/lib/hooks/useAppDispatch';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { formatDateInWords, type LocaleKey } from '@entities/article/lib/formatDate';
 import {
+  resolveDetailCaption,
   selectArticleByIdResolved,
   selectArticlesError,
   selectArticlesStatus,
@@ -99,11 +100,13 @@ export function ArticlePage() {
     content,
     img,
     alt,
+    caption,
     images,
     type,
     userId,
     blockKind,
   }: ArticledetailsProps) {
+    const mediaCaption = resolveDetailCaption({ caption, alt }) ?? '';
     // Карусель — только при ≥2 изображениях; одно фото из массива показываем как обычное изображение
     const imageList = images && Array.isArray(images) ? images : Array.isArray(img) ? img : null;
     const carouselImages = imageList && imageList.length >= 2 ? imageList : null;
@@ -118,19 +121,17 @@ export function ArticlePage() {
       <>
         {title && <h3>{renderMarkdownViaRichText(title)}</h3>}
         {carouselImages && carouselImages.length > 0 && (
-          <div className="uncollapse">
-            {/* #region agent log */}
-            {(() => {
-              return null;
-            })()}
-            {/* #endregion */}
-            <ImageCarousel
-              images={carouselImages}
-              alt={alt ?? ''}
-              category="articles"
-              userId={userId}
-            />
-          </div>
+          <>
+            <div className="uncollapse">
+              <ImageCarousel
+                images={carouselImages}
+                alt={mediaCaption}
+                category="articles"
+                userId={userId}
+              />
+            </div>
+            {mediaCaption ? <p className="article__carousel-caption">{mediaCaption}</p> : null}
+          </>
         )}
         {singleImage && (
           <div className="uncollapse">
@@ -144,7 +145,7 @@ export function ArticlePage() {
                 'ArticlePage:singleImage',
                 { hasUserId: !!userId }
               )}
-              alt={alt ?? ''}
+              alt={mediaCaption}
               loading="lazy"
               decoding="async"
             />

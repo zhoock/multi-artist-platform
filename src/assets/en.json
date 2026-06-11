@@ -573,6 +573,8 @@
       "deleteAlbum": "Delete album",
       "albumDeletedSuccessToast": "Album deleted",
       "albumDeletedSuccessToastWithTitle": "Album \"{name}\" deleted",
+      "articleDeletedSuccessToast": "Article deleted",
+      "articleDeletedSuccessToastWithTitle": "Article \"{name}\" deleted",
       "errorLoading": "Error loading:",
       "failedToLoadAlbums": "Failed to load albums",
       "selectLanguage": "Select language. Current language:",

@@ -3,8 +3,9 @@ import { createPortal } from 'react-dom';
 import clsx from 'clsx';
 import type { IInterface, DashboardTrackVisibilityLabels } from '@models';
 import type { SupportedLang } from '@shared/model/lang';
-import { TRACK_VISIBILITY_OPTIONS, type TrackVisibility } from '@shared/lib/tracks/trackVisibility';
+import type { TrackVisibility } from '@shared/lib/tracks/trackVisibility';
 import { TrackVisibilityIcon } from '@shared/ui/icons/TrackVisibilityIcon';
+import { buildArticleVisibilityMenuOptions } from './articleVisibilityOptions';
 
 type DashboardUi = NonNullable<IInterface['dashboard']>;
 type DashboardUiWithTrackAccess = DashboardUi & {
@@ -13,47 +14,6 @@ type DashboardUiWithTrackAccess = DashboardUi & {
   trackAccessAriaLabel?: string;
   articleAccessAriaLabel?: string;
 };
-
-function buildVisibilityMenuOptions(
-  ui: IInterface | undefined,
-  lang: SupportedLang
-): { value: TrackVisibility; label: string; description: string }[] {
-  const d = ui?.dashboard as DashboardUiWithTrackAccess | undefined;
-  const t = d?.articleVisibility ?? d?.trackVisibility;
-  const en = lang === 'en';
-  const fallbacks = {
-    public: {
-      title: en ? 'Open to everyone' : 'Открыт для всех',
-      description: en ? 'Article is available to all visitors' : 'Статья доступна всем посетителям',
-    },
-    subscribersOnly: {
-      title: en ? 'Subscribers only' : 'Только для подписчиков',
-      description: en ? 'Reading after purchasing the album' : 'Чтение после покупки альбома',
-    },
-    hidden: {
-      title: en ? 'Hidden' : 'Скрыт',
-      description: en
-        ? 'Not shown in the article list on the site'
-        : 'Не отображается в списке статей на сайте',
-    },
-  } as const;
-
-  return TRACK_VISIBILITY_OPTIONS.map((opt) => {
-    const block =
-      opt.value === 'public' ? t?.public : opt.value === 'hidden' ? t?.hidden : t?.subscribersOnly;
-    const fb =
-      opt.value === 'public'
-        ? fallbacks.public
-        : opt.value === 'hidden'
-          ? fallbacks.hidden
-          : fallbacks.subscribersOnly;
-    return {
-      value: opt.value,
-      label: block?.title ?? fb.title,
-      description: block?.description ?? fb.description,
-    };
-  });
-}
 
 export type ArticleAccessControlProps = {
   articleId: string;
@@ -88,7 +48,10 @@ export function ArticleAccessControl({
     (ui?.dashboard as DashboardUiWithTrackAccess | undefined)?.trackAccessAriaLabel ??
     (lang === 'en' ? 'Article access' : 'Доступ к статье');
 
-  const menuOptions = useMemo(() => buildVisibilityMenuOptions(ui, lang), [ui?.dashboard, lang]);
+  const menuOptions = useMemo(
+    () => buildArticleVisibilityMenuOptions(ui, lang),
+    [ui?.dashboard, lang]
+  );
 
   const updateAccessMenuPosition = useCallback(() => {
     const el = accessBtnRef.current;

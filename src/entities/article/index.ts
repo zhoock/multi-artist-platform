@@ -4,6 +4,11 @@ export { ArticleCoverPlaceholder } from './ui/ArticleCoverPlaceholder';
 export type { LocaleKey } from './lib/formatDate';
 export { formatDateInWords } from './lib/formatDate';
 export { resolveArticleForDisplay } from './lib/resolveArticleDisplay';
+export { resolveDetailCaption } from './lib/resolveDetailCaption';
+export {
+  getArticlePreviewContent,
+  type ArticlePreviewContent,
+} from './lib/getArticlePreviewContent';
 
 export {
   articlesReducer,

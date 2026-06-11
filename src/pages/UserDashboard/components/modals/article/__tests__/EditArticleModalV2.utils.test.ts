@@ -146,7 +146,7 @@ describe('EditArticleModalV2.utils stable ids', () => {
         type: 'carousel',
         blockId,
         images: ['solo.jpg'],
-        alt: 'caption',
+        caption: 'caption',
       },
     ]);
 
@@ -156,6 +156,23 @@ describe('EditArticleModalV2.utils stable ids', () => {
       type: 'image',
       imageKey: 'solo.jpg',
       caption: 'caption',
+    });
+  });
+
+  it('loads legacy alt as caption', () => {
+    const blockId = generateId();
+    const loaded = normalizeDetailsToBlocks([
+      {
+        type: 'carousel',
+        blockId,
+        images: ['a.jpg', 'b.jpg'],
+        alt: 'Legacy caption',
+      },
+    ]);
+
+    expect(loaded[0]).toMatchObject({
+      type: 'carousel',
+      caption: 'Legacy caption',
     });
   });
 
@@ -170,8 +187,29 @@ describe('EditArticleModalV2.utils stable ids', () => {
       type: 'image',
       blockId,
       img: 'solo.jpg',
-      alt: 'caption',
+      caption: 'caption',
     });
+    expect(details[0]).not.toHaveProperty('alt');
+  });
+
+  it('serializes saved carousel with caption field', () => {
+    const blockId = generateId();
+    const details = blocksToDetails([
+      {
+        id: blockId,
+        type: 'carousel',
+        imageKeys: ['a.jpg', 'b.jpg'],
+        caption: 'Carousel caption',
+      },
+    ]);
+
+    expect(details[0]).toMatchObject({
+      type: 'carousel',
+      blockId,
+      images: ['a.jpg', 'b.jpg'],
+      caption: 'Carousel caption',
+    });
+    expect(details[0]).not.toHaveProperty('alt');
   });
 
   it('assigns ids to pasted list lines', () => {

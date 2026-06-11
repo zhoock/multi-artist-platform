@@ -1,5 +1,6 @@
 // src/pages/UserDashboard/components/EditArticleModalV2.utils.ts
 import type { ArticledetailsProps } from '@models';
+import { resolveDetailCaption } from '@entities/article';
 import { withPublicArtistQuery } from '@shared/lib/artistQuery';
 import type { RichText } from '@shared/lib/richText';
 import {
@@ -164,12 +165,12 @@ function detailWithBlockIdToBlock(detail: ArticledetailsProps): Block | null {
   if (detail.type === 'image' && detail.img) {
     const imageKey = typeof detail.img === 'string' ? detail.img : detail.img[0] || '';
     if (!imageKey) return null;
-    return { id, type: 'image', imageKey, caption: detail.alt || undefined };
+    return { id, type: 'image', imageKey, caption: resolveDetailCaption(detail) };
   }
 
   if (detail.type === 'carousel') {
     const imageKeys = detail.images || (Array.isArray(detail.img) ? detail.img : []);
-    return blockFromPersistedCarouselImages(id, imageKeys, detail.alt || undefined);
+    return blockFromPersistedCarouselImages(id, imageKeys, resolveDetailCaption(detail));
   }
 
   if (detail.title) {
@@ -234,7 +235,7 @@ function legacyDetailToBlocks(detail: ArticledetailsProps): Block[] {
         id: detail.blockId?.trim() || generateId(),
         type: 'image',
         imageKey,
-        caption: detail.alt || undefined,
+        caption: resolveDetailCaption(detail),
       });
     }
   }
@@ -244,7 +245,7 @@ function legacyDetailToBlocks(detail: ArticledetailsProps): Block[] {
     const block = blockFromPersistedCarouselImages(
       detail.blockId?.trim() || generateId(),
       imageKeys,
-      detail.alt || undefined
+      resolveDetailCaption(detail)
     );
     if (block) blocks.push(block);
   }
@@ -358,7 +359,7 @@ function blockToDetail(block: Block): ArticledetailsProps | null {
         blockId: block.id,
         blockKind: 'image',
         img: block.imageKey,
-        alt: block.caption,
+        caption: block.caption,
       };
     case 'carousel':
       if (!isSavedCarousel(block.imageKeys)) {
@@ -368,7 +369,7 @@ function blockToDetail(block: Block): ArticledetailsProps | null {
             blockId: block.id,
             blockKind: 'image',
             img: block.imageKeys[0],
-            alt: block.caption,
+            caption: block.caption,
           };
         }
         return null;
@@ -378,7 +379,7 @@ function blockToDetail(block: Block): ArticledetailsProps | null {
         blockId: block.id,
         blockKind: 'carousel',
         images: block.imageKeys,
-        alt: block.caption,
+        caption: block.caption,
       };
     default:
       return null;

@@ -207,6 +207,19 @@ function extractFirstArticleFromApiJson(json: unknown): IArticles | null {
   return normalizeArticlePayloadItem(list[0]);
 }
 
+function isArticleContentTarget(element: Element | null): boolean {
+  if (!element) return false;
+  return element.closest('.edit-article-v2__content-column') !== null;
+}
+
+/** Cmd+A: select article body from anywhere in the editor (header/footer included). */
+function shouldHandleArticleSelectAll(activeElement: Element | null): boolean {
+  if (activeElement?.closest('.carousel-edit-modal, [role="alertdialog"]')) {
+    return false;
+  }
+  return true;
+}
+
 export function EditArticleModalV2({
   isOpen,
   article,
@@ -224,6 +237,7 @@ export function EditArticleModalV2({
   const [meta, setMeta] = useState<ArticleMeta>({ title: '', description: '' });
   const [focusBlockId, setFocusBlockId] = useState<string | null>(null);
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
+  const [isDocumentSelected, setIsDocumentSelected] = useState(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
   // Исходные значения для отслеживания изменений
@@ -255,6 +269,7 @@ export function EditArticleModalV2({
 
   // Ref для отложенной установки фокуса после удаления блока
   const pendingFocusRef = useRef<PendingFocus | null>(null);
+  const contentColumnRef = useRef<HTMLDivElement>(null);
   const imageUploadBlockIdRef = useRef<string | null>(null);
   const imageUploadInputRef = useRef<HTMLInputElement>(null);
 
@@ -405,6 +420,7 @@ export function EditArticleModalV2({
     if (!isOpen) {
       setAutofocusParagraphBlockId(null);
       setFocusBlockId(null);
+      setIsDocumentSelected(false);
       setVkInserter(null);
       // Отменяем автосохранение
       if (autoSaveTimeoutRef.current) {
@@ -862,6 +878,7 @@ export function EditArticleModalV2({
   }, [blocks, meta, selectedBlockId, focusBlockId]);
 
   const applySnapshot = useCallback((snapshot: ArticleEditorSnapshot) => {
+    setIsDocumentSelected(false);
     setBlocks(cloneSnapshot(snapshot.blocks));
     setMeta({ ...snapshot.meta });
     setSelectedBlockId(snapshot.selectedBlockId);
@@ -914,6 +931,36 @@ export function EditArticleModalV2({
     applySnapshot(result.snapshot);
     typingSnapshotPendingRef.current = false;
   }, [historyState, buildCurrentSnapshot, applySnapshot]);
+
+  const selectEntireDocument = useCallback(() => {
+    window.getSelection()?.removeAllRanges();
+    setIsDocumentSelected(true);
+    setSelectedBlockId(null);
+  }, []);
+
+  const clearEntireDocument = useCallback(() => {
+    saveSnapshot();
+
+    const newParagraphId = generateId();
+    const emptyParagraph: Block = {
+      id: newParagraphId,
+      type: 'paragraph',
+      content: emptyRichText(),
+    };
+
+    setIsDocumentSelected(false);
+    setMeta({ title: '', description: '' });
+    setBlocks([emptyParagraph]);
+    setSelectedBlockId(null);
+    setSlashMenu(null);
+    setVkInserter({ afterBlockId: newParagraphId });
+    setFocusBlockId(newParagraphId);
+    pendingFocusRef.current = {
+      blockId: newParagraphId,
+      position: 'start',
+      plainCaret: true,
+    };
+  }, [saveSnapshot]);
 
   // Функция для вычисления целевого блока после удаления
   const findTargetBlockAfterDelete = useCallback(
@@ -1106,10 +1153,13 @@ export function EditArticleModalV2({
     [blocks]
   );
 
-  // Обработка Delete/Backspace для удаления выделенного блока (image/carousel) и Undo/Redo
+  // Select-all, clear document, Delete/Backspace для блоков и Undo/Redo
   useEffect(() => {
+    if (!isOpen) return undefined;
+
     const handleKeyDown = (event: KeyboardEvent) => {
-      // Обработка Undo/Redo (Cmd+Z / Cmd+Shift+Z / Ctrl+Z / Ctrl+Shift+Z / Ctrl+Y)
+      const activeElement = document.activeElement;
+      const inContent = isArticleContentTarget(activeElement);
       const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
       const metaKey = isMac ? event.metaKey : event.ctrlKey;
       const key = event.key.toLowerCase();
@@ -1117,18 +1167,16 @@ export function EditArticleModalV2({
       // Проверяем Undo/Redo до проверки фокуса в текстовом поле
       if (metaKey && key === 'z') {
         if (event.shiftKey) {
-          // Redo: Cmd+Shift+Z (Mac) или Ctrl+Shift+Z (Windows)
           event.preventDefault();
           event.stopPropagation();
           redo();
           return;
-        } else {
-          // Undo: Cmd+Z (Mac) или Ctrl+Z (Windows)
-          event.preventDefault();
-          event.stopPropagation();
-          undo();
-          return;
         }
+
+        event.preventDefault();
+        event.stopPropagation();
+        undo();
+        return;
       }
 
       // Redo через Ctrl+Y (Windows)
@@ -1139,15 +1187,28 @@ export function EditArticleModalV2({
         return;
       }
 
-      // Проверяем, что фокус не в текстовом поле (textarea/input)
-      const activeElement = document.activeElement;
-      if (
+      if (metaKey && key === 'a' && shouldHandleArticleSelectAll(activeElement)) {
+        event.preventDefault();
+        event.stopPropagation();
+        selectEntireDocument();
+        return;
+      }
+
+      if (isDocumentSelected && (event.key === 'Delete' || event.key === 'Backspace')) {
+        event.preventDefault();
+        event.stopPropagation();
+        clearEntireDocument();
+        return;
+      }
+
+      const isTextField =
         activeElement &&
         (activeElement.tagName === 'TEXTAREA' ||
           activeElement.tagName === 'INPUT' ||
-          (activeElement as HTMLElement).isContentEditable)
-      ) {
-        return; // Стандартное поведение для текстовых полей
+          (activeElement as HTMLElement).isContentEditable);
+
+      if (isTextField && inContent) {
+        return;
       }
 
       if (selectedBlockId && (event.key === 'Delete' || event.key === 'Backspace')) {
@@ -1159,15 +1220,54 @@ export function EditArticleModalV2({
           event.preventDefault();
           deleteBlock(selectedBlockId);
           setSelectedBlockId(null);
-          // Каретка будет восстановлена в deleteBlock
         }
       }
     };
 
-    // Используем capture phase для перехвата события до других обработчиков
     document.addEventListener('keydown', handleKeyDown, true);
     return () => document.removeEventListener('keydown', handleKeyDown, true);
-  }, [selectedBlockId, blocks, deleteBlock, undo, redo]);
+  }, [
+    isOpen,
+    isDocumentSelected,
+    selectedBlockId,
+    blocks,
+    deleteBlock,
+    undo,
+    redo,
+    selectEntireDocument,
+    clearEntireDocument,
+  ]);
+
+  useEffect(() => {
+    if (!isDocumentSelected) return undefined;
+
+    const clearDocumentSelection = () => setIsDocumentSelected(false);
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' || event.key.startsWith('Arrow')) {
+        clearDocumentSelection();
+      }
+    };
+
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+
+      if (
+        contentColumnRef.current?.contains(target) ||
+        target.closest('.edit-article-v2__header, .edit-article-v2__footer') !== null
+      ) {
+        clearDocumentSelection();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('pointerdown', handlePointerDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('pointerdown', handlePointerDown);
+    };
+  }, [isDocumentSelected]);
 
   // Установка фокуса после удаления блока (useLayoutEffect выполняется синхронно после обновления DOM)
   useLayoutEffect(() => {
@@ -2227,7 +2327,13 @@ export function EditArticleModalV2({
 
               {/* Content */}
               <div className="edit-article-v2__content article">
-                <div className="edit-article-v2__content-column">
+                <div
+                  ref={contentColumnRef}
+                  className={`edit-article-v2__content-column${
+                    isDocumentSelected ? ' edit-article-v2__content-column--all-selected' : ''
+                  }`}
+                  data-document-selected={isDocumentSelected ? 'true' : undefined}
+                >
                   <h1 className="edit-article-v2__article-title">
                     <input
                       type="text"

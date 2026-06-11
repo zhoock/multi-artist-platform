@@ -632,6 +632,14 @@ dialog {
       }
     }
 
+    &__content-column--all-selected {
+      .edit-article-v2__article-title-input,
+      .edit-article-v2__block-wrapper {
+        background: var(--selection-color, #867650);
+        border-radius: var(--ms-01);
+      }
+    }
+
     &__drag-handle-icon {
       color: var(--dashboard-text-primary);
       font-size: var(--ms-0);

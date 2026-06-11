@@ -172,13 +172,19 @@ export function CarouselEditModal({
                 </button>
               </div>
 
-              <input
-                type="text"
-                className="edit-article-v2__carousel-edit-caption-input"
-                value={caption}
-                onChange={(e) => setCaption(e.target.value)}
-                placeholder="Подпись к карусели (необязательно)"
-              />
+              <label className="edit-article-v2__carousel-edit-caption">
+                <span className="edit-article-v2__carousel-edit-caption-label">
+                  Подпись к карусели (необязательно)
+                </span>
+                <input
+                  type="text"
+                  className="edit-article-v2__carousel-edit-caption-input"
+                  value={caption}
+                  onChange={(e) => setCaption(e.target.value)}
+                  placeholder="Подпись к карусели (необязательно)"
+                  aria-label="Подпись к карусели (необязательно)"
+                />
+              </label>
             </div>
 
             <input

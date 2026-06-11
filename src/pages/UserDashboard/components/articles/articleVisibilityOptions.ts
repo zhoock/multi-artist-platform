@@ -1,0 +1,70 @@
+import type { IArticles, IInterface, DashboardTrackVisibilityLabels } from '@models';
+import type { SupportedLang } from '@shared/model/lang';
+import { TRACK_VISIBILITY_OPTIONS, type TrackVisibility } from '@shared/lib/tracks/trackVisibility';
+
+type DashboardUi = NonNullable<IInterface['dashboard']>;
+type DashboardUiWithTrackAccess = DashboardUi & {
+  trackVisibility?: DashboardTrackVisibilityLabels;
+  articleVisibility?: DashboardTrackVisibilityLabels;
+};
+
+export type ArticleVisibilityMenuOption = {
+  value: TrackVisibility;
+  label: string;
+  description: string;
+};
+
+export function isArticleDraft(article: Pick<IArticles, 'isDraft'>): boolean {
+  return article.isDraft === true;
+}
+
+export function buildArticleVisibilityMenuOptions(
+  ui: IInterface | undefined,
+  lang: SupportedLang
+): ArticleVisibilityMenuOption[] {
+  const d = ui?.dashboard as DashboardUiWithTrackAccess | undefined;
+  const t = d?.articleVisibility ?? d?.trackVisibility;
+  const en = lang === 'en';
+  const fallbacks = {
+    public: {
+      title: en ? 'Open to everyone' : 'Открыт для всех',
+      description: en ? 'Article is available to all visitors' : 'Статья доступна всем посетителям',
+    },
+    subscribersOnly: {
+      title: en ? 'Subscribers only' : 'Только для подписчиков',
+      description: en ? 'Reading after purchasing the album' : 'Чтение после покупки альбома',
+    },
+    hidden: {
+      title: en ? 'Hidden' : 'Скрыт',
+      description: en
+        ? 'Not shown in the article list on the site'
+        : 'Не отображается в списке статей на сайте',
+    },
+  } as const;
+
+  return TRACK_VISIBILITY_OPTIONS.map((opt) => {
+    const block =
+      opt.value === 'public' ? t?.public : opt.value === 'hidden' ? t?.hidden : t?.subscribersOnly;
+    const fb =
+      opt.value === 'public'
+        ? fallbacks.public
+        : opt.value === 'hidden'
+          ? fallbacks.hidden
+          : fallbacks.subscribersOnly;
+    return {
+      value: opt.value,
+      label: block?.title ?? fb.title,
+      description: block?.description ?? fb.description,
+    };
+  });
+}
+
+export function getArticleVisibilityLabel(
+  visibility: TrackVisibility,
+  ui: IInterface | undefined,
+  lang: SupportedLang
+): string {
+  return (
+    buildArticleVisibilityMenuOptions(ui, lang).find((opt) => opt.value === visibility)?.label ?? ''
+  );
+}

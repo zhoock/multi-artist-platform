@@ -452,6 +452,11 @@ dialog {
       border-color: rgb(var(--dark-greenish-yellow-rgb) / 45%);
     }
 
+    &__album-status-badge--neutral {
+      color: var(--dashboard-text-secondary);
+      border-color: rgb(255 255 255 / 10%);
+    }
+
     &__album-status-badge--ready {
       color: #7eb6ff;
       border-color: rgb(126 182 255 / 45%);
@@ -556,6 +561,33 @@ dialog {
       line-height: 1.6;
       margin-bottom: var(--ms-0);
       margin-top: var(--ms-0);
+
+      strong {
+        color: inherit;
+        font-weight: 700;
+      }
+
+      em {
+        font-style: italic;
+      }
+
+      u {
+        text-decoration: underline;
+      }
+
+      s {
+        text-decoration: line-through;
+      }
+
+      a {
+        color: var(--dark-greenish-yellow, var(--dashboard-text-primary));
+        text-decoration: underline;
+        text-underline-offset: 0.12em;
+
+        &:hover {
+          opacity: 0.85;
+        }
+      }
     }
 
     &__article-actions {

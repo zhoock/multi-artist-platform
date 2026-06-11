@@ -245,6 +245,9 @@ export interface ArticledetailsProps {
   images?: string[]; // для карусели (массив изображений)
   subtitle?: string;
   content?: string | Array<string | { id: string; text: string }>;
+  /** Подпись к изображению/карусели; на публичной странице также используется как alt. */
+  caption?: string;
+  /** @deprecated Используйте caption. Читается только для старых статей. */
   alt?: string;
 }
 
@@ -646,6 +649,8 @@ export interface IInterface {
     deleteAlbum?: string;
     albumDeletedSuccessToast?: string;
     albumDeletedSuccessToastWithTitle?: string;
+    articleDeletedSuccessToast?: string;
+    articleDeletedSuccessToastWithTitle?: string;
     errorLoading?: string;
     failedToLoadAlbums?: string;
     selectLanguage?: string;

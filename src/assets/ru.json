@@ -573,6 +573,8 @@
       "deleteAlbum": "Удалить альбом",
       "albumDeletedSuccessToast": "Альбом удалён",
       "albumDeletedSuccessToastWithTitle": "Альбом «{name}» удалён",
+      "articleDeletedSuccessToast": "Статья удалена",
+      "articleDeletedSuccessToastWithTitle": "Статья «{name}» удалена",
       "errorLoading": "Ошибка загрузки:",
       "failedToLoadAlbums": "Не удалось загрузить альбомы",
       "selectLanguage": "Выбрать язык. Текущий язык:",

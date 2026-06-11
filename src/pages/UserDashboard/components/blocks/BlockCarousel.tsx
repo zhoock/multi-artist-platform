@@ -146,9 +146,26 @@ export function BlockCarousel({
           onMouseLeave={handleWrapperMouseLeave}
         >
           {currentImageUrl ? (
-            <img src={currentImageUrl} alt={`Image ${currentIndex + 1} of ${totalImages}`} />
+            <img
+              src={currentImageUrl}
+              alt={
+                captionValue
+                  ? currentIndex === 0
+                    ? captionValue
+                    : `${captionValue} (${currentIndex + 1})`
+                  : `Image ${currentIndex + 1} of ${totalImages}`
+              }
+            />
           ) : (
-            <ArticleCoverPlaceholder alt={`Image ${currentIndex + 1} of ${totalImages}`} />
+            <ArticleCoverPlaceholder
+              alt={
+                captionValue
+                  ? currentIndex === 0
+                    ? captionValue
+                    : `${captionValue} (${currentIndex + 1})`
+                  : `Image ${currentIndex + 1} of ${totalImages}`
+              }
+            />
           )}
 
           <div className="edit-article-v2__carousel-overlay" aria-hidden={!showControls}>

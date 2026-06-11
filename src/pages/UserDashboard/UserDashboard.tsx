@@ -54,6 +54,7 @@ import { AlbumPublishedToast } from '@shared/ui/albumPublishedToast/AlbumPublish
 import { AlbumCreatedToast } from '@shared/ui/albumCreatedToast/AlbumCreatedToast';
 import { TracksUploadedToast } from '@shared/ui/tracksUploadedToast/TracksUploadedToast';
 import { AlbumDeletedToast } from '@shared/ui/albumDeletedToast/AlbumDeletedToast';
+import { ArticleDeletedToast } from '@shared/ui/articleDeletedToast/ArticleDeletedToast';
 import { ArticleEditorToast } from '@shared/ui/articleEditorToast';
 import { fetchWithAuthSession } from '@shared/lib/authFetch';
 import { buildApiUrl } from '@shared/lib/artistQuery';
@@ -70,6 +71,7 @@ import { ArticlesEmptyState } from './components/articles/ArticlesEmptyState';
 import { queueAlbumPublishedToast } from '@shared/lib/albumPublishedToast';
 import { queueTracksUploadedToast } from '@shared/lib/tracksUploadedToast';
 import { queueAlbumDeletedToast } from '@shared/lib/albumDeletedToast';
+import { queueArticleDeletedToast } from '@shared/lib/articleDeletedToast';
 import { getArtistSlugFromLocation } from '@shared/lib/albumDeletedRedirect';
 import { openOwnArtistPage } from '@shared/lib/ownArtistPage';
 import { setPublicArtistSlug } from '@shared/model/currentArtist';
@@ -89,7 +91,9 @@ import {
   selectDashboardArticlesDataResolved,
   ArticleCoverImage,
   ArticleCoverPlaceholder,
+  getArticlePreviewContent,
 } from '@entities/article';
+import { renderMarkdownViaRichText } from '@shared/lib/richText';
 import { loadTrackTextFromDatabase, saveTrackText } from '@entities/track/lib';
 import { uploadFile } from '@shared/api/storage';
 import { sanitizeFileName } from '@shared/lib/sanitizeFileName';
@@ -104,6 +108,8 @@ import { EditAlbumModal, type AlbumFormData } from './components/modals/album/Ed
 import { EditArticleModalV2 } from './components/modals/article/EditArticleModalV2';
 import { ArticlesListSkeleton } from './components/articles/ArticlesListSkeleton';
 import { ArticleAccessControl } from './components/articles/ArticleAccessControl';
+import { ArticleListStatus } from './components/articles/ArticleListStatus';
+import { isArticleDraft } from './components/articles/articleVisibilityOptions';
 import { DashboardNavTabIcon } from './lib/dashboardNavTabIcon';
 import { DashboardExpandChevron } from './lib/dashboardExpandChevron';
 import { DashboardTabContentSkeleton } from './components/DashboardTabContentSkeleton';
@@ -204,6 +210,24 @@ function formatAlbumDeletedSuccessMessage(
   );
 }
 
+function formatArticleDeletedSuccessMessage(
+  articleTitle: string | undefined,
+  lang: SupportedLang,
+  ui: IInterface | null | undefined
+): string {
+  const title = articleTitle?.trim();
+  if (title) {
+    const template =
+      ui?.dashboard?.articleDeletedSuccessToastWithTitle ??
+      (lang === 'ru' ? 'Статья «{name}» удалена' : 'Article "{name}" deleted');
+    return template.replace('{name}', title);
+  }
+  return (
+    ui?.dashboard?.articleDeletedSuccessToast ??
+    (lang === 'ru' ? 'Статья удалена' : 'Article deleted')
+  );
+}
+
 /** В кабинете список альбомов всегда принадлежит сессии; бэкенд иногда не присылает `userId`. */
 function withDashboardAlbumOwner(
   albums: AlbumData[],
@@ -241,90 +265,6 @@ type DashboardUiWithTrackAccess = DashboardUi & {
   trackVisibility?: DashboardTrackVisibilityLabels;
   trackAccessAriaLabel?: string;
 };
-
-// Функция для извлечения первых двух строк текста из блоков статьи
-function getArticlePreviewText(article: IArticles): string {
-  if (!article.details || !Array.isArray(article.details)) {
-    return '';
-  }
-
-  const textParts: string[] = [];
-
-  for (const block of article.details) {
-    if (!block) continue;
-
-    const blockType = (block as any).type;
-
-    // Старый формат: type: 'text' с content
-    if (blockType === 'text') {
-      const content = (block as any).content;
-
-      // Добавляем content
-      if (typeof content === 'string' && content.trim()) {
-        textParts.push(content.trim());
-      } else if (Array.isArray(content)) {
-        const textStr = content.filter((item) => typeof item === 'string' && item.trim()).join(' ');
-        if (textStr) {
-          textParts.push(textStr);
-        }
-      }
-    }
-    // Новый формат: type: 'paragraph', 'quote'
-    else if (blockType === 'paragraph' || blockType === 'quote') {
-      const text = (block as any).text;
-      if (typeof text === 'string' && text.trim()) {
-        // Убираем markdown разметку для превью
-        const cleanText = text
-          .replace(/\*\*(.*?)\*\*/g, '$1') // Убираем **bold**
-          .replace(/~~(.*?)~~/g, '$1') // Убираем ~~strikethrough~~
-          .replace(/_(.*?)_/g, '$1') // Убираем _italic_
-          .replace(/\[(.*?)\]\(.*?\)/g, '$1') // Убираем [link](url)
-          .trim();
-        if (cleanText) {
-          textParts.push(cleanText);
-        }
-      }
-    }
-    // Списки
-    else if (blockType === 'list') {
-      const items = (block as any).items;
-      if (Array.isArray(items)) {
-        const listText = items.filter((item) => typeof item === 'string' && item.trim()).join(' ');
-        if (listText) {
-          textParts.push(listText);
-        }
-      }
-    }
-
-    // Если уже набрали достаточно текста (примерно 2 строки = 150-200 символов)
-    const combinedText = textParts.join(' ');
-    if (combinedText.length >= 150) {
-      break;
-    }
-  }
-
-  const fullText = textParts.join(' ');
-
-  if (!fullText) {
-    return '';
-  }
-
-  // Берем первые ~150 символов или до конца, если меньше
-  let preview = fullText.substring(0, 150);
-
-  // Обрезаем по последнему пробелу, чтобы не обрезать слово
-  const lastSpace = preview.lastIndexOf(' ');
-  if (lastSpace > 100 && fullText.length > 150) {
-    preview = preview.substring(0, lastSpace);
-  }
-
-  // Добавляем троеточие, если текст был обрезан
-  if (fullText.length > preview.length) {
-    preview += '...';
-  }
-
-  return preview;
-}
 
 function SortableTrackItem({
   track,
@@ -846,6 +786,7 @@ function UserDashboard() {
   const [publishedToastTrigger, setPublishedToastTrigger] = useState(0);
   const [tracksUploadToastTrigger, setTracksUploadToastTrigger] = useState(0);
   const [albumDeletedToastTrigger, setAlbumDeletedToastTrigger] = useState(0);
+  const [articleDeletedToastTrigger, setArticleDeletedToastTrigger] = useState(0);
   const [articleEditorToastTrigger, setArticleEditorToastTrigger] = useState(0);
   const trackUploadSectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const [expandedArticleId, setExpandedArticleId] = useState<string | null>(null);
@@ -2141,7 +2082,8 @@ function UserDashboard() {
         setExpandedArticleId(null);
       }
 
-      console.log('✅ Article deleted successfully:', article.articleId);
+      queueArticleDeletedToast(formatArticleDeletedSuccessMessage(article.nameArticle, lang, ui));
+      setArticleDeletedToastTrigger((value) => value + 1);
     } catch (error) {
       console.error('❌ Error deleting article:', error);
       setAlertModal({
@@ -2814,6 +2756,7 @@ function UserDashboard() {
         <AlbumCreatedToast triggerKey={editAlbumModal} />
         <TracksUploadedToast triggerKey={tracksUploadToastTrigger} />
         <AlbumDeletedToast triggerKey={albumDeletedToastTrigger} />
+        <ArticleDeletedToast triggerKey={articleDeletedToastTrigger} />
         <ArticleEditorToast triggerKey={articleEditorToastTrigger} />
         <div className="user-dashboard">
           {/* Main card container */}
@@ -3412,6 +3355,7 @@ function UserDashboard() {
                               const articleVisibility = normalizeTrackVisibility(
                                 article.visibility
                               );
+                              const articleIsDraft = isArticleDraft(article);
                               if (article.img && !article.userId) {
                                 console.error('[BUG] article.userId missing', {
                                   articleId: article.articleId,
@@ -3469,8 +3413,15 @@ function UserDashboard() {
                                       )}
                                     </div>
                                     <div className="user-dashboard__album-info">
-                                      <div className="user-dashboard__album-title">
-                                        {article.nameArticle}
+                                      <div className="user-dashboard__album-title-row">
+                                        <div className="user-dashboard__album-title">
+                                          {article.nameArticle}
+                                        </div>
+                                        <ArticleListStatus
+                                          isDraft={articleIsDraft}
+                                          ui={ui ?? undefined}
+                                          lang={lang}
+                                        />
                                       </div>
                                       {article.date ? (
                                         <div className="user-dashboard__album-date">
@@ -3483,26 +3434,30 @@ function UserDashboard() {
                                       onClick={(e) => e.stopPropagation()}
                                       onMouseDown={(e) => e.stopPropagation()}
                                     >
-                                      <ArticleAccessControl
-                                        articleId={article.articleId}
-                                        visibility={articleVisibility}
-                                        ui={ui ?? undefined}
-                                        lang={lang}
-                                        menuOpen={articleAccessMenuArticleId === article.articleId}
-                                        onMenuOpenChange={(open) =>
-                                          setArticleAccessMenuArticleId(
-                                            open ? article.articleId : null
-                                          )
-                                        }
-                                        onPickVisibility={(v) =>
-                                          void handleArticleVisibilityChange(article.articleId, v)
-                                        }
-                                        getRowElement={() =>
-                                          document.getElementById(
-                                            `dashboard-article-row-${article.articleId}`
-                                          )
-                                        }
-                                      />
+                                      {!articleIsDraft ? (
+                                        <ArticleAccessControl
+                                          articleId={article.articleId}
+                                          visibility={articleVisibility}
+                                          ui={ui ?? undefined}
+                                          lang={lang}
+                                          menuOpen={
+                                            articleAccessMenuArticleId === article.articleId
+                                          }
+                                          onMenuOpenChange={(open) =>
+                                            setArticleAccessMenuArticleId(
+                                              open ? article.articleId : null
+                                            )
+                                          }
+                                          onPickVisibility={(v) =>
+                                            void handleArticleVisibilityChange(article.articleId, v)
+                                          }
+                                          getRowElement={() =>
+                                            document.getElementById(
+                                              `dashboard-article-row-${article.articleId}`
+                                            )
+                                          }
+                                        />
+                                      ) : null}
                                       <div className="user-dashboard__album-arrow">
                                         <DashboardExpandChevron expanded={isExpanded} />
                                       </div>
@@ -3640,10 +3595,11 @@ function UserDashboard() {
                                       </div>
 
                                       {(() => {
-                                        const previewText = getArticlePreviewText(article);
-                                        return previewText ? (
+                                        const preview = getArticlePreviewContent(article);
+                                        return preview ? (
                                           <div className="user-dashboard__article-description">
-                                            {previewText}
+                                            {renderMarkdownViaRichText(preview.markdown)}
+                                            {preview.truncated ? '\u2026' : null}
                                           </div>
                                         ) : null;
                                       })()}
