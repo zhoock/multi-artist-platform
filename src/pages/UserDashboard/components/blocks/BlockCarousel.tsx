@@ -1,6 +1,12 @@
 // src/pages/UserDashboard/components/blocks/BlockCarousel.tsx
 import React, { useState } from 'react';
+import {
+  ChevronLeft as ChevronLeftIcon,
+  ChevronRight as ChevronRightIcon,
+  Pencil as PencilIcon,
+} from 'lucide-react';
 import { getUserImageUrl } from '@shared/api/albums';
+import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 import { ArticleCoverPlaceholder } from '@entities/article';
 import { optionalMediaSrc } from '@shared/lib/media/optionalMediaUrl';
 import { MIN_CAROUSEL_IMAGES } from '../modals/article/EditArticleModalV2.utils';
@@ -34,23 +40,40 @@ export function BlockCarousel({
   onEnter,
 }: BlockCarouselProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [showEditButton, setShowEditButton] = useState(false);
-  const [showNav, setShowNav] = useState(false);
+  const [controlsVisible, setControlsVisible] = useState(false);
   const captionValue = caption || '';
+  const showEditControl = Boolean(onEdit && imageKeys.length >= MIN_CAROUSEL_IMAGES);
+  const showControls = controlsVisible || Boolean(isSelected);
 
   const handleCarouselClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     onSelect?.();
   };
 
-  const handlePrev = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setCurrentIndex((prev) => (prev > 0 ? prev - 1 : imageKeys.length - 1));
+  const releaseOverlayFocus = (wrapper: HTMLElement) => {
+    const active = document.activeElement;
+    if (active instanceof HTMLElement && wrapper.contains(active)) {
+      active.blur();
+    }
   };
 
-  const handleNext = (e: React.MouseEvent) => {
+  const handlePrev = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation();
+    setCurrentIndex((prev) => (prev > 0 ? prev - 1 : imageKeys.length - 1));
+    e.currentTarget.blur();
+  };
+
+  const handleNext = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
     setCurrentIndex((prev) => (prev < imageKeys.length - 1 ? prev + 1 : 0));
+    e.currentTarget.blur();
+  };
+
+  const handleWrapperMouseLeave = (e: React.MouseEvent<HTMLDivElement>) => {
+    setControlsVisible(false);
+    if (!isSelected) {
+      releaseOverlayFocus(e.currentTarget);
+    }
   };
 
   const handleEditClick = (e: React.MouseEvent) => {
@@ -109,62 +132,63 @@ export function BlockCarousel({
       onKeyDown={handleKeyDown}
       tabIndex={0}
       onClick={handleCarouselClick}
-      onMouseEnter={() => {
-        setShowEditButton(true);
-        setShowNav(true);
-      }}
-      onMouseLeave={() => {
-        setShowEditButton(false);
-        setShowNav(false);
-      }}
     >
       <div className="uncollapse edit-article-v2__carousel-view">
-        <div className="edit-article-v2__carousel-image-wrapper">
+        <div
+          className={[
+            'edit-article-v2__carousel-image-wrapper',
+            showControls && 'edit-article-v2__carousel-image-wrapper--controls-visible',
+            isSelected && 'edit-article-v2__carousel-image-wrapper--selected',
+          ]
+            .filter(Boolean)
+            .join(' ')}
+          onMouseEnter={() => setControlsVisible(true)}
+          onMouseLeave={handleWrapperMouseLeave}
+        >
           {currentImageUrl ? (
             <img src={currentImageUrl} alt={`Image ${currentIndex + 1} of ${totalImages}`} />
           ) : (
             <ArticleCoverPlaceholder alt={`Image ${currentIndex + 1} of ${totalImages}`} />
           )}
 
-          {/* Кнопка "Редактировать карусель" — только при ≥2 сохранённых изображениях */}
-          <div className="edit-article-v2__carousel-top-right">
-            {(showEditButton || isSelected) &&
-              onEdit &&
-              imageKeys.length >= MIN_CAROUSEL_IMAGES && (
+          <div className="edit-article-v2__carousel-overlay" aria-hidden={!showControls}>
+            <div className="edit-article-v2__carousel-toolbar">
+              {showEditControl && (
                 <button
                   type="button"
                   className="edit-article-v2__carousel-edit"
                   onClick={handleEditClick}
                 >
+                  <PencilIcon {...dashboardActionIconProps({ size: 16 })} />
                   Редактировать карусель
                 </button>
               )}
-            <div className="edit-article-v2__carousel-badge">
-              {currentIndex + 1} из {totalImages}
+              <div className="edit-article-v2__carousel-badge">
+                {currentIndex + 1} из {totalImages}
+              </div>
             </div>
-          </div>
 
-          {/* Стрелки навигации */}
-          {totalImages > 1 && showNav && (
-            <>
-              <button
-                type="button"
-                className="edit-article-v2__carousel-nav edit-article-v2__carousel-nav--prev"
-                onClick={handlePrev}
-                aria-label="Предыдущее изображение"
-              >
-                ‹
-              </button>
-              <button
-                type="button"
-                className="edit-article-v2__carousel-nav edit-article-v2__carousel-nav--next"
-                onClick={handleNext}
-                aria-label="Следующее изображение"
-              >
-                ›
-              </button>
-            </>
-          )}
+            {totalImages > 1 && (
+              <>
+                <button
+                  type="button"
+                  className="edit-article-v2__carousel-nav edit-article-v2__carousel-nav--prev"
+                  onClick={handlePrev}
+                  aria-label="Предыдущее изображение"
+                >
+                  <ChevronLeftIcon {...dashboardActionIconProps({ size: 40 })} />
+                </button>
+                <button
+                  type="button"
+                  className="edit-article-v2__carousel-nav edit-article-v2__carousel-nav--next"
+                  onClick={handleNext}
+                  aria-label="Следующее изображение"
+                >
+                  <ChevronRightIcon {...dashboardActionIconProps({ size: 40 })} />
+                </button>
+              </>
+            )}
+          </div>
         </div>
       </div>
       {captionValue && (

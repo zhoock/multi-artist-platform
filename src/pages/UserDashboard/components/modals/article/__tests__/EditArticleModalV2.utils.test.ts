@@ -1,6 +1,7 @@
 import {
   blockFromCarouselSave,
   blocksToDetails,
+  buildArticlePublicPath,
   createListItem,
   createListItemFromRichText,
   generateId,
@@ -191,5 +192,17 @@ describe('EditArticleModalV2.utils stable ids', () => {
       if (typeof item === 'string') throw new Error('expected object item');
       expect(item.id).toEqual(expect.any(String));
     }
+  });
+});
+
+describe('buildArticlePublicPath', () => {
+  it('uses /articles route without language prefix', () => {
+    expect(buildArticlePublicPath('my-article')).toBe('/articles/my-article');
+  });
+
+  it('appends artist query when slug is provided', () => {
+    expect(buildArticlePublicPath('my-article', 'the-beatles')).toBe(
+      '/articles/my-article?artist=the-beatles'
+    );
   });
 });

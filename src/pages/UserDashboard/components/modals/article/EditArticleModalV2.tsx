@@ -41,7 +41,14 @@ import {
   createListItem,
   isListBlockEmpty,
   emptyRichText,
+  buildArticlePublicPath,
+  readApiErrorMessage,
 } from './EditArticleModalV2.utils';
+import {
+  queueArticleEditorToast,
+  type ArticleEditorToastPayload,
+} from '@shared/lib/articleEditorToast';
+import { ArticleEditorToast } from '@shared/ui/articleEditorToast';
 import type { InlineMark, RichText } from '@shared/lib/richText';
 import {
   cloneRichText,
@@ -109,6 +116,8 @@ interface EditArticleModalV2Props {
   isOpen: boolean;
   article: IArticles;
   onClose: () => void;
+  publicArtistSlug?: string | null;
+  onArticleEditorToast?: () => void;
 }
 
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
@@ -198,7 +207,13 @@ function extractFirstArticleFromApiJson(json: unknown): IArticles | null {
   return normalizeArticlePayloadItem(list[0]);
 }
 
-export function EditArticleModalV2({ isOpen, article, onClose }: EditArticleModalV2Props) {
+export function EditArticleModalV2({
+  isOpen,
+  article,
+  onClose,
+  publicArtistSlug,
+  onArticleEditorToast,
+}: EditArticleModalV2Props) {
   const { lang } = useLang();
   const dispatch = useAppDispatch();
   const texts = LANG_TEXTS[lang];
@@ -271,6 +286,13 @@ export function EditArticleModalV2({ isOpen, article, onClose }: EditArticleModa
   const [isPublishing, setIsPublishing] = useState(false);
   const [isSavingDraft, setIsSavingDraft] = useState(false);
   const [originalIsDraft, setOriginalIsDraft] = useState<boolean>(true);
+  const [editorToast, setEditorToast] = useState<ArticleEditorToastPayload | null>(null);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setEditorToast(null);
+    }
+  }, [isOpen]);
 
   // Refs для управления автосохранением
   const isMountedRef = useRef(true);
@@ -588,6 +610,20 @@ export function EditArticleModalV2({ isOpen, article, onClose }: EditArticleModa
     onClose: finalizeArticleModalClose,
   });
 
+  const showEditorToast = useCallback((payload: ArticleEditorToastPayload) => {
+    setEditorToast(payload);
+  }, []);
+
+  const showArticleSaveError = useCallback(
+    async (response?: Response) => {
+      const message = response
+        ? await readApiErrorMessage(response, texts.savingError)
+        : texts.savingError;
+      showEditorToast({ kind: 'error', message });
+    },
+    [texts.savingError, showEditorToast]
+  );
+
   const handleSaveDraft = useCallback(async () => {
     if (!currentArticle) return;
 
@@ -668,16 +704,29 @@ export function EditArticleModalV2({ isOpen, article, onClose }: EditArticleModa
         } catch (error) {
           console.warn('Failed to update Redux store:', error);
         }
+
+        showEditorToast({ kind: 'draft-saved' });
       } else {
         setSaveStatus('error');
+        void showArticleSaveError(response);
       }
     } catch (error) {
       console.error('Save draft error:', error);
       setSaveStatus('error');
+      void showArticleSaveError();
     } finally {
       setIsSavingDraft(false);
     }
-  }, [blocks, meta, currentArticle, lang, dispatch, article]);
+  }, [
+    blocks,
+    meta,
+    currentArticle,
+    lang,
+    dispatch,
+    article,
+    showEditorToast,
+    showArticleSaveError,
+  ]);
 
   // Публикация
   const handlePublish = useCallback(async () => {
@@ -735,23 +784,51 @@ export function EditArticleModalV2({ isOpen, article, onClose }: EditArticleModa
       });
 
       if (response.ok) {
+        let publishedArticleId = articleId;
+
+        if (isNewArticle) {
+          const json: unknown = await response.json();
+          const saved = extractFirstArticleFromApiJson(json);
+          if (saved?.articleId) {
+            publishedArticleId = saved.articleId;
+          }
+        }
+
         setSaveStatus('saved');
-        // Обновляем начальные значения после успешного сохранения
-        setInitialBlocks(JSON.parse(JSON.stringify(blocks))); // Deep copy
+        setInitialBlocks(JSON.parse(JSON.stringify(blocks)));
         setInitialMeta({ ...meta });
-        // Обновляем Redux store
+
+        queueArticleEditorToast({
+          kind: 'published',
+          articleHref: buildArticlePublicPath(publishedArticleId, publicArtistSlug),
+        });
+        onArticleEditorToast?.();
+
         await dispatch(fetchArticles({ force: true, ownerDashboard: true })).unwrap();
         onClose();
       } else {
         setSaveStatus('error');
+        void showArticleSaveError(response);
       }
     } catch (error) {
       console.error('Publish error:', error);
       setSaveStatus('error');
+      void showArticleSaveError();
     } finally {
       setIsPublishing(false);
     }
-  }, [blocks, meta, currentArticle, lang, dispatch, onClose, article]);
+  }, [
+    blocks,
+    meta,
+    currentArticle,
+    lang,
+    dispatch,
+    onClose,
+    article,
+    publicArtistSlug,
+    onArticleEditorToast,
+    showArticleSaveError,
+  ]);
 
   // Создание нового блока по типу
   const createBlock = useCallback((type: BlockType): Block => {
@@ -1558,6 +1635,15 @@ export function EditArticleModalV2({ isOpen, article, onClose }: EditArticleModa
     [blocks, insertBlock]
   );
 
+  const focusNewParagraphAfter = useCallback((paragraphBlockId: string) => {
+    setVkInserter({ afterBlockId: paragraphBlockId });
+    pendingFocusRef.current = {
+      blockId: paragraphBlockId,
+      position: 'start',
+      plainCaret: true,
+    };
+  }, []);
+
   // Преобразование типа блока (для VK-плюса)
   const convertBlockType = useCallback(
     (blockId: string, newType: BlockType) => {
@@ -1611,11 +1697,21 @@ export function EditArticleModalV2({ isOpen, article, onClose }: EditArticleModa
       }
 
       const blockIndex = blocks.findIndex((b) => b.id === blockId);
+      const paragraphAfterDivider = newBlock.type === 'divider' ? createBlock('paragraph') : null;
+
       setBlocks((prev) => {
         const newBlocks = [...prev];
         newBlocks[blockIndex] = newBlock;
+        if (paragraphAfterDivider) {
+          newBlocks.splice(blockIndex + 1, 0, paragraphAfterDivider);
+        }
         return newBlocks;
       });
+
+      if (paragraphAfterDivider) {
+        focusNewParagraphAfter(paragraphAfterDivider.id);
+        return;
+      }
 
       // Фокус остается на том же блоке
       setTimeout(() => {
@@ -1644,7 +1740,7 @@ export function EditArticleModalV2({ isOpen, article, onClose }: EditArticleModa
         }
       }, 0);
     },
-    [blocks, saveSnapshot]
+    [blocks, createBlock, focusNewParagraphAfter, saveSnapshot]
   );
 
   // Обработчик slash-меню
@@ -1716,16 +1812,27 @@ export function EditArticleModalV2({ isOpen, article, onClose }: EditArticleModa
           newBlock.content = newContent;
         }
 
+        saveSnapshot();
+
         const blockIndex = blocks.findIndex((b) => b.id === slashMenu.blockId);
+        const paragraphAfterDivider = newBlock.type === 'divider' ? createBlock('paragraph') : null;
+
         setBlocks((prev) => {
           const newBlocks = [...prev];
           newBlocks[blockIndex] = newBlock;
+          if (paragraphAfterDivider) {
+            newBlocks.splice(blockIndex + 1, 0, paragraphAfterDivider);
+          }
           return newBlocks;
         });
 
-        setTimeout(() => {
-          setFocusBlockId(newBlock.id);
-        }, 0);
+        if (paragraphAfterDivider) {
+          focusNewParagraphAfter(paragraphAfterDivider.id);
+        } else {
+          setTimeout(() => {
+            setFocusBlockId(newBlock.id);
+          }, 0);
+        }
 
         if (newBlock.type === 'image') {
           requestImageUpload(newBlock.id);
@@ -1734,7 +1841,15 @@ export function EditArticleModalV2({ isOpen, article, onClose }: EditArticleModa
 
       setSlashMenu(null);
     },
-    [slashMenu, blocks, updateBlock, createBlock, requestImageUpload]
+    [
+      slashMenu,
+      blocks,
+      updateBlock,
+      createBlock,
+      focusNewParagraphAfter,
+      requestImageUpload,
+      saveSnapshot,
+    ]
   );
 
   // Обработчик paste
@@ -2009,6 +2124,7 @@ export function EditArticleModalV2({ isOpen, article, onClose }: EditArticleModa
         closeBlocked={isArticleSaveBusy || articleCloseGuard.discardDialogOpen}
         autoFocusFirstElement={false}
       >
+        <ArticleEditorToast payload={editorToast} onDismiss={() => setEditorToast(null)} />
         {isLoading ? (
           //   {true ? (
           <ArticleEditSkeleton />

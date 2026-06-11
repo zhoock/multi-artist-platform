@@ -81,7 +81,16 @@ dialog {
         .carousel-edit-modal,
         .edit-article-v2__carousel-edit-modal,
         .archive-access-modal__panel,
-        .add-stem-modal
+        .add-stem-modal,
+        .article-editor-toast-layer,
+        .article-editor-toast,
+        .album-published-toast,
+        .album-created-toast,
+        .tracks-uploaded-toast,
+        .album-deleted-toast,
+        .mix-toast,
+        .stem-added-toast,
+        .stem-deleted-toast
       ) {
       max-height: 85vh;
       min-height: 60vh;

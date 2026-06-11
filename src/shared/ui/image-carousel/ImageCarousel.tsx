@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { ChevronLeft as ChevronLeftIcon, ChevronRight as ChevronRightIcon } from 'lucide-react';
 import { getImageUrl } from '@shared/api/albums';
 import { optionalMediaSrc } from '@shared/lib/media/optionalMediaUrl';
 import type { ImageCategory } from '@config/user';
@@ -224,16 +225,7 @@ export function ImageCarousel({ images, alt, category = 'articles', userId }: Im
               onClick={goToPrevious}
               aria-label="Previous image"
             >
-              <svg
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-              >
-                <path d="M15 18l-6-6 6-6" />
-              </svg>
+              <ChevronLeftIcon aria-hidden size={24} strokeWidth={2} />
             </button>
           )}
           {currentIndex < images.length - 1 && (
@@ -243,16 +235,7 @@ export function ImageCarousel({ images, alt, category = 'articles', userId }: Im
               onClick={goToNext}
               aria-label="Next image"
             >
-              <svg
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-              >
-                <path d="M9 18l6-6-6-6" />
-              </svg>
+              <ChevronRightIcon aria-hidden size={24} strokeWidth={2} />
             </button>
           )}
         </>

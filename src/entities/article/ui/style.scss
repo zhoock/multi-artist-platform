@@ -375,4 +375,40 @@
   .article__archive-gate-cta + .article__archive-gate-rule {
     margin-block-start: var(--ms-0);
   }
+
+  /* Цитата — вставка в стиле музыкальных журналов */
+  .article__quote {
+    position: relative;
+    margin-block: var(--ms-2);
+    margin-inline: 0;
+    padding-block: var(--ms-1);
+    padding-inline: var(--ms-2);
+    padding-inline-start: calc(var(--ms-2) + 0.35rem);
+    max-inline-size: min(38rem, 92%);
+    color: color-mix(in srgb, var(--text-color, #dddddd) 78%, transparent);
+    font-size: 1.05em;
+    font-style: italic;
+    line-height: 1.72;
+    background: transparent;
+    border: none;
+    border-inline-start: 3px solid var(--dark-greenish-yellow, #c8b06d);
+
+    p {
+      margin: 0;
+    }
+
+    p + p {
+      margin-block-start: var(--ms-01);
+    }
+
+    strong {
+      font-weight: 700;
+    }
+
+    a {
+      color: inherit;
+      text-decoration-thickness: 1px;
+      text-underline-offset: 0.15em;
+    }
+  }
 }

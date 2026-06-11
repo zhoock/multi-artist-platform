@@ -102,6 +102,7 @@ export function ArticlePage() {
     images,
     type,
     userId,
+    blockKind,
   }: ArticledetailsProps) {
     // Карусель — только при ≥2 изображениях; одно фото из массива показываем как обычное изображение
     const imageList = images && Array.isArray(images) ? images : Array.isArray(img) ? img : null;
@@ -154,6 +155,8 @@ export function ArticlePage() {
         {/* Разделитель */}
         {typeof content === 'string' && content === '---' ? (
           <hr />
+        ) : typeof content === 'string' && blockKind === 'quote' ? (
+          <blockquote className="article__quote">{renderMarkdownViaRichText(content)}</blockquote>
         ) : typeof content === 'string' ? (
           <p>{renderMarkdownViaRichText(content)}</p>
         ) : (

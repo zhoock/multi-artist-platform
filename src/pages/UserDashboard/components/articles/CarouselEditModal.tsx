@@ -122,29 +122,9 @@ export function CarouselEditModal({
             aria-busy={isUploading}
           >
             <div className="edit-article-v2__carousel-edit-header">
-              <div className="edit-article-v2__carousel-edit-header-main">
-                <h2 className="edit-article-v2__carousel-edit-title">Редактирование карусели</h2>
-                <div className="edit-article-v2__carousel-edit-count">
-                  {imageKeys.length} {imageKeys.length === 1 ? 'фотография' : 'фотографий'}
-                </div>
-              </div>
-              <div className="edit-article-v2__carousel-edit-actions">
-                <button
-                  type="button"
-                  className="edit-article-v2__carousel-edit-cancel"
-                  onClick={handleRequestCancel}
-                  disabled={isUploading}
-                >
-                  Отмена
-                </button>
-                <button
-                  type="button"
-                  className="edit-article-v2__carousel-edit-save"
-                  onClick={handleSave}
-                  disabled={isUploading}
-                >
-                  Сохранить
-                </button>
+              <h2 className="edit-article-v2__carousel-edit-title">Редактирование карусели</h2>
+              <div className="edit-article-v2__carousel-edit-count">
+                {imageKeys.length} {imageKeys.length === 1 ? 'фотография' : 'фотографий'}
               </div>
             </div>
 
@@ -209,6 +189,25 @@ export function CarouselEditModal({
               style={{ display: 'none' }}
               onChange={handleFileSelect}
             />
+
+            <div className="edit-article-v2__carousel-edit-footer">
+              <button
+                type="button"
+                className="edit-article-v2__carousel-edit-cancel"
+                onClick={handleRequestCancel}
+                disabled={isUploading}
+              >
+                Отмена
+              </button>
+              <button
+                type="button"
+                className="edit-article-v2__carousel-edit-save"
+                onClick={handleSave}
+                disabled={isUploading}
+              >
+                Сохранить
+              </button>
+            </div>
           </div>
         </div>
         <InlineEditDiscardDialog

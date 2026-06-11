@@ -1,5 +1,6 @@
 // src/pages/UserDashboard/components/EditArticleModalV2.utils.ts
 import type { ArticledetailsProps } from '@models';
+import { withPublicArtistQuery } from '@shared/lib/artistQuery';
 import type { RichText } from '@shared/lib/richText';
 import {
   isRichTextEmpty,
@@ -406,6 +407,28 @@ function hasContent(detail: Partial<ArticledetailsProps>): boolean {
     detail.type === 'image' ||
     detail.type === 'carousel'
   );
+}
+
+export function buildArticlePublicPath(articleId: string, artistSlug?: string | null): string {
+  return withPublicArtistQuery(`/articles/${encodeURIComponent(articleId)}`, artistSlug);
+}
+
+export async function readApiErrorMessage(response: Response, fallback: string): Promise<string> {
+  try {
+    const data: unknown = await response.clone().json();
+    if (data && typeof data === 'object') {
+      const record = data as Record<string, unknown>;
+      if (typeof record.message === 'string' && record.message.trim()) {
+        return record.message.trim();
+      }
+      if (typeof record.error === 'string' && record.error.trim()) {
+        return record.error.trim();
+      }
+    }
+  } catch {
+    /* ignore */
+  }
+  return fallback;
 }
 
 export function debounce<T extends (...args: any[]) => any>(

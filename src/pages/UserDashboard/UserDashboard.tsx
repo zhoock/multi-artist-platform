@@ -54,6 +54,7 @@ import { AlbumPublishedToast } from '@shared/ui/albumPublishedToast/AlbumPublish
 import { AlbumCreatedToast } from '@shared/ui/albumCreatedToast/AlbumCreatedToast';
 import { TracksUploadedToast } from '@shared/ui/tracksUploadedToast/TracksUploadedToast';
 import { AlbumDeletedToast } from '@shared/ui/albumDeletedToast/AlbumDeletedToast';
+import { ArticleEditorToast } from '@shared/ui/articleEditorToast';
 import { fetchWithAuthSession } from '@shared/lib/authFetch';
 import { buildApiUrl } from '@shared/lib/artistQuery';
 import { hasPublishedPublicReleases } from '@entities/album/lib/hasPublishedPublicReleases';
@@ -845,6 +846,7 @@ function UserDashboard() {
   const [publishedToastTrigger, setPublishedToastTrigger] = useState(0);
   const [tracksUploadToastTrigger, setTracksUploadToastTrigger] = useState(0);
   const [albumDeletedToastTrigger, setAlbumDeletedToastTrigger] = useState(0);
+  const [articleEditorToastTrigger, setArticleEditorToastTrigger] = useState(0);
   const trackUploadSectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const [expandedArticleId, setExpandedArticleId] = useState<string | null>(null);
   const [articleAccessMenuArticleId, setArticleAccessMenuArticleId] = useState<string | null>(null);
@@ -2812,6 +2814,7 @@ function UserDashboard() {
         <AlbumCreatedToast triggerKey={editAlbumModal} />
         <TracksUploadedToast triggerKey={tracksUploadToastTrigger} />
         <AlbumDeletedToast triggerKey={albumDeletedToastTrigger} />
+        <ArticleEditorToast triggerKey={articleEditorToastTrigger} />
         <div className="user-dashboard">
           {/* Main card container */}
           <div className="user-dashboard__card">
@@ -4247,6 +4250,8 @@ function UserDashboard() {
           isOpen={editArticleModal.isOpen}
           article={editArticleModal.article}
           onClose={() => setEditArticleModal(null)}
+          publicArtistSlug={profilePublicSlug}
+          onArticleEditorToast={() => setArticleEditorToastTrigger((value) => value + 1)}
         />
       )}
 

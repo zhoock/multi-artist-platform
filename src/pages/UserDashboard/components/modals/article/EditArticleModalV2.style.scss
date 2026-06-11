@@ -467,7 +467,7 @@ dialog {
 
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: var(--ms-2);
       margin-inline-start: calc(-1 * var(--edit-article-gutter-offset));
       padding-inline-start: var(--edit-article-gutter-offset);
     }
@@ -702,9 +702,16 @@ dialog {
       }
 
       &--quote {
-        padding-left: var(--ms-0);
-        border-left: 3px solid var(--dashboard-card-border);
+        max-inline-size: min(38rem, 92%);
+        padding-block: var(--ms-1);
+        padding-inline: var(--ms-2);
+        padding-inline-start: calc(var(--ms-2) + 0.35rem);
+        color: color-mix(in srgb, var(--text-color, #dddddd) 78%, transparent);
+        font-size: 1.05em;
         font-style: italic;
+        line-height: 1.72;
+        border: none;
+        border-inline-start: 3px solid var(--dark-greenish-yellow, #c8b06d);
       }
 
       &--list {
@@ -718,7 +725,7 @@ dialog {
       }
 
       &--divider {
-        padding: var(--ms-0) 0;
+        padding-block: var(--ms-01) 0;
 
         hr {
           margin: 0;
@@ -729,7 +736,7 @@ dialog {
 
       &--image,
       &--carousel {
-        padding: 16px 0;
+        padding-block: 0;
       }
     }
 
@@ -797,42 +804,96 @@ dialog {
       border-radius: var(--ms-01);
       overflow: hidden;
       cursor: pointer;
+
+      > .edit-article-v2__carousel-overlay {
+        position: absolute;
+        inset: 0;
+        z-index: 2;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 220ms ease;
+
+        @media (prefers-reduced-motion: reduce) {
+          transition-duration: 0.01ms;
+        }
+      }
+
+      &--controls-visible > .edit-article-v2__carousel-overlay,
+      &--selected > .edit-article-v2__carousel-overlay,
+      &:hover > .edit-article-v2__carousel-overlay {
+        opacity: 1;
+        pointer-events: auto;
+      }
     }
 
-    // Контейнер для кнопки редактирования и бейджа в правом верхнем углу
-    &__carousel-top-right {
+    &__carousel-toolbar {
       position: absolute;
       top: var(--ms-01);
       right: var(--ms-01);
-      z-index: 3;
+      z-index: 1;
       display: flex;
-      flex-direction: row;
       align-items: center;
       gap: var(--ms-01);
+      padding: var(--ms-02);
+      background: var(--dashboard-card-bg);
+      border: 1px solid var(--dashboard-card-border);
+      border-radius: var(--dashboard-btn-radius);
+      box-shadow: 0 2px 10px rgb(0 0 0 / 25%);
     }
 
-    // Бейдж "1 из N"
     &__carousel-badge {
       padding: var(--ms-02) var(--ms-01);
       color: var(--dashboard-btn-secondary-text);
       font-size: var(--ms-01);
       font-weight: 500;
-      background: var(--dashboard-card-bg);
-      border: 1px solid var(--dashboard-btn-primary-border);
-      border-radius: var(--dashboard-btn-radius);
-      box-shadow: 0 2px 10px rgb(0 0 0 / 25%);
+      line-height: 1;
+      white-space: nowrap;
     }
 
-    // Стрелки навигации
     &__carousel-nav {
       position: absolute;
       top: 50%;
-      z-index: 3;
-      font-size: 22px;
-      line-height: 1;
+      z-index: 1;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 0;
+      padding: var(--ms-02);
+      color: var(--dashboard-btn-primary-text);
+      background: none;
+      border: none;
+      box-shadow: none;
       transform: translateY(-50%);
+      cursor: pointer;
+      appearance: none;
 
-      @include edit-article-media-icon-btn(40px);
+      svg {
+        width: 2.5rem;
+        height: 2.5rem;
+        flex-shrink: 0;
+      }
+
+      &:focus-visible {
+        outline: 2px solid var(--dashboard-btn-focus-ring);
+        outline-offset: 2px;
+      }
+
+      @media (hover: hover) and (pointer: fine) {
+        &:hover:not(:disabled) {
+          color: var(--dark-greenish-yellow);
+          background: none;
+          border: none;
+          box-shadow: none;
+          opacity: 0.9;
+        }
+      }
+
+      &:active:not(:disabled) {
+        background: none;
+        border: none;
+        box-shadow: none;
+        opacity: 0.75;
+      }
 
       &--prev {
         left: var(--ms-01);
@@ -843,9 +904,16 @@ dialog {
       }
     }
 
-    // Кнопка "Редактировать карусель"
     &__carousel-edit {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--ms-02);
+
       @include edit-article-media-btn($padding: var(--ms-01) var(--ms-0));
+
+      svg {
+        flex-shrink: 0;
+      }
     }
 
     // Пустая карусель

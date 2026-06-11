@@ -184,7 +184,13 @@ export function SortableBlock({
           />
         );
       case 'divider':
-        return <BlockDivider onFocus={() => onFocus(block.id)} onBlur={onBlur} />;
+        return (
+          <BlockDivider
+            onFocus={() => onFocus(block.id)}
+            onBlur={onBlur}
+            onEnter={() => onEnter(block.id, true)}
+          />
+        );
       case 'image':
         return (
           <BlockImage
