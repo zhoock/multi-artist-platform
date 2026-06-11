@@ -14,8 +14,39 @@ export type ArticleVisibilityMenuOption = {
   description: string;
 };
 
-export function isArticleDraft(article: Pick<IArticles, 'isDraft'>): boolean {
+export type ArticleListDraftBadge = 'draft' | 'draft-changes' | null;
+
+/** Статья ни разу не публиковалась. */
+export function isArticleNeverPublished(article: Pick<IArticles, 'isDraft'>): boolean {
   return article.isDraft === true;
+}
+
+/** Статья хотя бы раз была опубликована. */
+export function isArticlePublished(article: Pick<IArticles, 'isDraft'>): boolean {
+  return article.isDraft === false;
+}
+
+/** @deprecated Use isArticleNeverPublished */
+export function isArticleDraft(article: Pick<IArticles, 'isDraft'>): boolean {
+  return isArticleNeverPublished(article);
+}
+
+export function hasArticleDraftChanges(
+  article: Pick<IArticles, 'isDraft' | 'hasDraftChanges'>
+): boolean {
+  return article.isDraft === false && article.hasDraftChanges === true;
+}
+
+export function getArticleListDraftBadge(
+  article: Pick<IArticles, 'isDraft' | 'hasDraftChanges'>
+): ArticleListDraftBadge {
+  if (isArticleNeverPublished(article)) {
+    return 'draft';
+  }
+  if (hasArticleDraftChanges(article)) {
+    return 'draft-changes';
+  }
+  return null;
 }
 
 export function buildArticleVisibilityMenuOptions(
@@ -58,6 +89,9 @@ export function buildArticleVisibilityMenuOptions(
     };
   });
 }
+
+/** @deprecated Use `buildArticleVisibilityMenuOptions` */
+export const buildVisibilityMenuOptions = buildArticleVisibilityMenuOptions;
 
 export function getArticleVisibilityLabel(
   visibility: TrackVisibility,

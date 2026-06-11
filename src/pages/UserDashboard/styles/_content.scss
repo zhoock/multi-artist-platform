@@ -447,19 +447,14 @@ dialog {
       block-size: 0.4rem;
     }
 
-    &__album-status-badge--draft {
-      color: var(--dark-greenish-yellow);
-      border-color: rgb(var(--dark-greenish-yellow-rgb) / 45%);
-    }
-
     &__album-status-badge--neutral {
       color: var(--dashboard-text-secondary);
       border-color: rgb(255 255 255 / 10%);
     }
 
     &__album-status-badge--ready {
-      color: #7eb6ff;
-      border-color: rgb(126 182 255 / 45%);
+      color: var(--dark-greenish-yellow);
+      border-color: rgb(var(--dark-greenish-yellow-rgb) / 45%);
     }
 
     &__album-status-badge--published {

@@ -9,6 +9,7 @@ describe('getArticlePreviewContent', () => {
       nameArticle: 'Title',
       img: '',
       date: '2026-01-01',
+      description: '',
       details: [
         {
           type: 'text',
@@ -36,6 +37,7 @@ describe('getArticlePreviewContent', () => {
       nameArticle: 'Title',
       img: '',
       date: '2026-01-01',
+      description: '',
       details: [
         { type: 'image', blockKind: 'image', img: 'cover.jpg' },
         { type: 'text', blockKind: 'divider', content: '---' },
@@ -54,6 +56,7 @@ describe('getArticlePreviewContent', () => {
       nameArticle: 'Title',
       img: '',
       date: '2026-01-01',
+      description: '',
       details: [{ type: 'text', blockKind: 'paragraph', content: longBody }],
     };
 

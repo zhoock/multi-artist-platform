@@ -1,18 +1,23 @@
 import type { IInterface } from '@models';
 import type { SupportedLang } from '@shared/model/lang';
+import type { ArticleListDraftBadge } from './articleVisibilityOptions';
 
 type ArticleListStatusProps = {
-  isDraft: boolean;
+  draftBadge: ArticleListDraftBadge;
   ui: IInterface | undefined;
   lang: SupportedLang;
 };
 
-export function ArticleListStatus({ isDraft, ui, lang }: ArticleListStatusProps) {
-  if (!isDraft) {
+export function ArticleListStatus({ draftBadge, ui, lang }: ArticleListStatusProps) {
+  if (!draftBadge) {
     return null;
   }
 
-  const label = ui?.dashboard?.albumStatusDraft ?? (lang === 'en' ? 'Draft' : 'Черновик');
+  const en = lang === 'en';
+  const label =
+    draftBadge === 'draft-changes'
+      ? (ui?.dashboard?.articleStatusDraftChanges ?? (en ? 'Draft changes' : 'Черновые правки'))
+      : (ui?.dashboard?.albumStatusDraft ?? (en ? 'Draft' : 'Черновик'));
 
   return (
     <span className="user-dashboard__album-status-badge user-dashboard__album-status-badge--neutral">

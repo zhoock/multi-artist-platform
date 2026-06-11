@@ -660,6 +660,7 @@ export function EditArticleModalV2({
         articleId = `article-${Date.now()}`;
       }
 
+      const neverPublished = originalIsDraft ?? true;
       const requestBody = {
         articleId,
         lang,
@@ -672,7 +673,7 @@ export function EditArticleModalV2({
         },
         img: currentArticle.img || article.img || '',
         date: currentArticle.date || article.date || toLocalYYYYMMDD(),
-        isDraft: true,
+        isDraft: neverPublished,
       };
 
       const isNewArticle = !currentArticle.id;
@@ -693,7 +694,9 @@ export function EditArticleModalV2({
       if (response.ok) {
         setSaveStatus('saved');
         setLastSaved(new Date());
-        setOriginalIsDraft(true);
+        if (neverPublished) {
+          setOriginalIsDraft(true);
+        }
 
         if (isNewArticle) {
           const json: unknown = await response.json();
@@ -737,6 +740,7 @@ export function EditArticleModalV2({
     blocks,
     meta,
     currentArticle,
+    originalIsDraft,
     lang,
     dispatch,
     article,
@@ -780,7 +784,8 @@ export function EditArticleModalV2({
         },
         img: currentArticle.img || article.img || '',
         date: currentArticle.date || article.date || toLocalYYYYMMDD(),
-        isDraft: false, // Публикуем
+        isDraft: false,
+        hasDraftChanges: false,
       };
 
       // До первого сохранения в БД нет id — POST; далее PUT
@@ -811,6 +816,7 @@ export function EditArticleModalV2({
         }
 
         setSaveStatus('saved');
+        setOriginalIsDraft(false);
         setInitialBlocks(JSON.parse(JSON.stringify(blocks)));
         setInitialMeta({ ...meta });
 

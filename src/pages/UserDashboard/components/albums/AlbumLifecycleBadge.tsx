@@ -32,7 +32,7 @@ export function AlbumLifecycleBadge({ status, ui, lang }: AlbumLifecycleBadgePro
   return (
     <span
       className={clsx('user-dashboard__album-status-badge', {
-        'user-dashboard__album-status-badge--draft': status === 'draft',
+        'user-dashboard__album-status-badge--neutral': status === 'draft',
         'user-dashboard__album-status-badge--ready': status === 'ready-to-publish',
         'user-dashboard__album-status-badge--published': status === 'published',
         'user-dashboard__album-status-badge--hidden': status === 'hidden',

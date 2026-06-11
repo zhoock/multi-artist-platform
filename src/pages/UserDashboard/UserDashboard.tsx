@@ -109,7 +109,10 @@ import { EditArticleModalV2 } from './components/modals/article/EditArticleModal
 import { ArticlesListSkeleton } from './components/articles/ArticlesListSkeleton';
 import { ArticleAccessControl } from './components/articles/ArticleAccessControl';
 import { ArticleListStatus } from './components/articles/ArticleListStatus';
-import { isArticleDraft } from './components/articles/articleVisibilityOptions';
+import {
+  getArticleListDraftBadge,
+  isArticlePublished,
+} from './components/articles/articleVisibilityOptions';
 import { DashboardNavTabIcon } from './lib/dashboardNavTabIcon';
 import { DashboardExpandChevron } from './lib/dashboardExpandChevron';
 import { DashboardTabContentSkeleton } from './components/DashboardTabContentSkeleton';
@@ -3355,7 +3358,8 @@ function UserDashboard() {
                               const articleVisibility = normalizeTrackVisibility(
                                 article.visibility
                               );
-                              const articleIsDraft = isArticleDraft(article);
+                              const articleDraftBadge = getArticleListDraftBadge(article);
+                              const articleIsPublished = isArticlePublished(article);
                               if (article.img && !article.userId) {
                                 console.error('[BUG] article.userId missing', {
                                   articleId: article.articleId,
@@ -3418,7 +3422,7 @@ function UserDashboard() {
                                           {article.nameArticle}
                                         </div>
                                         <ArticleListStatus
-                                          isDraft={articleIsDraft}
+                                          draftBadge={articleDraftBadge}
                                           ui={ui ?? undefined}
                                           lang={lang}
                                         />
@@ -3434,7 +3438,7 @@ function UserDashboard() {
                                       onClick={(e) => e.stopPropagation()}
                                       onMouseDown={(e) => e.stopPropagation()}
                                     >
-                                      {!articleIsDraft ? (
+                                      {articleIsPublished ? (
                                         <ArticleAccessControl
                                           articleId={article.articleId}
                                           visibility={articleVisibility}

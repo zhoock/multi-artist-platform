@@ -453,6 +453,7 @@
       "albumCreatedSuccessToast": "Альбом создан",
       "albumCreatedSuccessToastDescription": "Загрузите треки для завершения публикации.",
       "albumStatusDraft": "Черновик",
+      "articleStatusDraftChanges": "Черновые правки",
       "albumStatusReadyToPublish": "Готов к публикации",
       "albumStatusPublished": "Опубликован",
       "albumStatusHidden": "Скрыт",

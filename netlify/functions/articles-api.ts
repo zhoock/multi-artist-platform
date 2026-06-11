@@ -50,6 +50,10 @@ interface ArticleRow {
   details: unknown[];
   lang: string;
   is_draft: boolean;
+  has_draft_changes?: boolean;
+  published_name_article?: string | null;
+  published_description?: string | null;
+  published_details?: unknown[] | string | null;
   created_at: Date;
   updated_at: Date;
   visibility?: string | null;
@@ -71,6 +75,7 @@ interface ArticleData {
   details: unknown[];
   description: string;
   isDraft?: boolean;
+  hasDraftChanges?: boolean;
   visibility?: TrackVisibility;
   /** Публичный API: тело скрыто без активной подписки на этого артиста (аналог playbackLocked). */
   articleLocked?: boolean;
@@ -89,6 +94,7 @@ interface CreateArticleRequest {
   date: string;
   lang: SupportedLang;
   isDraft?: boolean;
+  hasDraftChanges?: boolean;
 }
 
 interface UpdateArticleRequest {
@@ -98,6 +104,8 @@ interface UpdateArticleRequest {
   img?: string;
   date?: string;
   isDraft?: boolean;
+  /** Явный сброс при публикации: `false` вместе с `isDraft: false`. */
+  hasDraftChanges?: boolean;
 }
 
 const LEGACY_ARTICLE_TRANSLATABLE_ROOT = ['nameArticle', 'description', 'details'] as const;
@@ -157,6 +165,7 @@ function mergeArticleDataPayloads(payloads: ArticleData[]): ArticleData {
     date: shared.date,
     details: textRoot.details,
     isDraft: shared.isDraft,
+    hasDraftChanges: shared.hasDraftChanges,
     visibility: shared.visibility,
     translations,
     updatedAt: shared.updatedAt,
@@ -170,6 +179,7 @@ async function syncSharedArticleMetadataAcrossLocales(
     img?: string | null;
     date?: string;
     isDraft?: boolean;
+    hasDraftChanges?: boolean;
     visibility?: TrackVisibility;
   }
 ): Promise<void> {
@@ -188,6 +198,10 @@ async function syncSharedArticleMetadataAcrossLocales(
     sets.push(`is_draft = $${i++}`);
     values.push(patch.isDraft);
   }
+  if (patch.hasDraftChanges !== undefined) {
+    sets.push(`has_draft_changes = $${i++}`);
+    values.push(patch.hasDraftChanges);
+  }
   if (patch.visibility !== undefined) {
     sets.push(`visibility = $${i++}::varchar(24)`);
     values.push(patch.visibility);
@@ -201,9 +215,93 @@ async function syncSharedArticleMetadataAcrossLocales(
   );
 }
 
-function mergeArticleRowsToApiData(rows: ArticleRow[]): ArticleData {
+type MapArticleOptions = { usePublishedSnapshot?: boolean };
+
+function parseDetailsJson(details: unknown): unknown[] {
+  if (details == null) return [];
+  if (typeof details === 'string') {
+    try {
+      const parsed = JSON.parse(details);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+  return Array.isArray(details) ? details : [];
+}
+
+function resolvePublishedLocaleFields(article: ArticleRow): {
+  nameArticle: string;
+  description: string;
+  details: unknown[];
+} | null {
+  if (article.published_name_article == null || article.published_details == null) {
+    return null;
+  }
+  const details = parseDetailsJson(article.published_details);
+  return {
+    nameArticle: article.published_name_article,
+    description: article.published_description || '',
+    details,
+  };
+}
+
+function resolveArticleLocaleWriteState(options: {
+  cur: ArticleRow | undefined;
+  data: UpdateArticleRequest;
+  hasLocalePatch: boolean;
+  nameArticle: string;
+  description: string;
+  detailsArr: unknown[];
+}): {
+  isDraft: boolean;
+  hasDraftChanges: boolean;
+  publishedName: string | null;
+  publishedDescription: string | null;
+  publishedDetails: unknown[] | null;
+} {
+  const cur = options.cur;
+  const curIsDraft = cur?.is_draft ?? true;
+  const curHasDraftChanges = cur?.has_draft_changes ?? false;
+
+  const isExplicitPublish =
+    options.data.isDraft === false &&
+    Object.prototype.hasOwnProperty.call(options.data, 'hasDraftChanges') &&
+    options.data.hasDraftChanges === false;
+
+  let isDraft = options.data.isDraft !== undefined ? options.data.isDraft : curIsDraft;
+  let hasDraftChanges = curHasDraftChanges;
+  let publishedName = cur?.published_name_article ?? null;
+  let publishedDescription = cur?.published_description ?? null;
+  let publishedDetails = cur?.published_details ? parseDetailsJson(cur.published_details) : null;
+
+  if (isExplicitPublish) {
+    isDraft = false;
+    hasDraftChanges = false;
+    if (options.hasLocalePatch) {
+      publishedName = options.nameArticle;
+      publishedDescription = options.description || null;
+      publishedDetails = options.detailsArr;
+    }
+  } else if (isDraft) {
+    hasDraftChanges = false;
+  } else if (options.hasLocalePatch && !curIsDraft) {
+    hasDraftChanges = true;
+    isDraft = false;
+  }
+
+  return {
+    isDraft,
+    hasDraftChanges,
+    publishedName,
+    publishedDescription,
+    publishedDetails,
+  };
+}
+
+function mergeArticleRowsToApiData(rows: ArticleRow[], options?: MapArticleOptions): ArticleData {
   const sorted = sortArticleRowsForMerge(rows);
-  const payloads = sorted.map(mapArticleToApiFormat);
+  const payloads = sorted.map((row) => mapArticleToApiFormat(row, options));
   const merged = mergeArticleDataPayloads(payloads);
   return hydrateMissingRuTranslationsOnArticle(
     merged as import('../../src/models').IArticles
@@ -254,9 +352,14 @@ function applyPublicArticleAccessPolicy(
 /**
  * Преобразует данные статьи из БД в формат API
  */
-function mapArticleToApiFormat(article: ArticleRow): ArticleData {
-  // Парсим details, если это строка (JSONB из базы может приходить как строка)
-  let details = article.details;
+function mapArticleToApiFormat(article: ArticleRow, options?: MapArticleOptions): ArticleData {
+  const useSnapshot =
+    options?.usePublishedSnapshot === true &&
+    !(article.is_draft ?? false) &&
+    (article.has_draft_changes ?? false);
+  const published = useSnapshot ? resolvePublishedLocaleFields(article) : null;
+
+  let details = published?.details ?? article.details;
   if (typeof details === 'string') {
     try {
       details = JSON.parse(details);
@@ -270,12 +373,13 @@ function mapArticleToApiFormat(article: ArticleRow): ArticleData {
     id: article.id, // UUID из БД
     userId: article.user_id || undefined,
     articleId: article.article_id, // строковый идентификатор
-    nameArticle: article.name_article,
+    nameArticle: published?.nameArticle ?? article.name_article,
     img: article.img || '',
     date: formatPostgresDateOnly(article.date),
     details: (details as unknown[]) || [],
-    description: article.description || '',
+    description: published?.description ?? article.description ?? '',
     isDraft: article.is_draft ?? false, // Статус черновика
+    hasDraftChanges: article.has_draft_changes ?? false,
     visibility: normalizeTrackVisibility(article.visibility),
     lang: article.lang,
     updatedAt:
@@ -595,9 +699,15 @@ export const handler: Handler = async (
               details,
               lang,
               is_draft,
+              has_draft_changes,
+              published_name_article,
+              published_description,
+              published_details,
               visibility,
               created_at,
               updated_at`;
+
+      const publicSnapshotOpts: MapArticleOptions = { usePublishedSnapshot: !includeDrafts };
 
       // GET по id (UUID или article_id): слив всех локалей в одну сущность.
       if (id) {
@@ -649,7 +759,7 @@ export const handler: Handler = async (
           return createSuccessResponse([]);
         }
 
-        const mergedOne = mergeArticleRowsToApiData(articleResult.rows);
+        const mergedOne = mergeArticleRowsToApiData(articleResult.rows, publicSnapshotOpts);
         if (!includeDrafts) {
           const vis = normalizeTrackVisibility(mergedOne.visibility);
           if (vis === 'hidden') {
@@ -706,7 +816,7 @@ export const handler: Handler = async (
       }
 
       const merged = articleIdsOrdered.map((aid) =>
-        mergeArticleRowsToApiData(byArticleId.get(aid)!)
+        mergeArticleRowsToApiData(byArticleId.get(aid)!, publicSnapshotOpts)
       );
 
       if (!includeDrafts) {
@@ -757,10 +867,14 @@ export const handler: Handler = async (
       }
 
       const isDraft = data.isDraft !== undefined ? data.isDraft : true;
+      const hasDraftChanges = false;
+      const publishedName = isDraft ? null : locale.nameArticle;
+      const publishedDescription = isDraft ? null : (locale.description ?? null);
+      const publishedDetails = isDraft ? null : JSON.stringify(locale.details);
 
       const result = await query<ArticleRow>(
-        `INSERT INTO articles (user_id, article_id, name_article, description, img, date, details, lang, is_draft, created_at, updated_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8, $9, NOW(), NOW())
+        `INSERT INTO articles (user_id, article_id, name_article, description, img, date, details, lang, is_draft, has_draft_changes, published_name_article, published_description, published_details, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8, $9, $10, $11, $12, $13::jsonb, NOW(), NOW())
          ON CONFLICT (user_id, article_id, lang)
          DO UPDATE SET
            name_article = EXCLUDED.name_article,
@@ -769,8 +883,12 @@ export const handler: Handler = async (
            date = EXCLUDED.date,
            details = EXCLUDED.details,
            is_draft = EXCLUDED.is_draft,
+           has_draft_changes = EXCLUDED.has_draft_changes,
+           published_name_article = EXCLUDED.published_name_article,
+           published_description = EXCLUDED.published_description,
+           published_details = EXCLUDED.published_details,
            updated_at = CURRENT_TIMESTAMP
-         RETURNING id, user_id, article_id, name_article, description, img, date, details, lang, is_draft, visibility, created_at, updated_at`,
+         RETURNING id, user_id, article_id, name_article, description, img, date, details, lang, is_draft, has_draft_changes, published_name_article, published_description, published_details, visibility, created_at, updated_at`,
         [
           userId,
           data.articleId,
@@ -781,6 +899,10 @@ export const handler: Handler = async (
           JSON.stringify(locale.details),
           data.lang,
           isDraft,
+          hasDraftChanges,
+          publishedName,
+          publishedDescription,
+          publishedDetails,
         ]
       );
 
@@ -788,6 +910,7 @@ export const handler: Handler = async (
         img: data.img !== undefined ? data.img : undefined,
         date: data.date,
         isDraft,
+        hasDraftChanges,
       });
 
       if (result.rows.length > 0) {
@@ -866,7 +989,7 @@ export const handler: Handler = async (
 
       const patch = data.translations?.[data.lang];
       const existingLocale = await query<ArticleRow>(
-        `SELECT id, user_id, article_id, name_article, description, img, date, details, lang, is_draft, visibility, created_at, updated_at
+        `SELECT id, user_id, article_id, name_article, description, img, date, details, lang, is_draft, has_draft_changes, published_name_article, published_description, published_details, visibility, created_at, updated_at
          FROM articles
          WHERE user_id = $1::uuid AND article_id = $2 AND lang = $3`,
         [userId, resolvedArticleId, data.lang]
@@ -899,7 +1022,14 @@ export const handler: Handler = async (
         } else {
           dateVal = formatPostgresDateOnly(new Date());
         }
-        const isDraftVal = data.isDraft !== undefined ? data.isDraft : (cur?.is_draft ?? true);
+        const writeState = resolveArticleLocaleWriteState({
+          cur,
+          data,
+          hasLocalePatch: true,
+          nameArticle,
+          description: description || '',
+          detailsArr,
+        });
 
         if (!nameArticle || !Array.isArray(detailsArr)) {
           return createErrorResponse(
@@ -909,8 +1039,8 @@ export const handler: Handler = async (
         }
 
         await query<ArticleRow>(
-          `INSERT INTO articles (user_id, article_id, name_article, description, img, date, details, lang, is_draft, created_at, updated_at)
-           VALUES ($1::uuid, $2, $3, $4, $5, $6, $7::jsonb, $8, $9, NOW(), NOW())
+          `INSERT INTO articles (user_id, article_id, name_article, description, img, date, details, lang, is_draft, has_draft_changes, published_name_article, published_description, published_details, created_at, updated_at)
+           VALUES ($1::uuid, $2, $3, $4, $5, $6, $7::jsonb, $8, $9, $10, $11, $12, $13::jsonb, NOW(), NOW())
            ON CONFLICT (user_id, article_id, lang)
            DO UPDATE SET
              name_article = EXCLUDED.name_article,
@@ -919,6 +1049,10 @@ export const handler: Handler = async (
              date = EXCLUDED.date,
              details = EXCLUDED.details,
              is_draft = EXCLUDED.is_draft,
+             has_draft_changes = EXCLUDED.has_draft_changes,
+             published_name_article = EXCLUDED.published_name_article,
+             published_description = EXCLUDED.published_description,
+             published_details = EXCLUDED.published_details,
              updated_at = CURRENT_TIMESTAMP
            RETURNING id`,
           [
@@ -930,14 +1064,21 @@ export const handler: Handler = async (
             dateVal,
             JSON.stringify(detailsArr),
             data.lang,
-            isDraftVal,
+            writeState.isDraft,
+            writeState.hasDraftChanges,
+            writeState.publishedName,
+            writeState.publishedDescription,
+            writeState.publishedDetails != null
+              ? JSON.stringify(writeState.publishedDetails)
+              : null,
           ]
         );
 
         await syncSharedArticleMetadataAcrossLocales(userId, resolvedArticleId, {
           img: imgVal ?? undefined,
           date: dateVal,
-          isDraft: isDraftVal,
+          isDraft: writeState.isDraft,
+          hasDraftChanges: writeState.hasDraftChanges,
         });
       } else if (hasSharedPatch) {
         await syncSharedArticleMetadataAcrossLocales(userId, resolvedArticleId, {

@@ -209,6 +209,8 @@ export type IArticles = {
   details: ArticledetailsProps[];
   description: string;
   isDraft?: boolean; // Статус черновика (опционально для обратной совместимости)
+  /** У опубликованной статьи есть несохранённые в live-версию правки. */
+  hasDraftChanges?: boolean;
   /** Доступ к статье на сайте (как у треков). */
   visibility?: TrackVisibility;
   /** Публичный API: контент скрыт до покупки альбома артиста (как playbackLocked у треков). */
@@ -544,6 +546,7 @@ export interface IInterface {
     albumCreatedSuccessToast?: string;
     albumCreatedSuccessToastDescription?: string;
     albumStatusDraft?: string;
+    articleStatusDraftChanges?: string;
     albumStatusReadyToPublish?: string;
     albumStatusPublished?: string;
     albumStatusHidden?: string;

@@ -108,6 +108,7 @@ export const fetchArticles = createAsyncThunk<
           details: Array.isArray(a.details) ? (a.details as IArticles['details']) : [],
           description: String(a.description ?? ''),
           isDraft: (a.isDraft as boolean | undefined) ?? false,
+          hasDraftChanges: (a.hasDraftChanges as boolean | undefined) ?? false,
           visibility: normalizeTrackVisibility(a.visibility),
           articleLocked:
             typeof (a as { articleLocked?: unknown }).articleLocked === 'boolean'

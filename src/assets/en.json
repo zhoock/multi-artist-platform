@@ -453,6 +453,7 @@
       "albumCreatedSuccessToast": "Album created",
       "albumCreatedSuccessToastDescription": "Upload tracks to complete publication.",
       "albumStatusDraft": "Draft",
+      "articleStatusDraftChanges": "Draft changes",
       "albumStatusReadyToPublish": "Ready to Publish",
       "albumStatusPublished": "Published",
       "albumStatusHidden": "Hidden",
