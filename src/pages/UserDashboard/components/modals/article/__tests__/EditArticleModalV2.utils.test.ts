@@ -1,8 +1,10 @@
 import {
+  blockFromCarouselSave,
   blocksToDetails,
   createListItem,
   createListItemFromRichText,
   generateId,
+  isSavedCarousel,
   mergeListItemContents,
   normalizeDetailsToBlocks,
 } from '../EditArticleModalV2.utils';
@@ -112,6 +114,63 @@ describe('EditArticleModalV2.utils stable ids', () => {
     expect(item.id).toEqual(expect.any(String));
     expect(richTextToPlainText(item.content)).toBe('bold');
     expect(item.content).not.toBe(content);
+  });
+
+  it('treats carousel as existing only with at least two images', () => {
+    expect(isSavedCarousel(['a'])).toBe(false);
+    expect(isSavedCarousel(['a', 'b'])).toBe(true);
+
+    const blockId = generateId();
+    expect(blockFromCarouselSave(blockId, ['a'])).toMatchObject({
+      id: blockId,
+      type: 'image',
+      imageKey: 'a',
+    });
+    expect(blockFromCarouselSave(blockId, ['a', 'b'])).toMatchObject({
+      id: blockId,
+      type: 'carousel',
+      imageKeys: ['a', 'b'],
+    });
+    expect(blockFromCarouselSave(blockId, [])).toMatchObject({
+      id: blockId,
+      type: 'image',
+      imageKey: '',
+    });
+  });
+
+  it('normalizes persisted carousel with one image to image block', () => {
+    const blockId = generateId();
+    const loaded = normalizeDetailsToBlocks([
+      {
+        type: 'carousel',
+        blockId,
+        images: ['solo.jpg'],
+        alt: 'caption',
+      },
+    ]);
+
+    expect(loaded).toHaveLength(1);
+    expect(loaded[0]).toMatchObject({
+      id: blockId,
+      type: 'image',
+      imageKey: 'solo.jpg',
+      caption: 'caption',
+    });
+  });
+
+  it('serializes carousel with one image as image detail', () => {
+    const blockId = generateId();
+    const details = blocksToDetails([
+      { id: blockId, type: 'carousel', imageKeys: ['solo.jpg'], caption: 'caption' },
+    ]);
+
+    expect(details).toHaveLength(1);
+    expect(details[0]).toMatchObject({
+      type: 'image',
+      blockId,
+      img: 'solo.jpg',
+      alt: 'caption',
+    });
   });
 
   it('assigns ids to pasted list lines', () => {

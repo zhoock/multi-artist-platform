@@ -1,6 +1,8 @@
 // src/pages/UserDashboard/components/CarouselEditModal.tsx
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+import { Loader2 as Loader2Icon, Plus as PlusIcon, X as XIcon } from 'lucide-react';
 import { getUserImageUrl } from '@shared/api/albums';
+import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 import { optionalMediaSrc } from '@shared/lib/media/optionalMediaUrl';
 import { ArticleCoverPlaceholder } from '@entities/article';
 import { uploadFile } from '@shared/api/storage';
@@ -12,6 +14,7 @@ import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 import { useCloseWithUnsavedConfirmation } from '@shared/lib/hooks/useCloseWithUnsavedConfirmation';
 import { InlineEditDiscardDialog, getCloseDiscardConfirmLabels } from '../shared/EditableCardField';
 import '@shared/ui/dashboard-save/dashboard-save.scss';
+import './CarouselEditModal.style.scss';
 
 interface CarouselEditModalProps {
   /** Владелец медиа в Storage */
@@ -113,88 +116,100 @@ export function CarouselEditModal({
         onClose={handleRequestCancel}
         closeBlocked={isUploading || carouselCloseGuard.discardDialogOpen}
       >
-        <div
-          className={`edit-article-v2__carousel-edit-modal${isUploading ? ' dashboard-save-card--busy' : ''}`}
-          aria-busy={isUploading}
-        >
-          <div className="edit-article-v2__carousel-edit-header">
-            <h2 className="edit-article-v2__carousel-edit-title">Редактирование карусели</h2>
-            <div className="edit-article-v2__carousel-edit-count">
-              {imageKeys.length} {imageKeys.length === 1 ? 'фотография' : 'фотографий'}
+        <div className="carousel-edit-modal">
+          <div
+            className={`edit-article-v2__carousel-edit-modal${isUploading ? ' dashboard-save-card--busy' : ''}`}
+            aria-busy={isUploading}
+          >
+            <div className="edit-article-v2__carousel-edit-header">
+              <div className="edit-article-v2__carousel-edit-header-main">
+                <h2 className="edit-article-v2__carousel-edit-title">Редактирование карусели</h2>
+                <div className="edit-article-v2__carousel-edit-count">
+                  {imageKeys.length} {imageKeys.length === 1 ? 'фотография' : 'фотографий'}
+                </div>
+              </div>
+              <div className="edit-article-v2__carousel-edit-actions">
+                <button
+                  type="button"
+                  className="edit-article-v2__carousel-edit-cancel"
+                  onClick={handleRequestCancel}
+                  disabled={isUploading}
+                >
+                  Отмена
+                </button>
+                <button
+                  type="button"
+                  className="edit-article-v2__carousel-edit-save"
+                  onClick={handleSave}
+                  disabled={isUploading}
+                >
+                  Сохранить
+                </button>
+              </div>
             </div>
-            <div className="edit-article-v2__carousel-edit-actions">
-              <button
-                type="button"
-                className="edit-article-v2__carousel-edit-cancel"
-                onClick={handleRequestCancel}
-                disabled={isUploading}
-              >
-                Отмена
-              </button>
-              <button
-                type="button"
-                className="edit-article-v2__carousel-edit-save"
-                onClick={handleSave}
-                disabled={isUploading}
-              >
-                Сохранить
-              </button>
-            </div>
-          </div>
 
-          <div className="edit-article-v2__carousel-edit-content">
-            <div className="edit-article-v2__carousel-edit-thumbnails">
-              {imageKeys.map((imageKey, index) => {
-                const thumbUrl = optionalMediaSrc(
-                  getUserImageUrl(imageKey, 'articles', '.jpg', undefined, mediaOwnerUserId),
-                  'CarouselEditModal:thumbnail',
-                  { index }
-                );
-                return (
-                  <div key={imageKey} className="edit-article-v2__carousel-edit-thumbnail">
-                    {thumbUrl ? (
-                      <img src={thumbUrl} alt={`Image ${index + 1}`} />
-                    ) : (
-                      <ArticleCoverPlaceholder alt={`Image ${index + 1}`} />
-                    )}
-                    <button
-                      type="button"
-                      className="edit-article-v2__carousel-edit-remove"
-                      onClick={() => handleRemoveImage(index)}
-                      aria-label="Удалить изображение"
-                    >
-                      ×
-                    </button>
-                  </div>
-                );
-              })}
-              <button
-                type="button"
-                className="edit-article-v2__carousel-edit-add"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isUploading}
-              >
-                {isUploading ? 'Загрузка...' : '+'}
-              </button>
+            <div className="edit-article-v2__carousel-edit-content">
+              <div className="edit-article-v2__carousel-edit-thumbnails">
+                {imageKeys.map((imageKey, index) => {
+                  const thumbUrl = optionalMediaSrc(
+                    getUserImageUrl(imageKey, 'articles', '.jpg', undefined, mediaOwnerUserId),
+                    'CarouselEditModal:thumbnail',
+                    { index }
+                  );
+                  return (
+                    <div key={imageKey} className="edit-article-v2__carousel-edit-thumbnail">
+                      {thumbUrl ? (
+                        <img src={thumbUrl} alt={`Image ${index + 1}`} />
+                      ) : (
+                        <ArticleCoverPlaceholder alt={`Image ${index + 1}`} />
+                      )}
+                      <button
+                        type="button"
+                        className="edit-article-v2__carousel-edit-remove"
+                        onClick={() => handleRemoveImage(index)}
+                        aria-label="Удалить изображение"
+                      >
+                        <XIcon {...dashboardActionIconProps({ size: 16 })} />
+                      </button>
+                    </div>
+                  );
+                })}
+                <button
+                  type="button"
+                  className="edit-article-v2__carousel-edit-add"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploading}
+                  aria-label={isUploading ? 'Загрузка изображений' : 'Добавить изображения'}
+                >
+                  {isUploading ? (
+                    <Loader2Icon
+                      {...dashboardActionIconProps({ size: 20 })}
+                      className="edit-article-v2__carousel-edit-add-spinner"
+                    />
+                  ) : (
+                    <PlusIcon {...dashboardActionIconProps({ size: 20 })} />
+                  )}
+                </button>
+              </div>
+
+              <input
+                type="text"
+                className="edit-article-v2__carousel-edit-caption-input"
+                value={caption}
+                onChange={(e) => setCaption(e.target.value)}
+                placeholder="Подпись к карусели (необязательно)"
+              />
             </div>
 
             <input
-              type="text"
-              className="edit-article-v2__carousel-edit-caption-input"
-              value={caption}
-              onChange={(e) => setCaption(e.target.value)}
-              placeholder="Подпись к карусели (необязательно)"
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              style={{ display: 'none' }}
+              onChange={handleFileSelect}
             />
           </div>
-
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            multiple
-            style={{ display: 'none' }}
-            onChange={handleFileSelect}
-          />
         </div>
         <InlineEditDiscardDialog
           open={carouselCloseGuard.discardDialogOpen}

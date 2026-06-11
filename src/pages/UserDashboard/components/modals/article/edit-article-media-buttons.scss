@@ -1,0 +1,84 @@
+@use '../../../../../scss/abstracts/mixins' as *;
+
+// Кнопки поверх изображений: dashboard primary + непрозрачный фон карточки
+@mixin edit-article-media-btn(
+  $padding: var(--dashboard-btn-padding-y) var(--dashboard-btn-padding-x)
+) {
+  @include dashboard-btn-primary($margin: 0, $padding: $padding);
+
+  & {
+    background: var(--dashboard-card-bg);
+    box-shadow: 0 2px 10px rgb(0 0 0 / 25%);
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    &:hover:not(:disabled) {
+      color: var(--dashboard-btn-primary-text);
+      background: var(--dashboard-btn-primary-hover-bg);
+      border-color: var(--dashboard-btn-primary-border);
+    }
+  }
+
+  &:active:not(:disabled) {
+    color: var(--dashboard-btn-primary-active-text);
+    background: var(--dashboard-btn-primary-active-bg);
+    border-color: var(--dashboard-btn-primary-active-bg);
+  }
+}
+
+@mixin edit-article-media-icon-btn($size: var(--dashboard-btn-height)) {
+  @include dashboard-btn-primary($margin: 0, $padding: 0);
+
+  & {
+    width: $size;
+    height: $size;
+    min-height: $size;
+    background: var(--dashboard-card-bg);
+    border-radius: 50%;
+    box-shadow: 0 2px 10px rgb(0 0 0 / 25%);
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    &:hover:not(:disabled) {
+      color: var(--dashboard-btn-primary-text);
+      background: var(--dashboard-btn-primary-hover-bg);
+      border-color: var(--dashboard-btn-primary-border);
+    }
+  }
+
+  &:active:not(:disabled) {
+    color: var(--dashboard-btn-primary-active-text);
+    background: var(--dashboard-btn-primary-active-bg);
+    border-color: var(--dashboard-btn-primary-active-bg);
+  }
+}
+
+// Круглая кнопка удаления поверх превью (destructive + фон карточки)
+@mixin edit-article-media-icon-btn-destructive($size: var(--dashboard-btn-height)) {
+  @include dashboard-btn-destructive($margin: 0, $padding: 0, $border-radius: 50%);
+
+  & {
+    width: $size;
+    height: $size;
+    min-width: $size;
+    min-height: $size;
+    max-height: $size;
+    background: var(--dashboard-card-bg);
+    border-radius: 50%;
+    box-shadow: 0 2px 10px rgb(0 0 0 / 25%);
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    &:hover:not(:disabled) {
+      color: var(--dashboard-btn-destructive-text);
+      background: var(--dashboard-btn-destructive-hover-bg);
+      border-color: var(--dashboard-btn-destructive-border);
+    }
+  }
+
+  &:active:not(:disabled) {
+    color: var(--dashboard-btn-destructive-active-text);
+    background: var(--dashboard-btn-destructive-active-bg);
+    border-color: var(--dashboard-btn-destructive-active-bg);
+  }
+}

@@ -41,6 +41,42 @@ export type Block =
   | { id: string; type: 'image'; imageKey: string; caption?: string }
   | { id: string; type: 'carousel'; imageKeys: string[]; caption?: string };
 
+/** Минимум сохранённых изображений, при котором блок считается каруселью. */
+export const MIN_CAROUSEL_IMAGES = 2;
+
+export function isSavedCarousel(imageKeys: string[]): boolean {
+  return imageKeys.length >= MIN_CAROUSEL_IMAGES;
+}
+
+/** Применяет результат сохранения редактора карусели к блоку (≥2 фото → carousel, иначе → image). */
+export function blockFromCarouselSave(
+  blockId: string,
+  imageKeys: string[],
+  caption?: string
+): Block {
+  if (isSavedCarousel(imageKeys)) {
+    return { id: blockId, type: 'carousel', imageKeys, caption };
+  }
+  if (imageKeys.length === 1) {
+    return { id: blockId, type: 'image', imageKey: imageKeys[0], caption };
+  }
+  return { id: blockId, type: 'image', imageKey: '', caption };
+}
+
+function blockFromPersistedCarouselImages(
+  id: string,
+  imageKeys: string[],
+  caption?: string
+): Block | null {
+  if (isSavedCarousel(imageKeys)) {
+    return { id, type: 'carousel', imageKeys, caption };
+  }
+  if (imageKeys.length === 1) {
+    return { id, type: 'image', imageKey: imageKeys[0], caption };
+  }
+  return null;
+}
+
 /** Пустое inline-содержимое для нового/пустого текстового блока. */
 export function emptyRichText(): RichText {
   return markdownToRichText('');
@@ -132,8 +168,7 @@ function detailWithBlockIdToBlock(detail: ArticledetailsProps): Block | null {
 
   if (detail.type === 'carousel') {
     const imageKeys = detail.images || (Array.isArray(detail.img) ? detail.img : []);
-    if (!imageKeys.length) return null;
-    return { id, type: 'carousel', imageKeys, caption: detail.alt || undefined };
+    return blockFromPersistedCarouselImages(id, imageKeys, detail.alt || undefined);
   }
 
   if (detail.title) {
@@ -205,14 +240,12 @@ function legacyDetailToBlocks(detail: ArticledetailsProps): Block[] {
 
   if (detail.type === 'carousel') {
     const imageKeys = detail.images || (Array.isArray(detail.img) ? detail.img : []);
-    if (imageKeys.length > 0) {
-      blocks.push({
-        id: detail.blockId?.trim() || generateId(),
-        type: 'carousel',
-        imageKeys,
-        caption: detail.alt || undefined,
-      });
-    }
+    const block = blockFromPersistedCarouselImages(
+      detail.blockId?.trim() || generateId(),
+      imageKeys,
+      detail.alt || undefined
+    );
+    if (block) blocks.push(block);
   }
 
   if (detail.content) {
@@ -327,7 +360,18 @@ function blockToDetail(block: Block): ArticledetailsProps | null {
         alt: block.caption,
       };
     case 'carousel':
-      if (!block.imageKeys.length) return null;
+      if (!isSavedCarousel(block.imageKeys)) {
+        if (block.imageKeys.length === 1) {
+          return {
+            type: 'image',
+            blockId: block.id,
+            blockKind: 'image',
+            img: block.imageKeys[0],
+            alt: block.caption,
+          };
+        }
+        return null;
+      }
       return {
         type: 'carousel',
         blockId: block.id,

@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { getUserImageUrl } from '@shared/api/albums';
 import { ArticleCoverPlaceholder } from '@entities/article';
 import { optionalMediaSrc } from '@shared/lib/media/optionalMediaUrl';
+import { MIN_CAROUSEL_IMAGES } from '../modals/article/EditArticleModalV2.utils';
 
 interface BlockCarouselProps {
   /** Владелец медиа в Storage (users/{id}/articles/...) */
@@ -125,17 +126,19 @@ export function BlockCarousel({
             <ArticleCoverPlaceholder alt={`Image ${currentIndex + 1} of ${totalImages}`} />
           )}
 
-          {/* Кнопка "Редактировать карусель" и бейдж "1 из N" в правом верхнем углу */}
+          {/* Кнопка "Редактировать карусель" — только при ≥2 сохранённых изображениях */}
           <div className="edit-article-v2__carousel-top-right">
-            {(showEditButton || isSelected) && onEdit && (
-              <button
-                type="button"
-                className="edit-article-v2__carousel-edit"
-                onClick={handleEditClick}
-              >
-                Редактировать карусель
-              </button>
-            )}
+            {(showEditButton || isSelected) &&
+              onEdit &&
+              imageKeys.length >= MIN_CAROUSEL_IMAGES && (
+                <button
+                  type="button"
+                  className="edit-article-v2__carousel-edit"
+                  onClick={handleEditClick}
+                >
+                  Редактировать карусель
+                </button>
+              )}
             <div className="edit-article-v2__carousel-badge">
               {currentIndex + 1} из {totalImages}
             </div>

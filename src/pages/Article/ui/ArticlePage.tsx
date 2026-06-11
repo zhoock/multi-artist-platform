@@ -103,10 +103,15 @@ export function ArticlePage() {
     type,
     userId,
   }: ArticledetailsProps) {
-    // Определяем, есть ли карусель: проверяем images или img как массив
-    const carouselImages =
-      images && Array.isArray(images) ? images : Array.isArray(img) ? img : null;
-    const singleImage = !carouselImages && img && typeof img === 'string' ? img : null;
+    // Карусель — только при ≥2 изображениях; одно фото из массива показываем как обычное изображение
+    const imageList = images && Array.isArray(images) ? images : Array.isArray(img) ? img : null;
+    const carouselImages = imageList && imageList.length >= 2 ? imageList : null;
+    const singleImage =
+      imageList?.length === 1
+        ? imageList[0]
+        : !imageList && img && typeof img === 'string'
+          ? img
+          : null;
 
     return (
       <>

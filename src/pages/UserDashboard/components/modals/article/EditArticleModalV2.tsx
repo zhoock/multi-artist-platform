@@ -34,6 +34,8 @@ import type { Block, ArticleMeta, BlockType } from './EditArticleModalV2.utils';
 import {
   normalizeDetailsToBlocks,
   blocksToDetails,
+  blockFromCarouselSave,
+  isSavedCarousel,
   generateId,
   debounce,
   createListItem,
@@ -1000,28 +1002,31 @@ export function EditArticleModalV2({ isOpen, article, onClose }: EditArticleModa
     [saveSnapshot, findTargetBlockAfterDelete]
   );
 
-  // Конвертация image в carousel
+  // Открыть редактор карусели (конвертация — только после «Сохранить» с ≥2 фото)
   const convertImageToCarousel = useCallback(
     (blockId: string) => {
-      // Сохраняем снимок перед конвертацией
-      saveSnapshot();
+      const block = blocks.find((b) => b.id === blockId);
+      if (!block) return;
 
-      setBlocks((prev) =>
-        prev.map((block) => {
-          if (block.id === blockId && block.type === 'image') {
-            return {
-              id: block.id,
-              type: 'carousel',
-              imageKeys: block.imageKey ? [block.imageKey] : [],
-              caption: block.caption,
-            } as Block;
-          }
-          return block;
-        })
-      );
+      if (block.type === 'image') {
+        setCarouselEditModal({
+          blockId: block.id,
+          imageKeys: block.imageKey ? [block.imageKey] : [],
+          caption: block.caption,
+        });
+      } else if (block.type === 'carousel' && !isSavedCarousel(block.imageKeys)) {
+        setCarouselEditModal({
+          blockId: block.id,
+          imageKeys: [...block.imageKeys],
+          caption: block.caption,
+        });
+      } else {
+        return;
+      }
+
       setSelectedBlockId(null);
     },
-    [saveSnapshot]
+    [blocks]
   );
 
   // Обработка Delete/Backspace для удаления выделенного блока (image/carousel) и Undo/Redo
@@ -2285,12 +2290,17 @@ export function EditArticleModalV2({ isOpen, article, onClose }: EditArticleModa
                 initialImageKeys={carouselEditModal!.imageKeys}
                 initialCaption={carouselEditModal!.caption}
                 onSave={(imageKeys, caption) => {
-                  // Сохраняем снимок перед изменением карусели
+                  const { blockId } = carouselEditModal!;
+                  const targetBlock = blocks.find((b) => b.id === blockId);
+                  if (!targetBlock) {
+                    setCarouselEditModal(null);
+                    return;
+                  }
+
                   saveSnapshot();
-                  updateBlock(
-                    carouselEditModal!.blockId,
-                    { imageKeys, caption } as Partial<Block>,
-                    true
+                  const savedBlock = blockFromCarouselSave(blockId, imageKeys, caption);
+                  setBlocks((prev) =>
+                    prev.map((block) => (block.id === blockId ? savedBlock : block))
                   );
                   setCarouselEditModal(null);
                 }}
