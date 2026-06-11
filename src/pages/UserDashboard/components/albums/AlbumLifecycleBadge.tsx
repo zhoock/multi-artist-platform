@@ -1,15 +1,15 @@
 import clsx from 'clsx';
-import type { AlbumLifecycleStatus } from '@entities/album/lib/albumLifecycleStatus';
+import type { AlbumListDraftBadge } from '@entities/album/lib/albumLifecycleStatus';
 import type { IInterface } from '@models';
 
 type AlbumLifecycleBadgeProps = {
-  status: AlbumLifecycleStatus;
+  status: AlbumListDraftBadge;
   ui?: IInterface;
   lang: string;
 };
 
 function statusLabel(
-  status: AlbumLifecycleStatus,
+  status: Exclude<AlbumListDraftBadge, null>,
   ui: IInterface | undefined,
   lang: string
 ): string {
@@ -19,23 +19,24 @@ function statusLabel(
   switch (status) {
     case 'ready-to-publish':
       return d?.albumStatusReadyToPublish ?? (en ? 'Ready to Publish' : 'Готов к публикации');
-    case 'published':
-      return d?.albumStatusPublished ?? (en ? 'Published' : 'Опубликован');
-    case 'hidden':
-      return d?.albumStatusHidden ?? (en ? 'Hidden' : 'Скрыт');
+    case 'draft-changes':
+      return d?.articleStatusDraftChanges ?? (en ? 'Draft changes' : 'Черновые правки');
     default:
       return d?.albumStatusDraft ?? (en ? 'Draft' : 'Черновик');
   }
 }
 
 export function AlbumLifecycleBadge({ status, ui, lang }: AlbumLifecycleBadgeProps) {
+  if (!status) {
+    return null;
+  }
+
   return (
     <span
       className={clsx('user-dashboard__album-status-badge', {
-        'user-dashboard__album-status-badge--neutral': status === 'draft',
+        'user-dashboard__album-status-badge--neutral':
+          status === 'draft' || status === 'draft-changes',
         'user-dashboard__album-status-badge--ready': status === 'ready-to-publish',
-        'user-dashboard__album-status-badge--published': status === 'published',
-        'user-dashboard__album-status-badge--hidden': status === 'hidden',
       })}
     >
       <span className="user-dashboard__album-status-badge-dot" aria-hidden="true" />

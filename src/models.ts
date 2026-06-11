@@ -89,6 +89,9 @@ export interface IAlbums {
   /** Видимость на странице артиста после публикации (синхронизируется по всем lang в БД). */
   isPublic?: boolean;
 
+  /** Есть неопубликованные правки после публикации (как у статей). */
+  hasDraftChanges?: boolean;
+
   /** Релиз альбома (единый JSON на альбом: дата, UPC, продажи, `genreCodes`, `tags` и т.д.) */
   release: Record<string, unknown>;
   /** URL музыкальных агрегаторов */

@@ -64,8 +64,13 @@ import {
   getAlbumPublishHintKey,
 } from '@entities/album/lib/isAlbumReadyToPublish';
 import { isAlbumPublished } from '@entities/album/lib/albumPublication';
-import { getAlbumLifecycleStatus } from '@entities/album/lib/albumLifecycleStatus';
+import { getAlbumListDraftBadge } from '@entities/album/lib/albumLifecycleStatus';
 import { AlbumLifecycleBadge } from './components/albums/AlbumLifecycleBadge';
+import { AlbumAccessControl } from './components/albums/AlbumAccessControl';
+import {
+  albumVisibilityToIsPublic,
+  getAlbumVisibilityFromIsPublic,
+} from './components/albums/albumVisibilityOptions';
 import { AlbumsEmptyState } from './components/albums/AlbumsEmptyState';
 import { ArticlesEmptyState } from './components/articles/ArticlesEmptyState';
 import { queueAlbumPublishedToast } from '@shared/lib/albumPublishedToast';
@@ -78,6 +83,7 @@ import { setPublicArtistSlug } from '@shared/model/currentArtist';
 import { useAuthSessionUser } from '@shared/lib/hooks/useAuthSessionUser';
 import {
   fetchAlbums,
+  patchDashboardAlbumVisibility,
   selectDashboardAlbumsStatus,
   selectDashboardAlbumsData,
   selectDashboardAlbumsError,
@@ -794,6 +800,7 @@ function UserDashboard() {
   const trackUploadSectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const [expandedArticleId, setExpandedArticleId] = useState<string | null>(null);
   const [articleAccessMenuArticleId, setArticleAccessMenuArticleId] = useState<string | null>(null);
+  const [albumAccessMenuAlbumId, setAlbumAccessMenuAlbumId] = useState<string | null>(null);
   const [albumsData, setAlbumsData] = useState<AlbumData[]>([]);
   const catalogNeedsRefreshRef = useRef(false);
   const articlesNeedsRefreshRef = useRef(false);
@@ -1814,6 +1821,56 @@ function UserDashboard() {
         isOpen: true,
         title: ui?.dashboard?.error ?? 'Error',
         message: `Ошибка при изменении доступа к треку: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        variant: 'error',
+      });
+      await dispatch(fetchAlbums({ force: true, ownerDashboard: true })).unwrap();
+    }
+  };
+
+  const handleAlbumVisibilityChange = async (
+    albumId: string,
+    visibility: Extract<TrackVisibility, 'public' | 'hidden'>
+  ) => {
+    try {
+      const token = getToken();
+      if (!token) {
+        setAlertModal({
+          isOpen: true,
+          title: ui?.dashboard?.error ?? 'Error',
+          message:
+            ui?.dashboard?.errorNotAuthorized ?? 'Error: you are not authorized. Please log in.',
+          variant: 'error',
+        });
+        return;
+      }
+
+      const response = await fetchWithAuthSession('/api/update-album-visibility', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ albumId, visibility }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error((errorData as { message?: string })?.message || `HTTP ${response.status}`);
+      }
+
+      dispatch(
+        patchDashboardAlbumVisibility({
+          albumId,
+          isPublic: albumVisibilityToIsPublic(visibility),
+        })
+      );
+      markPublicCatalogDirty();
+    } catch (error) {
+      console.error('Error updating album visibility:', error);
+      setAlertModal({
+        isOpen: true,
+        title: ui?.dashboard?.error ?? 'Error',
+        message: `${ui?.dashboard?.error ?? 'Error'}: ${error instanceof Error ? error.message : 'Unknown'}`,
         variant: 'error',
       });
       await dispatch(fetchAlbums({ force: true, ownerDashboard: true })).unwrap();
@@ -2899,8 +2956,8 @@ function UserDashboard() {
                               const albumFromStore = albumsFromStore.find(
                                 (a) => a.albumId === album.id || a.albumId === album.albumId
                               );
-                              const lifecycleStatus = albumFromStore
-                                ? getAlbumLifecycleStatus({
+                              const albumDraftBadge = albumFromStore
+                                ? getAlbumListDraftBadge({
                                     ...albumFromStore,
                                     tracks:
                                       album.tracks.length === 0
@@ -2914,10 +2971,17 @@ function UserDashboard() {
                                       isPublished: album.isPublished,
                                       isPublic: album.isPublic,
                                     })
-                                  ? album.isPublic === false
-                                    ? 'hidden'
-                                    : 'published'
+                                  ? null
                                   : 'draft';
+                              const albumIsPublished = albumFromStore
+                                ? isAlbumPublished(albumFromStore)
+                                : isAlbumPublished({
+                                    isPublished: album.isPublished,
+                                    isPublic: album.isPublic,
+                                  });
+                              const albumVisibility = getAlbumVisibilityFromIsPublic(
+                                albumFromStore?.isPublic ?? album.isPublic
+                              );
                               const publishHintKey = albumFromStore
                                 ? getAlbumPublishHintKey(albumFromStore)
                                 : 'fields';
@@ -2933,7 +2997,12 @@ function UserDashboard() {
                               return (
                                 <React.Fragment key={album.id}>
                                   <div
-                                    className={`user-dashboard__album-item ${isExpanded ? 'user-dashboard__album-item--expanded' : ''}`}
+                                    id={`dashboard-album-row-${album.id}`}
+                                    className={clsx('user-dashboard__album-item', {
+                                      'user-dashboard__album-item--expanded': isExpanded,
+                                      'user-dashboard__album-item--access-menu-open':
+                                        albumAccessMenuAlbumId === album.id,
+                                    })}
                                     onClick={() => toggleAlbum(album.id)}
                                     role="button"
                                     tabIndex={0}
@@ -2968,19 +3037,11 @@ function UserDashboard() {
                                           {album.title}
                                         </div>
                                         <AlbumLifecycleBadge
-                                          status={lifecycleStatus}
+                                          status={albumDraftBadge}
                                           ui={ui ?? undefined}
                                           lang={lang}
                                         />
                                       </div>
-                                      {lifecycleStatus === 'hidden' ? (
-                                        <p className="user-dashboard__album-status-hint">
-                                          {ui?.dashboard?.albumStatusHiddenHint ??
-                                            (lang !== 'ru'
-                                              ? 'The album is published but hidden from visitors.'
-                                              : 'Альбом опубликован, но скрыт от посетителей.')}
-                                        </p>
-                                      ) : null}
                                       {album.releaseDate ? (
                                         <div className="user-dashboard__album-date">
                                           {album.releaseDate}
@@ -2991,8 +3052,34 @@ function UserDashboard() {
                                         </div>
                                       )}
                                     </div>
-                                    <div className="user-dashboard__album-arrow">
-                                      <DashboardExpandChevron expanded={isExpanded} />
+                                    <div
+                                      className="user-dashboard__album-item-actions"
+                                      onClick={(e) => e.stopPropagation()}
+                                      onMouseDown={(e) => e.stopPropagation()}
+                                    >
+                                      {albumIsPublished ? (
+                                        <AlbumAccessControl
+                                          albumId={album.id}
+                                          visibility={albumVisibility}
+                                          ui={ui ?? undefined}
+                                          lang={lang}
+                                          menuOpen={albumAccessMenuAlbumId === album.id}
+                                          onMenuOpenChange={(open) =>
+                                            setAlbumAccessMenuAlbumId(open ? album.id : null)
+                                          }
+                                          onPickVisibility={(v) =>
+                                            void handleAlbumVisibilityChange(album.id, v)
+                                          }
+                                          getRowElement={() =>
+                                            document.getElementById(
+                                              `dashboard-album-row-${album.id}`
+                                            )
+                                          }
+                                        />
+                                      ) : null}
+                                      <div className="user-dashboard__album-arrow">
+                                        <DashboardExpandChevron expanded={isExpanded} />
+                                      </div>
                                     </div>
                                   </div>
 

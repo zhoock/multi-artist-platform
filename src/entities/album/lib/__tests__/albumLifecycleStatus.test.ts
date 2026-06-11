@@ -1,9 +1,9 @@
 import { describe, expect, test } from '@jest/globals';
 import type { IAlbums } from '@models';
 
-import { getAlbumLifecycleStatus } from '../albumLifecycleStatus';
+import { getAlbumListDraftBadge } from '../albumLifecycleStatus';
 
-describe('getAlbumLifecycleStatus', () => {
+describe('getAlbumListDraftBadge', () => {
   const baseAlbum: IAlbums = {
     artist: '',
     album: 'Test Album',
@@ -27,29 +27,27 @@ describe('getAlbumLifecycleStatus', () => {
     isPublished: true,
   };
 
-  test('returns published when published', () => {
-    expect(getAlbumLifecycleStatus(baseAlbum)).toBe('published');
+  test('returns null when published without draft changes', () => {
+    expect(getAlbumListDraftBadge(baseAlbum)).toBeNull();
   });
 
-  test('returns hidden when published but not visible', () => {
-    expect(getAlbumLifecycleStatus({ ...baseAlbum, isPublic: false, isPublished: true })).toBe(
-      'hidden'
+  test('returns draft-changes when published with pending edits', () => {
+    expect(getAlbumListDraftBadge({ ...baseAlbum, hasDraftChanges: true })).toBe('draft-changes');
+  });
+
+  test('returns draft when unpublished', () => {
+    expect(
+      getAlbumListDraftBadge({ ...baseAlbum, isPublic: true, isPublished: false, tracks: [] })
+    ).toBe('draft');
+  });
+
+  test('returns ready-to-publish when draft meets requirements', () => {
+    expect(getAlbumListDraftBadge({ ...baseAlbum, isPublished: false, isPublic: false })).toBe(
+      'ready-to-publish'
     );
   });
 
-  test('returns draft when public but not published (legacy)', () => {
-    expect(
-      getAlbumLifecycleStatus({ ...baseAlbum, isPublic: true, isPublished: false, tracks: [] })
-    ).toBe('draft');
-  });
-
-  test('returns published even without tracks when already published', () => {
-    expect(getAlbumLifecycleStatus({ ...baseAlbum, tracks: [] })).toBe('published');
-  });
-
-  test('returns draft when unpublished and has no tracks', () => {
-    expect(
-      getAlbumLifecycleStatus({ ...baseAlbum, isPublic: false, isPublished: false, tracks: [] })
-    ).toBe('draft');
+  test('returns null for published album even when hidden', () => {
+    expect(getAlbumListDraftBadge({ ...baseAlbum, isPublic: false, isPublished: true })).toBeNull();
   });
 });

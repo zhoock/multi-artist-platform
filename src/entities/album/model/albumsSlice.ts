@@ -1,4 +1,4 @@
-import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
+import { createAsyncThunk, createSlice, type PayloadAction } from '@reduxjs/toolkit';
 
 import type { IAlbums, IAlbumTranslations, IAlbumTrackTranslations } from '@models';
 import { normalizeTrackIdString } from '@shared/lib/tracks/normalizeTrackIdString';
@@ -408,6 +408,20 @@ const albumsSlice = createSlice({
   reducers: {
     /** Сброс публичного каталога и кабинета (после logout / удаления аккаунта). */
     resetAlbumsState: () => initialState,
+    patchDashboardAlbumVisibility: (
+      state,
+      action: PayloadAction<{ albumId: string; isPublic: boolean }>
+    ) => {
+      const { albumId, isPublic } = action.payload;
+      const patchList = (list: IAlbums[]) => {
+        const idx = list.findIndex((x) => x.albumId === albumId);
+        if (idx >= 0) {
+          list[idx] = { ...list[idx], isPublic };
+        }
+      };
+      patchList(state.dashboard.data);
+      patchList(state.data);
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -544,5 +558,5 @@ const albumsSlice = createSlice({
   },
 });
 
-export const { resetAlbumsState } = albumsSlice.actions;
+export const { resetAlbumsState, patchDashboardAlbumVisibility } = albumsSlice.actions;
 export const albumsReducer = albumsSlice.reducer;

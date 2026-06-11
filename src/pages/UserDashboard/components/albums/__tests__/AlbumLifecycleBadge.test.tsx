@@ -6,7 +6,13 @@ describe('AlbumLifecycleBadge', () => {
     const { container } = render(<AlbumLifecycleBadge status="draft" lang="en" />);
 
     expect(container.querySelector('.user-dashboard__album-status-badge--neutral')).toBeTruthy();
-    expect(container.querySelector('.user-dashboard__album-status-badge--draft')).toBeNull();
+    expect(container.querySelector('.user-dashboard__album-status-badge--published')).toBeNull();
+  });
+
+  it('uses neutral style for draft changes', () => {
+    const { container } = render(<AlbumLifecycleBadge status="draft-changes" lang="en" />);
+
+    expect(container.querySelector('.user-dashboard__album-status-badge--neutral')).toBeTruthy();
   });
 
   it('uses yellow ready style, not blue', () => {
@@ -15,11 +21,9 @@ describe('AlbumLifecycleBadge', () => {
     expect(container.querySelector('.user-dashboard__album-status-badge--ready')).toBeTruthy();
   });
 
-  it('uses published and hidden status modifiers', () => {
-    const { rerender, container } = render(<AlbumLifecycleBadge status="published" lang="en" />);
-    expect(container.querySelector('.user-dashboard__album-status-badge--published')).toBeTruthy();
+  it('renders nothing when status is null', () => {
+    const { container } = render(<AlbumLifecycleBadge status={null} lang="en" />);
 
-    rerender(<AlbumLifecycleBadge status="hidden" lang="en" />);
-    expect(container.querySelector('.user-dashboard__album-status-badge--hidden')).toBeTruthy();
+    expect(container.querySelector('.user-dashboard__album-status-badge')).toBeNull();
   });
 });

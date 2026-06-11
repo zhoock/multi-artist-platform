@@ -3,16 +3,25 @@ import type { IAlbums } from '@models';
 import { isAlbumPublished } from './albumPublication';
 import { isAlbumReadyToPublish } from './isAlbumReadyToPublish';
 
-export type AlbumLifecycleStatus = 'draft' | 'ready-to-publish' | 'published' | 'hidden';
+/** Бейдж жизненного цикла в списке альбомов (не видимость). */
+export type AlbumListDraftBadge = 'draft' | 'draft-changes' | 'ready-to-publish' | null;
 
-export function getAlbumLifecycleStatus(album: IAlbums): AlbumLifecycleStatus {
-  if (isAlbumPublished(album)) {
-    return album.isPublic === false ? 'hidden' : 'published';
+/** @deprecated Use AlbumListDraftBadge */
+export type AlbumLifecycleStatus = Exclude<AlbumListDraftBadge, null>;
+
+export function getAlbumListDraftBadge(album: IAlbums): AlbumListDraftBadge {
+  if (!isAlbumPublished(album)) {
+    return isAlbumReadyToPublish(album) ? 'ready-to-publish' : 'draft';
   }
 
-  if (isAlbumReadyToPublish(album)) {
-    return 'ready-to-publish';
+  if (album.hasDraftChanges === true) {
+    return 'draft-changes';
   }
 
-  return 'draft';
+  return null;
+}
+
+/** @deprecated Use getAlbumListDraftBadge */
+export function getAlbumLifecycleStatus(album: IAlbums): AlbumLifecycleStatus | null {
+  return getAlbumListDraftBadge(album);
 }
