@@ -80,7 +80,6 @@
   &__control {
     inline-size: 48px;
     block-size: 48px;
-    font-size: 1.2rem;
 
     @include button-variant(
       $color: var(--mini-player-button, var(--mini-player-text, var(--black, #000000))),
@@ -91,6 +90,27 @@
       $padding: 0,
       $border-radius: 50%
     );
+
+    &--transport {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    &-icon {
+      display: block;
+      flex-shrink: 0;
+      color: currentcolor;
+
+      &--play,
+      &--forward {
+        transform: translateX(3px);
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        transform: none !important;
+      }
+    }
 
     &:active {
       background-color: rgb(255 255 255 / 10%);
@@ -133,16 +153,4 @@
 
 .mini-player + dialog[open] {
   display: block;
-}
-
-.mini-player__control.icon-controller-play,
-.mini-player__control.icon-controller-pause,
-.mini-player__control.icon-controller-fast-forward {
-  font-size: 2rem;
-}
-
-.mini-player__control.icon-controller-play::before,
-.mini-player__control.icon-controller-fast-forward::before {
-  display: inline-block;
-  transform: translateX(3px);
 }

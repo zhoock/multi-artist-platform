@@ -1,6 +1,7 @@
 // src/pages/StemsPlayground/components/MixerPlayerPanel.tsx
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
+import { Pause, Play } from 'lucide-react';
 import clsx from 'clsx';
 import { Waveform } from '@shared/ui/waveform';
 import { StemEngine } from '@audio/stemsEngine';
@@ -12,6 +13,11 @@ import {
 import type { MixerTrack } from '../lib/types';
 import { formatTrackDuration } from '../lib/formatTrackDuration';
 import { MixerStemRow } from './MixerStemRow';
+import {
+  MIXER_TRANSPORT_PLAY_ICON_SIZE,
+  MIXER_WAVE_PLAY_ICON_SIZE,
+  playerIconProps,
+} from '@shared/ui/icons/playerActionIcon';
 
 type StemMixState = PanelStemState;
 
@@ -241,7 +247,17 @@ function MixerPlayerPanelInner(
           disabled={loading}
           aria-pressed={isPlaying}
         >
-          <span className={clsx(isPlaying ? 'icon-controller-pause' : 'icon-controller-play')} />
+          <span className="mixer-player__transport-icon" aria-hidden>
+            {isPlaying ? (
+              <Pause {...playerIconProps(MIXER_TRANSPORT_PLAY_ICON_SIZE)} />
+            ) : (
+              <Play
+                {...playerIconProps(MIXER_TRANSPORT_PLAY_ICON_SIZE, {
+                  className: 'mixer-player__transport-icon--play',
+                })}
+              />
+            )}
+          </span>
           {isPlaying ? labels.pause : labels.play}
         </button>
       </div>
@@ -256,10 +272,17 @@ function MixerPlayerPanelInner(
             aria-pressed={isPlaying}
             aria-label={isPlaying ? labels.pause : labels.play}
           >
-            <span
-              className={clsx(isPlaying ? 'icon-controller-pause' : 'icon-controller-play')}
-              aria-hidden
-            />
+            <span className="mixer-player__wave-play-icon" aria-hidden>
+              {isPlaying ? (
+                <Pause {...playerIconProps(MIXER_WAVE_PLAY_ICON_SIZE)} />
+              ) : (
+                <Play
+                  {...playerIconProps(MIXER_WAVE_PLAY_ICON_SIZE, {
+                    className: 'mixer-player__wave-play-icon--play',
+                  })}
+                />
+              )}
+            </span>
           </button>
 
           <div

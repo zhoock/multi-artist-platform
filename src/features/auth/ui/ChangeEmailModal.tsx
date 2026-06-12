@@ -10,6 +10,7 @@ import {
   resolveVerificationEmailSend,
 } from '@shared/lib/emailVerification';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
+import { ModalCloseIcon } from '@shared/ui/icons/ModalCloseIcon';
 import './VerifyEmailModal.style.scss';
 
 interface ChangeEmailModalProps {
@@ -84,7 +85,7 @@ export function ChangeEmailModal({ isOpen, onBack, onClose }: ChangeEmailModalPr
               disabled={loading}
               aria-label={copy.close}
             >
-              ×
+              <ModalCloseIcon />
             </button>
           </div>
 

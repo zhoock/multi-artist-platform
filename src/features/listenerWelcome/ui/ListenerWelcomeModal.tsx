@@ -5,6 +5,7 @@ import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 import { useBodyScrollLock } from '@shared/lib/hooks/useBodyScrollLock';
 import { LocalModal } from '@shared/ui/localModal';
+import { ModalCloseIcon } from '@shared/ui/icons/ModalCloseIcon';
 
 import './listenerWelcomeModal.scss';
 
@@ -172,7 +173,7 @@ export function ListenerWelcomeModal({ dialogRef, open, onDismiss }: ListenerWel
           onClick={handleDismiss}
           aria-label={copy.close}
         >
-          ×
+          <ModalCloseIcon />
         </button>
 
         <h2 id="listener-welcome-title" className="listener-welcome-modal__title">

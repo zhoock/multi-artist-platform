@@ -1,6 +1,6 @@
 // src/pages/UserDashboard/components/blocks/BlockParagraph.tsx
 import React, { useRef, useEffect, useState } from 'react';
-import { TextQuote as TextQuoteIcon } from 'lucide-react';
+import { TextQuote as TextQuoteIcon, X as XIcon } from 'lucide-react';
 import type { RichText } from '@shared/lib/richText';
 import { getDefaultEditorMode, isMarkdownEditorEnabled } from '@shared/lib/richText';
 import {
@@ -336,24 +336,6 @@ function LinkGlyph() {
     >
       <path d="M9.5 13.5a4 4 0 0 0 6 .4l2.5-2.5a4 4 0 0 0-5.7-5.7l-1.4 1.4" />
       <path d="M14.5 10.5a4 4 0 0 0-6-.4L6 12.6a4 4 0 0 0 5.7 5.7l1.4-1.4" />
-    </svg>
-  );
-}
-
-/** Иконка «крестик» для выхода из режима ввода ссылки. */
-function CloseGlyph() {
-  return (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      aria-hidden="true"
-    >
-      <path d="M6 6l12 12M18 6L6 18" />
     </svg>
   );
 }
@@ -753,7 +735,7 @@ export function FormatMenu({
             aria-label="Отменить ввод ссылки"
             title="Отменить"
           >
-            <CloseGlyph />
+            <XIcon {...dashboardActionIconProps({ size: 16 })} />
           </button>
         </div>
       )}

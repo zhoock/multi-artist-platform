@@ -1,12 +1,11 @@
 import { useState, useCallback, type ReactNode, type RefObject } from 'react';
-import { X as XIcon } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 import { useLang } from '@app/providers/lang';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 import { SubscriberContentLockIcon } from '@shared/ui/icons/SubscriberContentLockIcon';
-import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
+import { ModalCloseIcon } from '@shared/ui/icons/ModalCloseIcon';
 import { createSubscriptionPayment } from '@shared/api/subscription';
 import { savePremiumCheckoutArtistSlug } from '@features/premiumSubscription';
 import { getToken, isEmailVerified } from '@shared/lib/auth';
@@ -144,7 +143,7 @@ export function ArchiveAccessModalView({ dialogRef, onClose }: Props) {
           aria-label={closeLabel}
           onClick={() => onClose()}
         >
-          <XIcon {...dashboardActionIconProps({ size: 18 })} />
+          <ModalCloseIcon size={18} />
         </button>
 
         <header className="archive-access-modal__header">

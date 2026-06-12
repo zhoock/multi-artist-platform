@@ -1,12 +1,17 @@
 import React, { useEffect, useMemo } from 'react';
 import clsx from 'clsx';
-import { Lock as LockIcon } from 'lucide-react';
+import { Lock as LockIcon, Pause, Play } from 'lucide-react';
 import type { TracksProps, IAlbums } from '@models';
 import { normalizeTrackVisibility } from '@shared/lib/tracks/trackVisibility';
 import { isTrackPlaybackBlocked } from '@shared/lib/tracks/trackPlayback';
 import type { AppStore, RootState } from '@shared/model/appStore/types';
 import { fallbackAlbumClientId } from '@shared/lib/albumClientId';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
+import {
+  playerIconProps,
+  TRACK_LIST_PAUSE_ICON_SIZE,
+  TRACK_LIST_PLAY_ICON_SIZE,
+} from '@shared/ui/icons/playerActionIcon';
 
 function formatDuration(duration?: number | string): string {
   // Если duration не задан или не является валидным числом
@@ -175,8 +180,16 @@ export function TrackList({ tracks, album, store, onSelectTrack }: TrackListProp
               ) : (
                 <>
                   <span className="tracks__symbol-index">{index + 1}</span>
-                  <span className="tracks__symbol-play icon-controller-play" aria-hidden></span>
-                  <span className="tracks__symbol-pause icon-controller-pause" aria-hidden></span>
+                  <span className="tracks__symbol-play" aria-hidden>
+                    <Play
+                      {...playerIconProps(TRACK_LIST_PLAY_ICON_SIZE, {
+                        className: 'tracks__symbol-play-icon tracks__symbol-play-icon--shifted',
+                      })}
+                    />
+                  </span>
+                  <span className="tracks__symbol-pause" aria-hidden>
+                    <Pause {...playerIconProps(TRACK_LIST_PAUSE_ICON_SIZE)} />
+                  </span>
                   <span className="tracks__symbol-equalizer" aria-hidden>
                     <span></span>
                     <span></span>

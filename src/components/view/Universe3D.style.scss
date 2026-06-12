@@ -28,15 +28,18 @@
   position: absolute;
   top: var(--ms-01);
   right: var(--ms-01);
+  display: flex;
   width: var(--ms-1);
   height: var(--ms-1);
+  padding: 0;
   color: var(--text-color, #ffffff);
-  font-size: calc(var(--ms-0) + var(--ms-02));
-  line-height: 1;
+  line-height: 0;
   background: color-mix(in srgb, var(--extra-background-color, #101015) 70%, transparent);
   border: 1px solid color-mix(in srgb, var(--hr-color, #4b4d55) 60%, transparent);
   border-radius: 999px;
   cursor: pointer;
+  align-items: center;
+  justify-content: center;
 }
 
 .universe3d-card__close:hover {

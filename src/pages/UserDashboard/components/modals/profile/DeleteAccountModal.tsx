@@ -5,6 +5,7 @@ import { deleteAccount } from '@shared/lib/auth';
 import { markAccountDeletedSession } from '@shared/lib/accountDeletedSession';
 import { queueAccountDeletedToast } from '@shared/lib/accountDeletedToast';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
+import { ModalCloseIcon } from '@shared/ui/icons/ModalCloseIcon';
 import './DeleteAccountModal.style.scss';
 
 export interface DeleteAccountModalCopy {
@@ -145,7 +146,7 @@ export function DeleteAccountModal({ isOpen, onClose, onDeleted, copy }: DeleteA
               disabled={loading}
               aria-label={copy.close}
             >
-              ×
+              <ModalCloseIcon />
             </button>
           </div>
 

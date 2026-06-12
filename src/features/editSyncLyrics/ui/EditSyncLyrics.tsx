@@ -4,10 +4,13 @@
  * Позволяет устанавливать тайм-коды для каждой строки текста вручную.
  */
 import { useCallback, useEffect, useMemo, useState, useRef, useLayoutEffect } from 'react';
+import { Pause, Play, X as XIcon } from 'lucide-react';
 import { useParams, useLocation } from 'react-router-dom';
 import { useLang } from '@app/providers/lang';
 import { Loader } from '@shared/ui/loader';
 import { ErrorMessage } from '@shared/ui/error-message';
+import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
+import { playerIconProps } from '@shared/ui/icons/playerActionIcon';
 import { useAppDispatch } from '@shared/lib/hooks/useAppDispatch';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { playerActions, playerSelectors } from '@features/player';
@@ -925,15 +928,7 @@ export default function EditSyncLyrics({
                   position: 'relative',
                 }}
               >
-                {isPlaying ? (
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                    <path d="M5 3h2v10H5V3zm4 0h2v10H9V3z" />
-                  </svg>
-                ) : (
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                    <path d="M4 3l10 5-10 5V3z" />
-                  </svg>
-                )}
+                {isPlaying ? <Pause {...playerIconProps(16)} /> : <Play {...playerIconProps(16)} />}
               </button>
             </div>
             <div className="admin-sync__player-progress-wrapper">
@@ -1003,7 +998,7 @@ export default function EditSyncLyrics({
                           isInteractionLocked || line.endTime === undefined || line.endTime === 0
                         }
                       >
-                        ✖️
+                        <XIcon {...dashboardActionIconProps({ size: 16 })} />
                       </button>
                     </div>
                   </div>

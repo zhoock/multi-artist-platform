@@ -39,6 +39,7 @@ import { Popup } from '@shared/ui/popup';
 import { ConfirmationModal } from '@shared/ui/confirmationModal';
 import { AlertModal } from '@shared/ui/alertModal';
 import { SubscriberContentLockIcon } from '@shared/ui/icons/SubscriberContentLockIcon';
+import { ModalCloseIcon } from '@shared/ui/icons/ModalCloseIcon';
 import {
   isAuthenticated,
   getToken,
@@ -2830,7 +2831,7 @@ function UserDashboard() {
                 onClick={closeDashboard}
                 aria-label={ui?.dashboard?.close ?? 'Close'}
               >
-                ×
+                <ModalCloseIcon />
               </button>
             </div>
 
@@ -4084,7 +4085,7 @@ function UserDashboard() {
                     onClick={() => editTrackCloseGuard.requestClose()}
                     aria-label={ui?.dashboard?.close ?? 'Close'}
                   >
-                    ×
+                    <ModalCloseIcon />
                   </button>
                   <h2 className="edit-track-modal__title">
                     {ui?.dashboard?.editTrack ?? 'Edit Track'}

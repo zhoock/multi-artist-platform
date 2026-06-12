@@ -6,6 +6,7 @@
 import React from 'react';
 import { TriangleAlert as TriangleAlertIcon } from 'lucide-react';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
+import { ModalCloseIcon } from '@shared/ui/icons/ModalCloseIcon';
 import { Popup } from '../popup';
 import './style.scss';
 
@@ -69,7 +70,7 @@ export function ConfirmationModal({
               onClick={handleCancel}
               aria-label={closeLabel}
             >
-              ×
+              <ModalCloseIcon />
             </button>
           </div>
           {message ? <p className="confirmation-modal__message">{message}</p> : null}

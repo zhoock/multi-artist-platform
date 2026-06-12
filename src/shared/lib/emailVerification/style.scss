@@ -133,14 +133,16 @@
 
   &__close {
     grid-area: close;
+    display: flex;
     padding: 0.2rem;
     color: var(--warm-concrete);
-    font-size: 1.125rem;
-    line-height: 1;
+    line-height: 0;
     background: none;
     border: none;
     cursor: pointer;
     place-self: center end;
+    align-items: center;
+    justify-content: center;
 
     &:hover {
       color: var(--white);

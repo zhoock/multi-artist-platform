@@ -4,6 +4,7 @@ import { Upload as UploadIcon, Music as MusicIcon, X as XIcon } from 'lucide-rea
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 import { Popup } from '@shared/ui/popup';
 import { DashboardSaveSpinner } from '@shared/ui/dashboard-save/DashboardSaveSpinner';
+import { ModalCloseIcon } from '@shared/ui/icons/ModalCloseIcon';
 import '@shared/ui/dashboard-save/dashboard-save.scss';
 import { STEM_CATEGORIES, getCategoryLabel, type StemCategory } from '@entities/stem';
 import './AddStemModal.style.scss';
@@ -94,7 +95,7 @@ export function AddStemModal({ isOpen, lang, labels, onClose, onSubmit }: AddSte
               disabled={submitting}
               aria-label={labels.closeLabel}
             >
-              ×
+              <ModalCloseIcon />
             </button>
           </div>
 

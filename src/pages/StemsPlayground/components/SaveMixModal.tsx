@@ -1,6 +1,7 @@
 // src/pages/StemsPlayground/components/SaveMixModal.tsx
 import { useEffect, useState } from 'react';
 import { Popup } from '@shared/ui/popup';
+import { ModalCloseIcon } from '@shared/ui/icons/ModalCloseIcon';
 import './SaveMixModal.style.scss';
 
 export type SaveMixModalLabels = {
@@ -47,7 +48,7 @@ export function SaveMixModal({ isOpen, busy, labels, onClose, onSave }: SaveMixM
               disabled={busy}
               aria-label={labels.close}
             >
-              ×
+              <ModalCloseIcon />
             </button>
           </div>
 

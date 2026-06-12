@@ -4,6 +4,7 @@
  */
 
 import React from 'react';
+import { ModalCloseIcon } from '@shared/ui/icons/ModalCloseIcon';
 import { Popup } from '../popup';
 import './style.scss';
 
@@ -35,7 +36,7 @@ export function AlertModal({
               onClick={onClose}
               aria-label="Закрыть"
             >
-              ×
+              <ModalCloseIcon />
             </button>
             {title && <h2 className="alert-modal__title">{title}</h2>}
           </div>

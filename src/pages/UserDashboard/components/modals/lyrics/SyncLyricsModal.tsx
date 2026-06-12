@@ -22,6 +22,13 @@ import {
 } from '@features/syncedLyrics/lib';
 import { loadTrackTextFromDatabase } from '@entities/track/lib';
 import { getUserAudioUrl } from '@shared/api/albums';
+import { Pause, Play, X } from 'lucide-react';
+import { ModalCloseIcon } from '@shared/ui/icons/ModalCloseIcon';
+import {
+  LYRICS_MODAL_TRANSPORT_ICON_SIZE,
+  playerIconProps,
+} from '@shared/ui/icons/playerActionIcon';
+import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 import { useCloseWithUnsavedConfirmation } from '@shared/lib/hooks/useCloseWithUnsavedConfirmation';
 import {
   InlineEditDiscardDialog,
@@ -653,7 +660,7 @@ export function SyncLyricsModal({
                 disabled={isSaving}
                 aria-label="Закрыть"
               >
-                ×
+                <ModalCloseIcon />
               </button>
             </div>
 
@@ -668,32 +675,13 @@ export function SyncLyricsModal({
                 disabled={!audioPlaybackUrl}
               >
                 {isPlaying ? (
-                  <svg
-                    width="24"
-                    height="24"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <rect x="6" y="4" width="4" height="16" />
-                    <rect x="14" y="4" width="4" height="16" />
-                  </svg>
+                  <Pause {...playerIconProps(LYRICS_MODAL_TRANSPORT_ICON_SIZE)} />
                 ) : (
-                  <svg
-                    width="24"
-                    height="24"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <polygon points="5 3 19 12 5 21 5 3" />
-                  </svg>
+                  <Play
+                    {...playerIconProps(LYRICS_MODAL_TRANSPORT_ICON_SIZE, {
+                      className: 'sync-lyrics-modal__play-icon',
+                    })}
+                  />
                 )}
               </button>
 
@@ -809,7 +797,7 @@ export function SyncLyricsModal({
                                 className="sync-lyrics-modal__clear-btn"
                                 title="Сбросить конец строки"
                               >
-                                ×
+                                <X {...dashboardActionIconProps({ size: 16 })} />
                               </button>
                             )}
                           </div>

@@ -49,17 +49,13 @@ dialog {
       height: calc(var(--ms-1) * 2);
       padding: 0;
       color: var(--dashboard-text-primary);
+      line-height: 0;
       background: transparent;
       border: 1px solid var(--dashboard-card-border);
       border-radius: 50%;
       cursor: pointer;
       transition: all 0.2s;
       flex-shrink: 0;
-
-      svg {
-        width: calc(var(--ms-0) * 1.2);
-        height: calc(var(--ms-0) * 1.2);
-      }
 
       &:hover {
         background: var(--dashboard-hover-bg);
@@ -74,6 +70,10 @@ dialog {
         opacity: 0.5;
         cursor: not-allowed;
       }
+    }
+
+    &__play-icon {
+      transform: translateX(2px);
     }
 
     &__time {
@@ -246,32 +246,18 @@ dialog {
     }
 
     &__clear-btn {
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      @include dashboard-btn-secondary(
+        $margin: 0,
+        $padding: 0,
+        $border-radius: 50%,
+        $font-size: var(--ms-0)
+      );
+
       width: calc(var(--ms-0) * 1.5);
       height: calc(var(--ms-0) * 1.5);
-      padding: 0;
-      color: var(--dashboard-text-primary);
-      font-size: var(--ms-0);
-      font-weight: 300;
-      line-height: 1;
-      background: transparent;
-      border: 1px solid var(--dashboard-card-border);
-      border-radius: var(--ms-02);
-      cursor: pointer;
-      transition: all 0.2s;
+      min-height: unset;
+      line-height: 0;
       flex-shrink: 0;
-
-      &:hover {
-        color: var(--dashboard-text-primary);
-        background: var(--moon-ash);
-        border-color: var(--pink-terracotta);
-      }
-
-      &:focus {
-        outline: none;
-      }
     }
 
     &__actions {

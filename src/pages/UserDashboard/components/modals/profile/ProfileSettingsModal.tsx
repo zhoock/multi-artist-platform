@@ -24,6 +24,7 @@ import {
 import { ProfileEmailVerificationStatus } from '../../ProfileEmailVerificationStatus';
 import { Eye as EyeIcon, EyeOff as EyeOffIcon } from 'lucide-react';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
+import { ModalCloseIcon } from '@shared/ui/icons/ModalCloseIcon';
 import './ProfileSettingsModal.style.scss';
 
 function PasswordVisibilityIcon({ visible }: { visible: boolean }) {
@@ -751,7 +752,7 @@ export function ProfileSettingsModal({
                 disabled={isDashboardBusy}
                 aria-label={ui?.dashboard?.close ?? 'Закрыть'}
               >
-                ×
+                <ModalCloseIcon />
               </button>
             </div>
 

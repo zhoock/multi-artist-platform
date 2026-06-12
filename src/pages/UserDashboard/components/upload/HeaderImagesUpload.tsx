@@ -1,5 +1,7 @@
 // src/pages/UserDashboard/components/HeaderImagesUpload.tsx
 import React, { useState, useRef, useEffect } from 'react';
+import { X as XIcon } from 'lucide-react';
+import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 import { useLang } from '@app/providers/lang';
@@ -388,7 +390,7 @@ export function HeaderImagesUpload({
                     onClick={() => handleRemove(index)}
                     aria-label="Удалить изображение"
                   >
-                    ×
+                    <XIcon {...dashboardActionIconProps({ size: 16 })} />
                   </button>
                 </div>
               );

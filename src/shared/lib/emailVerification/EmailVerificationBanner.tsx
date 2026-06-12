@@ -4,6 +4,7 @@ import { ChangeEmailModal } from '@features/auth/ui/ChangeEmailModal';
 import { isEmailVerified, refreshAuthSession, resendVerificationEmail } from '@shared/lib/auth';
 import { useAuthSessionUser } from '@shared/lib/hooks/useAuthSessionUser';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
+import { ModalCloseIcon } from '@shared/ui/icons/ModalCloseIcon';
 import { useEmailVerificationCopy } from './useEmailVerificationCopy';
 import { useResendCooldown } from './useResendCooldown';
 import { resolveVerificationEmailSend } from './resolveVerificationEmailSendResult';
@@ -129,7 +130,7 @@ export function EmailVerificationBanner() {
             onClick={handleDismiss}
             aria-label={copy.close}
           >
-            ×
+            <ModalCloseIcon />
           </button>
         </div>
       </section>

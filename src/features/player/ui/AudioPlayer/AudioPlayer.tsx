@@ -36,6 +36,25 @@ import { usePlayerToggles } from './hooks/usePlayerToggles';
 import { UNIVERSE_FOCUS_ARTIST_STORAGE_KEY } from '@/components/view/Universe3D';
 import { siteArtistUiLabel } from '@shared/lib/profileDisplayName';
 import { fallbackAlbumClientId } from '@shared/lib/albumClientId';
+import {
+  Pause,
+  Play,
+  Quote,
+  Repeat,
+  Repeat1,
+  Shuffle,
+  SkipBack,
+  SkipForward,
+  Volume,
+  Volume2,
+} from 'lucide-react';
+import {
+  playerIconProps,
+  PLAYER_SECONDARY_ICON_SIZE,
+  PLAYER_TRANSPORT_ICON_SIZE,
+  PLAYER_TRANSPORT_PLAY_ICON_SIZE,
+  PLAYER_VOLUME_ICON_SIZE,
+} from '@shared/ui/icons/playerActionIcon';
 
 export default function AudioPlayer({
   album,
@@ -1291,7 +1310,8 @@ export default function AudioPlayer({
       {/* Кнопки управления: предыдущий трек, play/pause, следующий трек */}
       <div className={`player__controls ${!controlsVisible ? 'player__controls--hidden' : ''}`}>
         <button
-          className="icon-controller-fast-backward"
+          type="button"
+          className="player__transport-button"
           onMouseDown={(e) => {
             e.preventDefault(); // Предотвращаем focus и клик при удержании
             handleRewindStart('backward');
@@ -1319,16 +1339,38 @@ export default function AudioPlayer({
             // Если перемотка НЕ работает - переключаем трек
             handleRewindClick('backward', prevTrack);
           }}
-        />
+        >
+          <SkipBack
+            {...playerIconProps(PLAYER_TRANSPORT_ICON_SIZE, {
+              className: 'player__transport-icon player__transport-icon--back',
+            })}
+          />
+        </button>
         <button
-          className={isPlaying ? 'icon-controller-pause' : 'icon-controller-play'}
+          type="button"
+          className="player__transport-button player__transport-button--play"
           onClick={() => {
             togglePlayPause();
             resetInactivityTimer();
           }}
-        />
+        >
+          {isPlaying ? (
+            <Pause
+              {...playerIconProps(PLAYER_TRANSPORT_PLAY_ICON_SIZE, {
+                className: 'player__transport-icon',
+              })}
+            />
+          ) : (
+            <Play
+              {...playerIconProps(PLAYER_TRANSPORT_PLAY_ICON_SIZE, {
+                className: 'player__transport-icon player__transport-icon--play',
+              })}
+            />
+          )}
+        </button>
         <button
-          className="icon-controller-fast-forward"
+          type="button"
+          className="player__transport-button"
           onMouseDown={(e) => {
             e.preventDefault(); // Предотвращаем focus и клик при удержании
             handleRewindStart('forward');
@@ -1356,7 +1398,13 @@ export default function AudioPlayer({
             // Если перемотка НЕ работает - переключаем трек
             handleRewindClick('forward', nextTrack);
           }}
-        />
+        >
+          <SkipForward
+            {...playerIconProps(PLAYER_TRANSPORT_ICON_SIZE, {
+              className: 'player__transport-icon player__transport-icon--forward',
+            })}
+          />
+        </button>
       </div>
 
       {/* Контрол громкости (скрыт на мобильных устройствах) */}
@@ -1364,9 +1412,13 @@ export default function AudioPlayer({
         <div
           className={`player__volume-control ${!controlsVisible ? 'player__volume-control--hidden' : ''}`}
         >
-          <span className="icon-volume-mute"></span>
+          <span className="player__volume-icon" aria-hidden>
+            <Volume {...playerIconProps(PLAYER_VOLUME_ICON_SIZE)} />
+          </span>
           <input type="range" value={volume} min="0" max="100" onChange={handleVolumeChange} />
-          <span className="icon-volume-hight"></span>
+          <span className="player__volume-icon" aria-hidden>
+            <Volume2 {...playerIconProps(PLAYER_VOLUME_ICON_SIZE)} />
+          </span>
         </div>
       ) : null}
 
@@ -1384,7 +1436,9 @@ export default function AudioPlayer({
           className={`player__control-button ${shuffle ? 'player__control-button--active' : ''}`}
           aria-label={shuffle ? 'Выключить перемешивание' : 'Включить перемешивание'}
         >
-          <span className="player__control-button-icon icon-shuffle1"></span>
+          <span className="player__control-button-icon" aria-hidden>
+            <Shuffle {...playerIconProps(PLAYER_SECONDARY_ICON_SIZE)} />
+          </span>
         </button>
 
         {/* Кнопка зацикливания треков (три состояния: none → all → one → none) */}
@@ -1403,11 +1457,13 @@ export default function AudioPlayer({
                 : 'Выключить зацикливание'
           }
         >
-          {repeat === 'one' ? (
-            <span className="player__control-button-icon icon-repeat_one"></span>
-          ) : (
-            <span className="player__control-button-icon icon-loop"></span>
-          )}
+          <span className="player__control-button-icon" aria-hidden>
+            {repeat === 'one' ? (
+              <Repeat1 {...playerIconProps(PLAYER_SECONDARY_ICON_SIZE)} />
+            ) : (
+              <Repeat {...playerIconProps(PLAYER_SECONDARY_ICON_SIZE)} />
+            )}
+          </span>
         </button>
 
         {/* Кнопка переключения текста */}
@@ -1422,7 +1478,9 @@ export default function AudioPlayer({
           aria-label={showLyrics ? 'Скрыть текст' : 'Показать текст'}
           aria-disabled={!hasTextToShow}
         >
-          <span className="player__lyrics-toggle-icon icon-quote"></span>
+          <span className="player__lyrics-toggle-icon" aria-hidden>
+            <Quote {...playerIconProps(PLAYER_SECONDARY_ICON_SIZE)} />
+          </span>
         </button>
       </div>
 

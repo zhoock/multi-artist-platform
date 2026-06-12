@@ -7,6 +7,12 @@ import { useLang } from '@app/providers/lang';
 import type { SyncedLyricsLine } from '@models';
 import { getSyncedLineEndTime } from '@features/player/lib/syncedLyricsTiming';
 import { getUserAudioUrl } from '@shared/api/albums';
+import { Pause, Play } from 'lucide-react';
+import { ModalCloseIcon } from '@shared/ui/icons/ModalCloseIcon';
+import {
+  LYRICS_MODAL_TRANSPORT_ICON_SIZE,
+  playerIconProps,
+} from '@shared/ui/icons/playerActionIcon';
 import './PreviewLyricsModal.style.scss';
 
 interface PreviewLyricsModalProps {
@@ -267,7 +273,7 @@ export function PreviewLyricsModal({
               onClick={onClose}
               aria-label={ui?.dashboard?.close ?? 'Close'}
             >
-              ×
+              <ModalCloseIcon />
             </button>
           </div>
           <div className="preview-lyrics-modal__divider"></div>
@@ -280,32 +286,13 @@ export function PreviewLyricsModal({
               disabled={!audioPlaybackUrl}
             >
               {isPlaying ? (
-                <svg
-                  width="24"
-                  height="24"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <rect x="6" y="4" width="4" height="16" />
-                  <rect x="14" y="4" width="4" height="16" />
-                </svg>
+                <Pause {...playerIconProps(LYRICS_MODAL_TRANSPORT_ICON_SIZE)} />
               ) : (
-                <svg
-                  width="24"
-                  height="24"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <polygon points="5 3 19 12 5 21 5 3" />
-                </svg>
+                <Play
+                  {...playerIconProps(LYRICS_MODAL_TRANSPORT_ICON_SIZE, {
+                    className: 'preview-lyrics-modal__play-icon',
+                  })}
+                />
               )}
             </button>
             <div className="preview-lyrics-modal__time">{formatTime(currentTime)}</div>

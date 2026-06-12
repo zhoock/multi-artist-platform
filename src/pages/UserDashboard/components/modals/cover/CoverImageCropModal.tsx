@@ -7,6 +7,7 @@ import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 import { useLang } from '@app/providers/lang';
 import { getUser } from '@shared/lib/auth';
 import { DashboardSaveSpinner } from '@shared/ui/dashboard-save/DashboardSaveSpinner';
+import { ModalCloseIcon } from '@shared/ui/icons/ModalCloseIcon';
 import '@shared/ui/dashboard-save/dashboard-save.scss';
 import { useCloseWithUnsavedConfirmation } from '@shared/lib/hooks/useCloseWithUnsavedConfirmation';
 import {
@@ -305,7 +306,7 @@ export function CoverImageCropModal({
             disabled={isSaving}
             aria-label={ui?.dashboard?.close ?? 'Закрыть'}
           >
-            ×
+            <ModalCloseIcon />
           </button>
         </div>
 

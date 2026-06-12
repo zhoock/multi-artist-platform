@@ -1,7 +1,9 @@
 // src/features/player/ui/PlayerShell/MiniPlayer.tsx
 import React from 'react';
 import clsx from 'clsx';
+import { Pause, Play, SkipForward } from 'lucide-react';
 import AlbumCover from '@entities/album/ui/AlbumCover';
+import { playerIconProps, PLAYER_MINI_ICON_SIZE } from '@shared/ui/icons/playerActionIcon';
 
 import './style.scss';
 
@@ -71,19 +73,30 @@ export const MiniPlayer: React.FC<MiniPlayerProps> = ({
       <div className="mini-player__controls" aria-label="Управление воспроизведением">
         <button
           type="button"
-          className={clsx(
-            'mini-player__control',
-            isPlaying ? 'icon-controller-pause' : 'icon-controller-play'
-          )}
+          className="mini-player__control mini-player__control--transport"
           onClick={(event) => {
             event.stopPropagation();
             onToggle();
           }}
           aria-label={isPlaying ? 'Пауза' : 'Воспроизвести'}
-        />
+        >
+          {isPlaying ? (
+            <Pause
+              {...playerIconProps(PLAYER_MINI_ICON_SIZE, {
+                className: 'mini-player__control-icon',
+              })}
+            />
+          ) : (
+            <Play
+              {...playerIconProps(PLAYER_MINI_ICON_SIZE, {
+                className: clsx('mini-player__control-icon', 'mini-player__control-icon--play'),
+              })}
+            />
+          )}
+        </button>
         <button
           type="button"
-          className="mini-player__control icon-controller-fast-forward"
+          className="mini-player__control mini-player__control--transport"
           onMouseDown={(event) => {
             event.stopPropagation();
             forwardHandlers.onMouseDown(event);
@@ -108,7 +121,13 @@ export const MiniPlayer: React.FC<MiniPlayerProps> = ({
             event.stopPropagation();
           }}
           aria-label="Следующий трек"
-        />
+        >
+          <SkipForward
+            {...playerIconProps(PLAYER_MINI_ICON_SIZE, {
+              className: clsx('mini-player__control-icon', 'mini-player__control-icon--forward'),
+            })}
+          />
+        </button>
       </div>
     </div>
   );

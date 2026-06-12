@@ -23,6 +23,7 @@ import {
 import { useAuthSessionUser } from '@shared/lib/hooks/useAuthSessionUser';
 import { useBodyScrollLock } from '@shared/lib/hooks/useBodyScrollLock';
 import { ModalBackdrop } from '@shared/ui/localModal';
+import { ModalCloseIcon } from '@shared/ui/icons/ModalCloseIcon';
 import { LoginForm } from './LoginForm';
 import { RegisterForm } from './RegisterForm';
 import { RoleSelectionScreen } from './RoleSelectionScreen';
@@ -290,7 +291,7 @@ export function AuthPage() {
               aria-label="Закрыть"
               onClick={handleCloseAuth}
             >
-              ×
+              <ModalCloseIcon />
             </button>
             {sessionExpiredMessage ? (
               <p className="auth-page__session-notice" role="status">

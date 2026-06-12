@@ -37,6 +37,7 @@ import { useSiteArtistDisplayName } from '@shared/lib/hooks/useSiteArtistDisplay
 import { beginAlbumCheckoutAuthIntent } from '@shared/lib/authIntent';
 import { sanitizeReturnPath } from '@shared/lib/authReturnUrl';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
+import { ModalCloseIcon } from '@shared/ui/icons/ModalCloseIcon';
 import { getAlbumPrice } from '../lib/getAlbumPrice';
 import { useAlbumOwnedByViewer } from '../lib/useAlbumOwnedByViewer';
 import { resolveCheckoutBuyerIdentity } from '../lib/resolveCheckoutBuyerIdentity';
@@ -374,20 +375,7 @@ export function AlbumCheckoutModal({ isOpen, album, onClose }: AlbumCheckoutModa
             onClick={onClose}
             aria-label={labels.close}
           >
-            <svg
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-            >
-              <line x1="18" y1="6" x2="6" y2="18" />
-              <line x1="6" y1="6" x2="18" y2="18" />
-            </svg>
+            <ModalCloseIcon size={24} />
           </button>
 
           <header className="album-checkout-modal__hero">

@@ -21,6 +21,7 @@ import {
 } from '../lib/premiumSuccessModalStorage';
 import { resolveCheckoutArtistCard, type CheckoutArtistCard } from '../lib/resolveCheckoutArtist';
 import { LocalModal } from '@shared/ui/localModal';
+import { ModalCloseIcon } from '@shared/ui/icons/ModalCloseIcon';
 
 import './premiumSuccessModal.scss';
 
@@ -146,7 +147,7 @@ export function PremiumSuccessModalView({ dialogRef, open, onClose }: Props) {
           aria-label={closeLabel}
           onClick={dismiss}
         >
-          <span aria-hidden>×</span>
+          <ModalCloseIcon />
         </button>
 
         <div className="premium-success-modal__icon-wrap">

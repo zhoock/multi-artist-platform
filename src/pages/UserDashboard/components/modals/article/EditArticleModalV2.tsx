@@ -93,6 +93,7 @@ import { SlashMenu } from '../../blocks/SlashMenu';
 import { CarouselEditModal } from '../../articles/CarouselEditModal';
 import { ArticleEditSkeleton } from '../../articles/ArticleEditSkeleton';
 import { DashboardSaveSpinner } from '@shared/ui/dashboard-save/DashboardSaveSpinner';
+import { ModalCloseIcon } from '@shared/ui/icons/ModalCloseIcon';
 import { uniqueUploadFileSuffix } from '@shared/lib/uniqueUploadFileSuffix';
 import { sanitizeFileName } from '@shared/lib/sanitizeFileName';
 import { toLocalYYYYMMDD } from '@shared/lib/dateCalendar';
@@ -2326,7 +2327,7 @@ export function EditArticleModalV2({
                     disabled={isArticleSaveBusy}
                     aria-label={texts.close}
                   >
-                    ×
+                    <ModalCloseIcon />
                   </button>
                 </div>
               </div>

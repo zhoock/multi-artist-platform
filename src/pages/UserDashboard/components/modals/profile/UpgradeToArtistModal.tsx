@@ -5,6 +5,7 @@ import { useLang } from '@app/providers/lang';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { useFocusOnOpen } from '@shared/lib/hooks/useFocusOnOpen';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
+import { ModalCloseIcon } from '@shared/ui/icons/ModalCloseIcon';
 import './UpgradeToArtistModal.style.scss';
 
 interface UpgradeToArtistModalProps {
@@ -101,7 +102,7 @@ export function UpgradeToArtistModal({ isOpen, onClose, onUpgraded }: UpgradeToA
               aria-label={copy.close}
               disabled={loading}
             >
-              ×
+              <ModalCloseIcon />
             </button>
           </div>
 

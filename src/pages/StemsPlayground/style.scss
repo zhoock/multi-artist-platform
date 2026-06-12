@@ -280,14 +280,15 @@
       display: inline-flex;
     }
 
-    .icon-controller-play,
-    .icon-controller-pause {
+    .mixer-player__wave-play-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
       color: currentcolor;
-      font-size: 22px;
+      line-height: 0;
     }
 
-    .icon-controller-play::before {
-      display: inline-block;
+    .mixer-player__wave-play-icon--play {
       transform: translateX(2px);
     }
 
@@ -323,10 +324,16 @@
         filter: grayscale(100%);
       }
 
-      .icon-controller-play,
-      .icon-controller-pause {
+      .mixer-player__transport-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
         color: currentcolor;
-        font-size: 25px;
+        line-height: 0;
+      }
+
+      .mixer-player__transport-icon--play {
+        transform: translateX(2px);
       }
 
       @include breakpoint(tablet) {

@@ -1146,7 +1146,7 @@ export class Universe3D {
     card.className = 'universe3d-card';
     card.style.visibility = 'hidden';
     card.innerHTML = `
-      <button class="universe3d-card__close" type="button" aria-label="Close">×</button>
+      <button class="universe3d-card__close" type="button" aria-label="Close"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
       <div class="universe3d-card__media" aria-hidden="true"></div>
       <div class="universe3d-card__body">
         <div class="universe3d-card__title"></div>

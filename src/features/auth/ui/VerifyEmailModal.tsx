@@ -9,6 +9,7 @@ import {
   resolveVerificationEmailSend,
 } from '@shared/lib/emailVerification';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
+import { ModalCloseIcon } from '@shared/ui/icons/ModalCloseIcon';
 import { ChangeEmailModal } from './ChangeEmailModal';
 import './VerifyEmailModal.style.scss';
 
@@ -98,7 +99,7 @@ export function VerifyEmailModal({ isOpen, onContinueLater, onClose }: VerifyEma
               disabled={loading}
               aria-label={copy.close}
             >
-              ×
+              <ModalCloseIcon />
             </button>
           </div>
 

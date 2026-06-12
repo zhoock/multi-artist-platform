@@ -1,5 +1,6 @@
 // src/pages/StemsPlayground/components/MyMixesModal.tsx
 import { Popup } from '@shared/ui/popup';
+import { ModalCloseIcon } from '@shared/ui/icons/ModalCloseIcon';
 import type { SavedMix } from '@entities/savedMix';
 import './MyMixesModal.style.scss';
 
@@ -64,7 +65,7 @@ export function MyMixesModal({
               onClick={onClose}
               aria-label={labels.close}
             >
-              ×
+              <ModalCloseIcon />
             </button>
           </div>
 

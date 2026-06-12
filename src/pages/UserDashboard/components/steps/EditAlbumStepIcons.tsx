@@ -1,8 +1,9 @@
 import { ChevronDown, ChevronUp, Pencil, Plus, X } from 'lucide-react';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
+import { ModalCloseIcon } from '@shared/ui/icons/ModalCloseIcon';
 
 export function EditAlbumCloseIcon() {
-  return <X {...dashboardActionIconProps({ size: 20 })} />;
+  return <ModalCloseIcon size={20} />;
 }
 
 export function EditAlbumEditIcon() {
