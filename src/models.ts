@@ -862,8 +862,6 @@ export interface IInterface {
         upcEan: string;
         albumArt: string;
         description: string;
-        albumVisibility: string;
-        albumVisibleCheckbox: string;
         allowDownloadSale: string;
         regularPrice: string;
         preorderReleaseDate: string;
@@ -895,8 +893,6 @@ export interface IInterface {
       helpText: {
         controlDownloadSale: string;
         fansCanBuyNow: string;
-        albumVisibility: string;
-        albumVisibilityDraft: string;
       };
       radioOptions: {
         no: string;

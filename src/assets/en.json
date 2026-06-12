@@ -747,8 +747,6 @@
           "upcEan": "UPC / EAN",
           "albumArt": "Album art",
           "description": "Description",
-          "albumVisibility": "Album visibility",
-          "albumVisibleCheckbox": "Visible",
           "allowDownloadSale": "Allow download / sale",
           "regularPrice": "Regular price",
           "preorderReleaseDate": "Pre-order release date"
@@ -779,9 +777,7 @@
         },
         "helpText": {
           "controlDownloadSale": "Control whether fans can buy/download this album.",
-          "fansCanBuyNow": "Fans can buy now, download after release date",
-          "albumVisibility": "When visible, your album will be shown on your artist page.",
-          "albumVisibilityDraft": "Publish the album from your dashboard to control visibility on your artist page."
+          "fansCanBuyNow": "Fans can buy now, download after release date"
         },
         "radioOptions": {
           "no": "Don't sell",

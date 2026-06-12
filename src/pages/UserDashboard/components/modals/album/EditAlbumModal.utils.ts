@@ -700,7 +700,6 @@ export const makeEmptyForm = (): AlbumFormData => ({
   upcEan: '',
   albumArt: null,
   description: '',
-  visibleOnAlbumPage: true,
   allowDownloadSale: 'no',
   regularPrice: '9.99',
   currency: 'USD',

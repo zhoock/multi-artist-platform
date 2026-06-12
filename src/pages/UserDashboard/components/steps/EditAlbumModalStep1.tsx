@@ -226,22 +226,6 @@ export function EditAlbumModalStep1({
       </div>
 
       <div className="edit-album-modal__field">
-        <label className="edit-album-modal__label">Album visibility</label>
-        <div className="edit-album-modal__checkbox-wrapper">
-          <input
-            type="checkbox"
-            id="visible-on-page"
-            className="edit-album-modal__checkbox"
-            checked={formData.visibleOnAlbumPage}
-            onChange={(e) => onFormDataChange('visibleOnAlbumPage', e.target.checked)}
-          />
-          <label htmlFor="visible-on-page" className="edit-album-modal__checkbox-label">
-            Visible
-          </label>
-        </div>
-      </div>
-
-      <div className="edit-album-modal__field">
         <label className="edit-album-modal__label">Allow download / sale</label>
         <div className="edit-album-modal__help-text">
           Control whether fans can buy/download this album.
