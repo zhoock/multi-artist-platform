@@ -93,9 +93,9 @@ function albumHasDisplayableTitle(album: {
 async function resolveCatalogArtistMissing(response: Response): Promise<boolean> {
   try {
     const payload = (await response.json()) as { code?: string };
-    return payload.code !== 'ARTIST_NOT_PUBLISHED';
+    return payload.code === 'ARTIST_NOT_FOUND';
   } catch {
-    return true;
+    return false;
   }
 }
 
@@ -235,7 +235,8 @@ export const fetchAlbums = createAsyncThunk<
 
       try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 8000);
+        // Smolyanoe-scale catalogs (synced lyrics) can exceed 8s on cold Netlify dev.
+        const timeoutId = setTimeout(() => controller.abort(), 25000);
 
         if (signal) {
           if (signal.aborted) {
@@ -350,11 +351,7 @@ export const fetchAlbums = createAsyncThunk<
 
         throw new Error(`Failed to fetch albums. Status: ${response.status}`);
       } catch (apiError) {
-        if (
-          usePublicCatalog &&
-          publicSlug &&
-          !(apiError instanceof Error && apiError.name === 'AbortError')
-        ) {
+        if (usePublicCatalog && publicSlug) {
           if (catalogStale()) {
             return staleSnapshotPayload(getState, 'catalog');
           }
@@ -362,13 +359,12 @@ export const fetchAlbums = createAsyncThunk<
           if (cachedAlbums.data.length > 0 && cachedAlbums.fetchContextKey === requestFetchKey) {
             throw apiError instanceof Error ? apiError : new Error(String(apiError));
           }
-          return wrapAlbumsResult([], requestFetchKey, writeTarget, true);
         }
 
         if (isFullscreenDashboard) {
           console.error('❌ [albumsSlice] albums API failed in /dashboard', apiError);
         } else if (apiError instanceof Error && apiError.name === 'AbortError') {
-          console.warn('⚠️ [albumsSlice] API request timeout (8s)', apiError);
+          console.warn('⚠️ [albumsSlice] API request timeout (25s)', apiError);
         } else {
           console.warn('⚠️ [albumsSlice] albums API failed', apiError);
         }

@@ -460,9 +460,9 @@ describe('albumsSlice', () => {
       const store = createTestStore();
       const publicResult = await (store.dispatch as AppDispatch)(fetchAlbums({}));
 
-      expect(publicResult.type).toBe('albums/fetchMerged/fulfilled');
-      expect(selectCatalogArtistMissing(store.getState())).toBe(true);
-      expect(selectAlbumsStatus(store.getState())).toBe('succeeded');
+      expect(publicResult.type).toBe('albums/fetchMerged/rejected');
+      expect(selectCatalogArtistMissing(store.getState())).toBe(false);
+      expect(selectAlbumsStatus(store.getState())).toBe('failed');
 
       mockFetch.mockRejectedValueOnce(new Error(errorMessage));
       const dashboardStore = createTestStore();
