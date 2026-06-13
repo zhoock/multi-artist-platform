@@ -1,6 +1,9 @@
 [build]
   publish = "dist"
   functions = "netlify/functions"
+  # SPA fallback пишем в dist/_redirects при деплое: redirects в netlify.toml глобальны
+  # и применяются в Netlify Dev до проксирования на webpack (ломает /scripts/main.js).
+  command = "npm run build && printf '%s\\n' '/*    /index.html   200' > dist/_redirects"
 
 [dev]
   command = "npm start"
@@ -325,17 +328,6 @@
   force = true
 
 # ---------- SPA ----------
-# В dev режиме правило SPA НЕ нужно:
-# - Netlify Dev проксирует запросы на targetPort (8080)
-# - Webpack dev server обрабатывает historyApiFallback и статические файлы
-# - Правило redirects применяется ДО проксирования, что ломает статические файлы
-#
-# В production правило SPA необходимо для корректной работы client-side routing:
-# Netlify автоматически проверяет существование файла перед применением redirect,
-# поэтому статические файлы (scripts, styles, images, audio, assets) будут
-# отдаваться напрямую, а несуществующие пути будут перенаправляться на index.html
-
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
+# Redirects в netlify.toml глобальны (включая Netlify Dev) — см. docs Netlify.
+# SPA fallback для production/deploy-preview: dist/_redirects создаётся в [build].command.
+# Netlify Dev проксирует /scripts/main.js на webpack (8080); historyApiFallback — там.
