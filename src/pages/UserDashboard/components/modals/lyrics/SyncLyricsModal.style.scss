@@ -246,18 +246,18 @@ dialog {
     }
 
     &__clear-btn {
+      width: calc(var(--ms-0) * 1.5);
+      height: calc(var(--ms-0) * 1.5);
+      min-height: unset;
+      line-height: 0;
+      flex-shrink: 0;
+
       @include dashboard-btn-secondary(
         $margin: 0,
         $padding: 0,
         $border-radius: 50%,
         $font-size: var(--ms-0)
       );
-
-      width: calc(var(--ms-0) * 1.5);
-      height: calc(var(--ms-0) * 1.5);
-      min-height: unset;
-      line-height: 0;
-      flex-shrink: 0;
     }
 
     &__actions {

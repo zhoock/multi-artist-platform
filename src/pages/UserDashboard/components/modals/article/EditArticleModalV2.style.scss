@@ -75,16 +75,18 @@
 // Общие селекторы img (должны быть перед более специфичными)
 // Селекторы img из вложенных блоков (менее специфичные, чем dialog .edit-article-v2__content.article .uncollapse img)
 .edit-article-v2__image-container img {
-  width: 100%;
+  width: auto;
+  max-width: 100%;
   height: auto;
   border-radius: var(--ms-01);
 }
 
 .edit-article-v2__carousel-image-wrapper img {
   display: block;
-  width: 100%;
+  width: auto;
+  max-width: 100%;
   height: auto;
-  object-fit: cover;
+  object-fit: contain;
 }
 
 // Portal-меню: компактный overlay в стиле VK
@@ -780,6 +782,15 @@ dialog {
       @include edit-article-media-btn($padding: var(--ms-01) var(--ms-0));
     }
 
+    &__media-figure {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: fit-content;
+      max-width: 100%;
+      margin-inline: auto;
+    }
+
     &__image-caption {
       width: 100%;
       padding: var(--ms-01);
@@ -803,12 +814,14 @@ dialog {
     // VK-стиль карусели: показываем только первое изображение с навигацией
     &__carousel-view {
       position: relative;
-      width: 100%;
+      width: fit-content;
+      max-width: 100%;
     }
 
     &__carousel-image-wrapper {
       position: relative;
-      width: 100%;
+      width: fit-content;
+      max-width: 100%;
       border-radius: var(--ms-01);
       overflow: hidden;
       cursor: pointer;
@@ -934,8 +947,10 @@ dialog {
       @include dashboard-btn-secondary;
     }
 
-    // Подпись к карусели (отображение)
-    &__carousel-caption-display {
+    // Подпись к изображению (отображение вне режима редактирования)
+    &__media-caption-display {
+      align-self: stretch;
+      width: 100%;
       padding: var(--ms-01);
       color: var(--dashboard-text-secondary);
       font-size: var(--ms-0);

@@ -6,6 +6,11 @@ export { formatDateInWords } from './lib/formatDate';
 export { resolveArticleForDisplay } from './lib/resolveArticleDisplay';
 export { resolveDetailCaption } from './lib/resolveDetailCaption';
 export {
+  mergeCarouselImageKeys,
+  parseCarouselImagesFromDetail,
+  serializeCarouselImagesForDetail,
+} from './lib/parseCarouselImages';
+export {
   getArticlePreviewContent,
   type ArticlePreviewContent,
 } from './lib/getArticlePreviewContent';

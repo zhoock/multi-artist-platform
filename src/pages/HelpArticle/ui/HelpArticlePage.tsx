@@ -15,7 +15,7 @@ import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { useAppDispatch } from '@shared/lib/hooks/useAppDispatch';
 import { formatDateInWords, type LocaleKey } from '@entities/article/lib/formatDate';
-import { resolveDetailCaption } from '@entities/article';
+import { resolveDetailCaption, parseCarouselImagesFromDetail } from '@entities/article';
 import {
   selectHelpArticleById,
   selectHelpArticlesError,
@@ -26,6 +26,7 @@ import {
 import type { RequestStatus } from '@entities/article';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 import './style.scss';
+import '@entities/article/ui/style.scss';
 
 // Категории статей помощи
 type HelpArticleCategory = {
@@ -334,39 +335,52 @@ function ArticleContent({
     const subtitleId = details.subtitle ? createAnchor(details.subtitle) : undefined;
     const mediaOwnerId = details.userId ?? article.userId ?? undefined;
     const mediaCaption = resolveDetailCaption(details) ?? '';
-    const isCarousel = Array.isArray(details.img) && details.img.length >= 2;
+    const carouselItems =
+      Array.isArray(details.img) && details.img.length >= 2
+        ? parseCarouselImagesFromDetail({
+            type: 'carousel',
+            images: details.img,
+            caption: details.caption,
+            alt: details.alt,
+            img: details.img,
+          })
+        : null;
+    const carouselSlides =
+      carouselItems && carouselItems.length >= 2
+        ? carouselItems.map((item) => ({ src: item.imageKey, caption: item.caption }))
+        : null;
 
     return (
       <>
         {details.title && <h3 id={titleId}>{renderMarkdownViaRichText(details.title)}</h3>}
-        {details.img && (
-          <>
+        {details.img &&
+          (carouselSlides ? (
             <div className="uncollapse">
-              {Array.isArray(details.img) ? (
-                <ImageCarousel
-                  images={details.img}
-                  alt={mediaCaption}
-                  category="articles"
-                  userId={mediaOwnerId}
-                />
-              ) : (
-                <img
-                  src={optionalMediaSrc(
-                    getUserImageUrl(details.img, 'articles', '.jpg', undefined, mediaOwnerId),
-                    'HelpArticlePage:blockImage',
-                    { articleId: article.articleId, hasMediaOwnerId: !!mediaOwnerId }
-                  )}
-                  alt={mediaCaption}
-                  loading="lazy"
-                  decoding="async"
-                />
-              )}
+              <ImageCarousel slides={carouselSlides} category="articles" userId={mediaOwnerId} />
             </div>
-            {isCarousel && mediaCaption ? (
-              <p className="article__carousel-caption">{mediaCaption}</p>
-            ) : null}
-          </>
-        )}
+          ) : (
+            <figure className="article__media-figure">
+              <img
+                src={optionalMediaSrc(
+                  getUserImageUrl(
+                    details.img as string,
+                    'articles',
+                    '.jpg',
+                    undefined,
+                    mediaOwnerId
+                  ),
+                  'HelpArticlePage:blockImage',
+                  { articleId: article.articleId, hasMediaOwnerId: !!mediaOwnerId }
+                )}
+                alt={mediaCaption}
+                loading="lazy"
+                decoding="async"
+              />
+              {mediaCaption ? (
+                <figcaption className="article__media-caption">{mediaCaption}</figcaption>
+              ) : null}
+            </figure>
+          ))}
         {details.subtitle && <h4 id={subtitleId}>{renderMarkdownViaRichText(details.subtitle)}</h4>}
 
         {typeof details.content === 'string' ? (

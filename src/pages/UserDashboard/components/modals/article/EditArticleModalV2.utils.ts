@@ -1,6 +1,11 @@
 // src/pages/UserDashboard/components/EditArticleModalV2.utils.ts
-import type { ArticledetailsProps } from '@models';
-import { resolveDetailCaption } from '@entities/article';
+import type { ArticledetailsProps, CarouselImageItem } from '@models';
+import {
+  mergeCarouselImageKeys,
+  parseCarouselImagesFromDetail,
+  resolveDetailCaption,
+  serializeCarouselImagesForDetail,
+} from '@entities/article';
 import { withPublicArtistQuery } from '@shared/lib/artistQuery';
 import type { RichText } from '@shared/lib/richText';
 import {
@@ -41,43 +46,49 @@ export type Block =
   | { id: string; type: 'list'; items: ArticleListItem[] }
   | { id: string; type: 'divider' }
   | { id: string; type: 'image'; imageKey: string; caption?: string }
-  | { id: string; type: 'carousel'; imageKeys: string[]; caption?: string };
+  | { id: string; type: 'carousel'; images: CarouselImageItem[] };
 
 /** Минимум сохранённых изображений, при котором блок считается каруселью. */
 export const MIN_CAROUSEL_IMAGES = 2;
 
-export function isSavedCarousel(imageKeys: string[]): boolean {
-  return imageKeys.length >= MIN_CAROUSEL_IMAGES;
+export type { CarouselImageItem };
+
+export function isSavedCarousel(images: CarouselImageItem[]): boolean {
+  return images.length >= MIN_CAROUSEL_IMAGES;
 }
 
 /** Применяет результат сохранения редактора карусели к блоку (≥2 фото → carousel, иначе → image). */
-export function blockFromCarouselSave(
-  blockId: string,
-  imageKeys: string[],
-  caption?: string
-): Block {
-  if (isSavedCarousel(imageKeys)) {
-    return { id: blockId, type: 'carousel', imageKeys, caption };
+export function blockFromCarouselSave(blockId: string, images: CarouselImageItem[]): Block {
+  if (isSavedCarousel(images)) {
+    return { id: blockId, type: 'carousel', images };
   }
-  if (imageKeys.length === 1) {
-    return { id: blockId, type: 'image', imageKey: imageKeys[0], caption };
+  if (images.length === 1) {
+    return {
+      id: blockId,
+      type: 'image',
+      imageKey: images[0].imageKey,
+      caption: images[0].caption,
+    };
   }
-  return { id: blockId, type: 'image', imageKey: '', caption };
+  return { id: blockId, type: 'image', imageKey: '' };
 }
 
-function blockFromPersistedCarouselImages(
-  id: string,
-  imageKeys: string[],
-  caption?: string
-): Block | null {
-  if (isSavedCarousel(imageKeys)) {
-    return { id, type: 'carousel', imageKeys, caption };
+function blockFromPersistedCarouselImages(id: string, images: CarouselImageItem[]): Block | null {
+  if (isSavedCarousel(images)) {
+    return { id, type: 'carousel', images };
   }
-  if (imageKeys.length === 1) {
-    return { id, type: 'image', imageKey: imageKeys[0], caption };
+  if (images.length === 1) {
+    return {
+      id,
+      type: 'image',
+      imageKey: images[0].imageKey,
+      caption: images[0].caption,
+    };
   }
   return null;
 }
+
+export { mergeCarouselImageKeys };
 
 /** Пустое inline-содержимое для нового/пустого текстового блока. */
 export function emptyRichText(): RichText {
@@ -169,8 +180,8 @@ function detailWithBlockIdToBlock(detail: ArticledetailsProps): Block | null {
   }
 
   if (detail.type === 'carousel') {
-    const imageKeys = detail.images || (Array.isArray(detail.img) ? detail.img : []);
-    return blockFromPersistedCarouselImages(id, imageKeys, resolveDetailCaption(detail));
+    const images = parseCarouselImagesFromDetail(detail);
+    return blockFromPersistedCarouselImages(id, images);
   }
 
   if (detail.title) {
@@ -241,12 +252,8 @@ function legacyDetailToBlocks(detail: ArticledetailsProps): Block[] {
   }
 
   if (detail.type === 'carousel') {
-    const imageKeys = detail.images || (Array.isArray(detail.img) ? detail.img : []);
-    const block = blockFromPersistedCarouselImages(
-      detail.blockId?.trim() || generateId(),
-      imageKeys,
-      resolveDetailCaption(detail)
-    );
+    const images = parseCarouselImagesFromDetail(detail);
+    const block = blockFromPersistedCarouselImages(detail.blockId?.trim() || generateId(), images);
     if (block) blocks.push(block);
   }
 
@@ -362,14 +369,14 @@ function blockToDetail(block: Block): ArticledetailsProps | null {
         caption: block.caption,
       };
     case 'carousel':
-      if (!isSavedCarousel(block.imageKeys)) {
-        if (block.imageKeys.length === 1) {
+      if (!isSavedCarousel(block.images)) {
+        if (block.images.length === 1) {
           return {
             type: 'image',
             blockId: block.id,
             blockKind: 'image',
-            img: block.imageKeys[0],
-            caption: block.caption,
+            img: block.images[0].imageKey,
+            caption: block.images[0].caption,
           };
         }
         return null;
@@ -378,8 +385,7 @@ function blockToDetail(block: Block): ArticledetailsProps | null {
         type: 'carousel',
         blockId: block.id,
         blockKind: 'carousel',
-        images: block.imageKeys,
-        caption: block.caption,
+        images: serializeCarouselImagesForDetail(block.images),
       };
     default:
       return null;

@@ -18,7 +18,24 @@
     }
   }
 
-  &__carousel-caption {
+  &__media-figure {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: fit-content;
+    max-width: 100%;
+    margin-inline: auto;
+    margin-block: var(--ms-3) 0;
+
+    img {
+      display: block;
+      max-width: 100%;
+      height: auto;
+    }
+  }
+
+  &__media-caption {
+    width: 100%;
     margin: var(--ms-01) 0 var(--ms-2);
     color: var(--text-secondary, var(--dashboard-text-secondary, #9a9a9a));
     font-size: var(--ms-0);

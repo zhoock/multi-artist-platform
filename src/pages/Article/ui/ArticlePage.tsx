@@ -15,6 +15,7 @@ import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { formatDateInWords, type LocaleKey } from '@entities/article/lib/formatDate';
 import {
   resolveDetailCaption,
+  parseCarouselImagesFromDetail,
   selectArticleByIdResolved,
   selectArticlesError,
   selectArticlesStatus,
@@ -107,12 +108,28 @@ export function ArticlePage() {
     blockKind,
   }: ArticledetailsProps) {
     const mediaCaption = resolveDetailCaption({ caption, alt }) ?? '';
-    // Карусель — только при ≥2 изображениях; одно фото из массива показываем как обычное изображение
     const imageList = images && Array.isArray(images) ? images : Array.isArray(img) ? img : null;
-    const carouselImages = imageList && imageList.length >= 2 ? imageList : null;
+    const carouselItems =
+      type === 'carousel' && imageList
+        ? parseCarouselImagesFromDetail({ type, images: imageList, caption, alt, img })
+        : imageList && imageList.length >= 2
+          ? parseCarouselImagesFromDetail({
+              type: 'carousel',
+              images: imageList,
+              caption,
+              alt,
+              img,
+            })
+          : null;
+    const carouselSlides =
+      carouselItems && carouselItems.length >= 2
+        ? carouselItems.map((item) => ({ src: item.imageKey, caption: item.caption }))
+        : null;
     const singleImage =
       imageList?.length === 1
-        ? imageList[0]
+        ? typeof imageList[0] === 'string'
+          ? imageList[0]
+          : imageList[0].imageKey
         : !imageList && img && typeof img === 'string'
           ? img
           : null;
@@ -120,21 +137,13 @@ export function ArticlePage() {
     return (
       <>
         {title && <h3>{renderMarkdownViaRichText(title)}</h3>}
-        {carouselImages && carouselImages.length > 0 && (
-          <>
-            <div className="uncollapse">
-              <ImageCarousel
-                images={carouselImages}
-                alt={mediaCaption}
-                category="articles"
-                userId={userId}
-              />
-            </div>
-            {mediaCaption ? <p className="article__carousel-caption">{mediaCaption}</p> : null}
-          </>
+        {carouselSlides && carouselSlides.length > 0 && (
+          <div className="uncollapse">
+            <ImageCarousel slides={carouselSlides} category="articles" userId={userId} />
+          </div>
         )}
         {singleImage && (
-          <div className="uncollapse">
+          <figure className="article__media-figure">
             <img
               src={optionalMediaSrc(
                 getImageUrl(
@@ -149,7 +158,10 @@ export function ArticlePage() {
               loading="lazy"
               decoding="async"
             />
-          </div>
+            {mediaCaption ? (
+              <figcaption className="article__media-caption">{mediaCaption}</figcaption>
+            ) : null}
+          </figure>
         )}
         {subtitle && <h4>{renderMarkdownViaRichText(subtitle)}</h4>}
 

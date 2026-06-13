@@ -29,8 +29,8 @@ export function BlockImage({
 }: BlockImageProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
-  const [captionValue, setCaptionValue] = useState(caption || '');
   const [showCarouselButton, setShowCarouselButton] = useState(false);
+  const captionValue = caption ?? '';
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -40,7 +40,7 @@ export function BlockImage({
     try {
       const uploadedKey = await uploadArticleBlockImage(file);
       if (uploadedKey) {
-        onChange(uploadedKey, captionValue);
+        onChange(uploadedKey, captionValue || undefined);
       }
     } catch (error) {
       console.error('Error uploading image:', error);
@@ -53,9 +53,7 @@ export function BlockImage({
   };
 
   const handleCaptionChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newCaption = e.target.value;
-    setCaptionValue(newCaption);
-    onChange(imageKey || '', newCaption || undefined);
+    onChange(imageKey || '', e.target.value || undefined);
   };
 
   const handleCaptionKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -97,25 +95,30 @@ export function BlockImage({
       tabIndex={0}
     >
       {imageKey && imageUrl ? (
-        <div
-          className="uncollapse edit-article-v2__image-container"
-          onClick={handleImageClick}
-          onMouseEnter={() => setShowCarouselButton(true)}
-          onMouseLeave={() => setShowCarouselButton(false)}
-        >
-          <img src={imageUrl} alt={caption || ''} />
-          {(showCarouselButton || isSelected) && onConvertToCarousel && (
-            <button
-              type="button"
-              className="edit-article-v2__image-convert-to-carousel"
-              onClick={(e) => {
-                e.stopPropagation();
-                onConvertToCarousel();
-              }}
-            >
-              Создать карусель
-            </button>
-          )}
+        <div className="edit-article-v2__media-figure">
+          <div
+            className="edit-article-v2__image-container"
+            onClick={handleImageClick}
+            onMouseEnter={() => setShowCarouselButton(true)}
+            onMouseLeave={() => setShowCarouselButton(false)}
+          >
+            <img src={imageUrl} alt={captionValue.trim()} />
+            {(showCarouselButton || isSelected) && onConvertToCarousel && (
+              <button
+                type="button"
+                className="edit-article-v2__image-convert-to-carousel"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onConvertToCarousel();
+                }}
+              >
+                Создать карусель
+              </button>
+            )}
+          </div>
+          {!isSelected && captionValue.trim() ? (
+            <div className="edit-article-v2__media-caption-display">{captionValue.trim()}</div>
+          ) : null}
         </div>
       ) : (
         <div
@@ -135,7 +138,7 @@ export function BlockImage({
           }}
         />
       )}
-      {imageKey && (
+      {isSelected && imageKey && (
         <input
           type="text"
           className="edit-article-v2__image-caption"
@@ -143,8 +146,10 @@ export function BlockImage({
           onChange={handleCaptionChange}
           onKeyDown={handleCaptionKeyDown}
           placeholder="Подпись к изображению (необязательно)"
+          aria-label="Подпись к изображению (необязательно)"
         />
       )}
+
       <input
         ref={fileInputRef}
         type="file"

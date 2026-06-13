@@ -18,11 +18,20 @@
 
 .image-carousel__slide {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   min-width: 100%;
   scroll-snap-align: center;
   scroll-snap-stop: always;
+}
+
+.image-carousel__figure {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: fit-content;
+  max-width: 100%;
+  margin: 0;
 
   img {
     display: block;
@@ -31,6 +40,15 @@
     height: auto;
     object-fit: contain;
   }
+}
+
+.image-carousel__caption {
+  width: 100%;
+  margin: var(--ms-01) 0 0;
+  color: var(--text-secondary, var(--dashboard-text-secondary, #9a9a9a));
+  font-size: var(--ms-0);
+  line-height: 1.5;
+  text-align: center;
 }
 
 .image-carousel__button {

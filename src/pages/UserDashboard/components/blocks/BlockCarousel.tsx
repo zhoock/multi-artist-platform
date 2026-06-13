@@ -5,6 +5,7 @@ import {
   ChevronRight as ChevronRightIcon,
   Pencil as PencilIcon,
 } from 'lucide-react';
+import type { CarouselImageItem } from '@models';
 import { getUserImageUrl } from '@shared/api/albums';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 import { ArticleCoverPlaceholder } from '@entities/article';
@@ -14,9 +15,8 @@ import { MIN_CAROUSEL_IMAGES } from '../modals/article/EditArticleModalV2.utils'
 interface BlockCarouselProps {
   /** Владелец медиа в Storage (users/{id}/articles/...) */
   mediaOwnerUserId?: string;
-  imageKeys: string[];
-  caption?: string;
-  onChange: (imageKeys: string[], caption?: string) => void;
+  images: CarouselImageItem[];
+  onChange: (images: CarouselImageItem[]) => void;
   onFocus?: () => void;
   onBlur?: () => void;
   onDelete?: () => void;
@@ -28,8 +28,7 @@ interface BlockCarouselProps {
 
 export function BlockCarousel({
   mediaOwnerUserId,
-  imageKeys,
-  caption,
+  images,
   onChange,
   onFocus,
   onBlur,
@@ -41,9 +40,10 @@ export function BlockCarousel({
 }: BlockCarouselProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [controlsVisible, setControlsVisible] = useState(false);
-  const captionValue = caption || '';
-  const showEditControl = Boolean(onEdit && imageKeys.length >= MIN_CAROUSEL_IMAGES);
+  const showEditControl = Boolean(onEdit && images.length >= MIN_CAROUSEL_IMAGES);
   const showControls = controlsVisible || Boolean(isSelected);
+  const currentImage = images[currentIndex];
+  const currentCaption = currentImage?.caption ?? '';
 
   const handleCarouselClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -59,13 +59,13 @@ export function BlockCarousel({
 
   const handlePrev = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
-    setCurrentIndex((prev) => (prev > 0 ? prev - 1 : imageKeys.length - 1));
+    setCurrentIndex((prev) => (prev > 0 ? prev - 1 : images.length - 1));
     e.currentTarget.blur();
   };
 
   const handleNext = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
-    setCurrentIndex((prev) => (prev < imageKeys.length - 1 ? prev + 1 : 0));
+    setCurrentIndex((prev) => (prev < images.length - 1 ? prev + 1 : 0));
     e.currentTarget.blur();
   };
 
@@ -81,21 +81,36 @@ export function BlockCarousel({
     onEdit?.();
   };
 
-  // Сбрасываем индекс при изменении количества изображений
-  React.useEffect(() => {
-    if (currentIndex >= imageKeys.length && imageKeys.length > 0) {
-      setCurrentIndex(imageKeys.length - 1);
-    }
-  }, [imageKeys.length, currentIndex]);
+  const handleCaptionChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const nextCaption = e.target.value;
+    onChange(
+      images.map((item, index) =>
+        index === currentIndex ? { ...item, caption: nextCaption || undefined } : item
+      )
+    );
+  };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
+  const handleCaptionKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       e.preventDefault();
-      onEnter?.(true); // Всегда считаем, что Enter нажато в конце
+      onEnter?.(true);
     }
   };
 
-  if (imageKeys.length === 0) {
+  React.useEffect(() => {
+    if (currentIndex >= images.length && images.length > 0) {
+      setCurrentIndex(images.length - 1);
+    }
+  }, [images.length, currentIndex]);
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !(e.target instanceof HTMLInputElement)) {
+      e.preventDefault();
+      onEnter?.(true);
+    }
+  };
+
+  if (images.length === 0) {
     return (
       <div
         className="edit-article-v2__block edit-article-v2__block--carousel"
@@ -118,11 +133,12 @@ export function BlockCarousel({
   }
 
   const currentImageUrl = optionalMediaSrc(
-    getUserImageUrl(imageKeys[currentIndex], 'articles', '.jpg', undefined, mediaOwnerUserId),
+    getUserImageUrl(currentImage.imageKey, 'articles', '.jpg', undefined, mediaOwnerUserId),
     'BlockCarousel',
-    { index: currentIndex, key: imageKeys[currentIndex] }
+    { index: currentIndex, key: currentImage.imageKey }
   );
-  const totalImages = imageKeys.length;
+  const totalImages = images.length;
+  const imageAlt = currentCaption.trim() || `Image ${currentIndex + 1} of ${totalImages}`;
 
   return (
     <div
@@ -133,83 +149,81 @@ export function BlockCarousel({
       tabIndex={0}
       onClick={handleCarouselClick}
     >
-      <div className="uncollapse edit-article-v2__carousel-view">
-        <div
-          className={[
-            'edit-article-v2__carousel-image-wrapper',
-            showControls && 'edit-article-v2__carousel-image-wrapper--controls-visible',
-            isSelected && 'edit-article-v2__carousel-image-wrapper--selected',
-          ]
-            .filter(Boolean)
-            .join(' ')}
-          onMouseEnter={() => setControlsVisible(true)}
-          onMouseLeave={handleWrapperMouseLeave}
-        >
-          {currentImageUrl ? (
-            <img
-              src={currentImageUrl}
-              alt={
-                captionValue
-                  ? currentIndex === 0
-                    ? captionValue
-                    : `${captionValue} (${currentIndex + 1})`
-                  : `Image ${currentIndex + 1} of ${totalImages}`
-              }
-            />
-          ) : (
-            <ArticleCoverPlaceholder
-              alt={
-                captionValue
-                  ? currentIndex === 0
-                    ? captionValue
-                    : `${captionValue} (${currentIndex + 1})`
-                  : `Image ${currentIndex + 1} of ${totalImages}`
-              }
-            />
-          )}
-
-          <div className="edit-article-v2__carousel-overlay" aria-hidden={!showControls}>
-            <div className="edit-article-v2__carousel-toolbar">
-              {showEditControl && (
-                <button
-                  type="button"
-                  className="edit-article-v2__carousel-edit"
-                  onClick={handleEditClick}
-                >
-                  <PencilIcon {...dashboardActionIconProps({ size: 16 })} />
-                  Редактировать карусель
-                </button>
-              )}
-              <div className="edit-article-v2__carousel-badge">
-                {currentIndex + 1} из {totalImages}
-              </div>
-            </div>
-
-            {totalImages > 1 && (
-              <>
-                <button
-                  type="button"
-                  className="edit-article-v2__carousel-nav edit-article-v2__carousel-nav--prev"
-                  onClick={handlePrev}
-                  aria-label="Предыдущее изображение"
-                >
-                  <ChevronLeftIcon {...dashboardActionIconProps({ size: 40 })} />
-                </button>
-                <button
-                  type="button"
-                  className="edit-article-v2__carousel-nav edit-article-v2__carousel-nav--next"
-                  onClick={handleNext}
-                  aria-label="Следующее изображение"
-                >
-                  <ChevronRightIcon {...dashboardActionIconProps({ size: 40 })} />
-                </button>
-              </>
+      <div className="edit-article-v2__media-figure">
+        <div className="edit-article-v2__carousel-view">
+          <div
+            className={[
+              'edit-article-v2__carousel-image-wrapper',
+              showControls && 'edit-article-v2__carousel-image-wrapper--controls-visible',
+              isSelected && 'edit-article-v2__carousel-image-wrapper--selected',
+            ]
+              .filter(Boolean)
+              .join(' ')}
+            onMouseEnter={() => setControlsVisible(true)}
+            onMouseLeave={handleWrapperMouseLeave}
+          >
+            {currentImageUrl ? (
+              <img src={currentImageUrl} alt={imageAlt} />
+            ) : (
+              <ArticleCoverPlaceholder alt={imageAlt} />
             )}
+
+            <div className="edit-article-v2__carousel-overlay" aria-hidden={!showControls}>
+              <div className="edit-article-v2__carousel-toolbar">
+                {showEditControl && (
+                  <button
+                    type="button"
+                    className="edit-article-v2__carousel-edit"
+                    onClick={handleEditClick}
+                  >
+                    <PencilIcon {...dashboardActionIconProps({ size: 16 })} />
+                    Редактировать карусель
+                  </button>
+                )}
+                <div className="edit-article-v2__carousel-badge">
+                  {currentIndex + 1} из {totalImages}
+                </div>
+              </div>
+
+              {totalImages > 1 && (
+                <>
+                  <button
+                    type="button"
+                    className="edit-article-v2__carousel-nav edit-article-v2__carousel-nav--prev"
+                    onClick={handlePrev}
+                    aria-label="Предыдущее изображение"
+                  >
+                    <ChevronLeftIcon {...dashboardActionIconProps({ size: 40 })} />
+                  </button>
+                  <button
+                    type="button"
+                    className="edit-article-v2__carousel-nav edit-article-v2__carousel-nav--next"
+                    onClick={handleNext}
+                    aria-label="Следующее изображение"
+                  >
+                    <ChevronRightIcon {...dashboardActionIconProps({ size: 40 })} />
+                  </button>
+                </>
+              )}
+            </div>
           </div>
         </div>
+
+        {!isSelected && currentCaption ? (
+          <div className="edit-article-v2__media-caption-display">{currentCaption}</div>
+        ) : null}
       </div>
-      {captionValue && (
-        <div className="edit-article-v2__carousel-caption-display">{captionValue}</div>
+
+      {isSelected && (
+        <input
+          type="text"
+          className="edit-article-v2__image-caption"
+          value={currentCaption}
+          onChange={handleCaptionChange}
+          onKeyDown={handleCaptionKeyDown}
+          placeholder="Подпись к изображению (необязательно)"
+          aria-label="Подпись к изображению (необязательно)"
+        />
       )}
     </div>
   );

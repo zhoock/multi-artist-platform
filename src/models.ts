@@ -229,6 +229,11 @@ export type IArticles = {
   lang?: string;
 };
 
+export interface CarouselImageItem {
+  imageKey: string;
+  caption?: string;
+}
+
 export interface ArticledetailsProps {
   id?: number; // опционально, может отсутствовать в новой структуре
   /** Stable editor block id for list/reorder/delete sync within article details. */
@@ -247,10 +252,11 @@ export interface ArticledetailsProps {
   type?: 'text' | 'image' | 'carousel'; // тип блока
   title?: string;
   img?: string; // для одиночного изображения
-  images?: string[]; // для карусели (массив изображений)
+  /** Карусель: массив ключей (legacy) или объектов с подписью на каждое фото. */
+  images?: string[] | CarouselImageItem[];
   subtitle?: string;
   content?: string | Array<string | { id: string; text: string }>;
-  /** Подпись к изображению/карусели; на публичной странице также используется как alt. */
+  /** Подпись к одиночному изображению; legacy — общая подпись карусели при images: string[]. */
   caption?: string;
   /** @deprecated Используйте caption. Читается только для старых статей. */
   alt?: string;

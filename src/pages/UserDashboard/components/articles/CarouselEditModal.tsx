@@ -21,8 +21,7 @@ interface CarouselEditModalProps {
   mediaOwnerUserId?: string;
   blockId: string;
   initialImageKeys: string[];
-  initialCaption?: string;
-  onSave: (imageKeys: string[], caption?: string) => void;
+  onSave: (imageKeys: string[]) => void;
   onCancel: () => void;
 }
 
@@ -30,27 +29,23 @@ export function CarouselEditModal({
   mediaOwnerUserId,
   blockId,
   initialImageKeys,
-  initialCaption,
   onSave,
   onCancel,
 }: CarouselEditModalProps) {
   const { lang } = useLang();
   const ui = useAppSelector((state) => selectUiDictionaryFirst(state, lang));
   const [imageKeys, setImageKeys] = useState<string[]>(initialImageKeys);
-  const [caption, setCaption] = useState<string>(initialCaption || '');
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setImageKeys(initialImageKeys);
-    setCaption(initialCaption || '');
-  }, [blockId, initialImageKeys, initialCaption]);
+  }, [blockId, initialImageKeys]);
 
   const hasCarouselChanges = useMemo(() => {
-    if (caption.trim() !== (initialCaption || '').trim()) return true;
     if (imageKeys.length !== initialImageKeys.length) return true;
     return imageKeys.some((k, i) => k !== initialImageKeys[i]);
-  }, [caption, initialCaption, imageKeys, initialImageKeys]);
+  }, [imageKeys, initialImageKeys]);
 
   const finalizeCarouselDismiss = useCallback(() => {
     onCancel();
@@ -104,7 +99,7 @@ export function CarouselEditModal({
   };
 
   const handleSave = () => {
-    onSave(imageKeys, caption || undefined);
+    onSave(imageKeys);
   };
 
   const handleRequestCancel = () => carouselCloseGuard.requestClose();
@@ -171,20 +166,6 @@ export function CarouselEditModal({
                   )}
                 </button>
               </div>
-
-              <label className="edit-article-v2__carousel-edit-caption">
-                <span className="edit-article-v2__carousel-edit-caption-label">
-                  Подпись к карусели (необязательно)
-                </span>
-                <input
-                  type="text"
-                  className="edit-article-v2__carousel-edit-caption-input"
-                  value={caption}
-                  onChange={(e) => setCaption(e.target.value)}
-                  placeholder="Подпись к карусели (необязательно)"
-                  aria-label="Подпись к карусели (необязательно)"
-                />
-              </label>
             </div>
 
             <input

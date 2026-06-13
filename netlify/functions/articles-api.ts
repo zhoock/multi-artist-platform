@@ -505,8 +505,21 @@ function collectArticleMediaDeletionTargets(
     if (d.type === 'image') {
       addRawToArticleMediaTargets(stems, storagePathsOut, ownerUserId, d.img);
     } else if (d.type === 'carousel') {
-      if (Array.isArray(d.images))
-        addRawToArticleMediaTargets(stems, storagePathsOut, ownerUserId, d.images);
+      if (Array.isArray(d.images)) {
+        for (const entry of d.images) {
+          const ref =
+            typeof entry === 'string'
+              ? entry.trim()
+              : entry && typeof entry === 'object'
+                ? String(
+                    (entry as Record<string, unknown>).imageKey ??
+                      (entry as Record<string, unknown>).key ??
+                      ''
+                  ).trim()
+                : '';
+          if (ref) addRawToArticleMediaTargets(stems, storagePathsOut, ownerUserId, ref);
+        }
+      }
       addRawToArticleMediaTargets(stems, storagePathsOut, ownerUserId, d.img);
     }
     if (typeof d.imageKey === 'string') {

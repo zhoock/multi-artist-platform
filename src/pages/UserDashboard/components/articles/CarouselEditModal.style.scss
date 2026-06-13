@@ -147,39 +147,6 @@ dialog {
       cursor: not-allowed;
     }
   }
-
-  .edit-article-v2__carousel-edit-caption {
-    display: flex;
-    flex-direction: column;
-    gap: var(--ms-01);
-    width: 100%;
-  }
-
-  .edit-article-v2__carousel-edit-caption-label {
-    color: var(--dashboard-text-secondary);
-    font-size: var(--ms-01);
-    line-height: 1.4;
-  }
-
-  .edit-article-v2__carousel-edit-caption-input {
-    width: 100%;
-    padding: var(--ms-01);
-    color: var(--dashboard-text-primary);
-    font-size: var(--ms-0);
-    background: var(--dashboard-card-bg);
-    border: 1px solid var(--dashboard-card-border);
-    border-radius: var(--ms-01);
-    box-sizing: border-box;
-
-    &::placeholder {
-      color: var(--dashboard-text-secondary);
-    }
-
-    &:focus {
-      outline: none;
-      border-color: var(--dark-greenish-yellow);
-    }
-  }
 }
 
 .edit-article-v2__carousel-edit-add-spinner {

@@ -5,14 +5,18 @@ import { optionalMediaSrc } from '@shared/lib/media/optionalMediaUrl';
 import type { ImageCategory } from '@config/user';
 import './style.scss';
 
+export type ImageCarouselSlide = {
+  src: string;
+  caption?: string;
+};
+
 interface ImageCarouselProps {
-  images: string[];
-  alt: string;
+  slides: ImageCarouselSlide[];
   category?: ImageCategory;
   userId?: string;
 }
 
-export function ImageCarousel({ images, alt, category = 'articles', userId }: ImageCarouselProps) {
+export function ImageCarousel({ slides, category = 'articles', userId }: ImageCarouselProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showCounter, setShowCounter] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -25,52 +29,45 @@ export function ImageCarousel({ images, alt, category = 'articles', userId }: Im
     if (!containerRef.current) return;
     const slide = containerRef.current.children[index] as HTMLElement;
 
-    // Устанавливаем флаг, что прокрутка программная
     isScrollingProgrammaticallyRef.current = true;
     setCurrentIndex(index);
 
     slide?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
 
-    // Сбрасываем флаг после завершения анимации прокрутки
     setTimeout(() => {
       isScrollingProgrammaticallyRef.current = false;
-    }, 500); // Время анимации прокрутки
+    }, 500);
   };
 
   const goToPrevious = () => {
-    const newIndex = currentIndex === 0 ? images.length - 1 : currentIndex - 1;
+    const newIndex = currentIndex === 0 ? slides.length - 1 : currentIndex - 1;
     goToSlide(newIndex);
     showCounterWithTimeout();
   };
 
   const goToNext = () => {
-    const newIndex = currentIndex === images.length - 1 ? 0 : currentIndex + 1;
+    const newIndex = currentIndex === slides.length - 1 ? 0 : currentIndex + 1;
     goToSlide(newIndex);
     showCounterWithTimeout();
   };
 
-  // Функция для показа счетчика и сброса таймера скрытия
   const showCounterWithTimeout = useCallback(() => {
-    // Показываем счетчик только если карусель видна
     if (isVisibleRef.current) {
       setShowCounter(true);
       if (hideTimeoutRef.current) {
         clearTimeout(hideTimeoutRef.current);
       }
-      // Скрываем через 4 секунды бездействия
       hideTimeoutRef.current = setTimeout(() => {
         setShowCounter(false);
       }, 4000);
     }
   }, []);
 
-  // Отслеживаем текущий слайд при скролле
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
 
     const handleScroll = () => {
-      // Игнорируем обновление индекса во время программной прокрутки (через кнопки)
       if (!isScrollingProgrammaticallyRef.current) {
         const scrollLeft = container.scrollLeft;
         const slideWidth = container.offsetWidth;
@@ -86,7 +83,6 @@ export function ImageCarousel({ images, alt, category = 'articles', userId }: Im
     return () => container.removeEventListener('scroll', handleScroll);
   }, [currentIndex, showCounterWithTimeout]);
 
-  // Отслеживаем видимость карусели в viewport (как в Instagram)
   useEffect(() => {
     const carousel = carouselRef.current;
     if (!carousel) return;
@@ -98,9 +94,7 @@ export function ImageCarousel({ images, alt, category = 'articles', userId }: Im
           isVisibleRef.current = isVisible;
 
           if (isVisible) {
-            // Карусель видна - показываем счетчик
             setShowCounter(true);
-            // Скрываем через 4 секунды бездействия
             if (hideTimeoutRef.current) {
               clearTimeout(hideTimeoutRef.current);
             }
@@ -108,7 +102,6 @@ export function ImageCarousel({ images, alt, category = 'articles', userId }: Im
               setShowCounter(false);
             }, 4000);
           } else {
-            // Карусель не видна - скрываем счетчик
             setShowCounter(false);
             if (hideTimeoutRef.current) {
               clearTimeout(hideTimeoutRef.current);
@@ -117,7 +110,7 @@ export function ImageCarousel({ images, alt, category = 'articles', userId }: Im
         });
       },
       {
-        threshold: 0.1, // Считаем видимым, если видно хотя бы 10%
+        threshold: 0.1,
       }
     );
 
@@ -131,7 +124,6 @@ export function ImageCarousel({ images, alt, category = 'articles', userId }: Im
     };
   }, []);
 
-  // Показываем счетчик при взаимодействии
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
@@ -156,7 +148,6 @@ export function ImageCarousel({ images, alt, category = 'articles', userId }: Im
     };
   }, [showCounterWithTimeout]);
 
-  // Клавиатурная навигация
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'ArrowLeft') {
@@ -180,7 +171,13 @@ export function ImageCarousel({ images, alt, category = 'articles', userId }: Im
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  if (images.length === 0) return null;
+  useEffect(() => {
+    if (currentIndex >= slides.length && slides.length > 0) {
+      setCurrentIndex(slides.length - 1);
+    }
+  }, [currentIndex, slides.length]);
+
+  if (slides.length === 0) return null;
 
   return (
     <div
@@ -189,34 +186,42 @@ export function ImageCarousel({ images, alt, category = 'articles', userId }: Im
       role="region"
       aria-label="Image carousel"
     >
-      {/* Счетчик изображений */}
-      {images.length > 1 && (
+      {slides.length > 1 && (
         <div
           className={`image-carousel__counter ${showCounter ? 'image-carousel__counter--visible' : ''}`}
         >
-          {currentIndex + 1} / {images.length}
+          {currentIndex + 1} / {slides.length}
         </div>
       )}
 
       <div ref={containerRef} className="image-carousel__container">
-        {images.map((img, index) => (
-          <div key={img} className="image-carousel__slide">
-            <img
-              src={optionalMediaSrc(
-                getImageUrl(img, '.jpg', userId ? { userId, category } : undefined),
-                'ImageCarousel:slide',
-                { index, category, hasUserId: !!userId }
-              )}
-              alt={index === 0 ? alt : `${alt} (${index + 1})`}
-              loading={index === 0 ? 'lazy' : 'lazy'}
-              decoding="async"
-            />
-          </div>
-        ))}
+        {slides.map((slide, index) => {
+          const imageAlt = slide.caption?.trim() || `Image ${index + 1} of ${slides.length}`;
+          const slideCaption = slide.caption?.trim();
+
+          return (
+            <div key={`${slide.src}-${index}`} className="image-carousel__slide">
+              <figure className="image-carousel__figure">
+                <img
+                  src={optionalMediaSrc(
+                    getImageUrl(slide.src, '.jpg', userId ? { userId, category } : undefined),
+                    'ImageCarousel:slide',
+                    { index, category, hasUserId: !!userId }
+                  )}
+                  alt={imageAlt}
+                  loading="lazy"
+                  decoding="async"
+                />
+                {slideCaption ? (
+                  <figcaption className="image-carousel__caption">{slideCaption}</figcaption>
+                ) : null}
+              </figure>
+            </div>
+          );
+        })}
       </div>
 
-      {/* Навигационные стрелки */}
-      {images.length > 1 && (
+      {slides.length > 1 && (
         <>
           {currentIndex > 0 && (
             <button
@@ -228,7 +233,7 @@ export function ImageCarousel({ images, alt, category = 'articles', userId }: Im
               <ChevronLeftIcon aria-hidden size={24} strokeWidth={2} />
             </button>
           )}
-          {currentIndex < images.length - 1 && (
+          {currentIndex < slides.length - 1 && (
             <button
               type="button"
               className="image-carousel__button image-carousel__button--next"
@@ -241,12 +246,11 @@ export function ImageCarousel({ images, alt, category = 'articles', userId }: Im
         </>
       )}
 
-      {/* Индикаторы (точки) */}
-      {images.length > 1 && (
+      {slides.length > 1 && (
         <div className="image-carousel__indicators">
-          {images.map((_, index) => (
+          {slides.map((slide, index) => (
             <button
-              key={index}
+              key={`${slide.src}-${index}-indicator`}
               type="button"
               className={`image-carousel__indicator ${index === currentIndex ? 'image-carousel__indicator--active' : ''}`}
               onClick={() => goToSlide(index)}

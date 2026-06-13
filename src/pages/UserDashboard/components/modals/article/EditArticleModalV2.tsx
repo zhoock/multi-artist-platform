@@ -30,12 +30,13 @@ import { getToken } from '@shared/lib/auth';
 import { fetchWithAuthSession } from '@shared/lib/authFetch';
 import { fetchArticles, resolveArticleForDisplay } from '@entities/article';
 import type { IArticles } from '@models';
-import type { Block, ArticleMeta, BlockType } from './EditArticleModalV2.utils';
+import type { Block, ArticleMeta, BlockType, CarouselImageItem } from './EditArticleModalV2.utils';
 import {
   normalizeDetailsToBlocks,
   blocksToDetails,
   blockFromCarouselSave,
   isSavedCarousel,
+  mergeCarouselImageKeys,
   generateId,
   debounce,
   createListItem,
@@ -264,8 +265,7 @@ export function EditArticleModalV2({
   // Модал редактирования карусели
   const [carouselEditModal, setCarouselEditModal] = useState<{
     blockId: string;
-    imageKeys: string[];
-    caption?: string;
+    images: CarouselImageItem[];
   } | null>(null);
 
   // Ref для отложенной установки фокуса после удаления блока
@@ -578,11 +578,7 @@ export function EditArticleModalV2({
         );
 
       case 'carousel':
-        return (
-          JSON.stringify(block1.imageKeys) ===
-            JSON.stringify((block2 as typeof block1).imageKeys) &&
-          block1.caption === (block2 as typeof block1).caption
-        );
+        return JSON.stringify(block1.images) === JSON.stringify((block2 as typeof block1).images);
 
       default:
         return false;
@@ -871,7 +867,7 @@ export function EditArticleModalV2({
       case 'image':
         return { id: generateId(), type: 'image', imageKey: '' };
       case 'carousel':
-        return { id: generateId(), type: 'carousel', imageKeys: [] };
+        return { id: generateId(), type: 'carousel', images: [] };
     }
   }, []);
 
@@ -1142,14 +1138,12 @@ export function EditArticleModalV2({
       if (block.type === 'image') {
         setCarouselEditModal({
           blockId: block.id,
-          imageKeys: block.imageKey ? [block.imageKey] : [],
-          caption: block.caption,
+          images: block.imageKey ? [{ imageKey: block.imageKey, caption: block.caption }] : [],
         });
-      } else if (block.type === 'carousel' && !isSavedCarousel(block.imageKeys)) {
+      } else if (block.type === 'carousel' && !isSavedCarousel(block.images)) {
         setCarouselEditModal({
           blockId: block.id,
-          imageKeys: [...block.imageKeys],
-          caption: block.caption,
+          images: [...block.images],
         });
       } else {
         return;
@@ -1830,7 +1824,7 @@ export function EditArticleModalV2({
           newBlock = { id: blockId, type: 'image', imageKey: '' };
           break;
         case 'carousel':
-          newBlock = { id: blockId, type: 'carousel', imageKeys: [] };
+          newBlock = { id: blockId, type: 'carousel', images: [] };
           break;
       }
 
@@ -2482,8 +2476,7 @@ export function EditArticleModalV2({
                                 if (carouselBlock && carouselBlock.type === 'carousel') {
                                   setCarouselEditModal({
                                     blockId: carouselBlock.id,
-                                    imageKeys: carouselBlock.imageKeys,
-                                    caption: carouselBlock.caption,
+                                    images: carouselBlock.images,
                                   });
                                 }
                               }}
@@ -2562,10 +2555,9 @@ export function EditArticleModalV2({
               <CarouselEditModal
                 mediaOwnerUserId={article.userId ?? undefined}
                 blockId={carouselEditModal!.blockId}
-                initialImageKeys={carouselEditModal!.imageKeys}
-                initialCaption={carouselEditModal!.caption}
-                onSave={(imageKeys, caption) => {
-                  const { blockId } = carouselEditModal!;
+                initialImageKeys={carouselEditModal!.images.map((item) => item.imageKey)}
+                onSave={(imageKeys) => {
+                  const { blockId, images: previousImages } = carouselEditModal!;
                   const targetBlock = blocks.find((b) => b.id === blockId);
                   if (!targetBlock) {
                     setCarouselEditModal(null);
@@ -2573,7 +2565,10 @@ export function EditArticleModalV2({
                   }
 
                   saveSnapshot();
-                  const savedBlock = blockFromCarouselSave(blockId, imageKeys, caption);
+                  const savedBlock = blockFromCarouselSave(
+                    blockId,
+                    mergeCarouselImageKeys(previousImages, imageKeys)
+                  );
                   setBlocks((prev) =>
                     prev.map((block) => (block.id === blockId ? savedBlock : block))
                   );

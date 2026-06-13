@@ -118,19 +118,19 @@ describe('EditArticleModalV2.utils stable ids', () => {
   });
 
   it('treats carousel as existing only with at least two images', () => {
-    expect(isSavedCarousel(['a'])).toBe(false);
-    expect(isSavedCarousel(['a', 'b'])).toBe(true);
+    expect(isSavedCarousel([{ imageKey: 'a' }])).toBe(false);
+    expect(isSavedCarousel([{ imageKey: 'a' }, { imageKey: 'b' }])).toBe(true);
 
     const blockId = generateId();
-    expect(blockFromCarouselSave(blockId, ['a'])).toMatchObject({
+    expect(blockFromCarouselSave(blockId, [{ imageKey: 'a' }])).toMatchObject({
       id: blockId,
       type: 'image',
       imageKey: 'a',
     });
-    expect(blockFromCarouselSave(blockId, ['a', 'b'])).toMatchObject({
+    expect(blockFromCarouselSave(blockId, [{ imageKey: 'a' }, { imageKey: 'b' }])).toMatchObject({
       id: blockId,
       type: 'carousel',
-      imageKeys: ['a', 'b'],
+      images: [{ imageKey: 'a' }, { imageKey: 'b' }],
     });
     expect(blockFromCarouselSave(blockId, [])).toMatchObject({
       id: blockId,
@@ -159,7 +159,7 @@ describe('EditArticleModalV2.utils stable ids', () => {
     });
   });
 
-  it('loads legacy alt as caption', () => {
+  it('loads legacy alt as caption on first carousel image', () => {
     const blockId = generateId();
     const loaded = normalizeDetailsToBlocks([
       {
@@ -172,14 +172,14 @@ describe('EditArticleModalV2.utils stable ids', () => {
 
     expect(loaded[0]).toMatchObject({
       type: 'carousel',
-      caption: 'Legacy caption',
+      images: [{ imageKey: 'a.jpg', caption: 'Legacy caption' }, { imageKey: 'b.jpg' }],
     });
   });
 
   it('serializes carousel with one image as image detail', () => {
     const blockId = generateId();
     const details = blocksToDetails([
-      { id: blockId, type: 'carousel', imageKeys: ['solo.jpg'], caption: 'caption' },
+      { id: blockId, type: 'carousel', images: [{ imageKey: 'solo.jpg', caption: 'caption' }] },
     ]);
 
     expect(details).toHaveLength(1);
@@ -192,23 +192,28 @@ describe('EditArticleModalV2.utils stable ids', () => {
     expect(details[0]).not.toHaveProperty('alt');
   });
 
-  it('serializes saved carousel with caption field', () => {
+  it('serializes saved carousel with per-image captions', () => {
     const blockId = generateId();
     const details = blocksToDetails([
       {
         id: blockId,
         type: 'carousel',
-        imageKeys: ['a.jpg', 'b.jpg'],
-        caption: 'Carousel caption',
+        images: [
+          { imageKey: 'a.jpg', caption: 'First' },
+          { imageKey: 'b.jpg', caption: 'Second' },
+        ],
       },
     ]);
 
     expect(details[0]).toMatchObject({
       type: 'carousel',
       blockId,
-      images: ['a.jpg', 'b.jpg'],
-      caption: 'Carousel caption',
+      images: [
+        { imageKey: 'a.jpg', caption: 'First' },
+        { imageKey: 'b.jpg', caption: 'Second' },
+      ],
     });
+    expect(details[0]).not.toHaveProperty('caption');
     expect(details[0]).not.toHaveProperty('alt');
   });
 

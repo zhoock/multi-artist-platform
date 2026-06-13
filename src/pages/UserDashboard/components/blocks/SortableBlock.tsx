@@ -211,11 +211,8 @@ export function SortableBlock({
         return (
           <BlockCarousel
             mediaOwnerUserId={articleOwnerUserId}
-            imageKeys={block.imageKeys}
-            caption={block.caption}
-            onChange={(imageKeys, caption) =>
-              onUpdate(block.id, { imageKeys, caption } as Partial<Block>)
-            }
+            images={block.images}
+            onChange={(images) => onUpdate(block.id, { images } as Partial<Block>)}
             onFocus={() => onFocus(block.id)}
             onBlur={onBlur}
             isSelected={isSelected}
@@ -249,7 +246,7 @@ export function SortableBlock({
       return !block.imageKey || block.imageKey === '';
     }
     if (block.type === 'carousel') {
-      return !block.imageKeys || block.imageKeys.length === 0;
+      return !block.images || block.images.length === 0;
     }
     return false;
   })();
