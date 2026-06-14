@@ -1,6 +1,6 @@
 import type { IAlbums, IArticles } from '@models';
 
-import { isAlbumVisibleOnArtistPage } from '@entities/album/lib/albumPublication';
+import { isAlbumDraft, isAlbumVisibleOnArtistPage } from '@entities/album/lib/albumPublication';
 import { hasPublishedPublicReleases } from '@entities/album/lib/hasPublishedPublicReleases';
 import { normalizeTrackVisibility } from '@shared/lib/tracks/trackVisibility';
 
@@ -38,7 +38,16 @@ export function profileHasPublicBodyContent(profile: ProfileContentInput): boole
 }
 
 export function filterAlbumsForArtistPageSurface(albums: IAlbums[], isOwner: boolean): IAlbums[] {
-  if (isOwner) return albums;
+  if (isOwner) {
+    return albums.filter(
+      (album) =>
+        isAlbumDraft(album) ||
+        (isAlbumVisibleOnArtistPage(album) &&
+          typeof album.album === 'string' &&
+          album.album.trim().length > 0 &&
+          (album.tracks?.length ?? 0) > 0)
+    );
+  }
   return albums.filter(
     (album) =>
       isAlbumVisibleOnArtistPage(album) &&

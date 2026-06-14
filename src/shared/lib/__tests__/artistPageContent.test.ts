@@ -44,7 +44,7 @@ describe('artistPageContent', () => {
     expect(isArtistProfileEmpty({ theBand: ['Bio'] })).toBe(false);
   });
 
-  test('filterAlbumsForArtistPageSurface hides empty albums for visitors', () => {
+  test('filterAlbumsForArtistPageSurface hides empty albums for visitors and hidden releases for owners', () => {
     const albums = [
       {
         albumId: 'a1',
@@ -82,9 +82,22 @@ describe('artistPageContent', () => {
         details: [],
         isPublic: true,
       },
+      {
+        albumId: 'a4',
+        album: 'Hidden Release',
+        artist: 'Band',
+        fullName: 'Band — Hidden Release',
+        description: '',
+        release: { date: '2024-01-01' },
+        tracks: [mockTrack],
+        buttons: {},
+        details: [],
+        isPublic: false,
+        isPublished: true,
+      },
     ];
 
-    expect(filterAlbumsForArtistPageSurface(albums, true)).toHaveLength(3);
+    expect(filterAlbumsForArtistPageSurface(albums, true)).toHaveLength(2);
     expect(filterAlbumsForArtistPageSurface(albums, false)).toHaveLength(1);
   });
 

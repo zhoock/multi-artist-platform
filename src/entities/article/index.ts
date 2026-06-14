@@ -19,6 +19,7 @@ export {
   articlesReducer,
   fetchArticles,
   patchDashboardArticleVisibility,
+  removeArticleFromPublicCatalog,
 } from './model/articlesSlice';
 export type { ArticlesState, RequestStatus } from './model/types';
 export type { FetchArticlesArg, FetchArticlesResult } from './model/articlesSlice';

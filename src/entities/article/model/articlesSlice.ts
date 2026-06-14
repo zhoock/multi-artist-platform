@@ -39,11 +39,20 @@ export type FetchArticlesArg = {
   ownerDashboard?: boolean;
   /** Явный slug из loader URL; иначе берётся из `currentArtist` в store */
   publicArtistSlug?: string | null;
+  /** Писать в публичный каталог независимо от pathname (sync после дашборда). */
+  forcePublicCatalog?: boolean;
 };
 
 function isOwnerDashboardArticlesFetch(arg: FetchArticlesArg): boolean {
+  if (arg.forcePublicCatalog) return false;
   if (arg.ownerDashboard) return true;
   return isDashboardPathname() && !shouldUsePublicArtistCatalogInRedux();
+}
+
+function shouldFetchPublicArtistCatalog(arg: FetchArticlesArg): boolean {
+  if (arg.forcePublicCatalog) return true;
+  if (isOwnerDashboardArticlesFetch(arg)) return false;
+  return shouldUsePublicArtistCatalogInRedux();
 }
 
 function shouldTreatPublicArtistArticlesAsEmpty(
@@ -125,7 +134,7 @@ export const fetchArticles = createAsyncThunk<
       const { getAuthHeader } = await import('@shared/lib/auth');
       const authHeader = getAuthHeader();
       const ownerDashboard = isOwnerDashboardArticlesFetch(arg);
-      const usePublicCatalog = ownerDashboard ? false : shouldUsePublicArtistCatalogInRedux();
+      const usePublicCatalog = shouldFetchPublicArtistCatalog(arg);
       const isFullscreenDashboard = ownerDashboard;
 
       const resolvedSlug = usePublicCatalog ? resolvePublicArtistSlugForFetch(arg, getState) : '';
@@ -162,6 +171,7 @@ export const fetchArticles = createAsyncThunk<
             {
               includeArtist: usePublicCatalog,
               artistSlugOverride: usePublicCatalog ? resolvedSlug : null,
+              forceArtistQuery: Boolean(arg.forcePublicCatalog),
             }
           ),
           {
@@ -276,11 +286,19 @@ const articlesSlice = createSlice({
       action: PayloadAction<{ articleId: string; visibility: TrackVisibility }>
     ) => {
       const { articleId, visibility } = action.payload;
-      const list = state.dashboard.data;
-      const idx = list.findIndex((x) => x.articleId === articleId);
-      if (idx >= 0) {
-        list[idx] = { ...list[idx], visibility };
-      }
+      const patchList = (list: IArticles[]) => {
+        const idx = list.findIndex((x) => x.articleId === articleId);
+        if (idx >= 0) {
+          list[idx] = { ...list[idx], visibility };
+        }
+      };
+      patchList(state.dashboard.data);
+      patchList(state.data);
+    },
+    removeArticleFromPublicCatalog: (state, action: PayloadAction<{ articleId: string }>) => {
+      const { articleId } = action.payload;
+      state.dashboard.data = state.dashboard.data.filter((x) => x.articleId !== articleId);
+      state.data = state.data.filter((x) => x.articleId !== articleId);
     },
   },
   extraReducers: (builder) => {
@@ -413,4 +431,8 @@ const articlesSlice = createSlice({
 });
 
 export const articlesReducer = articlesSlice.reducer;
-export const { patchDashboardArticleVisibility, resetArticlesState } = articlesSlice.actions;
+export const {
+  patchDashboardArticleVisibility,
+  removeArticleFromPublicCatalog,
+  resetArticlesState,
+} = articlesSlice.actions;

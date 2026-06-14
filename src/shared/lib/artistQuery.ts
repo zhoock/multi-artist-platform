@@ -7,6 +7,8 @@ interface BuildApiUrlOptions {
    * (or an explicit slug); URL is not used as a fallback.
    */
   artistSlugOverride?: string | null;
+  /** Обходить правило «на /dashboard* не добавлять artist» (sync публичного каталога из кабинета). */
+  forceArtistQuery?: boolean;
 }
 
 function shouldIncludeArtistOnCurrentPage(): boolean {
@@ -37,7 +39,11 @@ export function buildApiUrl(
     }
   }
 
-  if (includeArtist && shouldIncludeArtistOnCurrentPage() && typeof window !== 'undefined') {
+  if (
+    includeArtist &&
+    (options.forceArtistQuery || shouldIncludeArtistOnCurrentPage()) &&
+    typeof window !== 'undefined'
+  ) {
     const slug = options.artistSlugOverride ? String(options.artistSlugOverride).trim() : '';
     if (slug) {
       query.set('artist', slug);

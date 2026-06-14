@@ -6,12 +6,14 @@ import {
   selectArticlesError,
   selectArticlesData,
   selectArticleById,
+  selectDashboardArticlesData,
 } from '../selectors';
 import { initialPlayerState } from '@features/player/model/types/playerSchema';
 import type { IArticles } from '@models';
 import type { SupportedLang } from '@shared/model/lang';
 import type { AppDispatch } from '@shared/model/appStore/types';
 import * as publicArtistContext from '@shared/lib/publicArtistContext';
+import { syncDashboardAlbumsPublicCatalogOverlay } from '@shared/lib/dashboardModalBackground';
 import { currentArtistReducer, setPublicArtistSlug } from '@shared/model/currentArtist';
 import { createAlbumsTestState } from '@entities/album/model/__tests__/albumsTestState';
 
@@ -50,6 +52,8 @@ describe('articlesSlice', () => {
     jest.clearAllMocks();
     mockFetch.mockReset();
     (globalThis as unknown as { fetch: typeof fetch }).fetch = mockFetch;
+    syncDashboardAlbumsPublicCatalogOverlay(false);
+    window.history.pushState({}, '', '/');
   });
 
   describe('reducer', () => {
@@ -133,6 +137,31 @@ describe('articlesSlice', () => {
       const state = store.getState();
       expect(state.articles.dashboard.status).toBe('failed');
       expect(selectArticlesStatus(state)).toBe('idle');
+    });
+
+    test('forcePublicCatalog на полноэкранном dashboard пишет в публичный каталог с явным slug', async () => {
+      window.history.pushState({}, '', '/dashboard-new/posts');
+      syncDashboardAlbumsPublicCatalogOverlay(false);
+      mockFetch.mockResolvedValueOnce(mockSuccessResponse(mockArticles));
+
+      const store = createTestStore();
+      const result = await (store.dispatch as AppDispatch)(
+        fetchArticles({
+          force: true,
+          forcePublicCatalog: true,
+          publicArtistSlug: 'test-artist',
+        })
+      );
+
+      expect(result.type).toBe('articles/fetchMerged/fulfilled');
+      expect(result.payload).toMatchObject({
+        articles: mockArticles,
+        lastPublicArtistSlug: 'test-artist',
+        writeTarget: 'catalog',
+      });
+      expect(selectArticlesData(store.getState())).toMatchObject(mockArticles);
+      expect(selectDashboardArticlesData(store.getState())).toEqual([]);
+      expect(String(mockFetch.mock.calls[0][0])).toContain('artist=test-artist');
     });
 
     test('на главной без artist не парсит HTML fallback как JSON', async () => {

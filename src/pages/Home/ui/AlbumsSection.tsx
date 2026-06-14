@@ -8,10 +8,11 @@ import { useLang } from '@app/providers/lang';
 import {
   selectAlbumsStatus,
   selectAlbumsError,
-  selectAlbumsDataResolved,
   selectDashboardAlbumsDataResolved,
   selectPublicAlbumsCacheIsStale,
+  selectPublicAlbumsDataResolvedForSurface,
 } from '@entities/album';
+import { isAlbumDraft } from '@entities/album/lib/albumPublication';
 import type { IAlbums } from '@models';
 import { useRedirectHomeAfterOwnAccountDeleted } from '@shared/lib/hooks/useRedirectHomeAfterOwnAccountDeleted';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
@@ -38,23 +39,29 @@ export function AlbumsSection({ isOwner = false }: { isOwner?: boolean }) {
   const albumsStatus = useAppSelector(selectAlbumsStatus);
   const albumsError = useAppSelector(selectAlbumsError);
   const catalogCacheStale = useAppSelector(selectPublicAlbumsCacheIsStale);
-  const resolvedAlbums = useAppSelector(selectAlbumsDataResolved);
+  const publicCatalogAlbums = useAppSelector(selectPublicAlbumsDataResolvedForSurface);
   const dashboardAlbums = useAppSelector(selectDashboardAlbumsDataResolved);
   const allAlbums = useMemo(() => {
-    const fromCatalog = filterAlbumsForArtistPageSurface(
-      catalogCacheStale ? [] : resolvedAlbums,
-      isOwner
-    );
-    if (!isOwner) return fromCatalog;
-
-    const fromDashboard = filterAlbumsForArtistPageSurface(dashboardAlbums, true);
-    // Свежий публичный каталог — единственный источник (после удаления не показываем stale merge).
-    if (!catalogCacheStale) {
-      if (fromCatalog.length > 0) return fromCatalog;
-      return fromDashboard;
+    if (!isOwner) {
+      return filterAlbumsForArtistPageSurface(catalogCacheStale ? [] : publicCatalogAlbums, false);
     }
-    return fromDashboard.length > 0 ? fromDashboard : fromCatalog;
-  }, [catalogCacheStale, dashboardAlbums, isOwner, resolvedAlbums]);
+
+    const ownerDrafts = filterAlbumsForArtistPageSurface(dashboardAlbums, true).filter((album) =>
+      isAlbumDraft(album)
+    );
+
+    if (catalogCacheStale) {
+      const fromDashboard = filterAlbumsForArtistPageSurface(dashboardAlbums, true);
+      return fromDashboard.length > 0 ? fromDashboard : ownerDrafts;
+    }
+
+    const draftIds = new Set(ownerDrafts.map((album) => album.albumId));
+    const publicIds = new Set(publicCatalogAlbums.map((album) => album.albumId));
+    return [
+      ...ownerDrafts.filter((album) => !publicIds.has(album.albumId)),
+      ...publicCatalogAlbums.filter((album) => !draftIds.has(album.albumId)),
+    ];
+  }, [catalogCacheStale, dashboardAlbums, isOwner, publicCatalogAlbums]);
   const ui = useAppSelector((state) => selectUiDictionaryFirst(state, lang));
   const showAlbumsLoadingShell = useShowSurfaceAlbumsLoadingShell(
     albumsStatus,

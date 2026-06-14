@@ -8,6 +8,7 @@ import type { IArticles } from '@models';
 
 import { selectCurrentLang } from '@shared/model/lang/selectors';
 import { selectPublicArtistSlug } from '@shared/model/currentArtist';
+import { isArticlePublicOnArtistPage } from '@shared/lib/artistPageContent';
 import { resolveArticleForDisplay } from '../lib/resolveArticleDisplay';
 
 import type { ArticlesState } from './types';
@@ -70,8 +71,14 @@ export const selectArticlesDataResolved = createSelector(
   (articles, lang): IArticles[] => articles.map((a) => resolveArticleForDisplay(a, lang))
 );
 
+/** Публичный каталог: опубликованные и видимые статьи. */
+export const selectPublicArticlesDataResolved = createSelector(
+  [selectArticlesDataResolved],
+  (articles): IArticles[] => articles.filter((article) => isArticlePublicOnArtistPage(article))
+);
+
 export const selectArticlesDataResolvedForSurface = createSelector(
-  [selectArticlesDataResolved, selectArticlesCacheIsStale],
+  [selectPublicArticlesDataResolved, selectArticlesCacheIsStale],
   (articles, stale) => (stale ? [] : articles)
 );
 

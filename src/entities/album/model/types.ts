@@ -38,6 +38,10 @@ export type FetchAlbumsArg = {
   force?: boolean;
   /** Явная загрузка альбомов владельца в dashboard bucket (модальный кабинет). */
   ownerDashboard?: boolean;
+  /** Явный slug из URL / фона модалки; иначе берётся из `currentArtist` в store. */
+  publicArtistSlug?: string | null;
+  /** Писать в публичный каталог независимо от pathname (sync после дашборда). */
+  forcePublicCatalog?: boolean;
 };
 
 export interface FetchAlbumsFulfilledPayload {

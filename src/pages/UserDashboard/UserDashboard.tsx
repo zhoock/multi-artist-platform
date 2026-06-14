@@ -97,6 +97,7 @@ import {
 import {
   fetchArticles,
   patchDashboardArticleVisibility,
+  removeArticleFromPublicCatalog,
   selectDashboardArticlesStatus,
   selectDashboardArticlesError,
   selectDashboardArticlesDataResolved,
@@ -848,16 +849,62 @@ function UserDashboard() {
     articlesNeedsRefreshRef.current = true;
   }, []);
 
-  const handleArticlePersisted = useCallback(
-    ({ published }: { published: boolean }) => {
+  const resolvePublicArtistSlugForRefresh = useCallback((): string | null => {
+    const fromBackground = backgroundLocation
+      ? getArtistSlugFromLocation(backgroundLocation)
+      : null;
+    return fromBackground ?? profilePublicSlug?.trim() ?? null;
+  }, [backgroundLocation, profilePublicSlug]);
+
+  const refreshPublicCatalogNow = useCallback(
+    (artistSlug: string | null) => {
+      const slug = artistSlug?.trim();
+      if (!slug) return;
+      void dispatch(
+        fetchAlbums({
+          force: true,
+          forcePublicCatalog: true,
+          publicArtistSlug: slug,
+        })
+      );
+    },
+    [dispatch]
+  );
+
+  const refreshPublicArticlesNow = useCallback(
+    (artistSlug: string | null) => {
+      const slug = artistSlug?.trim();
+      if (!slug) return;
+      void dispatch(
+        fetchArticles({
+          force: true,
+          forcePublicCatalog: true,
+          publicArtistSlug: slug,
+        })
+      );
+    },
+    [dispatch]
+  );
+
+  const syncPublicArticlesAfterChange = useCallback(
+    (options?: { refreshNow?: boolean }) => {
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new Event('artist:updated'));
       }
-      if (published) {
-        markPublicArticlesDirty();
+      markPublicArticlesDirty();
+      if (options?.refreshNow !== false) {
+        refreshPublicArticlesNow(resolvePublicArtistSlugForRefresh());
       }
     },
-    [markPublicArticlesDirty]
+    [markPublicArticlesDirty, refreshPublicArticlesNow, resolvePublicArtistSlugForRefresh]
+  );
+
+  const handleArticlePersisted = useCallback(
+    ({ published }: { published: boolean }) => {
+      if (!published) return;
+      syncPublicArticlesAfterChange();
+    },
+    [syncPublicArticlesAfterChange]
   );
 
   const handleArticleRemoved = useCallback(
@@ -867,9 +914,10 @@ function UserDashboard() {
       }
       if (wasPublished) {
         markPublicArticlesDirty();
+        refreshPublicArticlesNow(resolvePublicArtistSlugForRefresh());
       }
     },
-    [markPublicArticlesDirty]
+    [markPublicArticlesDirty, refreshPublicArticlesNow, resolvePublicArtistSlugForRefresh]
   );
 
   const handleCatalogChanged = useCallback(
@@ -899,13 +947,28 @@ function UserDashboard() {
       // сбрасывает catalog в idle/stale без loader re-run (surface уже смонтирована под модалкой).
       // Slug синхронизирует CurrentArtistSync из URL после navigate.
       if (catalogDirty) {
-        void dispatch(fetchAlbums({ force: true }));
+        void dispatch(
+          fetchAlbums({
+            force: true,
+            forcePublicCatalog: true,
+            publicArtistSlug: artistSlug,
+          })
+        );
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new Event('artist:updated'));
         }
       }
       if (articlesDirty) {
-        void dispatch(fetchArticles({ force: true, publicArtistSlug: artistSlug }));
+        void dispatch(
+          fetchArticles({
+            force: true,
+            forcePublicCatalog: true,
+            publicArtistSlug: artistSlug,
+          })
+        );
+        if (!catalogDirty && typeof window !== 'undefined') {
+          window.dispatchEvent(new Event('artist:updated'));
+        }
       }
     },
     [dispatch]
@@ -1886,7 +1949,8 @@ function UserDashboard() {
         )
       );
       flashDashboardRow(`dashboard-track-row-${trackId}`, visibility);
-      markPublicCatalogDirty();
+      handleCatalogChanged({ wasPubliclyVisible: true });
+      refreshPublicCatalogNow(resolvePublicArtistSlugForRefresh());
     } catch (error) {
       console.error('❌ Error updating track visibility:', error);
       setAlertModal({
@@ -1937,7 +2001,8 @@ function UserDashboard() {
         })
       );
       flashDashboardRow(`dashboard-album-row-${albumId}`, visibility);
-      markPublicCatalogDirty();
+      handleCatalogChanged({ wasPubliclyVisible: true });
+      refreshPublicCatalogNow(resolvePublicArtistSlugForRefresh());
     } catch (error) {
       console.error('Error updating album visibility:', error);
       setAlertModal({
@@ -1980,7 +2045,7 @@ function UserDashboard() {
 
       dispatch(patchDashboardArticleVisibility({ articleId, visibility }));
       flashDashboardRow(`dashboard-article-row-${articleId}`, visibility);
-      markPublicArticlesDirty();
+      syncPublicArticlesAfterChange();
     } catch (error) {
       console.error('Error updating article visibility:', error);
       setAlertModal({
@@ -2135,7 +2200,8 @@ function UserDashboard() {
 
       await dispatch(fetchAlbums({ force: true, ownerDashboard: true })).unwrap();
 
-      markPublicCatalogDirty();
+      handleCatalogChanged({ wasPubliclyVisible: true });
+      refreshPublicCatalogNow(resolvePublicArtistSlugForRefresh());
       queueAlbumPublishedToast();
       setPublishedToastTrigger((value) => value + 1);
     } catch (error) {
@@ -2218,6 +2284,7 @@ function UserDashboard() {
       }
 
       // Обновляем Redux store
+      dispatch(removeArticleFromPublicCatalog({ articleId: article.articleId }));
       await dispatch(fetchArticles({ force: true, ownerDashboard: true })).unwrap();
 
       // Закрываем расширенный вид, если удаленная статья была открыта

@@ -2,6 +2,7 @@ export {
   articlesReducer,
   fetchArticles,
   patchDashboardArticleVisibility,
+  removeArticleFromPublicCatalog,
   resetArticlesState,
   type FetchArticlesResult,
 } from './articlesSlice';

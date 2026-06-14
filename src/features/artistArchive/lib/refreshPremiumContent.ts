@@ -117,10 +117,10 @@ async function executePremiumEntitlementsRefresh(
 
   try {
     await Promise.all([
-      dispatch(fetchAlbums({ force: true }))
+      dispatch(fetchAlbums({ force: true, forcePublicCatalog: true, publicArtistSlug: slug }))
         .unwrap()
         .catch(() => undefined),
-      dispatch(fetchArticles({ force: true, publicArtistSlug: slug }))
+      dispatch(fetchArticles({ force: true, publicArtistSlug: slug, forcePublicCatalog: true }))
         .unwrap()
         .catch(() => undefined),
     ]);

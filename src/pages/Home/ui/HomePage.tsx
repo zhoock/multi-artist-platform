@@ -83,12 +83,25 @@ export function HomePage() {
         setUniverseRefreshToken((n) => n + 1);
       }
       if (hasArtistParam && !isDashboardPathname()) {
-        void dispatch(fetchAlbums({ force: true }));
+        void dispatch(
+          fetchAlbums({
+            force: true,
+            forcePublicCatalog: true,
+            publicArtistSlug: artistSlug,
+          })
+        );
+        void dispatch(
+          fetchArticles({
+            force: true,
+            forcePublicCatalog: true,
+            publicArtistSlug: artistSlug,
+          })
+        );
       }
     };
     window.addEventListener('artist:updated', handler);
     return () => window.removeEventListener('artist:updated', handler);
-  }, [dispatch, hasArtistParam]);
+  }, [artistSlug, dispatch, hasArtistParam]);
 
   useEffect(() => {
     if (isDashboardPathname()) return;

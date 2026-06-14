@@ -17,8 +17,22 @@ import type { AlbumsState, FetchAlbumsArg, FetchAlbumsFulfilledPayload } from '.
 export type { FetchAlbumsArg } from './types';
 
 function isOwnerDashboardAlbumsFetch(arg: FetchAlbumsArg): boolean {
+  if (arg.forcePublicCatalog) return false;
   if (arg.ownerDashboard) return true;
   return isDashboardPathname() && !shouldUsePublicArtistCatalogInRedux();
+}
+
+function resolvePublicArtistSlugForFetch(arg: FetchAlbumsArg, getState: () => RootState): string {
+  if (arg.publicArtistSlug !== undefined && arg.publicArtistSlug !== null) {
+    return String(arg.publicArtistSlug).trim();
+  }
+  return selectPublicArtistSlug(getState())?.trim() ?? '';
+}
+
+function shouldFetchPublicArtistCatalog(arg: FetchAlbumsArg): boolean {
+  if (arg.forcePublicCatalog) return true;
+  if (isOwnerDashboardAlbumsFetch(arg)) return false;
+  return shouldUsePublicArtistCatalogInRedux();
 }
 
 /** Ignore stale `force` responses when a newer entitlement refresh is in flight. */
@@ -42,11 +56,18 @@ const initialState: AlbumsState = {
 };
 
 /** Ключ кэша публичного каталога в `data` (artist slug из store / фон под модалкой). */
-function getCatalogAlbumsFetchContextKey(getState: () => RootState): string {
+function getCatalogAlbumsFetchContextKey(
+  getState: () => RootState,
+  slugOverride?: string | null
+): string {
   if (typeof window === 'undefined') {
     return 'ssr';
   }
-  return buildPublicAlbumsFetchContextKey(selectPublicArtistSlug(getState()));
+  const slug =
+    slugOverride !== undefined
+      ? String(slugOverride ?? '').trim()
+      : (selectPublicArtistSlug(getState())?.trim() ?? '');
+  return buildPublicAlbumsFetchContextKey(slug || null);
 }
 
 function wrapAlbumsResult(
@@ -217,16 +238,16 @@ export const fetchAlbums = createAsyncThunk<
 
     try {
       const ownerDashboard = isOwnerDashboardAlbumsFetch(arg);
-      const usePublicCatalog = ownerDashboard ? false : shouldUsePublicArtistCatalogInRedux();
+      const usePublicCatalog = shouldFetchPublicArtistCatalog(arg);
       const isFullscreenDashboard = ownerDashboard;
-      const publicSlug = selectPublicArtistSlug(getState())?.trim() ?? '';
+      const publicSlug = usePublicCatalog ? resolvePublicArtistSlugForFetch(arg, getState) : '';
       const requestFetchKey = usePublicCatalog
-        ? getCatalogAlbumsFetchContextKey(getState)
+        ? getCatalogAlbumsFetchContextKey(getState, publicSlug || null)
         : 'dashboard';
       const writeTarget: 'catalog' | 'dashboard' = usePublicCatalog ? 'catalog' : 'dashboard';
 
       const catalogStale = (): boolean =>
-        getCatalogAlbumsFetchContextKey(getState) !== requestFetchKey;
+        getCatalogAlbumsFetchContextKey(getState, publicSlug || null) !== requestFetchKey;
 
       const dashboardStale = (): boolean => {
         if (ownerDashboard) return false;
@@ -278,6 +299,7 @@ export const fetchAlbums = createAsyncThunk<
             {
               includeArtist: usePublicCatalog,
               artistSlugOverride: usePublicCatalog ? publicSlug : null,
+              forceArtistQuery: Boolean(arg.forcePublicCatalog),
             }
           ),
           {

@@ -418,6 +418,38 @@ describe('albumsSlice', () => {
       );
     });
 
+    test('forcePublicCatalog на полноэкранном dashboard пишет в публичный каталог с явным slug', async () => {
+      window.history.pushState({}, '', '/dashboard-new/albums');
+      window.localStorage.setItem('auth_token', TEST_AUTH_TOKEN);
+      syncDashboardAlbumsPublicCatalogOverlay(false);
+      mockFetch.mockResolvedValueOnce(mockSuccessResponse(mockAlbums));
+
+      const store = createTestStore();
+      const result = await (store.dispatch as AppDispatch)(
+        fetchAlbums({
+          force: true,
+          forcePublicCatalog: true,
+          publicArtistSlug: 'artist-a',
+        })
+      );
+
+      expect(result.type).toBe('albums/fetchMerged/fulfilled');
+      expect(result.payload).toEqual({
+        albums: mockAlbums,
+        fetchContextKey: 'public:artist-a',
+        writeTarget: 'catalog',
+        catalogArtistMissing: false,
+      });
+      expect(selectAlbumsData(store.getState())).toEqual(mockAlbums);
+      expect(selectDashboardAlbumsData(store.getState())).toEqual([]);
+      expect(mockFetch).toHaveBeenCalledWith(
+        '/api/albums?artist=artist-a',
+        expect.objectContaining({
+          cache: 'no-store',
+        })
+      );
+    });
+
     test('на dashboard без токена не дергает API (иначе 400 без ?artist=)', async () => {
       window.history.pushState({}, '', '/dashboard-new/albums');
       mockFetch.mockResolvedValueOnce(mockSuccessResponse(mockAlbums));
