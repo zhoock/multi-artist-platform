@@ -346,8 +346,8 @@ export function HomePage() {
 
     return (
       <>
-        {artistPageAccess.showAwaitingFirstRelease ? (
-          <ArtistAwaitingFirstReleaseBanner isOwner={artistPageAccess.isOwner} />
+        {artistPageAccess.showAwaitingFirstRelease && artistPageAccess.isOwner ? (
+          <ArtistAwaitingFirstReleaseBanner isOwner />
         ) : null}
         <AlbumsSection isOwner={artistPageAccess.isOwner} />
         <ArticlesSection />

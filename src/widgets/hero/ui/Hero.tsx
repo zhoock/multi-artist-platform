@@ -499,9 +499,7 @@ export function Hero() {
           : undefined
       }
     >
-      {showAwaitingFirstRelease ? (
-        <div className="hero__awaiting-scene" aria-hidden="true" />
-      ) : hasArtistParam ? (
+      {hasArtistParam && !showAwaitingFirstRelease ? (
         <div ref={heroCanvasRef} className="hero__canvas" />
       ) : null}
       <div className="hero__content">

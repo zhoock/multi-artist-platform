@@ -128,59 +128,75 @@
     text-transform: capitalize;
   }
 
-  &__awaiting-scene {
-    position: absolute;
-    inset: 0;
-    z-index: 1;
-    overflow: hidden;
-    pointer-events: none;
+  &--awaiting-first-release {
     background-color: #03040a;
     background-image: url('/images/awaiting-first-release-nebula.jpg');
-    background-repeat: no-repeat;
-    background-position: right center;
-    background-size: auto 100%;
-
-    /* Затемнение слева — отдельный слой поверх картинки, правая половина чистая */
-    &::after {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background: linear-gradient(
-        90deg,
-        rgb(0 0 0 / 94%) 0%,
-        rgb(0 0 0 / 72%) 20%,
-        rgb(0 0 0 / 28%) 36%,
-        rgb(0 0 0 / 0%) 48%
-      );
-      pointer-events: none;
-    }
+    background-attachment: scroll;
+    background-position: center;
+    background-size: cover;
+    cursor: default;
 
     @include breakpoint(tablet) {
-      background-size: auto 105%;
+      background-position: 40% center;
+    }
 
-      &::after {
+    /* Мягче стандартного hero — nebula видна на всю плашку, текст слева читаем */
+    &::before {
+      @include breakpoint(old-phones) {
+        background: linear-gradient(
+          180deg,
+          rgb(0 0 0 / 82%) 0%,
+          rgb(0 0 0 / 52%) 42%,
+          rgb(0 0 0 / 22%) 68%,
+          rgb(0 0 0 / 0%) 100%
+        );
+        opacity: 1;
+      }
+
+      @include breakpoint(phones) {
+        background: linear-gradient(
+          180deg,
+          rgb(0 0 0 / 82%) 0%,
+          rgb(0 0 0 / 52%) 42%,
+          rgb(0 0 0 / 22%) 68%,
+          rgb(0 0 0 / 0%) 100%
+        );
+        opacity: 1;
+      }
+
+      @include breakpoint(tablet) {
         background: linear-gradient(
           90deg,
-          rgb(0 0 0 / 94%) 0%,
-          rgb(0 0 0 / 68%) 22%,
-          rgb(0 0 0 / 22%) 38%,
-          rgb(0 0 0 / 0%) 46%
+          rgb(0 0 0 / 90%) 0%,
+          rgb(0 0 0 / 72%) 26%,
+          rgb(0 0 0 / 38%) 48%,
+          rgb(0 0 0 / 14%) 68%,
+          rgb(0 0 0 / 0%) 86%
+        );
+        opacity: 1;
+      }
+
+      @include breakpoint(desktops) {
+        background: linear-gradient(
+          90deg,
+          rgb(0 0 0 / 88%) 0%,
+          rgb(0 0 0 / 68%) 32%,
+          rgb(0 0 0 / 30%) 56%,
+          rgb(0 0 0 / 10%) 76%,
+          rgb(0 0 0 / 0%) 92%
         );
       }
     }
 
-    @include breakpoint(desktops) {
-      background-size: auto 108%;
+    .hero__headline {
+      grid-template-areas:
+        'title'
+        'copy';
+      gap: $ms-01;
+    }
 
-      &::after {
-        background: linear-gradient(
-          90deg,
-          rgb(0 0 0 / 92%) 0%,
-          rgb(0 0 0 / 62%) 26%,
-          rgb(0 0 0 / 18%) 42%,
-          rgb(0 0 0 / 0%) 52%
-        );
-      }
+    .hero__archive-slot {
+      display: none;
     }
   }
 
@@ -208,63 +224,9 @@
     text-wrap: pretty;
   }
 
-  &--awaiting-first-release {
-    align-items: stretch;
-    block-size: auto;
-    min-block-size: clamp(18rem, max(38vh, 36vw), 36rem);
-    background-color: #03040a;
-    cursor: default;
-
-    /* Не наследуем затемнение обычного hero — у awaiting свой слой на сцене */
-    &::before {
-      content: none;
-      display: none;
-    }
-
-    .hero__content {
-      position: relative;
-      z-index: 3;
-      display: flex;
-      align-items: end;
-      min-block-size: inherit;
-      padding-block: clamp($ms-1, 6vw, $ms-3) $ms-01;
-    }
-
-    .hero__headline {
-      grid-template-areas:
-        'title'
-        'copy';
-      gap: $ms-01;
-    }
-
-    .hero__archive-slot {
-      display: none;
-    }
-  }
-
   @media (width <= 768px) {
     &__canvas {
       display: none;
-    }
-
-    &--awaiting-first-release {
-      block-size: auto;
-      min-block-size: clamp(14rem, 52vw, 20rem);
-
-      .hero__awaiting-scene {
-        background-position: center bottom;
-        background-size: 120% auto;
-
-        &::after {
-          background: linear-gradient(
-            180deg,
-            rgb(0 0 0 / 92%) 0%,
-            rgb(0 0 0 / 55%) 28%,
-            rgb(0 0 0 / 12%) 44%,
-            rgb(0 0 0 / 0%) 56%
-          );
-        }
-      }
     }
   }
 }
