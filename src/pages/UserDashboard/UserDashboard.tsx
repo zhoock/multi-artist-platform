@@ -64,6 +64,7 @@ import {
   getAlbumPublishHintKey,
 } from '@entities/album/lib/isAlbumReadyToPublish';
 import { isAlbumPublished } from '@entities/album/lib/albumPublication';
+import { hasPublishedPublicReleases } from '@entities/album/lib/hasPublishedPublicReleases';
 import { getAlbumListDraftBadge } from '@entities/album/lib/albumLifecycleStatus';
 import { AlbumLifecycleBadge } from './components/albums/AlbumLifecycleBadge';
 import { AlbumAccessControl } from './components/albums/AlbumAccessControl';
@@ -84,7 +85,6 @@ import {
   isArticlePublicOnArtistPage,
 } from '@shared/lib/artistPageContent';
 import { useOwnArtistPageSummary } from '@shared/lib/hooks/useOwnArtistPageSummary';
-import { setPublicArtistSlug } from '@shared/model/currentArtist';
 import { useAuthSessionUser } from '@shared/lib/hooks/useAuthSessionUser';
 import {
   fetchAlbums,
@@ -846,6 +846,18 @@ function UserDashboard() {
       }
     },
     [markPublicArticlesDirty]
+  );
+
+  const handleCatalogChanged = useCallback(
+    ({ wasPubliclyVisible }: { wasPubliclyVisible: boolean }) => {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('artist:updated'));
+      }
+      if (wasPubliclyVisible) {
+        markPublicCatalogDirty();
+      }
+    },
+    [markPublicCatalogDirty]
   );
 
   const syncPublicSurfaceAfterDashboardClose = useCallback(
@@ -1955,6 +1967,11 @@ function UserDashboard() {
   };
 
   const performDeleteTrack = async (albumId: string, trackId: string) => {
+    const albumBeforeDelete = albumsFromStore.find((a) => a.albumId === albumId);
+    const wasPubliclyVisible = albumBeforeDelete
+      ? hasPublishedPublicReleases([albumBeforeDelete])
+      : false;
+
     try {
       const token = getToken();
       if (!token) {
@@ -2013,6 +2030,8 @@ function UserDashboard() {
           console.warn('⚠️ [performDeleteTrack] fetchAlbums after delete:', refetchErr);
         }
       }
+
+      handleCatalogChanged({ wasPubliclyVisible });
 
       console.log('✅ Track deleted successfully:', { albumId, trackId });
     } catch (error) {
@@ -2196,10 +2215,8 @@ function UserDashboard() {
 
   const performDeleteAlbum = async (albumId: string) => {
     const deletedAlbumTitle = albumsData.find((a) => a.id === albumId)?.title;
-    const artistSlugForCatalog =
-      (backgroundLocation ? getArtistSlugFromLocation(backgroundLocation) : null) ??
-      profilePublicSlug?.trim() ??
-      null;
+    const albumBeforeDelete = albumsFromStore.find((a) => a.albumId === albumId);
+    const shouldSyncPublicCatalog = Boolean(albumBeforeDelete);
 
     try {
       const token = getToken();
@@ -2243,20 +2260,7 @@ function UserDashboard() {
         setExpandedAlbumId(null);
       }
 
-      if (artistSlugForCatalog) {
-        dispatch(setPublicArtistSlug(artistSlugForCatalog));
-        try {
-          await dispatch(fetchAlbums({ force: true })).unwrap();
-        } catch {
-          /* публичный каталог под ?artist= — best-effort */
-        }
-      }
-
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new Event('artist:updated'));
-      }
-
-      catalogNeedsRefreshRef.current = false;
+      handleCatalogChanged({ wasPubliclyVisible: shouldSyncPublicCatalog });
 
       queueAlbumDeletedToast(formatAlbumDeletedSuccessMessage(deletedAlbumTitle, lang, ui));
       setAlbumDeletedToastTrigger((n) => n + 1);

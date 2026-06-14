@@ -1,4 +1,4 @@
-import { describe, test, expect, jest, beforeEach } from '@jest/globals';
+import { describe, test, expect, jest, beforeEach, afterEach } from '@jest/globals';
 import { renderHook, waitFor } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
@@ -9,7 +9,8 @@ import { langReducer } from '@shared/model/lang/langSlice';
 import { currentArtistReducer } from '@shared/model/currentArtist';
 import { LangProvider } from '@app/providers/lang';
 import { useArtistPageAccess } from '../useArtistPageAccess';
-import type { IAlbums } from '@models';
+import type { IAlbums, TracksProps } from '@models';
+import { writeCachedOwnPublicSlug, clearCachedOwnPublicSlug } from '@shared/lib/ownPublicSlugCache';
 
 jest.mock('@shared/lib/authFetch', () => ({
   fetchWithAuthSession: jest.fn(),
@@ -26,6 +27,16 @@ jest.mock('@shared/lib/auth', () => {
 });
 
 import { fetchWithAuthSession } from '@shared/lib/authFetch';
+import { getUser, isAuthenticated } from '@shared/lib/auth';
+
+const mockTrack: TracksProps = {
+  id: '1',
+  title: 'Track',
+  content: '',
+  duration: 180,
+  src: 'track.mp3',
+  order_index: 10,
+};
 
 const publishedAlbum: IAlbums = {
   albumId: 'test-album',
@@ -35,7 +46,7 @@ const publishedAlbum: IAlbums = {
   description: 'Desc',
   cover: 'cover',
   release: { date: '2024-01-01' },
-  tracks: [],
+  tracks: [mockTrack],
   buttons: {},
   details: [],
   isPublished: true,
@@ -116,6 +127,84 @@ describe('useArtistPageAccess — album surface reload', () => {
 
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false);
+    });
+  });
+});
+
+describe('useArtistPageAccess — owner onboarding after full content removal', () => {
+  beforeEach(() => {
+    jest.mocked(isAuthenticated).mockReturnValue(true);
+    jest.mocked(getUser).mockReturnValue({ id: 'user-1' } as never);
+    writeCachedOwnPublicSlug('user-1', 'test-artist');
+
+    jest.mocked(fetchWithAuthSession).mockImplementation(async (input: RequestInfo | URL) => {
+      const href =
+        typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+      if (href.includes('user-profile')) {
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            data: { publicSlug: 'test-artist', siteName: 'Band' },
+          }),
+        } as Response;
+      }
+      if (href.includes('articles-api')) {
+        return { ok: true, json: async () => [] } as Response;
+      }
+      if (href.includes('/api/albums')) {
+        return { ok: true, json: async () => ({ success: true, data: [] }) } as Response;
+      }
+      return { ok: false, json: async () => ({}) } as Response;
+    });
+  });
+
+  afterEach(() => {
+    clearCachedOwnPublicSlug();
+    jest.mocked(isAuthenticated).mockReturnValue(false);
+    jest.mocked(getUser).mockReturnValue(null);
+  });
+
+  test('показывает onboarding, если дашборд пуст, а публичный кэш ещё устарел', async () => {
+    const { result } = renderHook(() => useArtistPageAccess('test-artist'), {
+      wrapper: createWrapper({
+        lang: { current: 'en' },
+        currentArtist: { publicSlug: 'test-artist' },
+        articles: {
+          status: 'idle',
+          error: null,
+          data: [],
+          lastUpdated: null,
+          lastPublicArtistSlug: null,
+          dashboard: {
+            status: 'succeeded',
+            error: null,
+            data: [],
+            lastUpdated: Date.now(),
+          },
+        },
+        albums: {
+          status: 'succeeded',
+          error: null,
+          data: [publishedAlbum],
+          lastUpdated: Date.now(),
+          fetchContextKey: 'public:test-artist',
+          inFlightFetchContextKey: null,
+          catalogArtistMissing: false,
+          dashboard: {
+            status: 'succeeded',
+            error: null,
+            data: [],
+            lastUpdated: Date.now(),
+            inFlightFetchContextKey: null,
+          },
+        },
+      }),
+    });
+
+    await waitFor(() => {
+      expect(result.current.showOnboarding).toBe(true);
+      expect(result.current.showOwnerUnderConstruction).toBe(false);
     });
   });
 });

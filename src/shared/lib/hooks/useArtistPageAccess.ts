@@ -80,8 +80,14 @@ export function useArtistPageAccess(artistSlug: string) {
 
   const ownerAlbumCount = useMemo(() => {
     if (!isOwner) return 0;
-    return Math.max(countUniqueAlbums(dashboardAlbums), countUniqueAlbums(catalogAlbums));
-  }, [isOwner, dashboardAlbums, catalogAlbums]);
+    const dashboardCount = countUniqueAlbums(dashboardAlbums);
+    // Дашборд — источник правды для владельца; устаревший публичный кэш (например,
+    // опубликованный альбом до delete track → delete album) не должен блокировать онбординг.
+    if (dashboardAlbumsStatus === 'succeeded' || dashboardAlbumsStatus === 'failed') {
+      return dashboardCount;
+    }
+    return Math.max(dashboardCount, countUniqueAlbums(catalogAlbums));
+  }, [isOwner, dashboardAlbums, catalogAlbums, dashboardAlbumsStatus]);
 
   const ownerArticleCount = useMemo(() => {
     if (!isOwner) return 0;
