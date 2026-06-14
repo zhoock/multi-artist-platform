@@ -79,7 +79,10 @@ import { queueAlbumDeletedToast } from '@shared/lib/albumDeletedToast';
 import { queueArticleDeletedToast } from '@shared/lib/articleDeletedToast';
 import { getArtistSlugFromLocation } from '@shared/lib/albumDeletedRedirect';
 import { openOwnArtistPage } from '@shared/lib/ownArtistPage';
-import { artistHasPublicPageContent } from '@shared/lib/artistPageContent';
+import {
+  artistHasPublicPageContent,
+  isArticlePublicOnArtistPage,
+} from '@shared/lib/artistPageContent';
 import { useOwnArtistPageSummary } from '@shared/lib/hooks/useOwnArtistPageSummary';
 import { setPublicArtistSlug } from '@shared/model/currentArtist';
 import { useAuthSessionUser } from '@shared/lib/hooks/useAuthSessionUser';
@@ -827,6 +830,18 @@ function UserDashboard() {
         window.dispatchEvent(new Event('artist:updated'));
       }
       if (published) {
+        markPublicArticlesDirty();
+      }
+    },
+    [markPublicArticlesDirty]
+  );
+
+  const handleArticleRemoved = useCallback(
+    ({ wasPublished }: { wasPublished: boolean }) => {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('artist:updated'));
+      }
+      if (wasPublished) {
         markPublicArticlesDirty();
       }
     },
@@ -2111,6 +2126,8 @@ function UserDashboard() {
   };
 
   const performDeleteArticle = async (article: IArticles) => {
+    const wasPublished = isArticlePublicOnArtistPage(article);
+
     try {
       const token = getToken();
       if (!token) {
@@ -2161,6 +2178,8 @@ function UserDashboard() {
       if (expandedArticleId === article.articleId) {
         setExpandedArticleId(null);
       }
+
+      handleArticleRemoved({ wasPublished });
 
       queueArticleDeletedToast(formatArticleDeletedSuccessMessage(article.nameArticle, lang, ui));
       setArticleDeletedToastTrigger((value) => value + 1);
