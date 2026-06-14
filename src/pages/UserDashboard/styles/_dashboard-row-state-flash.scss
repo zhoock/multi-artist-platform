@@ -1,0 +1,61 @@
+@use '../../../scss/abstracts/mixins' as *;
+
+dialog {
+  .user-dashboard {
+    &__album-item,
+    &__track-item {
+      &.user-dashboard__row-state-flash {
+        position: relative;
+        isolation: isolate;
+        overflow: hidden;
+
+        &::before {
+          content: '';
+          position: absolute;
+          inset: 0;
+          z-index: 0;
+          pointer-events: none;
+          border-top-left-radius: var(--ms-01);
+          border-top-right-radius: var(--ms-01);
+          background: rgb(var(--dashboard-row-flash-rgb) / 14%);
+          animation: dashboard-row-state-flash 4.2s cubic-bezier(0.16, 1, 0.28, 1) forwards;
+        }
+
+        &[data-visibility-flash='hidden']::before {
+          background: rgb(var(--dashboard-row-flash-rgb) / 18%);
+        }
+
+        > * {
+          position: relative;
+          z-index: 1;
+        }
+      }
+    }
+  }
+}
+
+@keyframes dashboard-row-state-flash {
+  0% {
+    opacity: 0;
+  }
+
+  5% {
+    opacity: 0.62;
+  }
+
+  8% {
+    opacity: 0.58;
+  }
+
+  24% {
+    opacity: 0.56;
+  }
+
+  32% {
+    opacity: 0.48;
+  }
+
+  100% {
+    opacity: 0;
+  }
+}

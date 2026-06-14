@@ -9,6 +9,7 @@
 @use 'styles/purchases';
 @use 'styles/archive';
 @use 'styles/modals';
+@use 'styles/dashboard-row-state-flash';
 
 dialog {
   color: var(--dashboard-text-primary);

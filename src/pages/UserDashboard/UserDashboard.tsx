@@ -126,6 +126,14 @@ import {
 } from './components/articles/articleVisibilityOptions';
 import { DashboardNavTabIcon } from './lib/dashboardNavTabIcon';
 import { DashboardExpandChevron } from './lib/dashboardExpandChevron';
+import {
+  DASHBOARD_ROW_STATE_FLASH_CLASS,
+  DASHBOARD_ROW_FLASH_RGB_VAR,
+  getDashboardRowFlashProps,
+  getDashboardRowStateFlashRgb,
+  useDashboardRowFlash,
+  type DashboardRowFlash,
+} from './lib/dashboardRowStateFlash';
 import { DashboardTabContentSkeleton } from './components/DashboardTabContentSkeleton';
 import { ProfileTabSkeleton } from './components/ProfileTabSkeleton';
 import { SyncLyricsModal } from './components/modals/lyrics/SyncLyricsModal';
@@ -270,6 +278,7 @@ interface SortableTrackItemProps {
     trackId: string,
     visibility: TrackVisibility
   ) => Promise<void>;
+  rowFlash?: DashboardRowFlash;
   ui?: IInterface;
 }
 
@@ -288,6 +297,7 @@ function SortableTrackItem({
   onEdit,
   onTitleChange,
   onVisibilityChange,
+  rowFlash,
   ui,
 }: SortableTrackItemProps) {
   const { lang } = useLang();
@@ -542,21 +552,34 @@ function SortableTrackItem({
       document.body;
   }
 
+  const trackRowFlashProps = rowFlash
+    ? {
+        className: DASHBOARD_ROW_STATE_FLASH_CLASS,
+        style: {
+          [DASHBOARD_ROW_FLASH_RGB_VAR]: getDashboardRowStateFlashRgb(rowFlash.visibility),
+        } as React.CSSProperties,
+        'data-visibility-flash': rowFlash.visibility,
+      }
+    : {};
+
   return (
     <>
       <div
         ref={combinedRef}
         style={style}
-        className={clsx('user-dashboard__track-item-wrapper', {
+        className={clsx('user-dashboard__track-item-wrapper', 'dashboard-track-row', {
           'user-dashboard__track-item-wrapper--dragging': isDragging,
         })}
       >
         <div className="user-dashboard__track-item-content">
           <div
-            className={clsx('user-dashboard__track-item', {
+            id={`dashboard-track-row-${track.id}`}
+            className={clsx('user-dashboard__track-item', trackRowFlashProps.className, {
               'user-dashboard__track-item--dragging': isDragging,
               'user-dashboard__track-item--access-menu-open': accessMenuOpen,
             })}
+            style={trackRowFlashProps.style}
+            data-visibility-flash={trackRowFlashProps['data-visibility-flash']}
           >
             <div className="user-dashboard__track-cell user-dashboard__track-cell--track">
               <div
@@ -813,6 +836,7 @@ function UserDashboard() {
   const [articleAccessMenuArticleId, setArticleAccessMenuArticleId] = useState<string | null>(null);
   const [albumAccessMenuAlbumId, setAlbumAccessMenuAlbumId] = useState<string | null>(null);
   const [albumsData, setAlbumsData] = useState<AlbumData[]>([]);
+  const { flashes: dashboardRowFlashes, flashRow: flashDashboardRow } = useDashboardRowFlash();
   const catalogNeedsRefreshRef = useRef(false);
   const articlesNeedsRefreshRef = useRef(false);
 
@@ -1861,6 +1885,7 @@ function UserDashboard() {
             : album
         )
       );
+      flashDashboardRow(`dashboard-track-row-${trackId}`, visibility);
       markPublicCatalogDirty();
     } catch (error) {
       console.error('❌ Error updating track visibility:', error);
@@ -1911,6 +1936,7 @@ function UserDashboard() {
           isPublic: albumVisibilityToIsPublic(visibility),
         })
       );
+      flashDashboardRow(`dashboard-album-row-${albumId}`, visibility);
       markPublicCatalogDirty();
     } catch (error) {
       console.error('Error updating album visibility:', error);
@@ -1953,6 +1979,7 @@ function UserDashboard() {
       }
 
       dispatch(patchDashboardArticleVisibility({ articleId, visibility }));
+      flashDashboardRow(`dashboard-article-row-${articleId}`, visibility);
       markPublicArticlesDirty();
     } catch (error) {
       console.error('Error updating article visibility:', error);
@@ -3037,15 +3064,26 @@ function UserDashboard() {
                                     isPublished: album.isPublished,
                                     isPublic: album.isPublic,
                                   });
+                              const albumRowFlash = getDashboardRowFlashProps(
+                                `dashboard-album-row-${album.id}`,
+                                dashboardRowFlashes
+                              );
                               return (
                                 <React.Fragment key={album.id}>
                                   <div
                                     id={`dashboard-album-row-${album.id}`}
-                                    className={clsx('user-dashboard__album-item', {
-                                      'user-dashboard__album-item--expanded': isExpanded,
-                                      'user-dashboard__album-item--access-menu-open':
-                                        albumAccessMenuAlbumId === album.id,
-                                    })}
+                                    className={clsx(
+                                      'user-dashboard__album-item',
+                                      'dashboard-album-row',
+                                      albumRowFlash.className,
+                                      {
+                                        'user-dashboard__album-item--expanded': isExpanded,
+                                        'user-dashboard__album-item--access-menu-open':
+                                          albumAccessMenuAlbumId === album.id,
+                                      }
+                                    )}
+                                    style={albumRowFlash.style}
+                                    data-visibility-flash={albumRowFlash['data-visibility-flash']}
                                     onClick={() => toggleAlbum(album.id)}
                                     role="button"
                                     tabIndex={0}
@@ -3268,6 +3306,11 @@ function UserDashboard() {
                                                       onTitleChange={handleTrackTitleChange}
                                                       onVisibilityChange={
                                                         handleTrackVisibilityChange
+                                                      }
+                                                      rowFlash={
+                                                        dashboardRowFlashes[
+                                                          `dashboard-track-row-${track.id}`
+                                                        ]
                                                       }
                                                       ui={ui ?? undefined}
                                                     />
@@ -3497,15 +3540,26 @@ function UserDashboard() {
                                 });
                               }
                               const articleOwnerId = article.userId;
+                              const articleRowFlash = getDashboardRowFlashProps(
+                                `dashboard-article-row-${article.articleId}`,
+                                dashboardRowFlashes
+                              );
                               return (
                                 <React.Fragment key={article.articleId}>
                                   <div
                                     id={`dashboard-article-row-${article.articleId}`}
-                                    className={clsx('user-dashboard__album-item', {
-                                      'user-dashboard__album-item--expanded': isExpanded,
-                                      'user-dashboard__album-item--access-menu-open':
-                                        articleAccessMenuArticleId === article.articleId,
-                                    })}
+                                    className={clsx(
+                                      'user-dashboard__album-item',
+                                      'dashboard-article-row',
+                                      articleRowFlash.className,
+                                      {
+                                        'user-dashboard__album-item--expanded': isExpanded,
+                                        'user-dashboard__album-item--access-menu-open':
+                                          articleAccessMenuArticleId === article.articleId,
+                                      }
+                                    )}
+                                    style={articleRowFlash.style}
+                                    data-visibility-flash={articleRowFlash['data-visibility-flash']}
                                     onClick={() =>
                                       setExpandedArticleId(isExpanded ? null : article.articleId)
                                     }
