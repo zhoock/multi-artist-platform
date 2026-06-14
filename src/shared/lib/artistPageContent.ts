@@ -2,6 +2,7 @@ import type { IAlbums, IArticles } from '@models';
 
 import { isAlbumVisibleOnArtistPage } from '@entities/album/lib/albumPublication';
 import { hasPublishedPublicReleases } from '@entities/album/lib/hasPublishedPublicReleases';
+import { normalizeTrackVisibility } from '@shared/lib/tracks/trackVisibility';
 
 type ProfileContentInput = {
   siteName?: string | null;
@@ -45,6 +46,30 @@ export function filterAlbumsForArtistPageSurface(albums: IAlbums[], isOwner: boo
       album.album.trim().length > 0 &&
       (album.tracks?.length ?? 0) > 0
   );
+}
+
+export function isArticlePublicOnArtistPage(
+  article: Pick<IArticles, 'isDraft' | 'visibility'>
+): boolean {
+  if (article.isDraft === true) return false;
+  return normalizeTrackVisibility(article.visibility) !== 'hidden';
+}
+
+export function countPublishedPublicArticles(articles: IArticles[]): number {
+  return articles.filter(isArticlePublicOnArtistPage).length;
+}
+
+/** Visitor-facing artist page: published tracks, public articles, or profile body. */
+export function artistHasPublicPageContent(options: {
+  albums: IAlbums[];
+  articles: IArticles[];
+  profileHasPublicBody: boolean;
+}): boolean {
+  return hasVisitorVisibleArtistContent({
+    albums: options.albums,
+    articlesCount: countPublishedPublicArticles(options.articles),
+    profileHasPublicBody: options.profileHasPublicBody,
+  });
 }
 
 export function hasVisitorVisibleArtistContent(options: {

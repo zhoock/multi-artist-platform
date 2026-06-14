@@ -16,6 +16,8 @@ import {
   selectArticlesStatus,
   selectArticlesDataResolvedForSurface,
   selectArticlesCacheIsStale,
+  selectDashboardArticlesDataResolved,
+  selectDashboardArticlesStatus,
 } from '@entities/article';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { buildApiUrl } from '@shared/lib/artistQuery';
@@ -25,6 +27,7 @@ import { getAuthHeader, getUser, isAuthenticated } from '@shared/lib/auth';
 import { isCachedOwnArtistSlug, writeCachedOwnPublicSlug } from '@shared/lib/ownPublicSlugCache';
 import {
   countUniqueAlbums,
+  countUniqueArticles,
   hasVisitorVisibleArtistContent,
   profileHasPublicBodyContent,
 } from '@shared/lib/artistPageContent';
@@ -47,6 +50,8 @@ export function useArtistPageAccess(artistSlug: string) {
   const catalogAlbums = useAppSelector(selectAlbumsData);
   const dashboardAlbums = useAppSelector(selectDashboardAlbumsData);
   const dashboardAlbumsStatus = useAppSelector(selectDashboardAlbumsStatus);
+  const dashboardArticles = useAppSelector(selectDashboardArticlesDataResolved);
+  const dashboardArticlesStatus = useAppSelector(selectDashboardArticlesStatus);
   const cachedPublicRowCount = useAppSelector(selectPublicCatalogCachedRowCount);
   const articlesStatus = useAppSelector(selectArticlesStatus);
   const articlesCacheStale = useAppSelector(selectArticlesCacheIsStale);
@@ -67,6 +72,7 @@ export function useArtistPageAccess(artistSlug: string) {
   });
   const [isOwner, setIsOwner] = useState(cachedOwner);
   const [ownerNeedsOnboarding, setOwnerNeedsOnboarding] = useState(false);
+  const [ownerHasPublicPageContent, setOwnerHasPublicPageContent] = useState(false);
   const [ownerContentLoaded, setOwnerContentLoaded] = useState(false);
   const [visitorProfileHasPublicBody, setVisitorProfileHasPublicBody] = useState<boolean | null>(
     null
@@ -77,7 +83,13 @@ export function useArtistPageAccess(artistSlug: string) {
     return Math.max(countUniqueAlbums(dashboardAlbums), countUniqueAlbums(catalogAlbums));
   }, [isOwner, dashboardAlbums, catalogAlbums]);
 
-  const ownerStillNeedsOnboarding = ownerNeedsOnboarding && ownerAlbumCount === 0;
+  const ownerArticleCount = useMemo(() => {
+    if (!isOwner) return 0;
+    return countUniqueArticles(dashboardArticles);
+  }, [isOwner, dashboardArticles]);
+
+  const ownerStillNeedsOnboarding =
+    ownerNeedsOnboarding && ownerAlbumCount === 0 && ownerArticleCount === 0;
 
   useEffect(() => {
     const normalizedArtist = normalizeSlug(artistSlug);
@@ -149,6 +161,7 @@ export function useArtistPageAccess(artistSlug: string) {
     if (!isOwner || !ownerResolved) {
       setOwnerContentLoaded(!isOwner);
       setOwnerNeedsOnboarding(false);
+      setOwnerHasPublicPageContent(false);
       return;
     }
 
@@ -159,6 +172,7 @@ export function useArtistPageAccess(artistSlug: string) {
       void fetchOwnArtistPageState(lang).then((state) => {
         if (cancelled) return;
         setOwnerNeedsOnboarding(state.needsOnboarding);
+        setOwnerHasPublicPageContent(state.hasPublicPageContent);
         setOwnerContentLoaded(true);
       });
     };
@@ -282,18 +296,34 @@ export function useArtistPageAccess(artistSlug: string) {
   const ownerAlbumsKnown =
     dashboardAlbumsStatus === 'succeeded' || dashboardAlbumsStatus === 'failed';
 
+  const ownerArticlesKnown =
+    dashboardArticlesStatus === 'succeeded' || dashboardArticlesStatus === 'failed';
+
   /**
    * Окно подтверждения онбординга владельца: личность подтверждена (ownerResolved),
-   * дашборд достоверно сообщил об отсутствии альбомов, но fetchOwnArtistPageState ещё
+   * дашборд достоверно сообщил об отсутствии альбомов и статей, но fetchOwnArtistPageState ещё
    * в полёте (ownerContentLoaded === false). Без скелетона Home кратко рисует опубликованную
    * поверхность (hero + скелетон альбомов) перед экраном онбординга — «грязные» кадры при
    * переходе из дашборда «Открыть страницу артиста». Условие срабатывает только для владельца
-   * без альбомов, поэтому у артистов с релизами поведение не меняется.
+   * без альбомов и статей, поэтому у артистов с релизами поведение не меняется.
    */
   const ownerOnboardingResolutionPending =
-    isOwner && ownerResolved && ownerAlbumsKnown && ownerAlbumCount === 0 && !ownerContentLoaded;
+    isOwner &&
+    ownerResolved &&
+    ownerAlbumsKnown &&
+    ownerArticlesKnown &&
+    ownerAlbumCount === 0 &&
+    ownerArticleCount === 0 &&
+    !ownerContentLoaded;
 
   const showOnboardingSkeleton = !catalogArtistMissing && ownerOnboardingResolutionPending;
+
+  const showOwnerUnderConstruction =
+    !catalogArtistMissing &&
+    isOwner &&
+    ownerContentLoaded &&
+    !ownerStillNeedsOnboarding &&
+    !ownerHasPublicPageContent;
 
   const showNotFound =
     !isLoading &&
@@ -304,8 +334,10 @@ export function useArtistPageAccess(artistSlug: string) {
     !catalogArtistMissing &&
     !showOnboarding &&
     !showOnboardingSkeleton &&
-    !showNotFound;
-  const suppressPublishedArtistChrome = showOnboarding || showOnboardingSkeleton || showNotFound;
+    !showNotFound &&
+    !showOwnerUnderConstruction;
+  const suppressPublishedArtistChrome =
+    showOnboarding || showOnboardingSkeleton || showNotFound || showOwnerUnderConstruction;
 
   return {
     isLoading,
@@ -313,6 +345,7 @@ export function useArtistPageAccess(artistSlug: string) {
     hasPublicReleases,
     showOnboarding,
     showOnboardingSkeleton,
+    showOwnerUnderConstruction,
     showNotFound,
     showPublished,
     suppressPublishedArtistChrome,

@@ -168,6 +168,29 @@ body {
     }
   }
 
+  /* Страница артиста «в разработке»: контент по центру main, footer внизу viewport */
+  &.page--artist-under-construction {
+    #root {
+      display: grid;
+      min-block-size: 100dvb;
+      grid-template:
+        'header' calc(1.618rem * 2)
+        'main' minmax(0, 1fr)
+        'footer' auto / 1fr;
+    }
+
+    #root main {
+      display: flex;
+      flex-direction: column;
+      min-block-size: 0;
+
+      .artist-page-under-construction {
+        flex: 1 1 auto;
+        min-block-size: 0;
+      }
+    }
+  }
+
   /* Главная с 3D-сценой: без Hero, но глобальный main всё ещё задаёт два ряда под hero + лишний ряд #root под header — убираем лишнюю высоту и скролл */
   &.page--home-scene {
     overflow: hidden;

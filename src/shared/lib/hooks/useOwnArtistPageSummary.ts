@@ -7,6 +7,7 @@ import { fetchOwnArtistPageState, type OwnArtistPageState } from '@shared/lib/ow
 const EMPTY_STATE: OwnArtistPageState = {
   publicSlug: null,
   hasPublicReleases: false,
+  hasPublicPageContent: false,
   needsOnboarding: false,
   albumsCount: 0,
   articlesCount: 0,

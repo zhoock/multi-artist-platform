@@ -214,6 +214,11 @@
         }
       }
     },
+    "artistPageUnderConstruction": {
+      "title": "Page Is Under Construction",
+      "subtitle": "You have started building your page. Publish an album, article, or profile details to make it visible to everyone.",
+      "cta": "Open dashboard"
+    },
     "titles": {
       "albums": "albums",
       "theBand": "about the",

@@ -2,9 +2,12 @@ import { describe, expect, test } from '@jest/globals';
 import type { TracksProps } from '@models';
 
 import {
+  artistHasPublicPageContent,
+  countPublishedPublicArticles,
   filterAlbumsForArtistPageSurface,
   hasVisitorVisibleArtistContent,
   isArtistProfileEmpty,
+  isArticlePublicOnArtistPage,
   needsArtistOnboarding,
   profileHasPublicBodyContent,
 } from '../artistPageContent';
@@ -85,11 +88,6 @@ describe('artistPageContent', () => {
     expect(filterAlbumsForArtistPageSurface(albums, false)).toHaveLength(1);
   });
 
-  test('profileHasPublicBodyContent ignores site name alone', () => {
-    expect(profileHasPublicBodyContent({ siteName: 'Band' })).toBe(false);
-    expect(profileHasPublicBodyContent({ theBand: ['Bio'] })).toBe(true);
-  });
-
   test('hasVisitorVisibleArtistContent accepts tracks, articles, or profile body', () => {
     expect(
       hasVisitorVisibleArtistContent({
@@ -134,5 +132,52 @@ describe('artistPageContent', () => {
         profileHasPublicBody: false,
       })
     ).toBe(false);
+  });
+
+  test('profileHasPublicBodyContent ignores site name alone', () => {
+    expect(profileHasPublicBodyContent({ siteName: 'Band' })).toBe(false);
+    expect(profileHasPublicBodyContent({ theBand: ['Bio'] })).toBe(true);
+  });
+
+  test('isArticlePublicOnArtistPage requires published non-hidden articles', () => {
+    expect(isArticlePublicOnArtistPage({ isDraft: true })).toBe(false);
+    expect(isArticlePublicOnArtistPage({ isDraft: false, visibility: 'hidden' })).toBe(false);
+    expect(isArticlePublicOnArtistPage({ isDraft: false, visibility: 'public' })).toBe(true);
+  });
+
+  test('countPublishedPublicArticles ignores drafts and hidden articles', () => {
+    expect(
+      countPublishedPublicArticles([
+        { articleId: 'a1', isDraft: true } as never,
+        { articleId: 'a2', isDraft: false, visibility: 'hidden' } as never,
+        { articleId: 'a3', isDraft: false, visibility: 'public' } as never,
+      ])
+    ).toBe(1);
+  });
+
+  test('artistHasPublicPageContent mirrors visitor visibility rules', () => {
+    expect(
+      artistHasPublicPageContent({
+        albums: [],
+        articles: [{ articleId: 'a1', isDraft: false, visibility: 'public' } as never],
+        profileHasPublicBody: false,
+      })
+    ).toBe(true);
+
+    expect(
+      artistHasPublicPageContent({
+        albums: [],
+        articles: [{ articleId: 'a1', isDraft: true } as never],
+        profileHasPublicBody: false,
+      })
+    ).toBe(false);
+
+    expect(
+      artistHasPublicPageContent({
+        albums: [],
+        articles: [],
+        profileHasPublicBody: true,
+      })
+    ).toBe(true);
   });
 });

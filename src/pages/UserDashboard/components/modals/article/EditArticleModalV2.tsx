@@ -120,6 +120,7 @@ interface EditArticleModalV2Props {
   onClose: () => void;
   publicArtistSlug?: string | null;
   onArticleEditorToast?: () => void;
+  onArticlePersisted?: (options: { published: boolean }) => void;
 }
 
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
@@ -228,6 +229,7 @@ export function EditArticleModalV2({
   onClose,
   publicArtistSlug,
   onArticleEditorToast,
+  onArticlePersisted,
 }: EditArticleModalV2Props) {
   const { lang } = useLang();
   const dispatch = useAppDispatch();
@@ -721,6 +723,7 @@ export function EditArticleModalV2({
           console.warn('Failed to update Redux store:', error);
         }
 
+        onArticlePersisted?.({ published: false });
         showEditorToast({ kind: 'draft-saved' });
       } else {
         setSaveStatus('error');
@@ -743,6 +746,7 @@ export function EditArticleModalV2({
     article,
     showEditorToast,
     showArticleSaveError,
+    onArticlePersisted,
   ]);
 
   // Публикация
@@ -824,6 +828,7 @@ export function EditArticleModalV2({
         onArticleEditorToast?.();
 
         await dispatch(fetchArticles({ force: true, ownerDashboard: true })).unwrap();
+        onArticlePersisted?.({ published: true });
         onClose();
       } else {
         setSaveStatus('error');
@@ -847,6 +852,7 @@ export function EditArticleModalV2({
     publicArtistSlug,
     onArticleEditorToast,
     showArticleSaveError,
+    onArticlePersisted,
   ]);
 
   // Создание нового блока по типу

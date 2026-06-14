@@ -323,6 +323,11 @@ export interface IInterface {
       profile: { title: string; description: string };
     };
   };
+  artistPageUnderConstruction?: {
+    title: string;
+    subtitle: string;
+    cta: string;
+  };
   /** Кнопка входа/регистрации в шапке; ссылка в кабинет по аватару */
   header?: {
     signIn: string;

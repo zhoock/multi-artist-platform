@@ -59,7 +59,6 @@ import { ArticleDeletedToast } from '@shared/ui/articleDeletedToast/ArticleDelet
 import { ArticleEditorToast } from '@shared/ui/articleEditorToast';
 import { fetchWithAuthSession } from '@shared/lib/authFetch';
 import { buildApiUrl } from '@shared/lib/artistQuery';
-import { hasPublishedPublicReleases } from '@entities/album/lib/hasPublishedPublicReleases';
 import {
   isAlbumReadyToPublish,
   getAlbumPublishHintKey,
@@ -80,6 +79,8 @@ import { queueAlbumDeletedToast } from '@shared/lib/albumDeletedToast';
 import { queueArticleDeletedToast } from '@shared/lib/articleDeletedToast';
 import { getArtistSlugFromLocation } from '@shared/lib/albumDeletedRedirect';
 import { openOwnArtistPage } from '@shared/lib/ownArtistPage';
+import { artistHasPublicPageContent } from '@shared/lib/artistPageContent';
+import { useOwnArtistPageSummary } from '@shared/lib/hooks/useOwnArtistPageSummary';
 import { setPublicArtistSlug } from '@shared/model/currentArtist';
 import { useAuthSessionUser } from '@shared/lib/hooks/useAuthSessionUser';
 import {
@@ -758,13 +759,19 @@ function UserDashboard() {
   const albumsStatus = useAppSelector(selectDashboardAlbumsStatus);
   const albumsError = useAppSelector(selectDashboardAlbumsError);
   const albumsFromStore = useAppSelector(selectDashboardAlbumsData);
-  const isArtistPagePublic = useMemo(
-    () => hasPublishedPublicReleases(albumsFromStore),
-    [albumsFromStore]
-  );
   const articlesStatus = useAppSelector(selectDashboardArticlesStatus);
   const articlesError = useAppSelector(selectDashboardArticlesError);
   const articlesFromStore = useAppSelector((state) => selectDashboardArticlesDataResolved(state));
+  const { profileIsEmpty } = useOwnArtistPageSummary();
+  const isArtistPagePublic = useMemo(
+    () =>
+      artistHasPublicPageContent({
+        albums: albumsFromStore,
+        articles: articlesFromStore,
+        profileHasPublicBody: !profileIsEmpty,
+      }),
+    [albumsFromStore, articlesFromStore, profileIsEmpty]
+  );
   const user = useAuthSessionUser();
   const userId = user?.id ?? null;
   const emailVerified = isEmailVerified(user);
@@ -813,6 +820,18 @@ function UserDashboard() {
   const markPublicArticlesDirty = useCallback(() => {
     articlesNeedsRefreshRef.current = true;
   }, []);
+
+  const handleArticlePersisted = useCallback(
+    ({ published }: { published: boolean }) => {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('artist:updated'));
+      }
+      if (published) {
+        markPublicArticlesDirty();
+      }
+    },
+    [markPublicArticlesDirty]
+  );
 
   const syncPublicSurfaceAfterDashboardClose = useCallback(
     (artistSlug: string | null) => {
@@ -4300,6 +4319,7 @@ function UserDashboard() {
           onClose={() => setEditArticleModal(null)}
           publicArtistSlug={profilePublicSlug}
           onArticleEditorToast={() => setArticleEditorToastTrigger((value) => value + 1)}
+          onArticlePersisted={handleArticlePersisted}
         />
       )}
 

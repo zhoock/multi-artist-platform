@@ -4,10 +4,12 @@ import type { IAlbums, IArticles } from '@models';
 import { hasPublishedPublicReleases } from '@entities/album/lib/hasPublishedPublicReleases';
 import { isArtistAccount, isListenerAccount } from '@shared/lib/accountType';
 import {
+  artistHasPublicPageContent,
   countUniqueAlbums,
   countUniqueArticles,
   isArtistProfileEmpty,
   needsArtistOnboarding,
+  profileHasPublicBodyContent,
 } from '@shared/lib/artistPageContent';
 import { fetchWithAuthSession } from '@shared/lib/authFetch';
 import { getAuthHeader, getUser, isEmailVerified, type AuthUser } from '@shared/lib/auth';
@@ -22,6 +24,7 @@ import { sanitizeListenerPostAuthDestination } from '@shared/lib/authReturnUrl';
 export type OwnArtistPageState = {
   publicSlug: string | null;
   hasPublicReleases: boolean;
+  hasPublicPageContent: boolean;
   needsOnboarding: boolean;
   albumsCount: number;
   articlesCount: number;
@@ -106,6 +109,7 @@ export async function fetchOwnArtistPageState(lang: string): Promise<OwnArtistPa
   const empty: OwnArtistPageState = {
     publicSlug: null,
     hasPublicReleases: false,
+    hasPublicPageContent: false,
     needsOnboarding: false,
     albumsCount: 0,
     articlesCount: 0,
@@ -186,10 +190,22 @@ export async function fetchOwnArtistPageState(lang: string): Promise<OwnArtistPa
       articles = normalizeArticles(list);
     }
     const articlesCount = countUniqueArticles(articles);
+    const profileHasPublicBody = profileHasPublicBodyContent({
+      siteName: profileData?.siteName,
+      theBand: profileData?.theBand,
+      headerImages: profileData?.headerImages,
+      socialLinks: profileData?.socialLinks,
+    });
+    const hasPublicPageContent = artistHasPublicPageContent({
+      albums,
+      articles,
+      profileHasPublicBody,
+    });
 
     return {
       publicSlug,
       hasPublicReleases,
+      hasPublicPageContent,
       albumsCount,
       articlesCount,
       profileIsEmpty,
@@ -207,12 +223,12 @@ export type OpenOwnArtistPageOptions = {
 
 export function openOwnArtistPage(
   publicSlug: string,
-  hasPublicReleases: boolean,
+  hasPublicPageContent: boolean,
   navigate: NavigateFunction,
   options?: OpenOwnArtistPageOptions
 ): void {
   const path = buildOwnArtistPagePath(publicSlug);
-  if (options?.sameTab || !hasPublicReleases) {
+  if (options?.sameTab || !hasPublicPageContent) {
     navigate(path);
     return;
   }

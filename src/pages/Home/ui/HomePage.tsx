@@ -43,6 +43,7 @@ import { AlbumsSection } from './AlbumsSection';
 import { ArticlesSection } from './ArticlesSection';
 import { ArtistOnboarding } from './ArtistOnboarding';
 import { ArtistOnboardingSkeleton } from './ArtistOnboardingSkeleton';
+import { ArtistPageUnderConstruction } from './ArtistPageUnderConstruction';
 import { ScrollToExploreHint } from './ScrollToExploreHint';
 import { useArtistPageAccess } from '@shared/lib/hooks/useArtistPageAccess';
 import '../../../components/view/Universe3D.style.scss';
@@ -107,6 +108,12 @@ export function HomePage() {
     document.body.classList.toggle('page--artist-not-found', notFoundSurface);
     return () => document.body.classList.remove('page--artist-not-found');
   }, [artistPageAccess.showNotFound, hasArtistParam]);
+
+  useEffect(() => {
+    const underConstructionSurface = hasArtistParam && artistPageAccess.showOwnerUnderConstruction;
+    document.body.classList.toggle('page--artist-under-construction', underConstructionSurface);
+    return () => document.body.classList.remove('page--artist-under-construction');
+  }, [artistPageAccess.showOwnerUnderConstruction, hasArtistParam]);
 
   useEffect(() => {
     // Каталог грузит root albumsLoader; force здесь давал повторные loading-циклы
@@ -324,6 +331,10 @@ export function HomePage() {
 
     if (artistPageAccess.showOnboarding) {
       return <ArtistOnboarding />;
+    }
+
+    if (artistPageAccess.showOwnerUnderConstruction) {
+      return <ArtistPageUnderConstruction />;
     }
 
     return (
