@@ -128,9 +128,143 @@
     text-transform: capitalize;
   }
 
+  &__awaiting-scene {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    overflow: hidden;
+    pointer-events: none;
+    background-color: #03040a;
+    background-image: url('/images/awaiting-first-release-nebula.jpg');
+    background-repeat: no-repeat;
+    background-position: right center;
+    background-size: auto 100%;
+
+    /* Затемнение слева — отдельный слой поверх картинки, правая половина чистая */
+    &::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(
+        90deg,
+        rgb(0 0 0 / 94%) 0%,
+        rgb(0 0 0 / 72%) 20%,
+        rgb(0 0 0 / 28%) 36%,
+        rgb(0 0 0 / 0%) 48%
+      );
+      pointer-events: none;
+    }
+
+    @include breakpoint(tablet) {
+      background-size: auto 105%;
+
+      &::after {
+        background: linear-gradient(
+          90deg,
+          rgb(0 0 0 / 94%) 0%,
+          rgb(0 0 0 / 68%) 22%,
+          rgb(0 0 0 / 22%) 38%,
+          rgb(0 0 0 / 0%) 46%
+        );
+      }
+    }
+
+    @include breakpoint(desktops) {
+      background-size: auto 108%;
+
+      &::after {
+        background: linear-gradient(
+          90deg,
+          rgb(0 0 0 / 92%) 0%,
+          rgb(0 0 0 / 62%) 26%,
+          rgb(0 0 0 / 18%) 42%,
+          rgb(0 0 0 / 0%) 52%
+        );
+      }
+    }
+  }
+
+  &__awaiting-copy {
+    grid-area: copy;
+    max-inline-size: min(100%, 36rem);
+  }
+
+  &__awaiting-eyebrow {
+    margin: 0;
+    color: rgb(140 210 255 / 88%);
+    font-family: var(--base-font-family);
+    font-size: clamp(0.8125rem, 1.6vw, 0.9375rem);
+    font-weight: var(--semibold, 600);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  &__awaiting-body {
+    margin: $ms-02 0 0;
+    color: rgb(245 245 244 / 82%);
+    font-family: var(--base-font-family);
+    font-size: clamp(0.9375rem, 1.9vw, 1.0625rem);
+    line-height: 1.55;
+    text-wrap: pretty;
+  }
+
+  &--awaiting-first-release {
+    align-items: stretch;
+    block-size: auto;
+    min-block-size: clamp(18rem, max(38vh, 36vw), 36rem);
+    background-color: #03040a;
+    cursor: default;
+
+    /* Не наследуем затемнение обычного hero — у awaiting свой слой на сцене */
+    &::before {
+      content: none;
+      display: none;
+    }
+
+    .hero__content {
+      position: relative;
+      z-index: 3;
+      display: flex;
+      align-items: end;
+      min-block-size: inherit;
+      padding-block: clamp($ms-1, 6vw, $ms-3) $ms-01;
+    }
+
+    .hero__headline {
+      grid-template-areas:
+        'title'
+        'copy';
+      gap: $ms-01;
+    }
+
+    .hero__archive-slot {
+      display: none;
+    }
+  }
+
   @media (width <= 768px) {
     &__canvas {
       display: none;
+    }
+
+    &--awaiting-first-release {
+      block-size: auto;
+      min-block-size: clamp(14rem, 52vw, 20rem);
+
+      .hero__awaiting-scene {
+        background-position: center bottom;
+        background-size: 120% auto;
+
+        &::after {
+          background: linear-gradient(
+            180deg,
+            rgb(0 0 0 / 92%) 0%,
+            rgb(0 0 0 / 55%) 28%,
+            rgb(0 0 0 / 12%) 44%,
+            rgb(0 0 0 / 0%) 56%
+          );
+        }
+      }
     }
   }
 }

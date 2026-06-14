@@ -9,6 +9,7 @@ import { useArtistPageAccess } from '@shared/lib/hooks/useArtistPageAccess';
 import { useSiteArtistDisplayName } from '@shared/lib/hooks/useSiteArtistDisplayName';
 import { selectCatalogArtistMissing } from '@entities/album';
 import { selectPublicArtistSlug } from '@shared/model/currentArtist';
+import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 import { isAuthOverlayPathname } from '@shared/lib/publicArtistContext';
 import {
   Universe3D,
@@ -114,6 +115,7 @@ export function Hero() {
   const hasArtistParam = !!heroUrlParams.get('artist');
   const artistParamKey = heroUrlParams.get('artist')?.trim() ?? '';
   const artistPageAccess = useArtistPageAccess(artistParamKey);
+  const showAwaitingFirstRelease = hasArtistParam && artistPageAccess.showAwaitingFirstRelease;
   const hideHeroForArtistOnboarding =
     hasArtistParam && artistPageAccess.suppressPublishedArtistChrome;
   const heroPublicArtistSlug = (artistParamKey || publicArtistSlug || '').trim();
@@ -356,7 +358,7 @@ export function Hero() {
     hasArtistParam && !catalogArtistMissing && isProfileLoading && !profileDisplayName.trim();
   const displayName = isTitlePending
     ? ''
-    : catalogArtistMissing
+    : catalogArtistMissing && !showAwaitingFirstRelease
       ? ''
       : profileDisplayName.trim() ||
         (hasArtistParam ? readStoredProfileDisplayName() : '') ||
@@ -368,8 +370,17 @@ export function Hero() {
   profileNameForCanvasRef.current = profileDisplayName;
   headerImagesForCanvasRef.current = headerImages;
 
+  const ui = useAppSelector((state) => selectUiDictionaryFirst(state, lang));
+  const awaitingCopy = ui?.artistAwaitingFirstRelease;
+
   useEffect(() => {
-    if (!hasArtistParam || !artistParamKey || hideHeroForArtistOnboarding) return;
+    if (
+      !hasArtistParam ||
+      !artistParamKey ||
+      hideHeroForArtistOnboarding ||
+      showAwaitingFirstRelease
+    )
+      return;
     const el = heroCanvasRef.current;
     if (!el) return;
     if (el.childElementCount > 0) return;
@@ -449,18 +460,36 @@ export function Hero() {
       universe?.destroy();
       el.replaceChildren();
     };
-  }, [artistParamKey, hasArtistParam, hideHeroForArtistOnboarding]);
+  }, [artistParamKey, hasArtistParam, hideHeroForArtistOnboarding, showAwaitingFirstRelease]);
 
   if (hideHeroForArtistOnboarding) {
     return null;
   }
 
+  const heroClassName = [
+    'hero',
+    showAwaitingFirstRelease ? 'hero--awaiting-first-release' : '',
+    hasArtistParam && !showAwaitingFirstRelease ? 'hero--navigate-home' : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
+
+  const awaitingBodyCopy = artistPageAccess.isOwner
+    ? (awaitingCopy?.heroBodyOwner ??
+      'A new star has been detected. The first release will ignite this star and bring it into the public constellation.')
+    : (awaitingCopy?.heroBodyVisitor ??
+      'This artist has not yet appeared in the public constellation. The first release will ignite the star and bring this artist into the universe.');
+
   return (
     <section
-      className={hasArtistParam ? 'hero hero--navigate-home' : 'hero'}
-      style={{ backgroundImage: backgroundImage || undefined }}
+      className={heroClassName}
+      style={
+        showAwaitingFirstRelease || !backgroundImage
+          ? undefined
+          : { backgroundImage: backgroundImage || undefined }
+      }
       onClick={
-        hasArtistParam
+        hasArtistParam && !showAwaitingFirstRelease
           ? () => {
               if (artistParamKey) {
                 sessionStorage.setItem(UNIVERSE_FOCUS_ARTIST_STORAGE_KEY, artistParamKey);
@@ -470,11 +499,23 @@ export function Hero() {
           : undefined
       }
     >
-      {hasArtistParam && <div ref={heroCanvasRef} className="hero__canvas" />}
+      {showAwaitingFirstRelease ? (
+        <div className="hero__awaiting-scene" aria-hidden="true" />
+      ) : hasArtistParam ? (
+        <div ref={heroCanvasRef} className="hero__canvas" />
+      ) : null}
       <div className="hero__content">
         <div className="hero__headline">
           <h1 className="hero__title">{displayName}</h1>
-          {hasArtistParam ? (
+          {showAwaitingFirstRelease ? (
+            <div className="hero__awaiting-copy">
+              <p className="hero__awaiting-eyebrow">
+                {awaitingCopy?.heroEyebrow ?? 'New star detected'}
+              </p>
+              <p className="hero__awaiting-body">{awaitingBodyCopy}</p>
+            </div>
+          ) : null}
+          {hasArtistParam && !showAwaitingFirstRelease ? (
             <div className="hero__archive-slot">
               <ArtistArchiveButton artistUserId={artistPageMeta?.userId ?? null} />
             </div>

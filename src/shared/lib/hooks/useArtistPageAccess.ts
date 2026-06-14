@@ -334,14 +334,16 @@ export function useArtistPageAccess(artistSlug: string) {
   const showNotFound =
     !isLoading &&
     !visitorArticlesGatePending &&
-    (catalogArtistMissing || (!isOwner && !hasVisitorVisibleContent));
+    !hasVisitorVisibleContent &&
+    (catalogArtistMissing || !isOwner);
   const showPublished =
     !isLoading &&
-    !catalogArtistMissing &&
     !showOnboarding &&
     !showOnboardingSkeleton &&
     !showNotFound &&
     !showOwnerUnderConstruction;
+  /** Публичная страница есть, но релизов ещё нет — артист вне каталога облаков. */
+  const showAwaitingFirstRelease = showPublished && !hasPublicReleases;
   const suppressPublishedArtistChrome =
     showOnboarding || showOnboardingSkeleton || showNotFound || showOwnerUnderConstruction;
 
@@ -354,6 +356,7 @@ export function useArtistPageAccess(artistSlug: string) {
     showOwnerUnderConstruction,
     showNotFound,
     showPublished,
+    showAwaitingFirstRelease,
     suppressPublishedArtistChrome,
   };
 }

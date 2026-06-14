@@ -191,6 +191,14 @@ body {
     }
   }
 
+  /* Awaiting first release: taller hero with nebula background */
+  &.page--artist-awaiting-first-release {
+    #root main > .hero {
+      block-size: auto;
+      min-block-size: clamp(18rem, max(38vh, 36vw), 36rem);
+    }
+  }
+
   /* Главная с 3D-сценой: без Hero, но глобальный main всё ещё задаёт два ряда под hero + лишний ряд #root под header — убираем лишнюю высоту и скролл */
   &.page--home-scene {
     overflow: hidden;

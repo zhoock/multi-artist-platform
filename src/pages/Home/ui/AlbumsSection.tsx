@@ -11,10 +11,8 @@ import {
   selectAlbumsDataResolved,
   selectDashboardAlbumsDataResolved,
   selectPublicAlbumsCacheIsStale,
-  selectCatalogArtistMissing,
 } from '@entities/album';
 import type { IAlbums } from '@models';
-import { ArtistNotFound } from '@shared/ui/artistNotFound';
 import { useRedirectHomeAfterOwnAccountDeleted } from '@shared/lib/hooks/useRedirectHomeAfterOwnAccountDeleted';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 import './AlbumsSection.scss';
@@ -35,7 +33,6 @@ export function AlbumsSection({ isOwner = false }: { isOwner?: boolean }) {
   const { lang } = useLang();
   const [searchParams] = useSearchParams();
   const artistSlug = searchParams.get('artist');
-  const catalogArtistMissing = useAppSelector(selectCatalogArtistMissing);
   const hideArtistPageAfterOwnDelete = useRedirectHomeAfterOwnAccountDeleted(!!artistSlug);
   const { displayName: siteArtistName } = useSiteArtistDisplayName(lang, { artistSlug });
   const albumsStatus = useAppSelector(selectAlbumsStatus);
@@ -84,10 +81,6 @@ export function AlbumsSection({ isOwner = false }: { isOwner?: boolean }) {
 
   if (hideArtistPageAfterOwnDelete) {
     return null;
-  }
-
-  if (artistSlug && catalogArtistMissing && !catalogCacheStale && albumsStatus === 'succeeded') {
-    return <ArtistNotFound />;
   }
 
   if (!catalogCacheStale && albumsStatus === 'succeeded' && allAlbums.length === 0) {

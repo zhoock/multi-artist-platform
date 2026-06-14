@@ -328,6 +328,13 @@ export interface IInterface {
     subtitle: string;
     cta: string;
   };
+  artistAwaitingFirstRelease?: {
+    heroEyebrow: string;
+    heroBodyVisitor: string;
+    heroBodyOwner: string;
+    bannerStatus: string;
+    bannerCta: string;
+  };
   /** Кнопка входа/регистрации в шапке; ссылка в кабинет по аватару */
   header?: {
     signIn: string;

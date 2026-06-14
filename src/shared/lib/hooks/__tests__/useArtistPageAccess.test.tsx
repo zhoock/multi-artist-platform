@@ -131,6 +131,77 @@ describe('useArtistPageAccess — album surface reload', () => {
   });
 });
 
+describe('useArtistPageAccess — awaiting first release', () => {
+  beforeEach(() => {
+    jest.mocked(fetchWithAuthSession).mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        success: true,
+        data: {
+          theBand: ['Artist'],
+          headerImages: ['https://example.com/hero.jpg'],
+          socialLinks: {},
+        },
+      }),
+    } as Response);
+  });
+
+  test('показывает awaiting first release при публичных статьях без релизов', async () => {
+    const { result } = renderHook(() => useArtistPageAccess('test-artist'), {
+      wrapper: createWrapper({
+        lang: { current: 'en' },
+        currentArtist: { publicSlug: 'test-artist' },
+        articles: {
+          status: 'succeeded',
+          error: null,
+          data: [
+            {
+              articleId: 'article-1',
+              nameArticle: 'Untitled',
+              date: '2026-06-13',
+              img: '',
+              description: '',
+              isDraft: false,
+              visibility: 'public',
+            },
+          ],
+          lastUpdated: Date.now(),
+          lastPublicArtistSlug: 'test-artist',
+          dashboard: {
+            status: 'idle',
+            error: null,
+            data: [],
+            lastUpdated: null,
+          },
+        },
+        albums: {
+          status: 'succeeded',
+          error: null,
+          data: [],
+          lastUpdated: Date.now(),
+          fetchContextKey: 'public:test-artist',
+          inFlightFetchContextKey: null,
+          catalogArtistMissing: false,
+          dashboard: {
+            status: 'idle',
+            error: null,
+            data: [],
+            lastUpdated: null,
+            inFlightFetchContextKey: null,
+          },
+        },
+      }),
+    });
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+      expect(result.current.showPublished).toBe(true);
+      expect(result.current.showAwaitingFirstRelease).toBe(true);
+      expect(result.current.hasPublicReleases).toBe(false);
+    });
+  });
+});
+
 describe('useArtistPageAccess — owner onboarding after full content removal', () => {
   beforeEach(() => {
     jest.mocked(isAuthenticated).mockReturnValue(true);

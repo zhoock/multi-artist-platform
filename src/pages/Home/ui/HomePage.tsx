@@ -44,6 +44,7 @@ import { ArticlesSection } from './ArticlesSection';
 import { ArtistOnboarding } from './ArtistOnboarding';
 import { ArtistOnboardingSkeleton } from './ArtistOnboardingSkeleton';
 import { ArtistPageUnderConstruction } from './ArtistPageUnderConstruction';
+import { ArtistAwaitingFirstReleaseBanner } from './ArtistAwaitingFirstReleaseBanner';
 import { ScrollToExploreHint } from './ScrollToExploreHint';
 import { useArtistPageAccess } from '@shared/lib/hooks/useArtistPageAccess';
 import '../../../components/view/Universe3D.style.scss';
@@ -114,6 +115,12 @@ export function HomePage() {
     document.body.classList.toggle('page--artist-under-construction', underConstructionSurface);
     return () => document.body.classList.remove('page--artist-under-construction');
   }, [artistPageAccess.showOwnerUnderConstruction, hasArtistParam]);
+
+  useEffect(() => {
+    const awaitingSurface = hasArtistParam && artistPageAccess.showAwaitingFirstRelease;
+    document.body.classList.toggle('page--artist-awaiting-first-release', awaitingSurface);
+    return () => document.body.classList.remove('page--artist-awaiting-first-release');
+  }, [artistPageAccess.showAwaitingFirstRelease, hasArtistParam]);
 
   useEffect(() => {
     // Каталог грузит root albumsLoader; force здесь давал повторные loading-циклы
@@ -339,6 +346,9 @@ export function HomePage() {
 
     return (
       <>
+        {artistPageAccess.showAwaitingFirstRelease ? (
+          <ArtistAwaitingFirstReleaseBanner isOwner={artistPageAccess.isOwner} />
+        ) : null}
         <AlbumsSection isOwner={artistPageAccess.isOwner} />
         <ArticlesSection />
         <AboutSection

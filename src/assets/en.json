@@ -219,6 +219,13 @@
       "subtitle": "You have started building your page. Publish an album, article, or profile details to make it visible to everyone.",
       "cta": "Open dashboard"
     },
+    "artistAwaitingFirstRelease": {
+      "heroEyebrow": "New star detected",
+      "heroBodyVisitor": "This artist has not yet appeared in the public constellation. The first release will ignite the star and bring this artist into the universe.",
+      "heroBodyOwner": "A new star has been detected. The first release will ignite this star and bring it into the public constellation.",
+      "bannerStatus": "Your star has not yet joined the constellation.",
+      "bannerCta": "Release your first album"
+    },
     "titles": {
       "albums": "albums",
       "theBand": "about the",
