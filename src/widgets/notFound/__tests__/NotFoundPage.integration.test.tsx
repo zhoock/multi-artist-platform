@@ -4,7 +4,6 @@ import userEvent from '@testing-library/user-event';
 import { NotFoundPage } from '../NotFoundPage';
 import { renderWithProviders } from '@shared/lib/test-utils';
 
-// Мокируем useNavigate
 const mockNavigate = jest.fn();
 
 jest.mock('react-router-dom', () => ({
@@ -17,36 +16,27 @@ describe('NotFoundPage integration tests', () => {
     jest.clearAllMocks();
   });
 
-  test('должен отобразить иллюстрацию 404', () => {
+  test('должен отобразить заголовок 404', () => {
     renderWithProviders(<NotFoundPage />, {
       preloadedState: {
         lang: { current: 'en' },
       },
     });
 
-    expect(screen.getByRole('img', { name: /404 - страница не найдена/i })).toBeInTheDocument();
+    expect(screen.getByText('404')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /page not found/i })).toBeInTheDocument();
+    expect(screen.getByText(/looks like you got lost in space/i)).toBeInTheDocument();
+    expect(screen.getByText(/the page you're looking for doesn't exist/i)).toBeInTheDocument();
   });
 
-  test('должен отобразить 404 изображение', () => {
+  test('должен отобразить кнопку "Back to Home"', () => {
     renderWithProviders(<NotFoundPage />, {
       preloadedState: {
         lang: { current: 'en' },
       },
     });
 
-    const logo = screen.getByRole('img', { name: /404 - страница не найдена/i });
-    expect(logo).toBeInTheDocument();
-    expect(logo).toHaveAttribute('src', '/images/illustrations/404.png');
-  });
-
-  test('должен отобразить кнопку "Вернуться на главную"', () => {
-    renderWithProviders(<NotFoundPage />, {
-      preloadedState: {
-        lang: { current: 'en' },
-      },
-    });
-
-    const button = screen.getByRole('button', { name: /вернуться на главную/i });
+    const button = screen.getByRole('button', { name: /back to home/i });
     expect(button).toBeInTheDocument();
   });
 
@@ -58,21 +48,11 @@ describe('NotFoundPage integration tests', () => {
       },
     });
 
-    const button = screen.getByRole('button', { name: /вернуться на главную/i });
+    const button = screen.getByRole('button', { name: /back to home/i });
     await user.click(button);
 
     await waitFor(() => {
       expect(mockNavigate).toHaveBeenCalledWith('/', { replace: true });
     });
-  });
-
-  test('должен отобразить кнопку возврата', () => {
-    renderWithProviders(<NotFoundPage />, {
-      preloadedState: {
-        lang: { current: 'en' },
-      },
-    });
-
-    expect(screen.getByRole('button', { name: /вернуться на главную/i })).toBeInTheDocument();
   });
 });
