@@ -116,7 +116,7 @@
         "openDashboardPrefix": "Или открыть ",
         "openDashboardLink": "дашборд",
         "expiredTitle": "Ссылка устарела",
-        "expiredBody": "Ссылка недействительна или истекла. Запросите новую ссылку для подтверждения.",
+        "expiredBody": "Ссылка больше не действительна.",
         "sendNewLink": "Отправить новую ссылку",
         "backToLogin": "Вернуться ко входу",
         "changeEmailTitle": "Изменить email",

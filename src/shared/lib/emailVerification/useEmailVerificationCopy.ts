@@ -41,8 +41,7 @@ export function useEmailVerificationCopy() {
           openDashboardPrefix: 'Or open your ',
           openDashboardLink: 'dashboard',
           expiredTitle: 'Verification link expired',
-          expiredBody:
-            'This link is no longer valid or has expired. Please request a new verification link.',
+          expiredBody: 'This link is no longer valid.',
           sendNewLink: 'Send new link',
           backToLogin: 'Back to login',
           changeEmailTitle: 'Change email',
@@ -99,8 +98,7 @@ export function useEmailVerificationCopy() {
           openDashboardPrefix: 'Или открыть ',
           openDashboardLink: 'дашборд',
           expiredTitle: 'Ссылка устарела',
-          expiredBody:
-            'Ссылка недействительна или истекла. Запросите новую ссылку для подтверждения.',
+          expiredBody: 'Ссылка больше не действительна.',
           sendNewLink: 'Отправить новую ссылку',
           backToLogin: 'Вернуться ко входу',
           changeEmailTitle: 'Изменить email',

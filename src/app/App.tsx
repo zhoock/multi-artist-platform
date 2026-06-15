@@ -358,6 +358,10 @@ function Layout() {
   const hasArtistParam = new URLSearchParams(activeLocation.search).has('artist');
   const isHomeSceneRoute = isHomeRoute && !hasArtistParam;
   const isEmailVerifiedRoute = matchPath({ path: '/email-verified', end: true }, location.pathname);
+  const isEmailVerificationExpiredRoute = matchPath(
+    { path: '/email-verification-expired', end: true },
+    location.pathname
+  );
 
   useLayoutEffect(() => {
     if (isHomeSceneRoute) {
@@ -380,6 +384,17 @@ function Layout() {
       document.body.classList.remove('page--email-verified');
     };
   }, [isEmailVerifiedRoute]);
+
+  useLayoutEffect(() => {
+    if (isEmailVerificationExpiredRoute) {
+      document.body.classList.add('page--email-verification-expired');
+    } else {
+      document.body.classList.remove('page--email-verification-expired');
+    }
+    return () => {
+      document.body.classList.remove('page--email-verification-expired');
+    };
+  }, [isEmailVerificationExpiredRoute]);
 
   const mainRoutes = (
     <Routes location={activeLocation}>
@@ -653,8 +668,12 @@ function Layout() {
               />
               <AccountDeletedToast />
               <main>
-                {!isEmailVerifiedRoute && <EmailVerificationBanner />}
-                {!isHomeSceneRoute && !isEmailVerifiedRoute && <Hero />}
+                {!isEmailVerifiedRoute && !isEmailVerificationExpiredRoute && (
+                  <EmailVerificationBanner />
+                )}
+                {!isHomeSceneRoute && !isEmailVerifiedRoute && !isEmailVerificationExpiredRoute && (
+                  <Hero />
+                )}
 
                 {/* если поместим popup внурь header, то popup будет обрезаться из-за css-фильтра (filter) внури header */}
 
@@ -670,7 +689,7 @@ function Layout() {
 
                 <ErrorBoundary>{standardRoutes}</ErrorBoundary>
               </main>
-              {!isEmailVerifiedRoute && <Footer />}
+              {!isEmailVerifiedRoute && !isEmailVerificationExpiredRoute && <Footer />}
               <PlayerShell />
             </ErrorBoundary>
           )}
