@@ -33,6 +33,7 @@ import { useAuthSessionUser } from '@shared/lib/hooks/useAuthSessionUser';
 import { fetchWithAuthSession } from '@shared/lib/authFetch';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 import { useSiteArtistDisplayName } from '@shared/lib/hooks/useSiteArtistDisplayName';
+import { formatAlbumDisplayFullName } from '@shared/lib/profileDisplayName';
 import { buildPublicSiteUrl } from '@shared/lib/publicSiteOrigin';
 import { useShowSurfaceAlbumsLoadingShell } from '@shared/lib/hooks/useShowAlbumsLoadingShell';
 
@@ -214,7 +215,7 @@ export default function Album() {
   const seoTitle = formatAlbumDisplayFullName(siteArtistName, album.album);
   const seoDesc = album.description;
 
-  const canonical = buildPublicSiteUrl(`/albums/${encodeURIComponent(album.albumId)}`);
+  const canonical = buildPublicSiteUrl(`/albums/${encodeURIComponent(albumId)}`);
 
   return (
     <section className="album main-background" aria-label="Блок c альбомом">
