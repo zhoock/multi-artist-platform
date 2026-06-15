@@ -48,7 +48,7 @@
   }
 
   &__code {
-    margin: 0 0 0.35rem;
+    margin: 0 0 1.5rem;
     color: var(--dark-greenish-yellow, #c9b458);
     font-family: var(--base-accent-font, 'Oswald', sans-serif);
     font-size: clamp(4.5rem, 14vw, 7rem);
@@ -58,7 +58,7 @@
   }
 
   &__title {
-    margin: 0 0 var(--ms-0);
+    margin: 0 0 1.5rem;
     color: rgb(245 243 238 / 96%);
     font-family: var(--base-accent-font, 'Oswald', sans-serif);
     font-size: clamp(1.75rem, 4.5vw, 2.5rem);
@@ -83,7 +83,7 @@
     position: relative;
     width: min(12rem, 70%);
     height: 1px;
-    margin: var(--ms-0) auto;
+    margin: var(--ms-0) auto var(--ms-1);
     background: linear-gradient(
       90deg,
       transparent 0%,
@@ -106,11 +106,7 @@
   }
 
   &__cta {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
     min-width: min(16rem, 100%);
-    margin-top: var(--ms-01);
     text-transform: none;
     letter-spacing: normal;
 
