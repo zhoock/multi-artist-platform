@@ -1,5 +1,6 @@
 // src/shared/lib/hooks/useImageColor.ts
 import { useEffect, useRef } from 'react';
+import { buildProxyImageUrlFromStoragePath } from '@shared/api/storage';
 
 // Задача: нужно передать цвет от AlbumCover (внутри AudioPlayer) в Popup (в AlbumTracks).
 // Это задача подъёма состояния (lifting state up).
@@ -150,16 +151,7 @@ export function useImageColor(
             const urlMatch = actualImgSrc.match(/\/storage\/v1\/object\/public\/[^/]+\/(.+)$/);
             if (urlMatch) {
               const imagePath = urlMatch[1];
-              // Используем прокси для обхода CORS
-              // В production используем полный URL, в development - относительный
-              const isProduction =
-                window.location.hostname !== 'localhost' &&
-                !window.location.hostname.includes('127.0.0.1');
-              // Используем прямой путь к функции вместо redirect
-              // Это более надежно, так как не зависит от redirect конфигурации
-              const proxyUrl = isProduction
-                ? `https://${window.location.hostname}/.netlify/functions/proxy-image?path=${encodeURIComponent(imagePath)}`
-                : `/.netlify/functions/proxy-image?path=${encodeURIComponent(imagePath)}`;
+              const proxyUrl = buildProxyImageUrlFromStoragePath(imagePath);
 
               // Создаем новый Image элемент для загрузки через прокси
               const proxyImg = new Image();

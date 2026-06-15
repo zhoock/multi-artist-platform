@@ -186,8 +186,11 @@ module.exports = {
     new webpack.EnvironmentPlugin({
       NODE_ENV: 'development', // значение по умолчанию 'development', если переменная process.env.NODE_ENV не передана при вызове сборки
       NETLIFY_SITE_URL: '', // URL Netlify сайта для API запросов в dev режиме (опционально)
+      PUBLIC_APP_URL: '', // Public SPA origin for SEO/env fallbacks (see publicSiteOrigin.ts)
+      URL: '', // Netlify injects deploy URL at build time
       NETLIFY_DEV: '', // 'true' при netlify dev — dev pricing Premium
       YOOKASSA_TEST_MODE: 'false',
+      SUPPORT_EMAIL: '', // Platform support address (see src/shared/lib/supportEmail.ts)
     }),
 
     // Поддержка Vite-стиля переменных окружения (import.meta.env)

@@ -6,7 +6,6 @@
 
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import dns from 'node:dns';
-
 import {
   createErrorResponse,
   createOptionsResponse,
@@ -16,6 +15,7 @@ import {
 } from './lib/api-helpers';
 import { query } from './lib/db';
 import { getYooKassaEnvCredentials } from './lib/yookassa-env';
+import { resolveSubscriptionPaymentReturnUrl } from './lib/yookassa-return-url';
 import {
   attachProviderPaymentId,
   createPendingSubscriptionPayment,
@@ -93,7 +93,6 @@ export const handler: Handler = async (event: HandlerEvent) => {
     return createErrorResponse(500, 'Could not start subscription checkout');
   }
 
-  const fallbackReturnUrl = 'https://smolyanoechuchelko.ru/pay/subscription-success';
   let refererOrigin: string | null = null;
   if (event.headers.referer) {
     try {
@@ -103,25 +102,11 @@ export const handler: Handler = async (event: HandlerEvent) => {
     }
   }
 
-  const requestedReturn =
-    body.returnUrl?.trim() ||
-    process.env.YOOKASSA_SUBSCRIPTION_RETURN_URL?.trim() ||
-    process.env.YOOKASSA_RETURN_URL?.trim();
-
-  const baseReturnUrl =
-    requestedReturn ||
-    (refererOrigin ? `${refererOrigin}/pay/subscription-success` : fallbackReturnUrl);
-
-  let returnUrl: string;
-  try {
-    const urlObj = new URL(baseReturnUrl, refererOrigin || undefined);
-    urlObj.searchParams.set('subscriptionPaymentId', subscriptionPaymentId);
-    returnUrl = urlObj.toString();
-  } catch {
-    const fallback = new URL(fallbackReturnUrl);
-    fallback.searchParams.set('subscriptionPaymentId', subscriptionPaymentId);
-    returnUrl = fallback.toString();
-  }
+  const returnUrl = resolveSubscriptionPaymentReturnUrl({
+    requestedUrl: body.returnUrl,
+    refererOrigin,
+    subscriptionPaymentId,
+  });
 
   const amountValue = getPremiumSubscriptionAmountRub().toFixed(2);
   const description = 'Premium Archive Subscription';

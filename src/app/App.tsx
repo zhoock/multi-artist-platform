@@ -22,6 +22,7 @@ import {
   type Location,
 } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
+import { buildPublicSiteUrl, getPublicSiteOrigin } from '@shared/lib/publicSiteOrigin';
 import { albumsLoader } from '@routes/loaders/albumsLoader';
 import { ArtistPublishedPageFallback } from '@pages/Home/ui/ArtistPublishedPageFallback';
 import { useLang } from '@app/providers/lang';
@@ -265,20 +266,24 @@ function Layout() {
     setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
   };
 
-  const seo = {
-    ru: {
-      title: 'Смоляное Чучелко — официальный сайт',
-      desc: 'Московская гранж и альтернативная рок-группа. Альбомы, тексты, статьи и философия проекта.',
-      url: 'https://smolyanoechuchelko.ru/',
-      ogImage: 'https://smolyanoechuchelko.ru/og/default.jpg',
-    },
-    en: {
-      title: 'Смоляное Чучелко — official website',
-      desc: 'Moscow grunge and alternative rock band. Albums, lyrics, articles and project philosophy.',
-      url: 'https://smolyanoechuchelko.ru/en',
-      ogImage: 'https://smolyanoechuchelko.ru/og/default_en.jpg',
-    },
-  };
+  const siteOrigin = getPublicSiteOrigin();
+  const seo = useMemo(() => {
+    const homeUrl = buildPublicSiteUrl('/');
+    return {
+      ru: {
+        title: 'Смоляное Чучелко — официальный сайт',
+        desc: 'Московская гранж и альтернативная рок-группа. Альбомы, тексты, статьи и философия проекта.',
+        url: homeUrl,
+        ogImage: buildPublicSiteUrl('/og/default.jpg'),
+      },
+      en: {
+        title: 'Смоляное Чучелко — official website',
+        desc: 'Moscow grunge and alternative rock band. Albums, lyrics, articles and project philosophy.',
+        url: homeUrl,
+        ogImage: buildPublicSiteUrl('/og/default_en.jpg'),
+      },
+    };
+  }, [siteOrigin]);
 
   // меняем <html lang="...">
   useEffect(() => {
@@ -601,9 +606,9 @@ function Layout() {
             <link rel="canonical" href={seo[lang].url} />
 
             {/* hreflang для Google */}
-            <link rel="alternate" href="https://smolyanoechuchelko.ru/" hrefLang="ru" />
-            <link rel="alternate" href="https://smolyanoechuchelko.ru/en" hrefLang="en" />
-            <link rel="alternate" href="https://smolyanoechuchelko.ru/" hrefLang="x-default" />
+            <link rel="alternate" href={seo.ru.url} hrefLang="ru" />
+            <link rel="alternate" href={seo.en.url} hrefLang="en" />
+            <link rel="alternate" href={seo.ru.url} hrefLang="x-default" />
 
             {/* Open Graph / Twitter */}
             <meta property="og:type" content="website" />
@@ -615,6 +620,7 @@ function Layout() {
             <meta name="twitter:title" content={seo[lang].title} />
             <meta name="twitter:description" content={seo[lang].desc} />
             <meta name="twitter:image" content={seo[lang].ogImage} />
+            <meta name="twitter:url" content={seo[lang].url} />
           </Helmet>
 
           {isPaymentRoute ? (

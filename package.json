@@ -4,7 +4,7 @@
   "description": "Смоляное чучелко",
   "main": "index.js",
   "scripts": {
-    "build": "cross-env NODE_ENV=production webpack --config webpack/webpack.config.cjs --env env=prod",
+    "build": "tsx scripts/generate-seo-files.ts && cross-env NODE_ENV=production webpack --config webpack/webpack.config.cjs --env env=prod",
     "start": "webpack serve --config webpack/webpack.config.cjs --env env=dev",
     "stylelint": "stylelint \"src/**/*.{css,scss}\"",
     "stylelint:fix": "stylelint \"src/**/*.{css,scss}\" --fix",

@@ -5,7 +5,7 @@
  * Учётные данные продавца (shopId + secret) хранятся в БД (`user_payment_settings`), не в ENV.
  *
  * Опциональные переменные окружения:
- * - YOOKASSA_RETURN_URL — URL возврата после оплаты
+ * - YOOKASSA_RETURN_URL — URL возврата после оплаты (иначе Referer или getPublicAppOrigin())
  * - YOOKASSA_API_URL — endpoint API (по умолчанию production v3)
  * - YOOKASSA_TEST_MODE — флаг для документации/логов (тело test в запросе может быть отключено)
  *
@@ -31,12 +31,12 @@
  */
 
 import type { Handler, HandlerEvent, HandlerContext } from '@netlify/functions';
+import dns from 'node:dns';
 import { query } from './lib/db';
 import { resolveAlbumSellerUserId } from './lib/resolveAlbumSellerUserId';
 import { resolveAlbumByKey, resolveAlbumSlug } from './lib/resolve-album-key';
-import dns from 'node:dns';
+import { resolveAlbumPaymentReturnUrl } from './lib/yookassa-return-url';
 
-// Форсируем IPv4 для избежания проблем с fetch в некоторых сетях
 dns.setDefaultResultOrder('ipv4first');
 
 interface CreatePaymentRequest {
@@ -563,39 +563,25 @@ export const handler: Handler = async (
       }
     }
 
-    // Формируем return URL с orderId
-    const fallbackReturnUrl = 'https://smolyanoechuchelko.ru/pay/success';
-    const requestedReturnUrl = data.returnUrl?.trim() || process.env.YOOKASSA_RETURN_URL?.trim();
+    // Формируем return URL с orderId (platform origin — no hardcoded legacy domain)
     let refererOrigin: string | null = null;
 
     if (event.headers.referer) {
       try {
         refererOrigin = new URL(event.headers.referer).origin;
       } catch (error) {
-        console.warn('⚠️ Invalid referer URL, using fallback return URL:', {
+        console.warn('⚠️ Invalid referer URL, using platform fallback return URL:', {
           referer: event.headers.referer,
           error,
         });
       }
     }
 
-    const baseReturnUrl =
-      requestedReturnUrl || (refererOrigin ? `${refererOrigin}/pay/success` : fallbackReturnUrl);
-
-    let returnUrl: string;
-    try {
-      const returnUrlObject = new URL(baseReturnUrl, refererOrigin || undefined);
-      returnUrlObject.searchParams.set('orderId', orderId);
-      returnUrl = returnUrlObject.toString();
-    } catch (error) {
-      console.warn('⚠️ Invalid return URL, using fallback:', {
-        baseReturnUrl,
-        error,
-      });
-      const fallbackUrl = new URL(fallbackReturnUrl);
-      fallbackUrl.searchParams.set('orderId', orderId);
-      returnUrl = fallbackUrl.toString();
-    }
+    const returnUrl = resolveAlbumPaymentReturnUrl({
+      requestedUrl: data.returnUrl,
+      refererOrigin,
+      orderId,
+    });
 
     // Формируем запрос к ЮKassa
     // ВАЖНО: YooKassa (российский платежный сервис) работает только с рублями (RUB)

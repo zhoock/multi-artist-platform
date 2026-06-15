@@ -6,9 +6,10 @@ import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 import { selectPublicArtistSlug } from '@shared/model/currentArtist';
 import { loadSocialLinksFromDatabase } from '@entities/user/lib';
 import { socialLinksToList } from '@shared/constants/socialLinks';
+import { buildSupportMailtoHref } from '@shared/lib/supportEmail';
 import './style.scss';
 
-const supportLink = (label: string) => <a href="mailto:feedback@smolyanoechuchelko.ru">{label}</a>;
+const supportLink = (label: string) => <a href={buildSupportMailtoHref()}>{label}</a>;
 
 function FooterComponent() {
   const { lang } = useLang();

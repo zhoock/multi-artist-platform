@@ -23,6 +23,7 @@ import {
 } from '@entities/article';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 import { withPublicArtistQuery } from '@shared/lib/artistQuery';
+import { buildPublicSiteUrl } from '@shared/lib/publicSiteOrigin';
 import { ArtistArchiveLockIcon } from '@shared/ui/icons/ArtistArchiveLockIcon';
 import { SubscriberContentLockIcon } from '@shared/ui/icons/SubscriberContentLockIcon';
 import { useArchiveAccessModal } from '@shared/lib/archiveAccessModal';
@@ -342,10 +343,7 @@ function ArticleContent({
         ? archiveGateHint
         : article.description;
   const seoDesc = isPaywalled ? paywallSeoHint : article.description;
-  const canonical =
-    lang === 'en'
-      ? `https://smolyanoechuchelko.ru/en/articles/${article.articleId}`
-      : `https://smolyanoechuchelko.ru/articles/${article.articleId}`;
+  const canonical = buildPublicSiteUrl(`/articles/${encodeURIComponent(article.articleId)}`);
 
   const renderDetailBlocks = (blocks: typeof article.details, keyPrefix: string) =>
     blocks.map((d, index) => (
@@ -438,6 +436,8 @@ function ArticleContent({
         <meta property="og:title" content={seoTitle} />
         <meta property="og:description" content={seoDesc} />
         <meta property="og:type" content="article" />
+        <meta property="og:url" content={canonical} />
+        <meta name="twitter:url" content={canonical} />
         <link rel="canonical" href={canonical} />
       </Helmet>
 

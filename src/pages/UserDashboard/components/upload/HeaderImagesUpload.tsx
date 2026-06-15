@@ -6,7 +6,11 @@ import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 import { useLang } from '@app/providers/lang';
 import { CoverImageCropModal } from '../modals/cover/CoverImageCropModal';
-import { uploadFile, deleteHeroImage } from '@shared/api/storage';
+import {
+  uploadFile,
+  deleteHeroImage,
+  buildProxyImageUrlFromStoragePath,
+} from '@shared/api/storage';
 import { getUser } from '@shared/lib/auth';
 import { uniqueUploadFileSuffix } from '@shared/lib/uniqueUploadFileSuffix';
 import './HeaderImagesUpload.style.scss';
@@ -40,8 +44,7 @@ const MAX_IMAGES = 10; // Максимальное количество изоб
 function extractPreviewUrl(imageSetOrUrl: string): string {
   // Если это storagePath (начинается с "users/"), преобразуем в proxy URL
   if (imageSetOrUrl.startsWith('users/') && imageSetOrUrl.includes('/hero/')) {
-    const origin = typeof window !== 'undefined' ? window.location.origin : '';
-    const proxyUrl = `${origin}/.netlify/functions/proxy-image?path=${encodeURIComponent(imageSetOrUrl)}`;
+    const proxyUrl = buildProxyImageUrlFromStoragePath(imageSetOrUrl);
     console.log('🔄 [extractPreviewUrl] Преобразован storagePath в proxy URL:', {
       original: imageSetOrUrl,
       converted: proxyUrl,
@@ -239,46 +242,14 @@ export function HeaderImagesUpload({
       }
 
       // Убеждаемся, что URL это proxy URL, а не storagePath
-      let finalUrl = url;
-      if (url.startsWith('users/') && url.includes('/hero/')) {
-        // Если это storagePath, преобразуем в proxy URL
-        // Используем правильное определение production URL
-        let origin = '';
-        if (typeof window !== 'undefined') {
-          const hostname = window.location.hostname;
-          const protocol = window.location.protocol;
-          const port = window.location.port;
-
-          const isProduction =
-            hostname !== 'localhost' &&
-            hostname !== '127.0.0.1' &&
-            !hostname.includes('localhost') &&
-            !hostname.includes('127.0.0.1') &&
-            (hostname.includes('smolyanoechuchelko.ru') || hostname.includes('netlify.app'));
-
-          if (isProduction) {
-            origin = `${protocol}//${hostname}${port ? `:${port}` : ''}`;
-          } else {
-            origin = window.location.origin;
-          }
-        }
-
-        const isProduction =
-          typeof window !== 'undefined' &&
-          window.location.hostname !== 'localhost' &&
-          window.location.hostname !== '127.0.0.1' &&
-          !window.location.hostname.includes('localhost') &&
-          !window.location.hostname.includes('127.0.0.1') &&
-          (window.location.hostname.includes('smolyanoechuchelko.ru') ||
-            window.location.hostname.includes('netlify.app'));
-
-        const proxyPath = isProduction ? '/api/proxy-image' : '/.netlify/functions/proxy-image';
-        finalUrl = `${origin}${proxyPath}?path=${encodeURIComponent(url)}`;
+      const finalUrl =
+        url.startsWith('users/') && url.includes('/hero/')
+          ? buildProxyImageUrlFromStoragePath(url)
+          : url;
+      if (finalUrl !== url) {
         console.log('🔄 [HeaderImagesUpload] Преобразован storagePath в proxy URL:', {
           original: url,
           converted: finalUrl,
-          isProduction,
-          origin,
         });
       }
 

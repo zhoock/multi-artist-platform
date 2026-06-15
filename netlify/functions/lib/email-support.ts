@@ -1,9 +1,8 @@
 import type { EmailLocale } from './email-locale';
 import { getEmailCopy } from './email-copy';
+import { buildSupportMailtoHref, getSupportEmail } from '../../../src/shared/lib/supportEmail';
 
-export function getSupportEmail(): string {
-  return (process.env.SUPPORT_EMAIL || 'feedback@smolyanoechuchelko.ru').trim();
-}
+export { getSupportEmail };
 
 export type SupportMailtoTemplate = 'accountDeleted' | 'purchase' | 'passwordReset';
 
@@ -12,15 +11,10 @@ export function buildSupportMailto(options?: {
   template?: SupportMailtoTemplate;
   subject?: string;
 }): string {
-  const email = getSupportEmail();
   const locale = options?.locale ?? 'en';
   const subject =
     options?.subject ??
     (options?.template ? getEmailCopy('supportSubjects', locale)[options.template] : undefined);
 
-  if (!subject) {
-    return `mailto:${email}`;
-  }
-
-  return `mailto:${email}?subject=${encodeURIComponent(subject)}`;
+  return buildSupportMailtoHref({ subject });
 }

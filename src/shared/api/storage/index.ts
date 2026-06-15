@@ -10,6 +10,7 @@ import {
 import { getUserUserId, type ImageCategory } from '@config/user';
 import { sanitizeFileName } from '@shared/lib/sanitizeFileName';
 import { fetchWithAuthSession } from '@shared/lib/authFetch';
+import { getProxyImagePath, resolveProxyImageOrigin } from '@shared/lib/proxyImageEnvironment';
 
 export interface UploadFileOptions {
   userId?: string;
@@ -85,43 +86,57 @@ async function fileToBase64(file: File | Blob): Promise<string> {
 }
 
 /**
- * Локальный URL для `/.netlify/functions/proxy-image` (или /api/ на проде) по пути в bucket `users/...`.
- * Нужен, если API вернул storagePath, а не https к объекту.
+ * Локальный URL для proxy-image по пути в bucket `users/...`.
+ * Единственная точка построения proxy URL для storage paths.
  */
 export function buildProxyImageUrlFromStoragePath(storagePath: string): string {
-  let origin = '';
-  if (typeof window !== 'undefined') {
-    const hostname = window.location.hostname;
-    const protocol = window.location.protocol;
-    const port = window.location.port;
+  const origin = resolveProxyImageOrigin();
+  const proxyPath = getProxyImagePath();
+  return `${origin}${proxyPath}?path=${encodeURIComponent(storagePath)}`;
+}
 
-    const isProduction =
-      hostname !== 'localhost' &&
-      hostname !== '127.0.0.1' &&
-      !hostname.includes('localhost') &&
-      !hostname.includes('127.0.0.1') &&
-      (hostname.includes('smolyanoechuchelko.ru') || hostname.includes('netlify.app'));
-
-    if (isProduction) {
-      origin = `${protocol}//${hostname}${port ? `:${port}` : ''}`;
-    } else {
-      origin = window.location.origin;
-    }
-  } else {
-    origin = process.env.NETLIFY_SITE_URL || '';
+function extractStoragePathFromProxyInput(input: string): string | null {
+  if (input.startsWith('users/')) {
+    return input;
   }
 
-  const isProduction =
-    typeof window !== 'undefined' &&
-    window.location.hostname !== 'localhost' &&
-    window.location.hostname !== '127.0.0.1' &&
-    !window.location.hostname.includes('localhost') &&
-    !window.location.hostname.includes('127.0.0.1') &&
-    (window.location.hostname.includes('smolyanoechuchelko.ru') ||
-      window.location.hostname.includes('netlify.app'));
+  const pathMatch = input.match(/[?&]path=([^&]+)/);
+  if (pathMatch) {
+    return decodeURIComponent(pathMatch[1]);
+  }
 
-  const proxyPath = isProduction ? '/api/proxy-image' : '/.netlify/functions/proxy-image';
-  return `${origin}${proxyPath}?path=${encodeURIComponent(storagePath)}`;
+  return null;
+}
+
+/** Rewrites stale dev proxy URLs or bare hero storage paths into a current proxy URL. */
+export function normalizeProxyImageUrl(url: string): string {
+  if (!url) {
+    return url;
+  }
+
+  const isStaleLocal =
+    url.includes('localhost') || url.includes('127.0.0.1') || url.includes(':8080');
+
+  if (isStaleLocal) {
+    const path = extractStoragePathFromProxyInput(url);
+    if (path) {
+      return buildProxyImageUrlFromStoragePath(path);
+    }
+    return url;
+  }
+
+  if (url.startsWith('users/') && url.includes('/hero/')) {
+    return buildProxyImageUrlFromStoragePath(url);
+  }
+
+  return url;
+}
+
+function shouldBuildProxyUrlFromUploadResult(url: string): boolean {
+  if (url.startsWith('users/')) {
+    return true;
+  }
+  return !url.includes('proxy-image') && !url.includes('supabase.co');
 }
 
 /**
@@ -252,142 +267,22 @@ export async function uploadFile(options: UploadFileOptions): Promise<string | n
     let finalUrl = result.data.url;
 
     // Для hero изображений result.data.url может содержать storagePath или уже готовый URL
-    // Если это storagePath (начинается с "users/.../hero/"), формируем proxy URL
-    if (category === 'hero') {
-      if (finalUrl.startsWith('users/') && finalUrl.includes('/hero/')) {
-        // Извлекаем fileName из storagePath
-        const pathParts = finalUrl.split('/');
-        const fileName = pathParts[pathParts.length - 1];
-
-        // Формируем proxy URL с правильным определением production
-        let origin = '';
-        if (typeof window !== 'undefined') {
-          const hostname = window.location.hostname;
-          const protocol = window.location.protocol;
-          const port = window.location.port;
-
-          const isProduction =
-            hostname !== 'localhost' &&
-            hostname !== '127.0.0.1' &&
-            !hostname.includes('localhost') &&
-            !hostname.includes('127.0.0.1') &&
-            (hostname.includes('smolyanoechuchelko.ru') || hostname.includes('netlify.app'));
-
-          if (isProduction) {
-            origin = `${protocol}//${hostname}${port ? `:${port}` : ''}`;
-          } else {
-            origin = window.location.origin;
-          }
-        } else {
-          origin = process.env.NETLIFY_SITE_URL || '';
-        }
-
-        const isProduction =
-          typeof window !== 'undefined' &&
-          window.location.hostname !== 'localhost' &&
-          window.location.hostname !== '127.0.0.1' &&
-          !window.location.hostname.includes('localhost') &&
-          !window.location.hostname.includes('127.0.0.1') &&
-          (window.location.hostname.includes('smolyanoechuchelko.ru') ||
-            window.location.hostname.includes('netlify.app'));
-
-        const proxyPath = isProduction ? '/api/proxy-image' : '/.netlify/functions/proxy-image';
-        finalUrl = `${origin}${proxyPath}?path=${encodeURIComponent(finalUrl)}`;
-
-        console.log('🔗 [uploadFile] Сформирован proxy URL для hero:', {
-          storagePath: result.data.url,
-          fileName,
-          finalUrl,
-          isProduction,
-          origin,
-        });
-      } else if (!finalUrl.includes('proxy-image') && !finalUrl.includes('supabase.co')) {
-        // Если URL не содержит proxy-image и не является Supabase URL, возможно это storagePath
-        // Попробуем сформировать proxy URL
-        let origin = '';
-        if (typeof window !== 'undefined') {
-          const hostname = window.location.hostname;
-          const protocol = window.location.protocol;
-          const port = window.location.port;
-
-          const isProduction =
-            hostname !== 'localhost' &&
-            hostname !== '127.0.0.1' &&
-            !hostname.includes('localhost') &&
-            !hostname.includes('127.0.0.1') &&
-            (hostname.includes('smolyanoechuchelko.ru') || hostname.includes('netlify.app'));
-
-          if (isProduction) {
-            origin = `${protocol}//${hostname}${port ? `:${port}` : ''}`;
-          } else {
-            origin = window.location.origin;
-          }
-        } else {
-          origin = process.env.NETLIFY_SITE_URL || '';
-        }
-
-        const isProduction =
-          typeof window !== 'undefined' &&
-          window.location.hostname !== 'localhost' &&
-          window.location.hostname !== '127.0.0.1' &&
-          !window.location.hostname.includes('localhost') &&
-          !window.location.hostname.includes('127.0.0.1') &&
-          (window.location.hostname.includes('smolyanoechuchelko.ru') ||
-            window.location.hostname.includes('netlify.app'));
-
-        const proxyPath = isProduction ? '/api/proxy-image' : '/.netlify/functions/proxy-image';
-        finalUrl = `${origin}${proxyPath}?path=${encodeURIComponent(finalUrl)}`;
-
-        console.log('🔗 [uploadFile] Сформирован proxy URL для hero (fallback):', {
-          originalUrl: result.data.url,
-          finalUrl,
-          isProduction,
-          origin,
-        });
-      }
+    if (category === 'hero' && shouldBuildProxyUrlFromUploadResult(finalUrl)) {
+      finalUrl = buildProxyImageUrlFromStoragePath(finalUrl);
+      console.log('🔗 [uploadFile] Сформирован proxy URL для hero:', {
+        storagePath: result.data.url,
+        finalUrl,
+      });
     }
 
-    // Обложка статьи: storagePath users/.../articles/...-320.webp → proxy (как hero)
+    // Обложка статьи: storagePath users/.../articles/... → proxy (как hero)
     if (
       category === 'articles' &&
       typeof finalUrl === 'string' &&
       finalUrl.startsWith('users/') &&
       finalUrl.includes('/articles/')
     ) {
-      let origin = '';
-      if (typeof window !== 'undefined') {
-        const hostname = window.location.hostname;
-        const protocol = window.location.protocol;
-        const port = window.location.port;
-
-        const isProduction =
-          hostname !== 'localhost' &&
-          hostname !== '127.0.0.1' &&
-          !hostname.includes('localhost') &&
-          !hostname.includes('127.0.0.1') &&
-          (hostname.includes('smolyanoechuchelko.ru') || hostname.includes('netlify.app'));
-
-        if (isProduction) {
-          origin = `${protocol}//${hostname}${port ? `:${port}` : ''}`;
-        } else {
-          origin = window.location.origin;
-        }
-      } else {
-        origin = process.env.NETLIFY_SITE_URL || '';
-      }
-
-      const isProduction =
-        typeof window !== 'undefined' &&
-        window.location.hostname !== 'localhost' &&
-        window.location.hostname !== '127.0.0.1' &&
-        !window.location.hostname.includes('localhost') &&
-        !window.location.hostname.includes('127.0.0.1') &&
-        (window.location.hostname.includes('smolyanoechuchelko.ru') ||
-          window.location.hostname.includes('netlify.app'));
-
-      const proxyPath = isProduction ? '/api/proxy-image' : '/.netlify/functions/proxy-image';
-      finalUrl = `${origin}${proxyPath}?path=${encodeURIComponent(finalUrl)}`;
-
+      finalUrl = buildProxyImageUrlFromStoragePath(finalUrl);
       console.log('🔗 [uploadFile] Сформирован proxy URL для article cover:', {
         storagePath: result.data.url,
         finalUrl,
@@ -583,17 +478,7 @@ export function getStorageFileUrl(options: GetFileUrlOptions): string | null {
   }
 
   // Для изображений оставляем прокси через Netlify функцию
-  const origin =
-    typeof window !== 'undefined' ? window.location.origin : process.env.NETLIFY_SITE_URL || '';
-
-  // В production используем /api/proxy-image, в localhost - /.netlify/functions/proxy-image
-  const isProduction =
-    typeof window !== 'undefined' &&
-    !window.location.hostname.includes('localhost') &&
-    !window.location.hostname.includes('127.0.0.1');
-  const proxyPath = isProduction ? '/api/proxy-image' : '/.netlify/functions/proxy-image';
-
-  return `${origin}${proxyPath}?path=${encodeURIComponent(storagePath)}`;
+  return buildProxyImageUrlFromStoragePath(storagePath);
 }
 
 /**

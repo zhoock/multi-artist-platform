@@ -2,6 +2,7 @@ import { describe, test, expect, jest, beforeEach } from '@jest/globals';
 import { screen, waitFor } from '@testing-library/react';
 import { Footer } from '../ui/Footer';
 import { renderWithProviders } from '@shared/lib/test-utils';
+import { DEFAULT_SUPPORT_EMAIL } from '@shared/lib/supportEmail';
 
 const loadSocialLinksFromDatabase =
   jest.fn<(options?: Record<string, unknown>) => Promise<Record<string, string>>>();
@@ -124,7 +125,7 @@ describe('Footer integration tests', () => {
 
     const supportLink = await screen.findByRole('link', { name: /support/i });
     expect(supportLink).toBeInTheDocument();
-    expect(supportLink).toHaveAttribute('href', 'mailto:feedback@smolyanoechuchelko.ru');
+    expect(supportLink).toHaveAttribute('href', `mailto:${DEFAULT_SUPPORT_EMAIL}`);
   });
 
   test('должен использовать fallback текст если UI словарь не загружен', async () => {

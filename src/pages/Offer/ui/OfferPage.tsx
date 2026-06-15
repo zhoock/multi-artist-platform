@@ -2,38 +2,12 @@ import React, { useEffect, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useLang } from '@app/providers/lang';
 import { getJSON } from '@shared/api/http';
+import { applySupportEmailToOffer, type OfferPageData } from '@shared/lib/applySupportEmailToOffer';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 import './style.scss';
 
-interface OfferData {
-  title: string;
-  subtitle: string;
-  meta: {
-    dateLabel: string;
-    websiteLabel: string;
-    website: string;
-  };
-  intro: string;
-  terms: Array<{
-    term: string;
-    definition: string;
-  }>;
-  sections: Array<{
-    title: string;
-    paragraphs: string[];
-  }>;
-  sellerInfo: {
-    sellerLabel: string;
-    seller: string;
-    innLabel: string;
-    inn: string;
-    emailLabel: string;
-    email: string;
-    hoursLabel: string;
-    hours: string;
-  };
-}
+interface OfferData extends OfferPageData {}
 
 export function OfferPage() {
   const { lang } = useLang();
@@ -55,7 +29,7 @@ export function OfferPage() {
         setError(null);
         const data = await getJSON<OfferData>(`offer-${lang}.json`);
         if (!cancelled) {
-          setOfferData(data);
+          setOfferData(applySupportEmailToOffer(data));
           setLoading(false);
         }
       } catch (err) {

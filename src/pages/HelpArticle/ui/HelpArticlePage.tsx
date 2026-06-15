@@ -23,6 +23,7 @@ import {
   selectHelpArticlesData,
   fetchHelpArticles,
 } from '@entities/helpArticle';
+import { buildPublicSiteUrl } from '@shared/lib/publicSiteOrigin';
 import type { RequestStatus } from '@entities/article';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 import './style.scss';
@@ -324,10 +325,7 @@ function ArticleContent({
 
   const seoTitle = article.nameArticle;
   const seoDesc = article.description;
-  const canonical =
-    lang === 'en'
-      ? `https://smolyanoechuchelko.ru/en/help/articles/${article.articleId}`
-      : `https://smolyanoechuchelko.ru/help/articles/${article.articleId}`;
+  const canonical = buildPublicSiteUrl(`/help/articles/${encodeURIComponent(article.articleId)}`);
 
   // Создаем Block с доступом к createAnchor
   const BlockWithAnchor = (details: ArticledetailsProps) => {
@@ -406,6 +404,8 @@ function ArticleContent({
         <meta property="og:title" content={seoTitle} />
         <meta property="og:description" content={seoDesc} />
         <meta property="og:type" content="article" />
+        <meta property="og:url" content={canonical} />
+        <meta name="twitter:url" content={canonical} />
         <link rel="canonical" href={canonical} />
       </Helmet>
 

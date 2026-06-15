@@ -8,7 +8,7 @@ import { buildPasswordResetEmailContent } from './password-reset-email-template'
 import { buildPurchaseEmailContent } from './purchase-email-template';
 import { buildVerificationEmailContent } from './verification-email-template';
 import type { EmailLocale } from './email-locale';
-import { getSiteDisplayName } from './email-utils';
+import { getEmailFrom, getSiteDisplayName } from './email-utils';
 import { buildAlbumCoverEmailUrl } from './storage-public-url';
 import { getPublicAppOrigin } from './public-app-url';
 import { reservePurchaseEmail, releasePurchaseEmailReservation } from './email-dedupe';
@@ -125,7 +125,7 @@ export async function sendPurchaseEmail(
     });
 
     const result = await resend.emails.send({
-      from: 'Смоляное чучелко <noreply@smolyanoechuchelko.ru>',
+      from: getEmailFrom(),
       to: options.to,
       subject,
       html,
@@ -185,7 +185,7 @@ export async function sendVerificationEmail(
     });
 
     const result = await resend.emails.send({
-      from: 'Смоляное чучелко <noreply@smolyanoechuchelko.ru>',
+      from: getEmailFrom(),
       to: options.to,
       subject,
       html,
@@ -234,7 +234,7 @@ export async function sendPasswordResetEmail(
     });
 
     const result = await resend.emails.send({
-      from: 'Смоляное чучелко <noreply@smolyanoechuchelko.ru>',
+      from: getEmailFrom(),
       to: options.to,
       subject,
       html,
@@ -274,7 +274,7 @@ export async function sendAccountDeletedEmail(
     const { html, text, subject } = buildAccountDeletedEmailContent(locale);
 
     const result = await resend.emails.send({
-      from: 'Смоляное чучелко <noreply@smolyanoechuchelko.ru>',
+      from: getEmailFrom(),
       to: options.to,
       subject,
       html,

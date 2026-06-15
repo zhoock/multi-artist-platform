@@ -10,6 +10,7 @@ import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 import { selectPublicArtistSlug, setPublicArtistSlug } from '@shared/model/currentArtist';
 import { isAuthenticated } from '@shared/lib/auth';
 import { withPublicArtistQuery } from '@shared/lib/artistQuery';
+import { buildPublicSiteUrl } from '@shared/lib/publicSiteOrigin';
 import { sanitizeReturnPath } from '@shared/lib/authReturnUrl';
 import { queueMixToast } from '@shared/lib/mixToast';
 import { MixToast } from '@shared/ui/mixToast';
@@ -57,9 +58,7 @@ export default function StemsPlayground() {
   const sectionRef = useRef<HTMLElement | null>(null);
   const panelRef = useRef<MixerPlayerPanelHandle | null>(null);
 
-  const origin =
-    (typeof window !== 'undefined' && window.location.origin) || 'https://smolyanoechuchelko.ru';
-  const canonical = `${origin}${location.pathname}`;
+  const canonical = buildPublicSiteUrl(`${location.pathname}${location.search}`);
 
   const ui = useAppSelector((state) => selectUiDictionaryFirst(state, lang));
   const stems = (ui?.stems ?? {}) as Record<string, string>;
@@ -297,6 +296,7 @@ export default function StemsPlayground() {
         <meta property="og:title" content={pageTitle} />
         <meta property="og:description" content={selectAlbumHint || pageTitle} />
         <meta property="og:url" content={canonical} />
+        <meta name="twitter:url" content={canonical} />
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content={pageTitle} />
         <meta name="twitter:description" content={selectAlbumHint || pageTitle} />

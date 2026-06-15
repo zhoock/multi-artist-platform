@@ -97,7 +97,7 @@
       "title": "9. Return and Claims (Digital Content)",
       "paragraphs": [
         "9.1. Due to the specifics of digital content (electronic form, instant provision), refund for content of proper quality to which the Buyer has already been granted access/download is generally not made, except in cases where the content was not actually provided or has significant technical defects (file does not open, is corrupted, etc.).",
-        "9.2. Claims regarding the quality of digital content should be sent to support email: support@smolyanoechuchelko.ru. The Seller reviews the request and offers a solution (file replacement/re-provision of access/refund — if the content was not provided or is irreparable).",
+        "9.2. Claims regarding the quality of digital content should be sent to support email: {{supportEmail}}. The Seller reviews the request and offers a solution (file replacement/re-provision of access/refund — if the content was not provided or is irreparable).",
         "9.3. Unsuitable \"taste/expectations\" (e.g., \"didn't like the song\") is not a defect of digital content."
       ]
     },
@@ -128,7 +128,7 @@
     "innLabel": "INN:",
     "inn": "026305225147",
     "emailLabel": "Support e-mail:",
-    "email": "feedback@smolyanoechuchelko.ru",
+    "email": "{{supportEmail}}",
     "hoursLabel": "Support hours:",
     "hours": "10:00–19:00 MSK"
   }

@@ -34,9 +34,9 @@ describe('public-app-url', () => {
   });
 
   it('uses NETLIFY_SITE_URL when it is a public production URL', () => {
-    process.env.NETLIFY_SITE_URL = 'https://smolyanoechuchelko.ru';
+    process.env.NETLIFY_SITE_URL = 'https://multi-artist-platform.netlify.app';
     process.env.URL = 'http://localhost:8888';
-    expect(getPublicAppOrigin()).toBe('https://smolyanoechuchelko.ru');
+    expect(getPublicAppOrigin()).toBe('https://multi-artist-platform.netlify.app');
   });
 
   it('builds verify-email links on the public app origin', () => {

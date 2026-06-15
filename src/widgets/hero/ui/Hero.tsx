@@ -4,6 +4,7 @@ import { useLocation, useNavigate, type Location } from 'react-router-dom';
 import { useLang } from '@app/providers/lang';
 import { loadHeaderImagesFromDatabase } from '@entities/user/lib';
 import { fetchWithAuthSession } from '@shared/lib/authFetch';
+import { normalizeProxyImageUrl } from '@shared/api/storage';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { useArtistPageAccess } from '@shared/lib/hooks/useArtistPageAccess';
 import { useSiteArtistDisplayName } from '@shared/lib/hooks/useSiteArtistDisplayName';
@@ -269,41 +270,13 @@ export function Hero() {
       const imageUrl = headerImages[randomIndex];
       console.log('🎲 [Hero] Выбрано изображение:', { index: randomIndex, url: imageUrl });
 
-      // Проверяем и исправляем localhost URL перед установкой
-      let cleanImageUrl = imageUrl;
-      if (
-        imageUrl &&
-        (imageUrl.includes('localhost') ||
-          imageUrl.includes('127.0.0.1') ||
-          imageUrl.includes(':8080'))
-      ) {
-        // Извлекаем path из URL
-        const pathMatch = imageUrl.match(/[?&]path=([^&]+)/);
-        if (pathMatch) {
-          const path = decodeURIComponent(pathMatch[1]);
-          const hostname = window.location.hostname;
-          const protocol = window.location.protocol;
-          const port = window.location.port;
-
-          const isProduction =
-            hostname !== 'localhost' &&
-            hostname !== '127.0.0.1' &&
-            !hostname.includes('localhost') &&
-            !hostname.includes('127.0.0.1') &&
-            !hostname.includes(':8080') &&
-            (hostname.includes('smolyanoechuchelko.ru') || hostname.includes('netlify.app'));
-
-          const origin = isProduction
-            ? `${protocol}//${hostname}${port && port !== '8080' ? `:${port}` : ''}`
-            : window.location.origin;
-          const proxyPath = isProduction ? '/api/proxy-image' : '/.netlify/functions/proxy-image';
-          cleanImageUrl = `${origin}${proxyPath}?path=${encodeURIComponent(path)}`;
-
-          console.log('🔄 [Hero] Исправлен localhost URL:', {
-            old: imageUrl,
-            new: cleanImageUrl,
-          });
-        }
+      // Проверяем и исправляем stale localhost URL или bare storage path
+      const cleanImageUrl = normalizeProxyImageUrl(imageUrl);
+      if (cleanImageUrl !== imageUrl) {
+        console.log('🔄 [Hero] Нормализован proxy URL:', {
+          old: imageUrl,
+          new: cleanImageUrl,
+        });
       }
 
       // Преобразуем URL в формат для background-image (простой url(), без image-set)
