@@ -1,5 +1,5 @@
 // src/pages/StemsPlayground/StemsPlayground.tsx
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { List as ListIcon, Save as SaveIcon } from 'lucide-react';
 import { Helmet } from 'react-helmet-async';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
@@ -34,6 +34,7 @@ import { MixerBackNav } from './components/MixerBackNav';
 import { MixerPlayerPanel, type MixerPlayerPanelHandle } from './components/MixerPlayerPanel';
 import { SaveMixModal } from './components/SaveMixModal';
 import { MyMixesModal } from './components/MyMixesModal';
+import { ServiceScreen } from '@shared/ui/serviceScreen';
 import './style.scss';
 
 export default function StemsPlayground() {
@@ -68,7 +69,23 @@ export default function StemsPlayground() {
   const selectAlbumHint = stems.selectAlbumHint ?? '';
   const selectTrackHint = stems.selectTrackHint ?? '';
   const noAlbumsLabel = stems.noAlbums ?? '';
+  const emptyTitle = stems.emptyTitle ?? 'No stems available';
+  const emptyDescriptionLine1 =
+    stems.emptyDescriptionLine1 ?? 'When the artist publishes albums with stems,';
+  const emptyDescriptionLine2 = stems.emptyDescriptionLine2 ?? 'they will appear here.';
   const loadingLabel = stems.loading ?? '…';
+
+  const showEmptyCatalog = !loading && albums.length === 0 && !mixId;
+  const showImmersiveLayout = !mixId && (loading || showEmptyCatalog);
+
+  useLayoutEffect(() => {
+    document.body.classList.toggle('page--service-screen', showImmersiveLayout);
+    document.body.classList.toggle('page--stems-empty', showImmersiveLayout);
+    return () => {
+      document.body.classList.remove('page--service-screen');
+      document.body.classList.remove('page--stems-empty');
+    };
+  }, [showImmersiveLayout]);
 
   const trackCountLabels: TrackCountLabels = {
     one: stems.tracksCountOne ?? '{count}',
@@ -285,6 +302,37 @@ export default function StemsPlayground() {
     copyLink: stems.copyLink ?? 'Copy link',
     close: stems.close ?? 'Close',
   };
+
+  if (showImmersiveLayout) {
+    if (loading) {
+      return (
+        <section
+          className="service-screen service-screen--mixer-empty"
+          aria-busy="true"
+          aria-label={loadingLabel}
+        >
+          <div className="service-screen__backdrop" aria-hidden="true" />
+        </section>
+      );
+    }
+
+    return (
+      <ServiceScreen
+        modifier="mixer-empty"
+        titleId="stems-empty-title"
+        pageTitle={pageTitle}
+        title={emptyTitle}
+        description={
+          <>
+            {emptyDescriptionLine1}
+            <br />
+            {emptyDescriptionLine2}
+          </>
+        }
+        divider={false}
+      />
+    );
+  }
 
   return (
     <section className="stems-page main-background" aria-label="Блок c миксером" ref={sectionRef}>

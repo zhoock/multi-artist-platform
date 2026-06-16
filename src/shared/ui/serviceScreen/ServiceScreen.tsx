@@ -15,12 +15,13 @@ export type ServiceScreenSecondaryAction = {
 };
 
 export type ServiceScreenProps = {
-  modifier: 'email-verified' | 'email-verification-expired' | 'not-found';
+  modifier: 'email-verified' | 'email-verification-expired' | 'not-found' | 'mixer-empty';
   titleId: string;
   pageTitle: string;
   title: ReactNode;
   description: ReactNode;
-  primaryAction: ServiceScreenPrimaryAction;
+  divider?: boolean;
+  primaryAction?: ServiceScreenPrimaryAction;
   secondaryAction?: ServiceScreenSecondaryAction;
   beforeActions?: ReactNode;
 };
@@ -31,12 +32,18 @@ export function ServiceScreen({
   pageTitle,
   title,
   description,
+  divider,
   primaryAction,
   secondaryAction,
   beforeActions,
 }: ServiceScreenProps) {
+  const showDivider = divider ?? Boolean(primaryAction);
+
   return (
-    <section className={`service-screen service-screen--${modifier}`} aria-labelledby={titleId}>
+    <section
+      className={`service-screen service-screen--${modifier}${showDivider ? '' : ' service-screen--no-divider'}`}
+      aria-labelledby={titleId}
+    >
       <div className="service-screen__backdrop" aria-hidden="true" />
       <div className="service-screen__content">
         <Helmet>
@@ -47,20 +54,22 @@ export function ServiceScreen({
           {title}
         </h1>
 
-        <div className="service-screen__divider" aria-hidden="true" />
+        {showDivider ? <div className="service-screen__divider" aria-hidden="true" /> : null}
 
         <div className="service-screen__description">{description}</div>
 
         {beforeActions ? <div className="service-screen__notice">{beforeActions}</div> : null}
 
-        <button
-          type="button"
-          className="service-screen__button"
-          onClick={primaryAction.onClick}
-          disabled={primaryAction.disabled}
-        >
-          {primaryAction.label}
-        </button>
+        {primaryAction ? (
+          <button
+            type="button"
+            className="service-screen__button"
+            onClick={primaryAction.onClick}
+            disabled={primaryAction.disabled}
+          >
+            {primaryAction.label}
+          </button>
+        ) : null}
 
         {secondaryAction ? (
           <p className="service-screen__secondary">

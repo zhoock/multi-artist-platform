@@ -159,6 +159,26 @@
     background-image: url('/images/not-found-bg.png');
   }
 
+  &--mixer-empty &__backdrop {
+    background-image: url('/images/mixer-empty-bg.png');
+  }
+
+  &--mixer-empty {
+    &__title {
+      max-width: 560px;
+      font-size: clamp(2.25rem, 5vw, 3rem);
+      line-height: 1.1;
+    }
+  }
+
+  &--no-divider &__title {
+    margin-bottom: 1.75rem;
+  }
+
+  &--no-divider &__description {
+    margin-bottom: 0;
+  }
+
   &__notice-message {
     margin: 0;
     padding: 0.85rem 1rem;
@@ -183,6 +203,10 @@
       font-size: clamp(3rem, 14vw, 4.5rem);
     }
 
+    &--mixer-empty &__title {
+      font-size: clamp(1.75rem, 7vw, 2.25rem);
+    }
+
     &__description {
       font-size: 1.125rem;
       line-height: 1.55;
@@ -191,6 +215,24 @@
     &__button {
       width: min(280px, 100%);
     }
+  }
+}
+
+body.page--stems-empty {
+  #root {
+    min-block-size: 100dvb;
+    grid-template:
+      'header' calc(1.618rem * 2)
+      'main' minmax(0, 1fr) / 1fr;
+  }
+
+  #root main > .hero,
+  #root main > .email-verification-banner {
+    display: none;
+  }
+
+  #root .footer {
+    display: none;
   }
 }
 
@@ -213,9 +255,11 @@ body.page--service-screen {
     min-height: 0;
     overflow: hidden;
 
-    > .service-screen {
+    .service-screen {
       flex: 1 1 auto;
+      align-self: stretch;
       min-block-size: 0;
+      width: 100%;
     }
   }
 
