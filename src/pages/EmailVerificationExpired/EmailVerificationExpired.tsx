@@ -1,16 +1,12 @@
 import { useState } from 'react';
-import { Check as CheckIcon, TriangleAlert as TriangleAlertIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { Helmet } from 'react-helmet-async';
 import { isAuthenticated, refreshAuthSession, resendVerificationEmail } from '@shared/lib/auth';
 import {
   useEmailVerificationCopy,
   useResendCooldown,
   resolveVerificationEmailSend,
 } from '@shared/lib/emailVerification';
-import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
-import '@features/auth/ui/VerifyEmailModal.style.scss';
-import './EmailVerificationExpired.scss';
+import { ServiceScreen } from '@shared/ui/serviceScreen';
 
 export default function EmailVerificationExpired() {
   const navigate = useNavigate();
@@ -36,7 +32,6 @@ export default function EmailVerificationExpired() {
       return;
     }
     if (resolution.kind === 'already-verified') {
-      // Sync auth state then route the user to the verified-success page.
       void refreshAuthSession();
       navigate('/email-verified', { replace: true });
       return;
@@ -48,65 +43,37 @@ export default function EmailVerificationExpired() {
   const resendLabel = isCoolingDown ? `${copy.sendNewLink} (${remaining}s)` : copy.sendNewLink;
 
   return (
-    <section
-      className="email-verification-expired-page"
-      aria-labelledby="email-verification-expired-title"
-    >
-      <div className="email-verification-expired-page__backdrop" aria-hidden="true" />
-      <Helmet>
-        <title>{copy.expiredTitle}</title>
-      </Helmet>
-      <div className="email-verification-expired-page__card-wrap">
-        <div className="email-verification-expired-page__card verify-email-modal__container verify-email-modal__container--standalone">
-          <div className="verify-email-modal__header">
-            <div className="verify-email-modal__title-row">
-              <span
-                className="verify-email-modal__icon email-verification-expired-page__icon"
-                aria-hidden="true"
-              >
-                <TriangleAlertIcon {...dashboardActionIconProps({ size: 40, strokeWidth: 1.5 })} />
-              </span>
-              <h1 id="email-verification-expired-title" className="verify-email-modal__title">
-                {copy.expiredTitle}
-              </h1>
-            </div>
-          </div>
-          <p className="verify-email-modal__message">{copy.expiredBody}</p>
-          {success ? (
-            <div className="verify-email-modal__success" role="status" aria-live="polite">
-              <span className="verify-email-modal__success-icon" aria-hidden="true">
-                <CheckIcon {...dashboardActionIconProps({ size: 18, strokeWidth: 1.85 })} />
-              </span>
-              <div className="verify-email-modal__success-copy">
-                <p className="verify-email-modal__success-title">{copy.verificationSentTitle}</p>
-                <p className="verify-email-modal__success-body">{copy.verificationSentBody}</p>
-              </div>
-            </div>
-          ) : null}
-          {error ? (
-            <div className="verify-email-modal__error" role="alert">
-              {error}
-            </div>
-          ) : null}
-          <div className="verify-email-modal__actions">
-            <button
-              type="button"
-              className="verify-email-modal__button verify-email-modal__button--primary"
-              onClick={handleSendNewLink}
-              disabled={loading || isCoolingDown}
-            >
-              {loading ? copy.submitting : resendLabel}
-            </button>
-          </div>
-          <button
-            type="button"
-            className="verify-email-modal__footer-link"
-            onClick={() => navigate('/auth?mode=login', { replace: true })}
+    <ServiceScreen
+      modifier="email-verification-expired"
+      titleId="email-verification-expired-title"
+      pageTitle={copy.expiredTitle}
+      title={copy.expiredTitle}
+      description={copy.expiredBody}
+      beforeActions={
+        success ? (
+          <p
+            className="service-screen__notice-message service-screen__notice-message--success"
+            role="status"
           >
-            {copy.backToLogin}
-          </button>
-        </div>
-      </div>
-    </section>
+            <strong>{copy.verificationSentTitle}</strong>
+            <br />
+            {copy.verificationSentBody}
+          </p>
+        ) : error ? (
+          <p className="service-screen__notice-message" role="alert">
+            {error}
+          </p>
+        ) : null
+      }
+      primaryAction={{
+        label: loading ? copy.submitting : resendLabel,
+        onClick: handleSendNewLink,
+        disabled: loading || isCoolingDown,
+      }}
+      secondaryAction={{
+        label: copy.backToLogin,
+        onClick: () => navigate('/auth?mode=login', { replace: true }),
+      }}
+    />
   );
 }

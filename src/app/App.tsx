@@ -363,6 +363,10 @@ function Layout() {
     location.pathname
   );
 
+  const isServiceScreenRoute =
+    !isPaymentRoute &&
+    (isEmailVerifiedRoute || isEmailVerificationExpiredRoute || shouldHideChrome);
+
   useLayoutEffect(() => {
     if (isHomeSceneRoute) {
       document.body.classList.add('page--home-scene');
@@ -375,26 +379,15 @@ function Layout() {
   }, [isHomeSceneRoute]);
 
   useLayoutEffect(() => {
-    if (isEmailVerifiedRoute) {
-      document.body.classList.add('page--email-verified');
+    if (isServiceScreenRoute) {
+      document.body.classList.add('page--service-screen');
     } else {
-      document.body.classList.remove('page--email-verified');
+      document.body.classList.remove('page--service-screen');
     }
     return () => {
-      document.body.classList.remove('page--email-verified');
+      document.body.classList.remove('page--service-screen');
     };
-  }, [isEmailVerifiedRoute]);
-
-  useLayoutEffect(() => {
-    if (isEmailVerificationExpiredRoute) {
-      document.body.classList.add('page--email-verification-expired');
-    } else {
-      document.body.classList.remove('page--email-verification-expired');
-    }
-    return () => {
-      document.body.classList.remove('page--email-verification-expired');
-    };
-  }, [isEmailVerificationExpiredRoute]);
+  }, [isServiceScreenRoute]);
 
   const mainRoutes = (
     <Routes location={activeLocation}>

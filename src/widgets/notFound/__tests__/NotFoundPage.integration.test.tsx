@@ -23,8 +23,8 @@ describe('NotFoundPage integration tests', () => {
       },
     });
 
-    expect(screen.getByText('404')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: /page not found/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '404' })).toBeInTheDocument();
+    expect(screen.getByText(/page not found/i)).toBeInTheDocument();
     expect(screen.getByText(/looks like you got lost in space/i)).toBeInTheDocument();
     expect(screen.getByText(/the page you're looking for doesn't exist/i)).toBeInTheDocument();
   });

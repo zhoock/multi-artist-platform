@@ -1,6 +1,5 @@
 import { useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Helmet } from 'react-helmet-async';
 import { refreshAuthSession } from '@shared/lib/auth';
 import {
   locationFromReturnPath,
@@ -9,28 +8,9 @@ import {
 import { captureDashboardModalBackground } from '@shared/lib/dashboardModalBackground';
 import { useEmailVerificationCopy } from '@shared/lib/emailVerification';
 import { useAuthSessionUser } from '@shared/lib/hooks/useAuthSessionUser';
-import './EmailVerified.scss';
+import { ServiceScreen } from '@shared/ui/serviceScreen';
 
 const DASHBOARD_PATH = '/dashboard-new';
-
-function CheckIcon() {
-  return (
-    <svg
-      className="email-verified-page__icon-check"
-      viewBox="0 0 24 24"
-      fill="none"
-      aria-hidden="true"
-    >
-      <path
-        d="M20 6 9 17l-5-5"
-        stroke="currentColor"
-        strokeWidth="1.25"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
 
 export default function EmailVerified() {
   const navigate = useNavigate();
@@ -67,43 +47,18 @@ export default function EmailVerified() {
   };
 
   return (
-    <section className="email-verified-page" aria-labelledby="email-verified-title">
-      <div className="email-verified-page__backdrop" aria-hidden="true" />
-      <div className="email-verified-page__content">
-        <Helmet>
-          <title>{copy.successTitle}</title>
-        </Helmet>
-
-        <div className="email-verified-page__icon-ring" aria-hidden="true">
-          <CheckIcon />
-        </div>
-
-        <h1 id="email-verified-title" className="email-verified-page__title">
-          {copy.successTitle}
-        </h1>
-
-        <div className="email-verified-page__divider" aria-hidden="true" />
-
-        <p className="email-verified-page__subtitle">{copy.successBody}</p>
-
-        <button type="button" className="email-verified-page__cta" onClick={handleGoHome}>
-          <span>{copy.continueToHome}</span>
-          <span className="email-verified-page__cta-arrow" aria-hidden="true">
-            →
-          </span>
-        </button>
-
-        <p className="email-verified-page__secondary">
-          {copy.openDashboardPrefix}
-          <button
-            type="button"
-            className="email-verified-page__secondary-link"
-            onClick={handleOpenDashboard}
-          >
-            {copy.openDashboardLink}
-          </button>
-        </p>
-      </div>
-    </section>
+    <ServiceScreen
+      modifier="email-verified"
+      titleId="email-verified-title"
+      pageTitle={copy.successTitle}
+      title={copy.successTitle}
+      description={copy.successBody}
+      primaryAction={{ label: copy.continueToHome, onClick: handleGoHome }}
+      secondaryAction={{
+        prefix: copy.openDashboardPrefix,
+        label: copy.openDashboardLink,
+        onClick: handleOpenDashboard,
+      }}
+    />
   );
 }
