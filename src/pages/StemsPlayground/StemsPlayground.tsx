@@ -76,16 +76,15 @@ export default function StemsPlayground() {
   const loadingLabel = stems.loading ?? '…';
 
   const showEmptyCatalog = !loading && albums.length === 0 && !mixId;
-  const showImmersiveLayout = !mixId && (loading || showEmptyCatalog);
 
   useLayoutEffect(() => {
-    document.body.classList.toggle('page--service-screen', showImmersiveLayout);
-    document.body.classList.toggle('page--stems-empty', showImmersiveLayout);
+    document.body.classList.toggle('page--service-screen', showEmptyCatalog);
+    document.body.classList.toggle('page--stems-empty', showEmptyCatalog);
     return () => {
       document.body.classList.remove('page--service-screen');
       document.body.classList.remove('page--stems-empty');
     };
-  }, [showImmersiveLayout]);
+  }, [showEmptyCatalog]);
 
   const trackCountLabels: TrackCountLabels = {
     one: stems.tracksCountOne ?? '{count}',
@@ -303,19 +302,7 @@ export default function StemsPlayground() {
     close: stems.close ?? 'Close',
   };
 
-  if (showImmersiveLayout) {
-    if (loading) {
-      return (
-        <section
-          className="service-screen service-screen--mixer-empty"
-          aria-busy="true"
-          aria-label={loadingLabel}
-        >
-          <div className="service-screen__backdrop" aria-hidden="true" />
-        </section>
-      );
-    }
-
+  if (showEmptyCatalog) {
     return (
       <ServiceScreen
         modifier="mixer-empty"
