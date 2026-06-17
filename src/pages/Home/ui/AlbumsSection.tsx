@@ -1,8 +1,9 @@
 import { useMemo, useState, useEffect } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { WrapperAlbumCover, AlbumCover } from '@entities/album';
 import { ErrorI18n } from '@shared/ui/error-message';
 import { AlbumsSkeleton } from '@shared/ui/skeleton/AlbumsSkeleton';
+import { ArtistSectionHeading } from '@shared/ui/artistSectionHeading';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { useLang } from '@app/providers/lang';
 import {
@@ -15,8 +16,8 @@ import {
 import { isAlbumDraft } from '@entities/album/lib/albumPublication';
 import type { IAlbums } from '@models';
 import { useRedirectHomeAfterOwnAccountDeleted } from '@shared/lib/hooks/useRedirectHomeAfterOwnAccountDeleted';
+import { withPublicArtistQuery } from '@shared/lib/artistQuery';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
-import './AlbumsSection.scss';
 import { useSiteArtistDisplayName } from '@shared/lib/hooks/useSiteArtistDisplayName';
 import { formatAlbumDisplayFullName } from '@shared/lib/profileDisplayName';
 import { useShowSurfaceAlbumsLoadingShell } from '@shared/lib/hooks/useShowAlbumsLoadingShell';
@@ -83,6 +84,8 @@ export function AlbumsSection({ isOwner = false }: { isOwner?: boolean }) {
 
   const displayedAlbums = allAlbums.slice(0, initialCount);
   const hasMore = allAlbums.length > initialCount;
+  const allAlbumsPath = withPublicArtistQuery('/albums', artistSlug);
+  const showSectionLink = !showAlbumsLoadingShell && hasMore;
 
   // Данные загружаются через loader, не нужно загружать здесь
 
@@ -97,7 +100,11 @@ export function AlbumsSection({ isOwner = false }: { isOwner?: boolean }) {
   return (
     <section id="albums" className="albums main-background" aria-labelledby="home-albums-heading">
       <div className="wrapper">
-        <h2 id="home-albums-heading">{ui?.titles?.albums ?? '…'}</h2>
+        <ArtistSectionHeading
+          id="home-albums-heading"
+          title={ui?.titles?.albums ?? '…'}
+          to={showSectionLink ? allAlbumsPath : undefined}
+        />
 
         {showAlbumsLoadingShell ? (
           <AlbumsSkeleton count={initialCount} />
@@ -121,15 +128,6 @@ export function AlbumsSection({ isOwner = false }: { isOwner?: boolean }) {
                 </WrapperAlbumCover>
               ))}
             </div>
-
-            {hasMore && (
-              <div className="albums__more">
-                <Link to="/albums" className="albums__more-button">
-                  {ui?.buttons?.viewAllAlbums?.replace('{count}', String(allAlbums.length)) ??
-                    `Все альбомы (${allAlbums.length})`}
-                </Link>
-              </div>
-            )}
           </>
         )}
       </div>

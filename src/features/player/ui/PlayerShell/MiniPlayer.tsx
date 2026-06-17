@@ -3,7 +3,11 @@ import React from 'react';
 import clsx from 'clsx';
 import { Pause, Play, SkipForward } from 'lucide-react';
 import AlbumCover from '@entities/album/ui/AlbumCover';
-import { playerIconProps, PLAYER_MINI_ICON_SIZE } from '@shared/ui/icons/playerActionIcon';
+import {
+  playerIconProps,
+  playerTransportIconProps,
+  PLAYER_MINI_ICON_SIZE,
+} from '@shared/ui/icons/playerActionIcon';
 
 import './style.scss';
 
@@ -88,7 +92,7 @@ export const MiniPlayer: React.FC<MiniPlayerProps> = ({
             />
           ) : (
             <Play
-              {...playerIconProps(PLAYER_MINI_ICON_SIZE, {
+              {...playerTransportIconProps(PLAYER_MINI_ICON_SIZE, {
                 className: clsx('mini-player__control-icon', 'mini-player__control-icon--play'),
               })}
             />
@@ -123,7 +127,7 @@ export const MiniPlayer: React.FC<MiniPlayerProps> = ({
           aria-label="Следующий трек"
         >
           <SkipForward
-            {...playerIconProps(PLAYER_MINI_ICON_SIZE, {
+            {...playerTransportIconProps(PLAYER_MINI_ICON_SIZE, {
               className: clsx('mini-player__control-icon', 'mini-player__control-icon--forward'),
             })}
           />

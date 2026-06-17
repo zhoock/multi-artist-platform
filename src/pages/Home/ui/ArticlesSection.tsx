@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { ErrorI18n } from '@shared/ui/error-message';
 import { ArticlesSkeleton } from '@shared/ui/skeleton/ArticlesSkeleton';
+import { ArtistSectionHeading } from '@shared/ui/artistSectionHeading';
 import { ArticlePreview } from '@entities/article';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { useLang } from '@app/providers/lang';
@@ -11,9 +12,8 @@ import {
   selectArticlesCacheIsStale,
 } from '@entities/article';
 import { useShowSurfaceArticlesLoadingShell } from '@shared/lib/hooks/useShowSurfaceArticlesLoadingShell';
-import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 import { withPublicArtistQuery } from '@shared/lib/artistQuery';
-import './ArticlesSection.scss';
+import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 
 // Адаптивное количество статей для отображения на главной
 const getInitialCount = () => {
@@ -51,6 +51,7 @@ export function ArticlesSection() {
 
   const displayedArticles = allArticles.slice(0, initialCount);
   const hasMore = allArticles.length > initialCount;
+  const showSectionLink = !showArticlesLoadingShell && hasMore;
 
   // Данные загружаются через loader, не нужно загружать здесь
 
@@ -65,7 +66,11 @@ export function ArticlesSection() {
       aria-labelledby="home-articles-heading"
     >
       <div className="wrapper articles__wrapper">
-        <h2 id="home-articles-heading">{ui?.titles?.articles ?? '…'}</h2>
+        <ArtistSectionHeading
+          id="home-articles-heading"
+          title={ui?.titles?.articles ?? '…'}
+          to={showSectionLink ? allArticlesPath : undefined}
+        />
 
         {showArticlesLoadingShell ? (
           <ArticlesSkeleton count={initialCount} />
@@ -78,15 +83,6 @@ export function ArticlesSection() {
                 <ArticlePreview key={article.articleId} {...article} />
               ))}
             </div>
-
-            {hasMore && (
-              <div className="articles__more">
-                <Link to={allArticlesPath} className="articles__more-button">
-                  {ui?.buttons?.viewAllArticles?.replace('{count}', String(allArticles.length)) ??
-                    `Все статьи (${allArticles.length})`}
-                </Link>
-              </div>
-            )}
           </>
         )}
       </div>

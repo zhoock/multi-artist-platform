@@ -52,6 +52,13 @@ canvas {
   block-size: auto; /* Makes it responsive */
 }
 
+// Solid fill for Lucide transport glyphs site-wide
+.lucide-play,
+.lucide-skip-back,
+.lucide-skip-forward {
+  fill: currentcolor;
+}
+
 canvas {
   touch-action: none;
 }

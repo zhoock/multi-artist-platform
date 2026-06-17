@@ -9,6 +9,7 @@ import { fallbackAlbumClientId } from '@shared/lib/albumClientId';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 import {
   playerIconProps,
+  playerTransportIconProps,
   TRACK_LIST_PAUSE_ICON_SIZE,
   TRACK_LIST_PLAY_ICON_SIZE,
 } from '@shared/ui/icons/playerActionIcon';
@@ -182,7 +183,7 @@ export function TrackList({ tracks, album, store, onSelectTrack }: TrackListProp
                   <span className="tracks__symbol-index">{index + 1}</span>
                   <span className="tracks__symbol-play" aria-hidden>
                     <Play
-                      {...playerIconProps(TRACK_LIST_PLAY_ICON_SIZE, {
+                      {...playerTransportIconProps(TRACK_LIST_PLAY_ICON_SIZE, {
                         className: 'tracks__symbol-play-icon tracks__symbol-play-icon--shifted',
                       })}
                     />

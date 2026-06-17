@@ -12,6 +12,7 @@ import { ModalCloseIcon } from '@shared/ui/icons/ModalCloseIcon';
 import {
   LYRICS_MODAL_TRANSPORT_ICON_SIZE,
   playerIconProps,
+  playerTransportIconProps,
 } from '@shared/ui/icons/playerActionIcon';
 import './PreviewLyricsModal.style.scss';
 
@@ -289,7 +290,7 @@ export function PreviewLyricsModal({
                 <Pause {...playerIconProps(LYRICS_MODAL_TRANSPORT_ICON_SIZE)} />
               ) : (
                 <Play
-                  {...playerIconProps(LYRICS_MODAL_TRANSPORT_ICON_SIZE, {
+                  {...playerTransportIconProps(LYRICS_MODAL_TRANSPORT_ICON_SIZE, {
                     className: 'preview-lyrics-modal__play-icon',
                   })}
                 />

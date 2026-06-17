@@ -1,8 +1,6 @@
 import { AlbumsSkeleton } from '@shared/ui/skeleton/AlbumsSkeleton';
 import { ArticlesSkeleton } from '@shared/ui/skeleton/ArticlesSkeleton';
 import '@shared/ui/skeleton/skeleton.scss';
-import './AlbumsSection.scss';
-import './ArticlesSection.scss';
 
 /** Suspense fallback для `/?artist=` — те же скелетоны, что в AlbumsSection / ArticlesSection. */
 export function ArtistPublishedPageFallback() {

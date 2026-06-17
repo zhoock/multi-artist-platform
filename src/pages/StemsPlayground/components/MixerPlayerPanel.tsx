@@ -17,6 +17,7 @@ import {
   MIXER_TRANSPORT_PLAY_ICON_SIZE,
   MIXER_WAVE_PLAY_ICON_SIZE,
   playerIconProps,
+  playerTransportIconProps,
 } from '@shared/ui/icons/playerActionIcon';
 
 type StemMixState = PanelStemState;
@@ -252,7 +253,7 @@ function MixerPlayerPanelInner(
               <Pause {...playerIconProps(MIXER_TRANSPORT_PLAY_ICON_SIZE)} />
             ) : (
               <Play
-                {...playerIconProps(MIXER_TRANSPORT_PLAY_ICON_SIZE, {
+                {...playerTransportIconProps(MIXER_TRANSPORT_PLAY_ICON_SIZE, {
                   className: 'mixer-player__transport-icon--play',
                 })}
               />
@@ -277,7 +278,7 @@ function MixerPlayerPanelInner(
                 <Pause {...playerIconProps(MIXER_WAVE_PLAY_ICON_SIZE)} />
               ) : (
                 <Play
-                  {...playerIconProps(MIXER_WAVE_PLAY_ICON_SIZE, {
+                  {...playerTransportIconProps(MIXER_WAVE_PLAY_ICON_SIZE, {
                     className: 'mixer-player__wave-play-icon--play',
                   })}
                 />

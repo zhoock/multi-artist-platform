@@ -1,5 +1,8 @@
 import { Play } from 'lucide-react';
-import { ALBUM_PLAY_BUTTON_ICON_SIZE, playerIconProps } from '@shared/ui/icons/playerActionIcon';
+import {
+  ALBUM_PLAY_BUTTON_ICON_SIZE,
+  playerTransportIconProps,
+} from '@shared/ui/icons/playerActionIcon';
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useStore } from 'react-redux';
@@ -391,7 +394,7 @@ const AlbumTracksComponent = ({ album }: { album: IAlbums }) => {
             >
               <span className="album-play__icon" aria-hidden>
                 <Play
-                  {...playerIconProps(ALBUM_PLAY_BUTTON_ICON_SIZE, {
+                  {...playerTransportIconProps(ALBUM_PLAY_BUTTON_ICON_SIZE, {
                     className: 'album-play__icon-svg album-play__icon-svg--play',
                   })}
                 />

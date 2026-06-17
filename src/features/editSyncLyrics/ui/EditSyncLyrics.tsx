@@ -10,7 +10,7 @@ import { useLang } from '@app/providers/lang';
 import { Loader } from '@shared/ui/loader';
 import { ErrorMessage } from '@shared/ui/error-message';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
-import { playerIconProps } from '@shared/ui/icons/playerActionIcon';
+import { playerIconProps, playerTransportIconProps } from '@shared/ui/icons/playerActionIcon';
 import { useAppDispatch } from '@shared/lib/hooks/useAppDispatch';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { playerActions, playerSelectors } from '@features/player';
@@ -928,7 +928,11 @@ export default function EditSyncLyrics({
                   position: 'relative',
                 }}
               >
-                {isPlaying ? <Pause {...playerIconProps(16)} /> : <Play {...playerIconProps(16)} />}
+                {isPlaying ? (
+                  <Pause {...playerIconProps(16)} />
+                ) : (
+                  <Play {...playerTransportIconProps(16)} />
+                )}
               </button>
             </div>
             <div className="admin-sync__player-progress-wrapper">

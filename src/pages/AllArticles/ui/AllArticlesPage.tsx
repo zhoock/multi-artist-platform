@@ -110,11 +110,6 @@ export function AllArticlesPage() {
                   <ArticlesSkeleton count={4} />
                 </div>
               )}
-
-              {/* Индикатор конца списка */}
-              {!hasMore && allArticles.length > 0 && (
-                <p className="all-articles__end">{ui?.buttons?.allArticlesLoaded ?? ''}</p>
-              )}
             </>
           )}
         </div>
