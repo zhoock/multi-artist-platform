@@ -37,9 +37,9 @@ import { UNIVERSE_FOCUS_ARTIST_STORAGE_KEY } from '@/components/view/Universe3D'
 import { siteArtistUiLabel } from '@shared/lib/profileDisplayName';
 import { fallbackAlbumClientId } from '@shared/lib/albumClientId';
 import {
+  MessageSquareQuote,
   Pause,
   Play,
-  Quote,
   Repeat,
   Repeat1,
   Shuffle,
@@ -50,6 +50,7 @@ import {
 } from 'lucide-react';
 import {
   playerIconProps,
+  playerTransportIconProps,
   PLAYER_SECONDARY_ICON_SIZE,
   PLAYER_TRANSPORT_ICON_SIZE,
   PLAYER_TRANSPORT_PLAY_ICON_SIZE,
@@ -1020,6 +1021,26 @@ export default function AudioPlayer({
     return fromSearch || null;
   }, [albumMeta?.publicSlug, location.search]);
 
+  const albumIdForLink = useMemo(() => {
+    const fromMeta = albumMeta?.albumId?.trim();
+    if (fromMeta) return fromMeta;
+    const fromAlbum = fallbackAlbumClientId(album).trim();
+    return fromAlbum || null;
+  }, [albumMeta?.albumId, album]);
+
+  const albumTitle = albumMeta?.album?.trim() || album.album?.trim() || '';
+
+  const handleAlbumOpen = useCallback(() => {
+    if (!albumIdForLink) return;
+    const slug = artistSlugForProfileLink;
+    const target = {
+      pathname: `/albums/${encodeURIComponent(albumIdForLink)}`,
+      search: slug ? `?artist=${encodeURIComponent(slug)}` : undefined,
+    };
+    dispatch(playerActions.setSourceLocation(target));
+    navigate({ ...target, hash: '' }, { replace: false });
+  }, [albumIdForLink, artistSlugForProfileLink, dispatch, navigate]);
+
   const handleArtistProfileOpen = useCallback(() => {
     const slug = artistSlugForProfileLink;
     if (!slug) return;
@@ -1081,8 +1102,35 @@ export default function AudioPlayer({
         </div>
         <div className="player__track-info">
           <h2>{currentTrack?.title || 'Unknown Track'}</h2>
-          <h3
-            className={artistSlugForProfileLink ? 'player__artist-link' : undefined}
+          <p
+            className={albumIdForLink ? 'player__album-link' : 'player__album-name'}
+            role={albumIdForLink ? 'link' : undefined}
+            tabIndex={albumIdForLink ? 0 : undefined}
+            onClick={
+              albumIdForLink
+                ? (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleAlbumOpen();
+                  }
+                : undefined
+            }
+            onKeyDown={
+              albumIdForLink
+                ? (e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleAlbumOpen();
+                    }
+                  }
+                : undefined
+            }
+          >
+            {albumTitle || 'Unknown Album'}
+          </p>
+          <p
+            className={artistSlugForProfileLink ? 'player__artist-link' : 'player__artist-name'}
             role={artistSlugForProfileLink ? 'link' : undefined}
             tabIndex={artistSlugForProfileLink ? 0 : undefined}
             onClick={
@@ -1107,7 +1155,7 @@ export default function AudioPlayer({
             }
           >
             {siteArtistUiLabel(albumMeta?.artist ?? '', 'Unknown Artist')}
-          </h3>
+          </p>
         </div>
       </div>
 
@@ -1341,7 +1389,7 @@ export default function AudioPlayer({
           }}
         >
           <SkipBack
-            {...playerIconProps(PLAYER_TRANSPORT_ICON_SIZE, {
+            {...playerTransportIconProps(PLAYER_TRANSPORT_ICON_SIZE, {
               className: 'player__transport-icon player__transport-icon--back',
             })}
           />
@@ -1356,13 +1404,13 @@ export default function AudioPlayer({
         >
           {isPlaying ? (
             <Pause
-              {...playerIconProps(PLAYER_TRANSPORT_PLAY_ICON_SIZE, {
+              {...playerTransportIconProps(PLAYER_TRANSPORT_PLAY_ICON_SIZE, {
                 className: 'player__transport-icon',
               })}
             />
           ) : (
             <Play
-              {...playerIconProps(PLAYER_TRANSPORT_PLAY_ICON_SIZE, {
+              {...playerTransportIconProps(PLAYER_TRANSPORT_PLAY_ICON_SIZE, {
                 className: 'player__transport-icon player__transport-icon--play',
               })}
             />
@@ -1400,7 +1448,7 @@ export default function AudioPlayer({
           }}
         >
           <SkipForward
-            {...playerIconProps(PLAYER_TRANSPORT_ICON_SIZE, {
+            {...playerTransportIconProps(PLAYER_TRANSPORT_ICON_SIZE, {
               className: 'player__transport-icon player__transport-icon--forward',
             })}
           />
@@ -1479,7 +1527,7 @@ export default function AudioPlayer({
           aria-disabled={!hasTextToShow}
         >
           <span className="player__lyrics-toggle-icon" aria-hidden>
-            <Quote {...playerIconProps(PLAYER_SECONDARY_ICON_SIZE)} />
+            <MessageSquareQuote {...playerIconProps(PLAYER_SECONDARY_ICON_SIZE)} />
           </span>
         </button>
       </div>

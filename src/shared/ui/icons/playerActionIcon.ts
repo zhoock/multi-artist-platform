@@ -21,3 +21,13 @@ export function playerIconProps(size: number, overrides?: Partial<LucideProps>):
     ...overrides,
   };
 }
+
+export function playerTransportIconProps(
+  size: number,
+  overrides?: Partial<LucideProps>
+): LucideProps {
+  return playerIconProps(size, {
+    fill: 'currentColor',
+    ...overrides,
+  });
+}
