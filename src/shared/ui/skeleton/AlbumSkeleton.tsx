@@ -8,12 +8,8 @@ export function AlbumSkeleton({ tracksCount = 3 }: AlbumSkeletonProps) {
   return (
     <section className="album main-background" aria-label="Скелетон альбома">
       <div className="wrapper album__wrapper album-skeleton">
-        <nav className="breadcrumb item-type-a" aria-label="Breadcrumb">
-          <ul>
-            <li>
-              <div className="skeleton skeleton--breadcrumb skeleton--breadcrumb-top" />
-            </li>
-          </ul>
+        <nav className="context-nav" aria-hidden="true">
+          <div className="skeleton skeleton--context-nav" />
         </nav>
 
         <div className="item album-skeleton__cover-block">

@@ -11,6 +11,8 @@ import { selectPublicArtistSlug, setPublicArtistSlug } from '@shared/model/curre
 import { isAuthenticated } from '@shared/lib/auth';
 import { withPublicArtistQuery } from '@shared/lib/artistQuery';
 import { buildPublicSiteUrl } from '@shared/lib/publicSiteOrigin';
+import { useSiteArtistDisplayName } from '@shared/lib/hooks/useSiteArtistDisplayName';
+import { ContextNav } from '@shared/ui/contextNav';
 import { sanitizeReturnPath } from '@shared/lib/authReturnUrl';
 import { queueMixToast } from '@shared/lib/mixToast';
 import { MixToast } from '@shared/ui/mixToast';
@@ -66,6 +68,12 @@ export default function StemsPlayground() {
   const buttons = (ui?.buttons ?? {}) as Record<string, string>;
 
   const pageTitle = stems.pageTitle ?? 'Mixer';
+  const artistSlug =
+    publicArtistSlug?.trim() || new URLSearchParams(location.search).get('artist')?.trim() || '';
+  const { displayName: siteArtistName } = useSiteArtistDisplayName(lang, {
+    artistSlug: artistSlug || null,
+  });
+  const artistHubPath = withPublicArtistQuery('/', artistSlug);
   const selectAlbumHint = stems.selectAlbumHint ?? '';
   const selectTrackHint = stems.selectTrackHint ?? '';
   const noAlbumsLabel = stems.noAlbums ?? '';
@@ -338,6 +346,10 @@ export default function StemsPlayground() {
       </Helmet>
 
       <div className="wrapper">
+        {view === 'albums' ? (
+          <ContextNav mode="artist-only" artistName={siteArtistName} artistTo={artistHubPath} />
+        ) : null}
+
         <h2>{pageTitle}</h2>
 
         <div className="mixer">

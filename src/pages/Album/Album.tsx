@@ -1,7 +1,7 @@
 // src/pages/Album/Album.tsx
 
 import { useEffect, useMemo } from 'react';
-import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 
 import { AlbumCover, AlbumDetails } from '@entities/album';
@@ -36,6 +36,9 @@ import { useSiteArtistDisplayName } from '@shared/lib/hooks/useSiteArtistDisplay
 import { formatAlbumDisplayFullName } from '@shared/lib/profileDisplayName';
 import { buildPublicSiteUrl } from '@shared/lib/publicSiteOrigin';
 import { useShowSurfaceAlbumsLoadingShell } from '@shared/lib/hooks/useShowAlbumsLoadingShell';
+import { resolveChildContextNavMode, useNavigationOrigin } from '@shared/lib/navigationContext';
+import { withPublicArtistQuery } from '@shared/lib/artistQuery';
+import { ContextNav } from '@shared/ui/contextNav';
 
 export default function Album() {
   const dispatch = useAppDispatch();
@@ -85,37 +88,10 @@ export default function Album() {
     }
   }, [album, albumId]);
 
-  // Определяем, пришли ли мы со страницы списка альбомов
-  const cameFromAlbumsPage = useMemo(() => {
-    if (typeof window === 'undefined') return false;
-
-    // Проверяем sessionStorage для предыдущего пути (работает при клиентской навигации)
-    const previousPath = sessionStorage.getItem('previousPath');
-    if (previousPath) {
-      // Проверяем, что предыдущий путь - это страница списка альбомов
-      return previousPath === '/albums' || previousPath === '/en/albums';
-    }
-
-    // Fallback: проверяем document.referrer (работает при полной перезагрузке страницы)
-    const referrer = document.referrer;
-    if (!referrer) return false;
-
-    try {
-      const origin = window.location.origin;
-      const referrerUrl = new URL(referrer);
-
-      if (referrerUrl.origin !== origin) return false;
-
-      const pathname = referrerUrl.pathname;
-      return pathname === '/albums' || pathname === '/en/albums';
-    } catch {
-      return false;
-    }
-  }, []);
-
-  const albumsListLink = artistParam
-    ? `/albums?artist=${encodeURIComponent(artistParam)}`
-    : '/albums';
+  const navigationOrigin = useNavigationOrigin();
+  const contextNavMode = resolveChildContextNavMode(navigationOrigin);
+  const artistHubPath = withPublicArtistQuery('/', artistParam);
+  const albumsListLink = withPublicArtistQuery('/albums', artistParam);
 
   useEffect(() => {
     // Smart fallback for direct URL without ?artist:
@@ -231,21 +207,13 @@ export default function Album() {
       </Helmet>
 
       <div className="wrapper album__wrapper">
-        <nav className="breadcrumb item-type-a" aria-label="Breadcrumb">
-          <ul>
-            {ui?.links?.home && (
-              <li>
-                <Link to="/">{ui.links.home}</Link>
-              </li>
-            )}
-            {/* Показываем "Все альбомы" только если пришли со страницы списка */}
-            {cameFromAlbumsPage && ui?.titles?.albums && (
-              <li>
-                <Link to={albumsListLink}>{ui.titles.albums}</Link>
-              </li>
-            )}
-          </ul>
-        </nav>
+        <ContextNav
+          mode={contextNavMode}
+          artistName={siteArtistName}
+          artistTo={artistHubPath}
+          listLabel={ui?.titles?.albums}
+          listTo={albumsListLink}
+        />
 
         <div className="item">
           <AlbumCover

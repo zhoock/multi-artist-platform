@@ -5,6 +5,14 @@ import { ArticlePage } from '../ui/ArticlePage';
 import { renderWithProviders } from '@shared/lib/test-utils';
 import type { IArticles } from '@models';
 
+jest.mock('@shared/lib/hooks/useSiteArtistDisplayName', () => ({
+  useSiteArtistDisplayName: () => ({
+    displayName: 'Test Artist',
+    displayLabel: 'Test Artist',
+    isLoading: false,
+  }),
+}));
+
 function renderArticlePage(options: NonNullable<Parameters<typeof renderWithProviders>[1]>) {
   return renderWithProviders(
     <Routes>
@@ -214,9 +222,9 @@ describe('ArticlePage integration tests', () => {
     }
   });
 
-  test('должен отобразить breadcrumb навигацию', () => {
+  test('должен отобразить контекстную навигацию с fallback на Articles', () => {
     renderWithProviders(<ArticlePage />, {
-      initialEntries: ['/articles/test-article'],
+      initialEntries: ['/articles/test-article?artist=test-artist'],
       preloadedState: {
         lang: { current: 'en' },
         articles: {
@@ -242,10 +250,10 @@ describe('ArticlePage integration tests', () => {
               {
                 menu: {},
                 buttons: {},
-                titles: {},
-                links: {
-                  home: 'Home',
+                titles: {
+                  articles: 'Articles',
                 },
+                links: {},
               },
             ],
             lastUpdated: Date.now(),
@@ -260,8 +268,15 @@ describe('ArticlePage integration tests', () => {
       },
     });
 
-    expect(screen.getByLabelText(/breadcrumb/i)).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /home/i })).toBeInTheDocument();
+    expect(screen.getByLabelText(/context navigation/i)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /← articles/i })).toHaveAttribute(
+      'href',
+      '/articles?artist=test-artist'
+    );
+    expect(screen.getByRole('link', { name: /test artist/i })).toHaveAttribute(
+      'href',
+      '/?artist=test-artist'
+    );
   });
 
   test('должен отобразить дату статьи', () => {

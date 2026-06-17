@@ -211,11 +211,6 @@ describe('Album integration tests', () => {
     });
 
     expect(screen.getByLabelText(/блок c альбомом/i)).toBeInTheDocument();
-    // Breadcrumb может отсутствовать, если нет ссылки home в UI словаре или компонент не рендерится
-    const homeLink = screen.queryByRole('link', { name: /home/i });
-    if (homeLink) {
-      expect(homeLink).toBeInTheDocument();
-    }
   });
 
   test('должен отобразить правильные SEO метаданные', () => {

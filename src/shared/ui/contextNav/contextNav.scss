@@ -1,0 +1,57 @@
+// src/shared/ui/contextNav/contextNav.scss
+
+@use '../../../scss/abstracts/mixins' as *;
+
+.context-nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0;
+  margin-block: var(--ms-0) var(--ms-01);
+  font-size: clamp(0.875rem, 0.82rem + 0.25vw, 1rem);
+  font-weight: 400;
+  line-height: 1.35;
+  letter-spacing: normal;
+
+  &__back,
+  &__link {
+    color: var(--link-color, #998238);
+    text-decoration: none;
+    transition: opacity 160ms ease;
+
+    @media (hover: hover) and (pointer: fine) {
+      &:hover {
+        color: var(--link-color, #998238);
+        opacity: 0.72;
+      }
+    }
+
+    &:focus-visible {
+      outline: 1px solid var(--link-color, #998238);
+      outline-offset: 2px;
+      border-radius: 2px;
+    }
+  }
+
+  &__back--section {
+    text-transform: capitalize;
+  }
+
+  &__sep {
+    padding-inline: 0.55em;
+    color: var(--link-color, #998238);
+    opacity: 0.9;
+    user-select: none;
+  }
+}
+
+.album__wrapper > .context-nav {
+  grid-column: 1 / -1;
+}
+
+.article > .wrapper > .context-nav,
+.all-albums > .wrapper > .context-nav,
+.all-articles > .wrapper > .context-nav,
+.stems-page > .wrapper > .context-nav {
+  margin-block-start: var(--ms-0);
+}

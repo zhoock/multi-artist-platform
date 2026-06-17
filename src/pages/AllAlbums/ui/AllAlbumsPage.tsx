@@ -1,7 +1,7 @@
 // src/pages/AllAlbums/ui/AllAlbumsPage.tsx
 
 import { useEffect, useMemo, useState, useRef } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { WrapperAlbumCover, AlbumCover } from '@entities/album';
 import { useAppDispatch } from '@shared/lib/hooks/useAppDispatch';
@@ -25,6 +25,8 @@ import { useSiteArtistDisplayName } from '@shared/lib/hooks/useSiteArtistDisplay
 import { formatAlbumDisplayFullName } from '@shared/lib/profileDisplayName';
 import { useShowSurfaceAlbumsLoadingShell } from '@shared/lib/hooks/useShowAlbumsLoadingShell';
 import { filterAlbumsForArtistPageSurface } from '@shared/lib/artistPageContent';
+import { withPublicArtistQuery } from '@shared/lib/artistQuery';
+import { ContextNav } from '@shared/ui/contextNav';
 
 // Количество альбомов для подгрузки за раз
 const BATCH_SIZE = 16;
@@ -101,6 +103,7 @@ export function AllAlbumsPage() {
   // SEO
   const seoTitle = ui?.titles?.allAlbumsPageTitle ?? '';
   const seoDesc = ui?.titles?.allAlbumsPageDesc ?? '';
+  const artistHubPath = withPublicArtistQuery('/', artistSlug);
 
   useEffect(() => {
     window.scrollTo({ top: 0 });
@@ -119,6 +122,7 @@ export function AllAlbumsPage() {
     return (
       <section className="all-albums main-background" aria-label={seoTitle}>
         <div className="wrapper">
+          <ContextNav mode="artist-only" artistName={siteArtistName} artistTo={artistHubPath} />
           <AlbumsSkeleton count={BATCH_SIZE} />
         </div>
       </section>
@@ -137,11 +141,7 @@ export function AllAlbumsPage() {
       </Helmet>
 
       <div className="wrapper">
-        <nav className="breadcrumb item-type-a" aria-label="Breadcrumb">
-          <ul>
-            <li>{ui?.links?.home ? <Link to="/">{ui.links.home}</Link> : null}</li>
-          </ul>
-        </nav>
+        <ContextNav mode="artist-only" artistName={siteArtistName} artistTo={artistHubPath} />
 
         <h2>{ui?.titles?.albums ?? seoTitle}</h2>
 

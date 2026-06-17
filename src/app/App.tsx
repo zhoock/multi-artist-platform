@@ -186,7 +186,7 @@ function Layout() {
     purgeInvalidAuthSessionFromStorage();
   }, []);
 
-  // Отслеживаем предыдущий путь для умных breadcrumbs
+  // Отслеживаем предыдущий путь для контекстной навигации
   // Сохраняем текущий путь в sessionStorage при клике на ссылку (до навигации)
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {

@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useMemo, type ReactNode } from 'react';
-import { Link, useParams, useSearchParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 
 import { getImageUrl } from '@shared/api/albums';
@@ -23,6 +23,8 @@ import {
 } from '@entities/article';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 import { withPublicArtistQuery } from '@shared/lib/artistQuery';
+import { resolveChildContextNavMode, useNavigationOrigin } from '@shared/lib/navigationContext';
+import { ContextNav } from '@shared/ui/contextNav';
 import { buildPublicSiteUrl } from '@shared/lib/publicSiteOrigin';
 import { ArtistArchiveLockIcon } from '@shared/ui/icons/ArtistArchiveLockIcon';
 import { SubscriberContentLockIcon } from '@shared/ui/icons/SubscriberContentLockIcon';
@@ -38,6 +40,7 @@ import {
   resolveArticlePaywallKind,
   type ArticlePaywallKind,
 } from '@entities/article/lib/resolveArticlePaywallKind';
+import { useSiteArtistDisplayName } from '@shared/lib/hooks/useSiteArtistDisplayName';
 import '@entities/article/ui/style.scss';
 
 export function ArticlePage() {
@@ -66,35 +69,10 @@ export function ArticlePage() {
   const articlesError = useAppSelector((state) => selectArticlesError(state));
   const article = useAppSelector((state) => selectArticleByIdResolved(state, articleId));
   const ui = useAppSelector((state) => selectUiDictionaryFirst(state, lang));
+  const { displayName: siteArtistName } = useSiteArtistDisplayName(lang, { artistSlug });
+  const navigationOrigin = useNavigationOrigin();
+  const contextNavMode = resolveChildContextNavMode(navigationOrigin);
   const { formatDate } = formatDateInWords[locale];
-
-  // Определяем, пришли ли мы со страницы списка статей
-  const cameFromArticlesPage = useMemo(() => {
-    if (typeof window === 'undefined') return false;
-
-    // Проверяем sessionStorage для предыдущего пути (работает при клиентской навигации)
-    const previousPath = sessionStorage.getItem('previousPath');
-    if (previousPath) {
-      // Проверяем, что предыдущий путь - это страница списка статей
-      return previousPath === '/articles' || previousPath === '/en/articles';
-    }
-
-    // Fallback: проверяем document.referrer (работает при полной перезагрузке страницы)
-    const referrer = document.referrer;
-    if (!referrer) return false;
-
-    try {
-      const origin = window.location.origin;
-      const referrerUrl = new URL(referrer);
-
-      if (referrerUrl.origin !== origin) return false;
-
-      const pathname = referrerUrl.pathname;
-      return pathname === '/articles' || pathname === '/en/articles';
-    } catch {
-      return false;
-    }
-  }, []);
 
   function Block({
     title,
@@ -191,21 +169,13 @@ export function ArticlePage() {
   return (
     <section className="article main-background" aria-label="Блок со статьёй">
       <div className="wrapper">
-        <nav aria-label="Breadcrumb" className="breadcrumb">
-          <ul>
-            {ui?.links?.home && (
-              <li>
-                <Link to={homePath}>{ui.links.home}</Link>
-              </li>
-            )}
-            {/* Показываем "Все статьи" только если пришли со страницы списка */}
-            {cameFromArticlesPage && ui?.titles?.articles && (
-              <li>
-                <Link to={articlesListPath}>{ui.titles.articles}</Link>
-              </li>
-            )}
-          </ul>
-        </nav>
+        <ContextNav
+          mode={contextNavMode}
+          artistName={siteArtistName}
+          artistTo={homePath}
+          listLabel={ui?.titles?.articles}
+          listTo={articlesListPath}
+        />
 
         <ArticleContent
           status={articlesStatus}

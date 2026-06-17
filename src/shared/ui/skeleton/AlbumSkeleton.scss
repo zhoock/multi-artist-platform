@@ -69,13 +69,10 @@
     animation: none;
   }
 
-  &--breadcrumb {
-    block-size: 29.125px;
-    border-radius: var(--ms-0);
-  }
-
-  &--breadcrumb-top {
-    inline-size: 140px;
+  &--context-nav {
+    block-size: 1.125rem;
+    inline-size: 14rem;
+    border-radius: var(--ms-02);
   }
 }
 
