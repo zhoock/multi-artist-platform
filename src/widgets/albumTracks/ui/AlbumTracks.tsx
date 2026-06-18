@@ -4,7 +4,7 @@ import {
   playerTransportIconProps,
 } from '@shared/ui/icons/playerActionIcon';
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useStore } from 'react-redux';
 import type { RootState } from '@shared/model/appStore/types';
 import { useAppDispatch } from '@shared/lib/hooks/useAppDispatch';
@@ -18,6 +18,7 @@ import { TrackList } from '@entities/track/ui/TrackList';
 import { getUserAudioUrl } from '@shared/api/albums';
 import { emptyStringMediaSrc } from '@shared/lib/media/optionalMediaUrl';
 import { useSiteArtistDisplayName } from '@shared/lib/hooks/useSiteArtistDisplayName';
+import { withPublicArtistQuery } from '@shared/lib/artistQuery';
 import { fallbackAlbumClientId } from '@shared/lib/albumClientId';
 import { useArchiveAccessModal } from '@shared/lib/archiveAccessModal';
 import { refreshPremiumContentForArchiveChange } from '@features/artistArchive';
@@ -97,6 +98,7 @@ const AlbumTracksComponent = ({ album }: { album: IAlbums }) => {
     [siteArtistName]
   );
   const displayArtistLabel = resolvedSiteArtist ? resolvedSiteArtist : '—';
+  const artistHubPath = withPublicArtistQuery('/', artistSlugFromUrl);
   const fullNameMeta = useMemo(
     () => formatAlbumDisplayFullName(resolvedSiteArtist, album.album),
     [resolvedSiteArtist, album.album]
@@ -371,6 +373,16 @@ const AlbumTracksComponent = ({ album }: { album: IAlbums }) => {
         <>
           <h2 className="album-title">{album?.album}</h2>
 
+          {displayArtistLabel !== '—' && (
+            <h3 className="album-artist">
+              {artistSlugFromUrl ? (
+                <Link to={artistHubPath}>{displayArtistLabel}</Link>
+              ) : (
+                displayArtistLabel
+              )}
+            </h3>
+          )}
+
           <div className="wrapper-album-play">
             <button
               type="button"
@@ -417,7 +429,16 @@ const AlbumTracksComponent = ({ album }: { album: IAlbums }) => {
         </>
       );
     },
-    [album, lang, openPlayer, handleTrackSelect, store]
+    [
+      album,
+      artistHubPath,
+      artistSlugFromUrl,
+      displayArtistLabel,
+      lang,
+      openPlayer,
+      handleTrackSelect,
+      store,
+    ]
   );
 
   const playText = ui?.buttons?.playButton ?? 'Play';

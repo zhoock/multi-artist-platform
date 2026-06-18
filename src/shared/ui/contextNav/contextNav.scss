@@ -7,14 +7,16 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 0;
-  margin-block: var(--ms-0) var(--ms-01);
+  margin-block: var(--ms-0) var(--ms-1);
   font-size: clamp(0.875rem, 0.82rem + 0.25vw, 1rem);
   font-weight: 400;
   line-height: 1.35;
   letter-spacing: normal;
 
-  &__back,
-  &__link {
+  &__back {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2em;
     color: var(--link-color, #998238);
     text-decoration: none;
     transition: opacity 160ms ease;
@@ -37,11 +39,22 @@
     text-transform: capitalize;
   }
 
-  &__sep {
-    padding-inline: 0.55em;
-    color: var(--link-color, #998238);
-    opacity: 0.9;
-    user-select: none;
+  &__chevron {
+    flex-shrink: 0;
+    inline-size: 0.85em;
+    block-size: 0.85em;
+    opacity: 0.7;
+    color: currentcolor;
+    stroke: currentcolor;
+  }
+
+  &__back--icon-only {
+    gap: 0;
+
+    .context-nav__chevron {
+      inline-size: 1.5em;
+      block-size: 1.5em;
+    }
   }
 }
 

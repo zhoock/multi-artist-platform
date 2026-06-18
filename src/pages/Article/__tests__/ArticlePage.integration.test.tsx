@@ -269,14 +269,11 @@ describe('ArticlePage integration tests', () => {
     });
 
     expect(screen.getByLabelText(/context navigation/i)).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /← articles/i })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: /articles/i })).toHaveAttribute(
       'href',
       '/articles?artist=test-artist'
     );
-    expect(screen.getByRole('link', { name: /test artist/i })).toHaveAttribute(
-      'href',
-      '/?artist=test-artist'
-    );
+    expect(screen.queryByRole('link', { name: /test artist/i })).not.toBeInTheDocument();
   });
 
   test('должен отобразить дату статьи', () => {

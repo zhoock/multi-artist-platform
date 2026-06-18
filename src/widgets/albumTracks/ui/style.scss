@@ -10,7 +10,20 @@
 
     @include breakpoint(tablet) {
       text-align: left;
-      margin-block-end: var(--ms-1);
+      margin-block-end: var(--ms-01);
+    }
+  }
+
+  .album-artist {
+    margin-block: 0;
+    text-align: center;
+
+    @include breakpoint(tablet) {
+      text-align: left;
+    }
+
+    a {
+      text-decoration: none;
     }
   }
 
