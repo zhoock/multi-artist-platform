@@ -48,6 +48,7 @@ import {
   ArtistOnboardingRedirectController,
   PremiumCheckoutIntentResumeController,
 } from '@shared/lib/authIntent';
+import { SessionExpiredRedirectController } from '@shared/lib/sessionExpired';
 import { ListenerWelcomeController } from '@features/listenerWelcome';
 import {
   PremiumSubscriptionProvider,
@@ -361,7 +362,26 @@ function Layout() {
   const backgroundLocation =
     backgroundFromState ?? backgroundFromLastSurface ?? backgroundFromSession;
 
-  const activeLocation = backgroundLocation ?? location;
+  const isOnAuthRoute = Boolean(matchPath({ path: '/auth', end: true }, location.pathname));
+
+  const showAuthModal = Boolean(backgroundFromState) && isOnAuthRoute;
+
+  /** Session-expired auth overlay opened from dashboard — keep dashboard modal layer alive. */
+  const authOverlayDashboardBackground =
+    showAuthModal && backgroundFromState && isDashboardAppPathname(backgroundFromState.pathname)
+      ? backgroundFromState
+      : null;
+
+  const authOverlayPublicSurface = authOverlayDashboardBackground
+    ? ((authOverlayDashboardBackground.state as { backgroundLocation?: Location } | null)
+        ?.backgroundLocation ??
+      (storedBg && !storedBg.pathname.startsWith('/dashboard')
+        ? locationFromDashboardModalStored(storedBg)
+        : null) ??
+      backgroundFromLastSurface)
+    : null;
+
+  const activeLocation = authOverlayPublicSurface ?? backgroundLocation ?? location;
 
   const isHomeRoute = activeLocation.pathname === '/' || activeLocation.pathname === '/en';
   const hasArtistParam = new URLSearchParams(activeLocation.search).has('artist');
@@ -519,11 +539,11 @@ function Layout() {
     </Routes>
   );
 
-  const showAuthModal =
-    Boolean(backgroundLocation) &&
-    Boolean(matchPath({ path: '/auth', end: true }, location.pathname));
   const showDashboardModal =
-    Boolean(backgroundLocation) && isDashboardAppPathname(location.pathname);
+    (Boolean(backgroundLocation) && isDashboardAppPathname(location.pathname)) ||
+    Boolean(authOverlayDashboardBackground);
+
+  const dashboardRoutesLocation = authOverlayDashboardBackground ?? location;
 
   if (typeof window !== 'undefined') {
     syncDashboardAlbumsPublicCatalogOverlay(showDashboardModal);
@@ -532,9 +552,18 @@ function Layout() {
   const dashboardModalShell = useMemo(
     () => ({
       overlayOpen: showDashboardModal,
-      surfaceLocation: showDashboardModal ? backgroundLocation : null,
+      surfaceLocation: showDashboardModal
+        ? authOverlayDashboardBackground
+          ? authOverlayPublicSurface
+          : backgroundLocation
+        : null,
     }),
-    [showDashboardModal, backgroundLocation]
+    [
+      showDashboardModal,
+      authOverlayDashboardBackground,
+      authOverlayPublicSurface,
+      backgroundLocation,
+    ]
   );
 
   const authModalRoutes = showAuthModal ? (
@@ -551,7 +580,7 @@ function Layout() {
   ) : null;
 
   const dashboardModalRoutes = showDashboardModal ? (
-    <Routes>
+    <Routes location={dashboardRoutesLocation}>
       <Route
         path="/dashboard-new/:tab?"
         element={
@@ -690,6 +719,7 @@ function Layout() {
             </ErrorBoundary>
           )}
           <EmailVerificationRefreshController />
+          <SessionExpiredRedirectController />
           <PremiumEntitlementRefreshController />
           <PremiumCheckoutIntentResumeController />
           <AlbumCheckoutIntentResumeController />

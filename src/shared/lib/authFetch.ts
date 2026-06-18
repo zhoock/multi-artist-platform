@@ -1,14 +1,15 @@
 /**
  * Обёртка над fetch для защищённых /api/*: синхронизация UI с 401 (истёкший JWT и т.д.).
  */
-import { clearPremiumCheckoutAuthIntent } from '@shared/lib/authIntent';
-import { shouldLeaveDeletedArtistPage } from '@shared/lib/accountDeletedSession';
-import { clearAuth, AUTH_EXPIRED_BANNER_SESSION_KEY } from './auth';
+import {
+  dispatchSessionExpiredRequest,
+  mapApiCodeToBannerReason,
+  setSessionExpiredBannerReason,
+  tryScheduleSessionExpiredHandling,
+} from '@shared/lib/sessionExpired';
+import { invalidateAuthSession } from './auth';
 
 const AUTH_PATH_SUBSTRINGS = ['/api/auth/login', '/api/auth/register'];
-
-/** Снижает гонки при нескольких параллельных 401 (один редирект / одна очистка баннера). */
-let sessionExpiredRedirectScheduled = false;
 
 function isAuthLoginOrRegisterUrl(url: string): boolean {
   return AUTH_PATH_SUBSTRINGS.some((s) => url.includes(s));
@@ -31,6 +32,21 @@ function resolveRequestUrl(input: RequestInfo | URL): string {
   if (typeof input === 'string') return input;
   if (input instanceof URL) return input.href;
   return input.url;
+}
+
+function handleSessionExpiration(code: string | undefined): void {
+  if (typeof window === 'undefined') return;
+
+  const reason = mapApiCodeToBannerReason(code);
+  const onAuthPage = window.location.pathname.startsWith('/auth');
+
+  if (!tryScheduleSessionExpiredHandling()) {
+    return;
+  }
+
+  setSessionExpiredBannerReason(reason);
+  invalidateAuthSession();
+  dispatchSessionExpiredRequest({ reason, skipNavigation: onAuthPage });
 }
 
 /**
@@ -79,37 +95,7 @@ export async function fetchWithAuthSession(
     return response;
   }
 
-  if (typeof window === 'undefined') {
-    return response;
-  }
+  handleSessionExpiration(code);
 
-  if (window.location.pathname.startsWith('/auth')) {
-    clearAuth();
-    return response;
-  }
-
-  if (!sessionExpiredRedirectScheduled) {
-    sessionExpiredRedirectScheduled = true;
-    try {
-      sessionStorage.setItem(
-        AUTH_EXPIRED_BANNER_SESSION_KEY,
-        code === 'SESSION_EXPIRED'
-          ? 'Session expired. Please sign in again.'
-          : 'Your session is no longer valid. Please sign in again.'
-      );
-    } catch {
-      /* ignore quota */
-    }
-  }
-
-  clearPremiumCheckoutAuthIntent();
-  clearAuth();
-
-  if (shouldLeaveDeletedArtistPage()) {
-    window.location.assign('/');
-    return response;
-  }
-
-  window.location.assign('/auth');
   return response;
 }

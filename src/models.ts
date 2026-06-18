@@ -375,6 +375,10 @@ export interface IInterface {
       signUp: string;
       forgotPassword?: string;
     };
+    sessionExpired?: {
+      expired: string;
+      invalid: string;
+    };
     forgotPassword?: {
       title: string;
       body: string;

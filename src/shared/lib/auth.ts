@@ -7,12 +7,13 @@ import { getLang } from '@shared/lib/lang';
 import { getStore } from '@shared/model/appStore';
 import { resetCatalogAfterAuthEnd } from '@shared/lib/resetCatalogAfterAuthEnd';
 import { clearCachedOwnPublicSlug } from '@shared/lib/ownPublicSlugCache';
+import { resetSessionExpiredHandlingState } from '@shared/lib/sessionExpired';
 
 const TOKEN_STORAGE_KEY = 'auth_token';
 const USER_STORAGE_KEY = 'auth_user';
 
-/** Сообщение после редиректа на /auth при 401 (читается на странице входа). */
-export const AUTH_EXPIRED_BANNER_SESSION_KEY = 'sc-auth-session-expired-msg';
+/** @deprecated Import from `@shared/lib/sessionExpired` — kept for existing imports. */
+export { AUTH_EXPIRED_BANNER_SESSION_KEY } from '@shared/lib/sessionExpired';
 
 /** Допуск по часам клиента/серверу при проверке exp */
 const JWT_EXP_LEEWAY_MS = 60_000;
@@ -165,6 +166,7 @@ export function saveAuth(token: string, user: AuthUser): void {
     const enrichedUser = enrichAuthUserFromToken(user, token);
     localStorage.setItem(TOKEN_STORAGE_KEY, token);
     localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(enrichedUser));
+    resetSessionExpiredHandlingState();
     dispatchAuthSessionChanged();
   } catch (error) {
     console.error('❌ Failed to save auth data:', error);
@@ -236,7 +238,22 @@ export function updateStoredUserName(name: string | null): void {
 }
 
 /**
- * Удаляет токен и данные пользователя из localStorage
+ * Сбрасывает просроченную/отклонённую сессию без logout-level teardown.
+ * Не трогает Redux-каталог, dashboard modal background и checkout intents.
+ */
+export function invalidateAuthSession(): void {
+  try {
+    localStorage.removeItem(TOKEN_STORAGE_KEY);
+    localStorage.removeItem(USER_STORAGE_KEY);
+    clearCachedOwnPublicSlug();
+    dispatchAuthSessionChanged();
+  } catch (error) {
+    console.error('❌ Failed to invalidate auth session:', error);
+  }
+}
+
+/**
+ * Полный выход / удаление аккаунта: invalidate + сброс каталога и checkout intents.
  */
 export function clearAuth(): void {
   try {

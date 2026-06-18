@@ -21,6 +21,8 @@ const PopupComponent = ({
   const dialogRef = useRef<HTMLDialogElement>(null);
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
+  /** Skip onClose when parent sets isActive=false (not user dismiss). */
+  const closingProgrammaticallyRef = useRef(false);
 
   const requestClose = useCallback(() => {
     if (closeBlocked) return;
@@ -84,6 +86,7 @@ const PopupComponent = ({
         }, 0);
       }
     } else if (!isActive && dialog.open) {
+      closingProgrammaticallyRef.current = true;
       dialog.close();
     }
   }, [isActive, autoFocusFirstElement]);
@@ -93,6 +96,10 @@ const PopupComponent = ({
     if (!dialog) return;
 
     const handleClose = () => {
+      if (closingProgrammaticallyRef.current) {
+        closingProgrammaticallyRef.current = false;
+        return;
+      }
       onCloseRef.current?.();
     };
 

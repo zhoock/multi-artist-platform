@@ -1,15 +1,22 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useSearchParams, useLocation, type Location } from 'react-router-dom';
 import {
   isAuthenticated,
   isEmailVerified,
   getUser,
-  AUTH_EXPIRED_BANNER_SESSION_KEY,
+  AUTH_SESSION_CHANGED_EVENT,
 } from '@shared/lib/auth';
+import {
+  consumeSessionExpiredBannerReason,
+  SESSION_EXPIRED_REQUEST_EVENT,
+  type SessionExpiredBannerReason,
+} from '@shared/lib/sessionExpired';
+import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
+import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 import { isArtistAccount, isListenerAccount } from '@shared/lib/accountType';
 import { markFirstArtistOnboardingPending } from '@shared/lib/authIntent';
 import { markListenerWelcomePending } from '@features/listenerWelcome';
-import { resolvePostAuthDestinationForUser } from '@shared/lib/authReturnUrl';
+import { resolvePostAuthDestinationForUser, sanitizeReturnPath } from '@shared/lib/authReturnUrl';
 import {
   hasPendingArtistOnboarding,
   resolveArtistOnboardingDestination,
@@ -35,6 +42,18 @@ import './RoleSelectionScreen.scss';
 
 type AuthMode = 'login' | 'register' | 'forgot';
 type RegisterStep = 'role' | 'form';
+
+function resolveSessionExpiredBannerMessage(
+  reason: SessionExpiredBannerReason,
+  ui: ReturnType<typeof selectUiDictionaryFirst>
+): string {
+  if (reason === 'SESSION_EXPIRED') {
+    return ui?.auth?.sessionExpired?.expired ?? 'Session expired. Please sign in again.';
+  }
+  return (
+    ui?.auth?.sessionExpired?.invalid ?? 'Your session is no longer valid. Please sign in again.'
+  );
+}
 
 /**
  * Auth surface работает в двух режимах:
@@ -63,6 +82,7 @@ export function AuthPage() {
   const [searchParams] = useSearchParams();
   const location = useLocation();
   const { lang } = useLang();
+  const ui = useAppSelector((state) => selectUiDictionaryFirst(state, lang));
   const user = useAuthSessionUser();
   const [mode, setMode] = useState<AuthMode>(() => {
     const m = searchParams.get('mode');
@@ -76,8 +96,15 @@ export function AuthPage() {
   const [showVerifyEmailModal, setShowVerifyEmailModal] = useState(() =>
     Boolean((location.state as { showVerifyEmail?: boolean } | null)?.showVerifyEmail)
   );
-  const [sessionExpiredMessage, setSessionExpiredMessage] = useState<string | null>(null);
+  const [sessionExpiredReason, setSessionExpiredReason] =
+    useState<SessionExpiredBannerReason | null>(null);
   const navigate = useNavigate();
+  /** Prevents duplicate post-auth navigations and Popup close from undoing them. */
+  const postAuthNavigationStartedRef = useRef(false);
+
+  const sessionExpiredMessage = sessionExpiredReason
+    ? resolveSessionExpiredBannerMessage(sessionExpiredReason, ui)
+    : null;
 
   const needsVerification = Boolean(user && !isEmailVerified(user));
 
@@ -88,30 +115,43 @@ export function AuthPage() {
   );
 
   const finishPostAuthNavigation = useCallback(async () => {
+    if (postAuthNavigationStartedRef.current) return;
+    postAuthNavigationStartedRef.current = true;
+
     clearAccountDeletedSkipReturn();
     const currentUser = getUser();
+    const returnToRaw = searchParams.get('returnTo');
 
     if (hasOverlayBackground) {
       const bg = (location.state as { backgroundLocation?: Location } | null)?.backgroundLocation;
+      const bgPath = bg ? `${bg.pathname}${bg.search}${bg.hash ?? ''}` : '/';
       const destination = resolvePostAuthDestinationForUser(currentUser, {
-        returnToSearchParam: searchParams.get('returnTo'),
+        returnToSearchParam: returnToRaw,
         routerState: { backgroundLocation: bg ?? undefined },
       });
+
       if (isListenerAccount(currentUser)) {
         navigate(destination, { replace: true });
         return;
       }
-      const bgPath = bg ? `${bg.pathname}${bg.search}${bg.hash ?? ''}` : '/';
       if (destination !== bgPath) {
         navigate(destination, { replace: true });
-      } else {
-        navigate(-1);
+        return;
       }
+      if (bg) {
+        navigate(
+          { pathname: bg.pathname, search: bg.search, hash: bg.hash ?? '' },
+          { replace: true, state: bg.state ?? undefined }
+        );
+        return;
+      }
+      const explicitReturnTo = sanitizeReturnPath(returnToRaw);
+      navigate(explicitReturnTo ?? '/', { replace: true });
       return;
     }
 
     const roleAwareDefault = resolvePostAuthDestinationForUser(currentUser, {
-      returnToSearchParam: searchParams.get('returnTo'),
+      returnToSearchParam: returnToRaw,
       routerState: location.state,
     });
     const destination = await resolveArtistOnboardingDestination(lang, {
@@ -122,17 +162,26 @@ export function AuthPage() {
     navigate(destination, { replace: true });
   }, [hasOverlayBackground, lang, location.state, navigate, searchParams]);
 
-  useEffect(() => {
-    try {
-      const msg = sessionStorage.getItem(AUTH_EXPIRED_BANNER_SESSION_KEY);
-      if (msg) {
-        setSessionExpiredMessage(msg);
-        sessionStorage.removeItem(AUTH_EXPIRED_BANNER_SESSION_KEY);
-      }
-    } catch {
-      /* ignore */
+  const syncSessionExpiredBanner = useCallback(() => {
+    const reason = consumeSessionExpiredBannerReason();
+    if (reason) {
+      setSessionExpiredReason(reason);
     }
   }, []);
+
+  useEffect(() => {
+    syncSessionExpiredBanner();
+  }, [syncSessionExpiredBanner]);
+
+  useEffect(() => {
+    const onSessionExpired = () => syncSessionExpiredBanner();
+    window.addEventListener(SESSION_EXPIRED_REQUEST_EVENT, onSessionExpired);
+    window.addEventListener(AUTH_SESSION_CHANGED_EVENT, onSessionExpired);
+    return () => {
+      window.removeEventListener(SESSION_EXPIRED_REQUEST_EVENT, onSessionExpired);
+      window.removeEventListener(AUTH_SESSION_CHANGED_EVENT, onSessionExpired);
+    };
+  }, [syncSessionExpiredBanner]);
 
   useEffect(() => {
     const m = searchParams.get('mode');
@@ -158,20 +207,17 @@ export function AuthPage() {
   const showAuthForm = !showVerifyEmailModal && !isHidden;
 
   const handleCloseAuth = useCallback(() => {
+    if (postAuthNavigationStartedRef.current) return;
+
     if (shouldLeaveDeletedArtistPage()) {
       clearAccountDeletedSession();
       navigate({ pathname: '/', search: '' }, { replace: true });
       return;
     }
     if (hasOverlayBackground) {
-      // Overlay-режим: уносим стек назад на underlying-страницу. URL вернётся
-      // на artist page (или другой backgroundLocation), AuthPage размонтируется,
-      // body scroll lock снимется, scroll-позиция восстановится.
       navigate(-1);
       return;
     }
-    // Standalone-режим (прямой /auth): не делаем navigate(-1), потому что
-    // история может вести наружу. Уводим на главную replace'ом.
     navigate('/', { replace: true });
   }, [hasOverlayBackground, navigate]);
 

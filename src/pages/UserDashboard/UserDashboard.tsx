@@ -79,6 +79,8 @@ import { queueTracksUploadedToast } from '@shared/lib/tracksUploadedToast';
 import { queueAlbumDeletedToast } from '@shared/lib/albumDeletedToast';
 import { queueArticleDeletedToast } from '@shared/lib/articleDeletedToast';
 import { getArtistSlugFromLocation } from '@shared/lib/albumDeletedRedirect';
+import { isAuthOverlayPathname } from '@shared/lib/publicArtistContext';
+import { isSessionExpiredHandlingPending } from '@shared/lib/sessionExpired';
 import { openOwnArtistPage } from '@shared/lib/ownArtistPage';
 import {
   artistHasPublicPageContent,
@@ -799,7 +801,15 @@ function UserDashboard() {
       }),
     [albumsFromStore, articlesFromStore, profileIsEmpty]
   );
-  const user = useAuthSessionUser();
+  const sessionUser = useAuthSessionUser();
+  const lastSessionUserRef = useRef(sessionUser);
+  if (sessionUser) {
+    lastSessionUserRef.current = sessionUser;
+  }
+  const sessionReauthSurface =
+    (typeof window !== 'undefined' && isAuthOverlayPathname(window.location.pathname)) ||
+    isSessionExpiredHandlingPending();
+  const user = sessionUser ?? (sessionReauthSurface ? lastSessionUserRef.current : null);
   const userId = user?.id ?? null;
   const emailVerified = isEmailVerified(user);
 
@@ -2931,14 +2941,19 @@ function UserDashboard() {
     );
   }
 
-  if (!isAuthenticated() || !user) {
-    return (
-      <Navigate
-        to="/auth"
-        replace
-        state={dashboardNavState ? { ...dashboardNavState, from: location } : { from: location }}
-      />
-    );
+  if (!isAuthenticated() || !sessionUser) {
+    // Session-expired: SessionExpiredRedirectController opens /auth with dashboard
+    // backgroundLocation + returnTo. Do not clobber that navigation or unmount the
+    // dashboard (which would discard open modals / unsaved editor state).
+    if (!sessionReauthSurface) {
+      return (
+        <Navigate
+          to="/auth"
+          replace
+          state={dashboardNavState ? { ...dashboardNavState, from: location } : { from: location }}
+        />
+      );
+    }
   }
 
   const albumsInitialLoading =
