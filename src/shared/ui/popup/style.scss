@@ -42,7 +42,13 @@ dialog {
 
   // Центрирование только для попапов с классом .popup, но не для дашборда и confirmation-modal
   &.popup[open]:not(
-      :has(.user-dashboard, .confirmation-modal, .delete-account-modal, .verify-email-modal)
+      :has(
+        .user-dashboard,
+        .confirmation-modal,
+        .delete-account-modal,
+        .verify-email-modal,
+        .auth-page
+      )
     ) {
     display: flex;
     align-items: center;
@@ -59,7 +65,8 @@ dialog {
         .alert-modal,
         .confirmation-modal,
         .delete-account-modal,
-        .verify-email-modal
+        .verify-email-modal,
+        .auth-page
       )
     ) {
     display: flex;
@@ -77,6 +84,7 @@ dialog {
         .confirmation-modal,
         .delete-account-modal,
         .verify-email-modal,
+        .auth-page,
         .edit-article-v2,
         .carousel-edit-modal,
         .edit-article-v2__carousel-edit-modal,

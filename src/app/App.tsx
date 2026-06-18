@@ -33,8 +33,7 @@ import { isAuthOverlayPathname } from '@shared/lib/publicArtistContext';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { closePopup, getIsPopupOpen, openPopup } from '@features/popupToggle';
 
-import { Popup } from '@shared/ui/popup';
-import { Hamburger } from '@shared/ui/hamburger';
+import { Popup, PopupHamburgerToggle, usePopup } from '@shared/ui/popup';
 import { NotFoundPage } from '@widgets/notFound';
 import { Form } from '@widgets/form';
 import { Hero } from '@widgets/hero';
@@ -172,6 +171,16 @@ function CurrentArtistSync() {
   }, [artist, dispatch, skipSlugSync]);
 
   return null;
+}
+
+function NavPopupMenu({ isActive }: { isActive: boolean }) {
+  const { requestClose } = usePopup();
+  return (
+    <>
+      <PopupHamburgerToggle isActive={isActive} zIndex="1500" />
+      <Navigation onToggle={requestClose} />
+    </>
+  );
 }
 
 function Layout() {
@@ -671,13 +680,7 @@ function Layout() {
                 {/* если поместим popup внурь header, то popup будет обрезаться из-за css-фильтра (filter) внури header */}
 
                 <Popup isActive={popup} onClose={() => dispatch(closePopup())}>
-                  {/* Гамбургер внутри native dialog — в top layer, кликабелен; инлайн в шапке при открытом меню скрыт через behindDialogOverlap */}
-                  <Hamburger
-                    isActive={popup}
-                    onToggle={() => dispatch(closePopup())}
-                    zIndex="1500"
-                  />
-                  <Navigation onToggle={() => dispatch(closePopup())} />
+                  <NavPopupMenu isActive={popup} />
                 </Popup>
 
                 <ErrorBoundary>{standardRoutes}</ErrorBoundary>

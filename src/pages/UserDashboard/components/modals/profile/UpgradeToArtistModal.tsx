@@ -1,5 +1,5 @@
-import { useState, FormEvent, useMemo } from 'react';
-import { Popup } from '@shared/ui/popup';
+import { useState, FormEvent, useMemo, useRef } from 'react';
+import { Popup, PopupCloseButton } from '@shared/ui/popup';
 import { upgradeToArtistAccount } from '@shared/lib/auth';
 import { useLang } from '@app/providers/lang';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
@@ -50,6 +50,7 @@ export function UpgradeToArtistModal({ isOpen, onClose, onUpgraded }: UpgradeToA
   const [fieldError, setFieldError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const requestCloseRef = useRef<(() => void) | null>(null);
   const nameInputRef = useFocusOnOpen<HTMLInputElement>(isOpen);
 
   const handleClose = () => {
@@ -78,7 +79,7 @@ export function UpgradeToArtistModal({ isOpen, onClose, onUpgraded }: UpgradeToA
       if (result.success) {
         setArtistName('');
         onUpgraded?.();
-        onClose();
+        requestCloseRef.current?.();
         return;
       }
       setError(result.error || copy.upgradeFailed);
@@ -90,20 +91,23 @@ export function UpgradeToArtistModal({ isOpen, onClose, onUpgraded }: UpgradeToA
   };
 
   return (
-    <Popup isActive={isOpen} onClose={handleClose}>
+    <Popup
+      isActive={isOpen}
+      onClose={handleClose}
+      closeBlocked={loading}
+      requestCloseRef={requestCloseRef}
+    >
       <div className="upgrade-to-artist-modal">
         <form className="upgrade-to-artist-modal__container" onSubmit={handleSubmit} noValidate>
           <div className="upgrade-to-artist-modal__header">
             <h2 className="upgrade-to-artist-modal__title">{copy.title}</h2>
-            <button
-              type="button"
+            <PopupCloseButton
               className="upgrade-to-artist-modal__close"
-              onClick={handleClose}
               aria-label={copy.close}
               disabled={loading}
             >
               <ModalCloseIcon />
-            </button>
+            </PopupCloseButton>
           </div>
 
           {error ? (
@@ -141,14 +145,12 @@ export function UpgradeToArtistModal({ isOpen, onClose, onUpgraded }: UpgradeToA
           </div>
 
           <div className="upgrade-to-artist-modal__actions">
-            <button
-              type="button"
+            <PopupCloseButton
               className="upgrade-to-artist-modal__button upgrade-to-artist-modal__button--ghost"
-              onClick={handleClose}
               disabled={loading}
             >
               {copy.cancel}
-            </button>
+            </PopupCloseButton>
             <button
               type="submit"
               className="upgrade-to-artist-modal__button upgrade-to-artist-modal__button--primary"

@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useLocation, useSearchParams } from 'react-router-dom';
-import { Popup } from '@shared/ui/popup';
+import { Popup, PopupHamburgerToggle } from '@shared/ui/popup';
 import { Text } from '@shared/ui/text';
-import { Hamburger } from '@shared/ui/hamburger';
 import { useLang } from '@app/providers/lang';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
@@ -151,9 +150,8 @@ export function AboutSection({ isAboutModalOpen, onOpen, onClose }: AboutSection
               <h3 id="about-popup-title">
                 {title} {bandDisplayLabel}
               </h3>
-              <Hamburger
+              <PopupHamburgerToggle
                 isActive={isAboutModalOpen}
-                onToggle={onClose}
                 className={aboutStyles.aboutPopupHamburger}
               />
             </div>

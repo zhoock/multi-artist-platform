@@ -2,6 +2,7 @@ import { useState, FormEvent, useMemo } from 'react';
 import { register } from '@shared/lib/auth';
 import type { AccountType } from '@shared/lib/accountType';
 import { useLang } from '@app/providers/lang';
+import { useFocusOnOpen } from '@shared/lib/hooks/useFocusOnOpen';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 import './AuthForm.scss';
@@ -88,6 +89,7 @@ export function RegisterForm({
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<RegisterField, string>>>({});
   const [loading, setLoading] = useState(false);
+  const nameInputRef = useFocusOnOpen<HTMLInputElement>(true);
 
   const clearFieldError = (field: RegisterField) => {
     setFieldErrors((prev) => {
@@ -165,6 +167,7 @@ export function RegisterForm({
           {nameLabel}
         </label>
         <input
+          ref={nameInputRef}
           id="register-name"
           name="name"
           type="text"
@@ -177,11 +180,6 @@ export function RegisterForm({
           placeholder={namePlaceholder}
           autoComplete={isArtist ? 'organization' : 'name'}
           disabled={loading}
-          // First field on a fresh registration screen — autofocus matches
-          // the user's intent (they just chose this role) without trapping
-          // them on a page they didn't navigate to.
-
-          autoFocus
           aria-invalid={!!fieldErrors.name}
           aria-describedby={fieldErrors.name ? 'register-name-error' : undefined}
         />

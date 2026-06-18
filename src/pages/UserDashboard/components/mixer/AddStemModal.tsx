@@ -2,7 +2,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Upload as UploadIcon, Music as MusicIcon, X as XIcon } from 'lucide-react';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
-import { Popup } from '@shared/ui/popup';
+import { Popup, PopupCloseButton } from '@shared/ui/popup';
 import { DashboardSaveSpinner } from '@shared/ui/dashboard-save/DashboardSaveSpinner';
 import { ModalCloseIcon } from '@shared/ui/icons/ModalCloseIcon';
 import '@shared/ui/dashboard-save/dashboard-save.scss';
@@ -88,15 +88,13 @@ export function AddStemModal({ isOpen, lang, labels, onClose, onSubmit }: AddSte
         >
           <div className="add-stem-modal__header">
             <h2 className="add-stem-modal__title">{labels.title}</h2>
-            <button
-              type="button"
+            <PopupCloseButton
               className="add-stem-modal__close"
-              onClick={onClose}
               disabled={submitting}
               aria-label={labels.closeLabel}
             >
               <ModalCloseIcon />
-            </button>
+            </PopupCloseButton>
           </div>
 
           <div className="add-stem-modal__body">
@@ -191,14 +189,12 @@ export function AddStemModal({ isOpen, lang, labels, onClose, onSubmit }: AddSte
           <div className="add-stem-modal__divider" />
 
           <div className="add-stem-modal__actions">
-            <button
-              type="button"
+            <PopupCloseButton
               className="add-stem-modal__button add-stem-modal__button--cancel"
-              onClick={onClose}
               disabled={submitting}
             >
               {labels.cancel}
-            </button>
+            </PopupCloseButton>
             <button
               type="submit"
               className={`add-stem-modal__button add-stem-modal__button--primary${

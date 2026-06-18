@@ -1,7 +1,8 @@
 // src/shared/ui/popup/Popup.tsx
-import { memo, useEffect, useRef } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, type RefObject } from 'react';
 import clsx from 'clsx';
 import type { PopupProps } from 'models';
+import { PopupContext } from './PopupContext';
 import './style.scss';
 import '../localModal/localModal.scss';
 
@@ -10,23 +11,61 @@ const PopupComponent = ({
   isActive,
   bgColor,
   onClose,
-  closeBlocked,
+  closeBlocked = false,
+  onCancelRequest,
+  requestCloseRef,
   publicBackdrop,
   autoFocusFirstElement = true,
   'aria-labelledby': ariaLabelledBy,
 }: PopupProps) => {
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+
+  const requestClose = useCallback(() => {
+    if (closeBlocked) return;
+    const dialog = dialogRef.current;
+    if (dialog?.open) {
+      dialog.close();
+      return;
+    }
+    // Dialog already closed (e.g. race) — still run consumer side effects once.
+    onCloseRef.current?.();
+  }, [closeBlocked]);
+
+  useEffect(() => {
+    if (!requestCloseRef) return;
+    requestCloseRef.current = requestClose;
+    return () => {
+      requestCloseRef.current = null;
+    };
+  }, [requestClose, requestCloseRef]);
+
+  const popupContextValue = useMemo(
+    () => ({
+      requestClose,
+      isCloseBlocked: Boolean(closeBlocked),
+    }),
+    [requestClose, closeBlocked]
+  );
 
   useEffect(() => {
     const dialog = dialogRef.current;
     if (!dialog) return;
 
     const onCancel = (e: Event) => {
-      if (closeBlocked) e.preventDefault();
+      if (closeBlocked) {
+        e.preventDefault();
+        return;
+      }
+      if (onCancelRequest) {
+        e.preventDefault();
+        onCancelRequest();
+      }
     };
     dialog.addEventListener('cancel', onCancel);
     return () => dialog.removeEventListener('cancel', onCancel);
-  }, [closeBlocked]);
+  }, [closeBlocked, onCancelRequest]);
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -54,7 +93,7 @@ const PopupComponent = ({
     if (!dialog) return;
 
     const handleClose = () => {
-      onClose?.();
+      onCloseRef.current?.();
     };
 
     dialog.addEventListener('close', handleClose);
@@ -62,7 +101,7 @@ const PopupComponent = ({
     return () => {
       dialog.removeEventListener('close', handleClose);
     };
-  }, [onClose]);
+  }, []);
 
   // popup__gradient рендерится только для плеера (когда передан bgColor)
   const shouldRenderGradient = !!bgColor;
@@ -78,7 +117,7 @@ const PopupComponent = ({
       {shouldRenderGradient && (
         <div className="popup__gradient" style={{ background: bgColor }} aria-hidden="true"></div>
       )}
-      {children}
+      <PopupContext.Provider value={popupContextValue}>{children}</PopupContext.Provider>
     </dialog>
   );
 };

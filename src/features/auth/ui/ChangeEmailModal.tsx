@@ -1,6 +1,6 @@
 import { useState, FormEvent } from 'react';
 import { Mail as MailIcon } from 'lucide-react';
-import { Popup } from '@shared/ui/popup';
+import { Popup, PopupCloseButton } from '@shared/ui/popup';
 import { changeVerificationEmail, refreshAuthSession } from '@shared/lib/auth';
 import { useAuthSessionUser } from '@shared/lib/hooks/useAuthSessionUser';
 import { useFocusOnOpen } from '@shared/lib/hooks/useFocusOnOpen';
@@ -78,15 +78,13 @@ export function ChangeEmailModal({ isOpen, onBack, onClose }: ChangeEmailModalPr
               </span>
               <h2 className="verify-email-modal__title">{copy.changeEmailTitle}</h2>
             </div>
-            <button
-              type="button"
+            <PopupCloseButton
               className="verify-email-modal__close"
-              onClick={onClose}
               disabled={loading}
               aria-label={copy.close}
             >
               <ModalCloseIcon />
-            </button>
+            </PopupCloseButton>
           </div>
 
           <p className="verify-email-modal__message">{copy.changeEmailBody}</p>

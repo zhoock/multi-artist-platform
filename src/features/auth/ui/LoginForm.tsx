@@ -1,6 +1,7 @@
 import { useState, FormEvent, useMemo } from 'react';
 import { login } from '@shared/lib/auth';
 import { useLang } from '@app/providers/lang';
+import { useFocusOnOpen } from '@shared/lib/hooks/useFocusOnOpen';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 import './AuthForm.scss';
@@ -43,6 +44,7 @@ export function LoginForm({ onSuccess, onSwitchToRegister, onForgotPassword }: L
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<LoginField, string>>>({});
   const [loading, setLoading] = useState(false);
+  const emailInputRef = useFocusOnOpen<HTMLInputElement>(true);
 
   const clearFieldError = (field: LoginField) => {
     setFieldErrors((prev) => {
@@ -101,6 +103,7 @@ export function LoginForm({ onSuccess, onSwitchToRegister, onForgotPassword }: L
           {copy.emailLabel}
         </label>
         <input
+          ref={emailInputRef}
           id="login-email"
           name="email"
           type="email"
@@ -113,11 +116,6 @@ export function LoginForm({ onSuccess, onSwitchToRegister, onForgotPassword }: L
           autoComplete="username"
           disabled={loading}
           data-form-type="username"
-          // The login screen is the user's primary entry point — landing
-          // straight inside the email field is the expected UX and matches
-          // password managers' autofill behaviour.
-
-          autoFocus
           aria-invalid={!!fieldErrors.email}
           aria-describedby={fieldErrors.email ? 'login-email-error' : undefined}
         />

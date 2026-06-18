@@ -7,7 +7,7 @@ import React from 'react';
 import { TriangleAlert as TriangleAlertIcon } from 'lucide-react';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 import { ModalCloseIcon } from '@shared/ui/icons/ModalCloseIcon';
-import { Popup } from '../popup';
+import { Popup, PopupCloseButton } from '../popup';
 import './style.scss';
 
 export interface ConfirmationModalProps {
@@ -37,14 +37,6 @@ export function ConfirmationModal({
   onCancel,
   variant = 'info',
 }: ConfirmationModalProps) {
-  const handleConfirm = () => {
-    onConfirm();
-  };
-
-  const handleCancel = () => {
-    onCancel();
-  };
-
   const showIrreversibleHint = irreversibleHint !== null;
   const irreversibleHintText =
     irreversibleHint === undefined ? 'This action cannot be undone.' : irreversibleHint;
@@ -64,31 +56,22 @@ export function ConfirmationModal({
               )}
               {title && <h2 className="confirmation-modal__title">{title}</h2>}
             </div>
-            <button
-              type="button"
-              className="confirmation-modal__close"
-              onClick={handleCancel}
-              aria-label={closeLabel}
-            >
+            <PopupCloseButton className="confirmation-modal__close" aria-label={closeLabel}>
               <ModalCloseIcon />
-            </button>
+            </PopupCloseButton>
           </div>
           {message ? <p className="confirmation-modal__message">{message}</p> : null}
           {showIrreversibleHint && irreversibleHintText ? (
             <p className="confirmation-modal__warning">{irreversibleHintText}</p>
           ) : null}
           <div className="confirmation-modal__actions">
-            <button
-              type="button"
-              className="confirmation-modal__button confirmation-modal__button--cancel"
-              onClick={handleCancel}
-            >
+            <PopupCloseButton className="confirmation-modal__button confirmation-modal__button--cancel">
               {cancelText}
-            </button>
+            </PopupCloseButton>
             <button
               type="button"
               className={`confirmation-modal__button confirmation-modal__button--confirm confirmation-modal__button--${variant}`}
-              onClick={handleConfirm}
+              onClick={onConfirm}
             >
               {confirmText}
             </button>

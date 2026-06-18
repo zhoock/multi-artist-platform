@@ -618,11 +618,16 @@ export function EditArticleModalV2({
 
   const isArticleSaveBusy = saveStatus === 'saving' || isPublishing || isSavingDraft;
 
+  const popupRequestCloseRef = useRef<(() => void) | null>(null);
+  const closeDialog = useCallback(() => {
+    popupRequestCloseRef.current?.();
+  }, []);
+
   const articleCloseGuard = useCloseWithUnsavedConfirmation({
     isOpen,
     isBusy: isArticleSaveBusy,
     hasUnsavedChanges: hasChanges,
-    onClose: finalizeArticleModalClose,
+    closeDialog,
   });
 
   const showEditorToast = useCallback((payload: ArticleEditorToastPayload) => {
@@ -2272,7 +2277,9 @@ export function EditArticleModalV2({
     <>
       <Popup
         isActive={isOpen}
-        onClose={() => articleCloseGuard.requestClose()}
+        onClose={finalizeArticleModalClose}
+        onCancelRequest={() => articleCloseGuard.requestClose()}
+        requestCloseRef={popupRequestCloseRef}
         closeBlocked={isArticleSaveBusy || articleCloseGuard.discardDialogOpen}
         autoFocusFirstElement={false}
       >

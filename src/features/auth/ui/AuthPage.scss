@@ -1,15 +1,18 @@
-.auth-page {
-  position: fixed;
-  inset: 0;
-  z-index: 2000;
-  display: grid;
-  place-items: center;
+// Auth dialog: Popup (local-modal) + centered card. Backdrop via dialog::backdrop
+// (--public-modal-backdrop-* tokens in localModal.scss).
+
+dialog.popup.local-modal:has(.auth-page) {
+  overflow: hidden;
 }
 
-.auth-page__backdrop {
-  position: absolute;
-  inset: 0;
-  cursor: pointer;
+.auth-page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 100dvb;
+  padding: var(--ms-0);
 }
 
 .auth-page__container {

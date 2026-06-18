@@ -23,7 +23,7 @@ import { Check as CheckIcon } from 'lucide-react';
 import { Link, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import type { IAlbums } from '@models';
 import AlbumCover from '@entities/album/ui/AlbumCover';
-import { Popup } from '@shared/ui/popup';
+import { Popup, PopupCloseButton } from '@shared/ui/popup';
 import { useLang } from '@app/providers/lang';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
@@ -369,14 +369,9 @@ export function AlbumCheckoutModal({ isOpen, album, onClose }: AlbumCheckoutModa
     >
       <div className="album-checkout-modal">
         <div className="album-checkout-modal__container">
-          <button
-            type="button"
-            className="album-checkout-modal__close"
-            onClick={onClose}
-            aria-label={labels.close}
-          >
+          <PopupCloseButton className="album-checkout-modal__close" aria-label={labels.close}>
             <ModalCloseIcon size={24} />
-          </button>
+          </PopupCloseButton>
 
           <header className="album-checkout-modal__hero">
             <div className="album-checkout-modal__hero-cover">

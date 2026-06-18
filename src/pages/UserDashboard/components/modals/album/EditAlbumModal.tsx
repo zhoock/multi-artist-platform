@@ -192,6 +192,7 @@ export function EditAlbumModal({
     null
   );
   const discardCloseFingerprintRef = useRef<string | null>(null);
+  const popupRequestCloseRef = useRef<(() => void) | null>(null);
   const [discardCloseDialogOpen, setDiscardCloseDialogOpen] = useState(false);
 
   const [editingPurchaseLink, setEditingPurchaseLink] = useState<number | null>(null);
@@ -2611,7 +2612,7 @@ export function EditAlbumModal({
       setDiscardCloseDialogOpen(true);
       return;
     }
-    finalizeModalClose();
+    popupRequestCloseRef.current?.();
   };
 
   const renderStepContent = () => {
@@ -3246,7 +3247,9 @@ export function EditAlbumModal({
     <>
       <Popup
         isActive={isOpen}
-        onClose={handleClose}
+        onClose={finalizeModalClose}
+        onCancelRequest={() => handleClose()}
+        requestCloseRef={popupRequestCloseRef}
         closeBlocked={isSaving || discardCloseDialogOpen}
       >
         <div className="edit-album-modal">

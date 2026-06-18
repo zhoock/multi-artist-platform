@@ -1,5 +1,5 @@
 // src/pages/UserDashboard/components/AddLyricsModal.tsx
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState, useRef } from 'react';
 import { Popup } from '@shared/ui/popup';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
@@ -46,11 +46,16 @@ export function AddLyricsModal({
     onClose();
   }, [onClose]);
 
+  const popupRequestCloseRef = useRef<(() => void) | null>(null);
+  const closeDialog = useCallback(() => {
+    popupRequestCloseRef.current?.();
+  }, []);
+
   const lyricsAddCloseGuard = useCloseWithUnsavedConfirmation({
     isOpen,
     isBusy: isSaving,
     hasUnsavedChanges: hasUnsavedContent,
-    onClose: finalizeModalClose,
+    closeDialog,
   });
 
   const handleSave = () => {
@@ -65,7 +70,9 @@ export function AddLyricsModal({
   return (
     <Popup
       isActive={isOpen}
-      onClose={() => lyricsAddCloseGuard.requestClose()}
+      onClose={finalizeModalClose}
+      onCancelRequest={() => lyricsAddCloseGuard.requestClose()}
+      requestCloseRef={popupRequestCloseRef}
       closeBlocked={isSaving || lyricsAddCloseGuard.discardDialogOpen}
     >
       <div className="add-lyrics-modal">

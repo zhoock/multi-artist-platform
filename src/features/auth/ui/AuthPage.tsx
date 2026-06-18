@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams, useLocation, type Location } from 'react-router-dom';
 import {
   isAuthenticated,
@@ -22,7 +22,7 @@ import {
 } from '@shared/lib/accountDeletedSession';
 import { useAuthSessionUser } from '@shared/lib/hooks/useAuthSessionUser';
 import { useBodyScrollLock } from '@shared/lib/hooks/useBodyScrollLock';
-import { ModalBackdrop } from '@shared/ui/localModal';
+import { Popup, PopupCloseButton } from '@shared/ui/popup';
 import { ModalCloseIcon } from '@shared/ui/icons/ModalCloseIcon';
 import { LoginForm } from './LoginForm';
 import { RegisterForm } from './RegisterForm';
@@ -49,13 +49,11 @@ type RegisterStep = 'role' | 'form';
  *  2. **Standalone page** — прямой переход по URL `/auth`. backgroundLocation
  *     отсутствует, AuthPage рендерится как полноэкранная страница.
  *
- * Закрытие модала: Close-button / клик по backdrop / Escape. В overlay-режиме
- * `navigate(-1)` возвращает на underlying URL; в standalone — `navigate('/')`,
- * чтобы пользователь не вылетел за пределы сайта (предыдущая запись истории
- * могла быть внешней).
+ * UI — shared `<Popup>` / native `<dialog>` (как UserDashboard, VerifyEmailModal).
+ * Закрытие: × / backdrop / Escape → dialog.close() → `onClose` → `handleCloseAuth`.
  *
- * Body scroll lock включается пока открыт login/register/forgot, чтобы
- * underlying страница не прокручивалась пальцем под модалом (важно на iOS).
+ * Body scroll lock (`useBodyScrollLock`) дополняет dialog: iOS Safari игнорирует
+ * overflow:hidden на body, поэтому фиксируем scroll отдельно пока открыт auth-form.
  *
  * После успешного login/register пользователь сразу попадает на postAuthPath
  * (album page, checkout resume, /, …). Никакого onboarding-модала "выберите
@@ -155,8 +153,7 @@ export function AuthPage() {
   }, [finishPostAuthNavigation, showVerifyEmailModal, needsVerification]);
 
   // Что показано на экране СЕЙЧАС: auth-form vs только VerifyEmailModal.
-  // Для скрытия мы используем auth-логику ниже + early return — но scroll-lock
-  // и Escape должны вешаться ДО early return, иначе нарушим rules-of-hooks.
+  // Scroll-lock вешается ДО early return, иначе нарушим rules-of-hooks.
   const isHidden = isAuthenticated() && !showVerifyEmailModal && !needsVerification;
   const showAuthForm = !showVerifyEmailModal && !isHidden;
 
@@ -178,45 +175,10 @@ export function AuthPage() {
     navigate('/', { replace: true });
   }, [hasOverlayBackground, navigate]);
 
-  // Body scroll lock на всё время, пока виден auth-form. VerifyEmailModal
-  // имеет собственный scroll-lock (через native <dialog>), поэтому здесь
-  // лочим только когда auth-form реально на экране.
+  // iOS Safari: дополнение к native dialog scroll lock (см. useBodyScrollLock).
+  // Лочим только пока auth-form на экране; при переходе на VerifyEmailModal
+  // auth Popup размонтируется, verify Popup подхватит dialog top layer.
   useBodyScrollLock(showAuthForm);
-
-  // Запоминаем, какой элемент был сфокусирован ДО монтажа модала, чтобы
-  // вернуть туда фокус при закрытии. Без этого после Escape/backdrop click
-  // фокус оказывается на body и пользователь теряет позицию в табе.
-  const previouslyFocusedElementRef = useRef<HTMLElement | null>(null);
-  useEffect(() => {
-    if (typeof document === 'undefined') return;
-    if (!showAuthForm) return;
-    previouslyFocusedElementRef.current =
-      document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    return () => {
-      const target = previouslyFocusedElementRef.current;
-      // document.contains вместо isConnected — поддерживаем старые браузеры
-      if (target && document.contains(target)) {
-        try {
-          target.focus({ preventScroll: true });
-        } catch {
-          /* ignore */
-        }
-      }
-    };
-  }, [showAuthForm]);
-
-  // Escape закрывает модал — стандартное поведение для всех popup'ов.
-  useEffect(() => {
-    if (!showAuthForm) return;
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.stopPropagation();
-        handleCloseAuth();
-      }
-    };
-    document.addEventListener('keydown', onKeyDown);
-    return () => document.removeEventListener('keydown', onKeyDown);
-  }, [showAuthForm, handleCloseAuth]);
 
   if (isHidden) {
     return null;
@@ -249,15 +211,6 @@ export function AuthPage() {
 
   const showRoleSelection = mode === 'register' && registerStep === 'role';
 
-  const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    // Защита от случайного закрытия при отпускании клика, начатого внутри
-    // карточки (drag-выделение текста). Закрываем только если и mousedown,
-    // и mouseup произошли на самом backdrop'е.
-    if (e.target === e.currentTarget) {
-      handleCloseAuth();
-    }
-  };
-
   return (
     <>
       <VerifyEmailModal
@@ -267,72 +220,68 @@ export function AuthPage() {
       />
 
       {showAuthForm && (
-        <div
-          className="auth-page"
-          role="dialog"
-          aria-modal="true"
+        <Popup
+          isActive
+          onClose={handleCloseAuth}
+          publicBackdrop
+          autoFocusFirstElement={false}
           aria-labelledby="auth-page-title"
         >
-          <ModalBackdrop className="auth-page__backdrop" onClick={handleBackdropClick} />
-          <div
-            className={`auth-page__container${showRoleSelection ? ' auth-page__container--wide' : ''}`}
-            role="document"
-          >
-            <h2 id="auth-page-title" className="visually-hidden">
-              {mode === 'register'
-                ? 'Create account'
-                : mode === 'forgot'
-                  ? 'Reset password'
-                  : 'Sign in'}
-            </h2>
-            <button
-              type="button"
-              className="auth-page__close"
-              aria-label="Закрыть"
-              onClick={handleCloseAuth}
+          <div className="auth-page">
+            <div
+              className={`auth-page__container${showRoleSelection ? ' auth-page__container--wide' : ''}`}
             >
-              <ModalCloseIcon />
-            </button>
-            {sessionExpiredMessage ? (
-              <p className="auth-page__session-notice" role="status">
-                {sessionExpiredMessage}
-              </p>
-            ) : null}
-            {mode === 'login' ? (
-              <LoginForm
-                onSuccess={handleLoginSuccess}
-                onSwitchToRegister={() => {
-                  setMode('register');
-                  setRegisterStep('role');
-                }}
-                onForgotPassword={(currentEmail) => {
-                  setForgotInitialEmail(currentEmail);
-                  setMode('forgot');
-                }}
-              />
-            ) : mode === 'forgot' ? (
-              <ForgotPasswordForm
-                initialEmail={forgotInitialEmail}
-                onBackToLogin={() => setMode('login')}
-              />
-            ) : showRoleSelection ? (
-              <RoleSelectionScreen
-                onSelect={(accountType) => {
-                  setSelectedAccountType(accountType);
-                  setRegisterStep('form');
-                }}
-                onSwitchToLogin={() => setMode('login')}
-              />
-            ) : (
-              <RegisterForm
-                accountType={selectedAccountType}
-                onSuccess={handleRegisterSuccess}
-                onSwitchToLogin={() => setMode('login')}
-                onBack={() => setRegisterStep('role')}
-              />
-            )}
+              <h2 id="auth-page-title" className="visually-hidden">
+                {mode === 'register'
+                  ? 'Create account'
+                  : mode === 'forgot'
+                    ? 'Reset password'
+                    : 'Sign in'}
+              </h2>
+              <PopupCloseButton className="auth-page__close" aria-label="Закрыть">
+                <ModalCloseIcon />
+              </PopupCloseButton>
+              {sessionExpiredMessage ? (
+                <p className="auth-page__session-notice" role="status">
+                  {sessionExpiredMessage}
+                </p>
+              ) : null}
+              {mode === 'login' ? (
+                <LoginForm
+                  onSuccess={handleLoginSuccess}
+                  onSwitchToRegister={() => {
+                    setMode('register');
+                    setRegisterStep('role');
+                  }}
+                  onForgotPassword={(currentEmail) => {
+                    setForgotInitialEmail(currentEmail);
+                    setMode('forgot');
+                  }}
+                />
+              ) : mode === 'forgot' ? (
+                <ForgotPasswordForm
+                  initialEmail={forgotInitialEmail}
+                  onBackToLogin={() => setMode('login')}
+                />
+              ) : showRoleSelection ? (
+                <RoleSelectionScreen
+                  onSelect={(accountType) => {
+                    setSelectedAccountType(accountType);
+                    setRegisterStep('form');
+                  }}
+                  onSwitchToLogin={() => setMode('login')}
+                />
+              ) : (
+                <RegisterForm
+                  accountType={selectedAccountType}
+                  onSuccess={handleRegisterSuccess}
+                  onSwitchToLogin={() => setMode('login')}
+                  onBack={() => setRegisterStep('role')}
+                />
+              )}
+            </div>
           </div>
-        </div>
+        </Popup>
       )}
     </>
   );

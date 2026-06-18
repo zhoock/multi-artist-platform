@@ -6,19 +6,23 @@ export interface UseCloseWithUnsavedConfirmationArgs {
   isBusy?: boolean;
   /** Несохранённые изменения пользователя. */
   hasUnsavedChanges: boolean;
-  /** Фактическое закрытие (снять модалку у родителя). */
-  onClose: () => void;
+  /**
+   * Закрывает native `<dialog>` (обычно `() => popupRequestCloseRef.current?.()`).
+   * Хук вызывается в компоненте, который рендерит `<Popup>`, поэтому `usePopup()` здесь недоступен.
+   */
+  closeDialog: () => void;
 }
 
 /**
  * Диалог «Прогресс будет потерян» перед закрытием модалки с несохранённым вводом.
- * Связывает Popup:onClose с requestClose(force) после подтверждения пользователем.
+ * После подтверждения вызывает `closeDialog()` → dialog.close() → Popup.onClose.
+ * Escape/backdrop: `onCancelRequest={() => guard.requestClose()}`; side effects: `Popup.onClose={finalize}`.
  */
 export function useCloseWithUnsavedConfirmation({
   isOpen,
   isBusy = false,
   hasUnsavedChanges,
-  onClose,
+  closeDialog,
 }: UseCloseWithUnsavedConfirmationArgs) {
   const [discardDialogOpen, setDiscardDialogOpen] = useState(false);
   const discardTitleDomId = useId();
@@ -37,15 +41,15 @@ export function useCloseWithUnsavedConfirmation({
         return;
       }
       setDiscardDialogOpen(false);
-      onClose();
+      closeDialog();
     },
-    [isBusy, hasUnsavedChanges, onClose]
+    [isBusy, hasUnsavedChanges, closeDialog]
   );
 
   const finalizeCloseWithoutSaving = useCallback(() => {
     setDiscardDialogOpen(false);
-    onClose();
-  }, [onClose]);
+    closeDialog();
+  }, [closeDialog]);
 
   return {
     requestClose,

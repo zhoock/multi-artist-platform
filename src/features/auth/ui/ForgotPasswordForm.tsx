@@ -1,6 +1,7 @@
 import { useState, useMemo, FormEvent } from 'react';
 import { requestPasswordReset } from '@shared/lib/auth';
 import { useLang } from '@app/providers/lang';
+import { useFocusOnOpen } from '@shared/lib/hooks/useFocusOnOpen';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 import './AuthForm.scss';
@@ -88,6 +89,7 @@ export function ForgotPasswordForm({ onBackToLogin, initialEmail = '' }: ForgotP
   const [fieldError, setFieldError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
+  const emailInputRef = useFocusOnOpen<HTMLInputElement>(true);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -152,6 +154,7 @@ export function ForgotPasswordForm({ onBackToLogin, initialEmail = '' }: ForgotP
           {copy.emailLabel}
         </label>
         <input
+          ref={emailInputRef}
           id="forgot-password-email"
           name="email"
           type="email"
@@ -163,11 +166,6 @@ export function ForgotPasswordForm({ onBackToLogin, initialEmail = '' }: ForgotP
           }}
           autoComplete="username"
           disabled={loading}
-          // Single-field form, no risk of stealing focus from elsewhere.
-          // Pre-filled initialEmail is fine — caret lands at the end so the
-          // user can edit or just hit Enter.
-
-          autoFocus
           aria-invalid={!!fieldError}
           aria-describedby={fieldError ? 'forgot-password-email-error' : undefined}
         />

@@ -262,11 +262,16 @@ export function ProfileSettingsModal({
     onClose();
   }, [hasChanges, revertLocalEdits, onClose]);
 
+  const popupRequestCloseRef = useRef<(() => void) | null>(null);
+  const closeDialog = useCallback(() => {
+    popupRequestCloseRef.current?.();
+  }, []);
+
   const profileCloseGuard = useCloseWithUnsavedConfirmation({
     isOpen,
     isBusy: isDashboardBusy,
     hasUnsavedChanges: Boolean(hasChanges),
-    onClose: finalizeProfileModalClose,
+    closeDialog,
   });
 
   const handleSave = async () => {
@@ -733,7 +738,9 @@ export function ProfileSettingsModal({
     <>
       <Popup
         isActive={isOpen}
-        onClose={() => profileCloseGuard.requestClose()}
+        onClose={finalizeProfileModalClose}
+        onCancelRequest={() => profileCloseGuard.requestClose()}
+        requestCloseRef={popupRequestCloseRef}
         closeBlocked={isDashboardBusy || profileCloseGuard.discardDialogOpen}
       >
         <div className="profile-settings-modal">

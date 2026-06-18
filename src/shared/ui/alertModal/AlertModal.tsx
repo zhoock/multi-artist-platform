@@ -5,7 +5,7 @@
 
 import React from 'react';
 import { ModalCloseIcon } from '@shared/ui/icons/ModalCloseIcon';
-import { Popup } from '../popup';
+import { Popup, PopupCloseButton } from '../popup';
 import './style.scss';
 
 export interface AlertModalProps {
@@ -30,27 +30,21 @@ export function AlertModal({
       <div className="alert-modal">
         <div className="alert-modal__card">
           <div className="alert-modal__header">
-            <button
-              type="button"
-              className="alert-modal__close"
-              onClick={onClose}
-              aria-label="Закрыть"
-            >
+            <PopupCloseButton type="button" className="alert-modal__close" aria-label="Закрыть">
               <ModalCloseIcon />
-            </button>
+            </PopupCloseButton>
             {title && <h2 className="alert-modal__title">{title}</h2>}
           </div>
           <div className="alert-modal__content">
             <p className="alert-modal__message">{message}</p>
           </div>
           <div className="alert-modal__footer">
-            <button
+            <PopupCloseButton
               type="button"
               className={`alert-modal__button alert-modal__button--${variant}`}
-              onClick={onClose}
             >
               {buttonText}
-            </button>
+            </PopupCloseButton>
           </div>
         </div>
       </div>

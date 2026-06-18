@@ -1,6 +1,7 @@
 // Using interfaces with extends can often be more performant for the compiler
 // than type aliases with intersections
 
+import type { MutableRefObject } from 'react';
 import type { Track } from '@entities/track/model/types';
 import type { SupportedLang } from '@shared/model/lang';
 import type { TrackVisibility } from '@shared/lib/tracks/trackVisibility';
@@ -35,6 +36,13 @@ export interface PopupProps extends HamburgerProps {
   'aria-labelledby'?: string;
   /** Блокирует закрытие по Escape (событие cancel у нативного dialog). */
   closeBlocked?: boolean;
+  /**
+   * Перехват Escape / light-dismiss: preventDefault + callback вместо нативного close.
+   * Кнопки внутри dialog должны вызывать `usePopup().requestClose()` после своих проверок.
+   */
+  onCancelRequest?: () => void;
+  /** Optional ref populated with `requestClose` for parents that render `<Popup>`. */
+  requestCloseRef?: MutableRefObject<(() => void) | null>;
   /** Shared public-site modal backdrop (`--public-modal-backdrop-*`). */
   publicBackdrop?: boolean;
   /** При открытии dialog фокусировать первый интерактивный элемент (по умолчанию true). */

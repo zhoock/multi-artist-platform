@@ -12,8 +12,7 @@ import {
   formatAlbumDisplayFullName,
   readStoredProfileDisplayName,
 } from '@shared/lib/profileDisplayName';
-import { Popup } from '@shared/ui/popup';
-import { Hamburger } from '@shared/ui/hamburger';
+import { Popup, PopupHamburgerToggle } from '@shared/ui/popup';
 import { playerActions } from '@features/player/model/slice/playerSlice';
 import * as playerSelectors from '@features/player/model/selectors/playerSelectors';
 import { audioController } from '@features/player/model/lib/audioController';
@@ -578,7 +577,7 @@ export const PlayerShell: React.FC = () => {
 
       {canRenderPopup && albumForPlayer && (
         <Popup isActive={isFullScreen} bgColor={bgColor} onClose={handleClose}>
-          <Hamburger isActive onToggle={handleClose} />
+          <PopupHamburgerToggle isActive />
           <AudioPlayer album={albumForPlayer} setBgColor={setBgColor} />
         </Popup>
       )}

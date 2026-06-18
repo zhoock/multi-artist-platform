@@ -625,11 +625,16 @@ export function SyncLyricsModal({
     onClose();
   }, [onClose]);
 
+  const popupRequestCloseRef = useRef<(() => void) | null>(null);
+  const closeDialog = useCallback(() => {
+    popupRequestCloseRef.current?.();
+  }, []);
+
   const syncLyricsCloseGuard = useCloseWithUnsavedConfirmation({
     isOpen,
     isBusy: isSaving,
     hasUnsavedChanges: isDirty,
-    onClose: finalizeSyncLyricsClose,
+    closeDialog,
   });
 
   const { requestClose: requestSyncLyricsClose } = syncLyricsCloseGuard;
@@ -642,7 +647,9 @@ export function SyncLyricsModal({
     <>
       <Popup
         isActive={isOpen}
-        onClose={handleRequestClose}
+        onClose={finalizeSyncLyricsClose}
+        onCancelRequest={handleRequestClose}
+        requestCloseRef={popupRequestCloseRef}
         closeBlocked={isSaving || syncLyricsCloseGuard.discardDialogOpen}
       >
         <div className="sync-lyrics-modal">

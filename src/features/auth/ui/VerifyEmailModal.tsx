@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Mail as MailIcon } from 'lucide-react';
-import { Popup } from '@shared/ui/popup';
+import { Popup, PopupCloseButton } from '@shared/ui/popup';
 import { refreshAuthSession, resendVerificationEmail } from '@shared/lib/auth';
 import { useAuthSessionUser } from '@shared/lib/hooks/useAuthSessionUser';
 import {
@@ -41,6 +41,7 @@ export function VerifyEmailModal({ isOpen, onContinueLater, onClose }: VerifyEma
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [showChangeEmail, setShowChangeEmail] = useState(false);
+  const requestCloseRef = useRef<(() => void) | null>(null);
 
   const handleDismiss = onClose ?? onContinueLater;
 
@@ -58,7 +59,7 @@ export function VerifyEmailModal({ isOpen, onContinueLater, onClose }: VerifyEma
     if (resolution.kind === 'already-verified') {
       // Sync auth state — the parent will hide the modal once user.isEmailVerified flips.
       void refreshAuthSession();
-      handleDismiss();
+      requestCloseRef.current?.();
       return;
     }
     setError(resolution.message);
@@ -81,6 +82,7 @@ export function VerifyEmailModal({ isOpen, onContinueLater, onClose }: VerifyEma
       isActive={isOpen}
       onClose={handleDismiss}
       closeBlocked={loading}
+      requestCloseRef={requestCloseRef}
       bgColor="rgba(var(--deep-black-rgb) / 95%)"
     >
       <div className="verify-email-modal">
@@ -92,15 +94,13 @@ export function VerifyEmailModal({ isOpen, onContinueLater, onClose }: VerifyEma
               </span>
               <h2 className="verify-email-modal__title">{copy.verifyTitle}</h2>
             </div>
-            <button
-              type="button"
+            <PopupCloseButton
               className="verify-email-modal__close"
-              onClick={handleDismiss}
               disabled={loading}
               aria-label={copy.close}
             >
               <ModalCloseIcon />
-            </button>
+            </PopupCloseButton>
           </div>
 
           <p className="verify-email-modal__message">{copy.verifyBody}</p>
@@ -141,13 +141,9 @@ export function VerifyEmailModal({ isOpen, onContinueLater, onClose }: VerifyEma
             </button>
           </div>
 
-          <button
-            type="button"
-            className="verify-email-modal__footer-link"
-            onClick={onContinueLater}
-          >
+          <PopupCloseButton type="button" className="verify-email-modal__footer-link">
             {copy.continueLater}
-          </button>
+          </PopupCloseButton>
         </div>
       </div>
     </Popup>

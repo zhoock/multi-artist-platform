@@ -228,11 +228,16 @@ export function CoverImageCropModal({
     onClose();
   }, [onClose]);
 
+  const popupRequestCloseRef = useRef<(() => void) | null>(null);
+  const closeDialog = useCallback(() => {
+    popupRequestCloseRef.current?.();
+  }, []);
+
   const cropCloseGuard = useCloseWithUnsavedConfirmation({
     isOpen,
     isBusy: isSaving,
     hasUnsavedChanges: hasCropUnsavedChanges,
-    onClose: finalizeCropModalClose,
+    closeDialog,
   });
 
   const { requestClose: requestCropModalClose } = cropCloseGuard;
@@ -290,7 +295,9 @@ export function CoverImageCropModal({
   return (
     <Popup
       isActive={isOpen}
-      onClose={attemptCropClose}
+      onClose={finalizeCropModalClose}
+      onCancelRequest={attemptCropClose}
+      requestCloseRef={popupRequestCloseRef}
       closeBlocked={isSaving || cropCloseGuard.discardDialogOpen}
     >
       <div className={`cover-image-crop-modal${isSaving ? ' dashboard-save-card--busy' : ''}`}>

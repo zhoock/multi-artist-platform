@@ -1,8 +1,7 @@
 // src/widgets/modalRoute/ui/ModalRoute.tsx
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Popup } from '@shared/ui/popup';
-import { Hamburger } from '@shared/ui/hamburger';
+import { Popup, PopupHamburgerToggle } from '@shared/ui/popup';
 
 export const ModalRoute = ({ children }: { children: React.ReactNode }) => {
   const navigate = useNavigate();
@@ -11,7 +10,7 @@ export const ModalRoute = ({ children }: { children: React.ReactNode }) => {
   return (
     <Popup isActive={true} onClose={onClose}>
       {children}
-      <Hamburger isActive={true} onToggle={onClose} />
+      <PopupHamburgerToggle isActive={true} />
     </Popup>
   );
 };

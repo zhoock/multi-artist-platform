@@ -51,11 +51,16 @@ export function CarouselEditModal({
     onCancel();
   }, [onCancel]);
 
+  const popupRequestCloseRef = useRef<(() => void) | null>(null);
+  const closeDialog = useCallback(() => {
+    popupRequestCloseRef.current?.();
+  }, []);
+
   const carouselCloseGuard = useCloseWithUnsavedConfirmation({
     isOpen: true,
     isBusy: isUploading,
     hasUnsavedChanges: hasCarouselChanges,
-    onClose: finalizeCarouselDismiss,
+    closeDialog,
   });
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -108,7 +113,9 @@ export function CarouselEditModal({
     <>
       <Popup
         isActive={true}
-        onClose={handleRequestCancel}
+        onClose={finalizeCarouselDismiss}
+        onCancelRequest={handleRequestCancel}
+        requestCloseRef={popupRequestCloseRef}
         closeBlocked={isUploading || carouselCloseGuard.discardDialogOpen}
       >
         <div className="carousel-edit-modal">

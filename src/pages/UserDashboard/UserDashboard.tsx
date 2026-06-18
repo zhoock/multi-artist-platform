@@ -35,7 +35,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { getAlbumsDashboardRouteScopeKey } from '@shared/lib/albumsRouteScope';
 import { formatDate } from '@shared/api/albums';
 import { toLocalYYYYMMDD } from '@shared/lib/dateCalendar';
-import { Popup } from '@shared/ui/popup';
+import { Popup, PopupCloseButton } from '@shared/ui/popup';
 import { ConfirmationModal } from '@shared/ui/confirmationModal';
 import { AlertModal } from '@shared/ui/alertModal';
 import { SubscriberContentLockIcon } from '@shared/ui/icons/SubscriberContentLockIcon';
@@ -2910,10 +2910,15 @@ function UserDashboard() {
     setEditTrackModal(null);
   }, []);
 
+  const editTrackPopupRequestCloseRef = useRef<(() => void) | null>(null);
+  const closeEditTrackDialog = useCallback(() => {
+    editTrackPopupRequestCloseRef.current?.();
+  }, []);
+
   const editTrackCloseGuard = useCloseWithUnsavedConfirmation({
     isOpen: !!editTrackModal?.isOpen,
     hasUnsavedChanges: editTrackTitleDirty,
-    onClose: finalizeEditTrackModalClose,
+    closeDialog: closeEditTrackDialog,
   });
 
   if (tabInvalid || tabDisallowed) {
@@ -2961,14 +2966,12 @@ function UserDashboard() {
             {/* Header with controls */}
             <div className="user-dashboard__header">
               <h2 className="user-dashboard__title">{dashboardHeading}</h2>
-              <button
-                type="button"
+              <PopupCloseButton
                 className="user-dashboard__close"
-                onClick={closeDashboard}
                 aria-label={ui?.dashboard?.close ?? 'Close'}
               >
                 <ModalCloseIcon />
-              </button>
+              </PopupCloseButton>
             </div>
 
             {/* Main body with sidebar and content */}
@@ -4236,7 +4239,9 @@ function UserDashboard() {
         <>
           <Popup
             isActive={editTrackModal.isOpen}
-            onClose={() => editTrackCloseGuard.requestClose()}
+            onClose={finalizeEditTrackModalClose}
+            onCancelRequest={() => editTrackCloseGuard.requestClose()}
+            requestCloseRef={editTrackPopupRequestCloseRef}
             closeBlocked={editTrackCloseGuard.discardDialogOpen}
           >
             <div className="edit-track-modal">

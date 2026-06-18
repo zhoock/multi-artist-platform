@@ -1,6 +1,6 @@
 import { useState, FormEvent } from 'react';
 import { Lock as LockIcon } from 'lucide-react';
-import { Popup } from '@shared/ui/popup';
+import { Popup, PopupCloseButton } from '@shared/ui/popup';
 import { deleteAccount } from '@shared/lib/auth';
 import { markAccountDeletedSession } from '@shared/lib/accountDeletedSession';
 import { queueAccountDeletedToast } from '@shared/lib/accountDeletedToast';
@@ -139,15 +139,13 @@ export function DeleteAccountModal({ isOpen, onClose, onDeleted, copy }: DeleteA
                 <p className="delete-account-modal__message">{copy.warningDescription}</p>
               </div>
             </div>
-            <button
-              type="button"
+            <PopupCloseButton
               className="delete-account-modal__close"
-              onClick={handleClose}
               disabled={loading}
               aria-label={copy.close}
             >
               <ModalCloseIcon />
-            </button>
+            </PopupCloseButton>
           </div>
 
           <section
@@ -206,14 +204,12 @@ export function DeleteAccountModal({ isOpen, onClose, onDeleted, copy }: DeleteA
           </div>
 
           <div className="delete-account-modal__actions">
-            <button
-              type="button"
+            <PopupCloseButton
               className="delete-account-modal__button delete-account-modal__button--cancel"
-              onClick={handleClose}
               disabled={loading}
             >
               {copy.cancel}
-            </button>
+            </PopupCloseButton>
             <button
               type="submit"
               className="delete-account-modal__button delete-account-modal__button--danger"

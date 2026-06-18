@@ -1,6 +1,6 @@
 // src/pages/UserDashboard/components/PreviewLyricsModal.tsx
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { Popup } from '@shared/ui/popup';
+import { Popup, PopupCloseButton } from '@shared/ui/popup';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 import { useLang } from '@app/providers/lang';
@@ -268,14 +268,12 @@ export function PreviewLyricsModal({
             <h2 className="preview-lyrics-modal__title">
               {ui?.dashboard?.previewLyrics ?? 'Preview Lyrics'}
             </h2>
-            <button
-              type="button"
+            <PopupCloseButton
               className="preview-lyrics-modal__close"
-              onClick={onClose}
               aria-label={ui?.dashboard?.close ?? 'Close'}
             >
               <ModalCloseIcon />
-            </button>
+            </PopupCloseButton>
           </div>
           <div className="preview-lyrics-modal__divider"></div>
           <div className="preview-lyrics-modal__player">

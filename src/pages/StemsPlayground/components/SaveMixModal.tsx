@@ -1,6 +1,6 @@
 // src/pages/StemsPlayground/components/SaveMixModal.tsx
 import { useEffect, useState } from 'react';
-import { Popup } from '@shared/ui/popup';
+import { Popup, PopupCloseButton } from '@shared/ui/popup';
 import { ModalCloseIcon } from '@shared/ui/icons/ModalCloseIcon';
 import './SaveMixModal.style.scss';
 
@@ -41,15 +41,13 @@ export function SaveMixModal({ isOpen, busy, labels, onClose, onSave }: SaveMixM
         <form className="save-mix-modal__card" onSubmit={handleSubmit} aria-busy={busy}>
           <div className="save-mix-modal__header">
             <h2 className="save-mix-modal__title">{labels.title}</h2>
-            <button
-              type="button"
+            <PopupCloseButton
               className="save-mix-modal__close"
-              onClick={onClose}
               disabled={busy}
               aria-label={labels.close}
             >
               <ModalCloseIcon />
-            </button>
+            </PopupCloseButton>
           </div>
 
           <div className="save-mix-modal__body">
