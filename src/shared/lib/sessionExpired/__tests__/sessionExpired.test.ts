@@ -1,5 +1,6 @@
 import {
   AUTH_EXPIRED_BANNER_SESSION_KEY,
+  abandonSessionExpiredReauth,
   isSessionExpiredHandlingPending,
   mapApiCodeToBannerReason,
   normalizeSessionExpiredBannerReason,
@@ -51,5 +52,17 @@ describe('sessionExpired helpers', () => {
     resetSessionExpiredHandlingState();
     expect(tryScheduleSessionExpiredHandling()).toBe(true);
     expect(isSessionExpiredHandlingPending()).toBe(true);
+  });
+
+  test('abandonSessionExpiredReauth clears scheduled flag and banner storage', () => {
+    tryScheduleSessionExpiredHandling();
+    setSessionExpiredBannerReason('SESSION_EXPIRED');
+    expect(isSessionExpiredHandlingPending()).toBe(true);
+
+    abandonSessionExpiredReauth();
+
+    expect(isSessionExpiredHandlingPending()).toBe(false);
+    expect(sessionStorage.getItem(AUTH_EXPIRED_BANNER_SESSION_KEY)).toBeNull();
+    expect(tryScheduleSessionExpiredHandling()).toBe(true);
   });
 });

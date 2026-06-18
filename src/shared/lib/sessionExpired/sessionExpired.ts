@@ -27,6 +27,17 @@ export function resetSessionExpiredHandlingState(): void {
   sessionExpiredHandlingScheduled = false;
 }
 
+/** User dismissed re-auth without signing in — clear in-flight expiry handling. */
+export function abandonSessionExpiredReauth(): void {
+  resetSessionExpiredHandlingState();
+  if (typeof window === 'undefined') return;
+  try {
+    sessionStorage.removeItem(AUTH_EXPIRED_BANNER_SESSION_KEY);
+  } catch {
+    /* ignore quota */
+  }
+}
+
 export function mapApiCodeToBannerReason(code: string | undefined): SessionExpiredBannerReason {
   return code === 'SESSION_EXPIRED' ? 'SESSION_EXPIRED' : 'INVALID_SESSION';
 }

@@ -38,6 +38,14 @@ describe('buildSessionExpiredAuthTarget', () => {
     expect(target.backgroundLocation.state).toEqual({ backgroundLocation: nestedBg });
   });
 
+  test('preserves dashboard articles tab for unauthenticated deep link', () => {
+    const current = makeLocation('/dashboard-new/articles');
+    const target = buildSessionExpiredAuthTarget(current);
+
+    expect(target.returnTo).toBe('/dashboard-new/articles');
+    expect(target.backgroundLocation.pathname).toBe('/dashboard-new/articles');
+  });
+
   test('strips unsafe return paths', () => {
     const current = makeLocation('/auth', '?mode=login');
     const target = buildSessionExpiredAuthTarget(current);

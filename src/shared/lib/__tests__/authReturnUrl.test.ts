@@ -65,4 +65,13 @@ describe('resolvePostAuthDestinationForUser', () => {
       })
     ).toBe('/');
   });
+
+  test('artist returns to dashboard tab from returnTo search param', () => {
+    expect(
+      resolvePostAuthDestinationForUser(artist, {
+        returnToSearchParam: '/dashboard-new/articles',
+        routerState: null,
+      })
+    ).toBe('/dashboard-new/articles');
+  });
 });

@@ -7,6 +7,7 @@ import {
   AUTH_SESSION_CHANGED_EVENT,
 } from '@shared/lib/auth';
 import {
+  abandonSessionExpiredReauth,
   consumeSessionExpiredBannerReason,
   SESSION_EXPIRED_REQUEST_EVENT,
   type SessionExpiredBannerReason,
@@ -208,6 +209,9 @@ export function AuthPage() {
 
   const handleCloseAuth = useCallback(() => {
     if (postAuthNavigationStartedRef.current) return;
+
+    abandonSessionExpiredReauth();
+    setSessionExpiredReason(null);
 
     if (shouldLeaveDeletedArtistPage()) {
       clearAccountDeletedSession();

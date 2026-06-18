@@ -80,7 +80,10 @@ import { queueAlbumDeletedToast } from '@shared/lib/albumDeletedToast';
 import { queueArticleDeletedToast } from '@shared/lib/articleDeletedToast';
 import { getArtistSlugFromLocation } from '@shared/lib/albumDeletedRedirect';
 import { isAuthOverlayPathname } from '@shared/lib/publicArtistContext';
-import { isSessionExpiredHandlingPending } from '@shared/lib/sessionExpired';
+import {
+  buildSessionExpiredAuthTarget,
+  isSessionExpiredHandlingPending,
+} from '@shared/lib/sessionExpired';
 import { openOwnArtistPage } from '@shared/lib/ownArtistPage';
 import {
   artistHasPublicPageContent,
@@ -2946,11 +2949,13 @@ function UserDashboard() {
     // backgroundLocation + returnTo. Do not clobber that navigation or unmount the
     // dashboard (which would discard open modals / unsaved editor state).
     if (!sessionReauthSurface) {
+      const { returnTo, backgroundLocation } = buildSessionExpiredAuthTarget(location);
+      const authParams = new URLSearchParams({ mode: 'login', returnTo });
       return (
         <Navigate
-          to="/auth"
+          to={{ pathname: '/auth', search: `?${authParams.toString()}` }}
           replace
-          state={dashboardNavState ? { ...dashboardNavState, from: location } : { from: location }}
+          state={{ backgroundLocation }}
         />
       );
     }

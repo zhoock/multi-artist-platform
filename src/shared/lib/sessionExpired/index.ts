@@ -8,6 +8,7 @@ export {
   peekSessionExpiredBannerReason,
   isSessionExpiredHandlingPending,
   resetSessionExpiredHandlingState,
+  abandonSessionExpiredReauth,
   setSessionExpiredBannerReason,
   tryScheduleSessionExpiredHandling,
   type SessionExpiredBannerReason,
