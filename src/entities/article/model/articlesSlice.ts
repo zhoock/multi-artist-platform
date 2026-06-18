@@ -3,7 +3,11 @@ import { createAsyncThunk, createSlice, type PayloadAction } from '@reduxjs/tool
 import type { IArticles } from '@models';
 import type { RootState } from '@shared/model/appStore/types';
 import { buildApiUrl } from '@shared/lib/artistQuery';
-import { fetchWithAuthSession } from '@shared/lib/authFetch';
+import {
+  fetchWithAuthSession,
+  isSessionInvalidationResponse,
+  SESSION_INTERRUPTED,
+} from '@shared/lib/authFetch';
 import { isDashboardPathname } from '@shared/lib/publicArtistContext';
 import { shouldUsePublicArtistCatalogInRedux } from '@shared/lib/dashboardModalBackground';
 import { selectPublicArtistSlug, setPublicArtistSlug } from '@shared/model/currentArtist';
@@ -162,6 +166,15 @@ export const fetchArticles = createAsyncThunk<
       let apiFailure: unknown = null;
 
       try {
+        const articlesFetchInit = {
+          signal,
+          cache: 'no-cache' as const,
+          headers: {
+            'Cache-Control': 'no-cache',
+            ...authHeader,
+          },
+        };
+
         const response = await fetchWithAuthSession(
           buildApiUrl(
             '/api/articles-api',
@@ -174,14 +187,7 @@ export const fetchArticles = createAsyncThunk<
               forceArtistQuery: Boolean(arg.forcePublicCatalog),
             }
           ),
-          {
-            signal,
-            cache: 'no-cache',
-            headers: {
-              'Cache-Control': 'no-cache',
-              ...authHeader,
-            },
-          }
+          articlesFetchInit
         );
 
         if (response && response.ok) {
@@ -202,6 +208,8 @@ export const fetchArticles = createAsyncThunk<
           shouldTreatPublicArtistArticlesAsEmpty(usePublicCatalog, resolvedSlug, response.status)
         ) {
           return slugMeta([]);
+        } else if (response && (await isSessionInvalidationResponse(response, articlesFetchInit))) {
+          return rejectWithValue(SESSION_INTERRUPTED);
         } else {
           apiFailure = new Error(
             response
@@ -387,6 +395,24 @@ const articlesSlice = createSlice({
         state.inFlightFetchContextKey = null;
       })
       .addCase(fetchArticles.rejected, (state, action) => {
+        if (action.payload === SESSION_INTERRUPTED) {
+          if (state.dashboard.inFlightFetchContextKey != null) {
+            state.dashboard.inFlightFetchContextKey = null;
+            if (state.dashboard.status === 'loading') {
+              state.dashboard.status = state.dashboard.data.length > 0 ? 'succeeded' : 'idle';
+            }
+            state.dashboard.error = null;
+          }
+          if (state.inFlightFetchContextKey != null) {
+            state.inFlightFetchContextKey = null;
+            if (state.status === 'loading') {
+              state.status = state.data.length > 0 ? 'succeeded' : 'idle';
+            }
+            state.error = null;
+          }
+          return;
+        }
+
         let errorText = 'Failed to fetch articles';
         if (action.payload) {
           errorText = action.payload;

@@ -27,7 +27,7 @@ import {
   getCloseDiscardConfirmLabels,
 } from '../../shared/EditableCardField';
 import { getToken } from '@shared/lib/auth';
-import { fetchWithAuthSession } from '@shared/lib/authFetch';
+import { fetchWithAuthSession, shouldSuppressApiErrorUi } from '@shared/lib/authFetch';
 import { fetchArticles, resolveArticleForDisplay } from '@entities/article';
 import type { IArticles } from '@models';
 import type { Block, ArticleMeta, BlockType, CarouselImageItem } from './EditArticleModalV2.utils';
@@ -441,6 +441,17 @@ export function EditArticleModalV2({
     };
   }, [isOpen]);
 
+  const abortSaveFailureIfSessionInterrupted = useCallback(
+    async (response?: Response, init?: RequestInit): Promise<boolean> => {
+      if (await shouldSuppressApiErrorUi(response, init)) {
+        setSaveStatus('idle');
+        return true;
+      }
+      return false;
+    },
+    []
+  );
+
   // Автосохранение
   const autoSave = useCallback(async () => {
     if (!isMountedRef.current || !isOpen || !currentArticle) return;
@@ -479,17 +490,19 @@ export function EditArticleModalV2({
         isDraft: shouldBeDraft,
       };
 
+      const fetchInit = {
+        method: 'PUT' as const,
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(requestBody),
+        signal: abortControllerRef.current.signal,
+      };
+
       const response = await fetchWithAuthSession(
         `/api/articles-api?id=${encodeURIComponent(currentArticle.id)}`,
-        {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(requestBody),
-          signal: abortControllerRef.current.signal,
-        }
+        fetchInit
       );
 
       if (response.ok) {
@@ -501,11 +514,17 @@ export function EditArticleModalV2({
         } catch (error) {
           console.warn('Failed to update Redux store:', error);
         }
+      } else if (await abortSaveFailureIfSessionInterrupted(response, fetchInit)) {
+        return;
       } else {
         setSaveStatus('error');
       }
     } catch (error: any) {
       if (error.name !== 'AbortError') {
+        if (await shouldSuppressApiErrorUi()) {
+          setSaveStatus('idle');
+          return;
+        }
         console.error('Auto-save error:', error);
         setSaveStatus('error');
       }
@@ -531,6 +550,7 @@ export function EditArticleModalV2({
     saveStatus,
     isPublishing,
     isSavingDraft,
+    abortSaveFailureIfSessionInterrupted,
   ]);
 
   // Debounced автосохранение
@@ -635,7 +655,8 @@ export function EditArticleModalV2({
   }, []);
 
   const showArticleSaveError = useCallback(
-    async (response?: Response) => {
+    async (response?: Response, init?: RequestInit) => {
+      if (await shouldSuppressApiErrorUi(response, init)) return;
       const message = response
         ? await readApiErrorMessage(response, texts.savingError)
         : texts.savingError;
@@ -686,14 +707,16 @@ export function EditArticleModalV2({
         : `/api/articles-api?id=${encodeURIComponent(currentArticle.id || '')}`;
       const method = isNewArticle ? 'POST' : 'PUT';
 
-      const response = await fetchWithAuthSession(url, {
+      const fetchInit = {
         method,
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(requestBody),
-      });
+      };
+
+      const response = await fetchWithAuthSession(url, fetchInit);
 
       if (response.ok) {
         setSaveStatus('saved');
@@ -730,11 +753,17 @@ export function EditArticleModalV2({
 
         onArticlePersisted?.({ published: false });
         showEditorToast({ kind: 'draft-saved' });
+      } else if (await abortSaveFailureIfSessionInterrupted(response, fetchInit)) {
+        return;
       } else {
         setSaveStatus('error');
-        void showArticleSaveError(response);
+        void showArticleSaveError(response, fetchInit);
       }
     } catch (error) {
+      if (await shouldSuppressApiErrorUi()) {
+        setSaveStatus('idle');
+        return;
+      }
       console.error('Save draft error:', error);
       setSaveStatus('error');
       void showArticleSaveError();
@@ -751,6 +780,7 @@ export function EditArticleModalV2({
     article,
     showEditorToast,
     showArticleSaveError,
+    abortSaveFailureIfSessionInterrupted,
     onArticlePersisted,
   ]);
 
@@ -801,14 +831,16 @@ export function EditArticleModalV2({
         : `/api/articles-api?id=${encodeURIComponent(currentArticle.id || '')}`;
       const method = isNewArticle ? 'POST' : 'PUT';
 
-      const response = await fetchWithAuthSession(url, {
+      const fetchInit = {
         method,
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(requestBody),
-      });
+      };
+
+      const response = await fetchWithAuthSession(url, fetchInit);
 
       if (response.ok) {
         let publishedArticleId = articleId;
@@ -835,11 +867,17 @@ export function EditArticleModalV2({
         await dispatch(fetchArticles({ force: true, ownerDashboard: true })).unwrap();
         onArticlePersisted?.({ published: true });
         onClose();
+      } else if (await abortSaveFailureIfSessionInterrupted(response, fetchInit)) {
+        return;
       } else {
         setSaveStatus('error');
-        void showArticleSaveError(response);
+        void showArticleSaveError(response, fetchInit);
       }
     } catch (error) {
+      if (await shouldSuppressApiErrorUi()) {
+        setSaveStatus('idle');
+        return;
+      }
       console.error('Publish error:', error);
       setSaveStatus('error');
       void showArticleSaveError();
@@ -857,6 +895,7 @@ export function EditArticleModalV2({
     publicArtistSlug,
     onArticleEditorToast,
     showArticleSaveError,
+    abortSaveFailureIfSessionInterrupted,
     onArticlePersisted,
   ]);
 
@@ -1174,6 +1213,7 @@ export function EditArticleModalV2({
       const inContent = isArticleContentTarget(activeElement);
       const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
       const metaKey = isMac ? event.metaKey : event.ctrlKey;
+      if (typeof event.key !== 'string') return;
       const key = event.key.toLowerCase();
 
       // Проверяем Undo/Redo до проверки фокуса в текстовом поле
@@ -1256,6 +1296,7 @@ export function EditArticleModalV2({
     const clearDocumentSelection = () => setIsDocumentSelected(false);
 
     const handleKeyDown = (event: KeyboardEvent) => {
+      if (typeof event.key !== 'string') return;
       if (event.key === 'Escape' || event.key.startsWith('Arrow')) {
         clearDocumentSelection();
       }
