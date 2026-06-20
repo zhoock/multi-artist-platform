@@ -60,12 +60,12 @@ export function ArticlePreview({
 
   const archiveOverlayTitle =
     ui?.titles?.articleArchiveLockedOverlayTitle ??
-    (lang === 'en' ? 'Artist not in your Archive' : 'Артист не в вашем архиве');
+    (lang === 'en' ? 'Artist not in your collection' : 'Артист не в вашей коллекции');
   const archiveOverlayHint =
     ui?.titles?.articleArchiveLockedOverlayHint ??
     (lang === 'en'
-      ? 'Add this artist to your Archive to continue reading.'
-      : 'Добавьте артиста в архив, чтобы продолжить чтение.');
+      ? 'Add this artist to your collection to continue reading.'
+      : 'Добавьте артиста в коллекцию, чтобы продолжить чтение.');
 
   const renewOverlayTitle =
     ui?.titles?.articleRenewLockedOverlayTitle ??
@@ -73,8 +73,8 @@ export function ArticlePreview({
   const renewOverlayHint =
     ui?.titles?.articleRenewLockedOverlayHint ??
     (lang === 'en'
-      ? 'Renew your subscription to continue reading.'
-      : 'Продлите подписку, чтобы продолжить чтение.');
+      ? 'Renew support to continue reading.'
+      : 'Продлите поддержку, чтобы продолжить чтение.');
 
   const legacyOverlayTitle =
     ui?.titles?.articleLockedOverlayTitle ??

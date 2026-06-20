@@ -48,7 +48,7 @@ export function useArtistArchiveStatus(artistUserId: string | null | undefined) 
         return null;
       }
       console.warn('[useArtistArchiveStatus] failed to load status', err);
-      setError(err instanceof Error ? err.message : 'Failed to load archive status');
+      setError(err instanceof Error ? err.message : 'Failed to load collection status');
       return null;
     } finally {
       setLoading(false);

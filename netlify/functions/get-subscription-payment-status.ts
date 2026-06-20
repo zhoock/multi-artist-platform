@@ -20,13 +20,13 @@ import {
   metaString,
 } from './lib/yookassa-webhook-verify';
 import {
+  DEFAULT_SUBSCRIPTION_PLAN,
   fulfillSubscriptionPayment,
   getSubscriptionPaymentForUser,
   getSubscriptionPaymentByInternalId,
-  PREMIUM_SUBSCRIPTION_PLAN,
   PREMIUM_SUBSCRIPTION_PRODUCT_TYPE,
-  getPremiumSubscriptionAmountRub,
   updateSubscriptionPaymentStatus,
+  validatePremiumSubscriptionPayment,
 } from './lib/subscription-billing';
 
 dns.setDefaultResultOrder('ipv4first');
@@ -122,24 +122,39 @@ export const handler: Handler = async (event: HandlerEvent) => {
   const productType = metaString(api.metadata, 'productType');
   const plan = metaString(api.metadata, 'plan');
 
-  if (productType !== PREMIUM_SUBSCRIPTION_PRODUCT_TYPE) {
-    return createErrorResponse(400, 'Not a premium subscription payment');
+  const paymentValidation = validatePremiumSubscriptionPayment({
+    productType,
+    userId: metaUserId,
+    plan,
+    amountValue: api.amount.value,
+    currency: api.amount.currency,
+    amountsEqual,
+  });
+
+  if (!paymentValidation.valid) {
+    const message =
+      paymentValidation.reason === 'missing userId metadata'
+        ? 'Payment does not belong to this user'
+        : paymentValidation.reason === 'productType'
+          ? 'Not a premium subscription payment'
+          : paymentValidation.reason === 'plan metadata'
+            ? 'Unexpected subscription plan'
+            : 'Payment amount mismatch';
+    const statusCode = paymentValidation.reason === 'missing userId metadata' ? 403 : 400;
+    return createErrorResponse(statusCode, message);
   }
-  if (!metaUserId || metaUserId !== userId) {
+
+  if (metaUserId !== userId) {
     return createErrorResponse(403, 'Payment does not belong to this user');
   }
-  if (plan && plan !== PREMIUM_SUBSCRIPTION_PLAN) {
-    return createErrorResponse(400, 'Unexpected subscription plan');
-  }
-  if (!amountsEqual(api.amount.value, getPremiumSubscriptionAmountRub().toFixed(2))) {
-    return createErrorResponse(400, 'Payment amount mismatch');
-  }
+
+  const planSlug = paymentValidation.planSlug;
 
   let subscriptionActivated = false;
 
   if (api.status === 'succeeded') {
     await updateSubscriptionPaymentStatus(paymentId, 'succeeded');
-    await fulfillSubscriptionPayment({ userId, providerPaymentId: paymentId });
+    await fulfillSubscriptionPayment({ userId, planSlug, providerPaymentId: paymentId });
     subscriptionActivated = true;
   } else if (api.status === 'canceled') {
     await updateSubscriptionPaymentStatus(paymentId, 'canceled');
@@ -158,7 +173,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
       metadata: {
         productType,
         userId: metaUserId,
-        plan: plan ?? PREMIUM_SUBSCRIPTION_PLAN,
+        plan: plan ?? DEFAULT_SUBSCRIPTION_PLAN,
       },
       confirmation_url:
         (api.status === 'pending' || api.status === 'waiting_for_capture') &&

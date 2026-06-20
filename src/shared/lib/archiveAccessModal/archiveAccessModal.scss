@@ -14,6 +14,11 @@
     border: 1px solid var(--dark-greenish-yellow, #c8b06d);
     border-radius: var(--ms-01);
     box-shadow: 0 12px 40px rgb(0 0 0 / 50%);
+
+    &--plans {
+      width: min(58rem, calc(100vw - 1.5rem));
+      padding: var(--ms-1) var(--ms-1) var(--ms-0);
+    }
   }
 
   &__close {
@@ -46,6 +51,19 @@
     }
   }
 
+  &__title {
+    margin: 0;
+    color: var(--dark-greenish-yellow, #c8b06d);
+    font-size: var(--ms-0);
+  }
+
+  &__subtitle {
+    margin: 0;
+    color: rgb(255 255 255 / 72%);
+    font-size: var(--ms-01);
+    line-height: 1.45;
+  }
+
   &__header {
     display: flex;
     align-items: center;
@@ -57,6 +75,29 @@
       flex-direction: column;
       align-items: flex-start;
       gap: var(--ms-01);
+    }
+
+    &--plans {
+      flex-direction: column;
+      align-items: center;
+      gap: 0.55rem;
+      padding-right: 2.25rem;
+      margin-block-end: var(--ms-1);
+      text-align: center;
+
+      > .archive-access-modal__title {
+        color: #ffffff;
+        font-size: clamp(1.5rem, 3vw, 1.75rem);
+        font-weight: 700;
+        letter-spacing: -0.01em;
+      }
+
+      > .archive-access-modal__subtitle {
+        max-width: 28rem;
+        color: rgb(255 255 255 / 58%);
+        font-size: var(--ms-0);
+        line-height: 1.45;
+      }
     }
   }
 
@@ -82,12 +123,6 @@
   &__header-icon {
     flex-shrink: 0;
     color: var(--dark-greenish-yellow, #c8b06d);
-  }
-
-  &__title {
-    margin: 0;
-    color: var(--dark-greenish-yellow, #c8b06d);
-    font-size: var(--ms-0);
   }
 
   &__description {
@@ -192,10 +227,211 @@
   }
 
   &__footnote {
-    margin: var(--ms-01) 0 0;
+    margin: 0;
     color: rgb(255 255 255 / 55%);
     font-size: clamp(0.65rem, 2.1vw, var(--ms-01));
-    line-height: 1.35;
+    line-height: 1.5;
     text-align: center;
+  }
+
+  &__plans-footer {
+    margin-top: var(--ms-1);
+    padding-top: var(--ms-1);
+    border-top: 1px solid rgb(255 255 255 / 12%);
+  }
+
+  &__plans-footer-inner {
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 0.75rem;
+    max-width: 34rem;
+    margin: 0 auto;
+  }
+
+  &__plans-footer-icon {
+    flex-shrink: 0;
+    margin-top: 0.15rem;
+    color: var(--dark-greenish-yellow, #c8b06d);
+  }
+
+  &__plans {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--ms-01);
+    margin-block-end: 0;
+
+    @media (width <= 900px) {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  &__plan-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    min-height: 100%;
+    padding: var(--ms-1) var(--ms-0);
+    text-align: center;
+    background: rgb(255 255 255 / 2%);
+    border: 1px solid rgb(255 255 255 / 14%);
+    border-radius: var(--dashboard-btn-radius, var(--ms-01));
+
+    &--current {
+      border-color: var(--dark-greenish-yellow, #c8b06d);
+      background: rgb(200 176 109 / 4%);
+      box-shadow: inset 0 0 0 1px rgb(200 176 109 / 18%);
+    }
+  }
+
+  &__plan-status-badge {
+    align-self: center;
+    margin: 0 0 var(--ms-01);
+    padding: 0.12rem 0.5rem;
+    color: var(--dark-greenish-yellow, #c8b06d);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    line-height: 1.2;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    background: transparent;
+    border: 1px solid rgb(var(--dark-greenish-yellow-rgb, 200 176 109) / 45%);
+    border-radius: 999px;
+  }
+
+  &__plan-name {
+    margin: 0 0 var(--ms-01);
+    color: #ffffff;
+    font-size: clamp(1rem, 2.2vw, 1.125rem);
+    font-weight: 700;
+  }
+
+  &__plan-limit {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.2rem;
+    margin: 0 0 var(--ms-01);
+    line-height: 1;
+  }
+
+  &__plan-limit-prefix,
+  &__plan-limit-suffix {
+    color: rgb(255 255 255 / 58%);
+    font-size: clamp(0.8rem, 1.8vw, 0.95rem);
+    font-weight: 400;
+  }
+
+  &__plan-limit-count {
+    color: var(--dark-greenish-yellow, #c8b06d);
+    font-size: clamp(2.5rem, 7vw, 3.35rem);
+    font-weight: 700;
+    line-height: 0.95;
+  }
+
+  &__plan-price {
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 0.2rem;
+    margin: 0 0 var(--ms-01);
+  }
+
+  &__plan-price-num {
+    color: #ffffff;
+    font-size: clamp(1.05rem, 2.4vw, 1.2rem);
+    font-weight: 700;
+  }
+
+  &__plan-price-currency {
+    color: #ffffff;
+    font-size: clamp(1.05rem, 2.4vw, 1.2rem);
+    font-weight: 700;
+  }
+
+  &__plan-price-period {
+    color: rgb(255 255 255 / 58%);
+    font-size: clamp(0.85rem, 2vw, 0.95rem);
+    font-weight: 400;
+  }
+
+  &__plan-divider {
+    width: 100%;
+    margin: 0 0 var(--ms-01);
+    border: none;
+    border-top: 1px solid rgb(255 255 255 / 12%);
+  }
+
+  &__plan-cta {
+    width: 100%;
+    margin: 0 0 var(--ms-1);
+    text-transform: none;
+    letter-spacing: normal;
+
+    &--outline {
+      @include dashboard-btn-primary(
+        $margin: 0,
+        $padding: var(--ms-01) var(--ms-0),
+        $font-size: 0.9375rem
+      );
+    }
+
+    &--primary {
+      @include dashboard-btn-primary(
+        $margin: 0,
+        $padding: var(--ms-01) var(--ms-0),
+        $font-size: 0.9375rem
+      );
+
+      color: var(--dashboard-btn-primary-active-text);
+      background: var(--dashboard-btn-primary-active-bg);
+      border-color: var(--dashboard-btn-primary-active-bg);
+
+      @media (hover: hover) and (pointer: fine) {
+        &:hover:not(:disabled) {
+          color: var(--dashboard-btn-primary-active-text);
+          background: var(--dashboard-btn-primary-active-bg);
+          border-color: var(--dashboard-btn-primary-active-bg);
+        }
+      }
+    }
+
+    &:disabled,
+    &--disabled {
+      cursor: default;
+      opacity: var(--dashboard-btn-disabled-opacity, 0.45);
+      pointer-events: none;
+    }
+
+    &:disabled:not(.archive-access-modal__plan-cta--disabled) {
+      cursor: wait;
+    }
+  }
+
+  &__plan-features {
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    text-align: start;
+  }
+
+  &__plan-feature {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.55rem;
+    color: rgb(255 255 255 / 72%);
+    font-size: 0.8125rem;
+    line-height: 1.4;
+  }
+
+  &__plan-feature-icon {
+    flex-shrink: 0;
+    margin-top: 0.12rem;
+    color: var(--dark-greenish-yellow, #c8b06d);
   }
 }

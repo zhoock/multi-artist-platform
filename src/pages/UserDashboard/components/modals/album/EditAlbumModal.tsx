@@ -11,6 +11,8 @@ import { queueAlbumCreatedToast } from '@shared/lib/albumCreatedToast';
 import { useLang } from '@app/providers/lang';
 import { getToken, getUser } from '@shared/lib/auth';
 import { fetchWithAuthSession } from '@shared/lib/authFetch';
+import { useSiteArtistDisplayName } from '@shared/lib/hooks/useSiteArtistDisplayName';
+import { readStoredProfileDisplayName } from '@shared/lib/profileDisplayName';
 import { getUserImageUrl } from '@shared/api/albums';
 import { getAlbumStorageBaseName } from '@shared/lib/albumCoverUrl';
 import { uploadCoverDraft, commitCover } from '@shared/api/albums/cover';
@@ -110,6 +112,9 @@ export function EditAlbumModal({
   const { lang } = useLang();
   const dispatch = useAppDispatch();
   const ui = useAppSelector((state) => selectUiDictionaryFirst(state, lang));
+  const { displayName: siteArtistDisplayName } = useSiteArtistDisplayName(lang, {
+    variant: 'authenticated',
+  });
 
   // Получаем альбомы для текущего языка сайта
   const albumsFromStore = useAppSelector(selectDashboardAlbumsData);
@@ -222,10 +227,12 @@ export function EditAlbumModal({
   const [editLocaleFallbackNotice, setEditLocaleFallbackNotice] = useState<string | null>(null);
 
   const getProfileArtistName = (): string => {
+    const fromSite = siteArtistDisplayName.trim();
+    if (fromSite) return fromSite;
+    const storedName = readStoredProfileDisplayName();
+    if (storedName) return storedName;
     const authName = getUser()?.name?.trim();
-    if (authName) return authName;
-    const storedName = localStorage.getItem('profile-name')?.trim();
-    return storedName || '';
+    return authName || '';
   };
 
   // ========= FIX: objectURL lifecycle =========
@@ -807,25 +814,16 @@ export function EditAlbumModal({
         ? albumsFromStore.find((a: IAlbums) => a.albumId === albumId)
         : null;
 
-      // Подготавливаем параметры для uploadCoverDraft (имя — только из профиля, не albums.artist)
+      // Подготавливаем параметры для uploadCoverDraft (имя — из профиля site_name, не albums.artist)
       const uploadArtist = getProfileArtistName().trim();
       const uploadAlbum = formData.title || albumData?.album || originalAlbum?.album || '';
       const uploadAlbumId = albumId || undefined;
 
-      // Проверяем, что у нас есть минимально необходимые данные
-      if (!uploadArtist || !uploadAlbum) {
-        const errorMsg = `Missing required data: artist="${uploadArtist}", album="${uploadAlbum}"`;
-        console.error('Error uploading cover draft:', errorMsg);
-        setUploadStatus('error');
-        setUploadError(errorMsg);
-        return;
-      }
-
       const result = await uploadCoverDraft(
         file,
         uploadAlbumId,
-        uploadArtist,
-        uploadAlbum,
+        uploadArtist || undefined,
+        uploadAlbum || undefined,
         (progress) => setUploadProgress(progress)
       );
 

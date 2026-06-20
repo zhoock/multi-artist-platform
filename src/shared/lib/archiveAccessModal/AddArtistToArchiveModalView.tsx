@@ -42,35 +42,37 @@ export function AddArtistToArchiveModalView({ dialogRef, pendingAccess, onClose 
 
   const title =
     ui?.titles?.addArtistToArchiveTitle ??
-    (lang === 'en' ? 'This artist is not in your Archive' : 'Этого артиста нет в вашем архиве');
+    (lang === 'en' ? 'Artist not in your collection' : 'Артист не в вашей коллекции');
   const descriptionTemplate =
     ui?.titles?.addArtistToArchiveDescription ??
     (lang === 'en'
-      ? 'Add {artist} to your Archive to unlock tracks, articles, stems and downloads.'
-      : 'Добавьте {artist} в архив, чтобы открыть треки, статьи, стемы и скачивание.');
+      ? 'Add {artist} to your collection to unlock tracks, articles, stems and downloads.'
+      : 'Добавьте {artist} в коллекцию, чтобы открыть треки, статьи, стемы и скачивание.');
   const descriptionFallback =
     ui?.titles?.addArtistToArchiveDescriptionGeneric ??
     (lang === 'en'
-      ? 'Add this artist to your Archive to unlock tracks, articles, stems and downloads.'
-      : 'Добавьте артиста в архив, чтобы открыть треки, статьи, стемы и скачивание.');
+      ? 'Add this artist to your collection to unlock tracks, articles, stems and downloads.'
+      : 'Добавьте артиста в коллекцию, чтобы открыть треки, статьи, стемы и скачивание.');
   const description = artistName.trim()
     ? descriptionTemplate.replace('{artist}', artistName.trim())
     : descriptionFallback;
 
   const addLabel =
-    ui?.buttons?.artistArchiveAdd ?? (lang === 'en' ? 'Add to Archive' : 'Добавить в архив');
+    ui?.buttons?.artistArchiveAdd ?? (lang === 'en' ? 'Add to Collection' : 'Добавить в коллекцию');
   const addingLabel =
     ui?.buttons?.artistArchiveAdding ?? (lang === 'en' ? 'Adding…' : 'Добавляем…');
   const closeLabel = ui?.buttons?.articleLockedDialogClose ?? (lang === 'en' ? 'Close' : 'Закрыть');
   const archiveFullTitle =
-    ui?.titles?.artistArchiveFullTitle ?? (lang === 'en' ? 'Archive full' : 'Архив заполнен');
+    ui?.titles?.artistArchiveFullTitle ??
+    (lang === 'en' ? 'Collection full' : 'Коллекция заполнена');
   const archiveFullMessage =
     ui?.titles?.artistArchiveFullMessage ??
     (lang === 'en'
       ? 'You have used all collection slots. Remove an artist when their lock expires to add another.'
       : 'Все слоты коллекции заняты. Удалите артиста после окончания блокировки, чтобы добавить другого.');
   const manageArchiveLabel =
-    ui?.buttons?.premiumSuccessGoToArchive ?? (lang === 'en' ? 'Go to Archive' : 'Перейти в архив');
+    ui?.buttons?.premiumSuccessGoToArchive ??
+    (lang === 'en' ? 'Open Collection' : 'Открыть коллекцию');
 
   const dismiss = useCallback(() => {
     setAddError(null);
@@ -99,8 +101,8 @@ export function AddArtistToArchiveModalView({ dialogRef, pendingAccess, onClose 
         err instanceof Error
           ? err.message
           : lang === 'en'
-            ? 'Could not add to archive'
-            : 'Не удалось добавить в архив'
+            ? 'Could not add to collection'
+            : 'Не удалось добавить в коллекцию'
       );
     } finally {
       setAdding(false);

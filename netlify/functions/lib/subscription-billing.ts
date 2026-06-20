@@ -7,11 +7,51 @@ import type { Subscription } from './subscriptions';
 import { mapSubscriptionRow, type SubscriptionRow } from './subscriptions';
 
 export const PREMIUM_SUBSCRIPTION_PRODUCT_TYPE = 'premium_subscription';
-export const PREMIUM_SUBSCRIPTION_PLAN = 'archive';
-/** Production price; dev/test uses 1 RUB via getPremiumSubscriptionAmountRub(). */
-export const PREMIUM_SUBSCRIPTION_AMOUNT_RUB_PRODUCTION = 149;
-export const PREMIUM_SUBSCRIPTION_SLOTS_LIMIT = 3;
-export const PREMIUM_SUBSCRIPTION_PERIOD_DAYS = 30;
+
+export const SUBSCRIPTION_PLAN_SLUGS = ['explorer', 'collector', 'archivist'] as const;
+export type SubscriptionPlanSlug = (typeof SUBSCRIPTION_PLAN_SLUGS)[number];
+
+export const DEFAULT_SUBSCRIPTION_PLAN: SubscriptionPlanSlug = 'explorer';
+
+/** @deprecated Legacy plan slug — normalized to explorer at read/validation time. */
+export const LEGACY_SUBSCRIPTION_PLAN = 'archive';
+
+export interface SubscriptionPlanDefinition {
+  slotsLimit: number;
+  /** Dev/test support period. Ignored when durationDays is set. */
+  durationHours: number;
+  /** Production support period (days). Uncomment before production rollout. */
+  durationDays?: number;
+  priceRubProduction: number;
+  description: string;
+}
+
+// DEVELOPMENT VALUES.
+// Replace before production:
+//
+// Explorer:  20 artists / 30 days
+// Collector: 60 artists / 30 days
+// Archivist: 100 artists / 30 days
+export const PLAN_CATALOG: Record<SubscriptionPlanSlug, SubscriptionPlanDefinition> = {
+  explorer: {
+    slotsLimit: 1,
+    durationHours: 1,
+    priceRubProduction: 149,
+    description: 'Explorer Support',
+  },
+  collector: {
+    slotsLimit: 2,
+    durationHours: 1,
+    priceRubProduction: 149,
+    description: 'Collector Support',
+  },
+  archivist: {
+    slotsLimit: 3,
+    durationHours: 1,
+    priceRubProduction: 149,
+    description: 'Archivist Support',
+  },
+};
 
 export function isPremiumSubscriptionDevTestPricing(): boolean {
   return (
@@ -21,12 +61,84 @@ export function isPremiumSubscriptionDevTestPricing(): boolean {
   );
 }
 
-export function getPremiumSubscriptionAmountRub(): number {
-  return isPremiumSubscriptionDevTestPricing() ? 1 : PREMIUM_SUBSCRIPTION_AMOUNT_RUB_PRODUCTION;
+export function normalizeSubscriptionPlanSlug(
+  plan: string | null | undefined
+): SubscriptionPlanSlug | null {
+  if (!plan?.trim()) return null;
+  const trimmed = plan.trim();
+  if (trimmed === LEGACY_SUBSCRIPTION_PLAN) return DEFAULT_SUBSCRIPTION_PLAN;
+  if ((SUBSCRIPTION_PLAN_SLUGS as readonly string[]).includes(trimmed)) {
+    return trimmed as SubscriptionPlanSlug;
+  }
+  return null;
 }
 
-/** @deprecated Use getPremiumSubscriptionAmountRub() */
-export const PREMIUM_SUBSCRIPTION_AMOUNT_RUB = PREMIUM_SUBSCRIPTION_AMOUNT_RUB_PRODUCTION;
+export function isSubscriptionPlanSlug(
+  plan: string | null | undefined
+): plan is SubscriptionPlanSlug {
+  return normalizeSubscriptionPlanSlug(plan) !== null;
+}
+
+export function getPlanDefinition(planSlug: SubscriptionPlanSlug): SubscriptionPlanDefinition {
+  return PLAN_CATALOG[planSlug];
+}
+
+export function getPlanSlotsLimit(planSlug: SubscriptionPlanSlug): number {
+  return PLAN_CATALOG[planSlug].slotsLimit;
+}
+
+export function getPlanAmountRub(planSlug: SubscriptionPlanSlug): number {
+  if (isPremiumSubscriptionDevTestPricing()) return 1;
+  return PLAN_CATALOG[planSlug].priceRubProduction;
+}
+
+export function computeSupportExpiresAt(
+  planSlug: SubscriptionPlanSlug,
+  from: Date = new Date()
+): Date {
+  const plan = PLAN_CATALOG[planSlug];
+  const expiresAt = new Date(from);
+  if (plan.durationDays != null) {
+    expiresAt.setDate(expiresAt.getDate() + plan.durationDays);
+  } else {
+    expiresAt.setTime(expiresAt.getTime() + plan.durationHours * 60 * 60 * 1000);
+  }
+  return expiresAt;
+}
+
+export type SubscriptionPaymentValidationResult =
+  | { valid: true; planSlug: SubscriptionPlanSlug }
+  | { valid: false; reason: string };
+
+export function validatePremiumSubscriptionPayment(params: {
+  productType: string | null | undefined;
+  userId: string | null | undefined;
+  plan: string | null | undefined;
+  amountValue: string;
+  currency: string;
+  amountsEqual: (a: string, b: string) => boolean;
+}): SubscriptionPaymentValidationResult {
+  const { productType, userId, plan, amountValue, currency, amountsEqual } = params;
+
+  if (productType !== PREMIUM_SUBSCRIPTION_PRODUCT_TYPE) {
+    return { valid: false, reason: 'productType' };
+  }
+  if (!userId) {
+    return { valid: false, reason: 'missing userId metadata' };
+  }
+
+  const planSlug = normalizeSubscriptionPlanSlug(plan);
+  if (!planSlug) {
+    return { valid: false, reason: 'plan metadata' };
+  }
+
+  const expectedAmount = getPlanAmountRub(planSlug).toFixed(2);
+  if (!amountsEqual(amountValue, expectedAmount) || currency.trim().toUpperCase() !== 'RUB') {
+    return { valid: false, reason: 'amount or currency' };
+  }
+
+  return { valid: true, planSlug };
+}
 
 const SUBSCRIPTION_PAYMENT_STATUSES = [
   'pending',
@@ -49,12 +161,15 @@ export interface SubscriptionPaymentRow {
   plan: string;
 }
 
-export async function createPendingSubscriptionPayment(userId: string): Promise<string> {
+export async function createPendingSubscriptionPayment(
+  userId: string,
+  planSlug: SubscriptionPlanSlug = DEFAULT_SUBSCRIPTION_PLAN
+): Promise<string> {
   const result = await query<{ id: string }>(
     `INSERT INTO subscription_payments (user_id, provider, status, amount, currency, plan)
      VALUES ($1, 'yookassa', 'pending', $2, 'RUB', $3)
      RETURNING id`,
-    [userId, getPremiumSubscriptionAmountRub(), PREMIUM_SUBSCRIPTION_PLAN]
+    [userId, getPlanAmountRub(planSlug), planSlug]
   );
   const id = result.rows[0]?.id;
   if (!id) throw new Error('Failed to create subscription payment row');
@@ -138,12 +253,16 @@ export async function getSubscriptionPaymentByInternalId(
 
 /**
  * Activate or renew platform Premium subscription after successful YooKassa payment.
+ * Plan and slots_limit are taken from PLAN_CATALOG; support period starts from now.
  */
 export async function fulfillSubscriptionPayment(params: {
   userId: string;
+  planSlug: SubscriptionPlanSlug;
   providerPaymentId?: string | null;
 }): Promise<Subscription> {
-  const { userId, providerPaymentId } = params;
+  const { userId, planSlug, providerPaymentId } = params;
+  const plan = getPlanDefinition(planSlug);
+  const slotsLimit = plan.slotsLimit;
 
   const existing = await query<SubscriptionRow>(
     `SELECT
@@ -157,8 +276,7 @@ export async function fulfillSubscriptionPayment(params: {
   );
 
   const now = new Date();
-  const expiresAt = new Date(now);
-  expiresAt.setDate(expiresAt.getDate() + PREMIUM_SUBSCRIPTION_PERIOD_DAYS);
+  const expiresAt = computeSupportExpiresAt(planSlug, now);
 
   const row = existing.rows[0];
 
@@ -184,15 +302,7 @@ export async function fulfillSubscriptionPayment(params: {
          RETURNING
            id, user_id, status, plan, slots_limit, provider, provider_subscription_id,
            started_at, expires_at, created_at, updated_at`,
-        [
-          row.id,
-          PREMIUM_SUBSCRIPTION_PLAN,
-          PREMIUM_SUBSCRIPTION_SLOTS_LIMIT,
-          providerPaymentId ?? null,
-          canReuse,
-          now,
-          expiresAt,
-        ]
+        [row.id, planSlug, slotsLimit, providerPaymentId ?? null, canReuse, now, expiresAt]
       );
       const next = updated.rows[0];
       if (!next) throw new Error('Failed to update subscription');
@@ -207,14 +317,7 @@ export async function fulfillSubscriptionPayment(params: {
      RETURNING
        id, user_id, status, plan, slots_limit, provider, provider_subscription_id,
        started_at, expires_at, created_at, updated_at`,
-    [
-      userId,
-      PREMIUM_SUBSCRIPTION_PLAN,
-      PREMIUM_SUBSCRIPTION_SLOTS_LIMIT,
-      providerPaymentId ?? null,
-      now,
-      expiresAt,
-    ]
+    [userId, planSlug, slotsLimit, providerPaymentId ?? null, now, expiresAt]
   );
 
   const created = inserted.rows[0];

@@ -7,6 +7,7 @@ import { fetchWithAuthSession } from '@shared/lib/authFetch';
 
 export interface CreateSubscriptionPaymentRequest {
   returnUrl?: string;
+  plan?: 'explorer' | 'collector' | 'archivist';
 }
 
 export interface CreateSubscriptionPaymentResponse {

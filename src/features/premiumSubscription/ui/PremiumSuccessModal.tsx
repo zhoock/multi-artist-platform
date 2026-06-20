@@ -14,6 +14,7 @@ import {
 } from '@features/artistArchive';
 
 import { usePremiumSubscription } from '../lib/PremiumSubscriptionContext';
+import { SubscriptionPlanBadge } from '@shared/ui/subscriptionPlan';
 import {
   isPremiumCheckoutPending,
   isPremiumSuccessModalShown,
@@ -51,7 +52,7 @@ export function PremiumSuccessModalView({ dialogRef, open, onClose }: Props) {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const ui = useAppSelector((state) => selectUiDictionaryFirst(state, lang));
-  const { isPremium, slotsLimit } = usePremiumSubscription();
+  const { isPremium, slotsLimit, planSlug } = usePremiumSubscription();
 
   const [artist, setArtist] = useState<CheckoutArtistCard | null>(null);
   const [adding, setAdding] = useState(false);
@@ -63,17 +64,28 @@ export function PremiumSuccessModalView({ dialogRef, open, onClose }: Props) {
   const subtitle =
     ui?.titles?.premiumSuccessSubtitle ??
     (lang === 'en'
-      ? 'Add this artist to your archive and unlock exclusive content.'
-      : 'Добавьте артиста в архив и откройте эксклюзивный контент.');
-  const slotsHint = (
-    ui?.titles?.premiumSuccessSlotsHint ??
-    (lang === 'en'
-      ? 'You can have {count} artists in your archive.'
-      : 'В архиве может быть {count} артиста.')
-  ).replace('{count}', String(slotsLimit));
+      ? 'Add this artist to your collection and unlock exclusive content.'
+      : 'Добавьте артиста в коллекцию и откройте эксклюзивный контент.');
+  const planLabel = planSlug ? (
+    lang === 'en' ? (
+      <>
+        Current plan: <SubscriptionPlanBadge planSlug={planSlug} />
+      </>
+    ) : (
+      <>
+        Текущий план: <SubscriptionPlanBadge planSlug={planSlug} />
+      </>
+    )
+  ) : null;
+  const slotsHint = ui?.titles?.premiumSuccessSlotsHint?.includes('{count}')
+    ? ui.titles.premiumSuccessSlotsHint.replace('{count}', String(slotsLimit))
+    : lang === 'en'
+      ? `You can now add up to ${slotsLimit} artists to your collection.`
+      : `Теперь вы можете добавить до ${slotsLimit} артистов в коллекцию.`;
   const addLabel = ui?.buttons?.premiumSuccessAdd ?? (lang === 'en' ? 'Add' : 'Добавить');
   const goArchiveLabel =
-    ui?.buttons?.premiumSuccessGoToArchive ?? (lang === 'en' ? 'Go to Archive' : 'Перейти в архив');
+    ui?.buttons?.premiumSuccessGoToArchive ??
+    (lang === 'en' ? 'Open Collection' : 'Открыть коллекцию');
   const maybeLaterLabel =
     ui?.buttons?.premiumSuccessMaybeLater ?? (lang === 'en' ? 'Maybe later' : 'Позже');
   const closeLabel = ui?.buttons?.articleLockedDialogClose ?? (lang === 'en' ? 'Close' : 'Закрыть');
@@ -112,7 +124,7 @@ export function PremiumSuccessModalView({ dialogRef, open, onClose }: Props) {
       if (err instanceof ArchiveApiError && err.code === 'ARCHIVE_SLOTS_LIMIT') {
         setAddError(
           ui?.titles?.premiumSuccessArchiveFull ??
-            (lang === 'en' ? 'Archive is full' : 'Архив заполнен')
+            (lang === 'en' ? 'Collection is full' : 'Коллекция заполнена')
         );
       } else {
         setAddError(
@@ -157,6 +169,7 @@ export function PremiumSuccessModalView({ dialogRef, open, onClose }: Props) {
         <h2 id="premium-success-modal-title" className="premium-success-modal__title">
           {title}
         </h2>
+        {planLabel ? <p className="premium-success-modal__plan">{planLabel}</p> : null}
         <p className="premium-success-modal__subtitle">{subtitle}</p>
 
         {artist ? (

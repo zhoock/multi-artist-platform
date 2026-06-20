@@ -112,8 +112,8 @@
     font-weight: 600;
   }
 
-  &--premium {
-    color: var(--soft-green);
+  &--plan {
+    color: var(--dark-greenish-yellow, #c8b06d);
     font-weight: 600;
   }
 }
@@ -124,9 +124,9 @@
   line-height: 1.2;
 }
 
-.header__profile-menu-item--premium:hover {
-  .header__profile-menu-item-title--premium {
-    color: var(--success-color-hover);
+.header__profile-menu-item--plan:hover {
+  .header__profile-menu-item-title--plan {
+    color: var(--dark-greenish-yellow, #c8b06d);
   }
 }
 

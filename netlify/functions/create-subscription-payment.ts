@@ -1,6 +1,6 @@
 /**
  * POST /api/create-subscription-payment
- * Platform Premium subscription checkout (one-shot, 149 RUB / 30 days).
+ * Platform Premium subscription checkout (Explorer / Collector / Archivist).
  * Requires JWT. Does not touch album orders or artist credentials.
  */
 
@@ -19,15 +19,18 @@ import { resolveSubscriptionPaymentReturnUrl } from './lib/yookassa-return-url';
 import {
   attachProviderPaymentId,
   createPendingSubscriptionPayment,
-  PREMIUM_SUBSCRIPTION_PLAN,
+  DEFAULT_SUBSCRIPTION_PLAN,
+  getPlanAmountRub,
+  getPlanDefinition,
+  normalizeSubscriptionPlanSlug,
   PREMIUM_SUBSCRIPTION_PRODUCT_TYPE,
-  getPremiumSubscriptionAmountRub,
 } from './lib/subscription-billing';
 
 dns.setDefaultResultOrder('ipv4first');
 
 interface CreateSubscriptionPaymentBody {
   returnUrl?: string;
+  plan?: string;
 }
 
 interface YooKassaCreateResponse {
@@ -85,9 +88,16 @@ export const handler: Handler = async (event: HandlerEvent) => {
     return createErrorResponse(400, 'User email is required for subscription checkout');
   }
 
+  const planSlug = normalizeSubscriptionPlanSlug(body.plan) ?? DEFAULT_SUBSCRIPTION_PLAN;
+  if (body.plan?.trim() && !normalizeSubscriptionPlanSlug(body.plan)) {
+    return createErrorResponse(400, 'Invalid subscription plan');
+  }
+
+  const planDefinition = getPlanDefinition(planSlug);
+
   let subscriptionPaymentId: string;
   try {
-    subscriptionPaymentId = await createPendingSubscriptionPayment(userId);
+    subscriptionPaymentId = await createPendingSubscriptionPayment(userId, planSlug);
   } catch (error) {
     console.error('[create-subscription-payment] failed to create pending row', error);
     return createErrorResponse(500, 'Could not start subscription checkout');
@@ -108,8 +118,8 @@ export const handler: Handler = async (event: HandlerEvent) => {
     subscriptionPaymentId,
   });
 
-  const amountValue = getPremiumSubscriptionAmountRub().toFixed(2);
-  const description = 'Premium Archive Subscription';
+  const amountValue = getPlanAmountRub(planSlug).toFixed(2);
+  const description = planDefinition.description;
 
   const yookassaPayload = {
     amount: { value: amountValue, currency: 'RUB' },
@@ -122,7 +132,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
     metadata: {
       productType: PREMIUM_SUBSCRIPTION_PRODUCT_TYPE,
       userId,
-      plan: PREMIUM_SUBSCRIPTION_PLAN,
+      plan: planSlug,
     },
     receipt: {
       customer: { email: customerEmail },

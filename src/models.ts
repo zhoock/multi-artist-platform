@@ -795,6 +795,7 @@ export interface IInterface {
       removeError: string;
       artistLockedError: string;
       removeRequiresSubscriptionError: string;
+      collectionOverageHint: string;
     };
     myPurchases?: {
       title: string;

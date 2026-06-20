@@ -18,6 +18,11 @@ import {
   dispatchArchiveArtistRemoved,
   refreshPremiumContentForArchiveChange,
 } from '@features/artistArchive';
+import {
+  isCollectionOverPlanLimit,
+  resolveCurrentPlanSlug,
+} from '@shared/lib/payment/subscriptionPlans';
+import { SubscriptionPlanBadge } from '@shared/ui/subscriptionPlan';
 
 import '../../UserDashboard.style.scss';
 
@@ -74,7 +79,7 @@ export function MyArchiveContent({ active }: Props) {
         err instanceof Error
           ? err.message
           : (t?.loadError ??
-              (lang === 'en' ? 'Failed to load archive' : 'Не удалось загрузить архив'))
+              (lang === 'en' ? 'Failed to load collection' : 'Не удалось загрузить коллекцию'))
       );
     } finally {
       setLoading(false);
@@ -100,6 +105,11 @@ export function MyArchiveContent({ active }: Props) {
   const slotsRemaining = Math.max(0, slotsLimit - slotsUsed);
   const isFull = slotsRemaining === 0;
   const isPremium = data?.isPremium ?? false;
+  const planSlug = useMemo(
+    () => (data ? resolveCurrentPlanSlug({ isPremium, slotsLimit, slotsUsed }) : null),
+    [data, isPremium, slotsLimit, slotsUsed]
+  );
+  const isOverPlanLimit = isCollectionOverPlanLimit(slotsUsed, slotsLimit);
 
   const slotsProgress = useMemo(() => {
     if (slotsLimit <= 0) return 0;
@@ -154,10 +164,12 @@ export function MyArchiveContent({ active }: Props) {
   const subtitle =
     t?.subtitle ??
     (lang === 'en'
-      ? 'Artists in your archive are unlocked across the platform: tracks, articles, stems and album downloads.'
-      : 'Артисты в архиве открывают контент на всей платформе: треки, статьи, стемы и скачивание альбомов.');
-  const slotsUsedLabel = t?.slotsUsed ?? (lang === 'en' ? 'slots used' : 'слотов занято');
-  const inArchiveSince = t?.inArchiveSince ?? (lang === 'en' ? 'In Archive since' : 'В архиве с');
+      ? 'Artists in your collection unlock content across the platform: tracks, articles, stems and album downloads.'
+      : 'Артисты в коллекции открывают контент на всей платформе: треки, статьи, стемы и скачивание альбомов.');
+  const slotsUsedLabel =
+    t?.slotsUsed ?? (lang === 'en' ? 'collection slots used' : 'слотов коллекции занято');
+  const inArchiveSince =
+    t?.inArchiveSince ?? (lang === 'en' ? 'In Collection since' : 'В коллекции с');
   const removeLabel = t?.remove ?? (lang === 'en' ? 'Remove' : 'Удалить');
   const lockedUntilTemplate =
     t?.lockedUntil ?? (lang === 'en' ? 'Locked until {date}' : 'Заблокирован до {date}');
@@ -194,12 +206,18 @@ export function MyArchiveContent({ active }: Props) {
       : 'Добавьте артиста, чтобы открыть эксклюзивный контент.');
   const discoverLabel =
     t?.discoverArtists ?? (lang === 'en' ? 'Discover Artists' : 'Найти артистов');
-  const archiveFullLabel = t?.archiveFull ?? (lang === 'en' ? 'Archive Full' : 'Архив заполнен');
+  const archiveFullLabel =
+    t?.archiveFull ?? (lang === 'en' ? 'Collection Full' : 'Коллекция заполнена');
   const archiveFullHint =
     t?.archiveFullHint ??
     (lang === 'en'
       ? 'Remove an artist when their lock expires to free a slot.'
       : 'Удалите артиста после окончания блокировки, чтобы освободить слот.');
+  const collectionOverageHint =
+    t?.collectionOverageHint ??
+    (lang === 'en'
+      ? 'Collection exceeds current plan limit'
+      : 'Коллекция превышает лимит текущего плана');
 
   const slotsAvailableText =
     slotsRemaining === 1
@@ -227,10 +245,16 @@ export function MyArchiveContent({ active }: Props) {
             />
           </div>
           <div className="user-dashboard__archive-slots-meta">
-            <span className="user-dashboard__archive-slots-count">
-              {slotsUsed} / {slotsLimit}
-            </span>
+            <div className="user-dashboard__archive-slots-top">
+              <span className="user-dashboard__archive-slots-count">
+                {slotsUsed} / {slotsLimit}
+              </span>
+              {planSlug ? <SubscriptionPlanBadge planSlug={planSlug} /> : null}
+            </div>
             <span className="user-dashboard__archive-slots-label">{slotsUsedLabel}</span>
+            {isOverPlanLimit ? (
+              <span className="user-dashboard__archive-slots-overage">{collectionOverageHint}</span>
+            ) : null}
           </div>
         </div>
       </header>
@@ -243,7 +267,7 @@ export function MyArchiveContent({ active }: Props) {
 
       {loading && !data ? (
         <div className="user-dashboard__archive-loading" aria-busy="true">
-          {t?.loading ?? (lang === 'en' ? 'Loading archive…' : 'Загрузка архива…')}
+          {t?.loading ?? (lang === 'en' ? 'Loading collection…' : 'Загрузка коллекции…')}
         </div>
       ) : (
         <div className="user-dashboard__archive-list">

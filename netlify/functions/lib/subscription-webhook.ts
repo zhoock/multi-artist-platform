@@ -17,10 +17,10 @@ import {
 } from './yookassa-webhook-verify';
 import {
   fulfillSubscriptionPayment,
-  PREMIUM_SUBSCRIPTION_PLAN,
   PREMIUM_SUBSCRIPTION_PRODUCT_TYPE,
-  getPremiumSubscriptionAmountRub,
+  type SubscriptionPlanSlug,
   updateSubscriptionPaymentStatus,
+  validatePremiumSubscriptionPayment,
 } from './subscription-billing';
 
 interface PaymentWebhookBody {
@@ -181,37 +181,28 @@ export async function handlePremiumSubscriptionWebhookIfApplicable(
   const userId = metaString(api.metadata, 'userId');
   const plan = metaString(api.metadata, 'plan');
 
-  if (productType !== PREMIUM_SUBSCRIPTION_PRODUCT_TYPE) {
+  const paymentValidation = validatePremiumSubscriptionPayment({
+    productType,
+    userId,
+    plan,
+    amountValue: api.amount.value,
+    currency: api.amount.currency,
+    amountsEqual,
+  });
+
+  if (!paymentValidation.valid) {
     return jsonResponse(
       200,
-      { success: true, processed: false, message: 'Verification failed: productType' },
+      {
+        success: true,
+        processed: false,
+        message: `Verification failed: ${paymentValidation.reason}`,
+      },
       headers
     );
   }
-  if (!userId) {
-    return jsonResponse(
-      200,
-      { success: true, processed: false, message: 'Verification failed: missing userId metadata' },
-      headers
-    );
-  }
-  if (plan && plan !== PREMIUM_SUBSCRIPTION_PLAN) {
-    return jsonResponse(
-      200,
-      { success: true, processed: false, message: 'Verification failed: plan metadata' },
-      headers
-    );
-  }
-  if (
-    !amountsEqual(api.amount.value, getPremiumSubscriptionAmountRub().toFixed(2)) ||
-    api.amount.currency.trim().toUpperCase() !== 'RUB'
-  ) {
-    return jsonResponse(
-      200,
-      { success: true, processed: false, message: 'Verification failed: amount or currency' },
-      headers
-    );
-  }
+
+  const planSlug = paymentValidation.planSlug;
 
   const syntheticId = buildSyntheticEventId(data);
   const reserved = await reserveWebhookEvent(syntheticId, data.event, data.object.id);
@@ -225,7 +216,7 @@ export async function handlePremiumSubscriptionWebhookIfApplicable(
 
   try {
     if (data.event === 'payment.succeeded') {
-      await handleSubscriptionPaymentSucceeded(api, userId);
+      await handleSubscriptionPaymentSucceeded(api, userId, planSlug);
     } else if (data.event === 'payment.canceled') {
       await updateSubscriptionPaymentStatus(api.id, 'canceled');
     } else if (data.event === 'payment.waiting_for_capture') {
@@ -256,8 +247,9 @@ export async function handlePremiumSubscriptionWebhookIfApplicable(
 
 async function handleSubscriptionPaymentSucceeded(
   api: YooKassaPaymentApiShape,
-  userId: string
+  userId: string,
+  planSlug: SubscriptionPlanSlug
 ): Promise<void> {
   await updateSubscriptionPaymentStatus(api.id, 'succeeded');
-  await fulfillSubscriptionPayment({ userId, providerPaymentId: api.id });
+  await fulfillSubscriptionPayment({ userId, planSlug, providerPaymentId: api.id });
 }

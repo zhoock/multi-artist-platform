@@ -738,7 +738,7 @@ function dashboardHeadingForTab(tab: DashboardTab, ui: IInterface | null): strin
     case 'mixer':
       return d?.tabs?.mixer ?? 'Mixer';
     case 'archive':
-      return d?.archive?.title ?? d?.tabs?.archive ?? 'Archive';
+      return d?.archive?.title ?? d?.tabs?.archive ?? 'Your Collection';
     case 'payment-settings':
       return d?.tabs?.paymentSettings ?? 'Payment Settings';
     case 'my-purchases':
@@ -1120,7 +1120,7 @@ function UserDashboard() {
         d?.deleteAccountWarningTracks ?? (en ? 'Tracks' : 'Треки'),
         d?.deleteAccountWarningArticles ?? (en ? 'Articles' : 'Статьи'),
         d?.deleteAccountWarningPurchases ?? (en ? 'Purchases' : 'Покупки'),
-        d?.deleteAccountWarningArchive ?? (en ? 'Archive' : 'Архив'),
+        d?.deleteAccountWarningArchive ?? (en ? 'Collection' : 'Коллекция'),
         d?.deleteAccountWarningPremium ?? (en ? 'Premium access' : 'Premium-доступ'),
       ],
       passwordLabel: d?.deleteAccountPasswordLabel ?? (en ? 'Current password' : 'Текущий пароль'),

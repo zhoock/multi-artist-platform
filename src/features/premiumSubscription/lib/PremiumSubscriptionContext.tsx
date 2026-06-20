@@ -10,11 +10,15 @@ import {
 
 import { getMyArchive } from '@shared/api/archive';
 import { AUTH_SESSION_CHANGED_EVENT, getToken } from '@shared/lib/auth';
+import type { SubscriptionPlanSlug } from '@shared/lib/payment/subscriptionPlans';
+import { resolveCurrentPlanSlug } from '@shared/lib/payment/subscriptionPlans';
 import { ARCHIVE_CHANGED_EVENT, SUBSCRIPTION_ACTIVATED_EVENT } from '@features/artistArchive';
 
 export type PremiumSubscriptionContextValue = {
   isPremium: boolean;
   slotsLimit: number;
+  slotsUsed: number;
+  planSlug: SubscriptionPlanSlug | null;
   loading: boolean;
   refetch: () => Promise<void>;
 };
@@ -24,12 +28,14 @@ const PremiumSubscriptionContext = createContext<PremiumSubscriptionContextValue
 export function PremiumSubscriptionProvider({ children }: { children: ReactNode }) {
   const [isPremium, setIsPremium] = useState(false);
   const [slotsLimit, setSlotsLimit] = useState(3);
+  const [slotsUsed, setSlotsUsed] = useState(0);
   const [loading, setLoading] = useState(false);
 
   const refetch = useCallback(async () => {
     if (!getToken()) {
       setIsPremium(false);
       setSlotsLimit(3);
+      setSlotsUsed(0);
       return;
     }
 
@@ -38,6 +44,7 @@ export function PremiumSubscriptionProvider({ children }: { children: ReactNode 
       const data = await getMyArchive();
       setIsPremium(data.isPremium);
       setSlotsLimit(data.slotsLimit);
+      setSlotsUsed(data.slotsUsed);
     } catch {
       setIsPremium(false);
     } finally {
@@ -62,10 +69,10 @@ export function PremiumSubscriptionProvider({ children }: { children: ReactNode 
     };
   }, [refetch]);
 
-  const value = useMemo(
-    () => ({ isPremium, slotsLimit, loading, refetch }),
-    [isPremium, loading, refetch, slotsLimit]
-  );
+  const value = useMemo(() => {
+    const planSlug = resolveCurrentPlanSlug({ isPremium, slotsLimit, slotsUsed });
+    return { isPremium, slotsLimit, slotsUsed, planSlug, loading, refetch };
+  }, [isPremium, loading, refetch, slotsLimit, slotsUsed]);
 
   return (
     <PremiumSubscriptionContext.Provider value={value}>
@@ -80,6 +87,8 @@ export function usePremiumSubscription(): PremiumSubscriptionContextValue {
     return {
       isPremium: false,
       slotsLimit: 3,
+      slotsUsed: 0,
+      planSlug: null,
       loading: false,
       refetch: async () => {},
     };

@@ -1,0 +1,1 @@
+export { SubscriptionPlanBadge } from './SubscriptionPlanBadge';

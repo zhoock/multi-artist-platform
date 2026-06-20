@@ -240,18 +240,18 @@ function ArticleContent({
       : 'Эта статья доступна подписчикам.');
   const subscriptionCtaLabel =
     ui?.buttons?.articleSubscriptionLockedCta ??
-    (lang === 'en' ? 'Start Subscription' : 'Оформить подписку');
+    (lang === 'en' ? 'Start Support' : 'Начать поддержку');
 
   const archiveGateTitle =
     ui?.titles?.articleArchiveLockedOverlayTitle ??
-    (lang === 'en' ? 'Artist not in your Archive' : 'Артист не в вашем архиве');
+    (lang === 'en' ? 'Artist not in your collection' : 'Артист не в вашей коллекции');
   const archiveGateHint =
     ui?.titles?.articleArchiveLockedOverlayHint ??
     (lang === 'en'
-      ? 'Add this artist to your Archive to continue reading.'
-      : 'Добавьте артиста в архив, чтобы продолжить чтение.');
+      ? 'Add this artist to your collection to continue reading.'
+      : 'Добавьте артиста в коллекцию, чтобы продолжить чтение.');
   const archiveCtaLabel =
-    ui?.buttons?.artistArchiveAdd ?? (lang === 'en' ? 'Add to Archive' : 'Добавить в архив');
+    ui?.buttons?.artistArchiveAdd ?? (lang === 'en' ? 'Add to Collection' : 'Добавить в коллекцию');
 
   const renewGateTitle =
     ui?.titles?.articleRenewLockedOverlayTitle ??
@@ -259,11 +259,10 @@ function ArticleContent({
   const renewGateHint =
     ui?.titles?.articleRenewLockedOverlayHint ??
     (lang === 'en'
-      ? 'Renew your subscription to continue reading.'
-      : 'Продлите подписку, чтобы продолжить чтение.');
+      ? 'Renew support to continue reading.'
+      : 'Продлите поддержку, чтобы продолжить чтение.');
   const renewCtaLabel =
-    ui?.buttons?.artistCollectionRenew ??
-    (lang === 'en' ? 'Renew subscription' : 'Продлить подписку');
+    ui?.buttons?.artistCollectionRenew ?? (lang === 'en' ? 'Renew Support' : 'Продлить поддержку');
 
   const handleSubscriptionGate = () => {
     open({

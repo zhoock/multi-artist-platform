@@ -1,0 +1,14 @@
+.subscription-plan-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.12rem 0.45rem;
+  color: var(--dark-greenish-yellow, #c8b06d);
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  background: transparent;
+  border: 1px solid rgb(var(--dark-greenish-yellow-rgb, 200 176 109) / 45%);
+  border-radius: var(--ms-02, 0.25rem);
+}

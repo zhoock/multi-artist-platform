@@ -87,6 +87,19 @@ dialog {
       gap: 0.1rem;
     }
 
+    &__archive-slots-top {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.45rem;
+    }
+
+    &__archive-slots-overage {
+      color: var(--dashboard-text-secondary);
+      font-size: 0.75rem;
+      line-height: 1.3;
+    }
+
     &__archive-slots-count {
       color: var(--dashboard-text-primary);
       font-size: var(--ms-0);

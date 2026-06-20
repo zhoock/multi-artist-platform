@@ -62,8 +62,7 @@ export function ArtistArchiveButton({ artistUserId }: Props) {
     ui?.titles?.artistCollectionSupportInactive ??
     (lang === 'en' ? 'Support inactive' : 'Поддержка неактивна');
   const renewLabel =
-    ui?.buttons?.artistCollectionRenew ??
-    (lang === 'en' ? 'Renew subscription' : 'Продлить подписку');
+    ui?.buttons?.artistCollectionRenew ?? (lang === 'en' ? 'Renew Support' : 'Продлить поддержку');
   const slotsLeftLabel = (count: number) => {
     const template =
       ui?.titles?.artistArchiveSlotsLeft ??

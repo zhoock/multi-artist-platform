@@ -12,11 +12,11 @@ import { isProfileAvatarPlaceholderUrl } from '@shared/lib/avatarUpload';
 import {
   IconArtistPage,
   IconLogOut,
-  IconPremiumBadge,
   IconSettings,
   IconUpgradeSparkle,
 } from './headerProfileMenuIcons';
 import { usePremiumSubscription } from '@features/premiumSubscription';
+import { formatPlanStatusLabel } from '@shared/lib/payment/subscriptionPlans';
 import './profileAvatarMenu.scss';
 
 export type ProfileAvatarMenuProps = {
@@ -37,7 +37,7 @@ function ProfileAvatarMenuComponent({
   const navigate = useNavigate();
   const { lang } = useLang();
   const ui = useAppSelector((state) => selectUiDictionaryFirst(state, lang));
-  const { isPremium } = usePremiumSubscription();
+  const { isPremium, planSlug } = usePremiumSubscription();
   const { open: openPremiumModal } = useArchiveAccessModal();
   const [menuOpen, setMenuOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -156,26 +156,25 @@ function ProfileAvatarMenuComponent({
               <span>{avatarLabels?.myArtistPage ?? 'My Artist Page'}</span>
             </button>
           ) : null}
-          {isPremium ? (
+          {planSlug ? (
             <Link
-              className="header__profile-menu-item header__profile-menu-item--premium"
+              className="header__profile-menu-item header__profile-menu-item--plan"
               role="menuitem"
               to="/dashboard-new/archive"
               state={dashboardLinkState}
               onClick={() => updateOpen(false)}
             >
-              <IconPremiumBadge className="header__profile-menu-icon header__profile-menu-icon--premium" />
               <span className="header__profile-menu-item-text">
-                <span className="header__profile-menu-item-title header__profile-menu-item-title--premium">
-                  {avatarLabels?.premiumActive ?? 'Premium Active'}
+                <span className="header__profile-menu-item-title header__profile-menu-item-title--plan">
+                  {formatPlanStatusLabel(planSlug, isPremium, lang === 'ru' ? 'ru' : 'en')}
                 </span>
                 <span className="header__profile-menu-item-subtitle">
                   {avatarLabels?.manageSubscription ??
-                    (lang === 'en' ? 'Open Archive' : 'Открыть архив')}
+                    (lang === 'en' ? 'Open Collection' : 'Открыть коллекцию')}
                 </span>
               </span>
             </Link>
-          ) : (
+          ) : !isPremium ? (
             <button
               type="button"
               className="header__profile-menu-item header__profile-menu-item--upgrade"
@@ -190,7 +189,7 @@ function ProfileAvatarMenuComponent({
                 {avatarLabels?.upgradePlan ?? 'Upgrade plan'}
               </span>
             </button>
-          )}
+          ) : null}
           <button
             type="button"
             className="header__profile-menu-item header__profile-menu-item--danger"

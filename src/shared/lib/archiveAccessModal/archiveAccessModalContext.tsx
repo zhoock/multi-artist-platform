@@ -66,14 +66,16 @@ function ArchiveFullAlert({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
   const navigate = useNavigate();
 
   const archiveFullTitle =
-    ui?.titles?.artistArchiveFullTitle ?? (lang === 'en' ? 'Archive full' : 'Архив заполнен');
+    ui?.titles?.artistArchiveFullTitle ??
+    (lang === 'en' ? 'Collection full' : 'Коллекция заполнена');
   const archiveFullMessage =
     ui?.titles?.artistArchiveFullMessage ??
     (lang === 'en'
       ? 'You have used all collection slots. Remove an artist when their lock expires to add another.'
       : 'Все слоты коллекции заняты. Удалите артиста после окончания блокировки, чтобы добавить другого.');
   const manageArchiveLabel =
-    ui?.buttons?.premiumSuccessGoToArchive ?? (lang === 'en' ? 'Go to Archive' : 'Перейти в архив');
+    ui?.buttons?.premiumSuccessGoToArchive ??
+    (lang === 'en' ? 'Open Collection' : 'Открыть коллекцию');
 
   return (
     <AlertModal

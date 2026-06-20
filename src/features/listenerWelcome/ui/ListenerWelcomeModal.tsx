@@ -111,7 +111,7 @@ export function ListenerWelcomeModal({ dialogRef, open, onDismiss }: ListenerWel
           featureFollow: 'Follow your favorite artists',
           featurePurchase: 'Purchase albums and support artists',
           featureRead: 'Read articles and interviews',
-          featureArchive: 'Build your personal archive',
+          featureArchive: 'Build your personal collection',
           startExploring: 'Start exploring',
           close: 'Close',
         }
@@ -122,7 +122,7 @@ export function ListenerWelcomeModal({ dialogRef, open, onDismiss }: ListenerWel
           featureFollow: 'Подписывайтесь на любимых артистов',
           featurePurchase: 'Покупайте альбомы и поддерживайте музыкантов',
           featureRead: 'Читайте статьи и интервью',
-          featureArchive: 'Собирайте личный архив',
+          featureArchive: 'Собирайте личную коллекцию',
           startExploring: 'Начать знакомство',
           close: 'Закрыть',
         };

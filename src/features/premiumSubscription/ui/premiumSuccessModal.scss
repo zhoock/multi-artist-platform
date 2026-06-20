@@ -54,6 +54,18 @@
     font-weight: 700;
   }
 
+  &__plan {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    margin: 0 0 var(--ms-01);
+    color: rgb(255 255 255 / 78%);
+    font-size: var(--ms-01);
+    font-weight: 500;
+  }
+
   &__subtitle {
     margin: 0 0 var(--ms-1);
     color: rgb(255 255 255 / 72%);
