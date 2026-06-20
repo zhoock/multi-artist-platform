@@ -121,6 +121,18 @@
   status = 200
   force = true
 
+[[redirects]]
+  from = "/api/stems/manifest*"
+  to = "/.netlify/functions/stems-manifest"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/stems/audio*"
+  to = "/.netlify/functions/stems-audio"
+  status = 200
+  force = true
+
 # Auth
 [[redirects]]
   from = "/api/auth/*"

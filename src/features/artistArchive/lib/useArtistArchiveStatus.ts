@@ -9,14 +9,12 @@ import {
 import { getToken } from '@shared/lib/auth';
 import { useAuthSessionUser } from '@shared/lib/hooks/useAuthSessionUser';
 
-export type ArtistArchiveButtonState =
-  | 'hidden'
-  | 'loading'
-  | 'not_premium'
-  | 'can_add'
-  | 'in_archive'
-  | 'archive_full'
-  | 'adding';
+import {
+  resolveCollectionButtonState,
+  type ArtistArchiveButtonState,
+} from './resolveCollectionButtonState';
+
+export type { ArtistArchiveButtonState };
 
 export function useArtistArchiveStatus(artistUserId: string | null | undefined) {
   const viewer = useAuthSessionUser();
@@ -79,15 +77,18 @@ export function useArtistArchiveStatus(artistUserId: string | null | undefined) 
     };
   }, [refetch, viewer?.id]);
 
-  const buttonState: ArtistArchiveButtonState = useMemo(() => {
-    if (!artistUserId || isOwner) return 'hidden';
-    if (adding) return 'adding';
-    if (loading && !status) return 'loading';
-    if (!getToken() || !status?.isPremium) return 'not_premium';
-    if (status.artistInArchive) return 'in_archive';
-    if (status.slotsUsed >= status.slotsLimit) return 'archive_full';
-    return 'can_add';
-  }, [adding, artistUserId, isOwner, loading, status]);
+  const buttonState: ArtistArchiveButtonState = useMemo(
+    () =>
+      resolveCollectionButtonState({
+        artistUserId,
+        isOwner,
+        status,
+        loading,
+        adding,
+        hasToken: Boolean(getToken()),
+      }),
+    [adding, artistUserId, isOwner, loading, status]
+  );
 
   const slotsRemaining = useMemo(() => {
     if (!status) return 0;
@@ -136,6 +137,7 @@ export function useArtistArchiveStatus(artistUserId: string | null | undefined) 
     buttonState,
     slotsRemaining,
     isOwner,
+    artistInArchive: Boolean(status?.artistInArchive),
     refetch,
     addToArchive,
     clearError: () => setError(null),

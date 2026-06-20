@@ -23,21 +23,34 @@ describe('resolveArticlePaywallKind', () => {
     ).toBe('pending');
   });
 
-  test('returns subscription when locked without premium', () => {
+  test('returns subscription when locked without premium and not in collection', () => {
     expect(
       resolveArticlePaywallKind({
         articleLocked: true,
         isPremium: false,
+        artistInArchive: false,
         premiumLoading: false,
       })
     ).toBe('subscription');
   });
 
-  test('returns archive when locked with premium', () => {
+  test('returns renew when locked without premium but artist is in collection', () => {
+    expect(
+      resolveArticlePaywallKind({
+        articleLocked: true,
+        isPremium: false,
+        artistInArchive: true,
+        premiumLoading: false,
+      })
+    ).toBe('renew');
+  });
+
+  test('returns archive when locked with premium and artist not in collection', () => {
     expect(
       resolveArticlePaywallKind({
         articleLocked: true,
         isPremium: true,
+        artistInArchive: false,
         premiumLoading: false,
       })
     ).toBe('archive');

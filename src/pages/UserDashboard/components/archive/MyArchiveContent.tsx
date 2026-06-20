@@ -13,8 +13,7 @@ import {
   type MyArchiveData,
 } from '@shared/api/archive';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
-import { Calendar as CalendarIcon, Lock as LockIcon, Trash2 as Trash2Icon } from 'lucide-react';
-import { InfoCircleIcon } from '@shared/ui/icons/InfoCircleIcon';
+import { Lock as LockIcon, Trash2 as Trash2Icon, Unlock as UnlockIcon } from 'lucide-react';
 import {
   dispatchArchiveArtistRemoved,
   refreshPremiumContentForArchiveChange,
@@ -25,7 +24,7 @@ import '../../UserDashboard.style.scss';
 function formatArchiveDate(iso: string, lang: 'en' | 'ru'): string {
   try {
     return new Date(iso).toLocaleDateString(lang === 'ru' ? 'ru-RU' : 'en-US', {
-      month: 'long',
+      month: 'short',
       day: 'numeric',
       year: 'numeric',
     });
@@ -34,14 +33,17 @@ function formatArchiveDate(iso: string, lang: 'en' | 'ru'): string {
   }
 }
 
-function placeholderCooldownDate(lang: 'en' | 'ru'): string {
-  const d = new Date();
-  d.setDate(d.getDate() + 31);
-  return d.toLocaleDateString(lang === 'ru' ? 'ru-RU' : 'en-US', {
-    month: 'long',
-    day: 'numeric',
-    year: 'numeric',
-  });
+function formatLockDate(iso: string | null, lang: 'en' | 'ru'): string | null {
+  if (!iso) return null;
+  try {
+    return new Date(iso).toLocaleDateString(lang === 'ru' ? 'ru-RU' : 'en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  } catch {
+    return null;
+  }
 }
 
 type Props = {
@@ -97,6 +99,7 @@ export function MyArchiveContent({ active }: Props) {
   const slotsLimit = data?.slotsLimit ?? 3;
   const slotsRemaining = Math.max(0, slotsLimit - slotsUsed);
   const isFull = slotsRemaining === 0;
+  const isPremium = data?.isPremium ?? false;
 
   const slotsProgress = useMemo(() => {
     if (slotsLimit <= 0) return 0;
@@ -104,7 +107,7 @@ export function MyArchiveContent({ active }: Props) {
   }, [slotsLimit, slotsUsed]);
 
   const handleRemove = async (artist: MyArchiveArtist) => {
-    if (removingId) return;
+    if (removingId || artist.isLocked || !isPremium) return;
 
     const previous = data;
     if (previous) {
@@ -127,7 +130,17 @@ export function MyArchiveContent({ active }: Props) {
       setData(previous);
       const message =
         err instanceof ArchiveApiError
-          ? err.message
+          ? err.code === 'ARCHIVE_ARTIST_LOCKED'
+            ? (t?.artistLockedError ??
+              (lang === 'en'
+                ? 'This artist is locked until the end of your billing period.'
+                : 'Этот артист заблокирован до конца оплаченного периода.'))
+            : err.code === 'ARCHIVE_SUBSCRIPTION_REQUIRED'
+              ? (t?.removeRequiresSubscriptionError ??
+                (lang === 'en'
+                  ? 'An active subscription is required to remove artists.'
+                  : 'Для удаления артистов нужна активная подписка.'))
+              : err.message
           : err instanceof Error
             ? err.message
             : (t?.removeError ??
@@ -146,6 +159,29 @@ export function MyArchiveContent({ active }: Props) {
   const slotsUsedLabel = t?.slotsUsed ?? (lang === 'en' ? 'slots used' : 'слотов занято');
   const inArchiveSince = t?.inArchiveSince ?? (lang === 'en' ? 'In Archive since' : 'В архиве с');
   const removeLabel = t?.remove ?? (lang === 'en' ? 'Remove' : 'Удалить');
+  const lockedUntilTemplate =
+    t?.lockedUntil ?? (lang === 'en' ? 'Locked until {date}' : 'Заблокирован до {date}');
+  const lockedHint =
+    t?.lockedHint ??
+    (lang === 'en'
+      ? "You can't remove this artist until the lock expires."
+      : 'Нельзя удалить артиста, пока не истечёт блокировка.');
+  const canRemoveLabel = t?.canRemoveLabel ?? (lang === 'en' ? 'Can be removed' : 'Можно удалить');
+  const canRemoveHint =
+    t?.canRemoveHint ??
+    (lang === 'en'
+      ? 'You can remove this artist at any time.'
+      : 'Вы можете удалить этого артиста в любой момент.');
+  const removeLockedTooltip =
+    t?.removeLockedTooltip ??
+    (lang === 'en'
+      ? 'This artist is locked until the end of the billing period.'
+      : 'Артист заблокирован до конца оплаченного периода.');
+  const removeSubscriptionTooltip =
+    t?.removeSubscriptionTooltip ??
+    (lang === 'en'
+      ? 'An active subscription is required to remove artists.'
+      : 'Для удаления нужна активная подписка.');
   const slotAvailable =
     t?.slotAvailable ?? (lang === 'en' ? '{count} slot available' : 'Доступен {count} слот');
   const slotsAvailablePlural =
@@ -159,19 +195,11 @@ export function MyArchiveContent({ active }: Props) {
   const discoverLabel =
     t?.discoverArtists ?? (lang === 'en' ? 'Discover Artists' : 'Найти артистов');
   const archiveFullLabel = t?.archiveFull ?? (lang === 'en' ? 'Archive Full' : 'Архив заполнен');
-  const cooldownInfo =
-    t?.cooldownInfo ??
+  const archiveFullHint =
+    t?.archiveFullHint ??
     (lang === 'en'
-      ? 'You can change your archived artists once per month.'
-      : 'Менять артистов в архиве можно раз в месяц.');
-  const cooldownNext =
-    t?.cooldownNext?.replace('{date}', placeholderCooldownDate(lang)) ??
-    (lang === 'en'
-      ? `Next change will be available on ${placeholderCooldownDate(lang)}.`
-      : `Следующая смена будет доступна ${placeholderCooldownDate(lang)}.`);
-  const cooldownDays =
-    t?.cooldownDays?.replace('{days}', '31') ??
-    (lang === 'en' ? 'Change available in 31 days' : 'Смена через 31 день');
+      ? 'Remove an artist when their lock expires to free a slot.'
+      : 'Удалите артиста после окончания блокировки, чтобы освободить слот.');
 
   const slotsAvailableText =
     slotsRemaining === 1
@@ -223,9 +251,22 @@ export function MyArchiveContent({ active }: Props) {
             const isRemoving = removingId === artist.artistUserId;
             const genre = artist.genreLabel[lang] ?? artist.genreLabel.en;
             const artistHref = artist.slug ? `/?artist=${encodeURIComponent(artist.slug)}` : '/';
+            const lockDate = formatLockDate(artist.lockedUntil, lang);
+            const canRemove = isPremium && !artist.isLocked;
+            const removeDisabled = Boolean(removingId) || !canRemove;
+            const removeTooltip = !isPremium
+              ? removeSubscriptionTooltip
+              : artist.isLocked
+                ? removeLockedTooltip
+                : undefined;
 
             return (
-              <article key={artist.id} className="user-dashboard__archive-card">
+              <article
+                key={artist.id}
+                className={`user-dashboard__archive-card${
+                  artist.isLocked ? ' user-dashboard__archive-card--locked' : ''
+                }`}
+              >
                 <div className="user-dashboard__archive-card-cover">
                   {artist.cover ? (
                     <img src={artist.cover} alt="" loading="lazy" decoding="async" />
@@ -241,6 +282,37 @@ export function MyArchiveContent({ active }: Props) {
                     <Link to={artistHref}>{artist.name}</Link>
                   </h3>
                   <span className="user-dashboard__archive-card-genre">{genre}</span>
+
+                  {artist.isLocked && lockDate ? (
+                    <div className="user-dashboard__archive-card-lock">
+                      <p className="user-dashboard__archive-card-lock-title">
+                        <LockIcon
+                          {...dashboardActionIconProps({
+                            size: 14,
+                            className: 'user-dashboard__archive-card-lock-icon',
+                          })}
+                        />
+                        {lockedUntilTemplate.replace('{date}', lockDate)}
+                      </p>
+                      <p className="user-dashboard__archive-card-lock-hint">{lockedHint}</p>
+                    </div>
+                  ) : (
+                    <div className="user-dashboard__archive-card-lock user-dashboard__archive-card-lock--unlocked">
+                      <p className="user-dashboard__archive-card-lock-title">
+                        <UnlockIcon
+                          {...dashboardActionIconProps({
+                            size: 14,
+                            className: 'user-dashboard__archive-card-lock-icon',
+                          })}
+                        />
+                        {canRemoveLabel}
+                      </p>
+                      <p className="user-dashboard__archive-card-lock-hint">
+                        {!isPremium ? removeSubscriptionTooltip : canRemoveHint}
+                      </p>
+                    </div>
+                  )}
+
                   <p className="user-dashboard__archive-card-since">
                     <span aria-hidden>✓</span> {inArchiveSince}{' '}
                     {formatArchiveDate(artist.addedAt, lang)}
@@ -249,9 +321,13 @@ export function MyArchiveContent({ active }: Props) {
 
                 <button
                   type="button"
-                  className="user-dashboard__archive-remove"
-                  disabled={Boolean(removingId)}
+                  className={`user-dashboard__archive-remove${
+                    removeDisabled ? ' user-dashboard__archive-remove--disabled' : ''
+                  }`}
+                  disabled={removeDisabled}
                   aria-busy={isRemoving}
+                  title={removeTooltip}
+                  aria-label={removeTooltip ? `${removeLabel}. ${removeTooltip}` : removeLabel}
                   onClick={() => void handleRemove(artist)}
                 >
                   <Trash2Icon
@@ -290,27 +366,12 @@ export function MyArchiveContent({ active }: Props) {
                   />{' '}
                   {archiveFullLabel}
                 </p>
+                <p className="user-dashboard__archive-empty-hint">{archiveFullHint}</p>
               </div>
             </article>
           )}
         </div>
       )}
-
-      <footer className="user-dashboard__archive-info">
-        <p className="user-dashboard__archive-info-text">
-          <InfoCircleIcon className="user-dashboard__archive-info-icon" size={14} />
-          {cooldownInfo} {cooldownNext}
-        </p>
-        <p className="user-dashboard__archive-info-days">
-          <CalendarIcon
-            {...dashboardActionIconProps({
-              size: 14,
-              className: 'user-dashboard__archive-info-calendar',
-            })}
-          />
-          {cooldownDays}
-        </p>
-      </footer>
     </section>
   );
 }

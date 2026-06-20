@@ -48,14 +48,22 @@ export function ArtistArchiveButton({ artistUserId }: Props) {
 
   const [archiveFullOpen, setArchiveFullOpen] = useState(false);
 
+  const labelInCollection =
+    ui?.buttons?.artistCollectionIn ??
+    ui?.buttons?.artistArchiveInArchive ??
+    (lang === 'en' ? 'In Collection' : 'В коллекции');
   const labelAdd =
-    ui?.buttons?.artistArchiveAdd ?? (lang === 'en' ? 'Add to Archive' : 'Добавить в архив');
-  const labelInArchive =
-    ui?.buttons?.artistArchiveInArchive ?? (lang === 'en' ? 'In Archive' : 'В архиве');
+    ui?.buttons?.artistArchiveAdd ?? (lang === 'en' ? 'Add to Collection' : 'Добавить в коллекцию');
   const labelFull =
-    ui?.buttons?.artistArchiveFull ?? (lang === 'en' ? 'Archive Full' : 'Архив заполнен');
+    ui?.buttons?.artistArchiveFull ?? (lang === 'en' ? 'Collection Full' : 'Коллекция заполнена');
   const labelAdding =
     ui?.buttons?.artistArchiveAdding ?? (lang === 'en' ? 'Adding…' : 'Добавляем…');
+  const supportInactiveLabel =
+    ui?.titles?.artistCollectionSupportInactive ??
+    (lang === 'en' ? 'Support inactive' : 'Поддержка неактивна');
+  const renewLabel =
+    ui?.buttons?.artistCollectionRenew ??
+    (lang === 'en' ? 'Renew subscription' : 'Продлить подписку');
   const slotsLeftLabel = (count: number) => {
     const template =
       ui?.titles?.artistArchiveSlotsLeft ??
@@ -67,22 +75,27 @@ export function ArtistArchiveButton({ artistUserId }: Props) {
     return text.replace('{count}', String(count));
   };
   const archiveFullTitle =
-    ui?.titles?.artistArchiveFullTitle ?? (lang === 'en' ? 'Archive full' : 'Архив заполнен');
+    ui?.titles?.artistArchiveFullTitle ??
+    (lang === 'en' ? 'Collection full' : 'Коллекция заполнена');
   const archiveFullMessage =
     ui?.titles?.artistArchiveFullMessage ??
     (lang === 'en'
-      ? 'You have used all archive slots. Replacing an artist will be available later.'
-      : 'Все слоты архива заняты. Замена артиста будет доступна позже.');
+      ? 'You have used all collection slots. Remove an artist when their lock expires to add another.'
+      : 'Все слоты коллекции заняты. Удалите артиста после окончания блокировки, чтобы добавить другого.');
+
+  const openRenewModal = useCallback(() => {
+    openPremiumModal({
+      artistUserId: artistUserId ?? undefined,
+      artistSlug: publicArtistSlug?.trim() || undefined,
+    });
+  }, [artistUserId, openPremiumModal, publicArtistSlug]);
 
   const handleClick = useCallback(
     async (event: React.MouseEvent) => {
       event.stopPropagation();
 
-      if (buttonState === 'not_premium') {
-        openPremiumModal({
-          artistUserId: artistUserId ?? undefined,
-          artistSlug: publicArtistSlug?.trim() || undefined,
-        });
+      if (buttonState === 'in_collection_inactive' || buttonState === 'not_premium') {
+        openRenewModal();
         return;
       }
 
@@ -103,7 +116,7 @@ export function ArtistArchiveButton({ artistUserId }: Props) {
         }
       }
     },
-    [addToArchive, artistUserId, buttonState, dispatch, openPremiumModal, publicArtistSlug]
+    [addToArchive, artistUserId, buttonState, dispatch, openRenewModal, publicArtistSlug]
   );
 
   if (!artistUserId) {
@@ -115,21 +128,23 @@ export function ArtistArchiveButton({ artistUserId }: Props) {
   }
 
   const isDisabled =
-    buttonState === 'loading' || buttonState === 'adding' || buttonState === 'in_archive';
+    buttonState === 'loading' || buttonState === 'adding' || buttonState === 'in_collection_active';
 
   const buttonLabel =
     buttonState === 'loading'
       ? '…'
       : buttonState === 'adding'
         ? labelAdding
-        : buttonState === 'in_archive'
-          ? labelInArchive
+        : buttonState === 'in_collection_active' || buttonState === 'in_collection_inactive'
+          ? labelInCollection
           : buttonState === 'archive_full'
             ? labelFull
             : labelAdd;
 
   const showSlotsHint =
-    buttonState === 'can_add' || buttonState === 'in_archive' || buttonState === 'adding';
+    buttonState === 'can_add' || buttonState === 'in_collection_active' || buttonState === 'adding';
+
+  const showCollectionInactiveMeta = buttonState === 'in_collection_inactive';
 
   return (
     <>
@@ -153,13 +168,29 @@ export function ArtistArchiveButton({ artistUserId }: Props) {
           {buttonState === 'not_premium' || buttonState === 'archive_full' ? (
             <SubscriberContentLockIcon className="artist-archive-button__lock-icon" size={14} />
           ) : null}
-          {buttonState === 'in_archive' ? (
+          {buttonState === 'in_collection_active' || buttonState === 'in_collection_inactive' ? (
             <span className="artist-archive-button__check" aria-hidden>
               <CheckIcon {...dashboardActionIconProps({ size: 14 })} />
             </span>
           ) : null}
           <span>{buttonLabel}</span>
         </button>
+
+        {showCollectionInactiveMeta ? (
+          <div className="artist-archive-button__inactive-meta">
+            <span className="artist-archive-button__support-inactive">{supportInactiveLabel}</span>
+            <button
+              type="button"
+              className="artist-archive-button__renew"
+              onClick={(event) => {
+                event.stopPropagation();
+                openRenewModal();
+              }}
+            >
+              {renewLabel}
+            </button>
+          </div>
+        ) : null}
 
         {showSlotsHint && slotsRemaining > 0 ? (
           <span className="artist-archive-button__slots">{slotsLeftLabel(slotsRemaining)}</span>

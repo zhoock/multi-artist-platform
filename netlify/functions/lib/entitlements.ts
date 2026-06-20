@@ -27,8 +27,11 @@ export {
   getUserArchiveArtists,
   removeArtistFromArchive,
   userHasArtistInArchive,
+  isArchiveArtistLocked,
+  canRemoveArchiveArtist,
   ArchiveSlotsLimitError,
   ArchiveSubscriptionRequiredError,
+  ArchiveArtistLockedError,
 } from './archive';
 export type { ArchiveStatus, UserArchiveEntry } from './archive';
 

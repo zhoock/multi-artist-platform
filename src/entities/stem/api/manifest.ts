@@ -1,13 +1,8 @@
 // src/entities/stem/api/manifest.ts
-import {
-  buildStoragePublicObjectUrl,
-  createSupabaseClient,
-  STORAGE_BUCKET_NAME,
-} from '@config/supabase';
 import { fetchWithAuthSession } from '@shared/lib/authFetch';
+import { getAuthHeader } from '@shared/lib/auth';
 import { uniqueUploadFileSuffix } from '@shared/lib/uniqueUploadFileSuffix';
 import { STEMS_MANIFEST_VERSION, type StemMeta, type StemsManifest } from '../model/types';
-import { isStemCategory } from '../lib/category';
 
 const MANIFEST_FILE = 'stems.json';
 const MANIFEST_MIME = 'application/json';
@@ -27,26 +22,38 @@ export function getStemStoragePath(
   return `${getStemsFolderPath(userId, albumId, trackId)}/${fileName}`;
 }
 
-/** Публичный URL объекта в bucket (для воспроизведения / чтения манифеста). */
-export function resolveStoragePublicUrl(storagePath: string): string | null {
-  const built = buildStoragePublicObjectUrl(storagePath);
-  if (built) return built;
-  const supabase = createSupabaseClient();
-  if (supabase) {
-    const { data } = supabase.storage.from(STORAGE_BUCKET_NAME).getPublicUrl(storagePath);
-    return data?.publicUrl ?? null;
-  }
-  return null;
+export type LoadStemsResult = {
+  stems: StemMeta[];
+  accessToken: string | null;
+  accessTokenExpiresAt: number | null;
+};
+
+function buildStemsApiUrl(endpoint: 'manifest' | 'audio', params: URLSearchParams): string {
+  return `/api/stems/${endpoint}?${params.toString()}`;
 }
 
-/** Готовый публичный URL аудиофайла стема. */
+/** Protected stem audio URL (no direct Supabase public URLs). */
 export function getStemAudioUrl(
-  userId: string,
+  artistUserId: string,
   albumId: string,
   trackId: string,
-  stem: StemMeta
+  stem: StemMeta,
+  accessToken: string | null,
+  accessTokenExpiresAt: number | null
 ): string | null {
-  return resolveStoragePublicUrl(getStemStoragePath(userId, albumId, trackId, stem.file));
+  if (!artistUserId?.trim() || !stem.file?.trim()) return null;
+  if (!accessToken || accessTokenExpiresAt == null) return null;
+
+  const params = new URLSearchParams({
+    artistUserId,
+    albumId,
+    trackId,
+    file: stem.file,
+    accessToken,
+    expiresAt: String(accessTokenExpiresAt),
+  });
+
+  return buildStemsApiUrl('audio', params);
 }
 
 async function getAuthToken(): Promise<string> {
@@ -90,7 +97,6 @@ async function putToSignedUrl(
   body: Blob | File,
   contentType: string
 ): Promise<void> {
-  // Supabase signed upload expects multipart FormData + x-upsert (same as track uploads).
   const formData = new FormData();
   formData.append('cacheControl', '3600');
   formData.append(
@@ -155,49 +161,62 @@ export async function deleteStemFile(storagePath: string): Promise<void> {
   }
 }
 
-/** Разобрать одну запись стема. Без валидной category запись отклоняется. */
-function parseStemMeta(raw: unknown): StemMeta | null {
-  if (!raw || typeof raw !== 'object') return null;
-  const record = raw as Record<string, unknown>;
-  if (typeof record.id !== 'string' || !record.id.trim()) return null;
-  if (typeof record.name !== 'string' || !record.name.trim()) return null;
-  if (!isStemCategory(record.category)) return null;
-  if (typeof record.file !== 'string' || !record.file.trim()) return null;
-  return {
-    id: record.id,
-    name: record.name,
-    category: record.category,
-    file: record.file,
-    size: typeof record.size === 'number' ? record.size : undefined,
-    originalFileName:
-      typeof record.originalFileName === 'string' ? record.originalFileName : undefined,
-  };
+interface ApiEnvelope<T> {
+  success?: boolean;
+  data?: T;
+  error?: string;
 }
 
-/** Разобрать манифест формата { version, stems: [...] }. */
-function parseManifest(parsed: unknown): StemMeta[] | null {
-  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return null;
-  const { stems } = parsed as { stems?: unknown };
-  if (!Array.isArray(stems)) return null;
-  return stems.map(parseStemMeta).filter((s): s is StemMeta => s !== null);
-}
-
-/** Загрузить список стемов трека из stems.json. */
+/** Загрузить список стемов трека через protected API. */
 export async function loadStems(
-  userId: string,
+  artistUserId: string,
   albumId: string,
   trackId: string
-): Promise<StemMeta[]> {
-  const folderPath = getStemsFolderPath(userId, albumId, trackId);
-  const manifestUrl = resolveStoragePublicUrl(`${folderPath}/${MANIFEST_FILE}`);
-  if (!manifestUrl) return [];
+): Promise<LoadStemsResult> {
+  const empty: LoadStemsResult = { stems: [], accessToken: null, accessTokenExpiresAt: null };
+
+  if (!artistUserId?.trim() || !albumId?.trim() || !trackId?.trim()) {
+    return empty;
+  }
+
+  const params = new URLSearchParams({
+    artistUserId,
+    albumId,
+    trackId,
+  });
 
   try {
-    const response = await fetch(`${manifestUrl}?t=${Date.now()}`, { cache: 'no-store' });
-    if (!response.ok) return [];
-    const parsed = (await response.json()) as unknown;
-    return parseManifest(parsed) ?? [];
+    const response = await fetchWithAuthSession(buildStemsApiUrl('manifest', params), {
+      cache: 'no-store',
+      headers: {
+        ...getAuthHeader(),
+      },
+    });
+
+    if (response.status === 403 || response.status === 401) {
+      return empty;
+    }
+
+    if (!response.ok) {
+      return empty;
+    }
+
+    const payload = (await response.json()) as ApiEnvelope<{
+      stems: StemMeta[];
+      accessToken: string;
+      accessTokenExpiresAt: number;
+    }>;
+
+    if (!payload.success || !payload.data) {
+      return empty;
+    }
+
+    return {
+      stems: Array.isArray(payload.data.stems) ? payload.data.stems : [],
+      accessToken: payload.data.accessToken ?? null,
+      accessTokenExpiresAt: payload.data.accessTokenExpiresAt ?? null,
+    };
   } catch {
-    return [];
+    return empty;
   }
 }

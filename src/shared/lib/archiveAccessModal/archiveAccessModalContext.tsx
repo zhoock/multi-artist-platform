@@ -70,8 +70,8 @@ function ArchiveFullAlert({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
   const archiveFullMessage =
     ui?.titles?.artistArchiveFullMessage ??
     (lang === 'en'
-      ? 'You have used all archive slots. Replacing an artist will be available later.'
-      : 'Все слоты архива заняты. Замена артиста будет доступна позже.');
+      ? 'You have used all collection slots. Remove an artist when their lock expires to add another.'
+      : 'Все слоты коллекции заняты. Удалите артиста после окончания блокировки, чтобы добавить другого.');
   const manageArchiveLabel =
     ui?.buttons?.premiumSuccessGoToArchive ?? (lang === 'en' ? 'Go to Archive' : 'Перейти в архив');
 
@@ -162,13 +162,17 @@ export function ArchiveAccessModalProvider({ children }: { children: ReactNode }
       try {
         const status = await getArchiveStatus(artistUserId);
 
-        if (!status?.isPremium) {
-          open({ artistUserId, artistSlug });
+        if (status?.artistInArchive) {
+          if (status.isPremium) {
+            await onAccessGranted?.();
+          } else {
+            open({ artistUserId, artistSlug });
+          }
           return;
         }
 
-        if (status.artistInArchive) {
-          await onAccessGranted?.();
+        if (!status?.isPremium) {
+          open({ artistUserId, artistSlug });
           return;
         }
 

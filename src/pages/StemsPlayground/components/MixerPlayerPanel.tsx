@@ -5,6 +5,7 @@ import { Pause, Play } from 'lucide-react';
 import clsx from 'clsx';
 import { Waveform } from '@shared/ui/waveform';
 import { StemEngine } from '@audio/stemsEngine';
+import { getAuthHeader } from '@shared/lib/auth';
 import {
   panelStateToSettings,
   type PanelStemState,
@@ -126,7 +127,7 @@ function MixerPlayerPanelInner(
     setLoadProgress(0);
     setIsPlaying(false);
 
-    const engine = new StemEngine(validStems);
+    const engine = new StemEngine(validStems, undefined, { headers: getAuthHeader() });
     engineRef.current = engine;
 
     let disposed = false;

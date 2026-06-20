@@ -36,7 +36,7 @@ import {
   uploadStemAudio,
   deleteStemFile,
   getStemStoragePath,
-  resolveStoragePublicUrl,
+  getStemAudioUrl,
 } from '@entities/stem';
 import { DashboardExpandChevron } from '../../lib/dashboardExpandChevron';
 import { AddStemModal, type AddStemModalLabels } from './AddStemModal';
@@ -102,6 +102,9 @@ export function MixerAdmin({ ui, userId, albums = [] }: MixerAdminProps) {
   const [expandedAlbumId, setExpandedAlbumId] = useState<string | null>(null);
   const [expandedTrackId, setExpandedTrackId] = useState<string | null>(null);
   const [trackStems, setTrackStems] = useState<Record<string, StemMeta[]>>({});
+  const [stemAccessByTrack, setStemAccessByTrack] = useState<
+    Record<string, { accessToken: string; accessTokenExpiresAt: number }>
+  >({});
   const [loadingTracks, setLoadingTracks] = useState<Record<string, boolean>>({});
   const [busyStems, setBusyStems] = useState<Record<string, boolean>>({});
   const [addModal, setAddModal] = useState<{ albumId: string; trackId: string } | null>(null);
@@ -183,8 +186,18 @@ export function MixerAdmin({ ui, userId, albums = [] }: MixerAdminProps) {
       if (trackStems[key]) return;
       setLoadingTracks((prev) => ({ ...prev, [key]: true }));
       try {
-        const stems = await loadStems(storageUserId, storageAlbumId, trackId);
+        const { stems, accessToken, accessTokenExpiresAt } = await loadStems(
+          storageUserId,
+          storageAlbumId,
+          trackId
+        );
         setTrackStems((prev) => ({ ...prev, [key]: stems }));
+        if (accessToken && accessTokenExpiresAt != null) {
+          setStemAccessByTrack((prev) => ({
+            ...prev,
+            [key]: { accessToken, accessTokenExpiresAt },
+          }));
+        }
       } catch (error) {
         console.error('[MixerAdmin] Failed to load stems:', error);
         setTrackStems((prev) => ({ ...prev, [key]: prev[key] ?? [] }));
@@ -209,8 +222,15 @@ export function MixerAdmin({ ui, userId, albums = [] }: MixerAdminProps) {
         stopPlayback();
         return;
       }
-      const path = getStemStoragePath(storageUserId, storageAlbumId, trackId, stem.file);
-      const url = resolveStoragePublicUrl(path);
+      const access = stemAccessByTrack[stemKey(storageAlbumId, trackId)];
+      const url = getStemAudioUrl(
+        storageUserId,
+        storageAlbumId,
+        trackId,
+        stem,
+        access?.accessToken ?? null,
+        access?.accessTokenExpiresAt ?? null
+      );
       if (!url) return;
       if (!audioRef.current) {
         audioRef.current = new Audio();
@@ -220,7 +240,7 @@ export function MixerAdmin({ ui, userId, albums = [] }: MixerAdminProps) {
       void audioRef.current.play().catch(() => setPlayingStemId(null));
       setPlayingStemId(stem.id);
     },
-    [playingStemId, stopPlayback, storageUserId]
+    [playingStemId, stopPlayback, stemAccessByTrack, storageUserId]
   );
 
   const handleAddStem = useCallback(

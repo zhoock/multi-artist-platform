@@ -22,6 +22,8 @@ export interface MyArchiveArtist {
   genreLabel: { en: string; ru: string };
   cover: string | null;
   addedAt: string;
+  lockedUntil: string | null;
+  isLocked: boolean;
 }
 
 export interface MyArchiveData {
@@ -34,6 +36,7 @@ export interface MyArchiveData {
 export type ArchiveApiErrorCode =
   | 'ARCHIVE_SLOTS_LIMIT'
   | 'ARCHIVE_SUBSCRIPTION_REQUIRED'
+  | 'ARCHIVE_ARTIST_LOCKED'
   | 'ARCHIVE_SELF_ADD'
   | 'UNAUTHORIZED'
   | 'UNKNOWN';
@@ -59,6 +62,7 @@ interface ApiEnvelope<T> {
 function parseErrorCode(raw: string | undefined): ArchiveApiErrorCode {
   if (raw === 'ARCHIVE_SLOTS_LIMIT') return 'ARCHIVE_SLOTS_LIMIT';
   if (raw === 'ARCHIVE_SUBSCRIPTION_REQUIRED') return 'ARCHIVE_SUBSCRIPTION_REQUIRED';
+  if (raw === 'ARCHIVE_ARTIST_LOCKED') return 'ARCHIVE_ARTIST_LOCKED';
   if (raw === 'ARCHIVE_SELF_ADD') return 'ARCHIVE_SELF_ADD';
   if (raw === 'UNAUTHORIZED' || raw === 'SESSION_EXPIRED' || raw === 'INVALID_SESSION') {
     return 'UNAUTHORIZED';

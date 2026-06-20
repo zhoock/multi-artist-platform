@@ -31,6 +31,7 @@ import { SubscriberContentLockIcon } from '@shared/ui/icons/SubscriberContentLoc
 import { useArchiveAccessModal } from '@shared/lib/archiveAccessModal';
 import { usePremiumSubscription } from '@features/premiumSubscription';
 import { refreshPremiumContentForArchiveChange } from '@features/artistArchive';
+import { useArtistArchiveStatus } from '@features/artistArchive/lib/useArtistArchiveStatus';
 import {
   resolveArticleLockedBodySize,
   resolveLockedArticleBodyBlocks,
@@ -213,6 +214,7 @@ function ArticleContent({
   const dispatch = useAppDispatch();
   const ui = useAppSelector((state) => selectUiDictionaryFirst(state, lang));
   const { isPremium, loading: premiumLoading } = usePremiumSubscription();
+  const { artistInArchive } = useArtistArchiveStatus(article?.userId);
   const { open, requestAccess } = useArchiveAccessModal();
 
   const paywallKind = useMemo(
@@ -221,8 +223,9 @@ function ArticleContent({
         articleLocked: article?.articleLocked,
         isPremium,
         premiumLoading,
+        artistInArchive,
       }),
-    [article?.articleLocked, isPremium, premiumLoading]
+    [article?.articleLocked, artistInArchive, isPremium, premiumLoading]
   );
 
   const isPaywalled = paywallKind !== 'none';
@@ -250,7 +253,26 @@ function ArticleContent({
   const archiveCtaLabel =
     ui?.buttons?.artistArchiveAdd ?? (lang === 'en' ? 'Add to Archive' : 'Добавить в архив');
 
+  const renewGateTitle =
+    ui?.titles?.articleRenewLockedOverlayTitle ??
+    (lang === 'en' ? 'Support inactive' : 'Поддержка неактивна');
+  const renewGateHint =
+    ui?.titles?.articleRenewLockedOverlayHint ??
+    (lang === 'en'
+      ? 'Renew your subscription to continue reading.'
+      : 'Продлите подписку, чтобы продолжить чтение.');
+  const renewCtaLabel =
+    ui?.buttons?.artistCollectionRenew ??
+    (lang === 'en' ? 'Renew subscription' : 'Продлить подписку');
+
   const handleSubscriptionGate = () => {
+    open({
+      artistUserId: article?.userId,
+      artistSlug: artistSlug ?? undefined,
+    });
+  };
+
+  const handleRenewGate = () => {
     open({
       artistUserId: article?.userId,
       artistSlug: artistSlug ?? undefined,
@@ -309,9 +331,11 @@ function ArticleContent({
   const paywallSeoHint =
     paywallKind === 'subscription'
       ? subscriptionGateHint
-      : paywallKind === 'archive'
-        ? archiveGateHint
-        : article.description;
+      : paywallKind === 'renew'
+        ? renewGateHint
+        : paywallKind === 'archive'
+          ? archiveGateHint
+          : article.description;
   const seoDesc = isPaywalled ? paywallSeoHint : article.description;
   const canonical = buildPublicSiteUrl(`/articles/${encodeURIComponent(article.articleId)}`);
 
@@ -323,6 +347,27 @@ function ArticleContent({
     ));
 
   const renderPaywallGate = (kind: Exclude<ArticlePaywallKind, 'none' | 'pending'>) => {
+    if (kind === 'renew') {
+      return (
+        <div
+          className="article__archive-gate article__archive-gate--inline article__archive-gate--subscription article__archive-gate--renew"
+          role="region"
+          aria-labelledby="article-renew-gate-title"
+        >
+          <div className="article__archive-gate-rule" aria-hidden="true" />
+          <SubscriberContentLockIcon className="article__archive-gate-icon" size={28} />
+          <h3 id="article-renew-gate-title" className="article__archive-gate-title">
+            {renewGateTitle}
+          </h3>
+          <p className="article__archive-gate-hint">{renewGateHint}</p>
+          <button type="button" className="article__archive-gate-cta" onClick={handleRenewGate}>
+            {renewCtaLabel}
+          </button>
+          <div className="article__archive-gate-rule" aria-hidden="true" />
+        </div>
+      );
+    }
+
     const isSubscription = kind === 'subscription';
     const gateTitle = isSubscription ? subscriptionGateTitle : archiveGateTitle;
     const gateHint = isSubscription ? subscriptionGateHint : archiveGateHint;

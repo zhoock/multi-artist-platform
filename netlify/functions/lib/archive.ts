@@ -12,6 +12,7 @@ export interface UserArchiveEntry {
   artistUserId: string;
   createdAt: Date;
   updatedAt: Date;
+  lockedUntil: Date | null;
 }
 
 export interface ArchiveStatus {
@@ -27,6 +28,7 @@ interface UserArchiveRow {
   artist_user_id: string;
   created_at: Date;
   updated_at: Date;
+  locked_until?: Date | null;
 }
 
 export class ArchiveSlotsLimitError extends Error {
@@ -44,10 +46,41 @@ export class ArchiveSlotsLimitError extends Error {
 export class ArchiveSubscriptionRequiredError extends Error {
   readonly code = 'ARCHIVE_SUBSCRIPTION_REQUIRED';
 
-  constructor() {
-    super('Active subscription required to add artists to archive');
+  constructor(message = 'Active subscription required for archive changes') {
+    super(message);
     this.name = 'ArchiveSubscriptionRequiredError';
   }
+}
+
+export class ArchiveArtistLockedError extends Error {
+  readonly code = 'ARCHIVE_ARTIST_LOCKED';
+
+  constructor(
+    public readonly artistUserId: string,
+    public readonly lockedUntil: Date
+  ) {
+    super('Artist is locked until the end of the current billing period');
+    this.name = 'ArchiveArtistLockedError';
+  }
+}
+
+export function isArchiveArtistLocked(
+  lockedUntil: Date | null | undefined,
+  now: Date = new Date()
+): boolean {
+  if (!lockedUntil) return false;
+  const ts = lockedUntil instanceof Date ? lockedUntil : new Date(lockedUntil);
+  if (Number.isNaN(ts.getTime())) return false;
+  return ts.getTime() > now.getTime();
+}
+
+export function canRemoveArchiveArtist(
+  lockedUntil: Date | null | undefined,
+  hasActiveSubscription: boolean,
+  now: Date = new Date()
+): boolean {
+  if (!hasActiveSubscription) return false;
+  return !isArchiveArtistLocked(lockedUntil, now);
 }
 
 function mapUserArchiveRow(row: UserArchiveRow): UserArchiveEntry {
@@ -57,6 +90,7 @@ function mapUserArchiveRow(row: UserArchiveRow): UserArchiveEntry {
     artistUserId: row.artist_user_id,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    lockedUntil: row.locked_until ?? null,
   };
 }
 
@@ -114,7 +148,7 @@ export async function addArtistToArchive(
   const alreadyInArchive = await userHasArtistInArchive(userId, artistUserId);
   if (alreadyInArchive) {
     const r = await query<UserArchiveRow>(
-      `SELECT id, user_id, artist_user_id, created_at, updated_at
+      `SELECT id, user_id, artist_user_id, created_at, updated_at, locked_until
        FROM user_archive
        WHERE user_id = $1::uuid AND artist_user_id = $2::uuid
        LIMIT 1`,
@@ -138,11 +172,16 @@ export async function addArtistToArchive(
     throw new ArchiveSlotsLimitError(slotsUsed, slotsLimit);
   }
 
+  const lockedUntil = subscription!.expiresAt;
+  if (!lockedUntil) {
+    throw new ArchiveSubscriptionRequiredError();
+  }
+
   const r = await query<UserArchiveRow>(
-    `INSERT INTO user_archive (user_id, artist_user_id)
-     VALUES ($1::uuid, $2::uuid)
-     RETURNING id, user_id, artist_user_id, created_at, updated_at`,
-    [userId, artistUserId]
+    `INSERT INTO user_archive (user_id, artist_user_id, locked_until)
+     VALUES ($1::uuid, $2::uuid, $3::timestamptz)
+     RETURNING id, user_id, artist_user_id, created_at, updated_at, locked_until`,
+    [userId, artistUserId, lockedUntil]
   );
   const row = r.rows[0];
   if (!row) {
@@ -155,6 +194,31 @@ export async function removeArtistFromArchive(
   userId: string,
   artistUserId: string
 ): Promise<boolean> {
+  const subscription = await getViewerSubscription(userId);
+  if (!isSubscriptionActive(subscription)) {
+    throw new ArchiveSubscriptionRequiredError(
+      'Active subscription required to remove artists from archive'
+    );
+  }
+
+  const existing = await query<Pick<UserArchiveRow, 'id' | 'locked_until'>>(
+    `SELECT id, locked_until
+     FROM user_archive
+     WHERE user_id = $1::uuid AND artist_user_id = $2::uuid
+     LIMIT 1`,
+    [userId, artistUserId]
+  );
+  const row = existing.rows[0];
+  if (!row) {
+    return false;
+  }
+
+  if (isArchiveArtistLocked(row.locked_until ?? null)) {
+    const lockedUntil =
+      row.locked_until instanceof Date ? row.locked_until : new Date(row.locked_until!);
+    throw new ArchiveArtistLockedError(artistUserId, lockedUntil);
+  }
+
   const r = await query(
     `DELETE FROM user_archive
      WHERE user_id = $1::uuid AND artist_user_id = $2::uuid`,
@@ -191,6 +255,8 @@ export interface MyArchiveArtistDto {
   genreLabel: { en: string; ru: string };
   cover: string | null;
   addedAt: string;
+  lockedUntil: string | null;
+  isLocked: boolean;
 }
 
 export interface MyArchiveDto {
@@ -204,6 +270,7 @@ interface MyArchiveRow {
   id: string;
   artist_user_id: string;
   created_at: Date;
+  locked_until?: Date | null;
   public_slug: string | null;
   site_name: string | null;
   name: string | null;
@@ -248,11 +315,13 @@ export async function getMyArchiveForUser(userId: string): Promise<MyArchiveDto>
   const slotsLimit = subscription?.slotsLimit ?? 3;
 
   try {
+    const now = new Date();
     const r = await query<MyArchiveRow>(
       `SELECT
          ua.id,
          ua.artist_user_id,
          ua.created_at,
+         ua.locked_until,
          u.public_slug,
          u.site_name,
          u.name,
@@ -272,6 +341,13 @@ export async function getMyArchiveForUser(userId: string): Promise<MyArchiveDto>
       const genreCode = row.genre_code || 'other';
       const displayName =
         row.site_name?.trim() || row.name?.trim() || row.public_slug?.trim() || 'Artist';
+      const lockedUntilDate = row.locked_until ?? null;
+      const lockedUntil =
+        lockedUntilDate instanceof Date
+          ? lockedUntilDate.toISOString()
+          : lockedUntilDate
+            ? new Date(lockedUntilDate).toISOString()
+            : null;
       return {
         id: row.id,
         artistUserId: row.artist_user_id,
@@ -284,6 +360,8 @@ export async function getMyArchiveForUser(userId: string): Promise<MyArchiveDto>
         },
         cover: pickFirstHeaderCover(row.artist_user_id, row.header_images),
         addedAt: row.created_at.toISOString(),
+        lockedUntil,
+        isLocked: isArchiveArtistLocked(lockedUntilDate, now),
       };
     });
 

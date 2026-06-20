@@ -118,12 +118,23 @@ export function useMixerCatalog(): MixerCatalog {
           const trackId = String(track.id);
           const albumId = album.albumId;
 
-          const stemMetas = await loadStems(storageUserId, albumId, trackId);
+          const {
+            stems: stemMetas,
+            accessToken,
+            accessTokenExpiresAt,
+          } = await loadStems(storageUserId, albumId, trackId);
           if (!stemMetas || stemMetas.length === 0) continue;
 
           const stems: PlayableStem[] = [];
           for (const meta of stemMetas) {
-            const url = getStemAudioUrl(storageUserId, albumId, trackId, meta);
+            const url = getStemAudioUrl(
+              storageUserId,
+              albumId,
+              trackId,
+              meta,
+              accessToken,
+              accessTokenExpiresAt
+            );
             if (url) {
               stems.push({ id: meta.id, name: meta.name, category: meta.category, url });
             }

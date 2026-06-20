@@ -11,9 +11,9 @@ export {
   getStemsFolderPath,
   getStemStoragePath,
   getStemAudioUrl,
-  resolveStoragePublicUrl,
   uploadStemAudio,
   saveStemsManifest,
   deleteStemFile,
   loadStems,
+  type LoadStemsResult,
 } from './api/manifest';

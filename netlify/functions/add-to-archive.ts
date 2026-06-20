@@ -60,6 +60,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
         id: entry.id,
         artistUserId: entry.artistUserId,
         createdAt: entry.createdAt.toISOString(),
+        lockedUntil: entry.lockedUntil?.toISOString() ?? null,
       },
       status,
     });

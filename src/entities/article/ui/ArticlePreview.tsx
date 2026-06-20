@@ -11,6 +11,7 @@ import { SubscriberContentLockIcon } from '@shared/ui/icons/SubscriberContentLoc
 import { ArtistArchiveLockIcon } from '@shared/ui/icons/ArtistArchiveLockIcon';
 import { useArchiveAccessModal } from '@shared/lib/archiveAccessModal';
 import { usePremiumSubscription } from '@features/premiumSubscription';
+import { useArtistArchiveStatus } from '@features/artistArchive/lib/useArtistArchiveStatus';
 import { resolveArticlePaywallKind } from '@entities/article/lib/resolveArticlePaywallKind';
 import './style.scss';
 
@@ -31,6 +32,7 @@ export function ArticlePreview({
   const ui = useAppSelector((state) => selectUiDictionaryFirst(state, lang));
   const navigate = useNavigate();
   const { isPremium, loading: premiumLoading } = usePremiumSubscription();
+  const { artistInArchive } = useArtistArchiveStatus(userId);
   const { requestAccess } = useArchiveAccessModal();
   const handleLockedClick = () => {
     void requestAccess({
@@ -44,6 +46,7 @@ export function ArticlePreview({
     articleLocked,
     isPremium,
     premiumLoading,
+    artistInArchive,
   });
 
   const subscriptionOverlayTitle =
@@ -64,6 +67,15 @@ export function ArticlePreview({
       ? 'Add this artist to your Archive to continue reading.'
       : 'Добавьте артиста в архив, чтобы продолжить чтение.');
 
+  const renewOverlayTitle =
+    ui?.titles?.articleRenewLockedOverlayTitle ??
+    (lang === 'en' ? 'Support inactive' : 'Поддержка неактивна');
+  const renewOverlayHint =
+    ui?.titles?.articleRenewLockedOverlayHint ??
+    (lang === 'en'
+      ? 'Renew your subscription to continue reading.'
+      : 'Продлите подписку, чтобы продолжить чтение.');
+
   const legacyOverlayTitle =
     ui?.titles?.articleLockedOverlayTitle ??
     (lang === 'en' ? 'Subscribers only' : 'Только для подписчиков');
@@ -74,15 +86,19 @@ export function ArticlePreview({
   const overlayTitle =
     paywallKind === 'archive'
       ? archiveOverlayTitle
-      : paywallKind === 'subscription' || paywallKind === 'pending'
-        ? subscriptionOverlayTitle
-        : legacyOverlayTitle;
+      : paywallKind === 'renew'
+        ? renewOverlayTitle
+        : paywallKind === 'subscription' || paywallKind === 'pending'
+          ? subscriptionOverlayTitle
+          : legacyOverlayTitle;
   const overlayHint =
     paywallKind === 'archive'
       ? archiveOverlayHint
-      : paywallKind === 'subscription' || paywallKind === 'pending'
-        ? subscriptionOverlayHint
-        : legacyOverlayHint;
+      : paywallKind === 'renew'
+        ? renewOverlayHint
+        : paywallKind === 'subscription' || paywallKind === 'pending'
+          ? subscriptionOverlayHint
+          : legacyOverlayHint;
   const OverlayIcon = paywallKind === 'archive' ? ArtistArchiveLockIcon : SubscriberContentLockIcon;
 
   const visibilityNorm = normalizeTrackVisibility(visibility);

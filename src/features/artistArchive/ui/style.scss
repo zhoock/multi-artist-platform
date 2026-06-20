@@ -60,6 +60,7 @@
       cursor: wait;
     }
 
+    &--in_collection_active,
     &--in_archive {
       border-color: rgb(var(--dark-greenish-yellow-rgb, 153 130 56) / 55%);
       color: rgb(var(--dark-greenish-yellow-rgb, 153 130 56) / 85%);
@@ -72,6 +73,13 @@
         // Keep hit-testing so hero's cursor:pointer does not show through.
         pointer-events: auto;
       }
+    }
+
+    &--in_collection_inactive {
+      border-color: rgb(var(--dark-greenish-yellow-rgb, 153 130 56) / 55%);
+      color: rgb(var(--dark-greenish-yellow-rgb, 153 130 56) / 85%);
+      cursor: pointer;
+      pointer-events: auto;
     }
 
     &--archive_full {
@@ -99,6 +107,40 @@
     white-space: nowrap;
     opacity: 0.85;
     cursor: default;
+  }
+
+  &__inactive-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35em 0.5em;
+    inline-size: 100%;
+  }
+
+  &__support-inactive {
+    color: var(--text-color, rgb(255 255 255 / 62%));
+    font-size: clamp(0.65rem, 0.62rem + 0.15vw, 0.75rem);
+    opacity: 0.9;
+  }
+
+  &__renew {
+    margin: 0;
+    padding: 0;
+    color: var(--accent-color, var(--dark-greenish-yellow, #998238));
+    font-size: clamp(0.65rem, 0.62rem + 0.15vw, 0.75rem);
+    line-height: 1.2;
+    text-decoration: underline;
+    text-underline-offset: 0.15em;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-family: inherit;
+
+    @media (hover: hover) and (pointer: fine) {
+      &:hover {
+        opacity: 0.85;
+      }
+    }
   }
 
   &__error {

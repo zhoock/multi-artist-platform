@@ -67,8 +67,8 @@ export function AddArtistToArchiveModalView({ dialogRef, pendingAccess, onClose 
   const archiveFullMessage =
     ui?.titles?.artistArchiveFullMessage ??
     (lang === 'en'
-      ? 'You have used all archive slots. Replacing an artist will be available later.'
-      : 'Все слоты архива заняты. Замена артиста будет доступна позже.');
+      ? 'You have used all collection slots. Remove an artist when their lock expires to add another.'
+      : 'Все слоты коллекции заняты. Удалите артиста после окончания блокировки, чтобы добавить другого.');
   const manageArchiveLabel =
     ui?.buttons?.premiumSuccessGoToArchive ?? (lang === 'en' ? 'Go to Archive' : 'Перейти в архив');
 

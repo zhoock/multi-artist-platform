@@ -783,12 +783,18 @@ export interface IInterface {
       emptySlotHint: string;
       discoverArtists: string;
       archiveFull: string;
-      cooldownInfo: string;
-      cooldownNext: string;
-      cooldownDays: string;
+      archiveFullHint: string;
+      lockedUntil: string;
+      lockedHint: string;
+      canRemoveLabel: string;
+      canRemoveHint: string;
+      removeLockedTooltip: string;
+      removeSubscriptionTooltip: string;
       loading: string;
       loadError: string;
       removeError: string;
+      artistLockedError: string;
+      removeRequiresSubscriptionError: string;
     };
     myPurchases?: {
       title: string;

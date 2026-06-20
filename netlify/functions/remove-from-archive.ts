@@ -4,7 +4,12 @@
  */
 
 import type { Handler, HandlerEvent } from '@netlify/functions';
-import { getMyArchiveForUser, removeArtistFromArchive } from './lib/archive';
+import {
+  ArchiveArtistLockedError,
+  ArchiveSubscriptionRequiredError,
+  getMyArchiveForUser,
+  removeArtistFromArchive,
+} from './lib/archive';
 import {
   createErrorResponse,
   createOptionsResponse,
@@ -59,6 +64,19 @@ export const handler: Handler = async (event: HandlerEvent) => {
       archive,
     });
   } catch (error) {
+    if (error instanceof ArchiveArtistLockedError) {
+      return createErrorResponse(409, error.message, undefined, {
+        code: error.code,
+        details: JSON.stringify({
+          artistUserId: error.artistUserId,
+          lockedUntil: error.lockedUntil.toISOString(),
+        }),
+      });
+    }
+    if (error instanceof ArchiveSubscriptionRequiredError) {
+      return createErrorResponse(403, error.message, undefined, { code: error.code });
+    }
+
     console.error('❌ [remove-from-archive]', error);
     return createErrorResponse(500, 'Failed to remove artist from archive');
   }

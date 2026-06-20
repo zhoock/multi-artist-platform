@@ -20,6 +20,7 @@ import {
   unauthorizedFromAuthHeader,
   parseJsonBody,
 } from './lib/api-helpers';
+import { assertOwnedStemStoragePath, StemStoragePathError } from './lib/stem-storage-path';
 
 const STORAGE_BUCKET_NAME = 'user-media';
 
@@ -77,30 +78,40 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
       return createErrorResponse(400, 'Missing required field: storagePath');
     }
 
+    let ownedStoragePath: string;
+    try {
+      ownedStoragePath = assertOwnedStemStoragePath(body.storagePath, userId);
+    } catch (error) {
+      if (error instanceof StemStoragePathError) {
+        return createErrorResponse(error.statusCode, error.message);
+      }
+      throw error;
+    }
+
     const supabase = createSupabaseAdminClient();
     if (!supabase) {
       return createErrorResponse(500, 'Failed to initialize Supabase client');
     }
 
-    console.log('🗑️ [delete-stem] Deleting stem file:', body.storagePath);
+    console.log('🗑️ [delete-stem] Deleting stem file:', ownedStoragePath);
 
     // Удаляем файл из Storage
     const { error: deleteError } = await supabase.storage
       .from(STORAGE_BUCKET_NAME)
-      .remove([body.storagePath]);
+      .remove([ownedStoragePath]);
 
     if (deleteError) {
       console.error('❌ [delete-stem] Error deleting file from Storage:', deleteError);
       return createErrorResponse(500, `Failed to delete file: ${deleteError.message}`);
     }
 
-    console.log('✅ [delete-stem] File successfully deleted from Storage:', body.storagePath);
+    console.log('✅ [delete-stem] File successfully deleted from Storage:', ownedStoragePath);
 
     return createSuccessResponse(
       {
         success: true,
         message: 'Stem file deleted successfully',
-        storagePath: body.storagePath,
+        storagePath: ownedStoragePath,
       },
       200
     );

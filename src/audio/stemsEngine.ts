@@ -28,7 +28,8 @@ export class StemEngine {
 
   constructor(
     private stems: StemMap,
-    ctx?: AudioContext
+    ctx?: AudioContext,
+    private fetchOptions?: RequestInit
   ) {
     this.ctx =
       ctx ??
@@ -69,7 +70,7 @@ export class StemEngine {
     const results = await Promise.allSettled(
       entries.map(async ([kind, url]) => {
         console.log(`[StemEngine] Загрузка стема ${kind} с URL: ${url}`);
-        const resp = await fetch(url, { cache: 'force-cache' });
+        const resp = await fetch(url, { cache: 'force-cache', ...this.fetchOptions });
 
         if (!resp.ok) {
           throw new Error(`HTTP ${resp.status}: ${resp.statusText} для ${kind} (${url})`);
