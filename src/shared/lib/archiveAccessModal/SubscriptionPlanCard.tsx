@@ -38,7 +38,7 @@ export function SubscriptionPlanCard({
   const priceAmount = getPlanPriceDisplayAmount(planSlug);
   const pricePeriod = formatPlanPricePeriod(planSlug, lang);
   const isCurrent = currentPlanSlug === planSlug;
-  const { label, variant, badge, disabled } = resolvePlanCardAction({
+  const { label, badge, disabled } = resolvePlanCardAction({
     planSlug,
     currentPlanSlug,
     isPremium,
@@ -90,7 +90,7 @@ export function SubscriptionPlanCard({
 
       <button
         type="button"
-        className={`archive-access-modal__plan-cta archive-access-modal__plan-cta--${variant}${
+        className={`archive-access-modal__plan-cta${
           isButtonDisabled ? ' archive-access-modal__plan-cta--disabled' : ''
         }`}
         disabled={isButtonDisabled}

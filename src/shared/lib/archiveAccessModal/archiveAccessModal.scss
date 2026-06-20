@@ -2,6 +2,12 @@
 
 .archive-access-modal {
   max-width: calc(100vw - 1.5rem);
+  font-weight: 400;
+
+  h2,
+  h3 {
+    font-weight: inherit;
+  }
 
   /* Центрирование: `dialog.popup[open]` в shared/ui/popup/style.scss (LocalModal). */
 
@@ -88,7 +94,6 @@
       > .archive-access-modal__title {
         color: #ffffff;
         font-size: clamp(1.5rem, 3vw, 1.75rem);
-        font-weight: 700;
         letter-spacing: -0.01em;
       }
 
@@ -133,7 +138,6 @@
   }
 
   &__description-em {
-    font-weight: 700;
     color: #ffffff;
   }
 
@@ -185,24 +189,22 @@
   &__price-num {
     color: #ffffff;
     font-size: clamp(1.75rem, 6vw, 2.25rem);
-    font-weight: 700;
   }
 
   &__price-currency {
     color: var(--dark-greenish-yellow, #c8b06d);
     font-size: 1.15rem;
-    font-weight: 600;
   }
 
   &__price-period {
     color: rgb(255 255 255 / 55%);
     font-size: var(--ms-01);
     margin-inline-start: 0.15rem;
-    font-weight: 400;
   }
 
   &__cta {
     width: 100%;
+    font-weight: inherit;
     text-transform: none;
     letter-spacing: normal;
     text-decoration: none;
@@ -291,7 +293,6 @@
     padding: 0.12rem 0.5rem;
     color: var(--dark-greenish-yellow, #c8b06d);
     font-size: 0.6875rem;
-    font-weight: 600;
     line-height: 1.2;
     letter-spacing: 0.04em;
     text-transform: uppercase;
@@ -304,7 +305,6 @@
     margin: 0 0 var(--ms-01);
     color: #ffffff;
     font-size: clamp(1rem, 2.2vw, 1.125rem);
-    font-weight: 700;
   }
 
   &__plan-limit {
@@ -320,13 +320,11 @@
   &__plan-limit-suffix {
     color: rgb(255 255 255 / 58%);
     font-size: clamp(0.8rem, 1.8vw, 0.95rem);
-    font-weight: 400;
   }
 
   &__plan-limit-count {
     color: var(--dark-greenish-yellow, #c8b06d);
     font-size: clamp(2.5rem, 7vw, 3.35rem);
-    font-weight: 700;
     line-height: 0.95;
   }
 
@@ -342,49 +340,36 @@
   &__plan-price-num {
     color: #ffffff;
     font-size: clamp(1.05rem, 2.4vw, 1.2rem);
-    font-weight: 700;
   }
 
   &__plan-price-currency {
     color: #ffffff;
     font-size: clamp(1.05rem, 2.4vw, 1.2rem);
-    font-weight: 700;
   }
 
   &__plan-price-period {
     color: rgb(255 255 255 / 58%);
     font-size: clamp(0.85rem, 2vw, 0.95rem);
-    font-weight: 400;
   }
 
   &__plan-divider {
     width: 100%;
-    margin: 0 0 var(--ms-01);
+    margin: 0 0 var(--ms-0);
     border: none;
     border-top: 1px solid rgb(255 255 255 / 12%);
   }
 
   &__plan-cta {
     width: 100%;
-    margin: 0 0 var(--ms-1);
+    font-weight: inherit;
     text-transform: none;
     letter-spacing: normal;
 
-    &--outline {
-      @include dashboard-btn-primary(
-        $margin: 0,
-        $padding: var(--ms-01) var(--ms-0),
-        $font-size: 0.9375rem
-      );
-    }
-
-    &--primary {
-      @include dashboard-btn-primary-solid(
-        $margin: 0,
-        $padding: var(--ms-01) var(--ms-0),
-        $font-size: 0.9375rem
-      );
-    }
+    @include dashboard-btn-primary(
+      $margin: 0 0 var(--ms-1),
+      $padding: var(--ms-01) var(--ms-0),
+      $font-size: 0.875rem
+    );
 
     &:disabled,
     &--disabled {
@@ -401,8 +386,8 @@
   &__plan-features {
     display: flex;
     flex-direction: column;
-    gap: 0.65rem;
-    margin: 0;
+    gap: 0.85rem;
+    margin: var(--ms-01) 0 0;
     padding: 0;
     list-style: none;
     text-align: start;

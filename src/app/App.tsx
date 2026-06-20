@@ -639,8 +639,8 @@ function Layout() {
   );
 
   return (
-    <ArchiveAccessModalProvider>
-      <PremiumSubscriptionProvider>
+    <PremiumSubscriptionProvider>
+      <ArchiveAccessModalProvider>
         <DashboardModalShellContext.Provider value={dashboardModalShell}>
           <CurrentArtistSync />
           {/* БАЗОВЫЙ Helmet для всех страниц без собственного */}
@@ -727,7 +727,7 @@ function Layout() {
           <ListenerWelcomeController />
           <PremiumSuccessModalController />
         </DashboardModalShellContext.Provider>
-      </PremiumSubscriptionProvider>
-    </ArchiveAccessModalProvider>
+      </ArchiveAccessModalProvider>
+    </PremiumSubscriptionProvider>
   );
 }

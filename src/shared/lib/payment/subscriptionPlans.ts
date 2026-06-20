@@ -211,7 +211,7 @@ export function resolvePlanCardAction(params: {
       return {
         label: params.lang === 'en' ? 'Current Plan' : 'Текущий план',
         variant: 'outline',
-        badge: 'current',
+        badge: null,
         disabled: true,
       };
     }
@@ -226,7 +226,7 @@ export function resolvePlanCardAction(params: {
   if (params.currentPlanSlug) {
     return {
       label: params.lang === 'en' ? `Switch to ${name}` : `Перейти на ${name}`,
-      variant: 'primary',
+      variant: 'outline',
       badge: null,
       disabled: false,
     };
@@ -234,7 +234,7 @@ export function resolvePlanCardAction(params: {
 
   return {
     label: params.lang === 'en' ? `Choose ${name}` : `Выбрать ${name}`,
-    variant: 'primary',
+    variant: 'outline',
     badge: null,
     disabled: false,
   };

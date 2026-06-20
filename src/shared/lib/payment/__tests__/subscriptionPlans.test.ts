@@ -93,7 +93,7 @@ describe('resolvePlanCardAction', () => {
     ).toEqual({
       label: 'Current Plan',
       variant: 'outline',
-      badge: 'current',
+      badge: null,
       disabled: true,
     });
   });

@@ -1,6 +1,6 @@
 import { Users } from 'lucide-react';
 
-import { useState, useCallback, useMemo, type RefObject } from 'react';
+import { useState, useCallback, useEffect, type RefObject } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 import { useLang } from '@app/providers/lang';
@@ -18,7 +18,6 @@ import {
 } from '@shared/lib/authIntent';
 import { sanitizeReturnPath } from '@shared/lib/authReturnUrl';
 import {
-  resolveCurrentPlanSlug,
   SUBSCRIPTION_PLAN_SLUGS,
   type SubscriptionPlanSlug,
 } from '@shared/lib/payment/subscriptionPlans';
@@ -41,16 +40,23 @@ export function ArchiveAccessModalView({ dialogRef, onClose }: Props) {
   const navigate = useNavigate();
   const viewer = useAuthSessionUser();
   const emailCopy = useEmailVerificationCopy();
-  const { isPremium, slotsLimit, slotsUsed } = usePremiumSubscription();
+  const { isPremium, planSlug: currentPlanSlug, refetch } = usePremiumSubscription();
   const [loadingPlan, setLoadingPlan] = useState<SubscriptionPlanSlug | null>(null);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const ui = useAppSelector((state) => selectUiDictionaryFirst(state, lang));
   const emailBlocked = Boolean(viewer && !isEmailVerified(viewer));
 
-  const currentPlanSlug = useMemo(
-    () => resolveCurrentPlanSlug({ isPremium, slotsLimit, slotsUsed }),
-    [isPremium, slotsLimit, slotsUsed]
-  );
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+
+    const handleShow = () => {
+      void refetch();
+    };
+
+    dialog.addEventListener('show', handleShow);
+    return () => dialog.removeEventListener('show', handleShow);
+  }, [dialogRef, refetch]);
 
   const title =
     ui?.titles?.subscriptionPlanPickerTitle ??

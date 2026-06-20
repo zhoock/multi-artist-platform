@@ -57,10 +57,9 @@ describe('SubscriptionPlanCard', () => {
       />
     );
 
-    expect(screen.getByText('Current Plan', { selector: 'span' })).toBeTruthy();
-    const button = screen.getByRole('button', { name: 'Current Plan' });
-    expect(button).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Current Plan' })).toBeDisabled();
     expect(document.querySelector('.archive-access-modal__plan-card--current')).toBeTruthy();
+    expect(document.querySelector('.archive-access-modal__plan-status-badge')).toBeNull();
   });
 
   test('shows expired badge and renew action for inactive current plan', () => {
