@@ -169,6 +169,37 @@ dialog {
       background: transparent;
     }
 
+    &__archive-card--action {
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      border-style: dashed;
+      background: transparent;
+
+      @include breakpoint(old-phones) {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    &__archive-card--inactive {
+      border-color: rgb(var(--soft-red-rgb) / 35%);
+    }
+
+    &__archive-plan-cta {
+      align-self: center;
+      width: auto;
+
+      @include dashboard-btn-primary(
+        $margin: 0,
+        $padding: var(--ms-01) var(--ms-0),
+        $font-size: 0.875rem
+      );
+
+      @include breakpoint(old-phones) {
+        width: 100%;
+        margin-top: var(--ms-01);
+      }
+    }
+
     &__archive-card-cover {
       width: 3.5rem;
       height: 3.5rem;
@@ -269,35 +300,13 @@ dialog {
     }
 
     &__archive-remove {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.35rem;
-      padding: 0.45rem 0.75rem;
-      color: var(--dark-greenish-yellow);
-      font-size: 0.8rem;
-      background: transparent;
-      border: 1px solid rgb(var(--dark-greenish-yellow-rgb) / 45%);
-      border-radius: 999px;
-      cursor: pointer;
-      transition: background-color 0.15s ease;
-      white-space: nowrap;
+      align-self: center;
 
-      &:disabled,
-      &--disabled {
-        opacity: 0.45;
-        cursor: not-allowed;
-        border-color: var(--dashboard-input-border);
-        color: var(--dashboard-text-secondary);
-      }
-
-      &:focus-visible {
-        outline: 2px solid var(--dark-greenish-yellow);
-        outline-offset: 2px;
-      }
-
-      &:hover:not(:disabled, .user-dashboard__archive-remove--disabled) {
-        background: rgb(var(--dark-greenish-yellow-rgb) / 10%);
-      }
+      @include dashboard-btn-destructive(
+        $margin: 0,
+        $padding: var(--ms-01) var(--ms-0),
+        $font-size: 0.875rem
+      );
     }
 
     &__archive-remove-icon {
@@ -319,25 +328,17 @@ dialog {
     }
 
     &__archive-discover {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      padding: 0.45rem 0.85rem;
-      color: var(--dark-greenish-yellow);
-      font-size: 0.8rem;
-      text-decoration: none;
-      border: 1px solid rgb(var(--dark-greenish-yellow-rgb) / 45%);
-      border-radius: 999px;
-      white-space: nowrap;
-      transition: background-color 0.15s ease;
+      align-self: center;
 
-      &:hover {
-        background: rgb(var(--dark-greenish-yellow-rgb) / 10%);
-      }
+      @include dashboard-btn-primary(
+        $margin: 0,
+        $padding: var(--ms-01) var(--ms-0),
+        $font-size: 0.875rem
+      );
 
-      &:focus-visible {
-        outline: 2px solid var(--dark-greenish-yellow);
-        outline-offset: 2px;
+      @include breakpoint(old-phones) {
+        width: 100%;
+        margin-top: var(--ms-01);
       }
     }
 

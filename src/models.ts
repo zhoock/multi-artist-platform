@@ -784,6 +784,11 @@ export interface IInterface {
       discoverArtists: string;
       archiveFull: string;
       archiveFullHint: string;
+      archiveFullUpgradeHint: string;
+      upgradePlanButton: string;
+      supportInactiveTitle: string;
+      supportInactiveDescription: string;
+      renewSupportButton: string;
       lockedUntil: string;
       lockedHint: string;
       canRemoveLabel: string;

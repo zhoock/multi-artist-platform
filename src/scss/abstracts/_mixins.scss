@@ -140,6 +140,32 @@ $ms-4: 123.363px; // 6.854rem;
   }
 }
 
+// Primary — filled accent (solid gold default, for main CTAs)
+@mixin dashboard-btn-primary-solid(
+  $margin: 0,
+  $padding: var(--dashboard-btn-padding-y) var(--dashboard-btn-padding-x),
+  $border-radius: var(--dashboard-btn-radius),
+  $font-size: var(--dashboard-btn-font-size)
+) {
+  @include dashboard-btn-base($margin, $padding, $border-radius, $font-size);
+
+  color: var(--dashboard-btn-primary-active-text);
+  background: var(--dashboard-btn-primary-active-bg);
+  border-color: var(--dashboard-btn-primary-active-bg);
+
+  @media (hover: hover) and (pointer: fine) {
+    &:hover:not(:disabled) {
+      color: var(--dashboard-btn-primary-active-text);
+      background: var(--dashboard-btn-primary-active-bg);
+      border-color: var(--dashboard-btn-primary-active-bg);
+    }
+  }
+
+  &:active:not(:disabled) {
+    scale: 0.98;
+  }
+}
+
 // Secondary — subtle neutral outline
 @mixin dashboard-btn-secondary(
   $margin: 0,

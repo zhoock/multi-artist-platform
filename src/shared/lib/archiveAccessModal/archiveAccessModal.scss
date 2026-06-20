@@ -379,23 +379,11 @@
     }
 
     &--primary {
-      @include dashboard-btn-primary(
+      @include dashboard-btn-primary-solid(
         $margin: 0,
         $padding: var(--ms-01) var(--ms-0),
         $font-size: 0.9375rem
       );
-
-      color: var(--dashboard-btn-primary-active-text);
-      background: var(--dashboard-btn-primary-active-bg);
-      border-color: var(--dashboard-btn-primary-active-bg);
-
-      @media (hover: hover) and (pointer: fine) {
-        &:hover:not(:disabled) {
-          color: var(--dashboard-btn-primary-active-text);
-          background: var(--dashboard-btn-primary-active-bg);
-          border-color: var(--dashboard-btn-primary-active-bg);
-        }
-      }
     }
 
     &:disabled,

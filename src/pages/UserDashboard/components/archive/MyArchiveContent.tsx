@@ -18,6 +18,7 @@ import {
   dispatchArchiveArtistRemoved,
   refreshPremiumContentForArchiveChange,
 } from '@features/artistArchive';
+import { useArchiveAccessModal } from '@shared/lib/archiveAccessModal';
 import {
   isCollectionOverPlanLimit,
   resolveCurrentPlanSlug,
@@ -59,6 +60,7 @@ export function MyArchiveContent({ active }: Props) {
   const { lang } = useLang() as { lang: 'ru' | 'en' };
   const dispatch = useAppDispatch();
   const ui = useAppSelector((state) => selectUiDictionaryFirst(state, lang));
+  const { open: openSupportModal } = useArchiveAccessModal();
 
   const [data, setData] = useState<MyArchiveData | null>(null);
   const [loading, setLoading] = useState(false);
@@ -102,13 +104,15 @@ export function MyArchiveContent({ active }: Props) {
 
   const slotsUsed = data?.slotsUsed ?? 0;
   const slotsLimit = data?.slotsLimit ?? 3;
-  const slotsRemaining = Math.max(0, slotsLimit - slotsUsed);
-  const isFull = slotsRemaining === 0;
+  const isFull = slotsUsed >= slotsLimit;
   const isPremium = data?.isPremium ?? false;
   const planSlug = useMemo(
     () => (data ? resolveCurrentPlanSlug({ isPremium, slotsLimit, slotsUsed }) : null),
     [data, isPremium, slotsLimit, slotsUsed]
   );
+  const showRenewCard = Boolean(data && !isPremium && planSlug);
+  const showUpgradeCard = Boolean(data && isPremium && isFull);
+  const showEmptySlotCard = Boolean(data && !isFull && !showRenewCard);
   const isOverPlanLimit = isCollectionOverPlanLimit(slotsUsed, slotsLimit);
 
   const slotsProgress = useMemo(() => {
@@ -208,17 +212,33 @@ export function MyArchiveContent({ active }: Props) {
     t?.discoverArtists ?? (lang === 'en' ? 'Discover Artists' : 'Найти артистов');
   const archiveFullLabel =
     t?.archiveFull ?? (lang === 'en' ? 'Collection Full' : 'Коллекция заполнена');
-  const archiveFullHint =
-    t?.archiveFullHint ??
+  const archiveFullUpgradeHint =
+    t?.archiveFullUpgradeHint ??
     (lang === 'en'
-      ? 'Remove an artist when their lock expires to free a slot.'
-      : 'Удалите артиста после окончания блокировки, чтобы освободить слот.');
+      ? 'You have used all collection slots. Upgrade your plan to support more artists.'
+      : 'Вы использовали все слоты коллекции. Перейдите на более высокий план, чтобы поддерживать больше артистов.');
+  const upgradePlanLabel =
+    t?.upgradePlanButton ??
+    ui?.header?.avatarMenu?.upgradePlan ??
+    (lang === 'en' ? 'Upgrade Plan' : 'Улучшить план');
+  const supportInactiveTitle =
+    t?.supportInactiveTitle ?? (lang === 'en' ? 'Support inactive' : 'Поддержка неактивна');
+  const supportInactiveDescription =
+    t?.supportInactiveDescription ??
+    (lang === 'en'
+      ? 'Renew support to continue accessing exclusive content and managing your collection.'
+      : 'Возобновите поддержку, чтобы получать доступ к эксклюзивному контенту и управлять коллекцией.');
+  const renewSupportLabel =
+    t?.renewSupportButton ??
+    ui?.buttons?.artistCollectionRenew ??
+    (lang === 'en' ? 'Renew Support' : 'Продлить поддержку');
   const collectionOverageHint =
     t?.collectionOverageHint ??
     (lang === 'en'
       ? 'Collection exceeds current plan limit'
       : 'Коллекция превышает лимит текущего плана');
 
+  const slotsRemaining = Math.max(0, slotsLimit - slotsUsed);
   const slotsAvailableText =
     slotsRemaining === 1
       ? slotAvailable.replace('{count}', '1')
@@ -368,7 +388,7 @@ export function MyArchiveContent({ active }: Props) {
             );
           })}
 
-          {!isFull ? (
+          {showEmptySlotCard ? (
             <article className="user-dashboard__archive-card user-dashboard__archive-card--empty">
               <div className="user-dashboard__archive-card-body user-dashboard__archive-card-body--empty">
                 <p className="user-dashboard__archive-empty-title">+ {slotsAvailableText}</p>
@@ -378,8 +398,34 @@ export function MyArchiveContent({ active }: Props) {
                 {discoverLabel}
               </Link>
             </article>
-          ) : (
-            <article className="user-dashboard__archive-card user-dashboard__archive-card--full">
+          ) : null}
+
+          {showRenewCard ? (
+            <article className="user-dashboard__archive-card user-dashboard__archive-card--action user-dashboard__archive-card--inactive">
+              <div className="user-dashboard__archive-card-body user-dashboard__archive-card-body--empty">
+                <p className="user-dashboard__archive-empty-title">
+                  <LockIcon
+                    {...dashboardActionIconProps({
+                      size: 16,
+                      className: 'user-dashboard__archive-inline-icon',
+                    })}
+                  />{' '}
+                  {supportInactiveTitle}
+                </p>
+                <p className="user-dashboard__archive-empty-hint">{supportInactiveDescription}</p>
+              </div>
+              <button
+                type="button"
+                className="user-dashboard__archive-plan-cta"
+                onClick={() => openSupportModal()}
+              >
+                {renewSupportLabel}
+              </button>
+            </article>
+          ) : null}
+
+          {showUpgradeCard ? (
+            <article className="user-dashboard__archive-card user-dashboard__archive-card--action user-dashboard__archive-card--full">
               <div className="user-dashboard__archive-card-body user-dashboard__archive-card-body--empty">
                 <p className="user-dashboard__archive-empty-title">
                   <LockIcon
@@ -390,10 +436,17 @@ export function MyArchiveContent({ active }: Props) {
                   />{' '}
                   {archiveFullLabel}
                 </p>
-                <p className="user-dashboard__archive-empty-hint">{archiveFullHint}</p>
+                <p className="user-dashboard__archive-empty-hint">{archiveFullUpgradeHint}</p>
               </div>
+              <button
+                type="button"
+                className="user-dashboard__archive-plan-cta"
+                onClick={() => openSupportModal()}
+              >
+                {upgradePlanLabel}
+              </button>
             </article>
-          )}
+          ) : null}
         </div>
       )}
     </section>
