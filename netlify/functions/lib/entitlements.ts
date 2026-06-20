@@ -5,13 +5,13 @@
  * Premium — subscribers_only (треки/статьи), sync lyrics и т.д.
  *
  * Формула доступа:
- *   subscription.active && artist in user_archive
+ *   subscription.active && artist in user_archive && artist.is_active
  * (владелец артиста и dev mock — override).
  */
 
 import { query } from './db';
 import { activePurchaseFilter } from './purchase-schema';
-import { userHasArtistInArchive } from './archive';
+import { userHasActiveArtistInArchive } from './archive';
 import { viewerHasActiveSubscription } from './subscriptions';
 
 export {
@@ -22,15 +22,19 @@ export {
 export type { Subscription, SubscriptionStatus } from './subscriptions';
 export {
   addArtistToArchive,
+  activateArtistsInArchive,
   countUserArchiveSlots,
+  deactivateAllArchiveArtists,
   getArchiveStatusForArtist,
   getUserArchiveArtists,
   removeArtistFromArchive,
   userHasArtistInArchive,
+  userHasActiveArtistInArchive,
   isArchiveArtistLocked,
   canRemoveArchiveArtist,
   ArchiveSlotsLimitError,
   ArchiveSubscriptionRequiredError,
+  ArchiveActivationLimitError,
   ArchiveArtistLockedError,
 } from './archive';
 export type { ArchiveStatus, UserArchiveEntry } from './archive';
@@ -82,12 +86,12 @@ export async function viewerHasPremiumAccessToArtist(
     return true;
   }
 
-  const [hasSubscription, inArchive] = await Promise.all([
+  const [hasSubscription, activeInArchive] = await Promise.all([
     viewerHasActiveSubscription(viewerUserId),
-    userHasArtistInArchive(viewerUserId, artistId),
+    userHasActiveArtistInArchive(viewerUserId, artistId),
   ]);
 
-  return hasSubscription && inArchive;
+  return hasSubscription && activeInArchive;
 }
 
 /** @deprecated Use viewerHasPremiumAccessToArtist — kept for stale bundles / gradual migration. */

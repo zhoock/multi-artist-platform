@@ -2,6 +2,7 @@
  * Premium subscription billing (platform YooKassa) — isolated from album purchases.
  */
 
+import { deactivateAllArchiveArtists } from './archive';
 import { isMissingRelationError, query } from './db';
 import type { Subscription } from './subscriptions';
 import { mapSubscriptionRow, type SubscriptionRow } from './subscriptions';
@@ -287,6 +288,9 @@ export async function fulfillSubscriptionPayment(params: {
       row.status === 'paused' ||
       row.status === 'trial';
 
+    const previousPlanSlug = normalizeSubscriptionPlanSlug(row.plan);
+    const planChanged = previousPlanSlug !== null && previousPlanSlug !== planSlug;
+
     if (canReuse || row.status === 'active') {
       const updated = await query<SubscriptionRow>(
         `UPDATE subscriptions
@@ -306,6 +310,9 @@ export async function fulfillSubscriptionPayment(params: {
       );
       const next = updated.rows[0];
       if (!next) throw new Error('Failed to update subscription');
+      if (planChanged && slotsLimit < row.slots_limit) {
+        await deactivateAllArchiveArtists(userId);
+      }
       return mapSubscriptionRow(next);
     }
   }

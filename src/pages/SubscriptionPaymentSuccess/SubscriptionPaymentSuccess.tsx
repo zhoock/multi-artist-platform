@@ -11,6 +11,8 @@ import {
   PREMIUM_CHECKOUT_ARTIST_SLUG_KEY,
 } from '@features/premiumSubscription';
 
+import { resolveDashboardModalOpenStateFromStoredBackground } from '@shared/lib/dashboardModalBackground';
+
 import './SubscriptionPaymentSuccess.style.scss';
 
 const MAX_POLLS = 20;
@@ -61,7 +63,14 @@ export default function SubscriptionPaymentSuccess() {
     setStatus('success');
 
     if (target && target.startsWith('/')) {
-      window.setTimeout(() => navigate(target, { replace: true }), 800);
+      window.setTimeout(
+        () =>
+          navigate(target, {
+            replace: true,
+            ...resolveDashboardModalOpenStateFromStoredBackground(),
+          }),
+        800
+      );
     }
   }, [artistSlug, navigate, returnTo]);
 

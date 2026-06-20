@@ -48,7 +48,10 @@ import {
   getAuthHeader,
 } from '@shared/lib/auth';
 import { clearAccountDeletedSkipReturn } from '@shared/lib/accountDeletedSession';
-import { clearDashboardModalBackground } from '@shared/lib/dashboardModalBackground';
+import {
+  clearDashboardModalBackground,
+  resolveDashboardModalCloseTarget,
+} from '@shared/lib/dashboardModalBackground';
 import { readDashboardOpenIntent, stripDashboardOpenIntent } from '@shared/lib/dashboardOpenIntent';
 import { EmailVerificationOnboarding } from '@shared/lib/emailVerification';
 import { AlbumPublishedToast } from '@shared/ui/albumPublishedToast/AlbumPublishedToast';
@@ -988,21 +991,22 @@ function UserDashboard() {
   );
 
   const closeDashboard = useCallback(() => {
-    if (!backgroundLocation) {
+    const closeTarget = resolveDashboardModalCloseTarget({ backgroundLocation });
+    if (!closeTarget) {
       navigate('/');
       return;
     }
 
     clearDashboardModalBackground();
 
-    const backgroundArtistSlug = getArtistSlugFromLocation(backgroundLocation);
+    const backgroundArtistSlug = getArtistSlugFromLocation(closeTarget);
     const artistSlugForRefresh = backgroundArtistSlug ?? profilePublicSlug?.trim() ?? null;
 
     navigate(
       {
-        pathname: backgroundLocation.pathname,
-        search: backgroundLocation.search,
-        hash: backgroundLocation.hash ?? '',
+        pathname: closeTarget.pathname,
+        search: closeTarget.search,
+        hash: closeTarget.hash ?? '',
       },
       { replace: true }
     );

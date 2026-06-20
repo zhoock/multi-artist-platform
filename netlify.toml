@@ -263,6 +263,13 @@
   status = 200
   force = true
 
+# Activate archive artists (bulk)
+[[redirects]]
+  from = "/api/activate-archive-artists*"
+  to = "/.netlify/functions/activate-archive-artists"
+  status = 200
+  force = true
+
 # Saved mixes: list
 [[redirects]]
   from = "/api/my-saved-mixes*"

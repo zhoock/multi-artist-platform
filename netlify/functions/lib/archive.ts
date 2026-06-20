@@ -1,6 +1,6 @@
 /**
- * Artist archive: список открытых артистов пользователя.
- * Отдельно от subscriptions; записи сохраняются при истечении подписки.
+ * Artist archive: collection membership and per-artist activation.
+ * Inactive rows persist as history; premium access requires is_active = true.
  */
 
 import { isMissingRelationError, query } from './db';
@@ -12,12 +12,14 @@ export interface UserArchiveEntry {
   artistUserId: string;
   createdAt: Date;
   updatedAt: Date;
+  isActive: boolean;
   lockedUntil: Date | null;
 }
 
 export interface ArchiveStatus {
   isPremium: boolean;
   artistInArchive: boolean;
+  artistActiveInArchive: boolean;
   slotsUsed: number;
   slotsLimit: number;
 }
@@ -28,6 +30,7 @@ interface UserArchiveRow {
   artist_user_id: string;
   created_at: Date;
   updated_at: Date;
+  is_active?: boolean;
   locked_until?: Date | null;
 }
 
@@ -49,6 +52,18 @@ export class ArchiveSubscriptionRequiredError extends Error {
   constructor(message = 'Active subscription required for archive changes') {
     super(message);
     this.name = 'ArchiveSubscriptionRequiredError';
+  }
+}
+
+export class ArchiveActivationLimitError extends Error {
+  readonly code = 'ARCHIVE_ACTIVATION_LIMIT';
+
+  constructor(
+    public readonly availableSlots: number,
+    public readonly requested: number
+  ) {
+    super(`Can activate up to ${availableSlots} artist(s)`);
+    this.name = 'ArchiveActivationLimitError';
   }
 }
 
@@ -77,8 +92,10 @@ export function isArchiveArtistLocked(
 export function canRemoveArchiveArtist(
   lockedUntil: Date | null | undefined,
   hasActiveSubscription: boolean,
+  isActive: boolean,
   now: Date = new Date()
 ): boolean {
+  if (!isActive) return true;
   if (!hasActiveSubscription) return false;
   return !isArchiveArtistLocked(lockedUntil, now);
 }
@@ -90,15 +107,25 @@ function mapUserArchiveRow(row: UserArchiveRow): UserArchiveEntry {
     artistUserId: row.artist_user_id,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    isActive: row.is_active !== false,
     lockedUntil: row.locked_until ?? null,
   };
+}
+
+function toLockedUntilIso(lockedUntilDate: Date | null | undefined): string | null {
+  if (!lockedUntilDate) return null;
+  if (lockedUntilDate instanceof Date) {
+    return lockedUntilDate.toISOString();
+  }
+  const parsed = new Date(lockedUntilDate);
+  return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
 }
 
 export async function getUserArchiveArtists(userId: string): Promise<string[]> {
   const r = await query<{ artist_user_id: string }>(
     `SELECT artist_user_id
      FROM user_archive
-     WHERE user_id = $1::uuid
+     WHERE user_id = $1::uuid AND is_active = true
      ORDER BY created_at ASC`,
     [userId]
   );
@@ -107,7 +134,19 @@ export async function getUserArchiveArtists(userId: string): Promise<string[]> {
 
 export async function countUserArchiveSlots(userId: string): Promise<number> {
   const r = await query<{ count: string }>(
-    `SELECT COUNT(*)::text AS count FROM user_archive WHERE user_id = $1::uuid`,
+    `SELECT COUNT(*)::text AS count
+     FROM user_archive
+     WHERE user_id = $1::uuid AND is_active = true`,
+    [userId]
+  );
+  return Number.parseInt(r.rows[0]?.count ?? '0', 10) || 0;
+}
+
+export async function countInactiveArchiveArtists(userId: string): Promise<number> {
+  const r = await query<{ count: string }>(
+    `SELECT COUNT(*)::text AS count
+     FROM user_archive
+     WHERE user_id = $1::uuid AND is_active = false`,
     [userId]
   );
   return Number.parseInt(r.rows[0]?.count ?? '0', 10) || 0;
@@ -137,6 +176,99 @@ export async function userHasArtistInArchive(
   }
 }
 
+export async function userHasActiveArtistInArchive(
+  userId: string,
+  artistUserId: string
+): Promise<boolean> {
+  if (!userId?.trim() || !artistUserId?.trim()) return false;
+
+  try {
+    const r = await query<{ one: number }>(
+      `SELECT 1 AS one
+       FROM user_archive
+       WHERE user_id = $1::uuid AND artist_user_id = $2::uuid AND is_active = true
+       LIMIT 1`,
+      [userId, artistUserId]
+    );
+    return r.rows.length > 0;
+  } catch (error) {
+    if (isMissingRelationError(error)) return false;
+    throw error;
+  }
+}
+
+export async function deactivateAllArchiveArtists(userId: string): Promise<number> {
+  try {
+    const r = await query(
+      `UPDATE user_archive
+       SET is_active = false,
+           locked_until = NULL,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE user_id = $1::uuid AND is_active = true`,
+      [userId]
+    );
+    return r.rowCount ?? 0;
+  } catch (error) {
+    if (isMissingRelationError(error)) return 0;
+    throw error;
+  }
+}
+
+export async function activateArtistsInArchive(
+  userId: string,
+  artistUserIds: string[]
+): Promise<number> {
+  const uniqueIds = [...new Set(artistUserIds.map((id) => id.trim()).filter(Boolean))];
+  if (uniqueIds.length === 0) return 0;
+
+  const subscription = await getViewerSubscription(userId);
+  if (!isSubscriptionActive(subscription)) {
+    throw new ArchiveSubscriptionRequiredError('Active subscription required to activate artists');
+  }
+
+  const slotsLimit = subscription!.slotsLimit;
+  const slotsUsed = await countUserArchiveSlots(userId);
+  const availableSlots = Math.max(0, slotsLimit - slotsUsed);
+
+  if (availableSlots <= 0) {
+    throw new ArchiveSlotsLimitError(slotsUsed, slotsLimit);
+  }
+
+  const toActivate = uniqueIds.slice(0, availableSlots);
+  if (toActivate.length === 0) {
+    throw new ArchiveSlotsLimitError(slotsUsed, slotsLimit);
+  }
+
+  const lockedUntil = subscription!.expiresAt;
+  if (!lockedUntil) {
+    throw new ArchiveSubscriptionRequiredError();
+  }
+
+  const r = await query(
+    `UPDATE user_archive
+     SET is_active = true,
+         locked_until = $3::timestamptz,
+         updated_at = CURRENT_TIMESTAMP
+     WHERE user_id = $1::uuid
+       AND artist_user_id = ANY($2::uuid[])
+       AND is_active = false`,
+    [userId, toActivate, lockedUntil]
+  );
+
+  return r.rowCount ?? 0;
+}
+
+async function getArchiveRow(userId: string, artistUserId: string): Promise<UserArchiveRow | null> {
+  const r = await query<UserArchiveRow>(
+    `SELECT id, user_id, artist_user_id, created_at, updated_at, is_active, locked_until
+     FROM user_archive
+     WHERE user_id = $1::uuid AND artist_user_id = $2::uuid
+     LIMIT 1`,
+    [userId, artistUserId]
+  );
+  return r.rows[0] ?? null;
+}
+
 export async function addArtistToArchive(
   userId: string,
   artistUserId: string
@@ -145,19 +277,39 @@ export async function addArtistToArchive(
     throw new Error('Cannot add yourself to archive');
   }
 
-  const alreadyInArchive = await userHasArtistInArchive(userId, artistUserId);
-  if (alreadyInArchive) {
-    const r = await query<UserArchiveRow>(
-      `SELECT id, user_id, artist_user_id, created_at, updated_at, locked_until
-       FROM user_archive
-       WHERE user_id = $1::uuid AND artist_user_id = $2::uuid
-       LIMIT 1`,
-      [userId, artistUserId]
-    );
-    const row = r.rows[0];
-    if (!row) {
-      throw new Error('Archive entry not found');
+  const existing = await getArchiveRow(userId, artistUserId);
+  if (existing) {
+    if (existing.is_active !== false) {
+      return mapUserArchiveRow(existing);
     }
+
+    const subscription = await getViewerSubscription(userId);
+    if (!isSubscriptionActive(subscription)) {
+      throw new ArchiveSubscriptionRequiredError();
+    }
+
+    const slotsLimit = subscription!.slotsLimit;
+    const slotsUsed = await countUserArchiveSlots(userId);
+    if (slotsUsed >= slotsLimit) {
+      throw new ArchiveSlotsLimitError(slotsUsed, slotsLimit);
+    }
+
+    const lockedUntil = subscription!.expiresAt;
+    if (!lockedUntil) {
+      throw new ArchiveSubscriptionRequiredError();
+    }
+
+    const updated = await query<UserArchiveRow>(
+      `UPDATE user_archive
+       SET is_active = true,
+           locked_until = $2::timestamptz,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $1
+       RETURNING id, user_id, artist_user_id, created_at, updated_at, is_active, locked_until`,
+      [existing.id, lockedUntil]
+    );
+    const row = updated.rows[0];
+    if (!row) throw new Error('Failed to reactivate artist in archive');
     return mapUserArchiveRow(row);
   }
 
@@ -178,9 +330,9 @@ export async function addArtistToArchive(
   }
 
   const r = await query<UserArchiveRow>(
-    `INSERT INTO user_archive (user_id, artist_user_id, locked_until)
-     VALUES ($1::uuid, $2::uuid, $3::timestamptz)
-     RETURNING id, user_id, artist_user_id, created_at, updated_at, locked_until`,
+    `INSERT INTO user_archive (user_id, artist_user_id, is_active, locked_until)
+     VALUES ($1::uuid, $2::uuid, true, $3::timestamptz)
+     RETURNING id, user_id, artist_user_id, created_at, updated_at, is_active, locked_until`,
     [userId, artistUserId, lockedUntil]
   );
   const row = r.rows[0];
@@ -194,29 +346,26 @@ export async function removeArtistFromArchive(
   userId: string,
   artistUserId: string
 ): Promise<boolean> {
-  const subscription = await getViewerSubscription(userId);
-  if (!isSubscriptionActive(subscription)) {
-    throw new ArchiveSubscriptionRequiredError(
-      'Active subscription required to remove artists from archive'
-    );
-  }
-
-  const existing = await query<Pick<UserArchiveRow, 'id' | 'locked_until'>>(
-    `SELECT id, locked_until
-     FROM user_archive
-     WHERE user_id = $1::uuid AND artist_user_id = $2::uuid
-     LIMIT 1`,
-    [userId, artistUserId]
-  );
-  const row = existing.rows[0];
-  if (!row) {
+  const existing = await getArchiveRow(userId, artistUserId);
+  if (!existing) {
     return false;
   }
 
-  if (isArchiveArtistLocked(row.locked_until ?? null)) {
-    const lockedUntil =
-      row.locked_until instanceof Date ? row.locked_until : new Date(row.locked_until!);
-    throw new ArchiveArtistLockedError(artistUserId, lockedUntil);
+  if (existing.is_active !== false) {
+    const subscription = await getViewerSubscription(userId);
+    if (!isSubscriptionActive(subscription)) {
+      throw new ArchiveSubscriptionRequiredError(
+        'Active subscription required to remove active artists from archive'
+      );
+    }
+
+    if (isArchiveArtistLocked(existing.locked_until ?? null)) {
+      const lockedUntil =
+        existing.locked_until instanceof Date
+          ? existing.locked_until
+          : new Date(existing.locked_until!);
+      throw new ArchiveArtistLockedError(artistUserId, lockedUntil);
+    }
   }
 
   const r = await query(
@@ -232,8 +381,9 @@ export async function getArchiveStatusForArtist(
   artistUserId: string,
   isPremium: boolean
 ): Promise<ArchiveStatus> {
-  const [artistInArchive, slotsUsed, subscription] = await Promise.all([
+  const [artistInArchive, artistActiveInArchive, slotsUsed, subscription] = await Promise.all([
     userHasArtistInArchive(userId, artistUserId),
+    userHasActiveArtistInArchive(userId, artistUserId),
     countUserArchiveSlots(userId),
     getViewerSubscription(userId),
   ]);
@@ -241,6 +391,7 @@ export async function getArchiveStatusForArtist(
   return {
     isPremium,
     artistInArchive,
+    artistActiveInArchive,
     slotsUsed,
     slotsLimit: subscription?.slotsLimit ?? 3,
   };
@@ -255,6 +406,7 @@ export interface MyArchiveArtistDto {
   genreLabel: { en: string; ru: string };
   cover: string | null;
   addedAt: string;
+  isActive: boolean;
   lockedUntil: string | null;
   isLocked: boolean;
 }
@@ -263,6 +415,7 @@ export interface MyArchiveDto {
   isPremium: boolean;
   slotsUsed: number;
   slotsLimit: number;
+  inactiveCount: number;
   artists: MyArchiveArtistDto[];
 }
 
@@ -270,6 +423,7 @@ interface MyArchiveRow {
   id: string;
   artist_user_id: string;
   created_at: Date;
+  is_active?: boolean;
   locked_until?: Date | null;
   public_slug: string | null;
   site_name: string | null;
@@ -321,6 +475,7 @@ export async function getMyArchiveForUser(userId: string): Promise<MyArchiveDto>
          ua.id,
          ua.artist_user_id,
          ua.created_at,
+         ua.is_active,
          ua.locked_until,
          u.public_slug,
          u.site_name,
@@ -341,13 +496,9 @@ export async function getMyArchiveForUser(userId: string): Promise<MyArchiveDto>
       const genreCode = row.genre_code || 'other';
       const displayName =
         row.site_name?.trim() || row.name?.trim() || row.public_slug?.trim() || 'Artist';
+      const isActive = row.is_active !== false;
       const lockedUntilDate = row.locked_until ?? null;
-      const lockedUntil =
-        lockedUntilDate instanceof Date
-          ? lockedUntilDate.toISOString()
-          : lockedUntilDate
-            ? new Date(lockedUntilDate).toISOString()
-            : null;
+      const lockedUntil = toLockedUntilIso(lockedUntilDate);
       return {
         id: row.id,
         artistUserId: row.artist_user_id,
@@ -360,15 +511,20 @@ export async function getMyArchiveForUser(userId: string): Promise<MyArchiveDto>
         },
         cover: pickFirstHeaderCover(row.artist_user_id, row.header_images),
         addedAt: row.created_at.toISOString(),
+        isActive,
         lockedUntil,
-        isLocked: isArchiveArtistLocked(lockedUntilDate, now),
+        isLocked: isActive && isArchiveArtistLocked(lockedUntilDate, now),
       };
     });
 
+    const slotsUsed = artists.filter((a) => a.isActive).length;
+    const inactiveCount = artists.filter((a) => !a.isActive).length;
+
     return {
       isPremium: isSubscriptionActive(subscription),
-      slotsUsed: artists.length,
+      slotsUsed,
       slotsLimit,
+      inactiveCount,
       artists,
     };
   } catch (error) {
@@ -377,6 +533,7 @@ export async function getMyArchiveForUser(userId: string): Promise<MyArchiveDto>
         isPremium: isSubscriptionActive(subscription),
         slotsUsed: 0,
         slotsLimit,
+        inactiveCount: 0,
         artists: [],
       };
     }

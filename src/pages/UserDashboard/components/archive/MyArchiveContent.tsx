@@ -7,22 +7,30 @@ import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 import {
   ArchiveApiError,
+  activateArchiveArtistsApi,
   getMyArchive,
   removeArtistFromArchiveApi,
   type MyArchiveArtist,
   type MyArchiveData,
 } from '@shared/api/archive';
+import {
+  canRemoveCollectionArtist,
+  isArchiveArtistLocked,
+} from '@shared/lib/archive/collectionLock';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
-import { Lock as LockIcon, Trash2 as Trash2Icon, Unlock as UnlockIcon } from 'lucide-react';
+import {
+  CheckSquare,
+  Lock as LockIcon,
+  Square,
+  Trash2 as Trash2Icon,
+  Unlock as UnlockIcon,
+} from 'lucide-react';
 import {
   dispatchArchiveArtistRemoved,
   refreshPremiumContentForArchiveChange,
 } from '@features/artistArchive';
 import { useArchiveAccessModal } from '@shared/lib/archiveAccessModal';
-import {
-  isCollectionOverPlanLimit,
-  resolveCurrentPlanSlug,
-} from '@shared/lib/payment/subscriptionPlans';
+import { resolveCurrentPlanSlug } from '@shared/lib/payment/subscriptionPlans';
 import { SubscriptionPlanBadge } from '@shared/ui/subscriptionPlan';
 
 import '../../UserDashboard.style.scss';
@@ -52,6 +60,10 @@ function formatLockDate(iso: string | null, lang: 'en' | 'ru'): string | null {
   }
 }
 
+function canRemoveArtist(artist: MyArchiveArtist, isPremium: boolean): boolean {
+  return canRemoveCollectionArtist(artist, isPremium);
+}
+
 type Props = {
   active: boolean;
 };
@@ -66,6 +78,9 @@ export function MyArchiveContent({ active }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [removingId, setRemovingId] = useState<string | null>(null);
+  const [isSelectMode, setIsSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
+  const [bulkLoading, setBulkLoading] = useState(false);
 
   const t = ui?.dashboard?.archive;
 
@@ -104,6 +119,7 @@ export function MyArchiveContent({ active }: Props) {
 
   const slotsUsed = data?.slotsUsed ?? 0;
   const slotsLimit = data?.slotsLimit ?? 3;
+  const inactiveCount = data?.inactiveCount ?? data?.artists.filter((a) => !a.isActive).length ?? 0;
   const isFull = slotsUsed >= slotsLimit;
   const isPremium = data?.isPremium ?? false;
   const planSlug = useMemo(
@@ -112,23 +128,55 @@ export function MyArchiveContent({ active }: Props) {
   );
   const showRenewCard = Boolean(data && !isPremium && planSlug);
   const showUpgradeCard = Boolean(data && isPremium && isFull);
-  const showEmptySlotCard = Boolean(data && !isFull && !showRenewCard);
-  const isOverPlanLimit = isCollectionOverPlanLimit(slotsUsed, slotsLimit);
+  const showEmptySlotCard = Boolean(data && !isFull && !showRenewCard && inactiveCount === 0);
+  const showPlanChangeBanner = Boolean(
+    data && isPremium && inactiveCount > 0 && slotsUsed < slotsLimit
+  );
+  const slotsRemaining = Math.max(0, slotsLimit - slotsUsed);
 
   const slotsProgress = useMemo(() => {
     if (slotsLimit <= 0) return 0;
     return Math.min(100, Math.round((slotsUsed / slotsLimit) * 100));
   }, [slotsLimit, slotsUsed]);
 
+  const exitSelectMode = useCallback(() => {
+    setIsSelectMode(false);
+    setSelectedIds(new Set());
+  }, []);
+
+  const toggleSelectMode = useCallback(() => {
+    setIsSelectMode((prev) => {
+      if (prev) {
+        setSelectedIds(new Set());
+      }
+      return !prev;
+    });
+  }, []);
+
+  const toggleSelected = useCallback((artistUserId: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(artistUserId)) {
+        next.delete(artistUserId);
+      } else {
+        next.add(artistUserId);
+      }
+      return next;
+    });
+  }, []);
+
   const handleRemove = async (artist: MyArchiveArtist) => {
-    if (removingId || artist.isLocked || !isPremium) return;
+    if (removingId || bulkLoading || !canRemoveArtist(artist, isPremium)) return;
 
     const previous = data;
     if (previous) {
       setData({
         ...previous,
         artists: previous.artists.filter((a) => a.artistUserId !== artist.artistUserId),
-        slotsUsed: Math.max(0, previous.slotsUsed - 1),
+        slotsUsed: artist.isActive ? Math.max(0, previous.slotsUsed - 1) : previous.slotsUsed,
+        inactiveCount: !artist.isActive
+          ? Math.max(0, (previous.inactiveCount ?? 0) - 1)
+          : previous.inactiveCount,
       });
     }
 
@@ -140,6 +188,12 @@ export function MyArchiveContent({ active }: Props) {
       setData(archive);
       dispatchArchiveArtistRemoved(artist.artistUserId, artist.slug || undefined);
       refreshPremiumContentForArchiveChange(dispatch, artist.slug || undefined);
+      setSelectedIds((prev) => {
+        if (!prev.has(artist.artistUserId)) return prev;
+        const next = new Set(prev);
+        next.delete(artist.artistUserId);
+        return next;
+      });
     } catch (err) {
       setData(previous);
       const message =
@@ -165,15 +219,92 @@ export function MyArchiveContent({ active }: Props) {
     }
   };
 
+  const handleBulkRemove = async () => {
+    if (!data || bulkLoading || selectedIds.size === 0) return;
+
+    const toRemove = data.artists.filter(
+      (artist) => selectedIds.has(artist.artistUserId) && canRemoveArtist(artist, isPremium)
+    );
+    if (toRemove.length === 0) return;
+
+    setBulkLoading(true);
+    setError(null);
+
+    try {
+      let latest = data;
+      for (const artist of toRemove) {
+        const { archive } = await removeArtistFromArchiveApi(artist.artistUserId);
+        latest = archive;
+        dispatchArchiveArtistRemoved(artist.artistUserId, artist.slug || undefined);
+        refreshPremiumContentForArchiveChange(dispatch, artist.slug || undefined);
+      }
+      setData(latest);
+      exitSelectMode();
+    } catch (err) {
+      void loadArchive();
+      setError(
+        err instanceof Error
+          ? err.message
+          : (t?.removeError ??
+              (lang === 'en' ? 'Failed to remove artists' : 'Не удалось удалить артистов'))
+      );
+    } finally {
+      setBulkLoading(false);
+    }
+  };
+
+  const handleActivateSelected = async () => {
+    if (!data || bulkLoading || selectedIds.size === 0 || !isPremium) return;
+
+    const inactiveSelected = data.artists.filter(
+      (artist) => selectedIds.has(artist.artistUserId) && !artist.isActive
+    );
+    if (inactiveSelected.length === 0) return;
+
+    const toActivate = inactiveSelected
+      .slice(0, slotsRemaining)
+      .map((artist) => artist.artistUserId);
+
+    setBulkLoading(true);
+    setError(null);
+
+    try {
+      const { archive } = await activateArchiveArtistsApi(toActivate);
+      setData(archive);
+      window.dispatchEvent(new Event('archive:changed'));
+      exitSelectMode();
+    } catch (err) {
+      const message =
+        err instanceof ArchiveApiError
+          ? err.code === 'ARCHIVE_SLOTS_LIMIT' || err.code === 'ARCHIVE_ACTIVATION_LIMIT'
+            ? (
+                t?.activateLimitError ??
+                (lang === 'en'
+                  ? 'You can activate up to {count} artists.'
+                  : 'Можно активировать не более {count} артистов.')
+              ).replace('{count}', String(slotsRemaining))
+            : err.message
+          : err instanceof Error
+            ? err.message
+            : (t?.activateError ??
+              (lang === 'en' ? 'Failed to activate artists' : 'Не удалось активировать артистов'));
+      setError(message);
+    } finally {
+      setBulkLoading(false);
+    }
+  };
+
   const subtitle =
     t?.subtitle ??
     (lang === 'en'
       ? 'Artists in your collection unlock content across the platform: tracks, articles, stems and album downloads.'
       : 'Артисты в коллекции открывают контент на всей платформе: треки, статьи, стемы и скачивание альбомов.');
   const slotsUsedLabel =
-    t?.slotsUsed ?? (lang === 'en' ? 'collection slots used' : 'слотов коллекции занято');
+    t?.activeSlotsLabel ?? (lang === 'en' ? 'active slots' : 'активных слотов');
+  const managePlanLabel =
+    t?.managePlanLink ?? (lang === 'en' ? 'Manage Plan →' : 'Управление планом →');
   const inArchiveSince =
-    t?.inArchiveSince ?? (lang === 'en' ? 'In Collection since' : 'В коллекции с');
+    t?.inArchiveSince ?? (lang === 'en' ? 'In collection since' : 'В коллекции с');
   const removeLabel = t?.remove ?? (lang === 'en' ? 'Remove' : 'Удалить');
   const lockedUntilTemplate =
     t?.lockedUntil ?? (lang === 'en' ? 'Locked until {date}' : 'Заблокирован до {date}');
@@ -188,16 +319,23 @@ export function MyArchiveContent({ active }: Props) {
     (lang === 'en'
       ? 'You can remove this artist at any time.'
       : 'Вы можете удалить этого артиста в любой момент.');
+  const inactiveSlotHint =
+    t?.inactiveSlotHint ??
+    (lang === 'en'
+      ? 'This artist no longer uses an active slot.'
+      : 'Этот артист больше не занимает активный слот.');
   const removeLockedTooltip =
     t?.removeLockedTooltip ??
     (lang === 'en'
       ? 'This artist is locked until the end of the billing period.'
       : 'Артист заблокирован до конца оплаченного периода.');
+  const supportInactiveLabel =
+    t?.supportInactiveTitle ?? (lang === 'en' ? 'Support inactive' : 'Поддержка неактивна');
   const removeSubscriptionTooltip =
     t?.removeSubscriptionTooltip ??
     (lang === 'en'
-      ? 'An active subscription is required to remove artists.'
-      : 'Для удаления нужна активная подписка.');
+      ? 'An active subscription is required to remove active artists.'
+      : 'Для удаления активных артистов нужна активная подписка.');
   const slotAvailable =
     t?.slotAvailable ?? (lang === 'en' ? '{count} slot available' : 'Доступен {count} слот');
   const slotsAvailablePlural =
@@ -212,17 +350,31 @@ export function MyArchiveContent({ active }: Props) {
     t?.discoverArtists ?? (lang === 'en' ? 'Discover Artists' : 'Найти артистов');
   const archiveFullLabel =
     t?.archiveFull ?? (lang === 'en' ? 'Collection Full' : 'Коллекция заполнена');
-  const archiveFullUpgradeHint =
-    t?.archiveFullUpgradeHint ??
+  const archiveFullSlotsUsedLine = useMemo(() => {
+    if (slotsLimit === 1) {
+      return (
+        t?.archiveFullSlotsUsedSingular ??
+        (lang === 'en'
+          ? "You've used all 1 collection slot."
+          : 'Вы использовали единственный слот коллекции.')
+      );
+    }
+    const template =
+      t?.archiveFullSlotsUsedPlural ??
+      (lang === 'en'
+        ? "You've used all {count} collection slots."
+        : 'Вы использовали все {count} слота коллекции.');
+    return template.replace('{count}', String(slotsLimit));
+  }, [lang, slotsLimit, t?.archiveFullSlotsUsedPlural, t?.archiveFullSlotsUsedSingular]);
+  const archiveFullUpgradeActionLine =
+    t?.archiveFullUpgradeAction ??
     (lang === 'en'
-      ? 'You have used all collection slots. Upgrade your plan to support more artists.'
-      : 'Вы использовали все слоты коллекции. Перейдите на более высокий план, чтобы поддерживать больше артистов.');
+      ? 'Upgrade your plan to support more artists.'
+      : 'Перейдите на более высокий план, чтобы поддерживать больше артистов.');
   const upgradePlanLabel =
     t?.upgradePlanButton ??
     ui?.header?.avatarMenu?.upgradePlan ??
     (lang === 'en' ? 'Upgrade Plan' : 'Улучшить план');
-  const supportInactiveTitle =
-    t?.supportInactiveTitle ?? (lang === 'en' ? 'Support inactive' : 'Поддержка неактивна');
   const supportInactiveDescription =
     t?.supportInactiveDescription ??
     (lang === 'en'
@@ -232,50 +384,95 @@ export function MyArchiveContent({ active }: Props) {
     t?.renewSupportButton ??
     ui?.buttons?.artistCollectionRenew ??
     (lang === 'en' ? 'Renew Support' : 'Продлить поддержку');
-  const collectionOverageHint =
-    t?.collectionOverageHint ??
+  const planChangeBannerText =
+    t?.planChangeBanner ??
     (lang === 'en'
-      ? 'Collection exceeds current plan limit'
-      : 'Коллекция превышает лимит текущего плана');
+      ? 'Your plan changed. Previously supported artists are now inactive. Select up to {count} to support with your current plan.'
+      : 'План изменился. Ранее поддерживаемые артисты теперь неактивны. Выберите до {count} для поддержки по текущему плану.');
+  const selectModeLabel = t?.selectMode ?? (lang === 'en' ? 'Select' : 'Выбрать');
+  const cancelSelectLabel = t?.cancelSelect ?? (lang === 'en' ? 'Done' : 'Готово');
+  const selectedCountLabel =
+    t?.selectedCount ?? (lang === 'en' ? '{count} selected' : 'Выбрано: {count}');
+  const removeSelectedLabel =
+    t?.removeSelected ?? (lang === 'en' ? 'Remove from collection' : 'Удалить из коллекции');
+  const activateSelectedTemplate =
+    t?.activateSelected ?? (lang === 'en' ? 'Activate ({count})' : 'Активировать ({count})');
+  const selectHintTemplate =
+    t?.selectActivateHint ??
+    (lang === 'en' ? 'You can select up to {count} artists' : 'Можно выбрать до {count} артистов');
+  const inactiveArtistsLabel =
+    t?.inactiveArtistsCount ??
+    (lang === 'en' ? '{count} inactive artists' : 'Неактивных артистов: {count}');
 
-  const slotsRemaining = Math.max(0, slotsLimit - slotsUsed);
   const slotsAvailableText =
     slotsRemaining === 1
       ? slotAvailable.replace('{count}', '1')
       : slotsAvailablePlural.replace('{count}', String(slotsRemaining));
 
+  const selectedCount = selectedIds.size;
+  const selectedInactiveCount =
+    data?.artists.filter((a) => selectedIds.has(a.artistUserId) && !a.isActive).length ?? 0;
+  const activateCount = Math.min(selectedInactiveCount, slotsRemaining);
+  const activateDisabled =
+    bulkLoading || activateCount === 0 || selectedInactiveCount === 0 || !isPremium;
+  const removeSelectedDisabled =
+    bulkLoading ||
+    selectedCount === 0 ||
+    !data?.artists.some((a) => selectedIds.has(a.artistUserId) && canRemoveArtist(a, isPremium));
+
   return (
-    <section className="user-dashboard__archive-tab">
+    <section
+      className={`user-dashboard__archive-tab${
+        isSelectMode ? ' user-dashboard__archive-tab--select-mode' : ''
+      }`}
+    >
       <header className="user-dashboard__archive-header">
         <div className="user-dashboard__archive-header-text">
           <p className="user-dashboard__archive-subtitle">{subtitle}</p>
         </div>
 
-        <div className="user-dashboard__archive-slots-card" aria-live="polite">
-          <div
-            className="user-dashboard__archive-slots-ring"
-            style={{ '--archive-slots-progress': `${slotsProgress}%` } as CSSProperties}
-            aria-hidden
+        <div className="user-dashboard__archive-header-actions">
+          {(data?.artists.length ?? 0) > 0 ? (
+            <button
+              type="button"
+              className={`user-dashboard__archive-select-toggle${
+                isSelectMode ? ' user-dashboard__archive-select-toggle--active' : ''
+              }`}
+              onClick={toggleSelectMode}
+            >
+              {isSelectMode ? cancelSelectLabel : selectModeLabel}
+            </button>
+          ) : null}
+
+          <button
+            type="button"
+            className="user-dashboard__archive-slots-card"
+            onClick={() => openSupportModal()}
+            aria-label={`${slotsUsed} / ${slotsLimit}. ${managePlanLabel}`}
           >
-            <LockIcon
-              {...dashboardActionIconProps({
-                size: 18,
-                className: 'user-dashboard__archive-slots-ring-icon',
-              })}
-            />
-          </div>
-          <div className="user-dashboard__archive-slots-meta">
-            <div className="user-dashboard__archive-slots-top">
-              <span className="user-dashboard__archive-slots-count">
-                {slotsUsed} / {slotsLimit}
-              </span>
-              {planSlug ? <SubscriptionPlanBadge planSlug={planSlug} /> : null}
+            <div
+              className="user-dashboard__archive-slots-ring"
+              style={{ '--archive-slots-progress': `${slotsProgress}%` } as CSSProperties}
+              aria-hidden
+            >
+              <LockIcon
+                {...dashboardActionIconProps({
+                  size: 18,
+                  className: 'user-dashboard__archive-slots-ring-icon',
+                })}
+              />
             </div>
-            <span className="user-dashboard__archive-slots-label">{slotsUsedLabel}</span>
-            {isOverPlanLimit ? (
-              <span className="user-dashboard__archive-slots-overage">{collectionOverageHint}</span>
-            ) : null}
-          </div>
+            <div className="user-dashboard__archive-slots-meta">
+              <div className="user-dashboard__archive-slots-top">
+                <span className="user-dashboard__archive-slots-count" aria-live="polite">
+                  {slotsUsed} / {slotsLimit}
+                </span>
+                {planSlug ? <SubscriptionPlanBadge planSlug={planSlug} /> : null}
+              </div>
+              <span className="user-dashboard__archive-slots-label">{slotsUsedLabel}</span>
+              <span className="user-dashboard__archive-slots-manage">{managePlanLabel}</span>
+            </div>
+          </button>
         </div>
       </header>
 
@@ -290,164 +487,270 @@ export function MyArchiveContent({ active }: Props) {
           {t?.loading ?? (lang === 'en' ? 'Loading collection…' : 'Загрузка коллекции…')}
         </div>
       ) : (
-        <div className="user-dashboard__archive-list">
-          {(data?.artists ?? []).map((artist) => {
-            const isRemoving = removingId === artist.artistUserId;
-            const genre = artist.genreLabel[lang] ?? artist.genreLabel.en;
-            const artistHref = artist.slug ? `/?artist=${encodeURIComponent(artist.slug)}` : '/';
-            const lockDate = formatLockDate(artist.lockedUntil, lang);
-            const canRemove = isPremium && !artist.isLocked;
-            const removeDisabled = Boolean(removingId) || !canRemove;
-            const removeTooltip = !isPremium
-              ? removeSubscriptionTooltip
-              : artist.isLocked
-                ? removeLockedTooltip
-                : undefined;
-
-            return (
-              <article
-                key={artist.id}
-                className={`user-dashboard__archive-card${
-                  artist.isLocked ? ' user-dashboard__archive-card--locked' : ''
-                }`}
-              >
-                <div className="user-dashboard__archive-card-cover">
-                  {artist.cover ? (
-                    <img src={artist.cover} alt="" loading="lazy" decoding="async" />
-                  ) : (
-                    <span className="user-dashboard__archive-card-cover-fallback" aria-hidden>
-                      {artist.name.charAt(0).toUpperCase()}
-                    </span>
-                  )}
-                </div>
-
-                <div className="user-dashboard__archive-card-body">
-                  <h3 className="user-dashboard__archive-card-name">
-                    <Link to={artistHref}>{artist.name}</Link>
-                  </h3>
-                  <span className="user-dashboard__archive-card-genre">{genre}</span>
-
-                  {artist.isLocked && lockDate ? (
-                    <div className="user-dashboard__archive-card-lock">
-                      <p className="user-dashboard__archive-card-lock-title">
-                        <LockIcon
-                          {...dashboardActionIconProps({
-                            size: 14,
-                            className: 'user-dashboard__archive-card-lock-icon',
-                          })}
-                        />
-                        {lockedUntilTemplate.replace('{date}', lockDate)}
-                      </p>
-                      <p className="user-dashboard__archive-card-lock-hint">{lockedHint}</p>
-                    </div>
-                  ) : (
-                    <div className="user-dashboard__archive-card-lock user-dashboard__archive-card-lock--unlocked">
-                      <p className="user-dashboard__archive-card-lock-title">
-                        <UnlockIcon
-                          {...dashboardActionIconProps({
-                            size: 14,
-                            className: 'user-dashboard__archive-card-lock-icon',
-                          })}
-                        />
-                        {canRemoveLabel}
-                      </p>
-                      <p className="user-dashboard__archive-card-lock-hint">
-                        {!isPremium ? removeSubscriptionTooltip : canRemoveHint}
-                      </p>
-                    </div>
-                  )}
-
-                  <p className="user-dashboard__archive-card-since">
-                    <span aria-hidden>✓</span> {inArchiveSince}{' '}
-                    {formatArchiveDate(artist.addedAt, lang)}
-                  </p>
-                </div>
-
-                <button
-                  type="button"
-                  className={`user-dashboard__archive-remove${
-                    removeDisabled ? ' user-dashboard__archive-remove--disabled' : ''
-                  }`}
-                  disabled={removeDisabled}
-                  aria-busy={isRemoving}
-                  title={removeTooltip}
-                  aria-label={removeTooltip ? `${removeLabel}. ${removeTooltip}` : removeLabel}
-                  onClick={() => void handleRemove(artist)}
-                >
-                  <Trash2Icon
-                    {...dashboardActionIconProps({
-                      size: 14,
-                      className: 'user-dashboard__archive-remove-icon',
-                    })}
-                  />
-                  {isRemoving
-                    ? (t?.removing ?? (lang === 'en' ? 'Removing…' : 'Удаляем…'))
-                    : removeLabel}
-                </button>
-              </article>
-            );
-          })}
-
-          {showEmptySlotCard ? (
-            <article className="user-dashboard__archive-card user-dashboard__archive-card--empty">
-              <div className="user-dashboard__archive-card-body user-dashboard__archive-card-body--empty">
-                <p className="user-dashboard__archive-empty-title">+ {slotsAvailableText}</p>
-                <p className="user-dashboard__archive-empty-hint">{emptySlotHint}</p>
-              </div>
-              <Link className="user-dashboard__archive-discover" to="/">
-                {discoverLabel}
-              </Link>
-            </article>
-          ) : null}
-
-          {showRenewCard ? (
-            <article className="user-dashboard__archive-card user-dashboard__archive-card--action user-dashboard__archive-card--inactive">
-              <div className="user-dashboard__archive-card-body user-dashboard__archive-card-body--empty">
-                <p className="user-dashboard__archive-empty-title">
-                  <LockIcon
-                    {...dashboardActionIconProps({
-                      size: 16,
-                      className: 'user-dashboard__archive-inline-icon',
-                    })}
-                  />{' '}
-                  {supportInactiveTitle}
-                </p>
-                <p className="user-dashboard__archive-empty-hint">{supportInactiveDescription}</p>
-              </div>
-              <button
-                type="button"
-                className="user-dashboard__archive-plan-cta"
-                onClick={() => openSupportModal()}
-              >
-                {renewSupportLabel}
-              </button>
-            </article>
+        <>
+          {showPlanChangeBanner ? (
+            <div className="user-dashboard__archive-plan-change-banner" role="status">
+              <p>{planChangeBannerText.replace('{count}', String(slotsLimit))}</p>
+            </div>
           ) : null}
 
           {showUpgradeCard ? (
-            <article className="user-dashboard__archive-card user-dashboard__archive-card--action user-dashboard__archive-card--full">
-              <div className="user-dashboard__archive-card-body user-dashboard__archive-card-body--empty">
-                <p className="user-dashboard__archive-empty-title">
-                  <LockIcon
-                    {...dashboardActionIconProps({
-                      size: 16,
-                      className: 'user-dashboard__archive-inline-icon',
-                    })}
-                  />{' '}
-                  {archiveFullLabel}
+            <div className="user-dashboard__archive-full-banner" role="status">
+              <div className="user-dashboard__archive-full-banner-icon" aria-hidden>
+                <LockIcon
+                  {...dashboardActionIconProps({
+                    size: 18,
+                    className: 'user-dashboard__archive-full-banner-icon-svg',
+                  })}
+                />
+              </div>
+              <div className="user-dashboard__archive-full-banner-text">
+                <p className="user-dashboard__archive-full-banner-title">{archiveFullLabel}</p>
+                <p className="user-dashboard__archive-full-banner-line">
+                  {archiveFullSlotsUsedLine}
                 </p>
-                <p className="user-dashboard__archive-empty-hint">{archiveFullUpgradeHint}</p>
+                <p className="user-dashboard__archive-full-banner-line">
+                  {archiveFullUpgradeActionLine}
+                </p>
               </div>
               <button
                 type="button"
-                className="user-dashboard__archive-plan-cta"
+                className="user-dashboard__archive-full-banner-cta"
                 onClick={() => openSupportModal()}
               >
                 {upgradePlanLabel}
               </button>
-            </article>
+            </div>
           ) : null}
-        </div>
+
+          {inactiveCount > 0 ? (
+            <div className="user-dashboard__archive-list-meta">
+              <span>{inactiveArtistsLabel.replace('{count}', String(inactiveCount))}</span>
+            </div>
+          ) : null}
+
+          <div className="user-dashboard__archive-list">
+            {(data?.artists ?? []).map((artist) => {
+              const isRemoving = removingId === artist.artistUserId;
+              const genre = artist.genreLabel[lang] ?? artist.genreLabel.en;
+              const artistHref = artist.slug ? `/?artist=${encodeURIComponent(artist.slug)}` : '/';
+              const lockDate = formatLockDate(artist.lockedUntil, lang);
+              const artistIsLocked = artist.isActive && isArchiveArtistLocked(artist.lockedUntil);
+              const removable = canRemoveArtist(artist, isPremium);
+              const removeDisabled = Boolean(removingId) || bulkLoading || !removable;
+              const isSelected = selectedIds.has(artist.artistUserId);
+              const removeTooltip = !removable
+                ? artistIsLocked
+                  ? removeLockedTooltip
+                  : artist.isActive && !isPremium
+                    ? removeSubscriptionTooltip
+                    : undefined
+                : undefined;
+
+              return (
+                <article
+                  key={artist.id}
+                  className={`user-dashboard__archive-card${
+                    isSelectMode ? ' user-dashboard__archive-card--selectable' : ''
+                  }${isSelected ? ' user-dashboard__archive-card--selected' : ''}${
+                    !artist.isActive ? ' user-dashboard__archive-card--inactive-artist' : ''
+                  }${artistIsLocked ? ' user-dashboard__archive-card--locked' : ''}`}
+                  onClick={
+                    isSelectMode
+                      ? () => {
+                          toggleSelected(artist.artistUserId);
+                        }
+                      : undefined
+                  }
+                  onKeyDown={
+                    isSelectMode
+                      ? (event) => {
+                          if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault();
+                            toggleSelected(artist.artistUserId);
+                          }
+                        }
+                      : undefined
+                  }
+                  role={isSelectMode ? 'button' : undefined}
+                  tabIndex={isSelectMode ? 0 : undefined}
+                >
+                  {isSelectMode ? (
+                    <span className="user-dashboard__archive-select-checkbox" aria-hidden>
+                      {isSelected ? <CheckSquare size={20} /> : <Square size={20} />}
+                    </span>
+                  ) : null}
+
+                  <div className="user-dashboard__archive-card-cover">
+                    {artist.cover ? (
+                      <img src={artist.cover} alt="" loading="lazy" decoding="async" />
+                    ) : (
+                      <span className="user-dashboard__archive-card-cover-fallback" aria-hidden>
+                        {artist.name.charAt(0).toUpperCase()}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="user-dashboard__archive-card-body">
+                    <h3 className="user-dashboard__archive-card-name">
+                      {isSelectMode ? (
+                        artist.name
+                      ) : (
+                        <Link to={artistHref} onClick={(event) => event.stopPropagation()}>
+                          {artist.name}
+                        </Link>
+                      )}
+                    </h3>
+                    <span className="user-dashboard__archive-card-genre">{genre}</span>
+
+                    {!artist.isActive ? (
+                      <div className="user-dashboard__archive-card-lock user-dashboard__archive-card-lock--inactive">
+                        <p className="user-dashboard__archive-card-lock-title">
+                          <LockIcon
+                            {...dashboardActionIconProps({
+                              size: 14,
+                              className: 'user-dashboard__archive-card-lock-icon',
+                            })}
+                          />
+                          {supportInactiveLabel}
+                        </p>
+                        <p className="user-dashboard__archive-card-lock-hint">{inactiveSlotHint}</p>
+                      </div>
+                    ) : artistIsLocked && lockDate ? (
+                      <div className="user-dashboard__archive-card-lock">
+                        <p className="user-dashboard__archive-card-lock-title">
+                          <LockIcon
+                            {...dashboardActionIconProps({
+                              size: 14,
+                              className: 'user-dashboard__archive-card-lock-icon',
+                            })}
+                          />
+                          {lockedUntilTemplate.replace('{date}', lockDate)}
+                        </p>
+                        <p className="user-dashboard__archive-card-lock-hint">{lockedHint}</p>
+                      </div>
+                    ) : (
+                      <div className="user-dashboard__archive-card-lock user-dashboard__archive-card-lock--unlocked">
+                        <p className="user-dashboard__archive-card-lock-title">
+                          <UnlockIcon
+                            {...dashboardActionIconProps({
+                              size: 14,
+                              className: 'user-dashboard__archive-card-lock-icon',
+                            })}
+                          />
+                          {canRemoveLabel}
+                        </p>
+                        <p className="user-dashboard__archive-card-lock-hint">
+                          {!isPremium ? removeSubscriptionTooltip : canRemoveHint}
+                        </p>
+                      </div>
+                    )}
+
+                    <p className="user-dashboard__archive-card-since">
+                      <span aria-hidden>✓</span> {inArchiveSince}{' '}
+                      {formatArchiveDate(artist.addedAt, lang)}
+                    </p>
+                  </div>
+
+                  {!isSelectMode ? (
+                    <button
+                      type="button"
+                      className={`user-dashboard__archive-remove${
+                        removeDisabled ? ' user-dashboard__archive-remove--disabled' : ''
+                      }`}
+                      disabled={removeDisabled}
+                      aria-busy={isRemoving}
+                      title={removeTooltip}
+                      aria-label={removeTooltip ? `${removeLabel}. ${removeTooltip}` : removeLabel}
+                      onClick={() => void handleRemove(artist)}
+                    >
+                      <Trash2Icon
+                        {...dashboardActionIconProps({
+                          size: 14,
+                          className: 'user-dashboard__archive-remove-icon',
+                        })}
+                      />
+                      {isRemoving
+                        ? (t?.removing ?? (lang === 'en' ? 'Removing…' : 'Удаляем…'))
+                        : removeLabel}
+                    </button>
+                  ) : null}
+                </article>
+              );
+            })}
+
+            {showEmptySlotCard ? (
+              <article className="user-dashboard__archive-card user-dashboard__archive-card--empty">
+                <div className="user-dashboard__archive-card-body user-dashboard__archive-card-body--empty">
+                  <p className="user-dashboard__archive-empty-title">+ {slotsAvailableText}</p>
+                  <p className="user-dashboard__archive-empty-hint">{emptySlotHint}</p>
+                </div>
+                <Link className="user-dashboard__archive-discover" to="/">
+                  {discoverLabel}
+                </Link>
+              </article>
+            ) : null}
+
+            {showRenewCard ? (
+              <article className="user-dashboard__archive-card user-dashboard__archive-card--action user-dashboard__archive-card--inactive">
+                <div className="user-dashboard__archive-card-body user-dashboard__archive-card-body--empty">
+                  <p className="user-dashboard__archive-empty-title">
+                    <LockIcon
+                      {...dashboardActionIconProps({
+                        size: 16,
+                        className: 'user-dashboard__archive-inline-icon',
+                      })}
+                    />{' '}
+                    {supportInactiveLabel}
+                  </p>
+                  <p className="user-dashboard__archive-empty-hint">{supportInactiveDescription}</p>
+                </div>
+                <button
+                  type="button"
+                  className="user-dashboard__archive-plan-cta"
+                  onClick={() => openSupportModal()}
+                >
+                  {renewSupportLabel}
+                </button>
+              </article>
+            ) : null}
+          </div>
+
+          {isSelectMode ? (
+            <footer className="user-dashboard__archive-action-bar">
+              <div className="user-dashboard__archive-action-bar-meta">
+                <p className="user-dashboard__archive-action-bar-count">
+                  {selectedCountLabel.replace('{count}', String(selectedCount))}
+                </p>
+                {slotsRemaining > 0 ? (
+                  <p className="user-dashboard__archive-action-bar-hint">
+                    {selectHintTemplate.replace('{count}', String(slotsRemaining))}
+                  </p>
+                ) : null}
+              </div>
+              <div className="user-dashboard__archive-action-bar-buttons">
+                <button
+                  type="button"
+                  className="user-dashboard__archive-action-bar-remove"
+                  disabled={removeSelectedDisabled}
+                  onClick={() => void handleBulkRemove()}
+                >
+                  <Trash2Icon size={14} aria-hidden />
+                  {removeSelectedLabel}
+                </button>
+                <button
+                  type="button"
+                  className="user-dashboard__archive-action-bar-activate"
+                  disabled={activateDisabled}
+                  onClick={() => void handleActivateSelected()}
+                >
+                  <LockIcon size={14} aria-hidden />
+                  {activateSelectedTemplate.replace('{count}', String(activateCount))}
+                </button>
+              </div>
+            </footer>
+          ) : null}
+        </>
       )}
     </section>
   );

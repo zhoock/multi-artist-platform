@@ -44,6 +44,27 @@ export type DashboardModalBackground = {
   hash: string;
 };
 
+export const PAYMENT_RETURN_PATHS = [
+  '/pay/success',
+  '/pay/fail',
+  '/pay/subscription-success',
+] as const;
+
+export function isPaymentReturnPathname(pathname: string): boolean {
+  return (PAYMENT_RETURN_PATHS as readonly string[]).includes(pathname);
+}
+
+export function isValidDashboardModalBackground(
+  bg: Pick<DashboardModalBackground, 'pathname'> | Location | null | undefined
+): boolean {
+  if (!bg || typeof bg.pathname !== 'string' || !bg.pathname.startsWith('/')) {
+    return false;
+  }
+  if (bg.pathname.startsWith('/dashboard')) return false;
+  if (isPaymentReturnPathname(bg.pathname)) return false;
+  return true;
+}
+
 /** Минимальный Location для `Routes location={…}` (модальный дашборд поверх другой страницы). */
 export function locationFromDashboardModalStored(
   bg: DashboardModalBackground,
@@ -59,6 +80,7 @@ export function locationFromDashboardModalStored(
 }
 
 export function captureDashboardModalBackground(bg: DashboardModalBackground): void {
+  if (!isValidDashboardModalBackground(bg)) return;
   try {
     sessionStorage.setItem(STORAGE_KEY, JSON.stringify(bg));
   } catch {
@@ -79,7 +101,12 @@ export function readDashboardModalBackground(): DashboardModalBackground | null 
     const raw = sessionStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
     const p = JSON.parse(raw) as Partial<DashboardModalBackground>;
-    if (typeof p.pathname !== 'string' || !p.pathname.startsWith('/')) return null;
+    if (
+      typeof p.pathname !== 'string' ||
+      !isValidDashboardModalBackground(p as DashboardModalBackground)
+    ) {
+      return null;
+    }
     return {
       pathname: p.pathname,
       search: typeof p.search === 'string' ? p.search : '',
@@ -92,9 +119,13 @@ export function readDashboardModalBackground(): DashboardModalBackground | null 
 
 /** Перед клиентским переходом на /dashboard-new с backgroundLocation — чтобы loader увидел фон до первого commit Layout. */
 export function primeDashboardModalSessionFromLocation(current: Location): void {
+  if (isPaymentReturnPathname(current.pathname)) {
+    return;
+  }
+
   const nested = (current.state as { backgroundLocation?: Location } | null | undefined)
     ?.backgroundLocation;
-  if (nested && !nested.pathname.startsWith('/dashboard')) {
+  if (nested && isValidDashboardModalBackground(nested)) {
     captureDashboardModalBackground({
       pathname: nested.pathname,
       search: nested.search,
@@ -102,13 +133,36 @@ export function primeDashboardModalSessionFromLocation(current: Location): void 
     });
     return;
   }
-  if (!current.pathname.startsWith('/dashboard')) {
+  if (!current.pathname.startsWith('/dashboard') && isValidDashboardModalBackground(current)) {
     captureDashboardModalBackground({
       pathname: current.pathname,
       search: current.search,
-      hash: current.hash,
+      hash: current.hash ?? '',
     });
   }
+}
+
+export function resolveDashboardModalCloseTarget(options: {
+  backgroundLocation?: Location | null;
+}): Location | null {
+  if (options.backgroundLocation && isValidDashboardModalBackground(options.backgroundLocation)) {
+    return options.backgroundLocation;
+  }
+
+  const stored = readDashboardModalBackground();
+  if (stored) {
+    return locationFromDashboardModalStored(stored);
+  }
+
+  return null;
+}
+
+export function resolveDashboardModalOpenStateFromStoredBackground(): {
+  state?: { backgroundLocation: Location };
+} {
+  const stored = readDashboardModalBackground();
+  if (!stored) return {};
+  return { state: { backgroundLocation: locationFromDashboardModalStored(stored) } };
 }
 
 export function isDashboardModalOverNonDashboardBackground(): boolean {
@@ -128,7 +182,7 @@ export function resolveDashboardModalBackgroundForLoader(
     return { pathname: requestPathname, search: requestSearch };
   }
   const bg = readDashboardModalBackground();
-  if (bg && !bg.pathname.startsWith('/dashboard')) {
+  if (bg && !bg.pathname.startsWith('/dashboard') && isValidDashboardModalBackground(bg)) {
     return { pathname: bg.pathname, search: bg.search };
   }
   return { pathname: requestPathname, search: requestSearch };

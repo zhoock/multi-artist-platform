@@ -784,6 +784,9 @@ export interface IInterface {
       discoverArtists: string;
       archiveFull: string;
       archiveFullHint: string;
+      archiveFullSlotsUsedSingular: string;
+      archiveFullSlotsUsedPlural: string;
+      archiveFullUpgradeAction: string;
       archiveFullUpgradeHint: string;
       upgradePlanButton: string;
       supportInactiveTitle: string;
@@ -793,6 +796,7 @@ export interface IInterface {
       lockedHint: string;
       canRemoveLabel: string;
       canRemoveHint: string;
+      inactiveSlotHint: string;
       removeLockedTooltip: string;
       removeSubscriptionTooltip: string;
       loading: string;
@@ -801,6 +805,19 @@ export interface IInterface {
       artistLockedError: string;
       removeRequiresSubscriptionError: string;
       collectionOverageHint: string;
+      activeSlotsLabel: string;
+      managePlanLink: string;
+      supportActiveLabel: string;
+      planChangeBanner: string;
+      selectMode: string;
+      cancelSelect: string;
+      selectedCount: string;
+      removeSelected: string;
+      activateSelected: string;
+      selectActivateHint: string;
+      inactiveArtistsCount: string;
+      activateLimitError: string;
+      activateError: string;
     };
     myPurchases?: {
       title: string;

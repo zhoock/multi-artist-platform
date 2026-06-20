@@ -1,5 +1,5 @@
 /**
- * Unit tests for per-artist archive lock helpers and add/remove enforcement.
+ * Unit tests for per-artist archive lock and activation helpers.
  */
 
 import { describe, expect, test, jest, beforeEach } from '@jest/globals';
@@ -18,12 +18,15 @@ jest.mock('../subscriptions', () => ({
 import { query } from '../db';
 import { getViewerSubscription, isSubscriptionActive } from '../subscriptions';
 import {
+  activateArtistsInArchive,
   addArtistToArchive,
   ArchiveArtistLockedError,
   ArchiveSubscriptionRequiredError,
   canRemoveArchiveArtist,
+  deactivateAllArchiveArtists,
   isArchiveArtistLocked,
   removeArtistFromArchive,
+  userHasActiveArtistInArchive,
 } from '../archive';
 
 const mockedQuery = query as jest.MockedFunction<typeof query>;
@@ -52,13 +55,13 @@ function fakeQueryResult(
   };
 }
 
-function activeSubscription() {
+function activeSubscription(slotsLimit = 1) {
   return {
     id: 'sub-1',
     userId: USER_ID,
     status: 'active' as const,
-    plan: 'archive',
-    slotsLimit: 3,
+    plan: 'explorer',
+    slotsLimit,
     provider: 'yookassa',
     providerSubscriptionId: null,
     startedAt: new Date('2026-05-20T12:00:00.000Z'),
@@ -68,13 +71,14 @@ function activeSubscription() {
   };
 }
 
-function archiveRow(artistUserId: string, lockedUntil: Date | null = PERIOD_END) {
+function archiveRow(isActive: boolean, lockedUntil: Date | null = PERIOD_END) {
   return {
-    id: `row-${artistUserId}`,
+    id: 'row-1',
     user_id: USER_ID,
-    artist_user_id: artistUserId,
+    artist_user_id: ARTIST_A,
     created_at: NOW,
     updated_at: NOW,
+    is_active: isActive,
     locked_until: lockedUntil,
   };
 }
@@ -100,18 +104,47 @@ describe('isArchiveArtistLocked', () => {
 });
 
 describe('canRemoveArchiveArtist', () => {
-  test('requires active subscription', () => {
-    expect(canRemoveArchiveArtist(null, false, NOW)).toBe(false);
-    expect(canRemoveArchiveArtist(PERIOD_END, false, NOW)).toBe(false);
+  test('allows removing inactive artists without subscription', () => {
+    expect(canRemoveArchiveArtist(PERIOD_END, false, false, NOW)).toBe(true);
+  });
+
+  test('requires subscription to remove active artists', () => {
+    expect(canRemoveArchiveArtist(null, false, true, NOW)).toBe(false);
+    expect(canRemoveArchiveArtist(PERIOD_END, false, true, NOW)).toBe(false);
   });
 
   test('allows remove when subscription active and lock expired', () => {
-    expect(canRemoveArchiveArtist(new Date('2026-01-01T00:00:00.000Z'), true, NOW)).toBe(true);
-    expect(canRemoveArchiveArtist(null, true, NOW)).toBe(true);
+    expect(canRemoveArchiveArtist(new Date('2026-01-01T00:00:00.000Z'), true, true, NOW)).toBe(
+      true
+    );
+    expect(canRemoveArchiveArtist(null, true, true, NOW)).toBe(true);
   });
 
   test('blocks remove when artist is locked', () => {
-    expect(canRemoveArchiveArtist(PERIOD_END, true, NOW)).toBe(false);
+    expect(canRemoveArchiveArtist(PERIOD_END, true, true, NOW)).toBe(false);
+  });
+});
+
+describe('deactivateAllArchiveArtists', () => {
+  test('deactivates active rows', async () => {
+    mockedQuery.mockResolvedValue(fakeQueryResult([], 2));
+    await expect(deactivateAllArchiveArtists(USER_ID)).resolves.toBe(2);
+  });
+});
+
+describe('activateArtistsInArchive', () => {
+  test('activates inactive artists and sets locked_until', async () => {
+    mockedGetSubscription.mockResolvedValue(activeSubscription(1));
+    mockedIsActive.mockReturnValue(true);
+    mockedQuery
+      .mockResolvedValueOnce(fakeQueryResult([{ count: '0' }]))
+      .mockResolvedValueOnce(fakeQueryResult([], 1));
+
+    await expect(activateArtistsInArchive(USER_ID, [ARTIST_A])).resolves.toBe(1);
+
+    const updateCall = mockedQuery.mock.calls[1];
+    expect(String(updateCall?.[0])).toContain('locked_until');
+    expect(updateCall?.[1]?.[2]).toEqual(PERIOD_END);
   });
 });
 
@@ -119,18 +152,18 @@ describe('addArtistToArchive', () => {
   test('sets locked_until to subscription.expires_at on insert', async () => {
     mockedQuery.mockImplementation(async (text: string) => {
       const sql = text.replace(/\s+/g, ' ').trim();
-      if (sql.startsWith('SELECT 1 AS one')) {
+      if (sql.includes('FROM user_archive') && sql.includes('LIMIT 1')) {
         return fakeQueryResult([]);
       }
       if (sql.startsWith('SELECT COUNT(*)')) {
-        return fakeQueryResult([{ count: '1' }]);
+        return fakeQueryResult([{ count: '0' }]);
       }
       if (sql.startsWith('INSERT INTO user_archive')) {
-        return fakeQueryResult([archiveRow(ARTIST_A, PERIOD_END)]);
+        return fakeQueryResult([archiveRow(true, PERIOD_END)]);
       }
       return fakeQueryResult([]);
     });
-    mockedGetSubscription.mockResolvedValue(activeSubscription());
+    mockedGetSubscription.mockResolvedValue(activeSubscription(1));
     mockedIsActive.mockReturnValue(true);
 
     const entry = await addArtistToArchive(USER_ID, ARTIST_A);
@@ -142,14 +175,33 @@ describe('addArtistToArchive', () => {
     expect(insertCall?.[1]).toEqual([USER_ID, ARTIST_A, PERIOD_END]);
   });
 
-  test('does not update locked_until for idempotent add', async () => {
-    const existing = archiveRow(ARTIST_A, PERIOD_END);
+  test('reactivates inactive row with new locked_until', async () => {
     mockedQuery.mockImplementation(async (text: string) => {
       const sql = text.replace(/\s+/g, ' ').trim();
-      if (sql.startsWith('SELECT 1 AS one')) {
-        return fakeQueryResult([{ one: 1 }]);
+      if (sql.includes('FROM user_archive') && sql.includes('LIMIT 1')) {
+        return fakeQueryResult([archiveRow(false, null)]);
       }
-      if (sql.startsWith('SELECT id, user_id, artist_user_id')) {
+      if (sql.startsWith('SELECT COUNT(*)')) {
+        return fakeQueryResult([{ count: '0' }]);
+      }
+      if (sql.startsWith('UPDATE user_archive SET is_active = true')) {
+        return fakeQueryResult([archiveRow(true, PERIOD_END)]);
+      }
+      return fakeQueryResult([]);
+    });
+    mockedGetSubscription.mockResolvedValue(activeSubscription(1));
+    mockedIsActive.mockReturnValue(true);
+
+    const entry = await addArtistToArchive(USER_ID, ARTIST_A);
+    expect(entry.isActive).toBe(true);
+    expect(entry.lockedUntil).toEqual(PERIOD_END);
+  });
+
+  test('does not update locked_until for idempotent add of active artist', async () => {
+    const existing = archiveRow(true, PERIOD_END);
+    mockedQuery.mockImplementation(async (text: string) => {
+      const sql = text.replace(/\s+/g, ' ').trim();
+      if (sql.includes('FROM user_archive') && sql.includes('LIMIT 1')) {
         return fakeQueryResult([existing]);
       }
       return fakeQueryResult([]);
@@ -165,19 +217,28 @@ describe('addArtistToArchive', () => {
 });
 
 describe('removeArtistFromArchive', () => {
-  test('throws when subscription is inactive', async () => {
+  test('allows removing inactive artist without subscription', async () => {
+    mockedQuery
+      .mockResolvedValueOnce(fakeQueryResult([archiveRow(false, null)]))
+      .mockResolvedValueOnce(fakeQueryResult([], 1));
+
+    await expect(removeArtistFromArchive(USER_ID, ARTIST_A)).resolves.toBe(true);
+  });
+
+  test('requires subscription to remove active artist', async () => {
     mockedGetSubscription.mockResolvedValue(activeSubscription());
     mockedIsActive.mockReturnValue(false);
+    mockedQuery.mockResolvedValueOnce(fakeQueryResult([archiveRow(true, PERIOD_END)]));
 
     await expect(removeArtistFromArchive(USER_ID, ARTIST_A)).rejects.toBeInstanceOf(
       ArchiveSubscriptionRequiredError
     );
   });
 
-  test('throws when artist is locked', async () => {
+  test('throws when active artist is locked', async () => {
     mockedGetSubscription.mockResolvedValue(activeSubscription());
     mockedIsActive.mockReturnValue(true);
-    mockedQuery.mockResolvedValue(fakeQueryResult([archiveRow(ARTIST_A, PERIOD_END)]));
+    mockedQuery.mockResolvedValueOnce(fakeQueryResult([archiveRow(true, PERIOD_END)]));
 
     await expect(removeArtistFromArchive(USER_ID, ARTIST_A)).rejects.toBeInstanceOf(
       ArchiveArtistLockedError
@@ -189,7 +250,7 @@ describe('removeArtistFromArchive', () => {
     mockedIsActive.mockReturnValue(true);
     mockedQuery
       .mockResolvedValueOnce(
-        fakeQueryResult([archiveRow(ARTIST_A, new Date('2026-01-01T00:00:00.000Z'))])
+        fakeQueryResult([archiveRow(true, new Date('2026-01-01T00:00:00.000Z'))])
       )
       .mockResolvedValueOnce(fakeQueryResult([], 1));
 
@@ -197,10 +258,16 @@ describe('removeArtistFromArchive', () => {
   });
 
   test('returns false when artist not in archive', async () => {
-    mockedGetSubscription.mockResolvedValue(activeSubscription());
-    mockedIsActive.mockReturnValue(true);
     mockedQuery.mockResolvedValueOnce(fakeQueryResult([]));
 
     await expect(removeArtistFromArchive(USER_ID, ARTIST_B)).resolves.toBe(false);
+  });
+});
+
+describe('userHasActiveArtistInArchive', () => {
+  test('checks is_active flag', async () => {
+    mockedQuery.mockResolvedValue(fakeQueryResult([{ one: 1 }]));
+    await expect(userHasActiveArtistInArchive(USER_ID, ARTIST_A)).resolves.toBe(true);
+    expect(String(mockedQuery.mock.calls[0]?.[0])).toContain('is_active = true');
   });
 });

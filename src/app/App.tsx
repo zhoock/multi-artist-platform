@@ -6,6 +6,8 @@ import {
   locationFromDashboardModalStored,
   syncDashboardAlbumsPublicCatalogOverlay,
   isDashboardAlbumsPublicCatalogOverlay,
+  isPaymentReturnPathname,
+  isValidDashboardModalBackground,
 } from '@shared/lib/dashboardModalBackground';
 import { DashboardModalShellContext } from '@shared/lib/dashboardModalShellContext';
 import {
@@ -331,15 +333,19 @@ function Layout() {
 
   const shouldHideChrome = !isKnownRoute;
 
-  const backgroundFromState = (
+  const backgroundFromStateRaw = (
     location.state as { backgroundLocation?: Location } | null | undefined
   )?.backgroundLocation;
+  const backgroundFromState =
+    backgroundFromStateRaw && isValidDashboardModalBackground(backgroundFromStateRaw)
+      ? backgroundFromStateRaw
+      : undefined;
 
   /** Последняя страница не-дашборд: fallback, если при открытии модалки потеряли `location.state`. */
   const lastNonDashboardLocationRef = useRef<Location | null>(null);
   useLayoutEffect(() => {
     primeDashboardModalSessionFromLocation(location);
-    if (!isDashboardAppPathname(location.pathname)) {
+    if (!isDashboardAppPathname(location.pathname) && !isPaymentReturnPathname(location.pathname)) {
       lastNonDashboardLocationRef.current = location;
     }
   }, [location]);
@@ -348,14 +354,14 @@ function Layout() {
   const backgroundFromSession =
     isDashboardAppPathname(location.pathname) &&
     storedBg &&
-    !storedBg.pathname.startsWith('/dashboard')
+    isValidDashboardModalBackground(storedBg)
       ? locationFromDashboardModalStored(storedBg)
       : null;
 
   const backgroundFromLastSurface =
     isDashboardAppPathname(location.pathname) &&
     lastNonDashboardLocationRef.current &&
-    !isDashboardAppPathname(lastNonDashboardLocationRef.current.pathname)
+    isValidDashboardModalBackground(lastNonDashboardLocationRef.current)
       ? lastNonDashboardLocationRef.current
       : null;
 

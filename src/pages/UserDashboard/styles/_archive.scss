@@ -5,6 +5,10 @@
 dialog {
   .user-dashboard {
     &__archive-tab {
+      --archive-block-padding-y: var(--ms-0);
+      --archive-block-padding-x: var(--ms-1);
+      --archive-block-gap: 1.25rem;
+
       display: flex;
       flex-direction: column;
       gap: var(--ms-1);
@@ -28,6 +32,50 @@ dialog {
       }
     }
 
+    &__archive-header-actions {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: flex-end;
+      gap: var(--ms-01);
+    }
+
+    &__archive-select-toggle {
+      @include dashboard-btn-secondary(
+        $margin: 0,
+        $padding: var(--ms-01) var(--ms-0),
+        $font-size: 0.875rem
+      );
+
+      &--active {
+        color: var(--dark-greenish-yellow);
+        border-color: rgb(var(--dark-greenish-yellow-rgb) / 45%);
+      }
+    }
+
+    &__archive-plan-change-banner {
+      padding: var(--ms-01) var(--ms-0);
+      color: var(--dashboard-text-secondary);
+      font-size: 0.8125rem;
+      line-height: 1.45;
+      background: rgb(var(--dark-greenish-yellow-rgb) / 6%);
+      border: 1px solid rgb(var(--dark-greenish-yellow-rgb) / 18%);
+      border-radius: var(--ms-01);
+
+      p {
+        margin: 0;
+      }
+    }
+
+    &__archive-list-meta {
+      color: var(--dashboard-text-secondary);
+      font-size: 0.8125rem;
+    }
+
+    &__archive-tab--select-mode {
+      padding-bottom: calc(var(--ms-1) + 4.5rem);
+    }
+
     &__archive-header-text {
       flex: 1;
       min-width: 0;
@@ -42,13 +90,31 @@ dialog {
 
     &__archive-slots-card {
       display: flex;
-      align-items: center;
-      gap: var(--ms-0);
-      padding: var(--ms-01) var(--ms-0);
+      padding: var(--ms-0) var(--ms-1);
+      color: inherit;
+      font: inherit;
+      text-align: left;
       background: var(--dashboard-input-bg);
       border: 1px solid var(--dashboard-input-border);
       border-radius: var(--ms-01);
+      transition:
+        border-color 0.15s ease,
+        background-color 0.15s ease;
+      align-items: center;
+      gap: 1.25rem;
       flex-shrink: 0;
+      appearance: none;
+      cursor: pointer;
+
+      &:hover {
+        background: rgb(var(--dark-greenish-yellow-rgb) / 6%);
+        border-color: rgb(var(--dark-greenish-yellow-rgb) / 45%);
+      }
+
+      &:focus-visible {
+        outline: 2px solid rgb(var(--dark-greenish-yellow-rgb) / 55%);
+        outline-offset: 2px;
+      }
     }
 
     &__archive-slots-ring {
@@ -84,7 +150,7 @@ dialog {
     &__archive-slots-meta {
       display: flex;
       flex-direction: column;
-      gap: 0.1rem;
+      gap: 0.25rem;
     }
 
     &__archive-slots-top {
@@ -113,6 +179,12 @@ dialog {
       line-height: 1.2;
     }
 
+    &__archive-slots-manage {
+      color: var(--dark-greenish-yellow);
+      font-size: 0.75rem;
+      line-height: 1.2;
+    }
+
     &__archive-loading,
     &__archive-error {
       padding: var(--ms-01);
@@ -130,6 +202,76 @@ dialog {
       border: 1px solid rgb(var(--soft-red-rgb) / 30%);
     }
 
+    &__archive-full-banner {
+      display: flex;
+      align-items: center;
+      gap: var(--archive-block-gap);
+      padding: var(--archive-block-padding-y) var(--archive-block-padding-x);
+      background: var(--dashboard-input-bg);
+      border: 1px dashed rgb(var(--dark-greenish-yellow-rgb) / 45%);
+      border-radius: var(--ms-01);
+
+      @include breakpoint(old-phones) {
+        flex-direction: column;
+        align-items: stretch;
+        gap: var(--ms-0);
+        padding: var(--archive-block-padding-y);
+      }
+    }
+
+    &__archive-full-banner-icon {
+      display: grid;
+      flex-shrink: 0;
+      width: 2.75rem;
+      height: 2.75rem;
+      color: var(--dark-greenish-yellow);
+      border: 1px solid rgb(var(--dark-greenish-yellow-rgb) / 45%);
+      border-radius: 50%;
+      place-items: center;
+    }
+
+    &__archive-full-banner-icon-svg {
+      display: inline-flex;
+    }
+
+    &__archive-full-banner-text {
+      flex: 1;
+      min-width: 0;
+    }
+
+    &__archive-full-banner-title {
+      margin: 0 0 0.5rem;
+      color: var(--dashboard-text-primary);
+      font-size: var(--ms-0);
+      line-height: 1.25;
+    }
+
+    &__archive-full-banner-line {
+      margin: 0;
+      color: var(--dashboard-text-secondary);
+      font-size: 0.8125rem;
+      line-height: 1.45;
+
+      & + & {
+        margin-top: 0.25rem;
+      }
+    }
+
+    &__archive-full-banner-cta {
+      flex-shrink: 0;
+      width: auto;
+
+      @include dashboard-btn-primary-solid(
+        $margin: 0,
+        $padding: var(--ms-01) var(--ms-0),
+        $font-size: 0.875rem
+      );
+
+      @include breakpoint(old-phones) {
+        width: 100%;
+      }
+    }
+
     &__archive-list {
       display: flex;
       flex-direction: column;
@@ -140,19 +282,41 @@ dialog {
       display: grid;
       grid-template-columns: auto 1fr auto;
       align-items: center;
-      gap: var(--ms-0);
-      padding: var(--ms-01);
+      gap: var(--archive-block-gap);
+      padding: var(--archive-block-padding-y) var(--archive-block-padding-x);
       background: var(--dashboard-input-bg);
       border: 1px solid var(--dashboard-input-border);
       border-radius: var(--ms-01);
 
+      &--selectable {
+        grid-template-columns: auto auto 1fr;
+        cursor: pointer;
+      }
+
+      &--selected {
+        border-color: rgb(var(--dark-greenish-yellow-rgb) / 45%);
+        background: rgb(var(--dark-greenish-yellow-rgb) / 4%);
+      }
+
       @include breakpoint(old-phones) {
         grid-template-columns: 1fr;
+        padding: var(--archive-block-padding-y);
+
+        &--selectable {
+          grid-template-columns: auto 1fr;
+        }
       }
+    }
+
+    &__archive-select-checkbox {
+      display: inline-flex;
+      flex-shrink: 0;
+      color: var(--dark-greenish-yellow);
     }
 
     &__archive-card--empty {
       grid-template-columns: 1fr auto;
+      align-items: center;
       border-style: dashed;
       border-color: rgb(var(--dark-greenish-yellow-rgb) / 35%);
       background: transparent;
@@ -160,13 +324,6 @@ dialog {
       @include breakpoint(old-phones) {
         grid-template-columns: 1fr;
       }
-    }
-
-    &__archive-card--full {
-      grid-template-columns: 1fr;
-      border-style: dashed;
-      border-color: rgb(var(--dark-greenish-yellow-rgb) / 35%);
-      background: transparent;
     }
 
     &__archive-card--action {
@@ -231,7 +388,7 @@ dialog {
     }
 
     &__archive-card-body--empty {
-      padding-block: var(--ms-02);
+      padding-block: 0;
     }
 
     &__archive-card-name {
@@ -297,6 +454,67 @@ dialog {
       .user-dashboard__archive-card-lock-title {
         color: var(--soft-green);
       }
+    }
+
+    &__archive-card-lock--inactive {
+      .user-dashboard__archive-card-lock-title {
+        color: var(--soft-red);
+      }
+    }
+
+    &__archive-action-bar {
+      position: sticky;
+      bottom: 0;
+      z-index: 2;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--ms-01);
+      margin-top: var(--ms-0);
+      padding: var(--ms-01) var(--archive-block-padding-x);
+      background: var(--dashboard-input-bg);
+      border: 1px solid var(--dashboard-input-border);
+      border-radius: var(--ms-01);
+    }
+
+    &__archive-action-bar-meta {
+      min-width: 0;
+    }
+
+    &__archive-action-bar-count {
+      margin: 0;
+      color: var(--dashboard-text-primary);
+      font-size: var(--ms-0);
+    }
+
+    &__archive-action-bar-hint {
+      margin: 0.15rem 0 0;
+      color: var(--dashboard-text-secondary);
+      font-size: 0.75rem;
+    }
+
+    &__archive-action-bar-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--ms-01);
+      margin-left: auto;
+    }
+
+    &__archive-action-bar-remove {
+      @include dashboard-btn-destructive(
+        $margin: 0,
+        $padding: var(--ms-01) var(--ms-0),
+        $font-size: 0.875rem
+      );
+    }
+
+    &__archive-action-bar-activate {
+      @include dashboard-btn-primary-solid(
+        $margin: 0,
+        $padding: var(--ms-01) var(--ms-0),
+        $font-size: 0.875rem
+      );
     }
 
     &__archive-remove {

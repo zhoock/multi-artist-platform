@@ -254,7 +254,7 @@ describe('fulfillSubscriptionPayment', () => {
     expect(updateCall?.[1]?.[6]).toEqual(new Date('2026-06-20T13:00:00.000Z'));
   });
 
-  test('downgrade on active subscription is allowed without extra checks', async () => {
+  test('downgrade deactivates all archive artists on plan change', async () => {
     mockedQuery
       .mockResolvedValueOnce(
         fakeQueryResult([subscriptionRow({ plan: 'archivist', slots_limit: 3 })])
@@ -267,7 +267,8 @@ describe('fulfillSubscriptionPayment', () => {
             expires_at: new Date('2026-06-20T13:00:00.000Z'),
           }),
         ])
-      );
+      )
+      .mockResolvedValueOnce(fakeQueryResult([], 3));
 
     const result = await fulfillSubscriptionPayment({
       userId: USER_ID,
@@ -277,6 +278,10 @@ describe('fulfillSubscriptionPayment', () => {
 
     expect(result.plan).toBe('explorer');
     expect(result.slotsLimit).toBe(1);
+
+    const deactivateCall = mockedQuery.mock.calls[2];
+    expect(String(deactivateCall?.[0])).toContain('is_active = false');
+    expect(deactivateCall?.[1]?.[0]).toBe(USER_ID);
   });
 
   test('renew on expired subscription resets started_at', async () => {

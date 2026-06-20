@@ -29,7 +29,8 @@ export function resolveCollectionButtonState(options: {
   if (!hasToken || !status) return 'not_premium';
 
   if (status.artistInArchive) {
-    return status.isPremium ? 'in_collection_active' : 'in_collection_inactive';
+    const isActive = status.artistActiveInArchive ?? status.isPremium;
+    return status.isPremium && isActive ? 'in_collection_active' : 'in_collection_inactive';
   }
 
   if (!status.isPremium) return 'not_premium';

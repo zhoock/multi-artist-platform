@@ -9,6 +9,7 @@ import { fetchWithAuthSession } from '@shared/lib/authFetch';
 export interface ArchiveStatus {
   isPremium: boolean;
   artistInArchive: boolean;
+  artistActiveInArchive?: boolean;
   slotsUsed: number;
   slotsLimit: number;
 }
@@ -22,6 +23,7 @@ export interface MyArchiveArtist {
   genreLabel: { en: string; ru: string };
   cover: string | null;
   addedAt: string;
+  isActive: boolean;
   lockedUntil: string | null;
   isLocked: boolean;
 }
@@ -30,12 +32,14 @@ export interface MyArchiveData {
   isPremium: boolean;
   slotsUsed: number;
   slotsLimit: number;
+  inactiveCount?: number;
   artists: MyArchiveArtist[];
 }
 
 export type ArchiveApiErrorCode =
   | 'ARCHIVE_SLOTS_LIMIT'
   | 'ARCHIVE_SUBSCRIPTION_REQUIRED'
+  | 'ARCHIVE_ACTIVATION_LIMIT'
   | 'ARCHIVE_ARTIST_LOCKED'
   | 'ARCHIVE_SELF_ADD'
   | 'UNAUTHORIZED'
@@ -63,6 +67,7 @@ function parseErrorCode(raw: string | undefined): ArchiveApiErrorCode {
   if (raw === 'ARCHIVE_SLOTS_LIMIT') return 'ARCHIVE_SLOTS_LIMIT';
   if (raw === 'ARCHIVE_SUBSCRIPTION_REQUIRED') return 'ARCHIVE_SUBSCRIPTION_REQUIRED';
   if (raw === 'ARCHIVE_ARTIST_LOCKED') return 'ARCHIVE_ARTIST_LOCKED';
+  if (raw === 'ARCHIVE_ACTIVATION_LIMIT') return 'ARCHIVE_ACTIVATION_LIMIT';
   if (raw === 'ARCHIVE_SELF_ADD') return 'ARCHIVE_SELF_ADD';
   if (raw === 'UNAUTHORIZED' || raw === 'SESSION_EXPIRED' || raw === 'INVALID_SESSION') {
     return 'UNAUTHORIZED';
@@ -174,4 +179,37 @@ export async function removeArtistFromArchiveApi(artistUserId: string): Promise<
   }
 
   return { archive: payload.data.archive };
+}
+
+export async function activateArchiveArtistsApi(artistUserIds: string[]): Promise<{
+  archive: MyArchiveData;
+  activatedCount: number;
+}> {
+  const authHeader = getAuthHeader();
+  if (!('Authorization' in authHeader)) {
+    throw new ArchiveApiError('Authentication required', 'UNAUTHORIZED', 401);
+  }
+
+  const response = await fetchWithAuthSession('/api/activate-archive-artists', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeader },
+    body: JSON.stringify({ artistUserIds }),
+  });
+
+  if (!response.ok) {
+    throw await readApiError(response);
+  }
+
+  const payload = (await response.json()) as ApiEnvelope<{
+    archive: MyArchiveData;
+    activatedCount: number;
+  }>;
+  if (!payload.success || !payload.data?.archive) {
+    throw new ArchiveApiError(payload.error || 'Failed to activate artists', 'UNKNOWN');
+  }
+
+  return {
+    archive: payload.data.archive,
+    activatedCount: payload.data.activatedCount ?? 0,
+  };
 }
