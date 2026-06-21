@@ -214,7 +214,7 @@ export function UniverseFloatingSearch({
               ref={inputRef}
               id={listId}
               className="universe-search__input"
-              type="search"
+              type="text"
               value={query}
               placeholder="Search artists..."
               autoComplete="off"
