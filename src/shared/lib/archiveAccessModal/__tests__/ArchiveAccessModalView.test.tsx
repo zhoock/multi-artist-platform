@@ -106,7 +106,11 @@ describe('ArchiveAccessModalView current plan', () => {
     const explorerCard = getPlanCard('Explorer');
     expect(explorerCard.classList.contains('archive-access-modal__plan-card--current')).toBe(true);
     expect(within(explorerCard).getByRole('button', { name: 'Current Plan' })).toBeDisabled();
-    expect(within(explorerCard).queryByText('Current Plan', { selector: 'span' })).toBeNull();
+    expect(
+      within(explorerCard).getByText('Current Plan', {
+        selector: '.archive-access-modal__plan-status-badge',
+      })
+    ).toBeTruthy();
     expect(
       within(getPlanCard('Collector')).getByRole('button', { name: 'Switch to Collector' })
     ).toBeTruthy();
@@ -122,7 +126,11 @@ describe('ArchiveAccessModalView current plan', () => {
     const collectorCard = getPlanCard('Collector');
     expect(collectorCard.classList.contains('archive-access-modal__plan-card--current')).toBe(true);
     expect(within(collectorCard).getByRole('button', { name: 'Current Plan' })).toBeDisabled();
-    expect(within(collectorCard).queryByText('Current Plan', { selector: 'span' })).toBeNull();
+    expect(
+      within(collectorCard).getByText('Current Plan', {
+        selector: '.archive-access-modal__plan-status-badge',
+      })
+    ).toBeTruthy();
     expect(
       within(getPlanCard('Explorer')).getByRole('button', { name: 'Switch to Explorer' })
     ).toBeTruthy();
@@ -138,7 +146,11 @@ describe('ArchiveAccessModalView current plan', () => {
     const archivistCard = getPlanCard('Archivist');
     expect(archivistCard.classList.contains('archive-access-modal__plan-card--current')).toBe(true);
     expect(within(archivistCard).getByRole('button', { name: 'Current Plan' })).toBeDisabled();
-    expect(within(archivistCard).queryByText('Current Plan', { selector: 'span' })).toBeNull();
+    expect(
+      within(archivistCard).getByText('Current Plan', {
+        selector: '.archive-access-modal__plan-status-badge',
+      })
+    ).toBeTruthy();
     expect(
       within(getPlanCard('Explorer')).getByRole('button', { name: 'Switch to Explorer' })
     ).toBeTruthy();

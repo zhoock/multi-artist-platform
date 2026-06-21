@@ -291,7 +291,7 @@ dialog {
       flex-shrink: 0;
       width: auto;
 
-      @include dashboard-btn-primary-solid(
+      @include dashboard-btn-primary(
         $margin: 0,
         $padding: var(--ms-01) var(--ms-0),
         $font-size: 0.875rem

@@ -211,7 +211,7 @@ export function resolvePlanCardAction(params: {
       return {
         label: params.lang === 'en' ? 'Current Plan' : 'Текущий план',
         variant: 'outline',
-        badge: null,
+        badge: 'current',
         disabled: true,
       };
     }

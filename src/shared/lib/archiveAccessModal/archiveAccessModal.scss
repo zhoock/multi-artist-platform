@@ -288,17 +288,22 @@
   }
 
   &__plan-status-badge {
-    align-self: center;
-    margin: 0 0 var(--ms-01);
+    position: absolute;
+    top: 0;
+    left: 50%;
+    z-index: 1;
+    margin: 0;
     padding: 0.12rem 0.5rem;
     color: var(--dark-greenish-yellow, #c8b06d);
     font-size: 0.6875rem;
     line-height: 1.2;
     letter-spacing: 0.04em;
+    white-space: nowrap;
     text-transform: uppercase;
-    background: transparent;
+    background: var(--main-background-color, #141413);
     border: 1px solid rgb(var(--dark-greenish-yellow-rgb, 200 176 109) / 45%);
     border-radius: 999px;
+    transform: translate(-50%, -50%);
   }
 
   &__plan-name {
