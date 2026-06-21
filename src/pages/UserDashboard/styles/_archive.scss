@@ -76,6 +76,12 @@ dialog {
       padding-bottom: calc(var(--ms-1) + 4.5rem);
     }
 
+    &__archive-tab--empty {
+      flex: 1;
+      min-height: min(480px, 58vh);
+      padding: 0;
+    }
+
     &__archive-header-text {
       flex: 1;
       min-width: 0;

@@ -404,6 +404,8 @@
         "slotsAvailablePlural": "{count} slots available",
         "emptySlotHint": "Add another artist to unlock their exclusive content.",
         "discoverArtists": "Discover Artists",
+        "emptyTitle": "Your collection is empty",
+        "emptyDescription": "Support your favorite artists and get access to exclusive tracks, articles, stems and album downloads.",
         "archiveFull": "Collection Full",
         "archiveFullHint": "Remove an artist when their lock expires to free a slot.",
         "archiveFullSlotsUsedSingular": "You've used all 1 collection slot.",

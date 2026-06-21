@@ -782,6 +782,8 @@ export interface IInterface {
       slotsAvailablePlural: string;
       emptySlotHint: string;
       discoverArtists: string;
+      emptyTitle: string;
+      emptyDescription: string;
       archiveFull: string;
       archiveFullHint: string;
       archiveFullSlotsUsedSingular: string;

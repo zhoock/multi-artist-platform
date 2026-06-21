@@ -116,13 +116,14 @@ describe('MyArchiveContent plan display', () => {
     renderWithProviders(<MyArchiveContent active />);
 
     await waitFor(() => {
-      expect(screen.getByText('0 / 3')).toBeTruthy();
+      expect(screen.getByText('Your collection is empty')).toBeTruthy();
     });
 
     expect(screen.queryByText('Archivist')).toBeNull();
     expect(screen.queryByText('Explorer')).toBeNull();
     expect(screen.queryByRole('button', { name: 'Renew Support' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Upgrade Plan' })).toBeNull();
+    expect(document.querySelector('.user-dashboard__archive-slots-card')).toBeNull();
   });
 
   test('shows upgrade plan card when collection is full and support is active', async () => {
@@ -284,6 +285,76 @@ describe('MyArchiveContent plan display', () => {
 
     fireEvent.click(document.querySelector('.user-dashboard__archive-slots-card')!);
     expect(openSupportModalMock).toHaveBeenCalledTimes(1);
+  });
+
+  test('shows collection empty state without subscription and no artists', async () => {
+    getMyArchiveMock.mockResolvedValue({
+      isPremium: false,
+      slotsUsed: 0,
+      slotsLimit: 3,
+      inactiveCount: 0,
+      artists: [],
+    });
+
+    renderWithProviders(<MyArchiveContent active />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Your collection is empty')).toBeTruthy();
+    });
+
+    expect(screen.getByRole('link', { name: 'Discover Artists' })).toBeTruthy();
+    expect(screen.queryByText('Manage Plan →')).toBeNull();
+    expect(screen.queryByText('0 / 3')).toBeNull();
+    expect(document.querySelector('.user-dashboard__archive-slots-card')).toBeNull();
+  });
+
+  test('shows slots card when collection is empty but subscription is active', async () => {
+    getMyArchiveMock.mockResolvedValue({
+      isPremium: true,
+      slotsUsed: 0,
+      slotsLimit: 3,
+      inactiveCount: 0,
+      artists: [],
+    });
+
+    renderWithProviders(<MyArchiveContent active />);
+
+    await waitFor(() => {
+      expect(screen.getByText('0 / 3')).toBeTruthy();
+    });
+
+    expect(screen.queryByText('Your collection is empty')).toBeNull();
+    expect(screen.getByText('Manage Plan →')).toBeTruthy();
+  });
+
+  test('shows support inactive and allows remove for inactive artist with stale lock data', async () => {
+    getMyArchiveMock.mockResolvedValue({
+      isPremium: true,
+      slotsUsed: 0,
+      slotsLimit: 3,
+      inactiveCount: 1,
+      artists: [
+        {
+          ...inactiveArtist('a1', 'Inactive Artist'),
+          lockedUntil: '2026-07-20T12:00:00.000Z',
+          isLocked: true,
+        },
+      ],
+    });
+
+    renderWithProviders(<MyArchiveContent active />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Support inactive')).toBeTruthy();
+    });
+
+    expect(screen.queryByText(/Locked until/i)).toBeNull();
+    expect(screen.getByRole('button', { name: 'Remove' })).not.toBeDisabled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Select' }));
+    fireEvent.click(document.querySelector('.user-dashboard__archive-card--selectable')!);
+
+    expect(screen.getByRole('button', { name: 'Remove from collection' })).not.toBeDisabled();
   });
 
   test('select mode shows bottom action bar', async () => {

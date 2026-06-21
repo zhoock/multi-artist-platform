@@ -310,7 +310,7 @@ export async function fulfillSubscriptionPayment(params: {
       );
       const next = updated.rows[0];
       if (!next) throw new Error('Failed to update subscription');
-      if (planChanged && slotsLimit < row.slots_limit) {
+      if (planChanged) {
         await deactivateAllArchiveArtists(userId);
       }
       return mapSubscriptionRow(next);

@@ -15,7 +15,8 @@ import {
 } from '@shared/api/archive';
 import {
   canRemoveCollectionArtist,
-  isArchiveArtistLocked,
+  isCollectionArtistLocked,
+  normalizeCollectionArchive,
 } from '@shared/lib/archive/collectionLock';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 import {
@@ -33,6 +34,7 @@ import { useArchiveAccessModal } from '@shared/lib/archiveAccessModal';
 import { resolveCurrentPlanSlug } from '@shared/lib/payment/subscriptionPlans';
 import { SubscriptionPlanBadge } from '@shared/ui/subscriptionPlan';
 
+import { CollectionEmptyState } from './CollectionEmptyState';
 import '../../UserDashboard.style.scss';
 
 function formatArchiveDate(iso: string, lang: 'en' | 'ru'): string {
@@ -88,7 +90,7 @@ export function MyArchiveContent({ active }: Props) {
     setLoading(true);
     setError(null);
     try {
-      const next = await getMyArchive();
+      const next = normalizeCollectionArchive(await getMyArchive());
       setData(next);
     } catch (err) {
       console.error('[MyArchiveContent] load failed', err);
@@ -185,7 +187,7 @@ export function MyArchiveContent({ active }: Props) {
 
     try {
       const { archive } = await removeArtistFromArchiveApi(artist.artistUserId);
-      setData(archive);
+      setData(normalizeCollectionArchive(archive));
       dispatchArchiveArtistRemoved(artist.artistUserId, artist.slug || undefined);
       refreshPremiumContentForArchiveChange(dispatch, artist.slug || undefined);
       setSelectedIds((prev) => {
@@ -238,7 +240,7 @@ export function MyArchiveContent({ active }: Props) {
         dispatchArchiveArtistRemoved(artist.artistUserId, artist.slug || undefined);
         refreshPremiumContentForArchiveChange(dispatch, artist.slug || undefined);
       }
-      setData(latest);
+      setData(latest ? normalizeCollectionArchive(latest) : latest);
       exitSelectMode();
     } catch (err) {
       void loadArchive();
@@ -270,7 +272,7 @@ export function MyArchiveContent({ active }: Props) {
 
     try {
       const { archive } = await activateArchiveArtistsApi(toActivate);
-      setData(archive);
+      setData(normalizeCollectionArchive(archive));
       window.dispatchEvent(new Event('archive:changed'));
       exitSelectMode();
     } catch (err) {
@@ -420,6 +422,29 @@ export function MyArchiveContent({ active }: Props) {
     selectedCount === 0 ||
     !data?.artists.some((a) => selectedIds.has(a.artistUserId) && canRemoveArtist(a, isPremium));
 
+  const isCollectionEmpty = (data?.artists.length ?? 0) === 0;
+  const showCollectionEmptyState = Boolean(
+    data && !loading && !error && !isPremium && isCollectionEmpty
+  );
+
+  if (loading && !data) {
+    return (
+      <section className="user-dashboard__archive-tab">
+        <div className="user-dashboard__archive-loading" aria-busy="true">
+          {t?.loading ?? (lang === 'en' ? 'Loading collection…' : 'Загрузка коллекции…')}
+        </div>
+      </section>
+    );
+  }
+
+  if (showCollectionEmptyState) {
+    return (
+      <section className="user-dashboard__archive-tab user-dashboard__archive-tab--empty">
+        <CollectionEmptyState ui={ui} />
+      </section>
+    );
+  }
+
   return (
     <section
       className={`user-dashboard__archive-tab${
@@ -482,11 +507,7 @@ export function MyArchiveContent({ active }: Props) {
         </div>
       ) : null}
 
-      {loading && !data ? (
-        <div className="user-dashboard__archive-loading" aria-busy="true">
-          {t?.loading ?? (lang === 'en' ? 'Loading collection…' : 'Загрузка коллекции…')}
-        </div>
-      ) : (
+      {data ? (
         <>
           {showPlanChangeBanner ? (
             <div className="user-dashboard__archive-plan-change-banner" role="status">
@@ -534,8 +555,11 @@ export function MyArchiveContent({ active }: Props) {
               const isRemoving = removingId === artist.artistUserId;
               const genre = artist.genreLabel[lang] ?? artist.genreLabel.en;
               const artistHref = artist.slug ? `/?artist=${encodeURIComponent(artist.slug)}` : '/';
-              const lockDate = formatLockDate(artist.lockedUntil, lang);
-              const artistIsLocked = artist.isActive && isArchiveArtistLocked(artist.lockedUntil);
+              const lockDate = formatLockDate(
+                isCollectionArtistLocked(artist) ? artist.lockedUntil : null,
+                lang
+              );
+              const artistIsLocked = isCollectionArtistLocked(artist);
               const removable = canRemoveArtist(artist, isPremium);
               const removeDisabled = Boolean(removingId) || bulkLoading || !removable;
               const isSelected = selectedIds.has(artist.artistUserId);
@@ -751,7 +775,7 @@ export function MyArchiveContent({ active }: Props) {
             </footer>
           ) : null}
         </>
-      )}
+      ) : null}
     </section>
   );
 }

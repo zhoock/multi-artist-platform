@@ -107,7 +107,7 @@ function mapUserArchiveRow(row: UserArchiveRow): UserArchiveEntry {
     artistUserId: row.artist_user_id,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
-    isActive: row.is_active !== false,
+    isActive: row.is_active === true,
     lockedUntil: row.locked_until ?? null,
   };
 }
@@ -204,7 +204,7 @@ export async function deactivateAllArchiveArtists(userId: string): Promise<numbe
        SET is_active = false,
            locked_until = NULL,
            updated_at = CURRENT_TIMESTAMP
-       WHERE user_id = $1::uuid AND is_active = true`,
+       WHERE user_id = $1::uuid`,
       [userId]
     );
     return r.rowCount ?? 0;
@@ -496,7 +496,7 @@ export async function getMyArchiveForUser(userId: string): Promise<MyArchiveDto>
       const genreCode = row.genre_code || 'other';
       const displayName =
         row.site_name?.trim() || row.name?.trim() || row.public_slug?.trim() || 'Artist';
-      const isActive = row.is_active !== false;
+      const isActive = row.is_active === true;
       const lockedUntilDate = row.locked_until ?? null;
       const lockedUntil = toLockedUntilIso(lockedUntilDate);
       return {

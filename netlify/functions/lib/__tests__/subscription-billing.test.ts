@@ -237,7 +237,8 @@ describe('fulfillSubscriptionPayment', () => {
             expires_at: new Date('2026-06-20T13:00:00.000Z'),
           }),
         ])
-      );
+      )
+      .mockResolvedValueOnce(fakeQueryResult([], 2));
 
     const result = await fulfillSubscriptionPayment({
       userId: USER_ID,
@@ -252,6 +253,11 @@ describe('fulfillSubscriptionPayment', () => {
     expect(updateCall?.[1]?.[1]).toBe('archivist');
     expect(updateCall?.[1]?.[2]).toBe(3);
     expect(updateCall?.[1]?.[6]).toEqual(new Date('2026-06-20T13:00:00.000Z'));
+
+    const deactivateCall = mockedQuery.mock.calls[2];
+    expect(String(deactivateCall?.[0])).toContain('is_active = false');
+    expect(String(deactivateCall?.[0])).toContain('locked_until = NULL');
+    expect(deactivateCall?.[1]?.[0]).toBe(USER_ID);
   });
 
   test('downgrade deactivates all archive artists on plan change', async () => {
@@ -282,6 +288,37 @@ describe('fulfillSubscriptionPayment', () => {
     const deactivateCall = mockedQuery.mock.calls[2];
     expect(String(deactivateCall?.[0])).toContain('is_active = false');
     expect(deactivateCall?.[1]?.[0]).toBe(USER_ID);
+  });
+
+  test('does not reset archive on same-plan renewal', async () => {
+    mockedQuery
+      .mockResolvedValueOnce(
+        fakeQueryResult([
+          subscriptionRow({
+            status: 'active',
+            plan: 'explorer',
+            slots_limit: 1,
+          }),
+        ])
+      )
+      .mockResolvedValueOnce(
+        fakeQueryResult([
+          subscriptionRow({
+            status: 'active',
+            plan: 'explorer',
+            slots_limit: 1,
+            expires_at: new Date('2026-06-20T13:00:00.000Z'),
+          }),
+        ])
+      );
+
+    await fulfillSubscriptionPayment({
+      userId: USER_ID,
+      planSlug: 'explorer',
+      providerPaymentId: 'pay-renew-same-plan',
+    });
+
+    expect(mockedQuery.mock.calls.length).toBe(2);
   });
 
   test('renew on expired subscription resets started_at', async () => {
