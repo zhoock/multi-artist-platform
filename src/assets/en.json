@@ -440,6 +440,10 @@
         "activateSelected": "Activate ({count})",
         "selectActivateHint": "You can select up to {count} artists",
         "inactiveArtistsCount": "{count} inactive artists",
+        "clearCollection": "Clear collection",
+        "artistRemovedToast": "Artist removed from collection",
+        "artistsRemovedToast": "{count} artists removed from collection",
+        "collectionClearedToast": "Collection cleared",
         "activateLimitError": "You can activate up to {count} artists.",
         "activateError": "Failed to activate artists"
       },

@@ -67,9 +67,33 @@ dialog {
       }
     }
 
-    &__archive-list-meta {
+    &__archive-inactive-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--ms-01);
+      margin-bottom: var(--ms-01);
+    }
+
+    &__archive-inactive-toolbar-count {
       color: var(--dashboard-text-secondary);
       font-size: 0.8125rem;
+    }
+
+    &__archive-inactive-toolbar-actions {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: var(--ms-01);
+    }
+
+    &__archive-clear-collection {
+      @include dashboard-btn-destructive(
+        $margin: 0,
+        $padding: var(--ms-01) var(--ms-0),
+        $font-size: 0.875rem
+      );
     }
 
     &__archive-tab--select-mode {

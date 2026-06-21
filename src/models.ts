@@ -818,6 +818,10 @@ export interface IInterface {
       activateSelected: string;
       selectActivateHint: string;
       inactiveArtistsCount: string;
+      clearCollection: string;
+      artistRemovedToast: string;
+      artistsRemovedToast: string;
+      collectionClearedToast: string;
       activateLimitError: string;
       activateError: string;
     };

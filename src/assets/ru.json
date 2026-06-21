@@ -439,7 +439,11 @@
         "removeSelected": "Удалить из коллекции",
         "activateSelected": "Активировать ({count})",
         "selectActivateHint": "Можно выбрать до {count} артистов",
-        "inactiveArtistsCount": "Неактивных артистов: {count}",
+        "inactiveArtistsCount": "{count} неактивных артиста",
+        "clearCollection": "Очистить коллекцию",
+        "artistRemovedToast": "Артист удалён из коллекции",
+        "artistsRemovedToast": "{count} артистов удалено из коллекции",
+        "collectionClearedToast": "Коллекция очищена",
         "activateLimitError": "Можно активировать не более {count} артистов.",
         "activateError": "Не удалось активировать артистов"
       },

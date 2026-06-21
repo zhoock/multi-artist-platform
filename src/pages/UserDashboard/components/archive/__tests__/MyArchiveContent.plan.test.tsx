@@ -7,9 +7,11 @@ import { describe, test, expect, jest, beforeEach } from '@jest/globals';
 import { screen, waitFor, fireEvent } from '@testing-library/react';
 
 import { renderWithProviders } from '@shared/lib/test-utils';
+import { removeArtistFromArchiveApi } from '@shared/api/archive';
 import { MyArchiveContent } from '../MyArchiveContent';
 
 const getMyArchiveMock = jest.fn<() => Promise<unknown>>();
+const removeArtistFromArchiveApiMock = jest.mocked(removeArtistFromArchiveApi);
 const openSupportModalMock = jest.fn();
 
 jest.mock('@shared/api/archive', () => ({
@@ -59,6 +61,7 @@ function activeArtist(
 describe('MyArchiveContent plan display', () => {
   beforeEach(() => {
     getMyArchiveMock.mockReset();
+    removeArtistFromArchiveApiMock.mockReset();
     openSupportModalMock.mockReset();
   });
 
@@ -355,6 +358,169 @@ describe('MyArchiveContent plan display', () => {
     fireEvent.click(document.querySelector('.user-dashboard__archive-card--selectable')!);
 
     expect(screen.getByRole('button', { name: 'Remove from collection' })).not.toBeDisabled();
+  });
+
+  test('does not show inactive toolbar when all artists are active', async () => {
+    getMyArchiveMock.mockResolvedValue({
+      isPremium: true,
+      slotsUsed: 1,
+      slotsLimit: 3,
+      inactiveCount: 0,
+      artists: [activeArtist('a1', 'Active Artist')],
+    });
+
+    renderWithProviders(<MyArchiveContent active />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Active Artist')).toBeTruthy();
+    });
+
+    expect(screen.queryByRole('button', { name: 'Select' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Clear collection' })).toBeNull();
+  });
+
+  test('clear collection removes all inactive artists', async () => {
+    const emptyArchive = {
+      isPremium: true,
+      slotsUsed: 0,
+      slotsLimit: 3,
+      inactiveCount: 0,
+      artists: [],
+    };
+    const archiveWithInactive = {
+      isPremium: true,
+      slotsUsed: 0,
+      slotsLimit: 3,
+      inactiveCount: 2,
+      artists: [inactiveArtist('a1', 'Artist One'), inactiveArtist('a2', 'Artist Two')],
+    };
+
+    getMyArchiveMock.mockResolvedValueOnce(archiveWithInactive).mockResolvedValue(emptyArchive);
+    removeArtistFromArchiveApiMock.mockResolvedValue({ archive: emptyArchive });
+
+    renderWithProviders(<MyArchiveContent active />);
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Clear collection' })).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Clear collection' }));
+
+    await waitFor(() => {
+      expect(removeArtistFromArchiveApiMock).toHaveBeenCalledTimes(2);
+      expect(screen.queryByRole('button', { name: 'Select' })).toBeNull();
+    });
+  });
+
+  test('select mode only applies to inactive artists', async () => {
+    getMyArchiveMock.mockResolvedValue({
+      isPremium: true,
+      slotsUsed: 1,
+      slotsLimit: 3,
+      inactiveCount: 1,
+      artists: [activeArtist('a1', 'Active Artist'), inactiveArtist('a2', 'Inactive Artist')],
+    });
+
+    renderWithProviders(<MyArchiveContent active />);
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Select' })).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Select' }));
+
+    const selectableCards = document.querySelectorAll('.user-dashboard__archive-card--selectable');
+    expect(selectableCards.length).toBe(1);
+    expect(selectableCards[0]?.textContent).toContain('Inactive Artist');
+  });
+
+  test('done exits select mode', async () => {
+    getMyArchiveMock.mockResolvedValue({
+      isPremium: true,
+      slotsUsed: 0,
+      slotsLimit: 3,
+      inactiveCount: 1,
+      artists: [inactiveArtist('a1', 'Artist')],
+    });
+
+    renderWithProviders(<MyArchiveContent active />);
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Select' })).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Select' }));
+    expect(screen.getByRole('button', { name: 'Done' })).toBeTruthy();
+    expect(document.querySelector('.user-dashboard__archive-action-bar')).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }));
+
+    expect(screen.queryByRole('button', { name: 'Done' })).toBeNull();
+    expect(document.querySelector('.user-dashboard__archive-action-bar')).toBeNull();
+  });
+
+  test('shows toast after removing a single artist', async () => {
+    const emptyArchive = {
+      isPremium: true,
+      slotsUsed: 0,
+      slotsLimit: 3,
+      inactiveCount: 0,
+      artists: [],
+    };
+
+    getMyArchiveMock.mockResolvedValueOnce({
+      isPremium: true,
+      slotsUsed: 0,
+      slotsLimit: 3,
+      inactiveCount: 1,
+      artists: [inactiveArtist('a1', 'Inactive Artist')],
+    });
+    removeArtistFromArchiveApiMock.mockResolvedValue({ archive: emptyArchive });
+
+    renderWithProviders(<MyArchiveContent active />);
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Remove' })).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Artist removed from collection')).toBeTruthy();
+    });
+  });
+
+  test('shows collection cleared toast after clear collection', async () => {
+    const emptyArchive = {
+      isPremium: true,
+      slotsUsed: 0,
+      slotsLimit: 3,
+      inactiveCount: 0,
+      artists: [],
+    };
+
+    getMyArchiveMock
+      .mockResolvedValueOnce({
+        isPremium: true,
+        slotsUsed: 0,
+        slotsLimit: 3,
+        inactiveCount: 1,
+        artists: [inactiveArtist('a1', 'Inactive Artist')],
+      })
+      .mockResolvedValue(emptyArchive);
+    removeArtistFromArchiveApiMock.mockResolvedValue({ archive: emptyArchive });
+
+    renderWithProviders(<MyArchiveContent active />);
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Clear collection' })).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Clear collection' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Collection cleared')).toBeTruthy();
+    });
   });
 
   test('select mode shows bottom action bar', async () => {
