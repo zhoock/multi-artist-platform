@@ -7,7 +7,7 @@ import {
   useState,
   type KeyboardEvent as ReactKeyboardEvent,
 } from 'react';
-import { ArrowUpRight as ArrowUpRightIcon, Search as SearchIcon, X as XIcon } from 'lucide-react';
+import { Search as SearchIcon, X as XIcon } from 'lucide-react';
 import type { SceneArtist } from '@components/view/Universe3D';
 import { useLang } from '@app/providers/lang';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
@@ -54,11 +54,6 @@ export function UniverseFloatingSearch({
 
   const suggestions = useMemo(
     () => filterArtistsForSearch(artists, query, lang).slice(0, UNIVERSE_SEARCH_SUGGESTION_LIMIT),
-    [artists, query, lang]
-  );
-
-  const allMatches = useMemo(
-    () => filterArtistsForSearch(artists, query, lang),
     [artists, query, lang]
   );
 
@@ -134,7 +129,7 @@ export function UniverseFloatingSearch({
     return () => document.removeEventListener('mousedown', onPointerDown);
   }, [collapse, expanded, hasQuery]);
 
-  const showDropdown = expanded && hasQuery && (suggestions.length > 0 || allMatches.length > 0);
+  const showDropdown = expanded && hasQuery && suggestions.length > 0;
 
   const handleInputKeyDown = (event: ReactKeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'Escape') {
@@ -173,11 +168,7 @@ export function UniverseFloatingSearch({
     <div className="universe-search" role="search">
       <div
         ref={shellRef}
-        className={[
-          'universe-search__shell',
-          expanded ? 'universe-search__shell--expanded' : '',
-          hasQuery ? 'universe-search__shell--typing' : '',
-        ]
+        className={['universe-search__shell', expanded ? 'universe-search__shell--expanded' : '']
           .filter(Boolean)
           .join(' ')}
       >
@@ -283,26 +274,9 @@ export function UniverseFloatingSearch({
                     <div className="universe-search__name">{artist.name}</div>
                     {subtitle ? <div className="universe-search__sub">{subtitle}</div> : null}
                   </div>
-                  <ArrowUpRightIcon
-                    {...dashboardActionIconProps({
-                      size: 14,
-                      className: 'universe-search__arrow',
-                    })}
-                  />
                 </li>
               );
             })}
-            {allMatches.length > 0 ? (
-              <li
-                className="universe-search__footer"
-                role="presentation"
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={() => selectArtist(allMatches[0]!.publicSlug)}
-              >
-                View all results for &lsquo;{trimmedQuery}&rsquo;
-                {allMatches.length > 1 ? ` (${allMatches.length})` : ''}
-              </li>
-            ) : null}
           </ul>
         ) : null}
       </div>
