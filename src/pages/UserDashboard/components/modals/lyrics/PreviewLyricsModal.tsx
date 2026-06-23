@@ -11,7 +11,6 @@ import { Pause, Play } from 'lucide-react';
 import { ModalCloseIcon } from '@shared/ui/icons/ModalCloseIcon';
 import {
   LYRICS_MODAL_TRANSPORT_ICON_SIZE,
-  playerIconProps,
   playerTransportIconProps,
 } from '@shared/ui/icons/playerActionIcon';
 import './PreviewLyricsModal.style.scss';
@@ -285,7 +284,7 @@ export function PreviewLyricsModal({
               disabled={!audioPlaybackUrl}
             >
               {isPlaying ? (
-                <Pause {...playerIconProps(LYRICS_MODAL_TRANSPORT_ICON_SIZE)} />
+                <Pause {...playerTransportIconProps(LYRICS_MODAL_TRANSPORT_ICON_SIZE)} />
               ) : (
                 <Play
                   {...playerTransportIconProps(LYRICS_MODAL_TRANSPORT_ICON_SIZE, {

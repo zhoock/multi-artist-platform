@@ -17,7 +17,6 @@ import { MixerStemRow } from './MixerStemRow';
 import {
   MIXER_TRANSPORT_PLAY_ICON_SIZE,
   MIXER_WAVE_PLAY_ICON_SIZE,
-  playerIconProps,
   playerTransportIconProps,
 } from '@shared/ui/icons/playerActionIcon';
 
@@ -251,7 +250,7 @@ function MixerPlayerPanelInner(
         >
           <span className="mixer-player__transport-icon" aria-hidden>
             {isPlaying ? (
-              <Pause {...playerIconProps(MIXER_TRANSPORT_PLAY_ICON_SIZE)} />
+              <Pause {...playerTransportIconProps(MIXER_TRANSPORT_PLAY_ICON_SIZE)} />
             ) : (
               <Play
                 {...playerTransportIconProps(MIXER_TRANSPORT_PLAY_ICON_SIZE, {
@@ -276,7 +275,7 @@ function MixerPlayerPanelInner(
           >
             <span className="mixer-player__wave-play-icon" aria-hidden>
               {isPlaying ? (
-                <Pause {...playerIconProps(MIXER_WAVE_PLAY_ICON_SIZE)} />
+                <Pause {...playerTransportIconProps(MIXER_WAVE_PLAY_ICON_SIZE)} />
               ) : (
                 <Play
                   {...playerTransportIconProps(MIXER_WAVE_PLAY_ICON_SIZE, {

@@ -26,7 +26,6 @@ import { Pause, Play, X } from 'lucide-react';
 import { ModalCloseIcon } from '@shared/ui/icons/ModalCloseIcon';
 import {
   LYRICS_MODAL_TRANSPORT_ICON_SIZE,
-  playerIconProps,
   playerTransportIconProps,
 } from '@shared/ui/icons/playerActionIcon';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
@@ -683,7 +682,7 @@ export function SyncLyricsModal({
                 disabled={!audioPlaybackUrl}
               >
                 {isPlaying ? (
-                  <Pause {...playerIconProps(LYRICS_MODAL_TRANSPORT_ICON_SIZE)} />
+                  <Pause {...playerTransportIconProps(LYRICS_MODAL_TRANSPORT_ICON_SIZE)} />
                 ) : (
                   <Play
                     {...playerTransportIconProps(LYRICS_MODAL_TRANSPORT_ICON_SIZE, {

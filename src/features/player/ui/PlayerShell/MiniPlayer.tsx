@@ -3,11 +3,7 @@ import React from 'react';
 import clsx from 'clsx';
 import { Pause, Play, SkipForward } from 'lucide-react';
 import AlbumCover from '@entities/album/ui/AlbumCover';
-import {
-  playerIconProps,
-  playerTransportIconProps,
-  PLAYER_MINI_ICON_SIZE,
-} from '@shared/ui/icons/playerActionIcon';
+import { playerTransportIconProps, PLAYER_MINI_ICON_SIZE } from '@shared/ui/icons/playerActionIcon';
 
 import './style.scss';
 
@@ -86,7 +82,7 @@ export const MiniPlayer: React.FC<MiniPlayerProps> = ({
         >
           {isPlaying ? (
             <Pause
-              {...playerIconProps(PLAYER_MINI_ICON_SIZE, {
+              {...playerTransportIconProps(PLAYER_MINI_ICON_SIZE, {
                 className: 'mini-player__control-icon',
               })}
             />

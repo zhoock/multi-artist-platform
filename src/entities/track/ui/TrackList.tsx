@@ -8,7 +8,6 @@ import type { AppStore, RootState } from '@shared/model/appStore/types';
 import { fallbackAlbumClientId } from '@shared/lib/albumClientId';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 import {
-  playerIconProps,
   playerTransportIconProps,
   TRACK_LIST_PAUSE_ICON_SIZE,
   TRACK_LIST_PLAY_ICON_SIZE,
@@ -189,7 +188,7 @@ export function TrackList({ tracks, album, store, onSelectTrack }: TrackListProp
                     />
                   </span>
                   <span className="tracks__symbol-pause" aria-hidden>
-                    <Pause {...playerIconProps(TRACK_LIST_PAUSE_ICON_SIZE)} />
+                    <Pause {...playerTransportIconProps(TRACK_LIST_PAUSE_ICON_SIZE)} />
                   </span>
                   <span className="tracks__symbol-equalizer" aria-hidden>
                     <span></span>
