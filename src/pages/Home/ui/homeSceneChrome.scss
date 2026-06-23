@@ -1,0 +1,104 @@
+@use '../../../scss/abstracts/mixins' as *;
+
+.home-scene {
+  // Shared top chrome controls (8px grid: 44px size, 24px top, 32px sides on desktop)
+  --scene-chrome-size: 2.75rem;
+  --scene-chrome-offset-block: 1rem;
+  --scene-chrome-offset-inline: 1rem;
+  --scene-chrome-border-width: 1px;
+  --scene-chrome-border-color: rgb(var(--dark-greenish-yellow-rgb) / 42%);
+  --scene-chrome-border-color-hover: rgb(var(--dark-greenish-yellow-rgb) / 55%);
+  --scene-chrome-border-color-focus: rgb(var(--dark-greenish-yellow-rgb) / 65%);
+  --scene-chrome-bg: rgb(var(--charcoal-rgb) / 72%);
+  --scene-chrome-bg-hover: rgb(var(--charcoal-rgb) / 78%);
+  --scene-chrome-bg-focus: rgb(var(--charcoal-rgb) / 82%);
+  --scene-chrome-backdrop: blur(14px) saturate(120%);
+  --scene-chrome-transition: border-color 220ms ease, background 220ms ease;
+
+  @include breakpoint(desktops) {
+    --scene-chrome-offset-block: 1.5rem;
+    --scene-chrome-offset-inline: 2rem;
+  }
+}
+
+.home-scene__actions {
+  position: absolute;
+  z-index: 25;
+  inset-block-start: var(--scene-chrome-offset-block);
+  inset-inline-end: var(--scene-chrome-offset-inline);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--ms-01);
+  pointer-events: none;
+
+  > * {
+    pointer-events: auto;
+  }
+}
+
+.home-scene__sign-in,
+.home-scene__dev-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-block-size: var(--scene-chrome-size);
+  padding-inline: 1rem;
+  color: var(--white);
+  font-size: 0.875rem;
+  line-height: 1;
+  text-decoration: none;
+  background: var(--scene-chrome-bg);
+  border: var(--scene-chrome-border-width) solid var(--scene-chrome-border-color);
+  border-radius: 999px;
+  backdrop-filter: var(--scene-chrome-backdrop);
+  cursor: pointer;
+  transition: var(--scene-chrome-transition);
+  appearance: none;
+
+  &:hover {
+    border-color: var(--scene-chrome-border-color-hover);
+    background: var(--scene-chrome-bg-hover);
+  }
+
+  &:focus-visible {
+    outline: none;
+    border-color: var(--scene-chrome-border-color-focus);
+    background: var(--scene-chrome-bg-focus);
+  }
+}
+
+.home-scene .header__profile {
+  inline-size: var(--scene-chrome-size);
+  block-size: var(--scene-chrome-size);
+  overflow: hidden;
+  background: var(--scene-chrome-bg);
+  border: var(--scene-chrome-border-width) solid var(--scene-chrome-border-color);
+  backdrop-filter: var(--scene-chrome-backdrop);
+  transition: var(--scene-chrome-transition);
+
+  &:hover {
+    border-color: var(--scene-chrome-border-color-hover);
+    background: var(--scene-chrome-bg-hover);
+  }
+
+  &:focus-visible {
+    outline: none;
+    border-color: var(--scene-chrome-border-color-focus);
+    background: var(--scene-chrome-bg-focus);
+  }
+}
+
+.home-scene .header__profile-avatar {
+  inline-size: 100%;
+  block-size: 100%;
+  background: transparent;
+  border: none;
+  border-radius: 50%;
+  object-fit: cover;
+
+  &--empty {
+    font-size: 1rem;
+    background: transparent;
+  }
+}

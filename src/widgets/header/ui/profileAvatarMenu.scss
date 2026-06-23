@@ -152,9 +152,3 @@
   justify-content: center;
   user-select: none;
 }
-
-/* Главная (облако): те же размеры, что были у инлайн-стилей */
-.header__profile-avatar--home {
-  inline-size: 36px;
-  block-size: 36px;
-}

@@ -3,9 +3,14 @@
 .universe-search {
   position: absolute;
   z-index: 25;
-  inset-block-start: var(--ms-0);
-  inset-inline: var(--ms-0) auto;
-  max-inline-size: calc(100% - 4.75rem);
+  inset-block-start: var(--scene-chrome-offset-block, var(--ms-0));
+  inset-inline-start: var(--scene-chrome-offset-inline, var(--ms-0));
+  max-inline-size: calc(
+    100% - 2 *
+      var(--scene-chrome-offset-inline, var(--ms-0)) - var(--scene-chrome-size, 2.75rem) - var(
+        --ms-0
+      )
+  );
   pointer-events: none;
 
   @include breakpoint(desktops) {
@@ -48,20 +53,33 @@
     align-items: center;
     gap: var(--ms-01);
     inline-size: 100%;
-    min-block-size: 2.5rem;
-    padding: 0 var(--ms-01);
+    block-size: var(--scene-chrome-size, 2.75rem);
+    min-block-size: var(--scene-chrome-size, 2.75rem);
+    padding-inline: 1rem;
     color: var(--white);
-    background: rgb(var(--charcoal-rgb) / 72%);
-    border: 1px solid rgb(var(--dark-greenish-yellow-rgb) / 42%);
+    background: var(--scene-chrome-bg, rgb(var(--charcoal-rgb) / 72%));
+    border: var(--scene-chrome-border-width, 1px) solid
+      var(--scene-chrome-border-color, rgb(var(--dark-greenish-yellow-rgb) / 42%));
     border-radius: 999px;
-    backdrop-filter: blur(14px) saturate(120%);
-    transition:
-      border-color 220ms ease,
-      background 220ms ease;
+    backdrop-filter: var(--scene-chrome-backdrop, blur(14px) saturate(120%));
+    transition: var(--scene-chrome-transition, border-color 220ms ease, background 220ms ease);
 
-    &:focus-within {
-      border-color: rgb(var(--dark-greenish-yellow-rgb) / 65%);
-      background: rgb(var(--charcoal-rgb) / 82%);
+    &:hover {
+      border-color: var(
+        --scene-chrome-border-color-hover,
+        rgb(var(--dark-greenish-yellow-rgb) / 55%)
+      );
+      background: var(--scene-chrome-bg-hover, rgb(var(--charcoal-rgb) / 78%));
+    }
+
+    &:focus-within,
+    &:focus-visible {
+      border-color: var(
+        --scene-chrome-border-color-focus,
+        rgb(var(--dark-greenish-yellow-rgb) / 65%)
+      );
+      background: var(--scene-chrome-bg-focus, rgb(var(--charcoal-rgb) / 82%));
+      outline: none;
     }
   }
 

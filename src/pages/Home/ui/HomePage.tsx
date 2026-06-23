@@ -48,6 +48,7 @@ import { ArtistAwaitingFirstReleaseBanner } from './ArtistAwaitingFirstReleaseBa
 import { ScrollToExploreHint } from './ScrollToExploreHint';
 import { useArtistPageAccess } from '@shared/lib/hooks/useArtistPageAccess';
 import '../../../components/view/Universe3D.style.scss';
+import './homeSceneChrome.scss';
 
 const HOME_USE_MOCKS_STORAGE_KEY = 'homeUseMocks';
 
@@ -384,23 +385,13 @@ export function HomePage() {
         onSearchMatchesChange={handleSearchMatchesChange}
         onNavigateToArtist={handleSearchSelectArtist}
       />
-      <div
-        className="home-scene__actions"
-        style={{
-          position: 'absolute',
-          top: 12,
-          right: 12,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '8px',
-          zIndex: 20,
-        }}
-      >
+      <div className="home-scene__actions">
         {isAuthenticated() ? (
-          <ProfileAvatarMenu avatarImgClassName="header__profile-avatar--home" />
+          <ProfileAvatarMenu />
         ) : (
           <button
             type="button"
+            className="home-scene__sign-in"
             onClick={() => {
               clearPremiumCheckoutAuthIntent();
               const authParams = new URLSearchParams({ mode: 'login' });
@@ -410,36 +401,19 @@ export function HomePage() {
                 { state: { backgroundLocation: location } }
               );
             }}
-            style={{
-              padding: '6px 10px',
-              borderRadius: 8,
-              border: '1px solid rgba(255,255,255,0.35)',
-              background: 'rgba(12,12,14,0.72)',
-              color: '#fff',
-              fontSize: 12,
-              cursor: 'pointer',
-            }}
           >
             {ui?.header?.signIn ?? 'Sign in'}
           </button>
         )}
         <button
           type="button"
+          className="home-scene__dev-toggle"
           onClick={() => {
             setUseMocks((prev) => {
               const next = !prev;
               sessionStorage.setItem(HOME_USE_MOCKS_STORAGE_KEY, next ? '1' : '0');
               return next;
             });
-          }}
-          style={{
-            padding: '6px 10px',
-            borderRadius: 8,
-            border: '1px solid rgba(255,255,255,0.35)',
-            background: 'rgba(12,12,14,0.72)',
-            color: '#fff',
-            fontSize: 12,
-            cursor: 'pointer',
           }}
         >
           {useMocks ? 'Mocks: ON' : 'Mocks: OFF'}

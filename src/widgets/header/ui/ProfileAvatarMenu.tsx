@@ -123,8 +123,6 @@ function ProfileAvatarMenuComponent({
             className={['header__profile-avatar', avatarImgClassName].filter(Boolean).join(' ')}
             src={avatarSrc}
             alt=""
-            width={36}
-            height={36}
             decoding="async"
           />
         )}
