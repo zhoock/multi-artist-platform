@@ -190,10 +190,10 @@ export function TrackList({ tracks, album, store, onSelectTrack }: TrackListProp
                   <span className="tracks__symbol-pause" aria-hidden>
                     <Pause {...playerTransportIconProps(TRACK_LIST_PAUSE_ICON_SIZE)} />
                   </span>
-                  <span className="tracks__symbol-equalizer" aria-hidden>
-                    <span></span>
-                    <span></span>
-                    <span></span>
+                  <span className="tracks__symbol-equalizer" aria-hidden={true}>
+                    <span />
+                    <span />
+                    <span />
                   </span>
                 </>
               )}

@@ -125,12 +125,6 @@ export function HomePage() {
   }, [artistPageAccess.showNotFound, hasArtistParam]);
 
   useEffect(() => {
-    const underConstructionSurface = hasArtistParam && artistPageAccess.showOwnerUnderConstruction;
-    document.body.classList.toggle('page--artist-under-construction', underConstructionSurface);
-    return () => document.body.classList.remove('page--artist-under-construction');
-  }, [artistPageAccess.showOwnerUnderConstruction, hasArtistParam]);
-
-  useEffect(() => {
     const awaitingSurface = hasArtistParam && artistPageAccess.showAwaitingFirstRelease;
     document.body.classList.toggle('page--artist-awaiting-first-release', awaitingSurface);
     return () => document.body.classList.remove('page--artist-awaiting-first-release');
@@ -355,7 +349,11 @@ export function HomePage() {
     }
 
     if (artistPageAccess.showOwnerUnderConstruction) {
-      return <ArtistPageUnderConstruction />;
+      return <ArtistPageUnderConstruction variant="owner" />;
+    }
+
+    if (artistPageAccess.showVisitorUnderConstruction) {
+      return <ArtistPageUnderConstruction variant="visitor" />;
     }
 
     return (

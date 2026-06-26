@@ -335,6 +335,8 @@ export interface IInterface {
     title: string;
     subtitle: string;
     cta: string;
+    visitorSubtitle?: string;
+    visitorCta?: string;
   };
   artistAwaitingFirstRelease?: {
     heroEyebrow: string;

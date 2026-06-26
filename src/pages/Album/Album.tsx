@@ -26,6 +26,7 @@ import {
   selectDashboardAlbumByIdResolved,
 } from '@entities/album';
 import { ArtistNotFound } from '@shared/ui/artistNotFound';
+import { ArtistPageUnderConstruction } from '@pages/Home/ui/ArtistPageUnderConstruction';
 import { useArtistPageAccess } from '@shared/lib/hooks/useArtistPageAccess';
 import { useRedirectHomeAfterOwnAccountDeleted } from '@shared/lib/hooks/useRedirectHomeAfterOwnAccountDeleted';
 import { useRedirectAfterDeletedAlbum } from '@shared/lib/hooks/useRedirectAfterDeletedAlbum';
@@ -140,6 +141,10 @@ export default function Album() {
 
   if (artistParam && artistPageAccess.showNotFound) {
     return <ArtistNotFound />;
+  }
+
+  if (artistParam && artistPageAccess.showVisitorUnderConstruction) {
+    return <ArtistPageUnderConstruction variant="visitor" />;
   }
 
   if (showAlbumLoadingShell) {

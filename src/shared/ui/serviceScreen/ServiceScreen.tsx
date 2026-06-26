@@ -15,7 +15,12 @@ export type ServiceScreenSecondaryAction = {
 };
 
 export type ServiceScreenProps = {
-  modifier: 'email-verified' | 'email-verification-expired' | 'not-found' | 'mixer-empty';
+  modifier:
+    | 'email-verified'
+    | 'email-verification-expired'
+    | 'not-found'
+    | 'mixer-empty'
+    | 'artist-under-construction';
   titleId: string;
   pageTitle: string;
   title: ReactNode;

@@ -331,21 +331,31 @@ export function useArtistPageAccess(artistSlug: string) {
     !ownerStillNeedsOnboarding &&
     !ownerHasPublicPageContent;
 
-  const showNotFound =
+  /** Артист существует, но публичного контента ещё нет — для посетителей, не владельца. */
+  const showVisitorUnderConstruction =
+    !catalogArtistMissing &&
+    !isOwner &&
     !isLoading &&
     !visitorArticlesGatePending &&
-    !hasVisitorVisibleContent &&
-    (catalogArtistMissing || !isOwner);
+    !hasVisitorVisibleContent;
+
+  const showNotFound =
+    !isLoading && !visitorArticlesGatePending && !hasVisitorVisibleContent && catalogArtistMissing;
   const showPublished =
     !isLoading &&
     !showOnboarding &&
     !showOnboardingSkeleton &&
     !showNotFound &&
-    !showOwnerUnderConstruction;
+    !showOwnerUnderConstruction &&
+    !showVisitorUnderConstruction;
   /** Публичная страница есть, но релизов ещё нет — артист вне каталога облаков. */
   const showAwaitingFirstRelease = showPublished && !hasPublicReleases;
   const suppressPublishedArtistChrome =
-    showOnboarding || showOnboardingSkeleton || showNotFound || showOwnerUnderConstruction;
+    showOnboarding ||
+    showOnboardingSkeleton ||
+    showNotFound ||
+    showOwnerUnderConstruction ||
+    showVisitorUnderConstruction;
 
   return {
     isLoading,
@@ -354,6 +364,7 @@ export function useArtistPageAccess(artistSlug: string) {
     showOnboarding,
     showOnboardingSkeleton,
     showOwnerUnderConstruction,
+    showVisitorUnderConstruction,
     showNotFound,
     showPublished,
     showAwaitingFirstRelease,

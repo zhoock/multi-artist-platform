@@ -202,6 +202,108 @@ describe('useArtistPageAccess — awaiting first release', () => {
   });
 });
 
+describe('useArtistPageAccess — visitor unpublished artist', () => {
+  beforeEach(() => {
+    jest.mocked(isAuthenticated).mockReturnValue(false);
+    jest.mocked(fetchWithAuthSession).mockResolvedValue({
+      ok: false,
+      json: async () => ({
+        success: false,
+        error: 'Artist not found',
+        code: 'ARTIST_NOT_PUBLISHED',
+      }),
+    } as Response);
+  });
+
+  test('показывает under construction вместо 404, если slug существует без публичного контента', async () => {
+    const { result } = renderHook(() => useArtistPageAccess('test-artist'), {
+      wrapper: createWrapper({
+        lang: { current: 'ru' },
+        currentArtist: { publicSlug: 'test-artist' },
+        articles: {
+          status: 'succeeded',
+          error: null,
+          data: [],
+          lastUpdated: Date.now(),
+          lastPublicArtistSlug: 'test-artist',
+          dashboard: {
+            status: 'idle',
+            error: null,
+            data: [],
+            lastUpdated: null,
+          },
+        },
+        albums: {
+          status: 'succeeded',
+          error: null,
+          data: [],
+          lastUpdated: Date.now(),
+          fetchContextKey: 'public:test-artist',
+          inFlightFetchContextKey: null,
+          catalogArtistMissing: false,
+          dashboard: {
+            status: 'idle',
+            error: null,
+            data: [],
+            lastUpdated: null,
+            inFlightFetchContextKey: null,
+          },
+        },
+      }),
+    });
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+      expect(result.current.showVisitorUnderConstruction).toBe(true);
+      expect(result.current.showNotFound).toBe(false);
+    });
+  });
+
+  test('показывает 404, если slug не существует', async () => {
+    const { result } = renderHook(() => useArtistPageAccess('missing-artist'), {
+      wrapper: createWrapper({
+        lang: { current: 'ru' },
+        currentArtist: { publicSlug: 'missing-artist' },
+        articles: {
+          status: 'succeeded',
+          error: null,
+          data: [],
+          lastUpdated: Date.now(),
+          lastPublicArtistSlug: 'missing-artist',
+          dashboard: {
+            status: 'idle',
+            error: null,
+            data: [],
+            lastUpdated: null,
+          },
+        },
+        albums: {
+          status: 'succeeded',
+          error: null,
+          data: [],
+          lastUpdated: Date.now(),
+          fetchContextKey: 'public:missing-artist',
+          inFlightFetchContextKey: null,
+          catalogArtistMissing: true,
+          dashboard: {
+            status: 'idle',
+            error: null,
+            data: [],
+            lastUpdated: null,
+            inFlightFetchContextKey: null,
+          },
+        },
+      }),
+    });
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+      expect(result.current.showNotFound).toBe(true);
+      expect(result.current.showVisitorUnderConstruction).toBe(false);
+    });
+  });
+});
+
 describe('useArtistPageAccess — owner onboarding after full content removal', () => {
   beforeEach(() => {
     jest.mocked(isAuthenticated).mockReturnValue(true);

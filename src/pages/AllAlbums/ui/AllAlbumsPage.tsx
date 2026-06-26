@@ -16,6 +16,7 @@ import {
   selectPublicAlbumsCacheIsStale,
 } from '@entities/album';
 import { ArtistNotFound } from '@shared/ui/artistNotFound';
+import { ArtistPageUnderConstruction } from '@pages/Home/ui/ArtistPageUnderConstruction';
 import { useArtistPageAccess } from '@shared/lib/hooks/useArtistPageAccess';
 import { useRedirectHomeAfterOwnAccountDeleted } from '@shared/lib/hooks/useRedirectHomeAfterOwnAccountDeleted';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
@@ -131,6 +132,10 @@ export function AllAlbumsPage() {
 
   if (artistSlug && artistPageAccess.showNotFound) {
     return <ArtistNotFound />;
+  }
+
+  if (artistSlug && artistPageAccess.showVisitorUnderConstruction) {
+    return <ArtistPageUnderConstruction variant="visitor" />;
   }
 
   return (
