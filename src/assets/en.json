@@ -763,6 +763,8 @@
           "aboutBand": "Enter band description. Each line will be a separate paragraph."
         },
         "hints": {
+          "languageDescription": "Used throughout the application.",
+          "languageReloadNote": "The interface will reload after changing the language.",
           "primaryGenreCatalog": "This genre is used to show your artist in the catalog",
           "publicSlug": "Changing the slug may affect existing public links.",
           "aboutBand": "Each line will be a separate paragraph in the band description",

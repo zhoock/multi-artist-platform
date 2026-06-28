@@ -143,11 +143,24 @@ dialog {
       @include dashboard-form-textarea;
     }
 
+    &__field-description {
+      margin: -8px 0 5px;
+      color: var(--dashboard-text-secondary);
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
     &__field-hint {
       color: var(--dashboard-text-secondary);
       font-size: 12px;
       margin-top: 4px;
       line-height: 1.4;
+
+      &--muted {
+        color: var(--quiet-gray);
+        font-size: 11px;
+        margin-top: 0;
+      }
     }
 
     &__loading {

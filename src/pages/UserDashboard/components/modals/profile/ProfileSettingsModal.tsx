@@ -797,13 +797,16 @@ export function ProfileSettingsModal({
               <div className="profile-settings-modal__content">
                 {activeTab === 'general' && (
                   <div className="profile-settings-modal__general-tab">
-                    <h3 className="profile-settings-modal__section-title">
-                      {ui?.dashboard?.profileSettingsModal?.tabs?.general ?? 'General'}
-                    </h3>
                     <div className="profile-settings-modal__field">
                       <label className="profile-settings-modal__label">
                         {ui?.dashboard?.profileSettingsModal?.fields?.language ?? 'Язык'}
                       </label>
+                      <p className="profile-settings-modal__field-description">
+                        {ui?.dashboard?.profileSettingsModal?.hints?.languageDescription ??
+                          (currentLang === 'en'
+                            ? 'Used throughout the application.'
+                            : 'Используется во всём приложении.')}
+                      </p>
                       <div className="profile-settings-modal__select-wrapper">
                         <div
                           ref={selectRef}
@@ -860,6 +863,12 @@ export function ProfileSettingsModal({
                           </div>
                         )}
                       </div>
+                      <p className="profile-settings-modal__field-hint profile-settings-modal__field-hint--muted">
+                        {ui?.dashboard?.profileSettingsModal?.hints?.languageReloadNote ??
+                          (currentLang === 'en'
+                            ? 'The interface will reload after changing the language.'
+                            : 'После смены языка интерфейс будет перезагружен.')}
+                      </p>
                     </div>
 
                     {showBecomeArtist && onBecomeArtist ? (

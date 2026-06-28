@@ -875,6 +875,8 @@ export interface IInterface {
         aboutBand: string;
       };
       hints: {
+        languageDescription?: string;
+        languageReloadNote?: string;
         primaryGenreCatalog: string;
         publicSlug: string;
         aboutBand: string;
