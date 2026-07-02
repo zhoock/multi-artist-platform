@@ -38,15 +38,19 @@
     gap: $gap;
   }
 
-  @if $overflow-y {
-    overflow-y: $overflow-y;
-  }
-
   @include dashboard.dashboard-modal-card(
     $mobile-max-height: $mobile-max-height,
     $desktop-width: $desktop-width,
     $desktop-height: $desktop-height
   );
+
+  overflow-x: hidden;
+
+  @if $overflow-y {
+    overflow-y: $overflow-y;
+  } @else {
+    overflow-y: hidden;
+  }
 }
 
 @mixin dashboard-modal-header(

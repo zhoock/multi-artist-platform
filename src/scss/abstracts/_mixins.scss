@@ -267,7 +267,6 @@ $ms-4: 123.363px; // 6.854rem;
   border: 1px solid var(--dashboard-card-border);
   border-radius: var(--ms-0);
   box-shadow: 0 8px 32px var(--dashboard-shadow);
-  overflow: hidden;
 
   // Десктоп стили
   @include breakpoint(tablet) {
