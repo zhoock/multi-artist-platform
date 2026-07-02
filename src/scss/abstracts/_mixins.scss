@@ -253,7 +253,9 @@ $ms-4: 123.363px; // 6.854rem;
 @mixin dashboard-modal-card(
   $mobile-max-height: 90vh,
   $desktop-width: 680px,
-  $desktop-height: 600px
+  $desktop-height: 600px,
+  $overflow-x: hidden,
+  $overflow-y: auto
 ) {
   // Базовые стили
   display: flex;
@@ -267,6 +269,7 @@ $ms-4: 123.363px; // 6.854rem;
   border: 1px solid var(--dashboard-card-border);
   border-radius: var(--ms-0);
   box-shadow: 0 8px 32px var(--dashboard-shadow);
+  overflow: $overflow-x $overflow-y;
 
   // Десктоп стили
   @include breakpoint(tablet) {
