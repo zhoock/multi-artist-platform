@@ -244,40 +244,90 @@ dialog {
 
     &__avatar-menu {
       position: absolute;
-      top: calc(100% + 6px);
+      top: calc(100% + var(--ms-02));
       right: 0;
       left: auto;
       z-index: 5;
+      display: flex;
+      flex-direction: column;
+      gap: var(--ms-02);
       margin: 0;
-      padding: 0.35rem 0;
+      padding: var(--ms-02);
+      min-inline-size: calc(var(--ms-0) * 12);
+      list-style: none;
       background: var(--dashboard-card-bg);
       border: 1px solid var(--dashboard-card-border);
-      border-radius: 8px;
-      box-shadow: 0 4px 16px rgb(var(--black-rgb) / 12%);
-      min-width: 12rem;
-      list-style: none;
+      border-radius: var(--ms-0);
+      box-shadow: 0 8px 32px rgb(var(--black-rgb) / 25%);
+    }
+
+    &__avatar-menu-group {
+      display: flex;
+      flex-direction: column;
+      gap: var(--ms-02);
+
+      &--separated {
+        padding-block-start: var(--ms-02);
+        border-block-start: 1px solid var(--dashboard-card-border);
+      }
     }
 
     &__avatar-menu-item {
-      display: block;
+      display: flex;
+      align-items: center;
+      gap: var(--ms-01);
       width: 100%;
-      padding: 0.5rem 0.9rem;
+      margin: 0;
+      padding: var(--ms-01) var(--ms-0);
       color: var(--dashboard-text-primary);
       font: inherit;
       text-align: left;
-      background: none;
+      background: transparent;
       border: none;
+      border-radius: var(--ms-02);
       cursor: pointer;
-      transition: background 0.15s ease;
+      appearance: none;
+      transition:
+        color 0.2s ease,
+        background-color 0.2s ease;
+
+      &:focus-visible {
+        outline: none;
+        box-shadow: inset 0 0 0 2px var(--dashboard-btn-secondary-border);
+      }
 
       &:disabled {
-        cursor: not-allowed;
-        opacity: 0.5;
+        color: var(--dashboard-text-secondary);
+        cursor: default;
+        opacity: 0.45;
+        pointer-events: none;
       }
 
       &:hover:not(:disabled) {
         background: var(--dashboard-hover-bg);
       }
+
+      &--danger:not(:disabled) {
+        &:hover {
+          color: var(--error-color, #cf807d);
+        }
+      }
+    }
+
+    &__avatar-menu-icon {
+      display: block;
+      flex-shrink: 0;
+      opacity: 0.9;
+      pointer-events: none;
+
+      &--danger {
+        color: var(--error-color, #cf807d);
+      }
+    }
+
+    &__avatar-menu-item:disabled &__avatar-menu-icon--danger {
+      color: inherit;
+      opacity: 0.5;
     }
 
     &__avatar-loader {

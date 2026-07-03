@@ -201,7 +201,7 @@ function ProfileAvatarMenuComponent({
               >
                 <IconUpgradeSparkle className="header__profile-menu-icon header__profile-menu-icon--upgrade" />
                 <span className="header__profile-menu-item-title header__profile-menu-item-title--upgrade">
-                  {avatarLabels?.upgradePlan ?? 'Upgrade plan'}
+                  {avatarLabels?.choosePlan ?? (locale === 'en' ? 'Choose Plan' : 'Выбрать план')}
                 </span>
               </button>
             ) : null}

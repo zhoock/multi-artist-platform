@@ -353,6 +353,7 @@ export interface IInterface {
       settings: string;
       myArtistPage?: string;
       upgradePlan: string;
+      choosePlan?: string;
       premiumActive?: string;
       manageSubscription?: string;
       logOut: string;

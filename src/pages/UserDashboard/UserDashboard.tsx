@@ -197,6 +197,7 @@ import {
 import { TrackVisibilityIcon } from '@shared/ui/icons/TrackVisibilityIcon';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 import {
+  CloudUpload as CloudUploadIcon,
   ExternalLink as ExternalLinkIcon,
   Pencil as PencilIcon,
   Trash2 as Trash2Icon,
@@ -4012,20 +4013,7 @@ function UserDashboard() {
                                       role="menu"
                                       aria-labelledby="user-dashboard-avatar-edit-button"
                                     >
-                                      <button
-                                        type="button"
-                                        role="menuitem"
-                                        className="user-dashboard__avatar-menu-item"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          setIsAvatarMenuOpen(false);
-                                          handleAvatarClick();
-                                        }}
-                                        disabled={isUploadingAvatar}
-                                      >
-                                        {ui?.dashboard?.uploadAvatarPhoto ?? 'Upload the photo...'}
-                                      </button>
-                                      {!isProfileAvatarPlaceholderUrl(avatarSrc) ? (
+                                      <div className="user-dashboard__avatar-menu-group">
                                         <button
                                           type="button"
                                           role="menuitem"
@@ -4033,13 +4021,53 @@ function UserDashboard() {
                                           onClick={(e) => {
                                             e.stopPropagation();
                                             setIsAvatarMenuOpen(false);
-                                            void handleAvatarRemove();
+                                            handleAvatarClick();
                                           }}
                                           disabled={isUploadingAvatar}
                                         >
-                                          {ui?.dashboard?.removeAvatarPhoto ?? 'Remove photo'}
+                                          <CloudUploadIcon
+                                            {...dashboardActionIconProps({
+                                              size: 20,
+                                              className: 'user-dashboard__avatar-menu-icon',
+                                            })}
+                                          />
+                                          <span>
+                                            {ui?.dashboard?.uploadAvatarPhoto ??
+                                              'Upload the photo...'}
+                                          </span>
                                         </button>
-                                      ) : null}
+                                      </div>
+                                      <div className="user-dashboard__avatar-menu-group user-dashboard__avatar-menu-group--separated">
+                                        <button
+                                          type="button"
+                                          role="menuitem"
+                                          className="user-dashboard__avatar-menu-item user-dashboard__avatar-menu-item--danger"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setIsAvatarMenuOpen(false);
+                                            void handleAvatarRemove();
+                                          }}
+                                          disabled={
+                                            isUploadingAvatar ||
+                                            isProfileAvatarPlaceholderUrl(avatarSrc)
+                                          }
+                                          aria-disabled={
+                                            isUploadingAvatar ||
+                                            isProfileAvatarPlaceholderUrl(avatarSrc)
+                                          }
+                                        >
+                                          <Trash2Icon
+                                            {...dashboardActionIconProps({
+                                              size: 20,
+                                              className:
+                                                'user-dashboard__avatar-menu-icon user-dashboard__avatar-menu-icon--danger',
+                                            })}
+                                          />
+                                          <span>
+                                            {ui?.dashboard?.removeAvatarPhoto ?? 'Remove photo'}
+                                          </span>
+                                        </button>
+                                      </div>
                                     </div>
                                   )}
                                 </div>
