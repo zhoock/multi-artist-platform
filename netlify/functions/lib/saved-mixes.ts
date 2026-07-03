@@ -109,6 +109,39 @@ export async function createSavedMix(input: CreateSavedMixInput): Promise<SavedM
   };
 }
 
+export async function getSavedMixesForUserTrack(
+  userId: string,
+  albumId: string,
+  trackId: string
+): Promise<SavedMixDto[]> {
+  try {
+    const r = await query<SavedMixRow>(
+      `SELECT id, album_id, track_id, name, settings, created_at
+       FROM saved_mixes
+       WHERE user_id = $1::uuid
+         AND album_id = $2
+         AND track_id = $3
+       ORDER BY created_at DESC`,
+      [userId, albumId, trackId]
+    );
+    return r.rows.map((row) => ({
+      id: row.id,
+      albumId: row.album_id,
+      trackId: row.track_id,
+      name: row.name,
+      createdAt: row.created_at.toISOString(),
+      settings: normalizeSettings(row.settings),
+    }));
+  } catch (error) {
+    if (isMissingRelationError(error)) {
+      console.warn('[saved-mixes] table missing — returning empty list');
+      return [];
+    }
+    throw error;
+  }
+}
+
+/** @deprecated Use getSavedMixesForUserTrack — mixes are scoped to a track. */
 export async function getSavedMixesForUser(userId: string): Promise<SavedMixDto[]> {
   try {
     const r = await query<SavedMixRow>(

@@ -34,6 +34,7 @@ import { resolveTrackSrcToSupabasePublicUrl } from './lib/storage-public-url';
 import { migrateUserAlbumAudioFolderAfterRename } from './lib/migrate-storage-album-folder';
 import { normalizeTrackIdString } from '../../src/shared/lib/tracks/normalizeTrackIdString';
 import { rankToOrderIndex } from '../../src/shared/lib/tracks/trackOrderIndex';
+import { normalizeStemsVisibility } from '../../src/shared/lib/stems/stemsVisibility';
 import { normalizeTrackVisibility } from '../../src/shared/lib/tracks/trackVisibility';
 import { hydrateMissingRuTranslationsOnAlbum } from '../../src/entities/album/lib/hydrateMissingRuTranslations';
 import type { IAlbums } from '../../src/models';
@@ -74,6 +75,7 @@ interface TrackRow {
   synced_lyrics: unknown | null;
   order_index: number;
   visibility?: string | null;
+  stems_visibility?: string | null;
 }
 
 interface AlbumLocalePayload {
@@ -132,6 +134,8 @@ interface TrackData {
   translations?: Partial<Record<SupportedLang, TrackLocalePayload>>;
   /** Доступ на публичной странице (после GET с `?artist=` применяется policy). */
   visibility?: 'public' | 'subscribers_only' | 'hidden';
+  /** Доступ к стемам в Mixer (независимо от visibility). */
+  stemsVisibility?: 'public' | 'subscribers_only' | 'hidden';
   /** Только в публичном ответе: нельзя воспроизвести без покупки */
   playbackLocked?: boolean;
 }
@@ -169,10 +173,41 @@ async function tracksTableHasVisibilityColumn(): Promise<boolean> {
   return cachedTracksHasVisibilityColumn;
 }
 
+/** Кэш: есть ли колонка tracks.stems_visibility (миграция 058). */
+let cachedTracksHasStemsVisibilityColumn: boolean | null = null;
+
+async function tracksTableHasStemsVisibilityColumn(): Promise<boolean> {
+  if (cachedTracksHasStemsVisibilityColumn !== null) {
+    return cachedTracksHasStemsVisibilityColumn;
+  }
+  try {
+    const r = await query<{ exists: boolean }>(
+      `SELECT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'tracks'
+          AND column_name = 'stems_visibility'
+      ) AS exists`
+    );
+    cachedTracksHasStemsVisibilityColumn = Boolean(r.rows[0]?.exists);
+    if (!cachedTracksHasStemsVisibilityColumn) {
+      console.warn(
+        '[albums] Колонка tracks.stems_visibility отсутствует; ответ без неё (всем трекам считается public). Выполните database/migrations/058_add_stems_visibility.sql'
+      );
+    }
+  } catch (checkErr) {
+    console.warn('[albums] Не удалось проверить наличие tracks.stems_visibility:', checkErr);
+    cachedTracksHasStemsVisibilityColumn = false;
+  }
+  return cachedTracksHasStemsVisibilityColumn;
+}
+
 /** Загрузка строк треков; без миграции 032 столбец visibility не читается. */
 async function fetchTracksRowsForAlbumPk(albumPk: string): Promise<TrackRow[]> {
   const hasVis = await tracksTableHasVisibilityColumn();
+  const hasStemsVis = await tracksTableHasStemsVisibilityColumn();
   const visibilityCol = hasVis ? ',\n                t.visibility' : '';
+  const stemsVisibilityCol = hasStemsVis ? ',\n                t.stems_visibility' : '';
   const res = await query<TrackRow>(
     `SELECT 
                 t.track_id,
@@ -182,7 +217,7 @@ async function fetchTracksRowsForAlbumPk(albumPk: string): Promise<TrackRow[]> {
                 t.content,
                 t.authorship,
                 t.synced_lyrics,
-                t.order_index${visibilityCol}
+                t.order_index${visibilityCol}${stemsVisibilityCol}
               FROM tracks t
               WHERE t.album_id = $1
               ORDER BY t.order_index ASC`,
@@ -445,6 +480,7 @@ function mapAlbumToApiFormat(album: AlbumRow, tracks: TrackRow[]): AlbumData {
         authorship: track.authorship || undefined,
         syncedLyrics: syncedLyrics || undefined,
         visibility: normalizeTrackVisibility(track.visibility),
+        stemsVisibility: normalizeStemsVisibility(track.stems_visibility),
       };
     }),
     isPublic: album.is_public,
@@ -763,23 +799,30 @@ function applyPublicTrackAccessPolicy(
   album: AlbumData,
   ctx: { hasPremiumAccess: boolean }
 ): AlbumData {
-  /** Скрытые треки не показываем на публичной витрине даже владельцу (кабинет без ?artist= отдаёт полный список). */
-  const withoutHidden = album.tracks.filter(
-    (t) => normalizeTrackVisibility(t.visibility) !== 'hidden'
-  );
+  /**
+   * Скрытые треки не показываем на публичной витрине, кроме случая когда стемы
+   * доступны в Mixer (stemsVisibility !== hidden) — тогда трек остаётся в API с visibility: hidden.
+   */
+  const catalogTracks = album.tracks.filter((t) => {
+    const trackVis = normalizeTrackVisibility(t.visibility);
+    if (trackVis !== 'hidden') return true;
+    return normalizeStemsVisibility(t.stemsVisibility) !== 'hidden';
+  });
 
-  const nextTracks = withoutHidden.map((t) => {
+  const nextTracks = catalogTracks.map((t) => {
     const visibility = normalizeTrackVisibility(t.visibility);
+    const stemsVisibility = normalizeStemsVisibility(t.stemsVisibility);
     const needLock = visibility === 'subscribers_only' && !ctx.hasPremiumAccess;
     if (needLock) {
       return {
         ...t,
         visibility,
+        stemsVisibility,
         src: '',
         playbackLocked: true,
       };
     }
-    return { ...t, visibility, playbackLocked: false };
+    return { ...t, visibility, stemsVisibility, playbackLocked: false };
   });
   return { ...album, tracks: nextTracks };
 }
@@ -1073,6 +1116,7 @@ export const handler: Handler = async (
             tracks: merged.tracks.map((t) => ({
               ...t,
               visibility: normalizeTrackVisibility(t.visibility),
+              stemsVisibility: normalizeStemsVisibility(t.stemsVisibility),
             })),
           };
         }
@@ -1417,7 +1461,18 @@ export const handler: Handler = async (
               );
               const newAlbumPk = insertRes.rows[0].id;
               const hasVis = await tracksTableHasVisibilityColumn();
-              if (hasVis) {
+              const hasStemsVis = await tracksTableHasStemsVisibilityColumn();
+              if (hasVis && hasStemsVis) {
+                await client.query(
+                  `INSERT INTO tracks (
+                  album_id, track_id, title, duration, src, content, authorship, synced_lyrics, order_index, visibility, stems_visibility, updated_at
+                )
+                SELECT $1::uuid, track_id, title, duration, src, content, authorship, synced_lyrics, order_index,
+                       COALESCE(visibility, 'public'), COALESCE(stems_visibility, 'public'), NOW()
+                FROM tracks WHERE album_id = $2::uuid`,
+                  [newAlbumPk, sibling.id]
+                );
+              } else if (hasVis) {
                 await client.query(
                   `INSERT INTO tracks (
                   album_id, track_id, title, duration, src, content, authorship, synced_lyrics, order_index, visibility, updated_at
@@ -1806,6 +1861,7 @@ export const handler: Handler = async (
                 authorship: track.authorship || undefined,
                 syncedLyrics: track.syncedLyrics || undefined,
                 visibility: track.visibility || 'public',
+                stemsVisibility: track.stemsVisibility || 'public',
               };
             }),
           }));

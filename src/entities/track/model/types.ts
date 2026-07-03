@@ -11,6 +11,8 @@ export type Track = {
   order_index: number;
   /** См. `TracksProps.visibility`; для данных с API / дашборда. */
   visibility?: 'public' | 'subscribers_only' | 'hidden';
+  /** См. `TracksProps.stemsVisibility`; доступ к стемам в Mixer. */
+  stemsVisibility?: 'public' | 'subscribers_only' | 'hidden';
   /** Публичный ответ: воспроизведение недоступно без покупки */
   playbackLocked?: boolean;
 };

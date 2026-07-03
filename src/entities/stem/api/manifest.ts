@@ -3,6 +3,7 @@ import { fetchWithAuthSession } from '@shared/lib/authFetch';
 import { getAuthHeader } from '@shared/lib/auth';
 import { uniqueUploadFileSuffix } from '@shared/lib/uniqueUploadFileSuffix';
 import { STEMS_MANIFEST_VERSION, type StemMeta, type StemsManifest } from '../model/types';
+import type { StemsVisibility } from '@shared/lib/stems/stemsVisibility';
 
 const MANIFEST_FILE = 'stems.json';
 const MANIFEST_MIME = 'application/json';
@@ -167,6 +168,28 @@ interface ApiEnvelope<T> {
   success?: boolean;
   data?: T;
   error?: string;
+}
+
+/** POST: обновить видимость стемов трека (независимо от track.visibility). */
+export async function updateStemsVisibility(
+  albumId: string,
+  trackId: string,
+  visibility: StemsVisibility
+): Promise<void> {
+  const token = await getAuthToken();
+  const response = await fetchWithAuthSession('/api/update-stems-visibility', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ albumId, trackId, visibility }),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error((errorData as { message?: string }).message || `HTTP ${response.status}`);
+  }
 }
 
 /** Загрузить список стемов трека через protected API. */

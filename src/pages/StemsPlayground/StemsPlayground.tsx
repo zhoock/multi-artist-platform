@@ -1,5 +1,5 @@
 // src/pages/StemsPlayground/StemsPlayground.tsx
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, useCallback } from 'react';
 import { List as ListIcon, Save as SaveIcon } from 'lucide-react';
 import { Helmet } from 'react-helmet-async';
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
@@ -14,6 +14,8 @@ import { buildPublicSiteUrl } from '@shared/lib/publicSiteOrigin';
 import { useSiteArtistDisplayName } from '@shared/lib/hooks/useSiteArtistDisplayName';
 import { ContextNav } from '@shared/ui/contextNav';
 import { sanitizeReturnPath } from '@shared/lib/authReturnUrl';
+import { useArchiveAccessModal } from '@shared/lib/archiveAccessModal';
+import { refreshPremiumContentForArchiveChange } from '@features/artistArchive';
 import { queueMixToast } from '@shared/lib/mixToast';
 import { MixToast } from '@shared/ui/mixToast';
 import { ConfirmationModal } from '@shared/ui/confirmationModal';
@@ -47,6 +49,8 @@ export default function StemsPlayground() {
   const { mixId } = useParams<{ mixId?: string }>();
   const [searchParams] = useSearchParams();
   const publicArtistSlugFromStore = useAppSelector(selectPublicArtistSlug);
+  const artistSlug = searchParams.get('artist')?.trim() || publicArtistSlugFromStore?.trim() || '';
+  const publicArtistSlug = artistSlug || null;
 
   const { albums, loading } = useMixerCatalog();
   const {
@@ -59,6 +63,36 @@ export default function StemsPlayground() {
     backToTracks,
   } = useMixerNavigation(albums);
 
+  const { requestAccess } = useArchiveAccessModal();
+
+  const handleSelectTrack = useCallback(
+    (trackId: string) => {
+      const track = selectedAlbum?.tracks.find((t) => t.id === trackId);
+      if (track?.locked) {
+        void requestAccess({
+          artistUserId: selectedAlbum?.userId,
+          artistSlug: publicArtistSlug ?? undefined,
+          onAccessGranted: () => {
+            refreshPremiumContentForArchiveChange(dispatch, publicArtistSlug, {
+              immediate: true,
+            });
+          },
+        });
+        return;
+      }
+      selectTrack(trackId);
+    },
+    [selectedAlbum, publicArtistSlug, requestAccess, dispatch, selectTrack]
+  );
+
+  useEffect(() => {
+    const onArchiveChanged = () => {
+      refreshPremiumContentForArchiveChange(dispatch, publicArtistSlug);
+    };
+    window.addEventListener('archive:changed', onArchiveChanged);
+    return () => window.removeEventListener('archive:changed', onArchiveChanged);
+  }, [dispatch, publicArtistSlug]);
+
   const sectionRef = useRef<HTMLElement | null>(null);
   const panelRef = useRef<MixerPlayerPanelHandle | null>(null);
 
@@ -69,8 +103,6 @@ export default function StemsPlayground() {
   const buttons = (ui?.buttons ?? {}) as Record<string, string>;
 
   const pageTitle = stems.pageTitle ?? 'Mixer';
-  const artistSlug = searchParams.get('artist')?.trim() || publicArtistSlugFromStore?.trim() || '';
-  const publicArtistSlug = artistSlug || null;
   const { displayName: siteArtistName } = useSiteArtistDisplayName(lang, {
     artistSlug: artistSlug || null,
   });
@@ -137,6 +169,46 @@ export default function StemsPlayground() {
     navigate(`/auth?${params.toString()}`, { state: { backgroundLocation: location } });
     return false;
   };
+
+  const loadTrackMixes = useCallback(async () => {
+    if (!selectedAlbum || !selectedTrack) {
+      setMixes([]);
+      return;
+    }
+    setMixesLoading(true);
+    try {
+      setMixes(
+        await getMyMixes({
+          albumId: selectedAlbum.albumId,
+          trackId: selectedTrack.id,
+        })
+      );
+    } catch (error) {
+      const apiError = error as SavedMixApiError;
+      if (apiError?.code === 'UNAUTHORIZED') {
+        setMyMixesOpen(false);
+        requireAuth();
+      } else {
+        console.error('[stems] load mixes failed', error);
+        showToast(stems.mixError ?? 'Something went wrong');
+        setMixes([]);
+      }
+    } finally {
+      setMixesLoading(false);
+    }
+  }, [selectedAlbum, selectedTrack, stems.mixError, location.pathname, location.search, navigate]);
+
+  useEffect(() => {
+    setMixes([]);
+    if (!selectedAlbum || !selectedTrack) {
+      setMyMixesOpen(false);
+    }
+  }, [selectedAlbum?.albumId, selectedTrack?.id]);
+
+  useEffect(() => {
+    if (!myMixesOpen || !selectedAlbum || !selectedTrack) return;
+    void loadTrackMixes();
+  }, [myMixesOpen, selectedAlbum?.albumId, selectedTrack?.id, loadTrackMixes]);
 
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
@@ -238,27 +310,15 @@ export default function StemsPlayground() {
     }
   };
 
-  const handleMyMixesClick = async () => {
+  const handleMyMixesClick = () => {
     if (!requireAuth()) return;
+    if (!selectedAlbum || !selectedTrack) return;
     setMyMixesOpen(true);
-    setMixesLoading(true);
-    try {
-      setMixes(await getMyMixes());
-    } catch (error) {
-      const apiError = error as SavedMixApiError;
-      if (apiError?.code === 'UNAUTHORIZED') {
-        setMyMixesOpen(false);
-        requireAuth();
-      } else {
-        console.error('[stems] load mixes failed', error);
-        showToast(stems.mixError ?? 'Something went wrong');
-      }
-    } finally {
-      setMixesLoading(false);
-    }
   };
 
   const handleApply = (mix: SavedMix) => {
+    if (!selectedAlbum || !selectedTrack) return;
+    if (mix.albumId !== selectedAlbum.albumId || mix.trackId !== selectedTrack.id) return;
     panelRef.current?.applyMix(mix.settings);
     setMyMixesOpen(false);
     showToast(stems.mixApplied ?? 'Mix applied');
@@ -382,7 +442,7 @@ export default function StemsPlayground() {
                     .join(' · ')}
                 </span>
               </MixerBackNav>
-              <MixerTrackList tracks={selectedAlbum.tracks} onSelectTrack={selectTrack} />
+              <MixerTrackList tracks={selectedAlbum.tracks} onSelectTrack={handleSelectTrack} />
               {selectTrackHint ? <p className="mixer-level__hint">{selectTrackHint}</p> : null}
             </>
           )}

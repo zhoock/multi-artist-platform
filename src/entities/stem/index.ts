@@ -15,5 +15,6 @@ export {
   saveStemsManifest,
   deleteStemFile,
   loadStems,
+  updateStemsVisibility,
   type LoadStemsResult,
 } from './api/manifest';

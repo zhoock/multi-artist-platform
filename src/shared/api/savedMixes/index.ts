@@ -60,13 +60,25 @@ export interface CreateMixPayload {
   settings: SavedMixSetting[];
 }
 
-export async function getMyMixes(): Promise<SavedMix[]> {
+export type GetMyMixesParams = {
+  albumId: string;
+  trackId: string;
+};
+
+export async function getMyMixes(params: GetMyMixesParams): Promise<SavedMix[]> {
+  const albumId = params.albumId?.trim();
+  const trackId = params.trackId?.trim();
+  if (!albumId || !trackId) {
+    throw new SavedMixApiError('albumId and trackId are required', 'UNKNOWN', 400);
+  }
+
   const authHeader = getAuthHeader();
   if (!('Authorization' in authHeader)) {
     throw new SavedMixApiError('Authentication required', 'UNAUTHORIZED', 401);
   }
 
-  const response = await fetchWithAuthSession('/api/my-saved-mixes', {
+  const query = new URLSearchParams({ albumId, trackId });
+  const response = await fetchWithAuthSession(`/api/my-saved-mixes?${query.toString()}`, {
     headers: { ...authHeader },
   });
 

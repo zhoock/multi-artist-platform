@@ -14,8 +14,8 @@ import {
 } from '@entities/album/model/selectors';
 import { selectPublicArtistSlug } from '@shared/model/currentArtist';
 import { useShowSurfaceAlbumsLoadingShell } from '@shared/lib/hooks/useShowAlbumsLoadingShell';
+import { normalizeStemsVisibility } from '@shared/lib/stems/stemsVisibility';
 import { loadStems, getStemAudioUrl } from '@entities/stem';
-import { isTrackPlaybackBlocked } from '@shared/lib/tracks/trackPlayback';
 import type { MixerAlbum, MixerTrack, PlayableStem } from './types';
 
 /** Год релиза из `album.release.date` (пустая строка, если нет). */
@@ -78,7 +78,7 @@ export function useMixerCatalog(): MixerCatalog {
 
   // Превью обложек стемов из админки: принудительно перечитываем альбомы.
   useEffect(() => {
-    const handleStemCoverUpdate = () => {
+    const handleStemCatalogRefresh = () => {
       dispatch(
         fetchAlbums({
           force: true,
@@ -87,8 +87,12 @@ export function useMixerCatalog(): MixerCatalog {
         })
       );
     };
-    window.addEventListener('stem-cover-updated', handleStemCoverUpdate);
-    return () => window.removeEventListener('stem-cover-updated', handleStemCoverUpdate);
+    window.addEventListener('stem-cover-updated', handleStemCatalogRefresh);
+    window.addEventListener('stems-visibility-updated', handleStemCatalogRefresh);
+    return () => {
+      window.removeEventListener('stem-cover-updated', handleStemCatalogRefresh);
+      window.removeEventListener('stems-visibility-updated', handleStemCatalogRefresh);
+    };
   }, [artistSlug, dispatch]);
 
   // Построение каталога только после актуального fetchAlbums для текущего артиста.
@@ -135,6 +139,11 @@ export function useMixerCatalog(): MixerCatalog {
         for (const track of album.tracks) {
           const trackId = String(track.id);
           const albumId = album.albumId;
+          const stemsVis = normalizeStemsVisibility(
+            (track as { stemsVisibility?: unknown }).stemsVisibility
+          );
+
+          if (stemsVis === 'hidden') continue;
 
           const {
             stems: stemMetas,
@@ -146,14 +155,16 @@ export function useMixerCatalog(): MixerCatalog {
           const trackTitle = track.title || `Track ${trackId}`;
           const trackDuration = typeof track.duration === 'number' ? track.duration : 0;
 
-          if (accessDenied && isTrackPlaybackBlocked(track)) {
-            mixerTracks.push({
-              id: trackId,
-              title: trackTitle,
-              duration: trackDuration,
-              locked: true,
-              stems: [],
-            });
+          if (accessDenied) {
+            if (stemsVis === 'subscribers_only') {
+              mixerTracks.push({
+                id: trackId,
+                title: trackTitle,
+                duration: trackDuration,
+                locked: true,
+                stems: [],
+              });
+            }
             continue;
           }
 

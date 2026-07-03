@@ -492,6 +492,21 @@
         "deleteStemHint": "This action cannot be undone.",
         "deleteStemSuccessToast": "Stem \"{name}\" deleted",
         "addStemSuccessToast": "Stem \"{name}\" added",
+        "stemsAccessAriaLabel": "Stem access",
+        "stemsVisibility": {
+          "public": {
+            "title": "Open to everyone",
+            "description": "Stems are available to all visitors."
+          },
+          "subscribersOnly": {
+            "title": "Subscribers only",
+            "description": "Only subscribers can access these stems."
+          },
+          "hidden": {
+            "title": "Hidden",
+            "description": "Stems are hidden from the public Mixer."
+          }
+        },
         "stemCovers": "Stem Covers",
         "stemCoversDescription": "Upload photos of musicians for each stem.",
         "contentTitle": "Page content (RU / EN)",

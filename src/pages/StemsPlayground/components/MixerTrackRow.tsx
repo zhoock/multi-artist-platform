@@ -14,7 +14,13 @@ type MixerTrackRowProps = {
 export function MixerTrackRow({ track, index, onSelect }: MixerTrackRowProps) {
   if (track.locked) {
     return (
-      <div className="mixer-track-row mixer-track-row--locked" aria-label={track.title}>
+      <button
+        type="button"
+        className="mixer-track-row mixer-track-row--locked"
+        onClick={() => onSelect(track.id)}
+        aria-label={track.title}
+        aria-description={`Трек недоступен без подписки: ${track.title}`}
+      >
         <span className="mixer-track-row__lock" aria-hidden>
           <LockIcon
             {...dashboardActionIconProps({
@@ -25,7 +31,7 @@ export function MixerTrackRow({ track, index, onSelect }: MixerTrackRowProps) {
         </span>
         <span className="mixer-track-row__title">{track.title}</span>
         <span className="mixer-track-row__duration">{formatTrackDuration(track.duration)}</span>
-      </div>
+      </button>
     );
   }
 

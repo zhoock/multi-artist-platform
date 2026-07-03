@@ -492,6 +492,21 @@
         "deleteStemHint": "Это действие нельзя отменить.",
         "deleteStemSuccessToast": "Стем «{name}» удалён",
         "addStemSuccessToast": "Стем «{name}» добавлен",
+        "stemsAccessAriaLabel": "Доступ к стемам",
+        "stemsVisibility": {
+          "public": {
+            "title": "Открыт для всех",
+            "description": "Стемы доступны всем посетителям."
+          },
+          "subscribersOnly": {
+            "title": "Только для подписчиков",
+            "description": "Стемы доступны только подписчикам."
+          },
+          "hidden": {
+            "title": "Скрыт",
+            "description": "Стемы скрыты из публичного Mixer."
+          }
+        },
         "stemCovers": "Обложки стемов",
         "stemCoversDescription": "Загрузите фотографии музыкантов для каждого стема.",
         "contentTitle": "Контент страницы (RU / EN)",

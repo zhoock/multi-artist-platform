@@ -950,6 +950,11 @@ dialog {
     font-variant-numeric: tabular-nums;
   }
 
+  &__stem-access-button {
+    flex-shrink: 0;
+    margin-inline-start: auto;
+  }
+
   &__track-body {
     padding: 0 var(--ms-01) var(--ms-01);
   }

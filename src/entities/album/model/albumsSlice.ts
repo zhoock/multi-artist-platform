@@ -2,6 +2,7 @@ import { createAsyncThunk, createSlice, type PayloadAction } from '@reduxjs/tool
 
 import type { IAlbums, IAlbumTranslations, IAlbumTrackTranslations } from '@models';
 import { normalizeTrackIdString } from '@shared/lib/tracks/normalizeTrackIdString';
+import { normalizeStemsVisibility } from '@shared/lib/stems/stemsVisibility';
 import { normalizeTrackVisibility } from '@shared/lib/tracks/trackVisibility';
 import type { RootState } from '@shared/model/appStore/types';
 import { getToken } from '@shared/lib/auth';
@@ -201,6 +202,9 @@ export const fetchAlbums = createAsyncThunk<
                 translations: track.translations,
                 visibility: normalizeTrackVisibility(
                   (track as { visibility?: unknown }).visibility
+                ),
+                stemsVisibility: normalizeStemsVisibility(
+                  (track as { stemsVisibility?: unknown }).stemsVisibility
                 ),
                 playbackLocked: Boolean((track as { playbackLocked?: unknown }).playbackLocked),
               };

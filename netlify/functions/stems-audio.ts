@@ -4,12 +4,12 @@
 
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { createErrorResponse, createOptionsResponse, getUserIdFromEvent } from './lib/api-helpers';
+import { resolveStemTrackAccessAllowed } from './lib/stem-track-access';
 import {
   assertArtistUserId,
   assertSafeStemSegment,
   downloadStemFileFromStorage,
   verifyStemTrackAccessToken,
-  viewerCanAccessStems,
 } from './lib/stems-access';
 
 const CORS_HEADERS = {
@@ -67,7 +67,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
   if (!allowed) {
     const viewerUserId = getUserIdFromEvent(event);
     try {
-      allowed = await viewerCanAccessStems(viewerUserId, artistUserId);
+      allowed = await resolveStemTrackAccessAllowed(viewerUserId, artistUserId, albumId, trackId);
     } catch (error) {
       console.error('❌ [stems-audio] entitlement check failed', error);
       return createErrorResponse(500, 'Failed to verify stem access');

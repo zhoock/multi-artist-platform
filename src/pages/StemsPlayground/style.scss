@@ -256,7 +256,13 @@
       grid-template-columns: auto 1fr auto;
       color: var(--time-color, #9b9b9a);
       background: var(--link-button-background-color, rgb(255 255 255 / 2%));
-      cursor: default;
+      cursor: pointer;
+
+      @media (hover: hover) and (pointer: fine) {
+        &:hover {
+          background: rgb(255 255 255 / 4%);
+        }
+      }
 
       .mixer-track-row__lock {
         display: inline-flex;

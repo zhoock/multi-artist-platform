@@ -6,6 +6,8 @@
 import type { IAlbums } from '@models';
 import { siteArtistUiLabel } from '@shared/lib/profileDisplayName';
 import type { SupportedLang } from '@shared/model/lang';
+import type { StemsVisibility } from '@shared/lib/stems/stemsVisibility';
+import { normalizeStemsVisibility } from '@shared/lib/stems/stemsVisibility';
 import type { TrackVisibility } from '@shared/lib/tracks/trackVisibility';
 import { normalizeTrackVisibility } from '@shared/lib/tracks/trackVisibility';
 
@@ -38,6 +40,7 @@ export interface TrackData {
   authorship?: string;
   syncedLyrics?: { text: string; startTime: number; endTime?: number }[];
   visibility?: TrackVisibility;
+  stemsVisibility?: StemsVisibility;
 }
 
 /**
@@ -121,6 +124,9 @@ export function transformAlbumToAlbumData(
       authorship: (track as any).authorship || undefined,
       syncedLyrics: track.syncedLyrics || undefined, // Добавляем syncedLyrics из альбома
       visibility: normalizeTrackVisibility((track as { visibility?: unknown }).visibility),
+      stemsVisibility: normalizeStemsVisibility(
+        (track as { stemsVisibility?: unknown }).stemsVisibility
+      ),
     };
   });
 

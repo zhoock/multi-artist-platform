@@ -1,10 +1,10 @@
 /**
- * GET /api/my-saved-mixes
- * Список сохранённых миксов текущего пользователя.
+ * GET /api/my-saved-mixes?albumId=&trackId=
+ * Список сохранённых миксов текущего пользователя для конкретного трека.
  */
 
 import type { Handler, HandlerEvent } from '@netlify/functions';
-import { getSavedMixesForUser } from './lib/saved-mixes';
+import { getSavedMixesForUserTrack } from './lib/saved-mixes';
 import {
   createErrorResponse,
   createOptionsResponse,
@@ -27,8 +27,14 @@ export const handler: Handler = async (event: HandlerEvent) => {
     return unauthorizedFromAuthHeader(event);
   }
 
+  const albumId = event.queryStringParameters?.albumId?.trim() ?? '';
+  const trackId = event.queryStringParameters?.trackId?.trim() ?? '';
+  if (!albumId || !trackId) {
+    return createErrorResponse(400, 'albumId and trackId are required');
+  }
+
   try {
-    const mixes = await getSavedMixesForUser(userId);
+    const mixes = await getSavedMixesForUserTrack(userId, albumId, trackId);
     return createSuccessResponse({ mixes });
   } catch (error) {
     console.error('❌ [my-saved-mixes]', error);

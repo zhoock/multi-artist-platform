@@ -1,5 +1,6 @@
 // src/pages/UserDashboard/components/mixer/MixerAdmin.tsx
 import React, { useCallback, useMemo, useRef, useState } from 'react';
+import clsx from 'clsx';
 import {
   DndContext,
   closestCenter,
@@ -37,10 +38,14 @@ import {
   deleteStemFile,
   getStemStoragePath,
   getStemAudioUrl,
+  updateStemsVisibility,
 } from '@entities/stem';
+import { normalizeStemsVisibility, type StemsVisibility } from '@shared/lib/stems/stemsVisibility';
+import { getDashboardRowFlashProps, useDashboardRowFlash } from '../../lib/dashboardRowStateFlash';
 import { DashboardExpandChevron } from '../../lib/dashboardExpandChevron';
 import { AddStemModal, type AddStemModalLabels } from './AddStemModal';
 import { SortableStemRow, type StemRowLabels } from './SortableStemRow';
+import { StemAccessControl } from './StemAccessControl';
 
 interface MixerAdminProps {
   ui?: IInterface;
@@ -74,6 +79,9 @@ interface DeleteTarget {
  * где albumId — storage-ключ альбома (`album.albumId || album.id`, как getStorageAlbumId).
  */
 const stemKey = (albumId: string, trackId: string) => `${albumId}:${trackId}`;
+
+const mixerStemTrackRowId = (storageAlbumId: string, trackId: string) =>
+  `mixer-stem-track-row-${stemKey(storageAlbumId, trackId)}`;
 
 function formatStemToastMessage(
   stemName: string,
@@ -112,6 +120,11 @@ export function MixerAdmin({ ui, userId, albums = [] }: MixerAdminProps) {
   const [stemAddedToastTrigger, setStemAddedToastTrigger] = useState(0);
   const [stemDeletedToastTrigger, setStemDeletedToastTrigger] = useState(0);
   const [playingStemId, setPlayingStemId] = useState<string | null>(null);
+  const [stemsVisibilityByTrack, setStemsVisibilityByTrack] = useState<
+    Record<string, StemsVisibility>
+  >({});
+
+  const { flashes: stemTrackRowFlashes, flashRow: flashStemTrackRow } = useDashboardRowFlash();
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -171,6 +184,26 @@ export function MixerAdmin({ ui, userId, albums = [] }: MixerAdminProps) {
     albums.find((a) => a.id === albumId)?.tracks || [];
 
   const getStorageAlbumId = (album: AlbumData): string => album.albumId || album.id;
+
+  const resolveStemsVisibility = (storageAlbumId: string, track: TrackData): StemsVisibility => {
+    const key = stemKey(storageAlbumId, track.id);
+    return stemsVisibilityByTrack[key] ?? normalizeStemsVisibility(track.stemsVisibility);
+  };
+
+  const handleStemsVisibilityChange = useCallback(
+    async (storageAlbumId: string, trackId: string, visibility: StemsVisibility) => {
+      const key = stemKey(storageAlbumId, trackId);
+      try {
+        await updateStemsVisibility(storageAlbumId, trackId, visibility);
+        setStemsVisibilityByTrack((prev) => ({ ...prev, [key]: visibility }));
+        flashStemTrackRow(mixerStemTrackRowId(storageAlbumId, trackId), visibility);
+        window.dispatchEvent(new CustomEvent('stems-visibility-updated'));
+      } catch (error) {
+        console.error('[MixerAdmin] Failed to update stems visibility:', error);
+      }
+    },
+    [flashStemTrackRow]
+  );
 
   const setBusy = (albumId: string, trackId: string, stemId: string, value: boolean) => {
     const key = `${stemKey(albumId, trackId)}:${stemId}`;
@@ -378,13 +411,27 @@ export function MixerAdmin({ ui, userId, albums = [] }: MixerAdminProps) {
             <React.Fragment key={album.id}>
               <div
                 className={`user-dashboard__album-item ${isAlbumOpen ? 'user-dashboard__album-item--expanded' : ''}`}
-                onClick={() => setExpandedAlbumId(isAlbumOpen ? null : album.id)}
+                onClick={() => {
+                  const nextOpen = isAlbumOpen ? null : album.id;
+                  setExpandedAlbumId(nextOpen);
+                  if (!isAlbumOpen) {
+                    tracks.forEach((track) => {
+                      void ensureTrackStems(storageAlbumId, track.id);
+                    });
+                  }
+                }}
                 role="button"
                 tabIndex={0}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault();
-                    setExpandedAlbumId(isAlbumOpen ? null : album.id);
+                    const nextOpen = isAlbumOpen ? null : album.id;
+                    setExpandedAlbumId(nextOpen);
+                    if (!isAlbumOpen) {
+                      tracks.forEach((track) => {
+                        void ensureTrackStems(storageAlbumId, track.id);
+                      });
+                    }
                   }
                 }}
                 aria-label={isAlbumOpen ? 'Collapse album' : 'Expand album'}
@@ -428,10 +475,22 @@ export function MixerAdmin({ ui, userId, albums = [] }: MixerAdminProps) {
                         const isTrackOpen = expandedTrackId === trackKey;
                         const stems = trackStems[trackKey] ?? [];
                         const isLoading = loadingTracks[trackKey];
+                        const hasStems = !isLoading && stems.length > 0;
+                        const stemTrackRowFlash = getDashboardRowFlashProps(
+                          mixerStemTrackRowId(storageAlbumId, track.id),
+                          stemTrackRowFlashes
+                        );
                         return (
                           <article
                             key={track.id}
-                            className={`mixer-admin__track-card${isTrackOpen ? ' mixer-admin__track-card--expanded' : ''}`}
+                            id={mixerStemTrackRowId(storageAlbumId, track.id)}
+                            className={clsx(
+                              'mixer-admin__track-card',
+                              isTrackOpen && 'mixer-admin__track-card--expanded',
+                              stemTrackRowFlash.className
+                            )}
+                            style={stemTrackRowFlash.style}
+                            data-visibility-flash={stemTrackRowFlash['data-visibility-flash']}
                           >
                             <div
                               className="mixer-admin__track-header"
@@ -467,6 +526,15 @@ export function MixerAdmin({ ui, userId, albums = [] }: MixerAdminProps) {
                               <span className="mixer-admin__track-title">
                                 {track.title || (track as any).trackTitle || (track as any).trackId}
                               </span>
+                              {hasStems && (
+                                <StemAccessControl
+                                  albumId={storageAlbumId}
+                                  trackId={track.id}
+                                  visibility={resolveStemsVisibility(storageAlbumId, track)}
+                                  onVisibilityChange={handleStemsVisibilityChange}
+                                  ui={ui}
+                                />
+                              )}
                               <span className="mixer-admin__track-duration">{track.duration}</span>
                             </div>
 

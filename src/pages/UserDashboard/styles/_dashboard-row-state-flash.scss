@@ -3,7 +3,8 @@
 dialog {
   .user-dashboard {
     &__album-item,
-    &__track-item {
+    &__track-item,
+    .mixer-admin__track-card {
       &.user-dashboard__row-state-flash {
         position: relative;
         isolation: isolate;

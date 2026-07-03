@@ -185,6 +185,8 @@ export interface TracksProps extends Track {
   visibility?: 'public' | 'subscribers_only' | 'hidden';
   /** Плеер не должен играть трек без покупки (публичный API). */
   playbackLocked?: boolean;
+  /** Доступ к стемам в Mixer (независимо от visibility). */
+  stemsVisibility?: 'public' | 'subscribers_only' | 'hidden';
 }
 
 export interface CoverProps {
