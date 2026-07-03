@@ -26,6 +26,8 @@ export type LoadStemsResult = {
   stems: StemMeta[];
   accessToken: string | null;
   accessTokenExpiresAt: number | null;
+  /** Manifest exists but viewer lacks stem access (403/401). */
+  accessDenied?: boolean;
 };
 
 function buildStemsApiUrl(endpoint: 'manifest' | 'audio', params: URLSearchParams): string {
@@ -194,7 +196,7 @@ export async function loadStems(
     });
 
     if (response.status === 403 || response.status === 401) {
-      return empty;
+      return { ...empty, accessDenied: true };
     }
 
     if (!response.ok) {

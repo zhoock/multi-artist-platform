@@ -1108,6 +1108,24 @@ export class Universe3D {
     return `/?artist=${encodeURIComponent(publicSlug)}`;
   }
 
+  private handleArtistProfileNavigation(slug: string, event: Event): void {
+    event.stopPropagation();
+    if (this.onNavigateToArtist) {
+      event.preventDefault();
+      this.dismissCard();
+      this.onNavigateToArtist(slug);
+    } else {
+      this.dismissCard();
+    }
+  }
+
+  private bindArtistProfileLink(link: HTMLAnchorElement, slug: string): void {
+    link.href = this.buildArtistProfileHref(slug);
+    link.addEventListener('click', (event) => {
+      this.handleArtistProfileNavigation(slug, event);
+    });
+  }
+
   private appendArtistMediaPlaceholder(mediaEl: Element): void {
     const placeholder = document.createElement('div');
     placeholder.className = 'universe3d-card__media-placeholder';
@@ -1181,12 +1199,13 @@ export class Universe3D {
     const label = data.genreLabel?.[langKey] ?? genreCode;
     const coverUrl =
       Array.isArray(data.headerImages) && data.headerImages.length > 0 ? data.headerImages[0] : '';
+    const slug = typeof data.publicSlug === 'string' ? data.publicSlug.trim() : '';
 
     const card = document.createElement('div');
     card.className = 'universe3d-card';
     card.style.visibility = 'hidden';
     card.innerHTML = `
-      <div class="universe3d-card__media" aria-hidden="true"></div>
+      ${slug ? '<a class="universe3d-card__media"></a>' : '<div class="universe3d-card__media" aria-hidden="true"></div>'}
       <div class="universe3d-card__body">
         <div class="universe3d-card__title"></div>
         <div class="universe3d-card__chips">
@@ -1200,22 +1219,11 @@ export class Universe3D {
 
     const titleSlot = card.querySelector('.universe3d-card__title');
     if (titleSlot) {
-      const slug = typeof data.publicSlug === 'string' ? data.publicSlug.trim() : '';
       if (slug) {
         const link = document.createElement('a');
         link.className = 'universe3d-card__title';
-        link.href = this.buildArtistProfileHref(slug);
         link.textContent = title;
-        link.addEventListener('click', (e) => {
-          e.stopPropagation();
-          if (this.onNavigateToArtist) {
-            e.preventDefault();
-            this.dismissCard();
-            this.onNavigateToArtist(slug);
-          } else {
-            this.dismissCard();
-          }
-        });
+        this.bindArtistProfileLink(link, slug);
         titleSlot.replaceWith(link);
       } else {
         titleSlot.textContent = title;
@@ -1223,6 +1231,9 @@ export class Universe3D {
     }
 
     const mediaEl = card.querySelector('.universe3d-card__media');
+    if (mediaEl instanceof HTMLAnchorElement && slug) {
+      this.bindArtistProfileLink(mediaEl, slug);
+    }
     if (mediaEl) {
       if (coverUrl) {
         const img = document.createElement('img');
@@ -1238,6 +1249,9 @@ export class Universe3D {
         mediaEl.appendChild(img);
       } else {
         mediaEl.classList.add('universe3d-card__media--empty');
+        if (mediaEl instanceof HTMLAnchorElement) {
+          mediaEl.setAttribute('aria-label', title);
+        }
         this.appendArtistMediaPlaceholder(mediaEl);
       }
     }

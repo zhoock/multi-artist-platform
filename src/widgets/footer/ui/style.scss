@@ -2,15 +2,21 @@
 // Импортируем общий файл с зависимостями
 @use '../../../scss/abstracts/mixins' as *;
 
-.footer {
+body #root .footer {
   grid-area: footer;
+
+  .wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ms-1);
+    padding-block: var(--ms-1);
+  }
 
   .social-networks {
     &-list {
       display: grid;
       grid-gap: 1.618em;
       grid-template-columns: repeat(4, 50px);
-      margin-block-start: var(--ms-1);
       justify-content: space-between;
       text-align: center;
 
@@ -38,6 +44,7 @@
     align-items: center;
     gap: var(--ms-01);
     text-transform: capitalize;
+    margin-block-end: 0;
 
     li {
       white-space: nowrap;

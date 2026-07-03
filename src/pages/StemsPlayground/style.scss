@@ -251,6 +251,29 @@
       flex-shrink: 0;
       color: var(--accent-color);
     }
+
+    &--locked {
+      grid-template-columns: auto 1fr auto;
+      color: var(--time-color, #9b9b9a);
+      background: var(--link-button-background-color, rgb(255 255 255 / 2%));
+      cursor: default;
+
+      .mixer-track-row__lock {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--link-subtitle-color, var(--time-color, #9b9b9a));
+      }
+
+      .mixer-track-row__lock-icon {
+        flex-shrink: 0;
+      }
+
+      .mixer-track-row__title,
+      .mixer-track-row__duration {
+        color: var(--link-subtitle-color, var(--time-color, #9b9b9a));
+      }
+    }
   }
 
   /* ─────────────── Уровень 3: микшер ─────────────── */

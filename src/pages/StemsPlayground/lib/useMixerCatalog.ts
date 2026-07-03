@@ -1,17 +1,21 @@
 // src/pages/StemsPlayground/lib/useMixerCatalog.ts
 import { useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import type { IAlbums } from '@models';
 import { getUserAudioUrl } from '@shared/api/albums';
 import { optionalMediaSrc } from '@shared/lib/media/optionalMediaUrl';
 import { useAppDispatch } from '@shared/lib/hooks/useAppDispatch';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { useLang } from '@app/providers/lang';
-import { getUserUserId } from '@config/user';
 import { fetchAlbums } from '@entities/album/model/albumsSlice';
-import { selectAlbumsDataResolved, selectAlbumsStatus } from '@entities/album/model/selectors';
+import {
+  selectAlbumsStatus,
+  selectPublicAlbumsDataResolvedForSurface,
+} from '@entities/album/model/selectors';
 import { selectPublicArtistSlug } from '@shared/model/currentArtist';
 import { useShowSurfaceAlbumsLoadingShell } from '@shared/lib/hooks/useShowAlbumsLoadingShell';
 import { loadStems, getStemAudioUrl } from '@entities/stem';
+import { isTrackPlaybackBlocked } from '@shared/lib/tracks/trackPlayback';
 import type { MixerAlbum, MixerTrack, PlayableStem } from './types';
 
 /** Год релиза из `album.release.date` (пустая строка, если нет). */
@@ -44,8 +48,10 @@ export type MixerCatalog = {
 export function useMixerCatalog(): MixerCatalog {
   const dispatch = useAppDispatch();
   const { lang } = useLang();
-  const publicArtistSlug = useAppSelector(selectPublicArtistSlug);
-  const albums = useAppSelector(selectAlbumsDataResolved);
+  const [searchParams] = useSearchParams();
+  const publicArtistSlugFromStore = useAppSelector(selectPublicArtistSlug);
+  const artistSlug = searchParams.get('artist')?.trim() || publicArtistSlugFromStore?.trim() || '';
+  const albums = useAppSelector(selectPublicAlbumsDataResolvedForSurface);
   const albumsStatus = useAppSelector(selectAlbumsStatus);
   const albumsLastUpdated = useAppSelector((s) => s.albums.lastUpdated);
   const showAlbumsLoadingShell = useShowSurfaceAlbumsLoadingShell(albumsStatus, albums.length > 0);
@@ -61,17 +67,29 @@ export function useMixerCatalog(): MixerCatalog {
     syncEpochRef.current = Date.now();
     setCatalog([]);
     setBuilding(true);
-    dispatch(fetchAlbums({ force: true }));
-  }, [dispatch, lang, publicArtistSlug]);
+    dispatch(
+      fetchAlbums({
+        force: true,
+        forcePublicCatalog: true,
+        publicArtistSlug: artistSlug || null,
+      })
+    );
+  }, [artistSlug, dispatch, lang]);
 
   // Превью обложек стемов из админки: принудительно перечитываем альбомы.
   useEffect(() => {
     const handleStemCoverUpdate = () => {
-      dispatch(fetchAlbums({ force: true }));
+      dispatch(
+        fetchAlbums({
+          force: true,
+          forcePublicCatalog: true,
+          publicArtistSlug: artistSlug || null,
+        })
+      );
     };
     window.addEventListener('stem-cover-updated', handleStemCoverUpdate);
     return () => window.removeEventListener('stem-cover-updated', handleStemCoverUpdate);
-  }, [dispatch]);
+  }, [artistSlug, dispatch]);
 
   // Построение каталога только после актуального fetchAlbums для текущего артиста.
   useEffect(() => {
@@ -109,7 +127,7 @@ export function useMixerCatalog(): MixerCatalog {
       for (const album of albums) {
         if (!album.albumId || !album.tracks || album.tracks.length === 0) continue;
 
-        const storageUserId = (album.userId && String(album.userId).trim()) || getUserUserId();
+        const storageUserId = album.userId ? String(album.userId).trim() : '';
         if (!storageUserId) continue;
 
         const mixerTracks: MixerTrack[] = [];
@@ -122,7 +140,23 @@ export function useMixerCatalog(): MixerCatalog {
             stems: stemMetas,
             accessToken,
             accessTokenExpiresAt,
+            accessDenied,
           } = await loadStems(storageUserId, albumId, trackId);
+
+          const trackTitle = track.title || `Track ${trackId}`;
+          const trackDuration = typeof track.duration === 'number' ? track.duration : 0;
+
+          if (accessDenied && isTrackPlaybackBlocked(track)) {
+            mixerTracks.push({
+              id: trackId,
+              title: trackTitle,
+              duration: trackDuration,
+              locked: true,
+              stems: [],
+            });
+            continue;
+          }
+
           if (!stemMetas || stemMetas.length === 0) continue;
 
           const stems: PlayableStem[] = [];
@@ -151,8 +185,8 @@ export function useMixerCatalog(): MixerCatalog {
 
           mixerTracks.push({
             id: trackId,
-            title: track.title || `Track ${trackId}`,
-            duration: typeof track.duration === 'number' ? track.duration : 0,
+            title: trackTitle,
+            duration: trackDuration,
             mixUrl: mixUrl ?? undefined,
             stems,
           });
@@ -179,7 +213,7 @@ export function useMixerCatalog(): MixerCatalog {
     };
 
     build();
-  }, [albums, albumsStatus, albumsLastUpdated, publicArtistSlug]);
+  }, [albums, albumsStatus, albumsLastUpdated, artistSlug]);
 
   return {
     albums: catalog,

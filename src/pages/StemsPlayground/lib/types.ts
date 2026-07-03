@@ -12,7 +12,7 @@ export type PlayableStem = {
   url: string;
 };
 
-/** Трек альбома, у которого есть хотя бы один воспроизводимый стем. */
+/** Трек альбома, у которого есть стемы (воспроизводимые или только для подписчиков). */
 export type MixerTrack = {
   id: string;
   title: string;
@@ -20,6 +20,8 @@ export type MixerTrack = {
   duration: number;
   /** URL полного микса для волны (фолбэк — первый стем). */
   mixUrl?: string;
+  /** Стемы недоступны без подписки — показываем в списке, но не открываем микшер. */
+  locked?: boolean;
   stems: PlayableStem[];
 };
 

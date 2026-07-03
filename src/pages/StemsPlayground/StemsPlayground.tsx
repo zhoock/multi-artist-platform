@@ -2,7 +2,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { List as ListIcon, Save as SaveIcon } from 'lucide-react';
 import { Helmet } from 'react-helmet-async';
-import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useLang } from '@app/providers/lang';
 import { useAppDispatch } from '@shared/lib/hooks/useAppDispatch';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
@@ -45,7 +45,8 @@ export default function StemsPlayground() {
   const navigate = useNavigate();
   const location = useLocation();
   const { mixId } = useParams<{ mixId?: string }>();
-  const publicArtistSlug = useAppSelector(selectPublicArtistSlug);
+  const [searchParams] = useSearchParams();
+  const publicArtistSlugFromStore = useAppSelector(selectPublicArtistSlug);
 
   const { albums, loading } = useMixerCatalog();
   const {
@@ -68,8 +69,8 @@ export default function StemsPlayground() {
   const buttons = (ui?.buttons ?? {}) as Record<string, string>;
 
   const pageTitle = stems.pageTitle ?? 'Mixer';
-  const artistSlug =
-    publicArtistSlug?.trim() || new URLSearchParams(location.search).get('artist')?.trim() || '';
+  const artistSlug = searchParams.get('artist')?.trim() || publicArtistSlugFromStore?.trim() || '';
+  const publicArtistSlug = artistSlug || null;
   const { displayName: siteArtistName } = useSiteArtistDisplayName(lang, {
     artistSlug: artistSlug || null,
   });

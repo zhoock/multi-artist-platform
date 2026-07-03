@@ -26,13 +26,20 @@
 
 .universe3d-card__media {
   position: relative;
+  display: block;
   width: calc(100% - 2 * var(--ms-0));
   margin: var(--ms-0) auto 0;
   aspect-ratio: 1 / 1;
+  color: inherit;
   background: color-mix(in srgb, var(--extra-background-color, #101015) 90%, transparent);
   border: 1px solid color-mix(in srgb, var(--hr-color, #4b4d55) 60%, transparent);
   border-radius: calc(var(--ms-01) + var(--ms-02));
   overflow: hidden;
+  text-decoration: none;
+
+  &:is(a) {
+    cursor: pointer;
+  }
 
   &--empty {
     background: color-mix(

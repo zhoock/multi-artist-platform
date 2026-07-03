@@ -1,5 +1,6 @@
 // src/pages/StemsPlayground/components/MixerTrackRow.tsx
-import { ChevronRight as ChevronRightIcon } from 'lucide-react';
+import { ChevronRight as ChevronRightIcon, Lock as LockIcon } from 'lucide-react';
+import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 import type { MixerTrack } from '../lib/types';
 import { formatTrackDuration } from '../lib/formatTrackDuration';
 
@@ -11,6 +12,23 @@ type MixerTrackRowProps = {
 
 /** Строка трека: номер, название, длительность, стрелка перехода. */
 export function MixerTrackRow({ track, index, onSelect }: MixerTrackRowProps) {
+  if (track.locked) {
+    return (
+      <div className="mixer-track-row mixer-track-row--locked" aria-label={track.title}>
+        <span className="mixer-track-row__lock" aria-hidden>
+          <LockIcon
+            {...dashboardActionIconProps({
+              size: 18,
+              className: 'mixer-track-row__lock-icon',
+            })}
+          />
+        </span>
+        <span className="mixer-track-row__title">{track.title}</span>
+        <span className="mixer-track-row__duration">{formatTrackDuration(track.duration)}</span>
+      </div>
+    );
+  }
+
   return (
     <button
       type="button"

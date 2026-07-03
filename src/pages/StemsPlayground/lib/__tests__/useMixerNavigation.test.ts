@@ -97,4 +97,29 @@ describe('useMixerNavigation', () => {
     expect(result.current.selectedTrack).toBeNull();
     expect(result.current.selectedAlbum?.albumId).toBe('a1');
   });
+
+  test('does not open mixer for locked tracks', () => {
+    const albumsWithLocked: MixerAlbum[] = [
+      {
+        albumId: 'a1',
+        title: 'Album 1',
+        year: '2022',
+        tracks: [
+          {
+            id: 't1',
+            title: 'Locked track',
+            duration: 120,
+            locked: true,
+            stems: [],
+          },
+        ],
+      },
+    ];
+    const { result } = renderHook(() => useMixerNavigation(albumsWithLocked));
+
+    act(() => result.current.selectAlbum('a1'));
+    act(() => result.current.selectTrack('t1'));
+    expect(result.current.view).toBe('tracks');
+    expect(result.current.selectedTrack).toBeNull();
+  });
 });

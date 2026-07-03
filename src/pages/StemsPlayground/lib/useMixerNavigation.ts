@@ -52,10 +52,16 @@ export function useMixerNavigation(albums: MixerAlbum[]): MixerNavigation {
     setView('tracks');
   }, []);
 
-  const selectTrack = useCallback((trackId: string) => {
-    setSelectedTrackId(trackId);
-    setView('mixer');
-  }, []);
+  const selectTrack = useCallback(
+    (trackId: string) => {
+      const album = albums.find((a) => a.albumId === selectedAlbumId);
+      const track = album?.tracks.find((t) => t.id === trackId);
+      if (track?.locked) return;
+      setSelectedTrackId(trackId);
+      setView('mixer');
+    },
+    [albums, selectedAlbumId]
+  );
 
   const backToAlbums = useCallback(() => {
     setView('albums');

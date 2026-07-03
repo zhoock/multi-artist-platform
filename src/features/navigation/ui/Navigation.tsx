@@ -1,6 +1,6 @@
 // src/components/Navigation/Navigation.tsx
 import { memo } from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useSearchParams } from 'react-router-dom';
 import clsx from 'clsx';
 import { NavigationProps } from '@models';
 import { useLang } from '@app/providers/lang';
@@ -13,7 +13,10 @@ import './style.scss';
 const NavigationComponent = ({ onToggle }: NavigationProps) => {
   const { lang } = useLang();
   const ui = useAppSelector((state) => selectUiDictionaryFirst(state, lang));
-  const publicArtistSlug = useAppSelector(selectPublicArtistSlug);
+  const [searchParams] = useSearchParams();
+  const publicArtistSlugFromStore = useAppSelector(selectPublicArtistSlug);
+  const publicArtistSlug =
+    searchParams.get('artist')?.trim() || publicArtistSlugFromStore?.trim() || null;
 
   // UI словарь загружается через loader
 
