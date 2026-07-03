@@ -151,6 +151,9 @@ function sampleCloudLabelPositionsWithMinSep(
 /** sessionStorage key: set before opening `/?artist=`, read on home cloud init to focus camera. */
 export const UNIVERSE_FOCUS_ARTIST_STORAGE_KEY = 'focusArtist';
 
+const ARTIST_MEDIA_PLACEHOLDER_ICON_SVG =
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="universe3d-card__media-icon"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><path d="M16 3.128a4 4 0 0 1 0 7.744"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><circle cx="9" cy="7" r="4"/></svg>';
+
 export type SceneArtist = {
   userId?: string;
   name: string;
@@ -368,6 +371,7 @@ export class Universe3D {
 
     if (options?.isHeroPreview !== true) {
       window.addEventListener('click', this.onClick);
+      window.addEventListener('keydown', this.handleKeyDown);
       this.attachedWindowClick = true;
     }
 
@@ -907,10 +911,9 @@ export class Universe3D {
     const intersects = this.raycaster.intersectObjects(this.clickableNodes, true);
 
     for (let i = 0; i < intersects.length; i++) {
-      const obj = intersects[i].object;
-
-      if (obj.userData?.name) {
-        this.showCard(obj);
+      const artistNode = this.resolveArtistNodeFromIntersection(intersects[i].object);
+      if (artistNode) {
+        this.handleArtistNodeActivation(artistNode);
         return;
       }
     }
@@ -926,6 +929,36 @@ export class Universe3D {
     this.cardAnchorObject = null;
     this.navigationActiveObject = null;
   }
+
+  private isEditableKeyTarget(target: EventTarget | null): boolean {
+    if (!(target instanceof HTMLElement)) return false;
+    const tag = target.tagName;
+    return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target.isContentEditable;
+  }
+
+  private resolveArtistNodeFromIntersection(object: THREE.Object3D): THREE.Object3D | null {
+    let current: THREE.Object3D | null = object;
+    while (current) {
+      if (current.userData?.name) return current;
+      current = current.parent;
+    }
+    return null;
+  }
+
+  private handleArtistNodeActivation(obj: THREE.Object3D): void {
+    if (this.activeCard && this.cardAnchorObject === obj) {
+      this.dismissCard();
+      return;
+    }
+    this.showCard(obj);
+  }
+
+  private handleKeyDown = (e: KeyboardEvent) => {
+    if (e.key !== 'Escape' || !this.activeCard) return;
+    if (this.isEditableKeyTarget(e.target)) return;
+    e.preventDefault();
+    this.dismissCard();
+  };
 
   /** Viewport Y (px): max bottom edge of the card (above mini-player or viewport). */
   private getViewportBottomLimitY(): number {
@@ -1075,6 +1108,13 @@ export class Universe3D {
     return `/?artist=${encodeURIComponent(publicSlug)}`;
   }
 
+  private appendArtistMediaPlaceholder(mediaEl: Element): void {
+    const placeholder = document.createElement('div');
+    placeholder.className = 'universe3d-card__media-placeholder';
+    placeholder.innerHTML = ARTIST_MEDIA_PLACEHOLDER_ICON_SVG;
+    mediaEl.appendChild(placeholder);
+  }
+
   private moveTo(
     x: number,
     y: number,
@@ -1146,7 +1186,6 @@ export class Universe3D {
     card.className = 'universe3d-card';
     card.style.visibility = 'hidden';
     card.innerHTML = `
-      <button class="universe3d-card__close" type="button" aria-label="Close"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
       <div class="universe3d-card__media" aria-hidden="true"></div>
       <div class="universe3d-card__body">
         <div class="universe3d-card__title"></div>
@@ -1184,27 +1223,23 @@ export class Universe3D {
     }
 
     const mediaEl = card.querySelector('.universe3d-card__media');
-    if (mediaEl && coverUrl) {
-      const img = document.createElement('img');
-      img.className = 'universe3d-card__media-image';
-      img.alt = title;
-      img.loading = 'eager';
-      img.decoding = 'async';
-      img.src = this.resolveHeaderImageUrl(coverUrl);
-      img.addEventListener('load', () => {
-        if (this.activeCard !== card || !this.cardAnchorObject) return;
-        this.layoutCardFromObject();
-      });
-      mediaEl.appendChild(img);
-    }
-
-    const closeButton = card.querySelector('.universe3d-card__close');
-    if (closeButton instanceof HTMLButtonElement) {
-      closeButton.addEventListener('click', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        this.dismissCard();
-      });
+    if (mediaEl) {
+      if (coverUrl) {
+        const img = document.createElement('img');
+        img.className = 'universe3d-card__media-image';
+        img.alt = title;
+        img.loading = 'eager';
+        img.decoding = 'async';
+        img.src = this.resolveHeaderImageUrl(coverUrl);
+        img.addEventListener('load', () => {
+          if (this.activeCard !== card || !this.cardAnchorObject) return;
+          this.layoutCardFromObject();
+        });
+        mediaEl.appendChild(img);
+      } else {
+        mediaEl.classList.add('universe3d-card__media--empty');
+        this.appendArtistMediaPlaceholder(mediaEl);
+      }
     }
 
     const playButton = card.querySelector('.universe3d-card__play');
@@ -1612,10 +1647,9 @@ export class Universe3D {
       const intersects = this.raycaster.intersectObjects(this.clickableNodes, true);
 
       for (let i = 0; i < intersects.length; i++) {
-        const obj = intersects[i].object;
-
-        if (obj.userData?.name) {
-          this.showCard(obj);
+        const artistNode = this.resolveArtistNodeFromIntersection(intersects[i].object);
+        if (artistNode) {
+          this.handleArtistNodeActivation(artistNode);
           return;
         }
       }
@@ -1965,6 +1999,7 @@ export class Universe3D {
     window.visualViewport?.removeEventListener('resize', this.onResize);
     if (this.attachedWindowClick) {
       window.removeEventListener('click', this.onClick);
+      window.removeEventListener('keydown', this.handleKeyDown);
     }
     window.removeEventListener('profile-name-updated', this.onProfileDisplayNameUpdated);
     window.removeEventListener('wheel', this.handleWheel);
