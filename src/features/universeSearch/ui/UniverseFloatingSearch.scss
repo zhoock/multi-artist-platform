@@ -138,22 +138,26 @@
   &__dropdown {
     position: absolute;
     z-index: 30;
+    display: flex;
+    flex-direction: column;
+    gap: var(--ms-02);
     margin: 0;
-    padding: var(--ms-01) 0;
-    background: rgb(var(--charcoal-rgb) / 88%);
-    border: 1px solid rgb(var(--dark-greenish-yellow-rgb) / 38%);
-    border-radius: var(--ms-01);
-    box-shadow: 0 12px 40px rgb(0 0 0 / 45%);
+    padding: var(--ms-01);
+    background: var(--scene-chrome-bg, rgb(var(--charcoal-rgb) / 88%));
+    border: var(--scene-chrome-border-width, 1px) solid
+      var(--scene-chrome-border-color, rgb(var(--dark-greenish-yellow-rgb) / 42%));
+    border-radius: var(--ms-0);
+    box-shadow: 0 8px 32px rgb(0 0 0 / 45%);
     transition:
       opacity 200ms ease,
       transform 200ms ease;
-    transform: translateY(-6px);
-    inset-block-start: calc(100% + 0.5rem);
+    transform: translateY(calc(var(--ms-02) * -1));
+    inset-block-start: calc(100% + var(--ms-01));
     inset-inline: 0;
-    max-block-size: min(18rem, 42dvb);
+    max-block-size: min(calc(var(--ms-0) * 16), 42dvb);
     overflow: hidden auto;
     list-style: none;
-    backdrop-filter: blur(16px) saturate(130%);
+    backdrop-filter: var(--scene-chrome-backdrop, blur(16px) saturate(130%));
     opacity: 0;
     pointer-events: none;
 
@@ -168,36 +172,48 @@
     display: flex;
     gap: var(--ms-01);
     align-items: center;
+    margin: 0;
     padding: var(--ms-01) var(--ms-0);
+    border-radius: var(--ms-02);
     cursor: pointer;
-    transition: background 160ms ease;
+    transition:
+      color 0.2s ease,
+      background-color 0.2s ease;
 
-    &--active,
     &:hover {
-      background: rgb(var(--white-rgb) / 8%);
+      background: rgb(var(--white-rgb) / 6%);
+    }
+
+    &--active {
+      background: rgb(var(--white-rgb) / 10%);
+
+      &:hover {
+        background: rgb(var(--white-rgb) / 10%);
+      }
     }
   }
 
   &__avatar {
     flex-shrink: 0;
-    inline-size: 2rem;
-    block-size: 2rem;
+    inline-size: var(--ms-2);
+    block-size: var(--ms-2);
     object-fit: cover;
     background: rgb(var(--graphite-green-rgb) / 80%);
     border-radius: 50%;
+    margin-block-end: 0;
   }
 
   &__avatar-fallback {
     display: grid;
     color: rgb(var(--white-rgb) / 80%);
-    font-size: 0.75rem;
+    font-size: var(--ms-0);
     background: rgb(var(--graphite-green-rgb) / 80%);
     border-radius: 50%;
     flex-shrink: 0;
     place-items: center;
-    inline-size: 2rem;
-    block-size: 2rem;
-    font-weight: 600;
+    inline-size: var(--ms-2);
+    block-size: var(--ms-2);
+    font-weight: var(--semibold, 600);
   }
 
   &__meta {
