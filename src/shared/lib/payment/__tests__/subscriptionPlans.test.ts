@@ -2,6 +2,7 @@ import { describe, expect, test } from '@jest/globals';
 
 import {
   comparePlanTiers,
+  formatCollectionMenuSubtitle,
   formatPlanArtistLimit,
   formatPlanStatusLabel,
   formatPlanSupportDuration,
@@ -142,6 +143,31 @@ describe('formatPlanStatusLabel', () => {
 
   test('formats inactive plan label', () => {
     expect(formatPlanStatusLabel('explorer', false, 'ru')).toBe('Explorer · поддержка неактивна');
+  });
+});
+
+describe('formatCollectionMenuSubtitle', () => {
+  test('formats explorer with one artist', () => {
+    expect(formatCollectionMenuSubtitle('explorer', 1, 'en')).toBe('Explorer • 1 artist');
+  });
+
+  test('formats collector with two artists', () => {
+    expect(formatCollectionMenuSubtitle('collector', 2, 'en')).toBe('Collector • 2 artists');
+  });
+
+  test('formats archivist with three artists', () => {
+    expect(formatCollectionMenuSubtitle('archivist', 3, 'en')).toBe('Archivist • 3 artists');
+  });
+
+  test('formats no active plan when plan slug is missing', () => {
+    expect(formatCollectionMenuSubtitle(null, 0, 'en')).toBe('No active plan');
+    expect(formatCollectionMenuSubtitle(null, 0, 'ru')).toBe('Нет активного плана');
+  });
+
+  test('formats Russian artist plural forms', () => {
+    expect(formatCollectionMenuSubtitle('explorer', 1, 'ru')).toBe('Explorer • 1 артист');
+    expect(formatCollectionMenuSubtitle('collector', 2, 'ru')).toBe('Collector • 2 артиста');
+    expect(formatCollectionMenuSubtitle('archivist', 5, 'ru')).toBe('Archivist • 5 артистов');
   });
 });
 

@@ -26,11 +26,14 @@
 .header__profile-menu {
   position: absolute;
   z-index: 120;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ms-01);
   inset-block-start: calc(100% + var(--ms-01));
   inset-inline-end: 0;
   inline-size: min(100vw - var(--ms-2), 16.5rem);
   margin: 0;
-  padding: var(--ms-01) 0;
+  padding: var(--ms-01);
   list-style: none;
   background: rgb(var(--extra-background-color-rgb, 32 32 30) / 96%);
   border: 1px solid rgb(255 255 255 / 12%);
@@ -40,6 +43,16 @@
 
   @include breakpoint(desktops) {
     inline-size: 17.5rem;
+  }
+}
+
+.header__profile-menu-group {
+  display: flex;
+  flex-direction: column;
+
+  &--separated {
+    padding-block-start: var(--ms-01);
+    border-block-start: 1px solid rgb(255 255 255 / 8%);
   }
 }
 
@@ -54,17 +67,15 @@
   text-decoration: none;
   background: transparent;
   border: none;
-  border-block-end: 1px solid rgb(255 255 255 / 8%);
+  border-radius: var(--ms-02);
   cursor: pointer;
   appearance: none;
   font-family: var(--base-font-family);
+  transition:
+    color 0.2s ease,
+    background-color 0.2s ease;
 
   @include adjust-font-size-to($ms-0, 0, 11.125px);
-
-  &:last-child {
-    border-block-end: none;
-  }
-
   @include link-colors(
     --links-header-color,
     --links-header-color-hover,
@@ -73,6 +84,19 @@
 
   &:hover {
     background: rgb(255 255 255 / 6%);
+  }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: inset 0 0 0 2px var(--links-header-color, currentcolor);
+  }
+
+  &--active {
+    background: rgb(255 255 255 / 10%);
+
+    &:hover {
+      background: rgb(255 255 255 / 10%);
+    }
   }
 
   &--danger {
@@ -97,6 +121,10 @@
   &--premium {
     color: var(--soft-green);
   }
+
+  &--plan {
+    color: var(--dark-greenish-yellow, #c8b06d);
+  }
 }
 
 .header__profile-menu-item-text {
@@ -114,7 +142,6 @@
 
   &--plan {
     color: var(--dark-greenish-yellow, #c8b06d);
-    font-weight: 600;
   }
 }
 
@@ -124,7 +151,8 @@
   line-height: 1.2;
 }
 
-.header__profile-menu-item--plan:hover {
+.header__profile-menu-item--plan:hover,
+.header__profile-menu-item--plan.header__profile-menu-item--active {
   .header__profile-menu-item-title--plan {
     color: var(--dark-greenish-yellow, #c8b06d);
   }

@@ -1,3 +1,4 @@
+import clsx from 'clsx';
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useLang } from '@app/providers/lang';
@@ -11,12 +12,13 @@ import { openOwnArtistPage } from '@shared/lib/ownArtistPage';
 import { isProfileAvatarPlaceholderUrl } from '@shared/lib/avatarUpload';
 import {
   IconArtistPage,
+  IconCollection,
   IconLogOut,
   IconSettings,
   IconUpgradeSparkle,
 } from './headerProfileMenuIcons';
 import { usePremiumSubscription } from '@features/premiumSubscription';
-import { formatPlanStatusLabel } from '@shared/lib/payment/subscriptionPlans';
+import { formatCollectionMenuSubtitle } from '@shared/lib/payment/subscriptionPlans';
 import './profileAvatarMenu.scss';
 
 export type ProfileAvatarMenuProps = {
@@ -37,7 +39,7 @@ function ProfileAvatarMenuComponent({
   const navigate = useNavigate();
   const { lang } = useLang();
   const ui = useAppSelector((state) => selectUiDictionaryFirst(state, lang));
-  const { isPremium, planSlug } = usePremiumSubscription();
+  const { isPremium, planSlug, slotsUsed } = usePremiumSubscription();
   const { open: openPremiumModal } = useArchiveAccessModal();
   const [menuOpen, setMenuOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -94,6 +96,13 @@ function ProfileAvatarMenuComponent({
   }, [navigate, ownArtistPage.hasPublicPageContent, ownArtistPage.publicSlug, updateOpen]);
 
   const avatarLabels = ui?.header?.avatarMenu;
+  const locale = lang === 'ru' ? 'ru' : 'en';
+  const collectionTitle =
+    ui?.dashboard?.archive?.title ?? (locale === 'en' ? 'Your Collection' : 'Ваша коллекция');
+  const collectionSubtitle = formatCollectionMenuSubtitle(planSlug, slotsUsed, locale);
+  const { pathname } = location;
+  const isSettingsActive = pathname.startsWith('/dashboard-new/profile');
+  const isCollectionActive = pathname.startsWith('/dashboard-new/archive');
 
   return (
     <div className="header__profile-wrap" ref={wrapRef}>
@@ -133,70 +142,81 @@ function ProfileAvatarMenuComponent({
           role="menu"
           aria-label={ui?.header?.openProfile ?? 'Account'}
         >
-          <Link
-            className="header__profile-menu-item"
-            role="menuitem"
-            to="/dashboard-new/profile"
-            state={dashboardLinkState}
-            onClick={() => updateOpen(false)}
-          >
-            <IconSettings className="header__profile-menu-icon" />
-            <span>{avatarLabels?.settings ?? 'Settings'}</span>
-          </Link>
-          {ownArtistPage.publicSlug ? (
-            <button
-              type="button"
-              className="header__profile-menu-item"
-              role="menuitem"
-              onClick={handleOpenOwnArtistPage}
-            >
-              <IconArtistPage className="header__profile-menu-icon" />
-              <span>{avatarLabels?.myArtistPage ?? 'My Artist Page'}</span>
-            </button>
-          ) : null}
-          {planSlug ? (
+          <div className="header__profile-menu-group">
             <Link
-              className="header__profile-menu-item header__profile-menu-item--plan"
+              className={clsx(
+                'header__profile-menu-item',
+                isSettingsActive && 'header__profile-menu-item--active'
+              )}
               role="menuitem"
-              to="/dashboard-new/archive"
+              to="/dashboard-new/profile"
               state={dashboardLinkState}
               onClick={() => updateOpen(false)}
+              aria-current={isSettingsActive ? 'page' : undefined}
             >
-              <span className="header__profile-menu-item-text">
-                <span className="header__profile-menu-item-title header__profile-menu-item-title--plan">
-                  {formatPlanStatusLabel(planSlug, isPremium, lang === 'ru' ? 'ru' : 'en')}
-                </span>
-                <span className="header__profile-menu-item-subtitle">
-                  {avatarLabels?.manageSubscription ??
-                    (lang === 'en' ? 'Open Collection' : 'Открыть коллекцию')}
-                </span>
-              </span>
+              <IconSettings className="header__profile-menu-icon" />
+              <span>{avatarLabels?.settings ?? 'Settings'}</span>
             </Link>
-          ) : !isPremium ? (
+            {ownArtistPage.publicSlug ? (
+              <button
+                type="button"
+                className="header__profile-menu-item"
+                role="menuitem"
+                onClick={handleOpenOwnArtistPage}
+              >
+                <IconArtistPage className="header__profile-menu-icon" />
+                <span>{avatarLabels?.myArtistPage ?? 'My Artist Page'}</span>
+              </button>
+            ) : null}
+            {planSlug ? (
+              <Link
+                className={clsx(
+                  'header__profile-menu-item',
+                  'header__profile-menu-item--plan',
+                  isCollectionActive && 'header__profile-menu-item--active'
+                )}
+                role="menuitem"
+                to="/dashboard-new/archive"
+                state={dashboardLinkState}
+                onClick={() => updateOpen(false)}
+                aria-current={isCollectionActive ? 'page' : undefined}
+              >
+                <IconCollection className="header__profile-menu-icon header__profile-menu-icon--plan" />
+                <span className="header__profile-menu-item-text">
+                  <span className="header__profile-menu-item-title header__profile-menu-item-title--plan">
+                    {collectionTitle}
+                  </span>
+                  <span className="header__profile-menu-item-subtitle">{collectionSubtitle}</span>
+                </span>
+              </Link>
+            ) : !isPremium ? (
+              <button
+                type="button"
+                className="header__profile-menu-item header__profile-menu-item--upgrade"
+                role="menuitem"
+                onClick={() => {
+                  updateOpen(false);
+                  openPremiumModal();
+                }}
+              >
+                <IconUpgradeSparkle className="header__profile-menu-icon header__profile-menu-icon--upgrade" />
+                <span className="header__profile-menu-item-title header__profile-menu-item-title--upgrade">
+                  {avatarLabels?.upgradePlan ?? 'Upgrade plan'}
+                </span>
+              </button>
+            ) : null}
+          </div>
+          <div className="header__profile-menu-group header__profile-menu-group--separated">
             <button
               type="button"
-              className="header__profile-menu-item header__profile-menu-item--upgrade"
+              className="header__profile-menu-item header__profile-menu-item--danger"
               role="menuitem"
-              onClick={() => {
-                updateOpen(false);
-                openPremiumModal();
-              }}
+              onClick={handleLogout}
             >
-              <IconUpgradeSparkle className="header__profile-menu-icon header__profile-menu-icon--upgrade" />
-              <span className="header__profile-menu-item-title header__profile-menu-item-title--upgrade">
-                {avatarLabels?.upgradePlan ?? 'Upgrade plan'}
-              </span>
+              <IconLogOut className="header__profile-menu-icon" />
+              <span>{avatarLabels?.logOut ?? 'Log out'}</span>
             </button>
-          ) : null}
-          <button
-            type="button"
-            className="header__profile-menu-item header__profile-menu-item--danger"
-            role="menuitem"
-            onClick={handleLogout}
-          >
-            <IconLogOut className="header__profile-menu-icon" />
-            <span>{avatarLabels?.logOut ?? 'Log out'}</span>
-          </button>
+          </div>
         </div>
       ) : null}
     </div>

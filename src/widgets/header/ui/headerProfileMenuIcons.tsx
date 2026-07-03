@@ -1,5 +1,6 @@
 import {
   CircleStar as CircleStarIcon,
+  HeartHandshake as HeartHandshakeIcon,
   LogOut as LogOutIcon,
   Music as MusicIcon,
   Settings as SettingsIcon,
@@ -33,4 +34,8 @@ export function IconArtistPage({ className }: HeaderProfileMenuIconProps) {
 
 export function IconLogOut({ className }: HeaderProfileMenuIconProps) {
   return <LogOutIcon {...headerProfileMenuIconProps(className)} />;
+}
+
+export function IconCollection({ className }: HeaderProfileMenuIconProps) {
+  return <HeartHandshakeIcon {...headerProfileMenuIconProps(className)} />;
 }

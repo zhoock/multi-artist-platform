@@ -115,6 +115,29 @@ export function formatPlanStatusLabel(
   return isPremium ? `${name} · Active support` : `${name} · Support inactive`;
 }
 
+export function formatCollectionMenuArtistCount(count: number, lang: 'en' | 'ru'): string {
+  if (lang === 'ru') {
+    const mod10 = count % 10;
+    const mod100 = count % 100;
+    if (mod100 >= 11 && mod100 <= 14) return `${count} артистов`;
+    if (mod10 === 1) return `${count} артист`;
+    if (mod10 >= 2 && mod10 <= 4) return `${count} артиста`;
+    return `${count} артистов`;
+  }
+  return count === 1 ? `${count} artist` : `${count} artists`;
+}
+
+export function formatCollectionMenuSubtitle(
+  planSlug: SubscriptionPlanSlug | null,
+  slotsUsed: number,
+  lang: 'en' | 'ru'
+): string {
+  if (!planSlug) {
+    return lang === 'ru' ? 'Нет активного плана' : 'No active plan';
+  }
+  return `${getPlanDisplayName(planSlug)} • ${formatCollectionMenuArtistCount(slotsUsed, lang)}`;
+}
+
 export function formatPlanArtistLimitParts(
   planSlug: SubscriptionPlanSlug,
   lang: 'en' | 'ru'
