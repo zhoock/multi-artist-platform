@@ -19,6 +19,7 @@ body #root .footer {
       grid-template-columns: repeat(4, 50px);
       justify-content: space-between;
       text-align: center;
+      margin-block-end: 0;
 
       @include breakpoint(tablet) {
         justify-content: start;
