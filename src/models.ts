@@ -711,6 +711,25 @@ export interface IInterface {
       publicDescription?: string;
       openArtistPage?: string;
     };
+    publicProfilePreview?: {
+      sectionTitle?: string;
+      bandName?: string;
+      bandNameEmpty?: string;
+      primaryGenre?: string;
+      genreEmpty?: string;
+      publicUrl?: string;
+      slugEmpty?: string;
+      about?: string;
+      aboutEmpty?: string;
+      editDescription?: string;
+      showMore?: string;
+      showLess?: string;
+      copy?: string;
+      copied?: string;
+      openPageHint?: string;
+    };
+    accountSectionTitle?: string;
+    editProfile?: string;
     /** Listener → artist upgrade (profile / settings). */
     becomeArtistLead?: string;
     becomeArtist?: string;

@@ -147,6 +147,8 @@ import { DashboardTabContentSkeleton } from './components/DashboardTabContentSke
 import { ProfileTabSkeleton } from './components/ProfileTabSkeleton';
 import { SyncLyricsModal } from './components/modals/lyrics/SyncLyricsModal';
 import { ProfileSettingsModal } from './components/modals/profile/ProfileSettingsModal';
+import { PublicProfilePreview } from './components/profile/PublicProfilePreview';
+import { usePublicProfilePreview } from './components/profile/usePublicProfilePreview';
 import { UpgradeToArtistModal } from './components/modals/profile/UpgradeToArtistModal';
 import {
   DeleteAccountModal,
@@ -840,7 +842,11 @@ function UserDashboard() {
   const [isDeleteAccountModalOpen, setIsDeleteAccountModalOpen] = useState(false);
   const [isAvatarMenuOpen, setIsAvatarMenuOpen] = useState(false);
   const avatarMenuContainerRef = useRef<HTMLDivElement | null>(null);
-  const [profilePublicSlug, setProfilePublicSlug] = useState<string | null>(null);
+  const { data: publicProfilePreview, isLoading: isPublicProfileLoading } = usePublicProfilePreview(
+    userId,
+    lang
+  );
+  const profilePublicSlug = publicProfilePreview.publicSlug;
   const [expandedAlbumId, setExpandedAlbumId] = useState<string | null>(null);
   const [scrollToAlbumUploadId, setScrollToAlbumUploadId] = useState<string | null>(null);
   const [publishingAlbumId, setPublishingAlbumId] = useState<string | null>(null);
@@ -1608,55 +1614,6 @@ function UserDashboard() {
       document.removeEventListener('keydown', onKeyDown);
     };
   }, [isAvatarMenuOpen]);
-
-  useEffect(() => {
-    if (!userId) {
-      setProfilePublicSlug(null);
-      return;
-    }
-
-    let cancelled = false;
-
-    const loadProfileSlug = async () => {
-      try {
-        const response = await fetchWithAuthSession(
-          buildApiUrl('/api/user-profile', { lang }, { includeArtist: false }),
-          {
-            cache: 'no-cache',
-            headers: {
-              'Cache-Control': 'no-cache',
-              ...getAuthHeader(),
-            },
-          }
-        );
-        if (cancelled || !response.ok) return;
-
-        const result = (await response.json()) as {
-          success?: boolean;
-          data?: { publicSlug?: string | null };
-        };
-        if (result.success) {
-          setProfilePublicSlug(result.data?.publicSlug?.trim() || null);
-        }
-      } catch {
-        if (!cancelled) setProfilePublicSlug(null);
-      }
-    };
-
-    void loadProfileSlug();
-
-    const onProfileUpdated = () => {
-      void loadProfileSlug();
-    };
-    window.addEventListener('profile-name-updated', onProfileUpdated);
-    window.addEventListener('artist:updated', onProfileUpdated);
-
-    return () => {
-      cancelled = true;
-      window.removeEventListener('profile-name-updated', onProfileUpdated);
-      window.removeEventListener('artist:updated', onProfileUpdated);
-    };
-  }, [userId, lang]);
 
   // Загрузка альбомов: всегда force при смене аккаунта/языка,
   // чтобы не показывать данные предыдущего пользователя из Redux-кэша.
@@ -4171,32 +4128,39 @@ function UserDashboard() {
                               />
                             </div>
 
-                            <div className="user-dashboard__profile-fields">
-                              <div className="user-dashboard__field">
-                                <label htmlFor="name">
-                                  {ui?.dashboard?.profileFields?.name ?? 'Name'}
-                                </label>
-                                <input
-                                  id="name"
-                                  type="text"
-                                  value={user?.name || ''}
-                                  disabled
-                                  readOnly
-                                />
-                              </div>
+                            {isArtist ? (
+                              <PublicProfilePreview
+                                data={publicProfilePreview}
+                                isLoading={isPublicProfileLoading}
+                                lang={lang}
+                                ui={ui ?? undefined}
+                                onEditDescription={() => {
+                                  setProfileSettingsInitialTab('profile');
+                                  setIsProfileSettingsModalOpen(true);
+                                }}
+                              />
+                            ) : null}
 
-                              <div className="user-dashboard__field">
-                                <label htmlFor="email">
-                                  {ui?.dashboard?.profileFields?.email ?? 'Email'}
-                                </label>
-                                <input
-                                  id="email"
-                                  type="email"
-                                  value={user?.email || ''}
-                                  disabled
-                                  readOnly
-                                />
-                                <ProfileEmailVerificationStatus verified={emailVerified} />
+                            <div className="user-dashboard__profile-block user-dashboard__account-section">
+                              <h4 className="user-dashboard__profile-block-heading user-dashboard__profile-block-heading--accent">
+                                {ui?.dashboard?.accountSectionTitle ?? 'Account'}
+                              </h4>
+                              <div className="user-dashboard__account-card">
+                                <dl className="user-dashboard__public-profile-list">
+                                  <div className="user-dashboard__public-profile-row">
+                                    <dt className="user-dashboard__profile-row-label">
+                                      {ui?.dashboard?.profileFields?.email ?? 'Email'}
+                                    </dt>
+                                    <dd>
+                                      <span className="user-dashboard__public-profile-value">
+                                        {user?.email?.trim() || '—'}
+                                      </span>
+                                    </dd>
+                                  </div>
+                                </dl>
+                                <div className="user-dashboard__account-verification">
+                                  <ProfileEmailVerificationStatus verified={emailVerified} />
+                                </div>
                               </div>
                             </div>
 
@@ -4225,9 +4189,14 @@ function UserDashboard() {
                               <button
                                 type="button"
                                 className="user-dashboard__profile-settings-button"
-                                onClick={() => setIsProfileSettingsModalOpen(true)}
+                                onClick={() => {
+                                  setProfileSettingsInitialTab('general');
+                                  setIsProfileSettingsModalOpen(true);
+                                }}
                               >
-                                {ui?.dashboard?.profileSettings ?? 'Настройки профиля'}
+                                {ui?.dashboard?.editProfile ??
+                                  ui?.dashboard?.profileSettings ??
+                                  'Edit Profile'}
                               </button>
                               <button
                                 type="button"
