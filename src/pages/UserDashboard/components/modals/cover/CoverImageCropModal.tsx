@@ -322,7 +322,7 @@ export function CoverImageCropModal({
             ? (ui?.dashboard?.profileSettingsModal?.messages?.coverPreviewInstruction ??
               'Предпросмотр обложки')
             : (ui?.dashboard?.profileSettingsModal?.messages?.coverEditInstruction ??
-              'Выбранная область будет видна в вашем профиле')}
+              'Drag to reposition • Use the slider to zoom')}
         </div>
 
         {error && <div className="cover-image-crop-modal__error">{error}</div>}

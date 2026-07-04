@@ -3,8 +3,21 @@
 @use '../../../../../scss/components/modal' as *;
 
 .cover-image-crop-modal {
-  @include dashboard-modal-panel($padding: null, $gap: null, $overflow-y: null);
+  @include dashboard-modal-panel($padding: null, $gap: null, $overflow-y: hidden);
   @include dashboard-modal-dialog-buttons;
+
+  /* Sass mixed-decls: overrides must follow mixin nested rules */
+  /* stylelint-disable-next-line no-duplicate-selectors */
+  & {
+    min-height: 0;
+    max-height: 90vh;
+
+    @include breakpoint(tablet) {
+      height: min(600px, 90vh);
+      min-height: 0;
+      max-height: min(600px, 90vh);
+    }
+  }
 
   &__header {
     @include dashboard-modal-header(
@@ -24,9 +37,10 @@
 
   &__instruction {
     flex-shrink: 0;
-    padding: var(--ms-0) var(--ms-2);
-    color: var(--dashboard-text-secondary);
-    font-size: var(--ms-0);
+    padding: var(--ms-01) var(--ms-2) var(--ms-0);
+    color: rgb(255 255 255 / 42%);
+    font-size: 12px;
+    line-height: 1.45;
     text-align: center;
   }
 
@@ -34,17 +48,9 @@
     position: relative;
     width: 100%;
     flex: 1 1 0;
-    min-height: 250px;
-    max-height: 100%;
+    min-height: 0;
     overflow: hidden;
     background: var(--dashboard-hover-bg);
-
-    @include breakpoint(tablet) {
-      min-height: 300px;
-      max-height: calc(
-        600px - 250px
-      ); // 600px общая высота модального окна минус примерная высота header, instruction, controls и footer
-    }
   }
 
   &__loading {
@@ -90,108 +96,104 @@
 
   &__controls {
     flex-shrink: 0;
-    padding: var(--ms-1) var(--ms-2);
+    padding: var(--ms-0) var(--ms-2) var(--ms-1);
     border-top: 1px solid var(--dashboard-card-border);
   }
 
   &__zoom-control {
     display: flex;
     align-items: center;
-    gap: var(--ms-0);
-    color: var(--dashboard-text-primary);
-    font-size: var(--ms-0);
+    width: 100%;
 
     label {
       display: flex;
       align-items: center;
-      gap: var(--ms-1);
+      gap: var(--ms-0);
       width: 100%;
-    }
-
-    &__zoom-label {
-      min-width: 80px;
-      color: var(--dashboard-text-primary);
-      font-weight: 500;
+      margin: 0;
     }
 
     input[type='range'] {
+      --zoom-percent: 0%;
+
       flex: 1;
-      max-width: 300px;
+      min-width: 0;
       height: 8px;
       appearance: none;
       background: linear-gradient(
         to right,
-        var(--dashboard-btn-primary-text) 0%,
-        var(--dashboard-btn-primary-text) var(--zoom-percent, 0%),
-        var(--dashboard-card-border) var(--zoom-percent, 0%),
+        var(--accent-color, var(--dark-greenish-yellow)) 0%,
+        var(--accent-color, var(--dark-greenish-yellow)) var(--zoom-percent),
+        var(--dashboard-card-border) var(--zoom-percent),
         var(--dashboard-card-border) 100%
       );
       border-radius: 4px;
       outline: none;
       cursor: pointer;
 
-      &::-webkit-slider-thumb {
-        appearance: none;
-        width: 18px;
-        height: 18px;
-        background: var(--dashboard-text-primary);
-        border: 2px solid var(--dashboard-card-bg);
-        border-radius: 50%;
-        box-shadow: 0 2px 4px rgb(0 0 0 / 20%);
-        cursor: pointer;
-      }
-
-      &::-moz-range-thumb {
-        width: 18px;
-        height: 18px;
-        background: var(--dashboard-text-primary);
-        border: 2px solid var(--dashboard-card-bg);
-        border-radius: 50%;
-        box-shadow: 0 2px 4px rgb(0 0 0 / 20%);
-        cursor: pointer;
-      }
-
       &::-webkit-slider-runnable-track {
-        width: 100%;
-        height: 6px;
-        background: var(--dashboard-card-border);
-        border-radius: 3px;
+        height: 8px;
+        background: transparent;
+        border: none;
+        border-radius: 4px;
       }
 
       &::-moz-range-track {
-        width: 100%;
-        height: 6px;
+        height: 8px;
         background: var(--dashboard-card-border);
-        border-radius: 3px;
+        border: none;
+        border-radius: 4px;
       }
 
-      &:hover {
-        &::-webkit-slider-thumb {
-          transform: scale(1.1);
-        }
+      &::-moz-range-progress {
+        height: 8px;
+        background: var(--accent-color, var(--dark-greenish-yellow));
+        border-radius: 4px;
+      }
 
-        &::-moz-range-thumb {
-          transform: scale(1.1);
-        }
+      &::-webkit-slider-thumb {
+        appearance: none;
+        width: 0;
+        height: 0;
+        visibility: hidden;
+      }
+
+      &::-moz-range-thumb {
+        width: 0;
+        height: 0;
+        border: none;
+        visibility: hidden;
       }
     }
+  }
 
-    &__zoom-value {
-      min-width: 60px;
-      padding: var(--ms-01) var(--ms-0);
-      color: var(--dashboard-text-primary);
-      font-weight: 600;
-      text-align: right;
-      background: var(--dashboard-hover-bg);
-      border: 1px solid var(--dashboard-card-border);
-      border-radius: var(--ms-01);
-    }
+  &__zoom-label {
+    flex-shrink: 0;
+    color: var(--dashboard-text-secondary);
+    font-size: var(--dashboard-font-size);
+    font-weight: 500;
+    line-height: 1;
+    white-space: nowrap;
+  }
+
+  &__zoom-value {
+    flex-shrink: 0;
+    min-width: 3.25em;
+    padding: 0;
+    color: var(--dashboard-text-secondary);
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+    background: transparent;
+    border: none;
   }
 
   &__footer {
     position: relative;
     z-index: 10;
-    min-height: 60px;
+    flex-shrink: 0;
 
     @include dashboard-modal-footer(
       $padding: var(--ms-1) var(--ms-2),
@@ -204,9 +206,7 @@
     min-width: 120px;
 
     &--preview {
-      margin-right: auto;
-
-      @include dashboard-btn-secondary($margin: 0);
+      @include dashboard-btn-secondary($margin: 0 auto 0 0);
     }
 
     &:not(&--preview, &--save) {

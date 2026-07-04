@@ -1,15 +1,12 @@
 .header-images-upload {
-  &__label {
-    display: block;
-    margin-bottom: var(--ms-2);
-    color: var(--dashboard-text-primary);
-  }
+  display: flex;
+  flex-direction: column;
+  gap: var(--ms-0);
 
   &__list {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
     gap: var(--ms-2);
-    margin-bottom: var(--ms-2);
   }
 
   &__item {
@@ -46,7 +43,7 @@
     justify-content: center;
 
     &:hover {
-      background: rgb(255 0 0 / 80%);
+      background: color-mix(in srgb, var(--error-color) 80%, transparent);
     }
   }
 

@@ -817,7 +817,7 @@
           "passwordUpdated": "Password updated",
           "interfaceInDevelopment": "Interface section is under development",
           "coverEditTitle": "Editing Cover",
-          "coverEditInstruction": "The selected area will be visible in your profile",
+          "coverEditInstruction": "Drag to reposition • Use the slider to zoom",
           "coverPreviewInstruction": "Cover preview",
           "coverUploaded": "Cover uploaded successfully",
           "coverUploadError": "Error uploading cover",

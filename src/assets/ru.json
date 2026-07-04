@@ -817,7 +817,7 @@
           "passwordUpdated": "Пароль обновлён",
           "interfaceInDevelopment": "Раздел «Интерфейс» в разработке",
           "coverEditTitle": "Редактирование обложки",
-          "coverEditInstruction": "Выбранная область будет видна в вашем профиле",
+          "coverEditInstruction": "Перетащите для позиционирования • Используйте ползунок для масштаба",
           "coverPreviewInstruction": "Предпросмотр обложки",
           "coverUploaded": "Обложка успешно загружена",
           "coverUploadError": "Ошибка загрузки обложки",

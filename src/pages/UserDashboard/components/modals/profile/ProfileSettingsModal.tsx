@@ -896,9 +896,6 @@ export function ProfileSettingsModal({
 
                 {activeTab === 'profile' && (
                   <div className="profile-settings-modal__profile-tab">
-                    <h3 className="profile-settings-modal__section-title">
-                      {ui?.dashboard?.profileSettingsModal?.tabs?.profile ?? 'Profile'}
-                    </h3>
                     <div className="profile-settings-modal__field">
                       <label htmlFor="profile-name" className="profile-settings-modal__label">
                         {ui?.dashboard?.profileSettingsModal?.fields?.bandName ?? 'Band Name'}
@@ -1015,8 +1012,14 @@ export function ProfileSettingsModal({
                     </div>
 
                     <div className="profile-settings-modal__field">
+                      <label className="profile-settings-modal__label">
+                        {ui?.dashboard?.profileSettingsModal?.fields?.headerImages ??
+                          'Header Images'}
+                      </label>
                       {isLoadingHeaderImages ? (
-                        <div>Загрузка изображений...</div>
+                        <div>
+                          {ui?.dashboard?.loading ?? ui?.dashboard?.uploading ?? 'Loading...'}
+                        </div>
                       ) : (
                         <HeaderImagesUpload
                           currentImages={headerImages || []}

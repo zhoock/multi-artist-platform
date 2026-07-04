@@ -338,11 +338,6 @@ export function HeaderImagesUpload({
   return (
     <>
       <div className="header-images-upload">
-        <label className="header-images-upload__label">
-          {ui?.dashboard?.profileSettingsModal?.fields?.headerImages ??
-            'Изображения для шапки сайта'}
-        </label>
-
         {images.length > 0 && (
           <div className="header-images-upload__list">
             {images.map((imageSetOrUrl, index) => {
