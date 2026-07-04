@@ -1,6 +1,6 @@
 // src/pages/UserDashboard/components/HeaderImagesUpload.tsx
 import React, { useState, useRef, useEffect } from 'react';
-import { X as XIcon } from 'lucide-react';
+import { X as XIcon, Upload as UploadIcon } from 'lucide-react';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
@@ -371,7 +371,10 @@ export function HeaderImagesUpload({
             onDragOver={handleDragOver}
             onClick={() => fileInputRef.current?.click()}
           >
-            <div className="header-images-upload__dropzone-icon">+</div>
+            <UploadIcon
+              className="header-images-upload__dropzone-icon"
+              {...dashboardActionIconProps({ size: 32 })}
+            />
             <div className="header-images-upload__dropzone-text">
               {ui?.dashboard?.profileSettingsModal?.buttons?.uploadCover ?? 'Загрузить изображение'}
             </div>

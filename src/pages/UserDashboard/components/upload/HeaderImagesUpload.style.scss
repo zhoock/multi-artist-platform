@@ -48,7 +48,7 @@
   }
 
   &__dropzone {
-    padding: var(--ms-4);
+    padding: var(--ms-1);
     text-align: center;
     background: var(--dashboard-card-bg);
     border: 2px dashed var(--dashboard-card-border);
@@ -64,8 +64,7 @@
 
   &__dropzone-icon {
     color: var(--dashboard-text-secondary);
-    font-size: 32px;
-    margin-bottom: var(--ms-2);
+    margin-bottom: var(--ms-1);
   }
 
   &__dropzone-text {

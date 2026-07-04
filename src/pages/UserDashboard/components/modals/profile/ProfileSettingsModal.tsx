@@ -22,6 +22,7 @@ import {
   getCloseDiscardConfirmLabels,
 } from '../../shared/EditableCardField';
 import { ProfileEmailVerificationStatus } from '../../ProfileEmailVerificationStatus';
+import { ProfileSettingsSelect } from './ProfileSettingsSelect';
 import { Eye as EyeIcon, EyeOff as EyeOffIcon } from 'lucide-react';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 import { ModalCloseIcon } from '@shared/ui/icons/ModalCloseIcon';
@@ -81,7 +82,6 @@ export function ProfileSettingsModal({
   const [name, setName] = useState(userName);
   const [publicSlug, setPublicSlug] = useState('');
   const [selectedLang, setSelectedLang] = useState<'ru' | 'en'>(currentLang || 'ru');
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [headerImages, setHeaderImages] = useState<string[]>([]);
   const [initialHeaderImages, setInitialHeaderImages] = useState<string[]>([]);
   const [genreCode, setGenreCode] = useState<string>('other');
@@ -130,16 +130,6 @@ export function ProfileSettingsModal({
   const [initialAboutTextEn, setInitialAboutTextEn] = useState<string>('');
   const [initialAboutText, setInitialAboutText] = useState<string>('');
 
-  const dropdownRef = useRef<HTMLDivElement>(null);
-  const selectRef = useRef<HTMLDivElement>(null);
-
-  const languages = [
-    { value: 'ru', label: 'Русский' },
-    { value: 'en', label: 'English' },
-  ];
-
-  const selectedLanguage = languages.find((l) => l.value === selectedLang) || languages[0];
-
   const normalizePublicSlug = useCallback((value: string): string => {
     return value
       .toLowerCase()
@@ -149,24 +139,15 @@ export function ProfileSettingsModal({
       .replace(/-+$/, '');
   }, []);
 
-  // Закрытие dropdown при клике вне
-  useEffect(() => {
-    if (!isDropdownOpen) return;
+  const languages = [
+    { value: 'ru', label: 'Русский' },
+    { value: 'en', label: 'English' },
+  ];
 
-    const handleClickOutside = (e: MouseEvent) => {
-      if (
-        dropdownRef.current &&
-        selectRef.current &&
-        !dropdownRef.current.contains(e.target as Node) &&
-        !selectRef.current.contains(e.target as Node)
-      ) {
-        setIsDropdownOpen(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [isDropdownOpen]);
+  const genreOptions = GENRE_OPTIONS.map((option) => ({
+    value: option.code,
+    label: option.label[currentLang === 'en' ? 'en' : 'ru'],
+  }));
 
   // Валидация формы смены пароля — одна ошибка на конкретное поле (как в EditAlbumModal)
   const getPasswordFieldErrors = (): PasswordFieldErrors => {
@@ -718,11 +699,7 @@ export function ProfileSettingsModal({
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         if (isDashboardBusy) return;
-        if (isDropdownOpen) {
-          setIsDropdownOpen(false);
-        } else {
-          profileCloseGuard.requestClose();
-        }
+        profileCloseGuard.requestClose();
       }
     };
 
@@ -730,13 +707,7 @@ export function ProfileSettingsModal({
     return () => document.removeEventListener('keydown', handleEscape);
     // isDashboardBusy: блокируем Escape во время сохранения; handleHeaderClose — см. стабильность выше
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, isDropdownOpen, isDashboardBusy]);
-
-  const handleSelectLanguage = (lang: 'ru' | 'en') => {
-    setSelectedLang(lang);
-    setIsDropdownOpen(false);
-    // Не изменяем язык интерфейса сразу, только при сохранении
-  };
+  }, [isOpen, isDashboardBusy]);
 
   return (
     <>
@@ -811,62 +782,11 @@ export function ProfileSettingsModal({
                             ? 'Used throughout the application.'
                             : 'Используется во всём приложении.')}
                       </p>
-                      <div className="profile-settings-modal__select-wrapper">
-                        <div
-                          ref={selectRef}
-                          className="profile-settings-modal__select"
-                          onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                          role="button"
-                          tabIndex={0}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter' || e.key === ' ') {
-                              e.preventDefault();
-                              setIsDropdownOpen(!isDropdownOpen);
-                            }
-                          }}
-                        >
-                          <span className="profile-settings-modal__select-value">
-                            {selectedLanguage.label}
-                          </span>
-                          <svg
-                            className={`profile-settings-modal__select-arrow ${
-                              isDropdownOpen ? 'profile-settings-modal__select-arrow--open' : ''
-                            }`}
-                            width="12"
-                            height="8"
-                            viewBox="0 0 12 8"
-                            fill="none"
-                            xmlns="http://www.w3.org/2000/svg"
-                          >
-                            <path
-                              d="M1 1L6 6L11 1"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            />
-                          </svg>
-                        </div>
-
-                        {isDropdownOpen && (
-                          <div ref={dropdownRef} className="profile-settings-modal__dropdown">
-                            {languages.map((lang) => (
-                              <button
-                                key={lang.value}
-                                type="button"
-                                className={`profile-settings-modal__option ${
-                                  selectedLang === lang.value
-                                    ? 'profile-settings-modal__option--selected'
-                                    : ''
-                                }`}
-                                onClick={() => handleSelectLanguage(lang.value as 'ru' | 'en')}
-                              >
-                                {lang.label}
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </div>
+                      <ProfileSettingsSelect
+                        value={selectedLang}
+                        options={languages}
+                        onChange={(value) => setSelectedLang(value as 'ru' | 'en')}
+                      />
                       <p className="profile-settings-modal__field-hint profile-settings-modal__field-hint--muted">
                         {ui?.dashboard?.profileSettingsModal?.hints?.languageReloadNote ??
                           (currentLang === 'en'
@@ -925,18 +845,12 @@ export function ProfileSettingsModal({
                         {ui?.dashboard?.profileSettingsModal?.fields?.primaryGenre ??
                           'Основной жанр'}
                       </label>
-                      <select
+                      <ProfileSettingsSelect
                         id="profile-primary-genre"
-                        className="profile-settings-modal__input"
                         value={genreCode}
-                        onChange={(e) => setGenreCode(e.target.value)}
-                      >
-                        {GENRE_OPTIONS.map((opt) => (
-                          <option key={opt.code} value={opt.code}>
-                            {opt.label[currentLang === 'en' ? 'en' : 'ru']}
-                          </option>
-                        ))}
-                      </select>
+                        options={genreOptions}
+                        onChange={setGenreCode}
+                      />
                       <div className="profile-settings-modal__field-hint">
                         {ui?.dashboard?.profileSettingsModal?.hints?.primaryGenreCatalog ??
                           'Этот жанр используется для отображения артиста в каталоге'}
