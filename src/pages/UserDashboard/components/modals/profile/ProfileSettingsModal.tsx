@@ -28,7 +28,7 @@ import { ModalCloseIcon } from '@shared/ui/icons/ModalCloseIcon';
 import './ProfileSettingsModal.style.scss';
 
 function PasswordVisibilityIcon({ visible }: { visible: boolean }) {
-  const Icon = visible ? EyeOffIcon : EyeIcon;
+  const Icon = visible ? EyeIcon : EyeOffIcon;
 
   return (
     <Icon
@@ -52,6 +52,11 @@ interface ProfileSettingsModalProps {
 }
 
 type TabType = 'general' | 'profile' | 'security';
+
+const SECURITY_FORM_ID = 'security-form';
+
+type PasswordFieldKey = 'currentPassword' | 'newPassword' | 'confirmPassword';
+type PasswordFieldErrors = Partial<Record<PasswordFieldKey, string>>;
 
 export function ProfileSettingsModal({
   isOpen,
@@ -163,52 +168,57 @@ export function ProfileSettingsModal({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isDropdownOpen]);
 
-  // Валидация формы смены пароля
-  const getPasswordValidationError = (): string | null => {
-    if (activeTab !== 'security') return null;
+  // Валидация формы смены пароля — одна ошибка на конкретное поле (как в EditAlbumModal)
+  const getPasswordFieldErrors = (): PasswordFieldErrors => {
+    if (activeTab !== 'security') return {};
 
-    // Если поля пустые, ошибки валидации нет (но форма невалидна для сохранения)
-    if (!currentPassword && !newPassword && !confirmPassword) return null;
+    if (!currentPassword && !newPassword && !confirmPassword) return {};
+
+    const validation = ui?.dashboard?.profileSettingsModal?.validation;
 
     if (!currentPassword) {
-      return (
-        ui?.dashboard?.profileSettingsModal?.validation?.enterCurrentPassword ??
-        'Введите текущий пароль'
-      );
+      return {
+        currentPassword: validation?.enterCurrentPassword ?? 'Введите текущий пароль',
+      };
     }
 
     if (!newPassword) {
-      return (
-        ui?.dashboard?.profileSettingsModal?.validation?.enterNewPassword ?? 'Введите новый пароль'
-      );
+      return {
+        newPassword: validation?.enterNewPassword ?? 'Введите новый пароль',
+      };
     }
 
     if (newPassword.length < 8) {
-      return (
-        ui?.dashboard?.profileSettingsModal?.validation?.passwordMinLength ??
-        'Новый пароль должен содержать минимум 8 символов'
-      );
+      return {
+        newPassword:
+          validation?.passwordMinLength ?? 'Новый пароль должен содержать минимум 8 символов',
+      };
     }
 
     if (newPassword === currentPassword) {
-      return (
-        ui?.dashboard?.profileSettingsModal?.validation?.passwordDifferent ??
-        'Новый пароль должен отличаться от текущего'
-      );
+      return {
+        newPassword: validation?.passwordDifferent ?? 'Новый пароль должен отличаться от текущего',
+      };
     }
 
     if (newPassword !== confirmPassword) {
-      return (
-        ui?.dashboard?.profileSettingsModal?.validation?.passwordsNotMatch ?? 'Пароли не совпадают'
-      );
+      return {
+        confirmPassword: validation?.passwordsNotMatch ?? 'Пароли не совпадают',
+      };
     }
 
-    return null;
+    return {};
   };
 
-  const passwordValidationError = getPasswordValidationError();
+  const passwordFieldErrors = getPasswordFieldErrors();
+  const currentPasswordError = passwordFieldErrors.currentPassword ?? null;
+  const newPasswordError = passwordFieldErrors.newPassword ?? null;
+  const confirmPasswordError = passwordFieldErrors.confirmPassword ?? null;
   const isPasswordFormValid =
-    passwordValidationError === null && currentPassword && newPassword && confirmPassword;
+    !currentPasswordError &&
+    !newPasswordError &&
+    !confirmPasswordError &&
+    Boolean(currentPassword && newPassword && confirmPassword);
 
   // Проверка наличия изменений
   const hasProfileChanges =
@@ -282,13 +292,7 @@ export function ProfileSettingsModal({
         setInitialLang(selectedLang);
       }
     } else if (activeTab === 'security') {
-      // Валидация формы пароля
       if (!isPasswordFormValid) {
-        setPasswordError(
-          passwordValidationError ||
-            ui?.dashboard?.profileSettingsModal?.validation?.fillAllFields ||
-            'Заполните все поля'
-        );
         return;
       }
 
@@ -1034,21 +1038,14 @@ export function ProfileSettingsModal({
 
                 {activeTab === 'security' && (
                   <form
+                    id={SECURITY_FORM_ID}
                     className="profile-settings-modal__security-tab"
                     onSubmit={(e) => {
                       e.preventDefault();
-                      // Mirror the footer Save button — disabled-form checks are
-                      // already applied inside handleSave (isPasswordFormValid /
-                      // isDashboardBusy guards), so we just defer to it.
                       void handleSave();
                     }}
                     noValidate
                   >
-                    <h3 className="profile-settings-modal__section-title">
-                      {ui?.dashboard?.profileSettingsModal?.buttons?.changePassword ??
-                        'Смена пароля'}
-                    </h3>
-
                     {passwordSuccess && (
                       <div className="profile-settings-modal__success-message">
                         {ui?.dashboard?.profileSettingsModal?.messages?.passwordUpdated ??
@@ -1070,7 +1067,9 @@ export function ProfileSettingsModal({
                           ref={currentPasswordRef}
                           id="current-password"
                           type={showCurrentPassword ? 'text' : 'password'}
-                          className="profile-settings-modal__input"
+                          className={`profile-settings-modal__input${
+                            currentPasswordError ? ' profile-settings-modal__input--invalid' : ''
+                          }`}
                           value={currentPassword}
                           onChange={(e) => {
                             setCurrentPassword(e.target.value);
@@ -1078,6 +1077,10 @@ export function ProfileSettingsModal({
                           }}
                           autoComplete="current-password"
                           disabled={isChangingPassword}
+                          aria-invalid={Boolean(currentPasswordError)}
+                          aria-describedby={
+                            currentPasswordError ? 'current-password-error' : undefined
+                          }
                         />
                         <button
                           type="button"
@@ -1089,6 +1092,15 @@ export function ProfileSettingsModal({
                           <PasswordVisibilityIcon visible={showCurrentPassword} />
                         </button>
                       </div>
+                      {currentPasswordError ? (
+                        <p
+                          id="current-password-error"
+                          className="profile-settings-modal__field-error"
+                          role="alert"
+                        >
+                          {currentPasswordError}
+                        </p>
+                      ) : null}
                     </div>
 
                     <div className="profile-settings-modal__field">
@@ -1099,7 +1111,9 @@ export function ProfileSettingsModal({
                         <input
                           id="new-password"
                           type={showNewPassword ? 'text' : 'password'}
-                          className="profile-settings-modal__input"
+                          className={`profile-settings-modal__input${
+                            newPasswordError ? ' profile-settings-modal__input--invalid' : ''
+                          }`}
                           value={newPassword}
                           onChange={(e) => {
                             setNewPassword(e.target.value);
@@ -1108,6 +1122,8 @@ export function ProfileSettingsModal({
                           autoComplete="new-password"
                           disabled={isChangingPassword}
                           minLength={8}
+                          aria-invalid={Boolean(newPasswordError)}
+                          aria-describedby={newPasswordError ? 'new-password-error' : undefined}
                         />
                         <button
                           type="button"
@@ -1119,6 +1135,15 @@ export function ProfileSettingsModal({
                           <PasswordVisibilityIcon visible={showNewPassword} />
                         </button>
                       </div>
+                      {newPasswordError ? (
+                        <p
+                          id="new-password-error"
+                          className="profile-settings-modal__field-error"
+                          role="alert"
+                        >
+                          {newPasswordError}
+                        </p>
+                      ) : null}
                     </div>
 
                     <div className="profile-settings-modal__field">
@@ -1130,7 +1155,9 @@ export function ProfileSettingsModal({
                         <input
                           id="confirm-password"
                           type={showConfirmPassword ? 'text' : 'password'}
-                          className="profile-settings-modal__input"
+                          className={`profile-settings-modal__input${
+                            confirmPasswordError ? ' profile-settings-modal__input--invalid' : ''
+                          }`}
                           value={confirmPassword}
                           onChange={(e) => {
                             setConfirmPassword(e.target.value);
@@ -1138,6 +1165,10 @@ export function ProfileSettingsModal({
                           }}
                           autoComplete="new-password"
                           disabled={isChangingPassword}
+                          aria-invalid={Boolean(confirmPasswordError)}
+                          aria-describedby={
+                            confirmPasswordError ? 'confirm-password-error' : undefined
+                          }
                         />
                         <button
                           type="button"
@@ -1149,20 +1180,16 @@ export function ProfileSettingsModal({
                           <PasswordVisibilityIcon visible={showConfirmPassword} />
                         </button>
                       </div>
+                      {confirmPasswordError ? (
+                        <p
+                          id="confirm-password-error"
+                          className="profile-settings-modal__field-error"
+                          role="alert"
+                        >
+                          {confirmPasswordError}
+                        </p>
+                      ) : null}
                     </div>
-                    {/*
-                      Implicit-submit anchor so pressing Enter in any of the
-                      password inputs triggers `handleSave` via the form's
-                      onSubmit. The visible Save button stays in the footer
-                      and clicks the same handler directly.
-                    */}
-                    <button
-                      type="submit"
-                      hidden
-                      aria-hidden="true"
-                      tabIndex={-1}
-                      disabled={isDashboardBusy || !hasChanges || !isPasswordFormValid}
-                    />
                   </form>
                 )}
               </div>
@@ -1178,11 +1205,12 @@ export function ProfileSettingsModal({
                 {ui?.dashboard?.cancel ?? 'Отмена'}
               </button>
               <button
-                type="button"
+                type={activeTab === 'security' ? 'submit' : 'button'}
+                form={activeTab === 'security' ? SECURITY_FORM_ID : undefined}
                 className={`profile-settings-modal__button profile-settings-modal__button--save${
                   isDashboardBusy ? ' profile-settings-modal__button--save-loading' : ''
                 }`}
-                onClick={handleSave}
+                onClick={activeTab === 'security' ? undefined : handleSave}
                 disabled={
                   isDashboardBusy ||
                   !hasChanges ||

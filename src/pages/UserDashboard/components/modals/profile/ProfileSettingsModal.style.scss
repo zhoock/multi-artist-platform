@@ -137,6 +137,22 @@ dialog {
 
     &__input {
       @include dashboard-form-input;
+
+      &--invalid {
+        border-color: var(--pink-terracotta);
+
+        &:focus {
+          border-color: var(--pink-terracotta);
+          box-shadow: 0 0 0 2px rgb(207 128 125 / 28%);
+        }
+      }
+    }
+
+    &__field-error {
+      margin: var(--ms-02) 0 0;
+      color: var(--pink-terracotta);
+      font-size: var(--ms-01);
+      line-height: 1.35;
     }
 
     &__textarea {
