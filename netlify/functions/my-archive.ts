@@ -32,6 +32,6 @@ export const handler: Handler = async (event: HandlerEvent) => {
     return createSuccessResponse(data);
   } catch (error) {
     console.error('❌ [my-archive]', error);
-    return createErrorResponse(500, 'Failed to load archive');
+    return createErrorResponse(500, 'Failed to load collection');
   }
 };

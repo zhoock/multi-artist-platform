@@ -35,7 +35,7 @@ describe('purchase-email-template', () => {
     expect(html).toContain('Rubber Soul');
     expect(html).toContain('The Beatles');
     expect(html).toContain(
-      'The album has been added to your archive. You can stream, download and enjoy it whenever you want.'
+      'The album is now available in My Purchases. You can stream, download and enjoy it whenever you want.'
     );
     expect(html).toContain('Open in Smolyanoe Chuchelko');
     expect(html).toContain('https://smolyanoechuchelko.ru/albums/rubber-soul');
@@ -55,7 +55,7 @@ describe('purchase-email-template', () => {
     expect(html).toContain('Спасибо');
     expect(html).toContain('за покупку!');
     expect(html).toContain('Здравствуйте, Алексей!');
-    expect(html).toContain('Альбом добавлен в ваш архив');
+    expect(html).toContain('Альбом доступен в разделе «Мои покупки»');
     expect(html).toContain('Открыть в Smolyanoe Chuchelko');
     expect(text).toContain('Спасибо за покупку.');
   });

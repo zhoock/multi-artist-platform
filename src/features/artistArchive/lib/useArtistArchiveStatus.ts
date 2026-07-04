@@ -121,7 +121,7 @@ export function useArtistArchiveStatus(artistUserId: string | null | undefined) 
           ? err.message
           : err instanceof Error
             ? err.message
-            : 'Failed to add to archive';
+            : 'Failed to add to collection';
       setError(message);
       throw err;
     } finally {

@@ -74,11 +74,11 @@ export const handler: Handler = async (event: HandlerEvent) => {
     if (error instanceof ArchiveSubscriptionRequiredError) {
       return createErrorResponse(403, error.message, undefined, { code: error.code });
     }
-    if (error instanceof Error && error.message === 'Cannot add yourself to archive') {
+    if (error instanceof Error && error.message === 'Cannot add yourself to collection') {
       return createErrorResponse(400, error.message, undefined, { code: 'ARCHIVE_SELF_ADD' });
     }
 
     console.error('❌ [add-to-archive]', error);
-    return createErrorResponse(500, 'Failed to add artist to archive');
+    return createErrorResponse(500, 'Failed to add artist to collection');
   }
 };

@@ -93,6 +93,6 @@ export const handler: Handler = async (event: HandlerEvent) => {
     }
 
     console.error('❌ [activate-archive-artists]', error);
-    return createErrorResponse(500, 'Failed to activate archive artists');
+    return createErrorResponse(500, 'Failed to activate collection artists');
   }
 };

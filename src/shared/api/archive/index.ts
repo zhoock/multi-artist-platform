@@ -101,7 +101,7 @@ export async function getArchiveStatus(artistUserId: string): Promise<ArchiveSta
 
   const payload = (await response.json()) as ApiEnvelope<ArchiveStatus>;
   if (!payload.success || !payload.data) {
-    throw new ArchiveApiError(payload.error || 'Failed to load archive status', 'UNKNOWN');
+    throw new ArchiveApiError(payload.error || 'Failed to load collection status', 'UNKNOWN');
   }
 
   return payload.data;
@@ -127,7 +127,7 @@ export async function addArtistToArchiveApi(artistUserId: string): Promise<{
 
   const payload = (await response.json()) as ApiEnvelope<{ status: ArchiveStatus }>;
   if (!payload.success || !payload.data?.status) {
-    throw new ArchiveApiError(payload.error || 'Failed to add artist to archive', 'UNKNOWN');
+    throw new ArchiveApiError(payload.error || 'Failed to add artist to collection', 'UNKNOWN');
   }
 
   return { status: payload.data.status };
@@ -149,7 +149,7 @@ export async function getMyArchive(): Promise<MyArchiveData> {
 
   const payload = (await response.json()) as ApiEnvelope<MyArchiveData>;
   if (!payload.success || !payload.data) {
-    throw new ArchiveApiError(payload.error || 'Failed to load archive', 'UNKNOWN');
+    throw new ArchiveApiError(payload.error || 'Failed to load collection', 'UNKNOWN');
   }
 
   return payload.data;
@@ -175,7 +175,7 @@ export async function removeArtistFromArchiveApi(artistUserId: string): Promise<
 
   const payload = (await response.json()) as ApiEnvelope<{ archive: MyArchiveData }>;
   if (!payload.success || !payload.data?.archive) {
-    throw new ArchiveApiError(payload.error || 'Failed to remove from archive', 'UNKNOWN');
+    throw new ArchiveApiError(payload.error || 'Failed to remove from collection', 'UNKNOWN');
   }
 
   return { archive: payload.data.archive };

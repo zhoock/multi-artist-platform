@@ -41,7 +41,7 @@ export class ArchiveSlotsLimitError extends Error {
     public readonly slotsUsed: number,
     public readonly slotsLimit: number
   ) {
-    super(`Archive slots limit reached (${slotsUsed}/${slotsLimit})`);
+    super(`Collection slots limit reached (${slotsUsed}/${slotsLimit})`);
     this.name = 'ArchiveSlotsLimitError';
   }
 }
@@ -49,7 +49,7 @@ export class ArchiveSlotsLimitError extends Error {
 export class ArchiveSubscriptionRequiredError extends Error {
   readonly code = 'ARCHIVE_SUBSCRIPTION_REQUIRED';
 
-  constructor(message = 'Active subscription required for archive changes') {
+  constructor(message = 'Active subscription required for collection changes') {
     super(message);
     this.name = 'ArchiveSubscriptionRequiredError';
   }
@@ -274,7 +274,7 @@ export async function addArtistToArchive(
   artistUserId: string
 ): Promise<UserArchiveEntry> {
   if (userId === artistUserId) {
-    throw new Error('Cannot add yourself to archive');
+    throw new Error('Cannot add yourself to collection');
   }
 
   const existing = await getArchiveRow(userId, artistUserId);
@@ -309,7 +309,7 @@ export async function addArtistToArchive(
       [existing.id, lockedUntil]
     );
     const row = updated.rows[0];
-    if (!row) throw new Error('Failed to reactivate artist in archive');
+    if (!row) throw new Error('Failed to reactivate artist in collection');
     return mapUserArchiveRow(row);
   }
 
@@ -337,7 +337,7 @@ export async function addArtistToArchive(
   );
   const row = r.rows[0];
   if (!row) {
-    throw new Error('Failed to add artist to archive');
+    throw new Error('Failed to add artist to collection');
   }
   return mapUserArchiveRow(row);
 }
@@ -355,7 +355,7 @@ export async function removeArtistFromArchive(
     const subscription = await getViewerSubscription(userId);
     if (!isSubscriptionActive(subscription)) {
       throw new ArchiveSubscriptionRequiredError(
-        'Active subscription required to remove active artists from archive'
+        'Active subscription required to remove active artists from collection'
       );
     }
 

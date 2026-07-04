@@ -143,7 +143,7 @@ const COPY = {
       greetingGeneric: 'Hello!',
       heroSubtitle: 'Your purchase was successful.',
       albumDescription:
-        'The album has been added to your archive. You can stream, download and enjoy it whenever you want.',
+        'The album is now available in My Purchases. You can stream, download and enjoy it whenever you want.',
       ctaLabel: 'Open in {{siteName}}',
       closingLine1: 'We truly appreciate your support.',
       closingLine2: 'Stay tuned for more music.',
@@ -159,7 +159,7 @@ const COPY = {
       greetingGeneric: 'Здравствуйте!',
       heroSubtitle: 'Покупка прошла успешно.',
       albumDescription:
-        'Альбом добавлен в ваш архив. Слушайте, скачивайте и наслаждайтесь им в любое время.',
+        'Альбом доступен в разделе «Мои покупки». Слушайте, скачивайте и наслаждайтесь им в любое время.',
       ctaLabel: 'Открыть в {{siteName}}',
       closingLine1: 'Спасибо, что поддерживаете нас.',
       closingLine2: 'До встречи в новых релизах.',

@@ -52,7 +52,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
   try {
     const removed = await removeArtistFromArchive(userId, artistUserId);
     if (!removed) {
-      return createErrorResponse(404, 'Artist not found in archive', undefined, {
+      return createErrorResponse(404, 'Artist not found in collection', undefined, {
         code: 'ARCHIVE_NOT_FOUND',
       });
     }
@@ -78,6 +78,6 @@ export const handler: Handler = async (event: HandlerEvent) => {
     }
 
     console.error('❌ [remove-from-archive]', error);
-    return createErrorResponse(500, 'Failed to remove artist from archive');
+    return createErrorResponse(500, 'Failed to remove artist from collection');
   }
 };
