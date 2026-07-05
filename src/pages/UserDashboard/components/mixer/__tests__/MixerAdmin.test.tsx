@@ -49,7 +49,6 @@ const sampleAlbum: AlbumData = {
 const mixerUi = {
   dashboard: {
     mixer: {
-      title: 'Mixer',
       stemsEmptyTitle: 'No stems yet',
       stemsEmptyDescription: 'Add the first stem for this track.',
       addStem: 'Add stem',
@@ -83,9 +82,8 @@ describe('MixerAdmin', () => {
       }
     );
 
-    expect(container.querySelector('.dashboard-section')).toBeTruthy();
+    expect(container.querySelector('.user-dashboard__section')).toBeTruthy();
     expect(container.querySelector('.dashboard-card')).toBeTruthy();
-    expect(screen.getByText('Mixer')).toBeTruthy();
     expect(screen.getByText('Test Album')).toBeTruthy();
 
     await user.click(screen.getByLabelText('Expand album'));

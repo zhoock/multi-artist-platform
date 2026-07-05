@@ -29,7 +29,6 @@ import {
   DashboardCta,
   DashboardEmptyState,
   DashboardExpandableRowTrigger,
-  DashboardSection,
 } from '@shared/ui/dashboard';
 import './MixerAdmin.scss';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
@@ -426,7 +425,7 @@ export function MixerAdmin({ ui, userId, albums = [] }: MixerAdminProps) {
 
   return (
     <>
-      <DashboardSection title={t?.title ?? 'Mixer'}>
+      <div className="user-dashboard__section">
         <div className="user-dashboard__albums-list mixer-admin__albums">
           {albums.map((album) => {
             const tracks = getAlbumTracks(album.id);
@@ -681,7 +680,7 @@ export function MixerAdmin({ ui, userId, albums = [] }: MixerAdminProps) {
             );
           })}
         </div>
-      </DashboardSection>
+      </div>
 
       <AddStemModal
         isOpen={!!addModal}
