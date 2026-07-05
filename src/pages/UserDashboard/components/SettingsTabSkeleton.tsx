@@ -1,4 +1,5 @@
 import React from 'react';
+import '@shared/ui/dashboard';
 import '@shared/ui/skeleton/skeleton.scss';
 import './articles/ArticlesListSkeleton.scss';
 
@@ -15,11 +16,14 @@ export function SettingsTabSkeleton() {
       <div className="skeleton skeleton--bar skeleton--bar-title user-dashboard__tab-skeleton-title" />
       <div className="user-dashboard__settings-skeleton-inner">
         {[0, 1, 2, 3, 4, 5].map((section) => (
-          <div key={section} className="user-dashboard__settings-skeleton-section">
+          <div
+            key={section}
+            className="dashboard-section user-dashboard__settings-skeleton-section"
+          >
             <div className="skeleton skeleton--bar skeleton--bar-short user-dashboard__settings-skeleton-section-title" />
-            <div className="user-dashboard__settings-skeleton-card">
+            <div className="dashboard-card user-dashboard__settings-skeleton-card">
               {[0, 1, 2].map((row) => (
-                <div key={row} className="user-dashboard__settings-skeleton-field">
+                <div key={row} className="dashboard-row user-dashboard__settings-skeleton-field">
                   <div className="skeleton skeleton--bar skeleton--bar-short" />
                   <div className="skeleton skeleton--bar skeleton--bar-medium user-dashboard__settings-skeleton-input" />
                 </div>

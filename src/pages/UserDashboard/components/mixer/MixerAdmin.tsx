@@ -23,6 +23,7 @@ import { AlbumCoverImage } from '@entities/album';
 import { getUserUserId } from '@config/user';
 import { useLang } from '@app/providers/lang';
 import { uniqueUploadFileSuffix } from '@shared/lib/uniqueUploadFileSuffix';
+import { DashboardEmptyState } from '@shared/ui/dashboard';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 import { ConfirmationModal } from '@shared/ui/confirmationModal';
 import { StemAddedToast } from '@shared/ui/stemAddedToast/StemAddedToast';
@@ -566,28 +567,34 @@ export function MixerAdmin({ ui, userId, albums = [] }: MixerAdminProps) {
                                 {isLoading ? (
                                   <div className="mixer-admin__placeholder">{labels.loading}</div>
                                 ) : stems.length === 0 ? (
-                                  <div className="mixer-admin__empty">
-                                    <AudioLinesIcon
-                                      className="mixer-admin__empty-icon"
-                                      {...dashboardActionIconProps({ size: 48, strokeWidth: 1.5 })}
-                                    />
-                                    <h5 className="mixer-admin__empty-title">
-                                      {labels.emptyTitle}
-                                    </h5>
-                                    <p className="mixer-admin__empty-description">
-                                      {labels.emptyDescription}
-                                    </p>
-                                    <button
-                                      type="button"
-                                      className="user-dashboard__tab-empty-cta mixer-admin__add-stem"
-                                      onClick={() =>
-                                        setAddModal({ albumId: storageAlbumId, trackId: track.id })
-                                      }
-                                    >
-                                      <PlusIcon {...dashboardActionIconProps({ size: 18 })} />
-                                      {labels.addStem}
-                                    </button>
-                                  </div>
+                                  <DashboardEmptyState
+                                    variant="card"
+                                    icon={
+                                      <AudioLinesIcon
+                                        {...dashboardActionIconProps({
+                                          size: 48,
+                                          strokeWidth: 1.5,
+                                        })}
+                                      />
+                                    }
+                                    title={labels.emptyTitle}
+                                    description={labels.emptyDescription}
+                                    action={
+                                      <button
+                                        type="button"
+                                        className="dashboard-empty-state__cta mixer-admin__add-stem"
+                                        onClick={() =>
+                                          setAddModal({
+                                            albumId: storageAlbumId,
+                                            trackId: track.id,
+                                          })
+                                        }
+                                      >
+                                        <PlusIcon {...dashboardActionIconProps({ size: 18 })} />
+                                        {labels.addStem}
+                                      </button>
+                                    }
+                                  />
                                 ) : (
                                   <DndContext
                                     sensors={sensors}

@@ -74,15 +74,10 @@ dialog {
       .user-dashboard__settings-skeleton-card {
         display: flex;
         flex-direction: column;
-        gap: var(--ms-02);
-        padding: var(--ms-01) var(--ms-0);
-        background: var(--dashboard-card-bg);
-        border: 1px solid var(--dashboard-card-border);
-        border-radius: var(--ms-01);
+        gap: 0;
       }
 
       .user-dashboard__settings-skeleton-field {
-        display: grid;
         grid-template-columns: minmax(6rem, 36%) minmax(0, 1fr);
         gap: var(--ms-02);
         align-items: center;
@@ -659,13 +654,22 @@ dialog {
     }
 
     &__album-expanded {
-      background: var(--dashboard-card-bg);
       border-bottom: none;
       padding-block: var(--ms-0);
+
+      &:not(.user-dashboard__album-expanded--kit) {
+        background: var(--dashboard-card-bg);
+      }
 
       &--article {
         display: flex;
         flex-direction: column;
+      }
+
+      &--kit {
+        &.dashboard-card {
+          overflow: visible;
+        }
       }
     }
 
@@ -722,15 +726,6 @@ dialog {
 
     &__delete-article-button {
       @include dashboard-btn-destructive;
-    }
-
-    &__article-cover-section {
-      margin-bottom: var(--ms-1);
-    }
-
-    &__article-cover-label {
-      display: block;
-      margin-bottom: var(--ms-01);
     }
 
     &__article-cover-file-input {
@@ -875,89 +870,11 @@ dialog {
       @include dashboard-btn-secondary($margin: 0 0 var(--ms-0) 0);
     }
 
-    // Shared empty state (Albums, Posts, Mixer, My Purchases).
-    // Top-anchored stack: CTA/no-CTA blocks share the same icon position (My Purchases reference).
-    &__tab-empty {
-      --dashboard-tab-empty-top: clamp(3.25rem, 15vh, 4.5rem);
-
-      position: relative;
-      flex: 1;
-      width: 100%;
-      min-height: min(480px, 58vh);
-      padding: 0 var(--ms-1) var(--ms-2);
-      box-sizing: border-box;
-    }
-
-    &__tab-empty-inner {
-      position: absolute;
-      top: var(--dashboard-tab-empty-top);
-      left: 50%;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      width: min(100%, 26rem);
-      text-align: center;
-      transform: translateX(-50%);
-    }
-
-    &__tab-empty-icon {
-      flex-shrink: 0;
-      margin-bottom: var(--ms-0);
-      color: var(--dashboard-text-secondary);
-    }
-
-    &__tab-empty-title {
-      margin: 0 0 var(--ms-01);
-      color: var(--dashboard-text-primary);
-      font-size: clamp(1.35rem, 3vw, 1.65rem);
-      line-height: 1.25;
-    }
-
-    &__tab-empty-description {
-      margin: 0 0 var(--ms-1);
-      color: var(--dashboard-text-secondary);
-      font-size: var(--dashboard-font-size);
-      line-height: 1.55;
-
-      &--multiline {
-        white-space: pre-line;
-      }
-
-      &:last-child {
-        margin-bottom: 0;
-      }
-    }
-
-    &__tab-empty-cta {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 0.55em;
-      width: auto;
-      max-width: 100%;
-      text-transform: none;
-      letter-spacing: normal;
-
-      @include dashboard-btn-primary($margin: 0, $padding: var(--ms-01) var(--ms-1));
-    }
-
     &__upload-action {
       display: flex;
       justify-content: center;
       margin-top: var(--ms-0);
       margin-bottom: var(--ms-1);
-    }
-
-    &__upload-button {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: auto;
-      max-width: 100%;
-      text-transform: none;
-      letter-spacing: normal;
-
-      @include dashboard-btn-primary($margin: 0, $padding: var(--ms-01) var(--ms-1));
     }
 
     // После всех менее специфичных `img` в этом файле (stylelint no-descending-specificity)
@@ -989,10 +906,12 @@ dialog {
 // Mixer tab (классы mixer-admin__* на элементах внутри MixerAdmin)
 .mixer-admin {
   &__albums {
+    /* stylelint-disable-next-line no-descending-specificity -- mixer album list overrides dashboard defaults */
     .user-dashboard__album-item--expanded {
       background: transparent;
     }
 
+    /* stylelint-disable-next-line no-descending-specificity -- mixer album list overrides dashboard defaults */
     .user-dashboard__album-expanded {
       background: transparent;
       padding-block: 0;
@@ -1117,35 +1036,6 @@ dialog {
     display: flex;
     flex-direction: column;
     gap: var(--ms-01);
-  }
-
-  &__empty {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: var(--ms-0);
-    padding: var(--ms-3) var(--ms-1);
-    text-align: center;
-    border: 1px dashed var(--dashboard-card-border);
-    border-radius: var(--ms-01);
-  }
-
-  &__empty-icon {
-    color: var(--dashboard-text-secondary);
-  }
-
-  &__empty-title {
-    margin: 0;
-    color: var(--dashboard-text-primary);
-    font-size: var(--ms-1);
-    font-weight: 400;
-  }
-
-  &__empty-description {
-    margin: 0 0 var(--ms-0);
-    color: var(--dashboard-text-secondary);
-    font-size: 13px;
-    line-height: 1.5;
   }
 }
 

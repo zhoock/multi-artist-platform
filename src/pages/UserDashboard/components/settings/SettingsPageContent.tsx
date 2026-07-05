@@ -9,6 +9,15 @@ import {
   useEmailVerificationCopy,
   useResendCooldown,
 } from '@shared/lib/emailVerification';
+import {
+  DashboardAction,
+  DashboardCard,
+  DashboardRow,
+  DashboardRowInlineError,
+  DashboardRowValue,
+  DashboardRowValueWrap,
+  DashboardSection,
+} from '@shared/ui/dashboard';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 import { StatusBadge } from '@shared/ui/statusBadge';
 import { SettingsSelect } from '../modals/settings/SettingsSelect';
@@ -130,210 +139,174 @@ export function SettingsPageContent({
         })}
         aria-busy={isBusy}
       >
-        <section className="user-dashboard__profile-block">
-          <h4 className="user-dashboard__profile-block-heading user-dashboard__profile-block-heading--accent">
-            {d?.settingsModal?.tabs?.general ?? 'General'}
-          </h4>
-          <div className="user-dashboard__settings-page__card">
-            <div className="user-dashboard__settings-page__row">
-              <p className="user-dashboard__settings-page__row-label">
-                {d?.settingsModal?.fields?.language ?? 'Language'}
-              </p>
-              <div className="user-dashboard__settings-page__row-control">
-                <SettingsSelect
-                  value={currentLang}
-                  options={languages}
-                  onChange={handleLanguageChange}
-                />
-              </div>
-            </div>
-          </div>
-        </section>
+        <DashboardSection title={d?.settingsModal?.tabs?.general ?? 'General'}>
+          <DashboardCard>
+            <DashboardRow label={d?.settingsModal?.fields?.language ?? 'Language'}>
+              <SettingsSelect
+                value={currentLang}
+                options={languages}
+                onChange={handleLanguageChange}
+              />
+            </DashboardRow>
+          </DashboardCard>
+        </DashboardSection>
 
-        <section className="user-dashboard__profile-block">
-          <div className="user-dashboard__settings-page__section-heading-row">
-            <h4 className="user-dashboard__profile-block-heading user-dashboard__profile-block-heading--accent">
-              {d?.publicProfilePreview?.sectionTitle ?? 'Profile'}
-            </h4>
-            {!isListener ? (
+        <DashboardSection
+          title={d?.publicProfilePreview?.sectionTitle ?? 'Profile'}
+          headingExtra={
+            !isListener ? (
               <StatusBadge variant={isArtistPagePublic ? 'public' : 'private'}>
                 {isArtistPagePublic
                   ? (d?.profileHero?.pagePublic ?? 'Page is public')
                   : (d?.profileHero?.pagePrivate ?? 'Page is private')}
               </StatusBadge>
-            ) : null}
-          </div>
-          <div className="user-dashboard__settings-page__card">
-            <div className="user-dashboard__settings-page__row user-dashboard__settings-page__row--start">
-              <p className="user-dashboard__settings-page__row-label">
-                {d?.changeAvatar ?? 'Profile Image'}
-              </p>
-              <div className="user-dashboard__settings-page__row-control">
-                <div className="user-dashboard__settings-page__avatar-row">
-                  <div className="user-dashboard__settings-page__avatar">
-                    {isProfileAvatarPlaceholderUrl(avatarSrc) ? (
-                      <span
-                        className="user-dashboard__settings-page__avatar-placeholder"
-                        aria-hidden="true"
-                      >
-                        {getProfileAvatarInitials()}
-                      </span>
-                    ) : (
-                      <img
-                        src={avatarSrc}
-                        srcSet={avatarRetinaSrc ? `${avatarRetinaSrc} 2x` : undefined}
-                        alt={d?.changeAvatar ?? 'Avatar'}
-                      />
-                    )}
-                    {isUploadingAvatar ? (
-                      <div
-                        className="user-dashboard__settings-page__avatar-loader"
-                        aria-live="polite"
-                        aria-busy="true"
-                      >
-                        <div className="user-dashboard__settings-page__avatar-spinner" />
-                      </div>
-                    ) : null}
-                  </div>
-                  <div className="user-dashboard__settings-page__avatar-actions">
-                    <button
-                      type="button"
-                      className="user-dashboard__settings-page__avatar-upload"
-                      onClick={onAvatarUploadClick}
-                      disabled={isUploadingAvatar}
+            ) : undefined
+          }
+        >
+          <DashboardCard>
+            <DashboardRow label={d?.changeAvatar ?? 'Profile Image'} variant="start">
+              <div className="user-dashboard__settings-page__avatar-row">
+                <div className="user-dashboard__settings-page__avatar">
+                  {isProfileAvatarPlaceholderUrl(avatarSrc) ? (
+                    <span
+                      className="user-dashboard__settings-page__avatar-placeholder"
+                      aria-hidden="true"
                     >
-                      {hasAvatar ? changeLabel : uploadLabel}
-                    </button>
-                    {hasAvatar ? (
-                      <button
-                        type="button"
-                        className="user-dashboard__settings-page__avatar-remove"
-                        onClick={() => void onAvatarRemove()}
-                        disabled={isUploadingAvatar}
-                      >
-                        {removeLabel}
-                      </button>
-                    ) : null}
-                  </div>
-                  <p className="user-dashboard__settings-page__avatar-hint">{avatarHint}</p>
+                      {getProfileAvatarInitials()}
+                    </span>
+                  ) : (
+                    <img
+                      src={avatarSrc}
+                      srcSet={avatarRetinaSrc ? `${avatarRetinaSrc} 2x` : undefined}
+                      alt={d?.changeAvatar ?? 'Avatar'}
+                    />
+                  )}
+                  {isUploadingAvatar ? (
+                    <div
+                      className="user-dashboard__settings-page__avatar-loader"
+                      aria-live="polite"
+                      aria-busy="true"
+                    >
+                      <div className="user-dashboard__settings-page__avatar-spinner" />
+                    </div>
+                  ) : null}
                 </div>
-                <input
-                  ref={avatarInputRef}
-                  type="file"
-                  accept="image/*"
-                  className="user-dashboard__settings-page__hidden-input"
-                  onChange={onAvatarChange}
-                />
-              </div>
-            </div>
-
-            <div className="user-dashboard__settings-page__row">
-              <label
-                htmlFor="settings-band-name"
-                className="user-dashboard__settings-page__row-label"
-              >
-                {d?.settingsModal?.fields?.bandName ?? 'Band Name'}
-              </label>
-              <div className="user-dashboard__settings-page__row-control">
-                <input
-                  id="settings-band-name"
-                  type="text"
-                  className="settings-modal__input"
-                  placeholder={
-                    d?.settingsModal?.placeholders?.bandName ?? 'Enter the name of your band'
-                  }
-                  value={name}
-                  onChange={(event) => setName(event.target.value)}
-                  onBlur={handleNameBlur}
-                />
-              </div>
-            </div>
-
-            <div className="user-dashboard__settings-page__row">
-              <label
-                htmlFor="settings-primary-genre"
-                className="user-dashboard__settings-page__row-label"
-              >
-                {d?.settingsModal?.fields?.primaryGenre ?? 'Primary genre'}
-              </label>
-              <div className="user-dashboard__settings-page__row-control">
-                <SettingsSelect
-                  id="settings-primary-genre"
-                  value={genreCode}
-                  options={genreOptions}
-                  onChange={handleGenreChange}
-                />
-              </div>
-            </div>
-
-            <div className="user-dashboard__settings-page__row">
-              <label
-                htmlFor="settings-public-slug"
-                className="user-dashboard__settings-page__row-label"
-              >
-                {d?.publicProfilePreview?.publicUrl ?? 'Public URL (slug)'}
-              </label>
-              <div className="user-dashboard__settings-page__row-control">
-                <div className="user-dashboard__settings-page__slug-control">
-                  <input
-                    id="settings-public-slug"
-                    type="text"
-                    className="settings-modal__input"
-                    placeholder="my-band"
-                    value={publicSlug}
-                    onChange={(event) => handlePublicSlugChange(event.target.value)}
-                    onBlur={handlePublicSlugBlur}
-                  />
+                <div className="user-dashboard__settings-page__avatar-actions">
                   <button
                     type="button"
-                    className="user-dashboard__settings-page__slug-open"
-                    onClick={onOpenArtistPage}
-                    disabled={!profilePublicSlug}
-                    aria-label={d?.profileHero?.openArtistPage ?? 'Open artist page'}
-                    title={d?.profileHero?.openArtistPage ?? 'Open artist page'}
+                    className="user-dashboard__settings-page__avatar-upload"
+                    onClick={onAvatarUploadClick}
+                    disabled={isUploadingAvatar}
                   >
-                    <ExternalLinkIcon {...dashboardActionIconProps({ size: 18 })} />
+                    {hasAvatar ? changeLabel : uploadLabel}
                   </button>
+                  {hasAvatar ? (
+                    <button
+                      type="button"
+                      className="user-dashboard__settings-page__avatar-remove"
+                      onClick={() => void onAvatarRemove()}
+                      disabled={isUploadingAvatar}
+                    >
+                      {removeLabel}
+                    </button>
+                  ) : null}
                 </div>
+                <p className="user-dashboard__settings-page__avatar-hint">{avatarHint}</p>
               </div>
-            </div>
+              <input
+                ref={avatarInputRef}
+                type="file"
+                accept="image/*"
+                className="user-dashboard__settings-page__hidden-input"
+                onChange={onAvatarChange}
+              />
+            </DashboardRow>
 
-            <div className="user-dashboard__settings-page__row user-dashboard__settings-page__row--start">
-              <label
-                htmlFor="settings-about-band"
-                className="user-dashboard__settings-page__row-label"
-              >
-                {d?.settingsModal?.fields?.aboutBand ?? 'About the Band'}
-              </label>
-              <div className="user-dashboard__settings-page__row-control">
-                {isLoadingAboutText ? (
-                  <div className="settings-modal__loading">
-                    {d?.loading ?? d?.uploading ?? 'Loading…'}
-                  </div>
-                ) : (
-                  <textarea
-                    id="settings-about-band"
-                    className="settings-modal__textarea"
-                    placeholder={
-                      d?.settingsModal?.placeholders?.aboutBand ??
-                      'Enter band description. Each line will be a separate paragraph.'
-                    }
-                    value={aboutText}
-                    onChange={(event) => handleAboutChange(event.target.value)}
-                    onBlur={handleAboutBlur}
-                    rows={6}
-                  />
-                )}
+            <DashboardRow
+              label={d?.settingsModal?.fields?.bandName ?? 'Band Name'}
+              labelFor="settings-band-name"
+            >
+              <input
+                id="settings-band-name"
+                type="text"
+                className="settings-modal__input"
+                placeholder={
+                  d?.settingsModal?.placeholders?.bandName ?? 'Enter the name of your band'
+                }
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                onBlur={handleNameBlur}
+              />
+            </DashboardRow>
+
+            <DashboardRow
+              label={d?.settingsModal?.fields?.primaryGenre ?? 'Primary genre'}
+              labelFor="settings-primary-genre"
+            >
+              <SettingsSelect
+                id="settings-primary-genre"
+                value={genreCode}
+                options={genreOptions}
+                onChange={handleGenreChange}
+              />
+            </DashboardRow>
+
+            <DashboardRow
+              label={d?.publicProfilePreview?.publicUrl ?? 'Public URL (slug)'}
+              labelFor="settings-public-slug"
+            >
+              <div className="user-dashboard__settings-page__slug-control">
+                <input
+                  id="settings-public-slug"
+                  type="text"
+                  className="settings-modal__input"
+                  placeholder="my-band"
+                  value={publicSlug}
+                  onChange={(event) => handlePublicSlugChange(event.target.value)}
+                  onBlur={handlePublicSlugBlur}
+                />
+                <button
+                  type="button"
+                  className="user-dashboard__settings-page__slug-open"
+                  onClick={onOpenArtistPage}
+                  disabled={!profilePublicSlug}
+                  aria-label={d?.profileHero?.openArtistPage ?? 'Open artist page'}
+                  title={d?.profileHero?.openArtistPage ?? 'Open artist page'}
+                >
+                  <ExternalLinkIcon {...dashboardActionIconProps({ size: 18 })} />
+                </button>
               </div>
-            </div>
-          </div>
-        </section>
+            </DashboardRow>
 
-        <section className="user-dashboard__profile-block">
-          <h4 className="user-dashboard__profile-block-heading user-dashboard__profile-block-heading--accent">
-            {d?.settingsModal?.fields?.headerImages ?? 'Header Images'}
-          </h4>
-          <div className="user-dashboard__settings-page__card">
+            <DashboardRow
+              label={d?.settingsModal?.fields?.aboutBand ?? 'About the Band'}
+              labelFor="settings-about-band"
+              variant="start"
+            >
+              {isLoadingAboutText ? (
+                <div className="settings-modal__loading">
+                  {d?.loading ?? d?.uploading ?? 'Loading…'}
+                </div>
+              ) : (
+                <textarea
+                  id="settings-about-band"
+                  className="settings-modal__textarea"
+                  placeholder={
+                    d?.settingsModal?.placeholders?.aboutBand ??
+                    'Enter band description. Each line will be a separate paragraph.'
+                  }
+                  value={aboutText}
+                  onChange={(event) => handleAboutChange(event.target.value)}
+                  onBlur={handleAboutBlur}
+                  rows={6}
+                />
+              )}
+            </DashboardRow>
+          </DashboardCard>
+        </DashboardSection>
+
+        <DashboardSection title={d?.settingsModal?.fields?.headerImages ?? 'Header Images'}>
+          <DashboardCard>
             <div className="user-dashboard__settings-page__header-images">
               {isLoadingHeaderImages ? (
                 <div className="settings-modal__loading">
@@ -347,54 +320,48 @@ export function SettingsPageContent({
                 />
               )}
             </div>
-          </div>
-        </section>
+          </DashboardCard>
+        </DashboardSection>
 
-        <section className="user-dashboard__profile-block user-dashboard__account-section">
-          <h4 className="user-dashboard__profile-block-heading user-dashboard__profile-block-heading--accent">
-            {d?.accountSectionTitle ?? 'Account'}
-          </h4>
-          <div className="user-dashboard__settings-page__card">
-            <div className="user-dashboard__settings-page__row user-dashboard__settings-page__row--action">
-              <p className="user-dashboard__settings-page__row-label">
-                {d?.profileFields?.email ?? d?.settingsModal?.fields?.email ?? 'Email'}
-              </p>
-              <div className="user-dashboard__settings-page__row-value-wrap">
-                <p className="user-dashboard__settings-page__row-value">
-                  {userEmail?.trim() || '—'}
-                </p>
+        <DashboardSection
+          title={d?.accountSectionTitle ?? 'Account'}
+          className="user-dashboard__account-section"
+        >
+          <DashboardCard>
+            <DashboardRow
+              label={d?.profileFields?.email ?? d?.settingsModal?.fields?.email ?? 'Email'}
+              variant="action"
+              action={
+                emailVerified ? (
+                  <DashboardAction onClick={() => setIsChangeEmailOpen(true)}>
+                    {emailVerificationCopy.changeEmail}
+                  </DashboardAction>
+                ) : (
+                  <DashboardAction
+                    onClick={() => void handleVerifyEmail()}
+                    disabled={isSendingVerificationEmail || isCoolingDown}
+                  >
+                    {isSendingVerificationEmail
+                      ? emailVerificationCopy.submitting
+                      : verifyEmailLabel}
+                  </DashboardAction>
+                )
+              }
+            >
+              <DashboardRowValueWrap>
+                <DashboardRowValue>{userEmail?.trim() || '—'}</DashboardRowValue>
                 {!emailVerified ? (
                   <StatusBadge variant="notVerified">
                     {d?.profileFields?.emailVerification?.notVerified ?? 'Email not verified'}
                   </StatusBadge>
                 ) : null}
                 {verificationEmailError ? (
-                  <p className="user-dashboard__settings-page__row-inline-error" role="alert">
-                    {verificationEmailError}
-                  </p>
+                  <DashboardRowInlineError>{verificationEmailError}</DashboardRowInlineError>
                 ) : null}
-              </div>
-              {emailVerified ? (
-                <button
-                  type="button"
-                  className="user-dashboard__settings-page__row-action"
-                  onClick={() => setIsChangeEmailOpen(true)}
-                >
-                  {emailVerificationCopy.changeEmail}
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  className="user-dashboard__settings-page__row-action"
-                  onClick={() => void handleVerifyEmail()}
-                  disabled={isSendingVerificationEmail || isCoolingDown}
-                >
-                  {isSendingVerificationEmail ? emailVerificationCopy.submitting : verifyEmailLabel}
-                </button>
-              )}
-            </div>
-          </div>
-        </section>
+              </DashboardRowValueWrap>
+            </DashboardRow>
+          </DashboardCard>
+        </DashboardSection>
 
         {isListener ? (
           <p className="user-dashboard__settings-page__upgrade">
@@ -409,63 +376,51 @@ export function SettingsPageContent({
           </p>
         ) : null}
 
-        <section className="user-dashboard__profile-block">
-          <h4 className="user-dashboard__profile-block-heading user-dashboard__profile-block-heading--accent">
-            {d?.settingsModal?.tabs?.security ?? 'Security'}
-          </h4>
-          <div className="user-dashboard__settings-page__card">
-            <div className="user-dashboard__settings-page__row user-dashboard__settings-page__row--action">
-              <p className="user-dashboard__settings-page__row-label">
-                {currentLang === 'en' ? 'Password' : 'Пароль'}
-              </p>
-              <p
-                className="user-dashboard__settings-page__row-value user-dashboard__settings-page__password-mask"
+        <DashboardSection title={d?.settingsModal?.tabs?.security ?? 'Security'}>
+          <DashboardCard>
+            <DashboardRow
+              label={currentLang === 'en' ? 'Password' : 'Пароль'}
+              variant="action"
+              action={
+                <DashboardAction onClick={() => setIsChangePasswordOpen(true)}>
+                  {d?.settingsModal?.buttons?.changePassword ?? 'Change password'}
+                </DashboardAction>
+              }
+            >
+              <DashboardRowValue
+                className="user-dashboard__settings-page__password-mask"
                 aria-hidden="true"
               >
                 ••••••••••••••••
-              </p>
-              <button
-                type="button"
-                className="user-dashboard__settings-page__row-action"
-                onClick={() => setIsChangePasswordOpen(true)}
-              >
-                {d?.settingsModal?.buttons?.changePassword ?? 'Change password'}
-              </button>
-            </div>
-          </div>
-        </section>
+              </DashboardRowValue>
+            </DashboardRow>
+          </DashboardCard>
+        </DashboardSection>
 
-        <section className="user-dashboard__profile-block">
-          <h4 className="user-dashboard__profile-block-heading user-dashboard__profile-block-heading--accent">
-            {currentLang === 'en' ? 'More' : 'Ещё'}
-          </h4>
-          <div className="user-dashboard__settings-page__card">
-            <div className="user-dashboard__settings-page__row user-dashboard__settings-page__row--action">
-              <p className="user-dashboard__settings-page__row-label">{d?.logout ?? 'Log Out'}</p>
-              <span className="user-dashboard__settings-page__row-value" aria-hidden="true" />
-              <button
-                type="button"
-                className="user-dashboard__settings-page__row-action"
-                onClick={onLogout}
-              >
-                {d?.logout ?? 'Log Out'}
-              </button>
-            </div>
-            <div className="user-dashboard__settings-page__row user-dashboard__settings-page__row--action">
-              <p className="user-dashboard__settings-page__row-label">
-                {d?.deleteAccount ?? 'Delete Account'}
-              </p>
-              <span className="user-dashboard__settings-page__row-value" aria-hidden="true" />
-              <button
-                type="button"
-                className="user-dashboard__settings-page__row-action user-dashboard__settings-page__row-action--destructive"
-                onClick={onDeleteAccount}
-              >
-                {currentLang === 'en' ? 'Delete' : 'Удалить'}
-              </button>
-            </div>
-          </div>
-        </section>
+        <DashboardSection title={currentLang === 'en' ? 'More' : 'Ещё'}>
+          <DashboardCard>
+            <DashboardRow
+              label={d?.logout ?? 'Log Out'}
+              variant="action"
+              action={
+                <DashboardAction onClick={onLogout}>{d?.logout ?? 'Log Out'}</DashboardAction>
+              }
+            >
+              <DashboardRowValue aria-hidden="true" />
+            </DashboardRow>
+            <DashboardRow
+              label={d?.deleteAccount ?? 'Delete Account'}
+              variant="action"
+              action={
+                <DashboardAction destructive onClick={onDeleteAccount}>
+                  {currentLang === 'en' ? 'Delete' : 'Удалить'}
+                </DashboardAction>
+              }
+            >
+              <DashboardRowValue aria-hidden="true" />
+            </DashboardRow>
+          </DashboardCard>
+        </DashboardSection>
       </div>
 
       <ChangeEmailModal
