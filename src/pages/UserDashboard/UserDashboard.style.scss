@@ -14,11 +14,9 @@ dialog {
   color: var(--dashboard-text-primary);
   background: var(--dashboard-card-bg);
 
-  // Общие стили для всех кнопок в дашборде и попапах
+  // Base font size for unstyled legacy buttons; dashboard btn mixins own layout.
   button {
-    display: inline-block;
     font-size: var(--dashboard-font-size);
-    line-height: 16px;
   }
 
   .user-dashboard {
@@ -36,6 +34,30 @@ dialog {
     h5,
     h6 {
       @include dashboard-isolate-heading;
+    }
+
+    h2.user-dashboard__title {
+      @include dashboard-h1-title;
+    }
+
+    h3.dashboard-section__title {
+      @include dashboard-h2-title;
+
+      color: rgb(255 255 255 / 82%);
+    }
+
+    h3.user-dashboard__lyrics-title {
+      @include dashboard-h2-title;
+    }
+
+    h4.mixer-admin__subsection-title {
+      @include dashboard-h2-title;
+    }
+
+    .dashboard-empty-state--tab h3.dashboard-empty-state__title {
+      margin: 0 0 var(--ms-01);
+      font-size: clamp(1.35rem, 3vw, 1.65rem);
+      line-height: 1.25;
     }
 
     // Main card

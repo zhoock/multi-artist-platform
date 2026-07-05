@@ -106,9 +106,10 @@
   }
 
   color: var(--dashboard-text-primary);
-  font-size: var(--dashboard-heading-font-size);
 
   @include dashboard.dashboard-isolate-heading;
+
+  font-size: var(--dashboard-heading-font-size);
 
   @if $font-weight {
     font-weight: $font-weight;
