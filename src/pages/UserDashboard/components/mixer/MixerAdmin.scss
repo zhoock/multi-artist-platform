@@ -1,0 +1,301 @@
+@use '../../../../scss/abstracts/mixins' as *;
+
+.mixer-admin {
+  &__album-trigger {
+    cursor: pointer;
+
+    &:focus {
+      outline: none;
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--dark-greenish-yellow);
+      outline-offset: 2px;
+      border-radius: var(--ms-01);
+    }
+
+    .user-dashboard__album-item.dashboard-card {
+      width: 100%;
+    }
+  }
+
+  &__albums {
+    /* stylelint-disable-next-line no-descending-specificity -- mixer album list overrides dashboard defaults */
+    .user-dashboard__album-item--expanded {
+      background: transparent;
+    }
+
+    /* stylelint-disable-next-line no-descending-specificity -- mixer album list overrides dashboard defaults */
+    .user-dashboard__album-expanded--kit.dashboard-card {
+      background: transparent;
+      padding-block: 0;
+      border: none;
+    }
+  }
+
+  &__placeholder {
+    color: var(--dashboard-text-secondary);
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  &__tracks {
+    gap: var(--ms-0);
+    padding: var(--ms-0) var(--ms-01) var(--ms-01);
+  }
+
+  &__track-row {
+    width: 100%;
+  }
+
+  &__track-header {
+    display: flex;
+    align-items: center;
+    gap: var(--ms-01);
+    width: 100%;
+    min-height: 52px;
+    padding: var(--ms-0) var(--ms-01);
+    color: inherit;
+    text-align: left;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+
+    @media (hover: hover) and (pointer: fine) {
+      &:hover {
+        background: rgb(255 255 255 / 4%);
+      }
+    }
+  }
+
+  &__track-chevron {
+    display: inline-flex;
+    flex-shrink: 0;
+    color: var(--dashboard-text-secondary);
+  }
+
+  &__track-number {
+    flex-shrink: 0;
+    min-width: 1.75rem;
+    color: var(--dashboard-text-secondary);
+    font-size: var(--dashboard-font-size);
+    font-variant-numeric: tabular-nums;
+  }
+
+  &__track-title {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    color: var(--dashboard-text-primary);
+    font-size: var(--dashboard-font-size);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__track-duration {
+    flex-shrink: 0;
+    color: var(--dashboard-text-secondary);
+    font-size: var(--dashboard-font-size);
+    font-variant-numeric: tabular-nums;
+  }
+
+  &__stem-access-button {
+    flex-shrink: 0;
+    margin-inline-start: auto;
+  }
+
+  &__track-body {
+    padding: 0 var(--ms-01) var(--ms-01);
+  }
+
+  &__subsection-title {
+    margin: 0 0 var(--ms-02);
+    color: var(--dashboard-text-primary);
+    font-size: var(--ms-0);
+  }
+
+  &__stems-header {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ms-0);
+    margin-bottom: var(--ms-1);
+    padding-top: var(--ms-1);
+
+    @include breakpoint(tablet) {
+      flex-direction: row;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: var(--ms-1);
+    }
+  }
+
+  &__stems-description {
+    margin: var(--ms-02) 0 0;
+    color: var(--dashboard-text-secondary);
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  &__add-stem {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55em;
+    flex-shrink: 0;
+  }
+
+  &__stems-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ms-01);
+  }
+}
+
+.mixer-stem {
+  display: flex;
+  align-items: center;
+  gap: var(--ms-0);
+  padding: var(--ms-01) var(--ms-0);
+  background: var(--dashboard-hover-bg);
+  border: 1px solid var(--dashboard-card-border);
+  border-radius: var(--ms-01);
+
+  &--dragging {
+    border-color: var(--accent-color, var(--dark-greenish-yellow));
+  }
+
+  &--busy {
+    opacity: 0.7;
+  }
+
+  &__drag {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    padding: 0;
+    color: var(--dashboard-text-secondary);
+    background: transparent;
+    border: none;
+    cursor: grab;
+    touch-action: none;
+
+    &:active {
+      cursor: grabbing;
+    }
+  }
+
+  &__icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 24px;
+    height: 24px;
+    color: var(--accent-color, var(--dark-greenish-yellow));
+  }
+
+  &__info {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+  }
+
+  &__name {
+    align-self: flex-start;
+    max-width: 100%;
+    padding: 0;
+    color: var(--dashboard-text-primary);
+    font-size: var(--ms-0);
+    text-align: left;
+    background: transparent;
+    border: none;
+    cursor: text;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__name-input {
+    width: 100%;
+    max-width: 240px;
+    padding: 2px var(--ms-02);
+    color: var(--dashboard-text-primary);
+    font-size: var(--ms-0);
+    font-weight: 500;
+    background: var(--dashboard-hover-bg);
+    border: 1px solid var(--accent-color, var(--dark-greenish-yellow));
+    border-radius: var(--ms-02);
+  }
+
+  &__size {
+    flex-shrink: 0;
+    color: var(--dashboard-text-secondary);
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  &__actions {
+    display: flex;
+    align-items: center;
+    gap: var(--ms-02);
+    flex-shrink: 0;
+  }
+
+  &__action {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    color: var(--dashboard-text-secondary);
+    background: transparent;
+    border: none;
+    border-radius: var(--ms-02);
+    cursor: pointer;
+    transition:
+      color 0.2s,
+      background-color 0.2s;
+
+    @media (hover: hover) and (pointer: fine) {
+      &:hover {
+        color: var(--dashboard-text-primary);
+        background: var(--dashboard-hover-bg);
+      }
+    }
+
+    &--danger {
+      @media (hover: hover) and (pointer: fine) {
+        &:hover {
+          color: var(--soft-red);
+          background: rgb(255 87 87 / 10%);
+        }
+      }
+    }
+  }
+
+  &__spinner {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    color: var(--dashboard-text-secondary);
+
+    svg {
+      animation: mixer-stem-spin 1s linear infinite;
+    }
+  }
+}
+
+@keyframes mixer-stem-spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}

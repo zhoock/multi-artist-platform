@@ -9,7 +9,9 @@ export type StatusBadgeVariant =
   | 'draft'
   | 'readyToPublish'
   | 'published'
-  | 'notVerified';
+  | 'notVerified'
+  | 'locked'
+  | 'inactive';
 
 const VARIANT_CLASS: Record<StatusBadgeVariant, string> = {
   public: 'status-badge--public',
@@ -18,6 +20,8 @@ const VARIANT_CLASS: Record<StatusBadgeVariant, string> = {
   readyToPublish: 'status-badge--ready-to-publish',
   published: 'status-badge--published',
   notVerified: 'status-badge--not-verified',
+  locked: 'status-badge--locked',
+  inactive: 'status-badge--inactive',
 };
 
 type StatusBadgeProps = {

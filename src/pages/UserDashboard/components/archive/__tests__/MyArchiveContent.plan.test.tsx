@@ -126,7 +126,7 @@ describe('MyArchiveContent plan display', () => {
     expect(screen.queryByText('Explorer')).toBeNull();
     expect(screen.queryByRole('button', { name: 'Renew Support' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Upgrade Plan' })).toBeNull();
-    expect(document.querySelector('.user-dashboard__archive-slots-card')).toBeNull();
+    expect(document.querySelector('.collection__slots-trigger')).toBeNull();
   });
 
   test('shows upgrade plan card when collection is full and support is active', async () => {
@@ -149,8 +149,8 @@ describe('MyArchiveContent plan display', () => {
     expect(screen.getByText('Upgrade your plan to support more artists.')).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Renew Support' })).toBeNull();
 
-    const banner = document.querySelector('.user-dashboard__archive-full-banner');
-    const firstArtistCard = document.querySelector('.user-dashboard__archive-card');
+    const banner = document.querySelector('.collection__banner--full');
+    const firstArtistCard = document.querySelector('.collection__artist-card');
     expect(banner).toBeInstanceOf(Element);
     expect(firstArtistCard).toBeInstanceOf(Element);
     if (!(banner instanceof Element) || !(firstArtistCard instanceof Element)) {
@@ -286,7 +286,7 @@ describe('MyArchiveContent plan display', () => {
       expect(screen.getByText('Manage Plan →')).toBeTruthy();
     });
 
-    fireEvent.click(document.querySelector('.user-dashboard__archive-slots-card')!);
+    fireEvent.click(document.querySelector('.collection__slots-trigger')!);
     expect(openSupportModalMock).toHaveBeenCalledTimes(1);
   });
 
@@ -308,7 +308,7 @@ describe('MyArchiveContent plan display', () => {
     expect(screen.getByRole('link', { name: 'Discover Artists' })).toBeTruthy();
     expect(screen.queryByText('Manage Plan →')).toBeNull();
     expect(screen.queryByText('0 / 3')).toBeNull();
-    expect(document.querySelector('.user-dashboard__archive-slots-card')).toBeNull();
+    expect(document.querySelector('.collection__slots-trigger')).toBeNull();
   });
 
   test('shows slots card when collection is empty but subscription is active', async () => {
@@ -355,7 +355,7 @@ describe('MyArchiveContent plan display', () => {
     expect(screen.getByRole('button', { name: 'Remove' })).not.toBeDisabled();
 
     fireEvent.click(screen.getByRole('button', { name: 'Select' }));
-    fireEvent.click(document.querySelector('.user-dashboard__archive-card--selectable')!);
+    fireEvent.click(document.querySelector('.collection__artist-card-wrap--selectable')!);
 
     expect(screen.getByRole('button', { name: 'Remove from collection' })).not.toBeDisabled();
   });
@@ -429,7 +429,7 @@ describe('MyArchiveContent plan display', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Select' }));
 
-    const selectableCards = document.querySelectorAll('.user-dashboard__archive-card--selectable');
+    const selectableCards = document.querySelectorAll('.collection__artist-card-wrap--selectable');
     expect(selectableCards.length).toBe(1);
     expect(selectableCards[0]?.textContent).toContain('Inactive Artist');
   });
@@ -451,12 +451,12 @@ describe('MyArchiveContent plan display', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Select' }));
     expect(screen.getByRole('button', { name: 'Done' })).toBeTruthy();
-    expect(document.querySelector('.user-dashboard__archive-action-bar')).toBeTruthy();
+    expect(document.querySelector('.collection__action-bar')).toBeTruthy();
 
     fireEvent.click(screen.getByRole('button', { name: 'Done' }));
 
     expect(screen.queryByRole('button', { name: 'Done' })).toBeNull();
-    expect(document.querySelector('.user-dashboard__archive-action-bar')).toBeNull();
+    expect(document.querySelector('.collection__action-bar')).toBeNull();
   });
 
   test('shows toast after removing a single artist', async () => {
@@ -521,6 +521,27 @@ describe('MyArchiveContent plan display', () => {
     await waitFor(() => {
       expect(screen.getByText('Collection cleared')).toBeTruthy();
     });
+  });
+
+  test('renders dashboard kit layout with status badges', async () => {
+    getMyArchiveMock.mockResolvedValue({
+      isPremium: true,
+      slotsUsed: 1,
+      slotsLimit: 1,
+      inactiveCount: 0,
+      artists: [activeArtist('a1', 'Active Artist')],
+    });
+
+    const { container } = renderWithProviders(<MyArchiveContent active />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Can be removed')).toBeTruthy();
+    });
+
+    expect(container.querySelector('.dashboard-section')).toBeTruthy();
+    expect(container.querySelector('.dashboard-card')).toBeTruthy();
+    expect(container.querySelector('.status-badge--published')).toBeTruthy();
+    expect(container.querySelector('.dashboard-action--destructive')).toBeTruthy();
   });
 
   test('select mode shows bottom action bar', async () => {

@@ -1,9 +1,11 @@
+import clsx from 'clsx';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 import { useLang } from '@app/providers/lang';
 import { getToken } from '@shared/lib/auth';
 import { fetchWithAuthSession } from '@shared/lib/authFetch';
+import { DashboardCard, DashboardRow, DashboardSection } from '@shared/ui/dashboard';
 import { DashboardSaveSpinner } from '@shared/ui/dashboard-save/DashboardSaveSpinner';
 import '@shared/ui/dashboard-save/dashboard-save.scss';
 import {
@@ -132,49 +134,56 @@ export function SocialLinksContent({ active }: SocialLinksContentProps) {
   };
 
   return (
-    <div
-      className={`social-links${isSaving ? ' dashboard-save-card--busy' : ''}`}
-      aria-busy={isSaving}
-    >
+    <div className="social-links">
       <div className="social-links__scroll">
-        <p className="social-links__subtitle">
-          {copy?.subtitle ??
-            'Add your social networks. They will be displayed on your artist page.'}
-        </p>
+        <DashboardSection title={copy?.title ?? 'Social Links'}>
+          <DashboardCard
+            className={clsx(isSaving && 'dashboard-save-card--busy')}
+            aria-busy={isSaving}
+          >
+            <p className="social-links__subtitle">
+              {copy?.subtitle ??
+                'Add your social networks. They will be displayed on your artist page.'}
+            </p>
 
-        <div className="social-links__rows">
-          {SOCIAL_PLATFORMS.map((platform) => (
-            <div className="social-links__row" key={platform}>
-              <span
-                className={`social-links__icon ${PLATFORM_ICON_CLASS[platform]}`}
-                aria-hidden="true"
-              />
-              <label className="social-links__label" htmlFor={`social-link-${platform}`}>
-                {copy?.platforms?.[platform] ?? platform}
-              </label>
-              <input
-                id={`social-link-${platform}`}
-                type="url"
-                className="social-links__input"
-                value={form[platform]}
-                onChange={(event) => updateField(platform, event.target.value)}
-                placeholder={copy?.placeholders?.[platform]}
-                disabled={isLoading || isSaving}
-                autoComplete="off"
-              />
-            </div>
-          ))}
-        </div>
+            {SOCIAL_PLATFORMS.map((platform) => (
+              <DashboardRow
+                key={platform}
+                label={
+                  <span className="social-links__field-label">
+                    <span
+                      className={`social-links__icon ${PLATFORM_ICON_CLASS[platform]}`}
+                      aria-hidden="true"
+                    />
+                    {copy?.platforms?.[platform] ?? platform}
+                  </span>
+                }
+                labelFor={`social-link-${platform}`}
+              >
+                <input
+                  id={`social-link-${platform}`}
+                  type="url"
+                  className="social-links__input"
+                  value={form[platform]}
+                  onChange={(event) => updateField(platform, event.target.value)}
+                  placeholder={copy?.placeholders?.[platform]}
+                  disabled={isLoading || isSaving}
+                  autoComplete="off"
+                />
+              </DashboardRow>
+            ))}
 
-        <p className="social-links__hint">
-          {copy?.hint ?? "Leave empty if you don't have a link."}
-        </p>
+            <p className="social-links__hint">
+              {copy?.hint ?? "Leave empty if you don't have a link."}
+            </p>
+          </DashboardCard>
+        </DashboardSection>
       </div>
 
       <div className="social-links__footer">
         <button
           type="button"
-          className="social-links__button social-links__button--cancel"
+          className="social-links__cancel-button"
           onClick={handleCancel}
           disabled={isSaving || !hasChanges}
         >
@@ -182,9 +191,11 @@ export function SocialLinksContent({ active }: SocialLinksContentProps) {
         </button>
         <button
           type="button"
-          className={`social-links__button social-links__button--save${
-            isSaving ? ' social-links__button--save-loading' : ''
-          }`}
+          className={clsx(
+            'dashboard-empty-state__cta',
+            'social-links__cta',
+            isSaving && 'social-links__cta--loading'
+          )}
           onClick={() => void handleSave()}
           disabled={isSaving || isLoading || !hasChanges}
         >

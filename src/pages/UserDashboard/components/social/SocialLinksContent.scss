@@ -21,33 +21,28 @@ dialog {
       &__subtitle,
       &__hint {
         margin: 0;
+        padding: var(--ms-01) var(--ms-0) 0;
         color: var(--dashboard-text-secondary);
         font-size: var(--dashboard-font-size);
         line-height: 1.4;
       }
 
-      &__rows {
-        display: flex;
-        flex-direction: column;
-        gap: var(--ms-0);
+      &__hint {
+        padding-bottom: var(--ms-01);
       }
 
-      &__row {
-        display: grid;
-        grid-template-columns: 1.25rem minmax(4.5rem, auto) minmax(0, 1fr);
-        gap: var(--ms-01);
+      &__field-label {
+        display: inline-flex;
         align-items: center;
+        gap: var(--ms-01);
+        min-width: 0;
       }
 
       &__icon {
+        flex-shrink: 0;
         color: var(--dashboard-text-primary);
         font-size: 1rem;
         line-height: 1;
-      }
-
-      &__label {
-        color: var(--dashboard-text-primary);
-        font-size: var(--dashboard-font-size);
       }
 
       &__input {
@@ -65,22 +60,23 @@ dialog {
         border-top: none;
       }
 
-      &__button {
-        &--cancel {
-          @include dashboard-btn-ghost;
-        }
-
-        &--save {
-          @include dashboard-btn-primary;
-        }
-
-        &--save-loading {
-          @include dashboard-modal-inline-loading;
-        }
+      &__cancel-button {
+        @include dashboard-btn-ghost;
 
         &:disabled {
           opacity: 0.6;
           cursor: not-allowed;
+        }
+      }
+
+      &__cta {
+        &:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+        }
+
+        &--loading {
+          @include dashboard-modal-inline-loading;
         }
       }
     }

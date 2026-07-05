@@ -39,4 +39,14 @@
     color: var(--error-color);
     border-color: rgb(var(--pink-terracotta-rgb) / 45%);
   }
+
+  &--locked {
+    color: var(--dark-greenish-yellow);
+    border-color: rgb(var(--dark-greenish-yellow-rgb) / 45%);
+  }
+
+  &--inactive {
+    color: var(--soft-red);
+    border-color: rgb(var(--soft-red-rgb) / 45%);
+  }
 }

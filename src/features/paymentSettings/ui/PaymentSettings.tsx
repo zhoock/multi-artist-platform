@@ -1,11 +1,19 @@
+import clsx from 'clsx';
 import { useLang } from '@app/providers/lang';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
+import {
+  DashboardAction,
+  DashboardCard,
+  DashboardRow,
+  DashboardRowValue,
+  DashboardSection,
+} from '@shared/ui/dashboard';
+import { DashboardSaveSpinner } from '@shared/ui/dashboard-save/DashboardSaveSpinner';
 import { InfoCircleIcon } from '@shared/ui/icons/InfoCircleIcon';
+import { StatusBadge } from '@shared/ui/statusBadge';
 import { usePaymentSettings } from '../model/usePaymentSettings';
 import { PAYMENT_PROVIDERS } from '../lib/constants';
-import { fillPaymentSettingsTemplate } from '../lib/fillPaymentSettingsTemplate';
-import { DashboardSaveSpinner } from '@shared/ui/dashboard-save/DashboardSaveSpinner';
 import '@shared/ui/dashboard-save/dashboard-save.scss';
 import './PaymentSettings.style.scss';
 
@@ -32,6 +40,31 @@ function PaymentProviderLogo({ providerId }: { providerId: string }) {
   }
 
   return null;
+}
+
+type ProviderRowLabelProps = {
+  providerId: string;
+  providerName: string;
+  tagline: string;
+};
+
+function ProviderRowLabel({ providerId, providerName, tagline }: ProviderRowLabelProps) {
+  return (
+    <div className="payment-settings__provider-row-info">
+      <div className="payment-settings__provider-logo">
+        <PaymentProviderLogo providerId={providerId} />
+      </div>
+      <div className="payment-settings__provider-row-text">
+        <span className="payment-settings__provider-row-name">{providerName}</span>
+        <span className="payment-settings__provider-row-tagline">{tagline}</span>
+      </div>
+    </div>
+  );
+}
+
+function updatedAtRowLabel(template: string | undefined) {
+  const raw = template ?? 'Updated: {date}';
+  return raw.split('{date}')[0]?.replace(/:\s*$/, '').trim() || 'Updated';
 }
 
 export function PaymentSettings({ userId }: PaymentSettingsProps) {
@@ -61,7 +94,7 @@ export function PaymentSettings({ userId }: PaymentSettingsProps) {
 
   const isSaveInProgress = saving !== null;
 
-  const renderProviderCard = (provider: (typeof PAYMENT_PROVIDERS)[0]) => {
+  const renderProviderSection = (provider: (typeof PAYMENT_PROVIDERS)[0]) => {
     const settings = settingsMap[provider.id];
     const isThisSaving = saving === provider.id;
     const isFormOpen = showForm[provider.id];
@@ -69,168 +102,110 @@ export function PaymentSettings({ userId }: PaymentSettingsProps) {
     const providerCopy = copy?.providers?.[provider.id];
 
     return (
-      <div
+      <DashboardSection
         key={provider.id}
-        className={`payment-settings__provider-card${isThisSaving ? ' dashboard-save-card--busy' : ''}`}
-        aria-busy={isThisSaving}
+        title={provider.name}
+        headingExtra={
+          isConnected ? (
+            <StatusBadge variant="published">{copy?.connectedStatus ?? 'Connected'}</StatusBadge>
+          ) : undefined
+        }
       >
-        {isConnected ? (
-          <div className="payment-settings__connected">
-            <h3 className="payment-settings__provider-name">{provider.name}</h3>
-            <p className="payment-settings__connected-status" role="status">
-              ✔ {copy?.connectedStatus ?? 'Connected'}
-            </p>
-            {settings?.connectedAt ? (
-              <p className="payment-settings__connected-meta">
-                {fillPaymentSettingsTemplate(copy?.updatedAt ?? 'Updated: {date}', {
-                  date: new Date(settings.connectedAt).toLocaleDateString(dateLocale),
-                })}
+        <DashboardCard
+          className={clsx(isThisSaving && 'dashboard-save-card--busy')}
+          aria-busy={isThisSaving}
+        >
+          {isConnected ? (
+            <>
+              {settings?.connectedAt ? (
+                <DashboardRow label={updatedAtRowLabel(copy?.updatedAt)}>
+                  <DashboardRowValue>
+                    {new Date(settings.connectedAt).toLocaleDateString(dateLocale)}
+                  </DashboardRowValue>
+                </DashboardRow>
+              ) : null}
+
+              <p className="payment-settings__connected-lede">
+                {copy?.connectedLede ?? 'Fans can now pay for purchases on your site'}
               </p>
-            ) : null}
-            <p className="payment-settings__connected-lede">
-              {copy?.connectedLede ?? 'Fans can now pay for purchases on your site'}
-            </p>
 
-            <div className="payment-settings__provider-row">
-              <div className="payment-settings__provider-row-info">
-                <div className="payment-settings__provider-logo">
-                  <PaymentProviderLogo providerId={provider.id} />
-                </div>
-                <div className="payment-settings__provider-row-text">
-                  <span className="payment-settings__provider-row-name">{provider.name}</span>
-                  <span className="payment-settings__provider-row-tagline">
-                    {providerCopy?.tagline ?? 'Online payment acceptance'}
-                  </span>
-                </div>
-              </div>
-              <button
-                type="button"
-                className={`payment-settings__disconnect-button${
-                  isThisSaving ? ' payment-settings__disconnect-button--loading' : ''
-                }`}
-                onClick={() => handleDisconnect(provider.id)}
-                disabled={isSaveInProgress}
+              <DashboardRow
+                variant="action"
+                label={
+                  <ProviderRowLabel
+                    providerId={provider.id}
+                    providerName={provider.name}
+                    tagline={providerCopy?.tagline ?? 'Online payment acceptance'}
+                  />
+                }
+                action={
+                  <DashboardAction
+                    destructive
+                    className={clsx(isThisSaving && 'payment-settings__action--loading')}
+                    onClick={() => handleDisconnect(provider.id)}
+                    disabled={isSaveInProgress}
+                  >
+                    {isThisSaving ? (
+                      <>
+                        <DashboardSaveSpinner />
+                        {copy?.disconnecting ?? 'Disconnecting...'}
+                      </>
+                    ) : (
+                      (copy?.disconnect ?? 'Disconnect')
+                    )}
+                  </DashboardAction>
+                }
               >
-                {isThisSaving ? (
-                  <>
-                    <DashboardSaveSpinner />
-                    {copy?.disconnecting ?? 'Disconnecting...'}
-                  </>
-                ) : (
-                  (copy?.disconnect ?? 'Disconnect')
-                )}
-              </button>
-            </div>
+                <DashboardRowValue aria-hidden="true" />
+              </DashboardRow>
 
-            <p className="payment-settings__disconnect-note">
-              <InfoCircleIcon className="payment-settings__disconnect-note-icon" size={18} />
-              <span>
-                {copy?.disconnectNote ??
-                  'If you disconnect YooKassa, payment acceptance will be unavailable. Your payment data will be saved.'}
-              </span>
-            </p>
-          </div>
-        ) : (
-          <>
-            <h3 className="payment-settings__provider-name">{provider.name}</h3>
-            <p className="payment-settings__description">
-              {providerCopy?.description ??
-                'Let people pay for purchases on your site through YooKassa'}
-            </p>
-            <p className="payment-settings__details">
-              {providerCopy?.details ?? 'To receive payments you need a YooKassa business account.'}
-            </p>
+              <p className="payment-settings__disconnect-note">
+                <InfoCircleIcon className="payment-settings__disconnect-note-icon" size={18} />
+                <span>
+                  {copy?.disconnectNote ??
+                    'If you disconnect YooKassa, payment acceptance will be unavailable. Your payment data will be saved.'}
+                </span>
+              </p>
+            </>
+          ) : (
+            <>
+              <div className="payment-settings__intro">
+                <DashboardRowValue>
+                  {providerCopy?.description ??
+                    'Let people pay for purchases on your site through YooKassa'}
+                </DashboardRowValue>
+                <DashboardRowValue>
+                  {providerCopy?.details ??
+                    'To receive payments you need a YooKassa business account.'}
+                </DashboardRowValue>
+              </div>
 
-            {!isFormOpen ? (
-              <>
-                <div className="payment-settings__instructions">
-                  <p>{providerCopy?.instructionsIntro ?? 'To connect, you need to:'}</p>
-                  <ol>
-                    {(providerCopy?.instructionSteps ?? []).map((step) => (
-                      <li key={step}>{step}</li>
-                    ))}
-                  </ol>
-                  <p>
-                    <a
-                      href="https://yookassa.ru/"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="payment-settings__link"
-                    >
-                      {providerCopy?.registerLink ?? 'Go to YooKassa to sign up →'}
-                    </a>
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  className="payment-settings__connect-button"
-                  onClick={() => {
-                    setShowForm((prev) => ({ ...prev, [provider.id]: true }));
-                    setActiveProvider(provider.id);
-                    setLocalShopId((prev) => ({ ...prev, [provider.id]: settings?.shopId || '' }));
-                    setLocalSecretKey((prev) => ({ ...prev, [provider.id]: '' }));
-                  }}
-                  disabled={isSaveInProgress}
-                >
-                  {copy?.connectButton ?? 'Enter Shop ID and Secret Key'}
-                </button>
-              </>
-            ) : (
-              <div className="payment-settings__form">
-                <div className="payment-settings__form-field">
-                  <label
-                    htmlFor={`shop-id-${provider.id}`}
-                    className="payment-settings__form-label"
-                  >
-                    {providerCopy?.shopIdLabel ?? 'Shop ID'}
-                  </label>
-                  <input
-                    type="text"
-                    id={`shop-id-${provider.id}`}
-                    className="payment-settings__form-input"
-                    value={localShopId[provider.id] || ''}
-                    onChange={(event) =>
-                      setLocalShopId((prev) => ({ ...prev, [provider.id]: event.target.value }))
-                    }
-                    placeholder={providerCopy?.shopIdPlaceholder ?? 'Enter your Shop ID'}
-                    disabled={isSaveInProgress}
-                  />
-                  <small className="payment-settings__form-hint">
-                    {providerCopy?.shopIdHint ??
-                      'Shop ID is located under Settings → Store in your YooKassa dashboard'}
-                  </small>
-                </div>
-
-                <div className="payment-settings__form-field">
-                  <label
-                    htmlFor={`secret-key-${provider.id}`}
-                    className="payment-settings__form-label"
-                  >
-                    {providerCopy?.secretKeyLabel ?? 'Secret Key'}
-                  </label>
-                  <input
-                    type="password"
-                    id={`secret-key-${provider.id}`}
-                    className="payment-settings__form-input"
-                    value={localSecretKey[provider.id] || ''}
-                    onChange={(event) =>
-                      setLocalSecretKey((prev) => ({ ...prev, [provider.id]: event.target.value }))
-                    }
-                    placeholder={providerCopy?.secretKeyPlaceholder ?? 'Enter your Secret Key'}
-                    disabled={isSaveInProgress}
-                  />
-                  <small className="payment-settings__form-hint">
-                    {providerCopy?.secretKeyHint ??
-                      'Issue a Secret Key under Integration → API keys. Important: the key is shown only once — be sure to save it!'}
-                  </small>
-                </div>
-
-                <div className="payment-settings__form-actions">
+              {!isFormOpen ? (
+                <>
+                  <div className="payment-settings__instructions">
+                    <p>{providerCopy?.instructionsIntro ?? 'To connect, you need to:'}</p>
+                    <ol>
+                      {(providerCopy?.instructionSteps ?? []).map((step) => (
+                        <li key={step}>{step}</li>
+                      ))}
+                    </ol>
+                    <p>
+                      <a
+                        href="https://yookassa.ru/"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="payment-settings__link"
+                      >
+                        {providerCopy?.registerLink ?? 'Go to YooKassa to sign up →'}
+                      </a>
+                    </p>
+                  </div>
                   <button
                     type="button"
-                    className="payment-settings__cancel-button"
+                    className="dashboard-empty-state__cta payment-settings__cta"
                     onClick={() => {
-                      setShowForm((prev) => ({ ...prev, [provider.id]: false }));
+                      setShowForm((prev) => ({ ...prev, [provider.id]: true }));
+                      setActiveProvider(provider.id);
                       setLocalShopId((prev) => ({
                         ...prev,
                         [provider.id]: settings?.shopId || '',
@@ -239,41 +214,108 @@ export function PaymentSettings({ userId }: PaymentSettingsProps) {
                     }}
                     disabled={isSaveInProgress}
                   >
-                    {ui?.dashboard?.cancel ?? 'Cancel'}
+                    {copy?.connectButton ?? 'Enter Shop ID and Secret Key'}
                   </button>
-                  <button
-                    type="button"
-                    className={`payment-settings__save-button${
-                      isThisSaving ? ' payment-settings__save-button--loading' : ''
-                    }`}
-                    onClick={() => {
-                      const sid = localShopId[provider.id] || '';
-                      const sec = localSecretKey[provider.id] || '';
-                      setShopId(sid);
-                      setSecretKey(sec);
-                      void handleConnect(provider.id, sid, sec);
-                    }}
-                    disabled={
-                      isSaveInProgress ||
-                      !localShopId[provider.id]?.trim() ||
-                      !localSecretKey[provider.id]?.trim()
-                    }
+                </>
+              ) : (
+                <div className="payment-settings__form">
+                  <DashboardRow
+                    label={providerCopy?.shopIdLabel ?? 'Shop ID'}
+                    labelFor={`shop-id-${provider.id}`}
                   >
-                    {isThisSaving ? (
-                      <>
-                        <DashboardSaveSpinner />
-                        {copy?.connecting ?? 'Connecting...'}
-                      </>
-                    ) : (
-                      (copy?.connect ?? 'Connect')
-                    )}
-                  </button>
+                    <input
+                      type="text"
+                      id={`shop-id-${provider.id}`}
+                      className="payment-settings__form-input"
+                      value={localShopId[provider.id] || ''}
+                      onChange={(event) =>
+                        setLocalShopId((prev) => ({ ...prev, [provider.id]: event.target.value }))
+                      }
+                      placeholder={providerCopy?.shopIdPlaceholder ?? 'Enter your Shop ID'}
+                      disabled={isSaveInProgress}
+                    />
+                    <small className="payment-settings__form-hint">
+                      {providerCopy?.shopIdHint ??
+                        'Shop ID is located under Settings → Store in your YooKassa dashboard'}
+                    </small>
+                  </DashboardRow>
+
+                  <DashboardRow
+                    label={providerCopy?.secretKeyLabel ?? 'Secret Key'}
+                    labelFor={`secret-key-${provider.id}`}
+                  >
+                    <input
+                      type="password"
+                      id={`secret-key-${provider.id}`}
+                      className="payment-settings__form-input"
+                      value={localSecretKey[provider.id] || ''}
+                      onChange={(event) =>
+                        setLocalSecretKey((prev) => ({
+                          ...prev,
+                          [provider.id]: event.target.value,
+                        }))
+                      }
+                      placeholder={providerCopy?.secretKeyPlaceholder ?? 'Enter your Secret Key'}
+                      disabled={isSaveInProgress}
+                    />
+                    <small className="payment-settings__form-hint">
+                      {providerCopy?.secretKeyHint ??
+                        'Issue a Secret Key under Integration → API keys. Important: the key is shown only once — be sure to save it!'}
+                    </small>
+                  </DashboardRow>
+
+                  <div className="payment-settings__form-actions">
+                    <button
+                      type="button"
+                      className="payment-settings__cancel-button"
+                      onClick={() => {
+                        setShowForm((prev) => ({ ...prev, [provider.id]: false }));
+                        setLocalShopId((prev) => ({
+                          ...prev,
+                          [provider.id]: settings?.shopId || '',
+                        }));
+                        setLocalSecretKey((prev) => ({ ...prev, [provider.id]: '' }));
+                      }}
+                      disabled={isSaveInProgress}
+                    >
+                      {ui?.dashboard?.cancel ?? 'Cancel'}
+                    </button>
+                    <button
+                      type="button"
+                      className={clsx(
+                        'dashboard-empty-state__cta',
+                        'payment-settings__cta',
+                        isThisSaving && 'payment-settings__cta--loading'
+                      )}
+                      onClick={() => {
+                        const sid = localShopId[provider.id] || '';
+                        const sec = localSecretKey[provider.id] || '';
+                        setShopId(sid);
+                        setSecretKey(sec);
+                        void handleConnect(provider.id, sid, sec);
+                      }}
+                      disabled={
+                        isSaveInProgress ||
+                        !localShopId[provider.id]?.trim() ||
+                        !localSecretKey[provider.id]?.trim()
+                      }
+                    >
+                      {isThisSaving ? (
+                        <>
+                          <DashboardSaveSpinner />
+                          {copy?.connecting ?? 'Connecting...'}
+                        </>
+                      ) : (
+                        (copy?.connect ?? 'Connect')
+                      )}
+                    </button>
+                  </div>
                 </div>
-              </div>
-            )}
-          </>
-        )}
-      </div>
+              )}
+            </>
+          )}
+        </DashboardCard>
+      </DashboardSection>
     );
   };
 
@@ -299,9 +341,7 @@ export function PaymentSettings({ userId }: PaymentSettingsProps) {
         </div>
       ) : null}
 
-      <div className="payment-settings__providers-list">
-        {PAYMENT_PROVIDERS.map(renderProviderCard)}
-      </div>
+      {PAYMENT_PROVIDERS.map(renderProviderSection)}
     </div>
   );
 }

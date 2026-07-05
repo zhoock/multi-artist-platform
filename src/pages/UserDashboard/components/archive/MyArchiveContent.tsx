@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react';
+import clsx from 'clsx';
 import { Link } from 'react-router-dom';
 
 import { useLang } from '@app/providers/lang';
@@ -19,13 +20,7 @@ import {
   normalizeCollectionArchive,
 } from '@shared/lib/archive/collectionLock';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
-import {
-  CheckSquare,
-  Lock as LockIcon,
-  Square,
-  Trash2 as Trash2Icon,
-  Unlock as UnlockIcon,
-} from 'lucide-react';
+import { CheckSquare, Lock as LockIcon, Square, Trash2 as Trash2Icon } from 'lucide-react';
 import {
   dispatchArchiveArtistRemoved,
   refreshPremiumContentForArchiveChange,
@@ -33,11 +28,19 @@ import {
 import { useArchiveAccessModal } from '@shared/lib/archiveAccessModal';
 import { resolveCurrentPlanSlug } from '@shared/lib/payment/subscriptionPlans';
 import { SubscriptionPlanBadge } from '@shared/ui/subscriptionPlan';
+import {
+  DashboardAction,
+  DashboardCard,
+  DashboardRow,
+  DashboardRowValue,
+  DashboardSection,
+} from '@shared/ui/dashboard';
+import { StatusBadge } from '@shared/ui/statusBadge';
 
 import { CollectionEmptyState } from './CollectionEmptyState';
 import { ArchiveArtistRemovedToast } from '@shared/ui/archiveArtistRemovedToast';
 import { queueArchiveArtistRemovedToast } from '@shared/lib/archiveArtistRemovedToast';
-import '../../UserDashboard.style.scss';
+import './MyArchiveContent.scss';
 
 type RemovalToastKind = 'single' | 'bulk' | 'cleared';
 
@@ -504,8 +507,8 @@ export function MyArchiveContent({ active }: Props) {
   if (loading && !data) {
     return (
       <>
-        <section className="user-dashboard__archive-tab">
-          <div className="user-dashboard__archive-loading" aria-busy="true">
+        <section className="collection__tab">
+          <div className="collection__loading" aria-busy="true">
             {t?.loading ?? (lang === 'en' ? 'Loading collection…' : 'Загрузка коллекции…')}
           </div>
         </section>
@@ -517,7 +520,7 @@ export function MyArchiveContent({ active }: Props) {
   if (showCollectionEmptyState) {
     return (
       <>
-        <section className="user-dashboard__archive-tab user-dashboard__archive-tab--empty">
+        <section className="collection__tab collection__tab--empty">
           <CollectionEmptyState ui={ui} />
         </section>
         <ArchiveArtistRemovedToast triggerKey={removedToastTrigger} />
@@ -527,361 +530,337 @@ export function MyArchiveContent({ active }: Props) {
 
   return (
     <>
-      <section
-        className={`user-dashboard__archive-tab${
-          isSelectMode ? ' user-dashboard__archive-tab--select-mode' : ''
-        }`}
-      >
-        <header className="user-dashboard__archive-header">
-          <div className="user-dashboard__archive-header-text">
-            <p className="user-dashboard__archive-subtitle">{subtitle}</p>
-          </div>
-
-          <div className="user-dashboard__archive-header-actions">
-            <button
-              type="button"
-              className="user-dashboard__archive-slots-card"
-              onClick={() => openSupportModal()}
-              aria-label={`${slotsUsed} / ${slotsLimit}. ${managePlanLabel}`}
-            >
-              <div
-                className="user-dashboard__archive-slots-ring"
-                style={{ '--archive-slots-progress': `${slotsProgress}%` } as CSSProperties}
-                aria-hidden
-              >
-                <LockIcon
-                  {...dashboardActionIconProps({
-                    size: 18,
-                    className: 'user-dashboard__archive-slots-ring-icon',
-                  })}
-                />
-              </div>
-              <div className="user-dashboard__archive-slots-meta">
-                <div className="user-dashboard__archive-slots-top">
-                  <span className="user-dashboard__archive-slots-count" aria-live="polite">
-                    {slotsUsed} / {slotsLimit}
-                  </span>
-                  {planSlug ? <SubscriptionPlanBadge planSlug={planSlug} /> : null}
-                </div>
-                <span className="user-dashboard__archive-slots-label">{slotsUsedLabel}</span>
-                <span className="user-dashboard__archive-slots-manage">{managePlanLabel}</span>
-              </div>
-            </button>
-          </div>
-        </header>
-
-        {error ? (
-          <div className="user-dashboard__archive-error" role="alert">
-            {error}
-          </div>
-        ) : null}
-
-        {data ? (
-          <>
-            {showPlanChangeBanner ? (
-              <div className="user-dashboard__archive-plan-change-banner" role="status">
-                <p>{planChangeBannerText.replace('{count}', String(slotsLimit))}</p>
-              </div>
-            ) : null}
-
-            {showUpgradeCard ? (
-              <div className="user-dashboard__archive-full-banner" role="status">
-                <div className="user-dashboard__archive-full-banner-icon" aria-hidden>
-                  <LockIcon
-                    {...dashboardActionIconProps({
-                      size: 18,
-                      className: 'user-dashboard__archive-full-banner-icon-svg',
-                    })}
-                  />
-                </div>
-                <div className="user-dashboard__archive-full-banner-text">
-                  <p className="user-dashboard__archive-full-banner-title">{archiveFullLabel}</p>
-                  <p className="user-dashboard__archive-full-banner-line">
-                    {archiveFullSlotsUsedLine}
-                  </p>
-                  <p className="user-dashboard__archive-full-banner-line">
-                    {archiveFullUpgradeActionLine}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  className="user-dashboard__archive-full-banner-cta"
-                  onClick={() => openSupportModal()}
-                >
-                  {upgradePlanLabel}
-                </button>
-              </div>
-            ) : null}
-
-            {inactiveCount > 0 ? (
-              <div className="user-dashboard__archive-inactive-toolbar">
-                <span className="user-dashboard__archive-inactive-toolbar-count">
-                  {inactiveArtistsLabel.replace('{count}', String(inactiveCount))}
-                </span>
-                <div className="user-dashboard__archive-inactive-toolbar-actions">
-                  <button
-                    type="button"
-                    className="user-dashboard__archive-clear-collection"
-                    disabled={Boolean(removingId) || bulkLoading}
-                    onClick={() => void handleClearInactiveCollection()}
-                  >
-                    <Trash2Icon
-                      {...dashboardActionIconProps({
-                        size: 14,
-                        className: 'user-dashboard__archive-remove-icon',
-                      })}
-                      aria-hidden
-                    />
-                    {clearCollectionLabel}
-                  </button>
-                  <button
-                    type="button"
-                    className={`user-dashboard__archive-select-toggle${
-                      isSelectMode ? ' user-dashboard__archive-select-toggle--active' : ''
-                    }`}
-                    onClick={toggleSelectMode}
-                  >
-                    {isSelectMode ? cancelSelectLabel : selectModeLabel}
-                  </button>
-                </div>
-              </div>
-            ) : null}
-
-            <div className="user-dashboard__archive-list">
-              {(data?.artists ?? []).map((artist) => {
-                const isRemoving = removingId === artist.artistUserId;
-                const genre = artist.genreLabel[lang] ?? artist.genreLabel.en;
-                const artistHref = artist.slug
-                  ? `/?artist=${encodeURIComponent(artist.slug)}`
-                  : '/';
-                const lockDate = formatLockDate(
-                  isCollectionArtistLocked(artist) ? artist.lockedUntil : null,
-                  lang
-                );
-                const artistIsLocked = isCollectionArtistLocked(artist);
-                const removable = canRemoveArtist(artist, isPremium);
-                const removeDisabled = Boolean(removingId) || bulkLoading || !removable;
-                const isSelected = selectedIds.has(artist.artistUserId);
-                const isInactiveSelectable = isSelectMode && !artist.isActive;
-                const removeTooltip = !removable
-                  ? artistIsLocked
-                    ? removeLockedTooltip
-                    : artist.isActive && !isPremium
-                      ? removeSubscriptionTooltip
-                      : undefined
-                  : undefined;
-
-                return (
-                  <article
-                    key={artist.id}
-                    className={`user-dashboard__archive-card${
-                      isInactiveSelectable ? ' user-dashboard__archive-card--selectable' : ''
-                    }${isSelected ? ' user-dashboard__archive-card--selected' : ''}${
-                      !artist.isActive ? ' user-dashboard__archive-card--inactive-artist' : ''
-                    }${artistIsLocked ? ' user-dashboard__archive-card--locked' : ''}`}
-                    onClick={
-                      isInactiveSelectable
-                        ? () => {
-                            toggleSelected(artist.artistUserId);
-                          }
-                        : undefined
-                    }
-                    onKeyDown={
-                      isInactiveSelectable
-                        ? (event) => {
-                            if (event.key === 'Enter' || event.key === ' ') {
-                              event.preventDefault();
-                              toggleSelected(artist.artistUserId);
-                            }
-                          }
-                        : undefined
-                    }
-                    role={isInactiveSelectable ? 'button' : undefined}
-                    tabIndex={isInactiveSelectable ? 0 : undefined}
-                  >
-                    {isInactiveSelectable ? (
-                      <span className="user-dashboard__archive-select-checkbox" aria-hidden>
-                        {isSelected ? <CheckSquare size={20} /> : <Square size={20} />}
-                      </span>
-                    ) : null}
-
-                    <div className="user-dashboard__archive-card-cover">
-                      {artist.cover ? (
-                        <img src={artist.cover} alt="" loading="lazy" decoding="async" />
-                      ) : (
-                        <span className="user-dashboard__archive-card-cover-fallback" aria-hidden>
-                          {artist.name.charAt(0).toUpperCase()}
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="user-dashboard__archive-card-body">
-                      <h3 className="user-dashboard__archive-card-name">
-                        {isInactiveSelectable ? (
-                          artist.name
-                        ) : (
-                          <Link to={artistHref} onClick={(event) => event.stopPropagation()}>
-                            {artist.name}
-                          </Link>
-                        )}
-                      </h3>
-                      <span className="user-dashboard__archive-card-genre">{genre}</span>
-
-                      {!artist.isActive ? (
-                        <div className="user-dashboard__archive-card-lock user-dashboard__archive-card-lock--inactive">
-                          <p className="user-dashboard__archive-card-lock-title">
-                            <LockIcon
-                              {...dashboardActionIconProps({
-                                size: 14,
-                                className: 'user-dashboard__archive-card-lock-icon',
-                              })}
-                            />
-                            {supportInactiveLabel}
-                          </p>
-                          <p className="user-dashboard__archive-card-lock-hint">
-                            {inactiveSlotHint}
-                          </p>
-                        </div>
-                      ) : artistIsLocked && lockDate ? (
-                        <div className="user-dashboard__archive-card-lock">
-                          <p className="user-dashboard__archive-card-lock-title">
-                            <LockIcon
-                              {...dashboardActionIconProps({
-                                size: 14,
-                                className: 'user-dashboard__archive-card-lock-icon',
-                              })}
-                            />
-                            {lockedUntilTemplate.replace('{date}', lockDate)}
-                          </p>
-                          <p className="user-dashboard__archive-card-lock-hint">{lockedHint}</p>
-                        </div>
-                      ) : (
-                        <div className="user-dashboard__archive-card-lock user-dashboard__archive-card-lock--unlocked">
-                          <p className="user-dashboard__archive-card-lock-title">
-                            <UnlockIcon
-                              {...dashboardActionIconProps({
-                                size: 14,
-                                className: 'user-dashboard__archive-card-lock-icon',
-                              })}
-                            />
-                            {canRemoveLabel}
-                          </p>
-                          <p className="user-dashboard__archive-card-lock-hint">
-                            {!isPremium ? removeSubscriptionTooltip : canRemoveHint}
-                          </p>
-                        </div>
-                      )}
-
-                      <p className="user-dashboard__archive-card-since">
-                        <span aria-hidden>✓</span> {inArchiveSince}{' '}
-                        {formatArchiveDate(artist.addedAt, lang)}
-                      </p>
-                    </div>
-
-                    {!isSelectMode ? (
-                      <button
-                        type="button"
-                        className={`user-dashboard__archive-remove${
-                          removeDisabled ? ' user-dashboard__archive-remove--disabled' : ''
-                        }`}
-                        disabled={removeDisabled}
-                        aria-busy={isRemoving}
-                        title={removeTooltip}
-                        aria-label={
-                          removeTooltip ? `${removeLabel}. ${removeTooltip}` : removeLabel
-                        }
-                        onClick={() => void handleRemove(artist)}
-                      >
-                        <Trash2Icon
-                          {...dashboardActionIconProps({
-                            size: 14,
-                            className: 'user-dashboard__archive-remove-icon',
-                          })}
-                        />
-                        {isRemoving
-                          ? (t?.removing ?? (lang === 'en' ? 'Removing…' : 'Удаляем…'))
-                          : removeLabel}
-                      </button>
-                    ) : null}
-                  </article>
-                );
-              })}
-
-              {showEmptySlotCard ? (
-                <article className="user-dashboard__archive-card user-dashboard__archive-card--empty">
-                  <div className="user-dashboard__archive-card-body user-dashboard__archive-card-body--empty">
-                    <p className="user-dashboard__archive-empty-title">+ {slotsAvailableText}</p>
-                    <p className="user-dashboard__archive-empty-hint">{emptySlotHint}</p>
-                  </div>
-                  <Link className="user-dashboard__archive-discover" to="/">
-                    {discoverLabel}
-                  </Link>
-                </article>
-              ) : null}
-
-              {showRenewCard ? (
-                <article className="user-dashboard__archive-card user-dashboard__archive-card--action user-dashboard__archive-card--inactive">
-                  <div className="user-dashboard__archive-card-body user-dashboard__archive-card-body--empty">
-                    <p className="user-dashboard__archive-empty-title">
-                      <LockIcon
-                        {...dashboardActionIconProps({
-                          size: 16,
-                          className: 'user-dashboard__archive-inline-icon',
-                        })}
-                      />{' '}
-                      {supportInactiveLabel}
-                    </p>
-                    <p className="user-dashboard__archive-empty-hint">
-                      {supportInactiveDescription}
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    className="user-dashboard__archive-plan-cta"
-                    onClick={() => openSupportModal()}
-                  >
-                    {renewSupportLabel}
-                  </button>
-                </article>
-              ) : null}
+      <section className={clsx('collection__tab', isSelectMode && 'collection__tab--select-mode')}>
+        <DashboardSection
+          title={t?.title ?? (lang === 'en' ? 'Your Collection' : 'Ваша коллекция')}
+        >
+          <header className="collection__header">
+            <div className="collection__header-text">
+              <p className="collection__subtitle">{subtitle}</p>
             </div>
 
-            {isSelectMode ? (
-              <footer className="user-dashboard__archive-action-bar">
-                <div className="user-dashboard__archive-action-bar-meta">
-                  <p className="user-dashboard__archive-action-bar-count">
-                    {selectedCountLabel.replace('{count}', String(selectedCount))}
-                  </p>
-                  {slotsRemaining > 0 ? (
-                    <p className="user-dashboard__archive-action-bar-hint">
-                      {selectHintTemplate.replace('{count}', String(slotsRemaining))}
+            <div className="collection__header-actions">
+              <button
+                type="button"
+                className="collection__slots-trigger"
+                onClick={() => openSupportModal()}
+                aria-label={`${slotsUsed} / ${slotsLimit}. ${managePlanLabel}`}
+              >
+                <DashboardCard interactive className="collection__slots-card">
+                  <div
+                    className="collection__slots-ring"
+                    style={{ '--collection-slots-progress': `${slotsProgress}%` } as CSSProperties}
+                    aria-hidden
+                  >
+                    <LockIcon
+                      {...dashboardActionIconProps({
+                        size: 18,
+                        className: 'collection__slots-ring-icon',
+                      })}
+                    />
+                  </div>
+                  <div className="collection__slots-meta">
+                    <div className="collection__slots-top">
+                      <span className="collection__slots-count" aria-live="polite">
+                        {slotsUsed} / {slotsLimit}
+                      </span>
+                      {planSlug ? <SubscriptionPlanBadge planSlug={planSlug} /> : null}
+                    </div>
+                    <span className="collection__slots-label">{slotsUsedLabel}</span>
+                    <span className="collection__slots-manage">{managePlanLabel}</span>
+                  </div>
+                </DashboardCard>
+              </button>
+            </div>
+          </header>
+
+          {error ? (
+            <div className="collection__error" role="alert">
+              {error}
+            </div>
+          ) : null}
+
+          {data ? (
+            <>
+              {showPlanChangeBanner ? (
+                <DashboardCard className="collection__banner collection__banner--warning">
+                  <p role="status">{planChangeBannerText.replace('{count}', String(slotsLimit))}</p>
+                </DashboardCard>
+              ) : null}
+
+              {showUpgradeCard ? (
+                <DashboardCard className="collection__banner collection__banner--full">
+                  <div className="collection__banner-icon" aria-hidden>
+                    <LockIcon
+                      {...dashboardActionIconProps({
+                        size: 18,
+                        className: 'collection__banner-icon-svg',
+                      })}
+                    />
+                  </div>
+                  <div className="collection__banner-text">
+                    <p className="collection__banner-title">{archiveFullLabel}</p>
+                    <p className="collection__banner-line">{archiveFullSlotsUsedLine}</p>
+                    <p className="collection__banner-line">{archiveFullUpgradeActionLine}</p>
+                  </div>
+                  <button
+                    type="button"
+                    className="dashboard-empty-state__cta collection__banner-cta"
+                    onClick={() => openSupportModal()}
+                  >
+                    {upgradePlanLabel}
+                  </button>
+                </DashboardCard>
+              ) : null}
+
+              {inactiveCount > 0 ? (
+                <div className="collection__inactive-toolbar">
+                  <span className="collection__inactive-toolbar-count">
+                    {inactiveArtistsLabel.replace('{count}', String(inactiveCount))}
+                  </span>
+                  <div className="collection__inactive-toolbar-actions">
+                    <DashboardAction
+                      destructive
+                      disabled={Boolean(removingId) || bulkLoading}
+                      onClick={() => void handleClearInactiveCollection()}
+                    >
+                      <Trash2Icon
+                        {...dashboardActionIconProps({
+                          size: 14,
+                        })}
+                        aria-hidden
+                      />
+                      {clearCollectionLabel}
+                    </DashboardAction>
+                    <button
+                      type="button"
+                      className={clsx(
+                        'collection__select-toggle',
+                        isSelectMode && 'collection__select-toggle--active'
+                      )}
+                      onClick={toggleSelectMode}
+                    >
+                      {isSelectMode ? cancelSelectLabel : selectModeLabel}
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+
+              <div className="collection__list">
+                {(data?.artists ?? []).map((artist) => {
+                  const isRemoving = removingId === artist.artistUserId;
+                  const genre = artist.genreLabel[lang] ?? artist.genreLabel.en;
+                  const artistHref = artist.slug
+                    ? `/?artist=${encodeURIComponent(artist.slug)}`
+                    : '/';
+                  const lockDate = formatLockDate(
+                    isCollectionArtistLocked(artist) ? artist.lockedUntil : null,
+                    lang
+                  );
+                  const artistIsLocked = isCollectionArtistLocked(artist);
+                  const removable = canRemoveArtist(artist, isPremium);
+                  const removeDisabled = Boolean(removingId) || bulkLoading || !removable;
+                  const isSelected = selectedIds.has(artist.artistUserId);
+                  const isInactiveSelectable = isSelectMode && !artist.isActive;
+                  const removeTooltip = !removable
+                    ? artistIsLocked
+                      ? removeLockedTooltip
+                      : artist.isActive && !isPremium
+                        ? removeSubscriptionTooltip
+                        : undefined
+                    : undefined;
+
+                  return (
+                    <div
+                      key={artist.id}
+                      className={clsx(
+                        'collection__artist-card-wrap',
+                        isInactiveSelectable && 'collection__artist-card-wrap--selectable'
+                      )}
+                      onClick={
+                        isInactiveSelectable
+                          ? () => {
+                              toggleSelected(artist.artistUserId);
+                            }
+                          : undefined
+                      }
+                      onKeyDown={
+                        isInactiveSelectable
+                          ? (event) => {
+                              if (event.key === 'Enter' || event.key === ' ') {
+                                event.preventDefault();
+                                toggleSelected(artist.artistUserId);
+                              }
+                            }
+                          : undefined
+                      }
+                      role={isInactiveSelectable ? 'button' : undefined}
+                      tabIndex={isInactiveSelectable ? 0 : undefined}
+                    >
+                      <DashboardCard
+                        as="article"
+                        interactive={isInactiveSelectable}
+                        selected={isSelected}
+                        className="collection__artist-card"
+                      >
+                        {isInactiveSelectable ? (
+                          <span className="collection__select-checkbox" aria-hidden>
+                            {isSelected ? <CheckSquare size={20} /> : <Square size={20} />}
+                          </span>
+                        ) : null}
+
+                        <div className="collection__cover">
+                          {artist.cover ? (
+                            <img src={artist.cover} alt="" loading="lazy" decoding="async" />
+                          ) : (
+                            <span className="collection__cover-fallback" aria-hidden>
+                              {artist.name.charAt(0).toUpperCase()}
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="collection__card-body">
+                          <h3 className="collection__name">
+                            {isInactiveSelectable ? (
+                              artist.name
+                            ) : (
+                              <Link to={artistHref} onClick={(event) => event.stopPropagation()}>
+                                {artist.name}
+                              </Link>
+                            )}
+                          </h3>
+                          <span className="collection__genre">{genre}</span>
+
+                          <div className="collection__status">
+                            {!artist.isActive ? (
+                              <>
+                                <StatusBadge variant="inactive">{supportInactiveLabel}</StatusBadge>
+                                <p className="collection__status-hint">{inactiveSlotHint}</p>
+                              </>
+                            ) : artistIsLocked && lockDate ? (
+                              <>
+                                <StatusBadge variant="locked">
+                                  {lockedUntilTemplate.replace('{date}', lockDate)}
+                                </StatusBadge>
+                                <p className="collection__status-hint">{lockedHint}</p>
+                              </>
+                            ) : (
+                              <>
+                                <StatusBadge variant="published">{canRemoveLabel}</StatusBadge>
+                                <p className="collection__status-hint">
+                                  {!isPremium ? removeSubscriptionTooltip : canRemoveHint}
+                                </p>
+                              </>
+                            )}
+                          </div>
+
+                          <DashboardRow
+                            className="collection__since-row"
+                            variant="start"
+                            label={inArchiveSince}
+                          >
+                            <DashboardRowValue>
+                              <span aria-hidden>✓</span> {formatArchiveDate(artist.addedAt, lang)}
+                            </DashboardRowValue>
+                          </DashboardRow>
+                        </div>
+
+                        {!isSelectMode ? (
+                          <DashboardAction
+                            destructive
+                            className="collection__remove-action"
+                            disabled={removeDisabled}
+                            aria-label={
+                              removeTooltip ? `${removeLabel}. ${removeTooltip}` : removeLabel
+                            }
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              void handleRemove(artist);
+                            }}
+                          >
+                            <Trash2Icon
+                              {...dashboardActionIconProps({
+                                size: 14,
+                              })}
+                              aria-hidden
+                            />
+                            {isRemoving
+                              ? (t?.removing ?? (lang === 'en' ? 'Removing…' : 'Удаляем…'))
+                              : removeLabel}
+                          </DashboardAction>
+                        ) : null}
+                      </DashboardCard>
+                    </div>
+                  );
+                })}
+
+                {showEmptySlotCard ? (
+                  <DashboardCard className="collection__card--empty">
+                    <div className="collection__card-body collection__card-body--empty">
+                      <p className="collection__empty-title">+ {slotsAvailableText}</p>
+                      <p className="collection__empty-hint">{emptySlotHint}</p>
+                    </div>
+                    <Link className="dashboard-empty-state__cta collection__card-cta" to="/">
+                      {discoverLabel}
+                    </Link>
+                  </DashboardCard>
+                ) : null}
+
+                {showRenewCard ? (
+                  <DashboardCard className="collection__card--renew">
+                    <div className="collection__card-body collection__card-body--empty">
+                      <p className="collection__empty-title">
+                        <StatusBadge variant="inactive">{supportInactiveLabel}</StatusBadge>
+                      </p>
+                      <p className="collection__empty-hint">{supportInactiveDescription}</p>
+                    </div>
+                    <button
+                      type="button"
+                      className="dashboard-empty-state__cta collection__card-cta"
+                      onClick={() => openSupportModal()}
+                    >
+                      {renewSupportLabel}
+                    </button>
+                  </DashboardCard>
+                ) : null}
+              </div>
+
+              {isSelectMode ? (
+                <footer className="collection__action-bar">
+                  <div className="collection__action-bar-meta">
+                    <p className="collection__action-bar-count">
+                      {selectedCountLabel.replace('{count}', String(selectedCount))}
                     </p>
-                  ) : null}
-                </div>
-                <div className="user-dashboard__archive-action-bar-buttons">
-                  <button
-                    type="button"
-                    className="user-dashboard__archive-action-bar-remove"
-                    disabled={removeSelectedDisabled}
-                    onClick={() => void handleBulkRemove()}
-                  >
-                    <Trash2Icon size={14} aria-hidden />
-                    {removeSelectedLabel}
-                  </button>
-                  <button
-                    type="button"
-                    className="user-dashboard__archive-action-bar-activate"
-                    disabled={activateDisabled}
-                    onClick={() => void handleActivateSelected()}
-                  >
-                    <LockIcon size={14} aria-hidden />
-                    {activateSelectedTemplate.replace('{count}', String(activateCount))}
-                  </button>
-                </div>
-              </footer>
-            ) : null}
-          </>
-        ) : null}
+                    {slotsRemaining > 0 ? (
+                      <p className="collection__action-bar-hint">
+                        {selectHintTemplate.replace('{count}', String(slotsRemaining))}
+                      </p>
+                    ) : null}
+                  </div>
+                  <div className="collection__action-bar-buttons">
+                    <DashboardAction
+                      destructive
+                      disabled={removeSelectedDisabled}
+                      onClick={() => void handleBulkRemove()}
+                    >
+                      <Trash2Icon size={14} aria-hidden />
+                      {removeSelectedLabel}
+                    </DashboardAction>
+                    <button
+                      type="button"
+                      className="dashboard-empty-state__cta"
+                      disabled={activateDisabled}
+                      onClick={() => void handleActivateSelected()}
+                    >
+                      <LockIcon size={14} aria-hidden />
+                      {activateSelectedTemplate.replace('{count}', String(activateCount))}
+                    </button>
+                  </div>
+                </footer>
+              ) : null}
+            </>
+          ) : null}
+        </DashboardSection>
       </section>
       <ArchiveArtistRemovedToast triggerKey={removedToastTrigger} />
     </>

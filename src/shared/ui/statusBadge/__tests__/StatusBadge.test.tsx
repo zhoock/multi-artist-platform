@@ -36,4 +36,16 @@ describe('StatusBadge', () => {
 
     expect(container.querySelector('.status-badge--not-verified')).toBeTruthy();
   });
+
+  it('applies locked modifier', () => {
+    const { container } = render(<StatusBadge variant="locked">Locked until Jan 1</StatusBadge>);
+
+    expect(container.querySelector('.status-badge--locked')).toBeTruthy();
+  });
+
+  it('applies inactive modifier', () => {
+    const { container } = render(<StatusBadge variant="inactive">Support inactive</StatusBadge>);
+
+    expect(container.querySelector('.status-badge--inactive')).toBeTruthy();
+  });
 });

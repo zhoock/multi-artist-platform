@@ -2454,13 +2454,11 @@ function UserDashboard() {
                             onCreateAlbum={() => setEditAlbumModal({ isOpen: true })}
                           />
                         ) : (
-                          <div className="user-dashboard__section">
-                            <MixerAdmin
-                              ui={ui || undefined}
-                              userId={user?.id || undefined}
-                              albums={albumsData}
-                            />
-                          </div>
+                          <MixerAdmin
+                            ui={ui || undefined}
+                            userId={user?.id || undefined}
+                            albums={albumsData}
+                          />
                         )}
                       </div>
                     ) : null}

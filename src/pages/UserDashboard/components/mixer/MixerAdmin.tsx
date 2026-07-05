@@ -23,7 +23,13 @@ import { AlbumCoverImage } from '@entities/album';
 import { getUserUserId } from '@config/user';
 import { useLang } from '@app/providers/lang';
 import { uniqueUploadFileSuffix } from '@shared/lib/uniqueUploadFileSuffix';
-import { DashboardEmptyState } from '@shared/ui/dashboard';
+import {
+  DashboardAction,
+  DashboardCard,
+  DashboardEmptyState,
+  DashboardSection,
+} from '@shared/ui/dashboard';
+import './MixerAdmin.scss';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 import { ConfirmationModal } from '@shared/ui/confirmationModal';
 import { StemAddedToast } from '@shared/ui/stemAddedToast/StemAddedToast';
@@ -401,262 +407,290 @@ export function MixerAdmin({ ui, userId, albums = [] }: MixerAdminProps) {
     return null;
   }
 
+  const toggleAlbum = (
+    albumId: string,
+    isAlbumOpen: boolean,
+    tracks: TrackData[],
+    storageAlbumId: string
+  ) => {
+    const nextOpen = isAlbumOpen ? null : albumId;
+    setExpandedAlbumId(nextOpen);
+    if (!isAlbumOpen) {
+      tracks.forEach((track) => {
+        void ensureTrackStems(storageAlbumId, track.id);
+      });
+    }
+  };
+
   return (
     <>
-      <div className="user-dashboard__albums-list mixer-admin__albums">
-        {albums.map((album, index) => {
-          const tracks = getAlbumTracks(album.id);
-          const isAlbumOpen = expandedAlbumId === album.id;
-          const storageAlbumId = getStorageAlbumId(album);
-          return (
-            <React.Fragment key={album.id}>
-              <div
-                className={`user-dashboard__album-item ${isAlbumOpen ? 'user-dashboard__album-item--expanded' : ''}`}
-                onClick={() => {
-                  const nextOpen = isAlbumOpen ? null : album.id;
-                  setExpandedAlbumId(nextOpen);
-                  if (!isAlbumOpen) {
-                    tracks.forEach((track) => {
-                      void ensureTrackStems(storageAlbumId, track.id);
-                    });
-                  }
-                }}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    const nextOpen = isAlbumOpen ? null : album.id;
-                    setExpandedAlbumId(nextOpen);
-                    if (!isAlbumOpen) {
-                      tracks.forEach((track) => {
-                        void ensureTrackStems(storageAlbumId, track.id);
-                      });
+      <DashboardSection title={t?.title ?? 'Mixer'}>
+        <div className="user-dashboard__albums-list mixer-admin__albums">
+          {albums.map((album, index) => {
+            const tracks = getAlbumTracks(album.id);
+            const isAlbumOpen = expandedAlbumId === album.id;
+            const storageAlbumId = getStorageAlbumId(album);
+            return (
+              <React.Fragment key={album.id}>
+                <div
+                  className="mixer-admin__album-trigger"
+                  onClick={() => toggleAlbum(album.id, isAlbumOpen, tracks, storageAlbumId)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      toggleAlbum(album.id, isAlbumOpen, tracks, storageAlbumId);
                     }
-                  }
-                }}
-                aria-label={isAlbumOpen ? 'Collapse album' : 'Expand album'}
-              >
-                <div className="user-dashboard__album-thumbnail">
-                  {album.cover ? (
-                    <AlbumCoverImage
-                      cover={album.cover}
-                      userId={album.userId ?? userId}
-                      alt={album.title}
-                      contextAlbumId={album.id}
-                      logContext="mixer"
-                      loading="lazy"
-                      decoding="async"
-                    />
-                  ) : (
-                    <img src="/images/album-placeholder.png" alt={album.title} />
-                  )}
+                  }}
+                  aria-label={isAlbumOpen ? 'Collapse album' : 'Expand album'}
+                >
+                  <DashboardCard
+                    interactive
+                    selected={isAlbumOpen}
+                    className={clsx(
+                      'user-dashboard__album-item',
+                      isAlbumOpen && 'user-dashboard__album-item--expanded'
+                    )}
+                  >
+                    <div className="user-dashboard__album-thumbnail">
+                      {album.cover ? (
+                        <AlbumCoverImage
+                          cover={album.cover}
+                          userId={album.userId ?? userId}
+                          alt={album.title}
+                          contextAlbumId={album.id}
+                          logContext="mixer"
+                          loading="lazy"
+                          decoding="async"
+                        />
+                      ) : (
+                        <img src="/images/album-placeholder.png" alt={album.title} />
+                      )}
+                    </div>
+                    <div className="user-dashboard__album-info">
+                      <div className="user-dashboard__album-title">{album.title}</div>
+                      {album.releaseDate ? (
+                        <div className="user-dashboard__album-date">{album.releaseDate}</div>
+                      ) : (
+                        <div className="user-dashboard__album-year">{album.year}</div>
+                      )}
+                    </div>
+                    <div className="user-dashboard__album-arrow">
+                      <DashboardExpandChevron expanded={isAlbumOpen} />
+                    </div>
+                  </DashboardCard>
                 </div>
-                <div className="user-dashboard__album-info">
-                  <div className="user-dashboard__album-title">{album.title}</div>
-                  {album.releaseDate ? (
-                    <div className="user-dashboard__album-date">{album.releaseDate}</div>
-                  ) : (
-                    <div className="user-dashboard__album-year">{album.year}</div>
-                  )}
-                </div>
-                <div className="user-dashboard__album-arrow">
-                  <DashboardExpandChevron expanded={isAlbumOpen} />
-                </div>
-              </div>
 
-              {isAlbumOpen && (
-                <div className="user-dashboard__album-expanded">
-                  <div className="user-dashboard__tracks-list mixer-admin__tracks">
-                    {tracks.length === 0 ? (
-                      <div className="mixer-admin__placeholder">{labels.noTracks}</div>
-                    ) : (
-                      tracks.map((track, trackIndex) => {
-                        const trackKey = stemKey(storageAlbumId, track.id);
-                        const isTrackOpen = expandedTrackId === trackKey;
-                        const stems = trackStems[trackKey] ?? [];
-                        const isLoading = loadingTracks[trackKey];
-                        const hasStems = !isLoading && stems.length > 0;
-                        const stemTrackRowFlash = getDashboardRowFlashProps(
-                          mixerStemTrackRowId(storageAlbumId, track.id),
-                          stemTrackRowFlashes
-                        );
-                        return (
-                          <article
-                            key={track.id}
-                            id={mixerStemTrackRowId(storageAlbumId, track.id)}
-                            className={clsx(
-                              'mixer-admin__track-card',
-                              isTrackOpen && 'mixer-admin__track-card--expanded',
-                              stemTrackRowFlash.className
-                            )}
-                            style={stemTrackRowFlash.style}
-                            data-visibility-flash={stemTrackRowFlash['data-visibility-flash']}
-                          >
+                {isAlbumOpen && (
+                  <DashboardCard className="user-dashboard__album-expanded user-dashboard__album-expanded--kit">
+                    <div className="user-dashboard__tracks-list mixer-admin__tracks">
+                      {tracks.length === 0 ? (
+                        <div className="mixer-admin__placeholder">{labels.noTracks}</div>
+                      ) : (
+                        tracks.map((track, trackIndex) => {
+                          const trackKey = stemKey(storageAlbumId, track.id);
+                          const isTrackOpen = expandedTrackId === trackKey;
+                          const stems = trackStems[trackKey] ?? [];
+                          const isLoading = loadingTracks[trackKey];
+                          const hasStems = !isLoading && stems.length > 0;
+                          const stemTrackRowFlash = getDashboardRowFlashProps(
+                            mixerStemTrackRowId(storageAlbumId, track.id),
+                            stemTrackRowFlashes
+                          );
+                          return (
                             <div
-                              className="mixer-admin__track-header"
-                              role="button"
-                              tabIndex={0}
-                              aria-expanded={isTrackOpen}
-                              onClick={() => {
-                                if (isTrackOpen) {
-                                  setExpandedTrackId(null);
-                                } else {
-                                  setExpandedTrackId(trackKey);
-                                  ensureTrackStems(storageAlbumId, track.id);
-                                }
-                              }}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter' || e.key === ' ') {
-                                  e.preventDefault();
-                                  if (isTrackOpen) {
-                                    setExpandedTrackId(null);
-                                  } else {
-                                    setExpandedTrackId(trackKey);
-                                    ensureTrackStems(storageAlbumId, track.id);
-                                  }
-                                }
-                              }}
-                            >
-                              <span className="mixer-admin__track-chevron" aria-hidden>
-                                <DashboardExpandChevron expanded={isTrackOpen} />
-                              </span>
-                              <span className="mixer-admin__track-number">
-                                {String(trackIndex + 1).padStart(2, '0')}
-                              </span>
-                              <span className="mixer-admin__track-title">
-                                {track.title || (track as any).trackTitle || (track as any).trackId}
-                              </span>
-                              {hasStems && (
-                                <StemAccessControl
-                                  albumId={storageAlbumId}
-                                  trackId={track.id}
-                                  visibility={resolveStemsVisibility(storageAlbumId, track)}
-                                  onVisibilityChange={handleStemsVisibilityChange}
-                                  ui={ui}
-                                />
+                              key={track.id}
+                              id={mixerStemTrackRowId(storageAlbumId, track.id)}
+                              className={clsx(
+                                'mixer-admin__track-row',
+                                stemTrackRowFlash.className
                               )}
-                              <span className="mixer-admin__track-duration">{track.duration}</span>
-                            </div>
-
-                            {isTrackOpen && (
-                              <div className="mixer-admin__track-body">
-                                <div className="mixer-admin__stems-header">
-                                  <div>
-                                    <h4 className="mixer-admin__subsection-title">
-                                      {labels.stems}
-                                    </h4>
-                                    <p className="mixer-admin__stems-description">
-                                      {labels.stemsDescription}
-                                    </p>
-                                  </div>
-                                  {!isLoading && stems.length > 0 && (
-                                    <button
-                                      type="button"
-                                      className="user-dashboard__choose-files-button mixer-admin__add-stem"
-                                      onClick={() =>
-                                        setAddModal({ albumId: storageAlbumId, trackId: track.id })
+                              style={stemTrackRowFlash.style}
+                              data-visibility-flash={stemTrackRowFlash['data-visibility-flash']}
+                            >
+                              <DashboardCard
+                                as="article"
+                                interactive
+                                className={clsx(
+                                  'mixer-admin__track-card',
+                                  isTrackOpen && 'mixer-admin__track-card--expanded'
+                                )}
+                              >
+                                <div
+                                  className="mixer-admin__track-header"
+                                  role="button"
+                                  tabIndex={0}
+                                  aria-expanded={isTrackOpen}
+                                  onClick={() => {
+                                    if (isTrackOpen) {
+                                      setExpandedTrackId(null);
+                                    } else {
+                                      setExpandedTrackId(trackKey);
+                                      ensureTrackStems(storageAlbumId, track.id);
+                                    }
+                                  }}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter' || e.key === ' ') {
+                                      e.preventDefault();
+                                      if (isTrackOpen) {
+                                        setExpandedTrackId(null);
+                                      } else {
+                                        setExpandedTrackId(trackKey);
+                                        ensureTrackStems(storageAlbumId, track.id);
                                       }
-                                    >
-                                      <PlusIcon {...dashboardActionIconProps({ size: 18 })} />
-                                      {labels.addStem}
-                                    </button>
+                                    }
+                                  }}
+                                >
+                                  <span className="mixer-admin__track-chevron" aria-hidden>
+                                    <DashboardExpandChevron expanded={isTrackOpen} />
+                                  </span>
+                                  <span className="mixer-admin__track-number">
+                                    {String(trackIndex + 1).padStart(2, '0')}
+                                  </span>
+                                  <span className="mixer-admin__track-title">
+                                    {track.title ||
+                                      (track as any).trackTitle ||
+                                      (track as any).trackId}
+                                  </span>
+                                  {hasStems && (
+                                    <StemAccessControl
+                                      albumId={storageAlbumId}
+                                      trackId={track.id}
+                                      visibility={resolveStemsVisibility(storageAlbumId, track)}
+                                      onVisibilityChange={handleStemsVisibilityChange}
+                                      ui={ui}
+                                    />
                                   )}
+                                  <span className="mixer-admin__track-duration">
+                                    {track.duration}
+                                  </span>
                                 </div>
 
-                                {isLoading ? (
-                                  <div className="mixer-admin__placeholder">{labels.loading}</div>
-                                ) : stems.length === 0 ? (
-                                  <DashboardEmptyState
-                                    variant="card"
-                                    icon={
-                                      <AudioLinesIcon
-                                        {...dashboardActionIconProps({
-                                          size: 48,
-                                          strokeWidth: 1.5,
-                                        })}
-                                      />
-                                    }
-                                    title={labels.emptyTitle}
-                                    description={labels.emptyDescription}
-                                    action={
-                                      <button
-                                        type="button"
-                                        className="dashboard-empty-state__cta mixer-admin__add-stem"
-                                        onClick={() =>
-                                          setAddModal({
-                                            albumId: storageAlbumId,
-                                            trackId: track.id,
-                                          })
+                                {isTrackOpen && (
+                                  <div className="mixer-admin__track-body">
+                                    <div className="mixer-admin__stems-header">
+                                      <div>
+                                        <h4 className="mixer-admin__subsection-title">
+                                          {labels.stems}
+                                        </h4>
+                                        <p className="mixer-admin__stems-description">
+                                          {labels.stemsDescription}
+                                        </p>
+                                      </div>
+                                      {!isLoading && stems.length > 0 && (
+                                        <DashboardAction
+                                          className="mixer-admin__add-stem"
+                                          onClick={() =>
+                                            setAddModal({
+                                              albumId: storageAlbumId,
+                                              trackId: track.id,
+                                            })
+                                          }
+                                        >
+                                          <PlusIcon {...dashboardActionIconProps({ size: 18 })} />
+                                          {labels.addStem}
+                                        </DashboardAction>
+                                      )}
+                                    </div>
+
+                                    {isLoading ? (
+                                      <div className="mixer-admin__placeholder">
+                                        {labels.loading}
+                                      </div>
+                                    ) : stems.length === 0 ? (
+                                      <DashboardEmptyState
+                                        variant="card"
+                                        icon={
+                                          <AudioLinesIcon
+                                            {...dashboardActionIconProps({
+                                              size: 48,
+                                              strokeWidth: 1.5,
+                                            })}
+                                          />
                                         }
-                                      >
-                                        <PlusIcon {...dashboardActionIconProps({ size: 18 })} />
-                                        {labels.addStem}
-                                      </button>
-                                    }
-                                  />
-                                ) : (
-                                  <DndContext
-                                    sensors={sensors}
-                                    collisionDetection={closestCenter}
-                                    onDragEnd={(event) =>
-                                      handleDragEnd(event, storageAlbumId, track.id)
-                                    }
-                                  >
-                                    <SortableContext
-                                      items={stems.map((s) => s.id)}
-                                      strategy={verticalListSortingStrategy}
-                                    >
-                                      <div className="mixer-admin__stems-list">
-                                        {stems.map((stem) => (
-                                          <SortableStemRow
-                                            key={stem.id}
-                                            stem={stem}
-                                            labels={rowLabels}
-                                            busy={isBusy(storageAlbumId, track.id, stem.id)}
-                                            isPlaying={playingStemId === stem.id}
-                                            onTogglePlay={() =>
-                                              handleTogglePlay(storageAlbumId, track.id, stem)
-                                            }
-                                            onReplaceFile={(file) =>
-                                              handleReplaceFile(
-                                                storageAlbumId,
-                                                track.id,
-                                                stem,
-                                                file
-                                              )
-                                            }
-                                            onRename={(name) =>
-                                              handleRename(storageAlbumId, track.id, stem, name)
-                                            }
-                                            onDelete={() =>
-                                              setDeleteTarget({
+                                        title={labels.emptyTitle}
+                                        description={labels.emptyDescription}
+                                        action={
+                                          <button
+                                            type="button"
+                                            className="dashboard-empty-state__cta mixer-admin__add-stem"
+                                            onClick={() =>
+                                              setAddModal({
                                                 albumId: storageAlbumId,
                                                 trackId: track.id,
-                                                stem,
                                               })
                                             }
-                                          />
-                                        ))}
-                                      </div>
-                                    </SortableContext>
-                                  </DndContext>
+                                          >
+                                            <PlusIcon {...dashboardActionIconProps({ size: 18 })} />
+                                            {labels.addStem}
+                                          </button>
+                                        }
+                                      />
+                                    ) : (
+                                      <DndContext
+                                        sensors={sensors}
+                                        collisionDetection={closestCenter}
+                                        onDragEnd={(event) =>
+                                          handleDragEnd(event, storageAlbumId, track.id)
+                                        }
+                                      >
+                                        <SortableContext
+                                          items={stems.map((s) => s.id)}
+                                          strategy={verticalListSortingStrategy}
+                                        >
+                                          <div className="mixer-admin__stems-list">
+                                            {stems.map((stem) => (
+                                              <SortableStemRow
+                                                key={stem.id}
+                                                stem={stem}
+                                                labels={rowLabels}
+                                                busy={isBusy(storageAlbumId, track.id, stem.id)}
+                                                isPlaying={playingStemId === stem.id}
+                                                onTogglePlay={() =>
+                                                  handleTogglePlay(storageAlbumId, track.id, stem)
+                                                }
+                                                onReplaceFile={(file) =>
+                                                  handleReplaceFile(
+                                                    storageAlbumId,
+                                                    track.id,
+                                                    stem,
+                                                    file
+                                                  )
+                                                }
+                                                onRename={(name) =>
+                                                  handleRename(storageAlbumId, track.id, stem, name)
+                                                }
+                                                onDelete={() =>
+                                                  setDeleteTarget({
+                                                    albumId: storageAlbumId,
+                                                    trackId: track.id,
+                                                    stem,
+                                                  })
+                                                }
+                                              />
+                                            ))}
+                                          </div>
+                                        </SortableContext>
+                                      </DndContext>
+                                    )}
+                                  </div>
                                 )}
-                              </div>
-                            )}
-                          </article>
-                        );
-                      })
-                    )}
-                  </div>
-                </div>
-              )}
+                              </DashboardCard>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  </DashboardCard>
+                )}
 
-              {index < albums.length - 1 && <div className="user-dashboard__album-divider"></div>}
-            </React.Fragment>
-          );
-        })}
-      </div>
+                {index < albums.length - 1 && <div className="user-dashboard__album-divider"></div>}
+              </React.Fragment>
+            );
+          })}
+        </div>
+      </DashboardSection>
 
       <AddStemModal
         isOpen={!!addModal}
