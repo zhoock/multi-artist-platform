@@ -18,9 +18,6 @@ jest.mock('@shared/lib/authFetch', () => ({
 
 describe('SocialLinksContent', () => {
   const socialLinksCopy = {
-    title: 'Social Links',
-    subtitle: 'Add your social networks.',
-    hint: 'Leave empty if you do not have a link.',
     platforms: {
       instagram: 'Instagram',
       facebook: 'Facebook',
@@ -77,7 +74,7 @@ describe('SocialLinksContent', () => {
       expect(fetchWithAuthSessionMock).toHaveBeenCalled();
     });
 
-    expect(container.querySelector('.dashboard-section')).toBeTruthy();
+    expect(container.querySelector('.user-dashboard__section')).toBeTruthy();
     expect(container.querySelector('.dashboard-card')).toBeTruthy();
     expect(container.querySelectorAll('.dashboard-row')).toHaveLength(SOCIAL_PLATFORMS.length);
     expect(container.querySelector('.social-links__cancel-button')).toBeTruthy();

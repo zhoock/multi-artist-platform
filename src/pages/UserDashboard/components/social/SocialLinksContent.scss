@@ -18,19 +18,6 @@ dialog {
         overflow-y: auto;
       }
 
-      &__subtitle,
-      &__hint {
-        margin: 0;
-        padding: var(--ms-01) var(--ms-0);
-        color: var(--dashboard-text-secondary);
-        font-size: var(--dashboard-font-size);
-        line-height: 1.4;
-      }
-
-      &__hint {
-        padding-block-start: 0;
-      }
-
       &__field-label {
         display: inline-flex;
         align-items: center;

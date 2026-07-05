@@ -5,7 +5,7 @@ import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 import { useLang } from '@app/providers/lang';
 import { getToken } from '@shared/lib/auth';
 import { fetchWithAuthSession } from '@shared/lib/authFetch';
-import { DashboardCard, DashboardRow, DashboardSection, DashboardCta } from '@shared/ui/dashboard';
+import { DashboardCard, DashboardRow, DashboardCta } from '@shared/ui/dashboard';
 import '@shared/ui/dashboard-save/dashboard-save.scss';
 import {
   EMPTY_SOCIAL_LINKS_FORM,
@@ -135,16 +135,11 @@ export function SocialLinksContent({ active }: SocialLinksContentProps) {
   return (
     <div className="social-links">
       <div className="social-links__scroll">
-        <DashboardSection title={copy?.title ?? 'Social Links'}>
+        <div className="user-dashboard__section">
           <DashboardCard
             className={clsx(isSaving && 'dashboard-save-card--busy')}
             aria-busy={isSaving}
           >
-            <p className="social-links__subtitle">
-              {copy?.subtitle ??
-                'Add your social networks. They will be displayed on your artist page.'}
-            </p>
-
             {SOCIAL_PLATFORMS.map((platform) => (
               <DashboardRow
                 key={platform}
@@ -171,12 +166,8 @@ export function SocialLinksContent({ active }: SocialLinksContentProps) {
                 />
               </DashboardRow>
             ))}
-
-            <p className="social-links__hint">
-              {copy?.hint ?? "Leave empty if you don't have a link."}
-            </p>
           </DashboardCard>
-        </DashboardSection>
+        </div>
       </div>
 
       <div className="social-links__footer">
