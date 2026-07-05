@@ -31,5 +31,14 @@
 
   // Dashboard font sizes
   --dashboard-font-size: 14px;
+  --dashboard-helper-font-size: 12px;
+  --dashboard-helper-line-height: 1.4;
   --dashboard-heading-font-size: 18px;
+  --dashboard-h2-size: 15px;
+  --dashboard-font-family: var(--base-font-family);
+
+  // Dashboard labels — two intentional roles (same 14px, different weight/color)
+  --dashboard-row-label-color: rgb(255 255 255 / 62%);
+  --dashboard-row-label-weight: 400;
+  --dashboard-form-label-weight: 500;
 }

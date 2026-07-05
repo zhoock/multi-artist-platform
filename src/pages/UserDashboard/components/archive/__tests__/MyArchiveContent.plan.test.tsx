@@ -538,7 +538,7 @@ describe('MyArchiveContent plan display', () => {
       expect(screen.getByText('Can be removed')).toBeTruthy();
     });
 
-    expect(container.querySelector('.dashboard-section')).toBeTruthy();
+    expect(container.querySelector('.user-dashboard__section')).toBeTruthy();
     expect(container.querySelector('.dashboard-card')).toBeTruthy();
     expect(container.querySelector('.status-badge--published')).toBeTruthy();
     expect(container.querySelector('.dashboard-action--destructive')).toBeTruthy();

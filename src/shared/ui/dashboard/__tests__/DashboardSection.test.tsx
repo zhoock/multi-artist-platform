@@ -10,7 +10,7 @@ describe('DashboardSection', () => {
       </DashboardSection>
     );
 
-    expect(screen.getByRole('heading', { name: 'General' })).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 3, name: 'General' })).toBeTruthy();
     expect(screen.getByText('Content')).toBeTruthy();
   });
 

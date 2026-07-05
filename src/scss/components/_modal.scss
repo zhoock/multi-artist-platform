@@ -5,6 +5,15 @@
     font-size: $font-size;
     line-height: $line-height;
   }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @include dashboard.dashboard-isolate-heading;
+  }
 }
 
 @mixin dashboard-modal-shell($padding: var(--ms-2), $background: transparent) {
@@ -98,6 +107,8 @@
 
   color: var(--dashboard-text-primary);
   font-size: var(--dashboard-heading-font-size);
+
+  @include dashboard.dashboard-isolate-heading;
 
   @if $font-weight {
     font-weight: $font-weight;

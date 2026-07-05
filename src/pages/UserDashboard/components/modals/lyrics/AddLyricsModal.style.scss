@@ -39,18 +39,19 @@ dialog {
     }
 
     &__title {
-      @include dashboard-modal-title($margin: 0, $padding: 0, $font-weight: 700);
+      @include dashboard-modal-title($margin: 0, $padding: 0);
     }
 
     &__subtitle {
       margin: 0;
       padding: 0;
-      color: var(--dashboard-text-secondary);
-      font-size: var(--dashboard-font-size);
+
+      @include dashboard-helper-text;
+
       font-weight: 400;
-      line-height: 1.35;
       text-transform: none !important;
       letter-spacing: normal !important;
+      line-height: 1.35;
     }
 
     &__close {

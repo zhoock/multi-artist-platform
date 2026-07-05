@@ -71,7 +71,7 @@ describe('MyPurchasesContent', () => {
       expect(screen.getByText('Test Artist — Test Album')).toBeTruthy();
     });
 
-    expect(container.querySelector('.dashboard-section')).toBeTruthy();
+    expect(container.querySelector('.user-dashboard__section')).toBeTruthy();
     expect(container.querySelector('.dashboard-card')).toBeTruthy();
     expect(container.querySelectorAll('.dashboard-row').length).toBeGreaterThanOrEqual(3);
     expect(container.querySelector('.dashboard-action--destructive')).toBeTruthy();

@@ -10,7 +10,6 @@ import {
   DashboardCard,
   DashboardRow,
   DashboardRowValue,
-  DashboardSection,
 } from '@shared/ui/dashboard';
 import {
   downloadAlbumZip,
@@ -218,7 +217,7 @@ export function MyPurchasesContent() {
       {!loading && !error && purchases.length === 0 ? (
         <MyPurchasesEmptyState ui={ui} />
       ) : (
-        <DashboardSection title={copy?.title ?? 'My Purchases'}>
+        <div className="user-dashboard__section">
           {loading && (
             <p className="my-purchases__loading">
               {copy?.loadingPurchases ?? 'Loading purchases...'}
@@ -242,9 +241,9 @@ export function MyPurchasesContent() {
                       </div>
                     )}
                     <div className="my-purchases__header-meta">
-                      <h4 className="my-purchases__title">
+                      <h3 className="my-purchases__title">
                         {purchase.artist} — {purchase.album}
-                      </h4>
+                      </h3>
                       <p className="my-purchases__meta-line">
                         {copy?.purchased ?? 'Purchased:'} {formatDate(purchase.purchasedAt)}
                       </p>
@@ -349,7 +348,7 @@ export function MyPurchasesContent() {
               ))}
             </div>
           )}
-        </DashboardSection>
+        </div>
       )}
 
       <ConfirmationModal

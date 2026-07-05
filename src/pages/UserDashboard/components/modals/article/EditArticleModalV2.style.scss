@@ -128,7 +128,7 @@
   min-width: 80px;
   padding: 8px 12px;
   color: var(--dashboard-text-secondary, #aaaaaa);
-  font-size: 12px;
+  font-size: var(--dashboard-helper-font-size);
   line-height: 1.2;
   background: transparent;
   border: none;
@@ -378,7 +378,7 @@ dialog {
 
     &__cover-status-text {
       color: var(--dashboard-text-secondary);
-      font-size: var(--ms-01);
+      font-size: var(--dashboard-helper-font-size);
       line-height: 1.4;
 
       &--success {
@@ -865,7 +865,7 @@ dialog {
     &__carousel-badge {
       padding: var(--ms-02) var(--ms-01);
       color: var(--dashboard-btn-secondary-text);
-      font-size: var(--ms-01);
+      font-size: var(--dashboard-helper-font-size);
       font-weight: 500;
       line-height: 1;
       white-space: nowrap;
@@ -1083,7 +1083,7 @@ dialog {
     &__slash-menu-title {
       padding: var(--ms-01) var(--ms-0);
       color: var(--dashboard-text-secondary);
-      font-size: var(--ms-01);
+      font-size: var(--dashboard-helper-font-size);
       font-weight: 600;
       text-transform: uppercase;
       letter-spacing: 0.5px;

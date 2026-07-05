@@ -92,8 +92,8 @@ dialog {
     &__tab-placeholder {
       margin: 0;
       padding: var(--ms-1) 0;
-      color: var(--dashboard-text-secondary);
-      font-size: var(--dashboard-font-size);
+
+      @include dashboard-helper-text;
     }
 
     &__error--tab-shell {
@@ -120,7 +120,8 @@ dialog {
 
     &__section-title {
       color: var(--dashboard-text-primary);
-      font-size: var(--dashboard-heading-font-size);
+
+      @include dashboard-h2-title;
     }
 
     &__albums-list {
@@ -289,8 +290,8 @@ dialog {
     }
 
     &__album-status-hint {
-      color: var(--dashboard-text-secondary);
-      font-size: var(--ms-01);
+      @include dashboard-helper-text;
+
       margin-block-end: 0;
     }
 
@@ -342,14 +343,15 @@ dialog {
     &__publish-album-hint {
       margin: 0;
       max-width: 14rem;
-      color: var(--dashboard-text-secondary);
-      font-size: var(--ms-01);
+
+      @include dashboard-helper-text;
+
       line-height: 1.35;
       text-align: end;
     }
 
     &__album-date {
-      color: var(--dashboard-text-secondary);
+      @include dashboard-helper-text;
     }
 
     &__album-expanded {
@@ -363,8 +365,8 @@ dialog {
     }
 
     &__article-description {
-      color: var(--dashboard-text-secondary);
-      font-size: var(--dashboard-font-size);
+      @include dashboard-helper-text;
+
       line-height: 1.6;
       margin-bottom: var(--ms-0);
       margin-top: var(--ms-0);
@@ -405,9 +407,8 @@ dialog {
     &__article-cover-label {
       display: block;
       margin-bottom: var(--ms-01);
-      color: var(--dashboard-text-secondary);
-      font-size: var(--ms-01);
-      line-height: 1.4;
+
+      @include dashboard-helper-text;
     }
 
     &__article-cover-file-input {
@@ -438,7 +439,8 @@ dialog {
     }
 
     &__article-cover-dropzone-text {
-      color: var(--dashboard-text-secondary);
+      @include dashboard-helper-text;
+
       margin-bottom: var(--ms-01);
     }
 
@@ -533,9 +535,7 @@ dialog {
     }
 
     &__article-cover-status-text {
-      color: var(--dashboard-text-secondary);
-      font-size: var(--ms-01);
-      line-height: 1.4;
+      @include dashboard-helper-text;
 
       &--success {
         color: var(--dark-greenish-yellow);

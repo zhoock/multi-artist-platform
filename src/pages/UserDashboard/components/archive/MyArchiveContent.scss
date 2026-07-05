@@ -45,7 +45,9 @@ dialog {
       &__subtitle {
         margin: 0;
         max-width: 42rem;
-        color: var(--dashboard-text-secondary);
+
+        @include dashboard-helper-text;
+
         line-height: 1.5;
       }
 
@@ -128,14 +130,14 @@ dialog {
       }
 
       &__slots-label {
-        color: var(--dashboard-text-secondary);
-        font-size: 0.75rem;
+        @include dashboard-helper-text;
+
         line-height: 1.2;
       }
 
       &__slots-manage {
         color: var(--dark-greenish-yellow);
-        font-size: 0.75rem;
+        font-size: var(--dashboard-helper-font-size);
         line-height: 1.2;
       }
 
@@ -163,8 +165,8 @@ dialog {
         padding: var(--collection-block-padding-y) var(--collection-block-padding-x);
 
         &--warning {
-          color: var(--dashboard-text-secondary);
-          font-size: 0.8125rem;
+          @include dashboard-helper-text;
+
           line-height: 1.45;
           background: rgb(var(--dark-greenish-yellow-rgb) / 6%);
           border-color: rgb(var(--dark-greenish-yellow-rgb) / 18%);
@@ -216,8 +218,9 @@ dialog {
 
       &__banner-line {
         margin: 0;
-        color: var(--dashboard-text-secondary);
-        font-size: 0.8125rem;
+
+        @include dashboard-helper-text;
+
         line-height: 1.45;
 
         & + & {
@@ -244,8 +247,7 @@ dialog {
       }
 
       &__inactive-toolbar-count {
-        color: var(--dashboard-text-secondary);
-        font-size: 0.8125rem;
+        @include dashboard-helper-text;
       }
 
       &__inactive-toolbar-actions {
@@ -369,6 +371,8 @@ dialog {
         font-size: var(--ms-0);
         line-height: 1.25;
 
+        @include dashboard-ui-font-family;
+
         a {
           color: var(--dashboard-text-primary);
           text-decoration: none;
@@ -383,8 +387,9 @@ dialog {
         display: inline-block;
         margin: 0.35rem 0;
         padding: 0.1rem 0.45rem;
-        color: var(--dashboard-text-secondary);
-        font-size: 0.7rem;
+
+        @include dashboard-helper-text;
+
         border: 1px solid var(--dashboard-input-border);
         border-radius: 999px;
       }
@@ -395,8 +400,9 @@ dialog {
 
       &__status-hint {
         margin: 0.2rem 0 0;
-        color: var(--dashboard-text-secondary);
-        font-size: 0.75rem;
+
+        @include dashboard-helper-text;
+
         line-height: 1.35;
       }
 
@@ -416,8 +422,9 @@ dialog {
 
       &__empty-hint {
         margin: 0.35rem 0 0;
-        color: var(--dashboard-text-secondary);
-        font-size: 0.8rem;
+
+        @include dashboard-helper-text;
+
         line-height: 1.4;
       }
 
@@ -458,8 +465,8 @@ dialog {
 
       &__action-bar-hint {
         margin: 0.15rem 0 0;
-        color: var(--dashboard-text-secondary);
-        font-size: 0.75rem;
+
+        @include dashboard-helper-text;
       }
 
       &__action-bar-buttons {

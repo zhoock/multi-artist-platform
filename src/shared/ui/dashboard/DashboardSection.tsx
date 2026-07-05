@@ -18,11 +18,11 @@ export function DashboardSection({
     <section className={clsx('dashboard-section', className)}>
       {headingExtra ? (
         <div className="dashboard-section__heading-row">
-          <h4 className="dashboard-section__title">{title}</h4>
+          <h3 className="dashboard-section__title">{title}</h3>
           {headingExtra}
         </div>
       ) : (
-        <h4 className="dashboard-section__title">{title}</h4>
+        <h3 className="dashboard-section__title">{title}</h3>
       )}
       {children}
     </section>

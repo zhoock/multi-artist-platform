@@ -5,8 +5,8 @@ dialog {
     .my-purchases {
       &__loading {
         margin: 0;
-        color: var(--dashboard-text-secondary);
-        font-size: var(--dashboard-font-size);
+
+        @include dashboard-helper-text;
       }
 
       &__error {
@@ -59,25 +59,25 @@ dialog {
       &__title {
         margin: 0;
         color: var(--dashboard-text-primary);
-        font-family: inherit;
         font-size: var(--dashboard-font-size);
-        font-weight: 600;
         letter-spacing: normal;
+
+        @include dashboard-ui-font-family;
       }
 
       &__meta-line {
         margin: 0;
-        color: var(--dashboard-text-secondary);
-        font-size: var(--ms-01);
+
+        @include dashboard-helper-text;
       }
 
       &__tracks-label {
         margin: 0;
-        color: var(--dashboard-text-secondary);
-        font-size: var(--ms-01);
+
+        @include dashboard-helper-text;
+
         font-weight: 500;
         text-transform: uppercase;
-        letter-spacing: 0.04em;
       }
 
       &__download-all {
@@ -95,8 +95,9 @@ dialog {
 
       &__track-number {
         min-width: 1.5rem;
-        color: var(--dashboard-text-secondary);
-        font-size: var(--ms-01);
+
+        @include dashboard-helper-text;
+
         font-weight: 500;
         flex-shrink: 0;
       }
@@ -124,8 +125,9 @@ dialog {
       &__remove-hint {
         margin: 0;
         max-width: 28rem;
-        color: var(--dashboard-text-secondary);
-        font-size: var(--ms-01);
+
+        @include dashboard-helper-text;
+
         line-height: 1.45;
       }
 

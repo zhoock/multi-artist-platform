@@ -34,7 +34,6 @@ import {
   DashboardCta,
   DashboardRow,
   DashboardRowValue,
-  DashboardSection,
 } from '@shared/ui/dashboard';
 import { StatusBadge } from '@shared/ui/statusBadge';
 
@@ -532,9 +531,7 @@ export function MyArchiveContent({ active }: Props) {
   return (
     <>
       <section className={clsx('collection__tab', isSelectMode && 'collection__tab--select-mode')}>
-        <DashboardSection
-          title={t?.title ?? (lang === 'en' ? 'Your Collection' : 'Ваша коллекция')}
-        >
+        <div className="user-dashboard__section">
           <header className="collection__header">
             <div className="collection__header-text">
               <p className="collection__subtitle">{subtitle}</p>
@@ -857,7 +854,7 @@ export function MyArchiveContent({ active }: Props) {
               ) : null}
             </>
           ) : null}
-        </DashboardSection>
+        </div>
       </section>
       <ArchiveArtistRemovedToast triggerKey={removedToastTrigger} />
     </>

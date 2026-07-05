@@ -1,6 +1,12 @@
 import React, { useMemo } from 'react';
 import clsx from 'clsx';
 import {
+  Eye as EyeIcon,
+  Pencil as PencilIcon,
+  Plus as PlusIcon,
+  RefreshCw as RefreshCwIcon,
+} from 'lucide-react';
+import {
   DndContext,
   closestCenter,
   KeyboardSensor,
@@ -30,7 +36,9 @@ import {
   DashboardAction,
   DashboardCta,
   DashboardExpandableRowTrigger,
+  DashboardIconButton,
 } from '@shared/ui/dashboard';
+import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 import {
   getDashboardRowFlashProps,
   type DashboardRowFlash,
@@ -94,27 +102,57 @@ function getLyricsStatusText(status: TrackData['lyricsStatus'], ui: IInterface |
   }
 }
 
+type LyricsAction = 'edit' | 'prev' | 'sync' | 'add';
+
+function getLyricsActionLabel(action: LyricsAction, ui: IInterface | null): string {
+  switch (action) {
+    case 'edit':
+      return ui?.dashboard?.editLyrics ?? 'Edit lyrics';
+    case 'prev':
+      return ui?.dashboard?.previewLyrics ?? 'Preview lyrics';
+    case 'sync':
+      return ui?.dashboard?.syncLyricsTitle ?? 'Sync lyrics';
+    case 'add':
+      return ui?.dashboard?.addLyrics ?? 'Add lyrics';
+    default:
+      return '';
+  }
+}
+
+function renderLyricsActionIcon(action: LyricsAction) {
+  const iconProps = dashboardActionIconProps();
+
+  switch (action) {
+    case 'edit':
+      return <PencilIcon {...iconProps} />;
+    case 'prev':
+      return <EyeIcon {...iconProps} />;
+    case 'sync':
+      return <RefreshCwIcon {...iconProps} />;
+    case 'add':
+      return <PlusIcon {...iconProps} />;
+    default:
+      return null;
+  }
+}
+
 function getLyricsActions(
   status: TrackData['lyricsStatus'],
-  ui: IInterface | null,
   hasSyncedLyrics: boolean = false
-) {
+): LyricsAction[] {
   switch (status) {
     case 'synced': {
-      const actions = [{ label: ui?.dashboard?.edit ?? 'Edit', action: 'edit' }];
+      const actions: LyricsAction[] = ['edit'];
       if (hasSyncedLyrics) {
-        actions.push({ label: ui?.dashboard?.prev ?? 'Prev', action: 'prev' });
+        actions.push('prev');
       }
-      actions.push({ label: ui?.dashboard?.sync ?? 'Sync', action: 'sync' });
+      actions.push('sync');
       return actions;
     }
     case 'text-only':
-      return [
-        { label: ui?.dashboard?.edit ?? 'Edit', action: 'edit' },
-        { label: ui?.dashboard?.sync ?? 'Sync', action: 'sync' },
-      ];
+      return ['edit', 'sync'];
     case 'empty':
-      return [{ label: ui?.dashboard?.add ?? 'Add', action: 'add' }];
+      return ['add'];
     default:
       return [];
   }
@@ -462,9 +500,9 @@ export function AlbumsTabContent({
                       </DndContext>
 
                       <div className="user-dashboard__lyrics-section">
-                        <h4 className="user-dashboard__lyrics-title">
+                        <h3 className="user-dashboard__lyrics-title">
                           {ui?.dashboard?.lyrics ?? 'Lyrics'}
-                        </h4>
+                        </h3>
                         <div className="user-dashboard__lyrics-table">
                           <div className="user-dashboard__lyrics-header">
                             <div className="user-dashboard__lyrics-header-cell user-dashboard__lyrics-header-cell--track">
@@ -501,28 +539,23 @@ export function AlbumsTabContent({
                                       Array.isArray(track.syncedLyrics) &&
                                       track.syncedLyrics.length > 0 &&
                                       track.syncedLyrics.some((line) => line.startTime > 0);
-                                    return getLyricsActions(
-                                      track.lyricsStatus,
-                                      ui,
-                                      hasSyncedLyrics
+                                    return getLyricsActions(track.lyricsStatus, hasSyncedLyrics);
+                                  })().map((action) => {
+                                    const actionLabel = getLyricsActionLabel(action, ui);
+
+                                    return (
+                                      <DashboardIconButton
+                                        key={action}
+                                        onClick={() =>
+                                          onLyricsAction(action, album.id, track.id, track.title)
+                                        }
+                                        aria-label={actionLabel}
+                                        title={actionLabel}
+                                      >
+                                        {renderLyricsActionIcon(action)}
+                                      </DashboardIconButton>
                                     );
-                                  })().map((action, idx) => (
-                                    <button
-                                      key={idx}
-                                      type="button"
-                                      className="user-dashboard__lyrics-action-button"
-                                      onClick={() =>
-                                        onLyricsAction(
-                                          action.action,
-                                          album.id,
-                                          track.id,
-                                          track.title
-                                        )
-                                      }
-                                    >
-                                      {action.label}
-                                    </button>
-                                  ))}
+                                  })}
                                 </div>
                               </div>
                             </div>

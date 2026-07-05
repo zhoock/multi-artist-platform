@@ -83,7 +83,8 @@
 
 .dashboard-form-loading {
   padding: var(--ms-01) var(--ms-0);
-  color: var(--dashboard-text-secondary);
-  font-size: var(--dashboard-font-size);
+
+  @include dashboard-helper-text;
+
   line-height: 1.5;
 }

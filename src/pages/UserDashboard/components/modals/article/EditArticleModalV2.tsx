@@ -2389,7 +2389,7 @@ export function EditArticleModalV2({
                   }`}
                   data-document-selected={isDocumentSelected ? 'true' : undefined}
                 >
-                  <h1 className="edit-article-v2__article-title">
+                  <h2 className="edit-article-v2__article-title">
                     <input
                       type="text"
                       className="edit-article-v2__article-title-input"
@@ -2399,7 +2399,7 @@ export function EditArticleModalV2({
                       placeholder={texts.title}
                       aria-label={texts.title}
                     />
-                  </h1>
+                  </h2>
                   <DndContext
                     sensors={sensors}
                     collisionDetection={closestCenter}

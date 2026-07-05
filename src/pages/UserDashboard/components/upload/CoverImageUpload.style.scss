@@ -13,9 +13,7 @@
   }
 
   &__label {
-    color: var(--dashboard-text-primary);
-    font-size: var(--ms-0);
-    font-weight: 500;
+    @include dashboard-form-label($margin-bottom: 0);
   }
 
   &__dropzone {

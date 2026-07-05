@@ -289,8 +289,7 @@
   }
 
   &__label {
-    color: var(--dashboard-text-primary);
-    font-size: var(--dashboard-font-size, 14px);
+    @include dashboard-form-label($margin-bottom: 0);
   }
 
   &__input {

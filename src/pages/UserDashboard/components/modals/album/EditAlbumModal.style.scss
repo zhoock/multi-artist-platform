@@ -101,8 +101,7 @@ dialog {
     }
 
     &__label {
-      color: var(--dashboard-text-primary);
-      font-size: var(--dashboard-font-size);
+      @include dashboard-form-label($margin-bottom: 0);
     }
 
     &__input {
@@ -177,7 +176,7 @@ dialog {
 
     &__file-name {
       color: var(--dashboard-text-secondary);
-      font-size: var(--ms-01);
+      font-size: var(--dashboard-helper-font-size);
       margin-top: var(--ms-01);
     }
 
@@ -228,7 +227,7 @@ dialog {
 
     &__art-meta {
       color: var(--dashboard-text-secondary);
-      font-size: var(--ms-01);
+      font-size: var(--dashboard-helper-font-size);
       line-height: 1.4;
     }
 
@@ -255,7 +254,7 @@ dialog {
 
     &__art-status-text {
       color: var(--dashboard-text-secondary);
-      font-size: var(--ms-01);
+      font-size: var(--dashboard-helper-font-size);
       line-height: 1.4;
 
       &--success {
@@ -269,7 +268,7 @@ dialog {
 
     &__help-text {
       color: var(--dashboard-text-secondary);
-      font-size: var(--ms-01);
+      font-size: var(--dashboard-helper-font-size);
     }
 
     &__help-text--muted {
@@ -280,7 +279,7 @@ dialog {
     &__field-error {
       margin: var(--ms-02) 0 0;
       color: var(--pink-terracotta);
-      font-size: var(--ms-01);
+      font-size: var(--dashboard-helper-font-size);
       line-height: 1.35;
     }
 
@@ -302,7 +301,7 @@ dialog {
     &__album-sale-desc {
       margin: 0;
       color: var(--dashboard-text-secondary);
-      font-size: var(--ms-01);
+      font-size: var(--dashboard-helper-font-size);
     }
 
     &__album-sale-loading {
@@ -313,7 +312,7 @@ dialog {
       align-self: flex-start;
       width: fit-content;
       color: var(--dark-greenish-yellow);
-      font-size: var(--ms-01);
+      font-size: var(--dashboard-helper-font-size);
       font-weight: 600;
       text-decoration: underline;
       text-underline-offset: 2px;
@@ -356,7 +355,7 @@ dialog {
 
     &__preorder-help {
       color: var(--dashboard-text-secondary);
-      font-size: var(--ms-01);
+      font-size: var(--dashboard-helper-font-size);
       margin-top: var(--ms-01);
       padding-left: calc(var(--ms-0) + var(--ms-01));
     }
@@ -480,7 +479,7 @@ dialog {
       @include breakpoint(phones) {
         min-height: calc(var(--ms-0) * 1.5);
         padding: var(--ms-02) var(--ms-01);
-        font-size: var(--ms-01) !important;
+        font-size: var(--dashboard-helper-font-size) !important;
       }
 
       &:focus {
@@ -567,7 +566,7 @@ dialog {
         font-size: var(--ms-0);
 
         @include breakpoint(phones) {
-          font-size: var(--ms-01);
+          font-size: var(--dashboard-helper-font-size);
         }
       }
     }
@@ -585,7 +584,7 @@ dialog {
       gap: var(--ms-02);
       padding: var(--ms-02) var(--ms-01);
       color: var(--dashboard-text-primary);
-      font-size: var(--ms-01);
+      font-size: var(--dashboard-helper-font-size);
       background: var(--dashboard-hover-bg);
       border: 1px solid var(--dashboard-card-border);
       border-radius: var(--ms-02);
@@ -659,7 +658,7 @@ dialog {
 
     &__error {
       color: var(--pink-terracotta);
-      font-size: var(--ms-01);
+      font-size: var(--dashboard-helper-font-size);
       margin-top: var(--ms-02);
     }
 
@@ -747,12 +746,12 @@ dialog {
 
     &__list-item-role {
       color: var(--dashboard-text-secondary);
-      font-size: var(--ms-01);
+      font-size: var(--dashboard-helper-font-size);
     }
 
     &__list-item-url {
       color: var(--dashboard-text-secondary);
-      font-size: var(--ms-01);
+      font-size: var(--dashboard-helper-font-size);
       word-break: break-all;
     }
 
@@ -981,7 +980,7 @@ dialog {
 
     &__review-label {
       color: var(--dashboard-text-secondary);
-      font-size: var(--ms-01);
+      font-size: var(--dashboard-helper-font-size);
       font-weight: 500;
       text-transform: uppercase;
       letter-spacing: 0.05em;
@@ -1009,7 +1008,7 @@ dialog {
       display: inline-block;
       padding: var(--ms-02) var(--ms-01);
       color: var(--dashboard-text-primary);
-      font-size: var(--ms-01);
+      font-size: var(--dashboard-helper-font-size);
       background: var(--dashboard-hover-bg);
       border: 1px solid var(--dashboard-card-border);
       border-radius: var(--ms-01);

@@ -28,7 +28,7 @@
   }
 
   &__title {
-    @include dashboard-modal-title($margin: 0, $padding: 0, $font-weight: 700, $line-height: 1.2);
+    @include dashboard-modal-title($margin: 0, $padding: 0, $line-height: 1.2);
   }
 
   &__close {
@@ -38,8 +38,9 @@
   &__instruction {
     flex-shrink: 0;
     padding: var(--ms-01) var(--ms-2) var(--ms-0);
-    color: rgb(255 255 255 / 42%);
-    font-size: 12px;
+
+    @include dashboard-helper-text;
+
     line-height: 1.45;
     text-align: center;
   }
@@ -180,8 +181,9 @@
     flex-shrink: 0;
     min-width: 3.25em;
     padding: 0;
-    color: var(--dashboard-text-secondary);
-    font-size: 12px;
+
+    @include dashboard-helper-text;
+
     font-weight: 500;
     line-height: 1;
     font-variant-numeric: tabular-nums;

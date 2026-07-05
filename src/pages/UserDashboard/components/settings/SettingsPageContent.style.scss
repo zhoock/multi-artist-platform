@@ -5,6 +5,7 @@
   flex-direction: column;
   gap: var(--ms-1);
   width: 100%;
+  padding-block-end: var(--ms-2);
 
   &__avatar-row {
     display: flex;
@@ -77,9 +78,8 @@
   &__avatar-hint {
     flex: 1 1 100%;
     margin: 0;
-    color: rgb(255 255 255 / 42%);
-    font-size: var(--ms-01);
-    line-height: 1.4;
+
+    @include dashboard-helper-text;
 
     @include breakpoint(tablet) {
       flex: 1 1 auto;
@@ -96,35 +96,15 @@
       flex: 1;
       min-width: 0;
     }
-  }
 
-  &__slug-open {
-    display: inline-flex;
-    flex-shrink: 0;
-    align-items: center;
-    justify-content: center;
-    width: 2.75rem;
-    height: 2.75rem;
-    padding: 0;
-    color: var(--dashboard-text-secondary);
-    background: var(--dashboard-card-bg);
-    border: 1px solid var(--dashboard-card-border);
-    border-radius: 8px;
-    cursor: pointer;
-    transition:
-      color 0.2s ease,
-      border-color 0.2s ease,
-      background-color 0.2s ease;
+    .dashboard-action {
+      display: inline-flex;
+      align-items: center;
+      text-decoration: none;
 
-    &:disabled {
-      opacity: 0.45;
-      cursor: not-allowed;
-    }
-
-    &:hover:not(:disabled) {
-      color: var(--dark-greenish-yellow);
-      background: var(--dashboard-hover-bg);
-      border-color: var(--dark-greenish-yellow);
+      &:hover:not(:disabled) {
+        text-decoration: none;
+      }
     }
   }
 
@@ -138,8 +118,9 @@
 
   &__upgrade {
     margin: 0;
-    color: var(--dashboard-text-secondary);
-    font-size: var(--dashboard-font-size);
+
+    @include dashboard-helper-text;
+
     line-height: 1.5;
   }
 

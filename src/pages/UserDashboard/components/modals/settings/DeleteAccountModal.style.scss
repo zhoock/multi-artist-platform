@@ -57,13 +57,15 @@
     color: var(--dark-greenish-yellow, #c9b458);
     font-size: var(--dashboard-heading-font-size);
     line-height: 1.25;
-    text-transform: none;
+
+    @include dashboard-isolate-heading;
   }
 
   &__message {
     margin: 0;
-    color: var(--dashboard-text-secondary);
-    font-size: var(--dashboard-font-size);
+
+    @include dashboard-helper-text;
+
     line-height: 1.5;
   }
 
@@ -109,7 +111,8 @@
     color: var(--dark-greenish-yellow, #c9b458);
     font-size: var(--dashboard-font-size);
     line-height: 1.35;
-    text-transform: none;
+
+    @include dashboard-isolate-heading;
   }
 
   &__list {
@@ -121,9 +124,8 @@
     margin: 0;
     padding: 0;
     list-style: none;
-    color: var(--dashboard-text-secondary);
-    font-size: var(--ms-01);
-    line-height: 1.4;
+
+    @include dashboard-helper-text;
 
     li {
       display: flex;
@@ -151,7 +153,7 @@
     margin-bottom: var(--ms-01);
     padding: 0.75rem;
     color: var(--error-color, #cf807d);
-    font-size: var(--ms-01);
+    font-size: var(--dashboard-helper-font-size);
     background: rgb(207 128 125 / 10%);
     border: 1px solid color-mix(in srgb, var(--error-color, #cf807d) 55%, transparent);
     border-radius: 8px;
@@ -212,10 +214,9 @@
   }
 
   &__field-hint {
-    color: var(--dashboard-text-secondary);
-    font-size: 12px;
     margin-top: 4px;
-    line-height: 1.4;
+
+    @include dashboard-helper-text;
   }
 
   &__actions {
@@ -276,7 +277,7 @@
     margin: var(--ms-01) 0 0;
     padding: 0;
     color: var(--dark-greenish-yellow, #c9b458);
-    font-size: var(--ms-01);
+    font-size: var(--dashboard-helper-font-size);
     line-height: 1.35;
     text-align: center;
   }

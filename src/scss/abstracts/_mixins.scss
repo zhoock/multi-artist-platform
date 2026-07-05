@@ -265,9 +265,55 @@ $ms-4: 123.363px; // 6.854rem;
   font-size: var(--dashboard-font-size);
 }
 
+// Secondary helper / hint / meta copy (12px)
+@mixin dashboard-helper-text($color: var(--dashboard-text-secondary)) {
+  color: $color;
+  font-size: var(--dashboard-helper-font-size);
+  line-height: var(--dashboard-helper-line-height);
+}
+
+// Settings row label (label | value layout) — muted, regular weight
+@mixin dashboard-row-label {
+  margin: 0;
+  color: var(--dashboard-row-label-color);
+  font-size: var(--dashboard-font-size);
+  font-weight: var(--dashboard-row-label-weight, 400);
+  line-height: 1.4;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
 // Dashboard heading font size - размер шрифта для заголовков
 @mixin dashboard-heading-font-size {
   font-size: var(--dashboard-heading-font-size);
+}
+
+@mixin dashboard-ui-font-family {
+  font-family: var(--dashboard-font-family, var(--base-font-family));
+  font-weight: var(--regular, 400);
+}
+
+// Neutralize global marketing heading styles (Oswald, capitalize, letter-spacing, etc.)
+@mixin dashboard-isolate-heading {
+  @include dashboard-ui-font-family;
+
+  font-size: inherit;
+  letter-spacing: normal;
+  text-transform: none;
+  text-wrap: wrap;
+}
+
+@mixin dashboard-h1-title {
+  @include dashboard-isolate-heading;
+
+  font-size: var(--dashboard-heading-font-size);
+}
+
+@mixin dashboard-h2-title {
+  @include dashboard-isolate-heading;
+
+  font-size: var(--dashboard-h2-size);
+  line-height: 1.3;
 }
 
 // Dashboard form field - контейнер для поля формы
@@ -278,15 +324,15 @@ $ms-4: 123.363px; // 6.854rem;
   margin-bottom: 20px;
 }
 
-// Dashboard form label - метка поля формы
-@mixin dashboard-form-label {
+// Form field label (above input) — primary, medium weight
+@mixin dashboard-form-label($margin-bottom: 4px) {
   color: var(--dashboard-text-primary);
   font-size: var(--dashboard-font-size);
-  font-weight: 500;
+  font-weight: var(--dashboard-form-label-weight, 500);
   line-height: 1.4;
   text-transform: none;
   letter-spacing: normal;
-  margin-bottom: 4px;
+  margin-bottom: $margin-bottom;
 }
 
 // Shared visual shell for dashboard text inputs, textareas, and custom select triggers.

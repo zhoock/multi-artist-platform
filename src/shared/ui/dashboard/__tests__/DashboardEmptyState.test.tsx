@@ -15,7 +15,7 @@ describe('DashboardEmptyState', () => {
 
     expect(container.querySelector('.dashboard-empty-state--tab')).toBeTruthy();
     expect(screen.getByRole('status')).toBeTruthy();
-    expect(screen.getByText('No albums yet')).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 3, name: 'No albums yet' })).toBeTruthy();
   });
 
   it('renders card variant', () => {
@@ -25,6 +25,7 @@ describe('DashboardEmptyState', () => {
 
     expect(container.querySelector('.dashboard-empty-state--card')).toBeTruthy();
     expect(screen.getByText('Drop tracks here')).toBeTruthy();
+    expect(screen.queryByRole('heading', { name: 'Drop tracks here' })).toBeNull();
   });
 
   it('renders icon and action', () => {

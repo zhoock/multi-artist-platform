@@ -92,8 +92,8 @@ dialog {
 
     &__tracks-header-cell,
     &__lyrics-header-cell {
-      color: var(--dashboard-text-secondary);
-      font-size: var(--ms-01);
+      @include dashboard-helper-text;
+
       font-weight: 500;
       text-transform: uppercase;
 
@@ -330,8 +330,8 @@ dialog {
     }
 
     &__track-access-menu-item-desc {
-      color: var(--dashboard-text-secondary);
-      font-size: calc(var(--dashboard-font-size) * 0.85);
+      @include dashboard-helper-text;
+
       line-height: 1.3;
     }
 
@@ -382,8 +382,9 @@ dialog {
     &__lyrics-title {
       margin: 0 0 var(--ms-0) 0;
       padding: 0;
-      color: var(--white);
-      font-size: var(--dashboard-heading-font-size);
+      color: rgb(255 255 255 / 82%);
+
+      @include dashboard-h2-title;
     }
 
     &__lyrics-table {
@@ -432,8 +433,9 @@ dialog {
 
       &::before {
         content: attr(data-label);
-        color: var(--dashboard-text-secondary);
-        font-size: var(--ms-01);
+
+        @include dashboard-helper-text;
+
         font-weight: 500;
         text-transform: uppercase;
         margin-bottom: var(--ms-02);
@@ -451,35 +453,26 @@ dialog {
       }
 
       &--actions {
-        flex-direction: column;
-        align-items: flex-start;
+        flex-direction: row;
+        align-items: center;
+        justify-content: flex-start;
 
         @include breakpoint(tablet) {
-          flex-direction: column;
-          align-items: stretch;
+          flex-direction: row;
+          align-items: center;
           justify-content: center;
+          gap: 12px;
         }
       }
     }
 
     &__lyrics-actions-row {
       display: flex;
-      flex-flow: row wrap;
-      gap: var(--ms-01);
+      flex-direction: row;
+      align-items: center;
+      gap: 12px;
       justify-content: flex-start;
-      width: 100%;
-
-      @include breakpoint(tablet) {
-        flex-direction: column;
-        align-items: stretch;
-        width: 100%;
-      }
-    }
-
-    &__lyrics-action-button {
-      white-space: nowrap;
-
-      @include dashboard-btn-secondary;
+      width: auto;
     }
   }
 }

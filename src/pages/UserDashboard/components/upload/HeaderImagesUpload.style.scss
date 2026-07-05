@@ -1,3 +1,5 @@
+@use '../../../../scss/abstracts/mixins' as *;
+
 .header-images-upload {
   display: flex;
   flex-direction: column;
@@ -75,15 +77,17 @@
   &__inline-hint {
     flex: 1 1 12rem;
     margin: 0;
-    color: rgb(255 255 255 / 42%);
-    font-size: var(--ms-01);
+
+    @include dashboard-helper-text;
+
     line-height: 1.45;
   }
 
   &__inline-count {
     flex-shrink: 0;
-    color: rgb(255 255 255 / 42%);
-    font-size: var(--ms-01);
+
+    @include dashboard-helper-text;
+
     line-height: 1.45;
     white-space: nowrap;
   }
@@ -159,14 +163,14 @@
   }
 
   &__dropzone-hint {
-    color: var(--dashboard-text-secondary);
-    font-size: var(--dashboard-font-size);
+    @include dashboard-helper-text;
+
     margin-bottom: var(--ms-01);
   }
 
   &__dropzone-count {
-    color: var(--dashboard-text-secondary);
-    font-size: 12px;
+    @include dashboard-helper-text;
+
     margin-top: var(--ms-01);
   }
 

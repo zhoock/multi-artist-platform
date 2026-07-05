@@ -34,8 +34,9 @@
     margin: 0;
     color: var(--dashboard-text-primary);
     font-size: 1.125rem;
-    font-weight: 600;
     line-height: 1.3;
+
+    @include dashboard-isolate-heading;
   }
 
   &__close {
@@ -73,8 +74,7 @@
   }
 
   &__label {
-    color: var(--dashboard-text-secondary);
-    font-size: var(--dashboard-font-size);
+    @include dashboard-form-label($margin-bottom: 0);
   }
 
   &__input {
@@ -99,8 +99,8 @@
 
   &__field-error {
     margin: 0;
-    color: var(--error-color, #cf807d);
-    font-size: 0.875rem;
+
+    @include dashboard-helper-text(var(--error-color, #cf807d));
   }
 
   &__actions {

@@ -29,6 +29,15 @@ dialog {
     min-height: 100vh;
     line-height: 1.2;
 
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6 {
+      @include dashboard-isolate-heading;
+    }
+
     // Main card
     &__card {
       display: flex;

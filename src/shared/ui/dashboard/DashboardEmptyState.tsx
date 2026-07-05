@@ -25,7 +25,11 @@ export function DashboardEmptyState({
   const content = (
     <>
       {icon ? <div className="dashboard-empty-state__icon">{icon}</div> : null}
-      <h3 className="dashboard-empty-state__title">{title}</h3>
+      {variant === 'tab' ? (
+        <h3 className="dashboard-empty-state__title">{title}</h3>
+      ) : (
+        <p className="dashboard-empty-state__title">{title}</p>
+      )}
       {description ? (
         <p
           className={clsx(

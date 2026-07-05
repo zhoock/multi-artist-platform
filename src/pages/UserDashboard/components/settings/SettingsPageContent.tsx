@@ -264,16 +264,13 @@ export function SettingsPageContent({
                   onChange={(event) => handlePublicSlugChange(event.target.value)}
                   onBlur={handlePublicSlugBlur}
                 />
-                <button
-                  type="button"
-                  className="user-dashboard__settings-page__slug-open"
+                <DashboardAction
                   onClick={onOpenArtistPage}
                   disabled={!profilePublicSlug}
                   aria-label={d?.profileHero?.openArtistPage ?? 'Open artist page'}
-                  title={d?.profileHero?.openArtistPage ?? 'Open artist page'}
                 >
                   <ExternalLinkIcon {...dashboardActionIconProps({ size: 18 })} />
-                </button>
+                </DashboardAction>
               </div>
             </DashboardRow>
 

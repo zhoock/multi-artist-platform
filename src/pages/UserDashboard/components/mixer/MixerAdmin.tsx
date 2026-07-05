@@ -152,6 +152,7 @@ export function MixerAdmin({ ui, userId, albums = [] }: MixerAdminProps) {
       emptyTitle: t.stemsEmptyTitle ?? 'Стемы не добавлены',
       emptyDescription: t.stemsEmptyDescription ?? 'Добавьте первый стем для этого трека.',
       noTracks: t.noTracks ?? 'Нет треков в альбоме',
+      tracks: t.tracks ?? 'Tracks',
       loading: t.loading ?? 'Загрузка…',
     }),
     [t]
@@ -478,6 +479,7 @@ export function MixerAdmin({ ui, userId, albums = [] }: MixerAdminProps) {
                 {isAlbumOpen && (
                   <DashboardCard className="user-dashboard__album-expanded user-dashboard__album-expanded--kit">
                     <div className="user-dashboard__tracks-list mixer-admin__tracks">
+                      <h3 className="visually-hidden">{labels.tracks}</h3>
                       {tracks.length === 0 ? (
                         <div className="mixer-admin__placeholder">{labels.noTracks}</div>
                       ) : (

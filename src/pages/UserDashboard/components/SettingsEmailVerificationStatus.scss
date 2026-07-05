@@ -1,3 +1,5 @@
+@use '../../../../scss/abstracts/mixins' as *;
+
 .settings-email-verification {
   &--verified {
     display: inline-flex;
@@ -41,6 +43,7 @@
 
   &__hint {
     margin: 0 0 0 calc(16px + 0.45em);
-    color: var(--dashboard-text-secondary);
+
+    @include dashboard-helper-text;
   }
 }
