@@ -672,10 +672,6 @@ function UserDashboard() {
       consumed = true;
     }
 
-    if (intent.openSettingsModal) {
-      consumed = true;
-    }
-
     if (intent.openNewArticleModal) {
       if (emailVerified) {
         setEditArticleModal({ isOpen: true, article: createNewDraftArticle() });

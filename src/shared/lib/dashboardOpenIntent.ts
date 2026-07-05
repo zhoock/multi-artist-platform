@@ -3,8 +3,6 @@ import type { Location } from 'react-router-dom';
 export type DashboardOpenIntent = {
   backgroundLocation?: Location;
   openEditAlbumModal?: boolean;
-  openSettingsModal?: boolean;
-  settingsTab?: 'general' | 'profile' | 'security';
   openNewArticleModal?: boolean;
 };
 

@@ -4,19 +4,15 @@ dialog {
   .user-dashboard {
     .collection {
       &__tab {
-        --collection-block-padding-y: var(--ms-0);
-        --collection-block-padding-x: var(--ms-1);
-        --collection-block-gap: 1.25rem;
+        --collection-block-padding-y: var(--ms-01);
+        --collection-block-padding-x: var(--ms-0);
+        --collection-block-gap: var(--ms-0);
 
         display: flex;
         flex-direction: column;
         gap: var(--ms-1);
-        padding: var(--ms-01);
+        padding: 0;
         min-height: 0;
-
-        @include breakpoint(tablet) {
-          padding: var(--ms-0) var(--ms-01) var(--ms-1);
-        }
 
         &--select-mode {
           padding-bottom: calc(var(--ms-1) + 4.5rem);
@@ -81,8 +77,8 @@ dialog {
       &__slots-card {
         display: flex;
         align-items: center;
-        gap: 1.25rem;
-        padding: var(--ms-0) var(--ms-1);
+        gap: var(--collection-block-gap);
+        padding: var(--collection-block-padding-y) var(--collection-block-padding-x);
         flex-shrink: 0;
       }
 
@@ -150,7 +146,7 @@ dialog {
 
       &__loading,
       &__error {
-        padding: var(--ms-01);
+        padding: var(--ms-01) var(--ms-0);
         font-size: var(--ms-0);
         border-radius: var(--ms-02);
       }

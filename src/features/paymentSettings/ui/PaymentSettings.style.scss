@@ -116,7 +116,7 @@ dialog {
 
       &__instructions {
         margin: 0;
-        padding: 0 var(--ms-0) var(--ms-01);
+        padding: var(--ms-01) var(--ms-0);
         color: var(--dashboard-text-secondary);
         font-size: var(--dashboard-font-size);
         line-height: 1.5;
@@ -155,7 +155,8 @@ dialog {
 
       &__cta {
         align-self: flex-start;
-        margin: 0 var(--ms-0) var(--ms-01);
+        margin: 0;
+        padding: 0 var(--ms-0) var(--ms-01);
 
         &--loading {
           @include dashboard-modal-inline-loading;

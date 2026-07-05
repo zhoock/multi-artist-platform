@@ -76,6 +76,8 @@ html.theme-dark {
   --dashboard-active-bg: var(--warm-concrete);
   --dashboard-shadow: rgb(var(--black-rgb) / 50%);
   --dashboard-backdrop: rgb(var(--black-rgb) / 70%);
+  --dashboard-error-bg: rgb(var(--pink-terracotta-rgb) / 10%);
+  --dashboard-error-border: rgb(var(--pink-terracotta-rgb) / 30%);
 
   // Dashboard button system — dark theme
   --dashboard-accent-rgb: var(--dark-greenish-yellow-rgb);

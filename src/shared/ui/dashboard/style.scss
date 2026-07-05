@@ -11,7 +11,6 @@
     justify-content: space-between;
     align-items: center;
     gap: var(--ms-0);
-    margin-block-end: var(--ms-02);
   }
 
   &__title {
@@ -152,8 +151,13 @@
 
   &--destructive {
     width: auto;
+    text-decoration: none;
 
     @include dashboard-btn-destructive($margin: 0);
+
+    &:hover:not(:disabled) {
+      text-decoration: none;
+    }
   }
 }
 

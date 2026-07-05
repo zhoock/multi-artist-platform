@@ -89,8 +89,8 @@
     color: var(--soft-red);
     font-size: var(--ms-0);
     text-align: center;
-    background: var(--dashboard-error-bg, rgb(255 68 68 / 10%));
-    border: 1px solid var(--dashboard-error-border, rgb(255 68 68 / 30%));
+    background: var(--dashboard-error-bg);
+    border: 1px solid var(--dashboard-error-border);
     border-radius: var(--ms-01);
   }
 

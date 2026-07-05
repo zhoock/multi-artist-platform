@@ -10,7 +10,7 @@ import { DashboardSaveSpinner } from '@shared/ui/dashboard-save/DashboardSaveSpi
 import '@shared/ui/dashboard-save/dashboard-save.scss';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 import { ModalCloseIcon } from '@shared/ui/icons/ModalCloseIcon';
-import '../modals/settings/SettingsModal.style.scss';
+import './ChangePasswordModal.style.scss';
 
 function PasswordVisibilityIcon({ visible }: { visible: boolean }) {
   const Icon = visible ? EyeIcon : EyeOffIcon;
@@ -18,7 +18,7 @@ function PasswordVisibilityIcon({ visible }: { visible: boolean }) {
     <Icon
       {...dashboardActionIconProps({
         size: 20,
-        className: 'settings-modal__password-toggle-icon',
+        className: 'change-password-modal__password-toggle-icon',
       })}
     />
   );
@@ -145,18 +145,18 @@ export function ChangePasswordModal({ isOpen, onClose }: ChangePasswordModalProp
 
   return (
     <Popup isActive={isOpen} onClose={onClose}>
-      <div className="settings-modal">
+      <div className="change-password-modal">
         <div
-          className={`settings-modal__card${isChangingPassword ? ' dashboard-save-card--busy' : ''}`}
+          className={`change-password-modal__card${isChangingPassword ? ' dashboard-save-card--busy' : ''}`}
           aria-busy={isChangingPassword}
         >
-          <div className="settings-modal__header">
-            <h2 className="settings-modal__title">
+          <div className="change-password-modal__header">
+            <h2 className="change-password-modal__title">
               {ui?.dashboard?.settingsModal?.buttons?.changePassword ?? 'Change password'}
             </h2>
             <button
               type="button"
-              className="settings-modal__close"
+              className="change-password-modal__close"
               onClick={onClose}
               disabled={isChangingPassword}
               aria-label={ui?.dashboard?.close ?? 'Close'}
@@ -165,34 +165,34 @@ export function ChangePasswordModal({ isOpen, onClose }: ChangePasswordModalProp
             </button>
           </div>
 
-          <div className="settings-modal__body">
-            <div className="settings-modal__content">
+          <div className="change-password-modal__body">
+            <div className="change-password-modal__content">
               <form
                 id="change-password-form"
-                className="settings-modal__security-tab"
+                className="change-password-modal__form"
                 onSubmit={handleSubmit}
                 noValidate
               >
                 {passwordSuccess ? (
-                  <div className="settings-modal__success-message">
+                  <div className="change-password-modal__success-message">
                     {ui?.dashboard?.settingsModal?.messages?.passwordUpdated ?? 'Password updated'}
                   </div>
                 ) : null}
                 {passwordError ? (
-                  <div className="settings-modal__error-message">{passwordError}</div>
+                  <div className="change-password-modal__error-message">{passwordError}</div>
                 ) : null}
 
-                <div className="settings-modal__field">
-                  <label htmlFor="change-password-current" className="settings-modal__label">
+                <div className="change-password-modal__field">
+                  <label htmlFor="change-password-current" className="change-password-modal__label">
                     {ui?.dashboard?.settingsModal?.fields?.currentPassword ?? 'Current Password'}
                   </label>
-                  <div className="settings-modal__input-wrapper">
+                  <div className="change-password-modal__input-wrapper">
                     <input
                       ref={currentPasswordRef}
                       id="change-password-current"
                       type={showCurrentPassword ? 'text' : 'password'}
-                      className={`settings-modal__input${
-                        currentPasswordError ? ' settings-modal__input--invalid' : ''
+                      className={`change-password-modal__input${
+                        currentPasswordError ? ' change-password-modal__input--invalid' : ''
                       }`}
                       value={currentPassword}
                       onChange={(e) => {
@@ -204,7 +204,7 @@ export function ChangePasswordModal({ isOpen, onClose }: ChangePasswordModalProp
                     />
                     <button
                       type="button"
-                      className="settings-modal__password-toggle"
+                      className="change-password-modal__password-toggle"
                       onClick={() => setShowCurrentPassword(!showCurrentPassword)}
                       tabIndex={-1}
                     >
@@ -212,22 +212,22 @@ export function ChangePasswordModal({ isOpen, onClose }: ChangePasswordModalProp
                     </button>
                   </div>
                   {currentPasswordError ? (
-                    <p className="settings-modal__field-error" role="alert">
+                    <p className="change-password-modal__field-error" role="alert">
                       {currentPasswordError}
                     </p>
                   ) : null}
                 </div>
 
-                <div className="settings-modal__field">
-                  <label htmlFor="change-password-new" className="settings-modal__label">
+                <div className="change-password-modal__field">
+                  <label htmlFor="change-password-new" className="change-password-modal__label">
                     {ui?.dashboard?.settingsModal?.fields?.newPassword ?? 'New Password'}
                   </label>
-                  <div className="settings-modal__input-wrapper">
+                  <div className="change-password-modal__input-wrapper">
                     <input
                       id="change-password-new"
                       type={showNewPassword ? 'text' : 'password'}
-                      className={`settings-modal__input${
-                        newPasswordError ? ' settings-modal__input--invalid' : ''
+                      className={`change-password-modal__input${
+                        newPasswordError ? ' change-password-modal__input--invalid' : ''
                       }`}
                       value={newPassword}
                       onChange={(e) => {
@@ -239,7 +239,7 @@ export function ChangePasswordModal({ isOpen, onClose }: ChangePasswordModalProp
                     />
                     <button
                       type="button"
-                      className="settings-modal__password-toggle"
+                      className="change-password-modal__password-toggle"
                       onClick={() => setShowNewPassword(!showNewPassword)}
                       tabIndex={-1}
                     >
@@ -247,23 +247,23 @@ export function ChangePasswordModal({ isOpen, onClose }: ChangePasswordModalProp
                     </button>
                   </div>
                   {newPasswordError ? (
-                    <p className="settings-modal__field-error" role="alert">
+                    <p className="change-password-modal__field-error" role="alert">
                       {newPasswordError}
                     </p>
                   ) : null}
                 </div>
 
-                <div className="settings-modal__field">
-                  <label htmlFor="change-password-confirm" className="settings-modal__label">
+                <div className="change-password-modal__field">
+                  <label htmlFor="change-password-confirm" className="change-password-modal__label">
                     {ui?.dashboard?.settingsModal?.fields?.confirmPassword ??
                       'Confirm New Password'}
                   </label>
-                  <div className="settings-modal__input-wrapper">
+                  <div className="change-password-modal__input-wrapper">
                     <input
                       id="change-password-confirm"
                       type={showConfirmPassword ? 'text' : 'password'}
-                      className={`settings-modal__input${
-                        confirmPasswordError ? ' settings-modal__input--invalid' : ''
+                      className={`change-password-modal__input${
+                        confirmPasswordError ? ' change-password-modal__input--invalid' : ''
                       }`}
                       value={confirmPassword}
                       onChange={(e) => {
@@ -275,7 +275,7 @@ export function ChangePasswordModal({ isOpen, onClose }: ChangePasswordModalProp
                     />
                     <button
                       type="button"
-                      className="settings-modal__password-toggle"
+                      className="change-password-modal__password-toggle"
                       onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                       tabIndex={-1}
                     >
@@ -283,7 +283,7 @@ export function ChangePasswordModal({ isOpen, onClose }: ChangePasswordModalProp
                     </button>
                   </div>
                   {confirmPasswordError ? (
-                    <p className="settings-modal__field-error" role="alert">
+                    <p className="change-password-modal__field-error" role="alert">
                       {confirmPasswordError}
                     </p>
                   ) : null}
@@ -292,10 +292,10 @@ export function ChangePasswordModal({ isOpen, onClose }: ChangePasswordModalProp
             </div>
           </div>
 
-          <div className="settings-modal__footer">
+          <div className="change-password-modal__footer">
             <button
               type="button"
-              className="settings-modal__button settings-modal__button--cancel"
+              className="change-password-modal__button change-password-modal__button--cancel"
               onClick={onClose}
               disabled={isChangingPassword}
             >
@@ -304,8 +304,8 @@ export function ChangePasswordModal({ isOpen, onClose }: ChangePasswordModalProp
             <button
               type="submit"
               form="change-password-form"
-              className={`settings-modal__button settings-modal__button--save${
-                isChangingPassword ? ' settings-modal__button--save-loading' : ''
+              className={`change-password-modal__button change-password-modal__button--save${
+                isChangingPassword ? ' change-password-modal__button--save-loading' : ''
               }`}
               disabled={isChangingPassword || !isPasswordFormValid}
             >
