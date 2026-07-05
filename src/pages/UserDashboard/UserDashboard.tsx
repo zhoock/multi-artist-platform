@@ -144,23 +144,23 @@ import {
   type DashboardRowFlash,
 } from './lib/dashboardRowStateFlash';
 import { DashboardTabContentSkeleton } from './components/DashboardTabContentSkeleton';
-import { ProfileTabSkeleton } from './components/ProfileTabSkeleton';
+import { SettingsTabSkeleton } from './components/SettingsTabSkeleton';
 import { SyncLyricsModal } from './components/modals/lyrics/SyncLyricsModal';
-import { ProfileSettingsModal } from './components/modals/profile/ProfileSettingsModal';
+import { SettingsModal } from './components/modals/settings/SettingsModal';
 import { PublicProfilePreview } from './components/profile/PublicProfilePreview';
 import { usePublicProfilePreview } from './components/profile/usePublicProfilePreview';
-import { UpgradeToArtistModal } from './components/modals/profile/UpgradeToArtistModal';
+import { UpgradeToArtistModal } from './components/modals/settings/UpgradeToArtistModal';
 import {
   DeleteAccountModal,
   type DeleteAccountModalCopy,
-} from './components/modals/profile/DeleteAccountModal';
+} from './components/modals/settings/DeleteAccountModal';
 import { PaymentSettings } from '@features/paymentSettings/ui/PaymentSettings';
 import { MyPurchasesContent } from './components/purchases/MyPurchasesContent';
 import { MixerAdmin } from './components/mixer/MixerAdmin';
 import { MixerEmptyState } from './components/mixer/MixerEmptyState';
 import { MyArchiveContent } from './components/archive/MyArchiveContent';
 import { SocialLinksContent } from './components/social/SocialLinksContent';
-import { ProfileEmailVerificationStatus } from './components/ProfileEmailVerificationStatus';
+import { SettingsEmailVerificationStatus } from './components/SettingsEmailVerificationStatus';
 import type { IAlbums, IArticles, IInterface, DashboardTrackVisibilityLabels } from '@models';
 import { getCachedAuthorship, setCachedAuthorship } from '@shared/lib/utils/authorshipCache';
 import {
@@ -733,8 +733,8 @@ export type { DashboardTab } from '@shared/lib/accountType';
 function dashboardHeadingForTab(tab: DashboardTab, ui: IInterface | null): string {
   const d = ui?.dashboard;
   switch (tab) {
-    case 'profile':
-      return d?.profile ?? 'Profile';
+    case 'settings':
+      return d?.settings ?? 'Settings';
     case 'social-links':
       return d?.tabs?.socialLinks ?? d?.socialLinks?.title ?? 'Social Links';
     case 'albums':
@@ -834,11 +834,11 @@ function UserDashboard() {
   const isArtist = isArtistAccount(user);
   const isListener = isListenerAccount(user);
 
-  const [isProfileSettingsModalOpen, setIsProfileSettingsModalOpen] = useState(false);
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [isUpgradeToArtistModalOpen, setIsUpgradeToArtistModalOpen] = useState(false);
-  const [profileSettingsInitialTab, setProfileSettingsInitialTab] = useState<
-    'general' | 'profile' | 'security'
-  >('general');
+  const [settingsInitialTab, setSettingsInitialTab] = useState<'general' | 'profile' | 'security'>(
+    'general'
+  );
   const [isDeleteAccountModalOpen, setIsDeleteAccountModalOpen] = useState(false);
   const [isAvatarMenuOpen, setIsAvatarMenuOpen] = useState(false);
   const avatarMenuContainerRef = useRef<HTMLDivElement | null>(null);
@@ -1159,7 +1159,7 @@ function UserDashboard() {
 
   const handleAccountDeleted = useCallback(() => {
     setIsDeleteAccountModalOpen(false);
-    setIsProfileSettingsModalOpen(false);
+    setIsSettingsModalOpen(false);
     setConfirmationModal(null);
     setAlertModal(null);
     setEditAlbumModal(null);
@@ -1189,9 +1189,9 @@ function UserDashboard() {
       consumed = true;
     }
 
-    if (intent.openProfileSettingsModal) {
-      setProfileSettingsInitialTab(intent.profileSettingsTab ?? 'profile');
-      setIsProfileSettingsModalOpen(true);
+    if (intent.openSettingsModal) {
+      setSettingsInitialTab(intent.settingsTab ?? 'profile');
+      setIsSettingsModalOpen(true);
       consumed = true;
     }
 
@@ -2896,6 +2896,10 @@ function UserDashboard() {
     closeDialog: closeEditTrackDialog,
   });
 
+  if (tabFromRoute === 'profile') {
+    return <Navigate to="/dashboard-new/settings" replace state={location.state} />;
+  }
+
   if (tabInvalid || tabDisallowed) {
     return (
       <Navigate
@@ -2984,8 +2988,8 @@ function UserDashboard() {
                 activeTab === 'albums' &&
                 emailVerified ? (
                   <DashboardTabContentSkeleton />
-                ) : albumsInitialLoading && !albumsLoadFailed && activeTab === 'profile' ? (
-                  <ProfileTabSkeleton />
+                ) : albumsInitialLoading && !albumsLoadFailed && activeTab === 'settings' ? (
+                  <SettingsTabSkeleton />
                 ) : albumsLoadFailed ? (
                   <div
                     className="user-dashboard__error user-dashboard__error--tab-shell"
@@ -3926,12 +3930,12 @@ function UserDashboard() {
                     ) : null}
                     <div
                       className="user-dashboard__tab-panel"
-                      hidden={activeTab !== 'profile'}
-                      aria-hidden={activeTab !== 'profile'}
+                      hidden={activeTab !== 'settings'}
+                      aria-hidden={activeTab !== 'settings'}
                     >
-                      <div className="user-dashboard__profile-tab">
+                      <div className="user-dashboard__settings-tab">
                         <div className="user-dashboard__section">
-                          <div className="user-dashboard__profile-content">
+                          <div className="user-dashboard__settings-content">
                             <div
                               className={clsx('user-dashboard__profile-hero', {
                                 'user-dashboard__profile-hero--public': isArtistPagePublic,
@@ -3951,7 +3955,7 @@ function UserDashboard() {
                                     <img
                                       src={avatarSrc}
                                       srcSet={avatarRetinaSrc ? `${avatarRetinaSrc} 2x` : undefined}
-                                      alt={ui?.dashboard?.profile ?? 'Profile'}
+                                      alt={ui?.dashboard?.changeAvatar ?? 'Avatar'}
                                       onError={(e) => {
                                         (e.target as HTMLImageElement).style.display = 'none';
                                       }}
@@ -4091,27 +4095,46 @@ function UserDashboard() {
                                 </>
                               ) : null}
 
-                              {profilePublicSlug ? (
+                              <div className="user-dashboard__profile-hero-actions">
                                 <button
                                   type="button"
-                                  className="user-dashboard__profile-hero-open"
-                                  onClick={() =>
-                                    openOwnArtistPage(
-                                      profilePublicSlug,
-                                      isArtistPagePublic,
-                                      navigate
-                                    )
-                                  }
+                                  className="user-dashboard__profile-hero-edit"
+                                  onClick={() => {
+                                    setSettingsInitialTab('general');
+                                    setIsSettingsModalOpen(true);
+                                  }}
                                 >
                                   <span
-                                    className="user-dashboard__profile-hero-open-icon"
+                                    className="user-dashboard__profile-hero-action-icon"
                                     aria-hidden={true}
                                   >
-                                    <ExternalLinkIcon {...dashboardActionIconProps()} />
+                                    <PencilIcon {...dashboardActionIconProps()} />
                                   </span>
-                                  {ui?.dashboard?.profileHero?.openArtistPage ?? 'Open artist page'}
+                                  {ui?.dashboard?.editProfile ?? 'Edit Profile'}
                                 </button>
-                              ) : null}
+                                {profilePublicSlug ? (
+                                  <button
+                                    type="button"
+                                    className="user-dashboard__profile-hero-open"
+                                    onClick={() =>
+                                      openOwnArtistPage(
+                                        profilePublicSlug,
+                                        isArtistPagePublic,
+                                        navigate
+                                      )
+                                    }
+                                  >
+                                    <span
+                                      className="user-dashboard__profile-hero-action-icon"
+                                      aria-hidden={true}
+                                    >
+                                      <ExternalLinkIcon {...dashboardActionIconProps()} />
+                                    </span>
+                                    {ui?.dashboard?.profileHero?.openArtistPage ??
+                                      'Open artist page'}
+                                  </button>
+                                ) : null}
+                              </div>
 
                               <input
                                 ref={avatarInputRef}
@@ -4135,8 +4158,8 @@ function UserDashboard() {
                                 lang={lang}
                                 ui={ui ?? undefined}
                                 onEditDescription={() => {
-                                  setProfileSettingsInitialTab('profile');
-                                  setIsProfileSettingsModalOpen(true);
+                                  setSettingsInitialTab('profile');
+                                  setIsSettingsModalOpen(true);
                                 }}
                               />
                             ) : null}
@@ -4159,7 +4182,7 @@ function UserDashboard() {
                                   </div>
                                 </dl>
                                 <div className="user-dashboard__account-verification">
-                                  <ProfileEmailVerificationStatus verified={emailVerified} />
+                                  <SettingsEmailVerificationStatus verified={emailVerified} />
                                 </div>
                               </div>
                             </div>
@@ -4185,19 +4208,7 @@ function UserDashboard() {
                               </p>
                             ) : null}
 
-                            <div className="user-dashboard__profile-actions">
-                              <button
-                                type="button"
-                                className="user-dashboard__profile-settings-button"
-                                onClick={() => {
-                                  setProfileSettingsInitialTab('general');
-                                  setIsProfileSettingsModalOpen(true);
-                                }}
-                              >
-                                {ui?.dashboard?.editProfile ??
-                                  ui?.dashboard?.profileSettings ??
-                                  'Edit Profile'}
-                              </button>
+                            <div className="user-dashboard__settings-actions user-dashboard__settings-actions--danger">
                               <button
                                 type="button"
                                 className="user-dashboard__delete-account-button"
@@ -4520,17 +4531,17 @@ function UserDashboard() {
         />
       )}
 
-      {/* Profile Settings Modal */}
-      <ProfileSettingsModal
-        isOpen={isProfileSettingsModalOpen}
-        onClose={() => setIsProfileSettingsModalOpen(false)}
+      {/* Settings Modal */}
+      <SettingsModal
+        isOpen={isSettingsModalOpen}
+        onClose={() => setIsSettingsModalOpen(false)}
         userName={user?.name ?? undefined}
         userEmail={user?.email}
         emailVerified={emailVerified}
-        initialTab={profileSettingsInitialTab}
+        initialTab={settingsInitialTab}
         showBecomeArtist={isListener}
         onBecomeArtist={() => {
-          setIsProfileSettingsModalOpen(false);
+          setIsSettingsModalOpen(false);
           setIsUpgradeToArtistModalOpen(true);
         }}
       />

@@ -52,7 +52,7 @@ export function PublicProfilePreview({
   onEditDescription,
 }: PublicProfilePreviewProps) {
   const preview = ui?.dashboard?.publicProfilePreview;
-  const settings = ui?.dashboard?.profileSettingsModal?.fields;
+  const settings = ui?.dashboard?.settingsModal?.fields;
   const [copied, setCopied] = useState(false);
 
   const genreLabel = getPublicProfileGenreLabel(data.genreCode, lang);

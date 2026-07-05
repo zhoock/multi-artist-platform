@@ -14,7 +14,7 @@ import type { DashboardTab } from '@shared/lib/accountType';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 
 const DASHBOARD_NAV_TAB_ICONS: Record<DashboardTab, LucideIcon> = {
-  profile: UserIcon,
+  settings: UserIcon,
   albums: DiscIcon,
   posts: FileTextIcon,
   mixer: SlidersHorizontalIcon,

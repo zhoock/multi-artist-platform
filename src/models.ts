@@ -558,8 +558,7 @@ export interface IInterface {
         >
       >;
     };
-    profile: string;
-    profileSettings: string;
+    settings: string;
     deleteAccount?: string;
     deleteAccountConfirmTitle?: string;
     deleteAccountWarningDescription?: string;
@@ -874,7 +873,7 @@ export interface IInterface {
       errorDownloadingTrack: string;
       errorDownloadingAlbum: string;
     };
-    profileSettingsModal?: {
+    settingsModal?: {
       tabs: {
         general: string;
         profile: string;

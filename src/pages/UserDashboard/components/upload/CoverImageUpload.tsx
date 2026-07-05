@@ -95,17 +95,17 @@ export function CoverImageUpload({ currentCoverUrl, onCoverUpdated }: CoverImage
       switch (validation.error) {
         case 'invalidFileType':
           errorMessage =
-            ui?.dashboard?.profileSettingsModal?.validation?.invalidFileType ??
+            ui?.dashboard?.settingsModal?.validation?.invalidFileType ??
             'Неподдерживаемый формат файла';
           break;
         case 'fileTooLarge':
           errorMessage = (
-            ui?.dashboard?.profileSettingsModal?.validation?.fileTooLarge ?? 'Файл слишком большой'
+            ui?.dashboard?.settingsModal?.validation?.fileTooLarge ?? 'Файл слишком большой'
           ).replace('{size}', '15');
           break;
         case 'imageTooSmall':
           errorMessage = (
-            ui?.dashboard?.profileSettingsModal?.validation?.imageTooSmall ??
+            ui?.dashboard?.settingsModal?.validation?.imageTooSmall ??
             'Изображение слишком маленькое'
           )
             .replace('{width}', String(MIN_WIDTH))
@@ -113,7 +113,7 @@ export function CoverImageUpload({ currentCoverUrl, onCoverUpdated }: CoverImage
           break;
         default:
           errorMessage =
-            ui?.dashboard?.profileSettingsModal?.validation?.uploadError ?? 'Ошибка загрузки файла';
+            ui?.dashboard?.settingsModal?.validation?.uploadError ?? 'Ошибка загрузки файла';
       }
       setError(errorMessage);
       return;
@@ -184,7 +184,7 @@ export function CoverImageUpload({ currentCoverUrl, onCoverUpdated }: CoverImage
     } catch (err) {
       console.error('Error uploading cover:', err);
       setError(
-        ui?.dashboard?.profileSettingsModal?.messages?.coverUploadError ?? 'Ошибка загрузки обложки'
+        ui?.dashboard?.settingsModal?.messages?.coverUploadError ?? 'Ошибка загрузки обложки'
       );
     } finally {
       setIsUploading(false);
@@ -204,8 +204,7 @@ export function CoverImageUpload({ currentCoverUrl, onCoverUpdated }: CoverImage
     <>
       <div className="cover-image-upload">
         <label className="cover-image-upload__label">
-          {ui?.dashboard?.profileSettingsModal?.fields?.headerImages ??
-            'Изображения для шапки сайта'}
+          {ui?.dashboard?.settingsModal?.fields?.headerImages ?? 'Изображения для шапки сайта'}
         </label>
 
         {displayUrl ? (
@@ -232,10 +231,10 @@ export function CoverImageUpload({ currentCoverUrl, onCoverUpdated }: CoverImage
           >
             <div className="cover-image-upload__dropzone-icon">+</div>
             <div className="cover-image-upload__dropzone-text">
-              {ui?.dashboard?.profileSettingsModal?.buttons?.uploadCover ?? 'Загрузить обложку'}
+              {ui?.dashboard?.settingsModal?.buttons?.uploadCover ?? 'Загрузить обложку'}
             </div>
             <div className="cover-image-upload__dropzone-hint">
-              {ui?.dashboard?.profileSettingsModal?.hints?.coverImage ??
+              {ui?.dashboard?.settingsModal?.hints?.coverImage ??
                 'Рекомендуемое разрешение: 2560 × 1522'}
             </div>
           </div>

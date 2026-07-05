@@ -1,11 +1,11 @@
-// src/pages/UserDashboard/components/ProfileSettingsModal.style.scss
+// src/pages/UserDashboard/components/modals/settings/SettingsModal.style.scss
 @use '../../../../../scss/abstracts/mixins' as *;
 @use '../../../../../scss/components/modal' as *;
 
 dialog {
   @include dashboard-modal-dialog-buttons;
 
-  .profile-settings-modal {
+  .settings-modal {
     @include dashboard-modal-shell;
 
     &__card {
@@ -221,7 +221,7 @@ dialog {
       }
 
       svg,
-      .profile-settings-modal__password-toggle-icon {
+      .settings-modal__password-toggle-icon {
         display: block;
         width: 20px;
         height: 20px;
@@ -303,7 +303,7 @@ dialog {
       border: 1px solid var(--dashboard-card-border);
       border-radius: var(--ms-01);
       box-shadow: 0 4px 12px var(--dashboard-shadow);
-      animation: profile-settings-select-dropdown-in 0.15s ease;
+      animation: settings-select-dropdown-in 0.15s ease;
     }
 
     &__option {
@@ -348,7 +348,7 @@ dialog {
       }
     }
 
-    @keyframes profile-settings-select-dropdown-in {
+    @keyframes settings-select-dropdown-in {
       from {
         opacity: 0;
         transform: translateY(-2px);

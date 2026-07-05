@@ -140,7 +140,7 @@ export function HeaderImagesUpload({
     // Проверяем лимит
     if (images.length >= MAX_IMAGES) {
       const errorMessage = (
-        ui?.dashboard?.profileSettingsModal?.validation?.maxImages ??
+        ui?.dashboard?.settingsModal?.validation?.maxImages ??
         'Можно загрузить до {count} изображений'
       ).replace('{count}', String(MAX_IMAGES));
       setError(errorMessage);
@@ -153,17 +153,17 @@ export function HeaderImagesUpload({
       switch (validation.error) {
         case 'invalidFileType':
           errorMessage =
-            ui?.dashboard?.profileSettingsModal?.validation?.invalidFileType ??
+            ui?.dashboard?.settingsModal?.validation?.invalidFileType ??
             'Неподдерживаемый формат файла';
           break;
         case 'fileTooLarge':
           errorMessage = (
-            ui?.dashboard?.profileSettingsModal?.validation?.fileTooLarge ?? 'Файл слишком большой'
+            ui?.dashboard?.settingsModal?.validation?.fileTooLarge ?? 'Файл слишком большой'
           ).replace('{size}', '15');
           break;
         case 'imageTooSmall':
           errorMessage = (
-            ui?.dashboard?.profileSettingsModal?.validation?.imageTooSmall ??
+            ui?.dashboard?.settingsModal?.validation?.imageTooSmall ??
             'Изображение слишком маленькое'
           )
             .replace('{width}', String(MIN_WIDTH))
@@ -171,7 +171,7 @@ export function HeaderImagesUpload({
           break;
         default:
           errorMessage =
-            ui?.dashboard?.profileSettingsModal?.validation?.uploadError ?? 'Ошибка загрузки файла';
+            ui?.dashboard?.settingsModal?.validation?.uploadError ?? 'Ошибка загрузки файла';
       }
       setError(errorMessage);
       return;
@@ -273,8 +273,7 @@ export function HeaderImagesUpload({
     } catch (err) {
       console.error('Error uploading header image:', err);
       setError(
-        ui?.dashboard?.profileSettingsModal?.messages?.coverUploadError ??
-          'Ошибка загрузки изображения'
+        ui?.dashboard?.settingsModal?.messages?.coverUploadError ?? 'Ошибка загрузки изображения'
       );
     } finally {
       setIsUploading(false);
@@ -376,10 +375,10 @@ export function HeaderImagesUpload({
               {...dashboardActionIconProps({ size: 32 })}
             />
             <div className="header-images-upload__dropzone-text">
-              {ui?.dashboard?.profileSettingsModal?.buttons?.uploadCover ?? 'Загрузить изображение'}
+              {ui?.dashboard?.settingsModal?.buttons?.uploadCover ?? 'Загрузить изображение'}
             </div>
             <div className="header-images-upload__dropzone-hint">
-              {ui?.dashboard?.profileSettingsModal?.hints?.coverImage ??
+              {ui?.dashboard?.settingsModal?.hints?.coverImage ??
                 'Рекомендуемое разрешение: 2560 × 1522'}
             </div>
             <div className="header-images-upload__dropzone-count">

@@ -1,4 +1,4 @@
-// src/pages/UserDashboard/components/ProfileSettingsModal.tsx
+// src/pages/UserDashboard/components/SettingsModal.tsx
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useCloseWithUnsavedConfirmation } from '@shared/lib/hooks/useCloseWithUnsavedConfirmation';
 import { Popup } from '@shared/ui/popup';
@@ -21,12 +21,12 @@ import {
   InlineEditDiscardDialog,
   getCloseDiscardConfirmLabels,
 } from '../../shared/EditableCardField';
-import { ProfileEmailVerificationStatus } from '../../ProfileEmailVerificationStatus';
-import { ProfileSettingsSelect } from './ProfileSettingsSelect';
+import { SettingsEmailVerificationStatus } from '../../SettingsEmailVerificationStatus';
+import { SettingsSelect } from './SettingsSelect';
 import { Eye as EyeIcon, EyeOff as EyeOffIcon } from 'lucide-react';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 import { ModalCloseIcon } from '@shared/ui/icons/ModalCloseIcon';
-import './ProfileSettingsModal.style.scss';
+import './SettingsModal.style.scss';
 
 function PasswordVisibilityIcon({ visible }: { visible: boolean }) {
   const Icon = visible ? EyeIcon : EyeOffIcon;
@@ -35,13 +35,13 @@ function PasswordVisibilityIcon({ visible }: { visible: boolean }) {
     <Icon
       {...dashboardActionIconProps({
         size: 20,
-        className: 'profile-settings-modal__password-toggle-icon',
+        className: 'settings-modal__password-toggle-icon',
       })}
     />
   );
 }
 
-interface ProfileSettingsModalProps {
+interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
   userName?: string;
@@ -59,7 +59,7 @@ const SECURITY_FORM_ID = 'security-form';
 type PasswordFieldKey = 'currentPassword' | 'newPassword' | 'confirmPassword';
 type PasswordFieldErrors = Partial<Record<PasswordFieldKey, string>>;
 
-export function ProfileSettingsModal({
+export function SettingsModal({
   isOpen,
   onClose,
   userName = 'Site Owner',
@@ -68,7 +68,7 @@ export function ProfileSettingsModal({
   initialTab = 'general',
   showBecomeArtist = false,
   onBecomeArtist,
-}: ProfileSettingsModalProps) {
+}: SettingsModalProps) {
   const { lang: currentLang, setLang } = useLang();
   const ui = useAppSelector((state) => selectUiDictionaryFirst(state, currentLang));
   const [activeTab, setActiveTab] = useState<TabType>(initialTab);
@@ -155,7 +155,7 @@ export function ProfileSettingsModal({
 
     if (!currentPassword && !newPassword && !confirmPassword) return {};
 
-    const validation = ui?.dashboard?.profileSettingsModal?.validation;
+    const validation = ui?.dashboard?.settingsModal?.validation;
 
     if (!currentPassword) {
       return {
@@ -246,7 +246,7 @@ export function ProfileSettingsModal({
     initialHeaderImages,
   ]);
 
-  const finalizeProfileModalClose = useCallback(() => {
+  const finalizeSettingsModalClose = useCallback(() => {
     if (hasChanges) {
       revertLocalEdits();
     }
@@ -258,7 +258,7 @@ export function ProfileSettingsModal({
     popupRequestCloseRef.current?.();
   }, []);
 
-  const profileCloseGuard = useCloseWithUnsavedConfirmation({
+  const settingsCloseGuard = useCloseWithUnsavedConfirmation({
     isOpen,
     isBusy: isDashboardBusy,
     hasUnsavedChanges: Boolean(hasChanges),
@@ -378,7 +378,7 @@ export function ProfileSettingsModal({
         safeHeaderImages.length !== safeInitialHeaderImages.length ||
         safeHeaderImages.some((url, index) => url !== safeInitialHeaderImages[index]);
 
-      console.log('💾 [ProfileSettingsModal] Сохранение профиля:', {
+      console.log('💾 [SettingsModal] Сохранение профиля:', {
         needsSiteNameUpdate,
         needsPublicSlugUpdate,
         needsGenreUpdate,
@@ -415,13 +415,13 @@ export function ProfileSettingsModal({
           }
           if (needsHeaderImagesUpdate) {
             updateData.headerImages = safeHeaderImages;
-            console.log('📤 [ProfileSettingsModal] Header images для сохранения:', {
+            console.log('📤 [SettingsModal] Header images для сохранения:', {
               count: safeHeaderImages.length,
               urls: safeHeaderImages,
             });
           }
 
-          console.log('📤 [ProfileSettingsModal] Отправка данных:', updateData);
+          console.log('📤 [SettingsModal] Отправка данных:', updateData);
 
           const response = await fetchWithAuthSession('/api/user-profile', {
             method: 'POST',
@@ -451,7 +451,7 @@ export function ProfileSettingsModal({
           // Отправляем событие для обновления header images в Hero компоненте
           if (needsHeaderImagesUpdate) {
             console.log(
-              '✅ [ProfileSettingsModal] Header images успешно сохранены в БД, отправляем событие обновления'
+              '✅ [SettingsModal] Header images успешно сохранены в БД, отправляем событие обновления'
             );
             window.dispatchEvent(
               new CustomEvent('header-images-updated', {
@@ -460,9 +460,9 @@ export function ProfileSettingsModal({
             );
           }
 
-          console.log('✅ [ProfileSettingsModal] Профиль успешно сохранен');
+          console.log('✅ [SettingsModal] Профиль успешно сохранен');
         } catch (error) {
-          console.error('❌ [ProfileSettingsModal] Ошибка сохранения профиля:', error);
+          console.error('❌ [SettingsModal] Ошибка сохранения профиля:', error);
           alert(
             `Ошибка сохранения: ${error instanceof Error ? error.message : 'Неизвестная ошибка'}`
           );
@@ -471,7 +471,7 @@ export function ProfileSettingsModal({
           setIsSavingProfile(false);
         }
       } else {
-        console.log('ℹ️ [ProfileSettingsModal] Нет изменений для сохранения');
+        console.log('ℹ️ [SettingsModal] Нет изменений для сохранения');
       }
 
       setInitialName(name);
@@ -480,7 +480,7 @@ export function ProfileSettingsModal({
       setInitialHeaderImages([...(headerImages || [])]);
       setInitialAboutText(aboutText);
 
-      console.log('🔄 [ProfileSettingsModal] Обновлены начальные значения:', {
+      console.log('🔄 [SettingsModal] Обновлены начальные значения:', {
         initialName: name,
         initialHeaderImagesCount: (headerImages || []).length,
       });
@@ -564,7 +564,7 @@ export function ProfileSettingsModal({
           });
           // Гарантируем, что images всегда массив
           const safeImages = Array.isArray(images) ? images : [];
-          console.log('📥 [ProfileSettingsModal] Header images загружены из БД:', {
+          console.log('📥 [SettingsModal] Header images загружены из БД:', {
             count: safeImages.length,
             urls: safeImages,
             raw: images,
@@ -699,7 +699,7 @@ export function ProfileSettingsModal({
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         if (isDashboardBusy) return;
-        profileCloseGuard.requestClose();
+        settingsCloseGuard.requestClose();
       }
     };
 
@@ -713,24 +713,22 @@ export function ProfileSettingsModal({
     <>
       <Popup
         isActive={isOpen}
-        onClose={finalizeProfileModalClose}
-        onCancelRequest={() => profileCloseGuard.requestClose()}
+        onClose={finalizeSettingsModalClose}
+        onCancelRequest={() => settingsCloseGuard.requestClose()}
         requestCloseRef={popupRequestCloseRef}
-        closeBlocked={isDashboardBusy || profileCloseGuard.discardDialogOpen}
+        closeBlocked={isDashboardBusy || settingsCloseGuard.discardDialogOpen}
       >
-        <div className="profile-settings-modal">
+        <div className="settings-modal">
           <div
-            className={`profile-settings-modal__card${isDashboardBusy ? ' dashboard-save-card--busy' : ''}`}
+            className={`settings-modal__card${isDashboardBusy ? ' dashboard-save-card--busy' : ''}`}
             aria-busy={isDashboardBusy}
           >
-            <div className="profile-settings-modal__header">
-              <h2 className="profile-settings-modal__title">
-                {ui?.dashboard?.profileSettings ?? 'Настройки профиля'}
-              </h2>
+            <div className="settings-modal__header">
+              <h2 className="settings-modal__title">{ui?.dashboard?.settings ?? 'Settings'}</h2>
               <button
                 type="button"
-                className="profile-settings-modal__close"
-                onClick={() => profileCloseGuard.requestClose()}
+                className="settings-modal__close"
+                onClick={() => settingsCloseGuard.requestClose()}
                 disabled={isDashboardBusy}
                 aria-label={ui?.dashboard?.close ?? 'Закрыть'}
               >
@@ -738,57 +736,57 @@ export function ProfileSettingsModal({
               </button>
             </div>
 
-            <nav className="profile-settings-modal__tabs">
+            <nav className="settings-modal__tabs">
               <button
                 type="button"
-                className={`profile-settings-modal__tab ${
-                  activeTab === 'general' ? 'profile-settings-modal__tab--active' : ''
+                className={`settings-modal__tab ${
+                  activeTab === 'general' ? 'settings-modal__tab--active' : ''
                 }`}
                 onClick={() => setActiveTab('general')}
               >
-                {ui?.dashboard?.profileSettingsModal?.tabs?.general ?? 'General'}
+                {ui?.dashboard?.settingsModal?.tabs?.general ?? 'General'}
               </button>
               <button
                 type="button"
-                className={`profile-settings-modal__tab ${
-                  activeTab === 'profile' ? 'profile-settings-modal__tab--active' : ''
+                className={`settings-modal__tab ${
+                  activeTab === 'profile' ? 'settings-modal__tab--active' : ''
                 }`}
                 onClick={() => setActiveTab('profile')}
               >
-                {ui?.dashboard?.profileSettingsModal?.tabs?.profile ?? 'Profile'}
+                {ui?.dashboard?.settingsModal?.tabs?.profile ?? 'Profile'}
               </button>
               <button
                 type="button"
-                className={`profile-settings-modal__tab ${
-                  activeTab === 'security' ? 'profile-settings-modal__tab--active' : ''
+                className={`settings-modal__tab ${
+                  activeTab === 'security' ? 'settings-modal__tab--active' : ''
                 }`}
                 onClick={() => setActiveTab('security')}
               >
-                {ui?.dashboard?.profileSettingsModal?.tabs?.security ?? 'Security'}
+                {ui?.dashboard?.settingsModal?.tabs?.security ?? 'Security'}
               </button>
             </nav>
 
-            <div className="profile-settings-modal__body">
-              <div className="profile-settings-modal__content">
+            <div className="settings-modal__body">
+              <div className="settings-modal__content">
                 {activeTab === 'general' && (
-                  <div className="profile-settings-modal__general-tab">
-                    <div className="profile-settings-modal__field">
-                      <label className="profile-settings-modal__label">
-                        {ui?.dashboard?.profileSettingsModal?.fields?.language ?? 'Язык'}
+                  <div className="settings-modal__general-tab">
+                    <div className="settings-modal__field">
+                      <label className="settings-modal__label">
+                        {ui?.dashboard?.settingsModal?.fields?.language ?? 'Язык'}
                       </label>
-                      <p className="profile-settings-modal__field-description">
-                        {ui?.dashboard?.profileSettingsModal?.hints?.languageDescription ??
+                      <p className="settings-modal__field-description">
+                        {ui?.dashboard?.settingsModal?.hints?.languageDescription ??
                           (currentLang === 'en'
                             ? 'Used throughout the application.'
                             : 'Используется во всём приложении.')}
                       </p>
-                      <ProfileSettingsSelect
+                      <SettingsSelect
                         value={selectedLang}
                         options={languages}
                         onChange={(value) => setSelectedLang(value as 'ru' | 'en')}
                       />
-                      <p className="profile-settings-modal__field-hint profile-settings-modal__field-hint--muted">
-                        {ui?.dashboard?.profileSettingsModal?.hints?.languageReloadNote ??
+                      <p className="settings-modal__field-hint settings-modal__field-hint--muted">
+                        {ui?.dashboard?.settingsModal?.hints?.languageReloadNote ??
                           (currentLang === 'en'
                             ? 'The interface will reload after changing the language.'
                             : 'После смены языка интерфейс будет перезагружен.')}
@@ -796,8 +794,8 @@ export function ProfileSettingsModal({
                     </div>
 
                     {showBecomeArtist && onBecomeArtist ? (
-                      <p className="profile-settings-modal__upgrade">
-                        <span className="profile-settings-modal__upgrade-lead">
+                      <p className="settings-modal__upgrade">
+                        <span className="settings-modal__upgrade-lead">
                           {ui?.dashboard?.becomeArtistLead ??
                             (currentLang === 'en'
                               ? 'Want to publish music?'
@@ -805,7 +803,7 @@ export function ProfileSettingsModal({
                         </span>{' '}
                         <button
                           type="button"
-                          className="profile-settings-modal__upgrade-link"
+                          className="settings-modal__upgrade-link"
                           onClick={onBecomeArtist}
                         >
                           {ui?.dashboard?.becomeArtist ??
@@ -819,17 +817,17 @@ export function ProfileSettingsModal({
                 )}
 
                 {activeTab === 'profile' && (
-                  <div className="profile-settings-modal__profile-tab">
-                    <div className="profile-settings-modal__field">
-                      <label htmlFor="profile-name" className="profile-settings-modal__label">
-                        {ui?.dashboard?.profileSettingsModal?.fields?.bandName ?? 'Band Name'}
+                  <div className="settings-modal__profile-tab">
+                    <div className="settings-modal__field">
+                      <label htmlFor="profile-name" className="settings-modal__label">
+                        {ui?.dashboard?.settingsModal?.fields?.bandName ?? 'Band Name'}
                       </label>
                       <input
                         id="profile-name"
                         type="text"
-                        className="profile-settings-modal__input"
+                        className="settings-modal__input"
                         placeholder={
-                          ui?.dashboard?.profileSettingsModal?.placeholders?.bandName ??
+                          ui?.dashboard?.settingsModal?.placeholders?.bandName ??
                           'Enter the name of your band'
                         }
                         value={name}
@@ -837,82 +835,75 @@ export function ProfileSettingsModal({
                       />
                     </div>
 
-                    <div className="profile-settings-modal__field">
-                      <label
-                        htmlFor="profile-primary-genre"
-                        className="profile-settings-modal__label"
-                      >
-                        {ui?.dashboard?.profileSettingsModal?.fields?.primaryGenre ??
-                          'Основной жанр'}
+                    <div className="settings-modal__field">
+                      <label htmlFor="profile-primary-genre" className="settings-modal__label">
+                        {ui?.dashboard?.settingsModal?.fields?.primaryGenre ?? 'Основной жанр'}
                       </label>
-                      <ProfileSettingsSelect
+                      <SettingsSelect
                         id="profile-primary-genre"
                         value={genreCode}
                         options={genreOptions}
                         onChange={setGenreCode}
                       />
-                      <div className="profile-settings-modal__field-hint">
-                        {ui?.dashboard?.profileSettingsModal?.hints?.primaryGenreCatalog ??
+                      <div className="settings-modal__field-hint">
+                        {ui?.dashboard?.settingsModal?.hints?.primaryGenreCatalog ??
                           'Этот жанр используется для отображения артиста в каталоге'}
                       </div>
                     </div>
 
-                    <div className="profile-settings-modal__field">
-                      <label
-                        htmlFor="profile-public-slug"
-                        className="profile-settings-modal__label"
-                      >
+                    <div className="settings-modal__field">
+                      <label htmlFor="profile-public-slug" className="settings-modal__label">
                         Public URL (slug)
                       </label>
                       <input
                         id="profile-public-slug"
                         type="text"
-                        className="profile-settings-modal__input"
+                        className="settings-modal__input"
                         placeholder="my-band"
                         value={publicSlug}
                         onChange={(e) => setPublicSlug(normalizePublicSlug(e.target.value))}
                         onBlur={(e) => setPublicSlug(normalizePublicSlug(e.target.value))}
                       />
-                      <div className="profile-settings-modal__field-hint">
-                        {ui?.dashboard?.profileSettingsModal?.hints?.publicSlug ??
+                      <div className="settings-modal__field-hint">
+                        {ui?.dashboard?.settingsModal?.hints?.publicSlug ??
                           (currentLang === 'en'
                             ? 'Changing the slug may affect existing public links.'
                             : 'Изменение slug может повлиять на существующие публичные ссылки.')}
                       </div>
                     </div>
 
-                    <div className="profile-settings-modal__field">
-                      <label htmlFor="profile-email" className="profile-settings-modal__label">
-                        {ui?.dashboard?.profileSettingsModal?.fields?.email ?? 'Email'}
+                    <div className="settings-modal__field">
+                      <label htmlFor="profile-email" className="settings-modal__label">
+                        {ui?.dashboard?.settingsModal?.fields?.email ?? 'Email'}
                       </label>
                       <input
                         id="profile-email"
                         type="email"
-                        className="profile-settings-modal__input"
+                        className="settings-modal__input"
                         value={userEmail}
                         disabled
                       />
-                      <ProfileEmailVerificationStatus verified={emailVerified} />
+                      <SettingsEmailVerificationStatus verified={emailVerified} />
                     </div>
 
-                    <div className="profile-settings-modal__field">
-                      <label htmlFor="profile-about" className="profile-settings-modal__label">
-                        {ui?.dashboard?.profileSettingsModal?.fields?.aboutBand ?? 'О Группе'}
+                    <div className="settings-modal__field">
+                      <label htmlFor="profile-about" className="settings-modal__label">
+                        {ui?.dashboard?.settingsModal?.fields?.aboutBand ?? 'О Группе'}
                         {selectedLang === 'ru' ? ' (RU)' : ' (EN)'}
                       </label>
                       {isLoadingAboutText ? (
-                        <div className="profile-settings-modal__loading">
+                        <div className="settings-modal__loading">
                           {ui?.dashboard?.loading ?? ui?.dashboard?.uploading ?? 'Загрузка...'}
                         </div>
                       ) : (
                         <textarea
                           id="profile-about"
-                          className="profile-settings-modal__textarea"
+                          className="settings-modal__textarea"
                           placeholder={
                             selectedLang === 'ru'
-                              ? (ui?.dashboard?.profileSettingsModal?.placeholders?.aboutBand ??
+                              ? (ui?.dashboard?.settingsModal?.placeholders?.aboutBand ??
                                 'Введите описание группы на русском языке. Каждая строка будет отдельным параграфом.')
-                              : (ui?.dashboard?.profileSettingsModal?.placeholders?.aboutBand ??
+                              : (ui?.dashboard?.settingsModal?.placeholders?.aboutBand ??
                                 'Enter band description in English. Each line will be a separate paragraph.')
                           }
                           value={aboutText}
@@ -920,19 +911,18 @@ export function ProfileSettingsModal({
                           rows={8}
                         />
                       )}
-                      <div className="profile-settings-modal__field-hint">
+                      <div className="settings-modal__field-hint">
                         {selectedLang === 'ru'
-                          ? (ui?.dashboard?.profileSettingsModal?.hints?.aboutBand ??
+                          ? (ui?.dashboard?.settingsModal?.hints?.aboutBand ??
                             'Каждая строка будет отдельным параграфом в описании группы')
-                          : (ui?.dashboard?.profileSettingsModal?.hints?.aboutBand ??
+                          : (ui?.dashboard?.settingsModal?.hints?.aboutBand ??
                             'Each line will be a separate paragraph in the band description')}
                       </div>
                     </div>
 
-                    <div className="profile-settings-modal__field">
-                      <label className="profile-settings-modal__label">
-                        {ui?.dashboard?.profileSettingsModal?.fields?.headerImages ??
-                          'Header Images'}
+                    <div className="settings-modal__field">
+                      <label className="settings-modal__label">
+                        {ui?.dashboard?.settingsModal?.fields?.headerImages ?? 'Header Images'}
                       </label>
                       {isLoadingHeaderImages ? (
                         <div>
@@ -953,7 +943,7 @@ export function ProfileSettingsModal({
                 {activeTab === 'security' && (
                   <form
                     id={SECURITY_FORM_ID}
-                    className="profile-settings-modal__security-tab"
+                    className="settings-modal__security-tab"
                     onSubmit={(e) => {
                       e.preventDefault();
                       void handleSave();
@@ -961,28 +951,27 @@ export function ProfileSettingsModal({
                     noValidate
                   >
                     {passwordSuccess && (
-                      <div className="profile-settings-modal__success-message">
-                        {ui?.dashboard?.profileSettingsModal?.messages?.passwordUpdated ??
+                      <div className="settings-modal__success-message">
+                        {ui?.dashboard?.settingsModal?.messages?.passwordUpdated ??
                           'Пароль обновлён'}
                       </div>
                     )}
 
                     {passwordError && (
-                      <div className="profile-settings-modal__error-message">{passwordError}</div>
+                      <div className="settings-modal__error-message">{passwordError}</div>
                     )}
 
-                    <div className="profile-settings-modal__field">
-                      <label htmlFor="current-password" className="profile-settings-modal__label">
-                        {ui?.dashboard?.profileSettingsModal?.fields?.currentPassword ??
-                          'Текущий пароль'}
+                    <div className="settings-modal__field">
+                      <label htmlFor="current-password" className="settings-modal__label">
+                        {ui?.dashboard?.settingsModal?.fields?.currentPassword ?? 'Текущий пароль'}
                       </label>
-                      <div className="profile-settings-modal__input-wrapper">
+                      <div className="settings-modal__input-wrapper">
                         <input
                           ref={currentPasswordRef}
                           id="current-password"
                           type={showCurrentPassword ? 'text' : 'password'}
-                          className={`profile-settings-modal__input${
-                            currentPasswordError ? ' profile-settings-modal__input--invalid' : ''
+                          className={`settings-modal__input${
+                            currentPasswordError ? ' settings-modal__input--invalid' : ''
                           }`}
                           value={currentPassword}
                           onChange={(e) => {
@@ -998,7 +987,7 @@ export function ProfileSettingsModal({
                         />
                         <button
                           type="button"
-                          className="profile-settings-modal__password-toggle"
+                          className="settings-modal__password-toggle"
                           onClick={() => setShowCurrentPassword(!showCurrentPassword)}
                           aria-label={showCurrentPassword ? 'Скрыть пароль' : 'Показать пароль'}
                           tabIndex={-1}
@@ -1009,7 +998,7 @@ export function ProfileSettingsModal({
                       {currentPasswordError ? (
                         <p
                           id="current-password-error"
-                          className="profile-settings-modal__field-error"
+                          className="settings-modal__field-error"
                           role="alert"
                         >
                           {currentPasswordError}
@@ -1017,16 +1006,16 @@ export function ProfileSettingsModal({
                       ) : null}
                     </div>
 
-                    <div className="profile-settings-modal__field">
-                      <label htmlFor="new-password" className="profile-settings-modal__label">
-                        {ui?.dashboard?.profileSettingsModal?.fields?.newPassword ?? 'Новый пароль'}
+                    <div className="settings-modal__field">
+                      <label htmlFor="new-password" className="settings-modal__label">
+                        {ui?.dashboard?.settingsModal?.fields?.newPassword ?? 'Новый пароль'}
                       </label>
-                      <div className="profile-settings-modal__input-wrapper">
+                      <div className="settings-modal__input-wrapper">
                         <input
                           id="new-password"
                           type={showNewPassword ? 'text' : 'password'}
-                          className={`profile-settings-modal__input${
-                            newPasswordError ? ' profile-settings-modal__input--invalid' : ''
+                          className={`settings-modal__input${
+                            newPasswordError ? ' settings-modal__input--invalid' : ''
                           }`}
                           value={newPassword}
                           onChange={(e) => {
@@ -1041,7 +1030,7 @@ export function ProfileSettingsModal({
                         />
                         <button
                           type="button"
-                          className="profile-settings-modal__password-toggle"
+                          className="settings-modal__password-toggle"
                           onClick={() => setShowNewPassword(!showNewPassword)}
                           aria-label={showNewPassword ? 'Скрыть пароль' : 'Показать пароль'}
                           tabIndex={-1}
@@ -1052,7 +1041,7 @@ export function ProfileSettingsModal({
                       {newPasswordError ? (
                         <p
                           id="new-password-error"
-                          className="profile-settings-modal__field-error"
+                          className="settings-modal__field-error"
                           role="alert"
                         >
                           {newPasswordError}
@@ -1060,17 +1049,17 @@ export function ProfileSettingsModal({
                       ) : null}
                     </div>
 
-                    <div className="profile-settings-modal__field">
-                      <label htmlFor="confirm-password" className="profile-settings-modal__label">
-                        {ui?.dashboard?.profileSettingsModal?.fields?.confirmPassword ??
+                    <div className="settings-modal__field">
+                      <label htmlFor="confirm-password" className="settings-modal__label">
+                        {ui?.dashboard?.settingsModal?.fields?.confirmPassword ??
                           'Подтвердите новый пароль'}
                       </label>
-                      <div className="profile-settings-modal__input-wrapper">
+                      <div className="settings-modal__input-wrapper">
                         <input
                           id="confirm-password"
                           type={showConfirmPassword ? 'text' : 'password'}
-                          className={`profile-settings-modal__input${
-                            confirmPasswordError ? ' profile-settings-modal__input--invalid' : ''
+                          className={`settings-modal__input${
+                            confirmPasswordError ? ' settings-modal__input--invalid' : ''
                           }`}
                           value={confirmPassword}
                           onChange={(e) => {
@@ -1086,7 +1075,7 @@ export function ProfileSettingsModal({
                         />
                         <button
                           type="button"
-                          className="profile-settings-modal__password-toggle"
+                          className="settings-modal__password-toggle"
                           onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                           aria-label={showConfirmPassword ? 'Скрыть пароль' : 'Показать пароль'}
                           tabIndex={-1}
@@ -1097,7 +1086,7 @@ export function ProfileSettingsModal({
                       {confirmPasswordError ? (
                         <p
                           id="confirm-password-error"
-                          className="profile-settings-modal__field-error"
+                          className="settings-modal__field-error"
                           role="alert"
                         >
                           {confirmPasswordError}
@@ -1109,11 +1098,11 @@ export function ProfileSettingsModal({
               </div>
             </div>
 
-            <div className="profile-settings-modal__footer">
+            <div className="settings-modal__footer">
               <button
                 type="button"
-                className="profile-settings-modal__button profile-settings-modal__button--cancel"
-                onClick={() => profileCloseGuard.requestClose()}
+                className="settings-modal__button settings-modal__button--cancel"
+                onClick={() => settingsCloseGuard.requestClose()}
                 disabled={isDashboardBusy}
               >
                 {ui?.dashboard?.cancel ?? 'Отмена'}
@@ -1121,8 +1110,8 @@ export function ProfileSettingsModal({
               <button
                 type={activeTab === 'security' ? 'submit' : 'button'}
                 form={activeTab === 'security' ? SECURITY_FORM_ID : undefined}
-                className={`profile-settings-modal__button profile-settings-modal__button--save${
-                  isDashboardBusy ? ' profile-settings-modal__button--save-loading' : ''
+                className={`settings-modal__button settings-modal__button--save${
+                  isDashboardBusy ? ' settings-modal__button--save-loading' : ''
                 }`}
                 onClick={activeTab === 'security' ? undefined : handleSave}
                 disabled={
@@ -1144,11 +1133,11 @@ export function ProfileSettingsModal({
           </div>
         </div>
         <InlineEditDiscardDialog
-          open={profileCloseGuard.discardDialogOpen}
+          open={settingsCloseGuard.discardDialogOpen}
           labels={getCloseDiscardConfirmLabels(ui ?? undefined)}
-          titleId={profileCloseGuard.discardTitleDomId}
-          onStay={profileCloseGuard.dismissDiscardDialog}
-          onDiscard={profileCloseGuard.finalizeCloseWithoutSaving}
+          titleId={settingsCloseGuard.discardTitleDomId}
+          onStay={settingsCloseGuard.dismissDiscardDialog}
+          onDiscard={settingsCloseGuard.finalizeCloseWithoutSaving}
         />
       </Popup>
     </>

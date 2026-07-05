@@ -7,7 +7,7 @@ export const DASHBOARD_TAB_SLUGS = [
   'posts',
   'payment-settings',
   'my-purchases',
-  'profile',
+  'settings',
   'social-links',
   'mixer',
   'archive',
@@ -15,10 +15,10 @@ export const DASHBOARD_TAB_SLUGS = [
 
 export type DashboardTab = (typeof DASHBOARD_TAB_SLUGS)[number];
 
-const LISTENER_TABS: DashboardTab[] = ['profile', 'my-purchases', 'archive'];
+const LISTENER_TABS: DashboardTab[] = ['settings', 'my-purchases', 'archive'];
 
 const ARTIST_TABS: DashboardTab[] = [
-  'profile',
+  'settings',
   'albums',
   'posts',
   'mixer',
@@ -28,8 +28,17 @@ const ARTIST_TABS: DashboardTab[] = [
   'social-links',
 ];
 
+/** Legacy `/dashboard-new/profile` slug before Settings rename. */
+export function normalizeLegacyDashboardTabSlug(tab: string | undefined): string | undefined {
+  if (tab === 'profile') return 'settings';
+  return tab;
+}
+
 export function isDashboardTabSlug(value: string): value is DashboardTab {
-  return (DASHBOARD_TAB_SLUGS as readonly string[]).includes(value);
+  const normalized = normalizeLegacyDashboardTabSlug(value);
+  return (
+    normalized !== undefined && (DASHBOARD_TAB_SLUGS as readonly string[]).includes(normalized)
+  );
 }
 
 /** Legacy sessions without accountType are treated as artist (existing CMS users). */
@@ -56,21 +65,25 @@ export function getVisibleDashboardTabs(user: AuthUser | null | undefined): Dash
 }
 
 export function getDefaultDashboardTab(user: AuthUser | null | undefined): DashboardTab {
-  return isListenerAccount(user) ? 'profile' : 'albums';
+  return isListenerAccount(user) ? 'settings' : 'albums';
 }
 
 export function isDashboardTabAllowed(
   tab: string | undefined,
   user: AuthUser | null | undefined
 ): tab is DashboardTab {
-  if (!tab || !isDashboardTabSlug(tab)) return false;
-  return getVisibleDashboardTabs(user).includes(tab);
+  const normalizedTab = normalizeLegacyDashboardTabSlug(tab);
+  if (!normalizedTab || !isDashboardTabSlug(normalizedTab)) return false;
+  return getVisibleDashboardTabs(user).includes(normalizedTab as DashboardTab);
 }
 
 export function resolveDashboardTab(
   tab: string | undefined,
   user: AuthUser | null | undefined
 ): DashboardTab {
-  if (isDashboardTabAllowed(tab, user)) return tab;
+  const normalizedTab = normalizeLegacyDashboardTabSlug(tab);
+  if (normalizedTab && isDashboardTabAllowed(normalizedTab, user)) {
+    return normalizedTab as DashboardTab;
+  }
   return getDefaultDashboardTab(user);
 }

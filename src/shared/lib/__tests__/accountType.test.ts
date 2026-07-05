@@ -37,10 +37,10 @@ describe('accountType dashboard helpers', () => {
     localStorage.removeItem('auth_user');
   });
 
-  it('listener sees profile, purchases, and archive only', () => {
+  it('listener sees settings, purchases, and archive only', () => {
     const user = makeUser('listener');
-    expect(getVisibleDashboardTabs(user)).toEqual(['profile', 'my-purchases', 'archive']);
-    expect(getDefaultDashboardTab(user)).toBe('profile');
+    expect(getVisibleDashboardTabs(user)).toEqual(['settings', 'my-purchases', 'archive']);
+    expect(getDefaultDashboardTab(user)).toBe('settings');
   });
 
   it('artist keeps full dashboard tabs', () => {
@@ -50,11 +50,17 @@ describe('accountType dashboard helpers', () => {
     expect(getDefaultDashboardTab(user)).toBe('albums');
   });
 
+  it('resolveDashboardTab maps legacy profile slug to settings', () => {
+    const listener = makeUser('listener');
+    expect(resolveDashboardTab('profile', listener)).toBe('settings');
+    expect(isDashboardTabAllowed('profile', listener)).toBe(true);
+  });
+
   it('resolveDashboardTab redirects disallowed tabs to role default', () => {
     const listener = makeUser('listener');
-    expect(resolveDashboardTab('albums', listener)).toBe('profile');
+    expect(resolveDashboardTab('albums', listener)).toBe('settings');
     expect(isDashboardTabAllowed('albums', listener)).toBe(false);
-    expect(isDashboardTabAllowed('profile', listener)).toBe(true);
+    expect(isDashboardTabAllowed('settings', listener)).toBe(true);
   });
 
   it('resolveDashboardTab keeps allowed tabs', () => {

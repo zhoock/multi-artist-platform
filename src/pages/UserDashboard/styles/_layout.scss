@@ -1,5 +1,5 @@
 // Layout styles for UserDashboard
-// Header, sidebar, navigation, profile
+// Header, sidebar, navigation, settings
 
 @use '../../../scss/abstracts/mixins' as *;
 @use '../../../scss/components/modal' as *;
@@ -38,17 +38,21 @@ dialog {
       font-size: var(--dashboard-heading-font-size);
     }
 
-    &__profile-actions {
+    &__settings-actions {
       display: flex;
       flex-direction: column;
       width: 100%;
       margin: var(--ms-0) 0;
       gap: var(--ms-1);
 
-      @include breakpoint(tablet) {
-        flex-direction: row;
-        justify-content: space-between;
-        align-items: center;
+      &--danger {
+        margin-block-start: var(--ms-1);
+
+        @include breakpoint(tablet) {
+          flex-direction: row;
+          justify-content: flex-end;
+          align-items: center;
+        }
       }
     }
 
@@ -150,7 +154,7 @@ dialog {
       }
     }
 
-    /** Аватар в profile hero */
+    /** Аватар в profile hero (public profile preview on Settings page) */
     &__profile-hero-avatar-wrap {
       position: relative;
       display: inline-flex;
@@ -358,22 +362,6 @@ dialog {
 
       to {
         transform: rotate(360deg);
-      }
-    }
-
-    &__profile-fields {
-      display: flex;
-      flex-direction: column;
-      gap: var(--ms-0);
-    }
-
-    &__profile-settings-button {
-      width: 100%;
-
-      @include dashboard-btn-secondary;
-
-      @include breakpoint(tablet) {
-        width: auto;
       }
     }
 

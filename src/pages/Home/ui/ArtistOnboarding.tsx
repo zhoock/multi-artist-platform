@@ -38,7 +38,7 @@ export function ArtistOnboarding() {
   const { displayLabel: artistName } = useSiteArtistDisplayName(lang, { artistSlug });
 
   const openDashboard = (
-    tab: 'albums' | 'posts' | 'profile' | 'mixer',
+    tab: 'albums' | 'posts' | 'settings' | 'mixer',
     intent: Omit<DashboardOpenIntent, 'backgroundLocation'>
   ) => {
     navigate(`/dashboard-new/${tab}`, {
@@ -67,9 +67,9 @@ export function ArtistOnboarding() {
         copy?.features?.profile?.description ??
         'Создайте страницу артиста. Добавьте описание, фото и ссылки на соцсети.',
       onClick: () =>
-        openDashboard('profile', {
-          openProfileSettingsModal: true,
-          profileSettingsTab: 'profile',
+        openDashboard('settings', {
+          openSettingsModal: true,
+          settingsTab: 'profile',
         }),
     },
     {

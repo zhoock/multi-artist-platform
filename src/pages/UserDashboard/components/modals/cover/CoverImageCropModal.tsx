@@ -136,9 +136,7 @@ export function CoverImageCropModal({
       setZoom(nextZoom);
     };
     reader.onerror = () => {
-      setError(
-        ui?.dashboard?.profileSettingsModal?.validation?.uploadError ?? 'Ошибка чтения файла'
-      );
+      setError(ui?.dashboard?.settingsModal?.validation?.uploadError ?? 'Ошибка чтения файла');
       setImageSrc(null);
     };
     reader.readAsDataURL(imageFile);
@@ -170,8 +168,7 @@ export function CoverImageCropModal({
     } catch (err) {
       console.error('Error creating preview:', err);
       setError(
-        ui?.dashboard?.profileSettingsModal?.validation?.uploadError ??
-          'Ошибка создания предпросмотра'
+        ui?.dashboard?.settingsModal?.validation?.uploadError ?? 'Ошибка создания предпросмотра'
       );
     } finally {
       setIsSaving(false);
@@ -192,8 +189,7 @@ export function CoverImageCropModal({
     } catch (err) {
       console.error('Error saving cover:', err);
       let errorMessage =
-        ui?.dashboard?.profileSettingsModal?.messages?.coverUploadError ??
-        'Ошибка сохранения обложки';
+        ui?.dashboard?.settingsModal?.messages?.coverUploadError ?? 'Ошибка сохранения обложки';
 
       // Более детальные сообщения об ошибках
       if (err instanceof Error) {
@@ -203,12 +199,11 @@ export function CoverImageCropModal({
           err.message.includes('Network')
         ) {
           errorMessage =
-            ui?.dashboard?.profileSettingsModal?.validation?.networkError ??
+            ui?.dashboard?.settingsModal?.validation?.networkError ??
             'Ошибка сети. Проверьте подключение к интернету.';
         } else if (err.message.includes('Failed to upload') || err.message.includes('upload')) {
           errorMessage =
-            ui?.dashboard?.profileSettingsModal?.messages?.coverUploadError ??
-            'Ошибка загрузки обложки';
+            ui?.dashboard?.settingsModal?.messages?.coverUploadError ?? 'Ошибка загрузки обложки';
         }
       }
 
@@ -303,8 +298,7 @@ export function CoverImageCropModal({
       <div className={`cover-image-crop-modal${isSaving ? ' dashboard-save-card--busy' : ''}`}>
         <div className="cover-image-crop-modal__header">
           <h2 className="cover-image-crop-modal__title">
-            {ui?.dashboard?.profileSettingsModal?.messages?.coverEditTitle ??
-              'Редактирование обложки'}
+            {ui?.dashboard?.settingsModal?.messages?.coverEditTitle ?? 'Редактирование обложки'}
           </h2>
           <button
             type="button"
@@ -319,9 +313,9 @@ export function CoverImageCropModal({
 
         <div className="cover-image-crop-modal__instruction">
           {isPreviewMode
-            ? (ui?.dashboard?.profileSettingsModal?.messages?.coverPreviewInstruction ??
+            ? (ui?.dashboard?.settingsModal?.messages?.coverPreviewInstruction ??
               'Предпросмотр обложки')
-            : (ui?.dashboard?.profileSettingsModal?.messages?.coverEditInstruction ??
+            : (ui?.dashboard?.settingsModal?.messages?.coverEditInstruction ??
               'Drag to reposition • Use the slider to zoom')}
         </div>
 
@@ -385,7 +379,7 @@ export function CoverImageCropModal({
             <div className="cover-image-crop-modal__zoom-control">
               <label>
                 <span className="cover-image-crop-modal__zoom-label">
-                  {ui?.dashboard?.profileSettingsModal?.fields?.zoom ?? 'Масштаб'}:
+                  {ui?.dashboard?.settingsModal?.fields?.zoom ?? 'Масштаб'}:
                 </span>
                 <input
                   type="range"
@@ -433,7 +427,7 @@ export function CoverImageCropModal({
                     {ui?.dashboard?.saving ?? 'Сохранение...'}
                   </>
                 ) : (
-                  (ui?.dashboard?.profileSettingsModal?.buttons?.setCover ?? 'Установить обложку')
+                  (ui?.dashboard?.settingsModal?.buttons?.setCover ?? 'Установить обложку')
                 )}
               </button>
             </>
@@ -469,7 +463,7 @@ export function CoverImageCropModal({
                     {ui?.dashboard?.saving ?? 'Сохранение...'}
                   </>
                 ) : (
-                  (ui?.dashboard?.profileSettingsModal?.buttons?.setCover ?? 'Установить обложку')
+                  (ui?.dashboard?.settingsModal?.buttons?.setCover ?? 'Установить обложку')
                 )}
               </button>
             </>

@@ -1,4 +1,4 @@
-.profile-email-verification {
+.settings-email-verification {
   &--verified {
     display: inline-flex;
     align-items: center;
@@ -26,11 +26,11 @@
     display: block;
     flex-shrink: 0;
 
-    .profile-email-verification--verified & {
+    .settings-email-verification--verified & {
       color: var(--dark-greenish-yellow);
     }
 
-    .profile-email-verification--unverified & {
+    .settings-email-verification--unverified & {
       color: var(--honeydew-melon);
     }
   }

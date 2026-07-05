@@ -513,8 +513,7 @@
         "contentDescription": "Описание страницы миксера и инфоблоки для RU и EN.",
         "contentPlaceholder": "Добавьте описание и инфоблоки для обеих локалей."
       },
-      "profile": "Профиль",
-      "profileSettings": "Настройки профиля",
+      "settings": "Настройки",
       "editProfile": "Редактировать профиль",
       "deleteAccount": "Удалить аккаунт",
       "deleteAccountConfirmTitle": "Удалить аккаунт?",
@@ -775,7 +774,7 @@
         "close": "Закрыть",
         "upgradeFailed": "Не удалось обновить аккаунт"
       },
-      "profileSettingsModal": {
+      "settingsModal": {
         "tabs": {
           "general": "Общие",
           "profile": "Профиль",

@@ -32,8 +32,8 @@ describe('sanitizeListenerPostAuthDestination', () => {
     expect(sanitizeListenerPostAuthDestination('/albums/demo?artist=foo')).toBe(
       '/albums/demo?artist=foo'
     );
-    expect(sanitizeListenerPostAuthDestination('/dashboard-new/profile')).toBe(
-      '/dashboard-new/profile'
+    expect(sanitizeListenerPostAuthDestination('/dashboard-new/settings')).toBe(
+      '/dashboard-new/settings'
     );
   });
 });

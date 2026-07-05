@@ -9,7 +9,7 @@
  *  3. Fallback — 'en' (SSR, отсутствует navigator, и т.п.).
  *
  * НИКАКОГО onboarding-модала: язык выбирается прозрачно при первом визите
- * и больше не спрашивается. Ручной свитчер в Header/ProfileSettings
+ * и больше не спрашивается. Ручной свитчер в Header/Settings
  * по-прежнему пишет в `localStorage['lang']` — это и есть "saved preference".
  *
  * Маппинг намеренно совпадает с серверным `normalizeEmailLocale`, чтобы UI

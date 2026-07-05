@@ -1,25 +1,25 @@
 import React, { useEffect, useRef, useState } from 'react';
 
-export type ProfileSettingsSelectOption = {
+export type SettingsSelectOption = {
   value: string;
   label: string;
 };
 
-type ProfileSettingsSelectProps = {
+type SettingsSelectProps = {
   id?: string;
   value: string;
-  options: ProfileSettingsSelectOption[];
+  options: SettingsSelectOption[];
   onChange: (value: string) => void;
   disabled?: boolean;
 };
 
-export function ProfileSettingsSelect({
+export function SettingsSelect({
   id,
   value,
   options,
   onChange,
   disabled = false,
-}: ProfileSettingsSelectProps) {
+}: SettingsSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const selectRef = useRef<HTMLDivElement>(null);
@@ -69,13 +69,11 @@ export function ProfileSettingsSelect({
   };
 
   return (
-    <div className="profile-settings-modal__select-wrapper">
+    <div className="settings-modal__select-wrapper">
       <div
         ref={selectRef}
         id={id}
-        className={`profile-settings-modal__select${
-          isOpen ? ' profile-settings-modal__select--open' : ''
-        }`}
+        className={`settings-modal__select${isOpen ? ' settings-modal__select--open' : ''}`}
         onClick={toggleDropdown}
         role="button"
         tabIndex={disabled ? -1 : 0}
@@ -90,10 +88,10 @@ export function ProfileSettingsSelect({
           }
         }}
       >
-        <span className="profile-settings-modal__select-value">{selectedOption?.label ?? ''}</span>
+        <span className="settings-modal__select-value">{selectedOption?.label ?? ''}</span>
         <svg
-          className={`profile-settings-modal__select-arrow ${
-            isOpen ? 'profile-settings-modal__select-arrow--open' : ''
+          className={`settings-modal__select-arrow ${
+            isOpen ? 'settings-modal__select-arrow--open' : ''
           }`}
           width="12"
           height="8"
@@ -113,15 +111,15 @@ export function ProfileSettingsSelect({
       </div>
 
       {isOpen && (
-        <div ref={dropdownRef} className="profile-settings-modal__dropdown" role="listbox">
+        <div ref={dropdownRef} className="settings-modal__dropdown" role="listbox">
           {options.map((option) => (
             <button
               key={option.value}
               type="button"
               role="option"
               aria-selected={value === option.value}
-              className={`profile-settings-modal__option ${
-                value === option.value ? 'profile-settings-modal__option--selected' : ''
+              className={`settings-modal__option ${
+                value === option.value ? 'settings-modal__option--selected' : ''
               }`}
               onClick={() => handleSelect(option.value)}
             >

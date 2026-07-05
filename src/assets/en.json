@@ -513,8 +513,7 @@
         "contentDescription": "Mixer page description and info blocks for RU and EN.",
         "contentPlaceholder": "Add description and info blocks for both locales."
       },
-      "profile": "Profile",
-      "profileSettings": "Profile Settings",
+      "settings": "Settings",
       "editProfile": "Edit Profile",
       "deleteAccount": "Delete account",
       "deleteAccountConfirmTitle": "Delete account?",
@@ -775,7 +774,7 @@
         "close": "Close",
         "upgradeFailed": "Could not upgrade account"
       },
-      "profileSettingsModal": {
+      "settingsModal": {
         "tabs": {
           "general": "General",
           "profile": "Profile",
