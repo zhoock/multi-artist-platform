@@ -12,4 +12,6 @@ export {
 } from './DashboardRow';
 export { DashboardAction } from './DashboardAction';
 export { DashboardIconButton } from './DashboardIconButton';
+export { DashboardCta } from './DashboardCta';
+export { DashboardExpandableRowTrigger } from './DashboardExpandableRowTrigger';
 export { DashboardEmptyState } from './DashboardEmptyState';

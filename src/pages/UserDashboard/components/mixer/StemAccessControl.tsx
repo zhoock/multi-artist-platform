@@ -1,6 +1,5 @@
 // src/pages/UserDashboard/components/mixer/StemAccessControl.tsx
-import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
+import React, { useCallback, useMemo } from 'react';
 import clsx from 'clsx';
 import type { IInterface } from '@models';
 import { useLang } from '@app/providers/lang';
@@ -11,6 +10,11 @@ import {
 } from '@shared/lib/stems/stemsVisibility';
 import { TrackVisibilityIcon } from '@shared/ui/icons/TrackVisibilityIcon';
 import { StatusBadge, type StatusBadgeVariant } from '@shared/ui/statusBadge';
+import {
+  DashboardAccessMenuPortal,
+  resolveDashboardAccessMenuPortalFromElement,
+  useDashboardAccessMenu,
+} from '../../lib/useDashboardAccessMenu';
 
 type StemAccessControlProps = {
   albumId: string;
@@ -36,17 +40,6 @@ function stemsVisibilityBadgeVariant(visibility: StemsVisibility): StatusBadgeVa
   }
 }
 
-function resolveAccessMenuPortalRoot(anchor: HTMLElement | null): HTMLElement | null {
-  if (typeof document === 'undefined' || !anchor) return null;
-  const dialog =
-    (anchor.closest('dialog.popup') as HTMLElement | null) ??
-    (anchor.closest('dialog') as HTMLElement | null);
-  if (dialog) {
-    return (dialog.querySelector('.user-dashboard') as HTMLElement | null) ?? dialog;
-  }
-  return document.body;
-}
-
 export function StemAccessControl({
   albumId,
   trackId,
@@ -57,10 +50,15 @@ export function StemAccessControl({
 }: StemAccessControlProps) {
   const { lang } = useLang();
   const stemsVisibility = normalizeStemsVisibility(visibility);
-  const [menuOpen, setMenuOpen] = useState(false);
-  const btnRef = useRef<HTMLButtonElement>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
-  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
+
+  const { triggerRef, menuRef, menuOpen, menuStyle, portalMount, toggleMenu, closeMenu } =
+    useDashboardAccessMenu({
+      getPortalRoot: (trigger) =>
+        portalRoot ??
+        resolveDashboardAccessMenuPortalFromElement(trigger, {
+          preferUserDashboard: true,
+        }),
+    });
 
   const t = (ui as { dashboard?: { mixer?: Record<string, unknown> } } | undefined)?.dashboard
     ?.mixer;
@@ -120,96 +118,6 @@ export function StemAccessControl({
     (t?.stemsAccessAriaLabel as string | undefined) ??
     (lang === 'en' ? 'Stem access' : 'Доступ к стемам');
 
-  const updateMenuPosition = useCallback(() => {
-    const el = btnRef.current;
-    if (!el || !menuOpen) return;
-    const r = el.getBoundingClientRect();
-    const menuWidth = 268;
-    setMenuPos({
-      top: r.bottom + 4,
-      left: Math.min(r.left, window.innerWidth - menuWidth - 8),
-    });
-  }, [menuOpen]);
-
-  const closeMenu = useCallback(() => {
-    setMenuOpen(false);
-    setMenuPos(null);
-  }, []);
-
-  useLayoutEffect(() => {
-    if (!menuOpen) return;
-    updateMenuPosition();
-  }, [menuOpen, updateMenuPosition]);
-
-  useEffect(() => {
-    if (!menuOpen) return;
-    window.addEventListener('scroll', updateMenuPosition, true);
-    window.addEventListener('resize', updateMenuPosition);
-    return () => {
-      window.removeEventListener('scroll', updateMenuPosition, true);
-      window.removeEventListener('resize', updateMenuPosition);
-    };
-  }, [menuOpen, updateMenuPosition]);
-
-  useEffect(() => {
-    if (!menuOpen) return;
-    let detached: (() => void) | null = null;
-    let cancelled = false;
-
-    const scheduleId = window.setTimeout(() => {
-      if (cancelled) return;
-      const onDown = (e: MouseEvent | TouchEvent) => {
-        const target = e.target as Node;
-        if (btnRef.current?.contains(target)) return;
-        if (menuRef.current?.contains(target)) return;
-        closeMenu();
-      };
-      document.addEventListener('mousedown', onDown);
-      document.addEventListener('touchstart', onDown);
-      detached = () => {
-        document.removeEventListener('mousedown', onDown);
-        document.removeEventListener('touchstart', onDown);
-      };
-    }, 0);
-
-    return () => {
-      cancelled = true;
-      window.clearTimeout(scheduleId);
-      detached?.();
-    };
-  }, [menuOpen, closeMenu]);
-
-  useEffect(() => {
-    if (!menuOpen) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') closeMenu();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [menuOpen, closeMenu]);
-
-  const toggleMenu = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
-    e.preventDefault();
-    setMenuOpen((wasOpen) => {
-      if (wasOpen) {
-        setMenuPos(null);
-        return false;
-      }
-      const el = btnRef.current;
-      const menuWidth = 268;
-      const pos =
-        el != null
-          ? {
-              top: el.getBoundingClientRect().bottom + 4,
-              left: Math.min(el.getBoundingClientRect().left, window.innerWidth - menuWidth - 8),
-            }
-          : { top: 120, left: 24 };
-      setMenuPos(pos);
-      return true;
-    });
-  }, []);
-
   const pickVisibility = useCallback(
     (v: StemsVisibility) => {
       if (v === stemsVisibility) {
@@ -227,14 +135,10 @@ export function StemAccessControl({
     menuOptions[0]?.label ??
     stemsVisibility;
 
-  const mount =
-    portalRoot ??
-    (typeof document !== 'undefined' ? resolveAccessMenuPortalRoot(btnRef.current) : null);
-
   return (
     <>
       <button
-        ref={btnRef}
+        ref={triggerRef}
         type="button"
         className="user-dashboard__track-access-button mixer-admin__stem-access-button"
         onClick={toggleMenu}
@@ -247,56 +151,42 @@ export function StemAccessControl({
           {currentLabel}
         </StatusBadge>
       </button>
-      {menuOpen &&
-        mount != null &&
-        createPortal(
-          <div
-            ref={menuRef}
-            className="user-dashboard__track-access-menu"
-            style={{
-              position: 'fixed',
-              top: (menuPos ?? { top: 120, left: 24 }).top,
-              left: (menuPos ?? { top: 120, left: 24 }).left,
-              zIndex: 10050,
-              minWidth: 240,
-              maxWidth: 280,
+      <DashboardAccessMenuPortal
+        menuRef={menuRef}
+        open={menuOpen}
+        portalMount={portalMount}
+        menuStyle={menuStyle}
+      >
+        {menuOptions.map((opt) => (
+          <button
+            key={opt.value}
+            type="button"
+            role="menuitem"
+            className={clsx('user-dashboard__track-access-menu-item', {
+              'user-dashboard__track-access-menu-item--active': opt.value === stemsVisibility,
+            })}
+            onClick={(e) => {
+              e.stopPropagation();
+              pickVisibility(opt.value);
             }}
-            role="menu"
           >
-            {menuOptions.map((opt) => (
-              <button
-                key={opt.value}
-                type="button"
-                role="menuitem"
-                className={clsx('user-dashboard__track-access-menu-item', {
-                  'user-dashboard__track-access-menu-item--active': opt.value === stemsVisibility,
-                })}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  pickVisibility(opt.value);
-                }}
-              >
-                <span className="user-dashboard__track-access-menu-item-icon" aria-hidden>
-                  <TrackVisibilityIcon visibility={opt.value} size={18} />
-                </span>
-                <span className="user-dashboard__track-access-menu-item-text">
-                  <span className="user-dashboard__track-access-menu-item-title">{opt.label}</span>
-                  <span className="user-dashboard__track-access-menu-item-desc">
-                    {opt.description}
-                  </span>
-                </span>
-                {opt.value === stemsVisibility ? (
-                  <span className="user-dashboard__track-access-menu-check" aria-hidden>
-                    ✓
-                  </span>
-                ) : (
-                  <span className="user-dashboard__track-access-menu-check-spacer" aria-hidden />
-                )}
-              </button>
-            ))}
-          </div>,
-          mount
-        )}
+            <span className="user-dashboard__track-access-menu-item-icon" aria-hidden>
+              <TrackVisibilityIcon visibility={opt.value} size={18} />
+            </span>
+            <span className="user-dashboard__track-access-menu-item-text">
+              <span className="user-dashboard__track-access-menu-item-title">{opt.label}</span>
+              <span className="user-dashboard__track-access-menu-item-desc">{opt.description}</span>
+            </span>
+            {opt.value === stemsVisibility ? (
+              <span className="user-dashboard__track-access-menu-check" aria-hidden>
+                ✓
+              </span>
+            ) : (
+              <span className="user-dashboard__track-access-menu-check-spacer" aria-hidden />
+            )}
+          </button>
+        ))}
+      </DashboardAccessMenuPortal>
     </>
   );
 }

@@ -12,7 +12,12 @@ import { EmailVerificationOnboarding } from '@shared/lib/emailVerification';
 import { renderMarkdownViaRichText } from '@shared/lib/richText';
 import { normalizeTrackVisibility, type TrackVisibility } from '@shared/lib/tracks/trackVisibility';
 import type { SupportedLang } from '@shared/model/lang';
-import { DashboardCard, DashboardAction } from '@shared/ui/dashboard';
+import {
+  DashboardCard,
+  DashboardAction,
+  DashboardCta,
+  DashboardExpandableRowTrigger,
+} from '@shared/ui/dashboard';
 import {
   getDashboardRowFlashProps,
   type DashboardRowFlash,
@@ -253,18 +258,10 @@ export function PostsTabContent({
 
           return (
             <React.Fragment key={article.articleId}>
-              <div
+              <DashboardExpandableRowTrigger
                 id={`dashboard-article-row-${article.articleId}`}
-                className="user-dashboard__expandable-row-trigger"
-                onClick={() => onToggleArticle(isExpanded ? null : article.articleId)}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    onToggleArticle(isExpanded ? null : article.articleId);
-                  }
-                }}
+                expanded={isExpanded}
+                onToggle={() => onToggleArticle(isExpanded ? null : article.articleId)}
                 aria-label={isExpanded ? 'Collapse article' : 'Expand article'}
               >
                 <DashboardCard
@@ -351,7 +348,7 @@ export function PostsTabContent({
                     </div>
                   </div>
                 </DashboardCard>
-              </div>
+              </DashboardExpandableRowTrigger>
 
               {isExpanded ? (
                 <DashboardCard className="user-dashboard__album-expanded user-dashboard__album-expanded--article user-dashboard__album-expanded--kit">
@@ -409,9 +406,9 @@ export function PostsTabContent({
       </div>
 
       <div className="user-dashboard__upload-action">
-        <button type="button" className="dashboard-empty-state__cta" onClick={onCreateArticle}>
+        <DashboardCta onClick={onCreateArticle}>
           {ui?.dashboard?.uploadNewArticle ?? 'Upload New Article'}
-        </button>
+        </DashboardCta>
       </div>
     </div>
   );

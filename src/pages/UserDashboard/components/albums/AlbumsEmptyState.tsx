@@ -1,7 +1,7 @@
 import { Disc3 as Disc3Icon, Upload as UploadIcon } from 'lucide-react';
 
 import type { IInterface } from '@models';
-import { DashboardEmptyState } from '@shared/ui/dashboard';
+import { DashboardEmptyState, DashboardCta } from '@shared/ui/dashboard';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 
 type AlbumsEmptyStateProps = {
@@ -24,10 +24,10 @@ export function AlbumsEmptyState({ ui, onCreateAlbum }: AlbumsEmptyStateProps) {
         'Upload your first album to share your music with the world and build your catalog.'
       }
       action={
-        <button type="button" className="dashboard-empty-state__cta" onClick={onCreateAlbum}>
+        <DashboardCta onClick={onCreateAlbum}>
           <UploadIcon {...dashboardActionIconProps({ size: 18 })} />
           <span>{d?.createYourFirstAlbum ?? 'Create Your First Album'}</span>
-        </button>
+        </DashboardCta>
       }
     />
   );

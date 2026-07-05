@@ -59,7 +59,7 @@ describe('PostsTabContent', () => {
       />
     );
 
-    expect(container.querySelector('.user-dashboard__expandable-row-trigger')).toBeTruthy();
+    expect(container.querySelector('.dashboard-expandable-row-trigger')).toBeTruthy();
     expect(
       container.querySelector(
         '.dashboard-card.user-dashboard__album-item.dashboard-card--interactive'
@@ -116,7 +116,7 @@ describe('PostsTabContent', () => {
     ).toBeTruthy();
   });
 
-  it('uses dashboard-empty-state__cta for footer upload action', () => {
+  it('uses DashboardCta for footer upload action', () => {
     const { container } = render(
       <PostsTabContent
         {...createBaseProps({
@@ -125,7 +125,7 @@ describe('PostsTabContent', () => {
       />
     );
 
-    const cta = container.querySelector('.dashboard-empty-state__cta');
+    const cta = container.querySelector('.dashboard-cta');
     expect(cta).toBeTruthy();
     expect(cta?.textContent).toContain('Upload New Article');
   });

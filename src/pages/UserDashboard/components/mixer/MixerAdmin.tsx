@@ -26,7 +26,9 @@ import { uniqueUploadFileSuffix } from '@shared/lib/uniqueUploadFileSuffix';
 import {
   DashboardAction,
   DashboardCard,
+  DashboardCta,
   DashboardEmptyState,
+  DashboardExpandableRowTrigger,
   DashboardSection,
 } from '@shared/ui/dashboard';
 import './MixerAdmin.scss';
@@ -432,17 +434,9 @@ export function MixerAdmin({ ui, userId, albums = [] }: MixerAdminProps) {
             const storageAlbumId = getStorageAlbumId(album);
             return (
               <React.Fragment key={album.id}>
-                <div
-                  className="user-dashboard__expandable-row-trigger"
-                  onClick={() => toggleAlbum(album.id, isAlbumOpen, tracks, storageAlbumId)}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      toggleAlbum(album.id, isAlbumOpen, tracks, storageAlbumId);
-                    }
-                  }}
+                <DashboardExpandableRowTrigger
+                  expanded={isAlbumOpen}
+                  onToggle={() => toggleAlbum(album.id, isAlbumOpen, tracks, storageAlbumId)}
                   aria-label={isAlbumOpen ? 'Collapse album' : 'Expand album'}
                 >
                   <DashboardCard
@@ -480,7 +474,7 @@ export function MixerAdmin({ ui, userId, albums = [] }: MixerAdminProps) {
                       <DashboardExpandChevron expanded={isAlbumOpen} />
                     </div>
                   </DashboardCard>
-                </div>
+                </DashboardExpandableRowTrigger>
 
                 {isAlbumOpen && (
                   <DashboardCard className="user-dashboard__album-expanded user-dashboard__album-expanded--kit">
@@ -612,9 +606,8 @@ export function MixerAdmin({ ui, userId, albums = [] }: MixerAdminProps) {
                                         title={labels.emptyTitle}
                                         description={labels.emptyDescription}
                                         action={
-                                          <button
-                                            type="button"
-                                            className="dashboard-empty-state__cta mixer-admin__add-stem"
+                                          <DashboardCta
+                                            className="mixer-admin__add-stem"
                                             onClick={() =>
                                               setAddModal({
                                                 albumId: storageAlbumId,
@@ -624,7 +617,7 @@ export function MixerAdmin({ ui, userId, albums = [] }: MixerAdminProps) {
                                           >
                                             <PlusIcon {...dashboardActionIconProps({ size: 18 })} />
                                             {labels.addStem}
-                                          </button>
+                                          </DashboardCta>
                                         }
                                       />
                                     ) : (

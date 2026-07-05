@@ -5,8 +5,7 @@ import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 import { useLang } from '@app/providers/lang';
 import { getToken } from '@shared/lib/auth';
 import { fetchWithAuthSession } from '@shared/lib/authFetch';
-import { DashboardCard, DashboardRow, DashboardSection } from '@shared/ui/dashboard';
-import { DashboardSaveSpinner } from '@shared/ui/dashboard-save/DashboardSaveSpinner';
+import { DashboardCard, DashboardRow, DashboardSection, DashboardCta } from '@shared/ui/dashboard';
 import '@shared/ui/dashboard-save/dashboard-save.scss';
 import {
   EMPTY_SOCIAL_LINKS_FORM,
@@ -189,25 +188,16 @@ export function SocialLinksContent({ active }: SocialLinksContentProps) {
         >
           {ui?.dashboard?.cancel ?? 'Cancel'}
         </button>
-        <button
-          type="button"
-          className={clsx(
-            'dashboard-empty-state__cta',
-            'social-links__cta',
-            isSaving && 'social-links__cta--loading'
-          )}
+        <DashboardCta
+          className="social-links__cta"
+          loading={isSaving}
           onClick={() => void handleSave()}
           disabled={isSaving || isLoading || !hasChanges}
         >
-          {isSaving ? (
-            <>
-              <DashboardSaveSpinner />
-              {ui?.dashboard?.saving ?? ui?.dashboard?.uploading ?? 'Saving...'}
-            </>
-          ) : (
-            (ui?.dashboard?.save ?? 'Save')
-          )}
-        </button>
+          {isSaving
+            ? (ui?.dashboard?.saving ?? ui?.dashboard?.uploading ?? 'Saving...')
+            : (ui?.dashboard?.save ?? 'Save')}
+        </DashboardCta>
       </div>
     </div>
   );

@@ -25,7 +25,12 @@ import type { SupportedLang } from '@shared/model/lang';
 import type { TrackVisibility } from '@shared/lib/tracks/trackVisibility';
 import { EmailVerificationOnboarding } from '@shared/lib/emailVerification';
 import { SubscriberContentLockIcon } from '@shared/ui/icons/SubscriberContentLockIcon';
-import { DashboardCard, DashboardAction } from '@shared/ui/dashboard';
+import {
+  DashboardCard,
+  DashboardAction,
+  DashboardCta,
+  DashboardExpandableRowTrigger,
+} from '@shared/ui/dashboard';
 import {
   getDashboardRowFlashProps,
   type DashboardRowFlash,
@@ -243,18 +248,10 @@ export function AlbumsTabContent({
 
           return (
             <React.Fragment key={album.id}>
-              <div
+              <DashboardExpandableRowTrigger
                 id={`dashboard-album-row-${album.id}`}
-                className="user-dashboard__expandable-row-trigger"
-                onClick={() => onToggleAlbum(album.id)}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    onToggleAlbum(album.id);
-                  }
-                }}
+                expanded={isExpanded}
+                onToggle={() => onToggleAlbum(album.id)}
                 aria-label={isExpanded ? 'Collapse album' : 'Expand album'}
               >
                 <DashboardCard
@@ -326,7 +323,7 @@ export function AlbumsTabContent({
                     </div>
                   </div>
                 </DashboardCard>
-              </div>
+              </DashboardExpandableRowTrigger>
 
               {isExpanded ? (
                 <DashboardCard className="user-dashboard__album-expanded user-dashboard__album-expanded--kit">
@@ -606,9 +603,9 @@ export function AlbumsTabContent({
       <div className="user-dashboard__albums-upload-divider" aria-hidden />
 
       <div className="user-dashboard__upload-action">
-        <button type="button" className="dashboard-empty-state__cta" onClick={onCreateAlbum}>
+        <DashboardCta onClick={onCreateAlbum}>
           {ui?.dashboard?.uploadNewAlbum ?? 'Upload New Album'}
-        </button>
+        </DashboardCta>
       </div>
     </div>
   );

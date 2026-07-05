@@ -31,6 +31,7 @@ import { SubscriptionPlanBadge } from '@shared/ui/subscriptionPlan';
 import {
   DashboardAction,
   DashboardCard,
+  DashboardCta,
   DashboardRow,
   DashboardRowValue,
   DashboardSection,
@@ -603,13 +604,12 @@ export function MyArchiveContent({ active }: Props) {
                     <p className="collection__banner-line">{archiveFullSlotsUsedLine}</p>
                     <p className="collection__banner-line">{archiveFullUpgradeActionLine}</p>
                   </div>
-                  <button
-                    type="button"
-                    className="dashboard-empty-state__cta collection__banner-cta"
+                  <DashboardCta
+                    className="collection__banner-cta"
                     onClick={() => openSupportModal()}
                   >
                     {upgradePlanLabel}
-                  </button>
+                  </DashboardCta>
                 </DashboardCard>
               ) : null}
 
@@ -800,9 +800,9 @@ export function MyArchiveContent({ active }: Props) {
                       <p className="collection__empty-title">+ {slotsAvailableText}</p>
                       <p className="collection__empty-hint">{emptySlotHint}</p>
                     </div>
-                    <Link className="dashboard-empty-state__cta collection__card-cta" to="/">
+                    <DashboardCta as={Link} to="/" className="collection__card-cta">
                       {discoverLabel}
-                    </Link>
+                    </DashboardCta>
                   </DashboardCard>
                 ) : null}
 
@@ -814,13 +814,12 @@ export function MyArchiveContent({ active }: Props) {
                       </p>
                       <p className="collection__empty-hint">{supportInactiveDescription}</p>
                     </div>
-                    <button
-                      type="button"
-                      className="dashboard-empty-state__cta collection__card-cta"
+                    <DashboardCta
+                      className="collection__card-cta"
                       onClick={() => openSupportModal()}
                     >
                       {renewSupportLabel}
-                    </button>
+                    </DashboardCta>
                   </DashboardCard>
                 ) : null}
               </div>
@@ -846,15 +845,13 @@ export function MyArchiveContent({ active }: Props) {
                       <Trash2Icon size={14} aria-hidden />
                       {removeSelectedLabel}
                     </DashboardAction>
-                    <button
-                      type="button"
-                      className="dashboard-empty-state__cta"
+                    <DashboardCta
                       disabled={activateDisabled}
                       onClick={() => void handleActivateSelected()}
                     >
                       <LockIcon size={14} aria-hidden />
                       {activateSelectedTemplate.replace('{count}', String(activateCount))}
-                    </button>
+                    </DashboardCta>
                   </div>
                 </footer>
               ) : null}

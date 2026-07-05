@@ -1,5 +1,4 @@
-import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import clsx from 'clsx';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -22,6 +21,11 @@ import {
   getDashboardRowStateFlashRgb,
   type DashboardRowFlash,
 } from '../../lib/dashboardRowStateFlash';
+import {
+  DashboardAccessMenuPortal,
+  resolveDashboardAccessMenuPortalFromElement,
+  useDashboardAccessMenu,
+} from '../../lib/useDashboardAccessMenu';
 
 type DashboardUi = NonNullable<IInterface['dashboard']>;
 type DashboardUiWithTrackAccess = DashboardUi & {
@@ -67,10 +71,17 @@ export function SortableTrackItem({
   const inputRef = useRef<HTMLInputElement>(null);
 
   const containerRef = useRef<HTMLDivElement>(null);
-  const [accessMenuOpen, setAccessMenuOpen] = useState(false);
-  const accessBtnRef = useRef<HTMLButtonElement>(null);
-  const accessMenuRef = useRef<HTMLDivElement>(null);
-  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
+  const {
+    triggerRef: accessBtnRef,
+    menuRef: accessMenuRef,
+    menuOpen: accessMenuOpen,
+    menuStyle,
+    portalMount: trackAccessPortalMount,
+    toggleMenu: toggleAccessMenu,
+    closeMenu: closeAccessMenu,
+  } = useDashboardAccessMenu({
+    getPortalRoot: (_trigger) => resolveDashboardAccessMenuPortalFromElement(containerRef.current),
+  });
   const trackVisibility = normalizeTrackVisibility(track.visibility);
 
   const trackVisibilityMenuOptions = useMemo(() => {
@@ -176,97 +187,6 @@ export function SortableTrackItem({
     [albumId, track.id, track.title, onDelete]
   );
 
-  const updateAccessMenuPosition = useCallback(() => {
-    const el = accessBtnRef.current;
-    if (!el || !accessMenuOpen) return;
-    const r = el.getBoundingClientRect();
-    const menuWidth = 268;
-    setMenuPos({
-      top: r.bottom + 4,
-      left: Math.min(r.left, window.innerWidth - menuWidth - 8),
-    });
-  }, [accessMenuOpen]);
-
-  const closeAccessMenu = useCallback(() => {
-    setAccessMenuOpen(false);
-    setMenuPos(null);
-  }, []);
-
-  useLayoutEffect(() => {
-    if (!accessMenuOpen) return;
-    updateAccessMenuPosition();
-  }, [accessMenuOpen, updateAccessMenuPosition]);
-
-  useEffect(() => {
-    if (!accessMenuOpen) return;
-    window.addEventListener('scroll', updateAccessMenuPosition, true);
-    window.addEventListener('resize', updateAccessMenuPosition);
-    return () => {
-      window.removeEventListener('scroll', updateAccessMenuPosition, true);
-      window.removeEventListener('resize', updateAccessMenuPosition);
-    };
-  }, [accessMenuOpen, updateAccessMenuPosition]);
-
-  useEffect(() => {
-    if (!accessMenuOpen) return;
-    let detached: (() => void) | null = null;
-    let cancelled = false;
-
-    const scheduleId = window.setTimeout(() => {
-      if (cancelled) return;
-      const onDown = (e: MouseEvent | TouchEvent) => {
-        const target = e.target as Node;
-        if (accessBtnRef.current?.contains(target)) return;
-        if (accessMenuRef.current?.contains(target)) return;
-        closeAccessMenu();
-      };
-      document.addEventListener('mousedown', onDown);
-      document.addEventListener('touchstart', onDown);
-      detached = () => {
-        document.removeEventListener('mousedown', onDown);
-        document.removeEventListener('touchstart', onDown);
-      };
-    }, 0);
-
-    return () => {
-      cancelled = true;
-      window.clearTimeout(scheduleId);
-      detached?.();
-    };
-  }, [accessMenuOpen, closeAccessMenu]);
-
-  useEffect(() => {
-    if (!accessMenuOpen) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') closeAccessMenu();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [accessMenuOpen, closeAccessMenu]);
-
-  const toggleAccessMenu = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
-    e.preventDefault();
-
-    setAccessMenuOpen((wasOpen) => {
-      if (wasOpen) {
-        setMenuPos(null);
-        return false;
-      }
-      const el = accessBtnRef.current;
-      const menuWidth = 268;
-      const pos =
-        el != null
-          ? {
-              top: el.getBoundingClientRect().bottom + 4,
-              left: Math.min(el.getBoundingClientRect().left, window.innerWidth - menuWidth - 8),
-            }
-          : { top: 120, left: 24 };
-      setMenuPos(pos);
-      return true;
-    });
-  }, []);
-
   const pickVisibility = useCallback(
     async (v: TrackVisibility) => {
       if (v === trackVisibility) {
@@ -292,14 +212,6 @@ export function SortableTrackItem({
     },
     [setNodeRef]
   );
-
-  let trackAccessPortalMount: HTMLElement | null = null;
-  if (typeof document !== 'undefined') {
-    trackAccessPortalMount =
-      (containerRef.current?.closest?.('dialog.popup') as HTMLElement | null) ??
-      (containerRef.current?.closest?.('dialog') as HTMLElement | null) ??
-      document.body;
-  }
 
   const trackRowFlashProps = rowFlash
     ? {
@@ -409,54 +321,39 @@ export function SortableTrackItem({
           </div>
         </div>
       </div>
-      {accessMenuOpen &&
-        typeof document !== 'undefined' &&
-        trackAccessPortalMount != null &&
-        createPortal(
-          <div
-            ref={accessMenuRef}
-            className="user-dashboard__track-access-menu"
-            style={{
-              position: 'fixed',
-              top: (menuPos ?? { top: 120, left: 24 }).top,
-              left: (menuPos ?? { top: 120, left: 24 }).left,
-              zIndex: 10050,
-              minWidth: 240,
-              maxWidth: 280,
-            }}
-            role="menu"
+      <DashboardAccessMenuPortal
+        menuRef={accessMenuRef}
+        open={accessMenuOpen}
+        portalMount={trackAccessPortalMount}
+        menuStyle={menuStyle}
+      >
+        {trackVisibilityMenuOptions.map((opt) => (
+          <button
+            key={opt.value}
+            type="button"
+            role="menuitem"
+            className={clsx('user-dashboard__track-access-menu-item', {
+              'user-dashboard__track-access-menu-item--active': opt.value === trackVisibility,
+            })}
+            onClick={() => void pickVisibility(opt.value)}
           >
-            {trackVisibilityMenuOptions.map((opt) => (
-              <button
-                key={opt.value}
-                type="button"
-                role="menuitem"
-                className={clsx('user-dashboard__track-access-menu-item', {
-                  'user-dashboard__track-access-menu-item--active': opt.value === trackVisibility,
-                })}
-                onClick={() => void pickVisibility(opt.value)}
-              >
-                <span className="user-dashboard__track-access-menu-item-icon" aria-hidden>
-                  <TrackVisibilityIcon visibility={opt.value} size={18} />
-                </span>
-                <span className="user-dashboard__track-access-menu-item-text">
-                  <span className="user-dashboard__track-access-menu-item-title">{opt.label}</span>
-                  <span className="user-dashboard__track-access-menu-item-desc">
-                    {opt.description}
-                  </span>
-                </span>
-                {opt.value === trackVisibility ? (
-                  <span className="user-dashboard__track-access-menu-check" aria-hidden>
-                    ✓
-                  </span>
-                ) : (
-                  <span className="user-dashboard__track-access-menu-check-spacer" aria-hidden />
-                )}
-              </button>
-            ))}
-          </div>,
-          trackAccessPortalMount
-        )}
+            <span className="user-dashboard__track-access-menu-item-icon" aria-hidden>
+              <TrackVisibilityIcon visibility={opt.value} size={18} />
+            </span>
+            <span className="user-dashboard__track-access-menu-item-text">
+              <span className="user-dashboard__track-access-menu-item-title">{opt.label}</span>
+              <span className="user-dashboard__track-access-menu-item-desc">{opt.description}</span>
+            </span>
+            {opt.value === trackVisibility ? (
+              <span className="user-dashboard__track-access-menu-check" aria-hidden>
+                ✓
+              </span>
+            ) : (
+              <span className="user-dashboard__track-access-menu-check-spacer" aria-hidden />
+            )}
+          </button>
+        ))}
+      </DashboardAccessMenuPortal>
     </>
   );
 }

@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 
 import { DashboardEmptyState } from '../DashboardEmptyState';
+import { DashboardCta } from '../DashboardCta';
 
 describe('DashboardEmptyState', () => {
   it('renders tab variant', () => {
@@ -40,20 +41,16 @@ describe('DashboardEmptyState', () => {
     expect(screen.getByRole('button', { name: 'Add' })).toBeTruthy();
   });
 
-  it('applies CTA class on action element', () => {
+  it('accepts DashboardCta as action', () => {
     const { container } = render(
       <DashboardEmptyState
         variant="tab"
         title="No albums yet"
-        action={
-          <button type="button" className="dashboard-empty-state__cta">
-            Create album
-          </button>
-        }
+        action={<DashboardCta onClick={() => undefined}>Create album</DashboardCta>}
       />
     );
 
-    expect(container.querySelector('.dashboard-empty-state__cta')).toBeTruthy();
+    expect(container.querySelector('.dashboard-cta')).toBeTruthy();
   });
 
   it('applies multiline description modifier', () => {

@@ -87,7 +87,7 @@ describe('AlbumsTabContent', () => {
       '.dashboard-card.user-dashboard__album-item.dashboard-card--interactive'
     );
     expect(albumCard).toBeTruthy();
-    expect(container.querySelector('.user-dashboard__expandable-row-trigger')).toBeTruthy();
+    expect(container.querySelector('.dashboard-expandable-row-trigger')).toBeTruthy();
   });
 
   it('renders expanded panel as DashboardCard with kit modifier', () => {
@@ -107,7 +107,7 @@ describe('AlbumsTabContent', () => {
     expect(screen.getByText('Test Album')).toBeTruthy();
   });
 
-  it('uses dashboard-empty-state__cta for footer upload action', () => {
+  it('uses DashboardCta for footer upload action', () => {
     const onCreateAlbum = jest.fn();
     const { container } = render(
       <AlbumsTabContent
@@ -118,7 +118,7 @@ describe('AlbumsTabContent', () => {
       />
     );
 
-    const cta = container.querySelector('.dashboard-empty-state__cta');
+    const cta = container.querySelector('.dashboard-cta');
     expect(cta).toBeTruthy();
     expect(cta?.textContent).toContain('Upload New Album');
   });

@@ -157,10 +157,6 @@ dialog {
         align-self: flex-start;
         margin: 0;
         padding: 0 var(--ms-0) var(--ms-01);
-
-        &--loading {
-          @include dashboard-modal-inline-loading;
-        }
       }
 
       &__form {

@@ -140,11 +140,6 @@ dialog {
       }
     }
 
-    &__expandable-row-trigger {
-      cursor: pointer;
-      border-radius: var(--ms-01);
-    }
-
     &__album-item {
       display: flex;
       align-items: center;

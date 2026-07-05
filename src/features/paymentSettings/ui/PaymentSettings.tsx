@@ -5,6 +5,7 @@ import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 import {
   DashboardAction,
   DashboardCard,
+  DashboardCta,
   DashboardRow,
   DashboardRowValue,
   DashboardSection,
@@ -200,9 +201,8 @@ export function PaymentSettings({ userId }: PaymentSettingsProps) {
                       </a>
                     </p>
                   </div>
-                  <button
-                    type="button"
-                    className="dashboard-empty-state__cta payment-settings__cta"
+                  <DashboardCta
+                    className="payment-settings__cta"
                     onClick={() => {
                       setShowForm((prev) => ({ ...prev, [provider.id]: true }));
                       setActiveProvider(provider.id);
@@ -215,7 +215,7 @@ export function PaymentSettings({ userId }: PaymentSettingsProps) {
                     disabled={isSaveInProgress}
                   >
                     {copy?.connectButton ?? 'Enter Shop ID and Secret Key'}
-                  </button>
+                  </DashboardCta>
                 </>
               ) : (
                 <div className="payment-settings__form">
@@ -280,13 +280,9 @@ export function PaymentSettings({ userId }: PaymentSettingsProps) {
                     >
                       {ui?.dashboard?.cancel ?? 'Cancel'}
                     </button>
-                    <button
-                      type="button"
-                      className={clsx(
-                        'dashboard-empty-state__cta',
-                        'payment-settings__cta',
-                        isThisSaving && 'payment-settings__cta--loading'
-                      )}
+                    <DashboardCta
+                      className="payment-settings__cta"
+                      loading={isThisSaving}
                       onClick={() => {
                         const sid = localShopId[provider.id] || '';
                         const sec = localSecretKey[provider.id] || '';
@@ -300,15 +296,10 @@ export function PaymentSettings({ userId }: PaymentSettingsProps) {
                         !localSecretKey[provider.id]?.trim()
                       }
                     >
-                      {isThisSaving ? (
-                        <>
-                          <DashboardSaveSpinner />
-                          {copy?.connecting ?? 'Connecting...'}
-                        </>
-                      ) : (
-                        (copy?.connect ?? 'Connect')
-                      )}
-                    </button>
+                      {isThisSaving
+                        ? (copy?.connecting ?? 'Connecting...')
+                        : (copy?.connect ?? 'Connect')}
+                    </DashboardCta>
                   </div>
                 </div>
               )}

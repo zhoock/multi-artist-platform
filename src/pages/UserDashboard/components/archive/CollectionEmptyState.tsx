@@ -2,7 +2,7 @@ import { HeartHandshake as HeartHandshakeIcon, Search as SearchIcon } from 'luci
 import { Link } from 'react-router-dom';
 
 import type { IInterface } from '@models';
-import { DashboardEmptyState } from '@shared/ui/dashboard';
+import { DashboardEmptyState, DashboardCta } from '@shared/ui/dashboard';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 
 type CollectionEmptyStateProps = {
@@ -27,10 +27,10 @@ export function CollectionEmptyState({ ui }: CollectionEmptyStateProps) {
       }
       descriptionMultiline
       action={
-        <Link to="/" className="dashboard-empty-state__cta">
+        <DashboardCta as={Link} to="/">
           <SearchIcon {...dashboardActionIconProps({ size: 18 })} />
           <span>{t?.discoverArtists ?? 'Discover Artists'}</span>
-        </Link>
+        </DashboardCta>
       }
     />
   );

@@ -1,4 +1,5 @@
 @use '../../../scss/abstracts/mixins' as *;
+@use '../../../scss/components/modal' as *;
 
 .dashboard-section {
   display: flex;
@@ -297,17 +298,32 @@
       white-space: pre-line;
     }
   }
+}
 
-  &__cta {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.55em;
-    width: auto;
-    max-width: 100%;
-    text-transform: none;
-    letter-spacing: normal;
+.dashboard-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55em;
+  width: auto;
+  max-width: 100%;
+  text-transform: none;
+  letter-spacing: normal;
+  text-decoration: none;
 
-    @include dashboard-btn-primary($margin: 0, $padding: var(--ms-01) var(--ms-1));
+  @include dashboard-btn-primary($margin: 0, $padding: var(--ms-01) var(--ms-1));
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
   }
+
+  &--loading {
+    @include dashboard-modal-inline-loading;
+  }
+}
+
+.dashboard-expandable-row-trigger {
+  cursor: pointer;
+  border-radius: var(--ms-01);
 }

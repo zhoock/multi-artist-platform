@@ -1,7 +1,7 @@
 import { SlidersHorizontal as SlidersHorizontalIcon, Upload as UploadIcon } from 'lucide-react';
 
 import type { IInterface } from '@models';
-import { DashboardEmptyState } from '@shared/ui/dashboard';
+import { DashboardEmptyState, DashboardCta } from '@shared/ui/dashboard';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 
 type MixerEmptyStateProps = {
@@ -23,10 +23,10 @@ export function MixerEmptyState({ ui, onCreateAlbum }: MixerEmptyStateProps) {
       title={m?.emptyTitle ?? 'No albums available'}
       description={m?.emptyDescription ?? 'Create an album to add stems to the mixer.'}
       action={
-        <button type="button" className="dashboard-empty-state__cta" onClick={onCreateAlbum}>
+        <DashboardCta onClick={onCreateAlbum}>
           <UploadIcon {...dashboardActionIconProps({ size: 18 })} />
           <span>{m?.createAlbum ?? 'Create album'}</span>
-        </button>
+        </DashboardCta>
       }
     />
   );

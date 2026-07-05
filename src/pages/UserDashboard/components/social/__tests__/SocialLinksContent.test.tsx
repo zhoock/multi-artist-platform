@@ -81,7 +81,7 @@ describe('SocialLinksContent', () => {
     expect(container.querySelector('.dashboard-card')).toBeTruthy();
     expect(container.querySelectorAll('.dashboard-row')).toHaveLength(SOCIAL_PLATFORMS.length);
     expect(container.querySelector('.social-links__cancel-button')).toBeTruthy();
-    expect(container.querySelector('.dashboard-empty-state__cta')).toBeTruthy();
+    expect(container.querySelector('.dashboard-cta')).toBeTruthy();
 
     for (const platform of SOCIAL_PLATFORMS) {
       const label = socialLinksCopy.platforms[platform];
