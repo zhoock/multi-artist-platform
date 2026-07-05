@@ -1,5 +1,7 @@
 import type { IInterface } from '@models';
 import type { SupportedLang } from '@shared/model/lang';
+import { StatusBadge } from '@shared/ui/statusBadge';
+
 import type { ArticleListDraftBadge } from './articleVisibilityOptions';
 
 type ArticleListStatusProps = {
@@ -19,10 +21,5 @@ export function ArticleListStatus({ draftBadge, ui, lang }: ArticleListStatusPro
       ? (ui?.dashboard?.articleStatusDraftChanges ?? (en ? 'Draft changes' : 'Черновые правки'))
       : (ui?.dashboard?.albumStatusDraft ?? (en ? 'Draft' : 'Черновик'));
 
-  return (
-    <span className="user-dashboard__album-status-badge user-dashboard__album-status-badge--neutral">
-      <span className="user-dashboard__album-status-badge-dot" aria-hidden="true" />
-      {label}
-    </span>
-  );
+  return <StatusBadge variant="draft">{label}</StatusBadge>;
 }

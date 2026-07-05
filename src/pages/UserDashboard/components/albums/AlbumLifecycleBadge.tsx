@@ -1,6 +1,6 @@
-import clsx from 'clsx';
 import type { AlbumListDraftBadge } from '@entities/album/lib/albumLifecycleStatus';
 import type { IInterface } from '@models';
+import { StatusBadge, type StatusBadgeVariant } from '@shared/ui/statusBadge';
 
 type AlbumLifecycleBadgeProps = {
   status: AlbumListDraftBadge;
@@ -26,21 +26,20 @@ function statusLabel(
   }
 }
 
+function lifecycleVariant(status: Exclude<AlbumListDraftBadge, null>): StatusBadgeVariant {
+  if (status === 'ready-to-publish') {
+    return 'readyToPublish';
+  }
+
+  return 'draft';
+}
+
 export function AlbumLifecycleBadge({ status, ui, lang }: AlbumLifecycleBadgeProps) {
   if (!status) {
     return null;
   }
 
   return (
-    <span
-      className={clsx('user-dashboard__album-status-badge', {
-        'user-dashboard__album-status-badge--neutral':
-          status === 'draft' || status === 'draft-changes',
-        'user-dashboard__album-status-badge--ready': status === 'ready-to-publish',
-      })}
-    >
-      <span className="user-dashboard__album-status-badge-dot" aria-hidden="true" />
-      {statusLabel(status, ui, lang)}
-    </span>
+    <StatusBadge variant={lifecycleVariant(status)}>{statusLabel(status, ui, lang)}</StatusBadge>
   );
 }

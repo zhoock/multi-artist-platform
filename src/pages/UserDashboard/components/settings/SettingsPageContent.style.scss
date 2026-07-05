@@ -125,6 +125,18 @@
     font-size: var(--ms-0);
   }
 
+  &__section-heading-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--ms-0);
+    margin-block-end: var(--ms-02);
+
+    .user-dashboard__profile-block-heading--accent {
+      margin-block-end: 0;
+    }
+  }
+
   &__card {
     padding: 0;
     background: var(--dashboard-card-bg);
@@ -179,6 +191,22 @@
     word-break: break-word;
   }
 
+  &__row-value-wrap {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem 0.5rem;
+    min-width: 0;
+  }
+
+  &__row-inline-error {
+    flex: 1 1 100%;
+    margin: 0;
+    color: var(--error-color);
+    font-size: var(--ms-01);
+    line-height: 1.4;
+  }
+
   &__row-control {
     min-width: 0;
   }
@@ -231,7 +259,8 @@
     position: relative;
     width: calc(var(--ms-2) * 2.2);
     height: calc(var(--ms-2) * 2.2);
-    background: var(--dashboard-input-bg);
+    background: var(--dashboard-hover-bg);
+    border: 1px solid var(--dashboard-card-border);
     border-radius: 50%;
     flex-shrink: 0;
     overflow: hidden;

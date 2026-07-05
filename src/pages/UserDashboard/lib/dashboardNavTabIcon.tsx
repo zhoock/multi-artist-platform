@@ -5,8 +5,8 @@ import {
   HeartHandshake as HeartHandshakeIcon,
   Link2 as Link2Icon,
   ShoppingBag as ShoppingBagIcon,
+  Settings as SettingsIcon,
   SlidersHorizontal as SlidersHorizontalIcon,
-  User as UserIcon,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -14,7 +14,7 @@ import type { DashboardTab } from '@shared/lib/accountType';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 
 const DASHBOARD_NAV_TAB_ICONS: Record<DashboardTab, LucideIcon> = {
-  settings: UserIcon,
+  settings: SettingsIcon,
   albums: DiscIcon,
   posts: FileTextIcon,
   mixer: SlidersHorizontalIcon,

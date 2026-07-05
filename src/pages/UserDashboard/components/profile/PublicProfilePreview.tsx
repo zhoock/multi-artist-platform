@@ -86,7 +86,7 @@ export function PublicProfilePreview({
         id="user-dashboard-public-profile-title"
         className="user-dashboard__profile-block-heading user-dashboard__profile-block-heading--accent"
       >
-        {preview?.sectionTitle ?? 'Public Profile'}
+        {preview?.sectionTitle ?? 'Profile'}
       </h4>
 
       <div className="user-dashboard__public-profile-card">

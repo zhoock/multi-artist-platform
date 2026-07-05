@@ -120,9 +120,6 @@ dialog {
     }
 
     &__profile-hero {
-      --profile-hero-status-public: var(--soft-green);
-      --profile-hero-status-private: var(--dark-greenish-yellow);
-
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -173,31 +170,6 @@ dialog {
       &:hover {
         color: var(--honeydew-melon);
       }
-    }
-
-    &__profile-hero-status {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.45em;
-      margin: 0;
-      font-size: var(--dashboard-font-size);
-      line-height: 1.3;
-
-      &--private {
-        color: var(--profile-hero-status-private);
-      }
-
-      &--public {
-        color: var(--profile-hero-status-public);
-      }
-    }
-
-    &__profile-hero-status-dot {
-      background: currentcolor;
-      border-radius: 50%;
-      inline-size: 0.45em;
-      block-size: 0.45em;
-      flex-shrink: 0;
     }
 
     &__profile-hero-description {
@@ -467,17 +439,6 @@ dialog {
       margin-block-start: var(--ms-0);
     }
 
-    &__account-verification {
-      display: grid;
-      grid-template-columns: minmax(8.75rem, 36%) minmax(0, 1fr);
-      gap: var(--ms-0);
-      padding: 0 var(--ms-0) var(--ms-01);
-
-      .settings-email-verification {
-        grid-column: 2;
-      }
-    }
-
     &__section-title {
       color: var(--dashboard-text-primary);
       font-size: var(--dashboard-heading-font-size);
@@ -623,46 +584,6 @@ dialog {
       flex-wrap: wrap;
       align-items: center;
       gap: 0.35rem 0.5rem;
-    }
-
-    &__album-status-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.35rem;
-      padding: 0.1rem 0.45rem;
-      color: var(--dashboard-text-secondary);
-      font-size: var(--ms-01);
-      line-height: 1.3;
-      white-space: nowrap;
-      border: 1px solid rgb(255 255 255 / 10%);
-      border-radius: 999px;
-    }
-
-    &__album-status-badge-dot {
-      background: currentcolor;
-      border-radius: 50%;
-      inline-size: 0.4rem;
-      block-size: 0.4rem;
-    }
-
-    &__album-status-badge--neutral {
-      color: var(--dashboard-text-secondary);
-      border-color: rgb(255 255 255 / 10%);
-    }
-
-    &__album-status-badge--ready {
-      color: var(--dark-greenish-yellow);
-      border-color: rgb(var(--dark-greenish-yellow-rgb) / 45%);
-    }
-
-    &__album-status-badge--published {
-      color: var(--soft-green);
-      border-color: rgb(var(--soft-green-rgb) / 45%);
-    }
-
-    &__album-status-badge--hidden {
-      color: var(--error-color);
-      border-color: rgb(var(--pink-terracotta-rgb) / 45%);
     }
 
     &__album-status-hint {

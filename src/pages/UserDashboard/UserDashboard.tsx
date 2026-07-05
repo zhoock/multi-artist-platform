@@ -3908,6 +3908,7 @@ function UserDashboard() {
                               userEmail={user?.email}
                               emailVerified={emailVerified}
                               isListener={isListener}
+                              isArtistPagePublic={isArtistPagePublic}
                               profilePublicSlug={profilePublicSlug ?? ''}
                               onOpenArtistPage={() => {
                                 if (!profilePublicSlug) return;

@@ -1,11 +1,17 @@
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { ExternalLink as ExternalLinkIcon } from 'lucide-react';
 import clsx from 'clsx';
 import { ChangeEmailModal } from '@features/auth/ui/ChangeEmailModal';
+import { refreshAuthSession, resendVerificationEmail } from '@shared/lib/auth';
 import { isProfileAvatarPlaceholderUrl } from '@shared/lib/avatarUpload';
+import {
+  resolveVerificationEmailSend,
+  useEmailVerificationCopy,
+  useResendCooldown,
+} from '@shared/lib/emailVerification';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
+import { StatusBadge } from '@shared/ui/statusBadge';
 import { SettingsSelect } from '../modals/settings/SettingsSelect';
-import { SettingsEmailVerificationStatus } from '../SettingsEmailVerificationStatus';
 import { HeaderImagesUpload } from '../upload/HeaderImagesUpload';
 import { ChangePasswordModal } from './ChangePasswordModal';
 import { useSettingsPage } from './useSettingsPage';
@@ -17,6 +23,7 @@ type SettingsPageContentProps = {
   userEmail?: string;
   emailVerified: boolean;
   isListener: boolean;
+  isArtistPagePublic: boolean;
   profilePublicSlug?: string | null;
   onOpenArtistPage: () => void;
   onDeleteAccount: () => void;
@@ -38,6 +45,7 @@ export function SettingsPageContent({
   userEmail,
   emailVerified,
   isListener,
+  isArtistPagePublic,
   profilePublicSlug,
   onOpenArtistPage,
   onDeleteAccount,
@@ -54,6 +62,10 @@ export function SettingsPageContent({
 }: SettingsPageContentProps) {
   const [isChangeEmailOpen, setIsChangeEmailOpen] = useState(false);
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
+  const [isSendingVerificationEmail, setIsSendingVerificationEmail] = useState(false);
+  const [verificationEmailError, setVerificationEmailError] = useState<string | null>(null);
+  const emailVerificationCopy = useEmailVerificationCopy();
+  const { remaining, isCoolingDown, startCooldown } = useResendCooldown();
 
   const {
     ui,
@@ -86,6 +98,29 @@ export function SettingsPageContent({
   const uploadLabel = currentLang === 'en' ? 'Upload image' : 'Загрузить изображение';
   const changeLabel = currentLang === 'en' ? 'Change image' : 'Заменить изображение';
   const removeLabel = d?.removeAvatarPhoto ?? (currentLang === 'en' ? 'Remove' : 'Удалить');
+  const verifyEmailLabel = isCoolingDown
+    ? `${emailVerificationCopy.resendEmail} (${remaining}s)`
+    : emailVerificationCopy.resendEmail;
+
+  const handleVerifyEmail = useCallback(async () => {
+    if (isCoolingDown || isSendingVerificationEmail) return;
+
+    setIsSendingVerificationEmail(true);
+    setVerificationEmailError(null);
+
+    const result = await resendVerificationEmail();
+    setIsSendingVerificationEmail(false);
+
+    const resolution = resolveVerificationEmailSend(result, emailVerificationCopy, startCooldown);
+    if (resolution.kind === 'success') {
+      return;
+    }
+    if (resolution.kind === 'already-verified') {
+      void refreshAuthSession();
+      return;
+    }
+    setVerificationEmailError(resolution.message);
+  }, [emailVerificationCopy, isCoolingDown, isSendingVerificationEmail, startCooldown]);
 
   return (
     <>
@@ -116,9 +151,18 @@ export function SettingsPageContent({
         </section>
 
         <section className="user-dashboard__profile-block">
-          <h4 className="user-dashboard__profile-block-heading user-dashboard__profile-block-heading--accent">
-            {d?.publicProfilePreview?.sectionTitle ?? 'Public Profile'}
-          </h4>
+          <div className="user-dashboard__settings-page__section-heading-row">
+            <h4 className="user-dashboard__profile-block-heading user-dashboard__profile-block-heading--accent">
+              {d?.publicProfilePreview?.sectionTitle ?? 'Profile'}
+            </h4>
+            {!isListener ? (
+              <StatusBadge variant={isArtistPagePublic ? 'public' : 'private'}>
+                {isArtistPagePublic
+                  ? (d?.profileHero?.pagePublic ?? 'Page is public')
+                  : (d?.profileHero?.pagePrivate ?? 'Page is private')}
+              </StatusBadge>
+            ) : null}
+          </div>
           <div className="user-dashboard__settings-page__card">
             <div className="user-dashboard__settings-page__row user-dashboard__settings-page__row--start">
               <p className="user-dashboard__settings-page__row-label">
@@ -315,17 +359,39 @@ export function SettingsPageContent({
               <p className="user-dashboard__settings-page__row-label">
                 {d?.profileFields?.email ?? d?.settingsModal?.fields?.email ?? 'Email'}
               </p>
-              <p className="user-dashboard__settings-page__row-value">{userEmail?.trim() || '—'}</p>
-              <button
-                type="button"
-                className="user-dashboard__settings-page__row-action"
-                onClick={() => setIsChangeEmailOpen(true)}
-              >
-                {ui?.auth?.emailVerification?.changeEmail ?? 'Change email'}
-              </button>
-            </div>
-            <div className="user-dashboard__account-verification">
-              <SettingsEmailVerificationStatus verified={emailVerified} />
+              <div className="user-dashboard__settings-page__row-value-wrap">
+                <p className="user-dashboard__settings-page__row-value">
+                  {userEmail?.trim() || '—'}
+                </p>
+                {!emailVerified ? (
+                  <StatusBadge variant="notVerified">
+                    {d?.profileFields?.emailVerification?.notVerified ?? 'Email not verified'}
+                  </StatusBadge>
+                ) : null}
+                {verificationEmailError ? (
+                  <p className="user-dashboard__settings-page__row-inline-error" role="alert">
+                    {verificationEmailError}
+                  </p>
+                ) : null}
+              </div>
+              {emailVerified ? (
+                <button
+                  type="button"
+                  className="user-dashboard__settings-page__row-action"
+                  onClick={() => setIsChangeEmailOpen(true)}
+                >
+                  {emailVerificationCopy.changeEmail}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="user-dashboard__settings-page__row-action"
+                  onClick={() => void handleVerifyEmail()}
+                  disabled={isSendingVerificationEmail || isCoolingDown}
+                >
+                  {isSendingVerificationEmail ? emailVerificationCopy.submitting : verifyEmailLabel}
+                </button>
+              )}
             </div>
           </div>
         </section>
