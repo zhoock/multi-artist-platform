@@ -1,6 +1,6 @@
 // src/pages/UserDashboard/components/HeaderImagesUpload.tsx
 import React, { useState, useRef, useEffect } from 'react';
-import { X as XIcon, Upload as UploadIcon } from 'lucide-react';
+import { X as XIcon, Upload as UploadIcon, Plus as PlusIcon } from 'lucide-react';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
@@ -18,6 +18,7 @@ import './HeaderImagesUpload.style.scss';
 interface HeaderImagesUploadProps {
   currentImages?: string[];
   onImagesUpdated?: (urls: string[]) => void;
+  layout?: 'stacked' | 'inline';
 }
 
 // Валидация файла
@@ -116,6 +117,7 @@ function validateImageFile(file: File): Promise<{ valid: boolean; error?: string
 export function HeaderImagesUpload({
   currentImages = [],
   onImagesUpdated,
+  layout = 'stacked',
 }: HeaderImagesUploadProps) {
   const { lang } = useLang();
   const ui = useAppSelector((state) => selectUiDictionaryFirst(state, lang));
@@ -333,6 +335,90 @@ export function HeaderImagesUpload({
       onImagesUpdated(newImages);
     }
   };
+
+  const coverHint =
+    ui?.dashboard?.settingsModal?.hints?.coverImage ??
+    'Recommended resolution: 2560 × 1522\nMinimum: 1920 × 1140\nFormat: JPG, PNG, WEBP, GIF, AVIF, HEIC/HEIF';
+  const coverHintLines = coverHint.split('\n');
+  const recommendedHint = coverHintLines[0] ?? coverHint;
+  const formatHint = coverHintLines.slice(1).join('. ');
+
+  if (layout === 'inline') {
+    return (
+      <>
+        <div className="header-images-upload header-images-upload--inline">
+          <div className="header-images-upload__inline-gallery">
+            {images.map((imageSetOrUrl, index) => {
+              const previewUrl = extractPreviewUrl(imageSetOrUrl);
+              return (
+                <div key={index} className="header-images-upload__inline-item">
+                  <img
+                    src={previewUrl}
+                    alt={`Header ${index + 1}`}
+                    className="header-images-upload__preview"
+                  />
+                  <button
+                    type="button"
+                    className="header-images-upload__remove"
+                    onClick={() => handleRemove(index)}
+                    aria-label="Удалить изображение"
+                  >
+                    <XIcon {...dashboardActionIconProps({ size: 16 })} />
+                  </button>
+                </div>
+              );
+            })}
+
+            {images.length < MAX_IMAGES ? (
+              <button
+                type="button"
+                className="header-images-upload__inline-add"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isUploading}
+              >
+                <PlusIcon
+                  className="header-images-upload__inline-add-icon"
+                  {...dashboardActionIconProps({ size: 24 })}
+                />
+                <span>{ui?.dashboard?.addImage ?? 'Add image'}</span>
+              </button>
+            ) : null}
+          </div>
+
+          <div className="header-images-upload__inline-footer">
+            <p className="header-images-upload__inline-hint">
+              {recommendedHint}
+              {formatHint ? `. ${formatHint}` : ''}
+            </p>
+            <span className="header-images-upload__inline-count">
+              {images.length} / {MAX_IMAGES}
+              {lang === 'en' ? ' images' : ''}
+            </span>
+          </div>
+
+          {error ? <div className="header-images-upload__error">{error}</div> : null}
+
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/jpg,image/png,image/webp,image/gif,image/avif,image/heic,image/heif"
+            className="header-images-upload__input"
+            onChange={handleFileInput}
+          />
+        </div>
+
+        <CoverImageCropModal
+          isOpen={isCropModalOpen}
+          imageFile={selectedFile}
+          onClose={() => {
+            setIsCropModalOpen(false);
+            setSelectedFile(null);
+          }}
+          onSave={handleSave}
+        />
+      </>
+    );
+  }
 
   return (
     <>

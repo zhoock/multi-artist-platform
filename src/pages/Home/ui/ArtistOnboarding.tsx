@@ -66,11 +66,7 @@ export function ArtistOnboarding() {
       description:
         copy?.features?.profile?.description ??
         'Создайте страницу артиста. Добавьте описание, фото и ссылки на соцсети.',
-      onClick: () =>
-        openDashboard('settings', {
-          openSettingsModal: true,
-          settingsTab: 'profile',
-        }),
+      onClick: () => openDashboard('settings', {}),
     },
     {
       id: 'article',

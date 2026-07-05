@@ -3,6 +3,91 @@
   flex-direction: column;
   gap: var(--ms-0);
 
+  &--inline {
+    gap: var(--ms-02);
+  }
+
+  &__inline-gallery {
+    display: flex;
+    gap: var(--ms-02);
+    padding-bottom: var(--ms-02);
+    overflow-x: auto;
+    scrollbar-width: thin;
+  }
+
+  &__inline-item {
+    position: relative;
+    flex: 0 0 auto;
+    width: min(9.5rem, 38vw);
+    background: var(--dashboard-card-bg);
+    border: 1px solid var(--dashboard-card-border);
+    border-radius: var(--ms-02);
+    aspect-ratio: 16 / 9;
+    overflow: hidden;
+  }
+
+  &__inline-add {
+    display: flex;
+    flex: 0 0 auto;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--ms-02);
+    width: min(9.5rem, 38vw);
+    min-height: 0;
+    padding: var(--ms-01);
+    color: var(--dashboard-text-secondary);
+    font-size: var(--dashboard-font-size);
+    background: transparent;
+    border: 2px dashed var(--dashboard-card-border);
+    border-radius: var(--ms-02);
+    aspect-ratio: 16 / 9;
+    cursor: pointer;
+    transition:
+      border-color 0.2s ease,
+      color 0.2s ease,
+      background-color 0.2s ease;
+
+    &:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+
+    &:hover:not(:disabled) {
+      color: var(--dashboard-text-primary);
+      background: var(--dashboard-hover-bg);
+      border-color: var(--dark-greenish-yellow);
+    }
+  }
+
+  &__inline-add-icon {
+    color: inherit;
+  }
+
+  &__inline-footer {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--ms-02);
+  }
+
+  &__inline-hint {
+    flex: 1 1 12rem;
+    margin: 0;
+    color: rgb(255 255 255 / 42%);
+    font-size: var(--ms-01);
+    line-height: 1.45;
+  }
+
+  &__inline-count {
+    flex-shrink: 0;
+    color: rgb(255 255 255 / 42%);
+    font-size: var(--ms-01);
+    line-height: 1.45;
+    white-space: nowrap;
+  }
+
   &__list {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));

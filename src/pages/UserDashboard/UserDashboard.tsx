@@ -146,8 +146,7 @@ import {
 import { DashboardTabContentSkeleton } from './components/DashboardTabContentSkeleton';
 import { SettingsTabSkeleton } from './components/SettingsTabSkeleton';
 import { SyncLyricsModal } from './components/modals/lyrics/SyncLyricsModal';
-import { SettingsModal } from './components/modals/settings/SettingsModal';
-import { PublicProfilePreview } from './components/profile/PublicProfilePreview';
+import { SettingsPageContent } from './components/settings/SettingsPageContent';
 import { usePublicProfilePreview } from './components/profile/usePublicProfilePreview';
 import { UpgradeToArtistModal } from './components/modals/settings/UpgradeToArtistModal';
 import {
@@ -160,7 +159,6 @@ import { MixerAdmin } from './components/mixer/MixerAdmin';
 import { MixerEmptyState } from './components/mixer/MixerEmptyState';
 import { MyArchiveContent } from './components/archive/MyArchiveContent';
 import { SocialLinksContent } from './components/social/SocialLinksContent';
-import { SettingsEmailVerificationStatus } from './components/SettingsEmailVerificationStatus';
 import type { IAlbums, IArticles, IInterface, DashboardTrackVisibilityLabels } from '@models';
 import { getCachedAuthorship, setCachedAuthorship } from '@shared/lib/utils/authorshipCache';
 import {
@@ -169,7 +167,6 @@ import {
   type TrackData,
 } from '@entities/album/lib/transformAlbumData';
 import { useAvatar, getProfileAvatarInitials } from '@shared/lib/hooks/useAvatar';
-import { isProfileAvatarPlaceholderUrl } from '@shared/lib/avatarUpload';
 import { useSiteArtistDisplayName } from '@shared/lib/hooks/useSiteArtistDisplayName';
 import {
   type DashboardTab,
@@ -199,7 +196,6 @@ import {
 import { TrackVisibilityIcon } from '@shared/ui/icons/TrackVisibilityIcon';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 import {
-  CloudUpload as CloudUploadIcon,
   ExternalLink as ExternalLinkIcon,
   Pencil as PencilIcon,
   Trash2 as Trash2Icon,
@@ -834,18 +830,9 @@ function UserDashboard() {
   const isArtist = isArtistAccount(user);
   const isListener = isListenerAccount(user);
 
-  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [isUpgradeToArtistModalOpen, setIsUpgradeToArtistModalOpen] = useState(false);
-  const [settingsInitialTab, setSettingsInitialTab] = useState<'general' | 'profile' | 'security'>(
-    'general'
-  );
   const [isDeleteAccountModalOpen, setIsDeleteAccountModalOpen] = useState(false);
-  const [isAvatarMenuOpen, setIsAvatarMenuOpen] = useState(false);
-  const avatarMenuContainerRef = useRef<HTMLDivElement | null>(null);
-  const { data: publicProfilePreview, isLoading: isPublicProfileLoading } = usePublicProfilePreview(
-    userId,
-    lang
-  );
+  const { data: publicProfilePreview } = usePublicProfilePreview(userId, lang);
   const profilePublicSlug = publicProfilePreview.publicSlug;
   const [expandedAlbumId, setExpandedAlbumId] = useState<string | null>(null);
   const [scrollToAlbumUploadId, setScrollToAlbumUploadId] = useState<string | null>(null);
@@ -1157,9 +1144,13 @@ function UserDashboard() {
     };
   }, [lang, ui?.dashboard]);
 
+  const handleLogout = useCallback(() => {
+    clearAuth();
+    navigate({ pathname: '/', search: '' }, { replace: true });
+  }, [navigate]);
+
   const handleAccountDeleted = useCallback(() => {
     setIsDeleteAccountModalOpen(false);
-    setIsSettingsModalOpen(false);
     setConfirmationModal(null);
     setAlertModal(null);
     setEditAlbumModal(null);
@@ -1190,8 +1181,6 @@ function UserDashboard() {
     }
 
     if (intent.openSettingsModal) {
-      setSettingsInitialTab(intent.settingsTab ?? 'profile');
-      setIsSettingsModalOpen(true);
       consumed = true;
     }
 
@@ -1591,29 +1580,6 @@ function UserDashboard() {
       }));
     }
   };
-
-  useEffect(() => {
-    if (!isAvatarMenuOpen) return;
-    const onPointerDown = (e: PointerEvent) => {
-      if (
-        avatarMenuContainerRef.current &&
-        !avatarMenuContainerRef.current.contains(e.target as Node)
-      ) {
-        setIsAvatarMenuOpen(false);
-      }
-    };
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setIsAvatarMenuOpen(false);
-      }
-    };
-    document.addEventListener('pointerdown', onPointerDown);
-    document.addEventListener('keydown', onKeyDown);
-    return () => {
-      document.removeEventListener('pointerdown', onPointerDown);
-      document.removeEventListener('keydown', onKeyDown);
-    };
-  }, [isAvatarMenuOpen]);
 
   // Загрузка альбомов: всегда force при смене аккаунта/языка,
   // чтобы не показывать данные предыдущего пользователя из Redux-кэша.
@@ -3936,287 +3902,29 @@ function UserDashboard() {
                       <div className="user-dashboard__settings-tab">
                         <div className="user-dashboard__section">
                           <div className="user-dashboard__settings-content">
-                            <div
-                              className={clsx('user-dashboard__profile-hero', {
-                                'user-dashboard__profile-hero--public': isArtistPagePublic,
-                                'user-dashboard__profile-hero--private': !isArtistPagePublic,
-                              })}
-                            >
-                              <div className="user-dashboard__profile-hero-avatar-wrap">
-                                <div className="user-dashboard__avatar-img">
-                                  {isProfileAvatarPlaceholderUrl(avatarSrc) ? (
-                                    <span
-                                      className="user-dashboard__avatar-placeholder"
-                                      aria-hidden="true"
-                                    >
-                                      {getProfileAvatarInitials()}
-                                    </span>
-                                  ) : (
-                                    <img
-                                      src={avatarSrc}
-                                      srcSet={avatarRetinaSrc ? `${avatarRetinaSrc} 2x` : undefined}
-                                      alt={ui?.dashboard?.changeAvatar ?? 'Avatar'}
-                                      onError={(e) => {
-                                        (e.target as HTMLImageElement).style.display = 'none';
-                                      }}
-                                    />
-                                  )}
-                                  {isUploadingAvatar && (
-                                    <div
-                                      className="user-dashboard__avatar-loader"
-                                      aria-live="polite"
-                                      aria-busy="true"
-                                    >
-                                      <div className="user-dashboard__avatar-spinner"></div>
-                                    </div>
-                                  )}
-                                </div>
-                                <div
-                                  className="user-dashboard__avatar-actions"
-                                  ref={avatarMenuContainerRef}
-                                >
-                                  <button
-                                    type="button"
-                                    className="user-dashboard__avatar-edit-floating"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setIsAvatarMenuOpen((open) => !open);
-                                    }}
-                                    disabled={isUploadingAvatar}
-                                    aria-label={ui?.dashboard?.changeAvatar ?? 'Change avatar'}
-                                    aria-haspopup="menu"
-                                    aria-expanded={isAvatarMenuOpen}
-                                    id="user-dashboard-avatar-edit-button"
-                                  >
-                                    <span
-                                      className="user-dashboard__avatar-edit-icon"
-                                      aria-hidden={true}
-                                    >
-                                      <PencilIcon {...dashboardActionIconProps({ size: 16 })} />
-                                    </span>
-                                  </button>
-                                  {isAvatarMenuOpen && (
-                                    <div
-                                      className="user-dashboard__avatar-menu"
-                                      role="menu"
-                                      aria-labelledby="user-dashboard-avatar-edit-button"
-                                    >
-                                      <div className="user-dashboard__avatar-menu-group">
-                                        <button
-                                          type="button"
-                                          role="menuitem"
-                                          className="user-dashboard__avatar-menu-item"
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            setIsAvatarMenuOpen(false);
-                                            handleAvatarClick();
-                                          }}
-                                          disabled={isUploadingAvatar}
-                                        >
-                                          <CloudUploadIcon
-                                            {...dashboardActionIconProps({
-                                              size: 20,
-                                              className: 'user-dashboard__avatar-menu-icon',
-                                            })}
-                                          />
-                                          <span>
-                                            {ui?.dashboard?.uploadAvatarPhoto ??
-                                              'Upload the photo...'}
-                                          </span>
-                                        </button>
-                                      </div>
-                                      <div className="user-dashboard__avatar-menu-group user-dashboard__avatar-menu-group--separated">
-                                        <button
-                                          type="button"
-                                          role="menuitem"
-                                          className="user-dashboard__avatar-menu-item user-dashboard__avatar-menu-item--danger"
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            setIsAvatarMenuOpen(false);
-                                            void handleAvatarRemove();
-                                          }}
-                                          disabled={
-                                            isUploadingAvatar ||
-                                            isProfileAvatarPlaceholderUrl(avatarSrc)
-                                          }
-                                          aria-disabled={
-                                            isUploadingAvatar ||
-                                            isProfileAvatarPlaceholderUrl(avatarSrc)
-                                          }
-                                        >
-                                          <Trash2Icon
-                                            {...dashboardActionIconProps({
-                                              size: 20,
-                                              className:
-                                                'user-dashboard__avatar-menu-icon user-dashboard__avatar-menu-icon--danger',
-                                            })}
-                                          />
-                                          <span>
-                                            {ui?.dashboard?.removeAvatarPhoto ?? 'Remove photo'}
-                                          </span>
-                                        </button>
-                                      </div>
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-
-                              <h2 className="user-dashboard__profile-hero-name">
-                                <span>{user?.name?.trim() || '…'}</span>
-                              </h2>
-
-                              {isArtist ? (
-                                <>
-                                  <p
-                                    className={clsx('user-dashboard__profile-hero-status', {
-                                      'user-dashboard__profile-hero-status--public':
-                                        isArtistPagePublic,
-                                      'user-dashboard__profile-hero-status--private':
-                                        !isArtistPagePublic,
-                                    })}
-                                  >
-                                    <span
-                                      className="user-dashboard__profile-hero-status-dot"
-                                      aria-hidden="true"
-                                    />
-                                    {isArtistPagePublic
-                                      ? (ui?.dashboard?.profileHero?.pagePublic ?? 'Page is public')
-                                      : (ui?.dashboard?.profileHero?.pagePrivate ??
-                                        'Page is private')}
-                                  </p>
-
-                                  <p className="user-dashboard__profile-hero-description">
-                                    {isArtistPagePublic
-                                      ? (ui?.dashboard?.profileHero?.publicDescription ??
-                                        'Your artist page is now public\nand visible to everyone.')
-                                      : (ui?.dashboard?.profileHero?.privateDescription ??
-                                        'Only you can see your artist page right now.')}
-                                  </p>
-                                </>
-                              ) : null}
-
-                              <div className="user-dashboard__profile-hero-actions">
-                                <button
-                                  type="button"
-                                  className="user-dashboard__profile-hero-edit"
-                                  onClick={() => {
-                                    setSettingsInitialTab('general');
-                                    setIsSettingsModalOpen(true);
-                                  }}
-                                >
-                                  <span
-                                    className="user-dashboard__profile-hero-action-icon"
-                                    aria-hidden={true}
-                                  >
-                                    <PencilIcon {...dashboardActionIconProps()} />
-                                  </span>
-                                  {ui?.dashboard?.editProfile ?? 'Edit Profile'}
-                                </button>
-                                {profilePublicSlug ? (
-                                  <button
-                                    type="button"
-                                    className="user-dashboard__profile-hero-open"
-                                    onClick={() =>
-                                      openOwnArtistPage(
-                                        profilePublicSlug,
-                                        isArtistPagePublic,
-                                        navigate
-                                      )
-                                    }
-                                  >
-                                    <span
-                                      className="user-dashboard__profile-hero-action-icon"
-                                      aria-hidden={true}
-                                    >
-                                      <ExternalLinkIcon {...dashboardActionIconProps()} />
-                                    </span>
-                                    {ui?.dashboard?.profileHero?.openArtistPage ??
-                                      'Open artist page'}
-                                  </button>
-                                ) : null}
-                              </div>
-
-                              <input
-                                ref={avatarInputRef}
-                                type="file"
-                                accept="image/*"
-                                style={{
-                                  position: 'absolute',
-                                  width: '1px',
-                                  height: '1px',
-                                  opacity: 0,
-                                  pointerEvents: 'none',
-                                }}
-                                onChange={handleAvatarChange}
-                              />
-                            </div>
-
-                            {isArtist ? (
-                              <PublicProfilePreview
-                                data={publicProfilePreview}
-                                isLoading={isPublicProfileLoading}
-                                lang={lang}
-                                ui={ui ?? undefined}
-                                onEditDescription={() => {
-                                  setSettingsInitialTab('profile');
-                                  setIsSettingsModalOpen(true);
-                                }}
-                              />
-                            ) : null}
-
-                            <div className="user-dashboard__profile-block user-dashboard__account-section">
-                              <h4 className="user-dashboard__profile-block-heading user-dashboard__profile-block-heading--accent">
-                                {ui?.dashboard?.accountSectionTitle ?? 'Account'}
-                              </h4>
-                              <div className="user-dashboard__account-card">
-                                <dl className="user-dashboard__public-profile-list">
-                                  <div className="user-dashboard__public-profile-row">
-                                    <dt className="user-dashboard__profile-row-label">
-                                      {ui?.dashboard?.profileFields?.email ?? 'Email'}
-                                    </dt>
-                                    <dd>
-                                      <span className="user-dashboard__public-profile-value">
-                                        {user?.email?.trim() || '—'}
-                                      </span>
-                                    </dd>
-                                  </div>
-                                </dl>
-                                <div className="user-dashboard__account-verification">
-                                  <SettingsEmailVerificationStatus verified={emailVerified} />
-                                </div>
-                              </div>
-                            </div>
-
-                            {isListener ? (
-                              <p className="user-dashboard__profile-upgrade">
-                                <span className="user-dashboard__profile-upgrade-lead">
-                                  {ui?.dashboard?.becomeArtistLead ??
-                                    (lang === 'en'
-                                      ? 'Want to publish music?'
-                                      : 'Хотите публиковать музыку?')}
-                                </span>{' '}
-                                <button
-                                  type="button"
-                                  className="user-dashboard__profile-upgrade-link"
-                                  onClick={() => setIsUpgradeToArtistModalOpen(true)}
-                                >
-                                  {ui?.dashboard?.becomeArtist ??
-                                    (lang === 'en'
-                                      ? 'Upgrade to artist account'
-                                      : 'Перейти на аккаунт артиста')}
-                                </button>
-                              </p>
-                            ) : null}
-
-                            <div className="user-dashboard__settings-actions user-dashboard__settings-actions--danger">
-                              <button
-                                type="button"
-                                className="user-dashboard__delete-account-button"
-                                onClick={() => setIsDeleteAccountModalOpen(true)}
-                              >
-                                {ui?.dashboard?.deleteAccount ?? 'Delete account'}
-                              </button>
-                            </div>
+                            <SettingsPageContent
+                              enabled={activeTab === 'settings'}
+                              userName={user?.name ?? undefined}
+                              userEmail={user?.email}
+                              emailVerified={emailVerified}
+                              isListener={isListener}
+                              profilePublicSlug={profilePublicSlug ?? ''}
+                              onOpenArtistPage={() => {
+                                if (!profilePublicSlug) return;
+                                openOwnArtistPage(profilePublicSlug, isArtistPagePublic, navigate);
+                              }}
+                              onDeleteAccount={() => setIsDeleteAccountModalOpen(true)}
+                              onUpgradeToArtist={() => setIsUpgradeToArtistModalOpen(true)}
+                              onLogout={handleLogout}
+                              avatarSrc={avatarSrc}
+                              avatarRetinaSrc={avatarRetinaSrc ?? undefined}
+                              isUploadingAvatar={isUploadingAvatar}
+                              avatarInputRef={avatarInputRef}
+                              onAvatarUploadClick={handleAvatarClick}
+                              onAvatarChange={handleAvatarChange}
+                              onAvatarRemove={handleAvatarRemove}
+                              getProfileAvatarInitials={getProfileAvatarInitials}
+                            />
                           </div>
                         </div>
                       </div>
@@ -4530,21 +4238,6 @@ function UserDashboard() {
           onArticlePersisted={handleArticlePersisted}
         />
       )}
-
-      {/* Settings Modal */}
-      <SettingsModal
-        isOpen={isSettingsModalOpen}
-        onClose={() => setIsSettingsModalOpen(false)}
-        userName={user?.name ?? undefined}
-        userEmail={user?.email}
-        emailVerified={emailVerified}
-        initialTab={settingsInitialTab}
-        showBecomeArtist={isListener}
-        onBecomeArtist={() => {
-          setIsSettingsModalOpen(false);
-          setIsUpgradeToArtistModalOpen(true);
-        }}
-      />
 
       <UpgradeToArtistModal
         isOpen={isUpgradeToArtistModalOpen}
