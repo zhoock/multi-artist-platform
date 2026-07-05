@@ -123,21 +123,54 @@ dialog {
       font-size: var(--dashboard-heading-font-size);
     }
 
+    &__albums-list {
+      display: flex;
+      flex-direction: column;
+      gap: var(--ms-0);
+
+      .user-dashboard__album-item--expanded.dashboard-card {
+        background: transparent;
+      }
+
+      .user-dashboard__album-expanded--kit.dashboard-card {
+        background: transparent;
+        padding-block: 0;
+        border: none;
+        overflow: visible;
+      }
+    }
+
+    &__expandable-row-trigger {
+      cursor: pointer;
+      border-radius: var(--ms-01);
+    }
+
     &__album-item {
       display: flex;
       align-items: center;
       gap: var(--ms-0);
       padding: var(--ms-0);
-      cursor: pointer;
       transition: background-color 0.2s;
-      border-top-left-radius: var(--ms-01);
-      border-top-right-radius: var(--ms-01);
 
-      &:focus {
-        outline: none;
+      &.dashboard-card {
+        width: 100%;
+      }
+
+      &:not(.dashboard-card) {
+        cursor: pointer;
+        border-top-left-radius: var(--ms-01);
+        border-top-right-radius: var(--ms-01);
+
+        &:focus {
+          outline: none;
+        }
       }
 
       &--access-menu-open {
+        background: var(--dashboard-hover-bg);
+      }
+
+      &--expanded:not(.dashboard-card) {
         background: var(--dashboard-hover-bg);
       }
     }
@@ -178,11 +211,6 @@ dialog {
       &:hover {
         background: var(--dashboard-hover-bg);
         border-color: var(--dashboard-card-border);
-      }
-
-      &:focus-visible {
-        outline: 2px solid var(--dark-greenish-yellow);
-        outline-offset: 2px;
       }
     }
 
@@ -325,14 +353,6 @@ dialog {
       text-align: end;
     }
 
-    &__delete-album-button {
-      @include dashboard-btn-destructive($margin: 0, $padding: var(--ms-01) var(--ms-1));
-    }
-
-    &__album-item--expanded {
-      background: var(--dashboard-hover-bg);
-    }
-
     &__album-date {
       color: var(--dashboard-text-secondary);
     }
@@ -341,15 +361,9 @@ dialog {
       border-bottom: none;
       padding-block: var(--ms-0);
 
-      &--article {
+      &--kit {
         display: flex;
         flex-direction: column;
-      }
-
-      &--kit {
-        &.dashboard-card {
-          overflow: visible;
-        }
       }
     }
 
@@ -388,24 +402,17 @@ dialog {
       }
     }
 
-    &__article-actions {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: var(--ms-01);
+    &__article-cover-section {
       margin-top: var(--ms-0);
+      margin-bottom: 0;
     }
 
-    &__edit-button {
-      @include dashboard-btn-secondary(
-        $margin: 0,
-        $padding: var(--ms-01) var(--ms-0),
-        $border-radius: var(--ms-01)
-      );
-    }
-
-    &__delete-article-button {
-      @include dashboard-btn-destructive;
+    &__article-cover-label {
+      display: block;
+      margin-bottom: var(--ms-01);
+      color: var(--dashboard-text-secondary);
+      font-size: var(--ms-01);
+      line-height: 1.4;
     }
 
     &__article-cover-file-input {
@@ -541,6 +548,21 @@ dialog {
 
       &--error {
         color: var(--soft-red);
+      }
+    }
+
+    &__album-expanded--article {
+      .user-dashboard__article-cover-dropzone {
+        min-height: 72px;
+        padding: var(--ms-01);
+      }
+
+      .user-dashboard__article-cover-preview {
+        block-size: 100px;
+      }
+
+      .user-dashboard__article-cover-wrap {
+        margin-bottom: 0;
       }
     }
 

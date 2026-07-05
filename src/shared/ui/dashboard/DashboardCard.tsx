@@ -1,5 +1,5 @@
 import clsx from 'clsx';
-import type { ElementType, ReactNode } from 'react';
+import type { ElementType, HTMLAttributes, ReactNode } from 'react';
 
 type DashboardCardProps = {
   children: ReactNode;
@@ -8,7 +8,7 @@ type DashboardCardProps = {
   selected?: boolean;
   disabled?: boolean;
   as?: 'div' | 'article';
-};
+} & Omit<HTMLAttributes<HTMLElement>, 'className'>;
 
 export function DashboardCard({
   children,
@@ -17,6 +17,7 @@ export function DashboardCard({
   selected = false,
   disabled = false,
   as: Tag = 'div',
+  ...rest
 }: DashboardCardProps) {
   const Component = Tag as ElementType;
 
@@ -29,6 +30,7 @@ export function DashboardCard({
         disabled && 'dashboard-card--disabled',
         className
       )}
+      {...rest}
     >
       {children}
     </Component>

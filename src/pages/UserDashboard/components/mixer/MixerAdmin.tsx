@@ -426,14 +426,14 @@ export function MixerAdmin({ ui, userId, albums = [] }: MixerAdminProps) {
     <>
       <DashboardSection title={t?.title ?? 'Mixer'}>
         <div className="user-dashboard__albums-list mixer-admin__albums">
-          {albums.map((album, index) => {
+          {albums.map((album) => {
             const tracks = getAlbumTracks(album.id);
             const isAlbumOpen = expandedAlbumId === album.id;
             const storageAlbumId = getStorageAlbumId(album);
             return (
               <React.Fragment key={album.id}>
                 <div
-                  className="mixer-admin__album-trigger"
+                  className="user-dashboard__expandable-row-trigger"
                   onClick={() => toggleAlbum(album.id, isAlbumOpen, tracks, storageAlbumId)}
                   role="button"
                   tabIndex={0}
@@ -684,8 +684,6 @@ export function MixerAdmin({ ui, userId, albums = [] }: MixerAdminProps) {
                     </div>
                   </DashboardCard>
                 )}
-
-                {index < albums.length - 1 && <div className="user-dashboard__album-divider"></div>}
               </React.Fragment>
             );
           })}

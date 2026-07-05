@@ -226,7 +226,7 @@ export function PaymentSettings({ userId }: PaymentSettingsProps) {
                     <input
                       type="text"
                       id={`shop-id-${provider.id}`}
-                      className="payment-settings__form-input"
+                      className="dashboard-form-input"
                       value={localShopId[provider.id] || ''}
                       onChange={(event) =>
                         setLocalShopId((prev) => ({ ...prev, [provider.id]: event.target.value }))
@@ -247,7 +247,7 @@ export function PaymentSettings({ userId }: PaymentSettingsProps) {
                     <input
                       type="password"
                       id={`secret-key-${provider.id}`}
-                      className="payment-settings__form-input"
+                      className="dashboard-form-input"
                       value={localSecretKey[provider.id] || ''}
                       onChange={(event) =>
                         setLocalSecretKey((prev) => ({

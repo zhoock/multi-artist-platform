@@ -12,7 +12,7 @@ import { EmailVerificationOnboarding } from '@shared/lib/emailVerification';
 import { renderMarkdownViaRichText } from '@shared/lib/richText';
 import { normalizeTrackVisibility, type TrackVisibility } from '@shared/lib/tracks/trackVisibility';
 import type { SupportedLang } from '@shared/model/lang';
-import { DashboardCard, DashboardRow } from '@shared/ui/dashboard';
+import { DashboardCard, DashboardAction } from '@shared/ui/dashboard';
 import {
   getDashboardRowFlashProps,
   type DashboardRowFlash,
@@ -230,7 +230,7 @@ export function PostsTabContent({
   return (
     <div className="user-dashboard__section">
       <div className="user-dashboard__albums-list">
-        {articles.map((article, index) => {
+        {articles.map((article) => {
           const isExpanded = expandedArticleId === article.articleId;
           const articleVisibility = normalizeTrackVisibility(article.visibility);
           const articleDraftBadge = getArticleListDraftBadge(article);
@@ -255,18 +255,7 @@ export function PostsTabContent({
             <React.Fragment key={article.articleId}>
               <div
                 id={`dashboard-article-row-${article.articleId}`}
-                className={clsx(
-                  'user-dashboard__album-item',
-                  'dashboard-article-row',
-                  articleRowFlash.className,
-                  {
-                    'user-dashboard__album-item--expanded': isExpanded,
-                    'user-dashboard__album-item--access-menu-open':
-                      articleAccessMenuArticleId === article.articleId,
-                  }
-                )}
-                style={articleRowFlash.style}
-                data-visibility-flash={articleRowFlash['data-visibility-flash']}
+                className="user-dashboard__expandable-row-trigger"
                 onClick={() => onToggleArticle(isExpanded ? null : article.articleId)}
                 role="button"
                 tabIndex={0}
@@ -278,79 +267,105 @@ export function PostsTabContent({
                 }}
                 aria-label={isExpanded ? 'Collapse article' : 'Expand article'}
               >
-                <div className="user-dashboard__album-thumbnail user-dashboard__album-thumbnail--article">
-                  {article.img ? (
-                    articleOwnerId ? (
-                      <ArticleCoverImage
-                        img={article.img}
-                        userId={articleOwnerId}
-                        role="admin"
-                        alt={article.nameArticle}
-                        loading="lazy"
-                        decoding="async"
-                        debugLabel={`UserDashboard:articleThumb:${article.articleId}`}
-                      />
+                <DashboardCard
+                  interactive
+                  selected={isExpanded}
+                  className={clsx(
+                    'user-dashboard__album-item',
+                    'dashboard-article-row',
+                    articleRowFlash.className,
+                    {
+                      'user-dashboard__album-item--expanded': isExpanded,
+                      'user-dashboard__album-item--access-menu-open':
+                        articleAccessMenuArticleId === article.articleId,
+                    }
+                  )}
+                  style={articleRowFlash.style}
+                  data-visibility-flash={articleRowFlash['data-visibility-flash']}
+                >
+                  <div className="user-dashboard__album-thumbnail user-dashboard__album-thumbnail--article">
+                    {article.img ? (
+                      articleOwnerId ? (
+                        <ArticleCoverImage
+                          img={article.img}
+                          userId={articleOwnerId}
+                          role="admin"
+                          alt={article.nameArticle}
+                          loading="lazy"
+                          decoding="async"
+                          debugLabel={`UserDashboard:articleThumb:${article.articleId}`}
+                        />
+                      ) : (
+                        <ArticleCoverPlaceholder
+                          alt={article.nameArticle}
+                          loading="lazy"
+                          decoding="async"
+                        />
+                      )
                     ) : (
                       <ArticleCoverPlaceholder
                         alt={article.nameArticle}
                         loading="lazy"
                         decoding="async"
                       />
-                    )
-                  ) : (
-                    <ArticleCoverPlaceholder
-                      alt={article.nameArticle}
-                      loading="lazy"
-                      decoding="async"
-                    />
-                  )}
-                </div>
-                <div className="user-dashboard__album-info">
-                  <div className="user-dashboard__album-title-row">
-                    <div className="user-dashboard__album-title">{article.nameArticle}</div>
-                    <ArticleListStatus
-                      draftBadge={articleDraftBadge}
-                      ui={ui ?? undefined}
-                      lang={lang}
-                    />
+                    )}
                   </div>
-                  {article.date ? (
-                    <div className="user-dashboard__album-date">{formatDate(article.date)}</div>
-                  ) : null}
-                </div>
-                <div
-                  className="user-dashboard__album-item-actions"
-                  onClick={(e) => e.stopPropagation()}
-                  onMouseDown={(e) => e.stopPropagation()}
-                >
-                  {articleIsPublished ? (
-                    <ArticleAccessControl
-                      articleId={article.articleId}
-                      visibility={articleVisibility}
-                      ui={ui ?? undefined}
-                      lang={lang}
-                      menuOpen={articleAccessMenuArticleId === article.articleId}
-                      onMenuOpenChange={(open) =>
-                        onArticleAccessMenuChange(open ? article.articleId : null)
-                      }
-                      onPickVisibility={(v) => void onArticleVisibilityChange(article.articleId, v)}
-                      getRowElement={() =>
-                        document.getElementById(`dashboard-article-row-${article.articleId}`)
-                      }
-                    />
-                  ) : null}
-                  <div className="user-dashboard__album-arrow">
-                    <DashboardExpandChevron expanded={isExpanded} />
+                  <div className="user-dashboard__album-info">
+                    <div className="user-dashboard__album-title-row">
+                      <div className="user-dashboard__album-title">{article.nameArticle}</div>
+                      <ArticleListStatus
+                        draftBadge={articleDraftBadge}
+                        ui={ui ?? undefined}
+                        lang={lang}
+                      />
+                    </div>
+                    {article.date ? (
+                      <div className="user-dashboard__album-date">{formatDate(article.date)}</div>
+                    ) : null}
                   </div>
-                </div>
+                  <div
+                    className="user-dashboard__album-item-actions"
+                    onClick={(e) => e.stopPropagation()}
+                    onMouseDown={(e) => e.stopPropagation()}
+                  >
+                    {articleIsPublished ? (
+                      <ArticleAccessControl
+                        articleId={article.articleId}
+                        visibility={articleVisibility}
+                        ui={ui ?? undefined}
+                        lang={lang}
+                        menuOpen={articleAccessMenuArticleId === article.articleId}
+                        onMenuOpenChange={(open) =>
+                          onArticleAccessMenuChange(open ? article.articleId : null)
+                        }
+                        onPickVisibility={(v) =>
+                          void onArticleVisibilityChange(article.articleId, v)
+                        }
+                        getRowElement={() =>
+                          document.getElementById(`dashboard-article-row-${article.articleId}`)
+                        }
+                      />
+                    ) : null}
+                    <div className="user-dashboard__album-arrow">
+                      <DashboardExpandChevron expanded={isExpanded} />
+                    </div>
+                  </div>
+                </DashboardCard>
               </div>
 
               {isExpanded ? (
                 <DashboardCard className="user-dashboard__album-expanded user-dashboard__album-expanded--article user-dashboard__album-expanded--kit">
-                  <DashboardRow
-                    label={ui?.dashboard?.articleCover ?? 'Article Cover'}
-                    variant="start"
-                  >
+                  {preview ? (
+                    <div className="user-dashboard__article-description">
+                      {renderMarkdownViaRichText(preview.markdown)}
+                      {preview.truncated ? '\u2026' : null}
+                    </div>
+                  ) : null}
+
+                  <div className="user-dashboard__article-cover-section">
+                    <span className="user-dashboard__article-cover-label">
+                      {ui?.dashboard?.articleCover ?? 'Article Cover'}
+                    </span>
                     <ArticleCoverUploadBlock
                       article={article}
                       articleOwnerId={articleOwnerId}
@@ -360,44 +375,33 @@ export function PostsTabContent({
                       onArticleCoverDrop={onArticleCoverDrop}
                       onArticleCoverFileInput={onArticleCoverFileInput}
                     />
-                  </DashboardRow>
+                  </div>
 
-                  {preview ? (
-                    <div className="user-dashboard__article-description">
-                      {renderMarkdownViaRichText(preview.markdown)}
-                      {preview.truncated ? '\u2026' : null}
-                    </div>
-                  ) : null}
-
-                  <div className="user-dashboard__article-actions">
-                    <button
-                      type="button"
-                      className="user-dashboard__edit-button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onEditArticle(article);
-                      }}
-                    >
-                      {ui?.dashboard?.editArticle ?? 'Edit Article'}
-                    </button>
-                    <button
-                      type="button"
-                      className="user-dashboard__delete-article-button"
+                  <div className="user-dashboard__album-footer-actions">
+                    <DashboardAction
+                      destructive
                       onClick={(e) => {
                         e.stopPropagation();
                         onDeleteArticle(article);
                       }}
-                      title={ui?.dashboard?.deleteArticle ?? 'Delete article'}
                       aria-label={ui?.dashboard?.deleteArticle ?? 'Delete article'}
                     >
                       {ui?.dashboard?.deleteArticle ?? 'Delete article'}
-                    </button>
+                    </DashboardAction>
+                    <div className="user-dashboard__album-footer-actions-right">
+                      <button
+                        type="button"
+                        className="user-dashboard__edit-album-button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onEditArticle(article);
+                        }}
+                      >
+                        {ui?.dashboard?.editArticle ?? 'Edit Article'}
+                      </button>
+                    </div>
                   </div>
                 </DashboardCard>
-              ) : null}
-
-              {index < articles.length - 1 ? (
-                <div className="user-dashboard__album-divider" />
               ) : null}
             </React.Fragment>
           );

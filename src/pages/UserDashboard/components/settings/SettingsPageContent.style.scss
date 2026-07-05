@@ -6,125 +6,6 @@
   gap: var(--ms-1);
   width: 100%;
 
-  .settings-modal__field {
-    @include dashboard-form-field;
-  }
-
-  .settings-modal__label {
-    @include dashboard-form-label;
-  }
-
-  .settings-modal__input {
-    @include dashboard-form-input;
-  }
-
-  .settings-modal__textarea {
-    @include dashboard-form-textarea;
-  }
-
-  .settings-modal__select-wrapper {
-    position: relative;
-    width: 100%;
-  }
-
-  .settings-modal__select {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    width: 100%;
-    padding: var(--ms-01) var(--ms-01);
-    color: var(--dashboard-text-primary);
-    font-size: var(--dashboard-font-size);
-    background: var(--dashboard-input-bg);
-    border: 1px solid var(--dashboard-input-border);
-    border-radius: var(--ms-01);
-    cursor: pointer;
-    transition:
-      background-color 0.2s ease,
-      border-color 0.2s ease;
-
-    &:hover:not([aria-disabled='true']) {
-      background: var(--dashboard-hover-bg);
-    }
-
-    &:focus-visible:not(&--open) {
-      border-color: var(--dark-greenish-yellow);
-    }
-
-    &--open {
-      border-color: var(--dark-greenish-yellow);
-    }
-  }
-
-  .settings-modal__select-value {
-    flex: 1;
-    text-align: left;
-  }
-
-  .settings-modal__select-arrow {
-    flex-shrink: 0;
-    width: 12px;
-    height: 8px;
-    margin-left: var(--ms-01);
-    color: var(--dashboard-text-primary);
-    transition: transform 0.2s;
-
-    &--open {
-      transform: rotate(180deg);
-    }
-  }
-
-  .settings-modal__dropdown {
-    position: absolute;
-    top: calc(100% + 4px);
-    left: 0;
-    z-index: 10;
-    box-sizing: border-box;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    width: 100%;
-    max-height: 200px;
-    padding: var(--ms-02);
-    overflow-y: auto;
-    background: var(--dashboard-card-bg);
-    border: 1px solid var(--dashboard-card-border);
-    border-radius: var(--ms-01);
-    box-shadow: 0 4px 12px var(--dashboard-shadow);
-  }
-
-  .settings-modal__option {
-    display: block;
-    width: 100%;
-    margin: 0;
-    padding: var(--ms-01) var(--ms-0);
-    color: var(--dashboard-text-primary);
-    font-size: var(--dashboard-font-size);
-    font-family: inherit;
-    line-height: 1.4;
-    text-align: left;
-    background: transparent;
-    border: none;
-    border-radius: var(--ms-02);
-    cursor: pointer;
-
-    &:hover {
-      background: var(--dashboard-hover-bg);
-    }
-
-    &--selected {
-      color: var(--dark-greenish-yellow);
-      font-weight: 600;
-      background: rgb(var(--dark-greenish-yellow-rgb) / 8%);
-    }
-  }
-
-  .settings-modal__loading {
-    padding: var(--ms-01) var(--ms-0);
-    color: var(--dashboard-text-secondary);
-    font-size: var(--ms-0);
-  }
-
   &__avatar-row {
     display: flex;
     flex-wrap: wrap;
@@ -193,12 +74,6 @@
     @include dashboard-btn-secondary($margin: 0);
   }
 
-  &__avatar-remove {
-    width: auto;
-
-    @include dashboard-btn-destructive($margin: 0);
-  }
-
   &__avatar-hint {
     flex: 1 1 100%;
     margin: 0;
@@ -217,7 +92,7 @@
     gap: var(--ms-02);
     min-width: 0;
 
-    .settings-modal__input {
+    .dashboard-form-input {
       flex: 1;
       min-width: 0;
     }
@@ -228,13 +103,13 @@
     flex-shrink: 0;
     align-items: center;
     justify-content: center;
-    width: 2.25rem;
-    height: 2.25rem;
+    width: 2.75rem;
+    height: 2.75rem;
     padding: 0;
     color: var(--dashboard-text-secondary);
-    background: var(--dashboard-input-bg);
-    border: 1px solid var(--dashboard-input-border);
-    border-radius: var(--ms-01);
+    background: var(--dashboard-card-bg);
+    border: 1px solid var(--dashboard-card-border);
+    border-radius: 8px;
     cursor: pointer;
     transition:
       color 0.2s ease,
@@ -244,11 +119,6 @@
     &:disabled {
       opacity: 0.45;
       cursor: not-allowed;
-    }
-
-    &:focus-visible {
-      outline: 2px solid var(--dark-greenish-yellow);
-      outline-offset: 2px;
     }
 
     &:hover:not(:disabled) {

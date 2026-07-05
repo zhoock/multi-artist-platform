@@ -133,10 +133,7 @@
   border: none;
   cursor: pointer;
 
-  &:focus-visible {
-    outline: 2px solid var(--dark-greenish-yellow);
-    outline-offset: 2px;
-  }
+  @include dashboard-focus-ring;
 
   &:disabled {
     opacity: 0.55;
@@ -157,6 +154,61 @@
 
     &:hover:not(:disabled) {
       text-decoration: none;
+    }
+  }
+}
+
+.dashboard-icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  color: var(--dashboard-text-secondary);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--ms-02);
+  cursor: pointer;
+  transition:
+    color 150ms ease,
+    background-color 150ms ease,
+    border-color 150ms ease,
+    opacity 150ms ease;
+
+  @include dashboard-focus-ring;
+
+  &:disabled {
+    opacity: var(--dashboard-btn-disabled-opacity);
+    cursor: not-allowed;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    &:hover:not(:disabled) {
+      color: var(--dashboard-text-primary);
+      background: var(--dashboard-hover-bg);
+    }
+  }
+
+  &:active:not(:disabled) {
+    opacity: 0.7;
+  }
+
+  svg {
+    display: block;
+    flex-shrink: 0;
+  }
+
+  &--destructive {
+    color: var(--dashboard-btn-destructive-text);
+
+    @media (hover: hover) and (pointer: fine) {
+      &:hover:not(:disabled) {
+        color: var(--dashboard-btn-destructive-text);
+        background: var(--dashboard-btn-destructive-hover-bg);
+        border-color: var(--dashboard-btn-destructive-border);
+      }
     }
   }
 }

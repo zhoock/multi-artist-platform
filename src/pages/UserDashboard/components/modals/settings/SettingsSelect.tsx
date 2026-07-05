@@ -1,3 +1,4 @@
+import clsx from 'clsx';
 import React, { useEffect, useRef, useState } from 'react';
 
 export type SettingsSelectOption = {
@@ -69,11 +70,14 @@ export function SettingsSelect({
   };
 
   return (
-    <div className="settings-modal__select-wrapper">
+    <div className="dashboard-form-select">
       <div
         ref={selectRef}
         id={id}
-        className={`settings-modal__select${isOpen ? ' settings-modal__select--open' : ''}`}
+        className={clsx(
+          'dashboard-form-select__trigger',
+          isOpen && 'dashboard-form-select__trigger--open'
+        )}
         onClick={toggleDropdown}
         role="button"
         tabIndex={disabled ? -1 : 0}
@@ -88,11 +92,12 @@ export function SettingsSelect({
           }
         }}
       >
-        <span className="settings-modal__select-value">{selectedOption?.label ?? ''}</span>
+        <span className="dashboard-form-select__value">{selectedOption?.label ?? ''}</span>
         <svg
-          className={`settings-modal__select-arrow ${
-            isOpen ? 'settings-modal__select-arrow--open' : ''
-          }`}
+          className={clsx(
+            'dashboard-form-select__arrow',
+            isOpen && 'dashboard-form-select__arrow--open'
+          )}
           width="12"
           height="8"
           viewBox="0 0 12 8"
@@ -111,16 +116,17 @@ export function SettingsSelect({
       </div>
 
       {isOpen && (
-        <div ref={dropdownRef} className="settings-modal__dropdown" role="listbox">
+        <div ref={dropdownRef} className="dashboard-form-select__dropdown" role="listbox">
           {options.map((option) => (
             <button
               key={option.value}
               type="button"
               role="option"
               aria-selected={value === option.value}
-              className={`settings-modal__option ${
-                value === option.value ? 'settings-modal__option--selected' : ''
-              }`}
+              className={clsx(
+                'dashboard-form-select__option',
+                value === option.value && 'dashboard-form-select__option--selected'
+              )}
               onClick={() => handleSelect(option.value)}
             >
               {option.label}

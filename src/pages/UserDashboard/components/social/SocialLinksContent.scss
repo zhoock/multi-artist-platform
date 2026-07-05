@@ -45,12 +45,6 @@ dialog {
         line-height: 1;
       }
 
-      &__input {
-        @include dashboard-form-input;
-
-        margin-bottom: 0;
-      }
-
       &__footer {
         flex-shrink: 0;
         margin-top: var(--ms-1);

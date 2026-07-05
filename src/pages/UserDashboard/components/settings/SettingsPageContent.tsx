@@ -201,14 +201,13 @@ export function SettingsPageContent({
                     {hasAvatar ? changeLabel : uploadLabel}
                   </button>
                   {hasAvatar ? (
-                    <button
-                      type="button"
-                      className="user-dashboard__settings-page__avatar-remove"
+                    <DashboardAction
+                      destructive
                       onClick={() => void onAvatarRemove()}
                       disabled={isUploadingAvatar}
                     >
                       {removeLabel}
-                    </button>
+                    </DashboardAction>
                   ) : null}
                 </div>
                 <p className="user-dashboard__settings-page__avatar-hint">{avatarHint}</p>
@@ -229,7 +228,7 @@ export function SettingsPageContent({
               <input
                 id="settings-band-name"
                 type="text"
-                className="settings-modal__input"
+                className="dashboard-form-input"
                 placeholder={
                   d?.settingsModal?.placeholders?.bandName ?? 'Enter the name of your band'
                 }
@@ -259,7 +258,7 @@ export function SettingsPageContent({
                 <input
                   id="settings-public-slug"
                   type="text"
-                  className="settings-modal__input"
+                  className="dashboard-form-input"
                   placeholder="my-band"
                   value={publicSlug}
                   onChange={(event) => handlePublicSlugChange(event.target.value)}
@@ -284,13 +283,13 @@ export function SettingsPageContent({
               variant="start"
             >
               {isLoadingAboutText ? (
-                <div className="settings-modal__loading">
+                <div className="dashboard-form-loading">
                   {d?.loading ?? d?.uploading ?? 'Loading…'}
                 </div>
               ) : (
                 <textarea
                   id="settings-about-band"
-                  className="settings-modal__textarea"
+                  className="dashboard-form-textarea"
                   placeholder={
                     d?.settingsModal?.placeholders?.aboutBand ??
                     'Enter band description. Each line will be a separate paragraph.'
@@ -309,7 +308,7 @@ export function SettingsPageContent({
           <DashboardCard>
             <div className="user-dashboard__settings-page__header-images">
               {isLoadingHeaderImages ? (
-                <div className="settings-modal__loading">
+                <div className="dashboard-form-loading">
                   {d?.loading ?? d?.uploading ?? 'Loading…'}
                 </div>
               ) : (

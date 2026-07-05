@@ -163,7 +163,7 @@ export function SocialLinksContent({ active }: SocialLinksContentProps) {
                 <input
                   id={`social-link-${platform}`}
                   type="url"
-                  className="social-links__input"
+                  className="dashboard-form-input"
                   value={form[platform]}
                   onChange={(event) => updateField(platform, event.target.value)}
                   placeholder={copy?.placeholders?.[platform]}

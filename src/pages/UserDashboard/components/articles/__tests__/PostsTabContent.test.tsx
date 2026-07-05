@@ -50,6 +50,23 @@ describe('PostsTabContent', () => {
     expect(screen.getByText("You don't have any articles yet")).toBeTruthy();
   });
 
+  it('renders article row as interactive DashboardCard', () => {
+    const { container } = renderWithProviders(
+      <PostsTabContent
+        {...createBaseProps({
+          articles: [sampleArticle],
+        })}
+      />
+    );
+
+    expect(container.querySelector('.user-dashboard__expandable-row-trigger')).toBeTruthy();
+    expect(
+      container.querySelector(
+        '.dashboard-card.user-dashboard__album-item.dashboard-card--interactive'
+      )
+    ).toBeTruthy();
+  });
+
   it('renders expanded panel as DashboardCard with kit modifier', () => {
     const { container } = renderWithProviders(
       <PostsTabContent
@@ -67,18 +84,36 @@ describe('PostsTabContent', () => {
     expect(screen.getByText('Test Article')).toBeTruthy();
   });
 
-  it('renders cover upload as DashboardRow when expanded', () => {
+  it('renders excerpt before secondary cover section when expanded', () => {
+    const articleWithBody: IArticles = {
+      ...sampleArticle,
+      details: [{ type: 'text', content: 'Article excerpt for preview.' }],
+    };
+
     const { container } = renderWithProviders(
       <PostsTabContent
         {...createBaseProps({
-          articles: [sampleArticle],
+          articles: [articleWithBody],
           expandedArticleId: 'article-1',
         })}
       />
     );
 
-    expect(container.querySelector('.dashboard-row')).toBeTruthy();
+    const expanded = container.querySelector(
+      '.user-dashboard__album-expanded.user-dashboard__album-expanded--article'
+    );
+    expect(expanded).toBeTruthy();
+    expect(container.querySelector('.dashboard-row')).toBeNull();
     expect(screen.getByText('Article Cover')).toBeTruthy();
+    expect(container.querySelector('.user-dashboard__article-cover-file-input')).toBeTruthy();
+
+    const description = container.querySelector('.user-dashboard__article-description');
+    const coverSection = container.querySelector('.user-dashboard__article-cover-section');
+    expect(description).toBeTruthy();
+    expect(coverSection).toBeTruthy();
+    expect(
+      description!.compareDocumentPosition(coverSection!) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
   });
 
   it('uses dashboard-empty-state__cta for footer upload action', () => {

@@ -90,6 +90,9 @@ html.theme-dark {
   --dashboard-btn-transition-easing: ease;
   --dashboard-btn-disabled-opacity: 0.45;
   --dashboard-btn-focus-ring: var(--dark-greenish-yellow);
+  --dashboard-focus-ring-color: var(--dark-greenish-yellow);
+  --dashboard-focus-ring-width: 2px;
+  --dashboard-focus-ring-offset: 2px;
   --dashboard-btn-primary-text: var(--dark-greenish-yellow);
   --dashboard-btn-primary-border: rgb(var(--dark-greenish-yellow-rgb) / 45%);
   --dashboard-btn-primary-hover-bg: rgb(var(--dashboard-accent-rgb) / 11%);

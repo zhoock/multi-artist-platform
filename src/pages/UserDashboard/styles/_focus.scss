@@ -1,0 +1,25 @@
+// Unified keyboard focus ring inside User Dashboard (overrides site-wide 4px :focus-visible).
+
+dialog {
+  .user-dashboard {
+    --dashboard-focus-ring-color: var(--dashboard-btn-focus-ring, var(--dark-greenish-yellow));
+    --dashboard-focus-ring-width: 2px;
+    --dashboard-focus-ring-offset: 2px;
+
+    :where(a, button, [role='button'], [tabindex]:not([tabindex='-1'])):focus-visible:not(
+        .dashboard-form-input,
+        .dashboard-form-textarea,
+        .dashboard-form-select__trigger,
+        .dashboard-form-select__option
+      ) {
+      outline: var(--dashboard-focus-ring-width) solid var(--dashboard-focus-ring-color);
+      outline-offset: var(--dashboard-focus-ring-offset);
+    }
+
+    .dashboard-form-select__option:focus-visible {
+      outline: none;
+      background: var(--dashboard-hover-bg);
+      box-shadow: inset 0 0 0 2px var(--dashboard-focus-ring-color);
+    }
+  }
+}

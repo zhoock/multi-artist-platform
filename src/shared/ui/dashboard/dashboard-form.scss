@@ -1,0 +1,89 @@
+@use '../../../scss/abstracts/mixins' as *;
+
+.dashboard-form-input {
+  @include dashboard-form-input;
+}
+
+.dashboard-form-textarea {
+  @include dashboard-form-textarea;
+}
+
+.dashboard-form-select {
+  position: relative;
+  width: 100%;
+
+  &__trigger {
+    @include dashboard-form-select-trigger;
+  }
+
+  &__value {
+    flex: 1;
+    min-width: 0;
+    text-align: left;
+  }
+
+  &__arrow {
+    flex-shrink: 0;
+    width: 12px;
+    height: 8px;
+    margin-left: var(--ms-01);
+    color: var(--dashboard-text-primary);
+    transition: transform 0.2s ease;
+
+    &--open {
+      transform: rotate(180deg);
+    }
+  }
+
+  &__dropdown {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    z-index: 10;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    width: 100%;
+    max-height: 200px;
+    padding: var(--ms-02);
+    overflow-y: auto;
+    background: var(--dashboard-card-bg);
+    border: 1px solid var(--dashboard-card-border);
+    border-radius: 8px;
+    box-shadow: 0 4px 12px var(--dashboard-shadow);
+  }
+
+  &__option {
+    display: block;
+    width: 100%;
+    margin: 0;
+    padding: var(--ms-01) var(--ms-0);
+    color: var(--dashboard-text-primary);
+    font-size: var(--dashboard-font-size);
+    font-family: inherit;
+    line-height: 1.4;
+    text-align: left;
+    background: transparent;
+    border: none;
+    border-radius: var(--ms-02);
+    cursor: pointer;
+
+    &:hover {
+      background: var(--dashboard-hover-bg);
+    }
+
+    &--selected {
+      color: var(--dark-greenish-yellow);
+      font-weight: 600;
+      background: rgb(var(--dark-greenish-yellow-rgb) / 8%);
+    }
+  }
+}
+
+.dashboard-form-loading {
+  padding: var(--ms-01) var(--ms-0);
+  color: var(--dashboard-text-secondary);
+  font-size: var(--dashboard-font-size);
+  line-height: 1.5;
+}

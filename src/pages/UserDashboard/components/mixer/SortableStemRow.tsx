@@ -12,6 +12,7 @@ import {
   Loader2 as Loader2Icon,
 } from 'lucide-react';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
+import { DashboardIconButton } from '@shared/ui/dashboard';
 import { StemIcon, type StemMeta } from '@entities/stem';
 
 export interface StemRowLabels {
@@ -142,9 +143,7 @@ export function SortableStemRow({
           </span>
         ) : (
           <>
-            <button
-              type="button"
-              className="mixer-stem__action"
+            <DashboardIconButton
               onClick={onTogglePlay}
               aria-label={isPlaying ? labels.pause : labels.play}
               title={isPlaying ? labels.pause : labels.play}
@@ -154,34 +153,29 @@ export function SortableStemRow({
               ) : (
                 <PlayIcon {...dashboardActionIconProps({ size: 18 })} />
               )}
-            </button>
-            <button
-              type="button"
-              className="mixer-stem__action"
+            </DashboardIconButton>
+            <DashboardIconButton
               onClick={() => replaceInputRef.current?.click()}
               aria-label={labels.replace}
               title={labels.replace}
             >
               <RefreshCwIcon {...dashboardActionIconProps({ size: 18 })} />
-            </button>
-            <button
-              type="button"
-              className="mixer-stem__action"
+            </DashboardIconButton>
+            <DashboardIconButton
               onClick={startEditing}
               aria-label={labels.rename}
               title={labels.rename}
             >
               <PencilIcon {...dashboardActionIconProps({ size: 18 })} />
-            </button>
-            <button
-              type="button"
-              className="mixer-stem__action mixer-stem__action--danger"
+            </DashboardIconButton>
+            <DashboardIconButton
+              destructive
               onClick={onDelete}
               aria-label={labels.delete}
               title={labels.delete}
             >
               <Trash2Icon {...dashboardActionIconProps({ size: 18 })} />
-            </button>
+            </DashboardIconButton>
           </>
         )}
       </div>

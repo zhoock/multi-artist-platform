@@ -74,6 +74,22 @@ describe('AlbumsTabContent', () => {
     expect(screen.getByText('No albums yet')).toBeTruthy();
   });
 
+  it('renders album row as interactive DashboardCard', () => {
+    const { container } = renderWithProviders(
+      <AlbumsTabContent
+        {...createBaseProps({
+          albumsData: [sampleAlbum],
+        })}
+      />
+    );
+
+    const albumCard = container.querySelector(
+      '.dashboard-card.user-dashboard__album-item.dashboard-card--interactive'
+    );
+    expect(albumCard).toBeTruthy();
+    expect(container.querySelector('.user-dashboard__expandable-row-trigger')).toBeTruthy();
+  });
+
   it('renders expanded panel as DashboardCard with kit modifier', () => {
     const { container } = renderWithProviders(
       <AlbumsTabContent

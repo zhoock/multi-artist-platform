@@ -168,12 +168,6 @@ dialog {
         flex-direction: column;
       }
 
-      &__form-input {
-        @include dashboard-form-input;
-
-        margin-bottom: 0;
-      }
-
       &__form-hint {
         display: block;
         margin-top: var(--ms-02);

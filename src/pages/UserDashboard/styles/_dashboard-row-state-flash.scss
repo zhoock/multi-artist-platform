@@ -11,14 +11,13 @@ dialog {
         overflow: hidden;
 
         &::before {
-          content: '';
           position: absolute;
-          inset: 0;
           z-index: 0;
-          pointer-events: none;
-          border-top-left-radius: var(--ms-01);
-          border-top-right-radius: var(--ms-01);
           background: rgb(var(--dashboard-row-flash-rgb) / 14%);
+          border-radius: var(--ms-01);
+          content: '';
+          inset: 0;
+          pointer-events: none;
           animation: dashboard-row-state-flash 4.2s cubic-bezier(0.16, 1, 0.28, 1) forwards;
         }
 

@@ -25,7 +25,7 @@ import type { SupportedLang } from '@shared/model/lang';
 import type { TrackVisibility } from '@shared/lib/tracks/trackVisibility';
 import { EmailVerificationOnboarding } from '@shared/lib/emailVerification';
 import { SubscriberContentLockIcon } from '@shared/ui/icons/SubscriberContentLockIcon';
-import { DashboardCard } from '@shared/ui/dashboard';
+import { DashboardCard, DashboardAction } from '@shared/ui/dashboard';
 import {
   getDashboardRowFlashProps,
   type DashboardRowFlash,
@@ -199,7 +199,7 @@ export function AlbumsTabContent({
   return (
     <div className="user-dashboard__section">
       <div className="user-dashboard__albums-list">
-        {albumsData.map((album, index) => {
+        {albumsData.map((album) => {
           const isExpanded = expandedAlbumId === album.id;
           const albumFromStore = albumsFromStore.find(
             (a) => a.albumId === album.id || a.albumId === album.albumId
@@ -245,18 +245,7 @@ export function AlbumsTabContent({
             <React.Fragment key={album.id}>
               <div
                 id={`dashboard-album-row-${album.id}`}
-                className={clsx(
-                  'user-dashboard__album-item',
-                  'dashboard-album-row',
-                  albumRowFlash.className,
-                  {
-                    'user-dashboard__album-item--expanded': isExpanded,
-                    'user-dashboard__album-item--access-menu-open':
-                      albumAccessMenuAlbumId === album.id,
-                  }
-                )}
-                style={albumRowFlash.style}
-                data-visibility-flash={albumRowFlash['data-visibility-flash']}
+                className="user-dashboard__expandable-row-trigger"
                 onClick={() => onToggleAlbum(album.id)}
                 role="button"
                 tabIndex={0}
@@ -268,58 +257,75 @@ export function AlbumsTabContent({
                 }}
                 aria-label={isExpanded ? 'Collapse album' : 'Expand album'}
               >
-                <div className="user-dashboard__album-thumbnail">
-                  {album.cover ? (
-                    <AlbumCoverImage
-                      cover={album.cover}
-                      userId={album.userId ?? userId ?? undefined}
-                      alt={album.title}
-                      contextAlbumId={album.id}
-                      loading="lazy"
-                      decoding="async"
-                    />
-                  ) : (
-                    <img src="/images/album-placeholder.png" alt={album.title} />
+                <DashboardCard
+                  interactive
+                  selected={isExpanded}
+                  className={clsx(
+                    'user-dashboard__album-item',
+                    'dashboard-album-row',
+                    albumRowFlash.className,
+                    {
+                      'user-dashboard__album-item--expanded': isExpanded,
+                      'user-dashboard__album-item--access-menu-open':
+                        albumAccessMenuAlbumId === album.id,
+                    }
                   )}
-                </div>
-                <div className="user-dashboard__album-info">
-                  <div className="user-dashboard__album-title-row">
-                    <div className="user-dashboard__album-title">{album.title}</div>
-                    <AlbumLifecycleBadge
-                      status={albumDraftBadge}
-                      ui={ui ?? undefined}
-                      lang={lang}
-                    />
-                  </div>
-                  {album.releaseDate ? (
-                    <div className="user-dashboard__album-date">{album.releaseDate}</div>
-                  ) : (
-                    <div className="user-dashboard__album-year">{album.year}</div>
-                  )}
-                </div>
-                <div
-                  className="user-dashboard__album-item-actions"
-                  onClick={(e) => e.stopPropagation()}
-                  onMouseDown={(e) => e.stopPropagation()}
+                  style={albumRowFlash.style}
+                  data-visibility-flash={albumRowFlash['data-visibility-flash']}
                 >
-                  {albumIsPublished ? (
-                    <AlbumAccessControl
-                      albumId={album.id}
-                      visibility={albumVisibility}
-                      ui={ui ?? undefined}
-                      lang={lang}
-                      menuOpen={albumAccessMenuAlbumId === album.id}
-                      onMenuOpenChange={(open) => onAlbumAccessMenuChange(open ? album.id : null)}
-                      onPickVisibility={(v) => void onAlbumVisibilityChange(album.id, v)}
-                      getRowElement={() =>
-                        document.getElementById(`dashboard-album-row-${album.id}`)
-                      }
-                    />
-                  ) : null}
-                  <div className="user-dashboard__album-arrow">
-                    <DashboardExpandChevron expanded={isExpanded} />
+                  <div className="user-dashboard__album-thumbnail">
+                    {album.cover ? (
+                      <AlbumCoverImage
+                        cover={album.cover}
+                        userId={album.userId ?? userId ?? undefined}
+                        alt={album.title}
+                        contextAlbumId={album.id}
+                        loading="lazy"
+                        decoding="async"
+                      />
+                    ) : (
+                      <img src="/images/album-placeholder.png" alt={album.title} />
+                    )}
                   </div>
-                </div>
+                  <div className="user-dashboard__album-info">
+                    <div className="user-dashboard__album-title-row">
+                      <div className="user-dashboard__album-title">{album.title}</div>
+                      <AlbumLifecycleBadge
+                        status={albumDraftBadge}
+                        ui={ui ?? undefined}
+                        lang={lang}
+                      />
+                    </div>
+                    {album.releaseDate ? (
+                      <div className="user-dashboard__album-date">{album.releaseDate}</div>
+                    ) : (
+                      <div className="user-dashboard__album-year">{album.year}</div>
+                    )}
+                  </div>
+                  <div
+                    className="user-dashboard__album-item-actions"
+                    onClick={(e) => e.stopPropagation()}
+                    onMouseDown={(e) => e.stopPropagation()}
+                  >
+                    {albumIsPublished ? (
+                      <AlbumAccessControl
+                        albumId={album.id}
+                        visibility={albumVisibility}
+                        ui={ui ?? undefined}
+                        lang={lang}
+                        menuOpen={albumAccessMenuAlbumId === album.id}
+                        onMenuOpenChange={(open) => onAlbumAccessMenuChange(open ? album.id : null)}
+                        onPickVisibility={(v) => void onAlbumVisibilityChange(album.id, v)}
+                        getRowElement={() =>
+                          document.getElementById(`dashboard-album-row-${album.id}`)
+                        }
+                      />
+                    ) : null}
+                    <div className="user-dashboard__album-arrow">
+                      <DashboardExpandChevron expanded={isExpanded} />
+                    </div>
+                  </div>
+                </DashboardCard>
               </div>
 
               {isExpanded ? (
@@ -530,18 +536,16 @@ export function AlbumsTabContent({
                   ) : null}
 
                   <div className="user-dashboard__album-footer-actions">
-                    <button
-                      type="button"
-                      className="user-dashboard__delete-album-button"
+                    <DashboardAction
+                      destructive
                       onClick={(e) => {
                         e.stopPropagation();
                         onDeleteAlbum(album.id);
                       }}
-                      title={ui?.dashboard?.deleteAlbum ?? 'Delete album'}
                       aria-label={ui?.dashboard?.deleteAlbum ?? 'Delete album'}
                     >
                       {ui?.dashboard?.deleteAlbum ?? 'Delete album'}
-                    </button>
+                    </DashboardAction>
                     <div className="user-dashboard__album-footer-actions-right">
                       {showPublishControls ? (
                         <div className="user-dashboard__publish-album-wrap">
@@ -593,10 +597,6 @@ export function AlbumsTabContent({
                     </div>
                   </div>
                 </DashboardCard>
-              ) : null}
-
-              {index < albumsData.length - 1 ? (
-                <div className="user-dashboard__album-divider" />
               ) : null}
             </React.Fragment>
           );

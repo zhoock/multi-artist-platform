@@ -64,14 +64,9 @@ dialog {
         text-align: left;
         background: none;
         border: none;
+        border-radius: var(--ms-01);
         appearance: none;
         cursor: pointer;
-
-        &:focus-visible {
-          outline: 2px solid rgb(var(--dark-greenish-yellow-rgb) / 55%);
-          outline-offset: 2px;
-          border-radius: var(--ms-01);
-        }
       }
 
       &__slots-card {

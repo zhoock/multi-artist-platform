@@ -60,6 +60,18 @@ $ms-4: 123.363px; // 6.854rem;
 }
 
 // Dashboard button system — shared shell (height, radius, typography, transition)
+@mixin dashboard-focus-ring($offset: var(--dashboard-focus-ring-offset, 2px)) {
+  &:focus {
+    outline: none;
+  }
+
+  &:focus-visible {
+    outline: var(--dashboard-focus-ring-width, 2px) solid
+      var(--dashboard-focus-ring-color, var(--dashboard-btn-focus-ring));
+    outline-offset: $offset;
+  }
+}
+
 @mixin dashboard-btn-base(
   $margin: 0,
   $padding: var(--dashboard-btn-padding-y) var(--dashboard-btn-padding-x),
@@ -91,14 +103,7 @@ $ms-4: 123.363px; // 6.854rem;
     border-color var(--dashboard-btn-transition-duration) var(--dashboard-btn-transition-easing),
     opacity var(--dashboard-btn-transition-duration) var(--dashboard-btn-transition-easing);
 
-  &:focus {
-    outline: none;
-  }
-
-  &:focus-visible {
-    outline: 2px solid var(--dashboard-btn-focus-ring);
-    outline-offset: 2px;
-  }
+  @include dashboard-focus-ring;
 
   &.disabled,
   &[disabled] {
@@ -284,9 +289,9 @@ $ms-4: 123.363px; // 6.854rem;
   margin-bottom: 4px;
 }
 
-// Dashboard form input - текстовое поле
-@mixin dashboard-form-input($padding: 12px 16px) {
-  display: block;
+// Shared visual shell for dashboard text inputs, textareas, and custom select triggers.
+@mixin dashboard-form-control-shell($padding: 12px 16px) {
+  box-sizing: border-box;
   width: 100%;
   padding: $padding;
   color: var(--dashboard-text-primary);
@@ -296,92 +301,74 @@ $ms-4: 123.363px; // 6.854rem;
   background: var(--dashboard-card-bg);
   border: 1px solid var(--dashboard-card-border);
   border-radius: 8px;
-  box-sizing: border-box;
   transition:
     border-color 0.15s ease,
     box-shadow 0.15s ease;
 
-  &::placeholder {
-    color: var(--dashboard-text-secondary);
-    opacity: 0.7;
-  }
-
   &:focus {
     outline: none;
-    border-color: var(--dark-greenish-yellow);
   }
 
-  &:disabled {
+  &:focus-visible {
+    outline: none;
+    border-color: var(--dashboard-focus-ring-color, var(--dark-greenish-yellow));
+  }
+
+  &:disabled,
+  &[aria-disabled='true'] {
     opacity: 0.6;
     cursor: not-allowed;
     background: var(--dashboard-hover-bg);
+  }
+}
+
+// Dashboard form input - текстовое поле
+@mixin dashboard-form-input($padding: 12px 16px) {
+  @include dashboard-form-control-shell($padding);
+
+  display: block;
+
+  &::placeholder {
+    color: var(--dashboard-text-secondary);
+    opacity: 0.7;
   }
 }
 
 // Dashboard form textarea - многострочное поле
 @mixin dashboard-form-textarea($padding: 12px 16px, $min-height: 120px) {
+  @include dashboard-form-control-shell($padding);
+
   display: block;
-  width: 100%;
   min-height: $min-height;
-  padding: $padding;
-  color: var(--dashboard-text-primary);
-  font-size: var(--dashboard-font-size);
-  line-height: 1.5;
-  font-family: inherit;
-  background: var(--dashboard-card-bg);
-  border: 1px solid var(--dashboard-card-border);
-  border-radius: 8px;
-  box-sizing: border-box;
   resize: vertical;
-  transition:
-    border-color 0.15s ease,
-    box-shadow 0.15s ease;
 
   &::placeholder {
     color: var(--dashboard-text-secondary);
     opacity: 0.7;
   }
-
-  &:focus {
-    outline: none;
-    border-color: var(--dark-greenish-yellow);
-  }
-
-  &:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-    background: var(--dashboard-hover-bg);
-  }
 }
 
-// Dashboard form select - выпадающий список
+// Dashboard form select - native <select>
 @mixin dashboard-form-select($padding: 12px 16px) {
+  @include dashboard-form-control-shell($padding);
+
   display: block;
-  width: 100%;
-  padding: $padding;
-  color: var(--dashboard-text-primary);
-  font-size: var(--dashboard-font-size);
-  font-family: inherit;
-  line-height: 1.5;
-  background: var(--dashboard-card-bg);
-  border: 1px solid var(--dashboard-card-border);
-  border-radius: 8px;
-  box-sizing: border-box;
   cursor: pointer;
-  transition:
-    border-color 0.15s ease,
-    box-shadow 0.15s ease;
   appearance: none;
+}
 
-  &:focus {
-    outline: none;
+// Custom select trigger (SettingsSelect and similar)
+@mixin dashboard-form-select-trigger($padding: 12px 16px) {
+  @include dashboard-form-control-shell($padding);
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  text-align: left;
+
+  &--open {
     border-color: var(--dark-greenish-yellow);
-  }
-
-  &:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-    background: var(--dashboard-hover-bg);
   }
 }
 
@@ -639,6 +626,9 @@ $desktops: 'width >= 1024px';
   --dashboard-btn-transition-easing: ease;
   --dashboard-btn-disabled-opacity: 0.45;
   --dashboard-btn-focus-ring: var(--dark-greenish-yellow);
+  --dashboard-focus-ring-color: var(--dark-greenish-yellow);
+  --dashboard-focus-ring-width: 2px;
+  --dashboard-focus-ring-offset: 2px;
   --dashboard-btn-primary-text: var(--dark-greenish-yellow);
   --dashboard-btn-primary-border: rgb(var(--dark-greenish-yellow-rgb) / 45%);
   --dashboard-btn-primary-hover-bg: rgb(var(--dashboard-accent-rgb) / 11%);

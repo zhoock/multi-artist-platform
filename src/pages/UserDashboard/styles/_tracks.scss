@@ -238,9 +238,7 @@ dialog {
       flex-shrink: 0;
     }
 
-    &__track-access-button,
-    &__track-edit-button,
-    &__track-delete-button {
+    &__track-access-button {
       display: inline-flex;
       align-items: center;
       justify-content: center;
@@ -255,9 +253,6 @@ dialog {
         color 150ms ease,
         background-color 150ms ease,
         opacity 150ms ease;
-    }
-
-    &__track-access-button {
       color: inherit;
 
       &-icon {
@@ -271,27 +266,6 @@ dialog {
 
       &:active {
         opacity: 0.7;
-      }
-    }
-
-    &__track-edit-button {
-      color: #b3b3b3;
-
-      &:hover {
-        color: #ffffff;
-        background: var(--dashboard-hover-bg);
-      }
-
-      &:active {
-        opacity: 0.7;
-      }
-
-      svg {
-        display: block;
-        width: 18px;
-        height: 18px;
-        fill: none;
-        stroke: currentcolor;
       }
     }
 
@@ -376,30 +350,6 @@ dialog {
       margin-inline-start: var(--ms-01);
     }
 
-    &__track-delete-button {
-      color: var(--error-color, #cf807d);
-
-      &:hover {
-        color: var(--error-color, #cf807d);
-        background: var(
-          --dashboard-btn-destructive-hover-bg,
-          rgb(var(--pink-terracotta-rgb) / 12%)
-        );
-      }
-
-      &:active {
-        opacity: 0.7;
-      }
-
-      svg {
-        display: block;
-        width: 18px;
-        height: 18px;
-        fill: none;
-        stroke: currentcolor;
-      }
-    }
-
     &__track-title-input {
       min-width: 0;
       padding: var(--ms-01);
@@ -422,11 +372,6 @@ dialog {
       color: var(--dashboard-text-secondary);
       font-size: var(--dashboard-font-size);
       font-variant-numeric: tabular-nums;
-    }
-
-    &__album-divider {
-      height: 1px;
-      background: var(--dashboard-hover-bg);
     }
 
     &__lyrics-section {
