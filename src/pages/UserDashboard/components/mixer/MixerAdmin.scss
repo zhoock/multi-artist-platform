@@ -238,23 +238,3 @@
     transform: rotate(360deg);
   }
 }
-
-dialog {
-  .user-dashboard {
-    .mixer-admin__stem-access-button.user-dashboard__track-access-button {
-      width: auto;
-      height: auto;
-      min-height: 0;
-      padding: 0;
-      border-radius: 999px;
-
-      &:hover {
-        background: transparent;
-      }
-
-      &:active {
-        opacity: 1;
-      }
-    }
-  }
-}

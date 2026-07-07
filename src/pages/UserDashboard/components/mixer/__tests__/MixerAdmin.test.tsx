@@ -121,7 +121,7 @@ describe('MixerAdmin', () => {
     expect(container.querySelector('.status-badge')).toBeNull();
   });
 
-  it('shows status badge in track header when stems are loaded', async () => {
+  it('shows visibility globe button in track header when stems are loaded', async () => {
     loadStemsMock.mockResolvedValue({
       stems: [
         {
@@ -149,8 +149,12 @@ describe('MixerAdmin', () => {
     await user.click(screen.getByLabelText('Expand album'));
 
     await waitFor(() => {
-      expect(container.querySelector('.status-badge')).toBeTruthy();
+      expect(
+        container.querySelector('.mixer-admin__stem-access-button .track-visibility-icon')
+      ).toBeTruthy();
     });
+
+    await user.click(screen.getByLabelText('Stem access'));
 
     expect(screen.getByText('Open to everyone')).toBeTruthy();
   });

@@ -9,7 +9,6 @@ import {
   type StemsVisibility,
 } from '@shared/lib/stems/stemsVisibility';
 import { TrackVisibilityIcon } from '@shared/ui/icons/TrackVisibilityIcon';
-import { StatusBadge, type StatusBadgeVariant } from '@shared/ui/statusBadge';
 import {
   DashboardAccessMenuPortal,
   resolveDashboardAccessMenuPortalFromElement,
@@ -25,20 +24,6 @@ type StemAccessControlProps = {
   /** Контейнер для portal (dialog popup или body). */
   portalRoot?: HTMLElement | null;
 };
-
-/** Меню должно быть внутри `<dialog>` (top layer) и `.user-dashboard` (стили). */
-function stemsVisibilityBadgeVariant(visibility: StemsVisibility): StatusBadgeVariant {
-  switch (visibility) {
-    case 'public':
-      return 'public';
-    case 'subscribers_only':
-      return 'locked';
-    case 'hidden':
-      return 'draft';
-    default:
-      return 'draft';
-  }
-}
 
 export function StemAccessControl({
   albumId,
@@ -130,26 +115,21 @@ export function StemAccessControl({
     [albumId, trackId, stemsVisibility, onVisibilityChange, closeMenu]
   );
 
-  const currentLabel =
-    menuOptions.find((opt) => opt.value === stemsVisibility)?.label ??
-    menuOptions[0]?.label ??
-    stemsVisibility;
-
   return (
     <>
       <button
         ref={triggerRef}
         type="button"
-        className="user-dashboard__track-access-button mixer-admin__stem-access-button"
+        className="user-dashboard__article-access-button mixer-admin__stem-access-button"
         onClick={toggleMenu}
         onMouseDown={(e) => e.stopPropagation()}
         aria-expanded={menuOpen}
         aria-haspopup="menu"
         aria-label={ariaLabel}
       >
-        <StatusBadge variant={stemsVisibilityBadgeVariant(stemsVisibility)}>
-          {currentLabel}
-        </StatusBadge>
+        <span className="user-dashboard__article-access-button-icon" aria-hidden>
+          <TrackVisibilityIcon visibility={stemsVisibility} />
+        </span>
       </button>
       <DashboardAccessMenuPortal
         menuRef={menuRef}
