@@ -124,7 +124,10 @@ dialog {
       overflow-y: auto;
     }
 
-    &__loading,
+    &__loading {
+      min-height: 200px;
+    }
+
     &__empty {
       display: flex;
       align-items: center;

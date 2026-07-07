@@ -305,7 +305,9 @@ dialog {
     }
 
     &__album-sale-loading {
-      margin: 0;
+      justify-content: flex-start;
+      min-height: calc(var(--ms-2) * 1.5);
+      padding-block: var(--ms-01);
     }
 
     &__connect-payment-link {

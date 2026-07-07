@@ -6,6 +6,7 @@ import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 import { useLang } from '@app/providers/lang';
 import { getUser } from '@shared/lib/auth';
+import { DashboardLoadingState } from '@shared/ui/dashboard';
 import { DashboardSaveSpinner } from '@shared/ui/dashboard-save/DashboardSaveSpinner';
 import { ModalCloseIcon } from '@shared/ui/icons/ModalCloseIcon';
 import '@shared/ui/dashboard-save/dashboard-save.scss';
@@ -367,11 +368,7 @@ export function CoverImageCropModal({
             </div>
           )}
 
-          {!imageSrc && (
-            <div className="cover-image-crop-modal__loading">
-              {ui?.dashboard?.loading ?? 'Загрузка изображения...'}
-            </div>
-          )}
+          {!imageSrc && <DashboardLoadingState className="cover-image-crop-modal__loading" />}
         </div>
 
         {!isPreviewMode && imageSrc && (

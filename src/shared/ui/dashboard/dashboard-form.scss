@@ -52,6 +52,12 @@
     border: 1px solid var(--dashboard-card-border);
     border-radius: 8px;
     box-shadow: 0 4px 12px var(--dashboard-shadow);
+
+    &--fixed {
+      top: auto;
+      left: auto;
+      width: auto;
+    }
   }
 
   &__option {

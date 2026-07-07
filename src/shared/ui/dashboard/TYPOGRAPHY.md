@@ -246,6 +246,13 @@ h2  My Purchases
 9. **Headings — weight 400.**  
    Dashboard UI не использует semibold/bold в заголовках вкладок и секций. Акцент — через размер и placement, не через weight.
 
+10. **Loading states — три паттерна, не смешивать.**
+    - **Skeleton** — когда известна будущая структура (карточки, таблицы, списки, вкладки).
+    - **LoadingState** (`DashboardLoadingState`) — когда структура ещё неизвестна или редактор ещё не готов (модалки, локальные интерактивные области).
+    - **SaveSpinner** (`DashboardSaveSpinner`) — только для действий пользователя (Save, Publish, Upload и т.д.).
+
+    Подробнее — [Dashboard UI Kit — README, состояния загрузки](./README.md#dashboard-ui-primitives).
+
 ---
 
 ## 7. Примеры
@@ -368,3 +375,4 @@ Helper почти всегда **подчинён** body или label — не �
 - [ ] H2 не заменяет H1
 - [ ] Новые heading-стили проходят через `dashboard-isolate-heading`
 - [ ] При добавлении новой typography-роли обновлён `TYPOGRAPHY.md`
+- [ ] Состояние загрузки не использует текстовые заглушки («Загрузка…», «Loading…») — см. правило Loading states в README

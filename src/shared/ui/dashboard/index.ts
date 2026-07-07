@@ -15,3 +15,4 @@ export { DashboardIconButton } from './DashboardIconButton';
 export { DashboardCta } from './DashboardCta';
 export { DashboardExpandableRowTrigger } from './DashboardExpandableRowTrigger';
 export { DashboardEmptyState } from './DashboardEmptyState';
+export { DashboardSpinner, DashboardLoadingState } from './DashboardSpinner';

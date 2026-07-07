@@ -322,3 +322,29 @@
   cursor: pointer;
   border-radius: var(--ms-01);
 }
+
+.dashboard-spinner {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--dashboard-text-secondary);
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: dashboard-spinner-spin 0.8s linear infinite;
+  flex-shrink: 0;
+  opacity: 0.85;
+}
+
+.dashboard-loading-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  min-height: 0;
+}
+
+@keyframes dashboard-spinner-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

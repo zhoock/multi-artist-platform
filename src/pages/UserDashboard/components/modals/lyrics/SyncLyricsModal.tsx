@@ -28,6 +28,7 @@ import {
   LYRICS_MODAL_TRANSPORT_ICON_SIZE,
   playerTransportIconProps,
 } from '@shared/ui/icons/playerActionIcon';
+import { DashboardLoadingState } from '@shared/ui/dashboard';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 import { useCloseWithUnsavedConfirmation } from '@shared/lib/hooks/useCloseWithUnsavedConfirmation';
 import {
@@ -707,7 +708,7 @@ export function SyncLyricsModal({
 
             <div className="sync-lyrics-modal__content">
               {isLoading ? (
-                <div className="sync-lyrics-modal__loading">Загрузка...</div>
+                <DashboardLoadingState className="sync-lyrics-modal__loading" />
               ) : displayLines.length === 0 ? (
                 <div className="sync-lyrics-modal__empty">
                   {ui?.dashboard?.noLyrics ?? 'Нет текста для синхронизации'}

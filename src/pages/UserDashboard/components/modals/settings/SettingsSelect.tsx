@@ -1,5 +1,10 @@
 import clsx from 'clsx';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
+import { createPortal } from 'react-dom';
+import {
+  DASHBOARD_ACCESS_MENU_Z_INDEX,
+  resolveDashboardAccessMenuPortalFromElement,
+} from '../../../lib/useDashboardAccessMenu';
 
 export type SettingsSelectOption = {
   value: string;
@@ -14,6 +19,22 @@ type SettingsSelectProps = {
   disabled?: boolean;
 };
 
+function getDropdownStyle(trigger: HTMLElement | null): CSSProperties {
+  if (!trigger) {
+    return { position: 'fixed', visibility: 'hidden' };
+  }
+
+  const rect = trigger.getBoundingClientRect();
+
+  return {
+    position: 'fixed',
+    top: rect.bottom + 4,
+    left: rect.left,
+    width: rect.width,
+    zIndex: DASHBOARD_ACCESS_MENU_Z_INDEX,
+  };
+}
+
 export function SettingsSelect({
   id,
   value,
@@ -22,10 +43,34 @@ export function SettingsSelect({
   disabled = false,
 }: SettingsSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [dropdownStyle, setDropdownStyle] = useState<CSSProperties>(() => getDropdownStyle(null));
   const dropdownRef = useRef<HTMLDivElement>(null);
   const selectRef = useRef<HTMLDivElement>(null);
 
   const selectedOption = options.find((option) => option.value === value) ?? options[0];
+
+  const updateDropdownPosition = () => {
+    setDropdownStyle(getDropdownStyle(selectRef.current));
+  };
+
+  useLayoutEffect(() => {
+    if (!isOpen) return;
+    updateDropdownPosition();
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleReposition = () => updateDropdownPosition();
+
+    window.addEventListener('resize', handleReposition);
+    window.addEventListener('scroll', handleReposition, true);
+
+    return () => {
+      window.removeEventListener('resize', handleReposition);
+      window.removeEventListener('scroll', handleReposition, true);
+    };
+  }, [isOpen]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -68,6 +113,36 @@ export function SettingsSelect({
     onChange(nextValue);
     setIsOpen(false);
   };
+
+  const portalRoot =
+    isOpen && typeof document !== 'undefined'
+      ? resolveDashboardAccessMenuPortalFromElement(selectRef.current)
+      : null;
+
+  const dropdown = isOpen ? (
+    <div
+      ref={dropdownRef}
+      className="dashboard-form-select__dropdown dashboard-form-select__dropdown--fixed"
+      style={dropdownStyle}
+      role="listbox"
+    >
+      {options.map((option) => (
+        <button
+          key={option.value}
+          type="button"
+          role="option"
+          aria-selected={value === option.value}
+          className={clsx(
+            'dashboard-form-select__option',
+            value === option.value && 'dashboard-form-select__option--selected'
+          )}
+          onClick={() => handleSelect(option.value)}
+        >
+          {option.label}
+        </button>
+      ))}
+    </div>
+  ) : null;
 
   return (
     <div className="dashboard-form-select">
@@ -115,25 +190,7 @@ export function SettingsSelect({
         </svg>
       </div>
 
-      {isOpen && (
-        <div ref={dropdownRef} className="dashboard-form-select__dropdown" role="listbox">
-          {options.map((option) => (
-            <button
-              key={option.value}
-              type="button"
-              role="option"
-              aria-selected={value === option.value}
-              className={clsx(
-                'dashboard-form-select__option',
-                value === option.value && 'dashboard-form-select__option--selected'
-              )}
-              onClick={() => handleSelect(option.value)}
-            >
-              {option.label}
-            </button>
-          ))}
-        </div>
-      )}
+      {portalRoot && dropdown ? createPortal(dropdown, portalRoot) : null}
     </div>
   );
 }

@@ -14,6 +14,7 @@ import { fetchWithAuthSession } from '@shared/lib/authFetch';
 import { useSiteArtistDisplayName } from '@shared/lib/hooks/useSiteArtistDisplayName';
 import { readStoredProfileDisplayName } from '@shared/lib/profileDisplayName';
 import { getUserImageUrl } from '@shared/api/albums';
+import { DashboardLoadingState } from '@shared/ui/dashboard';
 import { getAlbumStorageBaseName } from '@shared/lib/albumCoverUrl';
 import { uploadCoverDraft, commitCover } from '@shared/api/albums/cover';
 import type { IAlbums, detailsProps } from '@models';
@@ -2871,9 +2872,7 @@ export function EditAlbumModal({
 
           <div className="edit-album-modal__field edit-album-modal__field--album-sale">
             {yookassaLoading ? (
-              <p className="edit-album-modal__help-text edit-album-modal__album-sale-loading">
-                {ui?.dashboard?.editAlbumModal?.albumSale?.loadingPayment ?? 'Loading…'}
-              </p>
+              <DashboardLoadingState className="edit-album-modal__album-sale-loading" />
             ) : !hasYooKassa ? (
               <div className="edit-album-modal__album-sale-connect">
                 <div className="edit-album-modal__album-sale-title">

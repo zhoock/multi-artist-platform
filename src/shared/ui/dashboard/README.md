@@ -38,6 +38,22 @@ Dashboard UI Kit **не содержит бизнес-логики**. Он не 
 | `DashboardIconButton`     | Иконочная кнопка (drag handle, play, delete и т.п.)  |
 | `DashboardCta`            | Primary CTA (кнопка или ссылка через `as`)           |
 | `DashboardEmptyState`     | Пустое состояние (`variant`: `tab` \| `card`)        |
+| `DashboardSpinner`        | Компактный индикатор загрузки (~18px)                |
+| `DashboardLoadingState`   | Стандартное состояние ожидания данных в модалках     |
+
+**Состояния загрузки:**
+
+- `DashboardSpinner` — компактный индикатор загрузки.
+- `DashboardLoadingState` — стандартное состояние ожидания данных внутри модалок и локальных интерактивных областей (центрированный spinner без текста).
+- `DashboardSaveSpinner` (`@shared/ui/dashboard-save`) — только для действий пользователя (Save, Publish, Upload и т.д.).
+
+**Правило выбора паттерна:**
+
+| Паттерн          | Когда использовать                                                                    |
+| ---------------- | ------------------------------------------------------------------------------------- |
+| **Skeleton**     | Когда известна будущая структура (карточки, таблицы, списки, вкладки)                 |
+| **LoadingState** | Когда структура ещё неизвестна или редактор ещё не готов (модалки, локальные области) |
+| **SaveSpinner**  | Только для действий пользователя (Save, Publish, Upload и т.д.)                       |
 
 **Стили форм** (CSS-классы, без React-компонентов):
 
@@ -152,14 +168,16 @@ DashboardIconButton
 DashboardCta
 DashboardExpandableRowTrigger
 DashboardEmptyState
+DashboardSpinner
+DashboardLoadingState
 ```
 
 ### Стили
 
-| Файл                  | Содержимое                                                                                   |
-| --------------------- | -------------------------------------------------------------------------------------------- |
-| `style.scss`          | Примитивы: section, card, row, action, icon-button, cta, empty-state, expandable-row-trigger |
-| `dashboard-form.scss` | Form-классы для Settings и других форм дашборда                                              |
+| Файл                  | Содержимое                                                                                                           |
+| --------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `style.scss`          | Примитивы: section, card, row, action, icon-button, cta, empty-state, spinner, loading-state, expandable-row-trigger |
+| `dashboard-form.scss` | Form-классы для Settings и других форм дашборда                                                                      |
 
 ### Тесты
 
@@ -228,3 +246,4 @@ DashboardEmptyState
 - [ ] Domain-логика не попала в `src/shared/ui/dashboard`
 - [ ] Новый shared-компонент оправдан правилом «3+ повторения»
 - [ ] При добавлении в kit — обновлён этот README
+- [ ] Состояние загрузки выбрано по правилу: Skeleton / LoadingState / SaveSpinner
