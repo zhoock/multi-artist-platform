@@ -141,6 +141,38 @@ dialog {
       }
     }
 
+    &__album-card {
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+
+      &.dashboard-card {
+        width: 100%;
+      }
+    }
+
+    &__album-header {
+      width: 100%;
+    }
+
+    &__album-body {
+      display: flex;
+      flex-direction: column;
+      padding: 0 var(--ms-01) var(--ms-01);
+      border-top: 1px solid var(--dashboard-divider);
+
+      &.user-dashboard__album-expanded--kit {
+        display: flex;
+        flex-direction: column;
+      }
+
+      .user-dashboard__edit-album-button {
+        align-self: center;
+        width: auto;
+        margin: var(--ms-0) 0 var(--ms-01);
+      }
+    }
+
     &__album-item {
       display: flex;
       align-items: center;
@@ -300,8 +332,8 @@ dialog {
       justify-content: space-between;
       align-items: flex-start;
       gap: var(--ms-0);
-      margin-top: var(--ms-0);
-      padding-top: var(--ms-0);
+      margin-top: 0;
+      padding-top: var(--ms-01);
     }
 
     &__album-footer-actions-right {
@@ -356,7 +388,10 @@ dialog {
 
     &__album-expanded {
       border-bottom: none;
-      padding-block: var(--ms-0);
+
+      &.dashboard-card {
+        padding-block: var(--ms-0);
+      }
 
       &--kit {
         display: flex;
@@ -562,9 +597,7 @@ dialog {
     }
 
     &__edit-album-button {
-      margin-bottom: var(--ms-0);
-
-      @include dashboard-btn-secondary($margin: 0 0 var(--ms-0) 0);
+      @include dashboard-btn-secondary($margin: 0);
     }
 
     &__upload-action {

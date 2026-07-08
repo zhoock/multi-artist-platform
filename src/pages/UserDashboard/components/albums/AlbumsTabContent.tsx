@@ -1,11 +1,5 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import clsx from 'clsx';
-import {
-  Eye as EyeIcon,
-  Pencil as PencilIcon,
-  Plus as PlusIcon,
-  RefreshCw as RefreshCwIcon,
-} from 'lucide-react';
 import {
   DndContext,
   closestCenter,
@@ -25,7 +19,7 @@ import { getAlbumPublishHintKey } from '@entities/album/lib/isAlbumReadyToPublis
 import { isAlbumPublished } from '@entities/album/lib/albumPublication';
 import { getAlbumListDraftBadge } from '@entities/album/lib/albumLifecycleStatus';
 import { AlbumCoverImage } from '@entities/album';
-import type { AlbumData, TrackData } from '@entities/album/lib/transformAlbumData';
+import type { AlbumData } from '@entities/album/lib/transformAlbumData';
 import type { IAlbums, IInterface } from '@models';
 import type { SupportedLang } from '@shared/model/lang';
 import type { TrackVisibility } from '@shared/lib/tracks/trackVisibility';
@@ -36,9 +30,7 @@ import {
   DashboardAction,
   DashboardCta,
   DashboardExpandableRowTrigger,
-  DashboardIconButton,
 } from '@shared/ui/dashboard';
-import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 import {
   getDashboardRowFlashProps,
   type DashboardRowFlash,
@@ -50,6 +42,8 @@ import { AlbumLifecycleBadge } from './AlbumLifecycleBadge';
 import { AlbumsEmptyState } from './AlbumsEmptyState';
 import { getAlbumVisibilityFromIsPublic } from './albumVisibilityOptions';
 import { SortableTrackItem } from './SortableTrackItem';
+import type { LyricsAction } from './trackLyricsHelpers';
+import './AlbumsTab.scss';
 
 type AlbumsTabContentProps = {
   emailVerified: boolean;
@@ -86,77 +80,15 @@ type AlbumsTabContentProps = {
   ) => Promise<void>;
   onDeleteAlbum: (albumId: string) => void;
   onPublishAlbum: (albumId: string) => void;
-  onLyricsAction: (action: string, albumId: string, trackId: string, trackTitle: string) => void;
+  onLyricsAction: (
+    action: LyricsAction,
+    albumId: string,
+    trackId: string,
+    trackTitle: string
+  ) => void;
 };
 
-function getLyricsStatusText(status: TrackData['lyricsStatus'], ui: IInterface | null) {
-  switch (status) {
-    case 'synced':
-      return ui?.dashboard?.addedSynced ?? 'Added, synced';
-    case 'text-only':
-      return ui?.dashboard?.addedNoSync ?? 'Added, no sync';
-    case 'empty':
-      return ui?.dashboard?.noLyrics ?? 'No lyrics';
-    default:
-      return '';
-  }
-}
-
-type LyricsAction = 'edit' | 'prev' | 'sync' | 'add';
-
-function getLyricsActionLabel(action: LyricsAction, ui: IInterface | null): string {
-  switch (action) {
-    case 'edit':
-      return ui?.dashboard?.editLyrics ?? 'Edit lyrics';
-    case 'prev':
-      return ui?.dashboard?.previewLyrics ?? 'Preview lyrics';
-    case 'sync':
-      return ui?.dashboard?.syncLyricsTitle ?? 'Sync lyrics';
-    case 'add':
-      return ui?.dashboard?.addLyrics ?? 'Add lyrics';
-    default:
-      return '';
-  }
-}
-
-function renderLyricsActionIcon(action: LyricsAction) {
-  const iconProps = dashboardActionIconProps();
-
-  switch (action) {
-    case 'edit':
-      return <PencilIcon {...iconProps} />;
-    case 'prev':
-      return <EyeIcon {...iconProps} />;
-    case 'sync':
-      return <RefreshCwIcon {...iconProps} />;
-    case 'add':
-      return <PlusIcon {...iconProps} />;
-    default:
-      return null;
-  }
-}
-
-function getLyricsActions(
-  status: TrackData['lyricsStatus'],
-  hasSyncedLyrics: boolean = false
-): LyricsAction[] {
-  switch (status) {
-    case 'synced': {
-      const actions: LyricsAction[] = ['edit'];
-      if (hasSyncedLyrics) {
-        actions.push('prev');
-      }
-      actions.push('sync');
-      return actions;
-    }
-    case 'text-only':
-      return ['edit', 'sync'];
-    case 'empty':
-      return ['add'];
-    default:
-      return [];
-  }
-}
+const albumTrackKey = (albumId: string, trackId: string) => `${albumId}:${trackId}`;
 
 export function AlbumsTabContent({
   emailVerified,
@@ -188,6 +120,12 @@ export function AlbumsTabContent({
   onPublishAlbum,
   onLyricsAction,
 }: AlbumsTabContentProps) {
+  const [expandedTrackId, setExpandedTrackId] = useState<string | null>(null);
+
+  useEffect(() => {
+    setExpandedTrackId(null);
+  }, [expandedAlbumId]);
+
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
@@ -285,86 +223,86 @@ export function AlbumsTabContent({
           );
 
           return (
-            <React.Fragment key={album.id}>
+            <DashboardCard
+              key={album.id}
+              interactive
+              className={clsx(
+                'user-dashboard__album-card',
+                'dashboard-album-row',
+                albumRowFlash.className,
+                {
+                  'user-dashboard__album-card--expanded': isExpanded,
+                }
+              )}
+              style={albumRowFlash.style}
+              data-visibility-flash={albumRowFlash['data-visibility-flash']}
+            >
               <DashboardExpandableRowTrigger
                 id={`dashboard-album-row-${album.id}`}
                 expanded={isExpanded}
                 onToggle={() => onToggleAlbum(album.id)}
                 aria-label={isExpanded ? 'Collapse album' : 'Expand album'}
+                className={clsx('user-dashboard__album-header', 'user-dashboard__album-item', {
+                  'user-dashboard__album-item--access-menu-open':
+                    albumAccessMenuAlbumId === album.id,
+                })}
               >
-                <DashboardCard
-                  interactive
-                  selected={isExpanded}
-                  className={clsx(
-                    'user-dashboard__album-item',
-                    'dashboard-album-row',
-                    albumRowFlash.className,
-                    {
-                      'user-dashboard__album-item--expanded': isExpanded,
-                      'user-dashboard__album-item--access-menu-open':
-                        albumAccessMenuAlbumId === album.id,
-                    }
+                <div className="user-dashboard__album-thumbnail">
+                  {album.cover ? (
+                    <AlbumCoverImage
+                      cover={album.cover}
+                      userId={album.userId ?? userId ?? undefined}
+                      alt={album.title}
+                      contextAlbumId={album.id}
+                      loading="lazy"
+                      decoding="async"
+                    />
+                  ) : (
+                    <img src="/images/album-placeholder.png" alt={album.title} />
                   )}
-                  style={albumRowFlash.style}
-                  data-visibility-flash={albumRowFlash['data-visibility-flash']}
+                </div>
+                <div className="user-dashboard__album-info">
+                  <div className="user-dashboard__album-title-row">
+                    <div className="user-dashboard__album-title">{album.title}</div>
+                    <AlbumLifecycleBadge
+                      status={albumDraftBadge}
+                      ui={ui ?? undefined}
+                      lang={lang}
+                    />
+                  </div>
+                  {album.releaseDate ? (
+                    <div className="user-dashboard__album-date">{album.releaseDate}</div>
+                  ) : (
+                    <div className="user-dashboard__album-year">{album.year}</div>
+                  )}
+                </div>
+                <div
+                  className="user-dashboard__album-item-actions"
+                  onClick={(e) => e.stopPropagation()}
+                  onMouseDown={(e) => e.stopPropagation()}
                 >
-                  <div className="user-dashboard__album-thumbnail">
-                    {album.cover ? (
-                      <AlbumCoverImage
-                        cover={album.cover}
-                        userId={album.userId ?? userId ?? undefined}
-                        alt={album.title}
-                        contextAlbumId={album.id}
-                        loading="lazy"
-                        decoding="async"
-                      />
-                    ) : (
-                      <img src="/images/album-placeholder.png" alt={album.title} />
-                    )}
+                  {albumIsPublished ? (
+                    <AlbumAccessControl
+                      albumId={album.id}
+                      visibility={albumVisibility}
+                      ui={ui ?? undefined}
+                      lang={lang}
+                      menuOpen={albumAccessMenuAlbumId === album.id}
+                      onMenuOpenChange={(open) => onAlbumAccessMenuChange(open ? album.id : null)}
+                      onPickVisibility={(v) => void onAlbumVisibilityChange(album.id, v)}
+                      getRowElement={() =>
+                        document.getElementById(`dashboard-album-row-${album.id}`)
+                      }
+                    />
+                  ) : null}
+                  <div className="user-dashboard__album-arrow">
+                    <DashboardExpandChevron expanded={isExpanded} />
                   </div>
-                  <div className="user-dashboard__album-info">
-                    <div className="user-dashboard__album-title-row">
-                      <div className="user-dashboard__album-title">{album.title}</div>
-                      <AlbumLifecycleBadge
-                        status={albumDraftBadge}
-                        ui={ui ?? undefined}
-                        lang={lang}
-                      />
-                    </div>
-                    {album.releaseDate ? (
-                      <div className="user-dashboard__album-date">{album.releaseDate}</div>
-                    ) : (
-                      <div className="user-dashboard__album-year">{album.year}</div>
-                    )}
-                  </div>
-                  <div
-                    className="user-dashboard__album-item-actions"
-                    onClick={(e) => e.stopPropagation()}
-                    onMouseDown={(e) => e.stopPropagation()}
-                  >
-                    {albumIsPublished ? (
-                      <AlbumAccessControl
-                        albumId={album.id}
-                        visibility={albumVisibility}
-                        ui={ui ?? undefined}
-                        lang={lang}
-                        menuOpen={albumAccessMenuAlbumId === album.id}
-                        onMenuOpenChange={(open) => onAlbumAccessMenuChange(open ? album.id : null)}
-                        onPickVisibility={(v) => void onAlbumVisibilityChange(album.id, v)}
-                        getRowElement={() =>
-                          document.getElementById(`dashboard-album-row-${album.id}`)
-                        }
-                      />
-                    ) : null}
-                    <div className="user-dashboard__album-arrow">
-                      <DashboardExpandChevron expanded={isExpanded} />
-                    </div>
-                  </div>
-                </DashboardCard>
+                </div>
               </DashboardExpandableRowTrigger>
 
               {isExpanded ? (
-                <DashboardCard className="user-dashboard__album-expanded user-dashboard__album-expanded--kit">
+                <div className="user-dashboard__album-body user-dashboard__album-expanded user-dashboard__album-expanded--kit">
                   <button
                     type="button"
                     className="user-dashboard__edit-album-button"
@@ -458,111 +396,41 @@ export function AlbumsTabContent({
                   </div>
 
                   {album.tracks.length > 0 ? (
-                    <>
-                      <DndContext
-                        sensors={sensors}
-                        collisionDetection={closestCenter}
-                        onDragEnd={(event) => onDragEnd(event, album.id)}
+                    <DndContext
+                      sensors={sensors}
+                      collisionDetection={closestCenter}
+                      onDragEnd={(event) => onDragEnd(event, album.id)}
+                    >
+                      <SortableContext
+                        items={album.tracks.map((track) => track.id)}
+                        strategy={verticalListSortingStrategy}
                       >
-                        <SortableContext
-                          items={album.tracks.map((track) => track.id)}
-                          strategy={verticalListSortingStrategy}
-                        >
-                          <div className="user-dashboard__tracks-table">
-                            <div className="user-dashboard__tracks-header" aria-hidden>
-                              <div className="user-dashboard__tracks-header-cell user-dashboard__tracks-header-cell--track">
-                                {ui?.dashboard?.track ?? 'Track'}
-                              </div>
-                              <div className="user-dashboard__tracks-header-cell user-dashboard__tracks-header-cell--duration">
-                                {ui?.dashboard?.duration ?? 'Duration'}
-                              </div>
-                              <div className="user-dashboard__tracks-header-cell user-dashboard__tracks-header-cell--actions">
-                                {ui?.dashboard?.actions ?? 'Actions'}
-                              </div>
-                            </div>
-                            <div className="user-dashboard__tracks-list">
-                              {album.tracks.map((track, trackIndex) => (
-                                <SortableTrackItem
-                                  key={track.id}
-                                  track={track}
-                                  displayIndex={trackIndex + 1}
-                                  albumId={album.albumId}
-                                  onDelete={onDeleteTrack}
-                                  onTitleChange={onTrackTitleChange}
-                                  onVisibilityChange={onTrackVisibilityChange}
-                                  rowFlash={dashboardRowFlashes[`dashboard-track-row-${track.id}`]}
-                                  ui={ui ?? undefined}
-                                />
-                              ))}
-                            </div>
-                          </div>
-                        </SortableContext>
-                      </DndContext>
+                        <div className="albums-tab__tracks user-dashboard__tracks-list">
+                          {album.tracks.map((track, trackIndex) => {
+                            const trackKey = albumTrackKey(album.id, track.id);
+                            const isTrackOpen = expandedTrackId === trackKey;
 
-                      <div className="user-dashboard__lyrics-section">
-                        <h3 className="user-dashboard__lyrics-title">
-                          {ui?.dashboard?.lyrics ?? 'Lyrics'}
-                        </h3>
-                        <div className="user-dashboard__lyrics-table">
-                          <div className="user-dashboard__lyrics-header">
-                            <div className="user-dashboard__lyrics-header-cell user-dashboard__lyrics-header-cell--track">
-                              {ui?.dashboard?.track ?? 'Track'}
-                            </div>
-                            <div className="user-dashboard__lyrics-header-cell user-dashboard__lyrics-header-cell--status">
-                              {ui?.dashboard?.status ?? 'Status'}
-                            </div>
-                            <div className="user-dashboard__lyrics-header-cell user-dashboard__lyrics-header-cell--actions">
-                              {ui?.dashboard?.actions ?? 'Actions'}
-                            </div>
-                          </div>
-                          {album.tracks.map((track) => (
-                            <div key={track.id} className="user-dashboard__lyrics-row">
-                              <div
-                                className="user-dashboard__lyrics-cell"
-                                data-label={ui?.dashboard?.track ?? 'Track'}
-                              >
-                                {track.title}
-                              </div>
-                              <div
-                                className="user-dashboard__lyrics-cell"
-                                data-label={ui?.dashboard?.status ?? 'Status'}
-                              >
-                                {getLyricsStatusText(track.lyricsStatus, ui)}
-                              </div>
-                              <div
-                                className="user-dashboard__lyrics-cell user-dashboard__lyrics-cell--actions"
-                                data-label={ui?.dashboard?.actions ?? 'Actions'}
-                              >
-                                <div className="user-dashboard__lyrics-actions-row">
-                                  {(() => {
-                                    const hasSyncedLyrics =
-                                      Array.isArray(track.syncedLyrics) &&
-                                      track.syncedLyrics.length > 0 &&
-                                      track.syncedLyrics.some((line) => line.startTime > 0);
-                                    return getLyricsActions(track.lyricsStatus, hasSyncedLyrics);
-                                  })().map((action) => {
-                                    const actionLabel = getLyricsActionLabel(action, ui);
-
-                                    return (
-                                      <DashboardIconButton
-                                        key={action}
-                                        onClick={() =>
-                                          onLyricsAction(action, album.id, track.id, track.title)
-                                        }
-                                        aria-label={actionLabel}
-                                        title={actionLabel}
-                                      >
-                                        {renderLyricsActionIcon(action)}
-                                      </DashboardIconButton>
-                                    );
-                                  })}
-                                </div>
-                              </div>
-                            </div>
-                          ))}
+                            return (
+                              <SortableTrackItem
+                                key={track.id}
+                                track={track}
+                                displayIndex={trackIndex + 1}
+                                albumId={album.albumId}
+                                lyricsAlbumId={album.id}
+                                isOpen={isTrackOpen}
+                                onToggle={() => setExpandedTrackId(isTrackOpen ? null : trackKey)}
+                                onDelete={onDeleteTrack}
+                                onTitleChange={onTrackTitleChange}
+                                onVisibilityChange={onTrackVisibilityChange}
+                                onLyricsAction={onLyricsAction}
+                                rowFlash={dashboardRowFlashes[`dashboard-track-row-${track.id}`]}
+                                ui={ui ?? undefined}
+                              />
+                            );
+                          })}
                         </div>
-                      </div>
-                    </>
+                      </SortableContext>
+                    </DndContext>
                   ) : null}
 
                   <div className="user-dashboard__album-footer-actions">
@@ -626,9 +494,9 @@ export function AlbumsTabContent({
                       ) : null}
                     </div>
                   </div>
-                </DashboardCard>
+                </div>
               ) : null}
-            </React.Fragment>
+            </DashboardCard>
           );
         })}
       </div>

@@ -84,13 +84,13 @@ describe('AlbumsTabContent', () => {
     );
 
     const albumCard = container.querySelector(
-      '.dashboard-card.user-dashboard__album-item.dashboard-card--interactive'
+      '.dashboard-card.user-dashboard__album-card.dashboard-card--interactive'
     );
     expect(albumCard).toBeTruthy();
     expect(container.querySelector('.dashboard-expandable-row-trigger')).toBeTruthy();
   });
 
-  it('renders expanded panel as DashboardCard with kit modifier', () => {
+  it('renders expanded content inside unified album card body', () => {
     const { container } = renderWithProviders(
       <AlbumsTabContent
         {...createBaseProps({
@@ -100,10 +100,11 @@ describe('AlbumsTabContent', () => {
       />
     );
 
-    const expanded = container.querySelector(
-      '.dashboard-card.user-dashboard__album-expanded.user-dashboard__album-expanded--kit'
-    );
-    expect(expanded).toBeTruthy();
+    const albumCard = container.querySelector('.user-dashboard__album-card--expanded');
+    const expandedBody = container.querySelector('.user-dashboard__album-body');
+    expect(albumCard).toBeTruthy();
+    expect(expandedBody).toBeTruthy();
+    expect(albumCard?.contains(expandedBody)).toBe(true);
     expect(screen.getByText('Test Album')).toBeTruthy();
   });
 

@@ -13,7 +13,7 @@ import {
   type TrackVisibility,
 } from '@shared/lib/tracks/trackVisibility';
 import { TrackVisibilityIcon } from '@shared/ui/icons/TrackVisibilityIcon';
-import { DashboardIconButton } from '@shared/ui/dashboard';
+import { DashboardCard, DashboardIconButton } from '@shared/ui/dashboard';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 import {
   DASHBOARD_ROW_STATE_FLASH_CLASS,
@@ -26,6 +26,9 @@ import {
   resolveDashboardAccessMenuPortalFromElement,
   useDashboardAccessMenu,
 } from '../../lib/useDashboardAccessMenu';
+import { DashboardExpandChevron } from '../../lib/dashboardExpandChevron';
+import { TrackLyricsPanel } from './TrackLyricsPanel';
+import type { LyricsAction } from './trackLyricsHelpers';
 
 type DashboardUi = NonNullable<IInterface['dashboard']>;
 type DashboardUiWithTrackAccess = DashboardUi & {
@@ -38,6 +41,9 @@ export type SortableTrackItemProps = {
   /** Порядковый номер для UI (1-based), не путать с track.id (UUID) */
   displayIndex: number;
   albumId: string;
+  lyricsAlbumId: string;
+  isOpen: boolean;
+  onToggle: () => void;
   onDelete: (albumId: string, trackId: string, trackTitle: string) => void;
   onEdit?: (albumId: string, trackId: string, trackTitle: string) => void;
   onTitleChange?: (albumId: string, trackId: string, newTitle: string) => Promise<void>;
@@ -46,6 +52,12 @@ export type SortableTrackItemProps = {
     trackId: string,
     visibility: TrackVisibility
   ) => Promise<void>;
+  onLyricsAction: (
+    action: LyricsAction,
+    albumId: string,
+    trackId: string,
+    trackTitle: string
+  ) => void;
   rowFlash?: DashboardRowFlash;
   ui?: IInterface;
 };
@@ -54,10 +66,14 @@ export function SortableTrackItem({
   track,
   displayIndex,
   albumId,
+  lyricsAlbumId,
+  isOpen,
+  onToggle,
   onDelete,
   onEdit,
   onTitleChange,
   onVisibilityChange,
+  onLyricsAction,
   rowFlash,
   ui,
 }: SortableTrackItemProps) {
@@ -199,6 +215,20 @@ export function SortableTrackItem({
     [albumId, track.id, trackVisibility, onVisibilityChange, closeAccessMenu]
   );
 
+  const handleHeaderClick = () => {
+    if (isEditing) {
+      return;
+    }
+    onToggle();
+  };
+
+  const handleHeaderKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      handleHeaderClick();
+    }
+  };
+
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
@@ -228,62 +258,76 @@ export function SortableTrackItem({
       <div
         ref={combinedRef}
         style={style}
-        className={clsx('user-dashboard__track-item-wrapper', 'dashboard-track-row', {
-          'user-dashboard__track-item-wrapper--dragging': isDragging,
+        className={clsx('albums-tab__track-row', 'dashboard-track-row', {
+          'albums-tab__track-row--dragging': isDragging,
+          [trackRowFlashProps.className ?? '']: Boolean(trackRowFlashProps.className),
         })}
+        id={`dashboard-track-row-${track.id}`}
+        data-visibility-flash={trackRowFlashProps['data-visibility-flash']}
       >
-        <div className="user-dashboard__track-item-content">
+        <DashboardCard
+          as="article"
+          interactive
+          className={clsx('albums-tab__track-card', isOpen && 'albums-tab__track-card--expanded')}
+          style={trackRowFlashProps.style}
+        >
           <div
-            id={`dashboard-track-row-${track.id}`}
-            className={clsx('user-dashboard__track-item', trackRowFlashProps.className, {
-              'user-dashboard__track-item--dragging': isDragging,
-              'user-dashboard__track-item--access-menu-open': accessMenuOpen,
+            className={clsx('albums-tab__track-header', {
+              'albums-tab__track-header--access-menu-open': accessMenuOpen,
             })}
-            style={trackRowFlashProps.style}
-            data-visibility-flash={trackRowFlashProps['data-visibility-flash']}
+            role="button"
+            tabIndex={0}
+            aria-expanded={isOpen}
+            onClick={handleHeaderClick}
+            onKeyDown={handleHeaderKeyDown}
           >
-            <div className="user-dashboard__track-cell user-dashboard__track-cell--track">
-              <div
-                {...attributes}
-                {...listeners}
-                className="user-dashboard__track-drag-handle"
-                title={ui?.dashboard?.dragToReorder ?? 'Drag to reorder'}
-                aria-label={ui?.dashboard?.dragToReorder ?? 'Drag to reorder'}
-              >
-                <span className="user-dashboard__track-drag-icon">⋮⋮</span>
-              </div>
-              <div className="user-dashboard__track-number" aria-hidden>
-                {displayIndex}.
-              </div>
-              {isEditing ? (
-                <input
-                  key={`edit-${track.id}-${isEditing}`}
-                  ref={inputRef}
-                  type="text"
-                  className="user-dashboard__track-title-input"
-                  value={editedTitle}
-                  onChange={(e) => setEditedTitle(e.target.value)}
-                  onBlur={handleTitleBlur}
-                  onKeyDown={handleTitleKeyDown}
-                  onClick={(e) => e.stopPropagation()}
-                  onMouseDown={(e) => e.stopPropagation()}
-                />
-              ) : (
-                <span className="user-dashboard__track-title-text">{track.title}</span>
-              )}
+            <div
+              {...attributes}
+              {...listeners}
+              className="albums-tab__track-drag-handle user-dashboard__track-drag-handle"
+              title={ui?.dashboard?.dragToReorder ?? 'Drag to reorder'}
+              aria-label={ui?.dashboard?.dragToReorder ?? 'Drag to reorder'}
+              onClick={(e) => e.stopPropagation()}
+              onKeyDown={(e) => e.stopPropagation()}
+            >
+              <span className="user-dashboard__track-drag-icon">⋮⋮</span>
             </div>
 
-            <div className="user-dashboard__track-cell user-dashboard__track-cell--duration">
-              <span className="user-dashboard__track-duration">{track.duration}</span>
-            </div>
+            <span className="albums-tab__track-chevron" aria-hidden>
+              <DashboardExpandChevron expanded={isOpen} />
+            </span>
+
+            <span className="albums-tab__track-number">
+              {String(displayIndex).padStart(2, '0')}
+            </span>
+
+            {isEditing ? (
+              <input
+                key={`edit-${track.id}-${isEditing}`}
+                ref={inputRef}
+                type="text"
+                className="user-dashboard__track-title-input albums-tab__track-title-input"
+                value={editedTitle}
+                onChange={(e) => setEditedTitle(e.target.value)}
+                onBlur={handleTitleBlur}
+                onKeyDown={handleTitleKeyDown}
+                onClick={(e) => e.stopPropagation()}
+                onMouseDown={(e) => e.stopPropagation()}
+              />
+            ) : (
+              <span className="albums-tab__track-title">{track.title}</span>
+            )}
 
             {!isEditing ? (
-              <div className="user-dashboard__track-cell user-dashboard__track-cell--actions">
+              <>
                 <button
                   ref={accessBtnRef}
                   type="button"
-                  className="user-dashboard__track-access-button"
-                  onClick={toggleAccessMenu}
+                  className="albums-tab__track-access-button user-dashboard__track-access-button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleAccessMenu(e);
+                  }}
                   aria-expanded={accessMenuOpen}
                   aria-haspopup="menu"
                   aria-label={trackAccessAria}
@@ -292,35 +336,50 @@ export function SortableTrackItem({
                     <TrackVisibilityIcon visibility={trackVisibility} size={18} />
                   </span>
                 </button>
-                <DashboardIconButton
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleEdit(e);
-                  }}
-                  aria-label={ui?.dashboard?.editTrack ?? 'Edit track'}
-                >
-                  <PencilIcon {...dashboardActionIconProps()} />
-                </DashboardIconButton>
-                <DashboardIconButton
-                  destructive
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDelete(e);
-                  }}
-                  aria-label={ui?.dashboard?.deleteTrack ?? 'Delete track'}
-                >
-                  <Trash2Icon {...dashboardActionIconProps()} />
-                </DashboardIconButton>
-              </div>
+
+                <span className="albums-tab__track-duration">{track.duration}</span>
+
+                <div className="albums-tab__track-actions">
+                  <DashboardIconButton
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleEdit(e);
+                    }}
+                    aria-label={ui?.dashboard?.editTrack ?? 'Edit track'}
+                  >
+                    <PencilIcon {...dashboardActionIconProps()} />
+                  </DashboardIconButton>
+                  <DashboardIconButton
+                    destructive
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDelete(e);
+                    }}
+                    aria-label={ui?.dashboard?.deleteTrack ?? 'Delete track'}
+                  >
+                    <Trash2Icon {...dashboardActionIconProps()} />
+                  </DashboardIconButton>
+                </div>
+              </>
             ) : (
-              <div
-                className="user-dashboard__track-cell user-dashboard__track-cell--actions"
-                aria-hidden
-              />
+              <span className="albums-tab__track-duration">{track.duration}</span>
             )}
           </div>
-        </div>
+
+          {isOpen ? (
+            <div className="albums-tab__track-body">
+              <TrackLyricsPanel
+                track={track}
+                albumId={lyricsAlbumId}
+                ui={ui ?? null}
+                lang={lang}
+                onLyricsAction={onLyricsAction}
+              />
+            </div>
+          ) : null}
+        </DashboardCard>
       </div>
+
       <DashboardAccessMenuPortal
         menuRef={accessMenuRef}
         open={accessMenuOpen}

@@ -32,12 +32,12 @@ dialog {
       align-items: center;
       justify-content: center;
       gap: var(--ms-0);
-      padding: var(--ms-1);
+      padding: var(--ms-0);
       color: var(--dashboard-text-secondary);
       background: var(--dashboard-card-bg, var(--moon-ash));
       border: 2px dashed var(--dashboard-input-border);
       border-radius: var(--ms-01);
-      margin-bottom: var(--ms-0);
+      margin-bottom: var(--ms-01);
     }
 
     &__track-upload-progress {
@@ -78,7 +78,6 @@ dialog {
     &__tracks-table {
       display: flex;
       flex-direction: column;
-      margin-bottom: var(--ms-0);
     }
 
     &__tracks-header {
@@ -126,7 +125,7 @@ dialog {
     &__track-item-content {
       position: relative;
       width: 100%;
-      background: var(--dashboard-card-bg);
+      background: transparent;
     }
 
     &__track-item {
@@ -375,12 +374,11 @@ dialog {
     }
 
     &__lyrics-section {
-      margin-top: var(--ms-1);
-      padding-top: var(--ms-0);
+      margin-top: 0;
     }
 
     &__lyrics-title {
-      margin: 0 0 var(--ms-0) 0;
+      margin: 0 0 var(--ms-01) 0;
       padding: 0;
       color: rgb(255 255 255 / 82%);
 
