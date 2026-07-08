@@ -50,10 +50,6 @@ dialog {
       @include dashboard-h2-title;
     }
 
-    h4.mixer-admin__subsection-title {
-      @include dashboard-h2-title;
-    }
-
     .dashboard-empty-state--tab h3.dashboard-empty-state__title {
       margin: 0 0 var(--ms-01);
       font-size: clamp(1.35rem, 3vw, 1.65rem);

@@ -77,11 +77,11 @@
 
   &__track-access-button {
     flex-shrink: 0;
-    margin-inline-start: auto;
   }
 
   &__track-duration {
     flex-shrink: 0;
+    margin-inline-start: auto;
     color: var(--dashboard-text-secondary);
     font-size: var(--dashboard-font-size);
     font-variant-numeric: tabular-nums;
@@ -98,30 +98,13 @@
     padding: 0 var(--ms-01) var(--ms-01);
   }
 
-  &__subsection-title {
-    margin: 0 0 var(--ms-02);
-    color: rgb(255 255 255 / 82%);
-
-    @include dashboard-h2-title;
-  }
-
   &__track-lyrics-header {
-    display: flex;
-    flex-direction: column;
-    gap: var(--ms-0);
     margin-bottom: var(--ms-01);
     padding-top: var(--ms-01);
-
-    @include breakpoint(tablet) {
-      flex-direction: row;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: var(--ms-1);
-    }
   }
 
   &__track-lyrics-description {
-    margin: var(--ms-02) 0 0;
+    margin: 0;
 
     @include dashboard-helper-text;
 

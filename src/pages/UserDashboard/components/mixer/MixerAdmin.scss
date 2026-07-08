@@ -78,34 +78,11 @@
     padding: 0 var(--ms-01) var(--ms-01);
   }
 
-  &__subsection-title {
-    margin: 0 0 var(--ms-02);
-    color: rgb(255 255 255 / 82%);
-
-    @include dashboard-h2-title;
-  }
-
-  &__stems-header {
+  &__stems-toolbar {
     display: flex;
-    flex-direction: column;
-    gap: var(--ms-0);
-    margin-bottom: var(--ms-1);
-    padding-top: var(--ms-1);
-
-    @include breakpoint(tablet) {
-      flex-direction: row;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: var(--ms-1);
-    }
-  }
-
-  &__stems-description {
-    margin: var(--ms-02) 0 0;
-
-    @include dashboard-helper-text;
-
-    line-height: 1.5;
+    justify-content: flex-end;
+    margin-bottom: var(--ms-01);
+    padding-top: var(--ms-01);
   }
 
   &__add-stem {
@@ -178,7 +155,6 @@
     max-width: 100%;
     padding: 0;
     color: var(--dashboard-text-primary);
-    font-size: var(--ms-0);
     text-align: left;
     background: transparent;
     border: none;

@@ -146,9 +146,6 @@ export function MixerAdmin({ ui, userId, albums = [] }: MixerAdminProps) {
   const labels = useMemo(
     () => ({
       addStem: t.addStem ?? 'Добавить стем',
-      stems: t.stems ?? 'Стемы',
-      stemsDescription:
-        t.stemsHint ?? 'Загружайте стемы трека. Вы можете добавлять любые инструменты.',
       emptyTitle: t.stemsEmptyTitle ?? 'Стемы не добавлены',
       emptyDescription: t.stemsEmptyDescription ?? 'Добавьте первый стем для этого трека.',
       noTracks: t.noTracks ?? 'Нет треков в альбоме',
@@ -564,31 +561,6 @@ export function MixerAdmin({ ui, userId, albums = [] }: MixerAdminProps) {
 
                                 {isTrackOpen && (
                                   <div className="mixer-admin__track-body">
-                                    <div className="mixer-admin__stems-header">
-                                      <div>
-                                        <h4 className="mixer-admin__subsection-title">
-                                          {labels.stems}
-                                        </h4>
-                                        <p className="mixer-admin__stems-description">
-                                          {labels.stemsDescription}
-                                        </p>
-                                      </div>
-                                      {!isLoading && stems.length > 0 && (
-                                        <DashboardAction
-                                          className="mixer-admin__add-stem"
-                                          onClick={() =>
-                                            setAddModal({
-                                              albumId: storageAlbumId,
-                                              trackId: track.id,
-                                            })
-                                          }
-                                        >
-                                          <PlusIcon {...dashboardActionIconProps({ size: 18 })} />
-                                          {labels.addStem}
-                                        </DashboardAction>
-                                      )}
-                                    </div>
-
                                     {isLoading ? (
                                       <div className="mixer-admin__placeholder">
                                         {labels.loading}
@@ -622,51 +594,72 @@ export function MixerAdmin({ ui, userId, albums = [] }: MixerAdminProps) {
                                         }
                                       />
                                     ) : (
-                                      <DndContext
-                                        sensors={sensors}
-                                        collisionDetection={closestCenter}
-                                        onDragEnd={(event) =>
-                                          handleDragEnd(event, storageAlbumId, track.id)
-                                        }
-                                      >
-                                        <SortableContext
-                                          items={stems.map((s) => s.id)}
-                                          strategy={verticalListSortingStrategy}
+                                      <>
+                                        <div className="mixer-admin__stems-toolbar">
+                                          <DashboardAction
+                                            className="mixer-admin__add-stem"
+                                            onClick={() =>
+                                              setAddModal({
+                                                albumId: storageAlbumId,
+                                                trackId: track.id,
+                                              })
+                                            }
+                                          >
+                                            <PlusIcon {...dashboardActionIconProps({ size: 18 })} />
+                                            {labels.addStem}
+                                          </DashboardAction>
+                                        </div>
+                                        <DndContext
+                                          sensors={sensors}
+                                          collisionDetection={closestCenter}
+                                          onDragEnd={(event) =>
+                                            handleDragEnd(event, storageAlbumId, track.id)
+                                          }
                                         >
-                                          <div className="mixer-admin__stems-list">
-                                            {stems.map((stem) => (
-                                              <SortableStemRow
-                                                key={stem.id}
-                                                stem={stem}
-                                                labels={rowLabels}
-                                                busy={isBusy(storageAlbumId, track.id, stem.id)}
-                                                isPlaying={playingStemId === stem.id}
-                                                onTogglePlay={() =>
-                                                  handleTogglePlay(storageAlbumId, track.id, stem)
-                                                }
-                                                onReplaceFile={(file) =>
-                                                  handleReplaceFile(
-                                                    storageAlbumId,
-                                                    track.id,
-                                                    stem,
-                                                    file
-                                                  )
-                                                }
-                                                onRename={(name) =>
-                                                  handleRename(storageAlbumId, track.id, stem, name)
-                                                }
-                                                onDelete={() =>
-                                                  setDeleteTarget({
-                                                    albumId: storageAlbumId,
-                                                    trackId: track.id,
-                                                    stem,
-                                                  })
-                                                }
-                                              />
-                                            ))}
-                                          </div>
-                                        </SortableContext>
-                                      </DndContext>
+                                          <SortableContext
+                                            items={stems.map((s) => s.id)}
+                                            strategy={verticalListSortingStrategy}
+                                          >
+                                            <div className="mixer-admin__stems-list">
+                                              {stems.map((stem) => (
+                                                <SortableStemRow
+                                                  key={stem.id}
+                                                  stem={stem}
+                                                  labels={rowLabels}
+                                                  busy={isBusy(storageAlbumId, track.id, stem.id)}
+                                                  isPlaying={playingStemId === stem.id}
+                                                  onTogglePlay={() =>
+                                                    handleTogglePlay(storageAlbumId, track.id, stem)
+                                                  }
+                                                  onReplaceFile={(file) =>
+                                                    handleReplaceFile(
+                                                      storageAlbumId,
+                                                      track.id,
+                                                      stem,
+                                                      file
+                                                    )
+                                                  }
+                                                  onRename={(name) =>
+                                                    handleRename(
+                                                      storageAlbumId,
+                                                      track.id,
+                                                      stem,
+                                                      name
+                                                    )
+                                                  }
+                                                  onDelete={() =>
+                                                    setDeleteTarget({
+                                                      albumId: storageAlbumId,
+                                                      trackId: track.id,
+                                                      stem,
+                                                    })
+                                                  }
+                                                />
+                                              ))}
+                                            </div>
+                                          </SortableContext>
+                                        </DndContext>
+                                      </>
                                     )}
                                   </div>
                                 )}

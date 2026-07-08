@@ -320,6 +320,8 @@ export function SortableTrackItem({
 
             {!isEditing ? (
               <>
+                <span className="albums-tab__track-duration">{track.duration}</span>
+
                 <button
                   ref={accessBtnRef}
                   type="button"
@@ -336,8 +338,6 @@ export function SortableTrackItem({
                     <TrackVisibilityIcon visibility={trackVisibility} size={18} />
                   </span>
                 </button>
-
-                <span className="albums-tab__track-duration">{track.duration}</span>
 
                 <div className="albums-tab__track-actions">
                   <DashboardIconButton
