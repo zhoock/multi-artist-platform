@@ -258,8 +258,8 @@ export function SortableTrackItem({
       <div
         ref={combinedRef}
         style={style}
-        className={clsx('albums-tab__track-row', 'dashboard-track-row', {
-          'albums-tab__track-row--dragging': isDragging,
+        className={clsx('user-dashboard__expanded-track-row', 'dashboard-track-row', {
+          'user-dashboard__expanded-track-row--dragging': isDragging,
           [trackRowFlashProps.className ?? '']: Boolean(trackRowFlashProps.className),
         })}
         id={`dashboard-track-row-${track.id}`}
@@ -268,12 +268,15 @@ export function SortableTrackItem({
         <DashboardCard
           as="article"
           interactive
-          className={clsx('albums-tab__track-card', isOpen && 'albums-tab__track-card--expanded')}
+          className={clsx(
+            'user-dashboard__expanded-track-card',
+            isOpen && 'user-dashboard__expanded-track-card--expanded'
+          )}
           style={trackRowFlashProps.style}
         >
           <div
-            className={clsx('albums-tab__track-header', {
-              'albums-tab__track-header--access-menu-open': accessMenuOpen,
+            className={clsx('user-dashboard__expanded-track-header', {
+              'user-dashboard__expanded-track-header--access-menu-open': accessMenuOpen,
             })}
             role="button"
             tabIndex={0}
@@ -284,7 +287,7 @@ export function SortableTrackItem({
             <div
               {...attributes}
               {...listeners}
-              className="albums-tab__track-drag-handle user-dashboard__track-drag-handle"
+              className="user-dashboard__expanded-track-drag user-dashboard__track-drag-handle"
               title={ui?.dashboard?.dragToReorder ?? 'Drag to reorder'}
               aria-label={ui?.dashboard?.dragToReorder ?? 'Drag to reorder'}
               onClick={(e) => e.stopPropagation()}
@@ -293,11 +296,11 @@ export function SortableTrackItem({
               <span className="user-dashboard__track-drag-icon">⋮⋮</span>
             </div>
 
-            <span className="albums-tab__track-chevron" aria-hidden>
+            <span className="user-dashboard__expanded-track-chevron" aria-hidden>
               <DashboardExpandChevron expanded={isOpen} />
             </span>
 
-            <span className="albums-tab__track-number">
+            <span className="user-dashboard__expanded-track-number">
               {String(displayIndex).padStart(2, '0')}
             </span>
 
@@ -306,7 +309,7 @@ export function SortableTrackItem({
                 key={`edit-${track.id}-${isEditing}`}
                 ref={inputRef}
                 type="text"
-                className="user-dashboard__track-title-input albums-tab__track-title-input"
+                className="user-dashboard__track-title-input user-dashboard__expanded-track-title-input"
                 value={editedTitle}
                 onChange={(e) => setEditedTitle(e.target.value)}
                 onBlur={handleTitleBlur}
@@ -315,17 +318,17 @@ export function SortableTrackItem({
                 onMouseDown={(e) => e.stopPropagation()}
               />
             ) : (
-              <span className="albums-tab__track-title">{track.title}</span>
+              <span className="user-dashboard__expanded-track-title">{track.title}</span>
             )}
 
             {!isEditing ? (
               <>
-                <span className="albums-tab__track-duration">{track.duration}</span>
+                <span className="user-dashboard__expanded-track-duration">{track.duration}</span>
 
                 <button
                   ref={accessBtnRef}
                   type="button"
-                  className="albums-tab__track-access-button user-dashboard__track-access-button"
+                  className="user-dashboard__track-access-button"
                   onClick={(e) => {
                     e.stopPropagation();
                     toggleAccessMenu(e);
@@ -339,7 +342,7 @@ export function SortableTrackItem({
                   </span>
                 </button>
 
-                <div className="albums-tab__track-actions">
+                <div className="user-dashboard__expanded-track-actions">
                   <DashboardIconButton
                     onClick={(e) => {
                       e.stopPropagation();
@@ -362,12 +365,12 @@ export function SortableTrackItem({
                 </div>
               </>
             ) : (
-              <span className="albums-tab__track-duration">{track.duration}</span>
+              <span className="user-dashboard__expanded-track-duration">{track.duration}</span>
             )}
           </div>
 
           {isOpen ? (
-            <div className="albums-tab__track-body">
+            <div className="user-dashboard__expanded-track-body">
               <TrackLyricsPanel
                 track={track}
                 albumId={lyricsAlbumId}

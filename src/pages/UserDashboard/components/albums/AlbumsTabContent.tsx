@@ -405,7 +405,7 @@ export function AlbumsTabContent({
                         items={album.tracks.map((track) => track.id)}
                         strategy={verticalListSortingStrategy}
                       >
-                        <div className="albums-tab__tracks user-dashboard__tracks-list">
+                        <div className="user-dashboard__expanded-tracks">
                           {album.tracks.map((track, trackIndex) => {
                             const trackKey = albumTrackKey(album.id, track.id);
                             const isTrackOpen = expandedTrackId === trackKey;

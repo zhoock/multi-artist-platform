@@ -120,7 +120,7 @@ export function StemAccessControl({
       <button
         ref={triggerRef}
         type="button"
-        className="user-dashboard__article-access-button mixer-admin__stem-access-button"
+        className="user-dashboard__article-access-button user-dashboard__expanded-track-access-slot"
         onClick={toggleMenu}
         onMouseDown={(e) => e.stopPropagation()}
         aria-expanded={menuOpen}

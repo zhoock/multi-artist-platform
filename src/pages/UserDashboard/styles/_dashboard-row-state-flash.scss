@@ -4,8 +4,7 @@ dialog {
   .user-dashboard {
     &__album-item,
     &__track-item,
-    .albums-tab__track-row,
-    .mixer-admin__track-row {
+    .user-dashboard__expanded-track-row {
       &.user-dashboard__row-state-flash {
         position: relative;
         isolation: isolate;

@@ -424,58 +424,56 @@ export function MixerAdmin({ ui, userId, albums = [] }: MixerAdminProps) {
   return (
     <>
       <div className="user-dashboard__section">
-        <div className="user-dashboard__albums-list mixer-admin__albums">
+        <div className="user-dashboard__albums-list">
           {albums.map((album) => {
             const tracks = getAlbumTracks(album.id);
             const isAlbumOpen = expandedAlbumId === album.id;
             const storageAlbumId = getStorageAlbumId(album);
             return (
-              <React.Fragment key={album.id}>
+              <DashboardCard
+                key={album.id}
+                interactive
+                className={clsx('user-dashboard__album-card', {
+                  'user-dashboard__album-card--expanded': isAlbumOpen,
+                })}
+              >
                 <DashboardExpandableRowTrigger
                   expanded={isAlbumOpen}
                   onToggle={() => toggleAlbum(album.id, isAlbumOpen, tracks, storageAlbumId)}
                   aria-label={isAlbumOpen ? 'Collapse album' : 'Expand album'}
+                  className={clsx('user-dashboard__album-header', 'user-dashboard__album-item')}
                 >
-                  <DashboardCard
-                    interactive
-                    selected={isAlbumOpen}
-                    className={clsx(
-                      'user-dashboard__album-item',
-                      isAlbumOpen && 'user-dashboard__album-item--expanded'
+                  <div className="user-dashboard__album-thumbnail">
+                    {album.cover ? (
+                      <AlbumCoverImage
+                        cover={album.cover}
+                        userId={album.userId ?? userId}
+                        alt={album.title}
+                        contextAlbumId={album.id}
+                        logContext="mixer"
+                        loading="lazy"
+                        decoding="async"
+                      />
+                    ) : (
+                      <img src="/images/album-placeholder.png" alt={album.title} />
                     )}
-                  >
-                    <div className="user-dashboard__album-thumbnail">
-                      {album.cover ? (
-                        <AlbumCoverImage
-                          cover={album.cover}
-                          userId={album.userId ?? userId}
-                          alt={album.title}
-                          contextAlbumId={album.id}
-                          logContext="mixer"
-                          loading="lazy"
-                          decoding="async"
-                        />
-                      ) : (
-                        <img src="/images/album-placeholder.png" alt={album.title} />
-                      )}
-                    </div>
-                    <div className="user-dashboard__album-info">
-                      <div className="user-dashboard__album-title">{album.title}</div>
-                      {album.releaseDate ? (
-                        <div className="user-dashboard__album-date">{album.releaseDate}</div>
-                      ) : (
-                        <div className="user-dashboard__album-year">{album.year}</div>
-                      )}
-                    </div>
-                    <div className="user-dashboard__album-arrow">
-                      <DashboardExpandChevron expanded={isAlbumOpen} />
-                    </div>
-                  </DashboardCard>
+                  </div>
+                  <div className="user-dashboard__album-info">
+                    <div className="user-dashboard__album-title">{album.title}</div>
+                    {album.releaseDate ? (
+                      <div className="user-dashboard__album-date">{album.releaseDate}</div>
+                    ) : (
+                      <div className="user-dashboard__album-year">{album.year}</div>
+                    )}
+                  </div>
+                  <div className="user-dashboard__album-arrow">
+                    <DashboardExpandChevron expanded={isAlbumOpen} />
+                  </div>
                 </DashboardExpandableRowTrigger>
 
-                {isAlbumOpen && (
-                  <DashboardCard className="user-dashboard__album-expanded user-dashboard__album-expanded--kit">
-                    <div className="user-dashboard__tracks-list mixer-admin__tracks">
+                {isAlbumOpen ? (
+                  <div className="user-dashboard__album-body user-dashboard__album-expanded user-dashboard__album-expanded--kit">
+                    <div className="user-dashboard__expanded-tracks">
                       <h3 className="visually-hidden">{labels.tracks}</h3>
                       {tracks.length === 0 ? (
                         <div className="mixer-admin__placeholder">{labels.noTracks}</div>
@@ -495,7 +493,7 @@ export function MixerAdmin({ ui, userId, albums = [] }: MixerAdminProps) {
                               key={track.id}
                               id={mixerStemTrackRowId(storageAlbumId, track.id)}
                               className={clsx(
-                                'mixer-admin__track-row',
+                                'user-dashboard__expanded-track-row',
                                 stemTrackRowFlash.className
                               )}
                               style={stemTrackRowFlash.style}
@@ -505,12 +503,12 @@ export function MixerAdmin({ ui, userId, albums = [] }: MixerAdminProps) {
                                 as="article"
                                 interactive
                                 className={clsx(
-                                  'mixer-admin__track-card',
-                                  isTrackOpen && 'mixer-admin__track-card--expanded'
+                                  'user-dashboard__expanded-track-card',
+                                  isTrackOpen && 'user-dashboard__expanded-track-card--expanded'
                                 )}
                               >
                                 <div
-                                  className="mixer-admin__track-header"
+                                  className="user-dashboard__expanded-track-header"
                                   role="button"
                                   tabIndex={0}
                                   aria-expanded={isTrackOpen}
@@ -534,33 +532,38 @@ export function MixerAdmin({ ui, userId, albums = [] }: MixerAdminProps) {
                                     }
                                   }}
                                 >
-                                  <span className="mixer-admin__track-chevron" aria-hidden>
+                                  <span
+                                    className="user-dashboard__expanded-track-chevron"
+                                    aria-hidden
+                                  >
                                     <DashboardExpandChevron expanded={isTrackOpen} />
                                   </span>
-                                  <span className="mixer-admin__track-number">
+                                  <span className="user-dashboard__expanded-track-number">
                                     {String(trackIndex + 1).padStart(2, '0')}
                                   </span>
-                                  <span className="mixer-admin__track-title">
+                                  <span className="user-dashboard__expanded-track-title">
                                     {track.title ||
                                       (track as any).trackTitle ||
                                       (track as any).trackId}
                                   </span>
-                                  {hasStems && (
-                                    <StemAccessControl
-                                      albumId={storageAlbumId}
-                                      trackId={track.id}
-                                      visibility={resolveStemsVisibility(storageAlbumId, track)}
-                                      onVisibilityChange={handleStemsVisibilityChange}
-                                      ui={ui}
-                                    />
-                                  )}
-                                  <span className="mixer-admin__track-duration">
+                                  <span className="user-dashboard__expanded-track-duration">
                                     {track.duration}
                                   </span>
+                                  {hasStems ? (
+                                    <span className="user-dashboard__expanded-track-access-slot">
+                                      <StemAccessControl
+                                        albumId={storageAlbumId}
+                                        trackId={track.id}
+                                        visibility={resolveStemsVisibility(storageAlbumId, track)}
+                                        onVisibilityChange={handleStemsVisibilityChange}
+                                        ui={ui}
+                                      />
+                                    </span>
+                                  ) : null}
                                 </div>
 
                                 {isTrackOpen && (
-                                  <div className="mixer-admin__track-body">
+                                  <div className="user-dashboard__expanded-track-body">
                                     {isLoading ? (
                                       <div className="mixer-admin__placeholder">
                                         {labels.loading}
@@ -669,9 +672,9 @@ export function MixerAdmin({ ui, userId, albums = [] }: MixerAdminProps) {
                         })
                       )}
                     </div>
-                  </DashboardCard>
-                )}
-              </React.Fragment>
+                  </div>
+                ) : null}
+              </DashboardCard>
             );
           })}
         </div>

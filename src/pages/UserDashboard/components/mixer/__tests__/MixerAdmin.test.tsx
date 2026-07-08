@@ -92,11 +92,11 @@ describe('MixerAdmin', () => {
       expect(loadStemsMock).toHaveBeenCalled();
     });
 
-    expect(
-      container.querySelector(
-        '.dashboard-card.user-dashboard__album-expanded.user-dashboard__album-expanded--kit'
-      )
-    ).toBeTruthy();
+    const albumCard = container.querySelector('.user-dashboard__album-card--expanded');
+    const expandedBody = container.querySelector('.user-dashboard__album-body');
+    expect(albumCard).toBeTruthy();
+    expect(expandedBody).toBeTruthy();
+    expect(albumCard?.contains(expandedBody)).toBe(true);
   });
 
   it('shows card empty state when track has no stems', async () => {
@@ -150,7 +150,9 @@ describe('MixerAdmin', () => {
 
     await waitFor(() => {
       expect(
-        container.querySelector('.mixer-admin__stem-access-button .track-visibility-icon')
+        container.querySelector(
+          '.user-dashboard__expanded-track-access-slot .track-visibility-icon'
+        )
       ).toBeTruthy();
     });
 
