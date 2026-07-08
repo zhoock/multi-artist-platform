@@ -57,19 +57,9 @@ export function renderLyricsActionIcon(action: LyricsAction) {
   }
 }
 
-export function getLyricsActions(
-  status: TrackData['lyricsStatus'],
-  hasSyncedLyrics: boolean = false
-): LyricsAction[] {
+export function getLyricsCardActions(status: TrackData['lyricsStatus']): LyricsAction[] {
   switch (status) {
-    case 'synced': {
-      const actions: LyricsAction[] = ['edit'];
-      if (hasSyncedLyrics) {
-        actions.push('prev');
-      }
-      actions.push('sync');
-      return actions;
-    }
+    case 'synced':
     case 'text-only':
       return ['edit', 'sync'];
     case 'empty':
@@ -79,10 +69,40 @@ export function getLyricsActions(
   }
 }
 
-export function trackHasSyncedLyrics(track: TrackData): boolean {
-  return (
-    Array.isArray(track.syncedLyrics) &&
-    track.syncedLyrics.length > 0 &&
-    track.syncedLyrics.some((line) => line.startTime > 0)
-  );
+export function getLyricsPreviewLines(track: TrackData, maxLines: number = 3): string[] {
+  if (track.syncedLyrics?.length) {
+    return track.syncedLyrics
+      .map((line) => line.text.trim())
+      .filter(Boolean)
+      .slice(0, maxLines);
+  }
+
+  if (track.lyricsText?.trim()) {
+    return track.lyricsText
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .slice(0, maxLines);
+  }
+
+  return [];
+}
+
+export function getLyricsLineCount(track: TrackData): number {
+  if (track.syncedLyrics?.length) {
+    return track.syncedLyrics.filter((line) => line.text.trim()).length;
+  }
+
+  if (track.lyricsText?.trim()) {
+    return track.lyricsText
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean).length;
+  }
+
+  return 0;
+}
+
+export function formatLyricsLineCount(count: number, lang: 'en' | 'ru'): string {
+  return lang !== 'ru' ? `${count} lines` : `${count} строк`;
 }
