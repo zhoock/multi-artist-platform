@@ -46,16 +46,34 @@ export type ResolvedAlbumEditDetails = {
   isFallback: boolean;
 };
 
-function hasSyncedLyricsData(lines: TracksProps['syncedLyrics']): boolean {
-  return Array.isArray(lines) && lines.length > 0;
-}
+export function resolveTrackForDisplay(track: TracksProps, lang: SupportedLang): TracksProps {
+  const title = resolveTranslationString(
+    {
+      en: track.translations?.en?.title,
+      ru: track.translations?.ru?.title,
+    },
+    lang
+  );
+  const authorship = resolveTranslationString(
+    {
+      en: track.translations?.en?.authorship,
+      ru: track.translations?.ru?.authorship,
+    },
+    lang
+  );
 
-/**
- * Для публичного отображения: «есть синхронизация» только если есть тайминги (как в плеере / transformAlbumData).
- * Массив только с startTime === 0 не блокирует fallback на другую локаль — иначе при UI=EN теряются тайминги из RU.
- */
-function hasSyncedLyricsTimingsForDisplay(lines: TracksProps['syncedLyrics']): boolean {
-  return Array.isArray(lines) && lines.length > 0 && lines.some((l) => (l?.startTime ?? 0) > 0);
+  const resolvedTitle = !isTranslationValueMissing(title) ? title : track.title;
+  const resolvedContent = track.lyrics?.content ?? track.content ?? '';
+  const resolvedAuthorship = !isTranslationValueMissing(authorship)
+    ? authorship
+    : (track.lyrics?.authorship ?? track.authorship ?? '');
+
+  return {
+    ...track,
+    title: resolvedTitle,
+    content: resolvedContent,
+    authorship: resolvedAuthorship || undefined,
+  };
 }
 
 export function stripGenreDetailBlocks(details: detailsProps[]): detailsProps[] {
@@ -565,7 +583,7 @@ export function resolveTrackFieldForEdit(
   lang: SupportedLang
 ): ResolvedAlbumEditField {
   if (field === 'content') {
-    const v = (track.content ?? '').trim();
+    const v = (track.lyrics?.content ?? track.content ?? '').trim();
     return { value: v, isFallback: false, source: lang };
   }
   const chain = buildTranslationFallbackLocales(
@@ -585,25 +603,6 @@ export function resolveTrackFieldForEdit(
   return {
     value: root,
     isFallback: root.length > 0,
-    source: 'root',
-  };
-}
-
-export type ResolvedTrackEditSyncedLyrics = {
-  lines: TracksProps['syncedLyrics'];
-  isFallback: boolean;
-  source: AlbumEditFieldSource;
-};
-
-export function getTrackSyncedLyricsForEdit(
-  track: TracksProps,
-  _lang: SupportedLang
-): ResolvedTrackEditSyncedLyrics {
-  const root = track.syncedLyrics;
-  const hasRoot = hasSyncedLyricsData(root);
-  return {
-    lines: root,
-    isFallback: hasRoot,
     source: 'root',
   };
 }
@@ -631,45 +630,6 @@ export function resolveAlbumStringField(
   if (fromTranslations) return fromTranslations;
   if (field === 'fullName') return album.fullName ?? '';
   return album.description ?? '';
-}
-
-/** Единая синхронизация на корне трека (без fallback по локалям). */
-function pickTrackSyncedLyricsForDisplay(track: TracksProps): TracksProps['syncedLyrics'] {
-  if (hasSyncedLyricsTimingsForDisplay(track.syncedLyrics)) {
-    return track.syncedLyrics;
-  }
-  return [];
-}
-
-export function resolveTrackForDisplay(track: TracksProps, lang: SupportedLang): TracksProps {
-  const title = resolveTranslationString(
-    {
-      en: track.translations?.en?.title,
-      ru: track.translations?.ru?.title,
-    },
-    lang
-  );
-  const authorship = resolveTranslationString(
-    {
-      en: track.translations?.en?.authorship,
-      ru: track.translations?.ru?.authorship,
-    },
-    lang
-  );
-
-  const resolvedTitle = !isTranslationValueMissing(title) ? title : track.title;
-  const resolvedContent = track.content ?? '';
-  const resolvedAuthorship = !isTranslationValueMissing(authorship)
-    ? authorship
-    : (track.authorship ?? '');
-
-  return {
-    ...track,
-    title: resolvedTitle,
-    content: resolvedContent,
-    authorship: resolvedAuthorship || undefined,
-    syncedLyrics: pickTrackSyncedLyricsForDisplay(track),
-  };
 }
 
 /** См. `buildMergedAlbumDetails` — та же union по id и fallback по локалям. */

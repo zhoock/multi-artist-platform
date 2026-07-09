@@ -2,7 +2,9 @@ import React from 'react';
 import { FileText as FileTextIcon, Plus as PlusIcon } from 'lucide-react';
 
 import type { TrackData } from '@entities/album/lib/transformAlbumData';
+import { resolveTrackLyricsBundle } from '@entities/lyrics';
 import type { IInterface } from '@models';
+import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { DashboardCta, DashboardEmptyState, DashboardIconButton } from '@shared/ui/dashboard';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 import { LyricsSyncStatusBadge } from './LyricsSyncStatusBadge';
@@ -34,7 +36,11 @@ export function TrackLyricsPanel({
   lang,
   onLyricsAction,
 }: TrackLyricsPanelProps) {
-  const isEmpty = track.lyricsStatus === 'empty';
+  // track.lyrics is hydration fallback only; trackLyricsSlice is the runtime source of truth.
+  const lyrics = useAppSelector((state) =>
+    resolveTrackLyricsBundle(state, albumId, track.id, track.lyrics)
+  );
+  const isEmpty = lyrics.state === 'empty';
 
   const emptyTitle = lang !== 'ru' ? 'No lyrics yet' : 'Текста пока нет';
 
@@ -72,8 +78,8 @@ export function TrackLyricsPanel({
     );
   }
 
-  const previewLines = getLyricsPreviewLines(track);
-  const lyricsActions = getLyricsCardActions(track.lyricsStatus);
+  const previewLines = getLyricsPreviewLines(lyrics);
+  const lyricsActions = getLyricsCardActions(lyrics);
 
   return (
     <div className="albums-tab__track-lyrics">
@@ -94,7 +100,7 @@ export function TrackLyricsPanel({
         </div>
 
         <div className="albums-tab__track-lyrics-card-meta">
-          <LyricsSyncStatusBadge status={track.lyricsStatus} ui={ui} />
+          <LyricsSyncStatusBadge lyrics={lyrics} ui={ui} />
           <div className="albums-tab__track-lyrics-actions">
             {lyricsActions.map((action) => {
               const actionLabel = getLyricsActionLabel(action, ui);

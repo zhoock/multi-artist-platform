@@ -47,6 +47,16 @@ function createBaseProps(overrides: Partial<React.ComponentProps<typeof AlbumsTa
   };
 }
 
+const emptyLyrics = (albumId: string, trackId: string) => ({
+  albumId,
+  trackId,
+  lang: 'en',
+  content: '',
+  syncedLines: null,
+  state: 'empty' as const,
+  syncedAt: null,
+});
+
 const sampleAlbum: AlbumData = {
   id: 'album-1',
   albumId: 'album-1',
@@ -61,7 +71,7 @@ const sampleAlbum: AlbumData = {
       title: 'Track One',
       order_index: 0,
       duration: '3:00',
-      lyricsStatus: 'empty',
+      lyrics: emptyLyrics('album-1', 'track-1'),
     },
   ],
 };

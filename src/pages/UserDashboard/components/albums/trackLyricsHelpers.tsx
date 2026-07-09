@@ -6,16 +6,19 @@ import {
   RefreshCw as RefreshCwIcon,
 } from 'lucide-react';
 
-import type { TrackData } from '@entities/album/lib/transformAlbumData';
+import type { TrackLyricsBundle } from '@shared/lib/lyrics/types';
 import type { IInterface } from '@models';
+import {
+  getLyricsActionsForState,
+  getLyricsPreviewLinesFromBundle,
+  type LyricsAction,
+} from '@shared/lib/lyrics';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 
-export type LyricsAction = 'edit' | 'prev' | 'sync' | 'add';
+export type { LyricsAction };
 
-export function getLyricsStatusText(status: TrackData['lyricsStatus'], ui: IInterface | null) {
-  switch (status) {
-    case 'synced':
-      return ui?.dashboard?.lyricsSynchronized ?? 'Synchronized';
+export function getLyricsStatusText(state: TrackLyricsBundle['state'], ui: IInterface | null) {
+  switch (state) {
     case 'text-only':
       return ui?.dashboard?.lyricsNotSynchronized ?? 'Not synchronized';
     case 'empty':
@@ -57,33 +60,10 @@ export function renderLyricsActionIcon(action: LyricsAction) {
   }
 }
 
-export function getLyricsCardActions(status: TrackData['lyricsStatus']): LyricsAction[] {
-  switch (status) {
-    case 'synced':
-    case 'text-only':
-      return ['edit', 'sync'];
-    case 'empty':
-      return ['add'];
-    default:
-      return [];
-  }
+export function getLyricsCardActions(lyrics: TrackLyricsBundle): LyricsAction[] {
+  return getLyricsActionsForState(lyrics.state);
 }
 
-export function getLyricsPreviewLines(track: TrackData, maxLines: number = 3): string[] {
-  if (track.syncedLyrics?.length) {
-    return track.syncedLyrics
-      .map((line) => line.text.trim())
-      .filter(Boolean)
-      .slice(0, maxLines);
-  }
-
-  if (track.lyricsText?.trim()) {
-    return track.lyricsText
-      .split('\n')
-      .map((line) => line.trim())
-      .filter(Boolean)
-      .slice(0, maxLines);
-  }
-
-  return [];
+export function getLyricsPreviewLines(lyrics: TrackLyricsBundle, maxLines: number = 3): string[] {
+  return getLyricsPreviewLinesFromBundle(lyrics, maxLines);
 }

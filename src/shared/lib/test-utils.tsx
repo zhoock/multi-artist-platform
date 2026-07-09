@@ -11,6 +11,7 @@ import { articlesReducer } from '@entities/article/model/articlesSlice';
 import { albumsReducer } from '@entities/album/model/albumsSlice';
 import { uiDictionaryReducer } from '@shared/model/uiDictionary/uiDictionarySlice';
 import { currentArtistReducer } from '@shared/model/currentArtist';
+import { trackLyricsReducer } from '@entities/lyrics/model/trackLyricsSlice';
 import type { RootState, AppStore } from '@shared/model/appStore';
 
 // Определяем тип для предзагруженного состояния (частичное состояние)
@@ -35,6 +36,7 @@ export function renderWithProviders(
         albums: albumsReducer,
         currentArtist: currentArtistReducer,
         uiDictionary: uiDictionaryReducer,
+        trackLyrics: trackLyricsReducer,
       } as any,
       preloadedState: preloadedState as any,
     }) as AppStore,

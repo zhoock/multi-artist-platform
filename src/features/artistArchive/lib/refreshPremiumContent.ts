@@ -10,7 +10,6 @@ import { getUserAudioUrl } from '@shared/api/albums';
 import { emptyStringMediaSrc } from '@shared/lib/media/optionalMediaUrl';
 import { fallbackAlbumClientId } from '@shared/lib/albumClientId';
 import { isTrackPlaybackBlocked } from '@shared/lib/tracks/trackPlayback';
-import { clearSyncedLyricsCache } from '@features/syncedLyrics/lib';
 import { setPublicArtistSlug, selectPublicArtistSlug } from '@shared/model/currentArtist';
 import { readPublicArtistSlugFromDashboardModalBackground } from '@shared/lib/dashboardModalBackground';
 import { readPremiumCheckoutArtistSlug } from '@features/premiumSubscription/lib/premiumSuccessModalStorage';
@@ -108,7 +107,6 @@ async function executePremiumEntitlementsRefresh(
   publicArtistSlug?: string
 ): Promise<void> {
   const runId = ++refreshRunId;
-  clearSyncedLyricsCache();
 
   const slug = resolveRefreshArtistSlug(publicArtistSlug);
   if (slug) {

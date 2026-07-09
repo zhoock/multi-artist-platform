@@ -12,6 +12,8 @@ import { isDashboardPathname } from '@shared/lib/publicArtistContext';
 import { shouldUsePublicArtistCatalogInRedux } from '@shared/lib/dashboardModalBackground';
 import { buildPublicAlbumsFetchContextKey } from '@shared/lib/publicCatalogCacheKey';
 import { selectPublicArtistSlug, setPublicArtistSlug } from '@shared/model/currentArtist';
+import { applyTrackLyricsBundle } from '@entities/lyrics/model/actions';
+import { patchAlbumsWithTrackLyrics } from '../lib/patchAlbumTrackLyrics';
 
 import type { AlbumsState, FetchAlbumsArg, FetchAlbumsFulfilledPayload } from './types';
 
@@ -162,7 +164,7 @@ export const fetchAlbums = createAsyncThunk<
       src?: string;
       content?: string;
       authorship?: string;
-      syncedLyrics?: unknown;
+      lyrics?: unknown;
       translations?: IAlbumTrackTranslations;
     } => {
       return (
@@ -198,7 +200,7 @@ export const fetchAlbums = createAsyncThunk<
                 src: track.src ?? '',
                 content: track.content ?? '',
                 authorship: track.authorship,
-                syncedLyrics: track.syncedLyrics,
+                lyrics: track.lyrics,
                 translations: track.translations,
                 visibility: normalizeTrackVisibility(
                   (track as { visibility?: unknown }).visibility
@@ -446,6 +448,11 @@ const albumsSlice = createSlice({
     },
   },
   extraReducers: (builder) => {
+    builder.addCase(applyTrackLyricsBundle, (state, action) => {
+      const bundle = action.payload;
+      state.dashboard.data = patchAlbumsWithTrackLyrics(state.dashboard.data, bundle);
+      state.data = patchAlbumsWithTrackLyrics(state.data, bundle);
+    });
     builder
       .addCase(setPublicArtistSlug, (state, action) => {
         const desiredKey = buildPublicAlbumsFetchContextKey(action.payload);

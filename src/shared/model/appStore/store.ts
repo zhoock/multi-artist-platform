@@ -7,11 +7,12 @@ import {
   attachAudioEvents,
 } from '@features/player/model/middleware/playerListeners';
 import { langReducer, langListenerMiddleware, applyLangSideEffects } from '@shared/model/lang';
+import { currentArtistReducer } from '@shared/model/currentArtist';
 import { articlesReducer } from '@entities/article';
 import { albumsReducer } from '@entities/album';
 import { helpArticlesReducer } from '@entities/helpArticle';
 import { uiDictionaryReducer } from '@shared/model/uiDictionary';
-import { currentArtistReducer } from '@shared/model/currentArtist';
+import { trackLyricsReducer } from '@entities/lyrics';
 
 import type { AppDispatch, AppStore as AppStoreType, RootState } from './types';
 
@@ -24,6 +25,7 @@ const rootReducer = {
   albums: albumsReducer,
   helpArticles: helpArticlesReducer,
   uiDictionary: uiDictionaryReducer,
+  trackLyrics: trackLyricsReducer,
 };
 
 let storeInstance: AppStoreType | null = null;

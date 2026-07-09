@@ -5,6 +5,7 @@ import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 import { useLang } from '@app/providers/lang';
 import type { SyncedLyricsLine } from '@models';
+import type { TrackLyricsBundle } from '@shared/lib/lyrics/types';
 import { getSyncedLineEndTime } from '@features/player/lib/syncedLyricsTiming';
 import { getUserAudioUrl } from '@shared/api/albums';
 import { Pause, Play } from 'lucide-react';
@@ -17,16 +18,13 @@ import './PreviewLyricsModal.style.scss';
 
 interface PreviewLyricsModalProps {
   isOpen: boolean;
-  lyrics: string;
-  syncedLyrics?: SyncedLyricsLine[];
-  authorship?: string;
+  lyrics: TrackLyricsBundle;
   trackSrc?: string;
   /** Владелец файла в Storage (users/{id}/audio/...) */
   mediaOwnerUserId?: string;
   onClose: () => void;
 }
 
-// Форматирование времени в формат MM:SS
 const formatTime = (seconds: number): string => {
   const mins = Math.floor(seconds / 60);
   const secs = Math.floor(seconds % 60);
@@ -36,8 +34,6 @@ const formatTime = (seconds: number): string => {
 export function PreviewLyricsModal({
   isOpen,
   lyrics,
-  syncedLyrics,
-  authorship,
   trackSrc,
   mediaOwnerUserId,
   onClose,
@@ -55,7 +51,9 @@ export function PreviewLyricsModal({
   const lyricsContainerRef = useRef<HTMLDivElement>(null);
   const lineRefs = useRef<Map<number, HTMLDivElement>>(new Map());
 
-  // Инициализация аудио элемента
+  const isSynced = lyrics.state === 'synced';
+  const authorship = lyrics.authorship?.trim() ?? '';
+
   useEffect(() => {
     if (!audioPlaybackUrl) return;
     const audio = new Audio(audioPlaybackUrl);
@@ -96,9 +94,6 @@ export function PreviewLyricsModal({
     };
   }, [audioPlaybackUrl]);
 
-  // Управление воспроизведением через useEffect больше не нужно - используем прямой вызов в togglePlay
-
-  // Сброс состояния при закрытии модалки
   useEffect(() => {
     if (!isOpen) {
       setIsPlaying(false);
@@ -110,81 +105,55 @@ export function PreviewLyricsModal({
     }
   }, [isOpen]);
 
-  // Берём синхронизированный текст, если есть; иначе разбиваем lyrics по строкам
-  const lines: SyncedLyricsLine[] =
-    syncedLyrics && syncedLyrics.length > 0
-      ? syncedLyrics
-      : lyrics
-          .split('\n')
-          .filter((l) => l.trim().length > 0)
-          .map((text) => ({ text, startTime: 0 }));
+  const lines: SyncedLyricsLine[] = useMemo(() => {
+    if (isSynced && lyrics.syncedLines?.length) {
+      return lyrics.syncedLines;
+    }
+    return lyrics.content
+      .split('\n')
+      .filter((l) => l.trim().length > 0)
+      .map((text) => ({ text, startTime: 0 }));
+  }, [isSynced, lyrics.content, lyrics.syncedLines]);
 
-  // Добавляем авторство как последнюю строку; старт сразу после endTime последней строки (без «дыры» до duration)
-  const linesWithAuthorship: SyncedLyricsLine[] =
-    authorship && authorship.trim()
-      ? (() => {
-          const auth = authorship.trim();
-          const last = lines[lines.length - 1];
-          const lastEnd = last?.endTime;
-          const authStart =
-            typeof lastEnd === 'number' && Number.isFinite(lastEnd) && lastEnd > 0
-              ? lastEnd
-              : duration || 0;
-          return [...lines, { text: auth, startTime: authStart }];
-        })()
-      : lines;
+  const linesWithAuthorship: SyncedLyricsLine[] = useMemo(() => {
+    if (!authorship) return lines;
+    const last = lines[lines.length - 1];
+    const lastEnd = last?.endTime;
+    const authStart =
+      typeof lastEnd === 'number' && Number.isFinite(lastEnd) && lastEnd > 0
+        ? lastEnd
+        : duration || 0;
+    return [...lines, { text: authorship, startTime: authStart }];
+  }, [authorship, duration, lines]);
 
-  // Проверяем, действительно ли текст синхронизирован (есть ли строки с startTime > 0)
-  const isActuallySynced = React.useMemo(() => {
-    if (!syncedLyrics || syncedLyrics.length === 0) return false;
-    // Используем linesWithAuthorship для проверки, но исключаем авторство (последняя строка может иметь большой startTime)
-    const lyricsLines = syncedLyrics.filter((line, index) => {
-      // Исключаем последнюю строку, если она является авторством
-      if (authorship && index === syncedLyrics.length - 1 && line.text === authorship.trim()) {
-        return false;
-      }
-      return true;
-    });
-    return lyricsLines.some((line) => line.startTime > 0);
-  }, [syncedLyrics, authorship]);
-
-  // Вычисляем индекс текущей активной строки (логика из useCurrentLineIndex)
   const currentLineIndex = React.useMemo(() => {
-    // Если текст не синхронизирован, не подсвечиваем строки
-    if (!isActuallySynced || linesWithAuthorship.length === 0) {
+    if (!isSynced || linesWithAuthorship.length === 0) {
       return null;
     }
 
     const timeValue = currentTime;
     const firstLineStart = linesWithAuthorship[0]?.startTime ?? 0;
 
-    // Если не играем и время в начале, не показываем активную строку
     if (!isPlaying && timeValue <= firstLineStart + 0.05) {
       return null;
     }
 
     let activeIndex: number | null = null;
 
-    // Если время меньше startTime первой строки - нет активной строки
     if (linesWithAuthorship.length > 0 && timeValue < linesWithAuthorship[0].startTime) {
       activeIndex = null;
     } else {
-      // Ищем активную строку среди всех строк
       for (let i = 0; i < linesWithAuthorship.length; i++) {
         const line = linesWithAuthorship[i];
         const nextLine = linesWithAuthorship[i + 1];
-
         const lineEndTime = getSyncedLineEndTime(linesWithAuthorship, i);
 
-        // Если время попадает в диапазон текущей строки
         if (timeValue >= line.startTime && timeValue < lineEndTime) {
           activeIndex = i;
           break;
         }
 
-        // Если это последняя строка
         if (!nextLine) {
-          // Если время больше startTime последней строки - оставляем её активной
           if (timeValue >= line.startTime) {
             activeIndex = i;
             break;
@@ -195,9 +164,8 @@ export function PreviewLyricsModal({
     }
 
     return activeIndex;
-  }, [isActuallySynced, currentTime, isPlaying, linesWithAuthorship]);
+  }, [isSynced, currentTime, isPlaying, linesWithAuthorship]);
 
-  // Автоскролл к активной строке
   useEffect(() => {
     if (currentLineIndex === null || !lyricsContainerRef.current) return;
 
@@ -205,25 +173,18 @@ export function PreviewLyricsModal({
     if (!lineElement) return;
 
     const container = lyricsContainerRef.current;
-
-    // Используем getBoundingClientRect для проверки видимости
     const containerRect = container.getBoundingClientRect();
     const lineRect = lineElement.getBoundingClientRect();
 
     const containerTop = containerRect.top;
     const containerBottom = containerRect.bottom;
-    const containerHeight = containerBottom - containerTop;
-
     const lineTop = lineRect.top;
     const lineBottom = lineRect.bottom;
 
-    // Проверяем, видна ли строка в контейнере (с небольшим отступом)
     const padding = 30;
     const isVisible = lineTop >= containerTop + padding && lineBottom <= containerBottom - padding;
 
     if (!isVisible) {
-      // Используем scrollIntoView для надежного скролла
-      // block: 'center' позиционирует элемент в центре видимой области
       lineElement.scrollIntoView({
         behavior: 'smooth',
         block: 'center',

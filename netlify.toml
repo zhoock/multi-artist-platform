@@ -41,15 +41,16 @@
   status = 200
   force = true
 
-# Synced lyrics
+# Track lyrics (canonical bundle API)
 [[redirects]]
-  from = "/api/synced-lyrics*"
-  to = "/.netlify/functions/synced-lyrics"
+  from = "/api/track-lyrics*"
+  to = "/.netlify/functions/track-lyrics"
   status = 200
   force = true
 
+# Synced lyrics (legacy read API — prefer /api/track-lyrics)
 [[redirects]]
-  from = "/api/save-synced-lyrics*"
+  from = "/api/synced-lyrics*"
   to = "/.netlify/functions/synced-lyrics"
   status = 200
   force = true

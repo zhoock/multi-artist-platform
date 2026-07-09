@@ -44,14 +44,6 @@ export function useLyricsAutoScroll({
     const container = lyricsContainerRef.current;
     if (!container || !syncedLyrics || syncedLyrics.length === 0 || !showLyrics) return;
 
-    // ВАЖНО: Если все строки имеют startTime: 0, это обычный текст (не синхронизированный)
-    // В этом случае не выполняем автоскролл, так как нет активных строк для синхронизации
-    const hasActualSync = syncedLyrics.some((line) => line.startTime > 0);
-    if (!hasActualSync) {
-      // Это обычный текст без синхронизации - не выполняем автоскролл
-      return;
-    }
-
     // Если мы только что восстановили позицию прокрутки, блокируем автоскролл
     if (justRestoredScrollRef.current) {
       debugLog('🚫 Blocking auto-scroll: position was just restored');

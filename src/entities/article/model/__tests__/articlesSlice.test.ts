@@ -15,6 +15,7 @@ import type { AppDispatch } from '@shared/model/appStore/types';
 import * as publicArtistContext from '@shared/lib/publicArtistContext';
 import { syncDashboardAlbumsPublicCatalogOverlay } from '@shared/lib/dashboardModalBackground';
 import { currentArtistReducer, setPublicArtistSlug } from '@shared/model/currentArtist';
+import { trackLyricsReducer } from '@entities/lyrics/model/trackLyricsSlice';
 import { createAlbumsTestState } from '@entities/album/model/__tests__/albumsTestState';
 
 const mockFetch = jest.fn() as jest.MockedFunction<typeof fetch>;
@@ -41,6 +42,7 @@ const createTestStore = () => {
         en: { status: 'idle' as const, error: null, data: [], lastUpdated: null },
         ru: { status: 'idle' as const, error: null, data: [], lastUpdated: null },
       }),
+      trackLyrics: trackLyricsReducer,
     },
   });
   store.dispatch(setPublicArtistSlug('test-artist'));

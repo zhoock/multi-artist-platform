@@ -4,6 +4,7 @@
 import type { MutableRefObject } from 'react';
 import type { Track } from '@entities/track/model/types';
 import type { SupportedLang } from '@shared/model/lang';
+import type { TrackLyricsBundle } from '@shared/lib/lyrics/types';
 import type { TrackVisibility } from '@shared/lib/tracks/trackVisibility';
 
 export interface NavigationProps {
@@ -163,8 +164,6 @@ export interface IAlbumTrackTranslationsLocale {
   /** @deprecated legacy; текст единый в `track.content` */
   content?: string;
   authorship?: string;
-  /** @deprecated legacy; синхронизация в `track.syncedLyrics` */
-  syncedLyrics?: SyncedLyricsLine[];
 }
 
 export type IAlbumTrackTranslations = Partial<Record<SupportedLang, IAlbumTrackTranslationsLocale>>;
@@ -173,8 +172,8 @@ export type IAlbumTrackTranslations = Partial<Record<SupportedLang, IAlbumTrackT
 export interface TracksProps extends Track {
   /** Единый текст песни (не зависит от языка UI). */
   content: string;
-  /** Синхронизированный текст с тайм-кодами (для karaoke-style отображения) */
-  syncedLyrics?: SyncedLyricsLine[];
+  /** Канонический bundle текста и синхронизации. */
+  lyrics?: TrackLyricsBundle;
   /** Текст авторства (автоматически добавляется в конец синхронизированных текстов) */
   authorship?: string;
   /** Длительность трека в секундах */
@@ -626,6 +625,8 @@ export interface IInterface {
     sync: string;
     /** Заголовок модалки синхронизации текста с аудио */
     syncLyricsTitle?: string;
+    removeSyncLyrics?: string;
+    removeSyncLyricsConfirm?: string;
     add: string;
     prev: string;
     addLyrics: string;

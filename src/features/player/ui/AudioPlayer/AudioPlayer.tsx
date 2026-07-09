@@ -15,8 +15,6 @@ import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { playerActions, playerSelectors } from '@features/player';
 import { audioController } from '@features/player/model/lib/audioController';
 import { clearImageColorCache } from '@shared/lib/hooks/useImageColor';
-import { loadSyncedLyricsFromStorage, loadAuthorshipFromStorage } from '@features/syncedLyrics/lib';
-import { loadTrackTextFromDatabase } from '@entities/track/lib';
 import { useLang } from '@app/providers/lang';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 
@@ -697,12 +695,11 @@ export default function AudioPlayer({
     bgColorSetForAlbumRef.current = null;
   }, [albumId]);
 
-  // Загружаем контент lyrics (синхронизированный текст, обычный текст, авторство)
-  useLyricsContent({
+  // Canonical TrackLyricsBundle from trackLyricsSlice (playlist lyrics = hydration fallback only)
+  const lyricsBundle = useLyricsContent({
     currentTrack,
     albumId,
     lang,
-    artistSlugForPublicApi: albumMeta?.publicSlug ?? null,
     duration: time.duration,
     setSyncedLyrics,
     setPlainLyricsContent,
@@ -866,10 +863,8 @@ export default function AudioPlayer({
 
   const hasPlainLyrics = !!plainLyricsContent;
 
-  // Вычисление "синхра точно есть/возможна" (для кнопки "текст")
-  const hasSyncedLyricsHint = !!(
-    currentTrack?.syncedLyrics && currentTrack.syncedLyrics.some((l) => (l.startTime ?? 0) > 0)
-  );
+  // Sync availability from canonical bundle (same source as useLyricsContent / trackLyricsSlice)
+  const hasSyncedLyricsHint = lyricsBundle?.state === 'synced';
 
   const hasTextToShow = hasSyncedLyricsAvailable || hasSyncedLyricsHint || hasPlainLyrics;
 

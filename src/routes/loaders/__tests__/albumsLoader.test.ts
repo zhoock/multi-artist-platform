@@ -20,6 +20,7 @@ import { helpArticlesReducer } from '@entities/helpArticle';
 import { uiDictionaryReducer } from '@shared/model/uiDictionary';
 import { langReducer } from '@shared/model/lang';
 import { currentArtistReducer, setPublicArtistSlug } from '@shared/model/currentArtist';
+import { trackLyricsReducer } from '@entities/lyrics/model/trackLyricsSlice';
 import { popupReducer } from '@features/popupToggle';
 import { playerReducer } from '@features/player';
 
@@ -37,6 +38,7 @@ function createTestStore(): AppStore {
       albums: albumsReducer,
       helpArticles: helpArticlesReducer,
       uiDictionary: uiDictionaryReducer,
+      trackLyrics: trackLyricsReducer,
     },
   }) as unknown as AppStore;
 }

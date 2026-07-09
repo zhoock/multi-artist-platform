@@ -580,6 +580,8 @@
       "edit": "Edit",
       "sync": "Sync",
       "syncLyricsTitle": "Sync lyrics",
+      "removeSyncLyrics": "Remove synchronization",
+      "removeSyncLyricsConfirm": "Remove synchronization? Lyrics text will be kept as plain text.",
       "add": "Add",
       "prev": "Prev",
       "addLyrics": "Add Lyrics",

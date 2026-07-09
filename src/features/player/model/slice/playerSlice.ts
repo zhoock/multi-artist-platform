@@ -3,6 +3,8 @@
  * Здесь определяем все действия (actions) и как они изменяют стейт.
  */
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import { applyTrackLyricsBundle } from '@entities/lyrics/model/actions';
+import type { TrackLyricsBundle } from '@shared/lib/lyrics/types';
 import {
   PlayerState,
   initialPlayerState,
@@ -34,6 +36,20 @@ const findTrackIndexById = (playlist: TracksProps[], trackId: string): number =>
   const needle = normalizeTrackIdString(trackId);
   return playlist.findIndex((track) => track.id === needle);
 };
+
+function patchPlaylistTrackLyrics(tracks: TracksProps[], bundle: TrackLyricsBundle): TracksProps[] {
+  return tracks.map((track) => {
+    if (String(track.id) !== String(bundle.trackId)) {
+      return track;
+    }
+    return {
+      ...track,
+      content: bundle.content,
+      authorship: bundle.authorship ?? track.authorship,
+      lyrics: bundle,
+    };
+  });
+}
 
 const playerSlice = createSlice({
   name: 'player',
@@ -386,6 +402,13 @@ const playerSlice = createSlice({
         state.controlsVisible = true;
       }
     },
+  },
+  extraReducers: (builder) => {
+    builder.addCase(applyTrackLyricsBundle, (state, action) => {
+      const bundle = action.payload;
+      state.playlist = patchPlaylistTrackLyrics(state.playlist, bundle);
+      state.originalPlaylist = patchPlaylistTrackLyrics(state.originalPlaylist, bundle);
+    });
   },
 });
 

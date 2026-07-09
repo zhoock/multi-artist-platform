@@ -37,8 +37,10 @@ import { rankToOrderIndex } from '../../src/shared/lib/tracks/trackOrderIndex';
 import { normalizeStemsVisibility } from '../../src/shared/lib/stems/stemsVisibility';
 import { normalizeTrackVisibility } from '../../src/shared/lib/tracks/trackVisibility';
 import { hydrateMissingRuTranslationsOnAlbum } from '../../src/entities/album/lib/hydrateMissingRuTranslations';
+import type { TrackLyricsBundle } from '../../src/shared/lib/lyrics/types';
 import type { IAlbums } from '../../src/models';
 import { viewerHasPremiumAccessToArtist } from './lib/entitlements';
+import { buildLyricsMapForAlbumTracks, mergeTrackLyricsBundles } from './lib/track-lyrics';
 
 interface AlbumRow {
   id: string;
@@ -128,9 +130,11 @@ interface TrackData {
   order_index: number;
   duration?: number;
   src?: string;
+  /** Plain text mirror of lyrics.content for legacy merge paths. */
   content?: string;
   authorship?: string;
-  syncedLyrics?: unknown;
+  /** Canonical lyrics + sync state (single source of truth). */
+  lyrics: TrackLyricsBundle;
   translations?: Partial<Record<SupportedLang, TrackLocalePayload>>;
   /** Доступ на публичной странице (после GET с `?artist=` применяется policy). */
   visibility?: 'public' | 'subscribers_only' | 'hidden';
@@ -216,7 +220,6 @@ async function fetchTracksRowsForAlbumPk(albumPk: string): Promise<TrackRow[]> {
                 t.src,
                 t.content,
                 t.authorship,
-                t.synced_lyrics,
                 t.order_index${visibilityCol}${stemsVisibilityCol}
               FROM tracks t
               WHERE t.album_id = $1
@@ -336,7 +339,11 @@ function readCoverCreditsFromRow(
 /**
  * Преобразует данные альбома из БД в формат API
  */
-function mapAlbumToApiFormat(album: AlbumRow, tracks: TrackRow[]): AlbumData {
+function mapAlbumToApiFormat(
+  album: AlbumRow,
+  tracks: TrackRow[],
+  lyricsByTrackId: Map<string, TrackLyricsBundle>
+): AlbumData {
   // Парсим details, если это строка (PostgreSQL может вернуть JSONB как строку)
   let details: unknown[] = [];
   if (album.details) {
@@ -426,45 +433,18 @@ function mapAlbumToApiFormat(album: AlbumRow, tracks: TrackRow[]): AlbumData {
         );
       }
 
-      // Парсим synced_lyrics, если это строка (PostgreSQL может вернуть JSONB как строку)
-      let syncedLyrics: unknown = undefined;
-      if (track.synced_lyrics) {
-        if (typeof track.synced_lyrics === 'string') {
-          try {
-            syncedLyrics = JSON.parse(track.synced_lyrics);
-          } catch (error) {
-            console.error('❌ Error parsing track.synced_lyrics as string:', error);
-            syncedLyrics = track.synced_lyrics;
-          }
-        } else {
-          syncedLyrics = track.synced_lyrics;
-        }
-      }
-
-      // #region agent log
-      if (syncedLyrics) {
-        fetch('http://127.0.0.1:7242/ingest/0d98fd1d-24ff-4297-901e-115ee9f70125', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            location: 'albums.ts:193',
-            message: 'Track syncedLyrics in mapAlbumToApiFormat',
-            data: {
-              trackId: track.track_id,
-              syncedLyricsType: Array.isArray(syncedLyrics) ? 'array' : typeof syncedLyrics,
-              syncedLyricsLength: Array.isArray(syncedLyrics) ? syncedLyrics.length : 0,
-              hasStartTimeGreaterThanZero: Array.isArray(syncedLyrics)
-                ? syncedLyrics.some((line: any) => line.startTime > 0)
-                : false,
-            },
-            timestamp: Date.now(),
-            sessionId: 'debug-session',
-            runId: 'run1',
-            hypothesisId: 'E',
-          }),
-        }).catch(() => {});
-      }
-      // #endregion
+      const lyrics =
+        lyricsByTrackId.get(track.track_id) ??
+        ({
+          albumId: album.album_id,
+          trackId: String(track.track_id),
+          lang: album.lang === 'ru' ? 'ru' : 'en',
+          content: track.content || '',
+          authorship: track.authorship || undefined,
+          syncedLines: null,
+          state: track.content?.trim() ? 'text-only' : 'empty',
+          syncedAt: null,
+        } satisfies TrackLyricsBundle);
 
       return {
         id: normalizeTrackIdString(track.track_id) || String(track.track_id),
@@ -473,12 +453,11 @@ function mapAlbumToApiFormat(album: AlbumRow, tracks: TrackRow[]): AlbumData {
           typeof track.order_index === 'number' && !Number.isNaN(track.order_index)
             ? track.order_index
             : 0,
-        // Убеждаемся, что duration всегда число (0, если отсутствует)
         duration: duration ?? 0,
         src: resolveTrackSrcToSupabasePublicUrl(track.src, album.user_id),
-        content: track.content || undefined,
-        authorship: track.authorship || undefined,
-        syncedLyrics: syncedLyrics || undefined,
+        content: lyrics.content || undefined,
+        authorship: lyrics.authorship || track.authorship || undefined,
+        lyrics,
         visibility: normalizeTrackVisibility(track.visibility),
         stemsVisibility: normalizeStemsVisibility(track.stems_visibility),
       };
@@ -627,33 +606,6 @@ function sortAlbumRowsForMerge(rows: AlbumRow[]): AlbumRow[] {
   );
 }
 
-function syncedLyricsHaveTimingsMerge(raw: unknown): boolean {
-  if (!Array.isArray(raw)) return false;
-  return raw.some(
-    (line: { startTime?: unknown }) => Number((line as { startTime?: number })?.startTime) > 0
-  );
-}
-
-function firstNonEmptyTrackContent(sorted: AlbumData[], trackId: string): string | undefined {
-  const tid = String(trackId);
-  for (const p of sorted) {
-    const m = p.tracks.find((t) => String(t.id) === tid);
-    const c = m?.content;
-    if (typeof c === 'string' && c.trim()) return c;
-  }
-  return undefined;
-}
-
-function firstSyncedLyricsWithTimings(sorted: AlbumData[], trackId: string): unknown {
-  for (const p of sorted) {
-    const m = p.tracks.find((t) => String(t.id) === String(trackId));
-    if (m?.syncedLyrics && syncedLyricsHaveTimingsMerge(m.syncedLyrics)) {
-      return m.syncedLyrics;
-    }
-  }
-  return undefined;
-}
-
 function pickFirstTrackWithId(sorted: AlbumData[], trackId: string): TrackData | undefined {
   const tid = String(trackId);
   for (const p of sorted) {
@@ -713,19 +665,16 @@ function mergeTrackPayloads(payloads: AlbumData[]): TrackData[] {
         };
       }
     }
-    let mergedContent = typeof ct.content === 'string' ? ct.content : '';
-    if (!mergedContent.trim()) {
-      mergedContent = firstNonEmptyTrackContent(sorted, tid) ?? '';
-    }
-    let mergedSync = ct.syncedLyrics;
-    if (!syncedLyricsHaveTimingsMerge(mergedSync)) {
-      const alt = firstSyncedLyricsWithTimings(sorted, tid);
-      if (alt !== undefined) mergedSync = alt;
-    }
+    const bundles = sorted
+      .map((p) => p.tracks.find((t) => String(t.id) === tid)?.lyrics)
+      .filter((b): b is TrackLyricsBundle => Boolean(b));
+    const mergedLyrics = mergeTrackLyricsBundles(bundles.length > 0 ? bundles : [ct.lyrics]);
+
     return {
       ...ct,
-      content: mergedContent,
-      syncedLyrics: mergedSync,
+      content: mergedLyrics.content,
+      authorship: mergedLyrics.authorship ?? ct.authorship,
+      lyrics: mergedLyrics,
       translations,
     };
   });
@@ -885,50 +834,14 @@ async function loadAlbumDataFromRow(album: AlbumRow): Promise<AlbumData> {
       : null,
   });
 
-  const trackIds = tracksRows.map((t) => t.track_id);
-  let syncedLyricsMap = new Map<string, { synced_lyrics: unknown; authorship: string | null }>();
+  const lyricsByTrackId = await buildLyricsMapForAlbumTracks(
+    album.album_id,
+    album.user_id,
+    tracksRows,
+    album.lang
+  );
 
-  if (trackIds.length > 0) {
-    try {
-      const syncedLyricsResult = await query<{
-        track_id: string;
-        synced_lyrics: unknown;
-        authorship: string | null;
-      }>(
-        `SELECT DISTINCT ON (track_id)
-                     track_id, synced_lyrics, authorship
-                   FROM synced_lyrics 
-                   WHERE album_id = $1 AND track_id = ANY($2::text[]) AND lang = $3
-                   ORDER BY track_id, updated_at DESC NULLS LAST`,
-        [album.album_id, trackIds, rowLang]
-      );
-
-      syncedLyricsResult.rows.forEach((r) => {
-        syncedLyricsMap.set(r.track_id, {
-          synced_lyrics: r.synced_lyrics,
-          authorship: r.authorship,
-        });
-      });
-    } catch (syncedError) {
-      console.error('❌ [albums.ts GET] Error loading synced lyrics:', syncedError);
-    }
-  }
-
-  const tracksWithSyncedLyrics = tracksRows.map((track) => {
-    const syncedData = syncedLyricsMap.get(track.track_id);
-    if (syncedData) {
-      return {
-        ...track,
-        synced_lyrics: syncedData.synced_lyrics,
-        // Источник истины — `tracks.authorship`. Синхронизация пишется под канонический lang;
-        // строка `synced_lyrics` для другой локали могла не обновиться и перетирала EN при чтении.
-        authorship: track.authorship ?? syncedData.authorship,
-      };
-    }
-    return track;
-  });
-
-  const mapped = mapAlbumToApiFormat(album, tracksWithSyncedLyrics);
+  const mapped = mapAlbumToApiFormat(album, tracksRows, lyricsByTrackId);
   console.log(`[albums.ts GET] Album ${album.album_id} mapped tracks:`, {
     tracksCount: mapped.tracks.length,
     tracksWithDuration: mapped.tracks.filter((t) => t.duration != null).length,
@@ -1236,7 +1149,7 @@ export const handler: Handler = async (
         ]
       );
 
-      const createdAlbum = mapAlbumToApiFormat(albumResult.rows[0], []);
+      const createdAlbum = mapAlbumToApiFormat(albumResult.rows[0], [], new Map());
 
       return {
         statusCode: 201,
@@ -1564,7 +1477,17 @@ export const handler: Handler = async (
           }
 
           const tracksAfterPublish = { rows: await fetchTracksRowsForAlbumPk(existingAlbum.id) };
-          const publishedAlbum = mapAlbumToApiFormat(existingAlbum, tracksAfterPublish.rows);
+          const publishLyricsMap = await buildLyricsMapForAlbumTracks(
+            existingAlbum.album_id,
+            existingAlbum.user_id,
+            tracksAfterPublish.rows,
+            existingAlbum.lang
+          );
+          const publishedAlbum = mapAlbumToApiFormat(
+            existingAlbum,
+            tracksAfterPublish.rows,
+            publishLyricsMap
+          );
 
           return {
             statusCode: 200,
@@ -1799,7 +1722,13 @@ export const handler: Handler = async (
 
         let mappedAlbum;
         try {
-          mappedAlbum = mapAlbumToApiFormat(updatedAlbum, tracksResult.rows);
+          const putLyricsMap = await buildLyricsMapForAlbumTracks(
+            updatedAlbum.album_id,
+            updatedAlbum.user_id,
+            tracksResult.rows,
+            updatedAlbum.lang
+          );
+          mappedAlbum = mapAlbumToApiFormat(updatedAlbum, tracksResult.rows, putLyricsMap);
           console.log('[albums.ts PUT] Album mapped successfully');
         } catch (mapError) {
           console.error('❌ [albums.ts PUT] Error mapping album:', mapError);
@@ -1836,7 +1765,13 @@ export const handler: Handler = async (
               // Загружаем треки по конкретному UUID альбома
               // Важно: фильтруем по конкретному альбому (UUID), чтобы не получить треки из других альбомов
               const tr = await fetchTracksRowsForAlbumPk(album.id);
-              return mapAlbumToApiFormat(album, tr);
+              const lyricsMap = await buildLyricsMapForAlbumTracks(
+                album.album_id,
+                album.user_id,
+                tr,
+                album.lang
+              );
+              return mapAlbumToApiFormat(album, tr, lyricsMap);
             })
           );
 
@@ -1859,7 +1794,7 @@ export const handler: Handler = async (
                 src: track.src || '',
                 content: track.content || '',
                 authorship: track.authorship || undefined,
-                syncedLyrics: track.syncedLyrics || undefined,
+                lyrics: track.lyrics || undefined,
                 visibility: track.visibility || 'public',
                 stemsVisibility: track.stemsVisibility || 'public',
               };

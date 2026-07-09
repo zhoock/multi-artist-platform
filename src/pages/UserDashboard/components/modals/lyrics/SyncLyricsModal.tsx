@@ -14,13 +14,13 @@ import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 import { useLang } from '@app/providers/lang';
 import type { SyncedLyricsLine } from '@/models';
+import type { TrackLyricsBundle } from '@shared/lib/lyrics/types';
+import { buildSyncEditorLinesFromBundle, isTimedSync } from '@shared/lib/lyrics';
 import {
-  saveSyncedLyrics,
-  loadSyncedLyricsFromStorage,
-  loadAuthorshipFromStorage,
-  clearSyncedLyricsCache,
-} from '@features/syncedLyrics/lib';
-import { loadTrackTextFromDatabase } from '@entities/track/lib';
+  deleteTrackLyricsSyncApi,
+  fetchTrackLyricsBundle,
+  saveTrackLyricsSyncApi,
+} from '@entities/lyrics';
 import { getUserAudioUrl } from '@shared/api/albums';
 import { Pause, Play, X } from 'lucide-react';
 import { ModalCloseIcon } from '@shared/ui/icons/ModalCloseIcon';
@@ -51,7 +51,7 @@ interface SyncLyricsModalProps {
   initialLyricsText?: string;
   authorship?: string; // fallback
   onClose: () => void;
-  onSave?: () => void;
+  onSave?: (bundle: TrackLyricsBundle) => void;
 }
 
 const isUsableMediaDuration = (d: number): boolean => Number.isFinite(d) && d > 0 && d !== Infinity;
@@ -125,8 +125,10 @@ export function SyncLyricsModal({
 
   const [syncedLines, setSyncedLines] = useState<SyncedLyricsLine[]>([]);
   const [trackAuthorship, setTrackAuthorship] = useState<string>('');
+  const [hasSavedSync, setHasSavedSync] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isRemovingSync, setIsRemovingSync] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
 
@@ -168,6 +170,7 @@ export function SyncLyricsModal({
     // мгновенно чистим UI
     setSyncedLines([]);
     setTrackAuthorship('');
+    setHasSavedSync(false);
     setIsLoading(true);
     setIsDirty(false);
     setIsSaved(false);
@@ -251,173 +254,21 @@ export function SyncLyricsModal({
 
     const loadData = async () => {
       try {
-        const rawText = await loadTrackTextFromDatabase(albumId, trackId, lang).catch((error) => {
-          console.error('[SyncLyricsModal] Failed to load text from DB:', error);
-          return null;
-        });
-        // null = нет записи / ошибка — берём текст из дашборда (новый трек, только что добавленный текст).
-        // Пустая строка из БД — явно сохранённый пустой текст, не подменяем пропом.
-        const textToUse = rawText !== null ? rawText : (initialLyricsText ?? '');
-
+        const bundle = await fetchTrackLyricsBundle(albumId, trackId, lang);
         if (!isRequestValid()) return;
 
-        const createEmptyLine = (text: string): SyncedLyricsLine => ({
-          text: text.trim(),
-          startTime: 0,
-          endTime: undefined,
-        });
+        const { lines, authorship } = buildSyncEditorLinesFromBundle(bundle, initialLyricsText);
+        const authorshipToUse = normalize(authorship || propAuthorship || '');
 
-        const contentLines = textToUse
-          ? textToUse
-              .split('\n')
-              .map((l) => l.trim())
-              .filter(Boolean)
-          : [];
-
-        const contentSet = new Set(contentLines.map(normalize));
-
-        clearSyncedLyricsCache(albumId, trackId, lang);
-
-        // 1) load saved sync
-        let storedSync: SyncedLyricsLine[] = [];
-        try {
-          storedSync = (await loadSyncedLyricsFromStorage(albumId, trackId, lang)) || [];
-        } catch (e) {
-          console.error('[SyncLyricsModal] Error loading synced lyrics:', e);
-          storedSync = [];
-        }
-
-        if (!isRequestValid()) return;
-
-        // 2) load authorship (source of truth)
-        let authorshipToUse = '';
-        try {
-          const storedAuthorship = await Promise.race([
-            loadAuthorshipFromStorage(albumId, trackId, lang),
-            new Promise<string | null>((resolve) => setTimeout(() => resolve(null), 5000)),
-          ]);
-          authorshipToUse = normalize(storedAuthorship || propAuthorship || '');
-        } catch {
-          authorshipToUse = normalize(propAuthorship || '');
-        }
-
-        if (!isRequestValid()) return;
-
-        // 3) Убираем строки авторства из сохранённого sync (никогда не часть syncedLyrics)
-        const storedClean =
-          authorshipToUse.trim().length > 0
-            ? storedSync.filter((l) => normalize(l.text || '') !== normalize(authorshipToUse))
-            : [...storedSync];
-
-        // 4) build lyrics lines (только текст песни)
-        let linesToDisplay: SyncedLyricsLine[] = [];
-
-        if (contentLines.length === 0) {
-          linesToDisplay = [];
-        } else if (storedClean.length > 0) {
-          const storedOnlyLyrics = storedClean.filter((l) =>
-            contentSet.has(normalize(l.text || ''))
-          );
-
-          // Создаем массив для отслеживания использованных строк из storedOnlyLyrics
-          const usedIndices = new Set<number>();
-
-          // Функция для поиска лучшего совпадения с учетом контекста
-          const findBestMatch = (
-            lineText: string,
-            lineIndex: number,
-            availableStored: SyncedLyricsLine[]
-          ): SyncedLyricsLine | null => {
-            const normalizedText = normalize(lineText);
-
-            // Сначала пытаемся найти точное совпадение по позиции (если количество строк совпадает)
-            if (storedOnlyLyrics.length === contentLines.length) {
-              const byIndex = storedOnlyLyrics[lineIndex];
-              if (
-                byIndex &&
-                !usedIndices.has(lineIndex) &&
-                normalize(byIndex.text || '') === normalizedText
-              ) {
-                usedIndices.add(lineIndex);
-                return byIndex;
-              }
-            }
-
-            // Ищем совпадение с учетом контекста (предыдущие/следующие строки)
-            // Это помогает различать дубликаты припевов
-            for (let i = 0; i < availableStored.length; i++) {
-              if (usedIndices.has(i)) continue;
-
-              const stored = availableStored[i];
-              if (normalize(stored.text || '') !== normalizedText) continue;
-
-              // Проверяем контекст: предыдущая строка
-              if (lineIndex > 0) {
-                const prevContentLine = normalize(contentLines[lineIndex - 1]);
-                if (i > 0) {
-                  const prevStoredLine = availableStored[i - 1];
-                  if (prevStoredLine && normalize(prevStoredLine.text || '') === prevContentLine) {
-                    // Контекст совпадает - это хорошее совпадение
-                    usedIndices.add(i);
-                    return stored;
-                  }
-                }
-              }
-
-              // Проверяем контекст: следующая строка
-              if (lineIndex < contentLines.length - 1) {
-                const nextContentLine = normalize(contentLines[lineIndex + 1]);
-                if (i < availableStored.length - 1) {
-                  const nextStoredLine = availableStored[i + 1];
-                  if (
-                    nextStoredLine &&
-                    normalize(nextStoredLine.text || '') === nextContentLine &&
-                    !usedIndices.has(i + 1)
-                  ) {
-                    // Контекст совпадает - это хорошее совпадение
-                    usedIndices.add(i);
-                    return stored;
-                  }
-                }
-              }
-            }
-
-            // Если контекст не помог, используем первое доступное совпадение
-            for (let i = 0; i < availableStored.length; i++) {
-              if (usedIndices.has(i)) continue;
-              const stored = availableStored[i];
-              if (normalize(stored.text || '') === normalizedText) {
-                usedIndices.add(i);
-                return stored;
-              }
-            }
-
-            return null;
-          };
-
-          linesToDisplay = contentLines.map((lineText, i) => {
-            const matched = findBestMatch(lineText, i, storedOnlyLyrics);
-            return matched
-              ? {
-                  text: lineText.trim(),
-                  startTime: matched.startTime ?? 0,
-                  endTime: matched.endTime,
-                }
-              : createEmptyLine(lineText);
-          });
-        } else {
-          linesToDisplay = contentLines.map(createEmptyLine);
-        }
-
-        if (!isRequestValid()) return;
-
+        setHasSavedSync(bundle.state === 'synced');
         setTrackAuthorship(authorshipToUse);
-        setSyncedLines(linesToDisplay);
+        setSyncedLines(lines);
       } catch (error) {
         console.error('[SyncLyricsModal] Load error:', error);
         if (!isRequestValid()) return;
         setSyncedLines([]);
         setTrackAuthorship('');
+        setHasSavedSync(false);
       } finally {
         if (isRequestValid()) setIsLoading(false);
       }
@@ -511,13 +362,18 @@ export function SyncLyricsModal({
     [currentTime]
   );
 
-  const clearEndTime = useCallback((lineIndex: number) => {
+  const clearLineTiming = useCallback((lineIndex: number) => {
     setSyncedLines((prev) => {
       const newLines = [...prev];
-      if (!newLines[lineIndex]) return prev;
+      const line = newLines[lineIndex];
+      if (!line) return prev;
 
-      const { endTime, ...rest } = newLines[lineIndex];
-      newLines[lineIndex] = rest;
+      // Remove all timing for this line; keep lyric text for the editor.
+      newLines[lineIndex] = {
+        text: line.text,
+        startTime: 0,
+        endTime: undefined,
+      };
 
       setIsDirty(true);
       setIsSaved(false);
@@ -526,10 +382,7 @@ export function SyncLyricsModal({
   }, []);
 
   const handleSave = useCallback(async () => {
-    const storedAuthorship = await loadAuthorshipFromStorage(albumId, trackId, lang).catch(
-      () => null
-    );
-    const authorshipToSave = normalize(storedAuthorship || trackAuthorship || propAuthorship || '');
+    const authorshipToSave = normalize(trackAuthorship || propAuthorship || '');
 
     const cleanLines = syncedLines.filter((l) => {
       const t = normalize(l.text || '');
@@ -550,37 +403,32 @@ export function SyncLyricsModal({
 
     setIsSaving(true);
     try {
-      const result = await saveSyncedLyrics({
-        albumId,
-        trackId,
-        lang,
-        syncedLyrics: cleanLines,
-        authorship: authorshipToSave || undefined,
-      });
+      // No timed lines left → delete sync row so bundle resolves to text-only / empty.
+      const bundle = isTimedSync(cleanLines)
+        ? await saveTrackLyricsSyncApi({
+            albumId,
+            trackId,
+            lang,
+            syncedLyrics: cleanLines,
+            authorship: authorshipToSave || undefined,
+          })
+        : await deleteTrackLyricsSyncApi(albumId, trackId);
 
-      if (result.success) {
-        setSyncedLines(cleanLines);
+      const { lines, authorship } = buildSyncEditorLinesFromBundle(bundle, initialLyricsText);
+      setSyncedLines(lines);
+      setTrackAuthorship(normalize(authorship || authorshipToSave || propAuthorship || ''));
+      setHasSavedSync(bundle.state === 'synced');
+      setIsDirty(false);
+      setIsSaved(true);
 
-        setIsDirty(false);
-        setIsSaved(true);
-        clearSyncedLyricsCache(albumId, trackId, lang);
-
-        if (audioRef.current) {
-          audioRef.current.pause();
-          audioRef.current.currentTime = 0;
-          setIsPlaying(false);
-          setCurrentTime(0);
-        }
-
-        onSave?.();
-      } else {
-        setAlertModal({
-          isOpen: true,
-          title: 'Ошибка',
-          message: `❌ Ошибка сохранения: ${result.message || 'Неизвестная ошибка'}`,
-          variant: 'error',
-        });
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+        setIsPlaying(false);
+        setCurrentTime(0);
       }
+
+      onSave?.(bundle);
     } catch (error) {
       console.error('[SyncLyricsModal] Save error:', error);
       setAlertModal({
@@ -592,7 +440,58 @@ export function SyncLyricsModal({
     } finally {
       setIsSaving(false);
     }
-  }, [albumId, trackId, lang, syncedLines, propAuthorship, onSave, trackAuthorship]);
+  }, [
+    albumId,
+    trackId,
+    lang,
+    syncedLines,
+    propAuthorship,
+    onSave,
+    trackAuthorship,
+    initialLyricsText,
+  ]);
+
+  const handleRemoveSync = useCallback(async () => {
+    const confirmed = window.confirm(
+      ui?.dashboard?.removeSyncLyricsConfirm ??
+        'Remove synchronization? Lyrics text will be kept as plain text.'
+    );
+    if (!confirmed) return;
+
+    setIsRemovingSync(true);
+    try {
+      const bundle = await deleteTrackLyricsSyncApi(albumId, trackId);
+      const { lines, authorship } = buildSyncEditorLinesFromBundle(bundle, initialLyricsText);
+
+      setSyncedLines(lines);
+      setTrackAuthorship(normalize(authorship || propAuthorship || ''));
+      setHasSavedSync(false);
+      setIsDirty(false);
+      setIsSaved(false);
+
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+        setIsPlaying(false);
+        setCurrentTime(0);
+      }
+
+      onSave?.(bundle);
+    } catch (error) {
+      console.error('[SyncLyricsModal] Remove sync error:', error);
+      setAlertModal({
+        isOpen: true,
+        title: ui?.dashboard?.error ?? 'Error',
+        message:
+          error instanceof Error
+            ? error.message
+            : (ui?.dashboard?.errorSavingText ?? 'Error saving text'),
+        variant: 'error',
+      });
+    } finally {
+      setIsRemovingSync(false);
+    }
+  }, [albumId, trackId, initialLyricsText, onSave, propAuthorship, ui?.dashboard]);
 
   const togglePlayPause = useCallback(() => {
     if (!audioRef.current) return;
@@ -632,7 +531,7 @@ export function SyncLyricsModal({
 
   const syncLyricsCloseGuard = useCloseWithUnsavedConfirmation({
     isOpen,
-    isBusy: isSaving,
+    isBusy: isSaving || isRemovingSync,
     hasUnsavedChanges: isDirty,
     closeDialog,
   });
@@ -650,12 +549,12 @@ export function SyncLyricsModal({
         onClose={finalizeSyncLyricsClose}
         onCancelRequest={handleRequestClose}
         requestCloseRef={popupRequestCloseRef}
-        closeBlocked={isSaving || syncLyricsCloseGuard.discardDialogOpen}
+        closeBlocked={isSaving || isRemovingSync || syncLyricsCloseGuard.discardDialogOpen}
       >
         <div className="sync-lyrics-modal">
           <div
-            className={`sync-lyrics-modal__card${isSaving ? ' sync-lyrics-modal__card--saving' : ''}`}
-            aria-busy={isSaving}
+            className={`sync-lyrics-modal__card${isSaving || isRemovingSync ? ' sync-lyrics-modal__card--saving' : ''}`}
+            aria-busy={isSaving || isRemovingSync}
           >
             <div className="sync-lyrics-modal__header">
               <h2 className="sync-lyrics-modal__title">
@@ -665,7 +564,7 @@ export function SyncLyricsModal({
                 type="button"
                 className="sync-lyrics-modal__close"
                 onClick={handleRequestClose}
-                disabled={isSaving}
+                disabled={isSaving || isRemovingSync}
                 aria-label="Закрыть"
               >
                 <ModalCloseIcon />
@@ -798,16 +697,19 @@ export function SyncLyricsModal({
                           </div>
 
                           <div className="sync-lyrics-modal__table-col sync-lyrics-modal__table-col--clear">
-                            {!isAuthorship && line.endTime !== undefined && line.endTime > 0 && (
-                              <button
-                                type="button"
-                                onClick={() => clearEndTime(lyricIndex)}
-                                className="sync-lyrics-modal__clear-btn"
-                                title="Сбросить конец строки"
-                              >
-                                <X {...dashboardActionIconProps({ size: 16 })} />
-                              </button>
-                            )}
+                            {!isAuthorship &&
+                              ((line.startTime ?? 0) > 0 ||
+                                (line.endTime !== undefined && line.endTime > 0)) && (
+                                <button
+                                  type="button"
+                                  onClick={() => clearLineTiming(lyricIndex)}
+                                  className="sync-lyrics-modal__clear-btn"
+                                  title="Clear line synchronization"
+                                  aria-label="Clear line synchronization"
+                                >
+                                  <X {...dashboardActionIconProps({ size: 16 })} />
+                                </button>
+                              )}
                           </div>
                         </div>
                       );
@@ -821,11 +723,22 @@ export function SyncLyricsModal({
               <>
                 <div className="sync-lyrics-modal__divider"></div>
                 <div className="sync-lyrics-modal__actions">
+                  {hasSavedSync && (
+                    <button
+                      type="button"
+                      className="sync-lyrics-modal__button sync-lyrics-modal__button--danger"
+                      onClick={handleRemoveSync}
+                      disabled={isSaving || isRemovingSync || isDirty}
+                    >
+                      {ui?.dashboard?.removeSyncLyrics ?? 'Remove synchronization'}
+                    </button>
+                  )}
+
                   <button
                     type="button"
                     className="sync-lyrics-modal__button sync-lyrics-modal__button--cancel"
                     onClick={handleRequestClose}
-                    disabled={isSaving}
+                    disabled={isSaving || isRemovingSync}
                   >
                     {ui?.dashboard?.cancel ?? 'Cancel'}
                   </button>
@@ -844,7 +757,7 @@ export function SyncLyricsModal({
                     <button
                       type="button"
                       onClick={handleSave}
-                      disabled={!isDirty || isSaving}
+                      disabled={!isDirty || isSaving || isRemovingSync}
                       className={`sync-lyrics-modal__button sync-lyrics-modal__button--primary${
                         isSaving ? ' sync-lyrics-modal__button--primary-loading' : ''
                       }`}

@@ -275,6 +275,11 @@ dialog {
       justify-content: space-between;
       align-items: center;
       gap: var(--ms-0);
+      flex-wrap: wrap;
+    }
+
+    &__actions-left {
+      margin-right: auto;
     }
 
     &__actions-right {
@@ -294,6 +299,16 @@ dialog {
 
       &--primary-loading {
         @include dashboard-modal-inline-loading;
+      }
+
+      &--danger {
+        @include dashboard-btn-ghost;
+
+        &,
+        &:hover:not(:disabled),
+        &:active:not(:disabled) {
+          color: var(--pink-terracotta);
+        }
       }
 
       &-spinner {

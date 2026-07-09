@@ -1,18 +1,16 @@
-import type { TrackData } from '@entities/album/lib/transformAlbumData';
+import type { TrackLyricsBundle } from '@shared/lib/lyrics/types';
 import type { IInterface } from '@models';
 import { StatusBadge, type StatusBadgeVariant } from '@shared/ui/statusBadge';
 
 import { getLyricsStatusText } from './trackLyricsHelpers';
 
 type LyricsSyncStatusBadgeProps = {
-  status: TrackData['lyricsStatus'];
+  lyrics: TrackLyricsBundle;
   ui: IInterface | null;
 };
 
-function lyricsStatusVariant(status: TrackData['lyricsStatus']): StatusBadgeVariant | null {
-  switch (status) {
-    case 'synced':
-      return 'published';
+function lyricsStatusVariant(state: TrackLyricsBundle['state']): StatusBadgeVariant | null {
+  switch (state) {
     case 'text-only':
       return 'readyToPublish';
     default:
@@ -20,12 +18,12 @@ function lyricsStatusVariant(status: TrackData['lyricsStatus']): StatusBadgeVari
   }
 }
 
-export function LyricsSyncStatusBadge({ status, ui }: LyricsSyncStatusBadgeProps) {
-  const variant = lyricsStatusVariant(status);
+export function LyricsSyncStatusBadge({ lyrics, ui }: LyricsSyncStatusBadgeProps) {
+  const variant = lyricsStatusVariant(lyrics.state);
 
   if (!variant) {
     return null;
   }
 
-  return <StatusBadge variant={variant}>{getLyricsStatusText(status, ui)}</StatusBadge>;
+  return <StatusBadge variant={variant}>{getLyricsStatusText(lyrics.state, ui)}</StatusBadge>;
 }

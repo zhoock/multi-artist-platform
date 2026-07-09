@@ -6,6 +6,8 @@
 import type { IAlbums } from '@models';
 import { siteArtistUiLabel } from '@shared/lib/profileDisplayName';
 import type { SupportedLang } from '@shared/model/lang';
+import type { TrackLyricsBundle } from '@shared/lib/lyrics/types';
+import { resolveLyricsSyncState } from '@shared/lib/lyrics';
 import type { StemsVisibility } from '@shared/lib/stems/stemsVisibility';
 import { normalizeStemsVisibility } from '@shared/lib/stems/stemsVisibility';
 import type { TrackVisibility } from '@shared/lib/tracks/trackVisibility';
@@ -15,8 +17,7 @@ import { resolveAlbumForDisplay } from './resolveAlbumDisplay';
 
 export interface AlbumData {
   id: string;
-  albumId: string; // Строковый ID альбома (например, "23-remastered")
-  /** Владелец альбома в storage (users/{id}/...); нужен для явных URL медиа */
+  albumId: string;
   userId?: string;
   title: string;
   artist: string;
@@ -31,22 +32,51 @@ export interface AlbumData {
 export interface TrackData {
   id: string;
   title: string;
-  /** Порядок в альбоме из БД; отображение списка сортируется по этому полю. */
   order_index: number;
   duration: string;
-  lyricsStatus: 'synced' | 'text-only' | 'empty';
-  lyricsText?: string;
+  lyrics: TrackLyricsBundle;
   src?: string;
   authorship?: string;
-  syncedLyrics?: { text: string; startTime: number; endTime?: number }[];
   visibility?: TrackVisibility;
   stemsVisibility?: StemsVisibility;
 }
 
-/**
- * Преобразует альбом из формата IAlbums в формат AlbumData для UI
- * @param siteDisplayName Имя из профиля (site_name); поле album.artist в UI не используется
- */
+function fallbackLyricsBundle(
+  albumId: string,
+  trackId: string,
+  lang: SupportedLang | undefined,
+  content?: string,
+  authorship?: string
+): TrackLyricsBundle {
+  const canonicalLang = lang === 'ru' ? 'ru' : 'en';
+  const text = content ?? '';
+  const state = resolveLyricsSyncState({
+    content: text,
+    syncedLines: null,
+  });
+  return {
+    albumId,
+    trackId: String(trackId),
+    lang: canonicalLang,
+    content: text,
+    authorship,
+    syncedLines: null,
+    state,
+    syncedAt: null,
+  };
+}
+
+function resolveTrackLyrics(
+  albumId: string,
+  track: IAlbums['tracks'][number],
+  lang?: SupportedLang
+): TrackLyricsBundle {
+  if (track.lyrics) {
+    return track.lyrics;
+  }
+  return fallbackLyricsBundle(albumId, track.id, lang, track.content, track.authorship);
+}
+
 export function transformAlbumToAlbumData(
   album: IAlbums,
   siteDisplayName?: string,
@@ -55,7 +85,6 @@ export function transformAlbumToAlbumData(
   const source = lang ? resolveAlbumForDisplay(album, lang) : album;
   const albumId = source.albumId || '';
 
-  // Обрабатываем release (объект с полем date)
   let releaseDate: Date | null = null;
   if (source.release && typeof source.release === 'object' && 'date' in source.release) {
     const raw = source.release.date;
@@ -69,29 +98,14 @@ export function transformAlbumToAlbumData(
     (a, b) => (a.order_index ?? 0) - (b.order_index ?? 0)
   );
 
-  // Создаем треки с определением статуса на основе данных из альбома
   const tracks: TrackData[] = sourceTracks.map((track, displayIndex) => {
-    // Определяем статус на основе данных из альбома
-    let lyricsStatus: TrackData['lyricsStatus'] = 'empty';
-    if (track.syncedLyrics && track.syncedLyrics.length > 0) {
-      // Проверяем, действительно ли синхронизировано (есть startTime > 0)
-      const isActuallySynced = track.syncedLyrics.some((line) => line.startTime > 0);
-      lyricsStatus = isActuallySynced ? 'synced' : 'text-only';
-    } else if (track.content && track.content.trim() !== '') {
-      lyricsStatus = 'text-only';
-    }
-
-    // Форматируем duration: если это число (секунды), преобразуем в MM:SS
     let durationStr = '0:00';
     const trackDuration = track.duration;
     if (trackDuration != null) {
       if (typeof trackDuration === 'string') {
-        // Если уже строка, проверяем формат
-        // Если это формат MM:SS, оставляем как есть
         if (/^\d+:\d{2}$/.test(trackDuration)) {
           durationStr = trackDuration;
         } else {
-          // Если это число в виде строки, пытаемся преобразовать
           const numDuration = parseFloat(trackDuration);
           if (!isNaN(numDuration)) {
             const mins = Math.floor(numDuration / 60);
@@ -102,7 +116,6 @@ export function transformAlbumToAlbumData(
           }
         }
       } else if (typeof trackDuration === 'number') {
-        // duration хранится в секундах в БД
         const mins = Math.floor(trackDuration / 60);
         const secs = Math.floor(trackDuration % 60);
         durationStr = `${mins}:${secs.toString().padStart(2, '0')}`;
@@ -118,11 +131,9 @@ export function transformAlbumToAlbumData(
       title: track.title,
       order_index,
       duration: durationStr,
-      lyricsStatus,
-      lyricsText: track.content, // Используем текст из альбома, если есть
+      lyrics: resolveTrackLyrics(albumId, track, lang),
       src: track.src,
-      authorship: (track as any).authorship || undefined,
-      syncedLyrics: track.syncedLyrics || undefined, // Добавляем syncedLyrics из альбома
+      authorship: track.authorship || track.lyrics?.authorship || undefined,
       visibility: normalizeTrackVisibility((track as { visibility?: unknown }).visibility),
       stemsVisibility: normalizeStemsVisibility(
         (track as { stemsVisibility?: unknown }).stemsVisibility
@@ -134,7 +145,7 @@ export function transformAlbumToAlbumData(
 
   return {
     id: albumId,
-    albumId: source.albumId || albumId, // Сохраняем строковый ID альбома
+    albumId: source.albumId || albumId,
     userId: source.userId,
     title: source.album,
     artist: artistLabel,
@@ -153,9 +164,6 @@ export function transformAlbumToAlbumData(
   };
 }
 
-/**
- * Преобразует массив альбомов из формата IAlbums[] в формат AlbumData[]
- */
 export function transformAlbumsToAlbumData(
   albums: IAlbums[],
   siteDisplayName?: string,

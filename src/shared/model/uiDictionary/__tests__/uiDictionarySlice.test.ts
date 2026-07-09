@@ -11,6 +11,7 @@ import { initialPlayerState } from '@features/player/model/types/playerSchema';
 import type { IInterface } from '@models';
 import type { SupportedLang } from '@shared/model/lang';
 import type { AppDispatch } from '@shared/model/appStore/types';
+import { trackLyricsReducer } from '@entities/lyrics/model/trackLyricsSlice';
 
 // Мокируем getJSON
 jest.mock('@shared/api/http', () => ({
@@ -65,6 +66,7 @@ const createTestStore = () => {
         en: { status: 'idle' as const, error: null, data: [], lastUpdated: null },
         ru: { status: 'idle' as const, error: null, data: [], lastUpdated: null },
       }),
+      trackLyrics: trackLyricsReducer,
     },
   });
 };
