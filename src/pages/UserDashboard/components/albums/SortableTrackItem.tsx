@@ -257,7 +257,7 @@ export function SortableTrackItem({
     <>
       <div
         ref={combinedRef}
-        style={style}
+        style={{ ...style, ...trackRowFlashProps.style }}
         className={clsx('user-dashboard__expanded-track-row', 'dashboard-track-row', {
           'user-dashboard__expanded-track-row--dragging': isDragging,
           [trackRowFlashProps.className ?? '']: Boolean(trackRowFlashProps.className),
@@ -272,7 +272,6 @@ export function SortableTrackItem({
             'user-dashboard__expanded-track-card',
             isOpen && 'user-dashboard__expanded-track-card--expanded'
           )}
-          style={trackRowFlashProps.style}
         >
           <div
             className={clsx('user-dashboard__expanded-track-header', {
