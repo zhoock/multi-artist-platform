@@ -158,7 +158,7 @@ dialog {
     &__album-body {
       display: flex;
       flex-direction: column;
-      padding: 0 var(--ms-01) var(--ms-01);
+      padding: var(--ms-01);
       border-top: 1px solid var(--dashboard-divider);
 
       &.user-dashboard__album-expanded--kit {

@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import clsx from 'clsx';
+import { Pencil as PencilIcon, Trash2 as Trash2Icon } from 'lucide-react';
 import {
   DndContext,
   closestCenter,
@@ -27,10 +28,11 @@ import { EmailVerificationOnboarding } from '@shared/lib/emailVerification';
 import { SubscriberContentLockIcon } from '@shared/ui/icons/SubscriberContentLockIcon';
 import {
   DashboardCard,
-  DashboardAction,
   DashboardCta,
   DashboardExpandableRowTrigger,
+  DashboardIconButton,
 } from '@shared/ui/dashboard';
+import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 import {
   getDashboardRowFlashProps,
   type DashboardRowFlash,
@@ -247,6 +249,9 @@ export function AlbumsTabContent({
                     albumAccessMenuAlbumId === album.id,
                 })}
               >
+                <span className="user-dashboard__expanded-track-chevron" aria-hidden>
+                  <DashboardExpandChevron expanded={isExpanded} />
+                </span>
                 <div className="user-dashboard__album-thumbnail">
                   {album.cover ? (
                     <AlbumCoverImage
@@ -295,28 +300,35 @@ export function AlbumsTabContent({
                       }
                     />
                   ) : null}
-                  <div className="user-dashboard__album-arrow">
-                    <DashboardExpandChevron expanded={isExpanded} />
+                  <div className="user-dashboard__expanded-track-actions">
+                    <DashboardIconButton
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const fromStore = albumsFromStore.find(
+                          (a) => a.albumId === album.id || a.albumId === album.albumId
+                        );
+                        onEditAlbum(fromStore?.albumId ?? album.albumId ?? album.id);
+                      }}
+                      aria-label={ui?.dashboard?.editAlbum ?? 'Edit Album'}
+                    >
+                      <PencilIcon {...dashboardActionIconProps()} />
+                    </DashboardIconButton>
+                    <DashboardIconButton
+                      destructive
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onDeleteAlbum(album.id);
+                      }}
+                      aria-label={ui?.dashboard?.deleteAlbum ?? 'Delete album'}
+                    >
+                      <Trash2Icon {...dashboardActionIconProps()} />
+                    </DashboardIconButton>
                   </div>
                 </div>
               </DashboardExpandableRowTrigger>
 
               {isExpanded ? (
                 <div className="user-dashboard__album-body user-dashboard__album-expanded user-dashboard__album-expanded--kit">
-                  <button
-                    type="button"
-                    className="user-dashboard__edit-album-button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      const fromStore = albumsFromStore.find(
-                        (a) => a.albumId === album.id || a.albumId === album.albumId
-                      );
-                      onEditAlbum(fromStore?.albumId ?? album.albumId ?? album.id);
-                    }}
-                  >
-                    {ui?.dashboard?.editAlbum ?? 'Edit Album'}
-                  </button>
-
                   <div
                     ref={(el) => {
                       trackUploadSectionRefs.current[album.id] = el;
@@ -433,19 +445,9 @@ export function AlbumsTabContent({
                     </DndContext>
                   ) : null}
 
-                  <div className="user-dashboard__album-footer-actions">
-                    <DashboardAction
-                      destructive
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onDeleteAlbum(album.id);
-                      }}
-                      aria-label={ui?.dashboard?.deleteAlbum ?? 'Delete album'}
-                    >
-                      {ui?.dashboard?.deleteAlbum ?? 'Delete album'}
-                    </DashboardAction>
-                    <div className="user-dashboard__album-footer-actions-right">
-                      {showPublishControls ? (
+                  {showPublishControls ? (
+                    <div className="user-dashboard__album-footer-actions">
+                      <div className="user-dashboard__album-footer-actions-right">
                         <div className="user-dashboard__publish-album-wrap">
                           <button
                             type="button"
@@ -491,9 +493,9 @@ export function AlbumsTabContent({
                                   : publishHintCopy.fields}
                           </p>
                         </div>
-                      ) : null}
+                      </div>
                     </div>
-                  </div>
+                  ) : null}
                 </div>
               ) : null}
             </DashboardCard>

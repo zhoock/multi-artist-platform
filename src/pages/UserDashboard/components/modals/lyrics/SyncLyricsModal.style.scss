@@ -316,19 +316,10 @@ dialog {
       }
 
       &--danger {
+        --dashboard-btn-ghost-text: var(--pink-terracotta);
+        --dashboard-btn-ghost-hover-text: var(--pink-terracotta);
+
         @include dashboard-btn-ghost;
-
-        color: var(--pink-terracotta);
-
-        @media (hover: hover) and (pointer: fine) {
-          &:hover:not(:disabled) {
-            color: var(--pink-terracotta);
-          }
-        }
-
-        &:active:not(:disabled) {
-          color: var(--pink-terracotta);
-        }
       }
 
       &-spinner {
