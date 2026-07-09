@@ -15,9 +15,9 @@ export type LyricsAction = 'edit' | 'prev' | 'sync' | 'add';
 export function getLyricsStatusText(status: TrackData['lyricsStatus'], ui: IInterface | null) {
   switch (status) {
     case 'synced':
-      return ui?.dashboard?.addedSynced ?? 'Added, synced';
+      return ui?.dashboard?.lyricsSynchronized ?? 'Synchronized';
     case 'text-only':
-      return ui?.dashboard?.addedNoSync ?? 'Added, no sync';
+      return ui?.dashboard?.lyricsNotSynchronized ?? 'Not synchronized';
     case 'empty':
       return ui?.dashboard?.noLyrics ?? 'No lyrics';
     default:
@@ -86,23 +86,4 @@ export function getLyricsPreviewLines(track: TrackData, maxLines: number = 3): s
   }
 
   return [];
-}
-
-export function getLyricsLineCount(track: TrackData): number {
-  if (track.syncedLyrics?.length) {
-    return track.syncedLyrics.filter((line) => line.text.trim()).length;
-  }
-
-  if (track.lyricsText?.trim()) {
-    return track.lyricsText
-      .split('\n')
-      .map((line) => line.trim())
-      .filter(Boolean).length;
-  }
-
-  return 0;
-}
-
-export function formatLyricsLineCount(count: number, lang: 'en' | 'ru'): string {
-  return lang !== 'ru' ? `${count} lines` : `${count} строк`;
 }

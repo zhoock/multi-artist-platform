@@ -619,8 +619,8 @@ export interface IInterface {
     duration: string;
     status: string;
     actions: string;
-    addedSynced: string;
-    addedNoSync: string;
+    lyricsSynchronized: string;
+    lyricsNotSynchronized: string;
     noLyrics: string;
     edit: string;
     sync: string;

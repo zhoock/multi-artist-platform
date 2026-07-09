@@ -5,13 +5,11 @@ import type { TrackData } from '@entities/album/lib/transformAlbumData';
 import type { IInterface } from '@models';
 import { DashboardCta, DashboardEmptyState, DashboardIconButton } from '@shared/ui/dashboard';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
+import { LyricsSyncStatusBadge } from './LyricsSyncStatusBadge';
 import {
-  formatLyricsLineCount,
   getLyricsActionLabel,
   getLyricsCardActions,
-  getLyricsLineCount,
   getLyricsPreviewLines,
-  getLyricsStatusText,
   renderLyricsActionIcon,
   type LyricsAction,
 } from './trackLyricsHelpers';
@@ -36,7 +34,6 @@ export function TrackLyricsPanel({
   lang,
   onLyricsAction,
 }: TrackLyricsPanelProps) {
-  const statusText = getLyricsStatusText(track.lyricsStatus, ui);
   const isEmpty = track.lyricsStatus === 'empty';
 
   const emptyTitle = lang !== 'ru' ? 'No lyrics yet' : 'Текста пока нет';
@@ -76,7 +73,6 @@ export function TrackLyricsPanel({
   }
 
   const previewLines = getLyricsPreviewLines(track);
-  const lineCount = getLyricsLineCount(track);
   const lyricsActions = getLyricsCardActions(track.lyricsStatus);
 
   return (
@@ -97,32 +93,24 @@ export function TrackLyricsPanel({
           ))}
         </div>
 
-        <div className="albums-tab__track-lyrics-card-side">
-          <div className="albums-tab__track-lyrics-card-meta">
-            <span className="albums-tab__track-lyrics-status">{statusText}</span>
-            <div className="albums-tab__track-lyrics-actions">
-              {lyricsActions.map((action) => {
-                const actionLabel = getLyricsActionLabel(action, ui);
+        <div className="albums-tab__track-lyrics-card-meta">
+          <LyricsSyncStatusBadge status={track.lyricsStatus} ui={ui} />
+          <div className="albums-tab__track-lyrics-actions">
+            {lyricsActions.map((action) => {
+              const actionLabel = getLyricsActionLabel(action, ui);
 
-                return (
-                  <DashboardIconButton
-                    key={action}
-                    onClick={() => onLyricsAction(action, albumId, track.id, track.title)}
-                    aria-label={actionLabel}
-                    title={actionLabel}
-                  >
-                    {renderLyricsActionIcon(action)}
-                  </DashboardIconButton>
-                );
-              })}
-            </div>
+              return (
+                <DashboardIconButton
+                  key={action}
+                  onClick={() => onLyricsAction(action, albumId, track.id, track.title)}
+                  aria-label={actionLabel}
+                  title={actionLabel}
+                >
+                  {renderLyricsActionIcon(action)}
+                </DashboardIconButton>
+              );
+            })}
           </div>
-
-          {lineCount > 0 ? (
-            <div className="albums-tab__track-lyrics-line-count">
-              {formatLyricsLineCount(lineCount, lang)}
-            </div>
-          ) : null}
         </div>
       </div>
     </div>
