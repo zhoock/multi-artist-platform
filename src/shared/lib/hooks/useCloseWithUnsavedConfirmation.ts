@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useId, useState } from 'react';
+import { flushSync } from 'react-dom';
 
 export interface UseCloseWithUnsavedConfirmationArgs {
   isOpen: boolean;
@@ -47,7 +48,8 @@ export function useCloseWithUnsavedConfirmation({
   );
 
   const finalizeCloseWithoutSaving = useCallback(() => {
-    setDiscardDialogOpen(false);
+    // Popup often sets closeBlocked while discardDialogOpen; clear it before closeDialog().
+    flushSync(() => setDiscardDialogOpen(false));
     closeDialog();
   }, [closeDialog]);
 

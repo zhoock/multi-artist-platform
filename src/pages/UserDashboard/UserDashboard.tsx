@@ -43,6 +43,7 @@ import { TracksUploadedToast } from '@shared/ui/tracksUploadedToast/TracksUpload
 import { AlbumDeletedToast } from '@shared/ui/albumDeletedToast/AlbumDeletedToast';
 import { ArticleDeletedToast } from '@shared/ui/articleDeletedToast/ArticleDeletedToast';
 import { ArticleEditorToast } from '@shared/ui/articleEditorToast';
+import { LyricsSyncSavedToast } from '@shared/ui/lyricsSyncSavedToast/LyricsSyncSavedToast';
 import { fetchWithAuthSession } from '@shared/lib/authFetch';
 import { buildApiUrl } from '@shared/lib/artistQuery';
 import { isAlbumReadyToPublish } from '@entities/album/lib/isAlbumReadyToPublish';
@@ -54,6 +55,7 @@ import { queueAlbumPublishedToast } from '@shared/lib/albumPublishedToast';
 import { queueTracksUploadedToast } from '@shared/lib/tracksUploadedToast';
 import { queueAlbumDeletedToast } from '@shared/lib/albumDeletedToast';
 import { queueArticleDeletedToast } from '@shared/lib/articleDeletedToast';
+import { queueLyricsSyncSavedToast } from '@shared/lib/lyricsSyncSavedToast';
 import { getArtistSlugFromLocation } from '@shared/lib/albumDeletedRedirect';
 import { isAuthOverlayPathname } from '@shared/lib/publicArtistContext';
 import {
@@ -338,6 +340,7 @@ function UserDashboard() {
   const [albumDeletedToastTrigger, setAlbumDeletedToastTrigger] = useState(0);
   const [articleDeletedToastTrigger, setArticleDeletedToastTrigger] = useState(0);
   const [articleEditorToastTrigger, setArticleEditorToastTrigger] = useState(0);
+  const [lyricsSyncSavedToastTrigger, setLyricsSyncSavedToastTrigger] = useState(0);
   const trackUploadSectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const [expandedArticleId, setExpandedArticleId] = useState<string | null>(null);
   const [articleAccessMenuArticleId, setArticleAccessMenuArticleId] = useState<string | null>(null);
@@ -2199,6 +2202,7 @@ function UserDashboard() {
         <AlbumDeletedToast triggerKey={albumDeletedToastTrigger} />
         <ArticleDeletedToast triggerKey={articleDeletedToastTrigger} />
         <ArticleEditorToast triggerKey={articleEditorToastTrigger} />
+        <LyricsSyncSavedToast triggerKey={lyricsSyncSavedToastTrigger} />
         <div className="user-dashboard">
           {/* Main card container */}
           <div className="user-dashboard__card">
@@ -2485,6 +2489,10 @@ function UserDashboard() {
           onClose={() => setSyncLyricsModal(null)}
           onSave={(bundle) => {
             dispatch(applyTrackLyricsBundle(bundle));
+          }}
+          onSyncSaved={() => {
+            queueLyricsSyncSavedToast();
+            setLyricsSyncSavedToastTrigger((value) => value + 1);
           }}
         />
       )}

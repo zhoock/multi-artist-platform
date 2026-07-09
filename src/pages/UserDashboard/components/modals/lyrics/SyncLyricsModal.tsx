@@ -10,19 +10,27 @@ import {
 } from 'react';
 import { Popup } from '@shared/ui/popup';
 import { AlertModal } from '@shared/ui/alertModal';
+import { ConfirmationModal } from '@shared/ui/confirmationModal';
+import { LyricsSyncRemovedToast } from '@shared/ui/lyricsSyncRemovedToast/LyricsSyncRemovedToast';
+import { queueLyricsSyncRemovedToast } from '@shared/lib/lyricsSyncRemovedToast';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 import { useLang } from '@app/providers/lang';
 import type { SyncedLyricsLine } from '@/models';
 import type { TrackLyricsBundle } from '@shared/lib/lyrics/types';
-import { buildSyncEditorLinesFromBundle, isTimedSync } from '@shared/lib/lyrics';
+import {
+  buildSyncEditorLinesFromBundle,
+  isTimedSync,
+  resolveLyricsSyncState,
+} from '@shared/lib/lyrics';
 import {
   deleteTrackLyricsSyncApi,
   fetchTrackLyricsBundle,
+  resolveTrackLyricsBundle,
   saveTrackLyricsSyncApi,
 } from '@entities/lyrics';
 import { getUserAudioUrl } from '@shared/api/albums';
-import { Pause, Play, X } from 'lucide-react';
+import { Pause, Play, Trash2 } from 'lucide-react';
 import { ModalCloseIcon } from '@shared/ui/icons/ModalCloseIcon';
 import {
   LYRICS_MODAL_TRANSPORT_ICON_SIZE,
@@ -52,6 +60,7 @@ interface SyncLyricsModalProps {
   authorship?: string; // fallback
   onClose: () => void;
   onSave?: (bundle: TrackLyricsBundle) => void;
+  onSyncSaved?: () => void;
 }
 
 const isUsableMediaDuration = (d: number): boolean => Number.isFinite(d) && d > 0 && d !== Infinity;
@@ -119,18 +128,19 @@ export function SyncLyricsModal({
   authorship: propAuthorship,
   onClose,
   onSave,
+  onSyncSaved,
 }: SyncLyricsModalProps) {
   const { lang } = useLang();
   const ui = useAppSelector((state) => selectUiDictionaryFirst(state, lang));
 
   const [syncedLines, setSyncedLines] = useState<SyncedLyricsLine[]>([]);
   const [trackAuthorship, setTrackAuthorship] = useState<string>('');
-  const [hasSavedSync, setHasSavedSync] = useState(false);
+  /** null → trackLyricsSlice; set after GET / save / remove to match persisted DB state. */
+  const [persistedSyncOverride, setPersistedSyncOverride] = useState<boolean | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isRemovingSync, setIsRemovingSync] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
-  const [isSaved, setIsSaved] = useState(false);
 
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -144,6 +154,32 @@ export function SyncLyricsModal({
   // ключ текущего трека/языка
   const keyNow = `${albumId}::${trackId}::${lang}`;
 
+  const lyricsBundleFallback = useMemo((): TrackLyricsBundle | null => {
+    const content = normalize(initialLyricsText || '');
+    if (!content) return null;
+    return {
+      albumId,
+      trackId: String(trackId),
+      lang,
+      content,
+      authorship: propAuthorship,
+      syncedLines: null,
+      state: resolveLyricsSyncState({ content, syncedLines: null }),
+      syncedAt: null,
+    };
+  }, [albumId, trackId, lang, initialLyricsText, propAuthorship]);
+
+  const reduxHasPersistedSync = useAppSelector(
+    (state) =>
+      resolveTrackLyricsBundle(state, albumId, trackId, lyricsBundleFallback).state === 'synced'
+  );
+
+  const hasPersistedSync = persistedSyncOverride ?? reduxHasPersistedSync;
+
+  const hasEditorTimings = useMemo(() => isTimedSync(syncedLines), [syncedLines]);
+
+  const canRemoveSync = hasPersistedSync || hasEditorTimings;
+
   const audioPlaybackUrl = useMemo(() => {
     if (!trackSrc?.trim()) return null;
     return getUserAudioUrl(trackSrc, undefined, mediaOwnerUserId);
@@ -155,6 +191,8 @@ export function SyncLyricsModal({
     message: string;
     variant?: 'success' | 'error' | 'warning' | 'info';
   } | null>(null);
+  const [removeSyncConfirmOpen, setRemoveSyncConfirmOpen] = useState(false);
+  const [removedToastTrigger, setRemovedToastTrigger] = useState(0);
 
   /**
    * ✅ СИНХРОННЫЙ СБРОС ДО PAINT
@@ -162,7 +200,11 @@ export function SyncLyricsModal({
    * когда старые тайминги начинают совпадать с новым аудио.
    */
   useLayoutEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen) {
+      setRemoveSyncConfirmOpen(false);
+      setRemovedToastTrigger(0);
+      return;
+    }
 
     // инвалидируем все pending async цепочки
     requestIdRef.current += 1;
@@ -170,10 +212,9 @@ export function SyncLyricsModal({
     // мгновенно чистим UI
     setSyncedLines([]);
     setTrackAuthorship('');
-    setHasSavedSync(false);
+    setPersistedSyncOverride(null);
     setIsLoading(true);
     setIsDirty(false);
-    setIsSaved(false);
 
     // важно: сброс таймера/длительности, чтобы ничего “старого” не синкалось
     setCurrentTime(0);
@@ -260,7 +301,7 @@ export function SyncLyricsModal({
         const { lines, authorship } = buildSyncEditorLinesFromBundle(bundle, initialLyricsText);
         const authorshipToUse = normalize(authorship || propAuthorship || '');
 
-        setHasSavedSync(bundle.state === 'synced');
+        setPersistedSyncOverride(bundle.state === 'synced');
         setTrackAuthorship(authorshipToUse);
         setSyncedLines(lines);
       } catch (error) {
@@ -268,7 +309,7 @@ export function SyncLyricsModal({
         if (!isRequestValid()) return;
         setSyncedLines([]);
         setTrackAuthorship('');
-        setHasSavedSync(false);
+        setPersistedSyncOverride(false);
       } finally {
         if (isRequestValid()) setIsLoading(false);
       }
@@ -355,7 +396,6 @@ export function SyncLyricsModal({
         }
 
         setIsDirty(true);
-        setIsSaved(false);
         return newLines;
       });
     },
@@ -376,7 +416,6 @@ export function SyncLyricsModal({
       };
 
       setIsDirty(true);
-      setIsSaved(false);
       return newLines;
     });
   }, []);
@@ -417,9 +456,7 @@ export function SyncLyricsModal({
       const { lines, authorship } = buildSyncEditorLinesFromBundle(bundle, initialLyricsText);
       setSyncedLines(lines);
       setTrackAuthorship(normalize(authorship || authorshipToSave || propAuthorship || ''));
-      setHasSavedSync(bundle.state === 'synced');
       setIsDirty(false);
-      setIsSaved(true);
 
       if (audioRef.current) {
         audioRef.current.pause();
@@ -429,6 +466,8 @@ export function SyncLyricsModal({
       }
 
       onSave?.(bundle);
+      onSyncSaved?.();
+      onClose();
     } catch (error) {
       console.error('[SyncLyricsModal] Save error:', error);
       setAlertModal({
@@ -446,18 +485,33 @@ export function SyncLyricsModal({
     lang,
     syncedLines,
     propAuthorship,
+    onClose,
     onSave,
+    onSyncSaved,
     trackAuthorship,
     initialLyricsText,
   ]);
 
-  const handleRemoveSync = useCallback(async () => {
-    const confirmed = window.confirm(
-      ui?.dashboard?.removeSyncLyricsConfirm ??
-        'Remove synchronization? Lyrics text will be kept as plain text.'
+  const clearAllLocalTimings = useCallback(() => {
+    setSyncedLines((prev) =>
+      prev.map((line) => ({
+        text: line.text,
+        startTime: 0,
+        endTime: undefined,
+      }))
     );
-    if (!confirmed) return;
+    setIsDirty(false);
 
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      setIsPlaying(false);
+      setCurrentTime(0);
+    }
+  }, []);
+
+  const executeRemoveSync = useCallback(async () => {
+    setRemoveSyncConfirmOpen(false);
     setIsRemovingSync(true);
     try {
       const bundle = await deleteTrackLyricsSyncApi(albumId, trackId);
@@ -465,9 +519,8 @@ export function SyncLyricsModal({
 
       setSyncedLines(lines);
       setTrackAuthorship(normalize(authorship || propAuthorship || ''));
-      setHasSavedSync(false);
+      setPersistedSyncOverride(false);
       setIsDirty(false);
-      setIsSaved(false);
 
       if (audioRef.current) {
         audioRef.current.pause();
@@ -477,6 +530,8 @@ export function SyncLyricsModal({
       }
 
       onSave?.(bundle);
+      queueLyricsSyncRemovedToast();
+      setRemovedToastTrigger((value) => value + 1);
     } catch (error) {
       console.error('[SyncLyricsModal] Remove sync error:', error);
       setAlertModal({
@@ -492,6 +547,14 @@ export function SyncLyricsModal({
       setIsRemovingSync(false);
     }
   }, [albumId, trackId, initialLyricsText, onSave, propAuthorship, ui?.dashboard]);
+
+  const handleRemoveSyncClick = useCallback(() => {
+    if (hasPersistedSync) {
+      setRemoveSyncConfirmOpen(true);
+      return;
+    }
+    clearAllLocalTimings();
+  }, [hasPersistedSync, clearAllLocalTimings]);
 
   const togglePlayPause = useCallback(() => {
     if (!audioRef.current) return;
@@ -551,6 +614,7 @@ export function SyncLyricsModal({
         requestCloseRef={popupRequestCloseRef}
         closeBlocked={isSaving || isRemovingSync || syncLyricsCloseGuard.discardDialogOpen}
       >
+        <LyricsSyncRemovedToast triggerKey={removedToastTrigger} />
         <div className="sync-lyrics-modal">
           <div
             className={`sync-lyrics-modal__card${isSaving || isRemovingSync ? ' sync-lyrics-modal__card--saving' : ''}`}
@@ -704,10 +768,12 @@ export function SyncLyricsModal({
                                   type="button"
                                   onClick={() => clearLineTiming(lyricIndex)}
                                   className="sync-lyrics-modal__clear-btn"
-                                  title="Clear line synchronization"
-                                  aria-label="Clear line synchronization"
+                                  title={ui?.dashboard?.clearLineTimings ?? 'Remove line timings'}
+                                  aria-label={
+                                    ui?.dashboard?.clearLineTimings ?? 'Remove line timings'
+                                  }
                                 >
-                                  <X {...dashboardActionIconProps({ size: 16 })} />
+                                  <Trash2 {...dashboardActionIconProps({ size: 16 })} />
                                 </button>
                               )}
                           </div>
@@ -723,16 +789,14 @@ export function SyncLyricsModal({
               <>
                 <div className="sync-lyrics-modal__divider"></div>
                 <div className="sync-lyrics-modal__actions">
-                  {hasSavedSync && (
-                    <button
-                      type="button"
-                      className="sync-lyrics-modal__button sync-lyrics-modal__button--danger"
-                      onClick={handleRemoveSync}
-                      disabled={isSaving || isRemovingSync || isDirty}
-                    >
-                      {ui?.dashboard?.removeSyncLyrics ?? 'Remove synchronization'}
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    className="sync-lyrics-modal__button sync-lyrics-modal__button--danger"
+                    onClick={handleRemoveSyncClick}
+                    disabled={!canRemoveSync || isSaving || isRemovingSync}
+                  >
+                    {ui?.dashboard?.removeSyncLyrics ?? 'Remove synchronization'}
+                  </button>
 
                   <button
                     type="button"
@@ -744,16 +808,6 @@ export function SyncLyricsModal({
                   </button>
 
                   <div className="sync-lyrics-modal__actions-right">
-                    {isSaved && (
-                      <span className="sync-lyrics-modal__saved-indicator">
-                        Синхронизации сохранены
-                      </span>
-                    )}
-                    {isDirty && !isSaved && (
-                      <span className="sync-lyrics-modal__dirty-indicator">
-                        Есть несохранённые изменения
-                      </span>
-                    )}
                     <button
                       type="button"
                       onClick={handleSave}
@@ -795,6 +849,22 @@ export function SyncLyricsModal({
           onClose={() => setAlertModal(null)}
         />
       )}
+
+      <ConfirmationModal
+        isOpen={removeSyncConfirmOpen}
+        title={ui?.dashboard?.removeSyncLyrics ?? 'Remove synchronization'}
+        message={
+          ui?.dashboard?.removeSyncLyricsConfirm ??
+          'Remove synchronization? Lyrics text will be kept as plain text.'
+        }
+        irreversibleHint={null}
+        confirmText={ui?.dashboard?.removeSyncLyrics ?? 'Remove synchronization'}
+        cancelText={ui?.dashboard?.cancel ?? 'Cancel'}
+        closeLabel={ui?.dashboard?.close ?? 'Close'}
+        variant="danger"
+        onConfirm={() => void executeRemoveSync()}
+        onCancel={() => setRemoveSyncConfirmOpen(false)}
+      />
     </>
   );
 }

@@ -251,23 +251,37 @@ dialog {
 
     &__clear-btn {
       display: inline-flex;
-      width: 36px;
-      height: 36px;
-      padding: 0;
-      line-height: 0;
-      border-radius: 50%;
       align-items: center;
       justify-content: center;
       flex-shrink: 0;
-      min-width: 36px;
-      min-height: 36px;
+      padding: var(--ms-01);
+      color: var(--dashboard-text-secondary);
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      transition: color 150ms ease;
 
-      @include dashboard-btn-secondary(
-        $margin: 0,
-        $padding: 0,
-        $border-radius: 50%,
-        $font-size: var(--ms-0)
-      );
+      @include dashboard-focus-ring;
+
+      &:disabled {
+        opacity: var(--dashboard-btn-disabled-opacity);
+        cursor: not-allowed;
+      }
+
+      @media (hover: hover) and (pointer: fine) {
+        &:hover:not(:disabled) {
+          color: var(--dashboard-btn-destructive-text);
+        }
+      }
+
+      &:active:not(:disabled) {
+        color: var(--dashboard-btn-destructive-text);
+      }
+
+      svg {
+        display: block;
+        flex-shrink: 0;
+      }
     }
 
     &__actions {
@@ -304,8 +318,14 @@ dialog {
       &--danger {
         @include dashboard-btn-ghost;
 
-        &,
-        &:hover:not(:disabled),
+        color: var(--pink-terracotta);
+
+        @media (hover: hover) and (pointer: fine) {
+          &:hover:not(:disabled) {
+            color: var(--pink-terracotta);
+          }
+        }
+
         &:active:not(:disabled) {
           color: var(--pink-terracotta);
         }
@@ -314,21 +334,6 @@ dialog {
       &-spinner {
         @include dashboard-modal-spinner(sync-lyrics-modal-spin);
       }
-    }
-
-    &__saved-indicator,
-    &__dirty-indicator {
-      font-size: var(--dashboard-helper-font-size);
-      line-height: var(--dashboard-helper-line-height);
-      font-weight: 400;
-    }
-
-    &__saved-indicator {
-      color: var(--honeydew-melon);
-    }
-
-    &__dirty-indicator {
-      color: var(--pink-terracotta);
     }
 
     @include breakpoint(phones) {

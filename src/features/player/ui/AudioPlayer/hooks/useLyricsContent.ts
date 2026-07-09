@@ -1,4 +1,5 @@
 import { useLayoutEffect } from 'react';
+import type { EqualityFn } from 'react-redux';
 
 import { resolveTrackLyricsBundle } from '@entities/lyrics';
 import type { SyncedLyricsLine, TracksProps } from '@models';
@@ -37,6 +38,8 @@ function lyricsBundlesEqual(a: TrackLyricsBundle | null, b: TrackLyricsBundle | 
     a.syncedLines === b.syncedLines
   );
 }
+
+const areLyricsBundlesEqual: EqualityFn<TrackLyricsBundle | null> = lyricsBundlesEqual;
 
 function buildKaraokeLines(bundle: TrackLyricsBundle, duration: number): SyncedLyricsLine[] | null {
   if (bundle.state !== 'synced' || !bundle.syncedLines?.length) {
@@ -109,20 +112,23 @@ export function useLyricsContent({
   setCurrentLineIndex,
   setIsLoadingSyncedLyrics,
   setHasSyncedLyricsAvailable,
-}: UseLyricsContentParams) {
+}: UseLyricsContentParams): TrackLyricsBundle | null {
   // Prefer trackLyricsSlice; use playlist-embedded lyrics only as hydration fallback.
-  const lyricsBundle = useAppSelector((state) => {
-    if (!currentTrack) return null;
+  const lyricsBundle = useAppSelector(
+    (state): TrackLyricsBundle | null => {
+      if (!currentTrack) return null;
 
-    const canonicalAlbumId =
-      currentTrack.lyrics?.albumId?.trim() ||
-      state.player.albumMeta?.albumId?.trim() ||
-      state.player.albumId?.trim() ||
-      albumId;
+      const canonicalAlbumId =
+        currentTrack.lyrics?.albumId?.trim() ||
+        state.player.albumMeta?.albumId?.trim() ||
+        state.player.albumId?.trim() ||
+        albumId;
 
-    const fallback = buildPlaylistLyricsFallback(canonicalAlbumId, currentTrack, lang);
-    return resolveTrackLyricsBundle(state, canonicalAlbumId, currentTrack.id, fallback);
-  }, lyricsBundlesEqual);
+      const fallback = buildPlaylistLyricsFallback(canonicalAlbumId, currentTrack, lang);
+      return resolveTrackLyricsBundle(state, canonicalAlbumId, currentTrack.id, fallback);
+    },
+    { equalityFn: areLyricsBundlesEqual }
+  );
 
   useLayoutEffect(() => {
     setCurrentLineIndex(null);

@@ -100,7 +100,9 @@ dialog {
         .mix-toast,
         .stem-added-toast,
         .stem-deleted-toast,
-        .archive-artist-removed-toast
+        .archive-artist-removed-toast,
+        .lyrics-sync-saved-toast,
+        .lyrics-sync-removed-toast
       ) {
       max-height: 85vh;
       min-height: 60vh;
