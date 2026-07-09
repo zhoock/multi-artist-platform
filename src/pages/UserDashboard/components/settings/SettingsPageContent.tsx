@@ -154,11 +154,9 @@ export function SettingsPageContent({
         <DashboardSection
           title={d?.publicProfilePreview?.sectionTitle ?? 'Profile'}
           headingExtra={
-            !isListener ? (
-              <StatusBadge variant={isArtistPagePublic ? 'public' : 'private'}>
-                {isArtistPagePublic
-                  ? (d?.profileHero?.pagePublic ?? 'Page is public')
-                  : (d?.profileHero?.pagePrivate ?? 'Page is private')}
+            !isListener && !isArtistPagePublic ? (
+              <StatusBadge variant="private">
+                {d?.profileHero?.pagePrivate ?? 'Page is private'}
               </StatusBadge>
             ) : undefined
           }

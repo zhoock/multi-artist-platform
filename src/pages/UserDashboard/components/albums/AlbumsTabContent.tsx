@@ -141,9 +141,6 @@ export function AlbumsTabContent({
 
   const publishHintCopy = useMemo(
     () => ({
-      ready:
-        ui?.dashboard?.albumPublishHintReady ??
-        (lang !== 'ru' ? 'This album is ready for publication.' : 'Альбом готов к публикации.'),
       cover:
         ui?.dashboard?.albumPublishHintNeedsCover ??
         (lang !== 'ru'
@@ -483,15 +480,15 @@ export function AlbumsTabContent({
                               </>
                             )}
                           </button>
-                          <p className="user-dashboard__publish-album-hint">
-                            {publishHintKey === 'ready'
-                              ? publishHintCopy.ready
-                              : publishHintKey === 'cover'
+                          {!canPublishAlbum ? (
+                            <p className="user-dashboard__publish-album-hint">
+                              {publishHintKey === 'cover'
                                 ? publishHintCopy.cover
                                 : publishHintKey === 'tracks'
                                   ? publishHintCopy.tracks
                                   : publishHintCopy.fields}
-                          </p>
+                            </p>
+                          ) : null}
                         </div>
                       </div>
                     </div>
