@@ -38,7 +38,6 @@ import {
   isSavedCarousel,
   mergeCarouselImageKeys,
   generateId,
-  debounce,
   createListItem,
   isListBlockEmpty,
   emptyRichText,
@@ -93,6 +92,8 @@ import type { FormatType } from '../../blocks/BlockParagraph';
 import { SlashMenu } from '../../blocks/SlashMenu';
 import { CarouselEditModal } from '../../articles/CarouselEditModal';
 import { ArticleEditSkeleton } from '../../articles/ArticleEditSkeleton';
+import { ArticleEditorCover, getArticleEditorCoverTexts } from './ArticleEditorCover';
+import { useArticleEditorCover } from './useArticleEditorCover';
 import { DashboardSaveSpinner } from '@shared/ui/dashboard-save/DashboardSaveSpinner';
 import { ModalCloseIcon } from '@shared/ui/icons/ModalCloseIcon';
 import { uniqueUploadFileSuffix } from '@shared/lib/uniqueUploadFileSuffix';
@@ -247,6 +248,7 @@ export function EditArticleModalV2({
   // Исходные значения для отслеживания изменений
   const [initialBlocks, setInitialBlocks] = useState<Block[]>([]);
   const [initialMeta, setInitialMeta] = useState<ArticleMeta>({ title: '', description: '' });
+  const [initialImg, setInitialImg] = useState('');
 
   // История Undo/Redo (единый стек операций редактора)
   const [historyState, setHistoryState] = useState(() =>
@@ -300,7 +302,6 @@ export function EditArticleModalV2({
 
   // Состояние сохранения
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
-  const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [isPublishing, setIsPublishing] = useState(false);
   const [isSavingDraft, setIsSavingDraft] = useState(false);
   const [originalIsDraft, setOriginalIsDraft] = useState<boolean>(true);
@@ -312,11 +313,26 @@ export function EditArticleModalV2({
     }
   }, [isOpen]);
 
-  // Refs для управления автосохранением
+  // Refs для управления автосохранением (отключено: сохранение только через Save draft / Publish)
   const isMountedRef = useRef(true);
   const abortControllerRef = useRef<AbortController | null>(null);
-  const autoSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [currentArticle, setCurrentArticle] = useState<IArticles | null>(null);
+  const {
+    coverUpload,
+    displayCoverKey,
+    hasCoverChanges,
+    resetCoverUpload,
+    handleCoverDrag,
+    handleCoverDrop,
+    handleCoverFileInput,
+    handleCoverRemove,
+    commitCoverForSave,
+  } = useArticleEditorCover({
+    savedCoverKey: initialImg,
+    ui,
+    disabled: isPublishing || isSavingDraft,
+  });
+  const coverTexts = useMemo(() => getArticleEditorCoverTexts(lang, ui), [lang, ui]);
 
   // Очистка таймера текстовых изменений при размонтировании
   useEffect(() => {
@@ -332,6 +348,8 @@ export function EditArticleModalV2({
     if (!isOpen) return;
 
     const loadArticle = async () => {
+      resetCoverUpload();
+
       // Если это новая статья (articleId начинается с "new-"), пропускаем загрузку
       if (article.articleId.startsWith('new-')) {
         setIsLoading(false);
@@ -352,6 +370,7 @@ export function EditArticleModalV2({
         setMeta(initialMetaValue);
         setInitialBlocks(JSON.parse(JSON.stringify(initialBlocksValue))); // Deep copy
         setInitialMeta({ ...initialMetaValue });
+        setInitialImg(article.img || '');
         setHistoryState(createHistoryState());
         typingSnapshotPendingRef.current = false;
         return;
@@ -403,6 +422,7 @@ export function EditArticleModalV2({
             };
             setMeta(loadedMeta);
             setInitialMeta({ ...loadedMeta });
+            setInitialImg(resolved.img || articleForEdit.img || '');
             setHistoryState(createHistoryState());
             typingSnapshotPendingRef.current = false;
           }
@@ -415,7 +435,7 @@ export function EditArticleModalV2({
     };
 
     loadArticle();
-  }, [isOpen, article.articleId, lang]);
+  }, [isOpen, article.articleId, lang, resetCoverUpload]);
 
   // Очистка при закрытии
   useEffect(() => {
@@ -425,12 +445,7 @@ export function EditArticleModalV2({
       setFocusBlockId(null);
       setIsDocumentSelected(false);
       setVkInserter(null);
-      // Отменяем автосохранение
-      if (autoSaveTimeoutRef.current) {
-        clearTimeout(autoSaveTimeoutRef.current);
-        autoSaveTimeoutRef.current = null;
-      }
-      // Отменяем запросы
+      resetCoverUpload();
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
         abortControllerRef.current = null;
@@ -439,7 +454,7 @@ export function EditArticleModalV2({
     return () => {
       isMountedRef.current = false;
     };
-  }, [isOpen]);
+  }, [isOpen, resetCoverUpload]);
 
   const abortSaveFailureIfSessionInterrupted = useCallback(
     async (response?: Response, init?: RequestInit): Promise<boolean> => {
@@ -451,127 +466,6 @@ export function EditArticleModalV2({
     },
     []
   );
-
-  // Автосохранение
-  const autoSave = useCallback(async () => {
-    if (!isMountedRef.current || !isOpen || !currentArticle) return;
-
-    if (isPublishing || isSavingDraft) return;
-
-    if (!currentArticle.id) return;
-
-    // Отменяем предыдущий запрос
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
-    abortControllerRef.current = new AbortController();
-
-    setSaveStatus('saving');
-
-    try {
-      const token = getToken();
-      if (!token) return;
-
-      const details = blocksToDetails(blocks);
-      const shouldBeDraft = originalIsDraft ?? true;
-
-      const requestBody = {
-        articleId: currentArticle.articleId,
-        lang,
-        translations: {
-          [lang]: {
-            nameArticle: meta.title,
-            description: meta.description,
-            details,
-          },
-        },
-        img: currentArticle.img || article.img || '',
-        date: currentArticle.date || article.date,
-        isDraft: shouldBeDraft,
-      };
-
-      const fetchInit = {
-        method: 'PUT' as const,
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(requestBody),
-        signal: abortControllerRef.current.signal,
-      };
-
-      const response = await fetchWithAuthSession(
-        `/api/articles-api?id=${encodeURIComponent(currentArticle.id)}`,
-        fetchInit
-      );
-
-      if (response.ok) {
-        setSaveStatus('saved');
-        setLastSaved(new Date());
-        // Обновляем Redux store
-        try {
-          await dispatch(fetchArticles({ force: true, ownerDashboard: true })).unwrap();
-        } catch (error) {
-          console.warn('Failed to update Redux store:', error);
-        }
-      } else if (await abortSaveFailureIfSessionInterrupted(response, fetchInit)) {
-        return;
-      } else {
-        setSaveStatus('error');
-      }
-    } catch (error: any) {
-      if (error.name !== 'AbortError') {
-        if (await shouldSuppressApiErrorUi()) {
-          setSaveStatus('idle');
-          return;
-        }
-        console.error('Auto-save error:', error);
-        setSaveStatus('error');
-      }
-    } finally {
-      if (isMountedRef.current) {
-        // Сбрасываем статус через 2 секунды
-        setTimeout(() => {
-          if (isMountedRef.current && saveStatus === 'saved') {
-            setSaveStatus('idle');
-          }
-        }, 2000);
-      }
-    }
-  }, [
-    blocks,
-    meta,
-    currentArticle,
-    originalIsDraft,
-    lang,
-    dispatch,
-    isOpen,
-    article,
-    saveStatus,
-    isPublishing,
-    isSavingDraft,
-    abortSaveFailureIfSessionInterrupted,
-  ]);
-
-  // Debounced автосохранение
-  const debouncedAutoSave = useRef(
-    debounce(() => {
-      autoSave();
-    }, 1500)
-  ).current;
-
-  // Планирование автосохранения
-  useEffect(() => {
-    if (!isOpen || !currentArticle) return;
-
-    if (!currentArticle.id) return;
-
-    debouncedAutoSave();
-
-    return () => {
-      // Очистка при размонтировании
-    };
-  }, [blocks, meta, isOpen, currentArticle?.id, debouncedAutoSave]);
 
   // Функция для сравнения двух блоков
   const blocksAreEqual = useCallback((block1: Block, block2: Block): boolean => {
@@ -622,14 +516,18 @@ export function EditArticleModalV2({
     const metaChanged =
       meta.title !== initialMeta.title || meta.description !== initialMeta.description;
 
-    return blocksChanged || metaChanged;
-  }, [blocks, initialBlocks, meta, initialMeta, blocksAreEqual]);
+    const coverChanged = hasCoverChanges;
+
+    return blocksChanged || metaChanged || coverChanged;
+  }, [blocks, initialBlocks, meta, initialMeta, hasCoverChanges, blocksAreEqual]);
 
   // Отмена изменений
   const handleCancel = useCallback(() => {
     setBlocks(JSON.parse(JSON.stringify(initialBlocks))); // Deep copy
     setMeta({ ...initialMeta });
-  }, [initialBlocks, initialMeta]);
+    setCurrentArticle((prev) => (prev ? { ...prev, img: initialImg } : prev));
+    resetCoverUpload();
+  }, [initialBlocks, initialMeta, initialImg, resetCoverUpload]);
 
   const finalizeArticleModalClose = useCallback(() => {
     if (hasChanges) handleCancel();
@@ -685,6 +583,7 @@ export function EditArticleModalV2({
         articleId = `article-${Date.now()}`;
       }
 
+      const coverKey = await commitCoverForSave(initialImg);
       const neverPublished = originalIsDraft ?? true;
       const requestBody = {
         articleId,
@@ -696,7 +595,7 @@ export function EditArticleModalV2({
             details,
           },
         },
-        img: currentArticle.img || article.img || '',
+        img: coverKey.trim() === '' ? null : coverKey,
         date: currentArticle.date || article.date || toLocalYYYYMMDD(),
         isDraft: neverPublished,
       };
@@ -720,7 +619,6 @@ export function EditArticleModalV2({
 
       if (response.ok) {
         setSaveStatus('saved');
-        setLastSaved(new Date());
         if (neverPublished) {
           setOriginalIsDraft(true);
         }
@@ -734,16 +632,21 @@ export function EditArticleModalV2({
                 ? {
                     ...prev,
                     ...saved,
-                    img: saved.img || prev.img || article.img || '',
+                    img: coverKey,
                     date: saved.date || prev.date || article.date || '',
                   }
-                : saved
+                : { ...saved, img: coverKey }
             );
+          } else {
+            setCurrentArticle((prev) => (prev ? { ...prev, img: coverKey } : prev));
           }
+        } else {
+          setCurrentArticle((prev) => (prev ? { ...prev, img: coverKey } : prev));
         }
 
         setInitialBlocks(JSON.parse(JSON.stringify(blocks)));
         setInitialMeta({ ...meta });
+        setInitialImg(coverKey);
 
         try {
           await dispatch(fetchArticles({ force: true, ownerDashboard: true })).unwrap();
@@ -778,6 +681,8 @@ export function EditArticleModalV2({
     lang,
     dispatch,
     article,
+    initialImg,
+    commitCoverForSave,
     showEditorToast,
     showArticleSaveError,
     abortSaveFailureIfSessionInterrupted,
@@ -808,6 +713,7 @@ export function EditArticleModalV2({
         articleId = `article-${Date.now()}`;
       }
 
+      const coverKey = await commitCoverForSave(initialImg);
       const requestBody = {
         articleId: articleId,
         lang,
@@ -818,7 +724,7 @@ export function EditArticleModalV2({
             details,
           },
         },
-        img: currentArticle.img || article.img || '',
+        img: coverKey.trim() === '' ? null : coverKey,
         date: currentArticle.date || article.date || toLocalYYYYMMDD(),
         isDraft: false,
         hasDraftChanges: false,
@@ -855,8 +761,10 @@ export function EditArticleModalV2({
 
         setSaveStatus('saved');
         setOriginalIsDraft(false);
+        setCurrentArticle((prev) => (prev ? { ...prev, img: coverKey } : prev));
         setInitialBlocks(JSON.parse(JSON.stringify(blocks)));
         setInitialMeta({ ...meta });
+        setInitialImg(coverKey);
 
         queueArticleEditorToast({
           kind: 'published',
@@ -892,6 +800,8 @@ export function EditArticleModalV2({
     dispatch,
     onClose,
     article,
+    initialImg,
+    commitCoverForSave,
     publicArtistSlug,
     onArticleEditorToast,
     showArticleSaveError,
@@ -2400,6 +2310,20 @@ export function EditArticleModalV2({
                       aria-label={texts.title}
                     />
                   </h2>
+                  {currentArticle ? (
+                    <ArticleEditorCover
+                      articleId={currentArticle.articleId}
+                      coverKey={displayCoverKey}
+                      ownerUserId={currentArticle.userId ?? article.userId}
+                      uploadState={coverUpload}
+                      disabled={isPublishing || isSavingDraft}
+                      texts={coverTexts}
+                      onDrag={handleCoverDrag}
+                      onDrop={handleCoverDrop}
+                      onFileInput={handleCoverFileInput}
+                      onRemove={handleCoverRemove}
+                    />
+                  ) : null}
                   <DndContext
                     sensors={sensors}
                     collisionDetection={closestCenter}

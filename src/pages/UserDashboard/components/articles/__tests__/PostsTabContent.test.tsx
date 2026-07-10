@@ -16,16 +16,12 @@ function createBaseProps(overrides: Partial<React.ComponentProps<typeof PostsTab
     articles: [] as IArticles[],
     expandedArticleId: null,
     articleAccessMenuArticleId: null,
-    articleCoverUpload: {},
     dashboardRowFlashes: {},
     ui: null,
     lang: 'en' as const,
     onToggleArticle: noop,
     onArticleAccessMenuChange: noop,
     onArticleVisibilityChange: noop,
-    onArticleCoverDrag: noop,
-    onArticleCoverDrop: noop,
-    onArticleCoverFileInput: noop,
     onEditArticle: noop,
     onDeleteArticle: noop,
     onCreateArticle: noop,
@@ -59,15 +55,14 @@ describe('PostsTabContent', () => {
       />
     );
 
+    const articleCard = container.querySelector(
+      '.dashboard-card.user-dashboard__album-card.dashboard-card--interactive'
+    );
+    expect(articleCard).toBeTruthy();
     expect(container.querySelector('.dashboard-expandable-row-trigger')).toBeTruthy();
-    expect(
-      container.querySelector(
-        '.dashboard-card.user-dashboard__album-item.dashboard-card--interactive'
-      )
-    ).toBeTruthy();
   });
 
-  it('renders expanded panel as DashboardCard with kit modifier', () => {
+  it('renders expanded content inside unified album card body', () => {
     const { container } = renderWithProviders(
       <PostsTabContent
         {...createBaseProps({
@@ -77,14 +72,26 @@ describe('PostsTabContent', () => {
       />
     );
 
-    const expanded = container.querySelector(
-      '.dashboard-card.user-dashboard__album-expanded.user-dashboard__album-expanded--kit'
-    );
-    expect(expanded).toBeTruthy();
+    const articleCard = container.querySelector('.user-dashboard__album-card--expanded');
+    expect(articleCard).toBeTruthy();
+    expect(container.querySelector('.user-dashboard__album-body')).toBeNull();
     expect(screen.getByText('Test Article')).toBeTruthy();
   });
 
-  it('renders excerpt before secondary cover section when expanded', () => {
+  it('renders edit and delete icon actions in the card header', () => {
+    renderWithProviders(
+      <PostsTabContent
+        {...createBaseProps({
+          articles: [sampleArticle],
+        })}
+      />
+    );
+
+    expect(screen.getByRole('button', { name: 'Edit Article' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Delete article' })).toBeTruthy();
+  });
+
+  it('renders article excerpt preview when expanded and content exists', () => {
     const articleWithBody: IArticles = {
       ...sampleArticle,
       details: [{ type: 'text', content: 'Article excerpt for preview.' }],
@@ -99,21 +106,12 @@ describe('PostsTabContent', () => {
       />
     );
 
-    const expanded = container.querySelector(
-      '.user-dashboard__album-expanded.user-dashboard__album-expanded--article'
+    const expandedBody = container.querySelector(
+      '.user-dashboard__album-body.user-dashboard__album-expanded--article'
     );
-    expect(expanded).toBeTruthy();
-    expect(container.querySelector('.dashboard-row')).toBeNull();
-    expect(screen.getByText('Article Cover')).toBeTruthy();
-    expect(container.querySelector('.user-dashboard__article-cover-file-input')).toBeTruthy();
-
-    const description = container.querySelector('.user-dashboard__article-description');
-    const coverSection = container.querySelector('.user-dashboard__article-cover-section');
-    expect(description).toBeTruthy();
-    expect(coverSection).toBeTruthy();
-    expect(
-      description!.compareDocumentPosition(coverSection!) & Node.DOCUMENT_POSITION_FOLLOWING
-    ).toBeTruthy();
+    expect(expandedBody).toBeTruthy();
+    expect(container.querySelector('.user-dashboard__article-cover-section')).toBeNull();
+    expect(container.querySelector('.user-dashboard__article-description')).toBeTruthy();
   });
 
   it('uses DashboardCta for footer upload action', () => {

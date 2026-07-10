@@ -1,5 +1,6 @@
 import React from 'react';
 import clsx from 'clsx';
+import { Pencil as PencilIcon, Trash2 as Trash2Icon } from 'lucide-react';
 
 import {
   ArticleCoverImage,
@@ -14,10 +15,11 @@ import { normalizeTrackVisibility, type TrackVisibility } from '@shared/lib/trac
 import type { SupportedLang } from '@shared/model/lang';
 import {
   DashboardCard,
-  DashboardAction,
   DashboardCta,
   DashboardExpandableRowTrigger,
+  DashboardIconButton,
 } from '@shared/ui/dashboard';
+import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 import {
   getDashboardRowFlashProps,
   type DashboardRowFlash,
@@ -29,14 +31,6 @@ import { ArticlesEmptyState } from './ArticlesEmptyState';
 import { ArticlesListSkeleton } from './ArticlesListSkeleton';
 import { getArticleListDraftBadge, isArticlePublished } from './articleVisibilityOptions';
 
-export type ArticleCoverUploadState = {
-  preview: string | null;
-  status: 'idle' | 'uploading' | 'uploaded' | 'error';
-  progress: number;
-  error: string | null;
-  dragActive: boolean;
-};
-
 type PostsTabContentProps = {
   emailVerified: boolean;
   articlesStatus: string;
@@ -44,146 +38,16 @@ type PostsTabContentProps = {
   articles: IArticles[];
   expandedArticleId: string | null;
   articleAccessMenuArticleId: string | null;
-  articleCoverUpload: Record<string, ArticleCoverUploadState>;
   dashboardRowFlashes: Record<string, DashboardRowFlash>;
   ui: IInterface | null;
   lang: SupportedLang;
   onToggleArticle: (articleId: string | null) => void;
   onArticleAccessMenuChange: (articleId: string | null) => void;
   onArticleVisibilityChange: (articleId: string, visibility: TrackVisibility) => void;
-  onArticleCoverDrag: (articleId: string, e: React.DragEvent) => void;
-  onArticleCoverDrop: (articleId: string, e: React.DragEvent) => void;
-  onArticleCoverFileInput: (articleId: string, e: React.ChangeEvent<HTMLInputElement>) => void;
   onEditArticle: (article: IArticles) => void;
   onDeleteArticle: (article: IArticles) => void;
   onCreateArticle: () => void;
 };
-
-type ArticleCoverUploadBlockProps = {
-  article: IArticles;
-  articleOwnerId: string | undefined;
-  coverState: ArticleCoverUploadState | undefined;
-  ui: IInterface | null;
-  onArticleCoverDrag: PostsTabContentProps['onArticleCoverDrag'];
-  onArticleCoverDrop: PostsTabContentProps['onArticleCoverDrop'];
-  onArticleCoverFileInput: PostsTabContentProps['onArticleCoverFileInput'];
-};
-
-function ArticleCoverUploadBlock({
-  article,
-  articleOwnerId,
-  coverState,
-  ui,
-  onArticleCoverDrag,
-  onArticleCoverDrop,
-  onArticleCoverFileInput,
-}: ArticleCoverUploadBlockProps) {
-  const hasCover = article.img || coverState?.preview;
-
-  return (
-    <>
-      <input
-        type="file"
-        id={`article-cover-input-${article.articleId}`}
-        accept="image/*"
-        className="user-dashboard__article-cover-file-input"
-        onChange={(e) => onArticleCoverFileInput(article.articleId, e)}
-      />
-
-      {hasCover ? (
-        <div className="user-dashboard__article-cover-wrap">
-          <div className="user-dashboard__article-cover-preview-shell">
-            <div className="user-dashboard__article-cover-preview">
-              {coverState?.preview ? (
-                <img
-                  src={coverState.preview}
-                  alt="Article cover preview"
-                  className="user-dashboard__article-cover-image"
-                />
-              ) : article.img && articleOwnerId ? (
-                <ArticleCoverImage
-                  img={article.img}
-                  userId={articleOwnerId}
-                  role="admin"
-                  alt="Article cover preview"
-                  className="user-dashboard__article-cover-image"
-                  debugLabel={`UserDashboard:articleCoverPreview:${article.articleId}`}
-                />
-              ) : (
-                <ArticleCoverPlaceholder
-                  alt="Article cover preview"
-                  className="user-dashboard__article-cover-image"
-                />
-              )}
-            </div>
-          </div>
-
-          <div className="user-dashboard__article-cover-actions">
-            <div className="user-dashboard__article-cover-buttons">
-              <label
-                htmlFor={`article-cover-input-${article.articleId}`}
-                className="user-dashboard__article-cover-button"
-              >
-                {ui?.dashboard?.replace ?? 'Replace'}
-              </label>
-            </div>
-
-            {coverState?.status === 'uploading' && (
-              <div className="user-dashboard__article-cover-status">
-                <div className="user-dashboard__article-cover-progress">
-                  <div
-                    className="user-dashboard__article-cover-progress-bar"
-                    style={{ width: `${coverState.progress}%` }}
-                  />
-                </div>
-                <span className="user-dashboard__article-cover-status-text">
-                  {ui?.dashboard?.uploading ?? 'Uploading...'}
-                </span>
-              </div>
-            )}
-
-            {coverState?.status === 'uploaded' && (
-              <div className="user-dashboard__article-cover-status">
-                <span className="user-dashboard__article-cover-status-text user-dashboard__article-cover-status-text--success">
-                  {ui?.dashboard?.uploaded ?? 'Uploaded'}
-                </span>
-              </div>
-            )}
-
-            {coverState?.status === 'error' && coverState.error && (
-              <div className="user-dashboard__article-cover-status">
-                <span className="user-dashboard__article-cover-status-text user-dashboard__article-cover-status-text--error">
-                  {ui?.dashboard?.error ?? 'Error'}: {coverState.error}
-                </span>
-              </div>
-            )}
-          </div>
-        </div>
-      ) : (
-        <div
-          className={clsx(
-            'user-dashboard__article-cover-dropzone',
-            coverState?.dragActive && 'user-dashboard__article-cover-dropzone--active'
-          )}
-          onDragEnter={(e) => onArticleCoverDrag(article.articleId, e)}
-          onDragLeave={(e) => onArticleCoverDrag(article.articleId, e)}
-          onDragOver={(e) => onArticleCoverDrag(article.articleId, e)}
-          onDrop={(e) => onArticleCoverDrop(article.articleId, e)}
-        >
-          <div className="user-dashboard__article-cover-dropzone-text">
-            {ui?.dashboard?.dragImageHereOr ?? 'Drag image here or'}
-          </div>
-          <label
-            htmlFor={`article-cover-input-${article.articleId}`}
-            className="user-dashboard__article-cover-file-label"
-          >
-            {ui?.dashboard?.chooseFile ?? 'Choose file'}
-          </label>
-        </div>
-      )}
-    </>
-  );
-}
 
 export function PostsTabContent({
   emailVerified,
@@ -192,16 +56,12 @@ export function PostsTabContent({
   articles,
   expandedArticleId,
   articleAccessMenuArticleId,
-  articleCoverUpload,
   dashboardRowFlashes,
   ui,
   lang,
   onToggleArticle,
   onArticleAccessMenuChange,
   onArticleVisibilityChange,
-  onArticleCoverDrag,
-  onArticleCoverDrop,
-  onArticleCoverFileInput,
   onEditArticle,
   onDeleteArticle,
   onCreateArticle,
@@ -253,129 +113,108 @@ export function PostsTabContent({
             `dashboard-article-row-${article.articleId}`,
             dashboardRowFlashes
           );
-          const coverState = articleCoverUpload[article.articleId];
           const preview = isExpanded ? getArticlePreviewContent(article) : null;
 
           return (
-            <React.Fragment key={article.articleId}>
+            <DashboardCard
+              key={article.articleId}
+              interactive
+              className={clsx(
+                'user-dashboard__album-card',
+                'dashboard-article-row',
+                articleRowFlash.className,
+                {
+                  'user-dashboard__album-card--expanded': isExpanded,
+                }
+              )}
+              style={articleRowFlash.style}
+              data-visibility-flash={articleRowFlash['data-visibility-flash']}
+            >
               <DashboardExpandableRowTrigger
                 id={`dashboard-article-row-${article.articleId}`}
                 expanded={isExpanded}
                 onToggle={() => onToggleArticle(isExpanded ? null : article.articleId)}
                 aria-label={isExpanded ? 'Collapse article' : 'Expand article'}
+                className={clsx('user-dashboard__album-header', 'user-dashboard__album-item', {
+                  'user-dashboard__album-item--access-menu-open':
+                    articleAccessMenuArticleId === article.articleId,
+                })}
               >
-                <DashboardCard
-                  interactive
-                  selected={isExpanded}
-                  className={clsx(
-                    'user-dashboard__album-item',
-                    'dashboard-article-row',
-                    articleRowFlash.className,
-                    {
-                      'user-dashboard__album-item--expanded': isExpanded,
-                      'user-dashboard__album-item--access-menu-open':
-                        articleAccessMenuArticleId === article.articleId,
-                    }
-                  )}
-                  style={articleRowFlash.style}
-                  data-visibility-flash={articleRowFlash['data-visibility-flash']}
-                >
-                  <div className="user-dashboard__album-thumbnail user-dashboard__album-thumbnail--article">
-                    {article.img ? (
-                      articleOwnerId ? (
-                        <ArticleCoverImage
-                          img={article.img}
-                          userId={articleOwnerId}
-                          role="admin"
-                          alt={article.nameArticle}
-                          loading="lazy"
-                          decoding="async"
-                          debugLabel={`UserDashboard:articleThumb:${article.articleId}`}
-                        />
-                      ) : (
-                        <ArticleCoverPlaceholder
-                          alt={article.nameArticle}
-                          loading="lazy"
-                          decoding="async"
-                        />
-                      )
+                <span className="user-dashboard__expanded-track-chevron" aria-hidden>
+                  <DashboardExpandChevron expanded={isExpanded} />
+                </span>
+                <div className="user-dashboard__album-thumbnail user-dashboard__album-thumbnail--article">
+                  {article.img ? (
+                    articleOwnerId ? (
+                      <ArticleCoverImage
+                        img={article.img}
+                        userId={articleOwnerId}
+                        role="admin"
+                        alt={article.nameArticle}
+                        loading="lazy"
+                        decoding="async"
+                        debugLabel={`UserDashboard:articleThumb:${article.articleId}`}
+                      />
                     ) : (
                       <ArticleCoverPlaceholder
                         alt={article.nameArticle}
                         loading="lazy"
                         decoding="async"
                       />
-                    )}
-                  </div>
-                  <div className="user-dashboard__album-info">
-                    <div className="user-dashboard__album-title-row">
-                      <div className="user-dashboard__album-title">{article.nameArticle}</div>
-                      <ArticleListStatus
-                        draftBadge={articleDraftBadge}
-                        ui={ui ?? undefined}
-                        lang={lang}
-                      />
-                    </div>
-                    {article.date ? (
-                      <div className="user-dashboard__album-date">{formatDate(article.date)}</div>
-                    ) : null}
-                  </div>
-                  <div
-                    className="user-dashboard__album-item-actions"
-                    onClick={(e) => e.stopPropagation()}
-                    onMouseDown={(e) => e.stopPropagation()}
-                  >
-                    {articleIsPublished ? (
-                      <ArticleAccessControl
-                        articleId={article.articleId}
-                        visibility={articleVisibility}
-                        ui={ui ?? undefined}
-                        lang={lang}
-                        menuOpen={articleAccessMenuArticleId === article.articleId}
-                        onMenuOpenChange={(open) =>
-                          onArticleAccessMenuChange(open ? article.articleId : null)
-                        }
-                        onPickVisibility={(v) =>
-                          void onArticleVisibilityChange(article.articleId, v)
-                        }
-                        getRowElement={() =>
-                          document.getElementById(`dashboard-article-row-${article.articleId}`)
-                        }
-                      />
-                    ) : null}
-                    <div className="user-dashboard__album-arrow">
-                      <DashboardExpandChevron expanded={isExpanded} />
-                    </div>
-                  </div>
-                </DashboardCard>
-              </DashboardExpandableRowTrigger>
-
-              {isExpanded ? (
-                <DashboardCard className="user-dashboard__album-expanded user-dashboard__album-expanded--article user-dashboard__album-expanded--kit">
-                  {preview ? (
-                    <div className="user-dashboard__article-description">
-                      {renderMarkdownViaRichText(preview.markdown)}
-                      {preview.truncated ? '\u2026' : null}
-                    </div>
-                  ) : null}
-
-                  <div className="user-dashboard__article-cover-section">
-                    <span className="user-dashboard__article-cover-label">
-                      {ui?.dashboard?.articleCover ?? 'Article Cover'}
-                    </span>
-                    <ArticleCoverUploadBlock
-                      article={article}
-                      articleOwnerId={articleOwnerId}
-                      coverState={coverState}
-                      ui={ui}
-                      onArticleCoverDrag={onArticleCoverDrag}
-                      onArticleCoverDrop={onArticleCoverDrop}
-                      onArticleCoverFileInput={onArticleCoverFileInput}
+                    )
+                  ) : (
+                    <ArticleCoverPlaceholder
+                      alt={article.nameArticle}
+                      loading="lazy"
+                      decoding="async"
+                    />
+                  )}
+                </div>
+                <div className="user-dashboard__album-info">
+                  <div className="user-dashboard__album-title-row">
+                    <div className="user-dashboard__album-title">{article.nameArticle}</div>
+                    <ArticleListStatus
+                      draftBadge={articleDraftBadge}
+                      ui={ui ?? undefined}
+                      lang={lang}
                     />
                   </div>
-
-                  <div className="user-dashboard__album-footer-actions">
-                    <DashboardAction
+                  {article.date ? (
+                    <div className="user-dashboard__album-date">{formatDate(article.date)}</div>
+                  ) : null}
+                </div>
+                <div
+                  className="user-dashboard__album-item-actions"
+                  onClick={(e) => e.stopPropagation()}
+                  onMouseDown={(e) => e.stopPropagation()}
+                >
+                  {articleIsPublished ? (
+                    <ArticleAccessControl
+                      articleId={article.articleId}
+                      visibility={articleVisibility}
+                      ui={ui ?? undefined}
+                      lang={lang}
+                      menuOpen={articleAccessMenuArticleId === article.articleId}
+                      onMenuOpenChange={(open) =>
+                        onArticleAccessMenuChange(open ? article.articleId : null)
+                      }
+                      onPickVisibility={(v) => void onArticleVisibilityChange(article.articleId, v)}
+                      getRowElement={() =>
+                        document.getElementById(`dashboard-article-row-${article.articleId}`)
+                      }
+                    />
+                  ) : null}
+                  <div className="user-dashboard__expanded-track-actions">
+                    <DashboardIconButton
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onEditArticle(article);
+                      }}
+                      aria-label={ui?.dashboard?.editArticle ?? 'Edit Article'}
+                    >
+                      <PencilIcon {...dashboardActionIconProps()} />
+                    </DashboardIconButton>
+                    <DashboardIconButton
                       destructive
                       onClick={(e) => {
                         e.stopPropagation();
@@ -383,27 +222,26 @@ export function PostsTabContent({
                       }}
                       aria-label={ui?.dashboard?.deleteArticle ?? 'Delete article'}
                     >
-                      {ui?.dashboard?.deleteArticle ?? 'Delete article'}
-                    </DashboardAction>
-                    <div className="user-dashboard__album-footer-actions-right">
-                      <button
-                        type="button"
-                        className="user-dashboard__edit-album-button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onEditArticle(article);
-                        }}
-                      >
-                        {ui?.dashboard?.editArticle ?? 'Edit Article'}
-                      </button>
-                    </div>
+                      <Trash2Icon {...dashboardActionIconProps()} />
+                    </DashboardIconButton>
                   </div>
-                </DashboardCard>
+                </div>
+              </DashboardExpandableRowTrigger>
+
+              {isExpanded && preview ? (
+                <div className="user-dashboard__album-body user-dashboard__album-expanded user-dashboard__album-expanded--kit user-dashboard__album-expanded--article">
+                  <div className="user-dashboard__article-description">
+                    {renderMarkdownViaRichText(preview.markdown)}
+                    {preview.truncated ? '\u2026' : null}
+                  </div>
+                </div>
               ) : null}
-            </React.Fragment>
+            </DashboardCard>
           );
         })}
       </div>
+
+      <div className="user-dashboard__albums-upload-divider" aria-hidden />
 
       <div className="user-dashboard__upload-action">
         <DashboardCta onClick={onCreateArticle}>
