@@ -587,51 +587,18 @@ function UserDashboard() {
     const d = ui?.dashboard;
     const en = lang !== 'ru';
     return {
-      title: d?.deleteAccountConfirmTitle ?? (en ? 'Delete account?' : 'Удалить аккаунт?'),
+      title: d?.deleteAccountConfirmTitle ?? (en ? 'Delete account' : 'Удалить аккаунт'),
       warningDescription:
         d?.deleteAccountWarningDescription ??
-        (en
-          ? 'This action cannot be undone. All your data will be permanently deleted.'
-          : 'Это действие нельзя отменить. Все ваши данные будут удалены безвозвратно.'),
-      impactTitle: (() => {
-        const fromApi = d?.deleteAccountWarningIntro?.trim();
-        const short = en ? 'This will permanently delete:' : 'Будут удалены безвозвратно:';
-        if (!fromApi) return short;
-        if (
-          fromApi.includes('не подлежат восстановлению') ||
-          fromApi.includes('cannot be recovered') ||
-          fromApi.length > 48
-        ) {
-          return short;
-        }
-        return fromApi;
-      })(),
-      warningItems: [
-        d?.deleteAccountWarningProfile ?? (en ? 'Profile' : 'Профиль'),
-        d?.deleteAccountWarningAlbums ?? (en ? 'Albums' : 'Альбомы'),
-        d?.deleteAccountWarningTracks ?? (en ? 'Tracks' : 'Треки'),
-        d?.deleteAccountWarningArticles ?? (en ? 'Articles' : 'Статьи'),
-        d?.deleteAccountWarningPurchases ?? (en ? 'Purchases' : 'Покупки'),
-        d?.deleteAccountWarningArchive ?? (en ? 'Collection' : 'Коллекция'),
-        d?.deleteAccountWarningPremium ?? (en ? 'Premium access' : 'Premium-доступ'),
-      ],
+        (en ? 'This action cannot be undone.' : 'Это действие нельзя отменить.'),
       passwordLabel: d?.deleteAccountPasswordLabel ?? (en ? 'Current password' : 'Текущий пароль'),
       passwordPlaceholder:
         d?.deleteAccountPasswordPlaceholder ??
         (en ? 'Enter current password' : 'Введите текущий пароль'),
-      passwordHelper:
-        d?.deleteAccountPasswordHelper ??
-        (en
-          ? 'For your security, please enter your current password to continue.'
-          : 'Для безопасности введите текущий пароль, чтобы продолжить.'),
-      finalWarning:
-        d?.deleteAccountFinalWarning ??
-        (en ? 'This action cannot be undone.' : 'Это действие нельзя отменить.'),
       deleteButton: d?.deleteAccount ?? (en ? 'Delete account' : 'Удалить аккаунт'),
       cancel: d?.cancel ?? (en ? 'Cancel' : 'Отмена'),
       close: d?.close ?? (en ? 'Close' : 'Закрыть'),
       deleting: d?.deleteAccountDeleting ?? (en ? 'Deleting account…' : 'Удаление аккаунта…'),
-      passwordRequired: en ? 'Enter your password' : 'Укажите пароль',
       deleteFailed:
         d?.deleteAccountFailed ??
         (en ? 'Could not delete account. Please try again.' : 'Не удалось удалить аккаунт.'),

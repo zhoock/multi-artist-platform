@@ -62,7 +62,7 @@ Submit вне `<form>`: `type="submit" form="form-id"`.
 <DashboardButton variant="outline" onClick={onPrevious}>Previous</DashboardButton>
 ```
 
-Текстовые действия в `DashboardRow` (Change email, Disconnect, Log out) — тоже `variant="outline"`.
+Текстовые действия в `DashboardRow` (Change email, Change password, Log out) — `variant="outline"` **без** `destructive`.
 
 Cancel в модалке на `Popup`:
 
@@ -101,10 +101,48 @@ Cancel в модалке на `Popup`:
 </footer>
 ```
 
+### Destructive
+
+`destructive` — **не** отдельный вариант кнопки, а модификатор для `outline` и `icon`. Применяется **только** к действиям, которые удаляют данные, разрывают связь или приводят к потенциальной потере данных.
+
+**Не красить всё подряд.** Logout, Cancel, Download и прочие обычные действия — всегда обычный `outline` без `destructive`.
+
+#### Да (`destructive`)
+
+| Действие                                  | Вариант                   |
+| ----------------------------------------- | ------------------------- |
+| Delete account                            | `outline` + `destructive` |
+| Delete album / track / article / stem     | `icon` + `destructive`    |
+| Remove purchase                           | `outline` + `destructive` |
+| Remove from collection / Clear collection | `outline` + `destructive` |
+| Disconnect payment                        | `outline` + `destructive` |
+| Remove avatar                             | `outline` + `destructive` |
+
+```tsx
+<DashboardButton variant="outline" destructive onClick={onDeleteAccount}>
+  Delete
+</DashboardButton>
+
+<DashboardButton variant="icon" destructive aria-label="Delete track" onClick={onDelete}>
+  <TrashIcon />
+</DashboardButton>
+```
+
+#### Нет (обычный `outline`, без `destructive`)
+
+Logout · Change email · Change password · Download · Upload · Choose file · Cancel · Preview · Save · Connect · Verify email · Open artist page
+
+```tsx
+<DashboardButton variant="outline" onClick={onLogout}>Logout</DashboardButton>
+<DashboardButton variant="outline" onClick={onCancel}>Cancel</DashboardButton>
+```
+
 ### Удаление данных
 
-1. **`DashboardButton variant="icon" destructive`** с иконкой delete/trash;
-2. **Подтверждение** через `ConfirmationModal` с **`DashboardButton variant="primary"`** как confirm.
+Паттерн удаления:
+
+1. **Триггер** — `destructive` (см. таблицу выше): `icon` в списке/карточке или `outline` для текстовой кнопки;
+2. **Подтверждение** — `ConfirmationModal` с `variant="primary"` как confirm (не `destructive`).
 
 ### Запрещённые замены в новом коде
 
@@ -132,8 +170,9 @@ Cancel в модалке на `Popup`:
 
 1. Presentation only — kit без бизнес-логики.
 2. Три визуальных варианта кнопки — не расширять без 3+ повторений и review.
-3. Ссылки — `<a>` / `Link`, не kit.
-4. Footer — CSS, не React.
+3. `destructive` — только для удаления, разрыва связи и потери данных; не для Logout, Cancel, Download и т.п.
+4. Ссылки — `<a>` / `Link`, не kit.
+5. Footer — CSS, не React.
 
 ---
 
@@ -141,7 +180,8 @@ Cancel в модалке на `Popup`:
 
 - [ ] Интерактив: только `DashboardButton` (`primary` \| `outline` \| `icon`)
 - [ ] Футер: `.dashboard-modal-footer`
-- [ ] Удаление: `variant="icon" destructive` + confirm `variant="primary"`
+- [ ] `destructive` только для delete / remove / disconnect / потери данных (не Logout, Cancel, Download)
+- [ ] Удаление: `destructive` trigger + confirm `variant="primary"`
 - [ ] Ссылки: `<a>` / `Link`, без Dashboard link-классов
 - [ ] Нет `DashboardAction`, `DashboardTextLink`, `.dashboard-action`, `.dashboard-text-link`
 - [ ] Domain-логика не в `shared/ui/dashboard`

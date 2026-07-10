@@ -17,7 +17,8 @@
 
 Плюс CSS-класс `.dashboard-modal-footer` для футеров модалок.
 
-**Удаление:** `variant="icon" destructive` + подтверждение с `variant="primary"`.
+**Удаление:** `destructive` + подтверждение с `variant="primary"`.  
+`destructive` — только для delete / remove / disconnect / потери данных. Logout, Cancel, Download — обычный `outline`.
 
 **Ссылки:** обычный `<a>` или `Link` — не Dashboard-компоненты.
 
@@ -91,4 +92,5 @@ DashboardCard, DashboardRow, DashboardSection, DashboardEmptyState, …
 - [ ] Только `DashboardButton` (`primary` \| `outline` \| `icon`)
 - [ ] `.dashboard-modal-footer` вместо React footer
 - [ ] Ссылки: `<a>` / `Link`, без Dashboard link-классов
+- [ ] `destructive` только для delete / remove / disconnect (не Logout, Cancel, Download)
 - [ ] Нет `DashboardAction`, `DashboardTextLink`, `.dashboard-action`, `.dashboard-text-link`

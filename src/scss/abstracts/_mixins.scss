@@ -419,7 +419,7 @@ $ms-4: 123.363px; // 6.854rem;
 }
 
 @mixin dashboard-modal-footer(
-  $padding: var(--ms-01),
+  $padding: var(--ms-01) var(--ms-1),
   $border-color: var(--dashboard-divider),
   $margin-top: auto
 ) {
@@ -432,6 +432,11 @@ $ms-4: 123.363px; // 6.854rem;
   margin-top: $margin-top;
   border-top: 1px solid $border-color;
   background: var(--dashboard-card-bg);
+
+  > .dashboard-button,
+  > button {
+    margin: 0;
+  }
 }
 
 $old-phones: 'width < 375px';
