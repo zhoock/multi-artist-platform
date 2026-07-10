@@ -1978,6 +1978,7 @@ function UserDashboard() {
                             ui={ui || undefined}
                             userId={user?.id || undefined}
                             albums={albumsData}
+                            tabActive={activeTab === 'mixer'}
                           />
                         )}
                       </div>
@@ -1998,9 +1999,11 @@ function UserDashboard() {
                         <AlbumsTabContent
                           emailVerified={emailVerified}
                           initialLoading={albumsInitialLoading}
+                          tabActive={activeTab === 'albums'}
                           albumsData={albumsData}
                           albumsFromStore={albumsFromStore}
                           expandedAlbumId={expandedAlbumId}
+                          onSetExpandedAlbumId={setExpandedAlbumId}
                           albumAccessMenuAlbumId={albumAccessMenuAlbumId}
                           publishingAlbumId={publishingAlbumId}
                           isUploadingTracks={isUploadingTracks}

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import clsx from 'clsx';
 import { Pencil as PencilIcon, Trash2 as Trash2Icon } from 'lucide-react';
 import {
@@ -38,6 +38,7 @@ import {
   type DashboardRowFlash,
 } from '../../lib/dashboardRowStateFlash';
 import { DashboardExpandChevron } from '../../lib/dashboardExpandChevron';
+import { useDashboardAccordionOnboarding } from '../../lib/dashboardAccordionOnboarding';
 import { ArticlesListSkeleton } from '../articles/ArticlesListSkeleton';
 import { AlbumAccessControl } from './AlbumAccessControl';
 import { AlbumLifecycleBadge } from './AlbumLifecycleBadge';
@@ -50,9 +51,11 @@ import './AlbumsTab.scss';
 type AlbumsTabContentProps = {
   emailVerified: boolean;
   initialLoading: boolean;
+  tabActive: boolean;
   albumsData: AlbumData[];
   albumsFromStore: IAlbums[];
   expandedAlbumId: string | null;
+  onSetExpandedAlbumId: (albumId: string | null) => void;
   albumAccessMenuAlbumId: string | null;
   publishingAlbumId: string | null;
   isUploadingTracks: Record<string, boolean>;
@@ -95,9 +98,11 @@ const albumTrackKey = (albumId: string, trackId: string) => `${albumId}:${trackI
 export function AlbumsTabContent({
   emailVerified,
   initialLoading,
+  tabActive,
   albumsData,
   albumsFromStore,
   expandedAlbumId,
+  onSetExpandedAlbumId,
   albumAccessMenuAlbumId,
   publishingAlbumId,
   isUploadingTracks,
@@ -124,8 +129,47 @@ export function AlbumsTabContent({
 }: AlbumsTabContentProps) {
   const [expandedTrackId, setExpandedTrackId] = useState<string | null>(null);
 
+  const { markUserInteracted } = useDashboardAccordionOnboarding({
+    scope: 'albums',
+    enabled: emailVerified && tabActive,
+    dataReady: !initialLoading && albumsData.length > 0,
+    albums: albumsData,
+    expandedAlbumId,
+    expandedTrackId,
+    onExpandAlbum: onSetExpandedAlbumId,
+    onExpandTrack: setExpandedTrackId,
+    buildTrackKey: albumTrackKey,
+  });
+
+  const handleAlbumToggle = useCallback(
+    (albumId: string) => {
+      markUserInteracted();
+      onToggleAlbum(albumId);
+    },
+    [markUserInteracted, onToggleAlbum]
+  );
+
+  const handleTrackToggle = useCallback(
+    (trackKey: string, isTrackOpen: boolean) => {
+      markUserInteracted();
+      setExpandedTrackId(isTrackOpen ? null : trackKey);
+    },
+    [markUserInteracted]
+  );
+
+  const prevExpandedAlbumIdRef = useRef<string | null>(expandedAlbumId);
+
   useEffect(() => {
-    setExpandedTrackId(null);
+    const previousAlbumId = prevExpandedAlbumIdRef.current;
+    prevExpandedAlbumIdRef.current = expandedAlbumId;
+
+    if (previousAlbumId === null && expandedAlbumId !== null) {
+      return;
+    }
+
+    if (previousAlbumId !== expandedAlbumId) {
+      setExpandedTrackId(null);
+    }
   }, [expandedAlbumId]);
 
   const sensors = useSensors(
@@ -239,7 +283,7 @@ export function AlbumsTabContent({
               <DashboardExpandableRowTrigger
                 id={`dashboard-album-row-${album.id}`}
                 expanded={isExpanded}
-                onToggle={() => onToggleAlbum(album.id)}
+                onToggle={() => handleAlbumToggle(album.id)}
                 aria-label={isExpanded ? 'Collapse album' : 'Expand album'}
                 className={clsx('user-dashboard__album-header', 'user-dashboard__album-item', {
                   'user-dashboard__album-item--access-menu-open':
@@ -427,7 +471,7 @@ export function AlbumsTabContent({
                                 albumId={album.albumId}
                                 lyricsAlbumId={album.id}
                                 isOpen={isTrackOpen}
-                                onToggle={() => setExpandedTrackId(isTrackOpen ? null : trackKey)}
+                                onToggle={() => handleTrackToggle(trackKey, isTrackOpen)}
                                 onDelete={onDeleteTrack}
                                 onTitleChange={onTrackTitleChange}
                                 onVisibilityChange={onTrackVisibilityChange}

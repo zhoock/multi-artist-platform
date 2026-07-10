@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 
 import type { AlbumData } from '@entities/album/lib/transformAlbumData';
 import { renderWithProviders } from '@shared/lib/test-utils';
+import { resetDashboardAccordionOnboardingForTests } from '../../../lib/dashboardAccordionOnboarding';
 import { MixerAdmin } from '../MixerAdmin';
 
 const loadStemsMock = jest.fn<(...args: unknown[]) => Promise<unknown>>();
@@ -73,6 +74,7 @@ const mixerUi = {
 
 describe('MixerAdmin', () => {
   beforeEach(() => {
+    resetDashboardAccordionOnboardingForTests();
     loadStemsMock.mockReset();
     loadStemsMock.mockResolvedValue({
       stems: [],
@@ -81,10 +83,9 @@ describe('MixerAdmin', () => {
     });
   });
 
-  it('renders dashboard kit layout and expands album into kit panel', async () => {
-    const user = userEvent.setup();
+  it('renders dashboard kit layout and auto-expands first album on first open', async () => {
     const { container } = renderWithProviders(
-      <MixerAdmin ui={mixerUi as never} userId="user-1" albums={[sampleAlbum]} />,
+      <MixerAdmin ui={mixerUi as never} userId="user-1" albums={[sampleAlbum]} tabActive />,
       {
         preloadedState: {
           lang: { current: 'en' },
@@ -96,10 +97,9 @@ describe('MixerAdmin', () => {
     expect(container.querySelector('.dashboard-card')).toBeTruthy();
     expect(screen.getByText('Test Album')).toBeTruthy();
 
-    await user.click(screen.getByLabelText('Expand album'));
-
     await waitFor(() => {
       expect(loadStemsMock).toHaveBeenCalled();
+      expect(container.querySelector('.user-dashboard__album-card--expanded')).toBeTruthy();
     });
 
     const albumCard = container.querySelector('.user-dashboard__album-card--expanded');
@@ -110,18 +110,14 @@ describe('MixerAdmin', () => {
   });
 
   it('shows card empty state when track has no stems', async () => {
-    const user = userEvent.setup();
     const { container } = renderWithProviders(
-      <MixerAdmin ui={mixerUi as never} userId="user-1" albums={[sampleAlbum]} />,
+      <MixerAdmin ui={mixerUi as never} userId="user-1" albums={[sampleAlbum]} tabActive />,
       {
         preloadedState: {
           lang: { current: 'en' },
         },
       }
     );
-
-    await user.click(screen.getByLabelText('Expand album'));
-    await user.click(screen.getByText('Track One'));
 
     await waitFor(() => {
       expect(screen.getByText('No stems yet')).toBeTruthy();
@@ -148,7 +144,7 @@ describe('MixerAdmin', () => {
 
     const user = userEvent.setup();
     const { container } = renderWithProviders(
-      <MixerAdmin ui={mixerUi as never} userId="user-1" albums={[sampleAlbum]} />,
+      <MixerAdmin ui={mixerUi as never} userId="user-1" albums={[sampleAlbum]} tabActive={false} />,
       {
         preloadedState: {
           lang: { current: 'en' },

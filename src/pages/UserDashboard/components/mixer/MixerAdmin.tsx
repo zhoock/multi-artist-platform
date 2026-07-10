@@ -51,6 +51,7 @@ import {
 import { normalizeStemsVisibility, type StemsVisibility } from '@shared/lib/stems/stemsVisibility';
 import { getDashboardRowFlashProps, useDashboardRowFlash } from '../../lib/dashboardRowStateFlash';
 import { DashboardExpandChevron } from '../../lib/dashboardExpandChevron';
+import { useDashboardAccordionOnboarding } from '../../lib/dashboardAccordionOnboarding';
 import { AddStemModal, type AddStemModalLabels } from './AddStemModal';
 import { SortableStemRow, type StemRowLabels } from './SortableStemRow';
 import { StemAccessControl } from './StemAccessControl';
@@ -59,6 +60,7 @@ interface MixerAdminProps {
   ui?: IInterface;
   userId?: string;
   albums?: AlbumData[];
+  tabActive?: boolean;
 }
 
 interface DeleteTarget {
@@ -110,7 +112,7 @@ function formatStemToastMessage(
   return (template ?? fallbacks[kind][lang]).replace('{name}', stemName);
 }
 
-export function MixerAdmin({ ui, userId, albums = [] }: MixerAdminProps) {
+export function MixerAdmin({ ui, userId, albums = [], tabActive = true }: MixerAdminProps) {
   // ui.dashboard.mixer пока не полностью описан в типах IInterface, берём через any.
   const t = useMemo(() => (ui as any)?.dashboard?.mixer ?? {}, [ui]);
   const { lang } = useLang();
@@ -246,6 +248,35 @@ export function MixerAdmin({ ui, userId, albums = [] }: MixerAdminProps) {
     },
     [storageUserId, trackStems]
   );
+
+  const preloadAlbumTrackStems = useCallback(
+    (album: AlbumData) => {
+      const storageAlbumId = getStorageAlbumId(album);
+      album.tracks.forEach((track) => {
+        void ensureTrackStems(storageAlbumId, track.id);
+      });
+    },
+    [ensureTrackStems]
+  );
+
+  const { markUserInteracted } = useDashboardAccordionOnboarding({
+    scope: 'mixer',
+    enabled: tabActive,
+    dataReady: albums.length > 0,
+    albums,
+    expandedAlbumId,
+    expandedTrackId,
+    onExpandAlbum: setExpandedAlbumId,
+    onExpandTrack: setExpandedTrackId,
+    buildTrackKey: (albumId, trackId) => {
+      const album = albums.find((item) => item.id === albumId);
+      return stemKey(album ? getStorageAlbumId(album) : albumId, trackId);
+    },
+    onAlbumAutoExpand: preloadAlbumTrackStems,
+    onTrackAutoExpand: (album, trackId) => {
+      void ensureTrackStems(getStorageAlbumId(album), trackId);
+    },
+  });
 
   const stopPlayback = useCallback(() => {
     if (audioRef.current) {
@@ -412,12 +443,28 @@ export function MixerAdmin({ ui, userId, albums = [] }: MixerAdminProps) {
     tracks: TrackData[],
     storageAlbumId: string
   ) => {
+    markUserInteracted();
     const nextOpen = isAlbumOpen ? null : albumId;
     setExpandedAlbumId(nextOpen);
     if (!isAlbumOpen) {
       tracks.forEach((track) => {
         void ensureTrackStems(storageAlbumId, track.id);
       });
+    }
+  };
+
+  const toggleTrack = (
+    trackKey: string,
+    isTrackOpen: boolean,
+    storageAlbumId: string,
+    trackId: string
+  ) => {
+    markUserInteracted();
+    if (isTrackOpen) {
+      setExpandedTrackId(null);
+    } else {
+      setExpandedTrackId(trackKey);
+      void ensureTrackStems(storageAlbumId, trackId);
     }
   };
 
@@ -512,23 +559,13 @@ export function MixerAdmin({ ui, userId, albums = [] }: MixerAdminProps) {
                                   role="button"
                                   tabIndex={0}
                                   aria-expanded={isTrackOpen}
-                                  onClick={() => {
-                                    if (isTrackOpen) {
-                                      setExpandedTrackId(null);
-                                    } else {
-                                      setExpandedTrackId(trackKey);
-                                      ensureTrackStems(storageAlbumId, track.id);
-                                    }
-                                  }}
+                                  onClick={() =>
+                                    toggleTrack(trackKey, isTrackOpen, storageAlbumId, track.id)
+                                  }
                                   onKeyDown={(e) => {
                                     if (e.key === 'Enter' || e.key === ' ') {
                                       e.preventDefault();
-                                      if (isTrackOpen) {
-                                        setExpandedTrackId(null);
-                                      } else {
-                                        setExpandedTrackId(trackKey);
-                                        ensureTrackStems(storageAlbumId, track.id);
-                                      }
+                                      toggleTrack(trackKey, isTrackOpen, storageAlbumId, track.id);
                                     }
                                   }}
                                 >

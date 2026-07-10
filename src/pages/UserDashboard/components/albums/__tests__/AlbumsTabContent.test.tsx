@@ -1,9 +1,10 @@
-import { describe, expect, it, jest } from '@jest/globals';
-import { render, screen } from '@testing-library/react';
+import { describe, expect, it, jest, beforeEach } from '@jest/globals';
+import { render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 
 import type { AlbumData } from '@entities/album/lib/transformAlbumData';
 import { renderWithProviders } from '@shared/lib/test-utils';
+import { resetDashboardAccordionOnboardingForTests } from '../../../lib/dashboardAccordionOnboarding';
 import { AlbumsTabContent } from '../AlbumsTabContent';
 
 const noop = () => undefined;
@@ -18,9 +19,11 @@ function createBaseProps(overrides: Partial<React.ComponentProps<typeof AlbumsTa
   return {
     emailVerified: true,
     initialLoading: false,
+    tabActive: false,
     albumsData: [] as AlbumData[],
     albumsFromStore: [],
     expandedAlbumId: null,
+    onSetExpandedAlbumId: noop,
     albumAccessMenuAlbumId: null,
     publishingAlbumId: null,
     isUploadingTracks: {},
@@ -77,6 +80,10 @@ const sampleAlbum: AlbumData = {
 };
 
 describe('AlbumsTabContent', () => {
+  beforeEach(() => {
+    resetDashboardAccordionOnboardingForTests();
+  });
+
   it('renders tab empty state with dashboard kit classes', () => {
     const { container } = render(<AlbumsTabContent {...createBaseProps()} />);
 
@@ -116,6 +123,37 @@ describe('AlbumsTabContent', () => {
     expect(expandedBody).toBeTruthy();
     expect(albumCard?.contains(expandedBody)).toBe(true);
     expect(screen.getByText('Test Album')).toBeTruthy();
+  });
+
+  it('auto-expands first album and track on first tab open', async () => {
+    const onSetExpandedAlbumId = jest.fn();
+
+    const { rerender } = renderWithProviders(
+      <AlbumsTabContent
+        {...createBaseProps({
+          albumsData: [sampleAlbum],
+          tabActive: true,
+          onSetExpandedAlbumId,
+        })}
+      />
+    );
+
+    await waitFor(() => {
+      expect(onSetExpandedAlbumId).toHaveBeenCalledWith('album-1');
+    });
+
+    rerender(
+      <AlbumsTabContent
+        {...createBaseProps({
+          albumsData: [sampleAlbum],
+          tabActive: true,
+          expandedAlbumId: 'album-1',
+          onSetExpandedAlbumId,
+        })}
+      />
+    );
+
+    expect(document.querySelector('.user-dashboard__expanded-track-card--expanded')).toBeTruthy();
   });
 
   it('uses DashboardCta for footer upload action', () => {
