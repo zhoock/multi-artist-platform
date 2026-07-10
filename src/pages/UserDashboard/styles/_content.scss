@@ -165,12 +165,6 @@ dialog {
         display: flex;
         flex-direction: column;
       }
-
-      .user-dashboard__edit-album-button {
-        align-self: center;
-        width: auto;
-        margin: var(--ms-0) 0 var(--ms-01);
-      }
     }
 
     &__album-item {
@@ -398,10 +392,6 @@ dialog {
         display: flex;
         flex-direction: column;
       }
-    }
-
-    &__edit-album-button {
-      @include dashboard-btn-secondary($margin: 0);
     }
 
     &__upload-action {

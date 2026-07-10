@@ -71,8 +71,6 @@ dialog {
 
     &__choose-files-button {
       white-space: nowrap;
-
-      @include dashboard-btn-secondary;
     }
 
     &__tracks-table {

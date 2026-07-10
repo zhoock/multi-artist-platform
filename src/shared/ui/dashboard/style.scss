@@ -76,7 +76,7 @@
     @media (width <= 40rem) {
       grid-template-columns: minmax(6rem, 40%) minmax(0, 1fr);
 
-      .dashboard-action {
+      > .dashboard-button {
         grid-column: 1 / -1;
         justify-self: end;
       }
@@ -116,97 +116,97 @@
   }
 }
 
-.dashboard-action {
-  flex-shrink: 0;
-  margin: 0;
-  padding: 0;
-  color: var(--dark-greenish-yellow);
-  font: inherit;
-  font-size: var(--dashboard-font-size);
-  line-height: 1.45;
-  white-space: nowrap;
-  background: none;
-  border: none;
-  cursor: pointer;
+.dashboard-button {
+  width: auto;
+  max-width: 100%;
+  text-transform: none;
+  letter-spacing: normal;
+  text-decoration: none;
 
-  @include dashboard-focus-ring;
+  &--primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.55em;
 
-  &:disabled {
-    opacity: 0.55;
-    cursor: not-allowed;
+    @include dashboard-btn-primary($margin: 0, $padding: var(--ms-01) var(--ms-1));
+
+    &:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    &.dashboard-button--loading {
+      @include dashboard-modal-inline-loading;
+    }
   }
 
-  &:hover:not(:disabled) {
-    color: var(--honeydew-melon);
-    text-decoration: underline;
-    text-underline-offset: 0.12em;
+  &--outline {
+    @include dashboard-btn-secondary($margin: 0);
+
+    &.dashboard-button--destructive {
+      @include dashboard-btn-destructive($margin: 0);
+    }
   }
 
-  &--destructive {
-    width: auto;
-    text-decoration: none;
+  &--icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    color: var(--dashboard-text-secondary);
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: var(--ms-02);
+    cursor: pointer;
+    transition:
+      color 150ms ease,
+      background-color 150ms ease,
+      border-color 150ms ease,
+      opacity 150ms ease;
 
-    @include dashboard-btn-destructive($margin: 0);
+    @include dashboard-focus-ring;
 
-    &:hover:not(:disabled) {
-      text-decoration: none;
+    &:disabled {
+      opacity: var(--dashboard-btn-disabled-opacity);
+      cursor: not-allowed;
+    }
+
+    @media (hover: hover) and (pointer: fine) {
+      &:hover:not(:disabled) {
+        color: var(--dashboard-text-primary);
+        background: var(--dashboard-hover-bg);
+      }
+    }
+
+    &:active:not(:disabled) {
+      opacity: 0.7;
+    }
+
+    svg {
+      display: block;
+      flex-shrink: 0;
+    }
+
+    &.dashboard-button--destructive {
+      color: var(--dashboard-btn-destructive-text);
+
+      @media (hover: hover) and (pointer: fine) {
+        &:hover:not(:disabled) {
+          color: var(--dashboard-btn-destructive-text);
+          background: var(--dashboard-btn-destructive-hover-bg);
+          border-color: var(--dashboard-btn-destructive-border);
+        }
+      }
     }
   }
 }
 
-.dashboard-icon-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  width: 36px;
-  height: 36px;
-  padding: 0;
-  color: var(--dashboard-text-secondary);
-  background: transparent;
-  border: 1px solid transparent;
-  border-radius: var(--ms-02);
-  cursor: pointer;
-  transition:
-    color 150ms ease,
-    background-color 150ms ease,
-    border-color 150ms ease,
-    opacity 150ms ease;
-
-  @include dashboard-focus-ring;
-
-  &:disabled {
-    opacity: var(--dashboard-btn-disabled-opacity);
-    cursor: not-allowed;
-  }
-
-  @media (hover: hover) and (pointer: fine) {
-    &:hover:not(:disabled) {
-      color: var(--dashboard-text-primary);
-      background: var(--dashboard-hover-bg);
-    }
-  }
-
-  &:active:not(:disabled) {
-    opacity: 0.7;
-  }
-
-  svg {
-    display: block;
-    flex-shrink: 0;
-  }
-
-  &--destructive {
-    color: var(--dashboard-btn-destructive-text);
-
-    @media (hover: hover) and (pointer: fine) {
-      &:hover:not(:disabled) {
-        color: var(--dashboard-btn-destructive-text);
-        background: var(--dashboard-btn-destructive-hover-bg);
-        border-color: var(--dashboard-btn-destructive-border);
-      }
-    }
-  }
+.dashboard-modal-footer {
+  @include dashboard-modal-footer;
 }
 
 .dashboard-empty-state {
@@ -292,29 +292,6 @@
     &--multiline {
       white-space: pre-line;
     }
-  }
-}
-
-.dashboard-cta {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.55em;
-  width: auto;
-  max-width: 100%;
-  text-transform: none;
-  letter-spacing: normal;
-  text-decoration: none;
-
-  @include dashboard-btn-primary($margin: 0, $padding: var(--ms-01) var(--ms-1));
-
-  &:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
-
-  &--loading {
-    @include dashboard-modal-inline-loading;
   }
 }
 

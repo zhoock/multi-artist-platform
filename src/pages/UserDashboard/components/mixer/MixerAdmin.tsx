@@ -24,9 +24,8 @@ import { getUserUserId } from '@config/user';
 import { useLang } from '@app/providers/lang';
 import { uniqueUploadFileSuffix } from '@shared/lib/uniqueUploadFileSuffix';
 import {
-  DashboardAction,
+  DashboardButton,
   DashboardCard,
-  DashboardCta,
   DashboardEmptyState,
   DashboardExpandableRowTrigger,
 } from '@shared/ui/dashboard';
@@ -619,7 +618,8 @@ export function MixerAdmin({ ui, userId, albums = [], tabActive = true }: MixerA
                                         title={labels.emptyTitle}
                                         description={labels.emptyDescription}
                                         action={
-                                          <DashboardCta
+                                          <DashboardButton
+                                            variant="primary"
                                             className="mixer-admin__add-stem"
                                             onClick={() =>
                                               setAddModal({
@@ -630,13 +630,14 @@ export function MixerAdmin({ ui, userId, albums = [], tabActive = true }: MixerA
                                           >
                                             <PlusIcon {...dashboardActionIconProps({ size: 18 })} />
                                             {labels.addStem}
-                                          </DashboardCta>
+                                          </DashboardButton>
                                         }
                                       />
                                     ) : (
                                       <>
                                         <div className="mixer-admin__stems-toolbar">
-                                          <DashboardAction
+                                          <DashboardButton
+                                            variant="outline"
                                             className="mixer-admin__add-stem"
                                             onClick={() =>
                                               setAddModal({
@@ -647,7 +648,7 @@ export function MixerAdmin({ ui, userId, albums = [], tabActive = true }: MixerA
                                           >
                                             <PlusIcon {...dashboardActionIconProps({ size: 18 })} />
                                             {labels.addStem}
-                                          </DashboardAction>
+                                          </DashboardButton>
                                         </div>
                                         <DndContext
                                           sensors={sensors}

@@ -71,8 +71,6 @@
 
   &__avatar-upload {
     width: auto;
-
-    @include dashboard-btn-secondary($margin: 0);
   }
 
   &__avatar-hint {
@@ -97,14 +95,10 @@
       min-width: 0;
     }
 
-    .dashboard-action {
+    .dashboard-button--icon {
       display: inline-flex;
       align-items: center;
-      text-decoration: none;
-
-      &:hover:not(:disabled) {
-        text-decoration: none;
-      }
+      flex-shrink: 0;
     }
   }
 

@@ -12,7 +12,7 @@ import {
   Loader2 as Loader2Icon,
 } from 'lucide-react';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
-import { DashboardIconButton } from '@shared/ui/dashboard';
+import { DashboardButton } from '@shared/ui/dashboard';
 import { StemIcon, type StemMeta } from '@entities/stem';
 
 export interface StemRowLabels {
@@ -143,7 +143,8 @@ export function SortableStemRow({
           </span>
         ) : (
           <>
-            <DashboardIconButton
+            <DashboardButton
+              variant="icon"
               onClick={onTogglePlay}
               aria-label={isPlaying ? labels.pause : labels.play}
               title={isPlaying ? labels.pause : labels.play}
@@ -153,29 +154,32 @@ export function SortableStemRow({
               ) : (
                 <PlayIcon {...dashboardActionIconProps({ size: 18 })} />
               )}
-            </DashboardIconButton>
-            <DashboardIconButton
+            </DashboardButton>
+            <DashboardButton
+              variant="icon"
               onClick={() => replaceInputRef.current?.click()}
               aria-label={labels.replace}
               title={labels.replace}
             >
               <RefreshCwIcon {...dashboardActionIconProps({ size: 18 })} />
-            </DashboardIconButton>
-            <DashboardIconButton
+            </DashboardButton>
+            <DashboardButton
+              variant="icon"
               onClick={startEditing}
               aria-label={labels.rename}
               title={labels.rename}
             >
               <PencilIcon {...dashboardActionIconProps({ size: 18 })} />
-            </DashboardIconButton>
-            <DashboardIconButton
+            </DashboardButton>
+            <DashboardButton
+              variant="icon"
               destructive
               onClick={onDelete}
               aria-label={labels.delete}
               title={labels.delete}
             >
               <Trash2Icon {...dashboardActionIconProps({ size: 18 })} />
-            </DashboardIconButton>
+            </DashboardButton>
           </>
         )}
       </div>

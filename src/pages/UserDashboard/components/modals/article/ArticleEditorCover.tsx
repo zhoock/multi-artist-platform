@@ -6,7 +6,7 @@ import { ArticleCoverImage, ArticleCoverPlaceholder } from '@entities/article';
 import type { IInterface } from '@models';
 import type { SupportedLang } from '@shared/model/lang';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
-import { DashboardIconButton } from '@shared/ui/dashboard';
+import { DashboardButton } from '@shared/ui/dashboard';
 
 import type { ArticleCoverUploadState } from './useArticleEditorCover';
 
@@ -101,7 +101,8 @@ export function ArticleEditorCover({
             )}
           </div>
 
-          <DashboardIconButton
+          <DashboardButton
+            variant="icon"
             className="edit-article-v2__cover-remove"
             destructive
             disabled={disabled || isUploading}
@@ -112,7 +113,7 @@ export function ArticleEditorCover({
             aria-label={texts.removeCover}
           >
             <Trash2Icon {...dashboardActionIconProps()} />
-          </DashboardIconButton>
+          </DashboardButton>
         </div>
       ) : (
         <div

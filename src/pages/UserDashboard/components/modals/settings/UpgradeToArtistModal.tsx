@@ -146,7 +146,7 @@ export function UpgradeToArtistModal({ isOpen, onClose, onUpgraded }: UpgradeToA
 
           <div className="upgrade-to-artist-modal__actions">
             <PopupCloseButton
-              className="upgrade-to-artist-modal__button upgrade-to-artist-modal__button--ghost"
+              className="upgrade-to-artist-modal__button dashboard-button dashboard-button--outline"
               disabled={loading}
             >
               {copy.cancel}

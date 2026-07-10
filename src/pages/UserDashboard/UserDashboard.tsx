@@ -22,6 +22,7 @@ import { toLocalYYYYMMDD } from '@shared/lib/dateCalendar';
 import { Popup, PopupCloseButton } from '@shared/ui/popup';
 import { ConfirmationModal } from '@shared/ui/confirmationModal';
 import { AlertModal } from '@shared/ui/alertModal';
+import { DashboardButton } from '@shared/ui/dashboard';
 import { ModalCloseIcon } from '@shared/ui/icons/ModalCloseIcon';
 import {
   isAuthenticated,
@@ -2204,17 +2205,15 @@ function UserDashboard() {
                     />
                   </div>
                 </div>
-                <div className="edit-track-modal__footer">
-                  <button
-                    type="button"
-                    className="edit-track-modal__cancel"
+                <footer className="dashboard-modal-footer edit-track-modal__footer">
+                  <DashboardButton
+                    variant="outline"
                     onClick={() => editTrackCloseGuard.requestClose()}
                   >
                     {ui?.dashboard?.cancel ?? 'Cancel'}
-                  </button>
-                  <button
-                    type="button"
-                    className="edit-track-modal__save"
+                  </DashboardButton>
+                  <DashboardButton
+                    variant="primary"
                     onClick={async () => {
                       const newTitle = editTrackTitleDraft.trim();
                       if (newTitle && newTitle !== editTrackModal.trackTitle) {
@@ -2228,8 +2227,8 @@ function UserDashboard() {
                     }}
                   >
                     {ui?.dashboard?.save ?? 'Save'}
-                  </button>
-                </div>
+                  </DashboardButton>
+                </footer>
               </div>
             </div>
             <InlineEditDiscardDialog

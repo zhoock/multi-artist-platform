@@ -27,10 +27,9 @@ import type { TrackVisibility } from '@shared/lib/tracks/trackVisibility';
 import { EmailVerificationOnboarding } from '@shared/lib/emailVerification';
 import { SubscriberContentLockIcon } from '@shared/ui/icons/SubscriberContentLockIcon';
 import {
+  DashboardButton,
   DashboardCard,
-  DashboardCta,
   DashboardExpandableRowTrigger,
-  DashboardIconButton,
 } from '@shared/ui/dashboard';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 import {
@@ -342,7 +341,8 @@ export function AlbumsTabContent({
                     />
                   ) : null}
                   <div className="user-dashboard__expanded-track-actions">
-                    <DashboardIconButton
+                    <DashboardButton
+                      variant="icon"
                       onClick={(e) => {
                         e.stopPropagation();
                         const fromStore = albumsFromStore.find(
@@ -353,8 +353,9 @@ export function AlbumsTabContent({
                       aria-label={ui?.dashboard?.editAlbum ?? 'Edit Album'}
                     >
                       <PencilIcon {...dashboardActionIconProps()} />
-                    </DashboardIconButton>
-                    <DashboardIconButton
+                    </DashboardButton>
+                    <DashboardButton
+                      variant="icon"
                       destructive
                       onClick={(e) => {
                         e.stopPropagation();
@@ -363,7 +364,7 @@ export function AlbumsTabContent({
                       aria-label={ui?.dashboard?.deleteAlbum ?? 'Delete album'}
                     >
                       <Trash2Icon {...dashboardActionIconProps()} />
-                    </DashboardIconButton>
+                    </DashboardButton>
                   </div>
                 </div>
               </DashboardExpandableRowTrigger>
@@ -431,8 +432,8 @@ export function AlbumsTabContent({
                             }
                           }}
                         />
-                        <button
-                          type="button"
+                        <DashboardButton
+                          variant="outline"
                           className="user-dashboard__choose-files-button"
                           disabled={isUploadingTracks[album.id]}
                           onClick={() => {
@@ -443,7 +444,7 @@ export function AlbumsTabContent({
                           }}
                         >
                           {ui?.dashboard?.chooseFiles ?? 'Choose files'}
-                        </button>
+                        </DashboardButton>
                       </>
                     )}
                   </div>
@@ -547,9 +548,9 @@ export function AlbumsTabContent({
       <div className="user-dashboard__albums-upload-divider" aria-hidden />
 
       <div className="user-dashboard__upload-action">
-        <DashboardCta onClick={onCreateAlbum}>
+        <DashboardButton variant="primary" onClick={onCreateAlbum}>
           {ui?.dashboard?.uploadNewAlbum ?? 'Upload New Album'}
-        </DashboardCta>
+        </DashboardButton>
       </div>
     </div>
   );

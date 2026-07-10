@@ -252,15 +252,6 @@
     flex-shrink: 0;
   }
 
-  &__button--cancel {
-    @include dashboard-btn-ghost($margin: 0);
-
-    &:disabled {
-      cursor: not-allowed;
-      opacity: 0.55;
-    }
-  }
-
   &__button--danger {
     @include dashboard-btn-destructive($margin: 0);
 

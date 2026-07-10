@@ -33,6 +33,7 @@ export interface MyArchiveData {
   slotsUsed: number;
   slotsLimit: number;
   inactiveCount?: number;
+  subscriptionExpiresAt?: string | null;
   artists: MyArchiveArtist[];
 }
 

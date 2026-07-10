@@ -74,7 +74,7 @@ describe('MyPurchasesContent', () => {
     expect(container.querySelector('.user-dashboard__section')).toBeTruthy();
     expect(container.querySelector('.dashboard-card')).toBeTruthy();
     expect(container.querySelectorAll('.dashboard-row').length).toBeGreaterThanOrEqual(3);
-    expect(container.querySelector('.dashboard-action--destructive')).toBeTruthy();
+    expect(container.querySelector('.dashboard-button--destructive')).toBeTruthy();
     expect(screen.getByText('Track One')).toBeTruthy();
     expect(screen.getByText('Track Two')).toBeTruthy();
   });

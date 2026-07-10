@@ -3,6 +3,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Upload as UploadIcon, Music as MusicIcon, X as XIcon } from 'lucide-react';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 import { Popup, PopupCloseButton } from '@shared/ui/popup';
+import { DashboardButton } from '@shared/ui/dashboard';
 import { DashboardSaveSpinner } from '@shared/ui/dashboard-save/DashboardSaveSpinner';
 import { ModalCloseIcon } from '@shared/ui/icons/ModalCloseIcon';
 import '@shared/ui/dashboard-save/dashboard-save.scss';
@@ -117,15 +118,15 @@ export function AddStemModal({ isOpen, lang, labels, onClose, onSubmit }: AddSte
                 </div>
               ) : (
                 <>
-                  <button
-                    type="button"
+                  <DashboardButton
+                    variant="outline"
                     className="add-stem-modal__choose"
                     onClick={() => fileInputRef.current?.click()}
                     disabled={submitting}
                   >
                     <UploadIcon {...dashboardActionIconProps({ size: 18 })} />
                     {labels.chooseFile}
-                  </button>
+                  </DashboardButton>
                   <p className="add-stem-modal__hint">{labels.fileHint}</p>
                 </>
               )}
@@ -190,7 +191,7 @@ export function AddStemModal({ isOpen, lang, labels, onClose, onSubmit }: AddSte
 
           <div className="add-stem-modal__actions">
             <PopupCloseButton
-              className="add-stem-modal__button add-stem-modal__button--cancel"
+              className="dashboard-button dashboard-button--outline"
               disabled={submitting}
             >
               {labels.cancel}

@@ -838,6 +838,12 @@ export interface IInterface {
       collectionOverageHint: string;
       activeSlotsLabel: string;
       managePlanLink: string;
+      subscriptionActiveLabel?: string;
+      subscriptionExpiringLabel?: string;
+      subscriptionExpiredLabel?: string;
+      subscriptionRenewalDate?: string;
+      subscriptionExpiredDescription?: string;
+      renewSupportLink?: string;
       supportActiveLabel: string;
       planChangeBanner: string;
       selectMode: string;

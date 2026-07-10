@@ -6,7 +6,7 @@ import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 import {
-  DashboardAction,
+  DashboardButton,
   DashboardCard,
   DashboardRow,
   DashboardRowValue,
@@ -259,8 +259,8 @@ export function MyPurchasesContent() {
                     variant="action"
                     label={<p className="my-purchases__tracks-label">{copy?.tracks ?? 'Tracks'}</p>}
                     action={
-                      <button
-                        type="button"
+                      <DashboardButton
+                        variant="outline"
                         className="my-purchases__download-all"
                         aria-label={copy?.downloadAll ?? 'Download all'}
                         disabled={
@@ -281,7 +281,7 @@ export function MyPurchasesContent() {
                             {copy?.downloadAll ?? 'Download all'}
                           </>
                         )}
-                      </button>
+                      </DashboardButton>
                     }
                   >
                     <DashboardRowValue aria-hidden="true" />
@@ -303,8 +303,8 @@ export function MyPurchasesContent() {
                           </span>
                         }
                         action={
-                          <button
-                            type="button"
+                          <DashboardButton
+                            variant="outline"
                             className="my-purchases__track-download"
                             onClick={() =>
                               handleDownloadTrack(purchase.purchaseToken, track.trackId)
@@ -322,7 +322,7 @@ export function MyPurchasesContent() {
                             ) : (
                               (copy?.download ?? 'Download')
                             )}
-                          </button>
+                          </DashboardButton>
                         }
                       >
                         <DashboardRowValue aria-hidden="true" />
@@ -331,14 +331,15 @@ export function MyPurchasesContent() {
                   })}
 
                   <div className="my-purchases__footer">
-                    <DashboardAction
+                    <DashboardButton
+                      variant="outline"
                       destructive
                       aria-label={copy?.removePurchase ?? 'Remove purchase'}
                       disabled={isRemoving && purchaseToRemove?.id === purchase.id}
                       onClick={() => setPurchaseToRemove(purchase)}
                     >
                       {copy?.removePurchase ?? 'Remove purchase'}
-                    </DashboardAction>
+                    </DashboardButton>
                     <p className="my-purchases__remove-hint">
                       {copy?.removePurchaseHint ??
                         'You will lose access to this album and all downloads.'}

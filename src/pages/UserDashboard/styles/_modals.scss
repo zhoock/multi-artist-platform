@@ -48,23 +48,6 @@ dialog {
       &__input {
         @include dashboard-form-input;
       }
-
-      &__footer {
-        @include dashboard-modal-footer;
-      }
-
-      &__cancel {
-        @include dashboard-btn-ghost;
-      }
-
-      &__save {
-        @include dashboard-btn-primary($margin: 0);
-
-        &:disabled {
-          opacity: 0.7;
-          cursor: not-allowed;
-        }
-      }
     }
   }
 }

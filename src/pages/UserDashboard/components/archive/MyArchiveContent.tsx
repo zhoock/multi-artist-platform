@@ -20,53 +20,41 @@ import {
   normalizeCollectionArchive,
 } from '@shared/lib/archive/collectionLock';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
-import { CheckSquare, Lock as LockIcon, Square, Trash2 as Trash2Icon } from 'lucide-react';
+import {
+  Calendar,
+  CheckSquare,
+  Lock as LockIcon,
+  Square,
+  Trash2 as Trash2Icon,
+} from 'lucide-react';
 import {
   dispatchArchiveArtistRemoved,
   refreshPremiumContentForArchiveChange,
 } from '@features/artistArchive';
 import { useArchiveAccessModal } from '@shared/lib/archiveAccessModal';
-import { resolveCurrentPlanSlug } from '@shared/lib/payment/subscriptionPlans';
-import { SubscriptionPlanBadge } from '@shared/ui/subscriptionPlan';
-import {
-  DashboardAction,
-  DashboardCard,
-  DashboardCta,
-  DashboardRow,
-  DashboardRowValue,
-} from '@shared/ui/dashboard';
-import { StatusBadge } from '@shared/ui/statusBadge';
+import { getPlanDisplayName, resolveCurrentPlanSlug } from '@shared/lib/payment/subscriptionPlans';
+import { DashboardButton, DashboardCard } from '@shared/ui/dashboard';
+import { StatusBadge, type StatusBadgeVariant } from '@shared/ui/statusBadge';
 
 import { CollectionEmptyState } from './CollectionEmptyState';
 import { ArchiveArtistRemovedToast } from '@shared/ui/archiveArtistRemovedToast';
 import { queueArchiveArtistRemovedToast } from '@shared/lib/archiveArtistRemovedToast';
+import {
+  formatCollectionRenewalDate,
+  formatSubscriptionDaysRemainingLabel,
+  getSubscriptionDaysRemaining,
+  resolveCollectionSubscriptionStatus,
+} from './lib/collectionSubscriptionStatus';
 import './MyArchiveContent.scss';
 
 type RemovalToastKind = 'single' | 'bulk' | 'cleared';
 
-function formatArchiveDate(iso: string, lang: 'en' | 'ru'): string {
-  try {
-    return new Date(iso).toLocaleDateString(lang === 'ru' ? 'ru-RU' : 'en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    });
-  } catch {
-    return iso;
-  }
-}
-
-function formatLockDate(iso: string | null, lang: 'en' | 'ru'): string | null {
-  if (!iso) return null;
-  try {
-    return new Date(iso).toLocaleDateString(lang === 'ru' ? 'ru-RU' : 'en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    });
-  } catch {
-    return null;
-  }
+function subscriptionStatusBadgeVariant(
+  status: 'active' | 'expiring' | 'expired'
+): StatusBadgeVariant {
+  if (status === 'active') return 'published';
+  if (status === 'expiring') return 'locked';
+  return 'inactive';
 }
 
 function canRemoveArtist(artist: MyArchiveArtist, isPremium: boolean): boolean {
@@ -160,13 +148,30 @@ export function MyArchiveContent({ active }: Props) {
     () => (data ? resolveCurrentPlanSlug({ isPremium, slotsLimit, slotsUsed }) : null),
     [data, isPremium, slotsLimit, slotsUsed]
   );
-  const showRenewCard = Boolean(data && !isPremium && planSlug);
-  const showUpgradeCard = Boolean(data && isPremium && isFull);
-  const showEmptySlotCard = Boolean(data && !isFull && !showRenewCard && inactiveCount === 0);
-  const showPlanChangeBanner = Boolean(
-    data && isPremium && inactiveCount > 0 && slotsUsed < slotsLimit
-  );
+  const showEmptySlotCard = Boolean(data && !isFull && inactiveCount === 0);
   const slotsRemaining = Math.max(0, slotsLimit - slotsUsed);
+  const subscriptionExpiresAt = data?.subscriptionExpiresAt ?? null;
+  const subscriptionStatus = useMemo(() => {
+    if (!data || !planSlug) return null;
+
+    const resolved = resolveCollectionSubscriptionStatus({
+      isPremium,
+      expiresAt: subscriptionExpiresAt,
+    });
+    if (resolved) return resolved;
+    return isPremium ? 'active' : 'expired';
+  }, [data, isPremium, planSlug, subscriptionExpiresAt]);
+  const renewalDateLabel = useMemo(() => {
+    if (!subscriptionExpiresAt) return null;
+    return formatCollectionRenewalDate(subscriptionExpiresAt, lang);
+  }, [lang, subscriptionExpiresAt]);
+  const daysRemainingLabel = useMemo(() => {
+    if (!subscriptionExpiresAt || subscriptionStatus === 'expired') return null;
+    return formatSubscriptionDaysRemainingLabel(
+      getSubscriptionDaysRemaining(subscriptionExpiresAt),
+      lang
+    );
+  }, [lang, subscriptionExpiresAt, subscriptionStatus]);
 
   const slotsProgress = useMemo(() => {
     if (slotsLimit <= 0) return 0;
@@ -371,43 +376,16 @@ export function MyArchiveContent({ active }: Props) {
     }
   };
 
-  const subtitle =
-    t?.subtitle ??
-    (lang === 'en'
-      ? 'Artists in your collection unlock content across the platform: tracks, articles, stems and album downloads.'
-      : 'Артисты в коллекции открывают контент на всей платформе: треки, статьи, стемы и скачивание альбомов.');
   const slotsUsedLabel =
-    t?.activeSlotsLabel ?? (lang === 'en' ? 'active slots' : 'активных слотов');
+    t?.activeSlotsLabel ?? (lang === 'en' ? 'slots used' : 'слотов использовано');
   const managePlanLabel =
     t?.managePlanLink ?? (lang === 'en' ? 'Manage Plan →' : 'Управление планом →');
-  const inArchiveSince =
-    t?.inArchiveSince ?? (lang === 'en' ? 'In collection since' : 'В коллекции с');
   const removeLabel = t?.remove ?? (lang === 'en' ? 'Remove' : 'Удалить');
-  const lockedUntilTemplate =
-    t?.lockedUntil ?? (lang === 'en' ? 'Locked until {date}' : 'Заблокирован до {date}');
-  const lockedHint =
-    t?.lockedHint ??
-    (lang === 'en'
-      ? "You can't remove this artist until the lock expires."
-      : 'Нельзя удалить артиста, пока не истечёт блокировка.');
-  const canRemoveLabel = t?.canRemoveLabel ?? (lang === 'en' ? 'Can be removed' : 'Можно удалить');
-  const canRemoveHint =
-    t?.canRemoveHint ??
-    (lang === 'en'
-      ? 'You can remove this artist at any time.'
-      : 'Вы можете удалить этого артиста в любой момент.');
-  const inactiveSlotHint =
-    t?.inactiveSlotHint ??
-    (lang === 'en'
-      ? 'This artist no longer uses an active slot.'
-      : 'Этот артист больше не занимает активный слот.');
   const removeLockedTooltip =
     t?.removeLockedTooltip ??
     (lang === 'en'
       ? 'This artist is locked until the end of the billing period.'
       : 'Артист заблокирован до конца оплаченного периода.');
-  const supportInactiveLabel =
-    t?.supportInactiveTitle ?? (lang === 'en' ? 'Support inactive' : 'Поддержка неактивна');
   const removeSubscriptionTooltip =
     t?.removeSubscriptionTooltip ??
     (lang === 'en'
@@ -425,47 +403,26 @@ export function MyArchiveContent({ active }: Props) {
       : 'Добавьте артиста, чтобы открыть эксклюзивный контент.');
   const discoverLabel =
     t?.discoverArtists ?? (lang === 'en' ? 'Discover Artists' : 'Найти артистов');
-  const archiveFullLabel =
-    t?.archiveFull ?? (lang === 'en' ? 'Collection Full' : 'Коллекция заполнена');
-  const archiveFullSlotsUsedLine = useMemo(() => {
-    if (slotsLimit === 1) {
-      return (
-        t?.archiveFullSlotsUsedSingular ??
-        (lang === 'en'
-          ? "You've used all 1 collection slot."
-          : 'Вы использовали единственный слот коллекции.')
-      );
-    }
-    const template =
-      t?.archiveFullSlotsUsedPlural ??
-      (lang === 'en'
-        ? "You've used all {count} collection slots."
-        : 'Вы использовали все {count} слота коллекции.');
-    return template.replace('{count}', String(slotsLimit));
-  }, [lang, slotsLimit, t?.archiveFullSlotsUsedPlural, t?.archiveFullSlotsUsedSingular]);
-  const archiveFullUpgradeActionLine =
-    t?.archiveFullUpgradeAction ??
-    (lang === 'en'
-      ? 'Upgrade your plan to support more artists.'
-      : 'Перейдите на более высокий план, чтобы поддерживать больше артистов.');
-  const upgradePlanLabel =
-    t?.upgradePlanButton ??
-    ui?.header?.avatarMenu?.upgradePlan ??
-    (lang === 'en' ? 'Upgrade Plan' : 'Улучшить план');
   const supportInactiveDescription =
+    t?.subscriptionExpiredDescription ??
     t?.supportInactiveDescription ??
     (lang === 'en'
-      ? 'Renew support to continue accessing exclusive content and managing your collection.'
-      : 'Возобновите поддержку, чтобы получать доступ к эксклюзивному контенту и управлять коллекцией.');
+      ? 'Access to exclusive content is suspended.'
+      : 'Доступ к эксклюзивному контенту приостановлен.');
   const renewSupportLabel =
+    t?.renewSupportLink ??
     t?.renewSupportButton ??
     ui?.buttons?.artistCollectionRenew ??
-    (lang === 'en' ? 'Renew Support' : 'Продлить поддержку');
-  const planChangeBannerText =
-    t?.planChangeBanner ??
-    (lang === 'en'
-      ? 'Your plan changed. Previously supported artists are now inactive. Select up to {count} to support with your current plan.'
-      : 'План изменился. Ранее поддерживаемые артисты теперь неактивны. Выберите до {count} для поддержки по текущему плану.');
+    (lang === 'en' ? 'Renew Support →' : 'Продлить поддержку →');
+  const subscriptionActiveLabel =
+    t?.subscriptionActiveLabel ?? (lang === 'en' ? 'Subscription active' : 'Подписка активна');
+  const subscriptionExpiringLabel =
+    t?.subscriptionExpiringLabel ??
+    (lang === 'en' ? 'Subscription ending' : 'Подписка заканчивается');
+  const subscriptionExpiredLabel =
+    t?.subscriptionExpiredLabel ?? (lang === 'en' ? 'Subscription expired' : 'Подписка истекла');
+  const renewalDateTemplate =
+    t?.subscriptionRenewalDate ?? (lang === 'en' ? 'Renews {date}' : 'Продление {date}');
   const selectModeLabel = t?.selectMode ?? (lang === 'en' ? 'Select' : 'Выбрать');
   const cancelSelectLabel = t?.cancelSelect ?? (lang === 'en' ? 'Done' : 'Готово');
   const selectedCountLabel =
@@ -532,19 +489,15 @@ export function MyArchiveContent({ active }: Props) {
     <>
       <section className={clsx('collection__tab', isSelectMode && 'collection__tab--select-mode')}>
         <div className="user-dashboard__section">
-          <header className="collection__header">
-            <div className="collection__header-text">
-              <p className="collection__subtitle">{subtitle}</p>
-            </div>
-
-            <div className="collection__header-actions">
+          <header className="collection__top">
+            <div className="collection__top-col collection__top-col--plan">
               <button
                 type="button"
-                className="collection__slots-trigger"
+                className="collection__plan-trigger"
                 onClick={() => openSupportModal()}
-                aria-label={`${slotsUsed} / ${slotsLimit}. ${managePlanLabel}`}
+                aria-label={`${planSlug ? getPlanDisplayName(planSlug) : ''} ${slotsUsed} / ${slotsLimit}. ${managePlanLabel}`}
               >
-                <DashboardCard interactive className="collection__slots-card">
+                <DashboardCard interactive className="collection__plan-card">
                   <div
                     className="collection__slots-ring"
                     style={{ '--collection-slots-progress': `${slotsProgress}%` } as CSSProperties}
@@ -557,18 +510,77 @@ export function MyArchiveContent({ active }: Props) {
                       })}
                     />
                   </div>
-                  <div className="collection__slots-meta">
-                    <div className="collection__slots-top">
+                  <div className="collection__plan-meta">
+                    {planSlug ? (
+                      <span className="collection__plan-name">{getPlanDisplayName(planSlug)}</span>
+                    ) : null}
+                    <p className="collection__slots-line">
                       <span className="collection__slots-count" aria-live="polite">
-                        {slotsUsed} / {slotsLimit}
-                      </span>
-                      {planSlug ? <SubscriptionPlanBadge planSlug={planSlug} /> : null}
-                    </div>
-                    <span className="collection__slots-label">{slotsUsedLabel}</span>
+                        {slotsUsed}/{slotsLimit}
+                      </span>{' '}
+                      <span className="collection__slots-label">{slotsUsedLabel}</span>
+                    </p>
                     <span className="collection__slots-manage">{managePlanLabel}</span>
                   </div>
                 </DashboardCard>
               </button>
+            </div>
+
+            <div className="collection__top-col collection__top-col--subscription">
+              <DashboardCard
+                className={clsx(
+                  'collection__subscription-card',
+                  subscriptionStatus && `collection__subscription-card--${subscriptionStatus}`
+                )}
+              >
+                {subscriptionStatus ? (
+                  <div className="collection__subscription-content">
+                    <div className="collection__subscription-head">
+                      <StatusBadge variant={subscriptionStatusBadgeVariant(subscriptionStatus)}>
+                        {subscriptionStatus === 'active'
+                          ? subscriptionActiveLabel
+                          : subscriptionStatus === 'expiring'
+                            ? subscriptionExpiringLabel
+                            : subscriptionExpiredLabel}
+                      </StatusBadge>
+
+                      {subscriptionStatus === 'expired' ? (
+                        <DashboardButton
+                          variant="primary"
+                          className="collection__subscription-cta"
+                          onClick={() => openSupportModal()}
+                        >
+                          {renewSupportLabel}
+                        </DashboardButton>
+                      ) : null}
+                    </div>
+
+                    {subscriptionStatus === 'expired' ? (
+                      <p className="collection__subscription-detail collection__subscription-detail--with-icon">
+                        <Calendar
+                          {...dashboardActionIconProps({
+                            size: 14,
+                            className: 'collection__subscription-detail-icon',
+                          })}
+                          aria-hidden
+                        />
+                        <span>{supportInactiveDescription}</span>
+                      </p>
+                    ) : (
+                      <>
+                        {renewalDateLabel ? (
+                          <p className="collection__subscription-detail">
+                            {renewalDateTemplate.replace('{date}', renewalDateLabel)}
+                          </p>
+                        ) : null}
+                        {daysRemainingLabel ? (
+                          <p className="collection__subscription-detail">{daysRemainingLabel}</p>
+                        ) : null}
+                      </>
+                    )}
+                  </div>
+                ) : null}
+              </DashboardCard>
             </div>
           </header>
 
@@ -580,43 +592,14 @@ export function MyArchiveContent({ active }: Props) {
 
           {data ? (
             <>
-              {showPlanChangeBanner ? (
-                <DashboardCard className="collection__banner collection__banner--warning">
-                  <p role="status">{planChangeBannerText.replace('{count}', String(slotsLimit))}</p>
-                </DashboardCard>
-              ) : null}
-
-              {showUpgradeCard ? (
-                <DashboardCard className="collection__banner collection__banner--full">
-                  <div className="collection__banner-icon" aria-hidden>
-                    <LockIcon
-                      {...dashboardActionIconProps({
-                        size: 18,
-                        className: 'collection__banner-icon-svg',
-                      })}
-                    />
-                  </div>
-                  <div className="collection__banner-text">
-                    <p className="collection__banner-title">{archiveFullLabel}</p>
-                    <p className="collection__banner-line">{archiveFullSlotsUsedLine}</p>
-                    <p className="collection__banner-line">{archiveFullUpgradeActionLine}</p>
-                  </div>
-                  <DashboardCta
-                    className="collection__banner-cta"
-                    onClick={() => openSupportModal()}
-                  >
-                    {upgradePlanLabel}
-                  </DashboardCta>
-                </DashboardCard>
-              ) : null}
-
               {inactiveCount > 0 ? (
                 <div className="collection__inactive-toolbar">
                   <span className="collection__inactive-toolbar-count">
                     {inactiveArtistsLabel.replace('{count}', String(inactiveCount))}
                   </span>
                   <div className="collection__inactive-toolbar-actions">
-                    <DashboardAction
+                    <DashboardButton
+                      variant="outline"
                       destructive
                       disabled={Boolean(removingId) || bulkLoading}
                       onClick={() => void handleClearInactiveCollection()}
@@ -628,9 +611,9 @@ export function MyArchiveContent({ active }: Props) {
                         aria-hidden
                       />
                       {clearCollectionLabel}
-                    </DashboardAction>
-                    <button
-                      type="button"
+                    </DashboardButton>
+                    <DashboardButton
+                      variant="outline"
                       className={clsx(
                         'collection__select-toggle',
                         isSelectMode && 'collection__select-toggle--active'
@@ -638,22 +621,17 @@ export function MyArchiveContent({ active }: Props) {
                       onClick={toggleSelectMode}
                     >
                       {isSelectMode ? cancelSelectLabel : selectModeLabel}
-                    </button>
+                    </DashboardButton>
                   </div>
                 </div>
               ) : null}
 
               <div className="collection__list">
                 {(data?.artists ?? []).map((artist) => {
-                  const isRemoving = removingId === artist.artistUserId;
                   const genre = artist.genreLabel[lang] ?? artist.genreLabel.en;
                   const artistHref = artist.slug
                     ? `/?artist=${encodeURIComponent(artist.slug)}`
                     : '/';
-                  const lockDate = formatLockDate(
-                    isCollectionArtistLocked(artist) ? artist.lockedUntil : null,
-                    lang
-                  );
                   const artistIsLocked = isCollectionArtistLocked(artist);
                   const removable = canRemoveArtist(artist, isPremium);
                   const removeDisabled = Boolean(removingId) || bulkLoading || !removable;
@@ -727,43 +705,11 @@ export function MyArchiveContent({ active }: Props) {
                             )}
                           </h3>
                           <span className="collection__genre">{genre}</span>
-
-                          <div className="collection__status">
-                            {!artist.isActive ? (
-                              <>
-                                <StatusBadge variant="inactive">{supportInactiveLabel}</StatusBadge>
-                                <p className="collection__status-hint">{inactiveSlotHint}</p>
-                              </>
-                            ) : artistIsLocked && lockDate ? (
-                              <>
-                                <StatusBadge variant="locked">
-                                  {lockedUntilTemplate.replace('{date}', lockDate)}
-                                </StatusBadge>
-                                <p className="collection__status-hint">{lockedHint}</p>
-                              </>
-                            ) : (
-                              <>
-                                <StatusBadge variant="published">{canRemoveLabel}</StatusBadge>
-                                <p className="collection__status-hint">
-                                  {!isPremium ? removeSubscriptionTooltip : canRemoveHint}
-                                </p>
-                              </>
-                            )}
-                          </div>
-
-                          <DashboardRow
-                            className="collection__since-row"
-                            variant="start"
-                            label={inArchiveSince}
-                          >
-                            <DashboardRowValue>
-                              <span aria-hidden>✓</span> {formatArchiveDate(artist.addedAt, lang)}
-                            </DashboardRowValue>
-                          </DashboardRow>
                         </div>
 
                         {!isSelectMode ? (
-                          <DashboardAction
+                          <DashboardButton
+                            variant="icon"
                             destructive
                             className="collection__remove-action"
                             disabled={removeDisabled}
@@ -777,14 +723,11 @@ export function MyArchiveContent({ active }: Props) {
                           >
                             <Trash2Icon
                               {...dashboardActionIconProps({
-                                size: 14,
+                                size: 16,
                               })}
                               aria-hidden
                             />
-                            {isRemoving
-                              ? (t?.removing ?? (lang === 'en' ? 'Removing…' : 'Удаляем…'))
-                              : removeLabel}
-                          </DashboardAction>
+                          </DashboardButton>
                         ) : null}
                       </DashboardCard>
                     </div>
@@ -797,26 +740,14 @@ export function MyArchiveContent({ active }: Props) {
                       <p className="collection__empty-title">+ {slotsAvailableText}</p>
                       <p className="collection__empty-hint">{emptySlotHint}</p>
                     </div>
-                    <DashboardCta as={Link} to="/" className="collection__card-cta">
-                      {discoverLabel}
-                    </DashboardCta>
-                  </DashboardCard>
-                ) : null}
-
-                {showRenewCard ? (
-                  <DashboardCard className="collection__card--renew">
-                    <div className="collection__card-body collection__card-body--empty">
-                      <p className="collection__empty-title">
-                        <StatusBadge variant="inactive">{supportInactiveLabel}</StatusBadge>
-                      </p>
-                      <p className="collection__empty-hint">{supportInactiveDescription}</p>
-                    </div>
-                    <DashboardCta
+                    <DashboardButton
+                      variant="primary"
+                      as={Link}
+                      to="/"
                       className="collection__card-cta"
-                      onClick={() => openSupportModal()}
                     >
-                      {renewSupportLabel}
-                    </DashboardCta>
+                      {discoverLabel}
+                    </DashboardButton>
                   </DashboardCard>
                 ) : null}
               </div>
@@ -834,21 +765,23 @@ export function MyArchiveContent({ active }: Props) {
                     ) : null}
                   </div>
                   <div className="collection__action-bar-buttons">
-                    <DashboardAction
+                    <DashboardButton
+                      variant="outline"
                       destructive
                       disabled={removeSelectedDisabled}
                       onClick={() => void handleBulkRemove()}
                     >
                       <Trash2Icon size={14} aria-hidden />
                       {removeSelectedLabel}
-                    </DashboardAction>
-                    <DashboardCta
+                    </DashboardButton>
+                    <DashboardButton
+                      variant="primary"
                       disabled={activateDisabled}
                       onClick={() => void handleActivateSelected()}
                     >
                       <LockIcon size={14} aria-hidden />
                       {activateSelectedTemplate.replace('{count}', String(activateCount))}
-                    </DashboardCta>
+                    </DashboardButton>
                   </div>
                 </footer>
               ) : null}

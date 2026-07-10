@@ -124,10 +124,6 @@
     }
   }
 
-  &__button--cancel {
-    @include dashboard-btn-ghost($margin: 0);
-  }
-
   &__button--confirm.confirmation-modal__button--info,
   &__button--confirm.confirmation-modal__button--warning {
     @include dashboard-btn-primary($margin: 0);

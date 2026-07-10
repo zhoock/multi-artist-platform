@@ -52,7 +52,7 @@ describe('PaymentSettings', () => {
 
     expect(container.querySelector('.dashboard-section')).toBeTruthy();
     expect(container.querySelector('.dashboard-card')).toBeTruthy();
-    expect(container.querySelector('.dashboard-cta')).toBeTruthy();
+    expect(container.querySelector('.dashboard-button--primary')).toBeTruthy();
     expect(screen.getByText('Enter Shop ID and Secret Key')).toBeTruthy();
   });
 

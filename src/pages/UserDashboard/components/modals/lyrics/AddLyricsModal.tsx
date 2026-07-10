@@ -5,6 +5,7 @@ import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 import { useLang } from '@app/providers/lang';
 import { useDashboardSaveLock } from '@shared/lib/hooks/useDashboardSaveLock';
+import { DashboardButton } from '@shared/ui/dashboard';
 import { DashboardSaveSpinner } from '@shared/ui/dashboard-save/DashboardSaveSpinner';
 import { ModalCloseIcon } from '@shared/ui/icons/ModalCloseIcon';
 import '@shared/ui/dashboard-save/dashboard-save.scss';
@@ -89,14 +90,14 @@ export function AddLyricsModal({
             </div>
             <div className="add-lyrics-modal__header-trailing">
               {onPreview ? (
-                <button
-                  type="button"
+                <DashboardButton
+                  variant="outline"
                   className="add-lyrics-modal__preview-button"
                   onClick={onPreview}
                   disabled={isSaving}
                 >
                   {ui?.dashboard?.preview ?? 'Preview'}
-                </button>
+                </DashboardButton>
               ) : null}
               <button
                 type="button"
@@ -150,14 +151,13 @@ export function AddLyricsModal({
           </div>
           <div className="add-lyrics-modal__divider"></div>
           <div className="add-lyrics-modal__actions">
-            <button
-              type="button"
-              className="add-lyrics-modal__button add-lyrics-modal__button--cancel"
+            <DashboardButton
+              variant="outline"
               onClick={() => lyricsAddCloseGuard.requestClose()}
               disabled={isSaving}
             >
               {ui?.dashboard?.cancel ?? 'Cancel'}
-            </button>
+            </DashboardButton>
             <button
               type="button"
               className={`add-lyrics-modal__button add-lyrics-modal__button--primary${

@@ -10,9 +10,7 @@ export {
   DashboardRowInlineError,
   type DashboardRowVariant,
 } from './DashboardRow';
-export { DashboardAction } from './DashboardAction';
-export { DashboardIconButton } from './DashboardIconButton';
-export { DashboardCta } from './DashboardCta';
+export { DashboardButton, type DashboardButtonVariant } from './DashboardButton';
 export { DashboardExpandableRowTrigger } from './DashboardExpandableRowTrigger';
 export { DashboardEmptyState } from './DashboardEmptyState';
 export { DashboardSpinner, DashboardLoadingState } from './DashboardSpinner';

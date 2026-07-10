@@ -3,9 +3,8 @@ import { useLang } from '@app/providers/lang';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 import {
-  DashboardAction,
+  DashboardButton,
   DashboardCard,
-  DashboardCta,
   DashboardRow,
   DashboardRowValue,
   DashboardSection,
@@ -140,7 +139,8 @@ export function PaymentSettings({ userId }: PaymentSettingsProps) {
                   />
                 }
                 action={
-                  <DashboardAction
+                  <DashboardButton
+                    variant="outline"
                     destructive
                     className={clsx(isThisSaving && 'payment-settings__action--loading')}
                     onClick={() => handleDisconnect(provider.id)}
@@ -154,7 +154,7 @@ export function PaymentSettings({ userId }: PaymentSettingsProps) {
                     ) : (
                       (copy?.disconnect ?? 'Disconnect')
                     )}
-                  </DashboardAction>
+                  </DashboardButton>
                 }
               >
                 <DashboardRowValue aria-hidden="true" />
@@ -191,17 +191,13 @@ export function PaymentSettings({ userId }: PaymentSettingsProps) {
                       ))}
                     </ol>
                     <p>
-                      <a
-                        href="https://yookassa.ru/"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="payment-settings__link"
-                      >
+                      <a href="https://yookassa.ru/" target="_blank" rel="noopener noreferrer">
                         {providerCopy?.registerLink ?? 'Go to YooKassa to sign up →'}
                       </a>
                     </p>
                   </div>
-                  <DashboardCta
+                  <DashboardButton
+                    variant="primary"
                     className="payment-settings__cta"
                     onClick={() => {
                       setShowForm((prev) => ({ ...prev, [provider.id]: true }));
@@ -215,7 +211,7 @@ export function PaymentSettings({ userId }: PaymentSettingsProps) {
                     disabled={isSaveInProgress}
                   >
                     {copy?.connectButton ?? 'Enter Shop ID and Secret Key'}
-                  </DashboardCta>
+                  </DashboardButton>
                 </>
               ) : (
                 <div className="payment-settings__form">
@@ -265,9 +261,8 @@ export function PaymentSettings({ userId }: PaymentSettingsProps) {
                   </DashboardRow>
 
                   <div className="payment-settings__form-actions">
-                    <button
-                      type="button"
-                      className="payment-settings__cancel-button"
+                    <DashboardButton
+                      variant="outline"
                       onClick={() => {
                         setShowForm((prev) => ({ ...prev, [provider.id]: false }));
                         setLocalShopId((prev) => ({
@@ -279,8 +274,9 @@ export function PaymentSettings({ userId }: PaymentSettingsProps) {
                       disabled={isSaveInProgress}
                     >
                       {ui?.dashboard?.cancel ?? 'Cancel'}
-                    </button>
-                    <DashboardCta
+                    </DashboardButton>
+                    <DashboardButton
+                      variant="primary"
                       className="payment-settings__cta"
                       loading={isThisSaving}
                       onClick={() => {
@@ -299,7 +295,7 @@ export function PaymentSettings({ userId }: PaymentSettingsProps) {
                       {isThisSaving
                         ? (copy?.connecting ?? 'Connecting...')
                         : (copy?.connect ?? 'Connect')}
-                    </DashboardCta>
+                    </DashboardButton>
                   </div>
                 </div>
               )}

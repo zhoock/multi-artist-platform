@@ -205,7 +205,7 @@ export function DeleteAccountModal({ isOpen, onClose, onDeleted, copy }: DeleteA
 
           <div className="delete-account-modal__actions">
             <PopupCloseButton
-              className="delete-account-modal__button delete-account-modal__button--cancel"
+              className="delete-account-modal__button dashboard-button dashboard-button--outline"
               disabled={loading}
             >
               {copy.cancel}

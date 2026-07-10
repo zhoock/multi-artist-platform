@@ -416,7 +416,17 @@ export interface MyArchiveDto {
   slotsUsed: number;
   slotsLimit: number;
   inactiveCount: number;
+  subscriptionExpiresAt: string | null;
   artists: MyArchiveArtistDto[];
+}
+
+function toSubscriptionExpiresAtIso(expiresAt: Date | null | undefined): string | null {
+  if (!expiresAt) return null;
+  if (expiresAt instanceof Date) {
+    return Number.isNaN(expiresAt.getTime()) ? null : expiresAt.toISOString();
+  }
+  const parsed = new Date(expiresAt);
+  return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
 }
 
 interface MyArchiveRow {
@@ -525,6 +535,7 @@ export async function getMyArchiveForUser(userId: string): Promise<MyArchiveDto>
       slotsUsed,
       slotsLimit,
       inactiveCount,
+      subscriptionExpiresAt: toSubscriptionExpiresAtIso(subscription?.expiresAt),
       artists,
     };
   } catch (error) {
@@ -534,6 +545,7 @@ export async function getMyArchiveForUser(userId: string): Promise<MyArchiveDto>
         slotsUsed: 0,
         slotsLimit,
         inactiveCount: 0,
+        subscriptionExpiresAt: toSubscriptionExpiresAtIso(subscription?.expiresAt),
         artists: [],
       };
     }

@@ -97,6 +97,14 @@
 - Подключите ESLint-правила для контроля зависимостей (например, `eslint-plugin-boundaries`).
 - После реорганизации запускайте тесты и линтер, чтобы отследить ошибки импорта.
 
+### Dashboard Design System
+
+Базовая дизайн-система личного кабинета (UI Kit v1): примитивы, шесть уровней интерактивных элементов, правила модалок и границы kit/domain.
+
+→ [docs/architecture/dashboard-design-system.md](./architecture/dashboard-design-system.md)
+
+Импорт: `@shared/ui/dashboard` · Исходники: `src/shared/ui/dashboard/`
+
 ### Процесс миграции
 
 1. Инвентаризируйте текущий код (списки компонентов, утилит, хуков).

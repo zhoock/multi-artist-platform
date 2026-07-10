@@ -65,7 +65,7 @@ export function ConfirmationModal({
             <p className="confirmation-modal__warning">{irreversibleHintText}</p>
           ) : null}
           <div className="confirmation-modal__actions">
-            <PopupCloseButton className="confirmation-modal__button confirmation-modal__button--cancel">
+            <PopupCloseButton className="confirmation-modal__button dashboard-button dashboard-button--outline">
               {cancelText}
             </PopupCloseButton>
             <button

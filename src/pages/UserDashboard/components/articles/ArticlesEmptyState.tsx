@@ -1,7 +1,7 @@
 import { FileText as FileTextIcon, Upload as UploadIcon } from 'lucide-react';
 
 import type { IInterface } from '@models';
-import { DashboardEmptyState, DashboardCta } from '@shared/ui/dashboard';
+import { DashboardEmptyState, DashboardButton } from '@shared/ui/dashboard';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 
 type ArticlesEmptyStateProps = {
@@ -21,10 +21,10 @@ export function ArticlesEmptyState({ ui, onCreateArticle }: ArticlesEmptyStatePr
       title={d?.articlesEmptyTitle ?? "You don't have any articles yet"}
       description={d?.articlesEmptyDescription ?? 'Publish your first article.'}
       action={
-        <DashboardCta onClick={onCreateArticle}>
+        <DashboardButton variant="primary" onClick={onCreateArticle}>
           <UploadIcon {...dashboardActionIconProps({ size: 18 })} />
           <span>{d?.createArticle ?? 'Create article'}</span>
-        </DashboardCta>
+        </DashboardButton>
       }
     />
   );

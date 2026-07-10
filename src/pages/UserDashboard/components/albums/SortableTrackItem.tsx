@@ -13,7 +13,7 @@ import {
   type TrackVisibility,
 } from '@shared/lib/tracks/trackVisibility';
 import { TrackVisibilityIcon } from '@shared/ui/icons/TrackVisibilityIcon';
-import { DashboardCard, DashboardIconButton } from '@shared/ui/dashboard';
+import { DashboardCard, DashboardButton } from '@shared/ui/dashboard';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 import {
   DASHBOARD_ROW_STATE_FLASH_CLASS,
@@ -342,7 +342,8 @@ export function SortableTrackItem({
                 </button>
 
                 <div className="user-dashboard__expanded-track-actions">
-                  <DashboardIconButton
+                  <DashboardButton
+                    variant="icon"
                     onClick={(e) => {
                       e.stopPropagation();
                       handleEdit(e);
@@ -350,8 +351,9 @@ export function SortableTrackItem({
                     aria-label={ui?.dashboard?.editTrack ?? 'Edit track'}
                   >
                     <PencilIcon {...dashboardActionIconProps()} />
-                  </DashboardIconButton>
-                  <DashboardIconButton
+                  </DashboardButton>
+                  <DashboardButton
+                    variant="icon"
                     destructive
                     onClick={(e) => {
                       e.stopPropagation();
@@ -360,7 +362,7 @@ export function SortableTrackItem({
                     aria-label={ui?.dashboard?.deleteTrack ?? 'Delete track'}
                   >
                     <Trash2Icon {...dashboardActionIconProps()} />
-                  </DashboardIconButton>
+                  </DashboardButton>
                 </div>
               </>
             ) : (

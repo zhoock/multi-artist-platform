@@ -83,8 +83,7 @@ dialog {
       align-items: center;
       gap: 0.55em;
       align-self: flex-start;
-
-      @include dashboard-btn-secondary($margin: 0, $padding: var(--ms-01) var(--ms-1));
+      padding: var(--ms-01) var(--ms-1);
     }
 
     &__hint {
@@ -159,10 +158,6 @@ dialog {
     }
 
     &__button {
-      &--cancel {
-        @include dashboard-btn-ghost;
-      }
-
       &--primary {
         @include dashboard-btn-primary;
       }

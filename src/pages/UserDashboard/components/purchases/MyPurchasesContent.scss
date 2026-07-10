@@ -82,8 +82,8 @@ dialog {
 
       &__download-all {
         min-height: auto;
-
-        @include dashboard-btn-ghost($padding: var(--ms-02) var(--ms-01), $font-size: var(--ms-01));
+        padding: var(--ms-02) var(--ms-01);
+        font-size: var(--ms-01);
       }
 
       &__track-label {
@@ -110,8 +110,6 @@ dialog {
 
       &__track-download {
         white-space: nowrap;
-
-        @include dashboard-btn-secondary;
       }
 
       &__footer {

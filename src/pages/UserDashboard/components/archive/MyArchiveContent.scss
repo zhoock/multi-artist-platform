@@ -25,41 +25,24 @@ dialog {
         }
       }
 
-      &__header {
-        display: flex;
-        flex-direction: column;
-        gap: var(--ms-1);
+      &__top {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: var(--ms-0);
+        align-items: stretch;
 
-        @include breakpoint(tablet) {
-          flex-direction: row;
-          justify-content: space-between;
-          align-items: flex-start;
+        @include breakpoint(old-phones) {
+          grid-template-columns: 1fr;
         }
       }
 
-      &__header-text {
-        flex: 1;
+      &__top-col {
+        display: flex;
         min-width: 0;
       }
 
-      &__subtitle {
-        margin: 0;
-        max-width: 42rem;
-
-        @include dashboard-helper-text;
-
-        line-height: 1.5;
-      }
-
-      &__header-actions {
-        display: flex;
-        flex-wrap: wrap;
-        align-items: center;
-        justify-content: flex-end;
-        gap: var(--ms-01);
-      }
-
-      &__slots-trigger {
+      &__plan-trigger {
+        width: 100%;
         padding: 0;
         color: inherit;
         font: inherit;
@@ -71,18 +54,24 @@ dialog {
         cursor: pointer;
       }
 
-      &__slots-card {
+      &__plan-card,
+      &__subscription-card {
+        width: 100%;
+        height: 100%;
+        padding: var(--collection-block-padding-y) var(--collection-block-padding-x);
+      }
+
+      &__plan-card {
         display: flex;
         align-items: center;
-        gap: var(--collection-block-gap);
-        padding: var(--collection-block-padding-y) var(--collection-block-padding-x);
-        flex-shrink: 0;
+        gap: var(--ms-0);
       }
 
       &__slots-ring {
         --collection-slots-progress: 0%;
 
         display: grid;
+        flex-shrink: 0;
         width: 2.75rem;
         height: 2.75rem;
         background: conic-gradient(
@@ -109,36 +98,92 @@ dialog {
         color: var(--dark-greenish-yellow);
       }
 
-      &__slots-meta {
+      &__plan-meta {
         display: flex;
         flex-direction: column;
-        gap: 0.25rem;
+        gap: 0.15rem;
+        min-width: 0;
       }
 
-      &__slots-top {
-        display: flex;
-        flex-wrap: wrap;
-        align-items: center;
-        gap: 0.45rem;
+      &__plan-name {
+        color: var(--dashboard-text-primary);
+        font-size: var(--ms-0);
+        font-weight: 600;
+        line-height: 1.2;
+      }
+
+      &__slots-line {
+        margin: 0;
+        line-height: 1.25;
       }
 
       &__slots-count {
         color: var(--dashboard-text-primary);
         font-size: var(--ms-0);
         font-weight: 600;
-        line-height: 1.1;
       }
 
       &__slots-label {
         @include dashboard-helper-text;
-
-        line-height: 1.2;
       }
 
       &__slots-manage {
+        margin-top: 0.15rem;
         color: var(--dark-greenish-yellow);
         font-size: var(--dashboard-helper-font-size);
-        line-height: 1.2;
+      }
+
+      &__subscription-card {
+        display: flex;
+        align-items: center;
+      }
+
+      &__subscription-content {
+        display: flex;
+        flex: 1;
+        flex-direction: column;
+        justify-content: center;
+        gap: 0.35rem;
+        min-width: 0;
+      }
+
+      &__subscription-head {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--ms-01);
+      }
+
+      &__subscription-detail {
+        margin: 0;
+
+        @include dashboard-helper-text;
+
+        line-height: 1.35;
+
+        &--with-icon {
+          display: flex;
+          align-items: flex-start;
+          gap: 0.4rem;
+        }
+      }
+
+      &__subscription-detail-icon {
+        flex-shrink: 0;
+        margin-top: 0.1rem;
+        color: var(--dashboard-text-secondary);
+      }
+
+      &__subscription-cta {
+        flex-shrink: 0;
+        width: auto;
+        margin-left: auto;
+
+        @include breakpoint(old-phones) {
+          width: 100%;
+          margin-left: 0;
+        }
       }
 
       &__loading,
@@ -156,85 +201,6 @@ dialog {
         color: var(--soft-red);
         background: rgb(var(--soft-red-rgb) / 10%);
         border: 1px solid rgb(var(--soft-red-rgb) / 30%);
-      }
-
-      &__banner {
-        display: flex;
-        align-items: center;
-        gap: var(--collection-block-gap);
-        padding: var(--collection-block-padding-y) var(--collection-block-padding-x);
-
-        &--warning {
-          @include dashboard-helper-text;
-
-          line-height: 1.45;
-          background: rgb(var(--dark-greenish-yellow-rgb) / 6%);
-          border-color: rgb(var(--dark-greenish-yellow-rgb) / 18%);
-
-          p {
-            margin: 0;
-          }
-        }
-
-        &--full {
-          border-style: dashed;
-          border-color: rgb(var(--dark-greenish-yellow-rgb) / 45%);
-
-          @include breakpoint(old-phones) {
-            flex-direction: column;
-            align-items: stretch;
-            gap: var(--ms-0);
-            padding: var(--collection-block-padding-y);
-          }
-        }
-      }
-
-      &__banner-icon {
-        display: grid;
-        flex-shrink: 0;
-        width: 2.75rem;
-        height: 2.75rem;
-        color: var(--dark-greenish-yellow);
-        border: 1px solid rgb(var(--dark-greenish-yellow-rgb) / 45%);
-        border-radius: 50%;
-        place-items: center;
-      }
-
-      &__banner-icon-svg {
-        display: inline-flex;
-      }
-
-      &__banner-text {
-        flex: 1;
-        min-width: 0;
-      }
-
-      &__banner-title {
-        margin: 0 0 0.5rem;
-        color: var(--dashboard-text-primary);
-        font-size: var(--ms-0);
-        line-height: 1.25;
-      }
-
-      &__banner-line {
-        margin: 0;
-
-        @include dashboard-helper-text;
-
-        line-height: 1.45;
-
-        & + & {
-          margin-top: 0.25rem;
-        }
-      }
-
-      &__banner-cta {
-        flex-shrink: 0;
-        width: auto;
-
-        @include breakpoint(old-phones) {
-          width: 100%;
-        }
       }
 
       &__inactive-toolbar {
@@ -258,11 +224,8 @@ dialog {
       }
 
       &__select-toggle {
-        @include dashboard-btn-secondary(
-          $margin: 0,
-          $padding: var(--ms-01) var(--ms-0),
-          $font-size: 0.875rem
-        );
+        padding: var(--ms-01) var(--ms-0);
+        font-size: 0.875rem;
 
         &--active {
           color: var(--dark-greenish-yellow);
@@ -294,11 +257,11 @@ dialog {
         }
 
         @include breakpoint(old-phones) {
-          grid-template-columns: 1fr;
+          grid-template-columns: auto 1fr auto;
           padding: var(--collection-block-padding-y);
 
           .collection__artist-card-wrap--selectable & {
-            grid-template-columns: auto 1fr;
+            grid-template-columns: auto auto 1fr auto;
           }
         }
       }
@@ -309,27 +272,19 @@ dialog {
         color: var(--dark-greenish-yellow);
       }
 
-      &__card--empty,
-      &__card--renew {
+      &__card--empty {
         display: grid;
         grid-template-columns: 1fr auto;
         align-items: center;
         gap: var(--collection-block-gap);
         padding: var(--collection-block-padding-y) var(--collection-block-padding-x);
         border-style: dashed;
+        border-color: rgb(var(--dark-greenish-yellow-rgb) / 35%);
         background: transparent;
 
         @include breakpoint(old-phones) {
           grid-template-columns: 1fr;
         }
-      }
-
-      &__card--empty {
-        border-color: rgb(var(--dark-greenish-yellow-rgb) / 35%);
-      }
-
-      &__card--renew {
-        border-color: rgb(var(--soft-red-rgb) / 35%);
       }
 
       &__card-body {
@@ -341,8 +296,8 @@ dialog {
       }
 
       &__cover {
-        width: 3.5rem;
-        height: 3.5rem;
+        width: 3rem;
+        height: 3rem;
         background: var(--dashboard-card-bg);
         border-radius: var(--ms-02);
         overflow: hidden;
@@ -361,13 +316,13 @@ dialog {
         width: 100%;
         height: 100%;
         color: var(--dark-greenish-yellow);
-        font-size: 1.25rem;
+        font-size: 1.1rem;
         font-weight: 600;
         background: rgb(var(--dark-greenish-yellow-rgb) / 12%);
       }
 
       &__name {
-        margin: 0 0 0.2rem;
+        margin: 0 0 0.15rem;
         font-size: var(--ms-0);
         line-height: 1.25;
 
@@ -385,7 +340,7 @@ dialog {
 
       &__genre {
         display: inline-block;
-        margin: 0.35rem 0;
+        margin: 0;
         padding: 0.1rem 0.45rem;
 
         @include dashboard-helper-text;
@@ -394,24 +349,10 @@ dialog {
         border-radius: 999px;
       }
 
-      &__status {
-        margin-top: 0.35rem;
-      }
-
-      &__status-hint {
-        margin: 0.2rem 0 0;
-
-        @include dashboard-helper-text;
-
-        line-height: 1.35;
-      }
-
-      &__since-row {
-        margin-top: 0.35rem;
-      }
-
       &__remove-action {
         align-self: center;
+        min-width: 2rem;
+        padding-inline: var(--ms-01);
       }
 
       &__empty-title {

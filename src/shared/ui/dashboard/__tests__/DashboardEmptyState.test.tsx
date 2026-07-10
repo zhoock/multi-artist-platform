@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 
 import { DashboardEmptyState } from '../DashboardEmptyState';
-import { DashboardCta } from '../DashboardCta';
+import { DashboardButton } from '../DashboardButton';
 
 describe('DashboardEmptyState', () => {
   it('renders tab variant', () => {
@@ -42,16 +42,20 @@ describe('DashboardEmptyState', () => {
     expect(screen.getByRole('button', { name: 'Add' })).toBeTruthy();
   });
 
-  it('accepts DashboardCta as action', () => {
+  it('accepts DashboardButton primary as action', () => {
     const { container } = render(
       <DashboardEmptyState
         variant="tab"
         title="No albums yet"
-        action={<DashboardCta onClick={() => undefined}>Create album</DashboardCta>}
+        action={
+          <DashboardButton variant="primary" onClick={() => undefined}>
+            Create album
+          </DashboardButton>
+        }
       />
     );
 
-    expect(container.querySelector('.dashboard-cta')).toBeTruthy();
+    expect(container.querySelector('.dashboard-button--primary')).toBeTruthy();
   });
 
   it('applies multiline description modifier', () => {

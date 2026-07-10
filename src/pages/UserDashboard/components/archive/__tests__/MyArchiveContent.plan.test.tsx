@@ -65,12 +65,59 @@ describe('MyArchiveContent plan display', () => {
     openSupportModalMock.mockReset();
   });
 
-  test('shows plan-change banner when inactive artists remain after downgrade', async () => {
+  test('shows two-column header with plan and subscription status when active', async () => {
+    getMyArchiveMock.mockResolvedValue({
+      isPremium: true,
+      slotsUsed: 1,
+      slotsLimit: 1,
+      inactiveCount: 0,
+      subscriptionExpiresAt: '2026-07-22T12:00:00.000Z',
+      artists: [activeArtist('a1', 'Artist')],
+    });
+
+    renderWithProviders(<MyArchiveContent active />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Explorer')).toBeTruthy();
+    });
+
+    expect(screen.getByText('1/1')).toBeTruthy();
+    expect(screen.getByText('Subscription active')).toBeTruthy();
+    expect(screen.getByText(/Renews/i)).toBeTruthy();
+    expect(screen.getByText(/days left/i)).toBeTruthy();
+    expect(document.querySelector('.collection__top')).toBeTruthy();
+    expect(document.querySelector('.collection__subscription-card--active')).toBeTruthy();
+    expect(screen.queryByText(/Previously supported artists are now inactive/i)).toBeNull();
+    expect(screen.queryByText('Collection Full')).toBeNull();
+  });
+
+  test('shows expiring subscription state in header without banner', async () => {
+    getMyArchiveMock.mockResolvedValue({
+      isPremium: true,
+      slotsUsed: 1,
+      slotsLimit: 1,
+      inactiveCount: 0,
+      subscriptionExpiresAt: '2026-07-13T12:00:00.000Z',
+      artists: [activeArtist('a1', 'Active Artist')],
+    });
+
+    renderWithProviders(<MyArchiveContent active />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Subscription ending')).toBeTruthy();
+    });
+
+    expect(document.querySelector('.collection__subscription-card--expiring')).toBeTruthy();
+    expect(screen.queryByText('Collection Full')).toBeNull();
+  });
+
+  test('shows inactive toolbar when plan changed and inactive artists remain', async () => {
     getMyArchiveMock.mockResolvedValue({
       isPremium: true,
       slotsUsed: 0,
       slotsLimit: 1,
       inactiveCount: 2,
+      subscriptionExpiresAt: '2026-08-03T12:00:00.000Z',
       artists: [inactiveArtist('a1', 'Artist One'), inactiveArtist('a2', 'Artist Two')],
     });
 
@@ -80,30 +127,7 @@ describe('MyArchiveContent plan display', () => {
       expect(screen.getByText('Explorer')).toBeTruthy();
     });
 
-    expect(screen.getByText('0 / 1')).toBeTruthy();
-    expect(screen.getByText(/Previously supported artists are now inactive/i)).toBeTruthy();
     expect(screen.getByText('2 inactive artists')).toBeTruthy();
-    expect(screen.queryByText('Collection Full')).toBeNull();
-  });
-
-  test('shows collection full when active slots are full even with inactive artists', async () => {
-    getMyArchiveMock.mockResolvedValue({
-      isPremium: true,
-      slotsUsed: 1,
-      slotsLimit: 1,
-      inactiveCount: 1,
-      artists: [activeArtist('a1', 'Active Artist'), inactiveArtist('a2', 'Inactive Artist')],
-    });
-
-    renderWithProviders(<MyArchiveContent active />);
-
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Upgrade Plan' })).toBeTruthy();
-    });
-
-    expect(screen.getByText('Collection Full')).toBeTruthy();
-    expect(screen.getByText("You've used all 1 collection slot.")).toBeTruthy();
-    expect(screen.getByText('1 inactive artists')).toBeTruthy();
     expect(screen.queryByText(/Previously supported artists are now inactive/i)).toBeNull();
   });
 
@@ -113,6 +137,7 @@ describe('MyArchiveContent plan display', () => {
       slotsUsed: 0,
       slotsLimit: 3,
       inactiveCount: 0,
+      subscriptionExpiresAt: null,
       artists: [],
     });
 
@@ -124,114 +149,89 @@ describe('MyArchiveContent plan display', () => {
 
     expect(screen.queryByText('Archivist')).toBeNull();
     expect(screen.queryByText('Explorer')).toBeNull();
-    expect(screen.queryByRole('button', { name: 'Renew Support' })).toBeNull();
-    expect(screen.queryByRole('button', { name: 'Upgrade Plan' })).toBeNull();
-    expect(document.querySelector('.collection__slots-trigger')).toBeNull();
+    expect(document.querySelector('.collection__top')).toBeNull();
   });
 
-  test('shows upgrade plan card when collection is full and support is active', async () => {
-    getMyArchiveMock.mockResolvedValue({
-      isPremium: true,
-      slotsUsed: 1,
-      slotsLimit: 1,
-      inactiveCount: 0,
-      artists: [activeArtist('a1', 'Artist')],
-    });
-
-    renderWithProviders(<MyArchiveContent active />);
-
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Upgrade Plan' })).toBeTruthy();
-    });
-
-    expect(screen.getByText('Collection Full')).toBeTruthy();
-    expect(screen.getByText("You've used all 1 collection slot.")).toBeTruthy();
-    expect(screen.getByText('Upgrade your plan to support more artists.')).toBeTruthy();
-    expect(screen.queryByRole('button', { name: 'Renew Support' })).toBeNull();
-
-    const banner = document.querySelector('.collection__banner--full');
-    const firstArtistCard = document.querySelector('.collection__artist-card');
-    expect(banner).toBeInstanceOf(Element);
-    expect(firstArtistCard).toBeInstanceOf(Element);
-    if (!(banner instanceof Element) || !(firstArtistCard instanceof Element)) {
-      throw new Error('Expected collection full banner and artist card in the DOM');
-    }
-    expect(
-      banner.compareDocumentPosition(firstArtistCard) & Node.DOCUMENT_POSITION_FOLLOWING
-    ).toBeTruthy();
-
-    fireEvent.click(screen.getByRole('button', { name: 'Upgrade Plan' }));
-    expect(openSupportModalMock).toHaveBeenCalledTimes(1);
-  });
-
-  test('shows renew support card when support is inactive and user had a plan', async () => {
+  test('shows renew support action only in subscription header when support is inactive', async () => {
     getMyArchiveMock.mockResolvedValue({
       isPremium: false,
       slotsUsed: 0,
       slotsLimit: 1,
       inactiveCount: 1,
+      subscriptionExpiresAt: '2026-06-01T12:00:00.000Z',
       artists: [inactiveArtist('a1', 'Artist')],
     });
 
     renderWithProviders(<MyArchiveContent active />);
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Renew Support' })).toBeTruthy();
+      expect(screen.getByRole('button', { name: 'Renew Support →' })).toBeTruthy();
     });
 
-    expect(screen.getAllByText('Support inactive').length).toBeGreaterThan(0);
+    expect(screen.getByText('Subscription expired')).toBeTruthy();
+    expect(screen.getByText('Access to exclusive content is suspended.')).toBeTruthy();
+    expect(document.querySelector('.collection__subscription-card--expired')).toBeTruthy();
+    expect(
+      document.querySelector('.collection__subscription-card .status-badge--inactive')
+    ).toBeTruthy();
+    expect(document.querySelector('.collection__card--renew')).toBeNull();
     expect(screen.queryByRole('button', { name: 'Upgrade Plan' })).toBeNull();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Renew Support' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Renew Support →' }));
     expect(openSupportModalMock).toHaveBeenCalledTimes(1);
   });
 
-  test('shows no plan actions when support is active and slots remain', async () => {
+  test('shows no renew or upgrade actions when support is active and slots remain', async () => {
     getMyArchiveMock.mockResolvedValue({
       isPremium: true,
       slotsUsed: 1,
       slotsLimit: 2,
       inactiveCount: 0,
+      subscriptionExpiresAt: '2026-08-03T12:00:00.000Z',
       artists: [activeArtist('a1', 'Artist')],
     });
 
     renderWithProviders(<MyArchiveContent active />);
 
     await waitFor(() => {
-      expect(screen.getByText('1 / 2')).toBeTruthy();
+      expect(screen.getByText('1/2')).toBeTruthy();
     });
 
     expect(screen.queryByRole('button', { name: 'Upgrade Plan' })).toBeNull();
-    expect(screen.queryByRole('button', { name: 'Renew Support' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Renew Support →' })).toBeNull();
     expect(screen.getByText(/slot available/i)).toBeTruthy();
   });
 
-  test('always shows remove button for active unlocked artist', async () => {
+  test('shows icon-only remove button for active unlocked artist', async () => {
     getMyArchiveMock.mockResolvedValue({
       isPremium: true,
       slotsUsed: 1,
       slotsLimit: 1,
       inactiveCount: 0,
+      subscriptionExpiresAt: '2026-08-03T12:00:00.000Z',
       artists: [activeArtist('a1', 'Active Artist')],
     });
 
     renderWithProviders(<MyArchiveContent active />);
 
     await waitFor(() => {
-      expect(screen.getByText('Can be removed')).toBeTruthy();
+      expect(screen.getByText('Active Artist')).toBeTruthy();
     });
 
-    expect(screen.getByText('You can remove this artist at any time.')).toBeTruthy();
+    expect(screen.queryByText('Can be removed')).toBeNull();
+    expect(screen.queryByText('You can remove this artist at any time.')).toBeNull();
+    expect(screen.queryByText(/In Collection since/i)).toBeNull();
     expect(screen.getByRole('button', { name: 'Remove' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Remove' })).not.toBeDisabled();
   });
 
-  test('shows disabled remove button for locked active artist', async () => {
+  test('shows disabled remove button for locked active artist without status badges', async () => {
     getMyArchiveMock.mockResolvedValue({
       isPremium: true,
       slotsUsed: 1,
       slotsLimit: 1,
       inactiveCount: 0,
+      subscriptionExpiresAt: '2026-07-20T12:00:00.000Z',
       artists: [
         activeArtist('a1', 'Locked Artist', {
           isLocked: true,
@@ -243,40 +243,43 @@ describe('MyArchiveContent plan display', () => {
     renderWithProviders(<MyArchiveContent active />);
 
     await waitFor(() => {
-      expect(screen.getByText(/Locked until/i)).toBeTruthy();
+      expect(screen.getByText('Locked Artist')).toBeTruthy();
     });
 
-    expect(screen.getByText("You can't remove this artist until the lock expires.")).toBeTruthy();
+    expect(screen.queryByText(/Locked until/i)).toBeNull();
     expect(screen.getByRole('button', { name: /^Remove\b/i })).toBeTruthy();
     expect(screen.getByRole('button', { name: /^Remove\b/i })).toBeDisabled();
   });
 
-  test('shows enabled remove button for inactive artist', async () => {
+  test('shows enabled remove button for inactive artist without extra status copy', async () => {
     getMyArchiveMock.mockResolvedValue({
       isPremium: true,
       slotsUsed: 0,
       slotsLimit: 1,
       inactiveCount: 1,
+      subscriptionExpiresAt: '2026-08-03T12:00:00.000Z',
       artists: [inactiveArtist('a1', 'Inactive Artist')],
     });
 
     renderWithProviders(<MyArchiveContent active />);
 
     await waitFor(() => {
-      expect(screen.getByText('Support inactive')).toBeTruthy();
+      expect(screen.getByText('Inactive Artist')).toBeTruthy();
     });
 
-    expect(screen.getByText('This artist no longer uses an active slot.')).toBeTruthy();
+    expect(screen.queryByText('Support inactive')).toBeNull();
+    expect(screen.queryByText('This artist no longer uses an active slot.')).toBeNull();
     expect(screen.getByRole('button', { name: 'Remove' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Remove' })).not.toBeDisabled();
   });
 
-  test('opens plan modal when slots card is clicked', async () => {
+  test('opens plan modal when plan card is clicked', async () => {
     getMyArchiveMock.mockResolvedValue({
       isPremium: true,
       slotsUsed: 2,
       slotsLimit: 3,
       inactiveCount: 0,
+      subscriptionExpiresAt: '2026-08-03T12:00:00.000Z',
       artists: [activeArtist('a1', 'Artist')],
     });
 
@@ -286,7 +289,7 @@ describe('MyArchiveContent plan display', () => {
       expect(screen.getByText('Manage Plan →')).toBeTruthy();
     });
 
-    fireEvent.click(document.querySelector('.collection__slots-trigger')!);
+    fireEvent.click(document.querySelector('.collection__plan-trigger')!);
     expect(openSupportModalMock).toHaveBeenCalledTimes(1);
   });
 
@@ -296,6 +299,7 @@ describe('MyArchiveContent plan display', () => {
       slotsUsed: 0,
       slotsLimit: 3,
       inactiveCount: 0,
+      subscriptionExpiresAt: null,
       artists: [],
     });
 
@@ -307,35 +311,38 @@ describe('MyArchiveContent plan display', () => {
 
     expect(screen.getByRole('link', { name: 'Discover Artists' })).toBeTruthy();
     expect(screen.queryByText('Manage Plan →')).toBeNull();
-    expect(screen.queryByText('0 / 3')).toBeNull();
-    expect(document.querySelector('.collection__slots-trigger')).toBeNull();
+    expect(screen.queryByText('0/3')).toBeNull();
+    expect(document.querySelector('.collection__plan-trigger')).toBeNull();
   });
 
-  test('shows slots card when collection is empty but subscription is active', async () => {
+  test('shows header when collection is empty but subscription is active', async () => {
     getMyArchiveMock.mockResolvedValue({
       isPremium: true,
       slotsUsed: 0,
       slotsLimit: 3,
       inactiveCount: 0,
+      subscriptionExpiresAt: '2026-08-03T12:00:00.000Z',
       artists: [],
     });
 
     renderWithProviders(<MyArchiveContent active />);
 
     await waitFor(() => {
-      expect(screen.getByText('0 / 3')).toBeTruthy();
+      expect(screen.getByText('0/3')).toBeTruthy();
     });
 
     expect(screen.queryByText('Your collection is empty')).toBeNull();
     expect(screen.getByText('Manage Plan →')).toBeTruthy();
+    expect(screen.getByText('Subscription active')).toBeTruthy();
   });
 
-  test('shows support inactive and allows remove for inactive artist with stale lock data', async () => {
+  test('allows remove for inactive artist with stale lock data and no card status', async () => {
     getMyArchiveMock.mockResolvedValue({
       isPremium: true,
       slotsUsed: 0,
       slotsLimit: 3,
       inactiveCount: 1,
+      subscriptionExpiresAt: '2026-08-03T12:00:00.000Z',
       artists: [
         {
           ...inactiveArtist('a1', 'Inactive Artist'),
@@ -348,7 +355,7 @@ describe('MyArchiveContent plan display', () => {
     renderWithProviders(<MyArchiveContent active />);
 
     await waitFor(() => {
-      expect(screen.getByText('Support inactive')).toBeTruthy();
+      expect(screen.getByText('Inactive Artist')).toBeTruthy();
     });
 
     expect(screen.queryByText(/Locked until/i)).toBeNull();
@@ -366,6 +373,7 @@ describe('MyArchiveContent plan display', () => {
       slotsUsed: 1,
       slotsLimit: 3,
       inactiveCount: 0,
+      subscriptionExpiresAt: '2026-08-03T12:00:00.000Z',
       artists: [activeArtist('a1', 'Active Artist')],
     });
 
@@ -385,6 +393,7 @@ describe('MyArchiveContent plan display', () => {
       slotsUsed: 0,
       slotsLimit: 3,
       inactiveCount: 0,
+      subscriptionExpiresAt: '2026-08-03T12:00:00.000Z',
       artists: [],
     };
     const archiveWithInactive = {
@@ -392,6 +401,7 @@ describe('MyArchiveContent plan display', () => {
       slotsUsed: 0,
       slotsLimit: 3,
       inactiveCount: 2,
+      subscriptionExpiresAt: '2026-08-03T12:00:00.000Z',
       artists: [inactiveArtist('a1', 'Artist One'), inactiveArtist('a2', 'Artist Two')],
     };
 
@@ -418,6 +428,7 @@ describe('MyArchiveContent plan display', () => {
       slotsUsed: 1,
       slotsLimit: 3,
       inactiveCount: 1,
+      subscriptionExpiresAt: '2026-08-03T12:00:00.000Z',
       artists: [activeArtist('a1', 'Active Artist'), inactiveArtist('a2', 'Inactive Artist')],
     });
 
@@ -440,6 +451,7 @@ describe('MyArchiveContent plan display', () => {
       slotsUsed: 0,
       slotsLimit: 3,
       inactiveCount: 1,
+      subscriptionExpiresAt: '2026-08-03T12:00:00.000Z',
       artists: [inactiveArtist('a1', 'Artist')],
     });
 
@@ -465,6 +477,7 @@ describe('MyArchiveContent plan display', () => {
       slotsUsed: 0,
       slotsLimit: 3,
       inactiveCount: 0,
+      subscriptionExpiresAt: '2026-08-03T12:00:00.000Z',
       artists: [],
     };
 
@@ -473,6 +486,7 @@ describe('MyArchiveContent plan display', () => {
       slotsUsed: 0,
       slotsLimit: 3,
       inactiveCount: 1,
+      subscriptionExpiresAt: '2026-08-03T12:00:00.000Z',
       artists: [inactiveArtist('a1', 'Inactive Artist')],
     });
     removeArtistFromArchiveApiMock.mockResolvedValue({ archive: emptyArchive });
@@ -496,6 +510,7 @@ describe('MyArchiveContent plan display', () => {
       slotsUsed: 0,
       slotsLimit: 3,
       inactiveCount: 0,
+      subscriptionExpiresAt: '2026-08-03T12:00:00.000Z',
       artists: [],
     };
 
@@ -505,6 +520,7 @@ describe('MyArchiveContent plan display', () => {
         slotsUsed: 0,
         slotsLimit: 3,
         inactiveCount: 1,
+        subscriptionExpiresAt: '2026-08-03T12:00:00.000Z',
         artists: [inactiveArtist('a1', 'Inactive Artist')],
       })
       .mockResolvedValue(emptyArchive);
@@ -523,25 +539,26 @@ describe('MyArchiveContent plan display', () => {
     });
   });
 
-  test('renders dashboard kit layout with status badges', async () => {
+  test('renders minimalist artist cards with delete action', async () => {
     getMyArchiveMock.mockResolvedValue({
       isPremium: true,
       slotsUsed: 1,
       slotsLimit: 1,
       inactiveCount: 0,
+      subscriptionExpiresAt: '2026-08-03T12:00:00.000Z',
       artists: [activeArtist('a1', 'Active Artist')],
     });
 
     const { container } = renderWithProviders(<MyArchiveContent active />);
 
     await waitFor(() => {
-      expect(screen.getByText('Can be removed')).toBeTruthy();
+      expect(screen.getByText('Active Artist')).toBeTruthy();
     });
 
     expect(container.querySelector('.user-dashboard__section')).toBeTruthy();
     expect(container.querySelector('.dashboard-card')).toBeTruthy();
-    expect(container.querySelector('.status-badge--published')).toBeTruthy();
-    expect(container.querySelector('.dashboard-action--destructive')).toBeTruthy();
+    expect(container.querySelector('.collection__artist-card .status-badge')).toBeNull();
+    expect(container.querySelector('.dashboard-button--destructive')).toBeTruthy();
   });
 
   test('select mode shows bottom action bar', async () => {
@@ -550,6 +567,7 @@ describe('MyArchiveContent plan display', () => {
       slotsUsed: 0,
       slotsLimit: 1,
       inactiveCount: 1,
+      subscriptionExpiresAt: '2026-08-03T12:00:00.000Z',
       artists: [inactiveArtist('a1', 'Artist')],
     });
 

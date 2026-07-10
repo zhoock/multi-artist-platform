@@ -5,6 +5,7 @@ import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 import { useLang } from '@app/providers/lang';
 import { useDashboardSaveLock } from '@shared/lib/hooks/useDashboardSaveLock';
+import { DashboardButton } from '@shared/ui/dashboard';
 import { DashboardSaveSpinner } from '@shared/ui/dashboard-save/DashboardSaveSpinner';
 import { ModalCloseIcon } from '@shared/ui/icons/ModalCloseIcon';
 import '@shared/ui/dashboard-save/dashboard-save.scss';
@@ -190,14 +191,9 @@ export function EditLyricsModal({
           <div className="edit-lyrics-modal__divider" />
 
           <div className="edit-lyrics-modal__actions">
-            <button
-              type="button"
-              className="edit-lyrics-modal__button edit-lyrics-modal__button--cancel"
-              onClick={handleCancel}
-              disabled={isSaving}
-            >
+            <DashboardButton variant="outline" onClick={handleCancel} disabled={isSaving}>
               {ui?.dashboard?.cancel ?? 'Cancel'}
-            </button>
+            </DashboardButton>
             <button
               type="button"
               className={`edit-lyrics-modal__button edit-lyrics-modal__button--primary${

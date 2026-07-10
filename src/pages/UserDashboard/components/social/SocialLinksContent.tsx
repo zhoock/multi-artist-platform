@@ -5,7 +5,7 @@ import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 import { useLang } from '@app/providers/lang';
 import { getToken } from '@shared/lib/auth';
 import { fetchWithAuthSession } from '@shared/lib/authFetch';
-import { DashboardCard, DashboardRow, DashboardCta } from '@shared/ui/dashboard';
+import { DashboardButton, DashboardCard, DashboardRow } from '@shared/ui/dashboard';
 import '@shared/ui/dashboard-save/dashboard-save.scss';
 import {
   EMPTY_SOCIAL_LINKS_FORM,
@@ -170,16 +170,16 @@ export function SocialLinksContent({ active }: SocialLinksContentProps) {
         </div>
       </div>
 
-      <div className="social-links__footer">
-        <button
-          type="button"
-          className="social-links__cancel-button"
+      <footer className="dashboard-modal-footer social-links__footer">
+        <DashboardButton
+          variant="outline"
           onClick={handleCancel}
           disabled={isSaving || !hasChanges}
         >
           {ui?.dashboard?.cancel ?? 'Cancel'}
-        </button>
-        <DashboardCta
+        </DashboardButton>
+        <DashboardButton
+          variant="primary"
           className="social-links__cta"
           loading={isSaving}
           onClick={() => void handleSave()}
@@ -188,8 +188,8 @@ export function SocialLinksContent({ active }: SocialLinksContentProps) {
           {isSaving
             ? (ui?.dashboard?.saving ?? ui?.dashboard?.uploading ?? 'Saving...')
             : (ui?.dashboard?.save ?? 'Save')}
-        </DashboardCta>
-      </div>
+        </DashboardButton>
+      </footer>
     </div>
   );
 }

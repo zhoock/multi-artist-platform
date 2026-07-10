@@ -6,7 +6,7 @@ import { useLang } from '@app/providers/lang';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 import { getToken } from '@shared/lib/auth';
 import { fetchWithAuthSession } from '@shared/lib/authFetch';
-import { DashboardSaveSpinner } from '@shared/ui/dashboard-save/DashboardSaveSpinner';
+import { DashboardButton } from '@shared/ui/dashboard';
 import '@shared/ui/dashboard-save/dashboard-save.scss';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 import { ModalCloseIcon } from '@shared/ui/icons/ModalCloseIcon';
@@ -292,33 +292,22 @@ export function ChangePasswordModal({ isOpen, onClose }: ChangePasswordModalProp
             </div>
           </div>
 
-          <div className="change-password-modal__footer">
-            <button
-              type="button"
-              className="change-password-modal__button change-password-modal__button--cancel"
-              onClick={onClose}
-              disabled={isChangingPassword}
-            >
+          <footer className="dashboard-modal-footer change-password-modal__footer">
+            <DashboardButton variant="outline" onClick={onClose} disabled={isChangingPassword}>
               {ui?.dashboard?.cancel ?? 'Cancel'}
-            </button>
-            <button
+            </DashboardButton>
+            <DashboardButton
               type="submit"
               form="change-password-form"
-              className={`change-password-modal__button change-password-modal__button--save${
-                isChangingPassword ? ' change-password-modal__button--save-loading' : ''
-              }`}
+              variant="primary"
+              loading={isChangingPassword}
               disabled={isChangingPassword || !isPasswordFormValid}
             >
-              {isChangingPassword ? (
-                <>
-                  <DashboardSaveSpinner />
-                  {ui?.dashboard?.saving ?? 'Saving…'}
-                </>
-              ) : (
-                (ui?.dashboard?.settingsModal?.buttons?.changePassword ?? 'Change password')
-              )}
-            </button>
-          </div>
+              {isChangingPassword
+                ? (ui?.dashboard?.saving ?? 'Saving…')
+                : (ui?.dashboard?.settingsModal?.buttons?.changePassword ?? 'Change password')}
+            </DashboardButton>
+          </footer>
         </div>
       </div>
     </Popup>

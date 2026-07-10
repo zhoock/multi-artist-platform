@@ -144,14 +144,17 @@ dialog {
             }
           }
         }
-      }
 
-      &__link {
-        color: var(--dark-greenish-yellow);
-        text-decoration: none;
+        a {
+          color: var(--dark-greenish-yellow);
+          text-decoration: none;
 
-        &:hover {
-          text-decoration: underline;
+          @media (hover: hover) and (pointer: fine) {
+            &:hover {
+              text-decoration: underline;
+              text-underline-offset: 0.12em;
+            }
+          }
         }
       }
 
@@ -177,10 +180,6 @@ dialog {
         justify-content: flex-end;
         gap: var(--ms-01);
         padding: var(--ms-01) var(--ms-0);
-      }
-
-      &__cancel-button {
-        @include dashboard-btn-ghost;
       }
     }
   }

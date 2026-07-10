@@ -8,7 +8,7 @@ import { formatDate } from '@shared/api/albums';
 import { EmailVerificationOnboarding } from '@shared/lib/emailVerification';
 import { normalizeTrackVisibility, type TrackVisibility } from '@shared/lib/tracks/trackVisibility';
 import type { SupportedLang } from '@shared/model/lang';
-import { DashboardCard, DashboardCta, DashboardIconButton } from '@shared/ui/dashboard';
+import { DashboardCard, DashboardButton } from '@shared/ui/dashboard';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 import {
   getDashboardRowFlashProps,
@@ -193,7 +193,8 @@ export function PostsTabContent({
                     />
                   ) : null}
                   <div className="user-dashboard__expanded-track-actions">
-                    <DashboardIconButton
+                    <DashboardButton
+                      variant="icon"
                       onClick={(e) => {
                         e.stopPropagation();
                         openEditor();
@@ -201,8 +202,9 @@ export function PostsTabContent({
                       aria-label={editLabel}
                     >
                       <PencilIcon {...dashboardActionIconProps()} />
-                    </DashboardIconButton>
-                    <DashboardIconButton
+                    </DashboardButton>
+                    <DashboardButton
+                      variant="icon"
                       destructive
                       onClick={(e) => {
                         e.stopPropagation();
@@ -211,7 +213,7 @@ export function PostsTabContent({
                       aria-label={ui?.dashboard?.deleteArticle ?? 'Delete article'}
                     >
                       <Trash2Icon {...dashboardActionIconProps()} />
-                    </DashboardIconButton>
+                    </DashboardButton>
                   </div>
                 </div>
               </div>
@@ -223,9 +225,9 @@ export function PostsTabContent({
       <div className="user-dashboard__albums-upload-divider" aria-hidden />
 
       <div className="user-dashboard__upload-action">
-        <DashboardCta onClick={onCreateArticle}>
+        <DashboardButton variant="primary" onClick={onCreateArticle}>
           {ui?.dashboard?.uploadNewArticle ?? 'Upload New Article'}
-        </DashboardCta>
+        </DashboardButton>
       </div>
     </div>
   );

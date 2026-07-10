@@ -5,7 +5,7 @@ import type { TrackData } from '@entities/album/lib/transformAlbumData';
 import { resolveTrackLyricsBundle } from '@entities/lyrics';
 import type { IInterface } from '@models';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
-import { DashboardCta, DashboardEmptyState, DashboardIconButton } from '@shared/ui/dashboard';
+import { DashboardButton, DashboardEmptyState } from '@shared/ui/dashboard';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 import { LyricsSyncStatusBadge } from './LyricsSyncStatusBadge';
 import {
@@ -65,13 +65,14 @@ export function TrackLyricsPanel({
           title={emptyTitle}
           description={emptyDescription}
           action={
-            <DashboardCta
+            <DashboardButton
+              variant="primary"
               className="albums-tab__add-lyrics"
               onClick={() => onLyricsAction('add', albumId, track.id, track.title)}
             >
               <PlusIcon {...dashboardActionIconProps({ size: 18 })} />
               {ui?.dashboard?.addLyrics ?? 'Add Lyrics'}
-            </DashboardCta>
+            </DashboardButton>
           }
         />
       </div>
@@ -106,14 +107,15 @@ export function TrackLyricsPanel({
               const actionLabel = getLyricsActionLabel(action, ui);
 
               return (
-                <DashboardIconButton
+                <DashboardButton
+                  variant="icon"
                   key={action}
                   onClick={() => onLyricsAction(action, albumId, track.id, track.title)}
                   aria-label={actionLabel}
                   title={actionLabel}
                 >
                   {renderLyricsActionIcon(action)}
-                </DashboardIconButton>
+                </DashboardButton>
               );
             })}
           </div>

@@ -156,7 +156,7 @@ describe('AlbumsTabContent', () => {
     expect(document.querySelector('.user-dashboard__expanded-track-card--expanded')).toBeTruthy();
   });
 
-  it('uses DashboardCta for footer upload action', () => {
+  it('uses DashboardButton primary for footer upload action', () => {
     const onCreateAlbum = jest.fn();
     const { container } = render(
       <AlbumsTabContent
@@ -167,7 +167,7 @@ describe('AlbumsTabContent', () => {
       />
     );
 
-    const cta = container.querySelector('.dashboard-cta');
+    const cta = container.querySelector('.dashboard-button--primary');
     expect(cta).toBeTruthy();
     expect(cta?.textContent).toContain('Upload New Album');
   });

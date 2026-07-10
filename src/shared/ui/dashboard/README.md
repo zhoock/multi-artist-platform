@@ -1,249 +1,94 @@
 # Dashboard UI Kit
 
-Единая точка входа для presentation-слоя User Dashboard.
+**Минимальный набор интерактивных примитивов (v1).**  
+Полная спецификация: [`docs/architecture/dashboard-design-system.md`](../../../docs/architecture/dashboard-design-system.md)
 
 **Импорт:** `@shared/ui/dashboard`
 
 ---
 
-## 1. Назначение
+## Kit — один компонент, три варианта
 
-Dashboard UI Kit — единая дизайн-система Dashboard. Он задаёт визуальный язык и повторяющиеся UI-паттерны для всех вкладок и экранов дашборда.
+| Вариант             | Когда                                              |
+| ------------------- | -------------------------------------------------- |
+| `variant="primary"` | Save, Publish, Next, confirm в диалогах            |
+| `variant="outline"` | Cancel, Previous, Choose files, действия в строках |
+| `variant="icon"`    | Иконка без текста (edit, delete, play)             |
 
-**Главная задача:**
+Плюс CSS-класс `.dashboard-modal-footer` для футеров модалок.
 
-- единый внешний вид;
-- единое поведение;
-- отсутствие дублирования presentation layer.
+**Удаление:** `variant="icon" destructive` + подтверждение с `variant="primary"`.
 
-Dashboard UI Kit **не содержит бизнес-логики**. Он не знает об альбомах, статьях, стемах, оплате и других доменных сущностях. Domain-компоненты используют kit как набор примитивов и инфраструктуры, но сами в kit не входят.
-
----
-
-## 2. Архитектурные слои
-
-### Dashboard UI primitives
-
-Примитивы отвечают **только за presentation**: разметку, стили, базовые состояния (selected, disabled, loading, destructive).
-
-| Компонент                 | Назначение                                           |
-| ------------------------- | ---------------------------------------------------- |
-| `DashboardSection`        | Секция с заголовком и контентом                      |
-| `DashboardCard`           | Карточка-контейнер (списки, панели, expandable rows) |
-| `DashboardRow`            | Строка label + value / action                        |
-| `DashboardRowValue`       | Значение внутри строки                               |
-| `DashboardRowValueWrap`   | Обёртка для сложного value-контента                  |
-| `DashboardRowInlineError` | Inline-ошибка в строке                               |
-| `DashboardAction`         | Текстовая кнопка действия в строке                   |
-| `DashboardIconButton`     | Иконочная кнопка (drag handle, play, delete и т.п.)  |
-| `DashboardCta`            | Primary CTA (кнопка или ссылка через `as`)           |
-| `DashboardEmptyState`     | Пустое состояние (`variant`: `tab` \| `card`)        |
-| `DashboardSpinner`        | Компактный индикатор загрузки (~18px)                |
-| `DashboardLoadingState`   | Стандартное состояние ожидания данных в модалках     |
-
-**Состояния загрузки:**
-
-- `DashboardSpinner` — компактный индикатор загрузки.
-- `DashboardLoadingState` — стандартное состояние ожидания данных внутри модалок и локальных интерактивных областей (центрированный spinner без текста).
-- `DashboardSaveSpinner` (`@shared/ui/dashboard-save`) — только для действий пользователя (Save, Publish, Upload и т.д.).
-
-**Правило выбора паттерна:**
-
-| Паттерн          | Когда использовать                                                                    |
-| ---------------- | ------------------------------------------------------------------------------------- |
-| **Skeleton**     | Когда известна будущая структура (карточки, таблицы, списки, вкладки)                 |
-| **LoadingState** | Когда структура ещё неизвестна или редактор ещё не готов (модалки, локальные области) |
-| **SaveSpinner**  | Только для действий пользователя (Save, Publish, Upload и т.д.)                       |
-
-**Стили форм** (CSS-классы, без React-компонентов):
-
-- `dashboard-form-input`
-- `dashboard-form-textarea`
-- `dashboard-form-select` (+ `__trigger`, `__value`, `__arrow`, `__menu`, `__option`)
-
-Подключаются автоматически через `@shared/ui/dashboard` (`style.scss`, `dashboard-form.scss`).
-
-### Dashboard infrastructure
-
-Инфраструктурные модули отвечают за **повторяющееся поведение**, общее для нескольких domain-компонентов:
-
-- accessibility;
-- keyboard;
-- portal;
-- positioning.
-
-Они **не содержат доменной логики** — только UI-механику.
-
-| Модуль                                        | Расположение                                             | Назначение                                                                         |
-| --------------------------------------------- | -------------------------------------------------------- | ---------------------------------------------------------------------------------- |
-| `DashboardExpandableRowTrigger`               | `@shared/ui/dashboard`                                   | Кликабельная обёртка expandable row: `role="button"`, `aria-expanded`, Enter/Space |
-| `useDashboardAccessMenu`                      | `src/pages/UserDashboard/lib/useDashboardAccessMenu.tsx` | Хук access-меню: open/close, portal, позиционирование, click-outside, Escape       |
-| `resolveDashboardAccessMenuPortalFromElement` | ↑                                                        | Выбор portal root (dialog / `.user-dashboard` / `document.body`)                   |
-| `computeDashboardAccessMenuPosition`          | ↑                                                        | Расчёт координат меню относительно trigger                                         |
-| `getDashboardAccessMenuStyle`                 | ↑                                                        | Inline-стили для fixed-меню                                                        |
-
-> **Примечание:** `useDashboardAccessMenu` пока живёт рядом с User Dashboard, потому что portal-логика завязана на структуру dialog-оболочки. Это infrastructure-слой, а не domain. При повторном использовании вне Dashboard его можно перенести в `@shared/ui/dashboard`.
-
-### Domain components
-
-Domain-компоненты **используют** Dashboard UI Kit, но **не входят** в него. Они содержат бизнес-логику, API-вызовы, domain-state и специфичную разметку экранов.
-
-Примеры:
-
-| Компонент              | Вкладка / область             |
-| ---------------------- | ----------------------------- |
-| `AlbumsTabContent`     | Albums                        |
-| `PostsTabContent`      | Posts                         |
-| `MixerAdmin`           | Mixer                         |
-| `AlbumAccessControl`   | Albums — visibility menu      |
-| `ArticleAccessControl` | Posts — visibility menu       |
-| `StemAccessControl`    | Mixer — stems visibility menu |
-| `SettingsPageContent`  | Settings                      |
-| `MyArchiveContent`     | Your Collection               |
-| `PaymentSettings`      | Payment Settings              |
-| `MyPurchasesContent`   | My Purchases                  |
-| `SocialLinksContent`   | Social Links                  |
-
-Заголовок активной вкладки рендерится **один раз** в шапке `UserDashboard` (`user-dashboard__title`). Domain-компоненты не дублируют название вкладки через `DashboardSection title`.
+**Ссылки:** обычный `<a>` или `Link` — не Dashboard-компоненты.
 
 ---
 
-## 3. Принципы
+## Быстрый старт
 
-1. **Dashboard UI Kit отвечает только за presentation.**  
-   Никаких fetch, Redux, domain-validations, routing.
-
-2. **Не менять информационную архитектуру экранов через kit.**  
-   Kit не решает, какие вкладки, секции и сценарии есть в Dashboard — только как они выглядят и ведут себя на UI-уровне.
-
-3. **Не переносить domain-логику в `shared`.**  
-   Если компонент знает про `AlbumData`, `StemMeta`, payment provider — он domain, не kit.
-
-4. **Не создавать новые компоненты без реального повторения.**  
-   Одноразовая разметка остаётся в domain-компоненте.
-
-5. **Composition over customization.**  
-   Предпочитать комбинацию существующих примитивов (`DashboardCard` + `DashboardRow` + `DashboardAction`) вместо нового wrapper-компонента.
-
-6. **Infrastructure — только для cross-cutting UI-поведения.**  
-   Portal, keyboard, a11y, positioning — да. «Как сохранить альбом» — нет.
-
----
-
-## 4. Правило добавления нового компонента
-
-Перед созданием нового Dashboard-компонента ответьте на вопросы:
-
-| #   | Вопрос                                                                     |
-| --- | -------------------------------------------------------------------------- |
-| 1   | Используется ли паттерн **минимум в трёх местах**?                         |
-| 2   | Это **presentation** или **domain**?                                       |
-| 3   | Можно ли решить задачу **существующими** примитивами kit?                  |
-| 4   | Не **усложнит** ли новый компонент API (лишние props, варианты, coupling)? |
-
-**Если хотя бы один ответ неоднозначен — новый компонент не создавать.**
-
-Типичный путь:
-
-1. Реализовать паттерн inline в domain-компоненте.
-2. Дождаться третьего повторения.
-3. Выделить presentation-часть в `@shared/ui/dashboard`.
-4. Domain-компоненты мигрировать на новый примитив без изменения UX.
-
----
-
-## 5. Что входит в Dashboard UI Kit
-
-### Экспорт `@shared/ui/dashboard`
-
-```
-DashboardSection
-DashboardCard
-DashboardRow
-DashboardRowValue
-DashboardRowValueWrap
-DashboardRowInlineError
-DashboardAction
-DashboardIconButton
-DashboardCta
-DashboardExpandableRowTrigger
-DashboardEmptyState
-DashboardSpinner
-DashboardLoadingState
+```tsx
+import { DashboardButton } from '@shared/ui/dashboard';
 ```
 
-### Стили
+**Футер модалки:**
 
-| Файл                  | Содержимое                                                                                                           |
-| --------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| `style.scss`          | Примитивы: section, card, row, action, icon-button, cta, empty-state, spinner, loading-state, expandable-row-trigger |
-| `dashboard-form.scss` | Form-классы для Settings и других форм дашборда                                                                      |
+```tsx
+<footer className="dashboard-modal-footer">
+  <DashboardButton variant="outline" onClick={onCancel}>
+    Cancel
+  </DashboardButton>
+  <DashboardButton variant="primary" loading={isSaving} onClick={onSave}>
+    Save
+  </DashboardButton>
+</footer>
+```
 
-### Тесты
+**Cancel на Popup:**
 
-Каждый примитив и `DashboardExpandableRowTrigger` покрыт unit-тестами в `__tests__/`.
+```tsx
+<PopupCloseButton className="dashboard-button dashboard-button--outline">Cancel</PopupCloseButton>
+```
 
-### Где используется kit (после миграции)
+**Действие в строке:**
 
-- **Albums** — `AlbumsTabContent`, `AlbumsEmptyState`, `SortableTrackItem`
-- **Posts** — `PostsTabContent`, `ArticlesEmptyState`, `ArticlesListSkeleton`
-- **Mixer** — `MixerAdmin`, `MixerEmptyState`, `SortableStemRow`
-- **Your Collection** — `MyArchiveContent`, `CollectionEmptyState`
-- **Settings** — `SettingsPageContent`
-- **Payment Settings** — `PaymentSettings`
-- **My Purchases** — `MyPurchasesContent`, `MyPurchasesEmptyState`
-- **Social Links** — `SocialLinksContent`
-- **Skeletons** — `DashboardTabContentSkeleton`
+```tsx
+<DashboardButton variant="outline" onClick={onEdit}>
+  Change email
+</DashboardButton>
+```
 
----
+**Компактное действие в списке:**
 
-## 6. Что сознательно НЕ входит в Dashboard UI Kit
+```tsx
+<DashboardButton variant="icon" destructive aria-label="Delete" onClick={onDelete}>
+  <TrashIcon />
+</DashboardButton>
+```
 
-Следующие вещи — **domain-компоненты и domain-логика**. Они могут использовать kit, но не являются его частью:
+**Внешняя ссылка:**
 
-| Область                | Примеры                                                                                                                                    |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| Album editor           | `EditAlbumModal`, publish flow, track upload                                                                                               |
-| Article editor         | `ArticleEditor`, draft/publish lifecycle                                                                                                   |
-| Mixer logic            | `loadStems`, `uploadStemAudio`, stem reorder, `AddStemModal`                                                                               |
-| Cover upload           | Cover crop, album artwork pipeline                                                                                                         |
-| Avatar upload          | Profile avatar in Settings                                                                                                                 |
-| Track row              | `SortableTrackItem` — domain row с dnd-kit, visibility, delete                                                                             |
-| Stem row               | `SortableStemRow` — domain row с playback, replace, rename                                                                                 |
-| Collection logic       | Slots, subscriptions, archive playback                                                                                                     |
-| Payment provider logic | YooKassa connect, credentials, provider forms                                                                                              |
-| Access control content | `AlbumAccessControl`, `ArticleAccessControl`, `StemAccessControl` — domain-меню; kit даёт только infrastructure (`useDashboardAccessMenu`) |
-| Navigation shell       | `UserDashboard` sidebar, tabs, routing, modals                                                                                             |
-| Row state flash        | `dashboardRowStateFlash` — domain-adjacent UX feedback                                                                                     |
+```tsx
+<a href="https://example.com" target="_blank" rel="noopener noreferrer">
+  Go to settings →
+</a>
+```
 
-**Правило:** если удалить domain-контекст и компонент теряет смысл — это не kit.
-
----
-
-## 7. Принцип развития
-
-1. **Сначала расширить существующее.**  
-   Новый visual или infrastructure-паттерн — проверить, можно ли добавить variant/prop в `DashboardCard`, `DashboardRow`, `DashboardEmptyState` и т.д.
-
-2. **Новый компонент — только при доказанном повторении.**  
-   Минимум три независимых use case с одинаковой presentation- или infrastructure-задачей.
-
-3. **Документировать изменения в этом README.**  
-   Новый примитив или infrastructure-модуль — добавить в раздел 5 и при необходимости уточнить раздел 6.
-
-4. **Не ломать обратную совместимость без миграции.**  
-   Изменение API kit затрагивает все вкладки Dashboard — мигрировать все call site в одном PR.
-
-5. **Domain остаётся domain.**  
-   Kit растёт вширь (больше примитивов), а не вглубь (больше бизнес-логики).
+Стили ссылок — в domain SCSS экрана, не в kit.
 
 ---
 
-## Быстрый чеклист для PR
+## Composition layer (не интерактивный kit)
 
-- [ ] Используются примитивы из `@shared/ui/dashboard`, а не локальные копии стилей
-- [ ] Нет дублирования заголовка вкладки в `DashboardSection`
-- [ ] Domain-логика не попала в `src/shared/ui/dashboard`
-- [ ] Новый shared-компонент оправдан правилом «3+ повторения»
-- [ ] При добавлении в kit — обновлён этот README
-- [ ] Состояние загрузки выбрано по правилу: Skeleton / LoadingState / SaveSpinner
+```
+DashboardCard, DashboardRow, DashboardSection, DashboardEmptyState, …
+```
+
+Формы: `dashboard-form-input`, `dashboard-form-textarea`, `dashboard-form-select`.
+
+---
+
+## Чеклист PR
+
+- [ ] Только `DashboardButton` (`primary` \| `outline` \| `icon`)
+- [ ] `.dashboard-modal-footer` вместо React footer
+- [ ] Ссылки: `<a>` / `Link`, без Dashboard link-классов
+- [ ] Нет `DashboardAction`, `DashboardTextLink`, `.dashboard-action`, `.dashboard-text-link`

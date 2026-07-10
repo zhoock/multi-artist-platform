@@ -101,7 +101,7 @@ describe('PostsTabContent', () => {
     expect(onDeleteArticle).toHaveBeenCalledWith(sampleArticle);
   });
 
-  it('uses DashboardCta for footer upload action', () => {
+  it('uses DashboardButton primary for footer upload action', () => {
     const { container } = render(
       <PostsTabContent
         {...createBaseProps({
@@ -110,7 +110,7 @@ describe('PostsTabContent', () => {
       />
     );
 
-    const cta = container.querySelector('.dashboard-cta');
+    const cta = container.querySelector('.dashboard-button--primary');
     expect(cta).toBeTruthy();
     expect(cta?.textContent).toContain('Upload New Article');
   });

@@ -125,10 +125,6 @@
     }
   }
 
-  &__button--ghost {
-    @include dashboard-btn-secondary($margin: 0);
-  }
-
   &__button--primary {
     @include dashboard-btn-primary($margin: 0);
   }

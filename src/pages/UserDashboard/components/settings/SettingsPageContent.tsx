@@ -10,7 +10,7 @@ import {
   useResendCooldown,
 } from '@shared/lib/emailVerification';
 import {
-  DashboardAction,
+  DashboardButton,
   DashboardCard,
   DashboardRow,
   DashboardRowInlineError,
@@ -190,22 +190,23 @@ export function SettingsPageContent({
                   ) : null}
                 </div>
                 <div className="user-dashboard__settings-page__avatar-actions">
-                  <button
-                    type="button"
+                  <DashboardButton
+                    variant="outline"
                     className="user-dashboard__settings-page__avatar-upload"
                     onClick={onAvatarUploadClick}
                     disabled={isUploadingAvatar}
                   >
                     {hasAvatar ? changeLabel : uploadLabel}
-                  </button>
+                  </DashboardButton>
                   {hasAvatar ? (
-                    <DashboardAction
+                    <DashboardButton
+                      variant="outline"
                       destructive
                       onClick={() => void onAvatarRemove()}
                       disabled={isUploadingAvatar}
                     >
                       {removeLabel}
-                    </DashboardAction>
+                    </DashboardButton>
                   ) : null}
                 </div>
                 <p className="user-dashboard__settings-page__avatar-hint">{avatarHint}</p>
@@ -262,13 +263,14 @@ export function SettingsPageContent({
                   onChange={(event) => handlePublicSlugChange(event.target.value)}
                   onBlur={handlePublicSlugBlur}
                 />
-                <DashboardAction
+                <DashboardButton
+                  variant="icon"
                   onClick={onOpenArtistPage}
                   disabled={!profilePublicSlug}
                   aria-label={d?.profileHero?.openArtistPage ?? 'Open artist page'}
                 >
                   <ExternalLinkIcon {...dashboardActionIconProps({ size: 18 })} />
-                </DashboardAction>
+                </DashboardButton>
               </div>
             </DashboardRow>
 
@@ -327,18 +329,19 @@ export function SettingsPageContent({
               variant="action"
               action={
                 emailVerified ? (
-                  <DashboardAction onClick={() => setIsChangeEmailOpen(true)}>
+                  <DashboardButton variant="outline" onClick={() => setIsChangeEmailOpen(true)}>
                     {emailVerificationCopy.changeEmail}
-                  </DashboardAction>
+                  </DashboardButton>
                 ) : (
-                  <DashboardAction
+                  <DashboardButton
+                    variant="outline"
                     onClick={() => void handleVerifyEmail()}
                     disabled={isSendingVerificationEmail || isCoolingDown}
                   >
                     {isSendingVerificationEmail
                       ? emailVerificationCopy.submitting
                       : verifyEmailLabel}
-                  </DashboardAction>
+                  </DashboardButton>
                 )
               }
             >
@@ -376,9 +379,9 @@ export function SettingsPageContent({
               label={currentLang === 'en' ? 'Password' : 'Пароль'}
               variant="action"
               action={
-                <DashboardAction onClick={() => setIsChangePasswordOpen(true)}>
+                <DashboardButton variant="outline" onClick={() => setIsChangePasswordOpen(true)}>
                   {d?.settingsModal?.buttons?.changePassword ?? 'Change password'}
-                </DashboardAction>
+                </DashboardButton>
               }
             >
               <DashboardRowValue
@@ -397,7 +400,9 @@ export function SettingsPageContent({
               label={d?.logout ?? 'Log Out'}
               variant="action"
               action={
-                <DashboardAction onClick={onLogout}>{d?.logout ?? 'Log Out'}</DashboardAction>
+                <DashboardButton variant="outline" onClick={onLogout}>
+                  {d?.logout ?? 'Log Out'}
+                </DashboardButton>
               }
             >
               <DashboardRowValue aria-hidden="true" />
@@ -406,9 +411,9 @@ export function SettingsPageContent({
               label={d?.deleteAccount ?? 'Delete Account'}
               variant="action"
               action={
-                <DashboardAction destructive onClick={onDeleteAccount}>
+                <DashboardButton variant="outline" destructive onClick={onDeleteAccount}>
                   {currentLang === 'en' ? 'Delete' : 'Удалить'}
-                </DashboardAction>
+                </DashboardButton>
               }
             >
               <DashboardRowValue aria-hidden="true" />
