@@ -1,5 +1,5 @@
 import { describe, expect, it, jest } from '@jest/globals';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 
 import type { IArticles } from '@models';
@@ -14,12 +14,10 @@ function createBaseProps(overrides: Partial<React.ComponentProps<typeof PostsTab
     articlesStatus: 'succeeded',
     articlesError: null,
     articles: [] as IArticles[],
-    expandedArticleId: null,
     articleAccessMenuArticleId: null,
     dashboardRowFlashes: {},
     ui: null,
     lang: 'en' as const,
-    onToggleArticle: noop,
     onArticleAccessMenuChange: noop,
     onArticleVisibilityChange: noop,
     onEditArticle: noop,
@@ -46,7 +44,7 @@ describe('PostsTabContent', () => {
     expect(screen.getByText("You don't have any articles yet")).toBeTruthy();
   });
 
-  it('renders article row as interactive DashboardCard', () => {
+  it('renders compact interactive article card without accordion', () => {
     const { container } = renderWithProviders(
       <PostsTabContent
         {...createBaseProps({
@@ -59,59 +57,48 @@ describe('PostsTabContent', () => {
       '.dashboard-card.user-dashboard__album-card.dashboard-card--interactive'
     );
     expect(articleCard).toBeTruthy();
-    expect(container.querySelector('.dashboard-expandable-row-trigger')).toBeTruthy();
-  });
-
-  it('renders expanded content inside unified album card body', () => {
-    const { container } = renderWithProviders(
-      <PostsTabContent
-        {...createBaseProps({
-          articles: [sampleArticle],
-          expandedArticleId: 'article-1',
-        })}
-      />
-    );
-
-    const articleCard = container.querySelector('.user-dashboard__album-card--expanded');
-    expect(articleCard).toBeTruthy();
+    expect(container.querySelector('.dashboard-expandable-row-trigger')).toBeNull();
+    expect(container.querySelector('.user-dashboard__expanded-track-chevron')).toBeNull();
+    expect(container.querySelector('.user-dashboard__album-card--expanded')).toBeNull();
     expect(container.querySelector('.user-dashboard__album-body')).toBeNull();
     expect(screen.getByText('Test Article')).toBeTruthy();
   });
 
-  it('renders edit and delete icon actions in the card header', () => {
+  it('opens editor when the card row is clicked', () => {
+    const onEditArticle = jest.fn();
+
     renderWithProviders(
       <PostsTabContent
         {...createBaseProps({
           articles: [sampleArticle],
+          onEditArticle,
         })}
       />
     );
 
-    expect(screen.getByRole('button', { name: 'Edit Article' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Delete article' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Test Article' }));
+    expect(onEditArticle).toHaveBeenCalledWith(sampleArticle);
   });
 
-  it('renders article excerpt preview when expanded and content exists', () => {
-    const articleWithBody: IArticles = {
-      ...sampleArticle,
-      details: [{ type: 'text', content: 'Article excerpt for preview.' }],
-    };
+  it('renders edit and delete icon actions in the card header', () => {
+    const onEditArticle = jest.fn();
+    const onDeleteArticle = jest.fn();
 
-    const { container } = renderWithProviders(
+    renderWithProviders(
       <PostsTabContent
         {...createBaseProps({
-          articles: [articleWithBody],
-          expandedArticleId: 'article-1',
+          articles: [sampleArticle],
+          onEditArticle,
+          onDeleteArticle,
         })}
       />
     );
 
-    const expandedBody = container.querySelector(
-      '.user-dashboard__album-body.user-dashboard__album-expanded--article'
-    );
-    expect(expandedBody).toBeTruthy();
-    expect(container.querySelector('.user-dashboard__article-cover-section')).toBeNull();
-    expect(container.querySelector('.user-dashboard__article-description')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Edit Article' }));
+    expect(onEditArticle).toHaveBeenCalledWith(sampleArticle);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Delete article' }));
+    expect(onDeleteArticle).toHaveBeenCalledWith(sampleArticle);
   });
 
   it('uses DashboardCta for footer upload action', () => {

@@ -1,30 +1,19 @@
-import React from 'react';
+import React, { type KeyboardEvent } from 'react';
 import clsx from 'clsx';
 import { Pencil as PencilIcon, Trash2 as Trash2Icon } from 'lucide-react';
 
-import {
-  ArticleCoverImage,
-  ArticleCoverPlaceholder,
-  getArticlePreviewContent,
-} from '@entities/article';
+import { ArticleCoverImage, ArticleCoverPlaceholder } from '@entities/article';
 import type { IArticles, IInterface } from '@models';
 import { formatDate } from '@shared/api/albums';
 import { EmailVerificationOnboarding } from '@shared/lib/emailVerification';
-import { renderMarkdownViaRichText } from '@shared/lib/richText';
 import { normalizeTrackVisibility, type TrackVisibility } from '@shared/lib/tracks/trackVisibility';
 import type { SupportedLang } from '@shared/model/lang';
-import {
-  DashboardCard,
-  DashboardCta,
-  DashboardExpandableRowTrigger,
-  DashboardIconButton,
-} from '@shared/ui/dashboard';
+import { DashboardCard, DashboardCta, DashboardIconButton } from '@shared/ui/dashboard';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 import {
   getDashboardRowFlashProps,
   type DashboardRowFlash,
 } from '../../lib/dashboardRowStateFlash';
-import { DashboardExpandChevron } from '../../lib/dashboardExpandChevron';
 import { ArticleAccessControl } from './ArticleAccessControl';
 import { ArticleListStatus } from './ArticleListStatus';
 import { ArticlesEmptyState } from './ArticlesEmptyState';
@@ -36,12 +25,10 @@ type PostsTabContentProps = {
   articlesStatus: string;
   articlesError: string | null | undefined;
   articles: IArticles[];
-  expandedArticleId: string | null;
   articleAccessMenuArticleId: string | null;
   dashboardRowFlashes: Record<string, DashboardRowFlash>;
   ui: IInterface | null;
   lang: SupportedLang;
-  onToggleArticle: (articleId: string | null) => void;
   onArticleAccessMenuChange: (articleId: string | null) => void;
   onArticleVisibilityChange: (articleId: string, visibility: TrackVisibility) => void;
   onEditArticle: (article: IArticles) => void;
@@ -54,12 +41,10 @@ export function PostsTabContent({
   articlesStatus,
   articlesError,
   articles,
-  expandedArticleId,
   articleAccessMenuArticleId,
   dashboardRowFlashes,
   ui,
   lang,
-  onToggleArticle,
   onArticleAccessMenuChange,
   onArticleVisibilityChange,
   onEditArticle,
@@ -96,7 +81,6 @@ export function PostsTabContent({
     <div className="user-dashboard__section">
       <div className="user-dashboard__albums-list">
         {articles.map((article) => {
-          const isExpanded = expandedArticleId === article.articleId;
           const articleVisibility = normalizeTrackVisibility(article.visibility);
           const articleDraftBadge = getArticleListDraftBadge(article);
           const articleIsPublished = isArticlePublished(article);
@@ -113,7 +97,15 @@ export function PostsTabContent({
             `dashboard-article-row-${article.articleId}`,
             dashboardRowFlashes
           );
-          const preview = isExpanded ? getArticlePreviewContent(article) : null;
+          const editLabel = ui?.dashboard?.editArticle ?? 'Edit Article';
+          const openEditor = () => onEditArticle(article);
+
+          const handleRowKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault();
+              openEditor();
+            }
+          };
 
           return (
             <DashboardCard
@@ -122,27 +114,23 @@ export function PostsTabContent({
               className={clsx(
                 'user-dashboard__album-card',
                 'dashboard-article-row',
-                articleRowFlash.className,
-                {
-                  'user-dashboard__album-card--expanded': isExpanded,
-                }
+                articleRowFlash.className
               )}
               style={articleRowFlash.style}
               data-visibility-flash={articleRowFlash['data-visibility-flash']}
             >
-              <DashboardExpandableRowTrigger
+              <div
                 id={`dashboard-article-row-${article.articleId}`}
-                expanded={isExpanded}
-                onToggle={() => onToggleArticle(isExpanded ? null : article.articleId)}
-                aria-label={isExpanded ? 'Collapse article' : 'Expand article'}
                 className={clsx('user-dashboard__album-header', 'user-dashboard__album-item', {
                   'user-dashboard__album-item--access-menu-open':
                     articleAccessMenuArticleId === article.articleId,
                 })}
+                onClick={openEditor}
+                onKeyDown={handleRowKeyDown}
+                role="button"
+                tabIndex={0}
+                aria-label={article.nameArticle || editLabel}
               >
-                <span className="user-dashboard__expanded-track-chevron" aria-hidden>
-                  <DashboardExpandChevron expanded={isExpanded} />
-                </span>
                 <div className="user-dashboard__album-thumbnail user-dashboard__album-thumbnail--article">
                   {article.img ? (
                     articleOwnerId ? (
@@ -208,9 +196,9 @@ export function PostsTabContent({
                     <DashboardIconButton
                       onClick={(e) => {
                         e.stopPropagation();
-                        onEditArticle(article);
+                        openEditor();
                       }}
-                      aria-label={ui?.dashboard?.editArticle ?? 'Edit Article'}
+                      aria-label={editLabel}
                     >
                       <PencilIcon {...dashboardActionIconProps()} />
                     </DashboardIconButton>
@@ -226,16 +214,7 @@ export function PostsTabContent({
                     </DashboardIconButton>
                   </div>
                 </div>
-              </DashboardExpandableRowTrigger>
-
-              {isExpanded && preview ? (
-                <div className="user-dashboard__album-body user-dashboard__album-expanded user-dashboard__album-expanded--kit user-dashboard__album-expanded--article">
-                  <div className="user-dashboard__article-description">
-                    {renderMarkdownViaRichText(preview.markdown)}
-                    {preview.truncated ? '\u2026' : null}
-                  </div>
-                </div>
-              ) : null}
+              </div>
             </DashboardCard>
           );
         })}

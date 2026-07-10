@@ -339,7 +339,6 @@ function UserDashboard() {
   const [articleEditorToastTrigger, setArticleEditorToastTrigger] = useState(0);
   const [lyricsSyncSavedToastTrigger, setLyricsSyncSavedToastTrigger] = useState(0);
   const trackUploadSectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
-  const [expandedArticleId, setExpandedArticleId] = useState<string | null>(null);
   const [articleAccessMenuArticleId, setArticleAccessMenuArticleId] = useState<string | null>(null);
   const [albumAccessMenuAlbumId, setAlbumAccessMenuAlbumId] = useState<string | null>(null);
   const [albumsData, setAlbumsData] = useState<AlbumData[]>([]);
@@ -1373,11 +1372,6 @@ function UserDashboard() {
       dispatch(removeArticleFromPublicCatalog({ articleId: article.articleId }));
       await dispatch(fetchArticles({ force: true, ownerDashboard: true })).unwrap();
 
-      // Закрываем расширенный вид, если удаленная статья была открыта
-      if (expandedArticleId === article.articleId) {
-        setExpandedArticleId(null);
-      }
-
       handleArticleRemoved({ wasPublished });
 
       queueArticleDeletedToast(formatArticleDeletedSuccessMessage(article.nameArticle, lang, ui));
@@ -2046,12 +2040,10 @@ function UserDashboard() {
                           articlesStatus={articlesStatus}
                           articlesError={articlesError}
                           articles={articlesFromStore ?? []}
-                          expandedArticleId={expandedArticleId}
                           articleAccessMenuArticleId={articleAccessMenuArticleId}
                           dashboardRowFlashes={dashboardRowFlashes}
                           ui={ui}
                           lang={lang}
-                          onToggleArticle={setExpandedArticleId}
                           onArticleAccessMenuChange={setArticleAccessMenuArticleId}
                           onArticleVisibilityChange={(articleId, visibility) =>
                             void handleArticleVisibilityChange(articleId, visibility)

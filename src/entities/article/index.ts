@@ -10,10 +10,6 @@ export {
   parseCarouselImagesFromDetail,
   serializeCarouselImagesForDetail,
 } from './lib/parseCarouselImages';
-export {
-  getArticlePreviewContent,
-  type ArticlePreviewContent,
-} from './lib/getArticlePreviewContent';
 
 export {
   articlesReducer,
