@@ -1184,21 +1184,30 @@ export const handler: Handler = async (
         storagePaths: [...storagePaths],
       };
 
+      // DB first, then storage. If cleanup fails, the article is gone (consistent) and
+      // media may be orphaned — preferable to leaving the row with broken media refs.
+      await query(`DELETE FROM articles WHERE user_id = $1::uuid AND article_id = $2`, [
+        userId,
+        articleIdToDelete,
+      ]);
+
       if (mediaTargets.stems.length > 0 || mediaTargets.storagePaths.length > 0) {
         const supabase = createSupabaseAdminClient();
         if (supabase) {
-          await removeArticleStorageFiles(supabase, userId, mediaTargets);
+          try {
+            await removeArticleStorageFiles(supabase, userId, mediaTargets);
+          } catch (cleanupErr) {
+            console.error(
+              '[articles-api DELETE] Storage cleanup failed after article row delete:',
+              cleanupErr
+            );
+          }
         } else {
           console.warn(
             '[articles-api DELETE] Supabase admin client missing; skipped storage cleanup'
           );
         }
       }
-
-      await query(`DELETE FROM articles WHERE user_id = $1::uuid AND article_id = $2`, [
-        userId,
-        articleIdToDelete,
-      ]);
 
       return createSuccessMessageResponse('Article deleted successfully');
     }

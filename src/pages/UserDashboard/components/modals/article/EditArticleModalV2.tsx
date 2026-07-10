@@ -322,6 +322,7 @@ export function EditArticleModalV2({
     displayCoverKey,
     hasCoverChanges,
     resetCoverUpload,
+    acknowledgeCoverCommitted,
     handleCoverDrag,
     handleCoverDrop,
     handleCoverFileInput,
@@ -647,6 +648,7 @@ export function EditArticleModalV2({
         setInitialBlocks(JSON.parse(JSON.stringify(blocks)));
         setInitialMeta({ ...meta });
         setInitialImg(coverKey);
+        acknowledgeCoverCommitted();
 
         try {
           await dispatch(fetchArticles({ force: true, ownerDashboard: true })).unwrap();
@@ -683,6 +685,7 @@ export function EditArticleModalV2({
     article,
     initialImg,
     commitCoverForSave,
+    acknowledgeCoverCommitted,
     showEditorToast,
     showArticleSaveError,
     abortSaveFailureIfSessionInterrupted,
@@ -765,6 +768,7 @@ export function EditArticleModalV2({
         setInitialBlocks(JSON.parse(JSON.stringify(blocks)));
         setInitialMeta({ ...meta });
         setInitialImg(coverKey);
+        acknowledgeCoverCommitted();
 
         queueArticleEditorToast({
           kind: 'published',
@@ -802,6 +806,7 @@ export function EditArticleModalV2({
     article,
     initialImg,
     commitCoverForSave,
+    acknowledgeCoverCommitted,
     publicArtistSlug,
     onArticleEditorToast,
     showArticleSaveError,

@@ -30,7 +30,10 @@ type UseArticleEditorCoverOptions = {
 
 /**
  * Cover edits stay local until Save draft / Publish.
- * Selecting a file only creates a blob preview; storage + DB write happen in commitCoverForSave.
+ * Selecting a file only creates a blob preview; storage upload happens in commitCoverForSave.
+ *
+ * Consistency rule: never delete the previous live cover during upload. Old cover cleanup
+ * happens in articles-api after the article row successfully points at the new key.
  */
 export function useArticleEditorCover({
   savedCoverKey,
@@ -41,6 +44,8 @@ export function useArticleEditorCover({
   const [coverRemoved, setCoverRemoved] = useState(false);
   const localPreviewRef = useRef<string | null>(null);
   const pendingFileRef = useRef<File | null>(null);
+  /** Key already uploaded for the current pending file (retry Save without re-upload). */
+  const uploadedPendingKeyRef = useRef<string | null>(null);
 
   const clearLocalPreview = useCallback(() => {
     if (localPreviewRef.current) {
@@ -52,6 +57,19 @@ export function useArticleEditorCover({
   const resetCoverUpload = useCallback(() => {
     clearLocalPreview();
     pendingFileRef.current = null;
+    uploadedPendingKeyRef.current = null;
+    setCoverRemoved(false);
+    setCoverUpload(EMPTY_COVER_UPLOAD);
+  }, [clearLocalPreview]);
+
+  /**
+   * Call only after article POST/PUT succeeded with the committed cover key.
+   * Keeps pending preview across failed saves so the user can retry.
+   */
+  const acknowledgeCoverCommitted = useCallback(() => {
+    clearLocalPreview();
+    pendingFileRef.current = null;
+    uploadedPendingKeyRef.current = null;
     setCoverRemoved(false);
     setCoverUpload(EMPTY_COVER_UPLOAD);
   }, [clearLocalPreview]);
@@ -60,6 +78,7 @@ export function useArticleEditorCover({
     return () => {
       clearLocalPreview();
       pendingFileRef.current = null;
+      uploadedPendingKeyRef.current = null;
     };
   }, [clearLocalPreview]);
 
@@ -83,6 +102,7 @@ export function useArticleEditorCover({
 
       clearLocalPreview();
       pendingFileRef.current = file;
+      uploadedPendingKeyRef.current = null;
       localPreviewRef.current = URL.createObjectURL(file);
       setCoverRemoved(false);
       setCoverUpload({
@@ -143,19 +163,24 @@ export function useArticleEditorCover({
 
     clearLocalPreview();
     pendingFileRef.current = null;
+    uploadedPendingKeyRef.current = null;
     setCoverRemoved(true);
     setCoverUpload(EMPTY_COVER_UPLOAD);
   }, [clearLocalPreview, disabled]);
 
   /**
    * Upload pending file to storage (if any) and return the img key for Save draft / Publish.
-   * Does not write to the articles API — caller includes the key in the article save body.
+   * Does not write to the articles API and does not delete the previous live cover.
    */
   const commitCoverForSave = useCallback(
     async (previousSavedKey: string): Promise<string> => {
       const pendingFile = pendingFileRef.current;
 
       if (pendingFile) {
+        if (uploadedPendingKeyRef.current) {
+          return uploadedPendingKeyRef.current;
+        }
+
         setCoverUpload((prev) => ({
           ...prev,
           status: 'uploading',
@@ -167,31 +192,32 @@ export function useArticleEditorCover({
         const baseFileName = pendingFile.name.replace(/\.[^/.]+$/, '');
         const rawFileName = `article_cover_${uniqueUploadFileSuffix()}_${baseFileName}.${fileExtension}`;
         const finalImageKey = sanitizeFileName(rawFileName);
-        const previousCoverKey =
-          previousSavedKey && previousSavedKey.startsWith('article_cover_')
-            ? previousSavedKey
-            : undefined;
 
+        // Do not pass previousImageKey: deleting the live cover before the article
+        // row is updated leaves a broken DB reference if POST/PUT fails.
         const url = await uploadFile({
           file: pendingFile,
           category: 'articles',
           fileName: rawFileName,
-          ...(previousCoverKey ? { previousImageKey: previousCoverKey } : {}),
         });
 
         if (!url) {
           setCoverUpload((prev) => ({
             ...prev,
             status: 'error',
+            progress: 0,
             error: ui?.dashboard?.failedToUploadCover ?? 'Failed to upload cover image',
           }));
           throw new Error(ui?.dashboard?.failedToUploadCover ?? 'Failed to upload cover image');
         }
 
-        clearLocalPreview();
-        pendingFileRef.current = null;
-        setCoverRemoved(false);
-        setCoverUpload(EMPTY_COVER_UPLOAD);
+        uploadedPendingKeyRef.current = finalImageKey;
+        setCoverUpload((prev) => ({
+          ...prev,
+          status: 'idle',
+          progress: 100,
+          error: null,
+        }));
         return finalImageKey;
       }
 
@@ -201,7 +227,7 @@ export function useArticleEditorCover({
 
       return previousSavedKey;
     },
-    [clearLocalPreview, coverRemoved, ui?.dashboard?.failedToUploadCover]
+    [coverRemoved, ui?.dashboard?.failedToUploadCover]
   );
 
   return {
@@ -210,6 +236,7 @@ export function useArticleEditorCover({
     displayCoverKey,
     hasCoverChanges,
     resetCoverUpload,
+    acknowledgeCoverCommitted,
     handleCoverDrag,
     handleCoverDrop,
     handleCoverFileInput,
