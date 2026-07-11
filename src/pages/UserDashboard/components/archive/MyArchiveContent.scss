@@ -22,11 +22,15 @@ dialog {
       &__summary {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
-        padding-bottom: var(--ms-1);
-        border-bottom: 1px solid var(--dashboard-divider);
 
         @include breakpoint(old-phones) {
           grid-template-columns: minmax(0, 1fr);
+        }
+      }
+
+      &__summary-card {
+        .collection__summary {
+          padding: var(--ms-1);
         }
       }
 
@@ -163,7 +167,6 @@ dialog {
         align-items: center;
         justify-content: space-between;
         gap: var(--ms-01);
-        padding-top: var(--ms-01);
       }
 
       &__inactive-toolbar-count {
@@ -175,16 +178,6 @@ dialog {
         flex-wrap: wrap;
         align-items: center;
         gap: var(--ms-01);
-      }
-
-      &__select-toggle {
-        padding: var(--ms-01) var(--ms-0);
-        font-size: 0.875rem;
-
-        &--active {
-          color: var(--dark-greenish-yellow);
-          border-color: rgb(var(--dark-greenish-yellow-rgb) / 45%);
-        }
       }
 
       &__artist-row-wrap {
@@ -310,6 +303,27 @@ dialog {
         flex-wrap: wrap;
         gap: var(--ms-01);
         margin-left: auto;
+      }
+
+      &__list-card {
+        .collection__inactive-toolbar {
+          padding: var(--ms-01) var(--ms-0);
+          border-bottom: 1px solid var(--dashboard-divider);
+        }
+
+        .collection__artist-row {
+          padding-inline: var(--ms-0);
+        }
+
+        .collection__artist-row-wrap:last-child .collection__artist-row {
+          border-bottom: none;
+        }
+
+        .collection__action-bar {
+          margin-top: 0;
+          padding: var(--ms-01) var(--ms-0);
+          background: transparent;
+        }
       }
     }
   }

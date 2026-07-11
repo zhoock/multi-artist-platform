@@ -564,6 +564,9 @@ describe('MyArchiveContent plan display', () => {
     });
 
     expect(container.querySelector('.user-dashboard__section')).toBeTruthy();
+    expect(container.querySelector('.user-dashboard__albums-list')).toBeTruthy();
+    expect(container.querySelector('.collection__summary-card.dashboard-card')).toBeTruthy();
+    expect(container.querySelector('.collection__list-card.dashboard-card')).toBeTruthy();
     expect(container.querySelector('.collection__artist-row')).toBeTruthy();
     expect(container.querySelector('.collection__artist-row .status-badge')).toBeNull();
     expect(container.querySelector('.dashboard-button--destructive')).toBeTruthy();

@@ -20,14 +20,14 @@ import {
   normalizeCollectionArchive,
 } from '@shared/lib/archive/collectionLock';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
-import { CheckSquare, Lock as LockIcon, Square, Trash2 as Trash2Icon } from 'lucide-react';
+import { CheckSquare, Square, Trash2 as Trash2Icon } from 'lucide-react';
 import {
   dispatchArchiveArtistRemoved,
   refreshPremiumContentForArchiveChange,
 } from '@features/artistArchive';
 import { useArchiveAccessModal } from '@shared/lib/archiveAccessModal';
 import { getPlanDisplayName, resolveCurrentPlanSlug } from '@shared/lib/payment/subscriptionPlans';
-import { DashboardButton } from '@shared/ui/dashboard';
+import { DashboardButton, DashboardCard } from '@shared/ui/dashboard';
 
 import { CollectionEmptyState } from './CollectionEmptyState';
 import { ArchiveArtistRemovedToast } from '@shared/ui/archiveArtistRemovedToast';
@@ -471,268 +471,263 @@ export function MyArchiveContent({ active }: Props) {
     <>
       <section className={clsx('collection__tab', isSelectMode && 'collection__tab--select-mode')}>
         <div className="user-dashboard__section">
-          <header
-            className={clsx(
-              'collection__summary',
-              subscriptionStatus && `collection__summary--${subscriptionStatus}`
-            )}
-          >
-            <div className="collection__summary-column collection__summary-plan">
-              <h3 className="collection__summary-column-title">{planSectionLabel}</h3>
-              {planSlug ? (
-                <p className="collection__summary-value-title">{getPlanDisplayName(planSlug)}</p>
-              ) : null}
-              <div className="collection__summary-description">
-                <p className="collection__summary-slots">
-                  <span className="collection__summary-slots-count" aria-live="polite">
-                    {slotsUsed} / {slotsLimit}
-                  </span>{' '}
-                  {slotsUsedLabel}
-                </p>
-                <div
-                  className="collection__summary-slots-progress"
-                  aria-hidden
-                  style={{ '--collection-slots-progress': `${slotsProgress}%` } as CSSProperties}
-                >
-                  <span className="collection__summary-slots-progress-fill" />
-                </div>
-              </div>
-              <div className="collection__summary-action">
-                <DashboardButton
-                  variant="outline"
-                  className="collection__summary-change-plan"
-                  onClick={() => openSupportModal()}
-                >
-                  {changePlanLabel}
-                </DashboardButton>
-              </div>
-            </div>
-
-            {subscriptionStatus ? (
-              <div className="collection__summary-column collection__summary-subscription">
-                <h3 className="collection__summary-column-title">{subscriptionSectionLabel}</h3>
-                {subscriptionStatus === 'expired' ? (
-                  <>
-                    <p className="collection__summary-value-title collection__summary-value-title--expired">
-                      <span className="collection__summary-expired-dot" aria-hidden />
-                      {subscriptionExpiredStatusLabel}
+          <div className="user-dashboard__albums-list">
+            <DashboardCard className="collection__summary-card">
+              <header
+                className={clsx(
+                  'collection__summary',
+                  subscriptionStatus && `collection__summary--${subscriptionStatus}`
+                )}
+              >
+                <div className="collection__summary-column collection__summary-plan">
+                  <h3 className="collection__summary-column-title">{planSectionLabel}</h3>
+                  {planSlug ? (
+                    <p className="collection__summary-value-title">
+                      {getPlanDisplayName(planSlug)}
                     </p>
-                    <div className="collection__summary-description">
-                      <p className="collection__summary-description-text">
-                        {supportInactiveDescription}
-                      </p>
+                  ) : null}
+                  <div className="collection__summary-description">
+                    <p className="collection__summary-slots">
+                      <span className="collection__summary-slots-count" aria-live="polite">
+                        {slotsUsed} / {slotsLimit}
+                      </span>{' '}
+                      {slotsUsedLabel}
+                    </p>
+                    <div
+                      className="collection__summary-slots-progress"
+                      aria-hidden
+                      style={
+                        { '--collection-slots-progress': `${slotsProgress}%` } as CSSProperties
+                      }
+                    >
+                      <span className="collection__summary-slots-progress-fill" />
                     </div>
-                    <div className="collection__summary-action">
+                  </div>
+                  <div className="collection__summary-action">
+                    <DashboardButton
+                      variant="outline"
+                      className="collection__summary-change-plan"
+                      onClick={() => openSupportModal()}
+                    >
+                      {changePlanLabel}
+                    </DashboardButton>
+                  </div>
+                </div>
+
+                {subscriptionStatus ? (
+                  <div className="collection__summary-column collection__summary-subscription">
+                    <h3 className="collection__summary-column-title">{subscriptionSectionLabel}</h3>
+                    {subscriptionStatus === 'expired' ? (
+                      <>
+                        <p className="collection__summary-value-title collection__summary-value-title--expired">
+                          <span className="collection__summary-expired-dot" aria-hidden />
+                          {subscriptionExpiredStatusLabel}
+                        </p>
+                        <div className="collection__summary-description">
+                          <p className="collection__summary-description-text">
+                            {supportInactiveDescription}
+                          </p>
+                        </div>
+                        <div className="collection__summary-action">
+                          <DashboardButton
+                            variant="outline"
+                            destructive
+                            className="collection__summary-renew"
+                            loading={renewLoading}
+                            disabled={renewLoading || bulkLoading}
+                            onClick={() => void handleRenewSubscription()}
+                          >
+                            {renewSupportLabel}
+                          </DashboardButton>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        {renewalDateLabel ? (
+                          <p className="collection__summary-value-title">
+                            {renewalDateTemplate.replace('{date}', renewalDateLabel)}
+                          </p>
+                        ) : null}
+                        {daysRemainingLabel ? (
+                          <div className="collection__summary-description">
+                            <p className="collection__summary-description-text">
+                              {daysRemainingLabel}
+                            </p>
+                          </div>
+                        ) : (
+                          <div className="collection__summary-description" aria-hidden />
+                        )}
+                        <div className="collection__summary-action" aria-hidden />
+                      </>
+                    )}
+                  </div>
+                ) : null}
+              </header>
+            </DashboardCard>
+
+            {error ? (
+              <div className="collection__error" role="alert">
+                {error}
+              </div>
+            ) : null}
+
+            {data ? (
+              <DashboardCard className="collection__list-card">
+                {inactiveCount > 0 ? (
+                  <div className="collection__inactive-toolbar">
+                    <span className="collection__inactive-toolbar-count">
+                      {inactiveArtistsLabel.replace('{count}', String(inactiveCount))}
+                    </span>
+                    <div className="collection__inactive-toolbar-actions">
                       <DashboardButton
                         variant="outline"
                         destructive
-                        className="collection__summary-renew"
-                        loading={renewLoading}
-                        disabled={renewLoading || bulkLoading}
-                        onClick={() => void handleRenewSubscription()}
+                        disabled={Boolean(removingId) || bulkLoading}
+                        onClick={() => void handleClearInactiveCollection()}
                       >
-                        {renewSupportLabel}
+                        {clearCollectionLabel}
+                      </DashboardButton>
+                      <DashboardButton variant="outline" onClick={toggleSelectMode}>
+                        {isSelectMode ? cancelSelectLabel : selectModeLabel}
                       </DashboardButton>
                     </div>
-                  </>
-                ) : (
-                  <>
-                    {renewalDateLabel ? (
-                      <p className="collection__summary-value-title">
-                        {renewalDateTemplate.replace('{date}', renewalDateLabel)}
-                      </p>
-                    ) : null}
-                    {daysRemainingLabel ? (
-                      <div className="collection__summary-description">
-                        <p className="collection__summary-description-text">{daysRemainingLabel}</p>
-                      </div>
-                    ) : (
-                      <div className="collection__summary-description" aria-hidden />
-                    )}
-                    <div className="collection__summary-action" aria-hidden />
-                  </>
-                )}
-              </div>
-            ) : null}
-          </header>
-
-          {error ? (
-            <div className="collection__error" role="alert">
-              {error}
-            </div>
-          ) : null}
-
-          {data ? (
-            <>
-              {inactiveCount > 0 ? (
-                <div className="collection__inactive-toolbar">
-                  <span className="collection__inactive-toolbar-count">
-                    {inactiveArtistsLabel.replace('{count}', String(inactiveCount))}
-                  </span>
-                  <div className="collection__inactive-toolbar-actions">
-                    <DashboardButton
-                      variant="outline"
-                      destructive
-                      disabled={Boolean(removingId) || bulkLoading}
-                      onClick={() => void handleClearInactiveCollection()}
-                    >
-                      <Trash2Icon
-                        {...dashboardActionIconProps({
-                          size: 14,
-                        })}
-                        aria-hidden
-                      />
-                      {clearCollectionLabel}
-                    </DashboardButton>
-                    <DashboardButton
-                      variant="outline"
-                      className={clsx(
-                        'collection__select-toggle',
-                        isSelectMode && 'collection__select-toggle--active'
-                      )}
-                      onClick={toggleSelectMode}
-                    >
-                      {isSelectMode ? cancelSelectLabel : selectModeLabel}
-                    </DashboardButton>
                   </div>
-                </div>
-              ) : null}
+                ) : null}
 
-              <div className="collection__list">
-                {(data?.artists ?? []).map((artist) => {
-                  const artistHref = artist.slug
-                    ? `/?artist=${encodeURIComponent(artist.slug)}`
-                    : '/';
-                  const artistIsLocked = isCollectionArtistLocked(artist);
-                  const removable = canRemoveArtist(artist, isPremium);
-                  const removeDisabled = Boolean(removingId) || bulkLoading || !removable;
-                  const isSelected = selectedIds.has(artist.artistUserId);
-                  const isInactiveSelectable = isSelectMode && !artist.isActive;
-                  const removeTooltip = !removable
-                    ? artistIsLocked
-                      ? removeLockedTooltip
-                      : artist.isActive && !isPremium
-                        ? removeSubscriptionTooltip
-                        : undefined
-                    : undefined;
-
-                  return (
-                    <div
-                      key={artist.id}
-                      className={clsx(
-                        'collection__artist-row-wrap',
-                        isInactiveSelectable && 'collection__artist-row-wrap--selectable'
-                      )}
-                      onClick={
-                        isInactiveSelectable
-                          ? () => {
-                              toggleSelected(artist.artistUserId);
-                            }
+                <div className="collection__list">
+                  {(data?.artists ?? []).map((artist) => {
+                    const artistHref = artist.slug
+                      ? `/?artist=${encodeURIComponent(artist.slug)}`
+                      : '/';
+                    const artistIsLocked = isCollectionArtistLocked(artist);
+                    const removable = canRemoveArtist(artist, isPremium);
+                    const removeDisabled = Boolean(removingId) || bulkLoading || !removable;
+                    const isSelected = selectedIds.has(artist.artistUserId);
+                    const isInactiveSelectable = isSelectMode && !artist.isActive;
+                    const removeTooltip = !removable
+                      ? artistIsLocked
+                        ? removeLockedTooltip
+                        : artist.isActive && !isPremium
+                          ? removeSubscriptionTooltip
                           : undefined
-                      }
-                      onKeyDown={
-                        isInactiveSelectable
-                          ? (event) => {
-                              if (event.key === 'Enter' || event.key === ' ') {
-                                event.preventDefault();
+                      : undefined;
+
+                    return (
+                      <div
+                        key={artist.id}
+                        className={clsx(
+                          'collection__artist-row-wrap',
+                          isInactiveSelectable && 'collection__artist-row-wrap--selectable'
+                        )}
+                        onClick={
+                          isInactiveSelectable
+                            ? () => {
                                 toggleSelected(artist.artistUserId);
                               }
-                            }
-                          : undefined
-                      }
-                      role={isInactiveSelectable ? 'button' : undefined}
-                      tabIndex={isInactiveSelectable ? 0 : undefined}
-                    >
-                      <article
-                        className={clsx(
-                          'collection__artist-row',
-                          isSelected && 'collection__artist-row--selected'
-                        )}
+                            : undefined
+                        }
+                        onKeyDown={
+                          isInactiveSelectable
+                            ? (event) => {
+                                if (event.key === 'Enter' || event.key === ' ') {
+                                  event.preventDefault();
+                                  toggleSelected(artist.artistUserId);
+                                }
+                              }
+                            : undefined
+                        }
+                        role={isInactiveSelectable ? 'button' : undefined}
+                        tabIndex={isInactiveSelectable ? 0 : undefined}
                       >
-                        {isInactiveSelectable ? (
-                          <span className="collection__select-checkbox" aria-hidden>
-                            {isSelected ? <CheckSquare size={18} /> : <Square size={18} />}
-                          </span>
-                        ) : null}
-
-                        <div className="collection__cover">
-                          {artist.cover ? (
-                            <img src={artist.cover} alt="" loading="lazy" decoding="async" />
-                          ) : (
-                            <span className="collection__cover-fallback" aria-hidden>
-                              {artist.name.charAt(0).toUpperCase()}
-                            </span>
+                        <article
+                          className={clsx(
+                            'collection__artist-row',
+                            isSelected && 'collection__artist-row--selected'
                           )}
-                        </div>
-
-                        <h3 className="collection__name">
+                        >
                           {isInactiveSelectable ? (
-                            artist.name
-                          ) : (
-                            <Link to={artistHref} onClick={(event) => event.stopPropagation()}>
-                              {artist.name}
-                            </Link>
-                          )}
-                        </h3>
+                            <span className="collection__select-checkbox" aria-hidden>
+                              {isSelected ? <CheckSquare size={18} /> : <Square size={18} />}
+                            </span>
+                          ) : null}
 
-                        {!isSelectMode ? (
-                          <DashboardButton
-                            variant="icon"
-                            destructive
-                            className="collection__remove-action"
-                            disabled={removeDisabled}
-                            aria-label={
-                              removeTooltip ? `${removeLabel}. ${removeTooltip}` : removeLabel
-                            }
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              void handleRemove(artist);
-                            }}
-                          >
-                            <Trash2Icon {...dashboardActionIconProps()} />
-                          </DashboardButton>
-                        ) : null}
-                      </article>
-                    </div>
-                  );
-                })}
-              </div>
+                          <div className="collection__cover">
+                            {artist.cover ? (
+                              <img src={artist.cover} alt="" loading="lazy" decoding="async" />
+                            ) : (
+                              <span className="collection__cover-fallback" aria-hidden>
+                                {artist.name.charAt(0).toUpperCase()}
+                              </span>
+                            )}
+                          </div>
 
-              {isSelectMode ? (
-                <footer className="collection__action-bar">
-                  <div className="collection__action-bar-meta">
-                    <p className="collection__action-bar-count">
-                      {selectedCountLabel.replace('{count}', String(selectedCount))}
-                    </p>
-                    {slotsRemaining > 0 ? (
-                      <p className="collection__action-bar-hint">
-                        {selectHintTemplate.replace('{count}', String(slotsRemaining))}
+                          <h3 className="collection__name">
+                            {isInactiveSelectable ? (
+                              artist.name
+                            ) : (
+                              <Link to={artistHref} onClick={(event) => event.stopPropagation()}>
+                                {artist.name}
+                              </Link>
+                            )}
+                          </h3>
+
+                          {!isSelectMode ? (
+                            <DashboardButton
+                              variant="icon"
+                              destructive
+                              className="collection__remove-action"
+                              disabled={removeDisabled}
+                              aria-label={
+                                removeTooltip ? `${removeLabel}. ${removeTooltip}` : removeLabel
+                              }
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                void handleRemove(artist);
+                              }}
+                            >
+                              <Trash2Icon {...dashboardActionIconProps()} />
+                            </DashboardButton>
+                          ) : null}
+                        </article>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {isSelectMode ? (
+                  <footer className="collection__action-bar">
+                    <div className="collection__action-bar-meta">
+                      <p className="collection__action-bar-count">
+                        {selectedCountLabel.replace('{count}', String(selectedCount))}
                       </p>
-                    ) : null}
-                  </div>
-                  <div className="collection__action-bar-buttons">
-                    <DashboardButton
-                      variant="outline"
-                      destructive
-                      disabled={removeSelectedDisabled}
-                      onClick={() => void handleBulkRemove()}
-                    >
-                      <Trash2Icon size={14} aria-hidden />
-                      {removeSelectedLabel}
-                    </DashboardButton>
-                    <DashboardButton
-                      variant="primary"
-                      disabled={activateDisabled}
-                      onClick={() => void handleActivateSelected()}
-                    >
-                      <LockIcon size={14} aria-hidden />
-                      {activateSelectedTemplate.replace('{count}', String(activateCount))}
-                    </DashboardButton>
-                  </div>
-                </footer>
-              ) : null}
-            </>
-          ) : null}
+                      {slotsRemaining > 0 ? (
+                        <p className="collection__action-bar-hint">
+                          {selectHintTemplate.replace('{count}', String(slotsRemaining))}
+                        </p>
+                      ) : null}
+                    </div>
+                    <div className="collection__action-bar-buttons">
+                      <DashboardButton
+                        variant="outline"
+                        destructive
+                        disabled={removeSelectedDisabled}
+                        onClick={() => void handleBulkRemove()}
+                      >
+                        {removeSelectedLabel}
+                      </DashboardButton>
+                      <DashboardButton
+                        variant="primary"
+                        disabled={activateDisabled}
+                        onClick={() => void handleActivateSelected()}
+                      >
+                        {activateSelectedTemplate.replace('{count}', String(activateCount))}
+                      </DashboardButton>
+                    </div>
+                  </footer>
+                ) : null}
+              </DashboardCard>
+            ) : null}
+          </div>
         </div>
       </section>
       <ArchiveArtistRemovedToast triggerKey={removedToastTrigger} />
