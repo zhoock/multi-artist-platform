@@ -80,12 +80,6 @@ dialog {
         text-transform: uppercase;
       }
 
-      &__download-all {
-        min-height: auto;
-        padding: var(--ms-02) var(--ms-01);
-        font-size: var(--ms-01);
-      }
-
       &__track-label {
         display: flex;
         align-items: baseline;
@@ -106,10 +100,6 @@ dialog {
         color: var(--dashboard-text-primary);
         font-size: var(--dashboard-font-size);
         line-height: 1.4;
-      }
-
-      &__track-download {
-        white-space: nowrap;
       }
 
       &__footer {

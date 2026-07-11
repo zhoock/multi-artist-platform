@@ -261,7 +261,6 @@ export function MyPurchasesContent() {
                     action={
                       <DashboardButton
                         variant="outline"
-                        className="my-purchases__download-all"
                         aria-label={copy?.downloadAll ?? 'Download all'}
                         disabled={
                           downloadingAlbums.has(purchase.id) || purchase.tracks.length === 0
@@ -305,7 +304,6 @@ export function MyPurchasesContent() {
                         action={
                           <DashboardButton
                             variant="outline"
-                            className="my-purchases__track-download"
                             onClick={() =>
                               handleDownloadTrack(purchase.purchaseToken, track.trackId)
                             }

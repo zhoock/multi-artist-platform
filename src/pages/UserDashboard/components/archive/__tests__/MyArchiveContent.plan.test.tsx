@@ -320,7 +320,7 @@ describe('MyArchiveContent plan display', () => {
     expect(screen.getByRole('link', { name: 'Discover Artists' })).toBeTruthy();
     expect(screen.queryByText('Manage Plan →')).toBeNull();
     expect(screen.queryByText('0/3')).toBeNull();
-    expect(document.querySelector('.collection__summary-change-plan')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Change plan' })).toBeNull();
   });
 
   test('shows header when collection is empty but subscription is active', async () => {

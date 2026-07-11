@@ -620,7 +620,6 @@ export function MixerAdmin({ ui, userId, albums = [], tabActive = true }: MixerA
                                         action={
                                           <DashboardButton
                                             variant="primary"
-                                            className="mixer-admin__add-stem"
                                             onClick={() =>
                                               setAddModal({
                                                 albumId: storageAlbumId,
@@ -638,7 +637,6 @@ export function MixerAdmin({ ui, userId, albums = [], tabActive = true }: MixerA
                                         <div className="mixer-admin__stems-toolbar">
                                           <DashboardButton
                                             variant="outline"
-                                            className="mixer-admin__add-stem"
                                             onClick={() =>
                                               setAddModal({
                                                 albumId: storageAlbumId,

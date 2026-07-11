@@ -14,13 +14,6 @@
     padding-top: var(--ms-01);
   }
 
-  &__add-stem {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.55em;
-    flex-shrink: 0;
-  }
-
   &__stems-list {
     display: flex;
     flex-direction: column;

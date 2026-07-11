@@ -504,11 +504,7 @@ export function MyArchiveContent({ active }: Props) {
                     </div>
                   </div>
                   <div className="collection__summary-action">
-                    <DashboardButton
-                      variant="outline"
-                      className="collection__summary-change-plan"
-                      onClick={() => openSupportModal()}
-                    >
+                    <DashboardButton variant="outline" onClick={() => openSupportModal()}>
                       {changePlanLabel}
                     </DashboardButton>
                   </div>
@@ -532,7 +528,6 @@ export function MyArchiveContent({ active }: Props) {
                           <DashboardButton
                             variant="outline"
                             destructive
-                            className="collection__summary-renew"
                             loading={renewLoading}
                             disabled={renewLoading || bulkLoading}
                             onClick={() => void handleRenewSubscription()}

@@ -192,7 +192,6 @@ export function SettingsPageContent({
                 <div className="user-dashboard__settings-page__avatar-actions">
                   <DashboardButton
                     variant="outline"
-                    className="user-dashboard__settings-page__avatar-upload"
                     onClick={onAvatarUploadClick}
                     disabled={isUploadingAvatar}
                   >

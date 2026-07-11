@@ -78,14 +78,6 @@ dialog {
       @include dashboard-form-select;
     }
 
-    &__choose {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.55em;
-      align-self: flex-start;
-      padding: var(--ms-01) var(--ms-1);
-    }
-
     &__hint {
       margin: 0;
 

@@ -180,7 +180,6 @@ export function SocialLinksContent({ active }: SocialLinksContentProps) {
         </DashboardButton>
         <DashboardButton
           variant="primary"
-          className="social-links__cta"
           loading={isSaving}
           onClick={() => void handleSave()}
           disabled={isSaving || isLoading || !hasChanges}

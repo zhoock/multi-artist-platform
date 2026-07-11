@@ -120,7 +120,6 @@ export function AddStemModal({ isOpen, lang, labels, onClose, onSubmit }: AddSte
                 <>
                   <DashboardButton
                     variant="outline"
-                    className="add-stem-modal__choose"
                     onClick={() => fileInputRef.current?.click()}
                     disabled={submitting}
                   >

@@ -67,7 +67,6 @@ export function TrackLyricsPanel({
           action={
             <DashboardButton
               variant="primary"
-              className="albums-tab__add-lyrics"
               onClick={() => onLyricsAction('add', albumId, track.id, track.title)}
             >
               <PlusIcon {...dashboardActionIconProps({ size: 18 })} />
