@@ -9,10 +9,12 @@ import { screen, waitFor, fireEvent } from '@testing-library/react';
 import { renderWithProviders } from '@shared/lib/test-utils';
 import { removeArtistFromArchiveApi } from '@shared/api/archive';
 import { MyArchiveContent } from '../MyArchiveContent';
+import type { SubscriptionCheckoutResult } from '@shared/lib/archiveAccessModal/useSubscriptionCheckout';
 
 const getMyArchiveMock = jest.fn<() => Promise<unknown>>();
 const removeArtistFromArchiveApiMock = jest.mocked(removeArtistFromArchiveApi);
 const openSupportModalMock = jest.fn();
+const startCheckoutMock = jest.fn<(planSlug: string) => Promise<SubscriptionCheckoutResult>>();
 
 jest.mock('@shared/api/archive', () => ({
   getMyArchive: () => getMyArchiveMock(),
@@ -27,6 +29,7 @@ jest.mock('@shared/lib/archiveAccessModal', () => ({
     close: jest.fn(),
     openFromIntentResume: jest.fn(),
     requestAccess: jest.fn(),
+    startCheckout: (planSlug: string) => startCheckoutMock(planSlug),
   }),
 }));
 
@@ -63,6 +66,8 @@ describe('MyArchiveContent plan display', () => {
     getMyArchiveMock.mockReset();
     removeArtistFromArchiveApiMock.mockReset();
     openSupportModalMock.mockReset();
+    startCheckoutMock.mockReset();
+    startCheckoutMock.mockResolvedValue({ ok: true, redirected: true });
   });
 
   test('shows two-column header with plan and subscription status when active', async () => {
@@ -81,12 +86,12 @@ describe('MyArchiveContent plan display', () => {
       expect(screen.getByText('Explorer')).toBeTruthy();
     });
 
-    expect(screen.getByText('1/1')).toBeTruthy();
-    expect(screen.getByText('Subscription active')).toBeTruthy();
-    expect(screen.getByText(/Renews/i)).toBeTruthy();
+    expect(screen.getByText(/1 \/ 1/)).toBeTruthy();
+    expect(screen.queryByText('Subscription active')).toBeNull();
+    expect(screen.getByText(/Valid until/i)).toBeTruthy();
     expect(screen.getByText(/days left/i)).toBeTruthy();
-    expect(document.querySelector('.collection__top')).toBeTruthy();
-    expect(document.querySelector('.collection__subscription-card--active')).toBeTruthy();
+    expect(document.querySelector('.collection__summary')).toBeTruthy();
+    expect(document.querySelector('.collection__summary--active')).toBeTruthy();
     expect(screen.queryByText(/Previously supported artists are now inactive/i)).toBeNull();
     expect(screen.queryByText('Collection Full')).toBeNull();
   });
@@ -104,10 +109,11 @@ describe('MyArchiveContent plan display', () => {
     renderWithProviders(<MyArchiveContent active />);
 
     await waitFor(() => {
-      expect(screen.getByText('Subscription ending')).toBeTruthy();
+      expect(screen.getByText(/days left/i)).toBeTruthy();
     });
 
-    expect(document.querySelector('.collection__subscription-card--expiring')).toBeTruthy();
+    expect(document.querySelector('.collection__summary--expiring')).toBeTruthy();
+    expect(screen.queryByText('Subscription ending')).toBeNull();
     expect(screen.queryByText('Collection Full')).toBeNull();
   });
 
@@ -149,7 +155,7 @@ describe('MyArchiveContent plan display', () => {
 
     expect(screen.queryByText('Archivist')).toBeNull();
     expect(screen.queryByText('Explorer')).toBeNull();
-    expect(document.querySelector('.collection__top')).toBeNull();
+    expect(document.querySelector('.collection__summary')).toBeNull();
   });
 
   test('shows renew support action only in subscription header when support is inactive', async () => {
@@ -165,20 +171,23 @@ describe('MyArchiveContent plan display', () => {
     renderWithProviders(<MyArchiveContent active />);
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Renew Support →' })).toBeTruthy();
+      expect(screen.getByRole('button', { name: 'Renew subscription' })).toBeTruthy();
     });
 
-    expect(screen.getByText('Subscription expired')).toBeTruthy();
+    expect(screen.getByText('Expired')).toBeTruthy();
     expect(screen.getByText('Access to exclusive content is suspended.')).toBeTruthy();
-    expect(document.querySelector('.collection__subscription-card--expired')).toBeTruthy();
-    expect(
-      document.querySelector('.collection__subscription-card .status-badge--inactive')
-    ).toBeTruthy();
+    expect(document.querySelector('.collection__summary--expired')).toBeTruthy();
+    expect(document.querySelector('.collection__summary .status-badge')).toBeNull();
     expect(document.querySelector('.collection__card--renew')).toBeNull();
     expect(screen.queryByRole('button', { name: 'Upgrade Plan' })).toBeNull();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Renew Support →' }));
-    expect(openSupportModalMock).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByRole('button', { name: 'Renew subscription' }));
+
+    await waitFor(() => {
+      expect(startCheckoutMock).toHaveBeenCalledWith('explorer');
+    });
+
+    expect(openSupportModalMock).not.toHaveBeenCalled();
   });
 
   test('shows no renew or upgrade actions when support is active and slots remain', async () => {
@@ -194,12 +203,11 @@ describe('MyArchiveContent plan display', () => {
     renderWithProviders(<MyArchiveContent active />);
 
     await waitFor(() => {
-      expect(screen.getByText('1/2')).toBeTruthy();
+      expect(screen.getByText(/1 \/ 2/)).toBeTruthy();
     });
 
     expect(screen.queryByRole('button', { name: 'Upgrade Plan' })).toBeNull();
-    expect(screen.queryByRole('button', { name: 'Renew Support →' })).toBeNull();
-    expect(screen.getByText(/slot available/i)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Renew subscription' })).toBeNull();
   });
 
   test('shows icon-only remove button for active unlocked artist', async () => {
@@ -273,7 +281,7 @@ describe('MyArchiveContent plan display', () => {
     expect(screen.getByRole('button', { name: 'Remove' })).not.toBeDisabled();
   });
 
-  test('opens plan modal when plan card is clicked', async () => {
+  test('opens plan modal when change plan button is clicked', async () => {
     getMyArchiveMock.mockResolvedValue({
       isPremium: true,
       slotsUsed: 2,
@@ -286,10 +294,10 @@ describe('MyArchiveContent plan display', () => {
     renderWithProviders(<MyArchiveContent active />);
 
     await waitFor(() => {
-      expect(screen.getByText('Manage Plan →')).toBeTruthy();
+      expect(screen.getByRole('button', { name: 'Change plan' })).toBeTruthy();
     });
 
-    fireEvent.click(document.querySelector('.collection__plan-trigger')!);
+    fireEvent.click(screen.getByRole('button', { name: 'Change plan' }));
     expect(openSupportModalMock).toHaveBeenCalledTimes(1);
   });
 
@@ -312,7 +320,7 @@ describe('MyArchiveContent plan display', () => {
     expect(screen.getByRole('link', { name: 'Discover Artists' })).toBeTruthy();
     expect(screen.queryByText('Manage Plan →')).toBeNull();
     expect(screen.queryByText('0/3')).toBeNull();
-    expect(document.querySelector('.collection__plan-trigger')).toBeNull();
+    expect(document.querySelector('.collection__summary-change-plan')).toBeNull();
   });
 
   test('shows header when collection is empty but subscription is active', async () => {
@@ -328,12 +336,12 @@ describe('MyArchiveContent plan display', () => {
     renderWithProviders(<MyArchiveContent active />);
 
     await waitFor(() => {
-      expect(screen.getByText('0/3')).toBeTruthy();
+      expect(screen.getByText(/0 \/ 3/)).toBeTruthy();
     });
 
     expect(screen.queryByText('Your collection is empty')).toBeNull();
-    expect(screen.getByText('Manage Plan →')).toBeTruthy();
-    expect(screen.getByText('Subscription active')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Change plan' })).toBeTruthy();
+    expect(screen.queryByText('Subscription active')).toBeNull();
   });
 
   test('allows remove for inactive artist with stale lock data and no card status', async () => {
@@ -362,7 +370,7 @@ describe('MyArchiveContent plan display', () => {
     expect(screen.getByRole('button', { name: 'Remove' })).not.toBeDisabled();
 
     fireEvent.click(screen.getByRole('button', { name: 'Select' }));
-    fireEvent.click(document.querySelector('.collection__artist-card-wrap--selectable')!);
+    fireEvent.click(document.querySelector('.collection__artist-row-wrap--selectable')!);
 
     expect(screen.getByRole('button', { name: 'Remove from collection' })).not.toBeDisabled();
   });
@@ -440,9 +448,9 @@ describe('MyArchiveContent plan display', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Select' }));
 
-    const selectableCards = document.querySelectorAll('.collection__artist-card-wrap--selectable');
-    expect(selectableCards.length).toBe(1);
-    expect(selectableCards[0]?.textContent).toContain('Inactive Artist');
+    const selectableRows = document.querySelectorAll('.collection__artist-row-wrap--selectable');
+    expect(selectableRows.length).toBe(1);
+    expect(selectableRows[0]?.textContent).toContain('Inactive Artist');
   });
 
   test('done exits select mode', async () => {
@@ -556,8 +564,8 @@ describe('MyArchiveContent plan display', () => {
     });
 
     expect(container.querySelector('.user-dashboard__section')).toBeTruthy();
-    expect(container.querySelector('.dashboard-card')).toBeTruthy();
-    expect(container.querySelector('.collection__artist-card .status-badge')).toBeNull();
+    expect(container.querySelector('.collection__artist-row')).toBeTruthy();
+    expect(container.querySelector('.collection__artist-row .status-badge')).toBeNull();
     expect(container.querySelector('.dashboard-button--destructive')).toBeTruthy();
   });
 

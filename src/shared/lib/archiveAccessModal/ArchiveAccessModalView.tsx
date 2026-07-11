@@ -1,22 +1,14 @@
 import { Users } from 'lucide-react';
 
 import { useState, useCallback, useEffect, type RefObject } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
 
 import { useLang } from '@app/providers/lang';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 import { ModalCloseIcon } from '@shared/ui/icons/ModalCloseIcon';
-import { createSubscriptionPayment } from '@shared/api/subscription';
 import { usePremiumSubscription } from '@features/premiumSubscription';
-import { savePremiumCheckoutArtistSlug } from '@features/premiumSubscription';
-import { getToken, isEmailVerified } from '@shared/lib/auth';
+import { isEmailVerified } from '@shared/lib/auth';
 import { useEmailVerificationCopy } from '@shared/lib/emailVerification';
-import {
-  beginPremiumCheckoutAuthIntent,
-  clearPremiumCheckoutAuthIntent,
-} from '@shared/lib/authIntent';
-import { sanitizeReturnPath } from '@shared/lib/authReturnUrl';
 import {
   SUBSCRIPTION_PLAN_SLUGS,
   type SubscriptionPlanSlug,
@@ -26,6 +18,7 @@ import { LocalModal } from '@shared/ui/localModal';
 
 import { SubscriptionPlanCard } from './SubscriptionPlanCard';
 import type { CloseArchiveAccessModalOptions } from './archiveAccessModalContext';
+import { useSubscriptionCheckout } from './useSubscriptionCheckout';
 
 import './archiveAccessModal.scss';
 
@@ -36,13 +29,12 @@ type Props = {
 
 export function ArchiveAccessModalView({ dialogRef, onClose }: Props) {
   const { lang } = useLang() as { lang: 'ru' | 'en' };
-  const location = useLocation();
-  const navigate = useNavigate();
   const viewer = useAuthSessionUser();
   const emailCopy = useEmailVerificationCopy();
   const { isPremium, planSlug: currentPlanSlug, refetch } = usePremiumSubscription();
   const [loadingPlan, setLoadingPlan] = useState<SubscriptionPlanSlug | null>(null);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  const { startCheckout } = useSubscriptionCheckout({ onClose });
   const ui = useAppSelector((state) => selectUiDictionaryFirst(state, lang));
   const emailBlocked = Boolean(viewer && !isEmailVerified(viewer));
 
@@ -76,61 +68,17 @@ export function ArchiveAccessModalView({ dialogRef, onClose }: Props) {
 
   const handleSelectPlan = useCallback(
     async (planSlug: SubscriptionPlanSlug) => {
-      const rawReturnTo = `${location.pathname}${location.search}`;
-      const returnTo = sanitizeReturnPath(rawReturnTo) ?? '/';
-
-      if (viewer && !isEmailVerified(viewer)) {
-        setCheckoutError(
-          emailCopy.restrictedPremium ??
-            (lang === 'en'
-              ? 'Verify your email to purchase Premium'
-              : 'Подтвердите email, чтобы оформить Premium')
-        );
-        return;
-      }
-
-      if (!getToken() && !viewer?.id) {
-        beginPremiumCheckoutAuthIntent({ returnTo });
-        navigate(`/auth?returnTo=${encodeURIComponent(returnTo)}`, {
-          state: { backgroundLocation: location },
-        });
-        onClose({ preserveCheckoutIntent: true });
-        return;
-      }
-
       setLoadingPlan(planSlug);
       setCheckoutError(null);
 
-      try {
-        const returnUrl =
-          typeof window !== 'undefined'
-            ? `${window.location.origin}/pay/subscription-success?returnTo=${encodeURIComponent(returnTo)}`
-            : undefined;
+      const result = await startCheckout(planSlug);
 
-        const result = await createSubscriptionPayment({ returnUrl, plan: planSlug });
-
-        if (!result.success || !result.data) {
-          setCheckoutError(result.error || 'Could not start checkout');
-          setLoadingPlan(null);
-          return;
-        }
-
-        if (result.data.confirmationUrl) {
-          clearPremiumCheckoutAuthIntent();
-          savePremiumCheckoutArtistSlug();
-          onClose({ preserveCheckoutIntent: true });
-          window.location.href = result.data.confirmationUrl;
-          return;
-        }
-
-        setCheckoutError('Payment provider did not return a checkout URL');
-        setLoadingPlan(null);
-      } catch (error) {
-        setCheckoutError(error instanceof Error ? error.message : 'Checkout failed');
+      if (!result.ok) {
+        setCheckoutError(result.error);
         setLoadingPlan(null);
       }
     },
-    [emailCopy.restrictedPremium, lang, location, navigate, onClose, viewer]
+    [startCheckout]
   );
 
   return (

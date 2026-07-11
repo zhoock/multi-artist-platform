@@ -820,6 +820,10 @@ export interface IInterface {
       archiveFullUpgradeAction: string;
       archiveFullUpgradeHint: string;
       upgradePlanButton: string;
+      changePlanButton: string;
+      planSectionLabel: string;
+      subscriptionSectionLabel: string;
+      subscriptionExpiredStatus: string;
       supportInactiveTitle: string;
       supportInactiveDescription: string;
       renewSupportButton: string;

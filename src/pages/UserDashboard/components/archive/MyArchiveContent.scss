@@ -4,14 +4,9 @@ dialog {
   .user-dashboard {
     .collection {
       &__tab {
-        --collection-block-padding-y: var(--ms-01);
-        --collection-block-padding-x: var(--ms-0);
-        --collection-block-gap: var(--ms-0);
-
         display: flex;
         flex-direction: column;
         gap: var(--ms-1);
-        padding: 0;
         min-height: 0;
 
         &--select-mode {
@@ -21,176 +16,137 @@ dialog {
         &--empty {
           flex: 1;
           min-height: min(480px, 58vh);
-          padding: 0;
         }
       }
 
-      &__top {
+      &__summary {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: var(--ms-0);
-        align-items: stretch;
+        padding-bottom: var(--ms-1);
+        border-bottom: 1px solid var(--dashboard-divider);
 
         @include breakpoint(old-phones) {
-          grid-template-columns: 1fr;
+          grid-template-columns: minmax(0, 1fr);
         }
       }
 
-      &__top-col {
-        display: flex;
-        min-width: 0;
-      }
-
-      &__plan-trigger {
-        width: 100%;
-        padding: 0;
-        color: inherit;
-        font: inherit;
-        text-align: left;
-        background: none;
-        border: none;
-        border-radius: var(--ms-01);
-        appearance: none;
-        cursor: pointer;
-      }
-
-      &__plan-card,
-      &__subscription-card {
-        width: 100%;
-        height: 100%;
-        padding: var(--collection-block-padding-y) var(--collection-block-padding-x);
-      }
-
-      &__plan-card {
-        display: flex;
-        align-items: center;
-        gap: var(--ms-0);
-      }
-
-      &__slots-ring {
-        --collection-slots-progress: 0%;
-
-        display: grid;
-        flex-shrink: 0;
-        width: 2.75rem;
-        height: 2.75rem;
-        background: conic-gradient(
-          var(--dark-greenish-yellow) var(--collection-slots-progress),
-          rgb(var(--dark-greenish-yellow-rgb) / 18%) 0
-        );
-        border-radius: 50%;
-        place-items: center;
-
-        &::after {
-          width: 2rem;
-          height: 2rem;
-          background: var(--dashboard-card-bg);
-          border-radius: 50%;
-          content: '';
-          grid-area: 1 / 1;
-        }
-      }
-
-      &__slots-ring-icon {
-        position: relative;
-        z-index: 1;
-        grid-area: 1 / 1;
-        color: var(--dark-greenish-yellow);
-      }
-
-      &__plan-meta {
+      &__summary-column {
         display: flex;
         flex-direction: column;
-        gap: 0.15rem;
+        align-items: flex-start;
+        gap: var(--ms-01);
         min-width: 0;
+        min-height: 100%;
       }
 
-      &__plan-name {
-        color: var(--dashboard-text-primary);
-        font-size: var(--ms-0);
-        font-weight: 600;
-        line-height: 1.2;
-      }
-
-      &__slots-line {
+      &__summary-column-title {
         margin: 0;
-        line-height: 1.25;
+        color: rgb(255 255 255 / 82%);
+
+        @include dashboard-h2-title;
       }
 
-      &__slots-count {
+      &__summary-value-title {
+        margin: 0;
         color: var(--dashboard-text-primary);
-        font-size: var(--ms-0);
-        font-weight: 600;
+        font-size: var(--dashboard-font-size);
+        font-weight: 500;
+        line-height: 1.35;
+
+        &--expired {
+          display: flex;
+          align-items: center;
+          gap: 0.45rem;
+          color: var(--soft-red);
+        }
       }
 
-      &__slots-label {
-        @include dashboard-helper-text;
-      }
-
-      &__slots-manage {
-        margin-top: 0.15rem;
-        color: var(--dark-greenish-yellow);
-        font-size: var(--dashboard-helper-font-size);
-      }
-
-      &__subscription-card {
-        display: flex;
-        align-items: center;
-      }
-
-      &__subscription-content {
+      &__summary-description {
         display: flex;
         flex: 1;
         flex-direction: column;
-        justify-content: center;
-        gap: 0.35rem;
-        min-width: 0;
-      }
-
-      &__subscription-head {
-        display: flex;
-        flex-wrap: wrap;
-        align-items: center;
-        justify-content: space-between;
         gap: var(--ms-01);
+        width: 100%;
       }
 
-      &__subscription-detail {
+      &__summary-description-text {
         margin: 0;
 
         @include dashboard-helper-text;
-
-        line-height: 1.35;
-
-        &--with-icon {
-          display: flex;
-          align-items: flex-start;
-          gap: 0.4rem;
-        }
       }
 
-      &__subscription-detail-icon {
-        flex-shrink: 0;
-        margin-top: 0.1rem;
-        color: var(--dashboard-text-secondary);
+      &__summary-action {
+        display: flex;
+        align-items: flex-end;
+        width: 100%;
+        min-height: 2.25rem;
+        margin-top: auto;
       }
 
-      &__subscription-cta {
-        flex-shrink: 0;
-        width: auto;
-        margin-left: auto;
+      &__summary-plan {
+        padding-right: var(--ms-1);
+        border-right: 1px solid var(--dashboard-divider);
 
         @include breakpoint(old-phones) {
-          width: 100%;
-          margin-left: 0;
+          padding-right: 0;
+          padding-bottom: calc(var(--ms-1) / 2);
+          border-right: none;
+          border-bottom: 1px solid var(--dashboard-divider);
         }
+      }
+
+      &__summary-subscription {
+        padding-left: var(--ms-1);
+
+        @include breakpoint(old-phones) {
+          padding-left: 0;
+          padding-top: calc(var(--ms-1) / 2);
+        }
+      }
+
+      &__summary-slots {
+        margin: 0;
+
+        @include dashboard-helper-text;
+      }
+
+      &__summary-slots-count {
+        color: var(--dashboard-text-secondary);
+        font-variant-numeric: tabular-nums;
+      }
+
+      &__summary-slots-progress {
+        --collection-slots-progress: 0%;
+
+        width: 100%;
+        height: 4px;
+        background: rgb(var(--dark-greenish-yellow-rgb) / 32%);
+        border-radius: 999px;
+        overflow: hidden;
+      }
+
+      &__summary-slots-progress-fill {
+        display: block;
+        width: var(--collection-slots-progress);
+        height: 100%;
+        background: var(--dark-greenish-yellow);
+        border-radius: inherit;
+        box-shadow: 0 0 8px rgb(var(--dark-greenish-yellow-rgb) / 45%);
+        transition: width 0.2s ease;
+      }
+
+      &__summary-expired-dot {
+        flex-shrink: 0;
+        width: 0.42rem;
+        height: 0.42rem;
+        background: currentcolor;
+        border-radius: 50%;
       }
 
       &__loading,
       &__error {
-        padding: var(--ms-01) var(--ms-0);
-        font-size: var(--ms-0);
-        border-radius: var(--ms-02);
+        padding: var(--ms-01) 0;
+        font-size: var(--dashboard-font-size);
       }
 
       &__loading {
@@ -199,8 +155,6 @@ dialog {
 
       &__error {
         color: var(--soft-red);
-        background: rgb(var(--soft-red-rgb) / 10%);
-        border: 1px solid rgb(var(--soft-red-rgb) / 30%);
       }
 
       &__inactive-toolbar {
@@ -209,7 +163,7 @@ dialog {
         align-items: center;
         justify-content: space-between;
         gap: var(--ms-01);
-        margin-bottom: var(--ms-01);
+        padding-top: var(--ms-01);
       }
 
       &__inactive-toolbar-count {
@@ -233,75 +187,50 @@ dialog {
         }
       }
 
-      &__list {
-        display: flex;
-        flex-direction: column;
-        gap: var(--ms-0);
-      }
-
-      &__artist-card-wrap {
+      &__artist-row-wrap {
         &--selectable {
           cursor: pointer;
         }
       }
 
-      &__artist-card {
+      &__artist-row {
         display: grid;
-        grid-template-columns: auto 1fr auto;
+        grid-template-columns: 2.25rem minmax(0, 1fr) auto;
         align-items: center;
-        gap: var(--collection-block-gap);
-        padding: var(--collection-block-padding-y) var(--collection-block-padding-x);
+        gap: var(--ms-0);
+        min-height: 3rem;
+        padding-block: var(--ms-01);
+        border-bottom: 1px solid var(--dashboard-divider);
 
-        .collection__artist-card-wrap--selectable & {
-          grid-template-columns: auto auto 1fr;
+        .collection__artist-row-wrap--selectable & {
+          grid-template-columns: auto 2.25rem minmax(0, 1fr) auto;
+        }
+
+        &--selected {
+          background: rgb(var(--dark-greenish-yellow-rgb) / 6%);
         }
 
         @include breakpoint(old-phones) {
-          grid-template-columns: auto 1fr auto;
-          padding: var(--collection-block-padding-y);
+          grid-template-columns: 2rem minmax(0, 1fr) auto;
+          gap: var(--ms-01);
 
-          .collection__artist-card-wrap--selectable & {
-            grid-template-columns: auto auto 1fr auto;
+          .collection__artist-row-wrap--selectable & {
+            grid-template-columns: auto 2rem minmax(0, 1fr) auto;
           }
         }
       }
 
       &__select-checkbox {
         display: inline-flex;
-        flex-shrink: 0;
-        color: var(--dark-greenish-yellow);
-      }
-
-      &__card--empty {
-        display: grid;
-        grid-template-columns: 1fr auto;
-        align-items: center;
-        gap: var(--collection-block-gap);
-        padding: var(--collection-block-padding-y) var(--collection-block-padding-x);
-        border-style: dashed;
-        border-color: rgb(var(--dark-greenish-yellow-rgb) / 35%);
-        background: transparent;
-
-        @include breakpoint(old-phones) {
-          grid-template-columns: 1fr;
-        }
-      }
-
-      &__card-body {
-        min-width: 0;
-
-        &--empty {
-          padding-block: 0;
-        }
+        color: var(--dashboard-text-secondary);
       }
 
       &__cover {
-        width: 3rem;
-        height: 3rem;
-        background: var(--dashboard-card-bg);
+        width: 2.25rem;
+        height: 2.25rem;
+        background: var(--dashboard-hover-bg);
         border-radius: var(--ms-02);
         overflow: hidden;
-        flex-shrink: 0;
 
         img {
           width: 100%;
@@ -315,16 +244,18 @@ dialog {
         place-items: center;
         width: 100%;
         height: 100%;
-        color: var(--dark-greenish-yellow);
-        font-size: 1.1rem;
-        font-weight: 600;
-        background: rgb(var(--dark-greenish-yellow-rgb) / 12%);
+        color: var(--dashboard-text-secondary);
+        font-size: 0.95rem;
+        font-weight: 500;
+        background: rgb(255 255 255 / 4%);
       }
 
       &__name {
-        margin: 0 0 0.15rem;
-        font-size: var(--ms-0);
-        line-height: 1.25;
+        margin: 0;
+        min-width: 0;
+        font-size: var(--dashboard-font-size);
+        font-weight: 500;
+        line-height: 1.3;
 
         @include dashboard-ui-font-family;
 
@@ -333,49 +264,14 @@ dialog {
           text-decoration: none;
 
           &:hover {
-            color: var(--dark-greenish-yellow);
+            text-decoration: underline;
+            text-underline-offset: 0.12em;
           }
         }
       }
 
-      &__genre {
-        display: inline-block;
-        margin: 0;
-        padding: 0.1rem 0.45rem;
-
-        @include dashboard-helper-text;
-
-        border: 1px solid var(--dashboard-input-border);
-        border-radius: 999px;
-      }
-
       &__remove-action {
-        align-self: center;
-        min-width: 2rem;
-        padding-inline: var(--ms-01);
-      }
-
-      &__empty-title {
-        margin: 0 0 0.25rem;
-        color: var(--dashboard-text-primary);
-        font-size: var(--ms-0);
-      }
-
-      &__empty-hint {
-        margin: 0.35rem 0 0;
-
-        @include dashboard-helper-text;
-
-        line-height: 1.4;
-      }
-
-      &__card-cta {
-        align-self: center;
-
-        @include breakpoint(old-phones) {
-          width: 100%;
-          margin-top: var(--ms-01);
-        }
+        justify-self: end;
       }
 
       &__action-bar {
@@ -388,10 +284,9 @@ dialog {
         justify-content: space-between;
         gap: var(--ms-01);
         margin-top: var(--ms-0);
-        padding: var(--ms-01) var(--collection-block-padding-x);
+        padding: var(--ms-01) 0;
         background: var(--dashboard-input-bg);
-        border: 1px solid var(--dashboard-input-border);
-        border-radius: var(--ms-01);
+        border-top: 1px solid var(--dashboard-divider);
       }
 
       &__action-bar-meta {
@@ -401,7 +296,7 @@ dialog {
       &__action-bar-count {
         margin: 0;
         color: var(--dashboard-text-primary);
-        font-size: var(--ms-0);
+        font-size: var(--dashboard-font-size);
       }
 
       &__action-bar-hint {

@@ -20,21 +20,14 @@ import {
   normalizeCollectionArchive,
 } from '@shared/lib/archive/collectionLock';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
-import {
-  Calendar,
-  CheckSquare,
-  Lock as LockIcon,
-  Square,
-  Trash2 as Trash2Icon,
-} from 'lucide-react';
+import { CheckSquare, Lock as LockIcon, Square, Trash2 as Trash2Icon } from 'lucide-react';
 import {
   dispatchArchiveArtistRemoved,
   refreshPremiumContentForArchiveChange,
 } from '@features/artistArchive';
 import { useArchiveAccessModal } from '@shared/lib/archiveAccessModal';
 import { getPlanDisplayName, resolveCurrentPlanSlug } from '@shared/lib/payment/subscriptionPlans';
-import { DashboardButton, DashboardCard } from '@shared/ui/dashboard';
-import { StatusBadge, type StatusBadgeVariant } from '@shared/ui/statusBadge';
+import { DashboardButton } from '@shared/ui/dashboard';
 
 import { CollectionEmptyState } from './CollectionEmptyState';
 import { ArchiveArtistRemovedToast } from '@shared/ui/archiveArtistRemovedToast';
@@ -49,14 +42,6 @@ import './MyArchiveContent.scss';
 
 type RemovalToastKind = 'single' | 'bulk' | 'cleared';
 
-function subscriptionStatusBadgeVariant(
-  status: 'active' | 'expiring' | 'expired'
-): StatusBadgeVariant {
-  if (status === 'active') return 'published';
-  if (status === 'expiring') return 'locked';
-  return 'inactive';
-}
-
 function canRemoveArtist(artist: MyArchiveArtist, isPremium: boolean): boolean {
   return canRemoveCollectionArtist(artist, isPremium);
 }
@@ -69,7 +54,7 @@ export function MyArchiveContent({ active }: Props) {
   const { lang } = useLang() as { lang: 'ru' | 'en' };
   const dispatch = useAppDispatch();
   const ui = useAppSelector((state) => selectUiDictionaryFirst(state, lang));
-  const { open: openSupportModal } = useArchiveAccessModal();
+  const { open: openSupportModal, startCheckout } = useArchiveAccessModal();
 
   const [data, setData] = useState<MyArchiveData | null>(null);
   const [loading, setLoading] = useState(false);
@@ -78,6 +63,7 @@ export function MyArchiveContent({ active }: Props) {
   const [isSelectMode, setIsSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const [bulkLoading, setBulkLoading] = useState(false);
+  const [renewLoading, setRenewLoading] = useState(false);
   const [removedToastTrigger, setRemovedToastTrigger] = useState(0);
 
   const t = ui?.dashboard?.archive;
@@ -142,13 +128,11 @@ export function MyArchiveContent({ active }: Props) {
   const slotsUsed = data?.slotsUsed ?? 0;
   const slotsLimit = data?.slotsLimit ?? 3;
   const inactiveCount = data?.inactiveCount ?? data?.artists.filter((a) => !a.isActive).length ?? 0;
-  const isFull = slotsUsed >= slotsLimit;
   const isPremium = data?.isPremium ?? false;
   const planSlug = useMemo(
     () => (data ? resolveCurrentPlanSlug({ isPremium, slotsLimit, slotsUsed }) : null),
     [data, isPremium, slotsLimit, slotsUsed]
   );
-  const showEmptySlotCard = Boolean(data && !isFull && inactiveCount === 0);
   const slotsRemaining = Math.max(0, slotsLimit - slotsUsed);
   const subscriptionExpiresAt = data?.subscriptionExpiresAt ?? null;
   const subscriptionStatus = useMemo(() => {
@@ -376,10 +360,27 @@ export function MyArchiveContent({ active }: Props) {
     }
   };
 
+  const handleRenewSubscription = useCallback(async () => {
+    if (renewLoading || bulkLoading) return;
+
+    if (!planSlug) {
+      openSupportModal();
+      return;
+    }
+
+    setRenewLoading(true);
+    setError(null);
+
+    const result = await startCheckout(planSlug);
+
+    if (!result.ok) {
+      setError(result.error);
+      setRenewLoading(false);
+    }
+  }, [bulkLoading, openSupportModal, planSlug, renewLoading, startCheckout]);
+
   const slotsUsedLabel =
     t?.activeSlotsLabel ?? (lang === 'en' ? 'slots used' : 'слотов использовано');
-  const managePlanLabel =
-    t?.managePlanLink ?? (lang === 'en' ? 'Manage Plan →' : 'Управление планом →');
   const removeLabel = t?.remove ?? (lang === 'en' ? 'Remove' : 'Удалить');
   const removeLockedTooltip =
     t?.removeLockedTooltip ??
@@ -391,18 +392,6 @@ export function MyArchiveContent({ active }: Props) {
     (lang === 'en'
       ? 'An active subscription is required to remove active artists.'
       : 'Для удаления активных артистов нужна активная подписка.');
-  const slotAvailable =
-    t?.slotAvailable ?? (lang === 'en' ? '{count} slot available' : 'Доступен {count} слот');
-  const slotsAvailablePlural =
-    t?.slotsAvailablePlural ??
-    (lang === 'en' ? '{count} slots available' : 'Доступно {count} слота');
-  const emptySlotHint =
-    t?.emptySlotHint ??
-    (lang === 'en'
-      ? 'Add another artist to unlock their exclusive content.'
-      : 'Добавьте артиста, чтобы открыть эксклюзивный контент.');
-  const discoverLabel =
-    t?.discoverArtists ?? (lang === 'en' ? 'Discover Artists' : 'Найти артистов');
   const supportInactiveDescription =
     t?.subscriptionExpiredDescription ??
     t?.supportInactiveDescription ??
@@ -410,19 +399,17 @@ export function MyArchiveContent({ active }: Props) {
       ? 'Access to exclusive content is suspended.'
       : 'Доступ к эксклюзивному контенту приостановлен.');
   const renewSupportLabel =
-    t?.renewSupportLink ??
     t?.renewSupportButton ??
     ui?.buttons?.artistCollectionRenew ??
-    (lang === 'en' ? 'Renew Support →' : 'Продлить поддержку →');
-  const subscriptionActiveLabel =
-    t?.subscriptionActiveLabel ?? (lang === 'en' ? 'Subscription active' : 'Подписка активна');
-  const subscriptionExpiringLabel =
-    t?.subscriptionExpiringLabel ??
-    (lang === 'en' ? 'Subscription ending' : 'Подписка заканчивается');
-  const subscriptionExpiredLabel =
-    t?.subscriptionExpiredLabel ?? (lang === 'en' ? 'Subscription expired' : 'Подписка истекла');
+    (lang === 'en' ? 'Renew subscription' : 'Продлить подписку');
+  const changePlanLabel = t?.changePlanButton ?? (lang === 'en' ? 'Change plan' : 'Сменить план');
+  const planSectionLabel = t?.planSectionLabel ?? (lang === 'en' ? 'Plan' : 'План');
+  const subscriptionSectionLabel =
+    t?.subscriptionSectionLabel ?? (lang === 'en' ? 'Subscription' : 'Подписка');
+  const subscriptionExpiredStatusLabel =
+    t?.subscriptionExpiredStatus ?? (lang === 'en' ? 'Expired' : 'Истекла');
   const renewalDateTemplate =
-    t?.subscriptionRenewalDate ?? (lang === 'en' ? 'Renews {date}' : 'Продление {date}');
+    t?.subscriptionRenewalDate ?? (lang === 'en' ? 'Valid until {date}' : 'Действует до {date}');
   const selectModeLabel = t?.selectMode ?? (lang === 'en' ? 'Select' : 'Выбрать');
   const cancelSelectLabel = t?.cancelSelect ?? (lang === 'en' ? 'Done' : 'Готово');
   const selectedCountLabel =
@@ -439,11 +426,6 @@ export function MyArchiveContent({ active }: Props) {
     (lang === 'en' ? '{count} inactive artists' : 'Неактивных артистов: {count}');
   const clearCollectionLabel =
     t?.clearCollection ?? (lang === 'en' ? 'Clear collection' : 'Очистить коллекцию');
-
-  const slotsAvailableText =
-    slotsRemaining === 1
-      ? slotAvailable.replace('{count}', '1')
-      : slotsAvailablePlural.replace('{count}', String(slotsRemaining));
 
   const selectedCount = selectedIds.size;
   const selectedInactiveCount =
@@ -489,99 +471,89 @@ export function MyArchiveContent({ active }: Props) {
     <>
       <section className={clsx('collection__tab', isSelectMode && 'collection__tab--select-mode')}>
         <div className="user-dashboard__section">
-          <header className="collection__top">
-            <div className="collection__top-col collection__top-col--plan">
-              <button
-                type="button"
-                className="collection__plan-trigger"
-                onClick={() => openSupportModal()}
-                aria-label={`${planSlug ? getPlanDisplayName(planSlug) : ''} ${slotsUsed} / ${slotsLimit}. ${managePlanLabel}`}
-              >
-                <DashboardCard interactive className="collection__plan-card">
-                  <div
-                    className="collection__slots-ring"
-                    style={{ '--collection-slots-progress': `${slotsProgress}%` } as CSSProperties}
-                    aria-hidden
-                  >
-                    <LockIcon
-                      {...dashboardActionIconProps({
-                        size: 18,
-                        className: 'collection__slots-ring-icon',
-                      })}
-                    />
-                  </div>
-                  <div className="collection__plan-meta">
-                    {planSlug ? (
-                      <span className="collection__plan-name">{getPlanDisplayName(planSlug)}</span>
-                    ) : null}
-                    <p className="collection__slots-line">
-                      <span className="collection__slots-count" aria-live="polite">
-                        {slotsUsed}/{slotsLimit}
-                      </span>{' '}
-                      <span className="collection__slots-label">{slotsUsedLabel}</span>
+          <header
+            className={clsx(
+              'collection__summary',
+              subscriptionStatus && `collection__summary--${subscriptionStatus}`
+            )}
+          >
+            <div className="collection__summary-column collection__summary-plan">
+              <h3 className="collection__summary-column-title">{planSectionLabel}</h3>
+              {planSlug ? (
+                <p className="collection__summary-value-title">{getPlanDisplayName(planSlug)}</p>
+              ) : null}
+              <div className="collection__summary-description">
+                <p className="collection__summary-slots">
+                  <span className="collection__summary-slots-count" aria-live="polite">
+                    {slotsUsed} / {slotsLimit}
+                  </span>{' '}
+                  {slotsUsedLabel}
+                </p>
+                <div
+                  className="collection__summary-slots-progress"
+                  aria-hidden
+                  style={{ '--collection-slots-progress': `${slotsProgress}%` } as CSSProperties}
+                >
+                  <span className="collection__summary-slots-progress-fill" />
+                </div>
+              </div>
+              <div className="collection__summary-action">
+                <DashboardButton
+                  variant="outline"
+                  className="collection__summary-change-plan"
+                  onClick={() => openSupportModal()}
+                >
+                  {changePlanLabel}
+                </DashboardButton>
+              </div>
+            </div>
+
+            {subscriptionStatus ? (
+              <div className="collection__summary-column collection__summary-subscription">
+                <h3 className="collection__summary-column-title">{subscriptionSectionLabel}</h3>
+                {subscriptionStatus === 'expired' ? (
+                  <>
+                    <p className="collection__summary-value-title collection__summary-value-title--expired">
+                      <span className="collection__summary-expired-dot" aria-hidden />
+                      {subscriptionExpiredStatusLabel}
                     </p>
-                    <span className="collection__slots-manage">{managePlanLabel}</span>
-                  </div>
-                </DashboardCard>
-              </button>
-            </div>
-
-            <div className="collection__top-col collection__top-col--subscription">
-              <DashboardCard
-                className={clsx(
-                  'collection__subscription-card',
-                  subscriptionStatus && `collection__subscription-card--${subscriptionStatus}`
-                )}
-              >
-                {subscriptionStatus ? (
-                  <div className="collection__subscription-content">
-                    <div className="collection__subscription-head">
-                      <StatusBadge variant={subscriptionStatusBadgeVariant(subscriptionStatus)}>
-                        {subscriptionStatus === 'active'
-                          ? subscriptionActiveLabel
-                          : subscriptionStatus === 'expiring'
-                            ? subscriptionExpiringLabel
-                            : subscriptionExpiredLabel}
-                      </StatusBadge>
-
-                      {subscriptionStatus === 'expired' ? (
-                        <DashboardButton
-                          variant="primary"
-                          className="collection__subscription-cta"
-                          onClick={() => openSupportModal()}
-                        >
-                          {renewSupportLabel}
-                        </DashboardButton>
-                      ) : null}
-                    </div>
-
-                    {subscriptionStatus === 'expired' ? (
-                      <p className="collection__subscription-detail collection__subscription-detail--with-icon">
-                        <Calendar
-                          {...dashboardActionIconProps({
-                            size: 14,
-                            className: 'collection__subscription-detail-icon',
-                          })}
-                          aria-hidden
-                        />
-                        <span>{supportInactiveDescription}</span>
+                    <div className="collection__summary-description">
+                      <p className="collection__summary-description-text">
+                        {supportInactiveDescription}
                       </p>
+                    </div>
+                    <div className="collection__summary-action">
+                      <DashboardButton
+                        variant="outline"
+                        destructive
+                        className="collection__summary-renew"
+                        loading={renewLoading}
+                        disabled={renewLoading || bulkLoading}
+                        onClick={() => void handleRenewSubscription()}
+                      >
+                        {renewSupportLabel}
+                      </DashboardButton>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    {renewalDateLabel ? (
+                      <p className="collection__summary-value-title">
+                        {renewalDateTemplate.replace('{date}', renewalDateLabel)}
+                      </p>
+                    ) : null}
+                    {daysRemainingLabel ? (
+                      <div className="collection__summary-description">
+                        <p className="collection__summary-description-text">{daysRemainingLabel}</p>
+                      </div>
                     ) : (
-                      <>
-                        {renewalDateLabel ? (
-                          <p className="collection__subscription-detail">
-                            {renewalDateTemplate.replace('{date}', renewalDateLabel)}
-                          </p>
-                        ) : null}
-                        {daysRemainingLabel ? (
-                          <p className="collection__subscription-detail">{daysRemainingLabel}</p>
-                        ) : null}
-                      </>
+                      <div className="collection__summary-description" aria-hidden />
                     )}
-                  </div>
-                ) : null}
-              </DashboardCard>
-            </div>
+                    <div className="collection__summary-action" aria-hidden />
+                  </>
+                )}
+              </div>
+            ) : null}
           </header>
 
           {error ? (
@@ -628,7 +600,6 @@ export function MyArchiveContent({ active }: Props) {
 
               <div className="collection__list">
                 {(data?.artists ?? []).map((artist) => {
-                  const genre = artist.genreLabel[lang] ?? artist.genreLabel.en;
                   const artistHref = artist.slug
                     ? `/?artist=${encodeURIComponent(artist.slug)}`
                     : '/';
@@ -649,8 +620,8 @@ export function MyArchiveContent({ active }: Props) {
                     <div
                       key={artist.id}
                       className={clsx(
-                        'collection__artist-card-wrap',
-                        isInactiveSelectable && 'collection__artist-card-wrap--selectable'
+                        'collection__artist-row-wrap',
+                        isInactiveSelectable && 'collection__artist-row-wrap--selectable'
                       )}
                       onClick={
                         isInactiveSelectable
@@ -672,15 +643,15 @@ export function MyArchiveContent({ active }: Props) {
                       role={isInactiveSelectable ? 'button' : undefined}
                       tabIndex={isInactiveSelectable ? 0 : undefined}
                     >
-                      <DashboardCard
-                        as="article"
-                        interactive={isInactiveSelectable}
-                        selected={isSelected}
-                        className="collection__artist-card"
+                      <article
+                        className={clsx(
+                          'collection__artist-row',
+                          isSelected && 'collection__artist-row--selected'
+                        )}
                       >
                         {isInactiveSelectable ? (
                           <span className="collection__select-checkbox" aria-hidden>
-                            {isSelected ? <CheckSquare size={20} /> : <Square size={20} />}
+                            {isSelected ? <CheckSquare size={18} /> : <Square size={18} />}
                           </span>
                         ) : null}
 
@@ -694,18 +665,15 @@ export function MyArchiveContent({ active }: Props) {
                           )}
                         </div>
 
-                        <div className="collection__card-body">
-                          <h3 className="collection__name">
-                            {isInactiveSelectable ? (
-                              artist.name
-                            ) : (
-                              <Link to={artistHref} onClick={(event) => event.stopPropagation()}>
-                                {artist.name}
-                              </Link>
-                            )}
-                          </h3>
-                          <span className="collection__genre">{genre}</span>
-                        </div>
+                        <h3 className="collection__name">
+                          {isInactiveSelectable ? (
+                            artist.name
+                          ) : (
+                            <Link to={artistHref} onClick={(event) => event.stopPropagation()}>
+                              {artist.name}
+                            </Link>
+                          )}
+                        </h3>
 
                         {!isSelectMode ? (
                           <DashboardButton
@@ -721,35 +689,13 @@ export function MyArchiveContent({ active }: Props) {
                               void handleRemove(artist);
                             }}
                           >
-                            <Trash2Icon
-                              {...dashboardActionIconProps({
-                                size: 16,
-                              })}
-                              aria-hidden
-                            />
+                            <Trash2Icon {...dashboardActionIconProps()} />
                           </DashboardButton>
                         ) : null}
-                      </DashboardCard>
+                      </article>
                     </div>
                   );
                 })}
-
-                {showEmptySlotCard ? (
-                  <DashboardCard className="collection__card--empty">
-                    <div className="collection__card-body collection__card-body--empty">
-                      <p className="collection__empty-title">+ {slotsAvailableText}</p>
-                      <p className="collection__empty-hint">{emptySlotHint}</p>
-                    </div>
-                    <DashboardButton
-                      variant="primary"
-                      as={Link}
-                      to="/"
-                      className="collection__card-cta"
-                    >
-                      {discoverLabel}
-                    </DashboardButton>
-                  </DashboardCard>
-                ) : null}
               </div>
 
               {isSelectMode ? (

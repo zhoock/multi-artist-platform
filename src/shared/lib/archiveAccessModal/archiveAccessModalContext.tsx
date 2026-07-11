@@ -25,6 +25,11 @@ import {
 
 import { AddArtistToArchiveModalView } from './AddArtistToArchiveModalView';
 import { ArchiveAccessModalView } from './ArchiveAccessModalView';
+import {
+  useSubscriptionCheckout,
+  type SubscriptionCheckoutResult,
+} from './useSubscriptionCheckout';
+import type { SubscriptionPlanSlug } from '@shared/lib/payment/subscriptionPlans';
 
 export type OpenArchiveAccessModalOptions = PremiumCheckoutIntentContext;
 
@@ -52,6 +57,8 @@ export type ArchiveAccessModalContextValue = {
   openFromIntentResume: (options?: OpenArchiveAccessModalOptions) => void;
   /** Route hidden-content clicks through premium / add-to-archive / allow access. */
   requestAccess: (options: RequestPremiumContentAccessOptions) => Promise<void>;
+  /** Start YooKassa checkout for a known plan without opening the plan picker. */
+  startCheckout: (planSlug: SubscriptionPlanSlug) => Promise<SubscriptionCheckoutResult>;
 };
 
 const ArchiveAccessModalContext = createContext<ArchiveAccessModalContextValue | null>(null);
@@ -113,6 +120,8 @@ export function ArchiveAccessModalProvider({ children }: { children: ReactNode }
     setPendingAccess(null);
     addArtistDialogRef.current?.close();
   }, []);
+
+  const { startCheckout } = useSubscriptionCheckout({ onClose: close });
 
   useEffect(() => {
     const onActivated = () => {
@@ -202,8 +211,8 @@ export function ArchiveAccessModalProvider({ children }: { children: ReactNode }
   );
 
   const value = useMemo(
-    () => ({ open, close, openFromIntentResume, requestAccess }),
-    [open, close, openFromIntentResume, requestAccess]
+    () => ({ open, close, openFromIntentResume, requestAccess, startCheckout }),
+    [open, close, openFromIntentResume, requestAccess, startCheckout]
   );
 
   return (
@@ -228,6 +237,7 @@ export function useArchiveAccessModal(): ArchiveAccessModalContextValue {
       close: () => {},
       openFromIntentResume: () => {},
       requestAccess: async () => {},
+      startCheckout: async () => ({ ok: false, error: 'Unavailable' }),
     };
   }
   return ctx;
