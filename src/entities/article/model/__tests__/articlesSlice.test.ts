@@ -7,6 +7,7 @@ import {
   selectArticlesData,
   selectArticleById,
   selectDashboardArticlesData,
+  selectDashboardArticlesStatus,
 } from '../selectors';
 import { initialPlayerState } from '@features/player/model/types/playerSchema';
 import type { IArticles } from '@models';
@@ -184,6 +185,56 @@ describe('articlesSlice', () => {
       expect(result.type).toBe('articles/fetchMerged/fulfilled');
       expect((result.payload as FetchArticlesResult).articles).toEqual([]);
       expect(mockFetch).toHaveBeenCalledWith('/assets/articles-en.json', expect.any(Object));
+    });
+
+    test('forcePublicCatalog не инвалидирует завершение ownerDashboard force fetch', async () => {
+      const dashSpy = jest.spyOn(publicArtistContext, 'isDashboardPathname').mockReturnValue(true);
+      window.history.pushState({}, '', '/dashboard-new/posts');
+      syncDashboardAlbumsPublicCatalogOverlay(false);
+
+      const dashboardArticles: IArticles[] = [{ ...mockArticles[0], articleId: 'dash-article' }];
+      const catalogArticles: IArticles[] = [{ ...mockArticles[0], articleId: 'catalog-article' }];
+
+      let resolveDashboard!: (value: Response) => void;
+      let resolveCatalog!: (value: Response) => void;
+      const dashboardDeferred = new Promise<Response>((resolve) => {
+        resolveDashboard = resolve;
+      });
+      const catalogDeferred = new Promise<Response>((resolve) => {
+        resolveCatalog = resolve;
+      });
+
+      mockFetch
+        .mockImplementationOnce(() => dashboardDeferred)
+        .mockImplementationOnce(() => catalogDeferred);
+
+      const store = createTestStore();
+      const dashboardPromise = (store.dispatch as AppDispatch)(
+        fetchArticles({ force: true, ownerDashboard: true })
+      );
+      const catalogPromise = (store.dispatch as AppDispatch)(
+        fetchArticles({
+          force: true,
+          forcePublicCatalog: true,
+          publicArtistSlug: 'test-artist',
+        })
+      );
+
+      expect(selectDashboardArticlesStatus(store.getState())).toBe('loading');
+
+      resolveCatalog!(mockSuccessResponse(catalogArticles));
+      await catalogPromise;
+
+      expect(selectArticlesData(store.getState())[0]?.articleId).toBe('catalog-article');
+      expect(selectDashboardArticlesStatus(store.getState())).toBe('loading');
+
+      resolveDashboard!(mockSuccessResponse(dashboardArticles));
+      await dashboardPromise;
+
+      expect(selectDashboardArticlesData(store.getState())[0]?.articleId).toBe('dash-article');
+      expect(selectDashboardArticlesStatus(store.getState())).toBe('succeeded');
+
+      dashSpy.mockRestore();
     });
 
     test('должен установить статус loading при начале загрузки', async () => {

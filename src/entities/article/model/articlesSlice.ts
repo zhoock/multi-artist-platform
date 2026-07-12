@@ -18,8 +18,30 @@ import { hydrateMissingRuTranslationsOnArticle } from '../lib/hydrateMissingRuTr
 
 import type { ArticlesState } from './types';
 
-/** Ignore stale `force` responses when a newer entitlement refresh is in flight. */
-let latestForceArticlesRequestId = '';
+/** Ignore stale `force` responses when a newer request for the same bucket is in flight. */
+let latestForceDashboardArticlesRequestId = '';
+let latestForceCatalogArticlesRequestId = '';
+
+function resolveArticlesForceRequestBucket(arg: FetchArticlesArg): 'dashboard' | 'catalog' {
+  return isOwnerDashboardArticlesFetch(arg) ? 'dashboard' : 'catalog';
+}
+
+function latestForceArticlesRequestIdForBucket(bucket: 'dashboard' | 'catalog'): string {
+  return bucket === 'dashboard'
+    ? latestForceDashboardArticlesRequestId
+    : latestForceCatalogArticlesRequestId;
+}
+
+function setLatestForceArticlesRequestIdForBucket(
+  bucket: 'dashboard' | 'catalog',
+  requestId: string
+): void {
+  if (bucket === 'dashboard') {
+    latestForceDashboardArticlesRequestId = requestId;
+  } else {
+    latestForceCatalogArticlesRequestId = requestId;
+  }
+}
 
 const initialState: ArticlesState = {
   status: 'idle',
@@ -321,7 +343,10 @@ const articlesSlice = createSlice({
       })
       .addCase(fetchArticles.pending, (state, action) => {
         if (action.meta.arg.force) {
-          latestForceArticlesRequestId = action.meta.requestId;
+          setLatestForceArticlesRequestIdForBucket(
+            resolveArticlesForceRequestBucket(action.meta.arg),
+            action.meta.requestId
+          );
         }
         const isFullscreenDashboard = isOwnerDashboardArticlesFetch(action.meta.arg);
         if (isFullscreenDashboard) {
@@ -339,18 +364,18 @@ const articlesSlice = createSlice({
         }
       })
       .addCase(fetchArticles.fulfilled, (state, action) => {
+        const forceBucket = resolveArticlesForceRequestBucket(action.meta.arg);
         if (
           action.meta.arg.force &&
-          action.meta.requestId !== latestForceArticlesRequestId &&
+          action.meta.requestId !== latestForceArticlesRequestIdForBucket(forceBucket) &&
           !action.payload.staleAbort
         ) {
-          if (state.inFlightFetchContextKey === 'public') {
+          if (forceBucket === 'catalog') {
             state.inFlightFetchContextKey = null;
             if (state.data.length > 0) {
               state.status = 'succeeded';
             }
-          }
-          if (state.dashboard.inFlightFetchContextKey === 'dashboard') {
+          } else {
             state.dashboard.inFlightFetchContextKey = null;
             if (state.dashboard.data.length > 0) {
               state.dashboard.status = 'succeeded';

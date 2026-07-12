@@ -524,9 +524,6 @@ export interface IInterface {
     paymentSettings?: {
       loading: string;
       errorLabel: string;
-      connectedStatus: string;
-      updatedAt: string;
-      connectedLede: string;
       disconnect: string;
       disconnecting: string;
       disconnectNote: string;

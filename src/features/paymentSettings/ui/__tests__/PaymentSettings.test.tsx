@@ -56,7 +56,7 @@ describe('PaymentSettings', () => {
     expect(screen.getByText('Enter Shop ID and Secret Key')).toBeTruthy();
   });
 
-  it('renders connected state with published status badge', () => {
+  it('renders connected state with disconnect action and no status badge', () => {
     usePaymentSettingsMock.mockReturnValue(
       baseHookReturn({
         settingsMap: {
@@ -71,9 +71,10 @@ describe('PaymentSettings', () => {
 
     const { container } = renderWithProviders(<PaymentSettings userId="user-1" />);
 
-    expect(container.querySelector('.status-badge--published')).toBeTruthy();
-    expect(screen.getByText('Connected')).toBeTruthy();
+    expect(container.querySelector('.status-badge--published')).toBeNull();
+    expect(screen.queryByText('Connected')).toBeNull();
     expect(screen.getByText('Disconnect')).toBeTruthy();
+    expect(screen.getByText('Payments will stop after disconnecting.')).toBeTruthy();
   });
 
   it('renders connect form with dashboard rows when form is open', () => {

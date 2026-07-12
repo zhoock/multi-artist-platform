@@ -10,8 +10,6 @@ import {
   DashboardSection,
 } from '@shared/ui/dashboard';
 import { DashboardSaveSpinner } from '@shared/ui/dashboard-save/DashboardSaveSpinner';
-import { InfoCircleIcon } from '@shared/ui/icons/InfoCircleIcon';
-import { StatusBadge } from '@shared/ui/statusBadge';
 import { usePaymentSettings } from '../model/usePaymentSettings';
 import { PAYMENT_PROVIDERS } from '../lib/constants';
 import '@shared/ui/dashboard-save/dashboard-save.scss';
@@ -21,64 +19,74 @@ interface PaymentSettingsProps {
   userId: string;
 }
 
-function PaymentProviderLogo({ providerId }: { providerId: string }) {
-  if (providerId === 'yookassa') {
-    return (
-      <svg
-        className="payment-settings__provider-logo-svg"
-        viewBox="0 0 40 40"
-        aria-hidden="true"
-        focusable="false"
-      >
-        <rect width="40" height="40" rx="8" fill="#1a1a1a" />
-        <path
-          fill="#fff"
-          d="M10 26V14h3.2l4.1 7.2V14H21v12h-3.1l-4.2-7.4V26H10zm14.2-6.1c0-3.4 2.5-5.9 6-5.9 3.5 0 6 2.5 6 5.9s-2.5 5.9-6 5.9c-3.5 0-6-2.5-6-5.9zm3.2 0c0 1.8 1.2 3.1 2.8 3.1s2.8-1.3 2.8-3.1-1.2-3.1-2.8-3.1-2.8 1.3-2.8 3.1z"
-        />
-      </svg>
-    );
-  }
-
-  return null;
-}
-
-type ProviderRowLabelProps = {
-  providerId: string;
-  providerName: string;
-  tagline: string;
-};
-
-function ProviderRowLabel({ providerId, providerName, tagline }: ProviderRowLabelProps) {
+function PaymentProviderLogo({
+  srcLight,
+  srcDark,
+  alt,
+}: {
+  srcLight: string;
+  srcDark: string;
+  alt: string;
+}) {
   return (
-    <div className="payment-settings__provider-row-info">
-      <div className="payment-settings__provider-logo">
-        <PaymentProviderLogo providerId={providerId} />
-      </div>
-      <div className="payment-settings__provider-row-text">
-        <span className="payment-settings__provider-row-name">{providerName}</span>
-        <span className="payment-settings__provider-row-tagline">{tagline}</span>
-      </div>
-    </div>
+    <>
+      <img
+        className="payment-settings__provider-logo-img payment-settings__provider-logo-img--light"
+        src={srcLight}
+        alt={alt}
+        width={96}
+        height={32}
+        loading="lazy"
+        decoding="async"
+      />
+      <img
+        className="payment-settings__provider-logo-img payment-settings__provider-logo-img--dark"
+        src={srcDark}
+        alt=""
+        aria-hidden
+        width={96}
+        height={32}
+        loading="lazy"
+        decoding="async"
+      />
+    </>
   );
 }
 
-function updatedAtRowLabel(template: string | undefined) {
-  const raw = template ?? 'Updated: {date}';
-  return raw.split('{date}')[0]?.replace(/:\s*$/, '').trim() || 'Updated';
+type ProviderRowLabelProps = {
+  providerName: string;
+  providerLogoSrcLight: string;
+  providerLogoSrcDark: string;
+};
+
+function ProviderRowLabel({
+  providerName,
+  providerLogoSrcLight,
+  providerLogoSrcDark,
+}: ProviderRowLabelProps) {
+  return (
+    <div className="dashboard-row__label payment-settings__provider-row-label">
+      <div className="payment-settings__provider-logo">
+        <PaymentProviderLogo
+          srcLight={providerLogoSrcLight}
+          srcDark={providerLogoSrcDark}
+          alt={providerName}
+        />
+      </div>
+    </div>
+  );
 }
 
 export function PaymentSettings({ userId }: PaymentSettingsProps) {
   const { lang } = useLang();
   const ui = useAppSelector((state) => selectUiDictionaryFirst(state, lang));
   const copy = ui?.dashboard?.paymentSettings;
-  const dateLocale = lang === 'ru' ? 'ru-RU' : 'en-US';
 
   const {
     settingsMap,
     loading,
     saving,
     error,
-    success,
     localShopId,
     localSecretKey,
     showForm,
@@ -102,40 +110,21 @@ export function PaymentSettings({ userId }: PaymentSettingsProps) {
     const providerCopy = copy?.providers?.[provider.id];
 
     return (
-      <DashboardSection
-        key={provider.id}
-        title={provider.name}
-        headingExtra={
-          isConnected ? (
-            <StatusBadge variant="published">{copy?.connectedStatus ?? 'Connected'}</StatusBadge>
-          ) : undefined
-        }
-      >
+      <DashboardSection key={provider.id} title={provider.name}>
         <DashboardCard
           className={clsx(isThisSaving && 'dashboard-save-card--busy')}
           aria-busy={isThisSaving}
         >
           {isConnected ? (
             <>
-              {settings?.connectedAt ? (
-                <DashboardRow label={updatedAtRowLabel(copy?.updatedAt)}>
-                  <DashboardRowValue>
-                    {new Date(settings.connectedAt).toLocaleDateString(dateLocale)}
-                  </DashboardRowValue>
-                </DashboardRow>
-              ) : null}
-
-              <p className="payment-settings__connected-lede">
-                {copy?.connectedLede ?? 'Fans can now pay for purchases on your site'}
-              </p>
-
               <DashboardRow
                 variant="action"
+                className="payment-settings__provider-row"
                 label={
                   <ProviderRowLabel
-                    providerId={provider.id}
                     providerName={provider.name}
-                    tagline={providerCopy?.tagline ?? 'Online payment acceptance'}
+                    providerLogoSrcLight={provider.logoSrcLight}
+                    providerLogoSrcDark={provider.logoSrcDark}
                   />
                 }
                 action={
@@ -157,34 +146,25 @@ export function PaymentSettings({ userId }: PaymentSettingsProps) {
                   </DashboardButton>
                 }
               >
-                <DashboardRowValue aria-hidden="true" />
+                {null}
               </DashboardRow>
 
               <p className="payment-settings__disconnect-note">
-                <InfoCircleIcon className="payment-settings__disconnect-note-icon" size={18} />
-                <span>
-                  {copy?.disconnectNote ??
-                    'If you disconnect YooKassa, payment acceptance will be unavailable. Your payment data will be saved.'}
-                </span>
+                {copy?.disconnectNote ?? 'Payments will stop after disconnecting.'}
               </p>
             </>
           ) : (
             <>
               <div className="payment-settings__intro">
                 <DashboardRowValue>
-                  {providerCopy?.description ??
-                    'Let people pay for purchases on your site through YooKassa'}
-                </DashboardRowValue>
-                <DashboardRowValue>
-                  {providerCopy?.details ??
-                    'To receive payments you need a YooKassa business account.'}
+                  {providerCopy?.description ?? 'Connect YooKassa to accept payments on your site.'}
                 </DashboardRowValue>
               </div>
 
               {!isFormOpen ? (
                 <>
                   <div className="payment-settings__instructions">
-                    <p>{providerCopy?.instructionsIntro ?? 'To connect, you need to:'}</p>
+                    <p>{providerCopy?.instructionsIntro ?? 'To connect:'}</p>
                     <ol>
                       {(providerCopy?.instructionSteps ?? []).map((step) => (
                         <li key={step}>{step}</li>
@@ -319,12 +299,6 @@ export function PaymentSettings({ userId }: PaymentSettingsProps) {
       {error ? (
         <div className="payment-settings__error" role="alert">
           <strong>{copy?.errorLabel ?? 'Error:'}</strong> {error}
-        </div>
-      ) : null}
-
-      {success ? (
-        <div className="payment-settings__success" role="alert">
-          {success}
         </div>
       ) : null}
 

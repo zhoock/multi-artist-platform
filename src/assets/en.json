@@ -367,12 +367,9 @@
       "paymentSettings": {
         "loading": "Loading...",
         "errorLabel": "Error:",
-        "connectedStatus": "Connected",
-        "updatedAt": "Updated: {date}",
-        "connectedLede": "Fans can now pay for purchases on your site",
         "disconnect": "Disconnect",
         "disconnecting": "Disconnecting...",
-        "disconnectNote": "If you disconnect YooKassa, payment acceptance will be unavailable. Your payment data will be saved.",
+        "disconnectNote": "Payments will stop after disconnecting.",
         "connectButton": "Enter Shop ID and Secret Key",
         "connect": "Connect",
         "connecting": "Connecting...",
@@ -382,16 +379,14 @@
         "disconnectConfirm": "Are you sure you want to disconnect {provider}? You will no longer be able to accept payments through this provider.",
         "providers": {
           "yookassa": {
-            "tagline": "Online payment acceptance",
-            "description": "Let people pay for purchases on your site through YooKassa",
-            "details": "To receive payments you need a YooKassa business account. If you have a personal account, you can upgrade it for free. You can use the same YooKassa Business account for multiple seller accounts.",
-            "instructionsIntro": "To connect, you need to:",
+            "tagline": "Online payments",
+            "description": "Connect YooKassa to accept payments on your site.",
+            "details": "",
+            "instructionsIntro": "To connect:",
             "instructionSteps": [
-              "Sign up or log in to your YooKassa account",
-              "Sign a contract and create a store",
-              "Find Shop ID under Settings → Store",
-              "Issue a Secret Key under Integration → API keys",
-              "Enter them in the form below"
+              "Sign in to YooKassa and create a store",
+              "Copy Shop ID (Settings → Store) and Secret Key (Integration → API keys)",
+              "Enter them below"
             ],
             "registerLink": "Go to YooKassa to sign up →",
             "shopIdLabel": "Shop ID",
