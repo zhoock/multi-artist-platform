@@ -1,3 +1,5 @@
+import { ArrowRight } from 'lucide-react';
+
 import { useLang } from '@app/providers/lang';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
@@ -9,6 +11,7 @@ import {
   type SubscriptionPlanSlug,
 } from '@shared/lib/payment/subscriptionPlans';
 import { DashboardButton } from '@shared/ui/dashboard';
+import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 import { ModalCloseIcon } from '@shared/ui/icons/ModalCloseIcon';
 import { Popup, PopupCloseButton } from '@shared/ui/popup';
 
@@ -23,6 +26,33 @@ type Props = {
   onCancel: () => void;
   onConfirm: () => void;
 };
+
+type PlanColumnProps = {
+  label: string;
+  planSlug: SubscriptionPlanSlug;
+  priceCurrency: string;
+  lang: 'en' | 'ru';
+};
+
+function PlanCompareColumn({ label, planSlug, priceCurrency, lang }: PlanColumnProps) {
+  const planName = getPlanDisplayName(planSlug);
+  const artistLimit = formatPlanArtistLimitParts(planSlug, lang);
+  const priceAmount = getPlanPriceDisplayAmount(planSlug);
+  const pricePeriod = formatPlanPricePeriod(planSlug, lang);
+
+  return (
+    <div className="subscription-plan-change-modal__plan-column">
+      <p className="subscription-plan-change-modal__plan-label">{label}</p>
+      <p className="subscription-plan-change-modal__plan-name">{planName}</p>
+      <p className="subscription-plan-change-modal__plan-meta">
+        {artistLimit.prefix} {artistLimit.count} {artistLimit.suffix}
+      </p>
+      <p className="subscription-plan-change-modal__plan-meta">
+        {priceAmount} {priceCurrency} {pricePeriod}
+      </p>
+    </div>
+  );
+}
 
 export function SubscriptionPlanChangeConfirmModal({
   isOpen,
@@ -39,32 +69,32 @@ export function SubscriptionPlanChangeConfirmModal({
   const targetPlanName = getPlanDisplayName(targetPlanSlug);
   const titleTemplate =
     ui?.titles?.subscriptionPlanChangeConfirmTitle ??
-    (lang === 'en' ? 'Switch to {plan}?' : 'Перейти на {plan}?');
+    (lang === 'en' ? 'Switch to the {plan} plan?' : 'Перейти на тариф {plan}?');
   const title = titleTemplate.replace('{plan}', targetPlanName);
   const messageLines = [
     ui?.titles?.subscriptionPlanChangeConfirmMessage1 ??
       (lang === 'en'
-        ? 'After paying for the new plan, your current collection will be reset.'
-        : 'После оплаты коллекция будет сброшена.'),
+        ? 'After payment, your current collection will become inactive.'
+        : 'После оплаты текущая коллекция станет неактивной.'),
     ui?.titles?.subscriptionPlanChangeConfirmMessage2 ??
       (lang === 'en'
-        ? 'All artists will become inactive, and you can rebuild your collection within the new limit.'
-        : 'Сразу после оплаты вы сможете выбрать новую коллекцию.'),
+        ? 'You can rebuild it within the limits of your new plan.'
+        : 'Вы сможете заново собрать её в рамках нового тарифа.'),
     ui?.titles?.subscriptionPlanChangeConfirmMessage3 ??
       (lang === 'en'
-        ? 'Your purchases and history will be preserved.'
-        : 'Покупки и подписка сохранятся.'),
+        ? 'Your purchases will remain available.'
+        : 'Ваши покупки останутся доступными.'),
   ];
+  const currentPlanLabel =
+    ui?.titles?.subscriptionPlanChangeCurrentPlanLabel ??
+    (lang === 'en' ? 'Current plan' : 'Текущий тариф');
+  const newPlanLabel =
+    ui?.titles?.subscriptionPlanChangeNewPlanLabel ?? (lang === 'en' ? 'New plan' : 'Новый тариф');
   const proceedLabel =
     ui?.buttons?.subscriptionPlanChangeProceed ??
     (lang === 'en' ? 'Proceed to payment' : 'Перейти к оплате');
   const cancelLabel = ui?.buttons?.cancel ?? (lang === 'en' ? 'Cancel' : 'Отмена');
   const closeLabel = ui?.buttons?.articleLockedDialogClose ?? (lang === 'en' ? 'Close' : 'Закрыть');
-
-  const currentPlanName = getPlanDisplayName(currentPlanSlug);
-  const artistLimit = formatPlanArtistLimitParts(targetPlanSlug, lang);
-  const priceAmount = getPlanPriceDisplayAmount(targetPlanSlug);
-  const pricePeriod = formatPlanPricePeriod(targetPlanSlug, lang);
 
   return (
     <Popup
@@ -77,24 +107,12 @@ export function SubscriptionPlanChangeConfirmModal({
       <div className="subscription-plan-change-modal">
         <div className="subscription-plan-change-modal__card">
           <header className="subscription-plan-change-modal__header">
-            <div className="subscription-plan-change-modal__heading">
-              <h2
-                id="subscription-plan-change-confirm-title"
-                className="subscription-plan-change-modal__title"
-              >
-                {title}
-              </h2>
-              <p
-                className="subscription-plan-change-modal__transition"
-                aria-label={`${currentPlanName} → ${targetPlanName}`}
-              >
-                <span>{currentPlanName}</span>
-                <span aria-hidden>→</span>
-                <span className="subscription-plan-change-modal__transition-to">
-                  {targetPlanName}
-                </span>
-              </p>
-            </div>
+            <h2
+              id="subscription-plan-change-confirm-title"
+              className="subscription-plan-change-modal__title"
+            >
+              {title}
+            </h2>
             <PopupCloseButton
               type="button"
               className="subscription-plan-change-modal__close"
@@ -105,7 +123,7 @@ export function SubscriptionPlanChangeConfirmModal({
             </PopupCloseButton>
           </header>
 
-          <div className="subscription-plan-change-modal__section">
+          <div className="subscription-plan-change-modal__body">
             <div className="subscription-plan-change-modal__messages">
               {messageLines.map((line) => (
                 <p key={line} className="subscription-plan-change-modal__message">
@@ -113,17 +131,26 @@ export function SubscriptionPlanChangeConfirmModal({
                 </p>
               ))}
             </div>
-          </div>
 
-          <div className="subscription-plan-change-modal__section">
-            <div className="subscription-plan-change-modal__details">
-              <p className="subscription-plan-change-modal__details-name">{targetPlanName}</p>
-              <p className="subscription-plan-change-modal__details-limit">
-                {artistLimit.prefix} {artistLimit.count} {artistLimit.suffix}
-              </p>
-              <p className="subscription-plan-change-modal__details-price">
-                {priceAmount} {priceCurrency} {pricePeriod}
-              </p>
+            <div
+              className="subscription-plan-change-modal__compare"
+              aria-label={`${currentPlanLabel} → ${newPlanLabel}`}
+            >
+              <PlanCompareColumn
+                label={currentPlanLabel}
+                planSlug={currentPlanSlug}
+                priceCurrency={priceCurrency}
+                lang={lang}
+              />
+              <span className="subscription-plan-change-modal__compare-arrow" aria-hidden>
+                <ArrowRight {...dashboardActionIconProps({ size: 16 })} />
+              </span>
+              <PlanCompareColumn
+                label={newPlanLabel}
+                planSlug={targetPlanSlug}
+                priceCurrency={priceCurrency}
+                lang={lang}
+              />
             </div>
           </div>
 

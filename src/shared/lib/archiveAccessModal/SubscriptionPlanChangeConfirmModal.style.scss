@@ -13,7 +13,7 @@
     display: flex;
     flex-direction: column;
     width: 100%;
-    max-width: 28rem;
+    max-width: 32rem;
     overflow: hidden;
     color: var(--dashboard-text-primary);
     background: var(--dashboard-card-bg);
@@ -31,34 +31,17 @@
     padding: var(--ms-1) var(--ms-1) var(--ms-0);
   }
 
-  &__heading {
+  &__title {
     min-width: 0;
     flex: 1;
-  }
-
-  &__title {
-    margin: 0 0 var(--ms-02);
+    margin: 0;
     padding: 0;
+    padding-right: var(--ms-01);
     color: var(--dashboard-text-primary);
     font-size: var(--dashboard-heading-font-size);
     line-height: 1.25;
 
     @include dashboard-isolate-heading;
-  }
-
-  &__transition {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 0.35rem;
-    margin: 0;
-    color: var(--dashboard-text-secondary);
-    font-size: var(--dashboard-font-size);
-    line-height: 1.35;
-  }
-
-  &__transition-to {
-    color: var(--accent-color, var(--dark-greenish-yellow));
   }
 
   &__close {
@@ -69,8 +52,11 @@
     );
   }
 
-  &__section {
-    padding: var(--ms-0) var(--ms-1);
+  &__body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ms-0);
+    padding: 0 var(--ms-1) var(--ms-0);
   }
 
   &__messages {
@@ -86,25 +72,55 @@
     line-height: 1.45;
   }
 
-  &__details {
-    display: flex;
-    flex-direction: column;
-    gap: 0.2rem;
+  &__compare {
+    position: relative;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    column-gap: var(--ms-2);
+    align-items: start;
   }
 
-  &__details-name {
+  &__plan-column {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.2rem;
+    min-width: 0;
+    text-align: center;
+  }
+
+  &__plan-label {
+    margin: 0;
+    color: var(--dashboard-text-secondary);
+    font-size: var(--ms-01);
+    line-height: 1.35;
+  }
+
+  &__plan-name {
     margin: 0;
     color: var(--dashboard-text-primary);
     font-size: var(--dashboard-font-size);
     font-weight: 600;
+    line-height: 1.3;
   }
 
-  &__details-limit,
-  &__details-price {
+  &__plan-meta {
     margin: 0;
     color: var(--dashboard-text-secondary);
     font-size: var(--dashboard-font-size);
     line-height: 1.35;
+  }
+
+  &__compare-arrow {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--dashboard-text-secondary);
+    pointer-events: none;
+    transform: translate(-50%, -50%);
   }
 
   &__footer {

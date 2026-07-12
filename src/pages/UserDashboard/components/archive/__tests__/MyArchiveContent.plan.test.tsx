@@ -7,12 +7,13 @@ import { describe, test, expect, jest, beforeEach } from '@jest/globals';
 import { screen, waitFor, fireEvent } from '@testing-library/react';
 
 import { renderWithProviders } from '@shared/lib/test-utils';
-import { removeArtistFromArchiveApi } from '@shared/api/archive';
+import { removeArtistFromArchiveApi, activateArchiveArtistsApi } from '@shared/api/archive';
 import { MyArchiveContent } from '../MyArchiveContent';
 import type { SubscriptionCheckoutResult } from '@shared/lib/archiveAccessModal/useSubscriptionCheckout';
 
 const getMyArchiveMock = jest.fn<() => Promise<unknown>>();
 const removeArtistFromArchiveApiMock = jest.mocked(removeArtistFromArchiveApi);
+const activateArchiveArtistsApiMock = jest.mocked(activateArchiveArtistsApi);
 const openSupportModalMock = jest.fn();
 const startCheckoutMock = jest.fn<(planSlug: string) => Promise<SubscriptionCheckoutResult>>();
 
@@ -65,6 +66,7 @@ describe('MyArchiveContent plan display', () => {
   beforeEach(() => {
     getMyArchiveMock.mockReset();
     removeArtistFromArchiveApiMock.mockReset();
+    activateArchiveArtistsApiMock.mockReset();
     openSupportModalMock.mockReset();
     startCheckoutMock.mockReset();
     startCheckoutMock.mockResolvedValue({ ok: true, redirected: true });
@@ -257,6 +259,87 @@ describe('MyArchiveContent plan display', () => {
     expect(screen.queryByText(/Locked until/i)).toBeNull();
     expect(screen.getByRole('button', { name: /^Remove\b/i })).toBeTruthy();
     expect(screen.getByRole('button', { name: /^Remove\b/i })).toBeDisabled();
+  });
+
+  test('shows activate and remove buttons for inactive artist', async () => {
+    getMyArchiveMock.mockResolvedValue({
+      isPremium: true,
+      slotsUsed: 0,
+      slotsLimit: 3,
+      inactiveCount: 1,
+      subscriptionExpiresAt: '2026-08-03T12:00:00.000Z',
+      artists: [inactiveArtist('a1', 'Inactive Artist')],
+    });
+
+    renderWithProviders(<MyArchiveContent active />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Inactive Artist')).toBeTruthy();
+    });
+
+    expect(screen.getByRole('button', { name: 'Activate' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Remove' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Done' })).toBeNull();
+  });
+
+  test('activates inactive artist without entering select mode', async () => {
+    const activatedArchive = {
+      isPremium: true,
+      slotsUsed: 1,
+      slotsLimit: 3,
+      inactiveCount: 0,
+      subscriptionExpiresAt: '2026-08-03T12:00:00.000Z',
+      artists: [activeArtist('a1', 'Inactive Artist')],
+    };
+
+    getMyArchiveMock.mockResolvedValue({
+      isPremium: true,
+      slotsUsed: 0,
+      slotsLimit: 3,
+      inactiveCount: 1,
+      subscriptionExpiresAt: '2026-08-03T12:00:00.000Z',
+      artists: [inactiveArtist('a1', 'Inactive Artist')],
+    });
+    activateArchiveArtistsApiMock.mockResolvedValue({ archive: activatedArchive });
+
+    renderWithProviders(<MyArchiveContent active />);
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Activate' })).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Activate' }));
+
+    await waitFor(() => {
+      expect(activateArchiveArtistsApiMock).toHaveBeenCalledWith(['a1']);
+      expect(screen.getByText(/1 \/ 3/)).toBeTruthy();
+    });
+
+    expect(screen.queryByRole('button', { name: 'Done' })).toBeNull();
+  });
+
+  test('disables activate button when no slots remain', async () => {
+    getMyArchiveMock.mockResolvedValue({
+      isPremium: true,
+      slotsUsed: 3,
+      slotsLimit: 3,
+      inactiveCount: 1,
+      subscriptionExpiresAt: '2026-08-03T12:00:00.000Z',
+      artists: [
+        activeArtist('a1', 'Active One'),
+        activeArtist('a2', 'Active Two'),
+        activeArtist('a3', 'Active Three'),
+        inactiveArtist('a4', 'Inactive Artist'),
+      ],
+    });
+
+    renderWithProviders(<MyArchiveContent active />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Inactive Artist')).toBeTruthy();
+    });
+
+    expect(screen.getByRole('button', { name: /^Activate\b/i })).toBeDisabled();
   });
 
   test('shows enabled remove button for inactive artist without extra status copy', async () => {

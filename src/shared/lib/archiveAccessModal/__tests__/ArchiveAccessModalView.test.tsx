@@ -220,13 +220,9 @@ describe('ArchiveAccessModalView plan change confirmation', () => {
       within(getPlanCard('Collector')).getByRole('button', { name: 'Switch to Collector' })
     );
 
-    expect(screen.getByRole('heading', { name: 'Switch to Collector?' })).toBeTruthy();
-    expect(
-      document.querySelector('.subscription-plan-change-modal__transition')?.textContent
-    ).toContain('Explorer');
-    expect(
-      document.querySelector('.subscription-plan-change-modal__transition-to')?.textContent
-    ).toBe('Collector');
+    expect(screen.getByRole('heading', { name: 'Switch to the Collector plan?' })).toBeTruthy();
+    expect(screen.getByText('Current plan')).toBeTruthy();
+    expect(screen.getByText('New plan')).toBeTruthy();
     expect(createSubscriptionPaymentMock).not.toHaveBeenCalled();
   });
 
@@ -239,7 +235,7 @@ describe('ArchiveAccessModalView plan change confirmation', () => {
     );
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
 
-    expect(screen.queryByRole('heading', { name: 'Switch to Collector?' })).toBeNull();
+    expect(screen.queryByRole('heading', { name: 'Switch to the Collector plan?' })).toBeNull();
     expect(createSubscriptionPaymentMock).not.toHaveBeenCalled();
   });
 
@@ -267,7 +263,7 @@ describe('ArchiveAccessModalView plan change confirmation', () => {
       within(getPlanCard('Collector')).getByRole('button', { name: 'Renew Collector' })
     );
 
-    expect(screen.queryByRole('heading', { name: 'Switch to Collector?' })).toBeNull();
+    expect(screen.queryByRole('heading', { name: 'Switch to the Collector plan?' })).toBeNull();
 
     await waitFor(() => {
       expect(createSubscriptionPaymentMock).toHaveBeenCalledWith(
@@ -282,7 +278,7 @@ describe('ArchiveAccessModalView plan change confirmation', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Choose Explorer' }));
 
-    expect(screen.queryByRole('heading', { name: 'Switch to Collector?' })).toBeNull();
+    expect(screen.queryByRole('heading', { name: 'Switch to the Collector plan?' })).toBeNull();
 
     await waitFor(() => {
       expect(createSubscriptionPaymentMock).toHaveBeenCalledWith(

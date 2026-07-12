@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import clsx from 'clsx';
 import { Link } from 'react-router-dom';
 
@@ -20,7 +20,7 @@ import {
   normalizeCollectionArchive,
 } from '@shared/lib/archive/collectionLock';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
-import { CheckSquare, Square, Trash2 as Trash2Icon } from 'lucide-react';
+import { CheckSquare, Plus as PlusIcon, Square, Trash2 as Trash2Icon } from 'lucide-react';
 import {
   dispatchArchiveArtistRemoved,
   refreshPremiumContentForArchiveChange,
@@ -60,11 +60,13 @@ export function MyArchiveContent({ active }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [removingId, setRemovingId] = useState<string | null>(null);
+  const [activatingId, setActivatingId] = useState<string | null>(null);
   const [isSelectMode, setIsSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const [bulkLoading, setBulkLoading] = useState(false);
   const [renewLoading, setRenewLoading] = useState(false);
   const [removedToastTrigger, setRemovedToastTrigger] = useState(0);
+  const skipNextArchiveReloadRef = useRef(false);
 
   const t = ui?.dashboard?.archive;
 
@@ -119,6 +121,10 @@ export function MyArchiveContent({ active }: Props) {
   useEffect(() => {
     if (!active) return;
     const onChanged = () => {
+      if (skipNextArchiveReloadRef.current) {
+        skipNextArchiveReloadRef.current = false;
+        return;
+      }
       void loadArchive();
     };
     window.addEventListener('archive:changed', onChanged);
@@ -331,32 +337,84 @@ export function MyArchiveContent({ active }: Props) {
       .slice(0, slotsRemaining)
       .map((artist) => artist.artistUserId);
 
-    setBulkLoading(true);
-    setError(null);
+    await activateArtists(toActivate, { exitSelectOnSuccess: true });
+  };
 
-    try {
-      const { archive } = await activateArchiveArtistsApi(toActivate);
-      setData(normalizeCollectionArchive(archive));
-      window.dispatchEvent(new Event('archive:changed'));
-      exitSelectMode();
-    } catch (err) {
-      const message =
-        err instanceof ArchiveApiError
-          ? err.code === 'ARCHIVE_SLOTS_LIMIT' || err.code === 'ARCHIVE_ACTIVATION_LIMIT'
-            ? (
-                t?.activateLimitError ??
+  const activateArtists = useCallback(
+    async (artistUserIds: string[], options?: { exitSelectOnSuccess?: boolean }) => {
+      if (!data || bulkLoading || activatingId || artistUserIds.length === 0 || !isPremium) {
+        return;
+      }
+
+      const isBulkActivate = artistUserIds.length > 1 || options?.exitSelectOnSuccess;
+      if (isBulkActivate) {
+        setBulkLoading(true);
+      } else {
+        setActivatingId(artistUserIds[0] ?? null);
+      }
+      setError(null);
+
+      try {
+        const { archive } = await activateArchiveArtistsApi(artistUserIds);
+        setData(normalizeCollectionArchive(archive));
+        for (const artistUserId of artistUserIds) {
+          const artist = data.artists.find((entry) => entry.artistUserId === artistUserId);
+          refreshPremiumContentForArchiveChange(dispatch, artist?.slug || undefined);
+        }
+        skipNextArchiveReloadRef.current = true;
+        window.dispatchEvent(new Event('archive:changed'));
+        setSelectedIds((prev) => {
+          const next = new Set(prev);
+          for (const artistUserId of artistUserIds) {
+            next.delete(artistUserId);
+          }
+          return next;
+        });
+        if (options?.exitSelectOnSuccess) {
+          exitSelectMode();
+        }
+      } catch (err) {
+        const message =
+          err instanceof ArchiveApiError
+            ? err.code === 'ARCHIVE_SLOTS_LIMIT' || err.code === 'ARCHIVE_ACTIVATION_LIMIT'
+              ? (
+                  t?.activateLimitError ??
+                  (lang === 'en'
+                    ? 'You can activate up to {count} artists.'
+                    : 'Можно активировать не более {count} артистов.')
+                ).replace('{count}', String(slotsRemaining))
+              : err.message
+            : err instanceof Error
+              ? err.message
+              : (t?.activateError ??
                 (lang === 'en'
-                  ? 'You can activate up to {count} artists.'
-                  : 'Можно активировать не более {count} артистов.')
-              ).replace('{count}', String(slotsRemaining))
-            : err.message
-          : err instanceof Error
-            ? err.message
-            : (t?.activateError ??
-              (lang === 'en' ? 'Failed to activate artists' : 'Не удалось активировать артистов'));
-      setError(message);
-    } finally {
-      setBulkLoading(false);
+                  ? 'Failed to activate artists'
+                  : 'Не удалось активировать артистов'));
+        setError(message);
+      } finally {
+        if (isBulkActivate) {
+          setBulkLoading(false);
+        } else {
+          setActivatingId(null);
+        }
+      }
+    },
+    [
+      activatingId,
+      bulkLoading,
+      data,
+      dispatch,
+      exitSelectMode,
+      lang,
+      slotsRemaining,
+      t?.activateError,
+      t?.activateLimitError,
+    ]
+  );
+
+  const handleActivateArtist = async (artist: MyArchiveArtist) => {
+    if (!artist.isActive) {
+      await activateArtists([artist.artistUserId]);
     }
   };
 
@@ -418,6 +476,12 @@ export function MyArchiveContent({ active }: Props) {
     t?.removeSelected ?? (lang === 'en' ? 'Remove from collection' : 'Удалить из коллекции');
   const activateSelectedTemplate =
     t?.activateSelected ?? (lang === 'en' ? 'Activate ({count})' : 'Активировать ({count})');
+  const activateArtistLabel = t?.activateArtist ?? (lang === 'en' ? 'Activate' : 'Активировать');
+  const activateLimitTemplate =
+    t?.activateLimitError ??
+    (lang === 'en'
+      ? 'You can activate up to {count} artists.'
+      : 'Можно активировать не более {count} артистов.');
   const selectHintTemplate =
     t?.selectActivateHint ??
     (lang === 'en' ? 'You can select up to {count} artists' : 'Можно выбрать до {count} артистов');
@@ -596,9 +660,20 @@ export function MyArchiveContent({ active }: Props) {
                       : '/';
                     const artistIsLocked = isCollectionArtistLocked(artist);
                     const removable = canRemoveArtist(artist, isPremium);
-                    const removeDisabled = Boolean(removingId) || bulkLoading || !removable;
+                    const removeDisabled =
+                      Boolean(removingId) || bulkLoading || Boolean(activatingId) || !removable;
                     const isSelected = selectedIds.has(artist.artistUserId);
                     const isInactiveSelectable = isSelectMode && !artist.isActive;
+                    const activateRowDisabled =
+                      Boolean(activatingId) ||
+                      bulkLoading ||
+                      Boolean(removingId) ||
+                      !isPremium ||
+                      slotsRemaining <= 0;
+                    const activateRowLabel =
+                      slotsRemaining <= 0 || !isPremium
+                        ? `${activateArtistLabel}. ${activateLimitTemplate.replace('{count}', String(slotsRemaining))}`
+                        : activateArtistLabel;
                     const removeTooltip = !removable
                       ? artistIsLocked
                         ? removeLockedTooltip
@@ -637,15 +712,11 @@ export function MyArchiveContent({ active }: Props) {
                         <article
                           className={clsx(
                             'collection__artist-row',
-                            isSelected && 'collection__artist-row--selected'
+                            isSelected && 'collection__artist-row--selected',
+                            (isInactiveSelectable || !isSelectMode) &&
+                              'collection__artist-row--with-trailing-action'
                           )}
                         >
-                          {isInactiveSelectable ? (
-                            <span className="collection__select-checkbox" aria-hidden>
-                              {isSelected ? <CheckSquare size={18} /> : <Square size={18} />}
-                            </span>
-                          ) : null}
-
                           <div className="collection__cover">
                             {artist.cover ? (
                               <img src={artist.cover} alt="" loading="lazy" decoding="async" />
@@ -656,32 +727,57 @@ export function MyArchiveContent({ active }: Props) {
                             )}
                           </div>
 
-                          <h3 className="collection__name">
-                            {isInactiveSelectable ? (
-                              artist.name
-                            ) : (
+                          <h3
+                            className={clsx(
+                              'collection__name',
+                              !artist.isActive && 'collection__name--inactive'
+                            )}
+                          >
+                            {artist.isActive ? (
                               <Link to={artistHref} onClick={(event) => event.stopPropagation()}>
                                 {artist.name}
                               </Link>
+                            ) : (
+                              artist.name
                             )}
                           </h3>
 
-                          {!isSelectMode ? (
-                            <DashboardButton
-                              variant="icon"
-                              destructive
-                              className="collection__remove-action"
-                              disabled={removeDisabled}
-                              aria-label={
-                                removeTooltip ? `${removeLabel}. ${removeTooltip}` : removeLabel
-                              }
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                void handleRemove(artist);
-                              }}
-                            >
-                              <Trash2Icon {...dashboardActionIconProps()} />
-                            </DashboardButton>
+                          {isInactiveSelectable ? (
+                            <span className="collection__select-checkbox" aria-hidden>
+                              {isSelected ? <CheckSquare size={18} /> : <Square size={18} />}
+                            </span>
+                          ) : !isSelectMode ? (
+                            <div className="collection__row-actions">
+                              {!artist.isActive ? (
+                                <DashboardButton
+                                  variant="icon"
+                                  className="collection__activate-action"
+                                  disabled={activateRowDisabled}
+                                  aria-label={activateRowLabel}
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                    void handleActivateArtist(artist);
+                                  }}
+                                >
+                                  <PlusIcon {...dashboardActionIconProps()} />
+                                </DashboardButton>
+                              ) : null}
+                              <DashboardButton
+                                variant="icon"
+                                destructive
+                                className="collection__remove-action"
+                                disabled={removeDisabled}
+                                aria-label={
+                                  removeTooltip ? `${removeLabel}. ${removeTooltip}` : removeLabel
+                                }
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  void handleRemove(artist);
+                                }}
+                              >
+                                <Trash2Icon {...dashboardActionIconProps()} />
+                              </DashboardButton>
+                            </div>
                           ) : null}
                         </article>
                       </div>

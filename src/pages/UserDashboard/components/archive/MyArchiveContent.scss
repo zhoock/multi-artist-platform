@@ -188,15 +188,15 @@ dialog {
 
       &__artist-row {
         display: grid;
-        grid-template-columns: 2.25rem minmax(0, 1fr) auto;
+        grid-template-columns: 2.25rem minmax(0, 1fr);
         align-items: center;
         gap: var(--ms-0);
         min-height: 3rem;
         padding-block: var(--ms-01);
         border-bottom: 1px solid var(--dashboard-divider);
 
-        .collection__artist-row-wrap--selectable & {
-          grid-template-columns: auto 2.25rem minmax(0, 1fr) auto;
+        &--with-trailing-action {
+          grid-template-columns: 2.25rem minmax(0, 1fr) auto;
         }
 
         &--selected {
@@ -204,18 +204,32 @@ dialog {
         }
 
         @include breakpoint(old-phones) {
-          grid-template-columns: 2rem minmax(0, 1fr) auto;
+          grid-template-columns: 2rem minmax(0, 1fr);
           gap: var(--ms-01);
 
-          .collection__artist-row-wrap--selectable & {
-            grid-template-columns: auto 2rem minmax(0, 1fr) auto;
+          &--with-trailing-action {
+            grid-template-columns: 2rem minmax(0, 1fr) auto;
           }
         }
       }
 
       &__select-checkbox {
         display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        justify-self: end;
         color: var(--dashboard-text-secondary);
+      }
+
+      &__row-actions {
+        display: flex;
+        align-items: center;
+        gap: var(--ms-02);
+        justify-self: end;
+      }
+
+      &__activate-action {
+        color: var(--dark-greenish-yellow);
       }
 
       &__cover {
@@ -249,8 +263,13 @@ dialog {
         font-size: var(--dashboard-font-size);
         font-weight: 500;
         line-height: 1.3;
+        text-align: left;
 
         @include dashboard-ui-font-family;
+
+        &--inactive {
+          color: var(--dashboard-text-primary);
+        }
 
         a {
           color: var(--dashboard-text-primary);
