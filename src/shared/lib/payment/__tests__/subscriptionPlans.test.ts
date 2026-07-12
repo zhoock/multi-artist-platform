@@ -13,6 +13,7 @@ import {
   resolvePlanCardAction,
   getPlanCardBadgeLabel,
   resolvePlanSlugFromSlotsLimit,
+  shouldConfirmSubscriptionPlanChange,
 } from '../subscriptionPlans';
 
 describe('PLAN_CATALOG (client)', () => {
@@ -127,6 +128,19 @@ describe('comparePlanTiers', () => {
     expect(comparePlanTiers('explorer', 'collector')).toBe(-1);
     expect(comparePlanTiers('archivist', 'explorer')).toBe(1);
     expect(comparePlanTiers('collector', 'collector')).toBe(0);
+  });
+});
+
+describe('shouldConfirmSubscriptionPlanChange', () => {
+  test('requires confirmation when switching between existing plans', () => {
+    expect(shouldConfirmSubscriptionPlanChange('explorer', 'collector')).toBe(true);
+    expect(shouldConfirmSubscriptionPlanChange('collector', 'archivist')).toBe(true);
+    expect(shouldConfirmSubscriptionPlanChange('archivist', 'explorer')).toBe(true);
+  });
+
+  test('skips confirmation for renew and first purchase', () => {
+    expect(shouldConfirmSubscriptionPlanChange('explorer', 'explorer')).toBe(false);
+    expect(shouldConfirmSubscriptionPlanChange(null, 'collector')).toBe(false);
   });
 });
 

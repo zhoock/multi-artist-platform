@@ -9,6 +9,7 @@ import { useSiteArtistDisplayName } from '@shared/lib/hooks/useSiteArtistDisplay
 import { ArchiveApiError } from '@shared/api/archive';
 import { AlertModal } from '@shared/ui/alertModal';
 import { LocalModal } from '@shared/ui/localModal';
+import { DashboardButton } from '@shared/ui/dashboard';
 import { ArtistArchiveLockIcon } from '@shared/ui/icons/ArtistArchiveLockIcon';
 import { ModalCloseIcon } from '@shared/ui/icons/ModalCloseIcon';
 import { dispatchArchiveArtistAdded, awaitPremiumContentRefresh } from '@features/artistArchive';
@@ -17,7 +18,7 @@ import { useArtistArchiveStatus } from '@features/artistArchive/lib/useArtistArc
 import { ArchiveAccessModalFeatures } from './ArchiveAccessModalFeatures';
 import type { PendingPremiumContentAccess } from './archiveAccessModalContext';
 
-import './archiveAccessModal.scss';
+import './archiveAccessModal.style.scss';
 
 type Props = {
   dialogRef: RefObject<HTMLDialogElement | null>;
@@ -118,45 +119,50 @@ export function AddArtistToArchiveModalView({ dialogRef, pendingAccess, onClose 
     <>
       <LocalModal
         dialogRef={dialogRef}
-        className="archive-access-modal archive-access-modal--add-artist"
+        className="add-artist-to-archive-modal"
         aria-labelledby="add-artist-to-archive-modal-title"
         onClose={dismiss}
       >
-        <div className="archive-access-modal__panel">
-          <button
-            type="button"
-            className="archive-access-modal__close"
-            aria-label={closeLabel}
-            onClick={dismiss}
-          >
-            <ModalCloseIcon size={18} />
-          </button>
-
-          <header className="archive-access-modal__header archive-access-modal__header--add-artist">
-            <ArtistArchiveLockIcon className="archive-access-modal__header-icon" size={26} />
-            <h2 id="add-artist-to-archive-modal-title" className="archive-access-modal__title">
-              {title}
-            </h2>
+        <div className="add-artist-to-archive-modal__card">
+          <header className="add-artist-to-archive-modal__header">
+            <div className="add-artist-to-archive-modal__heading">
+              <ArtistArchiveLockIcon className="add-artist-to-archive-modal__icon" size={26} />
+              <h2
+                id="add-artist-to-archive-modal-title"
+                className="add-artist-to-archive-modal__title"
+              >
+                {title}
+              </h2>
+            </div>
+            <button
+              type="button"
+              className="add-artist-to-archive-modal__close"
+              aria-label={closeLabel}
+              onClick={dismiss}
+            >
+              <ModalCloseIcon />
+            </button>
           </header>
 
-          <p className="archive-access-modal__description">{description}</p>
+          <p className="add-artist-to-archive-modal__description">{description}</p>
 
           <ArchiveAccessModalFeatures lang={lang} ui={ui} />
 
-          <hr className="archive-access-modal__rule" />
+          <hr className="add-artist-to-archive-modal__divider" />
 
-          <button
+          <DashboardButton
             type="button"
-            className="archive-access-modal__cta"
+            variant="primary"
+            className="add-artist-to-archive-modal__cta"
             disabled={adding || !artistUserId}
-            aria-busy={adding}
+            loading={adding}
             onClick={() => void handleAdd()}
           >
             {adding ? addingLabel : addLabel}
-          </button>
+          </DashboardButton>
 
           {addError ? (
-            <p className="archive-access-modal__checkout-error" role="alert">
+            <p className="add-artist-to-archive-modal__error" role="alert">
               {addError}
             </p>
           ) : null}

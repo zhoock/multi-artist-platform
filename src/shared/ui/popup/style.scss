@@ -45,6 +45,7 @@ dialog {
       :has(
         .user-dashboard,
         .confirmation-modal,
+        .subscription-plan-change-modal,
         .delete-account-modal,
         .verify-email-modal,
         .auth-page
@@ -64,6 +65,7 @@ dialog {
         .player,
         .alert-modal,
         .confirmation-modal,
+        .subscription-plan-change-modal,
         .delete-account-modal,
         .verify-email-modal,
         .auth-page
@@ -82,13 +84,15 @@ dialog {
         .cover-image-crop-modal,
         .alert-modal,
         .confirmation-modal,
+        .subscription-plan-change-modal,
         .delete-account-modal,
         .verify-email-modal,
         .auth-page,
         .edit-article-v2,
         .carousel-edit-modal,
         .edit-article-v2__carousel-edit-modal,
-        .archive-access-modal__panel,
+        .subscription-plan-modal__card,
+        .add-artist-to-archive-modal__card,
         .add-stem-modal,
         .article-editor-toast-layer,
         .article-editor-toast,

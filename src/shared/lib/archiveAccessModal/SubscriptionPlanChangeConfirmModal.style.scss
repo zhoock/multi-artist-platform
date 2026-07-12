@@ -1,0 +1,113 @@
+@use '../../../scss/abstracts/mixins' as *;
+@use '../../../scss/components/modal' as dashboard-modal;
+
+.subscription-plan-change-modal {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: var(--ms-1);
+  box-sizing: border-box;
+
+  &__card {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: 28rem;
+    overflow: hidden;
+    color: var(--dashboard-text-primary);
+    background: var(--dashboard-card-bg);
+    border: 1px solid var(--dashboard-card-border);
+    border-radius: var(--ms-01);
+    box-shadow: 0 4px 20px rgb(0 0 0 / 30%);
+    box-sizing: border-box;
+  }
+
+  &__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--ms-01);
+    padding: var(--ms-1) var(--ms-1) var(--ms-0);
+  }
+
+  &__heading {
+    min-width: 0;
+    flex: 1;
+  }
+
+  &__title {
+    margin: 0 0 var(--ms-02);
+    padding: 0;
+    color: var(--dashboard-text-primary);
+    font-size: var(--dashboard-heading-font-size);
+    line-height: 1.25;
+
+    @include dashboard-isolate-heading;
+  }
+
+  &__transition {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem;
+    margin: 0;
+    color: var(--dashboard-text-secondary);
+    font-size: var(--dashboard-font-size);
+    line-height: 1.35;
+  }
+
+  &__transition-to {
+    color: var(--accent-color, var(--dark-greenish-yellow));
+  }
+
+  &__close {
+    @include dashboard-modal.dashboard-modal-close(
+      $focus-visible: true,
+      $reset-text: true,
+      $flex-shrink: 0
+    );
+  }
+
+  &__section {
+    padding: var(--ms-0) var(--ms-1);
+  }
+
+  &__messages {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+
+  &__message {
+    margin: 0;
+    color: var(--dashboard-text-secondary);
+    font-size: var(--dashboard-font-size);
+    line-height: 1.45;
+  }
+
+  &__details {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+  }
+
+  &__details-name {
+    margin: 0;
+    color: var(--dashboard-text-primary);
+    font-size: var(--dashboard-font-size);
+    font-weight: 600;
+  }
+
+  &__details-limit,
+  &__details-price {
+    margin: 0;
+    color: var(--dashboard-text-secondary);
+    font-size: var(--dashboard-font-size);
+    line-height: 1.35;
+  }
+
+  &__footer {
+    margin-top: 0;
+  }
+}

@@ -1,5 +1,7 @@
 import { Check } from 'lucide-react';
 
+import clsx from 'clsx';
+
 import type { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 import {
   formatPlanArtistLimitParts,
@@ -11,6 +13,7 @@ import {
   resolvePlanCardAction,
   type SubscriptionPlanSlug,
 } from '@shared/lib/payment/subscriptionPlans';
+import { DashboardButton, DashboardCard } from '@shared/ui/dashboard';
 
 type Props = {
   planSlug: SubscriptionPlanSlug;
@@ -57,58 +60,62 @@ export function SubscriptionPlanCard({
   const featureHighlight = getPlanHighlightFeature(planSlug, lang);
 
   const features = [featureExclusive, featureRevenue, featureHighlight];
+  const redirectingLabel = lang === 'en' ? 'Redirecting…' : 'Переход к оплате…';
 
   return (
-    <article
-      className={`archive-access-modal__plan-card${isCurrent ? ' archive-access-modal__plan-card--current' : ''}`}
-      aria-labelledby={`archive-access-plan-${planSlug}-title`}
+    <DashboardCard
+      as="article"
+      selected={isCurrent}
+      className={clsx(
+        'subscription-plan-modal__plan-card',
+        badgeLabel && 'subscription-plan-modal__plan-card--has-badge'
+      )}
+      aria-labelledby={`subscription-plan-${planSlug}-title`}
     >
       {badgeLabel ? (
-        <span className="archive-access-modal__plan-status-badge">{badgeLabel}</span>
+        <span className="subscription-plan-modal__plan-badge">{badgeLabel}</span>
       ) : null}
 
-      <h3 id={`archive-access-plan-${planSlug}-title`} className="archive-access-modal__plan-name">
+      <h3 id={`subscription-plan-${planSlug}-title`} className="subscription-plan-modal__plan-name">
         {planName}
       </h3>
 
-      <div className="archive-access-modal__plan-limit">
-        <span className="archive-access-modal__plan-limit-prefix">{artistLimit.prefix}</span>
-        <span className="archive-access-modal__plan-limit-count">{artistLimit.count}</span>
-        <span className="archive-access-modal__plan-limit-suffix">{artistLimit.suffix}</span>
+      <div className="subscription-plan-modal__plan-limit">
+        <span className="subscription-plan-modal__plan-limit-prefix">{artistLimit.prefix}</span>
+        <span className="subscription-plan-modal__plan-limit-count">{artistLimit.count}</span>
+        <span className="subscription-plan-modal__plan-limit-suffix">{artistLimit.suffix}</span>
       </div>
 
       <p
-        className="archive-access-modal__plan-price"
+        className="subscription-plan-modal__plan-price"
         aria-label={`${priceAmount} ${priceCurrency} ${pricePeriod}`}
       >
-        <span className="archive-access-modal__plan-price-num">{priceAmount}</span>
-        <span className="archive-access-modal__plan-price-currency">{priceCurrency}</span>
-        <span className="archive-access-modal__plan-price-period">{pricePeriod}</span>
+        <span className="subscription-plan-modal__plan-price-num">{priceAmount}</span>
+        <span className="subscription-plan-modal__plan-price-currency">{priceCurrency}</span>
+        <span className="subscription-plan-modal__plan-price-period">{pricePeriod}</span>
       </p>
 
-      <hr className="archive-access-modal__plan-divider" aria-hidden />
+      <hr className="subscription-plan-modal__plan-divider" aria-hidden />
 
-      <button
+      <DashboardButton
         type="button"
-        className={`archive-access-modal__plan-cta${
-          isButtonDisabled ? ' archive-access-modal__plan-cta--disabled' : ''
-        }`}
+        variant={disabled ? 'outline' : 'primary'}
+        className="subscription-plan-modal__plan-cta"
         disabled={isButtonDisabled}
-        aria-busy={isLoading}
-        aria-disabled={isButtonDisabled}
+        loading={isLoading}
         onClick={() => {
           if (isButtonDisabled) return;
           onSelect(planSlug);
         }}
       >
-        {isLoading ? (lang === 'en' ? 'Redirecting…' : 'Переход к оплате…') : label}
-      </button>
+        {isLoading ? redirectingLabel : label}
+      </DashboardButton>
 
-      <ul className="archive-access-modal__plan-features">
+      <ul className="subscription-plan-modal__plan-features">
         {features.map((feature) => (
-          <li key={feature} className="archive-access-modal__plan-feature">
+          <li key={feature} className="subscription-plan-modal__plan-feature">
             <Check
-              className="archive-access-modal__plan-feature-icon"
+              className="subscription-plan-modal__plan-feature-icon"
               size={16}
               strokeWidth={2.5}
               aria-hidden
@@ -117,6 +124,6 @@ export function SubscriptionPlanCard({
           </li>
         ))}
       </ul>
-    </article>
+    </DashboardCard>
   );
 }

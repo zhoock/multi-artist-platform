@@ -35,11 +35,11 @@ export function ArchiveAccessModalFeatures({ lang, ui }: Props) {
   ];
 
   return (
-    <ul className="archive-access-modal__features">
+    <ul className="add-artist-to-archive-modal__features">
       {features.map(({ Icon, label }) => (
-        <li key={label} className="archive-access-modal__feature">
-          <Icon {...featureIconProps('archive-access-modal__feature-icon')} />
-          <span className="archive-access-modal__feature-label">{label}</span>
+        <li key={label} className="add-artist-to-archive-modal__feature">
+          <Icon {...featureIconProps('add-artist-to-archive-modal__feature-icon')} />
+          <span className="add-artist-to-archive-modal__feature-label">{label}</span>
         </li>
       ))}
     </ul>

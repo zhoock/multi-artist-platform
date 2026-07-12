@@ -58,9 +58,9 @@ describe('SubscriptionPlanCard', () => {
     );
 
     expect(screen.getByRole('button', { name: 'Current Plan' })).toBeDisabled();
-    expect(document.querySelector('.archive-access-modal__plan-card--current')).toBeTruthy();
+    expect(document.querySelector('.dashboard-card--selected')).toBeTruthy();
     expect(
-      screen.getByText('Current Plan', { selector: '.archive-access-modal__plan-status-badge' })
+      screen.getByText('Current Plan', { selector: '.subscription-plan-modal__plan-badge' })
     ).toBeTruthy();
   });
 
@@ -98,8 +98,8 @@ describe('SubscriptionPlanCard', () => {
       />
     );
 
-    expect(document.querySelector('.archive-access-modal__plan-card--current')).toBeNull();
-    expect(document.querySelector('.archive-access-modal__plan-status-badge')).toBeNull();
+    expect(document.querySelector('.dashboard-card--selected')).toBeNull();
+    expect(document.querySelector('.subscription-plan-modal__plan-badge')).toBeNull();
   });
 
   test('shows switch action for upgrade path', () => {

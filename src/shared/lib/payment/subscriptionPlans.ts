@@ -269,3 +269,11 @@ export function comparePlanTiers(a: SubscriptionPlanSlug, b: SubscriptionPlanSlu
   if (diff > 0) return 1;
   return 0;
 }
+
+/** True when switching between existing plans (not renew / first purchase). */
+export function shouldConfirmSubscriptionPlanChange(
+  currentPlanSlug: SubscriptionPlanSlug | null,
+  targetPlanSlug: SubscriptionPlanSlug
+): boolean {
+  return currentPlanSlug !== null && currentPlanSlug !== targetPlanSlug;
+}

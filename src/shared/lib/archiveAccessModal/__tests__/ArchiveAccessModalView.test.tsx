@@ -30,6 +30,10 @@ jest.mock('@shared/api/subscription', () => ({
   createSubscriptionPayment: jest.fn(),
 }));
 
+import { createSubscriptionPayment } from '@shared/api/subscription';
+
+const createSubscriptionPaymentMock = jest.mocked(createSubscriptionPayment);
+
 function OpenModalButton() {
   const { open } = useArchiveAccessModal();
   return (
@@ -86,7 +90,7 @@ async function openModal() {
 
 function getPlanCard(planName: string) {
   const heading = screen.getByRole('heading', { name: planName });
-  const card = heading.closest('.archive-access-modal__plan-card');
+  const card = heading.closest('.subscription-plan-modal__plan-card');
   if (!card) {
     throw new Error(`Plan card not found for ${planName}`);
   }
@@ -97,6 +101,11 @@ describe('ArchiveAccessModalView current plan', () => {
   beforeEach(() => {
     getMyArchiveMock.mockReset();
     getTokenMock.mockReset();
+    createSubscriptionPaymentMock.mockReset();
+    createSubscriptionPaymentMock.mockResolvedValue({
+      success: true,
+      data: { paymentId: 'pay-test-1', confirmationUrl: 'https://pay.example/checkout' },
+    });
   });
 
   test('highlights Explorer when Explorer is active', async () => {
@@ -104,11 +113,11 @@ describe('ArchiveAccessModalView current plan', () => {
     await openModal();
 
     const explorerCard = getPlanCard('Explorer');
-    expect(explorerCard.classList.contains('archive-access-modal__plan-card--current')).toBe(true);
+    expect(explorerCard.classList.contains('dashboard-card--selected')).toBe(true);
     expect(within(explorerCard).getByRole('button', { name: 'Current Plan' })).toBeDisabled();
     expect(
       within(explorerCard).getByText('Current Plan', {
-        selector: '.archive-access-modal__plan-status-badge',
+        selector: '.subscription-plan-modal__plan-badge',
       })
     ).toBeTruthy();
     expect(
@@ -124,11 +133,11 @@ describe('ArchiveAccessModalView current plan', () => {
     await openModal();
 
     const collectorCard = getPlanCard('Collector');
-    expect(collectorCard.classList.contains('archive-access-modal__plan-card--current')).toBe(true);
+    expect(collectorCard.classList.contains('dashboard-card--selected')).toBe(true);
     expect(within(collectorCard).getByRole('button', { name: 'Current Plan' })).toBeDisabled();
     expect(
       within(collectorCard).getByText('Current Plan', {
-        selector: '.archive-access-modal__plan-status-badge',
+        selector: '.subscription-plan-modal__plan-badge',
       })
     ).toBeTruthy();
     expect(
@@ -144,11 +153,11 @@ describe('ArchiveAccessModalView current plan', () => {
     await openModal();
 
     const archivistCard = getPlanCard('Archivist');
-    expect(archivistCard.classList.contains('archive-access-modal__plan-card--current')).toBe(true);
+    expect(archivistCard.classList.contains('dashboard-card--selected')).toBe(true);
     expect(within(archivistCard).getByRole('button', { name: 'Current Plan' })).toBeDisabled();
     expect(
       within(archivistCard).getByText('Current Plan', {
-        selector: '.archive-access-modal__plan-status-badge',
+        selector: '.subscription-plan-modal__plan-badge',
       })
     ).toBeTruthy();
     expect(
@@ -164,7 +173,7 @@ describe('ArchiveAccessModalView current plan', () => {
     await openModal();
 
     const collectorCard = getPlanCard('Collector');
-    expect(collectorCard.classList.contains('archive-access-modal__plan-card--current')).toBe(true);
+    expect(collectorCard.classList.contains('dashboard-card--selected')).toBe(true);
     expect(within(collectorCard).getByText('Expired')).toBeTruthy();
     expect(within(collectorCard).getByRole('button', { name: 'Renew Collector' })).toBeTruthy();
     expect(
@@ -176,8 +185,8 @@ describe('ArchiveAccessModalView current plan', () => {
     renderModalWithProviderOrder({ isPremium: false, slotsUsed: 0, slotsLimit: 3 });
     await openModal();
 
-    expect(document.querySelector('.archive-access-modal__plan-card--current')).toBeNull();
-    expect(document.querySelector('.archive-access-modal__plan-status-badge')).toBeNull();
+    expect(document.querySelector('.dashboard-card--selected')).toBeNull();
+    expect(document.querySelector('.subscription-plan-modal__plan-badge')).toBeNull();
     expect(screen.getByRole('button', { name: 'Choose Explorer' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Choose Collector' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Choose Archivist' })).toBeTruthy();
@@ -187,7 +196,98 @@ describe('ArchiveAccessModalView current plan', () => {
     renderModalWithProviderOrder({ isPremium: true, slotsUsed: 2, slotsLimit: 2 }, 'wrong');
     await openModal();
 
-    expect(document.querySelector('.archive-access-modal__plan-card--current')).toBeNull();
+    expect(document.querySelector('.dashboard-card--selected')).toBeNull();
     expect(screen.getByRole('button', { name: 'Choose Collector' })).toBeTruthy();
+  });
+});
+
+describe('ArchiveAccessModalView plan change confirmation', () => {
+  beforeEach(() => {
+    getMyArchiveMock.mockReset();
+    getTokenMock.mockReset();
+    createSubscriptionPaymentMock.mockReset();
+    createSubscriptionPaymentMock.mockResolvedValue({
+      success: true,
+      data: { paymentId: 'pay-test-1', confirmationUrl: 'https://pay.example/checkout' },
+    });
+  });
+
+  test('shows confirmation modal when switching plans', async () => {
+    renderModalWithProviderOrder({ isPremium: true, slotsUsed: 1, slotsLimit: 1 });
+    await openModal();
+
+    fireEvent.click(
+      within(getPlanCard('Collector')).getByRole('button', { name: 'Switch to Collector' })
+    );
+
+    expect(screen.getByRole('heading', { name: 'Switch to Collector?' })).toBeTruthy();
+    expect(
+      document.querySelector('.subscription-plan-change-modal__transition')?.textContent
+    ).toContain('Explorer');
+    expect(
+      document.querySelector('.subscription-plan-change-modal__transition-to')?.textContent
+    ).toBe('Collector');
+    expect(createSubscriptionPaymentMock).not.toHaveBeenCalled();
+  });
+
+  test('cancel closes confirmation without starting checkout', async () => {
+    renderModalWithProviderOrder({ isPremium: true, slotsUsed: 1, slotsLimit: 1 });
+    await openModal();
+
+    fireEvent.click(
+      within(getPlanCard('Collector')).getByRole('button', { name: 'Switch to Collector' })
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    expect(screen.queryByRole('heading', { name: 'Switch to Collector?' })).toBeNull();
+    expect(createSubscriptionPaymentMock).not.toHaveBeenCalled();
+  });
+
+  test('confirm proceeds to checkout for selected plan', async () => {
+    renderModalWithProviderOrder({ isPremium: true, slotsUsed: 1, slotsLimit: 1 });
+    await openModal();
+
+    fireEvent.click(
+      within(getPlanCard('Collector')).getByRole('button', { name: 'Switch to Collector' })
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Proceed to payment' }));
+
+    await waitFor(() => {
+      expect(createSubscriptionPaymentMock).toHaveBeenCalledWith(
+        expect.objectContaining({ plan: 'collector' })
+      );
+    });
+  });
+
+  test('renew current plan skips confirmation modal', async () => {
+    renderModalWithProviderOrder({ isPremium: false, slotsUsed: 1, slotsLimit: 2 });
+    await openModal();
+
+    fireEvent.click(
+      within(getPlanCard('Collector')).getByRole('button', { name: 'Renew Collector' })
+    );
+
+    expect(screen.queryByRole('heading', { name: 'Switch to Collector?' })).toBeNull();
+
+    await waitFor(() => {
+      expect(createSubscriptionPaymentMock).toHaveBeenCalledWith(
+        expect.objectContaining({ plan: 'collector' })
+      );
+    });
+  });
+
+  test('first plan purchase skips confirmation modal', async () => {
+    renderModalWithProviderOrder({ isPremium: false, slotsUsed: 0, slotsLimit: 3 });
+    await openModal();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Choose Explorer' }));
+
+    expect(screen.queryByRole('heading', { name: 'Switch to Collector?' })).toBeNull();
+
+    await waitFor(() => {
+      expect(createSubscriptionPaymentMock).toHaveBeenCalledWith(
+        expect.objectContaining({ plan: 'explorer' })
+      );
+    });
   });
 });
