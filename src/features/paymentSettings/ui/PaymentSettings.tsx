@@ -1,17 +1,22 @@
 import clsx from 'clsx';
+import { useState } from 'react';
+import { ExternalLink as ExternalLinkIcon } from 'lucide-react';
 import { useLang } from '@app/providers/lang';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
+import type { PaymentProvider } from '@shared/api/payment/types';
+import { ConfirmationModal } from '@shared/ui/confirmationModal';
+import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 import {
   DashboardButton,
   DashboardCard,
   DashboardRow,
-  DashboardRowValue,
   DashboardSection,
 } from '@shared/ui/dashboard';
 import { DashboardSaveSpinner } from '@shared/ui/dashboard-save/DashboardSaveSpinner';
 import { usePaymentSettings } from '../model/usePaymentSettings';
 import { PAYMENT_PROVIDERS } from '../lib/constants';
+import { fillPaymentSettingsTemplate } from '../lib/fillPaymentSettingsTemplate';
 import '@shared/ui/dashboard-save/dashboard-save.scss';
 import './PaymentSettings.style.scss';
 
@@ -100,7 +105,12 @@ export function PaymentSettings({ userId }: PaymentSettingsProps) {
     handleDisconnect,
   } = usePaymentSettings(userId);
 
+  const [providerToDisconnect, setProviderToDisconnect] = useState<PaymentProvider | null>(null);
+
   const isSaveInProgress = saving !== null;
+  const pendingDisconnectProvider = providerToDisconnect
+    ? PAYMENT_PROVIDERS.find((provider) => provider.id === providerToDisconnect)
+    : null;
 
   const renderProviderSection = (provider: (typeof PAYMENT_PROVIDERS)[0]) => {
     const settings = settingsMap[provider.id];
@@ -132,7 +142,7 @@ export function PaymentSettings({ userId }: PaymentSettingsProps) {
                     variant="outline"
                     destructive
                     className={clsx(isThisSaving && 'payment-settings__action--loading')}
-                    onClick={() => handleDisconnect(provider.id)}
+                    onClick={() => setProviderToDisconnect(provider.id)}
                     disabled={isSaveInProgress}
                   >
                     {isThisSaving ? (
@@ -155,29 +165,39 @@ export function PaymentSettings({ userId }: PaymentSettingsProps) {
             </>
           ) : (
             <>
-              <div className="payment-settings__intro">
-                <DashboardRowValue>
-                  {providerCopy?.description ?? 'Connect YooKassa to accept payments on your site.'}
-                </DashboardRowValue>
-              </div>
-
               {!isFormOpen ? (
-                <>
-                  <div className="payment-settings__instructions">
-                    <p>{providerCopy?.instructionsIntro ?? 'To connect:'}</p>
-                    <ol>
+                <div className="payment-settings__setup">
+                  <p className="payment-settings__setup-lede">
+                    {providerCopy?.description ??
+                      'Connect YooKassa to accept payments on your site.'}
+                  </p>
+
+                  <section
+                    className="payment-settings__setup-steps"
+                    aria-label={providerCopy?.instructionsIntro ?? 'To connect:'}
+                  >
+                    <h4 className="payment-settings__setup-steps-title">
+                      {providerCopy?.instructionsIntro ?? 'To connect:'}
+                    </h4>
+                    <ol className="payment-settings__setup-steps-list">
                       {(providerCopy?.instructionSteps ?? []).map((step) => (
                         <li key={step}>{step}</li>
                       ))}
                     </ol>
-                    <p>
-                      <a href="https://yookassa.ru/" target="_blank" rel="noopener noreferrer">
-                        {providerCopy?.registerLink ?? 'Go to YooKassa to sign up →'}
-                      </a>
-                    </p>
-                  </div>
+                  </section>
+
+                  <a
+                    className="payment-settings__external-link"
+                    href="https://yookassa.ru/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <ExternalLinkIcon {...dashboardActionIconProps({ size: 18 })} />
+                    <span>{providerCopy?.registerLink ?? 'Open YooKassa website →'}</span>
+                  </a>
+
                   <DashboardButton
-                    variant="primary"
+                    variant="outline"
                     className="payment-settings__cta"
                     onClick={() => {
                       setShowForm((prev) => ({ ...prev, [provider.id]: true }));
@@ -192,7 +212,7 @@ export function PaymentSettings({ userId }: PaymentSettingsProps) {
                   >
                     {copy?.connectButton ?? 'Enter Shop ID and Secret Key'}
                   </DashboardButton>
-                </>
+                </div>
               ) : (
                 <div className="payment-settings__form">
                   <DashboardRow
@@ -295,14 +315,46 @@ export function PaymentSettings({ userId }: PaymentSettingsProps) {
   }
 
   return (
-    <div className="payment-settings" aria-busy={isSaveInProgress}>
-      {error ? (
-        <div className="payment-settings__error" role="alert">
-          <strong>{copy?.errorLabel ?? 'Error:'}</strong> {error}
-        </div>
-      ) : null}
+    <>
+      <div className="payment-settings" aria-busy={isSaveInProgress}>
+        {error ? (
+          <div className="payment-settings__error" role="alert">
+            <strong>{copy?.errorLabel ?? 'Error:'}</strong> {error}
+          </div>
+        ) : null}
 
-      {PAYMENT_PROVIDERS.map(renderProviderSection)}
-    </div>
+        {PAYMENT_PROVIDERS.map(renderProviderSection)}
+      </div>
+
+      <ConfirmationModal
+        isOpen={providerToDisconnect !== null}
+        title={ui?.dashboard?.confirmAction ?? 'Confirm action'}
+        message={
+          pendingDisconnectProvider
+            ? fillPaymentSettingsTemplate(
+                copy?.disconnectConfirm ??
+                  'Are you sure you want to disconnect {provider}? You will no longer be able to accept payments through this provider.',
+                { provider: pendingDisconnectProvider.name }
+              )
+            : ''
+        }
+        irreversibleHint={null}
+        variant="danger"
+        confirmText={copy?.disconnect ?? 'Disconnect'}
+        cancelText={ui?.dashboard?.cancel ?? 'Cancel'}
+        closeLabel={ui?.dashboard?.close ?? 'Close'}
+        onCancel={() => {
+          if (!isSaveInProgress) {
+            setProviderToDisconnect(null);
+          }
+        }}
+        onConfirm={() => {
+          if (!providerToDisconnect) return;
+          const provider = providerToDisconnect;
+          setProviderToDisconnect(null);
+          void handleDisconnect(provider);
+        }}
+      />
+    </>
   );
 }

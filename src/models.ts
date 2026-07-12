@@ -829,7 +829,7 @@ export interface IInterface {
       canRemoveLabel: string;
       canRemoveHint: string;
       inactiveSlotHint: string;
-      removeLockedTooltip: string;
+      removeLockedPeriodHint: string;
       removeSubscriptionTooltip: string;
       loading: string;
       loadError: string;

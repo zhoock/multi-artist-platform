@@ -100,14 +100,6 @@
     color: currentcolor;
   }
 
-  &__slots {
-    color: var(--text-color, rgb(255 255 255 / 72%));
-    font-size: clamp(0.65rem, 0.62rem + 0.15vw, 0.75rem);
-    white-space: nowrap;
-    opacity: 0.85;
-    cursor: default;
-  }
-
   &__inactive-meta {
     display: flex;
     flex-wrap: wrap;

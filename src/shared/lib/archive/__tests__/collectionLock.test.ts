@@ -2,6 +2,8 @@ import { describe, expect, test } from '@jest/globals';
 
 import {
   canRemoveCollectionArtist,
+  formatCollectionArtistReplaceInDaysLabel,
+  getCollectionArtistLockDaysRemaining,
   isCollectionArtistLocked,
   normalizeCollectionArchive,
   normalizeCollectionArtist,
@@ -67,6 +69,34 @@ describe('normalizeCollectionArtist', () => {
     expect(normalized.isActive).toBe(false);
     expect(normalized.lockedUntil).toBeNull();
     expect(normalized.isLocked).toBe(false);
+  });
+});
+
+describe('formatCollectionArtistReplaceInDaysLabel', () => {
+  test('formats Russian plural forms', () => {
+    expect(formatCollectionArtistReplaceInDaysLabel(1, 'ru')).toBe('Можно заменить через 1 день.');
+    expect(formatCollectionArtistReplaceInDaysLabel(3, 'ru')).toBe('Можно заменить через 3 дня.');
+    expect(formatCollectionArtistReplaceInDaysLabel(8, 'ru')).toBe('Можно заменить через 8 дней.');
+    expect(formatCollectionArtistReplaceInDaysLabel(21, 'ru')).toBe(
+      'Можно заменить через 21 день.'
+    );
+  });
+
+  test('formats English labels', () => {
+    expect(formatCollectionArtistReplaceInDaysLabel(1, 'en')).toBe('Can be replaced in 1 day.');
+    expect(formatCollectionArtistReplaceInDaysLabel(8, 'en')).toBe('Can be replaced in 8 days.');
+  });
+});
+
+describe('getCollectionArtistLockDaysRemaining', () => {
+  test('returns remaining days until lock expires', () => {
+    expect(getCollectionArtistLockDaysRemaining(LOCKED_UNTIL, NOW)).toBe(30);
+  });
+
+  test('returns zero when lock has expired', () => {
+    expect(
+      getCollectionArtistLockDaysRemaining(LOCKED_UNTIL, new Date('2026-08-01T00:00:00.000Z'))
+    ).toBe(0);
   });
 });
 

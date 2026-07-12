@@ -43,8 +43,7 @@ export function ArtistArchiveButton({ artistUserId }: Props) {
   const ui = useAppSelector((state) => selectUiDictionaryFirst(state, lang));
   const { open: openPremiumModal } = useArchiveAccessModal();
 
-  const { buttonState, slotsRemaining, error, addToArchive, clearError } =
-    useArtistArchiveStatus(artistUserId);
+  const { buttonState, error, addToArchive, clearError } = useArtistArchiveStatus(artistUserId);
 
   const [archiveFullOpen, setArchiveFullOpen] = useState(false);
 
@@ -63,16 +62,6 @@ export function ArtistArchiveButton({ artistUserId }: Props) {
     (lang === 'en' ? 'Support inactive' : 'Поддержка неактивна');
   const renewLabel =
     ui?.buttons?.artistCollectionRenew ?? (lang === 'en' ? 'Renew Support' : 'Продлить поддержку');
-  const slotsLeftLabel = (count: number) => {
-    const template =
-      ui?.titles?.artistArchiveSlotsLeft ??
-      (lang === 'en' ? '{count} slot left' : '{count} слот остался');
-    const templatePlural =
-      ui?.titles?.artistArchiveSlotsLeftPlural ??
-      (lang === 'en' ? '{count} slots left' : '{count} слота осталось');
-    const text = count === 1 ? template : templatePlural;
-    return text.replace('{count}', String(count));
-  };
   const archiveFullTitle =
     ui?.titles?.artistArchiveFullTitle ??
     (lang === 'en' ? 'Collection full' : 'Коллекция заполнена');
@@ -140,9 +129,6 @@ export function ArtistArchiveButton({ artistUserId }: Props) {
             ? labelFull
             : labelAdd;
 
-  const showSlotsHint =
-    buttonState === 'can_add' || buttonState === 'in_collection_active' || buttonState === 'adding';
-
   const showCollectionInactiveMeta = buttonState === 'in_collection_inactive';
 
   return (
@@ -189,10 +175,6 @@ export function ArtistArchiveButton({ artistUserId }: Props) {
               {renewLabel}
             </button>
           </div>
-        ) : null}
-
-        {showSlotsHint && slotsRemaining > 0 ? (
-          <span className="artist-archive-button__slots">{slotsLeftLabel(slotsRemaining)}</span>
         ) : null}
 
         {error ? (

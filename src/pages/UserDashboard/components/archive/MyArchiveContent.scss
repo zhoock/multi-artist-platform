@@ -1,6 +1,35 @@
 @use '../../../../scss/abstracts/mixins' as *;
 
 dialog {
+  .collection__lock-tooltip {
+    display: block;
+    inline-size: max-content;
+    max-inline-size: min(16rem, 70vw);
+    padding: var(--ms-01);
+    color: var(--dashboard-text-primary);
+    font-size: var(--dashboard-font-size);
+    line-height: 1.45;
+    background: var(--dashboard-input-bg);
+    border: 1px solid var(--dashboard-card-border);
+    border-radius: var(--ms-01);
+    box-shadow: 0 0.35rem 1rem rgb(var(--deep-black-rgb) / 35%);
+    pointer-events: auto;
+
+    &--portal {
+      inline-size: auto;
+    }
+  }
+
+  .collection__lock-tooltip-primary {
+    margin: 0;
+  }
+
+  .collection__lock-tooltip-secondary {
+    margin: 0.35em 0 0;
+
+    @include dashboard-helper-text;
+  }
+
   .user-dashboard {
     .collection {
       &__tab {
@@ -284,6 +313,16 @@ dialog {
 
       &__remove-action {
         justify-self: end;
+      }
+
+      &__lock-action {
+        position: relative;
+        display: inline-flex;
+        justify-self: end;
+      }
+
+      &__lock-action-btn {
+        color: var(--dashboard-text-secondary);
       }
 
       &__action-bar {

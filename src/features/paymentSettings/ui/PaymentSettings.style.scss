@@ -25,11 +25,84 @@ dialog {
         border-radius: var(--ms-01);
       }
 
-      &__intro {
+      &__setup {
+        display: flex;
+        flex-direction: column;
+        gap: var(--ms-1);
+        padding: var(--ms-01) var(--ms-0) var(--ms-0);
+      }
+
+      &__setup-lede {
+        margin: 0;
+        color: var(--dashboard-text-primary);
+        font-size: var(--dashboard-font-size);
+        line-height: 1.5;
+      }
+
+      &__setup-steps {
+        margin: 0;
+      }
+
+      &__setup-steps-title {
+        margin: 0 0 var(--ms-01);
+        color: var(--dashboard-text-primary);
+        font-size: var(--dashboard-font-size);
+        font-weight: 600;
+        line-height: 1.4;
+      }
+
+      &__setup-steps-list {
         display: flex;
         flex-direction: column;
         gap: var(--ms-01);
-        padding: var(--ms-01) var(--ms-0);
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        counter-reset: payment-setup-step;
+
+        li {
+          display: flex;
+          gap: var(--ms-01);
+          align-items: center;
+          margin: 0;
+          color: var(--dashboard-text-primary);
+          font-size: var(--dashboard-font-size);
+          line-height: 1.45;
+          counter-increment: payment-setup-step;
+
+          &::before {
+            content: counter(payment-setup-step);
+            display: inline-flex;
+            flex-shrink: 0;
+            align-items: center;
+            justify-content: center;
+            width: 1.5rem;
+            height: 1.5rem;
+            color: var(--dashboard-text-secondary);
+            font-size: var(--dashboard-font-size);
+            line-height: 1;
+            border: 1px solid var(--dashboard-divider);
+            border-radius: 50%;
+          }
+        }
+      }
+
+      &__external-link {
+        display: inline-flex;
+        gap: var(--ms-01);
+        align-items: center;
+        align-self: flex-start;
+        color: var(--dark-greenish-yellow);
+        font-size: var(--dashboard-font-size);
+        line-height: 1.45;
+        text-decoration: none;
+
+        @media (hover: hover) and (pointer: fine) {
+          &:hover {
+            text-decoration: underline;
+            text-underline-offset: 0.12em;
+          }
+        }
       }
 
       &__provider-row {
@@ -98,49 +171,6 @@ dialog {
         @include dashboard-helper-text;
 
         line-height: 1.5;
-      }
-
-      &__instructions {
-        margin: 0;
-        padding: var(--ms-01) var(--ms-0);
-
-        @include dashboard-helper-text;
-
-        line-height: 1.5;
-
-        p {
-          margin: 0 0 var(--ms-01);
-          color: var(--dashboard-text-primary);
-
-          &:last-child {
-            margin-bottom: 0;
-          }
-        }
-
-        ol {
-          margin: 0 0 var(--ms-01);
-          padding-left: 1.25rem;
-
-          li {
-            margin-bottom: var(--ms-02);
-
-            &:last-child {
-              margin-bottom: 0;
-            }
-          }
-        }
-
-        a {
-          color: var(--dark-greenish-yellow);
-          text-decoration: none;
-
-          @media (hover: hover) and (pointer: fine) {
-            &:hover {
-              text-decoration: underline;
-              text-underline-offset: 0.12em;
-            }
-          }
-        }
       }
 
       &__cta {

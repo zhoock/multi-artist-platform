@@ -16,11 +16,10 @@ import {
 } from '@shared/api/archive';
 import {
   canRemoveCollectionArtist,
-  isCollectionArtistLocked,
   normalizeCollectionArchive,
 } from '@shared/lib/archive/collectionLock';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
-import { CheckSquare, Plus as PlusIcon, Square, Trash2 as Trash2Icon } from 'lucide-react';
+import { CheckSquare, Plus as PlusIcon, Square } from 'lucide-react';
 import {
   dispatchArchiveArtistRemoved,
   refreshPremiumContentForArchiveChange,
@@ -29,6 +28,7 @@ import { useArchiveAccessModal } from '@shared/lib/archiveAccessModal';
 import { getPlanDisplayName, resolveCurrentPlanSlug } from '@shared/lib/payment/subscriptionPlans';
 import { DashboardButton, DashboardCard } from '@shared/ui/dashboard';
 
+import { CollectionArtistRemoveAction } from './CollectionArtistRemoveAction';
 import { CollectionEmptyState } from './CollectionEmptyState';
 import { ArchiveArtistRemovedToast } from '@shared/ui/archiveArtistRemovedToast';
 import { queueArchiveArtistRemovedToast } from '@shared/lib/archiveArtistRemovedToast';
@@ -440,11 +440,11 @@ export function MyArchiveContent({ active }: Props) {
   const slotsUsedLabel =
     t?.activeSlotsLabel ?? (lang === 'en' ? 'slots used' : 'слотов использовано');
   const removeLabel = t?.remove ?? (lang === 'en' ? 'Remove' : 'Удалить');
-  const removeLockedTooltip =
-    t?.removeLockedTooltip ??
+  const removeLockedPeriodHint =
+    t?.removeLockedPeriodHint ??
     (lang === 'en'
-      ? 'This artist is locked until the end of the billing period.'
-      : 'Артист заблокирован до конца оплаченного периода.');
+      ? 'Each artist is locked in your collection for 30 days after being added.'
+      : 'Каждый артист закрепляется в коллекции на 30 дней после добавления.');
   const removeSubscriptionTooltip =
     t?.removeSubscriptionTooltip ??
     (lang === 'en'
@@ -658,10 +658,7 @@ export function MyArchiveContent({ active }: Props) {
                     const artistHref = artist.slug
                       ? `/?artist=${encodeURIComponent(artist.slug)}`
                       : '/';
-                    const artistIsLocked = isCollectionArtistLocked(artist);
-                    const removable = canRemoveArtist(artist, isPremium);
-                    const removeDisabled =
-                      Boolean(removingId) || bulkLoading || Boolean(activatingId) || !removable;
+                    const actionBusy = Boolean(removingId) || bulkLoading || Boolean(activatingId);
                     const isSelected = selectedIds.has(artist.artistUserId);
                     const isInactiveSelectable = isSelectMode && !artist.isActive;
                     const activateRowDisabled =
@@ -674,13 +671,6 @@ export function MyArchiveContent({ active }: Props) {
                       slotsRemaining <= 0 || !isPremium
                         ? `${activateArtistLabel}. ${activateLimitTemplate.replace('{count}', String(slotsRemaining))}`
                         : activateArtistLabel;
-                    const removeTooltip = !removable
-                      ? artistIsLocked
-                        ? removeLockedTooltip
-                        : artist.isActive && !isPremium
-                          ? removeSubscriptionTooltip
-                          : undefined
-                      : undefined;
 
                     return (
                       <div
@@ -762,21 +752,16 @@ export function MyArchiveContent({ active }: Props) {
                                   <PlusIcon {...dashboardActionIconProps()} />
                                 </DashboardButton>
                               ) : null}
-                              <DashboardButton
-                                variant="icon"
-                                destructive
-                                className="collection__remove-action"
-                                disabled={removeDisabled}
-                                aria-label={
-                                  removeTooltip ? `${removeLabel}. ${removeTooltip}` : removeLabel
-                                }
-                                onClick={(event) => {
-                                  event.stopPropagation();
-                                  void handleRemove(artist);
-                                }}
-                              >
-                                <Trash2Icon {...dashboardActionIconProps()} />
-                              </DashboardButton>
+                              <CollectionArtistRemoveAction
+                                artist={artist}
+                                isPremium={isPremium}
+                                lang={lang}
+                                removeLabel={removeLabel}
+                                removeSubscriptionTooltip={removeSubscriptionTooltip}
+                                removeLockedPeriodHint={removeLockedPeriodHint}
+                                actionBusy={actionBusy}
+                                onRemove={handleRemove}
+                              />
                             </div>
                           ) : null}
                         </article>

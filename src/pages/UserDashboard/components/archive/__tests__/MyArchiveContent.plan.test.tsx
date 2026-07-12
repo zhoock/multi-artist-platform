@@ -236,7 +236,7 @@ describe('MyArchiveContent plan display', () => {
     expect(screen.getByRole('button', { name: 'Remove' })).not.toBeDisabled();
   });
 
-  test('shows disabled remove button for locked active artist without status badges', async () => {
+  test('shows lock action with tooltip for locked active artist without status badges', async () => {
     getMyArchiveMock.mockResolvedValue({
       isPremium: true,
       slotsUsed: 1,
@@ -258,8 +258,15 @@ describe('MyArchiveContent plan display', () => {
     });
 
     expect(screen.queryByText(/Locked until/i)).toBeNull();
-    expect(screen.getByRole('button', { name: /^Remove\b/i })).toBeTruthy();
-    expect(screen.getByRole('button', { name: /^Remove\b/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Remove' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Remove' })).not.toBeDisabled();
+    expect(screen.queryByRole('tooltip')).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
+
+    const tooltip = screen.getByRole('tooltip');
+    expect(tooltip.textContent).toMatch(/Can be replaced in/i);
+    expect(tooltip.textContent).toMatch(/30 days after being added/i);
   });
 
   test('shows activate and remove buttons for inactive artist', async () => {

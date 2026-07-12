@@ -1,5 +1,5 @@
 import { describe, expect, it, jest, beforeEach } from '@jest/globals';
-import { screen } from '@testing-library/react';
+import { fireEvent, screen, within } from '@testing-library/react';
 
 import { renderWithProviders } from '@shared/lib/test-utils';
 import { PaymentSettings } from '../PaymentSettings';
@@ -52,8 +52,10 @@ describe('PaymentSettings', () => {
 
     expect(container.querySelector('.dashboard-section')).toBeTruthy();
     expect(container.querySelector('.dashboard-card')).toBeTruthy();
-    expect(container.querySelector('.dashboard-button--primary')).toBeTruthy();
+    expect(container.querySelector('.dashboard-button--outline')).toBeTruthy();
     expect(screen.getByText('Enter Shop ID and Secret Key')).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'ЮKassa', level: 3 })).toBeTruthy();
+    expect(container.querySelector('.payment-settings__setup-steps-list')).toBeTruthy();
   });
 
   it('renders connected state with disconnect action and no status badge', () => {
@@ -73,8 +75,35 @@ describe('PaymentSettings', () => {
 
     expect(container.querySelector('.status-badge--published')).toBeNull();
     expect(screen.queryByText('Connected')).toBeNull();
-    expect(screen.getByText('Disconnect')).toBeTruthy();
+    expect(screen.getAllByRole('button', { name: 'Disconnect' }).length).toBeGreaterThan(0);
     expect(screen.getByText('Payments will stop after disconnecting.')).toBeTruthy();
+  });
+
+  it('opens confirmation modal instead of native confirm when disconnect is clicked', () => {
+    const handleDisconnect = jest.fn();
+    usePaymentSettingsMock.mockReturnValue(
+      baseHookReturn({
+        settingsMap: {
+          yookassa: {
+            isActive: true,
+            connectedAt: '2026-01-15T12:00:00.000Z',
+          },
+          stripe: null,
+        },
+        handleDisconnect,
+      })
+    );
+
+    const { container } = renderWithProviders(<PaymentSettings userId="user-1" />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Disconnect' }));
+
+    const modal = container.querySelector('.confirmation-modal');
+    expect(modal).toBeTruthy();
+    expect(handleDisconnect).not.toHaveBeenCalled();
+
+    fireEvent.click(within(modal as HTMLElement).getByRole('button', { name: 'Disconnect' }));
+    expect(handleDisconnect).toHaveBeenCalledWith('yookassa');
   });
 
   it('renders connect form with dashboard rows when form is open', () => {

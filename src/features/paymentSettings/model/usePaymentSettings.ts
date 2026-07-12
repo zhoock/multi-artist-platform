@@ -177,17 +177,6 @@ export function usePaymentSettings(userId: string): UsePaymentSettingsReturn {
 
   const handleDisconnect = async (provider: PaymentProvider) => {
     const providerName = PAYMENT_PROVIDERS.find((p) => p.id === provider)?.name || provider;
-    if (
-      !confirm(
-        fillPaymentSettingsTemplate(
-          copy?.disconnectConfirm ??
-            'Are you sure you want to disconnect {provider}? You will no longer be able to accept payments through this provider.',
-          { provider: providerName }
-        )
-      )
-    ) {
-      return;
-    }
 
     setSaving(provider);
     setError(null);
