@@ -855,6 +855,7 @@ export interface IInterface {
       selectedCount: string;
       removeSelected: string;
       activateSelected: string;
+      activateArtist: string;
       selectActivateHint: string;
       inactiveArtistsCount: string;
       clearCollection: string;

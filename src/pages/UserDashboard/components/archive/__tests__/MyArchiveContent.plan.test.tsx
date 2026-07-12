@@ -40,6 +40,7 @@ function inactiveArtist(id: string, name: string) {
     artistUserId: id,
     name,
     slug: name.toLowerCase().replace(/\s+/g, '-'),
+    genreCode: 'rock',
     genreLabel: { en: 'Rock', ru: 'Рок' },
     cover: null,
     addedAt: '2026-01-01',
@@ -300,7 +301,10 @@ describe('MyArchiveContent plan display', () => {
       subscriptionExpiresAt: '2026-08-03T12:00:00.000Z',
       artists: [inactiveArtist('a1', 'Inactive Artist')],
     });
-    activateArchiveArtistsApiMock.mockResolvedValue({ archive: activatedArchive });
+    activateArchiveArtistsApiMock.mockResolvedValue({
+      archive: activatedArchive,
+      activatedCount: 1,
+    });
 
     renderWithProviders(<MyArchiveContent active />);
 
