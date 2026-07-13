@@ -1,5 +1,3 @@
-import { Check } from 'lucide-react';
-
 import clsx from 'clsx';
 
 import type { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
@@ -7,13 +5,13 @@ import {
   formatPlanArtistLimitParts,
   formatPlanPricePeriod,
   getPlanDisplayName,
-  getPlanHighlightFeature,
   getPlanPriceDisplayAmount,
   getPlanCardBadgeLabel,
   resolvePlanCardAction,
   type SubscriptionPlanSlug,
 } from '@shared/lib/payment/subscriptionPlans';
 import { DashboardButton, DashboardCard } from '@shared/ui/dashboard';
+import { getSubscriptionPlanFeatures } from './subscriptionPlanFeatures';
 
 type Props = {
   planSlug: SubscriptionPlanSlug;
@@ -51,15 +49,7 @@ export function SubscriptionPlanCard({
   const isLoading = loadingPlan === planSlug;
   const isButtonDisabled = Boolean(loadingPlan) || disabled;
 
-  const featureExclusive =
-    ui?.titles?.archiveAccessPlanFeatureExclusive ??
-    (lang === 'en' ? 'Exclusive tracks and articles' : 'Эксклюзивные треки и статьи');
-  const featureRevenue =
-    ui?.titles?.archiveAccessPlanFeatureRevenue ??
-    (lang === 'en' ? 'Equal revenue distribution' : 'Равное распределение дохода');
-  const featureHighlight = getPlanHighlightFeature(planSlug, lang);
-
-  const features = [featureExclusive, featureRevenue, featureHighlight];
+  const features = getSubscriptionPlanFeatures(lang, ui);
   const redirectingLabel = lang === 'en' ? 'Redirecting…' : 'Переход к оплате…';
 
   return (
@@ -112,15 +102,15 @@ export function SubscriptionPlanCard({
       </DashboardButton>
 
       <ul className="subscription-plan-modal__plan-features">
-        {features.map((feature) => (
-          <li key={feature} className="subscription-plan-modal__plan-feature">
-            <Check
+        {features.map(({ key, label, Icon }) => (
+          <li key={key} className="subscription-plan-modal__plan-feature">
+            <Icon
               className="subscription-plan-modal__plan-feature-icon"
               size={16}
-              strokeWidth={2.5}
+              strokeWidth={1.75}
               aria-hidden
             />
-            <span>{feature}</span>
+            <span>{label}</span>
           </li>
         ))}
       </ul>

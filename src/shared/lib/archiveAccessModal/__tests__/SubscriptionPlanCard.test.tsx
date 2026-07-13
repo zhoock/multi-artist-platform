@@ -38,8 +38,10 @@ describe('SubscriptionPlanCard', () => {
     expect(screen.getByText('2')).toBeTruthy();
     expect(screen.getByText('artists')).toBeTruthy();
     expect(screen.getByText('/ hour')).toBeTruthy();
-    expect(screen.getByText('Exclusive tracks and articles')).toBeTruthy();
-    expect(screen.getByText('Larger collection')).toBeTruthy();
+    expect(screen.getByText('Locked tracks')).toBeTruthy();
+    expect(screen.getByText('Locked articles')).toBeTruthy();
+    expect(screen.getByText('Locked stems')).toBeTruthy();
+    expect(screen.getByText('Album downloads')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Choose Collector' })).toBeTruthy();
   });
 
@@ -100,6 +102,49 @@ describe('SubscriptionPlanCard', () => {
 
     expect(document.querySelector('.dashboard-card--selected')).toBeNull();
     expect(document.querySelector('.subscription-plan-modal__plan-badge')).toBeNull();
+  });
+
+  test('shows the same subscription benefits on every plan card', () => {
+    const onSelect = jest.fn();
+    renderWithProviders(
+      <>
+        <SubscriptionPlanCard
+          planSlug="explorer"
+          currentPlanSlug={null}
+          isPremium={false}
+          lang="en"
+          ui={null}
+          priceCurrency="₽"
+          loadingPlan={null}
+          onSelect={onSelect}
+        />
+        <SubscriptionPlanCard
+          planSlug="collector"
+          currentPlanSlug={null}
+          isPremium={false}
+          lang="en"
+          ui={null}
+          priceCurrency="₽"
+          loadingPlan={null}
+          onSelect={onSelect}
+        />
+        <SubscriptionPlanCard
+          planSlug="archivist"
+          currentPlanSlug={null}
+          isPremium={false}
+          lang="en"
+          ui={null}
+          priceCurrency="₽"
+          loadingPlan={null}
+          onSelect={onSelect}
+        />
+      </>
+    );
+
+    expect(screen.getAllByText('Locked tracks')).toHaveLength(3);
+    expect(screen.getAllByText('Locked articles')).toHaveLength(3);
+    expect(screen.getAllByText('Locked stems')).toHaveLength(3);
+    expect(screen.getAllByText('Album downloads')).toHaveLength(3);
   });
 
   test('shows switch action for upgrade path', () => {

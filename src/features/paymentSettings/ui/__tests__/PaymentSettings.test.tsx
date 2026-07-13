@@ -76,7 +76,6 @@ describe('PaymentSettings', () => {
     expect(container.querySelector('.status-badge--published')).toBeNull();
     expect(screen.queryByText('Connected')).toBeNull();
     expect(screen.getAllByRole('button', { name: 'Disconnect' }).length).toBeGreaterThan(0);
-    expect(screen.getByText('Payments will stop after disconnecting.')).toBeTruthy();
   });
 
   it('opens confirmation modal instead of native confirm when disconnect is clicked', () => {

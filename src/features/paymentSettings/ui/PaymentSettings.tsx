@@ -158,10 +158,6 @@ export function PaymentSettings({ userId }: PaymentSettingsProps) {
               >
                 {null}
               </DashboardRow>
-
-              <p className="payment-settings__disconnect-note">
-                {copy?.disconnectNote ?? 'Payments will stop after disconnecting.'}
-              </p>
             </>
           ) : (
             <>

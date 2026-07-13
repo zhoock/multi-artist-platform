@@ -164,15 +164,6 @@ dialog {
         @include dashboard-modal-inline-loading;
       }
 
-      &__disconnect-note {
-        margin: 0;
-        padding: var(--ms-01) var(--ms-0);
-
-        @include dashboard-helper-text;
-
-        line-height: 1.5;
-      }
-
       &__cta {
         align-self: flex-start;
         margin: 0;

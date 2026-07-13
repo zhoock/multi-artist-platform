@@ -526,7 +526,6 @@ export interface IInterface {
       errorLabel: string;
       disconnect: string;
       disconnecting: string;
-      disconnectNote: string;
       connectButton: string;
       connect: string;
       connecting: string;

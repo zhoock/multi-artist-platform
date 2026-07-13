@@ -192,15 +192,6 @@ export function formatPlanSupportDuration(
   return hours === 1 ? '1 час поддержки' : `${hours} ч поддержки`;
 }
 
-export function getPlanHighlightFeature(planSlug: SubscriptionPlanSlug, lang: 'en' | 'ru'): string {
-  const labels: Record<SubscriptionPlanSlug, { en: string; ru: string }> = {
-    explorer: { en: 'Curated collection', ru: 'Кураторская коллекция' },
-    collector: { en: 'Larger collection', ru: 'Большая коллекция' },
-    archivist: { en: 'Maximum collection size', ru: 'Максимальный размер коллекции' },
-  };
-  return labels[planSlug][lang];
-}
-
 export type PlanCardActionVariant = 'primary' | 'outline';
 
 export type PlanCardBadge = 'current' | 'expired' | null;
