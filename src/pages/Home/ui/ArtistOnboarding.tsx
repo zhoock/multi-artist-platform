@@ -65,7 +65,7 @@ export function ArtistOnboarding() {
       title: copy?.features?.profile?.title ?? 'Профиль',
       description:
         copy?.features?.profile?.description ??
-        'Создайте страницу артиста. Добавьте описание, фото и ссылки на соцсети.',
+        'Оформите страницу артиста: добавьте изображения, описание, выберите жанр и настройте адрес своей страницы.',
       onClick: () => openDashboard('settings', {}),
     },
     {
@@ -102,8 +102,7 @@ export function ArtistOnboarding() {
               </span>
             </h1>
             <p className="artist-onboarding-hero__subtext">
-              {copy?.heroSubtext ??
-                'Загрузите первый альбом, чтобы появиться\u00a0в\u00a0каталоге и\u00a0поделиться музыкой\u00a0со\u00a0слушателями.'}
+              {copy?.heroSubtext ?? 'Опубликуйте первый альбом, чтобы попасть\u00a0в\u00a0каталог.'}
             </p>
             <button
               type="button"

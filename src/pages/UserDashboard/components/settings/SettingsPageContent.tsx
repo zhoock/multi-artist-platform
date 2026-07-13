@@ -107,6 +107,14 @@ export function SettingsPageContent({
   const uploadLabel = currentLang === 'en' ? 'Upload image' : 'Загрузить изображение';
   const changeLabel = currentLang === 'en' ? 'Change image' : 'Заменить изображение';
   const removeLabel = d?.removeAvatarPhoto ?? (currentLang === 'en' ? 'Remove' : 'Удалить');
+  const displayNameLabel = isListener
+    ? (d?.profileFields?.name ?? (currentLang === 'en' ? 'Name' : 'Имя'))
+    : (d?.settingsModal?.fields?.bandName ?? 'Band Name');
+  const displayNamePlaceholder = isListener
+    ? currentLang === 'en'
+      ? 'Enter your name'
+      : 'Введите ваше имя'
+    : (d?.settingsModal?.placeholders?.bandName ?? 'Enter the name of your band');
   const verifyEmailLabel = isCoolingDown
     ? `${emailVerificationCopy.resendEmail} (${remaining}s)`
     : emailVerificationCopy.resendEmail;
@@ -219,104 +227,105 @@ export function SettingsPageContent({
               />
             </DashboardRow>
 
-            <DashboardRow
-              label={d?.settingsModal?.fields?.bandName ?? 'Band Name'}
-              labelFor="settings-band-name"
-            >
+            <DashboardRow label={displayNameLabel} labelFor="settings-band-name">
               <input
                 id="settings-band-name"
                 type="text"
                 className="dashboard-form-input"
-                placeholder={
-                  d?.settingsModal?.placeholders?.bandName ?? 'Enter the name of your band'
-                }
+                placeholder={displayNamePlaceholder}
                 value={name}
                 onChange={(event) => setName(event.target.value)}
                 onBlur={handleNameBlur}
               />
             </DashboardRow>
 
-            <DashboardRow
-              label={d?.settingsModal?.fields?.primaryGenre ?? 'Primary genre'}
-              labelFor="settings-primary-genre"
-            >
-              <SettingsSelect
-                id="settings-primary-genre"
-                value={genreCode}
-                options={genreOptions}
-                onChange={handleGenreChange}
-              />
-            </DashboardRow>
-
-            <DashboardRow
-              label={d?.publicProfilePreview?.publicUrl ?? 'Public URL (slug)'}
-              labelFor="settings-public-slug"
-            >
-              <div className="user-dashboard__settings-page__slug-control">
-                <input
-                  id="settings-public-slug"
-                  type="text"
-                  className="dashboard-form-input"
-                  placeholder="my-band"
-                  value={publicSlug}
-                  onChange={(event) => handlePublicSlugChange(event.target.value)}
-                  onBlur={handlePublicSlugBlur}
-                />
-                <DashboardButton
-                  variant="icon"
-                  onClick={onOpenArtistPage}
-                  disabled={!profilePublicSlug}
-                  aria-label={d?.profileHero?.openArtistPage ?? 'Open artist page'}
+            {!isListener ? (
+              <>
+                <DashboardRow
+                  label={d?.settingsModal?.fields?.primaryGenre ?? 'Primary genre'}
+                  labelFor="settings-primary-genre"
                 >
-                  <ExternalLinkIcon {...dashboardActionIconProps({ size: 18 })} />
-                </DashboardButton>
+                  <SettingsSelect
+                    id="settings-primary-genre"
+                    value={genreCode}
+                    options={genreOptions}
+                    onChange={handleGenreChange}
+                  />
+                </DashboardRow>
+
+                <DashboardRow
+                  label={d?.publicProfilePreview?.publicUrl ?? 'Public URL (slug)'}
+                  labelFor="settings-public-slug"
+                >
+                  <div className="user-dashboard__settings-page__slug-control">
+                    <input
+                      id="settings-public-slug"
+                      type="text"
+                      className="dashboard-form-input"
+                      placeholder="my-band"
+                      value={publicSlug}
+                      onChange={(event) => handlePublicSlugChange(event.target.value)}
+                      onBlur={handlePublicSlugBlur}
+                    />
+                    <DashboardButton
+                      variant="icon"
+                      onClick={onOpenArtistPage}
+                      disabled={!profilePublicSlug}
+                      aria-label={d?.profileHero?.openArtistPage ?? 'Open artist page'}
+                    >
+                      <ExternalLinkIcon {...dashboardActionIconProps({ size: 18 })} />
+                    </DashboardButton>
+                  </div>
+                </DashboardRow>
+
+                <DashboardRow
+                  label={d?.settingsModal?.fields?.aboutBand ?? 'About the Band'}
+                  labelFor="settings-about-band"
+                  variant="start"
+                >
+                  {isLoadingAboutText ? (
+                    <div className="dashboard-form-loading">
+                      {d?.loading ?? d?.uploading ?? 'Loading…'}
+                    </div>
+                  ) : (
+                    <textarea
+                      id="settings-about-band"
+                      className="dashboard-form-textarea"
+                      placeholder={
+                        d?.settingsModal?.placeholders?.aboutBand ??
+                        'Enter band description. Each line will be a separate paragraph.'
+                      }
+                      value={aboutText}
+                      onChange={(event) => handleAboutChange(event.target.value)}
+                      onBlur={handleAboutBlur}
+                      rows={6}
+                    />
+                  )}
+                </DashboardRow>
+              </>
+            ) : null}
+          </DashboardCard>
+        </DashboardSection>
+
+        {!isListener ? (
+          <DashboardSection title={d?.settingsModal?.fields?.headerImages ?? 'Header Images'}>
+            <DashboardCard>
+              <div className="user-dashboard__settings-page__header-images">
+                {isLoadingHeaderImages ? (
+                  <div className="dashboard-form-loading">
+                    {d?.loading ?? d?.uploading ?? 'Loading…'}
+                  </div>
+                ) : (
+                  <HeaderImagesUpload
+                    layout="inline"
+                    currentImages={headerImages}
+                    onImagesUpdated={handleHeaderImagesUpdated}
+                  />
+                )}
               </div>
-            </DashboardRow>
-
-            <DashboardRow
-              label={d?.settingsModal?.fields?.aboutBand ?? 'About the Band'}
-              labelFor="settings-about-band"
-              variant="start"
-            >
-              {isLoadingAboutText ? (
-                <div className="dashboard-form-loading">
-                  {d?.loading ?? d?.uploading ?? 'Loading…'}
-                </div>
-              ) : (
-                <textarea
-                  id="settings-about-band"
-                  className="dashboard-form-textarea"
-                  placeholder={
-                    d?.settingsModal?.placeholders?.aboutBand ??
-                    'Enter band description. Each line will be a separate paragraph.'
-                  }
-                  value={aboutText}
-                  onChange={(event) => handleAboutChange(event.target.value)}
-                  onBlur={handleAboutBlur}
-                  rows={6}
-                />
-              )}
-            </DashboardRow>
-          </DashboardCard>
-        </DashboardSection>
-
-        <DashboardSection title={d?.settingsModal?.fields?.headerImages ?? 'Header Images'}>
-          <DashboardCard>
-            <div className="user-dashboard__settings-page__header-images">
-              {isLoadingHeaderImages ? (
-                <div className="dashboard-form-loading">
-                  {d?.loading ?? d?.uploading ?? 'Loading…'}
-                </div>
-              ) : (
-                <HeaderImagesUpload
-                  layout="inline"
-                  currentImages={headerImages}
-                  onImagesUpdated={handleHeaderImagesUpdated}
-                />
-              )}
-            </div>
-          </DashboardCard>
-        </DashboardSection>
+            </DashboardCard>
+          </DashboardSection>
+        ) : null}
 
         <DashboardSection
           title={d?.accountSectionTitle ?? 'Account'}

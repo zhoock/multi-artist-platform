@@ -99,9 +99,9 @@
   }
 
   &__feature-icon {
-    inline-size: 2.75rem;
-    block-size: 2.75rem;
-    border-radius: 50%;
+    inline-size: 1.125rem;
+    block-size: 1.125rem;
+    border-radius: $ms-01;
   }
 
   &__feature-title {
@@ -377,15 +377,9 @@ html.theme-light .artist-onboarding-skeleton {
   &__icon {
     display: flex;
     align-items: center;
-    justify-content: center;
     flex-shrink: 0;
-    inline-size: 2.75rem;
-    block-size: 2.75rem;
     margin-block-end: $ms-02;
     color: var(--onboarding-accent);
-    background: rgb(var(--onboarding-accent-rgb) / 6%);
-    border: 1px solid rgb(var(--onboarding-accent-rgb) / 28%);
-    border-radius: 50%;
 
     svg {
       inline-size: 1.125rem;

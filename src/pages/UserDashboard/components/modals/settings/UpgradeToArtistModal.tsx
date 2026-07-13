@@ -1,6 +1,13 @@
 import { useState, FormEvent, useMemo, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Popup, PopupCloseButton } from '@shared/ui/popup';
+import { isArtistAccount } from '@shared/lib/accountType';
 import { upgradeToArtistAccount } from '@shared/lib/auth';
+import { markFirstArtistOnboardingPending } from '@shared/lib/authIntent';
+import {
+  hasPendingArtistOnboarding,
+  resolveArtistOnboardingDestination,
+} from '@shared/lib/ownArtistPage';
 import { useLang } from '@app/providers/lang';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { useFocusOnOpen } from '@shared/lib/hooks/useFocusOnOpen';
@@ -16,6 +23,7 @@ interface UpgradeToArtistModalProps {
 
 export function UpgradeToArtistModal({ isOpen, onClose, onUpgraded }: UpgradeToArtistModalProps) {
   const { lang } = useLang();
+  const navigate = useNavigate();
   const ui = useAppSelector((state) => selectUiDictionaryFirst(state, lang));
 
   const copy = useMemo(() => {
@@ -76,10 +84,22 @@ export function UpgradeToArtistModal({ isOpen, onClose, onUpgraded }: UpgradeToA
 
     try {
       const result = await upgradeToArtistAccount(trimmed);
-      if (result.success) {
+      if (result.success && result.data?.user) {
+        const user = result.data.user;
+        if (user.id && isArtistAccount(user)) {
+          markFirstArtistOnboardingPending(user.id);
+        }
+
         setArtistName('');
         onUpgraded?.();
         requestCloseRef.current?.();
+
+        const destination = await resolveArtistOnboardingDestination(lang, {
+          user,
+          defaultDestination: '/',
+          pendingRegistration: hasPendingArtistOnboarding(user),
+        });
+        navigate(destination, { replace: true });
         return;
       }
       setError(result.error || copy.upgradeFailed);
