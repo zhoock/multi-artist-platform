@@ -1,5 +1,5 @@
 import { describe, test, expect, jest, beforeEach } from '@jest/globals';
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, act } from '@testing-library/react';
 import { AboutSection } from '../AboutSection';
 import { renderWithProviders } from '@shared/lib/test-utils';
 
@@ -82,5 +82,38 @@ describe('AboutSection integration tests', () => {
     const aboutSection = document.getElementById('about');
     expect(aboutSection).toBeInTheDocument();
     expect(aboutSection).toHaveTextContent('Описание группы');
+  });
+
+  test('скрывает секцию после artist:updated, когда описание очищено', async () => {
+    loadTheBandFromDatabase.mockResolvedValueOnce(['Описание группы']).mockResolvedValueOnce(null);
+
+    renderAboutSection();
+
+    await waitFor(() => {
+      expect(document.getElementById('about')).toBeInTheDocument();
+    });
+
+    await act(async () => {
+      window.dispatchEvent(new Event('artist:updated'));
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByRole('heading', { name: /о группе/i })).not.toBeInTheDocument();
+    });
+    expect(loadTheBandFromDatabase).toHaveBeenCalledTimes(2);
+  });
+
+  test('показывает описание на RU-странице, если текст сохранён только на EN', async () => {
+    loadTheBandFromDatabase.mockResolvedValue(['English-only bio paragraph']);
+
+    renderAboutSection();
+
+    await waitFor(() => {
+      expect(document.getElementById('about')).toBeInTheDocument();
+    });
+
+    const aboutSection = document.getElementById('about');
+    expect(aboutSection).toBeInTheDocument();
+    expect(aboutSection).toHaveTextContent('English-only bio paragraph');
   });
 });

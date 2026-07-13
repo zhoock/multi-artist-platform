@@ -172,14 +172,22 @@ export function useSettingsPage({ enabled, userName = '' }: UseSettingsPageOptio
         .split('\n')
         .map((p) => p.trim())
         .filter((p) => p.length > 0);
+      const isClearing = paragraphs.length === 0;
 
-      const result = await saveTheBandToDatabase(paragraphs, currentLang);
+      const result = isClearing
+        ? await saveTheBandToDatabase({ ru: [], en: [] })
+        : await saveTheBandToDatabase(paragraphs, currentLang);
       if (!result.success) {
         alert(`Save failed: ${result.error || 'Unknown error'}`);
         return;
       }
 
-      if (currentLang === 'ru') {
+      if (isClearing) {
+        setAboutTextRu('');
+        setAboutTextEn('');
+        setInitialAboutTextRu('');
+        setInitialAboutTextEn('');
+      } else if (currentLang === 'ru') {
         setAboutTextRu(aboutText);
         setInitialAboutTextRu(aboutText);
       } else {
@@ -332,8 +340,16 @@ export function useSettingsPage({ enabled, userName = '' }: UseSettingsPageOptio
       setIsLoadingAboutText(true);
       try {
         const [ruData, enData] = await Promise.all([
-          loadTheBandFromDatabase('ru', { includeArtist: false, useAuth: true }),
-          loadTheBandFromDatabase('en', { includeArtist: false, useAuth: true }),
+          loadTheBandFromDatabase('ru', {
+            includeArtist: false,
+            useAuth: true,
+            noBandFallback: true,
+          }),
+          loadTheBandFromDatabase('en', {
+            includeArtist: false,
+            useAuth: true,
+            noBandFallback: true,
+          }),
         ]);
 
         const textRu = ruData && ruData.length > 0 ? ruData.join('\n') : '';

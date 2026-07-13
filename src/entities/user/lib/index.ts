@@ -24,6 +24,8 @@ export interface UserProfileResponse {
 interface UserProfileLoadOptions {
   includeArtist?: boolean;
   useAuth?: boolean;
+  /** Не подставлять описание другого языка (для редактирования в админке). */
+  noBandFallback?: boolean;
   /** Публичный slug; если не задан, берётся из Redux `currentArtist` на клиенте. */
   artistSlugOverride?: string | null;
 }
@@ -67,7 +69,14 @@ export async function loadTheBandFromDatabase(
     }
 
     const response = await fetchWithAuthSession(
-      buildApiUrl('/api/user-profile', { lang }, { includeArtist, artistSlugOverride: slug }),
+      buildApiUrl(
+        '/api/user-profile',
+        {
+          lang,
+          noBandFallback: options.noBandFallback ? '1' : undefined,
+        },
+        { includeArtist, artistSlugOverride: slug }
+      ),
       {
         cache: 'no-cache',
         headers: {
@@ -113,13 +122,12 @@ export async function loadTheBandFromDatabase(
 export async function loadTheBandFromProfileJson(lang: string): Promise<string[] | null> {
   try {
     const { getJSON } = await import('@shared/api/http');
+    const { resolveTheBandForLang, hasFilledBandParagraphs } = await import('@shared/lib/theBand');
     const profile = await getJSON<{ theBand: { [key: string]: string[] } }>('profile.json');
 
-    if (profile?.theBand?.[lang] && Array.isArray(profile.theBand[lang])) {
-      return profile.theBand[lang].filter(Boolean);
-    }
-
-    return null;
+    const validLang = lang === 'en' ? 'en' : 'ru';
+    const paragraphs = resolveTheBandForLang(profile?.theBand ?? null, validLang);
+    return hasFilledBandParagraphs(paragraphs) ? paragraphs : null;
   } catch (error) {
     if (process.env.NODE_ENV === 'development') {
       console.warn('⚠️ Ошибка загрузки theBand из profile.json:', error);

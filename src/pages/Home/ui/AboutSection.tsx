@@ -37,8 +37,18 @@ export function AboutSection({ isAboutModalOpen, onOpen, onClose }: AboutSection
   const [theBandFromDb, setTheBandFromDb] = useState<string[] | null>(null);
   const [isLoadingTheBand, setIsLoadingTheBand] = useState(true);
   const [theBandFromProfileJson, setTheBandFromProfileJson] = useState<string[] | null>(null);
+  const [theBandRefreshToken, setTheBandRefreshToken] = useState(0);
 
   const title = ui?.titles?.theBand ?? '';
+
+  useEffect(() => {
+    const handleArtistUpdated = () => {
+      setTheBandRefreshToken((token) => token + 1);
+    };
+
+    window.addEventListener('artist:updated', handleArtistUpdated);
+    return () => window.removeEventListener('artist:updated', handleArtistUpdated);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -69,7 +79,7 @@ export function AboutSection({ isAboutModalOpen, onOpen, onClose }: AboutSection
     return () => {
       cancelled = true;
     };
-  }, [lang, location.search, isArtistPage, artistSlug]);
+  }, [lang, location.search, isArtistPage, artistSlug, theBandRefreshToken]);
 
   useEffect(() => {
     if (isArtistPage) {

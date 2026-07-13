@@ -17,6 +17,11 @@ import {
 import { classifyAuthorizationHeader } from './lib/jwt';
 import { assertArtistVisibleToViewer } from './lib/artist-publication';
 import { PublicArtistResolverError, resolvePublicArtistUserId } from './lib/public-artist-resolver';
+import {
+  normalizeBandParagraphs,
+  resolveTheBandForLang,
+  syncTheBandOnSave,
+} from '../../src/shared/lib/theBand';
 
 type SocialPlatform = 'instagram' | 'facebook' | 'youtube' | 'vk';
 
@@ -197,22 +202,12 @@ export const handler: Handler = async (
       // Получаем язык из query параметров (по умолчанию 'ru')
       const lang = (event.queryStringParameters?.lang || 'ru').toLowerCase();
       const validLang = lang === 'en' ? 'en' : 'ru';
+      const noBandFallback = event.queryStringParameters?.noBandFallback === '1';
 
-      const normalizeBandParagraphs = (paragraphs: unknown): string[] => {
-        if (!Array.isArray(paragraphs)) return [];
-        return paragraphs.filter((p) => typeof p === 'string' && p.trim().length > 0);
-      };
-
-      // Только непустые параграфы текущего языка (без fallback на другой язык).
-      let theBand: string[] = [];
-      if (user.the_band) {
-        if (Array.isArray(user.the_band)) {
-          theBand = normalizeBandParagraphs(user.the_band);
-        } else if (typeof user.the_band === 'object' && user.the_band !== null) {
-          const bandObj = user.the_band as { ru?: string[]; en?: string[] };
-          theBand = normalizeBandParagraphs(bandObj[validLang]);
-        }
-      }
+      // Текущий язык; если пуст — fallback на другой (единое описание до явного перевода).
+      const theBand = resolveTheBandForLang(user.the_band, validLang, {
+        fallbackToOtherLang: !noBandFallback,
+      });
 
       const headerImages = user.header_images
         ? Array.isArray(user.header_images)
@@ -366,6 +361,10 @@ export const handler: Handler = async (
           console.warn('⚠️ Ошибка загрузки текущих данных the_band:', error);
         }
 
+        const ruWasUpdated = data.theBandRu !== undefined;
+        const enWasUpdated = data.theBandEn !== undefined;
+        const legacyBothUpdated = data.theBand !== undefined && !ruWasUpdated && !enWasUpdated;
+
         // Обновляем данные в зависимости от того, что пришло
         if (data.theBandRu !== undefined) {
           if (!Array.isArray(data.theBandRu)) {
@@ -378,7 +377,7 @@ export const handler: Handler = async (
               } as SaveUserProfileResponse),
             };
           }
-          currentBandObj.ru = data.theBandRu;
+          currentBandObj.ru = normalizeBandParagraphs(data.theBandRu);
         }
 
         if (data.theBandEn !== undefined) {
@@ -392,7 +391,7 @@ export const handler: Handler = async (
               } as SaveUserProfileResponse),
             };
           }
-          currentBandObj.en = data.theBandEn;
+          currentBandObj.en = normalizeBandParagraphs(data.theBandEn);
         }
 
         // Обратная совместимость: если пришел старый формат theBand, обновляем оба языка
@@ -409,10 +408,22 @@ export const handler: Handler = async (
           }
           // Если не указаны явно ru/en, обновляем оба языка одинаково (для обратной совместимости)
           if (data.theBandRu === undefined && data.theBandEn === undefined) {
-            currentBandObj.ru = data.theBand;
-            currentBandObj.en = data.theBand;
+            const normalized = normalizeBandParagraphs(data.theBand);
+            currentBandObj.ru = normalized;
+            currentBandObj.en = normalized;
           }
         }
+
+        const syncedBandObj = syncTheBandOnSave({
+          bandObj: {
+            ru: currentBandObj.ru ?? [],
+            en: currentBandObj.en ?? [],
+          },
+          ruWasUpdated: ruWasUpdated || legacyBothUpdated,
+          enWasUpdated: enWasUpdated || legacyBothUpdated,
+        });
+        currentBandObj.ru = syncedBandObj.ru;
+        currentBandObj.en = syncedBandObj.en;
 
         // Сохраняем обновленный объект
         updateFields.push(`the_band = $${paramIndex++}::jsonb`);
