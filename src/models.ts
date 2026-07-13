@@ -324,10 +324,9 @@ export interface IInterface {
     heroSubtext: string;
     primaryCta: string;
     catalogHint: string;
-    secondaryHeading: string;
-    secondarySubtext: string;
     features: {
       article: { title: string; description: string };
+      earning: { title: string; description: string };
       mixer: { title: string; description: string };
       profile: { title: string; description: string };
     };

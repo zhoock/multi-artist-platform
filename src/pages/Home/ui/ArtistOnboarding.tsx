@@ -1,5 +1,6 @@
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import {
+  CreditCard as CreditCardIcon,
   FileText as FileTextIcon,
   SlidersHorizontal as SlidersHorizontalIcon,
   Upload as UploadIcon,
@@ -10,16 +11,18 @@ import { useLang } from '@app/providers/lang';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { useSiteArtistDisplayName } from '@shared/lib/hooks/useSiteArtistDisplayName';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
+import type { DashboardTab } from '@shared/lib/accountType';
 import type { DashboardOpenIntent } from '@shared/lib/dashboardOpenIntent';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 import './ArtistOnboarding.scss';
 
-type SecondaryFeatureId = 'article' | 'mixer' | 'profile';
+type SecondaryFeatureId = 'article' | 'earning' | 'mixer' | 'profile';
 
 const FEATURE_ICONS: Record<SecondaryFeatureId, LucideIcon> = {
   profile: UserIcon,
   article: FileTextIcon,
   mixer: SlidersHorizontalIcon,
+  earning: CreditCardIcon,
 };
 
 function FeatureIcon({ id }: { id: SecondaryFeatureId }) {
@@ -38,7 +41,7 @@ export function ArtistOnboarding() {
   const { displayLabel: artistName } = useSiteArtistDisplayName(lang, { artistSlug });
 
   const openDashboard = (
-    tab: 'albums' | 'posts' | 'settings' | 'mixer',
+    tab: DashboardTab,
     intent: Omit<DashboardOpenIntent, 'backgroundLocation'>
   ) => {
     navigate(`/dashboard-new/${tab}`, {
@@ -62,27 +65,35 @@ export function ArtistOnboarding() {
   }> = [
     {
       id: 'profile',
-      title: copy?.features?.profile?.title ?? 'Профиль',
+      title: copy?.features?.profile?.title ?? 'Создайте страницу артиста',
       description:
         copy?.features?.profile?.description ??
-        'Оформите страницу артиста: добавьте изображения, описание, выберите жанр и настройте адрес своей страницы.',
+        'Добавьте изображения, описание, выберите жанр и настройте публичный адрес страницы.',
       onClick: () => openDashboard('settings', {}),
     },
     {
       id: 'article',
-      title: copy?.features?.article?.title ?? 'Статьи',
+      title: copy?.features?.article?.title ?? 'Делитесь своим творчеством',
       description:
         copy?.features?.article?.description ??
-        'Расскажите свою историю. Пишите статьи и заметки для будущих слушателей.',
+        'Делитесь новостями, историями и фотографиями. Создавайте публикации с текстом и галереями изображений.',
       onClick: () => openDashboard('posts', { openNewArticleModal: true }),
     },
     {
       id: 'mixer',
-      title: copy?.features?.mixer?.title ?? 'Миксер стемов',
+      title: copy?.features?.mixer?.title ?? 'Создайте микс стемов',
       description:
         copy?.features?.mixer?.description ??
-        'Работайте со стемами своих альбомов. Загружайте стемы и делитесь ими с аудиторией.',
+        'Загружайте стемы опубликованных альбомов и дайте слушателям возможность создавать собственные миксы.',
       onClick: () => openDashboard('mixer', {}),
+    },
+    {
+      id: 'earning',
+      title: copy?.features?.earning?.title ?? 'Начните зарабатывать',
+      description:
+        copy?.features?.earning?.description ??
+        'Подключите платёжную систему, скрывайте эксклюзивный контент и получайте доход от подписчиков, которые добавляют вас в свою коллекцию.',
+      onClick: () => openDashboard('payment-settings', {}),
     },
   ];
 
@@ -116,22 +127,7 @@ export function ArtistOnboarding() {
         </div>
       </section>
 
-      <section
-        className="artist-onboarding-secondary wrapper"
-        aria-labelledby="artist-onboarding-secondary-heading"
-      >
-        <div className="artist-onboarding-secondary__intro">
-          <h2
-            id="artist-onboarding-secondary-heading"
-            className="artist-onboarding-secondary__heading"
-          >
-            {copy?.secondaryHeading ?? 'После публикации первого альбома вам станет доступно:'}
-          </h2>
-          <p className="artist-onboarding-secondary__subtext">
-            {copy?.secondarySubtext ??
-              'Профиль, статьи и миксер стемов будут доступны слушателям только после\u00a0публикации\u00a0вашего\u00a0первого\u00a0альбома.'}
-          </p>
-        </div>
+      <section className="artist-onboarding-secondary wrapper" aria-label="Разделы кабинета">
         <ul className="artist-onboarding-secondary__list">
           {preparationFeatures.map((feature) => (
             <li key={feature.id}>

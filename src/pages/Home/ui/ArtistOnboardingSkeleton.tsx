@@ -25,12 +25,8 @@ export function ArtistOnboardingSkeleton() {
       </section>
 
       <section className="artist-onboarding-secondary wrapper" aria-hidden="true">
-        <div className="artist-onboarding-secondary__intro artist-onboarding-skeleton__intro">
-          <div className="skeleton artist-onboarding-skeleton__section-title" />
-          <div className="skeleton artist-onboarding-skeleton__section-subtext" />
-        </div>
         <ul className="artist-onboarding-secondary__list">
-          {[0, 1, 2].map((index) => (
+          {[0, 1, 2, 3].map((index) => (
             <li key={index}>
               <div className="artist-onboarding-skeleton__feature">
                 <div className="skeleton artist-onboarding-skeleton__feature-icon" />

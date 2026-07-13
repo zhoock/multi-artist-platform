@@ -204,20 +204,22 @@
       "heroSubtext": "Publish your first album to appear in the catalog.",
       "primaryCta": "Upload album",
       "catalogHint": "You will appear in the catalog after publishing an album",
-      "secondaryHeading": "After publishing your first album, you'll have access to:",
-      "secondarySubtext": "Profile, articles, and the stem mixer will be available to listeners only after you publish your first album.",
       "features": {
         "profile": {
-          "title": "Profile",
-          "description": "Create your artist page. Add a bio, photo, and social links."
+          "title": "Create your artist page",
+          "description": "Add images, a description, choose a genre, and set up your page's public URL."
         },
         "article": {
-          "title": "Articles",
-          "description": "Tell your story. Write articles and notes for future listeners."
+          "title": "Share your creativity",
+          "description": "Share news, stories, and photos. Create posts with text and image galleries."
         },
         "mixer": {
-          "title": "Stem mixer",
-          "description": "Work with stems from your albums. Upload stems and share them with your audience."
+          "title": "Create stem mixes",
+          "description": "Upload stems from published albums and let listeners create their own mixes."
+        },
+        "earning": {
+          "title": "Start earning",
+          "description": "Connect a payment provider, hide exclusive content, and earn from subscribers who add you to their collection."
         }
       }
     },

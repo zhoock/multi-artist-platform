@@ -69,22 +69,6 @@
     border-radius: 999px;
   }
 
-  &__intro {
-    align-items: center;
-  }
-
-  &__section-title {
-    inline-size: min(28rem, 90%);
-    block-size: 1.25rem;
-    border-radius: $ms-01;
-  }
-
-  &__section-subtext {
-    inline-size: min(36rem, 95%);
-    block-size: 0.875rem;
-    border-radius: $ms-01;
-  }
-
   &__feature {
     display: flex;
     flex-direction: column;
@@ -295,37 +279,6 @@ html.theme-light .artist-onboarding-skeleton {
 .artist-onboarding-secondary {
   margin-block: clamp($ms-3, 8vw, $ms-4) clamp($ms-3, 12vw, $ms-4);
   padding-block: 0;
-
-  &__intro {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: clamp($ms-01, 2vw, $ms-1);
-    max-inline-size: min(56rem, 100%);
-    margin-inline: auto;
-    margin-block-end: clamp($ms-2, 5vw, $ms-3);
-    text-align: center;
-  }
-
-  &__heading {
-    margin: 0;
-    color: var(--onboarding-accent);
-    font-size: clamp(1.0625rem, 2.4vw, 1.25rem);
-    font-weight: 500;
-    letter-spacing: 0.01em;
-    line-height: 1.35;
-    text-transform: none;
-    text-wrap: balance;
-  }
-
-  &__subtext {
-    margin: 0;
-    max-inline-size: min(42rem, 100%);
-    color: var(--onboarding-muted);
-    font-size: clamp(0.875rem, 1.8vw, 0.9375rem);
-    line-height: 1.6;
-    text-wrap: pretty;
-  }
 
   &__list {
     display: flex;
