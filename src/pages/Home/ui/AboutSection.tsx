@@ -7,6 +7,14 @@ import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 import { useSiteArtistDisplayName } from '@shared/lib/hooks/useSiteArtistDisplayName';
 import { loadTheBandFromDatabase, loadTheBandFromProfileJson } from '@entities/user/lib';
+import { shouldShowArtistPageBuilderBlock } from '@shared/lib/artistPageBuilder';
+import { useArtistPageBuilder } from '@shared/lib/hooks/useArtistPageBuilder';
+import {
+  ArtistPageBuilderBlock,
+  artistPageBuilderSectionIconProps,
+  useArtistPageBuilderNav,
+} from '@shared/ui/artistPageBuilder';
+import { User as UserIcon } from 'lucide-react';
 import aboutStyles from './AboutSection.module.scss';
 
 type AboutSectionProps = {
@@ -29,6 +37,8 @@ export function AboutSection({ isAboutModalOpen, onOpen, onClose }: AboutSection
   const ui = useAppSelector((state) => selectUiDictionaryFirst(state, lang));
   const artistSlug = searchParams.get('artist')?.trim() ?? '';
   const isArtistPage = artistSlug.length > 0;
+  const { builderVisibility } = useArtistPageBuilder(artistSlug);
+  const { openDashboard } = useArtistPageBuilderNav();
 
   const { displayLabel: bandDisplayLabel } = useSiteArtistDisplayName(lang, {
     artistSlug: isArtistPage ? artistSlug : null,
@@ -122,8 +132,39 @@ export function AboutSection({ isAboutModalOpen, onOpen, onClose }: AboutSection
     return null;
   }
 
-  if (!hasFilledBandParagraphs(theBand)) {
+  const showAboutBuilder =
+    isArtistPage &&
+    shouldShowArtistPageBuilderBlock(builderVisibility, !hasFilledBandParagraphs(theBand));
+
+  if (!hasFilledBandParagraphs(theBand) && !showAboutBuilder) {
     return null;
+  }
+
+  if (showAboutBuilder) {
+    return (
+      <section
+        id="about"
+        className={`${aboutStyles.about} main-background`}
+        aria-labelledby="home-about-heading"
+      >
+        <div className="wrapper">
+          <h2 id="home-about-heading">
+            {title} {bandDisplayLabel}
+          </h2>
+          <ArtistPageBuilderBlock
+            layout="section"
+            icon={<UserIcon {...artistPageBuilderSectionIconProps()} />}
+            title={ui?.artistPageBuilder?.about?.title ?? 'Tell about your band'}
+            description={
+              ui?.artistPageBuilder?.about?.text ??
+              'Add a band description, origin story, members, and interesting facts.'
+            }
+            actionLabel={ui?.artistPageBuilder?.about?.cta ?? 'Add description'}
+            onAction={() => openDashboard('settings')}
+          />
+        </div>
+      </section>
+    );
   }
 
   return (

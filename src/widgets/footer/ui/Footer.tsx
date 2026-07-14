@@ -7,6 +7,14 @@ import { selectPublicArtistSlug } from '@shared/model/currentArtist';
 import { loadSocialLinksFromDatabase } from '@entities/user/lib';
 import { socialLinksToList } from '@shared/constants/socialLinks';
 import { buildSupportMailtoHref } from '@shared/lib/supportEmail';
+import { shouldShowArtistPageBuilderBlock } from '@shared/lib/artistPageBuilder';
+import { useArtistPageBuilder } from '@shared/lib/hooks/useArtistPageBuilder';
+import {
+  ArtistPageBuilderBlock,
+  artistPageBuilderBarIconProps,
+  useArtistPageBuilderNav,
+} from '@shared/ui/artistPageBuilder';
+import { Link2 as Link2Icon } from 'lucide-react';
 import './style.scss';
 
 const supportLink = (label: string) => <a href={buildSupportMailtoHref()}>{label}</a>;
@@ -25,6 +33,11 @@ function FooterComponent() {
   }, [isDashboardRoute, searchParams, artistSlugFromStore]);
 
   const [socialItems, setSocialItems] = useState<Array<{ platform: string; href: string }>>([]);
+  const { builderVisibility } = useArtistPageBuilder(artistSlug ?? '');
+  const { openDashboard } = useArtistPageBuilderNav();
+  const showSocialBuilder =
+    Boolean(artistSlug) &&
+    shouldShowArtistPageBuilderBlock(builderVisibility, socialItems.length === 0);
 
   const loadLinks = useCallback(async () => {
     if (!artistSlug) {
@@ -66,6 +79,16 @@ function FooterComponent() {
               </li>
             ))}
           </ul>
+        ) : showSocialBuilder ? (
+          <div className="footer__social-builder">
+            <ArtistPageBuilderBlock
+              layout="bar"
+              icon={<Link2Icon {...artistPageBuilderBarIconProps()} />}
+              title={ui?.artistPageBuilder?.social?.title ?? 'Add social media'}
+              actionLabel={ui?.artistPageBuilder?.social?.cta ?? 'Add social networks'}
+              onAction={() => openDashboard('social-links')}
+            />
+          </div>
         ) : null}
 
         <ul className="copyright-list">

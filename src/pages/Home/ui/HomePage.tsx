@@ -44,7 +44,8 @@ import { ArticlesSection } from './ArticlesSection';
 import { ArtistOnboarding } from './ArtistOnboarding';
 import { ArtistOnboardingSkeleton } from './ArtistOnboardingSkeleton';
 import { ArtistPageUnderConstruction } from './ArtistPageUnderConstruction';
-import { ArtistAwaitingFirstReleaseBanner } from './ArtistAwaitingFirstReleaseBanner';
+import { ArtistPageBuilderPaymentBar } from './ArtistPageBuilderPaymentBar';
+import { ArtistPublishedPageFallback } from './ArtistPublishedPageFallback';
 import { ScrollToExploreHint } from './ScrollToExploreHint';
 import { useArtistPageAccess } from '@shared/lib/hooks/useArtistPageAccess';
 import '../../../components/view/Universe3D.style.scss';
@@ -123,12 +124,6 @@ export function HomePage() {
     document.body.classList.toggle('page--artist-not-found', notFoundSurface);
     return () => document.body.classList.remove('page--artist-not-found');
   }, [artistPageAccess.showNotFound, hasArtistParam]);
-
-  useEffect(() => {
-    const awaitingSurface = hasArtistParam && artistPageAccess.showAwaitingFirstRelease;
-    document.body.classList.toggle('page--artist-awaiting-first-release', awaitingSurface);
-    return () => document.body.classList.remove('page--artist-awaiting-first-release');
-  }, [artistPageAccess.showAwaitingFirstRelease, hasArtistParam]);
 
   useEffect(() => {
     // Каталог грузит root albumsLoader; force здесь давал повторные loading-циклы
@@ -356,11 +351,13 @@ export function HomePage() {
       return <ArtistPageUnderConstruction variant="visitor" />;
     }
 
+    if (artistPageAccess.showArtistPageLayoutPending) {
+      return <ArtistPublishedPageFallback />;
+    }
+
     return (
       <>
-        {artistPageAccess.showAwaitingFirstRelease && artistPageAccess.isOwner ? (
-          <ArtistAwaitingFirstReleaseBanner isOwner />
-        ) : null}
+        <ArtistPageBuilderPaymentBar />
         <AlbumsSection isOwner={artistPageAccess.isOwner} />
         <ArticlesSection />
         <AboutSection

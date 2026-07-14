@@ -95,6 +95,10 @@
     }
   }
 
+  &__headline-main {
+    display: contents;
+  }
+
   &__archive-slot {
     display: flex;
     grid-area: archive;
@@ -128,71 +132,35 @@
     text-transform: capitalize;
   }
 
-  &--awaiting-first-release {
+  &--page-builder-pre-release {
     background-color: #03040a;
-    background-image: url('/images/awaiting-first-release-nebula.jpg');
-    background-attachment: scroll;
-    background-position: center;
-    background-size: cover;
     cursor: default;
 
-    @include breakpoint(tablet) {
-      background-position: 40% center;
-    }
-
-    /* Мягче стандартного hero — nebula видна на всю плашку, текст слева читаем */
     &::before {
       @include breakpoint(old-phones) {
-        background: linear-gradient(
-          180deg,
-          rgb(0 0 0 / 82%) 0%,
-          rgb(0 0 0 / 52%) 42%,
-          rgb(0 0 0 / 22%) 68%,
-          rgb(0 0 0 / 0%) 100%
-        );
-        opacity: 1;
+        background: var(--deep-coal, #20201d);
+        opacity: 0.55;
       }
 
       @include breakpoint(phones) {
-        background: linear-gradient(
-          180deg,
-          rgb(0 0 0 / 82%) 0%,
-          rgb(0 0 0 / 52%) 42%,
-          rgb(0 0 0 / 22%) 68%,
-          rgb(0 0 0 / 0%) 100%
-        );
-        opacity: 1;
+        background: var(--deep-coal, #20201d);
+        opacity: 0.55;
       }
 
       @include breakpoint(tablet) {
         background: linear-gradient(
           90deg,
-          rgb(0 0 0 / 90%) 0%,
-          rgb(0 0 0 / 72%) 26%,
-          rgb(0 0 0 / 38%) 48%,
-          rgb(0 0 0 / 14%) 68%,
-          rgb(0 0 0 / 0%) 86%
+          rgb(0 0 0 / 100%) 60%,
+          rgb(0 0 0 / 70%) 70%,
+          rgb(0 0 0 / 30%) 85%,
+          rgb(0 0 0 / 0%) 100%
         );
         opacity: 1;
       }
 
       @include breakpoint(desktops) {
-        background: linear-gradient(
-          90deg,
-          rgb(0 0 0 / 88%) 0%,
-          rgb(0 0 0 / 68%) 32%,
-          rgb(0 0 0 / 30%) 56%,
-          rgb(0 0 0 / 10%) 76%,
-          rgb(0 0 0 / 0%) 92%
-        );
+        background: linear-gradient(90deg, rgb(0 0 0 / 100%) 74%, rgb(0 0 0 / 0%) 100%);
       }
-    }
-
-    .hero__headline {
-      grid-template-areas:
-        'title'
-        'copy';
-      gap: $ms-01;
     }
 
     .hero__archive-slot {
@@ -200,28 +168,114 @@
     }
   }
 
-  &__awaiting-copy {
-    grid-area: copy;
-    max-inline-size: min(100%, 36rem);
+  /* Owner pre-release with hero image: real cover on the right, standard hero gradient, no nebula. */
+  &--page-builder-pre-release-with-image {
+    cursor: default;
+
+    .hero__headline {
+      grid-template-areas: 'title';
+      gap: $ms-01;
+
+      @include breakpoint(tablet) {
+        grid-template-areas: 'title archive';
+        grid-template-columns: minmax(0, 1fr) auto;
+      }
+    }
+
+    .hero__archive-slot {
+      display: none;
+    }
   }
 
-  &__awaiting-eyebrow {
-    margin: 0;
-    color: rgb(140 210 255 / 88%);
-    font-family: var(--base-font-family);
-    font-size: clamp(0.8125rem, 1.6vw, 0.9375rem);
-    font-weight: var(--semibold, 600);
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
+  &--has-image-builder {
+    @include breakpoint(tablet) {
+      background-image: none !important;
+    }
+
+    @include breakpoint(desktops) {
+      background-image: none !important;
+    }
+
+    .hero__headline {
+      grid-template-areas:
+        'title'
+        'cover';
+      grid-template-columns: minmax(0, 1fr);
+      align-items: end;
+      gap: $ms-01;
+
+      @include breakpoint(tablet) {
+        grid-template-areas: 'title cover';
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        align-items: end;
+        gap: $ms-0 $ms-01;
+      }
+    }
+
+    &.hero--navigate-home .hero__headline {
+      @include breakpoint(tablet) {
+        grid-template-areas: 'title archive cover';
+        grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+        gap: $ms-0;
+      }
+    }
+
+    &.hero--page-builder-pre-release .hero__headline,
+    &.hero--page-builder-pre-release-with-image .hero__headline {
+      grid-template-areas:
+        'title'
+        'cover';
+
+      @include breakpoint(tablet) {
+        grid-template-areas: 'title cover';
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      }
+    }
+
+    .hero__headline-main {
+      display: contents;
+    }
+
+    .hero__builder-block {
+      flex: 1 1 auto;
+      box-sizing: border-box;
+      gap: $ms-02;
+      justify-content: center;
+      align-items: center;
+      block-size: 100%;
+      padding: $ms-01 $ms-1;
+      text-align: center;
+
+      &.artist-page-builder-block--section {
+        padding: $ms-01 $ms-1;
+      }
+
+      .artist-page-builder-block__main {
+        align-items: center;
+        gap: $ms-02;
+      }
+
+      .artist-page-builder-block__text {
+        gap: $ms-02;
+        text-align: center;
+      }
+    }
   }
 
-  &__awaiting-body {
-    margin: $ms-02 0 0;
-    color: rgb(245 245 244 / 82%);
-    font-family: var(--base-font-family);
-    font-size: clamp(0.9375rem, 1.9vw, 1.0625rem);
-    line-height: 1.55;
-    text-wrap: pretty;
+  &__image-slot {
+    grid-area: cover;
+    display: flex;
+    align-items: stretch;
+    justify-content: stretch;
+    align-self: end;
+    inline-size: 100%;
+    min-block-size: 8rem;
+    pointer-events: auto;
+
+    .hero--has-image-builder & {
+      align-self: stretch;
+      block-size: 100%;
+    }
   }
 
   @media (width <= 768px) {

@@ -4,6 +4,8 @@
 @use '../../../scss/abstracts/mixins' as *;
 
 .about {
+  padding-block-end: $ms-1;
+
   &__content {
     display: -webkit-box;
     overflow: hidden;

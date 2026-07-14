@@ -230,13 +230,6 @@
       "visitorSubtitle": "This artist has not published their first release yet. This page will become available after the first publication.",
       "visitorCta": "Back to the galaxy"
     },
-    "artistAwaitingFirstRelease": {
-      "heroEyebrow": "New star detected",
-      "heroBodyVisitor": "This artist has not yet appeared in the public constellation. The first release will ignite the star and bring this artist into the universe.",
-      "heroBodyOwner": "A new star has been detected. The first release will ignite this star and bring it into the public constellation.",
-      "bannerStatus": "Your star has not yet joined the constellation.",
-      "bannerCta": "Release your first album"
-    },
     "titles": {
       "albums": "albums",
       "theBand": "about the",
@@ -1004,6 +997,35 @@
         "createAccount": "Create account",
         "switchToSignIn": "Already have an account? Sign in",
         "switchToCreateAccount": "New here? Create an account"
+      }
+    },
+    "artistPageBuilder": {
+      "hero": {
+        "imageTitle": "Band cover",
+        "uploadImage": "Upload"
+      },
+      "payment": {
+        "text": "Connect payments",
+        "cta": "Set up payments"
+      },
+      "albums": {
+        "title": "You have no albums yet",
+        "text": "Release your first album so it appears here and becomes available to listeners.",
+        "cta": "Publish first album"
+      },
+      "articles": {
+        "title": "You have no articles yet",
+        "text": "Share stories about your music, creative journey, and news.",
+        "cta": "Write your first article"
+      },
+      "about": {
+        "title": "Tell about your band",
+        "text": "Add a band description, origin story, members, and interesting facts.",
+        "cta": "Add description"
+      },
+      "social": {
+        "title": "Add social media",
+        "cta": "Add social networks"
       }
     }
   }

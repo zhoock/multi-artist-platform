@@ -22,6 +22,14 @@ import { useSiteArtistDisplayName } from '@shared/lib/hooks/useSiteArtistDisplay
 import { formatAlbumDisplayFullName } from '@shared/lib/profileDisplayName';
 import { useShowSurfaceAlbumsLoadingShell } from '@shared/lib/hooks/useShowAlbumsLoadingShell';
 import { filterAlbumsForArtistPageSurface } from '@shared/lib/artistPageContent';
+import { shouldShowArtistPageBuilderBlock } from '@shared/lib/artistPageBuilder';
+import { useArtistPageBuilder } from '@shared/lib/hooks/useArtistPageBuilder';
+import {
+  ArtistPageBuilderBlock,
+  artistPageBuilderSectionIconProps,
+  useArtistPageBuilderNav,
+} from '@shared/ui/artistPageBuilder';
+import { Disc3 as DiscIcon } from 'lucide-react';
 
 // Адаптивное количество альбомов для отображения на главной
 const getInitialCount = () => {
@@ -35,6 +43,9 @@ export function AlbumsSection({ isOwner = false }: { isOwner?: boolean }) {
   const { lang } = useLang();
   const [searchParams] = useSearchParams();
   const artistSlug = searchParams.get('artist');
+  const { builderVisibility, hasPublicReleases } = useArtistPageBuilder(artistSlug?.trim() ?? '');
+  const { openDashboard } = useArtistPageBuilderNav();
+  const showAlbumBuilder = shouldShowArtistPageBuilderBlock(builderVisibility, !hasPublicReleases);
   const hideArtistPageAfterOwnDelete = useRedirectHomeAfterOwnAccountDeleted(!!artistSlug);
   const { displayName: siteArtistName } = useSiteArtistDisplayName(lang, { artistSlug });
   const albumsStatus = useAppSelector(selectAlbumsStatus);
@@ -93,7 +104,12 @@ export function AlbumsSection({ isOwner = false }: { isOwner?: boolean }) {
     return null;
   }
 
-  if (!catalogCacheStale && albumsStatus === 'succeeded' && allAlbums.length === 0) {
+  if (
+    !catalogCacheStale &&
+    albumsStatus === 'succeeded' &&
+    allAlbums.length === 0 &&
+    !showAlbumBuilder
+  ) {
     return null;
   }
 
@@ -110,6 +126,18 @@ export function AlbumsSection({ isOwner = false }: { isOwner?: boolean }) {
           <AlbumsSkeleton count={initialCount} />
         ) : albumsStatus === 'failed' || albumsError ? (
           <ErrorI18n code="albumsLoadFailed" />
+        ) : showAlbumBuilder ? (
+          <ArtistPageBuilderBlock
+            layout="section"
+            icon={<DiscIcon {...artistPageBuilderSectionIconProps()} />}
+            title={ui?.artistPageBuilder?.albums?.title ?? 'You have no albums yet'}
+            description={
+              ui?.artistPageBuilder?.albums?.text ??
+              'Release your first album so it appears here and becomes available to listeners.'
+            }
+            actionLabel={ui?.artistPageBuilder?.albums?.cta ?? 'Publish first album'}
+            onAction={() => openDashboard('albums')}
+          />
         ) : (
           <>
             <div className="albums__list">

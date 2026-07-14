@@ -14,6 +14,14 @@ import {
 import { useShowSurfaceArticlesLoadingShell } from '@shared/lib/hooks/useShowSurfaceArticlesLoadingShell';
 import { withPublicArtistQuery } from '@shared/lib/artistQuery';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
+import { shouldShowArtistPageBuilderBlock } from '@shared/lib/artistPageBuilder';
+import { useArtistPageBuilder } from '@shared/lib/hooks/useArtistPageBuilder';
+import {
+  ArtistPageBuilderBlock,
+  artistPageBuilderSectionIconProps,
+  useArtistPageBuilderNav,
+} from '@shared/ui/artistPageBuilder';
+import { FileText as FileTextIcon } from 'lucide-react';
 
 // Адаптивное количество статей для отображения на главной
 const getInitialCount = () => {
@@ -26,10 +34,17 @@ const getInitialCount = () => {
 export function ArticlesSection() {
   const { lang } = useLang();
   const [searchParams] = useSearchParams();
+  const artistSlug = searchParams.get('artist')?.trim() ?? '';
   const allArticlesPath = withPublicArtistQuery('/articles', searchParams.get('artist'));
   const articlesStatus = useAppSelector((state) => selectArticlesStatus(state));
   const articlesCacheStale = useAppSelector(selectArticlesCacheIsStale);
   const allArticles = useAppSelector((state) => selectArticlesDataResolvedForSurface(state));
+  const { builderVisibility } = useArtistPageBuilder(artistSlug);
+  const { openDashboard } = useArtistPageBuilderNav();
+  const showArticleBuilder = shouldShowArtistPageBuilderBlock(
+    builderVisibility,
+    allArticles.length === 0
+  );
   const showArticlesLoadingShell = useShowSurfaceArticlesLoadingShell(
     articlesStatus,
     allArticles.length > 0,
@@ -55,7 +70,12 @@ export function ArticlesSection() {
 
   // Данные загружаются через loader, не нужно загружать здесь
 
-  if (!articlesCacheStale && articlesStatus === 'succeeded' && allArticles.length === 0) {
+  if (
+    !articlesCacheStale &&
+    articlesStatus === 'succeeded' &&
+    allArticles.length === 0 &&
+    !showArticleBuilder
+  ) {
     return null;
   }
 
@@ -76,6 +96,18 @@ export function ArticlesSection() {
           <ArticlesSkeleton count={initialCount} />
         ) : articlesStatus === 'failed' ? (
           <ErrorI18n code="articlesLoadFailed" />
+        ) : showArticleBuilder ? (
+          <ArtistPageBuilderBlock
+            layout="section"
+            icon={<FileTextIcon {...artistPageBuilderSectionIconProps()} />}
+            title={ui?.artistPageBuilder?.articles?.title ?? 'You have no articles yet'}
+            description={
+              ui?.artistPageBuilder?.articles?.text ??
+              'Share stories about your music, creative journey, and news.'
+            }
+            actionLabel={ui?.artistPageBuilder?.articles?.cta ?? 'Write your first article'}
+            onAction={() => openDashboard('posts')}
+          />
         ) : (
           <>
             <div className="articles__list">

@@ -1,12 +1,18 @@
 // src/widgets/hero/ui/Hero.tsx
-import { useEffect, useState, useRef, useMemo } from 'react';
+import { useEffect, useRef, useMemo, useState } from 'react';
 import { useLocation, useNavigate, type Location } from 'react-router-dom';
 import { useLang } from '@app/providers/lang';
-import { loadHeaderImagesFromDatabase } from '@entities/user/lib';
 import { fetchWithAuthSession } from '@shared/lib/authFetch';
-import { normalizeProxyImageUrl } from '@shared/api/storage';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
-import { useArtistPageAccess } from '@shared/lib/hooks/useArtistPageAccess';
+import { useArtistPageBuilder } from '@shared/lib/hooks/useArtistPageBuilder';
+import { pickHeroBackgroundImage } from '@shared/lib/artistHeroHeaderImages';
+import { shouldShowArtistPageBuilderBlock } from '@shared/lib/artistPageBuilder';
+import {
+  ArtistPageBuilderBlock,
+  artistPageBuilderHeroImageIconProps,
+  useArtistPageBuilderNav,
+} from '@shared/ui/artistPageBuilder';
+import { ImagePlus as ImagePlusIcon } from 'lucide-react';
 import { useSiteArtistDisplayName } from '@shared/lib/hooks/useSiteArtistDisplayName';
 import { selectCatalogArtistMissing } from '@entities/album';
 import { selectPublicArtistSlug } from '@shared/model/currentArtist';
@@ -27,45 +33,7 @@ const HERO_CLUSTER_PALETTE = [0x4d80ff, 0xff8a47, 0x53d8a2, 0xb086ff, 0xf2cd5d, 
 
 const defaultArtistName = '';
 
-/**
- * Преобразует URL изображения в формат для background-image
- * Всегда возвращает простой url(), так как многие браузеры не поддерживают image-set в inline style
- * @param imageUrl - URL изображения (может быть proxy URL или уже в формате url())
- * @returns простой URL в формате url('...')
- */
-function formatBackgroundImageUrl(imageUrl: string): string {
-  if (!imageUrl || !imageUrl.trim()) {
-    return '';
-  }
-
-  // Если это уже правильный формат url('...'), возвращаем как есть
-  if (imageUrl.startsWith("url('") || imageUrl.startsWith('url("')) {
-    return imageUrl;
-  }
-
-  // Если это image-set, извлекаем первый доступный URL (jpg приоритет)
-  if (imageUrl.includes('image-set')) {
-    const jpgMatch = imageUrl.match(/url\(["']([^"']+\.jpg[^"']*)["']\)/);
-    if (jpgMatch && jpgMatch[1]) {
-      return `url('${jpgMatch[1]}')`;
-    }
-    const webpMatch = imageUrl.match(/url\(["']([^"']+\.webp[^"']*)["']\)/);
-    if (webpMatch && webpMatch[1]) {
-      return `url('${webpMatch[1]}')`;
-    }
-    const firstMatch = imageUrl.match(/url\(["']([^"']+)["']\)/);
-    if (firstMatch && firstMatch[1]) {
-      return `url('${firstMatch[1]}')`;
-    }
-  }
-
-  // Для обычного URL просто оборачиваем в url()
-  return `url('${imageUrl}')`;
-}
-
 export function Hero() {
-  const [backgroundImage, setBackgroundImage] = useState('');
-  const [headerImages, setHeaderImages] = useState<string[]>([]);
   const [artistPageMeta, setArtistPageMeta] = useState<{
     userId: string;
   } | null>(null);
@@ -74,9 +42,6 @@ export function Hero() {
   const { lang } = useLang() as { lang: 'ru' | 'en' };
   const publicArtistSlug = useAppSelector(selectPublicArtistSlug);
   const heroCanvasRef = useRef<HTMLDivElement | null>(null);
-  const lastPathRef = useRef<string>('');
-  const imagesLoadedRef = useRef<boolean>(false);
-  const imageSelectedForPathRef = useRef<string>('');
   const { overlayOpen: dashboardOverlayOpen, surfaceLocation } = useDashboardModalShell();
   const isDashboardRoute = location.pathname.startsWith('/dashboard') && !dashboardOverlayOpen;
   /**
@@ -115,10 +80,26 @@ export function Hero() {
   );
   const hasArtistParam = !!heroUrlParams.get('artist');
   const artistParamKey = heroUrlParams.get('artist')?.trim() ?? '';
-  const artistPageAccess = useArtistPageAccess(artistParamKey);
-  const showAwaitingFirstRelease = hasArtistParam && artistPageAccess.showAwaitingFirstRelease;
+  const artistPageAccess = useArtistPageBuilder(artistParamKey);
+  const {
+    builderVisibility,
+    hasPublicReleases,
+    showArtistPageLayoutPending,
+    headerImages,
+    isHeaderImagesReady,
+  } = artistPageAccess;
+  const showHeroImageBuilder =
+    hasArtistParam &&
+    shouldShowArtistPageBuilderBlock(builderVisibility, headerImages.length === 0);
+  const showOwnerBuilderHero =
+    hasArtistParam && builderVisibility.canShowBlocks && !hasPublicReleases;
+  const showPageBuilderPreReleaseShell = showOwnerBuilderHero && headerImages.length === 0;
+  const showOwnerPreReleaseHeroImage = showOwnerBuilderHero && headerImages.length > 0;
+  const showPublishedHeroChrome = hasArtistParam && !showOwnerBuilderHero;
+  const { openDashboard } = useArtistPageBuilderNav();
   const hideHeroForArtistOnboarding =
     hasArtistParam && artistPageAccess.suppressPublishedArtistChrome;
+  const hideHeroForLayoutPending = hasArtistParam && showArtistPageLayoutPending;
   const heroPublicArtistSlug = (artistParamKey || publicArtistSlug || '').trim();
   const { displayName: profileDisplayName, isLoading: isProfileLoading } = useSiteArtistDisplayName(
     lang,
@@ -128,57 +109,11 @@ export function Hero() {
     }
   );
 
-  // Загружаем изображения из БД
-  useEffect(() => {
-    const loadImages = async () => {
-      imagesLoadedRef.current = false;
-      setHeaderImages([]);
-      setBackgroundImage('');
-
-      try {
-        // Для публичных страниц не передаем useAuth=true, API вернет данные админа
-        const images = await loadHeaderImagesFromDatabase(false, {
-          artistSlugOverride: heroPublicArtistSlug || null,
-        });
-        console.log('📸 [Hero] Загружены header images из БД:', images);
-
-        // Фильтруем только изображения из папки hero, удаляем старые из articles
-        const validHeroImages = (images || []).filter((url) => {
-          // Проверяем, что путь содержит '/hero/' (работает для любого userId, включая UUID)
-          const isValidHero =
-            url.includes('/hero/') ||
-            url.includes('/hero-') ||
-            (url.includes('proxy-image') && url.includes('hero')) ||
-            (url.includes('users/') && url.includes('/hero/'));
-
-          if (!isValidHero) {
-            console.warn('⚠️ [Hero] Найдено изображение не из папки hero, пропускаем:', url);
-          }
-
-          return isValidHero;
-        });
-
-        if (validHeroImages.length > 0) {
-          setHeaderImages(validHeroImages);
-          console.log('✅ [Hero] Валидные hero изображения:', validHeroImages.length);
-        } else {
-          console.warn(
-            '⚠️ [Hero] Header images не найдены в БД или все из неправильной папки (пустой массив)'
-          );
-          // Принудительно очищаем изображения, если в БД их нет
-          setHeaderImages([]);
-          setBackgroundImage('');
-        }
-        imagesLoadedRef.current = true;
-      } catch (error) {
-        console.error('❌ [Hero] Ошибка загрузки header images из БД:', error);
-        setHeaderImages([]);
-        setBackgroundImage('');
-        imagesLoadedRef.current = true;
-      }
-    };
-    loadImages();
-  }, [heroSearchString, heroPublicArtistSlug]);
+  const heroVisualKey = `${heroPathname}|${heroPublicArtistSlug}`;
+  const backgroundImage = useMemo(
+    () => pickHeroBackgroundImage(headerImages, heroVisualKey),
+    [headerImages, heroVisualKey]
+  );
 
   useEffect(() => {
     if (!hasArtistParam || !artistParamKey) {
@@ -223,115 +158,13 @@ export function Hero() {
     };
   }, [artistParamKey, hasArtistParam]);
 
-  useEffect(() => {
-    const handleHeaderImagesUpdate = (event: Event) => {
-      const customEvent = event as CustomEvent<{ images: string[] }>;
-      const newImages = customEvent.detail?.images;
-      if (Array.isArray(newImages)) {
-        console.log('🔄 [Hero] Получено событие обновления header images:', newImages);
-        setHeaderImages(newImages);
-        imagesLoadedRef.current = true;
-        if (newImages.length === 0) {
-          setBackgroundImage('');
-        }
-      }
-    };
-
-    window.addEventListener('header-images-updated', handleHeaderImagesUpdate);
-
-    return () => {
-      window.removeEventListener('header-images-updated', handleHeaderImagesUpdate);
-    };
-  }, []);
-
-  // Выбираем случайное изображение при загрузке данных, смене пути или артиста
-  const heroVisualKey = `${heroPathname}|${heroPublicArtistSlug}`;
-
-  useEffect(() => {
-    // Выбираем изображение только если данные загружены
-    if (!imagesLoadedRef.current) {
-      return;
-    }
-
-    const visualContextChanged = lastPathRef.current !== heroVisualKey;
-
-    if (!visualContextChanged && imageSelectedForPathRef.current === heroVisualKey) {
-      // Изображение уже выбрано для этого контекста, не меняем
-      return;
-    }
-
-    lastPathRef.current = heroVisualKey;
-    imageSelectedForPathRef.current = heroVisualKey;
-
-    // Выбираем изображение из БД
-    if (headerImages.length > 0) {
-      // Используем изображения из БД - случайный выбор
-      const randomIndex = Math.floor(Math.random() * headerImages.length);
-      const imageUrl = headerImages[randomIndex];
-      console.log('🎲 [Hero] Выбрано изображение:', { index: randomIndex, url: imageUrl });
-
-      // Проверяем и исправляем stale localhost URL или bare storage path
-      const cleanImageUrl = normalizeProxyImageUrl(imageUrl);
-      if (cleanImageUrl !== imageUrl) {
-        console.log('🔄 [Hero] Нормализован proxy URL:', {
-          old: imageUrl,
-          new: cleanImageUrl,
-        });
-      }
-
-      // Преобразуем URL в формат для background-image (простой url(), без image-set)
-      const backgroundImageUrl = formatBackgroundImageUrl(cleanImageUrl);
-      setBackgroundImage(backgroundImageUrl);
-
-      // Предзагружаем выбранное изображение для улучшения производительности
-      if (imageUrl && !imageUrl.startsWith('url(')) {
-        const cleanUrl = imageUrl.replace(/^url\(['"]?|['"]?\)$/g, '');
-        const link = document.createElement('link');
-        link.rel = 'preload';
-        link.as = 'image';
-        link.href = cleanUrl;
-
-        // Добавляем только один preload link за раз
-        const existingLink = document.querySelector('link[rel="preload"][as="image"]');
-        if (existingLink) {
-          existingLink.remove();
-        }
-
-        document.head.appendChild(link);
-
-        // Очищаем link через 10 секунд
-        setTimeout(() => {
-          if (link.parentNode) {
-            link.parentNode.removeChild(link);
-          }
-        }, 10000);
-      }
-
-      // Предзагружаем все остальные изображения для быстрого переключения
-      // Это особенно важно для мобильных устройств
-      headerImages.forEach((url, index) => {
-        if (index !== randomIndex && url && !url.startsWith('url(')) {
-          const cleanUrl = url.replace(/^url\(['"]?|['"]?\)$/g, '');
-          // Создаем Image объект для предзагрузки (более надежно, чем link preload)
-          const img = new Image();
-          img.src = cleanUrl;
-          // Не добавляем обработчики ошибок, чтобы не засорять консоль
-          // Изображение просто загрузится в кэш браузера
-        }
-      });
-    } else {
-      console.warn('⚠️ [Hero] Нет изображений для отображения (headerImages пустой)');
-      setBackgroundImage('');
-    }
-  }, [heroVisualKey, headerImages]);
-
   // Пока грузим профиль в artist-режиме — пустой заголовок; иначе имя из API/хранилища либо пусто.
   const catalogArtistMissing = useAppSelector(selectCatalogArtistMissing);
   const isTitlePending =
     hasArtistParam && !catalogArtistMissing && isProfileLoading && !profileDisplayName.trim();
   const displayName = isTitlePending
     ? ''
-    : catalogArtistMissing && !showAwaitingFirstRelease
+    : catalogArtistMissing
       ? ''
       : profileDisplayName.trim() ||
         (hasArtistParam ? readStoredProfileDisplayName() : '') ||
@@ -344,14 +177,16 @@ export function Hero() {
   headerImagesForCanvasRef.current = headerImages;
 
   const ui = useAppSelector((state) => selectUiDictionaryFirst(state, lang));
-  const awaitingCopy = ui?.artistAwaitingFirstRelease;
+  const builderCopy = ui?.artistPageBuilder;
 
   useEffect(() => {
     if (
       !hasArtistParam ||
       !artistParamKey ||
       hideHeroForArtistOnboarding ||
-      showAwaitingFirstRelease
+      hideHeroForLayoutPending ||
+      !isHeaderImagesReady ||
+      !showPublishedHeroChrome
     )
       return;
     const el = heroCanvasRef.current;
@@ -433,36 +268,39 @@ export function Hero() {
       universe?.destroy();
       el.replaceChildren();
     };
-  }, [artistParamKey, hasArtistParam, hideHeroForArtistOnboarding, showAwaitingFirstRelease]);
+  }, [
+    artistParamKey,
+    hasArtistParam,
+    hideHeroForArtistOnboarding,
+    hideHeroForLayoutPending,
+    isHeaderImagesReady,
+    showPublishedHeroChrome,
+  ]);
 
-  if (hideHeroForArtistOnboarding) {
+  if (hideHeroForArtistOnboarding || hideHeroForLayoutPending) {
     return null;
   }
 
+  const heroUsesInlineBackground = Boolean(backgroundImage) && !showHeroImageBuilder;
+
   const heroClassName = [
     'hero',
-    showAwaitingFirstRelease ? 'hero--awaiting-first-release' : '',
-    hasArtistParam && !showAwaitingFirstRelease ? 'hero--navigate-home' : '',
+    showPageBuilderPreReleaseShell ? 'hero--page-builder-pre-release' : '',
+    showOwnerPreReleaseHeroImage ? 'hero--page-builder-pre-release-with-image' : '',
+    showPublishedHeroChrome ? 'hero--navigate-home' : '',
+    showHeroImageBuilder ? 'hero--has-image-builder' : '',
   ]
     .filter(Boolean)
     .join(' ');
-
-  const awaitingBodyCopy = artistPageAccess.isOwner
-    ? (awaitingCopy?.heroBodyOwner ??
-      'A new star has been detected. The first release will ignite this star and bring it into the public constellation.')
-    : (awaitingCopy?.heroBodyVisitor ??
-      'This artist has not yet appeared in the public constellation. The first release will ignite the star and bring this artist into the universe.');
 
   return (
     <section
       className={heroClassName}
       style={
-        showAwaitingFirstRelease || !backgroundImage
-          ? undefined
-          : { backgroundImage: backgroundImage || undefined }
+        heroUsesInlineBackground ? { backgroundImage: backgroundImage || undefined } : undefined
       }
       onClick={
-        hasArtistParam && !showAwaitingFirstRelease
+        showPublishedHeroChrome
           ? () => {
               if (artistParamKey) {
                 sessionStorage.setItem(UNIVERSE_FOCUS_ARTIST_STORAGE_KEY, artistParamKey);
@@ -472,23 +310,27 @@ export function Hero() {
           : undefined
       }
     >
-      {hasArtistParam && !showAwaitingFirstRelease ? (
-        <div ref={heroCanvasRef} className="hero__canvas" />
-      ) : null}
+      {showPublishedHeroChrome ? <div ref={heroCanvasRef} className="hero__canvas" /> : null}
       <div className="hero__content">
         <div className="hero__headline">
-          <h1 className="hero__title">{displayName}</h1>
-          {showAwaitingFirstRelease ? (
-            <div className="hero__awaiting-copy">
-              <p className="hero__awaiting-eyebrow">
-                {awaitingCopy?.heroEyebrow ?? 'New star detected'}
-              </p>
-              <p className="hero__awaiting-body">{awaitingBodyCopy}</p>
-            </div>
-          ) : null}
-          {hasArtistParam && !showAwaitingFirstRelease ? (
-            <div className="hero__archive-slot">
-              <ArtistArchiveButton artistUserId={artistPageMeta?.userId ?? null} />
+          <div className="hero__headline-main">
+            <h1 className="hero__title">{displayName}</h1>
+            {showPublishedHeroChrome ? (
+              <div className="hero__archive-slot">
+                <ArtistArchiveButton artistUserId={artistPageMeta?.userId ?? null} />
+              </div>
+            ) : null}
+          </div>
+          {showHeroImageBuilder ? (
+            <div className="hero__image-slot" aria-hidden={false}>
+              <ArtistPageBuilderBlock
+                layout="section"
+                className="hero__builder-block"
+                icon={<ImagePlusIcon {...artistPageBuilderHeroImageIconProps()} />}
+                title={builderCopy?.hero?.imageTitle ?? 'Band cover'}
+                actionLabel={builderCopy?.hero?.uploadImage ?? 'Upload'}
+                onAction={() => openDashboard('settings')}
+              />
             </div>
           ) : null}
         </div>

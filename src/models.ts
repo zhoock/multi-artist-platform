@@ -338,12 +338,16 @@ export interface IInterface {
     visitorSubtitle?: string;
     visitorCta?: string;
   };
-  artistAwaitingFirstRelease?: {
-    heroEyebrow: string;
-    heroBodyVisitor: string;
-    heroBodyOwner: string;
-    bannerStatus: string;
-    bannerCta: string;
+  artistPageBuilder?: {
+    hero: {
+      imageTitle: string;
+      uploadImage: string;
+    };
+    payment: { text: string; cta: string };
+    albums: { title: string; text: string; cta: string };
+    articles: { title: string; text: string; cta: string };
+    about: { title: string; text: string; cta: string };
+    social: { title: string; text?: string; cta: string };
   };
   /** Кнопка входа/регистрации в шапке; ссылка в кабинет по аватару */
   header?: {

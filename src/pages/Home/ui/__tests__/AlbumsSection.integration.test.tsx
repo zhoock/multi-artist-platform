@@ -4,6 +4,15 @@ import { AlbumsSection } from '../AlbumsSection';
 import { renderWithProviders } from '@shared/lib/test-utils';
 import type { IAlbums, TracksProps } from '@models';
 
+jest.mock('@shared/lib/hooks/useArtistPageBuilder', () => ({
+  useArtistPageBuilder: () => ({
+    builderVisibility: { mode: 'hidden', canShowBlocks: false },
+    canShowBuilderBlocks: false,
+    hasPublicReleases: false,
+    isOwner: false,
+  }),
+}));
+
 describe('AlbumsSection integration tests', () => {
   const mockTrack: TracksProps = {
     id: '1',
@@ -28,6 +37,8 @@ describe('AlbumsSection integration tests', () => {
       tracks: [mockTrack],
       buttons: {},
       details: [],
+      isPublished: true,
+      isPublic: true,
     },
     {
       albumId: 'album-2',
@@ -42,6 +53,8 @@ describe('AlbumsSection integration tests', () => {
       tracks: [mockTrack],
       buttons: {},
       details: [],
+      isPublished: true,
+      isPublic: true,
     },
   ];
 

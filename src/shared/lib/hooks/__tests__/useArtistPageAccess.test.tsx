@@ -16,6 +16,13 @@ jest.mock('@shared/lib/authFetch', () => ({
   fetchWithAuthSession: jest.fn(),
 }));
 
+jest.mock('../useArtistHeroHeaderImages', () => ({
+  useArtistHeroHeaderImages: jest.fn(() => ({
+    headerImages: [],
+    isHeaderImagesReady: true,
+  })),
+}));
+
 jest.mock('@shared/lib/auth', () => {
   const actual = jest.requireActual<typeof import('@shared/lib/auth')>('@shared/lib/auth');
   return {
@@ -131,7 +138,7 @@ describe('useArtistPageAccess — album surface reload', () => {
   });
 });
 
-describe('useArtistPageAccess — awaiting first release', () => {
+describe('useArtistPageAccess — published surface without releases', () => {
   beforeEach(() => {
     jest.mocked(fetchWithAuthSession).mockResolvedValue({
       ok: true,
@@ -146,7 +153,7 @@ describe('useArtistPageAccess — awaiting first release', () => {
     } as Response);
   });
 
-  test('показывает awaiting first release при публичных статьях без релизов', async () => {
+  test('показывает опубликованную страницу при публичных статьях без релизов', async () => {
     const { result } = renderHook(() => useArtistPageAccess('test-artist'), {
       wrapper: createWrapper({
         lang: { current: 'en' },
@@ -196,7 +203,7 @@ describe('useArtistPageAccess — awaiting first release', () => {
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false);
       expect(result.current.showPublished).toBe(true);
-      expect(result.current.showAwaitingFirstRelease).toBe(true);
+      expect(result.current.showArtistPageSurfacePending).toBe(false);
       expect(result.current.hasPublicReleases).toBe(false);
     });
   });
@@ -378,6 +385,76 @@ describe('useArtistPageAccess — owner onboarding after full content removal', 
     await waitFor(() => {
       expect(result.current.showOnboarding).toBe(true);
       expect(result.current.showOwnerUnderConstruction).toBe(false);
+    });
+  });
+});
+
+describe('useArtistPageAccess — owner builder eligibility', () => {
+  beforeEach(() => {
+    jest.mocked(isAuthenticated).mockReturnValue(true);
+    jest.mocked(getUser).mockReturnValue({ id: 'owner-1' } as never);
+    writeCachedOwnPublicSlug('owner-1', 'test-artist');
+    jest.mocked(fetchWithAuthSession).mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        success: true,
+        data: {
+          publicSlug: 'test-artist',
+          theBand: ['Bio paragraph'],
+          headerImages: [],
+          socialLinks: {},
+        },
+      }),
+    } as Response);
+  });
+
+  afterEach(() => {
+    clearCachedOwnPublicSlug();
+  });
+
+  test('владелец после onboarding видит builder без pending surface', async () => {
+    const { result } = renderHook(() => useArtistPageAccess('test-artist'), {
+      wrapper: createWrapper({
+        lang: { current: 'en' },
+        currentArtist: { publicSlug: 'test-artist' },
+        articles: {
+          status: 'succeeded',
+          error: null,
+          data: [],
+          lastUpdated: Date.now(),
+          lastPublicArtistSlug: 'test-artist',
+          dashboard: {
+            status: 'succeeded',
+            error: null,
+            data: [],
+            lastUpdated: null,
+          },
+        },
+        albums: {
+          status: 'succeeded',
+          error: null,
+          data: [],
+          lastUpdated: Date.now(),
+          fetchContextKey: 'public:test-artist',
+          inFlightFetchContextKey: null,
+          catalogArtistMissing: false,
+          dashboard: {
+            status: 'succeeded',
+            error: null,
+            data: [],
+            lastUpdated: null,
+            inFlightFetchContextKey: null,
+          },
+        },
+      }),
+    });
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+      expect(result.current.isOwner).toBe(true);
+      expect(result.current.ownerStillNeedsOnboarding).toBe(false);
+      expect(result.current.showArtistPageSurfacePending).toBe(false);
+      expect(result.current.showPublished).toBe(true);
     });
   });
 });

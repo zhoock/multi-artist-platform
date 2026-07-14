@@ -32,6 +32,7 @@ import {
   profileHasPublicBodyContent,
 } from '@shared/lib/artistPageContent';
 import { fetchOwnArtistPageState } from '@shared/lib/ownArtistPage';
+import { useArtistHeroHeaderImages } from './useArtistHeroHeaderImages';
 
 function normalizeSlug(slug: string): string {
   return slug.trim().toLowerCase();
@@ -57,6 +58,7 @@ export function useArtistPageAccess(artistSlug: string) {
   const articlesCacheStale = useAppSelector(selectArticlesCacheIsStale);
   const publicArticles = useAppSelector(selectArticlesDataResolvedForSurface);
   const hasPublicReleases = useMemo(() => hasPublishedPublicReleases(publicAlbums), [publicAlbums]);
+  const { headerImages, isHeaderImagesReady } = useArtistHeroHeaderImages(artistSlug);
 
   const desiredFetchKey = useMemo(() => buildPublicAlbumsFetchContextKey(artistSlug), [artistSlug]);
 
@@ -324,12 +326,8 @@ export function useArtistPageAccess(artistSlug: string) {
 
   const showOnboardingSkeleton = !catalogArtistMissing && ownerOnboardingResolutionPending;
 
-  const showOwnerUnderConstruction =
-    !catalogArtistMissing &&
-    isOwner &&
-    ownerContentLoaded &&
-    !ownerStillNeedsOnboarding &&
-    !ownerHasPublicPageContent;
+  /** Владелец после onboarding видит реальную страницу с builder-блоками, не under construction. */
+  const showOwnerUnderConstruction = false;
 
   /** Артист существует, но публичного контента ещё нет — для посетителей, не владельца. */
   const showVisitorUnderConstruction =
@@ -339,17 +337,46 @@ export function useArtistPageAccess(artistSlug: string) {
     !visitorArticlesGatePending &&
     !hasVisitorVisibleContent;
 
+  const normalizedArtistSlug = normalizeSlug(artistSlug);
+  const showOwnerIdentityPending =
+    Boolean(normalizedArtistSlug) && isAuthenticated() && !ownerResolved;
+  const showOwnerBuilderResolutionPending =
+    isOwner && ownerResolved && !ownerContentLoaded && !ownerStillNeedsOnboarding;
+  /** Не рисовать visitor/builder UI, пока не подтверждена роль владельца или builder-state. */
+  const showArtistPageSurfacePending =
+    showOwnerIdentityPending || showOwnerBuilderResolutionPending;
+
   const showNotFound =
-    !isLoading && !visitorArticlesGatePending && !hasVisitorVisibleContent && catalogArtistMissing;
+    !isOwner &&
+    !isLoading &&
+    !visitorArticlesGatePending &&
+    !hasVisitorVisibleContent &&
+    catalogArtistMissing;
+
+  /**
+   * Hero зависит от headerImages: до ответа API не показываем страницу с Hero,
+   * чтобы не мигать upload-slot ↔ cover после первого рендера.
+   */
+  const showArtistPageHeroPending =
+    Boolean(normalizedArtistSlug) &&
+    !showOnboarding &&
+    !showOnboardingSkeleton &&
+    !showNotFound &&
+    !showOwnerUnderConstruction &&
+    !showVisitorUnderConstruction &&
+    !showArtistPageSurfacePending &&
+    !isHeaderImagesReady;
+
+  const showArtistPageLayoutPending = showArtistPageSurfacePending || showArtistPageHeroPending;
+
   const showPublished =
     !isLoading &&
+    !showArtistPageLayoutPending &&
     !showOnboarding &&
     !showOnboardingSkeleton &&
     !showNotFound &&
     !showOwnerUnderConstruction &&
     !showVisitorUnderConstruction;
-  /** Публичная страница есть, но релизов ещё нет — артист вне каталога облаков. */
-  const showAwaitingFirstRelease = showPublished && !hasPublicReleases;
   const suppressPublishedArtistChrome =
     showOnboarding ||
     showOnboardingSkeleton ||
@@ -360,6 +387,9 @@ export function useArtistPageAccess(artistSlug: string) {
   return {
     isLoading,
     isOwner,
+    ownerResolved,
+    ownerContentLoaded,
+    ownerStillNeedsOnboarding,
     hasPublicReleases,
     showOnboarding,
     showOnboardingSkeleton,
@@ -367,7 +397,11 @@ export function useArtistPageAccess(artistSlug: string) {
     showVisitorUnderConstruction,
     showNotFound,
     showPublished,
-    showAwaitingFirstRelease,
+    showArtistPageSurfacePending,
+    showArtistPageHeroPending,
+    showArtistPageLayoutPending,
+    headerImages,
+    isHeaderImagesReady,
     suppressPublishedArtistChrome,
   };
 }
