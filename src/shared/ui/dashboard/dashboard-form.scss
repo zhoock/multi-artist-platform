@@ -88,9 +88,9 @@
 }
 
 .dashboard-form-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   padding: var(--ms-01) var(--ms-0);
-
-  @include dashboard-helper-text;
-
-  line-height: 1.5;
+  min-height: 2.5rem;
 }

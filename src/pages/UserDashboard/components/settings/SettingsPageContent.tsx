@@ -17,6 +17,8 @@ import {
   DashboardRowValue,
   DashboardRowValueWrap,
   DashboardSection,
+  DashboardSpinner,
+  DashboardLoadingState,
 } from '@shared/ui/dashboard';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 import { StatusBadge } from '@shared/ui/statusBadge';
@@ -97,6 +99,7 @@ export function SettingsPageContent({
     handleNameBlur,
     isLoadingAboutText,
     isLoadingHeaderImages,
+    hasLoadedOnce,
     isBusy,
   } = useSettingsPage({ enabled, userName });
 
@@ -138,6 +141,10 @@ export function SettingsPageContent({
     }
     setVerificationEmailError(resolution.message);
   }, [emailVerificationCopy, isCoolingDown, isSendingVerificationEmail, startCooldown]);
+
+  if (enabled && !hasLoadedOnce) {
+    return <DashboardLoadingState className="user-dashboard__tab-loading" />;
+  }
 
   return (
     <>
@@ -193,7 +200,7 @@ export function SettingsPageContent({
                       aria-live="polite"
                       aria-busy="true"
                     >
-                      <div className="user-dashboard__settings-page__avatar-spinner" />
+                      <DashboardSpinner className="user-dashboard__settings-page__avatar-spinner" />
                     </div>
                   ) : null}
                 </div>
@@ -284,8 +291,8 @@ export function SettingsPageContent({
                   variant="start"
                 >
                   {isLoadingAboutText ? (
-                    <div className="dashboard-form-loading">
-                      {d?.loading ?? d?.uploading ?? 'Loading…'}
+                    <div className="dashboard-form-loading" aria-busy="true">
+                      <DashboardSpinner />
                     </div>
                   ) : (
                     <textarea
@@ -312,8 +319,8 @@ export function SettingsPageContent({
             <DashboardCard>
               <div className="user-dashboard__settings-page__header-images">
                 {isLoadingHeaderImages ? (
-                  <div className="dashboard-form-loading">
-                    {d?.loading ?? d?.uploading ?? 'Loading…'}
+                  <div className="dashboard-form-loading" aria-busy="true">
+                    <DashboardSpinner />
                   </div>
                 ) : (
                   <HeaderImagesUpload

@@ -40,9 +40,11 @@ describe('PaymentSettings', () => {
   it('renders loading state', () => {
     usePaymentSettingsMock.mockReturnValue(baseHookReturn({ loading: true }));
 
-    renderWithProviders(<PaymentSettings userId="user-1" />);
+    const { container } = renderWithProviders(<PaymentSettings userId="user-1" />);
 
-    expect(screen.getByText('Loading...')).toBeTruthy();
+    expect(
+      container.querySelector('.dashboard-loading-state.payment-settings__loading')
+    ).toBeTruthy();
   });
 
   it('renders disconnected state with dashboard kit layout and connect CTA', () => {

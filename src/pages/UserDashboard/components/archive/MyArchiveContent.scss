@@ -42,7 +42,8 @@ dialog {
           padding-bottom: calc(var(--ms-1) + 4.5rem);
         }
 
-        &--empty {
+        &--empty,
+        &--loading {
           flex: 1;
           min-height: min(480px, 58vh);
         }
@@ -176,18 +177,15 @@ dialog {
         border-radius: 50%;
       }
 
-      &__loading,
+      &__loading {
+        flex: 1;
+        min-height: min(240px, 40vh);
+      }
+
       &__error {
         padding: var(--ms-01) 0;
-        font-size: var(--dashboard-font-size);
-      }
-
-      &__loading {
-        color: var(--dashboard-text-secondary);
-      }
-
-      &__error {
         color: var(--soft-red);
+        font-size: var(--dashboard-font-size);
       }
 
       &__inactive-toolbar {

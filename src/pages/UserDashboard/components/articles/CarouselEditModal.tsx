@@ -1,8 +1,9 @@
 // src/pages/UserDashboard/components/CarouselEditModal.tsx
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
-import { Loader2 as Loader2Icon, Plus as PlusIcon, X as XIcon } from 'lucide-react';
+import { Plus as PlusIcon, X as XIcon } from 'lucide-react';
 import { getUserImageUrl } from '@shared/api/albums';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
+import { DashboardSpinner } from '@shared/ui/dashboard';
 import { optionalMediaSrc } from '@shared/lib/media/optionalMediaUrl';
 import { ArticleCoverPlaceholder } from '@entities/article';
 import { uploadFile } from '@shared/api/storage';
@@ -164,10 +165,7 @@ export function CarouselEditModal({
                   aria-label={isUploading ? 'Загрузка изображений' : 'Добавить изображения'}
                 >
                   {isUploading ? (
-                    <Loader2Icon
-                      {...dashboardActionIconProps({ size: 20 })}
-                      className="edit-article-v2__carousel-edit-add-spinner"
-                    />
+                    <DashboardSpinner className="edit-article-v2__carousel-edit-add-spinner" />
                   ) : (
                     <PlusIcon {...dashboardActionIconProps({ size: 20 })} />
                   )}

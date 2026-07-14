@@ -56,10 +56,13 @@
   &__avatar-spinner {
     width: 1.25rem;
     height: 1.25rem;
-    border: 2px solid rgb(255 255 255 / 25%);
+    border-color: rgb(255 255 255 / 25%);
+    border-right-color: transparent;
     border-top-color: var(--dark-greenish-yellow);
-    border-radius: 50%;
-    animation: settings-page-avatar-spin 0.8s linear infinite;
+  }
+
+  &__profile-loading {
+    min-height: 8rem;
   }
 
   &__avatar-actions {
@@ -136,11 +139,5 @@
     height: 1px;
     opacity: 0;
     pointer-events: none;
-  }
-}
-
-@keyframes settings-page-avatar-spin {
-  to {
-    transform: rotate(360deg);
   }
 }

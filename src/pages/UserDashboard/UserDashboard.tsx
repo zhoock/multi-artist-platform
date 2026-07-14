@@ -22,7 +22,7 @@ import { toLocalYYYYMMDD } from '@shared/lib/dateCalendar';
 import { Popup, PopupCloseButton } from '@shared/ui/popup';
 import { ConfirmationModal } from '@shared/ui/confirmationModal';
 import { AlertModal } from '@shared/ui/alertModal';
-import { DashboardButton } from '@shared/ui/dashboard';
+import { DashboardButton, DashboardLoadingState } from '@shared/ui/dashboard';
 import { ModalCloseIcon } from '@shared/ui/icons/ModalCloseIcon';
 import {
   isAuthenticated,
@@ -101,8 +101,6 @@ import { EditAlbumModal, type AlbumFormData } from './components/modals/album/Ed
 import { EditArticleModalV2 } from './components/modals/article/EditArticleModalV2';
 import { DashboardNavTabIcon } from './lib/dashboardNavTabIcon';
 import { useDashboardRowFlash } from './lib/dashboardRowStateFlash';
-import { DashboardTabContentSkeleton } from './components/DashboardTabContentSkeleton';
-import { SettingsTabSkeleton } from './components/SettingsTabSkeleton';
 import { SyncLyricsModal } from './components/modals/lyrics/SyncLyricsModal';
 import { SettingsPageContent } from './components/settings/SettingsPageContent';
 import { usePublicProfilePreview } from './components/profile/usePublicProfilePreview';
@@ -327,6 +325,18 @@ function UserDashboard() {
   const isListener = isListenerAccount(user);
 
   const [isUpgradeToArtistModalOpen, setIsUpgradeToArtistModalOpen] = useState(false);
+  const archiveTabEverVisitedRef = useRef(activeTab === 'archive');
+  const [archiveContentReady, setArchiveContentReady] = useState(false);
+  if (activeTab === 'archive') {
+    archiveTabEverVisitedRef.current = true;
+  }
+  const handleArchiveContentReady = useCallback(() => {
+    setArchiveContentReady(true);
+  }, []);
+  const handleArchiveContentBusy = useCallback(() => {
+    setArchiveContentReady(false);
+  }, []);
+
   const [isDeleteAccountModalOpen, setIsDeleteAccountModalOpen] = useState(false);
   const { data: publicProfilePreview } = usePublicProfilePreview(userId, lang);
   const profilePublicSlug = publicProfilePreview.publicSlug;
@@ -760,7 +770,7 @@ function UserDashboard() {
     }
 
     // Пока fetchAlbums в полёте, в store ещё предыдущий снимок; не пересобираем albumsData
-    // (вкладка Albums — skeleton; миксер/модалки сохраняют последний валидный список).
+    // (вкладка Albums — loader; миксер/модалки сохраняют последний валидный список).
     if (albumsStatus === 'loading') {
       return;
     }
@@ -1877,14 +1887,11 @@ function UserDashboard() {
 
               {/* Content area: стабильная оболочка; вкладки скрыты через hidden, не размонтируются */}
               <div className="user-dashboard__content user-dashboard__tab-shell">
-                {/* На первой загрузке альбомов: свой скелетон под активную вкладку */}
                 {albumsInitialLoading &&
                 !albumsLoadFailed &&
                 activeTab === 'albums' &&
                 emailVerified ? (
-                  <DashboardTabContentSkeleton />
-                ) : albumsInitialLoading && !albumsLoadFailed && activeTab === 'settings' ? (
-                  <SettingsTabSkeleton />
+                  <DashboardLoadingState className="user-dashboard__tab-loading" />
                 ) : albumsLoadFailed ? (
                   <div
                     className="user-dashboard__error user-dashboard__error--tab-shell"
@@ -1936,6 +1943,8 @@ function UserDashboard() {
                       >
                         {!emailVerified ? (
                           <EmailVerificationOnboarding context="mixer" />
+                        ) : albumsInitialLoading ? (
+                          <DashboardLoadingState className="user-dashboard__tab-loading" />
                         ) : albumsData.length === 0 ? (
                           <MixerEmptyState
                             ui={ui}
@@ -1952,11 +1961,27 @@ function UserDashboard() {
                       </div>
                     ) : null}
                     <div
-                      className="user-dashboard__tab-panel"
+                      className="user-dashboard__tab-panel user-dashboard__tab-panel--archive"
                       hidden={activeTab !== 'archive'}
                       aria-hidden={activeTab !== 'archive'}
                     >
-                      <MyArchiveContent active={activeTab === 'archive'} />
+                      {activeTab === 'archive' && !archiveContentReady ? (
+                        <DashboardLoadingState className="user-dashboard__tab-loading" />
+                      ) : null}
+                      {archiveTabEverVisitedRef.current ? (
+                        <div
+                          className={clsx(
+                            'user-dashboard__archive-content',
+                            !archiveContentReady && 'user-dashboard__archive-content--pending'
+                          )}
+                        >
+                          <MyArchiveContent
+                            active={activeTab === 'archive'}
+                            onContentReady={handleArchiveContentReady}
+                            onContentBusy={handleArchiveContentBusy}
+                          />
+                        </div>
+                      ) : null}
                     </div>
                     {isArtist ? (
                       <div

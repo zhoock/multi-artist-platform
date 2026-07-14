@@ -8,7 +8,7 @@ import { formatDate } from '@shared/api/albums';
 import { EmailVerificationOnboarding } from '@shared/lib/emailVerification';
 import { normalizeTrackVisibility, type TrackVisibility } from '@shared/lib/tracks/trackVisibility';
 import type { SupportedLang } from '@shared/model/lang';
-import { DashboardCard, DashboardButton } from '@shared/ui/dashboard';
+import { DashboardButton, DashboardCard, DashboardLoadingState } from '@shared/ui/dashboard';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 import {
   getDashboardRowFlashProps,
@@ -17,7 +17,6 @@ import {
 import { ArticleAccessControl } from './ArticleAccessControl';
 import { ArticleListStatus } from './ArticleListStatus';
 import { ArticlesEmptyState } from './ArticlesEmptyState';
-import { ArticlesListSkeleton } from './ArticlesListSkeleton';
 import { getArticleListDraftBadge, isArticlePublished } from './articleVisibilityOptions';
 
 type PostsTabContentProps = {
@@ -55,10 +54,10 @@ export function PostsTabContent({
     return <EmailVerificationOnboarding context="posts" />;
   }
 
-  if (articlesStatus === 'loading') {
+  if (articlesStatus === 'loading' || (articlesStatus === 'idle' && articles.length === 0)) {
     return (
       <div className="user-dashboard__section">
-        <ArticlesListSkeleton count={4} />
+        <DashboardLoadingState className="user-dashboard__tab-loading" />
       </div>
     );
   }

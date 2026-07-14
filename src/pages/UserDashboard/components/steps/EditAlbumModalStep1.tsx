@@ -1,5 +1,5 @@
 // src/pages/UserDashboard/components/steps/EditAlbumModalStep1.tsx
-import React from 'react';
+import { DashboardSpinner } from '@shared/ui/dashboard';
 import type { AlbumFormData } from '../modals/album/EditAlbumModal.types';
 import { formatDateInput } from '../modals/album/EditAlbumModal.utils';
 
@@ -159,14 +159,14 @@ export function EditAlbumModalStep1({
               )}
 
               {uploadStatus === 'uploading' && (
-                <div className="edit-album-modal__art-status">
+                <div className="edit-album-modal__art-status" aria-busy="true">
+                  <DashboardSpinner className="edit-album-modal__art-status-spinner" />
                   <div className="edit-album-modal__art-progress">
                     <div
                       className="edit-album-modal__art-progress-bar"
                       style={{ width: `${uploadProgress}%` }}
                     />
                   </div>
-                  <span className="edit-album-modal__art-status-text">Uploading...</span>
                 </div>
               )}
 

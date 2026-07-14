@@ -49,7 +49,7 @@ describe('MyPurchasesContent', () => {
       expect(getMyPurchasesMock).toHaveBeenCalled();
     });
 
-    expect(container.querySelector('.my-purchases__loading')).toBeTruthy();
+    expect(container.querySelector('.dashboard-loading-state.my-purchases__loading')).toBeTruthy();
   });
 
   it('renders empty state when there are no purchases', async () => {

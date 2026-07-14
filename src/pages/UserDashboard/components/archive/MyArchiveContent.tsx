@@ -1,4 +1,12 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+} from 'react';
 import clsx from 'clsx';
 import { Link } from 'react-router-dom';
 
@@ -48,16 +56,19 @@ function canRemoveArtist(artist: MyArchiveArtist, isPremium: boolean): boolean {
 
 type Props = {
   active: boolean;
+  onContentReady?: () => void;
+  onContentBusy?: () => void;
 };
 
-export function MyArchiveContent({ active }: Props) {
+export function MyArchiveContent({ active, onContentReady, onContentBusy }: Props) {
   const { lang } = useLang() as { lang: 'ru' | 'en' };
   const dispatch = useAppDispatch();
   const ui = useAppSelector((state) => selectUiDictionaryFirst(state, lang));
   const { open: openSupportModal, startCheckout } = useArchiveAccessModal();
 
   const [data, setData] = useState<MyArchiveData | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [activatingId, setActivatingId] = useState<string | null>(null);
@@ -67,8 +78,14 @@ export function MyArchiveContent({ active }: Props) {
   const [renewLoading, setRenewLoading] = useState(false);
   const [removedToastTrigger, setRemovedToastTrigger] = useState(0);
   const skipNextArchiveReloadRef = useRef(false);
+  const loadErrorTextRef = useRef<string | null>(null);
+  const onContentReadyRef = useRef(onContentReady);
+  const onContentBusyRef = useRef(onContentBusy);
 
   const t = ui?.dashboard?.archive;
+  loadErrorTextRef.current = t?.loadError ?? null;
+  onContentReadyRef.current = onContentReady;
+  onContentBusyRef.current = onContentBusy;
 
   const showRemovalToast = useCallback(
     (kind: RemovalToastKind, count = 1) => {
@@ -96,6 +113,7 @@ export function MyArchiveContent({ active }: Props) {
 
   const loadArchive = useCallback(async () => {
     setLoading(true);
+    onContentBusyRef.current?.();
     setError(null);
     try {
       const next = normalizeCollectionArchive(await getMyArchive());
@@ -105,18 +123,25 @@ export function MyArchiveContent({ active }: Props) {
       setError(
         err instanceof Error
           ? err.message
-          : (t?.loadError ??
+          : (loadErrorTextRef.current ??
               (lang === 'en' ? 'Failed to load collection' : 'Не удалось загрузить коллекцию'))
       );
     } finally {
       setLoading(false);
+      setHasLoadedOnce(true);
     }
-  }, [lang, t?.loadError]);
+  }, [lang]);
 
   useEffect(() => {
     if (!active) return;
     void loadArchive();
   }, [active, loadArchive]);
+
+  useLayoutEffect(() => {
+    if (hasLoadedOnce && !loading) {
+      onContentReadyRef.current?.();
+    }
+  }, [hasLoadedOnce, loading]);
 
   useEffect(() => {
     if (!active) return;
@@ -506,18 +531,12 @@ export function MyArchiveContent({ active }: Props) {
   const showCollectionEmptyState = Boolean(
     data && !loading && !error && !isPremium && isCollectionEmpty
   );
+  // Пока идёт загрузка или нет данных — не рисуем summary «0 / 3» (пустая оболочка).
+  // Parent показывает DashboardLoadingState через onContentBusy / !archiveContentReady.
+  const shouldBlockShell = !hasLoadedOnce || loading || (!data && !error);
 
-  if (loading && !data) {
-    return (
-      <>
-        <section className="collection__tab">
-          <div className="collection__loading" aria-busy="true">
-            {t?.loading ?? (lang === 'en' ? 'Loading collection…' : 'Загрузка коллекции…')}
-          </div>
-        </section>
-        <ArchiveArtistRemovedToast triggerKey={removedToastTrigger} />
-      </>
-    );
+  if (shouldBlockShell) {
+    return <ArchiveArtistRemovedToast triggerKey={removedToastTrigger} />;
   }
 
   if (showCollectionEmptyState) {

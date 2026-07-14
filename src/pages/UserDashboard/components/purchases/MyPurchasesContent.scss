@@ -4,9 +4,8 @@ dialog {
   .user-dashboard {
     .my-purchases {
       &__loading {
-        margin: 0;
-
-        @include dashboard-helper-text;
+        flex: 1;
+        min-height: min(240px, 40vh);
       }
 
       &__error {
@@ -120,32 +119,8 @@ dialog {
       }
 
       &__download-spinner {
-        display: inline-block;
         width: 14px;
         height: 14px;
-        flex-shrink: 0;
-        animation: my-purchases-download-spinner-spin 0.8s linear infinite;
-
-        circle {
-          stroke: currentcolor;
-          stroke-width: 2;
-        }
-
-        path {
-          stroke: currentcolor;
-          stroke-width: 2;
-          stroke-linecap: round;
-        }
-      }
-
-      @keyframes my-purchases-download-spinner-spin {
-        from {
-          transform: rotate(0deg);
-        }
-
-        to {
-          transform: rotate(360deg);
-        }
       }
     }
   }

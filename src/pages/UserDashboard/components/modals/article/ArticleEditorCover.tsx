@@ -6,7 +6,7 @@ import { ArticleCoverImage, ArticleCoverPlaceholder } from '@entities/article';
 import type { IInterface } from '@models';
 import type { SupportedLang } from '@shared/model/lang';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
-import { DashboardButton } from '@shared/ui/dashboard';
+import { DashboardButton, DashboardSpinner } from '@shared/ui/dashboard';
 
 import type { ArticleCoverUploadState } from './useArticleEditorCover';
 
@@ -18,7 +18,6 @@ type ArticleEditorCoverTexts = {
   replaceCover: string;
   removeCover: string;
   recommendedResolution: string;
-  uploading: string;
 };
 
 type ArticleEditorCoverProps = {
@@ -82,10 +81,12 @@ export function ArticleEditorCover({
             )}
 
             {isUploading ? (
-              <div className="edit-article-v2__cover-upload-overlay" aria-live="polite">
-                <span className="edit-article-v2__cover-upload-overlay-text">
-                  {texts.uploading}
-                </span>
+              <div
+                className="edit-article-v2__cover-upload-overlay"
+                aria-live="polite"
+                aria-busy="true"
+              >
+                <DashboardSpinner className="edit-article-v2__cover-upload-spinner" />
                 <div className="edit-article-v2__cover-progress">
                   <div
                     className="edit-article-v2__cover-progress-bar"
@@ -141,14 +142,14 @@ export function ArticleEditorCover({
           </label>
 
           {isUploading ? (
-            <div className="edit-article-v2__cover-status">
+            <div className="edit-article-v2__cover-status" aria-busy="true">
+              <DashboardSpinner className="edit-article-v2__cover-upload-spinner" />
               <div className="edit-article-v2__cover-progress">
                 <div
                   className="edit-article-v2__cover-progress-bar"
                   style={{ width: `${uploadState.progress}%` }}
                 />
               </div>
-              <span className="edit-article-v2__cover-status-text">{texts.uploading}</span>
             </div>
           ) : null}
         </div>
@@ -183,6 +184,5 @@ export function getArticleEditorCoverTexts(
     recommendedResolution: en
       ? 'Recommended resolution: 2400×1350 px (16:9)'
       : 'Рекомендуемое разрешение: 2400×1350 px (16:9)',
-    uploading: d?.uploading ?? (en ? 'Uploading...' : 'Загрузка...'),
   };
 }

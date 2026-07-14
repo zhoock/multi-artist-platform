@@ -12,7 +12,8 @@ dialog {
       color: var(--dashboard-text-primary);
 
       &__loading {
-        @include dashboard-helper-text;
+        flex: 1;
+        min-height: min(240px, 40vh);
       }
 
       &__error {

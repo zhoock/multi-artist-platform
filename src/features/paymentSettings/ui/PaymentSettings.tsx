@@ -12,6 +12,7 @@ import {
   DashboardCard,
   DashboardRow,
   DashboardSection,
+  DashboardLoadingState,
 } from '@shared/ui/dashboard';
 import { DashboardSaveSpinner } from '@shared/ui/dashboard-save/DashboardSaveSpinner';
 import { usePaymentSettings } from '../model/usePaymentSettings';
@@ -305,7 +306,7 @@ export function PaymentSettings({ userId }: PaymentSettingsProps) {
   if (loading) {
     return (
       <div className="payment-settings">
-        <div className="payment-settings__loading">{copy?.loading ?? 'Loading...'}</div>
+        <DashboardLoadingState className="payment-settings__loading" />
       </div>
     );
   }

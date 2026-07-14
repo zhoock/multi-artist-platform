@@ -48,6 +48,7 @@ export function useSettingsPage({ enabled, userName = '' }: UseSettingsPageOptio
   const [isLoadingProfile, setIsLoadingProfile] = useState(false);
   const [isLoadingAboutText, setIsLoadingAboutText] = useState(false);
   const [isLoadingHeaderImages, setIsLoadingHeaderImages] = useState(false);
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [isSavingAboutText, setIsSavingAboutText] = useState(false);
 
@@ -389,9 +390,9 @@ export function useSettingsPage({ enabled, userName = '' }: UseSettingsPageOptio
       }
     };
 
-    void loadSiteName();
-    void loadAboutText();
-    void loadHeaderImages();
+    void Promise.all([loadSiteName(), loadAboutText(), loadHeaderImages()]).finally(() => {
+      setHasLoadedOnce(true);
+    });
   }, [currentLang, enabled, userName]);
 
   useEffect(() => {
@@ -424,6 +425,7 @@ export function useSettingsPage({ enabled, userName = '' }: UseSettingsPageOptio
     isLoadingProfile,
     isLoadingAboutText,
     isLoadingHeaderImages,
+    hasLoadedOnce,
     isSavingProfile,
     isSavingAboutText,
     isBusy: isSavingProfile || isSavingAboutText,

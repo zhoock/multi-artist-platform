@@ -5,7 +5,12 @@ import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 import { useLang } from '@app/providers/lang';
 import { getToken } from '@shared/lib/auth';
 import { fetchWithAuthSession } from '@shared/lib/authFetch';
-import { DashboardButton, DashboardCard, DashboardRow } from '@shared/ui/dashboard';
+import {
+  DashboardButton,
+  DashboardCard,
+  DashboardLoadingState,
+  DashboardRow,
+} from '@shared/ui/dashboard';
 import '@shared/ui/dashboard-save/dashboard-save.scss';
 import {
   EMPTY_SOCIAL_LINKS_FORM,
@@ -131,6 +136,10 @@ export function SocialLinksContent({ active }: SocialLinksContentProps) {
   const updateField = (platform: SocialPlatform, value: string) => {
     setForm((current) => ({ ...current, [platform]: value }));
   };
+
+  if (!hasLoaded) {
+    return <DashboardLoadingState className="social-links__loading" />;
+  }
 
   return (
     <div className="social-links">

@@ -14,7 +14,7 @@ import { fetchWithAuthSession } from '@shared/lib/authFetch';
 import { useSiteArtistDisplayName } from '@shared/lib/hooks/useSiteArtistDisplayName';
 import { readStoredProfileDisplayName } from '@shared/lib/profileDisplayName';
 import { getUserImageUrl } from '@shared/api/albums';
-import { DashboardLoadingState } from '@shared/ui/dashboard';
+import { DashboardLoadingState, DashboardSpinner } from '@shared/ui/dashboard';
 import { getAlbumStorageBaseName } from '@shared/lib/albumCoverUrl';
 import { uploadCoverDraft, commitCover } from '@shared/api/albums/cover';
 import type { IAlbums, detailsProps } from '@models';
@@ -2777,16 +2777,14 @@ export function EditAlbumModal({
                   )}
 
                   {uploadStatus === 'uploading' && (
-                    <div className="edit-album-modal__art-status">
+                    <div className="edit-album-modal__art-status" aria-busy="true">
+                      <DashboardSpinner className="edit-album-modal__art-status-spinner" />
                       <div className="edit-album-modal__art-progress">
                         <div
                           className="edit-album-modal__art-progress-bar"
                           style={{ width: `${uploadProgress}%` }}
                         />
                       </div>
-                      <span className="edit-album-modal__art-status-text">
-                        {ui?.dashboard?.editAlbumModal?.status?.uploading ?? 'Uploading...'}
-                      </span>
                     </div>
                   )}
 

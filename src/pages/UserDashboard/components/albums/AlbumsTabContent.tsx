@@ -30,6 +30,7 @@ import {
   DashboardButton,
   DashboardCard,
   DashboardExpandableRowTrigger,
+  DashboardLoadingState,
 } from '@shared/ui/dashboard';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 import {
@@ -38,7 +39,6 @@ import {
 } from '../../lib/dashboardRowStateFlash';
 import { DashboardExpandChevron } from '../../lib/dashboardExpandChevron';
 import { useDashboardAccordionOnboarding } from '../../lib/dashboardAccordionOnboarding';
-import { ArticlesListSkeleton } from '../articles/ArticlesListSkeleton';
 import { AlbumAccessControl } from './AlbumAccessControl';
 import { AlbumLifecycleBadge } from './AlbumLifecycleBadge';
 import { AlbumsEmptyState } from './AlbumsEmptyState';
@@ -210,7 +210,7 @@ export function AlbumsTabContent({
   if (initialLoading) {
     return (
       <div className="user-dashboard__section">
-        <ArticlesListSkeleton count={4} />
+        <DashboardLoadingState className="user-dashboard__tab-loading" />
       </div>
     );
   }

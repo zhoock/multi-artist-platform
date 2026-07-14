@@ -91,7 +91,7 @@ import { uploadArticleBlockImage } from '../../blocks/uploadArticleBlockImage';
 import type { FormatType } from '../../blocks/BlockParagraph';
 import { SlashMenu } from '../../blocks/SlashMenu';
 import { CarouselEditModal } from '../../articles/CarouselEditModal';
-import { ArticleEditSkeleton } from '../../articles/ArticleEditSkeleton';
+import { DashboardLoadingState } from '@shared/ui/dashboard';
 import { ArticleEditorCover, getArticleEditorCoverTexts } from './ArticleEditorCover';
 import { useArticleEditorCover } from './useArticleEditorCover';
 import { DashboardSaveSpinner } from '@shared/ui/dashboard-save/DashboardSaveSpinner';
@@ -2241,8 +2241,7 @@ export function EditArticleModalV2({
       >
         <ArticleEditorToast payload={editorToast} onDismiss={() => setEditorToast(null)} />
         {isLoading ? (
-          //   {true ? (
-          <ArticleEditSkeleton />
+          <DashboardLoadingState className="edit-article-v2__loading" />
         ) : (
           <div className="edit-article-v2">
             <div

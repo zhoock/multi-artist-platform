@@ -9,10 +9,9 @@ import {
   RefreshCw as RefreshCwIcon,
   Pencil as PencilIcon,
   Trash2 as Trash2Icon,
-  Loader2 as Loader2Icon,
 } from 'lucide-react';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
-import { DashboardButton } from '@shared/ui/dashboard';
+import { DashboardButton, DashboardSpinner } from '@shared/ui/dashboard';
 import { StemIcon, type StemMeta } from '@entities/stem';
 
 export interface StemRowLabels {
@@ -139,7 +138,7 @@ export function SortableStemRow({
       <div className="mixer-stem__actions">
         {busy ? (
           <span className="mixer-stem__spinner" aria-hidden>
-            <Loader2Icon {...dashboardActionIconProps({ size: 18 })} />
+            <DashboardSpinner />
           </span>
         ) : (
           <>

@@ -1177,6 +1177,11 @@ dialog {
       font-size: var(--ms-0);
       text-align: center;
     }
+
+    &__loading {
+      flex: 1;
+      min-height: min(480px, 58vh);
+    }
   }
 }
 

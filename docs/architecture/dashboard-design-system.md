@@ -160,9 +160,11 @@ Logout · Change email · Change password · Download · Upload · Choose file �
 
 | Паттерн                                     | Когда                              |
 | ------------------------------------------- | ---------------------------------- |
-| **Skeleton**                                | Известна структура списка/карточек |
-| `DashboardLoadingState`                     | Ожидание данных в модалке          |
+| `DashboardLoadingState`                     | Загрузка вкладки, модалки, раздела |
+| `DashboardSpinner`                          | Inline-загрузка внутри элемента    |
 | `DashboardButton variant="primary" loading` | User-action (Save, Publish)        |
+
+Skeleton в Dashboard **не используется**.
 
 ---
 

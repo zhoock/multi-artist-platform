@@ -28,6 +28,7 @@ import {
   DashboardCard,
   DashboardEmptyState,
   DashboardExpandableRowTrigger,
+  DashboardLoadingState,
 } from '@shared/ui/dashboard';
 import './MixerAdmin.scss';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
@@ -151,7 +152,6 @@ export function MixerAdmin({ ui, userId, albums = [], tabActive = true }: MixerA
       emptyDescription: t.stemsEmptyDescription ?? 'Добавьте первый стем для этого трека.',
       noTracks: t.noTracks ?? 'Нет треков в альбоме',
       tracks: t.tracks ?? 'Tracks',
-      loading: t.loading ?? 'Загрузка…',
     }),
     [t]
   );
@@ -601,9 +601,7 @@ export function MixerAdmin({ ui, userId, albums = [], tabActive = true }: MixerA
                                 {isTrackOpen && (
                                   <div className="user-dashboard__expanded-track-body">
                                     {isLoading ? (
-                                      <div className="mixer-admin__placeholder">
-                                        {labels.loading}
-                                      </div>
+                                      <DashboardLoadingState className="mixer-admin__track-loading" />
                                     ) : stems.length === 0 ? (
                                       <DashboardEmptyState
                                         variant="card"

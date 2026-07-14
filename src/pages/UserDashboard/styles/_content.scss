@@ -40,52 +40,27 @@ dialog {
       }
     }
 
-    &__tab-skeleton {
+    &__tab-loading {
       flex: 1;
-      display: flex;
-      flex-direction: column;
-      gap: var(--ms-1);
       min-height: min(480px, 58vh);
     }
 
-    &__tab-skeleton-title {
-      max-width: 12rem;
-      height: 1.25rem;
+    &__tab-panel--archive {
+      position: relative;
     }
 
-    /** Скелетон вкладки Settings */
-    &__settings-tab-skeleton {
-      .user-dashboard__settings-skeleton-inner {
-        display: flex;
-        flex-direction: column;
-        gap: var(--ms-1);
-      }
+    &__archive-content {
+      display: flex;
+      flex: 1;
+      flex-direction: column;
+      min-height: 0;
+      min-width: 0;
 
-      .user-dashboard__settings-skeleton-section {
-        display: flex;
-        flex-direction: column;
-        gap: var(--ms-02);
-      }
-
-      .user-dashboard__settings-skeleton-section-title {
-        inline-size: min(40%, 8rem);
-      }
-
-      .user-dashboard__settings-skeleton-card {
-        display: flex;
-        flex-direction: column;
-        gap: 0;
-      }
-
-      .user-dashboard__settings-skeleton-field {
-        grid-template-columns: minmax(6rem, 36%) minmax(0, 1fr);
-        gap: var(--ms-02);
-        align-items: center;
-      }
-
-      .user-dashboard__settings-skeleton-input {
-        inline-size: 100%;
-        max-width: 100%;
+      &--pending {
+        visibility: hidden;
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
       }
     }
 
@@ -403,12 +378,7 @@ dialog {
 
     // После всех менее специфичных `img` в этом файле (stylelint no-descending-specificity)
     &__album-thumbnail--cover-loading {
-      .skeleton--image {
-        position: absolute;
-        inset: 0;
-        z-index: 0;
-        background: var(--iron-slate);
-      }
+      background: var(--iron-slate);
 
       .user-dashboard__album-cover-img--visible,
       img {

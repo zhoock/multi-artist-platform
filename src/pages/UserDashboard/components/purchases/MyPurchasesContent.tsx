@@ -10,6 +10,8 @@ import {
   DashboardCard,
   DashboardRow,
   DashboardRowValue,
+  DashboardLoadingState,
+  DashboardSpinner,
 } from '@shared/ui/dashboard';
 import {
   downloadAlbumZip,
@@ -33,28 +35,6 @@ function triggerBlobDownload(blob: Blob, filename: string) {
   link.click();
   document.body.removeChild(link);
   window.URL.revokeObjectURL(downloadUrl);
-}
-
-function DownloadSpinner() {
-  return (
-    <svg
-      className="my-purchases__download-spinner"
-      width="14"
-      height="14"
-      viewBox="0 0 14 14"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      aria-hidden
-    >
-      <circle cx="7" cy="7" r="6" stroke="currentColor" strokeWidth="2" strokeOpacity="0.3" />
-      <path
-        d="M 7 1 A 6 6 0 0 1 13 7"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
 }
 
 function getPurchaseCoverUrl(purchase: Purchase) {
@@ -216,17 +196,13 @@ export function MyPurchasesContent() {
     <>
       {!loading && !error && purchases.length === 0 ? (
         <MyPurchasesEmptyState ui={ui} />
+      ) : loading ? (
+        <DashboardLoadingState className="my-purchases__loading" />
       ) : (
         <div className="user-dashboard__section">
-          {loading && (
-            <p className="my-purchases__loading">
-              {copy?.loadingPurchases ?? 'Loading purchases...'}
-            </p>
-          )}
+          {error && <div className="my-purchases__error">{error}</div>}
 
-          {error && !loading && <div className="my-purchases__error">{error}</div>}
-
-          {!loading && !error && purchases.length > 0 && (
+          {!error && purchases.length > 0 && (
             <div className="my-purchases__list">
               {purchases.map((purchase) => (
                 <DashboardCard key={purchase.id} className="my-purchases__card">
@@ -268,10 +244,7 @@ export function MyPurchasesContent() {
                         onClick={() => void handleDownloadAlbum(purchase)}
                       >
                         {downloadingAlbums.has(purchase.id) ? (
-                          <>
-                            <DownloadSpinner />
-                            {copy?.preparingDownload ?? 'Preparing download...'}
-                          </>
+                          <DashboardSpinner className="my-purchases__download-spinner" />
                         ) : (
                           <>
                             <DownloadIcon
@@ -311,10 +284,7 @@ export function MyPurchasesContent() {
                             disabled={isDownloading}
                           >
                             {isDownloading ? (
-                              <>
-                                <DownloadSpinner />
-                                {copy?.downloading ?? 'Downloading...'}
-                              </>
+                              <DashboardSpinner className="my-purchases__download-spinner" />
                             ) : isDownloaded ? (
                               (copy?.downloaded ?? 'Downloaded')
                             ) : (

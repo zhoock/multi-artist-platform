@@ -9,6 +9,11 @@ dialog {
       flex: 1;
       min-height: 0;
 
+      &__loading {
+        flex: 1;
+        min-height: min(240px, 40vh);
+      }
+
       &__scroll {
         display: flex;
         flex-direction: column;
