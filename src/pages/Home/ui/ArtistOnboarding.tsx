@@ -27,7 +27,7 @@ const FEATURE_ICONS: Record<SecondaryFeatureId, LucideIcon> = {
 
 function FeatureIcon({ id }: { id: SecondaryFeatureId }) {
   const Icon = FEATURE_ICONS[id];
-  return <Icon {...dashboardActionIconProps({ size: 18, strokeWidth: 1.5 })} />;
+  return <Icon {...dashboardActionIconProps({ size: 24, strokeWidth: 1.5 })} />;
 }
 
 export function ArtistOnboarding() {
@@ -73,11 +73,11 @@ export function ArtistOnboarding() {
     },
     {
       id: 'article',
-      title: copy?.features?.article?.title ?? 'Делитесь своим творчеством',
+      title: copy?.features?.article?.title ?? 'Расскажите о своём творчестве',
       description:
         copy?.features?.article?.description ??
         'Делитесь новостями, историями и фотографиями. Создавайте публикации с текстом и галереями изображений.',
-      onClick: () => openDashboard('posts', { openNewArticleModal: true }),
+      onClick: () => openDashboard('posts', {}),
     },
     {
       id: 'mixer',

@@ -83,8 +83,8 @@
   }
 
   &__feature-icon {
-    inline-size: 1.125rem;
-    block-size: 1.125rem;
+    inline-size: 1.5rem;
+    block-size: 1.5rem;
     border-radius: $ms-01;
   }
 
@@ -290,7 +290,7 @@ html.theme-light .artist-onboarding-skeleton {
 
     @include breakpoint(tablet) {
       display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: clamp($ms-1, 2.5vw, $ms-2);
     }
   }
@@ -335,8 +335,8 @@ html.theme-light .artist-onboarding-skeleton {
     color: var(--onboarding-accent);
 
     svg {
-      inline-size: 1.125rem;
-      block-size: 1.125rem;
+      inline-size: 1.5rem;
+      block-size: 1.5rem;
     }
   }
 
