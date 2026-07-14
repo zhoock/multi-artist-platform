@@ -5,7 +5,8 @@ dialog {
     &__album-item,
     &__album-card,
     &__track-item,
-    .user-dashboard__expanded-track-row {
+    .user-dashboard__expanded-track-row,
+    .user-dashboard__settings-page__header-images {
       &.user-dashboard__row-state-flash {
         position: relative;
         isolation: isolate;

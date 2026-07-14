@@ -27,6 +27,7 @@ import '@/components/view/Universe3D.style.scss';
 import { useDashboardModalShell } from '@shared/lib/dashboardModalShellContext';
 import { ArtistArchiveButton } from '@features/artistArchive';
 import { readStoredProfileDisplayName } from '@shared/lib/profileDisplayName';
+import { ArtistPageSkeletonHero } from '@pages/Home/ui/ArtistPageSkeleton';
 import './style.scss';
 
 const HERO_CLUSTER_PALETTE = [0x4d80ff, 0xff8a47, 0x53d8a2, 0xb086ff, 0xf2cd5d, 0x5ec9f5] as const;
@@ -84,7 +85,7 @@ export function Hero() {
   const {
     builderVisibility,
     hasPublicReleases,
-    showArtistPageLayoutPending,
+    showArtistPageSkeleton,
     headerImages,
     isHeaderImagesReady,
   } = artistPageAccess;
@@ -99,7 +100,6 @@ export function Hero() {
   const { openDashboard } = useArtistPageBuilderNav();
   const hideHeroForArtistOnboarding =
     hasArtistParam && artistPageAccess.suppressPublishedArtistChrome;
-  const hideHeroForLayoutPending = hasArtistParam && showArtistPageLayoutPending;
   const heroPublicArtistSlug = (artistParamKey || publicArtistSlug || '').trim();
   const { displayName: profileDisplayName, isLoading: isProfileLoading } = useSiteArtistDisplayName(
     lang,
@@ -184,7 +184,7 @@ export function Hero() {
       !hasArtistParam ||
       !artistParamKey ||
       hideHeroForArtistOnboarding ||
-      hideHeroForLayoutPending ||
+      showArtistPageSkeleton ||
       !isHeaderImagesReady ||
       !showPublishedHeroChrome
     )
@@ -272,13 +272,17 @@ export function Hero() {
     artistParamKey,
     hasArtistParam,
     hideHeroForArtistOnboarding,
-    hideHeroForLayoutPending,
+    showArtistPageSkeleton,
     isHeaderImagesReady,
     showPublishedHeroChrome,
   ]);
 
-  if (hideHeroForArtistOnboarding || hideHeroForLayoutPending) {
+  if (hideHeroForArtistOnboarding) {
     return null;
+  }
+
+  if (showArtistPageSkeleton) {
+    return <ArtistPageSkeletonHero />;
   }
 
   const heroUsesInlineBackground = Boolean(backgroundImage) && !showHeroImageBuilder;
@@ -329,7 +333,7 @@ export function Hero() {
                 icon={<ImagePlusIcon {...artistPageBuilderHeroImageIconProps()} />}
                 title={builderCopy?.hero?.imageTitle ?? 'Band cover'}
                 actionLabel={builderCopy?.hero?.uploadImage ?? 'Upload'}
-                onAction={() => openDashboard('settings')}
+                onAction={() => openDashboard('settings', { scrollToHeaderImages: true })}
               />
             </div>
           ) : null}

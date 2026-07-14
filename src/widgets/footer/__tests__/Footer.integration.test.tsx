@@ -10,6 +10,15 @@ const loadSocialLinksFromDatabase =
 jest.mock('@entities/user/lib', () => ({
   loadSocialLinksFromDatabase: (options?: Record<string, unknown>) =>
     loadSocialLinksFromDatabase(options),
+  loadTheBandFromDatabase: jest.fn(() => Promise.resolve(null)),
+  loadHeaderImagesFromDatabase: jest.fn(() => Promise.resolve([])),
+}));
+
+jest.mock('@shared/lib/hooks/useArtistPageBuilder', () => ({
+  useArtistPageBuilder: jest.fn(() => ({
+    builderVisibility: { mode: 'hidden', canShowBlocks: false },
+    showArtistPageSkeleton: false,
+  })),
 }));
 
 const uiDictionaryState = {

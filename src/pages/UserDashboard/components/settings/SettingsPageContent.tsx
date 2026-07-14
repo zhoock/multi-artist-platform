@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useLayoutEffect, useRef, useState } from 'react';
 import { ExternalLink as ExternalLinkIcon } from 'lucide-react';
 import clsx from 'clsx';
 import { ChangeEmailModal } from '@features/auth/ui/ChangeEmailModal';
@@ -26,10 +26,33 @@ import { SettingsSelect } from '../modals/settings/SettingsSelect';
 import { HeaderImagesUpload } from '../upload/HeaderImagesUpload';
 import { ChangePasswordModal } from './ChangePasswordModal';
 import { useSettingsPage } from './useSettingsPage';
+import { getDashboardRowFlashProps, useDashboardRowFlash } from '../../lib/dashboardRowStateFlash';
 import './SettingsPageContent.style.scss';
+
+const SETTINGS_HEADER_IMAGES_FLASH_ID = 'settings-header-images-section';
+const HEADER_IMAGES_SCROLL_FLASH_DELAY_MS = 650;
+
+function scrollDashboardSectionIntoView(section: HTMLElement): void {
+  const scrollContainer = section.closest<HTMLElement>('.user-dashboard__content');
+  if (!scrollContainer) {
+    section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return;
+  }
+
+  const containerRect = scrollContainer.getBoundingClientRect();
+  const sectionRect = section.getBoundingClientRect();
+  const targetTop = scrollContainer.scrollTop + (sectionRect.top - containerRect.top);
+
+  scrollContainer.scrollTo({
+    top: Math.max(0, targetTop),
+    behavior: 'smooth',
+  });
+}
 
 type SettingsPageContentProps = {
   enabled: boolean;
+  scrollToHeaderImages?: boolean;
+  onScrollToHeaderImagesHandled?: () => void;
   userName?: string;
   userEmail?: string;
   emailVerified: boolean;
@@ -52,6 +75,8 @@ type SettingsPageContentProps = {
 
 export function SettingsPageContent({
   enabled,
+  scrollToHeaderImages = false,
+  onScrollToHeaderImagesHandled,
   userName,
   userEmail,
   emailVerified,
@@ -75,6 +100,9 @@ export function SettingsPageContent({
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
   const [isSendingVerificationEmail, setIsSendingVerificationEmail] = useState(false);
   const [verificationEmailError, setVerificationEmailError] = useState<string | null>(null);
+  const headerImagesSectionRef = useRef<HTMLDivElement>(null);
+  const { flashes: headerImagesSectionFlashes, flashRow: flashHeaderImagesSection } =
+    useDashboardRowFlash();
   const emailVerificationCopy = useEmailVerificationCopy();
   const { remaining, isCoolingDown, startCooldown } = useResendCooldown();
 
@@ -102,6 +130,36 @@ export function SettingsPageContent({
     hasLoadedOnce,
     isBusy,
   } = useSettingsPage({ enabled, userName });
+
+  useLayoutEffect(() => {
+    if (!scrollToHeaderImages || !enabled || isListener) return;
+    if (!hasLoadedOnce || isLoadingHeaderImages) return;
+
+    const section = headerImagesSectionRef.current;
+    if (!section) return;
+
+    onScrollToHeaderImagesHandled?.();
+
+    requestAnimationFrame(() => {
+      scrollDashboardSectionIntoView(section);
+      window.setTimeout(() => {
+        flashHeaderImagesSection(SETTINGS_HEADER_IMAGES_FLASH_ID, 'subscribers_only');
+      }, HEADER_IMAGES_SCROLL_FLASH_DELAY_MS);
+    });
+  }, [
+    enabled,
+    flashHeaderImagesSection,
+    hasLoadedOnce,
+    isListener,
+    isLoadingHeaderImages,
+    onScrollToHeaderImagesHandled,
+    scrollToHeaderImages,
+  ]);
+
+  const headerImagesSectionFlash = getDashboardRowFlashProps(
+    SETTINGS_HEADER_IMAGES_FLASH_ID,
+    headerImagesSectionFlashes
+  );
 
   const d = ui?.dashboard;
   const hasAvatar = !isProfileAvatarPlaceholderUrl(avatarSrc);
@@ -315,23 +373,35 @@ export function SettingsPageContent({
         </DashboardSection>
 
         {!isListener ? (
-          <DashboardSection title={d?.settingsModal?.fields?.headerImages ?? 'Header Images'}>
-            <DashboardCard>
-              <div className="user-dashboard__settings-page__header-images">
-                {isLoadingHeaderImages ? (
-                  <div className="dashboard-form-loading" aria-busy="true">
-                    <DashboardSpinner />
-                  </div>
-                ) : (
-                  <HeaderImagesUpload
-                    layout="inline"
-                    currentImages={headerImages}
-                    onImagesUpdated={handleHeaderImagesUpdated}
-                  />
-                )}
-              </div>
-            </DashboardCard>
-          </DashboardSection>
+          <div
+            ref={headerImagesSectionRef}
+            className="user-dashboard__settings-page__header-images-section"
+          >
+            <DashboardSection title={d?.settingsModal?.fields?.headerImages ?? 'Header Images'}>
+              <DashboardCard>
+                <div
+                  className={clsx(
+                    'user-dashboard__settings-page__header-images',
+                    headerImagesSectionFlash.className
+                  )}
+                  style={headerImagesSectionFlash.style}
+                  data-visibility-flash={headerImagesSectionFlash['data-visibility-flash']}
+                >
+                  {isLoadingHeaderImages ? (
+                    <div className="dashboard-form-loading" aria-busy="true">
+                      <DashboardSpinner />
+                    </div>
+                  ) : (
+                    <HeaderImagesUpload
+                      layout="inline"
+                      currentImages={headerImages}
+                      onImagesUpdated={handleHeaderImagesUpdated}
+                    />
+                  )}
+                </div>
+              </DashboardCard>
+            </DashboardSection>
+          </div>
         ) : null}
 
         <DashboardSection

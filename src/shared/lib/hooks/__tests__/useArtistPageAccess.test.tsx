@@ -23,6 +23,27 @@ jest.mock('../useArtistHeroHeaderImages', () => ({
   })),
 }));
 
+jest.mock('@entities/user/lib', () => ({
+  loadTheBandFromDatabase: jest.fn(() => Promise.resolve(null)),
+  loadSocialLinksFromDatabase: jest.fn(() => Promise.resolve({})),
+}));
+
+jest.mock('@shared/lib/profileDisplayName', () => {
+  const actual = jest.requireActual<typeof import('@shared/lib/profileDisplayName')>(
+    '@shared/lib/profileDisplayName'
+  );
+  return {
+    ...actual,
+    fetchPublicProfileForDisplay: jest.fn(() =>
+      Promise.resolve({ displayName: 'Test Artist', publicSlug: 'test-artist' })
+    ),
+  };
+});
+
+jest.mock('@shared/api/payment/settings', () => ({
+  getPaymentSettings: jest.fn(() => Promise.resolve({ success: true, settings: null })),
+}));
+
 jest.mock('@shared/lib/auth', () => {
   const actual = jest.requireActual<typeof import('@shared/lib/auth')>('@shared/lib/auth');
   return {
@@ -203,7 +224,8 @@ describe('useArtistPageAccess — published surface without releases', () => {
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false);
       expect(result.current.showPublished).toBe(true);
-      expect(result.current.showArtistPageSurfacePending).toBe(false);
+      expect(result.current.pageReady).toBe(true);
+      expect(result.current.showArtistPageSkeleton).toBe(false);
       expect(result.current.hasPublicReleases).toBe(false);
     });
   });
@@ -453,7 +475,8 @@ describe('useArtistPageAccess — owner builder eligibility', () => {
       expect(result.current.isLoading).toBe(false);
       expect(result.current.isOwner).toBe(true);
       expect(result.current.ownerStillNeedsOnboarding).toBe(false);
-      expect(result.current.showArtistPageSurfacePending).toBe(false);
+      expect(result.current.pageReady).toBe(true);
+      expect(result.current.showArtistPageSkeleton).toBe(false);
       expect(result.current.showPublished).toBe(true);
     });
   });

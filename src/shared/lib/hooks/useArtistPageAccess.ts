@@ -32,16 +32,50 @@ import {
   profileHasPublicBodyContent,
 } from '@shared/lib/artistPageContent';
 import { fetchOwnArtistPageState } from '@shared/lib/ownArtistPage';
+import { fetchPublicProfileForDisplay } from '@shared/lib/profileDisplayName';
+import { getPaymentSettings } from '@shared/api/payment/settings';
+import { loadSocialLinksFromDatabase, loadTheBandFromDatabase } from '@entities/user/lib';
 import { useArtistHeroHeaderImages } from './useArtistHeroHeaderImages';
 
 function normalizeSlug(slug: string): string {
   return slug.trim().toLowerCase();
 }
 
+export type ArtistPageAccessValue = {
+  isLoading: boolean;
+  isOwner: boolean;
+  ownerResolved: boolean;
+  ownerContentLoaded: boolean;
+  ownerStillNeedsOnboarding: boolean;
+  hasPublicReleases: boolean;
+  showOnboarding: boolean;
+  showOnboardingSkeleton: boolean;
+  showOwnerUnderConstruction: boolean;
+  showVisitorUnderConstruction: boolean;
+  showNotFound: boolean;
+  showPublished: boolean;
+  pageReady: boolean;
+  showArtistPageSkeleton: boolean;
+  showArtistPageSurfacePending: boolean;
+  showArtistPageHeroPending: boolean;
+  showArtistPageLayoutPending: boolean;
+  headerImages: string[];
+  isHeaderImagesReady: boolean;
+  suppressPublishedArtistChrome: boolean;
+};
+
+type UseArtistPageAccessStateOptions = {
+  enabled?: boolean;
+};
+
 /**
  * Доступ к странице артиста: каталог по опубликованным трекам, onboarding только для новых артистов, 404 без публичного контента.
  */
-export function useArtistPageAccess(artistSlug: string) {
+export function useArtistPageAccessState(
+  artistSlug: string,
+  options: UseArtistPageAccessStateOptions = {}
+) {
+  const enabled = options.enabled ?? true;
   const { lang } = useLang();
   const catalogArtistMissing = useAppSelector(selectCatalogArtistMissing);
   const albumsStatus = useAppSelector(selectAlbumsStatus);
@@ -58,7 +92,9 @@ export function useArtistPageAccess(artistSlug: string) {
   const articlesCacheStale = useAppSelector(selectArticlesCacheIsStale);
   const publicArticles = useAppSelector(selectArticlesDataResolvedForSurface);
   const hasPublicReleases = useMemo(() => hasPublishedPublicReleases(publicAlbums), [publicAlbums]);
-  const { headerImages, isHeaderImagesReady } = useArtistHeroHeaderImages(artistSlug);
+  const { headerImages, isHeaderImagesReady } = useArtistHeroHeaderImages(
+    enabled ? artistSlug : ''
+  );
 
   const desiredFetchKey = useMemo(() => buildPublicAlbumsFetchContextKey(artistSlug), [artistSlug]);
 
@@ -79,6 +115,10 @@ export function useArtistPageAccess(artistSlug: string) {
   const [visitorProfileHasPublicBody, setVisitorProfileHasPublicBody] = useState<boolean | null>(
     null
   );
+  const [aboutSurfaceReady, setAboutSurfaceReady] = useState(false);
+  const [socialSurfaceReady, setSocialSurfaceReady] = useState(false);
+  const [paymentSurfaceReady, setPaymentSurfaceReady] = useState(true);
+  const [artistDisplayNameReady, setArtistDisplayNameReady] = useState(false);
 
   const ownerAlbumCount = useMemo(() => {
     if (!isOwner) return 0;
@@ -100,6 +140,8 @@ export function useArtistPageAccess(artistSlug: string) {
     ownerNeedsOnboarding && ownerAlbumCount === 0 && ownerArticleCount === 0;
 
   useEffect(() => {
+    if (!enabled) return;
+
     const normalizedArtist = normalizeSlug(artistSlug);
     if (!normalizedArtist) {
       setIsOwner(false);
@@ -163,9 +205,11 @@ export function useArtistPageAccess(artistSlug: string) {
     return () => {
       cancelled = true;
     };
-  }, [artistSlug, cachedOwner, lang]);
+  }, [artistSlug, cachedOwner, enabled, lang]);
 
   useEffect(() => {
+    if (!enabled) return;
+
     if (!isOwner || !ownerResolved) {
       setOwnerContentLoaded(!isOwner);
       setOwnerNeedsOnboarding(false);
@@ -195,9 +239,11 @@ export function useArtistPageAccess(artistSlug: string) {
       window.removeEventListener('artist:updated', refreshOwnerState);
       window.removeEventListener('profile-name-updated', refreshOwnerState);
     };
-  }, [isOwner, ownerResolved, lang]);
+  }, [enabled, isOwner, ownerResolved, lang]);
 
   useEffect(() => {
+    if (!enabled) return;
+
     const normalizedArtist = normalizeSlug(artistSlug);
     if (isOwner || !ownerResolved || !normalizedArtist) {
       setVisitorProfileHasPublicBody(null);
@@ -256,7 +302,68 @@ export function useArtistPageAccess(artistSlug: string) {
     return () => {
       cancelled = true;
     };
-  }, [artistSlug, isOwner, lang, ownerResolved]);
+  }, [artistSlug, enabled, isOwner, lang, ownerResolved]);
+
+  useEffect(() => {
+    if (!enabled) return;
+
+    const normalizedArtist = normalizeSlug(artistSlug);
+    if (!normalizedArtist || !ownerResolved) {
+      setAboutSurfaceReady(false);
+      setSocialSurfaceReady(false);
+      setArtistDisplayNameReady(false);
+      return;
+    }
+
+    let cancelled = false;
+    setAboutSurfaceReady(false);
+    setSocialSurfaceReady(false);
+    setArtistDisplayNameReady(false);
+
+    void loadTheBandFromDatabase(lang, { artistSlugOverride: normalizedArtist })
+      .catch(() => null)
+      .finally(() => {
+        if (!cancelled) setAboutSurfaceReady(true);
+      });
+
+    void loadSocialLinksFromDatabase({ artistSlugOverride: normalizedArtist })
+      .catch(() => ({}))
+      .finally(() => {
+        if (!cancelled) setSocialSurfaceReady(true);
+      });
+
+    void fetchPublicProfileForDisplay(lang, normalizedArtist)
+      .catch(() => null)
+      .finally(() => {
+        if (!cancelled) setArtistDisplayNameReady(true);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [artistSlug, enabled, lang, ownerResolved]);
+
+  useEffect(() => {
+    if (!enabled) return;
+
+    if (!isOwner || !ownerResolved || !isAuthenticated()) {
+      setPaymentSurfaceReady(true);
+      return;
+    }
+
+    let cancelled = false;
+    setPaymentSurfaceReady(false);
+
+    void getPaymentSettings({ provider: 'yookassa' })
+      .catch(() => ({ success: false as const }))
+      .finally(() => {
+        if (!cancelled) setPaymentSurfaceReady(true);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [enabled, isOwner, ownerResolved]);
 
   const albumsPending =
     catalogCacheStale ||
@@ -275,6 +382,11 @@ export function useArtistPageAccess(artistSlug: string) {
     (articlesCacheStale || articlesStatus === 'idle' || articlesStatus === 'loading');
 
   const visitorAccessPending = visitorProfilePending || visitorArticlesGatePending;
+
+  /** Как `shouldShowSurfaceArticlesLoadingShell`: idle/loading без данных в store. */
+  const articlesSurfacePending =
+    articlesCacheStale ||
+    ((articlesStatus === 'idle' || articlesStatus === 'loading') && publicArticles.length === 0);
 
   /**
    * Блокировка списка/страницы альбома. Не включаем `articlesStatus === 'idle'` глобально
@@ -369,20 +481,39 @@ export function useArtistPageAccess(artistSlug: string) {
 
   const showArtistPageLayoutPending = showArtistPageSurfacePending || showArtistPageHeroPending;
 
-  const showPublished =
-    !isLoading &&
-    !showArtistPageLayoutPending &&
-    !showOnboarding &&
-    !showOnboardingSkeleton &&
-    !showNotFound &&
-    !showOwnerUnderConstruction &&
-    !showVisitorUnderConstruction;
   const suppressPublishedArtistChrome =
     showOnboarding ||
     showOnboardingSkeleton ||
     showNotFound ||
     showOwnerUnderConstruction ||
     showVisitorUnderConstruction;
+
+  const isArtistPublishedSurface =
+    Boolean(normalizedArtistSlug) &&
+    !showOnboarding &&
+    !showOnboardingSkeleton &&
+    !showNotFound &&
+    !showOwnerUnderConstruction &&
+    !showVisitorUnderConstruction;
+
+  const pageReady =
+    isArtistPublishedSurface &&
+    ownerResolved &&
+    isHeaderImagesReady &&
+    (!isOwner || ownerContentLoaded) &&
+    !albumsPending &&
+    !visitorAccessPending &&
+    !articlesSurfacePending &&
+    aboutSurfaceReady &&
+    socialSurfaceReady &&
+    paymentSurfaceReady &&
+    artistDisplayNameReady;
+
+  const showArtistPageSkeleton = isArtistPublishedSurface && !pageReady;
+
+  const showPublished = pageReady;
+  /** @deprecated Prefer `showArtistPageSkeleton`. */
+  const showArtistPageLayoutPendingLegacy = showArtistPageLayoutPending || showArtistPageSkeleton;
 
   return {
     isLoading,
@@ -397,11 +528,15 @@ export function useArtistPageAccess(artistSlug: string) {
     showVisitorUnderConstruction,
     showNotFound,
     showPublished,
+    pageReady,
+    showArtistPageSkeleton,
     showArtistPageSurfacePending,
     showArtistPageHeroPending,
-    showArtistPageLayoutPending,
+    showArtistPageLayoutPending: showArtistPageLayoutPendingLegacy,
     headerImages,
     isHeaderImagesReady,
     suppressPublishedArtistChrome,
-  };
+  } satisfies ArtistPageAccessValue;
 }
+
+export { useArtistPageAccess } from './ArtistPageAccessProvider';

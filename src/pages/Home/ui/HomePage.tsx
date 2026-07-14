@@ -17,7 +17,7 @@ import { emptyStringMediaSrc } from '@shared/lib/media/optionalMediaUrl';
 import type { IAlbums, TracksProps } from '@models';
 import { isDashboardPathname } from '@shared/lib/publicArtistContext';
 import { resolveAlbumForDisplay } from '@entities/album/lib/resolveAlbumDisplay';
-import { fetchAlbums, selectAlbumsStatus, selectPublicAlbumsCacheIsStale } from '@entities/album';
+import { fetchAlbums } from '@entities/album';
 import { fetchArticles } from '@entities/article';
 import { generateMockArtists } from '@shared/lib/generateMockArtists';
 import { prepareUniverseData } from '@features/universe/model/prepareUniverseData';
@@ -45,7 +45,7 @@ import { ArtistOnboarding } from './ArtistOnboarding';
 import { ArtistOnboardingSkeleton } from './ArtistOnboardingSkeleton';
 import { ArtistPageUnderConstruction } from './ArtistPageUnderConstruction';
 import { ArtistPageBuilderPaymentBar } from './ArtistPageBuilderPaymentBar';
-import { ArtistPublishedPageFallback } from './ArtistPublishedPageFallback';
+import { ArtistPageSkeletonMain } from './ArtistPageSkeleton';
 import { ScrollToExploreHint } from './ScrollToExploreHint';
 import { useArtistPageAccess } from '@shared/lib/hooks/useArtistPageAccess';
 import '../../../components/view/Universe3D.style.scss';
@@ -74,8 +74,6 @@ export function HomePage() {
   const [sceneArtists, setSceneArtists] = useState<SceneArtist[]>([]);
   const hasArtistParam = !!searchParams.get('artist');
   const artistSlug = searchParams.get('artist') || '';
-  const albumsStatus = useAppSelector(selectAlbumsStatus);
-  const catalogCacheStale = useAppSelector(selectPublicAlbumsCacheIsStale);
   const hideArtistPageAfterOwnDelete = useRedirectHomeAfterOwnAccountDeleted(hasArtistParam);
   const artistPageAccess = useArtistPageAccess(artistSlug);
 
@@ -108,9 +106,33 @@ export function HomePage() {
   useEffect(() => {
     if (isDashboardPathname()) return;
     if (!hasArtistParam) return;
-    if (!catalogCacheStale && albumsStatus !== 'idle') return;
-    void dispatch(fetchAlbums({ force: true }));
-  }, [albumsStatus, artistSlug, catalogCacheStale, dispatch, hasArtistParam]);
+
+    void dispatch(
+      fetchAlbums({
+        force: true,
+        forcePublicCatalog: true,
+        publicArtistSlug: artistSlug,
+      })
+    );
+    void dispatch(
+      fetchArticles({
+        force: true,
+        forcePublicCatalog: true,
+        publicArtistSlug: artistSlug,
+      })
+    );
+
+    if (artistPageAccess.isOwner && artistPageAccess.ownerResolved) {
+      void dispatch(fetchAlbums({ force: true, ownerDashboard: true }));
+      void dispatch(fetchArticles({ force: true, ownerDashboard: true }));
+    }
+  }, [
+    artistPageAccess.isOwner,
+    artistPageAccess.ownerResolved,
+    artistSlug,
+    dispatch,
+    hasArtistParam,
+  ]);
 
   useEffect(() => {
     const onboardingSurface =
@@ -124,14 +146,6 @@ export function HomePage() {
     document.body.classList.toggle('page--artist-not-found', notFoundSurface);
     return () => document.body.classList.remove('page--artist-not-found');
   }, [artistPageAccess.showNotFound, hasArtistParam]);
-
-  useEffect(() => {
-    // Каталог грузит root albumsLoader; force здесь давал повторные loading-циклы
-    // (в т.ч. каждые 15s при опросе email verification → AUTH_SESSION_CHANGED).
-    if (isDashboardPathname()) return;
-    if (!hasArtistParam) return;
-    void dispatch(fetchArticles({ publicArtistSlug: artistSlug }));
-  }, [dispatch, hasArtistParam, artistSlug]);
 
   const handleSearchMatchesChange = useCallback((matchedSlugs: string[] | null) => {
     universeRef.current?.setSearchHighlight(matchedSlugs);
@@ -351,8 +365,8 @@ export function HomePage() {
       return <ArtistPageUnderConstruction variant="visitor" />;
     }
 
-    if (artistPageAccess.showArtistPageLayoutPending) {
-      return <ArtistPublishedPageFallback />;
+    if (artistPageAccess.showArtistPageSkeleton) {
+      return <ArtistPageSkeletonMain />;
     }
 
     return (

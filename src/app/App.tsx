@@ -26,7 +26,7 @@ import {
 import { Helmet } from 'react-helmet-async';
 import { buildPublicSiteUrl, getPublicSiteOrigin } from '@shared/lib/publicSiteOrigin';
 import { albumsLoader } from '@routes/loaders/albumsLoader';
-import { ArtistPublishedPageFallback } from '@pages/Home/ui/ArtistPublishedPageFallback';
+import { ArtistPageSkeleton } from '@pages/Home/ui/ArtistPageSkeleton';
 import { useLang } from '@app/providers/lang';
 import { useAppDispatch } from '@shared/lib/hooks/useAppDispatch';
 import { setPublicArtistSlug } from '@shared/model/currentArtist';
@@ -62,6 +62,7 @@ import {
   EmailVerificationRefreshController,
 } from '@shared/lib/emailVerification';
 import { AccountDeletedToast } from '@shared/ui/accountDeletedToast/AccountDeletedToast';
+import { ArtistPageAccessProvider } from '@shared/lib/hooks/ArtistPageAccessProvider';
 
 // Lazy loading для страниц - загружаются только при необходимости
 const Album = lazy(() => import('@pages/Album/Album'));
@@ -91,7 +92,7 @@ const PageLoader = () => <p>Загрузка...</p>;
 function HomeRouteSuspenseFallback() {
   const [searchParams] = useSearchParams();
   if (searchParams.get('artist')?.trim()) {
-    return <ArtistPublishedPageFallback />;
+    return <ArtistPageSkeleton part="main" />;
   }
   return <PageLoader />;
 }
@@ -694,36 +695,38 @@ function Layout() {
               <PlayerShell />
             </ErrorBoundary>
           ) : (
-            <ErrorBoundary>
-              <Header
-                theme={theme}
-                onToggleTheme={toggleTheme}
-                navMenuOpen={popup}
-                onNavMenuToggle={() => {
-                  if (popup) dispatch(closePopup());
-                  else dispatch(openPopup());
-                }}
-              />
-              <AccountDeletedToast />
-              <main>
-                {!isEmailVerifiedRoute && !isEmailVerificationExpiredRoute && (
-                  <EmailVerificationBanner />
-                )}
-                {!isHomeSceneRoute && !isEmailVerifiedRoute && !isEmailVerificationExpiredRoute && (
-                  <Hero />
-                )}
+            <ArtistPageAccessProvider>
+              <ErrorBoundary>
+                <Header
+                  theme={theme}
+                  onToggleTheme={toggleTheme}
+                  navMenuOpen={popup}
+                  onNavMenuToggle={() => {
+                    if (popup) dispatch(closePopup());
+                    else dispatch(openPopup());
+                  }}
+                />
+                <AccountDeletedToast />
+                <main>
+                  {!isEmailVerifiedRoute && !isEmailVerificationExpiredRoute && (
+                    <EmailVerificationBanner />
+                  )}
+                  {!isHomeSceneRoute &&
+                    !isEmailVerifiedRoute &&
+                    !isEmailVerificationExpiredRoute && <Hero />}
 
-                {/* если поместим popup внурь header, то popup будет обрезаться из-за css-фильтра (filter) внури header */}
+                  {/* если поместим popup внурь header, то popup будет обрезаться из-за css-фильтра (filter) внури header */}
 
-                <Popup isActive={popup} onClose={() => dispatch(closePopup())}>
-                  <NavPopupMenu isActive={popup} />
-                </Popup>
+                  <Popup isActive={popup} onClose={() => dispatch(closePopup())}>
+                    <NavPopupMenu isActive={popup} />
+                  </Popup>
 
-                <ErrorBoundary>{standardRoutes}</ErrorBoundary>
-              </main>
-              {!isEmailVerifiedRoute && !isEmailVerificationExpiredRoute && <Footer />}
-              <PlayerShell />
-            </ErrorBoundary>
+                  <ErrorBoundary>{standardRoutes}</ErrorBoundary>
+                </main>
+                {!isEmailVerifiedRoute && !isEmailVerificationExpiredRoute && <Footer />}
+                <PlayerShell />
+              </ErrorBoundary>
+            </ArtistPageAccessProvider>
           )}
           <EmailVerificationRefreshController />
           <SessionExpiredRedirectController />

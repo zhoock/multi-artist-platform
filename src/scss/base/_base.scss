@@ -161,6 +161,16 @@ body {
     }
   }
 
+  /* Страница артиста: последняя секция или skeleton-main заполняют main */
+  &.page--artist-skeleton {
+    #root main {
+      > .artist-page-skeleton__main,
+      > :last-child.main-background {
+        flex: 1 0 auto;
+      }
+    }
+  }
+
   /* Страница артиста без публичного контента: полноэкранный 404 без hero */
   &.page--artist-not-found {
     #root {

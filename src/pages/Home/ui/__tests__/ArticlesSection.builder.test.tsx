@@ -16,6 +16,8 @@ const baseAccess = {
   showVisitorUnderConstruction: false,
   showNotFound: false,
   showPublished: true,
+  pageReady: true,
+  showArtistPageSkeleton: false,
   showArtistPageSurfacePending: false,
   showArtistPageHeroPending: false,
   showArtistPageLayoutPending: false,

@@ -30,6 +30,7 @@ import {
   useArtistPageBuilderNav,
 } from '@shared/ui/artistPageBuilder';
 import { Disc3 as DiscIcon } from 'lucide-react';
+import '@entities/album/ui/style.scss';
 
 // Адаптивное количество альбомов для отображения на главной
 const getInitialCount = () => {

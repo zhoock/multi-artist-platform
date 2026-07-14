@@ -105,8 +105,13 @@
     letter-spacing: 0.12em;
   }
 
+  &__header-images-section {
+    scroll-margin-top: var(--ms-1);
+  }
+
   &__header-images {
     padding: var(--ms-01) var(--ms-0);
+    border-radius: var(--ms-01);
   }
 
   &__upgrade {

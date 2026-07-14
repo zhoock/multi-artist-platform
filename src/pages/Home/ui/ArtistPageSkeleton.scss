@@ -1,0 +1,202 @@
+@use '../../../scss/abstracts/mixins' as *;
+
+.artist-page-skeleton {
+  &__main {
+    display: flex;
+    flex-direction: column;
+  }
+
+  &__hero {
+    position: relative;
+    display: flex;
+    align-items: end;
+    overflow: hidden;
+    background-color: #03040a;
+
+    &::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: var(--deep-coal, #20201d);
+      opacity: 0.55;
+
+      @include breakpoint(tablet) {
+        background: linear-gradient(
+          90deg,
+          rgb(0 0 0 / 100%) 60%,
+          rgb(0 0 0 / 70%) 70%,
+          rgb(0 0 0 / 30%) 85%,
+          rgb(0 0 0 / 0%) 100%
+        );
+        opacity: 1;
+      }
+
+      @include breakpoint(desktops) {
+        background: linear-gradient(90deg, rgb(0 0 0 / 100%) 74%, rgb(0 0 0 / 0%) 100%);
+      }
+    }
+  }
+
+  &__hero-content {
+    position: relative;
+    z-index: 1;
+    align-self: end;
+    inline-size: min(100vi, 1000px);
+    margin: 0 auto;
+    padding: 0 $ms-1 $ms-01;
+  }
+
+  &__hero-headline {
+    display: grid;
+    grid-template-areas:
+      'title'
+      'cover';
+    grid-template-columns: minmax(0, 1fr);
+    align-items: end;
+    gap: $ms-01;
+
+    @include breakpoint(tablet) {
+      grid-template-areas: 'title cover';
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: $ms-0 $ms-01;
+    }
+  }
+
+  &__hero-title {
+    grid-area: title;
+    align-self: end;
+    inline-size: min(100%, 18rem);
+    block-size: calc(clamp(1.618rem, 1.1474rem + 2.3529vw, 2.618rem) * 1.15);
+    margin: 0;
+    border-radius: var(--ms-01);
+  }
+
+  &__hero-cover {
+    grid-area: cover;
+    align-self: end;
+    inline-size: 100%;
+    block-size: min(11rem, 42vw);
+    min-block-size: 8rem;
+    border-radius: var(--ms-01);
+
+    @include breakpoint(tablet) {
+      block-size: min(10rem, 22vw);
+    }
+  }
+
+  &__payment-bar {
+    background: linear-gradient(180deg, rgb(0 0 0 / 92%) 0%, rgb(8 10 18 / 96%) 100%);
+    border-block-end: 1px solid rgb(250 171 31 / 18%);
+    padding-block: $ms-1;
+  }
+
+  &__payment-bar-inner {
+    display: flex;
+    flex-flow: row wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: $ms-01 $ms-0;
+    inline-size: min(100vi, 1000px);
+    margin: 0 auto;
+    padding: $ms-01 $ms-1;
+    border: 1px dashed rgb(255 255 255 / 22%);
+    border-radius: var(--ms-01);
+    box-sizing: border-box;
+  }
+
+  &__payment-bar-text {
+    flex: 1 1 12rem;
+    block-size: 1.125rem;
+    min-inline-size: 8rem;
+    max-inline-size: 14rem;
+  }
+
+  &__payment-bar-action {
+    inline-size: 8.5rem;
+    block-size: 2.25rem;
+    border-radius: var(--ms-01);
+  }
+
+  &__section-heading {
+    inline-size: 6rem;
+    block-size: 1.75rem;
+    margin-block: $ms-1;
+    border-radius: var(--ms-01);
+  }
+
+  &__about-lines {
+    display: flex;
+    flex-direction: column;
+    gap: $ms-02;
+    margin-block-end: $ms-1;
+  }
+
+  &__about-line {
+    block-size: 1em;
+    border-radius: var(--ms-01);
+
+    &--short {
+      inline-size: 72%;
+    }
+  }
+
+  &__about {
+    padding-block-end: $ms-1;
+  }
+
+  &__footer-social {
+    margin-block-end: var(--ms-1);
+  }
+
+  &__footer-social-bar {
+    display: flex;
+    flex-flow: row wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: $ms-01 $ms-0;
+    padding: $ms-01 $ms-1;
+    border: 1px dashed rgb(255 255 255 / 22%);
+    border-radius: var(--ms-01);
+  }
+
+  &__footer-social-text {
+    flex: 1 1 12rem;
+    block-size: 1.125rem;
+    min-inline-size: 8rem;
+    max-inline-size: 12rem;
+  }
+
+  &__footer-social-action {
+    inline-size: 9rem;
+    block-size: 2.25rem;
+    border-radius: var(--ms-01);
+  }
+
+  .albums__list {
+    @include list('.albums');
+  }
+
+  .albums__card {
+    @extend %card;
+  }
+
+  .albums__description {
+    @extend %description;
+  }
+
+  .articles__list {
+    @include list('.articles');
+  }
+
+  .articles__card {
+    @extend %card;
+  }
+
+  .articles__description {
+    @extend %description;
+  }
+
+  .articles__picture {
+    aspect-ratio: 16 / 10;
+  }
+}

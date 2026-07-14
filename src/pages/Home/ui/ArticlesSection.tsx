@@ -22,6 +22,7 @@ import {
   useArtistPageBuilderNav,
 } from '@shared/ui/artistPageBuilder';
 import { FileText as FileTextIcon } from 'lucide-react';
+import '@entities/article/ui/style.scss';
 
 // Адаптивное количество статей для отображения на главной
 const getInitialCount = () => {

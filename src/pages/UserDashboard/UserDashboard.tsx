@@ -325,6 +325,7 @@ function UserDashboard() {
   const isListener = isListenerAccount(user);
 
   const [isUpgradeToArtistModalOpen, setIsUpgradeToArtistModalOpen] = useState(false);
+  const [scrollSettingsToHeaderImages, setScrollSettingsToHeaderImages] = useState(false);
   const archiveTabEverVisitedRef = useRef(activeTab === 'archive');
   const [archiveContentReady, setArchiveContentReady] = useState(false);
   if (activeTab === 'archive') {
@@ -658,13 +659,26 @@ function UserDashboard() {
       consumed = true;
     }
 
+    if (intent.scrollToHeaderImages && !isListener) {
+      setScrollSettingsToHeaderImages(true);
+      consumed = true;
+    }
+
     if (consumed) {
       navigate(
         { pathname: location.pathname, search: location.search, hash: location.hash },
         { replace: true, state: replaceState }
       );
     }
-  }, [emailVerified, location.hash, location.pathname, location.search, location.state, navigate]);
+  }, [
+    emailVerified,
+    isListener,
+    location.hash,
+    location.pathname,
+    location.search,
+    location.state,
+    navigate,
+  ]);
 
   useEffect(() => {
     consumeDashboardOpenIntent();
@@ -2062,6 +2076,10 @@ function UserDashboard() {
                           <div className="user-dashboard__settings-content">
                             <SettingsPageContent
                               enabled={activeTab === 'settings'}
+                              scrollToHeaderImages={scrollSettingsToHeaderImages}
+                              onScrollToHeaderImagesHandled={() =>
+                                setScrollSettingsToHeaderImages(false)
+                              }
                               userName={user?.name ?? undefined}
                               userEmail={user?.email}
                               emailVerified={emailVerified}
