@@ -8,6 +8,8 @@ import {
 } from '../../../src/shared/lib/stems/stemsVisibility';
 import { query } from './db';
 import { viewerCanAccessStems } from './stems-access';
+import { artistHasMonetizationEnabled } from './artist-monetization';
+import { resolveEffectiveContentVisibility } from '../../../src/shared/lib/payment/artistMonetization';
 
 let cachedTracksHasStemsVisibilityColumn: boolean | null = null;
 
@@ -79,8 +81,10 @@ export async function resolveStemTrackAccessAllowed(
   albumId: string,
   trackId: string
 ): Promise<boolean> {
-  const visibility = await resolveStemsVisibilityForTrack(artistUserId, albumId, trackId);
-  if (visibility === null || visibility === 'hidden') return false;
+  const visibilityRaw = await resolveStemsVisibilityForTrack(artistUserId, albumId, trackId);
+  if (visibilityRaw === null || visibilityRaw === 'hidden') return false;
+  const monetizationEnabled = await artistHasMonetizationEnabled(artistUserId);
+  const visibility = resolveEffectiveContentVisibility(visibilityRaw, monetizationEnabled);
   if (visibility === 'public') return true;
   return viewerCanAccessStems(viewerUserId, artistUserId);
 }

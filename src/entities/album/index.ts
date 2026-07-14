@@ -8,6 +8,7 @@ export {
   fetchAlbums,
   resetAlbumsState,
   patchDashboardAlbumVisibility,
+  patchDashboardTrackVisibility,
 } from './model/albumsSlice';
 /** Все селекторы из `model/selectors` (в т.ч. `selectDashboardAlbumById`) — единая точка реэкспорта. */
 export * from './model/selectors';

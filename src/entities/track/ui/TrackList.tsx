@@ -2,7 +2,6 @@ import React, { useEffect, useMemo } from 'react';
 import clsx from 'clsx';
 import { Lock as LockIcon, Pause, Play } from 'lucide-react';
 import type { TracksProps, IAlbums } from '@models';
-import { normalizeTrackVisibility } from '@shared/lib/tracks/trackVisibility';
 import { isTrackPlaybackBlocked } from '@shared/lib/tracks/trackPlayback';
 import type { AppStore, RootState } from '@shared/model/appStore/types';
 import { fallbackAlbumClientId } from '@shared/lib/albumClientId';
@@ -127,8 +126,6 @@ export function TrackList({ tracks, album, store, onSelectTrack }: TrackListProp
           isCurrentAlbum && (shuffle ? rowMatchesCurrentTrack : activeIndex === index);
         const isPlayingNow = isCurrentAlbum && isPlaying && rowMatchesCurrentTrack;
 
-        const visibility = normalizeTrackVisibility(track.visibility);
-        const isSubscribersOnly = visibility === 'subscribers_only';
         const playbackLocked = isTrackPlaybackBlocked(track);
 
         // Логируем для отладки, если duration отсутствует
@@ -159,11 +156,9 @@ export function TrackList({ tracks, album, store, onSelectTrack }: TrackListProp
             aria-description={
               playbackLocked
                 ? `Трек недоступен без покупки: ${track.title}`
-                : isSubscribersOnly
-                  ? `Для гостей — после покупки альбома. ${track.title}`
-                  : isPlayingNow
-                    ? `Остановить воспроизведение: ${track.title}`
-                    : `Воспроизвести: ${track.title}`
+                : isPlayingNow
+                  ? `Остановить воспроизведение: ${track.title}`
+                  : `Воспроизвести: ${track.title}`
             }
             onClick={() => onSelectTrack({ index, track, isActive, isPlayingNow })}
           >

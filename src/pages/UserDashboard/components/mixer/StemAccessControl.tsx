@@ -8,6 +8,11 @@ import {
   normalizeStemsVisibility,
   type StemsVisibility,
 } from '@shared/lib/stems/stemsVisibility';
+import {
+  filterVisibilityOptionsByMonetization,
+  resolveEffectiveContentVisibility,
+} from '@shared/lib/payment/artistMonetization';
+import { useArtistMonetization } from '@shared/lib/payment/ArtistMonetizationContext';
 import { TrackVisibilityIcon } from '@shared/ui/icons/TrackVisibilityIcon';
 import {
   DashboardAccessMenuPortal,
@@ -34,7 +39,12 @@ export function StemAccessControl({
   portalRoot,
 }: StemAccessControlProps) {
   const { lang } = useLang();
-  const stemsVisibility = normalizeStemsVisibility(visibility);
+  const { monetizationEnabled } = useArtistMonetization();
+  const rawStemsVisibility = normalizeStemsVisibility(visibility);
+  const stemsVisibility = resolveEffectiveContentVisibility(
+    rawStemsVisibility,
+    monetizationEnabled
+  );
 
   const { triggerRef, menuRef, menuOpen, menuStyle, portalMount, toggleMenu, closeMenu } =
     useDashboardAccessMenu({
@@ -78,26 +88,29 @@ export function StemAccessControl({
       },
     } as const;
 
-    return STEMS_VISIBILITY_OPTIONS.map((opt) => {
-      const block =
-        opt.value === 'public'
-          ? labels?.public
-          : opt.value === 'hidden'
-            ? labels?.hidden
-            : labels?.subscribersOnly;
-      const fb =
-        opt.value === 'public'
-          ? fallbacks.public
-          : opt.value === 'hidden'
-            ? fallbacks.hidden
-            : fallbacks.subscribersOnly;
-      return {
-        value: opt.value,
-        label: block?.title ?? fb.title,
-        description: block?.description ?? fb.description,
-      };
-    });
-  }, [lang, t?.stemsVisibility]);
+    return filterVisibilityOptionsByMonetization(
+      STEMS_VISIBILITY_OPTIONS.map((opt) => {
+        const block =
+          opt.value === 'public'
+            ? labels?.public
+            : opt.value === 'hidden'
+              ? labels?.hidden
+              : labels?.subscribersOnly;
+        const fb =
+          opt.value === 'public'
+            ? fallbacks.public
+            : opt.value === 'hidden'
+              ? fallbacks.hidden
+              : fallbacks.subscribersOnly;
+        return {
+          value: opt.value,
+          label: block?.title ?? fb.title,
+          description: block?.description ?? fb.description,
+        };
+      }),
+      monetizationEnabled
+    );
+  }, [lang, monetizationEnabled, t?.stemsVisibility]);
 
   const ariaLabel =
     (t?.stemsAccessAriaLabel as string | undefined) ??
@@ -105,14 +118,14 @@ export function StemAccessControl({
 
   const pickVisibility = useCallback(
     (v: StemsVisibility) => {
-      if (v === stemsVisibility) {
+      if (v === rawStemsVisibility) {
         closeMenu();
         return;
       }
       void onVisibilityChange(albumId, trackId, v);
       closeMenu();
     },
-    [albumId, trackId, stemsVisibility, onVisibilityChange, closeMenu]
+    [albumId, trackId, rawStemsVisibility, onVisibilityChange, closeMenu]
   );
 
   return (

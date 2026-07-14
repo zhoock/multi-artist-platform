@@ -38,6 +38,8 @@ import {
   type TrackVisibility,
 } from '../../src/shared/lib/tracks/trackVisibility';
 import { viewerHasPremiumAccessToArtist } from './lib/entitlements';
+import { artistHasMonetizationEnabled } from './lib/artist-monetization';
+import { resolveEffectiveContentVisibility } from '../../src/shared/lib/payment/artistMonetization';
 
 interface ArticleRow {
   id: string;
@@ -311,15 +313,17 @@ function mergeArticleRowsToApiData(rows: ArticleRow[], options?: MapArticleOptio
 async function buildPublicArticlePremiumContext(
   event: HandlerEvent,
   artistOwnerUserId: string | null | undefined
-): Promise<{ hasPremiumAccess: boolean }> {
+): Promise<{ hasPremiumAccess: boolean; monetizationEnabled: boolean }> {
   const authUserId = getUserIdFromEvent(event);
   const artistId = artistOwnerUserId?.trim();
   if (!artistId) {
-    return { hasPremiumAccess: false };
+    return { hasPremiumAccess: false, monetizationEnabled: false };
   }
-  return {
-    hasPremiumAccess: await viewerHasPremiumAccessToArtist(authUserId, artistId),
-  };
+  const [hasPremiumAccess, monetizationEnabled] = await Promise.all([
+    viewerHasPremiumAccessToArtist(authUserId, artistId),
+    artistHasMonetizationEnabled(artistId),
+  ]);
+  return { hasPremiumAccess, monetizationEnabled };
 }
 
 function markArticleLockedForPublic(data: ArticleData): ArticleData {
@@ -332,15 +336,19 @@ function markArticleLockedForPublic(data: ArticleData): ArticleData {
 /**
  * Публичный каталог: скрытые статьи не отдаём; subscribers_only без подписки —
  * articleLocked + полное тело для partial paywall на клиенте (blur под gate).
+ * Пока у артиста нет монетизации, subscribers_only ведёт себя как public.
  */
 function applyPublicArticleAccessPolicy(
   articles: ArticleData[],
-  ctx: { hasPremiumAccess: boolean }
+  ctx: { hasPremiumAccess: boolean; monetizationEnabled: boolean }
 ): ArticleData[] {
   const withoutHidden = articles.filter((a) => normalizeTrackVisibility(a.visibility) !== 'hidden');
 
   return withoutHidden.map((a) => {
-    const visibility = normalizeTrackVisibility(a.visibility);
+    const visibility = resolveEffectiveContentVisibility(
+      normalizeTrackVisibility(a.visibility),
+      ctx.monetizationEnabled
+    );
     const needLock = visibility === 'subscribers_only' && !ctx.hasPremiumAccess;
     if (needLock) {
       return markArticleLockedForPublic({ ...a, visibility });

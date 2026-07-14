@@ -40,7 +40,7 @@ export function ArticlesSection() {
   const articlesStatus = useAppSelector((state) => selectArticlesStatus(state));
   const articlesCacheStale = useAppSelector(selectArticlesCacheIsStale);
   const allArticles = useAppSelector((state) => selectArticlesDataResolvedForSurface(state));
-  const { builderVisibility } = useArtistPageBuilder(artistSlug);
+  const { builderVisibility, monetizationEnabled } = useArtistPageBuilder(artistSlug);
   const { openDashboard } = useArtistPageBuilderNav();
   const showArticleBuilder = shouldShowArtistPageBuilderBlock(
     builderVisibility,
@@ -113,7 +113,11 @@ export function ArticlesSection() {
           <>
             <div className="articles__list">
               {displayedArticles.map((article) => (
-                <ArticlePreview key={article.articleId} {...article} />
+                <ArticlePreview
+                  key={article.articleId}
+                  {...article}
+                  monetizationEnabled={monetizationEnabled}
+                />
               ))}
             </div>
           </>

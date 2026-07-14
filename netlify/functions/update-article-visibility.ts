@@ -9,6 +9,7 @@ import {
   normalizeTrackVisibility,
   type TrackVisibility,
 } from '../../src/shared/lib/tracks/trackVisibility';
+import { assertPremiumVisibilityAllowed } from './lib/artist-monetization';
 
 const HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -57,6 +58,19 @@ export const handler: Handler = async (
       statusCode: 400,
       headers: HEADERS,
       body: JSON.stringify({ success: false, message: 'articleId is required' }),
+    };
+  }
+
+  const premiumGate = await assertPremiumVisibilityAllowed(userId, visibility);
+  if (!premiumGate.ok) {
+    return {
+      statusCode: 403,
+      headers: HEADERS,
+      body: JSON.stringify({
+        success: false,
+        message: premiumGate.message,
+        code: 'MONETIZATION_REQUIRED',
+      }),
     };
   }
 

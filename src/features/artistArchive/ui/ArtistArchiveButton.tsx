@@ -22,6 +22,11 @@ import './style.scss';
 
 type Props = {
   artistUserId: string | null;
+  /**
+   * Artist-side monetization gate. When false/undefined, the collection CTA is hidden
+   * so it cannot appear on pages that forget to check payment connection.
+   */
+  monetizationEnabled?: boolean;
 };
 
 /** Invisible twin of the archive CTA — reserves space before artist meta loads. */
@@ -36,14 +41,16 @@ function ArchiveButtonLayoutPlaceholder({ label }: { label: string }) {
   );
 }
 
-export function ArtistArchiveButton({ artistUserId }: Props) {
+export function ArtistArchiveButton({ artistUserId, monetizationEnabled = false }: Props) {
   const { lang } = useLang() as { lang: 'ru' | 'en' };
   const dispatch = useAppDispatch();
   const publicArtistSlug = useAppSelector(selectPublicArtistSlug);
   const ui = useAppSelector((state) => selectUiDictionaryFirst(state, lang));
   const { open: openPremiumModal } = useArchiveAccessModal();
 
-  const { buttonState, error, addToArchive, clearError } = useArtistArchiveStatus(artistUserId);
+  const { buttonState, error, addToArchive, clearError } = useArtistArchiveStatus(
+    monetizationEnabled ? artistUserId : null
+  );
 
   const [archiveFullOpen, setArchiveFullOpen] = useState(false);
 
@@ -106,6 +113,10 @@ export function ArtistArchiveButton({ artistUserId }: Props) {
     },
     [addToArchive, artistUserId, buttonState, dispatch, openRenewModal, publicArtistSlug]
   );
+
+  if (!monetizationEnabled) {
+    return null;
+  }
 
   if (!artistUserId) {
     return <ArchiveButtonLayoutPlaceholder label={labelAdd} />;

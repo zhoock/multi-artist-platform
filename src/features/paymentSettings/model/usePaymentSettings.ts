@@ -8,6 +8,10 @@ import {
   disconnectPaymentProvider,
 } from '@shared/api/payment/settings';
 import type { PaymentProvider, UserPaymentSettings } from '@shared/api/payment/types';
+import { resolveMonetizationEnabled } from '@shared/lib/payment/artistMonetization';
+import { dispatchArtistMonetizationChanged } from '@shared/lib/payment/artistMonetizationEvents';
+import { refreshPremiumContentForArchiveChange } from '@features/artistArchive';
+import { getStore } from '@shared/model/appStore';
 import { PAYMENT_PROVIDERS } from '../lib/constants';
 import { fillPaymentSettingsTemplate } from '../lib/fillPaymentSettingsTemplate';
 
@@ -159,6 +163,13 @@ export function usePaymentSettings(userId: string): UsePaymentSettingsReturn {
         setShowForm((prev) => ({ ...prev, [provider]: false }));
         setSecretKey('');
         await loadSettings();
+        if (provider === 'yookassa') {
+          const enabled = resolveMonetizationEnabled(result.settings);
+          dispatchArtistMonetizationChanged(enabled);
+          refreshPremiumContentForArchiveChange(getStore().dispatch, undefined, {
+            immediate: true,
+          });
+        }
       } else {
         const errorMessage = result.message || result.error || 'Failed to save payment settings';
         console.error('❌ Payment settings save failed:', {
@@ -197,6 +208,12 @@ export function usePaymentSettings(userId: string): UsePaymentSettingsReturn {
         setSecretKey('');
         setShowForm((prev) => ({ ...prev, [provider]: false }));
         await loadSettings();
+        if (provider === 'yookassa') {
+          dispatchArtistMonetizationChanged(false);
+          refreshPremiumContentForArchiveChange(getStore().dispatch, undefined, {
+            immediate: true,
+          });
+        }
       } else {
         setError(result.error || 'Failed to disconnect payment provider');
       }

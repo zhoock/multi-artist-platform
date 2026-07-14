@@ -88,6 +88,7 @@ export function Hero() {
     showArtistPageSkeleton,
     headerImages,
     isHeaderImagesReady,
+    monetizationEnabled,
   } = artistPageAccess;
   const showHeroImageBuilder =
     hasArtistParam &&
@@ -321,7 +322,10 @@ export function Hero() {
             <h1 className="hero__title">{displayName}</h1>
             {showPublishedHeroChrome ? (
               <div className="hero__archive-slot">
-                <ArtistArchiveButton artistUserId={artistPageMeta?.userId ?? null} />
+                <ArtistArchiveButton
+                  artistUserId={artistPageMeta?.userId ?? null}
+                  monetizationEnabled={monetizationEnabled}
+                />
               </div>
             ) : null}
           </div>

@@ -12,6 +12,7 @@ import { selectArticlesStatus, selectArticlesDataResolved } from '@entities/arti
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 import { withPublicArtistQuery } from '@shared/lib/artistQuery';
 import { useSiteArtistDisplayName } from '@shared/lib/hooks/useSiteArtistDisplayName';
+import { useArtistPageAccess } from '@shared/lib/hooks/useArtistPageAccess';
 import { ContextNav } from '@shared/ui/contextNav';
 import '@entities/article/ui/style.scss';
 import './style.scss';
@@ -25,6 +26,7 @@ export function AllArticlesPage() {
   const artistSlug = searchParams.get('artist');
   const { displayName: siteArtistName } = useSiteArtistDisplayName(lang, { artistSlug });
   const artistHubPath = withPublicArtistQuery('/', artistSlug);
+  const { monetizationEnabled } = useArtistPageAccess(artistSlug?.trim() ?? '');
   const articlesStatus = useAppSelector((state) => selectArticlesStatus(state));
   const allArticles = useAppSelector((state) => selectArticlesDataResolved(state));
   const ui = useAppSelector((state) => selectUiDictionaryFirst(state, lang));
@@ -100,7 +102,11 @@ export function AllArticlesPage() {
             <>
               <div className="articles__list">
                 {displayedArticles.map((article) => (
-                  <ArticlePreview key={article.articleId} {...article} />
+                  <ArticlePreview
+                    key={article.articleId}
+                    {...article}
+                    monetizationEnabled={monetizationEnabled}
+                  />
                 ))}
               </div>
 

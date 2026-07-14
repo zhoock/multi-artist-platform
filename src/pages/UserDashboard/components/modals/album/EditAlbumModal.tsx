@@ -140,7 +140,8 @@ export function EditAlbumModal({
   const [formData, setFormData] = useState<AlbumFormData>(makeEmptyForm());
 
   const paymentUser = getUser();
-  const { loading: yookassaLoading, hasYooKassa } = useYooKassaPaymentConnected(paymentUser?.id);
+  const { loading: yookassaLoading, monetizationEnabled: hasYooKassa } =
+    useYooKassaPaymentConnected(paymentUser?.id);
   /** Для валидации и сохранения: без ЮKassa продажа в релиз не уходит. */
   const saleModeForValidation: 'no' | 'yes' | 'preorder' = hasYooKassa
     ? formData.allowDownloadSale

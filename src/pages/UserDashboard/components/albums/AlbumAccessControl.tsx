@@ -61,8 +61,8 @@ export function AlbumAccessControl({
         closeMenu();
         return;
       }
-      await onPickVisibility(v);
       closeMenu();
+      void onPickVisibility(v);
     },
     [visibility, onPickVisibility, closeMenu]
   );

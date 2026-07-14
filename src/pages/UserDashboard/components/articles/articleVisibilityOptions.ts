@@ -1,6 +1,7 @@
 import type { IArticles, IInterface, DashboardTrackVisibilityLabels } from '@models';
 import type { SupportedLang } from '@shared/model/lang';
 import { TRACK_VISIBILITY_OPTIONS, type TrackVisibility } from '@shared/lib/tracks/trackVisibility';
+import { filterVisibilityOptionsByMonetization } from '@shared/lib/payment/artistMonetization';
 
 type DashboardUi = NonNullable<IInterface['dashboard']>;
 type DashboardUiWithTrackAccess = DashboardUi & {
@@ -51,7 +52,8 @@ export function getArticleListDraftBadge(
 
 export function buildArticleVisibilityMenuOptions(
   ui: IInterface | undefined,
-  lang: SupportedLang
+  lang: SupportedLang,
+  monetizationEnabled = true
 ): ArticleVisibilityMenuOption[] {
   const d = ui?.dashboard as DashboardUiWithTrackAccess | undefined;
   const t = d?.articleVisibility ?? d?.trackVisibility;
@@ -73,7 +75,7 @@ export function buildArticleVisibilityMenuOptions(
     },
   } as const;
 
-  return TRACK_VISIBILITY_OPTIONS.map((opt) => {
+  const options = TRACK_VISIBILITY_OPTIONS.map((opt) => {
     const block =
       opt.value === 'public' ? t?.public : opt.value === 'hidden' ? t?.hidden : t?.subscribersOnly;
     const fb =
@@ -88,6 +90,8 @@ export function buildArticleVisibilityMenuOptions(
       description: block?.description ?? fb.description,
     };
   });
+
+  return filterVisibilityOptionsByMonetization(options, monetizationEnabled);
 }
 
 /** @deprecated Use `buildArticleVisibilityMenuOptions` */

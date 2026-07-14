@@ -4,6 +4,8 @@ import type { IInterface, DashboardTrackVisibilityLabels } from '@models';
 import type { SupportedLang } from '@shared/model/lang';
 import type { TrackVisibility } from '@shared/lib/tracks/trackVisibility';
 import { TrackVisibilityIcon } from '@shared/ui/icons/TrackVisibilityIcon';
+import { resolveEffectiveContentVisibility } from '@shared/lib/payment/artistMonetization';
+import { useArtistMonetization } from '@shared/lib/payment/ArtistMonetizationContext';
 import { buildArticleVisibilityMenuOptions } from './articleVisibilityOptions';
 import {
   DashboardAccessMenuPortal,
@@ -43,6 +45,7 @@ export function ArticleAccessControl({
   getRowElement,
   buttonClassName,
 }: ArticleAccessControlProps) {
+  const { monetizationEnabled } = useArtistMonetization();
   const { triggerRef, menuRef, menuStyle, portalMount, toggleMenu, closeMenu } =
     useDashboardAccessMenu({
       open: menuOpen,
@@ -57,9 +60,11 @@ export function ArticleAccessControl({
     (lang === 'en' ? 'Article access' : 'Доступ к статье');
 
   const menuOptions = useMemo(
-    () => buildArticleVisibilityMenuOptions(ui, lang),
-    [ui?.dashboard, lang]
+    () => buildArticleVisibilityMenuOptions(ui, lang, monetizationEnabled),
+    [ui?.dashboard, lang, monetizationEnabled]
   );
+
+  const displayVisibility = resolveEffectiveContentVisibility(visibility, monetizationEnabled);
 
   const pickVisibility = useCallback(
     async (v: TrackVisibility) => {
@@ -67,8 +72,8 @@ export function ArticleAccessControl({
         closeMenu();
         return;
       }
-      await onPickVisibility(v);
       closeMenu();
+      void onPickVisibility(v);
     },
     [visibility, onPickVisibility, closeMenu]
   );
@@ -86,7 +91,7 @@ export function ArticleAccessControl({
         aria-label={trackAccessAria}
       >
         <span className="user-dashboard__article-access-button-icon" aria-hidden>
-          <TrackVisibilityIcon visibility={visibility} />
+          <TrackVisibilityIcon visibility={displayVisibility} />
         </span>
       </button>
 
@@ -102,7 +107,7 @@ export function ArticleAccessControl({
             type="button"
             role="menuitem"
             className={clsx('user-dashboard__track-access-menu-item', {
-              'user-dashboard__track-access-menu-item--active': opt.value === visibility,
+              'user-dashboard__track-access-menu-item--active': opt.value === displayVisibility,
             })}
             onClick={() => void pickVisibility(opt.value)}
           >
@@ -113,7 +118,7 @@ export function ArticleAccessControl({
               <span className="user-dashboard__track-access-menu-item-title">{opt.label}</span>
               <span className="user-dashboard__track-access-menu-item-desc">{opt.description}</span>
             </span>
-            {opt.value === visibility ? (
+            {opt.value === displayVisibility ? (
               <span className="user-dashboard__track-access-menu-check" aria-hidden>
                 ✓
               </span>

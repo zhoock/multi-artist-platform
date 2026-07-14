@@ -32,6 +32,7 @@ import { useArchiveAccessModal } from '@shared/lib/archiveAccessModal';
 import { usePremiumSubscription } from '@features/premiumSubscription';
 import { refreshPremiumContentForArchiveChange } from '@features/artistArchive';
 import { useArtistArchiveStatus } from '@features/artistArchive/lib/useArtistArchiveStatus';
+import { useArtistPageAccess } from '@shared/lib/hooks/useArtistPageAccess';
 import {
   resolveArticleLockedBodySize,
   resolveLockedArticleBodyBlocks,
@@ -215,17 +216,20 @@ function ArticleContent({
   const ui = useAppSelector((state) => selectUiDictionaryFirst(state, lang));
   const { isPremium, loading: premiumLoading } = usePremiumSubscription();
   const { artistInArchive } = useArtistArchiveStatus(article?.userId);
+  const { monetizationEnabled } = useArtistPageAccess(artistSlug?.trim() ?? '');
   const { open, requestAccess } = useArchiveAccessModal();
 
   const paywallKind = useMemo(
     () =>
-      resolveArticlePaywallKind({
-        articleLocked: article?.articleLocked,
-        isPremium,
-        premiumLoading,
-        artistInArchive,
-      }),
-    [article?.articleLocked, artistInArchive, isPremium, premiumLoading]
+      monetizationEnabled
+        ? resolveArticlePaywallKind({
+            articleLocked: article?.articleLocked,
+            isPremium,
+            premiumLoading,
+            artistInArchive,
+          })
+        : 'none',
+    [article?.articleLocked, artistInArchive, isPremium, monetizationEnabled, premiumLoading]
   );
 
   const isPaywalled = paywallKind !== 'none';

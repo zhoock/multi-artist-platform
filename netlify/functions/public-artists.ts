@@ -16,6 +16,7 @@ interface PublicArtistRow {
   label_en: string | null;
   label_ru: string | null;
   header_images: unknown;
+  monetization_shop_id: string | null;
 }
 
 interface PublicArtistDto {
@@ -25,6 +26,8 @@ interface PublicArtistDto {
   genreCode: string;
   genreLabel: { en: string; ru: string };
   headerImages: string[];
+  /** Active payment acceptance — gates collection / exclusive content on the public page. */
+  monetizationEnabled: boolean;
 }
 
 function toHeaderImageUrl(userId: string, image: string): string {
@@ -69,9 +72,14 @@ export const handler: Handler = async (
          u.genre_code,
          g.label_en,
          g.label_ru,
-         u.header_images
+         u.header_images,
+         ups.shop_id AS monetization_shop_id
        FROM users u
        JOIN genres g ON g.code = u.genre_code
+       LEFT JOIN user_payment_settings ups
+         ON ups.user_id = u.id::text
+        AND ups.provider = 'yookassa'
+        AND ups.is_active = true
        WHERE u.is_active = true
          AND u.public_slug IS NOT NULL
        ORDER BY u.id ASC`
@@ -105,6 +113,7 @@ export const handler: Handler = async (
         genreCode,
         genreLabel,
         headerImages: headerImageUrls,
+        monetizationEnabled: Boolean(row.monetization_shop_id?.trim()),
       };
     });
 

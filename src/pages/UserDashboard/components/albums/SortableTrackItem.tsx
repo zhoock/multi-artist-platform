@@ -12,6 +12,9 @@ import {
   normalizeTrackVisibility,
   type TrackVisibility,
 } from '@shared/lib/tracks/trackVisibility';
+import { filterVisibilityOptionsByMonetization } from '@shared/lib/payment/artistMonetization';
+import { resolveEffectiveContentVisibility } from '@shared/lib/payment/artistMonetization';
+import { useArtistMonetization } from '@shared/lib/payment/ArtistMonetizationContext';
 import { TrackVisibilityIcon } from '@shared/ui/icons/TrackVisibilityIcon';
 import { DashboardCard, DashboardButton } from '@shared/ui/dashboard';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
@@ -78,6 +81,7 @@ export function SortableTrackItem({
   ui,
 }: SortableTrackItemProps) {
   const { lang } = useLang();
+  const { monetizationEnabled } = useArtistMonetization();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: track.id,
   });
@@ -98,7 +102,11 @@ export function SortableTrackItem({
   } = useDashboardAccessMenu({
     getPortalRoot: (_trigger) => resolveDashboardAccessMenuPortalFromElement(containerRef.current),
   });
-  const trackVisibility = normalizeTrackVisibility(track.visibility);
+  const rawTrackVisibility = normalizeTrackVisibility(track.visibility);
+  const trackVisibility = resolveEffectiveContentVisibility(
+    rawTrackVisibility,
+    monetizationEnabled
+  );
 
   const trackVisibilityMenuOptions = useMemo(() => {
     const d = ui?.dashboard as DashboardUiWithTrackAccess | undefined;
@@ -123,26 +131,29 @@ export function SortableTrackItem({
       },
     } as const;
 
-    return TRACK_VISIBILITY_OPTIONS.map((opt) => {
-      const block =
-        opt.value === 'public'
-          ? t?.public
-          : opt.value === 'hidden'
-            ? t?.hidden
-            : t?.subscribersOnly;
-      const fb =
-        opt.value === 'public'
-          ? fallbacks.public
-          : opt.value === 'hidden'
-            ? fallbacks.hidden
-            : fallbacks.subscribersOnly;
-      return {
-        value: opt.value,
-        label: block?.title ?? fb.title,
-        description: block?.description ?? fb.description,
-      };
-    });
-  }, [lang, ui?.dashboard]);
+    return filterVisibilityOptionsByMonetization(
+      TRACK_VISIBILITY_OPTIONS.map((opt) => {
+        const block =
+          opt.value === 'public'
+            ? t?.public
+            : opt.value === 'hidden'
+              ? t?.hidden
+              : t?.subscribersOnly;
+        const fb =
+          opt.value === 'public'
+            ? fallbacks.public
+            : opt.value === 'hidden'
+              ? fallbacks.hidden
+              : fallbacks.subscribersOnly;
+        return {
+          value: opt.value,
+          label: block?.title ?? fb.title,
+          description: block?.description ?? fb.description,
+        };
+      }),
+      monetizationEnabled
+    );
+  }, [lang, monetizationEnabled, ui?.dashboard]);
 
   const trackAccessAria =
     (ui?.dashboard as DashboardUiWithTrackAccess | undefined)?.trackAccessAriaLabel ??
@@ -205,14 +216,14 @@ export function SortableTrackItem({
 
   const pickVisibility = useCallback(
     async (v: TrackVisibility) => {
-      if (v === trackVisibility) {
+      if (v === rawTrackVisibility) {
         closeAccessMenu();
         return;
       }
-      await onVisibilityChange(albumId, track.id, v);
       closeAccessMenu();
+      void onVisibilityChange(albumId, track.id, v);
     },
-    [albumId, track.id, trackVisibility, onVisibilityChange, closeAccessMenu]
+    [albumId, track.id, rawTrackVisibility, onVisibilityChange, closeAccessMenu]
   );
 
   const handleHeaderClick = () => {

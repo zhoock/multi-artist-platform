@@ -19,12 +19,12 @@ export function ArtistPageBuilderPaymentBar() {
   const [searchParams] = useSearchParams();
   const artistSlug = searchParams.get('artist')?.trim() ?? '';
   const { builderVisibility } = useArtistPageBuilder(artistSlug);
-  const { hasYooKassa } = useYooKassaPaymentConnected(getUser()?.id);
+  const { monetizationEnabled } = useYooKassaPaymentConnected(getUser()?.id);
   const ui = useAppSelector((state) => selectUiDictionaryFirst(state, lang));
   const copy = ui?.artistPageBuilder?.payment;
   const { openDashboard } = useArtistPageBuilderNav();
 
-  if (!shouldShowArtistPageBuilderBlock(builderVisibility, !hasYooKassa)) {
+  if (!shouldShowArtistPageBuilderBlock(builderVisibility, !monetizationEnabled)) {
     return null;
   }
 

@@ -1,13 +1,22 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { ArtistMonetizationProvider } from '@shared/lib/payment/ArtistMonetizationContext';
 import { ArticleAccessControl } from '../ArticleAccessControl';
+
+function renderWithMonetization(ui: React.ReactElement, monetizationEnabled = true) {
+  return render(
+    <ArtistMonetizationProvider value={{ monetizationEnabled, loading: false }}>
+      {ui}
+    </ArtistMonetizationProvider>
+  );
+}
 
 describe('ArticleAccessControl', () => {
   it('opens visibility menu on icon button click without bubbling to row', async () => {
     const user = userEvent.setup();
     const onMenuOpenChange = jest.fn();
 
-    render(
+    renderWithMonetization(
       <div
         data-testid="article-row"
         onClick={() => {
@@ -33,7 +42,7 @@ describe('ArticleAccessControl', () => {
   });
 
   it('shows visibility options when menu is open', () => {
-    render(
+    renderWithMonetization(
       <ArticleAccessControl
         articleId="article-1"
         visibility="public"
@@ -48,5 +57,24 @@ describe('ArticleAccessControl', () => {
 
     expect(screen.getByRole('menu')).toBeInTheDocument();
     expect(screen.getAllByRole('menuitem')).toHaveLength(3);
+  });
+
+  it('hides subscribers-only option when monetization is disabled', () => {
+    renderWithMonetization(
+      <ArticleAccessControl
+        articleId="article-1"
+        visibility="public"
+        ui={undefined}
+        lang="en"
+        menuOpen={true}
+        onMenuOpenChange={jest.fn()}
+        onPickVisibility={jest.fn()}
+        getRowElement={() => document.body}
+      />,
+      false
+    );
+
+    expect(screen.getAllByRole('menuitem')).toHaveLength(2);
+    expect(screen.queryByText(/subscribers only/i)).not.toBeInTheDocument();
   });
 });

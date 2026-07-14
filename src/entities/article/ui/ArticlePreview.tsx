@@ -23,7 +23,10 @@ export function ArticlePreview({
   userId,
   articleLocked,
   visibility,
-}: ArticleProps) {
+  monetizationEnabled = true,
+}: ArticleProps & {
+  /** When false, never show subscriber/collection paywall chrome. */ monetizationEnabled?: boolean;
+}) {
   const { lang } = useLang() as { lang: LocaleKey };
   const { formatDate } = formatDateInWords[lang];
   const [searchParams] = useSearchParams();
@@ -102,9 +105,10 @@ export function ArticlePreview({
   const OverlayIcon = paywallKind === 'archive' ? ArtistArchiveLockIcon : SubscriberContentLockIcon;
 
   const visibilityNorm = normalizeTrackVisibility(visibility);
-  /** API явно ставит `false`, если есть доступ (в т.ч. владелец артиста). `undefined` трактуем как «нет поля» — для subscribers_only безопаснее показать замок. */
+  /** Without artist monetization, exclusive content must render as public (no paywall copy). */
   const showLockedCard =
-    articleLocked === true || (visibilityNorm === 'subscribers_only' && articleLocked !== false);
+    monetizationEnabled &&
+    (articleLocked === true || (visibilityNorm === 'subscribers_only' && articleLocked !== false));
 
   if (!showLockedCard) {
     return (

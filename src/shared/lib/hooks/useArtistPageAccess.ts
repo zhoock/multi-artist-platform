@@ -34,6 +34,8 @@ import {
 import { fetchOwnArtistPageState } from '@shared/lib/ownArtistPage';
 import { fetchPublicProfileForDisplay } from '@shared/lib/profileDisplayName';
 import { getPaymentSettings } from '@shared/api/payment/settings';
+import { resolveMonetizationEnabled } from '@shared/lib/payment/artistMonetization';
+import { subscribeArtistMonetizationChanged } from '@shared/lib/payment/artistMonetizationEvents';
 import { loadSocialLinksFromDatabase, loadTheBandFromDatabase } from '@entities/user/lib';
 import { useArtistHeroHeaderImages } from './useArtistHeroHeaderImages';
 
@@ -62,6 +64,8 @@ export type ArtistPageAccessValue = {
   headerImages: string[];
   isHeaderImagesReady: boolean;
   suppressPublishedArtistChrome: boolean;
+  /** Artist has connected payment acceptance — gates collection / exclusive content. */
+  monetizationEnabled: boolean;
 };
 
 type UseArtistPageAccessStateOptions = {
@@ -118,6 +122,7 @@ export function useArtistPageAccessState(
   const [aboutSurfaceReady, setAboutSurfaceReady] = useState(false);
   const [socialSurfaceReady, setSocialSurfaceReady] = useState(false);
   const [paymentSurfaceReady, setPaymentSurfaceReady] = useState(true);
+  const [monetizationEnabled, setMonetizationEnabled] = useState(false);
   const [artistDisplayNameReady, setArtistDisplayNameReady] = useState(false);
 
   const ownerAlbumCount = useMemo(() => {
@@ -346,24 +351,66 @@ export function useArtistPageAccessState(
   useEffect(() => {
     if (!enabled) return;
 
-    if (!isOwner || !ownerResolved || !isAuthenticated()) {
+    const normalizedArtist = normalizeSlug(artistSlug);
+    if (!normalizedArtist || !ownerResolved) {
       setPaymentSurfaceReady(true);
+      setMonetizationEnabled(false);
       return;
     }
 
     let cancelled = false;
     setPaymentSurfaceReady(false);
 
-    void getPaymentSettings({ provider: 'yookassa' })
-      .catch(() => ({ success: false as const }))
-      .finally(() => {
+    const loadMonetization = async () => {
+      try {
+        if (isOwner && isAuthenticated()) {
+          const res = await getPaymentSettings({ provider: 'yookassa' }).catch(() => ({
+            success: false as const,
+            settings: undefined,
+          }));
+          if (cancelled) return;
+          setMonetizationEnabled(
+            Boolean(res.success && resolveMonetizationEnabled(res.settings ?? null))
+          );
+          return;
+        }
+
+        const response = await fetchWithAuthSession('/api/public-artists');
+        const payload = (await response.json()) as {
+          success?: boolean;
+          data?: Array<{ publicSlug?: string; monetizationEnabled?: boolean }>;
+        };
+        if (cancelled) return;
+        if (!response.ok || !payload.success || !Array.isArray(payload.data)) {
+          setMonetizationEnabled(false);
+          return;
+        }
+        const match = payload.data.find(
+          (artist) => normalizeSlug(artist.publicSlug ?? '') === normalizedArtist
+        );
+        setMonetizationEnabled(Boolean(match?.monetizationEnabled));
+      } catch {
+        if (!cancelled) setMonetizationEnabled(false);
+      } finally {
         if (!cancelled) setPaymentSurfaceReady(true);
-      });
+      }
+    };
+
+    void loadMonetization();
+
+    const unsubscribe = isOwner
+      ? subscribeArtistMonetizationChanged((enabled) => {
+          if (cancelled) return;
+          setMonetizationEnabled(enabled);
+          setPaymentSurfaceReady(true);
+        })
+      : () => {};
 
     return () => {
       cancelled = true;
+      unsubscribe();
     };
-  }, [enabled, isOwner, ownerResolved]);
+  }, [artistSlug, enabled, isOwner, ownerResolved]);
 
   const albumsPending =
     catalogCacheStale ||
@@ -536,6 +583,7 @@ export function useArtistPageAccessState(
     headerImages,
     isHeaderImagesReady,
     suppressPublishedArtistChrome,
+    monetizationEnabled,
   } satisfies ArtistPageAccessValue;
 }
 

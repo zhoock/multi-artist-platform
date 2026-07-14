@@ -24,6 +24,7 @@ const baseAccess = {
   headerImages: [],
   isHeaderImagesReady: true,
   suppressPublishedArtistChrome: false,
+  monetizationEnabled: false,
 };
 
 jest.mock('@shared/lib/hooks/useArtistPageBuilder', () => ({

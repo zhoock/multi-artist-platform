@@ -357,6 +357,16 @@ describe('useArtistPageAccess — owner onboarding after full content removal', 
       if (href.includes('/api/albums')) {
         return { ok: true, json: async () => ({ success: true, data: [] }) } as Response;
       }
+      if (href.includes('/api/public-artists') || href.includes('/api/payment-settings')) {
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            data: [{ publicSlug: 'test-artist', monetizationEnabled: false }],
+            settings: null,
+          }),
+        } as Response;
+      }
       return { ok: false, json: async () => ({}) } as Response;
     });
   });

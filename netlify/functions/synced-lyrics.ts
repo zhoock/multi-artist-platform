@@ -8,6 +8,7 @@ import { getUserIdFromEvent, unauthorizedFromAuthHeader } from './lib/api-helper
 import { assertArtistVisibleToViewer } from './lib/artist-publication';
 import { PublicArtistResolverError, resolvePublicArtistUserId } from './lib/public-artist-resolver';
 import { viewerHasPremiumAccessToArtist } from './lib/entitlements';
+import { artistHasMonetizationEnabled } from './lib/artist-monetization';
 import {
   buildTrackLyricsBundle,
   deleteTrackLyricsSync,
@@ -98,13 +99,16 @@ export const handler: Handler = async (
       }
 
       if (artist?.trim()) {
-        const canRead = await viewerHasPremiumAccessToArtist(authUserId, targetUserId);
-        if (!canRead) {
-          return {
-            statusCode: 200,
-            headers,
-            body: JSON.stringify({ success: true, data: undefined } as SyncedLyricsResponse),
-          };
+        const monetizationEnabled = await artistHasMonetizationEnabled(targetUserId);
+        if (monetizationEnabled) {
+          const canRead = await viewerHasPremiumAccessToArtist(authUserId, targetUserId);
+          if (!canRead) {
+            return {
+              statusCode: 200,
+              headers,
+              body: JSON.stringify({ success: true, data: undefined } as SyncedLyricsResponse),
+            };
+          }
         }
       }
 

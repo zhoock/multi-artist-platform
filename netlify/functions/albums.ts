@@ -40,6 +40,8 @@ import { hydrateMissingRuTranslationsOnAlbum } from '../../src/entities/album/li
 import type { TrackLyricsBundle } from '../../src/shared/lib/lyrics/types';
 import type { IAlbums } from '../../src/models';
 import { viewerHasPremiumAccessToArtist } from './lib/entitlements';
+import { artistHasMonetizationEnabled } from './lib/artist-monetization';
+import { resolveEffectiveContentVisibility } from '../../src/shared/lib/payment/artistMonetization';
 import { buildLyricsMapForAlbumTracks, mergeTrackLyricsBundles } from './lib/track-lyrics';
 
 interface AlbumRow {
@@ -74,7 +76,6 @@ interface TrackRow {
   src: string | null;
   content: string | null;
   authorship: string | null;
-  synced_lyrics: unknown | null;
   order_index: number;
   visibility?: string | null;
   stems_visibility?: string | null;
@@ -743,10 +744,11 @@ function mergeAlbumDataPayloads(payloads: AlbumData[]): AlbumData {
  * Публичный каталог (?artist=…): скрытые треки не отдаём никому;
  * полный список с аудио — только GET /api/albums из кабинета без ?artist=.
  * subscribers_only без активной подписки (или владения) — без src и playbackLocked.
+ * Пока у артиста нет монетизации, subscribers_only ведёт себя как public.
  */
 function applyPublicTrackAccessPolicy(
   album: AlbumData,
-  ctx: { hasPremiumAccess: boolean }
+  ctx: { hasPremiumAccess: boolean; monetizationEnabled: boolean }
 ): AlbumData {
   /**
    * Скрытые треки не показываем на публичной витрине, кроме случая когда стемы
@@ -759,8 +761,14 @@ function applyPublicTrackAccessPolicy(
   });
 
   const nextTracks = catalogTracks.map((t) => {
-    const visibility = normalizeTrackVisibility(t.visibility);
-    const stemsVisibility = normalizeStemsVisibility(t.stemsVisibility);
+    const visibility = resolveEffectiveContentVisibility(
+      normalizeTrackVisibility(t.visibility),
+      ctx.monetizationEnabled
+    );
+    const stemsVisibility = resolveEffectiveContentVisibility(
+      normalizeStemsVisibility(t.stemsVisibility),
+      ctx.monetizationEnabled
+    );
     const needLock = visibility === 'subscribers_only' && !ctx.hasPremiumAccess;
     if (needLock) {
       return {
@@ -1002,6 +1010,12 @@ export const handler: Handler = async (
 
       const artistParam = artist?.trim();
       const isPublicCatalogRequest = Boolean(artistParam);
+      const monetizationEnabled = isPublicCatalogRequest
+        ? await artistHasMonetizationEnabled(targetUserId)
+        : true;
+      const hasPremiumAccess = isPublicCatalogRequest
+        ? await viewerHasPremiumAccessToArtist(authUserId, targetUserId)
+        : false;
 
       const albumsWithTracks: AlbumData[] = [];
       for (const albumKey of albumIdsOrdered) {
@@ -1011,8 +1025,10 @@ export const handler: Handler = async (
         let merged = mergeAlbumDataPayloads(payloads);
 
         if (isPublicCatalogRequest) {
-          const hasPremiumAccess = await viewerHasPremiumAccessToArtist(authUserId, targetUserId);
-          merged = applyPublicTrackAccessPolicy(merged, { hasPremiumAccess });
+          merged = applyPublicTrackAccessPolicy(merged, {
+            hasPremiumAccess,
+            monetizationEnabled,
+          });
           const isOwnerViewer = Boolean(authUserId && authUserId === targetUserId);
           if (
             !isOwnerViewer &&
@@ -1378,9 +1394,9 @@ export const handler: Handler = async (
               if (hasVis && hasStemsVis) {
                 await client.query(
                   `INSERT INTO tracks (
-                  album_id, track_id, title, duration, src, content, authorship, synced_lyrics, order_index, visibility, stems_visibility, updated_at
+                  album_id, track_id, title, duration, src, content, authorship, order_index, visibility, stems_visibility, updated_at
                 )
-                SELECT $1::uuid, track_id, title, duration, src, content, authorship, synced_lyrics, order_index,
+                SELECT $1::uuid, track_id, title, duration, src, content, authorship, order_index,
                        COALESCE(visibility, 'public'), COALESCE(stems_visibility, 'public'), NOW()
                 FROM tracks WHERE album_id = $2::uuid`,
                   [newAlbumPk, sibling.id]
@@ -1388,9 +1404,9 @@ export const handler: Handler = async (
               } else if (hasVis) {
                 await client.query(
                   `INSERT INTO tracks (
-                  album_id, track_id, title, duration, src, content, authorship, synced_lyrics, order_index, visibility, updated_at
+                  album_id, track_id, title, duration, src, content, authorship, order_index, visibility, updated_at
                 )
-                SELECT $1::uuid, track_id, title, duration, src, content, authorship, synced_lyrics, order_index,
+                SELECT $1::uuid, track_id, title, duration, src, content, authorship, order_index,
                        COALESCE(visibility, 'public'), NOW()
                 FROM tracks WHERE album_id = $2::uuid`,
                   [newAlbumPk, sibling.id]
@@ -1398,9 +1414,9 @@ export const handler: Handler = async (
               } else {
                 await client.query(
                   `INSERT INTO tracks (
-                  album_id, track_id, title, duration, src, content, authorship, synced_lyrics, order_index, updated_at
+                  album_id, track_id, title, duration, src, content, authorship, order_index, updated_at
                 )
-                SELECT $1::uuid, track_id, title, duration, src, content, authorship, synced_lyrics, order_index, NOW()
+                SELECT $1::uuid, track_id, title, duration, src, content, authorship, order_index, NOW()
                 FROM tracks WHERE album_id = $2::uuid`,
                   [newAlbumPk, sibling.id]
                 );

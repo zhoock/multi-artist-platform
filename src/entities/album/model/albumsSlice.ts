@@ -3,7 +3,7 @@ import { createAsyncThunk, createSlice, type PayloadAction } from '@reduxjs/tool
 import type { IAlbums, IAlbumTranslations, IAlbumTrackTranslations } from '@models';
 import { normalizeTrackIdString } from '@shared/lib/tracks/normalizeTrackIdString';
 import { normalizeStemsVisibility } from '@shared/lib/stems/stemsVisibility';
-import { normalizeTrackVisibility } from '@shared/lib/tracks/trackVisibility';
+import { normalizeTrackVisibility, type TrackVisibility } from '@shared/lib/tracks/trackVisibility';
 import type { RootState } from '@shared/model/appStore/types';
 import { getToken } from '@shared/lib/auth';
 import { fetchWithAuthSession } from '@shared/lib/authFetch';
@@ -446,6 +446,25 @@ const albumsSlice = createSlice({
       patchList(state.dashboard.data);
       patchList(state.data);
     },
+    patchDashboardTrackVisibility: (
+      state,
+      action: PayloadAction<{ albumId: string; trackId: string; visibility: TrackVisibility }>
+    ) => {
+      const { albumId, trackId, visibility } = action.payload;
+      const patchList = (list: IAlbums[]) => {
+        const albumIdx = list.findIndex((x) => x.albumId === albumId);
+        if (albumIdx < 0) return;
+        const album = list[albumIdx];
+        const tracks = album.tracks ?? [];
+        const trackIdx = tracks.findIndex((t) => String(t.id) === String(trackId));
+        if (trackIdx < 0) return;
+        const nextTracks = tracks.slice();
+        nextTracks[trackIdx] = { ...nextTracks[trackIdx], visibility };
+        list[albumIdx] = { ...album, tracks: nextTracks };
+      };
+      patchList(state.dashboard.data);
+      patchList(state.data);
+    },
   },
   extraReducers: (builder) => {
     builder.addCase(applyTrackLyricsBundle, (state, action) => {
@@ -587,5 +606,6 @@ const albumsSlice = createSlice({
   },
 });
 
-export const { resetAlbumsState, patchDashboardAlbumVisibility } = albumsSlice.actions;
+export const { resetAlbumsState, patchDashboardAlbumVisibility, patchDashboardTrackVisibility } =
+  albumsSlice.actions;
 export const albumsReducer = albumsSlice.reducer;

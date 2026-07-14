@@ -70,9 +70,11 @@ import {
 } from '@shared/lib/artistPageContent';
 import { useOwnArtistPageSummary } from '@shared/lib/hooks/useOwnArtistPageSummary';
 import { useAuthSessionUser } from '@shared/lib/hooks/useAuthSessionUser';
+import { ArtistMonetizationProvider } from '@shared/lib/payment/ArtistMonetizationContext';
 import {
   fetchAlbums,
   patchDashboardAlbumVisibility,
+  patchDashboardTrackVisibility,
   selectDashboardAlbumsStatus,
   selectDashboardAlbumsData,
   selectDashboardAlbumsError,
@@ -404,8 +406,8 @@ function UserDashboard() {
   );
 
   const syncPublicArticlesAfterChange = useCallback(
-    (options?: { refreshNow?: boolean }) => {
-      if (typeof window !== 'undefined') {
+    (options?: { refreshNow?: boolean; broadcast?: boolean }) => {
+      if (options?.broadcast !== false && typeof window !== 'undefined') {
         window.dispatchEvent(new Event('artist:updated'));
       }
       markPublicArticlesDirty();
@@ -988,19 +990,43 @@ function UserDashboard() {
     trackId: string,
     visibility: TrackVisibility
   ) => {
-    try {
-      const token = getToken();
-      if (!token) {
-        setAlertModal({
-          isOpen: true,
-          title: ui?.dashboard?.error ?? 'Error',
-          message:
-            ui?.dashboard?.errorNotAuthorized ?? 'Error: you are not authorized. Please log in.',
-          variant: 'error',
-        });
-        return;
-      }
+    const token = getToken();
+    if (!token) {
+      setAlertModal({
+        isOpen: true,
+        title: ui?.dashboard?.error ?? 'Error',
+        message:
+          ui?.dashboard?.errorNotAuthorized ?? 'Error: you are not authorized. Please log in.',
+        variant: 'error',
+      });
+      return;
+    }
 
+    const album = albumsData.find((a) => a.albumId === albumId || a.id === albumId);
+    const previousVisibility = (album?.tracks.find((t) => String(t.id) === String(trackId))
+      ?.visibility ?? 'public') as TrackVisibility;
+
+    const applyTrackVisibility = (next: TrackVisibility) => {
+      setAlbumsData((prev) =>
+        prev.map((a) =>
+          a.albumId === albumId || a.id === albumId
+            ? {
+                ...a,
+                tracks: a.tracks.map((t) =>
+                  String(t.id) === String(trackId) ? { ...t, visibility: next } : t
+                ),
+              }
+            : a
+        )
+      );
+      dispatch(patchDashboardTrackVisibility({ albumId, trackId, visibility: next }));
+    };
+
+    applyTrackVisibility(visibility);
+    flashDashboardRow(`dashboard-track-row-${trackId}`, visibility);
+    markPublicCatalogDirty();
+
+    try {
       const response = await fetchWithAuthSession('/api/update-track-visibility', {
         method: 'POST',
         headers: {
@@ -1015,28 +1041,16 @@ function UserDashboard() {
         throw new Error((errorData as any)?.message || `HTTP error! status: ${response.status}`);
       }
 
-      setAlbumsData((prev) =>
-        prev.map((album) =>
-          album.albumId === albumId || album.id === albumId
-            ? {
-                ...album,
-                tracks: album.tracks.map((t) => (t.id === trackId ? { ...t, visibility } : t)),
-              }
-            : album
-        )
-      );
-      flashDashboardRow(`dashboard-track-row-${trackId}`, visibility);
-      handleCatalogChanged({ wasPubliclyVisible: true });
       refreshPublicCatalogNow(resolvePublicArtistSlugForRefresh());
     } catch (error) {
       console.error('❌ Error updating track visibility:', error);
+      applyTrackVisibility(previousVisibility);
       setAlertModal({
         isOpen: true,
         title: ui?.dashboard?.error ?? 'Error',
         message: `Ошибка при изменении доступа к треку: ${error instanceof Error ? error.message : 'Unknown error'}`,
         variant: 'error',
       });
-      await dispatch(fetchAlbums({ force: true, ownerDashboard: true })).unwrap();
     }
   };
 
@@ -1044,19 +1058,32 @@ function UserDashboard() {
     albumId: string,
     visibility: Extract<TrackVisibility, 'public' | 'hidden'>
   ) => {
-    try {
-      const token = getToken();
-      if (!token) {
-        setAlertModal({
-          isOpen: true,
-          title: ui?.dashboard?.error ?? 'Error',
-          message:
-            ui?.dashboard?.errorNotAuthorized ?? 'Error: you are not authorized. Please log in.',
-          variant: 'error',
-        });
-        return;
-      }
+    const token = getToken();
+    if (!token) {
+      setAlertModal({
+        isOpen: true,
+        title: ui?.dashboard?.error ?? 'Error',
+        message:
+          ui?.dashboard?.errorNotAuthorized ?? 'Error: you are not authorized. Please log in.',
+        variant: 'error',
+      });
+      return;
+    }
 
+    const previousIsPublic =
+      selectDashboardAlbumsData(getStore().getState()).find((a) => a.albumId === albumId)
+        ?.isPublic ?? true;
+
+    dispatch(
+      patchDashboardAlbumVisibility({
+        albumId,
+        isPublic: albumVisibilityToIsPublic(visibility),
+      })
+    );
+    flashDashboardRow(`dashboard-album-row-${albumId}`, visibility);
+    markPublicCatalogDirty();
+
+    try {
       const response = await fetchWithAuthSession('/api/update-album-visibility', {
         method: 'POST',
         headers: {
@@ -1071,41 +1098,42 @@ function UserDashboard() {
         throw new Error((errorData as { message?: string })?.message || `HTTP ${response.status}`);
       }
 
-      dispatch(
-        patchDashboardAlbumVisibility({
-          albumId,
-          isPublic: albumVisibilityToIsPublic(visibility),
-        })
-      );
-      flashDashboardRow(`dashboard-album-row-${albumId}`, visibility);
-      handleCatalogChanged({ wasPubliclyVisible: true });
       refreshPublicCatalogNow(resolvePublicArtistSlugForRefresh());
     } catch (error) {
       console.error('Error updating album visibility:', error);
+      dispatch(patchDashboardAlbumVisibility({ albumId, isPublic: previousIsPublic }));
       setAlertModal({
         isOpen: true,
         title: ui?.dashboard?.error ?? 'Error',
         message: `${ui?.dashboard?.error ?? 'Error'}: ${error instanceof Error ? error.message : 'Unknown'}`,
         variant: 'error',
       });
-      await dispatch(fetchAlbums({ force: true, ownerDashboard: true })).unwrap();
     }
   };
 
   const handleArticleVisibilityChange = async (articleId: string, visibility: TrackVisibility) => {
-    try {
-      const token = getToken();
-      if (!token) {
-        setAlertModal({
-          isOpen: true,
-          title: ui?.dashboard?.error ?? 'Error',
-          message:
-            ui?.dashboard?.errorNotAuthorized ?? 'Error: you are not authorized. Please log in.',
-          variant: 'error',
-        });
-        return;
-      }
+    const token = getToken();
+    if (!token) {
+      setAlertModal({
+        isOpen: true,
+        title: ui?.dashboard?.error ?? 'Error',
+        message:
+          ui?.dashboard?.errorNotAuthorized ?? 'Error: you are not authorized. Please log in.',
+        variant: 'error',
+      });
+      return;
+    }
 
+    const previousVisibility =
+      (selectDashboardArticlesDataResolved(getStore().getState()).find(
+        (a) => String(a.id) === String(articleId)
+      )?.visibility as TrackVisibility | undefined) ?? 'public';
+
+    dispatch(patchDashboardArticleVisibility({ articleId, visibility }));
+    flashDashboardRow(`dashboard-article-row-${articleId}`, visibility);
+    markPublicArticlesDirty();
+
+    try {
       const response = await fetchWithAuthSession('/api/update-article-visibility', {
         method: 'POST',
         headers: {
@@ -1120,18 +1148,16 @@ function UserDashboard() {
         throw new Error((errorData as { message?: string })?.message || `HTTP ${response.status}`);
       }
 
-      dispatch(patchDashboardArticleVisibility({ articleId, visibility }));
-      flashDashboardRow(`dashboard-article-row-${articleId}`, visibility);
-      syncPublicArticlesAfterChange();
+      syncPublicArticlesAfterChange({ broadcast: false });
     } catch (error) {
       console.error('Error updating article visibility:', error);
+      dispatch(patchDashboardArticleVisibility({ articleId, visibility: previousVisibility }));
       setAlertModal({
         isOpen: true,
         title: ui?.dashboard?.error ?? 'Error',
         message: `${ui?.dashboard?.error ?? 'Error'}: ${error instanceof Error ? error.message : 'Unknown'}`,
         variant: 'error',
       });
-      await dispatch(fetchArticles({ force: true, ownerDashboard: true })).unwrap();
     }
   };
 
@@ -1852,566 +1878,573 @@ function UserDashboard() {
   const dashboardHeading = dashboardHeadingForTab(activeTab, ui);
 
   return (
-    <>
-      <Helmet>
-        <title>{dashboardHeading} — Смоляное Чучелко</title>
-      </Helmet>
+    <ArtistMonetizationProvider>
+      <>
+        <Helmet>
+          <title>{dashboardHeading} — Смоляное Чучелко</title>
+        </Helmet>
 
-      <Popup isActive={true} onClose={closeDashboard}>
-        <AlbumPublishedToast triggerKey={publishedToastTrigger} />
-        <AlbumCreatedToast triggerKey={editAlbumModal} />
-        <TracksUploadedToast triggerKey={tracksUploadToastTrigger} />
-        <AlbumDeletedToast triggerKey={albumDeletedToastTrigger} />
-        <ArticleDeletedToast triggerKey={articleDeletedToastTrigger} />
-        <ArticleEditorToast triggerKey={articleEditorToastTrigger} />
-        <LyricsSyncSavedToast triggerKey={lyricsSyncSavedToastTrigger} />
-        <div className="user-dashboard">
-          {/* Main card container */}
-          <div className="user-dashboard__card">
-            {/* Header with controls */}
-            <div className="user-dashboard__header">
-              <h2 className="user-dashboard__title">{dashboardHeading}</h2>
-              <PopupCloseButton
-                className="user-dashboard__close"
-                aria-label={ui?.dashboard?.close ?? 'Close'}
-              >
-                <ModalCloseIcon />
-              </PopupCloseButton>
-            </div>
+        <Popup isActive={true} onClose={closeDashboard}>
+          <AlbumPublishedToast triggerKey={publishedToastTrigger} />
+          <AlbumCreatedToast triggerKey={editAlbumModal} />
+          <TracksUploadedToast triggerKey={tracksUploadToastTrigger} />
+          <AlbumDeletedToast triggerKey={albumDeletedToastTrigger} />
+          <ArticleDeletedToast triggerKey={articleDeletedToastTrigger} />
+          <ArticleEditorToast triggerKey={articleEditorToastTrigger} />
+          <LyricsSyncSavedToast triggerKey={lyricsSyncSavedToastTrigger} />
+          <div className="user-dashboard">
+            {/* Main card container */}
+            <div className="user-dashboard__card">
+              {/* Header with controls */}
+              <div className="user-dashboard__header">
+                <h2 className="user-dashboard__title">{dashboardHeading}</h2>
+                <PopupCloseButton
+                  className="user-dashboard__close"
+                  aria-label={ui?.dashboard?.close ?? 'Close'}
+                >
+                  <ModalCloseIcon />
+                </PopupCloseButton>
+              </div>
 
-            {/* Main body with sidebar and content */}
-            <div className="user-dashboard__body">
-              {/* Sidebar navigation */}
-              <nav className="user-dashboard__sidebar">
-                {visibleTabs.map((tab) => (
-                  <button
-                    key={tab}
-                    type="button"
-                    className={clsx(
-                      'user-dashboard__nav-item',
-                      activeTab === tab && 'user-dashboard__nav-item--active'
-                    )}
-                    onClick={() => goDashboard(`/dashboard-new/${tab}`)}
-                  >
-                    <DashboardNavTabIcon tab={tab} />
-                    {dashboardHeadingForTab(tab, ui)}
-                  </button>
-                ))}
-              </nav>
-
-              {/* Content area: стабильная оболочка; вкладки скрыты через hidden, не размонтируются */}
-              <div className="user-dashboard__content user-dashboard__tab-shell">
-                {albumsInitialLoading &&
-                !albumsLoadFailed &&
-                activeTab === 'albums' &&
-                emailVerified ? (
-                  <DashboardLoadingState className="user-dashboard__tab-loading" />
-                ) : albumsLoadFailed ? (
-                  <div
-                    className="user-dashboard__error user-dashboard__error--tab-shell"
-                    role="alert"
-                  >
-                    {ui?.dashboard?.errorLoading ?? 'Error loading:'}{' '}
-                    {albumsError || (ui?.dashboard?.failedToLoadAlbums ?? 'Failed to load albums')}
-                  </div>
-                ) : (
-                  <>
-                    {isArtist ? (
-                      <div
-                        className="user-dashboard__tab-panel"
-                        hidden={activeTab !== 'payment-settings'}
-                        aria-hidden={activeTab !== 'payment-settings'}
-                      >
-                        {!emailVerified ? (
-                          <EmailVerificationOnboarding context="payment-settings" />
-                        ) : user?.id ? (
-                          <PaymentSettings userId={user.id} />
-                        ) : (
-                          <p className="user-dashboard__tab-placeholder">
-                            {ui?.dashboard?.errorLoading ?? 'Error loading'}
-                          </p>
-                        )}
-                      </div>
-                    ) : null}
-                    <div
-                      className="user-dashboard__tab-panel"
-                      hidden={activeTab !== 'my-purchases'}
-                      aria-hidden={activeTab !== 'my-purchases'}
+              {/* Main body with sidebar and content */}
+              <div className="user-dashboard__body">
+                {/* Sidebar navigation */}
+                <nav className="user-dashboard__sidebar">
+                  {visibleTabs.map((tab) => (
+                    <button
+                      key={tab}
+                      type="button"
+                      className={clsx(
+                        'user-dashboard__nav-item',
+                        activeTab === tab && 'user-dashboard__nav-item--active'
+                      )}
+                      onClick={() => goDashboard(`/dashboard-new/${tab}`)}
                     >
-                      <MyPurchasesContent />
+                      <DashboardNavTabIcon tab={tab} />
+                      {dashboardHeadingForTab(tab, ui)}
+                    </button>
+                  ))}
+                </nav>
+
+                {/* Content area: стабильная оболочка; вкладки скрыты через hidden, не размонтируются */}
+                <div className="user-dashboard__content user-dashboard__tab-shell">
+                  {albumsInitialLoading &&
+                  !albumsLoadFailed &&
+                  activeTab === 'albums' &&
+                  emailVerified ? (
+                    <DashboardLoadingState className="user-dashboard__tab-loading" />
+                  ) : albumsLoadFailed ? (
+                    <div
+                      className="user-dashboard__error user-dashboard__error--tab-shell"
+                      role="alert"
+                    >
+                      {ui?.dashboard?.errorLoading ?? 'Error loading:'}{' '}
+                      {albumsError ||
+                        (ui?.dashboard?.failedToLoadAlbums ?? 'Failed to load albums')}
                     </div>
-                    {isArtist ? (
-                      <div
-                        className="user-dashboard__tab-panel"
-                        hidden={activeTab !== 'social-links'}
-                        aria-hidden={activeTab !== 'social-links'}
-                      >
-                        <SocialLinksContent active={activeTab === 'social-links'} />
-                      </div>
-                    ) : null}
-                    {isArtist ? (
-                      <div
-                        className="user-dashboard__tab-panel"
-                        hidden={activeTab !== 'mixer'}
-                        aria-hidden={activeTab !== 'mixer'}
-                      >
-                        {!emailVerified ? (
-                          <EmailVerificationOnboarding context="mixer" />
-                        ) : albumsInitialLoading ? (
-                          <DashboardLoadingState className="user-dashboard__tab-loading" />
-                        ) : albumsData.length === 0 ? (
-                          <MixerEmptyState
-                            ui={ui}
-                            onCreateAlbum={() => setEditAlbumModal({ isOpen: true })}
-                          />
-                        ) : (
-                          <MixerAdmin
-                            ui={ui || undefined}
-                            userId={user?.id || undefined}
-                            albums={albumsData}
-                            tabActive={activeTab === 'mixer'}
-                          />
-                        )}
-                      </div>
-                    ) : null}
-                    <div
-                      className="user-dashboard__tab-panel user-dashboard__tab-panel--archive"
-                      hidden={activeTab !== 'archive'}
-                      aria-hidden={activeTab !== 'archive'}
-                    >
-                      {activeTab === 'archive' && !archiveContentReady ? (
-                        <DashboardLoadingState className="user-dashboard__tab-loading" />
-                      ) : null}
-                      {archiveTabEverVisitedRef.current ? (
+                  ) : (
+                    <>
+                      {isArtist ? (
                         <div
-                          className={clsx(
-                            'user-dashboard__archive-content',
-                            !archiveContentReady && 'user-dashboard__archive-content--pending'
-                          )}
+                          className="user-dashboard__tab-panel"
+                          hidden={activeTab !== 'payment-settings'}
+                          aria-hidden={activeTab !== 'payment-settings'}
                         >
-                          <MyArchiveContent
-                            active={activeTab === 'archive'}
-                            onContentReady={handleArchiveContentReady}
-                            onContentBusy={handleArchiveContentBusy}
+                          {!emailVerified ? (
+                            <EmailVerificationOnboarding context="payment-settings" />
+                          ) : user?.id ? (
+                            <PaymentSettings userId={user.id} />
+                          ) : (
+                            <p className="user-dashboard__tab-placeholder">
+                              {ui?.dashboard?.errorLoading ?? 'Error loading'}
+                            </p>
+                          )}
+                        </div>
+                      ) : null}
+                      <div
+                        className="user-dashboard__tab-panel"
+                        hidden={activeTab !== 'my-purchases'}
+                        aria-hidden={activeTab !== 'my-purchases'}
+                      >
+                        <MyPurchasesContent />
+                      </div>
+                      {isArtist ? (
+                        <div
+                          className="user-dashboard__tab-panel"
+                          hidden={activeTab !== 'social-links'}
+                          aria-hidden={activeTab !== 'social-links'}
+                        >
+                          <SocialLinksContent active={activeTab === 'social-links'} />
+                        </div>
+                      ) : null}
+                      {isArtist ? (
+                        <div
+                          className="user-dashboard__tab-panel"
+                          hidden={activeTab !== 'mixer'}
+                          aria-hidden={activeTab !== 'mixer'}
+                        >
+                          {!emailVerified ? (
+                            <EmailVerificationOnboarding context="mixer" />
+                          ) : albumsInitialLoading ? (
+                            <DashboardLoadingState className="user-dashboard__tab-loading" />
+                          ) : albumsData.length === 0 ? (
+                            <MixerEmptyState
+                              ui={ui}
+                              onCreateAlbum={() => setEditAlbumModal({ isOpen: true })}
+                            />
+                          ) : (
+                            <MixerAdmin
+                              ui={ui || undefined}
+                              userId={user?.id || undefined}
+                              albums={albumsData}
+                              tabActive={activeTab === 'mixer'}
+                            />
+                          )}
+                        </div>
+                      ) : null}
+                      <div
+                        className="user-dashboard__tab-panel user-dashboard__tab-panel--archive"
+                        hidden={activeTab !== 'archive'}
+                        aria-hidden={activeTab !== 'archive'}
+                      >
+                        {activeTab === 'archive' && !archiveContentReady ? (
+                          <DashboardLoadingState className="user-dashboard__tab-loading" />
+                        ) : null}
+                        {archiveTabEverVisitedRef.current ? (
+                          <div
+                            className={clsx(
+                              'user-dashboard__archive-content',
+                              !archiveContentReady && 'user-dashboard__archive-content--pending'
+                            )}
+                          >
+                            <MyArchiveContent
+                              active={activeTab === 'archive'}
+                              onContentReady={handleArchiveContentReady}
+                              onContentBusy={handleArchiveContentBusy}
+                            />
+                          </div>
+                        ) : null}
+                      </div>
+                      {isArtist ? (
+                        <div
+                          className="user-dashboard__tab-panel"
+                          hidden={activeTab !== 'albums'}
+                          aria-hidden={activeTab !== 'albums'}
+                        >
+                          <AlbumsTabContent
+                            emailVerified={emailVerified}
+                            initialLoading={albumsInitialLoading}
+                            tabActive={activeTab === 'albums'}
+                            albumsData={albumsData}
+                            albumsFromStore={albumsFromStore}
+                            expandedAlbumId={expandedAlbumId}
+                            onSetExpandedAlbumId={setExpandedAlbumId}
+                            albumAccessMenuAlbumId={albumAccessMenuAlbumId}
+                            publishingAlbumId={publishingAlbumId}
+                            isUploadingTracks={isUploadingTracks}
+                            uploadProgress={uploadProgress}
+                            dashboardRowFlashes={dashboardRowFlashes}
+                            ui={ui}
+                            lang={lang}
+                            userId={userId}
+                            trackUploadSectionRefs={trackUploadSectionRefs}
+                            fileInputRefs={fileInputRefs}
+                            onCreateAlbum={() => setEditAlbumModal({ isOpen: true })}
+                            onEditAlbum={(albumId) => setEditAlbumModal({ isOpen: true, albumId })}
+                            onToggleAlbum={toggleAlbum}
+                            onAlbumAccessMenuChange={setAlbumAccessMenuAlbumId}
+                            onAlbumVisibilityChange={(albumId, visibility) =>
+                              void handleAlbumVisibilityChange(albumId, visibility)
+                            }
+                            onTrackUpload={handleTrackUpload}
+                            onDragEnd={handleDragEnd}
+                            onDeleteTrack={handleDeleteTrack}
+                            onTrackTitleChange={handleTrackTitleChange}
+                            onTrackVisibilityChange={handleTrackVisibilityChange}
+                            onDeleteAlbum={handleDeleteAlbum}
+                            onPublishAlbum={handlePublishAlbum}
+                            onLyricsAction={handleLyricsAction}
                           />
                         </div>
                       ) : null}
-                    </div>
-                    {isArtist ? (
+                      {isArtist ? (
+                        <div
+                          className="user-dashboard__tab-panel"
+                          hidden={activeTab !== 'posts'}
+                          aria-hidden={activeTab !== 'posts'}
+                        >
+                          <PostsTabContent
+                            emailVerified={emailVerified}
+                            articlesStatus={articlesStatus}
+                            articlesError={articlesError}
+                            articles={articlesFromStore ?? []}
+                            articleAccessMenuArticleId={articleAccessMenuArticleId}
+                            dashboardRowFlashes={dashboardRowFlashes}
+                            ui={ui}
+                            lang={lang}
+                            onArticleAccessMenuChange={setArticleAccessMenuArticleId}
+                            onArticleVisibilityChange={(articleId, visibility) =>
+                              void handleArticleVisibilityChange(articleId, visibility)
+                            }
+                            onEditArticle={(article) =>
+                              setEditArticleModal({ isOpen: true, article })
+                            }
+                            onDeleteArticle={handleDeleteArticle}
+                            onCreateArticle={openNewArticleEditor}
+                          />
+                        </div>
+                      ) : null}
                       <div
                         className="user-dashboard__tab-panel"
-                        hidden={activeTab !== 'albums'}
-                        aria-hidden={activeTab !== 'albums'}
+                        hidden={activeTab !== 'settings'}
+                        aria-hidden={activeTab !== 'settings'}
                       >
-                        <AlbumsTabContent
-                          emailVerified={emailVerified}
-                          initialLoading={albumsInitialLoading}
-                          tabActive={activeTab === 'albums'}
-                          albumsData={albumsData}
-                          albumsFromStore={albumsFromStore}
-                          expandedAlbumId={expandedAlbumId}
-                          onSetExpandedAlbumId={setExpandedAlbumId}
-                          albumAccessMenuAlbumId={albumAccessMenuAlbumId}
-                          publishingAlbumId={publishingAlbumId}
-                          isUploadingTracks={isUploadingTracks}
-                          uploadProgress={uploadProgress}
-                          dashboardRowFlashes={dashboardRowFlashes}
-                          ui={ui}
-                          lang={lang}
-                          userId={userId}
-                          trackUploadSectionRefs={trackUploadSectionRefs}
-                          fileInputRefs={fileInputRefs}
-                          onCreateAlbum={() => setEditAlbumModal({ isOpen: true })}
-                          onEditAlbum={(albumId) => setEditAlbumModal({ isOpen: true, albumId })}
-                          onToggleAlbum={toggleAlbum}
-                          onAlbumAccessMenuChange={setAlbumAccessMenuAlbumId}
-                          onAlbumVisibilityChange={(albumId, visibility) =>
-                            void handleAlbumVisibilityChange(albumId, visibility)
-                          }
-                          onTrackUpload={handleTrackUpload}
-                          onDragEnd={handleDragEnd}
-                          onDeleteTrack={handleDeleteTrack}
-                          onTrackTitleChange={handleTrackTitleChange}
-                          onTrackVisibilityChange={handleTrackVisibilityChange}
-                          onDeleteAlbum={handleDeleteAlbum}
-                          onPublishAlbum={handlePublishAlbum}
-                          onLyricsAction={handleLyricsAction}
-                        />
-                      </div>
-                    ) : null}
-                    {isArtist ? (
-                      <div
-                        className="user-dashboard__tab-panel"
-                        hidden={activeTab !== 'posts'}
-                        aria-hidden={activeTab !== 'posts'}
-                      >
-                        <PostsTabContent
-                          emailVerified={emailVerified}
-                          articlesStatus={articlesStatus}
-                          articlesError={articlesError}
-                          articles={articlesFromStore ?? []}
-                          articleAccessMenuArticleId={articleAccessMenuArticleId}
-                          dashboardRowFlashes={dashboardRowFlashes}
-                          ui={ui}
-                          lang={lang}
-                          onArticleAccessMenuChange={setArticleAccessMenuArticleId}
-                          onArticleVisibilityChange={(articleId, visibility) =>
-                            void handleArticleVisibilityChange(articleId, visibility)
-                          }
-                          onEditArticle={(article) =>
-                            setEditArticleModal({ isOpen: true, article })
-                          }
-                          onDeleteArticle={handleDeleteArticle}
-                          onCreateArticle={openNewArticleEditor}
-                        />
-                      </div>
-                    ) : null}
-                    <div
-                      className="user-dashboard__tab-panel"
-                      hidden={activeTab !== 'settings'}
-                      aria-hidden={activeTab !== 'settings'}
-                    >
-                      <div className="user-dashboard__settings-tab">
-                        <div className="user-dashboard__section">
-                          <div className="user-dashboard__settings-content">
-                            <SettingsPageContent
-                              enabled={activeTab === 'settings'}
-                              scrollToHeaderImages={scrollSettingsToHeaderImages}
-                              onScrollToHeaderImagesHandled={() =>
-                                setScrollSettingsToHeaderImages(false)
-                              }
-                              userName={user?.name ?? undefined}
-                              userEmail={user?.email}
-                              emailVerified={emailVerified}
-                              isListener={isListener}
-                              isArtistPagePublic={isArtistPagePublic}
-                              profilePublicSlug={profilePublicSlug ?? ''}
-                              onOpenArtistPage={() => {
-                                if (!profilePublicSlug) return;
-                                openOwnArtistPage(profilePublicSlug, isArtistPagePublic, navigate);
-                              }}
-                              onDeleteAccount={() => setIsDeleteAccountModalOpen(true)}
-                              onUpgradeToArtist={() => setIsUpgradeToArtistModalOpen(true)}
-                              onLogout={handleLogout}
-                              avatarSrc={avatarSrc}
-                              avatarRetinaSrc={avatarRetinaSrc ?? undefined}
-                              isUploadingAvatar={isUploadingAvatar}
-                              avatarInputRef={avatarInputRef}
-                              onAvatarUploadClick={handleAvatarClick}
-                              onAvatarChange={handleAvatarChange}
-                              onAvatarRemove={handleAvatarRemove}
-                              getProfileAvatarInitials={getProfileAvatarInitials}
-                            />
+                        <div className="user-dashboard__settings-tab">
+                          <div className="user-dashboard__section">
+                            <div className="user-dashboard__settings-content">
+                              <SettingsPageContent
+                                enabled={activeTab === 'settings'}
+                                scrollToHeaderImages={scrollSettingsToHeaderImages}
+                                onScrollToHeaderImagesHandled={() =>
+                                  setScrollSettingsToHeaderImages(false)
+                                }
+                                userName={user?.name ?? undefined}
+                                userEmail={user?.email}
+                                emailVerified={emailVerified}
+                                isListener={isListener}
+                                isArtistPagePublic={isArtistPagePublic}
+                                profilePublicSlug={profilePublicSlug ?? ''}
+                                onOpenArtistPage={() => {
+                                  if (!profilePublicSlug) return;
+                                  openOwnArtistPage(
+                                    profilePublicSlug,
+                                    isArtistPagePublic,
+                                    navigate
+                                  );
+                                }}
+                                onDeleteAccount={() => setIsDeleteAccountModalOpen(true)}
+                                onUpgradeToArtist={() => setIsUpgradeToArtistModalOpen(true)}
+                                onLogout={handleLogout}
+                                avatarSrc={avatarSrc}
+                                avatarRetinaSrc={avatarRetinaSrc ?? undefined}
+                                isUploadingAvatar={isUploadingAvatar}
+                                avatarInputRef={avatarInputRef}
+                                onAvatarUploadClick={handleAvatarClick}
+                                onAvatarChange={handleAvatarChange}
+                                onAvatarRemove={handleAvatarRemove}
+                                getProfileAvatarInitials={getProfileAvatarInitials}
+                              />
+                            </div>
                           </div>
                         </div>
                       </div>
-                    </div>
-                  </>
-                )}
+                    </>
+                  )}
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      </Popup>
+        </Popup>
 
-      {/* Add Lyrics Modal */}
-      {addLyricsModal && (
-        <AddLyricsModal
-          isOpen={addLyricsModal.isOpen}
-          trackTitle={addLyricsModal.trackTitle}
-          onClose={() => setAddLyricsModal(null)}
-          onSave={handleAddLyrics}
-        />
-      )}
+        {/* Add Lyrics Modal */}
+        {addLyricsModal && (
+          <AddLyricsModal
+            isOpen={addLyricsModal.isOpen}
+            trackTitle={addLyricsModal.trackTitle}
+            onClose={() => setAddLyricsModal(null)}
+            onSave={handleAddLyrics}
+          />
+        )}
 
-      {/* Edit Lyrics Modal */}
-      {editLyricsModal && (
-        <EditLyricsModal
-          isOpen={editLyricsModal.isOpen}
-          initialLyrics={
-            editLyricsModal.initialLyrics ??
-            getTrackLyricsText(editLyricsModal.albumId, editLyricsModal.trackId)
-          }
-          initialAuthorship={
-            editLyricsModal.initialAuthorship ||
-            getTrackAuthorship(editLyricsModal.albumId, editLyricsModal.trackId)
-          }
-          onClose={() => setEditLyricsModal(null)}
-          onSave={handleSaveLyrics}
-        />
-      )}
-
-      {/* Preview Lyrics Modal */}
-      {previewLyricsModal && (
-        <PreviewLyricsModal
-          isOpen={previewLyricsModal.isOpen}
-          lyrics={previewLyricsModal.lyrics}
-          trackSrc={previewLyricsModal.trackSrc}
-          mediaOwnerUserId={previewLyricsModal.mediaOwnerUserId}
-          onClose={() => setPreviewLyricsModal(null)}
-        />
-      )}
-
-      {/* Sync Lyrics Modal */}
-      {syncLyricsModal && (
-        <SyncLyricsModal
-          isOpen={syncLyricsModal.isOpen}
-          albumId={syncLyricsModal.albumId}
-          trackId={syncLyricsModal.trackId}
-          trackTitle={syncLyricsModal.trackTitle}
-          trackSrc={syncLyricsModal.trackSrc}
-          mediaOwnerUserId={syncLyricsModal.mediaOwnerUserId}
-          trackDurationSeconds={syncLyricsModal.trackDurationSeconds}
-          initialLyricsText={syncLyricsModal.lyricsText}
-          authorship={syncLyricsModal.authorship}
-          onClose={() => setSyncLyricsModal(null)}
-          onSave={(bundle) => {
-            dispatch(applyTrackLyricsBundle(bundle));
-          }}
-          onSyncSaved={() => {
-            queueLyricsSyncSavedToast();
-            setLyricsSyncSavedToastTrigger((value) => value + 1);
-          }}
-        />
-      )}
-
-      {/* Edit Track Modal */}
-      {editTrackModal && (
-        <>
-          <Popup
-            isActive={editTrackModal.isOpen}
-            onClose={finalizeEditTrackModalClose}
-            onCancelRequest={() => editTrackCloseGuard.requestClose()}
-            requestCloseRef={editTrackPopupRequestCloseRef}
-            closeBlocked={editTrackCloseGuard.discardDialogOpen}
-          >
-            <div className="edit-track-modal">
-              <div className="edit-track-modal__card">
-                <div className="edit-track-modal__header">
-                  <button
-                    type="button"
-                    className="edit-track-modal__close"
-                    onClick={() => editTrackCloseGuard.requestClose()}
-                    aria-label={ui?.dashboard?.close ?? 'Close'}
-                  >
-                    <ModalCloseIcon />
-                  </button>
-                  <h2 className="edit-track-modal__title">
-                    {ui?.dashboard?.editTrack ?? 'Edit Track'}
-                  </h2>
-                </div>
-                <div className="edit-track-modal__content">
-                  <div className="edit-track-modal__field">
-                    <label className="edit-track-modal__label" htmlFor="edit-track-title-input">
-                      {ui?.dashboard?.trackTitle ?? 'Track Title'}
-                    </label>
-                    <input
-                      type="text"
-                      className="edit-track-modal__input"
-                      value={editTrackTitleDraft}
-                      onChange={(e) => setEditTrackTitleDraft(e.target.value)}
-                      id="edit-track-title-input"
-                      autoFocus
-                    />
-                  </div>
-                </div>
-                <footer className="dashboard-modal-footer edit-track-modal__footer">
-                  <DashboardButton
-                    variant="outline"
-                    onClick={() => editTrackCloseGuard.requestClose()}
-                  >
-                    {ui?.dashboard?.cancel ?? 'Cancel'}
-                  </DashboardButton>
-                  <DashboardButton
-                    variant="primary"
-                    onClick={async () => {
-                      const newTitle = editTrackTitleDraft.trim();
-                      if (newTitle && newTitle !== editTrackModal.trackTitle) {
-                        await handleTrackTitleChange(
-                          editTrackModal.albumId,
-                          editTrackModal.trackId,
-                          newTitle
-                        );
-                      }
-                      setEditTrackModal(null);
-                    }}
-                  >
-                    {ui?.dashboard?.save ?? 'Save'}
-                  </DashboardButton>
-                </footer>
-              </div>
-            </div>
-            <InlineEditDiscardDialog
-              open={editTrackCloseGuard.discardDialogOpen}
-              labels={getCloseDiscardConfirmLabels(ui ?? undefined)}
-              titleId={editTrackCloseGuard.discardTitleDomId}
-              onStay={editTrackCloseGuard.dismissDiscardDialog}
-              onDiscard={editTrackCloseGuard.finalizeCloseWithoutSaving}
-            />
-          </Popup>
-        </>
-      )}
-
-      {/* Edit Album Modal */}
-      {editAlbumModal && (
-        <EditAlbumModal
-          key={editAlbumModal.albumId ?? 'new-album'}
-          isOpen={editAlbumModal.isOpen}
-          albumId={editAlbumModal.albumId}
-          onClose={() => setEditAlbumModal(null)}
-          onNext={async (formData, updatedAlbum, meta) => {
-            if (!editAlbumModal) {
-              setEditAlbumModal(null);
-              return;
+        {/* Edit Lyrics Modal */}
+        {editLyricsModal && (
+          <EditLyricsModal
+            isOpen={editLyricsModal.isOpen}
+            initialLyrics={
+              editLyricsModal.initialLyrics ??
+              getTrackLyricsText(editLyricsModal.albumId, editLyricsModal.trackId)
             }
+            initialAuthorship={
+              editLyricsModal.initialAuthorship ||
+              getTrackAuthorship(editLyricsModal.albumId, editLyricsModal.trackId)
+            }
+            onClose={() => setEditLyricsModal(null)}
+            onSave={handleSaveLyrics}
+          />
+        )}
 
-            const searchAlbumId = updatedAlbum?.albumId || editAlbumModal.albumId;
+        {/* Preview Lyrics Modal */}
+        {previewLyricsModal && (
+          <PreviewLyricsModal
+            isOpen={previewLyricsModal.isOpen}
+            lyrics={previewLyricsModal.lyrics}
+            trackSrc={previewLyricsModal.trackSrc}
+            mediaOwnerUserId={previewLyricsModal.mediaOwnerUserId}
+            onClose={() => setPreviewLyricsModal(null)}
+          />
+        )}
 
-            // Обновляем Redux store из БД
-            try {
-              console.log('🔄 [UserDashboard] Fetching albums after save...', {
-                originalAlbumId: editAlbumModal.albumId,
-                updatedAlbumId: updatedAlbum?.albumId,
-                isNewAlbum: !editAlbumModal.albumId,
-              });
-              const fetchPayload = await dispatch(
-                fetchAlbums({ force: true, ownerDashboard: true })
-              ).unwrap();
-              const result = fetchPayload.albums;
-              console.log('✅ [UserDashboard] Albums fetched:', {
-                count: result?.length || 0,
-                albumIds: result?.map((a: IAlbums) => a.albumId) || [],
-              });
+        {/* Sync Lyrics Modal */}
+        {syncLyricsModal && (
+          <SyncLyricsModal
+            isOpen={syncLyricsModal.isOpen}
+            albumId={syncLyricsModal.albumId}
+            trackId={syncLyricsModal.trackId}
+            trackTitle={syncLyricsModal.trackTitle}
+            trackSrc={syncLyricsModal.trackSrc}
+            mediaOwnerUserId={syncLyricsModal.mediaOwnerUserId}
+            trackDurationSeconds={syncLyricsModal.trackDurationSeconds}
+            initialLyricsText={syncLyricsModal.lyricsText}
+            authorship={syncLyricsModal.authorship}
+            onClose={() => setSyncLyricsModal(null)}
+            onSave={(bundle) => {
+              dispatch(applyTrackLyricsBundle(bundle));
+            }}
+            onSyncSaved={() => {
+              queueLyricsSyncSavedToast();
+              setLyricsSyncSavedToastTrigger((value) => value + 1);
+            }}
+          />
+        )}
 
-              // Проверяем, что обновленный альбом действительно пришел с новыми данными
-              // Для новых альбомов используем albumId из updatedAlbum, для существующих - из editAlbumModal
-              if (result && result.length > 0 && searchAlbumId) {
-                const foundAlbum = result.find((a: IAlbums) => a.albumId === searchAlbumId);
-                if (foundAlbum) {
-                  console.log('🔍 [UserDashboard] Updated album from fetchAlbums:', {
-                    albumId: foundAlbum.albumId,
-                    album: foundAlbum.album,
-                    artist: foundAlbum.artist,
-                    description: foundAlbum.description?.substring(0, 50) || '',
-                    cover: foundAlbum.cover,
-                    isNewAlbum: !editAlbumModal.albumId,
-                  });
-                } else {
-                  console.warn(
-                    '⚠️ [UserDashboard] Updated album not found in fetchAlbums result:',
-                    {
-                      searchedAlbumId: searchAlbumId,
-                      availableIds: result.map((a: IAlbums) => a.albumId),
-                      isNewAlbum: !editAlbumModal.albumId,
-                    }
-                  );
-                }
-              }
+        {/* Edit Track Modal */}
+        {editTrackModal && (
+          <>
+            <Popup
+              isActive={editTrackModal.isOpen}
+              onClose={finalizeEditTrackModalClose}
+              onCancelRequest={() => editTrackCloseGuard.requestClose()}
+              requestCloseRef={editTrackPopupRequestCloseRef}
+              closeBlocked={editTrackCloseGuard.discardDialogOpen}
+            >
+              <div className="edit-track-modal">
+                <div className="edit-track-modal__card">
+                  <div className="edit-track-modal__header">
+                    <button
+                      type="button"
+                      className="edit-track-modal__close"
+                      onClick={() => editTrackCloseGuard.requestClose()}
+                      aria-label={ui?.dashboard?.close ?? 'Close'}
+                    >
+                      <ModalCloseIcon />
+                    </button>
+                    <h2 className="edit-track-modal__title">
+                      {ui?.dashboard?.editTrack ?? 'Edit Track'}
+                    </h2>
+                  </div>
+                  <div className="edit-track-modal__content">
+                    <div className="edit-track-modal__field">
+                      <label className="edit-track-modal__label" htmlFor="edit-track-title-input">
+                        {ui?.dashboard?.trackTitle ?? 'Track Title'}
+                      </label>
+                      <input
+                        type="text"
+                        className="edit-track-modal__input"
+                        value={editTrackTitleDraft}
+                        onChange={(e) => setEditTrackTitleDraft(e.target.value)}
+                        id="edit-track-title-input"
+                        autoFocus
+                      />
+                    </div>
+                  </div>
+                  <footer className="dashboard-modal-footer edit-track-modal__footer">
+                    <DashboardButton
+                      variant="outline"
+                      onClick={() => editTrackCloseGuard.requestClose()}
+                    >
+                      {ui?.dashboard?.cancel ?? 'Cancel'}
+                    </DashboardButton>
+                    <DashboardButton
+                      variant="primary"
+                      onClick={async () => {
+                        const newTitle = editTrackTitleDraft.trim();
+                        if (newTitle && newTitle !== editTrackModal.trackTitle) {
+                          await handleTrackTitleChange(
+                            editTrackModal.albumId,
+                            editTrackModal.trackId,
+                            newTitle
+                          );
+                        }
+                        setEditTrackModal(null);
+                      }}
+                    >
+                      {ui?.dashboard?.save ?? 'Save'}
+                    </DashboardButton>
+                  </footer>
+                </div>
+              </div>
+              <InlineEditDiscardDialog
+                open={editTrackCloseGuard.discardDialogOpen}
+                labels={getCloseDiscardConfirmLabels(ui ?? undefined)}
+                titleId={editTrackCloseGuard.discardTitleDomId}
+                onStay={editTrackCloseGuard.dismissDiscardDialog}
+                onDiscard={editTrackCloseGuard.finalizeCloseWithoutSaving}
+              />
+            </Popup>
+          </>
+        )}
 
-              // Небольшая задержка для гарантии обновления Redux store
-              await new Promise((resolve) => setTimeout(resolve, 300));
-
-              // Принудительно обновляем albumsData из результата fetchAlbums
-              if (result && result.length > 0) {
-                console.log('🔄 [UserDashboard] Updating albumsData from fetchAlbums result...');
-
-                const transformedAlbums = transformAlbumsToAlbumData(
-                  result,
-                  siteArtistDisplayName,
-                  lang
-                );
-
-                setAlbumsData(withDashboardAlbumOwner(transformedAlbums, userId));
-                console.log('✅ [UserDashboard] albumsData updated:', {
-                  count: transformedAlbums.length,
-                  albumIds: transformedAlbums.map((a) => a.id),
-                });
-              }
-
-              // Закрываем модальное окно после обновления
-              // Небольшая задержка для гарантии обновления UI
-              await new Promise((resolve) => setTimeout(resolve, 200));
-              setEditAlbumModal(null);
-
-              if (meta?.createdNewAlbum && searchAlbumId) {
-                if (activeTab !== 'albums') {
-                  goDashboard('/dashboard-new/albums');
-                }
-                setExpandedAlbumId(searchAlbumId);
-                setScrollToAlbumUploadId(searchAlbumId);
-              }
-            } catch (error: any) {
-              // ConditionError - это нормально, condition отменил запрос
-              if (error?.name === 'ConditionError') {
+        {/* Edit Album Modal */}
+        {editAlbumModal && (
+          <EditAlbumModal
+            key={editAlbumModal.albumId ?? 'new-album'}
+            isOpen={editAlbumModal.isOpen}
+            albumId={editAlbumModal.albumId}
+            onClose={() => setEditAlbumModal(null)}
+            onNext={async (formData, updatedAlbum, meta) => {
+              if (!editAlbumModal) {
                 setEditAlbumModal(null);
                 return;
               }
-              setEditAlbumModal(null);
+
+              const searchAlbumId = updatedAlbum?.albumId || editAlbumModal.albumId;
+
+              // Обновляем Redux store из БД
+              try {
+                console.log('🔄 [UserDashboard] Fetching albums after save...', {
+                  originalAlbumId: editAlbumModal.albumId,
+                  updatedAlbumId: updatedAlbum?.albumId,
+                  isNewAlbum: !editAlbumModal.albumId,
+                });
+                const fetchPayload = await dispatch(
+                  fetchAlbums({ force: true, ownerDashboard: true })
+                ).unwrap();
+                const result = fetchPayload.albums;
+                console.log('✅ [UserDashboard] Albums fetched:', {
+                  count: result?.length || 0,
+                  albumIds: result?.map((a: IAlbums) => a.albumId) || [],
+                });
+
+                // Проверяем, что обновленный альбом действительно пришел с новыми данными
+                // Для новых альбомов используем albumId из updatedAlbum, для существующих - из editAlbumModal
+                if (result && result.length > 0 && searchAlbumId) {
+                  const foundAlbum = result.find((a: IAlbums) => a.albumId === searchAlbumId);
+                  if (foundAlbum) {
+                    console.log('🔍 [UserDashboard] Updated album from fetchAlbums:', {
+                      albumId: foundAlbum.albumId,
+                      album: foundAlbum.album,
+                      artist: foundAlbum.artist,
+                      description: foundAlbum.description?.substring(0, 50) || '',
+                      cover: foundAlbum.cover,
+                      isNewAlbum: !editAlbumModal.albumId,
+                    });
+                  } else {
+                    console.warn(
+                      '⚠️ [UserDashboard] Updated album not found in fetchAlbums result:',
+                      {
+                        searchedAlbumId: searchAlbumId,
+                        availableIds: result.map((a: IAlbums) => a.albumId),
+                        isNewAlbum: !editAlbumModal.albumId,
+                      }
+                    );
+                  }
+                }
+
+                // Небольшая задержка для гарантии обновления Redux store
+                await new Promise((resolve) => setTimeout(resolve, 300));
+
+                // Принудительно обновляем albumsData из результата fetchAlbums
+                if (result && result.length > 0) {
+                  console.log('🔄 [UserDashboard] Updating albumsData from fetchAlbums result...');
+
+                  const transformedAlbums = transformAlbumsToAlbumData(
+                    result,
+                    siteArtistDisplayName,
+                    lang
+                  );
+
+                  setAlbumsData(withDashboardAlbumOwner(transformedAlbums, userId));
+                  console.log('✅ [UserDashboard] albumsData updated:', {
+                    count: transformedAlbums.length,
+                    albumIds: transformedAlbums.map((a) => a.id),
+                  });
+                }
+
+                // Закрываем модальное окно после обновления
+                // Небольшая задержка для гарантии обновления UI
+                await new Promise((resolve) => setTimeout(resolve, 200));
+                setEditAlbumModal(null);
+
+                if (meta?.createdNewAlbum && searchAlbumId) {
+                  if (activeTab !== 'albums') {
+                    goDashboard('/dashboard-new/albums');
+                  }
+                  setExpandedAlbumId(searchAlbumId);
+                  setScrollToAlbumUploadId(searchAlbumId);
+                }
+              } catch (error: any) {
+                // ConditionError - это нормально, condition отменил запрос
+                if (error?.name === 'ConditionError') {
+                  setEditAlbumModal(null);
+                  return;
+                }
+                setEditAlbumModal(null);
+              }
+            }}
+          />
+        )}
+
+        {/* Confirmation Modal */}
+        {confirmationModal && (
+          <ConfirmationModal
+            isOpen={confirmationModal.isOpen}
+            title={confirmationModal.title}
+            message={confirmationModal.message}
+            irreversibleHint={
+              confirmationModal.irreversibleHint !== undefined
+                ? confirmationModal.irreversibleHint
+                : (ui?.dashboard?.confirmActionIrreversible ?? 'This action cannot be undone.')
             }
-          }}
+            variant={confirmationModal.variant}
+            cancelText={ui?.dashboard?.cancel ?? 'Cancel'}
+            confirmText={
+              confirmationModal.confirmText ??
+              (confirmationModal.variant === 'danger'
+                ? (ui?.dashboard?.confirmationModalConfirmDelete ?? 'Delete')
+                : (ui?.dashboard?.confirmationModalConfirm ?? 'Confirm'))
+            }
+            closeLabel={ui?.dashboard?.close ?? 'Close'}
+            onConfirm={confirmationModal.onConfirm}
+            onCancel={() => setConfirmationModal(null)}
+          />
+        )}
+
+        {/* Alert Modal */}
+        {alertModal && (
+          <AlertModal
+            isOpen={alertModal.isOpen}
+            title={alertModal.title}
+            message={alertModal.message}
+            variant={alertModal.variant}
+            onClose={() => setAlertModal(null)}
+          />
+        )}
+
+        {/* Edit Article Modal */}
+        {editArticleModal && editArticleModal.article && (
+          <EditArticleModalV2
+            isOpen={editArticleModal.isOpen}
+            article={editArticleModal.article}
+            onClose={() => setEditArticleModal(null)}
+            publicArtistSlug={profilePublicSlug}
+            onArticleEditorToast={() => setArticleEditorToastTrigger((value) => value + 1)}
+            onArticlePersisted={handleArticlePersisted}
+          />
+        )}
+
+        <UpgradeToArtistModal
+          isOpen={isUpgradeToArtistModalOpen}
+          onClose={() => setIsUpgradeToArtistModalOpen(false)}
         />
-      )}
 
-      {/* Confirmation Modal */}
-      {confirmationModal && (
-        <ConfirmationModal
-          isOpen={confirmationModal.isOpen}
-          title={confirmationModal.title}
-          message={confirmationModal.message}
-          irreversibleHint={
-            confirmationModal.irreversibleHint !== undefined
-              ? confirmationModal.irreversibleHint
-              : (ui?.dashboard?.confirmActionIrreversible ?? 'This action cannot be undone.')
-          }
-          variant={confirmationModal.variant}
-          cancelText={ui?.dashboard?.cancel ?? 'Cancel'}
-          confirmText={
-            confirmationModal.confirmText ??
-            (confirmationModal.variant === 'danger'
-              ? (ui?.dashboard?.confirmationModalConfirmDelete ?? 'Delete')
-              : (ui?.dashboard?.confirmationModalConfirm ?? 'Confirm'))
-          }
-          closeLabel={ui?.dashboard?.close ?? 'Close'}
-          onConfirm={confirmationModal.onConfirm}
-          onCancel={() => setConfirmationModal(null)}
+        <DeleteAccountModal
+          isOpen={isDeleteAccountModalOpen}
+          onClose={() => setIsDeleteAccountModalOpen(false)}
+          onDeleted={handleAccountDeleted}
+          copy={deleteAccountCopy}
         />
-      )}
-
-      {/* Alert Modal */}
-      {alertModal && (
-        <AlertModal
-          isOpen={alertModal.isOpen}
-          title={alertModal.title}
-          message={alertModal.message}
-          variant={alertModal.variant}
-          onClose={() => setAlertModal(null)}
-        />
-      )}
-
-      {/* Edit Article Modal */}
-      {editArticleModal && editArticleModal.article && (
-        <EditArticleModalV2
-          isOpen={editArticleModal.isOpen}
-          article={editArticleModal.article}
-          onClose={() => setEditArticleModal(null)}
-          publicArtistSlug={profilePublicSlug}
-          onArticleEditorToast={() => setArticleEditorToastTrigger((value) => value + 1)}
-          onArticlePersisted={handleArticlePersisted}
-        />
-      )}
-
-      <UpgradeToArtistModal
-        isOpen={isUpgradeToArtistModalOpen}
-        onClose={() => setIsUpgradeToArtistModalOpen(false)}
-      />
-
-      <DeleteAccountModal
-        isOpen={isDeleteAccountModalOpen}
-        onClose={() => setIsDeleteAccountModalOpen(false)}
-        onDeleted={handleAccountDeleted}
-        copy={deleteAccountCopy}
-      />
-    </>
+      </>
+    </ArtistMonetizationProvider>
   );
 }
 
