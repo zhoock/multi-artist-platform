@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useLang } from '@app/providers/lang';
 import { hasPublishedPublicReleases } from '@entities/album/lib/hasPublishedPublicReleases';
 import {
@@ -43,6 +44,23 @@ function normalizeSlug(slug: string): string {
   return slug.trim().toLowerCase();
 }
 
+function isArtistHomePath(pathname: string): boolean {
+  return pathname === '/' || pathname === '/en' || pathname === '/en/';
+}
+
+/** Loader/fetch альбомов: Home, /albums*, /stems* — на /articles* каталог остаётся idle. */
+function routeRequiresAlbumsSurface(pathname: string): boolean {
+  if (isArtistHomePath(pathname)) return true;
+  if (/^\/(?:en\/)?albums(?:\/|$)/.test(pathname)) return true;
+  return /^\/(?:en\/)?stems(?:\/|$)/.test(pathname);
+}
+
+/** Loader/fetch статей: Home и /articles* — на /albums/:id они остаются idle. */
+function routeRequiresArticlesSurface(pathname: string): boolean {
+  if (isArtistHomePath(pathname)) return true;
+  return /^\/(?:en\/)?articles(?:\/|$)/.test(pathname);
+}
+
 export type ArtistPageAccessValue = {
   isLoading: boolean;
   isOwner: boolean;
@@ -80,6 +98,7 @@ export function useArtistPageAccessState(
   options: UseArtistPageAccessStateOptions = {}
 ) {
   const enabled = options.enabled ?? true;
+  const { pathname } = useLocation();
   const { lang } = useLang();
   const catalogArtistMissing = useAppSelector(selectCatalogArtistMissing);
   const albumsStatus = useAppSelector(selectAlbumsStatus);
@@ -436,6 +455,14 @@ export function useArtistPageAccessState(
     ((articlesStatus === 'idle' || articlesStatus === 'loading') && publicArticles.length === 0);
 
   /**
+   * Каталог/статьи блокируют chrome/pageReady только на маршрутах, где их реально грузят.
+   * Иначе hard refresh `/albums/:id` (articles idle) или `/articles*` (albums idle)
+   * навсегда держит Hero/Footer в скелетоне.
+   */
+  const albumsBlockPageReady = routeRequiresAlbumsSurface(pathname) && albumsPending;
+  const articlesBlockPageReady = routeRequiresArticlesSurface(pathname) && articlesSurfacePending;
+
+  /**
    * Блокировка списка/страницы альбома. Не включаем `articlesStatus === 'idle'` глобально
    * (/albums/:id не грузит статьи) и не ждём owner onboarding — он только для Home.
    */
@@ -548,9 +575,9 @@ export function useArtistPageAccessState(
     ownerResolved &&
     isHeaderImagesReady &&
     (!isOwner || ownerContentLoaded) &&
-    !albumsPending &&
+    !albumsBlockPageReady &&
     !visitorAccessPending &&
-    !articlesSurfacePending &&
+    !articlesBlockPageReady &&
     aboutSurfaceReady &&
     socialSurfaceReady &&
     paymentSurfaceReady &&

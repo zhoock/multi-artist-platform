@@ -1,6 +1,7 @@
 import { describe, test, expect, jest, beforeEach, afterEach } from '@jest/globals';
 import { renderHook, waitFor } from '@testing-library/react';
 import { Provider } from 'react-redux';
+import { MemoryRouter } from 'react-router-dom';
 import { configureStore } from '@reduxjs/toolkit';
 import type { ReactNode } from 'react';
 import { articlesReducer } from '@entities/article/model/articlesSlice';
@@ -81,7 +82,10 @@ const publishedAlbum: IAlbums = {
   isPublic: true,
 };
 
-function createWrapper(preloadedState: Record<string, unknown>) {
+function createWrapper(
+  preloadedState: Record<string, unknown>,
+  initialEntries: string[] = ['/?artist=test-artist']
+) {
   const store = configureStore({
     reducer: {
       lang: langReducer,
@@ -95,7 +99,9 @@ function createWrapper(preloadedState: Record<string, unknown>) {
   return function Wrapper({ children }: { children: ReactNode }) {
     return (
       <Provider store={store}>
-        <LangProvider>{children}</LangProvider>
+        <MemoryRouter initialEntries={initialEntries}>
+          <LangProvider>{children}</LangProvider>
+        </MemoryRouter>
       </Provider>
     );
   };
@@ -116,45 +122,131 @@ describe('useArtistPageAccess — album surface reload', () => {
     } as Response);
   });
 
+  const albumSurfaceState = {
+    lang: { current: 'en' },
+    currentArtist: { publicSlug: 'test-artist' },
+    articles: {
+      status: 'idle' as const,
+      error: null,
+      data: [],
+      lastUpdated: null,
+      lastPublicArtistSlug: null,
+      dashboard: {
+        status: 'idle' as const,
+        error: null,
+        data: [],
+        lastUpdated: null,
+      },
+    },
+    albums: {
+      status: 'succeeded' as const,
+      error: null,
+      data: [publishedAlbum],
+      lastUpdated: Date.now(),
+      fetchContextKey: 'public:test-artist',
+      inFlightFetchContextKey: null,
+      catalogArtistMissing: false,
+      dashboard: {
+        status: 'idle' as const,
+        error: null,
+        data: [],
+        lastUpdated: null,
+        inFlightFetchContextKey: null,
+      },
+    },
+  };
+
   test('не держит isLoading из-за articles idle, когда альбомы уже в store', async () => {
     const { result } = renderHook(() => useArtistPageAccess('test-artist'), {
-      wrapper: createWrapper({
-        lang: { current: 'en' },
-        currentArtist: { publicSlug: 'test-artist' },
-        articles: {
-          status: 'idle',
-          error: null,
-          data: [],
-          lastUpdated: null,
-          lastPublicArtistSlug: null,
-          dashboard: {
-            status: 'idle',
-            error: null,
-            data: [],
-            lastUpdated: null,
-          },
-        },
-        albums: {
-          status: 'succeeded',
-          error: null,
-          data: [publishedAlbum],
-          lastUpdated: Date.now(),
-          fetchContextKey: 'public:test-artist',
-          inFlightFetchContextKey: null,
-          catalogArtistMissing: false,
-          dashboard: {
-            status: 'idle',
-            error: null,
-            data: [],
-            lastUpdated: null,
-            inFlightFetchContextKey: null,
-          },
-        },
-      }),
+      wrapper: createWrapper(albumSurfaceState, ['/albums/test-album?artist=test-artist']),
     });
 
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false);
+    });
+  });
+
+  test('не держит Hero/Footer скелетон на /albums/:id при articles idle (hard refresh)', async () => {
+    const { result } = renderHook(() => useArtistPageAccess('test-artist'), {
+      wrapper: createWrapper(albumSurfaceState, ['/albums/test-album?artist=test-artist']),
+    });
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+      expect(result.current.pageReady).toBe(true);
+      expect(result.current.showArtistPageSkeleton).toBe(false);
+    });
+  });
+});
+
+describe('useArtistPageAccess — articles surface reload', () => {
+  beforeEach(() => {
+    jest.mocked(fetchWithAuthSession).mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        success: true,
+        data: {
+          theBand: ['Artist'],
+          headerImages: ['https://example.com/hero.jpg'],
+          socialLinks: {},
+        },
+      }),
+    } as Response);
+  });
+
+  test('не держит Hero/Footer скелетон на /articles при albums idle (hard refresh)', async () => {
+    const { result } = renderHook(() => useArtistPageAccess('test-artist'), {
+      wrapper: createWrapper(
+        {
+          lang: { current: 'en' },
+          currentArtist: { publicSlug: 'test-artist' },
+          articles: {
+            status: 'succeeded',
+            error: null,
+            data: [
+              {
+                articleId: 'article-1',
+                nameArticle: 'Untitled',
+                date: '2026-06-13',
+                img: '',
+                description: '',
+                isDraft: false,
+                visibility: 'public',
+              },
+            ],
+            lastUpdated: Date.now(),
+            lastPublicArtistSlug: 'test-artist',
+            dashboard: {
+              status: 'idle',
+              error: null,
+              data: [],
+              lastUpdated: null,
+            },
+          },
+          albums: {
+            status: 'idle',
+            error: null,
+            data: [],
+            lastUpdated: null,
+            fetchContextKey: null,
+            inFlightFetchContextKey: null,
+            catalogArtistMissing: false,
+            dashboard: {
+              status: 'idle',
+              error: null,
+              data: [],
+              lastUpdated: null,
+              inFlightFetchContextKey: null,
+            },
+          },
+        },
+        ['/articles?artist=test-artist']
+      ),
+    });
+
+    await waitFor(() => {
+      expect(result.current.pageReady).toBe(true);
+      expect(result.current.showArtistPageSkeleton).toBe(false);
     });
   });
 });

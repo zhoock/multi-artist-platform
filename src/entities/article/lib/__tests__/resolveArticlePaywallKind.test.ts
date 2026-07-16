@@ -55,4 +55,27 @@ describe('resolveArticlePaywallKind', () => {
       })
     ).toBe('archive');
   });
+
+  test('returns none when locked but user has premium and artist in collection', () => {
+    expect(
+      resolveArticlePaywallKind({
+        articleLocked: true,
+        isPremium: true,
+        artistInArchive: true,
+        premiumLoading: false,
+      })
+    ).toBe('none');
+  });
+
+  test('returns pending while archive membership is loading', () => {
+    expect(
+      resolveArticlePaywallKind({
+        articleLocked: true,
+        isPremium: true,
+        artistInArchive: false,
+        premiumLoading: false,
+        archiveLoading: true,
+      })
+    ).toBe('pending');
+  });
 });

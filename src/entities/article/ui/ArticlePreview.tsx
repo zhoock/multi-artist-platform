@@ -35,22 +35,46 @@ export function ArticlePreview({
   const ui = useAppSelector((state) => selectUiDictionaryFirst(state, lang));
   const navigate = useNavigate();
   const { isPremium, loading: premiumLoading } = usePremiumSubscription();
-  const { artistInArchive } = useArtistArchiveStatus(userId);
-  const { requestAccess } = useArchiveAccessModal();
+  const { artistInArchive, loading: archiveLoading } = useArtistArchiveStatus(userId);
+  const { open, requestAccess } = useArchiveAccessModal();
+
+  const visibilityNorm = normalizeTrackVisibility(visibility);
+  /** Without artist monetization, exclusive content must render as public (no paywall copy). */
+  const showLockedCard =
+    monetizationEnabled &&
+    (articleLocked === true || (visibilityNorm === 'subscribers_only' && articleLocked !== false));
+
+  const paywallKind = resolveArticlePaywallKind({
+    articleLocked: showLockedCard,
+    isPremium,
+    premiumLoading,
+    archiveLoading,
+    artistInArchive,
+  });
+
   const handleLockedClick = () => {
+    // Entitled / still resolving: go to the article immediately — page has its own gates.
+    if (paywallKind === 'none' || paywallKind === 'pending') {
+      navigate(articlePath);
+      return;
+    }
+
+    // Known subscription gates: open modal without a second /api/archive-status round-trip.
+    if (paywallKind === 'subscription' || paywallKind === 'renew') {
+      open({
+        artistUserId: userId,
+        artistSlug: artistSlug ?? undefined,
+      });
+      return;
+    }
+
+    // Premium but artist not in collection — may need slots check / add-artist modal.
     void requestAccess({
       artistUserId: userId,
       artistSlug,
       onAccessGranted: () => navigate(articlePath),
     });
   };
-
-  const paywallKind = resolveArticlePaywallKind({
-    articleLocked,
-    isPremium,
-    premiumLoading,
-    artistInArchive,
-  });
 
   const subscriptionOverlayTitle =
     ui?.titles?.articleSubscriptionLockedOverlayTitle ??
@@ -104,13 +128,8 @@ export function ArticlePreview({
           : legacyOverlayHint;
   const OverlayIcon = paywallKind === 'archive' ? ArtistArchiveLockIcon : SubscriberContentLockIcon;
 
-  const visibilityNorm = normalizeTrackVisibility(visibility);
-  /** Without artist monetization, exclusive content must render as public (no paywall copy). */
-  const showLockedCard =
-    monetizationEnabled &&
-    (articleLocked === true || (visibilityNorm === 'subscribers_only' && articleLocked !== false));
-
-  if (!showLockedCard) {
+  // Entitled readers get a normal link — never block navigation on archive-status fetch.
+  if (!showLockedCard || paywallKind === 'none') {
     return (
       <article className="articles__card">
         <Link to={articlePath}>

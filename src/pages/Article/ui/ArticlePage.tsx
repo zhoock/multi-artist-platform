@@ -215,7 +215,7 @@ function ArticleContent({
   const dispatch = useAppDispatch();
   const ui = useAppSelector((state) => selectUiDictionaryFirst(state, lang));
   const { isPremium, loading: premiumLoading } = usePremiumSubscription();
-  const { artistInArchive } = useArtistArchiveStatus(article?.userId);
+  const { artistInArchive, loading: archiveLoading } = useArtistArchiveStatus(article?.userId);
   const { monetizationEnabled } = useArtistPageAccess(artistSlug?.trim() ?? '');
   const { open, requestAccess } = useArchiveAccessModal();
 
@@ -226,12 +226,21 @@ function ArticleContent({
             articleLocked: article?.articleLocked,
             isPremium,
             premiumLoading,
+            archiveLoading,
             artistInArchive,
           })
         : 'none',
-    [article?.articleLocked, artistInArchive, isPremium, monetizationEnabled, premiumLoading]
+    [
+      article?.articleLocked,
+      archiveLoading,
+      artistInArchive,
+      isPremium,
+      monetizationEnabled,
+      premiumLoading,
+    ]
   );
 
+  /** Keep content gated while entitlements resolve (`pending`) to avoid a brief unlock flash. */
   const isPaywalled = paywallKind !== 'none';
 
   const subscriptionGateTitle =
