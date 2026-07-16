@@ -48,12 +48,19 @@
 
   &__hero-headline {
     display: grid;
-    grid-template-areas:
-      'title'
-      'cover';
     grid-template-columns: minmax(0, 1fr);
     align-items: end;
     gap: $ms-01;
+  }
+
+  &__hero--public &__hero-headline {
+    grid-template-areas: 'title';
+  }
+
+  &__hero--builder &__hero-headline {
+    grid-template-areas:
+      'title'
+      'cover';
 
     @include breakpoint(tablet) {
       grid-template-areas: 'title cover';
@@ -71,16 +78,33 @@
     border-radius: var(--ms-01);
   }
 
-  &__hero-cover {
-    grid-area: cover;
-    align-self: end;
+  /**
+   * Outer card rectangles only — sizes mirror builder blocks
+   * (section / bar / hero cover), without internal icon/text layout.
+   */
+  &__card {
+    box-sizing: border-box;
+    display: block;
     inline-size: 100%;
-    block-size: min(11rem, 42vw);
-    min-block-size: 8rem;
     border-radius: var(--ms-01);
 
-    @include breakpoint(tablet) {
-      block-size: min(10rem, 22vw);
+    &--hero-cover {
+      grid-area: cover;
+      align-self: stretch;
+      min-block-size: 8rem;
+      block-size: 100%;
+    }
+
+    /* ~ icon 34 + title + 2 desc lines + gaps + section padding ms-3*2 */
+    &--section {
+      min-block-size: calc(
+        34px + (1.125rem * 1.35) + (0.9375rem * 1.55 * 2) + var(--ms-02) * 3 + var(--ms-3) * 2
+      );
+    }
+
+    /* ~ icon 24 + bar padding ms-01*2, single title line */
+    &--bar {
+      min-block-size: calc(24px + var(--ms-01) * 2 + 0.5rem);
     }
   }
 
@@ -91,30 +115,10 @@
   }
 
   &__payment-bar-inner {
-    display: flex;
-    flex-flow: row wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: $ms-01 $ms-0;
     inline-size: min(100vi, 1000px);
     margin: 0 auto;
-    padding: $ms-01 $ms-1;
-    border: 1px dashed rgb(255 255 255 / 22%);
-    border-radius: var(--ms-01);
+    padding-inline: $ms-1;
     box-sizing: border-box;
-  }
-
-  &__payment-bar-text {
-    flex: 1 1 12rem;
-    block-size: 1.125rem;
-    min-inline-size: 8rem;
-    max-inline-size: 14rem;
-  }
-
-  &__payment-bar-action {
-    inline-size: 8.5rem;
-    block-size: 2.25rem;
-    border-radius: var(--ms-01);
   }
 
   &__section-heading {
@@ -122,6 +126,10 @@
     block-size: 1.75rem;
     margin-block: $ms-1;
     border-radius: var(--ms-01);
+
+    &--wide {
+      inline-size: min(100%, 14rem);
+    }
   }
 
   &__about-lines {
@@ -146,30 +154,6 @@
 
   &__footer-social {
     margin-block-end: var(--ms-1);
-  }
-
-  &__footer-social-bar {
-    display: flex;
-    flex-flow: row wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: $ms-01 $ms-0;
-    padding: $ms-01 $ms-1;
-    border: 1px dashed rgb(255 255 255 / 22%);
-    border-radius: var(--ms-01);
-  }
-
-  &__footer-social-text {
-    flex: 1 1 12rem;
-    block-size: 1.125rem;
-    min-inline-size: 8rem;
-    max-inline-size: 12rem;
-  }
-
-  &__footer-social-action {
-    inline-size: 9rem;
-    block-size: 2.25rem;
-    border-radius: var(--ms-01);
   }
 
   .albums__list {

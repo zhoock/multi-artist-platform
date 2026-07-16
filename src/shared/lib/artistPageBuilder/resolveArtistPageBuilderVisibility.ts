@@ -44,3 +44,37 @@ export function shouldShowArtistPageBuilderBlock(
 ): boolean {
   return visibility.canShowBlocks && isSectionEmpty;
 }
+
+export type ArtistPageSkeletonVariant = 'public' | 'builder';
+
+export type ResolveArtistPageSkeletonVariantInput = {
+  canShowBlocks: boolean;
+  isOwner: boolean;
+  ownerResolved: boolean;
+  ownerContentLoaded: boolean;
+  ownerStillNeedsOnboarding: boolean;
+};
+
+/**
+ * Skeleton chrome for the artist page while surfaces hydrate.
+ *
+ * Builder skeleton only when owner Builder mode is already decided. Do not key solely on
+ * `canShowBlocks`: that flag waits for `ownerContentLoaded`, which often lands as the
+ * page skeleton unmounts — owners would only ever see the public skeleton.
+ */
+export function resolveArtistPageSkeletonVariant(
+  input: ResolveArtistPageSkeletonVariantInput
+): ArtistPageSkeletonVariant {
+  if (input.canShowBlocks) return 'builder';
+
+  if (
+    input.isOwner &&
+    input.ownerResolved &&
+    !input.ownerContentLoaded &&
+    !input.ownerStillNeedsOnboarding
+  ) {
+    return 'builder';
+  }
+
+  return 'public';
+}

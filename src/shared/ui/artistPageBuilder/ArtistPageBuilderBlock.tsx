@@ -1,6 +1,6 @@
 import clsx from 'clsx';
+import { ArrowUpRight as ArrowUpRightIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { DashboardButton } from '@shared/ui/dashboard/DashboardButton';
 import './ArtistPageBuilderBlock.scss';
 
 export type ArtistPageBuilderBlockLayout = 'section' | 'heroImage' | 'bar';
@@ -10,12 +10,22 @@ type ArtistPageBuilderBlockProps = {
   icon: ReactNode;
   title: ReactNode;
   description?: ReactNode;
+  /** Used for aria-label; describes the navigation action on click. */
   actionLabel: ReactNode;
   onAction: () => void;
-  actionIcon?: ReactNode;
   heading?: ReactNode;
   className?: string;
 };
+
+function resolveAriaLabel(actionLabel: ReactNode, title: ReactNode): string | undefined {
+  if (typeof actionLabel === 'string' && actionLabel.trim()) {
+    return actionLabel;
+  }
+  if (typeof title === 'string' && title.trim()) {
+    return title;
+  }
+  return undefined;
+}
 
 export function ArtistPageBuilderBlock({
   layout,
@@ -24,38 +34,38 @@ export function ArtistPageBuilderBlock({
   description,
   actionLabel,
   onAction,
-  actionIcon,
   heading,
   className,
 }: ArtistPageBuilderBlockProps) {
   return (
-    <div
+    <button
+      type="button"
       className={clsx(
         'artist-page-builder-block',
         `artist-page-builder-block--${layout}`,
         heading && 'artist-page-builder-block--withHeading',
         className
       )}
-      role="status"
+      onClick={onAction}
+      aria-label={resolveAriaLabel(actionLabel, title)}
     >
-      <div className="artist-page-builder-block__main">
-        <div className="artist-page-builder-block__icon" aria-hidden="true">
+      {/*
+        Only phrasing content inside <button>: nested <div>/<p> is invalid HTML and some
+        mobile browsers hoist those nodes out of the button, shrinking the real hit target.
+      */}
+      <span className="artist-page-builder-block__main">
+        <span className="artist-page-builder-block__icon" aria-hidden="true">
           {icon}
-        </div>
-        {heading ? <div className="artist-page-builder-block__heading">{heading}</div> : null}
-        <div className="artist-page-builder-block__text">
-          <p className="artist-page-builder-block__title">{title}</p>
+        </span>
+        {heading ? <span className="artist-page-builder-block__heading">{heading}</span> : null}
+        <span className="artist-page-builder-block__text">
+          <span className="artist-page-builder-block__title">{title}</span>
           {description ? (
-            <p className="artist-page-builder-block__description">{description}</p>
+            <span className="artist-page-builder-block__description">{description}</span>
           ) : null}
-        </div>
-      </div>
-      <div className="artist-page-builder-block__action">
-        <DashboardButton type="button" variant="primary" onClick={onAction}>
-          {actionIcon}
-          <span>{actionLabel}</span>
-        </DashboardButton>
-      </div>
-    </div>
+        </span>
+      </span>
+      <ArrowUpRightIcon className="artist-page-builder-block__arrow" aria-hidden size={18} />
+    </button>
   );
 }

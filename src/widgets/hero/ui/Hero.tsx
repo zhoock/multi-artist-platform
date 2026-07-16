@@ -86,6 +86,7 @@ export function Hero() {
     builderVisibility,
     hasPublicReleases,
     showArtistPageSkeleton,
+    skeletonVariant,
     headerImages,
     isHeaderImagesReady,
     monetizationEnabled,
@@ -283,7 +284,7 @@ export function Hero() {
   }
 
   if (showArtistPageSkeleton) {
-    return <ArtistPageSkeletonHero />;
+    return <ArtistPageSkeletonHero variant={skeletonVariant} />;
   }
 
   const heroUsesInlineBackground = Boolean(backgroundImage) && !showHeroImageBuilder;

@@ -88,11 +88,11 @@ const ResetPassword = lazy(() => import('@pages/ResetPassword/ResetPassword'));
 // Компонент для отображения загрузки
 const PageLoader = () => <p>Загрузка...</p>;
 
-/** Suspense для lazy Home: на `/?artist=` — скелетон секций, иначе текстовый loader. */
+/** Suspense для lazy Home: на `/?artist=` — нейтральный public-скелетон (builder ещё неизвестен). */
 function HomeRouteSuspenseFallback() {
   const [searchParams] = useSearchParams();
   if (searchParams.get('artist')?.trim()) {
-    return <ArtistPageSkeleton part="main" />;
+    return <ArtistPageSkeleton part="main" variant="public" />;
   }
   return <PageLoader />;
 }

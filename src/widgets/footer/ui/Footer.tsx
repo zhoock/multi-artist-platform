@@ -34,7 +34,9 @@ function FooterComponent() {
   }, [isDashboardRoute, searchParams, artistSlugFromStore]);
 
   const [socialItems, setSocialItems] = useState<Array<{ platform: string; href: string }>>([]);
-  const { builderVisibility, showArtistPageSkeleton } = useArtistPageBuilder(artistSlug ?? '');
+  const { builderVisibility, showArtistPageSkeleton, skeletonVariant } = useArtistPageBuilder(
+    artistSlug ?? ''
+  );
   const { openDashboard } = useArtistPageBuilderNav();
   const showSocialBuilder =
     Boolean(artistSlug) &&
@@ -66,7 +68,7 @@ function FooterComponent() {
     <footer role="contentinfo" className="footer extra-background">
       <div className="wrapper">
         {showArtistPageSkeleton ? (
-          <ArtistPageSkeletonFooterSocial />
+          <ArtistPageSkeletonFooterSocial variant={skeletonVariant} />
         ) : socialItems.length > 0 ? (
           <ul className="social-networks-list">
             {socialItems.map((item) => (

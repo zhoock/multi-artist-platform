@@ -47,7 +47,7 @@ import { ArtistPageUnderConstruction } from './ArtistPageUnderConstruction';
 import { ArtistPageBuilderPaymentBar } from './ArtistPageBuilderPaymentBar';
 import { ArtistPageSkeletonMain } from './ArtistPageSkeleton';
 import { ScrollToExploreHint } from './ScrollToExploreHint';
-import { useArtistPageAccess } from '@shared/lib/hooks/useArtistPageAccess';
+import { useArtistPageBuilder } from '@shared/lib/hooks/useArtistPageBuilder';
 import '../../../components/view/Universe3D.style.scss';
 import './homeSceneChrome.scss';
 
@@ -75,7 +75,7 @@ export function HomePage() {
   const hasArtistParam = !!searchParams.get('artist');
   const artistSlug = searchParams.get('artist') || '';
   const hideArtistPageAfterOwnDelete = useRedirectHomeAfterOwnAccountDeleted(hasArtistParam);
-  const artistPageAccess = useArtistPageAccess(artistSlug);
+  const artistPageAccess = useArtistPageBuilder(artistSlug);
 
   useEffect(() => {
     const handler = () => {
@@ -366,7 +366,7 @@ export function HomePage() {
     }
 
     if (artistPageAccess.showArtistPageSkeleton) {
-      return <ArtistPageSkeletonMain />;
+      return <ArtistPageSkeletonMain variant={artistPageAccess.skeletonVariant} />;
     }
 
     return (

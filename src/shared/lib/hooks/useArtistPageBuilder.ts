@@ -1,8 +1,10 @@
 import { useMemo } from 'react';
 import {
   resolveArtistPageBuilderVisibility,
+  resolveArtistPageSkeletonVariant,
   type ArtistPageBuilderHintsPreference,
   type ArtistPageBuilderVisibility,
+  type ArtistPageSkeletonVariant,
 } from '@shared/lib/artistPageBuilder';
 import { useArtistPageAccess } from './useArtistPageAccess';
 
@@ -38,9 +40,28 @@ export function useArtistPageBuilder(
     ]
   );
 
+  const skeletonVariant: ArtistPageSkeletonVariant = useMemo(
+    () =>
+      resolveArtistPageSkeletonVariant({
+        canShowBlocks: builderVisibility.canShowBlocks,
+        isOwner: access.isOwner,
+        ownerResolved: access.ownerResolved,
+        ownerContentLoaded: access.ownerContentLoaded,
+        ownerStillNeedsOnboarding: access.ownerStillNeedsOnboarding,
+      }),
+    [
+      builderVisibility.canShowBlocks,
+      access.isOwner,
+      access.ownerResolved,
+      access.ownerContentLoaded,
+      access.ownerStillNeedsOnboarding,
+    ]
+  );
+
   return {
     ...access,
     builderVisibility,
+    skeletonVariant,
     /** @deprecated Prefer `builderVisibility.canShowBlocks`. */
     canShowBuilderBlocks: builderVisibility.canShowBlocks,
   };

@@ -1,14 +1,64 @@
 @use '../../../scss/abstracts/mixins' as *;
 
 $builder-block-border-color: rgb(255 255 255 / 22%);
+$builder-block-border-color-hover: rgb(255 255 255 / 38%);
+$builder-block-bg-hover: rgb(255 255 255 / 4%);
+$builder-block-glow-hover: rgb(255 255 255 / 7%);
 
 .artist-page-builder-block {
+  position: relative;
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: var(--ms-0);
+  inline-size: 100%;
+  margin: 0;
+  padding: 0;
+  color: inherit;
+  font: inherit;
   text-align: center;
+  appearance: none;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
   pointer-events: auto;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+
+  &:focus-visible {
+    outline: 2px solid var(--accent-color, rgb(250 171 31 / 80%));
+    outline-offset: 2px;
+  }
+
+  // Hover only on devices that can hover; touch gets a brief :active press state.
+  @media (hover: hover) and (pointer: fine) {
+    &:hover {
+      background-color: $builder-block-bg-hover;
+      border-color: $builder-block-border-color-hover;
+      box-shadow: 0 0 24px $builder-block-glow-hover;
+
+      .artist-page-builder-block__icon {
+        color: rgb(255 255 255 / 72%);
+      }
+
+      .artist-page-builder-block__arrow {
+        color: rgb(255 255 255 / 72%);
+        transform: translate(2px, -2px);
+      }
+    }
+  }
+
+  @media (hover: none) {
+    &:active {
+      background-color: $builder-block-bg-hover;
+      border-color: $builder-block-border-color-hover;
+    }
+  }
 
   &--section {
     padding: var(--ms-3) var(--ms-1);
@@ -17,6 +67,7 @@ $builder-block-border-color: rgb(255 255 255 / 22%);
   }
 
   &__heading {
+    display: block;
     inline-size: 100%;
     margin-block-end: var(--ms-02);
   }
@@ -27,15 +78,21 @@ $builder-block-border-color: rgb(255 255 255 / 22%);
 
   &__main {
     display: flex;
+    flex: 1 1 auto;
     flex-direction: column;
     align-items: center;
+    justify-content: center;
     gap: var(--ms-02);
+    inline-size: 100%;
     min-width: 0;
+    min-block-size: 0;
+    pointer-events: none;
 
     .artist-page-builder-block--bar & {
       flex: 1 1 12rem;
       flex-flow: row;
       align-items: center;
+      justify-content: flex-start;
       gap: var(--ms-01);
     }
   }
@@ -46,12 +103,18 @@ $builder-block-border-color: rgb(255 255 255 / 22%);
     align-items: center;
     align-self: center;
     color: rgb(255 255 255 / 55%);
+    transition: color 0.2s ease;
+
+    .artist-page-builder-block--bar & {
+      align-self: flex-start;
+    }
   }
 
   &__text {
     display: flex;
     flex-direction: column;
     gap: var(--ms-02);
+    inline-size: 100%;
     min-width: 0;
 
     .artist-page-builder-block--bar & {
@@ -77,28 +140,27 @@ $builder-block-border-color: rgb(255 255 255 / 22%);
 
   &--heroImage {
     justify-content: center;
-    inline-size: 100%;
     block-size: 100%;
     min-block-size: 8rem;
     padding: var(--ms-1) var(--ms-01);
     border: 1px dashed $builder-block-border-color;
     border-radius: var(--ms-01);
-    box-sizing: border-box;
   }
 
   &--bar {
     flex-flow: row wrap;
     align-items: center;
-    justify-content: space-between;
+    justify-content: flex-start;
     gap: var(--ms-01) var(--ms-0);
-    inline-size: 100%;
     padding: var(--ms-01) var(--ms-1);
+    padding-inline-end: calc(var(--ms-1) + 1.5rem);
     text-align: start;
     border: 1px dashed $builder-block-border-color;
     border-radius: var(--ms-01);
   }
 
   &__title {
+    display: block;
     margin: 0;
     color: rgb(255 255 255 / 88%);
     font-family: var(--base-font-family);
@@ -108,6 +170,7 @@ $builder-block-border-color: rgb(255 255 255 / 22%);
   }
 
   &__description {
+    display: block;
     margin: 0;
     color: rgb(255 255 255 / 58%);
     font-family: var(--base-font-family);
@@ -115,7 +178,15 @@ $builder-block-border-color: rgb(255 255 255 / 22%);
     line-height: 1.55;
   }
 
-  &__action {
+  &__arrow {
+    position: absolute;
+    inset-block-end: var(--ms-01);
+    inset-inline-end: var(--ms-01);
     flex-shrink: 0;
+    color: rgb(255 255 255 / 38%);
+    pointer-events: none;
+    transition:
+      color 0.2s ease,
+      transform 0.2s ease;
   }
 }

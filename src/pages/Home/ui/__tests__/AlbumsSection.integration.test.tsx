@@ -7,6 +7,7 @@ import type { IAlbums, TracksProps } from '@models';
 jest.mock('@shared/lib/hooks/useArtistPageBuilder', () => ({
   useArtistPageBuilder: () => ({
     builderVisibility: { mode: 'hidden', canShowBlocks: false },
+    skeletonVariant: 'public' as const,
     canShowBuilderBlocks: false,
     hasPublicReleases: false,
     isOwner: false,

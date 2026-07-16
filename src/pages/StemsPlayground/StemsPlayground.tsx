@@ -416,7 +416,6 @@ export default function StemsPlayground() {
         <div className="mixer">
           {view === 'albums' && (
             <>
-              {selectAlbumHint ? <p className="mixer-level__hint">{selectAlbumHint}</p> : null}
               <MixerAlbumList
                 albums={albums}
                 loading={loading}

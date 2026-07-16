@@ -30,6 +30,7 @@ const baseAccess = {
 jest.mock('@shared/lib/hooks/useArtistPageBuilder', () => ({
   useArtistPageBuilder: jest.fn(() => ({
     builderVisibility: { mode: 'hidden', canShowBlocks: false },
+    skeletonVariant: 'public' as const,
     canShowBuilderBlocks: false,
     ...baseAccess,
   })),
@@ -41,6 +42,7 @@ describe('ArticlesSection — builder visibility', () => {
   beforeEach(() => {
     jest.mocked(useArtistPageBuilder).mockReturnValue({
       builderVisibility: { mode: 'hidden', canShowBlocks: false },
+      skeletonVariant: 'public',
       canShowBuilderBlocks: false,
       ...baseAccess,
     });
@@ -71,12 +73,15 @@ describe('ArticlesSection — builder visibility', () => {
 
     expect(screen.queryByText(/нет статей/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/You have no articles/i)).not.toBeInTheDocument();
-    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /Написать первую статью|Write your first article/i })
+    ).not.toBeInTheDocument();
   });
 
   test('владелец видит builder при пустых статьях', () => {
     jest.mocked(useArtistPageBuilder).mockReturnValue({
       builderVisibility: { mode: 'active', canShowBlocks: true },
+      skeletonVariant: 'builder',
       canShowBuilderBlocks: true,
       ...baseAccess,
       isOwner: true,
@@ -127,7 +132,7 @@ describe('ArticlesSection — builder visibility', () => {
       } as never,
     });
 
-    expect(screen.getByRole('status')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Написать первую статью/i })).toBeInTheDocument();
+    expect(screen.getByText('У вас пока нет статей')).toBeInTheDocument();
   });
 });
