@@ -243,8 +243,16 @@ export function useArtistPageAccessState(
 
     let cancelled = false;
 
-    const refreshOwnerState = () => {
-      setOwnerContentLoaded(false);
+    /**
+     * Не сбрасываем `ownerContentLoaded` при фоновом refresh (закрытие Dashboard /
+     * artist:updated): иначе pageReady мигает и вся страница артиста уходит в skeleton.
+     * Первый load по-прежнему ждёт ready=false → true.
+     */
+    const refreshOwnerState = (options?: { keepReady?: boolean }) => {
+      const keepReady = options?.keepReady === true;
+      if (!keepReady) {
+        setOwnerContentLoaded(false);
+      }
       void fetchOwnArtistPageState(lang).then((state) => {
         if (cancelled) return;
         setOwnerNeedsOnboarding(state.needsOnboarding);
@@ -255,13 +263,15 @@ export function useArtistPageAccessState(
 
     refreshOwnerState();
 
-    window.addEventListener('artist:updated', refreshOwnerState);
-    window.addEventListener('profile-name-updated', refreshOwnerState);
+    const softRefreshOwnerState = () => refreshOwnerState({ keepReady: true });
+
+    window.addEventListener('artist:updated', softRefreshOwnerState);
+    window.addEventListener('profile-name-updated', softRefreshOwnerState);
 
     return () => {
       cancelled = true;
-      window.removeEventListener('artist:updated', refreshOwnerState);
-      window.removeEventListener('profile-name-updated', refreshOwnerState);
+      window.removeEventListener('artist:updated', softRefreshOwnerState);
+      window.removeEventListener('profile-name-updated', softRefreshOwnerState);
     };
   }, [enabled, isOwner, ownerResolved, lang]);
 

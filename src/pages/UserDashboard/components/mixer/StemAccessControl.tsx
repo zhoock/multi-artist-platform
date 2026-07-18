@@ -112,9 +112,7 @@ export function StemAccessControl({
     );
   }, [lang, monetizationEnabled, t?.stemsVisibility]);
 
-  const ariaLabel =
-    (t?.stemsAccessAriaLabel as string | undefined) ??
-    (lang === 'en' ? 'Stem access' : 'Доступ к стемам');
+  const ariaLabel = (t?.stemsAccessAriaLabel as string | undefined) ?? 'Stem access';
 
   const pickVisibility = useCallback(
     (v: StemsVisibility) => {

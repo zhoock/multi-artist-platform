@@ -219,7 +219,7 @@ export function CoverImageUpload({ currentCoverUrl, onCoverUpdated }: CoverImage
               className="cover-image-upload__replace-button"
               onClick={() => fileInputRef.current?.click()}
             >
-              {lang === 'ru' ? 'Заменить обложку' : 'Replace cover'}
+              {ui?.dashboard?.settingsModal?.buttons?.replaceCover ?? 'Replace cover'}
             </button>
           </div>
         ) : (

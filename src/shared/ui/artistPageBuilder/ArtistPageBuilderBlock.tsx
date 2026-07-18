@@ -1,6 +1,6 @@
 import clsx from 'clsx';
 import { ArrowUpRight as ArrowUpRightIcon } from 'lucide-react';
-import type { ReactNode } from 'react';
+import type { MouseEvent, ReactNode, SyntheticEvent } from 'react';
 import './ArtistPageBuilderBlock.scss';
 
 export type ArtistPageBuilderBlockLayout = 'section' | 'heroImage' | 'bar';
@@ -27,6 +27,10 @@ function resolveAriaLabel(actionLabel: ReactNode, title: ReactNode): string | un
   return undefined;
 }
 
+function stopBubble(event: SyntheticEvent) {
+  event.stopPropagation();
+}
+
 export function ArtistPageBuilderBlock({
   layout,
   icon,
@@ -37,6 +41,11 @@ export function ArtistPageBuilderBlock({
   heading,
   className,
 }: ArtistPageBuilderBlockProps) {
+  const handleClick = (event: MouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation();
+    onAction();
+  };
+
   return (
     <button
       type="button"
@@ -46,7 +55,9 @@ export function ArtistPageBuilderBlock({
         heading && 'artist-page-builder-block--withHeading',
         className
       )}
-      onClick={onAction}
+      onClick={handleClick}
+      onPointerDown={stopBubble}
+      onMouseDown={stopBubble}
       aria-label={resolveAriaLabel(actionLabel, title)}
     >
       {/*

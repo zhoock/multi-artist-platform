@@ -57,7 +57,7 @@ export function ArticleAccessControl({
   const trackAccessAria =
     (ui?.dashboard as DashboardUiWithTrackAccess | undefined)?.articleAccessAriaLabel ??
     (ui?.dashboard as DashboardUiWithTrackAccess | undefined)?.trackAccessAriaLabel ??
-    (lang === 'en' ? 'Article access' : 'Доступ к статье');
+    'Article access';
 
   const menuOptions = useMemo(
     () => buildArticleVisibilityMenuOptions(ui, lang, monetizationEnabled),

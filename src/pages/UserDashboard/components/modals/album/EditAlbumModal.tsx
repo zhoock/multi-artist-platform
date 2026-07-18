@@ -2832,8 +2832,7 @@ export function EditAlbumModal({
             )}
             {step1HasErr('cover') ? (
               <p className="edit-album-modal__field-error" role="alert">
-                {step1ValUi?.requiredCover ??
-                  (lang === 'ru' ? 'Загрузите обложку альбома' : 'Upload album cover art')}
+                {step1ValUi?.requiredCover ?? 'Upload album cover art'}
               </p>
             ) : null}
           </div>

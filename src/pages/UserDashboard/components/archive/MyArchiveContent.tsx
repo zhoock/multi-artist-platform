@@ -91,24 +91,19 @@ export function MyArchiveContent({ active, onContentReady, onContentBusy }: Prop
     (kind: RemovalToastKind, count = 1) => {
       let message: string;
       if (kind === 'cleared') {
-        message =
-          t?.collectionClearedToast ?? (lang === 'en' ? 'Collection cleared' : 'Коллекция очищена');
+        message = t?.collectionClearedToast ?? 'Collection cleared';
       } else if (kind === 'single') {
-        message =
-          t?.artistRemovedToast ??
-          (lang === 'en' ? 'Artist removed from collection' : 'Артист удалён из коллекции');
+        message = t?.artistRemovedToast ?? 'Artist removed from collection';
       } else {
-        message = (
-          t?.artistsRemovedToast ??
-          (lang === 'en'
-            ? '{count} artists removed from collection'
-            : '{count} артистов удалено из коллекции')
-        ).replace('{count}', String(count));
+        message = (t?.artistsRemovedToast ?? '{count} artists removed from collection').replace(
+          '{count}',
+          String(count)
+        );
       }
       queueArchiveArtistRemovedToast(message);
       setRemovedToastTrigger((value) => value + 1);
     },
-    [lang, t?.artistRemovedToast, t?.artistsRemovedToast, t?.collectionClearedToast]
+    [t?.artistRemovedToast, t?.artistsRemovedToast, t?.collectionClearedToast]
   );
 
   const loadArchive = useCallback(async () => {
@@ -123,8 +118,7 @@ export function MyArchiveContent({ active, onContentReady, onContentBusy }: Prop
       setError(
         err instanceof Error
           ? err.message
-          : (loadErrorTextRef.current ??
-              (lang === 'en' ? 'Failed to load collection' : 'Не удалось загрузить коллекцию'))
+          : (loadErrorTextRef.current ?? 'Failed to load collection')
       );
     } finally {
       setLoading(false);
@@ -256,10 +250,7 @@ export function MyArchiveContent({ active, onContentReady, onContentBusy }: Prop
       } catch (err) {
         void loadArchive();
         setError(
-          err instanceof Error
-            ? err.message
-            : (t?.removeError ??
-                (lang === 'en' ? 'Failed to remove artists' : 'Не удалось удалить артистов'))
+          err instanceof Error ? err.message : (t?.removeError ?? 'Failed to remove artists')
         );
       } finally {
         setBulkLoading(false);
@@ -313,19 +304,14 @@ export function MyArchiveContent({ active, onContentReady, onContentBusy }: Prop
         err instanceof ArchiveApiError
           ? err.code === 'ARCHIVE_ARTIST_LOCKED'
             ? (t?.artistLockedError ??
-              (lang === 'en'
-                ? 'This artist is locked until the end of your billing period.'
-                : 'Этот артист заблокирован до конца оплаченного периода.'))
+              'This artist is locked until the end of your billing period.')
             : err.code === 'ARCHIVE_SUBSCRIPTION_REQUIRED'
               ? (t?.removeRequiresSubscriptionError ??
-                (lang === 'en'
-                  ? 'An active subscription is required to remove artists.'
-                  : 'Для удаления артистов нужна активная подписка.'))
+                'An active subscription is required to remove artists.')
               : err.message
           : err instanceof Error
             ? err.message
-            : (t?.removeError ??
-              (lang === 'en' ? 'Failed to remove artist' : 'Не удалось удалить артиста'));
+            : (t?.removeError ?? 'Failed to remove artist');
       setError(message);
     } finally {
       setRemovingId(null);
@@ -402,19 +388,14 @@ export function MyArchiveContent({ active, onContentReady, onContentBusy }: Prop
         const message =
           err instanceof ArchiveApiError
             ? err.code === 'ARCHIVE_SLOTS_LIMIT' || err.code === 'ARCHIVE_ACTIVATION_LIMIT'
-              ? (
-                  t?.activateLimitError ??
-                  (lang === 'en'
-                    ? 'You can activate up to {count} artists.'
-                    : 'Можно активировать не более {count} артистов.')
-                ).replace('{count}', String(slotsRemaining))
+              ? (t?.activateLimitError ?? 'You can activate up to {count} artists.').replace(
+                  '{count}',
+                  String(slotsRemaining)
+                )
               : err.message
             : err instanceof Error
               ? err.message
-              : (t?.activateError ??
-                (lang === 'en'
-                  ? 'Failed to activate artists'
-                  : 'Не удалось активировать артистов'));
+              : (t?.activateError ?? 'Failed to activate artists');
         setError(message);
       } finally {
         if (isBulkActivate) {
@@ -462,59 +443,34 @@ export function MyArchiveContent({ active, onContentReady, onContentBusy }: Prop
     }
   }, [bulkLoading, openSupportModal, planSlug, renewLoading, startCheckout]);
 
-  const slotsUsedLabel =
-    t?.activeSlotsLabel ?? (lang === 'en' ? 'slots used' : 'слотов использовано');
-  const removeLabel = t?.remove ?? (lang === 'en' ? 'Remove' : 'Удалить');
+  const slotsUsedLabel = t?.activeSlotsLabel ?? 'slots used';
+  const removeLabel = t?.remove ?? 'Remove';
   const removeLockedPeriodHint =
     t?.removeLockedPeriodHint ??
-    (lang === 'en'
-      ? 'Each artist is locked in your collection for 30 days after being added.'
-      : 'Каждый артист закрепляется в коллекции на 30 дней после добавления.');
+    'Each artist is locked in your collection for 30 days after being added.';
   const removeSubscriptionTooltip =
-    t?.removeSubscriptionTooltip ??
-    (lang === 'en'
-      ? 'An active subscription is required to remove active artists.'
-      : 'Для удаления активных артистов нужна активная подписка.');
+    t?.removeSubscriptionTooltip ?? 'An active subscription is required to remove active artists.';
   const supportInactiveDescription =
     t?.subscriptionExpiredDescription ??
     t?.supportInactiveDescription ??
-    (lang === 'en'
-      ? 'Access to exclusive content is suspended.'
-      : 'Доступ к эксклюзивному контенту приостановлен.');
+    'Access to exclusive content is suspended.';
   const renewSupportLabel =
-    t?.renewSupportButton ??
-    ui?.buttons?.artistCollectionRenew ??
-    (lang === 'en' ? 'Renew subscription' : 'Продлить подписку');
-  const changePlanLabel = t?.changePlanButton ?? (lang === 'en' ? 'Change plan' : 'Сменить план');
-  const planSectionLabel = t?.planSectionLabel ?? (lang === 'en' ? 'Plan' : 'План');
-  const subscriptionSectionLabel =
-    t?.subscriptionSectionLabel ?? (lang === 'en' ? 'Subscription' : 'Подписка');
-  const subscriptionExpiredStatusLabel =
-    t?.subscriptionExpiredStatus ?? (lang === 'en' ? 'Expired' : 'Истекла');
-  const renewalDateTemplate =
-    t?.subscriptionRenewalDate ?? (lang === 'en' ? 'Valid until {date}' : 'Действует до {date}');
-  const selectModeLabel = t?.selectMode ?? (lang === 'en' ? 'Select' : 'Выбрать');
-  const cancelSelectLabel = t?.cancelSelect ?? (lang === 'en' ? 'Done' : 'Готово');
-  const selectedCountLabel =
-    t?.selectedCount ?? (lang === 'en' ? '{count} selected' : 'Выбрано: {count}');
-  const removeSelectedLabel =
-    t?.removeSelected ?? (lang === 'en' ? 'Remove from collection' : 'Удалить из коллекции');
-  const activateSelectedTemplate =
-    t?.activateSelected ?? (lang === 'en' ? 'Activate ({count})' : 'Активировать ({count})');
-  const activateArtistLabel = t?.activateArtist ?? (lang === 'en' ? 'Activate' : 'Активировать');
-  const activateLimitTemplate =
-    t?.activateLimitError ??
-    (lang === 'en'
-      ? 'You can activate up to {count} artists.'
-      : 'Можно активировать не более {count} артистов.');
-  const selectHintTemplate =
-    t?.selectActivateHint ??
-    (lang === 'en' ? 'You can select up to {count} artists' : 'Можно выбрать до {count} артистов');
-  const inactiveArtistsLabel =
-    t?.inactiveArtistsCount ??
-    (lang === 'en' ? '{count} inactive artists' : 'Неактивных артистов: {count}');
-  const clearCollectionLabel =
-    t?.clearCollection ?? (lang === 'en' ? 'Clear collection' : 'Очистить коллекцию');
+    t?.renewSupportButton ?? ui?.buttons?.artistCollectionRenew ?? 'Renew subscription';
+  const changePlanLabel = t?.changePlanButton ?? 'Change plan';
+  const planSectionLabel = t?.planSectionLabel ?? 'Plan';
+  const subscriptionSectionLabel = t?.subscriptionSectionLabel ?? 'Subscription';
+  const subscriptionExpiredStatusLabel = t?.subscriptionExpiredStatus ?? 'Expired';
+  const renewalDateTemplate = t?.subscriptionRenewalDate ?? 'Valid until {date}';
+  const selectModeLabel = t?.selectMode ?? 'Select';
+  const cancelSelectLabel = t?.cancelSelect ?? 'Done';
+  const selectedCountLabel = t?.selectedCount ?? '{count} selected';
+  const removeSelectedLabel = t?.removeSelected ?? 'Remove from collection';
+  const activateSelectedTemplate = t?.activateSelected ?? 'Activate ({count})';
+  const activateArtistLabel = t?.activateArtist ?? 'Activate';
+  const activateLimitTemplate = t?.activateLimitError ?? 'You can activate up to {count} artists.';
+  const selectHintTemplate = t?.selectActivateHint ?? 'You can select up to {count} artists';
+  const inactiveArtistsLabel = t?.inactiveArtistsCount ?? '{count} inactive artists';
+  const clearCollectionLabel = t?.clearCollection ?? 'Clear collection';
 
   const selectedCount = selectedIds.size;
   const selectedInactiveCount =

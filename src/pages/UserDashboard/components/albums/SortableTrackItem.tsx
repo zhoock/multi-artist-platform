@@ -157,7 +157,7 @@ export function SortableTrackItem({
 
   const trackAccessAria =
     (ui?.dashboard as DashboardUiWithTrackAccess | undefined)?.trackAccessAriaLabel ??
-    (lang === 'en' ? 'Track access' : 'Доступ к треку');
+    'Track access';
 
   useEffect(() => {
     if (!isEditing) {

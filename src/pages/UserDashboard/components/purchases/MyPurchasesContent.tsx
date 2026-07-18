@@ -1,16 +1,13 @@
 // src/pages/UserDashboard/components/purchases/MyPurchasesContent.tsx
 import React, { useCallback, useEffect, useState } from 'react';
+import { Download as DownloadIcon, Music as MusicIcon, Trash2 as Trash2Icon } from 'lucide-react';
 import { useLang } from '@app/providers/lang';
 import { AlbumCoverImage } from '@entities/album';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
-import {
-  DashboardButton,
-  DashboardCard,
-  DashboardRow,
-  DashboardRowValue,
-  DashboardLoadingState,
-} from '@shared/ui/dashboard';
+import type { SupportedLang } from '@shared/model/lang';
+import { DashboardButton, DashboardCard, DashboardLoadingState } from '@shared/ui/dashboard';
+import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 import {
   downloadAlbumZip,
   getMyPurchases,
@@ -31,6 +28,28 @@ function triggerBlobDownload(blob: Blob, filename: string) {
   link.click();
   document.body.removeChild(link);
   window.URL.revokeObjectURL(downloadUrl);
+}
+
+function formatTracksCount(
+  count: number,
+  lang: SupportedLang,
+  labels: { one?: string; few?: string; many?: string }
+): string {
+  const one = labels.one ?? '{count} track';
+  const few = labels.few ?? '{count} tracks';
+  const many = labels.many ?? '{count} tracks';
+
+  let template = many;
+  if (lang === 'ru') {
+    const mod10 = count % 10;
+    const mod100 = count % 100;
+    if (mod10 === 1 && mod100 !== 11) template = one;
+    else if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) template = few;
+  } else if (count === 1) {
+    template = one;
+  }
+
+  return template.replace('{count}', String(count));
 }
 
 export function MyPurchasesContent() {
@@ -130,72 +149,73 @@ export function MyPurchasesContent() {
 
           {!error && purchases.length > 0 && (
             <div className="my-purchases__list">
-              {purchases.map((purchase) => (
-                <DashboardCard key={purchase.id} className="my-purchases__card">
-                  <div className="my-purchases__header">
-                    {purchase.cover ? (
-                      <div className="my-purchases__cover">
-                        <AlbumCoverImage
-                          cover={purchase.cover}
-                          userId={purchase.albumUserId ?? undefined}
-                          alt={`${purchase.artist} — ${purchase.album}`}
-                          contextAlbumId={purchase.albumId}
-                          loading="lazy"
-                          decoding="async"
-                          className="my-purchases__cover-image"
-                        />
-                      </div>
-                    ) : null}
-                    <div className="my-purchases__header-meta">
-                      <h3 className="my-purchases__title">
-                        {purchase.artist} — {purchase.album}
-                      </h3>
-                      <p className="my-purchases__meta-line">
-                        {copy?.purchased ?? 'Purchased:'} {formatDate(purchase.purchasedAt)}
-                      </p>
-                    </div>
-                  </div>
+              {purchases.map((purchase) => {
+                const trackCount = purchase.tracks.length;
+                const isDownloading = downloadingAlbums.has(purchase.id);
 
-                  <div className="my-purchases__tracks">
-                    {purchase.tracks.map((track, index) => (
-                      <DashboardRow
-                        key={track.trackId}
-                        className="my-purchases__track-row"
-                        label={
-                          <span className="my-purchases__track-label">
-                            <span className="my-purchases__track-number">{index + 1}.</span>
-                            <span className="my-purchases__track-title">{track.title}</span>
+                return (
+                  <DashboardCard key={purchase.id} className="my-purchases__card">
+                    <div className="my-purchases__row">
+                      {purchase.cover ? (
+                        <div className="my-purchases__cover">
+                          <AlbumCoverImage
+                            cover={purchase.cover}
+                            userId={purchase.albumUserId ?? undefined}
+                            alt={`${purchase.artist} — ${purchase.album}`}
+                            contextAlbumId={purchase.albumId}
+                            loading="lazy"
+                            decoding="async"
+                            className="my-purchases__cover-image"
+                          />
+                        </div>
+                      ) : null}
+
+                      <div className="my-purchases__meta">
+                        <h3 className="my-purchases__title">
+                          {purchase.artist} — {purchase.album}
+                        </h3>
+                        <p className="my-purchases__meta-line">
+                          {copy?.purchased ?? 'Purchased:'} {formatDate(purchase.purchasedAt)}
+                        </p>
+                        <p className="my-purchases__tracks-count">
+                          <MusicIcon
+                            {...dashboardActionIconProps({ size: 14, strokeWidth: 1.75 })}
+                          />
+                          <span>
+                            {formatTracksCount(trackCount, lang, {
+                              one: copy?.tracksCountOne,
+                              few: copy?.tracksCountFew,
+                              many: copy?.tracksCountMany,
+                            })}
                           </span>
-                        }
-                      >
-                        <DashboardRowValue aria-hidden="true" />
-                      </DashboardRow>
-                    ))}
-                  </div>
+                        </p>
+                      </div>
 
-                  <div className="my-purchases__footer">
-                    <DashboardButton
-                      variant="outline"
-                      destructive
-                      aria-label={copy?.removePurchase ?? 'Remove'}
-                      disabled={isRemoving && purchaseToRemove?.id === purchase.id}
-                      onClick={() => setPurchaseToRemove(purchase)}
-                    >
-                      {copy?.removePurchase ?? 'Remove'}
-                    </DashboardButton>
-                    <DashboardButton
-                      className="my-purchases__download"
-                      variant="primary"
-                      aria-label={copy?.download ?? 'Download'}
-                      loading={downloadingAlbums.has(purchase.id)}
-                      disabled={downloadingAlbums.has(purchase.id) || purchase.tracks.length === 0}
-                      onClick={() => void handleDownloadAlbum(purchase)}
-                    >
-                      {copy?.download ?? 'Download'}
-                    </DashboardButton>
-                  </div>
-                </DashboardCard>
-              ))}
+                      <div className="my-purchases__actions">
+                        <DashboardButton
+                          className="my-purchases__download"
+                          variant="icon"
+                          aria-label={copy?.download ?? 'Download'}
+                          disabled={isDownloading || trackCount === 0}
+                          onClick={() => void handleDownloadAlbum(purchase)}
+                        >
+                          <DownloadIcon {...dashboardActionIconProps()} />
+                        </DashboardButton>
+                        <DashboardButton
+                          className="my-purchases__remove"
+                          variant="icon"
+                          destructive
+                          aria-label={copy?.removePurchase ?? 'Remove'}
+                          disabled={isRemoving && purchaseToRemove?.id === purchase.id}
+                          onClick={() => setPurchaseToRemove(purchase)}
+                        >
+                          <Trash2Icon {...dashboardActionIconProps()} />
+                        </DashboardButton>
+                      </div>
+                    </div>
+                  </DashboardCard>
+                );
+              })}
             </div>
           )}
         </div>

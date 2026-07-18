@@ -47,8 +47,7 @@ export function AlbumAccessControl({
     });
 
   const albumAccessAria =
-    (ui?.dashboard as DashboardUi | undefined)?.albumAccessAriaLabel ??
-    (lang === 'en' ? 'Album visibility' : 'Видимость альбома');
+    (ui?.dashboard as DashboardUi | undefined)?.albumAccessAriaLabel ?? 'Album visibility';
 
   const menuOptions = useMemo(
     () => buildAlbumVisibilityMenuOptions(ui, lang),

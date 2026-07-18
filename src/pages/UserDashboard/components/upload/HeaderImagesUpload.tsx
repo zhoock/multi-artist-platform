@@ -391,8 +391,9 @@ export function HeaderImagesUpload({
               {formatHint ? `. ${formatHint}` : ''}
             </p>
             <span className="header-images-upload__inline-count">
-              {images.length} / {MAX_IMAGES}
-              {lang === 'en' ? ' images' : ''}
+              {(ui?.dashboard?.headerImagesCount ?? '{current} / {max} images')
+                .replace('{current}', String(images.length))
+                .replace('{max}', String(MAX_IMAGES))}
             </span>
           </div>
 

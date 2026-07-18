@@ -861,7 +861,7 @@ export function scrollToFirstAlbumStep4InvalidField(
 
 export const transformFormDataToAlbumFormat = (
   formData: AlbumFormData,
-  lang: SupportedLang,
+  _lang: SupportedLang,
   ui?: IInterface,
   /**
    * Merged details (например `getAlbumDetailsForEdit(...).details`): id берутся по `kind`
@@ -953,10 +953,12 @@ export const transformFormDataToAlbumFormat = (
   const maxIdRef = { n: maxId };
   const takeId = (kind: DetailBlockKind) => takeDetailBlockId(kind, kindToId, usedIds, maxIdRef);
 
+  const d = ui?.dashboard;
+
   if (formData.bandMembers.length > 0) {
     details.push({
       id: takeId('bandMembers'),
-      title: lang === 'ru' ? 'Исполнители' : 'Band members',
+      title: d?.bandMembers ?? 'Band members',
       content: formData.bandMembers.map((m) => serializeBandMemberToContentItem(m)),
     });
   }
@@ -964,7 +966,7 @@ export const transformFormDataToAlbumFormat = (
   if (formData.sessionMusicians.length > 0) {
     details.push({
       id: takeId('sessionMusicians'),
-      title: lang === 'ru' ? 'Сессионные музыканты' : 'Session musicians',
+      title: d?.sessionMusicians ?? 'Session musicians',
       content: formData.sessionMusicians.map((m) => serializeBandMemberToContentItem(m)),
     });
   }
@@ -973,7 +975,7 @@ export const transformFormDataToAlbumFormat = (
   if (formData.producer && formData.producer.length > 0) {
     details.push({
       id: takeId('producing'),
-      title: lang === 'ru' ? 'Продюсирование' : 'Producing',
+      title: d?.producing ?? 'Producing',
       content: formData.producer.map((member) => serializeProducerToContentItem(member)),
     });
   }
@@ -982,7 +984,7 @@ export const transformFormDataToAlbumFormat = (
   if (formData.mastering && formData.mastering.length > 0) {
     details.push({
       id: takeId('mastering'),
-      title: lang === 'ru' ? 'Мастеринг' : 'Mastered By',
+      title: d?.masteredBy ?? 'Mastered By',
       content: formData.mastering.map((entry) => serializeRecordingEntryToContentItem(entry)),
     });
   }
@@ -991,7 +993,7 @@ export const transformFormDataToAlbumFormat = (
   if (formData.recordedAt.length > 0) {
     details.push({
       id: takeId('recordedAt'),
-      title: lang === 'ru' ? 'Запись' : 'Recorded At',
+      title: d?.recordedAt ?? 'Recorded At',
       content: formData.recordedAt.map((entry) => serializeRecordingEntryToContentItem(entry)),
     });
   }
@@ -1000,7 +1002,7 @@ export const transformFormDataToAlbumFormat = (
   if (formData.mixedAt.length > 0) {
     details.push({
       id: takeId('mixedAt'),
-      title: lang === 'ru' ? 'Сведение' : 'Mixed At',
+      title: d?.mixedAt ?? 'Mixed At',
       content: formData.mixedAt.map((entry) => serializeRecordingEntryToContentItem(entry)),
     });
   }

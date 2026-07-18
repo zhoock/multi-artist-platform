@@ -61,7 +61,7 @@ describe('MyPurchasesContent', () => {
     });
   });
 
-  it('renders dashboard kit layout with purchase card, track list, and remove action', async () => {
+  it('renders purchase card with cover meta and icon actions only', async () => {
     getMyPurchasesMock.mockResolvedValue([samplePurchase]);
 
     const { container } = renderWithProviders(<MyPurchasesContent />);
@@ -72,17 +72,22 @@ describe('MyPurchasesContent', () => {
 
     expect(container.querySelector('.user-dashboard__section')).toBeTruthy();
     expect(container.querySelector('.dashboard-card')).toBeTruthy();
-    expect(container.querySelectorAll('.dashboard-row').length).toBe(2);
-    expect(
-      container.querySelector('.my-purchases__download.dashboard-button--primary')
-    ).toBeTruthy();
-    expect(container.querySelector('.my-purchases__tracks')).toBeTruthy();
-    expect(container.querySelector('.dashboard-button--destructive')).toBeTruthy();
-    expect(screen.getByText('Track One')).toBeTruthy();
-    expect(screen.getByText('Track Two')).toBeTruthy();
+    expect(container.querySelector('.my-purchases__cover')).toBeTruthy();
+    expect(container.querySelector('.my-purchases__tracks-count')).toBeTruthy();
+    expect(screen.getByText('2 tracks')).toBeTruthy();
+    expect(container.querySelectorAll('.dashboard-row').length).toBe(0);
+    expect(container.querySelector('.my-purchases__tracks')).toBeNull();
+    expect(screen.queryByText('Track One')).toBeNull();
+    expect(screen.queryByText('Track Two')).toBeNull();
     expect(screen.queryByText('Tracks')).toBeNull();
+    expect(screen.queryByText(/Show tracks/i)).toBeNull();
     expect(screen.queryByText(/Downloads:/)).toBeNull();
+    expect(container.querySelector('.my-purchases__download.dashboard-button--icon')).toBeTruthy();
+    expect(
+      container.querySelector('.my-purchases__remove.dashboard-button--destructive')
+    ).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Download' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Remove' })).toBeTruthy();
     expect(container.querySelector('.my-purchases__remove-hint')).toBeNull();
   });
 });

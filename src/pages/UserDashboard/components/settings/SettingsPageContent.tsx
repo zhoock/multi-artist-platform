@@ -163,18 +163,15 @@ export function SettingsPageContent({
 
   const d = ui?.dashboard;
   const hasAvatar = !isProfileAvatarPlaceholderUrl(avatarSrc);
-  const avatarHint =
-    currentLang === 'en' ? 'PNG, JPEG, or WebP up to 2 MB' : 'PNG, JPEG или WebP до 2 МБ';
-  const uploadLabel = currentLang === 'en' ? 'Upload image' : 'Загрузить изображение';
-  const changeLabel = currentLang === 'en' ? 'Change image' : 'Заменить изображение';
-  const removeLabel = d?.removeAvatarPhoto ?? (currentLang === 'en' ? 'Remove' : 'Удалить');
+  const avatarHint = d?.avatarFormatsHint ?? 'PNG, JPEG, or WebP up to 2 MB';
+  const uploadLabel = d?.uploadAvatarImage ?? 'Upload image';
+  const changeLabel = d?.changeAvatarImage ?? 'Change image';
+  const removeLabel = d?.removeAvatarPhoto ?? 'Remove photo';
   const displayNameLabel = isListener
-    ? (d?.profileFields?.name ?? (currentLang === 'en' ? 'Name' : 'Имя'))
+    ? (d?.profileFields?.name ?? 'Name')
     : (d?.settingsModal?.fields?.bandName ?? 'Band Name');
   const displayNamePlaceholder = isListener
-    ? currentLang === 'en'
-      ? 'Enter your name'
-      : 'Введите ваше имя'
+    ? (d?.profileFields?.namePlaceholder ?? 'Enter your name')
     : (d?.settingsModal?.placeholders?.bandName ?? 'Enter the name of your band');
   const verifyEmailLabel = isCoolingDown
     ? `${emailVerificationCopy.resendEmail} (${remaining}s)`
@@ -461,7 +458,7 @@ export function SettingsPageContent({
         <DashboardSection title={d?.settingsModal?.tabs?.security ?? 'Security'}>
           <DashboardCard>
             <DashboardRow
-              label={currentLang === 'en' ? 'Password' : 'Пароль'}
+              label={d?.settingsModal?.fields?.password ?? 'Password'}
               variant="action"
               action={
                 <DashboardButton variant="outline" onClick={() => setIsChangePasswordOpen(true)}>
@@ -479,7 +476,7 @@ export function SettingsPageContent({
           </DashboardCard>
         </DashboardSection>
 
-        <DashboardSection title={currentLang === 'en' ? 'More' : 'Ещё'}>
+        <DashboardSection title={d?.dangerZone ?? 'Danger Zone'}>
           <DashboardCard>
             <DashboardRow
               label={d?.logout ?? 'Log Out'}
@@ -497,7 +494,7 @@ export function SettingsPageContent({
               variant="action"
               action={
                 <DashboardButton variant="outline" destructive onClick={onDeleteAccount}>
-                  {currentLang === 'en' ? 'Delete' : 'Удалить'}
+                  {d?.deleteAccountShort ?? 'Delete'}
                 </DashboardButton>
               }
             >

@@ -172,37 +172,27 @@ function formatUploadedTracksSuccessMessage(
 
 function formatAlbumDeletedSuccessMessage(
   albumTitle: string | undefined,
-  lang: SupportedLang,
   ui: IInterface | null | undefined
 ): string {
   const title = albumTitle?.trim();
   if (title) {
-    const template =
-      ui?.dashboard?.albumDeletedSuccessToastWithTitle ??
-      (lang === 'ru' ? 'Альбом "{name}" удалён' : 'Album "{name}" deleted');
+    const template = ui?.dashboard?.albumDeletedSuccessToastWithTitle ?? 'Album "{name}" deleted';
     return template.replace('{name}', title);
   }
-  return (
-    ui?.dashboard?.albumDeletedSuccessToast ?? (lang === 'ru' ? 'Альбом удалён' : 'Album deleted')
-  );
+  return ui?.dashboard?.albumDeletedSuccessToast ?? 'Album deleted';
 }
 
 function formatArticleDeletedSuccessMessage(
   articleTitle: string | undefined,
-  lang: SupportedLang,
   ui: IInterface | null | undefined
 ): string {
   const title = articleTitle?.trim();
   if (title) {
     const template =
-      ui?.dashboard?.articleDeletedSuccessToastWithTitle ??
-      (lang === 'ru' ? 'Статья «{name}» удалена' : 'Article "{name}" deleted');
+      ui?.dashboard?.articleDeletedSuccessToastWithTitle ?? 'Article "{name}" deleted';
     return template.replace('{name}', title);
   }
-  return (
-    ui?.dashboard?.articleDeletedSuccessToast ??
-    (lang === 'ru' ? 'Статья удалена' : 'Article deleted')
-  );
+  return ui?.dashboard?.articleDeletedSuccessToast ?? 'Article deleted';
 }
 
 /** В кабинете список альбомов всегда принадлежит сессии; бэкенд иногда не присылает `userId`. */
@@ -1392,7 +1382,7 @@ function UserDashboard() {
 
       handleArticleRemoved({ wasPublished });
 
-      queueArticleDeletedToast(formatArticleDeletedSuccessMessage(article.nameArticle, lang, ui));
+      queueArticleDeletedToast(formatArticleDeletedSuccessMessage(article.nameArticle, ui));
       setArticleDeletedToastTrigger((value) => value + 1);
     } catch (error) {
       console.error('❌ Error deleting article:', error);
@@ -1454,7 +1444,7 @@ function UserDashboard() {
 
       handleCatalogChanged({ wasPubliclyVisible: shouldSyncPublicCatalog });
 
-      queueAlbumDeletedToast(formatAlbumDeletedSuccessMessage(deletedAlbumTitle, lang, ui));
+      queueAlbumDeletedToast(formatAlbumDeletedSuccessMessage(deletedAlbumTitle, ui));
       setAlbumDeletedToastTrigger((n) => n + 1);
 
       console.log('✅ Album deleted successfully:', albumId);

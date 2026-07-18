@@ -592,8 +592,12 @@ export interface IInterface {
     albumPublishHintReady?: string;
     publishAlbumFailed?: string;
     logout: string;
+    dangerZone?: string;
+    deleteAccountShort?: string;
+    albumAccessAriaLabel?: string;
     profileFields: {
       name: string;
+      namePlaceholder?: string;
       username: string;
       email: string;
       location: string;
@@ -704,10 +708,14 @@ export interface IInterface {
     avatarEdit?: string;
     /** Меню аватара: загрузка */
     uploadAvatarPhoto?: string;
+    uploadAvatarImage?: string;
+    changeAvatarImage?: string;
     /** Меню аватара: удаление */
     removeAvatarPhoto?: string;
+    avatarFormatsHint?: string;
     /** Файл аватара больше лимита (2 MB) */
     avatarFileTooLarge?: string;
+    headerImagesCount?: string;
     profileHero?: {
       pagePrivate?: string;
       pagePublic?: string;
@@ -877,6 +885,9 @@ export interface IInterface {
       downloaded: string;
       download: string;
       tracks: string;
+      tracksCountOne: string;
+      tracksCountFew: string;
+      tracksCountMany: string;
       downloadTrack: string;
       downloadFullAlbum: string;
       downloadAll: string;
@@ -902,6 +913,7 @@ export interface IInterface {
         language: string;
         aboutBand: string;
         headerImages: string;
+        password?: string;
         currentPassword: string;
         newPassword: string;
         confirmPassword: string;
@@ -924,6 +936,7 @@ export interface IInterface {
         selectFiles: string;
         changePassword: string;
         uploadCover: string;
+        replaceCover?: string;
         preview: string;
         setCover: string;
       };
