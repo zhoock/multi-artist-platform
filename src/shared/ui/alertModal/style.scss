@@ -16,7 +16,7 @@ dialog {
       width: 100%;
       max-width: 500px;
       padding: 0;
-      background: var(--main-background);
+      background: var(--main-background-color, var(--deep-coal, #20201d));
       border-radius: 8px;
       box-shadow: 0 4px 20px rgb(0 0 0 / 30%);
       overflow: hidden;

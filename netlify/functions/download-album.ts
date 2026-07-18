@@ -137,7 +137,8 @@ export const handler: Handler = async (
       };
     }
 
-    const storageUserId = authUserId || album.userId || null;
+    // Файлы лежат в storage владельца альбома, не у слушателя/подписчика.
+    const storageUserId = album.userId || null;
     const archive = archiver('zip', { zlib: { level: 1 } });
     const passThrough = new PassThrough();
     const zipBufferPromise = buildZipBuffer(archive, passThrough);

@@ -110,7 +110,8 @@ export const handler: Handler = async (
     }
 
     const track = trackResult.rows[0];
-    const storageUserId = getUserIdFromEvent(event) || track.album_user_id || null;
+    // Файлы лежат в storage владельца альбома, не у слушателя/подписчика.
+    const storageUserId = track.album_user_id || null;
     const publicUrl = await resolveTrackPublicUrl(track.src ?? '', resolvedAlbumId, storageUserId);
 
     if (!publicUrl) {

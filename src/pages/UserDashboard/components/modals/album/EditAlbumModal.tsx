@@ -623,11 +623,11 @@ export function EditAlbumModal({
         preorderReleaseDate: (release as any).preorderReleaseDate
           ? formatDateFromISO((release as any).preorderReleaseDate)
           : prevForm.preorderReleaseDate || '',
-        albumCoverPhotographer: photographerResolved.value || prevForm.albumCoverPhotographer,
-        albumCoverPhotographerURL:
-          photographerURLResolved.value || prevForm.albumCoverPhotographerURL,
-        albumCoverDesigner: designerResolved.value || prevForm.albumCoverDesigner,
-        albumCoverDesignerURL: designerURLResolved.value || prevForm.albumCoverDesignerURL,
+        // Пустая строка — валидное «очищено в этой локали»; не подставлять prevForm через `||`.
+        albumCoverPhotographer: photographerResolved.value,
+        albumCoverPhotographerURL: photographerURLResolved.value,
+        albumCoverDesigner: designerResolved.value,
+        albumCoverDesignerURL: designerURLResolved.value,
         bandMembers: bandMembers.length > 0 ? bandMembers : prevForm.bandMembers,
         sessionMusicians:
           sessionMusicians.length > 0 ? sessionMusicians : prevForm.sessionMusicians,

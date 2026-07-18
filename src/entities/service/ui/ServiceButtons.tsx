@@ -1,5 +1,5 @@
 import { useLang } from '@app/providers/lang';
-import { Download as DownloadIcon } from 'lucide-react';
+import { Download as DownloadIcon, ShoppingBag as ShoppingBagIcon } from 'lucide-react';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 import type { String, IAlbums } from '@models';
@@ -10,6 +10,7 @@ import { getAlbumKeyForPaymentApis } from '@shared/lib/payment/albumPaymentKey';
 import { useAuthSessionUser } from '@shared/lib/hooks/useAuthSessionUser';
 import { isAuthenticated } from '@shared/lib/auth';
 import { consumePendingAlbumCheckoutForKey } from '@shared/lib/authIntent';
+import { AlertModal } from '@shared/ui/alertModal';
 import { GetButton } from './GetButton';
 import { AlbumCheckoutModal } from './AlbumCheckoutModal';
 import {
@@ -21,6 +22,7 @@ import {
 } from '../lib/albumPurchaseUtils';
 import { useYooKassaShopAvailableForAlbum } from '../lib/useYooKassaShopAvailableForAlbum';
 import { useAlbumOwnedByViewer } from '../lib/useAlbumOwnedByViewer';
+import { useArtistArchiveStatus } from '@features/artistArchive/lib/useArtistArchiveStatus';
 import { getAlbumPrice } from '../lib/getAlbumPrice';
 import './style.scss';
 
@@ -50,13 +52,16 @@ function ServiceButtonsContent({
     buyAlbumPermanentAccess: string;
     buyAlbumPurchased: string;
     buyAlbumOwned: string;
+    buyAlbumViaSupport: string;
     downloadAlbum: string;
     downloadAlbumLoading: string;
     downloadAlbumPreparing: string;
     errorDownloadingAlbum: string;
+    errorTitle: string;
   };
 }) {
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+  const [downloadErrorOpen, setDownloadErrorOpen] = useState(false);
   const [albumDownloadState, setAlbumDownloadState] = useState<{
     active: boolean;
     percent: number | null;
@@ -81,6 +86,13 @@ function ServiceButtonsContent({
     yookassaAvailable &&
     !isAlbumOwnerView;
   const { isOwned, ownedPurchase } = useAlbumOwnedByViewer(album, downloadButtonEnabled);
+  const artistUserId = album?.userId?.trim() || null;
+  const { buttonState: archiveButtonState } = useArtistArchiveStatus(
+    downloadButtonEnabled ? artistUserId : null
+  );
+  /** Активная подписка + артист в коллекции (та же модель, что Hero «В коллекции»). */
+  const hasPremiumAccess = archiveButtonState === 'in_collection_active';
+  const canDownload = isOwned || hasPremiumAccess;
 
   const albumKey = getAlbumKeyForPaymentApis(album);
 
@@ -120,7 +132,7 @@ function ServiceButtonsContent({
   const handlePurchaseButtonClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
     e.preventDefault();
 
-    if (isOwned) {
+    if (canDownload) {
       if (isDownloadingAlbum || !albumKey) {
         return;
       }
@@ -134,7 +146,7 @@ function ServiceButtonsContent({
           : (ownedPurchase?.tracks ?? []);
 
       if (downloadTracks.length === 0) {
-        alert(labels.errorDownloadingAlbum);
+        setDownloadErrorOpen(true);
         return;
       }
 
@@ -157,7 +169,7 @@ function ServiceButtonsContent({
           );
         } catch (error) {
           console.error('Error downloading album:', error);
-          alert(labels.errorDownloadingAlbum);
+          setDownloadErrorOpen(true);
         } finally {
           setAlbumDownloadState({ active: false, percent: null });
         }
@@ -170,7 +182,7 @@ function ServiceButtonsContent({
 
   const purchaseTitle = isDownloadingAlbum
     ? labels.downloadAlbumLoading
-    : isOwned
+    : canDownload
       ? labels.downloadAlbum
       : labels.buyAlbum;
   const purchaseSubtitle = isDownloadingAlbum
@@ -179,8 +191,10 @@ function ServiceButtonsContent({
       : labels.downloadAlbumPreparing
     : isOwned
       ? labels.buyAlbumPurchased
-      : labels.buyAlbumPermanentAccess;
-  const purchaseRightLabel = isOwned || isDownloadingAlbum ? labels.buyAlbumOwned : albumPrice;
+      : hasPremiumAccess
+        ? labels.buyAlbumViaSupport
+        : labels.buyAlbumPermanentAccess;
+  const purchaseRightLabel = canDownload || isDownloadingAlbum ? labels.buyAlbumOwned : albumPrice;
   const progressBarValue = downloadProgress ?? 0;
 
   return (
@@ -206,8 +220,8 @@ function ServiceButtonsContent({
                   aria-label={
                     isDownloadingAlbum
                       ? `${labels.downloadAlbumLoading} ${purchaseSubtitle}, ${labels.buyAlbumOwned}`
-                      : isOwned
-                        ? `${labels.downloadAlbum}, ${labels.buyAlbumPurchased}, ${labels.buyAlbumOwned}`
+                      : canDownload
+                        ? `${labels.downloadAlbum}, ${purchaseSubtitle}, ${labels.buyAlbumOwned}`
                         : `${labels.buyAlbum}, ${albumPrice}, ${labels.buyAlbumPermanentAccess}`
                   }
                   aria-disabled={isDownloadingAlbum}
@@ -216,7 +230,11 @@ function ServiceButtonsContent({
                   onClick={handlePurchaseButtonClick}
                 >
                   <span className="service-buttons__download-icon" aria-hidden="true">
-                    <DownloadIcon {...dashboardActionIconProps({ size: 18 })} />
+                    {canDownload || isDownloadingAlbum ? (
+                      <DownloadIcon {...dashboardActionIconProps({ size: 18 })} />
+                    ) : (
+                      <ShoppingBagIcon {...dashboardActionIconProps({ size: 18 })} />
+                    )}
                   </span>
                   <span className="service-buttons__download-copy">
                     <span className="service-buttons__download-title">{purchaseTitle}</span>
@@ -301,6 +319,14 @@ function ServiceButtonsContent({
           onClose={() => setIsCheckoutOpen(false)}
         />
       )}
+
+      <AlertModal
+        isOpen={downloadErrorOpen}
+        title={labels.errorTitle}
+        message={labels.errorDownloadingAlbum}
+        variant="error"
+        onClose={() => setDownloadErrorOpen(false)}
+      />
     </div>
   );
 }
@@ -318,10 +344,12 @@ export function ServiceButtons({ album, section }: ServiceButtonsProps) {
           buyAlbumPermanentAccess: 'Permanent access',
           buyAlbumPurchased: 'Purchased',
           buyAlbumOwned: 'Owned',
+          buyAlbumViaSupport: 'Included with support',
           downloadAlbum: 'Download Album',
           downloadAlbumLoading: 'Downloading...',
           downloadAlbumPreparing: 'Preparing archive...',
           errorDownloadingAlbum: 'Error downloading album. Please try again.',
+          errorTitle: 'Error',
         }
       : {
           purchase: 'Купить',
@@ -330,10 +358,12 @@ export function ServiceButtons({ album, section }: ServiceButtonsProps) {
           buyAlbumPermanentAccess: 'Постоянный доступ',
           buyAlbumPurchased: 'Куплено',
           buyAlbumOwned: 'Ваше',
+          buyAlbumViaSupport: 'Входит в поддержку',
           downloadAlbum: 'Скачать альбом',
           downloadAlbumLoading: 'Скачивание...',
           downloadAlbumPreparing: 'Подготовка архива...',
           errorDownloadingAlbum: 'Ошибка при скачивании альбома. Попробуйте ещё раз.',
+          errorTitle: 'Ошибка',
         };
   const buttons = ui?.buttons ?? {};
   const labels = {
@@ -344,10 +374,12 @@ export function ServiceButtons({ album, section }: ServiceButtonsProps) {
       buttons.buyAlbumPermanentAccess ?? fallbackLabels.buyAlbumPermanentAccess,
     buyAlbumPurchased: buttons.buyAlbumPurchased ?? fallbackLabels.buyAlbumPurchased,
     buyAlbumOwned: buttons.buyAlbumOwned ?? fallbackLabels.buyAlbumOwned,
+    buyAlbumViaSupport: buttons.buyAlbumViaSupport ?? fallbackLabels.buyAlbumViaSupport,
     downloadAlbum: buttons.downloadAlbum ?? fallbackLabels.downloadAlbum,
     downloadAlbumLoading: buttons.downloadAlbumLoading ?? fallbackLabels.downloadAlbumLoading,
     downloadAlbumPreparing: buttons.downloadAlbumPreparing ?? fallbackLabels.downloadAlbumPreparing,
     errorDownloadingAlbum: buttons.errorDownloadingAlbum ?? fallbackLabels.errorDownloadingAlbum,
+    errorTitle: ui?.titles?.error ?? ui?.dashboard?.error ?? fallbackLabels.errorTitle,
   };
 
   return <ServiceButtonsContent album={album} section={section} labels={labels} />;

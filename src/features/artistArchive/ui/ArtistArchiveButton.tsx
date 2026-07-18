@@ -64,9 +64,6 @@ export function ArtistArchiveButton({ artistUserId, monetizationEnabled = false 
     ui?.buttons?.artistArchiveFull ?? (lang === 'en' ? 'Collection Full' : 'Коллекция заполнена');
   const labelAdding =
     ui?.buttons?.artistArchiveAdding ?? (lang === 'en' ? 'Adding…' : 'Добавляем…');
-  const supportInactiveLabel =
-    ui?.titles?.artistCollectionSupportInactive ??
-    (lang === 'en' ? 'Support inactive' : 'Поддержка неактивна');
   const renewLabel =
     ui?.buttons?.artistCollectionRenew ?? (lang === 'en' ? 'Renew Support' : 'Продлить поддержку');
   const archiveFullTitle =
@@ -134,13 +131,13 @@ export function ArtistArchiveButton({ artistUserId, monetizationEnabled = false 
       ? '…'
       : buttonState === 'adding'
         ? labelAdding
-        : buttonState === 'in_collection_active' || buttonState === 'in_collection_inactive'
-          ? labelInCollection
-          : buttonState === 'archive_full'
-            ? labelFull
-            : labelAdd;
-
-  const showCollectionInactiveMeta = buttonState === 'in_collection_inactive';
+        : buttonState === 'in_collection_inactive'
+          ? renewLabel
+          : buttonState === 'in_collection_active'
+            ? labelInCollection
+            : buttonState === 'archive_full'
+              ? labelFull
+              : labelAdd;
 
   return (
     <>
@@ -164,29 +161,13 @@ export function ArtistArchiveButton({ artistUserId, monetizationEnabled = false 
           {buttonState === 'not_premium' || buttonState === 'archive_full' ? (
             <SubscriberContentLockIcon className="artist-archive-button__lock-icon" size={14} />
           ) : null}
-          {buttonState === 'in_collection_active' || buttonState === 'in_collection_inactive' ? (
+          {buttonState === 'in_collection_active' ? (
             <span className="artist-archive-button__check" aria-hidden>
               <CheckIcon {...dashboardActionIconProps({ size: 14 })} />
             </span>
           ) : null}
           <span>{buttonLabel}</span>
         </button>
-
-        {showCollectionInactiveMeta ? (
-          <div className="artist-archive-button__inactive-meta">
-            <span className="artist-archive-button__support-inactive">{supportInactiveLabel}</span>
-            <button
-              type="button"
-              className="artist-archive-button__renew"
-              onClick={(event) => {
-                event.stopPropagation();
-                openRenewModal();
-              }}
-            >
-              {renewLabel}
-            </button>
-          </div>
-        ) : null}
 
         {error ? (
           <button

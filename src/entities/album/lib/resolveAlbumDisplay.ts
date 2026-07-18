@@ -136,23 +136,18 @@ function albumTranslationStrings(
 export type AlbumCoverCreditField = 'photographer' | 'photographerURL' | 'designer' | 'designerURL';
 
 /**
- * Значение для формы: current → default → en/ru, затем legacy из `release` (старые данные).
+ * Кредиты обложки — строго по локали (без en↔ru fallback).
+ * Пустая строка в `translations[lang]` значит «поле очищено», а не «подставь другую локаль».
+ * Legacy: только `release` для старых данных, если у текущей локали ключа ещё нет.
  */
 export function resolveAlbumCoverCreditFieldForEdit(
   album: IAlbums,
   field: AlbumCoverCreditField,
   lang: SupportedLang
 ): ResolvedAlbumEditField {
-  const chain = buildTranslationFallbackLocales(
-    lang,
-    DEFAULT_CONTENT_LOCALE,
-    TRANSLATION_LOCALE_ORDER
-  );
-  for (const loc of chain) {
-    const raw = album.translations?.[loc]?.[field];
-    if (typeof raw === 'string' && raw.trim()) {
-      return { value: raw.trim(), isFallback: loc !== lang, source: loc };
-    }
+  const raw = album.translations?.[lang]?.[field];
+  if (typeof raw === 'string') {
+    return { value: raw.trim(), isFallback: false, source: lang };
   }
   const rel =
     album.release && typeof album.release === 'object'
@@ -166,7 +161,7 @@ export function resolveAlbumCoverCreditFieldForEdit(
 }
 
 /**
- * Для публичной страницы: те же fallback, что у строк переводов; затем legacy `release`.
+ * Публичная страница: кредиты только из текущей локали, затем legacy `release`.
  */
 export function resolveAlbumCoverReleaseFieldsForDisplay(
   album: IAlbums,
@@ -180,15 +175,9 @@ export function resolveAlbumCoverReleaseFieldsForDisplay(
   ];
   const out = {} as Record<AlbumCoverCreditField, string>;
   for (const f of fields) {
-    const fromTranslations = resolveTranslationString(
-      {
-        en: album.translations?.en?.[f],
-        ru: album.translations?.ru?.[f],
-      },
-      lang
-    );
-    if (fromTranslations) {
-      out[f] = fromTranslations;
+    const raw = album.translations?.[lang]?.[f];
+    if (typeof raw === 'string') {
+      out[f] = raw.trim();
       continue;
     }
     const rel =
