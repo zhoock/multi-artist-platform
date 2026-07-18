@@ -1,26 +1,22 @@
 // src/pages/UserDashboard/components/purchases/MyPurchasesContent.tsx
 import React, { useCallback, useEffect, useState } from 'react';
-import { Download as DownloadIcon } from 'lucide-react';
 import { useLang } from '@app/providers/lang';
+import { AlbumCoverImage } from '@entities/album';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
-import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 import {
   DashboardButton,
   DashboardCard,
   DashboardRow,
   DashboardRowValue,
   DashboardLoadingState,
-  DashboardSpinner,
 } from '@shared/ui/dashboard';
 import {
   downloadAlbumZip,
   getMyPurchases,
-  getTrackDownloadUrl,
   revokePurchase,
   type Purchase,
 } from '@shared/api/purchases';
-import { getUserImageUrl } from '@shared/api/albums';
 import { ConfirmationModal } from '@shared/ui/confirmationModal';
 import { MyPurchasesEmptyState } from './MyPurchasesEmptyState';
 import './MyPurchasesContent.scss';
@@ -37,15 +33,6 @@ function triggerBlobDownload(blob: Blob, filename: string) {
   window.URL.revokeObjectURL(downloadUrl);
 }
 
-function getPurchaseCoverUrl(purchase: Purchase) {
-  const ownerId = purchase.albumUserId ?? undefined;
-  const imageUrl = getUserImageUrl(purchase.cover!, 'albums', '.jpg', true, ownerId);
-  if (imageUrl == null) {
-    return '/images/album-placeholder.png';
-  }
-  return imageUrl;
-}
-
 export function MyPurchasesContent() {
   const { lang } = useLang();
   const ui = useAppSelector((state) => selectUiDictionaryFirst(state, lang));
@@ -55,8 +42,6 @@ export function MyPurchasesContent() {
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [downloadingTracks, setDownloadingTracks] = useState<Set<string>>(new Set());
-  const [downloadedItems, setDownloadedItems] = useState<Set<string>>(new Set());
   const [downloadingAlbums, setDownloadingAlbums] = useState<Set<string>>(new Set());
   const [purchaseToRemove, setPurchaseToRemove] = useState<Purchase | null>(null);
   const [isRemoving, setIsRemoving] = useState(false);
@@ -82,65 +67,6 @@ export function MyPurchasesContent() {
   useEffect(() => {
     void loadPurchases();
   }, [loadPurchases]);
-
-  const handleDownloadTrack = async (purchaseToken: string, trackId: string) => {
-    const downloadKey = `${purchaseToken}-${trackId}`;
-
-    if (downloadingTracks.has(downloadKey)) {
-      return;
-    }
-
-    try {
-      setDownloadingTracks((prev) => new Set(prev).add(downloadKey));
-      setDownloadedItems((prev) => {
-        const next = new Set(prev);
-        next.delete(downloadKey);
-        return next;
-      });
-
-      const url = getTrackDownloadUrl(purchaseToken, trackId);
-      const response = await fetch(url);
-
-      if (!response.ok) {
-        throw new Error(`Failed to download: ${response.statusText}`);
-      }
-
-      const blob = await response.blob();
-      const contentDisposition = response.headers.get('Content-Disposition');
-      let filename = `track-${trackId}.wav`;
-      if (contentDisposition) {
-        const filenameMatch = contentDisposition.match(/filename\*=UTF-8''(.+)/);
-        if (filenameMatch) {
-          filename = decodeURIComponent(filenameMatch[1]);
-        } else {
-          const filenameMatch2 = contentDisposition.match(/filename="(.+)"/);
-          if (filenameMatch2) {
-            filename = filenameMatch2[1];
-          }
-        }
-      }
-
-      triggerBlobDownload(blob, filename);
-
-      setDownloadedItems((prev) => new Set(prev).add(downloadKey));
-      setTimeout(() => {
-        setDownloadedItems((prev) => {
-          const next = new Set(prev);
-          next.delete(downloadKey);
-          return next;
-        });
-      }, 2000);
-    } catch (err) {
-      console.error('Error downloading track:', err);
-      alert(copy?.errorDownloadingTrack ?? 'Error downloading track. Please try again.');
-    } finally {
-      setDownloadingTracks((prev) => {
-        const next = new Set(prev);
-        next.delete(downloadKey);
-        return next;
-      });
-    }
-  };
 
   const handleDownloadAlbum = async (purchase: Purchase) => {
     if (downloadingAlbums.has(purchase.id)) {
@@ -207,15 +133,19 @@ export function MyPurchasesContent() {
               {purchases.map((purchase) => (
                 <DashboardCard key={purchase.id} className="my-purchases__card">
                   <div className="my-purchases__header">
-                    {purchase.cover && (
+                    {purchase.cover ? (
                       <div className="my-purchases__cover">
-                        <img
-                          src={getPurchaseCoverUrl(purchase)}
+                        <AlbumCoverImage
+                          cover={purchase.cover}
+                          userId={purchase.albumUserId ?? undefined}
                           alt={`${purchase.artist} — ${purchase.album}`}
+                          contextAlbumId={purchase.albumId}
+                          loading="lazy"
+                          decoding="async"
                           className="my-purchases__cover-image"
                         />
                       </div>
-                    )}
+                    ) : null}
                     <div className="my-purchases__header-meta">
                       <h3 className="my-purchases__title">
                         {purchase.artist} — {purchase.album}
@@ -223,95 +153,46 @@ export function MyPurchasesContent() {
                       <p className="my-purchases__meta-line">
                         {copy?.purchased ?? 'Purchased:'} {formatDate(purchase.purchasedAt)}
                       </p>
-                      {purchase.downloadCount > 0 && (
-                        <p className="my-purchases__meta-line">
-                          {copy?.downloads ?? 'Downloads:'} {purchase.downloadCount}
-                        </p>
-                      )}
                     </div>
                   </div>
 
-                  <DashboardRow
-                    variant="action"
-                    label={<p className="my-purchases__tracks-label">{copy?.tracks ?? 'Tracks'}</p>}
-                    action={
-                      <DashboardButton
-                        variant="outline"
-                        aria-label={copy?.downloadAll ?? 'Download all'}
-                        disabled={
-                          downloadingAlbums.has(purchase.id) || purchase.tracks.length === 0
-                        }
-                        onClick={() => void handleDownloadAlbum(purchase)}
-                      >
-                        {downloadingAlbums.has(purchase.id) ? (
-                          <DashboardSpinner className="my-purchases__download-spinner" />
-                        ) : (
-                          <>
-                            <DownloadIcon
-                              {...dashboardActionIconProps({ size: 14, strokeWidth: 1.5 })}
-                            />
-                            {copy?.downloadAll ?? 'Download all'}
-                          </>
-                        )}
-                      </DashboardButton>
-                    }
-                  >
-                    <DashboardRowValue aria-hidden="true" />
-                  </DashboardRow>
-
-                  {purchase.tracks.map((track, index) => {
-                    const downloadKey = `${purchase.purchaseToken}-${track.trackId}`;
-                    const isDownloading = downloadingTracks.has(downloadKey);
-                    const isDownloaded = downloadedItems.has(downloadKey);
-
-                    return (
+                  <div className="my-purchases__tracks">
+                    {purchase.tracks.map((track, index) => (
                       <DashboardRow
                         key={track.trackId}
-                        variant="action"
+                        className="my-purchases__track-row"
                         label={
                           <span className="my-purchases__track-label">
                             <span className="my-purchases__track-number">{index + 1}.</span>
                             <span className="my-purchases__track-title">{track.title}</span>
                           </span>
                         }
-                        action={
-                          <DashboardButton
-                            variant="outline"
-                            onClick={() =>
-                              handleDownloadTrack(purchase.purchaseToken, track.trackId)
-                            }
-                            title={copy?.downloadTrack ?? 'Download track'}
-                            disabled={isDownloading}
-                          >
-                            {isDownloading ? (
-                              <DashboardSpinner className="my-purchases__download-spinner" />
-                            ) : isDownloaded ? (
-                              (copy?.downloaded ?? 'Downloaded')
-                            ) : (
-                              (copy?.download ?? 'Download')
-                            )}
-                          </DashboardButton>
-                        }
                       >
                         <DashboardRowValue aria-hidden="true" />
                       </DashboardRow>
-                    );
-                  })}
+                    ))}
+                  </div>
 
                   <div className="my-purchases__footer">
                     <DashboardButton
                       variant="outline"
                       destructive
-                      aria-label={copy?.removePurchase ?? 'Remove purchase'}
+                      aria-label={copy?.removePurchase ?? 'Remove'}
                       disabled={isRemoving && purchaseToRemove?.id === purchase.id}
                       onClick={() => setPurchaseToRemove(purchase)}
                     >
-                      {copy?.removePurchase ?? 'Remove purchase'}
+                      {copy?.removePurchase ?? 'Remove'}
                     </DashboardButton>
-                    <p className="my-purchases__remove-hint">
-                      {copy?.removePurchaseHint ??
-                        'You will lose access to this album and all downloads.'}
-                    </p>
+                    <DashboardButton
+                      className="my-purchases__download"
+                      variant="primary"
+                      aria-label={copy?.download ?? 'Download'}
+                      loading={downloadingAlbums.has(purchase.id)}
+                      disabled={downloadingAlbums.has(purchase.id) || purchase.tracks.length === 0}
+                      onClick={() => void handleDownloadAlbum(purchase)}
+                    >
+                      {copy?.download ?? 'Download'}
+                    </DashboardButton>
                   </div>
                 </DashboardCard>
               ))}

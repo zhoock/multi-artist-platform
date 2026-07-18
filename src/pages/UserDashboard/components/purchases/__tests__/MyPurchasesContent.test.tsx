@@ -9,7 +9,6 @@ const getMyPurchasesMock = jest.fn<() => Promise<Purchase[]>>();
 
 jest.mock('@shared/api/purchases', () => ({
   getMyPurchases: () => getMyPurchasesMock(),
-  getTrackDownloadUrl: jest.fn(),
   downloadAlbumZip: jest.fn(),
   revokePurchase: jest.fn(),
 }));
@@ -62,7 +61,7 @@ describe('MyPurchasesContent', () => {
     });
   });
 
-  it('renders dashboard kit layout with purchase card, track rows, and remove action', async () => {
+  it('renders dashboard kit layout with purchase card, track list, and remove action', async () => {
     getMyPurchasesMock.mockResolvedValue([samplePurchase]);
 
     const { container } = renderWithProviders(<MyPurchasesContent />);
@@ -73,9 +72,17 @@ describe('MyPurchasesContent', () => {
 
     expect(container.querySelector('.user-dashboard__section')).toBeTruthy();
     expect(container.querySelector('.dashboard-card')).toBeTruthy();
-    expect(container.querySelectorAll('.dashboard-row').length).toBeGreaterThanOrEqual(3);
+    expect(container.querySelectorAll('.dashboard-row').length).toBe(2);
+    expect(
+      container.querySelector('.my-purchases__download.dashboard-button--primary')
+    ).toBeTruthy();
+    expect(container.querySelector('.my-purchases__tracks')).toBeTruthy();
     expect(container.querySelector('.dashboard-button--destructive')).toBeTruthy();
     expect(screen.getByText('Track One')).toBeTruthy();
     expect(screen.getByText('Track Two')).toBeTruthy();
+    expect(screen.queryByText('Tracks')).toBeNull();
+    expect(screen.queryByText(/Downloads:/)).toBeNull();
+    expect(screen.getByRole('button', { name: 'Download' })).toBeTruthy();
+    expect(container.querySelector('.my-purchases__remove-hint')).toBeNull();
   });
 });
