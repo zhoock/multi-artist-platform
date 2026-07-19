@@ -6,6 +6,7 @@ import type { LangState } from '@shared/model/lang';
 import type { CurrentArtistState } from '@shared/model/currentArtist';
 import type { ArticlesState } from '@entities/article/model/types';
 import type { AlbumsState } from '@entities/album/model/types';
+import type { ArtistAlbumCatalogState } from '@entities/album/model/artistAlbumCatalogSlice';
 import type { HelpArticlesState } from '@entities/helpArticle/model/types';
 import type { UiDictionaryState } from '@shared/model/uiDictionary/types';
 import type { TrackLyricsState } from '@entities/lyrics/model/trackLyricsSlice';
@@ -20,6 +21,7 @@ export interface RootState {
   currentArtist: CurrentArtistState;
   articles: ArticlesState;
   albums: AlbumsState;
+  artistAlbumCatalog: ArtistAlbumCatalogState;
   helpArticles: HelpArticlesState;
   uiDictionary: UiDictionaryState;
   trackLyrics: TrackLyricsState;

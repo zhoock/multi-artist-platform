@@ -3,9 +3,8 @@
  * Позволяет сохранить текущий трек, альбом, громкость и состояние воспроизведения.
  */
 
-import type { PlayerState } from '@features/player/model/types/playerSchema';
-import type { TracksProps } from '@models';
-import { normalizeTrackIdString } from '@shared/lib/tracks/normalizeTrackIdString';
+import type { PlayerState, PlayerTrack } from '@features/player/model/types/playerSchema';
+import { toPlayerTracks } from '@features/player/model/lib/toPlayerTrack';
 
 const STORAGE_KEY = 'playerState';
 
@@ -21,8 +20,8 @@ interface PersistedPlayerState {
   isPlaying: boolean;
   albumMeta?: PlayerState['albumMeta'];
   sourceLocation?: PlayerState['sourceLocation'];
-  playlist?: TracksProps[];
-  originalPlaylist?: TracksProps[];
+  playlist?: PlayerTrack[];
+  originalPlaylist?: PlayerTrack[];
   shuffle?: boolean;
   repeat?: PlayerState['repeat'];
   time?: PlayerState['time'];
@@ -36,10 +35,9 @@ interface PersistedPlayerState {
  */
 export function savePlayerState(state: PlayerState): void {
   try {
-    const safePlaylist = state.playlist ? JSON.parse(JSON.stringify(state.playlist)) : [];
-    const safeOriginalPlaylist = state.originalPlaylist
-      ? JSON.parse(JSON.stringify(state.originalPlaylist))
-      : [];
+    const albumId = state.albumMeta?.albumId ?? state.albumId;
+    const safePlaylist = toPlayerTracks(state.playlist, albumId);
+    const safeOriginalPlaylist = toPlayerTracks(state.originalPlaylist, albumId);
     const persistedState: PersistedPlayerState = {
       albumId: state.albumId,
       albumTitle: state.albumTitle,
@@ -87,14 +85,10 @@ export function loadPlayerState(): PersistedPlayerState | null {
       return null;
     }
 
-    const mapTrackIds = (list: TracksProps[]) =>
-      list.map((t) => ({ ...t, id: normalizeTrackIdString(t.id) }));
-
-    const playlist = Array.isArray(parsed.playlist)
-      ? mapTrackIds(parsed.playlist as TracksProps[])
-      : [];
+    const albumId = parsed.albumMeta?.albumId ?? parsed.albumId;
+    const playlist = Array.isArray(parsed.playlist) ? toPlayerTracks(parsed.playlist, albumId) : [];
     const originalPlaylist = Array.isArray(parsed.originalPlaylist)
-      ? mapTrackIds(parsed.originalPlaylist as TracksProps[])
+      ? toPlayerTracks(parsed.originalPlaylist, albumId)
       : [];
 
     return {

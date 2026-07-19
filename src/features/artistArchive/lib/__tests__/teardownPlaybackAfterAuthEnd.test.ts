@@ -24,10 +24,8 @@ describe('teardownPlaybackAfterAuthEnd', () => {
         {
           id: '1',
           title: 'Premium track',
-          order_index: 0,
           src: 'https://example.com/premium.mp3',
           duration: 120,
-          content: '',
         },
       ])
     );

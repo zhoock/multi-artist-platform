@@ -2,15 +2,15 @@ import { useLayoutEffect } from 'react';
 import type { EqualityFn } from 'react-redux';
 
 import { resolveTrackLyricsBundle } from '@entities/lyrics';
-import type { SyncedLyricsLine, TracksProps } from '@models';
+import type { SyncedLyricsLine } from '@models';
+import type { PlayerTrack } from '@features/player/model/types/playerSchema';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
-import { resolveLyricsSyncState } from '@shared/lib/lyrics';
 import type { TrackLyricsBundle } from '@shared/lib/lyrics/types';
 
 import { debugLog } from '../utils/debug';
 
 interface UseLyricsContentParams {
-  currentTrack: TracksProps | null;
+  currentTrack: PlayerTrack | null;
   albumId: string;
   lang: string;
   duration: number;
@@ -70,37 +70,6 @@ function buildKaraokeLines(bundle: TrackLyricsBundle, duration: number): SyncedL
   return synced;
 }
 
-/**
- * Build a hydration-only fallback from the playlist track until trackLyricsSlice is populated.
- * Prefer embedded `track.lyrics`; otherwise synthesize from legacy `content` / `authorship`.
- */
-function buildPlaylistLyricsFallback(
-  albumId: string,
-  track: TracksProps,
-  lang: string
-): TrackLyricsBundle | null {
-  if (track.lyrics) {
-    return track.lyrics;
-  }
-
-  const content = track.content?.trim() ? track.content : '';
-  if (!content && !track.authorship?.trim()) {
-    return null;
-  }
-
-  const state = resolveLyricsSyncState({ content, syncedLines: null });
-  return {
-    albumId: albumId || '',
-    trackId: String(track.id),
-    lang: lang === 'ru' ? 'ru' : 'en',
-    content,
-    authorship: track.authorship,
-    syncedLines: null,
-    state,
-    syncedAt: null,
-  };
-}
-
 export function useLyricsContent({
   currentTrack,
   albumId,
@@ -113,19 +82,18 @@ export function useLyricsContent({
   setIsLoadingSyncedLyrics,
   setHasSyncedLyricsAvailable,
 }: UseLyricsContentParams): TrackLyricsBundle | null {
-  // Prefer trackLyricsSlice; use playlist-embedded lyrics only as hydration fallback.
+  // Playlist no longer carries lyrics — only trackLyricsSlice (hydrate via albums fetch / API).
   const lyricsBundle = useAppSelector(
     (state): TrackLyricsBundle | null => {
       if (!currentTrack) return null;
 
       const canonicalAlbumId =
-        currentTrack.lyrics?.albumId?.trim() ||
+        currentTrack.albumId?.trim() ||
         state.player.albumMeta?.albumId?.trim() ||
         state.player.albumId?.trim() ||
         albumId;
 
-      const fallback = buildPlaylistLyricsFallback(canonicalAlbumId, currentTrack, lang);
-      return resolveTrackLyricsBundle(state, canonicalAlbumId, currentTrack.id, fallback);
+      return resolveTrackLyricsBundle(state, canonicalAlbumId, currentTrack.id, null);
     },
     { equalityFn: areLyricsBundlesEqual }
   );
@@ -148,14 +116,12 @@ export function useLyricsContent({
       if (lyricsBundle && lyricsBundle.state !== 'empty') {
         const plain = normalize(lyricsBundle.content);
         setPlainLyricsContent(plain || null);
-        setAuthorshipText(
-          lyricsBundle.authorship?.trim() || currentTrack.authorship?.trim() || null
-        );
+        setAuthorshipText(lyricsBundle.authorship?.trim() || null);
         setHasSyncedLyricsAvailable(lyricsBundle.state === 'synced');
         setSyncedLyrics(buildKaraokeLines(lyricsBundle, duration));
       } else {
         setPlainLyricsContent(null);
-        setAuthorshipText(currentTrack.authorship?.trim() || null);
+        setAuthorshipText(null);
         setHasSyncedLyricsAvailable(false);
         setSyncedLyrics(null);
       }

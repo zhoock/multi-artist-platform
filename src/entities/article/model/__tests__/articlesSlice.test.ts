@@ -35,6 +35,14 @@ const createTestStore = () => {
       popup: () => ({ isOpen: false }),
       player: () => initialPlayerState,
       albums: () => createAlbumsTestState(),
+      artistAlbumCatalog: () => ({
+        status: 'idle' as const,
+        error: null,
+        data: [],
+        lastUpdated: null,
+        fetchContextKey: null,
+        artistMissing: false,
+      }),
       helpArticles: () => ({
         en: { status: 'idle' as const, error: null, data: [], lastUpdated: null },
         ru: { status: 'idle' as const, error: null, data: [], lastUpdated: null },

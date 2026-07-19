@@ -329,6 +329,55 @@ describe('playerSlice', () => {
       expect(playlist[0].id).toBe('1');
     });
 
+    test('должен стрипать TracksProps до PlayerTrack (без content/lyrics/order_index)', () => {
+      const store = configureStore({
+        reducer: {
+          player: playerReducer,
+        },
+      });
+
+      store.dispatch(
+        playerActions.setPlaylist([
+          {
+            id: '1',
+            title: 'Track 1',
+            order_index: 0,
+            content: 'lyrics body',
+            authorship: 'Author',
+            duration: 180,
+            src: 'track1.mp3',
+            lyrics: {
+              albumId: 'a1',
+              trackId: '1',
+              lang: 'ru',
+              content: 'lyrics body',
+              authorship: 'Author',
+              syncedLines: null,
+              state: 'text-only',
+              syncedAt: null,
+            },
+            visibility: 'public',
+            playbackLocked: false,
+          },
+        ] as TracksProps[])
+      );
+
+      const playlist = selectPlaylist(store.getState() as RootState);
+      expect(playlist).toEqual([
+        {
+          id: '1',
+          title: 'Track 1',
+          duration: 180,
+          src: 'track1.mp3',
+          playbackLocked: false,
+          visibility: 'public',
+        },
+      ]);
+      expect(playlist[0]).not.toHaveProperty('content');
+      expect(playlist[0]).not.toHaveProperty('lyrics');
+      expect(playlist[0]).not.toHaveProperty('order_index');
+    });
+
     test('должен сохранить оригинальный порядок в originalPlaylist', () => {
       const store = configureStore({
         reducer: {
@@ -412,7 +461,6 @@ describe('playerSlice', () => {
         },
       });
 
-      // @ts-expect-error - тестируем edge case
       store.dispatch(playerActions.setPlaylist(null));
 
       const state = store.getState() as RootState;

@@ -1,5 +1,11 @@
 export { playerReducer, playerActions } from './model/slice/playerSlice';
-export type { PlayerState } from './model/types/playerSchema';
+export type {
+  PlayerState,
+  PlayerTrack,
+  PlayerAlbumMeta,
+  PlayerSourceLocation,
+} from './model/types/playerSchema';
+export { toPlayerTrack, toPlayerTracks } from './model/lib/toPlayerTrack';
 export * as playerSelectors from './model/selectors/playerSelectors';
 export { AudioPlayer } from './ui/AudioPlayer';
 export { PlayerShell } from './ui/PlayerShell';

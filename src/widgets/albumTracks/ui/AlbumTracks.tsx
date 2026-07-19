@@ -9,7 +9,7 @@ import { useStore } from 'react-redux';
 import type { RootState } from '@shared/model/appStore/types';
 import { useAppDispatch } from '@shared/lib/hooks/useAppDispatch';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
-import { playerActions, loadPlayerState, savePlayerState } from '@features/player';
+import { playerActions, loadPlayerState, savePlayerState, toPlayerTracks } from '@features/player';
 import type { IAlbums, TracksProps } from '@models';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 import { useLang } from '@app/providers/lang';
@@ -167,7 +167,11 @@ const AlbumTracksComponent = ({ album }: { album: IAlbums }) => {
       if (validTrackIndex === -1) {
         return;
       }
-      dispatch(playerActions.setPlaylist(transformTracksForStorage(albumPageTracks, album.userId)));
+      dispatch(
+        playerActions.setPlaylist(
+          toPlayerTracks(transformTracksForStorage(albumPageTracks, album.userId), currentAlbumId)
+        )
+      );
       dispatch(playerActions.setCurrentTrackIndex(validTrackIndex));
       dispatch(
         playerActions.setAlbumInfo({
@@ -199,7 +203,11 @@ const AlbumTracksComponent = ({ album }: { album: IAlbums }) => {
       if (startIdx === -1) {
         return;
       }
-      dispatch(playerActions.setPlaylist(transformTracksForStorage(albumPageTracks, album.userId)));
+      dispatch(
+        playerActions.setPlaylist(
+          toPlayerTracks(transformTracksForStorage(albumPageTracks, album.userId), currentAlbumId)
+        )
+      );
       dispatch(playerActions.setCurrentTrackIndex(startIdx));
       dispatch(playerActions.setAlbumInfo({ albumId: currentAlbumId, albumTitle: album.album }));
       dispatch(
@@ -277,7 +285,11 @@ const AlbumTracksComponent = ({ album }: { album: IAlbums }) => {
       }
       const selectedTrack = playlist[playableIndex];
 
-      dispatch(playerActions.setPlaylist(transformTracksForStorage(playlist, album.userId)));
+      dispatch(
+        playerActions.setPlaylist(
+          toPlayerTracks(transformTracksForStorage(playlist, album.userId), albumId)
+        )
+      );
 
       if (selectedTrack) {
         const currentState = store.getState().player;

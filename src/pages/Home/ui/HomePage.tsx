@@ -11,13 +11,13 @@ import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 import { ArtistNotFound } from '@shared/ui/artistNotFound';
 import { useRedirectHomeAfterOwnAccountDeleted } from '@shared/lib/hooks/useRedirectHomeAfterOwnAccountDeleted';
-import { playerActions } from '@features/player';
+import { playerActions, toPlayerTracks } from '@features/player';
 import { getUserAudioUrl } from '@shared/api/albums';
 import { emptyStringMediaSrc } from '@shared/lib/media/optionalMediaUrl';
-import type { IAlbums, TracksProps } from '@models';
+import type { IAlbums } from '@models';
 import { isDashboardPathname } from '@shared/lib/publicArtistContext';
 import { resolveAlbumForDisplay } from '@entities/album/lib/resolveAlbumDisplay';
-import { fetchAlbums } from '@entities/album';
+import { fetchAlbums, fetchArtistAlbumCatalog } from '@entities/album';
 import { fetchArticles } from '@entities/article';
 import { generateMockArtists } from '@shared/lib/generateMockArtists';
 import { prepareUniverseData } from '@features/universe/model/prepareUniverseData';
@@ -94,6 +94,7 @@ export function HomePage() {
 
   /**
    * Единственный источник первичной загрузки публичного каталога на `/?artist=`.
+   * Thin catalog → Artist Page cards; full `/api/albums` остаётся для Album/Player/Mixer/Dashboard.
    * Loader при defer не диспатчит fetch (см. shouldDeferPublicArtistCatalogToSurface).
    */
   useEffect(() => {
@@ -101,9 +102,8 @@ export function HomePage() {
     if (!hasArtistParam) return;
 
     void dispatch(
-      fetchAlbums({
+      fetchArtistAlbumCatalog({
         force: true,
-        forcePublicCatalog: true,
         publicArtistSlug: artistSlug,
       })
     );
@@ -237,19 +237,23 @@ export function HomePage() {
 
           const resolvedAlbum = resolveAlbumForDisplay(firstAlbum as IAlbums, lang);
 
-          const playlist: TracksProps[] = resolvedAlbum.tracks.map((track) => {
-            if (isTrackPlaybackBlocked(track)) {
-              return { ...track, src: '' };
-            }
-            return {
-              ...track,
-              src: emptyStringMediaSrc(
-                getUserAudioUrl(track.src, undefined, resolvedAlbum.userId),
-                'HomePage:heroPlaylist',
-                { trackId: track.id, albumUserId: resolvedAlbum.userId }
-              ),
-            };
-          });
+          const albumId = fallbackAlbumClientId(resolvedAlbum);
+          const playlist = toPlayerTracks(
+            resolvedAlbum.tracks.map((track) => {
+              if (isTrackPlaybackBlocked(track)) {
+                return { ...track, src: '' };
+              }
+              return {
+                ...track,
+                src: emptyStringMediaSrc(
+                  getUserAudioUrl(track.src, undefined, resolvedAlbum.userId),
+                  'HomePage:heroPlaylist',
+                  { trackId: track.id, albumUserId: resolvedAlbum.userId }
+                ),
+              };
+            }),
+            albumId
+          );
 
           const startIdx = resolveFirstPlayableIndex(playlist, 0);
           if (startIdx === -1) {
@@ -258,8 +262,6 @@ export function HomePage() {
 
           dispatch(playerActions.setPlaylist(playlist));
           dispatch(playerActions.setCurrentTrackIndex(startIdx));
-
-          const albumId = fallbackAlbumClientId(resolvedAlbum);
 
           dispatch(
             playerActions.setAlbumInfo({

@@ -6,6 +6,7 @@ import { configureStore } from '@reduxjs/toolkit';
 import type { ReactNode } from 'react';
 import { articlesReducer } from '@entities/article/model/articlesSlice';
 import { albumsReducer } from '@entities/album/model/albumsSlice';
+import { artistAlbumCatalogReducer } from '@entities/album/model/artistAlbumCatalogSlice';
 import { langReducer } from '@shared/model/lang/langSlice';
 import { currentArtistReducer } from '@shared/model/currentArtist';
 import { LangProvider } from '@app/providers/lang';
@@ -91,6 +92,7 @@ function createWrapper(
       lang: langReducer,
       articles: articlesReducer,
       albums: albumsReducer,
+      artistAlbumCatalog: artistAlbumCatalogReducer,
       currentArtist: currentArtistReducer,
     } as never,
     preloadedState: preloadedState as never,
@@ -295,11 +297,11 @@ describe('useArtistPageAccess — published surface without releases', () => {
           },
         },
         albums: {
-          status: 'succeeded',
+          status: 'idle',
           error: null,
           data: [],
-          lastUpdated: Date.now(),
-          fetchContextKey: 'public:test-artist',
+          lastUpdated: null,
+          fetchContextKey: null,
           inFlightFetchContextKey: null,
           catalogArtistMissing: false,
           dashboard: {
@@ -309,6 +311,14 @@ describe('useArtistPageAccess — published surface without releases', () => {
             lastUpdated: null,
             inFlightFetchContextKey: null,
           },
+        },
+        artistAlbumCatalog: {
+          status: 'succeeded',
+          error: null,
+          data: [],
+          lastUpdated: Date.now(),
+          fetchContextKey: 'public:test-artist',
+          artistMissing: false,
         },
       }),
     });
@@ -355,11 +365,11 @@ describe('useArtistPageAccess — visitor unpublished artist', () => {
           },
         },
         albums: {
-          status: 'succeeded',
+          status: 'idle',
           error: null,
           data: [],
-          lastUpdated: Date.now(),
-          fetchContextKey: 'public:test-artist',
+          lastUpdated: null,
+          fetchContextKey: null,
           inFlightFetchContextKey: null,
           catalogArtistMissing: false,
           dashboard: {
@@ -369,6 +379,14 @@ describe('useArtistPageAccess — visitor unpublished artist', () => {
             lastUpdated: null,
             inFlightFetchContextKey: null,
           },
+        },
+        artistAlbumCatalog: {
+          status: 'succeeded',
+          error: null,
+          data: [],
+          lastUpdated: Date.now(),
+          fetchContextKey: 'public:test-artist',
+          artistMissing: false,
         },
       }),
     });
@@ -399,13 +417,13 @@ describe('useArtistPageAccess — visitor unpublished artist', () => {
           },
         },
         albums: {
-          status: 'succeeded',
+          status: 'idle',
           error: null,
           data: [],
-          lastUpdated: Date.now(),
-          fetchContextKey: 'public:missing-artist',
+          lastUpdated: null,
+          fetchContextKey: null,
           inFlightFetchContextKey: null,
-          catalogArtistMissing: true,
+          catalogArtistMissing: false,
           dashboard: {
             status: 'idle',
             error: null,
@@ -413,6 +431,14 @@ describe('useArtistPageAccess — visitor unpublished artist', () => {
             lastUpdated: null,
             inFlightFetchContextKey: null,
           },
+        },
+        artistAlbumCatalog: {
+          status: 'succeeded',
+          error: null,
+          data: [],
+          lastUpdated: Date.now(),
+          fetchContextKey: 'public:missing-artist',
+          artistMissing: true,
         },
       }),
     });
@@ -488,11 +514,11 @@ describe('useArtistPageAccess — owner onboarding after full content removal', 
           },
         },
         albums: {
-          status: 'succeeded',
+          status: 'idle',
           error: null,
-          data: [publishedAlbum],
-          lastUpdated: Date.now(),
-          fetchContextKey: 'public:test-artist',
+          data: [],
+          lastUpdated: null,
+          fetchContextKey: null,
           inFlightFetchContextKey: null,
           catalogArtistMissing: false,
           dashboard: {
@@ -502,6 +528,28 @@ describe('useArtistPageAccess — owner onboarding after full content removal', 
             lastUpdated: Date.now(),
             inFlightFetchContextKey: null,
           },
+        },
+        artistAlbumCatalog: {
+          status: 'succeeded',
+          error: null,
+          data: [
+            {
+              albumId: publishedAlbum.albumId!,
+              slug: publishedAlbum.albumId!,
+              title: publishedAlbum.album,
+              cover: publishedAlbum.cover || '',
+              releaseDate: '2024-01-01',
+              trackCount: 1,
+              duration: 180,
+              userId: 'user-1',
+              isPublished: true,
+              isPublic: true,
+              hasLockedTracks: false,
+            },
+          ],
+          lastUpdated: Date.now(),
+          fetchContextKey: 'public:other-artist',
+          artistMissing: false,
         },
       }),
     });
@@ -555,11 +603,11 @@ describe('useArtistPageAccess — owner builder eligibility', () => {
           },
         },
         albums: {
-          status: 'succeeded',
+          status: 'idle',
           error: null,
           data: [],
-          lastUpdated: Date.now(),
-          fetchContextKey: 'public:test-artist',
+          lastUpdated: null,
+          fetchContextKey: null,
           inFlightFetchContextKey: null,
           catalogArtistMissing: false,
           dashboard: {
@@ -569,6 +617,14 @@ describe('useArtistPageAccess — owner builder eligibility', () => {
             lastUpdated: null,
             inFlightFetchContextKey: null,
           },
+        },
+        artistAlbumCatalog: {
+          status: 'succeeded',
+          error: null,
+          data: [],
+          lastUpdated: Date.now(),
+          fetchContextKey: 'public:test-artist',
+          artistMissing: false,
         },
       }),
     });

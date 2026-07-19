@@ -3,18 +3,22 @@
 import { useEffect, useMemo, useState, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { WrapperAlbumCover, AlbumCover } from '@entities/album';
+import {
+  WrapperAlbumCover,
+  AlbumCover,
+  fetchArtistAlbumCatalog,
+  selectArtistAlbumCatalogStatus,
+  selectArtistAlbumCatalogCacheIsStale,
+  selectArtistAlbumCatalogData,
+  selectArtistAlbumCatalogArtistMissing,
+} from '@entities/album';
+import { filterCatalogAlbumsForArtistPageSurface } from '@entities/album/lib/catalogPublication';
 import { useAppDispatch } from '@shared/lib/hooks/useAppDispatch';
 import { fetchArticles } from '@entities/article';
 import { ErrorI18n } from '@shared/ui/error-message';
 import { AlbumsSkeleton } from '@shared/ui/skeleton/AlbumsSkeleton';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { useLang } from '@app/providers/lang';
-import {
-  selectAlbumsStatus,
-  selectAlbumsResolvedForAllAlbumsPage,
-  selectPublicAlbumsCacheIsStale,
-} from '@entities/album';
 import { ArtistNotFound } from '@shared/ui/artistNotFound';
 import { ArtistPageUnderConstruction } from '@pages/Home/ui/ArtistPageUnderConstruction';
 import { useArtistPageAccess } from '@shared/lib/hooks/useArtistPageAccess';
@@ -24,8 +28,7 @@ import '@entities/album/ui/style.scss';
 import './style.scss';
 import { useSiteArtistDisplayName } from '@shared/lib/hooks/useSiteArtistDisplayName';
 import { formatAlbumDisplayFullName } from '@shared/lib/profileDisplayName';
-import { useShowSurfaceAlbumsLoadingShell } from '@shared/lib/hooks/useShowAlbumsLoadingShell';
-import { filterAlbumsForArtistPageSurface } from '@shared/lib/artistPageContent';
+import { shouldShowAlbumsLoadingShell } from '@shared/lib/hooks/useShowAlbumsLoadingShell';
 import { withPublicArtistQuery } from '@shared/lib/artistQuery';
 import { ContextNav } from '@shared/ui/contextNav';
 
@@ -40,28 +43,35 @@ export function AllAlbumsPage() {
   const artistPageAccess = useArtistPageAccess(artistSlug);
   const hideArtistPageAfterOwnDelete = useRedirectHomeAfterOwnAccountDeleted(!!artistSlug);
   const { displayName: siteArtistName } = useSiteArtistDisplayName(lang, { artistSlug });
-  const albumsStatus = useAppSelector(selectAlbumsStatus);
-  const catalogCacheStale = useAppSelector(selectPublicAlbumsCacheIsStale);
-  const resolvedAlbums = useAppSelector((state) =>
-    selectAlbumsResolvedForAllAlbumsPage(state, !artistSlug)
-  );
+  const catalogStatus = useAppSelector(selectArtistAlbumCatalogStatus);
+  const catalogCacheStale = useAppSelector(selectArtistAlbumCatalogCacheIsStale);
+  const catalogArtistMissing = useAppSelector(selectArtistAlbumCatalogArtistMissing);
+  const catalogAlbums = useAppSelector(selectArtistAlbumCatalogData);
   const allAlbums = useMemo(
     () =>
-      catalogCacheStale
-        ? []
-        : filterAlbumsForArtistPageSurface(resolvedAlbums, artistPageAccess.isOwner),
-    [artistPageAccess.isOwner, catalogCacheStale, resolvedAlbums]
+      filterCatalogAlbumsForArtistPageSurface(
+        catalogCacheStale ? [] : catalogAlbums,
+        artistPageAccess.isOwner
+      ),
+    [artistPageAccess.isOwner, catalogAlbums, catalogCacheStale]
   );
   const ui = useAppSelector((state) => selectUiDictionaryFirst(state, lang));
-  const showAlbumsLoadingShell = useShowSurfaceAlbumsLoadingShell(
-    albumsStatus,
-    allAlbums.length > 0,
-    catalogCacheStale
-  );
+  const showAlbumsLoadingShell =
+    !catalogArtistMissing &&
+    shouldShowAlbumsLoadingShell(catalogStatus, allAlbums.length > 0, catalogCacheStale);
 
   const [displayedCount, setDisplayedCount] = useState(BATCH_SIZE);
   const observerRef = useRef<IntersectionObserver | null>(null);
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
+
+  /**
+   * Thin catalog for `/albums?artist=` — same source as Home AlbumsSection.
+   * Reuses cache after Home; fetches on cold load. Fat `/api/albums` stays for Album/Mixer/Dashboard.
+   */
+  useEffect(() => {
+    if (!artistSlug.trim()) return;
+    void dispatch(fetchArtistAlbumCatalog({ publicArtistSlug: artistSlug }));
+  }, [artistSlug, dispatch]);
 
   // Сбрасываем счетчик при смене языка или данных
   useEffect(() => {
@@ -70,7 +80,7 @@ export function AllAlbumsPage() {
 
   // Infinite scroll с Intersection Observer
   useEffect(() => {
-    if (albumsStatus !== 'succeeded' || displayedCount >= allAlbums.length) {
+    if (catalogStatus !== 'succeeded' || displayedCount >= allAlbums.length) {
       return;
     }
 
@@ -96,7 +106,7 @@ export function AllAlbumsPage() {
         observerRef.current.disconnect();
       }
     };
-  }, [albumsStatus, displayedCount, allAlbums.length]);
+  }, [catalogStatus, displayedCount, allAlbums.length]);
 
   const displayedAlbums = allAlbums.slice(0, displayedCount);
   const hasMore = displayedCount < allAlbums.length;
@@ -152,7 +162,7 @@ export function AllAlbumsPage() {
 
         {showAlbumsLoadingShell ? (
           <AlbumsSkeleton count={BATCH_SIZE} />
-        ) : albumsStatus === 'failed' ? (
+        ) : catalogStatus === 'failed' ? (
           <ErrorI18n code="albumsLoadFailed" />
         ) : (
           <>
@@ -161,13 +171,13 @@ export function AllAlbumsPage() {
                 <WrapperAlbumCover
                   key={album.albumId}
                   albumId={album.albumId}
-                  album={album.album}
-                  date={typeof album.release?.date === 'string' ? album.release.date : ''}
+                  album={album.title}
+                  date={album.releaseDate}
                 >
                   <AlbumCover
                     img={album.cover || ''}
                     userId={album.userId}
-                    fullName={formatAlbumDisplayFullName(siteArtistName, album.album)}
+                    fullName={formatAlbumDisplayFullName(siteArtistName, album.title)}
                   />
                 </WrapperAlbumCover>
               ))}

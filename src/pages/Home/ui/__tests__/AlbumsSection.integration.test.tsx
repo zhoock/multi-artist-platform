@@ -2,7 +2,8 @@ import { describe, test, expect } from '@jest/globals';
 import { screen } from '@testing-library/react';
 import { AlbumsSection } from '../AlbumsSection';
 import { renderWithProviders } from '@shared/lib/test-utils';
-import type { IAlbums, TracksProps } from '@models';
+import type { CatalogAlbum } from '@entities/album';
+import { createAlbumsTestState } from '@entities/album/model/__tests__/albumsTestState';
 
 jest.mock('@shared/lib/hooks/useArtistPageBuilder', () => ({
   useArtistPageBuilder: () => ({
@@ -14,172 +15,132 @@ jest.mock('@shared/lib/hooks/useArtistPageBuilder', () => ({
   }),
 }));
 
-describe('AlbumsSection integration tests', () => {
-  const mockTrack: TracksProps = {
-    id: '1',
-    title: 'Track 1',
-    content: '',
-    duration: 180,
-    src: 'track.mp3',
-    order_index: 10,
+function createCatalogTestState(
+  overrides: Partial<{
+    status: 'idle' | 'loading' | 'succeeded' | 'failed';
+    error: string | null;
+    data: CatalogAlbum[];
+    lastUpdated: number | null;
+    fetchContextKey: string | null;
+    artistMissing: boolean;
+  }> = {}
+) {
+  return {
+    status: 'idle' as const,
+    error: null,
+    data: [] as CatalogAlbum[],
+    lastUpdated: null as number | null,
+    fetchContextKey: 'public:test-artist' as string | null,
+    artistMissing: false,
+    ...overrides,
   };
+}
 
-  const mockAlbums: IAlbums[] = [
+describe('AlbumsSection integration tests', () => {
+  const mockCatalogAlbums: CatalogAlbum[] = [
     {
       albumId: 'album-1',
-      album: 'Album 1',
-      artist: 'Artist 1',
-      fullName: 'Artist 1 — Album 1',
-      description: 'Description 1',
-      release: {
-        date: '2024-01-01',
-      },
+      slug: 'album-1',
+      title: 'Album 1',
       cover: 'cover1',
-      tracks: [mockTrack],
-      buttons: {},
-      details: [],
+      releaseDate: '2024-01-01',
+      trackCount: 1,
+      duration: 180,
+      userId: 'user-1',
       isPublished: true,
       isPublic: true,
+      hasLockedTracks: false,
     },
     {
       albumId: 'album-2',
-      album: 'Album 2',
-      artist: 'Artist 2',
-      fullName: 'Artist 2 — Album 2',
-      description: 'Description 2',
-      release: {
-        date: '2024-02-01',
-      },
+      slug: 'album-2',
+      title: 'Album 2',
       cover: 'cover2',
-      tracks: [mockTrack],
-      buttons: {},
-      details: [],
+      releaseDate: '2024-02-01',
+      trackCount: 1,
+      duration: 200,
+      userId: 'user-1',
       isPublished: true,
       isPublic: true,
+      hasLockedTracks: false,
     },
   ];
 
   test('должен отобразить Loader во время загрузки', () => {
     renderWithProviders(<AlbumsSection />, {
+      initialEntries: ['/?artist=test-artist'],
       preloadedState: {
         lang: { current: 'en' },
-        albums: {
+        currentArtist: { publicSlug: 'test-artist' },
+        albums: createAlbumsTestState(),
+        artistAlbumCatalog: createCatalogTestState({
           status: 'loading',
-          error: null,
           data: [],
-          lastUpdated: null,
           fetchContextKey: null,
-          inFlightFetchContextKey: null,
-          catalogArtistMissing: false,
-          dashboard: {
-            status: 'idle',
-            error: null,
-            data: [],
-            lastUpdated: null,
-            inFlightFetchContextKey: null,
-          },
-        },
+        }),
         uiDictionary: {
-          en: {
-            status: 'idle',
-            error: null,
-            data: [],
-            lastUpdated: null,
-          },
-          ru: {
-            status: 'idle',
-            error: null,
-            data: [],
-            lastUpdated: null,
-          },
+          en: { status: 'idle', error: null, data: [], lastUpdated: null },
+          ru: { status: 'idle', error: null, data: [], lastUpdated: null },
         },
       },
     });
 
-    // Проверяем что секция рендерится (может иметь fallback текст "…", если UI словарь не загружен)
     const region = screen.queryByRole('region');
     expect(region).toBeInTheDocument();
   });
 
   test('должен отобразить ошибку при failed статусе', () => {
     renderWithProviders(<AlbumsSection />, {
+      initialEntries: ['/?artist=test-artist'],
       preloadedState: {
         lang: { current: 'en' },
-        albums: {
+        currentArtist: { publicSlug: 'test-artist' },
+        albums: createAlbumsTestState(),
+        artistAlbumCatalog: createCatalogTestState({
           status: 'failed',
           error: 'Failed to load albums',
           data: [],
-          lastUpdated: null,
-          fetchContextKey: null,
-          inFlightFetchContextKey: null,
-          catalogArtistMissing: false,
-          dashboard: {
-            status: 'idle',
-            error: null,
-            data: [],
-            lastUpdated: null,
-            inFlightFetchContextKey: null,
-          },
-        },
+        }),
         uiDictionary: {
-          en: {
-            status: 'idle',
-            error: null,
-            data: [],
-            lastUpdated: null,
-          },
-          ru: {
-            status: 'idle',
-            error: null,
-            data: [],
-            lastUpdated: null,
-          },
+          en: { status: 'idle', error: null, data: [], lastUpdated: null },
+          ru: { status: 'idle', error: null, data: [], lastUpdated: null },
         },
       },
     });
 
-    // Проверяем что секция рендерится (может иметь fallback текст "…", если UI словарь не загружен)
     const region = screen.queryByRole('region');
     expect(region).toBeInTheDocument();
   });
 
   test('не показывает альбомы с isPublic === false на витрине артиста', () => {
-    const withHidden: IAlbums[] = [
-      ...mockAlbums,
+    const withHidden: CatalogAlbum[] = [
+      ...mockCatalogAlbums,
       {
         albumId: 'album-hidden',
-        album: 'Hidden',
-        artist: 'Artist 1',
-        fullName: 'Artist 1 — Hidden',
-        description: '',
-        release: { date: '2024-03-01' },
+        slug: 'album-hidden',
+        title: 'Hidden',
         cover: 'cover-h',
-        tracks: [mockTrack],
-        buttons: {},
-        details: [],
+        releaseDate: '2024-03-01',
+        trackCount: 1,
+        duration: 100,
+        userId: 'user-1',
+        isPublished: true,
         isPublic: false,
+        hasLockedTracks: false,
       },
     ];
 
     renderWithProviders(<AlbumsSection />, {
+      initialEntries: ['/?artist=test-artist'],
       preloadedState: {
         lang: { current: 'en' },
-        albums: {
+        currentArtist: { publicSlug: 'test-artist' },
+        albums: createAlbumsTestState(),
+        artistAlbumCatalog: createCatalogTestState({
           status: 'succeeded',
-          error: null,
           data: withHidden,
           lastUpdated: Date.now(),
-          fetchContextKey: null,
-          inFlightFetchContextKey: null,
-          catalogArtistMissing: false,
-          dashboard: {
-            status: 'idle',
-            error: null,
-            data: [],
-            lastUpdated: null,
-            inFlightFetchContextKey: null,
-          },
-        },
+        }),
         uiDictionary: {
           en: {
             status: 'succeeded',
@@ -193,12 +154,7 @@ describe('AlbumsSection integration tests', () => {
             ],
             lastUpdated: Date.now(),
           },
-          ru: {
-            status: 'idle',
-            error: null,
-            data: [],
-            lastUpdated: null,
-          },
+          ru: { status: 'idle', error: null, data: [], lastUpdated: null },
         },
       },
     });
@@ -209,96 +165,53 @@ describe('AlbumsSection integration tests', () => {
 
   test('должен отобразить список альбомов', () => {
     renderWithProviders(<AlbumsSection />, {
+      initialEntries: ['/?artist=test-artist'],
       preloadedState: {
         lang: { current: 'en' },
-        albums: {
+        currentArtist: { publicSlug: 'test-artist' },
+        albums: createAlbumsTestState(),
+        artistAlbumCatalog: createCatalogTestState({
           status: 'succeeded',
-          error: null,
-          data: mockAlbums,
+          data: mockCatalogAlbums,
           lastUpdated: Date.now(),
-          fetchContextKey: null,
-          inFlightFetchContextKey: null,
-          catalogArtistMissing: false,
-          dashboard: {
-            status: 'idle',
-            error: null,
-            data: [],
-            lastUpdated: null,
-            inFlightFetchContextKey: null,
-          },
-        },
+        }),
         uiDictionary: {
           en: {
             status: 'succeeded',
             error: null,
-            data: [
-              {
-                menu: {},
-                buttons: {},
-                titles: {
-                  albums: 'Albums',
-                },
-              },
-            ],
+            data: [{ menu: {}, buttons: {}, titles: { albums: 'Albums' } }],
             lastUpdated: Date.now(),
           },
-          ru: {
-            status: 'idle',
-            error: null,
-            data: [],
-            lastUpdated: null,
-          },
+          ru: { status: 'idle', error: null, data: [], lastUpdated: null },
         },
       },
     });
 
     expect(screen.getByText('Albums')).toBeInTheDocument();
-    // Проверяем что секция рендерится (может иметь fallback текст "…", если UI словарь не загружен)
     const region = screen.queryByRole('region');
     expect(region).toBeInTheDocument();
   });
 
   test('должен отобразить заголовок из UI словаря', () => {
     renderWithProviders(<AlbumsSection />, {
+      initialEntries: ['/?artist=test-artist'],
       preloadedState: {
         lang: { current: 'en' },
-        albums: {
+        currentArtist: { publicSlug: 'test-artist' },
+        albums: createAlbumsTestState(),
+        artistAlbumCatalog: createCatalogTestState({
           status: 'succeeded',
-          error: null,
-          data: mockAlbums,
+          data: mockCatalogAlbums,
           lastUpdated: Date.now(),
-          fetchContextKey: null,
-          inFlightFetchContextKey: null,
-          catalogArtistMissing: false,
-          dashboard: {
-            status: 'idle',
-            error: null,
-            data: [],
-            lastUpdated: null,
-            inFlightFetchContextKey: null,
-          },
-        },
+        }),
         uiDictionary: {
           en: {
             status: 'succeeded',
             error: null,
-            data: [
-              {
-                menu: {},
-                buttons: {},
-                titles: {
-                  albums: 'My Albums',
-                },
-              },
-            ],
+            data: [{ menu: {}, buttons: {}, titles: { albums: 'My Albums' } }],
             lastUpdated: Date.now(),
           },
-          ru: {
-            status: 'idle',
-            error: null,
-            data: [],
-            lastUpdated: null,
-          },
+          ru: { status: 'idle', error: null, data: [], lastUpdated: null },
         },
       },
     });
@@ -308,37 +221,19 @@ describe('AlbumsSection integration tests', () => {
 
   test('должен использовать fallback текст если UI словарь не загружен', () => {
     renderWithProviders(<AlbumsSection />, {
+      initialEntries: ['/?artist=test-artist'],
       preloadedState: {
         lang: { current: 'en' },
-        albums: {
+        currentArtist: { publicSlug: 'test-artist' },
+        albums: createAlbumsTestState(),
+        artistAlbumCatalog: createCatalogTestState({
           status: 'succeeded',
-          error: null,
-          data: mockAlbums,
+          data: mockCatalogAlbums,
           lastUpdated: Date.now(),
-          fetchContextKey: null,
-          inFlightFetchContextKey: null,
-          catalogArtistMissing: false,
-          dashboard: {
-            status: 'idle',
-            error: null,
-            data: [],
-            lastUpdated: null,
-            inFlightFetchContextKey: null,
-          },
-        },
+        }),
         uiDictionary: {
-          en: {
-            status: 'idle',
-            error: null,
-            data: [],
-            lastUpdated: null,
-          },
-          ru: {
-            status: 'idle',
-            error: null,
-            data: [],
-            lastUpdated: null,
-          },
+          en: { status: 'idle', error: null, data: [], lastUpdated: null },
+          ru: { status: 'idle', error: null, data: [], lastUpdated: null },
         },
       },
     });
@@ -348,59 +243,38 @@ describe('AlbumsSection integration tests', () => {
 
   test('не рендерит пустые альбомы для посетителей', () => {
     renderWithProviders(<AlbumsSection />, {
+      initialEntries: ['/?artist=test-artist'],
       preloadedState: {
         lang: { current: 'en' },
-        albums: {
+        currentArtist: { publicSlug: 'test-artist' },
+        albums: createAlbumsTestState(),
+        artistAlbumCatalog: createCatalogTestState({
           status: 'succeeded',
-          error: null,
           data: [
             {
               albumId: 'album-empty',
-              album: 'Empty Draft',
-              artist: 'Artist 1',
-              fullName: 'Artist 1 — Empty Draft',
-              description: '',
-              release: { date: '2024-03-01' },
+              slug: 'album-empty',
+              title: 'Empty Draft',
               cover: 'cover-e',
-              tracks: [],
-              buttons: {},
-              details: [],
+              releaseDate: '2024-03-01',
+              trackCount: 0,
+              duration: 0,
+              userId: 'user-1',
+              isPublished: true,
               isPublic: true,
+              hasLockedTracks: false,
             },
           ],
           lastUpdated: Date.now(),
-          fetchContextKey: null,
-          inFlightFetchContextKey: null,
-          catalogArtistMissing: false,
-          dashboard: {
-            status: 'idle',
-            error: null,
-            data: [],
-            lastUpdated: null,
-            inFlightFetchContextKey: null,
-          },
-        },
+        }),
         uiDictionary: {
           en: {
             status: 'succeeded',
             error: null,
-            data: [
-              {
-                menu: {},
-                buttons: {},
-                titles: {
-                  albums: 'Albums',
-                },
-              },
-            ],
+            data: [{ menu: {}, buttons: {}, titles: { albums: 'Albums' } }],
             lastUpdated: Date.now(),
           },
-          ru: {
-            status: 'idle',
-            error: null,
-            data: [],
-            lastUpdated: null,
-          },
+          ru: { status: 'idle', error: null, data: [], lastUpdated: null },
         },
       },
     });
@@ -410,45 +284,24 @@ describe('AlbumsSection integration tests', () => {
 
   test('не рендерит секцию при успешной загрузке и пустом списке альбомов', () => {
     renderWithProviders(<AlbumsSection />, {
+      initialEntries: ['/?artist=test-artist'],
       preloadedState: {
         lang: { current: 'en' },
-        albums: {
+        currentArtist: { publicSlug: 'test-artist' },
+        albums: createAlbumsTestState(),
+        artistAlbumCatalog: createCatalogTestState({
           status: 'succeeded',
-          error: null,
           data: [],
           lastUpdated: Date.now(),
-          fetchContextKey: null,
-          inFlightFetchContextKey: null,
-          catalogArtistMissing: false,
-          dashboard: {
-            status: 'idle',
-            error: null,
-            data: [],
-            lastUpdated: null,
-            inFlightFetchContextKey: null,
-          },
-        },
+        }),
         uiDictionary: {
           en: {
             status: 'succeeded',
             error: null,
-            data: [
-              {
-                menu: {},
-                buttons: {},
-                titles: {
-                  albums: 'Albums',
-                },
-              },
-            ],
+            data: [{ menu: {}, buttons: {}, titles: { albums: 'Albums' } }],
             lastUpdated: Date.now(),
           },
-          ru: {
-            status: 'idle',
-            error: null,
-            data: [],
-            lastUpdated: null,
-          },
+          ru: { status: 'idle', error: null, data: [], lastUpdated: null },
         },
       },
     });
@@ -457,28 +310,50 @@ describe('AlbumsSection integration tests', () => {
     expect(screen.queryByText('Albums')).not.toBeInTheDocument();
   });
 
-  test('на ?artist= при сброшенном fetchContextKey показывает скелетон, а не dashboard-кэш', () => {
+  test('на ?artist= при stale thin-catalog показывает скелетон, а не dashboard-кэш', () => {
     renderWithProviders(<AlbumsSection isOwner />, {
       initialEntries: ['/?artist=test-artist'],
       preloadedState: {
         lang: { current: 'en' },
         currentArtist: { publicSlug: 'test-artist' },
-        albums: {
-          status: 'idle',
-          error: null,
-          data: [],
-          lastUpdated: null,
-          fetchContextKey: null,
-          inFlightFetchContextKey: null,
-          catalogArtistMissing: false,
+        albums: createAlbumsTestState({
           dashboard: {
             status: 'succeeded',
             error: null,
-            data: mockAlbums,
+            data: [
+              {
+                albumId: 'album-1',
+                album: 'Album 1',
+                artist: 'Artist 1',
+                fullName: 'Artist 1 — Album 1',
+                description: '',
+                release: { date: '2024-01-01' },
+                cover: 'cover1',
+                tracks: [
+                  {
+                    id: '1',
+                    title: 'Track 1',
+                    content: '',
+                    duration: 180,
+                    src: 'track.mp3',
+                    order_index: 10,
+                  },
+                ],
+                buttons: {},
+                details: [],
+                isPublished: true,
+                isPublic: true,
+              },
+            ],
             lastUpdated: Date.now(),
             inFlightFetchContextKey: null,
           },
-        },
+        }),
+        artistAlbumCatalog: createCatalogTestState({
+          status: 'idle',
+          data: [],
+          fetchContextKey: null,
+        }),
         uiDictionary: {
           en: {
             status: 'succeeded',
@@ -486,12 +361,7 @@ describe('AlbumsSection integration tests', () => {
             data: [{ menu: {}, buttons: {}, titles: { albums: 'Albums' } }],
             lastUpdated: Date.now(),
           },
-          ru: {
-            status: 'idle',
-            error: null,
-            data: [],
-            lastUpdated: null,
-          },
+          ru: { status: 'idle', error: null, data: [], lastUpdated: null },
         },
       },
     });

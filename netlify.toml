@@ -74,6 +74,13 @@
   status = 200
   force = true
 
+# Thin artist catalog (before /api/albums* and catch-all)
+[[redirects]]
+  from = "/api/artists/:slug/albums"
+  to = "/.netlify/functions/artist-albums-catalog?slug=:slug"
+  status = 200
+  force = true
+
 # Albums (общее правило)
 [[redirects]]
   from = "/api/albums*"

@@ -10,6 +10,7 @@ import { langReducer, langListenerMiddleware, applyLangSideEffects } from '@shar
 import { currentArtistReducer } from '@shared/model/currentArtist';
 import { articlesReducer } from '@entities/article';
 import { albumsReducer } from '@entities/album';
+import { artistAlbumCatalogReducer } from '@entities/album/model/artistAlbumCatalogSlice';
 import { helpArticlesReducer } from '@entities/helpArticle';
 import { uiDictionaryReducer } from '@shared/model/uiDictionary';
 import { trackLyricsReducer } from '@entities/lyrics';
@@ -23,6 +24,7 @@ const rootReducer = {
   currentArtist: currentArtistReducer,
   articles: articlesReducer,
   albums: albumsReducer,
+  artistAlbumCatalog: artistAlbumCatalogReducer,
   helpArticles: helpArticlesReducer,
   uiDictionary: uiDictionaryReducer,
   trackLyrics: trackLyricsReducer,

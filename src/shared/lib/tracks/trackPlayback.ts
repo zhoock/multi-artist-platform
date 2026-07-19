@@ -1,11 +1,17 @@
-import type { TracksProps } from '@models';
 import { normalizeTrackVisibility } from './trackVisibility';
+
+/** Minimal track shape for playback gating (TracksProps or PlayerTrack). */
+export type PlaybackGateTrack = {
+  src?: string;
+  visibility?: 'public' | 'subscribers_only' | 'hidden' | string | null;
+  playbackLocked?: boolean;
+};
 
 /**
  * Трек нельзя воспроизводить без premium (playbackLocked / пустой src у subscribers_only).
  * Плеер полагается на ответ API: подписка на артиста даёт src и playbackLocked: false.
  */
-export function isTrackPlaybackBlocked(track: TracksProps | undefined): boolean {
+export function isTrackPlaybackBlocked(track: PlaybackGateTrack | undefined): boolean {
   if (!track) return true;
   const vis = normalizeTrackVisibility(track.visibility);
   const hasSrc = Boolean(String(track.src ?? '').trim());
@@ -17,7 +23,10 @@ export function isTrackPlaybackBlocked(track: TracksProps | undefined): boolean 
 }
 
 /** Первый играбельный индекс вокруг запрошенного; −1 если все заблокированы. */
-export function resolveFirstPlayableIndex(playlist: TracksProps[], requestedIndex: number): number {
+export function resolveFirstPlayableIndex(
+  playlist: PlaybackGateTrack[],
+  requestedIndex: number
+): number {
   if (!playlist.length) return -1;
   const clamped = Math.max(0, Math.min(requestedIndex, playlist.length - 1));
   if (!isTrackPlaybackBlocked(playlist[clamped])) return clamped;
@@ -34,7 +43,7 @@ export function resolveFirstPlayableIndex(playlist: TracksProps[], requestedInde
  * Следующий/прежний играбельный индекс от `startIdx` (не проверяя сам `startIdx`), с обходом по кольцу.
  */
 export function findAdjacentPlayableIndex(
-  playlist: TracksProps[],
+  playlist: PlaybackGateTrack[],
   startIdx: number,
   direction: 1 | -1
 ): number {

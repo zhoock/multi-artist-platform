@@ -5,7 +5,7 @@ import type { AppDispatch } from '@shared/model/appStore/types';
 import { getStore } from '@shared/model/appStore';
 import { fetchAlbums, selectAlbumById } from '@entities/album';
 import { fetchArticles } from '@entities/article';
-import { playerActions } from '@features/player';
+import { playerActions, toPlayerTracks } from '@features/player';
 import { getUserAudioUrl } from '@shared/api/albums';
 import { emptyStringMediaSrc } from '@shared/lib/media/optionalMediaUrl';
 import { fallbackAlbumClientId } from '@shared/lib/albumClientId';
@@ -77,19 +77,22 @@ function syncPlayerPlaylistWithAlbumEntitlements(): void {
 
   if (!album?.tracks?.length) return;
 
-  const updatedPlaylist = album.tracks.map((track) => {
-    if (isTrackPlaybackBlocked(track)) {
-      return { ...track, src: '' };
-    }
-    return {
-      ...track,
-      src: emptyStringMediaSrc(
-        getUserAudioUrl(track.src, undefined, album.userId),
-        'refreshPremiumContent:syncPlayerPlaylist',
-        { trackId: track.id, albumUserId: album.userId }
-      ),
-    };
-  });
+  const updatedPlaylist = toPlayerTracks(
+    album.tracks.map((track) => {
+      if (isTrackPlaybackBlocked(track)) {
+        return { ...track, src: '' };
+      }
+      return {
+        ...track,
+        src: emptyStringMediaSrc(
+          getUserAudioUrl(track.src, undefined, album.userId),
+          'refreshPremiumContent:syncPlayerPlaylist',
+          { trackId: track.id, albumUserId: album.userId }
+        ),
+      };
+    }),
+    player.albumId
+  );
 
   const currentTrackId = player.playlist[player.currentTrackIndex]?.id;
   store.dispatch(playerActions.setPlaylist(updatedPlaylist));

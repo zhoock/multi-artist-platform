@@ -8,8 +8,6 @@ export interface PlayerTimeState {
   duration: number; // общая длительность трека в секундах (NaN если трек не загружен)
 }
 
-import type { TracksProps } from '@models';
-
 export interface PlayerAlbumMeta {
   albumId: string | null;
   userId?: string | null;
@@ -18,6 +16,21 @@ export interface PlayerAlbumMeta {
   artist: string | null;
   fullName: string | null;
   cover: string | null;
+}
+
+/**
+ * Thin playlist row — only fields needed for playback / queue UI.
+ * No lyrics, stems, translations, or audio-* tech meta.
+ */
+export interface PlayerTrack {
+  /** Track id (same as TracksProps.id). */
+  id: string;
+  albumId?: string;
+  title: string;
+  duration: number;
+  src: string;
+  playbackLocked?: boolean;
+  visibility?: 'public' | 'subscribers_only' | 'hidden';
 }
 
 export interface PlayerSourceLocation {
@@ -36,8 +49,8 @@ export interface PlayerState {
   progress: number; // прогресс воспроизведения от 0 до 100 (%)
   time: PlayerTimeState; // текущее время и длительность
   currentTrackIndex: number; // индекс текущего трека в плейлисте
-  playlist: TracksProps[]; // массив треков текущего альбома (может быть перемешан, если shuffle включен)
-  originalPlaylist: TracksProps[]; // оригинальный порядок треков (для восстановления при выключении shuffle)
+  playlist: PlayerTrack[]; // thin queue (may be shuffled)
+  originalPlaylist: PlayerTrack[]; // original order for shuffle restore
   playRequestId: number; // счётчик для запросов на воспроизведение (инкрементируется при requestPlay)
   albumId: string | null; // уникальный ID текущего альбома (для аналитики)
   albumTitle: string | null; // название текущего альбома (для аналитики)

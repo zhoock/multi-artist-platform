@@ -8,7 +8,8 @@ import React, { useRef, useEffect, useLayoutEffect, useCallback, useMemo, useSta
 import { useLocation, useNavigate } from 'react-router-dom';
 import { flushSync } from 'react-dom';
 import { AlbumCover } from '@entities/album';
-import type { IAlbums, SyncedLyricsLine } from '@models';
+import type { SyncedLyricsLine } from '@models';
+import type { PlayerAlbumMeta } from '@features/player/model/types/playerSchema';
 import './style.scss';
 import { useAppDispatch } from '@shared/lib/hooks/useAppDispatch';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
@@ -56,10 +57,11 @@ import {
 } from '@shared/ui/icons/playerActionIcon';
 
 export default function AudioPlayer({
-  album,
+  albumMeta,
   setBgColor,
 }: {
-  album: IAlbums; // Данные об альбоме (название, артист, обложка, треки)
+  /** Минимальные данные альбома для UI (обложка, название, артист) — не IAlbums. */
+  albumMeta: PlayerAlbumMeta;
   setBgColor: (color: string) => void; // Функция для установки фонового цвета попапа (градиент из цветов обложки)
 }) {
   // Получаем функцию для диспатча действий
@@ -82,7 +84,6 @@ export default function AudioPlayer({
   const currentTrack = useAppSelector(playerSelectors.selectCurrentTrack); // объект текущего трека
   const shuffle = useAppSelector(playerSelectors.selectShuffle); // включено ли перемешивание треков
   const repeat = useAppSelector(playerSelectors.selectRepeat); // режим зацикливания: 'none' | 'all' | 'one'
-  const albumMeta = useAppSelector(playerSelectors.selectAlbumMeta);
 
   const INACTIVITY_TIMEOUT = 5000;
 
@@ -195,7 +196,23 @@ export default function AudioPlayer({
    * Вычисляем уникальный ID альбома для аналитики и ключей.
    * Мемоизируем чтобы не пересчитывать при каждом рендере.
    */
-  const albumId = useMemo(() => fallbackAlbumClientId(album), [album]);
+  const albumId = useMemo(
+    () =>
+      fallbackAlbumClientId({
+        albumId: albumMeta.albumId ?? undefined,
+        album: albumMeta.album ?? '',
+        artist: albumMeta.artist ?? '',
+        userId: albumMeta.userId ?? undefined,
+      }),
+    [albumMeta.albumId, albumMeta.album, albumMeta.artist, albumMeta.userId]
+  );
+
+  const coverKey = albumMeta.cover ?? '';
+  const coverFullName =
+    albumMeta.fullName?.trim() ||
+    (albumMeta.artist && albumMeta.album
+      ? `${albumMeta.artist} — ${albumMeta.album}`
+      : albumMeta.album?.trim() || '');
 
   // Refs для работы с DOM элементами и хранения промежуточных значений
   const audioContainerRef = useRef<HTMLDivElement | null>(null); // контейнер для прикрепления audio элемента к DOM
@@ -660,11 +677,11 @@ export default function AudioPlayer({
    * ВАЖНО: НЕ очищаем кеш при размонтировании компонента, только при смене альбома.
    */
   useEffect(() => {
-    if (album.cover) {
-      clearImageColorCache(album.cover);
+    if (coverKey) {
+      clearImageColorCache(coverKey);
     }
     // Не делаем cleanup - кеш должен оставаться для следующего открытия попапа
-  }, [albumId, album.cover]);
+  }, [albumId, coverKey]);
 
   /**
    * Мемоизируем компонент обложки альбома.
@@ -677,13 +694,13 @@ export default function AudioPlayer({
     () => (
       <AlbumCover
         key={`album-cover-${albumId}`}
-        img={album.cover || ''}
-        userId={album.userId}
-        fullName={album.fullName}
+        img={coverKey}
+        userId={albumMeta.userId ?? undefined}
+        fullName={coverFullName}
         onColorsExtracted={handleColorsExtracted}
       />
     ),
-    [albumId, album.cover, album.fullName, handleColorsExtracted]
+    [albumId, coverKey, albumMeta.userId, coverFullName, handleColorsExtracted]
   );
 
   /**
@@ -695,7 +712,7 @@ export default function AudioPlayer({
     bgColorSetForAlbumRef.current = null;
   }, [albumId]);
 
-  // Canonical TrackLyricsBundle from trackLyricsSlice (playlist lyrics = hydration fallback only)
+  // Canonical TrackLyricsBundle from trackLyricsSlice only (playlist no longer carries lyrics)
   const lyricsBundle = useLyricsContent({
     currentTrack,
     albumId,
@@ -1008,22 +1025,22 @@ export default function AudioPlayer({
   const shouldRenderPlainLyrics =
     showLyrics && !shouldRenderSyncedLyrics && !shouldPreferSynced && !!plainLyricsContent;
 
-  /** Slug for public profile link: Redux meta (e.g. Home/Universe3D) or `?artist=` on current URL (album pages). */
+  /** Slug for public profile link: album meta (e.g. Home/Universe3D) or `?artist=` on current URL (album pages). */
   const artistSlugForProfileLink = useMemo(() => {
-    const fromMeta = albumMeta?.publicSlug?.trim();
+    const fromMeta = albumMeta.publicSlug?.trim();
     if (fromMeta) return fromMeta;
     const fromSearch = new URLSearchParams(location.search).get('artist')?.trim();
     return fromSearch || null;
-  }, [albumMeta?.publicSlug, location.search]);
+  }, [albumMeta.publicSlug, location.search]);
 
   const albumIdForLink = useMemo(() => {
-    const fromMeta = albumMeta?.albumId?.trim();
+    const fromMeta = albumMeta.albumId?.trim();
     if (fromMeta) return fromMeta;
-    const fromAlbum = fallbackAlbumClientId(album).trim();
-    return fromAlbum || null;
-  }, [albumMeta?.albumId, album]);
+    const fallback = albumId.trim();
+    return fallback || null;
+  }, [albumMeta.albumId, albumId]);
 
-  const albumTitle = albumMeta?.album?.trim() || album.album?.trim() || '';
+  const albumTitle = albumMeta.album?.trim() || '';
 
   const handleAlbumOpen = useCallback(() => {
     if (!albumIdForLink) return;
@@ -1149,7 +1166,7 @@ export default function AudioPlayer({
                 : undefined
             }
           >
-            {siteArtistUiLabel(albumMeta?.artist ?? '', 'Unknown Artist')}
+            {siteArtistUiLabel(albumMeta.artist ?? '', 'Unknown Artist')}
           </p>
         </div>
       </div>

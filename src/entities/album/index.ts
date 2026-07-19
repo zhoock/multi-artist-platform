@@ -10,6 +10,13 @@ export {
   patchDashboardAlbumVisibility,
   patchDashboardTrackVisibility,
 } from './model/albumsSlice';
+export {
+  artistAlbumCatalogReducer,
+  fetchArtistAlbumCatalog,
+  resetArtistAlbumCatalog,
+} from './model/artistAlbumCatalogSlice';
+export type { CatalogAlbum } from './model/catalogAlbum';
+export * from './model/artistAlbumCatalogSelectors';
 /** Все селекторы из `model/selectors` (в т.ч. `selectDashboardAlbumById`) — единая точка реэкспорта. */
 export * from './model/selectors';
 export type { AlbumsState, RequestStatus } from './model/types';

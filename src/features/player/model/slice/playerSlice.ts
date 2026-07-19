@@ -3,16 +3,15 @@
  * Здесь определяем все действия (actions) и как они изменяют стейт.
  */
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { applyTrackLyricsBundle } from '@entities/lyrics/model/actions';
-import type { TrackLyricsBundle } from '@shared/lib/lyrics/types';
 import {
   PlayerState,
   initialPlayerState,
   PlayerTimeState,
   PlayerAlbumMeta,
   PlayerSourceLocation,
+  PlayerTrack,
 } from '@features/player/model/types/playerSchema';
-import type { TracksProps } from '@models';
+import { toPlayerTracks } from '@features/player/model/lib/toPlayerTrack';
 import { normalizeTrackIdString } from '@shared/lib/tracks/normalizeTrackIdString';
 
 /**
@@ -32,24 +31,10 @@ const shufflePlaylist = <T>(array: T[]): T[] => {
  * Находит индекс трека в новом плейлисте по его ID.
  * Используется для обновления currentTrackIndex при перемешивании.
  */
-const findTrackIndexById = (playlist: TracksProps[], trackId: string): number => {
+const findTrackIndexById = (playlist: PlayerTrack[], trackId: string): number => {
   const needle = normalizeTrackIdString(trackId);
   return playlist.findIndex((track) => track.id === needle);
 };
-
-function patchPlaylistTrackLyrics(tracks: TracksProps[], bundle: TrackLyricsBundle): TracksProps[] {
-  return tracks.map((track) => {
-    if (String(track.id) !== String(bundle.trackId)) {
-      return track;
-    }
-    return {
-      ...track,
-      content: bundle.content,
-      authorship: bundle.authorship ?? track.authorship,
-      lyrics: bundle,
-    };
-  });
-}
 
 const playerSlice = createSlice({
   name: 'player',
@@ -107,17 +92,13 @@ const playerSlice = createSlice({
       state.time = { ...state.time, current: action.payload };
     },
     /**
-     * Устанавливает новый плейлист (массив треков).
+     * Устанавливает новый плейлист. Любой fat TracksProps[] стрипается в PlayerTrack[].
      * Сохраняет оригинальный порядок в originalPlaylist.
      * Если shuffle включен, перемешивает плейлист.
-     * Если текущий индекс выходит за пределы нового плейлиста, сбрасываем его на 0.
      */
-    setPlaylist(state, action: PayloadAction<TracksProps[]>) {
-      const raw = action.payload ?? [];
-      const newPlaylist = raw.map((t) => ({
-        ...t,
-        id: normalizeTrackIdString(t.id),
-      }));
+    setPlaylist(state, action: PayloadAction<readonly unknown[] | null | undefined>) {
+      const albumId = state.albumMeta?.albumId ?? state.albumId;
+      const newPlaylist = toPlayerTracks(action.payload, albumId);
 
       // Сохраняем оригинальный порядок
       state.originalPlaylist = [...newPlaylist];
@@ -307,8 +288,8 @@ const playerSlice = createSlice({
     hydrateFromPersistedState(
       state,
       action: PayloadAction<{
-        playlist: TracksProps[];
-        originalPlaylist?: TracksProps[];
+        playlist: readonly unknown[];
+        originalPlaylist?: readonly unknown[];
         currentTrackIndex: number;
         albumId: string | null;
         albumTitle: string | null;
@@ -340,11 +321,9 @@ const playerSlice = createSlice({
         controlsVisible,
       } = action.payload;
 
-      const mapIds = (list: TracksProps[]) =>
-        list.map((t) => ({ ...t, id: normalizeTrackIdString(t.id) }));
-
-      const playlist = mapIds(incomingPlaylist ?? []);
-      const originalPlaylistNorm = mapIds(incomingOriginal ?? []);
+      const resolvedAlbumId = albumMeta?.albumId ?? albumId;
+      const playlist = toPlayerTracks(incomingPlaylist, resolvedAlbumId);
+      const originalPlaylistNorm = toPlayerTracks(incomingOriginal, resolvedAlbumId);
 
       const resolvedOriginal =
         originalPlaylistNorm.length > 0
@@ -402,13 +381,6 @@ const playerSlice = createSlice({
         state.controlsVisible = true;
       }
     },
-  },
-  extraReducers: (builder) => {
-    builder.addCase(applyTrackLyricsBundle, (state, action) => {
-      const bundle = action.payload;
-      state.playlist = patchPlaylistTrackLyrics(state.playlist, bundle);
-      state.originalPlaylist = patchPlaylistTrackLyrics(state.originalPlaylist, bundle);
-    });
   },
 });
 

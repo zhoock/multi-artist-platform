@@ -15,6 +15,7 @@ jest.mock('@shared/lib/profileDisplayName', () => ({
 
 import { albumsLoader, shouldDeferPublicArtistCatalogToSurface } from '../albumsLoader';
 import { albumsReducer } from '@entities/album';
+import { artistAlbumCatalogReducer } from '@entities/album/model/artistAlbumCatalogSlice';
 import { articlesReducer } from '@entities/article';
 import { helpArticlesReducer } from '@entities/helpArticle';
 import { uiDictionaryReducer } from '@shared/model/uiDictionary';
@@ -36,6 +37,7 @@ function createTestStore(): AppStore {
       currentArtist: currentArtistReducer,
       articles: articlesReducer,
       albums: albumsReducer,
+      artistAlbumCatalog: artistAlbumCatalogReducer,
       helpArticles: helpArticlesReducer,
       uiDictionary: uiDictionaryReducer,
       trackLyrics: trackLyricsReducer,
@@ -55,8 +57,14 @@ describe('shouldDeferPublicArtistCatalogToSurface', () => {
     expect(shouldDeferPublicArtistCatalogToSurface('/', 'foo')).toBe(true);
   });
 
-  test('false для /albums и без slug', () => {
-    expect(shouldDeferPublicArtistCatalogToSurface('/albums', 'foo')).toBe(false);
+  test('true для списка /albums с ?artist= (thin catalog на surface)', () => {
+    expect(shouldDeferPublicArtistCatalogToSurface('/albums', 'foo')).toBe(true);
+    expect(shouldDeferPublicArtistCatalogToSurface('/albums/', 'foo')).toBe(true);
+  });
+
+  test('false для /albums/:id, /stems и без slug', () => {
+    expect(shouldDeferPublicArtistCatalogToSurface('/albums/23', 'foo')).toBe(false);
+    expect(shouldDeferPublicArtistCatalogToSurface('/stems', 'foo')).toBe(false);
     expect(shouldDeferPublicArtistCatalogToSurface('/', '')).toBe(false);
   });
 });
@@ -138,8 +146,19 @@ describe('albumsLoader — defer public catalog to HomePage', () => {
     expect(store.getState().articles.status).toBe('idle');
   });
 
-  test('на /albums?artist= стартует fetchAlbums (не defer)', async () => {
+  test('на /albums?artist= не стартует fat fetchAlbums (ждёт AllAlbumsPage thin catalog)', async () => {
     const args = makeRequest('/albums?artist=foo');
+    await albumsLoader({
+      request: args.request,
+      params: {},
+    } as Parameters<typeof albumsLoader>[0]);
+
+    expect(store.getState().albums.status).toBe('idle');
+    expect(store.getState().albums.inFlightFetchContextKey).toBeNull();
+  });
+
+  test('на /albums/:id?artist= стартует fetchAlbums (страница альбома)', async () => {
+    const args = makeRequest('/albums/23-remastered?artist=foo');
     await albumsLoader({
       request: args.request,
       params: {},

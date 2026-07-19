@@ -115,19 +115,6 @@ export const selectPublicCatalogCachedRowCount = createSelector(
   (albums) => albums.length
 );
 
-/**
- * Список на /albums: при `restrictToPublished === true` — как публичный каталог;
- * при `false` (есть `?artist=`) — полный список владельца.
- */
-export const selectAlbumsResolvedForAllAlbumsPage = createSelector(
-  [
-    selectAlbumsDataResolved,
-    (_state: RootState, restrictToPublished: boolean) => restrictToPublished,
-  ],
-  (albums, restrictToPublished): IAlbums[] =>
-    restrictToPublished ? albums.filter((a) => isAlbumVisibleOnArtistPage(a)) : albums
-);
-
 export const selectAlbumByIdResolved = createSelector(
   [selectAlbumsDataResolved, (_state: RootState, albumId: string) => albumId],
   (albums, albumId) => albums.find((album) => album.albumId === albumId)

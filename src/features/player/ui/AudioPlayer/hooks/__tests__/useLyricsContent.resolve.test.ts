@@ -5,10 +5,9 @@ import { resolveTrackLyricsBundle } from '@entities/lyrics/lib/selectors';
 import { applyTrackLyricsBundle } from '@entities/lyrics/model/actions';
 import { trackLyricsReducer } from '@entities/lyrics/model/trackLyricsSlice';
 import { playerReducer } from '@features/player/model/slice/playerSlice';
-import { initialPlayerState } from '@features/player/model/types/playerSchema';
+import { initialPlayerState, type PlayerTrack } from '@features/player/model/types/playerSchema';
 import type { RootState } from '@shared/model/appStore/types';
 import type { TrackLyricsBundle } from '@shared/lib/lyrics/types';
-import type { TracksProps } from '@models';
 
 const syncedBundle: TrackLyricsBundle = {
   albumId: 'album-1',
@@ -28,7 +27,15 @@ const textOnlyBundle: TrackLyricsBundle = {
   syncedAt: null,
 };
 
-function createPlayerStore(playlistTrack: TracksProps) {
+const thinTrack: PlayerTrack = {
+  id: 'track-1',
+  albumId: 'album-1',
+  title: 'Song',
+  duration: 180,
+  src: '',
+};
+
+function createPlayerStore(playlistTrack: PlayerTrack) {
   return configureStore({
     reducer: {
       trackLyrics: trackLyricsReducer,
@@ -55,90 +62,66 @@ function createPlayerStore(playlistTrack: TracksProps) {
 }
 
 /**
- * Mirrors the player resolution path in useLyricsContent:
- * prefer trackLyricsSlice, fall back to playlist-embedded lyrics only for hydration.
+ * Mirrors useLyricsContent: lyrics come only from trackLyricsSlice (no playlist embed).
  */
 function resolvePlayerLyricsBundle(
   state: RootState,
-  track: TracksProps,
+  track: PlayerTrack,
   albumIdFallback: string
-): TrackLyricsBundle {
+): TrackLyricsBundle | null {
   const canonicalAlbumId =
-    track.lyrics?.albumId?.trim() ||
+    track.albumId?.trim() ||
     state.player.albumMeta?.albumId?.trim() ||
     state.player.albumId?.trim() ||
     albumIdFallback;
 
-  return resolveTrackLyricsBundle(state, canonicalAlbumId, track.id, track.lyrics);
+  return resolveTrackLyricsBundle(state, canonicalAlbumId, track.id, null);
 }
 
 describe('player lyrics resolution', () => {
-  it('prefers trackLyricsSlice over stale playlist-embedded lyrics', () => {
-    const track: TracksProps = {
-      id: 'track-1',
-      title: 'Song',
-      order_index: 0,
-      duration: 180,
-      src: '',
-      content: 'Hello',
-      lyrics: syncedBundle,
-    };
-
-    const store = createPlayerStore(track);
+  it('resolves lyrics from trackLyricsSlice for thin PlayerTrack', () => {
+    const store = createPlayerStore(thinTrack);
     store.dispatch(applyTrackLyricsBundle(textOnlyBundle));
 
     const resolved = resolvePlayerLyricsBundle(
       store.getState() as unknown as RootState,
-      track,
+      thinTrack,
       'album-1'
     );
 
-    expect(resolved.state).toBe('text-only');
-    expect(resolved.syncedLines).toBeNull();
+    expect(resolved?.state).toBe('text-only');
+    expect(resolved?.syncedLines).toBeNull();
   });
 
-  it('uses playlist-embedded lyrics as hydration fallback before slice is populated', () => {
-    const track: TracksProps = {
-      id: 'track-1',
-      title: 'Song',
-      order_index: 0,
-      duration: 180,
-      src: '',
-      content: 'Hello',
-      lyrics: syncedBundle,
-    };
-
-    const store = createPlayerStore(track);
+  it('returns empty when slice has no lyrics (playlist no longer embeds lyrics)', () => {
+    const store = createPlayerStore(thinTrack);
     const resolved = resolvePlayerLyricsBundle(
       store.getState() as unknown as RootState,
-      track,
+      thinTrack,
       'album-1'
     );
 
-    expect(resolved.state).toBe('synced');
-    expect(resolved).toEqual(syncedBundle);
+    expect(resolved?.state).toBe('empty');
   });
 
-  it('resolves via albumMeta.albumId when playlist lyrics albumId is missing', () => {
-    const track: TracksProps = {
+  it('resolves via albumMeta.albumId when track.albumId is missing', () => {
+    const trackWithoutAlbum: PlayerTrack = {
       id: 'track-1',
       title: 'Song',
-      order_index: 0,
       duration: 180,
       src: '',
-      content: 'Hello',
     };
 
-    const store = createPlayerStore(track);
+    const store = createPlayerStore(trackWithoutAlbum);
     store.dispatch(applyTrackLyricsBundle(syncedBundle));
 
     const resolved = resolvePlayerLyricsBundle(
       store.getState() as unknown as RootState,
-      track,
+      trackWithoutAlbum,
       'wrong-album'
     );
 
-    expect(resolved.state).toBe('synced');
-    expect(resolved.albumId).toBe('album-1');
+    expect(resolved?.state).toBe('synced');
+    expect(resolved?.albumId).toBe('album-1');
   });
 });

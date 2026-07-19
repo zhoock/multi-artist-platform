@@ -7,21 +7,23 @@ import { ArtistSectionHeading } from '@shared/ui/artistSectionHeading';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { useLang } from '@app/providers/lang';
 import {
-  selectAlbumsStatus,
-  selectAlbumsError,
   selectDashboardAlbumsDataResolved,
-  selectPublicAlbumsCacheIsStale,
-  selectPublicAlbumsDataResolvedForSurface,
+  selectArtistAlbumCatalogStatus,
+  selectArtistAlbumCatalogError,
+  selectArtistAlbumCatalogCacheIsStale,
+  selectArtistAlbumCatalogForSurface,
+  selectArtistAlbumCatalogArtistMissing,
 } from '@entities/album';
 import { isAlbumDraft } from '@entities/album/lib/albumPublication';
-import type { IAlbums } from '@models';
+import { filterCatalogAlbumsForArtistPageSurface } from '@entities/album/lib/catalogPublication';
+import { filterAlbumsForArtistPageSurface } from '@shared/lib/artistPageContent';
+import type { CatalogAlbum } from '@entities/album';
 import { useRedirectHomeAfterOwnAccountDeleted } from '@shared/lib/hooks/useRedirectHomeAfterOwnAccountDeleted';
 import { withPublicArtistQuery } from '@shared/lib/artistQuery';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 import { useSiteArtistDisplayName } from '@shared/lib/hooks/useSiteArtistDisplayName';
 import { formatAlbumDisplayFullName } from '@shared/lib/profileDisplayName';
-import { useShowSurfaceAlbumsLoadingShell } from '@shared/lib/hooks/useShowAlbumsLoadingShell';
-import { filterAlbumsForArtistPageSurface } from '@shared/lib/artistPageContent';
+import { shouldShowAlbumsLoadingShell } from '@shared/lib/hooks/useShowAlbumsLoadingShell';
 import { shouldShowArtistPageBuilderBlock } from '@shared/lib/artistPageBuilder';
 import { useArtistPageBuilder } from '@shared/lib/hooks/useArtistPageBuilder';
 import {
@@ -31,6 +33,25 @@ import {
 } from '@shared/ui/artistPageBuilder';
 import { Disc3 as DiscIcon } from 'lucide-react';
 import '@entities/album/ui/style.scss';
+
+/** Card fields for Home albums grid — thin catalog or owner draft projection. */
+type AlbumCardView = {
+  albumId: string;
+  title: string;
+  cover: string;
+  userId?: string;
+  releaseDate: string;
+};
+
+function catalogToCard(album: CatalogAlbum): AlbumCardView {
+  return {
+    albumId: album.albumId,
+    title: album.title,
+    cover: album.cover,
+    userId: album.userId,
+    releaseDate: album.releaseDate,
+  };
+}
 
 // Адаптивное количество альбомов для отображения на главной
 const getInitialCount = () => {
@@ -49,38 +70,64 @@ export function AlbumsSection({ isOwner = false }: { isOwner?: boolean }) {
   const showAlbumBuilder = shouldShowArtistPageBuilderBlock(builderVisibility, !hasPublicReleases);
   const hideArtistPageAfterOwnDelete = useRedirectHomeAfterOwnAccountDeleted(!!artistSlug);
   const { displayName: siteArtistName } = useSiteArtistDisplayName(lang, { artistSlug });
-  const albumsStatus = useAppSelector(selectAlbumsStatus);
-  const albumsError = useAppSelector(selectAlbumsError);
-  const catalogCacheStale = useAppSelector(selectPublicAlbumsCacheIsStale);
-  const publicCatalogAlbums = useAppSelector(selectPublicAlbumsDataResolvedForSurface);
+  const catalogStatus = useAppSelector(selectArtistAlbumCatalogStatus);
+  const catalogError = useAppSelector(selectArtistAlbumCatalogError);
+  const catalogCacheStale = useAppSelector(selectArtistAlbumCatalogCacheIsStale);
+  const catalogArtistMissing = useAppSelector(selectArtistAlbumCatalogArtistMissing);
+  const publicCatalogAlbums = useAppSelector(selectArtistAlbumCatalogForSurface);
   const dashboardAlbums = useAppSelector(selectDashboardAlbumsDataResolved);
-  const allAlbums = useMemo(() => {
+
+  const allAlbums = useMemo((): AlbumCardView[] => {
     if (!isOwner) {
-      return filterAlbumsForArtistPageSurface(catalogCacheStale ? [] : publicCatalogAlbums, false);
+      return filterCatalogAlbumsForArtistPageSurface(
+        catalogCacheStale ? [] : publicCatalogAlbums,
+        false
+      ).map(catalogToCard);
     }
 
-    const ownerDrafts = filterAlbumsForArtistPageSurface(dashboardAlbums, true).filter((album) =>
-      isAlbumDraft(album)
-    );
+    const ownerDrafts = filterAlbumsForArtistPageSurface(dashboardAlbums, true)
+      .filter((album) => isAlbumDraft(album))
+      .map(
+        (album): AlbumCardView => ({
+          albumId: album.albumId ?? '',
+          title: album.album,
+          cover: album.cover || '',
+          userId: album.userId,
+          releaseDate: typeof album.release?.date === 'string' ? album.release.date : '',
+        })
+      )
+      .filter((album) => album.albumId);
 
     if (catalogCacheStale) {
-      const fromDashboard = filterAlbumsForArtistPageSurface(dashboardAlbums, true);
-      return fromDashboard.length > 0 ? fromDashboard : ownerDrafts;
+      const fromDashboard = filterAlbumsForArtistPageSurface(dashboardAlbums, true).map(
+        (album): AlbumCardView => ({
+          albumId: album.albumId ?? '',
+          title: album.album,
+          cover: album.cover || '',
+          userId: album.userId,
+          releaseDate: typeof album.release?.date === 'string' ? album.release.date : '',
+        })
+      );
+      const cards = fromDashboard.length > 0 ? fromDashboard : ownerDrafts;
+      return cards.filter((album) => album.albumId);
     }
 
     const draftIds = new Set(ownerDrafts.map((album) => album.albumId));
-    const publicIds = new Set(publicCatalogAlbums.map((album) => album.albumId));
+    const publicCards = filterCatalogAlbumsForArtistPageSurface(publicCatalogAlbums, true)
+      .filter((album) => !isAlbumDraft(album))
+      .map(catalogToCard);
+    const publicIds = new Set(publicCards.map((album) => album.albumId));
+
     return [
       ...ownerDrafts.filter((album) => !publicIds.has(album.albumId)),
-      ...publicCatalogAlbums.filter((album) => !draftIds.has(album.albumId)),
+      ...publicCards.filter((album) => !draftIds.has(album.albumId)),
     ];
   }, [catalogCacheStale, dashboardAlbums, isOwner, publicCatalogAlbums]);
+
   const ui = useAppSelector((state) => selectUiDictionaryFirst(state, lang));
-  const showAlbumsLoadingShell = useShowSurfaceAlbumsLoadingShell(
-    albumsStatus,
-    allAlbums.length > 0,
-    catalogCacheStale
-  );
+  const showAlbumsLoadingShell =
+    !catalogArtistMissing &&
+    shouldShowAlbumsLoadingShell(catalogStatus, allAlbums.length > 0, catalogCacheStale);
 
   const [initialCount, setInitialCount] = useState(getInitialCount);
 
@@ -99,15 +146,13 @@ export function AlbumsSection({ isOwner = false }: { isOwner?: boolean }) {
   const allAlbumsPath = withPublicArtistQuery('/albums', artistSlug);
   const showSectionLink = !showAlbumsLoadingShell && hasMore;
 
-  // Данные загружаются через loader, не нужно загружать здесь
-
   if (hideArtistPageAfterOwnDelete) {
     return null;
   }
 
   if (
     !catalogCacheStale &&
-    albumsStatus === 'succeeded' &&
+    catalogStatus === 'succeeded' &&
     allAlbums.length === 0 &&
     !showAlbumBuilder
   ) {
@@ -125,7 +170,7 @@ export function AlbumsSection({ isOwner = false }: { isOwner?: boolean }) {
 
         {showAlbumsLoadingShell ? (
           <AlbumsSkeleton count={initialCount} />
-        ) : albumsStatus === 'failed' || albumsError ? (
+        ) : catalogStatus === 'failed' || catalogError ? (
           <ErrorI18n code="albumsLoadFailed" />
         ) : showAlbumBuilder ? (
           <ArtistPageBuilderBlock
@@ -146,13 +191,13 @@ export function AlbumsSection({ isOwner = false }: { isOwner?: boolean }) {
                 <WrapperAlbumCover
                   key={album.albumId}
                   albumId={album.albumId}
-                  album={album.album}
-                  date={typeof album.release?.date === 'string' ? album.release.date : ''}
+                  album={album.title}
+                  date={album.releaseDate}
                 >
                   <AlbumCover
                     img={album.cover || ''}
                     userId={album.userId}
-                    fullName={formatAlbumDisplayFullName(siteArtistName, album.album)}
+                    fullName={formatAlbumDisplayFullName(siteArtistName, album.title)}
                   />
                 </WrapperAlbumCover>
               ))}

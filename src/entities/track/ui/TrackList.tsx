@@ -45,7 +45,7 @@ function isSameTrackId(
 }
 
 /** Однозначная подпись набора треков: тот же альбом даже при расхождении player.albumId (главная vs страница альбома). */
-function buildPlaylistSignature(list: TracksProps[]): string {
+function buildPlaylistSignature(list: Array<{ id?: string | number | null }>): string {
   if (!list.length) return '';
   return `${list.length}:${list
     .map((t) => String(t.id))

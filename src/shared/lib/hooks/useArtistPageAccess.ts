@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useLang } from '@app/providers/lang';
 import { hasPublishedPublicReleases } from '@entities/album/lib/hasPublishedPublicReleases';
+import { hasPublishedPublicCatalogReleases } from '@entities/album/lib/catalogPublication';
 import {
   selectAlbumsStatus,
   selectAlbumsData,
@@ -12,6 +13,13 @@ import {
   selectPublicAlbumsDataResolvedForSurface,
   selectPublicAlbumsCacheIsStale,
   selectPublicCatalogCachedRowCount,
+  selectArtistAlbumCatalogStatus,
+  selectArtistAlbumCatalogData,
+  selectArtistAlbumCatalogFetchContextKey,
+  selectArtistAlbumCatalogCacheIsStale,
+  selectArtistAlbumCatalogCachedRowCount,
+  selectArtistAlbumCatalogArtistMissing,
+  selectArtistAlbumCatalogForSurface,
 } from '@entities/album';
 import {
   selectArticlesStatus,
@@ -46,6 +54,11 @@ function normalizeSlug(slug: string): string {
 
 function isArtistHomePath(pathname: string): boolean {
   return pathname === '/' || pathname === '/en' || pathname === '/en/';
+}
+
+/** Список всех альбомов (`/albums`), не страница одного альбома (`/albums/:id`). */
+function isAllAlbumsListPath(pathname: string): boolean {
+  return /^\/(?:en\/)?albums\/?$/.test(pathname);
 }
 
 /** Loader/fetch альбомов: Home, /albums*, /stems* — на /articles* каталог остаётся idle. */
@@ -100,21 +113,42 @@ export function useArtistPageAccessState(
   const enabled = options.enabled ?? true;
   const { pathname } = useLocation();
   const { lang } = useLang();
-  const catalogArtistMissing = useAppSelector(selectCatalogArtistMissing);
+  const fullCatalogArtistMissing = useAppSelector(selectCatalogArtistMissing);
+  const thinCatalogArtistMissing = useAppSelector(selectArtistAlbumCatalogArtistMissing);
   const albumsStatus = useAppSelector(selectAlbumsStatus);
+  const thinCatalogStatus = useAppSelector(selectArtistAlbumCatalogStatus);
   const albumsFetchContextKey = useAppSelector(selectAlbumsFetchContextKey);
-  const catalogCacheStale = useAppSelector(selectPublicAlbumsCacheIsStale);
+  const thinCatalogFetchContextKey = useAppSelector(selectArtistAlbumCatalogFetchContextKey);
+  const fullCatalogCacheStale = useAppSelector(selectPublicAlbumsCacheIsStale);
+  const thinCatalogCacheStale = useAppSelector(selectArtistAlbumCatalogCacheIsStale);
   const publicAlbums = useAppSelector(selectPublicAlbumsDataResolvedForSurface);
+  const thinCatalogSurface = useAppSelector(selectArtistAlbumCatalogForSurface);
+  const thinCatalogData = useAppSelector(selectArtistAlbumCatalogData);
   const catalogAlbums = useAppSelector(selectAlbumsData);
   const dashboardAlbums = useAppSelector(selectDashboardAlbumsData);
   const dashboardAlbumsStatus = useAppSelector(selectDashboardAlbumsStatus);
   const dashboardArticles = useAppSelector(selectDashboardArticlesDataResolved);
   const dashboardArticlesStatus = useAppSelector(selectDashboardArticlesStatus);
-  const cachedPublicRowCount = useAppSelector(selectPublicCatalogCachedRowCount);
+  const cachedFullPublicRowCount = useAppSelector(selectPublicCatalogCachedRowCount);
+  const cachedThinCatalogRowCount = useAppSelector(selectArtistAlbumCatalogCachedRowCount);
   const articlesStatus = useAppSelector(selectArticlesStatus);
   const articlesCacheStale = useAppSelector(selectArticlesCacheIsStale);
   const publicArticles = useAppSelector(selectArticlesDataResolvedForSurface);
-  const hasPublicReleases = useMemo(() => hasPublishedPublicReleases(publicAlbums), [publicAlbums]);
+
+  /** Home + All Albums list use thin catalog; `/albums/:id` and `/stems` keep full `/api/albums`. */
+  const useThinCatalog = isArtistHomePath(pathname) || isAllAlbumsListPath(pathname);
+  const catalogArtistMissing = useThinCatalog ? thinCatalogArtistMissing : fullCatalogArtistMissing;
+  const catalogCacheStale = useThinCatalog ? thinCatalogCacheStale : fullCatalogCacheStale;
+  const cachedPublicRowCount = useThinCatalog
+    ? cachedThinCatalogRowCount
+    : cachedFullPublicRowCount;
+  const hasPublicReleases = useMemo(
+    () =>
+      useThinCatalog
+        ? hasPublishedPublicCatalogReleases(thinCatalogSurface)
+        : hasPublishedPublicReleases(publicAlbums),
+    [useThinCatalog, thinCatalogSurface, publicAlbums]
+  );
   const { headerImages, isHeaderImagesReady } = useArtistHeroHeaderImages(
     enabled ? artistSlug : ''
   );
@@ -441,20 +475,28 @@ export function useArtistPageAccessState(
     };
   }, [artistSlug, enabled, isOwner, ownerResolved]);
 
-  const albumsPending =
-    catalogCacheStale ||
-    albumsStatus === 'idle' ||
-    (albumsStatus === 'loading' && cachedPublicRowCount === 0) ||
-    (albumsStatus === 'succeeded' &&
-      albumsFetchContextKey !== desiredFetchKey &&
-      cachedPublicRowCount === 0);
+  const albumsPending = useThinCatalog
+    ? catalogCacheStale ||
+      thinCatalogStatus === 'idle' ||
+      (thinCatalogStatus === 'loading' && cachedPublicRowCount === 0) ||
+      (thinCatalogStatus === 'succeeded' &&
+        thinCatalogFetchContextKey !== desiredFetchKey &&
+        cachedPublicRowCount === 0)
+    : catalogCacheStale ||
+      albumsStatus === 'idle' ||
+      (albumsStatus === 'loading' && cachedPublicRowCount === 0) ||
+      (albumsStatus === 'succeeded' &&
+        albumsFetchContextKey !== desiredFetchKey &&
+        cachedPublicRowCount === 0);
 
   const visitorProfilePending = !isOwner && visitorProfileHasPublicBody === null;
+
+  const publicCatalogLength = useThinCatalog ? thinCatalogSurface.length : publicAlbums.length;
 
   /** 404 по контенту артиста: ждём статьи только если в каталоге ещё нет альбомов. */
   const visitorArticlesGatePending =
     !isOwner &&
-    publicAlbums.length === 0 &&
+    publicCatalogLength === 0 &&
     (articlesCacheStale || articlesStatus === 'idle' || articlesStatus === 'loading');
 
   const visitorAccessPending = visitorProfilePending || visitorArticlesGatePending;
@@ -478,11 +520,15 @@ export function useArtistPageAccessState(
    */
   const isLoading = !ownerResolved || albumsPending || visitorAccessPending;
 
-  const hasVisitorVisibleContent = hasVisitorVisibleArtistContent({
-    albums: publicAlbums,
-    articlesCount: publicArticles.length,
-    profileHasPublicBody: visitorProfileHasPublicBody === true,
-  });
+  const hasVisitorVisibleContent = useThinCatalog
+    ? hasPublishedPublicCatalogReleases(thinCatalogData) ||
+      publicArticles.length > 0 ||
+      visitorProfileHasPublicBody === true
+    : hasVisitorVisibleArtistContent({
+        albums: publicAlbums,
+        articlesCount: publicArticles.length,
+        profileHasPublicBody: visitorProfileHasPublicBody === true,
+      });
 
   /**
    * Онбординг только после fetchOwnArtistPageState — иначе при переходе «My Artist Page»

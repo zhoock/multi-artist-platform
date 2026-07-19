@@ -2,8 +2,6 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useStore } from 'react-redux';
-import type { IAlbums } from '@models';
-
 import { useLang } from '@app/providers/lang';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { useAppDispatch } from '@shared/lib/hooks/useAppDispatch';
@@ -356,31 +354,7 @@ export const PlayerShell: React.FC = () => {
     };
   }, [shouldRenderMini]);
 
-  const albumForPlayer = useMemo<IAlbums | null>(() => {
-    if (!albumMeta) {
-      return null;
-    }
-
-    const cover = albumMeta.cover ?? '';
-
-    return {
-      albumId: albumMeta.albumId ?? undefined,
-      userId: albumMeta.userId ?? undefined,
-      artist: albumMeta.artist ?? '',
-      album: albumMeta.album ?? '',
-      fullName:
-        albumMeta.fullName ||
-        (albumMeta.artist && albumMeta.album ? `${albumMeta.artist} — ${albumMeta.album}` : ''),
-      description: '',
-      cover,
-      release: {},
-      buttons: {},
-      details: [],
-      tracks: playlist,
-    };
-  }, [albumMeta, playlist]);
-
-  const canRenderPopup = !!albumForPlayer;
+  const canRenderPopup = Boolean(albumMeta);
 
   const handleToggle = useCallback(() => {
     dispatch(playerActions.toggle());
@@ -575,10 +549,10 @@ export const PlayerShell: React.FC = () => {
         />
       )}
 
-      {canRenderPopup && albumForPlayer && (
+      {canRenderPopup && albumMeta && (
         <Popup isActive={isFullScreen} bgColor={bgColor} onClose={handleClose}>
           <PopupHamburgerToggle isActive />
-          <AudioPlayer album={albumForPlayer} setBgColor={setBgColor} />
+          <AudioPlayer albumMeta={albumMeta} setBgColor={setBgColor} />
         </Popup>
       )}
     </>

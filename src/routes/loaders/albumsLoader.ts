@@ -115,15 +115,24 @@ export type AlbumsDeferred = {
 };
 
 /**
- * Публичная страница артиста на `/`: каталог грузит только HomePage (surface),
- * не React Router loader. Loader не должен ни блокировать навигацию, ни
- * `dispatch(fetchAlbums/fetchArticles)` — иначе получается двойной force-fetch.
+ * Публичный thin-каталог грузит surface (HomePage / AllAlbumsPage), не loader.
+ * Loader не должен `dispatch(fetchAlbums)` на этих маршрутах — иначе снова
+ * тянется полный монолит. `/albums/:albumId` и `/stems` по-прежнему через fat GET.
  */
 export function shouldDeferPublicArtistCatalogToSurface(
   loaderPathname: string,
   publicArtistFromUrl: string
 ): boolean {
-  return loaderPathname === '/' && Boolean(publicArtistFromUrl.trim());
+  if (!publicArtistFromUrl.trim()) return false;
+  if (loaderPathname === '/' || loaderPathname === '/en' || loaderPathname === '/en/') {
+    return true;
+  }
+  return (
+    loaderPathname === '/albums' ||
+    loaderPathname === '/albums/' ||
+    loaderPathname === '/en/albums' ||
+    loaderPathname === '/en/albums/'
+  );
 }
 
 export async function albumsLoader({ request }: LoaderFunctionArgs): Promise<AlbumsDeferred> {
