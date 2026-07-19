@@ -10,6 +10,8 @@ import {
   SUBSCRIPTION_ACTIVATED_EVENT,
   type EntitlementChangeDetail,
 } from '@features/artistArchive';
+import { shouldRefreshPublicCatalogOnAuthIdentityChange } from '@features/artistArchive/lib/authEntitlementRefreshPolicy';
+import { teardownPlaybackAfterAuthEnd } from '@features/artistArchive/lib/teardownPlaybackAfterAuthEnd';
 import { AUTH_SESSION_CHANGED_EVENT, getAuthSessionIdentityKey } from '@shared/lib/auth';
 import { useAppDispatch } from '@shared/lib/hooks/useAppDispatch';
 
@@ -24,8 +26,9 @@ function resolveSlugFromEvent(event: Event): string | undefined {
 }
 
 /**
- * Global entitlement refresh: albums, articles, synced-lyrics cache, player playlist.
- * Runs after login/logout, subscription activation, archive add/remove, checkout return.
+ * Global entitlement refresh: albums, articles, player playlist sync.
+ * - Login / account switch / archive / subscription → force public catalog refresh.
+ * - Logout → no catalog refetch (clearAuth already wiped Redux); local player teardown only.
  */
 export function PremiumEntitlementRefreshController() {
   const dispatch = useAppDispatch();
@@ -58,9 +61,17 @@ export function PremiumEntitlementRefreshController() {
 
     const onEntitlementChanged = (event: Event) => refresh(event, true);
     const onAuthSessionChanged = () => {
+      const previousIdentityKey = authIdentityKeyRef.current;
       const nextIdentityKey = getAuthSessionIdentityKey();
-      if (nextIdentityKey === authIdentityKeyRef.current) return;
+      if (nextIdentityKey === previousIdentityKey) return;
       authIdentityKeyRef.current = nextIdentityKey;
+
+      if (!shouldRefreshPublicCatalogOnAuthIdentityChange(previousIdentityKey, nextIdentityKey)) {
+        // Logout (or cleared session): catalog already reset in clearAuth — do not refetch.
+        teardownPlaybackAfterAuthEnd(dispatch);
+        return;
+      }
+
       refresh(null, true);
     };
 

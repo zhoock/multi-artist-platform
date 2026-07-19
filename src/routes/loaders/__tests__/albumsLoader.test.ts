@@ -112,3 +112,39 @@ describe('albumsLoader — auth overlay', () => {
     expect(store.getState().currentArtist.publicSlug).toBe('foo');
   });
 });
+
+describe('albumsLoader — defer public catalog to HomePage', () => {
+  let store: ReturnType<typeof createTestStore>;
+
+  beforeEach(() => {
+    store = createTestStore();
+    store.dispatch({
+      type: 'uiDictionary/fetch/fulfilled',
+      payload: [{ menu: {}, titles: {}, buttons: {} }],
+      meta: { arg: { lang: 'en' }, requestId: 'test', requestStatus: 'fulfilled' },
+    });
+    jest.spyOn(appStore, 'getStore').mockReturnValue(store);
+  });
+
+  test('на /?artist= не стартует загрузку каталога (ждёт HomePage)', async () => {
+    const args = makeRequest('/?artist=foo');
+    await albumsLoader({
+      request: args.request,
+      params: {},
+    } as Parameters<typeof albumsLoader>[0]);
+
+    expect(store.getState().albums.status).toBe('idle');
+    expect(store.getState().albums.inFlightFetchContextKey).toBeNull();
+    expect(store.getState().articles.status).toBe('idle');
+  });
+
+  test('на /albums?artist= стартует fetchAlbums (не defer)', async () => {
+    const args = makeRequest('/albums?artist=foo');
+    await albumsLoader({
+      request: args.request,
+      params: {},
+    } as Parameters<typeof albumsLoader>[0]);
+
+    expect(store.getState().albums.status).toBe('loading');
+  });
+});

@@ -115,8 +115,9 @@ export type AlbumsDeferred = {
 };
 
 /**
- * Публичная страница артиста на `/`: не блокируем router loader'ом до конца fetch —
- * иначе при F5 UI сразу получает succeeded и не показывает скелетон секций.
+ * Публичная страница артиста на `/`: каталог грузит только HomePage (surface),
+ * не React Router loader. Loader не должен ни блокировать навигацию, ни
+ * `dispatch(fetchAlbums/fetchArticles)` — иначе получается двойной force-fetch.
  */
 export function shouldDeferPublicArtistCatalogToSurface(
   loaderPathname: string,
@@ -244,7 +245,10 @@ export async function albumsLoader({ request }: LoaderFunctionArgs): Promise<Alb
         publicArtistFromUrl
       );
 
-      if (albumsCacheValid) {
+      // `/?artist=`: единственный источник — HomePage useEffect. Не стартуем fetch здесь.
+      if (deferCatalogToSurface) {
+        templateA = Promise.resolve(selectAlbumsData(state));
+      } else if (albumsCacheValid) {
         templateA = Promise.resolve(selectAlbumsData(state));
       } else if (status === 'loading') {
         const currentData = selectAlbumsData(state);
@@ -265,14 +269,10 @@ export async function albumsLoader({ request }: LoaderFunctionArgs): Promise<Alb
           };
           signal.addEventListener('abort', abortHandler, { once: true });
 
-          if (deferCatalogToSurface) {
-            templateA = Promise.resolve(selectAlbumsData(store.getState()));
-          } else {
-            templateA = unwrapLoaderAlbumsPromise(
-              fetchThunkPromise,
-              selectAlbumsData(store.getState())
-            );
-          }
+          templateA = unwrapLoaderAlbumsPromise(
+            fetchThunkPromise,
+            selectAlbumsData(store.getState())
+          );
         }
       }
     }
@@ -328,7 +328,10 @@ export async function albumsLoader({ request }: LoaderFunctionArgs): Promise<Alb
         publicArtistSlug
       );
 
-      if (cacheOk) {
+      // `/?artist=`: статьи тоже только из HomePage — без параллельного loader fetch.
+      if (deferArticlesToSurface) {
+        templateB = Promise.resolve(selectArticlesData(state));
+      } else if (cacheOk) {
         templateB = Promise.resolve(selectArticlesData(state));
       } else {
         const fetchThunkPromise = store.dispatch(
@@ -349,11 +352,7 @@ export async function albumsLoader({ request }: LoaderFunctionArgs): Promise<Alb
           };
           signal.addEventListener('abort', abortHandler, { once: true });
 
-          if (deferArticlesToSurface) {
-            templateB = Promise.resolve(selectArticlesData(store.getState()));
-          } else {
-            templateB = unwrapLoaderArticlesPromise(fetchThunkPromise, selectArticlesData(state));
-          }
+          templateB = unwrapLoaderArticlesPromise(fetchThunkPromise, selectArticlesData(state));
         }
       }
     }

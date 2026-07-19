@@ -77,32 +77,25 @@ export function HomePage() {
   const hideArtistPageAfterOwnDelete = useRedirectHomeAfterOwnAccountDeleted(hasArtistParam);
   const artistPageAccess = useArtistPageBuilder(artistSlug);
 
+  /**
+   * `artist:updated` — сигнал для Universe / профиля / about, не для каталога.
+   * Публичный catalog после правок в Dashboard обновляет сам Dashboard
+   * (`refreshPublicCatalogNow` / `syncPublicSurfaceAfterDashboardClose`).
+   */
   useEffect(() => {
     const handler = () => {
       if (!hasArtistParam) {
         setUniverseRefreshToken((n) => n + 1);
       }
-      if (hasArtistParam && !isDashboardPathname()) {
-        void dispatch(
-          fetchAlbums({
-            force: true,
-            forcePublicCatalog: true,
-            publicArtistSlug: artistSlug,
-          })
-        );
-        void dispatch(
-          fetchArticles({
-            force: true,
-            forcePublicCatalog: true,
-            publicArtistSlug: artistSlug,
-          })
-        );
-      }
     };
     window.addEventListener('artist:updated', handler);
     return () => window.removeEventListener('artist:updated', handler);
-  }, [artistSlug, dispatch, hasArtistParam]);
+  }, [hasArtistParam]);
 
+  /**
+   * Единственный источник первичной загрузки публичного каталога на `/?artist=`.
+   * Loader при defer не диспатчит fetch (см. shouldDeferPublicArtistCatalogToSurface).
+   */
   useEffect(() => {
     if (isDashboardPathname()) return;
     if (!hasArtistParam) return;
@@ -121,11 +114,19 @@ export function HomePage() {
         publicArtistSlug: artistSlug,
       })
     );
+  }, [artistSlug, dispatch, hasArtistParam]);
 
-    if (artistPageAccess.isOwner && artistPageAccess.ownerResolved) {
-      void dispatch(fetchAlbums({ force: true, ownerDashboard: true }));
-      void dispatch(fetchArticles({ force: true, ownerDashboard: true }));
-    }
+  /**
+   * Кабинет владельца — отдельный writeTarget (`dashboard`), не публичный catalog.
+   * Не зависит от публичного fetch и не перезапускает его при resolve owner.
+   */
+  useEffect(() => {
+    if (isDashboardPathname()) return;
+    if (!hasArtistParam) return;
+    if (!artistPageAccess.isOwner || !artistPageAccess.ownerResolved) return;
+
+    void dispatch(fetchAlbums({ force: true, ownerDashboard: true }));
+    void dispatch(fetchArticles({ force: true, ownerDashboard: true }));
   }, [
     artistPageAccess.isOwner,
     artistPageAccess.ownerResolved,

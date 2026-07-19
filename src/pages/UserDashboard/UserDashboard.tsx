@@ -369,6 +369,8 @@ function UserDashboard() {
     (artistSlug: string | null) => {
       const slug = artistSlug?.trim();
       if (!slug) return;
+      // Уже обновили публичный catalog — close не должен делать второй force-fetch.
+      catalogNeedsRefreshRef.current = false;
       void dispatch(
         fetchAlbums({
           force: true,
@@ -384,6 +386,7 @@ function UserDashboard() {
     (artistSlug: string | null) => {
       const slug = artistSlug?.trim();
       if (!slug) return;
+      articlesNeedsRefreshRef.current = false;
       void dispatch(
         fetchArticles({
           force: true,

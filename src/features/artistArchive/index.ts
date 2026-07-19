@@ -14,3 +14,5 @@ export {
   type EntitlementChangeDetail,
   type RefreshPremiumEntitlementsOptions,
 } from './lib/refreshPremiumContent';
+export { shouldRefreshPublicCatalogOnAuthIdentityChange } from './lib/authEntitlementRefreshPolicy';
+export { teardownPlaybackAfterAuthEnd } from './lib/teardownPlaybackAfterAuthEnd';
