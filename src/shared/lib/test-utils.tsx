@@ -10,6 +10,7 @@ import { popupReducer } from '@features/popupToggle/model/slice/popupSlice';
 import { articlesReducer } from '@entities/article/model/articlesSlice';
 import { albumsReducer } from '@entities/album/model/albumsSlice';
 import { artistAlbumCatalogReducer } from '@entities/album/model/artistAlbumCatalogSlice';
+import { albumDetailsReducer } from '@entities/album/model/albumDetailsSlice';
 import { uiDictionaryReducer } from '@shared/model/uiDictionary/uiDictionarySlice';
 import { currentArtistReducer } from '@shared/model/currentArtist';
 import { trackLyricsReducer } from '@entities/lyrics/model/trackLyricsSlice';
@@ -36,6 +37,7 @@ export function renderWithProviders(
         articles: articlesReducer,
         albums: albumsReducer,
         artistAlbumCatalog: artistAlbumCatalogReducer,
+        albumDetails: albumDetailsReducer,
         currentArtist: currentArtistReducer,
         uiDictionary: uiDictionaryReducer,
         trackLyrics: trackLyricsReducer,

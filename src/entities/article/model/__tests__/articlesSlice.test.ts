@@ -43,6 +43,16 @@ const createTestStore = () => {
         fetchContextKey: null,
         artistMissing: false,
       }),
+      albumDetails: () => ({
+        status: 'idle' as const,
+        error: null,
+        errorCode: null,
+        data: null,
+        fetchContextKey: null,
+        artistSlug: null,
+        albumId: null,
+        lastUpdated: null,
+      }),
       helpArticles: () => ({
         en: { status: 'idle' as const, error: null, data: [], lastUpdated: null },
         ru: { status: 'idle' as const, error: null, data: [], lastUpdated: null },

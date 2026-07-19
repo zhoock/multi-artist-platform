@@ -13,9 +13,14 @@ import {
 } from '@entities/article';
 import {
   fetchAlbums,
+  fetchAlbumDetailsPage,
+  buildAlbumDetailsFetchContextKey,
   selectAlbumsStatus,
   selectAlbumsData,
   selectAlbumsFetchContextKey,
+  selectAlbumDetailsStatus,
+  selectAlbumDetailsFetchContextKey,
+  selectAlbumDetailsData,
 } from '@entities/album';
 import {
   fetchHelpArticles,
@@ -117,7 +122,7 @@ export type AlbumsDeferred = {
 /**
  * Публичный thin-каталог грузит surface (HomePage / AllAlbumsPage), не loader.
  * Loader не должен `dispatch(fetchAlbums)` на этих маршрутах — иначе снова
- * тянется полный монолит. `/albums/:albumId` и `/stems` по-прежнему через fat GET.
+ * тянется полный монолит. `/albums/:albumId` — AlbumDetails; `/stems` — fat GET.
  */
 export function shouldDeferPublicArtistCatalogToSurface(
   loaderPathname: string,
@@ -132,6 +137,14 @@ export function shouldDeferPublicArtistCatalogToSurface(
     loaderPathname === '/albums/' ||
     loaderPathname === '/en/albums' ||
     loaderPathname === '/en/albums/'
+  );
+}
+
+/** Single album page — mid-weight AlbumDetails, not fat `/api/albums`. */
+export function isAlbumDetailLoaderPath(loaderPathname: string): boolean {
+  return Boolean(
+    matchPath({ path: '/albums/:albumId', end: true }, loaderPathname) ||
+      matchPath({ path: '/en/albums/:albumId', end: true }, loaderPathname)
   );
 }
 
@@ -230,6 +243,51 @@ export async function albumsLoader({ request }: LoaderFunctionArgs): Promise<Alb
           );
         }
       }
+    } else if (isAlbumDetailLoaderPath(loaderPathname)) {
+      // Album page: AlbumDetails only — do not pull fat public catalog.
+      const routeAlbumId =
+        matchPath(
+          { path: '/albums/:albumId', end: true },
+          loaderPathname
+        )?.params.albumId?.trim() ??
+        matchPath(
+          { path: '/en/albums/:albumId', end: true },
+          loaderPathname
+        )?.params.albumId?.trim() ??
+        '';
+
+      templateA = Promise.resolve(selectAlbumsData(state));
+
+      if (publicArtistFromUrl && routeAlbumId) {
+        const desiredKey = buildAlbumDetailsFetchContextKey(publicArtistFromUrl, routeAlbumId);
+        const detailsStatus = selectAlbumDetailsStatus(state);
+        const detailsKey = selectAlbumDetailsFetchContextKey(state);
+        const detailsData = selectAlbumDetailsData(state);
+        const detailsCacheValid =
+          detailsStatus === 'succeeded' &&
+          detailsKey === desiredKey &&
+          detailsData?.albumId === routeAlbumId;
+
+        if (!detailsCacheValid && detailsStatus !== 'loading') {
+          const fetchThunkPromise = store.dispatch(
+            fetchAlbumDetailsPage({
+              artistSlug: publicArtistFromUrl,
+              albumId: routeAlbumId,
+              force: detailsStatus === 'failed',
+            })
+          );
+
+          if (signal.aborted) {
+            fetchThunkPromise.abort();
+          } else {
+            const abortHandler = () => {
+              fetchThunkPromise.abort();
+            };
+            signal.addEventListener('abort', abortHandler, { once: true });
+            void fetchThunkPromise.unwrap().catch(() => undefined);
+          }
+        }
+      }
     } else {
       const desiredAlbumsFetchKey = publicArtistFromUrl
         ? `public:${publicArtistFromUrl}`
@@ -237,18 +295,8 @@ export async function albumsLoader({ request }: LoaderFunctionArgs): Promise<Alb
 
       const status = selectAlbumsStatus(state);
       const albumsFetchContextKey = selectAlbumsFetchContextKey(state);
-      const routeAlbumId =
-        matchPath(
-          { path: '/albums/:albumId', end: true },
-          loaderPathname
-        )?.params.albumId?.trim() ?? '';
-      const cachedAlbums = selectAlbumsData(state);
-      const albumMissingFromCache =
-        Boolean(routeAlbumId) && !cachedAlbums.some((a) => a.albumId === routeAlbumId);
       const albumsCacheValid =
-        status === 'succeeded' &&
-        albumsFetchContextKey === desiredAlbumsFetchKey &&
-        !albumMissingFromCache;
+        status === 'succeeded' && albumsFetchContextKey === desiredAlbumsFetchKey;
       const deferCatalogToSurface = shouldDeferPublicArtistCatalogToSurface(
         loaderPathname,
         publicArtistFromUrl

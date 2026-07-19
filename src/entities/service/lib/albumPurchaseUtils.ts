@@ -1,8 +1,14 @@
-import type { String, IAlbums } from '@models';
+import type { AlbumDetails } from '@entities/album/model/albumDetails';
+
+/** Minimal commerce shape used by album-page purchase / stream UI. */
+export type AlbumCommerceSource = Pick<
+  AlbumDetails,
+  'userId' | 'albumId' | 'dbAlbumId' | 'purchase' | 'serviceButtons' | 'tracks' | 'title'
+>;
 
 /** Signed-in viewer owns this album (artist dashboard context, not customer purchase). */
 export function isAlbumViewerOwner(
-  album: IAlbums | undefined,
+  album: { userId?: string } | undefined,
   viewerUserId: string | null | undefined
 ): boolean {
   const ownerId = album?.userId?.trim();
@@ -10,34 +16,38 @@ export function isAlbumViewerOwner(
   return Boolean(ownerId && viewerId && ownerId === viewerId);
 }
 
-export function getAllowDownloadSaleValue(album: IAlbums): string {
-  return album?.release && typeof album.release === 'object' && 'allowDownloadSale' in album.release
-    ? String((album.release as Record<string, unknown>).allowDownloadSale)
-    : 'no';
+export function getAllowDownloadSaleValue(album: AlbumCommerceSource): string {
+  const fromPurchase = album.purchase?.allowDownloadSale;
+  if (typeof fromPurchase === 'string' && fromPurchase.trim()) {
+    return fromPurchase;
+  }
+  return 'no';
 }
 
-/** Альбом помечен как платная продажа/предзаказ (настройка в release). */
-export function isAlbumPaidSaleEnabled(album: IAlbums): boolean {
+/** Альбом помечен как платная продажа/предзаказ (настройка в release / purchase). */
+export function isAlbumPaidSaleEnabled(album: AlbumCommerceSource): boolean {
   const v = getAllowDownloadSaleValue(album);
   return v === 'yes' || v === 'preorder';
 }
 
-export function hasTruthyButtonUrl(buttons: String | undefined, keys: readonly string[]): boolean {
+export function hasTruthyButtonUrl(
+  buttons: Record<string, string> | undefined,
+  keys: readonly string[]
+): boolean {
   return keys.some((key) => Boolean(buttons?.[key]?.trim()));
 }
 
-/** Есть ли что показать в блоке «Купить»: скачивание/продажа или хотя бы одна ссылка (iTunes / Bandcamp / Amazon). */
-export function hasAlbumPurchaseSectionContent(album: IAlbums): boolean {
-  const buttons = album?.buttons as String | undefined;
+/** Есть ли что показать в блоке «Купить»: скачивание/продажа или хотя бы одна ссылка. */
+export function hasAlbumPurchaseSectionContent(album: AlbumCommerceSource): boolean {
+  const buttons = album.serviceButtons;
   const isDownloadAllowed = isAlbumPaidSaleEnabled(album);
   const hasPurchaseLinks = hasTruthyButtonUrl(buttons, ['itunes', 'bandcamp', 'amazon']);
   return isDownloadAllowed || hasPurchaseLinks;
 }
 
 /** Есть ли что показать в блоке «Слушать»: хотя бы одна стриминговая ссылка. */
-export function hasAlbumStreamSectionContent(album: IAlbums): boolean {
-  const buttons = album?.buttons as String | undefined;
-  return hasTruthyButtonUrl(buttons, [
+export function hasAlbumStreamSectionContent(album: AlbumCommerceSource): boolean {
+  return hasTruthyButtonUrl(album.serviceButtons, [
     'apple',
     'vk',
     'youtube',

@@ -11,6 +11,7 @@ import { currentArtistReducer } from '@shared/model/currentArtist';
 import { articlesReducer } from '@entities/article';
 import { albumsReducer } from '@entities/album';
 import { artistAlbumCatalogReducer } from '@entities/album/model/artistAlbumCatalogSlice';
+import { albumDetailsReducer } from '@entities/album/model/albumDetailsSlice';
 import { helpArticlesReducer } from '@entities/helpArticle';
 import { uiDictionaryReducer } from '@shared/model/uiDictionary';
 import { trackLyricsReducer } from '@entities/lyrics';
@@ -25,6 +26,7 @@ const rootReducer = {
   articles: articlesReducer,
   albums: albumsReducer,
   artistAlbumCatalog: artistAlbumCatalogReducer,
+  albumDetails: albumDetailsReducer,
   helpArticles: helpArticlesReducer,
   uiDictionary: uiDictionaryReducer,
   trackLyrics: trackLyricsReducer,

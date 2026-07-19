@@ -1,9 +1,14 @@
 /**
  * Invalidate/refetch public catalog after premium subscription or archive changes.
  */
-import type { AppDispatch } from '@shared/model/appStore/types';
+import type { AppDispatch, RootState } from '@shared/model/appStore/types';
 import { getStore } from '@shared/model/appStore';
-import { fetchAlbums, selectAlbumById } from '@entities/album';
+import {
+  fetchAlbums,
+  fetchAlbumDetailsPage,
+  selectAlbumById,
+  selectAlbumDetailsData,
+} from '@entities/album';
 import { fetchArticles } from '@entities/article';
 import { playerActions, toPlayerTracks } from '@features/player';
 import { getUserAudioUrl } from '@shared/api/albums';
@@ -13,6 +18,7 @@ import { isTrackPlaybackBlocked } from '@shared/lib/tracks/trackPlayback';
 import { setPublicArtistSlug, selectPublicArtistSlug } from '@shared/model/currentArtist';
 import { readPublicArtistSlugFromDashboardModalBackground } from '@shared/lib/dashboardModalBackground';
 import { readPremiumCheckoutArtistSlug } from '@features/premiumSubscription/lib/premiumSuccessModalStorage';
+import type { PlayerTrack } from '@features/player/model/types/playerSchema';
 
 const REFRESH_DEBOUNCE_MS = 50;
 
@@ -64,6 +70,61 @@ function resolveRefreshArtistSlug(explicit?: string | null): string | undefined 
   return storeSlug?.trim() || undefined;
 }
 
+function resolvePlaylistTracksForSync(state: RootState): {
+  tracks: PlayerTrack[];
+  userId?: string;
+} | null {
+  const { player } = state;
+  if (!player.albumId) return null;
+
+  const details = selectAlbumDetailsData(state);
+  if (
+    details?.tracks?.length &&
+    (details.albumId === player.albumId || details.slug === player.albumId)
+  ) {
+    const mapped = toPlayerTracks(
+      details.tracks.map((track) => {
+        if (isTrackPlaybackBlocked(track)) {
+          return { ...track, src: '' };
+        }
+        return {
+          ...track,
+          src: emptyStringMediaSrc(
+            getUserAudioUrl(track.src, undefined, details.userId),
+            'refreshPremiumContent:syncPlayerPlaylist',
+            { trackId: track.id, albumUserId: details.userId }
+          ),
+        };
+      }),
+      player.albumId
+    );
+    return { tracks: mapped, userId: details.userId };
+  }
+
+  const fromFat =
+    selectAlbumById(state, player.albumId) ??
+    state.albums.data.find((item) => fallbackAlbumClientId(item) === player.albumId);
+  if (!fromFat?.tracks?.length) return null;
+
+  const mapped = toPlayerTracks(
+    fromFat.tracks.map((track) => {
+      if (isTrackPlaybackBlocked(track)) {
+        return { ...track, src: '' };
+      }
+      return {
+        ...track,
+        src: emptyStringMediaSrc(
+          getUserAudioUrl(track.src, undefined, fromFat.userId),
+          'refreshPremiumContent:syncPlayerPlaylist',
+          { trackId: track.id, albumUserId: fromFat.userId }
+        ),
+      };
+    }),
+    player.albumId
+  );
+  return { tracks: mapped, userId: fromFat.userId };
+}
+
 function syncPlayerPlaylistWithAlbumEntitlements(): void {
   const store = getStore();
   const state = store.getState();
@@ -71,28 +132,10 @@ function syncPlayerPlaylistWithAlbumEntitlements(): void {
 
   if (!player.albumId || player.playlist.length === 0) return;
 
-  const album =
-    selectAlbumById(state, player.albumId) ??
-    state.albums.data.find((item) => fallbackAlbumClientId(item) === player.albumId);
+  const resolved = resolvePlaylistTracksForSync(state);
+  if (!resolved?.tracks.length) return;
 
-  if (!album?.tracks?.length) return;
-
-  const updatedPlaylist = toPlayerTracks(
-    album.tracks.map((track) => {
-      if (isTrackPlaybackBlocked(track)) {
-        return { ...track, src: '' };
-      }
-      return {
-        ...track,
-        src: emptyStringMediaSrc(
-          getUserAudioUrl(track.src, undefined, album.userId),
-          'refreshPremiumContent:syncPlayerPlaylist',
-          { trackId: track.id, albumUserId: album.userId }
-        ),
-      };
-    }),
-    player.albumId
-  );
+  const updatedPlaylist = resolved.tracks;
 
   const currentTrackId = player.playlist[player.currentTrackIndex]?.id;
   store.dispatch(playerActions.setPlaylist(updatedPlaylist));
@@ -116,6 +159,10 @@ async function executePremiumEntitlementsRefresh(
     dispatch(setPublicArtistSlug(slug));
   }
 
+  const albumDetailsState = getStore().getState().albumDetails;
+  const detailsArtistSlug = albumDetailsState.artistSlug?.trim() || slug;
+  const detailsAlbumId = albumDetailsState.albumId?.trim();
+
   try {
     await Promise.all([
       dispatch(fetchAlbums({ force: true, forcePublicCatalog: true, publicArtistSlug: slug }))
@@ -124,6 +171,17 @@ async function executePremiumEntitlementsRefresh(
       dispatch(fetchArticles({ force: true, publicArtistSlug: slug, forcePublicCatalog: true }))
         .unwrap()
         .catch(() => undefined),
+      detailsArtistSlug && detailsAlbumId
+        ? dispatch(
+            fetchAlbumDetailsPage({
+              artistSlug: detailsArtistSlug,
+              albumId: detailsAlbumId,
+              force: true,
+            })
+          )
+            .unwrap()
+            .catch(() => undefined)
+        : Promise.resolve(),
     ]);
   } catch {
     /* keep going */

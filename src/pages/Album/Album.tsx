@@ -4,7 +4,18 @@ import { useEffect, useMemo } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 
-import { AlbumCover, AlbumDetails } from '@entities/album';
+import {
+  AlbumCover,
+  AlbumDetails,
+  fetchAlbumDetailsPage,
+  mapFatAlbumToAlbumDetails,
+  selectAlbumDetailsResolved,
+  selectAlbumDetailsStatus,
+  selectAlbumDetailsErrorCode,
+  selectAlbumDetailsState,
+  selectDashboardAlbumByIdResolved,
+  type AlbumDetailsData,
+} from '@entities/album';
 import { AlbumTracks } from '@widgets/albumTracks';
 import { Share } from '@features/share';
 import {
@@ -13,18 +24,11 @@ import {
   isAlbumViewerOwner,
   useShowAlbumPurchaseSection,
 } from '@entities/service';
-import { isAlbumPublished } from '@entities/album/lib/albumPublication';
 import { ErrorI18n } from '@shared/ui/error-message';
 import { AlbumSkeleton } from '@shared/ui/skeleton';
 import { useLang } from '@app/providers/lang';
 import { useAppDispatch } from '@shared/lib/hooks/useAppDispatch';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
-import {
-  fetchAlbums,
-  selectAlbumsStatus,
-  selectAlbumByIdResolved,
-  selectDashboardAlbumByIdResolved,
-} from '@entities/album';
 import { ArtistNotFound } from '@shared/ui/artistNotFound';
 import { ArtistPageUnderConstruction } from '@pages/Home/ui/ArtistPageUnderConstruction';
 import { useArtistPageAccess } from '@shared/lib/hooks/useArtistPageAccess';
@@ -36,7 +40,7 @@ import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 import { useSiteArtistDisplayName } from '@shared/lib/hooks/useSiteArtistDisplayName';
 import { formatAlbumDisplayFullName } from '@shared/lib/profileDisplayName';
 import { buildPublicSiteUrl } from '@shared/lib/publicSiteOrigin';
-import { useShowSurfaceAlbumsLoadingShell } from '@shared/lib/hooks/useShowAlbumsLoadingShell';
+import { shouldShowAlbumsLoadingShell } from '@shared/lib/hooks/useShowAlbumsLoadingShell';
 import { resolveChildContextNavMode, useNavigationOrigin } from '@shared/lib/navigationContext';
 import { withPublicArtistQuery } from '@shared/lib/artistQuery';
 import { ContextNav } from '@shared/ui/contextNav';
@@ -56,38 +60,47 @@ export default function Album() {
   });
   const navigate = useNavigate();
   const { albumId = '' } = useParams<{ albumId: string }>();
-  const albumsStatus = useAppSelector(selectAlbumsStatus);
+  const albumDetailsStatus = useAppSelector(selectAlbumDetailsStatus);
+  const albumDetailsErrorCode = useAppSelector(selectAlbumDetailsErrorCode);
+  const albumDetailsState = useAppSelector(selectAlbumDetailsState);
   const hideArtistPageAfterOwnDelete = useRedirectHomeAfterOwnAccountDeleted(!!artistParam);
   const hideDeletedAlbumPage = useRedirectAfterDeletedAlbum(albumId, artistSlug);
-  const catalogAlbum = useAppSelector((state) => selectAlbumByIdResolved(state, albumId));
+  const resolvedDetails = useAppSelector(selectAlbumDetailsResolved);
   const dashboardAlbum = useAppSelector((state) =>
     selectDashboardAlbumByIdResolved(state, albumId)
   );
-  const album = catalogAlbum ?? (artistPageAccess.isOwner ? dashboardAlbum : undefined);
+
+  const detailsMatchRoute =
+    resolvedDetails != null &&
+    resolvedDetails.albumId === albumId &&
+    albumDetailsState.artistSlug === artistParam?.trim() &&
+    albumDetailsState.albumId === albumId;
+
+  /**
+   * Public path: AlbumDetails from mid-weight API.
+   * Owner unpublished draft: map dashboard IAlbums → AlbumDetails (Dashboard CRUD untouched).
+   */
+  const albumFromDetails: AlbumDetailsData | undefined =
+    detailsMatchRoute && resolvedDetails ? resolvedDetails : undefined;
+  const albumFromOwnerDashboard: AlbumDetailsData | undefined =
+    !albumFromDetails && artistPageAccess.isOwner && dashboardAlbum
+      ? mapFatAlbumToAlbumDetails(dashboardAlbum)
+      : undefined;
+  const album: AlbumDetailsData | undefined = albumFromDetails ?? albumFromOwnerDashboard;
+
   const ui = useAppSelector((state) => selectUiDictionaryFirst(state, lang));
   const viewer = useAuthSessionUser();
   const showPurchaseSection = useShowAlbumPurchaseSection(album);
-  const showAlbumLoadingShell = useShowSurfaceAlbumsLoadingShell(albumsStatus, Boolean(album));
+  const showAlbumLoadingShell = shouldShowAlbumsLoadingShell(
+    albumDetailsStatus,
+    Boolean(albumFromDetails)
+  );
 
   useEffect(() => {
-    if (!artistParam || catalogAlbum || albumsStatus === 'loading') return;
-    if (!artistPageAccess.isOwner) return;
-    void dispatch(fetchAlbums({ force: true }));
-  }, [artistParam, catalogAlbum, albumsStatus, artistPageAccess.isOwner, albumId, dispatch]);
-
-  // 🔍 DEBUG: Логируем данные альбома для диагностики
-  useEffect(() => {
-    if (albumId === '23-remastered' && album) {
-      console.log('[Album.tsx] 🔍 DEBUG 23-remastered:', {
-        albumId: album.albumId,
-        tracksCount: album.tracks?.length || 0,
-        tracks: album.tracks?.map((t) => ({
-          id: t.id,
-          title: t.title,
-        })),
-      });
-    }
-  }, [album, albumId]);
+    const slug = artistParam?.trim();
+    if (!slug || !albumId) return;
+    void dispatch(fetchAlbumDetailsPage({ artistSlug: slug, albumId }));
+  }, [artistParam, albumId, dispatch]);
 
   const navigationOrigin = useNavigationOrigin();
   const contextNavMode = resolveChildContextNavMode(navigationOrigin);
@@ -95,9 +108,8 @@ export default function Album() {
   const albumsListLink = withPublicArtistQuery('/albums', artistParam);
 
   useEffect(() => {
-    // Smart fallback for direct URL without ?artist:
-    // if album is not found in default context, resolve owner slug and redirect.
-    if (!albumId || album || artistParam || albumsStatus !== 'succeeded') return;
+    // Direct URL without ?artist=: resolve owner slug and redirect.
+    if (!albumId || artistParam) return;
 
     let isCancelled = false;
 
@@ -109,10 +121,12 @@ export default function Album() {
         if (!response.ok) return;
 
         const result = await response.json();
-        const artistSlug = result?.success ? result?.data?.artistSlug : null;
-        if (!artistSlug || isCancelled) return;
+        const resolvedSlug = result?.success ? result?.data?.artistSlug : null;
+        if (!resolvedSlug || isCancelled) return;
 
-        navigate(`/albums/${albumId}?artist=${encodeURIComponent(artistSlug)}`, { replace: true });
+        navigate(`/albums/${albumId}?artist=${encodeURIComponent(resolvedSlug)}`, {
+          replace: true,
+        });
       } catch {
         // noop: keep standard "album not found" behavior if resolve fails
       }
@@ -123,13 +137,11 @@ export default function Album() {
     return () => {
       isCancelled = true;
     };
-  }, [albumId, album, artistParam, albumsStatus, lang, navigate]);
+  }, [albumId, artistParam, navigate]);
 
   useEffect(() => {
     window.scrollTo({ top: 0 });
   }, [albumId]);
-
-  // Данные загружаются через loader
 
   if (hideArtistPageAfterOwnDelete || hideDeletedAlbumPage) {
     return null;
@@ -147,11 +159,11 @@ export default function Album() {
     return <ArtistPageUnderConstruction variant="visitor" />;
   }
 
-  if (showAlbumLoadingShell) {
+  if (artistParam && showAlbumLoadingShell) {
     return <AlbumSkeleton />;
   }
 
-  if (albumsStatus === 'failed') {
+  if (artistParam && albumDetailsStatus === 'failed') {
     return (
       <section className="album main-background" aria-label="Блок c альбомом">
         <div className="wrapper album__wrapper">
@@ -161,7 +173,31 @@ export default function Album() {
     );
   }
 
+  if (
+    artistParam &&
+    albumDetailsStatus === 'succeeded' &&
+    !album &&
+    (albumDetailsErrorCode === 'ARTIST_NOT_FOUND' ||
+      albumDetailsErrorCode === 'ALBUM_NOT_FOUND' ||
+      !detailsMatchRoute)
+  ) {
+    if (albumDetailsErrorCode === 'ARTIST_NOT_FOUND') {
+      return <ArtistNotFound />;
+    }
+    return (
+      <section className="album main-background" aria-label="Блок c альбомом">
+        <div className="wrapper album__wrapper">
+          <ErrorI18n code="albumNotFound" />
+        </div>
+      </section>
+    );
+  }
+
   if (!album) {
+    // Waiting for ?artist= resolve, or owner dashboard still empty.
+    if (!artistParam || albumDetailsStatus === 'loading' || albumDetailsStatus === 'idle') {
+      return <AlbumSkeleton />;
+    }
     return (
       <section className="album main-background" aria-label="Блок c альбомом">
         <div className="wrapper album__wrapper">
@@ -173,7 +209,7 @@ export default function Album() {
 
   const isAlbumOwner = isAlbumViewerOwner(album, viewer?.id);
   const inArtistPublicContext = Boolean(artistParam?.trim());
-  if (!isAlbumPublished(album) && !isAlbumOwner) {
+  if (!album.visibility.isPublished && !isAlbumOwner) {
     return (
       <section className="album main-background" aria-label="Блок c альбомом">
         <div className="wrapper album__wrapper">
@@ -182,7 +218,7 @@ export default function Album() {
       </section>
     );
   }
-  if (album.isPublic === false && !isAlbumOwner && !inArtistPublicContext) {
+  if (!album.visibility.isPublic && !isAlbumOwner && !inArtistPublicContext) {
     return (
       <section className="album main-background" aria-label="Блок c альбомом">
         <div className="wrapper album__wrapper">
@@ -192,8 +228,7 @@ export default function Album() {
     );
   }
 
-  // SEO (RU/EN) для конкретного альбома — имя из профиля, не albums.artist / album.fullName
-  const seoTitle = formatAlbumDisplayFullName(siteArtistName, album.album);
+  const seoTitle = formatAlbumDisplayFullName(siteArtistName, album.title);
   const seoDesc = album.description;
 
   const canonical = buildPublicSiteUrl(`/albums/${encodeURIComponent(albumId)}`);
@@ -224,7 +259,7 @@ export default function Album() {
           <AlbumCover
             img={album.cover || ''}
             userId={album.userId}
-            fullName={formatAlbumDisplayFullName(siteArtistName, album.album)}
+            fullName={formatAlbumDisplayFullName(siteArtistName, album.title)}
           />
           <Share />
         </div>

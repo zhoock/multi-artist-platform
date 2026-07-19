@@ -61,10 +61,16 @@ function isAllAlbumsListPath(pathname: string): boolean {
   return /^\/(?:en\/)?albums\/?$/.test(pathname);
 }
 
-/** Loader/fetch альбомов: Home, /albums*, /stems* — на /articles* каталог остаётся idle. */
+/** Страница одного альбома — mid-weight AlbumDetails, не fat `/api/albums`. */
+function isAlbumDetailPath(pathname: string): boolean {
+  return /^\/(?:en\/)?albums\/[^/]+\/?$/.test(pathname);
+}
+
+/** Loader/fetch альбомов: Home, /albums list, /stems* — album detail owns its own fetch. */
 function routeRequiresAlbumsSurface(pathname: string): boolean {
   if (isArtistHomePath(pathname)) return true;
-  if (/^\/(?:en\/)?albums(?:\/|$)/.test(pathname)) return true;
+  if (isAllAlbumsListPath(pathname)) return true;
+  if (isAlbumDetailPath(pathname)) return false;
   return /^\/(?:en\/)?stems(?:\/|$)/.test(pathname);
 }
 
@@ -135,8 +141,13 @@ export function useArtistPageAccessState(
   const articlesCacheStale = useAppSelector(selectArticlesCacheIsStale);
   const publicArticles = useAppSelector(selectArticlesDataResolvedForSurface);
 
-  /** Home + All Albums list use thin catalog; `/albums/:id` and `/stems` keep full `/api/albums`. */
-  const useThinCatalog = isArtistHomePath(pathname) || isAllAlbumsListPath(pathname);
+  /**
+   * Home + All Albums + album detail use thin catalog for artist-access gates.
+   * `/stems` keeps full `/api/albums`. Album page data itself comes from AlbumDetails.
+   */
+  const onAlbumDetail = isAlbumDetailPath(pathname);
+  const useThinCatalog =
+    isArtistHomePath(pathname) || isAllAlbumsListPath(pathname) || onAlbumDetail;
   const catalogArtistMissing = useThinCatalog ? thinCatalogArtistMissing : fullCatalogArtistMissing;
   const catalogCacheStale = useThinCatalog ? thinCatalogCacheStale : fullCatalogCacheStale;
   const cachedPublicRowCount = useThinCatalog
@@ -517,8 +528,11 @@ export function useArtistPageAccessState(
   /**
    * Блокировка списка/страницы альбома. Не включаем `articlesStatus === 'idle'` глобально
    * (/albums/:id не грузит статьи) и не ждём owner onboarding — он только для Home.
+   * Album detail loads AlbumDetails itself — do not gate on thin/fat catalog idle.
    */
-  const isLoading = !ownerResolved || albumsPending || visitorAccessPending;
+  const isLoading = onAlbumDetail
+    ? !ownerResolved
+    : !ownerResolved || albumsPending || visitorAccessPending;
 
   const hasVisitorVisibleContent = useThinCatalog
     ? hasPublishedPublicCatalogReleases(thinCatalogData) ||
@@ -573,6 +587,7 @@ export function useArtistPageAccessState(
 
   /** Артист существует, но публичного контента ещё нет — для посетителей, не владельца. */
   const showVisitorUnderConstruction =
+    !onAlbumDetail &&
     !catalogArtistMissing &&
     !isOwner &&
     !isLoading &&
@@ -589,6 +604,7 @@ export function useArtistPageAccessState(
     showOwnerIdentityPending || showOwnerBuilderResolutionPending;
 
   const showNotFound =
+    !onAlbumDetail &&
     !isOwner &&
     !isLoading &&
     !visitorArticlesGatePending &&
@@ -632,7 +648,8 @@ export function useArtistPageAccessState(
     isHeaderImagesReady &&
     (!isOwner || ownerContentLoaded) &&
     !albumsBlockPageReady &&
-    !visitorAccessPending &&
+    // Album detail does not wait on thin catalog / articles gates — AlbumDetails owns loading.
+    (onAlbumDetail || !visitorAccessPending) &&
     !articlesBlockPageReady &&
     aboutSurfaceReady &&
     socialSurfaceReady &&

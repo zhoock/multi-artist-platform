@@ -7,6 +7,7 @@ import type { CurrentArtistState } from '@shared/model/currentArtist';
 import type { ArticlesState } from '@entities/article/model/types';
 import type { AlbumsState } from '@entities/album/model/types';
 import type { ArtistAlbumCatalogState } from '@entities/album/model/artistAlbumCatalogSlice';
+import type { AlbumDetailsState } from '@entities/album/model/albumDetailsSlice';
 import type { HelpArticlesState } from '@entities/helpArticle/model/types';
 import type { UiDictionaryState } from '@shared/model/uiDictionary/types';
 import type { TrackLyricsState } from '@entities/lyrics/model/trackLyricsSlice';
@@ -22,6 +23,7 @@ export interface RootState {
   articles: ArticlesState;
   albums: AlbumsState;
   artistAlbumCatalog: ArtistAlbumCatalogState;
+  albumDetails: AlbumDetailsState;
   helpArticles: HelpArticlesState;
   uiDictionary: UiDictionaryState;
   trackLyrics: TrackLyricsState;

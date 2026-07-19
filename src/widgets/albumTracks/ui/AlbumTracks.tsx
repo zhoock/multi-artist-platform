@@ -10,7 +10,7 @@ import type { RootState } from '@shared/model/appStore/types';
 import { useAppDispatch } from '@shared/lib/hooks/useAppDispatch';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { playerActions, loadPlayerState, savePlayerState, toPlayerTracks } from '@features/player';
-import type { IAlbums, TracksProps } from '@models';
+import type { AlbumDetails, TrackDetails } from '@entities/album/model/albumDetails';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 import { useLang } from '@app/providers/lang';
 import { gaEvent } from '@shared/lib/analytics';
@@ -34,12 +34,12 @@ import {
 import './style.scss';
 
 /** Сигнатура для React.memo — иначе при смене visibility/playbackLocked без смены albumId список не обновлялся. */
-function albumTracksMemoSignature(album: IAlbums): string {
-  const head = `${album.albumId}\0${album.album ?? ''}\0${String((album.cover ?? '').length)}`;
+function albumTracksMemoSignature(album: AlbumDetails): string {
+  const head = `${album.albumId}\0${album.title}\0${String((album.cover ?? '').length)}`;
   const tail = (album.tracks ?? [])
     .map(
       (t) =>
-        `${String(t.id)}\t${normalizeTrackVisibility((t as { visibility?: unknown }).visibility)}\t${isTrackPlaybackBlocked(t) ? 1 : 0}\t${String((t.src ?? '').length)}`
+        `${String(t.id)}\t${normalizeTrackVisibility(t.visibility)}\t${isTrackPlaybackBlocked(t) ? 1 : 0}\t${String((t.src ?? '').length)}`
     )
     .join('\n');
   return `${head}\n${tail}`;
@@ -48,14 +48,13 @@ function albumTracksMemoSignature(album: IAlbums): string {
 /**
  * Преобразует треки, заменяя пути к аудио файлам на Supabase Storage URL, если это включено
  */
-function transformTracksForStorage(tracks: TracksProps[], albumUserId?: string): TracksProps[] {
+function transformTracksForStorage(tracks: TrackDetails[], albumUserId?: string): TrackDetails[] {
   return tracks.map((track) => {
     if (isTrackPlaybackBlocked(track)) {
       return { ...track, src: '' };
     }
     return {
       ...track,
-      // TracksProps.src — string; пустая строка только если резолв вернул null (см. [BUG] в getUserAudioUrl + emptyStringMediaSrc)
       src: emptyStringMediaSrc(
         getUserAudioUrl(track.src, undefined, albumUserId),
         'AlbumTracks:transformTracksForStorage',
@@ -69,7 +68,7 @@ function transformTracksForStorage(tracks: TracksProps[], albumUserId?: string):
  * Компонент отображает список треков и управляет аудиоплеером.
  * Клик по треку запускает воспроизведение, меню открывает текст песни.
  */
-const AlbumTracksComponent = ({ album }: { album: IAlbums }) => {
+const AlbumTracksComponent = ({ album }: { album: AlbumDetails }) => {
   const dispatch = useAppDispatch();
   const store = useStore<RootState>();
   const activeIndexRef = useRef(0);
@@ -100,16 +99,13 @@ const AlbumTracksComponent = ({ album }: { album: IAlbums }) => {
   const displayArtistLabel = resolvedSiteArtist ? resolvedSiteArtist : '—';
   const artistHubPath = withPublicArtistQuery('/', artistSlugFromUrl);
   const fullNameMeta = useMemo(
-    () => formatAlbumDisplayFullName(resolvedSiteArtist, album.album),
-    [resolvedSiteArtist, album.album]
+    () => formatAlbumDisplayFullName(resolvedSiteArtist, album.title),
+    [resolvedSiteArtist, album.title]
   );
 
   /** Треки для страницы альбома: скрытые (visibility=hidden) не показываем, даже если стемы публичны. */
   const albumPageTracks = useMemo(
-    () =>
-      (album.tracks ?? []).filter(
-        (t) => normalizeTrackVisibility((t as { visibility?: unknown }).visibility) !== 'hidden'
-      ),
+    () => (album.tracks ?? []).filter((t) => normalizeTrackVisibility(t.visibility) !== 'hidden'),
     [album.tracks]
   );
 
@@ -176,7 +172,7 @@ const AlbumTracksComponent = ({ album }: { album: IAlbums }) => {
       dispatch(
         playerActions.setAlbumInfo({
           albumId: savedState.albumId,
-          albumTitle: savedState.albumTitle ?? album.album,
+          albumTitle: savedState.albumTitle ?? album.title,
         })
       );
       dispatch(
@@ -184,7 +180,7 @@ const AlbumTracksComponent = ({ album }: { album: IAlbums }) => {
           albumId: savedState.albumId,
           userId: album.userId ?? null,
           publicSlug: artistSlugFromUrl ?? undefined,
-          album: album.album,
+          album: album.title,
           artist: artistForMeta,
           fullName: coverFullName,
           cover: album.cover ?? null,
@@ -209,13 +205,13 @@ const AlbumTracksComponent = ({ album }: { album: IAlbums }) => {
         )
       );
       dispatch(playerActions.setCurrentTrackIndex(startIdx));
-      dispatch(playerActions.setAlbumInfo({ albumId: currentAlbumId, albumTitle: album.album }));
+      dispatch(playerActions.setAlbumInfo({ albumId: currentAlbumId, albumTitle: album.title }));
       dispatch(
         playerActions.setAlbumMeta({
           albumId: currentAlbumId,
           userId: album.userId ?? null,
           publicSlug: artistSlugFromUrl ?? undefined,
-          album: album.album,
+          album: album.title,
           artist: artistForMeta,
           fullName: coverFullName,
           cover: album.cover ?? null,
@@ -304,13 +300,13 @@ const AlbumTracksComponent = ({ album }: { album: IAlbums }) => {
         dispatch(playerActions.setCurrentTrackIndex(0));
       }
 
-      dispatch(playerActions.setAlbumInfo({ albumId, albumTitle: album.album }));
+      dispatch(playerActions.setAlbumInfo({ albumId, albumTitle: album.title }));
       dispatch(
         playerActions.setAlbumMeta({
           albumId,
           userId: album.userId ?? null,
           publicSlug: artistSlugFromUrl ?? undefined,
-          album: album.album,
+          album: album.title,
           artist: displayArtistLabel,
           fullName: fullNameMeta,
           cover: album.cover ?? null,
@@ -357,7 +353,7 @@ const AlbumTracksComponent = ({ album }: { album: IAlbums }) => {
       isPlayingNow,
     }: {
       index: number;
-      track: TracksProps;
+      track: TrackDetails;
       isActive: boolean;
       isPlayingNow: boolean;
     }) => {
@@ -382,8 +378,8 @@ const AlbumTracksComponent = ({ album }: { album: IAlbums }) => {
       }
 
       gaEvent('track_select', {
-        album_id: album?.albumId,
-        album_title: album?.album,
+        album_id: album.albumId,
+        album_title: album.title,
         track_id: track.id,
         track_title: track.title,
         lang,
@@ -395,10 +391,10 @@ const AlbumTracksComponent = ({ album }: { album: IAlbums }) => {
   );
 
   const renderBlock = useCallback(
-    ({ tracks, playText = 'Play' }: { tracks: TracksProps[]; playText?: string }) => {
+    ({ tracks, playText = 'Play' }: { tracks: TrackDetails[]; playText?: string }) => {
       const albumHeader = (
         <>
-          <h2 className="album-title">{album?.album}</h2>
+          <h2 className="album-title">{album.title}</h2>
 
           {displayArtistLabel !== '—' && (
             <h3 className="album-artist">
@@ -418,11 +414,11 @@ const AlbumTracksComponent = ({ album }: { album: IAlbums }) => {
               aria-description="Открывает плеер"
               onClick={() => {
                 gaEvent('player_open', {
-                  album_id: album?.albumId,
-                  album_title: album?.album,
+                  album_id: album.albumId,
+                  album_title: album.title,
                   lang,
                 });
-                const firstPlayable = resolveFirstPlayableIndex(album?.tracks || [], 0);
+                const firstPlayable = resolveFirstPlayableIndex(albumPageTracks, 0);
                 if (firstPlayable === -1) {
                   return;
                 }
@@ -458,6 +454,7 @@ const AlbumTracksComponent = ({ album }: { album: IAlbums }) => {
     },
     [
       album,
+      albumPageTracks,
       artistHubPath,
       artistSlugFromUrl,
       displayArtistLabel,

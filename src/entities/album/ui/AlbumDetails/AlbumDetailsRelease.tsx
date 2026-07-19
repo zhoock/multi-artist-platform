@@ -1,29 +1,24 @@
-import type { IAlbums, String } from '@models';
+import type { String } from '@models';
+import type { AlbumDetails } from '../../model/albumDetails';
 import { formatDate } from '@shared/api/albums';
 import { useLang } from '@app/providers/lang';
-import { functionsMap } from './Functions'; // Импортируем функции
+import { functionsMap } from './Functions';
 
 /**
  * Компонент отображает блок с датой релиза альбома.
  */
-export default function AlbumDetailsReleased({ album }: { album: IAlbums }) {
+export default function AlbumDetailsReleased({ album }: { album: AlbumDetails }) {
   const { lang } = useLang() as { lang: keyof typeof functionsMap };
-  // Подгружаем функции для выбранного языка
   const { endForTracks, endForMinutes } = functionsMap[lang];
 
-  // Функция для конвертации duration в минуты
-  // duration может быть числом (секунды) или строкой (MM:SS или число-строка)
   const convertDurationToMinutes = (duration: number | string | undefined | null): number => {
     if (duration == null) return 0;
 
-    // Если это число - это секунды, конвертируем в минуты
     if (typeof duration === 'number') {
       return duration / 60;
     }
 
-    // Если это строка
     if (typeof duration === 'string') {
-      // Проверяем формат MM:SS
       const mmssMatch = duration.match(/^(\d+):(\d{2})$/);
       if (mmssMatch) {
         const minutes = parseInt(mmssMatch[1], 10);
@@ -31,7 +26,6 @@ export default function AlbumDetailsReleased({ album }: { album: IAlbums }) {
         return minutes + seconds / 60;
       }
 
-      // Если это число в виде строки (секунды)
       const numDuration = parseFloat(duration);
       if (!isNaN(numDuration) && Number.isFinite(numDuration)) {
         return numDuration / 60;
@@ -41,22 +35,24 @@ export default function AlbumDetailsReleased({ album }: { album: IAlbums }) {
     return 0;
   };
 
-  // Суммируем длительность всех треков из БД (конвертируем секунды в минуты)
   const durationInMinutes: number =
-    album?.tracks?.reduce((sum, track) => sum + convertDurationToMinutes(track.duration), 0) ?? 0;
+    album.tracks?.reduce((sum, track) => sum + convertDurationToMinutes(track.duration), 0) ?? 0;
 
-  function Block({ date, UPC }: String) {
+  const date = typeof album.release?.date === 'string' ? album.release.date : '';
+  const UPC = typeof album.release?.UPC === 'string' ? album.release.UPC : '';
+
+  function Block({ date: releaseDate, UPC: upc }: String) {
     return (
       <>
-        <time className="album-details__released-time" dateTime={date}>
-          {formatDate(date)}
+        <time className="album-details__released-time" dateTime={releaseDate}>
+          {formatDate(releaseDate)}
         </time>
         <div>
-          <small>UPC: {UPC}</small>
+          <small>UPC: {upc}</small>
         </div>
         <div>
           <small>
-            {album?.tracks.length} {endForTracks(album?.tracks.length)},{' '}
+            {album.tracks.length} {endForTracks(album.tracks.length)},{' '}
             {Number.isFinite(durationInMinutes) && durationInMinutes > 0
               ? `${Math.round(durationInMinutes)} ${endForMinutes(Math.round(durationInMinutes))}`
               : `0 ${endForMinutes(0)}`}
@@ -66,5 +62,5 @@ export default function AlbumDetailsReleased({ album }: { album: IAlbums }) {
     );
   }
 
-  return <Block {...album?.release} />;
+  return <Block date={date} UPC={UPC} />;
 }

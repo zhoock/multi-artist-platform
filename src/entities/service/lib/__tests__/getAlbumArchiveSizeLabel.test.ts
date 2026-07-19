@@ -1,17 +1,29 @@
 import { formatArchiveSizeBytes, getAlbumArchiveSizeLabel } from '../getAlbumArchiveSizeLabel';
-import type { IAlbums, TracksProps } from '@models';
+import type { TrackDetails } from '@entities/album/model/albumDetails';
 
-function track(partial: Partial<TracksProps> & Pick<TracksProps, 'duration' | 'src'>): TracksProps {
+function track(
+  partial: Partial<TrackDetails> & Pick<TrackDetails, 'duration' | 'src'>
+): TrackDetails {
   return {
     id: '1',
     title: 'Track',
-    order_index: 0,
-    content: '',
+    orderIndex: 0,
+    playbackLocked: false,
+    visibility: 'public',
+    stemsAvailability: 'hidden',
+    audioContainer: null,
+    audioCodec: null,
+    audioBitrate: null,
+    audioSampleRate: null,
+    audioBitDepth: null,
+    audioChannels: null,
+    audioDuration: null,
+    audioFileSize: null,
     ...partial,
   };
 }
 
-function album(tracks: TracksProps[]): Pick<IAlbums, 'tracks'> {
+function album(tracks: TrackDetails[]) {
   return { tracks };
 }
 

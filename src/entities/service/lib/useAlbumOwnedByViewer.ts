@@ -1,5 +1,4 @@
 import { useEffect, useState, useSyncExternalStore } from 'react';
-import type { IAlbums } from '@models';
 import { getMyPurchasesCached, type Purchase } from '@shared/api/purchases';
 import { getAlbumKeyForPaymentApis } from '@shared/lib/payment/albumPaymentKey';
 import {
@@ -33,7 +32,10 @@ function findOwnedPurchase(
  * чтобы `revokePurchase` мог сам сбрасывать кэш и страница артиста сразу
  * увидела, что альбом больше не куплен.
  */
-export function useAlbumOwnedByViewer(album: IAlbums, enabled: boolean) {
+export function useAlbumOwnedByViewer(
+  album: { albumId?: string; dbAlbumId?: string },
+  enabled: boolean
+) {
   const albumKey = getAlbumKeyForPaymentApis(album);
   const sessionKey = useSyncExternalStore(
     subscribeAuthSession,

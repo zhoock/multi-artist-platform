@@ -74,6 +74,13 @@
   status = 200
   force = true
 
+# Mid-weight album page (before list catalog and /api/albums*)
+[[redirects]]
+  from = "/api/artists/:slug/albums/:albumId"
+  to = "/.netlify/functions/artist-album-details?slug=:slug&albumId=:albumId"
+  status = 200
+  force = true
+
 # Thin artist catalog (before /api/albums* and catch-all)
 [[redirects]]
   from = "/api/artists/:slug/albums"

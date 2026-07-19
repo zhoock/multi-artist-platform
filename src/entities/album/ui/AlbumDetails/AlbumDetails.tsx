@@ -1,7 +1,8 @@
 import AlbumDetailsRelease from './AlbumDetailsRelease';
 import AlbumDetailsArtwork from './AlbumDetailsArtwork';
 import AlbumDetailsMusic from './AlbumDetailsMusic';
-import type { String, IAlbums } from '@models';
+import type { String } from '@models';
+import type { AlbumDetails as AlbumDetailsData } from '../../model/albumDetails';
 import { useLang } from '@app/providers/lang';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
@@ -10,11 +11,9 @@ import './style.scss';
 /**
  * Компонент отображает дополнительные данные об альбоме.
  */
-export default function AlbumDetails({ album }: { album: IAlbums }) {
+export default function AlbumDetails({ album }: { album: AlbumDetailsData }) {
   const { lang } = useLang();
   const ui = useAppSelector((state) => selectUiDictionaryFirst(state, lang));
-
-  // UI словарь загружается через loader
 
   const titles = (ui?.titles as String | undefined) ?? {};
   const { music, release, albumCover } = titles;

@@ -1,4 +1,4 @@
-import type { IAlbums } from '@models';
+import type { AlbumCommerceSource } from './albumPurchaseUtils';
 
 export type AlbumPriceInfo = {
   price: string;
@@ -6,10 +6,9 @@ export type AlbumPriceInfo = {
   formatted: string;
 };
 
-export function getAlbumPrice(album: IAlbums): AlbumPriceInfo {
-  const release = album.release && typeof album.release === 'object' ? album.release : {};
-  const regularPrice = (release as { regularPrice?: string }).regularPrice || '0.99';
-  const currency = (release as { currency?: string }).currency || 'USD';
+export function getAlbumPrice(album: AlbumCommerceSource): AlbumPriceInfo {
+  const regularPrice = album.purchase?.regularPrice || '0.99';
+  const currency = album.purchase?.currency || 'USD';
 
   const priceNum = parseFloat(regularPrice) || 0;
   const formattedPrice = priceNum.toFixed(2);

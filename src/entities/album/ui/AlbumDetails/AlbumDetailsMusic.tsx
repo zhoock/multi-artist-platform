@@ -1,11 +1,12 @@
 import { useLang } from '@app/providers/lang';
 import { formatDateToDisplay } from '@pages/UserDashboard/components/modals/album/EditAlbumModal.utils';
-import type { IAlbums, detailsProps } from '@models';
+import type { detailsProps } from '@models';
+import type { AlbumDetails } from '../../model/albumDetails';
 
 /**
  * Компонент отображает блок с участниками и местами записи альбома.
  */
-export default function AlbumDetailsMusic({ album }: { album: IAlbums }) {
+export default function AlbumDetailsMusic({ album }: { album: AlbumDetails }) {
   const { lang } = useLang() as { lang: 'en' | 'ru' };
 
   function Block({ title, content }: detailsProps) {

@@ -1,5 +1,18 @@
-import type { IAlbums, TracksProps } from '@models';
+import type { TrackDetails } from '@entities/album/model/albumDetails';
 import { pickAudioTechnicalMetadata } from '@shared/lib/audio/audioTechnicalMetadata';
+
+type TrackSizeSource = Pick<
+  TrackDetails,
+  | 'duration'
+  | 'src'
+  | 'audioContainer'
+  | 'audioBitrate'
+  | 'audioSampleRate'
+  | 'audioBitDepth'
+  | 'audioChannels'
+  | 'audioDuration'
+  | 'audioFileSize'
+>;
 
 /** Typical FLAC ratio vs CD WAV for music when bitrate unknown. */
 const FLAC_SIZE_RATIO = 0.55;
@@ -46,20 +59,7 @@ function containerFromSrc(src: string | null | undefined): string | null {
   return ext || null;
 }
 
-function estimateTrackBytes(
-  track: Pick<
-    TracksProps,
-    | 'duration'
-    | 'src'
-    | 'audioContainer'
-    | 'audioBitrate'
-    | 'audioSampleRate'
-    | 'audioBitDepth'
-    | 'audioChannels'
-    | 'audioDuration'
-    | 'audioFileSize'
-  >
-): number | null {
+function estimateTrackBytes(track: TrackSizeSource): number | null {
   const meta = pickAudioTechnicalMetadata(track);
   if (meta.audioFileSize != null && meta.audioFileSize > 0) {
     return meta.audioFileSize;
@@ -101,7 +101,9 @@ function estimateTrackBytes(
  * Total download size for the album: sum of stored `audioFileSize` when present,
  * otherwise estimate from duration + tech specs. Empty when unknown.
  */
-export function getAlbumArchiveSizeBytes(album: Pick<IAlbums, 'tracks'>): number | null {
+export function getAlbumArchiveSizeBytes(album: {
+  tracks?: readonly TrackSizeSource[];
+}): number | null {
   const tracks = album.tracks ?? [];
   if (tracks.length === 0) {
     return null;
@@ -122,7 +124,7 @@ export function getAlbumArchiveSizeBytes(album: Pick<IAlbums, 'tracks'>): number
 /**
  * Right-side / offer size label. Empty when size is unknown — never a status word.
  */
-export function getAlbumArchiveSizeLabel(album: Pick<IAlbums, 'tracks'>): string {
+export function getAlbumArchiveSizeLabel(album: { tracks?: readonly TrackSizeSource[] }): string {
   const totalBytes = getAlbumArchiveSizeBytes(album);
   if (totalBytes == null) {
     return '';

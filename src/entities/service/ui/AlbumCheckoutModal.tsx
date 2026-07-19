@@ -21,7 +21,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Check as CheckIcon } from 'lucide-react';
 import { Link, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
-import type { IAlbums } from '@models';
+import type { AlbumDetails } from '@entities/album/model/albumDetails';
 import AlbumCover from '@entities/album/ui/AlbumCover';
 import { Popup, PopupCloseButton } from '@shared/ui/popup';
 import { useLang } from '@app/providers/lang';
@@ -45,7 +45,7 @@ import './AlbumCheckoutModal.style.scss';
 
 interface AlbumCheckoutModalProps {
   isOpen: boolean;
-  album: IAlbums | null;
+  album: AlbumDetails | null;
   onClose: () => void;
 }
 
@@ -196,7 +196,7 @@ export function AlbumCheckoutModal({ isOpen, album, onClose }: AlbumCheckoutModa
   // Ownership check — active only while modal is open AND viewer is auth'd,
   // чтобы не дёргать API на каждой странице с не-открытым модалом.
   const { isOwned, ownedPurchase } = useAlbumOwnedByViewer(
-    album ?? ({} as IAlbums),
+    album ?? { albumId: '', dbAlbumId: '' },
     isOpen && !isGuest
   );
 
@@ -273,7 +273,7 @@ export function AlbumCheckoutModal({ isOpen, album, onClose }: AlbumCheckoutModa
       const result = await createPayment({
         amount: numericPrice,
         currency: currency || 'RUB',
-        description: `${album.album} - ${siteArtistLabel} (download)`,
+        description: `${album.title} - ${siteArtistLabel} (download)`,
         albumId: albumKey,
         customerEmail: email,
         returnUrl,
@@ -348,8 +348,8 @@ export function AlbumCheckoutModal({ isOpen, album, onClose }: AlbumCheckoutModa
     try {
       await downloadOwnedAlbumZipByAuth({
         albumId: albumKey,
-        artist: album.artist,
-        album: album.album,
+        artist: siteArtistName.trim() || siteArtistLabel,
+        album: album.title,
         tracks,
       });
     } catch (error) {
@@ -379,7 +379,7 @@ export function AlbumCheckoutModal({ isOpen, album, onClose }: AlbumCheckoutModa
                 <AlbumCover
                   img={album.cover}
                   userId={album.userId}
-                  fullName={formatAlbumDisplayFullName(siteArtistName, album.album)}
+                  fullName={formatAlbumDisplayFullName(siteArtistName, album.title)}
                   size={128}
                   densities={[1, 2]}
                   sizes="128px"
@@ -391,7 +391,7 @@ export function AlbumCheckoutModal({ isOpen, album, onClose }: AlbumCheckoutModa
             <div className="album-checkout-modal__hero-meta">
               <p className="album-checkout-modal__hero-artist">{siteArtistLabel}</p>
               <h2 id="album-checkout-modal-title" className="album-checkout-modal__hero-title">
-                {album.album}
+                {album.title}
               </h2>
               <p className="album-checkout-modal__hero-price">{formattedPrice}</p>
             </div>

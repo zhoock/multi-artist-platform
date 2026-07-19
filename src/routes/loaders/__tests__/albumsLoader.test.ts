@@ -13,9 +13,14 @@ jest.mock('@shared/lib/profileDisplayName', () => ({
   prefetchPublicProfileForDisplay: jest.fn(),
 }));
 
-import { albumsLoader, shouldDeferPublicArtistCatalogToSurface } from '../albumsLoader';
+import {
+  albumsLoader,
+  isAlbumDetailLoaderPath,
+  shouldDeferPublicArtistCatalogToSurface,
+} from '../albumsLoader';
 import { albumsReducer } from '@entities/album';
 import { artistAlbumCatalogReducer } from '@entities/album/model/artistAlbumCatalogSlice';
+import { albumDetailsReducer } from '@entities/album/model/albumDetailsSlice';
 import { articlesReducer } from '@entities/article';
 import { helpArticlesReducer } from '@entities/helpArticle';
 import { uiDictionaryReducer } from '@shared/model/uiDictionary';
@@ -38,6 +43,7 @@ function createTestStore(): AppStore {
       articles: articlesReducer,
       albums: albumsReducer,
       artistAlbumCatalog: artistAlbumCatalogReducer,
+      albumDetails: albumDetailsReducer,
       helpArticles: helpArticlesReducer,
       uiDictionary: uiDictionaryReducer,
       trackLyrics: trackLyricsReducer,
@@ -66,6 +72,15 @@ describe('shouldDeferPublicArtistCatalogToSurface', () => {
     expect(shouldDeferPublicArtistCatalogToSurface('/albums/23', 'foo')).toBe(false);
     expect(shouldDeferPublicArtistCatalogToSurface('/stems', 'foo')).toBe(false);
     expect(shouldDeferPublicArtistCatalogToSurface('/', '')).toBe(false);
+  });
+});
+
+describe('isAlbumDetailLoaderPath', () => {
+  test('true только для страницы одного альбома', () => {
+    expect(isAlbumDetailLoaderPath('/albums/23-remastered')).toBe(true);
+    expect(isAlbumDetailLoaderPath('/en/albums/23-remastered')).toBe(true);
+    expect(isAlbumDetailLoaderPath('/albums')).toBe(false);
+    expect(isAlbumDetailLoaderPath('/stems')).toBe(false);
   });
 });
 
@@ -157,13 +172,22 @@ describe('albumsLoader — defer public catalog to HomePage', () => {
     expect(store.getState().albums.inFlightFetchContextKey).toBeNull();
   });
 
-  test('на /albums/:id?artist= стартует fetchAlbums (страница альбома)', async () => {
+  test('на /albums/:id?artist= стартует AlbumDetails, не fat fetchAlbums', async () => {
+    jest.spyOn(globalThis, 'fetch').mockImplementation(
+      () =>
+        new Promise(() => {
+          /* keep albumDetails in loading */
+        }) as Promise<Response>
+    );
+
     const args = makeRequest('/albums/23-remastered?artist=foo');
     await albumsLoader({
       request: args.request,
       params: {},
     } as Parameters<typeof albumsLoader>[0]);
 
-    expect(store.getState().albums.status).toBe('loading');
+    expect(store.getState().albums.status).toBe('idle');
+    expect(store.getState().albumDetails.status).toBe('loading');
+    expect(store.getState().albumDetails.fetchContextKey).toBe('albumDetails:foo:23-remastered');
   });
 });

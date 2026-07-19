@@ -7,6 +7,7 @@ import type { ReactNode } from 'react';
 import { articlesReducer } from '@entities/article/model/articlesSlice';
 import { albumsReducer } from '@entities/album/model/albumsSlice';
 import { artistAlbumCatalogReducer } from '@entities/album/model/artistAlbumCatalogSlice';
+import { albumDetailsReducer } from '@entities/album/model/albumDetailsSlice';
 import { langReducer } from '@shared/model/lang/langSlice';
 import { currentArtistReducer } from '@shared/model/currentArtist';
 import { LangProvider } from '@app/providers/lang';
@@ -93,6 +94,7 @@ function createWrapper(
       articles: articlesReducer,
       albums: albumsReducer,
       artistAlbumCatalog: artistAlbumCatalogReducer,
+      albumDetails: albumDetailsReducer,
       currentArtist: currentArtistReducer,
     } as never,
     preloadedState: preloadedState as never,

@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
-import type { IAlbums, String } from '@models';
 import { useAuthSessionUser } from '@shared/lib/hooks/useAuthSessionUser';
 import { getYooKassaShopId } from '@shared/api/payment';
 import { getAlbumKeyForPaymentApis } from '@shared/lib/payment/albumPaymentKey';
 import {
+  type AlbumCommerceSource,
   hasAlbumPurchaseSectionContent,
   hasTruthyButtonUrl,
   isAlbumPaidSaleEnabled,
@@ -15,7 +15,7 @@ type YookassaState = { status: 'loading' | 'done'; available: boolean };
 /**
  * Продавец альбома с активной ЮKassa в БД (без shop ID кнопка «скачать» не показывается).
  */
-export function useYooKassaShopAvailableForAlbum(album: IAlbums, enabled: boolean) {
+export function useYooKassaShopAvailableForAlbum(album: AlbumCommerceSource, enabled: boolean) {
   const [state, setState] = useState<YookassaState>(() =>
     enabled ? { status: 'loading', available: false } : { status: 'done', available: false }
   );
@@ -55,14 +55,25 @@ export function useYooKassaShopAvailableForAlbum(album: IAlbums, enabled: boolea
  * Показывать ли блок «Купить» на странице альбома: если включена только продажа скачивания,
  * блок есть только при настроенной ЮKassa у продавца.
  */
-export function useShowAlbumPurchaseSection(album: IAlbums | undefined): boolean | null {
+export function useShowAlbumPurchaseSection(
+  album: AlbumCommerceSource | undefined
+): boolean | null {
   const viewer = useAuthSessionUser();
   const isAlbumOwnerView = isAlbumViewerOwner(album, viewer?.id);
-  const buttons = album?.buttons as String | undefined;
+  const buttons = album?.serviceButtons;
   const isDownloadAllowed = album ? isAlbumPaidSaleEnabled(album) : false;
   const hasPurchaseLinks = hasTruthyButtonUrl(buttons, ['itunes', 'bandcamp', 'amazon']);
+  const emptyAlbum = {
+    albumId: '',
+    title: '',
+    userId: '',
+    dbAlbumId: '',
+    purchase: { allowDownloadSale: '', regularPrice: '0.99', currency: 'RUB' },
+    serviceButtons: {},
+    tracks: [],
+  } satisfies AlbumCommerceSource;
   const { loading, available } = useYooKassaShopAvailableForAlbum(
-    album ?? ({ albumId: '' } as IAlbums),
+    album ?? emptyAlbum,
     Boolean(album && isDownloadAllowed && !isAlbumOwnerView)
   );
 

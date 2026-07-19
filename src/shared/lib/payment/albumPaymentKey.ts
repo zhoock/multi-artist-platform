@@ -1,9 +1,10 @@
-import type { IAlbums } from '@models';
-
 /**
  * Ключ альбома для `/api/yookassa-shop-id` и `create-payment`: canonical `albums.album_id` (slug).
  */
-export function getAlbumKeyForPaymentApis(album: IAlbums): string | undefined {
+export function getAlbumKeyForPaymentApis(album: {
+  albumId?: string;
+  dbAlbumId?: string;
+}): string | undefined {
   const slug = album.albumId?.trim();
   if (slug) {
     return slug;

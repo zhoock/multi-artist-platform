@@ -18,7 +18,7 @@ import React from 'react';
 import { describe, test, expect, jest, beforeEach } from '@jest/globals';
 import { screen, fireEvent, waitFor } from '@testing-library/react';
 import { renderWithProviders } from '@shared/lib/test-utils';
-import type { IAlbums } from '@models';
+import type { AlbumDetails } from '@entities/album/model/albumDetails';
 
 type CreatePaymentResult = {
   success: boolean;
@@ -76,19 +76,68 @@ jest.mock('@entities/album/ui/AlbumCover', () => ({
 
 import { AlbumCheckoutModal } from '../AlbumCheckoutModal';
 
-const testAlbum = {
+const testAlbum: AlbumDetails = {
   albumId: 'album-1',
-  album: 'Sample Album',
-  artist: 'Test Artist',
-  cover: null,
+  slug: 'album-1',
+  title: 'Sample Album',
+  cover: '',
   userId: 'user-1',
-  release: { regularPrice: '4.99', currency: 'RUB', allowDownloadSale: 'yes' },
+  dbAlbumId: '',
+  description: '',
+  details: [],
+  release: {},
+  artwork: {
+    photographer: '',
+    photographerURL: '',
+    designer: '',
+    designerURL: '',
+  },
+  purchase: {
+    allowDownloadSale: 'yes',
+    regularPrice: '4.99',
+    currency: 'RUB',
+  },
+  serviceButtons: {},
+  visibility: { isPublished: true, isPublic: true },
   tracks: [
-    { id: 1, title: 'Track A' },
-    { id: 2, title: 'Track B' },
+    {
+      id: '1',
+      title: 'Track A',
+      duration: 180,
+      src: 'a.mp3',
+      orderIndex: 0,
+      playbackLocked: false,
+      visibility: 'public',
+      stemsAvailability: 'hidden',
+      audioContainer: null,
+      audioCodec: null,
+      audioBitrate: null,
+      audioSampleRate: null,
+      audioBitDepth: null,
+      audioChannels: null,
+      audioDuration: null,
+      audioFileSize: null,
+    },
+    {
+      id: '2',
+      title: 'Track B',
+      duration: 200,
+      src: 'b.mp3',
+      orderIndex: 1,
+      playbackLocked: false,
+      visibility: 'public',
+      stemsAvailability: 'hidden',
+      audioContainer: null,
+      audioCodec: null,
+      audioBitrate: null,
+      audioSampleRate: null,
+      audioBitDepth: null,
+      audioChannels: null,
+      audioDuration: null,
+      audioFileSize: null,
+    },
   ],
-  buttons: {},
-} as unknown as IAlbums;
+};
 
 function fillValidForm() {
   fireEvent.change(screen.getByLabelText(/email/i), {

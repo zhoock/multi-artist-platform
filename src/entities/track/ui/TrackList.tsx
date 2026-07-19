@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo } from 'react';
 import clsx from 'clsx';
 import { Lock as LockIcon, Pause, Play } from 'lucide-react';
-import type { TracksProps, IAlbums } from '@models';
+import type { TrackDetails } from '@entities/album/model/albumDetails';
 import { isTrackPlaybackBlocked } from '@shared/lib/tracks/trackPlayback';
 import type { AppStore, RootState } from '@shared/model/appStore/types';
 import { fallbackAlbumClientId } from '@shared/lib/albumClientId';
@@ -53,12 +53,18 @@ function buildPlaylistSignature(list: Array<{ id?: string | number | null }>): s
     .join('|')}`;
 }
 
+type TrackListAlbumRef = {
+  albumId?: string;
+  title: string;
+  userId?: string;
+};
+
 type TrackListProps = {
-  tracks: TracksProps[];
-  album: IAlbums;
+  tracks: TrackDetails[];
+  album: TrackListAlbumRef;
   onSelectTrack: (payload: {
     index: number;
-    track: TracksProps;
+    track: TrackDetails;
     isActive: boolean;
     isPlayingNow: boolean;
   }) => void;

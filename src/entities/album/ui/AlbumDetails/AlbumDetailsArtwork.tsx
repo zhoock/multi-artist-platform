@@ -1,4 +1,4 @@
-import type { IAlbums } from '@models';
+import type { AlbumDetails } from '../../model/albumDetails';
 import { useLang } from '@app/providers/lang';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
@@ -6,17 +6,15 @@ import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 /**
  * Компонент отображает блок с информацией об обложке альбома.
  */
-export default function AlbumDetailsArtwork({ album }: { album: IAlbums }) {
+export default function AlbumDetailsArtwork({ album }: { album: AlbumDetails }) {
   const { lang } = useLang();
   const ui = useAppSelector((state) => selectUiDictionaryFirst(state, lang));
 
-  // UI словарь загружается через loader
-
-  const rel = album?.release || {};
-  const photographer = typeof rel.photographer === 'string' ? rel.photographer : '';
-  const photographerURL = typeof rel.photographerURL === 'string' ? rel.photographerURL : '';
-  const designer = typeof rel.designer === 'string' ? rel.designer : '';
-  const designerURL = typeof rel.designerURL === 'string' ? rel.designerURL : '';
+  const art = album.artwork;
+  const photographer = art.photographer;
+  const photographerURL = art.photographerURL;
+  const designer = art.designer;
+  const designerURL = art.designerURL;
   const titles = ui?.titles ?? {};
 
   return (

@@ -1,120 +1,135 @@
-import { describe, test, expect } from '@jest/globals';
+import { describe, test, expect, jest, beforeEach } from '@jest/globals';
 import { screen } from '@testing-library/react';
 import Album from '../Album';
 import { renderWithProviders } from '@shared/lib/test-utils';
-import type { IAlbums } from '@models';
+import { createMockAlbumDetails } from '@entities/album/model/__tests__/albumDetailsFixtures';
+import { createAlbumsTestState } from '@entities/album/model/__tests__/albumsTestState';
+
+jest.mock('@entities/album/api/fetchAlbumDetails', () => ({
+  fetchAlbumDetails: jest.fn(async () => ({
+    albumId: 'test-album',
+    slug: 'test-album',
+    title: 'Test Album',
+    cover: 'cover',
+    userId: 'user-1',
+    dbAlbumId: 'uuid-1',
+    description: 'Test Description',
+    details: [],
+    release: { date: '2024-01-01' },
+    artwork: {
+      photographer: '',
+      photographerURL: '',
+      designer: '',
+      designerURL: '',
+    },
+    purchase: { allowDownloadSale: '', regularPrice: '0.99', currency: 'RUB' },
+    serviceButtons: {},
+    visibility: { isPublished: true, isPublic: true },
+    tracks: [],
+  })),
+  AlbumDetailsFetchError: class AlbumDetailsFetchError extends Error {
+    status: number;
+    code?: string;
+    constructor(message: string, status: number, code?: string) {
+      super(message);
+      this.name = 'AlbumDetailsFetchError';
+      this.status = status;
+      this.code = code;
+    }
+  },
+}));
+
+jest.mock('@shared/lib/hooks/useArtistPageAccess', () => ({
+  useArtistPageAccess: () => ({
+    isLoading: false,
+    isOwner: false,
+    ownerResolved: true,
+    ownerContentLoaded: true,
+    ownerStillNeedsOnboarding: false,
+    hasPublicReleases: true,
+    showOnboarding: false,
+    showOnboardingSkeleton: false,
+    showOwnerUnderConstruction: false,
+    showVisitorUnderConstruction: false,
+    showNotFound: false,
+    showPublished: true,
+    pageReady: true,
+    showArtistPageSkeleton: false,
+    showArtistPageSurfacePending: false,
+    showArtistPageHeroPending: false,
+    showArtistPageLayoutPending: false,
+    headerImages: [],
+    isHeaderImagesReady: true,
+    suppressPublishedArtistChrome: false,
+    monetizationEnabled: false,
+  }),
+}));
+
+jest.mock('@shared/lib/hooks/useRedirectHomeAfterOwnAccountDeleted', () => ({
+  useRedirectHomeAfterOwnAccountDeleted: () => false,
+}));
+
+jest.mock('@shared/lib/hooks/useRedirectAfterDeletedAlbum', () => ({
+  useRedirectAfterDeletedAlbum: () => false,
+}));
+
+function emptyAlbumsState() {
+  return createAlbumsTestState();
+}
+
+function albumDetailsState(
+  status: 'idle' | 'loading' | 'succeeded' | 'failed',
+  data: ReturnType<typeof createMockAlbumDetails> | null = null,
+  error: string | null = null,
+  errorCode: string | null = null
+) {
+  const albumId = data?.albumId ?? 'test-album';
+  return {
+    status,
+    error,
+    errorCode,
+    data,
+    fetchContextKey: data ? `albumDetails:test-artist:${albumId}` : null,
+    artistSlug: data ? 'test-artist' : null,
+    albumId: data ? albumId : null,
+    lastUpdated: data ? Date.now() : null,
+  };
+}
 
 describe('Album integration tests', () => {
-  const mockAlbum: IAlbums = {
-    albumId: 'test-album',
-    album: 'Test Album',
-    artist: 'Test Artist',
-    fullName: 'Test Artist — Test Album',
-    description: 'Test Description',
-    release: {
-      date: '2024-01-01',
-    },
-    cover: 'cover',
-    tracks: [
-      {
-        id: '1',
-        title: 'Track 1',
-        order_index: 0,
-        content: '',
-        duration: 180,
-        src: 'track1.mp3',
-      },
-      {
-        id: '2',
-        title: 'Track 2',
-        order_index: 1,
-        content: '',
-        duration: 200,
-        src: 'track2.mp3',
-      },
-    ],
-    buttons: {},
-    details: [],
-    isPublished: true,
-    isPublic: true,
-  };
+  const mockDetails = createMockAlbumDetails();
 
-  test('должен отобразить Loader во время загрузки', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  test('должен отобразить Loader во время загрузки AlbumDetails', () => {
     renderWithProviders(<Album />, {
-      initialEntries: ['/albums/test-album'],
+      initialEntries: ['/albums/test-album?artist=test-artist'],
       preloadedState: {
         lang: { current: 'en' },
-        albums: {
-          status: 'loading',
-          error: null,
-          data: [],
-          lastUpdated: null,
-          fetchContextKey: null,
-          inFlightFetchContextKey: null,
-          catalogArtistMissing: false,
-          dashboard: {
-            status: 'idle',
-            error: null,
-            data: [],
-            lastUpdated: null,
-            inFlightFetchContextKey: null,
-          },
-        },
+        albums: emptyAlbumsState(),
+        albumDetails: albumDetailsState('loading'),
         uiDictionary: {
-          en: {
-            status: 'idle',
-            error: null,
-            data: [],
-            lastUpdated: null,
-          },
-          ru: {
-            status: 'idle',
-            error: null,
-            data: [],
-            lastUpdated: null,
-          },
+          en: { status: 'idle', error: null, data: [], lastUpdated: null },
+          ru: { status: 'idle', error: null, data: [], lastUpdated: null },
         },
       },
     });
 
-    // В loading/idle рендерится skeleton
     expect(screen.getByLabelText(/скелетон альбома/i)).toBeInTheDocument();
   });
 
-  test('должен отобразить ошибку при failed статусе', () => {
+  test('должен отобразить ошибку при failed статусе AlbumDetails', () => {
     renderWithProviders(<Album />, {
-      initialEntries: ['/albums/test-album'],
+      initialEntries: ['/albums/test-album?artist=test-artist'],
       preloadedState: {
         lang: { current: 'en' },
-        albums: {
-          status: 'failed',
-          error: 'Failed to load album',
-          data: [],
-          lastUpdated: null,
-          fetchContextKey: null,
-          inFlightFetchContextKey: null,
-          catalogArtistMissing: false,
-          dashboard: {
-            status: 'idle',
-            error: null,
-            data: [],
-            lastUpdated: null,
-            inFlightFetchContextKey: null,
-          },
-        },
+        albums: emptyAlbumsState(),
+        albumDetails: albumDetailsState('failed', null, 'Failed to load album'),
         uiDictionary: {
-          en: {
-            status: 'idle',
-            error: null,
-            data: [],
-            lastUpdated: null,
-          },
-          ru: {
-            status: 'idle',
-            error: null,
-            data: [],
-            lastUpdated: null,
-          },
+          en: { status: 'idle', error: null, data: [], lastUpdated: null },
+          ru: { status: 'idle', error: null, data: [], lastUpdated: null },
         },
       },
     });
@@ -124,38 +139,19 @@ describe('Album integration tests', () => {
 
   test('должен отобразить ошибку если альбом не найден', () => {
     renderWithProviders(<Album />, {
-      initialEntries: ['/albums/non-existent'],
+      initialEntries: ['/albums/non-existent?artist=test-artist'],
       preloadedState: {
         lang: { current: 'en' },
-        albums: {
-          status: 'succeeded',
-          error: null,
-          data: [],
-          lastUpdated: Date.now(),
-          fetchContextKey: null,
-          inFlightFetchContextKey: null,
-          catalogArtistMissing: false,
-          dashboard: {
-            status: 'idle',
-            error: null,
-            data: [],
-            lastUpdated: null,
-            inFlightFetchContextKey: null,
-          },
+        albums: emptyAlbumsState(),
+        albumDetails: {
+          ...albumDetailsState('succeeded', null, null, 'ALBUM_NOT_FOUND'),
+          artistSlug: 'test-artist',
+          albumId: 'non-existent',
+          fetchContextKey: 'albumDetails:test-artist:non-existent',
         },
         uiDictionary: {
-          en: {
-            status: 'idle',
-            error: null,
-            data: [],
-            lastUpdated: null,
-          },
-          ru: {
-            status: 'idle',
-            error: null,
-            data: [],
-            lastUpdated: null,
-          },
+          en: { status: 'idle', error: null, data: [], lastUpdated: null },
+          ru: { status: 'idle', error: null, data: [], lastUpdated: null },
         },
       },
     });
@@ -163,27 +159,13 @@ describe('Album integration tests', () => {
     expect(screen.getByLabelText(/блок c альбомом/i)).toBeInTheDocument();
   });
 
-  test('должен отобразить альбом с правильными данными', () => {
+  test('должен отобразить альбом из AlbumDetails без fat albumsSlice', () => {
     renderWithProviders(<Album />, {
-      initialEntries: ['/albums/test-album'],
+      initialEntries: ['/albums/test-album?artist=test-artist'],
       preloadedState: {
         lang: { current: 'en' },
-        albums: {
-          status: 'succeeded',
-          error: null,
-          data: [mockAlbum],
-          lastUpdated: Date.now(),
-          fetchContextKey: null,
-          inFlightFetchContextKey: null,
-          catalogArtistMissing: false,
-          dashboard: {
-            status: 'idle',
-            error: null,
-            data: [],
-            lastUpdated: null,
-            inFlightFetchContextKey: null,
-          },
-        },
+        albums: emptyAlbumsState(),
+        albumDetails: albumDetailsState('succeeded', mockDetails),
         uiDictionary: {
           en: {
             status: 'succeeded',
@@ -193,104 +175,71 @@ describe('Album integration tests', () => {
                 menu: {},
                 buttons: {},
                 titles: {},
-                links: {
-                  home: 'Home',
-                },
+                links: { home: 'Home' },
               },
             ],
             lastUpdated: Date.now(),
           },
-          ru: {
-            status: 'idle',
-            error: null,
-            data: [],
-            lastUpdated: null,
-          },
+          ru: { status: 'idle', error: null, data: [], lastUpdated: null },
         },
       },
     });
 
     expect(screen.getByLabelText(/блок c альбомом/i)).toBeInTheDocument();
+    // Fat public catalog must stay empty — page reads albumDetails only.
+    expect(emptyAlbumsState().data).toHaveLength(0);
   });
 
   test('должен отобразить правильные SEO метаданные', () => {
     renderWithProviders(<Album />, {
-      initialEntries: ['/albums/test-album'],
+      initialEntries: ['/albums/test-album?artist=test-artist'],
       preloadedState: {
         lang: { current: 'en' },
-        albums: {
-          status: 'succeeded',
-          error: null,
-          data: [mockAlbum],
-          lastUpdated: Date.now(),
-          fetchContextKey: null,
-          inFlightFetchContextKey: null,
-          catalogArtistMissing: false,
-          dashboard: {
-            status: 'idle',
-            error: null,
-            data: [],
-            lastUpdated: null,
-            inFlightFetchContextKey: null,
-          },
-        },
+        albums: emptyAlbumsState(),
+        albumDetails: albumDetailsState('succeeded', mockDetails),
         uiDictionary: {
-          en: {
-            status: 'idle',
-            error: null,
-            data: [],
-            lastUpdated: null,
-          },
-          ru: {
-            status: 'idle',
-            error: null,
-            data: [],
-            lastUpdated: null,
+          en: { status: 'idle', error: null, data: [], lastUpdated: null },
+          ru: { status: 'idle', error: null, data: [], lastUpdated: null },
+        },
+      },
+    });
+
+    expect(screen.getByLabelText(/блок c альбомом/i)).toBeInTheDocument();
+  });
+
+  test('должен обработать разные языки через AlbumDetails translations', () => {
+    const ruDetails = createMockAlbumDetails({
+      albumId: 'test-album-ru',
+      slug: 'test-album-ru',
+      title: 'Тестовый альбом',
+      description: 'Описание',
+      translations: {
+        ru: {
+          fullName: 'Артист — Тестовый альбом',
+          description: 'Описание RU',
+          details: [],
+          artwork: {
+            photographer: '',
+            photographerURL: '',
+            designer: '',
+            designerURL: '',
           },
         },
       },
     });
 
-    // Проверяем что компонент рендерится (SEO проверяется через Helmet)
-    expect(screen.getByLabelText(/блок c альбомом/i)).toBeInTheDocument();
-  });
-
-  test('должен обработать разные языки', () => {
-    const ruAlbum: IAlbums = {
-      ...mockAlbum,
-      albumId: 'test-album-ru',
-      album: 'Тестовый альбом',
-      artist: 'Тестовый артист',
-      fullName: 'Тестовый артист — Тестовый альбом',
-    };
-
     renderWithProviders(<Album />, {
-      initialEntries: ['/albums/test-album-ru'],
+      initialEntries: ['/albums/test-album-ru?artist=test-artist'],
       preloadedState: {
         lang: { current: 'ru' },
-        albums: {
-          status: 'succeeded',
-          error: null,
-          data: [ruAlbum],
-          lastUpdated: Date.now(),
-          fetchContextKey: null,
-          inFlightFetchContextKey: null,
-          catalogArtistMissing: false,
-          dashboard: {
-            status: 'idle',
-            error: null,
-            data: [],
-            lastUpdated: null,
-            inFlightFetchContextKey: null,
-          },
+        albums: emptyAlbumsState(),
+        albumDetails: {
+          ...albumDetailsState('succeeded', ruDetails),
+          fetchContextKey: 'albumDetails:test-artist:test-album-ru',
+          albumId: 'test-album-ru',
         },
         uiDictionary: {
-          en: {
-            status: 'idle',
-            error: null,
-            data: [],
-            lastUpdated: null,
-          },
+          en: { status: 'idle', error: null, data: [], lastUpdated: null },
           ru: {
             status: 'succeeded',
             error: null,
@@ -299,9 +248,7 @@ describe('Album integration tests', () => {
                 menu: {},
                 buttons: {},
                 titles: {},
-                links: {
-                  home: 'Главная',
-                },
+                links: { home: 'Главная' },
               },
             ],
             lastUpdated: Date.now(),

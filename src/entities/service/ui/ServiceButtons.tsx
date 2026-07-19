@@ -2,8 +2,8 @@ import { useLang } from '@app/providers/lang';
 import { Download as DownloadIcon, ShoppingBag as ShoppingBagIcon } from 'lucide-react';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
-import type { String, IAlbums } from '@models';
-import { useEffect, useState } from 'react';
+import type { AlbumDetails } from '@entities/album/model/albumDetails';
+import { useEffect, useMemo, useState } from 'react';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 import { downloadOwnedAlbumZipByAuth } from '@shared/api/purchases';
 import { getAlbumKeyForPaymentApis } from '@shared/lib/payment/albumPaymentKey';
@@ -11,6 +11,8 @@ import { useAuthSessionUser } from '@shared/lib/hooks/useAuthSessionUser';
 import { isAuthenticated } from '@shared/lib/auth';
 import { consumePendingAlbumCheckoutForKey } from '@shared/lib/authIntent';
 import { AlertModal } from '@shared/ui/alertModal';
+import { useSiteArtistDisplayName } from '@shared/lib/hooks/useSiteArtistDisplayName';
+import { useLocation } from 'react-router-dom';
 import { GetButton } from './GetButton';
 import { AlbumCheckoutModal } from './AlbumCheckoutModal';
 import {
@@ -29,7 +31,7 @@ import { getAlbumDownloadOfferLabel } from '../lib/getAlbumDownloadFormatsLabel'
 import './style.scss';
 
 type ServiceButtonsProps = {
-  album: IAlbums;
+  album: AlbumDetails;
   section: string;
 };
 
@@ -45,7 +47,7 @@ function ServiceButtonsContent({
   section,
   labels,
 }: {
-  album: IAlbums;
+  album: AlbumDetails;
   section: string;
   labels: {
     purchase: string;
@@ -68,8 +70,17 @@ function ServiceButtonsContent({
   }>({ active: false, percent: null });
   const isDownloadingAlbum = albumDownloadState.active;
   const downloadProgress = albumDownloadState.percent;
-  const buttons = album?.buttons as String;
+  const buttons = album.serviceButtons;
   const viewer = useAuthSessionUser();
+  const { lang } = useLang();
+  const location = useLocation();
+  const artistSlugFromUrl = useMemo(() => {
+    const raw = new URLSearchParams(location.search).get('artist');
+    return raw?.trim() || null;
+  }, [location.search]);
+  const { displayName: siteArtistName } = useSiteArtistDisplayName(lang, {
+    artistSlug: artistSlugFromUrl,
+  });
   const isAlbumOwnerView = isAlbumViewerOwner(album, viewer?.id);
 
   const isPaidSaleEnabled = isAlbumPaidSaleEnabled(album);
@@ -157,8 +168,8 @@ function ServiceButtonsContent({
           await downloadOwnedAlbumZipByAuth(
             {
               albumId: albumKey,
-              artist: album.artist,
-              album: album.album,
+              artist: siteArtistName.trim(),
+              album: album.title,
               tracks: downloadTracks,
             },
             {
