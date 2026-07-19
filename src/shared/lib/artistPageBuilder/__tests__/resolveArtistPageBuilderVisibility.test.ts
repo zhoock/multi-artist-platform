@@ -3,6 +3,7 @@ import {
   resolveArtistPageBuilderVisibility,
   resolveArtistPageSkeletonVariant,
   shouldShowArtistPageBuilderBlock,
+  shouldShowArtistPageBuilderPaymentBlock,
 } from '../resolveArtistPageBuilderVisibility';
 
 const ownerReady = {
@@ -55,6 +56,38 @@ describe('shouldShowArtistPageBuilderBlock', () => {
     expect(shouldShowArtistPageBuilderBlock({ canShowBlocks: true }, true)).toBe(true);
     expect(shouldShowArtistPageBuilderBlock({ canShowBlocks: true }, false)).toBe(false);
     expect(shouldShowArtistPageBuilderBlock({ canShowBlocks: false }, true)).toBe(false);
+  });
+});
+
+describe('shouldShowArtistPageBuilderPaymentBlock', () => {
+  test('hides while payment status is unresolved even if monetization looks off', () => {
+    expect(
+      shouldShowArtistPageBuilderPaymentBlock(
+        { canShowBlocks: true },
+        { resolved: false, monetizationEnabled: false }
+      )
+    ).toBe(false);
+  });
+
+  test('shows only when resolved and monetization is off', () => {
+    expect(
+      shouldShowArtistPageBuilderPaymentBlock(
+        { canShowBlocks: true },
+        { resolved: true, monetizationEnabled: false }
+      )
+    ).toBe(true);
+    expect(
+      shouldShowArtistPageBuilderPaymentBlock(
+        { canShowBlocks: true },
+        { resolved: true, monetizationEnabled: true }
+      )
+    ).toBe(false);
+    expect(
+      shouldShowArtistPageBuilderPaymentBlock(
+        { canShowBlocks: false },
+        { resolved: true, monetizationEnabled: false }
+      )
+    ).toBe(false);
   });
 });
 

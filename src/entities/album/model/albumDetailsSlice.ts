@@ -6,6 +6,7 @@ import {
 } from '../api/fetchAlbumDetails';
 import type { AlbumDetails } from './albumDetails';
 import type { RequestStatus } from './types';
+import { consumeAlbumDetailsStale, isAlbumDetailsStale } from './albumDetailsStale';
 
 export type AlbumDetailsState = {
   status: RequestStatus;
@@ -102,7 +103,15 @@ export const fetchAlbumDetailsPage = createAsyncThunk<
   },
   {
     condition: (arg, { getState }) => {
-      if (arg.force) return true;
+      if (arg.force) {
+        consumeAlbumDetailsStale(arg.albumId);
+        return true;
+      }
+      // Dashboard public-surface sync marked this album dirty — do not reuse last-good.
+      if (isAlbumDetailsStale(arg.albumId)) {
+        consumeAlbumDetailsStale(arg.albumId);
+        return true;
+      }
       const state = getState().albumDetails;
       if (state.status === 'loading') return false;
       const desired = buildAlbumDetailsFetchContextKey(arg.artistSlug, arg.albumId);

@@ -82,8 +82,8 @@ export function HomePage() {
 
   /**
    * `artist:updated` — сигнал для Universe / профиля / about, не для каталога.
-   * Публичный catalog после правок в Dashboard обновляет сам Dashboard
-   * (`refreshPublicCatalogNow` / `syncPublicSurfaceAfterDashboardClose`).
+   * Публичный catalog / albumDetails / articles после правок обновляет
+   * `notifyPublicSurfaceChanged` (`@shared/lib/publicSurfaceSync`).
    */
   useEffect(() => {
     const handler = () => {

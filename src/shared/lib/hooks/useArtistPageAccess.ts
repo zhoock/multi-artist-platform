@@ -98,6 +98,11 @@ export type ArtistPageAccessValue = {
   suppressPublishedArtistChrome: boolean;
   /** Artist has connected payment acceptance — gates collection / exclusive content. */
   monetizationEnabled: boolean;
+  /**
+   * Payment/monetization status has been resolved for the current artist slug.
+   * Until true, `monetizationEnabled === false` means "unknown", not "disconnected".
+   */
+  paymentSurfaceReady: boolean;
 };
 
 type UseArtistPageAccessStateOptions = {
@@ -160,7 +165,8 @@ export function useArtistPageAccessState(
   );
   const [aboutSurfaceReady, setAboutSurfaceReady] = useState(false);
   const [socialSurfaceReady, setSocialSurfaceReady] = useState(false);
-  const [paymentSurfaceReady, setPaymentSurfaceReady] = useState(true);
+  /** False until first resolve — do not treat monetizationEnabled as authoritative yet. */
+  const [paymentSurfaceReady, setPaymentSurfaceReady] = useState(false);
   const [monetizationEnabled, setMonetizationEnabled] = useState(false);
   const [artistDisplayNameReady, setArtistDisplayNameReady] = useState(false);
   /** Slug for which profile/payment chrome gates already passed (SWR soft refresh). */
@@ -675,6 +681,7 @@ export function useArtistPageAccessState(
     isHeaderImagesReady,
     suppressPublishedArtistChrome,
     monetizationEnabled,
+    paymentSurfaceReady,
   } satisfies ArtistPageAccessValue;
 }
 

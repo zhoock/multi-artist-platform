@@ -6,14 +6,9 @@ import { AlertModal } from '@shared/ui/alertModal';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { useAppDispatch } from '@shared/lib/hooks/useAppDispatch';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
-import {
-  selectDashboardAlbumsData,
-  fetchDashboardAlbums,
-  fetchArtistAlbumCatalog,
-} from '@entities/album';
-import { selectPublicArtistSlug } from '@shared/model/currentArtist';
-import { getStore } from '@shared/model/appStore';
+import { selectDashboardAlbumsData, fetchDashboardAlbums } from '@entities/album';
 import { queueAlbumCreatedToast } from '@shared/lib/albumCreatedToast';
+import { notifyPublicSurfaceChanged } from '@shared/lib/publicSurfaceSync';
 import { useLang } from '@app/providers/lang';
 import { getToken, getUser } from '@shared/lib/auth';
 import { fetchWithAuthSession } from '@shared/lib/authFetch';
@@ -2501,20 +2496,7 @@ export function EditAlbumModal({
       console.log('🔄 [EditAlbumModal] Forcing fetchDashboardAlbums for lang:', lang);
       try {
         await dispatch(fetchDashboardAlbums({ force: true, ownerDashboard: true })).unwrap();
-        const publicSlug = selectPublicArtistSlug(getStore().getState())?.trim();
-        if (publicSlug) {
-          try {
-            await dispatch(
-              fetchArtistAlbumCatalog({ force: true, publicArtistSlug: publicSlug })
-            ).unwrap();
-          } catch {
-            /* thin public catalog — best-effort */
-          }
-        }
         console.log('✅ [EditAlbumModal] Redux store updated for', lang);
-        if (typeof window !== 'undefined') {
-          window.dispatchEvent(new Event('artist:updated'));
-        }
       } catch (fetchError) {
         console.error('❌ [EditAlbumModal] Failed to update Redux store:', fetchError);
         // Продолжаем выполнение даже если fetchDashboardAlbums не удался
@@ -2527,6 +2509,20 @@ export function EditAlbumModal({
       if (updatedAlbum?.albumId) {
         canonicalAlbumIdRef.current = updatedAlbum.albumId;
         albumTitleAtOpenRef.current = (updatedAlbum.album ?? formData.title ?? '').trim();
+      }
+
+      const savedAlbumId =
+        updatedAlbum?.albumId ||
+        canonicalAlbumIdRef.current ||
+        originalAlbum?.albumId ||
+        albumId ||
+        '';
+      if (savedAlbumId) {
+        notifyPublicSurfaceChanged({
+          type: 'albumContentChanged',
+          albumId: savedAlbumId,
+          previousAlbumId: previousAlbumIdForApi,
+        });
       }
 
       if (isNewAlbumWizard && method === 'POST') {

@@ -121,7 +121,7 @@ interface EditArticleModalV2Props {
   onClose: () => void;
   publicArtistSlug?: string | null;
   onArticleEditorToast?: () => void;
-  onArticlePersisted?: (options: { published: boolean }) => void;
+  onArticlePersisted?: (options: { affectsPublicSurface: boolean }) => void;
 }
 
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
@@ -656,7 +656,8 @@ export function EditArticleModalV2({
           console.warn('Failed to update Redux store:', error);
         }
 
-        onArticlePersisted?.({ published: false });
+        // Live article save (already published) must revalidate public articles — not only Publish.
+        onArticlePersisted?.({ affectsPublicSurface: !neverPublished });
         showEditorToast({ kind: 'draft-saved' });
       } else if (await abortSaveFailureIfSessionInterrupted(response, fetchInit)) {
         return;
@@ -777,7 +778,7 @@ export function EditArticleModalV2({
         onArticleEditorToast?.();
 
         await dispatch(fetchArticles({ force: true, ownerDashboard: true })).unwrap();
-        onArticlePersisted?.({ published: true });
+        onArticlePersisted?.({ affectsPublicSurface: true });
         onClose();
       } else if (await abortSaveFailureIfSessionInterrupted(response, fetchInit)) {
         return;

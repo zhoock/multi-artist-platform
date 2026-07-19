@@ -73,7 +73,6 @@ import { useAuthSessionUser } from '@shared/lib/hooks/useAuthSessionUser';
 import { ArtistMonetizationProvider } from '@shared/lib/payment/ArtistMonetizationContext';
 import {
   fetchDashboardAlbums,
-  fetchArtistAlbumCatalog,
   patchDashboardAlbumVisibility,
   patchDashboardTrackVisibility,
   selectDashboardAlbumsStatus,
@@ -88,6 +87,10 @@ import {
   selectDashboardArticlesError,
   selectDashboardArticlesDataResolved,
 } from '@entities/article';
+import {
+  flushPendingPublicSurfaceSync,
+  notifyPublicSurfaceChanged,
+} from '@shared/lib/publicSurfaceSync';
 import {
   applyTrackLyricsBundle,
   resolveTrackLyricsBundle,
@@ -348,16 +351,6 @@ function UserDashboard() {
   const [albumAccessMenuAlbumId, setAlbumAccessMenuAlbumId] = useState<string | null>(null);
   const [albumsData, setAlbumsData] = useState<AlbumData[]>([]);
   const { flashes: dashboardRowFlashes, flashRow: flashDashboardRow } = useDashboardRowFlash();
-  const catalogNeedsRefreshRef = useRef(false);
-  const articlesNeedsRefreshRef = useRef(false);
-
-  const markPublicCatalogDirty = useCallback(() => {
-    catalogNeedsRefreshRef.current = true;
-  }, []);
-
-  const markPublicArticlesDirty = useCallback(() => {
-    articlesNeedsRefreshRef.current = true;
-  }, []);
 
   const resolvePublicArtistSlugForRefresh = useCallback((): string | null => {
     const fromBackground = backgroundLocation
@@ -366,123 +359,26 @@ function UserDashboard() {
     return fromBackground ?? profilePublicSlug?.trim() ?? null;
   }, [backgroundLocation, profilePublicSlug]);
 
-  const refreshPublicCatalogNow = useCallback(
-    (artistSlug: string | null) => {
-      const slug = artistSlug?.trim();
-      if (!slug) return;
-      // Уже обновили публичный thin catalog — close не должен делать второй force-fetch.
-      catalogNeedsRefreshRef.current = false;
-      void dispatch(
-        fetchArtistAlbumCatalog({
-          force: true,
-          publicArtistSlug: slug,
-        })
-      );
-    },
-    [dispatch]
-  );
-
-  const refreshPublicArticlesNow = useCallback(
-    (artistSlug: string | null) => {
-      const slug = artistSlug?.trim();
-      if (!slug) return;
-      articlesNeedsRefreshRef.current = false;
-      void dispatch(
-        fetchArticles({
-          force: true,
-          forcePublicCatalog: true,
-          publicArtistSlug: slug,
-        })
-      );
-    },
-    [dispatch]
-  );
-
-  const syncPublicArticlesAfterChange = useCallback(
-    (options?: { refreshNow?: boolean; broadcast?: boolean }) => {
-      if (options?.broadcast !== false && typeof window !== 'undefined') {
-        window.dispatchEvent(new Event('artist:updated'));
-      }
-      markPublicArticlesDirty();
-      if (options?.refreshNow !== false) {
-        refreshPublicArticlesNow(resolvePublicArtistSlugForRefresh());
-      }
-    },
-    [markPublicArticlesDirty, refreshPublicArticlesNow, resolvePublicArtistSlugForRefresh]
-  );
-
   const handleArticlePersisted = useCallback(
-    ({ published }: { published: boolean }) => {
-      if (!published) return;
-      syncPublicArticlesAfterChange();
+    ({ affectsPublicSurface }: { affectsPublicSurface: boolean }) => {
+      if (!affectsPublicSurface) return;
+      notifyPublicSurfaceChanged(
+        { type: 'articlePublicChanged' },
+        { artistSlug: resolvePublicArtistSlugForRefresh() }
+      );
     },
-    [syncPublicArticlesAfterChange]
+    [resolvePublicArtistSlugForRefresh]
   );
 
   const handleArticleRemoved = useCallback(
     ({ wasPublished }: { wasPublished: boolean }) => {
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new Event('artist:updated'));
-      }
-      if (wasPublished) {
-        markPublicArticlesDirty();
-        refreshPublicArticlesNow(resolvePublicArtistSlugForRefresh());
-      }
+      if (!wasPublished) return;
+      notifyPublicSurfaceChanged(
+        { type: 'articlePublicChanged' },
+        { artistSlug: resolvePublicArtistSlugForRefresh() }
+      );
     },
-    [markPublicArticlesDirty, refreshPublicArticlesNow, resolvePublicArtistSlugForRefresh]
-  );
-
-  const handleCatalogChanged = useCallback(
-    ({ wasPubliclyVisible }: { wasPubliclyVisible: boolean }) => {
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new Event('artist:updated'));
-      }
-      if (wasPubliclyVisible) {
-        markPublicCatalogDirty();
-      }
-    },
-    [markPublicCatalogDirty]
-  );
-
-  const syncPublicSurfaceAfterDashboardClose = useCallback(
-    (artistSlug: string | null) => {
-      if (!artistSlug) return;
-
-      const catalogDirty = catalogNeedsRefreshRef.current;
-      const articlesDirty = articlesNeedsRefreshRef.current;
-      if (!catalogDirty && !articlesDirty) return;
-
-      catalogNeedsRefreshRef.current = false;
-      articlesNeedsRefreshRef.current = false;
-
-      // Не вызываем setPublicArtistSlug: при совпадении slug он no-op, при рассинхроне
-      // сбрасывает catalog в idle/stale без loader re-run (surface уже смонтирована под модалкой).
-      // Slug синхронизирует CurrentArtistSync из URL после navigate.
-      if (catalogDirty) {
-        void dispatch(
-          fetchArtistAlbumCatalog({
-            force: true,
-            publicArtistSlug: artistSlug,
-          })
-        );
-        if (typeof window !== 'undefined') {
-          window.dispatchEvent(new Event('artist:updated'));
-        }
-      }
-      if (articlesDirty) {
-        void dispatch(
-          fetchArticles({
-            force: true,
-            forcePublicCatalog: true,
-            publicArtistSlug: artistSlug,
-          })
-        );
-        if (!catalogDirty && typeof window !== 'undefined') {
-          window.dispatchEvent(new Event('artist:updated'));
-        }
-      }
-    },
-    [dispatch]
+    [resolvePublicArtistSlugForRefresh]
   );
 
   const closeDashboard = useCallback(() => {
@@ -506,8 +402,9 @@ function UserDashboard() {
       { replace: true }
     );
 
-    syncPublicSurfaceAfterDashboardClose(artistSlugForRefresh);
-  }, [backgroundLocation, navigate, profilePublicSlug, syncPublicSurfaceAfterDashboardClose]);
+    // Only retries scopes that could not resolve a slug at mutation time — not a global refresh.
+    flushPendingPublicSurfaceSync(artistSlugForRefresh);
+  }, [backgroundLocation, navigate, profilePublicSlug]);
   const [editArticleModal, setEditArticleModal] = useState<{
     isOpen: boolean;
     article: IArticles | null;
@@ -883,6 +780,10 @@ function UserDashboard() {
 
       // Обновляем данные из БД для синхронизации
       await dispatch(fetchDashboardAlbums({ force: true, ownerDashboard: true })).unwrap();
+      notifyPublicSurfaceChanged(
+        { type: 'trackContentChanged', albumId: album.albumId },
+        { artistSlug: resolvePublicArtistSlugForRefresh() }
+      );
       console.log('✅ Tracks reordered successfully');
     } catch (error) {
       console.error('❌ Error reordering tracks:', error);
@@ -963,6 +864,10 @@ function UserDashboard() {
         )
       );
 
+      notifyPublicSurfaceChanged(
+        { type: 'trackContentChanged', albumId },
+        { artistSlug: resolvePublicArtistSlugForRefresh() }
+      );
       console.log('✅ Track title updated successfully');
     } catch (error) {
       console.error('❌ Error updating track title:', error);
@@ -1016,7 +921,6 @@ function UserDashboard() {
 
     applyTrackVisibility(visibility);
     flashDashboardRow(`dashboard-track-row-${trackId}`, visibility);
-    markPublicCatalogDirty();
 
     try {
       const response = await fetchWithAuthSession('/api/update-track-visibility', {
@@ -1033,7 +937,10 @@ function UserDashboard() {
         throw new Error((errorData as any)?.message || `HTTP error! status: ${response.status}`);
       }
 
-      refreshPublicCatalogNow(resolvePublicArtistSlugForRefresh());
+      notifyPublicSurfaceChanged(
+        { type: 'trackVisibilityChanged', albumId },
+        { artistSlug: resolvePublicArtistSlugForRefresh() }
+      );
     } catch (error) {
       console.error('❌ Error updating track visibility:', error);
       applyTrackVisibility(previousVisibility);
@@ -1073,7 +980,6 @@ function UserDashboard() {
       })
     );
     flashDashboardRow(`dashboard-album-row-${albumId}`, visibility);
-    markPublicCatalogDirty();
 
     try {
       const response = await fetchWithAuthSession('/api/update-album-visibility', {
@@ -1090,7 +996,10 @@ function UserDashboard() {
         throw new Error((errorData as { message?: string })?.message || `HTTP ${response.status}`);
       }
 
-      refreshPublicCatalogNow(resolvePublicArtistSlugForRefresh());
+      notifyPublicSurfaceChanged(
+        { type: 'albumVisibilityChanged', albumId },
+        { artistSlug: resolvePublicArtistSlugForRefresh() }
+      );
     } catch (error) {
       console.error('Error updating album visibility:', error);
       dispatch(patchDashboardAlbumVisibility({ albumId, isPublic: previousIsPublic }));
@@ -1123,7 +1032,6 @@ function UserDashboard() {
 
     dispatch(patchDashboardArticleVisibility({ articleId, visibility }));
     flashDashboardRow(`dashboard-article-row-${articleId}`, visibility);
-    markPublicArticlesDirty();
 
     try {
       const response = await fetchWithAuthSession('/api/update-article-visibility', {
@@ -1140,7 +1048,10 @@ function UserDashboard() {
         throw new Error((errorData as { message?: string })?.message || `HTTP ${response.status}`);
       }
 
-      syncPublicArticlesAfterChange({ broadcast: false });
+      notifyPublicSurfaceChanged(
+        { type: 'articlePublicChanged' },
+        { artistSlug: resolvePublicArtistSlugForRefresh() }
+      );
     } catch (error) {
       console.error('Error updating article visibility:', error);
       dispatch(patchDashboardArticleVisibility({ articleId, visibility: previousVisibility }));
@@ -1218,7 +1129,12 @@ function UserDashboard() {
         }
       }
 
-      handleCatalogChanged({ wasPubliclyVisible });
+      if (wasPubliclyVisible) {
+        notifyPublicSurfaceChanged(
+          { type: 'trackDeleted', albumId },
+          { artistSlug: resolvePublicArtistSlugForRefresh() }
+        );
+      }
 
       console.log('✅ Track deleted successfully:', { albumId, trackId });
     } catch (error) {
@@ -1295,8 +1211,10 @@ function UserDashboard() {
 
       await dispatch(fetchDashboardAlbums({ force: true, ownerDashboard: true })).unwrap();
 
-      handleCatalogChanged({ wasPubliclyVisible: true });
-      refreshPublicCatalogNow(resolvePublicArtistSlugForRefresh());
+      notifyPublicSurfaceChanged(
+        { type: 'albumPublished', albumId },
+        { artistSlug: resolvePublicArtistSlugForRefresh() }
+      );
       queueAlbumPublishedToast();
       setPublishedToastTrigger((value) => value + 1);
     } catch (error) {
@@ -1444,7 +1362,12 @@ function UserDashboard() {
         setExpandedAlbumId(null);
       }
 
-      handleCatalogChanged({ wasPubliclyVisible: shouldSyncPublicCatalog });
+      if (shouldSyncPublicCatalog) {
+        notifyPublicSurfaceChanged(
+          { type: 'albumDeleted', albumId },
+          { artistSlug: resolvePublicArtistSlugForRefresh() }
+        );
+      }
 
       queueAlbumDeletedToast(formatAlbumDeletedSuccessMessage(deletedAlbumTitle, ui));
       setAlbumDeletedToastTrigger((n) => n + 1);
@@ -1582,6 +1505,10 @@ function UserDashboard() {
           }
         }
 
+        notifyPublicSurfaceChanged(
+          { type: 'trackContentChanged', albumId },
+          { artistSlug: resolvePublicArtistSlugForRefresh() }
+        );
         queueTracksUploadedToast(formatUploadedTracksSuccessMessage(uploadedCount, lang, ui));
         setTracksUploadToastTrigger((n) => n + 1);
       } else {

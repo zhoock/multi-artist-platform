@@ -45,6 +45,24 @@ export function shouldShowArtistPageBuilderBlock(
   return visibility.canShowBlocks && isSectionEmpty;
 }
 
+export type ArtistPageBuilderPaymentStatus = {
+  /** False while payment settings / public monetization flag are still loading. */
+  resolved: boolean;
+  monetizationEnabled: boolean;
+};
+
+/**
+ * Payment builder CTA: show only when monetization is known to be off.
+ * Unknown (`resolved === false`) must not be treated as "not connected".
+ */
+export function shouldShowArtistPageBuilderPaymentBlock(
+  visibility: Pick<ArtistPageBuilderVisibility, 'canShowBlocks'>,
+  payment: ArtistPageBuilderPaymentStatus
+): boolean {
+  if (!payment.resolved) return false;
+  return shouldShowArtistPageBuilderBlock(visibility, !payment.monetizationEnabled);
+}
+
 export type ArtistPageSkeletonVariant = 'public' | 'builder';
 
 export type ResolveArtistPageSkeletonVariantInput = {

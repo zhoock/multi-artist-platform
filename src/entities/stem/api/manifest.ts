@@ -170,9 +170,8 @@ export async function saveStemsManifest(
   const { signedUrl } = await getSignedUploadUrl(albumId, trackId, MANIFEST_FILE);
   await putToSignedUrl(signedUrl, file, MANIFEST_MIME);
   await syncTrackHasStems(albumId, trackId, stems.length > 0);
-  if (typeof window !== 'undefined') {
-    window.dispatchEvent(new CustomEvent('stems-manifest-updated'));
-  }
+  const { notifyPublicSurfaceChanged } = await import('@shared/lib/publicSurfaceSync');
+  notifyPublicSurfaceChanged({ type: 'stemsChanged', albumId });
 }
 
 /** Удалить файл стема из Storage. */

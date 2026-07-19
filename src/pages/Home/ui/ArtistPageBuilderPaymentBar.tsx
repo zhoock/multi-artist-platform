@@ -3,9 +3,7 @@ import { useLang } from '@app/providers/lang';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { useArtistPageBuilder } from '@shared/lib/hooks/useArtistPageBuilder';
 import { useEffectiveSearchParams } from '@shared/lib/hooks/useEffectiveLocation';
-import { shouldShowArtistPageBuilderBlock } from '@shared/lib/artistPageBuilder';
-import { useYooKassaPaymentConnected } from '@shared/lib/payment/useYooKassaPaymentConnected';
-import { getUser } from '@shared/lib/auth';
+import { shouldShowArtistPageBuilderPaymentBlock } from '@shared/lib/artistPageBuilder';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 import {
   ArtistPageBuilderBlock,
@@ -18,13 +16,18 @@ export function ArtistPageBuilderPaymentBar() {
   const { lang } = useLang();
   const [searchParams] = useEffectiveSearchParams();
   const artistSlug = searchParams.get('artist')?.trim() ?? '';
-  const { builderVisibility } = useArtistPageBuilder(artistSlug);
-  const { monetizationEnabled } = useYooKassaPaymentConnected(getUser()?.id);
+  const { builderVisibility, monetizationEnabled, paymentSurfaceReady } =
+    useArtistPageBuilder(artistSlug);
   const ui = useAppSelector((state) => selectUiDictionaryFirst(state, lang));
   const copy = ui?.artistPageBuilder?.payment;
   const { openDashboard } = useArtistPageBuilderNav();
 
-  if (!shouldShowArtistPageBuilderBlock(builderVisibility, !monetizationEnabled)) {
+  if (
+    !shouldShowArtistPageBuilderPaymentBlock(builderVisibility, {
+      resolved: paymentSurfaceReady,
+      monetizationEnabled,
+    })
+  ) {
     return null;
   }
 

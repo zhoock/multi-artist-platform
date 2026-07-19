@@ -22,6 +22,7 @@ import {
   type SocialLinksFormState,
   type SocialPlatform,
 } from '@shared/constants/socialLinks';
+import { notifyPublicSurfaceChanged } from '@shared/lib/publicSurfaceSync';
 import './SocialLinksContent.scss';
 
 interface SocialLinksContentProps {
@@ -124,7 +125,7 @@ export function SocialLinksContent({ active }: SocialLinksContentProps) {
       const savedForm = socialLinksToFormState(socialLinks);
       setForm(savedForm);
       setInitialForm(savedForm);
-      window.dispatchEvent(new Event('artist:updated'));
+      notifyPublicSurfaceChanged({ type: 'socialLinksChanged' });
     } catch (error) {
       console.error('Failed to save social links:', error);
       alert(error instanceof Error ? error.message : 'Unknown error');

@@ -9,7 +9,7 @@ import {
 } from '@shared/api/payment/settings';
 import type { PaymentProvider, UserPaymentSettings } from '@shared/api/payment/types';
 import { resolveMonetizationEnabled } from '@shared/lib/payment/artistMonetization';
-import { dispatchArtistMonetizationChanged } from '@shared/lib/payment/artistMonetizationEvents';
+import { notifyPublicSurfaceChanged } from '@shared/lib/publicSurfaceSync';
 import { refreshPremiumContentForArchiveChange } from '@features/artistArchive';
 import { getStore } from '@shared/model/appStore';
 import { PAYMENT_PROVIDERS } from '../lib/constants';
@@ -165,7 +165,7 @@ export function usePaymentSettings(userId: string): UsePaymentSettingsReturn {
         await loadSettings();
         if (provider === 'yookassa') {
           const enabled = resolveMonetizationEnabled(result.settings);
-          dispatchArtistMonetizationChanged(enabled);
+          notifyPublicSurfaceChanged({ type: 'monetizationChanged', enabled });
           refreshPremiumContentForArchiveChange(getStore().dispatch, undefined, {
             immediate: true,
           });
@@ -209,7 +209,7 @@ export function usePaymentSettings(userId: string): UsePaymentSettingsReturn {
         setShowForm((prev) => ({ ...prev, [provider]: false }));
         await loadSettings();
         if (provider === 'yookassa') {
-          dispatchArtistMonetizationChanged(false);
+          notifyPublicSurfaceChanged({ type: 'monetizationChanged', enabled: false });
           refreshPremiumContentForArchiveChange(getStore().dispatch, undefined, {
             immediate: true,
           });

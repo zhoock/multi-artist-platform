@@ -37,6 +37,26 @@ export function prefetchPublicArtists(): void {
     });
 }
 
+/** Drop in-memory public-artists list so the next ensure/reload hits the network. */
+export function invalidatePublicArtistsCache(): void {
+  artistsBySlug = new Map();
+  inflight = null;
+}
+
+/**
+ * Force-reload public artists (genre / name / slug on Universe).
+ * Keeps callers off forever-stuck module cache after Dashboard edits.
+ */
+export function reloadPublicArtists(): Promise<SceneArtist[]> {
+  invalidatePublicArtistsCache();
+  inflight = fetchPublicArtistsFromNetwork()
+    .catch(() => [] as SceneArtist[])
+    .finally(() => {
+      inflight = null;
+    });
+  return inflight;
+}
+
 /** Дождаться списка артистов (общий promise с prefetch / loader). */
 export async function ensurePublicArtistsLoaded(): Promise<SceneArtist[]> {
   if (artistsBySlug.size > 0) {

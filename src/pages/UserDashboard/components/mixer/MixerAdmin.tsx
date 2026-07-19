@@ -37,6 +37,7 @@ import { StemAddedToast } from '@shared/ui/stemAddedToast/StemAddedToast';
 import { StemDeletedToast } from '@shared/ui/stemDeletedToast/StemDeletedToast';
 import { queueStemAddedToast } from '@shared/lib/stemAddedToast';
 import { queueStemDeletedToast } from '@shared/lib/stemDeletedToast';
+import { notifyPublicSurfaceChanged } from '@shared/lib/publicSurfaceSync';
 import {
   type StemMeta,
   type StemCategory,
@@ -204,7 +205,7 @@ export function MixerAdmin({ ui, userId, albums = [], tabActive = true }: MixerA
         await updateStemsVisibility(storageAlbumId, trackId, visibility);
         setStemsVisibilityByTrack((prev) => ({ ...prev, [key]: visibility }));
         flashStemTrackRow(mixerStemTrackRowId(storageAlbumId, trackId), visibility);
-        window.dispatchEvent(new CustomEvent('stems-visibility-updated'));
+        notifyPublicSurfaceChanged({ type: 'stemsChanged', albumId: storageAlbumId });
       } catch (error) {
         console.error('[MixerAdmin] Failed to update stems visibility:', error);
       }

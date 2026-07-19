@@ -6,6 +6,9 @@ import { subscribeArtistMonetizationChanged } from './artistMonetizationEvents';
 /**
  * Активная ЮKassa у пользователя: запись в БД с is_active и непустым shopId.
  * `monetizationEnabled` — канонический флаг для premium-функций артиста.
+ *
+ * While `loading` is true, `monetizationEnabled === false` means "unknown", not
+ * "disconnected". Callers must not render "connect payments" CTAs until `!loading`.
  */
 export function useYooKassaPaymentConnected(userId: string | undefined | null) {
   const [loading, setLoading] = useState(true);

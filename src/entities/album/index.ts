@@ -21,6 +21,13 @@ export {
   resetAlbumDetails,
   buildAlbumDetailsFetchContextKey,
 } from './model/albumDetailsSlice';
+export {
+  markAlbumDetailsStale,
+  markAlbumDetailsStaleMany,
+  isAlbumDetailsStale,
+  consumeAlbumDetailsStale,
+  resetAlbumDetailsStaleForTests,
+} from './model/albumDetailsStale';
 export type { CatalogAlbum } from './model/catalogAlbum';
 /**
  * Model type is `AlbumDetails` in `./model/albumDetails`.

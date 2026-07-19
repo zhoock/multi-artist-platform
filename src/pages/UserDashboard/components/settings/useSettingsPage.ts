@@ -9,6 +9,7 @@ import {
   saveTheBandToDatabase,
   loadHeaderImagesFromDatabase,
 } from '@entities/user/lib';
+import { notifyPublicSurfaceChanged, type ProfileAspect } from '@shared/lib/publicSurfaceSync';
 import { GENRE_OPTIONS } from '../modals/album/EditAlbumModal.constants';
 
 function normalizePublicSlug(value: string): string {
@@ -89,7 +90,6 @@ export function useSettingsPage({ enabled, userName = '' }: UseSettingsPageOptio
         throw new Error((errorData as { error?: string })?.error || `HTTP ${response.status}`);
       }
 
-      window.dispatchEvent(new Event('artist:updated'));
       return true;
     } catch (error) {
       console.error('❌ [useSettingsPage] Profile save failed:', error);
@@ -131,20 +131,22 @@ export function useSettingsPage({ enabled, userName = '' }: UseSettingsPageOptio
     if (needsSiteNameUpdate) {
       localStorage.setItem('profile-name', name);
       updateStoredUserName(name);
-      window.dispatchEvent(
-        new CustomEvent('profile-name-updated', {
-          detail: { name, publicSlug: publicSlug.trim() || undefined },
-        })
-      );
     }
 
-    if (needsHeaderImagesUpdate) {
-      window.dispatchEvent(
-        new CustomEvent('header-images-updated', {
-          detail: { images: safeHeaderImages },
-        })
-      );
-    }
+    const aspects: ProfileAspect[] = [];
+    if (needsSiteNameUpdate) aspects.push('name');
+    if (needsPublicSlugUpdate) aspects.push('slug');
+    if (needsGenreUpdate) aspects.push('genre');
+    if (needsHeaderImagesUpdate) aspects.push('headerImages');
+
+    notifyPublicSurfaceChanged(
+      { type: 'profileChanged', aspects },
+      {
+        artistSlug: publicSlug.trim() || undefined,
+        displayName: needsSiteNameUpdate ? name : undefined,
+        headerImages: needsHeaderImagesUpdate ? safeHeaderImages : undefined,
+      }
+    );
 
     setInitialName(name);
     setInitialPublicSlug(publicSlug);
@@ -196,7 +198,7 @@ export function useSettingsPage({ enabled, userName = '' }: UseSettingsPageOptio
         setInitialAboutTextEn(aboutText);
       }
       setInitialAboutText(aboutText);
-      window.dispatchEvent(new Event('artist:updated'));
+      notifyPublicSurfaceChanged({ type: 'profileChanged', aspects: ['about'] });
     } catch (error) {
       alert(`Save failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
@@ -233,7 +235,9 @@ export function useSettingsPage({ enabled, userName = '' }: UseSettingsPageOptio
       setGenreCode(value);
       if (value === initialGenreCode) return;
       const ok = await persistProfile({ genreCode: value });
-      if (ok) setInitialGenreCode(value);
+      if (!ok) return;
+      setInitialGenreCode(value);
+      notifyPublicSurfaceChanged({ type: 'profileChanged', aspects: ['genre'] });
     },
     [initialGenreCode, persistProfile]
   );
@@ -247,7 +251,12 @@ export function useSettingsPage({ enabled, userName = '' }: UseSettingsPageOptio
         safe.length !== safeInitial.length || safe.some((url, index) => url !== safeInitial[index]);
       if (!changed) return;
       const ok = await persistProfile({ headerImages: safe });
-      if (ok) setInitialHeaderImages([...safe]);
+      if (!ok) return;
+      setInitialHeaderImages([...safe]);
+      notifyPublicSurfaceChanged(
+        { type: 'profileChanged', aspects: ['headerImages'] },
+        { headerImages: safe }
+      );
     },
     [initialHeaderImages, persistProfile]
   );

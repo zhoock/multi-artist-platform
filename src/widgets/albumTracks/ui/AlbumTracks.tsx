@@ -40,7 +40,7 @@ function albumTracksMemoSignature(album: AlbumDetails): string {
   const tail = (album.tracks ?? [])
     .map(
       (t) =>
-        `${String(t.id)}\t${normalizeTrackVisibility(t.visibility)}\t${isTrackPlaybackBlocked(t) ? 1 : 0}\t${String((t.src ?? '').length)}`
+        `${String(t.id)}\t${t.title ?? ''}\t${normalizeTrackVisibility(t.visibility)}\t${isTrackPlaybackBlocked(t) ? 1 : 0}\t${String((t.src ?? '').length)}\t${t.duration ?? ''}`
     )
     .join('\n');
   return `${head}\n${tail}`;
