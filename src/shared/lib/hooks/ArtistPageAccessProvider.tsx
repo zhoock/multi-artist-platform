@@ -1,8 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, type ReactNode } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { useDashboardModalShell } from '@shared/lib/dashboardModalShellContext';
-import { resolveArtistPageSurfaceSlug } from '@shared/lib/artistPageSurfaceSlug';
 import { useArtistPageAccessState, type ArtistPageAccessValue } from './useArtistPageAccess';
+import { useEffectiveSearchParams } from './useEffectiveLocation';
 
 type ArtistPageAccessContextValue = {
   slug: string;
@@ -30,9 +28,8 @@ export function useArtistPageAccess(artistSlug: string): ArtistPageAccessValue {
 
 /** Единый источник правды для `/?artist=` — Hero, Home и Footer читают одно состояние. */
 export function ArtistPageAccessProvider({ children }: { children: ReactNode }) {
-  const [searchParams] = useSearchParams();
-  const shell = useDashboardModalShell();
-  const artistSlug = resolveArtistPageSurfaceSlug(searchParams.get('artist'), shell);
+  const [searchParams] = useEffectiveSearchParams();
+  const artistSlug = searchParams.get('artist')?.trim() ?? '';
   const slug = normalizeSlug(artistSlug);
   const access = useArtistPageAccessState(artistSlug, { enabled: Boolean(slug) });
 

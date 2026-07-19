@@ -59,6 +59,7 @@ const mockCatalog: CatalogAlbum[] = [
     isPublished: true,
     isPublic: true,
     hasLockedTracks: false,
+    hasStems: false,
   },
   {
     albumId: 'album-2',
@@ -72,6 +73,7 @@ const mockCatalog: CatalogAlbum[] = [
     isPublished: true,
     isPublic: true,
     hasLockedTracks: false,
+    hasStems: false,
   },
 ];
 
@@ -130,6 +132,7 @@ describe('AllAlbumsPage — CatalogAlbum', () => {
               isPublished: true,
               isPublic: true,
               hasLockedTracks: false,
+              hasStems: false,
             },
             {
               albumId: 'hidden',
@@ -143,6 +146,7 @@ describe('AllAlbumsPage — CatalogAlbum', () => {
               isPublished: true,
               isPublic: false,
               hasLockedTracks: false,
+              hasStems: false,
             },
           ],
         }),

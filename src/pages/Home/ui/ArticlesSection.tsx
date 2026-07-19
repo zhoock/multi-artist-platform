@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useEffectiveSearchParams } from '@shared/lib/hooks/useEffectiveLocation';
 import { ErrorI18n } from '@shared/ui/error-message';
 import { ArticlesSkeleton } from '@shared/ui/skeleton/ArticlesSkeleton';
 import { ArtistSectionHeading } from '@shared/ui/artistSectionHeading';
@@ -34,7 +34,7 @@ const getInitialCount = () => {
 
 export function ArticlesSection() {
   const { lang } = useLang();
-  const [searchParams] = useSearchParams();
+  const [searchParams] = useEffectiveSearchParams();
   const artistSlug = searchParams.get('artist')?.trim() ?? '';
   const allArticlesPath = withPublicArtistQuery('/articles', searchParams.get('artist'));
   const articlesStatus = useAppSelector((state) => selectArticlesStatus(state));

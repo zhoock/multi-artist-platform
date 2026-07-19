@@ -12,7 +12,7 @@ import { isAuthenticated } from '@shared/lib/auth';
 import { consumePendingAlbumCheckoutForKey } from '@shared/lib/authIntent';
 import { AlertModal } from '@shared/ui/alertModal';
 import { useSiteArtistDisplayName } from '@shared/lib/hooks/useSiteArtistDisplayName';
-import { useLocation } from 'react-router-dom';
+import { useEffectiveLocation } from '@shared/lib/hooks/useEffectiveLocation';
 import { GetButton } from './GetButton';
 import { AlbumCheckoutModal } from './AlbumCheckoutModal';
 import {
@@ -73,7 +73,7 @@ function ServiceButtonsContent({
   const buttons = album.serviceButtons;
   const viewer = useAuthSessionUser();
   const { lang } = useLang();
-  const location = useLocation();
+  const location = useEffectiveLocation();
   const artistSlugFromUrl = useMemo(() => {
     const raw = new URLSearchParams(location.search).get('artist');
     return raw?.trim() || null;

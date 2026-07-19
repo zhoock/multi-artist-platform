@@ -4,7 +4,11 @@ import {
   UNIVERSE_FOCUS_ARTIST_STORAGE_KEY,
 } from '../../../components/view/Universe3D';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
+import {
+  useEffectiveLocation,
+  useEffectiveSearchParams,
+} from '@shared/lib/hooks/useEffectiveLocation';
 import { useLang } from '@app/providers/lang';
 import { useAppDispatch } from '@shared/lib/hooks/useAppDispatch';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
@@ -54,9 +58,9 @@ const HOME_USE_MOCKS_STORAGE_KEY = 'homeUseMocks';
 
 export function HomePage() {
   const dispatch = useAppDispatch();
-  const location = useLocation();
+  const location = useEffectiveLocation();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams] = useEffectiveSearchParams();
   const { lang } = useLang();
   const ui = useAppSelector((state) => selectUiDictionaryFirst(state, lang));
   const sceneRef = useRef<HTMLDivElement | null>(null);

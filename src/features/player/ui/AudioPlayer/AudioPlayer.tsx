@@ -5,7 +5,8 @@
  * Компонент получает данные из стейта через селекторы и диспатчит действия для управления плеером.
  */
 import React, { useRef, useEffect, useLayoutEffect, useCallback, useMemo, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
+import { useEffectiveLocation } from '@shared/lib/hooks/useEffectiveLocation';
 import { flushSync } from 'react-dom';
 import { AlbumCover } from '@entities/album';
 import type { SyncedLyricsLine } from '@models';
@@ -66,7 +67,7 @@ export default function AudioPlayer({
 }) {
   // Получаем функцию для диспатча действий
   const dispatch = useAppDispatch();
-  const location = useLocation();
+  const location = useEffectiveLocation();
   const navigate = useNavigate();
   const isFullScreenPlayer = location.hash === '#player';
   const [isLandscapeBlocked, setIsLandscapeBlocked] = useState(false);

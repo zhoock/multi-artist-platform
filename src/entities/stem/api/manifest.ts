@@ -133,6 +133,30 @@ export async function uploadStemAudio(
   return { fileName };
 }
 
+/** Синхронизирует tracks.has_stems после записи манифеста (CatalogAlbum / Mixer). */
+async function syncTrackHasStems(
+  albumId: string,
+  trackId: string,
+  hasStems: boolean
+): Promise<void> {
+  try {
+    const token = await getAuthToken();
+    const response = await fetchWithAuthSession('/api/stems/has-stems', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ albumId, trackId, hasStems }),
+    });
+    if (!response.ok) {
+      console.warn('[saveStemsManifest] Failed to sync has_stems:', response.status);
+    }
+  } catch (error) {
+    console.warn('[saveStemsManifest] Failed to sync has_stems:', error);
+  }
+}
+
 /** Сохранить манифест стемов трека (перезаписывает stems.json). */
 export async function saveStemsManifest(
   albumId: string,
@@ -145,6 +169,10 @@ export async function saveStemsManifest(
   });
   const { signedUrl } = await getSignedUploadUrl(albumId, trackId, MANIFEST_FILE);
   await putToSignedUrl(signedUrl, file, MANIFEST_MIME);
+  await syncTrackHasStems(albumId, trackId, stems.length > 0);
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('stems-manifest-updated'));
+  }
 }
 
 /** Удалить файл стема из Storage. */

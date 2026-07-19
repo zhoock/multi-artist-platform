@@ -1,8 +1,4 @@
 import { useEffect, useRef } from 'react';
-import { useLocation, useSearchParams, type Location } from 'react-router-dom';
-
-import { useDashboardModalShell } from '@shared/lib/dashboardModalShellContext';
-import { isAuthOverlayPathname } from '@shared/lib/publicArtistContext';
 
 import {
   ARCHIVE_CHANGED_EVENT,
@@ -14,6 +10,10 @@ import { shouldRefreshPublicCatalogOnAuthIdentityChange } from '@features/artist
 import { teardownPlaybackAfterAuthEnd } from '@features/artistArchive/lib/teardownPlaybackAfterAuthEnd';
 import { AUTH_SESSION_CHANGED_EVENT, getAuthSessionIdentityKey } from '@shared/lib/auth';
 import { useAppDispatch } from '@shared/lib/hooks/useAppDispatch';
+import {
+  useEffectiveLocation,
+  useEffectiveSearchParams,
+} from '@shared/lib/hooks/useEffectiveLocation';
 
 import {
   isPremiumCheckoutPending,
@@ -32,24 +32,11 @@ function resolveSlugFromEvent(event: Event): string | undefined {
  */
 export function PremiumEntitlementRefreshController() {
   const dispatch = useAppDispatch();
-  const location = useLocation();
-  const [searchParams] = useSearchParams();
-  const { overlayOpen, surfaceLocation } = useDashboardModalShell();
+  const location = useEffectiveLocation();
+  const [searchParams] = useEffectiveSearchParams();
 
-  const resolveSlug = (): string | undefined => {
-    if (overlayOpen && surfaceLocation?.search) {
-      const fromSurface = new URLSearchParams(surfaceLocation.search).get('artist')?.trim();
-      if (fromSurface) return fromSurface;
-    }
-    if (isAuthOverlayPathname(location.pathname)) {
-      const bg = (location.state as { backgroundLocation?: Location } | null)?.backgroundLocation;
-      if (bg?.search) {
-        const fromBg = new URLSearchParams(bg.search.replace(/^\?/, '')).get('artist')?.trim();
-        if (fromBg) return fromBg;
-      }
-    }
-    return searchParams.get('artist')?.trim() || readPremiumCheckoutArtistSlug() || undefined;
-  };
+  const resolveSlug = (): string | undefined =>
+    searchParams.get('artist')?.trim() || readPremiumCheckoutArtistSlug() || undefined;
 
   const authIdentityKeyRef = useRef(getAuthSessionIdentityKey());
 
@@ -85,14 +72,7 @@ export function PremiumEntitlementRefreshController() {
       window.removeEventListener(ARCHIVE_CHANGED_EVENT, onEntitlementChanged);
       window.removeEventListener(AUTH_SESSION_CHANGED_EVENT, onAuthSessionChanged);
     };
-  }, [
-    dispatch,
-    overlayOpen,
-    searchParams,
-    surfaceLocation?.search,
-    location.pathname,
-    location.state,
-  ]);
+  }, [dispatch, searchParams]);
 
   useEffect(() => {
     if (!isPremiumCheckoutPending()) return;

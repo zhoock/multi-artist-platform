@@ -1,4 +1,8 @@
-import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
+import {
+  useEffectiveLocation,
+  useEffectiveSearchParams,
+} from '@shared/lib/hooks/useEffectiveLocation';
 import {
   CreditCard as CreditCardIcon,
   FileText as FileTextIcon,
@@ -32,9 +36,9 @@ function FeatureIcon({ id }: { id: SecondaryFeatureId }) {
 
 export function ArtistOnboarding() {
   const { lang } = useLang();
-  const location = useLocation();
+  const location = useEffectiveLocation();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams] = useEffectiveSearchParams();
   const artistSlug = searchParams.get('artist')?.trim() ?? '';
   const ui = useAppSelector((state) => selectUiDictionaryFirst(state, lang));
   const copy = ui?.artistOnboarding;

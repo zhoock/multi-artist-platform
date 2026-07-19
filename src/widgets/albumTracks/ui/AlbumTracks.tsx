@@ -4,7 +4,8 @@ import {
   playerTransportIconProps,
 } from '@shared/ui/icons/playerActionIcon';
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { useEffectiveLocation } from '@shared/lib/hooks/useEffectiveLocation';
 import { useStore } from 'react-redux';
 import type { RootState } from '@shared/model/appStore/types';
 import { useAppDispatch } from '@shared/lib/hooks/useAppDispatch';
@@ -77,7 +78,7 @@ const AlbumTracksComponent = ({ album }: { album: AlbumDetails }) => {
   const { lang } = useLang();
   const ui = useAppSelector((state) => selectUiDictionaryFirst(state, lang));
 
-  const location = useLocation();
+  const location = useEffectiveLocation();
   const navigate = useNavigate();
 
   const artistSlugFromUrl = useMemo(() => {

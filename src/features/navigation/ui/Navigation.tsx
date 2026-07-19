@@ -1,6 +1,6 @@
 // src/components/Navigation/Navigation.tsx
 import { memo } from 'react';
-import { NavLink, useSearchParams } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
 import clsx from 'clsx';
 import { NavigationProps } from '@models';
 import { useLang } from '@app/providers/lang';
@@ -8,12 +8,13 @@ import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 import { selectPublicArtistSlug } from '@shared/model/currentArtist';
 import { withPublicArtistQuery } from '@shared/lib/artistQuery';
+import { useEffectiveSearchParams } from '@shared/lib/hooks/useEffectiveLocation';
 import './style.scss';
 
 const NavigationComponent = ({ onToggle }: NavigationProps) => {
   const { lang } = useLang();
   const ui = useAppSelector((state) => selectUiDictionaryFirst(state, lang));
-  const [searchParams] = useSearchParams();
+  const [searchParams] = useEffectiveSearchParams();
   const publicArtistSlugFromStore = useAppSelector(selectPublicArtistSlug);
   const publicArtistSlug =
     searchParams.get('artist')?.trim() || publicArtistSlugFromStore?.trim() || null;

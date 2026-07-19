@@ -22,6 +22,7 @@ import { artistHasMonetizationEnabled } from './lib/artist-monetization';
 import { resolveEffectiveContentVisibility } from '../../src/shared/lib/payment/artistMonetization';
 import { normalizeTrackVisibility } from '../../src/shared/lib/tracks/trackVisibility';
 import { normalizeStemsVisibility } from '../../src/shared/lib/stems/stemsVisibility';
+import { mergeCatalogTrackLocales } from './lib/mergeCatalogTrackLocales';
 
 export interface CatalogAlbumDto {
   albumId: string;
@@ -36,6 +37,11 @@ export interface CatalogAlbumDto {
   isPublic: boolean;
   /** Viewer would need entitlement for at least one listed track. */
   hasLockedTracks: boolean;
+  /**
+   * Album has ≥1 non-hidden track with stems in Storage (`tracks.has_stems`).
+   * Used by public Mixer to list only albums with stems (not fat /api/albums).
+   */
+  hasStems: boolean;
 }
 
 interface AlbumLocaleRow {
@@ -57,6 +63,7 @@ interface TrackAggRow {
   duration: number | null;
   visibility: string | null;
   stems_visibility: string | null;
+  has_stems: boolean | null;
 }
 
 function parseReleaseDate(release: unknown): string {
@@ -181,24 +188,41 @@ export const handler: Handler = async (
              t.track_id,
              t.duration,
              t.visibility,
-             t.stems_visibility
+             t.stems_visibility,
+             t.has_stems
            FROM tracks t
            WHERE t.album_id = ANY($1::uuid[])`,
           [albumPks]
         );
       } catch {
-        // Pre-migration fallback without visibility columns.
-        tracksResult = await query<TrackAggRow>(
-          `SELECT
-             t.album_id AS album_pk,
-             t.track_id,
-             t.duration,
-             NULL::text AS visibility,
-             NULL::text AS stems_visibility
-           FROM tracks t
-           WHERE t.album_id = ANY($1::uuid[])`,
-          [albumPks]
-        );
+        // Pre-migration fallback without visibility / has_stems columns.
+        try {
+          tracksResult = await query<TrackAggRow>(
+            `SELECT
+               t.album_id AS album_pk,
+               t.track_id,
+               t.duration,
+               t.visibility,
+               t.stems_visibility,
+               false AS has_stems
+             FROM tracks t
+             WHERE t.album_id = ANY($1::uuid[])`,
+            [albumPks]
+          );
+        } catch {
+          tracksResult = await query<TrackAggRow>(
+            `SELECT
+               t.album_id AS album_pk,
+               t.track_id,
+               t.duration,
+               NULL::text AS visibility,
+               NULL::text AS stems_visibility,
+               false AS has_stems
+             FROM tracks t
+             WHERE t.album_id = ANY($1::uuid[])`,
+            [albumPks]
+          );
+        }
       }
       for (const row of tracksResult.rows) {
         const list = trackByPk.get(row.album_pk) ?? [];
@@ -228,22 +252,35 @@ export const handler: Handler = async (
       const isPublished = shared.is_published === true;
       const isPublic = shared.is_public !== false;
 
-      // Unique track_ids across locales (same merge semantics as full albums API).
-      const trackMap = new Map<string, TrackAggRow>();
+      // Unique track_ids across locales:
+      // - presentation base: first locale (langRank: ru → en)
+      // - technical: has_stems = OR; visibility / stems_visibility = most open; duration = max
+      //   (stems_visibility is track-level access, not a translation — see mergeCatalogTrackLocales)
+      const trackRowsById = new Map<string, TrackAggRow[]>();
       const sortedLocales = [...group].sort((a, b) => langRank(a.lang) - langRank(b.lang));
       for (const locale of sortedLocales) {
         for (const track of trackByPk.get(locale.id) ?? []) {
-          if (!trackMap.has(track.track_id)) {
-            trackMap.set(track.track_id, track);
-          }
+          const list = trackRowsById.get(track.track_id) ?? [];
+          list.push(track);
+          trackRowsById.set(track.track_id, list);
         }
+      }
+      const trackMap = new Map<string, TrackAggRow>();
+      for (const [trackId, rows] of trackRowsById) {
+        trackMap.set(trackId, mergeCatalogTrackLocales(rows));
       }
 
       let trackCount = 0;
       let duration = 0;
       let hasLockedTracks = false;
+      let hasStems = false;
 
       for (const track of trackMap.values()) {
+        const stemsVis = normalizeStemsVisibility(track.stems_visibility);
+        if (track.has_stems === true && stemsVis !== 'hidden') {
+          hasStems = true;
+        }
+
         if (!isCatalogTrackVisible(track.visibility, track.stems_visibility)) continue;
 
         trackCount += 1;
@@ -275,6 +312,7 @@ export const handler: Handler = async (
         isPublished,
         isPublic,
         hasLockedTracks,
+        hasStems,
       });
     }
 

@@ -15,6 +15,7 @@ describe('CatalogAlbum model', () => {
       isPublished: true,
       isPublic: true,
       hasLockedTracks: true,
+      hasStems: true,
     });
 
     expect(album).toEqual({
@@ -29,8 +30,20 @@ describe('CatalogAlbum model', () => {
       isPublished: true,
       isPublic: true,
       hasLockedTracks: true,
+      hasStems: true,
     });
     expect(isCatalogAlbum(album)).toBe(true);
+  });
+
+  test('normalizeCatalogAlbum defaults hasStems to false', () => {
+    const album = normalizeCatalogAlbum({
+      albumId: 'a1',
+      title: 'T',
+      cover: '',
+      trackCount: 1,
+      userId: 'u',
+    });
+    expect(album?.hasStems).toBe(false);
   });
 
   test('normalizeCatalogAlbum rejects missing albumId', () => {

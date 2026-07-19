@@ -2,7 +2,11 @@
 import { useEffect, useLayoutEffect, useRef, useState, useCallback } from 'react';
 import { List as ListIcon, Save as SaveIcon } from 'lucide-react';
 import { Helmet } from 'react-helmet-async';
-import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
+import {
+  useEffectiveLocation,
+  useEffectiveSearchParams,
+} from '@shared/lib/hooks/useEffectiveLocation';
 import { useLang } from '@app/providers/lang';
 import { useAppDispatch } from '@shared/lib/hooks/useAppDispatch';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
@@ -45,9 +49,9 @@ export default function StemsPlayground() {
   const { lang } = useLang();
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
-  const location = useLocation();
+  const location = useEffectiveLocation();
   const { mixId } = useParams<{ mixId?: string }>();
-  const [searchParams] = useSearchParams();
+  const [searchParams] = useEffectiveSearchParams();
   const publicArtistSlugFromStore = useAppSelector(selectPublicArtistSlug);
   const artistSlug = searchParams.get('artist')?.trim() || publicArtistSlugFromStore?.trim() || '';
   const publicArtistSlug = artistSlug || null;

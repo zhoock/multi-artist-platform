@@ -1,5 +1,8 @@
 import { useState, useEffect } from 'react';
-import { useLocation, useSearchParams } from 'react-router-dom';
+import {
+  useEffectiveLocation,
+  useEffectiveSearchParams,
+} from '@shared/lib/hooks/useEffectiveLocation';
 import { Popup, PopupHamburgerToggle } from '@shared/ui/popup';
 import { Text } from '@shared/ui/text';
 import { useLang } from '@app/providers/lang';
@@ -32,8 +35,8 @@ function hasFilledBandParagraphs(paragraphs: string[] | null | undefined): boole
 
 export function AboutSection({ isAboutModalOpen, onOpen, onClose }: AboutSectionProps) {
   const { lang } = useLang();
-  const location = useLocation();
-  const [searchParams] = useSearchParams();
+  const location = useEffectiveLocation();
+  const [searchParams] = useEffectiveSearchParams();
   const ui = useAppSelector((state) => selectUiDictionaryFirst(state, lang));
   const artistSlug = searchParams.get('artist')?.trim() ?? '';
   const isArtistPage = artistSlug.length > 0;

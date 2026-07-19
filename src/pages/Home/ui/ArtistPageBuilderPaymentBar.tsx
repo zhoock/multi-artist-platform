@@ -1,8 +1,8 @@
 import { CreditCard as CreditCardIcon } from 'lucide-react';
-import { useSearchParams } from 'react-router-dom';
 import { useLang } from '@app/providers/lang';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { useArtistPageBuilder } from '@shared/lib/hooks/useArtistPageBuilder';
+import { useEffectiveSearchParams } from '@shared/lib/hooks/useEffectiveLocation';
 import { shouldShowArtistPageBuilderBlock } from '@shared/lib/artistPageBuilder';
 import { useYooKassaPaymentConnected } from '@shared/lib/payment/useYooKassaPaymentConnected';
 import { getUser } from '@shared/lib/auth';
@@ -16,7 +16,7 @@ import './ArtistPageBuilderPaymentBar.scss';
 
 export function ArtistPageBuilderPaymentBar() {
   const { lang } = useLang();
-  const [searchParams] = useSearchParams();
+  const [searchParams] = useEffectiveSearchParams();
   const artistSlug = searchParams.get('artist')?.trim() ?? '';
   const { builderVisibility } = useArtistPageBuilder(artistSlug);
   const { monetizationEnabled } = useYooKassaPaymentConnected(getUser()?.id);

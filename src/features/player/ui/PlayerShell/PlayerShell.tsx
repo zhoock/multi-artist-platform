@@ -1,6 +1,11 @@
 // src/features/player/ui/PlayerShell/PlayerShell.tsx
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
+import {
+  useEffectiveLocation,
+  useEffectiveSearchParams,
+} from '@shared/lib/hooks/useEffectiveLocation';
+import { useDashboardModalShell } from '@shared/lib/dashboardModalShellContext';
 import { useStore } from 'react-redux';
 import { useLang } from '@app/providers/lang';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
@@ -33,11 +38,13 @@ const getDefaultBottomOffset = (): number => {
 
 export const PlayerShell: React.FC = () => {
   const dispatch = useAppDispatch();
-  const location = useLocation();
+  const liveLocation = useLocation();
+  const location = useEffectiveLocation();
   const navigate = useNavigate();
   const store = useStore<RootState>();
   const { lang } = useLang();
-  const [searchParams] = useSearchParams();
+  const [searchParams] = useEffectiveSearchParams();
+  const { overlayOpen: dashboardOverlayOpen } = useDashboardModalShell();
 
   const albumMeta = useAppSelector(playerSelectors.selectAlbumMeta);
   const playlist = useAppSelector(playerSelectors.selectPlaylist);
@@ -48,7 +55,7 @@ export const PlayerShell: React.FC = () => {
   const hasPlaylist = useAppSelector(playerSelectors.selectHasPlaylist);
   const sourceLocation = useAppSelector(playerSelectors.selectSourceLocation);
 
-  const isDashboardRoute = location.pathname.startsWith('/dashboard');
+  const isDashboardRoute = dashboardOverlayOpen || liveLocation.pathname.startsWith('/dashboard');
   const artistSlugForProfile = useMemo(() => {
     if (isDashboardRoute) return null;
     const u = searchParams.get('artist')?.trim() ?? '';

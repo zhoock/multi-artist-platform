@@ -1,7 +1,7 @@
 // src/pages/Album/Album.tsx
 
 import { useEffect, useMemo } from 'react';
-import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 
 import {
@@ -28,6 +28,7 @@ import { ErrorI18n } from '@shared/ui/error-message';
 import { AlbumSkeleton } from '@shared/ui/skeleton';
 import { useLang } from '@app/providers/lang';
 import { useAppDispatch } from '@shared/lib/hooks/useAppDispatch';
+import { useEffectiveLocation } from '@shared/lib/hooks/useEffectiveLocation';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { ArtistNotFound } from '@shared/ui/artistNotFound';
 import { ArtistPageUnderConstruction } from '@pages/Home/ui/ArtistPageUnderConstruction';
@@ -48,7 +49,7 @@ import { ContextNav } from '@shared/ui/contextNav';
 export default function Album() {
   const dispatch = useAppDispatch();
   const { lang } = useLang();
-  const location = useLocation();
+  const location = useEffectiveLocation();
   const artistParam = useMemo(() => {
     const params = new URLSearchParams(location.search);
     return params.get('artist');

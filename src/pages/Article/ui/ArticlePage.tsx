@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useMemo, type ReactNode } from 'react';
-import { useParams, useSearchParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
+import { useEffectiveSearchParams } from '@shared/lib/hooks/useEffectiveLocation';
 import { Helmet } from 'react-helmet-async';
 
 import { getImageUrl } from '@shared/api/albums';
@@ -55,7 +56,7 @@ export function ArticlePage() {
   const { lang } = useLang();
   const locale = useMemo(() => lang as LocaleKey, [lang]);
   const { articleId = '' } = useParams<{ articleId: string }>();
-  const [searchParams] = useSearchParams();
+  const [searchParams] = useEffectiveSearchParams();
   const artistSlug = searchParams.get('artist');
 
   useEffect(() => {

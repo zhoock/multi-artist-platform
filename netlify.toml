@@ -148,6 +148,12 @@
   status = 200
   force = true
 
+[[redirects]]
+  from = "/api/stems/has-stems*"
+  to = "/.netlify/functions/update-track-has-stems"
+  status = 200
+  force = true
+
 # Auth
 [[redirects]]
   from = "/api/auth/*"

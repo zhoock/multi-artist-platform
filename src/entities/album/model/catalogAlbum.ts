@@ -18,6 +18,11 @@ export interface CatalogAlbum {
   isPublic: boolean;
   /** Viewer needs entitlement for at least one listed track. */
   hasLockedTracks: boolean;
+  /**
+   * Album has ≥1 non-hidden track with stems in Storage.
+   * Public Mixer lists only albums where this is true.
+   */
+  hasStems: boolean;
 }
 
 export function isCatalogAlbum(value: unknown): value is CatalogAlbum {
@@ -54,5 +59,6 @@ export function normalizeCatalogAlbum(raw: unknown): CatalogAlbum | null {
     isPublished: v.isPublished === true,
     isPublic: v.isPublic !== false,
     hasLockedTracks: v.hasLockedTracks === true,
+    hasStems: v.hasStems === true,
   };
 }

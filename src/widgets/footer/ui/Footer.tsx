@@ -1,5 +1,5 @@
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useLang } from '@app/providers/lang';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
@@ -7,10 +7,9 @@ import { selectPublicArtistSlug } from '@shared/model/currentArtist';
 import { loadSocialLinksFromDatabase } from '@entities/user/lib';
 import { socialLinksToList } from '@shared/constants/socialLinks';
 import { buildSupportMailtoHref } from '@shared/lib/supportEmail';
-import { resolveArtistPageSurfaceSlug } from '@shared/lib/artistPageSurfaceSlug';
-import { useDashboardModalShell } from '@shared/lib/dashboardModalShellContext';
 import { shouldShowArtistPageBuilderBlock } from '@shared/lib/artistPageBuilder';
 import { useArtistPageBuilder } from '@shared/lib/hooks/useArtistPageBuilder';
+import { useEffectiveSearchParams } from '@shared/lib/hooks/useEffectiveLocation';
 import { ArtistPageSkeletonFooterSocial } from '@pages/Home/ui/ArtistPageSkeleton';
 import {
   ArtistPageBuilderBlock,
@@ -24,23 +23,13 @@ const supportLink = (label: string) => <a href={buildSupportMailtoHref()}>{label
 
 function FooterComponent() {
   const { lang } = useLang();
-  const [searchParams] = useSearchParams();
-  const dashboardShell = useDashboardModalShell();
+  const [searchParams] = useEffectiveSearchParams();
   const artistSlugFromStore = useAppSelector(selectPublicArtistSlug);
   const ui = useAppSelector((state) => selectUiDictionaryFirst(state, lang));
 
   const artistSlug = useMemo(() => {
-    const fromSurface = resolveArtistPageSurfaceSlug(searchParams.get('artist'), {
-      overlayOpen: dashboardShell.overlayOpen,
-      surfaceLocation: dashboardShell.surfaceLocation,
-    });
-    return fromSurface || artistSlugFromStore || null;
-  }, [
-    dashboardShell.overlayOpen,
-    dashboardShell.surfaceLocation,
-    searchParams,
-    artistSlugFromStore,
-  ]);
+    return searchParams.get('artist')?.trim() || artistSlugFromStore || null;
+  }, [searchParams, artistSlugFromStore]);
 
   const [socialItems, setSocialItems] = useState<Array<{ platform: string; href: string }>>([]);
   const { builderVisibility, showArtistPageSkeleton, skeletonVariant } = useArtistPageBuilder(

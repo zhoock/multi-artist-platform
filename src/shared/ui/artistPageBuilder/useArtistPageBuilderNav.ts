@@ -1,10 +1,11 @@
 import { useCallback } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import type { DashboardTab } from '@shared/lib/accountType';
 import type { DashboardOpenIntent } from '@shared/lib/dashboardOpenIntent';
+import { useEffectiveLocation } from '@shared/lib/hooks/useEffectiveLocation';
 
 export function useArtistPageBuilderNav() {
-  const location = useLocation();
+  const location = useEffectiveLocation();
   const navigate = useNavigate();
 
   const openDashboard = useCallback(

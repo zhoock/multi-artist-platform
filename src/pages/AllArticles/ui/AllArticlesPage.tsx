@@ -1,7 +1,7 @@
 // src/pages/AllArticles/ui/AllArticlesPage.tsx
 
 import { useEffect, useState, useRef } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useEffectiveSearchParams } from '@shared/lib/hooks/useEffectiveLocation';
 import { Helmet } from 'react-helmet-async';
 import { ArticlePreview } from '@entities/article';
 import { ErrorI18n } from '@shared/ui/error-message';
@@ -22,7 +22,7 @@ const BATCH_SIZE = 16;
 
 export function AllArticlesPage() {
   const { lang } = useLang();
-  const [searchParams] = useSearchParams();
+  const [searchParams] = useEffectiveSearchParams();
   const artistSlug = searchParams.get('artist');
   const { displayName: siteArtistName } = useSiteArtistDisplayName(lang, { artistSlug });
   const artistHubPath = withPublicArtistQuery('/', artistSlug);

@@ -1,4 +1,5 @@
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { useEffectiveSearchParams } from '@shared/lib/hooks/useEffectiveLocation';
 import type { ArticleProps } from '@/models';
 import { useLang } from '@app/providers/lang';
 import { formatDateInWords, LocaleKey } from '@entities/article/lib/formatDate';
@@ -29,7 +30,7 @@ export function ArticlePreview({
 }) {
   const { lang } = useLang() as { lang: LocaleKey };
   const { formatDate } = formatDateInWords[lang];
-  const [searchParams] = useSearchParams();
+  const [searchParams] = useEffectiveSearchParams();
   const artistSlug = searchParams.get('artist');
   const articlePath = withPublicArtistQuery(`/articles/${articleId}`, artistSlug);
   const ui = useAppSelector((state) => selectUiDictionaryFirst(state, lang));

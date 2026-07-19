@@ -50,6 +50,7 @@ describe('AlbumsSection integration tests', () => {
       isPublished: true,
       isPublic: true,
       hasLockedTracks: false,
+      hasStems: false,
     },
     {
       albumId: 'album-2',
@@ -63,6 +64,7 @@ describe('AlbumsSection integration tests', () => {
       isPublished: true,
       isPublic: true,
       hasLockedTracks: false,
+      hasStems: false,
     },
   ];
 
@@ -127,6 +129,7 @@ describe('AlbumsSection integration tests', () => {
         isPublished: true,
         isPublic: false,
         hasLockedTracks: false,
+        hasStems: false,
       },
     ];
 
@@ -263,6 +266,7 @@ describe('AlbumsSection integration tests', () => {
               isPublished: true,
               isPublic: true,
               hasLockedTracks: false,
+              hasStems: false,
             },
           ],
           lastUpdated: Date.now(),

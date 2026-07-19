@@ -16,6 +16,7 @@ import {
   createStemTrackAccessToken,
   fetchStemManifestFromStorage,
 } from './lib/stems-access';
+import { syncTrackHasStemsInDb } from './lib/track-has-stems';
 
 export const handler: Handler = async (event: HandlerEvent) => {
   if (event.httpMethod === 'OPTIONS') {
@@ -65,6 +66,13 @@ export const handler: Handler = async (event: HandlerEvent) => {
     }
 
     const stems = await fetchStemManifestFromStorage(artistUserId, albumId, trackId);
+    // Self-heal denormalized flag for CatalogAlbum.hasStems (best-effort).
+    void syncTrackHasStemsInDb({
+      artistUserId,
+      albumId,
+      trackId,
+      hasStems: stems.length > 0,
+    });
     const { token: accessToken, expiresAt: accessTokenExpiresAt } = createStemTrackAccessToken(
       artistUserId,
       albumId,

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useLocation } from 'react-router-dom';
 import { scrollToHash } from '@pages/Home/lib/scrollToHash';
+import { useEffectiveLocation } from '@shared/lib/hooks/useEffectiveLocation';
 
 type UseHomeDataResult = {
   isAboutModalOpen: boolean;
@@ -9,7 +9,7 @@ type UseHomeDataResult = {
 };
 
 export function useHomeData(): UseHomeDataResult {
-  const location = useLocation();
+  const location = useEffectiveLocation();
   const [isAboutModalOpen, setIsAboutModalOpen] = useState(false);
 
   const openAboutModal = useCallback(() => setIsAboutModalOpen(true), []);

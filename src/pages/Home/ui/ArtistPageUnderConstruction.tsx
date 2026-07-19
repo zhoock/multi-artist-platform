@@ -1,8 +1,9 @@
 import { useEffect } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useLang } from '@app/providers/lang';
 import { getDefaultDashboardTab } from '@shared/lib/accountType';
 import { useAuthSessionUser } from '@shared/lib/hooks/useAuthSessionUser';
+import { useEffectiveLocation } from '@shared/lib/hooks/useEffectiveLocation';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 import { ServiceScreen } from '@shared/ui/serviceScreen';
@@ -15,7 +16,7 @@ export function ArtistPageUnderConstruction({
   variant = 'owner',
 }: ArtistPageUnderConstructionProps) {
   const { lang } = useLang();
-  const location = useLocation();
+  const location = useEffectiveLocation();
   const navigate = useNavigate();
   const user = useAuthSessionUser();
   const ui = useAppSelector((state) => selectUiDictionaryFirst(state, lang));

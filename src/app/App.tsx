@@ -5,7 +5,6 @@ import {
   readDashboardModalBackground,
   locationFromDashboardModalStored,
   syncDashboardAlbumsPublicCatalogOverlay,
-  isDashboardAlbumsPublicCatalogOverlay,
   isPaymentReturnPathname,
   isValidDashboardModalBackground,
 } from '@shared/lib/dashboardModalBackground';
@@ -14,7 +13,6 @@ import {
   createBrowserRouter,
   RouterProvider,
   useLocation,
-  useSearchParams,
   Routes,
   Route,
   Navigate,
@@ -31,8 +29,8 @@ import { useLang } from '@app/providers/lang';
 import { useAppDispatch } from '@shared/lib/hooks/useAppDispatch';
 import { setPublicArtistSlug } from '@shared/model/currentArtist';
 import { purgeInvalidAuthSessionFromStorage } from '@shared/lib/auth';
-import { isAuthOverlayPathname } from '@shared/lib/publicArtistContext';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
+import { useEffectiveSearchParams } from '@shared/lib/hooks/useEffectiveLocation';
 import { closePopup, getIsPopupOpen, openPopup } from '@features/popupToggle';
 
 import { Popup, PopupHamburgerToggle, usePopup } from '@shared/ui/popup';
@@ -90,7 +88,7 @@ const PageLoader = () => <p>Загрузка...</p>;
 
 /** Suspense для lazy Home: на `/?artist=` — нейтральный public-скелетон (builder ещё неизвестен). */
 function HomeRouteSuspenseFallback() {
-  const [searchParams] = useSearchParams();
+  const [searchParams] = useEffectiveSearchParams();
   if (searchParams.get('artist')?.trim()) {
     return <ArtistPageSkeleton part="main" variant="public" />;
   }
@@ -141,39 +139,15 @@ export default function App() {
   );
 }
 
-/** Синхронизирует `?artist=` из URL в Redux (F5 и клиентская навигация). */
+/** Синхронизирует `?artist=` из effective URL в Redux (F5, навигация, auth/dashboard overlay). */
 function CurrentArtistSync() {
-  const location = useLocation();
-  const [searchParams] = useSearchParams();
+  const [searchParams] = useEffectiveSearchParams();
   const dispatch = useAppDispatch();
-  const artistFromUrl = searchParams.get('artist')?.trim() ?? '';
-
-  const stateBg = (location.state as { backgroundLocation?: Location } | null)?.backgroundLocation;
-  const sessionBg =
-    isDashboardAppPathname(location.pathname) && isDashboardAlbumsPublicCatalogOverlay()
-      ? readDashboardModalBackground()
-      : null;
-  const surfaceSearch =
-    stateBg?.pathname && !stateBg.pathname.startsWith('/dashboard')
-      ? stateBg.search
-      : sessionBg && !sessionBg.pathname.startsWith('/dashboard')
-        ? sessionBg.search
-        : '';
-  const artistFromModalSurface =
-    isDashboardAppPathname(location.pathname) && surfaceSearch !== ''
-      ? (new URLSearchParams(surfaceSearch.replace(/^\?/, '')).get('artist')?.trim() ?? '')
-      : '';
-
-  const artist = artistFromUrl || artistFromModalSurface;
-  // Auth-оверлей (/auth*) рендерится поверх underlying-страницы. publicArtistSlug должен сохранять
-  // значение, выставленное на underlying-странице, иначе при закрытии модалки selector кэша
-  // считает данные stale и каталог под backdrop'ом мигает skeleton'ом.
-  const skipSlugSync = isAuthOverlayPathname(location.pathname);
+  const artist = searchParams.get('artist')?.trim() ?? '';
 
   useEffect(() => {
-    if (skipSlugSync) return;
     dispatch(setPublicArtistSlug(artist || null));
-  }, [artist, dispatch, skipSlugSync]);
+  }, [artist, dispatch]);
 
   return null;
 }

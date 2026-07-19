@@ -17,6 +17,7 @@ const base: CatalogAlbum = {
   isPublished: true,
   isPublic: true,
   hasLockedTracks: false,
+  hasStems: false,
 };
 
 describe('catalogPublication', () => {

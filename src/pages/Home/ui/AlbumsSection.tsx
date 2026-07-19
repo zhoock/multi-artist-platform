@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useEffectiveSearchParams } from '@shared/lib/hooks/useEffectiveLocation';
 import { WrapperAlbumCover, AlbumCover } from '@entities/album';
 import { ErrorI18n } from '@shared/ui/error-message';
 import { AlbumsSkeleton } from '@shared/ui/skeleton/AlbumsSkeleton';
@@ -63,7 +63,7 @@ const getInitialCount = () => {
 
 export function AlbumsSection({ isOwner = false }: { isOwner?: boolean }) {
   const { lang } = useLang();
-  const [searchParams] = useSearchParams();
+  const [searchParams] = useEffectiveSearchParams();
   const artistSlug = searchParams.get('artist');
   const { builderVisibility, hasPublicReleases } = useArtistPageBuilder(artistSlug?.trim() ?? '');
   const { openDashboard } = useArtistPageBuilderNav();

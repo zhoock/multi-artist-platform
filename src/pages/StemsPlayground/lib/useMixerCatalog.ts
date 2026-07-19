@@ -1,10 +1,10 @@
 // src/pages/StemsPlayground/lib/useMixerCatalog.ts
 /**
- * Mixer data plane: CatalogAlbum (list) → AlbumDetails (on select) → loadStems.
+ * Mixer data plane: CatalogAlbum (list, hasStems only) → AlbumDetails (on select) → loadStems.
  * Never uses fat `/api/albums` / AlbumEditable / public albums selectors.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useEffectiveSearchParams } from '@shared/lib/hooks/useEffectiveLocation';
 import { useAppDispatch } from '@shared/lib/hooks/useAppDispatch';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { useLang } from '@app/providers/lang';
@@ -60,7 +60,7 @@ export type MixerCatalog = {
 export function useMixerCatalog(): MixerCatalog {
   const dispatch = useAppDispatch();
   const { lang } = useLang();
-  const [searchParams] = useSearchParams();
+  const [searchParams] = useEffectiveSearchParams();
   const publicArtistSlugFromStore = useAppSelector(selectPublicArtistSlug);
   const artistSlug = searchParams.get('artist')?.trim() || publicArtistSlugFromStore?.trim() || '';
 
@@ -96,7 +96,7 @@ export function useMixerCatalog(): MixerCatalog {
     );
   }, [artistSlug, dispatch, lang]);
 
-  // Map CatalogAlbum → MixerAlbum shells (preserve loaded tracks when catalog refreshes).
+  // Map CatalogAlbum → MixerAlbum shells (only albums with stems; preserve loaded tracks).
   useEffect(() => {
     if (catalogStatus === 'loading' || catalogStatus === 'idle') return;
     if (catalogStatus === 'failed' || catalogCacheStale) {
@@ -105,7 +105,9 @@ export function useMixerCatalog(): MixerCatalog {
     }
     if (catalogStatus !== 'succeeded') return;
 
-    const surface = filterCatalogAlbumsForArtistPageSurface(publicCatalogAlbums, false);
+    const surface = filterCatalogAlbumsForArtistPageSurface(publicCatalogAlbums, false).filter(
+      (row) => row.hasStems
+    );
     setAlbums((prev) => {
       const prevById = new Map(prev.map((album) => [album.albumId, album]));
       return surface.map((row) => {
@@ -218,10 +220,12 @@ export function useMixerCatalog(): MixerCatalog {
     };
     window.addEventListener('stem-cover-updated', handleStemCatalogRefresh);
     window.addEventListener('stems-visibility-updated', handleStemCatalogRefresh);
+    window.addEventListener('stems-manifest-updated', handleStemCatalogRefresh);
     window.addEventListener('archive:changed', handleStemCatalogRefresh);
     return () => {
       window.removeEventListener('stem-cover-updated', handleStemCatalogRefresh);
       window.removeEventListener('stems-visibility-updated', handleStemCatalogRefresh);
+      window.removeEventListener('stems-manifest-updated', handleStemCatalogRefresh);
       window.removeEventListener('archive:changed', handleStemCatalogRefresh);
     };
   }, [dispatch, loadAlbumTracks, tracksLoadingAlbumId]);

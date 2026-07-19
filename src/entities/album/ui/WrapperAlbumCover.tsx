@@ -1,6 +1,6 @@
 // src/entities/album/ui/WrapperAlbumCover.tsx
 import { Link } from 'react-router-dom';
-import { useLocation } from 'react-router-dom';
+import { useEffectiveLocation } from '@shared/lib/hooks/useEffectiveLocation';
 import type { WrapperAlbumCoverProps } from 'models';
 
 import './style.scss';
@@ -11,7 +11,7 @@ export default function WrapperAlbumCover({
   album,
   children,
 }: WrapperAlbumCoverProps) {
-  const location = useLocation();
+  const location = useEffectiveLocation();
   const params = new URLSearchParams(location.search);
   const artist = params.get('artist');
   const albumUrl = artist

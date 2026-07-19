@@ -1,7 +1,6 @@
 // src/pages/AllAlbums/ui/AllAlbumsPage.tsx
 
 import { useEffect, useMemo, useState, useRef } from 'react';
-import { useSearchParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import {
   WrapperAlbumCover,
@@ -14,6 +13,7 @@ import {
 } from '@entities/album';
 import { filterCatalogAlbumsForArtistPageSurface } from '@entities/album/lib/catalogPublication';
 import { useAppDispatch } from '@shared/lib/hooks/useAppDispatch';
+import { useEffectiveSearchParams } from '@shared/lib/hooks/useEffectiveLocation';
 import { fetchArticles } from '@entities/article';
 import { ErrorI18n } from '@shared/ui/error-message';
 import { AlbumsSkeleton } from '@shared/ui/skeleton/AlbumsSkeleton';
@@ -38,7 +38,7 @@ const BATCH_SIZE = 16;
 export function AllAlbumsPage() {
   const dispatch = useAppDispatch();
   const { lang } = useLang();
-  const [searchParams] = useSearchParams();
+  const [searchParams] = useEffectiveSearchParams();
   const artistSlug = searchParams.get('artist') ?? '';
   const artistPageAccess = useArtistPageAccess(artistSlug);
   const hideArtistPageAfterOwnDelete = useRedirectHomeAfterOwnAccountDeleted(!!artistSlug);

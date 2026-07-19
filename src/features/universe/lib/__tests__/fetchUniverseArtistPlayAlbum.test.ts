@@ -33,6 +33,7 @@ const catalogRow = {
   isPublished: true,
   isPublic: true,
   hasLockedTracks: false,
+  hasStems: false,
 };
 
 const detailsPayload = {

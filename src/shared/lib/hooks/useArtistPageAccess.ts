@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useLocation } from 'react-router-dom';
 import { useLang } from '@app/providers/lang';
+import { useEffectiveLocation } from '@shared/lib/hooks/useEffectiveLocation';
 import { hasPublishedPublicCatalogReleases } from '@entities/album/lib/catalogPublication';
 import {
   selectDashboardAlbumsData,
@@ -112,7 +112,7 @@ export function useArtistPageAccessState(
   options: UseArtistPageAccessStateOptions = {}
 ) {
   const enabled = options.enabled ?? true;
-  const { pathname } = useLocation();
+  const { pathname } = useEffectiveLocation();
   const { lang } = useLang();
   const catalogArtistMissing = useAppSelector(selectArtistAlbumCatalogArtistMissing);
   const thinCatalogStatus = useAppSelector(selectArtistAlbumCatalogStatus);
