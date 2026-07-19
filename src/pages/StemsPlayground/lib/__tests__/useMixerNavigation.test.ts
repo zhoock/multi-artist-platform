@@ -8,6 +8,8 @@ const albums: MixerAlbum[] = [
     albumId: 'a1',
     title: 'Album 1',
     year: '2022',
+    listedTrackCount: 2,
+    tracksStatus: 'loaded',
     tracks: [
       {
         id: 't1',
@@ -27,6 +29,8 @@ const albums: MixerAlbum[] = [
     albumId: 'a2',
     title: 'Album 2',
     year: '2025',
+    listedTrackCount: 1,
+    tracksStatus: 'loaded',
     tracks: [
       {
         id: 't3',
@@ -104,6 +108,8 @@ describe('useMixerNavigation', () => {
         albumId: 'a1',
         title: 'Album 1',
         year: '2022',
+        listedTrackCount: 1,
+        tracksStatus: 'loaded',
         tracks: [
           {
             id: 't1',

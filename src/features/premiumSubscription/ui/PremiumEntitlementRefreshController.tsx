@@ -26,8 +26,8 @@ function resolveSlugFromEvent(event: Event): string | undefined {
 }
 
 /**
- * Global entitlement refresh: albums, articles, player playlist sync.
- * - Login / account switch / archive / subscription → force public catalog refresh.
+ * Global entitlement refresh: AlbumDetails (open album), articles, PlayerTrack playlist sync.
+ * - Login / account switch / archive / subscription → targeted refetch (no fat `/api/albums`).
  * - Logout → no catalog refetch (clearAuth already wiped Redux); local player teardown only.
  */
 export function PremiumEntitlementRefreshController() {

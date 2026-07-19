@@ -50,6 +50,8 @@ const trackLyricsSlice = createSlice({
     });
     builder.addCase(fetchAlbums.fulfilled, (state, action) => {
       if (action.payload.staleAbort) return;
+      // Public surfaces no longer use fat albums; hydrate lyrics only from Dashboard CRUD.
+      if (action.payload.writeTarget !== 'dashboard') return;
       for (const bundle of extractLyricsFromAlbums(action.payload.albums)) {
         state.entities[trackLyricsEntityKey(bundle.albumId, bundle.trackId, bundle.lang)] = bundle;
       }

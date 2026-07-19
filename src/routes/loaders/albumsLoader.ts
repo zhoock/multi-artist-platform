@@ -14,10 +14,8 @@ import {
 import {
   fetchAlbums,
   fetchAlbumDetailsPage,
+  fetchArtistAlbumCatalog,
   buildAlbumDetailsFetchContextKey,
-  selectAlbumsStatus,
-  selectAlbumsData,
-  selectAlbumsFetchContextKey,
   selectAlbumDetailsStatus,
   selectAlbumDetailsFetchContextKey,
   selectAlbumDetailsData,
@@ -120,9 +118,9 @@ export type AlbumsDeferred = {
 };
 
 /**
- * Публичный thin-каталог грузит surface (HomePage / AllAlbumsPage), не loader.
+ * Публичный thin-каталог грузит surface (HomePage / AllAlbumsPage / Mixer), не loader.
  * Loader не должен `dispatch(fetchAlbums)` на этих маршрутах — иначе снова
- * тянется полный монолит. `/albums/:albumId` — AlbumDetails; `/stems` — fat GET.
+ * тянется полный монолит. `/albums/:albumId` — AlbumDetails; `/stems` — thin + AlbumDetails.
  */
 export function shouldDeferPublicArtistCatalogToSurface(
   loaderPathname: string,
@@ -132,6 +130,7 @@ export function shouldDeferPublicArtistCatalogToSurface(
   if (loaderPathname === '/' || loaderPathname === '/en' || loaderPathname === '/en/') {
     return true;
   }
+  if (isStemsLoaderPath(loaderPathname)) return true;
   return (
     loaderPathname === '/albums' ||
     loaderPathname === '/albums/' ||
@@ -146,6 +145,11 @@ export function isAlbumDetailLoaderPath(loaderPathname: string): boolean {
     matchPath({ path: '/albums/:albumId', end: true }, loaderPathname) ||
       matchPath({ path: '/en/albums/:albumId', end: true }, loaderPathname)
   );
+}
+
+/** Mixer — thin CatalogAlbum + lazy AlbumDetails; never fat `/api/albums`. */
+export function isStemsLoaderPath(loaderPathname: string): boolean {
+  return /^\/(?:en\/)?stems(?:\/|$)/.test(loaderPathname);
 }
 
 export async function albumsLoader({ request }: LoaderFunctionArgs): Promise<AlbumsDeferred> {
@@ -224,7 +228,9 @@ export async function albumsLoader({ request }: LoaderFunctionArgs): Promise<Alb
       } else if (status === 'loading') {
         templateA = Promise.resolve(dash.data.length > 0 ? dash.data : []);
       } else {
-        const fetchThunkPromise = store.dispatch(fetchAlbums({ force: status === 'failed' }));
+        const fetchThunkPromise = store.dispatch(
+          fetchAlbums({ force: status === 'failed', ownerDashboard: true })
+        );
 
         const createNeverResolvingPromise = () => new Promise<IAlbums[]>(() => {});
 
@@ -243,8 +249,27 @@ export async function albumsLoader({ request }: LoaderFunctionArgs): Promise<Alb
           );
         }
       }
+    } else if (isStemsLoaderPath(loaderPathname)) {
+      // Mixer: thin catalog (+ AlbumDetails on select). Never fat `/api/albums`.
+      templateA = Promise.resolve([]);
+      if (publicArtistFromUrl) {
+        const fetchThunkPromise = store.dispatch(
+          fetchArtistAlbumCatalog({ publicArtistSlug: publicArtistFromUrl })
+        );
+        if (signal.aborted) {
+          fetchThunkPromise.abort();
+        } else {
+          const abortHandler = () => {
+            fetchThunkPromise.abort();
+          };
+          signal.addEventListener('abort', abortHandler, { once: true });
+          void fetchThunkPromise.unwrap().catch(() => undefined);
+        }
+      }
     } else if (isAlbumDetailLoaderPath(loaderPathname)) {
-      // Album page: AlbumDetails only — do not pull fat public catalog.
+      // Album page: AlbumDetails only — never fat public catalog.
+      templateA = Promise.resolve([]);
+
       const routeAlbumId =
         matchPath(
           { path: '/albums/:albumId', end: true },
@@ -255,8 +280,6 @@ export async function albumsLoader({ request }: LoaderFunctionArgs): Promise<Alb
           loaderPathname
         )?.params.albumId?.trim() ??
         '';
-
-      templateA = Promise.resolve(selectAlbumsData(state));
 
       if (publicArtistFromUrl && routeAlbumId) {
         const desiredKey = buildAlbumDetailsFetchContextKey(publicArtistFromUrl, routeAlbumId);
@@ -289,47 +312,24 @@ export async function albumsLoader({ request }: LoaderFunctionArgs): Promise<Alb
         }
       }
     } else {
-      const desiredAlbumsFetchKey = publicArtistFromUrl
-        ? `public:${publicArtistFromUrl}`
-        : 'public:no-slug';
-
-      const status = selectAlbumsStatus(state);
-      const albumsFetchContextKey = selectAlbumsFetchContextKey(state);
-      const albumsCacheValid =
-        status === 'succeeded' && albumsFetchContextKey === desiredAlbumsFetchKey;
-      const deferCatalogToSurface = shouldDeferPublicArtistCatalogToSurface(
-        loaderPathname,
-        publicArtistFromUrl
-      );
-
-      // `/?artist=`: единственный источник — HomePage useEffect. Не стартуем fetch здесь.
-      if (deferCatalogToSurface) {
-        templateA = Promise.resolve(selectAlbumsData(state));
-      } else if (albumsCacheValid) {
-        templateA = Promise.resolve(selectAlbumsData(state));
-      } else if (status === 'loading') {
-        const currentData = selectAlbumsData(state);
-        templateA = Promise.resolve(currentData || []);
-      } else {
+      // Home / All Albums / other public: thin CatalogAlbum on the surface — never fat.
+      templateA = Promise.resolve([]);
+      if (
+        publicArtistFromUrl &&
+        shouldDeferPublicArtistCatalogToSurface(loaderPathname, publicArtistFromUrl)
+      ) {
         const fetchThunkPromise = store.dispatch(
-          fetchAlbums({ force: status === 'succeeded' || status === 'failed' })
+          fetchArtistAlbumCatalog({ publicArtistSlug: publicArtistFromUrl })
         );
-
-        const createNeverResolvingPromise = () => new Promise<IAlbums[]>(() => {});
-
         if (signal.aborted) {
           fetchThunkPromise.abort();
-          templateA = createNeverResolvingPromise();
         } else {
           const abortHandler = () => {
             fetchThunkPromise.abort();
           };
           signal.addEventListener('abort', abortHandler, { once: true });
-
-          templateA = unwrapLoaderAlbumsPromise(
-            fetchThunkPromise,
-            selectAlbumsData(store.getState())
-          );
+          // Surface also force-fetches; loader prefetch is best-effort.
+          void fetchThunkPromise.unwrap().catch(() => undefined);
         }
       }
     }

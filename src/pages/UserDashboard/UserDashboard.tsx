@@ -73,6 +73,7 @@ import { useAuthSessionUser } from '@shared/lib/hooks/useAuthSessionUser';
 import { ArtistMonetizationProvider } from '@shared/lib/payment/ArtistMonetizationContext';
 import {
   fetchAlbums,
+  fetchArtistAlbumCatalog,
   patchDashboardAlbumVisibility,
   patchDashboardTrackVisibility,
   selectDashboardAlbumsStatus,
@@ -369,12 +370,11 @@ function UserDashboard() {
     (artistSlug: string | null) => {
       const slug = artistSlug?.trim();
       if (!slug) return;
-      // Уже обновили публичный catalog — close не должен делать второй force-fetch.
+      // Уже обновили публичный thin catalog — close не должен делать второй force-fetch.
       catalogNeedsRefreshRef.current = false;
       void dispatch(
-        fetchAlbums({
+        fetchArtistAlbumCatalog({
           force: true,
-          forcePublicCatalog: true,
           publicArtistSlug: slug,
         })
       );
@@ -460,9 +460,8 @@ function UserDashboard() {
       // Slug синхронизирует CurrentArtistSync из URL после navigate.
       if (catalogDirty) {
         void dispatch(
-          fetchAlbums({
+          fetchArtistAlbumCatalog({
             force: true,
-            forcePublicCatalog: true,
             publicArtistSlug: artistSlug,
           })
         );

@@ -14,7 +14,7 @@ import {
 } from '@shared/ui/artistPageBuilder';
 import { ImagePlus as ImagePlusIcon } from 'lucide-react';
 import { useSiteArtistDisplayName } from '@shared/lib/hooks/useSiteArtistDisplayName';
-import { selectCatalogArtistMissing } from '@entities/album';
+import { selectArtistAlbumCatalogArtistMissing } from '@entities/album';
 import { selectPublicArtistSlug } from '@shared/model/currentArtist';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 import { isAuthOverlayPathname } from '@shared/lib/publicArtistContext';
@@ -161,7 +161,7 @@ export function Hero() {
   }, [artistParamKey, hasArtistParam]);
 
   // Пока грузим профиль в artist-режиме — пустой заголовок; иначе имя из API/хранилища либо пусто.
-  const catalogArtistMissing = useAppSelector(selectCatalogArtistMissing);
+  const catalogArtistMissing = useAppSelector(selectArtistAlbumCatalogArtistMissing);
   const isTitlePending =
     hasArtistParam && !catalogArtistMissing && isProfileLoading && !profileDisplayName.trim();
   const displayName = isTitlePending

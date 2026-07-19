@@ -25,7 +25,10 @@ export type MixerTrack = {
   stems: PlayableStem[];
 };
 
-/** Альбом, у которого есть треки со стемами. */
+/** Статус загрузки AlbumDetails + stems для выбранного альбома. */
+export type MixerAlbumTracksStatus = 'idle' | 'loading' | 'loaded' | 'failed';
+
+/** Альбом микшера: список из CatalogAlbum, треки — после AlbumDetails + loadStems. */
 export type MixerAlbum = {
   albumId: string;
   title: string;
@@ -34,5 +37,8 @@ export type MixerAlbum = {
   cover?: string;
   /** Владелец альбома в storage (users/{id}/...). */
   userId?: string;
+  /** CatalogAlbum.trackCount — для карточки списка до загрузки стемов. */
+  listedTrackCount: number;
   tracks: MixerTrack[];
+  tracksStatus: MixerAlbumTracksStatus;
 };

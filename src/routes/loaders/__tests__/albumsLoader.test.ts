@@ -68,9 +68,13 @@ describe('shouldDeferPublicArtistCatalogToSurface', () => {
     expect(shouldDeferPublicArtistCatalogToSurface('/albums/', 'foo')).toBe(true);
   });
 
-  test('false для /albums/:id, /stems и без slug', () => {
+  test('true для /stems с ?artist= (thin catalog на Mixer surface)', () => {
+    expect(shouldDeferPublicArtistCatalogToSurface('/stems', 'foo')).toBe(true);
+    expect(shouldDeferPublicArtistCatalogToSurface('/stems/mix/1', 'foo')).toBe(true);
+  });
+
+  test('false для /albums/:id и без slug', () => {
     expect(shouldDeferPublicArtistCatalogToSurface('/albums/23', 'foo')).toBe(false);
-    expect(shouldDeferPublicArtistCatalogToSurface('/stems', 'foo')).toBe(false);
     expect(shouldDeferPublicArtistCatalogToSurface('/', '')).toBe(false);
   });
 });
@@ -189,5 +193,24 @@ describe('albumsLoader — defer public catalog to HomePage', () => {
     expect(store.getState().albums.status).toBe('idle');
     expect(store.getState().albumDetails.status).toBe('loading');
     expect(store.getState().albumDetails.fetchContextKey).toBe('albumDetails:foo:23-remastered');
+  });
+
+  test('на /stems?artist= не стартует fat fetchAlbums (thin catalog на Mixer)', async () => {
+    jest.spyOn(globalThis, 'fetch').mockImplementation(
+      () =>
+        new Promise(() => {
+          /* keep thin catalog in loading */
+        }) as Promise<Response>
+    );
+
+    const args = makeRequest('/stems?artist=foo');
+    await albumsLoader({
+      request: args.request,
+      params: {},
+    } as Parameters<typeof albumsLoader>[0]);
+
+    expect(store.getState().albums.status).toBe('idle');
+    expect(store.getState().albums.inFlightFetchContextKey).toBeNull();
+    expect(store.getState().artistAlbumCatalog.status).toBe('loading');
   });
 });

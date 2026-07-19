@@ -1,49 +1,61 @@
 // src/pages/StemsPlayground/lib/useMixerCatalog.ts
-import { useEffect, useRef, useState } from 'react';
+/**
+ * Mixer data plane: CatalogAlbum (list) → AlbumDetails (on select) → loadStems.
+ * Never uses fat `/api/albums` / IAlbums / public albums selectors.
+ */
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import type { IAlbums } from '@models';
-import { getUserAudioUrl } from '@shared/api/albums';
-import { optionalMediaSrc } from '@shared/lib/media/optionalMediaUrl';
 import { useAppDispatch } from '@shared/lib/hooks/useAppDispatch';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { useLang } from '@app/providers/lang';
-import { fetchAlbums } from '@entities/album/model/albumsSlice';
 import {
-  selectAlbumsStatus,
-  selectPublicAlbumsDataResolvedForSurface,
-} from '@entities/album/model/selectors';
+  fetchArtistAlbumCatalog,
+  selectArtistAlbumCatalogStatus,
+  selectArtistAlbumCatalogCacheIsStale,
+  selectArtistAlbumCatalogForSurface,
+} from '@entities/album';
+import { filterCatalogAlbumsForArtistPageSurface } from '@entities/album/lib/catalogPublication';
+import { fetchAlbumDetails } from '@entities/album/api/fetchAlbumDetails';
+import { resolveAlbumDetailsForDisplay } from '@entities/album/lib/resolveAlbumDetailsDisplay';
+import type { CatalogAlbum } from '@entities/album/model/catalogAlbum';
 import { selectPublicArtistSlug } from '@shared/model/currentArtist';
-import { useShowSurfaceAlbumsLoadingShell } from '@shared/lib/hooks/useShowAlbumsLoadingShell';
-import { normalizeStemsVisibility } from '@shared/lib/stems/stemsVisibility';
-import { loadStems, getStemAudioUrl } from '@entities/stem';
-import type { MixerAlbum, MixerTrack, PlayableStem } from './types';
+import { shouldShowAlbumsLoadingShell } from '@shared/lib/hooks/useShowAlbumsLoadingShell';
+import { buildMixerTracksFromAlbumDetails } from './buildMixerTracksFromAlbumDetails';
+import type { MixerAlbum } from './types';
 
-/** Год релиза из `album.release.date` (пустая строка, если нет). */
-function resolveAlbumYear(album: IAlbums): string {
-  const release = album.release;
-  if (release && typeof release === 'object' && 'date' in release) {
-    const raw = (release as Record<string, unknown>).date;
-    const dateStr = typeof raw === 'string' ? raw : typeof raw === 'number' ? String(raw) : '';
-    if (dateStr) {
-      const parsed = new Date(dateStr);
-      if (!Number.isNaN(parsed.getTime())) {
-        return parsed.getFullYear().toString();
-      }
-    }
-  }
-  return '';
+function yearFromReleaseDate(releaseDate: string): string {
+  if (!releaseDate.trim()) return '';
+  const parsed = new Date(releaseDate);
+  if (Number.isNaN(parsed.getTime())) return '';
+  return parsed.getFullYear().toString();
+}
+
+function catalogToMixerAlbumShell(album: CatalogAlbum): MixerAlbum {
+  return {
+    albumId: album.albumId,
+    title: album.title || album.albumId,
+    year: yearFromReleaseDate(album.releaseDate),
+    cover: album.cover || undefined,
+    userId: album.userId || undefined,
+    listedTrackCount: album.trackCount,
+    tracks: [],
+    tracksStatus: 'idle',
+  };
 }
 
 export type MixerCatalog = {
-  /** Альбомы, у которых есть хотя бы один трек со стемами. */
+  /** Album list from thin CatalogAlbum (tracks filled after select). */
   albums: MixerAlbum[];
-  /** Идёт построение каталога (включая скелетон загрузки альбомов). */
+  /** Thin catalog loading shell. */
   loading: boolean;
+  /** AlbumId whose AlbumDetails + stems are currently loading. */
+  tracksLoadingAlbumId: string | null;
+  /** Load AlbumDetails + loadStems for one album (idempotent while in flight). */
+  loadAlbumTracks: (albumId: string, options?: { force?: boolean }) => Promise<MixerAlbum | null>;
 };
 
 /**
- * Строит каталог альбомов и треков, у которых есть стемы в Storage.
- * Перезапускается при смене артиста/языка; пустые альбомы и треки отфильтрованы.
+ * Builds mixer catalog from thin public catalog; loads mid-weight details per album on demand.
  */
 export function useMixerCatalog(): MixerCatalog {
   const dispatch = useAppDispatch();
@@ -51,183 +63,173 @@ export function useMixerCatalog(): MixerCatalog {
   const [searchParams] = useSearchParams();
   const publicArtistSlugFromStore = useAppSelector(selectPublicArtistSlug);
   const artistSlug = searchParams.get('artist')?.trim() || publicArtistSlugFromStore?.trim() || '';
-  const albums = useAppSelector(selectPublicAlbumsDataResolvedForSurface);
-  const albumsStatus = useAppSelector(selectAlbumsStatus);
-  const albumsLastUpdated = useAppSelector((s) => s.albums.lastUpdated);
-  const showAlbumsLoadingShell = useShowSurfaceAlbumsLoadingShell(albumsStatus, albums.length > 0);
 
-  /** Метка момента смены артиста/языка: не строим список из устаревшего кэша. */
-  const syncEpochRef = useRef(0);
+  const catalogStatus = useAppSelector(selectArtistAlbumCatalogStatus);
+  const catalogCacheStale = useAppSelector(selectArtistAlbumCatalogCacheIsStale);
+  const publicCatalogAlbums = useAppSelector(selectArtistAlbumCatalogForSurface);
 
-  const [catalog, setCatalog] = useState<MixerAlbum[]>([]);
-  const [building, setBuilding] = useState(true);
+  const [albums, setAlbums] = useState<MixerAlbum[]>([]);
+  const [tracksLoadingAlbumId, setTracksLoadingAlbumId] = useState<string | null>(null);
 
-  // Смена артиста/языка: очищаем каталог, запрашиваем свежие альбомы.
+  const langRef = useRef(lang);
+  langRef.current = lang;
+  const artistSlugRef = useRef(artistSlug);
+  artistSlugRef.current = artistSlug;
+  const inFlightRef = useRef<Set<string>>(new Set());
+  const albumsRef = useRef(albums);
+  albumsRef.current = albums;
+
+  const showCatalogLoadingShell = shouldShowAlbumsLoadingShell(
+    catalogStatus,
+    albums.length > 0,
+    catalogCacheStale
+  );
+
+  // Thin catalog for album list.
   useEffect(() => {
-    syncEpochRef.current = Date.now();
-    setCatalog([]);
-    setBuilding(true);
+    setAlbums([]);
     dispatch(
-      fetchAlbums({
+      fetchArtistAlbumCatalog({
         force: true,
-        forcePublicCatalog: true,
         publicArtistSlug: artistSlug || null,
       })
     );
   }, [artistSlug, dispatch, lang]);
 
-  // Превью обложек стемов из админки: принудительно перечитываем альбомы.
+  // Map CatalogAlbum → MixerAlbum shells (preserve loaded tracks when catalog refreshes).
+  useEffect(() => {
+    if (catalogStatus === 'loading' || catalogStatus === 'idle') return;
+    if (catalogStatus === 'failed' || catalogCacheStale) {
+      setAlbums([]);
+      return;
+    }
+    if (catalogStatus !== 'succeeded') return;
+
+    const surface = filterCatalogAlbumsForArtistPageSurface(publicCatalogAlbums, false);
+    setAlbums((prev) => {
+      const prevById = new Map(prev.map((album) => [album.albumId, album]));
+      return surface.map((row) => {
+        const shell = catalogToMixerAlbumShell(row);
+        const existing = prevById.get(row.albumId);
+        if (
+          existing &&
+          (existing.tracksStatus === 'loaded' || existing.tracksStatus === 'loading')
+        ) {
+          return {
+            ...shell,
+            tracks: existing.tracks,
+            tracksStatus: existing.tracksStatus,
+          };
+        }
+        return shell;
+      });
+    });
+  }, [catalogStatus, catalogCacheStale, publicCatalogAlbums]);
+
+  const loadAlbumTracks = useCallback(
+    async (albumId: string, options?: { force?: boolean }): Promise<MixerAlbum | null> => {
+      const id = albumId.trim();
+      const slug = artistSlugRef.current.trim();
+      if (!id || !slug) return null;
+
+      const current = albumsRef.current.find((album) => album.albumId === id);
+      if (!options?.force && current?.tracksStatus === 'loaded') {
+        return current;
+      }
+      if (inFlightRef.current.has(id)) {
+        return albumsRef.current.find((album) => album.albumId === id) ?? null;
+      }
+
+      inFlightRef.current.add(id);
+      setTracksLoadingAlbumId(id);
+      setAlbums((prev) =>
+        prev.map((album) =>
+          album.albumId === id ? { ...album, tracksStatus: 'loading' as const } : album
+        )
+      );
+
+      try {
+        const details = await fetchAlbumDetails(slug, id);
+        const resolved = resolveAlbumDetailsForDisplay(details, langRef.current);
+        const storageUserId = resolved.userId?.trim() || current?.userId?.trim() || '';
+        if (!storageUserId) {
+          setAlbums((prev) =>
+            prev.map((album) =>
+              album.albumId === id
+                ? { ...album, tracks: [], tracksStatus: 'failed' as const }
+                : album
+            )
+          );
+          return null;
+        }
+
+        const tracks = await buildMixerTracksFromAlbumDetails(resolved, storageUserId);
+        const next: MixerAlbum = {
+          albumId: resolved.albumId,
+          title: resolved.title || resolved.albumId,
+          year: yearFromReleaseDate(
+            typeof resolved.release?.date === 'string' ? resolved.release.date : ''
+          ),
+          cover: resolved.cover || undefined,
+          userId: storageUserId,
+          listedTrackCount: current?.listedTrackCount ?? resolved.tracks.length,
+          tracks,
+          tracksStatus: 'loaded',
+        };
+
+        setAlbums((prev) => {
+          const exists = prev.some((album) => album.albumId === id);
+          if (!exists) return [...prev, next];
+          return prev.map((album) => (album.albumId === id ? next : album));
+        });
+        return next;
+      } catch {
+        setAlbums((prev) =>
+          prev.map((album) =>
+            album.albumId === id ? { ...album, tracks: [], tracksStatus: 'failed' as const } : album
+          )
+        );
+        return null;
+      } finally {
+        inFlightRef.current.delete(id);
+        setTracksLoadingAlbumId((prev) => (prev === id ? null : prev));
+      }
+    },
+    []
+  );
+
+  // Admin stem cover / visibility changes — refresh thin catalog; reload open album tracks.
   useEffect(() => {
     const handleStemCatalogRefresh = () => {
       dispatch(
-        fetchAlbums({
+        fetchArtistAlbumCatalog({
           force: true,
-          forcePublicCatalog: true,
-          publicArtistSlug: artistSlug || null,
+          publicArtistSlug: artistSlugRef.current || null,
         })
       );
+      const loadingId = tracksLoadingAlbumId;
+      const selectedLoaded = albumsRef.current.find(
+        (album) => album.tracksStatus === 'loaded' || album.tracksStatus === 'loading'
+      );
+      const reloadId = selectedLoaded?.albumId || loadingId;
+      if (reloadId) {
+        void loadAlbumTracks(reloadId, { force: true });
+      }
     };
     window.addEventListener('stem-cover-updated', handleStemCatalogRefresh);
     window.addEventListener('stems-visibility-updated', handleStemCatalogRefresh);
+    window.addEventListener('archive:changed', handleStemCatalogRefresh);
     return () => {
       window.removeEventListener('stem-cover-updated', handleStemCatalogRefresh);
       window.removeEventListener('stems-visibility-updated', handleStemCatalogRefresh);
+      window.removeEventListener('archive:changed', handleStemCatalogRefresh);
     };
-  }, [artistSlug, dispatch]);
-
-  // Построение каталога только после актуального fetchAlbums для текущего артиста.
-  useEffect(() => {
-    if (albumsStatus === 'loading' || albumsStatus === 'idle') {
-      return;
-    }
-
-    if (albumsStatus === 'failed') {
-      setCatalog([]);
-      setBuilding(false);
-      return;
-    }
-
-    if (albumsStatus !== 'succeeded') {
-      setBuilding(false);
-      return;
-    }
-
-    if (albumsLastUpdated != null && albumsLastUpdated < syncEpochRef.current) {
-      return;
-    }
-
-    if (!albums || albums.length === 0) {
-      setCatalog([]);
-      setBuilding(false);
-      return;
-    }
-
-    const syncAtLoadStart = syncEpochRef.current;
-
-    const build = async () => {
-      setBuilding(true);
-      const result: MixerAlbum[] = [];
-
-      for (const album of albums) {
-        if (!album.albumId || !album.tracks || album.tracks.length === 0) continue;
-
-        const storageUserId = album.userId ? String(album.userId).trim() : '';
-        if (!storageUserId) continue;
-
-        const mixerTracks: MixerTrack[] = [];
-
-        for (const track of album.tracks) {
-          const trackId = String(track.id);
-          const albumId = album.albumId;
-          const stemsVis = normalizeStemsVisibility(
-            (track as { stemsVisibility?: unknown }).stemsVisibility
-          );
-
-          if (stemsVis === 'hidden') continue;
-
-          const {
-            stems: stemMetas,
-            accessToken,
-            accessTokenExpiresAt,
-            accessDenied,
-          } = await loadStems(storageUserId, albumId, trackId);
-
-          const trackTitle = track.title || `Track ${trackId}`;
-          const trackDuration = typeof track.duration === 'number' ? track.duration : 0;
-
-          if (accessDenied) {
-            if (stemsVis === 'subscribers_only') {
-              mixerTracks.push({
-                id: trackId,
-                title: trackTitle,
-                duration: trackDuration,
-                locked: true,
-                stems: [],
-              });
-            }
-            continue;
-          }
-
-          if (!stemMetas || stemMetas.length === 0) continue;
-
-          const stems: PlayableStem[] = [];
-          for (const meta of stemMetas) {
-            const url = getStemAudioUrl(
-              storageUserId,
-              albumId,
-              trackId,
-              meta,
-              accessToken,
-              accessTokenExpiresAt
-            );
-            if (url) {
-              stems.push({ id: meta.id, name: meta.name, category: meta.category, url });
-            }
-          }
-          if (stems.length === 0) continue;
-
-          const mixUrl = track.src
-            ? optionalMediaSrc(
-                getUserAudioUrl(track.src, true, storageUserId),
-                'useMixerCatalog:mix',
-                { albumId, trackId }
-              )
-            : undefined;
-
-          mixerTracks.push({
-            id: trackId,
-            title: trackTitle,
-            duration: trackDuration,
-            mixUrl: mixUrl ?? undefined,
-            stems,
-          });
-        }
-
-        if (mixerTracks.length > 0) {
-          result.push({
-            albumId: album.albumId,
-            title: album.album || album.albumId,
-            year: resolveAlbumYear(album),
-            cover: album.cover,
-            userId: storageUserId,
-            tracks: mixerTracks,
-          });
-        }
-      }
-
-      if (syncAtLoadStart !== syncEpochRef.current) {
-        return;
-      }
-
-      setCatalog(result);
-      setBuilding(false);
-    };
-
-    build();
-  }, [albums, albumsStatus, albumsLastUpdated, artistSlug]);
+  }, [dispatch, loadAlbumTracks, tracksLoadingAlbumId]);
 
   return {
-    albums: catalog,
-    loading: showAlbumsLoadingShell || building,
+    albums,
+    loading: showCatalogLoadingShell,
+    tracksLoadingAlbumId,
+    loadAlbumTracks,
   };
 }

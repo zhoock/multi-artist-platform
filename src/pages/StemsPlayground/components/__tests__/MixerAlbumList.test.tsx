@@ -14,6 +14,8 @@ const albums: MixerAlbum[] = [
     albumId: 'a1',
     title: 'Album One',
     year: '2022',
+    listedTrackCount: 2,
+    tracksStatus: 'idle',
     tracks: [
       { id: 't1', title: 'Track 1', duration: 120, stems: [] },
       { id: 't2', title: 'Track 2', duration: 90, stems: [] },
@@ -23,6 +25,8 @@ const albums: MixerAlbum[] = [
     albumId: 'a2',
     title: 'Album Two',
     year: '2025',
+    listedTrackCount: 1,
+    tracksStatus: 'idle',
     tracks: [{ id: 't3', title: 'Track 3', duration: 60, stems: [] }],
   },
 ];

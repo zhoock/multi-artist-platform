@@ -52,7 +52,7 @@ export default function StemsPlayground() {
   const artistSlug = searchParams.get('artist')?.trim() || publicArtistSlugFromStore?.trim() || '';
   const publicArtistSlug = artistSlug || null;
 
-  const { albums, loading } = useMixerCatalog();
+  const { albums, loading, tracksLoadingAlbumId, loadAlbumTracks } = useMixerCatalog();
   const {
     view,
     selectedAlbum,
@@ -65,6 +65,14 @@ export default function StemsPlayground() {
 
   const { requestAccess } = useArchiveAccessModal();
 
+  const handleSelectAlbum = useCallback(
+    (albumId: string) => {
+      selectAlbum(albumId);
+      void loadAlbumTracks(albumId);
+    },
+    [selectAlbum, loadAlbumTracks]
+  );
+
   const handleSelectTrack = useCallback(
     (trackId: string) => {
       const track = selectedAlbum?.tracks.find((t) => t.id === trackId);
@@ -76,22 +84,28 @@ export default function StemsPlayground() {
             refreshPremiumContentForArchiveChange(dispatch, publicArtistSlug, {
               immediate: true,
             });
+            if (selectedAlbum?.albumId) {
+              void loadAlbumTracks(selectedAlbum.albumId, { force: true });
+            }
           },
         });
         return;
       }
       selectTrack(trackId);
     },
-    [selectedAlbum, publicArtistSlug, requestAccess, dispatch, selectTrack]
+    [selectedAlbum, publicArtistSlug, requestAccess, dispatch, selectTrack, loadAlbumTracks]
   );
 
   useEffect(() => {
     const onArchiveChanged = () => {
       refreshPremiumContentForArchiveChange(dispatch, publicArtistSlug);
+      if (selectedAlbum?.albumId) {
+        void loadAlbumTracks(selectedAlbum.albumId, { force: true });
+      }
     };
     window.addEventListener('archive:changed', onArchiveChanged);
     return () => window.removeEventListener('archive:changed', onArchiveChanged);
-  }, [dispatch, publicArtistSlug]);
+  }, [dispatch, publicArtistSlug, selectedAlbum?.albumId, loadAlbumTracks]);
 
   const sectionRef = useRef<HTMLElement | null>(null);
   const panelRef = useRef<MixerPlayerPanelHandle | null>(null);
@@ -251,16 +265,27 @@ export default function StemsPlayground() {
     };
   }, [mixId, dispatch, navigate]);
 
-  // Как только каталог построен — открываем нужный альбом/трек shared-микса.
+  // Shared mix: load AlbumDetails + stems for the target album, then drill in.
   useEffect(() => {
     if (!sharedMix || sharedAppliedRef.current) return;
-    const album = albums.find((a) => a.albumId === sharedMix.albumId);
-    const track = album?.tracks.find((t) => t.id === sharedMix.trackId);
-    if (!album || !track) return;
-    sharedAppliedRef.current = true;
-    selectAlbum(album.albumId);
-    selectTrack(track.id);
-  }, [sharedMix, albums, selectAlbum, selectTrack]);
+    const albumShell = albums.find((a) => a.albumId === sharedMix.albumId);
+    if (!albumShell) return;
+
+    let cancelled = false;
+    void (async () => {
+      const loaded = await loadAlbumTracks(sharedMix.albumId, { force: true });
+      if (cancelled || !loaded) return;
+      const track = loaded.tracks.find((t) => t.id === sharedMix.trackId);
+      if (!track || track.locked) return;
+      sharedAppliedRef.current = true;
+      selectAlbum(loaded.albumId);
+      selectTrack(track.id);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [sharedMix, albums, loadAlbumTracks, selectAlbum, selectTrack]);
 
   const isSharedTrack =
     Boolean(sharedMix) && view === 'mixer' && selectedTrack?.id === sharedMix?.trackId;
@@ -423,7 +448,7 @@ export default function StemsPlayground() {
                 trackCountLabels={trackCountLabels}
                 emptyLabel={noAlbumsLabel}
                 loadingLabel={loadingLabel}
-                onSelectAlbum={selectAlbum}
+                onSelectAlbum={handleSelectAlbum}
               />
             </>
           )}
@@ -435,14 +460,32 @@ export default function StemsPlayground() {
                 <span className="mixer-back__meta">
                   {[
                     selectedAlbum.year,
-                    pluralizeTracks(selectedAlbum.tracks.length, lang, trackCountLabels),
+                    selectedAlbum.tracksStatus === 'loaded'
+                      ? pluralizeTracks(selectedAlbum.tracks.length, lang, trackCountLabels)
+                      : pluralizeTracks(
+                          selectedAlbum.listedTrackCount > 0
+                            ? selectedAlbum.listedTrackCount
+                            : selectedAlbum.tracks.length,
+                          lang,
+                          trackCountLabels
+                        ),
                   ]
                     .filter(Boolean)
                     .join(' · ')}
                 </span>
               </MixerBackNav>
-              <MixerTrackList tracks={selectedAlbum.tracks} onSelectTrack={handleSelectTrack} />
-              {selectTrackHint ? <p className="mixer-level__hint">{selectTrackHint}</p> : null}
+              {tracksLoadingAlbumId === selectedAlbum.albumId ||
+              selectedAlbum.tracksStatus === 'loading' ||
+              selectedAlbum.tracksStatus === 'idle' ? (
+                <p className="mixer-level__hint">{loadingLabel}</p>
+              ) : selectedAlbum.tracks.length === 0 ? (
+                <p className="mixer-level__hint">{noAlbumsLabel || emptyTitle}</p>
+              ) : (
+                <MixerTrackList tracks={selectedAlbum.tracks} onSelectTrack={handleSelectTrack} />
+              )}
+              {selectTrackHint && selectedAlbum.tracksStatus === 'loaded' ? (
+                <p className="mixer-level__hint">{selectTrackHint}</p>
+              ) : null}
             </>
           )}
 

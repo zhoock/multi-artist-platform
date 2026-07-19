@@ -14,12 +14,11 @@ import { useRedirectHomeAfterOwnAccountDeleted } from '@shared/lib/hooks/useRedi
 import { playerActions, toPlayerTracks } from '@features/player';
 import { getUserAudioUrl } from '@shared/api/albums';
 import { emptyStringMediaSrc } from '@shared/lib/media/optionalMediaUrl';
-import type { IAlbums } from '@models';
 import { isDashboardPathname } from '@shared/lib/publicArtistContext';
-import { resolveAlbumForDisplay } from '@entities/album/lib/resolveAlbumDisplay';
 import { fetchAlbums, fetchArtistAlbumCatalog } from '@entities/album';
 import { fetchArticles } from '@entities/article';
 import { generateMockArtists } from '@shared/lib/generateMockArtists';
+import { fetchUniverseArtistPlayAlbum } from '@features/universe/lib/fetchUniverseArtistPlayAlbum';
 import { prepareUniverseData } from '@features/universe/model/prepareUniverseData';
 import { fetchWithAuthSession } from '@shared/lib/authFetch';
 import {
@@ -94,7 +93,7 @@ export function HomePage() {
 
   /**
    * Единственный источник первичной загрузки публичного каталога на `/?artist=`.
-   * Thin catalog → Artist Page cards; full `/api/albums` остаётся для Album/Player/Mixer/Dashboard.
+   * Thin catalog → Artist Page cards; Universe play → catalog + AlbumDetails (не fat `/api/albums`).
    * Loader при defer не диспатчит fetch (см. shouldDeferPublicArtistCatalogToSurface).
    */
   useEffect(() => {
@@ -217,25 +216,8 @@ export function HomePage() {
         onPlayArtist: async (artist) => {
           if (!artist?.publicSlug) return false;
 
-          const url = `/api/albums?artist=${encodeURIComponent(artist.publicSlug)}`;
-          const response = await fetchWithAuthSession(url);
-          const payload = (await response.json()) as { success?: boolean; data?: IAlbums[] };
-
-          if (
-            !response.ok ||
-            !payload.success ||
-            !Array.isArray(payload.data) ||
-            payload.data.length === 0
-          ) {
-            return false;
-          }
-
-          const firstAlbum = payload.data.find(
-            (album) => Array.isArray(album.tracks) && album.tracks.length > 0
-          );
-          if (!firstAlbum) return false;
-
-          const resolvedAlbum = resolveAlbumForDisplay(firstAlbum as IAlbums, lang);
+          const resolvedAlbum = await fetchUniverseArtistPlayAlbum(artist.publicSlug, lang);
+          if (!resolvedAlbum) return false;
 
           const albumId = fallbackAlbumClientId(resolvedAlbum);
           const playlist = toPlayerTracks(
@@ -266,7 +248,7 @@ export function HomePage() {
           dispatch(
             playerActions.setAlbumInfo({
               albumId,
-              albumTitle: resolvedAlbum.album,
+              albumTitle: resolvedAlbum.title,
             })
           );
 
@@ -279,11 +261,11 @@ export function HomePage() {
               albumId,
               userId: resolvedAlbum.userId ?? null,
               publicSlug: artist.publicSlug,
-              album: resolvedAlbum.album,
+              album: resolvedAlbum.title,
               artist: displayArtist,
               fullName:
-                formatAlbumDisplayFullName(resolvedForTitle, resolvedAlbum.album) ||
-                resolvedAlbum.album,
+                formatAlbumDisplayFullName(resolvedForTitle, resolvedAlbum.title) ||
+                resolvedAlbum.title,
               cover: resolvedAlbum.cover ?? null,
             })
           );

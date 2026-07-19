@@ -1,5 +1,8 @@
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
-import { selectAlbumsInFlightFetchContextKey, selectCatalogArtistMissing } from '@entities/album';
+import {
+  selectAlbumsInFlightFetchContextKey,
+  selectArtistAlbumCatalogArtistMissing,
+} from '@entities/album';
 import { useDashboardModalShell } from '@shared/lib/dashboardModalShellContext';
 
 type AlbumsStatus = 'idle' | 'loading' | 'succeeded' | 'failed';
@@ -40,7 +43,7 @@ export function useShowSurfaceAlbumsLoadingShell(
   hasRenderableAlbumsData: boolean,
   catalogCacheStale = false
 ): boolean {
-  const artistMissing = useAppSelector(selectCatalogArtistMissing);
+  const artistMissing = useAppSelector(selectArtistAlbumCatalogArtistMissing);
   const base = shouldShowAlbumsLoadingShell(
     albumsStatus,
     hasRenderableAlbumsData,

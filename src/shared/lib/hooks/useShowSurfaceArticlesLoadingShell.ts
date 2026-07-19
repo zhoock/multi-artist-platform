@@ -1,6 +1,6 @@
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { selectArticlesInFlightFetchContextKey } from '@entities/article';
-import { selectCatalogArtistMissing } from '@entities/album';
+import { selectArtistAlbumCatalogArtistMissing } from '@entities/album';
 import { useDashboardModalShell } from '@shared/lib/dashboardModalShellContext';
 
 type ArticlesStatus = 'idle' | 'loading' | 'succeeded' | 'failed';
@@ -21,7 +21,7 @@ export function useShowSurfaceArticlesLoadingShell(
   hasRenderableData: boolean,
   cacheStale = false
 ): boolean {
-  const artistMissing = useAppSelector(selectCatalogArtistMissing);
+  const artistMissing = useAppSelector(selectArtistAlbumCatalogArtistMissing);
   const inFlight = useAppSelector(selectArticlesInFlightFetchContextKey);
   const { overlayOpen } = useDashboardModalShell();
 

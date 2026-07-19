@@ -38,7 +38,11 @@ export function MixerAlbumList({
         <MixerAlbumCard
           key={album.albumId}
           album={album}
-          trackCountLabel={pluralizeTracks(album.tracks.length, lang, trackCountLabels)}
+          trackCountLabel={pluralizeTracks(
+            album.listedTrackCount > 0 ? album.listedTrackCount : album.tracks.length,
+            lang,
+            trackCountLabels
+          )}
           onSelect={onSelectAlbum}
         />
       ))}

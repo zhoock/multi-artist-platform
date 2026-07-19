@@ -6,7 +6,9 @@ import { AlertModal } from '@shared/ui/alertModal';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { useAppDispatch } from '@shared/lib/hooks/useAppDispatch';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
-import { selectDashboardAlbumsData, fetchAlbums } from '@entities/album';
+import { selectDashboardAlbumsData, fetchAlbums, fetchArtistAlbumCatalog } from '@entities/album';
+import { selectPublicArtistSlug } from '@shared/model/currentArtist';
+import { getStore } from '@shared/model/appStore';
 import { queueAlbumCreatedToast } from '@shared/lib/albumCreatedToast';
 import { useLang } from '@app/providers/lang';
 import { getToken, getUser } from '@shared/lib/auth';
@@ -2495,10 +2497,15 @@ export function EditAlbumModal({
       console.log('🔄 [EditAlbumModal] Forcing fetchAlbums for lang:', lang);
       try {
         await dispatch(fetchAlbums({ force: true, ownerDashboard: true })).unwrap();
-        try {
-          await dispatch(fetchAlbums({ force: true })).unwrap();
-        } catch {
-          /* публичный каталог ?artist= — best-effort */
+        const publicSlug = selectPublicArtistSlug(getStore().getState())?.trim();
+        if (publicSlug) {
+          try {
+            await dispatch(
+              fetchArtistAlbumCatalog({ force: true, publicArtistSlug: publicSlug })
+            ).unwrap();
+          } catch {
+            /* thin public catalog — best-effort */
+          }
         }
         console.log('✅ [EditAlbumModal] Redux store updated for', lang);
         if (typeof window !== 'undefined') {
