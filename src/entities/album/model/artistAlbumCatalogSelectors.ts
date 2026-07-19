@@ -35,7 +35,10 @@ export const selectArtistAlbumCatalogArtistMissing = createSelector(
 export const selectArtistAlbumCatalogCacheIsStale = createSelector(
   [selectArtistAlbumCatalogFetchContextKey, selectPublicArtistSlug],
   (fetchKey, slug) => {
-    const desired = buildPublicAlbumsFetchContextKey(slug);
+    const normalizedSlug = slug?.trim() ?? '';
+    // Brief slug clear (overlay teardown) must not mark cache stale — keep last-good surface.
+    if (!normalizedSlug) return false;
+    const desired = buildPublicAlbumsFetchContextKey(normalizedSlug);
     if (!fetchKey) return true;
     return fetchKey !== desired;
   }
@@ -45,7 +48,9 @@ export const selectArtistAlbumCatalogCacheIsStale = createSelector(
 export const selectArtistAlbumCatalogForSurface = createSelector(
   [selectArtistAlbumCatalogData, selectArtistAlbumCatalogCacheIsStale],
   (albums, stale): CatalogAlbum[] => {
-    if (stale) return [];
+    // Stale-while-revalidate: keep last-good cards during background refresh / brief mismatch.
+    // Cross-artist navigation clears `data` in fetch.pending when fetchContextKey changes.
+    if (stale && albums.length === 0) return [];
     return albums.filter(
       (album) =>
         isAlbumVisibleOnArtistPage(album) && album.title.trim().length > 0 && album.trackCount > 0

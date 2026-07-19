@@ -312,6 +312,72 @@ describe('useArtistPageAccess — published surface without releases', () => {
       expect(result.current.hasPublicReleases).toBe(false);
     });
   });
+
+  test('soft refresh: loading каталога с last-good данными не включает ArtistPageSkeleton', async () => {
+    const { result } = renderHook(() => useArtistPageAccess('test-artist'), {
+      wrapper: createWrapper({
+        lang: { current: 'en' },
+        currentArtist: { publicSlug: 'test-artist' },
+        articles: {
+          status: 'succeeded',
+          error: null,
+          data: [
+            {
+              articleId: 'article-1',
+              nameArticle: 'Untitled',
+              date: '2026-06-13',
+              img: '',
+              description: '',
+              isDraft: false,
+              visibility: 'public',
+            },
+          ],
+          lastUpdated: Date.now(),
+          lastPublicArtistSlug: 'test-artist',
+          dashboard: {
+            status: 'idle',
+            error: null,
+            data: [],
+            lastUpdated: null,
+          },
+        },
+        albums: {
+          dashboard: {
+            status: 'idle',
+            error: null,
+            data: [],
+            lastUpdated: null,
+            inFlightFetchContextKey: null,
+          },
+        },
+        artistAlbumCatalog: {
+          // Force refetch after Dashboard: status may be loading while rows stay in store (SWR).
+          status: 'loading',
+          error: null,
+          data: [
+            {
+              albumId: 'album-1',
+              title: 'Album',
+              cover: '',
+              releaseDate: '2024-01-01',
+              trackCount: 1,
+              isPublished: true,
+              isPublic: true,
+              hasStems: false,
+            },
+          ],
+          lastUpdated: Date.now(),
+          fetchContextKey: 'public:test-artist',
+          artistMissing: false,
+        },
+      }),
+    });
+
+    await waitFor(() => {
+      expect(result.current.pageReady).toBe(true);
+      expect(result.current.showArtistPageSkeleton).toBe(false);
+    });
+  });
 });
 
 describe('useArtistPageAccess — visitor unpublished artist', () => {

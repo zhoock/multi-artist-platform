@@ -79,7 +79,15 @@ export function ArchiveAccessModalView({ dialogRef, onClose }: Props) {
       if (!result.ok) {
         setCheckoutError(result.error);
         setLoadingPlan(null);
+        return;
       }
+
+      // Auth overlay keeps this view mounted — clear loading so canceling auth
+      // does not leave "Redirecting…" stuck on the plan CTA.
+      if (result.redirected === 'auth') {
+        setLoadingPlan(null);
+      }
+      // redirected === 'payment': keep loading until the browser leaves the page.
     },
     [startCheckout]
   );

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLang } from '@app/providers/lang';
 import { useEffectiveLocation } from '@shared/lib/hooks/useEffectiveLocation';
 import { hasPublishedPublicCatalogReleases } from '@entities/album/lib/catalogPublication';
@@ -163,6 +163,9 @@ export function useArtistPageAccessState(
   const [paymentSurfaceReady, setPaymentSurfaceReady] = useState(true);
   const [monetizationEnabled, setMonetizationEnabled] = useState(false);
   const [artistDisplayNameReady, setArtistDisplayNameReady] = useState(false);
+  /** Slug for which profile/payment chrome gates already passed (SWR soft refresh). */
+  const profileSurfacesReadyForSlugRef = useRef('');
+  const paymentSurfaceReadyForSlugRef = useRef('');
 
   const ownerAlbumCount = useMemo(() => {
     if (!isOwner) return 0;
@@ -364,6 +367,7 @@ export function useArtistPageAccessState(
 
     const normalizedArtist = normalizeSlug(artistSlug);
     if (!normalizedArtist || !ownerResolved) {
+      profileSurfacesReadyForSlugRef.current = '';
       setAboutSurfaceReady(false);
       setSocialSurfaceReady(false);
       setArtistDisplayNameReady(false);
@@ -371,14 +375,23 @@ export function useArtistPageAccessState(
     }
 
     let cancelled = false;
-    setAboutSurfaceReady(false);
-    setSocialSurfaceReady(false);
-    setArtistDisplayNameReady(false);
+    /**
+     * Soft revalidate (lang / ownerResolved after Dashboard): keep chrome ready for the same
+     * slug so pageReady does not flicker into ArtistPageSkeleton. New slug = cold start.
+     */
+    const softRefreshSameArtist = profileSurfacesReadyForSlugRef.current === normalizedArtist;
+    if (!softRefreshSameArtist) {
+      setAboutSurfaceReady(false);
+      setSocialSurfaceReady(false);
+      setArtistDisplayNameReady(false);
+    }
 
     void loadTheBandFromDatabase(lang, { artistSlugOverride: normalizedArtist })
       .catch(() => null)
       .finally(() => {
-        if (!cancelled) setAboutSurfaceReady(true);
+        if (cancelled) return;
+        profileSurfacesReadyForSlugRef.current = normalizedArtist;
+        setAboutSurfaceReady(true);
       });
 
     void loadSocialLinksFromDatabase({ artistSlugOverride: normalizedArtist })
@@ -403,13 +416,17 @@ export function useArtistPageAccessState(
 
     const normalizedArtist = normalizeSlug(artistSlug);
     if (!normalizedArtist || !ownerResolved) {
+      paymentSurfaceReadyForSlugRef.current = '';
       setPaymentSurfaceReady(true);
       setMonetizationEnabled(false);
       return;
     }
 
     let cancelled = false;
-    setPaymentSurfaceReady(false);
+    const softRefreshSameArtist = paymentSurfaceReadyForSlugRef.current === normalizedArtist;
+    if (!softRefreshSameArtist) {
+      setPaymentSurfaceReady(false);
+    }
 
     const loadMonetization = async () => {
       try {
@@ -442,7 +459,10 @@ export function useArtistPageAccessState(
       } catch {
         if (!cancelled) setMonetizationEnabled(false);
       } finally {
-        if (!cancelled) setPaymentSurfaceReady(true);
+        if (!cancelled) {
+          paymentSurfaceReadyForSlugRef.current = normalizedArtist;
+          setPaymentSurfaceReady(true);
+        }
       }
     };
 
@@ -463,14 +483,17 @@ export function useArtistPageAccessState(
   }, [artistSlug, enabled, isOwner, ownerResolved]);
 
   const albumsSurfaceRequired = routeRequiresAlbumsSurface(pathname);
+  /**
+   * Cold start only: block chrome when there is no last-good catalog to show.
+   * Soft refresh (force / brief stale) with cached rows must not flip pageReady → skeleton.
+   */
   const albumsPending =
     albumsSurfaceRequired &&
+    cachedThinCatalogRowCount === 0 &&
     (catalogCacheStale ||
       thinCatalogStatus === 'idle' ||
-      (thinCatalogStatus === 'loading' && cachedThinCatalogRowCount === 0) ||
-      (thinCatalogStatus === 'succeeded' &&
-        thinCatalogFetchContextKey !== desiredFetchKey &&
-        cachedThinCatalogRowCount === 0));
+      thinCatalogStatus === 'loading' ||
+      (thinCatalogStatus === 'succeeded' && thinCatalogFetchContextKey !== desiredFetchKey));
 
   const visitorProfilePending = !isOwner && visitorProfileHasPublicBody === null;
 
@@ -480,14 +503,15 @@ export function useArtistPageAccessState(
   const visitorArticlesGatePending =
     !isOwner &&
     publicCatalogLength === 0 &&
+    publicArticles.length === 0 &&
     (articlesCacheStale || articlesStatus === 'idle' || articlesStatus === 'loading');
 
   const visitorAccessPending = visitorProfilePending || visitorArticlesGatePending;
 
-  /** Как `shouldShowSurfaceArticlesLoadingShell`: idle/loading без данных в store. */
+  /** Cold start only — soft refresh keeps last-good articles on screen. */
   const articlesSurfacePending =
-    articlesCacheStale ||
-    ((articlesStatus === 'idle' || articlesStatus === 'loading') && publicArticles.length === 0);
+    publicArticles.length === 0 &&
+    (articlesCacheStale || articlesStatus === 'idle' || articlesStatus === 'loading');
 
   /**
    * Каталог/статьи блокируют chrome/pageReady только на маршрутах, где их реально грузят.

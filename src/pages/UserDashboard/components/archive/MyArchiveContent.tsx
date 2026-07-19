@@ -440,6 +440,11 @@ export function MyArchiveContent({ active, onContentReady, onContentBusy }: Prop
     if (!result.ok) {
       setError(result.error);
       setRenewLoading(false);
+      return;
+    }
+
+    if (result.redirected === 'auth') {
+      setRenewLoading(false);
     }
   }, [bulkLoading, openSupportModal, planSlug, renewLoading, startCheckout]);
 

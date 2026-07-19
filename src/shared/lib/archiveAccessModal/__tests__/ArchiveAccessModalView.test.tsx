@@ -13,6 +13,7 @@ import { ArchiveAccessModalProvider, useArchiveAccessModal } from '../archiveAcc
 
 const getMyArchiveMock = jest.fn<() => Promise<unknown>>();
 const getTokenMock = jest.fn<() => string | null>();
+const getUserMock = jest.fn<() => { id: string; email: string } | null>();
 
 jest.mock('@shared/api/archive', () => ({
   getMyArchive: () => getMyArchiveMock(),
@@ -20,7 +21,7 @@ jest.mock('@shared/api/archive', () => ({
 
 jest.mock('@shared/lib/auth', () => ({
   getToken: () => getTokenMock(),
-  getUser: () => ({ id: 'user-1', email: 'user@example.com' }),
+  getUser: () => getUserMock(),
   isEmailVerified: () => true,
   subscribeAuthSession: () => () => {},
   getAuthSessionIdentityKey: () => 'user:user-1',
@@ -101,6 +102,8 @@ describe('ArchiveAccessModalView current plan', () => {
   beforeEach(() => {
     getMyArchiveMock.mockReset();
     getTokenMock.mockReset();
+    getUserMock.mockReset();
+    getUserMock.mockReturnValue({ id: 'user-1', email: 'user@example.com' });
     createSubscriptionPaymentMock.mockReset();
     createSubscriptionPaymentMock.mockResolvedValue({
       success: true,
@@ -201,10 +204,61 @@ describe('ArchiveAccessModalView current plan', () => {
   });
 });
 
+describe('ArchiveAccessModalView guest auth redirect', () => {
+  beforeEach(() => {
+    getMyArchiveMock.mockReset();
+    getTokenMock.mockReset();
+    getUserMock.mockReset();
+    getTokenMock.mockReturnValue(null);
+    getUserMock.mockReturnValue(null);
+    getMyArchiveMock.mockResolvedValue({
+      isPremium: false,
+      slotsUsed: 0,
+      slotsLimit: 3,
+      artists: [],
+    });
+    createSubscriptionPaymentMock.mockReset();
+  });
+
+  test('clears plan CTA loading after redirecting guest to auth', async () => {
+    renderWithProviders(
+      <PremiumSubscriptionProvider>
+        <ArchiveAccessModalProvider>
+          <OpenModalButton />
+        </ArchiveAccessModalProvider>
+      </PremiumSubscriptionProvider>,
+      { preloadedState: { lang: { current: 'en' } } }
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open Artist Support' }));
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'Choose your plan' })).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Choose Archivist' }));
+
+    await waitFor(() => {
+      expect(createSubscriptionPaymentMock).not.toHaveBeenCalled();
+      // Auth redirect closes the plan picker; view stays mounted with loading cleared.
+      expect(screen.queryByRole('heading', { name: 'Choose your plan' })).toBeNull();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open Artist Support' }));
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'Choose your plan' })).toBeTruthy();
+    });
+
+    expect(screen.getByRole('button', { name: 'Choose Archivist' })).toBeEnabled();
+    expect(screen.queryByText('Redirecting…')).toBeNull();
+  });
+});
+
 describe('ArchiveAccessModalView plan change confirmation', () => {
   beforeEach(() => {
     getMyArchiveMock.mockReset();
     getTokenMock.mockReset();
+    getUserMock.mockReset();
+    getUserMock.mockReturnValue({ id: 'user-1', email: 'user@example.com' });
     createSubscriptionPaymentMock.mockReset();
     createSubscriptionPaymentMock.mockResolvedValue({
       success: true,

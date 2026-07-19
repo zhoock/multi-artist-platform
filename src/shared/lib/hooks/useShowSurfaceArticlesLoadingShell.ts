@@ -7,12 +7,13 @@ type ArticlesStatus = 'idle' | 'loading' | 'succeeded' | 'failed';
 
 /**
  * Скелетон статей на главной: не мигать, пока дашборд в полёте качает тот же slice (inFlight = dashboard).
+ * Stale-while-revalidate: при наличии last-good данных не скрываем секцию из‑за stale/loading.
  */
 function baseShow(status: ArticlesStatus, hasRenderableData: boolean, cacheStale = false): boolean {
+  if (hasRenderableData) return false;
   if (cacheStale) return true;
   const waiting = status === 'loading' || status === 'idle';
   if (!waiting) return false;
-  if (hasRenderableData) return false;
   return true;
 }
 

@@ -11,10 +11,21 @@ jest.mock('@entities/user/lib', () => ({
   loadTheBandFromDatabase: (lang: string, options?: Record<string, unknown>) =>
     loadTheBandFromDatabase(lang, options),
   loadTheBandFromProfileJson: (lang: string) => loadTheBandFromProfileJson(lang),
+  loadSocialLinksFromDatabase: jest.fn(async () => ({})),
+  loadHeaderImagesFromDatabase: jest.fn(async () => []),
 }));
 
 jest.mock('@shared/lib/hooks/useSiteArtistDisplayName', () => ({
   useSiteArtistDisplayName: () => ({ displayLabel: 'Test Artist', isLoading: false }),
+}));
+
+jest.mock('@shared/lib/hooks/useArtistPageBuilder', () => ({
+  useArtistPageBuilder: () => ({
+    builderVisibility: false,
+    monetizationEnabled: false,
+    showArtistPageSkeleton: false,
+    skeletonVariant: 'visitor' as const,
+  }),
 }));
 
 const uiDictionaryState = {
@@ -101,6 +112,40 @@ describe('AboutSection integration tests', () => {
       expect(screen.queryByRole('heading', { name: /о группе/i })).not.toBeInTheDocument();
     });
     expect(loadTheBandFromDatabase).toHaveBeenCalledTimes(2);
+  });
+
+  test('на soft refresh (artist:updated) оставляет секцию на экране до ответа', async () => {
+    let resolveRefresh!: (value: string[]) => void;
+    const refreshPromise = new Promise<string[]>((resolve) => {
+      resolveRefresh = resolve;
+    });
+
+    loadTheBandFromDatabase
+      .mockResolvedValueOnce(['Описание группы'])
+      .mockImplementationOnce(() => refreshPromise);
+
+    renderAboutSection();
+
+    await waitFor(() => {
+      expect(document.getElementById('about')).toBeInTheDocument();
+    });
+    expect(document.getElementById('about')).toHaveTextContent('Описание группы');
+
+    await act(async () => {
+      window.dispatchEvent(new Event('artist:updated'));
+    });
+
+    // SWR: previous content stays mounted while the background fetch is in flight.
+    expect(document.getElementById('about')).toBeInTheDocument();
+    expect(document.getElementById('about')).toHaveTextContent('Описание группы');
+
+    await act(async () => {
+      resolveRefresh(['Обновлённое описание']);
+    });
+
+    await waitFor(() => {
+      expect(document.getElementById('about')).toHaveTextContent('Обновлённое описание');
+    });
   });
 
   test('показывает описание на RU-странице, если текст сохранён только на EN', async () => {

@@ -336,6 +336,9 @@ const articlesSlice = createSlice({
       .addCase(setPublicArtistSlug, (state, action) => {
         const desiredSlug = action.payload?.trim() ?? '';
         if ((state.lastPublicArtistSlug ?? '') === desiredSlug) return;
+        // Keep last-good public articles when slug briefly clears (overlay teardown / soft sync).
+        // Wipe only when switching to a different non-empty artist.
+        if (!desiredSlug) return;
         state.data = [];
         state.status = 'idle';
         state.error = null;

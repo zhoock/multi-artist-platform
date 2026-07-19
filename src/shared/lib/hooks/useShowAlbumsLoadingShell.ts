@@ -9,7 +9,7 @@ type AlbumsStatus = 'idle' | 'loading' | 'succeeded' | 'failed';
 
 /**
  * Показывать ли полноэкранный скелетон/блокировку по статусу альбомов.
- * Пока в store уже есть данные для списка/альбома, не скрываем UI при loading/idle
+ * Stale-while-revalidate: пока в store уже есть данные, не скрываем UI при loading/idle/stale
  * (фоновый refetch после auth-change, из кабинета, закрытие дашборда и т.д.).
  */
 export function shouldShowAlbumsLoadingShell(
@@ -17,10 +17,10 @@ export function shouldShowAlbumsLoadingShell(
   hasRenderableAlbumsData: boolean,
   catalogCacheStale = false
 ): boolean {
+  if (hasRenderableAlbumsData) return false;
   if (catalogCacheStale) return true;
   const waiting = albumsStatus === 'loading' || albumsStatus === 'idle';
   if (!waiting) return false;
-  if (hasRenderableAlbumsData) return false;
   return true;
 }
 

@@ -146,15 +146,23 @@ const artistAlbumCatalogSlice = createSlice({
   extraReducers: (builder) => {
     builder
       .addCase(fetchArtistAlbumCatalog.pending, (state, action) => {
-        state.status = 'loading';
         state.error = null;
         const slug = action.meta.arg?.publicArtistSlug?.trim() ?? '';
         if (slug) {
           const nextKey = buildPublicAlbumsFetchContextKey(slug);
           if (state.fetchContextKey && state.fetchContextKey !== nextKey) {
+            // Real artist switch — drop previous catalog so we never flash the wrong artist.
             state.data = [];
             state.artistMissing = false;
+            state.status = 'loading';
+            return;
           }
+        }
+        // Soft refresh (same slug / force): keep last-good rows; do not flip chrome to skeleton.
+        const backgroundRefetch =
+          Boolean(action.meta.arg?.force) && state.status === 'succeeded' && state.data.length > 0;
+        if (!backgroundRefetch) {
+          state.status = 'loading';
         }
       })
       .addCase(fetchArtistAlbumCatalog.fulfilled, (state, action) => {

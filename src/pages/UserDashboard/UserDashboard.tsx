@@ -1876,7 +1876,7 @@ function UserDashboard() {
           <title>{dashboardHeading} — Смоляное Чучелко</title>
         </Helmet>
 
-        <Popup isActive={true} onClose={closeDashboard}>
+        <Popup isActive={true} onClose={closeDashboard} publicBackdrop>
           <AlbumPublishedToast triggerKey={publishedToastTrigger} />
           <AlbumCreatedToast triggerKey={editAlbumModal} />
           <TracksUploadedToast triggerKey={tracksUploadToastTrigger} />

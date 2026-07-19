@@ -1,6 +1,7 @@
 /* Dashboard */
 
 @use '../../scss/abstracts/mixins' as *;
+@use '../../scss/abstracts/modal-backdrop' as *;
 
 // Импортируем модульные стили
 @use 'styles/layout';
@@ -11,13 +12,19 @@
 @use 'styles/focus';
 @use 'styles/dashboard-row-state-flash';
 
-dialog {
+// Shell is transparent (same as Auth `publicBackdrop` / `.local-modal`).
+// Dim the page via ::backdrop — not an opaque dialog fill.
+dialog.popup:has(.user-dashboard) {
   color: var(--dashboard-text-primary);
-  background: var(--dashboard-card-bg);
+  background: transparent;
 
   // Base font size for unstyled legacy buttons; dashboard btn mixins own layout.
   button {
     font-size: var(--dashboard-font-size);
+  }
+
+  &::backdrop {
+    @include public-modal-dialog-backdrop;
   }
 
   .user-dashboard {
@@ -93,8 +100,9 @@ dialog {
   }
 }
 
-// Стили для backdrop (фон за попапом)
-dialog::backdrop {
+// Nested dialogs opened while dashboard styles are loaded (edit track, etc.).
+// Main dashboard shell uses public-modal tokens above.
+dialog:not(.local-modal)::backdrop {
   background: var(--dashboard-backdrop);
   backdrop-filter: blur(8px);
 }

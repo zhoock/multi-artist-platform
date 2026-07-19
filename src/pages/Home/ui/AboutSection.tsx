@@ -63,11 +63,17 @@ export function AboutSection({ isAboutModalOpen, onOpen, onClose }: AboutSection
     return () => window.removeEventListener('artist:updated', handleArtistUpdated);
   }, []);
 
+  // Identity change (artist / lang): cold start — clear so we never flash another artist's bio.
+  useEffect(() => {
+    setTheBandFromDb(null);
+    setIsLoadingTheBand(true);
+  }, [lang, isArtistPage, artistSlug]);
+
   useEffect(() => {
     let cancelled = false;
 
-    setTheBandFromDb(null);
-    setIsLoadingTheBand(true);
+    // Soft refresh (`artist:updated`): keep last-good `theBandFromDb` until the new payload arrives.
+    // Loading/clear is owned by the identity effect above (artist / lang change only).
 
     (async () => {
       try {

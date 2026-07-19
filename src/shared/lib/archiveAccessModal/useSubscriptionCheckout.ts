@@ -17,7 +17,13 @@ import type { SubscriptionPlanSlug } from '@shared/lib/payment/subscriptionPlans
 import type { CloseArchiveAccessModalOptions } from './archiveAccessModalContext';
 
 export type SubscriptionCheckoutResult =
-  | { ok: true; redirected: true }
+  /** Navigating to YooKassa — UI may keep loading until the page unloads. */
+  | { ok: true; redirected: 'payment' }
+  /**
+   * Navigating to auth overlay — SPA stays mounted; callers must clear loading
+   * (plan picker / renew buttons) so canceling auth does not leave a stuck CTA.
+   */
+  | { ok: true; redirected: 'auth' }
   | { ok: false; error: string };
 
 type UseSubscriptionCheckoutOptions = {
@@ -53,7 +59,7 @@ export function useSubscriptionCheckout({ onClose }: UseSubscriptionCheckoutOpti
           state: { backgroundLocation: location },
         });
         onClose?.({ preserveCheckoutIntent: true });
-        return { ok: true, redirected: true };
+        return { ok: true, redirected: 'auth' };
       }
 
       try {
@@ -76,7 +82,7 @@ export function useSubscriptionCheckout({ onClose }: UseSubscriptionCheckoutOpti
           savePremiumCheckoutArtistSlug();
           onClose?.({ preserveCheckoutIntent: true });
           window.location.href = result.data.confirmationUrl;
-          return { ok: true, redirected: true };
+          return { ok: true, redirected: 'payment' };
         }
 
         return {

@@ -70,7 +70,7 @@ describe('MyArchiveContent plan display', () => {
     activateArchiveArtistsApiMock.mockReset();
     openSupportModalMock.mockReset();
     startCheckoutMock.mockReset();
-    startCheckoutMock.mockResolvedValue({ ok: true, redirected: true });
+    startCheckoutMock.mockResolvedValue({ ok: true, redirected: 'payment' });
   });
 
   test('shows two-column header with plan and subscription status when active', async () => {

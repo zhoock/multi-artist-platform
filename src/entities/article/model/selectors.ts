@@ -61,6 +61,8 @@ export const selectArticlesCacheIsStale = createSelector(
   [selectArticlesLastPublicArtistSlug, selectPublicArtistSlug],
   (cachedSlug, desiredSlug) => {
     const desired = desiredSlug?.trim() ?? '';
+    // Brief slug clear must not mark cache stale — keep last-good surface (SWR).
+    if (!desired) return false;
     return cachedSlug !== desired;
   }
 );
@@ -79,7 +81,12 @@ export const selectPublicArticlesDataResolved = createSelector(
 
 export const selectArticlesDataResolvedForSurface = createSelector(
   [selectPublicArticlesDataResolved, selectArticlesCacheIsStale],
-  (articles, stale) => (stale ? [] : articles)
+  (articles, stale) => {
+    // Stale-while-revalidate: keep last-good rows while background refresh runs.
+    // Cross-artist slug change clears `data` in setPublicArtistSlug / fetch pending.
+    if (stale && articles.length === 0) return [];
+    return articles;
+  }
 );
 
 export const selectArticlesCachedRowCount = createSelector(
