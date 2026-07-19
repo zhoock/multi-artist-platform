@@ -121,6 +121,53 @@ describe('Album integration tests', () => {
     expect(screen.getByLabelText(/скелетон альбома/i)).toBeInTheDocument();
   });
 
+  test('во время SWR после rename показывает last-good, а не «Альбом не найден»', () => {
+    const previousDetails = createMockAlbumDetails({
+      albumId: 'stand-up',
+      slug: 'stand-up',
+      title: 'Stand Up',
+    });
+
+    renderWithProviders(<Album />, {
+      initialEntries: ['/albums/stand-up-remastered?artist=test-artist'],
+      preloadedState: {
+        lang: { current: 'en' },
+        albums: emptyAlbumsState(),
+        albumDetails: {
+          status: 'loading',
+          error: null,
+          errorCode: null,
+          // Last-good still has previous payload while slot identity already moved.
+          data: previousDetails,
+          fetchContextKey: 'albumDetails:test-artist:stand-up-remastered',
+          artistSlug: 'test-artist',
+          albumId: 'stand-up-remastered',
+          lastUpdated: Date.now(),
+        },
+        uiDictionary: {
+          en: {
+            status: 'succeeded',
+            error: null,
+            data: [
+              {
+                menu: {},
+                buttons: {},
+                titles: {},
+                links: { home: 'Home' },
+              },
+            ],
+            lastUpdated: Date.now(),
+          },
+          ru: { status: 'idle', error: null, data: [], lastUpdated: null },
+        },
+      },
+    });
+
+    expect(screen.getByLabelText(/блок c альбомом/i)).toBeInTheDocument();
+    expect(screen.queryByText(/альбом не найден/i)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/скелетон альбома/i)).not.toBeInTheDocument();
+  });
+
   test('должен отобразить ошибку при failed статусе AlbumDetails', () => {
     renderWithProviders(<Album />, {
       initialEntries: ['/albums/test-album?artist=test-artist'],

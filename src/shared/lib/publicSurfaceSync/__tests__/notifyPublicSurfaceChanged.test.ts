@@ -88,6 +88,20 @@ describe('notifyPublicSurfaceChanged', () => {
     });
   });
 
+  test('album rename force-fetches the new albumId when slot still holds previousSlug', () => {
+    notifyPublicSurfaceChanged({
+      type: 'albumContentChanged',
+      albumId: 'album-1-renamed',
+      previousAlbumId: 'album-1',
+    });
+
+    expect(mockFetchAlbumDetails).toHaveBeenCalledWith({
+      force: true,
+      artistSlug: 'test-artist',
+      albumId: 'album-1-renamed',
+    });
+  });
+
   test('flushPendingPublicSurfaceSync is a no-op without pending work', () => {
     flushPendingPublicSurfaceSync('test-artist');
     expect(mockFetchCatalog).not.toHaveBeenCalled();

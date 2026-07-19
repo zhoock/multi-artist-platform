@@ -19,6 +19,7 @@ export {
   albumDetailsReducer,
   fetchAlbumDetailsPage,
   resetAlbumDetails,
+  adoptAlbumDetailsAlbumId,
   buildAlbumDetailsFetchContextKey,
 } from './model/albumDetailsSlice';
 export {

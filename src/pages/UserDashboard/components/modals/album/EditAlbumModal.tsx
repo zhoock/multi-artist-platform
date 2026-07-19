@@ -1,14 +1,26 @@
 // src/pages/UserDashboard/components/EditAlbumModal.tsx
 import React, { useState, useRef, useEffect } from 'react';
+import { flushSync } from 'react-dom';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Popup } from '@shared/ui/popup';
 import { AlertModal } from '@shared/ui/alertModal';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { useAppDispatch } from '@shared/lib/hooks/useAppDispatch';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
-import { selectDashboardAlbumsData, fetchDashboardAlbums } from '@entities/album';
+import {
+  adoptAlbumDetailsAlbumId,
+  selectDashboardAlbumsData,
+  fetchDashboardAlbums,
+} from '@entities/album';
 import { queueAlbumCreatedToast } from '@shared/lib/albumCreatedToast';
-import { notifyPublicSurfaceChanged } from '@shared/lib/publicSurfaceSync';
+import {
+  navigateAfterAlbumSlugRename,
+  resolveArtistSlugForAlbumRename,
+} from '@shared/lib/albumRenameRedirect';
+import {
+  notifyPublicSurfaceChanged,
+  resolvePublicSurfaceArtistSlug,
+} from '@shared/lib/publicSurfaceSync';
 import { useLang } from '@app/providers/lang';
 import { getToken, getUser } from '@shared/lib/auth';
 import { fetchWithAuthSession } from '@shared/lib/authFetch';
@@ -2518,6 +2530,34 @@ export function EditAlbumModal({
         albumId ||
         '';
       if (savedAlbumId) {
+        const renamedFrom = previousAlbumIdForApi?.trim() || '';
+        const renamedTo = savedAlbumId.trim();
+        if (renamedFrom && renamedTo && renamedFrom !== renamedTo) {
+          const artistSlug =
+            resolveArtistSlugForAlbumRename(location, resolvePublicSurfaceArtistSlug()) ||
+            resolvePublicSurfaceArtistSlug();
+          if (artistSlug) {
+            // Remap slot + replace public album URL before SWR revalidate so Album.tsx
+            // never sees "old route + new details" (or empty) as "Альбом не найден".
+            dispatch(
+              adoptAlbumDetailsAlbumId({
+                previousAlbumId: renamedFrom,
+                albumId: renamedTo,
+                artistSlug,
+              })
+            );
+            flushSync(() => {
+              navigateAfterAlbumSlugRename({
+                previousAlbumId: renamedFrom,
+                newAlbumId: renamedTo,
+                artistSlug,
+                navigate,
+                location,
+              });
+            });
+          }
+        }
+
         notifyPublicSurfaceChanged({
           type: 'albumContentChanged',
           albumId: savedAlbumId,

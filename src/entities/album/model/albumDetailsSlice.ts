@@ -1,4 +1,4 @@
-import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
+import { createAsyncThunk, createSlice, type PayloadAction } from '@reduxjs/toolkit';
 import type { RootState } from '@shared/model/appStore/types';
 import {
   fetchAlbumDetails as fetchAlbumDetailsApi,
@@ -130,6 +130,42 @@ const albumDetailsSlice = createSlice({
     resetAlbumDetails() {
       return initialState;
     },
+    /**
+     * Optimistic identity remap after public slug rename.
+     * Keeps last-good payload so the album page does not flash empty/not-found
+     * while the route catches up and SWR revalidate replaces data.
+     */
+    adoptAlbumDetailsAlbumId(
+      state,
+      action: PayloadAction<{
+        previousAlbumId: string;
+        albumId: string;
+        artistSlug?: string | null;
+      }>
+    ) {
+      const previousAlbumId = action.payload.previousAlbumId.trim();
+      const albumId = action.payload.albumId.trim();
+      if (!previousAlbumId || !albumId || previousAlbumId === albumId) return;
+      if (state.albumId?.trim() !== previousAlbumId) return;
+
+      const artistSlug = action.payload.artistSlug?.trim() || state.artistSlug?.trim() || '';
+      state.albumId = albumId;
+      if (artistSlug) {
+        state.artistSlug = artistSlug;
+        state.fetchContextKey = buildAlbumDetailsFetchContextKey(artistSlug, albumId);
+      }
+      if (state.data && state.data.albumId === previousAlbumId) {
+        state.data = {
+          ...state.data,
+          albumId,
+          slug: albumId,
+        };
+      }
+      if (state.errorCode === 'ALBUM_NOT_FOUND') {
+        state.errorCode = null;
+        state.error = null;
+      }
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -140,9 +176,7 @@ const albumDetailsSlice = createSlice({
         state.status = 'loading';
         state.error = null;
         state.errorCode = null;
-        if (state.fetchContextKey && state.fetchContextKey !== nextKey) {
-          state.data = null;
-        }
+        // SWR: keep last-good UI until fulfilled replaces it (including slug rename).
         state.artistSlug = artistSlug;
         state.albumId = albumId;
         state.fetchContextKey = nextKey;
@@ -177,5 +211,5 @@ const albumDetailsSlice = createSlice({
   },
 });
 
-export const { resetAlbumDetails } = albumDetailsSlice.actions;
+export const { resetAlbumDetails, adoptAlbumDetailsAlbumId } = albumDetailsSlice.actions;
 export const albumDetailsReducer = albumDetailsSlice.reducer;
