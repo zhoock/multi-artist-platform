@@ -5,7 +5,7 @@
  */
 
 import type {
-  IAlbums,
+  AlbumEditable,
   IAlbumTranslationsLocale,
   IAlbumTrackTranslationsLocale,
   TracksProps,
@@ -33,7 +33,7 @@ function hydrateTrack<T extends TracksProps>(track: T): T {
 }
 
 /** Дополняет translations.ru и по трекам, если слот ru отсутствует. */
-export function hydrateMissingRuTranslationsOnAlbum<T extends IAlbums>(album: T): T {
+export function hydrateMissingRuTranslationsOnAlbum<T extends AlbumEditable>(album: T): T {
   const tracksHydrated = (album.tracks ?? []).map((t) =>
     (t as TracksProps).translations?.ru ? t : hydrateTrack(t as TracksProps)
   ) as T['tracks'];

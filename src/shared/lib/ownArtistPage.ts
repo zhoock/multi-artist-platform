@@ -1,6 +1,6 @@
 import type { NavigateFunction } from 'react-router-dom';
 
-import type { IAlbums, IArticles } from '@models';
+import type { AlbumEditable, IArticles } from '@models';
 import { hasPublishedPublicReleases } from '@entities/album/lib/hasPublishedPublicReleases';
 import { isArtistAccount, isListenerAccount } from '@shared/lib/accountType';
 import {
@@ -95,9 +95,9 @@ export function hasPendingArtistOnboarding(user: AuthUser | null | undefined): b
   return Boolean(userId && hasFirstArtistOnboardingPending(userId));
 }
 
-function normalizeAlbums(data: unknown): IAlbums[] {
+function normalizeAlbums(data: unknown): AlbumEditable[] {
   if (!Array.isArray(data)) return [];
-  return data.filter((item): item is IAlbums => typeof item === 'object' && item !== null);
+  return data.filter((item): item is AlbumEditable => typeof item === 'object' && item !== null);
 }
 
 function normalizeArticles(data: unknown): IArticles[] {

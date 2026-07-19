@@ -1,9 +1,9 @@
-import type { IAlbums } from '@models';
+import type { AlbumEditable } from '@models';
 
 import { isAlbumVisibleOnArtistPage } from './albumPublication';
 
 /** Public catalog eligibility: published, visible release with at least one track. */
-export function hasPublishedPublicReleases(albums: IAlbums[]): boolean {
+export function hasPublishedPublicReleases(albums: AlbumEditable[]): boolean {
   return albums.some(
     (album) =>
       isAlbumVisibleOnArtistPage(album) &&

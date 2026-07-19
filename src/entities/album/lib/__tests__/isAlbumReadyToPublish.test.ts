@@ -1,5 +1,5 @@
 import { describe, expect, test } from '@jest/globals';
-import type { IAlbums } from '@models';
+import type { AlbumEditable } from '@models';
 
 import { getAlbumPublishHintKey, isAlbumReadyToPublish } from '../isAlbumReadyToPublish';
 
@@ -12,7 +12,7 @@ const mockTrack = {
   order_index: 10,
 };
 
-const readyDraft: IAlbums = {
+const readyDraft: AlbumEditable = {
   album: 'Test Album',
   artist: 'Artist',
   fullName: 'Artist — Test Album',

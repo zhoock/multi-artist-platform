@@ -5,7 +5,7 @@ export { default as AlbumDetails } from './ui/AlbumDetails/AlbumDetails';
 
 export {
   albumsReducer,
-  fetchAlbums,
+  fetchDashboardAlbums,
   resetAlbumsState,
   patchDashboardAlbumVisibility,
   patchDashboardTrackVisibility,
@@ -36,7 +36,7 @@ export type {
 export {
   normalizeAlbumDetails,
   isAlbumDetails,
-  mapFatAlbumToAlbumDetails,
+  mapAlbumEditableToAlbumDetails,
   ALBUM_DETAILS_EXCLUDED_TRACK_FIELDS,
   ALBUM_DETAILS_EXCLUDED_ALBUM_FIELDS,
 } from './model/albumDetails';

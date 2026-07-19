@@ -6,7 +6,7 @@
 
 import { useCallback, useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import type { IAlbums, TracksProps } from '@models';
+import type { AlbumEditable, TracksProps } from '@models';
 import { getAudioDuration } from '@shared/lib/audio/getAudioDuration';
 import { normalizeTrackIdString } from '@shared/lib/tracks/normalizeTrackIdString';
 import { rankToOrderIndex } from '@shared/lib/tracks/trackOrderIndex';
@@ -128,8 +128,8 @@ const formatDuration = (value: string): number | undefined => {
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : undefined;
 };
 
-const draftToAlbum = (draft: AlbumDraft): IAlbums => {
-  const cover: IAlbums['cover'] = draft.coverImg.trim() || undefined;
+const draftToAlbum = (draft: AlbumDraft): AlbumEditable => {
+  const cover: AlbumEditable['cover'] = draft.coverImg.trim() || undefined;
 
   const releaseEntries = Object.entries({
     date: draft.releaseDate.trim(),
@@ -194,7 +194,7 @@ const draftToAlbum = (draft: AlbumDraft): IAlbums => {
   };
 };
 
-const albumToDraft = (album: IAlbums): AlbumDraft => {
+const albumToDraft = (album: AlbumEditable): AlbumDraft => {
   const tracks =
     album.tracks?.map((track) => ({
       id: String(track.id ?? ''),

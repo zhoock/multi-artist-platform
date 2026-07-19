@@ -2,7 +2,7 @@ import { describe, expect, it, jest, beforeEach } from '@jest/globals';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
-import type { AlbumData } from '@entities/album/lib/transformAlbumData';
+import type { AlbumData } from '@entities/album/lib/transformEditableAlbumData';
 import { renderWithProviders } from '@shared/lib/test-utils';
 import { resetDashboardAccordionOnboardingForTests } from '../../../lib/dashboardAccordionOnboarding';
 import { MixerAdmin } from '../MixerAdmin';

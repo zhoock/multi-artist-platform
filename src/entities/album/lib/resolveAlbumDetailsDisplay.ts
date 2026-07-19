@@ -1,5 +1,5 @@
 /**
- * Locale flatten for AlbumDetails (album page) — lighter than resolveAlbumForDisplay(IAlbums).
+ * Locale flatten for AlbumDetails (album page) — lighter than resolveAlbumEditableForDisplay.
  */
 
 import type { SupportedLang } from '@shared/model/lang';
@@ -11,7 +11,7 @@ import {
 } from '@shared/lib/i18n/resolveTranslationFallback';
 import type { AlbumDetails, TrackDetails } from '../model/albumDetails';
 import { dedupeMergedAlbumDetailsForDisplay } from './albumDetailSemanticKind';
-import { stripGenreDetailBlocks } from './resolveAlbumDisplay';
+import { stripGenreDetailBlocks } from './resolveAlbumEditableDisplay';
 
 function readGenreCodesFromRelease(release: Record<string, unknown> | undefined): string[] {
   if (!release || typeof release !== 'object') return [];

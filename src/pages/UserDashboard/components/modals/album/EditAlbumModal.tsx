@@ -6,7 +6,11 @@ import { AlertModal } from '@shared/ui/alertModal';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { useAppDispatch } from '@shared/lib/hooks/useAppDispatch';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
-import { selectDashboardAlbumsData, fetchAlbums, fetchArtistAlbumCatalog } from '@entities/album';
+import {
+  selectDashboardAlbumsData,
+  fetchDashboardAlbums,
+  fetchArtistAlbumCatalog,
+} from '@entities/album';
 import { selectPublicArtistSlug } from '@shared/model/currentArtist';
 import { getStore } from '@shared/model/appStore';
 import { queueAlbumCreatedToast } from '@shared/lib/albumCreatedToast';
@@ -19,7 +23,7 @@ import { getUserImageUrl } from '@shared/api/albums';
 import { DashboardLoadingState, DashboardSpinner } from '@shared/ui/dashboard';
 import { getAlbumStorageBaseName } from '@shared/lib/albumCoverUrl';
 import { uploadCoverDraft, commitCover } from '@shared/api/albums/cover';
-import type { IAlbums, detailsProps } from '@models';
+import type { AlbumEditable, detailsProps } from '@models';
 import { mergeSemanticSourceIntoLocaleDetails } from '@entities/album/lib/albumDetailSemanticKind';
 import { generateAlbumIdFromTitle } from '@shared/lib/album/generateAlbumIdFromTitle';
 import type { SupportedLang } from '@shared/model/lang';
@@ -29,7 +33,7 @@ import {
   getAlbumDetailsForEdit,
   resolveAlbumFieldForEdit,
   resolveAlbumCoverCreditFieldForEdit,
-} from '@entities/album/lib/resolveAlbumDisplay';
+} from '@entities/album/lib/resolveAlbumEditableDisplay';
 import type {
   EditAlbumModalProps,
   AlbumFormData,
@@ -304,7 +308,7 @@ export function EditAlbumModal({
     if (!albumId) return;
     if (!albumsFromStore || !Array.isArray(albumsFromStore)) return;
 
-    const album = albumsFromStore.find((a: IAlbums) => a && a.albumId === albumId);
+    const album = albumsFromStore.find((a: AlbumEditable) => a && a.albumId === albumId);
     if (!album) return;
 
     // Устанавливаем флаг инициализации
@@ -810,12 +814,12 @@ export function EditAlbumModal({
       setLocalPreview(file);
 
       const albumData = albumId
-        ? albumsFromStore.find((a: IAlbums) => a.albumId === albumId)
+        ? albumsFromStore.find((a: AlbumEditable) => a.albumId === albumId)
         : null;
 
       // Получаем оригинальный альбом для fallback значений
       const originalAlbum = albumId
-        ? albumsFromStore.find((a: IAlbums) => a.albumId === albumId)
+        ? albumsFromStore.find((a: AlbumEditable) => a.albumId === albumId)
         : null;
 
       // Подготавливаем параметры для uploadCoverDraft (имя — из профиля site_name, не albums.artist)
@@ -1879,7 +1883,7 @@ export function EditAlbumModal({
     }
 
     // Проверяем, существует ли версия языка для этого альбома (по id в store, до смены slug)
-    const originalAlbum = albumsFromStore.find((a: IAlbums) => a.albumId === lookupAlbumId);
+    const originalAlbum = albumsFromStore.find((a: AlbumEditable) => a.albumId === lookupAlbumId);
     const exists = !!originalAlbum;
     const method = exists ? 'PUT' : 'POST';
 
@@ -2494,9 +2498,9 @@ export function EditAlbumModal({
       }
 
       // ВАЖНО: Форсим обновление Redux store для языка контента ПЕРЕД вызовом onNext
-      console.log('🔄 [EditAlbumModal] Forcing fetchAlbums for lang:', lang);
+      console.log('🔄 [EditAlbumModal] Forcing fetchDashboardAlbums for lang:', lang);
       try {
-        await dispatch(fetchAlbums({ force: true, ownerDashboard: true })).unwrap();
+        await dispatch(fetchDashboardAlbums({ force: true, ownerDashboard: true })).unwrap();
         const publicSlug = selectPublicArtistSlug(getStore().getState())?.trim();
         if (publicSlug) {
           try {
@@ -2513,11 +2517,11 @@ export function EditAlbumModal({
         }
       } catch (fetchError) {
         console.error('❌ [EditAlbumModal] Failed to update Redux store:', fetchError);
-        // Продолжаем выполнение даже если fetchAlbums не удался
+        // Продолжаем выполнение даже если fetchDashboardAlbums не удался
       }
 
       // Передаём обновленный альбом в onNext для обновления UI
-      const updatedAlbum: IAlbums | undefined =
+      const updatedAlbum: AlbumEditable | undefined =
         result.data && Array.isArray(result.data) ? result.data[0] : undefined;
 
       if (updatedAlbum?.albumId) {
@@ -3320,7 +3324,7 @@ export function EditAlbumModal({
                           {ui?.dashboard?.editAlbumModal?.buttons?.saving ?? 'Saving...'}
                         </>
                       ) : albumId &&
-                        albumsFromStore?.some((a: IAlbums) => a.albumId === albumId) ? (
+                        albumsFromStore?.some((a: AlbumEditable) => a.albumId === albumId) ? (
                         (ui?.dashboard?.editAlbumModal?.buttons?.saveChanges ?? 'Save changes')
                       ) : isNewAlbumWizard ? (
                         (ui?.dashboard?.editAlbumModal?.buttons?.createAlbum ?? 'Create album')

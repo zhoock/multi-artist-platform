@@ -1,9 +1,8 @@
-// src/entities/album/lib/transformAlbumData.ts
 /**
- * Утилиты для трансформации данных альбомов из IAlbums в формат для UI
+ * Dashboard UI mappers: AlbumEditable → AlbumData / TrackData.
  */
 
-import type { IAlbums } from '@models';
+import type { AlbumEditable } from '@models';
 import { siteArtistUiLabel } from '@shared/lib/profileDisplayName';
 import type { SupportedLang } from '@shared/model/lang';
 import type { TrackLyricsBundle } from '@shared/lib/lyrics/types';
@@ -13,7 +12,7 @@ import { normalizeStemsVisibility } from '@shared/lib/stems/stemsVisibility';
 import type { TrackVisibility } from '@shared/lib/tracks/trackVisibility';
 import { normalizeTrackVisibility } from '@shared/lib/tracks/trackVisibility';
 
-import { resolveAlbumForDisplay } from './resolveAlbumDisplay';
+import { resolveAlbumEditableForDisplay } from './resolveAlbumEditableDisplay';
 
 export interface AlbumData {
   id: string;
@@ -68,7 +67,7 @@ function fallbackLyricsBundle(
 
 function resolveTrackLyrics(
   albumId: string,
-  track: IAlbums['tracks'][number],
+  track: AlbumEditable['tracks'][number],
   lang?: SupportedLang
 ): TrackLyricsBundle {
   if (track.lyrics) {
@@ -77,12 +76,12 @@ function resolveTrackLyrics(
   return fallbackLyricsBundle(albumId, track.id, lang, track.content, track.authorship);
 }
 
-export function transformAlbumToAlbumData(
-  album: IAlbums,
+export function transformEditableAlbumToAlbumData(
+  album: AlbumEditable,
   siteDisplayName?: string,
   lang?: SupportedLang
 ): AlbumData {
-  const source = lang ? resolveAlbumForDisplay(album, lang) : album;
+  const source = lang ? resolveAlbumEditableForDisplay(album, lang) : album;
   const albumId = source.albumId || '';
 
   let releaseDate: Date | null = null;
@@ -164,10 +163,10 @@ export function transformAlbumToAlbumData(
   };
 }
 
-export function transformAlbumsToAlbumData(
-  albums: IAlbums[],
+export function transformEditableAlbumsToAlbumData(
+  albums: AlbumEditable[],
   siteDisplayName?: string,
   lang?: SupportedLang
 ): AlbumData[] {
-  return albums.map((a) => transformAlbumToAlbumData(a, siteDisplayName, lang));
+  return albums.map((a) => transformEditableAlbumToAlbumData(a, siteDisplayName, lang));
 }

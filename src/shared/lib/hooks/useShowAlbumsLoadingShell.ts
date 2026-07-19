@@ -1,6 +1,6 @@
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import {
-  selectAlbumsInFlightFetchContextKey,
+  selectDashboardAlbumsInFlightFetchContextKey,
   selectArtistAlbumCatalogArtistMissing,
 } from '@entities/album';
 import { useDashboardModalShell } from '@shared/lib/dashboardModalShellContext';
@@ -26,10 +26,10 @@ export function shouldShowAlbumsLoadingShell(
 
 /**
  * Как `shouldShowAlbumsLoadingShell`, но не показываем «загрузку» на **фоновой** surface,
- * пока дашборд-оверлей в полёте тянет тот же глобальный `albums` (inFlight = dashboard).
+ * пока дашборд-оверлей в полёте тянет owner fat-albums (`dashboard.inFlight`).
  */
 export function useShowAlbumsLoadingShellExcludingDashboardInFlight(baseShow: boolean): boolean {
-  const inFlight = useAppSelector(selectAlbumsInFlightFetchContextKey);
+  const inFlight = useAppSelector(selectDashboardAlbumsInFlightFetchContextKey);
   const { overlayOpen } = useDashboardModalShell();
   if (baseShow && overlayOpen && inFlight === 'dashboard') {
     return false;

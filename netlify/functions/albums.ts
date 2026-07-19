@@ -38,7 +38,7 @@ import { normalizeStemsVisibility } from '../../src/shared/lib/stems/stemsVisibi
 import { normalizeTrackVisibility } from '../../src/shared/lib/tracks/trackVisibility';
 import { hydrateMissingRuTranslationsOnAlbum } from '../../src/entities/album/lib/hydrateMissingRuTranslations';
 import type { TrackLyricsBundle } from '../../src/shared/lib/lyrics/types';
-import type { IAlbums } from '../../src/models';
+import type { AlbumEditable } from '../../src/models';
 import { viewerHasPremiumAccessToArtist } from './lib/entitlements';
 import { artistHasMonetizationEnabled } from './lib/artist-monetization';
 import { resolveEffectiveContentVisibility } from '../../src/shared/lib/payment/artistMonetization';
@@ -1169,7 +1169,7 @@ export const handler: Handler = async (
         }
 
         albumsWithTracks.push(
-          hydrateMissingRuTranslationsOnAlbum(merged as IAlbums) as unknown as AlbumData
+          hydrateMissingRuTranslationsOnAlbum(merged as AlbumEditable) as unknown as AlbumData
         );
       }
 
@@ -1923,7 +1923,7 @@ export const handler: Handler = async (
             })
           );
 
-          // Преобразуем в формат IAlbums для JSON
+          // Преобразуем в формат AlbumEditable для JSON
           const albumsForJson = allAlbumsWithTracks.map((album) => ({
             albumId: album.albumId,
             album: album.album,

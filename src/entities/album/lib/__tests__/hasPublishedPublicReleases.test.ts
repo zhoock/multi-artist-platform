@@ -1,6 +1,6 @@
 import { describe, expect, test } from '@jest/globals';
 import { hasPublishedPublicReleases } from '../hasPublishedPublicReleases';
-import type { IAlbums, TracksProps } from '@models';
+import type { AlbumEditable, TracksProps } from '@models';
 
 const mockTrack: TracksProps = {
   id: '1',
@@ -13,7 +13,7 @@ const mockTrack: TracksProps = {
 
 describe('hasPublishedPublicReleases', () => {
   test('returns true only for public releases with at least one track', () => {
-    const album: IAlbums = {
+    const album: AlbumEditable = {
       album: 'My Release',
       artist: 'Band',
       fullName: 'Band — My Release',

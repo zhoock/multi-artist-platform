@@ -98,8 +98,13 @@ describe('playerListeners middleware', () => {
           lastPublicArtistSlug: null,
         }),
         albums: () => ({
-          en: { status: 'idle' as const, error: null, data: [], lastUpdated: null },
-          ru: { status: 'idle' as const, error: null, data: [], lastUpdated: null },
+          dashboard: {
+            status: 'idle' as const,
+            error: null,
+            data: [],
+            lastUpdated: null,
+            inFlightFetchContextKey: null,
+          },
         }),
         uiDictionary: () => ({
           en: { status: 'idle' as const, error: null, data: [], lastUpdated: null },

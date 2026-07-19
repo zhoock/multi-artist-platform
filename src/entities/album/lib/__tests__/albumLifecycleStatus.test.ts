@@ -1,10 +1,10 @@
 import { describe, expect, test } from '@jest/globals';
-import type { IAlbums } from '@models';
+import type { AlbumEditable } from '@models';
 
 import { getAlbumListDraftBadge } from '../albumLifecycleStatus';
 
 describe('getAlbumListDraftBadge', () => {
-  const baseAlbum: IAlbums = {
+  const baseAlbum: AlbumEditable = {
     artist: '',
     album: 'Test Album',
     fullName: 'Test Album',

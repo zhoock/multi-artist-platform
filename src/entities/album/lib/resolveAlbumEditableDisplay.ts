@@ -1,9 +1,10 @@
 /**
- * Сборка отображаемого снимка альбома/трека для текущего языка UI без мутации `translations`.
+ * Locale flatten / edit-field resolution for Dashboard `AlbumEditable`.
+ * Does not mutate `translations`. Public album pages use `resolveAlbumDetailsDisplay`.
  */
 
 import type { SupportedLang } from '@shared/model/lang';
-import type { IAlbums, TracksProps, detailsProps } from '@models';
+import type { AlbumEditable, TracksProps, detailsProps } from '@models';
 import { CANONICAL_GENRES } from '@shared/constants/canonicalGenres';
 import {
   buildTranslationFallbackLocales,
@@ -85,7 +86,7 @@ export function stripGenreDetailBlocks(details: detailsProps[]): detailsProps[] 
   );
 }
 
-function readGenreCodesFromRelease(release: IAlbums['release'] | undefined): string[] {
+function readGenreCodesFromRelease(release: AlbumEditable['release'] | undefined): string[] {
   if (!release || typeof release !== 'object') return [];
   const raw = (release as Record<string, unknown>).genreCodes;
   if (!Array.isArray(raw)) return [];
@@ -110,7 +111,7 @@ function formatGenreDetailLine(codes: string[], lang: SupportedLang): string {
 
 function injectGenreDetailIfNeeded(
   details: detailsProps[],
-  album: IAlbums,
+  album: AlbumEditable,
   lang: SupportedLang
 ): detailsProps[] {
   const codes = readGenreCodesFromRelease(album.release);
@@ -123,7 +124,7 @@ function injectGenreDetailIfNeeded(
 }
 
 function albumTranslationStrings(
-  album: IAlbums,
+  album: AlbumEditable,
   field: 'fullName' | 'description'
 ): Partial<Record<SupportedLang, string | null | undefined>> {
   return {
@@ -141,7 +142,7 @@ export type AlbumCoverCreditField = 'photographer' | 'photographerURL' | 'design
  * Legacy: только `release` для старых данных, если у текущей локали ключа ещё нет.
  */
 export function resolveAlbumCoverCreditFieldForEdit(
-  album: IAlbums,
+  album: AlbumEditable,
   field: AlbumCoverCreditField,
   lang: SupportedLang
 ): ResolvedAlbumEditField {
@@ -164,7 +165,7 @@ export function resolveAlbumCoverCreditFieldForEdit(
  * Публичная страница: кредиты только из текущей локали, затем legacy `release`.
  */
 export function resolveAlbumCoverReleaseFieldsForDisplay(
-  album: IAlbums,
+  album: AlbumEditable,
   lang: SupportedLang
 ): Record<AlbumCoverCreditField, string> {
   const fields: AlbumCoverCreditField[] = [
@@ -254,7 +255,7 @@ type DetailLocaleMaps = {
   root: Map<number, detailsProps>;
 };
 
-function buildAlbumDetailLocaleMaps(album: IAlbums): DetailLocaleMaps {
+function buildAlbumDetailLocaleMaps(album: AlbumEditable): DetailLocaleMaps {
   return {
     en: detailsBlocksById(album.translations?.en?.details),
     ru: detailsBlocksById(album.translations?.ru?.details),
@@ -266,7 +267,7 @@ function buildAlbumDetailLocaleMaps(album: IAlbums): DetailLocaleMaps {
  * Union всех числовых `id` из `translations.en.details`, `translations.ru.details` и корневого `details` (legacy).
  * Один id — один смысловой блок; отображение собирается в `buildMergedAlbumDetails` по цепочке fallback локалей.
  */
-function collectAllDetailBlockIds(album: IAlbums): Set<number> {
+function collectAllDetailBlockIds(album: AlbumEditable): Set<number> {
   const ids = new Set<number>();
   for (const b of parseDetailsBlocks(album.translations?.en?.details)) ids.add(b.id);
   for (const b of parseDetailsBlocks(album.translations?.ru?.details)) ids.add(b.id);
@@ -423,7 +424,7 @@ function applyStripGenreBlocksToMerged(
  * - если блок есть только в RU, при UI `en` данные берутся из `maps.ru` после исчерпания `en`.
  */
 function buildMergedAlbumDetails(
-  album: IAlbums,
+  album: AlbumEditable,
   lang: SupportedLang,
   options: { withBlockMeta: boolean; stripGenreBlocks: boolean }
 ): { details: detailsProps[]; blockMeta: ResolvedAlbumEditDetailBlockMeta[] } {
@@ -476,7 +477,7 @@ function buildMergedAlbumDetails(
  * Значение поля для формы: та же цепочка, что и на display (current → default → en, ru), затем корень.
  */
 export function resolveAlbumFieldForEdit(
-  album: IAlbums,
+  album: AlbumEditable,
   field: 'album' | 'fullName' | 'description',
   lang: SupportedLang
 ): ResolvedAlbumEditField {
@@ -521,7 +522,7 @@ export function resolveAlbumFieldForEdit(
 }
 
 export function getAlbumDetailsForEdit(
-  album: IAlbums,
+  album: AlbumEditable,
   lang: SupportedLang
 ): ResolvedAlbumEditDetails {
   const stripGenres = readGenreCodesFromRelease(album.release).length > 0;
@@ -598,7 +599,7 @@ export function resolveTrackFieldForEdit(
 
 /** Fallback для обложечных строк: сначала translations, иначе корень (legacy / канон). */
 export function resolveAlbumStringField(
-  album: IAlbums,
+  album: AlbumEditable,
   field: 'album' | 'fullName' | 'description',
   lang: SupportedLang
 ): string {
@@ -622,7 +623,7 @@ export function resolveAlbumStringField(
 }
 
 /** См. `buildMergedAlbumDetails` — та же union по id и fallback по локалям. */
-function resolveAlbumDetailsForDisplay(album: IAlbums, lang: SupportedLang): detailsProps[] {
+function resolveAlbumDetailsForDisplay(album: AlbumEditable, lang: SupportedLang): detailsProps[] {
   const raw = buildMergedAlbumDetails(album, lang, {
     withBlockMeta: false,
     stripGenreBlocks: false,
@@ -633,7 +634,10 @@ function resolveAlbumDetailsForDisplay(album: IAlbums, lang: SupportedLang): det
 /**
  * Плоский снимок альбома для отображения (новый объект, `translations` не меняется).
  */
-export function resolveAlbumForDisplay(album: IAlbums, lang: SupportedLang): IAlbums {
+export function resolveAlbumEditableForDisplay(
+  album: AlbumEditable,
+  lang: SupportedLang
+): AlbumEditable {
   const albumTitle = resolveAlbumStringField(album, 'album', lang);
   const fullNameRaw = resolveAlbumStringField(album, 'fullName', lang);
   const fullName =

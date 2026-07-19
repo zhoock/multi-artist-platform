@@ -31,7 +31,7 @@ describe('buildMixerTracksFromAlbumDetails', () => {
     mockLoadStems.mockReset();
   });
 
-  test('builds MixerTrack from AlbumDetails + loadStems without IAlbums', async () => {
+  test('builds MixerTrack from AlbumDetails + loadStems without AlbumEditable', async () => {
     mockLoadStems.mockResolvedValue({
       stems: [{ id: 's1', name: 'Drums', category: 'drums', file: 'drums.wav' }],
       accessToken: 'tok',

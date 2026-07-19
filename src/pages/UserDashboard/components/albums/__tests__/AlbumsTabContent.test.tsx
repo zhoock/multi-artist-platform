@@ -2,7 +2,7 @@ import { describe, expect, it, jest, beforeEach } from '@jest/globals';
 import { render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 
-import type { AlbumData } from '@entities/album/lib/transformAlbumData';
+import type { AlbumData } from '@entities/album/lib/transformEditableAlbumData';
 import { renderWithProviders } from '@shared/lib/test-utils';
 import { resetDashboardAccordionOnboardingForTests } from '../../../lib/dashboardAccordionOnboarding';
 import { AlbumsTabContent } from '../AlbumsTabContent';

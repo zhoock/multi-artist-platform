@@ -1,4 +1,4 @@
-import type { IAlbums } from '@models';
+import type { AlbumEditable } from '@models';
 
 import { isAlbumPublished } from './albumPublication';
 import { isAlbumReadyToPublish } from './isAlbumReadyToPublish';
@@ -9,7 +9,7 @@ export type AlbumListDraftBadge = 'draft' | 'draft-changes' | 'ready-to-publish'
 /** @deprecated Use AlbumListDraftBadge */
 export type AlbumLifecycleStatus = Exclude<AlbumListDraftBadge, null>;
 
-export function getAlbumListDraftBadge(album: IAlbums): AlbumListDraftBadge {
+export function getAlbumListDraftBadge(album: AlbumEditable): AlbumListDraftBadge {
   if (!isAlbumPublished(album)) {
     return isAlbumReadyToPublish(album) ? 'ready-to-publish' : 'draft';
   }
@@ -22,6 +22,6 @@ export function getAlbumListDraftBadge(album: IAlbums): AlbumListDraftBadge {
 }
 
 /** @deprecated Use getAlbumListDraftBadge */
-export function getAlbumLifecycleStatus(album: IAlbums): AlbumLifecycleStatus | null {
+export function getAlbumLifecycleStatus(album: AlbumEditable): AlbumLifecycleStatus | null {
   return getAlbumListDraftBadge(album);
 }

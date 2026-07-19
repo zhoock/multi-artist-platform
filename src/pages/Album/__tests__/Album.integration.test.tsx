@@ -186,8 +186,8 @@ describe('Album integration tests', () => {
     });
 
     expect(screen.getByLabelText(/блок c альбомом/i)).toBeInTheDocument();
-    // Fat public catalog must stay empty — page reads albumDetails only.
-    expect(emptyAlbumsState().data).toHaveLength(0);
+    // Dashboard fat bucket stays empty — page reads albumDetails only.
+    expect(emptyAlbumsState().dashboard.data).toHaveLength(0);
   });
 
   test('должен отобразить правильные SEO метаданные', () => {

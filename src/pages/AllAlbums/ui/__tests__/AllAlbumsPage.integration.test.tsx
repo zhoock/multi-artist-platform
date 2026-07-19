@@ -76,7 +76,7 @@ const mockCatalog: CatalogAlbum[] = [
 ];
 
 describe('AllAlbumsPage — CatalogAlbum', () => {
-  test('рендерит карточки из thin catalog без IAlbums', () => {
+  test('рендерит карточки из thin catalog без AlbumEditable', () => {
     renderWithProviders(<AllAlbumsPage />, {
       initialEntries: ['/albums?artist=test-artist'],
       preloadedState: {

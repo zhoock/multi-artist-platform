@@ -93,7 +93,7 @@ resolveTrackLyricsBundle()        ← prefer slice; fallback for hydration only
 | **Bundle builder**  | `netlify/functions/lib/track-lyrics.ts`         | `buildTrackLyricsBundle()` loads DB rows and `composeTrackLyricsBundle()` assembles a bundle with server-resolved `state`.                                        |
 | **HTTP API**        | `netlify/functions/track-lyrics.ts`             | Canonical REST surface for read/write/delete. Legacy `/api/synced-lyrics` delegates here but should not be used by new client code.                               |
 | **Client API**      | `src/entities/lyrics/api/trackLyricsApi.ts`     | Typed fetch/save/delete wrappers; always return `TrackLyricsBundle`.                                                                                              |
-| **Redux store**     | `src/entities/lyrics/model/trackLyricsSlice.ts` | Runtime entity map. Hydrated from `fetchAlbums.fulfilled` and updated by `applyTrackLyricsBundle`.                                                                |
+| **Redux store**     | `src/entities/lyrics/model/trackLyricsSlice.ts` | Runtime entity map. Hydrated from `fetchDashboardAlbums.fulfilled` and updated by `applyTrackLyricsBundle`.                                                       |
 | **Selectors**       | `src/entities/lyrics/lib/selectors.ts`          | `selectTrackLyricsBundle`, `resolveTrackLyricsBundle`, `selectLyricsSyncState`.                                                                                   |
 | **Mutation action** | `src/entities/lyrics/model/actions.ts`          | `applyTrackLyricsBundle` — fans out to slice, albums, and player.                                                                                                 |
 | **UI**              | Dashboard, Player, modals                       | Consume resolved bundles only; never compute sync state independently.                                                                                            |
@@ -326,7 +326,7 @@ Read Flow and Write Flow describe individual paths. The diagram below shows the 
                                       ▼
                          trackLyricsSlice.entities
                          (applyTrackLyricsBundle /
-                          fetchAlbums.fulfilled)
+                          fetchDashboardAlbums.fulfilled)
                                       │
                                       ▼
                          resolveTrackLyricsBundle()
@@ -356,7 +356,7 @@ Read Flow and Write Flow describe individual paths. The diagram below shows the 
                                       └──► (cycle repeats)
 ```
 
-**Initial load:** albums fetch embeds bundles → `fetchAlbums.fulfilled` hydrates the slice → UI resolves from slice.
+**Initial load:** albums fetch embeds bundles → `fetchDashboardAlbums.fulfilled` hydrates the slice → UI resolves from slice.
 
 **Explicit load:** sync editor opens → `fetchTrackLyricsBundle()` → caller may dispatch `applyTrackLyricsBundle` on save only; read path still goes through resolver on next render.
 
@@ -666,13 +666,13 @@ Symptoms of debugging the wrong layer:
 
 ### Quick symptom map
 
-| Symptom                                   | Likely cause                                                       |
-| ----------------------------------------- | ------------------------------------------------------------------ |
-| Stale sync status after save/delete       | Missing `applyTrackLyricsBundle` or direct `track.lyrics` read     |
-| Preview open when `state !== 'synced'`    | Modal snapshot; parent did not re-resolve before open              |
-| Player karaoke out of sync with dashboard | Player not using resolver; playlist embed stale                    |
-| `text-only` but timed lines in DB         | Server `isTimedSync` rule — lines need `startTime > 0`             |
-| Empty slice entity                        | Album fetch not completed; check `fetchAlbums.fulfilled` hydration |
+| Symptom                                   | Likely cause                                                                |
+| ----------------------------------------- | --------------------------------------------------------------------------- |
+| Stale sync status after save/delete       | Missing `applyTrackLyricsBundle` or direct `track.lyrics` read              |
+| Preview open when `state !== 'synced'`    | Modal snapshot; parent did not re-resolve before open                       |
+| Player karaoke out of sync with dashboard | Player not using resolver; playlist embed stale                             |
+| `text-only` but timed lines in DB         | Server `isTimedSync` rule — lines need `startTime > 0`                      |
+| Empty slice entity                        | Album fetch not completed; check `fetchDashboardAlbums.fulfilled` hydration |
 
 ---
 

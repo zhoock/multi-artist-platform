@@ -1,3 +1,6 @@
 // src/entities/album/lib/index.ts
-export { transformAlbumToAlbumData, transformAlbumsToAlbumData } from './transformAlbumData';
-export type { AlbumData, TrackData } from './transformAlbumData';
+export {
+  transformEditableAlbumToAlbumData,
+  transformEditableAlbumsToAlbumData,
+} from './transformEditableAlbumData';
+export type { AlbumData, TrackData } from './transformEditableAlbumData';

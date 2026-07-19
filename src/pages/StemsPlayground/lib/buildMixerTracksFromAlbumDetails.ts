@@ -1,5 +1,5 @@
 /**
- * AlbumDetails → MixerTrack[] via existing loadStems (no IAlbums / fat catalog).
+ * AlbumDetails → MixerTrack[] via existing loadStems (no AlbumEditable / fat catalog).
  */
 
 import { getUserAudioUrl } from '@shared/api/albums';

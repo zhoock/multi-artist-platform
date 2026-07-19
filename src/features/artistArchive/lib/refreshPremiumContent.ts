@@ -1,6 +1,6 @@
 /**
  * Invalidate/refetch premium-gated public surfaces after subscription or archive changes.
- * Uses AlbumDetails + Articles + PlayerTrack — never fat `/api/albums` / IAlbums.
+ * Uses AlbumDetails + Articles + PlayerTrack — never fat `/api/albums` / AlbumEditable.
  */
 import type { AppDispatch, RootState } from '@shared/model/appStore/types';
 import { getStore } from '@shared/model/appStore';

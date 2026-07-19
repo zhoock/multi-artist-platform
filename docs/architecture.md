@@ -51,10 +51,35 @@
 
 **Entities (доменные сущности):**
 
-- `@entities/album` — альбомы (компоненты, селекторы, слайсы).
+- `@entities/album` — альбомы: public (`CatalogAlbum` / `AlbumDetails`) и owner (`AlbumEditable` / Dashboard).
 - `@entities/article` — статьи.
 - `@entities/track` — треки (компоненты, утилиты для работы с текстом).
 - `@entities/service` — сервисы (кнопки покупки/стриминга).
+
+### Album domain models
+
+Public и Owner — разные модели. Не смешивать.
+
+```
+Public                         Owner
+──────                         ─────
+CatalogAlbum                   AlbumEditable
+      ↓                              ↓
+AlbumDetails                   Dashboard (CRUD / fat /api/albums)
+      ↓
+PlayerAlbumMeta
+      ↓
+PlayerTrack
+```
+
+| Модель                            | Назначение                                   | Store / API          |
+| --------------------------------- | -------------------------------------------- | -------------------- |
+| `CatalogAlbum`                    | thin список на Home / All Albums / Mixer     | `artistAlbumCatalog` |
+| `AlbumDetails`                    | mid-weight страница альбома (без lyrics)     | `albumDetails`       |
+| `PlayerAlbumMeta` / `PlayerTrack` | плеер                                        | `player`             |
+| `AlbumEditable`                   | editable Dashboard (tracks, lyrics, details) | `albums.dashboard`   |
+
+Устаревшее имя `IAlbums` снято. Публичный runtime не читает `AlbumEditable`.
 
 **Shared (переиспользуемые примитивы):**
 

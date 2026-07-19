@@ -7,7 +7,7 @@ import { applyTrackLyricsBundle } from '@entities/lyrics/model/actions';
 import { trackLyricsReducer } from '@entities/lyrics/model/trackLyricsSlice';
 import type { TrackLyricsBundle } from '@shared/lib/lyrics/types';
 import { trackLyricsEntityKey } from '@shared/lib/lyrics/types';
-import type { IAlbums } from '@models';
+import type { AlbumEditable } from '@models';
 
 const bundle: TrackLyricsBundle = {
   albumId: 'album-1',
@@ -63,7 +63,7 @@ describe('applyTrackLyricsBundle', () => {
                     },
                   },
                 ],
-              } satisfies IAlbums,
+              } satisfies AlbumEditable,
             ],
           },
         }),

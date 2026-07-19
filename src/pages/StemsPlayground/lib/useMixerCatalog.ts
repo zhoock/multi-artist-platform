@@ -1,7 +1,7 @@
 // src/pages/StemsPlayground/lib/useMixerCatalog.ts
 /**
  * Mixer data plane: CatalogAlbum (list) → AlbumDetails (on select) → loadStems.
- * Never uses fat `/api/albums` / IAlbums / public albums selectors.
+ * Never uses fat `/api/albums` / AlbumEditable / public albums selectors.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';

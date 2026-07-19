@@ -60,7 +60,7 @@ export default function AudioPlayer({
   albumMeta,
   setBgColor,
 }: {
-  /** Минимальные данные альбома для UI (обложка, название, артист) — не IAlbums. */
+  /** Минимальные данные альбома для UI (обложка, название, артист) — не AlbumEditable. */
   albumMeta: PlayerAlbumMeta;
   setBgColor: (color: string) => void; // Функция для установки фонового цвета попапа (градиент из цветов обложки)
 }) {

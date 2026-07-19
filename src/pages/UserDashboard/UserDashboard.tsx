@@ -72,7 +72,7 @@ import { useOwnArtistPageSummary } from '@shared/lib/hooks/useOwnArtistPageSumma
 import { useAuthSessionUser } from '@shared/lib/hooks/useAuthSessionUser';
 import { ArtistMonetizationProvider } from '@shared/lib/payment/ArtistMonetizationContext';
 import {
-  fetchAlbums,
+  fetchDashboardAlbums,
   fetchArtistAlbumCatalog,
   patchDashboardAlbumVisibility,
   patchDashboardTrackVisibility,
@@ -118,12 +118,12 @@ import { MixerAdmin } from './components/mixer/MixerAdmin';
 import { MixerEmptyState } from './components/mixer/MixerEmptyState';
 import { MyArchiveContent } from './components/archive/MyArchiveContent';
 import { SocialLinksContent } from './components/social/SocialLinksContent';
-import type { IAlbums, IArticles, IInterface, DashboardTrackVisibilityLabels } from '@models';
+import type { AlbumEditable, IArticles, IInterface, DashboardTrackVisibilityLabels } from '@models';
 import {
-  transformAlbumsToAlbumData,
+  transformEditableAlbumsToAlbumData,
   type AlbumData,
   type TrackData,
-} from '@entities/album/lib/transformAlbumData';
+} from '@entities/album/lib/transformEditableAlbumData';
 import { useAvatar, getProfileAvatarInitials } from '@shared/lib/hooks/useAvatar';
 import { useSiteArtistDisplayName } from '@shared/lib/hooks/useSiteArtistDisplayName';
 import {
@@ -744,7 +744,7 @@ function UserDashboard() {
   useEffect(() => {
     if (!isArtist) return;
 
-    dispatch(fetchAlbums({ force: true, ownerDashboard: true })).catch((error: any) => {
+    dispatch(fetchDashboardAlbums({ force: true, ownerDashboard: true })).catch((error: any) => {
       // ConditionError - это нормально, condition отменил запрос
       if (error?.name === 'ConditionError') {
         return;
@@ -769,7 +769,7 @@ function UserDashboard() {
     });
   }, [dispatch, lang, userId, activeTab]);
 
-  // Преобразование данных из IAlbums[] в AlbumData[] и загрузка статусов треков
+  // Преобразование данных из AlbumEditable[] в AlbumData[] и загрузка статусов треков
   useEffect(() => {
     if (!albumsFromStore || albumsFromStore.length === 0) {
       setAlbumsData([]);
@@ -777,7 +777,7 @@ function UserDashboard() {
       return;
     }
 
-    // Пока fetchAlbums в полёте, в store ещё предыдущий снимок; не пересобираем albumsData
+    // Пока fetchDashboardAlbums в полёте, в store ещё предыдущий снимок; не пересобираем albumsData
     // (вкладка Albums — loader; миксер/модалки сохраняют последний валидный список).
     if (albumsStatus === 'loading') {
       return;
@@ -789,7 +789,7 @@ function UserDashboard() {
     (async () => {
       try {
         // Преобразуем альбомы из Redux store в формат для UI
-        const transformedAlbums = transformAlbumsToAlbumData(
+        const transformedAlbums = transformEditableAlbumsToAlbumData(
           albumsFromStore,
           siteArtistDisplayName,
           lang
@@ -882,7 +882,7 @@ function UserDashboard() {
       }
 
       // Обновляем данные из БД для синхронизации
-      await dispatch(fetchAlbums({ force: true, ownerDashboard: true })).unwrap();
+      await dispatch(fetchDashboardAlbums({ force: true, ownerDashboard: true })).unwrap();
       console.log('✅ Tracks reordered successfully');
     } catch (error) {
       console.error('❌ Error reordering tracks:', error);
@@ -973,7 +973,7 @@ function UserDashboard() {
         variant: 'error',
       });
       // Откатываем изменения в локальном состоянии
-      await dispatch(fetchAlbums({ force: true, ownerDashboard: true })).unwrap();
+      await dispatch(fetchDashboardAlbums({ force: true, ownerDashboard: true })).unwrap();
     }
   };
 
@@ -1207,14 +1207,14 @@ function UserDashboard() {
       );
 
       try {
-        await dispatch(fetchAlbums({ force: true, ownerDashboard: true })).unwrap();
+        await dispatch(fetchDashboardAlbums({ force: true, ownerDashboard: true })).unwrap();
       } catch (refetchErr: unknown) {
         const name =
           refetchErr && typeof refetchErr === 'object' && 'name' in refetchErr
             ? (refetchErr as { name?: string }).name
             : undefined;
         if (name !== 'ConditionError') {
-          console.warn('⚠️ [performDeleteTrack] fetchAlbums after delete:', refetchErr);
+          console.warn('⚠️ [performDeleteTrack] fetchDashboardAlbums after delete:', refetchErr);
         }
       }
 
@@ -1293,7 +1293,7 @@ function UserDashboard() {
         );
       }
 
-      await dispatch(fetchAlbums({ force: true, ownerDashboard: true })).unwrap();
+      await dispatch(fetchDashboardAlbums({ force: true, ownerDashboard: true })).unwrap();
 
       handleCatalogChanged({ wasPubliclyVisible: true });
       refreshPublicCatalogNow(resolvePublicArtistSlugForRefresh());
@@ -1434,7 +1434,7 @@ function UserDashboard() {
       }
 
       // Обновляем Redux store
-      await dispatch(fetchAlbums({ force: true, ownerDashboard: true })).unwrap();
+      await dispatch(fetchDashboardAlbums({ force: true, ownerDashboard: true })).unwrap();
 
       // Удаляем альбом из локального состояния
       setAlbumsData((prev) => prev.filter((a) => a.id !== albumId));
@@ -1573,7 +1573,7 @@ function UserDashboard() {
         try {
           // Небольшая задержка для гарантии обновления БД
           await new Promise((resolve) => setTimeout(resolve, 300));
-          await dispatch(fetchAlbums({ force: true, ownerDashboard: true })).unwrap();
+          await dispatch(fetchDashboardAlbums({ force: true, ownerDashboard: true })).unwrap();
           console.log('✅ [handleTrackUpload] Albums refreshed from database');
         } catch (fetchError: any) {
           // ConditionError - это нормально, condition отменил запрос
@@ -2299,20 +2299,20 @@ function UserDashboard() {
                   isNewAlbum: !editAlbumModal.albumId,
                 });
                 const fetchPayload = await dispatch(
-                  fetchAlbums({ force: true, ownerDashboard: true })
+                  fetchDashboardAlbums({ force: true, ownerDashboard: true })
                 ).unwrap();
                 const result = fetchPayload.albums;
                 console.log('✅ [UserDashboard] Albums fetched:', {
                   count: result?.length || 0,
-                  albumIds: result?.map((a: IAlbums) => a.albumId) || [],
+                  albumIds: result?.map((a: AlbumEditable) => a.albumId) || [],
                 });
 
                 // Проверяем, что обновленный альбом действительно пришел с новыми данными
                 // Для новых альбомов используем albumId из updatedAlbum, для существующих - из editAlbumModal
                 if (result && result.length > 0 && searchAlbumId) {
-                  const foundAlbum = result.find((a: IAlbums) => a.albumId === searchAlbumId);
+                  const foundAlbum = result.find((a: AlbumEditable) => a.albumId === searchAlbumId);
                   if (foundAlbum) {
-                    console.log('🔍 [UserDashboard] Updated album from fetchAlbums:', {
+                    console.log('🔍 [UserDashboard] Updated album from fetchDashboardAlbums:', {
                       albumId: foundAlbum.albumId,
                       album: foundAlbum.album,
                       artist: foundAlbum.artist,
@@ -2322,10 +2322,10 @@ function UserDashboard() {
                     });
                   } else {
                     console.warn(
-                      '⚠️ [UserDashboard] Updated album not found in fetchAlbums result:',
+                      '⚠️ [UserDashboard] Updated album not found in fetchDashboardAlbums result:',
                       {
                         searchedAlbumId: searchAlbumId,
-                        availableIds: result.map((a: IAlbums) => a.albumId),
+                        availableIds: result.map((a: AlbumEditable) => a.albumId),
                         isNewAlbum: !editAlbumModal.albumId,
                       }
                     );
@@ -2335,11 +2335,13 @@ function UserDashboard() {
                 // Небольшая задержка для гарантии обновления Redux store
                 await new Promise((resolve) => setTimeout(resolve, 300));
 
-                // Принудительно обновляем albumsData из результата fetchAlbums
+                // Принудительно обновляем albumsData из результата fetchDashboardAlbums
                 if (result && result.length > 0) {
-                  console.log('🔄 [UserDashboard] Updating albumsData from fetchAlbums result...');
+                  console.log(
+                    '🔄 [UserDashboard] Updating albumsData from fetchDashboardAlbums result...'
+                  );
 
-                  const transformedAlbums = transformAlbumsToAlbumData(
+                  const transformedAlbums = transformEditableAlbumsToAlbumData(
                     result,
                     siteArtistDisplayName,
                     lang

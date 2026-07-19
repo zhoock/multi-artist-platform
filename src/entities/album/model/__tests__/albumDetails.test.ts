@@ -1,14 +1,14 @@
 import { describe, expect, test } from '@jest/globals';
-import type { IAlbums } from '@models';
+import type { AlbumEditable } from '@models';
 import {
   normalizeAlbumDetails,
   isAlbumDetails,
-  mapFatAlbumToAlbumDetails,
+  mapAlbumEditableToAlbumDetails,
   ALBUM_DETAILS_EXCLUDED_TRACK_FIELDS,
   ALBUM_DETAILS_EXCLUDED_ALBUM_FIELDS,
 } from '../albumDetails';
 
-function buildFatAlbum(): IAlbums {
+function buildFatAlbum(): AlbumEditable {
   return {
     albumId: '23-remastered',
     dbAlbumId: 'uuid-album-1',
@@ -171,9 +171,9 @@ describe('AlbumDetails model', () => {
     expect(album?.tracks[0]?.stemsAvailability).toBe('public');
   });
 
-  test('mapFatAlbumToAlbumDetails strips lyrics and reshapes fields', () => {
+  test('mapAlbumEditableToAlbumDetails strips lyrics and reshapes fields', () => {
     const fat = buildFatAlbum();
-    const details = mapFatAlbumToAlbumDetails(fat);
+    const details = mapAlbumEditableToAlbumDetails(fat);
 
     expect(details.albumId).toBe('23-remastered');
     expect(details.slug).toBe('23-remastered');
@@ -213,7 +213,7 @@ describe('AlbumDetails model', () => {
     }
   });
 
-  test('AlbumDetails payload is smaller than fat IAlbums with lyrics', () => {
+  test('AlbumDetails payload is smaller than fat AlbumEditable with lyrics', () => {
     const fat = buildFatAlbum();
     // Simulate a heavier synced lyrics payload like production fat responses.
     const heavyLyrics = Array.from({ length: 40 }, (_, i) => ({
@@ -231,7 +231,7 @@ describe('AlbumDetails model', () => {
       content: heavyLyrics.map((l) => l.text).join('\n'),
     };
 
-    const details = mapFatAlbumToAlbumDetails(fat);
+    const details = mapAlbumEditableToAlbumDetails(fat);
     const fatBytes = Buffer.byteLength(JSON.stringify(fat), 'utf8');
     const detailsBytes = Buffer.byteLength(JSON.stringify(details), 'utf8');
     const ratio = Number((detailsBytes / fatBytes).toFixed(3));

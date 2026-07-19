@@ -47,13 +47,6 @@ const createTestStore = () => {
         },
       }),
       albums: () => ({
-        status: 'idle' as const,
-        error: null,
-        data: [],
-        lastUpdated: null,
-        fetchContextKey: null,
-        inFlightFetchContextKey: null,
-        catalogArtistMissing: false,
         dashboard: {
           status: 'idle' as const,
           error: null,
@@ -461,13 +454,6 @@ describe('uiDictionarySlice', () => {
         },
       },
       albums: {
-        status: 'idle' as const,
-        error: null,
-        data: [],
-        lastUpdated: null,
-        fetchContextKey: null,
-        inFlightFetchContextKey: null,
-        catalogArtistMissing: false,
         dashboard: {
           status: 'idle' as const,
           error: null,

@@ -1,16 +1,16 @@
 import { describe, expect, it } from '@jest/globals';
-import type { IAlbums } from '@models';
+import type { AlbumEditable } from '@models';
 
 import {
   resolveAlbumCoverCreditFieldForEdit,
   resolveAlbumCoverReleaseFieldsForDisplay,
-} from '../resolveAlbumDisplay';
+} from '../resolveAlbumEditableDisplay';
 
 function albumWithCoverCredits(partial: {
-  en?: Partial<NonNullable<IAlbums['translations']>['en']>;
-  ru?: Partial<NonNullable<IAlbums['translations']>['ru']>;
+  en?: Partial<NonNullable<AlbumEditable['translations']>['en']>;
+  ru?: Partial<NonNullable<AlbumEditable['translations']>['ru']>;
   release?: Record<string, string>;
-}): IAlbums {
+}): AlbumEditable {
   return {
     albumId: 'a1',
     artist: 'Artist',
@@ -38,7 +38,7 @@ function albumWithCoverCredits(partial: {
           }
         : {}),
     },
-  } as IAlbums;
+  } as AlbumEditable;
 }
 
 describe('resolveAlbumCoverCreditFieldForEdit', () => {

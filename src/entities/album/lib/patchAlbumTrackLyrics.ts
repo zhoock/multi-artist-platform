@@ -1,10 +1,10 @@
-import type { IAlbums } from '@models';
+import type { AlbumEditable } from '@models';
 import type { TrackLyricsBundle } from '@shared/lib/lyrics/types';
 
 export function patchAlbumsWithTrackLyrics(
-  albums: IAlbums[],
+  albums: AlbumEditable[],
   bundle: TrackLyricsBundle
-): IAlbums[] {
+): AlbumEditable[] {
   return albums.map((album) => {
     const albumKey = album.albumId ?? '';
     if (albumKey !== bundle.albumId) {

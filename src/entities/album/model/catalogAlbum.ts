@@ -1,6 +1,6 @@
 /**
  * Thin public catalog models for Artist Page first paint.
- * Not interchangeable with full `IAlbums` (no tracks/lyrics/details/buttons).
+ * Not interchangeable with full `AlbumEditable` (no tracks/lyrics/details/buttons).
  */
 
 export interface CatalogAlbum {

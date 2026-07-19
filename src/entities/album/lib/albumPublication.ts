@@ -1,7 +1,7 @@
-import type { IAlbums } from '@models';
+import type { AlbumEditable } from '@models';
 
 /** Альбом прошёл одноразовую публикацию (не черновик). */
-export function isAlbumPublished(album: Pick<IAlbums, 'isPublished' | 'isPublic'>): boolean {
+export function isAlbumPublished(album: Pick<AlbumEditable, 'isPublished' | 'isPublic'>): boolean {
   if (typeof album.isPublished === 'boolean') {
     return album.isPublished;
   }
@@ -10,13 +10,13 @@ export function isAlbumPublished(album: Pick<IAlbums, 'isPublished' | 'isPublic'
 }
 
 /** Черновик — ещё не опубликован. */
-export function isAlbumDraft(album: Pick<IAlbums, 'isPublished' | 'isPublic'>): boolean {
+export function isAlbumDraft(album: Pick<AlbumEditable, 'isPublished' | 'isPublic'>): boolean {
   return !isAlbumPublished(album);
 }
 
 /** Видимость на странице артиста (только для опубликованных альбомов). */
 export function isAlbumVisibleOnArtistPage(
-  album: Pick<IAlbums, 'isPublished' | 'isPublic'>
+  album: Pick<AlbumEditable, 'isPublished' | 'isPublic'>
 ): boolean {
   return isAlbumPublished(album) && album.isPublic !== false;
 }

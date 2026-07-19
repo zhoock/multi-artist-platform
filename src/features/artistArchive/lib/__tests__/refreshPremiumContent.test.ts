@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, jest, test } from '@jest/globals';
 import type { AppDispatch } from '@shared/model/appStore/types';
 
-const mockFetchAlbumDetails = jest.fn();
-const mockGetStore = jest.fn();
+const mockFetchAlbumDetails = jest.fn<(...args: unknown[]) => Promise<unknown>>();
+const mockGetStore = jest.fn<() => unknown>();
 const mockSetPlaylist = jest.fn((payload: unknown) => ({
   type: 'player/setPlaylist',
   payload,
@@ -15,8 +15,8 @@ const mockSetPublicArtistSlug = jest.fn((payload: unknown) => ({
   type: 'currentArtist/setPublicArtistSlug',
   payload,
 }));
-const mockFetchArticles = jest.fn();
-const mockFetchAlbumDetailsPage = jest.fn();
+const mockFetchArticles = jest.fn<(...args: unknown[]) => unknown>();
+const mockFetchAlbumDetailsPage = jest.fn<(...args: unknown[]) => unknown>();
 
 jest.mock('@entities/album/api/fetchAlbumDetails', () => ({
   fetchAlbumDetails: (...args: unknown[]) => mockFetchAlbumDetails(...args),
@@ -133,7 +133,7 @@ describe('refreshPremiumContent', () => {
     mockFetchAlbumDetails.mockResolvedValue(makeDetails());
   });
 
-  test('refetches articles + AlbumDetails, never fetchAlbums / fat catalog', async () => {
+  test('refetches articles + AlbumDetails, never fetchDashboardAlbums / fat catalog', async () => {
     const dispatched: unknown[] = [];
     const dispatch = ((action: unknown) => {
       dispatched.push(action);
@@ -173,7 +173,9 @@ describe('refreshPremiumContent', () => {
       force: true,
     });
     expect(mockFetchAlbumDetails).not.toHaveBeenCalled();
-    expect(dispatched.some((action) => String(action).includes('fetchAlbums'))).toBe(false);
+    expect(dispatched.some((action) => String(action).includes('fetchDashboardAlbums'))).toBe(
+      false
+    );
     expect(mockSetPlaylist).toHaveBeenCalled();
     const playlist = mockSetPlaylist.mock.calls[0]?.[0] as Array<{ src: string }>;
     expect(playlist[0]?.src).toContain('unlocked.mp3');

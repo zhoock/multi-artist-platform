@@ -3,26 +3,9 @@ import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { HomePage } from '../HomePage';
 import { renderWithProviders } from '@shared/lib/test-utils';
-import type { IAlbums, IArticles } from '@models';
+import type { IArticles } from '@models';
 
 describe('HomePage integration tests', () => {
-  const mockAlbums: IAlbums[] = [
-    {
-      albumId: 'album-1',
-      album: 'Album 1',
-      artist: 'Artist 1',
-      fullName: 'Artist 1 — Album 1',
-      description: 'Description 1',
-      release: {
-        date: '2024-01-01',
-      },
-      cover: 'cover1',
-      tracks: [],
-      buttons: {},
-      details: [],
-    },
-  ];
-
   const mockArticles: IArticles[] = [
     {
       articleId: 'article-1',
@@ -51,13 +34,6 @@ describe('HomePage integration tests', () => {
       preloadedState: {
         lang: { current: 'en' },
         albums: {
-          status: 'succeeded',
-          error: null,
-          data: mockAlbums,
-          lastUpdated: Date.now(),
-          fetchContextKey: null,
-          inFlightFetchContextKey: null,
-          catalogArtistMissing: false,
           dashboard: {
             status: 'idle',
             error: null,
@@ -111,13 +87,6 @@ describe('HomePage integration tests', () => {
       preloadedState: {
         lang: { current: 'en' },
         albums: {
-          status: 'succeeded',
-          error: null,
-          data: mockAlbums,
-          lastUpdated: Date.now(),
-          fetchContextKey: null,
-          inFlightFetchContextKey: null,
-          catalogArtistMissing: false,
           dashboard: {
             status: 'idle',
             error: null,
@@ -180,13 +149,6 @@ describe('HomePage integration tests', () => {
       preloadedState: {
         lang: { current: 'en' },
         albums: {
-          status: 'succeeded',
-          error: null,
-          data: mockAlbums,
-          lastUpdated: Date.now(),
-          fetchContextKey: null,
-          inFlightFetchContextKey: null,
-          catalogArtistMissing: false,
           dashboard: {
             status: 'idle',
             error: null,
@@ -261,13 +223,6 @@ describe('HomePage integration tests', () => {
       preloadedState: {
         lang: { current: 'ru' },
         albums: {
-          status: 'succeeded',
-          error: null,
-          data: mockAlbums,
-          lastUpdated: Date.now(),
-          fetchContextKey: null,
-          inFlightFetchContextKey: null,
-          catalogArtistMissing: false,
           dashboard: {
             status: 'idle',
             error: null,

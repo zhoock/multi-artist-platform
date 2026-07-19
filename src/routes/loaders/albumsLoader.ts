@@ -1,7 +1,7 @@
 // src/routes/loaders/albumsLoader.ts
 import type { LoaderFunctionArgs } from 'react-router';
 import { matchPath } from 'react-router-dom';
-import type { IAlbums, IArticles, IInterface } from '@models';
+import type { AlbumEditable, IArticles, IInterface } from '@models';
 import { getStore } from '@shared/model/appStore';
 import { setPublicArtistSlug } from '@shared/model/currentArtist';
 import { selectCurrentLang } from '@shared/model/lang';
@@ -12,7 +12,7 @@ import {
   selectArticlesData,
 } from '@entities/article';
 import {
-  fetchAlbums,
+  fetchDashboardAlbums,
   fetchAlbumDetailsPage,
   fetchArtistAlbumCatalog,
   buildAlbumDetailsFetchContextKey,
@@ -48,10 +48,10 @@ function isAbortLikeOrConditionSkipError(error: unknown): boolean {
 
 /** Deferred loader promises are not consumed; avoid unhandled rejections after Redux settles. */
 function unwrapLoaderAlbumsPromise(
-  fetchThunkPromise: { unwrap: () => Promise<{ albums: IAlbums[] }> },
-  fallback: IAlbums[]
-): Promise<IAlbums[]> {
-  const createNeverResolvingPromise = () => new Promise<IAlbums[]>(() => {});
+  fetchThunkPromise: { unwrap: () => Promise<{ albums: AlbumEditable[] }> },
+  fallback: AlbumEditable[]
+): Promise<AlbumEditable[]> {
+  const createNeverResolvingPromise = () => new Promise<AlbumEditable[]>(() => {});
 
   return fetchThunkPromise
     .unwrap()
@@ -110,7 +110,7 @@ function unwrapLoaderHelpArticlesPromise(
 }
 
 export type AlbumsDeferred = {
-  templateA: Promise<IAlbums[]>; // альбомы
+  templateA: Promise<AlbumEditable[]>; // альбомы
   templateB: Promise<IArticles[]>; // статьи
   templateC: Promise<IInterface[]>; // UI-словарь – грузим ВСЕГДА
   templateD: Promise<IArticles[]>; // статьи помощи
@@ -119,7 +119,7 @@ export type AlbumsDeferred = {
 
 /**
  * Публичный thin-каталог грузит surface (HomePage / AllAlbumsPage / Mixer), не loader.
- * Loader не должен `dispatch(fetchAlbums)` на этих маршрутах — иначе снова
+ * Loader не должен `dispatch(fetchDashboardAlbums)` на этих маршрутах — иначе снова
  * тянется полный монолит. `/albums/:albumId` — AlbumDetails; `/stems` — thin + AlbumDetails.
  */
 export function shouldDeferPublicArtistCatalogToSurface(
@@ -207,7 +207,7 @@ export async function albumsLoader({ request }: LoaderFunctionArgs): Promise<Alb
   }
 
   // По умолчанию — пустые промисы, чтобы типы были стабильными
-  let templateA: Promise<IAlbums[]> = Promise.resolve([]);
+  let templateA: Promise<AlbumEditable[]> = Promise.resolve([]);
   let templateB: Promise<IArticles[]> = Promise.resolve([]);
   let templateD: Promise<IArticles[]> = Promise.resolve([]); // help articles
 
@@ -229,10 +229,10 @@ export async function albumsLoader({ request }: LoaderFunctionArgs): Promise<Alb
         templateA = Promise.resolve(dash.data.length > 0 ? dash.data : []);
       } else {
         const fetchThunkPromise = store.dispatch(
-          fetchAlbums({ force: status === 'failed', ownerDashboard: true })
+          fetchDashboardAlbums({ force: status === 'failed', ownerDashboard: true })
         );
 
-        const createNeverResolvingPromise = () => new Promise<IAlbums[]>(() => {});
+        const createNeverResolvingPromise = () => new Promise<AlbumEditable[]>(() => {});
 
         if (signal.aborted) {
           fetchThunkPromise.abort();

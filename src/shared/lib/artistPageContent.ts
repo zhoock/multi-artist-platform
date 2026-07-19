@@ -1,4 +1,4 @@
-import type { IAlbums, IArticles } from '@models';
+import type { AlbumEditable, IArticles } from '@models';
 
 import { isAlbumDraft, isAlbumVisibleOnArtistPage } from '@entities/album/lib/albumPublication';
 import { hasPublishedPublicReleases } from '@entities/album/lib/hasPublishedPublicReleases';
@@ -11,7 +11,7 @@ type ProfileContentInput = {
   socialLinks?: Record<string, string | undefined>;
 };
 
-export function countUniqueAlbums(albums: IAlbums[]): number {
+export function countUniqueAlbums(albums: AlbumEditable[]): number {
   const ids = new Set(albums.map((album) => album.albumId).filter(Boolean));
   return ids.size > 0 ? ids.size : albums.length;
 }
@@ -37,7 +37,10 @@ export function profileHasPublicBodyContent(profile: ProfileContentInput): boole
   return false;
 }
 
-export function filterAlbumsForArtistPageSurface(albums: IAlbums[], isOwner: boolean): IAlbums[] {
+export function filterAlbumsForArtistPageSurface(
+  albums: AlbumEditable[],
+  isOwner: boolean
+): AlbumEditable[] {
   if (isOwner) {
     return albums.filter(
       (album) =>
@@ -70,7 +73,7 @@ export function countPublishedPublicArticles(articles: IArticles[]): number {
 
 /** Visitor-facing artist page: published tracks, public articles, or profile body. */
 export function artistHasPublicPageContent(options: {
-  albums: IAlbums[];
+  albums: AlbumEditable[];
   articles: IArticles[];
   profileHasPublicBody: boolean;
 }): boolean {
@@ -82,7 +85,7 @@ export function artistHasPublicPageContent(options: {
 }
 
 export function hasVisitorVisibleArtistContent(options: {
-  albums: IAlbums[];
+  albums: AlbumEditable[];
   articlesCount: number;
   profileHasPublicBody: boolean;
 }): boolean {

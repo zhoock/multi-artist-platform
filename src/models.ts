@@ -51,10 +51,11 @@ export interface PopupProps extends HamburgerProps {
 }
 
 /**
- * Albums
+ * Dashboard editable album (fat `/api/albums` owner payload).
+ * Not a public catalog model — see CatalogAlbum / AlbumDetails / Player*.
  */
 
-/** Переводимые поля альбома (`translations.ru` / `translations.en`). Название альбома — только на корне `IAlbums.album`. */
+/** Переводимые поля альбома (`translations.ru` / `translations.en`). Название альбома — только на корне `AlbumEditable.album`. */
 export interface IAlbumTranslationsLocale {
   /** @deprecated Старые ответы API; не записывать. */
   album?: string;
@@ -70,7 +71,7 @@ export interface IAlbumTranslationsLocale {
 
 export type IAlbumTranslations = Partial<Record<SupportedLang, IAlbumTranslationsLocale>>;
 
-export interface IAlbums {
+export interface AlbumEditable {
   userId?: string;
   /** Первичный ключ `albums.id` (UUID), если пришёл из API — для ЮKassa и create-payment. */
   dbAlbumId?: string;

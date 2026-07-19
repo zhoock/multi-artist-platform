@@ -12,7 +12,7 @@ import { langReducer } from '@shared/model/lang/langSlice';
 import { currentArtistReducer } from '@shared/model/currentArtist';
 import { LangProvider } from '@app/providers/lang';
 import { useArtistPageAccess } from '../useArtistPageAccess';
-import type { IAlbums, TracksProps } from '@models';
+import type { AlbumEditable, TracksProps } from '@models';
 import { writeCachedOwnPublicSlug, clearCachedOwnPublicSlug } from '@shared/lib/ownPublicSlugCache';
 
 jest.mock('@shared/lib/authFetch', () => ({
@@ -69,7 +69,7 @@ const mockTrack: TracksProps = {
   order_index: 10,
 };
 
-const publishedAlbum: IAlbums = {
+const publishedAlbum: AlbumEditable = {
   albumId: 'test-album',
   album: 'Test Album',
   artist: 'Test Artist',
@@ -143,13 +143,6 @@ describe('useArtistPageAccess — album surface reload', () => {
       },
     },
     albums: {
-      status: 'succeeded' as const,
-      error: null,
-      data: [publishedAlbum],
-      lastUpdated: Date.now(),
-      fetchContextKey: 'public:test-artist',
-      inFlightFetchContextKey: null,
-      catalogArtistMissing: false,
       dashboard: {
         status: 'idle' as const,
         error: null,
@@ -228,13 +221,6 @@ describe('useArtistPageAccess — articles surface reload', () => {
             },
           },
           albums: {
-            status: 'idle',
-            error: null,
-            data: [],
-            lastUpdated: null,
-            fetchContextKey: null,
-            inFlightFetchContextKey: null,
-            catalogArtistMissing: false,
             dashboard: {
               status: 'idle',
               error: null,
@@ -299,13 +285,6 @@ describe('useArtistPageAccess — published surface without releases', () => {
           },
         },
         albums: {
-          status: 'idle',
-          error: null,
-          data: [],
-          lastUpdated: null,
-          fetchContextKey: null,
-          inFlightFetchContextKey: null,
-          catalogArtistMissing: false,
           dashboard: {
             status: 'idle',
             error: null,
@@ -367,13 +346,6 @@ describe('useArtistPageAccess — visitor unpublished artist', () => {
           },
         },
         albums: {
-          status: 'idle',
-          error: null,
-          data: [],
-          lastUpdated: null,
-          fetchContextKey: null,
-          inFlightFetchContextKey: null,
-          catalogArtistMissing: false,
           dashboard: {
             status: 'idle',
             error: null,
@@ -419,13 +391,6 @@ describe('useArtistPageAccess — visitor unpublished artist', () => {
           },
         },
         albums: {
-          status: 'idle',
-          error: null,
-          data: [],
-          lastUpdated: null,
-          fetchContextKey: null,
-          inFlightFetchContextKey: null,
-          catalogArtistMissing: false,
           dashboard: {
             status: 'idle',
             error: null,
@@ -516,13 +481,6 @@ describe('useArtistPageAccess — owner onboarding after full content removal', 
           },
         },
         albums: {
-          status: 'idle',
-          error: null,
-          data: [],
-          lastUpdated: null,
-          fetchContextKey: null,
-          inFlightFetchContextKey: null,
-          catalogArtistMissing: false,
           dashboard: {
             status: 'succeeded',
             error: null,
@@ -605,13 +563,6 @@ describe('useArtistPageAccess — owner builder eligibility', () => {
           },
         },
         albums: {
-          status: 'idle',
-          error: null,
-          data: [],
-          lastUpdated: null,
-          fetchContextKey: null,
-          inFlightFetchContextKey: null,
-          catalogArtistMissing: false,
           dashboard: {
             status: 'succeeded',
             error: null,

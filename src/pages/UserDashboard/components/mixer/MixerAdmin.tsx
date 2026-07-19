@@ -18,7 +18,7 @@ import {
 } from '@dnd-kit/sortable';
 import { AudioLines as AudioLinesIcon, Plus as PlusIcon } from 'lucide-react';
 import type { IInterface } from '@models';
-import type { AlbumData, TrackData } from '@entities/album/lib/transformAlbumData';
+import type { AlbumData, TrackData } from '@entities/album/lib/transformEditableAlbumData';
 import { AlbumCoverImage } from '@entities/album';
 import { getUserUserId } from '@config/user';
 import { useLang } from '@app/providers/lang';
@@ -72,12 +72,12 @@ interface DeleteTarget {
 /**
  * Составной ключ для любого клиентского кэша/стейта, привязанного к треку в микшере.
  *
- * Откуда берётся track.id в UI (TrackData.id / IAlbums.tracks[].id):
+ * Откуда берётся track.id в UI (TrackData.id / AlbumEditable.tracks[].id):
  * - В БД: колонка `tracks.track_id` (VARCHAR), уникальность только в паре с альбомом —
  *   `UNIQUE(album_id, track_id)` (см. database/migrations/003_create_users_albums_tracks.sql).
  * - Это НЕ глобальный PK строки `tracks.id` (UUID) и не slug названия трека.
  * - API: `netlify/functions/albums.ts` → `mapAlbumToApiFormat` кладёт `track.track_id` в поле `id`.
- * - UI: `transformAlbumToAlbumData` → `id: String(track.id)`.
+ * - UI: `transformEditableAlbumToAlbumData` → `id: String(track.id)`.
  * - Legacy-альбомы из JSON: позиционные id `"1"`, `"2"`, … (одинаковые между разными альбомами).
  * - Новые загрузки: стабильный UUID (`UserDashboard` → `newStableTrackId()`), но по-прежнему
  *   scoped к альбому в БД и в Storage, не глобально уникален без albumId.

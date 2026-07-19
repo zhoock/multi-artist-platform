@@ -8,7 +8,7 @@ import {
   AlbumCover,
   AlbumDetails,
   fetchAlbumDetailsPage,
-  mapFatAlbumToAlbumDetails,
+  mapAlbumEditableToAlbumDetails,
   selectAlbumDetailsResolved,
   selectAlbumDetailsStatus,
   selectAlbumDetailsErrorCode,
@@ -78,13 +78,13 @@ export default function Album() {
 
   /**
    * Public path: AlbumDetails from mid-weight API.
-   * Owner unpublished draft: map dashboard IAlbums → AlbumDetails (Dashboard CRUD untouched).
+   * Owner unpublished draft: map dashboard AlbumEditable → AlbumDetails (Dashboard CRUD untouched).
    */
   const albumFromDetails: AlbumDetailsData | undefined =
     detailsMatchRoute && resolvedDetails ? resolvedDetails : undefined;
   const albumFromOwnerDashboard: AlbumDetailsData | undefined =
     !albumFromDetails && artistPageAccess.isOwner && dashboardAlbum
-      ? mapFatAlbumToAlbumDetails(dashboardAlbum)
+      ? mapAlbumEditableToAlbumDetails(dashboardAlbum)
       : undefined;
   const album: AlbumDetailsData | undefined = albumFromDetails ?? albumFromOwnerDashboard;
 

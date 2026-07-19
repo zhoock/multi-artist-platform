@@ -4,7 +4,7 @@ import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Pencil as PencilIcon, Trash2 as Trash2Icon } from 'lucide-react';
 
-import type { TrackData } from '@entities/album/lib/transformAlbumData';
+import type { TrackData } from '@entities/album/lib/transformEditableAlbumData';
 import type { IInterface, DashboardTrackVisibilityLabels } from '@models';
 import { useLang } from '@app/providers/lang';
 import {

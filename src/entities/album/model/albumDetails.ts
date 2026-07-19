@@ -1,9 +1,9 @@
 /**
  * Mid-weight album page model — open-album payload without lyrics.
- * Not interchangeable with full `IAlbums` (Dashboard / fat `/api/albums`).
+ * Not interchangeable with full `AlbumEditable` (Dashboard / fat `/api/albums`).
  */
 
-import type { detailsProps, IAlbums, TracksProps } from '@models';
+import type { detailsProps, AlbumEditable, TracksProps } from '@models';
 import type { TrackVisibility } from '@shared/lib/tracks/trackVisibility';
 import { normalizeTrackVisibility } from '@shared/lib/tracks/trackVisibility';
 import { normalizeStemsVisibility } from '@shared/lib/stems/stemsVisibility';
@@ -283,10 +283,10 @@ export function normalizeAlbumDetails(raw: unknown): AlbumDetails | null {
 }
 
 /**
- * Map a fat `IAlbums` (or equivalent) into AlbumDetails for parity checks.
+ * Map a fat `AlbumEditable` (or equivalent) into AlbumDetails for parity checks.
  * Explicitly drops lyrics / content / authorship / stems-only dashboard fields.
  */
-export function mapFatAlbumToAlbumDetails(album: IAlbums): AlbumDetails {
+export function mapAlbumEditableToAlbumDetails(album: AlbumEditable): AlbumDetails {
   const release = parseRelease(album.release);
   const rootArtwork = parseArtwork({
     photographer: (album.release as Record<string, unknown> | undefined)?.photographer,

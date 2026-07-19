@@ -1,7 +1,7 @@
 import React from 'react';
 import { FileText as FileTextIcon, Plus as PlusIcon } from 'lucide-react';
 
-import type { TrackData } from '@entities/album/lib/transformAlbumData';
+import type { TrackData } from '@entities/album/lib/transformEditableAlbumData';
 import { resolveTrackLyricsBundle } from '@entities/lyrics';
 import type { IInterface } from '@models';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';

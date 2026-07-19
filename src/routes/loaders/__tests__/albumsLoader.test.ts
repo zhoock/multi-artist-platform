@@ -160,23 +160,23 @@ describe('albumsLoader — defer public catalog to HomePage', () => {
       params: {},
     } as Parameters<typeof albumsLoader>[0]);
 
-    expect(store.getState().albums.status).toBe('idle');
-    expect(store.getState().albums.inFlightFetchContextKey).toBeNull();
+    expect(store.getState().albums.dashboard.status).toBe('idle');
+    expect(store.getState().albums.dashboard.inFlightFetchContextKey).toBeNull();
     expect(store.getState().articles.status).toBe('idle');
   });
 
-  test('на /albums?artist= не стартует fat fetchAlbums (ждёт AllAlbumsPage thin catalog)', async () => {
+  test('на /albums?artist= не стартует fat fetchDashboardAlbums (ждёт AllAlbumsPage thin catalog)', async () => {
     const args = makeRequest('/albums?artist=foo');
     await albumsLoader({
       request: args.request,
       params: {},
     } as Parameters<typeof albumsLoader>[0]);
 
-    expect(store.getState().albums.status).toBe('idle');
-    expect(store.getState().albums.inFlightFetchContextKey).toBeNull();
+    expect(store.getState().albums.dashboard.status).toBe('idle');
+    expect(store.getState().albums.dashboard.inFlightFetchContextKey).toBeNull();
   });
 
-  test('на /albums/:id?artist= стартует AlbumDetails, не fat fetchAlbums', async () => {
+  test('на /albums/:id?artist= стартует AlbumDetails, не fat fetchDashboardAlbums', async () => {
     jest.spyOn(globalThis, 'fetch').mockImplementation(
       () =>
         new Promise(() => {
@@ -190,12 +190,12 @@ describe('albumsLoader — defer public catalog to HomePage', () => {
       params: {},
     } as Parameters<typeof albumsLoader>[0]);
 
-    expect(store.getState().albums.status).toBe('idle');
+    expect(store.getState().albums.dashboard.status).toBe('idle');
     expect(store.getState().albumDetails.status).toBe('loading');
     expect(store.getState().albumDetails.fetchContextKey).toBe('albumDetails:foo:23-remastered');
   });
 
-  test('на /stems?artist= не стартует fat fetchAlbums (thin catalog на Mixer)', async () => {
+  test('на /stems?artist= не стартует fat fetchDashboardAlbums (thin catalog на Mixer)', async () => {
     jest.spyOn(globalThis, 'fetch').mockImplementation(
       () =>
         new Promise(() => {
@@ -209,8 +209,8 @@ describe('albumsLoader — defer public catalog to HomePage', () => {
       params: {},
     } as Parameters<typeof albumsLoader>[0]);
 
-    expect(store.getState().albums.status).toBe('idle');
-    expect(store.getState().albums.inFlightFetchContextKey).toBeNull();
+    expect(store.getState().albums.dashboard.status).toBe('idle');
+    expect(store.getState().albums.dashboard.inFlightFetchContextKey).toBeNull();
     expect(store.getState().artistAlbumCatalog.status).toBe('loading');
   });
 });

@@ -25,8 +25,7 @@ export function isDashboardPathname(): boolean {
  * Маршруты auth-оверлея. На таких URL модалка регистрации/логина рендерится поверх
  * underlying-страницы (artist/home/etc.) через `state.backgroundLocation`. Loader не
  * должен трогать `currentArtist.publicArtistSlug` на этих путях, иначе после закрытия
- * модалки `desiredFetchContextKey` отличается от cached → cache считается stale →
- * `selectPublicAlbumsDataResolvedForSurface` возвращает `[]` → underlying-каталог
+ * модалки thin-catalog `fetchContextKey` становится stale → underlying-каталог
  * показывает skeleton.
  */
 export function isAuthOverlayPathname(pathname: string): boolean {

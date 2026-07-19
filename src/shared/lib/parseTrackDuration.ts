@@ -1,5 +1,5 @@
 /**
- * Длительность трека в дашборде хранится как строка "M:SS" / "MM:SS" (см. transformAlbumToAlbumData).
+ * Длительность трека в дашборде хранится как строка "M:SS" / "MM:SS" (см. transformEditableAlbumToAlbumData).
  * Для аудио-логики нужны секунды.
  */
 export function parseTrackDurationToSeconds(

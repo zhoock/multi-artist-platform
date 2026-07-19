@@ -20,8 +20,8 @@ import { getAlbumPublishHintKey } from '@entities/album/lib/isAlbumReadyToPublis
 import { isAlbumPublished } from '@entities/album/lib/albumPublication';
 import { getAlbumListDraftBadge } from '@entities/album/lib/albumLifecycleStatus';
 import { AlbumCoverImage } from '@entities/album';
-import type { AlbumData } from '@entities/album/lib/transformAlbumData';
-import type { IAlbums, IInterface } from '@models';
+import type { AlbumData } from '@entities/album/lib/transformEditableAlbumData';
+import type { AlbumEditable, IInterface } from '@models';
 import type { SupportedLang } from '@shared/model/lang';
 import type { TrackVisibility } from '@shared/lib/tracks/trackVisibility';
 import { EmailVerificationOnboarding } from '@shared/lib/emailVerification';
@@ -52,7 +52,7 @@ type AlbumsTabContentProps = {
   initialLoading: boolean;
   tabActive: boolean;
   albumsData: AlbumData[];
-  albumsFromStore: IAlbums[];
+  albumsFromStore: AlbumEditable[];
   expandedAlbumId: string | null;
   onSetExpandedAlbumId: (albumId: string | null) => void;
   albumAccessMenuAlbumId: string | null;

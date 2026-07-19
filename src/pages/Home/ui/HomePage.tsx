@@ -15,7 +15,7 @@ import { playerActions, toPlayerTracks } from '@features/player';
 import { getUserAudioUrl } from '@shared/api/albums';
 import { emptyStringMediaSrc } from '@shared/lib/media/optionalMediaUrl';
 import { isDashboardPathname } from '@shared/lib/publicArtistContext';
-import { fetchAlbums, fetchArtistAlbumCatalog } from '@entities/album';
+import { fetchDashboardAlbums, fetchArtistAlbumCatalog } from '@entities/album';
 import { fetchArticles } from '@entities/article';
 import { generateMockArtists } from '@shared/lib/generateMockArtists';
 import { fetchUniverseArtistPlayAlbum } from '@features/universe/lib/fetchUniverseArtistPlayAlbum';
@@ -116,15 +116,14 @@ export function HomePage() {
   }, [artistSlug, dispatch, hasArtistParam]);
 
   /**
-   * Кабинет владельца — отдельный writeTarget (`dashboard`), не публичный catalog.
-   * Не зависит от публичного fetch и не перезапускает его при resolve owner.
+   * Owner Dashboard fat-albums (`AlbumEditable`). Не зависит от thin CatalogAlbum fetch.
    */
   useEffect(() => {
     if (isDashboardPathname()) return;
     if (!hasArtistParam) return;
     if (!artistPageAccess.isOwner || !artistPageAccess.ownerResolved) return;
 
-    void dispatch(fetchAlbums({ force: true, ownerDashboard: true }));
+    void dispatch(fetchDashboardAlbums({ force: true, ownerDashboard: true }));
     void dispatch(fetchArticles({ force: true, ownerDashboard: true }));
   }, [
     artistPageAccess.isOwner,

@@ -1,7 +1,7 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 
-import { fetchAlbums } from '@entities/album/model/albumsSlice';
-import type { IAlbums } from '@models';
+import { fetchDashboardAlbums } from '@entities/album/model/albumsSlice';
+import type { AlbumEditable } from '@models';
 import type { TrackLyricsBundle } from '@shared/lib/lyrics/types';
 import { trackLyricsEntityKey } from '@shared/lib/lyrics/types';
 
@@ -15,7 +15,7 @@ const initialState: TrackLyricsState = {
   entities: {},
 };
 
-export function extractLyricsFromAlbums(albums: IAlbums[]): TrackLyricsBundle[] {
+export function extractLyricsFromAlbums(albums: AlbumEditable[]): TrackLyricsBundle[] {
   const bundles: TrackLyricsBundle[] = [];
   for (const album of albums) {
     const albumId = album.albumId || '';
@@ -34,7 +34,7 @@ const trackLyricsSlice = createSlice({
   name: 'trackLyrics',
   initialState,
   reducers: {
-    hydrateTrackLyricsFromAlbums(state, action: PayloadAction<IAlbums[]>) {
+    hydrateTrackLyricsFromAlbums(state, action: PayloadAction<AlbumEditable[]>) {
       for (const bundle of extractLyricsFromAlbums(action.payload)) {
         state.entities[trackLyricsEntityKey(bundle.albumId, bundle.trackId, bundle.lang)] = bundle;
       }
@@ -48,10 +48,8 @@ const trackLyricsSlice = createSlice({
       const bundle = action.payload;
       state.entities[trackLyricsEntityKey(bundle.albumId, bundle.trackId, bundle.lang)] = bundle;
     });
-    builder.addCase(fetchAlbums.fulfilled, (state, action) => {
+    builder.addCase(fetchDashboardAlbums.fulfilled, (state, action) => {
       if (action.payload.staleAbort) return;
-      // Public surfaces no longer use fat albums; hydrate lyrics only from Dashboard CRUD.
-      if (action.payload.writeTarget !== 'dashboard') return;
       for (const bundle of extractLyricsFromAlbums(action.payload.albums)) {
         state.entities[trackLyricsEntityKey(bundle.albumId, bundle.trackId, bundle.lang)] = bundle;
       }

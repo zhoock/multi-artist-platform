@@ -1,5 +1,5 @@
 // src/pages/UserDashboard/components/EditAlbumModal.types.ts
-import type { IAlbums } from '@models';
+import type { AlbumEditable } from '@models';
 
 export interface EditAlbumModalProps {
   isOpen: boolean;
@@ -7,7 +7,7 @@ export interface EditAlbumModalProps {
   onClose: () => void;
   onNext?: (
     data: AlbumFormData,
-    updatedAlbum?: IAlbums,
+    updatedAlbum?: AlbumEditable,
     meta?: { createdNewAlbum?: boolean }
   ) => void;
 }

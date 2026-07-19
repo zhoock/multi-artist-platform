@@ -129,7 +129,7 @@ export function useArtistPageAccessState(
   const articlesCacheStale = useAppSelector(selectArticlesCacheIsStale);
   const publicArticles = useAppSelector(selectArticlesDataResolvedForSurface);
 
-  /** Public album gates use thin CatalogAlbum only — never fat `albums.data`. */
+  /** Public album gates use thin CatalogAlbum only — never Dashboard AlbumEditable. */
   const onAlbumDetail = isAlbumDetailPath(pathname);
   const hasPublicReleases = useMemo(
     () => hasPublishedPublicCatalogReleases(thinCatalogSurface),

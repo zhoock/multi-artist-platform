@@ -1,6 +1,6 @@
 /**
  * Клиентский ключ альбома для плеера / кэша. Предпочитает albumId с API.
- * Поддерживает AlbumDetails (`title`) и legacy IAlbums (`album` + optional `artist`).
+ * Поддерживает AlbumDetails (`title`) и AlbumEditable (`album` + optional `artist`).
  */
 export function fallbackAlbumClientId(album: {
   albumId?: string;

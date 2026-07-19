@@ -1,6 +1,6 @@
 import { createAsyncThunk, createSlice, type PayloadAction } from '@reduxjs/toolkit';
 
-import type { IAlbums, IAlbumTranslations, IAlbumTrackTranslations } from '@models';
+import type { AlbumEditable, IAlbumTranslations, IAlbumTrackTranslations } from '@models';
 import { normalizeTrackIdString } from '@shared/lib/tracks/normalizeTrackIdString';
 import { normalizeStemsVisibility } from '@shared/lib/stems/stemsVisibility';
 import { normalizeTrackVisibility, type TrackVisibility } from '@shared/lib/tracks/trackVisibility';
@@ -10,45 +10,26 @@ import { fetchWithAuthSession } from '@shared/lib/authFetch';
 import { buildApiUrl } from '@shared/lib/artistQuery';
 import { isDashboardPathname } from '@shared/lib/publicArtistContext';
 import { shouldUsePublicArtistCatalogInRedux } from '@shared/lib/dashboardModalBackground';
-import { buildPublicAlbumsFetchContextKey } from '@shared/lib/publicCatalogCacheKey';
-import { selectPublicArtistSlug, setPublicArtistSlug } from '@shared/model/currentArtist';
 import { applyTrackLyricsBundle } from '@entities/lyrics/model/actions';
 import { patchAlbumsWithTrackLyrics } from '../lib/patchAlbumTrackLyrics';
 
-import type { AlbumsState, FetchAlbumsArg, FetchAlbumsFulfilledPayload } from './types';
+import type {
+  AlbumsState,
+  FetchDashboardAlbumsArg,
+  FetchDashboardAlbumsFulfilledPayload,
+} from './types';
 
-export type { FetchAlbumsArg } from './types';
+export type { FetchDashboardAlbumsArg } from './types';
 
-function isOwnerDashboardAlbumsFetch(arg: FetchAlbumsArg): boolean {
-  if (arg.forcePublicCatalog) return false;
+function isOwnerDashboardAlbumsFetch(arg: FetchDashboardAlbumsArg): boolean {
   if (arg.ownerDashboard) return true;
   return isDashboardPathname() && !shouldUsePublicArtistCatalogInRedux();
-}
-
-function resolvePublicArtistSlugForFetch(arg: FetchAlbumsArg, getState: () => RootState): string {
-  if (arg.publicArtistSlug !== undefined && arg.publicArtistSlug !== null) {
-    return String(arg.publicArtistSlug).trim();
-  }
-  return selectPublicArtistSlug(getState())?.trim() ?? '';
-}
-
-function shouldFetchPublicArtistCatalog(arg: FetchAlbumsArg): boolean {
-  if (arg.forcePublicCatalog) return true;
-  if (isOwnerDashboardAlbumsFetch(arg)) return false;
-  return shouldUsePublicArtistCatalogInRedux();
 }
 
 /** Ignore stale `force` responses when a newer entitlement refresh is in flight. */
 let latestForceAlbumsRequestId = '';
 
 const initialState: AlbumsState = {
-  status: 'idle',
-  error: null,
-  data: [],
-  lastUpdated: null,
-  fetchContextKey: null,
-  inFlightFetchContextKey: null,
-  catalogArtistMissing: false,
   dashboard: {
     status: 'idle',
     error: null,
@@ -58,48 +39,14 @@ const initialState: AlbumsState = {
   },
 };
 
-/** Ключ кэша публичного каталога в `data` (artist slug из store / фон под модалкой). */
-function getCatalogAlbumsFetchContextKey(
-  getState: () => RootState,
-  slugOverride?: string | null
-): string {
-  if (typeof window === 'undefined') {
-    return 'ssr';
-  }
-  const slug =
-    slugOverride !== undefined
-      ? String(slugOverride ?? '').trim()
-      : (selectPublicArtistSlug(getState())?.trim() ?? '');
-  return buildPublicAlbumsFetchContextKey(slug || null);
+function wrapAlbumsResult(albums: AlbumEditable[]): FetchDashboardAlbumsFulfilledPayload {
+  return { albums };
 }
 
-function wrapAlbumsResult(
-  albums: IAlbums[],
-  fetchContextKey: string,
-  writeTarget: 'catalog' | 'dashboard',
-  catalogArtistMissing = false
-): FetchAlbumsFulfilledPayload {
-  return { albums, fetchContextKey, writeTarget, catalogArtistMissing };
-}
-
-function staleSnapshotPayload(
-  getState: () => RootState,
-  target: 'catalog' | 'dashboard'
-): FetchAlbumsFulfilledPayload {
-  const s = getState().albums;
-  if (target === 'dashboard') {
-    return {
-      albums: s.dashboard.data,
-      fetchContextKey: 'dashboard',
-      staleAbort: true,
-      writeTarget: 'dashboard',
-    };
-  }
+function staleSnapshotPayload(getState: () => RootState): FetchDashboardAlbumsFulfilledPayload {
   return {
-    albums: s.data,
-    fetchContextKey: s.fetchContextKey ?? 'stale-keep',
+    albums: getState().albums.dashboard.data,
     staleAbort: true,
-    writeTarget: 'catalog',
   };
 }
 
@@ -114,18 +61,9 @@ function albumHasDisplayableTitle(album: {
   return Boolean(en || ru);
 }
 
-async function resolveCatalogArtistMissing(response: Response): Promise<boolean> {
-  try {
-    const payload = (await response.json()) as { code?: string };
-    return payload.code === 'ARTIST_NOT_FOUND';
-  } catch {
-    return false;
-  }
-}
-
-export const fetchAlbums = createAsyncThunk<
-  FetchAlbumsFulfilledPayload,
-  FetchAlbumsArg,
+export const fetchDashboardAlbums = createAsyncThunk<
+  FetchDashboardAlbumsFulfilledPayload,
+  FetchDashboardAlbumsArg,
   { rejectValue: string; state: RootState }
 >(
   'albums/fetchMerged',
@@ -176,7 +114,7 @@ export const fetchAlbums = createAsyncThunk<
       );
     };
 
-    const normalize = (data: unknown[]): IAlbums[] => {
+    const normalize = (data: unknown[]): AlbumEditable[] => {
       if (!Array.isArray(data)) {
         console.warn('⚠️ normalize: data is not an array', data);
         return [];
@@ -238,25 +176,13 @@ export const fetchAlbums = createAsyncThunk<
           isPublished: (album as { isPublished?: boolean }).isPublished,
           translations: album.translations,
           tracks,
-        } as IAlbums;
+        } as AlbumEditable;
       });
     };
 
     try {
-      const ownerDashboard = isOwnerDashboardAlbumsFetch(arg);
-      const usePublicCatalog = shouldFetchPublicArtistCatalog(arg);
-      const isFullscreenDashboard = ownerDashboard;
-      const publicSlug = usePublicCatalog ? resolvePublicArtistSlugForFetch(arg, getState) : '';
-      const requestFetchKey = usePublicCatalog
-        ? getCatalogAlbumsFetchContextKey(getState, publicSlug || null)
-        : 'dashboard';
-      const writeTarget: 'catalog' | 'dashboard' = usePublicCatalog ? 'catalog' : 'dashboard';
-
-      const catalogStale = (): boolean =>
-        getCatalogAlbumsFetchContextKey(getState, publicSlug || null) !== requestFetchKey;
-
       const dashboardStale = (): boolean => {
-        if (ownerDashboard) return false;
+        if (arg.ownerDashboard) return false;
         return !isDashboardPathname() || shouldUsePublicArtistCatalogInRedux();
       };
 
@@ -276,19 +202,11 @@ export const fetchAlbums = createAsyncThunk<
         const token = getToken();
 
         // Кабинет без JWT: иначе GET /api/albums без ?artist= → 400 на бэкенде.
-        if (isFullscreenDashboard && !token) {
+        if (!token) {
           if (dashboardStale()) {
-            return staleSnapshotPayload(getState, 'dashboard');
+            return staleSnapshotPayload(getState);
           }
-          return wrapAlbumsResult([], 'dashboard', 'dashboard');
-        }
-
-        // Публичный каталог: без public slug API не вызываем (нужен контекст артиста).
-        if (usePublicCatalog && !publicSlug) {
-          if (catalogStale()) {
-            return staleSnapshotPayload(getState, 'catalog');
-          }
-          return wrapAlbumsResult([], requestFetchKey, 'catalog');
+          return wrapAlbumsResult([]);
         }
 
         const headers: Record<string, string> = {
@@ -299,15 +217,7 @@ export const fetchAlbums = createAsyncThunk<
         }
 
         const response = await fetchWithAuthSession(
-          buildApiUrl(
-            '/api/albums',
-            {},
-            {
-              includeArtist: usePublicCatalog,
-              artistSlugOverride: usePublicCatalog ? publicSlug : null,
-              forceArtistQuery: Boolean(arg.forcePublicCatalog),
-            }
-          ),
+          buildApiUrl('/api/albums', {}, { includeArtist: false }),
           {
             signal: controller.signal,
             cache: 'no-store',
@@ -319,15 +229,11 @@ export const fetchAlbums = createAsyncThunk<
         if (response.ok) {
           const result = await response.json();
           if (result.success && result.data && Array.isArray(result.data)) {
+            if (dashboardStale()) {
+              return staleSnapshotPayload(getState);
+            }
             if (result.data.length === 0) {
-              if (isFullscreenDashboard) {
-                if (dashboardStale()) {
-                  return staleSnapshotPayload(getState, 'dashboard');
-                }
-              } else if (catalogStale()) {
-                return staleSnapshotPayload(getState, 'catalog');
-              }
-              return wrapAlbumsResult([], requestFetchKey, writeTarget);
+              return wrapAlbumsResult([]);
             }
 
             const firstAlbum = result.data[0];
@@ -347,55 +253,14 @@ export const fetchAlbums = createAsyncThunk<
                 : null,
             });
 
-            if (isFullscreenDashboard) {
-              if (dashboardStale()) {
-                return staleSnapshotPayload(getState, 'dashboard');
-              }
-            } else if (catalogStale()) {
-              return staleSnapshotPayload(getState, 'catalog');
-            }
-            return wrapAlbumsResult(normalize(result.data), requestFetchKey, writeTarget);
+            return wrapAlbumsResult(normalize(result.data));
           }
           throw new Error('Failed to fetch albums. Invalid response format.');
         }
 
-        // Неверный slug или страница без публичного контента (?artist=) — завершаем загрузку, без throw.
-        if (response.status === 404 && usePublicCatalog) {
-          const catalogArtistMissing = await resolveCatalogArtistMissing(response);
-          return wrapAlbumsResult([], requestFetchKey, writeTarget, catalogArtistMissing);
-        }
-
-        if (response.status >= 500 && usePublicCatalog && publicSlug) {
-          if (catalogStale()) {
-            return staleSnapshotPayload(getState, 'catalog');
-          }
-          const cachedAlbums = getState().albums;
-          if (cachedAlbums.data.length > 0 && cachedAlbums.fetchContextKey === requestFetchKey) {
-            throw new Error(`Failed to fetch albums. Status: ${response.status}`);
-          }
-          const catalogArtistMissing = await resolveCatalogArtistMissing(response);
-          return wrapAlbumsResult([], requestFetchKey, writeTarget, catalogArtistMissing);
-        }
-
         throw new Error(`Failed to fetch albums. Status: ${response.status}`);
       } catch (apiError) {
-        if (usePublicCatalog && publicSlug) {
-          if (catalogStale()) {
-            return staleSnapshotPayload(getState, 'catalog');
-          }
-          const cachedAlbums = getState().albums;
-          if (cachedAlbums.data.length > 0 && cachedAlbums.fetchContextKey === requestFetchKey) {
-            throw apiError instanceof Error ? apiError : new Error(String(apiError));
-          }
-        }
-
-        if (isFullscreenDashboard) {
-          console.error('❌ [albumsSlice] albums API failed in /dashboard', apiError);
-        } else if (apiError instanceof Error && apiError.name === 'AbortError') {
-          console.warn('⚠️ [albumsSlice] API request timeout (25s)', apiError);
-        } else {
-          console.warn('⚠️ [albumsSlice] albums API failed', apiError);
-        }
+        console.error('❌ [albumsSlice] albums API failed in dashboard', apiError);
         throw apiError instanceof Error ? apiError : new Error(String(apiError));
       }
     } catch (error) {
@@ -407,18 +272,10 @@ export const fetchAlbums = createAsyncThunk<
   },
   {
     condition: (arg, { getState }) => {
+      if (!isOwnerDashboardAlbumsFetch(arg)) return false;
+
       const { force } = arg;
-      const albums = getState().albums;
-      const isFullscreenDashboard = isOwnerDashboardAlbumsFetch(arg);
-
-      if (isFullscreenDashboard) {
-        const { status } = albums.dashboard;
-        if (status === 'loading' && !force) return false;
-        if (status === 'succeeded' && !force) return false;
-        return true;
-      }
-
-      const { status } = albums;
+      const { status } = getState().albums.dashboard;
       if (status === 'loading' && !force) return false;
       if (status === 'succeeded' && !force) return false;
       return true;
@@ -430,87 +287,50 @@ const albumsSlice = createSlice({
   name: 'albums',
   initialState,
   reducers: {
-    /** Сброс публичного каталога и кабинета (после logout / удаления аккаунта). */
+    /** Сброс кабинета (после logout / удаления аккаунта). */
     resetAlbumsState: () => initialState,
     patchDashboardAlbumVisibility: (
       state,
       action: PayloadAction<{ albumId: string; isPublic: boolean }>
     ) => {
       const { albumId, isPublic } = action.payload;
-      const patchList = (list: IAlbums[]) => {
-        const idx = list.findIndex((x) => x.albumId === albumId);
-        if (idx >= 0) {
-          list[idx] = { ...list[idx], isPublic };
-        }
-      };
-      patchList(state.dashboard.data);
-      patchList(state.data);
+      const list = state.dashboard.data;
+      const idx = list.findIndex((x) => x.albumId === albumId);
+      if (idx >= 0) {
+        list[idx] = { ...list[idx], isPublic };
+      }
     },
     patchDashboardTrackVisibility: (
       state,
       action: PayloadAction<{ albumId: string; trackId: string; visibility: TrackVisibility }>
     ) => {
       const { albumId, trackId, visibility } = action.payload;
-      const patchList = (list: IAlbums[]) => {
-        const albumIdx = list.findIndex((x) => x.albumId === albumId);
-        if (albumIdx < 0) return;
-        const album = list[albumIdx];
-        const tracks = album.tracks ?? [];
-        const trackIdx = tracks.findIndex((t) => String(t.id) === String(trackId));
-        if (trackIdx < 0) return;
-        const nextTracks = tracks.slice();
-        nextTracks[trackIdx] = { ...nextTracks[trackIdx], visibility };
-        list[albumIdx] = { ...album, tracks: nextTracks };
-      };
-      patchList(state.dashboard.data);
-      patchList(state.data);
+      const list = state.dashboard.data;
+      const albumIdx = list.findIndex((x) => x.albumId === albumId);
+      if (albumIdx < 0) return;
+      const album = list[albumIdx];
+      const tracks = album.tracks ?? [];
+      const trackIdx = tracks.findIndex((t) => String(t.id) === String(trackId));
+      if (trackIdx < 0) return;
+      const nextTracks = tracks.slice();
+      nextTracks[trackIdx] = { ...nextTracks[trackIdx], visibility };
+      list[albumIdx] = { ...album, tracks: nextTracks };
     },
   },
   extraReducers: (builder) => {
     builder.addCase(applyTrackLyricsBundle, (state, action) => {
-      const bundle = action.payload;
-      state.dashboard.data = patchAlbumsWithTrackLyrics(state.dashboard.data, bundle);
-      state.data = patchAlbumsWithTrackLyrics(state.data, bundle);
+      state.dashboard.data = patchAlbumsWithTrackLyrics(state.dashboard.data, action.payload);
     });
     builder
-      .addCase(setPublicArtistSlug, (state, action) => {
-        const desiredKey = buildPublicAlbumsFetchContextKey(action.payload);
-        if (state.fetchContextKey === desiredKey) return;
-        state.data = [];
-        state.status = 'idle';
-        state.error = null;
-        state.catalogArtistMissing = false;
-        state.inFlightFetchContextKey = null;
-        // Сбрасываем ключ кэша вместе с data: иначе transient null-slug (auth overlay,
-        // ?artist= без значения) оставляет fetchContextKey от прежнего артиста →
-        // catalogCacheStale + idle/empty deadlock после возврата того же slug.
-        state.fetchContextKey = null;
-      })
-      .addCase(fetchAlbums.pending, (state, action) => {
+      .addCase(fetchDashboardAlbums.pending, (state, action) => {
         if (action.meta.arg.force) {
           latestForceAlbumsRequestId = action.meta.requestId;
         }
-        const isFullscreenDashboard = isOwnerDashboardAlbumsFetch(action.meta.arg);
-        if (isFullscreenDashboard) {
-          state.dashboard.status = 'loading';
-          state.dashboard.error = null;
-          state.dashboard.inFlightFetchContextKey = 'dashboard';
-        } else {
-          state.inFlightFetchContextKey = 'public';
-          state.error = null;
-          state.catalogArtistMissing = false;
-          const backgroundRefetch =
-            Boolean(action.meta.arg.force) && state.status === 'succeeded' && state.data.length > 0;
-          if (!backgroundRefetch) {
-            state.status = 'loading';
-          }
-        }
+        state.dashboard.status = 'loading';
+        state.dashboard.error = null;
+        state.dashboard.inFlightFetchContextKey = 'dashboard';
       })
-      .addCase(fetchAlbums.fulfilled, (state, action) => {
-        const target = action.payload.writeTarget ?? 'catalog';
-        // Устаревший force-ответ: более новый force ещё владеет inFlight/status.
-        // Раньше здесь сбрасывали inFlight и при пустом data оставляли status=loading —
-        // вкладка «Альбомы» зависала на спиннере, если новый запрос потом reject'ился.
+      .addCase(fetchDashboardAlbums.fulfilled, (state, action) => {
         if (
           action.meta.arg.force &&
           action.meta.requestId !== latestForceAlbumsRequestId &&
@@ -519,57 +339,24 @@ const albumsSlice = createSlice({
           return;
         }
         if (action.payload.staleAbort) {
-          if (target === 'dashboard') {
-            // staleAbort только если этот запрос ещё актуален для кабинета
-            if (action.meta.arg.force && action.meta.requestId !== latestForceAlbumsRequestId) {
-              return;
-            }
-            state.dashboard.inFlightFetchContextKey = null;
-            if (state.dashboard.data.length > 0) {
-              state.dashboard.status = 'succeeded';
-            } else if (state.dashboard.status === 'loading') {
-              state.dashboard.status = 'idle';
-            }
-          } else {
-            if (action.meta.arg.force && action.meta.requestId !== latestForceAlbumsRequestId) {
-              return;
-            }
-            state.inFlightFetchContextKey = null;
-            if (state.data.length > 0) {
-              state.status = 'succeeded';
-            } else if (state.status === 'loading') {
-              state.status = 'idle';
-            }
+          if (action.meta.arg.force && action.meta.requestId !== latestForceAlbumsRequestId) {
+            return;
+          }
+          state.dashboard.inFlightFetchContextKey = null;
+          if (state.dashboard.data.length > 0) {
+            state.dashboard.status = 'succeeded';
+          } else if (state.dashboard.status === 'loading') {
+            state.dashboard.status = 'idle';
           }
           return;
         }
-        if (target === 'dashboard') {
-          state.dashboard.data = [...action.payload.albums];
-          state.dashboard.status = 'succeeded';
-          state.dashboard.error = null;
-          state.dashboard.lastUpdated = Date.now();
-          state.dashboard.inFlightFetchContextKey = null;
-          return;
-        }
-        const incoming = action.payload.albums;
-        const hadCatalogData = state.data.length > 0;
-        const keepPreviousOnEmptyRefetch =
-          !action.meta.arg.force &&
-          incoming.length === 0 &&
-          hadCatalogData &&
-          !action.payload.catalogArtistMissing;
-
-        if (!keepPreviousOnEmptyRefetch) {
-          state.data = [...incoming];
-        }
-        state.fetchContextKey = action.payload.fetchContextKey;
-        state.status = 'succeeded';
-        state.error = null;
-        state.lastUpdated = Date.now();
-        state.inFlightFetchContextKey = null;
-        state.catalogArtistMissing = Boolean(action.payload.catalogArtistMissing);
+        state.dashboard.data = [...action.payload.albums];
+        state.dashboard.status = 'succeeded';
+        state.dashboard.error = null;
+        state.dashboard.lastUpdated = Date.now();
+        state.dashboard.inFlightFetchContextKey = null;
       })
-      .addCase(fetchAlbums.rejected, (state, action) => {
+      .addCase(fetchDashboardAlbums.rejected, (state, action) => {
         let errorText = 'Failed to fetch albums';
         if (action.payload) {
           errorText = action.payload;
@@ -577,33 +364,17 @@ const albumsSlice = createSlice({
           errorText = String((action.error as { message?: string }).message || errorText);
         }
 
-        // Игнор reject от устаревшего force — иначе сбрасывали inFlight нового запроса
-        // и могли выставить failed/succeeded, пока актуальный fetch ещё идёт.
         if (action.meta.arg.force && action.meta.requestId !== latestForceAlbumsRequestId) {
           return;
         }
 
-        const isDashboard = isOwnerDashboardAlbumsFetch(action.meta.arg);
-
-        if (isDashboard) {
-          state.dashboard.inFlightFetchContextKey = null;
-          if (state.dashboard.data.length > 0) {
-            state.dashboard.status = 'succeeded';
-            state.dashboard.error = null;
-          } else {
-            state.dashboard.status = 'failed';
-            state.dashboard.error = errorText;
-          }
-          return;
-        }
-
-        state.inFlightFetchContextKey = null;
-        if (state.data.length > 0) {
-          state.status = 'succeeded';
-          state.error = null;
+        state.dashboard.inFlightFetchContextKey = null;
+        if (state.dashboard.data.length > 0) {
+          state.dashboard.status = 'succeeded';
+          state.dashboard.error = null;
         } else {
-          state.status = 'failed';
-          state.error = errorText;
+          state.dashboard.status = 'failed';
+          state.dashboard.error = errorText;
         }
       });
   },
