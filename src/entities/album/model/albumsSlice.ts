@@ -508,26 +508,22 @@ const albumsSlice = createSlice({
       })
       .addCase(fetchAlbums.fulfilled, (state, action) => {
         const target = action.payload.writeTarget ?? 'catalog';
+        // Устаревший force-ответ: более новый force ещё владеет inFlight/status.
+        // Раньше здесь сбрасывали inFlight и при пустом data оставляли status=loading —
+        // вкладка «Альбомы» зависала на спиннере, если новый запрос потом reject'ился.
         if (
           action.meta.arg.force &&
           action.meta.requestId !== latestForceAlbumsRequestId &&
           !action.payload.staleAbort
         ) {
-          if (target === 'dashboard') {
-            state.dashboard.inFlightFetchContextKey = null;
-            if (state.dashboard.data.length > 0) {
-              state.dashboard.status = 'succeeded';
-            }
-          } else {
-            state.inFlightFetchContextKey = null;
-            if (state.data.length > 0) {
-              state.status = 'succeeded';
-            }
-          }
           return;
         }
         if (action.payload.staleAbort) {
           if (target === 'dashboard') {
+            // staleAbort только если этот запрос ещё актуален для кабинета
+            if (action.meta.arg.force && action.meta.requestId !== latestForceAlbumsRequestId) {
+              return;
+            }
             state.dashboard.inFlightFetchContextKey = null;
             if (state.dashboard.data.length > 0) {
               state.dashboard.status = 'succeeded';
@@ -535,6 +531,9 @@ const albumsSlice = createSlice({
               state.dashboard.status = 'idle';
             }
           } else {
+            if (action.meta.arg.force && action.meta.requestId !== latestForceAlbumsRequestId) {
+              return;
+            }
             state.inFlightFetchContextKey = null;
             if (state.data.length > 0) {
               state.status = 'succeeded';
@@ -578,10 +577,15 @@ const albumsSlice = createSlice({
           errorText = String((action.error as { message?: string }).message || errorText);
         }
 
-        const dashInFlight = state.dashboard.inFlightFetchContextKey != null;
-        const catInFlight = state.inFlightFetchContextKey != null;
+        // Игнор reject от устаревшего force — иначе сбрасывали inFlight нового запроса
+        // и могли выставить failed/succeeded, пока актуальный fetch ещё идёт.
+        if (action.meta.arg.force && action.meta.requestId !== latestForceAlbumsRequestId) {
+          return;
+        }
 
-        if (dashInFlight) {
+        const isDashboard = isOwnerDashboardAlbumsFetch(action.meta.arg);
+
+        if (isDashboard) {
           state.dashboard.inFlightFetchContextKey = null;
           if (state.dashboard.data.length > 0) {
             state.dashboard.status = 'succeeded';
@@ -590,17 +594,16 @@ const albumsSlice = createSlice({
             state.dashboard.status = 'failed';
             state.dashboard.error = errorText;
           }
+          return;
         }
 
-        if (catInFlight) {
-          state.inFlightFetchContextKey = null;
-          if (state.data.length > 0) {
-            state.status = 'succeeded';
-            state.error = null;
-          } else {
-            state.status = 'failed';
-            state.error = errorText;
-          }
+        state.inFlightFetchContextKey = null;
+        if (state.data.length > 0) {
+          state.status = 'succeeded';
+          state.error = null;
+        } else {
+          state.status = 'failed';
+          state.error = errorText;
         }
       });
   },

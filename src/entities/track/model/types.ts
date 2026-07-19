@@ -15,4 +15,13 @@ export type Track = {
   stemsVisibility?: 'public' | 'subscribers_only' | 'hidden';
   /** Публичный ответ: воспроизведение недоступно без покупки */
   playbackLocked?: boolean;
+  /** Технические характеристики аудио (извлечены при загрузке файла). */
+  audioContainer?: string | null;
+  audioCodec?: string | null;
+  audioBitrate?: number | null;
+  audioSampleRate?: number | null;
+  audioBitDepth?: number | null;
+  audioChannels?: number | null;
+  audioDuration?: number | null;
+  audioFileSize?: number | null;
 };

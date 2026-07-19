@@ -552,6 +552,40 @@ describe('albumsSlice', () => {
       expect(mockFetch).toHaveBeenCalledTimes(2);
     });
 
+    test('устаревший force fulfill не оставляет dashboard.status=loading при пустом data', async () => {
+      let releaseFirst!: (r: Response) => void;
+      const firstHangs = new Promise<Response>((r) => {
+        releaseFirst = r;
+      });
+
+      mockFetch
+        .mockImplementationOnce(() => firstHangs)
+        .mockRejectedValueOnce(new Error('Network error'));
+
+      const store = createTestStore();
+      setupDashboardFetchContext(store);
+
+      const p1 = (store.dispatch as AppDispatch)(
+        fetchAlbums({ force: true, ownerDashboard: true })
+      );
+      const p2 = (store.dispatch as AppDispatch)(
+        fetchAlbums({ force: true, ownerDashboard: true })
+      );
+
+      expect(selectDashboardAlbumsStatus(store.getState())).toBe('loading');
+
+      // Старый запрос успешно завершился после старта нового — не должен сбросить inFlight
+      // и оставить loading навсегда, если новый затем упал.
+      releaseFirst(mockSuccessResponse(mockAlbums));
+      await p1;
+      await p2;
+
+      const state = store.getState();
+      expect(selectDashboardAlbumsStatus(state)).toBe('failed');
+      expect(selectDashboardAlbumsData(state)).toEqual([]);
+      expect(state.albums.dashboard.inFlightFetchContextKey).toBeNull();
+    });
+
     test('ответ, устаревший после смены маршрута на dashboard, не затирает store', async () => {
       let releaseFirst!: (r: Response) => void;
       const firstHangs = new Promise<Response>((r) => {

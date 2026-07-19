@@ -79,6 +79,14 @@ interface TrackRow {
   order_index: number;
   visibility?: string | null;
   stems_visibility?: string | null;
+  audio_container?: string | null;
+  audio_codec?: string | null;
+  audio_bitrate?: number | null;
+  audio_sample_rate?: number | null;
+  audio_bit_depth?: number | null;
+  audio_channels?: number | null;
+  audio_duration?: number | string | null;
+  audio_file_size?: number | string | null;
 }
 
 interface AlbumLocalePayload {
@@ -143,6 +151,14 @@ interface TrackData {
   stemsVisibility?: 'public' | 'subscribers_only' | 'hidden';
   /** Только в публичном ответе: нельзя воспроизвести без покупки */
   playbackLocked?: boolean;
+  audioContainer?: string | null;
+  audioCodec?: string | null;
+  audioBitrate?: number | null;
+  audioSampleRate?: number | null;
+  audioBitDepth?: number | null;
+  audioChannels?: number | null;
+  audioDuration?: number | null;
+  audioFileSize?: number | null;
 }
 
 interface AlbumOwnerSlugRow {
@@ -207,12 +223,106 @@ async function tracksTableHasStemsVisibilityColumn(): Promise<boolean> {
   return cachedTracksHasStemsVisibilityColumn;
 }
 
+/** Кэш: есть ли колонки audio_* (миграция 060). */
+let cachedTracksHasAudioTechnicalColumns: boolean | null = null;
+
+async function tracksTableHasAudioTechnicalColumns(): Promise<boolean> {
+  if (cachedTracksHasAudioTechnicalColumns !== null) {
+    return cachedTracksHasAudioTechnicalColumns;
+  }
+  try {
+    const r = await query<{ exists: boolean }>(
+      `SELECT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'tracks'
+          AND column_name = 'audio_container'
+      ) AS exists`
+    );
+    cachedTracksHasAudioTechnicalColumns = Boolean(r.rows[0]?.exists);
+    if (!cachedTracksHasAudioTechnicalColumns) {
+      console.warn(
+        '[albums] Колонки tracks.audio_* отсутствуют; ответ без tech-метаданных. Выполните database/migrations/060_add_track_audio_technical_fields.sql'
+      );
+    }
+  } catch (checkErr) {
+    console.warn('[albums] Не удалось проверить наличие tracks.audio_container:', checkErr);
+    cachedTracksHasAudioTechnicalColumns = false;
+  }
+  return cachedTracksHasAudioTechnicalColumns;
+}
+
+function optionalPositiveIntFromDb(value: unknown): number | null {
+  if (value == null) {
+    return null;
+  }
+  const num = typeof value === 'string' ? parseInt(value, 10) : Number(value);
+  if (!Number.isFinite(num) || num <= 0) {
+    return null;
+  }
+  return Math.round(num);
+}
+
+function optionalPositiveDurationFromDb(value: unknown): number | null {
+  if (value == null) {
+    return null;
+  }
+  const num = typeof value === 'string' ? parseFloat(value) : Number(value);
+  if (!Number.isFinite(num) || num <= 0) {
+    return null;
+  }
+  return Math.round(num * 100) / 100;
+}
+
+/** Кэш: есть ли audio_duration / audio_file_size (миграция 061). */
+let cachedTracksHasAudioFileMetaColumns: boolean | null = null;
+
+async function tracksTableHasAudioFileMetaColumns(): Promise<boolean> {
+  if (cachedTracksHasAudioFileMetaColumns !== null) {
+    return cachedTracksHasAudioFileMetaColumns;
+  }
+  try {
+    const r = await query<{ exists: boolean }>(
+      `SELECT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'tracks'
+          AND column_name = 'audio_file_size'
+      ) AS exists`
+    );
+    cachedTracksHasAudioFileMetaColumns = Boolean(r.rows[0]?.exists);
+    if (!cachedTracksHasAudioFileMetaColumns) {
+      console.warn(
+        '[albums] Колонки tracks.audio_duration / audio_file_size отсутствуют. Выполните database/migrations/061_add_track_audio_duration_and_file_size.sql'
+      );
+    }
+  } catch (checkErr) {
+    console.warn('[albums] Не удалось проверить наличие tracks.audio_file_size:', checkErr);
+    cachedTracksHasAudioFileMetaColumns = false;
+  }
+  return cachedTracksHasAudioFileMetaColumns;
+}
+
 /** Загрузка строк треков; без миграции 032 столбец visibility не читается. */
 async function fetchTracksRowsForAlbumPk(albumPk: string): Promise<TrackRow[]> {
   const hasVis = await tracksTableHasVisibilityColumn();
   const hasStemsVis = await tracksTableHasStemsVisibilityColumn();
+  const hasAudioTech = await tracksTableHasAudioTechnicalColumns();
+  const hasAudioFileMeta = await tracksTableHasAudioFileMetaColumns();
   const visibilityCol = hasVis ? ',\n                t.visibility' : '';
   const stemsVisibilityCol = hasStemsVis ? ',\n                t.stems_visibility' : '';
+  const audioTechCols = hasAudioTech
+    ? `,\n                t.audio_container,
+                t.audio_codec,
+                t.audio_bitrate,
+                t.audio_sample_rate,
+                t.audio_bit_depth,
+                t.audio_channels`
+    : '';
+  const audioFileMetaCols = hasAudioFileMeta
+    ? `,\n                t.audio_duration,
+                t.audio_file_size`
+    : '';
   const res = await query<TrackRow>(
     `SELECT 
                 t.track_id,
@@ -221,7 +331,7 @@ async function fetchTracksRowsForAlbumPk(albumPk: string): Promise<TrackRow[]> {
                 t.src,
                 t.content,
                 t.authorship,
-                t.order_index${visibilityCol}${stemsVisibilityCol}
+                t.order_index${visibilityCol}${stemsVisibilityCol}${audioTechCols}${audioFileMetaCols}
               FROM tracks t
               WHERE t.album_id = $1
               ORDER BY t.order_index ASC`,
@@ -461,6 +571,14 @@ function mapAlbumToApiFormat(
         lyrics,
         visibility: normalizeTrackVisibility(track.visibility),
         stemsVisibility: normalizeStemsVisibility(track.stems_visibility),
+        audioContainer: track.audio_container?.trim() || null,
+        audioCodec: track.audio_codec?.trim() || null,
+        audioBitrate: optionalPositiveIntFromDb(track.audio_bitrate),
+        audioSampleRate: optionalPositiveIntFromDb(track.audio_sample_rate),
+        audioBitDepth: optionalPositiveIntFromDb(track.audio_bit_depth),
+        audioChannels: optionalPositiveIntFromDb(track.audio_channels),
+        audioDuration: optionalPositiveDurationFromDb(track.audio_duration),
+        audioFileSize: optionalPositiveIntFromDb(track.audio_file_size),
       };
     }),
     isPublic: album.is_public,
@@ -1391,32 +1509,46 @@ export const handler: Handler = async (
               const newAlbumPk = insertRes.rows[0].id;
               const hasVis = await tracksTableHasVisibilityColumn();
               const hasStemsVis = await tracksTableHasStemsVisibilityColumn();
+              const hasAudioTech = await tracksTableHasAudioTechnicalColumns();
+              const hasAudioFileMeta = await tracksTableHasAudioFileMetaColumns();
+              const audioTechInsertCols = [
+                hasAudioTech
+                  ? ', audio_container, audio_codec, audio_bitrate, audio_sample_rate, audio_bit_depth, audio_channels'
+                  : '',
+                hasAudioFileMeta ? ', audio_duration, audio_file_size' : '',
+              ].join('');
+              const audioTechSelectCols = [
+                hasAudioTech
+                  ? ', audio_container, audio_codec, audio_bitrate, audio_sample_rate, audio_bit_depth, audio_channels'
+                  : '',
+                hasAudioFileMeta ? ', audio_duration, audio_file_size' : '',
+              ].join('');
               if (hasVis && hasStemsVis) {
                 await client.query(
                   `INSERT INTO tracks (
-                  album_id, track_id, title, duration, src, content, authorship, order_index, visibility, stems_visibility, updated_at
+                  album_id, track_id, title, duration, src, content, authorship, order_index, visibility, stems_visibility${audioTechInsertCols}, updated_at
                 )
                 SELECT $1::uuid, track_id, title, duration, src, content, authorship, order_index,
-                       COALESCE(visibility, 'public'), COALESCE(stems_visibility, 'public'), NOW()
+                       COALESCE(visibility, 'public'), COALESCE(stems_visibility, 'public')${audioTechSelectCols}, NOW()
                 FROM tracks WHERE album_id = $2::uuid`,
                   [newAlbumPk, sibling.id]
                 );
               } else if (hasVis) {
                 await client.query(
                   `INSERT INTO tracks (
-                  album_id, track_id, title, duration, src, content, authorship, order_index, visibility, updated_at
+                  album_id, track_id, title, duration, src, content, authorship, order_index, visibility${audioTechInsertCols}, updated_at
                 )
                 SELECT $1::uuid, track_id, title, duration, src, content, authorship, order_index,
-                       COALESCE(visibility, 'public'), NOW()
+                       COALESCE(visibility, 'public')${audioTechSelectCols}, NOW()
                 FROM tracks WHERE album_id = $2::uuid`,
                   [newAlbumPk, sibling.id]
                 );
               } else {
                 await client.query(
                   `INSERT INTO tracks (
-                  album_id, track_id, title, duration, src, content, authorship, order_index, updated_at
+                  album_id, track_id, title, duration, src, content, authorship, order_index${audioTechInsertCols}, updated_at
                 )
-                SELECT $1::uuid, track_id, title, duration, src, content, authorship, order_index, NOW()
+                SELECT $1::uuid, track_id, title, duration, src, content, authorship, order_index${audioTechSelectCols}, NOW()
                 FROM tracks WHERE album_id = $2::uuid`,
                   [newAlbumPk, sibling.id]
                 );

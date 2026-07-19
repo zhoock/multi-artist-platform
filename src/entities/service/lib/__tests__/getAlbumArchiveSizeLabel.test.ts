@@ -20,6 +20,10 @@ describe('formatArchiveSizeBytes', () => {
     expect(formatArchiveSizeBytes(248 * 1024 * 1024)).toBe('248 MB');
   });
 
+  test('formats gigabytes with two decimals when needed', () => {
+    expect(formatArchiveSizeBytes(Math.round(1.34 * 1024 * 1024 * 1024))).toBe('1.34 GB');
+  });
+
   test('formats smaller sizes as KB', () => {
     expect(formatArchiveSizeBytes(512 * 1024)).toBe('512 KB');
   });
@@ -62,5 +66,38 @@ describe('getAlbumArchiveSizeLabel', () => {
 
   test('returns empty for album without tracks', () => {
     expect(getAlbumArchiveSizeLabel(album([]))).toBe('');
+  });
+
+  test('uses stored bitrate when available', () => {
+    // 10 min @ 256 kbps ≈ 18.3 MiB → 18 MB
+    expect(
+      getAlbumArchiveSizeLabel(
+        album([
+          track({
+            id: 'a',
+            duration: 600,
+            src: 'song.mp3',
+            audioContainer: 'mp3',
+            audioBitrate: 256_000,
+          }),
+        ])
+      )
+    ).toBe('18 MB');
+  });
+
+  test('prefers stored audioFileSize over estimates', () => {
+    expect(
+      getAlbumArchiveSizeLabel(
+        album([
+          track({
+            id: 'a',
+            duration: 600,
+            src: 'song.flac',
+            audioContainer: 'flac',
+            audioFileSize: 612 * 1024 * 1024,
+          }),
+        ])
+      )
+    ).toBe('612 MB');
   });
 });

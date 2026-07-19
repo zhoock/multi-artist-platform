@@ -365,26 +365,24 @@ const articlesSlice = createSlice({
       })
       .addCase(fetchArticles.fulfilled, (state, action) => {
         const forceBucket = resolveArticlesForceRequestBucket(action.meta.arg);
+        // Устаревший force-ответ: более новый force ещё владеет inFlight/status.
+        // Нельзя сбрасывать inFlight и оставлять status=loading при пустом data —
+        // вкладка «Статьи» зависала на спиннере, если новый запрос потом reject'ился.
         if (
           action.meta.arg.force &&
           action.meta.requestId !== latestForceArticlesRequestIdForBucket(forceBucket) &&
           !action.payload.staleAbort
         ) {
-          if (forceBucket === 'catalog') {
-            state.inFlightFetchContextKey = null;
-            if (state.data.length > 0) {
-              state.status = 'succeeded';
-            }
-          } else {
-            state.dashboard.inFlightFetchContextKey = null;
-            if (state.dashboard.data.length > 0) {
-              state.dashboard.status = 'succeeded';
-            }
-          }
           return;
         }
         if (action.payload.staleAbort) {
           const target = action.payload.writeTarget ?? 'catalog';
+          if (
+            action.meta.arg.force &&
+            action.meta.requestId !== latestForceArticlesRequestIdForBucket(forceBucket)
+          ) {
+            return;
+          }
           if (target === 'dashboard') {
             state.dashboard.inFlightFetchContextKey = null;
             if (state.dashboard.data.length > 0) {
@@ -420,15 +418,24 @@ const articlesSlice = createSlice({
         state.inFlightFetchContextKey = null;
       })
       .addCase(fetchArticles.rejected, (state, action) => {
+        const forceBucket = resolveArticlesForceRequestBucket(action.meta.arg);
+        // Игнор reject от устаревшего force — иначе сбрасывали inFlight нового запроса.
+        if (
+          action.meta.arg.force &&
+          action.meta.requestId !== latestForceArticlesRequestIdForBucket(forceBucket)
+        ) {
+          return;
+        }
+
         if (action.payload === SESSION_INTERRUPTED) {
-          if (state.dashboard.inFlightFetchContextKey != null) {
+          const isDashboard = isOwnerDashboardArticlesFetch(action.meta.arg);
+          if (isDashboard) {
             state.dashboard.inFlightFetchContextKey = null;
             if (state.dashboard.status === 'loading') {
               state.dashboard.status = state.dashboard.data.length > 0 ? 'succeeded' : 'idle';
             }
             state.dashboard.error = null;
-          }
-          if (state.inFlightFetchContextKey != null) {
+          } else {
             state.inFlightFetchContextKey = null;
             if (state.status === 'loading') {
               state.status = state.data.length > 0 ? 'succeeded' : 'idle';
@@ -453,10 +460,9 @@ const articlesSlice = createSlice({
           }
         }
 
-        const dashInFlight = state.dashboard.inFlightFetchContextKey != null;
-        const catInFlight = state.inFlightFetchContextKey != null;
+        const isDashboard = isOwnerDashboardArticlesFetch(action.meta.arg);
 
-        if (dashInFlight) {
+        if (isDashboard) {
           state.dashboard.inFlightFetchContextKey = null;
           if (state.dashboard.data.length > 0) {
             state.dashboard.status = 'succeeded';
@@ -465,17 +471,16 @@ const articlesSlice = createSlice({
             state.dashboard.status = 'failed';
             state.dashboard.error = errorText;
           }
+          return;
         }
 
-        if (catInFlight) {
-          state.inFlightFetchContextKey = null;
-          if (state.data.length > 0) {
-            state.status = 'succeeded';
-            state.error = null;
-          } else {
-            state.status = 'failed';
-            state.error = errorText;
-          }
+        state.inFlightFetchContextKey = null;
+        if (state.data.length > 0) {
+          state.status = 'succeeded';
+          state.error = null;
+        } else {
+          state.status = 'failed';
+          state.error = errorText;
         }
       });
   },

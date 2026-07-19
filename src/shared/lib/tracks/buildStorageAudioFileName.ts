@@ -22,8 +22,19 @@ export function slugifyOriginalFileBaseForStorage(rawFileName: string, maxLen = 
   return s || 'track';
 }
 
-export function buildStorageAudioFileName(trackId: string, originalFileName: string): string {
-  const ext = safeAudioExtension(originalFileName);
+export function buildStorageAudioFileName(
+  trackId: string,
+  originalFileName: string,
+  options?: { extensionFromContent?: string | null }
+): string {
+  const fromContent = (options?.extensionFromContent || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '')
+    .slice(0, 12);
+  const ext =
+    fromContent && ALLOWED_AUDIO_EXT.test(fromContent)
+      ? fromContent
+      : safeAudioExtension(originalFileName);
   const slug = slugifyOriginalFileBaseForStorage(originalFileName, 96);
   return `${trackId}__${slug}.${ext}`;
 }

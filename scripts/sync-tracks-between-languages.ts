@@ -41,6 +41,14 @@ interface TrackRow {
   content: string | null;
   authorship: string | null;
   order_index: number;
+  audio_container?: string | null;
+  audio_codec?: string | null;
+  audio_bitrate?: number | null;
+  audio_sample_rate?: number | null;
+  audio_bit_depth?: number | null;
+  audio_channels?: number | null;
+  audio_duration?: number | null;
+  audio_file_size?: number | null;
 }
 
 async function syncTracksBetweenLanguages() {
@@ -103,7 +111,9 @@ async function syncTracksBetweenLanguages() {
 
       for (const album of albums) {
         const tracksResult = await query<TrackRow>(
-          `SELECT track_id, title, duration, src, content, authorship, order_index
+          `SELECT track_id, title, duration, src, content, authorship, order_index,
+                  audio_container, audio_codec, audio_bitrate, audio_sample_rate, audio_bit_depth, audio_channels,
+                  audio_duration, audio_file_size
            FROM tracks
            WHERE album_id = $1
            ORDER BY order_index ASC`,
@@ -180,8 +190,16 @@ async function syncTracksBetweenLanguages() {
         for (const trackId of missingTrackIds) {
           const referenceTrack = referenceTracks.get(trackId)!;
           await query(
-            `INSERT INTO tracks (album_id, track_id, title, duration, src, content, authorship, order_index, created_at, updated_at)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+            `INSERT INTO tracks (
+               album_id, track_id, title, duration, src, content, authorship, order_index,
+               audio_container, audio_codec, audio_bitrate, audio_sample_rate, audio_bit_depth, audio_channels,
+               audio_duration, audio_file_size,
+               created_at, updated_at
+             )
+             VALUES (
+               $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16,
+               CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+             )`,
             [
               album.id,
               referenceTrack.track_id,
@@ -191,6 +209,14 @@ async function syncTracksBetweenLanguages() {
               referenceTrack.content, // Можно оставить текст из эталонной версии или перевести
               referenceTrack.authorship,
               referenceTrack.order_index,
+              referenceTrack.audio_container ?? null,
+              referenceTrack.audio_codec ?? null,
+              referenceTrack.audio_bitrate ?? null,
+              referenceTrack.audio_sample_rate ?? null,
+              referenceTrack.audio_bit_depth ?? null,
+              referenceTrack.audio_channels ?? null,
+              referenceTrack.audio_duration ?? null,
+              referenceTrack.audio_file_size ?? null,
             ]
           );
           console.log(`      ✅ Добавлен трек [${trackId}] ${referenceTrack.title}`);

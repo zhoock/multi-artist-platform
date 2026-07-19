@@ -25,7 +25,7 @@ import { useAlbumOwnedByViewer } from '../lib/useAlbumOwnedByViewer';
 import { useArtistArchiveStatus } from '@features/artistArchive/lib/useArtistArchiveStatus';
 import { getAlbumPrice } from '../lib/getAlbumPrice';
 import { getAlbumArchiveSizeLabel } from '../lib/getAlbumArchiveSizeLabel';
-import { getAlbumDownloadFormatsLabel } from '../lib/getAlbumDownloadFormatsLabel';
+import { getAlbumDownloadOfferLabel } from '../lib/getAlbumDownloadFormatsLabel';
 import './style.scss';
 
 type ServiceButtonsProps = {
@@ -185,18 +185,19 @@ function ServiceButtonsContent({
     : canDownload
       ? labels.downloadAlbum
       : labels.buyAlbum;
-  const downloadFormatsLabel = getAlbumDownloadFormatsLabel(album);
+  const downloadOfferLabel = getAlbumDownloadOfferLabel(album);
   const purchaseSubtitle = isDownloadingAlbum
     ? downloadProgress !== null
       ? `${downloadProgress}%`
       : labels.downloadAlbumPreparing
     : isOwned
-      ? labels.buyAlbumPurchased
+      ? downloadOfferLabel || labels.buyAlbumPurchased
       : hasPremiumAccess
         ? labels.buyAlbumViaSupport
-        : downloadFormatsLabel;
-  const archiveSizeLabel = canDownload || isDownloadingAlbum ? getAlbumArchiveSizeLabel(album) : '';
-  const purchaseRightLabel = canDownload || isDownloadingAlbum ? archiveSizeLabel : albumPrice;
+        : downloadOfferLabel;
+  // Size is already in the offer subtitle when known — right side is price (buy) or empty (download).
+  const archiveSizeLabel = getAlbumArchiveSizeLabel(album);
+  const purchaseRightLabel = canDownload || isDownloadingAlbum ? '' : albumPrice;
   const showRightMeta = Boolean(purchaseRightLabel);
   const progressBarValue = downloadProgress ?? 0;
 
@@ -230,10 +231,8 @@ function ServiceButtonsContent({
                           .filter(Boolean)
                           .join(', ')
                       : canDownload
-                        ? [labels.downloadAlbum, purchaseSubtitle, archiveSizeLabel || undefined]
-                            .filter(Boolean)
-                            .join(', ')
-                        : [labels.buyAlbum, downloadFormatsLabel || undefined, albumPrice]
+                        ? [labels.downloadAlbum, purchaseSubtitle].filter(Boolean).join(', ')
+                        : [labels.buyAlbum, downloadOfferLabel || undefined, albumPrice]
                             .filter(Boolean)
                             .join(', ')
                   }

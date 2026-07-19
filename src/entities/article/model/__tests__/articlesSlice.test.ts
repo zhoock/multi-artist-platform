@@ -237,6 +237,42 @@ describe('articlesSlice', () => {
       dashSpy.mockRestore();
     });
 
+    test('устаревший force fulfill не оставляет dashboard.status=loading при пустом data', async () => {
+      const dashSpy = jest.spyOn(publicArtistContext, 'isDashboardPathname').mockReturnValue(true);
+      window.history.pushState({}, '', '/dashboard-new/posts');
+      syncDashboardAlbumsPublicCatalogOverlay(false);
+
+      let releaseFirst!: (r: Response) => void;
+      const firstHangs = new Promise<Response>((r) => {
+        releaseFirst = r;
+      });
+
+      mockFetch
+        .mockImplementationOnce(() => firstHangs)
+        .mockRejectedValueOnce(new Error('Network error'));
+
+      const store = createTestStore();
+      const p1 = (store.dispatch as AppDispatch)(
+        fetchArticles({ force: true, ownerDashboard: true })
+      );
+      const p2 = (store.dispatch as AppDispatch)(
+        fetchArticles({ force: true, ownerDashboard: true })
+      );
+
+      expect(selectDashboardArticlesStatus(store.getState())).toBe('loading');
+
+      releaseFirst(mockSuccessResponse(mockArticles));
+      await p1;
+      await p2;
+
+      const state = store.getState();
+      expect(selectDashboardArticlesStatus(state)).toBe('failed');
+      expect(selectDashboardArticlesData(state)).toEqual([]);
+      expect(state.articles.dashboard.inFlightFetchContextKey).toBeNull();
+
+      dashSpy.mockRestore();
+    });
+
     test('должен установить статус loading при начале загрузки', async () => {
       mockFetch.mockImplementation(() => new Promise(() => {}));
 

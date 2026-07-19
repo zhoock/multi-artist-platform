@@ -186,6 +186,19 @@ export interface TracksProps extends Track {
   playbackLocked?: boolean;
   /** Доступ к стемам в Mixer (независимо от visibility). */
   stemsVisibility?: 'public' | 'subscribers_only' | 'hidden';
+  /** Технические характеристики аудио (извлечены при загрузке файла). */
+  audioContainer?: string | null;
+  audioCodec?: string | null;
+  /** Битрейт в бит/с */
+  audioBitrate?: number | null;
+  /** Частота дискретизации в Гц */
+  audioSampleRate?: number | null;
+  audioBitDepth?: number | null;
+  audioChannels?: number | null;
+  /** Длительность из probe (секунды); может дополнять `duration`. */
+  audioDuration?: number | null;
+  /** Размер исходного файла в байтах. */
+  audioFileSize?: number | null;
 }
 
 export interface CoverProps {

@@ -18,7 +18,13 @@
  *     trackId: string (стабильный id: UUID для новых треков или legacy "1","2",…),
  *     orderIndex?: number (игнорируется — сервер назначает шагом после MAX под блокировкой альбома),
  *     storagePath: string (путь к файлу в Storage),
- *     url: string (публичный URL файла)
+ *     url: string (публичный URL файла),
+ *     audioContainer?: string | null,
+ *     audioCodec?: string | null,
+ *     audioBitrate?: number | null,
+ *     audioSampleRate?: number | null,
+ *     audioBitDepth?: number | null,
+ *     audioChannels?: number | null
  *   }>
  * }
  */
@@ -50,7 +56,40 @@ interface TrackUploadRequest {
     url: string;
     /** Название для текущей локали — только translations[lang].title */
     translations: Partial<Record<'en' | 'ru', { title: string }>>;
+    audioContainer?: string | null;
+    audioCodec?: string | null;
+    audioBitrate?: number | null;
+    audioSampleRate?: number | null;
+    audioBitDepth?: number | null;
+    audioChannels?: number | null;
+    audioDuration?: number | null;
+    audioFileSize?: number | null;
   }>;
+}
+
+function optionalPositiveInt(value: unknown): number | null {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
+    return null;
+  }
+  return Math.round(value);
+}
+
+function optionalPositiveDuration(value: unknown): number | null {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
+    return null;
+  }
+  return Math.round(value * 100) / 100;
+}
+
+function optionalTrimmedString(value: unknown, maxLen: number): string | null {
+  if (typeof value !== 'string') {
+    return null;
+  }
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return null;
+  }
+  return trimmed.slice(0, maxLen);
 }
 
 interface TrackUploadResponse {
@@ -215,20 +254,55 @@ export const handler: Handler = async (
         // #endregion
 
         const srcForDb = resolveTrackSrcToSupabasePublicUrl(url, album.user_id) ?? url;
+        const audioContainer = optionalTrimmedString(track.audioContainer, 32);
+        const audioCodec = optionalTrimmedString(track.audioCodec, 64);
+        const audioBitrate = optionalPositiveInt(track.audioBitrate);
+        const audioSampleRate = optionalPositiveInt(track.audioSampleRate);
+        const audioBitDepth = optionalPositiveInt(track.audioBitDepth);
+        const audioChannels = optionalPositiveInt(track.audioChannels);
+        const audioDuration =
+          optionalPositiveDuration(track.audioDuration) ?? optionalPositiveDuration(duration);
+        const audioFileSize = optionalPositiveInt(track.audioFileSize);
+        const durationForDb = audioDuration ?? duration;
 
         const insertResult = await client.query(
           `INSERT INTO tracks (
-        album_id, track_id, title, duration, src, order_index
-      ) VALUES ($1, $2, $3, $4, $5, $6)
+        album_id, track_id, title, duration, src, order_index,
+        audio_container, audio_codec, audio_bitrate, audio_sample_rate, audio_bit_depth, audio_channels,
+        audio_duration, audio_file_size
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
       ON CONFLICT (album_id, track_id)
       DO UPDATE SET
         title = EXCLUDED.title,
         duration = EXCLUDED.duration,
         src = EXCLUDED.src,
         order_index = EXCLUDED.order_index,
+        audio_container = EXCLUDED.audio_container,
+        audio_codec = EXCLUDED.audio_codec,
+        audio_bitrate = EXCLUDED.audio_bitrate,
+        audio_sample_rate = EXCLUDED.audio_sample_rate,
+        audio_bit_depth = EXCLUDED.audio_bit_depth,
+        audio_channels = EXCLUDED.audio_channels,
+        audio_duration = EXCLUDED.audio_duration,
+        audio_file_size = EXCLUDED.audio_file_size,
         updated_at = CURRENT_TIMESTAMP
       RETURNING id, track_id, title`,
-          [album.id, trackId, title, duration, srcForDb, assignedOrderIndex]
+          [
+            album.id,
+            trackId,
+            title,
+            durationForDb,
+            srcForDb,
+            assignedOrderIndex,
+            audioContainer,
+            audioCodec,
+            audioBitrate,
+            audioSampleRate,
+            audioBitDepth,
+            audioChannels,
+            audioDuration,
+            audioFileSize,
+          ]
         );
 
         // #region agent log

@@ -4,10 +4,15 @@
 
 import { getToken } from '@shared/lib/auth';
 import { fetchWithAuthSession } from '@shared/lib/authFetch';
+import {
+  audioContainerToExtension,
+  type AudioTechnicalMetadata,
+} from '@shared/lib/audio/audioTechnicalMetadata';
+import { extractAudioTechnicalMetadata } from '@shared/lib/audio/extractAudioTechnicalMetadata';
 import { buildStorageAudioFileName } from '@shared/lib/tracks/buildStorageAudioFileName';
 import type { SupportedLang } from '@shared/model/lang';
 
-export interface TrackUploadData {
+export interface TrackUploadData extends AudioTechnicalMetadata {
   fileName: string;
   duration: number;
   trackId: string;
@@ -164,9 +169,16 @@ export async function prepareAndUploadTrack(
     throw new Error('User is not authenticated. Please log in.');
   }
 
-  const duration = await getAudioDuration(file);
+  const [browserDuration, audioTech] = await Promise.all([
+    getAudioDuration(file),
+    extractAudioTechnicalMetadata(file),
+  ]);
+  // Probe duration предпочтительнее HTMLAudioElement; оба пишутся (duration + audioDuration).
+  const duration = audioTech.audioDuration ?? Math.round(browserDuration * 100) / 100;
 
-  const fileName = buildStorageAudioFileName(trackId, file.name);
+  const fileName = buildStorageAudioFileName(trackId, file.name, {
+    extensionFromContent: audioContainerToExtension(audioTech.audioContainer),
+  });
 
   // Извлекаем название трека из имени файла
   // Убираем расширение и префиксы типа "01-", "03-" и т.д.
@@ -313,26 +325,31 @@ export async function prepareAndUploadTrack(
 
       return {
         fileName,
-        duration: Math.round(duration * 100) / 100,
+        duration,
         trackId,
         storagePath,
         url: storagePath,
         translations: { [lang]: { title: trackTitle } },
+        ...audioTech,
+        audioDuration: audioTech.audioDuration ?? duration,
       };
     }
 
     console.log('✅ [prepareAndUploadTrack] Got public URL:', {
       fileName,
       url: publicUrl,
+      audioTech,
     });
 
     return {
       fileName,
-      duration: Math.round(duration * 100) / 100,
+      duration,
       trackId,
       storagePath,
       url: publicUrl,
       translations: { [lang]: { title: trackTitle } },
+      ...audioTech,
+      audioDuration: audioTech.audioDuration ?? duration,
     };
   } catch (uploadError) {
     clearTimeout(timeoutId);
