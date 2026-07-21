@@ -1,6 +1,50 @@
 import { describe, expect, test } from '@jest/globals';
 
-import { resolveArticlePaywallKind } from '../resolveArticlePaywallKind';
+import {
+  resolveArticlePaywallKind,
+  resolveShowLockedArticleCard,
+} from '../resolveArticlePaywallKind';
+
+describe('resolveShowLockedArticleCard', () => {
+  test('returns false when monetization is disabled', () => {
+    expect(
+      resolveShowLockedArticleCard({
+        monetizationEnabled: false,
+        articleLocked: true,
+        visibility: 'subscribers_only',
+      })
+    ).toBe(false);
+  });
+
+  test('returns true for subscribers_only when articleLocked is true', () => {
+    expect(
+      resolveShowLockedArticleCard({
+        monetizationEnabled: true,
+        articleLocked: true,
+        visibility: 'subscribers_only',
+      })
+    ).toBe(true);
+  });
+
+  test('returns true for subscribers_only when articleLocked is undefined', () => {
+    expect(
+      resolveShowLockedArticleCard({
+        monetizationEnabled: true,
+        visibility: 'subscribers_only',
+      })
+    ).toBe(true);
+  });
+
+  test('returns false for public articles', () => {
+    expect(
+      resolveShowLockedArticleCard({
+        monetizationEnabled: true,
+        articleLocked: false,
+        visibility: 'public',
+      })
+    ).toBe(false);
+  });
+});
 
 describe('resolveArticlePaywallKind', () => {
   test('returns none when article is unlocked', () => {

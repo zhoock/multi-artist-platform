@@ -41,6 +41,7 @@ import {
 } from '@entities/article/lib/splitArticleDetailsForArchiveGate';
 import {
   resolveArticlePaywallKind,
+  resolveShowLockedArticleCard,
   type ArticlePaywallKind,
 } from '@entities/article/lib/resolveArticlePaywallKind';
 import { useSiteArtistDisplayName } from '@shared/lib/hooks/useSiteArtistDisplayName';
@@ -220,25 +221,28 @@ function ArticleContent({
   const { monetizationEnabled } = useArtistPageAccess(artistSlug?.trim() ?? '');
   const { open, requestAccess } = useArchiveAccessModal();
 
+  const showLockedArticle = useMemo(
+    () =>
+      resolveShowLockedArticleCard({
+        monetizationEnabled,
+        articleLocked: article?.articleLocked,
+        visibility: article?.visibility,
+      }),
+    [article?.articleLocked, article?.visibility, monetizationEnabled]
+  );
+
   const paywallKind = useMemo(
     () =>
-      monetizationEnabled
+      showLockedArticle
         ? resolveArticlePaywallKind({
-            articleLocked: article?.articleLocked,
+            articleLocked: true,
             isPremium,
             premiumLoading,
             archiveLoading,
             artistInArchive,
           })
         : 'none',
-    [
-      article?.articleLocked,
-      archiveLoading,
-      artistInArchive,
-      isPremium,
-      monetizationEnabled,
-      premiumLoading,
-    ]
+    [archiveLoading, artistInArchive, isPremium, premiumLoading, showLockedArticle]
   );
 
   /** Keep content gated while entitlements resolve (`pending`) to avoid a brief unlock flash. */

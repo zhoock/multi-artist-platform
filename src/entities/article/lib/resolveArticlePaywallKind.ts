@@ -1,4 +1,20 @@
+import { normalizeTrackVisibility } from '@shared/lib/tracks/trackVisibility';
+
 export type ArticlePaywallKind = 'none' | 'pending' | 'subscription' | 'renew' | 'archive';
+
+/** Whether catalog chrome should show subscriber lock (card overlay). */
+export function resolveShowLockedArticleCard(options: {
+  monetizationEnabled: boolean;
+  articleLocked?: boolean;
+  visibility?: string | null;
+}): boolean {
+  if (!options.monetizationEnabled) return false;
+  const visibilityNorm = normalizeTrackVisibility(options.visibility);
+  return (
+    options.articleLocked === true ||
+    (visibilityNorm === 'subscribers_only' && options.articleLocked !== false)
+  );
+}
 
 /**
  * Collection membership is separate from subscription:

@@ -39,7 +39,7 @@ import {
 } from '../../src/shared/lib/tracks/trackVisibility';
 import { viewerHasPremiumAccessToArtist } from './lib/entitlements';
 import { artistHasMonetizationEnabled } from './lib/artist-monetization';
-import { resolveEffectiveContentVisibility } from '../../src/shared/lib/payment/artistMonetization';
+import { applyPublicArticleAccessPolicy } from './lib/public-article-access';
 
 interface ArticleRow {
   id: string;
@@ -324,37 +324,6 @@ async function buildPublicArticlePremiumContext(
     artistHasMonetizationEnabled(artistId),
   ]);
   return { hasPremiumAccess, monetizationEnabled };
-}
-
-function markArticleLockedForPublic(data: ArticleData): ArticleData {
-  return {
-    ...data,
-    articleLocked: true,
-  };
-}
-
-/**
- * Публичный каталог: скрытые статьи не отдаём; subscribers_only без подписки —
- * articleLocked + полное тело для partial paywall на клиенте (blur под gate).
- * Пока у артиста нет монетизации, subscribers_only ведёт себя как public.
- */
-function applyPublicArticleAccessPolicy(
-  articles: ArticleData[],
-  ctx: { hasPremiumAccess: boolean; monetizationEnabled: boolean }
-): ArticleData[] {
-  const withoutHidden = articles.filter((a) => normalizeTrackVisibility(a.visibility) !== 'hidden');
-
-  return withoutHidden.map((a) => {
-    const visibility = resolveEffectiveContentVisibility(
-      normalizeTrackVisibility(a.visibility),
-      ctx.monetizationEnabled
-    );
-    const needLock = visibility === 'subscribers_only' && !ctx.hasPremiumAccess;
-    if (needLock) {
-      return markArticleLockedForPublic({ ...a, visibility });
-    }
-    return { ...a, visibility, articleLocked: false };
-  });
 }
 
 /**

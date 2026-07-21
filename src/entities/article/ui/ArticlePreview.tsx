@@ -1,19 +1,20 @@
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useEffectiveSearchParams } from '@shared/lib/hooks/useEffectiveLocation';
 import type { ArticleProps } from '@/models';
 import { useLang } from '@app/providers/lang';
 import { formatDateInWords, LocaleKey } from '@entities/article/lib/formatDate';
 import { withPublicArtistQuery } from '@shared/lib/artistQuery';
-import { normalizeTrackVisibility } from '@shared/lib/tracks/trackVisibility';
 import { ArticleCoverImage } from './ArticleCoverImage';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 import { SubscriberContentLockIcon } from '@shared/ui/icons/SubscriberContentLockIcon';
 import { ArtistArchiveLockIcon } from '@shared/ui/icons/ArtistArchiveLockIcon';
-import { useArchiveAccessModal } from '@shared/lib/archiveAccessModal';
 import { usePremiumSubscription } from '@features/premiumSubscription';
 import { useArtistArchiveStatus } from '@features/artistArchive/lib/useArtistArchiveStatus';
-import { resolveArticlePaywallKind } from '@entities/article/lib/resolveArticlePaywallKind';
+import {
+  resolveArticlePaywallKind,
+  resolveShowLockedArticleCard,
+} from '@entities/article/lib/resolveArticlePaywallKind';
 import './style.scss';
 
 export function ArticlePreview({
@@ -34,16 +35,14 @@ export function ArticlePreview({
   const artistSlug = searchParams.get('artist');
   const articlePath = withPublicArtistQuery(`/articles/${articleId}`, artistSlug);
   const ui = useAppSelector((state) => selectUiDictionaryFirst(state, lang));
-  const navigate = useNavigate();
   const { isPremium, loading: premiumLoading } = usePremiumSubscription();
   const { artistInArchive, loading: archiveLoading } = useArtistArchiveStatus(userId);
-  const { open, requestAccess } = useArchiveAccessModal();
 
-  const visibilityNorm = normalizeTrackVisibility(visibility);
-  /** Without artist monetization, exclusive content must render as public (no paywall copy). */
-  const showLockedCard =
-    monetizationEnabled &&
-    (articleLocked === true || (visibilityNorm === 'subscribers_only' && articleLocked !== false));
+  const showLockedCard = resolveShowLockedArticleCard({
+    monetizationEnabled,
+    articleLocked,
+    visibility,
+  });
 
   const paywallKind = resolveArticlePaywallKind({
     articleLocked: showLockedCard,
@@ -52,30 +51,6 @@ export function ArticlePreview({
     archiveLoading,
     artistInArchive,
   });
-
-  const handleLockedClick = () => {
-    // Entitled / still resolving: go to the article immediately — page has its own gates.
-    if (paywallKind === 'none' || paywallKind === 'pending') {
-      navigate(articlePath);
-      return;
-    }
-
-    // Known subscription gates: open modal without a second /api/archive-status round-trip.
-    if (paywallKind === 'subscription' || paywallKind === 'renew') {
-      open({
-        artistUserId: userId,
-        artistSlug: artistSlug ?? undefined,
-      });
-      return;
-    }
-
-    // Premium but artist not in collection — may need slots check / add-artist modal.
-    void requestAccess({
-      artistUserId: userId,
-      artistSlug,
-      onAccessGranted: () => navigate(articlePath),
-    });
-  };
 
   const subscriptionOverlayTitle =
     ui?.titles?.articleSubscriptionLockedOverlayTitle ??
@@ -129,7 +104,6 @@ export function ArticlePreview({
           : legacyOverlayHint;
   const OverlayIcon = paywallKind === 'archive' ? ArtistArchiveLockIcon : SubscriberContentLockIcon;
 
-  // Entitled readers get a normal link — never block navigation on archive-status fetch.
   if (!showLockedCard || paywallKind === 'none') {
     return (
       <article className="articles__card">
@@ -162,7 +136,7 @@ export function ArticlePreview({
       className="articles__card articles__card--subscriber-locked"
       aria-label={`${overlayTitle}. ${nameArticle}`}
     >
-      <button type="button" className="articles__card-hit" onClick={handleLockedClick}>
+      <Link to={articlePath} className="articles__card-hit">
         <div className="articles__picture">
           <ArticleCoverImage
             img={img}
@@ -186,7 +160,7 @@ export function ArticlePreview({
             <small>{formatDate(date)}</small>
           </time>
         </div>
-      </button>
+      </Link>
     </article>
   );
 }
