@@ -10,7 +10,7 @@
       "signIn": "Sign in",
       "openProfile": "My profile",
       "avatarMenu": {
-        "settings": "Settings",
+        "dashboard": "Dashboard",
         "myArtistPage": "My Artist Page",
         "upgradePlan": "Upgrade plan",
         "choosePlan": "Choose Plan",

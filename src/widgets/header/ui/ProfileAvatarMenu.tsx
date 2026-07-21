@@ -156,7 +156,7 @@ function ProfileAvatarMenuComponent({
               aria-current={isSettingsActive ? 'page' : undefined}
             >
               <IconSettings className="header__profile-menu-icon" />
-              <span>{avatarLabels?.settings ?? 'Settings'}</span>
+              <span>{avatarLabels?.dashboard ?? 'Dashboard'}</span>
             </Link>
             {ownArtistPage.publicSlug ? (
               <button

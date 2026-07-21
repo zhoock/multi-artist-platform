@@ -365,7 +365,7 @@ export interface IInterface {
     signIn: string;
     openProfile: string;
     avatarMenu?: {
-      settings: string;
+      dashboard: string;
       myArtistPage?: string;
       upgradePlan: string;
       choosePlan?: string;
