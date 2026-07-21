@@ -19,6 +19,7 @@ import {
 } from './headerProfileMenuIcons';
 import { usePremiumSubscription } from '@features/premiumSubscription';
 import { formatCollectionMenuSubtitle } from '@shared/lib/payment/subscriptionPlans';
+import { COLLECTION_DASHBOARD_PATH } from '@shared/lib/accountType';
 import './profileAvatarMenu.scss';
 
 export type ProfileAvatarMenuProps = {
@@ -102,7 +103,7 @@ function ProfileAvatarMenuComponent({
   const collectionSubtitle = formatCollectionMenuSubtitle(planSlug, slotsUsed, locale);
   const { pathname } = location;
   const isSettingsActive = pathname.startsWith('/dashboard-new/settings');
-  const isCollectionActive = pathname.startsWith('/dashboard-new/archive');
+  const isCollectionActive = pathname.startsWith(COLLECTION_DASHBOARD_PATH);
 
   return (
     <div className="header__profile-wrap" ref={wrapRef}>
@@ -176,7 +177,7 @@ function ProfileAvatarMenuComponent({
                   isCollectionActive && 'header__profile-menu-item--active'
                 )}
                 role="menuitem"
-                to="/dashboard-new/archive"
+                to={COLLECTION_DASHBOARD_PATH}
                 state={dashboardLinkState}
                 onClick={() => updateOpen(false)}
                 aria-current={isCollectionActive ? 'page' : undefined}

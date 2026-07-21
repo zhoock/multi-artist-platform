@@ -2,6 +2,8 @@ import { readAccountTypeFromStoredToken, type AuthUser } from '@shared/lib/auth'
 
 export type AccountType = 'listener' | 'artist';
 
+export const COLLECTION_DASHBOARD_PATH = '/dashboard-new/collection';
+
 export const DASHBOARD_TAB_SLUGS = [
   'albums',
   'posts',
@@ -10,27 +12,28 @@ export const DASHBOARD_TAB_SLUGS = [
   'settings',
   'social-links',
   'mixer',
-  'archive',
+  'collection',
 ] as const;
 
 export type DashboardTab = (typeof DASHBOARD_TAB_SLUGS)[number];
 
-const LISTENER_TABS: DashboardTab[] = ['settings', 'my-purchases', 'archive'];
+const LISTENER_TABS: DashboardTab[] = ['settings', 'my-purchases', 'collection'];
 
 const ARTIST_TABS: DashboardTab[] = [
   'settings',
   'albums',
   'posts',
   'mixer',
-  'archive',
+  'collection',
   'payment-settings',
   'my-purchases',
   'social-links',
 ];
 
-/** Legacy `/dashboard-new/profile` slug before Settings rename. */
+/** Legacy dashboard tab slugs before rename (profile → settings, archive → collection). */
 export function normalizeLegacyDashboardTabSlug(tab: string | undefined): string | undefined {
   if (tab === 'profile') return 'settings';
+  if (tab === 'archive') return 'collection';
   return tab;
 }
 

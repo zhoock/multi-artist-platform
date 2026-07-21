@@ -4,6 +4,7 @@ import type { AuthUser } from '@shared/lib/auth';
 import {
   resolvePostAuthDestinationForUser,
   sanitizeListenerPostAuthDestination,
+  sanitizeReturnPath,
 } from '../authReturnUrl';
 
 const listener: AuthUser = {
@@ -21,6 +22,16 @@ const artist: AuthUser = {
   accountType: 'artist',
   isEmailVerified: false,
 };
+
+describe('sanitizeReturnPath', () => {
+  test('rewrites legacy collection dashboard path', () => {
+    expect(sanitizeReturnPath('/dashboard-new/archive')).toBe('/dashboard-new/collection');
+    expect(sanitizeReturnPath('/dashboard-new/archive?foo=1')).toBe(
+      '/dashboard-new/collection?foo=1'
+    );
+    expect(sanitizeReturnPath('/dashboard/archive')).toBe('/dashboard-new/collection');
+  });
+});
 
 describe('sanitizeListenerPostAuthDestination', () => {
   test('strips artist query from home path', () => {
@@ -73,5 +84,14 @@ describe('resolvePostAuthDestinationForUser', () => {
         routerState: null,
       })
     ).toBe('/dashboard-new/articles');
+  });
+
+  test('rewrites legacy archive dashboard returnTo to collection', () => {
+    expect(
+      resolvePostAuthDestinationForUser(listener, {
+        returnToSearchParam: '/dashboard-new/archive',
+        routerState: null,
+      })
+    ).toBe('/dashboard-new/collection');
   });
 });

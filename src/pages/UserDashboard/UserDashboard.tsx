@@ -138,6 +138,7 @@ import {
   getVisibleDashboardTabs,
   isArtistAccount,
   isListenerAccount,
+  COLLECTION_DASHBOARD_PATH,
 } from '@shared/lib/accountType';
 import { parseTrackDurationToSeconds } from '@shared/lib/parseTrackDuration';
 import { useDashboardModalShell } from '@shared/lib/dashboardModalShellContext';
@@ -229,7 +230,7 @@ function dashboardHeadingForTab(tab: DashboardTab, ui: IInterface | null): strin
       return d?.tabs?.posts ?? 'Articles';
     case 'mixer':
       return d?.tabs?.mixer ?? 'Mixer';
-    case 'archive':
+    case 'collection':
       return d?.archive?.title ?? d?.tabs?.archive ?? 'Your Collection';
     case 'payment-settings':
       return d?.tabs?.paymentSettings ?? 'Payment Settings';
@@ -322,16 +323,16 @@ function UserDashboard() {
 
   const [isUpgradeToArtistModalOpen, setIsUpgradeToArtistModalOpen] = useState(false);
   const [scrollSettingsToHeaderImages, setScrollSettingsToHeaderImages] = useState(false);
-  const archiveTabEverVisitedRef = useRef(activeTab === 'archive');
-  const [archiveContentReady, setArchiveContentReady] = useState(false);
-  if (activeTab === 'archive') {
-    archiveTabEverVisitedRef.current = true;
+  const collectionTabEverVisitedRef = useRef(activeTab === 'collection');
+  const [collectionContentReady, setCollectionContentReady] = useState(false);
+  if (activeTab === 'collection') {
+    collectionTabEverVisitedRef.current = true;
   }
-  const handleArchiveContentReady = useCallback(() => {
-    setArchiveContentReady(true);
+  const handleCollectionContentReady = useCallback(() => {
+    setCollectionContentReady(true);
   }, []);
-  const handleArchiveContentBusy = useCallback(() => {
-    setArchiveContentReady(false);
+  const handleCollectionContentBusy = useCallback(() => {
+    setCollectionContentReady(false);
   }, []);
 
   const [isDeleteAccountModalOpen, setIsDeleteAccountModalOpen] = useState(false);
@@ -1763,6 +1764,10 @@ function UserDashboard() {
     return <Navigate to="/dashboard-new/settings" replace state={location.state} />;
   }
 
+  if (tabFromRoute === 'archive') {
+    return <Navigate to={COLLECTION_DASHBOARD_PATH} replace state={location.state} />;
+  }
+
   if (tabInvalid || tabDisallowed) {
     return (
       <Navigate
@@ -1925,24 +1930,25 @@ function UserDashboard() {
                         </div>
                       ) : null}
                       <div
-                        className="user-dashboard__tab-panel user-dashboard__tab-panel--archive"
-                        hidden={activeTab !== 'archive'}
-                        aria-hidden={activeTab !== 'archive'}
+                        className="user-dashboard__tab-panel user-dashboard__tab-panel--collection"
+                        hidden={activeTab !== 'collection'}
+                        aria-hidden={activeTab !== 'collection'}
                       >
-                        {activeTab === 'archive' && !archiveContentReady ? (
+                        {activeTab === 'collection' && !collectionContentReady ? (
                           <DashboardLoadingState className="user-dashboard__tab-loading" />
                         ) : null}
-                        {archiveTabEverVisitedRef.current ? (
+                        {collectionTabEverVisitedRef.current ? (
                           <div
                             className={clsx(
-                              'user-dashboard__archive-content',
-                              !archiveContentReady && 'user-dashboard__archive-content--pending'
+                              'user-dashboard__collection-content',
+                              !collectionContentReady &&
+                                'user-dashboard__collection-content--pending'
                             )}
                           >
                             <MyArchiveContent
-                              active={activeTab === 'archive'}
-                              onContentReady={handleArchiveContentReady}
-                              onContentBusy={handleArchiveContentBusy}
+                              active={activeTab === 'collection'}
+                              onContentReady={handleCollectionContentReady}
+                              onContentBusy={handleCollectionContentBusy}
                             />
                           </div>
                         ) : null}

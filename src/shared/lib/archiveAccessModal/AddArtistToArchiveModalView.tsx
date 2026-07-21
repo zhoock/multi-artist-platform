@@ -14,6 +14,7 @@ import { ArtistArchiveLockIcon } from '@shared/ui/icons/ArtistArchiveLockIcon';
 import { ModalCloseIcon } from '@shared/ui/icons/ModalCloseIcon';
 import { dispatchArchiveArtistAdded, awaitPremiumContentRefresh } from '@features/artistArchive';
 import { useArtistArchiveStatus } from '@features/artistArchive/lib/useArtistArchiveStatus';
+import { COLLECTION_DASHBOARD_PATH } from '@shared/lib/accountType';
 
 import { ArchiveAccessModalFeatures } from './ArchiveAccessModalFeatures';
 import type { PendingPremiumContentAccess } from './archiveAccessModalContext';
@@ -112,7 +113,7 @@ export function AddArtistToArchiveModalView({ dialogRef, pendingAccess, onClose 
 
   const handleGoToArchive = useCallback(() => {
     setArchiveFullOpen(false);
-    navigate('/dashboard-new/archive');
+    navigate(COLLECTION_DASHBOARD_PATH);
   }, [navigate]);
 
   return (

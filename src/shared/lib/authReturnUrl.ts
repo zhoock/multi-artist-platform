@@ -21,6 +21,24 @@ function isAuthDestination(pathWithQueryOrHash: string): boolean {
   return p === '/auth' || p.startsWith('/auth/');
 }
 
+function normalizeLegacyReturnPath(path: string): string {
+  if (
+    path === '/dashboard-new/archive' ||
+    path.startsWith('/dashboard-new/archive?') ||
+    path.startsWith('/dashboard-new/archive#')
+  ) {
+    return path.replace('/dashboard-new/archive', '/dashboard-new/collection');
+  }
+  if (
+    path === '/dashboard/archive' ||
+    path.startsWith('/dashboard/archive?') ||
+    path.startsWith('/dashboard/archive#')
+  ) {
+    return path.replace('/dashboard/archive', '/dashboard-new/collection');
+  }
+  return path;
+}
+
 /**
  * Allows only same-site relative navigations (no open redirects).
  */
@@ -35,7 +53,8 @@ export function sanitizeReturnPath(candidate: string | null | undefined): string
   try {
     const resolved = new URL(s, window.location.origin);
     if (resolved.origin !== window.location.origin) return null;
-    return resolved.pathname + resolved.search + resolved.hash;
+    const safe = resolved.pathname + resolved.search + resolved.hash;
+    return normalizeLegacyReturnPath(safe);
   } catch {
     return null;
   }

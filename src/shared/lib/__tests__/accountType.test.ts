@@ -37,9 +37,9 @@ describe('accountType dashboard helpers', () => {
     localStorage.removeItem('auth_user');
   });
 
-  it('listener sees settings, purchases, and archive only', () => {
+  it('listener sees settings, purchases, and collection only', () => {
     const user = makeUser('listener');
-    expect(getVisibleDashboardTabs(user)).toEqual(['settings', 'my-purchases', 'archive']);
+    expect(getVisibleDashboardTabs(user)).toEqual(['settings', 'my-purchases', 'collection']);
     expect(getDefaultDashboardTab(user)).toBe('settings');
   });
 
@@ -54,6 +54,12 @@ describe('accountType dashboard helpers', () => {
     const listener = makeUser('listener');
     expect(resolveDashboardTab('profile', listener)).toBe('settings');
     expect(isDashboardTabAllowed('profile', listener)).toBe(true);
+  });
+
+  it('resolveDashboardTab maps legacy archive slug to collection', () => {
+    const listener = makeUser('listener');
+    expect(resolveDashboardTab('archive', listener)).toBe('collection');
+    expect(isDashboardTabAllowed('archive', listener)).toBe(true);
   });
 
   it('resolveDashboardTab redirects disallowed tabs to role default', () => {

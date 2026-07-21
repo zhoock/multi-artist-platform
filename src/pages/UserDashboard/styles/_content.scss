@@ -45,11 +45,11 @@ dialog {
       min-height: min(480px, 58vh);
     }
 
-    &__tab-panel--archive {
+    &__tab-panel--collection {
       position: relative;
     }
 
-    &__archive-content {
+    &__collection-content {
       display: flex;
       flex: 1;
       flex-direction: column;

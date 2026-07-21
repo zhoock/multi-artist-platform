@@ -18,7 +18,7 @@ const DASHBOARD_NAV_TAB_ICONS: Record<DashboardTab, LucideIcon> = {
   albums: DiscIcon,
   posts: FileTextIcon,
   mixer: SlidersHorizontalIcon,
-  archive: HeartHandshakeIcon,
+  collection: HeartHandshakeIcon,
   'payment-settings': CreditCardIcon,
   'my-purchases': ShoppingBagIcon,
   'social-links': Link2Icon,

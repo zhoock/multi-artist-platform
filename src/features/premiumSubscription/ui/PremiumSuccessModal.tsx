@@ -12,6 +12,7 @@ import {
   refreshPremiumContentForArchiveChange,
   SUBSCRIPTION_ACTIVATED_EVENT,
 } from '@features/artistArchive';
+import { COLLECTION_DASHBOARD_PATH } from '@shared/lib/accountType';
 
 import { usePremiumSubscription } from '../lib/PremiumSubscriptionContext';
 import { SubscriptionPlanBadge } from '@shared/ui/subscriptionPlan';
@@ -141,7 +142,7 @@ export function PremiumSuccessModalView({ dialogRef, open, onClose }: Props) {
 
   const handleGoArchive = useCallback(() => {
     dismiss();
-    navigate('/dashboard-new/archive');
+    navigate(COLLECTION_DASHBOARD_PATH);
   }, [dismiss, navigate]);
 
   return (

@@ -374,7 +374,7 @@ export function ServiceButtons({ album, section }: ServiceButtonsProps) {
           buyAlbumViaSupport: 'Included with support',
           downloadAlbum: 'Download Album',
           downloadAlbumLoading: 'Downloading...',
-          downloadAlbumPreparing: 'Preparing archive...',
+          downloadAlbumPreparing: 'Preparing download...',
           errorDownloadingAlbum: 'Error downloading album. Please try again.',
           errorTitle: 'Error',
         }
@@ -386,7 +386,7 @@ export function ServiceButtons({ album, section }: ServiceButtonsProps) {
           buyAlbumViaSupport: 'Входит в поддержку',
           downloadAlbum: 'Скачать альбом',
           downloadAlbumLoading: 'Скачивание...',
-          downloadAlbumPreparing: 'Подготовка архива...',
+          downloadAlbumPreparing: 'Подготовка загрузки...',
           errorDownloadingAlbum: 'Ошибка при скачивании альбома. Попробуйте ещё раз.',
           errorTitle: 'Ошибка',
         };

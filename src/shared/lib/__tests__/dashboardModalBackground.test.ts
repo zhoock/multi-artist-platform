@@ -32,7 +32,7 @@ describe('dashboardModalBackground', () => {
 
     primeDashboardModalSessionFromLocation({
       pathname: '/pay/subscription-success',
-      search: '?returnTo=%2Fdashboard-new%2Farchive',
+      search: '?returnTo=%2Fdashboard-new%2Fcollection',
       hash: '',
       state: null,
       key: 'pay',
@@ -55,7 +55,7 @@ describe('dashboardModalBackground', () => {
     const closeTarget = resolveDashboardModalCloseTarget({
       backgroundLocation: {
         pathname: '/pay/subscription-success',
-        search: '?returnTo=%2Fdashboard-new%2Farchive',
+        search: '?returnTo=%2Fdashboard-new%2Fcollection',
         hash: '',
         state: null,
         key: 'pay',

@@ -12,6 +12,7 @@ import { useNavigate } from 'react-router-dom';
 
 import { getArchiveStatus } from '@shared/api/archive';
 import { getToken } from '@shared/lib/auth';
+import { COLLECTION_DASHBOARD_PATH } from '@shared/lib/accountType';
 import { useAuthSessionUser } from '@shared/lib/hooks/useAuthSessionUser';
 import { AlertModal } from '@shared/ui/alertModal';
 import { useLang } from '@app/providers/lang';
@@ -93,7 +94,7 @@ function ArchiveFullAlert({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
       variant="warning"
       onClose={() => {
         onClose();
-        navigate('/dashboard-new/archive');
+        navigate(COLLECTION_DASHBOARD_PATH);
       }}
     />
   );
