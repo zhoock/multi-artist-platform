@@ -2,6 +2,9 @@
 
 @use '../../../scss/abstracts/mixins' as *;
 
+// Matches @include dashboard-form-input (12px 16px, line-height 1.5, 1px border)
+$expanded-track-title-control-height: calc(24px + var(--dashboard-font-size) * 1.5 + 2px);
+
 dialog {
   .user-dashboard {
     &__expanded-tracks {
@@ -24,7 +27,9 @@ dialog {
       align-items: center;
       gap: var(--ms-01);
       width: 100%;
-      min-height: 52px;
+      box-sizing: border-box;
+      height: calc(var(--ms-0) * 2 + #{$expanded-track-title-control-height});
+      min-height: calc(var(--ms-0) * 2 + #{$expanded-track-title-control-height});
       padding: var(--ms-0) var(--ms-01);
       color: inherit;
       text-align: left;
@@ -63,19 +68,34 @@ dialog {
       font-variant-numeric: tabular-nums;
     }
 
-    &__expanded-track-title {
+    &__expanded-track-title-slot {
       flex: 1;
       min-width: 0;
-      overflow: hidden;
-      color: var(--dashboard-text-primary);
-      font-size: var(--dashboard-font-size);
-      text-overflow: ellipsis;
-      white-space: nowrap;
+      display: flex;
+      align-items: stretch;
+      height: $expanded-track-title-control-height;
+      margin-inline-end: var(--ms-02);
     }
 
-    &__expanded-track-title-input {
-      flex: 1;
+    &__expanded-track-title {
+      @include dashboard-form-control-shell(12px 16px);
+
+      display: block;
+      width: 100%;
       min-width: 0;
+      margin: 0;
+      overflow: hidden;
+      color: var(--dashboard-text-primary);
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      background: transparent;
+      border-color: transparent;
+    }
+
+    &__expanded-track-title-input.dashboard-form-input {
+      width: 100%;
+      height: 100%;
+      min-height: 0;
     }
 
     &__expanded-track-duration {

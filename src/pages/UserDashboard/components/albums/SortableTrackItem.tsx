@@ -314,71 +314,71 @@ export function SortableTrackItem({
               {String(displayIndex).padStart(2, '0')}
             </span>
 
-            {isEditing ? (
-              <input
-                key={`edit-${track.id}-${isEditing}`}
-                ref={inputRef}
-                type="text"
-                className="user-dashboard__track-title-input user-dashboard__expanded-track-title-input"
-                value={editedTitle}
-                onChange={(e) => setEditedTitle(e.target.value)}
-                onBlur={handleTitleBlur}
-                onKeyDown={handleTitleKeyDown}
-                onClick={(e) => e.stopPropagation()}
-                onMouseDown={(e) => e.stopPropagation()}
-              />
-            ) : (
-              <span className="user-dashboard__expanded-track-title">{track.title}</span>
-            )}
+            <div className="user-dashboard__expanded-track-title-slot">
+              {isEditing ? (
+                <input
+                  key={`edit-${track.id}-${isEditing}`}
+                  ref={inputRef}
+                  type="text"
+                  className="dashboard-form-input user-dashboard__expanded-track-title-input"
+                  value={editedTitle}
+                  onChange={(e) => setEditedTitle(e.target.value)}
+                  onBlur={handleTitleBlur}
+                  onKeyDown={handleTitleKeyDown}
+                  onClick={(e) => e.stopPropagation()}
+                  onMouseDown={(e) => e.stopPropagation()}
+                />
+              ) : (
+                <span className="user-dashboard__expanded-track-title">{track.title}</span>
+              )}
+            </div>
 
-            {!isEditing ? (
-              <>
-                <span className="user-dashboard__expanded-track-duration">{track.duration}</span>
+            <span className="user-dashboard__expanded-track-duration">{track.duration}</span>
 
-                <button
-                  ref={accessBtnRef}
-                  type="button"
-                  className="user-dashboard__track-access-button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    toggleAccessMenu(e);
-                  }}
-                  aria-expanded={accessMenuOpen}
-                  aria-haspopup="menu"
-                  aria-label={trackAccessAria}
-                >
-                  <span className="user-dashboard__track-access-button-icon" aria-hidden>
-                    <TrackVisibilityIcon visibility={trackVisibility} size={18} />
-                  </span>
-                </button>
+            <span className="user-dashboard__expanded-track-access-slot">
+              <button
+                ref={accessBtnRef}
+                type="button"
+                className="user-dashboard__track-access-button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleAccessMenu(e);
+                }}
+                aria-expanded={accessMenuOpen}
+                aria-haspopup="menu"
+                aria-label={trackAccessAria}
+              >
+                <span className="user-dashboard__track-access-button-icon" aria-hidden>
+                  <TrackVisibilityIcon visibility={trackVisibility} size={18} />
+                </span>
+              </button>
+            </span>
 
-                <div className="user-dashboard__expanded-track-actions">
-                  <DashboardButton
-                    variant="icon"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleEdit(e);
-                    }}
-                    aria-label={ui?.dashboard?.editTrack ?? 'Edit track'}
-                  >
-                    <PencilIcon {...dashboardActionIconProps()} />
-                  </DashboardButton>
-                  <DashboardButton
-                    variant="icon"
-                    destructive
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDelete(e);
-                    }}
-                    aria-label={ui?.dashboard?.deleteTrack ?? 'Delete track'}
-                  >
-                    <Trash2Icon {...dashboardActionIconProps()} />
-                  </DashboardButton>
-                </div>
-              </>
-            ) : (
-              <span className="user-dashboard__expanded-track-duration">{track.duration}</span>
-            )}
+            <div className="user-dashboard__expanded-track-actions">
+              <DashboardButton
+                variant="icon"
+                disabled={isEditing}
+                aria-pressed={isEditing}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleEdit(e);
+                }}
+                aria-label={ui?.dashboard?.editTrack ?? 'Edit track'}
+              >
+                <PencilIcon {...dashboardActionIconProps()} />
+              </DashboardButton>
+              <DashboardButton
+                variant="icon"
+                destructive
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDelete(e);
+                }}
+                aria-label={ui?.dashboard?.deleteTrack ?? 'Delete track'}
+              >
+                <Trash2Icon {...dashboardActionIconProps()} />
+              </DashboardButton>
+            </div>
           </div>
 
           {isOpen ? (
