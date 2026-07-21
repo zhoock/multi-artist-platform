@@ -237,10 +237,9 @@ function ServiceButtonsContent({
                   aria-live="polite"
                   aria-label={labels.ownershipChecking}
                 >
-                  <span
-                    className="service-buttons__download-icon service-buttons__skeleton-block"
-                    aria-hidden="true"
-                  />
+                  <span className="service-buttons__download-icon" aria-hidden="true">
+                    <span className="service-buttons__skeleton-block" />
+                  </span>
                   <span className="service-buttons__download-copy">
                     <span
                       className="service-buttons__skeleton-line service-buttons__skeleton-line--title"
@@ -287,9 +286,9 @@ function ServiceButtonsContent({
                 >
                   <span className="service-buttons__download-icon" aria-hidden="true">
                     {canDownload || isDownloadingAlbum ? (
-                      <DownloadIcon {...dashboardActionIconProps({ size: 18 })} />
+                      <DownloadIcon {...dashboardActionIconProps({ size: 29 })} />
                     ) : (
-                      <ShoppingBagIcon {...dashboardActionIconProps({ size: 18 })} />
+                      <ShoppingBagIcon {...dashboardActionIconProps({ size: 29 })} />
                     )}
                   </span>
                   <span className="service-buttons__download-copy">

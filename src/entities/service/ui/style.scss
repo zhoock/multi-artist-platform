@@ -50,8 +50,8 @@
       box-sizing: border-box;
       min-block-size: var(--ms-3);
       block-size: var(--ms-3);
-      padding-block: var(--ms-01);
-      padding-inline: var(--ms-01) var(--ms-0);
+      padding-block: 0;
+      padding-inline: 0 var(--ms-0);
       color: var(--link-button-color, #dddddd);
       background: var(--link-button-background-color, #373633);
       border: none;
@@ -86,8 +86,8 @@
   }
 
   &__skeleton-block {
-    inline-size: 1.125rem;
-    block-size: 1.125rem;
+    inline-size: var(--ms-1);
+    block-size: var(--ms-1);
     border-radius: 50%;
   }
 
@@ -109,13 +109,14 @@
     flex-shrink: 0;
     align-items: center;
     justify-content: center;
-    inline-size: 1.125rem;
-    block-size: 1.125rem;
+    align-self: stretch;
+    inline-size: var(--ms-3);
+    block-size: var(--ms-3);
     color: var(--link-color, #998238);
 
     svg {
-      inline-size: 1.125rem;
-      block-size: 1.125rem;
+      inline-size: var(--ms-1);
+      block-size: var(--ms-1);
     }
   }
 
