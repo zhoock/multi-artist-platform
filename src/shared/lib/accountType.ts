@@ -30,10 +30,9 @@ const ARTIST_TABS: DashboardTab[] = [
   'social-links',
 ];
 
-/** Legacy dashboard tab slugs before rename (profile → settings, archive → collection). */
+/** Legacy `/dashboard-new/profile` slug before Settings rename. */
 export function normalizeLegacyDashboardTabSlug(tab: string | undefined): string | undefined {
   if (tab === 'profile') return 'settings';
-  if (tab === 'archive') return 'collection';
   return tab;
 }
 

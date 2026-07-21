@@ -138,7 +138,6 @@ import {
   getVisibleDashboardTabs,
   isArtistAccount,
   isListenerAccount,
-  COLLECTION_DASHBOARD_PATH,
 } from '@shared/lib/accountType';
 import { parseTrackDurationToSeconds } from '@shared/lib/parseTrackDuration';
 import { useDashboardModalShell } from '@shared/lib/dashboardModalShellContext';
@@ -1762,10 +1761,6 @@ function UserDashboard() {
 
   if (tabFromRoute === 'profile') {
     return <Navigate to="/dashboard-new/settings" replace state={location.state} />;
-  }
-
-  if (tabFromRoute === 'archive') {
-    return <Navigate to={COLLECTION_DASHBOARD_PATH} replace state={location.state} />;
   }
 
   if (tabInvalid || tabDisallowed) {

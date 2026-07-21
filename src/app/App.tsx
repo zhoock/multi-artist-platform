@@ -99,8 +99,7 @@ function HomeRouteSuspenseFallback() {
 function LegacyDashboardTabRedirect() {
   const { tab } = useParams();
   const { state } = useLocation();
-  const normalizedTab =
-    tab === 'profile' ? 'settings' : tab === 'archive' ? 'collection' : (tab ?? 'albums');
+  const normalizedTab = tab === 'profile' ? 'settings' : (tab ?? 'albums');
   return <Navigate to={`/dashboard-new/${normalizedTab}`} replace state={state} />;
 }
 

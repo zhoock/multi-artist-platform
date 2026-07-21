@@ -56,12 +56,6 @@ describe('accountType dashboard helpers', () => {
     expect(isDashboardTabAllowed('profile', listener)).toBe(true);
   });
 
-  it('resolveDashboardTab maps legacy archive slug to collection', () => {
-    const listener = makeUser('listener');
-    expect(resolveDashboardTab('archive', listener)).toBe('collection');
-    expect(isDashboardTabAllowed('archive', listener)).toBe(true);
-  });
-
   it('resolveDashboardTab redirects disallowed tabs to role default', () => {
     const listener = makeUser('listener');
     expect(resolveDashboardTab('albums', listener)).toBe('settings');
