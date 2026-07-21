@@ -539,8 +539,8 @@ function UserDashboard() {
     if (intent.openEditAlbumModal) {
       if (emailVerified) {
         setEditAlbumModal({ isOpen: true });
+        consumed = true;
       }
-      consumed = true;
     }
 
     if (intent.openNewArticleModal) {
