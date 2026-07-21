@@ -31,6 +31,25 @@ import type { GetMyPurchasesResponse, Purchase } from './types';
 let cachedUserId: string | null = null;
 let cachedPurchases: Purchase[] | null = null;
 let inflightPurchases: Promise<Purchase[]> | null = null;
+let cacheEpoch = 0;
+const cacheListeners = new Set<() => void>();
+
+function notifyCacheListeners(): void {
+  cacheEpoch += 1;
+  cacheListeners.forEach((listener) => listener());
+}
+
+/** Подписка на инвалидацию кэша покупок (для refetch в useAlbumOwnedByViewer). */
+export function subscribeMyPurchasesCache(onStoreChange: () => void): () => void {
+  cacheListeners.add(onStoreChange);
+  return () => {
+    cacheListeners.delete(onStoreChange);
+  };
+}
+
+export function getMyPurchasesCacheEpoch(): number {
+  return cacheEpoch;
+}
 
 if (typeof window !== 'undefined') {
   subscribeAuthSession(() => {
@@ -89,6 +108,7 @@ export function invalidateMyPurchasesCache(): void {
   cachedUserId = null;
   cachedPurchases = null;
   inflightPurchases = null;
+  notifyCacheListeners();
 }
 
 /** @internal Только для тестов: текущее состояние кэша. */

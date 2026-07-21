@@ -3,6 +3,7 @@
  */
 
 import { query } from './db';
+import { getViewerEmailLower, viewerPurchasedAlbum } from './entitlements';
 import {
   activePurchaseFilter,
   purchasesHasRevokedColumns,
@@ -55,6 +56,34 @@ export async function isAlbumOwnedByUser(
     [albumSlug, emailLower]
   );
   return result.rows.length > 0;
+}
+
+/**
+ * Whether the checkout buyer already owns this album (server-side gate for create-payment).
+ * Uses account ownership (user_id + legacy email fallback) and checkout email lookup.
+ */
+export async function buyerAlreadyOwnsAlbumForCheckout(
+  buyerUserId: string | null,
+  customerEmail: string,
+  albumSlug: string
+): Promise<boolean> {
+  if (!albumSlug) {
+    return false;
+  }
+
+  if (buyerUserId) {
+    const accountEmailLower = await getViewerEmailLower(buyerUserId);
+    if (await isAlbumOwnedByUser(buyerUserId, accountEmailLower, albumSlug)) {
+      return true;
+    }
+  }
+
+  const customerEmailLower = customerEmail.trim().toLowerCase();
+  if (customerEmailLower && (await viewerPurchasedAlbum(albumSlug, customerEmailLower))) {
+    return true;
+  }
+
+  return false;
 }
 
 export async function isPurchaseTokenActive(purchaseToken: string): Promise<{

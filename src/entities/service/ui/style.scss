@@ -63,6 +63,44 @@
         cursor: wait;
         pointer-events: none;
       }
+
+      &.service-buttons__link--ownership-loading {
+        cursor: default;
+        pointer-events: none;
+      }
+    }
+  }
+
+  &__skeleton-block,
+  &__skeleton-line {
+    display: block;
+    background: linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--text-color, #dddddd) 12%, transparent) 0%,
+      color-mix(in srgb, var(--text-color, #dddddd) 22%, transparent) 50%,
+      color-mix(in srgb, var(--text-color, #dddddd) 12%, transparent) 100%
+    );
+    border-radius: var(--ms-01);
+    background-size: 200% 100%;
+    animation: service-buttons-ownership-shimmer 1.2s ease-in-out infinite;
+  }
+
+  &__skeleton-block {
+    inline-size: 1.125rem;
+    block-size: 1.125rem;
+    border-radius: 50%;
+  }
+
+  &__skeleton-line {
+    block-size: 0.75rem;
+
+    &--title {
+      inline-size: 8.5rem;
+    }
+
+    &--subtitle {
+      inline-size: 6rem;
+      block-size: 0.625rem;
     }
   }
 
@@ -150,6 +188,16 @@
   }
 }
 
+@keyframes service-buttons-ownership-shimmer {
+  0% {
+    background-position: 100% 0;
+  }
+
+  100% {
+    background-position: -100% 0;
+  }
+}
+
 .service-buttons__link--download-preparing .service-buttons__download-progress-fill {
   inline-size: 40%;
   width: 40%;
@@ -189,7 +237,10 @@ html.theme-light {
   }
 }
 
-.service-buttons__link--download:hover:not(.service-buttons__link--downloading) {
+.service-buttons__link--download:hover:not(
+    .service-buttons__link--downloading,
+    .service-buttons__link--ownership-loading
+  ) {
   .service-buttons__download-title,
   .service-buttons__download-subtitle,
   .service-buttons__download-price {

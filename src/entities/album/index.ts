@@ -50,6 +50,10 @@ export {
 } from './model/albumDetails';
 export { fetchAlbumDetails, AlbumDetailsFetchError } from './api/fetchAlbumDetails';
 export { resolveAlbumDetailsForDisplay } from './lib/resolveAlbumDetailsDisplay';
+export {
+  albumDetailsMatchRoute,
+  resolveAlbumDetailsForRoute,
+} from './lib/resolveAlbumDetailsForRoute';
 export * from './model/albumDetailsSelectors';
 export * from './model/artistAlbumCatalogSelectors';
 /** Все селекторы из `model/selectors` (в т.ч. `selectDashboardAlbumById`) — единая точка реэкспорта. */

@@ -25,16 +25,20 @@ type CreatePaymentResult = {
   confirmationUrl?: string;
   orderId?: string;
   error?: string;
+  message?: string;
 };
 
 const createPaymentMock = jest.fn<(...args: unknown[]) => Promise<CreatePaymentResult>>();
 jest.mock('@shared/api/payment', () => ({
   createPayment: (...args: unknown[]) => createPaymentMock(...args),
+  CREATE_PAYMENT_ALREADY_OWNED: 'ALREADY_OWNED',
 }));
 
 const downloadOwnedAlbumZipByAuthMock = jest.fn<(...args: unknown[]) => Promise<void>>();
+const invalidateMyPurchasesCacheMock = jest.fn();
 jest.mock('@shared/api/purchases', () => ({
   downloadOwnedAlbumZipByAuth: (...args: unknown[]) => downloadOwnedAlbumZipByAuthMock(...args),
+  invalidateMyPurchasesCache: () => invalidateMyPurchasesCacheMock(),
 }));
 
 const ownershipState: {
@@ -150,6 +154,7 @@ function fillValidForm() {
 beforeEach(() => {
   createPaymentMock.mockReset();
   downloadOwnedAlbumZipByAuthMock.mockReset();
+  invalidateMyPurchasesCacheMock.mockReset();
   ownershipState.isOwned = false;
   ownershipState.ownedPurchase = null;
   mockUser = null;
@@ -222,6 +227,36 @@ describe('AlbumCheckoutModal', () => {
       expect(screen.getByRole('alert')).toHaveTextContent('YooKassa unavailable');
     });
     expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
+  });
+
+  test('ALREADY_OWNED switches to download state without showing error code', async () => {
+    mockUser = { id: 'u1', email: 'fan@example.com', name: 'Fan' };
+    createPaymentMock.mockResolvedValueOnce({
+      success: false,
+      error: 'ALREADY_OWNED',
+      message: 'This album is already in your library.',
+    });
+
+    renderWithProviders(<AlbumCheckoutModal isOpen album={testAlbum} onClose={() => {}} />);
+
+    fillValidForm();
+    fireEvent.click(screen.getByRole('button', { name: /continue to payment|перейти к оплате/i }));
+
+    await waitFor(() => {
+      expect(invalidateMyPurchasesCacheMock).toHaveBeenCalledTimes(1);
+    });
+
+    expect(screen.queryByText('ALREADY_OWNED')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/email/i)).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', {
+        name: /already in your library|уже в вашей библиотеке/i,
+      })
+    ).toBeInTheDocument();
+    expect(screen.getByText(/this album is already in your library/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /download album|скачать альбом/i })
+    ).toBeInTheDocument();
   });
 
   test('prefills email and shows read-only buyer identity from profile', () => {

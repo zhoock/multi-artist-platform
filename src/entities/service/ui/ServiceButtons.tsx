@@ -59,6 +59,7 @@ function ServiceButtonsContent({
     downloadAlbum: string;
     downloadAlbumLoading: string;
     downloadAlbumPreparing: string;
+    ownershipChecking: string;
     errorDownloadingAlbum: string;
     errorTitle: string;
   };
@@ -227,7 +228,33 @@ function ServiceButtonsContent({
             className="service-buttons__list"
             aria-label="Блок со ссылками на платные музыкальные агрегаторы"
           >
-            {showDownloadButton && (
+            {showDownloadButton && ownershipLoading && (
+              <li className="service-buttons__list-item service-buttons__list-item--buy-album">
+                <div
+                  className="service-buttons__link service-buttons__link--download service-buttons__link--ownership-loading"
+                  role="status"
+                  aria-busy="true"
+                  aria-live="polite"
+                  aria-label={labels.ownershipChecking}
+                >
+                  <span
+                    className="service-buttons__download-icon service-buttons__skeleton-block"
+                    aria-hidden="true"
+                  />
+                  <span className="service-buttons__download-copy">
+                    <span
+                      className="service-buttons__skeleton-line service-buttons__skeleton-line--title"
+                      aria-hidden="true"
+                    />
+                    <span
+                      className="service-buttons__skeleton-line service-buttons__skeleton-line--subtitle"
+                      aria-hidden="true"
+                    />
+                  </span>
+                </div>
+              </li>
+            )}
+            {showDownloadButton && !ownershipLoading && (
               <li className="service-buttons__list-item service-buttons__list-item--buy-album">
                 <a
                   href="#"
@@ -389,6 +416,7 @@ export function ServiceButtons({ album, section }: ServiceButtonsProps) {
           downloadAlbum: 'Download Album',
           downloadAlbumLoading: 'Downloading...',
           downloadAlbumPreparing: 'Preparing download...',
+          ownershipChecking: 'Checking your library...',
           errorDownloadingAlbum: 'Error downloading album. Please try again.',
           errorTitle: 'Error',
         }
@@ -401,6 +429,7 @@ export function ServiceButtons({ album, section }: ServiceButtonsProps) {
           downloadAlbum: 'Скачать альбом',
           downloadAlbumLoading: 'Скачивание...',
           downloadAlbumPreparing: 'Подготовка загрузки...',
+          ownershipChecking: 'Проверяем вашу библиотеку...',
           errorDownloadingAlbum: 'Ошибка при скачивании альбома. Попробуйте ещё раз.',
           errorTitle: 'Ошибка',
         };
@@ -414,6 +443,7 @@ export function ServiceButtons({ album, section }: ServiceButtonsProps) {
     downloadAlbum: buttons.downloadAlbum ?? fallbackLabels.downloadAlbum,
     downloadAlbumLoading: buttons.downloadAlbumLoading ?? fallbackLabels.downloadAlbumLoading,
     downloadAlbumPreparing: buttons.downloadAlbumPreparing ?? fallbackLabels.downloadAlbumPreparing,
+    ownershipChecking: buttons.ownershipChecking ?? fallbackLabels.ownershipChecking,
     errorDownloadingAlbum: buttons.errorDownloadingAlbum ?? fallbackLabels.errorDownloadingAlbum,
     errorTitle: ui?.titles?.error ?? ui?.dashboard?.error ?? fallbackLabels.errorTitle,
   };

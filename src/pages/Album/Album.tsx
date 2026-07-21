@@ -9,6 +9,7 @@ import {
   AlbumDetails,
   fetchAlbumDetailsPage,
   mapAlbumEditableToAlbumDetails,
+  resolveAlbumDetailsForRoute,
   selectAlbumDetailsResolved,
   selectAlbumDetailsStatus,
   selectAlbumDetailsErrorCode,
@@ -71,24 +72,20 @@ export default function Album() {
     selectDashboardAlbumByIdResolved(state, albumId)
   );
 
-  const detailsArtistMatches = albumDetailsState.artistSlug === artistParam?.trim();
-  const detailsMatchRoute =
-    resolvedDetails != null &&
-    resolvedDetails.albumId === albumId &&
-    detailsArtistMatches &&
-    albumDetailsState.albumId === albumId;
+  const albumFromDetails: AlbumDetailsData | undefined = resolveAlbumDetailsForRoute({
+    resolvedDetails,
+    routeAlbumId: albumId,
+    artistSlug: artistParam,
+    slotArtistSlug: albumDetailsState.artistSlug,
+    slotAlbumId: albumDetailsState.albumId,
+  });
+  const detailsMatchRoute = albumFromDetails != null;
 
   /**
    * Public path: AlbumDetails from mid-weight API.
    * Owner unpublished draft: map dashboard AlbumEditable → AlbumDetails (Dashboard CRUD untouched).
-   * During SWR (incl. slug rename) keep last-good while the route/slot identity catches up.
+   * Same-album SWR (refetch / rename after adoptAlbumDetailsAlbumId) when payload slug matches route.
    */
-  const albumFromDetails: AlbumDetailsData | undefined =
-    detailsMatchRoute && resolvedDetails
-      ? resolvedDetails
-      : albumDetailsStatus === 'loading' && resolvedDetails && detailsArtistMatches
-        ? resolvedDetails
-        : undefined;
   const albumFromOwnerDashboard: AlbumDetailsData | undefined =
     !albumFromDetails && artistPageAccess.isOwner && dashboardAlbum
       ? mapAlbumEditableToAlbumDetails(dashboardAlbum)

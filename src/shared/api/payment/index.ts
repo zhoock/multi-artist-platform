@@ -31,6 +31,9 @@ export interface CreatePaymentResponse {
   message?: string;
 }
 
+/** Server error code when buyer already owns the album (HTTP 409). */
+export const CREATE_PAYMENT_ALREADY_OWNED = 'ALREADY_OWNED';
+
 // Экспорт типов и утилит
 export type { PaymentProvider, UserPaymentSettings, PaymentSettingsResponse } from './types';
 export { getPaymentSettings, savePaymentSettings, disconnectPaymentProvider } from './settings';

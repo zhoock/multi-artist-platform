@@ -157,6 +157,31 @@ describe('purchases cache', () => {
     });
   });
 
+  test('invalidateMyPurchasesCache notifies cache subscribers', async () => {
+    await jest.isolateModulesAsync(async () => {
+      mockAuth();
+      mockAuthFetchOnce(async () => purchasesResponse([]));
+
+      const { getMyPurchasesCacheEpoch, invalidateMyPurchasesCache, subscribeMyPurchasesCache } =
+        (await import(
+          '@shared/api/purchases/cache'
+        )) as typeof import('@shared/api/purchases/cache');
+
+      expect(getMyPurchasesCacheEpoch()).toBe(0);
+
+      const listener = jest.fn();
+      const unsubscribe = subscribeMyPurchasesCache(listener);
+
+      invalidateMyPurchasesCache();
+      expect(getMyPurchasesCacheEpoch()).toBe(1);
+      expect(listener).toHaveBeenCalledTimes(1);
+
+      unsubscribe();
+      invalidateMyPurchasesCache();
+      expect(listener).toHaveBeenCalledTimes(1);
+    });
+  });
+
   // Это и есть прямой регресс на исходный баг.
   test('revokePurchase invalidates the cache so next read sees fresh data', async () => {
     await jest.isolateModulesAsync(async () => {

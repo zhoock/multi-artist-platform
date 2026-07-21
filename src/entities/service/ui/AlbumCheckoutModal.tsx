@@ -29,8 +29,8 @@ import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 import { getUser, isAuthenticated } from '@shared/lib/auth';
 import { useAuthSessionUser } from '@shared/lib/hooks/useAuthSessionUser';
-import { createPayment } from '@shared/api/payment';
-import { downloadOwnedAlbumZipByAuth } from '@shared/api/purchases';
+import { createPayment, CREATE_PAYMENT_ALREADY_OWNED } from '@shared/api/payment';
+import { downloadOwnedAlbumZipByAuth, invalidateMyPurchasesCache } from '@shared/api/purchases';
 import { getAlbumKeyForPaymentApis } from '@shared/lib/payment/albumPaymentKey';
 import { formatAlbumDisplayFullName } from '@shared/lib/profileDisplayName';
 import { useSiteArtistDisplayName } from '@shared/lib/hooks/useSiteArtistDisplayName';
@@ -100,8 +100,8 @@ const labelsFor = (
     title: en ? 'Buy album' : 'Купить альбом',
     alreadyOwnedTitle: en ? 'Already in your library' : 'Уже в вашей библиотеке',
     alreadyOwnedDescription: en
-      ? 'You can download this album any time from your dashboard.'
-      : 'Вы можете скачать этот альбом в любой момент из личного кабинета.',
+      ? 'This album is already in your library.'
+      : 'Этот альбом уже находится в вашей библиотеке.',
     downloadCta: buttons?.downloadAlbum ?? (en ? 'Download Album' : 'Скачать альбом'),
     downloadingCta: buttons?.downloadAlbumLoading ?? (en ? 'Downloading...' : 'Скачивание...'),
     close: en ? 'Close' : 'Закрыть',
@@ -208,6 +208,8 @@ export function AlbumCheckoutModal({ isOpen, album, onClose }: AlbumCheckoutModa
   const [paymentError, setPaymentError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [serverConfirmedOwned, setServerConfirmedOwned] = useState(false);
+  const showOwned = isOwned || serverConfirmedOwned;
 
   // При каждом открытии — пре-заполнение из auth-сессии и сброс ошибок.
   useEffect(() => {
@@ -219,6 +221,7 @@ export function AlbumCheckoutModal({ isOpen, album, onClose }: AlbumCheckoutModa
     setPaymentError(null);
     setIsSubmitting(false);
     setIsDownloading(false);
+    setServerConfirmedOwned(false);
   }, [isOpen]);
 
   if (!album) {
@@ -282,7 +285,15 @@ export function AlbumCheckoutModal({ isOpen, album, onClose }: AlbumCheckoutModa
       });
 
       if (!result.success) {
-        setPaymentError(result.error || labels.paymentErrorGeneric);
+        if (result.error === CREATE_PAYMENT_ALREADY_OWNED) {
+          invalidateMyPurchasesCache();
+          setServerConfirmedOwned(true);
+          setPaymentError(null);
+          setIsSubmitting(false);
+          return;
+        }
+
+        setPaymentError(result.message || result.error || labels.paymentErrorGeneric);
         setIsSubmitting(false);
         return;
       }
@@ -398,7 +409,7 @@ export function AlbumCheckoutModal({ isOpen, album, onClose }: AlbumCheckoutModa
             </div>
           </header>
 
-          {isOwned ? (
+          {showOwned ? (
             <section className="album-checkout-modal__owned" aria-live="polite">
               <h3 className="album-checkout-modal__owned-title">{labels.alreadyOwnedTitle}</h3>
               <p className="album-checkout-modal__owned-description">

@@ -9,6 +9,7 @@ import type { ApiMessageResponse, GetMyPurchasesResponse, Purchase, PurchaseTrac
 
 export type { ApiMessageResponse, GetMyPurchasesResponse, Purchase, PurchaseTrack };
 export { getMyPurchasesCached, invalidateMyPurchasesCache } from './cache';
+export { getMyPurchasesCacheEpoch, subscribeMyPurchasesCache } from './cache';
 
 async function parsePurchasesResponse(response: Response): Promise<Purchase[]> {
   if (!response.ok) {

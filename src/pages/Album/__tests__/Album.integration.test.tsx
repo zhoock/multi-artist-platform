@@ -121,9 +121,9 @@ describe('Album integration tests', () => {
   });
 
   test('во время SWR после rename показывает last-good, а не «Альбом не найден»', () => {
-    const previousDetails = createMockAlbumDetails({
-      albumId: 'stand-up',
-      slug: 'stand-up',
+    const adoptedDetails = createMockAlbumDetails({
+      albumId: 'stand-up-remastered',
+      slug: 'stand-up-remastered',
       title: 'Stand Up',
     });
 
@@ -133,11 +133,11 @@ describe('Album integration tests', () => {
         lang: { current: 'en' },
         albums: emptyAlbumsState(),
         albumDetails: {
-          status: 'loading',
+          status: 'succeeded',
           error: null,
           errorCode: null,
-          // Last-good still has previous payload while slot identity already moved.
-          data: previousDetails,
+          // adoptAlbumDetailsAlbumId remaps payload slug before route replace.
+          data: adoptedDetails,
           fetchContextKey: 'albumDetails:test-artist:stand-up-remastered',
           artistSlug: 'test-artist',
           albumId: 'stand-up-remastered',
@@ -165,6 +165,39 @@ describe('Album integration tests', () => {
     expect(screen.getByLabelText(/блок c альбомом/i)).toBeInTheDocument();
     expect(screen.queryByText(/альбом не найден/i)).not.toBeInTheDocument();
     expect(screen.queryByLabelText(/скелетон альбома/i)).not.toBeInTheDocument();
+  });
+
+  test('при переходе A → B показывает skeleton, а не данные предыдущего альбома', () => {
+    const staleAlbumA = createMockAlbumDetails({
+      albumId: 'album-a',
+      slug: 'album-a',
+      title: 'Album A',
+    });
+
+    renderWithProviders(<Album />, {
+      initialEntries: ['/albums/album-b?artist=test-artist'],
+      preloadedState: {
+        lang: { current: 'en' },
+        albums: emptyAlbumsState(),
+        albumDetails: {
+          status: 'loading',
+          error: null,
+          errorCode: null,
+          data: staleAlbumA,
+          fetchContextKey: 'albumDetails:test-artist:album-b',
+          artistSlug: 'test-artist',
+          albumId: 'album-b',
+          lastUpdated: Date.now(),
+        },
+        uiDictionary: {
+          en: { status: 'idle', error: null, data: [], lastUpdated: null },
+          ru: { status: 'idle', error: null, data: [], lastUpdated: null },
+        },
+      },
+    });
+
+    expect(screen.getByLabelText(/скелетон альбома/i)).toBeInTheDocument();
+    expect(screen.queryByText('Album A')).not.toBeInTheDocument();
   });
 
   test('должен отобразить ошибку при failed статусе AlbumDetails', () => {

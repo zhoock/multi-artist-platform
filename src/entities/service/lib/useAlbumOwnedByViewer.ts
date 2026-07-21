@@ -1,5 +1,10 @@
-import { useEffect, useState, useSyncExternalStore } from 'react';
-import { getMyPurchasesCached, type Purchase } from '@shared/api/purchases';
+import { useEffect, useLayoutEffect, useState, useSyncExternalStore } from 'react';
+import {
+  getMyPurchasesCached,
+  getMyPurchasesCacheEpoch,
+  subscribeMyPurchasesCache,
+  type Purchase,
+} from '@shared/api/purchases';
 import { getAlbumKeyForPaymentApis } from '@shared/lib/payment/albumPaymentKey';
 import {
   getAuthSessionIdentityKey,
@@ -25,6 +30,14 @@ function findOwnedPurchase(
   );
 }
 
+function isOwnershipCheckActive(
+  enabled: boolean,
+  albumKey: string | undefined,
+  userId: string | undefined
+): boolean {
+  return Boolean(enabled && albumKey && userId && isAuthenticated());
+}
+
 /**
  * Whether the signed-in viewer owns this album (account library).
  *
@@ -42,15 +55,25 @@ export function useAlbumOwnedByViewer(
     getAuthSessionIdentityKey,
     () => ''
   );
+  const purchasesCacheEpoch = useSyncExternalStore(
+    subscribeMyPurchasesCache,
+    getMyPurchasesCacheEpoch,
+    () => 0
+  );
   void sessionKey;
 
   const userId = getUser()?.id;
+  const checkActive = isOwnershipCheckActive(enabled, albumKey, userId);
   const [isOwned, setIsOwned] = useState(false);
   const [ownedPurchase, setOwnedPurchase] = useState<Purchase | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(checkActive);
+
+  useLayoutEffect(() => {
+    setLoading(checkActive);
+  }, [checkActive]);
 
   useEffect(() => {
-    if (!enabled || !albumKey || !userId || !isAuthenticated()) {
+    if (!checkActive || !albumKey || !userId) {
       setIsOwned(false);
       setOwnedPurchase(null);
       setLoading(false);
@@ -84,7 +107,7 @@ export function useAlbumOwnedByViewer(
     return () => {
       cancelled = true;
     };
-  }, [album, albumKey, enabled, userId, sessionKey]);
+  }, [album, albumKey, checkActive, userId, sessionKey, purchasesCacheEpoch]);
 
   return { isOwned, ownedPurchase, loading };
 }

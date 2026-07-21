@@ -32,7 +32,9 @@
 
 import type { Handler, HandlerEvent, HandlerContext } from '@netlify/functions';
 import dns from 'node:dns';
+import { getUserIdFromEvent } from './lib/api-helpers';
 import { query } from './lib/db';
+import { buyerAlreadyOwnsAlbumForCheckout } from './lib/purchase-access';
 import { resolveAlbumSellerUserId } from './lib/resolveAlbumSellerUserId';
 import { resolveAlbumByKey, resolveAlbumSlug } from './lib/resolve-album-key';
 import { resolveAlbumPaymentReturnUrl } from './lib/yookassa-return-url';
@@ -354,6 +356,23 @@ export const handler: Handler = async (
       };
     }
     const sellerUserId = sellerResolved.sellerUserId;
+
+    const buyerUserId = getUserIdFromEvent(event);
+    if (await buyerAlreadyOwnsAlbumForCheckout(buyerUserId, data.customerEmail, data.albumId)) {
+      console.log('ℹ️ create-payment blocked: buyer already owns album', {
+        albumId: data.albumId,
+        buyerUserId: buyerUserId ? `…${buyerUserId.slice(-6)}` : null,
+      });
+      return {
+        statusCode: 409,
+        headers,
+        body: JSON.stringify({
+          success: false,
+          error: 'ALREADY_OWNED',
+          message: 'This album is already in your library.',
+        } as CreatePaymentResponse),
+      };
+    }
 
     let shopId: string;
     let secretKey: string;
