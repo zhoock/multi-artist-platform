@@ -2,7 +2,7 @@
  * Direct album checkout modal.
  *
  * Заменяет старый cart → cart-modal → checkout-modal flow на один шаг:
- * Buy → этот модал → YooKassa redirect → /pay/success.
+ * Buy → этот модал → YooKassa redirect → /pay/status → /pay/success|/pay/fail.
  *
  * - Принимает один альбом через props (никакого cart-state снаружи).
  * - Сам подтягивает ownership через `useAlbumOwnedByViewer` и, если альбом
@@ -36,6 +36,7 @@ import { formatAlbumDisplayFullName } from '@shared/lib/profileDisplayName';
 import { useSiteArtistDisplayName } from '@shared/lib/hooks/useSiteArtistDisplayName';
 import { beginAlbumCheckoutAuthIntent } from '@shared/lib/authIntent';
 import { sanitizeReturnPath } from '@shared/lib/authReturnUrl';
+import { ALBUM_PAY_STATUS_PATH, ALBUM_PAY_SUCCESS_PATH } from '@shared/lib/paymentRoutes';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 import { ModalCloseIcon } from '@shared/ui/icons/ModalCloseIcon';
 import { getAlbumPrice } from '../lib/getAlbumPrice';
@@ -267,7 +268,7 @@ export function AlbumCheckoutModal({ isOpen, album, onClose }: AlbumCheckoutModa
       const returnTo = sanitizeReturnPath(rawReturnTo) ?? '/';
       const returnUrl =
         typeof window !== 'undefined'
-          ? `${window.location.origin}/pay/success?returnTo=${encodeURIComponent(returnTo)}`
+          ? `${window.location.origin}${ALBUM_PAY_STATUS_PATH}?returnTo=${encodeURIComponent(returnTo)}`
           : '';
 
       const result = await createPayment({
@@ -294,7 +295,7 @@ export function AlbumCheckoutModal({ isOpen, album, onClose }: AlbumCheckoutModa
       }
 
       if (result.orderId && typeof window !== 'undefined') {
-        window.location.href = `${window.location.origin}/pay/success?orderId=${result.orderId}`;
+        window.location.href = `${window.location.origin}${ALBUM_PAY_SUCCESS_PATH}?orderId=${result.orderId}`;
         return;
       }
 

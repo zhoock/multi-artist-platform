@@ -303,9 +303,12 @@ function Layout() {
     matchPath({ path: pattern, end: true }, location.pathname)
   );
 
-  const isPaymentRoute = ['/pay/success', '/pay/fail', '/pay/subscription-success'].some(
-    (pattern) => matchPath({ path: pattern, end: true }, location.pathname)
-  );
+  const isPaymentRoute = [
+    '/pay/status',
+    '/pay/success',
+    '/pay/fail',
+    '/pay/subscription-success',
+  ].some((pattern) => matchPath({ path: pattern, end: true }, location.pathname));
 
   const shouldHideChrome = !isKnownRoute;
 
@@ -592,6 +595,14 @@ function Layout() {
 
   const paymentRoutes = (
     <Routes>
+      <Route
+        path="/pay/status"
+        element={
+          <Suspense fallback={<PageLoader />}>
+            <PaymentSuccess />
+          </Suspense>
+        }
+      />
       <Route
         path="/pay/success"
         element={

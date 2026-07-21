@@ -1,6 +1,9 @@
 import { buildPublicAppPath } from './public-app-url';
 
+/** Neutral landing after YooKassa; client redirects to success/fail once status is known. */
+export const ALBUM_PAY_STATUS_PATH = '/pay/status';
 export const ALBUM_PAY_SUCCESS_PATH = '/pay/success';
+export const ALBUM_PAY_FAIL_PATH = '/pay/fail';
 export const SUBSCRIPTION_PAY_SUCCESS_PATH = '/pay/subscription-success';
 
 export interface ResolveYooKassaReturnUrlOptions {
@@ -55,7 +58,7 @@ export function resolveAlbumPaymentReturnUrl(options: {
     requestedUrl: options.requestedUrl,
     envReturnUrl: process.env.YOOKASSA_RETURN_URL,
     refererOrigin: options.refererOrigin,
-    successPath: ALBUM_PAY_SUCCESS_PATH,
+    successPath: ALBUM_PAY_STATUS_PATH,
     queryParams: { orderId: options.orderId },
   });
 }

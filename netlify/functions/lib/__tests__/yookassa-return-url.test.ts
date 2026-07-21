@@ -1,6 +1,6 @@
 import { LOCAL_DEV_FRONTEND_ORIGIN } from '../public-app-url';
 import {
-  ALBUM_PAY_SUCCESS_PATH,
+  ALBUM_PAY_STATUS_PATH,
   resolveAlbumPaymentReturnUrl,
   resolveSubscriptionPaymentReturnUrl,
   resolveYooKassaReturnUrl,
@@ -49,17 +49,17 @@ describe('yookassa-return-url', () => {
 
     const url = resolveAlbumPaymentReturnUrl({ orderId: 'ord-2' });
 
-    expect(url).toBe('https://multi-artist-platform.netlify.app/pay/success?orderId=ord-2');
+    expect(url).toBe('https://multi-artist-platform.netlify.app/pay/status?orderId=ord-2');
   });
 
   it('uses referer origin when env is unset', () => {
     const url = resolveYooKassaReturnUrl({
       refererOrigin: 'https://multi-artist-platform.netlify.app',
-      successPath: ALBUM_PAY_SUCCESS_PATH,
+      successPath: ALBUM_PAY_STATUS_PATH,
       queryParams: { orderId: 'ord-3' },
     });
 
-    expect(url).toBe('https://multi-artist-platform.netlify.app/pay/success?orderId=ord-3');
+    expect(url).toBe('https://multi-artist-platform.netlify.app/pay/status?orderId=ord-3');
   });
 
   it('prefers body returnUrl over env', () => {

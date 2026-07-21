@@ -45,6 +45,7 @@ export type DashboardModalBackground = {
 };
 
 export const PAYMENT_RETURN_PATHS = [
+  '/pay/status',
   '/pay/success',
   '/pay/fail',
   '/pay/subscription-success',

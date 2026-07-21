@@ -203,7 +203,7 @@ describe('AlbumCheckoutModal', () => {
       billingData: { buyerDisplayName: 'Test Artist' },
     });
     expect(typeof payload.returnUrl).toBe('string');
-    expect(payload.returnUrl).toContain('/pay/success?returnTo=');
+    expect(payload.returnUrl).toContain('/pay/status?returnTo=');
   });
 
   test('surfaces createPayment error and stays on form', async () => {
