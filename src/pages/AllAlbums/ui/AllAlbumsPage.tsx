@@ -145,7 +145,7 @@ export function AllAlbumsPage() {
   }
 
   if (artistSlug && artistPageAccess.showVisitorUnderConstruction) {
-    return <ArtistPageUnderConstruction variant="visitor" />;
+    return <ArtistPageUnderConstruction />;
   }
 
   return (

@@ -337,7 +337,6 @@ export interface IInterface {
     heroHeadlineAccent: string;
     heroSubtext: string;
     primaryCta: string;
-    catalogHint: string;
     features: {
       article: { title: string; description: string };
       earning: { title: string; description: string };
@@ -347,8 +346,6 @@ export interface IInterface {
   };
   artistPageUnderConstruction?: {
     title: string;
-    subtitle: string;
-    cta: string;
     visitorSubtitle?: string;
     visitorCta?: string;
   };

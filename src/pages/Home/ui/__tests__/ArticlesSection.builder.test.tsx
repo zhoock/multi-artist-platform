@@ -12,7 +12,6 @@ const baseAccess = {
   hasPublicReleases: false,
   showOnboarding: false,
   showOnboardingSkeleton: false,
-  showOwnerUnderConstruction: false,
   showVisitorUnderConstruction: false,
   showNotFound: false,
   showPublished: true,

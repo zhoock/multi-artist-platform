@@ -17,7 +17,6 @@ jest.mock('@shared/lib/hooks/useArtistPageAccess', () => ({
     showOnboardingSkeleton: false,
     showNotFound: false,
     showVisitorUnderConstruction: false,
-    showOwnerUnderConstruction: false,
     showArtistPageSkeleton: false,
     showPublished: true,
     pageReady: true,

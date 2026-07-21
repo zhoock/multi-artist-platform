@@ -583,7 +583,6 @@ describe('useArtistPageAccess — owner onboarding after full content removal', 
 
     await waitFor(() => {
       expect(result.current.showOnboarding).toBe(true);
-      expect(result.current.showOwnerUnderConstruction).toBe(false);
     });
   });
 });

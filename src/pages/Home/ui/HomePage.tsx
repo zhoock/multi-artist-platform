@@ -345,12 +345,8 @@ export function HomePage() {
       return <ArtistOnboarding />;
     }
 
-    if (artistPageAccess.showOwnerUnderConstruction) {
-      return <ArtistPageUnderConstruction variant="owner" />;
-    }
-
     if (artistPageAccess.showVisitorUnderConstruction) {
-      return <ArtistPageUnderConstruction variant="visitor" />;
+      return <ArtistPageUnderConstruction />;
     }
 
     if (artistPageAccess.showArtistPageSkeleton) {

@@ -163,7 +163,7 @@ export default function Album() {
   }
 
   if (artistParam && artistPageAccess.showVisitorUnderConstruction) {
-    return <ArtistPageUnderConstruction variant="visitor" />;
+    return <ArtistPageUnderConstruction />;
   }
 
   if (artistParam && showAlbumLoadingShell) {

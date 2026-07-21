@@ -204,7 +204,6 @@
       "heroHeadlineAccent": "here",
       "heroSubtext": "Publish your first album to appear in the catalog.",
       "primaryCta": "Upload album",
-      "catalogHint": "You will appear in the catalog after publishing an album",
       "features": {
         "profile": {
           "title": "Create your artist page",
@@ -226,8 +225,6 @@
     },
     "artistPageUnderConstruction": {
       "title": "Page Is Under Construction",
-      "subtitle": "You have started building your page. Publish an album, article, or profile details to make it visible to everyone.",
-      "cta": "Open dashboard",
       "visitorSubtitle": "This artist has not published their first release yet. This page will become available after the first publication.",
       "visitorCta": "Back to the galaxy"
     },

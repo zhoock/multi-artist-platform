@@ -84,7 +84,6 @@ export type ArtistPageAccessValue = {
   hasPublicReleases: boolean;
   showOnboarding: boolean;
   showOnboardingSkeleton: boolean;
-  showOwnerUnderConstruction: boolean;
   showVisitorUnderConstruction: boolean;
   showNotFound: boolean;
   showPublished: boolean;
@@ -579,9 +578,6 @@ export function useArtistPageAccessState(
 
   const showOnboardingSkeleton = !catalogArtistMissing && ownerOnboardingResolutionPending;
 
-  /** Владелец после onboarding видит реальную страницу с builder-блоками, не under construction. */
-  const showOwnerUnderConstruction = false;
-
   /** Артист существует, но публичного контента ещё нет — для посетителей, не владельца. */
   const showVisitorUnderConstruction =
     !onAlbumDetail &&
@@ -617,7 +613,6 @@ export function useArtistPageAccessState(
     !showOnboarding &&
     !showOnboardingSkeleton &&
     !showNotFound &&
-    !showOwnerUnderConstruction &&
     !showVisitorUnderConstruction &&
     !showArtistPageSurfacePending &&
     !isHeaderImagesReady;
@@ -625,18 +620,13 @@ export function useArtistPageAccessState(
   const showArtistPageLayoutPending = showArtistPageSurfacePending || showArtistPageHeroPending;
 
   const suppressPublishedArtistChrome =
-    showOnboarding ||
-    showOnboardingSkeleton ||
-    showNotFound ||
-    showOwnerUnderConstruction ||
-    showVisitorUnderConstruction;
+    showOnboarding || showOnboardingSkeleton || showNotFound || showVisitorUnderConstruction;
 
   const isArtistPublishedSurface =
     Boolean(normalizedArtistSlug) &&
     !showOnboarding &&
     !showOnboardingSkeleton &&
     !showNotFound &&
-    !showOwnerUnderConstruction &&
     !showVisitorUnderConstruction;
 
   const pageReady =
@@ -668,7 +658,6 @@ export function useArtistPageAccessState(
     hasPublicReleases,
     showOnboarding,
     showOnboardingSkeleton,
-    showOwnerUnderConstruction,
     showVisitorUnderConstruction,
     showNotFound,
     showPublished,
