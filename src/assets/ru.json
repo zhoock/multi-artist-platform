@@ -1008,6 +1008,10 @@
         "createAccount": "Создать аккаунт",
         "switchToSignIn": "Уже есть аккаунт? Войдите",
         "switchToCreateAccount": "Ещё нет аккаунта? Создайте"
+      },
+      "purchaseSuccessToast": {
+        "title": "Альбом добавлен в «Мои покупки»",
+        "description": "Вы можете скачать его в любой момент."
       }
     },
     "artistPageBuilder": {

@@ -5,6 +5,7 @@ import { Helmet } from 'react-helmet-async';
 import './PaymentSuccess.style.scss';
 import { fetchWithAuthSession } from '@shared/lib/authFetch';
 import { invalidateMyPurchasesCache } from '@shared/api/purchases';
+import { redirectToAlbumReturnPath } from '@shared/lib/albumPurchaseSuccessToast';
 import {
   ALBUM_PAY_FAIL_PATH,
   ALBUM_PAY_SUCCESS_PATH,
@@ -246,15 +247,7 @@ function PaymentSuccess() {
         setRedirectCountdown((prev) => {
           if (prev <= 1) {
             clearInterval(countdownInterval);
-            try {
-              const returnUrl = new URL(returnTo, window.location.origin);
-              // Сохраняем search (`?artist=...`) и hash при возврате на
-              // album page — иначе на multi-tenant странице потеряется
-              // контекст артиста.
-              window.location.href = `${returnUrl.pathname}${returnUrl.search}${returnUrl.hash}`;
-            } catch {
-              window.location.href = returnTo;
-            }
+            redirectToAlbumReturnPath(returnTo);
             return 0;
           }
           return prev - 1;
@@ -439,14 +432,7 @@ function PaymentSuccess() {
                     <button
                       type="button"
                       className="payment-success__button payment-success__button--primary"
-                      onClick={() => {
-                        try {
-                          const returnUrl = new URL(returnTo, window.location.origin);
-                          window.location.href = `${returnUrl.pathname}${returnUrl.search}${returnUrl.hash}`;
-                        } catch {
-                          window.location.href = returnTo;
-                        }
-                      }}
+                      onClick={() => redirectToAlbumReturnPath(returnTo)}
                     >
                       Вернуться сейчас
                     </button>

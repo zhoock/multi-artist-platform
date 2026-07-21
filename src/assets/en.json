@@ -1008,6 +1008,10 @@
         "createAccount": "Create account",
         "switchToSignIn": "Already have an account? Sign in",
         "switchToCreateAccount": "New here? Create an account"
+      },
+      "purchaseSuccessToast": {
+        "title": "Album added to My Purchases",
+        "description": "You can download it any time."
       }
     },
     "artistPageBuilder": {

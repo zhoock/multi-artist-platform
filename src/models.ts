@@ -1144,6 +1144,11 @@ export interface IInterface {
       switchToSignIn?: string;
       switchToCreateAccount?: string;
     };
+    /** One-shot toast after album checkout return (`returnTo`). */
+    purchaseSuccessToast?: {
+      title?: string;
+      description?: string;
+    };
   };
 }
 

@@ -28,6 +28,7 @@ import { useArtistArchiveStatus } from '@features/artistArchive/lib/useArtistArc
 import { getAlbumPrice } from '../lib/getAlbumPrice';
 import { getAlbumArchiveSizeLabel } from '../lib/getAlbumArchiveSizeLabel';
 import { getAlbumDownloadOfferLabel } from '../lib/getAlbumDownloadFormatsLabel';
+import { AlbumPurchaseSuccessToast } from '@shared/ui/albumPurchaseSuccessToast';
 import './style.scss';
 
 type ServiceButtonsProps = {
@@ -96,7 +97,12 @@ function ServiceButtonsContent({
     !yookassaLoading &&
     yookassaAvailable &&
     !isAlbumOwnerView;
-  const { isOwned, ownedPurchase } = useAlbumOwnedByViewer(album, downloadButtonEnabled);
+  const {
+    isOwned,
+    ownedPurchase,
+    loading: ownershipLoading,
+  } = useAlbumOwnedByViewer(album, downloadButtonEnabled);
+  const returnPath = `${location.pathname}${location.search}${location.hash}`;
   const artistUserId = album?.userId?.trim() || null;
   const { buttonState: archiveButtonState } = useArtistArchiveStatus(
     downloadButtonEnabled ? artistUserId : null
@@ -356,6 +362,14 @@ function ServiceButtonsContent({
         variant="error"
         onClose={() => setDownloadErrorOpen(false)}
       />
+
+      {section === 'Купить' && downloadButtonEnabled && (
+        <AlbumPurchaseSuccessToast
+          isOwned={isOwned}
+          ownershipLoading={ownershipLoading}
+          returnPath={returnPath}
+        />
+      )}
     </div>
   );
 }
