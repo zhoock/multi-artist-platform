@@ -92,7 +92,7 @@ describe('AllAlbumsPage — CatalogAlbum', () => {
             data: [
               {
                 menu: {},
-                buttons: { allAlbumsLoaded: 'All loaded' },
+                buttons: {},
                 titles: { albums: 'Albums', allAlbumsPageTitle: 'All albums' },
               },
             ],
@@ -106,7 +106,6 @@ describe('AllAlbumsPage — CatalogAlbum', () => {
     expect(screen.getByText('Albums')).toBeInTheDocument();
     expect(screen.getByAltText(/Обложка альбома First Album/)).toBeInTheDocument();
     expect(screen.getByAltText(/Обложка альбома Second Album/)).toBeInTheDocument();
-    expect(screen.getByText('All loaded')).toBeInTheDocument();
   });
 
   test('скрывает альбомы без треков и неопубликованные для посетителя', () => {

@@ -5,11 +5,4 @@
   &__load-more {
     margin-block-start: var(--ms-1);
   }
-
-  &__end {
-    color: var(--text-color-secondary, rgb(255 255 255 / 60%));
-    font-size: var(--ms-0);
-    text-align: center;
-    margin-block: var(--ms-2);
-  }
 }

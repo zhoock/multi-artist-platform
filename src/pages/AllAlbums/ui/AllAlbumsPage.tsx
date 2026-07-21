@@ -189,11 +189,6 @@ export function AllAlbumsPage() {
                 <AlbumsSkeleton count={4} />
               </div>
             )}
-
-            {/* Индикатор конца списка */}
-            {!hasMore && allAlbums.length > 0 && (
-              <p className="all-albums__end">{ui?.buttons?.allAlbumsLoaded ?? ''}</p>
-            )}
           </>
         )}
       </div>

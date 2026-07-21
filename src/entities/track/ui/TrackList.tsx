@@ -1,9 +1,12 @@
 import React, { useEffect, useMemo } from 'react';
 import clsx from 'clsx';
 import { Lock as LockIcon, Pause, Play } from 'lucide-react';
+import { useLang } from '@app/providers/lang';
 import type { TrackDetails } from '@entities/album/model/albumDetails';
 import { isTrackPlaybackBlocked } from '@shared/lib/tracks/trackPlayback';
 import type { AppStore, RootState } from '@shared/model/appStore/types';
+import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
+import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 import { fallbackAlbumClientId } from '@shared/lib/albumClientId';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 import {
@@ -72,6 +75,17 @@ type TrackListProps = {
 };
 
 export function TrackList({ tracks, album, store, onSelectTrack }: TrackListProps) {
+  const { lang } = useLang();
+  const ui = useAppSelector((state) => selectUiDictionaryFirst(state, lang));
+
+  const trackLockedAriaLabel =
+    ui?.titles?.trackLockedAriaLabel ?? (lang === 'en' ? 'Unavailable' : 'Недоступно');
+  const trackLockedAriaDescription =
+    ui?.titles?.trackLockedAriaDescription ??
+    (lang === 'en'
+      ? 'Premium support required to play'
+      : 'Для воспроизведения нужна Premium-поддержка');
+
   const initialState = store.getState() as RootState;
   const [activeIndex, setActiveIndex] = React.useState(initialState.player.currentTrackIndex);
   const [isPlaying, setIsPlaying] = React.useState(initialState.player.isPlaying);
@@ -158,10 +172,14 @@ export function TrackList({ tracks, album, store, onSelectTrack }: TrackListProp
                   }
                 : undefined
             }
-            aria-label={playbackLocked ? `Недоступно: ${track.title}` : 'Кнопка с названием песни'}
+            aria-label={
+              playbackLocked
+                ? `${trackLockedAriaLabel}: ${track.title}`
+                : 'Кнопка с названием песни'
+            }
             aria-description={
               playbackLocked
-                ? `Трек недоступен без покупки: ${track.title}`
+                ? `${trackLockedAriaDescription}: ${track.title}`
                 : isPlayingNow
                   ? `Остановить воспроизведение: ${track.title}`
                   : `Воспроизвести: ${track.title}`

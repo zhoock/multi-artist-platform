@@ -246,6 +246,8 @@
       "allArticlesPageDesc": "Просмотр всех статей и публикаций",
       "articleLockedOverlayTitle": "Только для подписчиков",
       "articleLockedOverlayHint": "Оформите подписку, чтобы читать",
+      "trackLockedAriaLabel": "Недоступно",
+      "trackLockedAriaDescription": "Для воспроизведения нужна Premium-поддержка",
       "articleSubscriptionLockedOverlayTitle": "Продолжить чтение",
       "articleSubscriptionLockedOverlayHint": "Эта статья доступна подписчикам.",
       "articleArchiveLockedOverlayTitle": "Артист не в вашей коллекции",
