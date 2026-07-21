@@ -17,11 +17,14 @@ import { uiDictionaryReducer } from '@shared/model/uiDictionary/uiDictionarySlic
 import { currentArtistReducer } from '@shared/model/currentArtist';
 import { trackLyricsReducer } from '@entities/lyrics/model/trackLyricsSlice';
 import { usePaymentSettings } from '../usePaymentSettings';
+import type { PaymentSettingsResponse } from '@shared/api/payment/types';
 
-const getPaymentSettingsMock = jest.fn();
+const getPaymentSettingsMock =
+  jest.fn<(request?: { provider?: string; userId?: string }) => Promise<PaymentSettingsResponse>>();
 
 jest.mock('@shared/api/payment/settings', () => ({
-  getPaymentSettings: (...args: unknown[]) => getPaymentSettingsMock(...args),
+  getPaymentSettings: (request?: { provider?: string; userId?: string }) =>
+    getPaymentSettingsMock(request),
   savePaymentSettings: jest.fn(),
   disconnectPaymentProvider: jest.fn(),
 }));
@@ -64,7 +67,7 @@ function createHookWrapper() {
 describe('usePaymentSettings lazy loading', () => {
   beforeEach(() => {
     getPaymentSettingsMock.mockReset();
-    getPaymentSettingsMock.mockResolvedValue({ success: true, settings: null });
+    getPaymentSettingsMock.mockResolvedValue({ success: true });
   });
 
   it('does not fetch payment settings while the tab is inactive', async () => {
@@ -115,7 +118,7 @@ describe('usePaymentSettings lazy loading', () => {
   it('retries loading when the tab is reopened after an error', async () => {
     getPaymentSettingsMock
       .mockRejectedValueOnce(new Error('Network error'))
-      .mockResolvedValueOnce({ success: true, settings: null });
+      .mockResolvedValueOnce({ success: true });
 
     const { result, rerender } = renderHook(
       ({ isActive }) => usePaymentSettings({ userId: 'user-1', active: isActive }),

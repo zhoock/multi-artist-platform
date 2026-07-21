@@ -99,11 +99,16 @@ dialog {
     }
 
     &__expanded-track-duration {
+      display: none;
       flex-shrink: 0;
-      margin-inline-start: auto;
       color: var(--dashboard-text-secondary);
       font-size: var(--dashboard-font-size);
       font-variant-numeric: tabular-nums;
+
+      @include breakpoint(tablet) {
+        display: block;
+        margin-inline-start: auto;
+      }
     }
 
     &__expanded-track-access-slot {
