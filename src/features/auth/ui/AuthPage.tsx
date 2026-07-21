@@ -1,5 +1,11 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useNavigate, useSearchParams, useLocation, type Location } from 'react-router-dom';
+import {
+  useNavigate,
+  useSearchParams,
+  useLocation,
+  type Location,
+  type NavigateFunction,
+} from 'react-router-dom';
 import {
   isAuthenticated,
   isEmailVerified,
@@ -44,6 +50,18 @@ import './RoleSelectionScreen.scss';
 type AuthMode = 'login' | 'register' | 'forgot';
 type RegisterStep = 'role' | 'form';
 
+function getOverlayBackgroundLocation(state: Location['state']): Location | undefined {
+  return (state as { backgroundLocation?: Location } | null)?.backgroundLocation;
+}
+
+/** Explicit return to underlying surface — avoids navigate(-1) after replace-based auth opens. */
+function navigateToOverlayBackground(navigate: NavigateFunction, bg: Location): void {
+  navigate(
+    { pathname: bg.pathname, search: bg.search, hash: bg.hash ?? '' },
+    { replace: true, state: bg.state ?? undefined }
+  );
+}
+
 function resolveSessionExpiredBannerMessage(
   reason: SessionExpiredBannerReason,
   ui: ReturnType<typeof selectUiDictionaryFirst>
@@ -70,7 +88,8 @@ function resolveSessionExpiredBannerMessage(
  *     отсутствует, AuthPage рендерится как полноэкранная страница.
  *
  * UI — shared `<Popup>` / native `<dialog>` (как UserDashboard, VerifyEmailModal).
- * Закрытие: × / backdrop / Escape → dialog.close() → `onClose` → `handleCloseAuth`.
+ * Закрытие: × / backdrop / Escape → dialog.close() → `onClose` → `handleCloseAuth`
+ * (overlay → явный переход в backgroundLocation; standalone → /).
  *
  * Body scroll lock (`useBodyScrollLock`) дополняет dialog: iOS Safari игнорирует
  * overflow:hidden на body, поэтому фиксируем scroll отдельно пока открыт auth-form.
@@ -111,9 +130,8 @@ export function AuthPage() {
 
   // True, когда AuthPage открыт как overlay поверх другой страницы — тогда
   // в `location.state.backgroundLocation` лежит URL underlying-страницы.
-  const hasOverlayBackground = Boolean(
-    (location.state as { backgroundLocation?: Location } | null)?.backgroundLocation
-  );
+  const overlayBackground = getOverlayBackgroundLocation(location.state);
+  const hasOverlayBackground = Boolean(overlayBackground);
 
   const finishPostAuthNavigation = useCallback(async () => {
     if (postAuthNavigationStartedRef.current) return;
@@ -124,7 +142,7 @@ export function AuthPage() {
     const returnToRaw = searchParams.get('returnTo');
 
     if (hasOverlayBackground) {
-      const bg = (location.state as { backgroundLocation?: Location } | null)?.backgroundLocation;
+      const bg = overlayBackground;
       const bgPath = bg ? `${bg.pathname}${bg.search}${bg.hash ?? ''}` : '/';
       const destination = resolvePostAuthDestinationForUser(currentUser, {
         returnToSearchParam: returnToRaw,
@@ -140,10 +158,7 @@ export function AuthPage() {
         return;
       }
       if (bg) {
-        navigate(
-          { pathname: bg.pathname, search: bg.search, hash: bg.hash ?? '' },
-          { replace: true, state: bg.state ?? undefined }
-        );
+        navigateToOverlayBackground(navigate, bg);
         return;
       }
       const explicitReturnTo = sanitizeReturnPath(returnToRaw);
@@ -161,7 +176,7 @@ export function AuthPage() {
       pendingRegistration: hasPendingArtistOnboarding(currentUser),
     });
     navigate(destination, { replace: true });
-  }, [hasOverlayBackground, lang, location.state, navigate, searchParams]);
+  }, [hasOverlayBackground, lang, location.state, navigate, overlayBackground, searchParams]);
 
   const syncSessionExpiredBanner = useCallback(() => {
     const reason = consumeSessionExpiredBannerReason();
@@ -218,12 +233,12 @@ export function AuthPage() {
       navigate({ pathname: '/', search: '' }, { replace: true });
       return;
     }
-    if (hasOverlayBackground) {
-      navigate(-1);
+    if (overlayBackground) {
+      navigateToOverlayBackground(navigate, overlayBackground);
       return;
     }
     navigate('/', { replace: true });
-  }, [hasOverlayBackground, navigate]);
+  }, [navigate, overlayBackground]);
 
   // iOS Safari: дополнение к native dialog scroll lock (см. useBodyScrollLock).
   // Лочим только пока auth-form на экране; при переходе на VerifyEmailModal
