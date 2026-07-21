@@ -34,6 +34,70 @@ describe('MyPurchasesContent', () => {
     getMyPurchasesMock.mockReset();
   });
 
+  it('does not fetch purchases while the tab is inactive', async () => {
+    renderWithProviders(<MyPurchasesContent active={false} />);
+
+    await waitFor(() => {
+      expect(getMyPurchasesMock).not.toHaveBeenCalled();
+    });
+  });
+
+  it('fetches purchases once when the tab becomes active', async () => {
+    getMyPurchasesMock.mockResolvedValue([samplePurchase]);
+
+    renderWithProviders(<MyPurchasesContent active />);
+
+    await waitFor(() => {
+      expect(getMyPurchasesMock).toHaveBeenCalledTimes(1);
+    });
+
+    expect(screen.getByText('Test Artist — Test Album')).toBeTruthy();
+  });
+
+  it('does not refetch when toggling active after a successful load', async () => {
+    getMyPurchasesMock.mockResolvedValue([samplePurchase]);
+
+    const { rerender } = renderWithProviders(<MyPurchasesContent active />);
+
+    await waitFor(() => {
+      expect(getMyPurchasesMock).toHaveBeenCalledTimes(1);
+    });
+
+    rerender(<MyPurchasesContent active={false} />);
+    rerender(<MyPurchasesContent active />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Test Artist — Test Album')).toBeTruthy();
+    });
+
+    expect(getMyPurchasesMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('retries loading when the tab is reopened after an error', async () => {
+    getMyPurchasesMock
+      .mockRejectedValueOnce(new Error('Network error'))
+      .mockResolvedValueOnce([samplePurchase]);
+
+    const { rerender } = renderWithProviders(<MyPurchasesContent active />);
+
+    await waitFor(() => {
+      expect(getMyPurchasesMock).toHaveBeenCalledTimes(1);
+    });
+
+    expect(screen.getByText('Network error')).toBeTruthy();
+
+    rerender(<MyPurchasesContent active={false} />);
+    rerender(<MyPurchasesContent active />);
+
+    await waitFor(() => {
+      expect(getMyPurchasesMock).toHaveBeenCalledTimes(2);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('Test Artist — Test Album')).toBeTruthy();
+    });
+  });
+
   it('renders loading state', async () => {
     getMyPurchasesMock.mockImplementation(
       () =>
@@ -42,7 +106,7 @@ describe('MyPurchasesContent', () => {
         })
     );
 
-    const { container } = renderWithProviders(<MyPurchasesContent />);
+    const { container } = renderWithProviders(<MyPurchasesContent active />);
 
     await waitFor(() => {
       expect(getMyPurchasesMock).toHaveBeenCalled();
@@ -54,7 +118,7 @@ describe('MyPurchasesContent', () => {
   it('renders empty state when there are no purchases', async () => {
     getMyPurchasesMock.mockResolvedValue([]);
 
-    const { container } = renderWithProviders(<MyPurchasesContent />);
+    const { container } = renderWithProviders(<MyPurchasesContent active />);
 
     await waitFor(() => {
       expect(container.querySelector('.dashboard-empty-state--tab')).toBeTruthy();
@@ -64,7 +128,7 @@ describe('MyPurchasesContent', () => {
   it('renders purchase card with cover meta and icon actions only', async () => {
     getMyPurchasesMock.mockResolvedValue([samplePurchase]);
 
-    const { container } = renderWithProviders(<MyPurchasesContent />);
+    const { container } = renderWithProviders(<MyPurchasesContent active />);
 
     await waitFor(() => {
       expect(screen.getByText('Test Artist — Test Album')).toBeTruthy();

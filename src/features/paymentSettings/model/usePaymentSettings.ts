@@ -15,9 +15,15 @@ import { getStore } from '@shared/model/appStore';
 import { PAYMENT_PROVIDERS } from '../lib/constants';
 import { fillPaymentSettingsTemplate } from '../lib/fillPaymentSettingsTemplate';
 
+interface UsePaymentSettingsOptions {
+  userId: string;
+  active: boolean;
+}
+
 interface UsePaymentSettingsReturn {
   settingsMap: Record<PaymentProvider, UserPaymentSettings | null>;
   loading: boolean;
+  loadSucceeded: boolean;
   saving: PaymentProvider | null;
   error: string | null;
   success: string | null;
@@ -42,7 +48,10 @@ interface UsePaymentSettingsReturn {
   handleDisconnect: (provider: PaymentProvider) => Promise<void>;
 }
 
-export function usePaymentSettings(userId: string): UsePaymentSettingsReturn {
+export function usePaymentSettings({
+  userId,
+  active,
+}: UsePaymentSettingsOptions): UsePaymentSettingsReturn {
   const { lang } = useLang();
   const ui = useAppSelector((state) => selectUiDictionaryFirst(state, lang));
   const copy = ui?.dashboard?.paymentSettings;
@@ -54,7 +63,8 @@ export function usePaymentSettings(userId: string): UsePaymentSettingsReturn {
     stripe: null,
     paypal: null,
   });
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [loadSucceeded, setLoadSucceeded] = useState(false);
   const [saving, setSaving] = useState<PaymentProvider | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -107,6 +117,7 @@ export function usePaymentSettings(userId: string): UsePaymentSettingsReturn {
       if (activeSettings) {
         setShopId(activeSettings.shopId || '');
       }
+      setLoadSucceeded(true);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load payment settings';
       if (!errorMessage.includes('netlify') && !errorMessage.includes('JSON')) {
@@ -115,11 +126,12 @@ export function usePaymentSettings(userId: string): UsePaymentSettingsReturn {
     } finally {
       setLoading(false);
     }
-  }, [userId, activeProvider]);
+  }, [activeProvider, userId]);
 
   useEffect(() => {
-    loadSettings();
-  }, [loadSettings]);
+    if (!active || loadSucceeded) return;
+    void loadSettings();
+  }, [active, loadSucceeded, loadSettings]);
 
   const handleConnect = async (
     provider: PaymentProvider,
@@ -227,6 +239,7 @@ export function usePaymentSettings(userId: string): UsePaymentSettingsReturn {
   return {
     settingsMap,
     loading,
+    loadSucceeded,
     saving,
     error,
     success,

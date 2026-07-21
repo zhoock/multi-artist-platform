@@ -52,14 +52,19 @@ function formatTracksCount(
   return template.replace('{count}', String(count));
 }
 
-export function MyPurchasesContent() {
+type MyPurchasesContentProps = {
+  active: boolean;
+};
+
+export function MyPurchasesContent({ active }: MyPurchasesContentProps) {
   const { lang } = useLang();
   const ui = useAppSelector((state) => selectUiDictionaryFirst(state, lang));
   const copy = ui?.dashboard?.myPurchases;
   const dashboardCopy = ui?.dashboard;
 
   const [purchases, setPurchases] = useState<Purchase[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [loadSucceeded, setLoadSucceeded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [downloadingAlbums, setDownloadingAlbums] = useState<Set<string>>(new Set());
   const [purchaseToRemove, setPurchaseToRemove] = useState<Purchase | null>(null);
@@ -72,6 +77,7 @@ export function MyPurchasesContent() {
     try {
       const data = await getMyPurchases();
       setPurchases(data);
+      setLoadSucceeded(true);
     } catch (err) {
       console.error('Error fetching purchases:', err);
       setError(
@@ -84,8 +90,11 @@ export function MyPurchasesContent() {
   }, [copy?.loadFailed]);
 
   useEffect(() => {
+    if (!active || loadSucceeded) return;
     void loadPurchases();
-  }, [loadPurchases]);
+  }, [active, loadSucceeded, loadPurchases]);
+
+  const showLoading = loading || (active && !loadSucceeded && !error);
 
   const handleDownloadAlbum = async (purchase: Purchase) => {
     if (downloadingAlbums.has(purchase.id)) {
@@ -137,12 +146,16 @@ export function MyPurchasesContent() {
     });
   };
 
+  if (!loadSucceeded && !error && !active) {
+    return null;
+  }
+
   return (
     <>
-      {!loading && !error && purchases.length === 0 ? (
-        <MyPurchasesEmptyState ui={ui} />
-      ) : loading ? (
+      {showLoading ? (
         <DashboardLoadingState className="my-purchases__loading" />
+      ) : !error && purchases.length === 0 ? (
+        <MyPurchasesEmptyState ui={ui} />
       ) : (
         <div className="user-dashboard__section">
           {error && <div className="my-purchases__error">{error}</div>}

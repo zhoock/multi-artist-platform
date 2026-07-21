@@ -7,13 +7,15 @@ import { PaymentSettings } from '../PaymentSettings';
 const usePaymentSettingsMock = jest.fn();
 
 jest.mock('../../model/usePaymentSettings', () => ({
-  usePaymentSettings: (userId: string) => usePaymentSettingsMock(userId),
+  usePaymentSettings: (options: { userId: string; active: boolean }) =>
+    usePaymentSettingsMock(options),
 }));
 
 function baseHookReturn(overrides: Record<string, unknown> = {}) {
   return {
     settingsMap: { yookassa: null, stripe: null },
     loading: false,
+    loadSucceeded: true,
     saving: null,
     error: null,
     success: null,
@@ -37,10 +39,24 @@ describe('PaymentSettings', () => {
     usePaymentSettingsMock.mockReset();
   });
 
-  it('renders loading state', () => {
-    usePaymentSettingsMock.mockReturnValue(baseHookReturn({ loading: true }));
+  it('renders nothing while inactive before the first successful load', () => {
+    usePaymentSettingsMock.mockReturnValue(
+      baseHookReturn({ loadSucceeded: false, loading: false, error: null })
+    );
 
-    const { container } = renderWithProviders(<PaymentSettings userId="user-1" />);
+    const { container } = renderWithProviders(<PaymentSettings userId="user-1" active={false} />);
+
+    expect(container.firstChild).toBeNull();
+    expect(usePaymentSettingsMock).toHaveBeenCalledWith({
+      userId: 'user-1',
+      active: false,
+    });
+  });
+
+  it('renders loading state', () => {
+    usePaymentSettingsMock.mockReturnValue(baseHookReturn({ loading: true, loadSucceeded: false }));
+
+    const { container } = renderWithProviders(<PaymentSettings userId="user-1" active />);
 
     expect(
       container.querySelector('.dashboard-loading-state.payment-settings__loading')
@@ -50,7 +66,7 @@ describe('PaymentSettings', () => {
   it('renders disconnected state with dashboard kit layout and connect CTA', () => {
     usePaymentSettingsMock.mockReturnValue(baseHookReturn());
 
-    const { container } = renderWithProviders(<PaymentSettings userId="user-1" />);
+    const { container } = renderWithProviders(<PaymentSettings userId="user-1" active />);
 
     expect(container.querySelector('.dashboard-section')).toBeTruthy();
     expect(container.querySelector('.dashboard-card')).toBeTruthy();
@@ -73,7 +89,7 @@ describe('PaymentSettings', () => {
       })
     );
 
-    const { container } = renderWithProviders(<PaymentSettings userId="user-1" />);
+    const { container } = renderWithProviders(<PaymentSettings userId="user-1" active />);
 
     expect(container.querySelector('.status-badge--published')).toBeNull();
     expect(screen.queryByText('Connected')).toBeNull();
@@ -95,7 +111,7 @@ describe('PaymentSettings', () => {
       })
     );
 
-    const { container } = renderWithProviders(<PaymentSettings userId="user-1" />);
+    const { container } = renderWithProviders(<PaymentSettings userId="user-1" active />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Disconnect' }));
 
@@ -114,7 +130,7 @@ describe('PaymentSettings', () => {
       })
     );
 
-    const { container } = renderWithProviders(<PaymentSettings userId="user-1" />);
+    const { container } = renderWithProviders(<PaymentSettings userId="user-1" active />);
 
     expect(container.querySelectorAll('.dashboard-row').length).toBeGreaterThanOrEqual(2);
     expect(screen.getByLabelText('Shop ID')).toBeTruthy();

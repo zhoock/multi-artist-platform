@@ -23,6 +23,7 @@ import './PaymentSettings.style.scss';
 
 interface PaymentSettingsProps {
   userId: string;
+  active: boolean;
 }
 
 function PaymentProviderLogo({
@@ -83,7 +84,7 @@ function ProviderRowLabel({
   );
 }
 
-export function PaymentSettings({ userId }: PaymentSettingsProps) {
+export function PaymentSettings({ userId, active }: PaymentSettingsProps) {
   const { lang } = useLang();
   const ui = useAppSelector((state) => selectUiDictionaryFirst(state, lang));
   const copy = ui?.dashboard?.paymentSettings;
@@ -91,6 +92,7 @@ export function PaymentSettings({ userId }: PaymentSettingsProps) {
   const {
     settingsMap,
     loading,
+    loadSucceeded,
     saving,
     error,
     localShopId,
@@ -104,7 +106,7 @@ export function PaymentSettings({ userId }: PaymentSettingsProps) {
     setShowForm,
     handleConnect,
     handleDisconnect,
-  } = usePaymentSettings(userId);
+  } = usePaymentSettings({ userId, active });
 
   const [providerToDisconnect, setProviderToDisconnect] = useState<PaymentProvider | null>(null);
 
@@ -303,7 +305,13 @@ export function PaymentSettings({ userId }: PaymentSettingsProps) {
     );
   };
 
-  if (loading) {
+  if (!loadSucceeded && !error && !active) {
+    return null;
+  }
+
+  const showLoading = loading || (active && !loadSucceeded && !error);
+
+  if (showLoading) {
     return (
       <div className="payment-settings">
         <DashboardLoadingState className="payment-settings__loading" />

@@ -1872,7 +1872,10 @@ function UserDashboard() {
                           {!emailVerified ? (
                             <EmailVerificationOnboarding context="payment-settings" />
                           ) : user?.id ? (
-                            <PaymentSettings userId={user.id} />
+                            <PaymentSettings
+                              userId={user.id}
+                              active={activeTab === 'payment-settings'}
+                            />
                           ) : (
                             <p className="user-dashboard__tab-placeholder">
                               {ui?.dashboard?.errorLoading ?? 'Error loading'}
@@ -1885,7 +1888,7 @@ function UserDashboard() {
                         hidden={activeTab !== 'my-purchases'}
                         aria-hidden={activeTab !== 'my-purchases'}
                       >
-                        <MyPurchasesContent />
+                        <MyPurchasesContent active={activeTab === 'my-purchases'} />
                       </div>
                       {isArtist ? (
                         <div
