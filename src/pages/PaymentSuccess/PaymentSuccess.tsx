@@ -1,11 +1,14 @@
 // src/pages/PaymentSuccess/PaymentSuccess.tsx
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams, useNavigate, useLocation } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import './PaymentSuccess.style.scss';
+import { useLang } from '@app/providers/lang';
 import { fetchWithAuthSession } from '@shared/lib/authFetch';
 import { invalidateMyPurchasesCache } from '@shared/api/purchases';
 import { redirectToAlbumReturnPath } from '@shared/lib/albumPurchaseSuccessToast';
+import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
+import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 import {
   ALBUM_PAY_FAIL_PATH,
   ALBUM_PAY_SUCCESS_PATH,
@@ -44,6 +47,94 @@ interface StatusInfo {
   className: string;
 }
 
+type PaymentUiError = 'missing_reference' | 'fetch_failed';
+
+const labelsFor = (lang: string, ui: ReturnType<typeof selectUiDictionaryFirst> | null) => {
+  const copy = ui?.checkout?.paymentSuccess;
+  const en = lang === 'en';
+
+  return {
+    pageTitleSuccess:
+      copy?.pageTitleSuccess ??
+      (en ? 'Payment successful — Smolyanoe Chuchelko' : 'Оплата успешна — Смоляное Чучелко'),
+    pageTitleFail:
+      copy?.pageTitleFail ??
+      (en
+        ? 'Payment not completed — Smolyanoe Chuchelko'
+        : 'Платёж не завершён — Смоляное Чучелко'),
+    pageTitleResolve:
+      copy?.pageTitleResolve ??
+      (en ? 'Payment status — Smolyanoe Chuchelko' : 'Статус оплаты — Смоляное Чучелко'),
+    loading: copy?.loading ?? (en ? 'Loading payment status…' : 'Статус оплаты загружается…'),
+    verifyErrorTitle:
+      copy?.verifyErrorTitle ??
+      (en ? 'Could not verify payment' : 'Не получилось проверить оплату'),
+    missingReference:
+      copy?.missingReference ??
+      (en ? 'Payment reference is missing.' : 'Не указан идентификатор платежа или заказа.'),
+    fetchFailed:
+      copy?.fetchFailed ??
+      (en
+        ? 'Could not retrieve payment status. Please try again.'
+        : 'Не удалось получить статус оплаты. Попробуйте ещё раз.'),
+    reloadPage: copy?.reloadPage ?? (en ? 'Reload page' : 'Обновить страницу'),
+    succeededTitle: copy?.succeededTitle ?? (en ? 'Payment successful!' : 'Оплата успешна!'),
+    succeededMessage:
+      copy?.succeededMessage ??
+      (en
+        ? 'Your order has been paid. Thank you for your purchase!'
+        : 'Ваш заказ успешно оплачен. Спасибо за покупку!'),
+    incompleteTitle: copy?.incompleteTitle ?? (en ? 'Payment not completed' : 'Платёж не завершён'),
+    incompleteMessage:
+      copy?.incompleteMessage ??
+      (en
+        ? 'The operation was not completed or is still processing. To continue, click "Try again".'
+        : 'Операция не была завершена или ещё обрабатывается. Чтобы продолжить оплату, нажмите «Попробовать снова».'),
+    canceledTitle: copy?.canceledTitle ?? (en ? 'Payment not completed' : 'Платёж не завершён'),
+    canceledMessage:
+      copy?.canceledMessage ??
+      (en
+        ? 'Payment was canceled. You can try again.'
+        : 'Платёж отменён. Вы можете попробовать снова.'),
+    canceledWithReasonPrefix:
+      copy?.canceledWithReasonPrefix ??
+      (en ? 'Could not charge payment:' : 'Не удалось списать оплату:'),
+    unknownTitle: copy?.unknownTitle ?? (en ? 'Status pending confirmation' : 'Статус уточняется'),
+    unknownStatusPrefix: copy?.unknownStatusPrefix ?? (en ? 'Payment status:' : 'Статус платежа:'),
+    pollTimeoutNote:
+      copy?.pollTimeoutNote ??
+      (en
+        ? 'Status is taking longer than expected — reload the page or return to checkout.'
+        : 'Статус долго не обновляется — обновите страницу или вернитесь к оформлению заказа.'),
+    amountLabel: copy?.amountLabel ?? (en ? 'Amount:' : 'Сумма:'),
+    emailLabel: copy?.emailLabel ?? 'Email:',
+    orderNumberLabel: copy?.orderNumberLabel ?? (en ? 'Order number:' : 'Номер заказа:'),
+    downloadLinkSentPrefix:
+      copy?.downloadLinkSentPrefix ??
+      (en ? 'Download link sent to email' : 'Ссылка на скачивание отправлена на email'),
+    redirectCountdownOne:
+      copy?.redirectCountdownOne ??
+      (en
+        ? 'Returning to the previous page in {seconds} second…'
+        : 'Возвращаемся на исходную страницу через {seconds} секунду…'),
+    redirectCountdownMany:
+      copy?.redirectCountdownMany ??
+      (en
+        ? 'Returning to the previous page in {seconds} seconds…'
+        : 'Возвращаемся на исходную страницу через {seconds} секунды…'),
+    successImageAlt: copy?.successImageAlt ?? (en ? 'Payment successful' : 'Оплата успешна'),
+    myPurchases: copy?.myPurchases ?? (en ? 'My purchases' : 'Мои покупки'),
+    home: copy?.home ?? (en ? 'Home' : 'На главную'),
+    returnNow: copy?.returnNow ?? (en ? 'Return now' : 'Вернуться сейчас'),
+    tryAgain: copy?.tryAgain ?? (en ? 'Try again' : 'Попробовать снова'),
+    orderNotFoundTitle: copy?.orderNotFoundTitle ?? (en ? 'Order not found' : 'Заказ не найден'),
+    orderNotFoundMessage:
+      copy?.orderNotFoundMessage ??
+      (en ? 'Could not find order information.' : 'Не удалось найти информацию о заказе.'),
+    returnHome: copy?.returnHome ?? (en ? 'Return to home' : 'Вернуться на главную'),
+  };
+};
+
 /** YooKassa payment UUID (ориентировочная эвристика) */
 function isYooKassaPaymentId(value: string): boolean {
   return (
@@ -63,6 +154,9 @@ const MAX_STATUS_POLLS = 20;
 const POLL_INTERVAL_MS = 5000;
 
 function PaymentSuccess() {
+  const { lang } = useLang();
+  const ui = useAppSelector((state) => selectUiDictionaryFirst(state, lang));
+  const labels = useMemo(() => labelsFor(lang, ui), [lang, ui]);
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const location = useLocation();
@@ -72,7 +166,7 @@ function PaymentSuccess() {
   const returnTo = searchParams.get('returnTo');
   const [payment, setPayment] = useState<PaymentStatus | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<PaymentUiError | null>(null);
   const [statusCheckTimedOut, setStatusCheckTimedOut] = useState(false);
   const [redirectCountdown, setRedirectCountdown] = useState(5);
 
@@ -96,7 +190,7 @@ function PaymentSuccess() {
   const fetchPaymentOnce = useCallback(async (): Promise<{ stop: boolean; fatal: boolean }> => {
     const apiQuery = resolveApiQuery();
     if (!apiQuery) {
-      setError('Payment ID or Order ID is missing');
+      setError('missing_reference');
       setLoading(false);
       return { stop: true, fatal: true };
     }
@@ -108,7 +202,7 @@ function PaymentSuccess() {
 
     const data = await response.json();
     if (!data.success || !data.payment) {
-      setError(data.error || data.message || 'Failed to fetch payment status');
+      setError('fetch_failed');
       setLoading(false);
       return { stop: true, fatal: true };
     }
@@ -123,7 +217,7 @@ function PaymentSuccess() {
 
   useEffect(() => {
     if (!paymentIdParam && !orderIdParam) {
-      setError('Payment ID or Order ID is missing');
+      setError('missing_reference');
       setLoading(false);
       return undefined;
     }
@@ -259,9 +353,8 @@ function PaymentSuccess() {
   }, [payment?.status, returnTo]);
 
   const getIncompleteStatusUi = (): StatusInfo => ({
-    title: 'Платёж не завершён',
-    message:
-      'Операция не была завершена или ещё обрабатывается. Чтобы продолжить оплату, нажмите «Попробовать снова».',
+    title: labels.incompleteTitle,
+    message: labels.incompleteMessage,
     icon: '📌',
     className: 'payment-success__status--pending',
   });
@@ -270,8 +363,8 @@ function PaymentSuccess() {
     switch (paymentData.status) {
       case 'succeeded':
         return {
-          title: 'Оплата успешна!',
-          message: 'Ваш заказ успешно оплачен. Спасибо за покупку!',
+          title: labels.succeededTitle,
+          message: labels.succeededMessage,
           icon: '✅',
           className: 'payment-success__status--paid',
         };
@@ -280,17 +373,17 @@ function PaymentSuccess() {
         return getIncompleteStatusUi();
       case 'canceled':
         return {
-          title: 'Платёж не завершён',
+          title: labels.canceledTitle,
           message: paymentData.cancellation_details?.reason
-            ? `Не удалось списать оплату: ${paymentData.cancellation_details.reason}`
-            : 'Платёж отменён. Вы можете попробовать снова.',
+            ? `${labels.canceledWithReasonPrefix} ${paymentData.cancellation_details.reason}`
+            : labels.canceledMessage,
           icon: '❌',
           className: 'payment-success__status--canceled',
         };
       default:
         return {
-          title: 'Статус уточняется',
-          message: `Статус платежа: ${paymentData.status}`,
+          title: labels.unknownTitle,
+          message: `${labels.unknownStatusPrefix} ${paymentData.status}`,
           icon: '❓',
           className: 'payment-success__status--unknown',
         };
@@ -299,10 +392,17 @@ function PaymentSuccess() {
 
   const pageTitle =
     routeMode === 'success'
-      ? 'Оплата успешна — Смоляное Чучелко'
+      ? labels.pageTitleSuccess
       : routeMode === 'fail'
-        ? 'Платёж не завершён — Смоляное Чучелко'
-        : 'Статус оплаты — Смоляное Чучелко';
+        ? labels.pageTitleFail
+        : labels.pageTitleResolve;
+
+  const errorMessage = error === 'missing_reference' ? labels.missingReference : labels.fetchFailed;
+
+  const redirectCountdownText =
+    redirectCountdown === 1
+      ? labels.redirectCountdownOne.replace('{seconds}', String(redirectCountdown))
+      : labels.redirectCountdownMany.replace('{seconds}', String(redirectCountdown));
 
   const showResolveLoading = routeMode === 'resolve';
   const showSuccessOutcome = routeMode === 'success' && payment?.status === 'succeeded';
@@ -321,25 +421,25 @@ function PaymentSuccess() {
           {showResolveLoading || showRouteAlignLoading ? (
             <div className="payment-success__loading">
               <div className="payment-success__spinner" aria-hidden />
-              <p>Статус оплаты загружается…</p>
+              <p>{labels.loading}</p>
             </div>
           ) : error ? (
             routeMode === 'fail' ? (
               <div className="payment-success__error">
-                <h1>Не получилось проверить оплату</h1>
-                <p>{error}</p>
+                <h1>{labels.verifyErrorTitle}</h1>
+                <p>{errorMessage}</p>
                 <button
                   type="button"
                   className="payment-success__button"
                   onClick={() => window.location.reload()}
                 >
-                  Обновить страницу
+                  {labels.reloadPage}
                 </button>
               </div>
             ) : (
               <div className="payment-success__loading">
                 <div className="payment-success__spinner" aria-hidden />
-                <p>Статус оплаты загружается…</p>
+                <p>{labels.loading}</p>
               </div>
             )
           ) : showSuccessOutcome && payment ? (
@@ -354,16 +454,17 @@ function PaymentSuccess() {
                   {!returnTo && (
                     <div className="payment-success__details">
                       <p>
-                        <strong>Сумма:</strong> {payment.amount.value} {payment.amount.currency}
+                        <strong>{labels.amountLabel}</strong> {payment.amount.value}{' '}
+                        {payment.amount.currency}
                       </p>
                       {payment.metadata?.customerEmail && (
                         <p>
-                          <strong>Email:</strong> {payment.metadata.customerEmail}
+                          <strong>{labels.emailLabel}</strong> {payment.metadata.customerEmail}
                         </p>
                       )}
                       {payment.metadata?.orderId && (
                         <p>
-                          <strong>Номер заказа:</strong> {payment.metadata.orderId}
+                          <strong>{labels.orderNumberLabel}</strong> {payment.metadata.orderId}
                         </p>
                       )}
                     </div>
@@ -374,34 +475,32 @@ function PaymentSuccess() {
                       <div className="payment-success__success-message">
                         <img
                           src="/images/illustrations/successful-payment.png"
-                          alt="Оплата успешна"
+                          alt={labels.successImageAlt}
                           className="payment-success__success-icon"
                         />
                         <p className="payment-success__success-text">
-                          Ссылка на скачивание отправлена на email{' '}
+                          {labels.downloadLinkSentPrefix}{' '}
                           <strong>{payment.metadata?.customerEmail || ''}</strong>
                         </p>
                         {redirectCountdown > 0 && (
-                          <p className="payment-success__redirect-note">
-                            Возвращаемся на исходную страницу через {redirectCountdown}{' '}
-                            {redirectCountdown === 1 ? 'секунду' : 'секунды'}…
-                          </p>
+                          <p className="payment-success__redirect-note">{redirectCountdownText}</p>
                         )}
                       </div>
                     ) : (
                       <>
                         <div className="payment-success__details">
                           <p>
-                            <strong>Сумма:</strong> {payment.amount.value} {payment.amount.currency}
+                            <strong>{labels.amountLabel}</strong> {payment.amount.value}{' '}
+                            {payment.amount.currency}
                           </p>
                           {payment.metadata?.customerEmail && (
                             <p>
-                              <strong>Email:</strong> {payment.metadata.customerEmail}
+                              <strong>{labels.emailLabel}</strong> {payment.metadata.customerEmail}
                             </p>
                           )}
                           {payment.metadata?.orderId && (
                             <p>
-                              <strong>Номер заказа:</strong> {payment.metadata.orderId}
+                              <strong>{labels.orderNumberLabel}</strong> {payment.metadata.orderId}
                             </p>
                           )}
                         </div>
@@ -415,7 +514,7 @@ function PaymentSuccess() {
                               })
                             }
                           >
-                            Мои покупки
+                            {labels.myPurchases}
                           </button>
                         )}
                         <button
@@ -423,7 +522,7 @@ function PaymentSuccess() {
                           className="payment-success__button"
                           onClick={() => navigate('/')}
                         >
-                          На главную
+                          {labels.home}
                         </button>
                       </>
                     )}
@@ -434,7 +533,7 @@ function PaymentSuccess() {
                       className="payment-success__button payment-success__button--primary"
                       onClick={() => redirectToAlbumReturnPath(returnTo)}
                     >
-                      Вернуться сейчас
+                      {labels.returnNow}
                     </button>
                   )}
                 </div>
@@ -453,10 +552,7 @@ function PaymentSuccess() {
                   <p className="payment-success__message">{statusInfo.message}</p>
 
                   {statusCheckTimedOut && isPendingLike && (
-                    <p className="payment-success__muted-note">
-                      Статус долго не обновляется — обновите страницу или вернитесь к оформлению
-                      заказа.
-                    </p>
+                    <p className="payment-success__muted-note">{labels.pollTimeoutNote}</p>
                   )}
 
                   <div className="payment-success__pending-actions">
@@ -467,7 +563,7 @@ function PaymentSuccess() {
                         target="_self"
                         rel="noopener noreferrer"
                       >
-                        Попробовать снова
+                        {labels.tryAgain}
                       </a>
                     ) : (
                       <button
@@ -475,7 +571,7 @@ function PaymentSuccess() {
                         className="payment-success__button payment-success__button--primary"
                         onClick={handleTryAgainNavigate}
                       >
-                        Попробовать снова
+                        {labels.tryAgain}
                       </button>
                     )}
                     <button
@@ -483,7 +579,7 @@ function PaymentSuccess() {
                       className="payment-success__button"
                       onClick={() => navigate('/')}
                     >
-                      На главную
+                      {labels.home}
                     </button>
                   </div>
                 </div>
@@ -491,14 +587,14 @@ function PaymentSuccess() {
             })()
           ) : (
             <div className="payment-success__error">
-              <h1>Заказ не найден</h1>
-              <p>Не удалось найти информацию о заказе.</p>
+              <h1>{labels.orderNotFoundTitle}</h1>
+              <p>{labels.orderNotFoundMessage}</p>
               <button
                 type="button"
                 className="payment-success__button"
                 onClick={() => navigate('/')}
               >
-                Вернуться на главную
+                {labels.returnHome}
               </button>
             </div>
           )}

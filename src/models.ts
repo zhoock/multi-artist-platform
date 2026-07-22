@@ -1149,6 +1149,41 @@ export interface IInterface {
       title?: string;
       description?: string;
     };
+    /** Album payment return pages (`/pay/status`, `/pay/success`, `/pay/fail`). */
+    paymentSuccess?: {
+      pageTitleSuccess?: string;
+      pageTitleFail?: string;
+      pageTitleResolve?: string;
+      loading?: string;
+      verifyErrorTitle?: string;
+      missingReference?: string;
+      fetchFailed?: string;
+      reloadPage?: string;
+      succeededTitle?: string;
+      succeededMessage?: string;
+      incompleteTitle?: string;
+      incompleteMessage?: string;
+      canceledTitle?: string;
+      canceledMessage?: string;
+      canceledWithReasonPrefix?: string;
+      unknownTitle?: string;
+      unknownStatusPrefix?: string;
+      pollTimeoutNote?: string;
+      amountLabel?: string;
+      emailLabel?: string;
+      orderNumberLabel?: string;
+      downloadLinkSentPrefix?: string;
+      redirectCountdownOne?: string;
+      redirectCountdownMany?: string;
+      successImageAlt?: string;
+      myPurchases?: string;
+      home?: string;
+      returnNow?: string;
+      tryAgain?: string;
+      orderNotFoundTitle?: string;
+      orderNotFoundMessage?: string;
+      returnHome?: string;
+    };
   };
 }
 
