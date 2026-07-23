@@ -1003,7 +1003,7 @@
       },
       "authGate": {
         "title": "Sign in to complete your purchase",
-        "description": "Your library is tied to an account so you can re-download this album any time, on any device.",
+        "description": "Sign in to save this album to My Purchases — re-download any time, on any device.",
         "benefitLibrary": "Album saved to your account forever",
         "benefitDevices": "Re-download any time, on any device",
         "benefitSecure": "Secure access — no broken email links",
@@ -1039,7 +1039,7 @@
         "amountLabel": "Amount:",
         "emailLabel": "Email:",
         "orderNumberLabel": "Order number:",
-        "downloadLinkSentPrefix": "Download link sent to",
+        "downloadLinkSentPrefix": "Purchase confirmation sent to",
         "redirectCountdownOne": "Returning to the album page in {seconds} sec",
         "redirectCountdownMany": "Returning to the album page in {seconds} sec",
         "successImageAlt": "Payment successful",

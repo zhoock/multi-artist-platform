@@ -230,7 +230,7 @@ describe('AlbumCheckoutModal', () => {
     createPaymentMock.mockResolvedValueOnce({
       success: false,
       error: 'ALREADY_OWNED',
-      message: 'This album is already in your library.',
+      message: 'This album is already in My Purchases.',
     });
 
     renderWithProviders(<AlbumCheckoutModal isOpen album={testAlbum} onClose={() => {}} />);
@@ -246,10 +246,10 @@ describe('AlbumCheckoutModal', () => {
     expect(screen.queryByText('fan@example.com')).not.toBeInTheDocument();
     expect(
       screen.getByRole('heading', {
-        name: /already in your library|уже в вашей библиотеке/i,
+        name: /already in my purchases|уже в «мои покупках»/i,
       })
     ).toBeInTheDocument();
-    expect(screen.getByText(/this album is already in your library/i)).toBeInTheDocument();
+    expect(screen.getByText(/this album is already in my purchases/i)).toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: /download album|скачать альбом/i })
     ).toBeInTheDocument();
@@ -284,7 +284,7 @@ describe('AlbumCheckoutModal', () => {
 
     expect(
       screen.getByRole('heading', {
-        name: /already in your library|уже в вашей библиотеке/i,
+        name: /already in my purchases|уже в «мои покупках»/i,
       })
     ).toBeInTheDocument();
     expect(screen.queryByText(/continue to payment|перейти к оплате/i)).not.toBeInTheDocument();

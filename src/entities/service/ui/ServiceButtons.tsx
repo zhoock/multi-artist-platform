@@ -415,7 +415,7 @@ export function ServiceButtons({ album, section }: ServiceButtonsProps) {
           downloadAlbum: 'Download Album',
           downloadAlbumLoading: 'Downloading...',
           downloadAlbumPreparing: 'Preparing download...',
-          ownershipChecking: 'Checking your library...',
+          ownershipChecking: 'Checking My Purchases...',
           errorDownloadingAlbum: 'Error downloading album. Please try again.',
           errorTitle: 'Error',
         }
@@ -428,7 +428,7 @@ export function ServiceButtons({ album, section }: ServiceButtonsProps) {
           downloadAlbum: 'Скачать альбом',
           downloadAlbumLoading: 'Скачивание...',
           downloadAlbumPreparing: 'Подготовка загрузки...',
-          ownershipChecking: 'Проверяем вашу библиотеку...',
+          ownershipChecking: 'Проверяем «Мои покупки»...',
           errorDownloadingAlbum: 'Ошибка при скачивании альбома. Попробуйте ещё раз.',
           errorTitle: 'Ошибка',
         };

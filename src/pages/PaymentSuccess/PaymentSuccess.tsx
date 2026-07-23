@@ -138,7 +138,7 @@ const labelsFor = (lang: string, ui: ReturnType<typeof selectUiDictionaryFirst> 
         : 'Статус долго не обновляется — обновите страницу или вернитесь к оформлению заказа.'),
     downloadLinkSentPrefix:
       copy?.downloadLinkSentPrefix ??
-      (en ? 'Download link sent to' : 'Ссылка для скачивания отправлена на'),
+      (en ? 'Purchase confirmation sent to' : 'Подтверждение покупки отправлено на'),
     redirectCountdownOne:
       copy?.redirectCountdownOne ??
       (en

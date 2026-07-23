@@ -369,7 +369,7 @@ export const handler: Handler = async (
         body: JSON.stringify({
           success: false,
           error: 'ALREADY_OWNED',
-          message: 'This album is already in your library.',
+          message: 'This album is already in My Purchases.',
         } as CreatePaymentResponse),
       };
     }

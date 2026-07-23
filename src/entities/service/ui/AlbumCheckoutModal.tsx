@@ -98,10 +98,10 @@ const labelsFor = (
 
   return {
     title: en ? 'Buy album' : 'Купить альбом',
-    alreadyOwnedTitle: en ? 'Already in your library' : 'Уже в вашей библиотеке',
+    alreadyOwnedTitle: en ? 'Already in My Purchases' : 'Уже в «Мои покупках»',
     alreadyOwnedDescription: en
-      ? 'This album is already in your library.'
-      : 'Этот альбом уже находится в вашей библиотеке.',
+      ? 'This album is already in My Purchases.'
+      : 'Этот альбом уже есть в «Мои покупках».',
     downloadCta: buttons?.downloadAlbum ?? (en ? 'Download Album' : 'Скачать альбом'),
     downloadingCta: buttons?.downloadAlbumLoading ?? (en ? 'Downloading...' : 'Скачивание...'),
     close: en ? 'Close' : 'Закрыть',
@@ -111,8 +111,8 @@ const labelsFor = (
     authGateDescription:
       authGate?.description ??
       (en
-        ? 'Your library is tied to an account so you can re-download this album any time, on any device.'
-        : 'Альбом сохранится в вашей библиотеке — вы сможете скачать его в любой момент с любого устройства.'),
+        ? 'Sign in to save this album to My Purchases — re-download any time, on any device.'
+        : 'Альбом сохранится в «Мои покупки» — вы сможете скачать его в любой момент с любого устройства.'),
     authGateBenefitLibrary:
       authGate?.benefitLibrary ??
       (en ? 'Album saved to your account forever' : 'Альбом останется в вашем аккаунте навсегда'),
