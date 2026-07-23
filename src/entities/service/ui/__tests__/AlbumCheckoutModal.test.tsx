@@ -6,7 +6,7 @@
  *  - валидный submit идёт в createPayment с правильными аргументами
  *  - ошибка createPayment остаётся в форме (не редиректит)
  *  - ownership branch: уже куплено → форма скрыта, виден Download
- *  - пре-заполнение email из auth-сессии и read-only buyer identity
+ *  - пре-заполнение email из auth-сессии как read-only информация
  *  - defensive: album=null не рендерит ничего
  *
  * Сам редирект (`window.location.href = ...`) проверять в jsdom неудобно
@@ -144,11 +144,7 @@ const testAlbum: AlbumDetails = {
 };
 
 function fillValidForm() {
-  fireEvent.change(screen.getByLabelText(/email/i), {
-    target: { value: 'fan@example.com' },
-  });
-  const checkboxes = screen.getAllByRole('checkbox');
-  checkboxes.forEach((cb) => fireEvent.click(cb));
+  fireEvent.click(screen.getByRole('checkbox'));
 }
 
 beforeEach(() => {
@@ -185,7 +181,7 @@ describe('AlbumCheckoutModal', () => {
   });
 
   test('valid submit calls createPayment with album + customer details', async () => {
-    mockUser = { id: 'u1', email: '', name: '' };
+    mockUser = { id: 'u1', email: 'fan@example.com', name: '' };
     // Никогда не резолвим — чтобы тест не пытался выполнить редирект на
     // confirmationUrl и не нарваться на jsdom location-восстановление.
     createPaymentMock.mockImplementation(() => new Promise(() => {}));
@@ -212,7 +208,7 @@ describe('AlbumCheckoutModal', () => {
   });
 
   test('surfaces createPayment error and stays on form', async () => {
-    mockUser = { id: 'u1', email: '', name: '' };
+    mockUser = { id: 'u1', email: 'fan@example.com', name: '' };
     createPaymentMock.mockResolvedValueOnce({
       success: false,
       error: 'YooKassa unavailable',
@@ -226,7 +222,7 @@ describe('AlbumCheckoutModal', () => {
     await waitFor(() => {
       expect(screen.getByRole('alert')).toHaveTextContent('YooKassa unavailable');
     });
-    expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
+    expect(screen.getByText('fan@example.com')).toBeInTheDocument();
   });
 
   test('ALREADY_OWNED switches to download state without showing error code', async () => {
@@ -247,7 +243,7 @@ describe('AlbumCheckoutModal', () => {
     });
 
     expect(screen.queryByText('ALREADY_OWNED')).not.toBeInTheDocument();
-    expect(screen.queryByLabelText(/email/i)).not.toBeInTheDocument();
+    expect(screen.queryByText('fan@example.com')).not.toBeInTheDocument();
     expect(
       screen.getByRole('heading', {
         name: /already in your library|уже в вашей библиотеке/i,
@@ -259,7 +255,7 @@ describe('AlbumCheckoutModal', () => {
     ).toBeInTheDocument();
   });
 
-  test('prefills email and shows read-only buyer identity from profile', () => {
+  test('prefills email as read-only checkout info from profile', () => {
     mockUser = {
       id: 'u1',
       email: 'me@example.com',
@@ -269,11 +265,9 @@ describe('AlbumCheckoutModal', () => {
 
     renderWithProviders(<AlbumCheckoutModal isOpen album={testAlbum} onClose={() => {}} />);
 
-    expect(screen.getByLabelText(/email/i)).toHaveValue('me@example.com');
-    expect(screen.getByText('Name')).toBeInTheDocument();
-    expect(screen.getByText('Test Artist')).toBeInTheDocument();
-    expect(screen.queryByLabelText(/first name|имя/i)).not.toBeInTheDocument();
-    expect(screen.queryByLabelText(/last name|фамилия/i)).not.toBeInTheDocument();
+    expect(screen.getByText('Email')).toBeInTheDocument();
+    expect(screen.getByText('me@example.com')).toBeInTheDocument();
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
   });
 
   test('shows already-owned state and download CTA when isOwned=true', async () => {
@@ -293,7 +287,7 @@ describe('AlbumCheckoutModal', () => {
         name: /already in your library|уже в вашей библиотеке/i,
       })
     ).toBeInTheDocument();
-    expect(screen.queryByLabelText(/email/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/continue to payment|перейти к оплате/i)).not.toBeInTheDocument();
     expect(createPaymentMock).not.toHaveBeenCalled();
 
     fireEvent.click(screen.getByRole('button', { name: /download album|скачать альбом/i }));

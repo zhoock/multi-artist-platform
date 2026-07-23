@@ -69,9 +69,9 @@ const labelsFor = (
   downloadingCta: string;
   close: string;
   email: string;
-  agreeToOffer: string;
+  agreeCombinedPrefix: string;
+  agreeCombinedAnd: string;
   publicOffer: string;
-  agreeToPrivacy: string;
   privacyPolicy: string;
   payCta: string;
   payCtaProcessing: string;
@@ -132,13 +132,14 @@ const labelsFor = (
     authGateSwitchToCreateAccount:
       authGate?.switchToCreateAccount ??
       (en ? 'New here? Create an account' : 'Ещё нет аккаунта? Создайте'),
-    email: checkout?.checkout?.emailAddress ?? (en ? 'Email address' : 'Email'),
-    agreeToOffer: checkout?.checkout?.agreeToOffer ?? (en ? 'I agree to the' : 'Согласен с'),
-    publicOffer: checkout?.checkout?.publicOffer ?? (en ? 'public offer' : 'публичной офертой'),
-    agreeToPrivacy: checkout?.checkout?.agreeToPrivacy ?? (en ? 'I consent to' : 'Даю согласие на'),
+    email: checkout?.checkout?.emailAddress ?? (en ? 'Email' : 'Email'),
+    agreeCombinedPrefix:
+      checkout?.checkout?.agreeToOffer ??
+      (en ? 'I have read and agree to the' : 'Я ознакомился(ась) и согласен(на) с'),
+    agreeCombinedAnd: en ? 'and' : 'и',
+    publicOffer: checkout?.checkout?.publicOffer ?? (en ? 'Public Offer' : 'Публичной офертой'),
     privacyPolicy:
-      checkout?.checkout?.privacyPolicy ??
-      (en ? 'processing of personal data' : 'обработку персональных данных'),
+      checkout?.checkout?.privacyPolicy ?? (en ? 'Privacy Policy' : 'Политикой конфиденциальности'),
     payCta:
       checkout?.payment?.proceedToPayment ?? (en ? 'Continue to payment' : 'Перейти к оплате'),
     payCtaProcessing: checkout?.payment?.processing ?? (en ? 'Processing...' : 'Обработка...'),
@@ -480,47 +481,34 @@ export function AlbumCheckoutModal({ isOpen, album, onClose }: AlbumCheckoutModa
           ) : (
             <form className="album-checkout-modal__form" onSubmit={handleSubmit} noValidate>
               <div className="album-checkout-modal__field">
-                <label htmlFor="album-checkout-email" className="album-checkout-modal__label">
-                  {labels.email}
-                </label>
-                <input
-                  type="email"
-                  id="album-checkout-email"
-                  className={`album-checkout-modal__input${
-                    errors.email ? ' album-checkout-modal__input--error' : ''
-                  }`}
-                  value={email}
-                  onChange={(e) => {
-                    setEmail(e.target.value);
-                    if (errors.email) setErrors((prev) => ({ ...prev, email: undefined }));
-                  }}
-                  autoComplete="email"
-                  required
-                />
+                <span className="album-checkout-modal__label">{labels.email}</span>
+                <p className="album-checkout-modal__email-value">{email}</p>
                 {errors.email && (
                   <span className="album-checkout-modal__field-error">{errors.email}</span>
                 )}
-              </div>
-
-              <div className="album-checkout-modal__identity" aria-readonly="true">
-                <span className="album-checkout-modal__label">{buyerIdentity.label}</span>
-                <p className="album-checkout-modal__identity-value">{buyerIdentity.displayName}</p>
               </div>
 
               <label className="album-checkout-modal__agreement">
                 <input
                   type="checkbox"
                   className="album-checkout-modal__checkbox"
-                  checked={agreeToOffer}
+                  checked={agreeToOffer && agreeToPrivacy}
                   onChange={(e) => {
-                    setAgreeToOffer(e.target.checked);
-                    if (errors.agreeToOffer)
-                      setErrors((prev) => ({ ...prev, agreeToOffer: undefined }));
+                    const checked = e.target.checked;
+                    setAgreeToOffer(checked);
+                    setAgreeToPrivacy(checked);
+                    if (errors.agreeToOffer || errors.agreeToPrivacy) {
+                      setErrors((prev) => ({
+                        ...prev,
+                        agreeToOffer: undefined,
+                        agreeToPrivacy: undefined,
+                      }));
+                    }
                   }}
                   required
                 />
                 <span className="album-checkout-modal__agreement-text">
-                  {labels.agreeToOffer}{' '}
+                  {labels.agreeCombinedPrefix}{' '}
                   <Link
                     to="/offer"
                     target="_blank"
@@ -528,27 +516,8 @@ export function AlbumCheckoutModal({ isOpen, album, onClose }: AlbumCheckoutModa
                     className="album-checkout-modal__link"
                   >
                     {labels.publicOffer}
-                  </Link>
-                  {errors.agreeToOffer && (
-                    <span className="album-checkout-modal__field-error">{errors.agreeToOffer}</span>
-                  )}
-                </span>
-              </label>
-
-              <label className="album-checkout-modal__agreement">
-                <input
-                  type="checkbox"
-                  className="album-checkout-modal__checkbox"
-                  checked={agreeToPrivacy}
-                  onChange={(e) => {
-                    setAgreeToPrivacy(e.target.checked);
-                    if (errors.agreeToPrivacy)
-                      setErrors((prev) => ({ ...prev, agreeToPrivacy: undefined }));
-                  }}
-                  required
-                />
-                <span className="album-checkout-modal__agreement-text">
-                  {labels.agreeToPrivacy}{' '}
+                  </Link>{' '}
+                  {labels.agreeCombinedAnd}{' '}
                   <Link
                     to="/privacy"
                     target="_blank"
@@ -557,9 +526,10 @@ export function AlbumCheckoutModal({ isOpen, album, onClose }: AlbumCheckoutModa
                   >
                     {labels.privacyPolicy}
                   </Link>
-                  {errors.agreeToPrivacy && (
+                  .
+                  {(errors.agreeToOffer || errors.agreeToPrivacy) && (
                     <span className="album-checkout-modal__field-error">
-                      {errors.agreeToPrivacy}
+                      {errors.agreeToOffer ?? errors.agreeToPrivacy}
                     </span>
                   )}
                 </span>
@@ -585,8 +555,6 @@ export function AlbumCheckoutModal({ isOpen, album, onClose }: AlbumCheckoutModa
                   labels.payCta
                 )}
               </button>
-
-              <p className="album-checkout-modal__secure-note">{labels.secureNote}</p>
             </form>
           )}
         </div>

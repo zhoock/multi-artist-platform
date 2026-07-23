@@ -263,21 +263,11 @@
     }
   }
 
-  &__identity {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-  }
-
-  &__identity-value {
+  &__email-value {
     margin: 0;
-    padding: 12px;
     color: var(--dashboard-text-primary);
     font-size: var(--dashboard-font-size, 14px);
     font-family: var(--base-font-family, arial, sans-serif);
-    background: var(--dashboard-hover-bg);
-    border: 1px solid var(--dashboard-input-border);
-    border-radius: var(--ms-01);
     user-select: text;
   }
 
@@ -290,33 +280,6 @@
 
   &__label {
     @include dashboard-form-label($margin-bottom: 0);
-  }
-
-  &__input {
-    padding: 12px;
-    color: var(--dashboard-text-primary);
-    font-size: var(--dashboard-font-size, 14px);
-    background: var(--dashboard-input-bg);
-    border: 1px solid var(--dashboard-input-border);
-    border-radius: var(--ms-01);
-    transition: border-color 0.2s ease;
-    font-family: var(--base-font-family, arial, sans-serif);
-    inline-size: 100%;
-    box-sizing: border-box;
-
-    &:focus {
-      outline: none;
-      border-color: var(--dark-greenish-yellow);
-    }
-
-    &--error,
-    &--error:focus {
-      border-color: var(--soft-red);
-    }
-
-    &::placeholder {
-      color: var(--dashboard-text-secondary);
-    }
   }
 
   &__field-error {
@@ -335,42 +298,15 @@
   }
 
   &__checkbox {
-    position: relative;
     flex-shrink: 0;
     margin-block-start: 2px;
-    background: var(--dashboard-btn-secondary-hover-bg);
-    border-radius: 12px;
-    transition: background-color 0.2s ease;
-    inline-size: 44px;
-    block-size: 24px;
-    appearance: none;
+    inline-size: var(--ms-0);
+    block-size: var(--ms-0);
+    accent-color: var(--dark-greenish-yellow);
     cursor: pointer;
-
-    &::before {
-      position: absolute;
-      top: 2px;
-      left: 2px;
-      background: var(--dashboard-text-primary);
-      border-radius: 50%;
-      transition: transform 0.2s ease;
-      content: '';
-      inline-size: 20px;
-      block-size: 20px;
-    }
-
-    &:checked {
-      background: var(--dark-greenish-yellow);
-
-      &::before {
-        transform: translateX(20px);
-      }
-    }
   }
 
   &__agreement-text {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
     color: var(--dashboard-text-primary);
     font-size: var(--dashboard-font-size, 14px);
     line-height: 1.5;
@@ -433,12 +369,5 @@
     to {
       transform: rotate(360deg);
     }
-  }
-
-  &__secure-note {
-    margin: var(--ms-01) 0 0;
-    color: var(--dashboard-text-secondary);
-    font-size: 0.8125rem;
-    text-align: center;
   }
 }
