@@ -8,10 +8,23 @@ export function isAlbumUuid(value: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value.trim());
 }
 
+/** SQL fragment: albums aliased as `a`, users as `u` (LEFT JOIN). */
+export const ALBUMS_USER_JOIN_SQL = 'LEFT JOIN users u ON u.id = a.user_id';
+
+/** Resolved display name: site_name → name → public_slug → legacy albums.artist. */
+export const ARTIST_DISPLAY_NAME_SQL = `
+  COALESCE(
+    NULLIF(TRIM(u.site_name), ''),
+    NULLIF(TRIM(u.name), ''),
+    NULLIF(TRIM(u.public_slug), ''),
+    NULLIF(TRIM(a.artist), '')
+  )
+`;
+
 export interface ResolvedAlbum {
   id: string;
   albumSlug: string;
-  artist: string;
+  artistDisplayName: string;
   album: string;
   lang: string;
   cover: string | null;
@@ -21,18 +34,32 @@ export interface ResolvedAlbum {
 type AlbumRow = {
   id: string;
   album_slug: string;
-  artist: string;
+  artist_display_name: string | null;
   album: string;
   lang: string;
   cover: string | null;
   user_id: string | null;
 };
 
+export function resolveArtistDisplayNameFromParts(input: {
+  siteName?: string | null;
+  userName?: string | null;
+  publicSlug?: string | null;
+  legacyAlbumArtist?: string | null;
+}): string {
+  const fromUser =
+    input.siteName?.trim() || input.userName?.trim() || input.publicSlug?.trim() || '';
+  if (fromUser) {
+    return fromUser;
+  }
+  return input.legacyAlbumArtist?.trim() || '';
+}
+
 function mapAlbumRow(row: AlbumRow): ResolvedAlbum {
   return {
     id: row.id,
     albumSlug: row.album_slug,
-    artist: row.artist,
+    artistDisplayName: row.artist_display_name?.trim() || '',
     album: row.album,
     lang: row.lang,
     cover: row.cover,
@@ -41,23 +68,58 @@ function mapAlbumRow(row: AlbumRow): ResolvedAlbum {
 }
 
 const ALBUM_SELECT = `
-  SELECT id::text AS id,
-         album_id AS album_slug,
-         artist,
-         album,
-         lang,
-         cover,
-         user_id::text AS user_id
-  FROM albums
+  SELECT a.id::text AS id,
+         a.album_id AS album_slug,
+         ${ARTIST_DISPLAY_NAME_SQL} AS artist_display_name,
+         a.album,
+         a.lang,
+         a.cover,
+         a.user_id::text AS user_id
+  FROM albums a
+  ${ALBUMS_USER_JOIN_SQL}
 `;
 
 /** Prefer album row that actually has tracks (bilingual albums may have empty locale rows). */
 const ALBUM_ROW_PRIORITY = `
   ORDER BY (
-    SELECT COUNT(*)::int FROM tracks t WHERE t.album_id = albums.id
+    SELECT COUNT(*)::int FROM tracks t WHERE t.album_id = a.id
   ) DESC,
-  updated_at DESC NULLS LAST
+  a.updated_at DESC NULLS LAST
 `;
+
+/** Load artist display name when only user_id is known (e.g. after INSERT RETURNING *). */
+export async function fetchArtistDisplayNameForUserId(
+  userId: string | null | undefined,
+  legacyAlbumArtist?: string | null
+): Promise<string> {
+  if (!userId?.trim()) {
+    return legacyAlbumArtist?.trim() || '';
+  }
+
+  const result = await query<{
+    site_name: string | null;
+    name: string | null;
+    public_slug: string | null;
+  }>(
+    `SELECT site_name, name, public_slug
+     FROM users
+     WHERE id = $1::uuid
+     LIMIT 1`,
+    [userId.trim()]
+  );
+
+  const row = result.rows[0];
+  if (!row) {
+    return legacyAlbumArtist?.trim() || '';
+  }
+
+  return resolveArtistDisplayNameFromParts({
+    siteName: row.site_name,
+    userName: row.name,
+    publicSlug: row.public_slug,
+    legacyAlbumArtist,
+  });
+}
 
 /** Canonical albums.album_id slug for storage in orders/purchases. */
 export async function resolveAlbumSlug(albumKey: string): Promise<string | null> {
@@ -73,7 +135,7 @@ export async function resolveAlbumByKey(albumKey: string): Promise<ResolvedAlbum
 
   if (isAlbumUuid(trimmed)) {
     const byPk = await query<AlbumRow>(
-      `${ALBUM_SELECT} WHERE id = $1::uuid ${ALBUM_ROW_PRIORITY} LIMIT 1`,
+      `${ALBUM_SELECT} WHERE a.id = $1::uuid ${ALBUM_ROW_PRIORITY} LIMIT 1`,
       [trimmed]
     );
     if (byPk.rows[0]) {
@@ -82,7 +144,7 @@ export async function resolveAlbumByKey(albumKey: string): Promise<ResolvedAlbum
   }
 
   const bySlug = await query<AlbumRow>(
-    `${ALBUM_SELECT} WHERE album_id = $1 ${ALBUM_ROW_PRIORITY} LIMIT 1`,
+    `${ALBUM_SELECT} WHERE a.album_id = $1 ${ALBUM_ROW_PRIORITY} LIMIT 1`,
     [trimmed]
   );
   if (bySlug.rows[0]) {

@@ -168,7 +168,7 @@ export async function downloadAlbumZip(
 
   return {
     blob,
-    filename: buildAlbumZipFileName(purchase.artist, purchase.album),
+    filename: buildAlbumZipFileName(purchase.artistDisplayName, purchase.album),
   };
 }
 

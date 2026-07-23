@@ -78,10 +78,11 @@ export interface AlbumEditable {
   /** Идентификатор альбома */
   albumId?: string;
   /**
-   * Устарело: не записывается при создании/обновлении альбома. Имя для UI — `users.site_name`.
-   * Поле может приходить из БД для старых записей.
+   * @deprecated Legacy DB column `albums.artist`. Do not use — prefer `artistDisplayName`.
    */
   artist: string;
+  /** Display name resolved from album owner's profile (site_name). Populated by API. */
+  artistDisplayName?: string;
   /**
    * Название альбома — одно на альбом (все языки). Запись на корне API/БД, не в translations.
    */
@@ -908,6 +909,7 @@ export interface IInterface {
       removePurchaseConfirm: string;
       removePurchaseHint: string;
       removePurchaseFailed: string;
+      removePurchaseSuccessToast: string;
       errorDownloadingTrack: string;
       errorDownloadingAlbum: string;
     };

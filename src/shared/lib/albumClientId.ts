@@ -7,14 +7,12 @@ export function fallbackAlbumClientId(album: {
   title?: string;
   album?: string;
   userId?: string;
+  artistDisplayName?: string;
+  /** @deprecated legacy albums.artist */
   artist?: string;
 }): string {
   if (album.albumId?.trim()) return album.albumId.trim();
-  const art = (album.artist ?? '').trim();
   const title = (album.title ?? album.album ?? '').trim() || 'album';
-  if (art) {
-    return `${art}-${title}`.toLowerCase().replace(/\s+/g, '-');
-  }
   const owner = (album.userId ?? '').trim() || 'na';
   return `${owner}-${title}`.toLowerCase().replace(/\s+/g, '-');
 }

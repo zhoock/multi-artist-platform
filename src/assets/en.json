@@ -777,6 +777,7 @@
         "removePurchaseConfirm": "Remove",
         "removePurchaseHint": "You will lose access to this album and all downloads.",
         "removePurchaseFailed": "Failed to remove purchase. Please try again.",
+        "removePurchaseSuccessToast": "Album removed from purchases",
         "errorDownloadingTrack": "Error downloading track. Please try again.",
         "errorDownloadingAlbum": "Error downloading album. Please try again."
       },

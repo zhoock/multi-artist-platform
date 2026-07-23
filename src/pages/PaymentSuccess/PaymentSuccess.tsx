@@ -49,7 +49,7 @@ interface PaymentStatus {
 
 interface PurchasedAlbumInfo {
   title: string;
-  artist: string;
+  artistDisplayName: string;
   cover: string | null;
   userId: string | null;
 }
@@ -218,7 +218,7 @@ function PaymentSuccessPurchasedAlbum({
       )}
       <div className="payment-success__album-meta">
         <p className="payment-success__album-title">{album.title}</p>
-        <p className="payment-success__album-artist">{album.artist}</p>
+        <p className="payment-success__album-artist">{album.artistDisplayName}</p>
       </div>
     </div>
   );

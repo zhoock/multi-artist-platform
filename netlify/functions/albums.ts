@@ -43,12 +43,21 @@ import { viewerHasPremiumAccessToArtist } from './lib/entitlements';
 import { artistHasMonetizationEnabled } from './lib/artist-monetization';
 import { resolveEffectiveContentVisibility } from '../../src/shared/lib/payment/artistMonetization';
 import { buildLyricsMapForAlbumTracks, mergeTrackLyricsBundles } from './lib/track-lyrics';
+import {
+  ARTIST_DISPLAY_NAME_SQL,
+  ALBUMS_USER_JOIN_SQL,
+  fetchArtistDisplayNameForUserId,
+  resolveArtistDisplayNameFromParts,
+} from './lib/resolve-album-key';
 
 interface AlbumRow {
   id: string;
   user_id: string | null;
   album_id: string;
+  /** Legacy column; not written on create/update. Used only as resolver fallback. */
   artist: string;
+  /** Populated when album row is loaded with users JOIN. */
+  artist_display_name?: string | null;
   album: string;
   full_name: string;
   description: string;
@@ -104,7 +113,7 @@ interface AlbumData {
   /** Первичный ключ строки в БД (`albums.id`), для платёжных API вместе с `albumId`. */
   dbAlbumId?: string;
   albumId: string;
-  artist: string;
+  artistDisplayName: string;
   album: string;
   fullName: string;
   description: string;
@@ -450,6 +459,26 @@ function readCoverCreditsFromRow(
 /**
  * Преобразует данные альбома из БД в формат API
  */
+function readArtistDisplayNameFromAlbumRow(album: AlbumRow): string {
+  if (album.artist_display_name?.trim()) {
+    return album.artist_display_name.trim();
+  }
+  return resolveArtistDisplayNameFromParts({ legacyAlbumArtist: album.artist });
+}
+
+async function queryAlbumRowByPk(albumPk: string): Promise<AlbumRow | null> {
+  const result = await query<AlbumRow>(
+    `SELECT a.*,
+            ${ARTIST_DISPLAY_NAME_SQL} AS artist_display_name
+     FROM albums a
+     ${ALBUMS_USER_JOIN_SQL}
+     WHERE a.id = $1::uuid
+     LIMIT 1`,
+    [albumPk]
+  );
+  return result.rows[0] ?? null;
+}
+
 function mapAlbumToApiFormat(
   album: AlbumRow,
   tracks: TrackRow[],
@@ -510,7 +539,7 @@ function mapAlbumToApiFormat(
     userId: album.user_id || undefined,
     dbAlbumId: album.id,
     albumId: album.album_id,
-    artist: album.artist,
+    artistDisplayName: readArtistDisplayNameFromAlbumRow(album),
     album: album.album,
     fullName: album.full_name,
     description: album.description,
@@ -843,7 +872,7 @@ function mergeAlbumDataPayloads(payloads: AlbumData[]): AlbumData {
     userId: shared.userId,
     dbAlbumId: shared.dbAlbumId,
     albumId: shared.albumId,
-    artist: shared.artist,
+    artistDisplayName: shared.artistDisplayName,
     album: sharedAlbumTitle,
     fullName: textRoot.fullName,
     description: textRoot.description,
@@ -1091,6 +1120,7 @@ export const handler: Handler = async (
              a.user_id,
              a.album_id,
              a.artist,
+             ${ARTIST_DISPLAY_NAME_SQL} AS artist_display_name,
              a.album,
              a.full_name,
              a.description,
@@ -1108,6 +1138,7 @@ export const handler: Handler = async (
              a.designer,
              a.designer_url
          FROM albums a
+         ${ALBUMS_USER_JOIN_SQL}
          WHERE a.user_id = $1
          ORDER BY a.album_id,
            CASE a.lang WHEN 'ru' THEN 0 WHEN 'en' THEN 1 ELSE 2 END,
@@ -1283,7 +1314,16 @@ export const handler: Handler = async (
         ]
       );
 
-      const createdAlbum = mapAlbumToApiFormat(albumResult.rows[0], [], new Map());
+      const createdRow = albumResult.rows[0];
+      const createdArtistDisplayName = await fetchArtistDisplayNameForUserId(
+        albumUserId,
+        createdRow.artist
+      );
+      const createdAlbum = mapAlbumToApiFormat(
+        { ...createdRow, artist_display_name: createdArtistDisplayName },
+        [],
+        new Map()
+      );
 
       return {
         statusCode: 201,
@@ -1616,12 +1656,9 @@ export const handler: Handler = async (
             isPublic: true,
           });
 
-          const reloadedAfterPublish = await query<AlbumRow>(
-            `SELECT * FROM albums WHERE id = $1 LIMIT 1`,
-            [existingAlbum.id]
-          );
-          if (reloadedAfterPublish.rows[0]) {
-            existingAlbum = reloadedAfterPublish.rows[0];
+          const reloadedAfterPublish = await queryAlbumRowByPk(existingAlbum.id);
+          if (reloadedAfterPublish) {
+            existingAlbum = reloadedAfterPublish;
           }
 
           const tracksAfterPublish = { rows: await fetchTracksRowsForAlbumPk(existingAlbum.id) };
@@ -1742,13 +1779,11 @@ export const handler: Handler = async (
         let updatedAlbum: AlbumRow;
 
         if (updateFields.length === 0 && albumIdRenameApplied) {
-          const reloaded = await query<AlbumRow>(`SELECT * FROM albums WHERE id = $1 LIMIT 1`, [
-            existingAlbum.id,
-          ]);
-          if (reloaded.rows.length === 0) {
+          const reloaded = await queryAlbumRowByPk(existingAlbum.id);
+          if (!reloaded) {
             return createErrorResponse(500, 'Album reload failed after rename.');
           }
-          updatedAlbum = reloaded.rows[0];
+          updatedAlbum = reloaded;
         } else {
           updateFields.push(`updated_at = CURRENT_TIMESTAMP`);
 
@@ -1804,6 +1839,10 @@ export const handler: Handler = async (
           }
 
           updatedAlbum = updateResult.rows[0];
+          const reloadedAfterUpdate = await queryAlbumRowByPk(updatedAlbum.id);
+          if (reloadedAfterUpdate) {
+            updatedAlbum = reloadedAfterUpdate;
+          }
         }
 
         const syncAlbum = albumForDb !== undefined ? String(albumForDb) : undefined;
@@ -1841,11 +1880,9 @@ export const handler: Handler = async (
              WHERE user_id = $2 AND album_id = $3`,
             [String(albumForDb).trim(), userId, data.albumId]
           );
-          const refreshed = await query<AlbumRow>(`SELECT * FROM albums WHERE id = $1 LIMIT 1`, [
-            updatedAlbum.id,
-          ]);
-          if (refreshed.rows[0]) {
-            updatedAlbum = refreshed.rows[0];
+          const refreshed = await queryAlbumRowByPk(updatedAlbum.id);
+          if (refreshed) {
+            updatedAlbum = refreshed;
           }
         }
 
@@ -1887,7 +1924,7 @@ export const handler: Handler = async (
         console.log('[albums.ts PUT] Mapped album:', {
           albumId: mappedAlbum.albumId,
           album: mappedAlbum.album, // Должно быть новое значение
-          artist: mappedAlbum.artist,
+          artistDisplayName: mappedAlbum.artistDisplayName,
           description: mappedAlbum.description?.substring(0, 50) || '',
           cover: mappedAlbum.cover,
           type: typeof mappedAlbum.cover,
@@ -1899,8 +1936,10 @@ export const handler: Handler = async (
         if (githubToken) {
           // Загружаем все альбомы пользователя для обновления JSON
           const allAlbumsResult = await query<AlbumRow>(
-            `SELECT a.*
+            `SELECT a.*,
+                    ${ARTIST_DISPLAY_NAME_SQL} AS artist_display_name
           FROM albums a
+          ${ALBUMS_USER_JOIN_SQL}
           WHERE a.lang = $1 
             AND a.user_id = $2
           ORDER BY a.created_at DESC`,

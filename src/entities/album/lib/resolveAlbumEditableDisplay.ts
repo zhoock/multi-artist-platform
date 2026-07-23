@@ -642,7 +642,7 @@ export function resolveAlbumEditableForDisplay(
   const fullNameRaw = resolveAlbumStringField(album, 'fullName', lang);
   const fullName =
     fullNameRaw ||
-    `${album.artist || ''}${album.artist && albumTitle ? ' — ' : ''}${albumTitle}`.trim();
+    `${album.artistDisplayName || album.artist || ''}${(album.artistDisplayName || album.artist) && albumTitle ? ' — ' : ''}${albumTitle}`.trim();
 
   const tracks = (album.tracks ?? []).map((t) => resolveTrackForDisplay(t, lang));
 

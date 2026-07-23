@@ -1,23 +1,24 @@
 import { describe, expect, it, jest, beforeEach } from '@jest/globals';
-import { screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 
 import { renderWithProviders } from '@shared/lib/test-utils';
 import type { Purchase } from '@shared/api/purchases';
 import { MyPurchasesContent } from '../MyPurchasesContent';
 
 const getMyPurchasesMock = jest.fn<() => Promise<Purchase[]>>();
+const revokePurchaseMock = jest.fn<(purchaseId: string) => Promise<void>>();
 
 jest.mock('@shared/api/purchases', () => ({
   getMyPurchases: () => getMyPurchasesMock(),
   downloadAlbumZip: jest.fn(),
-  revokePurchase: jest.fn(),
+  revokePurchase: (purchaseId: string) => revokePurchaseMock(purchaseId),
 }));
 
 const samplePurchase: Purchase = {
   id: 'purchase-1',
   orderId: 'order-1',
   albumId: 'album-1',
-  artist: 'Test Artist',
+  artistDisplayName: 'Test Artist',
   album: 'Test Album',
   cover: 'cover.jpg',
   purchaseToken: 'token-1',
@@ -32,6 +33,8 @@ const samplePurchase: Purchase = {
 describe('MyPurchasesContent', () => {
   beforeEach(() => {
     getMyPurchasesMock.mockReset();
+    revokePurchaseMock.mockReset();
+    sessionStorage.clear();
   });
 
   it('does not fetch purchases while the tab is inactive', async () => {
@@ -153,5 +156,62 @@ describe('MyPurchasesContent', () => {
     expect(screen.getByRole('button', { name: 'Download' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Remove' })).toBeTruthy();
     expect(container.querySelector('.my-purchases__remove-hint')).toBeNull();
+  });
+
+  it('shows success toast after purchase is removed', async () => {
+    getMyPurchasesMock.mockResolvedValue([samplePurchase]);
+    revokePurchaseMock.mockResolvedValue(undefined);
+
+    renderWithProviders(<MyPurchasesContent active />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Test Artist — Test Album')).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Remove purchase?')).toBeTruthy();
+    });
+
+    const modal = document.querySelector('.confirmation-modal');
+    expect(modal).toBeTruthy();
+    fireEvent.click(within(modal as HTMLElement).getByRole('button', { name: 'Remove' }));
+
+    await waitFor(() => {
+      expect(revokePurchaseMock).toHaveBeenCalledWith('purchase-1');
+      expect(screen.queryByText('Test Artist — Test Album')).toBeNull();
+    });
+
+    expect(screen.getByText('Album removed from purchases')).toBeTruthy();
+  });
+
+  it('does not show success toast when remove fails', async () => {
+    getMyPurchasesMock.mockResolvedValue([samplePurchase]);
+    revokePurchaseMock.mockRejectedValue(new Error('Server error'));
+    const alertMock = jest.spyOn(window, 'alert').mockImplementation(() => {});
+
+    renderWithProviders(<MyPurchasesContent active />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Test Artist — Test Album')).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Remove purchase?')).toBeTruthy();
+    });
+
+    const modal = document.querySelector('.confirmation-modal');
+    fireEvent.click(within(modal as HTMLElement).getByRole('button', { name: 'Remove' }));
+
+    await waitFor(() => {
+      expect(revokePurchaseMock).toHaveBeenCalledWith('purchase-1');
+    });
+
+    expect(screen.queryByText('Album removed from purchases')).toBeNull();
+    expect(screen.getByText('Test Artist — Test Album')).toBeTruthy();
+    alertMock.mockRestore();
   });
 });

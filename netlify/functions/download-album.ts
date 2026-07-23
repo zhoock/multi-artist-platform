@@ -183,7 +183,7 @@ export const handler: Handler = async (
 
     await archive.finalize();
     const zipBuffer = await zipBufferPromise;
-    const zipFileName = buildAlbumZipFileName(album.artist, album.album);
+    const zipFileName = buildAlbumZipFileName(album.artistDisplayName, album.album);
 
     if (purchaseRowId) {
       query(

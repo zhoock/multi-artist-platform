@@ -21,8 +21,33 @@ describe('purchase-email-template', () => {
     orderId: 'abcdef1234567890',
     albumUrl: 'https://smolyanoechuchelko.ru/albums/rubber-soul',
     albumCoverUrl: 'https://example.com/proxy?path=cover.jpg',
-    siteName: 'Smolyanoe Chuchelko',
+    siteName: 'Название сайта',
   };
+
+  it('renders artist name under album title with muted styling', () => {
+    const { html } = buildPurchaseEmailContent(baseOptions);
+
+    expect(html).toContain('Rubber Soul');
+    expect(html).toContain('class="sc-album-artist"');
+    expect(html).toContain('The Beatles');
+    expect(html).toContain('font-size:14px');
+    expect(html).toContain('font-weight:400');
+    expect(html).toMatch(
+      /<h2[^>]*>[\s\S]*Rubber Soul[\s\S]*<\/h2>[\s\S]*sc-album-artist[\s\S]*The Beatles/
+    );
+  });
+
+  it('omits artist row when artist name is blank', () => {
+    const { html, text, subject } = buildPurchaseEmailContent({
+      ...baseOptions,
+      artistName: '   ',
+    });
+
+    expect(html).not.toContain('sc-album-artist');
+    expect(html).not.toContain('The Beatles');
+    expect(subject).toBe('Thank you for your purchase: Rubber Soul');
+    expect(text).toContain('\nRubber Soul\n');
+  });
 
   it('renders the atmospheric thank-you hero + album block in English', () => {
     const { html, text, subject } = buildPurchaseEmailContent(baseOptions);
@@ -37,7 +62,7 @@ describe('purchase-email-template', () => {
     expect(html).toContain(
       'The album is now available in My Purchases. You can stream, download and enjoy it whenever you want.'
     );
-    expect(html).toContain('Open in Smolyanoe Chuchelko');
+    expect(html).toContain('Open in Название сайта');
     expect(html).toContain('https://smolyanoechuchelko.ru/albums/rubber-soul');
     expect(html).toContain('https://example.com/proxy?path=cover.jpg');
     expect(text).toContain('Thank you for your purchase.');
@@ -56,7 +81,8 @@ describe('purchase-email-template', () => {
     expect(html).toContain('за покупку!');
     expect(html).toContain('Здравствуйте, Алексей!');
     expect(html).toContain('Альбом доступен в разделе «Мои покупки»');
-    expect(html).toContain('Открыть в Smolyanoe Chuchelko');
+    expect(html).toContain('Открыть в Название сайта');
+    expect(html).toContain('Спасибо, что поддерживаете артистов.');
     expect(text).toContain('Спасибо за покупку.');
   });
 
@@ -69,7 +95,7 @@ describe('purchase-email-template', () => {
   it('renders a graceful SVG soundwave placeholder when the cover is missing', () => {
     const { html } = buildPurchaseEmailContent({ ...baseOptions, albumCoverUrl: null });
     expect(html).not.toContain('<img');
-    // The placeholder uses the same soundwave glyph as the hero badge.
+    // Cover placeholder uses the soundwave glyph.
     expect(html).toMatch(/<svg[\s\S]*?<rect/);
   });
 
@@ -117,11 +143,13 @@ describe('purchase-email-template', () => {
     expect(html).not.toMatch(/text-transform:\s*uppercase/);
   });
 
-  it('renders the CTA with a headphones icon and a chevron arrow', () => {
+  it('keeps the CTA text-only without decorative icons', () => {
     const { html } = buildPurchaseEmailContent(baseOptions);
-    // Headphones SVG (the icon block uses one inline svg per CTA).
-    expect(html).toMatch(/<svg[^>]*>[\s\S]*?headphones?|<path[\s\S]*?M4 14v3/);
-    expect(html).toContain('&rsaquo;');
+    expect(html).toContain('Open in Название сайта');
+    expect(html).not.toContain('&rsaquo;');
+    expect(html).not.toMatch(/M4 14v3/);
+    expect(html).not.toMatch(/M12 20s-7-4\.35/);
+    expect(html).not.toMatch(/M12 1 C12\.4 7\.8/);
   });
 
   it('respects SITE_DISPLAY_NAME from env when no siteName is passed', () => {

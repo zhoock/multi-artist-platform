@@ -777,6 +777,7 @@
         "removePurchaseConfirm": "Удалить",
         "removePurchaseHint": "Вы потеряете доступ к этому альбому и всем скачиваниям.",
         "removePurchaseFailed": "Не удалось удалить покупку. Попробуйте ещё раз.",
+        "removePurchaseSuccessToast": "Альбом удалён из покупок",
         "errorDownloadingTrack": "Ошибка при скачивании трека. Попробуйте еще раз.",
         "errorDownloadingAlbum": "Ошибка при скачивании альбома. Попробуйте еще раз."
       },

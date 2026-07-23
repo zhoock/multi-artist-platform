@@ -20,8 +20,15 @@
  *     metadata?: { orderId?: string, ... }
  *   },
  *   orderUpdated: boolean,
- *   album?: { title: string, artist: string, cover: string | null, userId: string | null }
+ *   album?: {
+ *     title: string,
+ *     artistDisplayName: string,
+ *     cover: string | null,
+ *     userId: string | null
+ *   }
  * }
+ *
+ * `artistDisplayName` — resolved from album owner's profile (users.site_name), not legacy albums.artist.
  */
 
 import type { Handler, HandlerEvent, HandlerContext } from '@netlify/functions';
@@ -112,7 +119,7 @@ interface PaymentStatusResponse {
   orderUpdated?: boolean;
   album?: {
     title: string;
-    artist: string;
+    artistDisplayName: string;
     cover: string | null;
     userId: string | null;
   };
@@ -140,7 +147,7 @@ async function resolvePurchasedAlbumForResponse(
 
     return {
       title: album.album,
-      artist: album.artist,
+      artistDisplayName: album.artistDisplayName,
       cover: album.cover,
       userId: album.userId,
     };
@@ -318,7 +325,7 @@ async function updateOrderAndPaymentStatus(paymentStatus: YooKassaPaymentStatus)
                         to: customerEmail,
                         customerName,
                         albumName: album.album,
-                        artistName: album.artist,
+                        artistName: album.artistDisplayName,
                         orderId,
                         albumSlug: album.albumSlug,
                         albumCover: album.cover,

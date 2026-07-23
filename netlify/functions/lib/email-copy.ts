@@ -145,7 +145,7 @@ const COPY = {
       albumDescription:
         'The album is now available in My Purchases. You can stream, download and enjoy it whenever you want.',
       ctaLabel: 'Open in {{siteName}}',
-      closingLine1: 'We truly appreciate your support.',
+      closingLine1: 'Thank you for supporting artists.',
       closingLine2: 'Stay tuned for more music.',
       textThanks: 'Thank you for your purchase.',
       textCtaLabel: 'Open album',
@@ -161,7 +161,7 @@ const COPY = {
       albumDescription:
         'Альбом доступен в разделе «Мои покупки». Слушайте, скачивайте и наслаждайтесь им в любое время.',
       ctaLabel: 'Открыть в {{siteName}}',
-      closingLine1: 'Спасибо, что поддерживаете нас.',
+      closingLine1: 'Спасибо, что поддерживаете артистов.',
       closingLine2: 'До встречи в новых релизах.',
       textThanks: 'Спасибо за покупку.',
       textCtaLabel: 'Открыть альбом',

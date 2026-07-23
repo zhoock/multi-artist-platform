@@ -183,6 +183,7 @@ const draftToAlbum = (draft: AlbumDraft): AlbumEditable => {
   return {
     albumId: draft.albumId.trim() || undefined,
     artist: '',
+    artistDisplayName: '',
     album: title,
     fullName: title,
     description: draft.description.trim(),

@@ -532,7 +532,7 @@ async function tryPurchaseSideEffects(
         to: customerEmail,
         customerName,
         albumName: album.album,
-        artistName: album.artist,
+        artistName: album.artistDisplayName,
         orderId,
         albumSlug: album.albumSlug,
         albumCover: album.cover,

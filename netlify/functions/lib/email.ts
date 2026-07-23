@@ -15,8 +15,8 @@ import { reservePurchaseEmail, releasePurchaseEmailReservation } from './email-d
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-/** Public-facing brand name used as the default display name in the purchase email. */
-const PURCHASE_BRAND_DISPLAY_NAME = 'Smolyanoe Chuchelko';
+/** Temporary platform placeholder until the official brand name is chosen. */
+const PURCHASE_BRAND_DISPLAY_NAME = 'Название сайта';
 
 interface SendPurchaseEmailOptions {
   to: string;

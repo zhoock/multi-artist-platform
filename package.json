@@ -38,6 +38,7 @@
     "remove-duplicate-albums": "tsx database/scripts/remove-duplicate-albums.ts",
     "dev": "netlify dev",
     "dev:local": "npm start",
+    "preview:purchase-email": "tsx scripts/preview-purchase-email.ts",
     "open:payment-success": "open 'http://localhost:8888/pay/success?preview=success&returnTo=%2Falbums%2Fdemo'"
   },
   "lint-staged": {

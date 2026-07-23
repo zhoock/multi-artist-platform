@@ -31,7 +31,7 @@ export interface PurchaseDto {
   orderId: string;
   albumId: string;
   albumUserId: string | null;
-  artist: string;
+  artistDisplayName: string;
   album: string;
   cover: string | null;
   purchaseToken: string;
@@ -77,7 +77,7 @@ async function mapPurchaseRows(rows: PurchaseRow[]): Promise<PurchaseDto[]> {
           orderId: purchaseRow.order_id,
           albumId: purchaseRow.album_id,
           albumUserId: null,
-          artist: 'Unknown',
+          artistDisplayName: 'Unknown',
           album: purchaseRow.album_id,
           cover: null,
           purchaseToken: purchaseRow.purchase_token,
@@ -94,7 +94,7 @@ async function mapPurchaseRows(rows: PurchaseRow[]): Promise<PurchaseDto[]> {
         orderId: purchaseRow.order_id,
         albumId: album.albumSlug,
         albumUserId: album.userId,
-        artist: album.artist,
+        artistDisplayName: album.artistDisplayName,
         album: album.album,
         cover: album.cover || null,
         purchaseToken: purchaseRow.purchase_token,

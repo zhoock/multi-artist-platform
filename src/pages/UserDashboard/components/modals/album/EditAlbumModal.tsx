@@ -2498,7 +2498,7 @@ export function EditAlbumModal({
         console.log('📋 [EditAlbumModal] Album returned from server:', {
           albumId: returnedAlbum.albumId,
           album: returnedAlbum.album, // Должно быть "32"
-          artist: returnedAlbum.artist,
+          artistDisplayName: returnedAlbum.artistDisplayName,
           description: returnedAlbum.description?.substring(0, 50) || '',
           cover: returnedAlbum.cover,
         });

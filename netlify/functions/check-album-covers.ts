@@ -9,6 +9,7 @@
 
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { query } from './lib/db';
+import { ALBUMS_USER_JOIN_SQL, ARTIST_DISPLAY_NAME_SQL } from './lib/resolve-album-key';
 import {
   createOptionsResponse,
   createErrorResponse,
@@ -18,7 +19,7 @@ import {
 interface AlbumRow {
   id: string;
   album_id: string;
-  artist: string;
+  artist_display_name: string | null;
   album: string;
   cover: Record<string, unknown>;
   lang: string;
@@ -39,17 +40,18 @@ export const handler: Handler = async (event: HandlerEvent) => {
 
     // Загружаем все альбомы
     const albumsResult = await query<AlbumRow>(
-      `SELECT id, album_id, artist, album, cover, lang
-       FROM albums
-       WHERE cover IS NOT NULL
-       ORDER BY album_id, lang`
+      `SELECT a.id, a.album_id, ${ARTIST_DISPLAY_NAME_SQL} AS artist_display_name, a.album, a.cover, a.lang
+       FROM albums a
+       ${ALBUMS_USER_JOIN_SQL}
+       WHERE a.cover IS NOT NULL
+       ORDER BY a.album_id, a.lang`
     );
 
     const covers = albumsResult.rows.map((album) => {
       const cover = album.cover as { img?: string } | null;
       return {
         albumId: album.album_id,
-        artist: album.artist,
+        artistDisplayName: album.artist_display_name?.trim() || '',
         album: album.album,
         lang: album.lang,
         coverImg: cover?.img || null,

@@ -2246,7 +2246,7 @@ function UserDashboard() {
                     console.log('🔍 [UserDashboard] Updated album from fetchDashboardAlbums:', {
                       albumId: foundAlbum.albumId,
                       album: foundAlbum.album,
-                      artist: foundAlbum.artist,
+                      artistDisplayName: foundAlbum.artistDisplayName,
                       description: foundAlbum.description?.substring(0, 50) || '',
                       cover: foundAlbum.cover,
                       isNewAlbum: !editAlbumModal.albumId,

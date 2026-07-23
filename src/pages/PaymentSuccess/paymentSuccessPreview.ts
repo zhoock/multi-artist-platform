@@ -28,7 +28,7 @@ export interface PaymentSuccessPreviewPayment {
 
 export interface PaymentSuccessPreviewAlbum {
   title: string;
-  artist: string;
+  artistDisplayName: string;
   cover: string | null;
   userId: string | null;
 }
@@ -76,7 +76,7 @@ export function resolvePreviewPurchasedAlbum(): {
     return {
       purchasedAlbum: {
         title: '23',
-        artist: 'Смоляное Чучелко',
+        artistDisplayName: 'Смоляное Чучелко',
         cover: PAYMENT_SUCCESS_PREVIEW_ALBUM_COVER_KEY,
         userId,
       },
@@ -87,7 +87,7 @@ export function resolvePreviewPurchasedAlbum(): {
   return {
     purchasedAlbum: {
       title: '23',
-      artist: 'Смоляное Чучелко',
+      artistDisplayName: 'Смоляное Чучелко',
       cover: null,
       userId: null,
     },

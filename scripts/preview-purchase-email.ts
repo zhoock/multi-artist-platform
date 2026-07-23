@@ -1,154 +1,114 @@
 #!/usr/bin/env tsx
 /**
- * Renders both the legacy ecommerce-style purchase email and the new
- * minimal / atmospheric variant to standalone HTML files so they can be
- * inspected side-by-side (or fed to a screenshot tool).
+ * Renders the purchase confirmation email to standalone HTML files for local review.
  *
  * Usage:
- *   npx tsx scripts/preview-purchase-email.ts
+ *   npm run preview:purchase-email
+ *   open dist/email-previews/purchase-email.ru.html
  *
- * Output:
- *   dist/email-previews/purchase-email.before.html  (legacy receipt look)
- *   dist/email-previews/purchase-email.after.html   (new dark / gold)
- *   dist/email-previews/purchase-email.after-ru.html
- *   dist/email-previews/purchase-email.after-no-cover.html
+ * Output (dist/email-previews/):
+ *   purchase-email.en.html — EN
+ *   purchase-email.ru.html — RU
  */
 
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, unlinkSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
 import { buildPurchaseEmailContent } from '../netlify/functions/lib/purchase-email-template';
 
+const OUT_DIR = path.resolve(__dirname, '..', 'dist', 'email-previews');
 const LOCAL_COVER_PATH = path.resolve(__dirname, '..', 'src', 'images', 'album-placeholder.png');
+
 const SAMPLE = {
-  customerName: 'Алексей',
   albumName: 'Rubber Soul',
-  artistName: 'The Beatles',
   orderId: 'abcdef1234567890',
-  albumUrl: 'https://smolyanoechuchelko.ru/en/albums/rubber-soul',
-  /**
-   * In production this is a Supabase Storage URL. For an offline preview we use a
-   * file:// URL so headless Chrome can render the cover without network access.
-   * Override with `PREVIEW_COVER_URL=https://...` env var when sharing the HTML.
-   */
+  siteName: 'Название сайта',
   albumCoverUrl: process.env.PREVIEW_COVER_URL || `file://${LOCAL_COVER_PATH}`,
-  siteName: 'Smolyanoe Chuchelko',
 };
 
-/**
- * Snapshot of the *previous* template before the redesign, kept here only so the
- * preview script can render an apples-to-apples "before" file. It is intentionally
- * unused at runtime — production code now lives in purchase-email-template.ts.
- */
-function buildLegacyPurchaseEmailHtml(): string {
-  const tracks = [
-    { trackId: '1', title: 'Drive My Car' },
-    { trackId: '2', title: 'Norwegian Wood (This Bird Has Flown)' },
-    { trackId: '3', title: 'You Won\u2019t See Me' },
-    { trackId: '4', title: 'Nowhere Man' },
-  ];
-  const tracksList = tracks
-    .map(
-      (track, index) => `
-        <tr style="border-bottom: 1px solid #e0e0e0;">
-          <td style="padding: 12px 0; color: #333;">${index + 1}.</td>
-          <td style="padding: 12px 0; color: #333;">${track.title}</td>
-          <td style="padding: 12px 0; text-align: right;">
-            <a href="https://smolyanoechuchelko.ru/api/download?token=DEMO&track=${track.trackId}"
-               style="color: #4CAF50; text-decoration: none; font-weight: 500;">
-              Download
-            </a>
-          </td>
-        </tr>`
-    )
-    .join('');
+const PREVIEW_VARIANTS = {
+  en: {
+    customerName: 'Alex',
+    artistName: 'The Beatles',
+    albumUrl: 'https://smolyanoechuchelko.ru/en/albums/rubber-soul',
+  },
+  ru: {
+    customerName: 'Алексей',
+    artistName: 'Смоляное Чучелко',
+    albumUrl: 'https://smolyanoechuchelko.ru/albums/rubber-soul',
+  },
+} as const;
 
-  return `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Thank you for your purchase!</title>
-</head>
-<body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;line-height:1.6;color:#333;max-width:600px;margin:0 auto;padding:20px;background-color:#f5f5f5;">
-  <div style="background-color:white;border-radius:8px;padding:30px;box-shadow:0 2px 4px rgba(0,0,0,0.1);">
-    <h1 style="color:#4CAF50;margin-top:0;">Thank you for your purchase! \u2705</h1>
-    <p>Hello, ${SAMPLE.customerName}!</p>
-    <p>Your order <strong>#${SAMPLE.orderId.slice(0, 8)}</strong> has been paid successfully.</p>
-    <h2 style="color:#333;margin-top:30px;margin-bottom:15px;">
-      ${SAMPLE.artistName} \u2014 ${SAMPLE.albumName}
-    </h2>
-    <table style="width:100%;border-collapse:collapse;margin:20px 0;">
-      <thead>
-        <tr style="border-bottom:2px solid #4CAF50;">
-          <th style="text-align:left;padding:10px 0;color:#666;font-weight:600;width:40px;">#</th>
-          <th style="text-align:left;padding:10px 0;color:#666;font-weight:600;">Track</th>
-          <th style="text-align:right;padding:10px 0;color:#666;font-weight:600;">Download</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${tracksList}
-      </tbody>
-    </table>
-    <hr style="border:none;border-top:1px solid #e0e0e0;margin:30px 0;">
-    <p style="color:#666;font-size:14px;margin:0;">
-      If you have any questions, please contact us:
-      <a href="mailto:feedback@smolyanoechuchelko.ru" style="color:#4CAF50;">feedback@smolyanoechuchelko.ru</a>
-    </p>
-  </div>
-</body>
-</html>`.trim();
+function assertArtistPresent(html: string, artistName: string, filename: string): void {
+  if (!html.includes(artistName)) {
+    throw new Error(
+      `Preview ${filename} is missing artist text "${artistName}". Check artistName in preview mock data.`
+    );
+  }
+  if (!html.includes('class="sc-album-artist"')) {
+    throw new Error(`Preview ${filename} is missing sc-album-artist markup.`);
+  }
 }
 
 function writeHtml(filename: string, html: string): void {
-  const outDir = path.resolve(__dirname, '..', 'dist', 'email-previews');
-  mkdirSync(outDir, { recursive: true });
-  const fullPath = path.join(outDir, filename);
+  mkdirSync(OUT_DIR, { recursive: true });
+  const fullPath = path.join(OUT_DIR, filename);
   writeFileSync(fullPath, html, 'utf-8');
   console.log(`✓ wrote ${path.relative(process.cwd(), fullPath)}`);
 }
 
+function removeStalePreview(filename: string): void {
+  const fullPath = path.join(OUT_DIR, filename);
+  try {
+    unlinkSync(fullPath);
+    console.log(`✓ removed stale ${path.relative(process.cwd(), fullPath)}`);
+  } catch {
+    // File did not exist — nothing to clean up.
+  }
+}
+
 function main(): void {
-  writeHtml('purchase-email.before.html', buildLegacyPurchaseEmailHtml());
+  for (const stale of [
+    'purchase-email.before.html',
+    'purchase-email.after.html',
+    'purchase-email.after-ru.html',
+    'purchase-email.after-no-cover.html',
+    'purchase-email.no-cover.html',
+  ]) {
+    removeStalePreview(stale);
+  }
 
-  const after = buildPurchaseEmailContent({
+  const en = buildPurchaseEmailContent({
     locale: 'en',
-    customerName: 'Alex',
+    customerName: PREVIEW_VARIANTS.en.customerName,
     albumName: SAMPLE.albumName,
-    artistName: SAMPLE.artistName,
+    artistName: PREVIEW_VARIANTS.en.artistName,
     orderId: SAMPLE.orderId,
-    albumUrl: SAMPLE.albumUrl,
+    albumUrl: PREVIEW_VARIANTS.en.albumUrl,
     albumCoverUrl: SAMPLE.albumCoverUrl,
     siteName: SAMPLE.siteName,
   });
-  writeHtml('purchase-email.after.html', after.html);
+  assertArtistPresent(en.html, PREVIEW_VARIANTS.en.artistName, 'purchase-email.en.html');
+  writeHtml('purchase-email.en.html', en.html);
 
-  const afterRu = buildPurchaseEmailContent({
+  const ru = buildPurchaseEmailContent({
     locale: 'ru',
-    customerName: SAMPLE.customerName,
+    customerName: PREVIEW_VARIANTS.ru.customerName,
     albumName: SAMPLE.albumName,
-    artistName: SAMPLE.artistName,
+    artistName: PREVIEW_VARIANTS.ru.artistName,
     orderId: SAMPLE.orderId,
-    albumUrl: 'https://smolyanoechuchelko.ru/albums/rubber-soul',
+    albumUrl: PREVIEW_VARIANTS.ru.albumUrl,
     albumCoverUrl: SAMPLE.albumCoverUrl,
     siteName: SAMPLE.siteName,
   });
-  writeHtml('purchase-email.after-ru.html', afterRu.html);
+  assertArtistPresent(ru.html, PREVIEW_VARIANTS.ru.artistName, 'purchase-email.ru.html');
+  writeHtml('purchase-email.ru.html', ru.html);
 
-  const afterNoCover = buildPurchaseEmailContent({
-    locale: 'en',
-    customerName: 'Alex',
-    albumName: SAMPLE.albumName,
-    artistName: SAMPLE.artistName,
-    orderId: SAMPLE.orderId,
-    albumUrl: SAMPLE.albumUrl,
-    albumCoverUrl: null,
-    siteName: SAMPLE.siteName,
-  });
-  writeHtml('purchase-email.after-no-cover.html', afterNoCover.html);
+  console.log(
+    `\nArtist preview: EN → "${PREVIEW_VARIANTS.en.artistName}", RU → "${PREVIEW_VARIANTS.ru.artistName}"`
+  );
 
-  console.log('\nOpen these files in a browser to compare side-by-side.');
+  console.log('\nOpen dist/email-previews/purchase-email.ru.html in a browser.');
 }
 
 main();

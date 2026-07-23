@@ -47,7 +47,7 @@ describe('paymentSuccessPreview', () => {
 
     const album = resolvePreviewPurchasedAlbum().purchasedAlbum;
     expect(album.title).toBeTruthy();
-    expect(album.artist).toBeTruthy();
+    expect(album.artistDisplayName).toBeTruthy();
   });
 
   test('uses placeholder cover when preview artist userId is not configured', () => {

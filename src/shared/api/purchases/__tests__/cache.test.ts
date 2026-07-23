@@ -24,7 +24,7 @@ function purchase(id: string, albumId = `album-${id}`): Purchase {
     id,
     orderId: `order-${id}`,
     albumId,
-    artist: 'Artist',
+    artistDisplayName: 'Artist',
     album: 'Album',
     cover: null,
     purchaseToken: `tok-${id}`,

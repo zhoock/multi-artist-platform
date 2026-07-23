@@ -73,7 +73,8 @@ export const fetchDashboardAlbums = createAsyncThunk<
     ): album is {
       userId?: string;
       albumId: string;
-      artist: string;
+      artistDisplayName?: string;
+      artist?: string;
       album: string;
       fullName?: string;
       description?: string;
@@ -85,12 +86,20 @@ export const fetchDashboardAlbums = createAsyncThunk<
       translations?: IAlbumTranslations;
     } => {
       if (typeof album !== 'object' || album === null) return false;
-      if (!('albumId' in album) || !('artist' in album)) return false;
+      if (!('albumId' in album)) return false;
       if (typeof (album as { albumId: unknown }).albumId !== 'string') return false;
-      if (typeof (album as { artist: unknown }).artist !== 'string') return false;
       return albumHasDisplayableTitle(
         album as { album?: unknown; translations?: IAlbumTranslations }
       );
+    };
+
+    const readArtistDisplayNameFromApi = (album: {
+      artistDisplayName?: string;
+      artist?: string;
+    }): string => {
+      const resolved = album.artistDisplayName?.trim();
+      if (resolved) return resolved;
+      return album.artist?.trim() || '';
     };
 
     const isValidTrack = (
@@ -160,13 +169,17 @@ export const fetchDashboardAlbums = createAsyncThunk<
           : [];
 
         const rawAlbum = album as Record<string, unknown>;
+        const artistDisplayName = readArtistDisplayNameFromApi(album);
         return {
           userId: album.userId,
           dbAlbumId: typeof rawAlbum.dbAlbumId === 'string' ? rawAlbum.dbAlbumId : undefined,
           albumId: album.albumId,
-          artist: album.artist,
+          artist: '',
+          artistDisplayName,
           album: album.album,
-          fullName: album.fullName || `${album.artist} — ${album.album}`,
+          fullName:
+            album.fullName ||
+            (artistDisplayName ? `${artistDisplayName} — ${album.album}` : album.album),
           description: album.description || '',
           cover: album.cover || '',
           release: album.release || {},

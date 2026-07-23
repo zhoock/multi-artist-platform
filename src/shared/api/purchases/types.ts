@@ -17,7 +17,7 @@ export interface Purchase {
   albumId: string;
   /** Album owner in Storage (cover in user bucket) */
   albumUserId?: string | null;
-  artist: string;
+  artistDisplayName: string;
   album: string;
   cover: string | null;
   purchaseToken: string;

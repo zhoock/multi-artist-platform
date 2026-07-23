@@ -15,6 +15,8 @@ import {
   type Purchase,
 } from '@shared/api/purchases';
 import { ConfirmationModal } from '@shared/ui/confirmationModal';
+import { PurchaseRemovedToast } from '@shared/ui/purchaseRemovedToast';
+import { queuePurchaseRemovedToast } from '@shared/lib/purchaseRemovedToast';
 import { MyPurchasesEmptyState } from './MyPurchasesEmptyState';
 import './MyPurchasesContent.scss';
 
@@ -69,6 +71,7 @@ export function MyPurchasesContent({ active }: MyPurchasesContentProps) {
   const [downloadingAlbums, setDownloadingAlbums] = useState<Set<string>>(new Set());
   const [purchaseToRemove, setPurchaseToRemove] = useState<Purchase | null>(null);
   const [isRemoving, setIsRemoving] = useState(false);
+  const [removedToastTrigger, setRemovedToastTrigger] = useState(0);
 
   const loadPurchases = useCallback(async () => {
     setLoading(true);
@@ -129,6 +132,8 @@ export function MyPurchasesContent({ active }: MyPurchasesContentProps) {
       await revokePurchase(purchaseId);
       setPurchases((prev) => prev.filter((purchase) => purchase.id !== purchaseId));
       setPurchaseToRemove(null);
+      queuePurchaseRemovedToast(copy?.removePurchaseSuccessToast ?? 'Album removed from purchases');
+      setRemovedToastTrigger((value) => value + 1);
     } catch (err) {
       console.error('Error removing purchase:', err);
       alert(copy?.removePurchaseFailed ?? 'Failed to remove purchase. Please try again.');
@@ -174,7 +179,7 @@ export function MyPurchasesContent({ active }: MyPurchasesContentProps) {
                           <AlbumCoverImage
                             cover={purchase.cover}
                             userId={purchase.albumUserId ?? undefined}
-                            alt={`${purchase.artist} — ${purchase.album}`}
+                            alt={`${purchase.artistDisplayName} — ${purchase.album}`}
                             contextAlbumId={purchase.albumId}
                             loading="lazy"
                             decoding="async"
@@ -185,7 +190,7 @@ export function MyPurchasesContent({ active }: MyPurchasesContentProps) {
 
                       <div className="my-purchases__meta">
                         <h3 className="my-purchases__title">
-                          {purchase.artist} — {purchase.album}
+                          {purchase.artistDisplayName} — {purchase.album}
                         </h3>
                         <p className="my-purchases__meta-line">
                           {copy?.purchased ?? 'Purchased:'} {formatDate(purchase.purchasedAt)}
@@ -252,6 +257,7 @@ export function MyPurchasesContent({ active }: MyPurchasesContentProps) {
         }}
         onConfirm={() => void handleConfirmRemove()}
       />
+      <PurchaseRemovedToast triggerKey={removedToastTrigger} />
     </>
   );
 }
