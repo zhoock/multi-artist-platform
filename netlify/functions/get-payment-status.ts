@@ -33,7 +33,11 @@
 
 import type { Handler, HandlerEvent, HandlerContext } from '@netlify/functions';
 import { applyAlbumPaymentSuccess } from './lib/complete-album-payment';
-import { isDevMarkedPayment, isDevPaymentModeEnabled } from './lib/dev-payment-mode';
+import {
+  isDevMarkedPayment,
+  isDevPaymentModeEnabled,
+  logDevPaymentAlbumStatus,
+} from './lib/dev-payment-mode';
 import { query } from './lib/db';
 import { resolveAlbumByKey } from './lib/resolve-album-key';
 import dns from 'node:dns';
@@ -397,7 +401,7 @@ export const handler: Handler = async (
     if (isDevPaymentModeEnabled()) {
       const devPaymentStatus = await buildDevPaymentStatusFromDb(resolvedOrderId, actualPaymentId);
       if (devPaymentStatus) {
-        console.log('🧪 Dev payment mode: returning status from DB (skip YooKassa)', {
+        logDevPaymentAlbumStatus({
           orderId: resolvedOrderId,
           paymentId: actualPaymentId,
         });

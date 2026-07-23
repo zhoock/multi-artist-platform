@@ -8,8 +8,12 @@ export type CompleteDevAlbumPaymentInput = {
   amount: number;
 };
 
+export type AttachDevSucceededSubscriptionCheckoutInput = {
+  subscriptionPaymentId: string;
+};
+
 /**
- * Dev-only: persist a succeeded payment linked to the order (no fulfillment).
+ * Dev-only: persist a succeeded album payment linked to the order (no fulfillment).
  * Fulfillment runs in get-payment-status via applyAlbumPaymentSuccess — same as production.
  */
 export async function completeDevAlbumPayment(
@@ -41,6 +45,40 @@ export async function completeDevAlbumPayment(
      WHERE id = $2`,
     [paymentId, input.orderId]
   );
+
+  return { paymentId };
+}
+
+/**
+ * Dev-only: mark subscription checkout payment succeeded (no fulfillment).
+ * Fulfillment runs in get-subscription-payment-status via fulfillSubscriptionPayment.
+ */
+export async function attachDevSucceededSubscriptionCheckout(
+  input: AttachDevSucceededSubscriptionCheckoutInput
+): Promise<{ paymentId: string }> {
+  if (!isDevPaymentModeEnabled()) {
+    throw new Error(
+      'attachDevSucceededSubscriptionCheckout called while dev payment mode is disabled'
+    );
+  }
+
+  const paymentId = crypto.randomUUID();
+  const rawDevMarker = JSON.stringify(devPaymentRawMarker());
+
+  const updated = await query<{ id: string }>(
+    `UPDATE subscription_payments
+     SET provider_payment_id = $2,
+         status = 'succeeded',
+         raw_last_event = $3::jsonb,
+         updated_at = CURRENT_TIMESTAMP
+     WHERE id = $1
+     RETURNING id`,
+    [input.subscriptionPaymentId, paymentId, rawDevMarker]
+  );
+
+  if (!updated.rows[0]?.id) {
+    throw new Error('Subscription payment row not found');
+  }
 
   return { paymentId };
 }

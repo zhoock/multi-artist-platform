@@ -13,6 +13,7 @@ import {
 import { sanitizeReturnPath } from '@shared/lib/authReturnUrl';
 import { useAuthSessionUser } from '@shared/lib/hooks/useAuthSessionUser';
 import type { SubscriptionPlanSlug } from '@shared/lib/payment/subscriptionPlans';
+import { logDevPaymentSubscriptionRedirect } from '@shared/lib/payment/devPaymentMode';
 
 import type { CloseArchiveAccessModalOptions } from './archiveAccessModalContext';
 
@@ -75,6 +76,22 @@ export function useSubscriptionCheckout({ onClose }: UseSubscriptionCheckoutOpti
             ok: false,
             error: result.error || 'Could not start checkout',
           };
+        }
+
+        if (result.data.devPaymentCompleted && result.data.subscriptionPaymentId) {
+          clearPremiumCheckoutAuthIntent();
+          savePremiumCheckoutArtistSlug();
+          onClose?.({ preserveCheckoutIntent: true });
+          const statusUrl = new URL(`${window.location.origin}/pay/subscription-success`);
+          statusUrl.searchParams.set('subscriptionPaymentId', result.data.subscriptionPaymentId);
+          statusUrl.searchParams.set('returnTo', returnTo);
+          logDevPaymentSubscriptionRedirect({
+            subscriptionPaymentId: result.data.subscriptionPaymentId,
+            paymentId: result.data.paymentId,
+            redirectUrl: statusUrl.pathname + statusUrl.search,
+          });
+          window.location.href = statusUrl.toString();
+          return { ok: true, redirected: 'payment' };
         }
 
         if (result.data.confirmationUrl) {

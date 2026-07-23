@@ -14,7 +14,10 @@ export interface CreateSubscriptionPaymentResponse {
   success: boolean;
   data?: {
     paymentId: string;
-    confirmationUrl: string;
+    confirmationUrl?: string;
+    subscriptionPaymentId?: string;
+    /** Dev-only: payment persisted without YooKassa redirect */
+    devPaymentCompleted?: boolean;
   };
   error?: string;
   code?: string;

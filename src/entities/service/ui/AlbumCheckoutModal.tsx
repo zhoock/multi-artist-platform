@@ -37,6 +37,7 @@ import { useSiteArtistDisplayName } from '@shared/lib/hooks/useSiteArtistDisplay
 import { beginAlbumCheckoutAuthIntent } from '@shared/lib/authIntent';
 import { sanitizeReturnPath } from '@shared/lib/authReturnUrl';
 import { ALBUM_PAY_STATUS_PATH, ALBUM_PAY_SUCCESS_PATH } from '@shared/lib/paymentRoutes';
+import { logDevPaymentAlbumRedirect } from '@shared/lib/payment/devPaymentMode';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 import { ModalCloseIcon } from '@shared/ui/icons/ModalCloseIcon';
 import { DashboardButton } from '@shared/ui/dashboard';
@@ -305,6 +306,11 @@ export function AlbumCheckoutModal({ isOpen, album, onClose }: AlbumCheckoutModa
           const statusUrl = new URL(`${window.location.origin}${ALBUM_PAY_STATUS_PATH}`);
           statusUrl.searchParams.set('orderId', result.orderId);
           statusUrl.searchParams.set('returnTo', returnTo);
+          logDevPaymentAlbumRedirect({
+            orderId: result.orderId,
+            paymentId: result.paymentId,
+            redirectUrl: statusUrl.pathname + statusUrl.search,
+          });
           window.location.href = statusUrl.toString();
         }
         return;

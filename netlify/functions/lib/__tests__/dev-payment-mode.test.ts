@@ -1,7 +1,11 @@
 import {
+  buildAlbumStatusRedirectPath,
+  buildSubscriptionSuccessRedirectPath,
   devPaymentRawMarker,
+  extractReturnToFromReturnUrl,
   isDevMarkedPayment,
   isDevPaymentModeEnabled,
+  logDevPaymentAlbumCreate,
 } from '../dev-payment-mode';
 
 describe('dev-payment-mode', () => {
@@ -65,5 +69,41 @@ describe('dev-payment-mode', () => {
     expect(isDevMarkedPayment(marker)).toBe(true);
     expect(isDevMarkedPayment({ other: true })).toBe(false);
     expect(isDevMarkedPayment(null)).toBe(false);
+  });
+
+  it('buildAlbumStatusRedirectPath includes orderId and optional returnTo', () => {
+    expect(buildAlbumStatusRedirectPath('ord-1')).toBe('/pay/status?orderId=ord-1');
+    expect(buildAlbumStatusRedirectPath('ord-1', '/albums/foo')).toBe(
+      '/pay/status?orderId=ord-1&returnTo=%2Falbums%2Ffoo'
+    );
+  });
+
+  it('buildSubscriptionSuccessRedirectPath includes subscriptionPaymentId', () => {
+    expect(buildSubscriptionSuccessRedirectPath('sub-1')).toBe(
+      '/pay/subscription-success?subscriptionPaymentId=sub-1'
+    );
+  });
+
+  it('extractReturnToFromReturnUrl reads returnTo query param', () => {
+    expect(
+      extractReturnToFromReturnUrl(
+        'http://localhost:8888/pay/subscription-success?returnTo=%2Fdashboard'
+      )
+    ).toBe('/dashboard');
+    expect(extractReturnToFromReturnUrl(undefined)).toBeUndefined();
+  });
+
+  it('logDevPaymentAlbumCreate emits structured banner', () => {
+    const spy = jest.spyOn(console, 'log').mockImplementation(() => {});
+    logDevPaymentAlbumCreate({
+      orderId: 'ord-1',
+      paymentId: 'pay-1',
+      returnTo: '/home',
+    });
+    expect(spy).toHaveBeenCalledWith(
+      expect.stringContaining('🧪 DEV PAYMENT MODE\nType: album\nOrder: ord-1\nPayment: pay-1')
+    );
+    expect(spy.mock.calls[0][0]).toContain('Redirect → /pay/status?');
+    spy.mockRestore();
   });
 });

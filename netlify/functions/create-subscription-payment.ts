@@ -16,6 +16,12 @@ import {
 import { query } from './lib/db';
 import { getYooKassaEnvCredentials } from './lib/yookassa-env';
 import { resolveSubscriptionPaymentReturnUrl } from './lib/yookassa-return-url';
+import { attachDevSucceededSubscriptionCheckout } from './lib/complete-dev-payment';
+import {
+  isDevPaymentModeEnabled,
+  logDevPaymentSubscriptionCreate,
+  extractReturnToFromReturnUrl,
+} from './lib/dev-payment-mode';
 import {
   attachProviderPaymentId,
   createPendingSubscriptionPayment,
@@ -62,16 +68,6 @@ export const handler: Handler = async (event: HandlerEvent) => {
     });
   }
 
-  const yookassaCreds = getYooKassaEnvCredentials();
-  if (!yookassaCreds) {
-    return createErrorResponse(
-      503,
-      'YooKassa is not configured. Set YOOKASSA_SHOP_ID and YOOKASSA_SECRET_KEY.',
-      undefined,
-      { code: 'YOOKASSA_NOT_CONFIGURED' }
-    );
-  }
-
   let body: CreateSubscriptionPaymentBody = {};
   try {
     body = JSON.parse(event.body || '{}') as CreateSubscriptionPaymentBody;
@@ -112,11 +108,37 @@ export const handler: Handler = async (event: HandlerEvent) => {
     }
   }
 
+  if (isDevPaymentModeEnabled()) {
+    const { paymentId } = await attachDevSucceededSubscriptionCheckout({ subscriptionPaymentId });
+
+    logDevPaymentSubscriptionCreate({
+      subscriptionPaymentId,
+      paymentId,
+      returnTo: extractReturnToFromReturnUrl(body.returnUrl),
+    });
+
+    return createSuccessResponse({
+      paymentId,
+      subscriptionPaymentId,
+      devPaymentCompleted: true,
+    });
+  }
+
   const returnUrl = resolveSubscriptionPaymentReturnUrl({
     requestedUrl: body.returnUrl,
     refererOrigin,
     subscriptionPaymentId,
   });
+
+  const yookassaCreds = getYooKassaEnvCredentials();
+  if (!yookassaCreds) {
+    return createErrorResponse(
+      503,
+      'YooKassa is not configured. Set YOOKASSA_SHOP_ID and YOOKASSA_SECRET_KEY.',
+      undefined,
+      { code: 'YOOKASSA_NOT_CONFIGURED' }
+    );
+  }
 
   const amountValue = getPlanAmountRub(planSlug).toFixed(2);
   const description = planDefinition.description;

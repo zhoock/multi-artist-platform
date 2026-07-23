@@ -13,6 +13,11 @@ import {
   getUserIdFromEvent,
   unauthorizedFromAuthHeader,
 } from './lib/api-helpers';
+import {
+  isDevMarkedPayment,
+  isDevPaymentModeEnabled,
+  logDevPaymentSubscriptionStatus,
+} from './lib/dev-payment-mode';
 import { getYooKassaEnvCredentials } from './lib/yookassa-env';
 import {
   amountsEqual,
@@ -27,11 +32,104 @@ import {
   PREMIUM_SUBSCRIPTION_PRODUCT_TYPE,
   updateSubscriptionPaymentStatus,
   validatePremiumSubscriptionPayment,
+  type SubscriptionPlanSlug,
 } from './lib/subscription-billing';
 
 dns.setDefaultResultOrder('ipv4first');
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+type SubscriptionPaymentApiShape = {
+  id: string;
+  status: 'pending' | 'waiting_for_capture' | 'succeeded' | 'canceled';
+  amount: { value: string; currency: string };
+  metadata?: Record<string, string | undefined>;
+  confirmation?: { confirmation_url?: string };
+};
+
+async function applySubscriptionPaymentFromProvider(
+  api: SubscriptionPaymentApiShape,
+  userId: string
+): Promise<{ subscriptionActivated: boolean; planSlug: SubscriptionPlanSlug }> {
+  const metaUserId = metaString(api.metadata, 'userId');
+  const productType = metaString(api.metadata, 'productType');
+  const plan = metaString(api.metadata, 'plan');
+
+  const paymentValidation = validatePremiumSubscriptionPayment({
+    productType,
+    userId: metaUserId,
+    plan,
+    amountValue: api.amount.value,
+    currency: api.amount.currency,
+    amountsEqual,
+  });
+
+  if (!paymentValidation.valid) {
+    const message =
+      paymentValidation.reason === 'missing userId metadata'
+        ? 'Payment does not belong to this user'
+        : paymentValidation.reason === 'productType'
+          ? 'Not a premium subscription payment'
+          : paymentValidation.reason === 'plan metadata'
+            ? 'Unexpected subscription plan'
+            : 'Payment amount mismatch';
+    const statusCode = paymentValidation.reason === 'missing userId metadata' ? 403 : 400;
+    throw Object.assign(new Error(message), { statusCode });
+  }
+
+  if (metaUserId !== userId) {
+    throw Object.assign(new Error('Payment does not belong to this user'), { statusCode: 403 });
+  }
+
+  const planSlug = paymentValidation.planSlug;
+  let subscriptionActivated = false;
+
+  if (api.status === 'succeeded') {
+    await updateSubscriptionPaymentStatus(api.id, 'succeeded');
+    await fulfillSubscriptionPayment({ userId, planSlug, providerPaymentId: api.id });
+    subscriptionActivated = true;
+  } else if (api.status === 'canceled') {
+    await updateSubscriptionPaymentStatus(api.id, 'canceled');
+  } else if (api.status === 'waiting_for_capture') {
+    await updateSubscriptionPaymentStatus(api.id, 'waiting_for_capture');
+  } else if (api.status === 'pending') {
+    await updateSubscriptionPaymentStatus(api.id, 'pending');
+  }
+
+  return { subscriptionActivated, planSlug };
+}
+
+async function buildDevSubscriptionPaymentFromDb(
+  providerPaymentId: string,
+  userId: string
+): Promise<SubscriptionPaymentApiShape | null> {
+  const owned = await getSubscriptionPaymentForUser(providerPaymentId, userId);
+  if (!owned || !isDevMarkedPayment(owned.raw_last_event)) {
+    return null;
+  }
+
+  const status =
+    owned.status === 'succeeded' ||
+    owned.status === 'canceled' ||
+    owned.status === 'pending' ||
+    owned.status === 'waiting_for_capture'
+      ? owned.status
+      : 'succeeded';
+
+  return {
+    id: owned.provider_payment_id!,
+    status,
+    amount: {
+      value: String(owned.amount),
+      currency: owned.currency || 'RUB',
+    },
+    metadata: {
+      productType: PREMIUM_SUBSCRIPTION_PRODUCT_TYPE,
+      userId: owned.user_id,
+      plan: owned.plan,
+    },
+  };
+}
 
 export const handler: Handler = async (event: HandlerEvent) => {
   if (event.httpMethod === 'OPTIONS') {
@@ -94,6 +192,47 @@ export const handler: Handler = async (event: HandlerEvent) => {
     return createErrorResponse(404, 'Subscription payment not found');
   }
 
+  if (isDevPaymentModeEnabled()) {
+    const devPayment = await buildDevSubscriptionPaymentFromDb(paymentId, userId);
+    if (devPayment) {
+      logDevPaymentSubscriptionStatus({
+        subscriptionPaymentId: owned.id,
+        paymentId,
+      });
+
+      try {
+        const { subscriptionActivated, planSlug } = await applySubscriptionPaymentFromProvider(
+          devPayment,
+          userId
+        );
+
+        return createSuccessResponse({
+          payment: {
+            id: devPayment.id,
+            status: devPayment.status,
+            paid: devPayment.status === 'succeeded',
+            amount: devPayment.amount,
+            metadata: {
+              productType: PREMIUM_SUBSCRIPTION_PRODUCT_TYPE,
+              userId,
+              plan: planSlug,
+            },
+          },
+          subscriptionActivated,
+        });
+      } catch (error) {
+        const statusCode =
+          error && typeof error === 'object' && 'statusCode' in error
+            ? Number((error as { statusCode: number }).statusCode)
+            : 500;
+        return createErrorResponse(
+          statusCode,
+          error instanceof Error ? error.message : 'Failed to process subscription payment'
+        );
+      }
+    }
+  }
+
   const yookassaCreds = getYooKassaEnvCredentials();
   if (!yookassaCreds) {
     return createErrorResponse(
@@ -118,69 +257,50 @@ export const handler: Handler = async (event: HandlerEvent) => {
   }
 
   const api = apiResult.payment;
-  const metaUserId = metaString(api.metadata, 'userId');
   const productType = metaString(api.metadata, 'productType');
+  const metaUserId = metaString(api.metadata, 'userId');
   const plan = metaString(api.metadata, 'plan');
 
-  const paymentValidation = validatePremiumSubscriptionPayment({
-    productType,
-    userId: metaUserId,
-    plan,
-    amountValue: api.amount.value,
-    currency: api.amount.currency,
-    amountsEqual,
-  });
-
-  if (!paymentValidation.valid) {
-    const message =
-      paymentValidation.reason === 'missing userId metadata'
-        ? 'Payment does not belong to this user'
-        : paymentValidation.reason === 'productType'
-          ? 'Not a premium subscription payment'
-          : paymentValidation.reason === 'plan metadata'
-            ? 'Unexpected subscription plan'
-            : 'Payment amount mismatch';
-    const statusCode = paymentValidation.reason === 'missing userId metadata' ? 403 : 400;
-    return createErrorResponse(statusCode, message);
-  }
-
-  if (metaUserId !== userId) {
-    return createErrorResponse(403, 'Payment does not belong to this user');
-  }
-
-  const planSlug = paymentValidation.planSlug;
-
-  let subscriptionActivated = false;
-
-  if (api.status === 'succeeded') {
-    await updateSubscriptionPaymentStatus(paymentId, 'succeeded');
-    await fulfillSubscriptionPayment({ userId, planSlug, providerPaymentId: paymentId });
-    subscriptionActivated = true;
-  } else if (api.status === 'canceled') {
-    await updateSubscriptionPaymentStatus(paymentId, 'canceled');
-  } else if (api.status === 'waiting_for_capture') {
-    await updateSubscriptionPaymentStatus(paymentId, 'waiting_for_capture');
-  } else if (api.status === 'pending') {
-    await updateSubscriptionPaymentStatus(paymentId, 'pending');
-  }
-
-  return createSuccessResponse({
-    payment: {
-      id: api.id,
-      status: api.status,
-      paid: api.status === 'succeeded',
-      amount: api.amount,
-      metadata: {
-        productType,
-        userId: metaUserId,
-        plan: plan ?? DEFAULT_SUBSCRIPTION_PLAN,
+  try {
+    const { subscriptionActivated, planSlug } = await applySubscriptionPaymentFromProvider(
+      {
+        id: api.id,
+        status: api.status,
+        amount: api.amount,
+        metadata: api.metadata,
+        confirmation: (api as { confirmation?: { confirmation_url?: string } }).confirmation,
       },
-      confirmation_url:
-        (api.status === 'pending' || api.status === 'waiting_for_capture') &&
-        (api as { confirmation?: { confirmation_url?: string } }).confirmation?.confirmation_url
-          ? (api as { confirmation?: { confirmation_url?: string } }).confirmation!.confirmation_url
-          : undefined,
-    },
-    subscriptionActivated,
-  });
+      userId
+    );
+
+    return createSuccessResponse({
+      payment: {
+        id: api.id,
+        status: api.status,
+        paid: api.status === 'succeeded',
+        amount: api.amount,
+        metadata: {
+          productType,
+          userId: metaUserId,
+          plan: plan ?? DEFAULT_SUBSCRIPTION_PLAN,
+        },
+        confirmation_url:
+          (api.status === 'pending' || api.status === 'waiting_for_capture') &&
+          (api as { confirmation?: { confirmation_url?: string } }).confirmation?.confirmation_url
+            ? (api as { confirmation?: { confirmation_url?: string } }).confirmation!
+                .confirmation_url
+            : undefined,
+      },
+      subscriptionActivated,
+    });
+  } catch (error) {
+    const statusCode =
+      error && typeof error === 'object' && 'statusCode' in error
+        ? Number((error as { statusCode: number }).statusCode)
+        : 500;
+    return createErrorResponse(
+      statusCode,
+      error instanceof Error ? error.message : 'Failed to process subscription payment'
+    );
+  }
 };

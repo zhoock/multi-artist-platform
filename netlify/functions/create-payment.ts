@@ -38,8 +38,12 @@ import { buyerAlreadyOwnsAlbumForCheckout } from './lib/purchase-access';
 import { resolveAlbumSellerUserId } from './lib/resolveAlbumSellerUserId';
 import { resolveAlbumByKey, resolveAlbumSlug } from './lib/resolve-album-key';
 import { resolveAlbumPaymentReturnUrl } from './lib/yookassa-return-url';
-import { isDevPaymentModeEnabled } from './lib/dev-payment-mode';
-import { completeDevAlbumPayment } from './lib/complete-dev-album-payment';
+import {
+  isDevPaymentModeEnabled,
+  logDevPaymentAlbumCreate,
+  extractReturnToFromReturnUrl,
+} from './lib/dev-payment-mode';
+import { completeDevAlbumPayment } from './lib/complete-dev-payment';
 
 dns.setDefaultResultOrder('ipv4first');
 
@@ -517,10 +521,15 @@ export const handler: Handler = async (
     }
 
     if (isDevPaymentModeEnabled()) {
-      console.log('🧪 Dev payment mode: completing album payment without YooKassa', { orderId });
       const { paymentId } = await completeDevAlbumPayment({
         orderId,
         amount: orderAmount,
+      });
+
+      logDevPaymentAlbumCreate({
+        orderId,
+        paymentId,
+        returnTo: extractReturnToFromReturnUrl(data.returnUrl),
       });
 
       return {

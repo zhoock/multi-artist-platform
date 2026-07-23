@@ -160,6 +160,7 @@ export interface SubscriptionPaymentRow {
   amount: string;
   currency: string;
   plan: string;
+  raw_last_event?: unknown;
 }
 
 export async function createPendingSubscriptionPayment(
@@ -211,7 +212,7 @@ export async function getSubscriptionPaymentByProviderId(
 ): Promise<SubscriptionPaymentRow | null> {
   try {
     const r = await query<SubscriptionPaymentRow>(
-      `SELECT id, user_id, provider, provider_payment_id, status, amount::text AS amount, currency, plan
+      `SELECT id, user_id, provider, provider_payment_id, status, amount::text AS amount, currency, plan, raw_last_event
        FROM subscription_payments
        WHERE provider = 'yookassa' AND provider_payment_id = $1
        LIMIT 1`,
