@@ -39,6 +39,7 @@ import { sanitizeReturnPath } from '@shared/lib/authReturnUrl';
 import { ALBUM_PAY_STATUS_PATH, ALBUM_PAY_SUCCESS_PATH } from '@shared/lib/paymentRoutes';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 import { ModalCloseIcon } from '@shared/ui/icons/ModalCloseIcon';
+import { DashboardButton } from '@shared/ui/dashboard';
 import { getAlbumPrice } from '../lib/getAlbumPrice';
 import { useAlbumOwnedByViewer } from '../lib/useAlbumOwnedByViewer';
 import { resolveCheckoutBuyerIdentity } from '../lib/resolveCheckoutBuyerIdentity';
@@ -382,10 +383,6 @@ export function AlbumCheckoutModal({ isOpen, album, onClose }: AlbumCheckoutModa
     >
       <div className="album-checkout-modal">
         <div className="album-checkout-modal__container">
-          <PopupCloseButton className="album-checkout-modal__close" aria-label={labels.close}>
-            <ModalCloseIcon size={24} />
-          </PopupCloseButton>
-
           <header className="album-checkout-modal__hero">
             <div className="album-checkout-modal__hero-cover">
               {album.cover ? (
@@ -408,6 +405,9 @@ export function AlbumCheckoutModal({ isOpen, album, onClose }: AlbumCheckoutModa
               </h2>
               <p className="album-checkout-modal__hero-price">{formattedPrice}</p>
             </div>
+            <PopupCloseButton className="album-checkout-modal__close" aria-label={labels.close}>
+              <ModalCloseIcon />
+            </PopupCloseButton>
           </header>
 
           {showOwned ? (
@@ -421,21 +421,18 @@ export function AlbumCheckoutModal({ isOpen, album, onClose }: AlbumCheckoutModa
                   {paymentError}
                 </div>
               )}
-              <button
-                type="button"
-                className="album-checkout-modal__primary"
-                onClick={() => void handleDownloadOwned()}
-                disabled={isDownloading}
-              >
-                {isDownloading ? (
-                  <>
-                    <span className="album-checkout-modal__spinner" aria-hidden="true" />
-                    <span>{labels.downloadingCta}</span>
-                  </>
-                ) : (
-                  labels.downloadCta
-                )}
-              </button>
+              <div className="album-checkout-modal__actions">
+                <DashboardButton
+                  type="button"
+                  variant="primary"
+                  className="album-checkout-modal__action"
+                  loading={isDownloading}
+                  disabled={isDownloading}
+                  onClick={() => void handleDownloadOwned()}
+                >
+                  {isDownloading ? labels.downloadingCta : labels.downloadCta}
+                </DashboardButton>
+              </div>
             </section>
           ) : isGuest ? (
             <section className="album-checkout-modal__auth-gate" aria-live="polite">
@@ -461,21 +458,23 @@ export function AlbumCheckoutModal({ isOpen, album, onClose }: AlbumCheckoutModa
                   {paymentError}
                 </div>
               )}
-              <div className="album-checkout-modal__auth-gate-actions">
-                <button
+              <div className="album-checkout-modal__actions">
+                <DashboardButton
                   type="button"
-                  className="album-checkout-modal__primary"
+                  variant="primary"
+                  className="album-checkout-modal__action"
                   onClick={() => handleGoToAuth('register')}
                 >
                   {labels.authGateCreateAccount}
-                </button>
-                <button
+                </DashboardButton>
+                <DashboardButton
                   type="button"
-                  className="album-checkout-modal__secondary"
+                  variant="outline"
+                  className="album-checkout-modal__action"
                   onClick={() => handleGoToAuth('login')}
                 >
                   {labels.authGateSignIn}
-                </button>
+                </DashboardButton>
               </div>
             </section>
           ) : (
@@ -541,20 +540,17 @@ export function AlbumCheckoutModal({ isOpen, album, onClose }: AlbumCheckoutModa
                 </div>
               )}
 
-              <button
-                type="submit"
-                className="album-checkout-modal__primary"
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? (
-                  <>
-                    <span className="album-checkout-modal__spinner" aria-hidden="true" />
-                    <span>{labels.payCtaProcessing}</span>
-                  </>
-                ) : (
-                  labels.payCta
-                )}
-              </button>
+              <div className="album-checkout-modal__actions">
+                <DashboardButton
+                  type="submit"
+                  variant="primary"
+                  className="album-checkout-modal__action"
+                  loading={isSubmitting}
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? labels.payCtaProcessing : labels.payCta}
+                </DashboardButton>
+              </div>
             </form>
           )}
         </div>

@@ -984,7 +984,7 @@
     },
     "checkout": {
       "checkout": {
-        "emailAddress": "Email address",
+        "emailAddress": "Email",
         "agreeToOffer": "I agree to the",
         "publicOffer": "public offer",
         "agreeToPrivacy": "I consent to",

@@ -1,17 +1,23 @@
 @use '../../../scss/abstracts/mixins' as *;
+@use '../../../scss/components/modal' as dashboard-modal;
 
-// Direct album checkout modal — single-column calm layout, без cart-семантики
-// и таблиц DESC/QTY/PRICE.
+// Direct album checkout modal — aligned with dashboard modal patterns (VerifyEmail, DeleteAccount, etc.).
+
+$album-checkout-modal-padding: 24px;
+$album-checkout-modal-gap: var(--ms-0);
 
 .album-checkout-modal {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-block-size: 100vh;
+  @include dashboard-modal.dashboard-modal-shell($padding: 20px);
 
   &__container {
-    position: relative;
-    padding: var(--ms-2) var(--ms-1) var(--ms-1);
+    display: flex;
+    flex-direction: column;
+    gap: $album-checkout-modal-gap;
+    inline-size: 100%;
+    max-inline-size: 480px;
+    max-block-size: 92vh;
+    padding: $album-checkout-modal-padding;
+    overflow-y: auto;
     color: var(--dashboard-text-primary);
     font-size: var(--dashboard-font-size, 14px);
     line-height: 1.4;
@@ -19,68 +25,31 @@
     font-weight: 400;
     background: var(--dashboard-card-bg);
     border: 1px solid var(--dashboard-card-border);
-    border-radius: var(--ms-0);
-    box-shadow: 0 8px 32px var(--dashboard-shadow);
-    inline-size: 100%;
-    max-inline-size: 480px;
-    max-block-size: 92vh;
-    overflow-y: auto;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgb(0 0 0 / 30%);
+    box-sizing: border-box;
 
     @include breakpoint(tablet) {
-      padding: var(--ms-2);
       max-inline-size: 520px;
     }
   }
 
-  &__close {
-    position: absolute;
-    top: var(--ms-1);
-    right: var(--ms-1);
-    z-index: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    inline-size: 32px;
-    block-size: 32px;
-    padding: 0;
-    color: var(--dashboard-text-secondary);
-    background: transparent;
-    border: none;
-    border-radius: 50%;
-    cursor: pointer;
-    transition:
-      color 0.2s ease,
-      background-color 0.2s ease;
-
-    @media (hover: hover) and (pointer: fine) {
-      &:hover {
-        color: var(--dashboard-text-primary);
-        background: var(--dashboard-hover-bg);
-      }
-    }
-
-    &:active {
-      background: var(--dashboard-active-bg);
-    }
-
-    svg {
-      inline-size: 20px;
-      block-size: 20px;
-    }
-  }
-
   &__hero {
+    position: sticky;
+    top: 0;
+    z-index: 1;
     display: grid;
-    grid-template-columns: auto 1fr;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas: 'cover meta close';
     gap: var(--ms-1);
     align-items: center;
-    padding-block-end: var(--ms-1);
+    padding-block-end: $album-checkout-modal-gap;
+    background: var(--dashboard-card-bg);
     border-block-end: 1px solid var(--dashboard-divider);
-    margin-block-end: var(--ms-2);
   }
 
   &__hero-cover {
-    position: relative;
+    grid-area: cover;
     inline-size: 96px;
     block-size: 96px;
     background: var(--dashboard-hover-bg);
@@ -113,10 +82,22 @@
   }
 
   &__hero-meta {
+    grid-area: meta;
     display: flex;
     flex-direction: column;
     gap: 4px;
     min-inline-size: 0;
+  }
+
+  &__close {
+    grid-area: close;
+    align-self: start;
+
+    @include dashboard-modal.dashboard-modal-close(
+      $focus-visible: true,
+      $reset-text: true,
+      $flex-shrink: 0
+    );
   }
 
   &__hero-artist {
@@ -128,19 +109,22 @@
 
   &__hero-title {
     margin: 0;
-    color: var(--dashboard-text-primary);
-    font-size: var(--dashboard-heading-font-size, 18px);
-    font-weight: 500;
-    letter-spacing: -0.01em;
+
+    @include dashboard-modal.dashboard-modal-title(
+      $font-weight: 500,
+      $line-height: 1.25,
+      $reset-text: true
+    );
+
     overflow-wrap: anywhere;
   }
 
   &__hero-price {
     margin: 0;
+    margin-block-start: 4px;
     color: var(--dashboard-text-primary);
     font-size: 1rem;
     font-weight: 600;
-    margin-block-start: 4px;
   }
 
   &__form,
@@ -148,40 +132,28 @@
   &__auth-gate {
     display: flex;
     flex-direction: column;
-    gap: var(--ms-1);
+    gap: $album-checkout-modal-gap;
   }
 
-  &__owned {
-    align-items: stretch;
-    text-align: start;
-  }
-
-  &__owned-title {
-    margin: 0;
-    color: var(--dashboard-text-primary);
-    font-size: 1.0625rem;
-    font-weight: 500;
-  }
-
-  &__owned-description {
-    margin: 0;
-    color: var(--dashboard-text-secondary);
-    font-size: var(--dashboard-font-size, 14px);
-    line-height: 1.5;
-  }
-
+  &__owned,
   &__auth-gate {
     align-items: stretch;
     text-align: start;
   }
 
+  &__owned-title,
   &__auth-gate-title {
-    margin: 0;
-    color: var(--dashboard-text-primary);
+    @include dashboard-modal.dashboard-modal-title(
+      $margin: 0,
+      $font-weight: 500,
+      $line-height: 1.35,
+      $reset-text: true
+    );
+
     font-size: 1.0625rem;
-    font-weight: 500;
   }
 
+  &__owned-description,
   &__auth-gate-description {
     margin: 0;
     color: var(--dashboard-text-secondary);
@@ -221,46 +193,29 @@
     border-radius: 50%;
   }
 
-  &__auth-gate-actions {
+  &__actions {
+    @include dashboard-modal.dashboard-modal-dialog-buttons(
+      $font-size: var(--dashboard-font-size),
+      $line-height: 1.35
+    );
+
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: var(--ms-01);
   }
 
-  &__secondary {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
+  &__action {
     inline-size: 100%;
-    padding: var(--ms-01) var(--ms-0);
-    color: var(--dashboard-text-primary);
-    font-size: var(--dashboard-font-size, 14px);
-    font-weight: 500;
-    font-family: var(--base-font-family, arial, sans-serif);
-    background: transparent;
-    border: 1px solid var(--dashboard-input-border);
-    border-radius: var(--ms-01);
-    cursor: pointer;
-    transition:
-      background-color 0.2s ease,
-      border-color 0.2s ease;
+    min-block-size: 2.75rem;
+    text-transform: none !important;
+    letter-spacing: normal !important;
+  }
 
-    @media (hover: hover) and (pointer: fine) {
-      &:hover {
-        background: var(--dashboard-hover-bg);
-        border-color: var(--dashboard-text-secondary);
-      }
-    }
-
-    &:active {
-      background: var(--dashboard-active-bg);
-    }
-
-    &:disabled {
-      opacity: 0.7;
-      cursor: not-allowed;
-    }
+  &__field {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-inline-size: 0;
   }
 
   &__email-value {
@@ -271,23 +226,15 @@
     user-select: text;
   }
 
-  &__field {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    min-inline-size: 0;
-  }
-
   &__label {
     @include dashboard-form-label($margin-bottom: 0);
   }
 
   &__field-error {
     display: block;
-    color: var(--soft-red);
-    font-size: 0.75rem;
-    font-family: var(--base-font-family, arial, sans-serif);
     margin-block-start: 4px;
+
+    @include dashboard-helper-text(var(--error-color, #cf807d));
   }
 
   &__agreement {
@@ -327,47 +274,13 @@
   }
 
   &__error {
-    padding: var(--ms-1);
-    color: var(--soft-red);
-    font-size: 0.875rem;
-    font-family: var(--base-font-family, arial, sans-serif);
-    background: rgb(var(--soft-red-rgb) / 10%);
-    border: 1px solid var(--soft-red);
+    margin: 0;
+    padding: 0.75rem;
+    color: var(--error-color, #cf807d);
+    font-size: var(--ms-01);
+    line-height: 1.45;
+    background: rgb(207 128 125 / 10%);
+    border: 1px solid color-mix(in srgb, var(--error-color, #cf807d) 55%, transparent);
     border-radius: 8px;
-  }
-
-  &__primary {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    inline-size: 100%;
-    font-weight: 500;
-    font-family: var(--base-font-family, arial, sans-serif);
-    cursor: pointer;
-    margin-block-start: var(--ms-01);
-
-    @include dashboard-btn-primary($margin: 0, $padding: var(--ms-01) var(--ms-0));
-
-    &:disabled {
-      opacity: 0.7;
-      cursor: not-allowed;
-    }
-  }
-
-  &__spinner {
-    display: inline-block;
-    inline-size: 16px;
-    block-size: 16px;
-    border: 2px solid rgba(255 255 255 / 30%);
-    border-top-color: var(--dashboard-btn-primary-text);
-    border-radius: 50%;
-    animation: album-checkout-modal-spin 0.8s linear infinite;
-  }
-
-  @keyframes album-checkout-modal-spin {
-    to {
-      transform: rotate(360deg);
-    }
   }
 }
