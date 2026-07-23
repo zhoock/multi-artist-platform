@@ -212,7 +212,7 @@ function ServiceButtonsContent({
       ? downloadOfferLabel || labels.buyAlbumPurchased
       : hasPremiumAccess
         ? downloadOfferLabel
-          ? `${downloadOfferLabel} • ${labels.buyAlbumViaSupport}`
+          ? `${downloadOfferLabel} · ${labels.buyAlbumViaSupport}`
           : labels.buyAlbumViaSupport
         : downloadOfferLabel;
   // Size is already in the offer subtitle when known — right side is price (buy) or empty (download).
