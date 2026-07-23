@@ -1,0 +1,5 @@
+# Production-only redirects (copied to dist/_redirects on deploy).
+# Netlify processes _redirects before netlify.toml; first match wins.
+# See: https://docs.netlify.com/manage/routing/redirects/overview/#rule-processing-order
+/api/*  /.netlify/functions/:splat  200
+/*      /index.html                 200

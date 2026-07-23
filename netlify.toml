@@ -1,9 +1,10 @@
 [build]
   publish = "dist"
   functions = "netlify/functions"
-  # SPA fallback пишем в dist/_redirects при деплое: redirects в netlify.toml глобальны
-  # и применяются в Netlify Dev до проксирования на webpack (ломает /scripts/main.js).
-  command = "npm run build && printf '%s\\n' '/*    /index.html   200' > dist/_redirects"
+  # dist/_redirects только для production/deploy-preview: правила в netlify.toml глобальны
+  # и в Netlify Dev применяются до проксирования на webpack (ломает /scripts/main.js).
+  # Порядок в dist._redirects: API proxy, затем SPA fallback (см. docs Netlify rule processing order).
+  command = "npm run build && cp netlify/dist._redirects dist/_redirects"
 
 [dev]
   command = "npm start"
@@ -370,5 +371,5 @@
 
 # ---------- SPA ----------
 # Redirects в netlify.toml глобальны (включая Netlify Dev) — см. docs Netlify.
-# SPA fallback для production/deploy-preview: dist/_redirects создаётся в [build].command.
+# Production/deploy-preview: netlify/dist._redirects → dist/_redirects в [build].command.
 # Netlify Dev проксирует /scripts/main.js на webpack (8080); historyApiFallback — там.
