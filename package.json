@@ -36,6 +36,7 @@
     "rename-audio-folder": "tsx scripts/rename-audio-folder.ts",
     "recalculate-durations": "tsx scripts/recalculate-track-durations.ts",
     "remove-duplicate-albums": "tsx database/scripts/remove-duplicate-albums.ts",
+    "predev": "tsx scripts/remove-dist-redirects-for-dev.ts",
     "dev": "netlify dev",
     "dev:local": "npm start",
     "preview:purchase-email": "tsx scripts/preview-purchase-email.ts",

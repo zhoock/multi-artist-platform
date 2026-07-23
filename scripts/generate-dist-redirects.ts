@@ -3,6 +3,8 @@
  *
  * Netlify evaluates _redirects before netlify.toml (first match wins), so production
  * must ship the full /api/* routing table here — not only a :splat catch-all.
+ *
+ * Do not keep this file locally during Netlify Dev — see scripts/remove-dist-redirects-for-dev.ts.
  */
 
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
