@@ -204,6 +204,10 @@ module.exports = {
       'import.meta.env.VITE_USE_SUPABASE_STORAGE': JSON.stringify(
         process.env.VITE_USE_SUPABASE_STORAGE || 'false'
       ),
+      'import.meta.env.DEV': JSON.stringify(process.env.NODE_ENV !== 'production'),
+      'import.meta.env.VITE_DEV_PAYMENT_MODE': JSON.stringify(
+        process.env.VITE_DEV_PAYMENT_MODE || ''
+      ),
       'process.env.VITE_SUPABASE_URL': JSON.stringify(process.env.VITE_SUPABASE_URL || ''),
       'process.env.VITE_SUPABASE_ANON_KEY': JSON.stringify(
         process.env.VITE_SUPABASE_ANON_KEY || ''

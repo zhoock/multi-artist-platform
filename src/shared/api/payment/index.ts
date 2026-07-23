@@ -27,6 +27,8 @@ export interface CreatePaymentResponse {
   paymentId?: string;
   confirmationUrl?: string;
   orderId?: string;
+  /** Dev-only: payment fulfilled server-side without YooKassa redirect */
+  devPaymentCompleted?: boolean;
   error?: string;
   message?: string;
 }

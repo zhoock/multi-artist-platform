@@ -49,6 +49,7 @@
 Опциональные:
 
 - `NETLIFY_SITE_URL` - URL продакшн сайта (для проксирования API вместо локальных функций)
+- `DEV_PAYMENT_MODE=true` — локальный checkout альбома без YooKassa (см. `docs/dev-payment-mode.md`)
 
 ## Команды
 

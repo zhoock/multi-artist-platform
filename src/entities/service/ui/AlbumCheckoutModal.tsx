@@ -300,6 +300,16 @@ export function AlbumCheckoutModal({ isOpen, album, onClose }: AlbumCheckoutModa
         return;
       }
 
+      if (result.devPaymentCompleted && result.orderId) {
+        if (typeof window !== 'undefined') {
+          const statusUrl = new URL(`${window.location.origin}${ALBUM_PAY_STATUS_PATH}`);
+          statusUrl.searchParams.set('orderId', result.orderId);
+          statusUrl.searchParams.set('returnTo', returnTo);
+          window.location.href = statusUrl.toString();
+        }
+        return;
+      }
+
       if (result.confirmationUrl) {
         if (typeof window !== 'undefined') {
           window.location.href = result.confirmationUrl;

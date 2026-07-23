@@ -22,6 +22,10 @@ declare global {
     readonly VITE_USE_SUPABASE_STORAGE?: string;
     /** Базовый URL для JSON/ассетов в production (например raw.githubusercontent.com/.../src/assets) */
     readonly VITE_RAW_ASSETS_BASE_URL?: string;
+    /** Local dev: skip YooKassa redirect (requires server DEV_PAYMENT_MODE=true) */
+    readonly VITE_DEV_PAYMENT_MODE?: string;
+    /** True when webpack build is not production */
+    readonly DEV?: boolean;
   }
 
   interface ImportMeta {

@@ -12,6 +12,7 @@
 
 [context.dev.environment]
   PUBLIC_APP_URL = "http://localhost:8080"
+  DEV_PAYMENT_MODE = "true"
 
 # ---------- Статические файлы ----------
 [[redirects]]

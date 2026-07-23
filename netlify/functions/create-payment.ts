@@ -38,6 +38,8 @@ import { buyerAlreadyOwnsAlbumForCheckout } from './lib/purchase-access';
 import { resolveAlbumSellerUserId } from './lib/resolveAlbumSellerUserId';
 import { resolveAlbumByKey, resolveAlbumSlug } from './lib/resolve-album-key';
 import { resolveAlbumPaymentReturnUrl } from './lib/yookassa-return-url';
+import { isDevPaymentModeEnabled } from './lib/dev-payment-mode';
+import { completeDevAlbumPayment } from './lib/complete-dev-album-payment';
 
 dns.setDefaultResultOrder('ipv4first');
 
@@ -64,6 +66,8 @@ interface CreatePaymentResponse {
   paymentId?: string;
   confirmationUrl?: string;
   orderId?: string;
+  /** Dev-only: payment fulfilled server-side without YooKassa redirect */
+  devPaymentCompleted?: boolean;
   error?: string;
   message?: string;
 }
@@ -374,50 +378,6 @@ export const handler: Handler = async (
       };
     }
 
-    let shopId: string;
-    let secretKey: string;
-    try {
-      const { getDecryptedSecretKey } = await import('./payment-settings');
-      const userCredentials = await getDecryptedSecretKey(sellerUserId, 'yookassa');
-      if (!userCredentials?.shopId || !userCredentials?.secretKey) {
-        console.warn(`⚠️ Seller ${sellerUserId} has no active YooKassa credentials`);
-        return {
-          statusCode: 403,
-          headers,
-          body: JSON.stringify({
-            success: false,
-            error: 'seller_payment_not_configured',
-            message:
-              'This artist has not connected YooKassa or payments are disabled. Purchases are unavailable.',
-          } as CreatePaymentResponse),
-        };
-      }
-      shopId = userCredentials.shopId.trim();
-      secretKey = userCredentials.secretKey.trim();
-    } catch (credErr) {
-      console.error(`❌ Error loading YooKassa credentials for seller ${sellerUserId}:`, credErr);
-      return {
-        statusCode: 503,
-        headers,
-        body: JSON.stringify({
-          success: false,
-          error: 'payment_credentials_unavailable',
-          message: 'Could not load payment settings for this seller.',
-        } as CreatePaymentResponse),
-      };
-    }
-
-    console.log('🔐 YooKassa credentials loaded (seller only, no platform fallback):', {
-      shopId,
-      sellerUserId,
-      shopIdLength: shopId.length,
-      secretKeyLength: secretKey.length,
-      secretKeyPrefix: `${secretKey.substring(0, 6)}***`,
-      credentialsSource: 'user_settings',
-      nodeEnv: process.env.NODE_ENV,
-      netlifyDev: process.env.NETLIFY_DEV,
-    });
-
     // Создаем или получаем заказ
     let orderId: string;
     let orderAmount: number;
@@ -555,6 +515,69 @@ export const handler: Handler = async (
         throw dbError;
       }
     }
+
+    if (isDevPaymentModeEnabled()) {
+      console.log('🧪 Dev payment mode: completing album payment without YooKassa', { orderId });
+      const { paymentId } = await completeDevAlbumPayment({
+        orderId,
+        amount: orderAmount,
+      });
+
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({
+          success: true,
+          orderId,
+          paymentId,
+          devPaymentCompleted: true,
+        } as CreatePaymentResponse),
+      };
+    }
+
+    let shopId: string;
+    let secretKey: string;
+    try {
+      const { getDecryptedSecretKey } = await import('./payment-settings');
+      const userCredentials = await getDecryptedSecretKey(sellerUserId, 'yookassa');
+      if (!userCredentials?.shopId || !userCredentials?.secretKey) {
+        console.warn(`⚠️ Seller ${sellerUserId} has no active YooKassa credentials`);
+        return {
+          statusCode: 403,
+          headers,
+          body: JSON.stringify({
+            success: false,
+            error: 'seller_payment_not_configured',
+            message:
+              'This artist has not connected YooKassa or payments are disabled. Purchases are unavailable.',
+          } as CreatePaymentResponse),
+        };
+      }
+      shopId = userCredentials.shopId.trim();
+      secretKey = userCredentials.secretKey.trim();
+    } catch (credErr) {
+      console.error(`❌ Error loading YooKassa credentials for seller ${sellerUserId}:`, credErr);
+      return {
+        statusCode: 503,
+        headers,
+        body: JSON.stringify({
+          success: false,
+          error: 'payment_credentials_unavailable',
+          message: 'Could not load payment settings for this seller.',
+        } as CreatePaymentResponse),
+      };
+    }
+
+    console.log('🔐 YooKassa credentials loaded (seller only, no platform fallback):', {
+      shopId,
+      sellerUserId,
+      shopIdLength: shopId.length,
+      secretKeyLength: secretKey.length,
+      secretKeyPrefix: `${secretKey.substring(0, 6)}***`,
+      credentialsSource: 'user_settings',
+      nodeEnv: process.env.NODE_ENV,
+      netlifyDev: process.env.NETLIFY_DEV,
+    });
 
     // Нормализуем телефон для YooKassa: только цифры, без символов
     // YooKassa требует формат: только цифры, без +, пробелов, скобок и т.п.
