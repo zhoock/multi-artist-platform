@@ -9,6 +9,8 @@ import { invalidateMyPurchasesCache } from '@shared/api/purchases';
 import { redirectToAlbumReturnPath } from '@shared/lib/albumPurchaseSuccessToast';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
+import AlbumCover from '@entities/album/ui/AlbumCover';
+import { Mail as MailIcon } from 'lucide-react';
 import {
   ALBUM_PAY_FAIL_PATH,
   ALBUM_PAY_SUCCESS_PATH,
@@ -16,6 +18,11 @@ import {
   albumPaymentOutcomePath,
   type AlbumPaymentRouteMode,
 } from '@shared/lib/paymentRoutes';
+import {
+  buildPaymentSuccessPreviewState,
+  isPaymentSuccessPreviewActive,
+  PAYMENT_SUCCESS_PREVIEW_PLACEHOLDER_COVER,
+} from './paymentSuccessPreview';
 
 /**
  * Статус платежа от YooKassa API (через get-payment-status; сверка с провайдером на бэкенде).
@@ -40,14 +47,42 @@ interface PaymentStatus {
   confirmation_url?: string;
 }
 
+interface PurchasedAlbumInfo {
+  title: string;
+  artist: string;
+  cover: string | null;
+  userId: string | null;
+}
+
 interface StatusInfo {
   title: string;
   message: string;
-  icon: string;
   className: string;
 }
 
 type PaymentUiError = 'missing_reference' | 'fetch_failed';
+
+function SuccessCheckIcon() {
+  return (
+    <svg
+      className="payment-success__check-icon"
+      width="28"
+      height="28"
+      viewBox="0 0 28 28"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden
+    >
+      <path
+        d="M8 14.5L12 18.5L20 10.5"
+        stroke="currentColor"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
 
 const labelsFor = (lang: string, ui: ReturnType<typeof selectUiDictionaryFirst> | null) => {
   const copy = ui?.checkout?.paymentSuccess;
@@ -78,12 +113,7 @@ const labelsFor = (lang: string, ui: ReturnType<typeof selectUiDictionaryFirst> 
         ? 'Could not retrieve payment status. Please try again.'
         : 'Не удалось получить статус оплаты. Попробуйте ещё раз.'),
     reloadPage: copy?.reloadPage ?? (en ? 'Reload page' : 'Обновить страницу'),
-    succeededTitle: copy?.succeededTitle ?? (en ? 'Payment successful!' : 'Оплата успешна!'),
-    succeededMessage:
-      copy?.succeededMessage ??
-      (en
-        ? 'Your order has been paid. Thank you for your purchase!'
-        : 'Ваш заказ успешно оплачен. Спасибо за покупку!'),
+    succeededTitle: copy?.succeededTitle ?? (en ? 'Purchase complete' : 'Покупка завершена'),
     incompleteTitle: copy?.incompleteTitle ?? (en ? 'Payment not completed' : 'Платёж не завершён'),
     incompleteMessage:
       copy?.incompleteMessage ??
@@ -106,24 +136,19 @@ const labelsFor = (lang: string, ui: ReturnType<typeof selectUiDictionaryFirst> 
       (en
         ? 'Status is taking longer than expected — reload the page or return to checkout.'
         : 'Статус долго не обновляется — обновите страницу или вернитесь к оформлению заказа.'),
-    amountLabel: copy?.amountLabel ?? (en ? 'Amount:' : 'Сумма:'),
-    emailLabel: copy?.emailLabel ?? 'Email:',
-    orderNumberLabel: copy?.orderNumberLabel ?? (en ? 'Order number:' : 'Номер заказа:'),
     downloadLinkSentPrefix:
       copy?.downloadLinkSentPrefix ??
-      (en ? 'Download link sent to email' : 'Ссылка на скачивание отправлена на email'),
+      (en ? 'Download link sent to' : 'Ссылка для скачивания отправлена на'),
     redirectCountdownOne:
       copy?.redirectCountdownOne ??
       (en
-        ? 'Returning to the previous page in {seconds} second…'
-        : 'Возвращаемся на исходную страницу через {seconds} секунду…'),
+        ? 'Returning to the album page in {seconds} sec'
+        : 'Возвращаемся на страницу альбома через {seconds} сек'),
     redirectCountdownMany:
       copy?.redirectCountdownMany ??
       (en
-        ? 'Returning to the previous page in {seconds} seconds…'
-        : 'Возвращаемся на исходную страницу через {seconds} секунды…'),
-    successImageAlt: copy?.successImageAlt ?? (en ? 'Payment successful' : 'Оплата успешна'),
-    myPurchases: copy?.myPurchases ?? (en ? 'My purchases' : 'Мои покупки'),
+        ? 'Returning to the album page in {seconds} sec'
+        : 'Возвращаемся на страницу альбома через {seconds} сек'),
     home: copy?.home ?? (en ? 'Home' : 'На главную'),
     returnNow: copy?.returnNow ?? (en ? 'Return now' : 'Вернуться сейчас'),
     tryAgain: copy?.tryAgain ?? (en ? 'Try again' : 'Попробовать снова'),
@@ -153,6 +178,52 @@ function isOrderUUID(value: string): boolean {
 const MAX_STATUS_POLLS = 20;
 const POLL_INTERVAL_MS = 5000;
 
+function PaymentSuccessPurchasedAlbum({
+  album,
+  usePlaceholderCover = false,
+}: {
+  album: PurchasedAlbumInfo;
+  usePlaceholderCover?: boolean;
+}) {
+  const coverKey = album.cover?.trim() ?? '';
+
+  return (
+    <div className="payment-success__album">
+      {usePlaceholderCover ? (
+        <div className="payment-success__album-cover">
+          <img
+            src={PAYMENT_SUCCESS_PREVIEW_PLACEHOLDER_COVER}
+            alt={`Обложка альбома ${album.title}`}
+            className="album-cover__image"
+            loading="eager"
+            decoding="async"
+          />
+        </div>
+      ) : coverKey ? (
+        <div className="payment-success__album-cover">
+          <AlbumCover
+            img={coverKey}
+            userId={album.userId ?? undefined}
+            fullName={album.title}
+            size={72}
+            densities={[1, 2]}
+            sizes="72px"
+          />
+        </div>
+      ) : (
+        <div
+          className="payment-success__album-cover payment-success__album-cover--placeholder"
+          aria-hidden
+        />
+      )}
+      <div className="payment-success__album-meta">
+        <p className="payment-success__album-title">{album.title}</p>
+        <p className="payment-success__album-artist">{album.artist}</p>
+      </div>
+    </div>
+  );
+}
+
 function PaymentSuccess() {
   const { lang } = useLang();
   const ui = useAppSelector((state) => selectUiDictionaryFirst(state, lang));
@@ -163,9 +234,20 @@ function PaymentSuccess() {
   const routeMode: AlbumPaymentRouteMode = albumPaymentModeFromPathname(location.pathname);
   const paymentIdParam = searchParams.get('paymentId');
   const orderIdParam = searchParams.get('orderId');
-  const returnTo = searchParams.get('returnTo');
-  const [payment, setPayment] = useState<PaymentStatus | null>(null);
-  const [loading, setLoading] = useState(true);
+  const returnToParam = searchParams.get('returnTo');
+  const isPreviewMode = isPaymentSuccessPreviewActive(searchParams.get('preview'));
+  const previewState = useMemo(
+    () => (isPreviewMode ? buildPaymentSuccessPreviewState(returnToParam) : null),
+    [isPreviewMode, returnToParam]
+  );
+  const returnTo = isPreviewMode ? (previewState?.returnTo ?? null) : returnToParam;
+  const [payment, setPayment] = useState<PaymentStatus | null>(
+    () => (previewState?.payment as PaymentStatus | undefined) ?? null
+  );
+  const [purchasedAlbum, setPurchasedAlbum] = useState<PurchasedAlbumInfo | null>(
+    () => previewState?.purchasedAlbum ?? null
+  );
+  const [loading, setLoading] = useState(() => !isPreviewMode);
   const [error, setError] = useState<PaymentUiError | null>(null);
   const [statusCheckTimedOut, setStatusCheckTimedOut] = useState(false);
   const [redirectCountdown, setRedirectCountdown] = useState(5);
@@ -208,6 +290,9 @@ function PaymentSuccess() {
     }
 
     setPayment(data.payment as PaymentStatus);
+    if (data.album) {
+      setPurchasedAlbum(data.album as PurchasedAlbumInfo);
+    }
     setLoading(false);
 
     const yookassaStatus = data.payment.status;
@@ -216,6 +301,10 @@ function PaymentSuccess() {
   }, [resolveApiQuery]);
 
   useEffect(() => {
+    if (isPreviewMode) {
+      return undefined;
+    }
+
     if (!paymentIdParam && !orderIdParam) {
       setError('missing_reference');
       setLoading(false);
@@ -273,7 +362,7 @@ function PaymentSuccess() {
       cancelled = true;
       clearPollTimer();
     };
-  }, [paymentIdParam, orderIdParam, fetchPaymentOnce]);
+  }, [paymentIdParam, orderIdParam, fetchPaymentOnce, isPreviewMode]);
 
   const buildOutcomeUrl = useCallback(
     (pathname: string) => `${pathname}${location.search}`,
@@ -282,7 +371,9 @@ function PaymentSuccess() {
 
   // Align URL with payment outcome: /pay/status → success|fail; guard legacy /pay/success links.
   useEffect(() => {
-    if (loading) return;
+    if (isPreviewMode || loading) {
+      return;
+    }
 
     if (routeMode === 'resolve') {
       if (error || !payment) {
@@ -308,7 +399,16 @@ function PaymentSuccess() {
     if (routeMode === 'fail' && payment.status === 'succeeded') {
       navigate(buildOutcomeUrl(ALBUM_PAY_SUCCESS_PATH), { replace: true });
     }
-  }, [routeMode, loading, error, payment, statusCheckTimedOut, navigate, buildOutcomeUrl]);
+  }, [
+    routeMode,
+    loading,
+    error,
+    payment,
+    statusCheckTimedOut,
+    navigate,
+    buildOutcomeUrl,
+    isPreviewMode,
+  ]);
 
   const handleTryAgainNavigate = () => {
     try {
@@ -325,49 +425,47 @@ function PaymentSuccess() {
 
   // Покупка прошла — сбрасываем кэш покупок, чтобы при возврате на album page
   // `useAlbumOwnedByViewer` сразу запросил свежие данные и показал "Owned".
-  // Это и есть настоящий ownership state: запись лежит в БД (`purchases`),
-  // мы лишь говорим клиенту перечитать список.
   const cacheInvalidatedRef = useRef(false);
   useEffect(() => {
+    if (isPreviewMode) {
+      return;
+    }
+
     if (payment?.status === 'succeeded' && !cacheInvalidatedRef.current) {
       cacheInvalidatedRef.current = true;
       invalidateMyPurchasesCache();
     }
-  }, [payment?.status]);
+  }, [payment?.status, isPreviewMode]);
 
   useEffect(() => {
-    if (payment?.status === 'succeeded' && returnTo) {
-      const countdownInterval = setInterval(() => {
-        setRedirectCountdown((prev) => {
-          if (prev <= 1) {
-            clearInterval(countdownInterval);
-            redirectToAlbumReturnPath(returnTo);
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-
-      return () => clearInterval(countdownInterval);
+    if (payment?.status !== 'succeeded' || !returnTo) {
+      return undefined;
     }
-  }, [payment?.status, returnTo]);
+
+    const countdownInterval = setInterval(() => {
+      setRedirectCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(countdownInterval);
+          if (!isPreviewMode) {
+            redirectToAlbumReturnPath(returnTo);
+          }
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(countdownInterval);
+  }, [payment?.status, returnTo, isPreviewMode]);
 
   const getIncompleteStatusUi = (): StatusInfo => ({
     title: labels.incompleteTitle,
     message: labels.incompleteMessage,
-    icon: '📌',
     className: 'payment-success__status--pending',
   });
 
   const getStatusMessage = (paymentData: PaymentStatus): StatusInfo => {
     switch (paymentData.status) {
-      case 'succeeded':
-        return {
-          title: labels.succeededTitle,
-          message: labels.succeededMessage,
-          icon: '✅',
-          className: 'payment-success__status--paid',
-        };
       case 'pending':
       case 'waiting_for_capture':
         return getIncompleteStatusUi();
@@ -377,21 +475,19 @@ function PaymentSuccess() {
           message: paymentData.cancellation_details?.reason
             ? `${labels.canceledWithReasonPrefix} ${paymentData.cancellation_details.reason}`
             : labels.canceledMessage,
-          icon: '❌',
           className: 'payment-success__status--canceled',
         };
       default:
         return {
           title: labels.unknownTitle,
           message: `${labels.unknownStatusPrefix} ${paymentData.status}`,
-          icon: '❓',
           className: 'payment-success__status--unknown',
         };
     }
   };
 
   const pageTitle =
-    routeMode === 'success'
+    isPreviewMode || routeMode === 'success'
       ? labels.pageTitleSuccess
       : routeMode === 'fail'
         ? labels.pageTitleFail
@@ -399,15 +495,15 @@ function PaymentSuccess() {
 
   const errorMessage = error === 'missing_reference' ? labels.missingReference : labels.fetchFailed;
 
-  const redirectCountdownText =
-    redirectCountdown === 1
-      ? labels.redirectCountdownOne.replace('{seconds}', String(redirectCountdown))
-      : labels.redirectCountdownMany.replace('{seconds}', String(redirectCountdown));
+  const customerEmail = payment?.metadata?.customerEmail?.trim() ?? '';
 
-  const showResolveLoading = routeMode === 'resolve';
-  const showSuccessOutcome = routeMode === 'success' && payment?.status === 'succeeded';
-  const showFailOutcome = routeMode === 'fail' && payment != null && payment.status !== 'succeeded';
+  const showResolveLoading = !isPreviewMode && routeMode === 'resolve';
+  const showSuccessOutcome =
+    (isPreviewMode || routeMode === 'success') && payment?.status === 'succeeded';
+  const showFailOutcome =
+    !isPreviewMode && routeMode === 'fail' && payment != null && payment.status !== 'succeeded';
   const showRouteAlignLoading =
+    !isPreviewMode &&
     routeMode !== 'resolve' &&
     (loading || (payment != null && !showSuccessOutcome && !showFailOutcome));
 
@@ -443,102 +539,79 @@ function PaymentSuccess() {
               </div>
             )
           ) : showSuccessOutcome && payment ? (
-            (() => {
-              const statusInfo = getStatusMessage(payment);
-
-              return (
-                <div className={`payment-success__status ${statusInfo.className}`}>
-                  <h1 className="payment-success__title">{statusInfo.title}</h1>
-                  <p className="payment-success__message">{statusInfo.message}</p>
-
-                  {!returnTo && (
-                    <div className="payment-success__details">
-                      <p>
-                        <strong>{labels.amountLabel}</strong> {payment.amount.value}{' '}
-                        {payment.amount.currency}
-                      </p>
-                      {payment.metadata?.customerEmail && (
-                        <p>
-                          <strong>{labels.emailLabel}</strong> {payment.metadata.customerEmail}
-                        </p>
-                      )}
-                      {payment.metadata?.orderId && (
-                        <p>
-                          <strong>{labels.orderNumberLabel}</strong> {payment.metadata.orderId}
-                        </p>
-                      )}
-                    </div>
-                  )}
-
-                  <div className="payment-success__success-actions">
-                    {returnTo ? (
-                      <div className="payment-success__success-message">
-                        <img
-                          src="/images/illustrations/successful-payment.png"
-                          alt={labels.successImageAlt}
-                          className="payment-success__success-icon"
-                        />
-                        <p className="payment-success__success-text">
-                          {labels.downloadLinkSentPrefix}{' '}
-                          <strong>{payment.metadata?.customerEmail || ''}</strong>
-                        </p>
-                        {redirectCountdown > 0 && (
-                          <p className="payment-success__redirect-note">{redirectCountdownText}</p>
-                        )}
-                      </div>
-                    ) : (
-                      <>
-                        <div className="payment-success__details">
-                          <p>
-                            <strong>{labels.amountLabel}</strong> {payment.amount.value}{' '}
-                            {payment.amount.currency}
-                          </p>
-                          {payment.metadata?.customerEmail && (
-                            <p>
-                              <strong>{labels.emailLabel}</strong> {payment.metadata.customerEmail}
-                            </p>
-                          )}
-                          {payment.metadata?.orderId && (
-                            <p>
-                              <strong>{labels.orderNumberLabel}</strong> {payment.metadata.orderId}
-                            </p>
-                          )}
-                        </div>
-                        {payment.metadata?.customerEmail && (
-                          <button
-                            type="button"
-                            className="payment-success__button payment-success__button--primary"
-                            onClick={() =>
-                              navigate('/dashboard-new/my-purchases', {
-                                state: { backgroundLocation: location },
-                              })
-                            }
-                          >
-                            {labels.myPurchases}
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          className="payment-success__button"
-                          onClick={() => navigate('/')}
-                        >
-                          {labels.home}
-                        </button>
-                      </>
-                    )}
-                  </div>
-                  {returnTo && (
-                    <button
-                      type="button"
-                      className="payment-success__button payment-success__button--primary"
-                      onClick={() => redirectToAlbumReturnPath(returnTo)}
-                    >
-                      {labels.returnNow}
-                    </button>
-                  )}
+            <div className="payment-success__status payment-success__status--paid payment-success__outcome">
+              <div className="payment-success__outcome-header">
+                <div className="payment-success__check-badge" aria-hidden>
+                  <SuccessCheckIcon />
                 </div>
-              );
-            })()
+                <h1 className="payment-success__title">{labels.succeededTitle}</h1>
+              </div>
+
+              {purchasedAlbum && (
+                <>
+                  <div className="payment-success__divider" aria-hidden />
+                  <PaymentSuccessPurchasedAlbum
+                    album={purchasedAlbum}
+                    usePlaceholderCover={
+                      isPreviewMode && (previewState?.usePlaceholderCover ?? false)
+                    }
+                  />
+                </>
+              )}
+
+              {customerEmail && (
+                <>
+                  <div className="payment-success__divider" aria-hidden />
+                  <div className="payment-success__email-block">
+                    <MailIcon className="payment-success__mail-icon" size={20} aria-hidden />
+                    <div className="payment-success__email-copy">
+                      <p className="payment-success__email-label">
+                        {labels.downloadLinkSentPrefix}
+                      </p>
+                      <p className="payment-success__email-value">{customerEmail}</p>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {returnTo && redirectCountdown > 0 && (
+                <p className="payment-success__redirect-note">
+                  {(redirectCountdown === 1
+                    ? labels.redirectCountdownOne
+                    : labels.redirectCountdownMany
+                  )
+                    .split('{seconds}')
+                    .map((segment, index, segments) => (
+                      <React.Fragment key={index}>
+                        {segment}
+                        {index < segments.length - 1 && (
+                          <span className="payment-success__redirect-count">
+                            {redirectCountdown}
+                          </span>
+                        )}
+                      </React.Fragment>
+                    ))}
+                </p>
+              )}
+
+              {returnTo ? (
+                <button
+                  type="button"
+                  className="payment-success__button payment-success__button--outline"
+                  onClick={() => redirectToAlbumReturnPath(returnTo)}
+                >
+                  {labels.returnNow}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="payment-success__button payment-success__button--outline"
+                  onClick={() => navigate('/')}
+                >
+                  {labels.returnHome}
+                </button>
+              )}
+            </div>
           ) : showFailOutcome && payment ? (
             (() => {
               const statusInfo = getStatusMessage(payment);

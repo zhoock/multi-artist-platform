@@ -1160,6 +1160,7 @@ export interface IInterface {
       fetchFailed?: string;
       reloadPage?: string;
       succeededTitle?: string;
+      succeededSubtitle?: string;
       succeededMessage?: string;
       incompleteTitle?: string;
       incompleteMessage?: string;

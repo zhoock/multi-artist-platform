@@ -19,7 +19,8 @@
  *     cancellation_details?: { ... },
  *     metadata?: { orderId?: string, ... }
  *   },
- *   orderUpdated: boolean
+ *   orderUpdated: boolean,
+ *   album?: { title: string, artist: string, cover: string | null, userId: string | null }
  * }
  */
 
@@ -109,7 +110,44 @@ interface PaymentStatusResponse {
     confirmation_url?: string; // URL для продолжения оплаты для pending статусов
   };
   orderUpdated?: boolean;
+  album?: {
+    title: string;
+    artist: string;
+    cover: string | null;
+    userId: string | null;
+  };
   error?: string;
+}
+
+async function resolvePurchasedAlbumForResponse(
+  resolvedOrderId: string,
+  paymentMetadata?: YooKassaPaymentStatus['metadata']
+): Promise<PaymentStatusResponse['album'] | undefined> {
+  try {
+    const orderResult = await query<{ album_id: string }>(
+      'SELECT album_id FROM orders WHERE id = $1',
+      [resolvedOrderId]
+    );
+    const albumKey = orderResult.rows[0]?.album_id || paymentMetadata?.albumId;
+    if (!albumKey) {
+      return undefined;
+    }
+
+    const album = await resolveAlbumByKey(albumKey);
+    if (!album) {
+      return undefined;
+    }
+
+    return {
+      title: album.album,
+      artist: album.artist,
+      cover: album.cover,
+      userId: album.userId,
+    };
+  } catch (error) {
+    console.warn('⚠️ [get-payment-status] Could not resolve purchased album for response:', error);
+    return undefined;
+  }
 }
 
 /**
@@ -650,6 +688,7 @@ export const handler: Handler = async (
 
     // Обновляем БД на основе реального статуса от YooKassa
     const orderUpdated = await updateOrderAndPaymentStatus(paymentStatus);
+    const album = await resolvePurchasedAlbumForResponse(resolvedOrderId, paymentStatus.metadata);
 
     // Возвращаем статус платежа
     return {
@@ -673,6 +712,7 @@ export const handler: Handler = async (
               : undefined,
         },
         orderUpdated,
+        ...(album ? { album } : {}),
       } as PaymentStatusResponse),
     };
   } catch (error: any) {

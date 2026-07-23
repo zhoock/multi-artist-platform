@@ -5,14 +5,8 @@ $payment-success-button-padding: var(--ms-01) var(--ms-0);
 // ============================================
 // PaymentSuccess Component Styles
 // ============================================
-// Для редактирования вёрстки:
-// 1. Запустите: npm run dev (или netlify dev)
-// 2. Откройте: npm run open:payment-success
-// 3. Редактируйте этот файл - изменения применятся автоматически
-// ============================================
 
 .payment-success {
-  // Основной контейнер страницы (фон) - стили dashboard
   display: flex;
   padding: var(--ms-2);
   color: var(--dashboard-text-primary);
@@ -24,18 +18,16 @@ $payment-success-button-padding: var(--ms-01) var(--ms-0);
   justify-content: center;
 
   &__container {
-    // Контейнер для всего контента (белая/серая карточка)
-    max-width: 600px;
+    max-width: 420px;
     width: 100%;
-    text-align: center;
   }
 
   &__loading {
-    // Блок загрузки - стили dashboard
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: var(--ms-1);
+    text-align: center;
 
     p {
       color: var(--dashboard-text-secondary);
@@ -60,86 +52,163 @@ $payment-success-button-padding: var(--ms-01) var(--ms-0);
   }
 
   &__status {
-    // Основная карточка со статусом оплаты
     padding: var(--ms-2);
+    text-align: center;
     background: var(--dashboard-card-bg);
+    border: 1px solid var(--dashboard-card-border);
     border-radius: var(--ms-0);
     box-shadow: 0 8px 32px var(--dashboard-shadow);
 
-    &--paid {
-      // Стили для успешной оплаты (золотая рамка)
-      border-color: var(--dark-greenish-yellow);
-    }
-
     &--pending {
-      // Стили для ожидания оплаты
       border-color: var(--dashboard-card-border);
     }
 
     &--canceled,
     &--failed {
-      // Стили для отменённой/неудачной оплаты (красная рамка)
       border-color: rgb(var(--soft-red-rgb) / 50%);
     }
   }
 
-  &__icon {
-    font-size: 4rem;
-    margin-bottom: var(--ms-1);
+  &__outcome {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    text-align: center;
+  }
+
+  &__outcome-header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--ms-01);
+  }
+
+  &__check-badge {
+    display: inline-flex;
+    width: 3rem;
+    height: 3rem;
+    color: var(--dark-greenish-yellow);
+    background: rgb(var(--dark-greenish-yellow-rgb) / 18%);
+    border-radius: 50%;
+    align-items: center;
+    justify-content: center;
+  }
+
+  &__check-icon {
+    display: block;
   }
 
   &__title {
-    // Заголовок "Оплата успешна!" - стили dashboard
+    margin: 0;
     color: var(--dashboard-text-primary);
 
     @include dashboard-heading-font-size;
+  }
 
-    margin-bottom: var(--ms-1);
+  &__divider {
+    height: 1px;
+    margin: var(--ms-1) 0;
+    background: var(--dashboard-divider);
+  }
+
+  &__album {
+    display: flex;
+    align-items: center;
+    gap: var(--ms-0);
+    text-align: left;
+  }
+
+  &__album-cover {
+    flex: 0 0 72px;
+    width: 72px;
+    height: 72px;
+    overflow: hidden;
+    border-radius: var(--ms-01);
+
+    .album-cover,
+    .album-cover__image {
+      display: block;
+      width: 72px;
+      height: 72px;
+      object-fit: cover;
+    }
+
+    &--placeholder {
+      background: var(--dashboard-card-border);
+    }
+  }
+
+  &__album-meta {
+    min-width: 0;
+  }
+
+  &__album-title {
+    margin: 0 0 var(--ms-01);
+    color: var(--dashboard-text-primary);
+    font-weight: 600;
+
+    @include dashboard-font-size;
+  }
+
+  &__album-artist {
+    margin: 0;
+    color: var(--dashboard-text-secondary);
+
+    @include dashboard-font-size;
+  }
+
+  &__email-block {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--ms-01);
+    text-align: left;
+  }
+
+  &__mail-icon {
+    flex: 0 0 auto;
+    margin-top: 0.1rem;
+    color: var(--dashboard-text-secondary);
+  }
+
+  &__email-copy {
+    min-width: 0;
+  }
+
+  &__email-label {
+    margin: 0 0 var(--ms-01);
+    color: var(--dashboard-text-secondary);
+
+    @include dashboard-font-size;
+  }
+
+  &__email-value {
+    margin: 0;
+    color: var(--dark-greenish-yellow);
+    font-weight: 600;
+    word-break: break-word;
+
+    @include dashboard-font-size;
+  }
+
+  &__redirect-note {
+    margin: var(--ms-1) 0 0;
+    color: var(--dashboard-text-secondary);
+    font-size: calc(var(--dashboard-font-size) * 0.92);
+    line-height: 1.4;
+  }
+
+  &__redirect-count {
+    color: var(--dark-greenish-yellow);
+    font-weight: 600;
   }
 
   &__message {
-    // Подзаголовок под заголовком - стили dashboard
     color: var(--dashboard-text-secondary);
 
     @include dashboard-font-size;
 
     line-height: 1.5;
     margin-bottom: var(--ms-1);
-  }
-
-  &__success-text {
-    // Текст успешной оплаты - стили dashboard
-    margin: 0;
-    color: var(--dashboard-text-primary);
-
-    @include dashboard-font-size;
-
-    line-height: 1.5;
-    text-align: center;
-
-    strong {
-      color: var(--dark-greenish-yellow);
-      font-weight: 600;
-    }
-  }
-
-  &__details {
-    // Детали заказа - стили dashboard
-    margin-top: var(--ms-1);
-    padding-top: var(--ms-1);
-    border-top: 1px solid var(--dashboard-divider);
-    text-align: left;
-
-    p {
-      margin: var(--ms-01) 0;
-      color: var(--dashboard-text-secondary);
-
-      @include dashboard-font-size;
-
-      strong {
-        color: var(--dashboard-text-primary);
-      }
-    }
   }
 
   &__muted-note {
@@ -154,8 +223,8 @@ $payment-success-button-padding: var(--ms-01) var(--ms-0);
   }
 
   &__error {
-    // Блок ошибки - стили dashboard
     padding: var(--ms-2);
+    text-align: center;
     background: var(--dashboard-card-bg);
     border: 1px solid rgb(var(--soft-red-rgb) / 50%);
     border-radius: var(--ms-0);
@@ -189,9 +258,21 @@ $payment-success-button-padding: var(--ms-01) var(--ms-0);
     &--primary {
       @include dashboard-btn-primary($margin: 0, $padding: $payment-success-button-padding);
     }
+
+    &--outline {
+      width: 100%;
+      margin-top: var(--ms-1);
+      border-color: var(--dark-greenish-yellow);
+      color: var(--dark-greenish-yellow);
+      background: transparent;
+
+      &:hover,
+      &:focus-visible {
+        background: rgb(var(--dark-greenish-yellow-rgb) / 10%);
+      }
+    }
   }
 
-  /** Незавершённый платёж: колонка; стиль кнопок только из миксинов. */
   &__pending-actions {
     display: flex;
     flex-direction: column;
@@ -205,55 +286,5 @@ $payment-success-button-padding: var(--ms-01) var(--ms-0);
       width: 100%;
       margin-top: 0;
     }
-  }
-
-  &__success-actions {
-    // Контейнер для кнопок действий (вертикально на мобильных, горизонтально на десктопе)
-    display: flex;
-    flex-direction: column;
-    gap: var(--ms-01);
-    margin-top: var(--ms-1);
-
-    > :is(a, button).payment-success__button {
-      margin-top: 0;
-    }
-
-    @media (width >= 480px) {
-      flex-flow: row wrap;
-      align-items: center;
-      justify-content: center;
-    }
-  }
-
-  &__success-message {
-    // Блок с сообщением об успехе (иконка ✅ + текст + email)
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: var(--ms-01);
-    margin-bottom: var(--ms-1);
-    padding: var(--ms-1);
-    border-radius: var(--ms-01);
-  }
-
-  &__success-icon {
-    // Изображение успешной оплаты
-    display: block;
-    width: auto;
-    height: auto;
-    margin: 0 auto;
-    max-width: 100%;
-    max-height: 200px;
-    object-fit: contain;
-  }
-
-  &__redirect-note {
-    // Текст "Возвращаемся на исходную страницу через X секунд..." - стили dashboard
-    margin: 0;
-    color: var(--dashboard-text-secondary);
-
-    @include dashboard-font-size;
-
-    font-style: italic;
   }
 }

@@ -6,6 +6,7 @@ const path = require('path'); /// для того чтобы превратит�
 // Подгружаем корневой .env в process.env до DefinePlugin (иначе VITE_* не попадают в бандл).
 const rootDir = path.resolve(__dirname, '..');
 require('dotenv').config({ path: path.join(rootDir, '.env') });
+require('dotenv').config({ path: path.join(rootDir, '.env.local'), override: true });
 const HtmlWebpackPlugin = require('html-webpack-plugin'); // Плагин для генерации HTML с правильными путями к скриптам
 const MiniCssExtractPlugin = require('mini-css-extract-plugin'); // извлекаем CSS из файлов .js при сборке
 const CopyWebpackPlugin = require('copy-webpack-plugin'); // Копируем файлы и папки в папку dist
@@ -212,6 +213,12 @@ module.exports = {
       ),
       'process.env.VITE_RAW_ASSETS_BASE_URL': JSON.stringify(
         process.env.VITE_RAW_ASSETS_BASE_URL || ''
+      ),
+      'process.env.PAYMENT_SUCCESS_PREVIEW_USER_ID': JSON.stringify(
+        process.env.PAYMENT_SUCCESS_PREVIEW_USER_ID || ''
+      ),
+      'process.env.MIGRATION_TARGET_USER_ID': JSON.stringify(
+        process.env.MIGRATION_TARGET_USER_ID || ''
       ),
     }),
   ],

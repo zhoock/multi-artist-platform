@@ -38,7 +38,7 @@
     "remove-duplicate-albums": "tsx database/scripts/remove-duplicate-albums.ts",
     "dev": "netlify dev",
     "dev:local": "npm start",
-    "open:payment-success": "open 'http://localhost:8888/pay/success?paymentId=test-payment-123&returnTo=/&orderId=test-order-123'"
+    "open:payment-success": "open 'http://localhost:8888/pay/success?preview=success&returnTo=%2Falbums%2Fdemo'"
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx}": [
