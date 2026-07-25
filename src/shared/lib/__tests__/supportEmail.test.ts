@@ -22,7 +22,7 @@ describe('supportEmail', () => {
     expect(getSupportEmail()).toBe('support@platform.example');
   });
 
-  it('falls back to legacy address when SUPPORT_EMAIL is missing', () => {
+  it('falls back to placeholder address when SUPPORT_EMAIL is missing', () => {
     delete process.env.SUPPORT_EMAIL;
     expect(getSupportEmail()).toBe(DEFAULT_SUPPORT_EMAIL);
   });

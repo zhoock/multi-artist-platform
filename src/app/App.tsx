@@ -71,6 +71,7 @@ const Home = lazy(() => import('@pages/Home'));
 const ArticlePage = lazy(() => import('@pages/Article'));
 const HelpArticlePage = lazy(() => import('@pages/HelpArticle'));
 const OfferPage = lazy(() => import('@pages/Offer'));
+const PrivacyPage = lazy(() => import('@pages/Privacy'));
 const UserDashboard = lazy(() => import('@pages/UserDashboard/UserDashboard'));
 const AuthPage = lazy(() => import('@features/auth/ui/AuthPage'));
 const PaymentSuccess = lazy(() => import('@pages/PaymentSuccess/PaymentSuccess'));
@@ -286,6 +287,7 @@ function Layout() {
     '/articles/:articleId',
     '/help/articles/:articleId',
     '/offer',
+    '/privacy',
     '/forms',
     '/stems',
     '/stems/mix/:mixId',
@@ -377,6 +379,8 @@ function Layout() {
     location.pathname
   );
   const isOfferRoute = matchPath({ path: '/offer', end: true }, location.pathname);
+  const isPrivacyRoute = matchPath({ path: '/privacy', end: true }, location.pathname);
+  const isLegalDocumentRoute = isOfferRoute || isPrivacyRoute;
 
   const isServiceScreenRoute =
     !isPaymentRoute &&
@@ -459,6 +463,14 @@ function Layout() {
         element={
           <Suspense fallback={<PageLoader />}>
             <OfferPage />
+          </Suspense>
+        }
+      />
+      <Route
+        path="/privacy"
+        element={
+          <Suspense fallback={<PageLoader />}>
+            <PrivacyPage />
           </Suspense>
         }
       />
@@ -700,7 +712,7 @@ function Layout() {
                   {!isHomeSceneRoute &&
                     !isEmailVerifiedRoute &&
                     !isEmailVerificationExpiredRoute &&
-                    !isOfferRoute && <Hero />}
+                    !isLegalDocumentRoute && <Hero />}
 
                   {/* если поместим popup внурь header, то popup будет обрезаться из-за css-фильтра (filter) внури header */}
 

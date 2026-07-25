@@ -12,6 +12,7 @@ export const SITEMAP_PUBLIC_ENTRIES: readonly SitemapEntry[] = [
   { path: '/articles', priority: '0.8' },
   { path: '/stems', priority: '0.7' },
   { path: '/offer', priority: '0.5' },
+  { path: '/privacy', priority: '0.5' },
 ] as const;
 
 function escapeXml(value: string): string {

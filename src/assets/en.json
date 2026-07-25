@@ -287,7 +287,9 @@
       "home": "home",
       "publicOffer": "Public Offer",
       "offerPageTitle": "Public Offer",
-      "offerPageDescription": "Public offer for retail purchase and sale agreement via remote means"
+      "offerPageDescription": "Public offer for retail purchase and sale agreement via remote means",
+      "privacyPageTitle": "Privacy Policy",
+      "privacyPageDescription": "Privacy policy and personal data processing terms"
     },
     "stems": {
       "pageTitle": "Mixer",

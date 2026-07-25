@@ -88,17 +88,19 @@ export function OfferPage() {
       </Helmet>
       <div className="offer-page">
         <div className="offer-page__container">
-          <h1 className="offer-page__title">{ui?.links?.offerPageTitle ?? offerData.title}</h1>
-          <p className="offer-page__subtitle">{offerData.subtitle}</p>
+          <header className="offer-page__header">
+            <h1 className="offer-page__title">{ui?.links?.offerPageTitle ?? offerData.title}</h1>
+            <p className="offer-page__subtitle">{offerData.subtitle}</p>
 
-          <div className="offer-page__meta">
-            <p>
-              <strong>{offerData.meta.dateLabel}</strong> {currentDate}
-            </p>
-            <p>
-              <strong>{offerData.meta.websiteLabel}</strong> {offerData.meta.website}
-            </p>
-          </div>
+            <div className="offer-page__meta">
+              <p>
+                <strong>{offerData.meta.dateLabel}</strong> {currentDate}
+              </p>
+              <p>
+                <strong>{offerData.meta.websiteLabel}</strong> {offerData.meta.website}
+              </p>
+            </div>
+          </header>
 
           <div className="offer-page__content">
             <p className="offer-page__intro">{offerData.intro}</p>

@@ -1,5 +1,5 @@
-/** Legacy platform support address when `SUPPORT_EMAIL` is unset. */
-export const DEFAULT_SUPPORT_EMAIL = 'feedback@smolyanoechuchelko.ru';
+/** Temporary platform placeholder until the official support address is chosen. */
+export const DEFAULT_SUPPORT_EMAIL = 'support@example.com';
 
 /** Placeholder in static JSON copy (e.g. offer pages) substituted at runtime. */
 export const SUPPORT_EMAIL_PLACEHOLDER = '{{supportEmail}}';

@@ -1,0 +1,172 @@
+{
+  "title": "PRIVACY POLICY",
+  "subtitle": "on the processing of personal data of Website users",
+  "meta": {
+    "dateLabel": "Publication date:",
+    "websiteLabel": "Website:",
+    "website": "Smolyanoe Chuchelko"
+  },
+  "intro": "",
+  "sections": [
+    {
+      "title": "1. Introduction",
+      "paragraphs": [
+        "This Privacy Policy explains what personal data we collect and how we use it when you use the Smolyanoe Chuchelko website (the \"Site\"). The Site is a music platform offering content publishing, digital purchases, and subscriptions.",
+        "This Policy applies to everyone who visits the Site, registers, makes purchases, or uses a personal account — including listeners and artists who publish content on the Site.",
+        "Personal data means any information that directly or indirectly identifies you: for example, your email address, name, details you provide at checkout, and technical data such as your IP address and browser parameters sent when you connect to our servers.",
+        "The operator of personal data — the party that determines the purposes and means of processing your data on the Site — is identified in Section 14, along with contact details.",
+        "We request your consent to process personal data separately in cases where required by applicable law or needed to provide the relevant Site feature: during registration, digital album purchase, Premium subscription checkout, and in other forms where you submit data to us. The processing terms for each case are described in the relevant form and in this Policy.",
+        "We may update this Policy. The current version is always available on this page; the publication date is shown at the top of the document."
+      ]
+    },
+    {
+      "title": "2. Personal Data We Collect",
+      "paragraphs": [
+        "Below are the main categories of personal data used by the Site's current features. We only process data needed for the features described.",
+        "Account data. When you register, you provide an email address (required), a password (required; passwords are never stored in plain text), and a name — your name as a listener, or an artist/band name as an artist (required). Your account type — listener or artist — is also recorded (required). Interface language (Russian or English) is sent at registration and login — optional unless you change it yourself. For artists, a public page identifier (slug) and a system username are created automatically at registration — you do not enter these separately. Sign-in uses email and password (required). Password reset requires your email (required). Changing your email before verification, changing your password, and deleting your account each require the relevant confirmation — a new email or your current password (required in each case). Email verification status is recorded automatically.",
+        "Profile data. After registration, you may add or update profile information in your account — all fields below are optional unless you choose to fill them in: display name; for artists — name on the Site, public page address (slug), genre, “about the band/artist” text in Russian and/or English, profile header images, social network links (Instagram, Facebook, YouTube, VK), and avatar. When publishing content, an artist uploads files linked to the account — album covers, audio, stems, article images, and other materials you voluntarily place on the Site. On the stems mixer page, you may save a mix preset — an optional mix name and volume/mute/solo settings per track. An artist connecting album payments provides a shop identifier and a secret payment key — both are required only to enable that feature; the secret key is stored encrypted on the server.",
+        "Purchase data. When buying a digital album, the email from your account is used (required — checkout is not available without signing in) and your display name from your profile (sent for receipt purposes; if no name is set, a default value is used). The selected album, order amount, and the link between the purchase and your account are recorded. When you download a purchased album, download activity including the number of downloads is tracked automatically.",
+        "Subscription data. Premium subscription checkout is available only to signed-in users with a verified email. We store the selected plan, subscription status, expiry date, and collection slot limit. If you add artists to your Premium collection, we store the link between your account and the selected artists — this is required to grant access to restricted content.",
+        "Technical data. When you contact our servers — including during registration, sign-in, email verification resend, or password reset — your IP address may be transmitted automatically. It is used to rate-limit requests and prevent abuse, not to identify you personally. After sign-in, a session and brief account details (identifier, email, name, account type, email verification status, language) are stored in your browser — this avoids asking for your password on every action.",
+        "Data created automatically when you use the Site. Your browser may store local interface settings and Site operation preferences — for example, language choice, player state, or data needed to resume an action after sign-in. Some of this information is kept only for the current browser session. Details are covered in the sections on cookies and browser local storage."
+      ]
+    },
+    {
+      "title": "3. Account Registration",
+      "paragraphs": [
+        "You can register using the form on the Site. First you choose an account type — listener or artist — then fill in the registration form. Without an account, purchases, your personal dashboard, and other sign-in features are not available.",
+        "Required fields are email address, password, and name. Email serves as your unique sign-in identifier and a way to reach you — including verification and password-recovery messages. Your password protects the account; it is never stored in plain text. Your name is shown in the interface; for artists, this is your band or stage name. Account type determines what you can do on the Site — for example, publishing content is available to artists. Password confirmation is checked only in the form on your device and is not sent to the server. If a required field is missing or the email is already taken, registration will not complete — the Site will show an error.",
+        "Interface language (Russian or English) is sent with the form if you have already chosen it on the Site. For artists, a public page address and system username are created automatically at registration — you do not enter them separately.",
+        "After successful registration, your account is created on the server and you are signed in immediately — a session is saved in your browser. A verification email is sent to the address you provided. A modal asking you to verify your email is part of this step; you can continue using the Site without following the link right away.",
+        "Email verification is completed via the link in the message. If the email did not arrive, you can request a resend — with rate limits on how often. Before verification, you may change your email in account settings; a confirmation message will be sent to the new address. After you verify your email, your account status is updated automatically or the next time you sign in.",
+        "Without a verified email address, certain Site features may be unavailable. This applies primarily to content publishing, subscription checkout, payment acceptance, and other operations that require a confirmed account.",
+        "After registering, you can later change your name, interface language, and password in settings. A listener can switch to an artist account through a separate option in the dashboard. The email address you provided at registration can only be replaced before verification — via the change-email form in settings or when requesting a new verification message."
+      ]
+    },
+    {
+      "title": "4. Authentication and Security",
+      "paragraphs": [
+        "You can sign in using the email and password you chose at registration. If the credentials are correct, the Site grants access to features that require an account. If the email or password is wrong, the Site does not indicate which field is incorrect — this reduces the risk of guessing someone else's login details.",
+        "After a successful sign-in or registration, a session is created — a state in which the Site recognizes you without asking for your password on every action. The session is kept in your browser and remains active for a limited time; when it ends, you will need to sign in again. If you change the interface language, it may be saved with your profile so that emails and the Site display stay consistent.",
+        "To keep you signed in, the Site uses technical mechanisms that recognize your account from one request to the next without asking for your password again. This information is used only to maintain your authorized session and should not be shared with others.",
+        "Your password is never stored in plain text. To change your password in settings, you must enter your current password and a new one. If you forget your password, you can request a reset link by email — the link works for a limited time. To protect against password guessing and abuse, we limit how often failed sign-in attempts, password-reset requests, and verification-email resends can be made. Certain important actions — such as deleting your account — require entering your password again. Email verification adds another check before sensitive features; see the registration section for more detail.",
+        "If a session is no longer valid — for example, because it has expired — the Site stops granting access to protected features and asks you to sign in again. You will see a corresponding message; your sign-in data is removed from the browser on that device.",
+        "You can sign out through the profile menu or settings in your dashboard. Sign-out removes session data from the browser on the current device: you will need to enter your email and password again to use protected features. Signing out on one device does not automatically end sessions on other devices where you signed in separately. Deleting your account also ends use of the Site on your behalf and is described in the relevant settings section."
+      ]
+    },
+    {
+      "title": "5. Digital Album Purchases",
+      "paragraphs": [
+        "You can buy a digital album only after signing in to your account. When you place an order, we use your account email — filled in automatically and not editable in the form — and the display name from your profile (for listeners, your profile name; for artists, your band or artist name; if no name is set, a default value is used). We also use details about the album you selected and the purchase amount. Before proceeding to payment, you must confirm your agreement to the Public Offer and this Privacy Policy.",
+        "This information is needed to create an order, link it to your account, and record the purchase after successful payment. Your email and account link are required to keep access to the album you bought, show it in your purchase history, and send confirmation to your address. How payment details are handled is described in the payment processing section.",
+        "After successful payment, we save a purchase record: which album was bought, when the purchase was made, the link to your account, and the email used at checkout. Each time you download a purchased album, we automatically record that a download took place and how many downloads have been made. A purchase confirmation email may be sent to your account email.",
+        "The purchase is linked to your account by the email you were signed in with at checkout. Purchased albums appear in the My Purchases section of your dashboard and remain available for download after you sign in — including from another device. On a purchased album's page, when you are signed in, download is also available without paying again.",
+        "Purchase history lets you download an album again at any time and see the purchase date and album details in your dashboard. Purchase history is also used to confirm your access rights to previously purchased digital goods and to prevent incorrect re-processing of a purchase."
+      ]
+    },
+    {
+      "title": "6. Premium Subscription",
+      "paragraphs": [
+        "Premium is a paid subscription on the Site that unlocks access to exclusive content from artists in your collection. You can subscribe only after signing in to an account with a verified email. When you subscribe, you choose one of the available subscription plans and proceed to payment; your account email is used automatically.",
+        "This information is needed to link the subscription to your account, process payment, and activate access for the paid period. Without a verified email and account link, we cannot provide the subscription correctly or let you manage it in your dashboard. How payment details are handled is described in the payment processing section.",
+        "After successful payment, we save subscription details: the plan you chose, status, start and end dates, and the collection slot limit for that plan. This information is shown in your dashboard and used to determine whether your subscription is active at a given time. We also keep records of subscription payments — as needed for payment accounting.",
+        "We separately store data about your artist collection: which artists you added, when they were added, and whether they are active in the current subscription period. The collection is needed because Premium access applies to artists you support through your collection, not to all content on the Site at once. The limit on actively supported artists depends on your plan. You can add an artist to your collection only if that artist has the relevant subscriber features enabled on the Site. Collection data may be kept for as long as needed to provide subscription features, restore access after renewal, and support other related Site functions.",
+        "To provide Premium access, the Site matches an active subscription with your collection: while your subscription is active and an artist is active in your collection, you can access that artist's exclusive content on the Site — within the scope of the Site's current subscriber features. When the subscription period ends, Premium access to that content stops; you can renew or change your plan through the Site. Digital album purchases made separately are not tied to your subscription."
+      ]
+    },
+    {
+      "title": "7. Payment Processing",
+      "paragraphs": [
+        "The Site supports paid transactions: digital album purchases and Premium subscriptions. Payment is processed through YooKassa (the \"payment provider\"). After you place an order on the Site, you are redirected to the payment provider's page to choose how to pay. Bank card details and other payment credentials are entered directly on the payment provider's side and are not processed by the Site.",
+        "To initiate payment, the Site uses information linked to your order and account: your email address, the purchase amount and description, and — for album purchases — the buyer's display name from your profile. This information is sent to the payment provider to process the payment, identify the order, and meet legal requirements related to payment processing. The specific data used when buying an album or subscribing to Premium is described in the relevant sections of this Policy.",
+        "The Site creates the order and sends you to the payment provider; the provider accepts payment and processes payment data under its own rules. For album purchases, payment may go through payment settings connected by the artist; for Premium, through the Site's payment settings. After payment completes, the provider notifies the Site of the outcome — success, cancellation, or a failed attempt. Based on that, the Site updates the order status and grants access to the purchased album or activates your subscription. How the payment provider stores and processes data is governed by its privacy policy.",
+        "After successful payment, the Site stores payment and order details: the type of transaction (album purchase or subscription), amount, currency, payment status, date and time, the email address used at checkout, and the link to your account and the purchased item or plan. Bank card details and other payment credentials are not stored on the Site.",
+        "This information is used to confirm payment, provide access to a purchased digital album or Premium subscription, show relevant information in your dashboard, keep payment records, and handle support requests in disputed cases. If a refund or other adjustment needs to be considered, stored payment data may be used to verify the status of the transaction — as provided by applicable law and the Site's terms of use."
+      ]
+    },
+    {
+      "title": "8. Emails and Notifications",
+      "paragraphs": [
+        "The Site sends email in a limited number of cases related to your account and specific actions on the Site. The Site does not send advertising or marketing email campaigns.",
+        "Emails are sent to your account email address or the address used for the relevant action. Depending on the message, we may also use your profile name, album title and cover, a link to the album page, a one-time link to confirm an action, and the name of the Site. Where supported for a particular email, its content may be generated in the interface language you have selected on the Site.",
+        "The Site may send the following types of email. Email verification — at registration, when you request a new message, or when you change your address before it is verified; the message contains a confirmation link so we can verify the address belongs to you. Password reset — when you request a reset; the message contains a one-time link to set a new password. Digital album purchase confirmation — after successful payment; the message may include album details and a link to its page. Account deletion confirmation — after your account is deleted; the message confirms this and includes a support contact in case the deletion was not authorized by you.",
+        "Verification and password-reset emails are sent because of registration or your request and are needed to complete the corresponding action on the Site. Album purchase and account-deletion emails are informational: access to purchased content and account management do not depend on receiving them. Some reminders and messages may also appear in the Site interface — for example, prompting you to verify your email; they do not replace email where a message with a link is required for the action."
+      ]
+    },
+    {
+      "title": "9. Cookies and Analytics",
+      "paragraphs": [
+        "In the current version of the Site, first-party cookies are not used to store user data or maintain authorization. To run your account, interface settings, and certain features, the Site uses other browser mechanisms — including local storage; see the browser local storage section for details.",
+        "When you visit the Site, third-party services may be loaded that set cookies or other identifiers in your browser. Currently these are web analytics services: Google Analytics 4 and Yandex Metrica. They help us understand how the Site is used — which pages are opened and how visitors interact with the player and content. These cookies are not required for core Site features such as sign-in, listening, purchases, or account management.",
+        "The Site also sends Google Analytics custom events about actions in the music player — for example, selecting a track, starting or pausing playback, or opening the player. Such events may include the album and track identifier and title, interface language, and playback position. Account personal data (email, name) is not included in these events.",
+        "Yandex Metrica on the Site includes behavior analysis features — including a click map, link tracking, and Webvisor, which may record on-page actions for later analysis. This data is processed by Yandex under its own rules.",
+        "When you proceed to payment, you leave the Site and open the payment provider's page. Cookies and other identifiers there may be set by the provider — not by the Site itself.",
+        "When you contact our servers, your IP address may be transmitted automatically in certain cases — for example, when signing in, requesting a password reset, or resending a verification email. It is used to rate-limit requests and prevent abuse, not to identify you personally for analytics.",
+        "The way analytics services are used may change as the Site evolves and as applicable law requires. You can manage third-party cookies and identifiers through your browser settings and the tools provided by those services."
+      ]
+    },
+    {
+      "title": "10. Local Storage",
+      "paragraphs": [
+        "In addition to cookies, the Site uses browser local storage — localStorage and sessionStorage. These are areas of memory on your device where the Site can store data through the browser. They are used to run the interface, keep your settings, and let you continue actions without re-entering information at every step.",
+        "Data in localStorage may persist between visits to the Site — until you clear it manually or the Site overwrites it on your next action. This includes, among other things: information required for features available after signing in; your chosen interface language and theme; music player state; cached display name and avatar; flags related to tips and onboarding; and drafts of certain edits you have not yet saved to the server.",
+        "Data in sessionStorage is kept only until you close the tab or browser (depending on browser settings). It is used for temporary tasks: resuming a purchase or subscription checkout after sign-in, showing a one-time notification, remembering the previous page during navigation, hiding a banner for the rest of the session, or storing short-lived interface parameters. After you close the tab, such data is usually not available the next time you open the Site.",
+        "By default, localStorage and sessionStorage contents stay on your device and are not sent to the server automatically on every page view. Some information from storage may be sent to the server when you take an action that requires it — for example, signing in, saving your profile, placing an order, or using a feature that requires authorization. See the relevant sections of this Policy for account, purchase, and subscription data.",
+        "When you sign out, the Site may remove data needed to end your current authorized session. Other entries in local storage — such as interface language or player state — may remain until you clear the Site's data in your browser settings."
+      ]
+    },
+    {
+      "title": "11. Third-Party Services",
+      "paragraphs": [
+        "To operate the Site, we use third-party services. Some are loaded while you browse; others are used when you proceed to payment or when the Site sends you an email. How data is processed in those services is governed by their own privacy policies.",
+        "On the Site, Google Analytics 4 and Yandex Metrica may be loaded when pages open. They are used to analyze traffic and behavior on the Site. They may receive technical visit data, cookies and identifiers, page views, and certain actions — including events related to the music player (see the cookies and analytics section). Account personal data is not sent to these services.",
+        "To display fonts, the Site may request Google Fonts. When fonts are loaded, Google may receive technical request data — such as IP address and browser information.",
+        "For certain visual features — for example, detecting an album cover color — a script may be loaded from Cloudflare CDN. When that happens, the CDN provider may receive technical request data.",
+        "The Site uses cloud storage infrastructure to store and deliver uploaded media files. When media is uploaded or viewed, the infrastructure provider may receive technical request data and the transferred file content as required to provide the service.",
+        "When you proceed to payment, you are taken to YooKassa. The service is used to accept payments for digital albums and Premium subscriptions. The Site sends the provider information needed for payment — including email, amount, and order description; for album purchases, the buyer's name may also be sent. Payment credentials are entered on YooKassa's side. Album payments may be processed through settings connected by the artist; Premium payments through the Site's settings (see the payment processing section).",
+        "Transactional emails (email verification, password reset, purchase confirmation, account deletion notice) are sent through Resend. It receives the recipient address and message content — as needed to deliver the message. You do not visit Resend's website during normal use of the Site.",
+        "The list of third-party services may change as the Site evolves and new features are added. The current Privacy Policy is published on this page."
+      ]
+    },
+    {
+      "title": "12. Data Retention",
+      "paragraphs": [
+        "This section explains how long different categories of data are kept on the Site and when they are removed. Unless a specific feature calls for a different period, data is kept for as long as needed to operate that feature and your account, unless retention is required to meet obligations related to operating the Site or applicable law.",
+        "Account data — email, name, account type, email verification status, and other details you provide in your dashboard — is kept throughout the period your account exists and until it is deleted. The current version of the Site does not automatically delete inactive accounts after a fixed calendar period.",
+        "Purchase records are kept to confirm your rights to previously purchased digital goods, display purchase history, and provide continued access to downloads. Information about download activity is stored together with the purchase record. There is no automatic removal of purchase records after a set time following a purchase.",
+        "Premium subscription data — plan, validity period, status, and subscription payment records — is kept throughout the period your account exists and until it is deleted. Information about your Premium artist collection is also kept after the paid period ends: it may be needed when you renew or change your plan. When the subscription period ends, access to exclusive content stops, but related records on the Site may remain.",
+        "Payment data on the Site — order and payment details for albums and Premium subscriptions, including amount, status, date, and the email used at checkout — is kept throughout the period your account exists and until it is deleted. Records of canceled or unsuccessful payment attempts may also be kept. Bank card details are not stored on the Site. Payment records are not automatically deleted after a fixed calendar period.",
+        "Security-related data. Email verification and password-reset links work for a limited time; after they expire, the link no longer works. Technical information related to sending these messages and checking links may remain on the server until the action is completed or a new link is issued. IP addresses and related technical data sent during sign-in and other protected operations may be kept to the extent needed to rate-limit requests and prevent abuse.",
+        "Browser data is described in the sections on local storage and cookies. In brief: information needed after sign-in may be removed when you sign out or when your session is no longer valid; other settings and data in localStorage may remain on your device until you clear them in your browser. sessionStorage data is usually unavailable after you close the tab.",
+        "When you delete your account through dashboard settings, we remove from the Site's active database and linked file storage your account and profile information, published content (albums, tracks, articles, and related materials), purchases, Premium subscription, artist collection, payment acceptance settings, and files you uploaded — covers, audio, stems, images, and other materials placed through your account. An informational email about account deletion may be sent to the address on file.",
+        "Some information may temporarily remain in backups or with infrastructure providers — cloud storage, hosting, email delivery, the payment provider, and analytics services — under their internal procedures and rules. Retention periods in those services are governed by their policies; see the third-party services section for more detail.",
+        "We may change data retention periods when applicable law, requirements of the services we use, or Site functionality change. The current version of this Policy is always published on this page."
+      ]
+    },
+    {
+      "title": "13. Your Rights",
+      "paragraphs": [
+        "Under applicable law, you have rights regarding your personal data — including access, correction, deletion, restriction of processing, and withdrawal of consent where processing is consent-based. Below we explain which of these you can exercise on the Site yourself and which require contacting support.",
+        "After signing in to your dashboard, you can view and update much of your profile: name, interface language, avatar, and — for artist accounts — genre, public page address, description, profile header images, and social links. You can change your password in the security section by entering your current password. You can replace your email address only before it is verified — through settings or when requesting a new verification message; after verification, email change is not available through the Site interface.",
+        "Artists can create, edit, and delete content published on the Site — albums, tracks, articles, and related files — through the dashboard. You can remove or replace your avatar and header images, clear social links, and disconnect payment settings for album sales. Saved mix presets can be deleted on the stems mixer page. Purchased albums appear in My Purchases, where you can download them again or remove an album from the list — after removal, download access through the Site for that entry stops. Premium subscription and collection details are shown in the relevant dashboard section; you can renew or change your plan through the Site.",
+        "You can delete your account in dashboard settings by entering your password. See the data retention section for what is removed on the Site when you do. Some data is stored on your device — see the sections on local storage and cookies; signing out removes information needed for your current session on that device, and other browser entries can be cleared in your browser settings.",
+        "Some rights can only be exercised by contacting support — for example, when a request cannot be handled through the dashboard. The current version of the Site does not offer automatic export of all personal data in a single file. If you have questions about the personal data we process or how to exercise your rights, you can email support using the address in Section 14. We will review your request and respond in accordance with applicable law and what the Site can provide.",
+        "If you believe your personal data is processed unlawfully, you may lodge a complaint with the competent personal data protection authority under applicable law."
+      ]
+    },
+    {
+      "title": "14. Contact Information",
+      "paragraphs": [
+        "The personal data operator's contact details are published on this page and may be updated as the project evolves.",
+        "For questions about personal data processing, this Privacy Policy, and exercising your rights, you can contact support at {{supportEmail}}.",
+        "In the current version of the Site, inquiries are accepted by email. If additional contact channels become available, information about them will be published on this page."
+      ]
+    }
+  ],
+  "contactInfo": {
+    "emailLabel": "Support e-mail:",
+    "email": "{{supportEmail}}",
+    "hoursLabel": "Support hours:",
+    "hours": "10:00–19:00 MSK"
+  }
+}
