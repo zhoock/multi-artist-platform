@@ -17,7 +17,6 @@ import {
   Route,
   Navigate,
   useParams,
-  useRevalidator,
   matchPath,
   type Location,
 } from 'react-router-dom';
@@ -31,6 +30,7 @@ import { setPublicArtistSlug } from '@shared/model/currentArtist';
 import { purgeInvalidAuthSessionFromStorage } from '@shared/lib/auth';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { useEffectiveSearchParams } from '@shared/lib/hooks/useEffectiveLocation';
+import { fetchUiDictionary } from '@shared/model/uiDictionary';
 import { closePopup, getIsPopupOpen, openPopup } from '@features/popupToggle';
 
 import { Popup, PopupHamburgerToggle, usePopup } from '@shared/ui/popup';
@@ -169,7 +169,6 @@ function Layout() {
   const location = useLocation();
 
   const { lang } = useLang() as { lang: 'ru' | 'en' };
-  const { revalidate } = useRevalidator();
 
   useEffect(() => {
     purgeInvalidAuthSessionFromStorage();
@@ -218,32 +217,12 @@ function Layout() {
   });
 
   const previousLangRef = useRef(lang);
-  const revalidateTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    if (previousLangRef.current !== lang) {
-      previousLangRef.current = lang;
-
-      // Отменяем предыдущий таймаут, если он есть
-      if (revalidateTimeoutRef.current) {
-        clearTimeout(revalidateTimeoutRef.current);
-      }
-
-      // Используем debounce, чтобы предотвратить множественные вызовы
-      revalidateTimeoutRef.current = setTimeout(() => {
-        revalidate();
-        revalidateTimeoutRef.current = null;
-      }, 50);
-    }
-
-    return () => {
-      if (revalidateTimeoutRef.current) {
-        clearTimeout(revalidateTimeoutRef.current);
-        revalidateTimeoutRef.current = null;
-      }
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lang]);
+    if (previousLangRef.current === lang) return;
+    previousLangRef.current = lang;
+    void dispatch(fetchUiDictionary({ lang }));
+  }, [dispatch, lang]);
 
   useEffect(() => {
     document.documentElement.classList.toggle('theme-dark', theme === 'dark');

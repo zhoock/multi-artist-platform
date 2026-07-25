@@ -171,6 +171,9 @@ export function useArtistPageAccessState(
   /** Slug for which profile/payment chrome gates already passed (SWR soft refresh). */
   const profileSurfacesReadyForSlugRef = useRef('');
   const paymentSurfaceReadyForSlugRef = useRef('');
+  const ownerIdentityReadyForSlugRef = useRef('');
+  const ownerContentReadyForSlugRef = useRef('');
+  const visitorProfileReadyForSlugRef = useRef('');
 
   const ownerAlbumCount = useMemo(() => {
     if (!isOwner) return 0;
@@ -197,22 +200,38 @@ export function useArtistPageAccessState(
 
     const normalizedArtist = normalizeSlug(artistSlug);
     if (!normalizedArtist) {
+      ownerIdentityReadyForSlugRef.current = '';
       setIsOwner(false);
       setOwnerResolved(true);
       return;
     }
 
     if (!isAuthenticated()) {
+      ownerIdentityReadyForSlugRef.current = '';
       setIsOwner(false);
       setOwnerResolved(true);
       return;
     }
 
     let cancelled = false;
-    setIsOwner(cachedOwner);
-    setOwnerResolved(cachedOwner);
+    const softRefreshSameArtist = ownerIdentityReadyForSlugRef.current === normalizedArtist;
+
+    if (!softRefreshSameArtist) {
+      setIsOwner(cachedOwner);
+      setOwnerResolved(cachedOwner);
+    }
 
     if (cachedOwner) {
+      if (!softRefreshSameArtist) {
+        ownerIdentityReadyForSlugRef.current = normalizedArtist;
+      }
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    /** Ownership does not depend on UI language — keep resolved chrome on lang-only refresh. */
+    if (softRefreshSameArtist) {
       return () => {
         cancelled = true;
       };
@@ -251,7 +270,10 @@ export function useArtistPageAccessState(
       } catch {
         if (!cancelled) setIsOwner(false);
       } finally {
-        if (!cancelled) setOwnerResolved(true);
+        if (!cancelled) {
+          ownerIdentityReadyForSlugRef.current = normalizedArtist;
+          setOwnerResolved(true);
+        }
       }
     })();
 
@@ -263,7 +285,10 @@ export function useArtistPageAccessState(
   useEffect(() => {
     if (!enabled) return;
 
+    const normalizedArtist = normalizeSlug(artistSlug);
+
     if (!isOwner || !ownerResolved) {
+      ownerContentReadyForSlugRef.current = '';
       setOwnerContentLoaded(!isOwner);
       setOwnerNeedsOnboarding(false);
       setOwnerHasPublicPageContent(false);
@@ -271,10 +296,12 @@ export function useArtistPageAccessState(
     }
 
     let cancelled = false;
+    const softRefreshSameArtist =
+      ownerContentReadyForSlugRef.current === normalizedArtist && normalizedArtist !== '';
 
     /**
      * Не сбрасываем `ownerContentLoaded` при фоновом refresh (закрытие Dashboard /
-     * artist:updated): иначе pageReady мигает и вся страница артиста уходит в skeleton.
+     * artist:updated / смена языка): иначе pageReady мигает и вся страница артиста уходит в skeleton.
      * Первый load по-прежнему ждёт ready=false → true.
      */
     const refreshOwnerState = (options?: { keepReady?: boolean }) => {
@@ -287,10 +314,11 @@ export function useArtistPageAccessState(
         setOwnerNeedsOnboarding(state.needsOnboarding);
         setOwnerHasPublicPageContent(state.hasPublicPageContent);
         setOwnerContentLoaded(true);
+        ownerContentReadyForSlugRef.current = normalizedArtist;
       });
     };
 
-    refreshOwnerState();
+    refreshOwnerState({ keepReady: softRefreshSameArtist });
 
     const softRefreshOwnerState = () => refreshOwnerState({ keepReady: true });
 
@@ -302,19 +330,23 @@ export function useArtistPageAccessState(
       window.removeEventListener('artist:updated', softRefreshOwnerState);
       window.removeEventListener('profile-name-updated', softRefreshOwnerState);
     };
-  }, [enabled, isOwner, ownerResolved, lang]);
+  }, [artistSlug, enabled, isOwner, ownerResolved, lang]);
 
   useEffect(() => {
     if (!enabled) return;
 
     const normalizedArtist = normalizeSlug(artistSlug);
     if (isOwner || !ownerResolved || !normalizedArtist) {
+      visitorProfileReadyForSlugRef.current = '';
       setVisitorProfileHasPublicBody(null);
       return;
     }
 
     let cancelled = false;
-    setVisitorProfileHasPublicBody(null);
+    const softRefreshSameArtist = visitorProfileReadyForSlugRef.current === normalizedArtist;
+    if (!softRefreshSameArtist) {
+      setVisitorProfileHasPublicBody(null);
+    }
 
     void (async () => {
       try {
@@ -336,6 +368,7 @@ export function useArtistPageAccessState(
 
         if (!response.ok) {
           setVisitorProfileHasPublicBody(false);
+          visitorProfileReadyForSlugRef.current = normalizedArtist;
           return;
         }
 
@@ -357,8 +390,12 @@ export function useArtistPageAccessState(
               })
             : false
         );
+        visitorProfileReadyForSlugRef.current = normalizedArtist;
       } catch {
-        if (!cancelled) setVisitorProfileHasPublicBody(false);
+        if (!cancelled) {
+          setVisitorProfileHasPublicBody(false);
+          visitorProfileReadyForSlugRef.current = normalizedArtist;
+        }
       }
     })();
 

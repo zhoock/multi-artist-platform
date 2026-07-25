@@ -61,10 +61,10 @@ const HeaderComponent = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Смена языка: обновляем Redux, revalidate вызывается в Layout
+  // Смена языка: обновляем Redux; uiDictionary подгружается в Layout
   const changeLang = (newLang: SupportedLang) => {
     if (newLang !== lang) {
-      setLang(newLang); // Обновляем Redux, Layout автоматически вызовет revalidate
+      setLang(newLang);
     }
     setLangOpen(false);
   };

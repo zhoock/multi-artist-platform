@@ -294,7 +294,6 @@
     "stems": {
       "pageTitle": "Mixer",
       "selectAlbumHint": "Choose an album to open its tracks and stems",
-      "selectTrackHint": "Choose a track to open its stems",
       "noAlbums": "No albums with stems yet",
       "emptyTitle": "No stems available",
       "emptyDescriptionLine1": "When the artist publishes albums with stems,",

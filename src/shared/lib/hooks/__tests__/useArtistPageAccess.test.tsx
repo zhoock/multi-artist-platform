@@ -9,6 +9,7 @@ import { albumsReducer } from '@entities/album/model/albumsSlice';
 import { artistAlbumCatalogReducer } from '@entities/album/model/artistAlbumCatalogSlice';
 import { albumDetailsReducer } from '@entities/album/model/albumDetailsSlice';
 import { langReducer } from '@shared/model/lang/langSlice';
+import { langActions } from '@shared/model/lang';
 import { currentArtistReducer } from '@shared/model/currentArtist';
 import { LangProvider } from '@app/providers/lang';
 import { useArtistPageAccess } from '../useArtistPageAccess';
@@ -372,6 +373,100 @@ describe('useArtistPageAccess — published surface without releases', () => {
         },
       }),
     });
+
+    await waitFor(() => {
+      expect(result.current.pageReady).toBe(true);
+      expect(result.current.showArtistPageSkeleton).toBe(false);
+    });
+  });
+
+  test('смена только языка не включает ArtistPageSkeleton (SWR)', async () => {
+    const preloadedState = {
+      lang: { current: 'en' as const },
+      currentArtist: { publicSlug: 'test-artist' },
+      articles: {
+        status: 'succeeded' as const,
+        error: null,
+        data: [
+          {
+            articleId: 'article-1',
+            nameArticle: 'Untitled',
+            date: '2026-06-13',
+            img: '',
+            description: '',
+            isDraft: false,
+            visibility: 'public' as const,
+          },
+        ],
+        lastUpdated: Date.now(),
+        lastPublicArtistSlug: 'test-artist',
+        dashboard: {
+          status: 'idle' as const,
+          error: null,
+          data: [],
+          lastUpdated: null,
+        },
+      },
+      albums: {
+        dashboard: {
+          status: 'idle' as const,
+          error: null,
+          data: [],
+          lastUpdated: null,
+          inFlightFetchContextKey: null,
+        },
+      },
+      artistAlbumCatalog: {
+        status: 'succeeded' as const,
+        error: null,
+        data: [
+          {
+            albumId: 'album-1',
+            title: 'Album',
+            cover: '',
+            releaseDate: '2024-01-01',
+            trackCount: 1,
+            isPublished: true,
+            isPublic: true,
+            hasStems: false,
+          },
+        ],
+        lastUpdated: Date.now(),
+        fetchContextKey: 'public:test-artist',
+        artistMissing: false,
+      },
+    };
+
+    const store = configureStore({
+      reducer: {
+        lang: langReducer,
+        articles: articlesReducer,
+        albums: albumsReducer,
+        artistAlbumCatalog: artistAlbumCatalogReducer,
+        albumDetails: albumDetailsReducer,
+        currentArtist: currentArtistReducer,
+      } as never,
+      preloadedState: preloadedState as never,
+    });
+
+    function Wrapper({ children }: { children: ReactNode }) {
+      return (
+        <Provider store={store}>
+          <MemoryRouter initialEntries={['/?artist=test-artist']}>
+            <LangProvider>{children}</LangProvider>
+          </MemoryRouter>
+        </Provider>
+      );
+    }
+
+    const { result } = renderHook(() => useArtistPageAccess('test-artist'), { wrapper: Wrapper });
+
+    await waitFor(() => {
+      expect(result.current.pageReady).toBe(true);
+      expect(result.current.showArtistPageSkeleton).toBe(false);
+    });
+
+    store.dispatch(langActions.setLang('ru'));
 
     await waitFor(() => {
       expect(result.current.pageReady).toBe(true);

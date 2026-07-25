@@ -127,7 +127,6 @@ export default function StemsPlayground() {
   });
   const artistHubPath = withPublicArtistQuery('/', artistSlug);
   const selectAlbumHint = stems.selectAlbumHint ?? '';
-  const selectTrackHint = stems.selectTrackHint ?? '';
   const noAlbumsLabel = stems.noAlbums ?? '';
   const emptyTitle = stems.emptyTitle ?? 'No stems available';
   const emptyDescriptionLine1 =
@@ -489,16 +488,13 @@ export default function StemsPlayground() {
               ) : (
                 <MixerTrackList tracks={selectedAlbum.tracks} onSelectTrack={handleSelectTrack} />
               )}
-              {selectTrackHint && selectedAlbum.tracksStatus === 'loaded' ? (
-                <p className="mixer-level__hint">{selectTrackHint}</p>
-              ) : null}
             </>
           )}
 
           {view === 'mixer' && selectedAlbum && selectedTrack && (
             <>
               <div className="mixer-track-head">
-                <MixerBackNav onBack={backToTracks} ariaLabel={selectTrackHint || pageTitle}>
+                <MixerBackNav onBack={backToTracks} ariaLabel={pageTitle}>
                   <span className="mixer-back__title">{selectedTrack.title}</span>
                   <span className="mixer-back__meta">
                     {[selectedAlbum.title, formatTrackDuration(selectedTrack.duration)]
