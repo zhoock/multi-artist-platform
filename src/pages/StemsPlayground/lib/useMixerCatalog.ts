@@ -18,6 +18,7 @@ import { filterCatalogAlbumsForArtistPageSurface } from '@entities/album/lib/cat
 import { fetchAlbumDetails } from '@entities/album/api/fetchAlbumDetails';
 import { resolveAlbumDetailsForDisplay } from '@entities/album/lib/resolveAlbumDetailsDisplay';
 import type { CatalogAlbum } from '@entities/album/model/catalogAlbum';
+import type { RequestStatus } from '@entities/album/model/types';
 import { selectPublicArtistSlug } from '@shared/model/currentArtist';
 import { shouldShowAlbumsLoadingShell } from '@shared/lib/hooks/useShowAlbumsLoadingShell';
 import { buildMixerTracksFromAlbumDetails } from './buildMixerTracksFromAlbumDetails';
@@ -48,6 +49,12 @@ export type MixerCatalog = {
   albums: MixerAlbum[];
   /** Thin catalog loading shell. */
   loading: boolean;
+  /** Redux thin-catalog request status (for empty-state gating). */
+  catalogStatus: RequestStatus;
+  /** True while cached catalog belongs to another artist context. */
+  catalogCacheStale: boolean;
+  /** After catalog settled: whether thin catalog contains any album with stems. */
+  catalogHasStemAlbums: boolean | null;
   /** AlbumId whose AlbumDetails + stems are currently loading. */
   tracksLoadingAlbumId: string | null;
   /** Load AlbumDetails + loadStems for one album (idempotent while in flight). */
@@ -85,7 +92,14 @@ export function useMixerCatalog(): MixerCatalog {
     catalogCacheStale
   );
 
-  // Thin catalog for album list.
+  const catalogSettled = catalogStatus === 'succeeded' && !catalogCacheStale;
+  const catalogHasStemAlbums = catalogSettled
+    ? filterCatalogAlbumsForArtistPageSurface(publicCatalogAlbums, false).some(
+        (row) => row.hasStems
+      )
+    : null;
+
+  // Thin catalog for album list (lang-independent; refetch only on artist change).
   useEffect(() => {
     setAlbums([]);
     dispatch(
@@ -94,7 +108,7 @@ export function useMixerCatalog(): MixerCatalog {
         publicArtistSlug: artistSlug || null,
       })
     );
-  }, [artistSlug, dispatch, lang]);
+  }, [artistSlug, dispatch]);
 
   // Map CatalogAlbum → MixerAlbum shells (only albums with stems; preserve loaded tracks).
   useEffect(() => {
@@ -233,6 +247,9 @@ export function useMixerCatalog(): MixerCatalog {
   return {
     albums,
     loading: showCatalogLoadingShell,
+    catalogStatus,
+    catalogCacheStale,
+    catalogHasStemAlbums,
     tracksLoadingAlbumId,
     loadAlbumTracks,
   };

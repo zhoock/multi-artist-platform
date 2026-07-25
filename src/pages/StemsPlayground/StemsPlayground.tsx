@@ -57,7 +57,8 @@ export default function StemsPlayground() {
   const artistSlug = searchParams.get('artist')?.trim() || publicArtistSlugFromStore?.trim() || '';
   const publicArtistSlug = artistSlug || null;
 
-  const { albums, loading, tracksLoadingAlbumId, loadAlbumTracks } = useMixerCatalog();
+  const { albums, loading, catalogHasStemAlbums, tracksLoadingAlbumId, loadAlbumTracks } =
+    useMixerCatalog();
   const {
     view,
     selectedAlbum,
@@ -134,7 +135,7 @@ export default function StemsPlayground() {
   const emptyDescriptionLine2 = stems.emptyDescriptionLine2 ?? 'they will appear here.';
   const loadingLabel = stems.loading ?? '…';
 
-  const showEmptyCatalog = !loading && albums.length === 0 && !mixId;
+  const showEmptyCatalog = catalogHasStemAlbums === false && !loading && !mixId;
 
   useLayoutEffect(() => {
     document.body.classList.toggle('page--service-screen', showEmptyCatalog);
