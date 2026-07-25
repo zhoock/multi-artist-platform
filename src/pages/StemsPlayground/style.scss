@@ -30,6 +30,12 @@
     display: flex;
     flex-direction: column;
     gap: var(--ms-01);
+
+    &--skeleton {
+      .skeleton {
+        animation-delay: calc(var(--skeleton-index, 0) * 0.08s);
+      }
+    }
   }
 
   .mixer-album-card {
@@ -101,6 +107,45 @@
     &__arrow {
       flex-shrink: 0;
       color: var(--accent-color);
+    }
+
+    &--skeleton {
+      cursor: default;
+      pointer-events: none;
+
+      @media (hover: hover) and (pointer: fine) {
+        &:hover {
+          background: rgb(255 255 255 / 2%);
+        }
+      }
+
+      .mixer-album-card__skeleton-thumb {
+        inline-size: calc(var(--ms-1) * 2.4);
+        block-size: calc(var(--ms-1) * 2.4);
+        flex-shrink: 0;
+        border-radius: var(--ms-01);
+      }
+
+      .mixer-album-card__skeleton-title {
+        inline-size: min(70%, 14rem);
+        block-size: 1.1em;
+      }
+
+      .mixer-album-card__skeleton-meta {
+        inline-size: 4.5rem;
+        block-size: 0.85em;
+
+        &--short {
+          inline-size: 3rem;
+        }
+      }
+
+      .mixer-album-card__skeleton-arrow {
+        inline-size: 22px;
+        block-size: 22px;
+        flex-shrink: 0;
+        border-radius: var(--ms-02);
+      }
     }
   }
 
@@ -207,6 +252,12 @@
     display: flex;
     flex-direction: column;
     gap: var(--ms-02);
+
+    &--skeleton {
+      .skeleton {
+        animation-delay: calc(var(--skeleton-index, 0) * 0.08s);
+      }
+    }
   }
 
   .mixer-track-row {
@@ -278,6 +329,38 @@
       .mixer-track-row__title,
       .mixer-track-row__duration {
         color: var(--link-subtitle-color, var(--time-color, #9b9b9a));
+      }
+    }
+
+    &--skeleton {
+      cursor: default;
+      pointer-events: none;
+
+      @media (hover: hover) and (pointer: fine) {
+        &:hover {
+          background: rgb(255 255 255 / 2%);
+        }
+      }
+
+      .mixer-track-row__skeleton-number {
+        inline-size: 1.5em;
+        block-size: 1em;
+      }
+
+      .mixer-track-row__skeleton-title {
+        inline-size: min(55%, 16rem);
+        block-size: 1em;
+      }
+
+      .mixer-track-row__skeleton-duration {
+        inline-size: 2.5em;
+        block-size: 1em;
+      }
+
+      .mixer-track-row__skeleton-arrow {
+        inline-size: 22px;
+        block-size: 22px;
+        border-radius: var(--ms-02);
       }
     }
   }

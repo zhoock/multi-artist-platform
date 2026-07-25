@@ -39,7 +39,6 @@ function renderList(overrides: Partial<Parameters<typeof MixerAlbumList>[0]> = {
       lang="en"
       trackCountLabels={trackCountLabels}
       emptyLabel="No albums with stems yet"
-      loadingLabel="Loading…"
       onSelectAlbum={jest.fn()}
       {...overrides}
     />
@@ -56,9 +55,10 @@ describe('MixerAlbumList', () => {
     expect(screen.getByText('1 track')).toBeInTheDocument();
   });
 
-  test('shows the loading hint while loading', () => {
-    renderList({ loading: true });
-    expect(screen.getByText('Loading…')).toBeInTheDocument();
+  test('shows album skeleton while loading', () => {
+    const { container } = renderList({ loading: true });
+    expect(screen.getByLabelText('Loading albums')).toBeInTheDocument();
+    expect(container.querySelectorAll('.mixer-album-card--skeleton').length).toBeGreaterThan(0);
     expect(screen.queryByText('Album One')).not.toBeInTheDocument();
   });
 

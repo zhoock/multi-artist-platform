@@ -3,6 +3,7 @@ import type { SupportedLang } from '@shared/model/lang';
 import type { MixerAlbum } from '../lib/types';
 import { pluralizeTracks, type TrackCountLabels } from '../lib/pluralizeTracks';
 import { MixerAlbumCard } from './MixerAlbumCard';
+import { MixerAlbumListSkeleton } from './MixerAlbumListSkeleton';
 
 type MixerAlbumListProps = {
   albums: MixerAlbum[];
@@ -10,7 +11,6 @@ type MixerAlbumListProps = {
   lang: SupportedLang;
   trackCountLabels: TrackCountLabels;
   emptyLabel: string;
-  loadingLabel: string;
   onSelectAlbum: (albumId: string) => void;
 };
 
@@ -21,11 +21,10 @@ export function MixerAlbumList({
   lang,
   trackCountLabels,
   emptyLabel,
-  loadingLabel,
   onSelectAlbum,
 }: MixerAlbumListProps) {
   if (loading) {
-    return <p className="mixer-level__hint">{loadingLabel}</p>;
+    return <MixerAlbumListSkeleton />;
   }
 
   if (albums.length === 0) {

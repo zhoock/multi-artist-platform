@@ -38,6 +38,7 @@ import { pluralizeTracks, type TrackCountLabels } from './lib/pluralizeTracks';
 import { formatTrackDuration } from './lib/formatTrackDuration';
 import { MixerAlbumList } from './components/MixerAlbumList';
 import { MixerTrackList } from './components/MixerTrackList';
+import { MixerTrackListSkeleton } from './components/MixerTrackListSkeleton';
 import { MixerBackNav } from './components/MixerBackNav';
 import { MixerPlayerPanel, type MixerPlayerPanelHandle } from './components/MixerPlayerPanel';
 import { SaveMixModal } from './components/SaveMixModal';
@@ -451,7 +452,6 @@ export default function StemsPlayground() {
                 lang={lang}
                 trackCountLabels={trackCountLabels}
                 emptyLabel={noAlbumsLabel}
-                loadingLabel={loadingLabel}
                 onSelectAlbum={handleSelectAlbum}
               />
             </>
@@ -481,7 +481,9 @@ export default function StemsPlayground() {
               {tracksLoadingAlbumId === selectedAlbum.albumId ||
               selectedAlbum.tracksStatus === 'loading' ||
               selectedAlbum.tracksStatus === 'idle' ? (
-                <p className="mixer-level__hint">{loadingLabel}</p>
+                <MixerTrackListSkeleton
+                  count={selectedAlbum.listedTrackCount > 0 ? selectedAlbum.listedTrackCount : 3}
+                />
               ) : selectedAlbum.tracks.length === 0 ? (
                 <p className="mixer-level__hint">{noAlbumsLabel || emptyTitle}</p>
               ) : (
