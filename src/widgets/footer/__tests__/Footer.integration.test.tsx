@@ -126,7 +126,7 @@ describe('Footer integration tests', () => {
     renderFooter();
 
     await waitFor(() => {
-      expect(screen.getByText(/© 2021—2025 Смоляное чучелко/i)).toBeInTheDocument();
+      expect(screen.getByText(/© 2026 Название сайта/i)).toBeInTheDocument();
     });
   });
 

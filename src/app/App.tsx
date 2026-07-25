@@ -376,6 +376,7 @@ function Layout() {
     { path: '/email-verification-expired', end: true },
     location.pathname
   );
+  const isOfferRoute = matchPath({ path: '/offer', end: true }, location.pathname);
 
   const isServiceScreenRoute =
     !isPaymentRoute &&
@@ -698,7 +699,8 @@ function Layout() {
                   )}
                   {!isHomeSceneRoute &&
                     !isEmailVerifiedRoute &&
-                    !isEmailVerificationExpiredRoute && <Hero />}
+                    !isEmailVerificationExpiredRoute &&
+                    !isOfferRoute && <Hero />}
 
                   {/* если поместим popup внурь header, то popup будет обрезаться из-за css-фильтра (filter) внури header */}
 

@@ -986,9 +986,9 @@
       "checkout": {
         "emailAddress": "Email",
         "agreeToOffer": "I agree to the",
-        "publicOffer": "public offer",
+        "publicOffer": "Public Offer",
         "agreeToPrivacy": "I consent to",
-        "privacyPolicy": "processing of personal data"
+        "privacyPolicy": "Privacy Policy"
       },
       "payment": {
         "proceedToPayment": "Continue to payment",

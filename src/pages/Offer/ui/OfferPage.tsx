@@ -88,7 +88,7 @@ export function OfferPage() {
       </Helmet>
       <div className="offer-page">
         <div className="offer-page__container">
-          <h1 className="offer-page__title">{offerData.title}</h1>
+          <h1 className="offer-page__title">{ui?.links?.offerPageTitle ?? offerData.title}</h1>
           <p className="offer-page__subtitle">{offerData.subtitle}</p>
 
           <div className="offer-page__meta">

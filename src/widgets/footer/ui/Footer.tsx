@@ -97,7 +97,7 @@ function FooterComponent() {
         <ul className="copyright-list">
           <li className="copyright-list__item">
             <small>
-              <span>© 2021—2025 Смоляное чучелко</span>
+              <span>© 2026 Название сайта</span>
             </small>
           </li>
           <li>

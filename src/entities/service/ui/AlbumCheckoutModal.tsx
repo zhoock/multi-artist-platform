@@ -137,7 +137,7 @@ const labelsFor = (
     email: checkout?.checkout?.emailAddress ?? (en ? 'Email' : 'Email'),
     agreeCombinedPrefix:
       checkout?.checkout?.agreeToOffer ??
-      (en ? 'I have read and agree to the' : 'Я ознакомился(ась) и согласен(на) с'),
+      (en ? 'I agree to the' : 'Я ознакомился(ась) и согласен(на) с'),
     agreeCombinedAnd: en ? 'and' : 'и',
     publicOffer: checkout?.checkout?.publicOffer ?? (en ? 'Public Offer' : 'Публичной офертой'),
     privacyPolicy:
