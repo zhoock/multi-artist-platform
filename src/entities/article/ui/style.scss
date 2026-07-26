@@ -125,6 +125,39 @@
     transition: opacity 0.2s ease;
   }
 
+  &__subscriber-overlay--pending {
+    background: rgb(0 0 0 / 58%);
+  }
+
+  &__subscriber-overlay-skeleton {
+    display: block;
+    background: linear-gradient(
+      90deg,
+      rgb(255 255 255 / 12%) 0%,
+      rgb(255 255 255 / 22%) 50%,
+      rgb(255 255 255 / 12%) 100%
+    );
+    border-radius: var(--ms-01);
+    background-size: 200% 100%;
+    animation: skeleton-shimmer 1.5s ease-in-out infinite;
+
+    &--icon {
+      inline-size: 1.75rem;
+      block-size: 1.75rem;
+      border-radius: 50%;
+    }
+
+    &--title {
+      inline-size: min(72%, 9rem);
+      block-size: clamp(0.7rem, 2.2vw, var(--ms-0));
+    }
+
+    &--hint {
+      inline-size: min(84%, 11rem);
+      block-size: clamp(0.58rem, 1.85vw, var(--ms-01));
+    }
+  }
+
   &__description--locked {
     color: #ffffff;
 
@@ -329,7 +362,6 @@
     &--pending {
       min-block-size: 12rem;
       pointer-events: none;
-      visibility: hidden;
     }
   }
 
@@ -343,6 +375,55 @@
       rgb(200 176 109 / 22%) 78%,
       transparent 100%
     );
+  }
+
+  .article__archive-gate-skeleton {
+    display: block;
+    background: linear-gradient(
+      90deg,
+      rgb(255 255 255 / 10%) 0%,
+      rgb(255 255 255 / 18%) 50%,
+      rgb(255 255 255 / 10%) 100%
+    );
+    border-radius: var(--ms-01);
+    background-size: 200% 100%;
+    animation: skeleton-shimmer 1.5s ease-in-out infinite;
+
+    &--icon {
+      inline-size: 1.75rem;
+      block-size: 1.75rem;
+      border-radius: 50%;
+    }
+
+    &--title {
+      inline-size: min(72%, 14rem);
+      block-size: 1.25rem;
+    }
+
+    &--hint {
+      inline-size: min(84%, 18rem);
+      block-size: 1rem;
+    }
+
+    &--cta {
+      inline-size: min(56%, 10rem);
+      block-size: 2.25rem;
+      border-radius: var(--ms-01);
+    }
+  }
+
+  .article__archive-gate-rule + .article__archive-gate-skeleton--icon,
+  .article__archive-gate-skeleton--icon + .article__archive-gate-skeleton--title {
+    margin-block-start: var(--ms-01);
+  }
+
+  .article__archive-gate-skeleton--title + .article__archive-gate-skeleton--hint,
+  .article__archive-gate-skeleton--hint + .article__archive-gate-skeleton--cta {
+    margin-block-start: var(--ms-01);
+  }
+
+  .article__archive-gate-skeleton--cta + .article__archive-gate-rule {
+    margin-block-start: var(--ms-1);
   }
 
   .article__archive-gate-icon {
@@ -436,5 +517,15 @@
       text-decoration-thickness: 1px;
       text-underline-offset: 0.15em;
     }
+  }
+}
+
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+
+  100% {
+    background-position: 200% 0;
   }
 }

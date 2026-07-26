@@ -29,13 +29,14 @@ export function PremiumSubscriptionProvider({ children }: { children: ReactNode 
   const [isPremium, setIsPremium] = useState(false);
   const [slotsLimit, setSlotsLimit] = useState(3);
   const [slotsUsed, setSlotsUsed] = useState(0);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(() => Boolean(getToken()));
 
   const refetch = useCallback(async () => {
     if (!getToken()) {
       setIsPremium(false);
       setSlotsLimit(3);
       setSlotsUsed(0);
+      setLoading(false);
       return;
     }
 

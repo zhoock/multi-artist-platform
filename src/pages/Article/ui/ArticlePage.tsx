@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, type ReactNode } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useParams } from 'react-router-dom';
 import { useEffectiveSearchParams } from '@shared/lib/hooks/useEffectiveLocation';
 import { Helmet } from 'react-helmet-async';
@@ -30,9 +30,15 @@ import { buildPublicSiteUrl } from '@shared/lib/publicSiteOrigin';
 import { ArtistArchiveLockIcon } from '@shared/ui/icons/ArtistArchiveLockIcon';
 import { SubscriberContentLockIcon } from '@shared/ui/icons/SubscriberContentLockIcon';
 import { useArchiveAccessModal } from '@shared/lib/archiveAccessModal';
+import { ArchiveApiError } from '@shared/api/archive';
 import { usePremiumSubscription } from '@features/premiumSubscription';
-import { refreshPremiumContentForArchiveChange } from '@features/artistArchive';
+import {
+  dispatchArchiveArtistAdded,
+  refreshPremiumContentForArchiveChange,
+} from '@features/artistArchive';
+import { CollectionFullModal } from '@features/artistArchive/ui/CollectionFullModal';
 import { useArtistArchiveStatus } from '@features/artistArchive/lib/useArtistArchiveStatus';
+import { useArtistPageBuilderNav } from '@shared/ui/artistPageBuilder/useArtistPageBuilderNav';
 import { useArtistPageAccess } from '@shared/lib/hooks/useArtistPageAccess';
 import {
   resolveArticleLockedBodySize,
@@ -44,6 +50,7 @@ import {
   resolveShowLockedArticleCard,
   type ArticlePaywallKind,
 } from '@entities/article/lib/resolveArticlePaywallKind';
+import { isArticlePaywallOverlayPending } from '@entities/article/lib/resolveArticlePaywallOverlay';
 import { useSiteArtistDisplayName } from '@shared/lib/hooks/useSiteArtistDisplayName';
 import '@entities/article/ui/style.scss';
 
@@ -217,9 +224,20 @@ function ArticleContent({
   const dispatch = useAppDispatch();
   const ui = useAppSelector((state) => selectUiDictionaryFirst(state, lang));
   const { isPremium, loading: premiumLoading } = usePremiumSubscription();
-  const { artistInArchive, loading: archiveLoading } = useArtistArchiveStatus(article?.userId);
+  const {
+    artistInArchive,
+    artistActiveInArchive,
+    loading: archiveLoading,
+    addToArchive,
+    adding: archiveAdding,
+    activateInArchive,
+    activating: archiveActivating,
+    buttonState: archiveButtonState,
+  } = useArtistArchiveStatus(article?.userId);
   const { monetizationEnabled } = useArtistPageAccess(artistSlug?.trim() ?? '');
-  const { open, requestAccess } = useArchiveAccessModal();
+  const { open } = useArchiveAccessModal();
+  const { openDashboard } = useArtistPageBuilderNav();
+  const [archiveFullOpen, setArchiveFullOpen] = useState(false);
 
   const showLockedArticle = useMemo(
     () =>
@@ -240,36 +258,66 @@ function ArticleContent({
             premiumLoading,
             archiveLoading,
             artistInArchive,
+            artistActiveInArchive,
           })
         : 'none',
-    [archiveLoading, artistInArchive, isPremium, premiumLoading, showLockedArticle]
+    [
+      archiveLoading,
+      artistActiveInArchive,
+      artistInArchive,
+      isPremium,
+      premiumLoading,
+      showLockedArticle,
+    ]
   );
 
   /** Keep content gated while entitlements resolve (`pending`) to avoid a brief unlock flash. */
   const isPaywalled = paywallKind !== 'none';
 
+  const overlayPending = isArticlePaywallOverlayPending({
+    showLocked: showLockedArticle,
+    paywallKind,
+    premiumLoading,
+    archiveLoading,
+  });
+
   const subscriptionGateTitle =
     ui?.titles?.articleSubscriptionLockedOverlayTitle ??
-    (lang === 'en' ? 'Continue Reading' : 'Продолжить чтение');
+    (lang === 'en' ? 'Support required' : 'Нужна поддержка');
   const subscriptionGateHint =
     ui?.titles?.articleSubscriptionLockedOverlayHint ??
-    (lang === 'en'
-      ? 'This article is available to subscribers.'
-      : 'Эта статья доступна подписчикам.');
+    (lang === 'en' ? 'Read the full article.' : 'Чтобы читать полностью.');
   const subscriptionCtaLabel =
     ui?.buttons?.articleSubscriptionLockedCta ??
     (lang === 'en' ? 'Start Support' : 'Начать поддержку');
 
   const archiveGateTitle =
     ui?.titles?.articleArchiveLockedOverlayTitle ??
-    (lang === 'en' ? 'Artist not in your collection' : 'Артист не в вашей коллекции');
+    (lang === 'en' ? 'Add to collection' : 'Добавьте в коллекцию');
   const archiveGateHint =
     ui?.titles?.articleArchiveLockedOverlayHint ??
-    (lang === 'en'
-      ? 'Add this artist to your collection to continue reading.'
-      : 'Добавьте артиста в коллекцию, чтобы продолжить чтение.');
+    (lang === 'en' ? 'Read the full article.' : 'Чтобы читать полностью.');
   const archiveCtaLabel =
     ui?.buttons?.artistArchiveAdd ?? (lang === 'en' ? 'Add to Collection' : 'Добавить в коллекцию');
+  const archiveAddingLabel =
+    ui?.buttons?.artistArchiveAdding ?? (lang === 'en' ? 'Adding…' : 'Добавляем…');
+  const archiveInCollectionLabel =
+    ui?.buttons?.artistCollectionIn ??
+    ui?.buttons?.artistArchiveInArchive ??
+    (lang === 'en' ? 'In Collection' : 'В коллекции');
+
+  const activateGateTitle =
+    ui?.titles?.articleActivateLockedOverlayTitle ??
+    (lang === 'en' ? 'Activate artist' : 'Активируйте артиста');
+  const activateGateHint =
+    ui?.titles?.articleActivateLockedGateHint ??
+    (lang === 'en'
+      ? 'Activate this artist in your collection to continue reading.'
+      : 'Активируйте этого артиста в коллекции, чтобы продолжить чтение.');
+  const activateCtaLabel =
+    ui?.buttons?.articleActivateLockedCta ?? (lang === 'en' ? 'Activate' : 'Активировать');
+  const activateLoadingLabel =
+    ui?.buttons?.artistArchiveActivating ?? (lang === 'en' ? 'Activating…' : 'Активируем…');
 
   const renewGateTitle =
     ui?.titles?.articleRenewLockedOverlayTitle ??
@@ -296,15 +344,59 @@ function ArticleContent({
     });
   };
 
-  const handleArchiveGate = () => {
-    void requestAccess({
-      artistUserId: article?.userId,
-      artistSlug,
-      onAccessGranted: () => {
-        refreshPremiumContentForArchiveChange(dispatch, artistSlug, { immediate: true });
-      },
-    });
-  };
+  const handleArchiveGate = useCallback(async () => {
+    const artistUserId = article?.userId?.trim();
+    if (!artistUserId) return;
+
+    if (archiveButtonState === 'not_premium' || archiveButtonState === 'subscription_inactive') {
+      open({
+        artistUserId,
+        artistSlug: artistSlug ?? undefined,
+      });
+      return;
+    }
+
+    if (archiveButtonState === 'archive_full') {
+      setArchiveFullOpen(true);
+      return;
+    }
+
+    if (archiveButtonState !== 'can_add' || archiveAdding) return;
+
+    try {
+      await addToArchive();
+      dispatchArchiveArtistAdded(artistUserId, artistSlug ?? undefined);
+      refreshPremiumContentForArchiveChange(dispatch, artistSlug, { immediate: true });
+    } catch (err) {
+      if (err instanceof ArchiveApiError && err.code === 'ARCHIVE_SLOTS_LIMIT') {
+        setArchiveFullOpen(true);
+      }
+    }
+  }, [
+    addToArchive,
+    archiveAdding,
+    archiveButtonState,
+    artistSlug,
+    article?.userId,
+    dispatch,
+    open,
+  ]);
+
+  const handleActivateGate = useCallback(async () => {
+    if (archiveButtonState !== 'in_collection_inactive' || archiveActivating) return;
+
+    try {
+      await activateInArchive();
+      refreshPremiumContentForArchiveChange(dispatch, artistSlug, { immediate: true });
+    } catch (err) {
+      if (
+        err instanceof ArchiveApiError &&
+        (err.code === 'ARCHIVE_SLOTS_LIMIT' || err.code === 'ARCHIVE_ACTIVATION_LIMIT')
+      ) {
+        setArchiveFullOpen(true);
+      }
+    }
+  }, [activateInArchive, archiveActivating, archiveButtonState, artistSlug, dispatch]);
 
   const articleDetailsSplit = useMemo(
     () =>
@@ -350,9 +442,11 @@ function ArticleContent({
       ? subscriptionGateHint
       : paywallKind === 'renew'
         ? renewGateHint
-        : paywallKind === 'archive'
-          ? archiveGateHint
-          : article.description;
+        : paywallKind === 'activate'
+          ? activateGateHint
+          : paywallKind === 'archive'
+            ? archiveGateHint
+            : article.description;
   const seoDesc = isPaywalled ? paywallSeoHint : article.description;
   const canonical = buildPublicSiteUrl(`/articles/${encodeURIComponent(article.articleId)}`);
 
@@ -385,14 +479,52 @@ function ArticleContent({
       );
     }
 
+    if (kind === 'activate') {
+      return (
+        <div
+          className="article__archive-gate article__archive-gate--inline"
+          role="region"
+          aria-labelledby="article-activate-gate-title"
+        >
+          <div className="article__archive-gate-rule" aria-hidden="true" />
+          <ArtistArchiveLockIcon className="article__archive-gate-icon" size={28} />
+          <h3 id="article-activate-gate-title" className="article__archive-gate-title">
+            {activateGateTitle}
+          </h3>
+          <p className="article__archive-gate-hint">{activateGateHint}</p>
+          <button
+            type="button"
+            className="article__archive-gate-cta"
+            disabled={archiveActivating}
+            aria-busy={archiveActivating}
+            onClick={() => void handleActivateGate()}
+          >
+            {archiveActivating ? activateLoadingLabel : activateCtaLabel}
+          </button>
+          <div className="article__archive-gate-rule" aria-hidden="true" />
+        </div>
+      );
+    }
+
     const isSubscription = kind === 'subscription';
     const gateTitle = isSubscription ? subscriptionGateTitle : archiveGateTitle;
     const gateHint = isSubscription ? subscriptionGateHint : archiveGateHint;
-    const gateCta = isSubscription ? subscriptionCtaLabel : archiveCtaLabel;
+    const gateCta = isSubscription
+      ? subscriptionCtaLabel
+      : archiveAdding
+        ? archiveAddingLabel
+        : archiveButtonState === 'in_collection_active'
+          ? archiveInCollectionLabel
+          : archiveCtaLabel;
     const gateTitleId = isSubscription
       ? 'article-subscription-gate-title'
       : 'article-archive-gate-title';
     const GateIcon = isSubscription ? SubscriberContentLockIcon : ArtistArchiveLockIcon;
+    const gateButtonDisabled =
+      !isSubscription &&
+      (archiveAdding ||
+        archiveButtonState === 'in_collection_active' ||
+        archiveButtonState === 'loading');
 
     return (
       <div
@@ -411,7 +543,9 @@ function ArticleContent({
         <button
           type="button"
           className="article__archive-gate-cta"
-          onClick={isSubscription ? handleSubscriptionGate : handleArchiveGate}
+          disabled={gateButtonDisabled}
+          aria-busy={!isSubscription && archiveAdding}
+          onClick={isSubscription ? handleSubscriptionGate : () => void handleArchiveGate()}
         >
           {gateCta}
         </button>
@@ -432,14 +566,21 @@ function ArticleContent({
               </div>
             )}
           </div>
-          {paywallKind === 'pending' ? (
+          {overlayPending ? (
             <div
               className="article__archive-gate article__archive-gate--inline article__archive-gate--pending"
               aria-hidden="true"
-            />
-          ) : (
+            >
+              <div className="article__archive-gate-rule" aria-hidden="true" />
+              <span className="article__archive-gate-skeleton article__archive-gate-skeleton--icon" />
+              <span className="article__archive-gate-skeleton article__archive-gate-skeleton--title" />
+              <span className="article__archive-gate-skeleton article__archive-gate-skeleton--hint" />
+              <span className="article__archive-gate-skeleton article__archive-gate-skeleton--cta" />
+              <div className="article__archive-gate-rule" aria-hidden="true" />
+            </div>
+          ) : paywallKind !== 'pending' ? (
             renderPaywallGate(paywallKind)
-          )}
+          ) : null}
           <div
             className={`article__paywall-tail article__paywall-tail--${lockedBodySize}`}
             aria-hidden="true"
@@ -481,6 +622,18 @@ function ArticleContent({
       <h2>{article.nameArticle}</h2>
 
       {articleBody}
+
+      <CollectionFullModal
+        isOpen={archiveFullOpen}
+        onClose={() => setArchiveFullOpen(false)}
+        onUpgradePlan={() => {
+          open({
+            artistUserId: article.userId,
+            artistSlug: artistSlug ?? undefined,
+          });
+        }}
+        onManageCollection={() => openDashboard('collection')}
+      />
     </>
   );
 }

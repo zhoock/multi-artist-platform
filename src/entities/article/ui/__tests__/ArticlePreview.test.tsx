@@ -42,6 +42,7 @@ jest.mock('@features/artistArchive/lib/useArtistArchiveStatus', () => ({
     slotsRemaining: 0,
     isOwner: false,
     artistInArchive: false,
+    artistActiveInArchive: false,
     refetch: async () => null,
     addToArchive: async () => null,
     activateInArchive: async () => null,
@@ -107,6 +108,7 @@ describe('ArticlePreview click behavior', () => {
       slotsRemaining: 0,
       isOwner: false,
       artistInArchive: false,
+      artistActiveInArchive: false,
       refetch: async () => null,
       addToArchive: async () => null,
       activateInArchive: async () => null,
@@ -157,6 +159,7 @@ describe('ArticlePreview click behavior', () => {
       slotsRemaining: 0,
       isOwner: false,
       artistInArchive: false,
+      artistActiveInArchive: false,
       refetch: async () => null,
       addToArchive: async () => null,
       activateInArchive: async () => null,
@@ -171,6 +174,70 @@ describe('ArticlePreview click behavior', () => {
     expect(await screen.findByTestId('article-page')).toBeInTheDocument();
     expect(mockOpen).not.toHaveBeenCalled();
     expect(mockRequestAccess).not.toHaveBeenCalled();
+  });
+
+  test('shows pending skeleton overlay while entitlements are loading', () => {
+    premiumState.loading = true;
+    jest.mocked(usePremiumSubscription).mockReturnValue({ ...premiumState });
+
+    renderLockedPreview();
+
+    expect(screen.queryByText(/Support required|Нужна поддержка/i)).not.toBeInTheDocument();
+    expect(document.querySelector('.articles__subscriber-overlay--pending')).toBeTruthy();
+    expect(document.querySelectorAll('.articles__subscriber-overlay-skeleton')).toHaveLength(3);
+  });
+
+  test('shows resolved activate overlay for inactive collection slot', () => {
+    premiumState.isPremium = true;
+    premiumState.loading = false;
+    jest.mocked(usePremiumSubscription).mockReturnValue({ ...premiumState });
+    jest.mocked(useArtistArchiveStatus).mockReturnValue({
+      status: null,
+      loading: false,
+      adding: false,
+      activating: false,
+      error: null,
+      buttonState: 'in_collection_inactive',
+      slotsRemaining: 2,
+      isOwner: false,
+      artistInArchive: true,
+      artistActiveInArchive: false,
+      refetch: async () => null,
+      addToArchive: async () => null,
+      activateInArchive: async () => null,
+      clearError: () => {},
+    });
+
+    renderLockedPreview();
+
+    expect(screen.getByText(/Activate artist|Активируйте артиста/i)).toBeTruthy();
+    expect(screen.getByText(/Read the full article|Чтобы читать статью полностью/i)).toBeTruthy();
+  });
+
+  test('shows resolved archive overlay after entitlements load', () => {
+    premiumState.isPremium = true;
+    premiumState.loading = false;
+    jest.mocked(usePremiumSubscription).mockReturnValue({ ...premiumState });
+    jest.mocked(useArtistArchiveStatus).mockReturnValue({
+      status: null,
+      loading: false,
+      adding: false,
+      activating: false,
+      error: null,
+      buttonState: 'can_add',
+      slotsRemaining: 2,
+      isOwner: false,
+      artistInArchive: false,
+      artistActiveInArchive: false,
+      refetch: async () => null,
+      addToArchive: async () => null,
+      activateInArchive: async () => null,
+      clearError: () => {},
+    });
+
+    renderLockedPreview();
+
+    expect(screen.getByText(/Add to collection|Добавьте в коллекцию/i)).toBeTruthy();
   });
 
   test('public card links to article page', () => {

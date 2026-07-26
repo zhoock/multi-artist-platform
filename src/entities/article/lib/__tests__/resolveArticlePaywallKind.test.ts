@@ -100,7 +100,31 @@ describe('resolveArticlePaywallKind', () => {
     ).toBe('archive');
   });
 
-  test('returns none when locked but user has premium and artist in collection', () => {
+  test('returns activate when artist is in collection but slot is inactive', () => {
+    expect(
+      resolveArticlePaywallKind({
+        articleLocked: true,
+        isPremium: true,
+        artistInArchive: true,
+        artistActiveInArchive: false,
+        premiumLoading: false,
+      })
+    ).toBe('activate');
+  });
+
+  test('returns none when locked but user has premium and artist active in collection', () => {
+    expect(
+      resolveArticlePaywallKind({
+        articleLocked: true,
+        isPremium: true,
+        artistInArchive: true,
+        artistActiveInArchive: true,
+        premiumLoading: false,
+      })
+    ).toBe('none');
+  });
+
+  test('returns none when locked with premium and artist in collection without active flag', () => {
     expect(
       resolveArticlePaywallKind({
         articleLocked: true,

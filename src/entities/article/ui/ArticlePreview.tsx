@@ -15,6 +15,7 @@ import {
   resolveArticlePaywallKind,
   resolveShowLockedArticleCard,
 } from '@entities/article/lib/resolveArticlePaywallKind';
+import { isArticlePaywallOverlayPending } from '@entities/article/lib/resolveArticlePaywallOverlay';
 import './style.scss';
 
 export function ArticlePreview({
@@ -36,7 +37,11 @@ export function ArticlePreview({
   const articlePath = withPublicArtistQuery(`/articles/${articleId}`, artistSlug);
   const ui = useAppSelector((state) => selectUiDictionaryFirst(state, lang));
   const { isPremium, loading: premiumLoading } = usePremiumSubscription();
-  const { artistInArchive, loading: archiveLoading } = useArtistArchiveStatus(userId);
+  const {
+    artistInArchive,
+    artistActiveInArchive,
+    loading: archiveLoading,
+  } = useArtistArchiveStatus(userId);
 
   const showLockedCard = resolveShowLockedArticleCard({
     monetizationEnabled,
@@ -50,25 +55,36 @@ export function ArticlePreview({
     premiumLoading,
     archiveLoading,
     artistInArchive,
+    artistActiveInArchive,
+  });
+
+  const overlayPending = isArticlePaywallOverlayPending({
+    showLocked: showLockedCard,
+    paywallKind,
+    premiumLoading,
+    archiveLoading,
   });
 
   const subscriptionOverlayTitle =
     ui?.titles?.articleSubscriptionLockedOverlayTitle ??
-    (lang === 'en' ? 'Continue Reading' : 'Продолжить чтение');
+    (lang === 'en' ? 'Support required' : 'Нужна поддержка');
   const subscriptionOverlayHint =
     ui?.titles?.articleSubscriptionLockedOverlayHint ??
-    (lang === 'en'
-      ? 'This article is available to subscribers.'
-      : 'Эта статья доступна подписчикам.');
+    (lang === 'en' ? 'Read the full article.' : 'Чтобы читать полностью.');
 
   const archiveOverlayTitle =
     ui?.titles?.articleArchiveLockedOverlayTitle ??
-    (lang === 'en' ? 'Artist not in your collection' : 'Артист не в вашей коллекции');
+    (lang === 'en' ? 'Add to collection' : 'Добавьте в коллекцию');
   const archiveOverlayHint =
     ui?.titles?.articleArchiveLockedOverlayHint ??
-    (lang === 'en'
-      ? 'Add this artist to your collection to continue reading.'
-      : 'Добавьте артиста в коллекцию, чтобы продолжить чтение.');
+    (lang === 'en' ? 'Read the full article.' : 'Чтобы читать полностью.');
+
+  const activateOverlayTitle =
+    ui?.titles?.articleActivateLockedOverlayTitle ??
+    (lang === 'en' ? 'Activate artist' : 'Активируйте артиста');
+  const activateOverlayHint =
+    ui?.titles?.articleActivateLockedOverlayHint ??
+    (lang === 'en' ? 'Read the full article.' : 'Чтобы читать статью полностью.');
 
   const renewOverlayTitle =
     ui?.titles?.articleRenewLockedOverlayTitle ??
@@ -89,20 +105,27 @@ export function ArticlePreview({
   const overlayTitle =
     paywallKind === 'archive'
       ? archiveOverlayTitle
-      : paywallKind === 'renew'
-        ? renewOverlayTitle
-        : paywallKind === 'subscription' || paywallKind === 'pending'
-          ? subscriptionOverlayTitle
-          : legacyOverlayTitle;
+      : paywallKind === 'activate'
+        ? activateOverlayTitle
+        : paywallKind === 'renew'
+          ? renewOverlayTitle
+          : paywallKind === 'subscription'
+            ? subscriptionOverlayTitle
+            : legacyOverlayTitle;
   const overlayHint =
     paywallKind === 'archive'
       ? archiveOverlayHint
-      : paywallKind === 'renew'
-        ? renewOverlayHint
-        : paywallKind === 'subscription' || paywallKind === 'pending'
-          ? subscriptionOverlayHint
-          : legacyOverlayHint;
-  const OverlayIcon = paywallKind === 'archive' ? ArtistArchiveLockIcon : SubscriberContentLockIcon;
+      : paywallKind === 'activate'
+        ? activateOverlayHint
+        : paywallKind === 'renew'
+          ? renewOverlayHint
+          : paywallKind === 'subscription'
+            ? subscriptionOverlayHint
+            : legacyOverlayHint;
+  const OverlayIcon =
+    paywallKind === 'archive' || paywallKind === 'activate'
+      ? ArtistArchiveLockIcon
+      : SubscriberContentLockIcon;
 
   if (!showLockedCard || paywallKind === 'none') {
     return (
@@ -134,7 +157,7 @@ export function ArticlePreview({
   return (
     <article
       className="articles__card articles__card--subscriber-locked"
-      aria-label={`${overlayTitle}. ${nameArticle}`}
+      aria-label={overlayPending ? nameArticle : `${overlayTitle}. ${nameArticle}`}
     >
       <Link to={articlePath} className="articles__card-hit">
         <div className="articles__picture">
@@ -147,10 +170,25 @@ export function ArticlePreview({
             decoding="async"
             debugLabel={`ArticlePreview:${articleId}`}
           />
-          <div className="articles__subscriber-overlay" aria-hidden="true">
-            <OverlayIcon className="articles__subscriber-lock-icon" size={28} />
-            <p className="articles__subscriber-overlay-title">{overlayTitle}</p>
-            <p className="articles__subscriber-overlay-hint">{overlayHint}</p>
+          <div
+            className={`articles__subscriber-overlay${
+              overlayPending ? ' articles__subscriber-overlay--pending' : ''
+            }`}
+            aria-hidden="true"
+          >
+            {overlayPending ? (
+              <>
+                <span className="articles__subscriber-overlay-skeleton articles__subscriber-overlay-skeleton--icon" />
+                <span className="articles__subscriber-overlay-skeleton articles__subscriber-overlay-skeleton--title" />
+                <span className="articles__subscriber-overlay-skeleton articles__subscriber-overlay-skeleton--hint" />
+              </>
+            ) : (
+              <>
+                <OverlayIcon className="articles__subscriber-lock-icon" size={28} />
+                <p className="articles__subscriber-overlay-title">{overlayTitle}</p>
+                <p className="articles__subscriber-overlay-hint">{overlayHint}</p>
+              </>
+            )}
           </div>
         </div>
         <div className="articles__description articles__description--locked">

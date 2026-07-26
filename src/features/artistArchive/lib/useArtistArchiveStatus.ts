@@ -20,7 +20,7 @@ export type { ArtistArchiveButtonState };
 export function useArtistArchiveStatus(artistUserId: string | null | undefined) {
   const viewer = useAuthSessionUser();
   const [status, setStatus] = useState<ArchiveStatus | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(() => Boolean(getToken() && artistUserId));
   const [adding, setAdding] = useState(false);
   const [activating, setActivating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -31,11 +31,13 @@ export function useArtistArchiveStatus(artistUserId: string | null | undefined) 
   const refetch = useCallback(async () => {
     if (!artistUserId || isOwner) {
       setStatus(null);
+      setLoading(false);
       return null;
     }
 
     if (!getToken()) {
       setStatus(null);
+      setLoading(false);
       return null;
     }
 
@@ -184,6 +186,7 @@ export function useArtistArchiveStatus(artistUserId: string | null | undefined) 
     slotsRemaining,
     isOwner,
     artistInArchive: Boolean(status?.artistInArchive),
+    artistActiveInArchive: Boolean(status?.artistActiveInArchive),
     refetch,
     addToArchive,
     activateInArchive,

@@ -1,6 +1,12 @@
 import { normalizeTrackVisibility } from '@shared/lib/tracks/trackVisibility';
 
-export type ArticlePaywallKind = 'none' | 'pending' | 'subscription' | 'renew' | 'archive';
+export type ArticlePaywallKind =
+  | 'none'
+  | 'pending'
+  | 'subscription'
+  | 'renew'
+  | 'archive'
+  | 'activate';
 
 /** Whether catalog chrome should show subscriber lock (card overlay). */
 export function resolveShowLockedArticleCard(options: {
@@ -18,25 +24,32 @@ export function resolveShowLockedArticleCard(options: {
 
 /**
  * Collection membership is separate from subscription:
- * - none: unlocked, or premium + artist already in collection
+ * - none: unlocked, or premium + artist active in collection
  * - pending: premium/collection status still loading
  * - renew: in collection, subscription inactive
  * - subscription: not subscribed (and not in collection, or guest path)
  * - archive: subscribed but artist not in collection
+ * - activate: in collection, slot inactive, subscription active
  */
 export function resolveArticlePaywallKind(options: {
   articleLocked?: boolean;
   isPremium: boolean;
   artistInArchive?: boolean;
+  artistActiveInArchive?: boolean;
   premiumLoading: boolean;
   /** While collection membership is unknown, do not treat as archive gate. */
   archiveLoading?: boolean;
 }): ArticlePaywallKind {
   if (options.articleLocked !== true) return 'none';
   if (options.premiumLoading || options.archiveLoading) return 'pending';
-  if (!options.isPremium) {
-    return options.artistInArchive ? 'renew' : 'subscription';
+
+  if (options.artistInArchive) {
+    if (!options.isPremium) return 'renew';
+    const isActive = options.artistActiveInArchive ?? options.isPremium;
+    if (!isActive) return 'activate';
+    return 'none';
   }
-  if (options.artistInArchive) return 'none';
+
+  if (!options.isPremium) return 'subscription';
   return 'archive';
 }
