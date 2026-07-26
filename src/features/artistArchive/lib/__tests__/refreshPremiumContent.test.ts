@@ -133,7 +133,7 @@ describe('refreshPremiumContent', () => {
     mockFetchAlbumDetails.mockResolvedValue(makeDetails());
   });
 
-  test('refetches articles + AlbumDetails, never fetchDashboardAlbums / fat catalog', async () => {
+  test('refetches articles + AlbumDetails, never thin catalog or fat dashboard albums', async () => {
     const dispatched: unknown[] = [];
     const dispatch = ((action: unknown) => {
       dispatched.push(action);

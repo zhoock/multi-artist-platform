@@ -314,6 +314,50 @@ describe('useArtistPageAccess — published surface without releases', () => {
     });
   });
 
+  test('пустой thin catalog idle на Home блокирует pageReady (albumsBlockPageReady)', async () => {
+    const { result } = renderHook(() => useArtistPageAccess('test-artist'), {
+      wrapper: createWrapper({
+        lang: { current: 'en' },
+        currentArtist: { publicSlug: 'test-artist' },
+        articles: {
+          status: 'succeeded',
+          error: null,
+          data: [],
+          lastUpdated: Date.now(),
+          lastPublicArtistSlug: 'test-artist',
+          dashboard: {
+            status: 'idle',
+            error: null,
+            data: [],
+            lastUpdated: null,
+          },
+        },
+        albums: {
+          dashboard: {
+            status: 'idle',
+            error: null,
+            data: [],
+            lastUpdated: null,
+            inFlightFetchContextKey: null,
+          },
+        },
+        artistAlbumCatalog: {
+          status: 'idle',
+          error: null,
+          data: [],
+          lastUpdated: null,
+          fetchContextKey: null,
+          artistMissing: false,
+        },
+      }),
+    });
+
+    await waitFor(() => {
+      expect(result.current.pageReady).toBe(false);
+      expect(result.current.showArtistPageSkeleton).toBe(true);
+    });
+  });
+
   test('soft refresh: loading каталога с last-good данными не включает ArtistPageSkeleton', async () => {
     const { result } = renderHook(() => useArtistPageAccess('test-artist'), {
       wrapper: createWrapper({

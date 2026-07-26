@@ -18,7 +18,7 @@ import { useRedirectHomeAfterOwnAccountDeleted } from '@shared/lib/hooks/useRedi
 import { playerActions, toPlayerTracks } from '@features/player';
 import { getUserAudioUrl } from '@shared/api/albums';
 import { emptyStringMediaSrc } from '@shared/lib/media/optionalMediaUrl';
-import { isDashboardPathname } from '@shared/lib/publicArtistContext';
+import { shouldUsePublicArtistCatalogInRedux } from '@shared/lib/dashboardModalBackground';
 import { fetchDashboardAlbums, fetchArtistAlbumCatalog } from '@entities/album';
 import { fetchArticles } from '@entities/article';
 import { generateMockArtists } from '@shared/lib/generateMockArtists';
@@ -101,7 +101,8 @@ export function HomePage() {
    * Loader при defer не диспатчит fetch (см. shouldDeferPublicArtistCatalogToSurface).
    */
   useEffect(() => {
-    if (isDashboardPathname()) return;
+    // Модальный dashboard поверх /?artist=: thin catalog должен грузиться (иначе albumsBlockPageReady).
+    if (!shouldUsePublicArtistCatalogInRedux()) return;
     if (!hasArtistParam) return;
 
     void dispatch(
@@ -123,7 +124,7 @@ export function HomePage() {
    * Owner Dashboard fat-albums (`AlbumEditable`). Не зависит от thin CatalogAlbum fetch.
    */
   useEffect(() => {
-    if (isDashboardPathname()) return;
+    if (!shouldUsePublicArtistCatalogInRedux()) return;
     if (!hasArtistParam) return;
     if (!artistPageAccess.isOwner || !artistPageAccess.ownerResolved) return;
 
