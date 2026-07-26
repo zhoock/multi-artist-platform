@@ -299,24 +299,23 @@ export function Hero() {
     .filter(Boolean)
     .join(' ');
 
+  const handleNavigateHome = () => {
+    if (artistParamKey) {
+      sessionStorage.setItem(UNIVERSE_FOCUS_ARTIST_STORAGE_KEY, artistParamKey);
+    }
+    navigate('/');
+  };
+
   return (
     <section
       className={heroClassName}
       style={
         heroUsesInlineBackground ? { backgroundImage: backgroundImage || undefined } : undefined
       }
-      onClick={
-        showPublishedHeroChrome
-          ? () => {
-              if (artistParamKey) {
-                sessionStorage.setItem(UNIVERSE_FOCUS_ARTIST_STORAGE_KEY, artistParamKey);
-              }
-              navigate('/');
-            }
-          : undefined
-      }
     >
-      {showPublishedHeroChrome ? <div ref={heroCanvasRef} className="hero__canvas" /> : null}
+      {showPublishedHeroChrome ? (
+        <div ref={heroCanvasRef} className="hero__canvas" onClick={handleNavigateHome} />
+      ) : null}
       <div className="hero__content">
         <div className="hero__headline">
           <div className="hero__headline-main">

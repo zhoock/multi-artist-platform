@@ -5,14 +5,14 @@ import type { ArchiveStatus } from '@shared/api/archive';
 
 const ARTIST_ID = 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee';
 
-const mockGetArchiveStatus = jest.fn<() => Promise<ArchiveStatus>>();
+const mockGetArchiveStatus = jest.fn<(artistUserId: string) => Promise<ArchiveStatus>>();
 const mockActivateArchiveArtistsApi =
-  jest.fn<() => Promise<{ archive: unknown; activatedCount: number }>>();
+  jest.fn<(artistUserIds: string[]) => Promise<{ archive: unknown; activatedCount: number }>>();
 
 jest.mock('@shared/api/archive', () => ({
-  activateArchiveArtistsApi: (...args: unknown[]) => mockActivateArchiveArtistsApi(...args),
+  activateArchiveArtistsApi: mockActivateArchiveArtistsApi,
   addArtistToArchiveApi: jest.fn(),
-  getArchiveStatus: (...args: unknown[]) => mockGetArchiveStatus(...args),
+  getArchiveStatus: mockGetArchiveStatus,
   ArchiveApiError: class ArchiveApiError extends Error {},
 }));
 

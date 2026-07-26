@@ -7,7 +7,7 @@ import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 import { selectPublicArtistSlug } from '@shared/model/currentArtist';
 import { useArchiveAccessModal } from '@shared/lib/archiveAccessModal';
-import { AlertModal } from '@shared/ui/alertModal';
+import { useArtistPageBuilderNav } from '@shared/ui/artistPageBuilder/useArtistPageBuilderNav';
 import { SubscriberContentLockIcon } from '@shared/ui/icons/SubscriberContentLockIcon';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 import { ArchiveApiError } from '@shared/api/archive';
@@ -17,6 +17,7 @@ import {
   refreshPremiumContentForArchiveChange,
 } from '../lib/refreshPremiumContent';
 import { useArtistArchiveStatus } from '../lib/useArtistArchiveStatus';
+import { CollectionFullModal } from './CollectionFullModal';
 
 import './style.scss';
 
@@ -47,6 +48,7 @@ export function ArtistArchiveButton({ artistUserId, monetizationEnabled = false 
   const publicArtistSlug = useAppSelector(selectPublicArtistSlug);
   const ui = useAppSelector((state) => selectUiDictionaryFirst(state, lang));
   const { open: openPremiumModal } = useArchiveAccessModal();
+  const { openDashboard } = useArtistPageBuilderNav();
 
   const { buttonState, error, addToArchive, activateInArchive, clearError } =
     useArtistArchiveStatus(monetizationEnabled ? artistUserId : null);
@@ -67,14 +69,6 @@ export function ArtistArchiveButton({ artistUserId, monetizationEnabled = false 
     ui?.buttons?.artistCollectionRenew ?? (lang === 'en' ? 'Renew Support' : 'Продлить поддержку');
   const activateLabel = lang === 'en' ? 'Activate' : 'Активировать';
   const labelActivating = lang === 'en' ? 'Activating…' : 'Активируем…';
-  const archiveFullTitle =
-    ui?.titles?.artistArchiveFullTitle ??
-    (lang === 'en' ? 'Collection full' : 'Коллекция заполнена');
-  const archiveFullMessage =
-    ui?.titles?.artistArchiveFullMessage ??
-    (lang === 'en'
-      ? 'You have used all collection slots. Remove an artist when their lock expires to add another.'
-      : 'Все слоты коллекции заняты. Удалите артиста после окончания блокировки, чтобы добавить другого.');
 
   const openRenewModal = useCallback(() => {
     openPremiumModal({
@@ -214,12 +208,11 @@ export function ArtistArchiveButton({ artistUserId, monetizationEnabled = false 
         ) : null}
       </div>
 
-      <AlertModal
+      <CollectionFullModal
         isOpen={archiveFullOpen}
-        title={archiveFullTitle}
-        message={archiveFullMessage}
-        variant="warning"
         onClose={() => setArchiveFullOpen(false)}
+        onUpgradePlan={openRenewModal}
+        onManageCollection={() => openDashboard('collection')}
       />
     </>
   );

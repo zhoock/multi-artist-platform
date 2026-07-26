@@ -1,0 +1,73 @@
+@use '../../../scss/abstracts/mixins' as *;
+@use '../../../scss/components/modal' as dashboard-modal;
+
+dialog {
+  .collection-full-modal {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: var(--ms-0);
+    background: transparent;
+
+    &__card {
+      text-align: center;
+    }
+
+    &__header {
+      position: relative;
+      min-height: calc(var(--ms-1) * 1.5);
+      margin-block-end: var(--ms-01);
+
+      .add-artist-to-archive-modal__close {
+        position: absolute;
+        top: 0;
+        right: 0;
+        margin-inline-start: 0;
+      }
+    }
+
+    &__icon-wrap {
+      display: flex;
+      justify-content: center;
+      margin-block-end: var(--ms-01);
+    }
+
+    &__icon {
+      color: var(--dark-greenish-yellow, #c8b06d);
+    }
+
+    &__title {
+      margin: 0 0 var(--ms-01);
+      padding: 0;
+      color: var(--dashboard-text-primary);
+      font-size: var(--dashboard-heading-font-size);
+      line-height: 1.25;
+
+      @include dashboard-isolate-heading;
+    }
+
+    &__message {
+      margin: 0 0 var(--ms-1);
+      color: var(--dashboard-text-secondary);
+      font-size: var(--dashboard-font-size);
+      line-height: 1.45;
+    }
+
+    &__actions {
+      display: flex;
+      flex-direction: column;
+      gap: var(--ms-01);
+    }
+
+    &__action {
+      width: 100%;
+    }
+
+    &__close-action {
+      width: 100%;
+
+      @include dashboard-btn-ghost($margin: 0);
+    }
+  }
+}

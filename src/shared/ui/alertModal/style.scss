@@ -1,4 +1,5 @@
-@use 'sass:color';
+@use '../../../scss/abstracts/mixins' as *;
+@use '../../../scss/components/modal' as dashboard-modal;
 
 dialog {
   .alert-modal {
@@ -6,147 +7,89 @@ dialog {
     align-items: center;
     justify-content: center;
     min-height: 100vh;
-    padding: 20px;
+    padding: var(--ms-0);
     background: transparent;
 
     &__card {
-      // Базовые стили для всех AlertModal (не ломают плеер)
-      display: flex;
-      flex-direction: column;
-      width: 100%;
-      max-width: 500px;
-      padding: 0;
-      background: var(--main-background-color, var(--deep-coal, #20201d));
-      border-radius: 8px;
+      width: min(22.5rem, calc(100vw - 1.5rem));
+      padding: var(--ms-1);
+      color: var(--dashboard-text-primary);
+      background: var(--dashboard-card-bg);
+      border: 1px solid var(--dashboard-card-border);
+      border-radius: var(--ms-01);
       box-shadow: 0 4px 20px rgb(0 0 0 / 30%);
-      overflow: hidden;
+      box-sizing: border-box;
     }
 
     &__header {
       display: flex;
-      flex-shrink: 0;
       align-items: center;
-      gap: var(--ms-0);
-      padding: 24px;
-      padding-bottom: 16px;
-      border-bottom: 1px solid var(--hr-color);
-    }
-
-    &__close {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: calc(var(--ms-1) * 1.5);
-      height: calc(var(--ms-1) * 1.5);
-      padding: 0;
-      color: var(--text-color);
-      font-size: var(--ms-1);
-      font-weight: 300;
-      line-height: 1;
-      background: transparent;
-      border: none;
-      border-radius: var(--ms-02);
-      cursor: pointer;
-      transition: all 0.2s;
-      text-transform: none !important;
-      letter-spacing: normal !important;
-
-      &:hover {
-        color: var(--text-color);
-        background: var(--extra-background-color);
-      }
-
-      &:focus {
-        outline: none;
-      }
-
-      &:focus-visible {
-        outline: 2px solid var(--accent-color);
-        outline-offset: 2px;
-      }
+      justify-content: space-between;
+      gap: var(--ms-01);
+      margin-block-end: var(--ms-01);
     }
 
     &__title {
       margin: 0;
-      color: var(--text-color);
-      font-size: 20px;
-      font-weight: 600;
-      line-height: 1.2;
-      text-transform: none !important;
-      letter-spacing: normal !important;
+      padding: 0;
+      color: var(--dashboard-text-primary);
+      font-size: var(--dashboard-heading-font-size);
+      line-height: 1.25;
+      min-width: 0;
+      flex: 1;
+      padding-right: var(--ms-01);
+
+      @include dashboard-isolate-heading;
     }
 
-    &__content {
-      // flex: 1 1 0;
-      overflow-y: auto;
-      padding: 24px;
-      min-height: 0;
+    &__close {
+      @include dashboard-modal.dashboard-modal-close(
+        $focus-visible: true,
+        $reset-text: true,
+        $flex-shrink: 0
+      );
     }
 
     &__message {
-      margin: 0;
-      color: var(--text-color);
-      font-size: 16px;
-      line-height: 1.5;
+      margin: 0 0 var(--ms-1);
+      color: var(--dashboard-text-secondary);
+      font-size: var(--dashboard-font-size);
+      line-height: 1.45;
       white-space: pre-line;
     }
 
     &__footer {
+      @include dashboard-modal.dashboard-modal-dialog-buttons(
+        $font-size: var(--dashboard-font-size),
+        $line-height: 1.35
+      );
+
       display: flex;
       justify-content: flex-end;
-      padding: 24px;
-      padding-top: 16px;
-      border-top: 1px solid var(--hr-color);
     }
 
     &__button {
-      padding: 10px 20px;
-      color: white;
-      font-size: 14px;
-      border: none;
-      border-radius: 4px;
-      transition: all 0.2s;
-      font-weight: 500;
-      cursor: pointer;
-
-      &:focus {
-        outline: none;
-      }
+      margin: 0 !important;
+      text-transform: none !important;
+      letter-spacing: normal !important;
 
       &:focus-visible {
-        outline: 2px solid var(--accent-color);
+        outline: 2px solid var(--dark-greenish-yellow);
         outline-offset: 2px;
       }
 
-      &--info {
-        background: var(--primary-color, #007bff);
-
-        &:hover {
-          background: var(--primary-color-hover, #0056b3);
-        }
+      &.dashboard-button--primary:not(.dashboard-button--destructive) {
+        @include dashboard-btn-primary($margin: 0);
       }
 
-      &--success {
-        background: var(--success-color);
+      &.dashboard-button--destructive {
+        font-size: var(--dashboard-font-size);
 
-        &:hover {
-          background: var(--success-color-hover);
-        }
-      }
+        @include dashboard-btn-destructive;
 
-      &--warning {
-        background: var(--warning-color, #ffc107);
-
-        &:hover {
-          background: var(--warning-color-hover, #e0a800);
-        }
-      }
-
-      &--error {
-        background: var(--danger-color, #dc3545);
-
-        &:hover {
-          background: var(--danger-color-hover, #c82333);
+        &:disabled {
+          opacity: 0.7;
+          cursor: not-allowed;
         }
       }
     }

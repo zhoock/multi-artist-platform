@@ -8,16 +8,12 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { useNavigate } from 'react-router-dom';
 
 import { getArchiveStatus } from '@shared/api/archive';
 import { getToken } from '@shared/lib/auth';
-import { COLLECTION_DASHBOARD_PATH } from '@shared/lib/accountType';
 import { useAuthSessionUser } from '@shared/lib/hooks/useAuthSessionUser';
-import { AlertModal } from '@shared/ui/alertModal';
-import { useLang } from '@app/providers/lang';
-import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
-import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
+import { CollectionFullModal } from '@features/artistArchive/ui/CollectionFullModal';
+import { useArtistPageBuilderNav } from '@shared/ui/artistPageBuilder/useArtistPageBuilderNav';
 import {
   beginPremiumCheckoutAuthIntent,
   clearPremiumCheckoutAuthIntent,
@@ -68,34 +64,23 @@ function isGuestSession(): boolean {
   return !getToken();
 }
 
-function ArchiveFullAlert({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
-  const { lang } = useLang() as { lang: 'ru' | 'en' };
-  const ui = useAppSelector((state) => selectUiDictionaryFirst(state, lang));
-  const navigate = useNavigate();
-
-  const archiveFullTitle =
-    ui?.titles?.artistArchiveFullTitle ??
-    (lang === 'en' ? 'Collection full' : 'Коллекция заполнена');
-  const archiveFullMessage =
-    ui?.titles?.artistArchiveFullMessage ??
-    (lang === 'en'
-      ? 'You have used all collection slots. Remove an artist when their lock expires to add another.'
-      : 'Все слоты коллекции заняты. Удалите артиста после окончания блокировки, чтобы добавить другого.');
-  const manageArchiveLabel =
-    ui?.buttons?.premiumSuccessGoToArchive ??
-    (lang === 'en' ? 'Open Collection' : 'Открыть коллекцию');
-
+function ArchiveFullAlert({
+  isOpen,
+  onClose,
+  onUpgradePlan,
+  onManageCollection,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onUpgradePlan: () => void;
+  onManageCollection: () => void;
+}) {
   return (
-    <AlertModal
+    <CollectionFullModal
       isOpen={isOpen}
-      title={archiveFullTitle}
-      message={archiveFullMessage}
-      buttonText={manageArchiveLabel}
-      variant="warning"
-      onClose={() => {
-        onClose();
-        navigate(COLLECTION_DASHBOARD_PATH);
-      }}
+      onClose={onClose}
+      onUpgradePlan={onUpgradePlan}
+      onManageCollection={onManageCollection}
     />
   );
 }
@@ -104,8 +89,12 @@ export function ArchiveAccessModalProvider({ children }: { children: ReactNode }
   const premiumDialogRef = useRef<HTMLDialogElement>(null);
   const addArtistDialogRef = useRef<HTMLDialogElement>(null);
   const viewer = useAuthSessionUser();
+  const { openDashboard } = useArtistPageBuilderNav();
   const [pendingAccess, setPendingAccess] = useState<PendingPremiumContentAccess | null>(null);
   const [archiveFullOpen, setArchiveFullOpen] = useState(false);
+  const [archiveFullContext, setArchiveFullContext] = useState<PremiumCheckoutIntentContext | null>(
+    null
+  );
 
   const close = useCallback((options?: CloseArchiveAccessModalOptions) => {
     if (!options?.preserveCheckoutIntent) {
@@ -115,6 +104,7 @@ export function ArchiveAccessModalProvider({ children }: { children: ReactNode }
     setPendingAccess(null);
     addArtistDialogRef.current?.close();
     setArchiveFullOpen(false);
+    setArchiveFullContext(null);
   }, []);
 
   const closeAddArtist = useCallback(() => {
@@ -189,6 +179,7 @@ export function ArchiveAccessModalProvider({ children }: { children: ReactNode }
         }
 
         if (status.slotsUsed >= status.slotsLimit) {
+          setArchiveFullContext({ artistUserId, artistSlug });
           setArchiveFullOpen(true);
           return;
         }
@@ -225,7 +216,20 @@ export function ArchiveAccessModalProvider({ children }: { children: ReactNode }
         pendingAccess={pendingAccess}
         onClose={closeAddArtist}
       />
-      <ArchiveFullAlert isOpen={archiveFullOpen} onClose={() => setArchiveFullOpen(false)} />
+      <ArchiveFullAlert
+        isOpen={archiveFullOpen}
+        onClose={() => {
+          setArchiveFullOpen(false);
+          setArchiveFullContext(null);
+        }}
+        onUpgradePlan={() => {
+          open({
+            artistUserId: archiveFullContext?.artistUserId,
+            artistSlug: archiveFullContext?.artistSlug,
+          });
+        }}
+        onManageCollection={() => openDashboard('collection')}
+      />
     </ArchiveAccessModalContext.Provider>
   );
 }

@@ -1,19 +1,19 @@
 import { useCallback, useState, type RefObject } from 'react';
-import { useNavigate } from 'react-router-dom';
 
 import { useLang } from '@app/providers/lang';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 import { useSiteArtistDisplayName } from '@shared/lib/hooks/useSiteArtistDisplayName';
 import { ArchiveApiError } from '@shared/api/archive';
-import { AlertModal } from '@shared/ui/alertModal';
 import { LocalModal } from '@shared/ui/localModal';
 import { DashboardButton } from '@shared/ui/dashboard';
+import { useArtistPageBuilderNav } from '@shared/ui/artistPageBuilder/useArtistPageBuilderNav';
 import { ArtistArchiveLockIcon } from '@shared/ui/icons/ArtistArchiveLockIcon';
 import { ModalCloseIcon } from '@shared/ui/icons/ModalCloseIcon';
 import { dispatchArchiveArtistAdded } from '@features/artistArchive';
+import { CollectionFullModal } from '@features/artistArchive/ui/CollectionFullModal';
+import { useArchiveAccessModal } from '@shared/lib/archiveAccessModal';
 import { useArtistArchiveStatus } from '@features/artistArchive/lib/useArtistArchiveStatus';
-import { COLLECTION_DASHBOARD_PATH } from '@shared/lib/accountType';
 
 import { ArchiveAccessModalFeatures } from './ArchiveAccessModalFeatures';
 import type { PendingPremiumContentAccess } from './archiveAccessModalContext';
@@ -28,8 +28,9 @@ type Props = {
 
 export function AddArtistToArchiveModalView({ dialogRef, pendingAccess, onClose }: Props) {
   const { lang } = useLang() as { lang: 'ru' | 'en' };
-  const navigate = useNavigate();
   const ui = useAppSelector((state) => selectUiDictionaryFirst(state, lang));
+  const { open: openPremiumModal } = useArchiveAccessModal();
+  const { openDashboard } = useArtistPageBuilderNav();
 
   const artistUserId = pendingAccess?.artistUserId ?? null;
   const artistSlug = pendingAccess?.artistSlug?.trim() || null;
@@ -62,17 +63,6 @@ export function AddArtistToArchiveModalView({ dialogRef, pendingAccess, onClose 
   const addingLabel =
     ui?.buttons?.artistArchiveAdding ?? (lang === 'en' ? 'Adding…' : 'Добавляем…');
   const closeLabel = ui?.buttons?.articleLockedDialogClose ?? (lang === 'en' ? 'Close' : 'Закрыть');
-  const archiveFullTitle =
-    ui?.titles?.artistArchiveFullTitle ??
-    (lang === 'en' ? 'Collection full' : 'Коллекция заполнена');
-  const archiveFullMessage =
-    ui?.titles?.artistArchiveFullMessage ??
-    (lang === 'en'
-      ? 'You have used all collection slots. Remove an artist when their lock expires to add another.'
-      : 'Все слоты коллекции заняты. Удалите артиста после окончания блокировки, чтобы добавить другого.');
-  const manageArchiveLabel =
-    ui?.buttons?.premiumSuccessGoToArchive ??
-    (lang === 'en' ? 'Open Collection' : 'Открыть коллекцию');
 
   const dismiss = useCallback(() => {
     setAddError(null);
@@ -108,10 +98,12 @@ export function AddArtistToArchiveModalView({ dialogRef, pendingAccess, onClose 
     }
   }, [addToArchive, adding, artistSlug, artistUserId, dismiss, lang, pendingAccess]);
 
-  const handleGoToArchive = useCallback(() => {
-    setArchiveFullOpen(false);
-    navigate(COLLECTION_DASHBOARD_PATH);
-  }, [navigate]);
+  const openUpgradeModal = useCallback(() => {
+    openPremiumModal({
+      artistUserId: artistUserId ?? undefined,
+      artistSlug: artistSlug ?? undefined,
+    });
+  }, [artistSlug, artistUserId, openPremiumModal]);
 
   return (
     <>
@@ -167,13 +159,11 @@ export function AddArtistToArchiveModalView({ dialogRef, pendingAccess, onClose 
         </div>
       </LocalModal>
 
-      <AlertModal
+      <CollectionFullModal
         isOpen={archiveFullOpen}
-        title={archiveFullTitle}
-        message={archiveFullMessage}
-        buttonText={manageArchiveLabel}
-        variant="warning"
-        onClose={handleGoToArchive}
+        onClose={() => setArchiveFullOpen(false)}
+        onUpgradePlan={openUpgradeModal}
+        onManageCollection={() => openDashboard('collection')}
       />
     </>
   );
