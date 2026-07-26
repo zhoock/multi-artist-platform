@@ -237,6 +237,7 @@ export function MyArchiveContent({ active, onContentReady, onContentBusy }: Prop
         for (const artist of toRemove) {
           const { archive } = await removeArtistFromArchiveApi(artist.artistUserId);
           latest = archive;
+          skipNextArchiveReloadRef.current = true;
           dispatchArchiveArtistRemoved(artist.artistUserId, artist.slug || undefined);
           refreshPremiumContentForArchiveChange(dispatch, artist.slug || undefined);
         }
@@ -289,6 +290,7 @@ export function MyArchiveContent({ active, onContentReady, onContentBusy }: Prop
     try {
       const { archive } = await removeArtistFromArchiveApi(artist.artistUserId);
       setData(normalizeCollectionArchive(archive));
+      skipNextArchiveReloadRef.current = true;
       dispatchArchiveArtistRemoved(artist.artistUserId, artist.slug || undefined);
       refreshPremiumContentForArchiveChange(dispatch, artist.slug || undefined);
       setSelectedIds((prev) => {

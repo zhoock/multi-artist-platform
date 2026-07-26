@@ -525,6 +525,8 @@ describe('MyArchiveContent plan display', () => {
       expect(removeArtistFromArchiveApiMock).toHaveBeenCalledTimes(2);
       expect(screen.queryByRole('button', { name: 'Select' })).toBeNull();
     });
+
+    expect(getMyArchiveMock).toHaveBeenCalledTimes(1);
   });
 
   test('select mode only applies to inactive artists', async () => {
@@ -607,6 +609,8 @@ describe('MyArchiveContent plan display', () => {
     await waitFor(() => {
       expect(screen.getByText('Artist removed from collection')).toBeTruthy();
     });
+
+    expect(getMyArchiveMock).toHaveBeenCalledTimes(1);
   });
 
   test('shows collection cleared toast after clear collection', async () => {
