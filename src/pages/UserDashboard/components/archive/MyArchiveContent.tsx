@@ -489,9 +489,10 @@ export function MyArchiveContent({ active, onContentReady, onContentBusy }: Prop
     !data?.artists.some((a) => selectedIds.has(a.artistUserId) && canRemoveArtist(a, isPremium));
 
   const isCollectionEmpty = (data?.artists.length ?? 0) === 0;
-  const showCollectionEmptyState = Boolean(
-    data && !loading && !error && !isPremium && isCollectionEmpty
+  const showFullTabEmptyState = Boolean(
+    data && !loading && !error && isCollectionEmpty && !planSlug
   );
+  const showInlineEmptyState = Boolean(data && !loading && !error && isCollectionEmpty && planSlug);
   // Пока идёт загрузка или нет данных — не рисуем summary «0 / 3» (пустая оболочка).
   // Parent показывает DashboardLoadingState через onContentBusy / !archiveContentReady.
   const shouldBlockShell = !hasLoadedOnce || loading || (!data && !error);
@@ -500,7 +501,7 @@ export function MyArchiveContent({ active, onContentReady, onContentBusy }: Prop
     return <ArchiveArtistRemovedToast triggerKey={removedToastTrigger} />;
   }
 
-  if (showCollectionEmptyState) {
+  if (showFullTabEmptyState) {
     return (
       <>
         <section className="collection__tab collection__tab--empty">
@@ -513,7 +514,13 @@ export function MyArchiveContent({ active, onContentReady, onContentBusy }: Prop
 
   return (
     <>
-      <section className={clsx('collection__tab', isSelectMode && 'collection__tab--select-mode')}>
+      <section
+        className={clsx(
+          'collection__tab',
+          isSelectMode && 'collection__tab--select-mode',
+          showInlineEmptyState && 'collection__tab--empty-with-summary'
+        )}
+      >
         <div className="user-dashboard__section">
           <div className="user-dashboard__albums-list">
             <DashboardCard className="collection__summary-card">
@@ -610,7 +617,9 @@ export function MyArchiveContent({ active, onContentReady, onContentBusy }: Prop
               </div>
             ) : null}
 
-            {data ? (
+            {showInlineEmptyState ? (
+              <CollectionEmptyState ui={ui} embedded />
+            ) : data ? (
               <DashboardCard className="collection__list-card">
                 {inactiveCount > 0 ? (
                   <div className="collection__inactive-toolbar">

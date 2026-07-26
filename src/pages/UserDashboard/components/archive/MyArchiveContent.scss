@@ -47,6 +47,37 @@ dialog {
           flex: 1;
           min-height: min(480px, 58vh);
         }
+
+        &--empty-with-summary {
+          flex: 1;
+          min-height: min(480px, 58vh);
+
+          .user-dashboard__section,
+          .user-dashboard__albums-list {
+            display: flex;
+            flex: 1;
+            flex-direction: column;
+            min-height: 0;
+          }
+        }
+      }
+
+      &__embedded-empty-state {
+        &.dashboard-empty-state--tab {
+          position: static;
+          display: flex;
+          flex: 1;
+          align-items: center;
+          justify-content: center;
+          min-height: min(360px, 45vh);
+          padding: var(--ms-2) var(--ms-1);
+
+          .dashboard-empty-state__inner--tab {
+            position: static;
+            left: auto;
+            transform: none;
+          }
+        }
       }
 
       &__summary {

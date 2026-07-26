@@ -2,16 +2,11 @@ import { useCallback, useEffect, useRef, useState, type RefObject } from 'react'
 import { useNavigate } from 'react-router-dom';
 
 import { useLang } from '@app/providers/lang';
-import { useAppDispatch } from '@shared/lib/hooks/useAppDispatch';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 import { getToken } from '@shared/lib/auth';
 import { addArtistToArchiveApi, ArchiveApiError, getMyArchive } from '@shared/api/archive';
-import {
-  dispatchArchiveArtistAdded,
-  refreshPremiumContentForArchiveChange,
-  SUBSCRIPTION_ACTIVATED_EVENT,
-} from '@features/artistArchive';
+import { dispatchArchiveArtistAdded, SUBSCRIPTION_ACTIVATED_EVENT } from '@features/artistArchive';
 import { COLLECTION_DASHBOARD_PATH } from '@shared/lib/accountType';
 
 import { usePremiumSubscription } from '../lib/PremiumSubscriptionContext';
@@ -51,7 +46,6 @@ type Props = {
 export function PremiumSuccessModalView({ dialogRef, open, onClose }: Props) {
   const { lang } = useLang() as { lang: 'ru' | 'en' };
   const navigate = useNavigate();
-  const dispatch = useAppDispatch();
   const ui = useAppSelector((state) => selectUiDictionaryFirst(state, lang));
   const { isPremium, slotsLimit, planSlug } = usePremiumSubscription();
 
@@ -116,7 +110,6 @@ export function PremiumSuccessModalView({ dialogRef, open, onClose }: Props) {
       const { status } = await addArtistToArchiveApi(artist.artistUserId);
       if (status.artistInArchive) {
         setArtistInArchive(true);
-        refreshPremiumContentForArchiveChange(dispatch, artist.slug);
         dispatchArchiveArtistAdded(artist.artistUserId, artist.slug);
         markPremiumSuccessModalShown();
         onClose();
@@ -138,7 +131,7 @@ export function PremiumSuccessModalView({ dialogRef, open, onClose }: Props) {
     } finally {
       setAdding(false);
     }
-  }, [adding, artist, artistInArchive, dispatch, lang, onClose, ui?.titles]);
+  }, [adding, artist, artistInArchive, lang, onClose, ui?.titles]);
 
   const handleGoArchive = useCallback(() => {
     dismiss();

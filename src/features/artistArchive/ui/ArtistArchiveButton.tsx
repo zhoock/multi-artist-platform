@@ -2,7 +2,6 @@ import { useCallback, useState } from 'react';
 import { Check as CheckIcon, Plus as PlusIcon } from 'lucide-react';
 
 import { useLang } from '@app/providers/lang';
-import { useAppDispatch } from '@shared/lib/hooks/useAppDispatch';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 import { selectPublicArtistSlug } from '@shared/model/currentArtist';
@@ -12,10 +11,7 @@ import { SubscriberContentLockIcon } from '@shared/ui/icons/SubscriberContentLoc
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 import { ArchiveApiError } from '@shared/api/archive';
 
-import {
-  dispatchArchiveArtistAdded,
-  refreshPremiumContentForArchiveChange,
-} from '../lib/refreshPremiumContent';
+import { dispatchArchiveArtistAdded } from '../lib/refreshPremiumContent';
 import { useArtistArchiveStatus } from '../lib/useArtistArchiveStatus';
 
 import './style.scss';
@@ -43,7 +39,6 @@ function ArchiveButtonLayoutPlaceholder({ label }: { label: string }) {
 
 export function ArtistArchiveButton({ artistUserId, monetizationEnabled = false }: Props) {
   const { lang } = useLang() as { lang: 'ru' | 'en' };
-  const dispatch = useAppDispatch();
   const publicArtistSlug = useAppSelector(selectPublicArtistSlug);
   const ui = useAppSelector((state) => selectUiDictionaryFirst(state, lang));
   const { open: openPremiumModal } = useArchiveAccessModal();
@@ -100,7 +95,6 @@ export function ArtistArchiveButton({ artistUserId, monetizationEnabled = false 
 
       try {
         await addToArchive();
-        refreshPremiumContentForArchiveChange(dispatch, publicArtistSlug?.trim() ?? '');
         dispatchArchiveArtistAdded(artistUserId, publicArtistSlug?.trim() ?? undefined);
       } catch (err) {
         if (err instanceof ArchiveApiError && err.code === 'ARCHIVE_SLOTS_LIMIT') {
@@ -108,7 +102,7 @@ export function ArtistArchiveButton({ artistUserId, monetizationEnabled = false 
         }
       }
     },
-    [addToArchive, artistUserId, buttonState, dispatch, openRenewModal, publicArtistSlug]
+    [addToArchive, artistUserId, buttonState, openRenewModal, publicArtistSlug]
   );
 
   if (!monetizationEnabled) {

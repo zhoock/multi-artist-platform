@@ -359,8 +359,8 @@ const articlesSlice = createSlice({
         } else {
           state.inFlightFetchContextKey = 'public';
           state.error = null;
-          const backgroundRefetch =
-            Boolean(action.meta.arg.force) && state.status === 'succeeded' && state.data.length > 0;
+          // Soft refresh (same slug / force): keep last-good rows; do not flip chrome to skeleton.
+          const backgroundRefetch = Boolean(action.meta.arg.force) && state.status === 'succeeded';
           if (!backgroundRefetch) {
             state.status = 'loading';
           }

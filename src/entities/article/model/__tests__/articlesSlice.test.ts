@@ -348,6 +348,30 @@ describe('articlesSlice', () => {
       expect(selectArticlesData(state)[0].articleId).toBe('a2');
     });
 
+    test('force refetch после succeeded с пустым data не переводит status в loading (SWR)', async () => {
+      mockFetch.mockResolvedValueOnce(mockSuccessResponse([])).mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            setTimeout(() => resolve(mockSuccessResponse(mockArticles)), 50);
+          })
+      );
+
+      const store = createTestStore();
+      await (store.dispatch as AppDispatch)(fetchArticles({}));
+
+      expect(selectArticlesStatus(store.getState())).toBe('succeeded');
+      expect(selectArticlesData(store.getState())).toEqual([]);
+
+      const forcePromise = (store.dispatch as AppDispatch)(fetchArticles({ force: true }));
+
+      expect(selectArticlesStatus(store.getState())).toBe('succeeded');
+
+      await forcePromise;
+
+      expect(selectArticlesStatus(store.getState())).toBe('succeeded');
+      expect(selectArticlesData(store.getState()).length).toBeGreaterThan(0);
+    });
+
     test('должен обработать пустой массив данных', async () => {
       mockFetch.mockResolvedValueOnce(mockSuccessResponse([]));
 

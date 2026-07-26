@@ -2,7 +2,6 @@ import { useCallback, useState, type RefObject } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import { useLang } from '@app/providers/lang';
-import { useAppDispatch } from '@shared/lib/hooks/useAppDispatch';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 import { useSiteArtistDisplayName } from '@shared/lib/hooks/useSiteArtistDisplayName';
@@ -12,7 +11,7 @@ import { LocalModal } from '@shared/ui/localModal';
 import { DashboardButton } from '@shared/ui/dashboard';
 import { ArtistArchiveLockIcon } from '@shared/ui/icons/ArtistArchiveLockIcon';
 import { ModalCloseIcon } from '@shared/ui/icons/ModalCloseIcon';
-import { dispatchArchiveArtistAdded, awaitPremiumContentRefresh } from '@features/artistArchive';
+import { dispatchArchiveArtistAdded } from '@features/artistArchive';
 import { useArtistArchiveStatus } from '@features/artistArchive/lib/useArtistArchiveStatus';
 import { COLLECTION_DASHBOARD_PATH } from '@shared/lib/accountType';
 
@@ -29,7 +28,6 @@ type Props = {
 
 export function AddArtistToArchiveModalView({ dialogRef, pendingAccess, onClose }: Props) {
   const { lang } = useLang() as { lang: 'ru' | 'en' };
-  const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const ui = useAppSelector((state) => selectUiDictionaryFirst(state, lang));
 
@@ -89,7 +87,6 @@ export function AddArtistToArchiveModalView({ dialogRef, pendingAccess, onClose 
 
     try {
       await addToArchive();
-      await awaitPremiumContentRefresh(dispatch, artistSlug);
       dispatchArchiveArtistAdded(artistUserId, artistSlug ?? undefined);
       dismiss();
       await pendingAccess?.onAccessGranted?.();
@@ -109,7 +106,7 @@ export function AddArtistToArchiveModalView({ dialogRef, pendingAccess, onClose 
     } finally {
       setAdding(false);
     }
-  }, [addToArchive, adding, artistSlug, artistUserId, dispatch, dismiss, lang, pendingAccess]);
+  }, [addToArchive, adding, artistSlug, artistUserId, dismiss, lang, pendingAccess]);
 
   const handleGoToArchive = useCallback(() => {
     setArchiveFullOpen(false);

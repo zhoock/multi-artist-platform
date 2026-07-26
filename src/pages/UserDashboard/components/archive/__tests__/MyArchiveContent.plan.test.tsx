@@ -411,13 +411,13 @@ describe('MyArchiveContent plan display', () => {
       expect(screen.getByText('Your collection is empty')).toBeTruthy();
     });
 
-    expect(screen.getByRole('link', { name: 'Discover Artists' })).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Find artists' })).toBeTruthy();
     expect(screen.queryByText('Manage Plan →')).toBeNull();
     expect(screen.queryByText('0/3')).toBeNull();
     expect(screen.queryByRole('button', { name: 'Change plan' })).toBeNull();
   });
 
-  test('shows header when collection is empty but subscription is active', async () => {
+  test('shows header and empty state when collection is empty but subscription is active', async () => {
     getMyArchiveMock.mockResolvedValue({
       isPremium: true,
       slotsUsed: 0,
@@ -433,9 +433,12 @@ describe('MyArchiveContent plan display', () => {
       expect(screen.getByText(/0 \/ 3/)).toBeTruthy();
     });
 
-    expect(screen.queryByText('Your collection is empty')).toBeNull();
+    expect(screen.getByText('Your collection is empty')).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Find artists' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Change plan' })).toBeTruthy();
     expect(screen.queryByText('Subscription active')).toBeNull();
+    expect(document.querySelector('.collection__list-card')).toBeNull();
+    expect(document.querySelector('.collection__embedded-empty-state')).toBeTruthy();
   });
 
   test('allows remove for inactive artist with stale lock data and no card status', async () => {
