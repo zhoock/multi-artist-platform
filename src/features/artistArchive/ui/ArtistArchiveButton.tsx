@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react';
 import { Check as CheckIcon, Plus as PlusIcon } from 'lucide-react';
 
 import { useLang } from '@app/providers/lang';
+import { useAppDispatch } from '@shared/lib/hooks/useAppDispatch';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 import { selectPublicArtistSlug } from '@shared/model/currentArtist';
@@ -11,7 +12,10 @@ import { SubscriberContentLockIcon } from '@shared/ui/icons/SubscriberContentLoc
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 import { ArchiveApiError } from '@shared/api/archive';
 
-import { dispatchArchiveArtistAdded } from '../lib/refreshPremiumContent';
+import {
+  dispatchArchiveArtistAdded,
+  refreshPremiumContentForArchiveChange,
+} from '../lib/refreshPremiumContent';
 import { useArtistArchiveStatus } from '../lib/useArtistArchiveStatus';
 
 import './style.scss';
@@ -39,13 +43,13 @@ function ArchiveButtonLayoutPlaceholder({ label }: { label: string }) {
 
 export function ArtistArchiveButton({ artistUserId, monetizationEnabled = false }: Props) {
   const { lang } = useLang() as { lang: 'ru' | 'en' };
+  const dispatch = useAppDispatch();
   const publicArtistSlug = useAppSelector(selectPublicArtistSlug);
   const ui = useAppSelector((state) => selectUiDictionaryFirst(state, lang));
   const { open: openPremiumModal } = useArchiveAccessModal();
 
-  const { buttonState, error, addToArchive, clearError } = useArtistArchiveStatus(
-    monetizationEnabled ? artistUserId : null
-  );
+  const { buttonState, error, addToArchive, activateInArchive, clearError } =
+    useArtistArchiveStatus(monetizationEnabled ? artistUserId : null);
 
   const [archiveFullOpen, setArchiveFullOpen] = useState(false);
 
@@ -61,6 +65,8 @@ export function ArtistArchiveButton({ artistUserId, monetizationEnabled = false 
     ui?.buttons?.artistArchiveAdding ?? (lang === 'en' ? 'Adding…' : 'Добавляем…');
   const renewLabel =
     ui?.buttons?.artistCollectionRenew ?? (lang === 'en' ? 'Renew Support' : 'Продлить поддержку');
+  const activateLabel = lang === 'en' ? 'Activate' : 'Активировать';
+  const labelActivating = lang === 'en' ? 'Activating…' : 'Активируем…';
   const archiveFullTitle =
     ui?.titles?.artistArchiveFullTitle ??
     (lang === 'en' ? 'Collection full' : 'Коллекция заполнена');
@@ -81,8 +87,24 @@ export function ArtistArchiveButton({ artistUserId, monetizationEnabled = false 
     async (event: React.MouseEvent) => {
       event.stopPropagation();
 
-      if (buttonState === 'in_collection_inactive' || buttonState === 'not_premium') {
+      if (buttonState === 'subscription_inactive' || buttonState === 'not_premium') {
         openRenewModal();
+        return;
+      }
+
+      if (buttonState === 'in_collection_inactive') {
+        if (!artistUserId) return;
+        try {
+          await activateInArchive();
+          refreshPremiumContentForArchiveChange(dispatch, publicArtistSlug?.trim() ?? undefined);
+        } catch (err) {
+          if (
+            err instanceof ArchiveApiError &&
+            (err.code === 'ARCHIVE_SLOTS_LIMIT' || err.code === 'ARCHIVE_ACTIVATION_LIMIT')
+          ) {
+            setArchiveFullOpen(true);
+          }
+        }
         return;
       }
 
@@ -102,7 +124,15 @@ export function ArtistArchiveButton({ artistUserId, monetizationEnabled = false 
         }
       }
     },
-    [addToArchive, artistUserId, buttonState, openRenewModal, publicArtistSlug]
+    [
+      activateInArchive,
+      addToArchive,
+      artistUserId,
+      buttonState,
+      dispatch,
+      openRenewModal,
+      publicArtistSlug,
+    ]
   );
 
   if (!monetizationEnabled) {
@@ -118,20 +148,27 @@ export function ArtistArchiveButton({ artistUserId, monetizationEnabled = false 
   }
 
   const isDisabled =
-    buttonState === 'loading' || buttonState === 'adding' || buttonState === 'in_collection_active';
+    buttonState === 'loading' ||
+    buttonState === 'adding' ||
+    buttonState === 'activating' ||
+    buttonState === 'in_collection_active';
 
   const buttonLabel =
     buttonState === 'loading'
       ? '…'
       : buttonState === 'adding'
         ? labelAdding
-        : buttonState === 'in_collection_inactive'
-          ? renewLabel
-          : buttonState === 'in_collection_active'
-            ? labelInCollection
-            : buttonState === 'archive_full'
-              ? labelFull
-              : labelAdd;
+        : buttonState === 'activating'
+          ? labelActivating
+          : buttonState === 'subscription_inactive'
+            ? renewLabel
+            : buttonState === 'in_collection_inactive'
+              ? activateLabel
+              : buttonState === 'in_collection_active'
+                ? labelInCollection
+                : buttonState === 'archive_full'
+                  ? labelFull
+                  : labelAdd;
 
   return (
     <>
@@ -144,7 +181,9 @@ export function ArtistArchiveButton({ artistUserId, monetizationEnabled = false 
           type="button"
           className={`artist-archive-button__btn artist-archive-button__btn--${buttonState}`}
           disabled={isDisabled}
-          aria-busy={buttonState === 'loading' || buttonState === 'adding'}
+          aria-busy={
+            buttonState === 'loading' || buttonState === 'adding' || buttonState === 'activating'
+          }
           onClick={handleClick}
         >
           {buttonState === 'can_add' ? (

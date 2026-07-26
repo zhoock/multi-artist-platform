@@ -21,9 +21,10 @@ describe('resolveCollectionButtonState', () => {
       resolveCollectionButtonState({
         artistUserId: ARTIST_ID,
         isOwner: false,
-        status: status({ artistInArchive: true, isPremium: true }),
+        status: status({ artistInArchive: true, isPremium: true, artistActiveInArchive: true }),
         loading: false,
         adding: false,
+        activating: false,
         hasToken: true,
       })
     ).toBe('in_collection_active');
@@ -37,6 +38,25 @@ describe('resolveCollectionButtonState', () => {
         status: status({ artistInArchive: true, isPremium: false }),
         loading: false,
         adding: false,
+        activating: false,
+        hasToken: true,
+      })
+    ).toBe('subscription_inactive');
+  });
+
+  test('artist in collection with active subscription but inactive artist slot', () => {
+    expect(
+      resolveCollectionButtonState({
+        artistUserId: ARTIST_ID,
+        isOwner: false,
+        status: status({
+          artistInArchive: true,
+          isPremium: true,
+          artistActiveInArchive: false,
+        }),
+        loading: false,
+        adding: false,
+        activating: false,
         hasToken: true,
       })
     ).toBe('in_collection_inactive');
@@ -50,6 +70,7 @@ describe('resolveCollectionButtonState', () => {
         status: status({ artistInArchive: false, isPremium: false }),
         loading: false,
         adding: false,
+        activating: false,
         hasToken: true,
       })
     ).toBe('not_premium');
@@ -63,6 +84,7 @@ describe('resolveCollectionButtonState', () => {
         status: status({ artistInArchive: false, isPremium: true, slotsUsed: 1, slotsLimit: 3 }),
         loading: false,
         adding: false,
+        activating: false,
         hasToken: true,
       })
     ).toBe('can_add');

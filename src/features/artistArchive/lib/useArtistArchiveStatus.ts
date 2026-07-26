@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import {
+  activateArchiveArtistsApi,
   addArtistToArchiveApi,
   ArchiveApiError,
   getArchiveStatus,
@@ -21,7 +22,9 @@ export function useArtistArchiveStatus(artistUserId: string | null | undefined) 
   const [status, setStatus] = useState<ArchiveStatus | null>(null);
   const [loading, setLoading] = useState(false);
   const [adding, setAdding] = useState(false);
+  const [activating, setActivating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const skipNextRefetchRef = useRef(false);
 
   const isOwner = Boolean(viewer?.id && artistUserId && viewer.id === artistUserId);
 
@@ -63,6 +66,10 @@ export function useArtistArchiveStatus(artistUserId: string | null | undefined) 
     void refetch();
 
     const onArchiveChanged = () => {
+      if (skipNextRefetchRef.current) {
+        skipNextRefetchRef.current = false;
+        return;
+      }
       void refetch();
     };
     window.addEventListener('archive:changed', onArchiveChanged);
@@ -85,9 +92,10 @@ export function useArtistArchiveStatus(artistUserId: string | null | undefined) 
         status,
         loading,
         adding,
+        activating,
         hasToken: Boolean(getToken()),
       }),
-    [adding, artistUserId, isOwner, loading, status]
+    [activating, adding, artistUserId, isOwner, loading, status]
   );
 
   const slotsRemaining = useMemo(() => {
@@ -113,6 +121,7 @@ export function useArtistArchiveStatus(artistUserId: string | null | undefined) 
     try {
       const { status: next } = await addArtistToArchiveApi(artistUserId);
       setStatus(next);
+      skipNextRefetchRef.current = true;
       return next;
     } catch (err) {
       setStatus(previous);
@@ -129,10 +138,47 @@ export function useArtistArchiveStatus(artistUserId: string | null | undefined) 
     }
   }, [adding, artistUserId, status]);
 
+  const activateInArchive = useCallback(async (): Promise<ArchiveStatus | null> => {
+    if (!artistUserId || activating) return null;
+
+    setActivating(true);
+    setError(null);
+
+    const previous = status;
+    if (status) {
+      setStatus({
+        ...status,
+        artistActiveInArchive: true,
+      });
+    }
+
+    try {
+      await activateArchiveArtistsApi([artistUserId]);
+      const next = await getArchiveStatus(artistUserId);
+      setStatus(next);
+      skipNextRefetchRef.current = true;
+      window.dispatchEvent(new Event('archive:changed'));
+      return next;
+    } catch (err) {
+      setStatus(previous);
+      const message =
+        err instanceof ArchiveApiError
+          ? err.message
+          : err instanceof Error
+            ? err.message
+            : 'Failed to activate artist';
+      setError(message);
+      throw err;
+    } finally {
+      setActivating(false);
+    }
+  }, [activating, artistUserId, status]);
+
   return {
     status,
     loading,
     adding,
+    activating,
     error,
     buttonState,
     slotsRemaining,
@@ -140,6 +186,7 @@ export function useArtistArchiveStatus(artistUserId: string | null | undefined) 
     artistInArchive: Boolean(status?.artistInArchive),
     refetch,
     addToArchive,
+    activateInArchive,
     clearError: () => setError(null),
   };
 }

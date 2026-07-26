@@ -36,6 +36,7 @@ jest.mock('@features/artistArchive/lib/useArtistArchiveStatus', () => ({
     status: null,
     loading: false,
     adding: false,
+    activating: false,
     error: null,
     buttonState: 'not_premium',
     slotsRemaining: 0,
@@ -43,6 +44,7 @@ jest.mock('@features/artistArchive/lib/useArtistArchiveStatus', () => ({
     artistInArchive: false,
     refetch: async () => null,
     addToArchive: async () => null,
+    activateInArchive: async () => null,
     clearError: () => {},
   })),
 }));
@@ -99,6 +101,7 @@ describe('ArticlePreview click behavior', () => {
       status: null,
       loading: false,
       adding: false,
+      activating: false,
       error: null,
       buttonState: 'not_premium',
       slotsRemaining: 0,
@@ -106,6 +109,7 @@ describe('ArticlePreview click behavior', () => {
       artistInArchive: false,
       refetch: async () => null,
       addToArchive: async () => null,
+      activateInArchive: async () => null,
       clearError: () => {},
     });
   });
@@ -147,6 +151,7 @@ describe('ArticlePreview click behavior', () => {
       status: null,
       loading: true,
       adding: false,
+      activating: false,
       error: null,
       buttonState: 'loading',
       slotsRemaining: 0,
@@ -154,6 +159,7 @@ describe('ArticlePreview click behavior', () => {
       artistInArchive: false,
       refetch: async () => null,
       addToArchive: async () => null,
+      activateInArchive: async () => null,
       clearError: () => {},
     });
 

@@ -54,7 +54,8 @@
     }
 
     &--loading,
-    &--adding {
+    &--adding,
+    &--activating {
       opacity: 0.75;
       cursor: wait;
     }
@@ -74,7 +75,8 @@
       }
     }
 
-    &--in_collection_inactive {
+    &--in_collection_inactive,
+    &--subscription_inactive {
       cursor: pointer;
       pointer-events: auto;
     }
