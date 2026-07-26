@@ -97,12 +97,23 @@
       justify-content: center;
     }
 
+    &-glyph {
+      display: grid;
+      place-items: center;
+      inline-size: 100%;
+      block-size: 100%;
+      line-height: 0;
+    }
+
     &-icon {
       display: block;
       flex-shrink: 0;
       color: currentcolor;
 
-      &--play,
+      &--play {
+        transform: translateX(2px);
+      }
+
       &--forward {
         transform: translateX(3px);
       }

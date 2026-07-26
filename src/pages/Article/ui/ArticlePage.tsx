@@ -311,9 +311,7 @@ function ArticleContent({
     (lang === 'en' ? 'Activate artist' : 'Активируйте артиста');
   const activateGateHint =
     ui?.titles?.articleActivateLockedGateHint ??
-    (lang === 'en'
-      ? 'Activate this artist in your collection to continue reading.'
-      : 'Активируйте этого артиста в коллекции, чтобы продолжить чтение.');
+    (lang === 'en' ? 'Read the full article.' : 'Чтобы читать статью полностью.');
   const activateCtaLabel =
     ui?.buttons?.articleActivateLockedCta ?? (lang === 'en' ? 'Activate' : 'Активировать');
   const activateLoadingLabel =

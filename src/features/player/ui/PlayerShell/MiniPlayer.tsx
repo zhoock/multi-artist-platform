@@ -3,7 +3,11 @@ import React from 'react';
 import clsx from 'clsx';
 import { Pause, Play, SkipForward } from 'lucide-react';
 import AlbumCover from '@entities/album/ui/AlbumCover';
-import { playerTransportIconProps, PLAYER_MINI_ICON_SIZE } from '@shared/ui/icons/playerActionIcon';
+import {
+  playerFilledPlayIconProps,
+  playerTransportIconProps,
+  PLAYER_MINI_ICON_SIZE,
+} from '@shared/ui/icons/playerActionIcon';
 
 import './style.scss';
 
@@ -81,17 +85,21 @@ export const MiniPlayer: React.FC<MiniPlayerProps> = ({
           aria-label={isPlaying ? 'Пауза' : 'Воспроизвести'}
         >
           {isPlaying ? (
-            <Pause
-              {...playerTransportIconProps(PLAYER_MINI_ICON_SIZE, {
-                className: 'mini-player__control-icon',
-              })}
-            />
+            <span className="mini-player__control-glyph" aria-hidden>
+              <Pause
+                {...playerTransportIconProps(PLAYER_MINI_ICON_SIZE, {
+                  className: 'mini-player__control-icon',
+                })}
+              />
+            </span>
           ) : (
-            <Play
-              {...playerTransportIconProps(PLAYER_MINI_ICON_SIZE, {
-                className: clsx('mini-player__control-icon', 'mini-player__control-icon--play'),
-              })}
-            />
+            <span className="mini-player__control-glyph" aria-hidden>
+              <Play
+                {...playerFilledPlayIconProps(PLAYER_MINI_ICON_SIZE, {
+                  className: 'mini-player__control-icon mini-player__control-icon--play',
+                })}
+              />
+            </span>
           )}
         </button>
         <button

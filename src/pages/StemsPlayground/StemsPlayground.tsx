@@ -367,7 +367,6 @@ export default function StemsPlayground() {
     try {
       await deleteMix(mix.id);
       setMixes((prev) => prev.filter((m) => m.id !== mix.id));
-      showToast(stems.mixDeleted ?? 'Mix deleted');
     } catch (error) {
       console.error('[stems] delete mix failed', error);
       showToast(stems.mixError ?? 'Something went wrong');

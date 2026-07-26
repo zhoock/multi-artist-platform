@@ -31,3 +31,15 @@ export function playerTransportIconProps(
     ...overrides,
   });
 }
+
+/** Filled play triangle without stroke — keeps the glyph centered in circular buttons. */
+export function playerFilledPlayIconProps(
+  size: number,
+  overrides?: Partial<LucideProps>
+): LucideProps {
+  return playerIconProps(size, {
+    fill: 'currentColor',
+    strokeWidth: 0,
+    ...overrides,
+  });
+}
