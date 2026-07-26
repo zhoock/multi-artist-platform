@@ -46,6 +46,7 @@ import { shouldShowAlbumsLoadingShell } from '@shared/lib/hooks/useShowAlbumsLoa
 import { resolveChildContextNavMode, useNavigationOrigin } from '@shared/lib/navigationContext';
 import { withPublicArtistQuery } from '@shared/lib/artistQuery';
 import { ContextNav } from '@shared/ui/contextNav';
+import '@entities/album/ui/album-layout.scss';
 
 export default function Album() {
   const dispatch = useAppDispatch();

@@ -1,0 +1,9 @@
+// Album list container (Home, /albums, skeleton grids).
+@use '../../../scss/abstracts/mixins' as *;
+
+.albums,
+.album {
+  &__list {
+    @include list('.albums');
+  }
+}

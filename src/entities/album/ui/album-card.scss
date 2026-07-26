@@ -1,0 +1,19 @@
+// Reusable album card: cover image, card shell, description block.
+@use '../../../scss/abstracts/mixins' as *;
+
+.albums,
+.album {
+  &__card {
+    @extend %card;
+  }
+
+  &__description {
+    @extend %description;
+  }
+
+  &-cover__image {
+    border-radius: var(--ms-01);
+    inline-size: 100%;
+    aspect-ratio: 1 / 1;
+  }
+}

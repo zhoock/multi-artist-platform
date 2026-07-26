@@ -32,7 +32,7 @@ import {
   useArtistPageBuilderNav,
 } from '@shared/ui/artistPageBuilder';
 import { Disc3 as DiscIcon } from 'lucide-react';
-import '@entities/album/ui/style.scss';
+import '@entities/album/ui/album-list.scss';
 
 /** Card fields for Home albums grid — thin catalog or owner draft projection. */
 type AlbumCardView = {

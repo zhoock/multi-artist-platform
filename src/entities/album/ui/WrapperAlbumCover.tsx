@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useEffectiveLocation } from '@shared/lib/hooks/useEffectiveLocation';
 import type { WrapperAlbumCoverProps } from 'models';
 
-import './style.scss';
+import './album-card.scss';
 
 export default function WrapperAlbumCover({
   albumId,

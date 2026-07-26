@@ -1,3 +1,5 @@
+import '@entities/album/ui/album-list.scss';
+import '@entities/album/ui/album-card.scss';
 import './AlbumsSkeleton.scss';
 
 interface AlbumsSkeletonProps {

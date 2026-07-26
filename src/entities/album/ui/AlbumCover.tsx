@@ -1,4 +1,5 @@
 // src/entities/album/ui/AlbumCover.tsx
+import './album-card.scss';
 import { memo, useMemo } from 'react';
 import { getImageUrl } from '@shared/api/albums';
 import type { CoverProps } from 'models';

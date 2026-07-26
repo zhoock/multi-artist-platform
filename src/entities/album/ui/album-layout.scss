@@ -1,0 +1,20 @@
+// Layout shell for a single album detail page (.album__wrapper grid).
+@use '../../../scss/abstracts/mixins' as *;
+
+.album__wrapper {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0 var(--ms-1);
+
+  .item {
+    grid-column: span 2;
+
+    @include breakpoint(tablet) {
+      grid-column: initial;
+    }
+
+    &-type-a {
+      grid-column: span 2;
+    }
+  }
+}

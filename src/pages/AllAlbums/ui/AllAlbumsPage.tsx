@@ -24,7 +24,7 @@ import { ArtistPageUnderConstruction } from '@pages/Home/ui/ArtistPageUnderConst
 import { useArtistPageAccess } from '@shared/lib/hooks/useArtistPageAccess';
 import { useRedirectHomeAfterOwnAccountDeleted } from '@shared/lib/hooks/useRedirectHomeAfterOwnAccountDeleted';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
-import '@entities/album/ui/style.scss';
+import '@entities/album/ui/album-list.scss';
 import './style.scss';
 import { useSiteArtistDisplayName } from '@shared/lib/hooks/useSiteArtistDisplayName';
 import { formatAlbumDisplayFullName } from '@shared/lib/profileDisplayName';
