@@ -1,9 +1,7 @@
 .mix-toast {
-  position: fixed;
-  inset-block-start: calc(var(--ms-1) + 4.75rem);
-  inset-inline-end: var(--ms-1);
-  z-index: 2500;
+  position: relative;
   display: flex;
+  pointer-events: auto;
   align-items: flex-start;
   gap: var(--ms-01);
   inline-size: min(100%, 22rem);

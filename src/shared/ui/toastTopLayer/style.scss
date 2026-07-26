@@ -1,0 +1,28 @@
+// Top-layer shell: dialog itself is anchored to the viewport corner (fixed inside dialog
+// uses the dialog as containing block, not the viewport).
+dialog.toast-top-layer {
+  position: fixed;
+  inset-block: calc(var(--ms-1) + 4.75rem) auto;
+  inset-inline: auto var(--ms-1);
+  inline-size: max-content;
+  block-size: auto;
+  max-inline-size: min(22rem, calc(100vw - 2rem));
+  max-block-size: none;
+  margin: 0;
+  padding: 0;
+  overflow: visible;
+  color: inherit;
+  background: transparent;
+  border: none;
+  pointer-events: none;
+
+  &::backdrop {
+    pointer-events: none;
+    background: transparent;
+    backdrop-filter: none;
+  }
+
+  &[open] {
+    display: block;
+  }
+}

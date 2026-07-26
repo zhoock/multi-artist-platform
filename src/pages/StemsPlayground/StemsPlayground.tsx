@@ -22,7 +22,6 @@ import { useArchiveAccessModal } from '@shared/lib/archiveAccessModal';
 import { refreshPremiumContentForArchiveChange } from '@features/artistArchive';
 import { queueMixToast } from '@shared/lib/mixToast';
 import { MixToast } from '@shared/ui/mixToast';
-import { ConfirmationModal } from '@shared/ui/confirmationModal';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 import {
   createMix,
@@ -133,7 +132,6 @@ export default function StemsPlayground() {
   const emptyDescriptionLine1 =
     stems.emptyDescriptionLine1 ?? 'When the artist publishes albums with stems,';
   const emptyDescriptionLine2 = stems.emptyDescriptionLine2 ?? 'they will appear here.';
-  const loadingLabel = stems.loading ?? '…';
 
   const showEmptyCatalog = catalogHasStemAlbums === false && !loading && !mixId;
 
@@ -167,7 +165,6 @@ export default function StemsPlayground() {
   const [mixesLoading, setMixesLoading] = useState(false);
   const [mixes, setMixes] = useState<SavedMix[]>([]);
   const [busyMixId, setBusyMixId] = useState<string | null>(null);
-  const [pendingDelete, setPendingDelete] = useState<SavedMix | null>(null);
 
   // ── Shared-link (read-only пресет) ────────────────────────────────
   const [sharedMix, setSharedMix] = useState<SharedMix | null>(null);
@@ -365,9 +362,7 @@ export default function StemsPlayground() {
     }
   };
 
-  const confirmDelete = async () => {
-    if (!pendingDelete) return;
-    const mix = pendingDelete;
+  const handleDeleteMix = async (mix: SavedMix) => {
     setBusyMixId(mix.id);
     try {
       await deleteMix(mix.id);
@@ -376,9 +371,9 @@ export default function StemsPlayground() {
     } catch (error) {
       console.error('[stems] delete mix failed', error);
       showToast(stems.mixError ?? 'Something went wrong');
+      throw error;
     } finally {
       setBusyMixId(null);
-      setPendingDelete(null);
     }
   };
 
@@ -391,14 +386,22 @@ export default function StemsPlayground() {
     close: stems.close ?? 'Close',
   };
 
+  const dashboard = (ui?.dashboard ?? {}) as Record<string, string>;
+
   const myMixesLabels = {
     title: stems.myMixes ?? 'My mixes',
     empty: stems.noMixes ?? 'No saved mixes yet',
-    loading: loadingLabel,
     apply: stems.apply ?? 'Apply',
     delete: stems.delete ?? 'Delete',
+    cancel: stems.cancel ?? 'Cancel',
     copyLink: stems.copyLink ?? 'Copy link',
     close: stems.close ?? 'Close',
+    deleteConfirm: stems.deleteMixConfirm ?? 'Delete this mix?',
+    deleteDescription:
+      lang === 'ru'
+        ? '«{name}» будет удалён без возможности восстановления.'
+        : '"{name}" will be permanently deleted.',
+    deleteIrreversible: dashboard.confirmActionIrreversible ?? 'This action cannot be undone.',
   };
 
   if (showEmptyCatalog) {
@@ -545,26 +548,13 @@ export default function StemsPlayground() {
         isOpen={myMixesOpen}
         mixes={mixes}
         loading={mixesLoading}
-        busyId={busyMixId}
+        deletingId={busyMixId}
         locale={lang === 'ru' ? 'ru-RU' : 'en-US'}
         labels={myMixesLabels}
         onClose={() => setMyMixesOpen(false)}
         onApply={handleApply}
-        onDelete={setPendingDelete}
+        onDeleteConfirm={handleDeleteMix}
         onCopyLink={handleCopyLink}
-      />
-
-      <ConfirmationModal
-        isOpen={Boolean(pendingDelete)}
-        title={stems.deleteMixTitle ?? 'Delete mix'}
-        message={stems.deleteMixConfirm ?? 'Delete this mix?'}
-        irreversibleHint={null}
-        confirmText={stems.delete ?? 'Delete'}
-        cancelText={stems.cancel ?? 'Cancel'}
-        closeLabel={stems.close ?? 'Close'}
-        variant="danger"
-        onConfirm={confirmDelete}
-        onCancel={() => setPendingDelete(null)}
       />
 
       <MixToast triggerKey={toastKey} />

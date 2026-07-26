@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { MIX_TOAST_DURATION_MS, consumeMixToast } from '@shared/lib/mixToast';
+import { ToastTopLayer } from '@shared/ui/toastTopLayer';
 import './style.scss';
 
 function SuccessIcon() {
@@ -48,23 +49,25 @@ export function MixToast({ triggerKey }: MixToastProps) {
   if (!message) return null;
 
   return (
-    <div
-      className="mix-toast"
-      role="status"
-      aria-live="polite"
-      style={
-        {
-          '--mix-toast-duration': `${MIX_TOAST_DURATION_MS}ms`,
-        } as React.CSSProperties
-      }
-    >
-      <div className="mix-toast__icon">
-        <SuccessIcon />
+    <ToastTopLayer open>
+      <div
+        className="mix-toast"
+        role="status"
+        aria-live="polite"
+        style={
+          {
+            '--mix-toast-duration': `${MIX_TOAST_DURATION_MS}ms`,
+          } as React.CSSProperties
+        }
+      >
+        <div className="mix-toast__icon">
+          <SuccessIcon />
+        </div>
+        <div className="mix-toast__body">
+          <p className="mix-toast__title">{message}</p>
+        </div>
+        <div className="mix-toast__progress" aria-hidden="true" />
       </div>
-      <div className="mix-toast__body">
-        <p className="mix-toast__title">{message}</p>
-      </div>
-      <div className="mix-toast__progress" aria-hidden="true" />
-    </div>
+    </ToastTopLayer>
   );
 }
