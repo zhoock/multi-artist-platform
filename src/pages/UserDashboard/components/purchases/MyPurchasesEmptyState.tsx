@@ -20,7 +20,7 @@ export function MyPurchasesEmptyState({ ui }: MyPurchasesEmptyStateProps) {
       title={copy?.emptyTitle ?? 'No purchases yet'}
       description={
         copy?.emptyDescription ??
-        'Purchased albums will appear here.\nYou can download them and get access to updates.'
+        'Purchased albums will appear here.\nYou can download them anytime.'
       }
       descriptionMultiline
     />

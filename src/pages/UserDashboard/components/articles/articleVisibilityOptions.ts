@@ -65,7 +65,9 @@ export function buildArticleVisibilityMenuOptions(
     },
     subscribersOnly: {
       title: en ? 'Subscribers only' : 'Только для подписчиков',
-      description: en ? 'Reading after purchasing the album' : 'Чтение после покупки альбома',
+      description: en
+        ? 'Available to subscribers who support this artist'
+        : 'Доступна подписчикам, поддерживающим этого артиста',
     },
     hidden: {
       title: en ? 'Hidden' : 'Скрыт',

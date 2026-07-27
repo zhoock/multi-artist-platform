@@ -77,8 +77,8 @@ export function StemAccessControl({
       subscribersOnly: {
         title: en ? 'Subscribers only' : 'Только для подписчиков',
         description: en
-          ? 'Only subscribers can access these stems.'
-          : 'Стемы доступны только подписчикам.',
+          ? 'Available to subscribers who support this artist.'
+          : 'Доступны подписчикам, поддерживающим этого артиста.',
       },
       hidden: {
         title: en ? 'Hidden' : 'Скрыт',

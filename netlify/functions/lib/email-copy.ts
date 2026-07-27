@@ -142,8 +142,7 @@ const COPY = {
       greetingNamed: 'Hello, {{name}}!',
       greetingGeneric: 'Hello!',
       heroSubtitle: 'Your purchase was successful.',
-      albumDescription:
-        'The album is now available in My Purchases. You can stream, download and enjoy it whenever you want.',
+      albumDescription: 'The album is now available in My Purchases. You can download it anytime.',
       ctaLabel: 'Open in {{siteName}}',
       closingLine1: 'Thank you for supporting artists.',
       closingLine2: 'Stay tuned for more music.',
@@ -159,7 +158,7 @@ const COPY = {
       greetingGeneric: 'Здравствуйте!',
       heroSubtitle: 'Покупка прошла успешно.',
       albumDescription:
-        'Альбом доступен в разделе «Мои покупки». Слушайте, скачивайте и наслаждайтесь им в любое время.',
+        'Альбом доступен в разделе «Мои покупки». Вы можете скачать его в любой момент.',
       ctaLabel: 'Открыть в {{siteName}}',
       closingLine1: 'Спасибо, что поддерживаете артистов.',
       closingLine2: 'До встречи в новых релизах.',

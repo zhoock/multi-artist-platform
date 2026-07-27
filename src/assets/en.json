@@ -508,7 +508,7 @@
           },
           "subscribersOnly": {
             "title": "Subscribers only",
-            "description": "Only subscribers can access these stems."
+            "description": "Available to subscribers who support this artist."
           },
           "hidden": {
             "title": "Hidden",
@@ -651,7 +651,7 @@
         },
         "subscribersOnly": {
           "title": "Subscribers only",
-          "description": "Playback after purchasing the album"
+          "description": "Available to subscribers who support this artist"
         },
         "hidden": {
           "title": "Hidden",
@@ -668,7 +668,7 @@
         },
         "subscribersOnly": {
           "title": "Subscribers only",
-          "description": "Reading after purchasing the album"
+          "description": "Available to subscribers who support this artist"
         },
         "hidden": {
           "title": "Hidden",
@@ -763,7 +763,7 @@
       "myPurchases": {
         "title": "My Purchases",
         "emptyTitle": "No purchases yet",
-        "emptyDescription": "Purchased albums will appear here.\nYou can download them and get access to updates.",
+        "emptyDescription": "Purchased albums will appear here.\nYou can download them anytime.",
         "loadFailed": "Failed to load purchases",
         "loadingPurchases": "Loading purchases...",
         "purchased": "Purchased:",

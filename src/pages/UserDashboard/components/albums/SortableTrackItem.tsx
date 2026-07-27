@@ -120,8 +120,8 @@ export function SortableTrackItem({
       subscribersOnly: {
         title: en ? 'Subscribers only' : 'Только для подписчиков',
         description: en
-          ? 'Playback after purchasing the album'
-          : 'Воспроизведение после покупки альбома',
+          ? 'Available to subscribers who support this artist'
+          : 'Доступен подписчикам, поддерживающим этого артиста',
       },
       hidden: {
         title: en ? 'Hidden' : 'Скрыт',

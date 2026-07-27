@@ -60,7 +60,7 @@ describe('purchase-email-template', () => {
     expect(html).toContain('Rubber Soul');
     expect(html).toContain('The Beatles');
     expect(html).toContain(
-      'The album is now available in My Purchases. You can stream, download and enjoy it whenever you want.'
+      'The album is now available in My Purchases. You can download it anytime.'
     );
     expect(html).toContain('Open in Название сайта');
     expect(html).toContain('https://smolyanoechuchelko.ru/albums/rubber-soul');
