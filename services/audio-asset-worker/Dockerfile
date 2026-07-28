@@ -18,6 +18,7 @@ COPY services/audio-asset-worker/src ./src
 RUN npm run build
 
 ENV NODE_ENV=production
-EXPOSE 8080
+ENV PORT=8090
+EXPOSE 8090
 
 CMD ["node", "dist/index.js"]

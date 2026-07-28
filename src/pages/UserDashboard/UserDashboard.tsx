@@ -42,6 +42,7 @@ import { AlbumPublishedToast } from '@shared/ui/albumPublishedToast/AlbumPublish
 import { AlbumCreatedToast } from '@shared/ui/albumCreatedToast/AlbumCreatedToast';
 import { TracksUploadedToast } from '@shared/ui/tracksUploadedToast/TracksUploadedToast';
 import { AlbumDeletedToast } from '@shared/ui/albumDeletedToast/AlbumDeletedToast';
+import { TrackDeletedToast } from '@shared/ui/trackDeletedToast/TrackDeletedToast';
 import { ArticleDeletedToast } from '@shared/ui/articleDeletedToast/ArticleDeletedToast';
 import { ArticleEditorToast } from '@shared/ui/articleEditorToast';
 import { LyricsSyncSavedToast } from '@shared/ui/lyricsSyncSavedToast/LyricsSyncSavedToast';
@@ -55,6 +56,7 @@ import { PostsTabContent } from './components/articles/PostsTabContent';
 import { queueAlbumPublishedToast } from '@shared/lib/albumPublishedToast';
 import { queueTracksUploadedToast } from '@shared/lib/tracksUploadedToast';
 import { queueAlbumDeletedToast } from '@shared/lib/albumDeletedToast';
+import { queueTrackDeletedToast } from '@shared/lib/trackDeletedToast';
 import { queueArticleDeletedToast } from '@shared/lib/articleDeletedToast';
 import { queueLyricsSyncSavedToast } from '@shared/lib/lyricsSyncSavedToast';
 import { getArtistSlugFromLocation } from '@shared/lib/albumDeletedRedirect';
@@ -99,6 +101,7 @@ import {
 import type { TrackLyricsBundle } from '@shared/lib/lyrics/types';
 import { getStore } from '@shared/model/appStore';
 import { uploadTracks, prepareAndUploadTrack, type TrackUploadData } from '@shared/api/tracks';
+import { regenerateTrackAssets } from '@shared/api/tracks/regenerateTrackAssets';
 import { TRACK_ORDER_INDEX_STEP } from '@shared/lib/tracks/trackOrderIndex';
 import { AddLyricsModal } from './components/modals/lyrics/AddLyricsModal';
 import { EditLyricsModal } from './components/modals/lyrics/EditLyricsModal';
@@ -184,6 +187,18 @@ function formatAlbumDeletedSuccessMessage(
     return template.replace('{name}', title);
   }
   return ui?.dashboard?.albumDeletedSuccessToast ?? 'Album deleted';
+}
+
+function formatTrackDeletedSuccessMessage(
+  trackTitle: string | undefined,
+  ui: IInterface | null | undefined
+): string {
+  const title = trackTitle?.trim();
+  if (title) {
+    const template = ui?.dashboard?.trackDeletedSuccessToastWithTitle ?? 'Track "{name}" deleted';
+    return template.replace('{name}', title);
+  }
+  return ui?.dashboard?.trackDeletedSuccessToast ?? 'Track deleted';
 }
 
 function formatArticleDeletedSuccessMessage(
@@ -339,10 +354,12 @@ function UserDashboard() {
   const profilePublicSlug = publicProfilePreview.publicSlug;
   const [expandedAlbumId, setExpandedAlbumId] = useState<string | null>(null);
   const [scrollToAlbumUploadId, setScrollToAlbumUploadId] = useState<string | null>(null);
+  const [pendingTrackUploadAlbumId, setPendingTrackUploadAlbumId] = useState<string | null>(null);
   const [publishingAlbumId, setPublishingAlbumId] = useState<string | null>(null);
   const [publishedToastTrigger, setPublishedToastTrigger] = useState(0);
   const [tracksUploadToastTrigger, setTracksUploadToastTrigger] = useState(0);
   const [albumDeletedToastTrigger, setAlbumDeletedToastTrigger] = useState(0);
+  const [trackDeletedToastTrigger, setTrackDeletedToastTrigger] = useState(0);
   const [articleDeletedToastTrigger, setArticleDeletedToastTrigger] = useState(0);
   const [articleEditorToastTrigger, setArticleEditorToastTrigger] = useState(0);
   const [lyricsSyncSavedToastTrigger, setLyricsSyncSavedToastTrigger] = useState(0);
@@ -475,7 +492,10 @@ function UserDashboard() {
     title?: string;
     message: string;
     variant?: 'success' | 'error' | 'warning' | 'info';
+    retryTracks?: { albumId: string; trackIds: string[] };
   } | null>(null);
+  const [retryingTrackProcessingId, setRetryingTrackProcessingId] = useState<string | null>(null);
+  const [replacingTrackId, setReplacingTrackId] = useState<string | null>(null);
 
   const onAvatarFileTooLarge = useCallback((message: string) => {
     setAlertModal({
@@ -631,6 +651,47 @@ function UserDashboard() {
     uploadSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
     setScrollToAlbumUploadId(null);
   }, [scrollToAlbumUploadId, expandedAlbumId, albumsData]);
+
+  const clearUploadTracksQueryParam = useCallback(() => {
+    const uploadTracksParam = searchParams.get('uploadTracks');
+    if (!uploadTracksParam) {
+      return;
+    }
+
+    const nextParams = new URLSearchParams(searchParams.toString());
+    nextParams.delete('uploadTracks');
+    const nextQuery = nextParams.toString();
+    navigate(
+      {
+        pathname: location.pathname,
+        search: nextQuery ? `?${nextQuery}` : '',
+      },
+      { replace: true, state: location.state }
+    );
+  }, [searchParams, navigate, location.pathname, location.state]);
+
+  const handlePendingTrackUploadHandled = useCallback(() => {
+    setPendingTrackUploadAlbumId(null);
+    clearUploadTracksQueryParam();
+  }, [clearUploadTracksQueryParam]);
+
+  useEffect(() => {
+    const uploadTracksParam = searchParams.get('uploadTracks')?.trim();
+    if (!uploadTracksParam || albumsData.length === 0 || activeTab !== 'albums') {
+      return;
+    }
+
+    const album = albumsData.find(
+      (entry) => entry.id === uploadTracksParam || entry.albumId === uploadTracksParam
+    );
+    if (!album) {
+      return;
+    }
+
+    setExpandedAlbumId(album.id);
+    setScrollToAlbumUploadId(album.id);
+    setPendingTrackUploadAlbumId(album.id);
+  }, [searchParams, albumsData, activeTab]);
 
   // Загрузка альбомов: всегда force при смене аккаунта/языка,
   // чтобы не показывать данные предыдущего пользователя из Redux-кэша.
@@ -812,7 +873,7 @@ function UserDashboard() {
       variant: 'danger',
       onConfirm: async () => {
         setConfirmationModal(null);
-        await performDeleteTrack(albumId, trackId);
+        await performDeleteTrack(albumId, trackId, trackTitle);
       },
     });
   };
@@ -1064,7 +1125,7 @@ function UserDashboard() {
     }
   };
 
-  const performDeleteTrack = async (albumId: string, trackId: string) => {
+  const performDeleteTrack = async (albumId: string, trackId: string, trackTitle?: string) => {
     const albumBeforeDelete = albumsFromStore.find((a) => a.albumId === albumId);
     const wasPubliclyVisible = albumBeforeDelete
       ? hasPublishedPublicReleases([albumBeforeDelete])
@@ -1135,6 +1196,9 @@ function UserDashboard() {
           { artistSlug: resolvePublicArtistSlugForRefresh() }
         );
       }
+
+      queueTrackDeletedToast(formatTrackDeletedSuccessMessage(trackTitle, ui));
+      setTrackDeletedToastTrigger((n) => n + 1);
 
       console.log('✅ Track deleted successfully:', { albumId, trackId });
     } catch (error) {
@@ -1385,6 +1449,253 @@ function UserDashboard() {
   };
 
   // Обработка загрузки треков
+  const markTrackProcessingPendingLocally = useCallback((albumSlug: string, trackId: string) => {
+    setAlbumsData((prev) =>
+      prev.map((album) => {
+        if (album.albumId !== albumSlug && album.id !== albumSlug) {
+          return album;
+        }
+        return {
+          ...album,
+          tracks: album.tracks.map((track) =>
+            track.id === trackId
+              ? { ...track, processingStatus: 'pending' as const, processingError: null }
+              : track
+          ),
+        };
+      })
+    );
+  }, []);
+
+  const handleRetryTrackProcessing = useCallback(
+    async (albumSlug: string, trackId: string) => {
+      setRetryingTrackProcessingId(trackId);
+      try {
+        const result = await regenerateTrackAssets(albumSlug, trackId);
+        if (!result.success) {
+          setAlertModal({
+            isOpen: true,
+            title: ui?.dashboard?.trackProcessing?.enqueueFailed ?? 'Processing not started',
+            message: result.error,
+            variant: 'error',
+            retryTracks: { albumId: albumSlug, trackIds: [trackId] },
+          });
+          return;
+        }
+
+        markTrackProcessingPendingLocally(albumSlug, trackId);
+        try {
+          await dispatch(fetchDashboardAlbums({ force: true, ownerDashboard: true })).unwrap();
+        } catch (fetchError: unknown) {
+          if ((fetchError as { name?: string })?.name !== 'ConditionError') {
+            console.error('⚠️ Failed to refresh albums after retry:', fetchError);
+          }
+        }
+      } finally {
+        setRetryingTrackProcessingId(null);
+      }
+    },
+    [dispatch, markTrackProcessingPendingLocally, ui?.dashboard?.trackProcessing?.enqueueFailed]
+  );
+
+  const handleRetryTracksFromAlert = useCallback(async () => {
+    const retryTracks = alertModal?.retryTracks;
+    if (!retryTracks) {
+      return;
+    }
+
+    setRetryingTrackProcessingId(retryTracks.trackIds[0] ?? null);
+    try {
+      for (const trackId of retryTracks.trackIds) {
+        setRetryingTrackProcessingId(trackId);
+        const result = await regenerateTrackAssets(retryTracks.albumId, trackId);
+        if (!result.success) {
+          setAlertModal({
+            isOpen: true,
+            title: ui?.dashboard?.trackProcessing?.enqueueFailed ?? 'Processing not started',
+            message:
+              result.error ||
+              ui?.dashboard?.trackProcessingRetryAllFailed ||
+              'Could not restart audio processing.',
+            variant: 'error',
+            retryTracks,
+          });
+          return;
+        }
+        markTrackProcessingPendingLocally(retryTracks.albumId, trackId);
+      }
+
+      setAlertModal(null);
+      try {
+        await dispatch(fetchDashboardAlbums({ force: true, ownerDashboard: true })).unwrap();
+      } catch (fetchError: unknown) {
+        if ((fetchError as { name?: string })?.name !== 'ConditionError') {
+          console.error('⚠️ Failed to refresh albums after retry:', fetchError);
+        }
+      }
+    } finally {
+      setRetryingTrackProcessingId(null);
+    }
+  }, [
+    alertModal?.retryTracks,
+    dispatch,
+    markTrackProcessingPendingLocally,
+    ui?.dashboard?.trackProcessing?.enqueueFailed,
+    ui?.dashboard?.trackProcessingRetryAllFailed,
+  ]);
+
+  const executeReplaceTrackAudio = useCallback(
+    async (albumId: string, trackId: string, trackTitle: string, file: File) => {
+      if (isUploadingTracks[albumId] || replacingTrackId) {
+        return;
+      }
+
+      setReplacingTrackId(trackId);
+      setIsUploadingTracks((prev) => ({ ...prev, [albumId]: true }));
+      setUploadProgress((prev) => ({ ...prev, [albumId]: 0 }));
+
+      try {
+        setUploadProgress((prev) => ({ ...prev, [albumId]: 10 }));
+
+        const trackData = await prepareAndUploadTrack(file, albumId, trackId, {
+          lang,
+          title: trackTitle,
+        });
+
+        setUploadProgress((prev) => ({ ...prev, [albumId]: 80 }));
+
+        const result = await uploadTracks(albumId, lang, [trackData]);
+
+        if (!result.success || !result.data) {
+          throw new Error(result.error || 'Failed to replace track audio');
+        }
+
+        setUploadProgress((prev) => ({ ...prev, [albumId]: 100 }));
+
+        const entry = result.data[0] as {
+          trackId: string;
+          processingStatus?: TrackData['processingStatus'];
+          processingError?: string;
+        };
+
+        const durationLabel = `${Math.floor(trackData.duration / 60)}:${Math.floor(
+          trackData.duration % 60
+        )
+          .toString()
+          .padStart(2, '0')}`;
+
+        setAlbumsData((prevAlbums) =>
+          prevAlbums.map((album) => {
+            if (album.albumId !== albumId && album.id !== albumId) {
+              return album;
+            }
+            return {
+              ...album,
+              tracks: album.tracks.map((track) =>
+                track.id === trackId
+                  ? {
+                      ...track,
+                      duration: durationLabel,
+                      processingStatus: entry?.processingStatus ?? 'pending',
+                      processingError: entry?.processingError ?? null,
+                    }
+                  : track
+              ),
+            };
+          })
+        );
+
+        setIsUploadingTracks((prev) => {
+          const next = { ...prev };
+          delete next[albumId];
+          return next;
+        });
+        setUploadProgress((prev) => {
+          const next = { ...prev };
+          delete next[albumId];
+          return next;
+        });
+
+        try {
+          await new Promise((resolve) => setTimeout(resolve, 300));
+          await dispatch(fetchDashboardAlbums({ force: true, ownerDashboard: true })).unwrap();
+        } catch (fetchError: unknown) {
+          if ((fetchError as { name?: string })?.name !== 'ConditionError') {
+            console.error('⚠️ Failed to refresh albums after replace:', fetchError);
+          }
+        }
+
+        notifyPublicSurfaceChanged(
+          { type: 'trackContentChanged', albumId },
+          { artistSlug: resolvePublicArtistSlugForRefresh() }
+        );
+
+        if (entry?.processingStatus === 'failed') {
+          setAlertModal({
+            isOpen: true,
+            title: ui?.dashboard?.trackProcessing?.enqueueFailed ?? 'Processing not started',
+            message:
+              entry.processingError ??
+              ui?.dashboard?.trackProcessingFailedAfterUpload ??
+              'Tracks were uploaded, but audio processing could not start.',
+            variant: 'warning',
+            retryTracks: { albumId, trackIds: [trackId] },
+          });
+        }
+      } catch (error) {
+        console.error('❌ Error replacing track audio:', error);
+        setAlertModal({
+          isOpen: true,
+          title: ui?.dashboard?.error ?? 'Error',
+          message: `Error replacing track audio: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          variant: 'error',
+        });
+      } finally {
+        setReplacingTrackId(null);
+        setIsUploadingTracks((prev) => {
+          const next = { ...prev };
+          delete next[albumId];
+          return next;
+        });
+        setUploadProgress((prev) => {
+          const next = { ...prev };
+          delete next[albumId];
+          return next;
+        });
+      }
+    },
+    [
+      dispatch,
+      isUploadingTracks,
+      lang,
+      replacingTrackId,
+      resolvePublicArtistSlugForRefresh,
+      ui?.dashboard,
+    ]
+  );
+
+  const handleReplaceTrackAudioRequest = useCallback(
+    (albumId: string, trackId: string, trackTitle: string, file: File) => {
+      if (!emailVerified) return;
+
+      setConfirmationModal({
+        isOpen: true,
+        title: ui?.dashboard?.replaceTrackAudioConfirmTitle ?? "Replace this track's audio?",
+        message:
+          ui?.dashboard?.replaceTrackAudioConfirmMessage ??
+          'After processing completes, the previous master file and all generated versions will be removed automatically.',
+        variant: 'warning',
+        confirmText: ui?.dashboard?.replaceTrackAudioConfirm ?? 'Replace',
+        irreversibleHint: null,
+        onConfirm: () => {
+          setConfirmationModal(null);
+          void executeReplaceTrackAudio(albumId, trackId, trackTitle, file);
+        },
+      });
+    },
+    [emailVerified, executeReplaceTrackAudio, ui?.dashboard]
+  );
+
   const handleTrackUpload = async (albumId: string, files: FileList) => {
     if (!emailVerified) return;
     if (isUploadingTracks[albumId]) {
@@ -1456,31 +1767,47 @@ function UserDashboard() {
         // Обновляем прогресс: завершение (100%)
         setUploadProgress((prev) => ({ ...prev, [albumId]: 100 }));
 
+        const processingByTrackId = new Map(
+          (result.data ?? []).map((entry) => [
+            entry.trackId,
+            {
+              processingStatus: (entry as { processingStatus?: TrackData['processingStatus'] })
+                .processingStatus,
+              processingError: (entry as { processingError?: string }).processingError,
+            },
+          ])
+        );
+
         // Оптимистичное обновление: сразу добавляем новые треки в локальное состояние
         setAlbumsData((prevAlbums) => {
           return prevAlbums.map((album) => {
             if (album.albumId === albumId || album.id === albumId) {
               const maxOrder = album.tracks.reduce((m, t) => Math.max(m, t.order_index ?? 0), 0);
               // Оптимистично: тот же шаг, что на сервере (max + 10, +20, …)
-              const newTracks: TrackData[] = tracksData.map((trackData, i) => ({
-                id: trackData.trackId,
-                title: trackData.translations[lang]?.title ?? '',
-                order_index: maxOrder + TRACK_ORDER_INDEX_STEP * (i + 1),
-                duration: `${Math.floor(trackData.duration / 60)}:${Math.floor(
-                  trackData.duration % 60
-                )
-                  .toString()
-                  .padStart(2, '0')}`,
-                lyrics: {
-                  albumId,
-                  trackId: trackData.trackId,
-                  lang,
-                  content: '',
-                  syncedLines: null,
-                  state: 'empty' as const,
-                  syncedAt: null,
-                },
-              }));
+              const newTracks: TrackData[] = tracksData.map((trackData, i) => {
+                const processing = processingByTrackId.get(trackData.trackId);
+                return {
+                  id: trackData.trackId,
+                  title: trackData.translations[lang]?.title ?? '',
+                  order_index: maxOrder + TRACK_ORDER_INDEX_STEP * (i + 1),
+                  duration: `${Math.floor(trackData.duration / 60)}:${Math.floor(
+                    trackData.duration % 60
+                  )
+                    .toString()
+                    .padStart(2, '0')}`,
+                  processingStatus: processing?.processingStatus ?? 'pending',
+                  processingError: processing?.processingError,
+                  lyrics: {
+                    albumId,
+                    trackId: trackData.trackId,
+                    lang,
+                    content: '',
+                    syncedLines: null,
+                    state: 'empty' as const,
+                    syncedAt: null,
+                  },
+                };
+              });
 
               return {
                 ...album,
@@ -1489,6 +1816,17 @@ function UserDashboard() {
             }
             return album;
           });
+        });
+
+        setIsUploadingTracks((prev) => {
+          const next = { ...prev };
+          delete next[albumId];
+          return next;
+        });
+        setUploadProgress((prev) => {
+          const next = { ...prev };
+          delete next[albumId];
+          return next;
         });
 
         // Обновляем список альбомов из БД для синхронизации
@@ -1509,8 +1847,30 @@ function UserDashboard() {
           { type: 'trackContentChanged', albumId },
           { artistSlug: resolvePublicArtistSlugForRefresh() }
         );
-        queueTracksUploadedToast(formatUploadedTracksSuccessMessage(uploadedCount, lang, ui));
-        setTracksUploadToastTrigger((n) => n + 1);
+
+        const failedProcessingTracks = (result.data ?? []).filter(
+          (entry) => (entry as { processingStatus?: string }).processingStatus === 'failed'
+        );
+
+        if (failedProcessingTracks.length > 0) {
+          setAlertModal({
+            isOpen: true,
+            title: ui?.dashboard?.trackProcessing?.enqueueFailed ?? 'Processing not started',
+            message:
+              ui?.dashboard?.trackProcessingFailedAfterUpload ??
+              'Tracks were uploaded, but audio processing could not start.',
+            variant: 'warning',
+            retryTracks: {
+              albumId,
+              trackIds: failedProcessingTracks.map(
+                (entry) => (entry as { trackId: string }).trackId
+              ),
+            },
+          });
+        } else {
+          queueTracksUploadedToast(formatUploadedTracksSuccessMessage(uploadedCount, lang, ui));
+          setTracksUploadToastTrigger((n) => n + 1);
+        }
       } else {
         throw new Error(result.error || 'Failed to upload tracks');
       }
@@ -1808,6 +2168,7 @@ function UserDashboard() {
           <AlbumCreatedToast triggerKey={editAlbumModal} />
           <TracksUploadedToast triggerKey={tracksUploadToastTrigger} />
           <AlbumDeletedToast triggerKey={albumDeletedToastTrigger} />
+          <TrackDeletedToast triggerKey={trackDeletedToastTrigger} />
           <ArticleDeletedToast triggerKey={articleDeletedToastTrigger} />
           <ArticleEditorToast triggerKey={articleEditorToastTrigger} />
           <LyricsSyncSavedToast triggerKey={lyricsSyncSavedToastTrigger} />
@@ -1972,6 +2333,8 @@ function UserDashboard() {
                             userId={userId}
                             trackUploadSectionRefs={trackUploadSectionRefs}
                             fileInputRefs={fileInputRefs}
+                            pendingTrackUploadAlbumId={pendingTrackUploadAlbumId}
+                            onPendingTrackUploadHandled={handlePendingTrackUploadHandled}
                             onCreateAlbum={() => setEditAlbumModal({ isOpen: true })}
                             onEditAlbum={(albumId) => setEditAlbumModal({ isOpen: true, albumId })}
                             onToggleAlbum={toggleAlbum}
@@ -1987,6 +2350,10 @@ function UserDashboard() {
                             onDeleteAlbum={handleDeleteAlbum}
                             onPublishAlbum={handlePublishAlbum}
                             onLyricsAction={handleLyricsAction}
+                            retryingTrackProcessingId={retryingTrackProcessingId}
+                            onRetryTrackProcessing={handleRetryTrackProcessing}
+                            replacingTrackId={replacingTrackId}
+                            onReplaceTrackAudio={handleReplaceTrackAudioRequest}
                           />
                         </div>
                       ) : null}
@@ -2296,6 +2663,7 @@ function UserDashboard() {
                   }
                   setExpandedAlbumId(searchAlbumId);
                   setScrollToAlbumUploadId(searchAlbumId);
+                  setPendingTrackUploadAlbumId(searchAlbumId);
                 }
               } catch (error: any) {
                 // ConditionError - это нормально, condition отменил запрос
@@ -2342,6 +2710,20 @@ function UserDashboard() {
             message={alertModal.message}
             variant={alertModal.variant}
             onClose={() => setAlertModal(null)}
+            secondaryButton={
+              alertModal.retryTracks
+                ? {
+                    text:
+                      ui?.dashboard?.trackProcessing?.retryProcessing ??
+                      ui?.dashboard?.trackProcessing?.retry ??
+                      'Retry processing',
+                    onClick: () => {
+                      void handleRetryTracksFromAlert();
+                    },
+                    disabled: Boolean(retryingTrackProcessingId),
+                  }
+                : undefined
+            }
           />
         )}
 

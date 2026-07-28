@@ -1,5 +1,6 @@
 import { createReadStream, promises as fs } from 'node:fs';
 import { createClient } from '@supabase/supabase-js';
+import { pipelineTrace } from './pipelineTrace.js';
 import type { PipelineStorage } from '../pipeline/types.js';
 
 const BUCKET = 'user-media';
@@ -18,15 +19,18 @@ export function createPipelineStorage(): PipelineStorage {
 
   return {
     async downloadToFile(storagePath, localPath) {
+      pipelineTrace('storage.download start', { storagePath, localPath });
       const { data, error } = await supabase.storage.from(BUCKET).download(storagePath);
       if (error || !data) {
         throw new Error(`Download failed for ${storagePath}: ${error?.message ?? 'no data'}`);
       }
       const buf = Buffer.from(await data.arrayBuffer());
       await fs.writeFile(localPath, buf);
+      pipelineTrace('storage.download completed', { storagePath, bytes: buf.length });
     },
 
     async uploadFile(storagePath, localPath, contentType) {
+      pipelineTrace('storage.upload start', { storagePath, localPath, contentType });
       const stream = createReadStream(localPath);
       const { error } = await supabase.storage.from(BUCKET).upload(storagePath, stream, {
         upsert: true,
@@ -35,6 +39,7 @@ export function createPipelineStorage(): PipelineStorage {
       if (error) {
         throw new Error(`Upload failed for ${storagePath}: ${error.message}`);
       }
+      pipelineTrace('storage.upload completed', { storagePath });
     },
   };
 }

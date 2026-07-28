@@ -32,6 +32,7 @@ import {
   isTrackPlaybackBlocked,
   resolveFirstPlayableIndex,
 } from '@shared/lib/tracks/trackPlayback';
+import { AlbumTracksEmptyState } from './AlbumTracksEmptyState';
 import './style.scss';
 
 /** Сигнатура для React.memo — иначе при смене visibility/playbackLocked без смены albumId список не обновлялся. */
@@ -69,7 +70,15 @@ function transformTracksForStorage(tracks: TrackDetails[], albumUserId?: string)
  * Компонент отображает список треков и управляет аудиоплеером.
  * Клик по треку запускает воспроизведение, меню открывает текст песни.
  */
-const AlbumTracksComponent = ({ album }: { album: AlbumDetails }) => {
+const AlbumTracksComponent = ({
+  album,
+  isOwner = false,
+  ownerDashboardAlbumId,
+}: {
+  album: AlbumDetails;
+  isOwner?: boolean;
+  ownerDashboardAlbumId?: string | null;
+}) => {
   const dispatch = useAppDispatch();
   const store = useStore<RootState>();
   const activeIndexRef = useRef(0);
@@ -467,9 +476,38 @@ const AlbumTracksComponent = ({ album }: { album: AlbumDetails }) => {
   );
 
   const playText = ui?.buttons?.playButton ?? 'Play';
+
+  if (albumPageTracks.length === 0) {
+    return (
+      <>
+        <h2 className="album-title">{album.title}</h2>
+
+        {displayArtistLabel !== '—' && (
+          <h3 className="album-artist">
+            {artistSlugFromUrl ? (
+              <Link to={artistHubPath}>{displayArtistLabel}</Link>
+            ) : (
+              displayArtistLabel
+            )}
+          </h3>
+        )}
+
+        <AlbumTracksEmptyState
+          ui={ui}
+          isOwner={isOwner}
+          ownerDashboardAlbumId={ownerDashboardAlbumId ?? album.albumId}
+        />
+      </>
+    );
+  }
+
   return renderBlock({ tracks: albumPageTracks, playText });
 };
 
 export default React.memo(AlbumTracksComponent, (prevProps, nextProps) => {
-  return albumTracksMemoSignature(prevProps.album) === albumTracksMemoSignature(nextProps.album);
+  return (
+    albumTracksMemoSignature(prevProps.album) === albumTracksMemoSignature(nextProps.album) &&
+    prevProps.isOwner === nextProps.isOwner &&
+    prevProps.ownerDashboardAlbumId === nextProps.ownerDashboardAlbumId
+  );
 });

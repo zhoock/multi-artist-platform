@@ -67,18 +67,20 @@
 
 3. **Запуск:**
 
-   | Команда                         | Назначение                                                                |
-   | ------------------------------- | ------------------------------------------------------------------------- |
-   | `npm start`                     | Только frontend (webpack dev server на порту 8080), без Netlify Functions |
-   | `npm run dev` или `netlify dev` | Полный dev: frontend + Netlify Functions. Сайт: `http://localhost:8888`   |
-   | `npm run build`                 | Production-сборка в папку `dist`                                          |
+   | Команда              | Назначение                                                                |
+   | -------------------- | ------------------------------------------------------------------------- |
+   | `npm run dev:docker` | **Рекомендуется:** Netlify Dev + Audio Asset Worker в Docker (prod-like)  |
+   | `npm run dev:all`    | Netlify Dev + воркер на хосте (нужен `brew install ffmpeg`)               |
+   | `npm start`          | Только frontend (webpack dev server на порту 8080), без Netlify Functions |
+   | `npm run dev`        | Netlify Dev без воркера (предупреждение, если воркер недоступен)          |
+   | `npm run build`      | Production-сборка в папку `dist`                                          |
 
    Для проверки работы после клонирования:
 
    ```bash
    npm install
    source scripts/load-netlify-env.sh   # если есть доступ к Netlify
-   netlify dev
+   npm run dev:docker
    ```
 
    Откройте в браузере `http://localhost:8888` и убедитесь, что главная страница и разделы открываются.

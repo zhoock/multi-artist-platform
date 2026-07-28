@@ -48,6 +48,14 @@ dialog {
       &--access-menu-open {
         background: var(--dashboard-hover-bg);
       }
+
+      &:has(.user-dashboard__track-processing) {
+        flex-wrap: wrap;
+        align-items: flex-start;
+        height: auto;
+        min-height: calc(var(--ms-0) * 2 + #{$expanded-track-title-control-height});
+        padding-block: var(--ms-01);
+      }
     }
 
     &__expanded-track-drag {
@@ -118,7 +126,6 @@ dialog {
       font-size: 0.75rem;
       font-weight: 600;
       line-height: 1.3;
-      text-transform: capitalize;
       background: rgb(255 255 255 / 8%);
       border-radius: var(--ms-02);
 
@@ -126,6 +133,34 @@ dialog {
         color: var(--error-color, #e57373);
         background: rgb(229 115 115 / 12%);
       }
+
+      &--processing {
+        color: var(--dark-greenish-yellow, #c9a227);
+        background: rgb(201 162 39 / 12%);
+      }
+
+      &--enqueue-failed {
+        color: var(--dark-greenish-yellow, #c9a227);
+        background: rgb(201 162 39 / 12%);
+      }
+    }
+
+    &__track-processing {
+      display: inline-flex;
+      flex: 1 1 100%;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: flex-end;
+      gap: var(--ms-02);
+      order: 10;
+      margin-top: var(--ms-02);
+    }
+
+    &__track-processing-retry {
+      min-height: 1.75rem;
+      padding: 0.15rem 0.55rem !important;
+      font-size: 0.75rem !important;
+      line-height: 1.2 !important;
     }
 
     &__expanded-track-access-slot {

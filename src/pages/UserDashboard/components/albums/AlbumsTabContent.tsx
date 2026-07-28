@@ -41,6 +41,7 @@ import { DashboardExpandChevron } from '../../lib/dashboardExpandChevron';
 import { useDashboardAccordionOnboarding } from '../../lib/dashboardAccordionOnboarding';
 import { AlbumAccessControl } from './AlbumAccessControl';
 import { AlbumLifecycleBadge } from './AlbumLifecycleBadge';
+import { AlbumNoTracksEmptyState } from './AlbumNoTracksEmptyState';
 import { AlbumsEmptyState } from './AlbumsEmptyState';
 import { getAlbumVisibilityFromIsPublic } from './albumVisibilityOptions';
 import { SortableTrackItem } from './SortableTrackItem';
@@ -65,6 +66,8 @@ type AlbumsTabContentProps = {
   userId: string | null;
   trackUploadSectionRefs: React.MutableRefObject<Record<string, HTMLDivElement | null>>;
   fileInputRefs: React.MutableRefObject<Record<string, HTMLInputElement | null>>;
+  pendingTrackUploadAlbumId?: string | null;
+  onPendingTrackUploadHandled?: () => void;
   onCreateAlbum: () => void;
   onEditAlbum: (albumId: string) => void;
   onToggleAlbum: (albumId: string) => void;
@@ -90,6 +93,10 @@ type AlbumsTabContentProps = {
     trackId: string,
     trackTitle: string
   ) => void;
+  retryingTrackProcessingId?: string | null;
+  onRetryTrackProcessing?: (albumId: string, trackId: string) => void;
+  replacingTrackId?: string | null;
+  onReplaceTrackAudio?: (albumId: string, trackId: string, trackTitle: string, file: File) => void;
 };
 
 const albumTrackKey = (albumId: string, trackId: string) => `${albumId}:${trackId}`;
@@ -112,6 +119,8 @@ export function AlbumsTabContent({
   userId,
   trackUploadSectionRefs,
   fileInputRefs,
+  pendingTrackUploadAlbumId,
+  onPendingTrackUploadHandled,
   onCreateAlbum,
   onEditAlbum,
   onToggleAlbum,
@@ -125,6 +134,10 @@ export function AlbumsTabContent({
   onDeleteAlbum,
   onPublishAlbum,
   onLyricsAction,
+  retryingTrackProcessingId,
+  onRetryTrackProcessing,
+  replacingTrackId,
+  onReplaceTrackAudio,
 }: AlbumsTabContentProps) {
   const [expandedTrackId, setExpandedTrackId] = useState<string | null>(null);
 
@@ -171,6 +184,30 @@ export function AlbumsTabContent({
     }
   }, [expandedAlbumId]);
 
+  const openTrackUploadForAlbum = useCallback(
+    (albumId: string) => {
+      const input = fileInputRefs.current[albumId];
+      if (input) {
+        input.click();
+      }
+    },
+    [fileInputRefs]
+  );
+
+  useEffect(() => {
+    if (!pendingTrackUploadAlbumId || expandedAlbumId !== pendingTrackUploadAlbumId) {
+      return;
+    }
+
+    openTrackUploadForAlbum(pendingTrackUploadAlbumId);
+    onPendingTrackUploadHandled?.();
+  }, [
+    pendingTrackUploadAlbumId,
+    expandedAlbumId,
+    openTrackUploadForAlbum,
+    onPendingTrackUploadHandled,
+  ]);
+
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
@@ -189,11 +226,6 @@ export function AlbumsTabContent({
         (lang !== 'ru'
           ? 'Upload album cover art to publish this album.'
           : 'Загрузите обложку альбома для публикации.'),
-      tracks:
-        ui?.dashboard?.albumPublishHintNeedsTracks ??
-        (lang !== 'ru'
-          ? 'Upload at least one track to publish this album.'
-          : 'Загрузите хотя бы один трек для публикации альбома.'),
       fields:
         ui?.dashboard?.albumPublishHintNeedsFields ??
         (lang !== 'ru'
@@ -409,6 +441,32 @@ export function AlbumsTabContent({
                           />
                         </div>
                       </div>
+                    ) : album.tracks.length === 0 ? (
+                      <>
+                        <input
+                          ref={(el) => {
+                            fileInputRefs.current[album.id] = el;
+                          }}
+                          type="file"
+                          multiple
+                          accept="audio/*"
+                          style={{ display: 'none' }}
+                          onChange={(e) => {
+                            const files = e.target.files;
+                            if (files && files.length > 0) {
+                              onTrackUpload(album.id, files);
+                            }
+                            if (e.target) {
+                              e.target.value = '';
+                            }
+                          }}
+                        />
+                        <AlbumNoTracksEmptyState
+                          ui={ui}
+                          onUploadTracks={() => openTrackUploadForAlbum(album.id)}
+                          className="user-dashboard__album-no-tracks-empty"
+                        />
+                      </>
                     ) : (
                       <>
                         <div className="user-dashboard__track-upload-text">
@@ -436,12 +494,7 @@ export function AlbumsTabContent({
                           variant="outline"
                           className="user-dashboard__choose-files-button"
                           disabled={isUploadingTracks[album.id]}
-                          onClick={() => {
-                            const input = fileInputRefs.current[album.id];
-                            if (input) {
-                              input.click();
-                            }
-                          }}
+                          onClick={() => openTrackUploadForAlbum(album.id)}
                         >
                           {ui?.dashboard?.chooseFiles ?? 'Choose files'}
                         </DashboardButton>
@@ -479,6 +532,12 @@ export function AlbumsTabContent({
                                 onLyricsAction={onLyricsAction}
                                 rowFlash={dashboardRowFlashes[`dashboard-track-row-${track.id}`]}
                                 ui={ui ?? undefined}
+                                retryingTrackProcessingId={retryingTrackProcessingId}
+                                onRetryTrackProcessing={onRetryTrackProcessing}
+                                replacingTrackId={replacingTrackId}
+                                onReplaceTrackAudio={onReplaceTrackAudio}
+                                replaceAudioDisabled={Boolean(isUploadingTracks[album.id])}
+                                suppressProcessingStatus={Boolean(isUploadingTracks[album.id])}
                               />
                             );
                           })}
@@ -525,13 +584,11 @@ export function AlbumsTabContent({
                               </>
                             )}
                           </button>
-                          {!canPublishAlbum ? (
+                          {!canPublishAlbum && publishHintKey !== 'tracks' ? (
                             <p className="user-dashboard__publish-album-hint">
                               {publishHintKey === 'cover'
                                 ? publishHintCopy.cover
-                                : publishHintKey === 'tracks'
-                                  ? publishHintCopy.tracks
-                                  : publishHintCopy.fields}
+                                : publishHintCopy.fields}
                             </p>
                           ) : null}
                         </div>

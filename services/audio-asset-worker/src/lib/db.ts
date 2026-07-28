@@ -2,23 +2,36 @@ import type pg from 'pg';
 import type { PipelineOutputDefinition } from '../../../../src/shared/lib/audio/audioAssetPipelineConfig.js';
 import { GENERATOR_VERSIONS } from '../../../../src/shared/lib/audio/audioAssetPipelineConfig.js';
 import type { PipelineDb } from '../pipeline/types.js';
+import { pipelineTrace, pipelineTraceWarn, type PipelineTraceContext } from './pipelineTrace.js';
 import { getPool } from './pool.js';
 
 /** Advisory lock class id for per-track audio processing jobs. */
 export const TRACK_PROCESS_LOCK_CLASS = 0x415544; // 'AUD'
 
-export function createPipelineDb(client: pg.PoolClient): PipelineDb {
+export function createPipelineDb(client: pg.PoolClient, trace?: PipelineTraceContext): PipelineDb {
+  const logDbWrite = (
+    operation: string,
+    rowCount: number | null,
+    params: Record<string, unknown>
+  ) => {
+    pipelineTrace(`db.${operation}`, { rowCount, ...params }, trace);
+    if (rowCount === 0) {
+      pipelineTraceWarn(`db.${operation} ZERO ROWS`, params, trace);
+    }
+  };
+
   return {
     async setProcessingStatus(trackDbId, status, error = null) {
-      await client.query(
+      const res = await client.query(
         `UPDATE tracks SET processing_status = $2, processing_error = $3, updated_at = CURRENT_TIMESTAMP WHERE id = $1`,
         [trackDbId, status, error]
       );
+      logDbWrite('setProcessingStatus', res.rowCount, { trackDbId, status, error });
     },
 
     async markAssetProcessing(trackDbId, output: PipelineOutputDefinition) {
       const generatorVersion = GENERATOR_VERSIONS[output.generator] ?? 1;
-      await client.query(
+      const res = await client.query(
         `INSERT INTO track_assets (
           track_id, type, format, variant, generator, generator_version, status, path, metadata
         ) VALUES ($1, $2, $3, $4, $5, $6, 'processing', NULL, '{}')
@@ -31,10 +44,18 @@ export function createPipelineDb(client: pg.PoolClient): PipelineDb {
           updated_at = CURRENT_TIMESTAMP`,
         [trackDbId, output.type, output.format, output.variant, output.generator, generatorVersion]
       );
+      logDbWrite('markAssetProcessing', res.rowCount, {
+        trackDbId,
+        type: output.type,
+        format: output.format,
+        variant: output.variant,
+        generator: output.generator,
+        generatorVersion,
+      });
     },
 
     async markAssetReady(trackDbId, output, path, generatorVersion, metadata) {
-      await client.query(
+      const res = await client.query(
         `UPDATE track_assets SET
           status = 'ready',
           path = $5,
@@ -53,10 +74,18 @@ export function createPipelineDb(client: pg.PoolClient): PipelineDb {
           JSON.stringify(metadata),
         ]
       );
+      logDbWrite('markAssetReady', res.rowCount, {
+        trackDbId,
+        type: output.type,
+        format: output.format,
+        variant: output.variant,
+        path,
+        generatorVersion,
+      });
     },
 
     async markAssetFailed(trackDbId, output, error) {
-      await client.query(
+      const res = await client.query(
         `UPDATE track_assets SET
           status = 'failed',
           error = $5,
@@ -64,13 +93,54 @@ export function createPipelineDb(client: pg.PoolClient): PipelineDb {
         WHERE track_id = $1 AND type = $2 AND format = $3 AND variant = $4`,
         [trackDbId, output.type, output.format, output.variant, error.slice(0, 4000)]
       );
+      logDbWrite('markAssetFailed', res.rowCount, {
+        trackDbId,
+        type: output.type,
+        format: output.format,
+        variant: output.variant,
+        error: error.slice(0, 200),
+      });
     },
 
     async syncLegacySrc(trackDbId, publicUrl) {
-      await client.query(
+      const res = await client.query(
         `UPDATE tracks SET src = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $1`,
         [trackDbId, publicUrl]
       );
+      logDbWrite('syncLegacySrc', res.rowCount, { trackDbId, publicUrl });
+    },
+
+    async snapshotTrackAssets(trackDbId) {
+      const res = await client.query<{
+        type: string;
+        format: string;
+        variant: string;
+        status: string;
+        path: string | null;
+      }>(
+        `SELECT type, format, variant, status, path
+         FROM track_assets
+         WHERE track_id = $1
+         ORDER BY type, format, variant`,
+        [trackDbId]
+      );
+      pipelineTrace(
+        'db.snapshotTrackAssets',
+        { trackDbId, rowCount: res.rowCount, rows: res.rows },
+        trace
+      );
+    },
+
+    async countNotReadyAssets(trackDbId) {
+      const res = await client.query<{ count: string }>(
+        `SELECT COUNT(*)::text AS count
+         FROM track_assets
+         WHERE track_id = $1 AND status <> 'ready'`,
+        [trackDbId]
+      );
+      const count = parseInt(res.rows[0]?.count ?? '0', 10);
+      pipelineTrace('db.countNotReadyAssets', { trackDbId, notReadyCount: count }, trace);
+      return count;
     },
   };
 }
@@ -83,7 +153,8 @@ export type TrackJobRunResult = 'completed' | 'skipped';
  */
 export async function runWithTrackProcessingLock(
   trackDbId: string,
-  fn: (db: PipelineDb) => Promise<void>
+  fn: (db: PipelineDb) => Promise<void>,
+  trace?: PipelineTraceContext
 ): Promise<TrackJobRunResult> {
   const pool = getPool();
   const client = await pool.connect();
@@ -95,10 +166,13 @@ export async function runWithTrackProcessingLock(
     );
 
     if (!lockResult.rows[0]?.acquired) {
+      pipelineTraceWarn('advisory lock not acquired — job skipped', { trackDbId }, trace);
       return 'skipped';
     }
 
-    const db = createPipelineDb(client);
+    pipelineTrace('advisory lock acquired', { trackDbId }, trace);
+
+    const db = createPipelineDb(client, trace);
     await fn(db);
     return 'completed';
   } finally {

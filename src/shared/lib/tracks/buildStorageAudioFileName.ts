@@ -11,15 +11,22 @@ export function safeAudioExtension(originalFileName: string): string {
   return ALLOWED_AUDIO_EXT.test(cleaned) ? cleaned.toLowerCase() : 'mp3';
 }
 
-/** Базовое имя файла (без расширения) → безопасный фрагмент для ключа в Storage. */
+/** Базовое имя файла (без расширения) → безопасный ASCII-фрагмент для ключа в Storage. */
 export function slugifyOriginalFileBaseForStorage(rawFileName: string, maxLen = 96): string {
   const withoutExt = rawFileName.replace(/\.[^/.]+$/, '').trim();
   const base = withoutExt || 'track';
+  // Supabase signed upload rejects non-ASCII object keys — keep slug ASCII-only.
   let s = base
-    .replace(/[^\p{L}\p{N}]+/gu, '-')
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9._-]+/g, '-')
+    .replace(/-+/g, '-')
     .replace(/^-+|-+$/g, '')
     .slice(0, maxLen);
-  return s || 'track';
+  if (!s || /^[\d._-]+$/.test(s)) {
+    return 'track';
+  }
+  return s;
 }
 
 export function buildStorageAudioFileName(

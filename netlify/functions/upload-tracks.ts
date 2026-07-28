@@ -45,6 +45,7 @@ import { resolveTrackSrcToSupabasePublicUrl } from './lib/storage-public-url';
 import { TRACK_ORDER_INDEX_STEP } from '../../src/shared/lib/tracks/trackOrderIndex';
 import { tracksTableHasPipelineColumns, trackAssetsTableExists } from './lib/track-pipeline-schema';
 import { enqueueTrackProcessing } from './lib/enqueueTrackProcessing';
+import { markTrackProcessingEnqueueFailed } from './lib/trackProcessingFailure';
 import {
   GENERATOR_VERSIONS,
   PIPELINE_STAGES,
@@ -110,6 +111,7 @@ interface TrackUploadResponse {
     url: string;
     storagePath: string;
     processingStatus?: string;
+    processingError?: string;
   }>;
   error?: string;
 }
@@ -262,8 +264,21 @@ export const handler: Handler = async (
       for (const track of tracksToSave) {
         const { fileName, duration, trackId, storagePath, url } = track;
         const title = track.translations?.[lang as 'en' | 'ru']?.title?.trim() ?? '';
-        const assignedOrderIndex = nextOrderIndex;
-        nextOrderIndex += TRACK_ORDER_INDEX_STEP;
+        const existingTrackRes = await client.query<{
+          id: string;
+          master_path: string | null;
+          order_index: number;
+        }>(
+          `SELECT id, master_path, order_index FROM tracks WHERE album_id = $1 AND track_id = $2 LIMIT 1`,
+          [album.id, trackId]
+        );
+        const isReupload = existingTrackRes.rows.length > 0;
+        const assignedOrderIndex = isReupload
+          ? Number(existingTrackRes.rows[0].order_index)
+          : nextOrderIndex;
+        if (!isReupload) {
+          nextOrderIndex += TRACK_ORDER_INDEX_STEP;
+        }
 
         console.log('💾 [upload-tracks] Saving track to DB:', {
           albumId: album.id,
@@ -316,30 +331,20 @@ export const handler: Handler = async (
         const audioFileSize = optionalPositiveInt(track.audioFileSize);
         const durationForDb = audioDuration ?? duration;
 
-        if (hasPipeline && hasAssetsTable) {
-          const existingTrack = await client.query<{
-            id: string;
-            master_path: string | null;
-          }>(`SELECT id, master_path FROM tracks WHERE album_id = $1 AND track_id = $2 LIMIT 1`, [
-            album.id,
-            trackId,
-          ]);
-
-          if (existingTrack.rows.length > 0) {
-            const existingRow = existingTrack.rows[0];
-            const assetPathsRes = await client.query<{ path: string | null }>(
-              `SELECT path FROM track_assets WHERE track_id = $1::uuid AND path IS NOT NULL`,
-              [existingRow.id]
-            );
-            storagePathsToRemoveAfterCommit.push(
-              ...collectSupersededTrackStoragePaths(
-                userId,
-                masterPathForDb,
-                existingRow.master_path,
-                assetPathsRes.rows.map((row) => row.path)
-              )
-            );
-          }
+        if (hasPipeline && hasAssetsTable && isReupload) {
+          const existingRow = existingTrackRes.rows[0];
+          const assetPathsRes = await client.query<{ path: string | null }>(
+            `SELECT path FROM track_assets WHERE track_id = $1::uuid AND path IS NOT NULL`,
+            [existingRow.id]
+          );
+          storagePathsToRemoveAfterCommit.push(
+            ...collectSupersededTrackStoragePaths(
+              userId,
+              masterPathForDb,
+              existingRow.master_path,
+              assetPathsRes.rows.map((row) => row.path)
+            )
+          );
         }
 
         const insertResult = hasPipeline
@@ -509,7 +514,7 @@ export const handler: Handler = async (
 
     if (enqueueJobs.length > 0) {
       for (const job of enqueueJobs) {
-        void enqueueTrackProcessing({
+        const enqueueResult = await enqueueTrackProcessing({
           userId,
           albumDbId: album.id,
           albumSlug: album.album_id,
@@ -517,6 +522,22 @@ export const handler: Handler = async (
           trackId: job.trackId,
           masterPath: job.masterPath,
         });
+
+        if (!enqueueResult.ok) {
+          console.error('[upload-tracks] Audio processing enqueue failed:', {
+            trackId: job.trackId,
+            trackDbId: job.trackDbId,
+            reason: enqueueResult.reason,
+            message: enqueueResult.message,
+          });
+          await markTrackProcessingEnqueueFailed(job.trackDbId, enqueueResult.message);
+
+          const uploadedEntry = uploadedTracks.find((entry) => entry.trackId === job.trackId);
+          if (uploadedEntry) {
+            uploadedEntry.processingStatus = 'failed';
+            uploadedEntry.processingError = enqueueResult.message;
+          }
+        }
       }
     }
 

@@ -626,6 +626,11 @@ export interface IInterface {
     newPost: string;
     dropTracksHere: string;
     chooseFiles: string;
+    albumNoTracksOwnerTitle?: string;
+    albumNoTracksOwnerDescription?: string;
+    albumNoTracksOwnerAction?: string;
+    albumNoTracksVisitorTitle?: string;
+    albumNoTracksVisitorDescription?: string;
     /** Прогресс загрузки треков в альбом (перед процентом). */
     uploadingTracks: string;
     lyrics: string;
@@ -696,8 +701,26 @@ export interface IInterface {
     editTrack?: string;
     trackTitle?: string;
     deleteTrack?: string;
+    replaceTrackAudio?: string;
+    replaceTrackAudioConfirmTitle?: string;
+    replaceTrackAudioConfirmMessage?: string;
+    replaceTrackAudioConfirm?: string;
     /** aria-label кнопки меню «доступ к треку» в списке треков альбома */
     trackAccessAriaLabel?: string;
+    trackProcessing?: {
+      pending: string;
+      processing: string;
+      enqueueFailed: string;
+      pipelineFailed: string;
+      enqueueFailedHint?: string;
+      pipelineFailedHint?: string;
+      workerUnavailableHint: string;
+      retry: string;
+      retryProcessing: string;
+      retrying: string;
+    };
+    trackProcessingFailedAfterUpload?: string;
+    trackProcessingRetryAllFailed?: string;
     /** Тексты пунктов меню видимости трека */
     trackVisibility?: DashboardTrackVisibilityLabels;
     /** aria-label кнопки доступа к статье (список в кабинете) */
@@ -710,6 +733,8 @@ export interface IInterface {
     deleteAlbum?: string;
     albumDeletedSuccessToast?: string;
     albumDeletedSuccessToastWithTitle?: string;
+    trackDeletedSuccessToast?: string;
+    trackDeletedSuccessToastWithTitle?: string;
     articleDeletedSuccessToast?: string;
     articleDeletedSuccessToastWithTitle?: string;
     errorLoading?: string;

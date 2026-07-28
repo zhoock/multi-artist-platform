@@ -66,6 +66,11 @@ dialog {
 
       display: flex;
       justify-content: flex-end;
+      gap: var(--ms-01);
+    }
+
+    &__button--secondary {
+      @include dashboard-btn-secondary($margin: 0);
     }
 
     &__button {

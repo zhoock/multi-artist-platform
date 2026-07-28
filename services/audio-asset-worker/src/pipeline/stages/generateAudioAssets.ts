@@ -8,19 +8,54 @@ import {
   replaceStorageFileExtension,
 } from '../../../../../src/shared/lib/tracks/trackStoragePaths.js';
 import { runFfmpeg, runFfprobe } from '../../processors/ffmpegTranscoder.js';
+import {
+  pipelineTrace,
+  pipelineTraceWarn,
+  type PipelineTraceContext,
+} from '../../lib/pipelineTrace.js';
 import type { PipelineContext, PipelineStage } from '../types.js';
 
 export const generateAudioAssetsStage: PipelineStage = {
   stageId: 'generate-audio-streams',
   async run(ctx) {
+    const trace: PipelineTraceContext = {
+      trackDbId: ctx.trackDbId,
+      trackId: ctx.trackId,
+    };
     const stage = PIPELINE_STAGES.find((s) => s.stageId === 'generate-audio-streams');
-    if (!stage) return ctx;
+    if (!stage) {
+      pipelineTraceWarn('generate-audio-streams stage definition missing', undefined, trace);
+      return ctx;
+    }
+
+    pipelineTrace(
+      'generate-audio-streams entered',
+      { outputCount: stage.outputs.length, masterPath: ctx.masterPath },
+      trace
+    );
 
     const masterFileName = ctx.masterPath.split('/').pop() || 'track.audio';
 
     for (const output of stage.outputs) {
-      await processFfmpegOutput(ctx, output, masterFileName);
+      pipelineTrace(
+        'generate-audio-streams processing output',
+        {
+          trackDbId: ctx.trackDbId,
+          type: output.type,
+          format: output.format,
+          variant: output.variant,
+          generator: output.generator,
+        },
+        trace
+      );
+      await processFfmpegOutput(ctx, output, masterFileName, trace);
     }
+
+    pipelineTrace(
+      'generate-audio-streams finished',
+      { completedAssets: ctx.completedAssets.length },
+      trace
+    );
     return ctx;
   },
 };
@@ -42,7 +77,8 @@ export const generatePreviewStage: PipelineStage = {
 async function processFfmpegOutput(
   ctx: PipelineContext,
   output: PipelineOutputDefinition,
-  masterFileName: string
+  masterFileName: string,
+  trace: PipelineTraceContext
 ): Promise<void> {
   const derivedFileName = replaceStorageFileExtension(masterFileName, output.extension);
   const storagePath = buildDerivedStoragePath(
@@ -56,13 +92,22 @@ async function processFfmpegOutput(
 
   const localOut = `${ctx.workDir}/${output.type}_${output.format}_${output.variant}.${output.extension}`;
 
+  pipelineTrace('markAssetProcessing calling', { storagePath, localOut }, trace);
   await ctx.db.markAssetProcessing(ctx.trackDbId, output);
 
   try {
+    pipelineTrace('running ffmpeg', { input: ctx.masterLocalPath, output: localOut }, trace);
     const ffmpegOutputArgs = ['-vn', ...(output.ffmpegArgs ?? [])];
     await runFfmpeg(ctx.masterLocalPath, localOut, ffmpegOutputArgs);
+
+    pipelineTrace('running ffprobe on derived file', { localOut }, trace);
     const probe = await runFfprobe(localOut);
 
+    pipelineTrace(
+      'uploading to storage',
+      { storagePath, contentType: contentTypeForExtension(output.extension) },
+      trace
+    );
     await ctx.storage.uploadFile(storagePath, localOut, contentTypeForExtension(output.extension));
 
     const generatorVersion = GENERATOR_VERSIONS[output.generator] ?? 1;
@@ -80,6 +125,7 @@ async function processFfmpegOutput(
       },
     });
 
+    pipelineTrace('markAssetReady calling', { storagePath, generatorVersion }, trace);
     await ctx.db.markAssetReady(ctx.trackDbId, output, storagePath, generatorVersion, {
       bitrate: probe.bitrate,
       sampleRate: probe.sampleRate,
@@ -88,8 +134,10 @@ async function processFfmpegOutput(
       fileSize: probe.fileSize,
       codec: probe.codec,
     });
+    pipelineTrace('output completed successfully', { storagePath }, trace);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
+    pipelineTraceWarn('output failed', { error: message, storagePath }, trace);
     await ctx.db.markAssetFailed(ctx.trackDbId, output, message);
     if (output.type === 'stream' && output.variant === '128k') {
       ctx.primaryStreamFailed = true;

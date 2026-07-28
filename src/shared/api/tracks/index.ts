@@ -12,6 +12,34 @@ import { extractAudioTechnicalMetadata } from '@shared/lib/audio/extractAudioTec
 import { buildStorageAudioFileName } from '@shared/lib/tracks/buildStorageAudioFileName';
 import type { SupportedLang } from '@shared/model/lang';
 
+function formatStorageUploadError(status: number, statusText: string, errorText: string): string {
+  let detail = errorText.trim();
+  if (detail) {
+    try {
+      const parsed = JSON.parse(detail) as {
+        message?: string;
+        error?: string;
+      };
+      detail = parsed.message?.trim() || parsed.error?.trim() || detail;
+    } catch {
+      // keep raw body
+    }
+  }
+
+  if (
+    status === 413 ||
+    /too large|payload too large|entity too large|maximum.*size/i.test(detail)
+  ) {
+    return `File is too large for storage upload.${detail ? ` ${detail}` : ''}`;
+  }
+
+  if (detail) {
+    return `Failed to upload file: ${detail}`;
+  }
+
+  return `Failed to upload file: ${status} ${statusText}`;
+}
+
 export interface TrackUploadData extends AudioTechnicalMetadata {
   fileName: string;
   duration: number;
@@ -303,7 +331,7 @@ export async function prepareAndUploadTrack(
         error: errorText,
       });
       throw new Error(
-        `Failed to upload file: ${uploadResponse.status} ${uploadResponse.statusText}`
+        formatStorageUploadError(uploadResponse.status, uploadResponse.statusText, errorText)
       );
     }
 

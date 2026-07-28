@@ -37,7 +37,7 @@ import {
   removeTrackStoragePaths,
 } from './lib/track-storage-cleanup';
 import { fetchTrackAssetsByAlbumPks, resolvePipelineAvailable } from './lib/track-assets-loader';
-import { tracksTableHasPipelineColumns } from './lib/track-pipeline-schema';
+import { tracksTableHasPipelineColumns, trackAssetsTableExists } from './lib/track-pipeline-schema';
 import { migrateUserAlbumAudioFolderAfterRename } from './lib/migrate-storage-album-folder';
 import { normalizeTrackIdString } from '../../src/shared/lib/tracks/normalizeTrackIdString';
 import { rankToOrderIndex } from '../../src/shared/lib/tracks/trackOrderIndex';
@@ -104,6 +104,7 @@ interface TrackRow {
   audio_duration?: number | string | null;
   audio_file_size?: number | string | null;
   processing_status?: string | null;
+  processing_error?: string | null;
 }
 
 interface AlbumLocalePayload {
@@ -177,6 +178,7 @@ interface TrackData {
   audioDuration?: number | null;
   audioFileSize?: number | null;
   processingStatus?: 'pending' | 'processing' | 'ready' | 'failed';
+  processingError?: string | null;
 }
 
 interface AlbumOwnerSlugRow {
@@ -330,7 +332,9 @@ async function fetchTracksRowsForAlbumPk(albumPk: string): Promise<TrackRow[]> {
   const hasPipeline = await tracksTableHasPipelineColumns();
   const visibilityCol = hasVis ? ',\n                t.visibility' : '';
   const stemsVisibilityCol = hasStemsVis ? ',\n                t.stems_visibility' : '';
-  const pipelineCols = hasPipeline ? `,\n                t.processing_status` : '';
+  const pipelineCols = hasPipeline
+    ? `,\n                t.processing_status,\n                t.processing_error`
+    : '';
   const audioTechCols = hasAudioTech
     ? `,\n                t.audio_container,
                 t.audio_codec,
@@ -635,6 +639,10 @@ function mapAlbumToApiFormat(
         duration: duration ?? 0,
         src: resolvedSrc,
         processingStatus: pipelineAvailable ? processingStatus : undefined,
+        processingError:
+          pipelineAvailable && track.processing_error?.trim()
+            ? track.processing_error.trim()
+            : undefined,
         content: lyrics.content || undefined,
         authorship: lyrics.authorship || track.authorship || undefined,
         lyrics,
@@ -2199,6 +2207,10 @@ export const handler: Handler = async (
 
           // Треки привязаны к UUID строки albums (отдельные строки на ru/en). Нельзя искать только
           // по lang из UI: трек, загруженный в русской версии, иначе не находится при удалении из EN.
+          const hasPipeline = await tracksTableHasPipelineColumns();
+          const hasAssetsTable = await trackAssetsTableExists();
+          const masterPathCol = hasPipeline ? 't.master_path' : 'NULL::text AS master_path';
+
           const trackOwnerResult = await query<{
             src: string | null;
             master_path: string | null;
@@ -2206,7 +2218,7 @@ export const handler: Handler = async (
             album_pk: string;
             lang: string;
           }>(
-            `SELECT t.src, t.master_path, t.id AS track_db_id, a.id AS album_pk, a.lang
+            `SELECT t.src, ${masterPathCol}, t.id AS track_db_id, a.id AS album_pk, a.lang
              FROM tracks t
              INNER JOIN albums a ON a.id = t.album_id
              WHERE a.user_id = $1
@@ -2225,10 +2237,12 @@ export const handler: Handler = async (
 
           const trackRow = trackOwnerResult.rows[0];
 
-          const assetPathsResult = await query<{ path: string | null }>(
-            `SELECT path FROM track_assets WHERE track_id = $1::uuid AND path IS NOT NULL`,
-            [trackRow.track_db_id]
-          ).catch(() => ({ rows: [] as { path: string | null }[] }));
+          const assetPathsResult = hasAssetsTable
+            ? await query<{ path: string | null }>(
+                `SELECT path FROM track_assets WHERE track_id = $1::uuid AND path IS NOT NULL`,
+                [trackRow.track_db_id]
+              ).catch(() => ({ rows: [] as { path: string | null }[] }))
+            : { rows: [] as { path: string | null }[] };
 
           const storagePathsToRemove = new Set<string>();
           for (const candidate of [

@@ -15,6 +15,7 @@ import {
 } from './lib/api-helpers';
 import { query } from './lib/db';
 import { enqueueTrackProcessing } from './lib/enqueueTrackProcessing';
+import { markTrackProcessingEnqueueFailed } from './lib/trackProcessingFailure';
 import { GENERATOR_VERSIONS } from '../../src/shared/lib/audio/audioAssetPipelineConfig';
 import { tracksTableHasPipelineColumns, trackAssetsTableExists } from './lib/track-pipeline-schema';
 
@@ -95,7 +96,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
     [row.id]
   );
 
-  await enqueueTrackProcessing({
+  const enqueueResult = await enqueueTrackProcessing({
     userId,
     albumDbId: row.album_db_id,
     albumSlug: row.album_slug,
@@ -103,6 +104,11 @@ export const handler: Handler = async (event: HandlerEvent) => {
     trackId,
     masterPath: row.master_path,
   });
+
+  if (!enqueueResult.ok) {
+    await markTrackProcessingEnqueueFailed(row.id, enqueueResult.message);
+    return createErrorResponse(503, enqueueResult.message);
+  }
 
   return createSuccessResponse({ trackId, processingStatus: 'pending' }, 200);
 };

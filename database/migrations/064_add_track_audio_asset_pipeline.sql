@@ -54,6 +54,6 @@ COMMENT ON COLUMN track_assets.type IS 'Asset kind: stream, preview, waveform, s
 COMMENT ON COLUMN track_assets.format IS 'Container/encoding: opus, aac, json, webp, …';
 COMMENT ON COLUMN track_assets.variant IS 'Variant label: 128k, 256k, 30s, default, …';
 COMMENT ON COLUMN track_assets.generator IS 'Pipeline generator id: ffmpeg-opus, waveform, loudness, …';
-COMMENT ON COLUMN track_assets.generator_version IS 'Version of generator algorithm; compared to GENERATOR_VERSIONS in app config';
+COMMENT ON COLUMN track_assets.generator_version IS 'Version of generator algorithm, compared to GENERATOR_VERSIONS in app config';
 COMMENT ON COLUMN track_assets.path IS 'Supabase storage path under derived/';
 COMMENT ON COLUMN track_assets.metadata IS 'Type-specific JSON metadata (bitrate, sampleRate, pointCount, …)';

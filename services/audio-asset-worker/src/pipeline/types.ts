@@ -40,6 +40,8 @@ export interface PipelineDb {
     error: string
   ): Promise<void>;
   syncLegacySrc(trackDbId: string, publicUrl: string): Promise<void>;
+  snapshotTrackAssets(trackDbId: string): Promise<void>;
+  countNotReadyAssets(trackDbId: string): Promise<number>;
 }
 
 export interface PipelineStorage {

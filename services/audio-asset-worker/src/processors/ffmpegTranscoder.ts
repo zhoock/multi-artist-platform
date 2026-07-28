@@ -117,3 +117,21 @@ export async function getFfmpegVersionLabel(): Promise<string> {
     proc.on('error', () => resolve('ffmpeg-unknown'));
   });
 }
+
+export type FfmpegToolAvailability = {
+  ffmpeg: boolean;
+  ffprobe: boolean;
+};
+
+/** Returns which CLI tools are on PATH (spawn must not throw ENOENT). */
+export async function checkFfmpegToolsAvailable(): Promise<FfmpegToolAvailability> {
+  const check = (cmd: string) =>
+    new Promise<boolean>((resolve) => {
+      const proc = spawn(cmd, ['-version'], { stdio: ['ignore', 'ignore', 'ignore'] });
+      proc.on('error', () => resolve(false));
+      proc.on('close', (code) => resolve(code === 0));
+    });
+
+  const [ffmpeg, ffprobe] = await Promise.all([check('ffmpeg'), check('ffprobe')]);
+  return { ffmpeg, ffprobe };
+}

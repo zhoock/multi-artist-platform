@@ -72,7 +72,8 @@ dialog {
           min-height: min(360px, 45vh);
           padding: var(--ms-2) var(--ms-1);
 
-          .dashboard-empty-state__inner--tab {
+          .dashboard-empty-state__inner--tab,
+          .empty-state__inner--tab {
             position: static;
             left: auto;
             transform: none;

@@ -270,7 +270,11 @@ export default function Album() {
         </div>
 
         <div className="item">
-          <AlbumTracks album={album} />
+          <AlbumTracks
+            album={album}
+            isOwner={isAlbumOwner}
+            ownerDashboardAlbumId={album.albumId ?? albumId}
+          />
         </div>
 
         {showPurchaseSection === true && (

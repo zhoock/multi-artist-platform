@@ -2,6 +2,7 @@
 
 // Импортируем общий файл с зависимостями
 @use '../../../scss/abstracts/mixins' as *;
+@use '../../../shared/ui/emptyState/style';
 
 .album {
   .album-title {

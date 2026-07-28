@@ -1,0 +1,17 @@
+# Local development — Audio Asset Worker in Docker (ffmpeg/ffprobe like production).
+# Usage: npm run dev:docker  (Netlify + worker)  or  npm run dev:docker:worker  (worker only)
+
+services:
+  audio-asset-worker:
+    build:
+      context: .
+      dockerfile: services/audio-asset-worker/Dockerfile
+    ports:
+      - '${ASSET_WORKER_PORT:-8090}:8090'
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      PORT: '8090'
+      NODE_ENV: production
+    restart: unless-stopped

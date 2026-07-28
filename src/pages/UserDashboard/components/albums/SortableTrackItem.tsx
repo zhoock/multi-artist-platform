@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import clsx from 'clsx';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Pencil as PencilIcon, Trash2 as Trash2Icon } from 'lucide-react';
+import { Pencil as PencilIcon, Trash2 as Trash2Icon, Replace as ReplaceIcon } from 'lucide-react';
 
 import type { TrackData } from '@entities/album/lib/transformEditableAlbumData';
 import type { IInterface, DashboardTrackVisibilityLabels } from '@models';
@@ -31,6 +31,7 @@ import {
 } from '../../lib/useDashboardAccessMenu';
 import { DashboardExpandChevron } from '../../lib/dashboardExpandChevron';
 import { TrackLyricsPanel } from './TrackLyricsPanel';
+import { TrackProcessingStatus } from './TrackProcessingStatus';
 import type { LyricsAction } from './trackLyricsHelpers';
 
 type DashboardUi = NonNullable<IInterface['dashboard']>;
@@ -63,6 +64,12 @@ export type SortableTrackItemProps = {
   ) => void;
   rowFlash?: DashboardRowFlash;
   ui?: IInterface;
+  retryingTrackProcessingId?: string | null;
+  onRetryTrackProcessing?: (albumId: string, trackId: string) => void;
+  replacingTrackId?: string | null;
+  onReplaceTrackAudio?: (albumId: string, trackId: string, trackTitle: string, file: File) => void;
+  replaceAudioDisabled?: boolean;
+  suppressProcessingStatus?: boolean;
 };
 
 export function SortableTrackItem({
@@ -79,6 +86,12 @@ export function SortableTrackItem({
   onLyricsAction,
   rowFlash,
   ui,
+  retryingTrackProcessingId,
+  onRetryTrackProcessing,
+  replacingTrackId,
+  onReplaceTrackAudio,
+  replaceAudioDisabled = false,
+  suppressProcessingStatus = false,
 }: SortableTrackItemProps) {
   const { lang } = useLang();
   const { monetizationEnabled } = useArtistMonetization();
@@ -89,6 +102,7 @@ export function SortableTrackItem({
   const [isEditing, setIsEditing] = useState(false);
   const [editedTitle, setEditedTitle] = useState(track.title);
   const inputRef = useRef<HTMLInputElement>(null);
+  const replaceAudioInputRef = useRef<HTMLInputElement>(null);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const {
@@ -335,21 +349,15 @@ export function SortableTrackItem({
 
             <span className="user-dashboard__expanded-track-duration">{track.duration}</span>
 
-            {track.processingStatus && track.processingStatus !== 'ready' ? (
-              <span
-                className={clsx('user-dashboard__track-processing-badge', {
-                  'user-dashboard__track-processing-badge--failed':
-                    track.processingStatus === 'failed',
-                })}
-                title={track.processingStatus}
-              >
-                {track.processingStatus === 'failed'
-                  ? 'Failed'
-                  : track.processingStatus === 'processing'
-                    ? 'Processing'
-                    : 'Pending'}
-              </span>
-            ) : null}
+            <TrackProcessingStatus
+              track={track}
+              ui={ui}
+              albumId={albumId}
+              trackId={track.id}
+              retrying={retryingTrackProcessingId === track.id}
+              onRetry={onRetryTrackProcessing}
+              suppressed={suppressProcessingStatus}
+            />
 
             <span className="user-dashboard__expanded-track-access-slot">
               <button
@@ -371,6 +379,42 @@ export function SortableTrackItem({
             </span>
 
             <div className="user-dashboard__expanded-track-actions">
+              {onReplaceTrackAudio ? (
+                <>
+                  <input
+                    ref={replaceAudioInputRef}
+                    type="file"
+                    accept="audio/*,.wav,.flac,.aiff,.aif,.mp3,.m4a,.ogg,.opus"
+                    style={{ display: 'none' }}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        onReplaceTrackAudio(albumId, track.id, track.title, file);
+                      }
+                      if (e.target) {
+                        e.target.value = '';
+                      }
+                    }}
+                  />
+                  <DashboardButton
+                    variant="icon"
+                    disabled={
+                      replaceAudioDisabled ||
+                      isEditing ||
+                      replacingTrackId === track.id ||
+                      retryingTrackProcessingId === track.id
+                    }
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      replaceAudioInputRef.current?.click();
+                    }}
+                    aria-label={ui?.dashboard?.replaceTrackAudio ?? 'Replace audio'}
+                    title={ui?.dashboard?.replaceTrackAudio ?? 'Replace audio'}
+                  >
+                    <ReplaceIcon {...dashboardActionIconProps()} />
+                  </DashboardButton>
+                </>
+              ) : null}
               <DashboardButton
                 variant="icon"
                 disabled={isEditing}

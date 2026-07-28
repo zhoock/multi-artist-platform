@@ -2,14 +2,27 @@
 
 ## Быстрый старт
 
-> **Важно:** для локальной разработки используйте `npm run dev` (Netlify Dev на **8888**), а не только `npm start` (8080).
-> Файл `dist/_redirects` создаётся только при production-сборке на Netlify; если он остался после `netlify build`, `predev` удалит его автоматически.
+> **Рекомендуется:**
+>
+> - `npm run dev:docker` — Netlify Dev + воркер **в Docker** (ffmpeg как на проде, не нужен `brew install ffmpeg`)
+> - `npm run dev:all` — Netlify Dev + воркер **на хосте** (нужны `ffmpeg`/`ffprobe` в PATH)
+>
+> Только фронт без API: `npm start` (8080). Только Netlify без воркера: `npm run dev`.
 
 1. **Установите зависимости:**
 
    ```bash
    npm install
    ```
+
+   Для `dev:all` (воркер на хосте, без Docker):
+
+   ```bash
+   npm install --prefix services/audio-asset-worker
+   brew install ffmpeg   # macOS — только для dev:all / dev:worker
+   ```
+
+   Для `dev:docker` нужен [Docker Desktop](https://www.docker.com/products/docker-desktop/) (или Docker Engine + Compose).
 
 2. **Настройте переменные окружения:**
 
@@ -26,19 +39,52 @@
    # Отредактируйте .env и заполните переменные вручную
    ```
 
+   Для обработки аудио после загрузки треков добавьте в `.env`:
+
+   ```bash
+   ASSET_WORKER_URL=http://localhost:8090
+   ASSET_WORKER_WEBHOOK_SECRET=dev-secret-change-me
+   ```
+
 3. **Запустите локальный сервер:**
 
    ```bash
-   netlify dev
+   npm run dev:docker
    ```
 
    Откройте в браузере: `http://localhost:8888`
 
+## Команды
+
+| Команда                     | Назначение                                                               |
+| --------------------------- | ------------------------------------------------------------------------ |
+| `npm run dev:docker`        | **Рекомендуется:** Netlify Dev + Audio Asset Worker в Docker (prod-like) |
+| `npm run dev:all`           | Netlify Dev + воркер на хосте (нужен локальный ffmpeg)                   |
+| `npm run dev`               | Только Netlify Dev (с предупреждением, если воркер недоступен)           |
+| `npm run dev:docker:worker` | Только воркер в Docker                                                   |
+| `npm run dev:worker`        | Только воркер на хосте                                                   |
+| `npm run dev:docker:down`   | Остановить Docker-контейнер воркера                                      |
+| `npm run dev:netlify`       | Только Netlify Dev, без проверки воркера                                 |
+| `npm start`                 | Только webpack dev server (без Netlify Functions)                        |
+| `npm run build`             | Production-сборка                                                        |
+
 ## Структура
 
-- **Webpack Dev Server** работает на порту **8080**
-- **Netlify Dev** проксирует запросы на порту **8888**
-- **Netlify Functions** обрабатывают API запросы на `http://localhost:8888/.netlify/functions/*`
+- **Webpack Dev Server** — порт **8080**
+- **Netlify Dev** — прокси на **8888**
+- **Audio Asset Worker** — порт **8090** (FFmpeg, Opus в `derived/`)
+- **Netlify Functions** — `http://localhost:8888/.netlify/functions/*`
+
+При `npm run dev` (без `:all`) в терминале появится предупреждение, если `ASSET_WORKER_URL` задан, но воркер не отвечает на `/health`:
+
+```
+⚠️  Audio Asset Worker is not running.
+   Start it with:
+     npm run dev:worker
+   or run everything together:
+     npm run dev:all
+     npm run dev:docker
+```
 
 ## Переменные окружения
 
@@ -53,12 +99,28 @@
 
 - `NETLIFY_SITE_URL` - URL продакшн сайта (для проксирования API вместо локальных функций)
 - `DEV_PAYMENT_MODE=true` — локальный checkout альбомов и подписок без YooKassa (см. `docs/dev-payment-mode.md`)
+- `ASSET_WORKER_URL` + `ASSET_WORKER_WEBHOOK_SECRET` — обработка аудио после загрузки трека. Без них загрузка проходит, но статус «Обработка не запущена».
 
-## Команды
+## Обработка аудио
 
-- `npm start` - запустить только webpack dev server (без Netlify функций)
-- `netlify dev` - запустить полный dev сервер с Netlify функциями
-- `npm run build` - собрать production версию
+После загрузки WAV Netlify ставит задачу во внешний воркер (FFmpeg).
+
+**Prod-like локально (Docker, ffmpeg внутри образа):**
+
+```bash
+npm run dev:docker
+```
+
+**Быстрее для отладки кода воркера (ffmpeg на хосте):**
+
+```bash
+brew install ffmpeg   # один раз
+npm run dev:all
+```
+
+Проверка: `curl http://localhost:8090/health` → `{"ok":true,"ffmpeg":true,"ffprobe":true}`.
+
+На уже загруженном треке с ошибкой нажмите **«Повторить»** — перезаливать файл не нужно.
 
 ## Проблемы и решения
 
@@ -90,8 +152,19 @@
 
 4. Перезапустите dev сервер:
    ```bash
-   netlify dev
+   npm run dev:all
    ```
+
+### Нет папки `derived/` после загрузки трека
+
+**Проблема:** WAV загружается, но Opus не появляется.
+
+**Решение:**
+
+1. Используйте `npm run dev:docker` (ffmpeg в Docker) или `npm run dev:all` с `brew install ffmpeg`.
+2. Проверьте `ASSET_WORKER_URL` и `ASSET_WORKER_WEBHOOK_SECRET` в `.env`.
+3. Убедитесь, что `ffmpeg` установлен: `ffmpeg -version`.
+4. Нажмите **«Повторить»** на треке со статусом «Обработка не запущена».
 
 ### API запросы возвращают ошибки
 
@@ -101,7 +174,7 @@
 
 1. Убедитесь, что `netlify dev` запущен (не просто `npm start`)
 2. Проверьте, что переменные окружения загружены (особенно `DATABASE_URL`)
-3. Проверьте логи в терминале, где запущен `netlify dev`
+3. Проверьте логи в терминале, где запущен `npm run dev:all`
 
 ### Ошибка "DATABASE_URL is not set!"
 
@@ -119,7 +192,7 @@
 
 3. Убедитесь, что `.env` файл находится в корне проекта
 
-4. Перезапустите `netlify dev`
+4. Перезапустите `npm run dev:all`
 
 ## Разработка без Netlify Dev
 

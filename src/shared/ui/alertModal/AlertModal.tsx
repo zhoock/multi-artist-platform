@@ -19,6 +19,12 @@ export interface AlertModalProps {
   onClose: () => void;
   /** Основная кнопка (OK). Если не задана — вызывается `onClose`. */
   onAction?: () => void;
+  /** Дополнительная кнопка (например, «Повторить»). Не закрывает модалку автоматически. */
+  secondaryButton?: {
+    text: string;
+    onClick: () => void;
+    disabled?: boolean;
+  };
   variant?: 'success' | 'error' | 'warning' | 'info';
 }
 
@@ -30,6 +36,7 @@ export function AlertModal({
   closeLabel = 'Close',
   onClose,
   onAction,
+  secondaryButton,
   variant = 'info',
 }: AlertModalProps) {
   const isDestructive = variant === 'error';
@@ -55,6 +62,21 @@ export function AlertModal({
           <p className="alert-modal__message">{message}</p>
 
           <footer className="alert-modal__footer">
+            {secondaryButton ? (
+              <button
+                type="button"
+                className={clsx(
+                  'alert-modal__button',
+                  'alert-modal__button--secondary',
+                  'dashboard-button',
+                  'dashboard-button--outline'
+                )}
+                disabled={secondaryButton.disabled}
+                onClick={secondaryButton.onClick}
+              >
+                {secondaryButton.text}
+              </button>
+            ) : null}
             <button
               type="button"
               className={clsx(

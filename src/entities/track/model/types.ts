@@ -17,6 +17,8 @@ export type Track = {
   playbackLocked?: boolean;
   /** Aggregate audio pipeline status (dashboard / album page). */
   processingStatus?: 'pending' | 'processing' | 'ready' | 'failed';
+  /** Last pipeline failure message when processingStatus = failed. */
+  processingError?: string | null;
   /** Технические характеристики аудио (извлечены при загрузке файла). */
   audioContainer?: string | null;
   audioCodec?: string | null;

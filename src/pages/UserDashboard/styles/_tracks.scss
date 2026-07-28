@@ -38,6 +38,10 @@ dialog {
       border: 2px dashed var(--dashboard-input-border);
       border-radius: var(--ms-01);
       margin-bottom: var(--ms-01);
+
+      &:has(.user-dashboard__album-no-tracks-empty) {
+        padding: var(--ms-3) var(--ms-1);
+      }
     }
 
     &__track-upload-progress {

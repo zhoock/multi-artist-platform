@@ -39,6 +39,7 @@ export interface TrackData {
   visibility?: TrackVisibility;
   stemsVisibility?: StemsVisibility;
   processingStatus?: 'pending' | 'processing' | 'ready' | 'failed';
+  processingError?: string | null;
 }
 
 function fallbackLyricsBundle(
@@ -140,6 +141,8 @@ export function transformEditableAlbumToAlbumData(
       ),
       processingStatus: (track as { processingStatus?: TrackData['processingStatus'] })
         .processingStatus,
+      processingError: (track as { processingError?: TrackData['processingError'] })
+        .processingError,
     };
   });
 

@@ -2,6 +2,7 @@
 
 @use '../../scss/abstracts/mixins' as *;
 @use '../../scss/abstracts/modal-backdrop' as *;
+@use '../../shared/ui/emptyState/style';
 
 // Импортируем модульные стили
 @use 'styles/layout';
@@ -58,7 +59,8 @@ dialog.popup:has(.user-dashboard) {
       @include dashboard-h2-title;
     }
 
-    .dashboard-empty-state--tab h3.dashboard-empty-state__title {
+    .dashboard-empty-state--tab h3.dashboard-empty-state__title,
+    .dashboard-empty-state--tab h3.empty-state__title {
       margin: 0 0 var(--ms-01);
       font-size: clamp(1.35rem, 3vw, 1.65rem);
       line-height: 1.25;

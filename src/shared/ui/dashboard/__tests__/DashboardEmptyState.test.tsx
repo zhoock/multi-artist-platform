@@ -68,6 +68,6 @@ describe('DashboardEmptyState', () => {
       />
     );
 
-    expect(container.querySelector('.dashboard-empty-state__description--multiline')).toBeTruthy();
+    expect(container.querySelector('.empty-state__description--multiline')).toBeTruthy();
   });
 });

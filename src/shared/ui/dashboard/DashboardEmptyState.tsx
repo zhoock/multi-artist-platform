@@ -1,6 +1,8 @@
 import clsx from 'clsx';
 import type { ReactNode } from 'react';
 
+import { EmptyState, type EmptyStateLayout } from '@shared/ui/emptyState';
+
 type DashboardEmptyStateVariant = 'tab' | 'card';
 
 type DashboardEmptyStateProps = {
@@ -22,45 +24,22 @@ export function DashboardEmptyState({
   className,
   descriptionMultiline = false,
 }: DashboardEmptyStateProps) {
-  const content = (
-    <>
-      {icon ? <div className="dashboard-empty-state__icon">{icon}</div> : null}
-      {variant === 'tab' ? (
-        <h3 className="dashboard-empty-state__title">{title}</h3>
-      ) : (
-        <p className="dashboard-empty-state__title">{title}</p>
-      )}
-      {description ? (
-        <p
-          className={clsx(
-            'dashboard-empty-state__description',
-            descriptionMultiline && 'dashboard-empty-state__description--multiline'
-          )}
-        >
-          {description}
-        </p>
-      ) : null}
-      {action}
-    </>
-  );
-
-  if (variant === 'tab') {
-    return (
-      <div
-        className={clsx('dashboard-empty-state', 'dashboard-empty-state--tab', className)}
-        role="status"
-      >
-        <div className="dashboard-empty-state__inner--tab">{content}</div>
-      </div>
-    );
-  }
+  const layout: EmptyStateLayout = variant;
 
   return (
-    <div
-      className={clsx('dashboard-empty-state', 'dashboard-empty-state--card', className)}
-      role="status"
-    >
-      {content}
-    </div>
+    <EmptyState
+      layout={layout}
+      icon={icon}
+      title={title}
+      description={description}
+      action={action}
+      className={clsx(
+        className,
+        'dashboard-empty-state',
+        variant === 'tab' ? 'dashboard-empty-state--tab' : 'dashboard-empty-state--card'
+      )}
+      descriptionMultiline={descriptionMultiline}
+      actionsVariant="dashboard"
+    />
   );
 }

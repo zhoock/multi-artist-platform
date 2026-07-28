@@ -1,6 +1,7 @@
 // src/pages/UserDashboard/components/mixer/MixerAdmin.tsx
 import React, { useCallback, useMemo, useRef, useState } from 'react';
 import clsx from 'clsx';
+import { useNavigate } from 'react-router-dom';
 import {
   DndContext,
   closestCenter,
@@ -33,6 +34,7 @@ import {
 import './MixerAdmin.scss';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 import { ConfirmationModal } from '@shared/ui/confirmationModal';
+import { AlbumNoTracksEmptyState } from '../albums/AlbumNoTracksEmptyState';
 import { StemAddedToast } from '@shared/ui/stemAddedToast/StemAddedToast';
 import { StemDeletedToast } from '@shared/ui/stemDeletedToast/StemDeletedToast';
 import { queueStemAddedToast } from '@shared/lib/stemAddedToast';
@@ -117,6 +119,7 @@ export function MixerAdmin({ ui, userId, albums = [], tabActive = true }: MixerA
   // ui.dashboard.mixer пока не полностью описан в типах IInterface, берём через any.
   const t = useMemo(() => (ui as any)?.dashboard?.mixer ?? {}, [ui]);
   const { lang } = useLang();
+  const navigate = useNavigate();
 
   const [expandedAlbumId, setExpandedAlbumId] = useState<string | null>(null);
   const [expandedTrackId, setExpandedTrackId] = useState<string | null>(null);
@@ -151,7 +154,6 @@ export function MixerAdmin({ ui, userId, albums = [], tabActive = true }: MixerA
       addStem: t.addStem ?? 'Добавить стем',
       emptyTitle: t.stemsEmptyTitle ?? 'Стемы не добавлены',
       emptyDescription: t.stemsEmptyDescription ?? 'Добавьте первый стем для этого трека.',
-      noTracks: t.noTracks ?? 'Нет треков в альбоме',
       tracks: t.tracks ?? 'Tracks',
     }),
     [t]
@@ -523,7 +525,16 @@ export function MixerAdmin({ ui, userId, albums = [], tabActive = true }: MixerA
                     <div className="user-dashboard__expanded-tracks">
                       <h3 className="visually-hidden">{labels.tracks}</h3>
                       {tracks.length === 0 ? (
-                        <div className="mixer-admin__placeholder">{labels.noTracks}</div>
+                        <AlbumNoTracksEmptyState
+                          ui={ui}
+                          layout="inline"
+                          className="mixer-admin__no-tracks-empty"
+                          onUploadTracks={() =>
+                            navigate(
+                              `/dashboard-new/albums?uploadTracks=${encodeURIComponent(album.id)}`
+                            )
+                          }
+                        />
                       ) : (
                         tracks.map((track, trackIndex) => {
                           const trackKey = stemKey(storageAlbumId, track.id);
