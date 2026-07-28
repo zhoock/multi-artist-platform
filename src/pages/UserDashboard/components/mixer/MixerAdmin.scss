@@ -23,6 +23,10 @@
     flex-direction: column;
     gap: var(--ms-01);
   }
+
+  &__no-tracks-empty {
+    padding: var(--ms-2) var(--ms-1);
+  }
 }
 
 .mixer-stem {

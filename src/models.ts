@@ -843,6 +843,9 @@ export interface IInterface {
       emptyDescription: string;
       createAlbum: string;
       noAlbums?: string;
+      noTracksTitle?: string;
+      noTracksDescription?: string;
+      noTracksAction?: string;
     };
     archive?: {
       title: string;

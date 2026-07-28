@@ -354,6 +354,7 @@ function UserDashboard() {
   const profilePublicSlug = publicProfilePreview.publicSlug;
   const [expandedAlbumId, setExpandedAlbumId] = useState<string | null>(null);
   const [scrollToAlbumUploadId, setScrollToAlbumUploadId] = useState<string | null>(null);
+  const [scrollToAlbumId, setScrollToAlbumId] = useState<string | null>(null);
   const [pendingTrackUploadAlbumId, setPendingTrackUploadAlbumId] = useState<string | null>(null);
   const [publishingAlbumId, setPublishingAlbumId] = useState<string | null>(null);
   const [publishedToastTrigger, setPublishedToastTrigger] = useState(0);
@@ -652,23 +653,43 @@ function UserDashboard() {
     setScrollToAlbumUploadId(null);
   }, [scrollToAlbumUploadId, expandedAlbumId, albumsData]);
 
-  const clearUploadTracksQueryParam = useCallback(() => {
-    const uploadTracksParam = searchParams.get('uploadTracks');
-    if (!uploadTracksParam) {
+  useLayoutEffect(() => {
+    if (!scrollToAlbumId || expandedAlbumId !== scrollToAlbumId) {
       return;
     }
 
-    const nextParams = new URLSearchParams(searchParams.toString());
-    nextParams.delete('uploadTracks');
-    const nextQuery = nextParams.toString();
-    navigate(
-      {
-        pathname: location.pathname,
-        search: nextQuery ? `?${nextQuery}` : '',
-      },
-      { replace: true, state: location.state }
-    );
-  }, [searchParams, navigate, location.pathname, location.state]);
+    const albumRow = document.getElementById(`dashboard-album-row-${scrollToAlbumId}`);
+    if (!albumRow) {
+      return;
+    }
+
+    albumRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setScrollToAlbumId(null);
+  }, [scrollToAlbumId, expandedAlbumId, albumsData]);
+
+  const clearAlbumNavigationQueryParam = useCallback(
+    (paramName: 'uploadTracks' | 'focusAlbum') => {
+      if (!searchParams.get(paramName)) {
+        return;
+      }
+
+      const nextParams = new URLSearchParams(searchParams.toString());
+      nextParams.delete(paramName);
+      const nextQuery = nextParams.toString();
+      navigate(
+        {
+          pathname: location.pathname,
+          search: nextQuery ? `?${nextQuery}` : '',
+        },
+        { replace: true, state: location.state }
+      );
+    },
+    [searchParams, navigate, location.pathname, location.state]
+  );
+
+  const clearUploadTracksQueryParam = useCallback(() => {
+    clearAlbumNavigationQueryParam('uploadTracks');
+  }, [clearAlbumNavigationQueryParam]);
 
   const handlePendingTrackUploadHandled = useCallback(() => {
     setPendingTrackUploadAlbumId(null);
@@ -692,6 +713,24 @@ function UserDashboard() {
     setScrollToAlbumUploadId(album.id);
     setPendingTrackUploadAlbumId(album.id);
   }, [searchParams, albumsData, activeTab]);
+
+  useEffect(() => {
+    const focusAlbumParam = searchParams.get('focusAlbum')?.trim();
+    if (!focusAlbumParam || albumsData.length === 0 || activeTab !== 'albums') {
+      return;
+    }
+
+    const album = albumsData.find(
+      (entry) => entry.id === focusAlbumParam || entry.albumId === focusAlbumParam
+    );
+    if (!album) {
+      return;
+    }
+
+    setExpandedAlbumId(album.id);
+    setScrollToAlbumId(album.id);
+    clearAlbumNavigationQueryParam('focusAlbum');
+  }, [searchParams, albumsData, activeTab, clearAlbumNavigationQueryParam]);
 
   // Загрузка альбомов: всегда force при смене аккаунта/языка,
   // чтобы не показывать данные предыдущего пользователя из Redux-кэша.

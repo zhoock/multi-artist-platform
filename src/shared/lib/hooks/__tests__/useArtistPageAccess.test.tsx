@@ -175,6 +175,69 @@ describe('useArtistPageAccess — album surface reload', () => {
       expect(result.current.showArtistPageSkeleton).toBe(false);
     });
   });
+
+  test('hasPublicReleases на /albums/:id берётся из AlbumDetails, если thin catalog не грузили', async () => {
+    const { result } = renderHook(() => useArtistPageAccess('test-artist'), {
+      wrapper: createWrapper(
+        {
+          ...albumSurfaceState,
+          albumDetails: {
+            status: 'succeeded',
+            error: null,
+            data: {
+              albumId: 'test-album',
+              slug: 'test-album',
+              title: 'Test Album',
+              cover: 'cover.jpg',
+              userId: 'user-1',
+              dbAlbumId: 'db-1',
+              description: '',
+              details: [],
+              release: {},
+              artwork: {
+                photographer: '',
+                photographerURL: '',
+                designer: '',
+                designerURL: '',
+              },
+              purchase: { allowDownloadSale: '', regularPrice: '', currency: '' },
+              serviceButtons: {},
+              visibility: { isPublished: true, isPublic: true },
+              tracks: [
+                {
+                  id: 't1',
+                  title: 'Track',
+                  duration: 180,
+                  src: '',
+                  orderIndex: 0,
+                  playbackLocked: false,
+                  visibility: 'public',
+                  stemsAvailability: 'public',
+                  audioContainer: null,
+                  audioCodec: null,
+                  audioBitrate: null,
+                  audioSampleRate: null,
+                  audioBitDepth: null,
+                  audioChannels: null,
+                  audioDuration: null,
+                  audioFileSize: null,
+                },
+              ],
+            },
+            fetchContextKey: 'albumDetails:test-artist:test-album',
+            artistSlug: 'test-artist',
+            albumId: 'test-album',
+            errorCode: null,
+          },
+        },
+        ['/albums/test-album?artist=test-artist']
+      ),
+    });
+
+    await waitFor(() => {
+      expect(result.current.hasPublicReleases).toBe(true);
+    });
+  });
 });
 
 describe('useArtistPageAccess — articles surface reload', () => {

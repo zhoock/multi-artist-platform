@@ -6,7 +6,7 @@ import {
   GripVertical as GripVerticalIcon,
   Play as PlayIcon,
   Pause as PauseIcon,
-  RefreshCw as RefreshCwIcon,
+  Replace as ReplaceIcon,
   Pencil as PencilIcon,
   Trash2 as Trash2Icon,
 } from 'lucide-react';
@@ -160,7 +160,7 @@ export function SortableStemRow({
               aria-label={labels.replace}
               title={labels.replace}
             >
-              <RefreshCwIcon {...dashboardActionIconProps({ size: 18 })} />
+              <ReplaceIcon {...dashboardActionIconProps({ size: 18 })} />
             </DashboardButton>
             <DashboardButton
               variant="icon"

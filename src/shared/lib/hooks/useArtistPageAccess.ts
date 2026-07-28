@@ -1,7 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLang } from '@app/providers/lang';
 import { useEffectiveLocation } from '@shared/lib/hooks/useEffectiveLocation';
-import { hasPublishedPublicCatalogReleases } from '@entities/album/lib/catalogPublication';
+import {
+  hasPublishedPublicCatalogReleases,
+  albumDetailsHasPublicRelease,
+} from '@entities/album/lib/catalogPublication';
 import {
   selectDashboardAlbumsData,
   selectDashboardAlbumsStatus,
@@ -12,6 +15,8 @@ import {
   selectArtistAlbumCatalogCachedRowCount,
   selectArtistAlbumCatalogArtistMissing,
   selectArtistAlbumCatalogForSurface,
+  selectAlbumDetailsResolved,
+  selectAlbumDetailsMatchesRoute,
 } from '@entities/album';
 import {
   selectArticlesStatus,
@@ -57,6 +62,11 @@ function isAlbumDetailPath(pathname: string): boolean {
   return /^\/(?:en\/)?albums\/[^/]+\/?$/.test(pathname);
 }
 
+function readAlbumIdFromDetailPath(pathname: string): string {
+  const match = pathname.match(/^\/(?:en\/)?albums\/([^/]+)\/?$/);
+  return match?.[1]?.trim() ?? '';
+}
+
 function isStemsPath(pathname: string): boolean {
   return /^\/(?:en\/)?stems(?:\/|$)/.test(pathname);
 }
@@ -95,6 +105,8 @@ export type ArtistPageAccessValue = {
   headerImages: string[];
   isHeaderImagesReady: boolean;
   suppressPublishedArtistChrome: boolean;
+  /** On `/albums/:id`, defer owner builder hero until route AlbumDetails is loaded. */
+  albumDetailsReleaseGatePending: boolean;
   /** Artist has connected payment acceptance — gates collection / exclusive content. */
   monetizationEnabled: boolean;
   /**
@@ -135,10 +147,23 @@ export function useArtistPageAccessState(
 
   /** Public album gates use thin CatalogAlbum only — never Dashboard AlbumEditable. */
   const onAlbumDetail = isAlbumDetailPath(pathname);
-  const hasPublicReleases = useMemo(
-    () => hasPublishedPublicCatalogReleases(thinCatalogSurface),
-    [thinCatalogSurface]
+  const routeAlbumId = onAlbumDetail ? readAlbumIdFromDetailPath(pathname) : '';
+  const albumDetailsForRoute = useAppSelector(selectAlbumDetailsResolved);
+  const albumDetailsMatchesRoute = useAppSelector((state) =>
+    routeAlbumId ? selectAlbumDetailsMatchesRoute(state, artistSlug, routeAlbumId) : false
   );
+  const albumDetailsReleaseGatePending =
+    onAlbumDetail && Boolean(routeAlbumId) && !albumDetailsMatchesRoute;
+  const hasPublicReleases = useMemo(() => {
+    if (hasPublishedPublicCatalogReleases(thinCatalogSurface)) {
+      return true;
+    }
+    // `/albums/:id` skips thin catalog prefetch; infer from loaded AlbumDetails instead.
+    if (onAlbumDetail && albumDetailsMatchesRoute) {
+      return albumDetailsHasPublicRelease(albumDetailsForRoute);
+    }
+    return false;
+  }, [thinCatalogSurface, onAlbumDetail, albumDetailsMatchesRoute, albumDetailsForRoute]);
   const { headerImages, isHeaderImagesReady } = useArtistHeroHeaderImages(
     enabled ? artistSlug : ''
   );
@@ -705,6 +730,7 @@ export function useArtistPageAccessState(
     showArtistPageLayoutPending: showArtistPageLayoutPendingLegacy,
     headerImages,
     isHeaderImagesReady,
+    albumDetailsReleaseGatePending,
     suppressPublishedArtistChrome,
     monetizationEnabled,
     paymentSurfaceReady,

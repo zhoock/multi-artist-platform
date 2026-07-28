@@ -3,6 +3,7 @@ import type { CatalogAlbum } from '../../model/catalogAlbum';
 import {
   filterCatalogAlbumsForArtistPageSurface,
   hasPublishedPublicCatalogReleases,
+  albumDetailsHasPublicRelease,
 } from '../catalogPublication';
 
 const base: CatalogAlbum = {
@@ -25,6 +26,23 @@ describe('catalogPublication', () => {
     expect(hasPublishedPublicCatalogReleases([base])).toBe(true);
     expect(hasPublishedPublicCatalogReleases([{ ...base, trackCount: 0 }])).toBe(false);
     expect(hasPublishedPublicCatalogReleases([{ ...base, isPublic: false }])).toBe(false);
+  });
+
+  test('albumDetailsHasPublicRelease mirrors catalog rules for AlbumDetails payload', () => {
+    expect(
+      albumDetailsHasPublicRelease({
+        title: 'Album',
+        visibility: { isPublished: true, isPublic: true },
+        tracks: [{ id: 't1' }],
+      })
+    ).toBe(true);
+    expect(
+      albumDetailsHasPublicRelease({
+        title: 'Album',
+        visibility: { isPublished: true, isPublic: true },
+        tracks: [],
+      })
+    ).toBe(false);
   });
 
   test('filterCatalogAlbumsForArtistPageSurface hides empty albums for visitors', () => {

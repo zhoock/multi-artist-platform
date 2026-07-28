@@ -22,6 +22,7 @@ const baseAccess = {
   showArtistPageLayoutPending: false,
   headerImages: [],
   isHeaderImagesReady: true,
+  albumDetailsReleaseGatePending: false,
   suppressPublishedArtistChrome: false,
   monetizationEnabled: false,
   paymentSurfaceReady: true,

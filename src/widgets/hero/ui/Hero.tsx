@@ -90,12 +90,16 @@ export function Hero() {
     headerImages,
     isHeaderImagesReady,
     monetizationEnabled,
+    albumDetailsReleaseGatePending,
   } = artistPageAccess;
   const showHeroImageBuilder =
     hasArtistParam &&
     shouldShowArtistPageBuilderBlock(builderVisibility, headerImages.length === 0);
   const showOwnerBuilderHero =
-    hasArtistParam && builderVisibility.canShowBlocks && !hasPublicReleases;
+    hasArtistParam &&
+    builderVisibility.canShowBlocks &&
+    !hasPublicReleases &&
+    !albumDetailsReleaseGatePending;
   const showPageBuilderPreReleaseShell = showOwnerBuilderHero && headerImages.length === 0;
   const showOwnerPreReleaseHeroImage = showOwnerBuilderHero && headerImages.length > 0;
   const showPublishedHeroChrome = hasArtistParam && !showOwnerBuilderHero;

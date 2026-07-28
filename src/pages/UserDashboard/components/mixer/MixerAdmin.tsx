@@ -34,7 +34,6 @@ import {
 import './MixerAdmin.scss';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 import { ConfirmationModal } from '@shared/ui/confirmationModal';
-import { AlbumNoTracksEmptyState } from '../albums/AlbumNoTracksEmptyState';
 import { StemAddedToast } from '@shared/ui/stemAddedToast/StemAddedToast';
 import { StemDeletedToast } from '@shared/ui/stemDeletedToast/StemDeletedToast';
 import { queueStemAddedToast } from '@shared/lib/stemAddedToast';
@@ -56,6 +55,7 @@ import { getDashboardRowFlashProps, useDashboardRowFlash } from '../../lib/dashb
 import { DashboardExpandChevron } from '../../lib/dashboardExpandChevron';
 import { useDashboardAccordionOnboarding } from '../../lib/dashboardAccordionOnboarding';
 import { AddStemModal, type AddStemModalLabels } from './AddStemModal';
+import { MixerNoTracksEmptyState } from './MixerNoTracksEmptyState';
 import { SortableStemRow, type StemRowLabels } from './SortableStemRow';
 import { StemAccessControl } from './StemAccessControl';
 
@@ -525,13 +525,12 @@ export function MixerAdmin({ ui, userId, albums = [], tabActive = true }: MixerA
                     <div className="user-dashboard__expanded-tracks">
                       <h3 className="visually-hidden">{labels.tracks}</h3>
                       {tracks.length === 0 ? (
-                        <AlbumNoTracksEmptyState
+                        <MixerNoTracksEmptyState
                           ui={ui}
-                          layout="inline"
                           className="mixer-admin__no-tracks-empty"
-                          onUploadTracks={() =>
+                          onGoToAlbum={() =>
                             navigate(
-                              `/dashboard-new/albums?uploadTracks=${encodeURIComponent(album.id)}`
+                              `/dashboard-new/albums?focusAlbum=${encodeURIComponent(album.id)}`
                             )
                           }
                         />

@@ -7,6 +7,16 @@ import { renderWithProviders } from '@shared/lib/test-utils';
 import { resetDashboardAccordionOnboardingForTests } from '../../../lib/dashboardAccordionOnboarding';
 import { MixerAdmin } from '../MixerAdmin';
 
+const navigateMock = jest.fn<(path: string) => void>();
+
+jest.mock('react-router-dom', () => {
+  const actual = jest.requireActual<typeof import('react-router-dom')>('react-router-dom');
+  return {
+    ...actual,
+    useNavigate: () => navigateMock,
+  };
+});
+
 const loadStemsMock = jest.fn<(...args: unknown[]) => Promise<unknown>>();
 
 jest.mock('@entities/stem', () => {
@@ -62,6 +72,9 @@ const mixerUi = {
     mixer: {
       stemsEmptyTitle: 'No stems yet',
       stemsEmptyDescription: 'Add the first stem for this track.',
+      noTracksTitle: 'Add a track first',
+      noTracksDescription: 'Stems can only be uploaded for existing tracks.',
+      noTracksAction: 'Go to album',
       addStem: 'Add stem',
       stemsVisibility: {
         public: { title: 'Open to everyone' },
@@ -75,6 +88,7 @@ const mixerUi = {
 describe('MixerAdmin', () => {
   beforeEach(() => {
     resetDashboardAccordionOnboardingForTests();
+    navigateMock.mockReset();
     loadStemsMock.mockReset();
     loadStemsMock.mockResolvedValue({
       stems: [],
@@ -125,6 +139,32 @@ describe('MixerAdmin', () => {
 
     expect(container.querySelector('.dashboard-empty-state--card')).toBeTruthy();
     expect(container.querySelector('.status-badge')).toBeNull();
+  });
+
+  it('shows mixer no-tracks empty state and navigates to albums tab', async () => {
+    const albumWithoutTracks: AlbumData = {
+      ...sampleAlbum,
+      tracks: [],
+    };
+    const user = userEvent.setup();
+
+    renderWithProviders(
+      <MixerAdmin ui={mixerUi as never} userId="user-1" albums={[albumWithoutTracks]} tabActive />,
+      {
+        preloadedState: {
+          lang: { current: 'en' },
+        },
+      }
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Add a track first')).toBeTruthy();
+      expect(screen.getByText('Stems can only be uploaded for existing tracks.')).toBeTruthy();
+    });
+
+    await user.click(screen.getByRole('button', { name: 'Go to album' }));
+
+    expect(navigateMock).toHaveBeenCalledWith('/dashboard-new/albums?focusAlbum=album-1');
   });
 
   it('shows visibility globe button in track header when stems are loaded', async () => {

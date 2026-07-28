@@ -26,7 +26,8 @@ export function AlbumTracksEmptyState({
     : (dashboardCopy?.albumNoTracksVisitorTitle ?? 'No tracks have been published yet.');
 
   const description = isOwner
-    ? (dashboardCopy?.albumNoTracksOwnerDescription ?? 'You can publish the album after that.')
+    ? (dashboardCopy?.albumNoTracksOwnerDescription ??
+      'After publishing, your artist profile will appear in the catalog and search.')
     : (dashboardCopy?.albumNoTracksVisitorDescription ??
       "The artist hasn't added any published tracks to this album yet.");
 

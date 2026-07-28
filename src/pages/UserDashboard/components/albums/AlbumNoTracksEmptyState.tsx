@@ -31,7 +31,10 @@ export function AlbumNoTracksEmptyState({
         />
       }
       title={d?.albumNoTracksOwnerTitle ?? 'Add your first track'}
-      description={d?.albumNoTracksOwnerDescription ?? 'You can publish the album after that.'}
+      description={
+        d?.albumNoTracksOwnerDescription ??
+        'After publishing, your artist profile will appear in the catalog and search.'
+      }
       primaryAction={{
         label: d?.albumNoTracksOwnerAction ?? 'Upload',
         onClick: onUploadTracks,

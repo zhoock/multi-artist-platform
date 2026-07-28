@@ -59,6 +59,7 @@ jest.mock('@shared/lib/hooks/useArtistPageAccess', () => ({
     showArtistPageLayoutPending: false,
     headerImages: [],
     isHeaderImagesReady: true,
+    albumDetailsReleaseGatePending: false,
     suppressPublishedArtistChrome: false,
     monetizationEnabled: false,
     paymentSurfaceReady: true,
