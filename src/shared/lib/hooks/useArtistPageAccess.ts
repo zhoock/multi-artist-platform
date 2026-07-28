@@ -5,7 +5,9 @@ import {
   hasPublishedPublicCatalogReleases,
   albumDetailsHasPublicRelease,
 } from '@entities/album/lib/catalogPublication';
+import { hasPublishedPublicReleases } from '@entities/album/lib/hasPublishedPublicReleases';
 import {
+  fetchDashboardAlbums,
   selectDashboardAlbumsData,
   selectDashboardAlbumsStatus,
   selectArtistAlbumCatalogStatus,
@@ -26,6 +28,7 @@ import {
   selectDashboardArticlesStatus,
 } from '@entities/article';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
+import { useAppDispatch } from '@shared/lib/hooks/useAppDispatch';
 import { buildApiUrl } from '@shared/lib/artistQuery';
 import { buildPublicAlbumsFetchContextKey } from '@shared/lib/publicCatalogCacheKey';
 import { fetchWithAuthSession } from '@shared/lib/authFetch';
@@ -92,6 +95,8 @@ export type ArtistPageAccessValue = {
   ownerContentLoaded: boolean;
   ownerStillNeedsOnboarding: boolean;
   hasPublicReleases: boolean;
+  /** Owner page has visitor-visible body (hero, bio, social) from fetchOwnArtistPageState. */
+  ownerHasPublicPageContent: boolean;
   showOnboarding: boolean;
   showOnboardingSkeleton: boolean;
   showVisitorUnderConstruction: boolean;
@@ -107,6 +112,8 @@ export type ArtistPageAccessValue = {
   suppressPublishedArtistChrome: boolean;
   /** On `/albums/:id`, defer owner builder hero until route AlbumDetails is loaded. */
   albumDetailsReleaseGatePending: boolean;
+  /** On `/stems` etc., defer owner builder hero until thin catalog / dashboard albums settle. */
+  catalogReleaseGatePending: boolean;
   /** Artist has connected payment acceptance — gates collection / exclusive content. */
   monetizationEnabled: boolean;
   /**
@@ -129,6 +136,7 @@ export function useArtistPageAccessState(
 ) {
   const enabled = options.enabled ?? true;
   const { pathname } = useEffectiveLocation();
+  const dispatch = useAppDispatch();
   const { lang } = useLang();
   const catalogArtistMissing = useAppSelector(selectArtistAlbumCatalogArtistMissing);
   const thinCatalogStatus = useAppSelector(selectArtistAlbumCatalogStatus);
@@ -154,16 +162,8 @@ export function useArtistPageAccessState(
   );
   const albumDetailsReleaseGatePending =
     onAlbumDetail && Boolean(routeAlbumId) && !albumDetailsMatchesRoute;
-  const hasPublicReleases = useMemo(() => {
-    if (hasPublishedPublicCatalogReleases(thinCatalogSurface)) {
-      return true;
-    }
-    // `/albums/:id` skips thin catalog prefetch; infer from loaded AlbumDetails instead.
-    if (onAlbumDetail && albumDetailsMatchesRoute) {
-      return albumDetailsHasPublicRelease(albumDetailsForRoute);
-    }
-    return false;
-  }, [thinCatalogSurface, onAlbumDetail, albumDetailsMatchesRoute, albumDetailsForRoute]);
+  const onStems = isStemsPath(pathname);
+  const thinCatalogHasPublicReleases = hasPublishedPublicCatalogReleases(thinCatalogSurface);
   const { headerImages, isHeaderImagesReady } = useArtistHeroHeaderImages(
     enabled ? artistSlug : ''
   );
@@ -181,6 +181,33 @@ export function useArtistPageAccessState(
     return cachedOwner;
   });
   const [isOwner, setIsOwner] = useState(cachedOwner);
+  const hasPublicReleases = useMemo(() => {
+    if (thinCatalogHasPublicReleases) {
+      return true;
+    }
+    // `/albums/:id` skips thin catalog prefetch; infer from loaded AlbumDetails instead.
+    if (onAlbumDetail && albumDetailsMatchesRoute) {
+      return albumDetailsHasPublicRelease(albumDetailsForRoute);
+    }
+    // Owner reload on `/stems`: dashboard albums may resolve release state before UX gates flip.
+    if (
+      isOwner &&
+      onStems &&
+      (dashboardAlbumsStatus === 'succeeded' || dashboardAlbumsStatus === 'failed')
+    ) {
+      return hasPublishedPublicReleases(dashboardAlbums);
+    }
+    return false;
+  }, [
+    thinCatalogHasPublicReleases,
+    onAlbumDetail,
+    albumDetailsMatchesRoute,
+    albumDetailsForRoute,
+    isOwner,
+    onStems,
+    dashboardAlbumsStatus,
+    dashboardAlbums,
+  ]);
   const [ownerNeedsOnboarding, setOwnerNeedsOnboarding] = useState(false);
   const [ownerHasPublicPageContent, setOwnerHasPublicPageContent] = useState(false);
   const [ownerContentLoaded, setOwnerContentLoaded] = useState(false);
@@ -549,6 +576,18 @@ export function useArtistPageAccessState(
     };
   }, [artistSlug, enabled, isOwner, ownerResolved]);
 
+  useEffect(() => {
+    if (!enabled || !isOwner || !ownerResolved || !onStems) return;
+    dispatch(fetchDashboardAlbums({ force: true, ownerDashboard: true })).catch(
+      (error: unknown) => {
+        if ((error as { name?: string })?.name === 'ConditionError') {
+          return;
+        }
+        console.error('[useArtistPageAccess] fetch dashboard albums failed', error);
+      }
+    );
+  }, [dispatch, enabled, isOwner, ownerResolved, onStems]);
+
   const albumsSurfaceRequired = routeRequiresAlbumsSurface(pathname);
   /**
    * Cold start only: block chrome when there is no last-good catalog to show.
@@ -561,6 +600,23 @@ export function useArtistPageAccessState(
       thinCatalogStatus === 'idle' ||
       thinCatalogStatus === 'loading' ||
       (thinCatalogStatus === 'succeeded' && thinCatalogFetchContextKey !== desiredFetchKey));
+
+  const ownerStemsDashboardReleaseGatePending =
+    isOwner &&
+    ownerResolved &&
+    onStems &&
+    !albumsPending &&
+    !thinCatalogHasPublicReleases &&
+    dashboardAlbumsStatus !== 'succeeded' &&
+    dashboardAlbumsStatus !== 'failed';
+
+  const ownerHeroContentGatePending = isOwner && ownerResolved && !ownerContentLoaded;
+
+  /** Defer owner builder hero until thin catalog / dashboard albums settle (e.g. hard reload on `/stems`). */
+  const catalogReleaseGatePending =
+    (albumsSurfaceRequired && !onAlbumDetail && albumsPending) ||
+    ownerStemsDashboardReleaseGatePending ||
+    ownerHeroContentGatePending;
 
   const visitorProfilePending = !isOwner && visitorProfileHasPublicBody === null;
 
@@ -718,6 +774,7 @@ export function useArtistPageAccessState(
     ownerContentLoaded,
     ownerStillNeedsOnboarding,
     hasPublicReleases,
+    ownerHasPublicPageContent,
     showOnboarding,
     showOnboardingSkeleton,
     showVisitorUnderConstruction,
@@ -731,6 +788,7 @@ export function useArtistPageAccessState(
     headerImages,
     isHeaderImagesReady,
     albumDetailsReleaseGatePending,
+    catalogReleaseGatePending,
     suppressPublishedArtistChrome,
     monetizationEnabled,
     paymentSurfaceReady,

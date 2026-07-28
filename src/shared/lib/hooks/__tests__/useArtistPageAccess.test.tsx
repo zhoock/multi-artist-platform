@@ -860,3 +860,122 @@ describe('useArtistPageAccess — owner builder eligibility', () => {
     });
   });
 });
+
+describe('useArtistPageAccess — stems hero release gate', () => {
+  beforeEach(() => {
+    jest.mocked(isAuthenticated).mockReturnValue(true);
+    jest.mocked(getUser).mockReturnValue({ id: 'owner-1' } as never);
+    writeCachedOwnPublicSlug('owner-1', 'test-artist');
+    jest.mocked(fetchWithAuthSession).mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        success: true,
+        data: {
+          publicSlug: 'test-artist',
+          theBand: ['Bio paragraph'],
+          headerImages: ['https://example.com/hero.jpg'],
+          socialLinks: {},
+        },
+      }),
+    } as Response);
+  });
+
+  afterEach(() => {
+    clearCachedOwnPublicSlug();
+    jest.mocked(isAuthenticated).mockReturnValue(false);
+    jest.mocked(getUser).mockReturnValue(null);
+  });
+
+  const ownerStemsBaseState = {
+    lang: { current: 'en' },
+    currentArtist: { publicSlug: 'test-artist' },
+    articles: {
+      status: 'idle' as const,
+      error: null,
+      data: [],
+      lastUpdated: null,
+      lastPublicArtistSlug: null,
+      dashboard: {
+        status: 'idle' as const,
+        error: null,
+        data: [],
+        lastUpdated: null,
+      },
+    },
+    albums: {
+      dashboard: {
+        status: 'idle' as const,
+        error: null,
+        data: [],
+        lastUpdated: null,
+        inFlightFetchContextKey: null,
+      },
+    },
+    artistAlbumCatalog: {
+      status: 'loading' as const,
+      error: null,
+      data: [],
+      lastUpdated: null,
+      fetchContextKey: null,
+      artistMissing: false,
+    },
+  };
+
+  test('держит catalogReleaseGatePending на /stems, пока ownerContentLoaded false', async () => {
+    const { result } = renderHook(() => useArtistPageAccess('test-artist'), {
+      wrapper: createWrapper(ownerStemsBaseState, ['/stems?artist=test-artist']),
+    });
+
+    await waitFor(() => {
+      expect(result.current.isOwner).toBe(true);
+    });
+
+    expect(result.current.catalogReleaseGatePending).toBe(true);
+    expect(result.current.ownerHasPublicPageContent).toBe(false);
+  });
+
+  test('держит catalogReleaseGatePending на /stems, пока thin catalog не загрузился', async () => {
+    const { result } = renderHook(() => useArtistPageAccess('test-artist'), {
+      wrapper: createWrapper(ownerStemsBaseState, ['/stems?artist=test-artist']),
+    });
+
+    await waitFor(() => {
+      expect(result.current.isOwner).toBe(true);
+      expect(result.current.catalogReleaseGatePending).toBe(true);
+      expect(result.current.hasPublicReleases).toBe(false);
+    });
+  });
+
+  test('hasPublicReleases на /stems учитывает опубликованные альбомы из dashboard', async () => {
+    const { result } = renderHook(() => useArtistPageAccess('test-artist'), {
+      wrapper: createWrapper(
+        {
+          ...ownerStemsBaseState,
+          artistAlbumCatalog: {
+            status: 'succeeded',
+            error: null,
+            data: [],
+            lastUpdated: Date.now(),
+            fetchContextKey: 'public:test-artist',
+            artistMissing: false,
+          },
+          albums: {
+            dashboard: {
+              status: 'succeeded',
+              error: null,
+              data: [publishedAlbum],
+              lastUpdated: Date.now(),
+              inFlightFetchContextKey: null,
+            },
+          },
+        },
+        ['/stems?artist=test-artist']
+      ),
+    });
+
+    await waitFor(() => {
+      expect(result.current.catalogReleaseGatePending).toBe(false);
+      expect(result.current.hasPublicReleases).toBe(true);
+    });
+  });
+});

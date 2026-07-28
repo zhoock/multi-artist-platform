@@ -561,7 +561,7 @@ function Layout() {
       <Route
         path="/dashboard-new/:tab?"
         element={
-          <Suspense fallback={<PageLoader />}>
+          <Suspense fallback={null}>
             <UserDashboard />
           </Suspense>
         }

@@ -317,9 +317,7 @@ export interface IInterface {
     [key: string]: string;
   };
   stems?: {
-    text: string;
-    pageTitle: string;
-    notice: string;
+    [key: string]: string;
   };
   listenerWelcome?: {
     welcomePrefix: string;

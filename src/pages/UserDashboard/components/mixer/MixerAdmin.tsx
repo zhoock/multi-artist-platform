@@ -1,5 +1,5 @@
 // src/pages/UserDashboard/components/mixer/MixerAdmin.tsx
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import clsx from 'clsx';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -51,6 +51,10 @@ import {
   updateStemsVisibility,
 } from '@entities/stem';
 import { normalizeStemsVisibility, type StemsVisibility } from '@shared/lib/stems/stemsVisibility';
+import {
+  useEffectiveLocation,
+  useEffectiveSearchParams,
+} from '@shared/lib/hooks/useEffectiveLocation';
 import { getDashboardRowFlashProps, useDashboardRowFlash } from '../../lib/dashboardRowStateFlash';
 import { DashboardExpandChevron } from '../../lib/dashboardExpandChevron';
 import { useDashboardAccordionOnboarding } from '../../lib/dashboardAccordionOnboarding';
@@ -120,6 +124,8 @@ export function MixerAdmin({ ui, userId, albums = [], tabActive = true }: MixerA
   const t = useMemo(() => (ui as any)?.dashboard?.mixer ?? {}, [ui]);
   const { lang } = useLang();
   const navigate = useNavigate();
+  const location = useEffectiveLocation();
+  const [searchParams] = useEffectiveSearchParams();
 
   const [expandedAlbumId, setExpandedAlbumId] = useState<string | null>(null);
   const [expandedTrackId, setExpandedTrackId] = useState<string | null>(null);
@@ -279,6 +285,60 @@ export function MixerAdmin({ ui, userId, albums = [], tabActive = true }: MixerA
       void ensureTrackStems(getStorageAlbumId(album), trackId);
     },
   });
+
+  useEffect(() => {
+    if (!tabActive || albums.length === 0) {
+      return;
+    }
+
+    const focusAlbumParam = searchParams.get('focusAlbum')?.trim();
+    if (!focusAlbumParam) {
+      return;
+    }
+
+    const album = albums.find(
+      (entry) => entry.id === focusAlbumParam || entry.albumId === focusAlbumParam
+    );
+    if (!album) {
+      return;
+    }
+
+    const storageAlbumId = getStorageAlbumId(album);
+    markUserInteracted();
+    setExpandedAlbumId(album.id);
+    preloadAlbumTrackStems(album);
+
+    const focusTrackParam = searchParams.get('focusTrack')?.trim();
+    if (focusTrackParam) {
+      const track = album.tracks.find((entry) => entry.id === focusTrackParam);
+      if (track) {
+        setExpandedTrackId(stemKey(storageAlbumId, track.id));
+        void ensureTrackStems(storageAlbumId, track.id);
+      }
+    }
+
+    const nextParams = new URLSearchParams(searchParams.toString());
+    nextParams.delete('focusAlbum');
+    nextParams.delete('focusTrack');
+    const nextQuery = nextParams.toString();
+    navigate(
+      {
+        pathname: location.pathname,
+        search: nextQuery ? `?${nextQuery}` : '',
+      },
+      { replace: true, state: location.state }
+    );
+  }, [
+    albums,
+    ensureTrackStems,
+    location.pathname,
+    location.state,
+    markUserInteracted,
+    navigate,
+    preloadAlbumTrackStems,
+    searchParams,
+    tabActive,
+  ]);
 
   const stopPlayback = useCallback(() => {
     if (audioRef.current) {

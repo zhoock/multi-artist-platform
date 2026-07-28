@@ -356,6 +356,7 @@ function UserDashboard() {
   const [scrollToAlbumUploadId, setScrollToAlbumUploadId] = useState<string | null>(null);
   const [scrollToAlbumId, setScrollToAlbumId] = useState<string | null>(null);
   const [pendingTrackUploadAlbumId, setPendingTrackUploadAlbumId] = useState<string | null>(null);
+  const [pendingFocusTrackKey, setPendingFocusTrackKey] = useState<string | null>(null);
   const [publishingAlbumId, setPublishingAlbumId] = useState<string | null>(null);
   const [publishedToastTrigger, setPublishedToastTrigger] = useState(0);
   const [tracksUploadToastTrigger, setTracksUploadToastTrigger] = useState(0);
@@ -668,7 +669,7 @@ function UserDashboard() {
   }, [scrollToAlbumId, expandedAlbumId, albumsData]);
 
   const clearAlbumNavigationQueryParam = useCallback(
-    (paramName: 'uploadTracks' | 'focusAlbum') => {
+    (paramName: 'uploadTracks' | 'focusAlbum' | 'focusTrack') => {
       if (!searchParams.get(paramName)) {
         return;
       }
@@ -714,6 +715,10 @@ function UserDashboard() {
     setPendingTrackUploadAlbumId(album.id);
   }, [searchParams, albumsData, activeTab]);
 
+  const handlePendingFocusTrackHandled = useCallback(() => {
+    setPendingFocusTrackKey(null);
+  }, []);
+
   useEffect(() => {
     const focusAlbumParam = searchParams.get('focusAlbum')?.trim();
     if (!focusAlbumParam || albumsData.length === 0 || activeTab !== 'albums') {
@@ -729,6 +734,16 @@ function UserDashboard() {
 
     setExpandedAlbumId(album.id);
     setScrollToAlbumId(album.id);
+
+    const focusTrackParam = searchParams.get('focusTrack')?.trim();
+    if (focusTrackParam) {
+      const track = album.tracks.find((entry) => entry.id === focusTrackParam);
+      if (track) {
+        setPendingFocusTrackKey(`${album.id}:${track.id}`);
+      }
+      clearAlbumNavigationQueryParam('focusTrack');
+    }
+
     clearAlbumNavigationQueryParam('focusAlbum');
   }, [searchParams, albumsData, activeTab, clearAlbumNavigationQueryParam]);
 
@@ -2374,6 +2389,8 @@ function UserDashboard() {
                             fileInputRefs={fileInputRefs}
                             pendingTrackUploadAlbumId={pendingTrackUploadAlbumId}
                             onPendingTrackUploadHandled={handlePendingTrackUploadHandled}
+                            pendingFocusTrackKey={pendingFocusTrackKey}
+                            onPendingFocusTrackHandled={handlePendingFocusTrackHandled}
                             onCreateAlbum={() => setEditAlbumModal({ isOpen: true })}
                             onEditAlbum={(albumId) => setEditAlbumModal({ isOpen: true, albumId })}
                             onToggleAlbum={toggleAlbum}

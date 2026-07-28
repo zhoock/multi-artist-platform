@@ -68,6 +68,8 @@ type AlbumsTabContentProps = {
   fileInputRefs: React.MutableRefObject<Record<string, HTMLInputElement | null>>;
   pendingTrackUploadAlbumId?: string | null;
   onPendingTrackUploadHandled?: () => void;
+  pendingFocusTrackKey?: string | null;
+  onPendingFocusTrackHandled?: () => void;
   onCreateAlbum: () => void;
   onEditAlbum: (albumId: string) => void;
   onToggleAlbum: (albumId: string) => void;
@@ -121,6 +123,8 @@ export function AlbumsTabContent({
   fileInputRefs,
   pendingTrackUploadAlbumId,
   onPendingTrackUploadHandled,
+  pendingFocusTrackKey,
+  onPendingFocusTrackHandled,
   onCreateAlbum,
   onEditAlbum,
   onToggleAlbum,
@@ -207,6 +211,20 @@ export function AlbumsTabContent({
     openTrackUploadForAlbum,
     onPendingTrackUploadHandled,
   ]);
+
+  useEffect(() => {
+    if (!pendingFocusTrackKey || expandedAlbumId === null) {
+      return;
+    }
+
+    const [albumId] = pendingFocusTrackKey.split(':');
+    if (expandedAlbumId !== albumId) {
+      return;
+    }
+
+    setExpandedTrackId(pendingFocusTrackKey);
+    onPendingFocusTrackHandled?.();
+  }, [pendingFocusTrackKey, expandedAlbumId, onPendingFocusTrackHandled]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {

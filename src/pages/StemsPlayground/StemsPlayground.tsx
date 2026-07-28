@@ -1,5 +1,5 @@
 // src/pages/StemsPlayground/StemsPlayground.tsx
-import { useEffect, useLayoutEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { List as ListIcon, Save as SaveIcon } from 'lucide-react';
 import { Helmet } from 'react-helmet-async';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -13,6 +13,9 @@ import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 import { selectPublicArtistSlug, setPublicArtistSlug } from '@shared/model/currentArtist';
 import { isAuthenticated } from '@shared/lib/auth';
+import { useArtistPageBuilder } from '@shared/lib/hooks/useArtistPageBuilder';
+import { selectDashboardAlbumsData } from '@entities/album';
+import { transformEditableAlbumsToAlbumData } from '@entities/album/lib/transformEditableAlbumData';
 import { withPublicArtistQuery } from '@shared/lib/artistQuery';
 import { buildPublicSiteUrl } from '@shared/lib/publicSiteOrigin';
 import { useSiteArtistDisplayName } from '@shared/lib/hooks/useSiteArtistDisplayName';
@@ -37,12 +40,14 @@ import { pluralizeTracks, type TrackCountLabels } from './lib/pluralizeTracks';
 import { formatTrackDuration } from './lib/formatTrackDuration';
 import { MixerAlbumList } from './components/MixerAlbumList';
 import { MixerTrackList } from './components/MixerTrackList';
+import { MixerAlbumListSkeleton } from './components/MixerAlbumListSkeleton';
 import { MixerTrackListSkeleton } from './components/MixerTrackListSkeleton';
 import { MixerBackNav } from './components/MixerBackNav';
 import { MixerPlayerPanel, type MixerPlayerPanelHandle } from './components/MixerPlayerPanel';
 import { SaveMixModal } from './components/SaveMixModal';
 import { MyMixesModal } from './components/MyMixesModal';
 import { ServiceScreen } from '@shared/ui/serviceScreen';
+import { StemsPlaygroundOwnerEmptyState } from './components/StemsPlaygroundOwnerEmptyState';
 import './style.scss';
 
 export default function StemsPlayground() {
@@ -133,16 +138,27 @@ export default function StemsPlayground() {
     stems.emptyDescriptionLine1 ?? 'When the artist publishes albums with stems,';
   const emptyDescriptionLine2 = stems.emptyDescriptionLine2 ?? 'they will appear here.';
 
+  const { isOwner, ownerResolved } = useArtistPageBuilder(artistSlug);
+  const dashboardAlbumsFromStore = useAppSelector(selectDashboardAlbumsData);
+
   const showEmptyCatalog = catalogHasStemAlbums === false && !loading && !mixId;
+  const showEmptyCatalogResolving = showEmptyCatalog && !ownerResolved;
+  const showOwnerEmptyCatalog = showEmptyCatalog && ownerResolved && isOwner;
+  const showVisitorEmptyCatalog = showEmptyCatalog && ownerResolved && !isOwner;
+
+  const dashboardAlbums = useMemo(
+    () => transformEditableAlbumsToAlbumData(dashboardAlbumsFromStore, siteArtistName, lang),
+    [dashboardAlbumsFromStore, siteArtistName, lang]
+  );
 
   useLayoutEffect(() => {
-    document.body.classList.toggle('page--service-screen', showEmptyCatalog);
-    document.body.classList.toggle('page--stems-empty', showEmptyCatalog);
+    document.body.classList.toggle('page--service-screen', showVisitorEmptyCatalog);
+    document.body.classList.toggle('page--stems-empty', showVisitorEmptyCatalog);
     return () => {
       document.body.classList.remove('page--service-screen');
       document.body.classList.remove('page--stems-empty');
     };
-  }, [showEmptyCatalog]);
+  }, [showVisitorEmptyCatalog]);
 
   const trackCountLabels: TrackCountLabels = {
     one: stems.tracksCountOne ?? '{count}',
@@ -403,7 +419,41 @@ export default function StemsPlayground() {
     deleteIrreversible: dashboard.confirmActionIrreversible ?? 'This action cannot be undone.',
   };
 
-  if (showEmptyCatalog) {
+  if (showEmptyCatalogResolving) {
+    return (
+      <section className="stems-page main-background" aria-label="Блок c миксером">
+        <Helmet>
+          <title>{pageTitle}</title>
+        </Helmet>
+        <div className="wrapper">
+          <ContextNav mode="artist-only" artistName={siteArtistName} artistTo={artistHubPath} />
+          <h2>{pageTitle}</h2>
+          <div className="mixer">
+            <MixerAlbumListSkeleton />
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  if (showOwnerEmptyCatalog) {
+    return (
+      <section className="stems-page main-background" aria-label="Блок c миксером">
+        <Helmet>
+          <title>{pageTitle}</title>
+          <meta name="description" content={selectAlbumHint || pageTitle} />
+          <link rel="canonical" href={canonical} />
+        </Helmet>
+        <div className="wrapper">
+          <ContextNav mode="artist-only" artistName={siteArtistName} artistTo={artistHubPath} />
+          <h2>{pageTitle}</h2>
+          <StemsPlaygroundOwnerEmptyState ui={ui} dashboardAlbums={dashboardAlbums} />
+        </div>
+      </section>
+    );
+  }
+
+  if (showVisitorEmptyCatalog) {
     return (
       <ServiceScreen
         modifier="mixer-empty"
