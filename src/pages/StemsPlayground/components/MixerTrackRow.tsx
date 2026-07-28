@@ -19,7 +19,7 @@ export function MixerTrackRow({ track, index, onSelect }: MixerTrackRowProps) {
         className="mixer-track-row mixer-track-row--locked"
         onClick={() => onSelect(track.id)}
         aria-label={track.title}
-        aria-description={`Трек недоступен без подписки: ${track.title}`}
+        aria-description={`Трек недоступен без активной поддержки артиста: ${track.title}`}
       >
         <span className="mixer-track-row__lock" aria-hidden>
           <LockIcon

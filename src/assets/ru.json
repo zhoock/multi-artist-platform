@@ -12,7 +12,7 @@
       "avatarMenu": {
         "dashboard": "Дашборд",
         "myArtistPage": "Моя страница артиста",
-        "upgradePlan": "Тариф / подписка",
+        "upgradePlan": "Тариф / поддержка",
         "choosePlan": "Выбрать план",
         "premiumActive": "Активная поддержка",
         "manageSubscription": "Открыть коллекцию",
@@ -132,7 +132,7 @@
         "cancel": "Отмена",
         "back": "Назад",
         "restrictedHint": "Подтвердите email для доступа к этой функции",
-        "restrictedPremium": "Подтвердите email, чтобы оформить Premium",
+        "restrictedPremium": "Подтвердите email, чтобы начать поддержку",
         "restrictedUpload": "Подтвердите email, чтобы загружать контент",
         "restrictedPaymentSettings": "Платежи",
         "restrictedPaymentSettingsHint": "Подтвердите email, чтобы настроить приём платежей",
@@ -249,9 +249,9 @@
       "allArticlesPageTitle": "Все статьи",
       "allArticlesPageDesc": "Просмотр всех статей и публикаций",
       "articleLockedOverlayTitle": "Только для подписчиков",
-      "articleLockedOverlayHint": "Оформите подписку, чтобы читать",
+      "articleLockedOverlayHint": "Нужна активная поддержка, чтобы читать",
       "trackLockedAriaLabel": "Недоступно",
-      "trackLockedAriaDescription": "Для воспроизведения нужна Premium-поддержка",
+      "trackLockedAriaDescription": "Для воспроизведения нужна активная поддержка артиста",
       "articleSubscriptionLockedOverlayTitle": "Нужна поддержка",
       "articleSubscriptionLockedOverlayHint": "Чтобы читать полностью.",
       "articleArchiveLockedOverlayTitle": "Добавьте в коллекцию",
@@ -284,7 +284,7 @@
       "archiveAccessPricePeriod": "/ 30 дней",
       "artistArchiveFullTitle": "Коллекция заполнена",
       "artistArchiveFullMessage": "Все слоты коллекции заняты. Чтобы добавить этого артиста, удалите артиста из коллекции или смените тариф, чтобы получить больше слотов.",
-      "premiumSuccessTitle": "Вы Premium!",
+      "premiumSuccessTitle": "Поддержка активна!",
       "premiumSuccessSubtitle": "Добавьте артиста в коллекцию и откройте эксклюзивный контент.",
       "premiumSuccessSlotsHint": "Теперь вы можете добавить до {count} артистов в коллекцию.",
       "premiumSuccessArchiveFull": "Коллекция заполнена",
@@ -415,29 +415,29 @@
         "upgradePlanButton": "Улучшить план",
         "changePlanButton": "Сменить план",
         "planSectionLabel": "План",
-        "subscriptionSectionLabel": "Подписка",
+        "subscriptionSectionLabel": "Поддержка",
         "subscriptionExpiredStatus": "Истекла",
         "supportInactiveTitle": "Поддержка неактивна",
         "supportInactiveDescription": "Возобновите поддержку, чтобы получать доступ к эксклюзивному контенту и управлять коллекцией.",
-        "renewSupportButton": "Продлить подписку",
+        "renewSupportButton": "Продлить поддержку",
         "lockedUntil": "Заблокирован до {date}",
         "lockedHint": "Нельзя удалить артиста, пока не истечёт блокировка.",
         "canRemoveLabel": "Можно удалить",
         "canRemoveHint": "Вы можете удалить этого артиста в любой момент.",
         "inactiveSlotHint": "Этот артист больше не занимает активный слот.",
         "removeLockedPeriodHint": "Каждый артист закрепляется в коллекции на 30 дней после добавления.",
-        "removeSubscriptionTooltip": "Для удаления нужна активная подписка.",
+        "removeSubscriptionTooltip": "Для удаления нужна активная поддержка.",
         "loading": "Загрузка коллекции…",
         "loadError": "Не удалось загрузить коллекцию",
         "removeError": "Не удалось удалить артиста",
         "artistLockedError": "Этот артист заблокирован до конца оплаченного периода.",
-        "removeRequiresSubscriptionError": "Для удаления артистов нужна активная подписка.",
+        "removeRequiresSubscriptionError": "Для удаления артистов нужна активная поддержка.",
         "collectionOverageHint": "Коллекция превышает лимит текущего плана",
         "activeSlotsLabel": "слотов использовано",
         "managePlanLink": "Управление планом →",
-        "subscriptionActiveLabel": "Подписка активна",
-        "subscriptionExpiringLabel": "Подписка заканчивается",
-        "subscriptionExpiredLabel": "Подписка истекла",
+        "subscriptionActiveLabel": "Поддержка активна",
+        "subscriptionExpiringLabel": "Поддержка заканчивается",
+        "subscriptionExpiredLabel": "Поддержка истекла",
         "subscriptionRenewalDate": "Действует до {date}",
         "subscriptionExpiredDescription": "Доступ к эксклюзивному контенту приостановлен.",
         "renewSupportLink": "Продлить поддержку →",
@@ -508,7 +508,7 @@
           },
           "subscribersOnly": {
             "title": "Только для подписчиков",
-            "description": "Доступны подписчикам, поддерживающим этого артиста."
+            "description": "Доступны подписчикам с активной поддержкой артиста."
           },
           "hidden": {
             "title": "Скрыт",
@@ -536,7 +536,7 @@
       "deleteAccountWarningArticles": "Статьи",
       "deleteAccountWarningPurchases": "Покупки",
       "deleteAccountWarningArchive": "Коллекция",
-      "deleteAccountWarningPremium": "Premium-доступ",
+      "deleteAccountWarningPremium": "Активная поддержка",
       "deleteAccountPasswordLabel": "Текущий пароль",
       "deleteAccountDeleting": "Удаление аккаунта…",
       "deleteAccountFailed": "Не удалось удалить аккаунт. Попробуйте снова.",
@@ -651,7 +651,7 @@
         },
         "subscribersOnly": {
           "title": "Только для подписчиков",
-          "description": "Доступен подписчикам, поддерживающим этого артиста"
+          "description": "Доступен подписчикам с активной поддержкой артиста"
         },
         "hidden": {
           "title": "Скрыт",
@@ -660,7 +660,7 @@
       },
       "articleAccessAriaLabel": "Доступ к статье",
       "articleSubscribersOnlyOverlayTitle": "Только для подписчиков",
-      "articleSubscribersOnlyOverlayHint": "Оформите подписку, чтобы читать эксклюзивные статьи",
+      "articleSubscribersOnlyOverlayHint": "Доступно при активной поддержке артиста",
       "articleVisibility": {
         "public": {
           "title": "Открыт для всех",
@@ -668,7 +668,7 @@
         },
         "subscribersOnly": {
           "title": "Только для подписчиков",
-          "description": "Доступна подписчикам, поддерживающим этого артиста"
+          "description": "Доступна подписчикам с активной поддержкой артиста"
         },
         "hidden": {
           "title": "Скрыт",

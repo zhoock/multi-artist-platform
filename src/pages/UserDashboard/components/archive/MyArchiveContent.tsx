@@ -309,7 +309,7 @@ export function MyArchiveContent({ active, onContentReady, onContentBusy }: Prop
               'This artist is locked until the end of your billing period.')
             : err.code === 'ARCHIVE_SUBSCRIPTION_REQUIRED'
               ? (t?.removeRequiresSubscriptionError ??
-                'An active subscription is required to remove artists.')
+                'Active support is required to remove artists.')
               : err.message
           : err instanceof Error
             ? err.message
@@ -456,16 +456,16 @@ export function MyArchiveContent({ active, onContentReady, onContentBusy }: Prop
     t?.removeLockedPeriodHint ??
     'Each artist is locked in your collection for 30 days after being added.';
   const removeSubscriptionTooltip =
-    t?.removeSubscriptionTooltip ?? 'An active subscription is required to remove active artists.';
+    t?.removeSubscriptionTooltip ?? 'Active support is required to remove active artists.';
   const supportInactiveDescription =
     t?.subscriptionExpiredDescription ??
     t?.supportInactiveDescription ??
     'Access to exclusive content is suspended.';
   const renewSupportLabel =
-    t?.renewSupportButton ?? ui?.buttons?.artistCollectionRenew ?? 'Renew subscription';
+    t?.renewSupportButton ?? ui?.buttons?.artistCollectionRenew ?? 'Renew support';
   const changePlanLabel = t?.changePlanButton ?? 'Change plan';
   const planSectionLabel = t?.planSectionLabel ?? 'Plan';
-  const subscriptionSectionLabel = t?.subscriptionSectionLabel ?? 'Subscription';
+  const subscriptionSectionLabel = t?.subscriptionSectionLabel ?? 'Support';
   const subscriptionExpiredStatusLabel = t?.subscriptionExpiredStatus ?? 'Expired';
   const renewalDateTemplate = t?.subscriptionRenewalDate ?? 'Valid until {date}';
   const selectModeLabel = t?.selectMode ?? 'Select';

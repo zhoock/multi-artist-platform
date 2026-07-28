@@ -168,8 +168,8 @@ export function ArchiveAccessModalView({ dialogRef, onClose }: Props) {
             <p className="subscription-plan-modal__error" role="status">
               {emailCopy.restrictedPremium ??
                 (lang === 'en'
-                  ? 'Verify your email to purchase Premium'
-                  : 'Подтвердите email, чтобы оформить Premium')}
+                  ? 'Verify your email to start support'
+                  : 'Подтвердите email, чтобы начать поддержку')}
             </p>
           ) : null}
           {footnote ? (

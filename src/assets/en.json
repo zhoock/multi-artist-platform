@@ -12,7 +12,7 @@
       "avatarMenu": {
         "dashboard": "Dashboard",
         "myArtistPage": "My Artist Page",
-        "upgradePlan": "Upgrade plan",
+        "upgradePlan": "Plan / support",
         "choosePlan": "Choose Plan",
         "premiumActive": "Active support",
         "manageSubscription": "Open Collection",
@@ -132,7 +132,7 @@
         "cancel": "Cancel",
         "back": "Back",
         "restrictedHint": "Verify your email to unlock this feature",
-        "restrictedPremium": "Verify your email to purchase Premium",
+        "restrictedPremium": "Verify your email to start support",
         "restrictedUpload": "Verify your email to upload content",
         "restrictedPaymentSettings": "Payment Settings",
         "restrictedPaymentSettingsHint": "Verify your email to configure payment settings",
@@ -249,9 +249,9 @@
       "allArticlesPageTitle": "All Articles",
       "allArticlesPageDesc": "Browse all articles and posts",
       "articleLockedOverlayTitle": "Subscribers only",
-      "articleLockedOverlayHint": "Subscribe to read this content.",
+      "articleLockedOverlayHint": "Active artist support required to read.",
       "trackLockedAriaLabel": "Unavailable",
-      "trackLockedAriaDescription": "Premium support required to play",
+      "trackLockedAriaDescription": "Active artist support required to play",
       "articleSubscriptionLockedOverlayTitle": "Support required",
       "articleSubscriptionLockedOverlayHint": "Read the full article.",
       "articleArchiveLockedOverlayTitle": "Add to collection",
@@ -284,7 +284,7 @@
       "archiveAccessPricePeriod": "/ 30 days",
       "artistArchiveFullTitle": "Collection full",
       "artistArchiveFullMessage": "All collection slots are occupied. To add this artist, remove an artist from your collection or upgrade your plan to unlock more slots.",
-      "premiumSuccessTitle": "You're Premium!",
+      "premiumSuccessTitle": "Support is active!",
       "premiumSuccessSubtitle": "Add this artist to your collection and unlock exclusive content.",
       "premiumSuccessSlotsHint": "You can now add up to {count} artists to your collection.",
       "premiumSuccessArchiveFull": "Collection is full",
@@ -415,29 +415,29 @@
         "upgradePlanButton": "Upgrade Plan",
         "changePlanButton": "Change plan",
         "planSectionLabel": "Plan",
-        "subscriptionSectionLabel": "Subscription",
+        "subscriptionSectionLabel": "Support",
         "subscriptionExpiredStatus": "Expired",
         "supportInactiveTitle": "Support inactive",
         "supportInactiveDescription": "Renew support to continue accessing exclusive content and managing your collection.",
-        "renewSupportButton": "Renew subscription",
+        "renewSupportButton": "Renew support",
         "lockedUntil": "Locked until {date}",
         "lockedHint": "You can't remove this artist until the lock expires.",
         "canRemoveLabel": "Can be removed",
         "canRemoveHint": "You can remove this artist at any time.",
         "inactiveSlotHint": "This artist no longer uses an active slot.",
         "removeLockedPeriodHint": "Each artist is locked in your collection for 30 days after being added.",
-        "removeSubscriptionTooltip": "An active subscription is required to remove artists.",
+        "removeSubscriptionTooltip": "Active support is required to remove artists.",
         "loading": "Loading collection…",
         "loadError": "Failed to load collection",
         "removeError": "Failed to remove artist",
         "artistLockedError": "This artist is locked until the end of your billing period.",
-        "removeRequiresSubscriptionError": "An active subscription is required to remove artists.",
+        "removeRequiresSubscriptionError": "Active support is required to remove artists.",
         "collectionOverageHint": "Collection exceeds current plan limit",
         "activeSlotsLabel": "slots used",
         "managePlanLink": "Manage Plan →",
-        "subscriptionActiveLabel": "Subscription active",
-        "subscriptionExpiringLabel": "Subscription ending",
-        "subscriptionExpiredLabel": "Subscription expired",
+        "subscriptionActiveLabel": "Support active",
+        "subscriptionExpiringLabel": "Support ending",
+        "subscriptionExpiredLabel": "Support expired",
         "subscriptionRenewalDate": "Valid until {date}",
         "subscriptionExpiredDescription": "Access to exclusive content is suspended.",
         "renewSupportLink": "Renew Support →",
@@ -508,7 +508,7 @@
           },
           "subscribersOnly": {
             "title": "Subscribers only",
-            "description": "Available to subscribers who support this artist."
+            "description": "Available to subscribers with active artist support."
           },
           "hidden": {
             "title": "Hidden",
@@ -536,7 +536,7 @@
       "deleteAccountWarningArticles": "Articles",
       "deleteAccountWarningPurchases": "Purchases",
       "deleteAccountWarningArchive": "Collection",
-      "deleteAccountWarningPremium": "Premium access",
+      "deleteAccountWarningPremium": "Active support",
       "deleteAccountPasswordLabel": "Current password",
       "deleteAccountDeleting": "Deleting account…",
       "deleteAccountFailed": "Could not delete account. Please try again.",
@@ -651,7 +651,7 @@
         },
         "subscribersOnly": {
           "title": "Subscribers only",
-          "description": "Available to subscribers who support this artist"
+          "description": "Available to subscribers with active artist support"
         },
         "hidden": {
           "title": "Hidden",
@@ -660,7 +660,7 @@
       },
       "articleAccessAriaLabel": "Article access",
       "articleSubscribersOnlyOverlayTitle": "Subscribers only",
-      "articleSubscribersOnlyOverlayHint": "Subscribe to read exclusive articles.",
+      "articleSubscribersOnlyOverlayHint": "Available with active artist support.",
       "articleVisibility": {
         "public": {
           "title": "Open to everyone",
@@ -668,7 +668,7 @@
         },
         "subscribersOnly": {
           "title": "Subscribers only",
-          "description": "Available to subscribers who support this artist"
+          "description": "Available to subscribers with active artist support"
         },
         "hidden": {
           "title": "Hidden",

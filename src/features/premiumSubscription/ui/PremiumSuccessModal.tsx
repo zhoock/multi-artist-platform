@@ -55,7 +55,8 @@ export function PremiumSuccessModalView({ dialogRef, open, onClose }: Props) {
   const [artistInArchive, setArtistInArchive] = useState(false);
 
   const title =
-    ui?.titles?.premiumSuccessTitle ?? (lang === 'en' ? "You're Premium!" : 'Вы Premium!');
+    ui?.titles?.premiumSuccessTitle ??
+    (lang === 'en' ? 'Support is active!' : 'Поддержка активна!');
   const subtitle =
     ui?.titles?.premiumSuccessSubtitle ??
     (lang === 'en'

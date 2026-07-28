@@ -100,7 +100,9 @@ export function ArticlePreview({
     (lang === 'en' ? 'Subscribers only' : 'Только для подписчиков');
   const legacyOverlayHint =
     ui?.titles?.articleLockedOverlayHint ??
-    (lang === 'en' ? 'Subscribe to read this content.' : 'Оформите подписку, чтобы читать');
+    (lang === 'en'
+      ? 'Active artist support required to read.'
+      : 'Нужна активная поддержка, чтобы читать');
 
   const overlayTitle =
     paywallKind === 'archive'

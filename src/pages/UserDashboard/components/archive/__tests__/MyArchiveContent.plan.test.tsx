@@ -90,7 +90,7 @@ describe('MyArchiveContent plan display', () => {
     });
 
     expect(screen.getByText(/1 \/ 1/)).toBeTruthy();
-    expect(screen.queryByText('Subscription active')).toBeNull();
+    expect(screen.queryByText('Support active')).toBeNull();
     expect(screen.getByText(/Valid until/i)).toBeTruthy();
     expect(screen.getByText(/days left/i)).toBeTruthy();
     expect(document.querySelector('.collection__summary')).toBeTruthy();
@@ -116,7 +116,7 @@ describe('MyArchiveContent plan display', () => {
     });
 
     expect(document.querySelector('.collection__summary--expiring')).toBeTruthy();
-    expect(screen.queryByText('Subscription ending')).toBeNull();
+    expect(screen.queryByText('Support ending')).toBeNull();
     expect(screen.queryByText('Collection Full')).toBeNull();
   });
 
@@ -174,7 +174,7 @@ describe('MyArchiveContent plan display', () => {
     renderWithProviders(<MyArchiveContent active />);
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Renew subscription' })).toBeTruthy();
+      expect(screen.getByRole('button', { name: 'Renew support' })).toBeTruthy();
     });
 
     expect(screen.getByText('Expired')).toBeTruthy();
@@ -184,7 +184,7 @@ describe('MyArchiveContent plan display', () => {
     expect(document.querySelector('.collection__card--renew')).toBeNull();
     expect(screen.queryByRole('button', { name: 'Upgrade Plan' })).toBeNull();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Renew subscription' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Renew support' }));
 
     await waitFor(() => {
       expect(startCheckoutMock).toHaveBeenCalledWith('explorer');
@@ -210,7 +210,7 @@ describe('MyArchiveContent plan display', () => {
     });
 
     expect(screen.queryByRole('button', { name: 'Upgrade Plan' })).toBeNull();
-    expect(screen.queryByRole('button', { name: 'Renew subscription' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Renew support' })).toBeNull();
   });
 
   test('shows icon-only remove button for active unlocked artist', async () => {
@@ -436,7 +436,7 @@ describe('MyArchiveContent plan display', () => {
     expect(screen.getByText('Your collection is empty')).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Find artists' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Change plan' })).toBeTruthy();
-    expect(screen.queryByText('Subscription active')).toBeNull();
+    expect(screen.queryByText('Support active')).toBeNull();
     expect(document.querySelector('.collection__list-card')).toBeNull();
     expect(document.querySelector('.collection__embedded-empty-state')).toBeTruthy();
   });

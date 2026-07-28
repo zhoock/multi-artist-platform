@@ -49,8 +49,8 @@ export function useSubscriptionCheckout({ onClose }: UseSubscriptionCheckoutOpti
           error:
             emailCopy.restrictedPremium ??
             (lang === 'en'
-              ? 'Verify your email to purchase Premium'
-              : 'Подтвердите email, чтобы оформить Premium'),
+              ? 'Verify your email to start support'
+              : 'Подтвердите email, чтобы начать поддержку'),
         };
       }
 

@@ -83,8 +83,8 @@ export function TrackList({ tracks, album, store, onSelectTrack }: TrackListProp
   const trackLockedAriaDescription =
     ui?.titles?.trackLockedAriaDescription ??
     (lang === 'en'
-      ? 'Premium support required to play'
-      : 'Для воспроизведения нужна Premium-поддержка');
+      ? 'Active artist support required to play'
+      : 'Для воспроизведения нужна активная поддержка артиста');
 
   const initialState = store.getState() as RootState;
   const [activeIndex, setActiveIndex] = React.useState(initialState.player.currentTrackIndex);
