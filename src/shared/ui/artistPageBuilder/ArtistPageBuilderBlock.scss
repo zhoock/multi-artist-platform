@@ -66,6 +66,16 @@ $builder-block-glow-hover: rgb(255 255 255 / 7%);
     border-radius: var(--ms-01);
   }
 
+  &--section.artist-page-builder-block--compact {
+    padding: var(--ms-1) var(--ms-01);
+    min-block-size: 5.5rem;
+  }
+
+  &--static {
+    cursor: default;
+    pointer-events: none;
+  }
+
   &__heading {
     display: block;
     inline-size: 100%;

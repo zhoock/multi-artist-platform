@@ -1,17 +1,17 @@
-import { Music2 as Music2Icon, Upload as UploadIcon } from 'lucide-react';
+import { Music2 as Music2Icon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 import type { IInterface } from '@models';
-import { EmptyState } from '@shared/ui/emptyState';
-import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
+import {
+  ArtistPageBuilderBlock,
+  artistPageBuilderSectionIconProps,
+} from '@shared/ui/artistPageBuilder';
 
 type AlbumTracksEmptyStateProps = {
   ui: IInterface | null | undefined;
   isOwner: boolean;
   ownerDashboardAlbumId?: string | null;
 };
-
-const ALBUM_TRACKS_EMPTY_ICON_SIZE = 56;
 
 export function AlbumTracksEmptyState({
   ui,
@@ -31,35 +31,26 @@ export function AlbumTracksEmptyState({
     : (dashboardCopy?.albumNoTracksVisitorDescription ??
       "The artist hasn't added any published tracks to this album yet.");
 
-  const handleUploadTracks = () => {
+  const handleGoToAlbum = () => {
     if (!ownerDashboardAlbumId) {
       navigate('/dashboard-new/albums');
       return;
     }
-    navigate(`/dashboard-new/albums?uploadTracks=${encodeURIComponent(ownerDashboardAlbumId)}`);
+    navigate(`/dashboard-new/albums?focusAlbum=${encodeURIComponent(ownerDashboardAlbumId)}`);
   };
 
   return (
-    <EmptyState
-      layout="inline"
-      className="album-tracks-empty"
-      actionsVariant={isOwner ? 'dashboard' : 'plain'}
-      icon={
-        <Music2Icon
-          {...dashboardActionIconProps({ size: ALBUM_TRACKS_EMPTY_ICON_SIZE, strokeWidth: 1.5 })}
-        />
-      }
-      title={title}
-      description={description}
-      primaryAction={
-        isOwner
-          ? {
-              label: dashboardCopy?.albumNoTracksOwnerAction ?? 'Upload',
-              onClick: handleUploadTracks,
-              icon: <UploadIcon {...dashboardActionIconProps({ size: 18 })} />,
-            }
-          : undefined
-      }
-    />
+    <div className="tracks album-tracks__builder">
+      <ArtistPageBuilderBlock
+        layout="section"
+        className="artist-page-builder-block--compact"
+        interactive={isOwner}
+        icon={<Music2Icon {...artistPageBuilderSectionIconProps()} />}
+        title={title}
+        description={description}
+        actionLabel={dashboardCopy?.mixer?.noTracksAction ?? 'Go to album'}
+        onAction={handleGoToAlbum}
+      />
+    </div>
   );
 }

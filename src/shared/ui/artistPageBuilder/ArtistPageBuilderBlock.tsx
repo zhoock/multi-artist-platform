@@ -15,6 +15,8 @@ type ArtistPageBuilderBlockProps = {
   onAction: () => void;
   heading?: ReactNode;
   className?: string;
+  /** When false, renders a static placeholder (no click, no arrow). */
+  interactive?: boolean;
 };
 
 function resolveAriaLabel(actionLabel: ReactNode, title: ReactNode): string | undefined {
@@ -31,35 +33,17 @@ function stopBubble(event: SyntheticEvent) {
   event.stopPropagation();
 }
 
-export function ArtistPageBuilderBlock({
-  layout,
+function ArtistPageBuilderBlockContent({
   icon,
   title,
   description,
-  actionLabel,
-  onAction,
   heading,
-  className,
-}: ArtistPageBuilderBlockProps) {
-  const handleClick = (event: MouseEvent<HTMLButtonElement>) => {
-    event.stopPropagation();
-    onAction();
-  };
-
+  showArrow,
+}: Pick<ArtistPageBuilderBlockProps, 'icon' | 'title' | 'description' | 'heading'> & {
+  showArrow: boolean;
+}) {
   return (
-    <button
-      type="button"
-      className={clsx(
-        'artist-page-builder-block',
-        `artist-page-builder-block--${layout}`,
-        heading && 'artist-page-builder-block--withHeading',
-        className
-      )}
-      onClick={handleClick}
-      onPointerDown={stopBubble}
-      onMouseDown={stopBubble}
-      aria-label={resolveAriaLabel(actionLabel, title)}
-    >
+    <>
       {/*
         Only phrasing content inside <button>: nested <div>/<p> is invalid HTML and some
         mobile browsers hoist those nodes out of the button, shrinking the real hit target.
@@ -76,7 +60,71 @@ export function ArtistPageBuilderBlock({
           ) : null}
         </span>
       </span>
-      <ArrowUpRightIcon className="artist-page-builder-block__arrow" aria-hidden size={18} />
+      {showArrow ? (
+        <ArrowUpRightIcon className="artist-page-builder-block__arrow" aria-hidden size={18} />
+      ) : null}
+    </>
+  );
+}
+
+export function ArtistPageBuilderBlock({
+  layout,
+  icon,
+  title,
+  description,
+  actionLabel,
+  onAction,
+  heading,
+  className,
+  interactive = true,
+}: ArtistPageBuilderBlockProps) {
+  const blockClassName = clsx(
+    'artist-page-builder-block',
+    `artist-page-builder-block--${layout}`,
+    heading && 'artist-page-builder-block--withHeading',
+    !interactive && 'artist-page-builder-block--static',
+    className
+  );
+
+  if (!interactive) {
+    return (
+      <div
+        className={blockClassName}
+        role="status"
+        aria-label={resolveAriaLabel(actionLabel, title)}
+      >
+        <ArtistPageBuilderBlockContent
+          icon={icon}
+          title={title}
+          description={description}
+          heading={heading}
+          showArrow={false}
+        />
+      </div>
+    );
+  }
+
+  const handleClick = (event: MouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation();
+    onAction();
+  };
+
+  return (
+    <button
+      type="button"
+      className={blockClassName}
+      onClick={handleClick}
+      onPointerDown={stopBubble}
+      onMouseDown={stopBubble}
+      aria-label={resolveAriaLabel(actionLabel, title)}
+    >
+      <ArtistPageBuilderBlockContent
+        icon={icon}
+        title={title}
+        description={description}
+        heading={heading}
+        showArrow
+      />
     </button>
   );
 }

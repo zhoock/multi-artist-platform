@@ -37,4 +37,23 @@ describe('ArtistPageBuilderBlock', () => {
     expect(onParentPointerDown).not.toHaveBeenCalled();
     expect(onParentMouseDown).not.toHaveBeenCalled();
   });
+
+  it('renders a static placeholder when interactive is false', () => {
+    const onAction = jest.fn();
+
+    render(
+      <ArtistPageBuilderBlock
+        layout="section"
+        interactive={false}
+        icon={<span aria-hidden="true">↑</span>}
+        title="No tracks yet"
+        description="Check back later."
+        actionLabel="Upload"
+        onAction={onAction}
+      />
+    );
+
+    expect(screen.getByRole('status', { name: 'Upload' })).toBeInTheDocument();
+    expect(screen.queryByRole('button')).not.toBeInTheDocument();
+  });
 });

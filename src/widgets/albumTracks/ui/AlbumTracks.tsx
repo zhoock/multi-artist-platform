@@ -400,108 +400,73 @@ const AlbumTracksComponent = ({
     [album, album.userId, artistSlugFromUrl, lang, openPlayer, requestAccess, store]
   );
 
-  const renderBlock = useCallback(
-    ({ tracks, playText = 'Play' }: { tracks: TrackDetails[]; playText?: string }) => {
-      const albumHeader = (
-        <>
-          <h2 className="album-title">{album.title}</h2>
-
-          {displayArtistLabel !== '—' && (
-            <h3 className="album-artist">
-              {artistSlugFromUrl ? (
-                <Link to={artistHubPath}>{displayArtistLabel}</Link>
-              ) : (
-                displayArtistLabel
-              )}
-            </h3>
-          )}
-
-          <div className="wrapper-album-play">
-            <button
-              type="button"
-              className="album-play"
-              aria-label="Кнопка play"
-              aria-description="Открывает плеер"
-              onClick={() => {
-                gaEvent('player_open', {
-                  album_id: album.albumId,
-                  album_title: album.title,
-                  lang,
-                });
-                const firstPlayable = resolveFirstPlayableIndex(albumPageTracks, 0);
-                if (firstPlayable === -1) {
-                  return;
-                }
-                void openPlayer(firstPlayable, {
-                  openFullScreen: false,
-                });
-              }}
-            >
-              <span className="album-play__icon" aria-hidden>
-                <Play
-                  {...playerTransportIconProps(ALBUM_PLAY_BUTTON_ICON_SIZE, {
-                    className: 'album-play__icon-svg album-play__icon-svg--play',
-                  })}
-                />
-              </span>
-              {playText}
-            </button>
-          </div>
-        </>
-      );
-
-      return (
-        <>
-          {albumHeader}
-          <TrackList
-            tracks={tracks}
-            album={album}
-            onSelectTrack={handleTrackSelect}
-            store={store}
-          />
-        </>
-      );
-    },
-    [
-      album,
-      albumPageTracks,
-      artistHubPath,
-      artistSlugFromUrl,
-      displayArtistLabel,
-      lang,
-      openPlayer,
-      handleTrackSelect,
-      store,
-    ]
-  );
-
   const playText = ui?.buttons?.playButton ?? 'Play';
+  const hasTracks = albumPageTracks.length > 0;
 
-  if (albumPageTracks.length === 0) {
-    return (
-      <>
-        <h2 className="album-title">{album.title}</h2>
+  return (
+    <>
+      <h2 className="album-title">{album.title}</h2>
 
-        {displayArtistLabel !== '—' && (
-          <h3 className="album-artist">
-            {artistSlugFromUrl ? (
-              <Link to={artistHubPath}>{displayArtistLabel}</Link>
-            ) : (
-              displayArtistLabel
-            )}
-          </h3>
-        )}
+      {displayArtistLabel !== '—' && (
+        <h3 className="album-artist">
+          {artistSlugFromUrl ? (
+            <Link to={artistHubPath}>{displayArtistLabel}</Link>
+          ) : (
+            displayArtistLabel
+          )}
+        </h3>
+      )}
 
+      {hasTracks ? (
+        <div className="wrapper-album-play">
+          <button
+            type="button"
+            className="album-play"
+            aria-label="Кнопка play"
+            aria-description="Открывает плеер"
+            onClick={() => {
+              gaEvent('player_open', {
+                album_id: album.albumId,
+                album_title: album.title,
+                lang,
+              });
+              const firstPlayable = resolveFirstPlayableIndex(albumPageTracks, 0);
+              if (firstPlayable === -1) {
+                return;
+              }
+              void openPlayer(firstPlayable, {
+                openFullScreen: false,
+              });
+            }}
+          >
+            <span className="album-play__icon" aria-hidden>
+              <Play
+                {...playerTransportIconProps(ALBUM_PLAY_BUTTON_ICON_SIZE, {
+                  className: 'album-play__icon-svg album-play__icon-svg--play',
+                })}
+              />
+            </span>
+            {playText}
+          </button>
+        </div>
+      ) : null}
+
+      {hasTracks ? (
+        <TrackList
+          tracks={albumPageTracks}
+          album={album}
+          onSelectTrack={handleTrackSelect}
+          store={store}
+        />
+      ) : (
         <AlbumTracksEmptyState
           ui={ui}
           isOwner={isOwner}
           ownerDashboardAlbumId={ownerDashboardAlbumId ?? album.albumId}
         />
-      </>
-    );
-  }
-
-  return renderBlock({ tracks: albumPageTracks, playText });
+      )}
+    </>
+  );
 };
 
 export default React.memo(AlbumTracksComponent, (prevProps, nextProps) => {
