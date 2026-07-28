@@ -18,6 +18,7 @@ export interface TrackUploadData extends AudioTechnicalMetadata {
   trackId: string;
   orderIndex?: number;
   storagePath: string;
+  masterPath?: string;
   url: string;
   translations: Partial<Record<SupportedLang, { title: string }>>;
 }
@@ -328,6 +329,7 @@ export async function prepareAndUploadTrack(
         duration,
         trackId,
         storagePath,
+        masterPath: storagePath,
         url: storagePath,
         translations: { [lang]: { title: trackTitle } },
         ...audioTech,
@@ -346,6 +348,7 @@ export async function prepareAndUploadTrack(
       duration,
       trackId,
       storagePath,
+      masterPath: storagePath,
       url: publicUrl,
       translations: { [lang]: { title: trackTitle } },
       ...audioTech,

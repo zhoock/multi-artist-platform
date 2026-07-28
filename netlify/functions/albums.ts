@@ -31,6 +31,13 @@ import { assertArtistVisibleToViewer } from './lib/artist-publication';
 import { isAlbumRowReadyToPublish } from './lib/album-publish';
 import { PublicArtistResolverError, resolvePublicArtistUserId } from './lib/public-artist-resolver';
 import { resolveTrackSrcToSupabasePublicUrl } from './lib/storage-public-url';
+import { resolveAssetForPlayback } from './lib/assetResolver';
+import {
+  extractStoragePathFromTrackRef,
+  removeTrackStoragePaths,
+} from './lib/track-storage-cleanup';
+import { fetchTrackAssetsByAlbumPks, resolvePipelineAvailable } from './lib/track-assets-loader';
+import { tracksTableHasPipelineColumns } from './lib/track-pipeline-schema';
 import { migrateUserAlbumAudioFolderAfterRename } from './lib/migrate-storage-album-folder';
 import { normalizeTrackIdString } from '../../src/shared/lib/tracks/normalizeTrackIdString';
 import { rankToOrderIndex } from '../../src/shared/lib/tracks/trackOrderIndex';
@@ -96,6 +103,7 @@ interface TrackRow {
   audio_channels?: number | null;
   audio_duration?: number | string | null;
   audio_file_size?: number | string | null;
+  processing_status?: string | null;
 }
 
 interface AlbumLocalePayload {
@@ -168,6 +176,7 @@ interface TrackData {
   audioChannels?: number | null;
   audioDuration?: number | null;
   audioFileSize?: number | null;
+  processingStatus?: 'pending' | 'processing' | 'ready' | 'failed';
 }
 
 interface AlbumOwnerSlugRow {
@@ -318,8 +327,10 @@ async function fetchTracksRowsForAlbumPk(albumPk: string): Promise<TrackRow[]> {
   const hasStemsVis = await tracksTableHasStemsVisibilityColumn();
   const hasAudioTech = await tracksTableHasAudioTechnicalColumns();
   const hasAudioFileMeta = await tracksTableHasAudioFileMetaColumns();
+  const hasPipeline = await tracksTableHasPipelineColumns();
   const visibilityCol = hasVis ? ',\n                t.visibility' : '';
   const stemsVisibilityCol = hasStemsVis ? ',\n                t.stems_visibility' : '';
+  const pipelineCols = hasPipeline ? `,\n                t.processing_status` : '';
   const audioTechCols = hasAudioTech
     ? `,\n                t.audio_container,
                 t.audio_codec,
@@ -334,13 +345,14 @@ async function fetchTracksRowsForAlbumPk(albumPk: string): Promise<TrackRow[]> {
     : '';
   const res = await query<TrackRow>(
     `SELECT 
+                t.id,
                 t.track_id,
                 t.title,
                 t.duration,
                 t.src,
                 t.content,
                 t.authorship,
-                t.order_index${visibilityCol}${stemsVisibilityCol}${audioTechCols}${audioFileMetaCols}
+                t.order_index${visibilityCol}${stemsVisibilityCol}${audioTechCols}${audioFileMetaCols}${pipelineCols}
               FROM tracks t
               WHERE t.album_id = $1
               ORDER BY t.order_index ASC`,
@@ -482,7 +494,11 @@ async function queryAlbumRowByPk(albumPk: string): Promise<AlbumRow | null> {
 function mapAlbumToApiFormat(
   album: AlbumRow,
   tracks: TrackRow[],
-  lyricsByTrackId: Map<string, TrackLyricsBundle>
+  lyricsByTrackId: Map<string, TrackLyricsBundle>,
+  options?: {
+    assetsByTrackId?: Map<string, import('./lib/assetResolver').TrackAssetRecord[]>;
+    pipelineAvailable?: boolean;
+  }
 ): AlbumData {
   // Парсим details, если это строка (PostgreSQL может вернуть JSONB как строку)
   let details: unknown[] = [];
@@ -586,6 +602,29 @@ function mapAlbumToApiFormat(
           syncedAt: null,
         } satisfies TrackLyricsBundle);
 
+      const assets = options?.assetsByTrackId?.get(track.track_id) ?? [];
+      const pipelineAvailable = options?.pipelineAvailable === true;
+      const processingStatus = (track.processing_status ??
+        'ready') as TrackData['processingStatus'];
+
+      let resolvedSrc: string | undefined;
+      if (pipelineAvailable) {
+        const playback = resolveAssetForPlayback(
+          assets,
+          {
+            purpose: 'playback',
+            processingStatus: processingStatus ?? 'ready',
+            hasPremiumAccess: true,
+            legacySrc: track.src,
+            pipelineAvailable: true,
+          },
+          album.user_id
+        );
+        resolvedSrc = playback.url ?? undefined;
+      } else {
+        resolvedSrc = resolveTrackSrcToSupabasePublicUrl(track.src, album.user_id);
+      }
+
       return {
         id: normalizeTrackIdString(track.track_id) || String(track.track_id),
         title: track.title,
@@ -594,7 +633,8 @@ function mapAlbumToApiFormat(
             ? track.order_index
             : 0,
         duration: duration ?? 0,
-        src: resolveTrackSrcToSupabasePublicUrl(track.src, album.user_id),
+        src: resolvedSrc,
+        processingStatus: pipelineAvailable ? processingStatus : undefined,
         content: lyrics.content || undefined,
         authorship: lyrics.authorship || track.authorship || undefined,
         lyrics,
@@ -935,7 +975,11 @@ function applyPublicTrackAccessPolicy(
 async function loadAlbumDataFromRow(album: AlbumRow): Promise<AlbumData> {
   const rowLang = album.lang;
 
-  const tracksRows = await fetchTracksRowsForAlbumPk(album.id);
+  const [tracksRows, assetsByTrackId, pipelineAvailable] = await Promise.all([
+    fetchTracksRowsForAlbumPk(album.id),
+    fetchTrackAssetsByAlbumPks([album.id]),
+    resolvePipelineAvailable(),
+  ]);
 
   if (album.album_id === '23-remastered') {
     console.log(`[albums.ts GET] 🔍 DEBUG tracks query for 23-remastered:`, {
@@ -996,7 +1040,10 @@ async function loadAlbumDataFromRow(album: AlbumRow): Promise<AlbumData> {
     album.lang
   );
 
-  const mapped = mapAlbumToApiFormat(album, tracksRows, lyricsByTrackId);
+  const mapped = mapAlbumToApiFormat(album, tracksRows, lyricsByTrackId, {
+    assetsByTrackId,
+    pipelineAvailable,
+  });
   console.log(`[albums.ts GET] Album ${album.album_id} mapped tracks:`, {
     tracksCount: mapped.tracks.length,
     tracksWithDuration: mapped.tracks.filter((t) => t.duration != null).length,
@@ -2154,10 +2201,12 @@ export const handler: Handler = async (
           // по lang из UI: трек, загруженный в русской версии, иначе не находится при удалении из EN.
           const trackOwnerResult = await query<{
             src: string | null;
+            master_path: string | null;
+            track_db_id: string;
             album_pk: string;
             lang: string;
           }>(
-            `SELECT t.src, a.id AS album_pk, a.lang
+            `SELECT t.src, t.master_path, t.id AS track_db_id, a.id AS album_pk, a.lang
              FROM tracks t
              INNER JOIN albums a ON a.id = t.album_id
              WHERE a.user_id = $1
@@ -2176,81 +2225,24 @@ export const handler: Handler = async (
 
           const trackRow = trackOwnerResult.rows[0];
 
-          // Удаляем аудиофайл из Supabase Storage, если он есть
-          if (trackRow.src) {
-            try {
-              const { createClient } = await import('@supabase/supabase-js');
-              const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '';
-              const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+          const assetPathsResult = await query<{ path: string | null }>(
+            `SELECT path FROM track_assets WHERE track_id = $1::uuid AND path IS NOT NULL`,
+            [trackRow.track_db_id]
+          ).catch(() => ({ rows: [] as { path: string | null }[] }));
 
-              if (supabaseUrl && serviceRoleKey) {
-                const supabase = createClient(supabaseUrl, serviceRoleKey, {
-                  auth: {
-                    persistSession: false,
-                    autoRefreshToken: false,
-                    detectSessionInUrl: false,
-                  },
-                });
+          const storagePathsToRemove = new Set<string>();
+          for (const candidate of [
+            trackRow.master_path,
+            trackRow.src,
+            ...assetPathsResult.rows.map((r) => r.path),
+          ]) {
+            if (!candidate?.trim()) continue;
+            const extracted = extractStoragePathFromTrackRef(candidate, userId);
+            if (extracted) storagePathsToRemove.add(extracted);
+          }
 
-                const STORAGE_BUCKET_NAME = 'user-media';
-
-                // Извлекаем путь к файлу из src
-                // src может быть полным URL или относительным путем
-                let storagePath: string;
-                if (trackRow.src.startsWith('http://') || trackRow.src.startsWith('https://')) {
-                  // Если это полный URL, извлекаем путь
-                  // Формат Supabase Storage public URL:
-                  // https://{project}.supabase.co/storage/v1/object/public/user-media/users/{userId}/audio/...
-                  const urlMatch = trackRow.src.match(/\/user-media\/(.+)$/);
-                  if (urlMatch) {
-                    storagePath = urlMatch[1];
-                  } else {
-                    // Альтернативный формат: путь после /audio/
-                    const audioMatch = trackRow.src.match(/\/audio\/(.+)$/);
-                    if (audioMatch) {
-                      storagePath = `users/${userId}/audio/${audioMatch[1]}`;
-                    } else {
-                      console.warn('⚠️ Could not extract storage path from src:', trackRow.src);
-                      storagePath = '';
-                    }
-                  }
-                } else {
-                  // Если это относительный путь, добавляем префикс
-                  // Формат: /audio/albumId/fileName или users/{userId}/audio/albumId/fileName
-                  if (trackRow.src.startsWith('/audio/')) {
-                    storagePath = `users/${userId}${trackRow.src}`;
-                  } else if (trackRow.src.startsWith('users/')) {
-                    storagePath = trackRow.src;
-                  } else {
-                    storagePath = `users/${userId}/audio/${trackRow.src}`;
-                  }
-                }
-
-                if (storagePath) {
-                  const { error: deleteError } = await supabase.storage
-                    .from(STORAGE_BUCKET_NAME)
-                    .remove([storagePath]);
-
-                  if (deleteError) {
-                    console.warn('⚠️ Failed to delete audio file from storage:', {
-                      path: storagePath,
-                      error: deleteError,
-                    });
-                  } else {
-                    console.log('✅ Audio file deleted from storage:', {
-                      path: storagePath,
-                      trackId,
-                    });
-                  }
-                }
-              }
-            } catch (storageError) {
-              console.warn(
-                '⚠️ Error deleting audio file from storage (non-critical):',
-                storageError
-              );
-              // Не блокируем удаление трека, если файл не удалился
-            }
+          if (storagePathsToRemove.size > 0) {
+            void removeTrackStoragePaths([...storagePathsToRemove]);
           }
 
           // Удаляем трек из базы данных во всех языковых версиях альбома

@@ -25,6 +25,8 @@ import {
   type AlbumDetailsLocaleSource,
   type AlbumDetailsTrackSource,
 } from './lib/album-details-mapper';
+import { fetchTrackAssetsByAlbumPks, resolvePipelineAvailable } from './lib/track-assets-loader';
+import { tracksTableHasPipelineColumns } from './lib/track-pipeline-schema';
 
 interface AlbumLocaleRow {
   id: string;
@@ -64,6 +66,8 @@ interface TrackRow {
   audio_channels: number | null;
   audio_duration: number | null;
   audio_file_size: number | null;
+  processing_status: string | null;
+  master_path: string | null;
 }
 
 function parseSlugAndAlbumId(event: HandlerEvent): { slug: string; albumId: string } {
@@ -85,6 +89,11 @@ async function fetchTracksForAlbumPks(albumPks: string[]): Promise<Map<string, T
   const byPk = new Map<string, TrackRow[]>();
   if (albumPks.length === 0) return byPk;
 
+  const hasPipeline = await tracksTableHasPipelineColumns();
+  const pipelineCols = hasPipeline
+    ? `,\n         t.processing_status,\n         t.master_path`
+    : `,\n         NULL::text AS processing_status,\n         NULL::text AS master_path`;
+
   try {
     const result = await query<TrackRow>(
       `SELECT
@@ -103,7 +112,7 @@ async function fetchTracksForAlbumPks(albumPks: string[]): Promise<Map<string, T
          t.audio_bit_depth,
          t.audio_channels,
          t.audio_duration,
-         t.audio_file_size
+         t.audio_file_size${pipelineCols}
        FROM tracks t
        WHERE t.album_id = ANY($1::uuid[])
        ORDER BY t.order_index ASC`,
@@ -167,6 +176,8 @@ function mapTrackRow(row: TrackRow): AlbumDetailsTrackSource {
     audioChannels: row.audio_channels,
     audioDuration: row.audio_duration,
     audioFileSize: row.audio_file_size,
+    processingStatus:
+      (row.processing_status as AlbumDetailsTrackSource['processingStatus']) ?? null,
   };
 }
 
@@ -256,7 +267,11 @@ export const handler: Handler = async (
     }
 
     const albumPks = albumsResult.rows.map((r) => r.id);
-    const tracksByPk = await fetchTracksForAlbumPks(albumPks);
+    const [tracksByPk, assetsByTrackId, pipelineAvailable] = await Promise.all([
+      fetchTracksForAlbumPks(albumPks),
+      fetchTrackAssetsByAlbumPks(albumPks),
+      resolvePipelineAvailable(),
+    ]);
 
     const locales: AlbumDetailsLocaleSource[] = albumsResult.rows.map((row) => ({
       lang: row.lang,
@@ -283,6 +298,8 @@ export const handler: Handler = async (
     const details = mapLocalesToAlbumDetails(locales, {
       hasPremiumAccess,
       monetizationEnabled,
+      assetsByTrackId,
+      pipelineAvailable,
     });
 
     if (!details) {

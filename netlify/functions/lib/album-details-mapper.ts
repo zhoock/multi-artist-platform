@@ -8,7 +8,8 @@ import { normalizeTrackVisibility } from '../../../src/shared/lib/tracks/trackVi
 import { normalizeStemsVisibility } from '../../../src/shared/lib/stems/stemsVisibility';
 import { resolveEffectiveContentVisibility } from '../../../src/shared/lib/payment/artistMonetization';
 import { normalizeTrackIdString } from '../../../src/shared/lib/tracks/normalizeTrackIdString';
-import { resolveTrackSrcToSupabasePublicUrl } from './storage-public-url';
+import { resolveAssetForPlayback, type TrackAssetRecord } from './assetResolver';
+import type { ProcessingStatus } from '../../../src/shared/lib/audio/audioAssetPipelineConfig';
 import type { SupportedLang } from './types';
 
 export interface AlbumDetailsArtworkDto {
@@ -46,6 +47,7 @@ export interface TrackDetailsDto {
   audioChannels: number | null;
   audioDuration: number | null;
   audioFileSize: number | null;
+  processingStatus?: ProcessingStatus | null;
   translations?: Partial<Record<'en' | 'ru', { title: string }>>;
 }
 
@@ -112,6 +114,15 @@ export interface AlbumDetailsTrackSource {
   audioChannels: number | null;
   audioDuration: number | null;
   audioFileSize: number | null;
+  processingStatus?: ProcessingStatus | null;
+}
+
+export interface AlbumDetailsMapperContext {
+  hasPremiumAccess: boolean;
+  monetizationEnabled: boolean;
+  userId: string;
+  assetsByTrackId?: Map<string, TrackAssetRecord[]>;
+  pipelineAvailable?: boolean;
 }
 
 const RELEASE_COVER_KEYS = ['photographer', 'photographerURL', 'designer', 'designerURL'] as const;
@@ -220,7 +231,7 @@ function purchaseFromRelease(release: Record<string, unknown>): AlbumDetailsPurc
 
 function mergeTracks(
   locales: AlbumDetailsLocaleSource[],
-  ctx: { hasPremiumAccess: boolean; monetizationEnabled: boolean; userId: string }
+  ctx: AlbumDetailsMapperContext
 ): TrackDetailsDto[] {
   const sorted = [...locales].sort((a, b) => langRank(a.lang) - langRank(b.lang));
 
@@ -267,7 +278,24 @@ function mergeTracks(
     const visibility = resolveEffectiveContentVisibility(trackVis, ctx.monetizationEnabled);
     const stemsAvailability = resolveEffectiveContentVisibility(stemsVis, ctx.monetizationEnabled);
     const needLock = visibility === 'subscribers_only' && !ctx.hasPremiumAccess;
-    const resolvedSrc = resolveTrackSrcToSupabasePublicUrl(track.src, ctx.userId) ?? '';
+    const trackKey = normalizeTrackIdString(track.trackId) || String(track.trackId);
+    const assets = ctx.assetsByTrackId?.get(trackKey) ?? [];
+    const processingStatus = (track.processingStatus ?? 'ready') as ProcessingStatus;
+    const pipelineAvailable = ctx.pipelineAvailable === true;
+
+    const resolved = resolveAssetForPlayback(
+      assets,
+      {
+        purpose: 'playback',
+        processingStatus,
+        hasPremiumAccess: ctx.hasPremiumAccess,
+        legacySrc: track.src,
+        pipelineAvailable,
+      },
+      ctx.userId
+    );
+
+    const resolvedSrc = resolved.url ?? '';
     const translations = titlesById.get(id);
 
     mapped.push({
@@ -287,6 +315,7 @@ function mergeTracks(
       audioChannels: optionalPositiveInt(track.audioChannels),
       audioDuration: optionalPositiveDuration(track.audioDuration),
       audioFileSize: optionalPositiveInt(track.audioFileSize),
+      processingStatus: pipelineAvailable ? processingStatus : undefined,
       translations: translations && (translations.en || translations.ru) ? translations : undefined,
     });
   }
@@ -299,7 +328,12 @@ function mergeTracks(
  */
 export function mapLocalesToAlbumDetails(
   locales: AlbumDetailsLocaleSource[],
-  ctx: { hasPremiumAccess: boolean; monetizationEnabled: boolean }
+  ctx: {
+    hasPremiumAccess: boolean;
+    monetizationEnabled: boolean;
+    assetsByTrackId?: Map<string, TrackAssetRecord[]>;
+    pipelineAvailable?: boolean;
+  }
 ): AlbumDetailsDto | null {
   if (locales.length === 0) return null;
 
@@ -337,6 +371,8 @@ export function mapLocalesToAlbumDetails(
     hasPremiumAccess: ctx.hasPremiumAccess,
     monetizationEnabled: ctx.monetizationEnabled,
     userId,
+    assetsByTrackId: ctx.assetsByTrackId,
+    pipelineAvailable: ctx.pipelineAvailable,
   });
 
   return {

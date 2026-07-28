@@ -89,11 +89,12 @@ export const handler: Handler = async (
 
     const trackResult = await query<{
       src: string | null;
+      master_path: string | null;
       title: string;
       album_id: string;
       album_user_id: string | null;
     }>(
-      `SELECT t.src, t.title, a.album_id, a.user_id AS album_user_id
+      `SELECT t.src, t.master_path, t.title, a.album_id, a.user_id AS album_user_id
        FROM tracks t
        INNER JOIN albums a ON t.album_id = a.id
        WHERE a.album_id = $1 AND t.track_id = $2
@@ -101,7 +102,7 @@ export const handler: Handler = async (
       [resolvedAlbumId, trackId]
     );
 
-    if (trackResult.rows.length === 0 || !trackResult.rows[0].src) {
+    if (trackResult.rows.length === 0) {
       return {
         statusCode: 404,
         headers: { 'Content-Type': 'application/json' },
@@ -110,9 +111,18 @@ export const handler: Handler = async (
     }
 
     const track = trackResult.rows[0];
+    const downloadPath = track.master_path?.trim() || track.src?.trim();
+    if (!downloadPath) {
+      return {
+        statusCode: 404,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ error: 'Track file not found' }),
+      };
+    }
+
     // Файлы лежат в storage владельца альбома, не у слушателя/подписчика.
     const storageUserId = track.album_user_id || null;
-    const publicUrl = await resolveTrackPublicUrl(track.src ?? '', resolvedAlbumId, storageUserId);
+    const publicUrl = await resolveTrackPublicUrl(downloadPath, resolvedAlbumId, storageUserId);
 
     if (!publicUrl) {
       return {

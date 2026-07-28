@@ -344,6 +344,12 @@
 
 # Tracks upload
 [[redirects]]
+  from = "/api/tracks/regenerate-assets*"
+  to = "/.netlify/functions/regenerate-track-assets"
+  status = 200
+  force = true
+
+[[redirects]]
   from = "/api/tracks/upload-url*"
   to = "/.netlify/functions/get-track-upload-url"
   status = 200

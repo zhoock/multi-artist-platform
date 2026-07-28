@@ -47,6 +47,7 @@ export interface TrackDetails {
   audioChannels: number | null;
   audioDuration: number | null;
   audioFileSize: number | null;
+  processingStatus?: 'pending' | 'processing' | 'ready' | 'failed';
   /** Title per locale only — no lyrics / authorship blobs. */
   translations?: Partial<Record<'en' | 'ru', { title: string }>>;
 }
@@ -201,6 +202,13 @@ function normalizeTrackDetails(raw: unknown): TrackDetails | null {
     audioChannels: asNullablePositiveNumber(v.audioChannels),
     audioDuration: asNullablePositiveNumber(v.audioDuration),
     audioFileSize: asNullablePositiveNumber(v.audioFileSize),
+    processingStatus:
+      v.processingStatus === 'pending' ||
+      v.processingStatus === 'processing' ||
+      v.processingStatus === 'ready' ||
+      v.processingStatus === 'failed'
+        ? v.processingStatus
+        : undefined,
     translations,
   };
 }
@@ -341,6 +349,13 @@ export function mapAlbumEditableToAlbumDetails(album: AlbumEditable): AlbumDetai
       audioChannels: track.audioChannels ?? null,
       audioDuration: track.audioDuration ?? null,
       audioFileSize: track.audioFileSize ?? null,
+      processingStatus:
+        track.processingStatus === 'pending' ||
+        track.processingStatus === 'processing' ||
+        track.processingStatus === 'ready' ||
+        track.processingStatus === 'failed'
+          ? track.processingStatus
+          : undefined,
       translations: trackTranslations.en || trackTranslations.ru ? trackTranslations : undefined,
     };
   });

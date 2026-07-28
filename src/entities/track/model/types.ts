@@ -15,6 +15,8 @@ export type Track = {
   stemsVisibility?: 'public' | 'subscribers_only' | 'hidden';
   /** Публичный ответ: воспроизведение недоступно без покупки */
   playbackLocked?: boolean;
+  /** Aggregate audio pipeline status (dashboard / album page). */
+  processingStatus?: 'pending' | 'processing' | 'ready' | 'failed';
   /** Технические характеристики аудио (извлечены при загрузке файла). */
   audioContainer?: string | null;
   audioCodec?: string | null;

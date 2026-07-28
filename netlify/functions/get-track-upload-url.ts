@@ -96,7 +96,7 @@ export const handler: Handler = async (
       return createErrorResponse(400, 'Missing required fields: albumId, fileName');
     }
 
-    const storagePath = `users/${userId}/audio/${albumId}/${fileName}`;
+    const storagePath = `users/${userId}/audio/${albumId}/original/${fileName}`;
 
     // Создаём Supabase клиент с service role key
     const supabase = createSupabaseAdminClient();

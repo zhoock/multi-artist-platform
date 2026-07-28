@@ -43,6 +43,16 @@ import {
 import { getClient, query } from './lib/db';
 import { resolveTrackSrcToSupabasePublicUrl } from './lib/storage-public-url';
 import { TRACK_ORDER_INDEX_STEP } from '../../src/shared/lib/tracks/trackOrderIndex';
+import { tracksTableHasPipelineColumns, trackAssetsTableExists } from './lib/track-pipeline-schema';
+import { enqueueTrackProcessing } from './lib/enqueueTrackProcessing';
+import {
+  GENERATOR_VERSIONS,
+  PIPELINE_STAGES,
+} from '../../src/shared/lib/audio/audioAssetPipelineConfig';
+import {
+  collectSupersededTrackStoragePaths,
+  removeTrackStoragePaths,
+} from './lib/track-storage-cleanup';
 
 interface TrackUploadRequest {
   albumId: string;
@@ -99,8 +109,36 @@ interface TrackUploadResponse {
     title: string;
     url: string;
     storagePath: string;
+    processingStatus?: string;
   }>;
   error?: string;
+}
+
+async function seedPendingAssetRows(
+  client: Awaited<ReturnType<typeof getClient>>,
+  trackDbId: string
+) {
+  for (const stage of PIPELINE_STAGES) {
+    if (!stage.enabled) continue;
+    for (const output of stage.outputs) {
+      const generatorVersion = GENERATOR_VERSIONS[output.generator] ?? 1;
+      await client.query(
+        `INSERT INTO track_assets (
+          track_id, type, format, variant, generator, generator_version, status, path, metadata
+        ) VALUES ($1, $2, $3, $4, $5, $6, 'pending', NULL, '{}')
+        ON CONFLICT (track_id, type, format, variant)
+        DO UPDATE SET
+          generator = EXCLUDED.generator,
+          generator_version = EXCLUDED.generator_version,
+          status = 'pending',
+          path = NULL,
+          error = NULL,
+          metadata = '{}',
+          updated_at = CURRENT_TIMESTAMP`,
+        [trackDbId, output.type, output.format, output.variant, output.generator, generatorVersion]
+      );
+    }
+  }
 }
 
 // Функция getStoragePath больше не нужна - файлы загружаются с клиента напрямую в Supabase Storage
@@ -179,6 +217,14 @@ export const handler: Handler = async (
     }
 
     const uploadedTracks: TrackUploadResponse['data'] = [];
+    const hasPipeline = await tracksTableHasPipelineColumns();
+    const hasAssetsTable = await trackAssetsTableExists();
+    const enqueueJobs: Array<{
+      trackDbId: string;
+      trackId: string;
+      masterPath: string;
+    }> = [];
+    const storagePathsToRemoveAfterCommit: string[] = [];
 
     const tracksToSave = tracks.filter((t) => {
       const titleForLang = t.translations?.[lang as 'en' | 'ru']?.title?.trim() ?? '';
@@ -253,7 +299,12 @@ export const handler: Handler = async (
         }).catch(() => {});
         // #endregion
 
-        const srcForDb = resolveTrackSrcToSupabasePublicUrl(url, album.user_id) ?? url;
+        const masterPathForDb = storagePath.startsWith('users/')
+          ? storagePath
+          : storagePath.replace(/^\/+/, '');
+        const srcForDb = hasPipeline
+          ? ''
+          : (resolveTrackSrcToSupabasePublicUrl(url, album.user_id) ?? url);
         const audioContainer = optionalTrimmedString(track.audioContainer, 32);
         const audioCodec = optionalTrimmedString(track.audioCodec, 64);
         const audioBitrate = optionalPositiveInt(track.audioBitrate);
@@ -265,8 +316,79 @@ export const handler: Handler = async (
         const audioFileSize = optionalPositiveInt(track.audioFileSize);
         const durationForDb = audioDuration ?? duration;
 
-        const insertResult = await client.query(
-          `INSERT INTO tracks (
+        if (hasPipeline && hasAssetsTable) {
+          const existingTrack = await client.query<{
+            id: string;
+            master_path: string | null;
+          }>(`SELECT id, master_path FROM tracks WHERE album_id = $1 AND track_id = $2 LIMIT 1`, [
+            album.id,
+            trackId,
+          ]);
+
+          if (existingTrack.rows.length > 0) {
+            const existingRow = existingTrack.rows[0];
+            const assetPathsRes = await client.query<{ path: string | null }>(
+              `SELECT path FROM track_assets WHERE track_id = $1::uuid AND path IS NOT NULL`,
+              [existingRow.id]
+            );
+            storagePathsToRemoveAfterCommit.push(
+              ...collectSupersededTrackStoragePaths(
+                userId,
+                masterPathForDb,
+                existingRow.master_path,
+                assetPathsRes.rows.map((row) => row.path)
+              )
+            );
+          }
+        }
+
+        const insertResult = hasPipeline
+          ? await client.query(
+              `INSERT INTO tracks (
+        album_id, track_id, title, duration, src, order_index,
+        audio_container, audio_codec, audio_bitrate, audio_sample_rate, audio_bit_depth, audio_channels,
+        audio_duration, audio_file_size,
+        master_path, processing_status, processing_error
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, 'pending', NULL)
+      ON CONFLICT (album_id, track_id)
+      DO UPDATE SET
+        title = EXCLUDED.title,
+        duration = EXCLUDED.duration,
+        src = EXCLUDED.src,
+        order_index = EXCLUDED.order_index,
+        audio_container = EXCLUDED.audio_container,
+        audio_codec = EXCLUDED.audio_codec,
+        audio_bitrate = EXCLUDED.audio_bitrate,
+        audio_sample_rate = EXCLUDED.audio_sample_rate,
+        audio_bit_depth = EXCLUDED.audio_bit_depth,
+        audio_channels = EXCLUDED.audio_channels,
+        audio_duration = EXCLUDED.audio_duration,
+        audio_file_size = EXCLUDED.audio_file_size,
+        master_path = EXCLUDED.master_path,
+        processing_status = 'pending',
+        processing_error = NULL,
+        updated_at = CURRENT_TIMESTAMP
+      RETURNING id, track_id, title`,
+              [
+                album.id,
+                trackId,
+                title,
+                durationForDb,
+                srcForDb,
+                assignedOrderIndex,
+                audioContainer,
+                audioCodec,
+                audioBitrate,
+                audioSampleRate,
+                audioBitDepth,
+                audioChannels,
+                audioDuration,
+                audioFileSize,
+                masterPathForDb,
+              ]
+            )
+          : await client.query(
+              `INSERT INTO tracks (
         album_id, track_id, title, duration, src, order_index,
         audio_container, audio_codec, audio_bitrate, audio_sample_rate, audio_bit_depth, audio_channels,
         audio_duration, audio_file_size
@@ -287,23 +409,23 @@ export const handler: Handler = async (
         audio_file_size = EXCLUDED.audio_file_size,
         updated_at = CURRENT_TIMESTAMP
       RETURNING id, track_id, title`,
-          [
-            album.id,
-            trackId,
-            title,
-            durationForDb,
-            srcForDb,
-            assignedOrderIndex,
-            audioContainer,
-            audioCodec,
-            audioBitrate,
-            audioSampleRate,
-            audioBitDepth,
-            audioChannels,
-            audioDuration,
-            audioFileSize,
-          ]
-        );
+              [
+                album.id,
+                trackId,
+                title,
+                durationForDb,
+                srcForDb,
+                assignedOrderIndex,
+                audioContainer,
+                audioCodec,
+                audioBitrate,
+                audioSampleRate,
+                audioBitDepth,
+                audioChannels,
+                audioDuration,
+                audioFileSize,
+              ]
+            );
 
         // #region agent log
         fetch('http://127.0.0.1:7242/ingest/0d98fd1d-24ff-4297-901e-115ee9f70125', {
@@ -331,18 +453,31 @@ export const handler: Handler = async (
 
         if (insertResult.rows.length > 0) {
           const savedTrack = insertResult.rows[0];
+          const trackDbId = savedTrack.id as string;
+
+          if (hasPipeline && hasAssetsTable) {
+            await seedPendingAssetRows(client, trackDbId);
+            enqueueJobs.push({
+              trackDbId,
+              trackId,
+              masterPath: masterPathForDb,
+            });
+          }
+
           console.log('✅ [upload-tracks] Track saved to DB:', {
             trackId: savedTrack.track_id,
             title: savedTrack.title,
             dbId: savedTrack.id,
             orderIndex: assignedOrderIndex,
+            hasPipeline,
           });
 
           uploadedTracks.push({
             trackId,
             title,
-            url,
+            url: hasPipeline ? '' : url,
             storagePath,
+            processingStatus: hasPipeline ? 'pending' : undefined,
           });
         } else {
           throw new Error(`Track not saved — no rows returned for trackId ${trackId}`);
@@ -366,6 +501,23 @@ export const handler: Handler = async (
         500,
         'Failed to upload any tracks. Check server logs for details.'
       );
+    }
+
+    if (storagePathsToRemoveAfterCommit.length > 0) {
+      void removeTrackStoragePaths(storagePathsToRemoveAfterCommit);
+    }
+
+    if (enqueueJobs.length > 0) {
+      for (const job of enqueueJobs) {
+        void enqueueTrackProcessing({
+          userId,
+          albumDbId: album.id,
+          albumSlug: album.album_id,
+          trackDbId: job.trackDbId,
+          trackId: job.trackId,
+          masterPath: job.masterPath,
+        });
+      }
     }
 
     // createSuccessResponse уже кладёт payload в { success, data } — не дублировать вложенность.

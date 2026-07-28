@@ -120,11 +120,12 @@ export const handler: Handler = async (
       track_id: string;
       title: string;
       src: string | null;
+      master_path: string | null;
       order_index: number;
     }>(
-      `SELECT track_id, title, src, order_index
+      `SELECT track_id, title, src, master_path, order_index
        FROM tracks
-       WHERE album_id = $1::uuid AND src IS NOT NULL
+       WHERE album_id = $1::uuid AND (master_path IS NOT NULL OR src IS NOT NULL)
        ORDER BY order_index ASC`,
       [album.id]
     );
@@ -147,11 +148,12 @@ export const handler: Handler = async (
     let appendedCount = 0;
 
     for (const track of tracksResult.rows) {
-      if (!track.src) {
+      const downloadPath = track.master_path?.trim() || track.src?.trim();
+      if (!downloadPath) {
         continue;
       }
 
-      const publicUrl = await resolveTrackPublicUrl(track.src, album.albumSlug, storageUserId);
+      const publicUrl = await resolveTrackPublicUrl(downloadPath, album.albumSlug, storageUserId);
       if (!publicUrl) {
         continue;
       }
@@ -166,7 +168,7 @@ export const handler: Handler = async (
         track.order_index,
         track.track_id,
         track.title,
-        track.src
+        downloadPath
       );
       archive.append(fileBuffer, { name: entryName });
       appendedCount += 1;

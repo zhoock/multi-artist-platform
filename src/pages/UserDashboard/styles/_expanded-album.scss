@@ -111,6 +111,23 @@ dialog {
       }
     }
 
+    &__track-processing-badge {
+      flex-shrink: 0;
+      padding: 2px 8px;
+      color: var(--dashboard-text-secondary);
+      font-size: 0.75rem;
+      font-weight: 600;
+      line-height: 1.3;
+      text-transform: capitalize;
+      background: rgb(255 255 255 / 8%);
+      border-radius: var(--ms-02);
+
+      &--failed {
+        color: var(--error-color, #e57373);
+        background: rgb(229 115 115 / 12%);
+      }
+    }
+
     &__expanded-track-access-slot {
       display: inline-flex;
       flex-shrink: 0;

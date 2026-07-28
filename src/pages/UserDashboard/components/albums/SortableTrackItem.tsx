@@ -335,6 +335,22 @@ export function SortableTrackItem({
 
             <span className="user-dashboard__expanded-track-duration">{track.duration}</span>
 
+            {track.processingStatus && track.processingStatus !== 'ready' ? (
+              <span
+                className={clsx('user-dashboard__track-processing-badge', {
+                  'user-dashboard__track-processing-badge--failed':
+                    track.processingStatus === 'failed',
+                })}
+                title={track.processingStatus}
+              >
+                {track.processingStatus === 'failed'
+                  ? 'Failed'
+                  : track.processingStatus === 'processing'
+                    ? 'Processing'
+                    : 'Pending'}
+              </span>
+            ) : null}
+
             <span className="user-dashboard__expanded-track-access-slot">
               <button
                 ref={accessBtnRef}
