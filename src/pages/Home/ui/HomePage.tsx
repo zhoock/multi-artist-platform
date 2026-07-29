@@ -19,7 +19,8 @@ import { playerActions, toPlayerTracks } from '@features/player';
 import { getUserAudioUrl } from '@shared/api/albums';
 import { emptyStringMediaSrc } from '@shared/lib/media/optionalMediaUrl';
 import { shouldUsePublicArtistCatalogInRedux } from '@shared/lib/dashboardModalBackground';
-import { fetchDashboardAlbums, fetchArtistAlbumCatalog } from '@entities/album';
+import { bootstrapPublicArtistPageSurfaces } from '@shared/lib/bootstrapPublicArtistPageSurfaces';
+import { fetchDashboardAlbums } from '@entities/album';
 import { fetchArticles } from '@entities/article';
 import { generateMockArtists } from '@shared/lib/generateMockArtists';
 import { fetchUniverseArtistPlayAlbum } from '@features/universe/lib/fetchUniverseArtistPlayAlbum';
@@ -101,24 +102,11 @@ export function HomePage() {
    * Loader при defer не диспатчит fetch (см. shouldDeferPublicArtistCatalogToSurface).
    */
   useEffect(() => {
-    // Модальный dashboard поверх /?artist=: thin catalog должен грузиться (иначе albumsBlockPageReady).
     if (!shouldUsePublicArtistCatalogInRedux()) return;
     if (!hasArtistParam) return;
 
-    void dispatch(
-      fetchArtistAlbumCatalog({
-        force: true,
-        publicArtistSlug: artistSlug,
-      })
-    );
-    void dispatch(
-      fetchArticles({
-        force: true,
-        forcePublicCatalog: true,
-        publicArtistSlug: artistSlug,
-      })
-    );
-  }, [artistSlug, dispatch, hasArtistParam]);
+    bootstrapPublicArtistPageSurfaces(dispatch, artistSlug);
+  }, [artistSlug, dispatch, hasArtistParam, location.pathname, location.search]);
 
   /**
    * Owner Dashboard fat-albums (`AlbumEditable`). Не зависит от thin CatalogAlbum fetch.
@@ -350,7 +338,7 @@ export function HomePage() {
       return <ArtistPageUnderConstruction />;
     }
 
-    if (artistPageAccess.showArtistPageSkeleton) {
+    if (!artistPageAccess.pageReady) {
       return <ArtistPageSkeletonMain variant={artistPageAccess.skeletonVariant} />;
     }
 

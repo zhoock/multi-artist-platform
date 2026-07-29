@@ -237,24 +237,6 @@
   }
 }
 
-body.page--stems-empty {
-  #root {
-    min-block-size: 100dvb;
-    grid-template:
-      'header' calc(1.618rem * 2)
-      'main' minmax(0, 1fr) / 1fr;
-  }
-
-  #root main > .hero,
-  #root main > .email-verification-banner {
-    display: none;
-  }
-
-  #root .footer {
-    display: none;
-  }
-}
-
 body.page--service-screen {
   #root {
     min-block-size: 100dvb;

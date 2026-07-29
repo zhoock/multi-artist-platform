@@ -2,10 +2,45 @@
 
 // Импортируем общий файл с зависимостями
 @use '../../scss/abstracts/mixins' as *;
+@use '../../shared/ui/emptyState/style';
 
 .stems-page {
   flex: 1 0 auto;
   padding-block-end: var(--ms-3);
+
+  &--visitor-empty {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    padding-block-end: 0;
+
+    .wrapper {
+      display: flex;
+      flex: 1;
+      flex-direction: column;
+      min-height: 0;
+    }
+
+    .stems-page__visitor-empty-state {
+      flex: 1;
+      width: 100%;
+
+      .empty-state__title {
+        text-transform: none;
+      }
+
+      .empty-state__description {
+        margin-bottom: 0;
+      }
+    }
+
+    .stems-page__visitor-empty-action {
+      text-transform: none;
+      letter-spacing: normal;
+
+      @include button-variant($margin: calc(var(--ms-1) + 14px) 0 0);
+    }
+  }
 
   @include breakpoint(tablet) {
     padding-block-end: var(--ms-2);

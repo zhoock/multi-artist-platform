@@ -86,7 +86,8 @@ export function Hero() {
     builderVisibility,
     hasPublicReleases,
     ownerHasPublicPageContent,
-    showArtistPageSkeleton,
+    showArtistPageSurfacePending,
+    showArtistPageHeroPending,
     skeletonVariant,
     headerImages,
     isHeaderImagesReady,
@@ -94,6 +95,7 @@ export function Hero() {
     albumDetailsReleaseGatePending,
     catalogReleaseGatePending,
   } = artistPageAccess;
+  const showHeroLoadingShell = showArtistPageSurfacePending || showArtistPageHeroPending;
   const heroReleaseGatePending = albumDetailsReleaseGatePending || catalogReleaseGatePending;
   const ownerShowsPublishedHero =
     artistPageAccess.isOwner &&
@@ -197,8 +199,7 @@ export function Hero() {
       !hasArtistParam ||
       !artistParamKey ||
       hideHeroForArtistOnboarding ||
-      showArtistPageSkeleton ||
-      !isHeaderImagesReady ||
+      showHeroLoadingShell ||
       !showPublishedHeroChrome
     )
       return;
@@ -285,8 +286,7 @@ export function Hero() {
     artistParamKey,
     hasArtistParam,
     hideHeroForArtistOnboarding,
-    showArtistPageSkeleton,
-    isHeaderImagesReady,
+    showHeroLoadingShell,
     showPublishedHeroChrome,
   ]);
 
@@ -294,7 +294,7 @@ export function Hero() {
     return null;
   }
 
-  if (showArtistPageSkeleton) {
+  if (showHeroLoadingShell) {
     return <ArtistPageSkeletonHero variant={skeletonVariant} />;
   }
 

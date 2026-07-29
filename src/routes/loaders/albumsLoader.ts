@@ -385,9 +385,27 @@ export async function albumsLoader({ request }: LoaderFunctionArgs): Promise<Alb
         publicArtistSlug
       );
 
-      // `/?artist=`: статьи тоже только из HomePage — без параллельного loader fetch.
+      // `/?artist=`: surface owns force refresh; loader only best-effort prefetch (как catalog).
       if (deferArticlesToSurface) {
         templateB = Promise.resolve(selectArticlesData(state));
+        if (publicArtistSlug) {
+          const fetchThunkPromise = store.dispatch(
+            fetchArticles({
+              force: true,
+              forcePublicCatalog: true,
+              publicArtistSlug,
+            })
+          );
+          if (signal.aborted) {
+            fetchThunkPromise.abort();
+          } else {
+            const abortHandler = () => {
+              fetchThunkPromise.abort();
+            };
+            signal.addEventListener('abort', abortHandler, { once: true });
+            void fetchThunkPromise.unwrap().catch(() => undefined);
+          }
+        }
       } else if (cacheOk) {
         templateB = Promise.resolve(selectArticlesData(state));
       } else {

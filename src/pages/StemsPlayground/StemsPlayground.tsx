@@ -1,5 +1,5 @@
 // src/pages/StemsPlayground/StemsPlayground.tsx
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, useCallback } from 'react';
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { List as ListIcon, Save as SaveIcon } from 'lucide-react';
 import { Helmet } from 'react-helmet-async';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -46,8 +46,8 @@ import { MixerBackNav } from './components/MixerBackNav';
 import { MixerPlayerPanel, type MixerPlayerPanelHandle } from './components/MixerPlayerPanel';
 import { SaveMixModal } from './components/SaveMixModal';
 import { MyMixesModal } from './components/MyMixesModal';
-import { ServiceScreen } from '@shared/ui/serviceScreen';
 import { StemsPlaygroundOwnerEmptyState } from './components/StemsPlaygroundOwnerEmptyState';
+import { StemsPlaygroundVisitorEmptyState } from './components/StemsPlaygroundVisitorEmptyState';
 import './style.scss';
 
 export default function StemsPlayground() {
@@ -133,11 +133,6 @@ export default function StemsPlayground() {
   const artistHubPath = withPublicArtistQuery('/', artistSlug);
   const selectAlbumHint = stems.selectAlbumHint ?? '';
   const noAlbumsLabel = stems.noAlbums ?? '';
-  const emptyTitle = stems.emptyTitle ?? 'No stems available';
-  const emptyDescriptionLine1 =
-    stems.emptyDescriptionLine1 ?? 'When the artist publishes albums with stems,';
-  const emptyDescriptionLine2 = stems.emptyDescriptionLine2 ?? 'they will appear here.';
-
   const { isOwner, ownerResolved } = useArtistPageBuilder(artistSlug);
   const dashboardAlbumsFromStore = useAppSelector(selectDashboardAlbumsData);
 
@@ -150,15 +145,6 @@ export default function StemsPlayground() {
     () => transformEditableAlbumsToAlbumData(dashboardAlbumsFromStore, siteArtistName, lang),
     [dashboardAlbumsFromStore, siteArtistName, lang]
   );
-
-  useLayoutEffect(() => {
-    document.body.classList.toggle('page--service-screen', showVisitorEmptyCatalog);
-    document.body.classList.toggle('page--stems-empty', showVisitorEmptyCatalog);
-    return () => {
-      document.body.classList.remove('page--service-screen');
-      document.body.classList.remove('page--stems-empty');
-    };
-  }, [showVisitorEmptyCatalog]);
 
   const trackCountLabels: TrackCountLabels = {
     one: stems.tracksCountOne ?? '{count}',
@@ -455,20 +441,23 @@ export default function StemsPlayground() {
 
   if (showVisitorEmptyCatalog) {
     return (
-      <ServiceScreen
-        modifier="mixer-empty"
-        titleId="stems-empty-title"
-        pageTitle={pageTitle}
-        title={emptyTitle}
-        description={
-          <>
-            {emptyDescriptionLine1}
-            <br />
-            {emptyDescriptionLine2}
-          </>
-        }
-        divider={false}
-      />
+      <section
+        className="stems-page stems-page--visitor-empty main-background"
+        aria-label={stems.emptyTitle ?? pageTitle}
+      >
+        <Helmet>
+          <title>{pageTitle}</title>
+          <meta name="description" content={selectAlbumHint || pageTitle} />
+          <link rel="canonical" href={canonical} />
+        </Helmet>
+        <div className="wrapper">
+          <StemsPlaygroundVisitorEmptyState
+            ui={ui}
+            artistSlug={artistSlug}
+            artistHubPath={artistHubPath}
+          />
+        </div>
+      </section>
     );
   }
 
@@ -537,7 +526,7 @@ export default function StemsPlayground() {
                   count={selectedAlbum.listedTrackCount > 0 ? selectedAlbum.listedTrackCount : 3}
                 />
               ) : selectedAlbum.tracks.length === 0 ? (
-                <p className="mixer-level__hint">{noAlbumsLabel || emptyTitle}</p>
+                <p className="mixer-level__hint">{noAlbumsLabel || stems.emptyTitle}</p>
               ) : (
                 <MixerTrackList tracks={selectedAlbum.tracks} onSelectTrack={handleSelectTrack} />
               )}

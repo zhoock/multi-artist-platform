@@ -979,3 +979,70 @@ describe('useArtistPageAccess — stems hero release gate', () => {
     });
   });
 });
+
+describe('useArtistPageAccess — visitor /stems reload', () => {
+  beforeEach(() => {
+    jest.mocked(isAuthenticated).mockReturnValue(false);
+    jest.mocked(getUser).mockReturnValue(null);
+    jest.mocked(fetchWithAuthSession).mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        success: true,
+        data: {
+          theBand: ['Artist bio'],
+          headerImages: ['https://example.com/hero.jpg'],
+          socialLinks: {},
+        },
+      }),
+    } as Response);
+  });
+
+  test('pageReady на /stems не ждёт idle articles, когда каталог пуст', async () => {
+    const { result } = renderHook(() => useArtistPageAccess('test-artist'), {
+      wrapper: createWrapper(
+        {
+          lang: { current: 'en' },
+          currentArtist: { publicSlug: 'test-artist' },
+          articles: {
+            status: 'idle' as const,
+            error: null,
+            data: [],
+            lastUpdated: null,
+            lastPublicArtistSlug: null,
+            dashboard: {
+              status: 'idle' as const,
+              error: null,
+              data: [],
+              lastUpdated: null,
+            },
+          },
+          albums: {
+            dashboard: {
+              status: 'idle' as const,
+              error: null,
+              data: [],
+              lastUpdated: null,
+              inFlightFetchContextKey: null,
+            },
+          },
+          artistAlbumCatalog: {
+            status: 'succeeded' as const,
+            error: null,
+            data: [],
+            lastUpdated: Date.now(),
+            fetchContextKey: 'test-artist',
+            artistMissing: false,
+          },
+        },
+        ['/stems?artist=test-artist']
+      ),
+    });
+
+    await waitFor(() => {
+      expect(result.current.ownerResolved).toBe(true);
+      expect(result.current.isOwner).toBe(false);
+      expect(result.current.pageReady).toBe(true);
+      expect(result.current.showArtistPageHeroPending).toBe(false);
+    });
+  });
+});

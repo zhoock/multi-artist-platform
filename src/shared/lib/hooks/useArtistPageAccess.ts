@@ -631,6 +631,10 @@ export function useArtistPageAccessState(
 
   const visitorAccessPending = visitorProfilePending || visitorArticlesGatePending;
 
+  /** Не блокировать pageReady ожиданием статей на маршрутах без articles surface (/stems, /albums/:id). */
+  const visitorAccessBlocksPageReady =
+    visitorProfilePending || (routeRequiresArticlesSurface(pathname) && visitorArticlesGatePending);
+
   /** Cold start only — soft refresh keeps last-good articles on screen. */
   const articlesSurfacePending =
     publicArticles.length === 0 &&
@@ -754,7 +758,7 @@ export function useArtistPageAccessState(
     (!isOwner || ownerContentLoaded) &&
     !albumsBlockPageReady &&
     // Album detail does not wait on thin catalog / articles gates — AlbumDetails owns loading.
-    (onAlbumDetail || !visitorAccessPending) &&
+    (onAlbumDetail || !visitorAccessBlocksPageReady) &&
     !articlesBlockPageReady &&
     aboutSurfaceReady &&
     socialSurfaceReady &&
