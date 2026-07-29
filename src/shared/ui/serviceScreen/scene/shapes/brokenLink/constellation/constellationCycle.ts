@@ -60,7 +60,7 @@ function ambientStarDrift(nodeId: string, elapsed: number): THREE.Vector3 {
   );
 }
 
-export type ConstellationCycleMode = 'loop' | 'birth';
+export type ConstellationCycleMode = 'loop' | 'birth' | 'lost';
 
 export type ConstellationCycleState = {
   mode: ConstellationCycleMode;

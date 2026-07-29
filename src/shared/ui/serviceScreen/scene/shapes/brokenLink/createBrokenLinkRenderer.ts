@@ -13,3 +13,8 @@ export function createBrokenLinkRenderer(): ServiceRendererHandle {
 export function createConstellationBirthRenderer(): ServiceRendererHandle {
   return createBrokenLinkConstellationRenderer({ mode: 'birth' });
 }
+
+/** Lost constellation — perpetual incomplete search, never assembles or breaks. */
+export function createConstellationLostRenderer(): ServiceRendererHandle {
+  return createBrokenLinkConstellationRenderer({ mode: 'lost' });
+}

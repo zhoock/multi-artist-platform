@@ -11,14 +11,12 @@ function useNotFoundCopy() {
       lang === 'ru'
         ? {
             pageTitle: '404 — Страница не найдена',
-            subtitle: 'Страница не найдена',
             descriptionLine1: 'Похоже, вы заблудились в космосе.',
             descriptionLine2: 'Страница, которую вы ищете, не существует.',
             backToHome: 'На главную',
           }
         : {
-            pageTitle: '404 — Page not found',
-            subtitle: 'Page not found',
+            pageTitle: '404',
             descriptionLine1: 'Looks like you got lost in space.',
             descriptionLine2: "The page you're looking for doesn't exist.",
             backToHome: 'Back to Home',
@@ -33,14 +31,12 @@ export const NotFoundPage = () => {
 
   return (
     <ServicePageLayout
-      scene="404"
+      scene="constellation-lost"
       titleId="not-found-title"
       pageTitle={copy.pageTitle}
       title="404"
       description={
         <>
-          {copy.subtitle}
-          <br />
           {copy.descriptionLine1}
           <br />
           {copy.descriptionLine2}

@@ -11,6 +11,7 @@ import {
   BIRTH_SEQUENCE_S,
 } from './constellationCycle';
 import type { ConstellationCycleMode } from './constellationCycle';
+import { computeConstellationLostCycle, LOST_STATIC_ELAPSED } from './constellationLostCycle';
 
 export type ConstellationRendererOptions = {
   mode?: ConstellationCycleMode;
@@ -95,12 +96,19 @@ export function createBrokenLinkConstellationRenderer(
       return;
     }
 
-    const elapsed =
-      reducedMotion && cycleMode === 'birth' ? BIRTH_SEQUENCE_S + 1 : (now - clockStart) / 1000;
+    const elapsed = reducedMotion
+      ? cycleMode === 'birth'
+        ? BIRTH_SEQUENCE_S + 1
+        : cycleMode === 'lost'
+          ? LOST_STATIC_ELAPSED
+          : 0
+      : (now - clockStart) / 1000;
     const cycle =
       cycleMode === 'birth'
         ? computeConstellationBirthCycle(elapsed)
-        : computeConstellationCycle(elapsed);
+        : cycleMode === 'lost'
+          ? computeConstellationLostCycle(elapsed)
+          : computeConstellationCycle(elapsed);
     backgroundStars.update(elapsed);
     constellationNodes.update(elapsed, cycle);
     constellationLinks.update(elapsed, cycle);

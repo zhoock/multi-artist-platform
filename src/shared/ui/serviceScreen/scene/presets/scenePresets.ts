@@ -18,6 +18,7 @@ export const SCENE_PRESETS: Record<ServiceSceneId, ScenePreset> = {
   envelope: { shape: 'envelope', motion: 'assemble', appearance: 'ambient' },
   'broken-link': { shape: 'broken-link', motion: 'drift', appearance: 'ambient' },
   'constellation-birth': { shape: 'broken-link', motion: 'idle', appearance: 'ambient' },
+  'constellation-lost': { shape: 'broken-link', motion: 'drift', appearance: 'ambient' },
   '404': { shape: '404', motion: 'assemble', appearance: 'ambient' },
   hexagon: { shape: 'hexagon', motion: 'pulse', appearance: 'ambient' },
   sphere: { shape: 'sphere', motion: 'pulse', appearance: 'ambient' },

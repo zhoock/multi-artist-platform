@@ -2,6 +2,7 @@
 export type ServiceSceneId =
   | 'broken-link'
   | 'constellation-birth'
+  | 'constellation-lost'
   | 'envelope'
   | '404'
   | 'sphere'

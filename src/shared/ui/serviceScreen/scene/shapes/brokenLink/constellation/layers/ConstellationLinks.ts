@@ -189,7 +189,7 @@ export function createConstellationLinksLayer(
     },
     update(elapsed: number, cycle: ConstellationCycleState) {
       let particleVisibility = 0;
-      const isBirth = cycle.mode === 'birth';
+      const isPartialDraw = cycle.mode === 'birth' || cycle.mode === 'lost';
 
       linePairs.forEach((pair, linkIndex) => {
         const from = cycle.animatedPositions.get(pair.fromId);
@@ -203,7 +203,7 @@ export function createConstellationLinksLayer(
         const strength = cycle.linkStrength[linkIndex] ?? 0;
         const waveBoost = cycle.linkWaveBoost[linkIndex] ?? 0;
 
-        if (isBirth) {
+        if (isPartialDraw) {
           if (drawProgress <= 0) {
             (pair.thin.material as LineMaterial).opacity = 0;
             (pair.glow.material as LineMaterial).opacity = 0;
@@ -222,19 +222,19 @@ export function createConstellationLinksLayer(
           1 +
           breathScale * Math.sin((elapsed * Math.PI * 2) / pair.breathPeriod + pair.breathPhase);
         const waveScale = 1 + waveBoost * 0.95;
-        const opacityScale = isBirth ? 1 : strength;
+        const opacityScale = cycle.mode === 'birth' ? 1 : strength;
 
         (pair.thin.material as LineMaterial).opacity =
           pair.baseThinOpacity * opacityScale * breath * waveScale;
         (pair.glow.material as LineMaterial).opacity =
           pair.baseGlowOpacity * opacityScale * breath * waveScale;
 
-        if (!isBirth) {
+        if (!isPartialDraw) {
           particleVisibility = Math.max(particleVisibility, cycle.particleDrive[linkIndex] ?? 0);
         }
       });
 
-      if (isBirth) {
+      if (isPartialDraw) {
         particleMaterial.opacity = 0;
         ambientMaterial.opacity = 0;
         return;
