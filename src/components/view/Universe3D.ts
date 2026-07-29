@@ -962,14 +962,21 @@ export class Universe3D {
     this.dismissCard();
   };
 
-  /** Viewport Y (px): max bottom edge of the card (above mini-player or viewport). */
+  /** Viewport Y (px): max bottom edge of the card (above scroll hint / mini-player / viewport). */
   private getViewportBottomLimitY(): number {
     const margin = 16;
-    const gapAboveMiniPlayer = 12;
+    const gapAboveChrome = 12;
+
+    const scrollHint = document.querySelector('.universe-scroll-hint');
+    if (scrollHint) {
+      return scrollHint.getBoundingClientRect().top - gapAboveChrome;
+    }
+
     const mini = document.querySelector('.mini-player');
     if (mini) {
-      return mini.getBoundingClientRect().top - gapAboveMiniPlayer;
+      return mini.getBoundingClientRect().top - gapAboveChrome;
     }
+
     const vv = window.visualViewport;
     const h = vv?.height ?? window.innerHeight;
     return h - margin;

@@ -3,7 +3,7 @@
 .universe-scroll-hint {
   position: absolute;
   z-index: 12;
-  inset-block-end: max(var(--ms-0), env(safe-area-inset-bottom, 0px));
+  inset-block-end: max(var(--ms-1), env(safe-area-inset-bottom, 0px));
   inset-inline: 0;
   display: flex;
   gap: 0.625rem;
@@ -17,7 +17,7 @@
 
   @supports selector(body:has(.mini-player)) {
     body:has(.mini-player) & {
-      inset-block-end: calc(4.75rem + env(safe-area-inset-bottom, 0px));
+      inset-block-end: calc(4.75rem + var(--ms-1) + env(safe-area-inset-bottom, 0px));
     }
   }
 
