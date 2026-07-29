@@ -160,10 +160,12 @@ export function createConstellationNodesLayer(texture: THREE.Texture): Constella
 
           const twinkleScale =
             1 + amplitudes[i]! * Math.sin((elapsed * Math.PI * 2) / periods[i]! + phases[i]!);
+          const glowBoost = cycle.nodeGlowBoost.get(nodeId) ?? 0;
+          const scale = twinkleScale * (1 + glowBoost * 0.75);
 
-          colorAttr.array[ix] = baseColor.r * twinkleScale;
-          colorAttr.array[ix + 1] = baseColor.g * twinkleScale;
-          colorAttr.array[ix + 2] = baseColor.b * twinkleScale;
+          colorAttr.array[ix] = baseColor.r * scale;
+          colorAttr.array[ix + 1] = baseColor.g * scale;
+          colorAttr.array[ix + 2] = baseColor.b * scale;
         }
 
         posAttr.needsUpdate = true;

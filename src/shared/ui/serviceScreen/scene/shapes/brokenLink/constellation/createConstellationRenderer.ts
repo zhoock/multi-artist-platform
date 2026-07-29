@@ -5,13 +5,25 @@ import type { ServiceRendererHandle } from '../../../types';
 import { createBackgroundStarsLayer } from './layers/BackgroundStars';
 import { createConstellationLinksLayer } from './layers/ConstellationLinks';
 import { createConstellationNodesLayer } from './layers/ConstellationNodes';
-import { computeConstellationCycle } from './constellationCycle';
+import {
+  computeConstellationBirthCycle,
+  computeConstellationCycle,
+  BIRTH_SEQUENCE_S,
+} from './constellationCycle';
+import type { ConstellationCycleMode } from './constellationCycle';
+
+export type ConstellationRendererOptions = {
+  mode?: ConstellationCycleMode;
+};
 
 /**
  * Broken-link constellation renderer — starfield + nodes + links + break.
  * Independent from Shape / Matter (blob placeholder not mounted here).
  */
-export function createBrokenLinkConstellationRenderer(): ServiceRendererHandle {
+export function createBrokenLinkConstellationRenderer(
+  options: ConstellationRendererOptions = {}
+): ServiceRendererHandle {
+  const cycleMode = options.mode ?? 'loop';
   let renderer: THREE.WebGLRenderer | null = null;
   let scene: THREE.Scene | null = null;
   let camera: THREE.PerspectiveCamera | null = null;
@@ -83,8 +95,12 @@ export function createBrokenLinkConstellationRenderer(): ServiceRendererHandle {
       return;
     }
 
-    const elapsed = (now - clockStart) / 1000;
-    const cycle = computeConstellationCycle(elapsed);
+    const elapsed =
+      reducedMotion && cycleMode === 'birth' ? BIRTH_SEQUENCE_S + 1 : (now - clockStart) / 1000;
+    const cycle =
+      cycleMode === 'birth'
+        ? computeConstellationBirthCycle(elapsed)
+        : computeConstellationCycle(elapsed);
     backgroundStars.update(elapsed);
     constellationNodes.update(elapsed, cycle);
     constellationLinks.update(elapsed, cycle);

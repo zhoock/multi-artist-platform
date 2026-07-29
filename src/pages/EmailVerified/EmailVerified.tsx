@@ -48,7 +48,7 @@ export default function EmailVerified() {
 
   return (
     <ServicePageLayout
-      scene="envelope"
+      scene="constellation-birth"
       titleId="email-verified-title"
       pageTitle={copy.successTitle}
       title={copy.successTitle}

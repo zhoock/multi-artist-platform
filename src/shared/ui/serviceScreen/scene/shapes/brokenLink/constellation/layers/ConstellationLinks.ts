@@ -161,6 +161,24 @@ export function createConstellationLinksLayer(
     geometry.setPositions([from.x, from.y, from.z, to.x, to.y, to.z]);
   }
 
+  function updateLineGeometryPartial(
+    line: Line2,
+    from: THREE.Vector3,
+    to: THREE.Vector3,
+    progress: number
+  ): void {
+    const t = Math.max(0.001, Math.min(1, progress));
+    const geometry = line.geometry as LineGeometry;
+    geometry.setPositions([
+      from.x,
+      from.y,
+      from.z,
+      from.x + (to.x - from.x) * t,
+      from.y + (to.y - from.y) * t,
+      from.z + (to.z - from.z) * t,
+    ]);
+  }
+
   return {
     group,
     setResolution(width: number, height: number) {
@@ -171,6 +189,7 @@ export function createConstellationLinksLayer(
     },
     update(elapsed: number, cycle: ConstellationCycleState) {
       let particleVisibility = 0;
+      const isBirth = cycle.mode === 'birth';
 
       linePairs.forEach((pair, linkIndex) => {
         const from = cycle.animatedPositions.get(pair.fromId);
@@ -180,20 +199,46 @@ export function createConstellationLinksLayer(
           return;
         }
 
-        updateLineGeometry(pair.thin, from, to);
-        updateLineGeometry(pair.glow, from, to);
-
+        const drawProgress = cycle.linkDrawProgress[linkIndex] ?? 0;
         const strength = cycle.linkStrength[linkIndex] ?? 0;
+        const waveBoost = cycle.linkWaveBoost[linkIndex] ?? 0;
+
+        if (isBirth) {
+          if (drawProgress <= 0) {
+            (pair.thin.material as LineMaterial).opacity = 0;
+            (pair.glow.material as LineMaterial).opacity = 0;
+            return;
+          }
+
+          updateLineGeometryPartial(pair.thin, from, to, drawProgress);
+          updateLineGeometryPartial(pair.glow, from, to, drawProgress);
+        } else {
+          updateLineGeometry(pair.thin, from, to);
+          updateLineGeometry(pair.glow, from, to);
+        }
+
         const breathScale = cycle.calm ? 0.05 : 0.032;
         const breath =
           1 +
           breathScale * Math.sin((elapsed * Math.PI * 2) / pair.breathPeriod + pair.breathPhase);
+        const waveScale = 1 + waveBoost * 0.95;
+        const opacityScale = isBirth ? 1 : strength;
 
-        (pair.thin.material as LineMaterial).opacity = pair.baseThinOpacity * strength * breath;
-        (pair.glow.material as LineMaterial).opacity = pair.baseGlowOpacity * strength * breath;
+        (pair.thin.material as LineMaterial).opacity =
+          pair.baseThinOpacity * opacityScale * breath * waveScale;
+        (pair.glow.material as LineMaterial).opacity =
+          pair.baseGlowOpacity * opacityScale * breath * waveScale;
 
-        particleVisibility = Math.max(particleVisibility, cycle.particleDrive[linkIndex] ?? 0);
+        if (!isBirth) {
+          particleVisibility = Math.max(particleVisibility, cycle.particleDrive[linkIndex] ?? 0);
+        }
       });
+
+      if (isBirth) {
+        particleMaterial.opacity = 0;
+        ambientMaterial.opacity = 0;
+        return;
+      }
 
       const posAttr = particleGeometry.getAttribute('position') as THREE.BufferAttribute;
       let activeCount = 0;

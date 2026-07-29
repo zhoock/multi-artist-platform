@@ -5,7 +5,7 @@ import { getServiceScene, listServiceSceneIds, SERVICE_SCENES } from '../registr
 describe('SERVICE_SCENES', () => {
   test('contains visual scene ids without page semantics', () => {
     expect(listServiceSceneIds().sort()).toEqual(
-      ['404', 'broken-link', 'envelope', 'hexagon', 'rings', 'sphere'].sort()
+      ['404', 'broken-link', 'constellation-birth', 'envelope', 'hexagon', 'rings', 'sphere'].sort()
     );
   });
 

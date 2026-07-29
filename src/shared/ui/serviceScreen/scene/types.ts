@@ -1,5 +1,12 @@
 /** Visual scene identity — no page semantics, reusable across routes. */
-export type ServiceSceneId = 'broken-link' | 'envelope' | '404' | 'sphere' | 'rings' | 'hexagon';
+export type ServiceSceneId =
+  | 'broken-link'
+  | 'constellation-birth'
+  | 'envelope'
+  | '404'
+  | 'sphere'
+  | 'rings'
+  | 'hexagon';
 
 /** Lifecycle handle returned by every renderer factory (WebGL, Canvas, SVG, DOM, …). */
 export interface ServiceRendererHandle {

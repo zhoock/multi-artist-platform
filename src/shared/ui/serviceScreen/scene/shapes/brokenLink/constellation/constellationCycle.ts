@@ -60,14 +60,23 @@ function ambientStarDrift(nodeId: string, elapsed: number): THREE.Vector3 {
   );
 }
 
+export type ConstellationCycleMode = 'loop' | 'birth';
+
 export type ConstellationCycleState = {
+  mode: ConstellationCycleMode;
   breakAmount: number;
   isRestoring: boolean;
   linkStrength: Float32Array;
+  /** 0–1 progress along link length (birth draws lines; loop uses full segment). */
+  linkDrawProgress: Float32Array;
   nodeOffsets: Map<ConstellationNodeId, THREE.Vector3>;
   animatedPositions: Map<ConstellationNodeId, THREE.Vector3>;
   particleDrive: Float32Array;
   calm: boolean;
+  /** Per-link wave brightness boost (0 = none). Birth mode only. */
+  linkWaveBoost: Float32Array;
+  /** Per-node wave glow boost (0 = none). Birth mode only. */
+  nodeGlowBoost: Map<ConstellationNodeId, number>;
 };
 
 function smoothstep(edge0: number, edge1: number, x: number): number {
@@ -198,6 +207,177 @@ const basePositions = new Map<ConstellationNodeId, THREE.Vector3>(
   CONSTELLATION_NODES.map((node) => [node.id, new THREE.Vector3(...node.position)])
 );
 
+/** Birth draw order — both arcs grow outward, bridge closes last. */
+const LINK_BIRTH_ORDER = [0, 5, 1, 6, 2, 7, 3, 8, 4, 9, 10];
+
+/** Scattered hold — same separation as expired broken state. */
+const BIRTH_SCATTERED_HOLD_S = 0.8;
+/** Halves converge — same easing as expired restore, without link fade. */
+const BIRTH_CONVERGE_S = 4.5;
+/** Lines begin halfway through convergence — stars still settling while links draw. */
+const BIRTH_DRAW_START = BIRTH_SCATTERED_HOLD_S + BIRTH_CONVERGE_S * 0.5;
+const BIRTH_DRAW_S = 3;
+const BIRTH_WAVE_S = 2.2;
+export const BIRTH_SEQUENCE_S = BIRTH_DRAW_START + BIRTH_DRAW_S + BIRTH_WAVE_S;
+const BIRTH_LINK_DRAW_S = 0.32;
+
+/** Wave propagation order from s11 (bridge destination — last reached star). */
+const LINK_WAVE_ORDER = [5.5, 4.5, 3.5, 2.5, 1.5, 4.5, 3.5, 2.5, 1.5, 0.5, 0.5];
+const MAX_LINK_WAVE_ORDER = 5.5;
+
+const NODE_WAVE_ORDER = new Map<ConstellationNodeId, number>([
+  ['s11', 0],
+  ['s10', 1],
+  ['s04', 1],
+  ['s09', 2],
+  ['s03', 2],
+  ['s08', 3],
+  ['s02', 3],
+  ['s07', 4],
+  ['s01', 4],
+  ['s13', 5],
+  ['s00', 5],
+  ['s06', 6],
+]);
+
+function waveBell(front: number, center: number, width: number): number {
+  const d = (front - center) / width;
+  return Math.exp(-d * d);
+}
+
+function sampleBirthSeparation(elapsed: number): number {
+  const convergeStart = BIRTH_SCATTERED_HOLD_S;
+  const convergeEnd = convergeStart + BIRTH_CONVERGE_S;
+
+  if (elapsed < convergeStart) {
+    return 1;
+  }
+
+  if (elapsed < convergeEnd) {
+    const convergeT = (elapsed - convergeStart) / BIRTH_CONVERGE_S;
+    return 1 - easeInOutCubic(convergeT);
+  }
+
+  return 0;
+}
+
+function sampleBirthDrawProgress(elapsed: number): Float32Array {
+  const progress = new Float32Array(ANIMATED_LINKS.length);
+
+  if (elapsed < BIRTH_DRAW_START) {
+    return progress;
+  }
+
+  const drawElapsed = elapsed - BIRTH_DRAW_START;
+  const stagger =
+    LINK_BIRTH_ORDER.length > 1
+      ? (BIRTH_DRAW_S - BIRTH_LINK_DRAW_S) / (LINK_BIRTH_ORDER.length - 1)
+      : 0;
+
+  LINK_BIRTH_ORDER.forEach((linkIndex, orderIndex) => {
+    const start = orderIndex * stagger;
+    const end = start + BIRTH_LINK_DRAW_S;
+    progress[linkIndex] =
+      drawElapsed < start ? 0 : drawElapsed >= end ? 1 : smoothstep(start, end, drawElapsed);
+  });
+
+  return progress;
+}
+
+function sampleBirthWave(elapsed: number): {
+  linkWaveBoost: Float32Array;
+  nodeGlowBoost: Map<ConstellationNodeId, number>;
+} {
+  const linkWaveBoost = new Float32Array(ANIMATED_LINKS.length);
+  const nodeGlowBoost = new Map<ConstellationNodeId, number>();
+
+  const waveStart = BIRTH_DRAW_START + BIRTH_DRAW_S;
+  const waveElapsed = elapsed - waveStart;
+
+  if (waveElapsed < 0 || waveElapsed > BIRTH_WAVE_S) {
+    return { linkWaveBoost, nodeGlowBoost };
+  }
+
+  const waveT = waveElapsed / BIRTH_WAVE_S;
+  const front = waveT * (MAX_LINK_WAVE_ORDER + 0.6);
+  const envelope = 1 - waveT * 0.12;
+  const waveWidth = 0.78;
+
+  for (let i = 0; i < ANIMATED_LINKS.length; i++) {
+    linkWaveBoost[i] = waveBell(front, LINK_WAVE_ORDER[i]!, waveWidth) * envelope * 1.15;
+  }
+
+  NODE_WAVE_ORDER.forEach((order, nodeId) => {
+    nodeGlowBoost.set(nodeId, waveBell(front, order, waveWidth) * envelope * 1.2);
+  });
+
+  return { linkWaveBoost, nodeGlowBoost };
+}
+
+function buildBirthPositions(
+  elapsed: number,
+  separationFactor: number
+): {
+  nodeOffsets: Map<ConstellationNodeId, THREE.Vector3>;
+  animatedPositions: Map<ConstellationNodeId, THREE.Vector3>;
+} {
+  const nodeOffsets = new Map<ConstellationNodeId, THREE.Vector3>();
+  const animatedPositions = new Map<ConstellationNodeId, THREE.Vector3>();
+  const separation = HALF_SEPARATION * separationFactor;
+
+  CONSTELLATION_NODES.forEach((node) => {
+    const offset = new THREE.Vector3();
+    const isLeft = LEFT_HALF.has(node.id);
+    const side = isLeft ? -1 : 1;
+
+    offset.x += side * separation;
+
+    const drift = ambientStarDrift(node.id, elapsed);
+    offset.add(drift);
+
+    nodeOffsets.set(node.id, offset);
+
+    const base = basePositions.get(node.id)!;
+    animatedPositions.set(
+      node.id,
+      new THREE.Vector3(base.x + offset.x, base.y + offset.y, base.z + offset.z)
+    );
+  });
+
+  return { nodeOffsets, animatedPositions };
+}
+
+export function computeConstellationBirthCycle(elapsed: number): ConstellationCycleState {
+  const separationFactor = sampleBirthSeparation(elapsed);
+  const linkDrawProgress = sampleBirthDrawProgress(elapsed);
+  const linkStrength = new Float32Array(ANIMATED_LINKS.length);
+
+  for (let i = 0; i < ANIMATED_LINKS.length; i++) {
+    linkStrength[i] = linkDrawProgress[i]! >= 1 ? 1 : 0;
+  }
+
+  const calm = elapsed >= BIRTH_SEQUENCE_S;
+  const converging =
+    elapsed >= BIRTH_SCATTERED_HOLD_S && elapsed < BIRTH_SCATTERED_HOLD_S + BIRTH_CONVERGE_S;
+
+  const { linkWaveBoost, nodeGlowBoost } = sampleBirthWave(elapsed);
+  const { nodeOffsets, animatedPositions } = buildBirthPositions(elapsed, separationFactor);
+
+  return {
+    mode: 'birth',
+    breakAmount: separationFactor,
+    isRestoring: converging,
+    linkStrength,
+    linkDrawProgress,
+    nodeOffsets,
+    animatedPositions,
+    particleDrive: new Float32Array(ANIMATED_LINKS.length),
+    calm,
+    linkWaveBoost,
+    nodeGlowBoost,
+  };
+}
+
 export function computeConstellationCycle(elapsed: number): ConstellationCycleState {
   const cycleTime = elapsed % CYCLE_S;
   const phase = samplePhase(cycleTime);
@@ -207,12 +387,15 @@ export function computeConstellationCycle(elapsed: number): ConstellationCycleSt
   const calm = !inMainMotion;
 
   const linkStrength = new Float32Array(ANIMATED_LINKS.length);
+  const linkDrawProgress = new Float32Array(ANIMATED_LINKS.length);
   const particleDrive = new Float32Array(ANIMATED_LINKS.length);
 
   for (let i = 0; i < ANIMATED_LINKS.length; i++) {
     linkStrength[i] = phase.restoring
       ? linkStrengthRestoring(i, phase.restoreT)
       : linkStrengthBreaking(i, phase.linkDrive);
+
+    linkDrawProgress[i] = linkStrength[i] > 0.02 ? 1 : 0;
 
     const orderIndex = LINK_BREAK_ORDER.indexOf(i);
     const fadeCenter = orderIndex * 0.052 + 0.038;
@@ -246,12 +429,16 @@ export function computeConstellationCycle(elapsed: number): ConstellationCycleSt
   });
 
   return {
+    mode: 'loop',
     breakAmount: phase.breakAmount,
     isRestoring: phase.restoring,
     linkStrength,
+    linkDrawProgress,
     nodeOffsets,
     animatedPositions,
     particleDrive,
     calm,
+    linkWaveBoost: new Float32Array(ANIMATED_LINKS.length),
+    nodeGlowBoost: new Map(),
   };
 }

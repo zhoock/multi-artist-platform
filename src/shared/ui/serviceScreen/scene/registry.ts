@@ -1,4 +1,7 @@
-import { createBrokenLinkRenderer } from './shapes/brokenLink/createBrokenLinkRenderer';
+import {
+  createBrokenLinkRenderer,
+  createConstellationBirthRenderer,
+} from './shapes/brokenLink/createBrokenLinkRenderer';
 import { createSceneById } from './presets/scenePresets';
 import type { ServiceSceneDefinition, ServiceSceneId } from './types';
 
@@ -7,6 +10,10 @@ export const SERVICE_SCENES: Record<ServiceSceneId, ServiceSceneDefinition> = {
   'broken-link': {
     id: 'broken-link',
     createRenderer: createBrokenLinkRenderer,
+  },
+  'constellation-birth': {
+    id: 'constellation-birth',
+    createRenderer: createConstellationBirthRenderer,
   },
   envelope: {
     id: 'envelope',
