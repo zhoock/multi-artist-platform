@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useLang } from '@app/providers/lang';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
-import { ServiceScreen } from '@shared/ui/serviceScreen';
+import { ServicePageLayout } from '@shared/ui/serviceScreen';
 
 export function ArtistPageUnderConstruction() {
   const { lang } = useLang();
@@ -25,13 +25,13 @@ export function ArtistPageUnderConstruction() {
   const ctaLabel = copy?.visitorCta ?? 'Back to the galaxy';
 
   return (
-    <ServiceScreen
-      modifier="artist-under-construction"
+    <ServicePageLayout
+      scene="hexagon"
       titleId="artist-page-under-construction-title"
       pageTitle={title}
       title={title}
       description={subtitle}
-      primaryAction={{
+      action={{
         label: ctaLabel,
         onClick: () => navigate('/', { replace: true }),
       }}

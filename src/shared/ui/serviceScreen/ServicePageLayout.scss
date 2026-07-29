@@ -1,0 +1,60 @@
+.service-page-layout {
+  position: relative;
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 100%;
+  padding: var(--ms-2) var(--ms-1);
+  box-sizing: border-box;
+  background: none;
+
+  @media (width <= 30rem) {
+    padding: var(--ms-1) var(--ms-0);
+  }
+}
+
+body.page--service-screen {
+  #root {
+    min-block-size: 100dvb;
+    grid-template:
+      'header' calc(1.618rem * 2)
+      'main' minmax(0, 1fr) / 1fr;
+
+    &:not(:has(.header)) {
+      grid-template: 'main' minmax(0, 1fr) / 1fr;
+    }
+  }
+
+  #root main {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+
+    .service-page-layout {
+      flex: 1 1 auto;
+      align-self: stretch;
+      min-block-size: 0;
+      width: 100%;
+    }
+  }
+
+  .header {
+    position: relative;
+    z-index: 2;
+  }
+}
+
+body.page--artist-under-construction {
+  #root main > .email-verification-banner,
+  #root main > .hero {
+    display: none;
+  }
+
+  #root .footer {
+    display: none;
+  }
+}

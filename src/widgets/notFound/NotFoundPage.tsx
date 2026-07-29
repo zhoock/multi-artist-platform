@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLang } from '@app/providers/lang';
-import { ServiceScreen } from '@shared/ui/serviceScreen';
+import { ServicePageLayout } from '@shared/ui/serviceScreen';
 
 function useNotFoundCopy() {
   const { lang } = useLang();
@@ -32,8 +32,8 @@ export const NotFoundPage = () => {
   const copy = useNotFoundCopy();
 
   return (
-    <ServiceScreen
-      modifier="not-found"
+    <ServicePageLayout
+      scene="404"
       titleId="not-found-title"
       pageTitle={copy.pageTitle}
       title="404"
@@ -46,7 +46,7 @@ export const NotFoundPage = () => {
           {copy.descriptionLine2}
         </>
       }
-      primaryAction={{
+      action={{
         label: copy.backToHome,
         onClick: () => navigate('/', { replace: true }),
       }}

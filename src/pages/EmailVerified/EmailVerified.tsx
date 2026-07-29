@@ -8,7 +8,7 @@ import {
 import { captureDashboardModalBackground } from '@shared/lib/dashboardModalBackground';
 import { useEmailVerificationCopy } from '@shared/lib/emailVerification';
 import { useAuthSessionUser } from '@shared/lib/hooks/useAuthSessionUser';
-import { ServiceScreen } from '@shared/ui/serviceScreen';
+import { ServicePageLayout } from '@shared/ui/serviceScreen';
 
 const DASHBOARD_PATH = '/dashboard-new';
 
@@ -47,13 +47,13 @@ export default function EmailVerified() {
   };
 
   return (
-    <ServiceScreen
-      modifier="email-verified"
+    <ServicePageLayout
+      scene="envelope"
       titleId="email-verified-title"
       pageTitle={copy.successTitle}
       title={copy.successTitle}
       description={copy.successBody}
-      primaryAction={{ label: copy.continueToHome, onClick: handleGoHome }}
+      action={{ label: copy.continueToHome, onClick: handleGoHome }}
       secondaryAction={{
         prefix: copy.openDashboardPrefix,
         label: copy.openDashboardLink,

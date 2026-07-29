@@ -6,7 +6,7 @@ import {
   useResendCooldown,
   resolveVerificationEmailSend,
 } from '@shared/lib/emailVerification';
-import { ServiceScreen } from '@shared/ui/serviceScreen';
+import { ServicePageLayout } from '@shared/ui/serviceScreen';
 
 export default function EmailVerificationExpired() {
   const navigate = useNavigate();
@@ -43,29 +43,26 @@ export default function EmailVerificationExpired() {
   const resendLabel = isCoolingDown ? `${copy.sendNewLink} (${remaining}s)` : copy.sendNewLink;
 
   return (
-    <ServiceScreen
-      modifier="email-verification-expired"
+    <ServicePageLayout
+      scene="broken-link"
       titleId="email-verification-expired-title"
       pageTitle={copy.expiredTitle}
       title={copy.expiredTitle}
       description={copy.expiredBody}
-      beforeActions={
+      extraContent={
         success ? (
-          <p
-            className="service-screen__notice-message service-screen__notice-message--success"
-            role="status"
-          >
+          <p className="service-content__message service-content__message--success" role="status">
             <strong>{copy.verificationSentTitle}</strong>
             <br />
             {copy.verificationSentBody}
           </p>
         ) : error ? (
-          <p className="service-screen__notice-message" role="alert">
+          <p className="service-content__message" role="alert">
             {error}
           </p>
         ) : null
       }
-      primaryAction={{
+      action={{
         label: loading ? copy.submitting : resendLabel,
         onClick: handleSendNewLink,
         disabled: loading || isCoolingDown,
