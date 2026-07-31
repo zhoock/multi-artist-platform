@@ -11,7 +11,7 @@
 | `AlbumTracks`      | Список треков                   | ✅ перенесено → `@widgets/albumTracks` + `@entities/track/ui` |
 | `Articles`         | Превью статей, враппер          | ✅ перенесено → `@entities/article`                           |
 | `Footer`           | Глобальный подвал сайта         | ✅ перенесено → `@widgets/footer`                             |
-| `Forms`            | Общая форма                     | ✅ перенесено → `@widgets/form`                               |
+| `Forms`            | Общая форма (legacy)            | ✅ удалено — заменено dashboard `EditAlbumModal`              |
 | `Hamburger`        | Кнопка меню                     | ✅ перенесено → `@shared/ui/hamburger`                        |
 | `Header`           | Шапка сайта                     | ✅ перенесено → `@widgets/header`                             |
 | `Hero`             | Герой-блок                      | ✅ перенесено → `@widgets/hero`                               |

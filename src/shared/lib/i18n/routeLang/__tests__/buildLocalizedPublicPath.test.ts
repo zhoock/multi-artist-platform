@@ -19,7 +19,6 @@ describe('isInternalAppPath', () => {
     expect(isInternalAppPath('/pay/success')).toBe(true);
     expect(isInternalAppPath('/ru/pay/success')).toBe(true);
     expect(isInternalAppPath('/email-verified')).toBe(true);
-    expect(isInternalAppPath('/forms')).toBe(true);
     expect(isInternalAppPath('/help/articles/1')).toBe(true);
   });
 

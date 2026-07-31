@@ -27,10 +27,6 @@ export function isInternalAppPath(pathname: string): boolean {
     return true;
   }
 
-  if (path === '/forms') {
-    return true;
-  }
-
   if (path.startsWith('/help/')) {
     return true;
   }

@@ -43,7 +43,6 @@
 
 - `@widgets/header` — шапка сайта.
 - `@widgets/footer` — подвал сайта.
-- `@widgets/form` — форма обратной связи.
 - `@widgets/hero` — главный баннер.
 - `@widgets/notFound` — страница 404.
 - `@widgets/dashboardAlbums` — список альбомов в личном кабинете.

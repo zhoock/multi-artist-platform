@@ -39,7 +39,6 @@ import { closePopup, getIsPopupOpen, openPopup } from '@features/popupToggle';
 
 import { Popup, PopupHamburgerToggle, usePopup } from '@shared/ui/popup';
 import { NotFoundPage } from '@widgets/notFound';
-import { Form } from '@widgets/form';
 import { Hero } from '@widgets/hero';
 import { Header } from '@widgets/header';
 import { Footer } from '@widgets/footer';
@@ -328,7 +327,6 @@ function Layout() {
     '/help/articles/:articleId',
     '/offer',
     '/privacy',
-    '/forms',
     '/stems',
     '/stems/mix/:mixId',
     '/dashboard',
@@ -503,7 +501,6 @@ function Layout() {
           </Suspense>
         }
       />
-      <Route path="/forms" element={<Form />} />
       <Route path="/:lang" element={<LangLayout />}>
         <Route index element={homePageElement} />
         <Route path="albums" element={allAlbumsPageElement} />
@@ -520,7 +517,6 @@ function Layout() {
         <Route path="pay/*" element={<UnprefixedRedirect />} />
         <Route path="email-verified" element={<UnprefixedRedirect />} />
         <Route path="email-verification-expired" element={<UnprefixedRedirect />} />
-        <Route path="forms" element={<UnprefixedRedirect />} />
         <Route path="help/*" element={<UnprefixedRedirect />} />
         <Route path="*" element={<NotFoundPage />} />
       </Route>
