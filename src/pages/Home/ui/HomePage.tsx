@@ -52,6 +52,8 @@ import { ArtistPageBuilderPaymentBar } from './ArtistPageBuilderPaymentBar';
 import { ArtistPageSkeletonMain } from './ArtistPageSkeleton';
 import { ScrollToExploreHint } from './ScrollToExploreHint';
 import { useArtistPageBuilder } from '@shared/lib/hooks/useArtistPageBuilder';
+import { useArtistPageSeo } from '@shared/lib/hooks/useArtistPageSeo';
+import { ArtistPageSeoHelmet } from './ArtistPageSeoHelmet';
 import '../../../components/view/Universe3D.style.scss';
 import './homeSceneChrome.scss';
 
@@ -80,6 +82,12 @@ export function HomePage() {
   const artistSlug = searchParams.get('artist') || '';
   const hideArtistPageAfterOwnDelete = useRedirectHomeAfterOwnAccountDeleted(hasArtistParam);
   const artistPageAccess = useArtistPageBuilder(artistSlug);
+  const artistPageSeo = useArtistPageSeo({
+    lang,
+    artistSlug,
+    enabled: hasArtistParam && !hideArtistPageAfterOwnDelete,
+    forcePlatformFallback: artistPageAccess.showNotFound,
+  });
 
   /**
    * `artist:updated` — сигнал для Universe / профиля / about, не для каталога.
@@ -322,28 +330,56 @@ export function HomePage() {
       return null;
     }
 
+    const artistSeoHelmet = <ArtistPageSeoHelmet seo={artistPageSeo} />;
+
     if (artistPageAccess.showNotFound) {
-      return <ArtistNotFound />;
+      return (
+        <>
+          {artistSeoHelmet}
+          <ArtistNotFound />
+        </>
+      );
     }
 
     if (artistPageAccess.showOnboardingSkeleton) {
-      return <ArtistOnboardingSkeleton />;
+      return (
+        <>
+          {artistSeoHelmet}
+          <ArtistOnboardingSkeleton />
+        </>
+      );
     }
 
     if (artistPageAccess.showOnboarding) {
-      return <ArtistOnboarding />;
+      return (
+        <>
+          {artistSeoHelmet}
+          <ArtistOnboarding />
+        </>
+      );
     }
 
     if (artistPageAccess.showVisitorUnderConstruction) {
-      return <ArtistPageUnderConstruction />;
+      return (
+        <>
+          {artistSeoHelmet}
+          <ArtistPageUnderConstruction />
+        </>
+      );
     }
 
     if (!artistPageAccess.pageReady) {
-      return <ArtistPageSkeletonMain variant={artistPageAccess.skeletonVariant} />;
+      return (
+        <>
+          {artistSeoHelmet}
+          <ArtistPageSkeletonMain variant={artistPageAccess.skeletonVariant} />
+        </>
+      );
     }
 
     return (
       <>
+        {artistSeoHelmet}
         <ArtistPageBuilderPaymentBar />
         <AlbumsSection isOwner={artistPageAccess.isOwner} />
         <ArticlesSection />

@@ -16,6 +16,7 @@ import {
   artistPageBuilderBarIconProps,
   useArtistPageBuilderNav,
 } from '@shared/ui/artistPageBuilder';
+import { platformDisplayName } from '@shared/constants/platformBranding';
 import { Link2 as Link2Icon } from 'lucide-react';
 import './style.scss';
 
@@ -97,7 +98,7 @@ function FooterComponent() {
         <ul className="copyright-list">
           <li className="copyright-list__item">
             <small>
-              <span>© 2026 Название сайта</span>
+              <span>© 2026 {platformDisplayName(lang)}</span>
             </small>
           </li>
           <li>

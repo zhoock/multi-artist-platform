@@ -113,6 +113,7 @@ export function SettingsPageContent({
     genreOptions,
     name,
     setName,
+    nameError,
     publicSlug,
     handlePublicSlugChange,
     handlePublicSlugBlur,
@@ -129,7 +130,7 @@ export function SettingsPageContent({
     isLoadingHeaderImages,
     hasLoadedOnce,
     isBusy,
-  } = useSettingsPage({ enabled, userName });
+  } = useSettingsPage({ enabled, userName, isListener });
 
   useLayoutEffect(() => {
     if (!scrollToHeaderImages || !enabled || isListener) return;
@@ -298,7 +299,14 @@ export function SettingsPageContent({
                 value={name}
                 onChange={(event) => setName(event.target.value)}
                 onBlur={handleNameBlur}
+                aria-invalid={nameError ? true : undefined}
+                aria-describedby={nameError ? 'settings-band-name-error' : undefined}
               />
+              {nameError ? (
+                <DashboardRowInlineError id="settings-band-name-error">
+                  {nameError}
+                </DashboardRowInlineError>
+              ) : null}
             </DashboardRow>
 
             {!isListener ? (

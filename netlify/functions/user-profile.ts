@@ -253,7 +253,17 @@ export const handler: Handler = async (
       let paramIndex = 1;
 
       if (data.siteName !== undefined) {
-        const normalizedName = data.siteName?.trim() || null;
+        const normalizedName = (data.siteName ?? '').trim();
+        if (!normalizedName) {
+          return {
+            statusCode: 400,
+            headers,
+            body: JSON.stringify({
+              success: false,
+              error: 'Artist name is required',
+            } as SaveUserProfileResponse),
+          };
+        }
         // name is source of truth; keep site_name in sync for backward compatibility
         updateFields.push(`name = $${paramIndex++}`);
         updateValues.push(normalizedName);

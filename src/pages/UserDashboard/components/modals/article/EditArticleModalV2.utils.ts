@@ -6,7 +6,7 @@ import {
   resolveDetailCaption,
   serializeCarouselImagesForDetail,
 } from '@entities/article';
-import { withPublicArtistQuery } from '@shared/lib/artistQuery';
+import { buildPublicArticlePagePath } from '@shared/lib/seo/publicPagePaths';
 import type { RichText } from '@shared/lib/richText';
 import {
   isRichTextEmpty,
@@ -417,7 +417,7 @@ function hasContent(detail: Partial<ArticledetailsProps>): boolean {
 }
 
 export function buildArticlePublicPath(articleId: string, artistSlug?: string | null): string {
-  return withPublicArtistQuery(`/articles/${encodeURIComponent(articleId)}`, artistSlug);
+  return buildPublicArticlePagePath(articleId, artistSlug);
 }
 
 export async function readApiErrorMessage(response: Response, fallback: string): Promise<string> {

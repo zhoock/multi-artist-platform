@@ -147,10 +147,6 @@ module.exports = {
       patterns: [
         { from: path.resolve(__dirname, '../robots.txt'), to: 'robots.txt' },
         {
-          from: path.resolve(__dirname, '../sitemap.xml'), // Путь к файлу sitemap.xml
-          to: path.resolve(__dirname, '../dist/'), // Папка в которую нужно скопировать
-        },
-        {
           from: path.resolve(__dirname, '../_headers'), // Путь к файлу _headers
           to: path.resolve(__dirname, '../dist/'), // Папка в которую нужно скопировать
         },

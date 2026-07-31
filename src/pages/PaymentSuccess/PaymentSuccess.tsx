@@ -18,6 +18,7 @@ import {
   albumPaymentOutcomePath,
   type AlbumPaymentRouteMode,
 } from '@shared/lib/paymentRoutes';
+import { platformDisplayName } from '@shared/constants/platformBranding';
 import {
   buildPaymentSuccessPreviewState,
   isPaymentSuccessPreviewActive,
@@ -91,15 +92,19 @@ const labelsFor = (lang: string, ui: ReturnType<typeof selectUiDictionaryFirst> 
   return {
     pageTitleSuccess:
       copy?.pageTitleSuccess ??
-      (en ? 'Payment successful — Smolyanoe Chuchelko' : 'Оплата успешна — Смоляное Чучелко'),
+      (en
+        ? `Payment successful — ${platformDisplayName('en')}`
+        : `Оплата успешна — ${platformDisplayName('ru')}`),
     pageTitleFail:
       copy?.pageTitleFail ??
       (en
-        ? 'Payment not completed — Smolyanoe Chuchelko'
-        : 'Платёж не завершён — Смоляное Чучелко'),
+        ? `Payment not completed — ${platformDisplayName('en')}`
+        : `Платёж не завершён — ${platformDisplayName('ru')}`),
     pageTitleResolve:
       copy?.pageTitleResolve ??
-      (en ? 'Payment status — Smolyanoe Chuchelko' : 'Статус оплаты — Смоляное Чучелко'),
+      (en
+        ? `Payment status — ${platformDisplayName('en')}`
+        : `Статус оплаты — ${platformDisplayName('ru')}`),
     loading: copy?.loading ?? (en ? 'Loading payment status…' : 'Статус оплаты загружается…'),
     verifyErrorTitle:
       copy?.verifyErrorTitle ??

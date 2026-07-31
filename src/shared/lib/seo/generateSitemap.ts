@@ -1,19 +1,34 @@
 import { normalizeOrigin } from '../publicSiteOrigin';
 
+export type SitemapChangeFreq =
+  | 'always'
+  | 'hourly'
+  | 'daily'
+  | 'weekly'
+  | 'monthly'
+  | 'yearly'
+  | 'never';
+
 export interface SitemapEntry {
   path: string;
-  priority: string;
+  priority?: string;
+  changefreq?: SitemapChangeFreq;
+  /** ISO date (YYYY-MM-DD) or full ISO datetime — emitted as W3C lastmod when set. */
+  lastmod?: string;
 }
 
-/** Public SPA routes included in sitemap (no artist-specific or auth URLs). */
-export const SITEMAP_PUBLIC_ENTRIES: readonly SitemapEntry[] = [
-  { path: '/', priority: '1.0' },
-  { path: '/albums', priority: '0.8' },
-  { path: '/articles', priority: '0.8' },
-  { path: '/stems', priority: '0.7' },
-  { path: '/offer', priority: '0.5' },
-  { path: '/privacy', priority: '0.5' },
+/** Platform-wide SPA routes (no auth, payment, or dashboard URLs). */
+export const SITEMAP_PLATFORM_ENTRIES: readonly SitemapEntry[] = [
+  { path: '/', priority: '1.0', changefreq: 'daily' },
+  { path: '/albums', priority: '0.8', changefreq: 'daily' },
+  { path: '/articles', priority: '0.8', changefreq: 'daily' },
+  { path: '/stems', priority: '0.7', changefreq: 'weekly' },
+  { path: '/offer', priority: '0.5', changefreq: 'monthly' },
+  { path: '/privacy', priority: '0.5', changefreq: 'monthly' },
 ] as const;
+
+/** @deprecated Use SITEMAP_PLATFORM_ENTRIES */
+export const SITEMAP_PUBLIC_ENTRIES = SITEMAP_PLATFORM_ENTRIES;
 
 function escapeXml(value: string): string {
   return value
@@ -33,16 +48,33 @@ export function buildAbsoluteSitemapUrl(origin: string, path: string): string {
   return `${base}${normalizedPath}`;
 }
 
+/** Normalize DB / API timestamps to sitemap lastmod (date portion only). */
+export function formatSitemapLastmod(value: Date | string | null | undefined): string | undefined {
+  if (value == null) return undefined;
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return undefined;
+  return date.toISOString().slice(0, 10);
+}
+
+function renderSitemapUrl(origin: string, entry: SitemapEntry): string {
+  const parts = [`<loc>${escapeXml(buildAbsoluteSitemapUrl(origin, entry.path))}</loc>`];
+  if (entry.lastmod) {
+    parts.push(`<lastmod>${escapeXml(entry.lastmod)}</lastmod>`);
+  }
+  if (entry.changefreq) {
+    parts.push(`<changefreq>${entry.changefreq}</changefreq>`);
+  }
+  if (entry.priority) {
+    parts.push(`<priority>${entry.priority}</priority>`);
+  }
+  return `  <url>${parts.join('')}</url>`;
+}
+
 export function generateSitemapXml(
   origin: string,
-  entries: readonly SitemapEntry[] = SITEMAP_PUBLIC_ENTRIES
+  entries: readonly SitemapEntry[] = SITEMAP_PLATFORM_ENTRIES
 ): string {
-  const urls = entries
-    .map(
-      (entry) =>
-        `  <url><loc>${escapeXml(buildAbsoluteSitemapUrl(origin, entry.path))}</loc><priority>${entry.priority}</priority></url>`
-    )
-    .join('\n');
+  const urls = entries.map((entry) => renderSitemapUrl(origin, entry)).join('\n');
 
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}\n</urlset>\n`;
 }

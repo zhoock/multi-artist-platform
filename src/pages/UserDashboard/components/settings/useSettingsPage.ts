@@ -24,9 +24,14 @@ function normalizePublicSlug(value: string): string {
 type UseSettingsPageOptions = {
   enabled: boolean;
   userName?: string;
+  isListener?: boolean;
 };
 
-export function useSettingsPage({ enabled, userName = '' }: UseSettingsPageOptions) {
+export function useSettingsPage({
+  enabled,
+  userName = '',
+  isListener = false,
+}: UseSettingsPageOptions) {
   const { lang: currentLang, setLang } = useLang();
   const ui = useAppSelector((state) => selectUiDictionaryFirst(state, currentLang));
 
@@ -52,6 +57,7 @@ export function useSettingsPage({ enabled, userName = '' }: UseSettingsPageOptio
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [isSavingAboutText, setIsSavingAboutText] = useState(false);
+  const [nameError, setNameError] = useState<string | null>(null);
 
   const saveProfileRef = useRef<(() => Promise<void>) | undefined>(undefined);
   const saveAboutRef = useRef<(() => Promise<void>) | undefined>(undefined);
@@ -120,21 +126,39 @@ export function useSettingsPage({ enabled, userName = '' }: UseSettingsPageOptio
     }
 
     const updateData: Record<string, unknown> = {};
-    if (needsSiteNameUpdate) updateData.siteName = name.trim() || null;
+    if (needsSiteNameUpdate) {
+      const trimmedName = name.trim();
+      if (!trimmedName) {
+        const message = isListener
+          ? 'Name is required'
+          : (ui?.auth?.register?.siteBandNameRequired ?? 'Site / band name is required');
+        setNameError(message);
+        setName(initialName);
+      } else {
+        updateData.siteName = trimmedName;
+      }
+    }
     if (needsPublicSlugUpdate) updateData.publicSlug = publicSlug.trim();
     if (needsGenreUpdate) updateData.genreCode = genreCode;
     if (needsHeaderImagesUpdate) updateData.headerImages = safeHeaderImages;
 
+    if (Object.keys(updateData).length === 0) {
+      return;
+    }
+
+    const savedSiteName = updateData.siteName as string | undefined;
+
     const ok = await persistProfile(updateData);
     if (!ok) return;
 
-    if (needsSiteNameUpdate) {
-      localStorage.setItem('profile-name', name);
-      updateStoredUserName(name);
+    if (savedSiteName !== undefined) {
+      setNameError(null);
+      localStorage.setItem('profile-name', savedSiteName);
+      updateStoredUserName(savedSiteName);
     }
 
     const aspects: ProfileAspect[] = [];
-    if (needsSiteNameUpdate) aspects.push('name');
+    if (savedSiteName !== undefined) aspects.push('name');
     if (needsPublicSlugUpdate) aspects.push('slug');
     if (needsGenreUpdate) aspects.push('genre');
     if (needsHeaderImagesUpdate) aspects.push('headerImages');
@@ -143,12 +167,15 @@ export function useSettingsPage({ enabled, userName = '' }: UseSettingsPageOptio
       { type: 'profileChanged', aspects },
       {
         artistSlug: publicSlug.trim() || undefined,
-        displayName: needsSiteNameUpdate ? name : undefined,
+        displayName: savedSiteName,
         headerImages: needsHeaderImagesUpdate ? safeHeaderImages : undefined,
       }
     );
 
-    setInitialName(name);
+    if (savedSiteName !== undefined) {
+      setInitialName(savedSiteName);
+      setName(savedSiteName);
+    }
     setInitialPublicSlug(publicSlug);
     setInitialGenreCode(genreCode);
     setInitialHeaderImages([...safeHeaderImages]);
@@ -159,9 +186,11 @@ export function useSettingsPage({ enabled, userName = '' }: UseSettingsPageOptio
     initialHeaderImages,
     initialName,
     initialPublicSlug,
+    isListener,
     name,
     persistProfile,
     publicSlug,
+    ui,
   ]);
 
   saveProfileRef.current = saveProfileFields;
@@ -216,6 +245,11 @@ export function useSettingsPage({ enabled, userName = '' }: UseSettingsPageOptio
     },
     [currentLang, setLang]
   );
+
+  const handleNameChange = useCallback((value: string) => {
+    setName(value);
+    setNameError(null);
+  }, []);
 
   const handleNameBlur = useCallback(() => {
     void saveProfileRef.current?.();
@@ -417,7 +451,8 @@ export function useSettingsPage({ enabled, userName = '' }: UseSettingsPageOptio
     languages,
     genreOptions,
     name,
-    setName,
+    setName: handleNameChange,
+    nameError,
     publicSlug,
     handlePublicSlugChange,
     handlePublicSlugBlur,

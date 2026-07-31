@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
+import { useLang } from '@app/providers/lang';
+import { platformDisplayName } from '@shared/constants/platformBranding';
 
 import { getSubscriptionPaymentStatus } from '@shared/api/subscription';
 import { dispatchSubscriptionActivated } from '@features/artistArchive';
@@ -21,6 +23,7 @@ const POLL_INTERVAL_MS = 3000;
 export default function SubscriptionPaymentSuccess() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { lang } = useLang();
 
   const subscriptionPaymentId = searchParams.get('subscriptionPaymentId');
   const returnTo = searchParams.get('returnTo');
@@ -134,7 +137,10 @@ export default function SubscriptionPaymentSuccess() {
   return (
     <>
       <Helmet>
-        <title>Premium subscription</title>
+        <title>
+          {lang === 'en' ? 'Premium subscription' : 'Подписка Premium'} —{' '}
+          {platformDisplayName(lang)}
+        </title>
       </Helmet>
       <div className="subscription-payment-success">
         {status === 'loading' && (

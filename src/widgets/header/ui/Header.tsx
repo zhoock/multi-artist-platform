@@ -13,6 +13,7 @@ import { isAuthenticated } from '@shared/lib/auth';
 import type { SupportedLang } from '@shared/model/lang';
 import { Hamburger } from '@shared/ui/hamburger';
 import { ProfileAvatarMenu } from './ProfileAvatarMenu';
+import { platformDisplayName } from '@shared/constants/platformBranding';
 import './style.scss';
 
 const LANG_OPTIONS: SupportedLang[] = ['en', 'ru'];
@@ -78,7 +79,7 @@ const HeaderComponent = ({
       <div className="wrapper header__wrapper">
         <div className="header__start">
           <Link className="logo" to="/">
-            Home
+            {ui?.listenerWelcome?.siteName ?? platformDisplayName(lang)}
           </Link>
 
           <div className="lang-menu" ref={langRef}>

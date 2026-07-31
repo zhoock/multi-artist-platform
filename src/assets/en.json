@@ -193,7 +193,7 @@
     },
     "listenerWelcome": {
       "welcomePrefix": "Welcome to",
-      "siteName": "Smolyanoe Chuchelko",
+      "siteName": "Site Name",
       "subtitle": "Discover music, albums and articles from independent artists.",
       "featureFollow": "Follow your favorite artists",
       "featurePurchase": "Purchase albums and support artists",
@@ -1058,9 +1058,9 @@
         "description": "You can download it any time."
       },
       "paymentSuccess": {
-        "pageTitleSuccess": "Payment successful — Smolyanoe Chuchelko",
-        "pageTitleFail": "Payment not completed — Smolyanoe Chuchelko",
-        "pageTitleResolve": "Payment status — Smolyanoe Chuchelko",
+        "pageTitleSuccess": "Payment successful — Site Name",
+        "pageTitleFail": "Payment not completed — Site Name",
+        "pageTitleResolve": "Payment status — Site Name",
         "loading": "Loading payment status…",
         "verifyErrorTitle": "Could not verify payment",
         "missingReference": "Payment reference is missing.",

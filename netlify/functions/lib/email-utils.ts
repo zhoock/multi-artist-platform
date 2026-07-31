@@ -14,7 +14,7 @@ export function getSiteDisplayName(): string {
 }
 
 /** Resend "From" when `EMAIL_FROM` is unset — keeps legacy sender until env is configured. */
-export const DEFAULT_EMAIL_FROM = 'Смоляное чучелко <noreply@smolyanoechuchelko.ru>';
+export const DEFAULT_EMAIL_FROM = 'Название сайта <noreply@smolyanoechuchelko.ru>';
 
 export function getEmailFrom(): string {
   const fromEnv = (process.env.EMAIL_FROM || '').trim();

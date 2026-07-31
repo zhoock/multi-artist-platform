@@ -21,6 +21,7 @@ import {
   type Location,
 } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
+import { platformSeoForLang } from '@shared/constants/platformBranding';
 import { buildPublicSiteUrl, getPublicSiteOrigin } from '@shared/lib/publicSiteOrigin';
 import { albumsLoader } from '@routes/loaders/albumsLoader';
 import { ArtistPageSkeleton } from '@pages/Home/ui/ArtistPageSkeleton';
@@ -239,14 +240,14 @@ function Layout() {
     const homeUrl = buildPublicSiteUrl('/');
     return {
       ru: {
-        title: 'Смоляное Чучелко — официальный сайт',
-        desc: 'Московская гранж и альтернативная рок-группа. Альбомы, тексты, статьи и философия проекта.',
+        title: platformSeoForLang('ru').title,
+        desc: platformSeoForLang('ru').description,
         url: homeUrl,
         ogImage: buildPublicSiteUrl('/og/default.jpg'),
       },
       en: {
-        title: 'Смоляное Чучелко — official website',
-        desc: 'Moscow grunge and alternative rock band. Albums, lyrics, articles and project philosophy.',
+        title: platformSeoForLang('en').title,
+        desc: platformSeoForLang('en').description,
         url: homeUrl,
         ogImage: buildPublicSiteUrl('/og/default_en.jpg'),
       },

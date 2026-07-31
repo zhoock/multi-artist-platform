@@ -58,6 +58,7 @@ const lines = [
   '# Netlify processes _redirects before netlify.toml; first match wins.',
   '# See: https://docs.netlify.com/manage/routing/redirects/overview/#rule-processing-order',
   '',
+  '/sitemap.xml  /.netlify/functions/sitemap  200!',
   ...apiRules.map(toRedirectsLine),
   '/*      /index.html                 200',
   '',

@@ -6,6 +6,7 @@ import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 import { useBodyScrollLock } from '@shared/lib/hooks/useBodyScrollLock';
 import { LocalModal } from '@shared/ui/localModal';
 import { ModalCloseIcon } from '@shared/ui/icons/ModalCloseIcon';
+import { platformDisplayName } from '@shared/constants/platformBranding';
 
 import './listenerWelcomeModal.scss';
 
@@ -106,7 +107,7 @@ export function ListenerWelcomeModal({ dialogRef, open, onDismiss }: ListenerWel
     const fallback = en
       ? {
           welcomePrefix: 'Welcome to',
-          siteName: 'Smolyanoe Chuchelko',
+          siteName: platformDisplayName('en'),
           subtitle: 'Discover music, albums and articles from independent artists.',
           featureFollow: 'Follow your favorite artists',
           featurePurchase: 'Purchase albums and support artists',
@@ -117,7 +118,7 @@ export function ListenerWelcomeModal({ dialogRef, open, onDismiss }: ListenerWel
         }
       : {
           welcomePrefix: 'Добро пожаловать на',
-          siteName: 'Смоляное Чучелко',
+          siteName: platformDisplayName('ru'),
           subtitle: 'Открывайте музыку, альбомы и статьи независимых артистов.',
           featureFollow: 'Подписывайтесь на любимых артистов',
           featurePurchase: 'Покупайте альбомы и поддерживайте музыкантов',

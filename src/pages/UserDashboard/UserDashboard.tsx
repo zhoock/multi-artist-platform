@@ -70,6 +70,7 @@ import {
   artistHasPublicPageContent,
   isArticlePublicOnArtistPage,
 } from '@shared/lib/artistPageContent';
+import { platformDisplayName } from '@shared/constants/platformBranding';
 import { useOwnArtistPageSummary } from '@shared/lib/hooks/useOwnArtistPageSummary';
 import { useAuthSessionUser } from '@shared/lib/hooks/useAuthSessionUser';
 import { ArtistMonetizationProvider } from '@shared/lib/payment/ArtistMonetizationContext';
@@ -2225,7 +2226,9 @@ function UserDashboard() {
     <ArtistMonetizationProvider>
       <>
         <Helmet>
-          <title>{dashboardHeading} — Смоляное Чучелко</title>
+          <title>
+            {dashboardHeading} — {platformDisplayName(lang)}
+          </title>
         </Helmet>
 
         <Popup isActive={true} onClose={closeDashboard} publicBackdrop>

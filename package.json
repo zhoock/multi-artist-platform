@@ -1,7 +1,7 @@
 {
   "name": "my-project",
   "version": "1.1.0",
-  "description": "Смоляное чучелко",
+  "description": "Название сайта — музыкальная платформа для независимых артистов",
   "main": "index.js",
   "scripts": {
     "build": "tsx scripts/generate-seo-files.ts && cross-env NODE_ENV=production webpack --config webpack/webpack.config.cjs --env env=prod",
