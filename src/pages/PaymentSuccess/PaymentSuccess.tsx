@@ -131,11 +131,10 @@ const labelsFor = (lang: string, ui: ReturnType<typeof selectUiDictionaryFirst> 
       (en ? 'Could not charge payment:' : 'Не удалось списать оплату:'),
     unknownTitle: copy?.unknownTitle ?? (en ? 'Status pending confirmation' : 'Статус уточняется'),
     unknownStatusPrefix: copy?.unknownStatusPrefix ?? (en ? 'Payment status:' : 'Статус платежа:'),
-    pollTimeoutNote:
-      copy?.pollTimeoutNote ??
-      (en
-        ? 'Status is taking longer than expected — reload the page or return to checkout.'
-        : 'Статус долго не обновляется — обновите страницу или вернитесь к оформлению заказа.'),
+    pollTimeoutTitle:
+      copy?.pollTimeoutTitle ??
+      (en ? 'Payment is taking longer than usual.' : 'Оплата обрабатывается дольше обычного.'),
+    checkAgain: copy?.checkAgain ?? (en ? 'Check again' : 'Проверить ещё раз'),
     downloadLinkSentPrefix:
       copy?.downloadLinkSentPrefix ??
       (en ? 'Purchase confirmation sent to' : 'Подтверждение покупки отправлено на'),
@@ -177,6 +176,10 @@ function isOrderUUID(value: string): boolean {
 
 const MAX_STATUS_POLLS = 20;
 const POLL_INTERVAL_MS = 5000;
+
+function isPendingLikeStatus(status: PaymentStatus['status'] | undefined): boolean {
+  return status === 'pending' || status === 'waiting_for_capture';
+}
 
 function PaymentSuccessPurchasedAlbum({
   album,
@@ -250,10 +253,17 @@ function PaymentSuccess() {
   const [loading, setLoading] = useState(() => !isPreviewMode);
   const [error, setError] = useState<PaymentUiError | null>(null);
   const [statusCheckTimedOut, setStatusCheckTimedOut] = useState(false);
+  const [pollSession, setPollSession] = useState(0);
   const [redirectCountdown, setRedirectCountdown] = useState(5);
 
   const pollCountRef = useRef(0);
   const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleRecheckPayment = useCallback(() => {
+    setStatusCheckTimedOut(false);
+    setLoading(true);
+    setPollSession((session) => session + 1);
+  }, []);
 
   const resolveApiQuery = useCallback((): string | null => {
     if (paymentIdParam) {
@@ -362,7 +372,7 @@ function PaymentSuccess() {
       cancelled = true;
       clearPollTimer();
     };
-  }, [paymentIdParam, orderIdParam, fetchPaymentOnce, isPreviewMode]);
+  }, [paymentIdParam, orderIdParam, fetchPaymentOnce, isPreviewMode, pollSession]);
 
   const buildOutcomeUrl = useCallback(
     (pathname: string) => `${pathname}${location.search}`,
@@ -381,8 +391,7 @@ function PaymentSuccess() {
         return;
       }
 
-      const isFinal =
-        payment.status === 'succeeded' || payment.status === 'canceled' || statusCheckTimedOut;
+      const isFinal = payment.status === 'succeeded' || payment.status === 'canceled';
       if (!isFinal) return;
 
       navigate(buildOutcomeUrl(albumPaymentOutcomePath(payment.status)), { replace: true });
@@ -399,16 +408,7 @@ function PaymentSuccess() {
     if (routeMode === 'fail' && payment.status === 'succeeded') {
       navigate(buildOutcomeUrl(ALBUM_PAY_SUCCESS_PATH), { replace: true });
     }
-  }, [
-    routeMode,
-    loading,
-    error,
-    payment,
-    statusCheckTimedOut,
-    navigate,
-    buildOutcomeUrl,
-    isPreviewMode,
-  ]);
+  }, [routeMode, loading, error, payment, navigate, buildOutcomeUrl, isPreviewMode]);
 
   const handleTryAgainNavigate = () => {
     try {
@@ -497,7 +497,13 @@ function PaymentSuccess() {
 
   const customerEmail = payment?.metadata?.customerEmail?.trim() ?? '';
 
-  const showResolveLoading = !isPreviewMode && routeMode === 'resolve';
+  const showResolveLoading = !isPreviewMode && routeMode === 'resolve' && !statusCheckTimedOut;
+  const showResolveTimeout =
+    !isPreviewMode &&
+    routeMode === 'resolve' &&
+    statusCheckTimedOut &&
+    payment != null &&
+    isPendingLikeStatus(payment.status);
   const showSuccessOutcome =
     (isPreviewMode || routeMode === 'success') && payment?.status === 'succeeded';
   const showFailOutcome =
@@ -518,6 +524,26 @@ function PaymentSuccess() {
             <div className="payment-success__loading">
               <div className="payment-success__spinner" aria-hidden />
               <p>{labels.loading}</p>
+            </div>
+          ) : showResolveTimeout && payment ? (
+            <div className="payment-success__status payment-success__status--pending">
+              <h1 className="payment-success__title">{labels.pollTimeoutTitle}</h1>
+              <div className="payment-success__pending-actions">
+                <button
+                  type="button"
+                  className="payment-success__button payment-success__button--primary"
+                  onClick={handleRecheckPayment}
+                >
+                  {labels.checkAgain}
+                </button>
+                <button
+                  type="button"
+                  className="payment-success__button"
+                  onClick={() => navigate('/')}
+                >
+                  {labels.home}
+                </button>
+              </div>
             </div>
           ) : error ? (
             routeMode === 'fail' ? (
@@ -615,18 +641,13 @@ function PaymentSuccess() {
           ) : showFailOutcome && payment ? (
             (() => {
               const statusInfo = getStatusMessage(payment);
-              const isPendingLike =
-                payment.status === 'pending' || payment.status === 'waiting_for_capture';
+              const isPendingLike = isPendingLikeStatus(payment.status);
               const resumeCheckoutHref = payment.confirmation_url?.trim() || '';
 
               return (
                 <div className={`payment-success__status ${statusInfo.className}`}>
                   <h1 className="payment-success__title">{statusInfo.title}</h1>
                   <p className="payment-success__message">{statusInfo.message}</p>
-
-                  {statusCheckTimedOut && isPendingLike && (
-                    <p className="payment-success__muted-note">{labels.pollTimeoutNote}</p>
-                  )}
 
                   <div className="payment-success__pending-actions">
                     {resumeCheckoutHref && isPendingLike ? (
