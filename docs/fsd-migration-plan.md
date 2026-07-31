@@ -64,8 +64,8 @@
 | `DashboardSync`             | Компонент синхронизации          | ✅ перенесено → `@features/editSyncLyrics` (фича)                     |
 | `DashboardTextEditor`       | Редактор текста (обёртка)        | ✅ перенесено → `@widgets/dashboardEditors/ui/DashboardTextEditor`    |
 | `DashboardText`             | Компонент редактирования текста  | ✅ перенесено → `@features/editTrackText` (фича)                      |
-| `DashboardAlbumBuilder`     | Создание альбома (обёртка)       | ✅ перенесено → `@widgets/dashboardEditors/ui/DashboardAlbumBuilder`  |
-| `DashboardAlbumBuilderPage` | Компонент создания альбома       | ✅ перенесено → `@features/createAlbum` (фича)                        |
+| `DashboardAlbumBuilder`     | Создание альбома (обёртка)       | ✅ удалено — заменено dashboard `EditAlbumModal`                      |
+| `DashboardAlbumBuilderPage` | Компонент создания альбома       | ✅ удалено — заменено dashboard `EditAlbumModal`                      |
 | `dashboardModalWrappers`    | Общие стили для редакторов       | ✅ перенесено → `@widgets/dashboardEditors/styles/`                   |
 | `formStyles`                | Стили форм (общие)               | ✅ перенесено → `@shared/lib/styles/formStyles`                       |
 
@@ -73,11 +73,10 @@
 
 - `pages/UserDashboard/` — содержит только основную страницу (`UserDashboard.tsx`, стили, `index.ts`)
 - `features/paymentSettings/` — настройки платежей с бизнес-логикой (`ui/`, `model/`, `lib/`)
-- `features/editSyncLyrics/` — синхронизация текста с музыкой (фича с бизнес-логикой)
-- `features/editTrackText/` — редактирование текста трека (фича с бизнес-логикой)
-- `features/createAlbum/` — создание нового альбома (фича с бизнес-логикой)
-- `widgets/dashboardAlbums/` — список альбомов (`ui/DashboardAlbumsRoot`, `ui/DashboardAlbumsOverview`)
-- `widgets/dashboardEditors/` — обёртки редакторов (`ui/` с обёртками, `styles/`)
+- `features/editSyncLyrics/` — синхронизация текста с музыкой → `pages/UserDashboard/components/modals/lyrics/SyncLyricsModal`
+- `features/editTrackText/` — редактирование текста трека → lyrics-модалки в `pages/UserDashboard`
+- `widgets/dashboardAlbums/` — список альбомов → `pages/UserDashboard/components/albums/`
+- `widgets/dashboardEditors/` — обёртки редакторов → dashboard-модалки в `pages/UserDashboard/components/`
 
 ### Дополнительные действия
 

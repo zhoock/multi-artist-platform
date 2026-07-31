@@ -35,9 +35,8 @@
 - `@features/navigation` — навигационное меню.
 - `@features/popupToggle` — управление попапами.
 - `@features/paymentSettings` — настройки платежей (UI + бизнес-логика).
-- `@features/editSyncLyrics` — синхронизация текста с музыкой.
-- `@features/editTrackText` — редактирование текста трека.
-- `@features/createAlbum` — создание нового альбома.
+- `@features/editSyncLyrics` — синхронизация текста с музыкой (см. `SyncLyricsModal` в `pages/UserDashboard`).
+- `@features/editTrackText` — редактирование текста трека (см. lyrics-модалки в `pages/UserDashboard`).
 
 **Widgets (UI-композиции):**
 
@@ -45,8 +44,9 @@
 - `@widgets/footer` — подвал сайта.
 - `@widgets/hero` — главный баннер.
 - `@widgets/notFound` — страница 404.
-- `@widgets/dashboardAlbums` — список альбомов в личном кабинете.
-- `@widgets/dashboardEditors` — обёртки редакторов для личного кабинета.
+- `@widgets/albumTracks` — список треков на странице альбома.
+
+Создание и редактирование альбомов — `EditAlbumModal` в `pages/UserDashboard`. Modal overlays (auth, dashboard) — dual `<Routes>` в `app/App.tsx` + `shared/lib/dashboardModalBackground`.
 
 **Entities (доменные сущности):**
 
