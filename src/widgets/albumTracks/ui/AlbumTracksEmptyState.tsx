@@ -2,6 +2,9 @@ import { Music2 as Music2Icon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 import type { IInterface } from '@models';
+import { resolveAlbumNoTracksOwnerDescription } from '@entities/album/lib/resolveAlbumNoTracksOwnerDescription';
+import { useLang } from '@app/providers/lang';
+import { useArtistInPublicCatalog } from '@shared/lib/hooks/useArtistInPublicCatalog';
 import {
   ArtistPageBuilderBlock,
   artistPageBuilderSectionIconProps,
@@ -19,15 +22,16 @@ export function AlbumTracksEmptyState({
   ownerDashboardAlbumId,
 }: AlbumTracksEmptyStateProps) {
   const navigate = useNavigate();
+  const { lang } = useLang();
   const dashboardCopy = ui?.dashboard;
+  const artistInCatalog = useArtistInPublicCatalog(isOwner);
 
   const title = isOwner
     ? (dashboardCopy?.albumNoTracksOwnerTitle ?? 'Add your first track')
     : (dashboardCopy?.albumNoTracksVisitorTitle ?? 'No tracks have been published yet.');
 
   const description = isOwner
-    ? (dashboardCopy?.albumNoTracksOwnerDescription ??
-      'After publishing, your artist profile will appear in the catalog and search.')
+    ? resolveAlbumNoTracksOwnerDescription(ui, { artistInCatalog, lang })
     : (dashboardCopy?.albumNoTracksVisitorDescription ??
       "The artist hasn't added any published tracks to this album yet.");
 

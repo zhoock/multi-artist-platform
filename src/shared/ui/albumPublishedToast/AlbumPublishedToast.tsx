@@ -59,9 +59,7 @@ export function AlbumPublishedToast({ triggerKey }: AlbumPublishedToastProps) {
     ui?.dashboard?.albumPublishedSuccessToast ?? (en ? 'Album published' : 'Альбом опубликован');
   const description =
     ui?.dashboard?.albumPublishedSuccessToastDescription ??
-    (en
-      ? 'Your artist page is now available in the catalog.'
-      : 'Ваша страница артиста теперь доступна в каталоге.');
+    (en ? 'Your album is now available to listeners.' : 'Ваш альбом теперь доступен слушателям.');
 
   return (
     <div

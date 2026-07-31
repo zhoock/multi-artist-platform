@@ -18,6 +18,7 @@ import {
 
 import { getAlbumPublishHintKey } from '@entities/album/lib/isAlbumReadyToPublish';
 import { isAlbumPublished } from '@entities/album/lib/albumPublication';
+import { hasPublishedPublicReleases } from '@entities/album/lib/hasPublishedPublicReleases';
 import { getAlbumListDraftBadge } from '@entities/album/lib/albumLifecycleStatus';
 import { AlbumCoverImage } from '@entities/album';
 import type { AlbumData } from '@entities/album/lib/transformEditableAlbumData';
@@ -144,6 +145,10 @@ export function AlbumsTabContent({
   onReplaceTrackAudio,
 }: AlbumsTabContentProps) {
   const [expandedTrackId, setExpandedTrackId] = useState<string | null>(null);
+  const artistInCatalog = useMemo(
+    () => hasPublishedPublicReleases(albumsFromStore),
+    [albumsFromStore]
+  );
 
   const { markUserInteracted } = useDashboardAccordionOnboarding({
     scope: 'albums',
@@ -481,6 +486,8 @@ export function AlbumsTabContent({
                         />
                         <AlbumNoTracksEmptyState
                           ui={ui}
+                          lang={lang}
+                          artistInCatalog={artistInCatalog}
                           onUploadTracks={() => openTrackUploadForAlbum(album.id)}
                           className="user-dashboard__album-no-tracks-empty"
                         />
