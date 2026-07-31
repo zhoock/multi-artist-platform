@@ -66,6 +66,9 @@ import {
 import { AccountDeletedToast } from '@shared/ui/accountDeletedToast/AccountDeletedToast';
 import { ArtistPageAccessProvider } from '@shared/lib/hooks/ArtistPageAccessProvider';
 import { LangLayout } from '@app/layouts/LangLayout';
+import { MinimalLayout } from '@app/layouts/MinimalLayout';
+import { isMinimalLayoutPathname } from '@app/layouts/minimalLayoutRoutes';
+import { isServiceScreenBodyClassActive } from '@app/layouts/serviceScreenBodyClass';
 import { UnprefixedRedirect } from '@app/layouts/UnprefixedRedirect';
 import { DEFAULT_ROUTE_LANG, stripLangPrefix } from '@shared/lib/i18n/routeLang';
 
@@ -414,21 +417,16 @@ function Layout() {
   const isHomeRoute = activePathnameWithoutLang === '/';
   const hasArtistParam = new URLSearchParams(activeLocation.search).has('artist');
   const isHomeSceneRoute = isHomeRoute && !hasArtistParam;
-  const isEmailVerifiedRoute = matchPath(
-    { path: '/email-verified', end: true },
-    pathnameWithoutLang
-  );
-  const isEmailVerificationExpiredRoute = matchPath(
-    { path: '/email-verification-expired', end: true },
-    pathnameWithoutLang
-  );
+  const isMinimalLayoutRoute = isMinimalLayoutPathname(location.pathname);
   const isOfferRoute = matchPath({ path: '/offer', end: true }, pathnameWithoutLang);
   const isPrivacyRoute = matchPath({ path: '/privacy', end: true }, pathnameWithoutLang);
   const isLegalDocumentRoute = isOfferRoute || isPrivacyRoute;
 
-  const isServiceScreenRoute =
-    !isPaymentRoute &&
-    (isEmailVerifiedRoute || isEmailVerificationExpiredRoute || shouldHideChrome);
+  const isServiceScreenRoute = isServiceScreenBodyClassActive({
+    isPaymentRoute,
+    shouldHideChrome,
+    isMinimalLayoutRoute,
+  });
 
   useLayoutEffect(() => {
     if (isHomeSceneRoute) {
@@ -669,13 +667,15 @@ function Layout() {
             <ErrorBoundary>
               <main>{paymentRoutes}</main>
             </ErrorBoundary>
+          ) : isMinimalLayoutRoute ? (
+            <MinimalLayout>{mainRoutes}</MinimalLayout>
           ) : shouldHideChrome ? (
             <ErrorBoundary>
               <main>{notFoundRoutes}</main>
             </ErrorBoundary>
           ) : isHomeSceneRoute ? (
             <ErrorBoundary>
-              {!isEmailVerifiedRoute && <EmailVerificationBanner />}
+              <EmailVerificationBanner />
               <AccountDeletedToast />
               <main>
                 <ErrorBoundary>{standardRoutes}</ErrorBoundary>
@@ -696,13 +696,8 @@ function Layout() {
                 />
                 <AccountDeletedToast />
                 <main>
-                  {!isEmailVerifiedRoute && !isEmailVerificationExpiredRoute && (
-                    <EmailVerificationBanner />
-                  )}
-                  {!isHomeSceneRoute &&
-                    !isEmailVerifiedRoute &&
-                    !isEmailVerificationExpiredRoute &&
-                    !isLegalDocumentRoute && <Hero />}
+                  <EmailVerificationBanner />
+                  {!isHomeSceneRoute && !isLegalDocumentRoute && <Hero />}
 
                   {/* если поместим popup внурь header, то popup будет обрезаться из-за css-фильтра (filter) внури header */}
 
@@ -712,7 +707,7 @@ function Layout() {
 
                   <ErrorBoundary>{standardRoutes}</ErrorBoundary>
                 </main>
-                {!isEmailVerifiedRoute && !isEmailVerificationExpiredRoute && <Footer />}
+                <Footer />
                 <PlayerShell />
               </ErrorBoundary>
             </ArtistPageAccessProvider>
