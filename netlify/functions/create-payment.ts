@@ -48,6 +48,7 @@ import {
   extractReturnToFromReturnUrl,
 } from './lib/dev-payment-mode';
 import { completeDevAlbumPayment } from './lib/complete-dev-payment';
+import { findOrCreatePendingAlbumOrder } from './lib/find-or-create-pending-order';
 
 dns.setDefaultResultOrder('ipv4first');
 
@@ -475,8 +476,8 @@ export const handler: Handler = async (
         }
       }
     } else {
-      // Создаем новый заказ
-      console.log('📝 Creating new order in database...', {
+      // Reuse existing pending_payment order for same buyer + album (server-side idempotency).
+      console.log('📝 Finding or creating pending order in database...', {
         albumId: data.albumId,
         amount: albumPricing.amount,
         customerEmail: data.customerEmail,
@@ -486,34 +487,24 @@ export const handler: Handler = async (
       try {
         const buyerDisplayName = data.billingData?.buyerDisplayName?.trim() || null;
 
-        const orderResult = await query<{ id: string }>(
-          `INSERT INTO orders (
-            user_id, album_id, amount, currency, customer_email,
-            buyer_display_name, customer_phone,
-            status, payment_provider
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-          RETURNING id`,
-          [
-            sellerUserId,
-            data.albumId,
-            albumPricing.amount,
-            'RUB', // YooKassa работает только с рублями
-            data.customerEmail,
-            buyerDisplayName,
-            data.billingData?.phone || null,
-            'pending_payment',
-            'yookassa',
-          ]
-        );
+        const orderResolved = await findOrCreatePendingAlbumOrder({
+          sellerUserId,
+          albumId: data.albumId,
+          customerEmail: data.customerEmail,
+          amount: albumPricing.amount,
+          buyerDisplayName,
+          customerPhone: data.billingData?.phone || null,
+        });
 
-        if (orderResult.rows.length === 0) {
-          throw new Error('Failed to create order');
+        orderId = orderResolved.orderId;
+        orderAmount = orderResolved.orderAmount;
+        orderStatus = orderResolved.orderStatus;
+
+        if (orderResolved.reusedExisting) {
+          console.log('ℹ️ Reusing existing pending order:', { orderId, orderAmount, orderStatus });
+        } else {
+          console.log('✅ Order created:', { orderId, orderAmount, orderStatus });
         }
-
-        orderId = orderResult.rows[0].id;
-        orderAmount = albumPricing.amount;
-        orderStatus = 'pending_payment';
-        console.log('✅ Order created:', { orderId, orderAmount, orderStatus });
       } catch (dbError: any) {
         console.error('❌ Database error when creating order:', {
           message: dbError?.message,

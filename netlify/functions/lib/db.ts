@@ -226,6 +226,35 @@ export async function withClient<T>(fn: (client: PoolClient) => Promise<T>): Pro
 }
 
 /**
+ * Runs `fn` inside BEGIN/COMMIT (ROLLBACK on error) on a single pooled client.
+ */
+export async function withTransaction<T>(fn: (client: PoolClient) => Promise<T>): Promise<T> {
+  return withClient(async (client) => {
+    await client.query('BEGIN');
+    try {
+      const result = await fn(client);
+      await commitTransaction(client);
+      return result;
+    } catch (error) {
+      await rollbackTransaction(client);
+      throw error;
+    }
+  });
+}
+
+async function commitTransaction(client: PoolClient): Promise<void> {
+  await client.query('COMMIT');
+}
+
+async function rollbackTransaction(client: PoolClient): Promise<void> {
+  try {
+    await client.query('ROLLBACK');
+  } catch {
+    /* connection may already be broken */
+  }
+}
+
+/**
  * Закрывает shared connection pool.
  */
 export async function closePool(): Promise<void> {
