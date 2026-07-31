@@ -5,6 +5,8 @@ export interface EditAlbumModalProps {
   isOpen: boolean;
   albumId?: string;
   onClose: () => void;
+  /** Вызывается при изменении риска потери несохранённого прогресса (fingerprint). */
+  onDiscardRiskChange?: (hasRisk: boolean) => void;
   onNext?: (
     data: AlbumFormData,
     updatedAlbum?: AlbumEditable,

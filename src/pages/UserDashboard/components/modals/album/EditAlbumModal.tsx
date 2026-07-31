@@ -1,5 +1,5 @@
 // src/pages/UserDashboard/components/EditAlbumModal.tsx
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import { flushSync } from 'react-dom';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Popup } from '@shared/ui/popup';
@@ -120,6 +120,7 @@ export function EditAlbumModal({
   isOpen,
   albumId,
   onClose,
+  onDiscardRiskChange,
   onNext,
 }: EditAlbumModalProps): JSX.Element | null {
   const navigate = useNavigate();
@@ -2644,6 +2645,15 @@ export function EditAlbumModal({
     if (baseline === null) return false;
     return buildAlbumDiscardFingerprint(formData, currentStep, snapshotDiscardAux()) !== baseline;
   };
+
+  const reportedDiscardRiskRef = useRef<boolean | null>(null);
+  useLayoutEffect(() => {
+    if (!onDiscardRiskChange) return;
+    const next = isOpen ? hasPendingDiscardCloseRisk() : false;
+    if (reportedDiscardRiskRef.current === next) return;
+    reportedDiscardRiskRef.current = next;
+    onDiscardRiskChange(next);
+  });
 
   const finalizeModalClose = () => {
     setDiscardCloseDialogOpen(false);

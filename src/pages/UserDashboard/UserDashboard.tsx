@@ -145,6 +145,7 @@ import {
 import { parseTrackDurationToSeconds } from '@shared/lib/parseTrackDuration';
 import { useDashboardModalShell } from '@shared/lib/dashboardModalShellContext';
 import { useCloseWithUnsavedConfirmation } from '@shared/lib/hooks/useCloseWithUnsavedConfirmation';
+import { useUnsavedNavigationLeaveGuard } from '@shared/lib/hooks/useUnsavedNavigationLeaveGuard';
 import {
   InlineEditDiscardDialog,
   getCloseDiscardConfirmLabels,
@@ -479,6 +480,16 @@ function UserDashboard() {
     isOpen: boolean;
     albumId?: string;
   } | null>(null);
+  const [albumEditorDiscardRisk, setAlbumEditorDiscardRisk] = useState(false);
+  const handleAlbumEditorDiscardRiskChange = useCallback((hasRisk: boolean) => {
+    setAlbumEditorDiscardRisk(hasRisk);
+  }, []);
+  const closeEditAlbumModal = useCallback(() => {
+    setAlbumEditorDiscardRisk(false);
+    setEditAlbumModal(null);
+  }, []);
+  const albumEditorLeaveGuardActive = Boolean(editAlbumModal?.isOpen) && albumEditorDiscardRisk;
+  const albumEditorRouteLeaveBlocker = useUnsavedNavigationLeaveGuard(albumEditorLeaveGuardActive);
 
   const [confirmationModal, setConfirmationModal] = useState<{
     isOpen: boolean;
@@ -538,8 +549,8 @@ function UserDashboard() {
     setIsDeleteAccountModalOpen(false);
     setConfirmationModal(null);
     setAlertModal(null);
-    setEditAlbumModal(null);
     setEditArticleModal(null);
+    closeEditAlbumModal();
     clearDashboardModalBackground();
     clearAuth();
     clearAccountDeletedSkipReturn();
@@ -2636,10 +2647,11 @@ function UserDashboard() {
             key={editAlbumModal.albumId ?? 'new-album'}
             isOpen={editAlbumModal.isOpen}
             albumId={editAlbumModal.albumId}
-            onClose={() => setEditAlbumModal(null)}
+            onDiscardRiskChange={handleAlbumEditorDiscardRiskChange}
+            onClose={closeEditAlbumModal}
             onNext={async (formData, updatedAlbum, meta) => {
               if (!editAlbumModal) {
-                setEditAlbumModal(null);
+                closeEditAlbumModal();
                 return;
               }
 
@@ -2711,7 +2723,7 @@ function UserDashboard() {
                 // Закрываем модальное окно после обновления
                 // Небольшая задержка для гарантии обновления UI
                 await new Promise((resolve) => setTimeout(resolve, 200));
-                setEditAlbumModal(null);
+                closeEditAlbumModal();
 
                 if (meta?.createdNewAlbum && searchAlbumId) {
                   if (activeTab !== 'albums') {
@@ -2724,10 +2736,10 @@ function UserDashboard() {
               } catch (error: any) {
                 // ConditionError - это нормально, condition отменил запрос
                 if (error?.name === 'ConditionError') {
-                  setEditAlbumModal(null);
+                  closeEditAlbumModal();
                   return;
                 }
-                setEditAlbumModal(null);
+                closeEditAlbumModal();
               }
             }}
           />
@@ -2806,6 +2818,18 @@ function UserDashboard() {
           onDeleted={handleAccountDeleted}
           copy={deleteAccountCopy}
         />
+
+        {albumEditorRouteLeaveBlocker.state === 'blocked' ? (
+          <ConfirmationModal
+            isOpen
+            message={getCloseDiscardConfirmLabels(ui ?? undefined).message}
+            cancelText={getCloseDiscardConfirmLabels(ui ?? undefined).stay}
+            confirmText={getCloseDiscardConfirmLabels(ui ?? undefined).discard}
+            onCancel={() => albumEditorRouteLeaveBlocker.reset?.()}
+            onConfirm={() => albumEditorRouteLeaveBlocker.proceed?.()}
+            variant="warning"
+          />
+        ) : null}
       </>
     </ArtistMonetizationProvider>
   );
