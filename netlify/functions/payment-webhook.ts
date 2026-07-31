@@ -482,87 +482,85 @@ async function tryPurchaseSideEffects(
 ): Promise<void> {
   const albumIdMeta = metaString(api.metadata, 'albumId');
   const customerEmailMeta = metaString(api.metadata, 'customerEmail');
-  if (!albumIdMeta || !customerEmailMeta) {
+
+  const orderResult = await query<{
+    album_id: string;
+    customer_email: string;
+    buyer_display_name: string | null;
+  }>(
+    `SELECT album_id, customer_email, buyer_display_name
+     FROM orders WHERE id = $1`,
+    [orderId]
+  );
+
+  if (orderResult.rows.length === 0) {
+    throw new Error('order_not_found_for_purchase_fulfillment');
+  }
+
+  const row = orderResult.rows[0];
+  const albumKey = row.album_id || albumIdMeta;
+  const customerEmail = row.customer_email || customerEmailMeta;
+
+  if (!albumKey || !customerEmail) {
+    throw new Error('missing_album_or_customer_for_purchase_fulfillment');
+  }
+
+  console.log('yookassa_webhook.purchase_upsert', {
+    orderIdSuffix: `…${orderId.slice(-6)}`,
+    albumKeySuffix: albumKey.length > 8 ? `…${albumKey.slice(-8)}` : albumKey,
+  });
+
+  const purchase = await upsertPurchaseRecord(orderId, customerEmail, albumKey);
+
+  if (!purchase) {
+    throw new Error('purchase_record_not_created');
+  }
+
+  const album = await resolveAlbumByKey(albumKey);
+
+  if (!album) {
+    console.error('yookassa_webhook.album_missing_for_email', {
+      albumKeySuffix: albumKey.slice(-8),
+    });
     return;
   }
 
   try {
-    const orderResult = await query<{
-      album_id: string;
-      customer_email: string;
-      buyer_display_name: string | null;
-    }>(
-      `SELECT album_id, customer_email, buyer_display_name
-       FROM orders WHERE id = $1`,
-      [orderId]
-    );
+    const { sendPurchaseEmail } = await import('./lib/email');
+    const { resolveEmailLocaleForAddress } = await import('./lib/user-preferred-language');
+    const customerName = row.buyer_display_name?.trim() || undefined;
 
-    if (orderResult.rows.length === 0) return;
+    const locale = await resolveEmailLocaleForAddress(customerEmail, album.lang);
 
-    const row = orderResult.rows[0];
-    const albumKey = row.album_id || albumIdMeta;
-    const customerEmail = row.customer_email || customerEmailMeta;
-
-    console.log('yookassa_webhook.purchase_upsert', {
-      orderIdSuffix: `…${orderId.slice(-6)}`,
-      albumKeySuffix: albumKey.length > 8 ? `…${albumKey.slice(-8)}` : albumKey,
+    const emailResult = await sendPurchaseEmail({
+      to: customerEmail,
+      customerName,
+      albumName: album.album,
+      artistName: album.artistDisplayName,
+      orderId,
+      albumSlug: album.albumSlug,
+      albumCover: album.cover,
+      albumUserId: album.userId,
+      albumLang: album.lang,
+      paymentId: api.id,
+      locale,
     });
 
-    const purchase = await upsertPurchaseRecord(orderId, customerEmail, albumKey);
-
-    if (!purchase) return;
-
-    const album = await resolveAlbumByKey(albumKey);
-
-    if (!album) {
-      console.error('yookassa_webhook.album_missing_for_email', {
-        albumKeySuffix: albumKey.slice(-8),
-      });
-      return;
-    }
-
-    try {
-      const { sendPurchaseEmail } = await import('./lib/email');
-      const { resolveEmailLocaleForAddress } = await import('./lib/user-preferred-language');
-      const customerName = row.buyer_display_name?.trim() || undefined;
-
-      const locale = await resolveEmailLocaleForAddress(customerEmail, album.lang);
-
-      const emailResult = await sendPurchaseEmail({
-        to: customerEmail,
-        customerName,
-        albumName: album.album,
-        artistName: album.artistDisplayName,
-        orderId,
-        albumSlug: album.albumSlug,
-        albumCover: album.cover,
-        albumUserId: album.userId,
-        albumLang: album.lang,
-        paymentId: api.id,
-        locale,
-      });
-
-      if (emailResult.alreadySent) {
-        console.log('yookassa_webhook.email_already_sent', {
-          orderIdSuffix: `…${orderId.slice(-6)}`,
-          paymentIdSuffix: `…${api.id.slice(-6)}`,
-        });
-      } else if (!emailResult.success) {
-        console.error('yookassa_webhook.email_failed', {
-          orderIdSuffix: `…${orderId.slice(-6)}`,
-          err: emailResult.error,
-        });
-      }
-    } catch (emailErr) {
-      console.error('yookassa_webhook.email_exception', {
+    if (emailResult.alreadySent) {
+      console.log('yookassa_webhook.email_already_sent', {
         orderIdSuffix: `…${orderId.slice(-6)}`,
-        err: emailErr instanceof Error ? emailErr.message : String(emailErr),
+        paymentIdSuffix: `…${api.id.slice(-6)}`,
+      });
+    } else if (!emailResult.success) {
+      console.error('yookassa_webhook.email_failed', {
+        orderIdSuffix: `…${orderId.slice(-6)}`,
+        err: emailResult.error,
       });
     }
-  } catch (e) {
-    console.error('yookassa_webhook.purchase_side_effect_error', {
+  } catch (emailErr) {
+    console.error('yookassa_webhook.email_exception', {
       orderIdSuffix: `…${orderId.slice(-6)}`,
-      err: e instanceof Error ? e.message : String(e),
+      err: emailErr instanceof Error ? emailErr.message : String(emailErr),
     });
   }
 }
