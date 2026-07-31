@@ -957,6 +957,7 @@
           "requiredDescription": "Укажите описание",
           "requiredCover": "Загрузите обложку альбома",
           "requiredRegularPrice": "Укажите обычную цену",
+          "invalidRegularPrice": "Укажите корректную цену (минимум 0,01)",
           "requiredPreorderReleaseDate": "Укажите дату релиза предзаказа"
         },
         "step2": {

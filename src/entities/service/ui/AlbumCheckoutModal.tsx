@@ -231,8 +231,7 @@ export function AlbumCheckoutModal({ isOpen, album, onClose }: AlbumCheckoutModa
     return null;
   }
 
-  const { formatted: formattedPrice, currency, price } = getAlbumPrice(album);
-  const numericPrice = parseFloat(price) || 0.99;
+  const { formatted: formattedPrice } = getAlbumPrice(album);
   const albumKey = getAlbumKeyForPaymentApis(album);
   const authGateBenefits = [
     labels.authGateBenefitLibrary,
@@ -278,9 +277,6 @@ export function AlbumCheckoutModal({ isOpen, album, onClose }: AlbumCheckoutModa
           : '';
 
       const result = await createPayment({
-        amount: numericPrice,
-        currency: currency || 'RUB',
-        description: `${album.title} - ${siteArtistLabel} (download)`,
         albumId: albumKey,
         customerEmail: email,
         returnUrl,

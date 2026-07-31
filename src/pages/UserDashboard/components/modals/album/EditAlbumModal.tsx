@@ -3049,7 +3049,9 @@ export function EditAlbumModal({
               </div>
               {step1HasErr('regularPrice') ? (
                 <p id="regular-price-error" className="edit-album-modal__field-error" role="alert">
-                  {step1ValUi?.requiredRegularPrice}
+                  {!formData.regularPrice?.trim()
+                    ? step1ValUi?.requiredRegularPrice
+                    : step1ValUi?.invalidRegularPrice}
                 </p>
               ) : null}
             </div>

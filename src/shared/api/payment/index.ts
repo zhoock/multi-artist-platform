@@ -5,9 +5,6 @@
 import { fetchWithAuthSession } from '@shared/lib/authFetch';
 
 export interface CreatePaymentRequest {
-  amount: number;
-  currency?: string;
-  description: string;
   albumId: string;
   customerEmail: string;
   returnUrl?: string;

@@ -20,14 +20,14 @@
  * Пример использования:
  * POST /api/create-payment
  * Body: {
- *   amount: number,
- *   currency: string,
- *   description: string,
  *   albumId: string,
  *   customerEmail: string,
  *   returnUrl: string (опционально),
+ *   orderId: string (опционально, повторная оплата),
  *   diagnose: boolean (опционально, для диагностики)
  * }
+ *
+ * Сумма платежа определяется только на сервере из albums.release (regularPrice).
  */
 
 import type { Handler, HandlerEvent, HandlerContext } from '@netlify/functions';
@@ -36,7 +36,11 @@ import { getUserIdFromEvent } from './lib/api-helpers';
 import { query } from './lib/db';
 import { buyerAlreadyOwnsAlbumForCheckout } from './lib/purchase-access';
 import { resolveAlbumSellerUserId } from './lib/resolveAlbumSellerUserId';
-import { resolveAlbumByKey, resolveAlbumSlug } from './lib/resolve-album-key';
+import {
+  resolveAlbumPurchasePricing,
+  resolveValidatedAlbumCheckoutPricing,
+} from './lib/resolve-album-purchase';
+import { resolveAlbumSlug } from './lib/resolve-album-key';
 import { resolveAlbumPaymentReturnUrl } from './lib/yookassa-return-url';
 import {
   isDevPaymentModeEnabled,
@@ -48,9 +52,6 @@ import { completeDevAlbumPayment } from './lib/complete-dev-payment';
 dns.setDefaultResultOrder('ipv4first');
 
 interface CreatePaymentRequest {
-  amount: number;
-  currency?: string;
-  description: string;
   albumId: string;
   customerEmail: string;
   returnUrl?: string;
@@ -318,26 +319,14 @@ export const handler: Handler = async (
       return await handleDiagnosticMode(headers);
     }
 
-    // Валидация полей до доступа к БД / ключам
-    if (!data.amount || !data.description || !data.albumId || !data.customerEmail) {
+    // Валидация полей до доступа к БД / ключам (денежные поля с клиента не принимаем)
+    if (!data.albumId || !data.customerEmail) {
       return {
         statusCode: 400,
         headers,
         body: JSON.stringify({
           success: false,
-          error: 'Invalid request data. Required: amount, description, albumId, customerEmail',
-        } as CreatePaymentResponse),
-      };
-    }
-
-    // Минимальная сумма для ЮKassa - 0.01 (1 копейка)
-    if (data.amount < 0.01) {
-      return {
-        statusCode: 400,
-        headers,
-        body: JSON.stringify({
-          success: false,
-          error: 'Amount must be at least 0.01',
+          error: 'Invalid request data. Required: albumId, customerEmail',
         } as CreatePaymentResponse),
       };
     }
@@ -382,6 +371,24 @@ export const handler: Handler = async (
       };
     }
 
+    const albumPricingResolved = data.orderId
+      ? await resolveAlbumPurchasePricing(data.albumId)
+      : await resolveValidatedAlbumCheckoutPricing(data.albumId);
+
+    if (!albumPricingResolved.ok) {
+      return {
+        statusCode: albumPricingResolved.statusCode,
+        headers,
+        body: JSON.stringify({
+          success: false,
+          error: albumPricingResolved.error,
+        } as CreatePaymentResponse),
+      };
+    }
+
+    const albumPricing = albumPricingResolved.pricing;
+    const paymentDescription = albumPricing.description;
+
     // Создаем или получаем заказ
     let orderId: string;
     let orderAmount: number;
@@ -412,14 +419,13 @@ export const handler: Handler = async (
       orderAmount = parseFloat(order.amount.toString());
       orderStatus = order.status;
 
-      // Проверяем, что сумма совпадает
-      if (Math.abs(orderAmount - data.amount) > 0.01) {
+      if (!Number.isFinite(orderAmount) || orderAmount < 0.01) {
         return {
           statusCode: 400,
           headers,
           body: JSON.stringify({
             success: false,
-            error: 'Amount mismatch with existing order',
+            error: 'Order amount is invalid',
           } as CreatePaymentResponse),
         };
       }
@@ -472,7 +478,7 @@ export const handler: Handler = async (
       // Создаем новый заказ
       console.log('📝 Creating new order in database...', {
         albumId: data.albumId,
-        amount: data.amount,
+        amount: albumPricing.amount,
         customerEmail: data.customerEmail,
         hasDbUrl: !!process.env.DATABASE_URL,
       });
@@ -490,7 +496,7 @@ export const handler: Handler = async (
           [
             sellerUserId,
             data.albumId,
-            data.amount,
+            albumPricing.amount,
             'RUB', // YooKassa работает только с рублями
             data.customerEmail,
             buyerDisplayName,
@@ -505,7 +511,7 @@ export const handler: Handler = async (
         }
 
         orderId = orderResult.rows[0].id;
-        orderAmount = data.amount;
+        orderAmount = albumPricing.amount;
         orderStatus = 'pending_payment';
         console.log('✅ Order created:', { orderId, orderAmount, orderStatus });
       } catch (dbError: any) {
@@ -656,7 +662,7 @@ export const handler: Handler = async (
     // иначе используем только confirmation для redirect (умная оплата)
     const yookassaRequest: YooKassaPaymentRequest = {
       amount: {
-        value: data.amount.toFixed(2),
+        value: orderAmount.toFixed(2),
         currency: yookassaCurrency, // Принудительно RUB для YooKassa
       },
       capture: true, // Деньги списываются сразу после оплаты
@@ -678,7 +684,7 @@ export const handler: Handler = async (
               return_url: returnUrl,
             },
           }),
-      description: data.description,
+      description: paymentDescription,
       // test: isTestMode, // ВРЕМЕННО ОТКЛЮЧЕНО для диагностики
       metadata: {
         orderId: orderId,
@@ -696,10 +702,10 @@ export const handler: Handler = async (
         },
         items: [
           {
-            description: data.description,
+            description: paymentDescription,
             quantity: '1',
             amount: {
-              value: data.amount.toFixed(2),
+              value: orderAmount.toFixed(2),
               currency: yookassaCurrency, // Принудительно RUB для YooKassa
             },
             vat_code: 1, // НДС не облагается (для цифровых товаров в РФ часто используется код 1)

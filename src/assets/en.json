@@ -957,6 +957,7 @@
           "requiredDescription": "Enter a description",
           "requiredCover": "Upload album cover art",
           "requiredRegularPrice": "Enter the regular price",
+          "invalidRegularPrice": "Enter a valid price (minimum 0.01)",
           "requiredPreorderReleaseDate": "Enter the pre-order release date"
         },
         "step2": {

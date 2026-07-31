@@ -197,12 +197,13 @@ describe('AlbumCheckoutModal', () => {
 
     const payload = createPaymentMock.mock.calls[0][0] as Record<string, unknown>;
     expect(payload).toMatchObject({
-      amount: 4.99,
-      currency: 'RUB',
       albumId: 'album-1',
       customerEmail: 'fan@example.com',
       billingData: { buyerDisplayName: 'Test Artist' },
     });
+    expect(payload).not.toHaveProperty('amount');
+    expect(payload).not.toHaveProperty('currency');
+    expect(payload).not.toHaveProperty('description');
     expect(typeof payload.returnUrl).toBe('string');
     expect(payload.returnUrl).toContain('/pay/status?returnTo=');
   });

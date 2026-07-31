@@ -776,6 +776,22 @@ export function hasAlbumCoverForStep1(
   return false;
 }
 
+/** Minimum album regular price (matches YooKassa / server checkout validation). */
+export const MIN_ALBUM_REGULAR_PRICE = 0.01;
+
+export function parseAlbumRegularPriceInput(value: string | undefined | null): number | null {
+  const trimmed = value?.trim();
+  if (!trimmed) return null;
+
+  const num = parseFloat(trimmed);
+  if (!Number.isFinite(num) || num < MIN_ALBUM_REGULAR_PRICE) return null;
+  return Math.round(num * 100) / 100;
+}
+
+export function isAlbumRegularPriceInputValid(value: string | undefined | null): boolean {
+  return parseAlbumRegularPriceInput(value) != null;
+}
+
 /** Список пустых/незаполненных полей шага 1 (без alert — текст под полями в UI). */
 export function getAlbumStep1InvalidFields(
   formData: AlbumFormData,
@@ -791,7 +807,9 @@ export function getAlbumStep1InvalidFields(
   if (!formData.upcEan?.trim()) out.push('upcEan');
   if (!formData.description?.trim()) out.push('description');
   if (opts?.cover && !hasAlbumCoverForStep1(formData, opts.cover)) out.push('cover');
-  if (saleMode !== 'no' && !formData.regularPrice?.trim()) out.push('regularPrice');
+  if (saleMode !== 'no' && !isAlbumRegularPriceInputValid(formData.regularPrice)) {
+    out.push('regularPrice');
+  }
   if (saleMode === 'preorder' && !formData.preorderReleaseDate?.trim())
     out.push('preorderReleaseDate');
   return out;

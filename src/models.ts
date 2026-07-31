@@ -1065,6 +1065,7 @@ export interface IInterface {
         requiredDescription?: string;
         requiredCover?: string;
         requiredRegularPrice?: string;
+        invalidRegularPrice?: string;
         requiredPreorderReleaseDate?: string;
       };
       step2?: {
