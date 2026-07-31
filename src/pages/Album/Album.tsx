@@ -42,9 +42,15 @@ import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 import { useSiteArtistDisplayName } from '@shared/lib/hooks/useSiteArtistDisplayName';
 import { formatAlbumDisplayFullName } from '@shared/lib/profileDisplayName';
 import { buildPublicSiteUrl } from '@shared/lib/publicSiteOrigin';
+import { buildPublicPageHreflangUrls } from '@shared/lib/seo/buildPublicPageHreflangUrls';
+import { publicPageHreflangLinks } from '@shared/lib/seo/PublicPageHreflangLinks';
 import { shouldShowAlbumsLoadingShell } from '@shared/lib/hooks/useShowAlbumsLoadingShell';
 import { resolveChildContextNavMode, useNavigationOrigin } from '@shared/lib/navigationContext';
-import { withPublicArtistQuery } from '@shared/lib/artistQuery';
+import {
+  buildArtistAlbumsCatalogPath,
+  buildArtistPagePath,
+  buildPublicAlbumPagePath,
+} from '@shared/lib/seo/publicPagePaths';
 import { ContextNav } from '@shared/ui/contextNav';
 import '@entities/album/ui/album-layout.scss';
 
@@ -109,8 +115,8 @@ export default function Album() {
 
   const navigationOrigin = useNavigationOrigin();
   const contextNavMode = resolveChildContextNavMode(navigationOrigin);
-  const artistHubPath = withPublicArtistQuery('/', artistParam);
-  const albumsListLink = withPublicArtistQuery('/albums', artistParam);
+  const artistHubPath = buildArtistPagePath(lang, artistSlug);
+  const albumsListLink = buildArtistAlbumsCatalogPath(lang, artistSlug);
 
   useEffect(() => {
     // Direct URL without ?artist=: resolve owner slug and redirect.
@@ -129,7 +135,7 @@ export default function Album() {
         const resolvedSlug = result?.success ? result?.data?.artistSlug : null;
         if (!resolvedSlug || isCancelled) return;
 
-        navigate(`/albums/${albumId}?artist=${encodeURIComponent(resolvedSlug)}`, {
+        navigate(buildPublicAlbumPagePath(lang, albumId, resolvedSlug), {
           replace: true,
         });
       } catch {
@@ -142,7 +148,7 @@ export default function Album() {
     return () => {
       isCancelled = true;
     };
-  }, [albumId, artistParam, navigate]);
+  }, [albumId, artistParam, lang, navigate]);
 
   useEffect(() => {
     window.scrollTo({ top: 0 });
@@ -235,8 +241,10 @@ export default function Album() {
 
   const seoTitle = formatAlbumDisplayFullName(siteArtistName, album.title);
   const seoDesc = album.description;
-
-  const canonical = buildPublicSiteUrl(`/albums/${encodeURIComponent(albumId)}`);
+  const canonical = buildPublicSiteUrl(buildPublicAlbumPagePath(lang, albumId, artistSlug));
+  const hreflang = buildPublicPageHreflangUrls((routeLang) =>
+    buildPublicAlbumPagePath(routeLang, albumId, artistSlug)
+  );
 
   return (
     <section className="album main-background" aria-label="Блок c альбомом">
@@ -249,6 +257,7 @@ export default function Album() {
         <meta property="og:url" content={canonical} />
         <meta name="twitter:url" content={canonical} />
         <link rel="canonical" href={canonical} />
+        {publicPageHreflangLinks(hreflang)}
       </Helmet>
 
       <div className="wrapper album__wrapper">
@@ -266,7 +275,7 @@ export default function Album() {
             userId={album.userId}
             fullName={formatAlbumDisplayFullName(siteArtistName, album.title)}
           />
-          <Share />
+          <Share url={canonical} />
         </div>
 
         <div className="item">

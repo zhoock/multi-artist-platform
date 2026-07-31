@@ -19,7 +19,7 @@ import { filterCatalogAlbumsForArtistPageSurface } from '@entities/album/lib/cat
 import { filterAlbumsForArtistPageSurface } from '@shared/lib/artistPageContent';
 import type { CatalogAlbum } from '@entities/album';
 import { useRedirectHomeAfterOwnAccountDeleted } from '@shared/lib/hooks/useRedirectHomeAfterOwnAccountDeleted';
-import { withPublicArtistQuery } from '@shared/lib/artistQuery';
+import { buildArtistAlbumsCatalogPath } from '@shared/lib/seo/publicPagePaths';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 import { useSiteArtistDisplayName } from '@shared/lib/hooks/useSiteArtistDisplayName';
 import { formatAlbumDisplayFullName } from '@shared/lib/profileDisplayName';
@@ -143,7 +143,7 @@ export function AlbumsSection({ isOwner = false }: { isOwner?: boolean }) {
 
   const displayedAlbums = allAlbums.slice(0, initialCount);
   const hasMore = allAlbums.length > initialCount;
-  const allAlbumsPath = withPublicArtistQuery('/albums', artistSlug);
+  const allAlbumsPath = buildArtistAlbumsCatalogPath(lang, artistSlug?.trim() ?? '');
   const showSectionLink = !showAlbumsLoadingShell && hasMore;
 
   if (hideArtistPageAfterOwnDelete) {

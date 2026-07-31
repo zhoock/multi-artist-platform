@@ -19,7 +19,7 @@ describe('purchase-email-template', () => {
     albumName: 'Rubber Soul',
     artistName: 'The Beatles',
     orderId: 'abcdef1234567890',
-    albumUrl: 'https://smolyanoechuchelko.ru/albums/rubber-soul',
+    albumUrl: 'https://example.com/ru/albums/rubber-soul?artist=the-beatles',
     albumCoverUrl: 'https://example.com/proxy?path=cover.jpg',
     siteName: 'Название сайта',
   };
@@ -63,10 +63,12 @@ describe('purchase-email-template', () => {
       'The album is now available in My Purchases. You can download it anytime.'
     );
     expect(html).toContain('Open in Название сайта');
-    expect(html).toContain('https://smolyanoechuchelko.ru/albums/rubber-soul');
+    expect(html).toContain('https://example.com/ru/albums/rubber-soul?artist=the-beatles');
     expect(html).toContain('https://example.com/proxy?path=cover.jpg');
     expect(text).toContain('Thank you for your purchase.');
-    expect(text).toContain('Open album: https://smolyanoechuchelko.ru/albums/rubber-soul');
+    expect(text).toContain(
+      'Open album: https://example.com/ru/albums/rubber-soul?artist=the-beatles'
+    );
   });
 
   it('renders the localized Russian variant', () => {

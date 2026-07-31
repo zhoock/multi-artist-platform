@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLang } from '@app/providers/lang';
+import { buildLocalizedPublicPath } from '@shared/lib/i18n/routeLang';
 import { ServicePageLayout } from '@shared/ui/serviceScreen';
 
 function useNotFoundCopy() {
@@ -27,6 +28,7 @@ function useNotFoundCopy() {
 
 export const NotFoundPage = () => {
   const navigate = useNavigate();
+  const { lang } = useLang();
   const copy = useNotFoundCopy();
 
   return (
@@ -44,7 +46,7 @@ export const NotFoundPage = () => {
       }
       action={{
         label: copy.backToHome,
-        onClick: () => navigate('/', { replace: true }),
+        onClick: () => navigate(buildLocalizedPublicPath(lang, '/'), { replace: true }),
       }}
     />
   );

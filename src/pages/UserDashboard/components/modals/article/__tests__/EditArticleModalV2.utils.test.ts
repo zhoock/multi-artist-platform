@@ -239,13 +239,13 @@ describe('EditArticleModalV2.utils stable ids', () => {
 });
 
 describe('buildArticlePublicPath', () => {
-  it('uses /articles route without language prefix', () => {
-    expect(buildArticlePublicPath('my-article')).toBe('/articles/my-article');
+  it('builds localized article path without artist context', () => {
+    expect(buildArticlePublicPath('my-article', 'ru')).toBe('/ru/articles/my-article');
   });
 
   it('appends artist query when slug is provided', () => {
-    expect(buildArticlePublicPath('my-article', 'the-beatles')).toBe(
-      '/articles/my-article?artist=the-beatles'
+    expect(buildArticlePublicPath('my-article', 'en', 'the-beatles')).toBe(
+      '/en/articles/my-article?artist=the-beatles'
     );
   });
 });

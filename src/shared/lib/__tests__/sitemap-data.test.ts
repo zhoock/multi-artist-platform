@@ -1,7 +1,7 @@
 import { buildDynamicSitemapEntries } from '../seo/buildDynamicSitemapEntries';
 
 describe('buildDynamicSitemapEntries', () => {
-  it('includes platform routes and public artist content URLs', () => {
+  it('includes localized platform routes and public artist content URLs', () => {
     const entries = buildDynamicSitemapEntries({
       artists: [
         {
@@ -29,17 +29,26 @@ describe('buildDynamicSitemapEntries', () => {
 
     const paths = entries.map((entry) => entry.path);
 
-    expect(paths).toContain('/');
-    expect(paths).toContain('/albums');
-    expect(paths).toContain('/articles');
-    expect(paths).toContain('/stems');
-    expect(paths).toContain('/offer');
-    expect(paths).toContain('/privacy');
-    expect(paths).toContain('/?artist=my-band');
-    expect(paths).toContain('/albums?artist=my-band');
-    expect(paths).toContain('/albums/debut?artist=my-band');
-    expect(paths).toContain('/articles?artist=my-band');
-    expect(paths).toContain('/articles/hello-world?artist=my-band');
+    expect(paths).toContain('/ru');
+    expect(paths).toContain('/en');
+    expect(paths).toContain('/ru/albums');
+    expect(paths).toContain('/en/albums');
+    expect(paths).toContain('/ru/articles');
+    expect(paths).toContain('/en/articles');
+    expect(paths).toContain('/ru/stems');
+    expect(paths).toContain('/en/stems');
+    expect(paths).toContain('/ru/offer');
+    expect(paths).toContain('/en/privacy');
+    expect(paths).not.toContain('/');
+    expect(paths).not.toContain('/albums');
+    expect(paths).toContain('/ru?artist=my-band');
+    expect(paths).toContain('/en?artist=my-band');
+    expect(paths).toContain('/ru/albums?artist=my-band');
+    expect(paths).toContain('/en/albums?artist=my-band');
+    expect(paths).toContain('/ru/albums/debut?artist=my-band');
+    expect(paths).toContain('/en/albums/debut?artist=my-band');
+    expect(paths).toContain('/ru/articles?artist=my-band');
+    expect(paths).toContain('/en/articles/hello-world?artist=my-band');
   });
 
   it('skips artist catalog URLs when artist has no public albums or articles', () => {
@@ -58,8 +67,10 @@ describe('buildDynamicSitemapEntries', () => {
 
     const paths = entries.map((entry) => entry.path);
 
-    expect(paths).toContain('/?artist=profile-only');
+    expect(paths).toContain('/ru?artist=profile-only');
+    expect(paths).toContain('/en?artist=profile-only');
     expect(paths).not.toContain('/albums?artist=profile-only');
+    expect(paths).not.toContain('/ru/albums?artist=profile-only');
     expect(paths).not.toContain('/articles?artist=profile-only');
   });
 
@@ -88,8 +99,12 @@ describe('buildDynamicSitemapEntries', () => {
       articles: [],
     });
 
-    const albumEntries = entries.filter((entry) => entry.path === '/albums/same?artist=dup');
+    const albumEntries = entries.filter((entry) => entry.path === '/ru/albums/same?artist=dup');
     expect(albumEntries).toHaveLength(1);
     expect(albumEntries[0]?.lastmod).toBe('2026-03-01');
+
+    const enAlbumEntries = entries.filter((entry) => entry.path === '/en/albums/same?artist=dup');
+    expect(enAlbumEntries).toHaveLength(1);
+    expect(enAlbumEntries[0]?.lastmod).toBe('2026-03-01');
   });
 });

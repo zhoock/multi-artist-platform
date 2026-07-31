@@ -1,5 +1,7 @@
 import { isDashboardAlbumsPublicCatalogOverlay } from '@shared/lib/dashboardModalBackground';
 
+export { withPublicArtistQuery } from '@shared/lib/publicArtistQueryLink';
+
 interface BuildApiUrlOptions {
   includeArtist?: boolean;
   /**
@@ -56,24 +58,4 @@ export function buildApiUrl(
 
   const qs = query.toString();
   return qs ? `${path}?${qs}` : path;
-}
-
-/**
- * Сохраняет контекст публичного профиля (?artist=slug) в ссылке.
- * Нужно для /articles/:id и списка статей: иначе после F5 API грузит только дефолтного артиста.
- */
-export function withPublicArtistQuery(
-  pathWithOptionalQuery: string,
-  artistSlug: string | null | undefined
-): string {
-  const slug = artistSlug?.trim();
-  if (!slug) return pathWithOptionalQuery;
-
-  const qMark = pathWithOptionalQuery.indexOf('?');
-  const path = qMark === -1 ? pathWithOptionalQuery : pathWithOptionalQuery.slice(0, qMark);
-  const queryString = qMark === -1 ? '' : pathWithOptionalQuery.slice(qMark + 1);
-  const params = new URLSearchParams(queryString);
-  params.set('artist', slug);
-  const q = params.toString();
-  return q ? `${path}?${q}` : path;
 }

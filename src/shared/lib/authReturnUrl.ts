@@ -2,6 +2,7 @@ import type { Location } from 'react-router-dom';
 import { isListenerAccount } from '@shared/lib/accountType';
 import { shouldForcePostAuthHome } from '@shared/lib/accountDeletedSession';
 import type { AuthUser } from '@shared/lib/auth';
+import { stripLangPrefix } from '@shared/lib/i18n/routeLang/stripLangPrefix';
 
 const DEFAULT_AFTER_AUTH = '/';
 
@@ -45,9 +46,24 @@ export function appendReturnTo(
   params: URLSearchParams,
   location: Pick<Location, 'pathname' | 'search'>
 ): void {
-  const candidate = `${location.pathname}${location.search}`;
-  const safe = sanitizeReturnPath(candidate);
+  const safe = sanitizeReturnPath(`${location.pathname}${location.search}`);
   if (safe) params.set('returnTo', safe);
+}
+
+/** Safe return path from a router location (preserves locale prefix on public routes). */
+export function readReturnPathFromLocation(
+  location: Pick<Location, 'pathname' | 'search'>
+): string {
+  return sanitizeReturnPath(`${location.pathname}${location.search}`) ?? DEFAULT_AFTER_AUTH;
+}
+
+/** Safe return path from the current browser URL. */
+export function readReturnPathFromWindow(): string {
+  if (typeof window === 'undefined') return DEFAULT_AFTER_AUTH;
+  return readReturnPathFromLocation({
+    pathname: window.location.pathname,
+    search: window.location.search,
+  });
 }
 
 type BackgroundState = { backgroundLocation?: Location } | undefined;
@@ -76,7 +92,8 @@ export function resolvePostAuthDestination(options: {
 export function isHomeArtistPagePath(pathWithQuery: string): boolean {
   try {
     const url = new URL(pathWithQuery, 'http://local.invalid');
-    const isHome = url.pathname === '/' || url.pathname === '/en';
+    const pathnameWithoutLang = stripLangPrefix(url.pathname);
+    const isHome = pathnameWithoutLang === '/' || pathnameWithoutLang === '';
     return isHome && new URLSearchParams(url.search).has('artist');
   } catch {
     return false;

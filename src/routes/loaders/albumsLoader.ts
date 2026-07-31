@@ -34,6 +34,8 @@ import { resolveDashboardModalBackgroundForLoader } from '@shared/lib/dashboardM
 import { prefetchPublicProfileForDisplay } from '@shared/lib/profileDisplayName';
 import { isAuthOverlayPathname } from '@shared/lib/publicArtistContext';
 import { prefetchPublicArtists } from '@shared/lib/publicArtistsCache';
+import { parseLangFromPath, stripLangPrefix } from '@shared/lib/i18n/routeLang';
+import { langActions } from '@shared/model/lang/langSlice';
 
 /**
  * createAsyncThunk: при `condition` → false unwrap() отклоняет plain object
@@ -127,35 +129,31 @@ export function shouldDeferPublicArtistCatalogToSurface(
   publicArtistFromUrl: string
 ): boolean {
   if (!publicArtistFromUrl.trim()) return false;
-  if (loaderPathname === '/' || loaderPathname === '/en' || loaderPathname === '/en/') {
+
+  const path = stripLangPrefix(loaderPathname);
+  if (path === '/') {
     return true;
   }
   if (isStemsLoaderPath(loaderPathname)) return true;
-  return (
-    loaderPathname === '/albums' ||
-    loaderPathname === '/albums/' ||
-    loaderPathname === '/en/albums' ||
-    loaderPathname === '/en/albums/'
-  );
+  return path === '/albums' || path === '/albums/';
 }
 
 /** Single album page — mid-weight AlbumDetails, not fat `/api/albums`. */
 export function isAlbumDetailLoaderPath(loaderPathname: string): boolean {
-  return Boolean(
-    matchPath({ path: '/albums/:albumId', end: true }, loaderPathname) ||
-      matchPath({ path: '/en/albums/:albumId', end: true }, loaderPathname)
-  );
+  const path = stripLangPrefix(loaderPathname);
+  return Boolean(matchPath({ path: '/albums/:albumId', end: true }, path));
 }
 
 /** Mixer — thin CatalogAlbum + lazy AlbumDetails; never fat `/api/albums`. */
 export function isStemsLoaderPath(loaderPathname: string): boolean {
-  return /^\/(?:en\/)?stems(?:\/|$)/.test(loaderPathname);
+  return /^\/stems(?:\/|$)/.test(stripLangPrefix(loaderPathname));
 }
 
 export async function albumsLoader({ request }: LoaderFunctionArgs): Promise<AlbumsDeferred> {
   const { signal, url } = request;
   const requestUrl = new URL(url);
   const { pathname } = requestUrl;
+  const routeLangFromUrl = parseLangFromPath(pathname).lang;
   const requestIsDashboard = pathname.startsWith('/dashboard');
   const { pathname: loaderPathname, search: loaderSearch } =
     resolveDashboardModalBackgroundForLoader(pathname, requestUrl.search);
@@ -170,8 +168,12 @@ export async function albumsLoader({ request }: LoaderFunctionArgs): Promise<Alb
   if (!isAuthOverlayPathname(pathname)) {
     store.dispatch(setPublicArtistSlug(publicArtistFromUrl || null));
   }
+  if (routeLangFromUrl) {
+    store.dispatch(langActions.setLang(routeLangFromUrl));
+  }
   const state = store.getState();
-  const lang = selectCurrentLang(state);
+  const lang = routeLangFromUrl ?? selectCurrentLang(state);
+  const routePathname = stripLangPrefix(loaderPathname);
 
   prefetchPublicArtists();
   if (publicArtistFromUrl) {
@@ -214,9 +216,9 @@ export async function albumsLoader({ request }: LoaderFunctionArgs): Promise<Alb
   // Альбомы нужны на "/", "/albums*", "/stems" (миксер) и "/dashboard*" (включая /dashboard-new)
   if (
     requestIsDashboard ||
-    loaderPathname === '/' ||
-    loaderPathname.startsWith('/albums') ||
-    loaderPathname.startsWith('/stems')
+    routePathname === '/' ||
+    routePathname.startsWith('/albums') ||
+    routePathname.startsWith('/stems')
   ) {
     if (requestIsDashboard) {
       const dash = state.albums.dashboard;
@@ -271,14 +273,7 @@ export async function albumsLoader({ request }: LoaderFunctionArgs): Promise<Alb
       templateA = Promise.resolve([]);
 
       const routeAlbumId =
-        matchPath(
-          { path: '/albums/:albumId', end: true },
-          loaderPathname
-        )?.params.albumId?.trim() ??
-        matchPath(
-          { path: '/en/albums/:albumId', end: true },
-          loaderPathname
-        )?.params.albumId?.trim() ??
+        matchPath({ path: '/albums/:albumId', end: true }, routePathname)?.params.albumId?.trim() ??
         '';
 
       if (publicArtistFromUrl && routeAlbumId) {
@@ -336,7 +331,7 @@ export async function albumsLoader({ request }: LoaderFunctionArgs): Promise<Alb
   }
 
   // Статьи нужны на "/" (главная) и "/articles*"
-  if (loaderPathname === '/' || loaderPathname.startsWith('/articles')) {
+  if (routePathname === '/' || routePathname.startsWith('/articles')) {
     const publicArtistSlug = publicArtistFromUrl;
 
     if (requestIsDashboard) {
@@ -434,7 +429,7 @@ export async function albumsLoader({ request }: LoaderFunctionArgs): Promise<Alb
   }
 
   // Статьи помощи нужны на "/help/articles*"
-  if (loaderPathname.startsWith('/help/articles')) {
+  if (routePathname.startsWith('/help/articles')) {
     const status = selectHelpArticlesStatus(state, lang);
     if (status === 'succeeded') {
       templateD = Promise.resolve(selectHelpArticlesData(state, lang));

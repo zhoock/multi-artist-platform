@@ -3,7 +3,7 @@
  * Only set when user explicitly opened paywall or clicked locked content while logged out.
  */
 
-import { sanitizeReturnPath } from '@shared/lib/authReturnUrl';
+import { sanitizeReturnPath, readReturnPathFromWindow } from '@shared/lib/authReturnUrl';
 
 export const PREMIUM_CHECKOUT_AUTH_INTENT_STORAGE_KEY = 'sc_premium_checkout_auth_intent';
 export const PREMIUM_CHECKOUT_RESUME_AFTER_AUTH_FLAG = 'sc_premium_checkout_resume_after_auth';
@@ -30,9 +30,7 @@ function readArtistSlugFromLocation(): string {
 }
 
 function readReturnToFromLocation(): string {
-  if (typeof window === 'undefined') return '/';
-  const candidate = `${window.location.pathname}${window.location.search}`;
-  return sanitizeReturnPath(candidate) ?? '/';
+  return readReturnPathFromWindow();
 }
 
 export function buildPremiumCheckoutIntentContext(

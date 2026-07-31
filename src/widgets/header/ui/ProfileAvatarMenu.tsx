@@ -8,6 +8,7 @@ import { clearAuth } from '@shared/lib/auth';
 import { useArchiveAccessModal } from '@shared/lib/archiveAccessModal';
 import { useStoredProfileAvatarUrl, getProfileAvatarInitials } from '@shared/lib/hooks/useAvatar';
 import { useOwnArtistPageSummary } from '@shared/lib/hooks/useOwnArtistPageSummary';
+import { buildLocalizedPublicPath } from '@shared/lib/i18n/routeLang/buildLocalizedPublicPath';
 import { openOwnArtistPage } from '@shared/lib/ownArtistPage';
 import { isProfileAvatarPlaceholderUrl } from '@shared/lib/avatarUpload';
 import {
@@ -86,15 +87,15 @@ function ProfileAvatarMenuComponent({
   const handleLogout = useCallback(() => {
     updateOpen(false);
     clearAuth();
-    navigate('/');
-  }, [navigate, updateOpen]);
+    navigate(buildLocalizedPublicPath(lang, '/'));
+  }, [lang, navigate, updateOpen]);
 
   const handleOpenOwnArtistPage = useCallback(() => {
     const slug = ownArtistPage.publicSlug;
     if (!slug) return;
     updateOpen(false);
-    openOwnArtistPage(slug, ownArtistPage.hasPublicPageContent, navigate, { sameTab: true });
-  }, [navigate, ownArtistPage.hasPublicPageContent, ownArtistPage.publicSlug, updateOpen]);
+    openOwnArtistPage(lang, slug, ownArtistPage.hasPublicPageContent, navigate, { sameTab: true });
+  }, [lang, navigate, ownArtistPage.hasPublicPageContent, ownArtistPage.publicSlug, updateOpen]);
 
   const avatarLabels = ui?.header?.avatarMenu;
   const locale = lang === 'ru' ? 'ru' : 'en';

@@ -1,5 +1,13 @@
-import { describe, expect, test } from '@jest/globals';
+import { describe, expect, test, jest } from '@jest/globals';
 import type { AuthUser } from '@shared/lib/auth';
+
+jest.mock('@shared/lib/accountDeletedSession', () => ({
+  shouldForcePostAuthHome: () => false,
+}));
+
+jest.mock('@shared/lib/accountType', () => ({
+  isListenerAccount: (user: AuthUser | null | undefined) => user?.accountType === 'listener',
+}));
 
 import {
   resolvePostAuthDestinationForUser,
@@ -23,9 +31,10 @@ const artist: AuthUser = {
 };
 
 describe('sanitizeListenerPostAuthDestination', () => {
-  test('strips artist query from home path', () => {
+  test('strips artist query from localized home paths', () => {
     expect(sanitizeListenerPostAuthDestination('/?artist=my-slug')).toBe('/');
     expect(sanitizeListenerPostAuthDestination('/en?artist=my-slug')).toBe('/en');
+    expect(sanitizeListenerPostAuthDestination('/ru?artist=my-slug')).toBe('/ru');
   });
 
   test('keeps non-artist-home paths', () => {

@@ -1,5 +1,9 @@
 import type { SitemapEntry } from './generateSitemap';
-import { formatSitemapLastmod, SITEMAP_PLATFORM_ENTRIES } from './generateSitemap';
+import {
+  appendLocalizedSitemapEntries,
+  formatSitemapLastmod,
+  SITEMAP_PLATFORM_ENTRIES,
+} from './generateSitemap';
 import {
   buildArtistAlbumsCatalogPath,
   buildArtistArticlesCatalogPath,
@@ -81,8 +85,7 @@ export function buildDynamicSitemapEntries(input: {
     if (!slug) continue;
 
     const artistLastmod = formatSitemapLastmod(artist.updated_at);
-    entries.push({
-      path: buildArtistPagePath(slug),
+    appendLocalizedSitemapEntries(entries, (lang) => buildArtistPagePath(lang, slug), {
       priority: '0.9',
       changefreq: 'weekly',
       ...(artistLastmod ? { lastmod: artistLastmod } : {}),
@@ -91,8 +94,7 @@ export function buildDynamicSitemapEntries(input: {
     const artistAlbums = albumsByArtist.get(slug) ?? [];
     if (artist.has_public_albums && artistAlbums.length > 0) {
       const catalogLastmod = maxUpdatedAt(artistAlbums);
-      entries.push({
-        path: buildArtistAlbumsCatalogPath(slug),
+      appendLocalizedSitemapEntries(entries, (lang) => buildArtistAlbumsCatalogPath(lang, slug), {
         priority: '0.7',
         changefreq: 'weekly',
         ...(catalogLastmod ? { lastmod: catalogLastmod } : {}),
@@ -100,20 +102,22 @@ export function buildDynamicSitemapEntries(input: {
 
       for (const album of artistAlbums) {
         const albumLastmod = formatSitemapLastmod(album.updated_at);
-        entries.push({
-          path: buildPublicAlbumPagePath(album.album_id, slug),
-          priority: '0.6',
-          changefreq: 'weekly',
-          ...(albumLastmod ? { lastmod: albumLastmod } : {}),
-        });
+        appendLocalizedSitemapEntries(
+          entries,
+          (lang) => buildPublicAlbumPagePath(lang, album.album_id, slug),
+          {
+            priority: '0.6',
+            changefreq: 'weekly',
+            ...(albumLastmod ? { lastmod: albumLastmod } : {}),
+          }
+        );
       }
     }
 
     const artistArticles = articlesByArtist.get(slug) ?? [];
     if (artist.has_public_articles && artistArticles.length > 0) {
       const catalogLastmod = maxUpdatedAt(artistArticles);
-      entries.push({
-        path: buildArtistArticlesCatalogPath(slug),
+      appendLocalizedSitemapEntries(entries, (lang) => buildArtistArticlesCatalogPath(lang, slug), {
         priority: '0.7',
         changefreq: 'weekly',
         ...(catalogLastmod ? { lastmod: catalogLastmod } : {}),
@@ -121,12 +125,15 @@ export function buildDynamicSitemapEntries(input: {
 
       for (const article of artistArticles) {
         const articleLastmod = formatSitemapLastmod(article.updated_at);
-        entries.push({
-          path: buildPublicArticlePagePath(article.article_id, slug),
-          priority: '0.6',
-          changefreq: 'monthly',
-          ...(articleLastmod ? { lastmod: articleLastmod } : {}),
-        });
+        appendLocalizedSitemapEntries(
+          entries,
+          (lang) => buildPublicArticlePagePath(lang, article.article_id, slug),
+          {
+            priority: '0.6',
+            changefreq: 'monthly',
+            ...(articleLastmod ? { lastmod: articleLastmod } : {}),
+          }
+        );
       }
     }
   }

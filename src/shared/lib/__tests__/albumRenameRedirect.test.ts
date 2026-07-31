@@ -27,31 +27,37 @@ describe('albumRenameRedirect', () => {
     clearDashboardModalBackground();
   });
 
-  test('buildPublicAlbumPath keeps artist query', () => {
+  test('buildPublicAlbumPath keeps artist query with default locale', () => {
     expect(buildPublicAlbumPath('stand-up-remastered', 'jethro-tull')).toBe(
-      '/albums/stand-up-remastered?artist=jethro-tull'
+      '/ru/albums/stand-up-remastered?artist=jethro-tull'
     );
   });
 
-  test('direct album route replaces URL with new slug', () => {
+  test('buildPublicAlbumPath respects explicit locale', () => {
+    expect(buildPublicAlbumPath('stand-up-remastered', 'jethro-tull', 'en')).toBe(
+      '/en/albums/stand-up-remastered?artist=jethro-tull'
+    );
+  });
+
+  test('direct localized album route replaces URL with new slug', () => {
     const navigate = jest.fn() as unknown as NavigateFunction;
     const didNavigate = navigateAfterAlbumSlugRename({
       previousAlbumId: 'stand-up',
       newAlbumId: 'stand-up-remastered',
       artistSlug: 'jethro-tull',
       navigate,
-      location: loc('/albums/stand-up', '?artist=jethro-tull'),
+      location: loc('/ru/albums/stand-up', '?artist=jethro-tull'),
     });
 
     expect(didNavigate).toBe(true);
-    expect(navigate).toHaveBeenCalledWith('/albums/stand-up-remastered?artist=jethro-tull', {
+    expect(navigate).toHaveBeenCalledWith('/ru/albums/stand-up-remastered?artist=jethro-tull', {
       replace: true,
     });
   });
 
   test('dashboard overlay replaces backgroundLocation and keeps dashboard path', () => {
     const navigate = jest.fn() as unknown as NavigateFunction;
-    const background = loc('/albums/stand-up', '?artist=jethro-tull');
+    const background = loc('/en/albums/stand-up', '?artist=jethro-tull');
     const didNavigate = navigateAfterAlbumSlugRename({
       previousAlbumId: 'stand-up',
       newAlbumId: 'stand-up-remastered',
@@ -71,13 +77,13 @@ describe('albumRenameRedirect', () => {
         replace: true,
         state: {
           backgroundLocation: expect.objectContaining({
-            pathname: '/albums/stand-up-remastered',
+            pathname: '/en/albums/stand-up-remastered',
             search: '?artist=jethro-tull',
           }),
         },
       }
     );
-    expect(readDashboardModalBackground()?.pathname).toBe('/albums/stand-up-remastered');
+    expect(readDashboardModalBackground()?.pathname).toBe('/en/albums/stand-up-remastered');
   });
 
   test('title-only rename (same slug) is a no-op', () => {
@@ -88,7 +94,7 @@ describe('albumRenameRedirect', () => {
         newAlbumId: 'stand-up',
         artistSlug: 'jethro-tull',
         navigate,
-        location: loc('/albums/stand-up', '?artist=jethro-tull'),
+        location: loc('/ru/albums/stand-up', '?artist=jethro-tull'),
       })
     ).toBe(false);
     expect(navigate).not.toHaveBeenCalled();
@@ -96,7 +102,7 @@ describe('albumRenameRedirect', () => {
 
   test('when stored modal background is the old album under dashboard, rewrites it via navigate', () => {
     captureDashboardModalBackground({
-      pathname: '/albums/stand-up',
+      pathname: '/ru/albums/stand-up',
       search: '?artist=jethro-tull',
       hash: '',
     });
@@ -111,7 +117,7 @@ describe('albumRenameRedirect', () => {
 
     expect(didNavigate).toBe(true);
     expect(navigate).toHaveBeenCalled();
-    expect(readDashboardModalBackground()?.pathname).toBe('/albums/stand-up-remastered');
+    expect(readDashboardModalBackground()?.pathname).toBe('/ru/albums/stand-up-remastered');
   });
 
   test('when not on the renamed album surface, does not navigate', () => {
@@ -121,7 +127,7 @@ describe('albumRenameRedirect', () => {
       newAlbumId: 'stand-up-remastered',
       artistSlug: 'jethro-tull',
       navigate,
-      location: loc('/albums', '?artist=jethro-tull'),
+      location: loc('/ru/albums', '?artist=jethro-tull'),
     });
 
     expect(didNavigate).toBe(false);
@@ -132,7 +138,7 @@ describe('albumRenameRedirect', () => {
     expect(
       resolveArtistSlugForAlbumRename(
         loc('/dashboard-new/albums', '', {
-          backgroundLocation: loc('/albums/stand-up', '?artist=jethro-tull'),
+          backgroundLocation: loc('/ru/albums/stand-up', '?artist=jethro-tull'),
         }),
         'fallback'
       )

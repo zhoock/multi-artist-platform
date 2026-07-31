@@ -55,7 +55,7 @@ export function ArtistOnboardingRedirectController() {
 
       if (!state.needsOnboarding || !state.publicSlug) return;
 
-      const targetPath = buildOwnArtistPagePath(state.publicSlug);
+      const targetPath = buildOwnArtistPagePath(lang, state.publicSlug);
       if (isOnOwnArtistOnboardingPage(location.pathname, location.search, state.publicSlug)) {
         return;
       }

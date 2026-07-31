@@ -1,4 +1,5 @@
 import { normalizeOrigin } from '../publicSiteOrigin';
+import { buildLocalizedPublicPath, SUPPORTED_LANGS, type RouteLang } from '../i18n/routeLang';
 
 export type SitemapChangeFreq =
   | 'always'
@@ -17,8 +18,8 @@ export interface SitemapEntry {
   lastmod?: string;
 }
 
-/** Platform-wide SPA routes (no auth, payment, or dashboard URLs). */
-export const SITEMAP_PLATFORM_ENTRIES: readonly SitemapEntry[] = [
+/** Platform-wide SPA routes (no auth, payment, or dashboard URLs) — unlocalized templates. */
+export const SITEMAP_PLATFORM_PATH_TEMPLATES: readonly SitemapEntry[] = [
   { path: '/', priority: '1.0', changefreq: 'daily' },
   { path: '/albums', priority: '0.8', changefreq: 'daily' },
   { path: '/articles', priority: '0.8', changefreq: 'daily' },
@@ -26,6 +27,37 @@ export const SITEMAP_PLATFORM_ENTRIES: readonly SitemapEntry[] = [
   { path: '/offer', priority: '0.5', changefreq: 'monthly' },
   { path: '/privacy', priority: '0.5', changefreq: 'monthly' },
 ] as const;
+
+/** Expands unlocalized sitemap paths into `ru` + `en` entries. */
+export function localizeSitemapEntriesForAllLangs(
+  entries: readonly SitemapEntry[]
+): SitemapEntry[] {
+  return SUPPORTED_LANGS.flatMap((lang) =>
+    entries.map((entry) => ({
+      ...entry,
+      path: buildLocalizedPublicPath(lang, entry.path),
+    }))
+  );
+}
+
+/** Localized platform routes included in sitemap.xml (`/ru/*`, `/en/*`). */
+export const SITEMAP_PLATFORM_ENTRIES: readonly SitemapEntry[] = localizeSitemapEntriesForAllLangs(
+  SITEMAP_PLATFORM_PATH_TEMPLATES
+);
+
+/** Appends one sitemap row per supported locale using a semantic path builder. */
+export function appendLocalizedSitemapEntries(
+  target: SitemapEntry[],
+  buildLocalizedPath: (lang: RouteLang) => string,
+  meta: Omit<SitemapEntry, 'path'>
+): void {
+  for (const lang of SUPPORTED_LANGS) {
+    target.push({
+      path: buildLocalizedPath(lang),
+      ...meta,
+    });
+  }
+}
 
 /** @deprecated Use SITEMAP_PLATFORM_ENTRIES */
 export const SITEMAP_PUBLIC_ENTRIES = SITEMAP_PLATFORM_ENTRIES;

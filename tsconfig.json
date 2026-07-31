@@ -58,6 +58,7 @@
 
   "exclude": [
     "node_modules",
+    "netlify",
     "webpack/webpack.common.js",
     "postcss.config.js",
     "eslint.config.mjs",

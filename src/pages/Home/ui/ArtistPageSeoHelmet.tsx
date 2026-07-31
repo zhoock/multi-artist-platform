@@ -1,18 +1,22 @@
 import { Helmet } from 'react-helmet-async';
 
 import type { ResolvedPageSeo } from '@shared/constants/platformBranding';
+import type { PublicPageHreflangUrls } from '@shared/lib/seo/buildPublicPageHreflangUrls';
+import { publicPageHreflangLinks } from '@shared/lib/seo/PublicPageHreflangLinks';
 
 type ArtistPageSeoHelmetProps = {
   seo: ResolvedPageSeo;
+  hreflang: PublicPageHreflangUrls;
 };
 
 /** Overrides platform default Helmet on `/?artist=<slug>` routes. */
-export function ArtistPageSeoHelmet({ seo }: ArtistPageSeoHelmetProps) {
+export function ArtistPageSeoHelmet({ seo, hreflang }: ArtistPageSeoHelmetProps) {
   return (
     <Helmet>
       <title>{seo.title}</title>
       <meta name="description" content={seo.description} />
       <link rel="canonical" href={seo.canonical} />
+      {publicPageHreflangLinks(hreflang)}
       <meta property="og:type" content="profile" />
       <meta property="og:title" content={seo.title} />
       <meta property="og:description" content={seo.description} />

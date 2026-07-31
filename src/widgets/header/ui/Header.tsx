@@ -1,6 +1,6 @@
 // src/widgets/header/ui/Header.tsx
 import { memo, useEffect, useState, useRef, useCallback } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import clsx from 'clsx';
 import { Navigation } from '@features/navigation';
 import { clearPremiumCheckoutAuthIntent } from '@shared/lib/authIntent';
@@ -14,6 +14,7 @@ import type { SupportedLang } from '@shared/model/lang';
 import { Hamburger } from '@shared/ui/hamburger';
 import { ProfileAvatarMenu } from './ProfileAvatarMenu';
 import { platformDisplayName } from '@shared/constants/platformBranding';
+import { buildLocalizedPublicPath, withLangPrefix } from '@shared/lib/i18n/routeLang';
 import './style.scss';
 
 const LANG_OPTIONS: SupportedLang[] = ['en', 'ru'];
@@ -37,7 +38,9 @@ const HeaderComponent = ({
 }: HeaderProps) => {
   const { lang, setLang } = useLang(); // язык из контекста
   const location = useLocation();
+  const navigate = useNavigate();
   const ui = useAppSelector((state) => selectUiDictionaryFirst(state, lang));
+  const localizedHomePath = buildLocalizedPublicPath(lang, '/');
   const isAuthed = isAuthenticated();
   const authParams = new URLSearchParams({ mode: 'login' });
   const leaveDeletedArtistPage = shouldLeaveDeletedArtistPage();
@@ -45,7 +48,7 @@ const HeaderComponent = ({
     appendReturnTo(authParams, location);
   }
   const authBackgroundLocation = leaveDeletedArtistPage
-    ? { pathname: '/', search: '', hash: '', state: null, key: 'default' }
+    ? { pathname: localizedHomePath, search: '', hash: '', state: null, key: 'default' }
     : location;
   const [langOpen, setLangOpen] = useState(false);
   const langRef = useRef<HTMLDivElement>(null);
@@ -62,11 +65,19 @@ const HeaderComponent = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Смена языка: обновляем Redux; uiDictionary подгружается в Layout
+  // Смена языка: URL (source of truth на public routes) + Redux; uiDictionary подгружается в Layout
   const changeLang = (newLang: SupportedLang) => {
+    const currentPath = `${location.pathname}${location.search}${location.hash}`;
+    const nextPath = withLangPrefix(newLang, currentPath);
+
     if (newLang !== lang) {
       setLang(newLang);
     }
+
+    if (nextPath !== currentPath) {
+      navigate(nextPath, { replace: true });
+    }
+
     setLangOpen(false);
   };
 
@@ -78,7 +89,7 @@ const HeaderComponent = ({
     <header className="header">
       <div className="wrapper header__wrapper">
         <div className="header__start">
-          <Link className="logo" to="/">
+          <Link className="logo" to={localizedHomePath}>
             {ui?.listenerWelcome?.siteName ?? platformDisplayName(lang)}
           </Link>
 

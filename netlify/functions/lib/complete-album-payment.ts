@@ -151,6 +151,7 @@ export async function applyAlbumPaymentSuccess(
                         artistName: album.artistDisplayName,
                         orderId,
                         albumSlug: album.albumSlug,
+                        artistPublicSlug: album.artistPublicSlug,
                         albumCover: album.cover,
                         albumUserId: album.userId,
                         albumLang: album.lang,

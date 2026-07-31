@@ -25,6 +25,7 @@ export interface ResolvedAlbum {
   id: string;
   albumSlug: string;
   artistDisplayName: string;
+  artistPublicSlug: string | null;
   album: string;
   lang: string;
   cover: string | null;
@@ -35,6 +36,7 @@ type AlbumRow = {
   id: string;
   album_slug: string;
   artist_display_name: string | null;
+  artist_public_slug: string | null;
   album: string;
   lang: string;
   cover: string | null;
@@ -60,6 +62,7 @@ function mapAlbumRow(row: AlbumRow): ResolvedAlbum {
     id: row.id,
     albumSlug: row.album_slug,
     artistDisplayName: row.artist_display_name?.trim() || '',
+    artistPublicSlug: row.artist_public_slug?.trim() || null,
     album: row.album,
     lang: row.lang,
     cover: row.cover,
@@ -71,6 +74,7 @@ const ALBUM_SELECT = `
   SELECT a.id::text AS id,
          a.album_id AS album_slug,
          ${ARTIST_DISPLAY_NAME_SQL} AS artist_display_name,
+         NULLIF(TRIM(u.public_slug), '') AS artist_public_slug,
          a.album,
          a.lang,
          a.cover,

@@ -22,7 +22,10 @@ import {
 } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { platformSeoForLang } from '@shared/constants/platformBranding';
+import { buildLocalizedPublicPath } from '@shared/lib/i18n/routeLang';
 import { buildPublicSiteUrl, getPublicSiteOrigin } from '@shared/lib/publicSiteOrigin';
+import { buildPublicPageHreflangUrls } from '@shared/lib/seo/buildPublicPageHreflangUrls';
+import { publicPageHreflangLinks } from '@shared/lib/seo/PublicPageHreflangLinks';
 import { albumsLoader } from '@routes/loaders/albumsLoader';
 import { ArtistPageSkeleton } from '@pages/Home/ui/ArtistPageSkeleton';
 import { useLang } from '@app/providers/lang';
@@ -62,6 +65,9 @@ import {
 } from '@shared/lib/emailVerification';
 import { AccountDeletedToast } from '@shared/ui/accountDeletedToast/AccountDeletedToast';
 import { ArtistPageAccessProvider } from '@shared/lib/hooks/ArtistPageAccessProvider';
+import { LangLayout } from '@app/layouts/LangLayout';
+import { UnprefixedRedirect } from '@app/layouts/UnprefixedRedirect';
+import { DEFAULT_ROUTE_LANG, stripLangPrefix } from '@shared/lib/i18n/routeLang';
 
 // Lazy loading для страниц - загружаются только при необходимости
 const Album = lazy(() => import('@pages/Album/Album'));
@@ -88,7 +94,7 @@ const ResetPassword = lazy(() => import('@pages/ResetPassword/ResetPassword'));
 // Компонент для отображения загрузки
 const PageLoader = () => <p>Загрузка...</p>;
 
-/** Suspense для lazy Home: на `/?artist=` — нейтральный public-скелетон (builder ещё неизвестен). */
+/** Suspense для lazy Home: на artist hub — нейтральный public-скелетон (builder ещё не известен). */
 function HomeRouteSuspenseFallback() {
   const [searchParams] = useEffectiveSearchParams();
   if (searchParams.get('artist')?.trim()) {
@@ -96,6 +102,54 @@ function HomeRouteSuspenseFallback() {
   }
   return <PageLoader />;
 }
+
+const homePageElement = (
+  <Suspense fallback={<HomeRouteSuspenseFallback />}>
+    <Home />
+  </Suspense>
+);
+
+const allAlbumsPageElement = (
+  <Suspense fallback={<PageLoader />}>
+    <AllAlbums />
+  </Suspense>
+);
+
+const albumPageElement = (
+  <Suspense fallback={<PageLoader />}>
+    <Album />
+  </Suspense>
+);
+
+const allArticlesPageElement = (
+  <Suspense fallback={<PageLoader />}>
+    <AllArticles />
+  </Suspense>
+);
+
+const articlePageElement = (
+  <Suspense fallback={<PageLoader />}>
+    <ArticlePage />
+  </Suspense>
+);
+
+const offerPageElement = (
+  <Suspense fallback={<PageLoader />}>
+    <OfferPage />
+  </Suspense>
+);
+
+const privacyPageElement = (
+  <Suspense fallback={<PageLoader />}>
+    <PrivacyPage />
+  </Suspense>
+);
+
+const stemsPageElement = (
+  <Suspense fallback={<PageLoader />}>
+    <StemsPlayground />
+  </Suspense>
+);
 
 /** Старые пути `/dashboard/:tab` → `/dashboard-new/:tab` (сохраняем location.state) */
 function LegacyDashboardTabRedirect() {
@@ -237,18 +291,21 @@ function Layout() {
 
   const siteOrigin = getPublicSiteOrigin();
   const seo = useMemo(() => {
-    const homeUrl = buildPublicSiteUrl('/');
+    const hreflang = buildPublicPageHreflangUrls((routeLang) =>
+      buildLocalizedPublicPath(routeLang, '/')
+    );
     return {
+      hreflang,
       ru: {
         title: platformSeoForLang('ru').title,
         desc: platformSeoForLang('ru').description,
-        url: homeUrl,
+        url: hreflang.ru,
         ogImage: buildPublicSiteUrl('/og/default.jpg'),
       },
       en: {
         title: platformSeoForLang('en').title,
         desc: platformSeoForLang('en').description,
-        url: homeUrl,
+        url: hreflang.en,
         ogImage: buildPublicSiteUrl('/og/default_en.jpg'),
       },
     };
@@ -281,8 +338,10 @@ function Layout() {
     '/email-verification-expired',
   ];
 
+  const pathnameWithoutLang = stripLangPrefix(location.pathname);
+
   const isKnownRoute = knownRoutes.some((pattern) =>
-    matchPath({ path: pattern, end: true }, location.pathname)
+    matchPath({ path: pattern, end: true }, pathnameWithoutLang)
   );
 
   const isPaymentRoute = [
@@ -350,16 +409,21 @@ function Layout() {
 
   const activeLocation = authOverlayPublicSurface ?? backgroundLocation ?? location;
 
-  const isHomeRoute = activeLocation.pathname === '/' || activeLocation.pathname === '/en';
+  const activePathnameWithoutLang = stripLangPrefix(activeLocation.pathname);
+
+  const isHomeRoute = activePathnameWithoutLang === '/';
   const hasArtistParam = new URLSearchParams(activeLocation.search).has('artist');
   const isHomeSceneRoute = isHomeRoute && !hasArtistParam;
-  const isEmailVerifiedRoute = matchPath({ path: '/email-verified', end: true }, location.pathname);
+  const isEmailVerifiedRoute = matchPath(
+    { path: '/email-verified', end: true },
+    pathnameWithoutLang
+  );
   const isEmailVerificationExpiredRoute = matchPath(
     { path: '/email-verification-expired', end: true },
-    location.pathname
+    pathnameWithoutLang
   );
-  const isOfferRoute = matchPath({ path: '/offer', end: true }, location.pathname);
-  const isPrivacyRoute = matchPath({ path: '/privacy', end: true }, location.pathname);
+  const isOfferRoute = matchPath({ path: '/offer', end: true }, pathnameWithoutLang);
+  const isPrivacyRoute = matchPath({ path: '/privacy', end: true }, pathnameWithoutLang);
   const isLegalDocumentRoute = isOfferRoute || isPrivacyRoute;
 
   const isServiceScreenRoute =
@@ -390,67 +454,12 @@ function Layout() {
 
   const mainRoutes = (
     <Routes location={activeLocation}>
-      <Route
-        path="/"
-        element={
-          <Suspense fallback={<HomeRouteSuspenseFallback />}>
-            <Home />
-          </Suspense>
-        }
-      />
-      <Route
-        path="/albums"
-        element={
-          <Suspense fallback={<PageLoader />}>
-            <AllAlbums />
-          </Suspense>
-        }
-      />
-      <Route
-        path="/albums/:albumId"
-        element={
-          <Suspense fallback={<PageLoader />}>
-            <Album />
-          </Suspense>
-        }
-      />
-      <Route
-        path="/articles"
-        element={
-          <Suspense fallback={<PageLoader />}>
-            <AllArticles />
-          </Suspense>
-        }
-      />
-      <Route
-        path="/articles/:articleId"
-        element={
-          <Suspense fallback={<PageLoader />}>
-            <ArticlePage />
-          </Suspense>
-        }
-      />
+      <Route path="/" element={<Navigate to={`/${DEFAULT_ROUTE_LANG}`} replace />} />
       <Route
         path="/help/articles/:articleId"
         element={
           <Suspense fallback={<PageLoader />}>
             <HelpArticlePage />
-          </Suspense>
-        }
-      />
-      <Route
-        path="/offer"
-        element={
-          <Suspense fallback={<PageLoader />}>
-            <OfferPage />
-          </Suspense>
-        }
-      />
-      <Route
-        path="/privacy"
-        element={
-          <Suspense fallback={<PageLoader />}>
-            <PrivacyPage />
           </Suspense>
         }
       />
@@ -497,22 +506,26 @@ function Layout() {
         }
       />
       <Route path="/forms" element={<Form />} />
-      <Route
-        path="/stems"
-        element={
-          <Suspense fallback={<PageLoader />}>
-            <StemsPlayground />
-          </Suspense>
-        }
-      />
-      <Route
-        path="/stems/mix/:mixId"
-        element={
-          <Suspense fallback={<PageLoader />}>
-            <StemsPlayground />
-          </Suspense>
-        }
-      />
+      <Route path="/:lang" element={<LangLayout />}>
+        <Route index element={homePageElement} />
+        <Route path="albums" element={allAlbumsPageElement} />
+        <Route path="albums/:albumId" element={albumPageElement} />
+        <Route path="articles" element={allArticlesPageElement} />
+        <Route path="articles/:articleId" element={articlePageElement} />
+        <Route path="offer" element={offerPageElement} />
+        <Route path="privacy" element={privacyPageElement} />
+        <Route path="stems" element={stemsPageElement} />
+        <Route path="stems/mix/:mixId" element={stemsPageElement} />
+        <Route path="dashboard-new/*" element={<UnprefixedRedirect />} />
+        <Route path="dashboard/*" element={<UnprefixedRedirect />} />
+        <Route path="auth/*" element={<UnprefixedRedirect />} />
+        <Route path="pay/*" element={<UnprefixedRedirect />} />
+        <Route path="email-verified" element={<UnprefixedRedirect />} />
+        <Route path="email-verification-expired" element={<UnprefixedRedirect />} />
+        <Route path="forms" element={<UnprefixedRedirect />} />
+        <Route path="help/*" element={<UnprefixedRedirect />} />
+        <Route path="*" element={<NotFoundPage />} />
+      </Route>
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
   );
@@ -637,10 +650,7 @@ function Layout() {
             <meta name="color-scheme" content="dark light" />
             <link rel="canonical" href={seo[lang].url} />
 
-            {/* hreflang для Google */}
-            <link rel="alternate" href={seo.ru.url} hrefLang="ru" />
-            <link rel="alternate" href={seo.en.url} hrefLang="en" />
-            <link rel="alternate" href={seo.ru.url} hrefLang="x-default" />
+            {publicPageHreflangLinks(seo.hreflang)}
 
             {/* Open Graph / Twitter */}
             <meta property="og:type" content="website" />

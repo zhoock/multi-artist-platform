@@ -19,7 +19,7 @@ import { TrackList } from '@entities/track/ui/TrackList';
 import { getUserAudioUrl } from '@shared/api/albums';
 import { emptyStringMediaSrc } from '@shared/lib/media/optionalMediaUrl';
 import { useSiteArtistDisplayName } from '@shared/lib/hooks/useSiteArtistDisplayName';
-import { withPublicArtistQuery } from '@shared/lib/artistQuery';
+import { buildArtistPagePath } from '@shared/lib/seo/publicPagePaths';
 import { fallbackAlbumClientId } from '@shared/lib/albumClientId';
 import { useArchiveAccessModal } from '@shared/lib/archiveAccessModal';
 import { refreshPremiumContentForArchiveChange } from '@features/artistArchive';
@@ -107,7 +107,7 @@ const AlbumTracksComponent = ({
     [siteArtistName]
   );
   const displayArtistLabel = resolvedSiteArtist ? resolvedSiteArtist : '—';
-  const artistHubPath = withPublicArtistQuery('/', artistSlugFromUrl);
+  const artistHubPath = buildArtistPagePath(lang, artistSlugFromUrl ?? '');
   const fullNameMeta = useMemo(
     () => formatAlbumDisplayFullName(resolvedSiteArtist, album.title),
     [resolvedSiteArtist, album.title]

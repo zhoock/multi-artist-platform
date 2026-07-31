@@ -1,6 +1,7 @@
 import {
   LOCAL_DEV_FRONTEND_ORIGIN,
   buildEmailVerificationUrl,
+  buildPublicAlbumEmailUrl,
   buildPublicAppPath,
   getPublicAppOrigin,
   isLocalBackendOrigin,
@@ -63,5 +64,35 @@ describe('public-app-url', () => {
 
   it('normalizes trailing slashes', () => {
     expect(normalizeOrigin('https://example.com/')).toBe('https://example.com');
+  });
+
+  it('builds localized public album URLs for purchase emails', () => {
+    process.env.URL = 'https://multi-artist-platform.netlify.app';
+
+    expect(
+      buildPublicAlbumEmailUrl({
+        albumLang: 'ru',
+        albumSlug: 'rubber-soul',
+        artistPublicSlug: 'the-beatles',
+      })
+    ).toBe('https://multi-artist-platform.netlify.app/ru/albums/rubber-soul?artist=the-beatles');
+
+    expect(
+      buildPublicAlbumEmailUrl({
+        albumLang: 'en',
+        albumSlug: 'rubber-soul',
+        artistPublicSlug: 'the-beatles',
+      })
+    ).toBe('https://multi-artist-platform.netlify.app/en/albums/rubber-soul?artist=the-beatles');
+  });
+
+  it('defaults unknown album lang to ru for email album links', () => {
+    process.env.URL = 'https://example.com';
+    expect(
+      buildPublicAlbumEmailUrl({
+        albumLang: 'de',
+        albumSlug: 'sample',
+      })
+    ).toBe('https://example.com/ru/albums/sample');
   });
 });

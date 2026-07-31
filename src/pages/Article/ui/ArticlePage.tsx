@@ -23,10 +23,16 @@ import {
   type RequestStatus,
 } from '@entities/article';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
-import { withPublicArtistQuery } from '@shared/lib/artistQuery';
+import {
+  buildArtistArticlesCatalogPath,
+  buildArtistPagePath,
+  buildPublicArticlePagePath,
+} from '@shared/lib/seo/publicPagePaths';
 import { resolveChildContextNavMode, useNavigationOrigin } from '@shared/lib/navigationContext';
 import { ContextNav } from '@shared/ui/contextNav';
 import { buildPublicSiteUrl } from '@shared/lib/publicSiteOrigin';
+import { buildPublicPageHreflangUrls } from '@shared/lib/seo/buildPublicPageHreflangUrls';
+import { publicPageHreflangLinks } from '@shared/lib/seo/PublicPageHreflangLinks';
 import { ArtistArchiveLockIcon } from '@shared/ui/icons/ArtistArchiveLockIcon';
 import { SubscriberContentLockIcon } from '@shared/ui/icons/SubscriberContentLockIcon';
 import { useArchiveAccessModal } from '@shared/lib/archiveAccessModal';
@@ -74,8 +80,8 @@ export function ArticlePage() {
     window.addEventListener('archive:changed', onArchiveChanged);
     return () => window.removeEventListener('archive:changed', onArchiveChanged);
   }, [artistSlug, dispatch]);
-  const homePath = withPublicArtistQuery('/', artistSlug);
-  const articlesListPath = withPublicArtistQuery('/articles', artistSlug);
+  const homePath = buildArtistPagePath(lang, artistSlug?.trim() ?? '');
+  const articlesListPath = buildArtistArticlesCatalogPath(lang, artistSlug?.trim() ?? '');
   const articlesStatus = useAppSelector((state) => selectArticlesStatus(state));
   const articlesError = useAppSelector((state) => selectArticlesError(state));
   const article = useAppSelector((state) => selectArticleByIdResolved(state, articleId));
@@ -446,7 +452,12 @@ function ArticleContent({
             ? archiveGateHint
             : article.description;
   const seoDesc = isPaywalled ? paywallSeoHint : article.description;
-  const canonical = buildPublicSiteUrl(`/articles/${encodeURIComponent(article.articleId)}`);
+  const canonical = buildPublicSiteUrl(
+    buildPublicArticlePagePath(lang, article.articleId, artistSlug)
+  );
+  const hreflang = buildPublicPageHreflangUrls((routeLang) =>
+    buildPublicArticlePagePath(routeLang, article.articleId, artistSlug)
+  );
 
   const renderDetailBlocks = (blocks: typeof article.details, keyPrefix: string) =>
     blocks.map((d, index) => (
@@ -610,6 +621,7 @@ function ArticleContent({
         <meta property="og:url" content={canonical} />
         <meta name="twitter:url" content={canonical} />
         <link rel="canonical" href={canonical} />
+        {publicPageHreflangLinks(hreflang)}
       </Helmet>
 
       <time dateTime={article.date}>

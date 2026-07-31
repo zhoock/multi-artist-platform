@@ -18,12 +18,16 @@ const artistUser: AuthUser = {
 describe('ownArtistPage helpers', () => {
   test('isDefaultHomePath detects universe home', () => {
     expect(isDefaultHomePath('/', '')).toBe(true);
+    expect(isDefaultHomePath('/ru', '')).toBe(true);
+    expect(isDefaultHomePath('/en', '')).toBe(true);
     expect(isDefaultHomePath('/', '?artist=slug')).toBe(false);
+    expect(isDefaultHomePath('/ru', '?artist=slug')).toBe(false);
     expect(isDefaultHomePath('/dashboard-new/albums', '')).toBe(false);
   });
 
   test('isOnOwnArtistOnboardingPage matches owner slug case-insensitively', () => {
     expect(isOnOwnArtistOnboardingPage('/', '?artist=My-Artist', 'my-artist')).toBe(true);
+    expect(isOnOwnArtistOnboardingPage('/ru', '?artist=My-Artist', 'my-artist')).toBe(true);
     expect(isOnOwnArtistOnboardingPage('/', '?artist=other', 'my-artist')).toBe(false);
   });
 

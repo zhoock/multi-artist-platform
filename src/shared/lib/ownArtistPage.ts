@@ -20,6 +20,9 @@ import {
   hasFirstArtistOnboardingPending,
 } from '@shared/lib/authIntent/artistOnboardingRedirect';
 import { sanitizeListenerPostAuthDestination } from '@shared/lib/authReturnUrl';
+import type { RouteLang } from '@shared/lib/i18n/routeLang';
+import { stripLangPrefix } from '@shared/lib/i18n/routeLang/stripLangPrefix';
+import { buildArtistPagePath } from '@shared/lib/seo/publicPagePaths';
 
 export type OwnArtistPageState = {
   publicSlug: string | null;
@@ -31,12 +34,12 @@ export type OwnArtistPageState = {
   profileIsEmpty: boolean;
 };
 
-export function buildOwnArtistPagePath(publicSlug: string): string {
-  return `/?artist=${encodeURIComponent(publicSlug.trim())}`;
+export function buildOwnArtistPagePath(lang: RouteLang, publicSlug: string): string {
+  return buildArtistPagePath(lang, publicSlug);
 }
 
 export function isDefaultHomePath(pathname: string, search: string): boolean {
-  return pathname === '/' && !new URLSearchParams(search).has('artist');
+  return stripLangPrefix(pathname) === '/' && !new URLSearchParams(search).has('artist');
 }
 
 export function isOnOwnArtistOnboardingPage(
@@ -44,7 +47,7 @@ export function isOnOwnArtistOnboardingPage(
   search: string,
   publicSlug: string
 ): boolean {
-  if (pathname !== '/') return false;
+  if (stripLangPrefix(pathname) !== '/') return false;
   const currentArtist = new URLSearchParams(search).get('artist')?.trim().toLowerCase();
   return currentArtist === publicSlug.trim().toLowerCase();
 }
@@ -75,7 +78,11 @@ export async function resolveArtistOnboardingDestination(
     return sanitizeListenerPostAuthDestination(defaultDestination);
   }
 
-  const onDefaultHome = defaultDestination === '/';
+  const destinationPath = defaultDestination.split('?')[0] ?? defaultDestination;
+  const destinationSearch = defaultDestination.includes('?')
+    ? defaultDestination.slice(defaultDestination.indexOf('?'))
+    : '';
+  const onDefaultHome = isDefaultHomePath(destinationPath, destinationSearch);
   if (!shouldTryArtistOnboardingRedirect(user, { pendingRegistration, onDefaultHome })) {
     return defaultDestination;
   }
@@ -84,7 +91,7 @@ export async function resolveArtistOnboardingDestination(
 
   const state = await fetchOwnArtistPageState(lang);
   if (state.needsOnboarding && state.publicSlug) {
-    return buildOwnArtistPagePath(state.publicSlug);
+    return buildOwnArtistPagePath(lang as RouteLang, state.publicSlug);
   }
 
   return defaultDestination;
@@ -222,12 +229,13 @@ export type OpenOwnArtistPageOptions = {
 };
 
 export function openOwnArtistPage(
+  lang: RouteLang,
   publicSlug: string,
   hasPublicPageContent: boolean,
   navigate: NavigateFunction,
   options?: OpenOwnArtistPageOptions
 ): void {
-  const path = buildOwnArtistPagePath(publicSlug);
+  const path = buildOwnArtistPagePath(lang, publicSlug);
   if (options?.sameTab || !hasPublicPageContent) {
     navigate(path);
     return;

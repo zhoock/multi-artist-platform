@@ -83,8 +83,17 @@ describe('isAlbumDetailLoaderPath', () => {
   test('true только для страницы одного альбома', () => {
     expect(isAlbumDetailLoaderPath('/albums/23-remastered')).toBe(true);
     expect(isAlbumDetailLoaderPath('/en/albums/23-remastered')).toBe(true);
+    expect(isAlbumDetailLoaderPath('/ru/albums/23-remastered')).toBe(true);
     expect(isAlbumDetailLoaderPath('/albums')).toBe(false);
     expect(isAlbumDetailLoaderPath('/stems')).toBe(false);
+  });
+});
+
+describe('shouldDeferPublicArtistCatalogToSurface — localized paths', () => {
+  test('true для /ru/albums и /en/albums с ?artist=', () => {
+    expect(shouldDeferPublicArtistCatalogToSurface('/ru/albums', 'foo')).toBe(true);
+    expect(shouldDeferPublicArtistCatalogToSurface('/en/albums', 'foo')).toBe(true);
+    expect(shouldDeferPublicArtistCatalogToSurface('/ru', 'foo')).toBe(true);
   });
 });
 
@@ -212,5 +221,17 @@ describe('albumsLoader — defer public catalog to HomePage', () => {
     expect(store.getState().albums.dashboard.status).toBe('idle');
     expect(store.getState().albums.dashboard.inFlightFetchContextKey).toBeNull();
     expect(store.getState().artistAlbumCatalog.status).toBe('loading');
+  });
+
+  test('на /en/albums синхронизирует lang из URL в Redux', async () => {
+    expect(store.getState().lang.current).toBe('en');
+
+    const args = makeRequest('/ru/albums?artist=foo');
+    await albumsLoader({
+      request: args.request,
+      params: {},
+    } as Parameters<typeof albumsLoader>[0]);
+
+    expect(store.getState().lang.current).toBe('ru');
   });
 });

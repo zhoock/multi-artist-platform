@@ -67,13 +67,6 @@ function artistSeoDescriptionFallback(lang: string, artistName: string): string 
   return `${name}: альбомы, статьи и музыка на ${PLATFORM_DISPLAY_NAME.ru}.`;
 }
 
-/** Canonical public URL for `/?artist=<slug>`. Requires caller to pass origin builder. */
-export function buildArtistPageCanonicalPath(artistSlug: string): string {
-  const slug = artistSlug.trim();
-  if (!slug) return '/';
-  return `/?artist=${encodeURIComponent(slug)}`;
-}
-
 /**
  * Artist page SEO: artist name + about excerpt when available; platform SEO as fallback.
  * Canonical always reflects the artist URL when slug is present.

@@ -25,6 +25,8 @@ import {
 } from '@/components/view/Universe3D';
 import '@/components/view/Universe3D.style.scss';
 import { useDashboardModalShell } from '@shared/lib/dashboardModalShellContext';
+import { buildLocalizedPublicPath } from '@shared/lib/i18n/routeLang';
+import { buildArtistPagePath } from '@shared/lib/seo/publicPagePaths';
 import { ArtistArchiveButton } from '@features/artistArchive';
 import { readStoredProfileDisplayName } from '@shared/lib/profileDisplayName';
 import { ArtistPageSkeletonHero } from '@pages/Home/ui/ArtistPageSkeleton';
@@ -272,6 +274,7 @@ export function Hero() {
         disableCameraControls: true,
         embedInContainer: true,
         isHeroPreview: true,
+        buildArtistProfileHref: (publicSlug) => buildArtistPagePath(lang, publicSlug),
       });
     };
 
@@ -286,6 +289,7 @@ export function Hero() {
     artistParamKey,
     hasArtistParam,
     hideHeroForArtistOnboarding,
+    lang,
     showHeroLoadingShell,
     showPublishedHeroChrome,
   ]);
@@ -314,7 +318,7 @@ export function Hero() {
     if (artistParamKey) {
       sessionStorage.setItem(UNIVERSE_FOCUS_ARTIST_STORAGE_KEY, artistParamKey);
     }
-    navigate('/');
+    navigate(buildLocalizedPublicPath(lang, '/'));
   };
 
   return (

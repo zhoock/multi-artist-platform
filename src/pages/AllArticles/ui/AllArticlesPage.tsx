@@ -10,7 +10,13 @@ import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { useLang } from '@app/providers/lang';
 import { selectArticlesStatus, selectArticlesDataResolved } from '@entities/article';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
-import { withPublicArtistQuery } from '@shared/lib/artistQuery';
+import {
+  buildArtistArticlesCatalogPath,
+  buildArtistPagePath,
+} from '@shared/lib/seo/publicPagePaths';
+import { buildPublicSiteUrl } from '@shared/lib/publicSiteOrigin';
+import { buildPublicPageHreflangUrls } from '@shared/lib/seo/buildPublicPageHreflangUrls';
+import { publicPageHreflangLinks } from '@shared/lib/seo/PublicPageHreflangLinks';
 import { useSiteArtistDisplayName } from '@shared/lib/hooks/useSiteArtistDisplayName';
 import { useArtistPageAccess } from '@shared/lib/hooks/useArtistPageAccess';
 import { ContextNav } from '@shared/ui/contextNav';
@@ -25,7 +31,13 @@ export function AllArticlesPage() {
   const [searchParams] = useEffectiveSearchParams();
   const artistSlug = searchParams.get('artist');
   const { displayName: siteArtistName } = useSiteArtistDisplayName(lang, { artistSlug });
-  const artistHubPath = withPublicArtistQuery('/', artistSlug);
+  const artistHubPath = buildArtistPagePath(lang, artistSlug?.trim() ?? '');
+  const canonical = buildPublicSiteUrl(
+    buildArtistArticlesCatalogPath(lang, artistSlug?.trim() ?? '')
+  );
+  const hreflang = buildPublicPageHreflangUrls((routeLang) =>
+    buildArtistArticlesCatalogPath(routeLang, artistSlug?.trim() ?? '')
+  );
   const { monetizationEnabled } = useArtistPageAccess(artistSlug?.trim() ?? '');
   const articlesStatus = useAppSelector((state) => selectArticlesStatus(state));
   const allArticles = useAppSelector((state) => selectArticlesDataResolved(state));
@@ -86,6 +98,10 @@ export function AllArticlesPage() {
       <Helmet>
         <title>{seoTitle}</title>
         <meta name="description" content={seoDesc} />
+        <link rel="canonical" href={canonical} />
+        {publicPageHreflangLinks(hreflang)}
+        <meta property="og:url" content={canonical} />
+        <meta name="twitter:url" content={canonical} />
       </Helmet>
 
       <div className="wrapper">

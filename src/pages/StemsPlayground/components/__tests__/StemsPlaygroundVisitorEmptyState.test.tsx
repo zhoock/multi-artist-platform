@@ -44,7 +44,7 @@ describe('StemsPlaygroundVisitorEmptyState', () => {
             },
           }}
           artistSlug="beatles"
-          artistHubPath="/?artist=beatles"
+          artistHubPath="/ru?artist=beatles"
         />
       </MemoryRouter>
     );
@@ -62,7 +62,7 @@ describe('StemsPlaygroundVisitorEmptyState', () => {
     fireEvent.click(actionButton);
 
     expect(mockBootstrap).toHaveBeenCalledWith(mockDispatch, 'beatles');
-    expect(mockNavigate).toHaveBeenCalledWith('/?artist=beatles', { replace: false });
+    expect(mockNavigate).toHaveBeenCalledWith('/ru?artist=beatles', { replace: false });
     expect(screen.queryByRole('link')).not.toBeInTheDocument();
   });
 });

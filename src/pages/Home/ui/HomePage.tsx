@@ -3,7 +3,7 @@ import {
   type SceneArtist,
   UNIVERSE_FOCUS_ARTIST_STORAGE_KEY,
 } from '../../../components/view/Universe3D';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   useEffectiveLocation,
@@ -37,6 +37,7 @@ import {
   isTrackPlaybackBlocked,
   resolveFirstPlayableIndex,
 } from '@shared/lib/tracks/trackPlayback';
+import { buildArtistPagePath } from '@shared/lib/seo/publicPagePaths';
 import { clearPremiumCheckoutAuthIntent } from '@shared/lib/authIntent';
 import { appendReturnTo } from '@shared/lib/authReturnUrl';
 import { isAuthenticated } from '@shared/lib/auth';
@@ -53,6 +54,8 @@ import { ArtistPageSkeletonMain } from './ArtistPageSkeleton';
 import { ScrollToExploreHint } from './ScrollToExploreHint';
 import { useArtistPageBuilder } from '@shared/lib/hooks/useArtistPageBuilder';
 import { useArtistPageSeo } from '@shared/lib/hooks/useArtistPageSeo';
+import { buildLocalizedPublicPath } from '@shared/lib/i18n/routeLang';
+import { buildPublicPageHreflangUrls } from '@shared/lib/seo/buildPublicPageHreflangUrls';
 import { ArtistPageSeoHelmet } from './ArtistPageSeoHelmet';
 import '../../../components/view/Universe3D.style.scss';
 import './homeSceneChrome.scss';
@@ -88,6 +91,15 @@ export function HomePage() {
     enabled: hasArtistParam && !hideArtistPageAfterOwnDelete,
     forcePlatformFallback: artistPageAccess.showNotFound,
   });
+  const artistPageHreflang = useMemo(
+    () =>
+      buildPublicPageHreflangUrls((routeLang) =>
+        artistSlug.trim()
+          ? buildArtistPagePath(routeLang, artistSlug.trim())
+          : buildLocalizedPublicPath(routeLang, '/')
+      ),
+    [artistSlug]
+  );
 
   /**
    * `artist:updated` — сигнал для Universe / профиля / about, не для каталога.
@@ -207,12 +219,9 @@ export function HomePage() {
       universe = new Universe3D(sceneRef.current, artists, {
         onNavigateToArtist: (publicSlug) => {
           sessionStorage.setItem(UNIVERSE_FOCUS_ARTIST_STORAGE_KEY, publicSlug);
-          navigate({
-            pathname: '/',
-            search: `?artist=${encodeURIComponent(publicSlug)}`,
-            hash: '',
-          });
+          navigate(buildArtistPagePath(lang, publicSlug), { replace: false });
         },
+        buildArtistProfileHref: (publicSlug) => buildArtistPagePath(lang, publicSlug),
         onPlayArtist: async (artist) => {
           if (!artist?.publicSlug) return false;
 
@@ -330,7 +339,9 @@ export function HomePage() {
       return null;
     }
 
-    const artistSeoHelmet = <ArtistPageSeoHelmet seo={artistPageSeo} />;
+    const artistSeoHelmet = (
+      <ArtistPageSeoHelmet seo={artistPageSeo} hreflang={artistPageHreflang} />
+    );
 
     if (artistPageAccess.showNotFound) {
       return (

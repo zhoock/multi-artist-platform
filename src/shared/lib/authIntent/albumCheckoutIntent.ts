@@ -9,7 +9,7 @@
  *
  * Зеркалит `premiumCheckoutIntent.ts`: тот же паттерн, но на конкретный альбом.
  */
-import { sanitizeReturnPath } from '@shared/lib/authReturnUrl';
+import { sanitizeReturnPath, readReturnPathFromWindow } from '@shared/lib/authReturnUrl';
 
 export const ALBUM_CHECKOUT_AUTH_INTENT_STORAGE_KEY = 'sc_album_checkout_auth_intent';
 export const ALBUM_CHECKOUT_RESUME_AFTER_AUTH_FLAG = 'sc_album_checkout_resume_after_auth';
@@ -32,9 +32,7 @@ export type AlbumCheckoutIntentContext = {
 };
 
 function readCurrentReturnPath(): string {
-  if (typeof window === 'undefined') return '/';
-  const candidate = `${window.location.pathname}${window.location.search}`;
-  return sanitizeReturnPath(candidate) ?? '/';
+  return readReturnPathFromWindow();
 }
 
 export function buildAlbumCheckoutIntentContext(

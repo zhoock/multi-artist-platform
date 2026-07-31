@@ -5,6 +5,10 @@ import { getJSON } from '@shared/api/http';
 import { applySupportEmailToOffer, type OfferPageData } from '@shared/lib/applySupportEmailToOffer';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
+import { buildLocalizedPublicPath } from '@shared/lib/i18n/routeLang';
+import { buildPublicSiteUrl } from '@shared/lib/publicSiteOrigin';
+import { buildPublicPageHreflangUrls } from '@shared/lib/seo/buildPublicPageHreflangUrls';
+import { publicPageHreflangLinks } from '@shared/lib/seo/PublicPageHreflangLinks';
 import './style.scss';
 
 interface OfferData extends OfferPageData {}
@@ -53,6 +57,15 @@ export function OfferPage() {
     year: 'numeric',
   });
 
+  const pageTitle = ui?.links?.offerPageTitle ?? 'Публичная оферта';
+  const pageDescription =
+    ui?.links?.offerPageDescription ??
+    'Публичная оферта о заключении договора розничной купли-продажи товаров дистанционным способом';
+  const canonical = buildPublicSiteUrl(buildLocalizedPublicPath(lang, '/offer'));
+  const hreflang = buildPublicPageHreflangUrls((routeLang) =>
+    buildLocalizedPublicPath(routeLang, '/offer')
+  );
+
   if (loading) {
     return (
       <div className="offer-page">
@@ -77,14 +90,12 @@ export function OfferPage() {
   return (
     <>
       <Helmet>
-        <title>{ui?.links?.offerPageTitle ?? 'Публичная оферта'}</title>
-        <meta
-          name="description"
-          content={
-            ui?.links?.offerPageDescription ??
-            'Публичная оферта о заключении договора розничной купли-продажи товаров дистанционным способом'
-          }
-        />
+        <title>{pageTitle}</title>
+        <meta name="description" content={pageDescription} />
+        <link rel="canonical" href={canonical} />
+        {publicPageHreflangLinks(hreflang)}
+        <meta property="og:url" content={canonical} />
+        <meta name="twitter:url" content={canonical} />
       </Helmet>
       <div className="offer-page">
         <div className="offer-page__container">

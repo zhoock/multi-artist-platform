@@ -8,6 +8,10 @@ import {
 } from '@shared/lib/applySupportEmailToPrivacy';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
+import { buildLocalizedPublicPath } from '@shared/lib/i18n/routeLang';
+import { buildPublicSiteUrl } from '@shared/lib/publicSiteOrigin';
+import { buildPublicPageHreflangUrls } from '@shared/lib/seo/buildPublicPageHreflangUrls';
+import { publicPageHreflangLinks } from '@shared/lib/seo/PublicPageHreflangLinks';
 import '@pages/Offer/ui/style.scss';
 
 function hasParagraphText(value: string): boolean {
@@ -58,6 +62,17 @@ export function PrivacyPage() {
     year: 'numeric',
   });
 
+  const pageTitle = ui?.links?.privacyPageTitle ?? 'Privacy';
+  const pageDescription =
+    ui?.links?.privacyPageDescription ??
+    (lang === 'ru'
+      ? 'Политика конфиденциальности и обработки персональных данных'
+      : 'Privacy policy and personal data processing terms');
+  const canonical = buildPublicSiteUrl(buildLocalizedPublicPath(lang, '/privacy'));
+  const hreflang = buildPublicPageHreflangUrls((routeLang) =>
+    buildLocalizedPublicPath(routeLang, '/privacy')
+  );
+
   if (loading) {
     return (
       <div className="offer-page">
@@ -83,15 +98,11 @@ export function PrivacyPage() {
     <>
       <Helmet>
         <title>{ui?.links?.privacyPageTitle ?? privacyData.title}</title>
-        <meta
-          name="description"
-          content={
-            ui?.links?.privacyPageDescription ??
-            (lang === 'ru'
-              ? 'Политика конфиденциальности и обработки персональных данных'
-              : 'Privacy policy and personal data processing terms')
-          }
-        />
+        <meta name="description" content={pageDescription} />
+        <link rel="canonical" href={canonical} />
+        {publicPageHreflangLinks(hreflang)}
+        <meta property="og:url" content={canonical} />
+        <meta name="twitter:url" content={canonical} />
       </Helmet>
       <div className="offer-page">
         <div className="offer-page__container">

@@ -5,6 +5,7 @@ import {
   readDashboardModalBackground,
 } from '@shared/lib/dashboardModalBackground';
 import { markAlbumDeletedLeavePage } from '@shared/lib/albumDeletedSession';
+import { DEFAULT_ROUTE_LANG, stripLangPrefix, type RouteLang } from '@shared/lib/i18n/routeLang';
 import { buildOwnArtistPagePath } from '@shared/lib/ownArtistPage';
 
 function isDashboardPathname(pathname: string): boolean {
@@ -21,7 +22,7 @@ export function getArtistSlugFromLocation(location: Location): string | null {
 }
 
 export function getOpenAlbumIdFromPathname(pathname: string): string | null {
-  const match = matchPath({ path: '/albums/:albumId', end: true }, pathname);
+  const match = matchPath({ path: '/albums/:albumId', end: true }, stripLangPrefix(pathname));
   return match?.params.albumId?.trim() || null;
 }
 
@@ -80,9 +81,10 @@ export function resolveDeletedAlbumRedirectTarget(
 /** Помечает уход с удалённого альбома (до refetch) и после успеха ведёт на страницу артиста. */
 export function navigateAwayFromDeletedAlbumPage(
   target: DeletedAlbumRedirectTarget,
-  navigate: NavigateFunction
+  navigate: NavigateFunction,
+  lang: RouteLang = DEFAULT_ROUTE_LANG
 ): void {
   markAlbumDeletedLeavePage(target);
   clearDashboardModalBackground();
-  navigate(buildOwnArtistPagePath(target.artistSlug), { replace: true });
+  navigate(buildOwnArtistPagePath(lang, target.artistSlug), { replace: true });
 }

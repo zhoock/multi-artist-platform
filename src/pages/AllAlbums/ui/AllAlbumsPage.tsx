@@ -29,7 +29,10 @@ import './style.scss';
 import { useSiteArtistDisplayName } from '@shared/lib/hooks/useSiteArtistDisplayName';
 import { formatAlbumDisplayFullName } from '@shared/lib/profileDisplayName';
 import { shouldShowAlbumsLoadingShell } from '@shared/lib/hooks/useShowAlbumsLoadingShell';
-import { withPublicArtistQuery } from '@shared/lib/artistQuery';
+import { buildArtistAlbumsCatalogPath, buildArtistPagePath } from '@shared/lib/seo/publicPagePaths';
+import { buildPublicSiteUrl } from '@shared/lib/publicSiteOrigin';
+import { buildPublicPageHreflangUrls } from '@shared/lib/seo/buildPublicPageHreflangUrls';
+import { publicPageHreflangLinks } from '@shared/lib/seo/PublicPageHreflangLinks';
 import { ContextNav } from '@shared/ui/contextNav';
 
 // Количество альбомов для подгрузки за раз
@@ -114,7 +117,11 @@ export function AllAlbumsPage() {
   // SEO
   const seoTitle = ui?.titles?.allAlbumsPageTitle ?? '';
   const seoDesc = ui?.titles?.allAlbumsPageDesc ?? '';
-  const artistHubPath = withPublicArtistQuery('/', artistSlug);
+  const artistHubPath = buildArtistPagePath(lang, artistSlug.trim());
+  const canonical = buildPublicSiteUrl(buildArtistAlbumsCatalogPath(lang, artistSlug.trim()));
+  const hreflang = buildPublicPageHreflangUrls((routeLang) =>
+    buildArtistAlbumsCatalogPath(routeLang, artistSlug.trim())
+  );
 
   useEffect(() => {
     window.scrollTo({ top: 0 });
@@ -153,6 +160,10 @@ export function AllAlbumsPage() {
       <Helmet>
         <title>{seoTitle}</title>
         <meta name="description" content={seoDesc} />
+        <link rel="canonical" href={canonical} />
+        {publicPageHreflangLinks(hreflang)}
+        <meta property="og:url" content={canonical} />
+        <meta name="twitter:url" content={canonical} />
       </Helmet>
 
       <div className="wrapper">

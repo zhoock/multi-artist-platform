@@ -7,6 +7,7 @@ import {
   serializeCarouselImagesForDetail,
 } from '@entities/article';
 import { buildPublicArticlePagePath } from '@shared/lib/seo/publicPagePaths';
+import type { RouteLang } from '@shared/lib/i18n/routeLang';
 import type { RichText } from '@shared/lib/richText';
 import {
   isRichTextEmpty,
@@ -416,8 +417,12 @@ function hasContent(detail: Partial<ArticledetailsProps>): boolean {
   );
 }
 
-export function buildArticlePublicPath(articleId: string, artistSlug?: string | null): string {
-  return buildPublicArticlePagePath(articleId, artistSlug);
+export function buildArticlePublicPath(
+  articleId: string,
+  lang: RouteLang,
+  artistSlug?: string | null
+): string {
+  return buildPublicArticlePagePath(lang, articleId, artistSlug);
 }
 
 export async function readApiErrorMessage(response: Response, fallback: string): Promise<string> {

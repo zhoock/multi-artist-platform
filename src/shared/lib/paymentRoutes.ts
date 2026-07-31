@@ -2,6 +2,7 @@
 export const ALBUM_PAY_STATUS_PATH = '/pay/status';
 export const ALBUM_PAY_SUCCESS_PATH = '/pay/success';
 export const ALBUM_PAY_FAIL_PATH = '/pay/fail';
+export const SUBSCRIPTION_PAY_SUCCESS_PATH = '/pay/subscription-success';
 
 export const ALBUM_PAY_RETURN_PATHS = [
   ALBUM_PAY_STATUS_PATH,

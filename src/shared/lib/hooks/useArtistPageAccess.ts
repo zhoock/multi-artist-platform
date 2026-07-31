@@ -46,27 +46,28 @@ import { resolveMonetizationEnabled } from '@shared/lib/payment/artistMonetizati
 import { subscribeArtistMonetizationChanged } from '@shared/lib/payment/artistMonetizationEvents';
 import { loadSocialLinksFromDatabase, loadTheBandFromDatabase } from '@entities/user/lib';
 import { useArtistHeroHeaderImages } from './useArtistHeroHeaderImages';
+import { stripLangPrefix } from '@shared/lib/i18n/routeLang';
 
 function normalizeSlug(slug: string): string {
   return slug.trim().toLowerCase();
 }
 
 function isArtistHomePath(pathname: string): boolean {
-  return pathname === '/' || pathname === '/en' || pathname === '/en/';
+  return stripLangPrefix(pathname) === '/';
 }
 
 /** Список всех альбомов (`/albums`), не страница одного альбома (`/albums/:id`). */
 function isAllAlbumsListPath(pathname: string): boolean {
-  return /^\/(?:en\/)?albums\/?$/.test(pathname);
+  return /^\/albums\/?$/.test(stripLangPrefix(pathname));
 }
 
 /** Страница одного альбома — mid-weight AlbumDetails, не fat `/api/albums`. */
 function isAlbumDetailPath(pathname: string): boolean {
-  return /^\/(?:en\/)?albums\/[^/]+\/?$/.test(pathname);
+  return /^\/albums\/[^/]+\/?$/.test(stripLangPrefix(pathname));
 }
 
 function readAlbumIdFromDetailPath(pathname: string): string {
-  const match = pathname.match(/^\/(?:en\/)?albums\/([^/]+)\/?$/);
+  const match = stripLangPrefix(pathname).match(/^\/albums\/([^/]+)\/?$/);
   return match?.[1]?.trim() ?? '';
 }
 

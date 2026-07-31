@@ -12,7 +12,7 @@ import {
   selectArticlesCacheIsStale,
 } from '@entities/article';
 import { useShowSurfaceArticlesLoadingShell } from '@shared/lib/hooks/useShowSurfaceArticlesLoadingShell';
-import { withPublicArtistQuery } from '@shared/lib/artistQuery';
+import { buildArtistArticlesCatalogPath } from '@shared/lib/seo/publicPagePaths';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 import { shouldShowArtistPageBuilderBlock } from '@shared/lib/artistPageBuilder';
 import { useArtistPageBuilder } from '@shared/lib/hooks/useArtistPageBuilder';
@@ -36,7 +36,7 @@ export function ArticlesSection() {
   const { lang } = useLang();
   const [searchParams] = useEffectiveSearchParams();
   const artistSlug = searchParams.get('artist')?.trim() ?? '';
-  const allArticlesPath = withPublicArtistQuery('/articles', searchParams.get('artist'));
+  const allArticlesPath = buildArtistArticlesCatalogPath(lang, artistSlug);
   const articlesStatus = useAppSelector((state) => selectArticlesStatus(state));
   const articlesCacheStale = useAppSelector(selectArticlesCacheIsStale);
   const allArticles = useAppSelector((state) => selectArticlesDataResolvedForSurface(state));

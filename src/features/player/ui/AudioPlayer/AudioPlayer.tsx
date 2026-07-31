@@ -35,6 +35,7 @@ import { useTrackNavigation } from './hooks/useTrackNavigation';
 import { usePlayerToggles } from './hooks/usePlayerToggles';
 import { UNIVERSE_FOCUS_ARTIST_STORAGE_KEY } from '@/components/view/Universe3D';
 import { siteArtistUiLabel } from '@shared/lib/profileDisplayName';
+import { buildArtistPagePath, buildPublicAlbumPagePath } from '@shared/lib/seo/publicPagePaths';
 import { fallbackAlbumClientId } from '@shared/lib/albumClientId';
 import {
   MessageSquareQuote,
@@ -1045,27 +1046,24 @@ export default function AudioPlayer({
 
   const handleAlbumOpen = useCallback(() => {
     if (!albumIdForLink) return;
-    const slug = artistSlugForProfileLink;
-    const target = {
-      pathname: `/albums/${encodeURIComponent(albumIdForLink)}`,
-      search: slug ? `?artist=${encodeURIComponent(slug)}` : undefined,
-    };
+    const path = buildPublicAlbumPagePath(lang, albumIdForLink, artistSlugForProfileLink ?? '');
+    const { pathname, search } = new URL(path, 'http://local');
+    const target = { pathname, search: search || undefined };
     dispatch(playerActions.setSourceLocation(target));
-    navigate({ ...target, hash: '' }, { replace: false });
-  }, [albumIdForLink, artistSlugForProfileLink, dispatch, navigate]);
+    navigate(path, { replace: false });
+  }, [albumIdForLink, artistSlugForProfileLink, dispatch, lang, navigate]);
 
   const handleArtistProfileOpen = useCallback(() => {
     const slug = artistSlugForProfileLink;
     if (!slug) return;
-    const target = {
-      pathname: '/',
-      search: `?artist=${encodeURIComponent(slug)}`,
-    };
+    const path = buildArtistPagePath(lang, slug);
+    const { pathname, search } = new URL(path, 'http://local');
+    const target = { pathname, search: search || undefined };
     sessionStorage.setItem(UNIVERSE_FOCUS_ARTIST_STORAGE_KEY, slug);
     // Keep PlayerShell close flow consistent: when dialog closes, it will navigate to sourceLocation.
     dispatch(playerActions.setSourceLocation(target));
-    navigate({ ...target, hash: '' }, { replace: false });
-  }, [artistSlugForProfileLink, dispatch, navigate]);
+    navigate(path, { replace: false });
+  }, [artistSlugForProfileLink, dispatch, lang, navigate]);
 
   useEffect(() => {
     if (!isFullScreenPlayer) {

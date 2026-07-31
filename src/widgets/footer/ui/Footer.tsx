@@ -17,6 +17,7 @@ import {
   useArtistPageBuilderNav,
 } from '@shared/ui/artistPageBuilder';
 import { platformDisplayName } from '@shared/constants/platformBranding';
+import { buildLocalizedPublicPath } from '@shared/lib/i18n/routeLang';
 import { Link2 as Link2Icon } from 'lucide-react';
 import './style.scss';
 
@@ -106,7 +107,9 @@ function FooterComponent() {
           </li>
           <li>
             <small>
-              <Link to="/offer">{ui?.links?.publicOffer ?? 'Публичная оферта'}</Link>
+              <Link to={buildLocalizedPublicPath(lang, '/offer')}>
+                {ui?.links?.publicOffer ?? 'Публичная оферта'}
+              </Link>
             </small>
           </li>
         </ul>

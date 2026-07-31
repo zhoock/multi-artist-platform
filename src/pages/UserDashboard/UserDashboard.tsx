@@ -2477,6 +2477,7 @@ function UserDashboard() {
                                 onOpenArtistPage={() => {
                                   if (!profilePublicSlug) return;
                                   openOwnArtistPage(
+                                    lang,
                                     profilePublicSlug,
                                     isArtistPagePublic,
                                     navigate

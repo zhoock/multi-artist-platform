@@ -1,10 +1,13 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
+import { useLang } from '@app/providers/lang';
 import { shouldLeaveDeletedArtistPage } from '@shared/lib/accountDeletedSession';
+import { buildLocalizedPublicPath } from '@shared/lib/i18n/routeLang/buildLocalizedPublicPath';
 import { isAuthOverlayPathname } from '@shared/lib/publicArtistContext';
 
 import { buildSessionExpiredAuthTarget } from './sessionExpiredNavigation';
+import { buildAuthPath } from '@shared/lib/internalAppUrls';
 import { SESSION_EXPIRED_REQUEST_EVENT, type SessionExpiredRequestDetail } from './sessionExpired';
 
 /**
@@ -12,6 +15,7 @@ import { SESSION_EXPIRED_REQUEST_EVENT, type SessionExpiredRequestDetail } from 
  * without a full page reload. Navigation stays in React Router; fetch stays agnostic.
  */
 export function SessionExpiredRedirectController() {
+  const { lang } = useLang();
   const navigate = useNavigate();
   const location = useLocation();
   const redirectInFlightRef = useRef(false);
@@ -30,7 +34,7 @@ export function SessionExpiredRedirectController() {
 
       try {
         if (shouldLeaveDeletedArtistPage()) {
-          navigate('/', { replace: true });
+          navigate(buildLocalizedPublicPath(lang, '/'), { replace: true });
           return;
         }
 
@@ -38,15 +42,12 @@ export function SessionExpiredRedirectController() {
         const params = new URLSearchParams({ mode: 'login' });
         params.set('returnTo', returnTo);
 
-        navigate(
-          { pathname: '/auth', search: `?${params.toString()}` },
-          { replace: true, state: { backgroundLocation } }
-        );
+        navigate(buildAuthPath(params), { replace: true, state: { backgroundLocation } });
       } finally {
         redirectInFlightRef.current = false;
       }
     },
-    [location, navigate]
+    [lang, location, navigate]
   );
 
   useEffect(() => {

@@ -23,6 +23,7 @@ import {
   selectHelpArticlesData,
   fetchHelpArticles,
 } from '@entities/helpArticle';
+import { buildLocalizedPublicPath } from '@shared/lib/i18n/routeLang/buildLocalizedPublicPath';
 import { buildPublicSiteUrl } from '@shared/lib/publicSiteOrigin';
 import type { RequestStatus } from '@entities/article';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
@@ -207,7 +208,10 @@ export function HelpArticlePage() {
           className={`help-article__sidebar ${isSidebarOpen ? 'help-article__sidebar--open' : 'help-article__sidebar--closed'}`}
         >
           <nav className="help-article__nav">
-            <Link to="/articles" className="help-article__back-link">
+            <Link
+              to={buildLocalizedPublicPath(lang, '/articles')}
+              className="help-article__back-link"
+            >
               {lang === 'en' ? '« All articles' : '« Все статьи'}
             </Link>
 

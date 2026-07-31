@@ -225,6 +225,7 @@ export class Universe3D {
   private cardAnchorObject: THREE.Object3D | null = null;
   private onPlayArtist?: (artist: SceneArtist) => boolean | Promise<boolean>;
   private onNavigateToArtist?: (publicSlug: string) => void;
+  private buildArtistProfileHrefFn?: (publicSlug: string) => string;
   private useContainerSize = false;
   private resizeObserver: ResizeObserver | null = null;
   private attachedWindowClick = false;
@@ -261,6 +262,7 @@ export class Universe3D {
     options?: {
       onPlayArtist?: (artist: SceneArtist) => boolean | Promise<boolean>;
       onNavigateToArtist?: (publicSlug: string) => void;
+      buildArtistProfileHref?: (publicSlug: string) => string;
       clusterColor?: number;
       disableCameraControls?: boolean;
       embedInContainer?: boolean;
@@ -310,6 +312,7 @@ export class Universe3D {
     this.uiLayer = ui;
     this.onPlayArtist = options?.onPlayArtist;
     this.onNavigateToArtist = options?.onNavigateToArtist;
+    this.buildArtistProfileHrefFn = options?.buildArtistProfileHref;
 
     const clusters = this.buildClusters(artists);
     const focusSlug = sessionStorage.getItem(UNIVERSE_FOCUS_ARTIST_STORAGE_KEY);
@@ -1112,9 +1115,9 @@ export class Universe3D {
     }
   }
 
-  /** Same profile URL shape as AudioPlayer `handleArtistProfileOpen` (`/?artist=`). */
+  /** Fallback href for artist profile links when SPA navigation is unavailable. */
   private buildArtistProfileHref(publicSlug: string): string {
-    return `/?artist=${encodeURIComponent(publicSlug)}`;
+    return this.buildArtistProfileHrefFn?.(publicSlug) ?? '#';
   }
 
   private handleArtistProfileNavigation(slug: string, event: Event): void {

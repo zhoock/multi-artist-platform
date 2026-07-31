@@ -773,7 +773,7 @@ export function EditArticleModalV2({
 
         queueArticleEditorToast({
           kind: 'published',
-          articleHref: buildArticlePublicPath(publishedArticleId, publicArtistSlug),
+          articleHref: buildArticlePublicPath(publishedArticleId, lang, publicArtistSlug),
         });
         onArticleEditorToast?.();
 

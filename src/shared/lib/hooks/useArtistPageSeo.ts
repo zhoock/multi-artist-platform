@@ -1,11 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 
 import { loadTheBandFromDatabase } from '@entities/user/lib';
-import {
-  buildArtistPageCanonicalPath,
-  buildArtistPageSeo,
-  type ResolvedPageSeo,
-} from '@shared/constants/platformBranding';
+import { buildArtistPageSeo, type ResolvedPageSeo } from '@shared/constants/platformBranding';
+import type { RouteLang } from '@shared/lib/i18n/routeLang';
+import { buildLocalizedPublicPath } from '@shared/lib/i18n/routeLang/buildLocalizedPublicPath';
+import { buildArtistPagePath } from '@shared/lib/seo/publicPagePaths';
 import { useSiteArtistDisplayName } from '@shared/lib/hooks/useSiteArtistDisplayName';
 import { buildPublicSiteUrl } from '@shared/lib/publicSiteOrigin';
 
@@ -62,7 +61,11 @@ export function useArtistPageSeo({
     };
   }, [aboutRefreshToken, enabled, forcePlatformFallback, lang, normalizedSlug]);
 
-  const canonicalUrl = buildPublicSiteUrl(buildArtistPageCanonicalPath(normalizedSlug));
+  const routeLang = lang as RouteLang;
+  const canonicalPath = normalizedSlug
+    ? buildArtistPagePath(routeLang, normalizedSlug)
+    : buildLocalizedPublicPath(routeLang, '/');
+  const canonicalUrl = buildPublicSiteUrl(canonicalPath);
 
   return useMemo(
     () =>

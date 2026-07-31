@@ -7,7 +7,7 @@ import { useLang } from '@app/providers/lang';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 import { selectPublicArtistSlug } from '@shared/model/currentArtist';
-import { withPublicArtistQuery } from '@shared/lib/artistQuery';
+import { buildLocalizedPublicPathWithArtist } from '@shared/lib/seo/publicPagePaths';
 import { useEffectiveSearchParams } from '@shared/lib/hooks/useEffectiveLocation';
 import './style.scss';
 
@@ -33,22 +33,25 @@ const NavigationComponent = ({ onToggle }: NavigationProps) => {
   return (
     <nav className="header__menu">
       <ul className="header__links-list">
-        {[{ to: withPublicArtistQuery('/stems', publicArtistSlug), label: labels.stems }].map(
-          ({ to, label }) => (
-            <li key="stems">
-              <NavLink
-                to={to}
-                title={label ?? undefined}
-                onClick={onToggle}
-                className={({ isActive, isPending }) =>
-                  clsx('header__link', { active: isActive, pending: isPending })
-                }
-              >
-                {label}
-              </NavLink>
-            </li>
-          )
-        )}
+        {[
+          {
+            to: buildLocalizedPublicPathWithArtist(lang, '/stems', publicArtistSlug),
+            label: labels.stems,
+          },
+        ].map(({ to, label }) => (
+          <li key="stems">
+            <NavLink
+              to={to}
+              title={label ?? undefined}
+              onClick={onToggle}
+              className={({ isActive, isPending }) =>
+                clsx('header__link', { active: isActive, pending: isPending })
+              }
+            >
+              {label}
+            </NavLink>
+          </li>
+        ))}
       </ul>
     </nav>
   );

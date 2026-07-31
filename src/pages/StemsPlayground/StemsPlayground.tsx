@@ -1,7 +1,7 @@
 // src/pages/StemsPlayground/StemsPlayground.tsx
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { List as ListIcon, Save as SaveIcon } from 'lucide-react';
-import { Helmet } from 'react-helmet-async';
+import { StemsPlaygroundSeoHelmet } from './StemsPlaygroundSeoHelmet';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   useEffectiveLocation,
@@ -16,11 +16,18 @@ import { isAuthenticated } from '@shared/lib/auth';
 import { useArtistPageBuilder } from '@shared/lib/hooks/useArtistPageBuilder';
 import { selectDashboardAlbumsData } from '@entities/album';
 import { transformEditableAlbumsToAlbumData } from '@entities/album/lib/transformEditableAlbumData';
-import { withPublicArtistQuery } from '@shared/lib/artistQuery';
+import { withPublicArtistQuery } from '@shared/lib/publicArtistQueryLink';
+import {
+  buildArtistPagePath,
+  buildLocalizedPublicPathWithArtist,
+  buildSharedMixPagePath,
+} from '@shared/lib/seo/publicPagePaths';
 import { buildPublicSiteUrl } from '@shared/lib/publicSiteOrigin';
+import { buildPublicPageHreflangUrls } from '@shared/lib/seo/buildPublicPageHreflangUrls';
 import { useSiteArtistDisplayName } from '@shared/lib/hooks/useSiteArtistDisplayName';
 import { ContextNav } from '@shared/ui/contextNav';
 import { sanitizeReturnPath } from '@shared/lib/authReturnUrl';
+import { buildAuthPath } from '@shared/lib/internalAppUrls';
 import { useArchiveAccessModal } from '@shared/lib/archiveAccessModal';
 import { refreshPremiumContentForArchiveChange } from '@features/artistArchive';
 import { queueMixToast } from '@shared/lib/mixToast';
@@ -120,7 +127,22 @@ export default function StemsPlayground() {
   const sectionRef = useRef<HTMLElement | null>(null);
   const panelRef = useRef<MixerPlayerPanelHandle | null>(null);
 
-  const canonical = buildPublicSiteUrl(`${location.pathname}${location.search}`);
+  const canonical = useMemo(() => {
+    const localizedPath = mixId
+      ? buildSharedMixPagePath(lang, mixId)
+      : buildLocalizedPublicPathWithArtist(lang, '/stems', artistSlug);
+    return buildPublicSiteUrl(localizedPath);
+  }, [artistSlug, lang, mixId]);
+
+  const hreflang = useMemo(
+    () =>
+      buildPublicPageHreflangUrls((routeLang) =>
+        mixId
+          ? buildSharedMixPagePath(routeLang, mixId)
+          : buildLocalizedPublicPathWithArtist(routeLang, '/stems', artistSlug)
+      ),
+    [artistSlug, mixId]
+  );
 
   const ui = useAppSelector((state) => selectUiDictionaryFirst(state, lang));
   const stems = (ui?.stems ?? {}) as Record<string, string>;
@@ -130,8 +152,9 @@ export default function StemsPlayground() {
   const { displayName: siteArtistName } = useSiteArtistDisplayName(lang, {
     artistSlug: artistSlug || null,
   });
-  const artistHubPath = withPublicArtistQuery('/', artistSlug);
+  const artistHubPath = buildArtistPagePath(lang, artistSlug);
   const selectAlbumHint = stems.selectAlbumHint ?? '';
+  const seoDescription = selectAlbumHint || pageTitle;
   const noAlbumsLabel = stems.noAlbums ?? '';
   const { isOwner, ownerResolved } = useArtistPageBuilder(artistSlug);
   const dashboardAlbumsFromStore = useAppSelector(selectDashboardAlbumsData);
@@ -181,10 +204,8 @@ export default function StemsPlayground() {
   const requireAuth = (): boolean => {
     if (isAuthenticated()) return true;
     const returnTo = sanitizeReturnPath(`${location.pathname}${location.search}`) ?? '/stems';
-    const params = new URLSearchParams();
-    params.set('mode', 'login');
-    params.set('returnTo', returnTo);
-    navigate(`/auth?${params.toString()}`, { state: { backgroundLocation: location } });
+    const params = new URLSearchParams({ mode: 'login', returnTo });
+    navigate(buildAuthPath(params), { state: { backgroundLocation: location } });
     return false;
   };
 
@@ -354,7 +375,7 @@ export default function StemsPlayground() {
   };
 
   const handleCopyLink = async (mix: SavedMix) => {
-    const url = `${origin}/stems/mix/${mix.id}`;
+    const url = buildPublicSiteUrl(buildSharedMixPagePath(lang, mix.id));
     try {
       await navigator.clipboard.writeText(url);
       showToast(stems.linkCopied ?? 'Link copied');
@@ -408,9 +429,12 @@ export default function StemsPlayground() {
   if (showEmptyCatalogResolving) {
     return (
       <section className="stems-page main-background" aria-label="Блок c миксером">
-        <Helmet>
-          <title>{pageTitle}</title>
-        </Helmet>
+        <StemsPlaygroundSeoHelmet
+          title={pageTitle}
+          description={seoDescription}
+          canonical={canonical}
+          hreflang={hreflang}
+        />
         <div className="wrapper">
           <ContextNav mode="artist-only" artistName={siteArtistName} artistTo={artistHubPath} />
           <h2>{pageTitle}</h2>
@@ -425,11 +449,12 @@ export default function StemsPlayground() {
   if (showOwnerEmptyCatalog) {
     return (
       <section className="stems-page main-background" aria-label="Блок c миксером">
-        <Helmet>
-          <title>{pageTitle}</title>
-          <meta name="description" content={selectAlbumHint || pageTitle} />
-          <link rel="canonical" href={canonical} />
-        </Helmet>
+        <StemsPlaygroundSeoHelmet
+          title={pageTitle}
+          description={seoDescription}
+          canonical={canonical}
+          hreflang={hreflang}
+        />
         <div className="wrapper">
           <ContextNav mode="artist-only" artistName={siteArtistName} artistTo={artistHubPath} />
           <h2>{pageTitle}</h2>
@@ -445,11 +470,12 @@ export default function StemsPlayground() {
         className="stems-page stems-page--visitor-empty main-background"
         aria-label={stems.emptyTitle ?? pageTitle}
       >
-        <Helmet>
-          <title>{pageTitle}</title>
-          <meta name="description" content={selectAlbumHint || pageTitle} />
-          <link rel="canonical" href={canonical} />
-        </Helmet>
+        <StemsPlaygroundSeoHelmet
+          title={pageTitle}
+          description={seoDescription}
+          canonical={canonical}
+          hreflang={hreflang}
+        />
         <div className="wrapper">
           <StemsPlaygroundVisitorEmptyState
             ui={ui}
@@ -463,19 +489,12 @@ export default function StemsPlayground() {
 
   return (
     <section className="stems-page main-background" aria-label="Блок c миксером" ref={sectionRef}>
-      <Helmet>
-        <title>{pageTitle}</title>
-        <meta name="description" content={selectAlbumHint || pageTitle} />
-        <link rel="canonical" href={canonical} />
-        <meta property="og:type" content="website" />
-        <meta property="og:title" content={pageTitle} />
-        <meta property="og:description" content={selectAlbumHint || pageTitle} />
-        <meta property="og:url" content={canonical} />
-        <meta name="twitter:url" content={canonical} />
-        <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content={pageTitle} />
-        <meta name="twitter:description" content={selectAlbumHint || pageTitle} />
-      </Helmet>
+      <StemsPlaygroundSeoHelmet
+        title={pageTitle}
+        description={seoDescription}
+        canonical={canonical}
+        hreflang={hreflang}
+      />
 
       <div className="wrapper">
         {view === 'albums' ? (

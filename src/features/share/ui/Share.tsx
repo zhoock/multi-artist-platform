@@ -34,7 +34,12 @@ function openShareWindow(
   window.open(url, windowName, settings);
 }
 
-export function Share() {
+type ShareProps = {
+  /** Absolute public URL to share (built by the page via semantic path builders). */
+  url: string;
+};
+
+export function Share({ url }: ShareProps) {
   const [isOpen, setIsOpen] = useState(false);
 
   const handleToggle = (event: MouseEvent<HTMLElement>) => {
@@ -42,11 +47,9 @@ export function Share() {
     setIsOpen((prev) => !prev);
   };
 
-  const handleShare = (platform: SharePlatform, uri: string) => {
-    const targetUrl = uri === 'this' ? window.location.href : uri;
+  const handleShare = (platform: SharePlatform) => {
     const config = platformConfig[platform];
-    const encoded = encodeURIComponent(targetUrl);
-
+    const encoded = encodeURIComponent(url);
     openShareWindow(`${config.baseUrl}${encoded}`, config);
   };
 
@@ -68,7 +71,7 @@ export function Share() {
           aria-label="Поделиться на Facebook"
           onClick={(e) => {
             e.preventDefault();
-            handleShare('facebook', 'this');
+            handleShare('facebook');
           }}
         >
           <span className="visually-hidden">Facebook</span>
@@ -81,7 +84,7 @@ export function Share() {
           aria-label="Поделиться на Twitter"
           onClick={(e) => {
             e.preventDefault();
-            handleShare('twitter', 'this');
+            handleShare('twitter');
           }}
         >
           <span className="visually-hidden">Twitter</span>

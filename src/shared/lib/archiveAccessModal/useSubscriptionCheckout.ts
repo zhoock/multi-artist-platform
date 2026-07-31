@@ -10,7 +10,12 @@ import {
   beginPremiumCheckoutAuthIntent,
   clearPremiumCheckoutAuthIntent,
 } from '@shared/lib/authIntent';
-import { sanitizeReturnPath } from '@shared/lib/authReturnUrl';
+import { readReturnPathFromLocation } from '@shared/lib/authReturnUrl';
+import {
+  buildAuthPath,
+  buildSubscriptionPaymentDevStatusUrl,
+  buildSubscriptionPaymentStatusReturnUrl,
+} from '@shared/lib/internalAppUrls';
 import { useAuthSessionUser } from '@shared/lib/hooks/useAuthSessionUser';
 import type { SubscriptionPlanSlug } from '@shared/lib/payment/subscriptionPlans';
 import { logDevPaymentSubscriptionRedirect } from '@shared/lib/payment/devPaymentMode';
@@ -40,8 +45,7 @@ export function useSubscriptionCheckout({ onClose }: UseSubscriptionCheckoutOpti
 
   const startCheckout = useCallback(
     async (planSlug: SubscriptionPlanSlug): Promise<SubscriptionCheckoutResult> => {
-      const rawReturnTo = `${location.pathname}${location.search}`;
-      const returnTo = sanitizeReturnPath(rawReturnTo) ?? '/';
+      const returnTo = readReturnPathFromLocation(location);
 
       if (viewer && !isEmailVerified(viewer)) {
         return {
@@ -56,7 +60,9 @@ export function useSubscriptionCheckout({ onClose }: UseSubscriptionCheckoutOpti
 
       if (!getToken() && !viewer?.id) {
         beginPremiumCheckoutAuthIntent({ returnTo });
-        navigate(`/auth?returnTo=${encodeURIComponent(returnTo)}`, {
+        const authParams = new URLSearchParams();
+        authParams.set('returnTo', returnTo);
+        navigate(buildAuthPath(authParams), {
           state: { backgroundLocation: location },
         });
         onClose?.({ preserveCheckoutIntent: true });
@@ -66,7 +72,7 @@ export function useSubscriptionCheckout({ onClose }: UseSubscriptionCheckoutOpti
       try {
         const returnUrl =
           typeof window !== 'undefined'
-            ? `${window.location.origin}/pay/subscription-success?returnTo=${encodeURIComponent(returnTo)}`
+            ? buildSubscriptionPaymentStatusReturnUrl(returnTo)
             : undefined;
 
         const result = await createSubscriptionPayment({ returnUrl, plan: planSlug });
@@ -82,15 +88,19 @@ export function useSubscriptionCheckout({ onClose }: UseSubscriptionCheckoutOpti
           clearPremiumCheckoutAuthIntent();
           savePremiumCheckoutArtistSlug();
           onClose?.({ preserveCheckoutIntent: true });
-          const statusUrl = new URL(`${window.location.origin}/pay/subscription-success`);
-          statusUrl.searchParams.set('subscriptionPaymentId', result.data.subscriptionPaymentId);
-          statusUrl.searchParams.set('returnTo', returnTo);
+          const statusUrl = buildSubscriptionPaymentDevStatusUrl({
+            subscriptionPaymentId: result.data.subscriptionPaymentId,
+            returnTo,
+          });
           logDevPaymentSubscriptionRedirect({
             subscriptionPaymentId: result.data.subscriptionPaymentId,
             paymentId: result.data.paymentId,
-            redirectUrl: statusUrl.pathname + statusUrl.search,
+            redirectUrl: (() => {
+              const parsed = new URL(statusUrl);
+              return `${parsed.pathname}${parsed.search}`;
+            })(),
           });
-          window.location.href = statusUrl.toString();
+          window.location.href = statusUrl;
           return { ok: true, redirected: 'payment' };
         }
 

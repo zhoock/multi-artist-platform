@@ -1,3 +1,5 @@
+import { stripLangPrefix } from '@shared/lib/i18n/routeLang';
+
 export type NavListSection = 'albums' | 'articles' | 'mixer';
 
 export type ContextNavMode = 'artist-only' | 'list-and-artist';
@@ -12,14 +14,14 @@ export interface NavigationOrigin {
 }
 
 function isArtistHubPath(pathname: string): boolean {
-  return pathname === '/' || pathname === '/en' || pathname === '/en/';
+  return stripLangPrefix(pathname) === '/';
 }
 
 function pathToListSection(pathname: string): NavListSection | null {
-  if (pathname === '/albums' || pathname === '/en/albums') return 'albums';
-  if (pathname === '/articles' || pathname === '/en/articles') return 'articles';
-  if (pathname === '/stems' || pathname.startsWith('/stems/')) return 'mixer';
-  if (pathname === '/en/stems' || pathname.startsWith('/en/stems/')) return 'mixer';
+  const path = stripLangPrefix(pathname);
+  if (path === '/albums') return 'albums';
+  if (path === '/articles') return 'articles';
+  if (path === '/stems' || path.startsWith('/stems/')) return 'mixer';
   return null;
 }
 
@@ -61,11 +63,11 @@ export function resolveNavigationOrigin(previousPath?: string | null): Navigatio
     return { isArtistHubOrigin: false, listSection, isDirectEntry: false };
   }
 
-  if (/^\/(?:en\/)?albums\/[^/]+/.test(path)) {
+  if (/^\/albums\/[^/]+/.test(stripLangPrefix(path))) {
     return { isArtistHubOrigin: false, listSection: 'albums', isDirectEntry: false };
   }
 
-  if (/^\/(?:en\/)?articles\/[^/]+/.test(path)) {
+  if (/^\/articles\/[^/]+/.test(stripLangPrefix(path))) {
     return { isArtistHubOrigin: false, listSection: 'articles', isDirectEntry: false };
   }
 

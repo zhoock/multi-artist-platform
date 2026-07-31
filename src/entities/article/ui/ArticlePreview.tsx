@@ -3,7 +3,7 @@ import { useEffectiveSearchParams } from '@shared/lib/hooks/useEffectiveLocation
 import type { ArticleProps } from '@/models';
 import { useLang } from '@app/providers/lang';
 import { formatDateInWords, LocaleKey } from '@entities/article/lib/formatDate';
-import { withPublicArtistQuery } from '@shared/lib/artistQuery';
+import { buildPublicArticlePagePath } from '@shared/lib/seo/publicPagePaths';
 import { ArticleCoverImage } from './ArticleCoverImage';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
@@ -34,7 +34,7 @@ export function ArticlePreview({
   const { formatDate } = formatDateInWords[lang];
   const [searchParams] = useEffectiveSearchParams();
   const artistSlug = searchParams.get('artist');
-  const articlePath = withPublicArtistQuery(`/articles/${articleId}`, artistSlug);
+  const articleTo = buildPublicArticlePagePath(lang, articleId, artistSlug);
   const ui = useAppSelector((state) => selectUiDictionaryFirst(state, lang));
   const { isPremium, loading: premiumLoading } = usePremiumSubscription();
   const {
@@ -132,7 +132,7 @@ export function ArticlePreview({
   if (!showLockedCard || paywallKind === 'none') {
     return (
       <article className="articles__card">
-        <Link to={articlePath}>
+        <Link to={articleTo}>
           <div className="articles__picture">
             <ArticleCoverImage
               img={img}
@@ -161,7 +161,7 @@ export function ArticlePreview({
       className="articles__card articles__card--subscriber-locked"
       aria-label={overlayPending ? nameArticle : `${overlayTitle}. ${nameArticle}`}
     >
-      <Link to={articlePath} className="articles__card-hit">
+      <Link to={articleTo} className="articles__card-hit">
         <div className="articles__picture">
           <ArticleCoverImage
             img={img}

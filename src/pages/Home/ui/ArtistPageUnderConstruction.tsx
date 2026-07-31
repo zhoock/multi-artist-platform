@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useLang } from '@app/providers/lang';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
+import { buildLocalizedPublicPath } from '@shared/lib/i18n/routeLang/buildLocalizedPublicPath';
 import { ServicePageLayout } from '@shared/ui/serviceScreen';
 
 export function ArtistPageUnderConstruction() {
@@ -33,7 +34,7 @@ export function ArtistPageUnderConstruction() {
       description={subtitle}
       action={{
         label: ctaLabel,
-        onClick: () => navigate('/', { replace: true }),
+        onClick: () => navigate(buildLocalizedPublicPath(lang, '/'), { replace: true }),
       }}
     />
   );

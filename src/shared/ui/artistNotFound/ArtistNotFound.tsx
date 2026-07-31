@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useLang } from '@app/providers/lang';
+import { buildLocalizedPublicPath } from '@shared/lib/i18n/routeLang/buildLocalizedPublicPath';
 import './style.scss';
 
 const COPY = {
@@ -26,7 +27,7 @@ export function ArtistNotFound() {
           {copy.title}
         </h1>
         <p className="artist-not-found__subtitle">{copy.subtitle}</p>
-        <Link to="/" className="artist-not-found__cta" replace>
+        <Link to={buildLocalizedPublicPath(lang, '/')} className="artist-not-found__cta" replace>
           {copy.backToHome}
         </Link>
       </div>

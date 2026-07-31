@@ -35,8 +35,14 @@ import { getAlbumKeyForPaymentApis } from '@shared/lib/payment/albumPaymentKey';
 import { formatAlbumDisplayFullName } from '@shared/lib/profileDisplayName';
 import { useSiteArtistDisplayName } from '@shared/lib/hooks/useSiteArtistDisplayName';
 import { beginAlbumCheckoutAuthIntent } from '@shared/lib/authIntent';
-import { sanitizeReturnPath } from '@shared/lib/authReturnUrl';
-import { ALBUM_PAY_STATUS_PATH, ALBUM_PAY_SUCCESS_PATH } from '@shared/lib/paymentRoutes';
+import { readReturnPathFromLocation } from '@shared/lib/authReturnUrl';
+import {
+  buildAlbumPaymentDevStatusUrl,
+  buildAlbumPaymentStatusReturnUrl,
+  buildAlbumPaymentSuccessUrl,
+  buildAuthPath,
+} from '@shared/lib/internalAppUrls';
+import { buildLocalizedPublicPath } from '@shared/lib/i18n/routeLang/buildLocalizedPublicPath';
 import { logDevPaymentAlbumRedirect } from '@shared/lib/payment/devPaymentMode';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 import { ModalCloseIcon } from '@shared/ui/icons/ModalCloseIcon';
@@ -265,16 +271,9 @@ export function AlbumCheckoutModal({ isOpen, album, onClose }: AlbumCheckoutModa
     setPaymentError(null);
 
     try {
-      // FULL path+search, чтобы `?artist=` не терялся после payment redirect.
-      const rawReturnTo =
-        typeof window !== 'undefined'
-          ? `${window.location.pathname}${window.location.search}`
-          : '/';
-      const returnTo = sanitizeReturnPath(rawReturnTo) ?? '/';
+      const returnTo = readReturnPathFromLocation(location);
       const returnUrl =
-        typeof window !== 'undefined'
-          ? `${window.location.origin}${ALBUM_PAY_STATUS_PATH}?returnTo=${encodeURIComponent(returnTo)}`
-          : '';
+        typeof window !== 'undefined' ? buildAlbumPaymentStatusReturnUrl(returnTo) : '';
 
       const result = await createPayment({
         albumId: albumKey,
@@ -299,15 +298,19 @@ export function AlbumCheckoutModal({ isOpen, album, onClose }: AlbumCheckoutModa
 
       if (result.devPaymentCompleted && result.orderId) {
         if (typeof window !== 'undefined') {
-          const statusUrl = new URL(`${window.location.origin}${ALBUM_PAY_STATUS_PATH}`);
-          statusUrl.searchParams.set('orderId', result.orderId);
-          statusUrl.searchParams.set('returnTo', returnTo);
+          const statusUrl = buildAlbumPaymentDevStatusUrl({
+            orderId: result.orderId,
+            returnTo,
+          });
           logDevPaymentAlbumRedirect({
             orderId: result.orderId,
             paymentId: result.paymentId,
-            redirectUrl: statusUrl.pathname + statusUrl.search,
+            redirectUrl: (() => {
+              const parsed = new URL(statusUrl);
+              return `${parsed.pathname}${parsed.search}`;
+            })(),
           });
-          window.location.href = statusUrl.toString();
+          window.location.href = statusUrl;
         }
         return;
       }
@@ -320,7 +323,7 @@ export function AlbumCheckoutModal({ isOpen, album, onClose }: AlbumCheckoutModa
       }
 
       if (result.orderId && typeof window !== 'undefined') {
-        window.location.href = `${window.location.origin}${ALBUM_PAY_SUCCESS_PATH}?orderId=${result.orderId}`;
+        window.location.href = buildAlbumPaymentSuccessUrl(result.orderId);
         return;
       }
 
@@ -338,8 +341,7 @@ export function AlbumCheckoutModal({ isOpen, album, onClose }: AlbumCheckoutModa
       setPaymentError(labels.paymentErrorGeneric);
       return;
     }
-    const rawReturnTo = `${location.pathname}${location.search}`;
-    const returnTo = sanitizeReturnPath(rawReturnTo) ?? '/';
+    const returnTo = readReturnPathFromLocation(location);
 
     beginAlbumCheckoutAuthIntent({
       albumKey,
@@ -352,7 +354,7 @@ export function AlbumCheckoutModal({ isOpen, album, onClose }: AlbumCheckoutModa
     params.set('returnTo', returnTo);
 
     onClose();
-    navigate(`/auth?${params.toString()}`, {
+    navigate(buildAuthPath(params), {
       state: { backgroundLocation: location },
     });
   };
@@ -521,7 +523,7 @@ export function AlbumCheckoutModal({ isOpen, album, onClose }: AlbumCheckoutModa
                 <span className="album-checkout-modal__agreement-text">
                   {labels.agreeCombinedPrefix}{' '}
                   <Link
-                    to="/offer"
+                    to={buildLocalizedPublicPath(lang, '/offer')}
                     target="_blank"
                     rel="noopener"
                     className="album-checkout-modal__link"
@@ -530,7 +532,7 @@ export function AlbumCheckoutModal({ isOpen, album, onClose }: AlbumCheckoutModa
                   </Link>{' '}
                   {labels.agreeCombinedAnd}{' '}
                   <Link
-                    to="/privacy"
+                    to={buildLocalizedPublicPath(lang, '/privacy')}
                     target="_blank"
                     rel="noopener"
                     className="album-checkout-modal__link"

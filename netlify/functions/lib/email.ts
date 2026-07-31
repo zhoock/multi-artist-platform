@@ -10,7 +10,7 @@ import { buildVerificationEmailContent } from './verification-email-template';
 import type { EmailLocale } from './email-locale';
 import { getEmailFrom, getSiteDisplayName } from './email-utils';
 import { buildAlbumCoverEmailUrl } from './storage-public-url';
-import { getPublicAppOrigin } from './public-app-url';
+import { buildPublicAlbumEmailUrl, getPublicAppOrigin } from './public-app-url';
 import { reservePurchaseEmail, releasePurchaseEmailReservation } from './email-dedupe';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -24,8 +24,10 @@ interface SendPurchaseEmailOptions {
   albumName: string;
   artistName: string;
   orderId: string;
-  /** Canonical album slug used to build the public album URL (e.g. `albums/rubber-soul`). */
+  /** Canonical album slug used to build the public album URL (e.g. `rubber-soul`). */
   albumSlug: string;
+  /** Artist public slug for `?artist=` context in the album link. */
+  artistPublicSlug?: string | null;
   /** Stored album cover value (storage path or absolute URL). */
   albumCover?: string | null;
   /** UUID of the album owner — needed when `albumCover` is a bare filename. */
@@ -46,12 +48,6 @@ interface SendPurchaseEmailOptions {
   paymentId?: string;
   /** Locale of the *email body copy*. Distinct from `albumLang` (album page locale). */
   locale?: EmailLocale;
-}
-
-function buildPublicAlbumUrl(siteUrl: string, albumLang: string, albumSlug: string): string {
-  const cleanSiteUrl = siteUrl.replace(/\/+$/, '');
-  const localePrefix = albumLang === 'en' ? '/en' : '';
-  return `${cleanSiteUrl}${localePrefix}/albums/${encodeURIComponent(albumSlug)}`;
 }
 
 function resolvePurchaseBrandName(): string {
@@ -111,7 +107,12 @@ export async function sendPurchaseEmail(
     const albumLang = (options.albumLang || locale || 'en').toLowerCase();
 
     const albumCoverUrl = buildAlbumCoverEmailUrl(options.albumCover, options.albumUserId);
-    const albumUrl = buildPublicAlbumUrl(siteUrl, albumLang, options.albumSlug);
+    const albumUrl = buildPublicAlbumEmailUrl({
+      origin: siteUrl,
+      albumLang,
+      albumSlug: options.albumSlug,
+      artistPublicSlug: options.artistPublicSlug,
+    });
 
     const { html, text, subject } = buildPurchaseEmailContent({
       locale,

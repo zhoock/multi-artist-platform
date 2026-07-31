@@ -1,20 +1,24 @@
 import {
   SITEMAP_PLATFORM_ENTRIES,
+  SITEMAP_PLATFORM_PATH_TEMPLATES,
   buildAbsoluteSitemapUrl,
   formatSitemapLastmod,
   generateRobotsTxt,
   generateSitemapXml,
+  localizeSitemapEntriesForAllLangs,
 } from '../seo/generateSitemap';
 import { LEGACY_BAND_PUBLIC_DOMAIN } from '../publicSiteOrigin';
 
 describe('generateSitemap', () => {
   const origin = 'https://multi-artist-platform.netlify.app';
 
-  it('generates sitemap XML with platform origin only', () => {
+  it('generates sitemap XML with localized platform URLs', () => {
     const xml = generateSitemapXml(origin);
 
-    expect(xml).toContain('<loc>https://multi-artist-platform.netlify.app/</loc>');
-    expect(xml).toContain('<loc>https://multi-artist-platform.netlify.app/albums</loc>');
+    expect(xml).toContain('<loc>https://multi-artist-platform.netlify.app/ru</loc>');
+    expect(xml).toContain('<loc>https://multi-artist-platform.netlify.app/en</loc>');
+    expect(xml).toContain('<loc>https://multi-artist-platform.netlify.app/ru/albums</loc>');
+    expect(xml).not.toContain('<loc>https://multi-artist-platform.netlify.app/albums</loc>');
     expect(xml).not.toContain(LEGACY_BAND_PUBLIC_DOMAIN);
   });
 
@@ -27,12 +31,12 @@ describe('generateSitemap', () => {
 
   it('buildAbsoluteSitemapUrl keeps trailing slash only for home', () => {
     expect(buildAbsoluteSitemapUrl(origin, '/')).toBe('https://multi-artist-platform.netlify.app/');
-    expect(buildAbsoluteSitemapUrl(origin, '/albums')).toBe(
-      'https://multi-artist-platform.netlify.app/albums'
+    expect(buildAbsoluteSitemapUrl(origin, '/ru/albums')).toBe(
+      'https://multi-artist-platform.netlify.app/ru/albums'
     );
   });
 
-  it('includes all configured public routes', () => {
+  it('includes all configured localized public routes', () => {
     const xml = generateSitemapXml(origin);
 
     for (const entry of SITEMAP_PLATFORM_ENTRIES) {
@@ -40,10 +44,22 @@ describe('generateSitemap', () => {
     }
   });
 
-  it('omits lastmod and changefreq tags when not provided', () => {
-    const xml = generateSitemapXml(origin, [{ path: '/offer', priority: '0.5' }]);
+  it('localizes platform templates for ru and en', () => {
+    const localized = localizeSitemapEntriesForAllLangs(SITEMAP_PLATFORM_PATH_TEMPLATES);
+    const paths = localized.map((entry) => entry.path);
 
-    expect(xml).toContain('<loc>https://multi-artist-platform.netlify.app/offer</loc>');
+    expect(paths).toContain('/ru');
+    expect(paths).toContain('/en');
+    expect(paths).toContain('/ru/albums');
+    expect(paths).toContain('/en/albums');
+    expect(paths).not.toContain('/');
+    expect(paths).not.toContain('/albums');
+  });
+
+  it('omits lastmod and changefreq tags when not provided', () => {
+    const xml = generateSitemapXml(origin, [{ path: '/ru/offer', priority: '0.5' }]);
+
+    expect(xml).toContain('<loc>https://multi-artist-platform.netlify.app/ru/offer</loc>');
     expect(xml).not.toContain('<lastmod>');
     expect(xml).not.toContain('<changefreq>');
   });
@@ -51,7 +67,7 @@ describe('generateSitemap', () => {
   it('includes optional lastmod and changefreq when provided', () => {
     const xml = generateSitemapXml(origin, [
       {
-        path: '/?artist=band',
+        path: '/ru?artist=band',
         priority: '0.9',
         changefreq: 'weekly',
         lastmod: '2026-07-31',
