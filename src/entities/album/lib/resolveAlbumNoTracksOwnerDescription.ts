@@ -1,4 +1,3 @@
-import type { IInterface } from '@models';
 import type { SupportedLang } from '@shared/model/lang';
 
 type ResolveAlbumNoTracksOwnerDescriptionOptions = {
@@ -6,11 +5,18 @@ type ResolveAlbumNoTracksOwnerDescriptionOptions = {
   lang?: SupportedLang;
 };
 
+type ResolveAlbumNoTracksOwnerDescriptionUi = {
+  dashboard?: {
+    albumNoTracksOwnerDescription?: string;
+    albumNoTracksOwnerDescriptionNeutral?: string;
+  };
+};
+
 /**
  * Owner empty-album helper: catalog onboarding only before the artist's first public release.
  */
 export function resolveAlbumNoTracksOwnerDescription(
-  ui: IInterface | null | undefined,
+  ui: ResolveAlbumNoTracksOwnerDescriptionUi | null | undefined,
   { artistInCatalog, lang = 'en' }: ResolveAlbumNoTracksOwnerDescriptionOptions
 ): string {
   const d = ui?.dashboard;

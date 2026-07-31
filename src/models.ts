@@ -1199,7 +1199,8 @@ export interface IInterface {
       canceledWithReasonPrefix?: string;
       unknownTitle?: string;
       unknownStatusPrefix?: string;
-      pollTimeoutNote?: string;
+      pollTimeoutTitle?: string;
+      checkAgain?: string;
       amountLabel?: string;
       emailLabel?: string;
       orderNumberLabel?: string;
