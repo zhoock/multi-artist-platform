@@ -60,6 +60,7 @@ import {
 } from './EditAlbumModal.constants';
 import type { AlbumStep1InvalidField, AlbumStep4InvalidField } from './EditAlbumModal.utils';
 import {
+  ALBUM_PRICE_CURRENCY,
   dedupeSemanticAlbumDetailBlocks,
   makeEmptyForm,
   getAlbumStep1InvalidFields,
@@ -632,7 +633,7 @@ export function EditAlbumModal({
           prevForm.allowDownloadSale ||
           'no',
         regularPrice: (release as any).regularPrice || prevForm.regularPrice || '9.99',
-        currency: (release as any).currency || prevForm.currency || 'USD',
+        currency: ALBUM_PRICE_CURRENCY,
         preorderReleaseDate: (release as any).preorderReleaseDate
           ? formatDateFromISO((release as any).preorderReleaseDate)
           : prevForm.preorderReleaseDate || '',
@@ -3019,18 +3020,6 @@ export function EditAlbumModal({
                 {ui?.dashboard?.editAlbumModal?.fieldLabels?.regularPrice ?? 'Regular price'}
               </label>
               <div className="edit-album-modal__price-group">
-                <select
-                  name="currency"
-                  autoComplete="off"
-                  className="edit-album-modal__select"
-                  value={formData.currency}
-                  onChange={(e) => handleInputChange('currency', e.target.value)}
-                >
-                  <option value="USD">USD</option>
-                  <option value="EUR">EUR</option>
-                  <option value="RUB">RUB</option>
-                </select>
-
                 <input
                   id="regular-price"
                   name="regular-price"
@@ -3046,6 +3035,9 @@ export function EditAlbumModal({
                       setStep1InvalidFields((p) => p.filter((x) => x !== 'regularPrice'));
                   }}
                 />
+                <span className="edit-album-modal__price-currency" aria-hidden="true">
+                  ₽
+                </span>
               </div>
               {step1HasErr('regularPrice') ? (
                 <p id="regular-price-error" className="edit-album-modal__field-error" role="alert">

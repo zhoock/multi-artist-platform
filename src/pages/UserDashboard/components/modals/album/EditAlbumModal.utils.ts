@@ -694,6 +694,9 @@ export function formatDateInput(value: string): string {
   }
 }
 
+/** Album sales are RUB-only until multi-currency checkout exists. */
+export const ALBUM_PRICE_CURRENCY = 'RUB' as const;
+
 export const makeEmptyForm = (): AlbumFormData => ({
   title: '',
   releaseDate: '',
@@ -702,7 +705,7 @@ export const makeEmptyForm = (): AlbumFormData => ({
   description: '',
   allowDownloadSale: 'no',
   regularPrice: '9.99',
-  currency: 'USD',
+  currency: ALBUM_PRICE_CURRENCY,
   preorderReleaseDate: '',
   genreCodes: [],
   tags: [],
@@ -915,12 +918,10 @@ export const transformFormDataToAlbumFormat = (
     }
   }
 
-  // Сохраняем цену и валюту
+  // Сохраняем цену (валюта всегда RUB — см. ALBUM_PRICE_CURRENCY)
   if (formData.regularPrice && formData.regularPrice.trim()) {
     release.regularPrice = formData.regularPrice.trim();
-  }
-  if (formData.currency && formData.currency.trim()) {
-    release.currency = formData.currency.trim();
+    release.currency = ALBUM_PRICE_CURRENCY;
   }
 
   /** Кредиты обложки (photographer/designer) — в `translations[lang]`, не в `release`. */

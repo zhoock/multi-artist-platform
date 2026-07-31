@@ -108,7 +108,10 @@ dialog {
       @include dashboard-form-input;
 
       &--price {
-        flex: 1;
+        flex: 0 0 auto;
+        width: 132px;
+        min-width: 100px;
+        max-width: 140px;
       }
 
       &--invalid {
@@ -364,8 +367,15 @@ dialog {
 
     &__price-group {
       display: flex;
+      flex-wrap: nowrap;
       gap: var(--ms-01);
       align-items: center;
+    }
+
+    &__price-currency {
+      flex-shrink: 0;
+      color: var(--dashboard-text-secondary);
+      font-size: var(--dashboard-font-size);
     }
 
     &__select {

@@ -285,18 +285,6 @@ export function EditAlbumModalStep1({
         <div className="edit-album-modal__field">
           <label className="edit-album-modal__label">Regular price</label>
           <div className="edit-album-modal__price-group">
-            <select
-              name="currency"
-              autoComplete="off"
-              className="edit-album-modal__select"
-              value={formData.currency}
-              onChange={(e) => onFormDataChange('currency', e.target.value)}
-            >
-              <option value="USD">USD</option>
-              <option value="EUR">EUR</option>
-              <option value="RUB">RUB</option>
-            </select>
-
             <input
               name="regular-price"
               type="text"
@@ -306,6 +294,9 @@ export function EditAlbumModalStep1({
               onChange={(e) => onFormDataChange('regularPrice', e.target.value)}
               disabled={formData.allowDownloadSale === 'no'}
             />
+            <span className="edit-album-modal__price-currency" aria-hidden="true">
+              ₽
+            </span>
           </div>
         </div>
       )}
