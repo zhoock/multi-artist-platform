@@ -12,7 +12,6 @@ import {
   selectDashboardAlbumsData,
   fetchDashboardAlbums,
 } from '@entities/album';
-import { queueAlbumCreatedToast } from '@shared/lib/albumCreatedToast';
 import {
   navigateAfterAlbumSlugRename,
   resolveArtistSlugForAlbumRename,
@@ -2565,10 +2564,6 @@ export function EditAlbumModal({
           albumId: savedAlbumId,
           previousAlbumId: previousAlbumIdForApi,
         });
-      }
-
-      if (isNewAlbumWizard && method === 'POST') {
-        queueAlbumCreatedToast();
       }
 
       if (onNext) {

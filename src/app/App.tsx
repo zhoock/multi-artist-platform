@@ -62,7 +62,6 @@ import {
   EmailVerificationBanner,
   EmailVerificationRefreshController,
 } from '@shared/lib/emailVerification';
-import { AccountDeletedToast } from '@shared/ui/accountDeletedToast/AccountDeletedToast';
 import { ArtistPageAccessProvider } from '@shared/lib/hooks/ArtistPageAccessProvider';
 import { LangLayout } from '@app/layouts/LangLayout';
 import { MinimalLayout } from '@app/layouts/MinimalLayout';
@@ -70,6 +69,7 @@ import { isMinimalLayoutPathname } from '@app/layouts/minimalLayoutRoutes';
 import { isServiceScreenBodyClassActive } from '@app/layouts/serviceScreenBodyClass';
 import { UnprefixedRedirect } from '@app/layouts/UnprefixedRedirect';
 import { DEFAULT_ROUTE_LANG, stripLangPrefix } from '@shared/lib/i18n/routeLang';
+import { ToastProvider, NavigationToastHydrator } from '@shared/lib/toast';
 
 // Lazy loading для страниц - загружаются только при необходимости
 const Album = lazy(() => import('@pages/Album/Album'));
@@ -188,11 +188,14 @@ const router = createBrowserRouter([
 export default function App() {
   return (
     <ErrorBoundary>
-      <RouterProvider
-        router={router}
-        future={{ v7_startTransition: true }}
-        fallbackElement={<p>Загрузка...</p>}
-      />
+      <ToastProvider>
+        <NavigationToastHydrator />
+        <RouterProvider
+          router={router}
+          future={{ v7_startTransition: true }}
+          fallbackElement={<p>Загрузка...</p>}
+        />
+      </ToastProvider>
     </ErrorBoundary>
   );
 }
@@ -672,7 +675,6 @@ function Layout() {
           ) : isHomeSceneRoute ? (
             <ErrorBoundary>
               <EmailVerificationBanner />
-              <AccountDeletedToast />
               <main>
                 <ErrorBoundary>{standardRoutes}</ErrorBoundary>
               </main>
@@ -690,7 +692,6 @@ function Layout() {
                     else dispatch(openPopup());
                   }}
                 />
-                <AccountDeletedToast />
                 <main>
                   <EmailVerificationBanner />
                   {!isHomeSceneRoute && !isLegalDocumentRoute && <Hero />}

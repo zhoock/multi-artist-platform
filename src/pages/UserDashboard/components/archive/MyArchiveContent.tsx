@@ -38,8 +38,8 @@ import { DashboardButton, DashboardCard } from '@shared/ui/dashboard';
 
 import { CollectionArtistRemoveAction } from './CollectionArtistRemoveAction';
 import { CollectionEmptyState } from './CollectionEmptyState';
-import { ArchiveArtistRemovedToast } from '@shared/ui/archiveArtistRemovedToast';
-import { queueArchiveArtistRemovedToast } from '@shared/lib/archiveArtistRemovedToast';
+import { toast } from '@shared/lib/toast';
+import { ARCHIVE_ARTIST_REMOVED_TOAST_DURATION_MS } from '@shared/lib/toast/toastDurations';
 import {
   formatCollectionRenewalDate,
   formatSubscriptionDaysRemainingLabel,
@@ -82,7 +82,6 @@ export function MyArchiveContent({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const [bulkLoading, setBulkLoading] = useState(false);
   const [renewLoading, setRenewLoading] = useState(false);
-  const [removedToastTrigger, setRemovedToastTrigger] = useState(0);
   const skipNextArchiveReloadRef = useRef(false);
   const loadErrorTextRef = useRef<string | null>(null);
   const onContentReadyRef = useRef(onContentReady);
@@ -106,8 +105,11 @@ export function MyArchiveContent({
           String(count)
         );
       }
-      queueArchiveArtistRemovedToast(message);
-      setRemovedToastTrigger((value) => value + 1);
+      toast.show({
+        variant: 'success',
+        title: message,
+        duration: ARCHIVE_ARTIST_REMOVED_TOAST_DURATION_MS,
+      });
     },
     [t?.artistRemovedToast, t?.artistsRemovedToast, t?.collectionClearedToast]
   );
@@ -511,17 +513,14 @@ export function MyArchiveContent({
   const shouldBlockShell = !hasLoadedOnce || loading || (!data && !error);
 
   if (shouldBlockShell) {
-    return <ArchiveArtistRemovedToast triggerKey={removedToastTrigger} />;
+    return null;
   }
 
   if (showFullTabEmptyState) {
     return (
-      <>
-        <section className="collection__tab collection__tab--empty">
-          <CollectionEmptyState ui={ui} />
-        </section>
-        <ArchiveArtistRemovedToast triggerKey={removedToastTrigger} />
-      </>
+      <section className="collection__tab collection__tab--empty">
+        <CollectionEmptyState ui={ui} />
+      </section>
     );
   }
 
@@ -808,7 +807,6 @@ export function MyArchiveContent({
           </div>
         </div>
       </section>
-      <ArchiveArtistRemovedToast triggerKey={removedToastTrigger} />
     </>
   );
 }

@@ -7,6 +7,8 @@ import { describe, test, expect, jest, beforeEach } from '@jest/globals';
 import { screen, waitFor, fireEvent } from '@testing-library/react';
 
 import { renderWithProviders } from '@shared/lib/test-utils';
+import { ToastProvider } from '@shared/lib/toast/ToastProvider';
+import { resetToastStoreForTests } from '@shared/lib/toast/toastStore';
 import { removeArtistFromArchiveApi, activateArchiveArtistsApi } from '@shared/api/archive';
 import { MyArchiveContent } from '../MyArchiveContent';
 import type { SubscriptionCheckoutResult } from '@shared/lib/archiveAccessModal/useSubscriptionCheckout';
@@ -33,6 +35,10 @@ jest.mock('@shared/lib/archiveAccessModal', () => ({
     startCheckout: (planSlug: string) => startCheckoutMock(planSlug),
   }),
 }));
+
+function renderMyArchive(ui: React.ReactElement) {
+  return renderWithProviders(<ToastProvider>{ui}</ToastProvider>);
+}
 
 function inactiveArtist(id: string, name: string) {
   return {
@@ -71,6 +77,7 @@ describe('MyArchiveContent plan display', () => {
     openSupportModalMock.mockReset();
     startCheckoutMock.mockReset();
     startCheckoutMock.mockResolvedValue({ ok: true, redirected: 'payment' });
+    resetToastStoreForTests();
   });
 
   test('shows two-column header with plan and subscription status when active', async () => {
@@ -598,7 +605,7 @@ describe('MyArchiveContent plan display', () => {
     });
     removeArtistFromArchiveApiMock.mockResolvedValue({ archive: emptyArchive });
 
-    renderWithProviders(<MyArchiveContent active />);
+    renderMyArchive(<MyArchiveContent active />);
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Remove' })).toBeTruthy();
@@ -635,7 +642,7 @@ describe('MyArchiveContent plan display', () => {
       .mockResolvedValue(emptyArchive);
     removeArtistFromArchiveApiMock.mockResolvedValue({ archive: emptyArchive });
 
-    renderWithProviders(<MyArchiveContent active />);
+    renderMyArchive(<MyArchiveContent active />);
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Clear collection' })).toBeTruthy();

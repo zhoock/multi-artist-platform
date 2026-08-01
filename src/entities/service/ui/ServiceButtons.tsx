@@ -28,7 +28,8 @@ import { useArtistArchiveStatus } from '@features/artistArchive/lib/useArtistArc
 import { getAlbumPrice } from '../lib/getAlbumPrice';
 import { getAlbumArchiveSizeLabel } from '../lib/getAlbumArchiveSizeLabel';
 import { getAlbumDownloadOfferLabel } from '../lib/getAlbumDownloadFormatsLabel';
-import { AlbumPurchaseSuccessToast } from '@shared/ui/albumPurchaseSuccessToast';
+import { showAlbumPurchaseSuccessToast } from '@shared/lib/albumPurchaseSuccessToast';
+import { tryConsumePendingPurchaseSuccessToast } from '@shared/lib/toast/pendingPurchaseSuccessToast';
 import './style.scss';
 
 type ServiceButtonsProps = {
@@ -47,9 +48,11 @@ function ServiceButtonsContent({
   album,
   section,
   labels,
+  ui,
 }: {
   album: AlbumDetails;
   section: string;
+  ui: ReturnType<typeof selectUiDictionaryFirst>;
   labels: {
     purchase: string;
     stream: string;
@@ -127,6 +130,14 @@ function ServiceButtonsContent({
       setIsCheckoutOpen(true);
     }
   }, [albumKey, downloadButtonEnabled]);
+
+  useEffect(() => {
+    if (!downloadButtonEnabled) return;
+    if (ownershipLoading || !isOwned) return;
+    if (!tryConsumePendingPurchaseSuccessToast(returnPath)) return;
+
+    showAlbumPurchaseSuccessToast(ui, lang);
+  }, [downloadButtonEnabled, isOwned, lang, ownershipLoading, returnPath, ui]);
 
   if (section === 'Купить' && !hasAlbumPurchaseSectionContent(album)) {
     return null;
@@ -390,14 +401,6 @@ function ServiceButtonsContent({
         variant="error"
         onClose={() => setDownloadErrorOpen(false)}
       />
-
-      {section === 'Купить' && downloadButtonEnabled && (
-        <AlbumPurchaseSuccessToast
-          isOwned={isOwned}
-          ownershipLoading={ownershipLoading}
-          returnPath={returnPath}
-        />
-      )}
     </div>
   );
 }
@@ -449,7 +452,7 @@ export function ServiceButtons({ album, section }: ServiceButtonsProps) {
     errorTitle: ui?.titles?.error ?? ui?.dashboard?.error ?? fallbackLabels.errorTitle,
   };
 
-  return <ServiceButtonsContent album={album} section={section} labels={labels} />;
+  return <ServiceButtonsContent album={album} section={section} labels={labels} ui={ui} />;
 }
 
 export default ServiceButtons;

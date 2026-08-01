@@ -38,15 +38,6 @@ import {
 } from '@shared/lib/dashboardModalBackground';
 import { readDashboardOpenIntent, stripDashboardOpenIntent } from '@shared/lib/dashboardOpenIntent';
 import { EmailVerificationOnboarding } from '@shared/lib/emailVerification';
-import { AlbumPublishedToast } from '@shared/ui/albumPublishedToast/AlbumPublishedToast';
-import { AlbumCreatedToast } from '@shared/ui/albumCreatedToast/AlbumCreatedToast';
-import { TracksUploadedToast } from '@shared/ui/tracksUploadedToast/TracksUploadedToast';
-import { AlbumDeletedToast } from '@shared/ui/albumDeletedToast/AlbumDeletedToast';
-import { TrackDeletedToast } from '@shared/ui/trackDeletedToast/TrackDeletedToast';
-import { ArticleDeletedToast } from '@shared/ui/articleDeletedToast/ArticleDeletedToast';
-import { ArticleEditorToast } from '@shared/ui/articleEditorToast';
-import { LyricsSyncSavedToast } from '@shared/ui/lyricsSyncSavedToast/LyricsSyncSavedToast';
-import { DashboardErrorToast } from '@shared/ui/dashboardErrorToast';
 import { fetchWithAuthSession } from '@shared/lib/authFetch';
 import { buildApiUrl } from '@shared/lib/artistQuery';
 import { isAlbumReadyToPublish } from '@entities/album/lib/isAlbumReadyToPublish';
@@ -54,13 +45,17 @@ import { hasPublishedPublicReleases } from '@entities/album/lib/hasPublishedPubl
 import { albumVisibilityToIsPublic } from './components/albums/albumVisibilityOptions';
 import { AlbumsTabContent } from './components/albums/AlbumsTabContent';
 import { PostsTabContent } from './components/articles/PostsTabContent';
-import { queueAlbumPublishedToast } from '@shared/lib/albumPublishedToast';
-import { queueTracksUploadedToast } from '@shared/lib/tracksUploadedToast';
-import { queueAlbumDeletedToast } from '@shared/lib/albumDeletedToast';
-import { queueTrackDeletedToast } from '@shared/lib/trackDeletedToast';
-import { queueArticleDeletedToast } from '@shared/lib/articleDeletedToast';
-import { queueLyricsSyncSavedToast } from '@shared/lib/lyricsSyncSavedToast';
-import { queueDashboardErrorToast } from '@shared/lib/dashboardErrorToast';
+import {
+  ALBUM_CREATED_TOAST_DURATION_MS,
+  ALBUM_DELETED_TOAST_DURATION_MS,
+  ALBUM_PUBLISHED_TOAST_DURATION_MS,
+  ARTICLE_DELETED_TOAST_DURATION_MS,
+  DASHBOARD_ERROR_TOAST_DURATION_MS,
+  LYRICS_SYNC_SAVED_TOAST_DURATION_MS,
+  TRACKS_UPLOADED_TOAST_DURATION_MS,
+  TRACK_DELETED_TOAST_DURATION_MS,
+} from '@shared/lib/toast/toastDurations';
+import { toast } from '@shared/lib/toast';
 import { getArtistSlugFromLocation } from '@shared/lib/albumDeletedRedirect';
 import { isAuthOverlayPathname } from '@shared/lib/publicArtistContext';
 import {
@@ -222,6 +217,50 @@ function formatArticleDeletedSuccessMessage(
   return ui?.dashboard?.articleDeletedSuccessToast ?? 'Article deleted';
 }
 
+function formatAlbumPublishedToastCopy(
+  ui: IInterface | null | undefined,
+  lang: string
+): { title: string; description: string } {
+  const en = lang !== 'ru';
+  return {
+    title:
+      ui?.dashboard?.albumPublishedSuccessToast ?? (en ? 'Album published' : 'Альбом опубликован'),
+    description:
+      ui?.dashboard?.albumPublishedSuccessToastDescription ??
+      (en ? 'Your album is now available to listeners.' : 'Ваш альбом теперь доступен слушателям.'),
+  };
+}
+
+function formatAlbumCreatedToastCopy(
+  ui: IInterface | null | undefined,
+  lang: string
+): { title: string; description: string } {
+  const en = lang !== 'ru';
+  return {
+    title: ui?.dashboard?.albumCreatedSuccessToast ?? (en ? 'Album created' : 'Альбом создан'),
+    description:
+      ui?.dashboard?.albumCreatedSuccessToastDescription ??
+      (en
+        ? 'Upload tracks to complete publication.'
+        : 'Загрузите треки для завершения публикации.'),
+  };
+}
+
+function formatLyricsSyncSavedToastCopy(
+  ui: IInterface | null | undefined,
+  lang: string
+): { title: string; description: string } {
+  const en = lang !== 'ru';
+  return {
+    title:
+      ui?.dashboard?.lyricsSyncSavedToast ??
+      (en ? 'Synchronization saved' : 'Синхронизация сохранена'),
+    description:
+      ui?.dashboard?.lyricsSyncSavedToastDescription ??
+      (en ? 'Your changes have been saved.' : 'Изменения сохранены.'),
+  };
+}
+
 /** В кабинете список альбомов всегда принадлежит сессии; бэкенд иногда не присылает `userId`. */
 function withDashboardAlbumOwner(
   albums: AlbumData[],
@@ -363,14 +402,6 @@ function UserDashboard() {
   const [pendingTrackUploadAlbumId, setPendingTrackUploadAlbumId] = useState<string | null>(null);
   const [pendingFocusTrackKey, setPendingFocusTrackKey] = useState<string | null>(null);
   const [publishingAlbumId, setPublishingAlbumId] = useState<string | null>(null);
-  const [publishedToastTrigger, setPublishedToastTrigger] = useState(0);
-  const [tracksUploadToastTrigger, setTracksUploadToastTrigger] = useState(0);
-  const [albumDeletedToastTrigger, setAlbumDeletedToastTrigger] = useState(0);
-  const [trackDeletedToastTrigger, setTrackDeletedToastTrigger] = useState(0);
-  const [articleDeletedToastTrigger, setArticleDeletedToastTrigger] = useState(0);
-  const [articleEditorToastTrigger, setArticleEditorToastTrigger] = useState(0);
-  const [lyricsSyncSavedToastTrigger, setLyricsSyncSavedToastTrigger] = useState(0);
-  const [dashboardErrorToastTrigger, setDashboardErrorToastTrigger] = useState(0);
   const trackUploadSectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const [articleAccessMenuArticleId, setArticleAccessMenuArticleId] = useState<string | null>(null);
   const [albumAccessMenuAlbumId, setAlbumAccessMenuAlbumId] = useState<string | null>(null);
@@ -580,8 +611,11 @@ function UserDashboard() {
   }, [ui?.dashboard?.error, ui?.dashboard?.errorNotAuthorized]);
 
   const handleSettingsSaveError = useCallback((message: string) => {
-    queueDashboardErrorToast(message);
-    setDashboardErrorToastTrigger((value) => value + 1);
+    toast.show({
+      variant: 'error',
+      title: message,
+      duration: DASHBOARD_ERROR_TOAST_DURATION_MS,
+    });
   }, []);
 
   const deleteAccountCopy = useMemo((): DeleteAccountModalCopy => {
@@ -1330,8 +1364,11 @@ function UserDashboard() {
         );
       }
 
-      queueTrackDeletedToast(formatTrackDeletedSuccessMessage(trackTitle, ui));
-      setTrackDeletedToastTrigger((n) => n + 1);
+      toast.show({
+        variant: 'success',
+        title: formatTrackDeletedSuccessMessage(trackTitle, ui),
+        duration: TRACK_DELETED_TOAST_DURATION_MS,
+      });
 
       console.log('✅ Track deleted successfully:', { albumId, trackId });
     } catch (error) {
@@ -1412,8 +1449,13 @@ function UserDashboard() {
         { type: 'albumPublished', albumId },
         { artistSlug: resolvePublicArtistSlugForRefresh() }
       );
-      queueAlbumPublishedToast();
-      setPublishedToastTrigger((value) => value + 1);
+      const publishedToast = formatAlbumPublishedToastCopy(ui, lang);
+      toast.show({
+        variant: 'success',
+        title: publishedToast.title,
+        description: publishedToast.description,
+        duration: ALBUM_PUBLISHED_TOAST_DURATION_MS,
+      });
     } catch (error) {
       setAlertModal({
         isOpen: true,
@@ -1499,8 +1541,11 @@ function UserDashboard() {
 
       handleArticleRemoved({ wasPublished });
 
-      queueArticleDeletedToast(formatArticleDeletedSuccessMessage(article.nameArticle, ui));
-      setArticleDeletedToastTrigger((value) => value + 1);
+      toast.show({
+        variant: 'success',
+        title: formatArticleDeletedSuccessMessage(article.nameArticle, ui),
+        duration: ARTICLE_DELETED_TOAST_DURATION_MS,
+      });
     } catch (error) {
       console.error('❌ Error deleting article:', error);
       setAlertModal({
@@ -1566,8 +1611,11 @@ function UserDashboard() {
         );
       }
 
-      queueAlbumDeletedToast(formatAlbumDeletedSuccessMessage(deletedAlbumTitle, ui));
-      setAlbumDeletedToastTrigger((n) => n + 1);
+      toast.show({
+        variant: 'success',
+        title: formatAlbumDeletedSuccessMessage(deletedAlbumTitle, ui),
+        duration: ALBUM_DELETED_TOAST_DURATION_MS,
+      });
 
       console.log('✅ Album deleted successfully:', albumId);
     } catch (error) {
@@ -2001,8 +2049,11 @@ function UserDashboard() {
             },
           });
         } else {
-          queueTracksUploadedToast(formatUploadedTracksSuccessMessage(uploadedCount, lang, ui));
-          setTracksUploadToastTrigger((n) => n + 1);
+          toast.show({
+            variant: 'success',
+            title: formatUploadedTracksSuccessMessage(uploadedCount, lang, ui),
+            duration: TRACKS_UPLOADED_TOAST_DURATION_MS,
+          });
         }
       } else {
         throw new Error(result.error || 'Failed to upload tracks');
@@ -2312,6 +2363,16 @@ function UserDashboard() {
         await new Promise((resolve) => setTimeout(resolve, 200));
         closeEditAlbumModal();
 
+        if (meta?.createdNewAlbum) {
+          const createdToast = formatAlbumCreatedToastCopy(ui, lang);
+          toast.show({
+            variant: 'success',
+            title: createdToast.title,
+            description: createdToast.description,
+            duration: ALBUM_CREATED_TOAST_DURATION_MS,
+          });
+        }
+
         if (meta?.createdNewAlbum && searchAlbumId) {
           if (activeTab !== 'albums') {
             goDashboard('/dashboard-new/albums');
@@ -2336,14 +2397,20 @@ function UserDashboard() {
       goDashboard,
       lang,
       siteArtistDisplayName,
+      ui,
       userId,
     ]
   );
 
   const handleSyncLyricsSaved = useCallback(() => {
-    queueLyricsSyncSavedToast();
-    setLyricsSyncSavedToastTrigger((value) => value + 1);
-  }, []);
+    const syncSavedToast = formatLyricsSyncSavedToastCopy(ui, lang);
+    toast.show({
+      variant: 'success',
+      title: syncSavedToast.title,
+      description: syncSavedToast.description,
+      duration: LYRICS_SYNC_SAVED_TOAST_DURATION_MS,
+    });
+  }, [lang, ui]);
 
   const editTrackTitleDirty =
     !!editTrackModal?.isOpen && editTrackTitleDraft.trim() !== editTrackModal.trackTitle.trim();
@@ -2410,15 +2477,6 @@ function UserDashboard() {
         </Helmet>
 
         <Popup isActive={true} onClose={closeDashboard} publicBackdrop>
-          <AlbumPublishedToast triggerKey={publishedToastTrigger} />
-          <AlbumCreatedToast triggerKey={editAlbumModal} />
-          <TracksUploadedToast triggerKey={tracksUploadToastTrigger} />
-          <AlbumDeletedToast triggerKey={albumDeletedToastTrigger} />
-          <TrackDeletedToast triggerKey={trackDeletedToastTrigger} />
-          <ArticleDeletedToast triggerKey={articleDeletedToastTrigger} />
-          <ArticleEditorToast triggerKey={articleEditorToastTrigger} />
-          <LyricsSyncSavedToast triggerKey={lyricsSyncSavedToastTrigger} />
-          <DashboardErrorToast triggerKey={dashboardErrorToastTrigger} />
           <div className="user-dashboard">
             {/* Main card container */}
             <div className="user-dashboard__card">
@@ -2730,7 +2788,6 @@ function UserDashboard() {
             dispatch(applyTrackLyricsBundle(bundle));
           }}
           onSyncLyricsSaved={handleSyncLyricsSaved}
-          onArticleEditorToast={() => setArticleEditorToastTrigger((value) => value + 1)}
           onArticlePersisted={handleArticlePersisted}
           profilePublicSlug={profilePublicSlug}
         />

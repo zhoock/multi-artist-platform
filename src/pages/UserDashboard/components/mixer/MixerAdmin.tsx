@@ -34,10 +34,11 @@ import {
 import './MixerAdmin.scss';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 import { ConfirmationModal } from '@shared/ui/confirmationModal';
-import { StemAddedToast } from '@shared/ui/stemAddedToast/StemAddedToast';
-import { StemDeletedToast } from '@shared/ui/stemDeletedToast/StemDeletedToast';
-import { queueStemAddedToast } from '@shared/lib/stemAddedToast';
-import { queueStemDeletedToast } from '@shared/lib/stemDeletedToast';
+import { toast } from '@shared/lib/toast';
+import {
+  STEM_ADDED_TOAST_DURATION_MS,
+  STEM_DELETED_TOAST_DURATION_MS,
+} from '@shared/lib/toast/toastDurations';
 import { notifyPublicSurfaceChanged } from '@shared/lib/publicSurfaceSync';
 import {
   type StemMeta,
@@ -200,8 +201,6 @@ export function MixerAdmin({
   const [busyStems, setBusyStems] = useState<Record<string, boolean>>({});
   const [addModal, setAddModal] = useState<{ albumId: string; trackId: string } | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
-  const [stemAddedToastTrigger, setStemAddedToastTrigger] = useState(0);
-  const [stemDeletedToastTrigger, setStemDeletedToastTrigger] = useState(0);
   const [playingStemId, setPlayingStemId] = useState<string | null>(null);
   const [stemsVisibilityByTrack, setStemsVisibilityByTrack] = useState<
     Record<string, StemsVisibility>
@@ -522,8 +521,11 @@ export function MixerAdmin({
           await persistTrackStems(storageAlbumId, trackId);
           commitTrackStems(key, next);
           setAddModal(null);
-          queueStemAddedToast(formatStemToastMessage(name, t.addStemSuccessToast, lang, 'added'));
-          setStemAddedToastTrigger((n) => n + 1);
+          toast.show({
+            variant: 'success',
+            title: formatStemToastMessage(name, t.addStemSuccessToast, lang, 'added'),
+            duration: STEM_ADDED_TOAST_DURATION_MS,
+          });
         } catch (error) {
           revertTrackStemsStage(key, previous);
           throw error;
@@ -636,10 +638,16 @@ export function MixerAdmin({
         try {
           await persistTrackStems(storageAlbumId, trackId);
           commitTrackStems(key, next);
-          queueStemDeletedToast(
-            formatStemToastMessage(deletedStemName, t.deleteStemSuccessToast, lang, 'deleted')
-          );
-          setStemDeletedToastTrigger((n) => n + 1);
+          toast.show({
+            variant: 'success',
+            title: formatStemToastMessage(
+              deletedStemName,
+              t.deleteStemSuccessToast,
+              lang,
+              'deleted'
+            ),
+            duration: STEM_DELETED_TOAST_DURATION_MS,
+          });
         } catch (error) {
           revertTrackStemsStage(key, previous);
           console.error('[MixerAdmin] Failed to delete stem:', error);
@@ -1014,9 +1022,6 @@ export function MixerAdmin({
         onConfirm={handleConfirmDelete}
         onCancel={() => setDeleteTarget(null)}
       />
-
-      <StemDeletedToast triggerKey={stemDeletedToastTrigger} />
-      <StemAddedToast triggerKey={stemAddedToastTrigger} />
     </>
   );
 }

@@ -85,7 +85,6 @@ export type DashboardLazyModalsProps = {
   ) => void | Promise<void>;
   onSyncLyricsSave: (bundle: TrackLyricsBundle) => void;
   onSyncLyricsSaved: () => void;
-  onArticleEditorToast: () => void;
   onArticlePersisted: (options: { affectsPublicSurface: boolean }) => void;
   profilePublicSlug?: string | null;
 };
@@ -111,7 +110,6 @@ export function DashboardLazyModals({
   onEditAlbumNext,
   onSyncLyricsSave,
   onSyncLyricsSaved,
-  onArticleEditorToast,
   onArticlePersisted,
   profilePublicSlug,
 }: DashboardLazyModalsProps) {
@@ -197,7 +195,6 @@ export function DashboardLazyModals({
             article={editArticleModal.article}
             onClose={onCloseEditArticle}
             publicArtistSlug={profilePublicSlug}
-            onArticleEditorToast={onArticleEditorToast}
             onArticlePersisted={onArticlePersisted}
           />
         </Suspense>

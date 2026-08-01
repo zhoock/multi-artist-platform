@@ -1,5 +1,6 @@
 // src/pages/UserDashboard/components/EditArticleModalV2.tsx
 import React, { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   DndContext,
   closestCenter,
@@ -45,10 +46,9 @@ import {
   readApiErrorMessage,
 } from './EditArticleModalV2.utils';
 import {
-  queueArticleEditorToast,
+  showArticleEditorToast,
   type ArticleEditorToastPayload,
-} from '@shared/lib/articleEditorToast';
-import { ArticleEditorToast } from '@shared/ui/articleEditorToast';
+} from '@shared/lib/toast/showArticleEditorToast';
 import type { InlineMark, RichText } from '@shared/lib/richText';
 import {
   cloneRichText,
@@ -120,7 +120,6 @@ interface EditArticleModalV2Props {
   article: IArticles;
   onClose: () => void;
   publicArtistSlug?: string | null;
-  onArticleEditorToast?: () => void;
   onArticlePersisted?: (options: { affectsPublicSurface: boolean }) => void;
 }
 
@@ -229,10 +228,10 @@ export function EditArticleModalV2({
   article,
   onClose,
   publicArtistSlug,
-  onArticleEditorToast,
   onArticlePersisted,
 }: EditArticleModalV2Props) {
   const { lang } = useLang();
+  const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const texts = LANG_TEXTS[lang];
   const ui = useAppSelector((state) => selectUiDictionaryFirst(state, lang));
@@ -305,13 +304,6 @@ export function EditArticleModalV2({
   const [isPublishing, setIsPublishing] = useState(false);
   const [isSavingDraft, setIsSavingDraft] = useState(false);
   const [originalIsDraft, setOriginalIsDraft] = useState<boolean>(true);
-  const [editorToast, setEditorToast] = useState<ArticleEditorToastPayload | null>(null);
-
-  useEffect(() => {
-    if (!isOpen) {
-      setEditorToast(null);
-    }
-  }, [isOpen]);
 
   // Refs для управления автосохранением (отключено: сохранение только через Save draft / Publish)
   const isMountedRef = useRef(true);
@@ -549,9 +541,15 @@ export function EditArticleModalV2({
     closeDialog,
   });
 
-  const showEditorToast = useCallback((payload: ArticleEditorToastPayload) => {
-    setEditorToast(payload);
-  }, []);
+  const showEditorToast = useCallback(
+    (payload: ArticleEditorToastPayload) => {
+      showArticleEditorToast(payload, {
+        lang,
+        onOpenArticle: (href) => navigate(href),
+      });
+    },
+    [lang, navigate]
+  );
 
   const showArticleSaveError = useCallback(
     async (response?: Response, init?: RequestInit) => {
@@ -771,11 +769,10 @@ export function EditArticleModalV2({
         setInitialImg(coverKey);
         acknowledgeCoverCommitted();
 
-        queueArticleEditorToast({
+        showEditorToast({
           kind: 'published',
           articleHref: buildArticlePublicPath(publishedArticleId, lang, publicArtistSlug),
         });
-        onArticleEditorToast?.();
 
         await dispatch(fetchArticles({ force: true, ownerDashboard: true })).unwrap();
         onArticlePersisted?.({ affectsPublicSurface: true });
@@ -809,7 +806,7 @@ export function EditArticleModalV2({
     commitCoverForSave,
     acknowledgeCoverCommitted,
     publicArtistSlug,
-    onArticleEditorToast,
+    showEditorToast,
     showArticleSaveError,
     abortSaveFailureIfSessionInterrupted,
     onArticlePersisted,
@@ -2240,7 +2237,6 @@ export function EditArticleModalV2({
         closeBlocked={isArticleSaveBusy || articleCloseGuard.discardDialogOpen}
         autoFocusFirstElement={false}
       >
-        <ArticleEditorToast payload={editorToast} onDismiss={() => setEditorToast(null)} />
         {isLoading ? (
           <DashboardLoadingState className="edit-article-v2__loading" />
         ) : (

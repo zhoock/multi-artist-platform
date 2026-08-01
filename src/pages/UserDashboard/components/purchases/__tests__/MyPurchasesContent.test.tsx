@@ -1,7 +1,10 @@
 import { describe, expect, it, jest, beforeEach } from '@jest/globals';
+import React from 'react';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 
 import { renderWithProviders } from '@shared/lib/test-utils';
+import { ToastProvider } from '@shared/lib/toast/ToastProvider';
+import { resetToastStoreForTests } from '@shared/lib/toast/toastStore';
 import type { Purchase } from '@shared/api/purchases';
 import { MyPurchasesContent } from '../MyPurchasesContent';
 
@@ -13,6 +16,15 @@ jest.mock('@shared/api/purchases', () => ({
   downloadAlbumZip: jest.fn(),
   revokePurchase: (purchaseId: string) => revokePurchaseMock(purchaseId),
 }));
+
+function renderMyPurchases(ui: React.ReactElement) {
+  const result = renderWithProviders(<ToastProvider>{ui}</ToastProvider>);
+  return {
+    ...result,
+    rerender: (nextUi: React.ReactElement) =>
+      result.rerender(<ToastProvider>{nextUi}</ToastProvider>),
+  };
+}
 
 const samplePurchase: Purchase = {
   id: 'purchase-1',
@@ -35,10 +47,11 @@ describe('MyPurchasesContent', () => {
     getMyPurchasesMock.mockReset();
     revokePurchaseMock.mockReset();
     sessionStorage.clear();
+    resetToastStoreForTests();
   });
 
   it('does not fetch purchases while the tab is inactive', async () => {
-    renderWithProviders(<MyPurchasesContent active={false} />);
+    renderMyPurchases(<MyPurchasesContent active={false} />);
 
     await waitFor(() => {
       expect(getMyPurchasesMock).not.toHaveBeenCalled();
@@ -48,7 +61,7 @@ describe('MyPurchasesContent', () => {
   it('fetches purchases once when the tab becomes active', async () => {
     getMyPurchasesMock.mockResolvedValue([samplePurchase]);
 
-    renderWithProviders(<MyPurchasesContent active />);
+    renderMyPurchases(<MyPurchasesContent active />);
 
     await waitFor(() => {
       expect(getMyPurchasesMock).toHaveBeenCalledTimes(1);
@@ -60,7 +73,7 @@ describe('MyPurchasesContent', () => {
   it('does not refetch when toggling active after a successful load', async () => {
     getMyPurchasesMock.mockResolvedValue([samplePurchase]);
 
-    const { rerender } = renderWithProviders(<MyPurchasesContent active />);
+    const { rerender } = renderMyPurchases(<MyPurchasesContent active />);
 
     await waitFor(() => {
       expect(getMyPurchasesMock).toHaveBeenCalledTimes(1);
@@ -81,7 +94,7 @@ describe('MyPurchasesContent', () => {
       .mockRejectedValueOnce(new Error('Network error'))
       .mockResolvedValueOnce([samplePurchase]);
 
-    const { rerender } = renderWithProviders(<MyPurchasesContent active />);
+    const { rerender } = renderMyPurchases(<MyPurchasesContent active />);
 
     await waitFor(() => {
       expect(getMyPurchasesMock).toHaveBeenCalledTimes(1);
@@ -109,7 +122,7 @@ describe('MyPurchasesContent', () => {
         })
     );
 
-    const { container } = renderWithProviders(<MyPurchasesContent active />);
+    const { container } = renderMyPurchases(<MyPurchasesContent active />);
 
     await waitFor(() => {
       expect(getMyPurchasesMock).toHaveBeenCalled();
@@ -121,7 +134,7 @@ describe('MyPurchasesContent', () => {
   it('renders empty state when there are no purchases', async () => {
     getMyPurchasesMock.mockResolvedValue([]);
 
-    const { container } = renderWithProviders(<MyPurchasesContent active />);
+    const { container } = renderMyPurchases(<MyPurchasesContent active />);
 
     await waitFor(() => {
       expect(container.querySelector('.dashboard-empty-state--tab')).toBeTruthy();
@@ -131,7 +144,7 @@ describe('MyPurchasesContent', () => {
   it('renders purchase card with cover meta and icon actions only', async () => {
     getMyPurchasesMock.mockResolvedValue([samplePurchase]);
 
-    const { container } = renderWithProviders(<MyPurchasesContent active />);
+    const { container } = renderMyPurchases(<MyPurchasesContent active />);
 
     await waitFor(() => {
       expect(screen.getByText('Test Artist — Test Album')).toBeTruthy();
@@ -162,7 +175,7 @@ describe('MyPurchasesContent', () => {
     getMyPurchasesMock.mockResolvedValue([samplePurchase]);
     revokePurchaseMock.mockResolvedValue(undefined);
 
-    renderWithProviders(<MyPurchasesContent active />);
+    renderMyPurchases(<MyPurchasesContent active />);
 
     await waitFor(() => {
       expect(screen.getByText('Test Artist — Test Album')).toBeTruthy();
@@ -190,7 +203,7 @@ describe('MyPurchasesContent', () => {
     getMyPurchasesMock.mockResolvedValue([samplePurchase]);
     revokePurchaseMock.mockRejectedValue(new Error('Server error'));
 
-    renderWithProviders(<MyPurchasesContent active />);
+    renderMyPurchases(<MyPurchasesContent active />);
 
     await waitFor(() => {
       expect(screen.getByText('Test Artist — Test Album')).toBeTruthy();

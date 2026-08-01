@@ -3,7 +3,7 @@ import { Eye as EyeIcon, EyeOff as EyeOffIcon } from 'lucide-react';
 import { Popup, PopupCloseButton } from '@shared/ui/popup';
 import { deleteAccount } from '@shared/lib/auth';
 import { markAccountDeletedSession } from '@shared/lib/accountDeletedSession';
-import { queueAccountDeletedToast } from '@shared/lib/accountDeletedToast';
+import { armAccountDeletedToast } from '@shared/lib/toast/armAccountDeletedToast';
 import { DashboardButton } from '@shared/ui/dashboard';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 import { ModalCloseIcon } from '@shared/ui/icons/ModalCloseIcon';
@@ -65,7 +65,7 @@ export function DeleteAccountModal({ isOpen, onClose, onDeleted, copy }: DeleteA
 
     if (result.success) {
       markAccountDeletedSession();
-      queueAccountDeletedToast();
+      armAccountDeletedToast();
       setPassword('');
       onDeleted();
       return;

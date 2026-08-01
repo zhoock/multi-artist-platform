@@ -30,8 +30,8 @@ import { sanitizeReturnPath } from '@shared/lib/authReturnUrl';
 import { buildAuthPath } from '@shared/lib/internalAppUrls';
 import { useArchiveAccessModal } from '@shared/lib/archiveAccessModal';
 import { refreshPremiumContentForArchiveChange } from '@features/artistArchive';
-import { queueMixToast } from '@shared/lib/mixToast';
-import { MixToast } from '@shared/ui/mixToast';
+import { toast } from '@shared/lib/toast';
+import { MIX_TOAST_DURATION_MS } from '@shared/lib/toast/toastDurations';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 import {
   createMix,
@@ -183,7 +183,6 @@ export default function StemsPlayground() {
   };
 
   // ── Saved Mixes state ─────────────────────────────────────────────
-  const [toastKey, setToastKey] = useState(0);
   const [saveOpen, setSaveOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [myMixesOpen, setMyMixesOpen] = useState(false);
@@ -197,8 +196,12 @@ export default function StemsPlayground() {
 
   const showToast = (message: string) => {
     if (!message) return;
-    queueMixToast(message);
-    setToastKey((k) => k + 1);
+    toast.show({
+      variant: 'success',
+      title: message,
+      duration: MIX_TOAST_DURATION_MS,
+      layer: 'top',
+    });
   };
 
   const requireAuth = (): boolean => {
@@ -613,8 +616,6 @@ export default function StemsPlayground() {
         onDeleteConfirm={handleDeleteMix}
         onCopyLink={handleCopyLink}
       />
-
-      <MixToast triggerKey={toastKey} />
     </section>
   );
 }

@@ -11,8 +11,8 @@ import {
 import { Popup } from '@shared/ui/popup';
 import { AlertModal } from '@shared/ui/alertModal';
 import { ConfirmationModal } from '@shared/ui/confirmationModal';
-import { LyricsSyncRemovedToast } from '@shared/ui/lyricsSyncRemovedToast/LyricsSyncRemovedToast';
-import { queueLyricsSyncRemovedToast } from '@shared/lib/lyricsSyncRemovedToast';
+import { toast } from '@shared/lib/toast';
+import { LYRICS_SYNC_REMOVED_TOAST_DURATION_MS } from '@shared/lib/toast/toastDurations';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 import { useLang } from '@app/providers/lang';
@@ -107,6 +107,17 @@ const formatTimeCompact = (seconds: number): string => {
 
 const normalize = (s: string) => (s || '').trim();
 
+function formatLyricsSyncRemovedToastTitle(
+  ui: ReturnType<typeof selectUiDictionaryFirst>,
+  lang: string
+): string {
+  const en = lang !== 'ru';
+  return (
+    ui?.dashboard?.lyricsSyncRemovedToast ??
+    (en ? 'Synchronization removed' : 'Синхронизация удалена')
+  );
+}
+
 /** Только UI: последняя строка авторства, не входит в SyncedLyricsLine / БД */
 type VirtualAuthorshipLine = { text: string; __isAuthorship: true };
 
@@ -192,7 +203,6 @@ export function SyncLyricsModal({
     variant?: 'success' | 'error' | 'warning' | 'info';
   } | null>(null);
   const [removeSyncConfirmOpen, setRemoveSyncConfirmOpen] = useState(false);
-  const [removedToastTrigger, setRemovedToastTrigger] = useState(0);
 
   /**
    * ✅ СИНХРОННЫЙ СБРОС ДО PAINT
@@ -202,7 +212,6 @@ export function SyncLyricsModal({
   useLayoutEffect(() => {
     if (!isOpen) {
       setRemoveSyncConfirmOpen(false);
-      setRemovedToastTrigger(0);
       return;
     }
 
@@ -530,8 +539,11 @@ export function SyncLyricsModal({
       }
 
       onSave?.(bundle);
-      queueLyricsSyncRemovedToast();
-      setRemovedToastTrigger((value) => value + 1);
+      toast.show({
+        variant: 'success',
+        title: formatLyricsSyncRemovedToastTitle(ui, lang),
+        duration: LYRICS_SYNC_REMOVED_TOAST_DURATION_MS,
+      });
     } catch (error) {
       console.error('[SyncLyricsModal] Remove sync error:', error);
       setAlertModal({
@@ -546,7 +558,7 @@ export function SyncLyricsModal({
     } finally {
       setIsRemovingSync(false);
     }
-  }, [albumId, trackId, initialLyricsText, onSave, propAuthorship, ui?.dashboard]);
+  }, [albumId, trackId, initialLyricsText, lang, onSave, propAuthorship, ui]);
 
   const handleRemoveSyncClick = useCallback(() => {
     if (hasPersistedSync) {
@@ -614,7 +626,6 @@ export function SyncLyricsModal({
         requestCloseRef={popupRequestCloseRef}
         closeBlocked={isSaving || isRemovingSync || syncLyricsCloseGuard.discardDialogOpen}
       >
-        <LyricsSyncRemovedToast triggerKey={removedToastTrigger} />
         <div className="sync-lyrics-modal">
           <div
             className={`sync-lyrics-modal__card${isSaving || isRemovingSync ? ' sync-lyrics-modal__card--saving' : ''}`}

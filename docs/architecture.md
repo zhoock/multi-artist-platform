@@ -162,6 +162,12 @@ PlayerTrack
 
 Импорт: `@shared/ui/dashboard` · Исходники: `src/shared/ui/dashboard/`
 
+### Toast System
+
+→ [docs/architecture/toast-system.md](./architecture/toast-system.md)
+
+Generic API: `toast.show()` (in-memory only) · Cross-navigation: `arm*()` helpers · Исходники (план): `src/shared/lib/toast/`
+
 ### Связанные документы
 
 - История миграции с legacy `components/`: [docs/fsd-migration-plan.md](./fsd-migration-plan.md)
