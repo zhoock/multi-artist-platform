@@ -341,11 +341,6 @@ function classifyDetailBlockTitle(title: string, ui?: IInterface): DetailBlockKi
   return classifyAlbumDetailSemanticKind(title, ui);
 }
 
-/** true, если блок относится к одному из шести редактируемых «смысловых» kind (по normalize(title), не по точной строке). */
-export function isEditableSemanticAlbumDetailBlock(title: string, ui?: IInterface): boolean {
-  return classifyAlbumDetailSemanticKind(title, ui) != null;
-}
-
 /** Сохранение: тот же дедуп, что и на отображении (один блок на kind, канонический title). */
 export function dedupeSemanticAlbumDetailBlocks(
   details: unknown[],
