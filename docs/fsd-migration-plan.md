@@ -1,86 +1,103 @@
 ## План миграции по слоям
 
-Документ фиксирует текущие модули и предлагаемое место в структуре FSD. Используйте как чек-лист: после переноса отмечайте элементы и корректируйте назначения при необходимости.
+Исторический чек-лист переноса из монолитного `src/components`. **Актуальная архитектура** — в [docs/architecture.md](./architecture.md).
 
-### `src/components`
+### Текущая структура (после cleanup)
 
-| Текущая директория | Назначение сейчас               | Статус / итоговое расположение                                |
-| ------------------ | ------------------------------- | ------------------------------------------------------------- |
-| `AboutUs`          | Статический блок «О нас», стили | ✅ перенесено → `@pages/Home/ui/AboutSection`                 |
-| `AlbumDetails`     | Компоненты карточки альбома     | ✅ перенесено → `@entities/album/ui/AlbumDetails`             |
-| `AlbumTracks`      | Список треков                   | ✅ перенесено → `@widgets/albumTracks` + `@entities/track/ui` |
-| `Articles`         | Превью статей, враппер          | ✅ перенесено → `@entities/article`                           |
-| `Footer`           | Глобальный подвал сайта         | ✅ перенесено → `@widgets/footer`                             |
-| `Forms`            | Общая форма (legacy)            | ✅ удалено — заменено dashboard `EditAlbumModal`              |
-| `Hamburger`        | Кнопка меню                     | ✅ перенесено → `@shared/ui/hamburger`                        |
-| `Header`           | Шапка сайта                     | ✅ перенесено → `@widgets/header`                             |
-| `Hero`             | Герой-блок                      | ✅ перенесено → `@widgets/hero`                               |
-| `Navigation`       | Меню навигации                  | ✅ перенесено → `@features/navigation`                        |
-| `ServiceButtons`   | Кнопки сервисов                 | ✅ перенесено → `@entities/service`                           |
-| `Share`            | Шэринг                          | ✅ перенесено → `@features/share`                             |
-| `UseImageColor`    | Хук/компонент получения цвета   | ✅ перенесено → `@shared/lib/hooks/useImageColor`             |
-| `Waveform`         | Отображение волны аудио         | ✅ перенесено → `@shared/ui/waveform`                         |
+```
+src/
+├── app/                    # Router, layouts, providers
+├── pages/                  # Home, Album, UserDashboard, StemsPlayground, …
+├── widgets/                # header, footer, hero, notFound, albumTracks
+├── features/               # player, auth, artistArchive, universe, universeSearch, …
+├── entities/               # album, article, lyrics, track, stem, …
+├── shared/                 # ui, lib, api, model
+├── config/
+├── components/view/        # legacy: Universe3D only
+└── routes/loaders/
+```
 
-После переноса `components/index.ts` следует удалить или превратить в реэкспорты новых слоёв.
+**Удалено (не восстанавливать как FSD-срезы):**
 
-### `src/hooks`
+| Было                                                    | Замена                                                             |
+| ------------------------------------------------------- | ------------------------------------------------------------------ |
+| `Forms`, `@features/createAlbum`                        | `EditAlbumModal` в `pages/UserDashboard`                           |
+| `@widgets/modalRoute`                                   | dual `<Routes>` + `dashboardModalBackground` в `App.tsx`           |
+| `@widgets/dashboardAlbums`, `@widgets/dashboardEditors` | никогда не создавались; логика в `pages/UserDashboard/components/` |
+| `@features/editSyncLyrics`, `@features/editTrackText`   | модалки в `pages/UserDashboard/components/modals/lyrics/`          |
+| `shared/lib/styles/formStyles`                          | `@shared/ui/dashboard` (`dashboard-form-*`)                        |
+| `shared/ui/breadcrumb`                                  | удалён (не использовался)                                          |
 
-| Файл            | Назначение               | Рекомендованный слой                                                               |
-| --------------- | ------------------------ | ---------------------------------------------------------------------------------- |
-| `data.ts`       | Загрузка данных шаблонов | ✅ перенесено в `shared/api/albums` (`useAlbumsData`, `getImageUrl`, `formatDate`) |
-| `useLang.ts`    | Контекст языка           | ✅ перенесено в `shared/model/lang` (`useLang`, `index.ts`)                        |
-| `__tests__/...` | Тесты хуков              | переименовать под соответствующие файлы после переноса                             |
+---
 
-### `src/utils`
+### `src/components` (история)
 
-| Файл              | Назначение                            | Рекомендованный слой                                     |
-| ----------------- | ------------------------------------- | -------------------------------------------------------- |
-| `ga.ts`           | Интеграция Google Analytics           | ✅ перенесено в `shared/lib/analytics` (`gaEvent`)       |
-| `http.ts`         | HTTP-утилиты                          | ✅ перенесено в `shared/api/http` (`http`, `getJSON`)    |
-| `language.ts`     | Помощники локализации                 | ✅ перенесено в `shared/lib/lang` (`getLang`, `setLang`) |
-| `syncedLyrics.ts` | Работа с синхронизированными лириками | ✅ перенесено в `features/syncedLyrics/lib`              |
-| `trackText.ts`    | Работа с текстами треков              | ✅ перенесено в `entities/track/lib`                     |
+| Бывшая директория   | Статус / итоговое расположение                                                                |
+| ------------------- | --------------------------------------------------------------------------------------------- |
+| `AboutUs`           | ✅ `@pages/Home/ui/AboutSection`                                                              |
+| `AlbumDetails`      | ✅ `@entities/album/ui/AlbumDetails`                                                          |
+| `AlbumTracks`       | ✅ `@widgets/albumTracks` + `@entities/track`                                                 |
+| `Articles`          | ✅ `@entities/article`                                                                        |
+| `Footer`            | ✅ `@widgets/footer`                                                                          |
+| `Forms`             | ✅ **удалено** → `EditAlbumModal`                                                             |
+| `Hamburger`         | ✅ `@shared/ui/hamburger`                                                                     |
+| `Header`            | ✅ `@widgets/header`                                                                          |
+| `Hero`              | ✅ `@widgets/hero`                                                                            |
+| `Navigation`        | ✅ `@features/navigation`                                                                     |
+| `ServiceButtons`    | ✅ `@entities/service`                                                                        |
+| `Share`             | ✅ `@features/share`                                                                          |
+| `UseImageColor`     | ✅ `@shared/lib/hooks/useImageColor`                                                          |
+| `Waveform`          | ✅ `@shared/ui/waveform`                                                                      |
+| `Universe3D` (view) | ⏳ **остался** → `src/components/view/Universe3D.ts` (миграция в `@features/universe` — TODO) |
 
-### Провайдеры и стор
+`components/index.ts` не создавался.
 
-| Элемент          | Назначение               | Статус / итоговое расположение                                 |
-| ---------------- | ------------------------ | -------------------------------------------------------------- |
-| `StoreProvider`  | Провайдер Redux стора    | ✅ `@app/providers/StoreProvider`                              |
-| `LangProvider`   | Контекст языка + setters | ✅ `@app/providers/lang`                                       |
-| `useAppDispatch` | Типизированный dispatch  | ✅ `@shared/lib/hooks/useAppDispatch` (тип из `StoreProvider`) |
-| `useLang`        | Хук текущего языка       | ✅ `@app/providers/lang`                                       |
-| `langStore.ts`   | Глобальный стор языка    | ✅ перенесено → `@shared/model/lang/store`                     |
+### `src/hooks` и `src/utils` (история)
 
-### `src/pages/UserDashboard` (Личный кабинет)
+| Было                    | Статус                                                                                                     |
+| ----------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `hooks/data.ts`         | ✅ `@shared/api/albums`                                                                                    |
+| `hooks/useLang.ts`      | ✅ `@shared/model/lang`, `@app/providers/lang`                                                             |
+| `utils/ga.ts`           | ✅ `@shared/lib/analytics`                                                                                 |
+| `utils/http.ts`         | ✅ `@shared/api/http`                                                                                      |
+| `utils/language.ts`     | ✅ `@shared/lib/lang`                                                                                      |
+| `utils/syncedLyrics.ts` | ✅ `@entities/lyrics/api/trackLyricsApi`, `@shared/lib/lyrics/`, `@features/player/lib/syncedLyricsTiming` |
+| `utils/trackText.ts`    | ✅ `@entities/track/lib`                                                                                   |
 
-| Элемент                     | Назначение                       | Статус / итоговое расположение                                        |
-| --------------------------- | -------------------------------- | --------------------------------------------------------------------- |
-| `PaymentSettings`           | Настройки платежей (UI + логика) | ✅ перенесено → `@features/paymentSettings`                           |
-| `DashboardAlbumsRoot`       | Список альбомов в кабинете       | ✅ перенесено → `@widgets/dashboardAlbums`                            |
-| `DashboardAlbumsOverview`   | Компонент списка альбомов        | ✅ перенесено → `@widgets/dashboardAlbums/ui/DashboardAlbumsOverview` |
-| `DashboardAlbumEditor`      | Редактор альбома (обёртка)       | ✅ перенесено → `@widgets/dashboardEditors/ui/DashboardAlbumEditor`   |
-| `DashboardAlbum`            | Компонент редактирования альбома | ✅ перенесено → `@widgets/dashboardEditors/ui/DashboardAlbum`         |
-| `DashboardSyncEditor`       | Редактор синхронизации (обёртка) | ✅ перенесено → `@widgets/dashboardEditors/ui/DashboardSyncEditor`    |
-| `DashboardSync`             | Компонент синхронизации          | ✅ перенесено → `@features/editSyncLyrics` (фича)                     |
-| `DashboardTextEditor`       | Редактор текста (обёртка)        | ✅ перенесено → `@widgets/dashboardEditors/ui/DashboardTextEditor`    |
-| `DashboardText`             | Компонент редактирования текста  | ✅ перенесено → `@features/editTrackText` (фича)                      |
-| `DashboardAlbumBuilder`     | Создание альбома (обёртка)       | ✅ удалено — заменено dashboard `EditAlbumModal`                      |
-| `DashboardAlbumBuilderPage` | Компонент создания альбома       | ✅ удалено — заменено dashboard `EditAlbumModal`                      |
-| `dashboardModalWrappers`    | Общие стили для редакторов       | ✅ перенесено → `@widgets/dashboardEditors/styles/`                   |
-| `formStyles`                | Стили форм (общие)               | ✅ перенесено → `@shared/lib/styles/formStyles`                       |
+### Провайдеры и store
 
-**Структура после рефакторинга:**
+| Элемент                   | Статус                                |
+| ------------------------- | ------------------------------------- |
+| `StoreProvider`           | ✅ `@app/providers/StoreProvider`     |
+| `LangProvider`, `useLang` | ✅ `@app/providers/lang`              |
+| `useAppDispatch`          | ✅ `@shared/lib/hooks/useAppDispatch` |
+| `langStore`               | ✅ `@shared/model/lang`               |
 
-- `pages/UserDashboard/` — содержит только основную страницу (`UserDashboard.tsx`, стили, `index.ts`)
-- `features/paymentSettings/` — настройки платежей с бизнес-логикой (`ui/`, `model/`, `lib/`)
-- `features/editSyncLyrics/` — синхронизация текста с музыкой → `pages/UserDashboard/components/modals/lyrics/SyncLyricsModal`
-- `features/editTrackText/` — редактирование текста трека → lyrics-модалки в `pages/UserDashboard`
-- `widgets/dashboardAlbums/` — список альбомов → `pages/UserDashboard/components/albums/`
-- `widgets/dashboardEditors/` — обёртки редакторов → dashboard-модалки в `pages/UserDashboard/components/`
+### `src/pages/UserDashboard` (история → текущее)
 
-### Дополнительные действия
+| Былший элемент                                       | Статус / где сейчас                                 |
+| ---------------------------------------------------- | --------------------------------------------------- |
+| `PaymentSettings`                                    | ✅ `@features/paymentSettings`                      |
+| `DashboardAlbumsRoot`, `DashboardAlbumsOverview`     | ✅ `pages/UserDashboard/components/albums/`         |
+| `DashboardAlbumEditor`, `DashboardAlbum`             | ✅ `EditAlbumModal` + steps                         |
+| `DashboardSyncEditor`, `DashboardSync`               | ✅ `SyncLyricsModal`, `PreviewLyricsModal`          |
+| `DashboardTextEditor`, `DashboardText`               | ✅ `AddLyricsModal`, `EditLyricsModal`              |
+| `DashboardAlbumBuilder`, `DashboardAlbumBuilderPage` | ✅ **удалено** → `EditAlbumModal` (create + edit)   |
+| `dashboardModalWrappers`                             | ✅ стили рядом с модалками / `@shared/ui/dashboard` |
+| `formStyles`                                         | ✅ **удалено** → `@shared/ui/dashboard`             |
 
-- Сверить `widgets` и `features` на предмет дублирования с компонентами.
-- Настроить реэкспорты в каждой сущности (`index.ts`) после перемещения.
-- Разделить стили: глобальные оставить в `shared/styles`, компонентные хранить рядом с компонентами.
-- Обновлять документ при завершении каждого переноса.
+**Структура `pages/UserDashboard/` сейчас:**
+
+- `UserDashboard.tsx`, `UserDashboard.style.scss`, `styles/`
+- `components/albums/` — список, empty states, track UI
+- `components/mixer/` — stems mixer
+- `components/modals/album/` — `EditAlbumModal`
+- `components/modals/lyrics/` — lyrics / sync modals
+- `components/modals/article/` — редактор статей
+- `components/settings/`, `components/archive/`, …
+
+### Дополнительные действия (оставшиеся)
+
+- [ ] Перенести `Universe3D` из `components/view/` в `@features/universe/ui/`.
+- [ ] Унифицировать импорты: barrel vs deep path в `@entities/album`, `@features/player`.
+- [ ] Архивировать или удалить устаревшие backup-документы в корне репозитория.

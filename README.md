@@ -92,6 +92,7 @@
 
 ### Дополнительная документация
 
+- Архитектура и слои FSD: `docs/architecture.md`
 - Локальная разработка и переменные: `docs/LOCAL-DEVELOPMENT.md`, `docs/FILL-ENV-FILE.md`
 - База данных и миграции: `docs/database-setup.md`, `database/`
 - Платежи (ЮKassa): `docs/SETUP-PAYMENTS.md`, `docs/yookassa-setup.md`

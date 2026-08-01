@@ -18,7 +18,7 @@
  */
 
 import { query, closePool } from '../../netlify/functions/lib/db';
-import { parseRecordingText } from '../../src/pages/UserDashboard/components/EditAlbumModal.utils';
+import { parseRecordingText } from '../../src/pages/UserDashboard/components/modals/album/EditAlbumModal.utils';
 import * as fs from 'fs';
 import * as path from 'path';
 

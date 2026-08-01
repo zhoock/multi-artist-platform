@@ -1,59 +1,109 @@
 ## Архитектура проекта
 
-Проект следует подходу Feature-Sliced Design (FSD). Ниже определены слои, их предназначение и допустимые зависимости. Используйте документ как справочник при реорганизации кода.
+Проект следует подходу Feature-Sliced Design (FSD). Ниже — актуальные слои, алиасы и расположение модулей. Используйте документ как справочник при реорганизации кода.
 
 ### Слои и алиасы
 
-- `app` — точка входа приложения, провайдеры (Lang, Store), маршрутизация, глобальные стили.
-- `processes` — долгоживущие пользовательские сценарии (при необходимости).
-- `pages` — страницы, композиция слоёв ниже.
-- `widgets` — крупные UI-композиции, собирающие сущности/фичи.
-- `features` — функциональные возможности пользователя, бизнес-действия.
-- `entities` — доменные сущности и их отображение.
-- `shared` — переиспользуемые примитивы: UI-кит, хелперы, конфиг, API.
-- `config` — глобальные настройки, `env`, токены DI.
-- `lib` — общие утилиты и функции, не зависящие от React.
+Используемые слои в `src/`:
+
+- `app` — точка входа, провайдеры (Lang, Store), маршрутизация, layout-компоненты.
+- `pages` — страницы и крупные сценарии (в т.ч. `UserDashboard` с подкомпонентами).
+- `widgets` — крупные UI-композиции.
+- `features` — пользовательские действия и интерактивная бизнес-логика.
+- `entities` — доменные сущности, их store и UI-представление.
+- `shared` — переиспользуемые UI-кит, хелперы, API-клиенты, конфиг.
+- `config` — глобальные настройки и env.
+
+Опциональные слои из классического FSD (`processes`, отдельный top-level `lib`) **не используются** — утилиты лежат в `shared/lib`, конфигурация в `config/`.
 
 Для импорта используются алиасы:
 
-- `@app/providers/StoreProvider` — провайдер Redux с конфигурацией стора.
+- `@app/*` — приложение и провайдеры.
+- `@pages/*` — страницы.
+- `@widgets/*` — виджеты.
+- `@features/*` — фичи.
+- `@entities/*` — сущности.
+- `@shared/*` — shared-слой.
+- `@config` / `@config/*` — конфигурация.
+- `@routes/*` — route loaders.
+- `@components/*` — **legacy**: остался только `components/view/Universe3D` (см. ниже).
+- `@models` — общие TypeScript-модели (`src/models.ts`).
+
+Примеры часто используемых модулей:
+
+- `@app/providers/StoreProvider` — Redux store.
 - `@app/providers/lang` — контекст языка (`LangProvider`, `useLang`).
 - `@shared/model/appStore` — `createReduxStore`, тип `AppStore`.
-- `@shared/model/appStore/types` — типы `RootState`, `AppDispatch`.
-- `@shared/model/lang` — глобальный стор языка (`currentLang`, `setCurrentLang`).
 - `@shared/api/http` — fetch-клиент (`getJSON`).
-- `@shared/api/albums` — хуки и утилиты для работы с альбомами (`useAlbumsData`, `getImageUrl`, `formatDate`).
-- `@shared/lib/analytics` — аналитика (`gaEvent`).
-- `@shared/lib/lang` — утилиты языка (`getLang`, `setLang`).
-- `@shared/lib/styles/formStyles` — общие стили для форм.
+- `@shared/api/albums` — альбомы (`useAlbumsData`, `getImageUrl`, `formatDate`).
+- `@shared/ui/dashboard` — дизайн-система личного кабинета (формы, кнопки, модалки).
+- `@shared/lib/dashboardModalBackground` — overlay-дашборд и auth поверх публичных страниц.
 
-### Примеры модулей по слоям
+### Модули по слоям (актуально)
 
-**Features (бизнес-действия):**
+**Features (`src/features/`):**
 
-- `@features/player` — аудиоплеер с управлением воспроизведением.
-- `@features/navigation` — навигационное меню.
-- `@features/popupToggle` — управление попапами.
-- `@features/paymentSettings` — настройки платежей (UI + бизнес-логика).
-- `@features/editSyncLyrics` — синхронизация текста с музыкой (см. `SyncLyricsModal` в `pages/UserDashboard`).
-- `@features/editTrackText` — редактирование текста трека (см. lyrics-модалки в `pages/UserDashboard`).
+| Алиас                           | Назначение                                                            |
+| ------------------------------- | --------------------------------------------------------------------- |
+| `@features/player`              | Аудиоплеer, Redux slice, karaoke timing                               |
+| `@features/navigation`          | Навигационное меню                                                    |
+| `@features/popupToggle`         | Глобальный popup (меню)                                               |
+| `@features/paymentSettings`     | Настройки платежей в кабинете                                         |
+| `@features/share`               | Шэринг альбома                                                        |
+| `@features/auth`                | Страница авторизации (`ui/AuthPage`, формы)                           |
+| `@features/artistArchive`       | Коллекция артистов, Premium refresh                                   |
+| `@features/premiumSubscription` | Premium-подписка, checkout intent                                     |
+| `@features/listenerWelcome`     | Welcome-модалка для слушателя                                         |
+| `@features/universeSearch`      | Поиск артистов на Home (Universe)                                     |
+| `@features/universe`            | Подготовка данных Universe и play-album (`lib/`, `model/`; без `ui/`) |
 
-**Widgets (UI-композиции):**
+**Widgets (`src/widgets/`):**
 
-- `@widgets/header` — шапка сайта.
-- `@widgets/footer` — подвал сайта.
-- `@widgets/hero` — главный баннер.
-- `@widgets/notFound` — страница 404.
-- `@widgets/albumTracks` — список треков на странице альбома.
+| Алиас                  | Назначение                        |
+| ---------------------- | --------------------------------- |
+| `@widgets/header`      | Шапка, профильное меню            |
+| `@widgets/footer`      | Подвал                            |
+| `@widgets/hero`        | Hero-баннер на странице артиста   |
+| `@widgets/notFound`    | Страница 404                      |
+| `@widgets/albumTracks` | Список треков на странице альбома |
 
-Создание и редактирование альбомов — `EditAlbumModal` в `pages/UserDashboard`. Modal overlays (auth, dashboard) — dual `<Routes>` в `app/App.tsx` + `shared/lib/dashboardModalBackground`.
+**Entities (`src/entities/`):**
 
-**Entities (доменные сущности):**
+| Алиас                   | Назначение                                       |
+| ----------------------- | ------------------------------------------------ |
+| `@entities/album`       | Альбомы: public catalog, details, dashboard CRUD |
+| `@entities/article`     | Статьи                                           |
+| `@entities/lyrics`      | Track lyrics API, slice, selectors               |
+| `@entities/track`       | Типы и утилиты треков                            |
+| `@entities/service`     | Кнопки стриминга / покупки                       |
+| `@entities/stem`        | Stems для mixer                                  |
+| `@entities/savedMix`    | Сохранённые миксы                                |
+| `@entities/helpArticle` | Help-статьи                                      |
+| `@entities/user`        | Пользователь / профиль                           |
 
-- `@entities/album` — альбомы: public (`CatalogAlbum` / `AlbumDetails`) и owner (`AlbumEditable` / Dashboard).
-- `@entities/article` — статьи.
-- `@entities/track` — треки (компоненты, утилиты для работы с текстом).
-- `@entities/service` — сервисы (кнопки покупки/стриминга).
+**Личный кабинет (`pages/UserDashboard/`):**
+
+Dashboard — отдельная page-сборка, не вынесенная в `@widgets/dashboard*`. Основные редакторы:
+
+| Компонент                         | Путь                                                                                                       |
+| --------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| Список альбомов, mixer, posts     | `components/albums/`, `components/mixer/`, `components/articles/`                                          |
+| Создание / редактирование альбома | `components/modals/album/EditAlbumModal` (+ steps 2–5)                                                     |
+| Тексты и синхронизация            | `components/modals/lyrics/` (`AddLyricsModal`, `EditLyricsModal`, `SyncLyricsModal`, `PreviewLyricsModal`) |
+| Статьи                            | `components/modals/article/EditArticleModalV2`                                                             |
+| Настройки платежей                | `@features/paymentSettings`                                                                                |
+
+**Modal overlays (auth, dashboard):**
+
+Реализованы в `app/App.tsx` через dual `<Routes>` и `backgroundLocation` (`@shared/lib/dashboardModalBackground`). Отдельного виджета `@widgets/modalRoute` нет.
+
+**Legacy pre-FSD:**
+
+| Путь                                                    | Статус                                                                  |
+| ------------------------------------------------------- | ----------------------------------------------------------------------- |
+| `src/components/view/Universe3D.ts`                     | Активно: 3D-сцена Home/Hero; импорт через `@components/view/Universe3D` |
+| `src/hooks/`, `src/utils/`                              | Удалены; логика в `shared/` и `features/`                               |
+| `@features/createAlbum`, `@widgets/modalRoute`, `Forms` | Удалены; создание альбома — только `EditAlbumModal`                     |
 
 ### Album domain models
 
@@ -80,61 +130,41 @@ PlayerTrack
 
 Устаревшее имя `IAlbums` снято. Публичный runtime не читает `AlbumEditable`.
 
-**Shared (переиспользуемые примитивы):**
+### Стили форм
 
-- `@shared/ui/*` — UI-компоненты (loader, popup, error-message, hamburger и др.).
-- `@shared/lib/hooks` — хуки (`useAppDispatch`, `useAppSelector`).
+Общие стили форм личного кабинета — **`@shared/ui/dashboard`** (`dashboard-form-*` mixins и классы). Устаревший `shared/lib/styles/formStyles.scss` удалён.
 
 ### Правила зависимостей
 
-- Слой может импортировать только слои, расположенные ниже по списку.
+- Слой может импортировать только слои ниже по списку.
 - `shared` не зависит от других слоёв проекта.
-- `entities` могут использовать только `shared`.
-- `features` могут зависеть от `entities` и `shared`.
-- `widgets` могут зависеть от `features`, `entities`, `shared`.
-- `pages` могут зависеть от `widgets`, `features`, `entities`, `shared`.
-- `app` может зависеть от всех слоёв.
-- Горизонтальные связи (между срезами одного уровня) запрещены.
+- `entities` — только `shared` (исключения из legacy-кода постепенно убираются).
+- `features` — `entities`, `shared`.
+- `widgets` — `features`, `entities`, `shared`.
+- `pages` — `widgets`, `features`, `entities`, `shared`.
+- `app` — все слои.
+- Горизонтальные импорты между срезами одного уровня запрещены.
 
-Глобальный стор и middleware хранятся в `shared/model/appStore`, подключаются через провайдеры `app/providers`. Благодаря этому хуки (`useAppDispatch`, `useAppSelector`) не тянут `app` в зависимостях — только `shared/model/appStore/types`.
+Глобальный store: `shared/model/appStore` + провайдеры `app/providers`.
 
-### Внутренняя структура слоёв
-
-Каждый срез организуйте с подпапками:
+### Внутренняя структура срезов
 
 - `ui` — компоненты и стили.
-- `model` — состояние, хранилища, бизнес-логика.
-- `lib` — утилиты и функции, специфичные для среза.
-- `config` — константы и настройки.
+- `model` — состояние, slice, selectors.
+- `lib` — утилиты среза.
 - `api` — запросы к серверу.
 
-Не все подпапки обязательны, создавайте их по мере необходимости.
-
-### Нейминг и импорты
-
-- Используйте алиасы с `@/` (корень `src`) и алиасы слоёв (`@entities/*`, `@features/*`, и т.д.).
-- Файлы-компоненты называютcя в PascalCase (`HomePage.tsx`, `AlbumsSection.tsx`).
-- Глобальные функции/константы — в `shared/lib`, `shared/config`.
-
-### Проверки
-
-- Подключите ESLint-правила для контроля зависимостей (например, `eslint-plugin-boundaries`).
-- После реорганизации запускайте тесты и линтер, чтобы отследить ошибки импорта.
+Не все подпапки обязательны.
 
 ### Dashboard Design System
-
-Базовая дизайн-система личного кабинета (UI Kit v1): примитивы, шесть уровней интерактивных элементов, правила модалок и границы kit/domain.
 
 → [docs/architecture/dashboard-design-system.md](./architecture/dashboard-design-system.md)
 
 Импорт: `@shared/ui/dashboard` · Исходники: `src/shared/ui/dashboard/`
 
-### Процесс миграции
+### Связанные документы
 
-1. Инвентаризируйте текущий код (списки компонентов, утилит, хуков).
-2. Создайте недостающие директории для каждого слоя.
-3. Поэтапно переносите страницы и связанные модули, обновляя импорты.
-4. Вынесите общую логику из `components`, `utils`, `hooks` в соответствующие слои.
-5. Дополните документацию примерами и ссылками по мере развития.
+- История миграции с legacy `components/`: [docs/fsd-migration-plan.md](./fsd-migration-plan.md)
+- Синхронизация текстов: [docs/architecture/lyrics-synchronization.md](./architecture/lyrics-synchronization.md)
 
-Документ обновляйте по мере уточнения архитектурных договорённостей.
+Документ обновляйте при изменении структуры `src/`.
