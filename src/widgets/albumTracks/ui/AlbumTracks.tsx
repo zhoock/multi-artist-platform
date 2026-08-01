@@ -10,7 +10,7 @@ import { useStore } from 'react-redux';
 import type { RootState } from '@shared/model/appStore/types';
 import { useAppDispatch } from '@shared/lib/hooks/useAppDispatch';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
-import { playerActions, loadPlayerState, savePlayerState, toPlayerTracks } from '@features/player';
+import { playerActions, toPlayerTracks } from '@features/player';
 import type { AlbumDetails, TrackDetails } from '@entities/album/model/albumDetails';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 import { useLang } from '@app/providers/lang';
@@ -148,138 +148,6 @@ const AlbumTracksComponent = ({
     window.addEventListener('archive:changed', onArchiveChanged);
     return () => window.removeEventListener('archive:changed', onArchiveChanged);
   }, [artistSlugFromUrl, dispatch]);
-
-  useEffect(() => {
-    const shouldBeOpen = location.hash === '#player';
-    const playlistLength = store.getState().player.playlist.length;
-    if (!(shouldBeOpen && playlistLength === 0 && albumPageTracks.length > 0)) {
-      return;
-    }
-
-    const savedState = loadPlayerState();
-    const currentAlbumId = fallbackAlbumClientId(album);
-    const currentState = store.getState().player;
-
-    if (currentState.playlist.length !== 0) return;
-
-    const artistForMeta = displayArtistLabelRef.current;
-    const coverFullName = fullNameMetaRef.current;
-
-    if (savedState && savedState.albumId === currentAlbumId) {
-      const validTrackIndex = resolveFirstPlayableIndex(
-        albumPageTracks,
-        savedState.currentTrackIndex
-      );
-      if (validTrackIndex === -1) {
-        return;
-      }
-      dispatch(
-        playerActions.setPlaylist(
-          toPlayerTracks(transformTracksForStorage(albumPageTracks, album.userId), currentAlbumId)
-        )
-      );
-      dispatch(playerActions.setCurrentTrackIndex(validTrackIndex));
-      dispatch(
-        playerActions.setAlbumInfo({
-          albumId: savedState.albumId,
-          albumTitle: savedState.albumTitle ?? album.title,
-        })
-      );
-      dispatch(
-        playerActions.setAlbumMeta({
-          albumId: savedState.albumId,
-          userId: album.userId ?? null,
-          publicSlug: artistSlugFromUrl ?? undefined,
-          album: album.title,
-          artist: artistForMeta,
-          fullName: coverFullName,
-          cover: album.cover ?? null,
-        })
-      );
-      dispatch(
-        playerActions.setSourceLocation({
-          pathname: location.pathname,
-          search: location.search || undefined,
-        })
-      );
-      dispatch(playerActions.setVolume(savedState.volume));
-      dispatch(playerActions.pause());
-    } else {
-      const startIdx = resolveFirstPlayableIndex(albumPageTracks, 0);
-      if (startIdx === -1) {
-        return;
-      }
-      dispatch(
-        playerActions.setPlaylist(
-          toPlayerTracks(transformTracksForStorage(albumPageTracks, album.userId), currentAlbumId)
-        )
-      );
-      dispatch(playerActions.setCurrentTrackIndex(startIdx));
-      dispatch(playerActions.setAlbumInfo({ albumId: currentAlbumId, albumTitle: album.title }));
-      dispatch(
-        playerActions.setAlbumMeta({
-          albumId: currentAlbumId,
-          userId: album.userId ?? null,
-          publicSlug: artistSlugFromUrl ?? undefined,
-          album: album.title,
-          artist: artistForMeta,
-          fullName: coverFullName,
-          cover: album.cover ?? null,
-        })
-      );
-      dispatch(
-        playerActions.setSourceLocation({
-          pathname: location.pathname,
-          search: location.search || undefined,
-        })
-      );
-      dispatch(playerActions.requestPlay());
-    }
-  }, [
-    location.hash,
-    location.pathname,
-    location.search,
-    album,
-    albumPageTracks,
-    artistSlugFromUrl,
-    dispatch,
-    store,
-  ]);
-
-  useEffect(() => {
-    let lastSavedState = {
-      albumId: store.getState().player.albumId,
-      currentTrackIndex: store.getState().player.currentTrackIndex,
-      playlistLength: store.getState().player.playlist.length,
-    };
-
-    const unsubscribe = store.subscribe(() => {
-      const state = store.getState().player;
-
-      if (
-        state.albumId &&
-        state.playlist.length > 0 &&
-        (state.albumId !== lastSavedState.albumId ||
-          state.currentTrackIndex !== lastSavedState.currentTrackIndex ||
-          state.playlist.length !== lastSavedState.playlistLength)
-      ) {
-        savePlayerState(state);
-
-        lastSavedState = {
-          albumId: state.albumId,
-          currentTrackIndex: state.currentTrackIndex,
-          playlistLength: state.playlist.length,
-        };
-      }
-    });
-
-    const initialState = store.getState().player;
-    if (initialState.albumId && initialState.playlist.length > 0) {
-      savePlayerState(initialState);
-    }
-
-    return unsubscribe;
-  }, [store]);
 
   const openPlayer = useCallback(
     (trackIndex: number, options?: { openFullScreen?: boolean }) => {

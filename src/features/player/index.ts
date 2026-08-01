@@ -10,3 +10,8 @@ export * as playerSelectors from './model/selectors/playerSelectors';
 export { AudioPlayer } from './ui/AudioPlayer';
 export { PlayerShell } from './ui/PlayerShell';
 export { savePlayerState, loadPlayerState, clearPlayerState } from './model/lib/playerPersist';
+export {
+  bootstrapPlayerSession,
+  resetPlayerSessionBootstrapForTests,
+} from './model/lib/bootstrapPlayerSession';
+export type { BootstrapPlayerSessionResult } from './model/lib/bootstrapPlayerSession';

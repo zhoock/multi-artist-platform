@@ -22,11 +22,8 @@ import { audioController } from '@features/player/model/lib/audioController';
 import { MiniPlayer } from './MiniPlayer';
 import AudioPlayer from '@features/player/ui/AudioPlayer/AudioPlayer';
 import type { RootState } from '@shared/model/appStore/types';
-import { loadPlayerState, savePlayerState } from '@features/player/model/lib/playerPersist';
-import {
-  isTrackPlaybackBlocked,
-  resolveFirstPlayableIndex,
-} from '@shared/lib/tracks/trackPlayback';
+import { savePlayerState } from '@features/player/model/lib/playerPersist';
+import { bootstrapPlayerSession } from '@features/player/model/lib/bootstrapPlayerSession';
 
 const DEFAULT_BG = 'rgba(var(--extra-background-color-rgb) / 80%)';
 
@@ -114,7 +111,25 @@ export const PlayerShell: React.FC = () => {
   const timeRef = useRef(time);
   const isSeekingRef = useRef(isSeeking);
   const seekProtectionUntilRef = useRef<number>(0);
-  const hasHydratedFromStorageRef = useRef(false);
+
+  const stripOrphanPlayerHash = useCallback(() => {
+    if (location.hash !== '#player') {
+      return;
+    }
+
+    const { player } = store.getState();
+    const hasSession = player.playlist.length > 0 && Boolean(player.albumMeta?.albumId);
+    if (!hasSession) {
+      navigate(
+        {
+          pathname: location.pathname,
+          search: location.search || undefined,
+          hash: '',
+        },
+        { replace: true }
+      );
+    }
+  }, [location.hash, location.pathname, location.search, navigate, store]);
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -153,138 +168,29 @@ export const PlayerShell: React.FC = () => {
   }, [store]);
 
   useEffect(() => {
-    if (hasHydratedFromStorageRef.current) {
-      return;
-    }
-
     if (typeof window === 'undefined') {
       return;
     }
 
-    if (location.hash !== '#player') {
+    bootstrapPlayerSession({
+      dispatch,
+      getState: store.getState,
+      fallbackSourceLocation: {
+        pathname: location.pathname,
+        search: location.search || undefined,
+      },
+    });
+
+    stripOrphanPlayerHash();
+  }, [dispatch, location.pathname, location.search, store, stripOrphanPlayerHash]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
       return;
     }
 
-    const currentState = store.getState().player;
-    if (
-      currentState.playlist.length > 0 &&
-      currentState.albumMeta &&
-      currentState.albumMeta.albumId
-    ) {
-      // Состояние уже восстановлено, но нужно убедиться, что источник установлен
-      const track = currentState.playlist[currentState.currentTrackIndex];
-      if (track?.src && !audioController.element.src) {
-        // Источник не установлен, устанавливаем его
-        audioController.setSource(track.src, currentState.isPlaying);
-        if (currentState.time?.current && currentState.time.current > 0) {
-          const el = audioController.element;
-          if (el.readyState >= 1) {
-            setTimeout(() => {
-              const duration = el.duration;
-              if (Number.isFinite(duration) && duration > 0) {
-                const timeToSet = Math.min(currentState.time.current, duration);
-                audioController.setCurrentTime(timeToSet);
-              }
-            }, 50);
-          }
-        }
-      }
-      hasHydratedFromStorageRef.current = true;
-      return;
-    }
-
-    const savedState = loadPlayerState();
-    if (!savedState || !Array.isArray(savedState.playlist) || savedState.playlist.length === 0) {
-      hasHydratedFromStorageRef.current = true;
-      return;
-    }
-
-    const playlist = savedState.playlist;
-    const originalPlaylist =
-      Array.isArray(savedState.originalPlaylist) && savedState.originalPlaylist.length > 0
-        ? savedState.originalPlaylist
-        : playlist;
-    const safeIndex = Math.max(0, Math.min(savedState.currentTrackIndex ?? 0, playlist.length - 1));
-    const playableIdx = resolveFirstPlayableIndex(playlist, safeIndex);
-    const resolvedIndex = playableIdx !== -1 ? playableIdx : safeIndex;
-    const canResumePlayback = playableIdx !== -1;
-
-    hasHydratedFromStorageRef.current = true;
-
-    const fallbackSourceLocation = {
-      pathname: location.pathname,
-      search: location.search || undefined,
-    };
-
-    const playbackTime = savedState.time ?? { current: 0, duration: NaN };
-
-    dispatch(
-      playerActions.hydrateFromPersistedState({
-        playlist,
-        originalPlaylist,
-        currentTrackIndex: resolvedIndex,
-        albumId: savedState.albumId ?? null,
-        albumTitle:
-          savedState.albumTitle ??
-          savedState.albumMeta?.album ??
-          savedState.albumMeta?.fullName ??
-          null,
-        albumMeta: savedState.albumMeta ?? null,
-        sourceLocation: savedState.sourceLocation ?? fallbackSourceLocation,
-        volume: savedState.volume ?? 50,
-        isPlaying: canResumePlayback ? (savedState.isPlaying ?? false) : false,
-        shuffle: savedState.shuffle ?? false,
-        repeat: savedState.repeat ?? 'none',
-        time: playbackTime,
-        showLyrics: savedState.showLyrics ?? false,
-        controlsVisible: savedState.controlsVisible ?? true,
-      })
-    );
-
-    audioController.setVolume(savedState.volume ?? 50);
-
-    // ВАЖНО: hydrateFromPersistedState не вызывает listener для setCurrentTrackIndex,
-    // поэтому нужно явно установить источник аудио после восстановления состояния
-    const track = playlist[resolvedIndex];
-    if (track?.src && !isTrackPlaybackBlocked(track)) {
-      // Устанавливаем источник, но не запускаем автоплей (isPlaying будет обработан отдельно)
-      audioController.setSource(track.src, false);
-
-      // Устанавливаем время после загрузки метаданных
-      // loadedmetadataHandler также восстановит время, но на случай если событие уже произошло,
-      // устанавливаем время здесь тоже
-      const el = audioController.element;
-      const restoreTime = () => {
-        if (playbackTime.current && playbackTime.current > 0) {
-          const duration = el.duration;
-          if (Number.isFinite(duration) && duration > 0) {
-            const timeToSet = Math.min(playbackTime.current, duration);
-            audioController.setCurrentTime(timeToSet);
-          }
-        }
-      };
-
-      // Если метаданные уже загружены, устанавливаем время сразу
-      if (el.readyState >= 1) {
-        // Метаданные загружены, но может потребоваться небольшая задержка
-        setTimeout(restoreTime, 50);
-      } else {
-        // Ждем загрузки метаданных
-        const onLoadedMetadata = () => {
-          el.removeEventListener('loadedmetadata', onLoadedMetadata);
-          restoreTime();
-        };
-        el.addEventListener('loadedmetadata', onLoadedMetadata);
-      }
-    }
-
-    if (canResumePlayback && savedState.isPlaying) {
-      // Используем requestPlay вместо play, чтобы убедиться, что метаданные загружены
-      dispatch(playerActions.requestPlay());
-    } else {
-      dispatch(playerActions.pause());
-    }
-  }, [dispatch, location.hash, location.pathname, location.search, store]);
+    stripOrphanPlayerHash();
+  }, [stripOrphanPlayerHash, hasPlaylist, albumMeta?.albumId]);
 
   // Сбрасываем цвет фона только при смене альбома (по albumId)
   // Это нужно для начальной установки дефолтного цвета, который затем будет заменён
