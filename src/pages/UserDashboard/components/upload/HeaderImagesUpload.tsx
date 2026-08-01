@@ -19,6 +19,7 @@ interface HeaderImagesUploadProps {
   currentImages?: string[];
   onImagesUpdated?: (urls: string[]) => void;
   layout?: 'stacked' | 'inline';
+  onUploadingChange?: (uploading: boolean) => void;
 }
 
 // Валидация файла
@@ -118,6 +119,7 @@ export function HeaderImagesUpload({
   currentImages = [],
   onImagesUpdated,
   layout = 'stacked',
+  onUploadingChange,
 }: HeaderImagesUploadProps) {
   const { lang } = useLang();
   const ui = useAppSelector((state) => selectUiDictionaryFirst(state, lang));
@@ -128,6 +130,10 @@ export function HeaderImagesUpload({
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [uploadingIndex, setUploadingIndex] = useState<number | null>(null);
+
+  useEffect(() => {
+    onUploadingChange?.(isUploading);
+  }, [isUploading, onUploadingChange]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 

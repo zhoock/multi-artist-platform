@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLang } from '@app/providers/lang';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
@@ -468,6 +468,39 @@ export function useSettingsPage({
     setInitialAboutText(currentText);
   }, [aboutTextEn, aboutTextRu, currentLang, enabled]);
 
+  const headerImagesDirty = useMemo(() => {
+    if (headerImages.length !== initialHeaderImages.length) {
+      return true;
+    }
+    return headerImages.some((image, index) => image !== initialHeaderImages[index]);
+  }, [headerImages, initialHeaderImages]);
+
+  const hasUnsavedChanges = useMemo(
+    () =>
+      name !== initialName ||
+      publicSlug !== initialPublicSlug ||
+      genreCode !== initialGenreCode ||
+      aboutText !== initialAboutText ||
+      aboutTextRu !== initialAboutTextRu ||
+      aboutTextEn !== initialAboutTextEn ||
+      headerImagesDirty,
+    [
+      aboutText,
+      aboutTextEn,
+      aboutTextRu,
+      genreCode,
+      headerImagesDirty,
+      initialAboutText,
+      initialAboutTextEn,
+      initialAboutTextRu,
+      initialGenreCode,
+      initialName,
+      initialPublicSlug,
+      name,
+      publicSlug,
+    ]
+  );
+
   return {
     ui,
     currentLang,
@@ -496,5 +529,6 @@ export function useSettingsPage({
     isSavingProfile,
     isSavingAboutText,
     isBusy: isSavingProfile || isSavingAboutText,
+    hasUnsavedChanges,
   };
 }

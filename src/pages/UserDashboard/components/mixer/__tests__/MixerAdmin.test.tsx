@@ -210,6 +210,29 @@ describe('MixerAdmin', () => {
     expect(screen.getByText('Open to everyone')).toBeTruthy();
   });
 
+  it('calls onMountPinChange when playback or modal state requires pinning', () => {
+    const onMountPinChange = jest.fn<(pinned: boolean) => void>();
+
+    const { unmount } = renderWithProviders(
+      <MixerAdmin
+        ui={mixerUi as never}
+        userId="user-1"
+        albums={[sampleAlbum]}
+        tabActive
+        onMountPinChange={onMountPinChange}
+      />,
+      {
+        preloadedState: {
+          lang: { current: 'en' },
+        },
+      }
+    );
+
+    expect(onMountPinChange).toHaveBeenCalledWith(false);
+
+    unmount();
+  });
+
   it('dedupes concurrent loadStems requests for the same track during onboarding', async () => {
     let resolveLoad!: (value: unknown) => void;
     loadStemsMock.mockImplementation(

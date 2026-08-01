@@ -1,4 +1,4 @@
-import React, { useCallback, useLayoutEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { ExternalLink as ExternalLinkIcon } from 'lucide-react';
 import clsx from 'clsx';
 import { ChangeEmailModal } from '@features/auth/ui/ChangeEmailModal';
@@ -73,6 +73,7 @@ type SettingsPageContentProps = {
   getProfileAvatarInitials: () => string;
   onNotAuthorized?: () => void;
   onSaveError?: (message: string) => void;
+  onMountPinChange?: (pinned: boolean) => void;
 };
 
 export function SettingsPageContent({
@@ -99,11 +100,13 @@ export function SettingsPageContent({
   getProfileAvatarInitials,
   onNotAuthorized,
   onSaveError,
+  onMountPinChange,
 }: SettingsPageContentProps) {
   const [isChangeEmailOpen, setIsChangeEmailOpen] = useState(false);
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
   const [isSendingVerificationEmail, setIsSendingVerificationEmail] = useState(false);
   const [verificationEmailError, setVerificationEmailError] = useState<string | null>(null);
+  const [headerImagesUploading, setHeaderImagesUploading] = useState(false);
   const headerImagesSectionRef = useRef<HTMLDivElement>(null);
   const { flashes: headerImagesSectionFlashes, flashRow: flashHeaderImagesSection } =
     useDashboardRowFlash();
@@ -134,7 +137,13 @@ export function SettingsPageContent({
     isLoadingHeaderImages,
     hasLoadedOnce,
     isBusy,
+    hasUnsavedChanges,
   } = useSettingsPage({ enabled, userName, isListener, onNotAuthorized, onSaveError });
+
+  useEffect(() => {
+    if (!onMountPinChange) return;
+    onMountPinChange(hasUnsavedChanges || headerImagesUploading || isBusy);
+  }, [hasUnsavedChanges, headerImagesUploading, isBusy, onMountPinChange]);
 
   useLayoutEffect(() => {
     if (!scrollToHeaderImages || !enabled || isListener) return;
@@ -405,6 +414,7 @@ export function SettingsPageContent({
                       layout="inline"
                       currentImages={headerImages}
                       onImagesUpdated={handleHeaderImagesUpdated}
+                      onUploadingChange={setHeaderImagesUploading}
                     />
                   )}
                 </div>

@@ -1,4 +1,11 @@
-import { useState, useEffect, useCallback, type Dispatch, type SetStateAction } from 'react';
+import {
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  type Dispatch,
+  type SetStateAction,
+} from 'react';
 import { useLang } from '@app/providers/lang';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
@@ -46,6 +53,7 @@ interface UsePaymentSettingsReturn {
     secretKeyFromForm?: string
   ) => Promise<void>;
   handleDisconnect: (provider: PaymentProvider) => Promise<void>;
+  hasUnsavedCredentialEdits: boolean;
 }
 
 export function usePaymentSettings({
@@ -132,6 +140,19 @@ export function usePaymentSettings({
     if (!active || loadSucceeded) return;
     void loadSettings();
   }, [active, loadSucceeded, loadSettings]);
+
+  const hasUnsavedCredentialEdits = useMemo(() => {
+    return PAYMENT_PROVIDERS.some((provider) => {
+      if (!showForm[provider.id]) {
+        return false;
+      }
+      const settings = settingsMap[provider.id];
+      const savedShopId = settings?.shopId?.trim() ?? '';
+      const localShop = localShopId[provider.id]?.trim() ?? '';
+      const localSecret = localSecretKey[provider.id]?.trim() ?? '';
+      return localShop !== savedShopId || localSecret.length > 0;
+    });
+  }, [localSecretKey, localShopId, settingsMap, showForm]);
 
   const handleConnect = async (
     provider: PaymentProvider,
@@ -258,5 +279,6 @@ export function usePaymentSettings({
     loadSettings,
     handleConnect,
     handleDisconnect,
+    hasUnsavedCredentialEdits,
   };
 }

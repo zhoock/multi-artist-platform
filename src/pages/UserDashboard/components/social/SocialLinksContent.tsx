@@ -28,6 +28,7 @@ import './SocialLinksContent.scss';
 
 interface SocialLinksContentProps {
   active: boolean;
+  onMountPinChange?: (pinned: boolean) => void;
 }
 
 const PLATFORM_ICON_CLASS: Record<SocialPlatform, string> = {
@@ -37,7 +38,7 @@ const PLATFORM_ICON_CLASS: Record<SocialPlatform, string> = {
   vk: 'icon-vk',
 };
 
-export function SocialLinksContent({ active }: SocialLinksContentProps) {
+export function SocialLinksContent({ active, onMountPinChange }: SocialLinksContentProps) {
   const { lang } = useLang();
   const ui = useAppSelector((state) => selectUiDictionaryFirst(state, lang));
   const copy = ui?.dashboard?.socialLinks;
@@ -51,6 +52,11 @@ export function SocialLinksContent({ active }: SocialLinksContentProps) {
   const [alertModal, setAlertModal] = useState<{ message: string } | null>(null);
 
   const hasChanges = !socialLinksFormStatesEqual(form, initialForm);
+
+  useEffect(() => {
+    if (!onMountPinChange) return;
+    onMountPinChange(hasChanges || isSaving);
+  }, [hasChanges, isSaving, onMountPinChange]);
 
   const loadSocialLinks = useCallback(async () => {
     setIsLoading(true);

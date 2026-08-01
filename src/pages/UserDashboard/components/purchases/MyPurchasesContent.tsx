@@ -59,9 +59,10 @@ function formatTracksCount(
 
 type MyPurchasesContentProps = {
   active: boolean;
+  onMountPinChange?: (pinned: boolean) => void;
 };
 
-export function MyPurchasesContent({ active }: MyPurchasesContentProps) {
+export function MyPurchasesContent({ active, onMountPinChange }: MyPurchasesContentProps) {
   const { lang } = useLang();
   const ui = useAppSelector((state) => selectUiDictionaryFirst(state, lang));
   const copy = ui?.dashboard?.myPurchases;
@@ -101,6 +102,11 @@ export function MyPurchasesContent({ active }: MyPurchasesContentProps) {
     if (!active || loadSucceeded) return;
     void loadPurchases();
   }, [active, loadSucceeded, loadPurchases]);
+
+  useEffect(() => {
+    if (!onMountPinChange) return;
+    onMountPinChange(downloadingAlbums.size > 0 || isRemoving);
+  }, [downloadingAlbums, isRemoving, onMountPinChange]);
 
   const showLoading = loading || (active && !loadSucceeded && !error);
 

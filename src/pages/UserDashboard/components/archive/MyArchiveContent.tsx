@@ -58,9 +58,15 @@ type Props = {
   active: boolean;
   onContentReady?: () => void;
   onContentBusy?: () => void;
+  onMountPinChange?: (pinned: boolean) => void;
 };
 
-export function MyArchiveContent({ active, onContentReady, onContentBusy }: Props) {
+export function MyArchiveContent({
+  active,
+  onContentReady,
+  onContentBusy,
+  onMountPinChange,
+}: Props) {
   const { lang } = useLang() as { lang: 'ru' | 'en' };
   const dispatch = useAppDispatch();
   const ui = useAppSelector((state) => selectUiDictionaryFirst(state, lang));
@@ -130,6 +136,11 @@ export function MyArchiveContent({ active, onContentReady, onContentBusy }: Prop
     if (!active) return;
     void loadArchive();
   }, [active, loadArchive]);
+
+  useEffect(() => {
+    if (!onMountPinChange) return;
+    onMountPinChange(bulkLoading || Boolean(removingId) || Boolean(activatingId));
+  }, [bulkLoading, removingId, activatingId, onMountPinChange]);
 
   useLayoutEffect(() => {
     if (hasLoadedOnce && !loading) {

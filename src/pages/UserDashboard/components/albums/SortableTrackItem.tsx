@@ -62,6 +62,7 @@ export type SortableTrackItemProps = {
     trackId: string,
     trackTitle: string
   ) => void;
+  onPreloadLyrics?: () => void;
   rowFlash?: DashboardRowFlash;
   ui?: IInterface;
   retryingTrackProcessingId?: string | null;
@@ -84,6 +85,7 @@ export function SortableTrackItem({
   onTitleChange,
   onVisibilityChange,
   onLyricsAction,
+  onPreloadLyrics,
   rowFlash,
   ui,
   retryingTrackProcessingId,
@@ -449,6 +451,7 @@ export function SortableTrackItem({
                 ui={ui ?? null}
                 lang={lang}
                 onLyricsAction={onLyricsAction}
+                onPreloadLyrics={onPreloadLyrics}
               />
             </div>
           ) : null}

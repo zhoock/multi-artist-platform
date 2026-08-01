@@ -18,6 +18,7 @@ import { ArticleAccessControl } from './ArticleAccessControl';
 import { ArticleListStatus } from './ArticleListStatus';
 import { ArticlesEmptyState } from './ArticlesEmptyState';
 import { getArticleListDraftBadge, isArticlePublished } from './articleVisibilityOptions';
+import { bindDashboardPreloadIntentHandlers } from '../../lib/bindDashboardPreloadIntentHandlers';
 
 type PostsTabContentProps = {
   emailVerified: boolean;
@@ -33,6 +34,7 @@ type PostsTabContentProps = {
   onEditArticle: (article: IArticles) => void;
   onDeleteArticle: (article: IArticles) => void;
   onCreateArticle: () => void;
+  onPreloadCreateArticle?: () => void;
 };
 
 export function PostsTabContent({
@@ -49,7 +51,9 @@ export function PostsTabContent({
   onEditArticle,
   onDeleteArticle,
   onCreateArticle,
+  onPreloadCreateArticle,
 }: PostsTabContentProps) {
+  const createArticlePreloadHandlers = bindDashboardPreloadIntentHandlers(onPreloadCreateArticle);
   if (!emailVerified) {
     return <EmailVerificationOnboarding context="posts" />;
   }
@@ -73,7 +77,13 @@ export function PostsTabContent({
   }
 
   if (articles.length === 0) {
-    return <ArticlesEmptyState ui={ui} onCreateArticle={onCreateArticle} />;
+    return (
+      <ArticlesEmptyState
+        ui={ui}
+        onCreateArticle={onCreateArticle}
+        onPreloadCreateArticle={onPreloadCreateArticle}
+      />
+    );
   }
 
   return (
@@ -224,7 +234,11 @@ export function PostsTabContent({
       <div className="user-dashboard__albums-upload-divider" aria-hidden />
 
       <div className="user-dashboard__upload-action">
-        <DashboardButton variant="primary" onClick={onCreateArticle}>
+        <DashboardButton
+          variant="primary"
+          onClick={onCreateArticle}
+          {...createArticlePreloadHandlers}
+        >
           {ui?.dashboard?.uploadNewArticle ?? 'Upload New Article'}
         </DashboardButton>
       </div>

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import clsx from 'clsx';
 import { Pencil as PencilIcon, Trash2 as Trash2Icon } from 'lucide-react';
 import {
@@ -40,6 +40,7 @@ import {
 } from '../../lib/dashboardRowStateFlash';
 import { DashboardExpandChevron } from '../../lib/dashboardExpandChevron';
 import { useDashboardAccordionOnboarding } from '../../lib/dashboardAccordionOnboarding';
+import { bindDashboardPreloadIntentHandlers } from '../../lib/bindDashboardPreloadIntentHandlers';
 import { AlbumAccessControl } from './AlbumAccessControl';
 import { AlbumLifecycleBadge } from './AlbumLifecycleBadge';
 import { AlbumNoTracksEmptyState } from './AlbumNoTracksEmptyState';
@@ -57,6 +58,8 @@ type AlbumsTabContentProps = {
   albumsFromStore: AlbumEditable[];
   expandedAlbumId: string | null;
   onSetExpandedAlbumId: (albumId: string | null) => void;
+  expandedTrackId: string | null;
+  onSetExpandedTrackId: (trackId: string | null) => void;
   albumAccessMenuAlbumId: string | null;
   publishingAlbumId: string | null;
   isUploadingTracks: Record<string, boolean>;
@@ -73,6 +76,7 @@ type AlbumsTabContentProps = {
   onPendingFocusTrackHandled?: () => void;
   onCreateAlbum: () => void;
   onEditAlbum: (albumId: string) => void;
+  onPreloadEditAlbum?: () => void;
   onToggleAlbum: (albumId: string) => void;
   onAlbumAccessMenuChange: (albumId: string | null) => void;
   onAlbumVisibilityChange: (
@@ -96,6 +100,7 @@ type AlbumsTabContentProps = {
     trackId: string,
     trackTitle: string
   ) => void;
+  onPreloadLyrics?: () => void;
   retryingTrackProcessingId?: string | null;
   onRetryTrackProcessing?: (albumId: string, trackId: string) => void;
   replacingTrackId?: string | null;
@@ -112,6 +117,8 @@ export function AlbumsTabContent({
   albumsFromStore,
   expandedAlbumId,
   onSetExpandedAlbumId,
+  expandedTrackId,
+  onSetExpandedTrackId,
   albumAccessMenuAlbumId,
   publishingAlbumId,
   isUploadingTracks,
@@ -128,6 +135,7 @@ export function AlbumsTabContent({
   onPendingFocusTrackHandled,
   onCreateAlbum,
   onEditAlbum,
+  onPreloadEditAlbum,
   onToggleAlbum,
   onAlbumAccessMenuChange,
   onAlbumVisibilityChange,
@@ -139,12 +147,13 @@ export function AlbumsTabContent({
   onDeleteAlbum,
   onPublishAlbum,
   onLyricsAction,
+  onPreloadLyrics,
   retryingTrackProcessingId,
   onRetryTrackProcessing,
   replacingTrackId,
   onReplaceTrackAudio,
 }: AlbumsTabContentProps) {
-  const [expandedTrackId, setExpandedTrackId] = useState<string | null>(null);
+  const editAlbumPreloadHandlers = bindDashboardPreloadIntentHandlers(onPreloadEditAlbum);
   const artistInCatalog = useMemo(
     () => hasPublishedPublicReleases(albumsFromStore),
     [albumsFromStore]
@@ -158,7 +167,7 @@ export function AlbumsTabContent({
     expandedAlbumId,
     expandedTrackId,
     onExpandAlbum: onSetExpandedAlbumId,
-    onExpandTrack: setExpandedTrackId,
+    onExpandTrack: onSetExpandedTrackId,
     buildTrackKey: albumTrackKey,
   });
 
@@ -173,9 +182,9 @@ export function AlbumsTabContent({
   const handleTrackToggle = useCallback(
     (trackKey: string, isTrackOpen: boolean) => {
       markUserInteracted();
-      setExpandedTrackId(isTrackOpen ? null : trackKey);
+      onSetExpandedTrackId(isTrackOpen ? null : trackKey);
     },
-    [markUserInteracted]
+    [markUserInteracted, onSetExpandedTrackId]
   );
 
   const prevExpandedAlbumIdRef = useRef<string | null>(expandedAlbumId);
@@ -189,9 +198,9 @@ export function AlbumsTabContent({
     }
 
     if (previousAlbumId !== expandedAlbumId) {
-      setExpandedTrackId(null);
+      onSetExpandedTrackId(null);
     }
-  }, [expandedAlbumId]);
+  }, [expandedAlbumId, onSetExpandedTrackId]);
 
   const openTrackUploadForAlbum = useCallback(
     (albumId: string) => {
@@ -227,9 +236,9 @@ export function AlbumsTabContent({
       return;
     }
 
-    setExpandedTrackId(pendingFocusTrackKey);
+    onSetExpandedTrackId(pendingFocusTrackKey);
     onPendingFocusTrackHandled?.();
-  }, [pendingFocusTrackKey, expandedAlbumId, onPendingFocusTrackHandled]);
+  }, [pendingFocusTrackKey, expandedAlbumId, onPendingFocusTrackHandled, onSetExpandedTrackId]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -271,7 +280,13 @@ export function AlbumsTabContent({
   }
 
   if (albumsData.length === 0) {
-    return <AlbumsEmptyState ui={ui} onCreateAlbum={onCreateAlbum} />;
+    return (
+      <AlbumsEmptyState
+        ui={ui}
+        onCreateAlbum={onCreateAlbum}
+        onPreloadCreateAlbum={onPreloadEditAlbum}
+      />
+    );
   }
 
   return (
@@ -406,6 +421,7 @@ export function AlbumsTabContent({
                         onEditAlbum(fromStore?.albumId ?? album.albumId ?? album.id);
                       }}
                       aria-label={ui?.dashboard?.editAlbum ?? 'Edit Album'}
+                      {...editAlbumPreloadHandlers}
                     >
                       <PencilIcon {...dashboardActionIconProps()} />
                     </DashboardButton>
@@ -555,6 +571,7 @@ export function AlbumsTabContent({
                                 onTitleChange={onTrackTitleChange}
                                 onVisibilityChange={onTrackVisibilityChange}
                                 onLyricsAction={onLyricsAction}
+                                onPreloadLyrics={onPreloadLyrics}
                                 rowFlash={dashboardRowFlashes[`dashboard-track-row-${track.id}`]}
                                 ui={ui ?? undefined}
                                 retryingTrackProcessingId={retryingTrackProcessingId}
@@ -630,7 +647,7 @@ export function AlbumsTabContent({
       <div className="user-dashboard__albums-upload-divider" aria-hidden />
 
       <div className="user-dashboard__upload-action">
-        <DashboardButton variant="primary" onClick={onCreateAlbum}>
+        <DashboardButton variant="primary" onClick={onCreateAlbum} {...editAlbumPreloadHandlers}>
           {ui?.dashboard?.uploadNewAlbum ?? 'Upload New Album'}
         </DashboardButton>
       </div>

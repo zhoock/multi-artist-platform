@@ -8,6 +8,7 @@ import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { DashboardButton, DashboardEmptyState } from '@shared/ui/dashboard';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 import { LyricsSyncStatusBadge } from './LyricsSyncStatusBadge';
+import { bindDashboardPreloadIntentHandlers } from '../../lib/bindDashboardPreloadIntentHandlers';
 import {
   getLyricsActionLabel,
   getLyricsCardActions,
@@ -27,6 +28,7 @@ type TrackLyricsPanelProps = {
     trackId: string,
     trackTitle: string
   ) => void;
+  onPreloadLyrics?: () => void;
 };
 
 export function TrackLyricsPanel({
@@ -35,7 +37,9 @@ export function TrackLyricsPanel({
   ui,
   lang,
   onLyricsAction,
+  onPreloadLyrics,
 }: TrackLyricsPanelProps) {
+  const lyricsPreloadHandlers = bindDashboardPreloadIntentHandlers(onPreloadLyrics);
   // track.lyrics is hydration fallback only; trackLyricsSlice is the runtime source of truth.
   const lyrics = useAppSelector((state) =>
     resolveTrackLyricsBundle(state, albumId, track.id, track.lyrics)
@@ -68,6 +72,7 @@ export function TrackLyricsPanel({
             <DashboardButton
               variant="primary"
               onClick={() => onLyricsAction('add', albumId, track.id, track.title)}
+              {...lyricsPreloadHandlers}
             >
               <PlusIcon {...dashboardActionIconProps({ size: 18 })} />
               {ui?.dashboard?.addLyrics ?? 'Add Lyrics'}
@@ -101,7 +106,7 @@ export function TrackLyricsPanel({
 
         <div className="albums-tab__track-lyrics-card-meta">
           <LyricsSyncStatusBadge lyrics={lyrics} ui={ui} />
-          <div className="albums-tab__track-lyrics-actions">
+          <div className="albums-tab__track-lyrics-actions" {...lyricsPreloadHandlers}>
             {lyricsActions.map((action) => {
               const actionLabel = getLyricsActionLabel(action, ui);
 

@@ -106,14 +106,18 @@ import { getStore } from '@shared/model/appStore';
 import { uploadTracks, prepareAndUploadTrack, type TrackUploadData } from '@shared/api/tracks';
 import { regenerateTrackAssets } from '@shared/api/tracks/regenerateTrackAssets';
 import { TRACK_ORDER_INDEX_STEP } from '@shared/lib/tracks/trackOrderIndex';
-import { AddLyricsModal } from './components/modals/lyrics/AddLyricsModal';
-import { EditLyricsModal } from './components/modals/lyrics/EditLyricsModal';
-import { PreviewLyricsModal } from './components/modals/lyrics/PreviewLyricsModal';
-import { EditAlbumModal, type AlbumFormData } from './components/modals/album/EditAlbumModal';
-import { EditArticleModalV2 } from './components/modals/article/EditArticleModalV2';
+import type { AlbumFormData } from './components/modals/album/EditAlbumModal.types';
+import { DashboardLazyModals } from './components/shell/DashboardLazyModals';
 import { DashboardNavTabIcon } from './lib/dashboardNavTabIcon';
 import { useDashboardRowFlash } from './lib/dashboardRowStateFlash';
-import { SyncLyricsModal } from './components/modals/lyrics/SyncLyricsModal';
+import {
+  preloadEditAlbumModal,
+  preloadEditArticleModal,
+  preloadLyricsModals,
+  preloadSyncLyricsModal,
+} from './lib/dashboardLazyModals';
+import { useDashboardMountedTabs } from './lib/useDashboardMountedTabs';
+import { computeAlbumsTabPinned } from './lib/dashboardTabMountPolicy';
 import { SettingsPageContent } from './components/settings/SettingsPageContent';
 import { usePublicProfilePreview } from './components/profile/usePublicProfilePreview';
 import { UpgradeToArtistModal } from './components/modals/settings/UpgradeToArtistModal';
@@ -341,11 +345,7 @@ function UserDashboard() {
 
   const [isUpgradeToArtistModalOpen, setIsUpgradeToArtistModalOpen] = useState(false);
   const [scrollSettingsToHeaderImages, setScrollSettingsToHeaderImages] = useState(false);
-  const collectionTabEverVisitedRef = useRef(activeTab === 'collection');
   const [collectionContentReady, setCollectionContentReady] = useState(false);
-  if (activeTab === 'collection') {
-    collectionTabEverVisitedRef.current = true;
-  }
   const handleCollectionContentReady = useCallback(() => {
     setCollectionContentReady(true);
   }, []);
@@ -357,6 +357,7 @@ function UserDashboard() {
   const { data: publicProfilePreview } = usePublicProfilePreview(userId, lang);
   const profilePublicSlug = publicProfilePreview.publicSlug;
   const [expandedAlbumId, setExpandedAlbumId] = useState<string | null>(null);
+  const [expandedTrackId, setExpandedTrackId] = useState<string | null>(null);
   const [scrollToAlbumUploadId, setScrollToAlbumUploadId] = useState<string | null>(null);
   const [scrollToAlbumId, setScrollToAlbumId] = useState<string | null>(null);
   const [pendingTrackUploadAlbumId, setPendingTrackUploadAlbumId] = useState<string | null>(null);
@@ -434,7 +435,13 @@ function UserDashboard() {
     article: IArticles | null;
   } | null>(null);
   const openNewArticleEditor = useCallback(() => {
+    preloadEditArticleModal();
     setEditArticleModal({ isOpen: true, article: createNewDraftArticle() });
+  }, []);
+
+  const openEditAlbumModal = useCallback((albumId?: string) => {
+    preloadEditAlbumModal();
+    setEditAlbumModal({ isOpen: true, ...(albumId ? { albumId } : {}) });
   }, []);
   const [isLoadingTracks, setIsLoadingTracks] = useState<boolean>(false);
   const [isUploadingTracks, setIsUploadingTracks] = useState<{ [albumId: string]: boolean }>({});
@@ -513,6 +520,44 @@ function UserDashboard() {
   } | null>(null);
   const [retryingTrackProcessingId, setRetryingTrackProcessingId] = useState<string | null>(null);
   const [replacingTrackId, setReplacingTrackId] = useState<string | null>(null);
+  const [tabPinSignals, setTabPinSignals] = useState<Partial<Record<DashboardTab, boolean>>>({});
+
+  const setTabPinned = useCallback((tab: DashboardTab, pinned: boolean) => {
+    setTabPinSignals((prev) => {
+      const current = Boolean(prev[tab]);
+      if (current === pinned) {
+        return prev;
+      }
+      if (!pinned) {
+        const next = { ...prev };
+        delete next[tab];
+        return next;
+      }
+      return { ...prev, [tab]: true };
+    });
+  }, []);
+
+  const pinnedTabs = useMemo(() => {
+    const pins = new Set<DashboardTab>();
+    if (computeAlbumsTabPinned({ isUploadingTracks, replacingTrackId })) {
+      pins.add('albums');
+    }
+    (Object.entries(tabPinSignals) as [DashboardTab, boolean][]).forEach(([tab, pinned]) => {
+      if (pinned) {
+        pins.add(tab);
+      }
+    });
+    return pins;
+  }, [isUploadingTracks, replacingTrackId, tabPinSignals]);
+
+  const { shouldMount } = useDashboardMountedTabs(activeTab, pinnedTabs);
+  const collectionMounted = shouldMount('collection');
+
+  useEffect(() => {
+    if (!collectionMounted) {
+      setCollectionContentReady(false);
+    }
+  }, [collectionMounted]);
 
   const onAvatarAlert = useCallback(
     ({ message, variant = 'error' }: { message: string; variant?: 'error' | 'warning' }) => {
@@ -592,6 +637,7 @@ function UserDashboard() {
 
     if (intent.openEditAlbumModal) {
       if (emailVerified) {
+        preloadEditAlbumModal();
         setEditAlbumModal({ isOpen: true });
         consumed = true;
       }
@@ -599,6 +645,7 @@ function UserDashboard() {
 
     if (intent.openNewArticleModal) {
       if (emailVerified) {
+        preloadEditArticleModal();
         setEditArticleModal({ isOpen: true, article: createNewDraftArticle() });
       }
       consumed = true;
@@ -1997,6 +2044,11 @@ function UserDashboard() {
     trackId: string,
     trackTitle: string
   ) => {
+    preloadLyricsModals();
+    if (action === 'sync') {
+      preloadSyncLyricsModal();
+    }
+
     const album = albumsData.find((a) => a.id === albumId || a.albumId === albumId);
     const track = album?.tracks.find((t) => t.id === trackId);
     const lyrics = resolveDashboardTrackLyrics(albumId, trackId);
@@ -2159,6 +2211,7 @@ function UserDashboard() {
 
   const handleSyncLyricsFromEdit = async (currentLyrics: string, currentAuthorship?: string) => {
     if (!editLyricsModal) return;
+    preloadSyncLyricsModal();
     const { albumId, trackId, trackTitle } = editLyricsModal;
     // Сначала сохраняем изменения текста
     await handleSaveLyrics(currentLyrics, currentAuthorship);
@@ -2186,6 +2239,111 @@ function UserDashboard() {
       });
     }
   };
+
+  const handleEditAlbumNext = useCallback(
+    async (
+      _formData: AlbumFormData,
+      updatedAlbum?: AlbumEditable,
+      meta?: { createdNewAlbum?: boolean }
+    ) => {
+      if (!editAlbumModal) {
+        closeEditAlbumModal();
+        return;
+      }
+
+      const searchAlbumId = updatedAlbum?.albumId || editAlbumModal.albumId;
+
+      try {
+        console.log('🔄 [UserDashboard] Fetching albums after save...', {
+          originalAlbumId: editAlbumModal.albumId,
+          updatedAlbumId: updatedAlbum?.albumId,
+          isNewAlbum: !editAlbumModal.albumId,
+        });
+        const fetchPayload = await dispatch(
+          fetchDashboardAlbums({ force: true, ownerDashboard: true })
+        ).unwrap();
+        const result = fetchPayload.albums;
+        console.log('✅ [UserDashboard] Albums fetched:', {
+          count: result?.length || 0,
+          albumIds: result?.map((a: AlbumEditable) => a.albumId) || [],
+        });
+
+        if (result && result.length > 0 && searchAlbumId) {
+          const foundAlbum = result.find((a: AlbumEditable) => a.albumId === searchAlbumId);
+          if (foundAlbum) {
+            console.log('🔍 [UserDashboard] Updated album from fetchDashboardAlbums:', {
+              albumId: foundAlbum.albumId,
+              album: foundAlbum.album,
+              artistDisplayName: foundAlbum.artistDisplayName,
+              description: foundAlbum.description?.substring(0, 50) || '',
+              cover: foundAlbum.cover,
+              isNewAlbum: !editAlbumModal.albumId,
+            });
+          } else {
+            console.warn(
+              '⚠️ [UserDashboard] Updated album not found in fetchDashboardAlbums result:',
+              {
+                searchedAlbumId: searchAlbumId,
+                availableIds: result.map((a: AlbumEditable) => a.albumId),
+                isNewAlbum: !editAlbumModal.albumId,
+              }
+            );
+          }
+        }
+
+        await new Promise((resolve) => setTimeout(resolve, 300));
+
+        if (result && result.length > 0) {
+          console.log('🔄 [UserDashboard] Updating albumsData from fetchDashboardAlbums result...');
+
+          const transformedAlbums = transformEditableAlbumsToAlbumData(
+            result,
+            siteArtistDisplayName,
+            lang
+          );
+
+          setAlbumsData(withDashboardAlbumOwner(transformedAlbums, userId));
+          console.log('✅ [UserDashboard] albumsData updated:', {
+            count: transformedAlbums.length,
+            albumIds: transformedAlbums.map((a) => a.id),
+          });
+        }
+
+        await new Promise((resolve) => setTimeout(resolve, 200));
+        closeEditAlbumModal();
+
+        if (meta?.createdNewAlbum && searchAlbumId) {
+          if (activeTab !== 'albums') {
+            goDashboard('/dashboard-new/albums');
+          }
+          setExpandedAlbumId(searchAlbumId);
+          setScrollToAlbumUploadId(searchAlbumId);
+          setPendingTrackUploadAlbumId(searchAlbumId);
+        }
+      } catch (error: unknown) {
+        if (error instanceof Error && error.name === 'ConditionError') {
+          closeEditAlbumModal();
+          return;
+        }
+        closeEditAlbumModal();
+      }
+    },
+    [
+      activeTab,
+      closeEditAlbumModal,
+      dispatch,
+      editAlbumModal,
+      goDashboard,
+      lang,
+      siteArtistDisplayName,
+      userId,
+    ]
+  );
+
+  const handleSyncLyricsSaved = useCallback(() => {
+    queueLyricsSyncSavedToast();
+    setLyricsSyncSavedToastTrigger((value) => value + 1);
+  }, []);
 
   const editTrackTitleDirty =
     !!editTrackModal?.isOpen && editTrackTitleDraft.trim() !== editTrackModal.trackTitle.trim();
@@ -2295,7 +2453,7 @@ function UserDashboard() {
                   ))}
                 </nav>
 
-                {/* Content area: стабильная оболочка; вкладки скрыты через hidden, не размонтируются */}
+                {/* Content area: conditional mount; active + previous + pinned tabs stay in DOM (hidden) */}
                 <div className="user-dashboard__content user-dashboard__tab-shell">
                   {albumsInitialLoading &&
                   !albumsLoadFailed &&
@@ -2313,7 +2471,7 @@ function UserDashboard() {
                     </div>
                   ) : (
                     <>
-                      {isArtist ? (
+                      {isArtist && shouldMount('payment-settings') ? (
                         <div
                           className="user-dashboard__tab-panel"
                           hidden={activeTab !== 'payment-settings'}
@@ -2325,6 +2483,9 @@ function UserDashboard() {
                             <PaymentSettings
                               userId={user.id}
                               active={activeTab === 'payment-settings'}
+                              onMountPinChange={(pinned) =>
+                                setTabPinned('payment-settings', pinned)
+                              }
                             />
                           ) : (
                             <p className="user-dashboard__tab-placeholder">
@@ -2333,23 +2494,31 @@ function UserDashboard() {
                           )}
                         </div>
                       ) : null}
-                      <div
-                        className="user-dashboard__tab-panel"
-                        hidden={activeTab !== 'my-purchases'}
-                        aria-hidden={activeTab !== 'my-purchases'}
-                      >
-                        <MyPurchasesContent active={activeTab === 'my-purchases'} />
-                      </div>
-                      {isArtist ? (
+                      {shouldMount('my-purchases') ? (
+                        <div
+                          className="user-dashboard__tab-panel"
+                          hidden={activeTab !== 'my-purchases'}
+                          aria-hidden={activeTab !== 'my-purchases'}
+                        >
+                          <MyPurchasesContent
+                            active={activeTab === 'my-purchases'}
+                            onMountPinChange={(pinned) => setTabPinned('my-purchases', pinned)}
+                          />
+                        </div>
+                      ) : null}
+                      {isArtist && shouldMount('social-links') ? (
                         <div
                           className="user-dashboard__tab-panel"
                           hidden={activeTab !== 'social-links'}
                           aria-hidden={activeTab !== 'social-links'}
                         >
-                          <SocialLinksContent active={activeTab === 'social-links'} />
+                          <SocialLinksContent
+                            active={activeTab === 'social-links'}
+                            onMountPinChange={(pinned) => setTabPinned('social-links', pinned)}
+                          />
                         </div>
                       ) : null}
-                      {isArtist ? (
+                      {isArtist && shouldMount('mixer') ? (
                         <div
                           className="user-dashboard__tab-panel"
                           hidden={activeTab !== 'mixer'}
@@ -2360,29 +2529,27 @@ function UserDashboard() {
                           ) : albumsInitialLoading ? (
                             <DashboardLoadingState className="user-dashboard__tab-loading" />
                           ) : albumsData.length === 0 ? (
-                            <MixerEmptyState
-                              ui={ui}
-                              onCreateAlbum={() => setEditAlbumModal({ isOpen: true })}
-                            />
+                            <MixerEmptyState ui={ui} onCreateAlbum={() => openEditAlbumModal()} />
                           ) : (
                             <MixerAdmin
                               ui={ui || undefined}
                               userId={user?.id || undefined}
                               albums={albumsData}
                               tabActive={activeTab === 'mixer'}
+                              onMountPinChange={(pinned) => setTabPinned('mixer', pinned)}
                             />
                           )}
                         </div>
                       ) : null}
-                      <div
-                        className="user-dashboard__tab-panel user-dashboard__tab-panel--collection"
-                        hidden={activeTab !== 'collection'}
-                        aria-hidden={activeTab !== 'collection'}
-                      >
-                        {activeTab === 'collection' && !collectionContentReady ? (
-                          <DashboardLoadingState className="user-dashboard__tab-loading" />
-                        ) : null}
-                        {collectionTabEverVisitedRef.current ? (
+                      {collectionMounted ? (
+                        <div
+                          className="user-dashboard__tab-panel user-dashboard__tab-panel--collection"
+                          hidden={activeTab !== 'collection'}
+                          aria-hidden={activeTab !== 'collection'}
+                        >
+                          {activeTab === 'collection' && !collectionContentReady ? (
+                            <DashboardLoadingState className="user-dashboard__tab-loading" />
+                          ) : null}
                           <div
                             className={clsx(
                               'user-dashboard__collection-content',
@@ -2394,11 +2561,12 @@ function UserDashboard() {
                               active={activeTab === 'collection'}
                               onContentReady={handleCollectionContentReady}
                               onContentBusy={handleCollectionContentBusy}
+                              onMountPinChange={(pinned) => setTabPinned('collection', pinned)}
                             />
                           </div>
-                        ) : null}
-                      </div>
-                      {isArtist ? (
+                        </div>
+                      ) : null}
+                      {isArtist && shouldMount('albums') ? (
                         <div
                           className="user-dashboard__tab-panel"
                           hidden={activeTab !== 'albums'}
@@ -2412,6 +2580,8 @@ function UserDashboard() {
                             albumsFromStore={albumsFromStore}
                             expandedAlbumId={expandedAlbumId}
                             onSetExpandedAlbumId={setExpandedAlbumId}
+                            expandedTrackId={expandedTrackId}
+                            onSetExpandedTrackId={setExpandedTrackId}
                             albumAccessMenuAlbumId={albumAccessMenuAlbumId}
                             publishingAlbumId={publishingAlbumId}
                             isUploadingTracks={isUploadingTracks}
@@ -2426,8 +2596,10 @@ function UserDashboard() {
                             onPendingTrackUploadHandled={handlePendingTrackUploadHandled}
                             pendingFocusTrackKey={pendingFocusTrackKey}
                             onPendingFocusTrackHandled={handlePendingFocusTrackHandled}
-                            onCreateAlbum={() => setEditAlbumModal({ isOpen: true })}
-                            onEditAlbum={(albumId) => setEditAlbumModal({ isOpen: true, albumId })}
+                            onCreateAlbum={() => openEditAlbumModal()}
+                            onEditAlbum={(albumId) => openEditAlbumModal(albumId)}
+                            onPreloadEditAlbum={preloadEditAlbumModal}
+                            onPreloadLyrics={preloadLyricsModals}
                             onToggleAlbum={toggleAlbum}
                             onAlbumAccessMenuChange={setAlbumAccessMenuAlbumId}
                             onAlbumVisibilityChange={(albumId, visibility) =>
@@ -2448,7 +2620,7 @@ function UserDashboard() {
                           />
                         </div>
                       ) : null}
-                      {isArtist ? (
+                      {isArtist && shouldMount('posts') ? (
                         <div
                           className="user-dashboard__tab-panel"
                           hidden={activeTab !== 'posts'}
@@ -2467,61 +2639,66 @@ function UserDashboard() {
                             onArticleVisibilityChange={(articleId, visibility) =>
                               void handleArticleVisibilityChange(articleId, visibility)
                             }
-                            onEditArticle={(article) =>
-                              setEditArticleModal({ isOpen: true, article })
-                            }
+                            onEditArticle={(article) => {
+                              preloadEditArticleModal();
+                              setEditArticleModal({ isOpen: true, article });
+                            }}
                             onDeleteArticle={handleDeleteArticle}
                             onCreateArticle={openNewArticleEditor}
+                            onPreloadCreateArticle={preloadEditArticleModal}
                           />
                         </div>
                       ) : null}
-                      <div
-                        className="user-dashboard__tab-panel"
-                        hidden={activeTab !== 'settings'}
-                        aria-hidden={activeTab !== 'settings'}
-                      >
-                        <div className="user-dashboard__settings-tab">
-                          <div className="user-dashboard__section">
-                            <div className="user-dashboard__settings-content">
-                              <SettingsPageContent
-                                enabled={activeTab === 'settings'}
-                                scrollToHeaderImages={scrollSettingsToHeaderImages}
-                                onScrollToHeaderImagesHandled={() =>
-                                  setScrollSettingsToHeaderImages(false)
-                                }
-                                userName={user?.name ?? undefined}
-                                userEmail={user?.email}
-                                emailVerified={emailVerified}
-                                isListener={isListener}
-                                isArtistPagePublic={isArtistPagePublic}
-                                profilePublicSlug={profilePublicSlug ?? ''}
-                                onOpenArtistPage={() => {
-                                  if (!profilePublicSlug) return;
-                                  openOwnArtistPage(
-                                    lang,
-                                    profilePublicSlug,
-                                    isArtistPagePublic,
-                                    navigate
-                                  );
-                                }}
-                                onDeleteAccount={() => setIsDeleteAccountModalOpen(true)}
-                                onUpgradeToArtist={() => setIsUpgradeToArtistModalOpen(true)}
-                                onLogout={handleLogout}
-                                avatarSrc={avatarSrc}
-                                avatarRetinaSrc={avatarRetinaSrc ?? undefined}
-                                isUploadingAvatar={isUploadingAvatar}
-                                avatarInputRef={avatarInputRef}
-                                onAvatarUploadClick={handleAvatarClick}
-                                onAvatarChange={handleAvatarChange}
-                                onAvatarRemove={handleAvatarRemove}
-                                getProfileAvatarInitials={getProfileAvatarInitials}
-                                onNotAuthorized={handleSettingsNotAuthorized}
-                                onSaveError={handleSettingsSaveError}
-                              />
+                      {shouldMount('settings') ? (
+                        <div
+                          className="user-dashboard__tab-panel"
+                          hidden={activeTab !== 'settings'}
+                          aria-hidden={activeTab !== 'settings'}
+                        >
+                          <div className="user-dashboard__settings-tab">
+                            <div className="user-dashboard__section">
+                              <div className="user-dashboard__settings-content">
+                                <SettingsPageContent
+                                  enabled={activeTab === 'settings'}
+                                  scrollToHeaderImages={scrollSettingsToHeaderImages}
+                                  onScrollToHeaderImagesHandled={() =>
+                                    setScrollSettingsToHeaderImages(false)
+                                  }
+                                  userName={user?.name ?? undefined}
+                                  userEmail={user?.email}
+                                  emailVerified={emailVerified}
+                                  isListener={isListener}
+                                  isArtistPagePublic={isArtistPagePublic}
+                                  profilePublicSlug={profilePublicSlug ?? ''}
+                                  onOpenArtistPage={() => {
+                                    if (!profilePublicSlug) return;
+                                    openOwnArtistPage(
+                                      lang,
+                                      profilePublicSlug,
+                                      isArtistPagePublic,
+                                      navigate
+                                    );
+                                  }}
+                                  onDeleteAccount={() => setIsDeleteAccountModalOpen(true)}
+                                  onUpgradeToArtist={() => setIsUpgradeToArtistModalOpen(true)}
+                                  onLogout={handleLogout}
+                                  avatarSrc={avatarSrc}
+                                  avatarRetinaSrc={avatarRetinaSrc ?? undefined}
+                                  isUploadingAvatar={isUploadingAvatar}
+                                  avatarInputRef={avatarInputRef}
+                                  onAvatarUploadClick={handleAvatarClick}
+                                  onAvatarChange={handleAvatarChange}
+                                  onAvatarRemove={handleAvatarRemove}
+                                  getProfileAvatarInitials={getProfileAvatarInitials}
+                                  onNotAuthorized={handleSettingsNotAuthorized}
+                                  onSaveError={handleSettingsSaveError}
+                                  onMountPinChange={(pinned) => setTabPinned('settings', pinned)}
+                                />
+                              </div>
                             </div>
                           </div>
                         </div>
-                      </div>
+                      ) : null}
                     </>
                   )}
                 </div>
@@ -2530,66 +2707,33 @@ function UserDashboard() {
           </div>
         </Popup>
 
-        {/* Add Lyrics Modal */}
-        {addLyricsModal && (
-          <AddLyricsModal
-            isOpen={addLyricsModal.isOpen}
-            trackTitle={addLyricsModal.trackTitle}
-            onClose={() => setAddLyricsModal(null)}
-            onSave={handleAddLyrics}
-          />
-        )}
-
-        {/* Edit Lyrics Modal */}
-        {editLyricsModal && (
-          <EditLyricsModal
-            isOpen={editLyricsModal.isOpen}
-            initialLyrics={
-              editLyricsModal.initialLyrics ??
-              getTrackLyricsText(editLyricsModal.albumId, editLyricsModal.trackId)
-            }
-            initialAuthorship={
-              editLyricsModal.initialAuthorship ||
-              getTrackAuthorship(editLyricsModal.albumId, editLyricsModal.trackId)
-            }
-            onClose={() => setEditLyricsModal(null)}
-            onSave={handleSaveLyrics}
-          />
-        )}
-
-        {/* Preview Lyrics Modal */}
-        {previewLyricsModal && (
-          <PreviewLyricsModal
-            isOpen={previewLyricsModal.isOpen}
-            lyrics={previewLyricsModal.lyrics}
-            trackSrc={previewLyricsModal.trackSrc}
-            mediaOwnerUserId={previewLyricsModal.mediaOwnerUserId}
-            onClose={() => setPreviewLyricsModal(null)}
-          />
-        )}
-
-        {/* Sync Lyrics Modal */}
-        {syncLyricsModal && (
-          <SyncLyricsModal
-            isOpen={syncLyricsModal.isOpen}
-            albumId={syncLyricsModal.albumId}
-            trackId={syncLyricsModal.trackId}
-            trackTitle={syncLyricsModal.trackTitle}
-            trackSrc={syncLyricsModal.trackSrc}
-            mediaOwnerUserId={syncLyricsModal.mediaOwnerUserId}
-            trackDurationSeconds={syncLyricsModal.trackDurationSeconds}
-            initialLyricsText={syncLyricsModal.lyricsText}
-            authorship={syncLyricsModal.authorship}
-            onClose={() => setSyncLyricsModal(null)}
-            onSave={(bundle) => {
-              dispatch(applyTrackLyricsBundle(bundle));
-            }}
-            onSyncSaved={() => {
-              queueLyricsSyncSavedToast();
-              setLyricsSyncSavedToastTrigger((value) => value + 1);
-            }}
-          />
-        )}
+        <DashboardLazyModals
+          addLyricsModal={addLyricsModal}
+          editLyricsModal={editLyricsModal}
+          previewLyricsModal={previewLyricsModal}
+          syncLyricsModal={syncLyricsModal}
+          editAlbumModal={editAlbumModal}
+          editArticleModal={editArticleModal}
+          onCloseAddLyrics={() => setAddLyricsModal(null)}
+          onCloseEditLyrics={() => setEditLyricsModal(null)}
+          onClosePreviewLyrics={() => setPreviewLyricsModal(null)}
+          onCloseSyncLyrics={() => setSyncLyricsModal(null)}
+          onCloseEditAlbum={closeEditAlbumModal}
+          onCloseEditArticle={() => setEditArticleModal(null)}
+          onAddLyricsSave={handleAddLyrics}
+          onEditLyricsSave={handleSaveLyrics}
+          getTrackLyricsText={getTrackLyricsText}
+          getTrackAuthorship={getTrackAuthorship}
+          onEditAlbumDiscardRiskChange={handleAlbumEditorDiscardRiskChange}
+          onEditAlbumNext={handleEditAlbumNext}
+          onSyncLyricsSave={(bundle) => {
+            dispatch(applyTrackLyricsBundle(bundle));
+          }}
+          onSyncLyricsSaved={handleSyncLyricsSaved}
+          onArticleEditorToast={() => setArticleEditorToastTrigger((value) => value + 1)}
+          onArticlePersisted={handleArticlePersisted}
+          profilePublicSlug={profilePublicSlug}
+        />
 
         {/* Edit Track Modal */}
         {editTrackModal && (
@@ -2668,110 +2812,6 @@ function UserDashboard() {
           </>
         )}
 
-        {/* Edit Album Modal */}
-        {editAlbumModal && (
-          <EditAlbumModal
-            key={editAlbumModal.albumId ?? 'new-album'}
-            isOpen={editAlbumModal.isOpen}
-            albumId={editAlbumModal.albumId}
-            onDiscardRiskChange={handleAlbumEditorDiscardRiskChange}
-            onClose={closeEditAlbumModal}
-            onNext={async (formData, updatedAlbum, meta) => {
-              if (!editAlbumModal) {
-                closeEditAlbumModal();
-                return;
-              }
-
-              const searchAlbumId = updatedAlbum?.albumId || editAlbumModal.albumId;
-
-              // Обновляем Redux store из БД
-              try {
-                console.log('🔄 [UserDashboard] Fetching albums after save...', {
-                  originalAlbumId: editAlbumModal.albumId,
-                  updatedAlbumId: updatedAlbum?.albumId,
-                  isNewAlbum: !editAlbumModal.albumId,
-                });
-                const fetchPayload = await dispatch(
-                  fetchDashboardAlbums({ force: true, ownerDashboard: true })
-                ).unwrap();
-                const result = fetchPayload.albums;
-                console.log('✅ [UserDashboard] Albums fetched:', {
-                  count: result?.length || 0,
-                  albumIds: result?.map((a: AlbumEditable) => a.albumId) || [],
-                });
-
-                // Проверяем, что обновленный альбом действительно пришел с новыми данными
-                // Для новых альбомов используем albumId из updatedAlbum, для существующих - из editAlbumModal
-                if (result && result.length > 0 && searchAlbumId) {
-                  const foundAlbum = result.find((a: AlbumEditable) => a.albumId === searchAlbumId);
-                  if (foundAlbum) {
-                    console.log('🔍 [UserDashboard] Updated album from fetchDashboardAlbums:', {
-                      albumId: foundAlbum.albumId,
-                      album: foundAlbum.album,
-                      artistDisplayName: foundAlbum.artistDisplayName,
-                      description: foundAlbum.description?.substring(0, 50) || '',
-                      cover: foundAlbum.cover,
-                      isNewAlbum: !editAlbumModal.albumId,
-                    });
-                  } else {
-                    console.warn(
-                      '⚠️ [UserDashboard] Updated album not found in fetchDashboardAlbums result:',
-                      {
-                        searchedAlbumId: searchAlbumId,
-                        availableIds: result.map((a: AlbumEditable) => a.albumId),
-                        isNewAlbum: !editAlbumModal.albumId,
-                      }
-                    );
-                  }
-                }
-
-                // Небольшая задержка для гарантии обновления Redux store
-                await new Promise((resolve) => setTimeout(resolve, 300));
-
-                // Принудительно обновляем albumsData из результата fetchDashboardAlbums
-                if (result && result.length > 0) {
-                  console.log(
-                    '🔄 [UserDashboard] Updating albumsData from fetchDashboardAlbums result...'
-                  );
-
-                  const transformedAlbums = transformEditableAlbumsToAlbumData(
-                    result,
-                    siteArtistDisplayName,
-                    lang
-                  );
-
-                  setAlbumsData(withDashboardAlbumOwner(transformedAlbums, userId));
-                  console.log('✅ [UserDashboard] albumsData updated:', {
-                    count: transformedAlbums.length,
-                    albumIds: transformedAlbums.map((a) => a.id),
-                  });
-                }
-
-                // Закрываем модальное окно после обновления
-                // Небольшая задержка для гарантии обновления UI
-                await new Promise((resolve) => setTimeout(resolve, 200));
-                closeEditAlbumModal();
-
-                if (meta?.createdNewAlbum && searchAlbumId) {
-                  if (activeTab !== 'albums') {
-                    goDashboard('/dashboard-new/albums');
-                  }
-                  setExpandedAlbumId(searchAlbumId);
-                  setScrollToAlbumUploadId(searchAlbumId);
-                  setPendingTrackUploadAlbumId(searchAlbumId);
-                }
-              } catch (error: any) {
-                // ConditionError - это нормально, condition отменил запрос
-                if (error?.name === 'ConditionError') {
-                  closeEditAlbumModal();
-                  return;
-                }
-                closeEditAlbumModal();
-              }
-            }}
-          />
-        )}
-
         {/* Confirmation Modal */}
         {confirmationModal && (
           <ConfirmationModal
@@ -2819,18 +2859,6 @@ function UserDashboard() {
                   }
                 : undefined
             }
-          />
-        )}
-
-        {/* Edit Article Modal */}
-        {editArticleModal && editArticleModal.article && (
-          <EditArticleModalV2
-            isOpen={editArticleModal.isOpen}
-            article={editArticleModal.article}
-            onClose={() => setEditArticleModal(null)}
-            publicArtistSlug={profilePublicSlug}
-            onArticleEditorToast={() => setArticleEditorToastTrigger((value) => value + 1)}
-            onArticlePersisted={handleArticlePersisted}
           />
         )}
 

@@ -3,16 +3,23 @@ import { FileText as FileTextIcon, Upload as UploadIcon } from 'lucide-react';
 import type { IInterface } from '@models';
 import { DashboardEmptyState, DashboardButton } from '@shared/ui/dashboard';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
+import { bindDashboardPreloadIntentHandlers } from '../../lib/bindDashboardPreloadIntentHandlers';
 
 type ArticlesEmptyStateProps = {
   ui: IInterface | null | undefined;
   onCreateArticle: () => void;
+  onPreloadCreateArticle?: () => void;
 };
 
 const ARTICLES_EMPTY_ICON_SIZE = 108;
 
-export function ArticlesEmptyState({ ui, onCreateArticle }: ArticlesEmptyStateProps) {
+export function ArticlesEmptyState({
+  ui,
+  onCreateArticle,
+  onPreloadCreateArticle,
+}: ArticlesEmptyStateProps) {
   const d = ui?.dashboard;
+  const preloadHandlers = bindDashboardPreloadIntentHandlers(onPreloadCreateArticle);
 
   return (
     <DashboardEmptyState
@@ -21,7 +28,7 @@ export function ArticlesEmptyState({ ui, onCreateArticle }: ArticlesEmptyStatePr
       title={d?.articlesEmptyTitle ?? "You don't have any articles yet"}
       description={d?.articlesEmptyDescription ?? 'Publish your first article.'}
       action={
-        <DashboardButton variant="primary" onClick={onCreateArticle}>
+        <DashboardButton variant="primary" onClick={onCreateArticle} {...preloadHandlers}>
           <UploadIcon {...dashboardActionIconProps({ size: 18 })} />
           <span>{d?.createArticle ?? 'Create article'}</span>
         </DashboardButton>

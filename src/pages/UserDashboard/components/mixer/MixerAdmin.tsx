@@ -71,6 +71,7 @@ interface MixerAdminProps {
   userId?: string;
   albums?: AlbumData[];
   tabActive?: boolean;
+  onMountPinChange?: (pinned: boolean) => void;
 }
 
 interface DeleteTarget {
@@ -122,7 +123,13 @@ function formatStemToastMessage(
   return (template ?? fallbacks[kind][lang]).replace('{name}', stemName);
 }
 
-export function MixerAdmin({ ui, userId, albums = [], tabActive = true }: MixerAdminProps) {
+export function MixerAdmin({
+  ui,
+  userId,
+  albums = [],
+  tabActive = true,
+  onMountPinChange,
+}: MixerAdminProps) {
   // ui.dashboard.mixer пока не полностью описан в типах IInterface, берём через any.
   const t = useMemo(() => (ui as any)?.dashboard?.mixer ?? {}, [ui]);
   const { lang } = useLang();
@@ -444,6 +451,22 @@ export function MixerAdmin({ ui, userId, albums = [], tabActive = true }: MixerA
     }
     setPlayingStemId(null);
   }, []);
+
+  useEffect(() => {
+    return () => {
+      stopPlayback();
+    };
+  }, [stopPlayback]);
+
+  useEffect(() => {
+    if (!onMountPinChange) return;
+    const pinned =
+      playingStemId !== null ||
+      addModal !== null ||
+      deleteTarget !== null ||
+      Object.values(busyStems).some(Boolean);
+    onMountPinChange(pinned);
+  }, [addModal, busyStems, deleteTarget, onMountPinChange, playingStemId]);
 
   const handleTogglePlay = useCallback(
     (storageAlbumId: string, trackId: string, stem: StemMeta) => {

@@ -30,6 +30,7 @@ function baseHookReturn(overrides: Record<string, unknown> = {}) {
     setShowForm: jest.fn(),
     handleConnect: jest.fn(),
     handleDisconnect: jest.fn(),
+    hasUnsavedCredentialEdits: false,
     ...overrides,
   };
 }

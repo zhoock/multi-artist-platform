@@ -1,5 +1,5 @@
 import clsx from 'clsx';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ExternalLink as ExternalLinkIcon } from 'lucide-react';
 import { useLang } from '@app/providers/lang';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
@@ -24,6 +24,7 @@ import './PaymentSettings.style.scss';
 interface PaymentSettingsProps {
   userId: string;
   active: boolean;
+  onMountPinChange?: (pinned: boolean) => void;
 }
 
 function PaymentProviderLogo({
@@ -84,7 +85,7 @@ function ProviderRowLabel({
   );
 }
 
-export function PaymentSettings({ userId, active }: PaymentSettingsProps) {
+export function PaymentSettings({ userId, active, onMountPinChange }: PaymentSettingsProps) {
   const { lang } = useLang();
   const ui = useAppSelector((state) => selectUiDictionaryFirst(state, lang));
   const copy = ui?.dashboard?.paymentSettings;
@@ -106,7 +107,13 @@ export function PaymentSettings({ userId, active }: PaymentSettingsProps) {
     setShowForm,
     handleConnect,
     handleDisconnect,
+    hasUnsavedCredentialEdits,
   } = usePaymentSettings({ userId, active });
+
+  useEffect(() => {
+    if (!onMountPinChange) return;
+    onMountPinChange(hasUnsavedCredentialEdits || saving !== null);
+  }, [hasUnsavedCredentialEdits, onMountPinChange, saving]);
 
   const [providerToDisconnect, setProviderToDisconnect] = useState<PaymentProvider | null>(null);
 

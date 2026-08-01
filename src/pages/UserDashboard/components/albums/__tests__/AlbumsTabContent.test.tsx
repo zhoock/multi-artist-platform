@@ -24,6 +24,8 @@ function createBaseProps(overrides: Partial<React.ComponentProps<typeof AlbumsTa
     albumsFromStore: [],
     expandedAlbumId: null,
     onSetExpandedAlbumId: noop,
+    expandedTrackId: null,
+    onSetExpandedTrackId: noop,
     albumAccessMenuAlbumId: null,
     publishingAlbumId: null,
     isUploadingTracks: {},
