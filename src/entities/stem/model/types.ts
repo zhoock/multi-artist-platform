@@ -1,29 +1,7 @@
 // src/entities/stem/model/types.ts
+import type { StemCategory } from '@shared/lib/stems/stemCategories';
 
-/** Поддерживаемые категории стемов. Иконка стема определяется ТОЛЬКО по категории. */
-export type StemCategory =
-  | 'drums'
-  | 'bass'
-  | 'guitar'
-  | 'vocal'
-  | 'piano'
-  | 'strings'
-  | 'synth'
-  | 'percussion'
-  | 'other';
-
-/** Порядок категорий для выпадающих списков (UI). */
-export const STEM_CATEGORIES: StemCategory[] = [
-  'drums',
-  'bass',
-  'guitar',
-  'vocal',
-  'piano',
-  'strings',
-  'synth',
-  'percussion',
-  'other',
-];
+export { STEM_CATEGORIES, type StemCategory } from '@shared/lib/stems/stemCategories';
 
 /** Описание одного стема в манифесте трека. */
 export interface StemMeta {

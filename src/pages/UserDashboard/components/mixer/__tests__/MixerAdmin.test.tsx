@@ -18,13 +18,14 @@ jest.mock('react-router-dom', () => {
 });
 
 const loadStemsMock = jest.fn<(...args: unknown[]) => Promise<unknown>>();
+const saveStemsManifestMock = jest.fn<(...args: unknown[]) => Promise<void>>();
 
 jest.mock('@entities/stem', () => {
   const actual = jest.requireActual('@entities/stem') as typeof import('@entities/stem');
   return {
     ...actual,
     loadStems: (...args: unknown[]) => loadStemsMock(...args),
-    saveStemsManifest: jest.fn(),
+    saveStemsManifest: (...args: unknown[]) => saveStemsManifestMock(...args),
     uploadStemAudio: jest.fn(),
     deleteStemFile: jest.fn(),
     getStemStoragePath: jest.fn(),
@@ -90,6 +91,8 @@ describe('MixerAdmin', () => {
     resetDashboardAccordionOnboardingForTests();
     navigateMock.mockReset();
     loadStemsMock.mockReset();
+    saveStemsManifestMock.mockReset();
+    saveStemsManifestMock.mockResolvedValue(undefined);
     loadStemsMock.mockResolvedValue({
       stems: [],
       accessToken: null,
@@ -205,5 +208,40 @@ describe('MixerAdmin', () => {
     await user.click(screen.getByLabelText('Stem access'));
 
     expect(screen.getByText('Open to everyone')).toBeTruthy();
+  });
+
+  it('dedupes concurrent loadStems requests for the same track during onboarding', async () => {
+    let resolveLoad!: (value: unknown) => void;
+    loadStemsMock.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveLoad = resolve;
+        })
+    );
+
+    renderWithProviders(
+      <MixerAdmin ui={mixerUi as never} userId="user-1" albums={[sampleAlbum]} tabActive />,
+      {
+        preloadedState: {
+          lang: { current: 'en' },
+        },
+      }
+    );
+
+    await waitFor(() => {
+      expect(loadStemsMock).toHaveBeenCalledTimes(1);
+    });
+
+    resolveLoad({
+      stems: [],
+      accessToken: null,
+      accessTokenExpiresAt: null,
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('No stems yet')).toBeTruthy();
+    });
+
+    expect(loadStemsMock).toHaveBeenCalledTimes(1);
   });
 });

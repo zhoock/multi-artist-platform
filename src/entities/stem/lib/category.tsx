@@ -10,7 +10,7 @@ import {
   Music,
   Piano,
 } from 'lucide-react';
-import { STEM_CATEGORIES, type StemCategory } from '../model/types';
+import { type StemCategory } from '@shared/lib/stems/stemCategories';
 
 /** Иконки Lucide по категории. */
 const CATEGORY_ICONS: Record<StemCategory, LucideIcon> = {
@@ -52,9 +52,7 @@ const CATEGORY_LABELS: Record<'ru' | 'en', Record<StemCategory, string>> = {
 };
 
 /** Является ли значение валидной категорией. */
-export function isStemCategory(value: unknown): value is StemCategory {
-  return typeof value === 'string' && (STEM_CATEGORIES as string[]).includes(value);
-}
+export { isStemCategory } from '@shared/lib/stems/stemCategories';
 
 /** Иконка Lucide по категории (с фолбэком на AudioLines). */
 export function resolveCategoryIcon(category: StemCategory): LucideIcon {

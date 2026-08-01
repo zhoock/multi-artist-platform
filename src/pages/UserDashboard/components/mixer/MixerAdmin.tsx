@@ -51,6 +51,9 @@ import {
   updateStemsVisibility,
 } from '@entities/stem';
 import { normalizeStemsVisibility, type StemsVisibility } from '@shared/lib/stems/stemsVisibility';
+import { shouldApplyRemoteStemsLoad } from './mixerTrackStemsLoadGuard';
+import { createStemsPersistQueue } from './mixerTrackStemsPersistQueue';
+import { createTrackStemsMutationQueue } from './mixerTrackStemsMutationQueue';
 import {
   useEffectiveLocation,
   useEffectiveSearchParams,
@@ -130,6 +133,59 @@ export function MixerAdmin({ ui, userId, albums = [], tabActive = true }: MixerA
   const [expandedAlbumId, setExpandedAlbumId] = useState<string | null>(null);
   const [expandedTrackId, setExpandedTrackId] = useState<string | null>(null);
   const [trackStems, setTrackStems] = useState<Record<string, StemMeta[]>>({});
+  /** Authoritative during async work; never mirror React state back onto this ref on render. */
+  const trackStemsRef = useRef<Record<string, StemMeta[]>>({});
+
+  /** Tracks that finished a remote load (including empty manifests). */
+  const loadedTrackKeysRef = useRef<Set<string>>(new Set());
+  /** Coalesces concurrent loadStems calls per track. */
+  const inFlightTrackLoadsRef = useRef<Record<string, Promise<void>>>({});
+  /** Bumps when a new load starts; stale responses are ignored. */
+  const loadGenerationByKeyRef = useRef<Record<string, number>>({});
+  /** Bumps on local stem mutations; blocks stale remote loads from overwriting. */
+  const localRevisionByKeyRef = useRef<Record<string, number>>({});
+
+  const schedulePersistStemsRef = useRef(createStemsPersistQueue(saveStemsManifest));
+  const runTrackMutationRef = useRef(createTrackStemsMutationQueue());
+
+  const bumpLocalTrackRevision = useCallback((key: string) => {
+    localRevisionByKeyRef.current[key] = (localRevisionByKeyRef.current[key] ?? 0) + 1;
+    loadedTrackKeysRef.current.add(key);
+  }, []);
+
+  const commitTrackStems = useCallback((key: string, stems: StemMeta[]) => {
+    trackStemsRef.current = { ...trackStemsRef.current, [key]: stems };
+    setTrackStems((prev) => ({ ...prev, [key]: stems }));
+  }, []);
+
+  const readTrackStemsSnapshot = useCallback((key: string) => {
+    return trackStemsRef.current[key] ?? [];
+  }, []);
+
+  const persistTrackStems = useCallback(
+    (storageAlbumId: string, trackId: string) => {
+      const key = stemKey(storageAlbumId, trackId);
+      return schedulePersistStemsRef.current(storageAlbumId, trackId, () =>
+        readTrackStemsSnapshot(key)
+      );
+    },
+    [readTrackStemsSnapshot]
+  );
+
+  const stageTrackStemsForPersist = useCallback(
+    (key: string, stems: StemMeta[]) => {
+      bumpLocalTrackRevision(key);
+      trackStemsRef.current = { ...trackStemsRef.current, [key]: stems };
+    },
+    [bumpLocalTrackRevision]
+  );
+
+  const revertTrackStemsStage = useCallback((key: string, previous: StemMeta[]) => {
+    trackStemsRef.current = { ...trackStemsRef.current, [key]: previous };
+    if (previous.length === 0) {
+      loadedTrackKeysRef.current.delete(key);
+    }
+  }, []);
   const [stemAccessByTrack, setStemAccessByTrack] = useState<
     Record<string, { accessToken: string; accessTokenExpiresAt: number }>
   >({});
@@ -231,30 +287,71 @@ export function MixerAdmin({ ui, userId, albums = [], tabActive = true }: MixerA
   const ensureTrackStems = useCallback(
     async (storageAlbumId: string, trackId: string) => {
       if (!storageUserId) return;
+
       const key = stemKey(storageAlbumId, trackId);
-      if (trackStems[key]) return;
-      setLoadingTracks((prev) => ({ ...prev, [key]: true }));
-      try {
-        const { stems, accessToken, accessTokenExpiresAt } = await loadStems(
-          storageUserId,
-          storageAlbumId,
-          trackId
-        );
-        setTrackStems((prev) => ({ ...prev, [key]: stems }));
-        if (accessToken && accessTokenExpiresAt != null) {
-          setStemAccessByTrack((prev) => ({
-            ...prev,
-            [key]: { accessToken, accessTokenExpiresAt },
-          }));
-        }
-      } catch (error) {
-        console.error('[MixerAdmin] Failed to load stems:', error);
-        setTrackStems((prev) => ({ ...prev, [key]: prev[key] ?? [] }));
-      } finally {
-        setLoadingTracks((prev) => ({ ...prev, [key]: false }));
+      const inFlight = inFlightTrackLoadsRef.current[key];
+      if (inFlight) {
+        return inFlight;
       }
+      if (loadedTrackKeysRef.current.has(key)) {
+        return;
+      }
+
+      const loadGeneration = (loadGenerationByKeyRef.current[key] ?? 0) + 1;
+      loadGenerationByKeyRef.current[key] = loadGeneration;
+      const localRevisionAtStart = localRevisionByKeyRef.current[key] ?? 0;
+
+      const promise = (async () => {
+        setLoadingTracks((prev) => ({ ...prev, [key]: true }));
+        try {
+          const { stems, accessToken, accessTokenExpiresAt } = await loadStems(
+            storageUserId,
+            storageAlbumId,
+            trackId
+          );
+
+          if (
+            !shouldApplyRemoteStemsLoad({
+              currentLoadGeneration: loadGenerationByKeyRef.current[key] ?? 0,
+              expectedLoadGeneration: loadGeneration,
+              localRevisionAtLoadStart: localRevisionAtStart,
+              currentLocalRevision: localRevisionByKeyRef.current[key] ?? 0,
+            })
+          ) {
+            return;
+          }
+
+          loadedTrackKeysRef.current.add(key);
+          commitTrackStems(key, stems);
+          if (accessToken && accessTokenExpiresAt != null) {
+            setStemAccessByTrack((prev) => ({
+              ...prev,
+              [key]: { accessToken, accessTokenExpiresAt },
+            }));
+          }
+        } catch (error) {
+          console.error('[MixerAdmin] Failed to load stems:', error);
+          if (
+            shouldApplyRemoteStemsLoad({
+              currentLoadGeneration: loadGenerationByKeyRef.current[key] ?? 0,
+              expectedLoadGeneration: loadGeneration,
+              localRevisionAtLoadStart: localRevisionAtStart,
+              currentLocalRevision: localRevisionByKeyRef.current[key] ?? 0,
+            })
+          ) {
+            loadedTrackKeysRef.current.add(key);
+            commitTrackStems(key, trackStemsRef.current[key] ?? []);
+          }
+        } finally {
+          delete inFlightTrackLoadsRef.current[key];
+          setLoadingTracks((prev) => ({ ...prev, [key]: false }));
+        }
+      })();
+
+      inFlightTrackLoadsRef.current[key] = promise;
+      return promise;
     },
-    [storageUserId, trackStems]
+    [storageUserId, commitTrackStems]
   );
 
   const preloadAlbumTrackStems = useCallback(
@@ -393,14 +490,32 @@ export function MixerAdmin({ ui, userId, albums = [], tabActive = true }: MixerA
         originalFileName: file.name,
       };
       const key = stemKey(storageAlbumId, trackId);
-      const next = [...(trackStems[key] ?? []), newStem];
-      await saveStemsManifest(storageAlbumId, trackId, next);
-      setTrackStems((prev) => ({ ...prev, [key]: next }));
-      setAddModal(null);
-      queueStemAddedToast(formatStemToastMessage(name, t.addStemSuccessToast, lang, 'added'));
-      setStemAddedToastTrigger((n) => n + 1);
+
+      await runTrackMutationRef.current(key, async () => {
+        const previous = readTrackStemsSnapshot(key);
+        const next = [...previous, newStem];
+        stageTrackStemsForPersist(key, next);
+        try {
+          await persistTrackStems(storageAlbumId, trackId);
+          commitTrackStems(key, next);
+          setAddModal(null);
+          queueStemAddedToast(formatStemToastMessage(name, t.addStemSuccessToast, lang, 'added'));
+          setStemAddedToastTrigger((n) => n + 1);
+        } catch (error) {
+          revertTrackStemsStage(key, previous);
+          throw error;
+        }
+      });
     },
-    [trackStems, t, lang]
+    [
+      readTrackStemsSnapshot,
+      stageTrackStemsForPersist,
+      revertTrackStemsStage,
+      commitTrackStems,
+      persistTrackStems,
+      t,
+      lang,
+    ]
   );
 
   const handleReplaceFile = useCallback(
@@ -409,13 +524,22 @@ export function MixerAdmin({ ui, userId, albums = [], tabActive = true }: MixerA
       setBusy(storageAlbumId, trackId, stem.id, true);
       try {
         const { fileName } = await uploadStemAudio(storageAlbumId, trackId, file);
-        const next = (trackStems[key] ?? []).map((s) =>
-          s.id === stem.id
-            ? { ...s, file: fileName, size: file.size, originalFileName: file.name }
-            : s
-        );
-        await saveStemsManifest(storageAlbumId, trackId, next);
-        setTrackStems((prev) => ({ ...prev, [key]: next }));
+        await runTrackMutationRef.current(key, async () => {
+          const previous = readTrackStemsSnapshot(key);
+          const next = previous.map((s) =>
+            s.id === stem.id
+              ? { ...s, file: fileName, size: file.size, originalFileName: file.name }
+              : s
+          );
+          stageTrackStemsForPersist(key, next);
+          try {
+            await persistTrackStems(storageAlbumId, trackId);
+            commitTrackStems(key, next);
+          } catch (error) {
+            revertTrackStemsStage(key, previous);
+            throw error;
+          }
+        });
         if (playingStemId === stem.id) stopPlayback();
         // Старый файл удаляем по возможности (не критично при ошибке).
         if (stem.file && stem.file !== fileName) {
@@ -429,22 +553,43 @@ export function MixerAdmin({ ui, userId, albums = [], tabActive = true }: MixerA
         setBusy(storageAlbumId, trackId, stem.id, false);
       }
     },
-    [trackStems, playingStemId, stopPlayback, storageUserId]
+    [
+      playingStemId,
+      stopPlayback,
+      storageUserId,
+      readTrackStemsSnapshot,
+      stageTrackStemsForPersist,
+      revertTrackStemsStage,
+      commitTrackStems,
+      persistTrackStems,
+    ]
   );
 
   const handleRename = useCallback(
     async (storageAlbumId: string, trackId: string, stem: StemMeta, name: string) => {
       // Переименование НЕ меняет категорию автоматически.
       const key = stemKey(storageAlbumId, trackId);
-      const next = (trackStems[key] ?? []).map((s) => (s.id === stem.id ? { ...s, name } : s));
-      setTrackStems((prev) => ({ ...prev, [key]: next }));
-      try {
-        await saveStemsManifest(storageAlbumId, trackId, next);
-      } catch (error) {
-        console.error('[MixerAdmin] Failed to rename stem:', error);
-      }
+      await runTrackMutationRef.current(key, async () => {
+        const previous = readTrackStemsSnapshot(key);
+        const next = previous.map((s) => (s.id === stem.id ? { ...s, name } : s));
+        stageTrackStemsForPersist(key, next);
+        commitTrackStems(key, next);
+        try {
+          await persistTrackStems(storageAlbumId, trackId);
+        } catch (error) {
+          revertTrackStemsStage(key, previous);
+          commitTrackStems(key, previous);
+          console.error('[MixerAdmin] Failed to rename stem:', error);
+        }
+      });
     },
-    [trackStems]
+    [
+      readTrackStemsSnapshot,
+      stageTrackStemsForPersist,
+      revertTrackStemsStage,
+      commitTrackStems,
+      persistTrackStems,
+    ]
   );
 
   const handleConfirmDelete = useCallback(async () => {
@@ -461,38 +606,68 @@ export function MixerAdmin({ ui, userId, albums = [], tabActive = true }: MixerA
           getStemStoragePath(storageUserId, storageAlbumId, trackId, stem.file)
         ).catch(() => undefined);
       }
-      const next = (trackStems[key] ?? []).filter((s) => s.id !== stem.id);
-      await saveStemsManifest(storageAlbumId, trackId, next);
-      setTrackStems((prev) => ({ ...prev, [key]: next }));
-      queueStemDeletedToast(
-        formatStemToastMessage(deletedStemName, t.deleteStemSuccessToast, lang, 'deleted')
-      );
-      setStemDeletedToastTrigger((n) => n + 1);
-    } catch (error) {
-      console.error('[MixerAdmin] Failed to delete stem:', error);
+      await runTrackMutationRef.current(key, async () => {
+        const previous = readTrackStemsSnapshot(key);
+        const next = previous.filter((s) => s.id !== stem.id);
+        stageTrackStemsForPersist(key, next);
+        try {
+          await persistTrackStems(storageAlbumId, trackId);
+          commitTrackStems(key, next);
+          queueStemDeletedToast(
+            formatStemToastMessage(deletedStemName, t.deleteStemSuccessToast, lang, 'deleted')
+          );
+          setStemDeletedToastTrigger((n) => n + 1);
+        } catch (error) {
+          revertTrackStemsStage(key, previous);
+          console.error('[MixerAdmin] Failed to delete stem:', error);
+        }
+      });
     } finally {
       setBusy(storageAlbumId, trackId, stem.id, false);
     }
-  }, [deleteTarget, trackStems, playingStemId, stopPlayback, storageUserId, t, lang]);
+  }, [
+    deleteTarget,
+    playingStemId,
+    stopPlayback,
+    storageUserId,
+    t,
+    lang,
+    readTrackStemsSnapshot,
+    stageTrackStemsForPersist,
+    revertTrackStemsStage,
+    commitTrackStems,
+    persistTrackStems,
+  ]);
 
   const handleDragEnd = useCallback(
     async (event: DragEndEvent, storageAlbumId: string, trackId: string) => {
       const { active, over } = event;
       if (!over || active.id === over.id) return;
       const key = stemKey(storageAlbumId, trackId);
-      const stems = trackStems[key] ?? [];
-      const oldIndex = stems.findIndex((s) => s.id === active.id);
-      const newIndex = stems.findIndex((s) => s.id === over.id);
-      if (oldIndex === -1 || newIndex === -1) return;
-      const next = arrayMove(stems, oldIndex, newIndex);
-      setTrackStems((prev) => ({ ...prev, [key]: next }));
-      try {
-        await saveStemsManifest(storageAlbumId, trackId, next);
-      } catch (error) {
-        console.error('[MixerAdmin] Failed to reorder stems:', error);
-      }
+      await runTrackMutationRef.current(key, async () => {
+        const previous = readTrackStemsSnapshot(key);
+        const oldIndex = previous.findIndex((s) => s.id === active.id);
+        const newIndex = previous.findIndex((s) => s.id === over.id);
+        if (oldIndex === -1 || newIndex === -1) return;
+        const next = arrayMove(previous, oldIndex, newIndex);
+        stageTrackStemsForPersist(key, next);
+        commitTrackStems(key, next);
+        try {
+          await persistTrackStems(storageAlbumId, trackId);
+        } catch (error) {
+          revertTrackStemsStage(key, previous);
+          commitTrackStems(key, previous);
+          console.error('[MixerAdmin] Failed to reorder stems:', error);
+        }
+      });
     },
-    [trackStems]
+    [
+      readTrackStemsSnapshot,
+      stageTrackStemsForPersist,
+      revertTrackStemsStage,
+      commitTrackStems,
+      persistTrackStems,
+    ]
   );
 
   if (albums.length === 0) {

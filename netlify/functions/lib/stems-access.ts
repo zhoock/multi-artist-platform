@@ -5,6 +5,10 @@
 
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import {
+  normalizeStemCategory,
+  type StemCategory,
+} from '../../../src/shared/lib/stems/stemCategories';
 import { viewerHasPremiumAccessToArtist } from './entitlements';
 import { getStemsFolderPath, getStemStoragePath } from './stem-storage-path-shared';
 
@@ -20,13 +24,11 @@ export const STEM_ACCESS_TOKEN_TTL_MS = 60 * 60 * 1000;
 export interface StemMetaDto {
   id: string;
   name: string;
-  category: string;
+  category: StemCategory;
   file: string;
   size?: number;
   originalFileName?: string;
 }
-
-const STEM_CATEGORIES = new Set(['drums', 'bass', 'guitar', 'keys', 'vocals', 'fx', 'other']);
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const SAFE_SEGMENT_RE = /^[a-zA-Z0-9._-]+$/;
@@ -81,7 +83,9 @@ function parseStemMeta(raw: unknown): StemMetaDto | null {
   const record = raw as Record<string, unknown>;
   if (typeof record.id !== 'string' || !record.id.trim()) return null;
   if (typeof record.name !== 'string' || !record.name.trim()) return null;
-  if (typeof record.category !== 'string' || !STEM_CATEGORIES.has(record.category)) return null;
+  if (typeof record.category !== 'string') return null;
+  const category = normalizeStemCategory(record.category);
+  if (!category) return null;
   if (typeof record.file !== 'string' || !record.file.trim()) return null;
   try {
     assertSafeStemSegment(record.file, 'stem file');
@@ -91,7 +95,7 @@ function parseStemMeta(raw: unknown): StemMetaDto | null {
   return {
     id: record.id,
     name: record.name,
-    category: record.category,
+    category,
     file: record.file,
     size: typeof record.size === 'number' ? record.size : undefined,
     originalFileName:
