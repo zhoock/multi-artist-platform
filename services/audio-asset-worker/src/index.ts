@@ -2,7 +2,7 @@ import './loadEnv.js';
 import express from 'express';
 import { pipelineTrace } from './lib/pipelineTrace.js';
 import { checkFfmpegToolsAvailable, getFfmpegVersionLabel } from './processors/ffmpegTranscoder.js';
-import { processTrackJob } from './processTrackJob.js';
+import { processTrackJobWithRetry } from './processTrackJobRetry.js';
 import type { ProcessTrackJobPayload } from './pipeline/types.js';
 
 const app = express();
@@ -84,21 +84,12 @@ app.post('/jobs/process-track', async (req, res) => {
     { trackDbId: payload.trackDbId, trackId: payload.trackId }
   );
 
-  void processTrackJob(payload)
-    .then((result) => {
-      if (result === 'skipped') {
-        console.log('[process-track] Skipped duplicate job (advisory lock held):', {
-          trackId: payload.trackId,
-          trackDbId: payload.trackDbId,
-        });
-      }
-    })
-    .catch((err) => {
-      console.error('[process-track] Job failed:', {
-        trackId: payload.trackId,
-        error: err instanceof Error ? err.message : String(err),
-      });
+  void processTrackJobWithRetry(payload).catch((err) => {
+    console.error('[process-track] Job failed:', {
+      trackId: payload.trackId,
+      error: err instanceof Error ? err.message : String(err),
     });
+  });
 });
 
 app.post('/jobs/regenerate', async (req, res) => {
@@ -132,21 +123,12 @@ app.post('/jobs/regenerate', async (req, res) => {
     { trackDbId: payload.trackDbId, trackId: payload.trackId ?? payload.trackDbId }
   );
 
-  void processTrackJob(payload)
-    .then((result) => {
-      if (result === 'skipped') {
-        console.log('[regenerate] Skipped duplicate job (advisory lock held):', {
-          trackId: payload.trackId,
-          trackDbId: payload.trackDbId,
-        });
-      }
-    })
-    .catch((err) => {
-      console.error('[regenerate] Job failed:', {
-        trackId: payload.trackId,
-        error: err instanceof Error ? err.message : String(err),
-      });
+  void processTrackJobWithRetry(payload).catch((err) => {
+    console.error('[regenerate] Job failed:', {
+      trackId: payload.trackId,
+      error: err instanceof Error ? err.message : String(err),
     });
+  });
 });
 
 const port = Number(process.env.PORT || 8090);

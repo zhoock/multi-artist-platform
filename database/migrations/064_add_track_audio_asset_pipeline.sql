@@ -17,8 +17,8 @@ BEGIN
 END $$;
 
 COMMENT ON COLUMN tracks.master_path IS 'Supabase storage path or public URL of immutable master upload (original/)';
-COMMENT ON COLUMN tracks.processing_status IS 'Aggregate pipeline status for dashboard UX: pending, processing, ready, failed';
-COMMENT ON COLUMN tracks.processing_error IS 'Last pipeline failure message when processing_status = failed';
+COMMENT ON COLUMN tracks.processing_status IS 'Playback readiness for dashboard UX: ready when playback-required derived assets are ready';
+COMMENT ON COLUMN tracks.processing_error IS 'Last playback-required pipeline failure when processing_status = failed';
 
 CREATE TABLE IF NOT EXISTS track_assets (
   id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),

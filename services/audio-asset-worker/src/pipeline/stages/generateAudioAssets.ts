@@ -8,6 +8,7 @@ import {
   replaceStorageFileExtension,
 } from '../../../../../src/shared/lib/tracks/trackStoragePaths.js';
 import { runFfmpeg, runFfprobe } from '../../processors/ffmpegTranscoder.js';
+import { generateWaveformPeaksJsonFile } from '../../processors/waveformPeaksFromAudio.js';
 import {
   pipelineTrace,
   pipelineTraceWarn,
@@ -63,6 +64,33 @@ export const generateAudioAssetsStage: PipelineStage = {
 export const generateWaveformStage: PipelineStage = {
   stageId: 'generate-waveform',
   async run(ctx) {
+    const trace: PipelineTraceContext = {
+      trackDbId: ctx.trackDbId,
+      trackId: ctx.trackId,
+    };
+    const stage = PIPELINE_STAGES.find((s) => s.stageId === 'generate-waveform');
+    if (!stage) {
+      pipelineTraceWarn('generate-waveform stage definition missing', undefined, trace);
+      return ctx;
+    }
+
+    pipelineTrace(
+      'generate-waveform entered',
+      { outputCount: stage.outputs.length, masterPath: ctx.masterPath },
+      trace
+    );
+
+    const masterFileName = ctx.masterPath.split('/').pop() || 'track.audio';
+
+    for (const output of stage.outputs) {
+      await processWaveformOutput(ctx, output, masterFileName, trace);
+    }
+
+    pipelineTrace(
+      'generate-waveform finished',
+      { completedAssets: ctx.completedAssets.length },
+      trace
+    );
     return ctx;
   },
 };
@@ -144,6 +172,65 @@ async function processFfmpegOutput(
       ctx.primaryStreamError = message;
     }
     throw err;
+  }
+}
+
+async function processWaveformOutput(
+  ctx: PipelineContext,
+  output: PipelineOutputDefinition,
+  masterFileName: string,
+  trace: PipelineTraceContext
+): Promise<void> {
+  const derivedFileName = replaceStorageFileExtension(masterFileName, output.extension);
+  const storagePath = buildDerivedStoragePath(
+    ctx.userId,
+    ctx.albumSlug,
+    output.type,
+    output.format,
+    output.variant,
+    derivedFileName
+  );
+
+  const localOut = `${ctx.workDir}/${output.type}_${output.format}_${output.variant}.${output.extension}`;
+
+  pipelineTrace('generate-waveform markAssetProcessing', { storagePath, localOut }, trace);
+  await ctx.db.markAssetProcessing(ctx.trackDbId, output);
+
+  try {
+    pipelineTrace('generate-waveform running ffmpeg pcm', { input: ctx.masterLocalPath }, trace);
+    const peaksResult = await generateWaveformPeaksJsonFile(ctx.masterLocalPath, localOut);
+
+    pipelineTrace(
+      'generate-waveform uploading to storage',
+      { storagePath, contentType: contentTypeForExtension(output.extension) },
+      trace
+    );
+    await ctx.storage.uploadFile(storagePath, localOut, contentTypeForExtension(output.extension));
+
+    const generatorVersion = GENERATOR_VERSIONS[output.generator] ?? 1;
+    const metadata = {
+      pointCount: peaksResult.pointCount,
+      sampleCount: peaksResult.sampleCount,
+    };
+
+    ctx.completedAssets.push({
+      ...output,
+      storagePath,
+      generatorVersion,
+      metadata,
+    });
+
+    pipelineTrace('generate-waveform markAssetReady', { storagePath, generatorVersion }, trace);
+    await ctx.db.markAssetReady(ctx.trackDbId, output, storagePath, generatorVersion, metadata);
+    pipelineTrace('generate-waveform output completed', { storagePath }, trace);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    pipelineTraceWarn(
+      'generate-waveform output failed (non-fatal)',
+      { error: message, storagePath },
+      trace
+    );
+    await ctx.db.markAssetFailed(ctx.trackDbId, output, message);
   }
 }
 

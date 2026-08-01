@@ -166,5 +166,6 @@ PlayerTrack
 
 - История миграции с legacy `components/`: [docs/fsd-migration-plan.md](./fsd-migration-plan.md)
 - Синхронизация текстов: [docs/architecture/lyrics-synchronization.md](./architecture/lyrics-synchronization.md)
+- Audio Asset Pipeline (playback vs optional assets): [docs/architecture/audio-asset-pipeline.md](./architecture/audio-asset-pipeline.md)
 
 Документ обновляйте при изменении структуры `src/`.

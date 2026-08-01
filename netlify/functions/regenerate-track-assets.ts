@@ -1,5 +1,8 @@
 /**
  * POST /api/tracks/regenerate-assets — re-enqueue audio asset processing for a track.
+ *
+ * Does NOT reset track_assets or tracks.processing_status before enqueue.
+ * Worker transitions assets to `processing` only after advisory lock is acquired.
  */
 
 import type { Handler, HandlerEvent } from '@netlify/functions';
@@ -16,7 +19,11 @@ import {
 import { query } from './lib/db';
 import { enqueueTrackProcessing } from './lib/enqueueTrackProcessing';
 import { markTrackProcessingEnqueueFailed } from './lib/trackProcessingFailure';
-import { GENERATOR_VERSIONS } from '../../src/shared/lib/audio/audioAssetPipelineConfig';
+import {
+  GENERATOR_VERSIONS,
+  isOptionalOnlyGenerator,
+  resolveRegenerateStagesForGenerator,
+} from '../../src/shared/lib/audio/audioAssetPipelineConfig';
 import { tracksTableHasPipelineColumns, trackAssetsTableExists } from './lib/track-pipeline-schema';
 
 interface RegenerateRequest {
@@ -61,8 +68,9 @@ export const handler: Handler = async (event: HandlerEvent) => {
     master_path: string | null;
     album_db_id: string;
     album_slug: string;
+    processing_status: string;
   }>(
-    `SELECT t.id, t.master_path, a.id AS album_db_id, a.album_id AS album_slug
+    `SELECT t.id, t.master_path, t.processing_status, a.id AS album_db_id, a.album_id AS album_slug
      FROM tracks t
      INNER JOIN albums a ON a.id = t.album_id
      WHERE a.user_id = $1 AND a.album_id = $2 AND t.track_id = $3
@@ -75,26 +83,35 @@ export const handler: Handler = async (event: HandlerEvent) => {
   }
 
   const row = trackRes.rows[0];
+  const generator = body.generator?.trim();
+  const optionalOnly = generator ? isOptionalOnlyGenerator(generator) : false;
+  const stages = resolveRegenerateStagesForGenerator(generator);
 
-  if (body.staleOnly && body.generator) {
-    const currentVersion = GENERATOR_VERSIONS[body.generator] ?? 1;
-    await query(
-      `UPDATE track_assets SET status = 'pending', path = NULL, error = NULL, updated_at = CURRENT_TIMESTAMP
-       WHERE track_id = $1 AND generator = $2 AND generator_version < $3`,
-      [row.id, body.generator, currentVersion]
-    );
-  } else {
-    await query(
-      `UPDATE track_assets SET status = 'pending', path = NULL, error = NULL, updated_at = CURRENT_TIMESTAMP
-       WHERE track_id = $1`,
-      [row.id]
-    );
+  if (generator && !stages) {
+    return createErrorResponse(400, `Unknown generator: ${generator}`);
   }
 
-  await query(
-    `UPDATE tracks SET processing_status = 'pending', processing_error = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = $1`,
-    [row.id]
-  );
+  if (body.staleOnly && generator) {
+    const currentVersion = GENERATOR_VERSIONS[generator] ?? 1;
+    const staleCheck = await query<{ exists: boolean }>(
+      `SELECT EXISTS(
+         SELECT 1 FROM track_assets
+         WHERE track_id = $1 AND generator = $2 AND generator_version < $3
+       ) AS exists`,
+      [row.id, generator, currentVersion]
+    );
+    if (!staleCheck.rows[0]?.exists) {
+      return createSuccessResponse(
+        {
+          trackId,
+          enqueued: false,
+          reason: 'not_stale',
+          processingStatus: row.processing_status,
+        },
+        200
+      );
+    }
+  }
 
   const enqueueResult = await enqueueTrackProcessing({
     userId,
@@ -103,12 +120,21 @@ export const handler: Handler = async (event: HandlerEvent) => {
     trackDbId: row.id,
     trackId,
     masterPath: row.master_path,
+    stages,
   });
 
   if (!enqueueResult.ok) {
-    await markTrackProcessingEnqueueFailed(row.id, enqueueResult.message);
+    await markTrackProcessingEnqueueFailed(row.id, enqueueResult.message, { stages });
     return createErrorResponse(503, enqueueResult.message);
   }
 
-  return createSuccessResponse({ trackId, processingStatus: 'pending' }, 200);
+  return createSuccessResponse(
+    {
+      trackId,
+      enqueued: true,
+      processingStatus: row.processing_status,
+      optionalOnlyRegenerate: optionalOnly,
+    },
+    200
+  );
 };

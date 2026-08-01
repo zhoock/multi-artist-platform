@@ -48,6 +48,8 @@ export interface TrackDetailsDto {
   audioDuration: number | null;
   audioFileSize: number | null;
   processingStatus?: ProcessingStatus | null;
+  waveformUrl?: string | null;
+  waveformStatus?: ProcessingStatus | null;
   translations?: Partial<Record<'en' | 'ru', { title: string }>>;
 }
 
@@ -229,6 +231,19 @@ function purchaseFromRelease(release: Record<string, unknown>): AlbumDetailsPurc
   };
 }
 
+function findWaveformAsset(assets: TrackAssetRecord[]): TrackAssetRecord | undefined {
+  return assets.find(
+    (a) => a.type === 'waveform' && a.format === 'json' && a.variant === 'default'
+  );
+}
+
+function parseWaveformStatus(raw: string | undefined): ProcessingStatus | null {
+  if (raw === 'pending' || raw === 'processing' || raw === 'ready' || raw === 'failed') {
+    return raw;
+  }
+  return null;
+}
+
 function mergeTracks(
   locales: AlbumDetailsLocaleSource[],
   ctx: AlbumDetailsMapperContext
@@ -296,6 +311,23 @@ function mergeTracks(
     );
 
     const resolvedSrc = resolved.url ?? '';
+
+    const waveformAsset = findWaveformAsset(assets);
+    const resolvedWaveform = resolveAssetForPlayback(
+      assets,
+      {
+        purpose: 'waveform',
+        processingStatus,
+        hasPremiumAccess: ctx.hasPremiumAccess,
+        pipelineAvailable,
+      },
+      ctx.userId
+    );
+    const waveformUrl = needLock ? null : resolvedWaveform.url;
+    const waveformStatus = pipelineAvailable
+      ? parseWaveformStatus(waveformAsset?.status)
+      : undefined;
+
     const translations = titlesById.get(id);
 
     mapped.push({
@@ -316,6 +348,8 @@ function mergeTracks(
       audioDuration: optionalPositiveDuration(track.audioDuration),
       audioFileSize: optionalPositiveInt(track.audioFileSize),
       processingStatus: pipelineAvailable ? processingStatus : undefined,
+      waveformUrl: pipelineAvailable ? waveformUrl : undefined,
+      waveformStatus,
       translations: translations && (translations.en || translations.ru) ? translations : undefined,
     });
   }

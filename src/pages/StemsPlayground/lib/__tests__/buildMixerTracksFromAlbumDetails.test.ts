@@ -106,4 +106,42 @@ describe('buildMixerTracksFromAlbumDetails', () => {
     await expect(buildMixerTracksFromAlbumDetails(details, 'user-1')).resolves.toEqual([]);
     expect(mockLoadStems).not.toHaveBeenCalled();
   });
+
+  test('passes waveformUrl through without changing mixUrl behavior', async () => {
+    mockLoadStems.mockResolvedValue({
+      stems: [{ id: 's1', name: 'Drums', category: 'drums', file: 'drums.wav' }],
+      accessToken: 'tok',
+      accessTokenExpiresAt: Date.now() + 60_000,
+    });
+
+    const details = createMockAlbumDetails({
+      tracks: [
+        {
+          id: '1',
+          title: 'Track 1',
+          orderIndex: 0,
+          duration: 180,
+          src: 'mix.mp3',
+          playbackLocked: false,
+          visibility: 'public',
+          stemsAvailability: 'public',
+          audioContainer: null,
+          audioCodec: null,
+          audioBitrate: null,
+          audioSampleRate: null,
+          audioBitDepth: null,
+          audioChannels: null,
+          audioDuration: null,
+          audioFileSize: null,
+          waveformUrl: 'https://cdn.example/waveform.json',
+          waveformStatus: 'ready',
+        },
+      ],
+    });
+
+    const tracks = await buildMixerTracksFromAlbumDetails(details, 'user-1');
+
+    expect(tracks[0]?.mixUrl).toBe('https://cdn/mix.mp3');
+    expect(tracks[0]?.waveformUrl).toBe('https://cdn.example/waveform.json');
+  });
 });

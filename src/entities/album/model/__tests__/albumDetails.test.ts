@@ -148,6 +148,53 @@ describe('AlbumDetails model', () => {
     expect(album?.serviceButtons.bandcamp).toBe('https://bc.example');
   });
 
+  test('normalizeAlbumDetails parses waveformUrl and waveformStatus', () => {
+    const album = normalizeAlbumDetails({
+      albumId: 'a1',
+      title: 'T',
+      cover: '',
+      userId: 'u1',
+      dbAlbumId: 'db1',
+      description: '',
+      details: [],
+      release: {},
+      artwork: {
+        photographer: '',
+        photographerURL: '',
+        designer: '',
+        designerURL: '',
+      },
+      purchase: { allowDownloadSale: '', regularPrice: '0', currency: 'RUB' },
+      serviceButtons: {},
+      visibility: { isPublished: true, isPublic: true },
+      tracks: [
+        {
+          id: 't1',
+          title: 'One',
+          duration: 120,
+          src: 'a.mp3',
+          orderIndex: 0,
+          playbackLocked: false,
+          visibility: 'public',
+          stemsAvailability: 'hidden',
+          audioContainer: null,
+          audioCodec: null,
+          audioBitrate: null,
+          audioSampleRate: null,
+          audioBitDepth: null,
+          audioChannels: null,
+          audioDuration: null,
+          audioFileSize: null,
+          waveformUrl: 'https://cdn.example/waveform.json',
+          waveformStatus: 'ready',
+        },
+      ],
+    });
+
+    expect(album?.tracks[0]?.waveformUrl).toBe('https://cdn.example/waveform.json');
+    expect(album?.tracks[0]?.waveformStatus).toBe('ready');
+  });
+
   test('normalizeAlbumDetails rejects missing albumId', () => {
     expect(normalizeAlbumDetails({ title: 'x', tracks: [] })).toBeNull();
   });

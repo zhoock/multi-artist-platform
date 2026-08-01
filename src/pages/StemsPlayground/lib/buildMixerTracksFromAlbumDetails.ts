@@ -70,11 +70,17 @@ export async function buildMixerTracksFromAlbumDetails(
         })
       : undefined;
 
+    const waveformUrl =
+      typeof track.waveformUrl === 'string' && track.waveformUrl.trim()
+        ? track.waveformUrl.trim()
+        : undefined;
+
     mixerTracks.push({
       id: trackId,
       title: trackTitle,
       duration: trackDuration,
       mixUrl: mixUrl ?? undefined,
+      waveformUrl,
       stems,
     });
   }

@@ -1,78 +1,69 @@
-// src/shared/ui/waveform/ui/Waveform.tsx
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { loadWaveformPeaks } from '@shared/lib/audio/loadWaveformPeaks';
+import './Waveform.scss';
 
 type Props = {
-  /** Файл, по которому строим пики */
-  src?: string;
-  /** Прогресс 0..1 (даёт страница/движок) */
+  /** Server-generated waveform peaks JSON URL (C2/C3). */
+  waveformUrl?: string | null;
+  /** Progress 0..1 (from playback engine). */
   progress?: number;
   height?: number;
-  peaksCount?: number;
 };
 
-export default function Waveform({ src, progress = 0, height = 56, peaksCount = 900 }: Props) {
+type WaveformLoadState = 'idle' | 'loading' | 'ready' | 'unavailable';
+
+export default function Waveform({ waveformUrl, progress = 0, height = 56 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const peaksRef = useRef<number[] | null>(null);
+  const [loadState, setLoadState] = useState<WaveformLoadState>('idle');
 
-  // загрузка/расчёт пиков
   useEffect(() => {
-    if (!src) return;
-    let aborted = false;
-
-    (async () => {
+    const url = waveformUrl?.trim();
+    if (!url) {
       peaksRef.current = null;
+      setLoadState('unavailable');
+      return;
+    }
 
-      // Поддержка префиксных версий AudioContext для старых браузеров
-      const AC =
-        window.AudioContext ||
-        (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-      if (!AC) {
-        console.error('AudioContext is not supported');
-        return;
-      }
-      const ac = new AC();
+    let aborted = false;
+    peaksRef.current = null;
+    setLoadState('loading');
 
-      const resp = await fetch(src, { cache: 'force-cache' });
-      const buf = await resp.arrayBuffer();
-      const audio = await ac.decodeAudioData(buf);
-      if (aborted) return;
-
-      const ch = audio.getChannelData(0);
-      const block = Math.max(1, Math.floor(ch.length / peaksCount));
-      const peaks = new Array(peaksCount).fill(0);
-      for (let i = 0; i < peaksCount; i++) {
-        let sum = 0;
-        const start = i * block;
-        const end = Math.min(start + block, ch.length);
-        for (let j = start; j < end; j++) sum += Math.abs(ch[j]);
-        peaks[i] = sum / (end - start);
-      }
-      const max = Math.max(...peaks) || 1;
-      peaksRef.current = peaks.map((v) => v / max);
-
-      draw(progress); // первый рендер
-      ac.close();
-    })().catch(console.error);
+    loadWaveformPeaks(url)
+      .then((peaks) => {
+        if (aborted) return;
+        if (!peaks || peaks.length === 0) {
+          peaksRef.current = null;
+          setLoadState('unavailable');
+          return;
+        }
+        peaksRef.current = peaks;
+        setLoadState('ready');
+        draw(progress);
+      })
+      .catch(() => {
+        if (aborted) return;
+        peaksRef.current = null;
+        setLoadState('unavailable');
+      });
 
     return () => {
       aborted = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [src, peaksCount]);
+  }, [waveformUrl]);
 
-  // ресайз → перерисовать
   useEffect(() => {
     const onResize = () => draw(progress);
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [loadState]);
 
-  // любое изменение progress → перерисовать
   useEffect(() => {
     draw(progress);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [progress]);
+  }, [progress, loadState]);
 
   const readColors = (el: HTMLElement) => {
     const cs = getComputedStyle(el);
@@ -100,7 +91,6 @@ export default function Waveform({ src, progress = 0, height = 56, peaksCount = 
     const mid = h / 2;
     const barW = w / peaks.length;
 
-    // фоновые бары
     ctx.clearRect(0, 0, w, h);
     ctx.fillStyle = bg;
     for (let i = 0; i < peaks.length; i++) {
@@ -108,7 +98,6 @@ export default function Waveform({ src, progress = 0, height = 56, peaksCount = 
       ctx.fillRect(i * barW, mid - amp, Math.max(1, barW * 0.9), amp * 2);
     }
 
-    // активная часть
     const cutoff = Math.floor(peaks.length * Math.min(1, Math.max(0, p)));
     ctx.fillStyle = act;
     for (let i = 0; i < cutoff; i++) {
@@ -116,6 +105,19 @@ export default function Waveform({ src, progress = 0, height = 56, peaksCount = 
       ctx.fillRect(i * barW, mid - amp, Math.max(1, barW * 0.9), amp * 2);
     }
   };
+
+  if (loadState !== 'ready') {
+    return (
+      <div className="waveform" style={{ width: '100%' }}>
+        <div
+          className="waveform__skeleton"
+          style={{ height }}
+          role="img"
+          aria-label="Waveform loading"
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="waveform" style={{ width: '100%' }}>

@@ -1,0 +1,28 @@
+.waveform {
+  inline-size: 100%;
+}
+
+.waveform__skeleton {
+  background: linear-gradient(
+    90deg,
+    rgb(var(--skeleton-base-rgb, 255 255 255) / 10%) 0%,
+    rgb(var(--skeleton-base-rgb, 255 255 255) / 20%) 50%,
+    rgb(var(--skeleton-base-rgb, 255 255 255) / 10%) 100%
+  );
+  border-radius: var(--ms-01, 4px);
+  inline-size: 100%;
+  block-size: 100%;
+  min-block-size: 2rem;
+  background-size: 200% 100%;
+  animation: waveform-skeleton-shimmer 1.5s ease-in-out infinite;
+}
+
+@keyframes waveform-skeleton-shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+
+  100% {
+    background-position: 200% 0;
+  }
+}

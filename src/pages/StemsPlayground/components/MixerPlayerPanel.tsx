@@ -173,7 +173,6 @@ function MixerPlayerPanelInner(
   }, []);
 
   const progress = time.duration > 0 ? time.current / time.duration : 0;
-  const waveformSrc = track.mixUrl ?? track.stems[0]?.url;
 
   const togglePlay = async () => {
     const e = engineRef.current;
@@ -304,7 +303,7 @@ function MixerPlayerPanelInner(
               </div>
             ) : (
               <>
-                <Waveform src={waveformSrc} progress={progress} height={64} />
+                <Waveform waveformUrl={track.waveformUrl} progress={progress} height={64} />
                 <div className="stems__wave-cursor" style={{ left: `${progress * 100}%` }} />
               </>
             )}

@@ -1,12 +1,37 @@
 import type pg from 'pg';
 import type { PipelineOutputDefinition } from '../../../../src/shared/lib/audio/audioAssetPipelineConfig.js';
-import { GENERATOR_VERSIONS } from '../../../../src/shared/lib/audio/audioAssetPipelineConfig.js';
+import {
+  GENERATOR_VERSIONS,
+  getPlaybackRequiredOutputs,
+} from '../../../../src/shared/lib/audio/audioAssetPipelineConfig.js';
 import type { PipelineDb } from '../pipeline/types.js';
 import { pipelineTrace, pipelineTraceWarn, type PipelineTraceContext } from './pipelineTrace.js';
 import { getPool } from './pool.js';
 
 /** Advisory lock class id for per-track audio processing jobs. */
 export const TRACK_PROCESS_LOCK_CLASS = 0x415544; // 'AUD'
+
+type AssetStatusRow = {
+  type: string;
+  format: string;
+  variant: string;
+  status: string;
+  error: string | null;
+};
+
+function buildPlaybackRequiredStatuses(rows: AssetStatusRow[]) {
+  const rowByKey = new Map(rows.map((row) => [`${row.type}:${row.format}:${row.variant}`, row]));
+  const requiredOutputs = getPlaybackRequiredOutputs();
+  return requiredOutputs.map((output) => {
+    const key = `${output.type}:${output.format}:${output.variant}`;
+    const row = rowByKey.get(key);
+    return {
+      output,
+      status: row?.status ?? 'pending',
+      error: row?.error ?? null,
+    };
+  });
+}
 
 export function createPipelineDb(client: pg.PoolClient, trace?: PipelineTraceContext): PipelineDb {
   const logDbWrite = (
@@ -129,6 +154,76 @@ export function createPipelineDb(client: pg.PoolClient, trace?: PipelineTraceCon
         { trackDbId, rowCount: res.rowCount, rows: res.rows },
         trace
       );
+    },
+
+    async getTrackProcessingStatus(trackDbId) {
+      const res = await client.query<{ processing_status: string }>(
+        `SELECT processing_status FROM tracks WHERE id = $1`,
+        [trackDbId]
+      );
+      const status = res.rows[0]?.processing_status ?? 'pending';
+      pipelineTrace('db.getTrackProcessingStatus', { trackDbId, status }, trace);
+      return status;
+    },
+
+    async getPlaybackRequiredAssetStatuses(trackDbId) {
+      const res = await client.query<AssetStatusRow>(
+        `SELECT type, format, variant, status, error
+         FROM track_assets
+         WHERE track_id = $1`,
+        [trackDbId]
+      );
+
+      const statuses = buildPlaybackRequiredStatuses(res.rows);
+
+      pipelineTrace(
+        'db.getPlaybackRequiredAssetStatuses',
+        {
+          trackDbId,
+          requiredCount: statuses.length,
+          statuses: statuses.map((s) => ({
+            type: s.output.type,
+            format: s.output.format,
+            variant: s.output.variant,
+            status: s.status,
+          })),
+        },
+        trace
+      );
+
+      return statuses;
+    },
+
+    async countPlaybackRequiredNotReady(trackDbId) {
+      const statuses = buildPlaybackRequiredStatuses(
+        (
+          await client.query<AssetStatusRow>(
+            `SELECT type, format, variant, status, error
+             FROM track_assets
+             WHERE track_id = $1`,
+            [trackDbId]
+          )
+        ).rows
+      );
+      const count = statuses.filter((s) => s.status !== 'ready').length;
+      pipelineTrace('db.countPlaybackRequiredNotReady', { trackDbId, notReadyCount: count }, trace);
+      return count;
+    },
+
+    async anyPlaybackRequiredFailed(trackDbId) {
+      const statuses = buildPlaybackRequiredStatuses(
+        (
+          await client.query<AssetStatusRow>(
+            `SELECT type, format, variant, status, error
+             FROM track_assets
+             WHERE track_id = $1`,
+            [trackDbId]
+          )
+        ).rows
+      );
+      const failed = statuses.find((s) => s.status === 'failed');
+      pipelineTrace('db.anyPlaybackRequiredFailed', { trackDbId, failed: Boolean(failed) }, trace);
+      return failed ?? null;
     },
 
     async countNotReadyAssets(trackDbId) {

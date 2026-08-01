@@ -1,18 +1,29 @@
 /**
  * Bulk-regenerate stale track_assets by generator version.
  *
+ * Does NOT reset asset rows before enqueue — worker marks `processing` after lock.
+ *
  * Usage: tsx scripts/regenerate-stale-assets.ts --generator=ffmpeg-opus [--dry-run]
  */
 
 import { query } from '../netlify/functions/lib/db';
 import { enqueueTrackProcessing } from '../netlify/functions/lib/enqueueTrackProcessing';
-import { GENERATOR_VERSIONS } from '../src/shared/lib/audio/audioAssetPipelineConfig';
+import {
+  GENERATOR_VERSIONS,
+  getStageIdsForGenerator,
+} from '../src/shared/lib/audio/audioAssetPipelineConfig';
 
 async function main() {
   const dryRun = process.argv.includes('--dry-run');
   const generatorArg = process.argv.find((a) => a.startsWith('--generator='));
   const generator = generatorArg?.split('=')[1]?.trim() || 'ffmpeg-opus';
   const currentVersion = GENERATOR_VERSIONS[generator] ?? 1;
+  const stages = getStageIdsForGenerator(generator);
+
+  if (stages.length === 0) {
+    console.error(`Unknown generator: ${generator}`);
+    process.exit(1);
+  }
 
   const stale = await query<{
     track_db_id: string;
@@ -41,17 +52,6 @@ async function main() {
       continue;
     }
 
-    await query(
-      `UPDATE track_assets SET status = 'pending', path = NULL, error = NULL, updated_at = CURRENT_TIMESTAMP
-       WHERE track_id = $1 AND generator = $2`,
-      [row.track_db_id, generator]
-    );
-
-    await query(
-      `UPDATE tracks SET processing_status = 'pending', processing_error = NULL WHERE id = $1`,
-      [row.track_db_id]
-    );
-
     await enqueueTrackProcessing({
       userId: row.user_id,
       albumDbId: row.album_db_id,
@@ -59,6 +59,7 @@ async function main() {
       trackDbId: row.track_db_id,
       trackId: row.track_id,
       masterPath: row.master_path,
+      stages,
     });
   }
 

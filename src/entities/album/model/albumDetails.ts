@@ -48,6 +48,10 @@ export interface TrackDetails {
   audioDuration: number | null;
   audioFileSize: number | null;
   processingStatus?: 'pending' | 'processing' | 'ready' | 'failed';
+  /** Server-generated waveform peaks JSON URL (C2); UI uses in C3. */
+  waveformUrl?: string | null;
+  /** Per-asset lifecycle from track_assets (waveform/json/default). */
+  waveformStatus?: 'pending' | 'processing' | 'ready' | 'failed' | null;
   /** Title per locale only — no lyrics / authorship blobs. */
   translations?: Partial<Record<'en' | 'ru', { title: string }>>;
 }
@@ -209,6 +213,17 @@ function normalizeTrackDetails(raw: unknown): TrackDetails | null {
       v.processingStatus === 'failed'
         ? v.processingStatus
         : undefined,
+    waveformUrl:
+      typeof v.waveformUrl === 'string' ? v.waveformUrl : v.waveformUrl === null ? null : undefined,
+    waveformStatus:
+      v.waveformStatus === 'pending' ||
+      v.waveformStatus === 'processing' ||
+      v.waveformStatus === 'ready' ||
+      v.waveformStatus === 'failed'
+        ? v.waveformStatus
+        : v.waveformStatus === null
+          ? null
+          : undefined,
     translations,
   };
 }

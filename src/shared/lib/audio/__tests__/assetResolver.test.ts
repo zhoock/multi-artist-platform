@@ -9,6 +9,22 @@ const ready128: TrackAssetRecord = {
   path: 'users/u/audio/album/derived/stream/opus_128k/track.opus',
 };
 
+const readyWaveform: TrackAssetRecord = {
+  type: 'waveform',
+  format: 'json',
+  variant: 'default',
+  status: 'ready',
+  path: 'users/u/audio/album/derived/waveform/json_default/track.json',
+};
+
+const failedWaveform: TrackAssetRecord = {
+  type: 'waveform',
+  format: 'json',
+  variant: 'default',
+  status: 'failed',
+  path: null,
+};
+
 const ready256: TrackAssetRecord = {
   type: 'stream',
   format: 'opus',
@@ -80,5 +96,49 @@ describe('selectAssetPath', () => {
       legacySrc: 'https://example.com/legacy.mp3',
     });
     expect(result.url).toBe('https://example.com/legacy.mp3');
+  });
+
+  it('returns playback URL when stream ready and waveform failed', () => {
+    const result = selectAssetPath([ready128, failedWaveform], {
+      purpose: 'playback',
+      processingStatus: 'ready',
+      hasPremiumAccess: false,
+      pipelineAvailable: true,
+    });
+    expect(result.url).toBe(ready128.path);
+  });
+
+  it('returns waveform URL when track ready and waveform asset ready', () => {
+    const result = selectAssetPath([ready128, readyWaveform], {
+      purpose: 'waveform',
+      processingStatus: 'ready',
+      hasPremiumAccess: false,
+      pipelineAvailable: true,
+    });
+    expect(result.url).toBe(readyWaveform.path);
+    expect(result.asset).toEqual({ type: 'waveform', format: 'json', variant: 'default' });
+  });
+
+  it('returns null waveform URL when waveform pending but track ready', () => {
+    const result = selectAssetPath(
+      [ready128, { ...readyWaveform, status: 'pending', path: null }],
+      {
+        purpose: 'waveform',
+        processingStatus: 'ready',
+        hasPremiumAccess: false,
+        pipelineAvailable: true,
+      }
+    );
+    expect(result.url).toBeNull();
+  });
+
+  it('returns null waveform URL when track not playback-ready', () => {
+    const result = selectAssetPath([ready128, readyWaveform], {
+      purpose: 'waveform',
+      processingStatus: 'processing',
+      hasPremiumAccess: false,
+      pipelineAvailable: true,
+    });
+    expect(result.url).toBeNull();
   });
 });

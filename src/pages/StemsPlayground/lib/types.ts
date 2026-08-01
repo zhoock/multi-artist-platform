@@ -20,6 +20,8 @@ export type MixerTrack = {
   duration: number;
   /** URL полного микса для волны (фолбэк — первый стем). */
   mixUrl?: string;
+  /** Server waveform peaks JSON (C2 plumbing; Waveform uses in C3). */
+  waveformUrl?: string;
   /** Стемы недоступны без подписки — показываем в списке, но не открываем микшер. */
   locked?: boolean;
   stems: PlayableStem[];

@@ -16,8 +16,9 @@ export type Track = {
   /** Публичный ответ: воспроизведение недоступно без покупки */
   playbackLocked?: boolean;
   /** Aggregate audio pipeline status (dashboard / album page). */
+  /** Playback readiness — ready when playback-required derived assets (stream) are ready. */
   processingStatus?: 'pending' | 'processing' | 'ready' | 'failed';
-  /** Last pipeline failure message when processingStatus = failed. */
+  /** Last playback-required pipeline failure when processingStatus = failed. */
   processingError?: string | null;
   /** Технические характеристики аудио (извлечены при загрузке файла). */
   audioContainer?: string | null;

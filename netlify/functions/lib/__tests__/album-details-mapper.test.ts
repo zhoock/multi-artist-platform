@@ -217,4 +217,137 @@ describe('album-details-mapper', () => {
     });
     expect(isAlbumDetailsVisibleToPublicViewer(dto!)).toBe(false);
   });
+
+  test('exposes waveformUrl and waveformStatus from track_assets when pipeline available', () => {
+    const assetsByTrackId = new Map([
+      [
+        't1',
+        [
+          {
+            type: 'stream',
+            format: 'opus',
+            variant: '128k',
+            status: 'ready',
+            path: 'users/u1/audio/album/derived/stream/opus_128k/t1.opus',
+          },
+          {
+            type: 'waveform',
+            format: 'json',
+            variant: 'default',
+            status: 'ready',
+            path: 'users/u1/audio/album/derived/waveform/json_default/t1.json',
+          },
+        ],
+      ],
+    ]);
+
+    const dto = mapLocalesToAlbumDetails([locale({ lang: 'en' })], {
+      hasPremiumAccess: true,
+      monetizationEnabled: true,
+      pipelineAvailable: true,
+      assetsByTrackId,
+    });
+
+    expect(dto!.tracks[0]?.waveformStatus).toBe('ready');
+    expect(dto!.tracks[0]?.waveformUrl).toContain('waveform/json_default/t1.json');
+  });
+
+  test('waveformUrl null when waveform pending but track playback-ready', () => {
+    const assetsByTrackId = new Map([
+      [
+        't1',
+        [
+          {
+            type: 'stream',
+            format: 'opus',
+            variant: '128k',
+            status: 'ready',
+            path: 'users/u1/audio/album/derived/stream/opus_128k/t1.opus',
+          },
+          {
+            type: 'waveform',
+            format: 'json',
+            variant: 'default',
+            status: 'pending',
+            path: null,
+          },
+        ],
+      ],
+    ]);
+
+    const dto = mapLocalesToAlbumDetails([locale({ lang: 'en' })], {
+      hasPremiumAccess: true,
+      monetizationEnabled: true,
+      pipelineAvailable: true,
+      assetsByTrackId,
+    });
+
+    expect(dto!.tracks[0]?.waveformStatus).toBe('pending');
+    expect(dto!.tracks[0]?.waveformUrl).toBeNull();
+    expect(dto!.tracks[0]?.processingStatus).toBe('ready');
+  });
+
+  test('omits waveform fields when pipeline unavailable', () => {
+    const dto = mapLocalesToAlbumDetails([locale({ lang: 'en' })], {
+      hasPremiumAccess: true,
+      monetizationEnabled: true,
+      pipelineAvailable: false,
+    });
+
+    expect(dto!.tracks[0]?.waveformUrl).toBeUndefined();
+    expect(dto!.tracks[0]?.waveformStatus).toBeUndefined();
+  });
+
+  test('clears waveformUrl for locked subscribers_only tracks', () => {
+    const assetsByTrackId = new Map([
+      [
+        'locked',
+        [
+          {
+            type: 'waveform',
+            format: 'json',
+            variant: 'default',
+            status: 'ready',
+            path: 'users/u1/audio/album/derived/waveform/json_default/locked.json',
+          },
+        ],
+      ],
+    ]);
+
+    const dto = mapLocalesToAlbumDetails(
+      [
+        locale({
+          lang: 'en',
+          tracks: [
+            {
+              trackId: 'locked',
+              title: 'Locked',
+              duration: 60,
+              src: 'secret.mp3',
+              orderIndex: 0,
+              visibility: 'subscribers_only',
+              stemsVisibility: 'hidden',
+              audioContainer: null,
+              audioCodec: null,
+              audioBitrate: null,
+              audioSampleRate: null,
+              audioBitDepth: null,
+              audioChannels: null,
+              audioDuration: null,
+              audioFileSize: null,
+            },
+          ],
+        }),
+      ],
+      {
+        hasPremiumAccess: false,
+        monetizationEnabled: true,
+        pipelineAvailable: true,
+        assetsByTrackId,
+      }
+    );
+
+    expect(dto!.tracks[0]?.waveformUrl).toBeNull();
+    expect(dto!.tracks[0]?.waveformStatus).toBe('ready');
+  });
 });

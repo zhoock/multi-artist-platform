@@ -1,5 +1,5 @@
-import type { PipelineOutputDefinition } from '../../../../../src/shared/lib/audio/audioAssetPipelineConfig.js';
-import type { FfprobeResult } from '../../processors/ffmpegTranscoder.js';
+import type { PipelineOutputDefinition } from '../../../../src/shared/lib/audio/audioAssetPipelineConfig.js';
+import type { FfprobeResult } from '../processors/ffmpegTranscoder.js';
 
 export interface CompletedAsset extends PipelineOutputDefinition {
   storagePath: string;
@@ -41,6 +41,18 @@ export interface PipelineDb {
   ): Promise<void>;
   syncLegacySrc(trackDbId: string, publicUrl: string): Promise<void>;
   snapshotTrackAssets(trackDbId: string): Promise<void>;
+  getTrackProcessingStatus(trackDbId: string): Promise<string>;
+  getPlaybackRequiredAssetStatuses(trackDbId: string): Promise<
+    Array<{
+      output: PipelineOutputDefinition;
+      status: string;
+      error: string | null;
+    }>
+  >;
+  countPlaybackRequiredNotReady(trackDbId: string): Promise<number>;
+  anyPlaybackRequiredFailed(
+    trackDbId: string
+  ): Promise<{ output: PipelineOutputDefinition; status: string; error: string | null } | null>;
   countNotReadyAssets(trackDbId: string): Promise<number>;
 }
 

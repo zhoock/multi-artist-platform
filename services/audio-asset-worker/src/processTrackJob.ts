@@ -1,6 +1,10 @@
 import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import {
+  ENABLED_PIPELINE_STAGE_IDS,
+  isOptionalOnlyPipelineRun,
+} from '../../../src/shared/lib/audio/audioAssetPipelineConfig.js';
 import { finalizeTrackProcessingStatus } from './finalizeTrackProcessingStatus.js';
 import { runWithTrackProcessingLock } from './lib/db.js';
 import { pipelineTrace, pipelineTraceWarn } from './lib/pipelineTrace.js';
@@ -34,8 +38,29 @@ export async function processTrackJob(
       const masterLocalPath = path.join(workDir, 'master');
 
       try {
-        pipelineTrace('setting track status processing', undefined, trace);
-        await db.setProcessingStatus(payload.trackDbId, 'processing', null);
+        const stageIds = payload.stages ?? ENABLED_PIPELINE_STAGE_IDS;
+        const optionalOnlyJob = isOptionalOnlyPipelineRun(stageIds);
+
+        if (!optionalOnlyJob) {
+          pipelineTrace('setting track status processing', undefined, trace);
+          await db.setProcessingStatus(payload.trackDbId, 'processing', null);
+        } else {
+          const currentStatus = await db.getTrackProcessingStatus(payload.trackDbId);
+          if (currentStatus !== 'ready') {
+            pipelineTrace(
+              'optional-only job on non-ready track — setting processing',
+              { currentStatus },
+              trace
+            );
+            await db.setProcessingStatus(payload.trackDbId, 'processing', null);
+          } else {
+            pipelineTrace(
+              'optional-only job on ready track — preserving processing_status',
+              undefined,
+              trace
+            );
+          }
+        }
 
         pipelineTrace('downloading master', { masterPath: payload.masterPath }, trace);
         await storage.downloadToFile(payload.masterPath, masterLocalPath);
@@ -57,7 +82,7 @@ export async function processTrackJob(
         let pipelineError: string | null = null;
 
         try {
-          await runPipeline(ctx, payload.stages);
+          await runPipeline(ctx, stageIds);
           pipelineTrace(
             'runPipeline returned',
             {
@@ -91,7 +116,7 @@ export async function processTrackJob(
             }
           }
           pipelineTrace('processTrackJob success path completed', undefined, trace);
-        } else {
+        } else if (finalStatus === 'failed') {
           jobFailed = true;
         }
       } finally {
