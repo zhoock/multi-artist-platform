@@ -1,0 +1,25 @@
+dialog.toast-viewport-layer {
+  position: fixed;
+  inset: 0;
+  inline-size: 100%;
+  block-size: 100%;
+  max-inline-size: none;
+  max-block-size: none;
+  margin: 0;
+  padding: 0;
+  overflow: visible;
+  color: inherit;
+  background: transparent !important;
+  border: none;
+  pointer-events: none;
+
+  &::backdrop {
+    pointer-events: none !important;
+    background: transparent !important;
+    backdrop-filter: none !important;
+  }
+
+  &[open] {
+    display: block;
+  }
+}

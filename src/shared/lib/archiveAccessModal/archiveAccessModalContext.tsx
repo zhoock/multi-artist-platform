@@ -11,6 +11,7 @@ import {
 
 import { getArchiveStatus } from '@shared/api/archive';
 import { getToken } from '@shared/lib/auth';
+import { promoteToastLayers } from '@shared/lib/toast/useToastLayerDialog';
 import { useAuthSessionUser } from '@shared/lib/hooks/useAuthSessionUser';
 import { CollectionFullModal } from '@features/artistArchive/ui/CollectionFullModal';
 import { useArtistPageBuilderNav } from '@shared/ui/artistPageBuilder/useArtistPageBuilderNav';
@@ -125,12 +126,14 @@ export function ArchiveAccessModalProvider({ children }: { children: ReactNode }
 
   const showPremiumModal = useCallback(() => {
     premiumDialogRef.current?.showModal();
+    promoteToastLayers();
   }, []);
 
   const showAddArtistModal = useCallback((ctx: PendingPremiumContentAccess) => {
     setPendingAccess(ctx);
     requestAnimationFrame(() => {
       addArtistDialogRef.current?.showModal();
+      promoteToastLayers();
     });
   }, []);
 

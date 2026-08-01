@@ -1,7 +1,10 @@
 // Top-layer shell: dialog itself is anchored to the viewport corner (fixed inside dialog
 // uses the dialog as containing block, not the viewport).
+@use '../../lib/toast/z-index' as toast-z;
+
 dialog.toast-top-layer {
   position: fixed;
+  z-index: toast-z.$toast-top-layer;
   inset-block: calc(var(--ms-1) + 4.75rem) auto;
   inset-inline: auto var(--ms-1);
   inline-size: max-content;
@@ -17,9 +20,9 @@ dialog.toast-top-layer {
   pointer-events: none;
 
   &::backdrop {
-    pointer-events: none;
-    background: transparent;
-    backdrop-filter: none;
+    pointer-events: none !important;
+    background: transparent !important;
+    backdrop-filter: none !important;
   }
 
   &[open] {

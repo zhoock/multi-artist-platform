@@ -132,6 +132,56 @@ features/checkout/armPurchaseSuccessToast.ts   (или shared/lib/checkout/)
 | 7   | `layer: 'top'` — видимость поверх native `<dialog>`                       |
 | 8   | Durations: 4000 / 4500 / 6500 ms (без silent unification)                 |
 | 9   | `prefers-reduced-motion` отключает progress animation                     |
+| 10  | Default toasts рендерятся через `ToastViewportLayer` (portal + top layer) |
+
+---
+
+## Root cause (layering regression)
+
+После миграции P2-14 toast рендерился как обычный DOM-узел (`position: fixed; z-index: 2500`) внутри React-дерева `ToastProvider`, **без portal в `document.body`**.
+
+Это не работает с модалками приложения по двум причинам:
+
+1. **Browser top layer.** Все `Popup` / `AlertModal` / `ConfirmationModal` / Dashboard-модалки используют native `<dialog showModal()>`. Такой dialog попадает в browser top layer — слой **выше любого z-index** в обычном DOM. Toast с `z-index: 2500` оказывается под modal backdrop (на скриншоте toast «потемнён»).
+2. **Точка монтирования.** `ToastViewport` жил внутри React-дерева провайдера; без portal toast теоретически мог попадать в stacking context предков (`transform`, `filter`, `overflow` у layout/header/player).
+
+**Почему z-index «наугад» не помогает:** даже `z-index: 999999` не поднимет узел над `showModal()` — нужен собственный top-layer shell.
+
+## Решение
+
+```
+ToastTopLayer            (dialog.showModal, z-index 10010, без backdrop)
+ToastViewportLayer       (dialog.showModal, z-index 10000, без backdrop)
+Native dialogs / Modals  (Popup, AlertModal, …)
+Application UI
+```
+
+- `ToastProvider` монтирует `ToastViewport` через `createPortal(..., document.body)`.
+- Default toast оборачиваются в прозрачный fullscreen `ToastViewportLayer` (`background: transparent`, `::backdrop { background: transparent }`, `pointer-events: none` на shell).
+- `ToastTopLayer` — corner shell для `layer: 'top'` (StemsPlayground).
+- При каждом изменении стека toast и при открытии любого modal (`Popup`, `LocalModal`, archive access) вызывается `promoteToastLayers()` (`close()` + `showModal()`) — toast снова оказывается **поверх** уже открытых modals.
+- Глобальные стили `dialog` в `popup/style.scss` исключают `.toast-viewport-layer` / `.toast-top-layer`, чтобы не применять modal backdrop к toast shell.
+
+Константы: `src/shared/lib/toast/zIndex.ts` + `_z-index.scss`.
+
+---
+
+## Z-index и layering
+
+Native `<dialog>` с `showModal()` попадает в browser top layer — обычный `z-index` не поднимает toast над modal. Поэтому:
+
+- **`ToastViewportLayer`** — прозрачный fullscreen `<dialog>` в `document.body` для default toasts; при каждом изменении стека вызывается `close()` + `showModal()` для re-promote поверх открытых modals.
+- **`ToastTopLayer`** — corner dialog для `layer: 'top'` (StemsPlayground и native dialogs).
+- Константы в `zIndex.ts` / `_z-index.scss`:
+
+```typescript
+export const Z_INDEX = {
+  TOAST_VIEWPORT: 10000,
+  TOAST_TOP_LAYER: 10010,
+};
+```
+
+`z-index` на контейнерах нужен для не-dialog overlays; top-layer dialogs решают stacking с `<dialog>` modals.
 
 ---
 

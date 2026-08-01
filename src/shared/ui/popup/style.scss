@@ -23,7 +23,7 @@
   }
 }
 
-dialog {
+dialog:not(.toast-viewport-layer, .toast-top-layer) {
   max-inline-size: 100%;
   max-block-size: 100%;
   inline-size: 100vw;
@@ -151,7 +151,7 @@ dialog {
   }
 }
 
-.page:has(dialog[open]:not(.toast-top-layer)) {
+.page:has(dialog[open]:not(.toast-top-layer, .toast-viewport-layer)) {
   overflow: hidden;
 
   @extend %hide-scrollbar;

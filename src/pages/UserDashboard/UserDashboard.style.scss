@@ -104,7 +104,7 @@ dialog.popup:has(.user-dashboard) {
 
 // Nested dialogs opened while dashboard styles are loaded (edit track, etc.).
 // Main dashboard shell uses public-modal tokens above.
-dialog:not(.local-modal)::backdrop {
+dialog:not(.local-modal, .toast-viewport-layer, .toast-top-layer)::backdrop {
   background: var(--dashboard-backdrop);
   backdrop-filter: blur(8px);
 }

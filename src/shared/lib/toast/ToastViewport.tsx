@@ -5,6 +5,7 @@ import { ToastTopLayer } from '@shared/ui/toastTopLayer';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 
 import { dismissToast } from './toastStore';
+import { ToastViewportLayer } from './ToastViewportLayer';
 import type { ToastItem, ToastPlacement, ToastVariant } from './types';
 import './style.scss';
 
@@ -178,19 +179,25 @@ export function ToastViewport({ toasts }: ToastViewportProps) {
   const topLayerToasts = toasts.filter((item) => item.layer === 'top');
 
   const placements: ToastPlacement[] = ['top-right', 'top-right-offset', 'bottom-center'];
+  const defaultStackKey = defaultToasts.map((item) => item.id).join('|');
+  const topLayerStackKey = topLayerToasts.map((item) => item.id).join('|');
 
-  return (
+  const viewport = (
     <>
-      {placements.map((placement) => (
-        <ToastStack
-          key={placement}
-          placement={placement}
-          toasts={defaultToasts.filter((item) => item.placement === placement)}
-        />
-      ))}
+      {defaultToasts.length > 0 ? (
+        <ToastViewportLayer open stackKey={defaultStackKey}>
+          {placements.map((placement) => (
+            <ToastStack
+              key={placement}
+              placement={placement}
+              toasts={defaultToasts.filter((item) => item.placement === placement)}
+            />
+          ))}
+        </ToastViewportLayer>
+      ) : null}
 
       {topLayerToasts.length > 0 ? (
-        <ToastTopLayer open>
+        <ToastTopLayer open stackKey={topLayerStackKey}>
           <div className="toast-viewport toast-viewport--top-layer">
             {topLayerToasts.map((item) => (
               <ToastCard key={item.id} item={item} />
@@ -200,4 +207,10 @@ export function ToastViewport({ toasts }: ToastViewportProps) {
       ) : null}
     </>
   );
+
+  if (defaultToasts.length === 0 && topLayerToasts.length === 0) {
+    return null;
+  }
+
+  return viewport;
 }

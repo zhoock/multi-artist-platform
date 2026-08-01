@@ -1,4 +1,5 @@
 import type { ToastItem, ToastShowOptions } from './types';
+import { schedulePromoteToastLayers } from './useToastLayerDialog';
 
 type ToastListener = () => void;
 
@@ -63,6 +64,7 @@ export function showToast(options: ToastShowOptions): string {
   const item = normalizeToastOptions(options);
   toasts = [...toasts, item];
   emit();
+  schedulePromoteToastLayers();
   scheduleAutoDismiss(item);
   return item.id;
 }

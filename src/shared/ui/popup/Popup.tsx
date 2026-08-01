@@ -2,6 +2,7 @@
 import { memo, useCallback, useEffect, useMemo, useRef, type RefObject } from 'react';
 import clsx from 'clsx';
 import type { PopupProps } from 'models';
+import { promoteToastLayers } from '@shared/lib/toast/useToastLayerDialog';
 import { PopupContext } from './PopupContext';
 import './style.scss';
 import '../localModal/localModal.scss';
@@ -75,6 +76,7 @@ const PopupComponent = ({
 
     if (isActive && !dialog.open) {
       dialog.showModal();
+      promoteToastLayers();
       if (autoFocusFirstElement) {
         // Фокус на первом фокусируемом элементе внутри dialog для доступности
         // Используем setTimeout для предотвращения конфликтов с расширениями браузера

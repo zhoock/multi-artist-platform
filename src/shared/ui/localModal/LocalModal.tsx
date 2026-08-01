@@ -1,6 +1,7 @@
 import { useEffect, type LegacyRef, type ReactNode, type RefObject } from 'react';
 import clsx from 'clsx';
 
+import { promoteToastLayers } from '@shared/lib/toast/useToastLayerDialog';
 import '@shared/ui/popup/style.scss';
 import './localModal.scss';
 
@@ -36,6 +37,7 @@ export function LocalModal({
 
     if (isOpen && !dialog.open) {
       dialog.showModal();
+      promoteToastLayers();
     } else if (!isOpen && dialog.open) {
       dialog.close();
     }
