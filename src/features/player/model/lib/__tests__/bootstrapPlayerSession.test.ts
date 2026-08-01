@@ -4,6 +4,7 @@ import { playerReducer, playerActions } from '../../slice/playerSlice';
 import { playerListenerMiddleware } from '../../middleware/playerListeners';
 import { initialPlayerState } from '../../types/playerSchema';
 import type { PlayerTrack } from '../../types/playerSchema';
+import type { AppDispatch, RootState } from '@shared/model/appStore/types';
 import {
   bootstrapPlayerSession,
   resetPlayerSessionBootstrapForTests,
@@ -74,9 +75,16 @@ function createTestStore(preloadedPlayer?: Partial<typeof initialPlayerState>) {
           },
         }
       : undefined,
-    middleware: (getDefaultMiddleware) =>
+    middleware: (getDefaultMiddleware: any) =>
       getDefaultMiddleware().prepend(playerListenerMiddleware.middleware),
   });
+}
+
+function bootstrapParams(store: ReturnType<typeof createTestStore>) {
+  return {
+    dispatch: store.dispatch as AppDispatch,
+    getState: store.getState as () => RootState,
+  };
 }
 
 describe('bootstrapPlayerSession', () => {
@@ -99,10 +107,7 @@ describe('bootstrapPlayerSession', () => {
   test('returns empty-storage when localStorage has no session', () => {
     const store = createTestStore();
 
-    const result = bootstrapPlayerSession({
-      dispatch: store.dispatch,
-      getState: store.getState,
-    });
+    const result = bootstrapPlayerSession(bootstrapParams(store));
 
     expect(result).toEqual({ restored: false, reason: 'empty-storage' });
     expect(store.getState().player.playlist).toHaveLength(0);
@@ -129,8 +134,7 @@ describe('bootstrapPlayerSession', () => {
     const store = createTestStore();
 
     const result = bootstrapPlayerSession({
-      dispatch: store.dispatch,
-      getState: store.getState,
+      ...bootstrapParams(store),
       fallbackSourceLocation: { pathname: '/ru/', search: undefined },
     });
 
@@ -164,10 +168,7 @@ describe('bootstrapPlayerSession', () => {
     const store = createTestStore();
     const requestPlaySpy = jest.spyOn(playerActions, 'requestPlay');
 
-    bootstrapPlayerSession({
-      dispatch: store.dispatch,
-      getState: store.getState,
-    });
+    bootstrapPlayerSession(bootstrapParams(store));
 
     expect(requestPlaySpy).toHaveBeenCalled();
     requestPlaySpy.mockRestore();
@@ -192,8 +193,7 @@ describe('bootstrapPlayerSession', () => {
     const fallback = { pathname: '/ru/albums/album-1', search: '?artist=test' };
 
     bootstrapPlayerSession({
-      dispatch: store.dispatch,
-      getState: store.getState,
+      ...bootstrapParams(store),
       fallbackSourceLocation: fallback,
     });
 
@@ -211,10 +211,7 @@ describe('bootstrapPlayerSession', () => {
       time: { current: 30, duration: 180 },
     });
 
-    const result = bootstrapPlayerSession({
-      dispatch: store.dispatch,
-      getState: store.getState,
-    });
+    const result = bootstrapPlayerSession(bootstrapParams(store));
 
     expect(result).toEqual({ restored: true, reason: 'rebound-audio' });
     expect(mockAudioController.setSource).toHaveBeenCalledWith(
@@ -239,7 +236,7 @@ describe('bootstrapPlayerSession', () => {
     });
 
     const store = createTestStore();
-    const params = { dispatch: store.dispatch, getState: store.getState };
+    const params = bootstrapParams(store);
 
     bootstrapPlayerSession(params);
     const second = bootstrapPlayerSession(params);

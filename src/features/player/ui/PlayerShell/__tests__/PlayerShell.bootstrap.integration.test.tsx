@@ -133,7 +133,7 @@ function createPlayerShellStore() {
       lang: { current: 'ru' as const },
       popup: { isOpen: false },
     },
-    middleware: (getDefaultMiddleware) =>
+    middleware: (getDefaultMiddleware: any) =>
       getDefaultMiddleware().prepend(playerListenerMiddleware.middleware),
   });
 }
