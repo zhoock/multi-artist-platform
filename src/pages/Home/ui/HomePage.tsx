@@ -71,6 +71,11 @@ export function HomePage() {
   const ui = useAppSelector((state) => selectUiDictionaryFirst(state, lang));
   const sceneRef = useRef<HTMLDivElement | null>(null);
   const universeRef = useRef<Universe3D | null>(null);
+  /** Read at interaction time so Universe3D init does not rerun on locale-only changes. */
+  const langForUniverseRef = useRef(lang);
+  const locationForUniverseRef = useRef(location);
+  langForUniverseRef.current = lang;
+  locationForUniverseRef.current = location;
   const [isAboutModalOpen, setIsAboutModalOpen] = useState(false);
   const [useMocks, setUseMocks] = useState(() => {
     try {
@@ -197,7 +202,7 @@ export function HomePage() {
           }
           return [];
         })(),
-        fetchPublicProfileForDisplay(lang),
+        fetchPublicProfileForDisplay(langForUniverseRef.current),
       ]);
 
       apiArtists = publicArtistsResult;
@@ -219,13 +224,17 @@ export function HomePage() {
       universe = new Universe3D(sceneRef.current, artists, {
         onNavigateToArtist: (publicSlug) => {
           sessionStorage.setItem(UNIVERSE_FOCUS_ARTIST_STORAGE_KEY, publicSlug);
-          navigate(buildArtistPagePath(lang, publicSlug), { replace: false });
+          navigate(buildArtistPagePath(langForUniverseRef.current, publicSlug), { replace: false });
         },
-        buildArtistProfileHref: (publicSlug) => buildArtistPagePath(lang, publicSlug),
+        buildArtistProfileHref: (publicSlug) =>
+          buildArtistPagePath(langForUniverseRef.current, publicSlug),
         onPlayArtist: async (artist) => {
           if (!artist?.publicSlug) return false;
 
-          const resolvedAlbum = await fetchUniverseArtistPlayAlbum(artist.publicSlug, lang);
+          const resolvedAlbum = await fetchUniverseArtistPlayAlbum(
+            artist.publicSlug,
+            langForUniverseRef.current
+          );
           if (!resolvedAlbum) return false;
 
           const albumId = fallbackAlbumClientId(resolvedAlbum);
@@ -261,7 +270,10 @@ export function HomePage() {
             })
           );
 
-          const profileRow = await fetchPublicProfileForDisplay(lang, artist.publicSlug ?? null);
+          const profileRow = await fetchPublicProfileForDisplay(
+            langForUniverseRef.current,
+            artist.publicSlug ?? null
+          );
           const resolvedForTitle =
             profileRow.displayName.trim() || readStoredProfileDisplayName().trim();
           const displayArtist = siteArtistUiLabel(profileRow.displayName);
@@ -281,8 +293,8 @@ export function HomePage() {
 
           dispatch(
             playerActions.setSourceLocation({
-              pathname: location.pathname,
-              search: location.search || undefined,
+              pathname: locationForUniverseRef.current.pathname,
+              search: locationForUniverseRef.current.search || undefined,
             })
           );
 
@@ -291,8 +303,8 @@ export function HomePage() {
           // Force mini-player mode for this flow (avoid hidden mini when URL has #player).
           navigate(
             {
-              pathname: location.pathname,
-              search: location.search || undefined,
+              pathname: locationForUniverseRef.current.pathname,
+              search: locationForUniverseRef.current.search || undefined,
               hash: '',
             },
             { replace: true }
@@ -323,16 +335,7 @@ export function HomePage() {
         sceneRef.current.innerHTML = '';
       }
     };
-  }, [
-    dispatch,
-    hasArtistParam,
-    lang,
-    location.pathname,
-    location.search,
-    navigate,
-    useMocks,
-    universeRefreshToken,
-  ]);
+  }, [dispatch, hasArtistParam, navigate, useMocks, universeRefreshToken]);
 
   if (hasArtistParam) {
     if (hideArtistPageAfterOwnDelete) {

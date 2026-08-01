@@ -25,7 +25,7 @@ import {
 } from '@/components/view/Universe3D';
 import '@/components/view/Universe3D.style.scss';
 import { useDashboardModalShell } from '@shared/lib/dashboardModalShellContext';
-import { buildLocalizedPublicPath } from '@shared/lib/i18n/routeLang';
+import { buildLocalizedPublicPath, stripLangPrefix } from '@shared/lib/i18n/routeLang';
 import { buildArtistPagePath } from '@shared/lib/seo/publicPagePaths';
 import { ArtistArchiveButton } from '@features/artistArchive';
 import { readStoredProfileDisplayName } from '@shared/lib/profileDisplayName';
@@ -126,7 +126,7 @@ export function Hero() {
     }
   );
 
-  const heroVisualKey = `${heroPathname}|${heroPublicArtistSlug}`;
+  const heroVisualKey = `${stripLangPrefix(heroPathname)}|${heroPublicArtistSlug}`;
   const backgroundImage = useMemo(
     () => pickHeroBackgroundImage(headerImages, heroVisualKey),
     [headerImages, heroVisualKey]
@@ -192,6 +192,10 @@ export function Hero() {
   const headerImagesForCanvasRef = useRef(headerImages);
   profileNameForCanvasRef.current = profileDisplayName;
   headerImagesForCanvasRef.current = headerImages;
+
+  /** Locale for canvas link builders — read at click time, not at Universe3D init. */
+  const langForCanvasRef = useRef(lang);
+  langForCanvasRef.current = lang;
 
   const ui = useAppSelector((state) => selectUiDictionaryFirst(state, lang));
   const builderCopy = ui?.artistPageBuilder;
@@ -274,7 +278,8 @@ export function Hero() {
         disableCameraControls: true,
         embedInContainer: true,
         isHeroPreview: true,
-        buildArtistProfileHref: (publicSlug) => buildArtistPagePath(lang, publicSlug),
+        buildArtistProfileHref: (publicSlug) =>
+          buildArtistPagePath(langForCanvasRef.current, publicSlug),
       });
     };
 
@@ -289,7 +294,6 @@ export function Hero() {
     artistParamKey,
     hasArtistParam,
     hideHeroForArtistOnboarding,
-    lang,
     showHeroLoadingShell,
     showPublishedHeroChrome,
   ]);
