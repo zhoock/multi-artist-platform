@@ -25,12 +25,16 @@ type UseSettingsPageOptions = {
   enabled: boolean;
   userName?: string;
   isListener?: boolean;
+  onNotAuthorized?: () => void;
+  onSaveError?: (message: string) => void;
 };
 
 export function useSettingsPage({
   enabled,
   userName = '',
   isListener = false,
+  onNotAuthorized,
+  onSaveError,
 }: UseSettingsPageOptions) {
   const { lang: currentLang, setLang } = useLang();
   const ui = useAppSelector((state) => selectUiDictionaryFirst(state, currentLang));
@@ -73,38 +77,50 @@ export function useSettingsPage({
     label: option.label[currentLang === 'en' ? 'en' : 'ru'],
   }));
 
-  const persistProfile = useCallback(async (updates: Record<string, unknown>) => {
-    const token = getToken();
-    if (!token) {
-      alert('Error: you are not signed in.');
-      return false;
-    }
+  const formatSaveError = useCallback(
+    (error: unknown) => {
+      const detail = error instanceof Error ? error.message : 'Unknown error';
+      const prefix = ui?.dashboard?.error ?? 'Error';
+      return `${prefix}: ${detail}`;
+    },
+    [ui?.dashboard?.error]
+  );
 
-    setIsSavingProfile(true);
-    try {
-      const response = await fetchWithAuthSession('/api/user-profile', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(updates),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error((errorData as { error?: string })?.error || `HTTP ${response.status}`);
+  const persistProfile = useCallback(
+    async (updates: Record<string, unknown>) => {
+      const token = getToken();
+      if (!token) {
+        onNotAuthorized?.();
+        return false;
       }
 
-      return true;
-    } catch (error) {
-      console.error('❌ [useSettingsPage] Profile save failed:', error);
-      alert(`Save failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      return false;
-    } finally {
-      setIsSavingProfile(false);
-    }
-  }, []);
+      setIsSavingProfile(true);
+      try {
+        const response = await fetchWithAuthSession('/api/user-profile', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(updates),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error((errorData as { error?: string })?.error || `HTTP ${response.status}`);
+        }
+
+        return true;
+      } catch (error) {
+        console.error('❌ [useSettingsPage] Profile save failed:', error);
+        onSaveError?.(formatSaveError(error));
+        return false;
+      } finally {
+        setIsSavingProfile(false);
+      }
+    },
+    [formatSaveError, onNotAuthorized, onSaveError]
+  );
 
   const saveProfileFields = useCallback(async () => {
     const needsSiteNameUpdate = name !== initialName;
@@ -210,7 +226,7 @@ export function useSettingsPage({
         ? await saveTheBandToDatabase({ ru: [], en: [] })
         : await saveTheBandToDatabase(paragraphs, currentLang);
       if (!result.success) {
-        alert(`Save failed: ${result.error || 'Unknown error'}`);
+        onSaveError?.(`${ui?.dashboard?.error ?? 'Error'}: ${result.error || 'Unknown error'}`);
         return;
       }
 
@@ -229,11 +245,18 @@ export function useSettingsPage({
       setInitialAboutText(aboutText);
       notifyPublicSurfaceChanged({ type: 'profileChanged', aspects: ['about'] });
     } catch (error) {
-      alert(`Save failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      onSaveError?.(formatSaveError(error));
     } finally {
       setIsSavingAboutText(false);
     }
-  }, [aboutText, currentLang, initialAboutText]);
+  }, [
+    aboutText,
+    currentLang,
+    formatSaveError,
+    initialAboutText,
+    onSaveError,
+    ui?.dashboard?.error,
+  ]);
 
   saveAboutRef.current = saveAboutText;
 

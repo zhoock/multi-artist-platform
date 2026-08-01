@@ -71,6 +71,8 @@ type SettingsPageContentProps = {
   onAvatarChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
   onAvatarRemove: () => void;
   getProfileAvatarInitials: () => string;
+  onNotAuthorized?: () => void;
+  onSaveError?: (message: string) => void;
 };
 
 export function SettingsPageContent({
@@ -95,6 +97,8 @@ export function SettingsPageContent({
   onAvatarChange,
   onAvatarRemove,
   getProfileAvatarInitials,
+  onNotAuthorized,
+  onSaveError,
 }: SettingsPageContentProps) {
   const [isChangeEmailOpen, setIsChangeEmailOpen] = useState(false);
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
@@ -130,7 +134,7 @@ export function SettingsPageContent({
     isLoadingHeaderImages,
     hasLoadedOnce,
     isBusy,
-  } = useSettingsPage({ enabled, userName, isListener });
+  } = useSettingsPage({ enabled, userName, isListener, onNotAuthorized, onSaveError });
 
   useLayoutEffect(() => {
     if (!scrollToHeaderImages || !enabled || isListener) return;

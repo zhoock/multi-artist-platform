@@ -189,7 +189,6 @@ describe('MyPurchasesContent', () => {
   it('does not show success toast when remove fails', async () => {
     getMyPurchasesMock.mockResolvedValue([samplePurchase]);
     revokePurchaseMock.mockRejectedValue(new Error('Server error'));
-    const alertMock = jest.spyOn(window, 'alert').mockImplementation(() => {});
 
     renderWithProviders(<MyPurchasesContent active />);
 
@@ -212,6 +211,6 @@ describe('MyPurchasesContent', () => {
 
     expect(screen.queryByText('Album removed from purchases')).toBeNull();
     expect(screen.getByText('Test Artist — Test Album')).toBeTruthy();
-    alertMock.mockRestore();
+    expect(screen.getByText('Failed to remove purchase. Please try again.')).toBeTruthy();
   });
 });

@@ -5,6 +5,7 @@ import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 import { useLang } from '@app/providers/lang';
 import { getToken } from '@shared/lib/auth';
 import { fetchWithAuthSession } from '@shared/lib/authFetch';
+import { AlertModal } from '@shared/ui/alertModal';
 import {
   DashboardButton,
   DashboardCard,
@@ -46,6 +47,8 @@ export function SocialLinksContent({ active }: SocialLinksContentProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [hasLoaded, setHasLoaded] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [alertModal, setAlertModal] = useState<{ message: string } | null>(null);
 
   const hasChanges = !socialLinksFormStatesEqual(form, initialForm);
 
@@ -93,17 +96,27 @@ export function SocialLinksContent({ active }: SocialLinksContentProps) {
   }, [active, hasLoaded, loadSocialLinks]);
 
   const handleCancel = () => {
+    setSaveError(null);
     setForm(initialForm);
+  };
+
+  const updateField = (platform: SocialPlatform, value: string) => {
+    setSaveError(null);
+    setForm((current) => ({ ...current, [platform]: value }));
   };
 
   const handleSave = async () => {
     if (!hasChanges || isSaving) return;
 
     setIsSaving(true);
+    setSaveError(null);
     try {
       const token = getToken();
       if (!token) {
-        alert(ui?.dashboard?.errorLoading ?? 'Error loading');
+        setAlertModal({
+          message:
+            ui?.dashboard?.errorNotAuthorized ?? 'Error: you are not authorized. Please log in.',
+        });
         return;
       }
 
@@ -128,14 +141,10 @@ export function SocialLinksContent({ active }: SocialLinksContentProps) {
       notifyPublicSurfaceChanged({ type: 'socialLinksChanged' });
     } catch (error) {
       console.error('Failed to save social links:', error);
-      alert(error instanceof Error ? error.message : 'Unknown error');
+      setSaveError(error instanceof Error ? error.message : 'Unknown error');
     } finally {
       setIsSaving(false);
     }
-  };
-
-  const updateField = (platform: SocialPlatform, value: string) => {
-    setForm((current) => ({ ...current, [platform]: value }));
   };
 
   if (!hasLoaded) {
@@ -180,6 +189,8 @@ export function SocialLinksContent({ active }: SocialLinksContentProps) {
         </div>
       </div>
 
+      {saveError ? <div className="social-links__error">{saveError}</div> : null}
+
       <footer className="dashboard-modal-footer social-links__footer">
         <DashboardButton
           variant="outline"
@@ -199,6 +210,17 @@ export function SocialLinksContent({ active }: SocialLinksContentProps) {
             : (ui?.dashboard?.save ?? 'Save')}
         </DashboardButton>
       </footer>
+
+      {alertModal ? (
+        <AlertModal
+          isOpen
+          title={ui?.dashboard?.error ?? 'Error'}
+          message={alertModal.message}
+          variant="error"
+          closeLabel={ui?.dashboard?.close ?? 'Close'}
+          onClose={() => setAlertModal(null)}
+        />
+      ) : null}
     </div>
   );
 }

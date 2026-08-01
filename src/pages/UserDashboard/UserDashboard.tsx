@@ -46,6 +46,7 @@ import { TrackDeletedToast } from '@shared/ui/trackDeletedToast/TrackDeletedToas
 import { ArticleDeletedToast } from '@shared/ui/articleDeletedToast/ArticleDeletedToast';
 import { ArticleEditorToast } from '@shared/ui/articleEditorToast';
 import { LyricsSyncSavedToast } from '@shared/ui/lyricsSyncSavedToast/LyricsSyncSavedToast';
+import { DashboardErrorToast } from '@shared/ui/dashboardErrorToast';
 import { fetchWithAuthSession } from '@shared/lib/authFetch';
 import { buildApiUrl } from '@shared/lib/artistQuery';
 import { isAlbumReadyToPublish } from '@entities/album/lib/isAlbumReadyToPublish';
@@ -59,6 +60,7 @@ import { queueAlbumDeletedToast } from '@shared/lib/albumDeletedToast';
 import { queueTrackDeletedToast } from '@shared/lib/trackDeletedToast';
 import { queueArticleDeletedToast } from '@shared/lib/articleDeletedToast';
 import { queueLyricsSyncSavedToast } from '@shared/lib/lyricsSyncSavedToast';
+import { queueDashboardErrorToast } from '@shared/lib/dashboardErrorToast';
 import { getArtistSlugFromLocation } from '@shared/lib/albumDeletedRedirect';
 import { isAuthOverlayPathname } from '@shared/lib/publicArtistContext';
 import {
@@ -367,6 +369,7 @@ function UserDashboard() {
   const [articleDeletedToastTrigger, setArticleDeletedToastTrigger] = useState(0);
   const [articleEditorToastTrigger, setArticleEditorToastTrigger] = useState(0);
   const [lyricsSyncSavedToastTrigger, setLyricsSyncSavedToastTrigger] = useState(0);
+  const [dashboardErrorToastTrigger, setDashboardErrorToastTrigger] = useState(0);
   const trackUploadSectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const [articleAccessMenuArticleId, setArticleAccessMenuArticleId] = useState<string | null>(null);
   const [albumAccessMenuAlbumId, setAlbumAccessMenuAlbumId] = useState<string | null>(null);
@@ -511,12 +514,29 @@ function UserDashboard() {
   const [retryingTrackProcessingId, setRetryingTrackProcessingId] = useState<string | null>(null);
   const [replacingTrackId, setReplacingTrackId] = useState<string | null>(null);
 
-  const onAvatarFileTooLarge = useCallback((message: string) => {
+  const onAvatarAlert = useCallback(
+    ({ message, variant = 'error' }: { message: string; variant?: 'error' | 'warning' }) => {
+      setAlertModal({
+        isOpen: true,
+        message,
+        variant,
+      });
+    },
+    []
+  );
+
+  const handleSettingsNotAuthorized = useCallback(() => {
     setAlertModal({
       isOpen: true,
-      message,
-      variant: 'warning',
+      title: ui?.dashboard?.error ?? 'Error',
+      message: ui?.dashboard?.errorNotAuthorized ?? 'Error: you are not authorized. Please log in.',
+      variant: 'error',
     });
+  }, [ui?.dashboard?.error, ui?.dashboard?.errorNotAuthorized]);
+
+  const handleSettingsSaveError = useCallback((message: string) => {
+    queueDashboardErrorToast(message);
+    setDashboardErrorToastTrigger((value) => value + 1);
   }, []);
 
   const deleteAccountCopy = useMemo((): DeleteAccountModalCopy => {
@@ -619,7 +639,7 @@ function UserDashboard() {
     handleAvatarRemove,
   } = useAvatar({
     avatarFileTooLargeMessage: ui?.dashboard?.avatarFileTooLarge,
-    onAvatarFileTooLarge,
+    onAvatarAlert,
   });
 
   // В админке artist из query не используется: удаляем его из URL, оставляя только tab.
@@ -2240,6 +2260,7 @@ function UserDashboard() {
           <ArticleDeletedToast triggerKey={articleDeletedToastTrigger} />
           <ArticleEditorToast triggerKey={articleEditorToastTrigger} />
           <LyricsSyncSavedToast triggerKey={lyricsSyncSavedToastTrigger} />
+          <DashboardErrorToast triggerKey={dashboardErrorToastTrigger} />
           <div className="user-dashboard">
             {/* Main card container */}
             <div className="user-dashboard__card">
@@ -2494,6 +2515,8 @@ function UserDashboard() {
                                 onAvatarChange={handleAvatarChange}
                                 onAvatarRemove={handleAvatarRemove}
                                 getProfileAvatarInitials={getProfileAvatarInitials}
+                                onNotAuthorized={handleSettingsNotAuthorized}
+                                onSaveError={handleSettingsSaveError}
                               />
                             </div>
                           </div>

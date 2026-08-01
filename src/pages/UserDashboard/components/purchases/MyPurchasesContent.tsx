@@ -15,8 +15,11 @@ import {
   type Purchase,
 } from '@shared/api/purchases';
 import { ConfirmationModal } from '@shared/ui/confirmationModal';
+import { AlertModal } from '@shared/ui/alertModal';
 import { PurchaseRemovedToast } from '@shared/ui/purchaseRemovedToast';
+import { DashboardErrorToast } from '@shared/ui/dashboardErrorToast';
 import { queuePurchaseRemovedToast } from '@shared/lib/purchaseRemovedToast';
+import { queueDashboardErrorToast } from '@shared/lib/dashboardErrorToast';
 import { MyPurchasesEmptyState } from './MyPurchasesEmptyState';
 import './MyPurchasesContent.scss';
 
@@ -72,6 +75,8 @@ export function MyPurchasesContent({ active }: MyPurchasesContentProps) {
   const [purchaseToRemove, setPurchaseToRemove] = useState<Purchase | null>(null);
   const [isRemoving, setIsRemoving] = useState(false);
   const [removedToastTrigger, setRemovedToastTrigger] = useState(0);
+  const [errorToastTrigger, setErrorToastTrigger] = useState(0);
+  const [removeErrorModal, setRemoveErrorModal] = useState<{ message: string } | null>(null);
 
   const loadPurchases = useCallback(async () => {
     setLoading(true);
@@ -110,7 +115,10 @@ export function MyPurchasesContent({ active }: MyPurchasesContentProps) {
       triggerBlobDownload(blob, filename);
     } catch (err) {
       console.error('Error downloading album:', err);
-      alert(copy?.errorDownloadingAlbum ?? 'Error downloading album. Please try again.');
+      queueDashboardErrorToast(
+        copy?.errorDownloadingAlbum ?? 'Error downloading album. Please try again.'
+      );
+      setErrorToastTrigger((value) => value + 1);
     } finally {
       setDownloadingAlbums((prev) => {
         const next = new Set(prev);
@@ -136,7 +144,9 @@ export function MyPurchasesContent({ active }: MyPurchasesContentProps) {
       setRemovedToastTrigger((value) => value + 1);
     } catch (err) {
       console.error('Error removing purchase:', err);
-      alert(copy?.removePurchaseFailed ?? 'Failed to remove purchase. Please try again.');
+      setRemoveErrorModal({
+        message: copy?.removePurchaseFailed ?? 'Failed to remove purchase. Please try again.',
+      });
     } finally {
       setIsRemoving(false);
     }
@@ -258,6 +268,18 @@ export function MyPurchasesContent({ active }: MyPurchasesContentProps) {
         onConfirm={() => void handleConfirmRemove()}
       />
       <PurchaseRemovedToast triggerKey={removedToastTrigger} />
+      <DashboardErrorToast triggerKey={errorToastTrigger} />
+
+      {removeErrorModal ? (
+        <AlertModal
+          isOpen
+          title={dashboardCopy?.error ?? 'Error'}
+          message={removeErrorModal.message}
+          variant="error"
+          closeLabel={dashboardCopy?.close ?? 'Close'}
+          onClose={() => setRemoveErrorModal(null)}
+        />
+      ) : null}
     </>
   );
 }

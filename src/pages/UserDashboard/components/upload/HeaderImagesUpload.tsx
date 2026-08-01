@@ -305,17 +305,16 @@ export function HeaderImagesUpload({
         console.warn(
           '⚠️ [HeaderImagesUpload] Не удалось удалить варианты hero изображения из Storage, но продолжаем удаление из списка'
         );
-        // Показываем предупреждение, но продолжаем
-        alert(
+        setError(
           'Изображение удалено из списка, но могут остаться файлы в хранилище. Сохраните изменения для применения.'
         );
       } else {
         console.log('✅ [HeaderImagesUpload] Изображение успешно удалено из Storage');
+        setError(null);
       }
     } catch (error) {
       console.error('❌ [HeaderImagesUpload] Ошибка удаления hero изображения из Storage:', error);
-      // Продолжаем удаление из списка даже если удаление из Storage не удалось
-      alert(
+      setError(
         'Ошибка удаления изображения из хранилища, но оно удалено из списка. Сохраните изменения для применения.'
       );
     }

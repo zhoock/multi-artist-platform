@@ -124,14 +124,13 @@ export function useStoredProfileAvatarUrl(): string {
 const DEFAULT_FILE_TOO_LARGE_MSG =
   'The image is too large. Maximum file size is 2 MB. Choose a smaller file.';
 
+export type AvatarAlertVariant = 'error' | 'warning';
+
 export type UseAvatarOptions = {
   /** Сообщение при превышении лимита (из UI-словаря) */
   avatarFileTooLargeMessage?: string;
-  /**
-   * Показать уведомление вместо window.alert (например AlertModal в дашборде).
-   * Если не передан — для обратной совместимости остаётся alert().
-   */
-  onAvatarFileTooLarge?: (message: string) => void;
+  /** Показать уведомление (AlertModal в дашборде). Без callback — только console.error. */
+  onAvatarAlert?: (options: { message: string; variant?: AvatarAlertVariant }) => void;
 };
 
 /**
@@ -139,8 +138,19 @@ export type UseAvatarOptions = {
  * @returns Объект с состоянием и функциями для работы с аватаром
  */
 export function useAvatar(options?: UseAvatarOptions) {
-  const { onAvatarFileTooLarge } = options ?? {};
+  const { onAvatarAlert } = options ?? {};
   const fileTooLargeMessage = options?.avatarFileTooLargeMessage ?? DEFAULT_FILE_TOO_LARGE_MSG;
+
+  const showAvatarAlert = useCallback(
+    (message: string, variant: AvatarAlertVariant = 'error') => {
+      if (onAvatarAlert) {
+        onAvatarAlert({ message, variant });
+        return;
+      }
+      console.error(message);
+    },
+    [onAvatarAlert]
+  );
 
   const [avatarSrc, setAvatarSrc] = useState<string>(() => {
     try {
@@ -200,8 +210,8 @@ export function useAvatar(options?: UseAvatarOptions) {
       const key = getAvatarKeyForCurrentUser();
       const ok = await deleteProfileAvatarFromServer();
       if (!ok) {
-        alert(
-          'Не удалось удалить фото в хранилище. Проверьте авторизацию и сеть, затем повторите.'
+        showAvatarAlert(
+          'Не удалось удалить фото. Проверьте подключение к сети и повторите попытку.'
         );
         return;
       }
@@ -217,13 +227,15 @@ export function useAvatar(options?: UseAvatarOptions) {
       dispatchProfileAvatarChanged();
     } catch (error) {
       console.error('Failed to remove avatar:', error);
-      alert(
-        `Ошибка: ${error instanceof Error ? error.message : 'Unknown error'}. Проверьте консоль.`
+      showAvatarAlert(
+        error instanceof Error
+          ? `Не удалось удалить фото: ${error.message}`
+          : 'Не удалось удалить фото. Повторите попытку.'
       );
     } finally {
       setIsUploadingAvatar(false);
     }
-  }, [isUploadingAvatar]);
+  }, [isUploadingAvatar, showAvatarAlert]);
 
   const handleAvatarChange = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -231,11 +243,7 @@ export function useAvatar(options?: UseAvatarOptions) {
       if (!file) return;
 
       if (file.size > AVATAR_MAX_FILE_SIZE_BYTES) {
-        if (onAvatarFileTooLarge) {
-          onAvatarFileTooLarge(fileTooLargeMessage);
-        } else {
-          alert(fileTooLargeMessage);
-        }
+        showAvatarAlert(fileTooLargeMessage, 'warning');
         e.target.value = '';
         return;
       }
@@ -271,7 +279,7 @@ export function useAvatar(options?: UseAvatarOptions) {
 
         if (!result) {
           console.error('Upload failed: result is null');
-          alert('Не удалось загрузить аватар. Проверьте консоль для деталей и повторите.');
+          showAvatarAlert('Не удалось загрузить аватар. Повторите попытку.');
           return;
         }
 
@@ -286,7 +294,7 @@ export function useAvatar(options?: UseAvatarOptions) {
         }
         if (!displayUrl.startsWith('http')) {
           console.error('Invalid URL returned:', result, '->', displayUrl);
-          alert('Получен невалидный URL аватара. Проверьте консоль для деталей.');
+          showAvatarAlert('Не удалось обработать загруженное изображение. Повторите попытку.');
           return;
         }
 
@@ -326,8 +334,10 @@ export function useAvatar(options?: UseAvatarOptions) {
         dispatchProfileAvatarChanged();
       } catch (error) {
         console.error('❌ Error uploading avatar:', error);
-        alert(
-          `Ошибка загрузки аватара: ${error instanceof Error ? error.message : 'Unknown error'}. Проверьте консоль для деталей.`
+        showAvatarAlert(
+          error instanceof Error
+            ? `Не удалось загрузить аватар: ${error.message}`
+            : 'Не удалось загрузить аватар. Повторите попытку.'
         );
       } finally {
         setIsUploadingAvatar(false);
@@ -336,7 +346,7 @@ export function useAvatar(options?: UseAvatarOptions) {
         }
       }
     },
-    [fileTooLargeMessage, onAvatarFileTooLarge]
+    [fileTooLargeMessage, showAvatarAlert]
   );
 
   const avatarRetinaSrc = useMemo(() => profileAvatarRetinaUrlFrom1x(avatarSrc), [avatarSrc]);
