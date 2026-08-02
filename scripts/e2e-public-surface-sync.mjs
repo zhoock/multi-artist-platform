@@ -91,11 +91,11 @@ async function openDashboardOverlay(page, tab = 'albums') {
     search: location.search,
     hash: location.hash || '',
   }));
-  // Seed modal background so /dashboard-new opens as overlay over current public page
+  // Seed modal background so /dashboard opens as overlay over current public page
   await page.evaluate((bg) => {
     sessionStorage.setItem('sc-dashboard-modal-bg', JSON.stringify(bg));
   }, bg);
-  await page.goto(`${BASE}/dashboard-new/${tab}`, { waitUntil: 'domcontentloaded', timeout: 60000 });
+  await page.goto(`${BASE}/dashboard/${tab}`, { waitUntil: 'domcontentloaded', timeout: 60000 });
   await dismissDevOverlays(page);
   await page.waitForSelector('.user-dashboard__sidebar', { timeout: 45000 });
   await page.waitForTimeout(800);

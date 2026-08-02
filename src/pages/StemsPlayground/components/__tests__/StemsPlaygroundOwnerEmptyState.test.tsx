@@ -64,7 +64,7 @@ const albums: AlbumData[] = [
 describe('buildStemsOwnerDashboardMixerUrl', () => {
   it('opens mixer tab with album and track focus when a track exists', () => {
     expect(buildStemsOwnerDashboardMixerUrl(albums)).toBe(
-      '/dashboard-new/mixer?focusAlbum=dashboard-album-1&focusTrack=track-1'
+      '/dashboard/mixer?focusAlbum=dashboard-album-1&focusTrack=track-1'
     );
   });
 
@@ -76,11 +76,11 @@ describe('buildStemsOwnerDashboardMixerUrl', () => {
           tracks: [],
         },
       ])
-    ).toBe('/dashboard-new/mixer?focusAlbum=dashboard-album-1');
+    ).toBe('/dashboard/mixer?focusAlbum=dashboard-album-1');
   });
 
   it('falls back to the mixer tab without query params', () => {
-    expect(buildStemsOwnerDashboardMixerUrl([])).toBe('/dashboard-new/mixer');
+    expect(buildStemsOwnerDashboardMixerUrl([])).toBe('/dashboard/mixer');
   });
 });
 
@@ -112,7 +112,7 @@ describe('StemsPlaygroundOwnerEmptyState', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Настройте микшер' }));
 
     expect(mockNavigate).toHaveBeenCalledWith(
-      '/dashboard-new/mixer?focusAlbum=dashboard-album-1&focusTrack=track-1',
+      '/dashboard/mixer?focusAlbum=dashboard-album-1&focusTrack=track-1',
       {
         state: {
           backgroundLocation: {

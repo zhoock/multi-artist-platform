@@ -8,10 +8,10 @@ function renderRedirect(initialPath: string) {
   return render(
     <MemoryRouter initialEntries={[initialPath]}>
       <Routes>
-        <Route path="/:lang/dashboard-new/*" element={<UnprefixedRedirect />} />
+        <Route path="/:lang/dashboard/*" element={<UnprefixedRedirect />} />
         <Route path="/:lang/auth/*" element={<UnprefixedRedirect />} />
         <Route path="/:lang/pay/*" element={<UnprefixedRedirect />} />
-        <Route path="/dashboard-new/*" element={<div data-testid="dashboard">dashboard</div>} />
+        <Route path="/dashboard/*" element={<div data-testid="dashboard">dashboard</div>} />
         <Route path="/auth" element={<div data-testid="auth">auth</div>} />
         <Route path="/pay/success" element={<div data-testid="pay-success">pay</div>} />
       </Routes>
@@ -20,8 +20,8 @@ function renderRedirect(initialPath: string) {
 }
 
 describe('UnprefixedRedirect', () => {
-  test('redirects /ru/dashboard-new/albums to /dashboard-new/albums', async () => {
-    renderRedirect('/ru/dashboard-new/albums');
+  test('redirects /ru/dashboard/albums to /dashboard/albums', async () => {
+    renderRedirect('/ru/dashboard/albums');
     expect(await screen.findByTestId('dashboard')).toBeTruthy();
   });
 

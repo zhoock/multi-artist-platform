@@ -24,7 +24,7 @@ describe('buildSessionExpiredAuthTarget', () => {
   test('uses dashboard location as background so UserDashboard stays mounted', () => {
     const nestedBg = makeLocation('/', '?artist=beatles');
     const current: Location = {
-      pathname: '/dashboard-new/albums',
+      pathname: '/dashboard/albums',
       search: '',
       hash: '',
       state: { backgroundLocation: nestedBg },
@@ -33,17 +33,17 @@ describe('buildSessionExpiredAuthTarget', () => {
 
     const target = buildSessionExpiredAuthTarget(current);
 
-    expect(target.returnTo).toBe('/dashboard-new/albums');
+    expect(target.returnTo).toBe('/dashboard/albums');
     expect(target.backgroundLocation).toBe(current);
     expect(target.backgroundLocation.state).toEqual({ backgroundLocation: nestedBg });
   });
 
   test('preserves dashboard articles tab for unauthenticated deep link', () => {
-    const current = makeLocation('/dashboard-new/articles');
+    const current = makeLocation('/dashboard/articles');
     const target = buildSessionExpiredAuthTarget(current);
 
-    expect(target.returnTo).toBe('/dashboard-new/articles');
-    expect(target.backgroundLocation.pathname).toBe('/dashboard-new/articles');
+    expect(target.returnTo).toBe('/dashboard/articles');
+    expect(target.backgroundLocation.pathname).toBe('/dashboard/articles');
   });
 
   test('strips unsafe return paths', () => {

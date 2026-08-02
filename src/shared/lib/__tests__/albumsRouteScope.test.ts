@@ -2,8 +2,6 @@ import { isDashboardAppPathname } from '../albumsRouteScope';
 
 describe('isDashboardAppPathname', () => {
   it('matches dashboard routes', () => {
-    expect(isDashboardAppPathname('/dashboard-new/albums')).toBe(true);
-    expect(isDashboardAppPathname('/dashboard-new')).toBe(true);
     expect(isDashboardAppPathname('/dashboard')).toBe(true);
     expect(isDashboardAppPathname('/dashboard/settings')).toBe(true);
   });

@@ -150,7 +150,7 @@ export function readDashboardModalBackground(): DashboardModalBackground | null 
   }
 }
 
-/** Перед клиентским переходом на /dashboard-new с backgroundLocation — чтобы loader увидел фон до первого commit Layout. */
+/** Перед клиентским переходом на /dashboard с backgroundLocation — чтобы loader увидел фон до первого commit Layout. */
 export function primeDashboardModalSessionFromLocation(current: Location): void {
   if (isPaymentReturnPathname(current.pathname)) {
     return;

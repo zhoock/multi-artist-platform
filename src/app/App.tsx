@@ -16,7 +16,6 @@ import {
   Routes,
   Route,
   Navigate,
-  useParams,
   matchPath,
   type Location,
 } from 'react-router-dom';
@@ -72,6 +71,10 @@ import { isServiceScreenBodyClassActive } from '@app/layouts/serviceScreenBodyCl
 import { UnprefixedRedirect } from '@app/layouts/UnprefixedRedirect';
 import { DEFAULT_ROUTE_LANG, stripLangPrefix } from '@shared/lib/i18n/routeLang';
 import { ToastProvider, NavigationToastHydrator } from '@shared/lib/toast';
+
+function isDashboardAppPathname(pathname: string): boolean {
+  return pathname === '/dashboard' || pathname.startsWith('/dashboard/');
+}
 
 // Lazy loading для страниц - загружаются только при необходимости
 const Album = lazy(() => import('@pages/Album/Album'));
@@ -154,27 +157,6 @@ const stemsPageElement = (
     <StemsPlayground />
   </Suspense>
 );
-
-/** Старые пути `/dashboard/:tab` → `/dashboard-new/:tab` (сохраняем location.state) */
-function LegacyDashboardTabRedirect() {
-  const { tab } = useParams();
-  const { state } = useLocation();
-  const normalizedTab = tab === 'profile' ? 'settings' : (tab ?? 'albums');
-  return <Navigate to={`/dashboard-new/${normalizedTab}`} replace state={state} />;
-}
-
-function DashboardRootRedirect() {
-  const { state } = useLocation();
-  return <Navigate to="/dashboard-new" replace state={state} />;
-}
-
-function isDashboardAppPathname(pathname: string): boolean {
-  return (
-    pathname.startsWith('/dashboard-new') ||
-    pathname === '/dashboard' ||
-    pathname.startsWith('/dashboard/')
-  );
-}
 
 // Упрощённый роутер: один корневой маршрут, всё остальное рисуем в Layout
 const router = createBrowserRouter([
@@ -336,8 +318,6 @@ function Layout() {
     '/stems/mix/:mixId',
     '/dashboard',
     '/dashboard/:tab',
-    '/dashboard-new',
-    '/dashboard-new/:tab',
     '/auth',
     '/auth/reset-password',
     '/email-verified',
@@ -465,15 +445,13 @@ function Layout() {
         }
       />
       <Route
-        path="/dashboard-new/:tab?"
+        path="/dashboard/:tab?"
         element={
           <Suspense fallback={<PageLoader />}>
             <UserDashboard />
           </Suspense>
         }
       />
-      <Route path="/dashboard" element={<DashboardRootRedirect />} />
-      <Route path="/dashboard/:tab" element={<LegacyDashboardTabRedirect />} />
       <Route
         path="/auth"
         element={
@@ -516,7 +494,6 @@ function Layout() {
         <Route path="privacy" element={privacyPageElement} />
         <Route path="stems" element={stemsPageElement} />
         <Route path="stems/mix/:mixId" element={stemsPageElement} />
-        <Route path="dashboard-new/*" element={<UnprefixedRedirect />} />
         <Route path="dashboard/*" element={<UnprefixedRedirect />} />
         <Route path="auth/*" element={<UnprefixedRedirect />} />
         <Route path="pay/*" element={<UnprefixedRedirect />} />
@@ -572,15 +549,13 @@ function Layout() {
   const dashboardModalRoutes = showDashboardModal ? (
     <Routes location={dashboardRoutesLocation}>
       <Route
-        path="/dashboard-new/:tab?"
+        path="/dashboard/:tab?"
         element={
           <Suspense fallback={null}>
             <UserDashboard />
           </Suspense>
         }
       />
-      <Route path="/dashboard" element={<DashboardRootRedirect />} />
-      <Route path="/dashboard/:tab" element={<LegacyDashboardTabRedirect />} />
     </Routes>
   ) : null;
 

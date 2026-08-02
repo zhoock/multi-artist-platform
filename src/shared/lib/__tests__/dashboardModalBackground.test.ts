@@ -33,7 +33,7 @@ describe('dashboardModalBackground', () => {
 
     primeDashboardModalSessionFromLocation({
       pathname: '/pay/subscription-success',
-      search: '?returnTo=%2Fdashboard-new%2Fcollection',
+      search: '?returnTo=%2Fdashboard%2Fcollection',
       hash: '',
       state: null,
       key: 'pay',
@@ -56,7 +56,7 @@ describe('dashboardModalBackground', () => {
     const closeTarget = resolveDashboardModalCloseTarget({
       backgroundLocation: {
         pathname: '/pay/subscription-success',
-        search: '?returnTo=%2Fdashboard-new%2Fcollection',
+        search: '?returnTo=%2Fdashboard%2Fcollection',
         hash: '',
         state: null,
         key: 'pay',
@@ -87,7 +87,7 @@ describe('dashboardModalBackground', () => {
   });
 
   test('localizeDashboardModalBackground leaves unprefixed paths unchanged', () => {
-    const bg = { pathname: '/dashboard-new/settings', search: '', hash: '' };
+    const bg = { pathname: '/dashboard/settings', search: '', hash: '' };
     expect(localizeDashboardModalBackground(bg, 'en')).toEqual(bg);
   });
 });

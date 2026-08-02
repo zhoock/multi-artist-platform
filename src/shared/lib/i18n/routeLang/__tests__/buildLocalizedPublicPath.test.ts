@@ -12,8 +12,8 @@ describe('buildLocalizedPublicPath', () => {
 
 describe('isInternalAppPath', () => {
   test('detects internal routes with or without locale prefix', () => {
-    expect(isInternalAppPath('/dashboard-new/albums')).toBe(true);
-    expect(isInternalAppPath('/ru/dashboard-new/albums')).toBe(true);
+    expect(isInternalAppPath('/dashboard/albums')).toBe(true);
+    expect(isInternalAppPath('/ru/dashboard/albums')).toBe(true);
     expect(isInternalAppPath('/auth')).toBe(true);
     expect(isInternalAppPath('/en/auth/reset-password')).toBe(true);
     expect(isInternalAppPath('/pay/success')).toBe(true);

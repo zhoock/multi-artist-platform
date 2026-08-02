@@ -13,11 +13,7 @@ import { DEFAULT_ROUTE_LANG, parseLangFromPath, type RouteLang } from '@shared/l
 import { buildPublicAlbumPagePath } from '@shared/lib/seo/publicPagePaths';
 
 function isDashboardPathname(pathname: string): boolean {
-  return (
-    pathname.startsWith('/dashboard-new') ||
-    pathname === '/dashboard' ||
-    pathname.startsWith('/dashboard/')
-  );
+  return pathname === '/dashboard' || pathname.startsWith('/dashboard/');
 }
 
 function resolveRouteLangFromPathname(pathname: string): RouteLang {

@@ -2934,12 +2934,12 @@ export function EditAlbumModal({
                     'To sell this album, connect a payment method.'}
                 </p>
                 <a
-                  href="/dashboard-new/payment-settings"
+                  href="/dashboard/payment-settings"
                   className="edit-album-modal__connect-payment-link"
                   onClick={(e) => {
                     e.preventDefault();
                     onClose();
-                    navigate('/dashboard-new/payment-settings', {
+                    navigate('/dashboard/payment-settings', {
                       replace: true,
                       state: location.state,
                     });

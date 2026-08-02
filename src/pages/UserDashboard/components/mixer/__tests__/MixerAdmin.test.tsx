@@ -167,7 +167,7 @@ describe('MixerAdmin', () => {
 
     await user.click(screen.getByRole('button', { name: 'Go to album' }));
 
-    expect(navigateMock).toHaveBeenCalledWith('/dashboard-new/albums?focusAlbum=album-1');
+    expect(navigateMock).toHaveBeenCalledWith('/dashboard/albums?focusAlbum=album-1');
   });
 
   it('shows visibility globe button in track header when stems are loaded', async () => {

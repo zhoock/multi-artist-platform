@@ -2,16 +2,12 @@ import { stripLangPrefix } from './stripLangPrefix';
 
 /**
  * Paths that must never stay under `/:lang/*` — redirect to unprefixed routes.
- * Matches `/dashboard-new`, `/auth`, `/pay/success`, etc.
+ * Matches `/dashboard`, `/auth`, `/pay/success`, etc.
  */
 export function isInternalAppPath(pathname: string): boolean {
   const path = stripLangPrefix(pathname);
 
-  if (
-    path.startsWith('/dashboard-new') ||
-    path === '/dashboard' ||
-    path.startsWith('/dashboard/')
-  ) {
+  if (path === '/dashboard' || path.startsWith('/dashboard/')) {
     return true;
   }
 

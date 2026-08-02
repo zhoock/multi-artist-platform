@@ -51,14 +51,14 @@ describe('DashboardButton', () => {
   it('supports polymorphic Link', () => {
     render(
       <MemoryRouter>
-        <DashboardButton as={Link} to="/dashboard-new/albums" variant="outline">
+        <DashboardButton as={Link} to="/dashboard/albums" variant="outline">
           Open albums
         </DashboardButton>
       </MemoryRouter>
     );
 
     const link = screen.getByRole('link', { name: 'Open albums' });
-    expect(link.getAttribute('href')).toBe('/dashboard-new/albums');
+    expect(link.getAttribute('href')).toBe('/dashboard/albums');
     expect(link.className).toContain('dashboard-button--outline');
   });
 });

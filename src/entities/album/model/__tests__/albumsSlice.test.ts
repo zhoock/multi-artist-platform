@@ -88,7 +88,7 @@ const createTestStore = () => {
 };
 
 function setupDashboardFetchContext(store: ReturnType<typeof createTestStore>) {
-  window.history.pushState({}, '', '/dashboard-new/albums');
+  window.history.pushState({}, '', '/dashboard/albums');
   window.localStorage.setItem('auth_token', TEST_AUTH_TOKEN);
   store.dispatch(setPublicArtistSlug(null));
 }
@@ -178,7 +178,7 @@ describe('albumsSlice', () => {
 
     test('без JWT возвращает пустой dashboard на /dashboard', async () => {
       const store = createTestStore();
-      window.history.pushState({}, '', '/dashboard-new/albums');
+      window.history.pushState({}, '', '/dashboard/albums');
       store.dispatch(setPublicArtistSlug(null));
 
       const result = await (store.dispatch as AppDispatch)(

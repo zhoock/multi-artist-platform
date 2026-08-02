@@ -63,13 +63,13 @@ describe('albumRenameRedirect', () => {
       newAlbumId: 'stand-up-remastered',
       artistSlug: 'jethro-tull',
       navigate,
-      location: loc('/dashboard-new/albums', '', { backgroundLocation: background }),
+      location: loc('/dashboard/albums', '', { backgroundLocation: background }),
     });
 
     expect(didNavigate).toBe(true);
     expect(navigate).toHaveBeenCalledWith(
       {
-        pathname: '/dashboard-new/albums',
+        pathname: '/dashboard/albums',
         search: '',
         hash: '',
       },
@@ -112,7 +112,7 @@ describe('albumRenameRedirect', () => {
       newAlbumId: 'stand-up-remastered',
       artistSlug: 'jethro-tull',
       navigate,
-      location: loc('/dashboard-new/albums', ''),
+      location: loc('/dashboard/albums', ''),
     });
 
     expect(didNavigate).toBe(true);
@@ -137,7 +137,7 @@ describe('albumRenameRedirect', () => {
   test('resolveArtistSlugForAlbumRename prefers surface query', () => {
     expect(
       resolveArtistSlugForAlbumRename(
-        loc('/dashboard-new/albums', '', {
+        loc('/dashboard/albums', '', {
           backgroundLocation: loc('/ru/albums/stand-up', '?artist=jethro-tull'),
         }),
         'fallback'

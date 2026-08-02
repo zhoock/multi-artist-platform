@@ -16,7 +16,7 @@ describe('isMinimalLayoutPathname', () => {
 
   test('does not match auth overlay or other app routes', () => {
     expect(isMinimalLayoutPathname('/auth')).toBe(false);
-    expect(isMinimalLayoutPathname('/dashboard-new')).toBe(false);
+    expect(isMinimalLayoutPathname('/dashboard')).toBe(false);
     expect(isMinimalLayoutPathname('/pay/success')).toBe(false);
     expect(isMinimalLayoutPathname('/albums')).toBe(false);
     expect(isMinimalLayoutPathname('/unknown')).toBe(false);

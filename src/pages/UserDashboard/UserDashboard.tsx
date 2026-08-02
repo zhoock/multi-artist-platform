@@ -137,6 +137,7 @@ import { useAvatar, getProfileAvatarInitials } from '@shared/lib/hooks/useAvatar
 import { useSiteArtistDisplayName } from '@shared/lib/hooks/useSiteArtistDisplayName';
 import {
   type DashboardTab,
+  DASHBOARD_PATH,
   isDashboardTabSlug,
   isDashboardTabAllowed,
   resolveDashboardTab,
@@ -321,7 +322,7 @@ function withDashboardAlbumOwner(
   }));
 }
 
-/** URL segment under `/dashboard-new/:tab` — источник истины для активной вкладки. */
+/** URL segment under `/dashboard/:tab` — источник истины для активной вкладки. */
 export type { DashboardTab } from '@shared/lib/accountType';
 
 function dashboardHeadingForTab(tab: DashboardTab, ui: IInterface | null): string {
@@ -2492,7 +2493,7 @@ function UserDashboard() {
 
         if (meta?.createdNewAlbum && searchAlbumId) {
           if (activeTab !== 'albums') {
-            goDashboard('/dashboard-new/albums');
+            goDashboard(`${DASHBOARD_PATH}/albums`);
           }
           setExpandedAlbumId(searchAlbumId);
           setScrollToAlbumUploadId(searchAlbumId);
@@ -2548,13 +2549,13 @@ function UserDashboard() {
   });
 
   if (tabFromRoute === 'profile') {
-    return <Navigate to="/dashboard-new/settings" replace state={location.state} />;
+    return <Navigate to={`${DASHBOARD_PATH}/settings`} replace state={location.state} />;
   }
 
   if (tabInvalid || tabDisallowed) {
     return (
       <Navigate
-        to={`/dashboard-new/${getDefaultDashboardTab(user)}`}
+        to={`${DASHBOARD_PATH}/${getDefaultDashboardTab(user)}`}
         replace
         state={location.state}
       />
@@ -2620,7 +2621,7 @@ function UserDashboard() {
                         'user-dashboard__nav-item',
                         activeTab === tab && 'user-dashboard__nav-item--active'
                       )}
-                      onClick={() => goDashboard(`/dashboard-new/${tab}`)}
+                      onClick={() => goDashboard(`${DASHBOARD_PATH}/${tab}`)}
                     >
                       <DashboardNavTabIcon tab={tab} />
                       {dashboardHeadingForTab(tab, ui)}

@@ -161,7 +161,7 @@ describe('articlesSlice', () => {
     });
 
     test('forcePublicCatalog на полноэкранном dashboard пишет в публичный каталог с явным slug', async () => {
-      window.history.pushState({}, '', '/dashboard-new/posts');
+      window.history.pushState({}, '', '/dashboard/posts');
       syncDashboardAlbumsPublicCatalogOverlay(false);
       mockFetch.mockResolvedValueOnce(mockSuccessResponse(mockArticles));
 
@@ -207,7 +207,7 @@ describe('articlesSlice', () => {
 
     test('forcePublicCatalog не инвалидирует завершение ownerDashboard force fetch', async () => {
       const dashSpy = jest.spyOn(publicArtistContext, 'isDashboardPathname').mockReturnValue(true);
-      window.history.pushState({}, '', '/dashboard-new/posts');
+      window.history.pushState({}, '', '/dashboard/posts');
       syncDashboardAlbumsPublicCatalogOverlay(false);
 
       const dashboardArticles: IArticles[] = [{ ...mockArticles[0], articleId: 'dash-article' }];
@@ -257,7 +257,7 @@ describe('articlesSlice', () => {
 
     test('устаревший force fulfill не оставляет dashboard.status=loading при пустом data', async () => {
       const dashSpy = jest.spyOn(publicArtistContext, 'isDashboardPathname').mockReturnValue(true);
-      window.history.pushState({}, '', '/dashboard-new/posts');
+      window.history.pushState({}, '', '/dashboard/posts');
       syncDashboardAlbumsPublicCatalogOverlay(false);
 
       let releaseFirst!: (r: Response) => void;

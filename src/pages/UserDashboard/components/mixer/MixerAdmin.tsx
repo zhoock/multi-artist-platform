@@ -795,9 +795,7 @@ export function MixerAdmin({
                           ui={ui}
                           className="mixer-admin__no-tracks-empty"
                           onGoToAlbum={() =>
-                            navigate(
-                              `/dashboard-new/albums?focusAlbum=${encodeURIComponent(album.id)}`
-                            )
+                            navigate(`/dashboard/albums?focusAlbum=${encodeURIComponent(album.id)}`)
                           }
                         />
                       ) : (

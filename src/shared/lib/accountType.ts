@@ -2,7 +2,9 @@ import { readAccountTypeFromStoredToken, type AuthUser } from '@shared/lib/auth'
 
 export type AccountType = 'listener' | 'artist';
 
-export const COLLECTION_DASHBOARD_PATH = '/dashboard-new/collection';
+export const DASHBOARD_PATH = '/dashboard';
+
+export const COLLECTION_DASHBOARD_PATH = `${DASHBOARD_PATH}/collection`;
 
 export const DASHBOARD_TAB_SLUGS = [
   'albums',
@@ -30,7 +32,7 @@ const ARTIST_TABS: DashboardTab[] = [
   'social-links',
 ];
 
-/** Legacy `/dashboard-new/profile` slug before Settings rename. */
+/** Legacy `/dashboard/profile` slug before Settings rename. */
 export function normalizeLegacyDashboardTabSlug(tab: string | undefined): string | undefined {
   if (tab === 'profile') return 'settings';
   return tab;

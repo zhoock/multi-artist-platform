@@ -10,7 +10,7 @@ import { useEmailVerificationCopy } from '@shared/lib/emailVerification';
 import { useAuthSessionUser } from '@shared/lib/hooks/useAuthSessionUser';
 import { ServicePageLayout } from '@shared/ui/serviceScreen';
 
-const DASHBOARD_PATH = '/dashboard-new';
+import { DASHBOARD_PATH } from '@shared/lib/accountType';
 
 export default function EmailVerified() {
   const navigate = useNavigate();

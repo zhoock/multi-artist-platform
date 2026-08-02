@@ -103,7 +103,7 @@ function ProfileAvatarMenuComponent({
     ui?.dashboard?.archive?.title ?? (locale === 'en' ? 'Your Collection' : 'Ваша коллекция');
   const collectionSubtitle = formatCollectionMenuSubtitle(planSlug, slotsUsed, locale);
   const { pathname } = location;
-  const isSettingsActive = pathname.startsWith('/dashboard-new/settings');
+  const isSettingsActive = pathname.startsWith('/dashboard/settings');
   const isCollectionActive = pathname.startsWith(COLLECTION_DASHBOARD_PATH);
 
   return (
@@ -151,7 +151,7 @@ function ProfileAvatarMenuComponent({
                 isSettingsActive && 'header__profile-menu-item--active'
               )}
               role="menuitem"
-              to="/dashboard-new/settings"
+              to="/dashboard/settings"
               state={dashboardLinkState}
               onClick={() => updateOpen(false)}
               aria-current={isSettingsActive ? 'page' : undefined}

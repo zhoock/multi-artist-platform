@@ -17,7 +17,7 @@ function normalizePathname(pathname: string): string {
  * Parses a locale prefix from a pathname (`/en/albums` → `{ lang: 'en', pathnameWithoutLang: '/albums' }`).
  *
  * Does not read query or hash — pass `location.pathname` only.
- * Unprefixed paths (`/albums`, `/dashboard-new`) return `lang: null`.
+ * Unprefixed paths (`/albums`, `/dashboard`) return `lang: null`.
  */
 export function parseLangFromPath(pathname: string): ParsedLangPath {
   const normalized = normalizePathname(pathname);

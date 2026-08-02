@@ -48,7 +48,7 @@ export function ArtistOnboarding() {
     tab: DashboardTab,
     intent: Omit<DashboardOpenIntent, 'backgroundLocation'>
   ) => {
-    navigate(`/dashboard-new/${tab}`, {
+    navigate(`/dashboard/${tab}`, {
       state: {
         backgroundLocation: location,
         ...intent,

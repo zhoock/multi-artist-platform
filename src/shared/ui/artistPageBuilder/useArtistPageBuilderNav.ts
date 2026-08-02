@@ -12,7 +12,7 @@ export function useArtistPageBuilderNav() {
   const openDashboard = useCallback(
     (tab: DashboardTab, intent: Omit<DashboardOpenIntent, 'backgroundLocation'> = {}) => {
       preloadUserDashboardModule();
-      navigate(`/dashboard-new/${tab}`, {
+      navigate(`/dashboard/${tab}`, {
         state: {
           backgroundLocation: location,
           ...intent,

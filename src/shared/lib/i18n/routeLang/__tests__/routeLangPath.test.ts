@@ -35,9 +35,9 @@ describe('parseLangFromPath', () => {
       lang: null,
       pathnameWithoutLang: '/articles/post-1',
     });
-    expect(parseLangFromPath('/dashboard-new/albums')).toEqual({
+    expect(parseLangFromPath('/dashboard/albums')).toEqual({
       lang: null,
-      pathnameWithoutLang: '/dashboard-new/albums',
+      pathnameWithoutLang: '/dashboard/albums',
     });
     expect(parseLangFromPath('/pay/success')).toEqual({
       lang: null,

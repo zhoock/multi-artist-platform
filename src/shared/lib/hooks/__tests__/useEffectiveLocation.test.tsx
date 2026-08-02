@@ -61,7 +61,7 @@ describe('useEffectiveLocation', () => {
 
     const wrapper = ({ children }: { children: ReactNode }) => (
       <DashboardModalShellContext.Provider value={{ overlayOpen: true, surfaceLocation }}>
-        <MemoryRouter initialEntries={['/dashboard-new/albums']}>
+        <MemoryRouter initialEntries={['/dashboard/albums']}>
           <Routes>
             <Route path="*" element={children} />
           </Routes>

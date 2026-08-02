@@ -20,7 +20,7 @@ describe('resolveEffectiveLocation', () => {
   });
 
   it('prefers dashboard shell surface while overlay is open', () => {
-    const live = loc('/dashboard-new/albums');
+    const live = loc('/dashboard/albums');
     const surface = loc('/', '?artist=band');
     expect(resolveEffectiveLocation(live, { overlayOpen: true, surfaceLocation: surface })).toBe(
       surface
@@ -35,7 +35,7 @@ describe('resolveEffectiveLocation', () => {
 
   it('unwraps public page when auth is opened over dashboard', () => {
     const publicPage = loc('/albums', '?artist=band');
-    const dashboard = loc('/dashboard-new/albums', '', { backgroundLocation: publicPage });
+    const dashboard = loc('/dashboard/albums', '', { backgroundLocation: publicPage });
     const live = loc('/auth', '?mode=login', { backgroundLocation: dashboard });
     expect(resolveEffectiveLocation(live)).toBe(publicPage);
   });

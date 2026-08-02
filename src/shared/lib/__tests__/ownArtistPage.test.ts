@@ -22,7 +22,7 @@ describe('ownArtistPage helpers', () => {
     expect(isDefaultHomePath('/en', '')).toBe(true);
     expect(isDefaultHomePath('/', '?artist=slug')).toBe(false);
     expect(isDefaultHomePath('/ru', '?artist=slug')).toBe(false);
-    expect(isDefaultHomePath('/dashboard-new/albums', '')).toBe(false);
+    expect(isDefaultHomePath('/dashboard/albums', '')).toBe(false);
   });
 
   test('isOnOwnArtistOnboardingPage matches owner slug case-insensitively', () => {

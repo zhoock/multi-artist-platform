@@ -37,10 +37,10 @@ export function AlbumTracksEmptyState({
 
   const handleGoToAlbum = () => {
     if (!ownerDashboardAlbumId) {
-      navigate('/dashboard-new/albums');
+      navigate('/dashboard/albums');
       return;
     }
-    navigate(`/dashboard-new/albums?focusAlbum=${encodeURIComponent(ownerDashboardAlbumId)}`);
+    navigate(`/dashboard/albums?focusAlbum=${encodeURIComponent(ownerDashboardAlbumId)}`);
   };
 
   return (

@@ -213,7 +213,7 @@ export async function albumsLoader({ request }: LoaderFunctionArgs): Promise<Alb
   let templateB: Promise<IArticles[]> = Promise.resolve([]);
   let templateD: Promise<IArticles[]> = Promise.resolve([]); // help articles
 
-  // Альбомы нужны на "/", "/albums*", "/stems" (миксер) и "/dashboard*" (включая /dashboard-new)
+  // Альбомы нужны на "/", "/albums*", "/stems" (миксер) и "/dashboard*"
   if (
     requestIsDashboard ||
     routePathname === '/' ||

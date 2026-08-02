@@ -9,11 +9,7 @@ import { DEFAULT_ROUTE_LANG, stripLangPrefix, type RouteLang } from '@shared/lib
 import { buildOwnArtistPagePath } from '@shared/lib/ownArtistPage';
 
 function isDashboardPathname(pathname: string): boolean {
-  return (
-    pathname.startsWith('/dashboard-new') ||
-    pathname === '/dashboard' ||
-    pathname.startsWith('/dashboard/')
-  );
+  return pathname === '/dashboard' || pathname.startsWith('/dashboard/');
 }
 
 export function getArtistSlugFromLocation(location: Location): string | null {

@@ -22,16 +22,16 @@ export function buildStemsOwnerDashboardMixerUrl(albums: AlbumData[]): string {
       focusAlbum: firstAlbumWithTracks.id,
       focusTrack: firstAlbumWithTracks.tracks[0].id,
     });
-    return `/dashboard-new/mixer?${params.toString()}`;
+    return `/dashboard/mixer?${params.toString()}`;
   }
 
   const firstAlbum = albums[0];
   if (firstAlbum) {
     const params = new URLSearchParams({ focusAlbum: firstAlbum.id });
-    return `/dashboard-new/mixer?${params.toString()}`;
+    return `/dashboard/mixer?${params.toString()}`;
   }
 
-  return '/dashboard-new/mixer';
+  return '/dashboard/mixer';
 }
 
 export function StemsPlaygroundOwnerEmptyState({

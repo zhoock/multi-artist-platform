@@ -41,9 +41,7 @@ describe('sanitizeListenerPostAuthDestination', () => {
     expect(sanitizeListenerPostAuthDestination('/albums/demo?artist=foo')).toBe(
       '/albums/demo?artist=foo'
     );
-    expect(sanitizeListenerPostAuthDestination('/dashboard-new/settings')).toBe(
-      '/dashboard-new/settings'
-    );
+    expect(sanitizeListenerPostAuthDestination('/dashboard/settings')).toBe('/dashboard/settings');
   });
 });
 
@@ -78,9 +76,9 @@ describe('resolvePostAuthDestinationForUser', () => {
   test('artist returns to dashboard tab from returnTo search param', () => {
     expect(
       resolvePostAuthDestinationForUser(artist, {
-        returnToSearchParam: '/dashboard-new/articles',
+        returnToSearchParam: '/dashboard/articles',
         routerState: null,
       })
-    ).toBe('/dashboard-new/articles');
+    ).toBe('/dashboard/articles');
   });
 });
