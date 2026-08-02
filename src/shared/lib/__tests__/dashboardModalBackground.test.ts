@@ -5,6 +5,7 @@ import {
   clearDashboardModalBackground,
   isPaymentReturnPathname,
   isValidDashboardModalBackground,
+  localizeDashboardModalBackground,
   primeDashboardModalSessionFromLocation,
   readDashboardModalBackground,
   resolveDashboardModalCloseTarget,
@@ -70,5 +71,23 @@ describe('dashboardModalBackground', () => {
     expect(sessionStorage.getItem(STORAGE_KEY)).toBeTruthy();
     clearDashboardModalBackground();
     expect(readDashboardModalBackground()).toBeNull();
+  });
+
+  test('localizeDashboardModalBackground swaps locale prefix and keeps query', () => {
+    expect(
+      localizeDashboardModalBackground(
+        { pathname: '/ru/albums', search: '?artist=foo', hash: '' },
+        'en'
+      )
+    ).toEqual({
+      pathname: '/en/albums',
+      search: '?artist=foo',
+      hash: '',
+    });
+  });
+
+  test('localizeDashboardModalBackground leaves unprefixed paths unchanged', () => {
+    const bg = { pathname: '/dashboard-new/settings', search: '', hash: '' };
+    expect(localizeDashboardModalBackground(bg, 'en')).toEqual(bg);
   });
 });

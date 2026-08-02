@@ -1,9 +1,19 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useLocation, useNavigate, type Location } from 'react-router-dom';
 import { useLang } from '@app/providers/lang';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 import { getToken, updateStoredUserName } from '@shared/lib/auth';
 import { fetchWithAuthSession } from '@shared/lib/authFetch';
+import { useDashboardModalShell } from '@shared/lib/dashboardModalShellContext';
+import type { DashboardOpenIntent } from '@shared/lib/dashboardOpenIntent';
+import {
+  captureDashboardModalBackground,
+  isValidDashboardModalBackground,
+  localizeDashboardModalBackground,
+  readDashboardModalBackground,
+  type DashboardModalBackground,
+} from '@shared/lib/dashboardModalBackground';
 import {
   loadTheBandFromDatabase,
   saveTheBandToDatabase,
@@ -37,6 +47,9 @@ export function useSettingsPage({
   onSaveError,
 }: UseSettingsPageOptions) {
   const { lang: currentLang, setLang } = useLang();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { surfaceLocation: dashboardSurfaceFromLayout } = useDashboardModalShell();
   const ui = useAppSelector((state) => selectUiDictionaryFirst(state, currentLang));
 
   const [name, setName] = useState(userName);
@@ -265,8 +278,51 @@ export function useSettingsPage({
       const nextLang = value as 'ru' | 'en';
       if (nextLang === currentLang) return;
       setLang(nextLang);
+
+      const routerBackground = (location.state as DashboardOpenIntent | null)?.backgroundLocation;
+      const storedBackground = readDashboardModalBackground();
+      const backgroundSource: Location | DashboardModalBackground | null | undefined =
+        routerBackground ?? dashboardSurfaceFromLayout ?? storedBackground;
+
+      if (!backgroundSource || !isValidDashboardModalBackground(backgroundSource)) {
+        return;
+      }
+
+      const localizedBackground = localizeDashboardModalBackground(
+        {
+          pathname: backgroundSource.pathname,
+          search: backgroundSource.search,
+          hash: backgroundSource.hash ?? '',
+        },
+        nextLang
+      );
+
+      captureDashboardModalBackground(localizedBackground);
+
+      const nextBackgroundLocation: Location = {
+        pathname: localizedBackground.pathname,
+        search: localizedBackground.search,
+        hash: localizedBackground.hash,
+        state: null,
+        key: 'dashboard-lang-bg',
+      };
+
+      navigate(
+        {
+          pathname: location.pathname,
+          search: location.search,
+          hash: location.hash,
+        },
+        {
+          replace: true,
+          state: {
+            ...(location.state && typeof location.state === 'object' ? location.state : {}),
+            backgroundLocation: nextBackgroundLocation,
+          },
+        }
+      );
     },
-    [currentLang, setLang]
+    [currentLang, dashboardSurfaceFromLayout, location, navigate, setLang]
   );
 
   const handleNameChange = useCallback((value: string) => {

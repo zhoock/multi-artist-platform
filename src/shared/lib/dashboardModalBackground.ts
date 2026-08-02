@@ -1,5 +1,6 @@
 import type { Location } from 'react-router-dom';
 
+import { parseLangFromPath, withLangPrefix, type RouteLang } from '@shared/lib/i18n/routeLang';
 import { isDashboardPathname } from '@shared/lib/publicArtistContext';
 
 const STORAGE_KEY = 'sc-dashboard-modal-bg';
@@ -43,6 +44,37 @@ export type DashboardModalBackground = {
   search: string;
   hash: string;
 };
+
+function splitRelativePath(fullPath: string): DashboardModalBackground {
+  const queryIndex = fullPath.indexOf('?');
+  const hashIndex = fullPath.indexOf('#');
+
+  let cutIndex = fullPath.length;
+  if (queryIndex !== -1) cutIndex = Math.min(cutIndex, queryIndex);
+  if (hashIndex !== -1) cutIndex = Math.min(cutIndex, hashIndex);
+
+  const pathname = fullPath.slice(0, cutIndex) || '/';
+  const searchEnd = hashIndex !== -1 && hashIndex > queryIndex ? hashIndex : fullPath.length;
+  const search =
+    queryIndex !== -1
+      ? fullPath.slice(queryIndex, searchEnd === queryIndex ? undefined : searchEnd)
+      : '';
+  const hash = hashIndex !== -1 ? fullPath.slice(hashIndex) : '';
+
+  return { pathname, search, hash };
+}
+
+/** Rewrites a locale-prefixed dashboard modal background to the chosen UI language. */
+export function localizeDashboardModalBackground(
+  bg: DashboardModalBackground,
+  lang: RouteLang
+): DashboardModalBackground {
+  const { lang: pathLang } = parseLangFromPath(bg.pathname);
+  if (!pathLang) return bg;
+
+  const fullPath = `${bg.pathname}${bg.search}${bg.hash ?? ''}`;
+  return splitRelativePath(withLangPrefix(lang, fullPath));
+}
 
 export const PAYMENT_RETURN_PATHS = [
   '/pay/status',

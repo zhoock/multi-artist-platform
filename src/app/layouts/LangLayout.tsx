@@ -17,12 +17,16 @@ export function LangLayout() {
   const { lang: currentLang } = useLang();
   const isValidLang = langParam !== undefined && isRouteLang(langParam);
 
+  // Sync URL → Redux on navigation only. Do not depend on `currentLang`: otherwise
+  // locale changes from dashboard settings (or other UI) are immediately reverted
+  // while a prefixed route stays mounted under a dashboard modal.
   useLayoutEffect(() => {
     if (!isValidLang || !langParam || langParam === currentLang) {
       return;
     }
     dispatch(langActions.setLang(langParam));
-  }, [currentLang, dispatch, isValidLang, langParam]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- URL is the trigger, not Redux
+  }, [dispatch, isValidLang, langParam]);
 
   if (!isValidLang) {
     return <NotFoundPage />;

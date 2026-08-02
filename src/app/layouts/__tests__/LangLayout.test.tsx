@@ -62,6 +62,27 @@ describe('LangLayout', () => {
     expect(mockDispatch).not.toHaveBeenCalled();
   });
 
+  test('does not revert Redux when current lang changes without URL navigation', () => {
+    mockUseLang.mockReturnValue({ lang: 'en', setLang: jest.fn() });
+    const { rerender } = renderLangRoute('/ru');
+
+    expect(mockDispatch).toHaveBeenCalledTimes(1);
+    mockDispatch.mockClear();
+
+    mockUseLang.mockReturnValue({ lang: 'en', setLang: jest.fn() });
+    rerender(
+      <MemoryRouter initialEntries={['/ru']}>
+        <Routes>
+          <Route path="/:lang" element={<LangLayout />}>
+            <Route index element={<HomeStub />} />
+          </Route>
+        </Routes>
+      </MemoryRouter>
+    );
+
+    expect(mockDispatch).not.toHaveBeenCalled();
+  });
+
   test('shows 404 for unsupported locale segment', () => {
     renderLangRoute('/de');
     expect(screen.getByTestId('not-found')).toBeTruthy();

@@ -34,6 +34,7 @@ import {
 import { clearAccountDeletedSkipReturn } from '@shared/lib/accountDeletedSession';
 import {
   clearDashboardModalBackground,
+  localizeDashboardModalBackground,
   resolveDashboardModalCloseTarget,
 } from '@shared/lib/dashboardModalBackground';
 import { readDashboardOpenIntent, stripDashboardOpenIntent } from '@shared/lib/dashboardOpenIntent';
@@ -446,21 +447,35 @@ function UserDashboard() {
 
     clearDashboardModalBackground();
 
-    const backgroundArtistSlug = getArtistSlugFromLocation(closeTarget);
-    const artistSlugForRefresh = backgroundArtistSlug ?? profilePublicSlug?.trim() ?? null;
-
-    navigate(
+    const localizedCloseTarget = localizeDashboardModalBackground(
       {
         pathname: closeTarget.pathname,
         search: closeTarget.search,
         hash: closeTarget.hash ?? '',
+      },
+      lang
+    );
+
+    const backgroundArtistSlug = getArtistSlugFromLocation({
+      ...closeTarget,
+      pathname: localizedCloseTarget.pathname,
+      search: localizedCloseTarget.search,
+      hash: localizedCloseTarget.hash,
+    });
+    const artistSlugForRefresh = backgroundArtistSlug ?? profilePublicSlug?.trim() ?? null;
+
+    navigate(
+      {
+        pathname: localizedCloseTarget.pathname,
+        search: localizedCloseTarget.search,
+        hash: localizedCloseTarget.hash ?? '',
       },
       { replace: true }
     );
 
     // Only retries scopes that could not resolve a slug at mutation time — not a global refresh.
     flushPendingPublicSurfaceSync(artistSlugForRefresh);
-  }, [backgroundLocation, navigate, profilePublicSlug]);
+  }, [backgroundLocation, lang, navigate, profilePublicSlug]);
   const [editArticleModal, setEditArticleModal] = useState<{
     isOpen: boolean;
     article: IArticles | null;
