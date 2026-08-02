@@ -642,6 +642,27 @@ export interface IInterface {
     albumNoTracksVisitorDescription?: string;
     /** Прогресс загрузки треков в альбом (перед процентом). */
     uploadingTracks: string;
+    /** Кнопка отмены массовой загрузки треков. */
+    cancelTrackUpload?: string;
+    /** Подсказка о поддерживаемых форматах и лимите размера файла. */
+    trackUploadFormatsHint?: string;
+    /** Заголовок при частичной загрузке: «Загружено {uploaded} из {total}». */
+    uploadedTracksPartialTitle?: string;
+    /** Вступление к списку файлов, которые не удалось загрузить. */
+    uploadedTracksPartialFailuresIntro?: string;
+    /** Сообщение при отмене загрузки пользователем. */
+    uploadCancelled?: string;
+    /** Вступление при полном провале загрузки всех файлов. */
+    trackUploadAllFailedIntro?: string;
+    trackUploadFileTooLarge?: string;
+    trackUploadFileFailed?: string;
+    trackUploadTimeout?: string;
+    trackUploadNotAuthenticated?: string;
+    trackUploadFailedGetUrl?: string;
+    trackUploadInvalidServerResponse?: string;
+    trackUploadFailedSave?: string;
+    trackUploadUnknownError?: string;
+    trackUploadAlbumNotFound?: string;
     lyrics: string;
     track: string;
     duration: string;

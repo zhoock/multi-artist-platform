@@ -10,35 +10,13 @@ import {
 } from '@shared/lib/audio/audioTechnicalMetadata';
 import { extractAudioTechnicalMetadata } from '@shared/lib/audio/extractAudioTechnicalMetadata';
 import { buildStorageAudioFileName } from '@shared/lib/tracks/buildStorageAudioFileName';
+import {
+  formatStorageUploadError,
+  formatTrackUploadCancelledMessage,
+  formatTrackUploadTimeoutMessage,
+  resolveTrackUploadErrorCopy,
+} from '@shared/lib/tracks/trackUploadErrorMessages';
 import type { SupportedLang } from '@shared/model/lang';
-
-function formatStorageUploadError(status: number, statusText: string, errorText: string): string {
-  let detail = errorText.trim();
-  if (detail) {
-    try {
-      const parsed = JSON.parse(detail) as {
-        message?: string;
-        error?: string;
-      };
-      detail = parsed.message?.trim() || parsed.error?.trim() || detail;
-    } catch {
-      // keep raw body
-    }
-  }
-
-  if (
-    status === 413 ||
-    /too large|payload too large|entity too large|maximum.*size/i.test(detail)
-  ) {
-    return `File is too large for storage upload.${detail ? ` ${detail}` : ''}`;
-  }
-
-  if (detail) {
-    return `Failed to upload file: ${detail}`;
-  }
-
-  return `Failed to upload file: ${status} ${statusText}`;
-}
 
 export interface TrackUploadData extends AudioTechnicalMetadata {
   fileName: string;
@@ -186,16 +164,22 @@ export async function prepareAndUploadTrack(
   file: File,
   albumId: string,
   trackId: string,
-  options?: { title?: string; lang: SupportedLang }
+  options?: { title?: string; lang: SupportedLang; signal?: AbortSignal }
 ): Promise<TrackUploadData> {
   const lang = options?.lang ?? 'ru';
   const titleOpt = options?.title;
+  const externalSignal = options?.signal;
+  const errorCopy = resolveTrackUploadErrorCopy(lang);
+
+  if (externalSignal?.aborted) {
+    throw new Error(errorCopy.uploadCancelled);
+  }
   const { createSupabaseClient, STORAGE_BUCKET_NAME } = await import('@config/supabase');
   const { getToken } = await import('@shared/lib/auth');
 
   const token = getToken();
   if (!token) {
-    throw new Error('User is not authenticated. Please log in.');
+    throw new Error(errorCopy.notAuthenticated);
   }
 
   const [browserDuration, audioTech] = await Promise.all([
@@ -261,13 +245,13 @@ export async function prepareAndUploadTrack(
   if (!signedUrlResponse.ok) {
     const errorData = await signedUrlResponse.json().catch(() => ({}));
     console.error('❌ [prepareAndUploadTrack] Failed to get signed URL:', errorData);
-    throw new Error(errorData.error || 'Failed to get upload URL. Please try again.');
+    throw new Error(errorData.error || errorCopy.failedGetUploadUrl);
   }
 
   const { data: signedUrlData } = await signedUrlResponse.json();
   if (!signedUrlData?.signedUrl || !signedUrlData?.storagePath || !signedUrlData?.authUserId) {
     console.error('❌ [prepareAndUploadTrack] Invalid signed URL response:', signedUrlData);
-    throw new Error('Invalid response from server. Please try again.');
+    throw new Error(errorCopy.invalidServerResponse);
   }
 
   const { signedUrl, storagePath, authUserId } = signedUrlData;
@@ -304,6 +288,9 @@ export async function prepareAndUploadTrack(
     controller.abort();
   }, timeoutMs);
 
+  const onExternalAbort = () => controller.abort();
+  externalSignal?.addEventListener('abort', onExternalAbort);
+
   try {
     console.log('🔄 [prepareAndUploadTrack] Uploading to Supabase Storage via signed URL...');
     const uploadStartTime = Date.now();
@@ -331,7 +318,7 @@ export async function prepareAndUploadTrack(
         error: errorText,
       });
       throw new Error(
-        formatStorageUploadError(uploadResponse.status, uploadResponse.statusText, errorText)
+        formatStorageUploadError(uploadResponse.status, uploadResponse.statusText, errorText, lang)
       );
     }
 
@@ -384,11 +371,15 @@ export async function prepareAndUploadTrack(
     };
   } catch (uploadError) {
     clearTimeout(timeoutId);
+    externalSignal?.removeEventListener('abort', onExternalAbort);
     if (uploadError instanceof Error && uploadError.name === 'AbortError') {
-      throw new Error(
-        `Upload timeout: File is too large (${fileSizeMB} MB) or connection is too slow. Try a smaller file or check your connection.`
-      );
+      if (externalSignal?.aborted) {
+        throw new Error(formatTrackUploadCancelledMessage(lang));
+      }
+      throw new Error(formatTrackUploadTimeoutMessage(lang));
     }
     throw uploadError;
+  } finally {
+    externalSignal?.removeEventListener('abort', onExternalAbort);
   }
 }

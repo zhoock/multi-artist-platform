@@ -4,6 +4,7 @@ import {
   parseRgbString,
   selectBackgroundColors,
   selectBackgroundColorsWithDetails,
+  type RGB,
 } from '../selectBackgroundColors';
 
 describe('selectBackgroundColors', () => {
@@ -76,7 +77,7 @@ describe('selectBackgroundColors', () => {
       [145, 142, 138],
       [200, 198, 194],
       [40, 38, 36],
-    ];
+    ] satisfies RGB[];
 
     expect(isMonochromePalette(bwPalette)).toBe(true);
 
@@ -103,14 +104,14 @@ describe('selectBackgroundColors', () => {
       [40, 80, 120],
       [180, 60, 90],
       [250, 250, 248],
-    ];
+    ] satisfies RGB[];
 
     expect(isMonochromePalette(colorful)).toBe(false);
     expect(selectBackgroundColorsWithDetails(colorful).mode).toBe('color');
   });
 });
 
-function rgbToLightness([r, g, b]: [number, number, number]): number {
+function rgbToLightness([r, g, b]: RGB): number {
   const rn = r / 255;
   const gn = g / 255;
   const bn = b / 255;

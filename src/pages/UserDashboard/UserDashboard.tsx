@@ -156,6 +156,11 @@ import {
 import type { SupportedLang } from '@shared/model/lang';
 import './UserDashboard.style.scss';
 import { normalizeTrackVisibility, type TrackVisibility } from '@shared/lib/tracks/trackVisibility';
+import {
+  formatTrackUploadCancelledMessage,
+  resolveTrackUploadErrorCopy,
+  resolveTrackUploadFailureReason,
+} from '@shared/lib/tracks/trackUploadErrorMessages';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 import { ExternalLink as ExternalLinkIcon } from 'lucide-react';
 
@@ -179,6 +184,46 @@ function formatUploadedTracksSuccessMessage(
   const prefix = ui?.dashboard?.uploadedTracksSuccessPrefix ?? 'Successfully uploaded';
   const unit = count === 1 ? 'track' : 'tracks';
   return `${prefix} ${count} ${unit}`;
+}
+
+type TrackUploadFailure = { fileName: string; reason: string };
+
+function formatUploadedTracksPartialTitle(
+  uploaded: number,
+  total: number,
+  ui: IInterface | null | undefined
+): string {
+  const template = ui?.dashboard?.uploadedTracksPartialTitle ?? 'Uploaded {uploaded} of {total}';
+  return template.replace('{uploaded}', String(uploaded)).replace('{total}', String(total));
+}
+
+function formatUploadFailuresMessage(
+  failures: TrackUploadFailure[],
+  ui: IInterface | null | undefined
+): string {
+  if (failures.length === 0) {
+    return '';
+  }
+  const intro =
+    ui?.dashboard?.uploadedTracksPartialFailuresIntro ??
+    'The following files could not be uploaded:';
+  const lines = failures.map((failure) => `• ${failure.fileName}: ${failure.reason}`);
+  return `${intro}\n${lines.join('\n')}`;
+}
+
+function formatTrackUploadAllFailedMessage(
+  failures: TrackUploadFailure[],
+  ui: IInterface | null | undefined,
+  lang: SupportedLang
+): string {
+  const intro =
+    ui?.dashboard?.trackUploadAllFailedIntro ??
+    (lang === 'ru' ? 'Не удалось загрузить ни один трек.' : 'Could not upload any tracks.');
+  if (failures.length === 0) {
+    return intro;
+  }
+  const lines = failures.map((failure) => `• ${failure.fileName}: ${failure.reason}`).join('\n');
+  return `${intro}\n${lines}`;
 }
 
 function formatAlbumDeletedSuccessMessage(
@@ -404,6 +449,7 @@ function UserDashboard() {
   const [pendingFocusTrackKey, setPendingFocusTrackKey] = useState<string | null>(null);
   const [publishingAlbumId, setPublishingAlbumId] = useState<string | null>(null);
   const trackUploadSectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const trackUploadAbortControllersRef = useRef<Record<string, AbortController>>({});
   const [articleAccessMenuArticleId, setArticleAccessMenuArticleId] = useState<string | null>(null);
   const [albumAccessMenuAlbumId, setAlbumAccessMenuAlbumId] = useState<string | null>(null);
   const [albumsData, setAlbumsData] = useState<AlbumData[]>([]);
@@ -1898,6 +1944,11 @@ function UserDashboard() {
       return;
     }
 
+    const abortController = new AbortController();
+    trackUploadAbortControllersRef.current[albumId] = abortController;
+    const cancelledMessage = formatTrackUploadCancelledMessage(lang, ui);
+    const uploadErrorCopy = resolveTrackUploadErrorCopy(lang, ui);
+
     setIsUploadingTracks((prev) => ({ ...prev, [albumId]: true }));
     setUploadProgress((prev) => ({ ...prev, [albumId]: 0 }));
 
@@ -1905,13 +1956,17 @@ function UserDashboard() {
       // Находим альбом в albumsFromStore для получения данных
       const albumFromStore = albumsFromStore.find((a) => a.albumId === albumId);
       if (!albumFromStore) {
-        throw new Error('Album not found');
+        throw new Error(
+          ui?.dashboard?.trackUploadAlbumNotFound ??
+            (lang === 'ru' ? 'Альбом не найден' : 'Album not found')
+        );
       }
 
       // Загружаем файлы и подготавливаем метаданные для каждого трека
       const tracksData: TrackUploadData[] = [];
-      const uploadErrors: string[] = [];
+      const uploadFailures: TrackUploadFailure[] = [];
       const fileArray = Array.from(files);
+      const totalFileCount = fileArray.length;
 
       // Стабильный track_id (UUID): не зависит от порядка/дыр в нумерации; привязка lyrics/метаданных не «съезжает».
       const newStableTrackId = (): string => {
@@ -1922,6 +1977,10 @@ function UserDashboard() {
       };
 
       for (let i = 0; i < fileArray.length; i++) {
+        if (abortController.signal.aborted) {
+          break;
+        }
+
         const file = fileArray[i];
         const trackId = newStableTrackId();
 
@@ -1931,17 +1990,24 @@ function UserDashboard() {
         setUploadProgress((prev) => ({ ...prev, [albumId]: fileProgressStart }));
 
         try {
-          const trackData = await prepareAndUploadTrack(file, albumId, trackId, { lang });
+          const trackData = await prepareAndUploadTrack(file, albumId, trackId, {
+            lang,
+            signal: abortController.signal,
+          });
           tracksData.push(trackData);
 
           // Обновляем прогресс после успешной загрузки файла
           setUploadProgress((prev) => ({ ...prev, [albumId]: fileProgressEnd }));
         } catch (error) {
           console.error(`❌ [handleTrackUpload] Error uploading track ${trackId}:`, error);
-          const msg =
-            error instanceof Error ? error.message : typeof error === 'string' ? error : 'Unknown';
-          uploadErrors.push(`${file.name}: ${msg}`);
-          // Продолжаем загрузку остальных треков, но не обновляем прогресс при ошибке
+          const isCancelled = abortController.signal.aborted;
+          const msg = isCancelled
+            ? cancelledMessage
+            : resolveTrackUploadFailureReason(error, lang, ui);
+          uploadFailures.push({ fileName: file.name, reason: msg });
+          if (isCancelled) {
+            break;
+          }
         }
       }
 
@@ -1949,8 +2015,23 @@ function UserDashboard() {
       setUploadProgress((prev) => ({ ...prev, [albumId]: 90 }));
 
       if (tracksData.length === 0) {
-        const detail = uploadErrors.length > 0 ? ` ${uploadErrors.join(' | ')}` : '';
-        throw new Error(`Failed to upload any tracks.${detail}`);
+        if (abortController.signal.aborted) {
+          setAlertModal({
+            isOpen: true,
+            title: cancelledMessage,
+            message: formatUploadFailuresMessage(uploadFailures, ui),
+            variant: 'info',
+          });
+          return;
+        }
+
+        setAlertModal({
+          isOpen: true,
+          title: ui?.dashboard?.error ?? (lang === 'ru' ? 'Ошибка' : 'Error'),
+          message: formatTrackUploadAllFailedMessage(uploadFailures, ui, lang),
+          variant: 'error',
+        });
+        return;
       }
 
       // Загружаем треки
@@ -2048,13 +2129,22 @@ function UserDashboard() {
           (entry) => (entry as { processingStatus?: string }).processingStatus === 'failed'
         );
 
+        const partialFailuresMessage = formatUploadFailuresMessage(uploadFailures, ui);
+        const processingMessage =
+          ui?.dashboard?.trackProcessingFailedAfterUpload ??
+          'Tracks were uploaded, but audio processing could not start.';
+
         if (failedProcessingTracks.length > 0) {
+          const combinedMessage = [processingMessage, partialFailuresMessage]
+            .filter(Boolean)
+            .join('\n\n');
           setAlertModal({
             isOpen: true,
-            title: ui?.dashboard?.trackProcessing?.enqueueFailed ?? 'Processing not started',
-            message:
-              ui?.dashboard?.trackProcessingFailedAfterUpload ??
-              'Tracks were uploaded, but audio processing could not start.',
+            title:
+              uploadFailures.length > 0
+                ? formatUploadedTracksPartialTitle(uploadedCount, totalFileCount, ui)
+                : (ui?.dashboard?.trackProcessing?.enqueueFailed ?? 'Processing not started'),
+            message: combinedMessage,
             variant: 'warning',
             retryTracks: {
               albumId,
@@ -2062,6 +2152,13 @@ function UserDashboard() {
                 (entry) => (entry as { trackId: string }).trackId
               ),
             },
+          });
+        } else if (uploadFailures.length > 0) {
+          setAlertModal({
+            isOpen: true,
+            title: formatUploadedTracksPartialTitle(uploadedCount, totalFileCount, ui),
+            message: partialFailuresMessage,
+            variant: 'warning',
           });
         } else {
           toast.show({
@@ -2071,17 +2168,18 @@ function UserDashboard() {
           });
         }
       } else {
-        throw new Error(result.error || 'Failed to upload tracks');
+        throw new Error(result.error || uploadErrorCopy.failedSaveTracks);
       }
     } catch (error) {
       console.error('❌ Error uploading tracks:', error);
       setAlertModal({
         isOpen: true,
-        title: ui?.dashboard?.error ?? 'Error',
-        message: `Error uploading tracks: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        title: ui?.dashboard?.error ?? (lang === 'ru' ? 'Ошибка' : 'Error'),
+        message: resolveTrackUploadFailureReason(error, lang, ui),
         variant: 'error',
       });
     } finally {
+      delete trackUploadAbortControllersRef.current[albumId];
       setIsUploadingTracks((prev) => {
         const newState = { ...prev };
         delete newState[albumId];
@@ -2094,6 +2192,10 @@ function UserDashboard() {
       });
     }
   };
+
+  const handleCancelTrackUpload = useCallback((albumId: string) => {
+    trackUploadAbortControllersRef.current[albumId]?.abort();
+  }, []);
 
   const resolveDashboardTrackLyrics = useCallback(
     (albumId: string, trackId: string): TrackLyricsBundle => {
@@ -2679,6 +2781,7 @@ function UserDashboard() {
                               void handleAlbumVisibilityChange(albumId, visibility)
                             }
                             onTrackUpload={handleTrackUpload}
+                            onCancelTrackUpload={handleCancelTrackUpload}
                             onDragEnd={handleDragEnd}
                             onDeleteTrack={handleDeleteTrack}
                             onTrackTitleChange={handleTrackTitleChange}

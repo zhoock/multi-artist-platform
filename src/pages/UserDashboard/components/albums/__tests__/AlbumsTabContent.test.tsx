@@ -41,6 +41,7 @@ function createBaseProps(overrides: Partial<React.ComponentProps<typeof AlbumsTa
     onAlbumAccessMenuChange: noop,
     onAlbumVisibilityChange: noop,
     onTrackUpload: noop,
+    onCancelTrackUpload: noop,
     onDragEnd: noop,
     onDeleteTrack: noop,
     onTrackTitleChange: asyncNoop,

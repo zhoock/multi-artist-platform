@@ -1,4 +1,4 @@
-export type RGB = [number, number, number];
+export type RGB = readonly [number, number, number];
 
 export type Hsl = { h: number; s: number; l: number };
 
@@ -406,7 +406,7 @@ function deriveSecondaryFromPrimary(primary: RGB): RGB {
   return hslToRgb(hsl.h, nextSaturation, nextLightness);
 }
 
-function averagePalette(palette: RGB[]): RGB {
+function averagePalette(palette: readonly RGB[]): RGB {
   if (palette.length === 0) {
     return [...T.fallback.emptyPaletteRgb];
   }
@@ -433,7 +433,7 @@ export function neutralizeToGray(rgb: RGB): RGB {
  * True when the cover palette is overwhelmingly achromatic (B&W / silver / graphite).
  * Colorful albums with one gray border pixel should not qualify.
  */
-export function isMonochromePalette(palette: RGB[]): boolean {
+export function isMonochromePalette(palette: readonly RGB[]): boolean {
   const normalized = palette.filter((color) => color.length === 3);
   if (normalized.length === 0) {
     return false;
@@ -468,7 +468,7 @@ function evaluateMonochromeStop(rgb: RGB, role: 'primary' | 'secondary'): ColorE
   };
 }
 
-function selectMonochromeBackgroundColors(palette: RGB[]): BackgroundColorSelection {
+function selectMonochromeBackgroundColors(palette: readonly RGB[]): BackgroundColorSelection {
   const M = T.monochrome;
   const normalized = palette.filter((color) => color.length === 3);
 
@@ -537,7 +537,7 @@ function selectMonochromeBackgroundColors(palette: RGB[]): BackgroundColorSelect
   };
 }
 
-function evaluateColorPalette(palette: RGB[]): BackgroundColorSelection {
+function evaluateColorPalette(palette: readonly RGB[]): BackgroundColorSelection {
   const normalizedPalette = palette.filter((color) => color.length === 3);
   if (normalizedPalette.length === 0) {
     const fallback = [...T.fallback.emptyPaletteRgb] as RGB;
@@ -578,7 +578,7 @@ function evaluateColorPalette(palette: RGB[]): BackgroundColorSelection {
   };
 }
 
-function evaluatePalette(palette: RGB[]): BackgroundColorSelection {
+function evaluatePalette(palette: readonly RGB[]): BackgroundColorSelection {
   const normalizedPalette = palette.filter((color) => color.length === 3);
   if (isMonochromePalette(normalizedPalette)) {
     return selectMonochromeBackgroundColors(normalizedPalette);
@@ -587,7 +587,7 @@ function evaluatePalette(palette: RGB[]): BackgroundColorSelection {
   return evaluateColorPalette(normalizedPalette);
 }
 
-export function selectBackgroundColors(palette: RGB[]): { primary: RGB; secondary: RGB } {
+export function selectBackgroundColors(palette: readonly RGB[]): { primary: RGB; secondary: RGB } {
   const selection = evaluatePalette(palette);
   return {
     primary: selection.primary,
@@ -595,7 +595,9 @@ export function selectBackgroundColors(palette: RGB[]): { primary: RGB; secondar
   };
 }
 
-export function selectBackgroundColorsWithDetails(palette: RGB[]): BackgroundColorSelection {
+export function selectBackgroundColorsWithDetails(
+  palette: readonly RGB[]
+): BackgroundColorSelection {
   return evaluatePalette(palette);
 }
 

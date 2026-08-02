@@ -84,6 +84,7 @@ type AlbumsTabContentProps = {
     visibility: Extract<TrackVisibility, 'public' | 'hidden'>
   ) => void;
   onTrackUpload: (albumId: string, files: FileList) => void;
+  onCancelTrackUpload: (albumId: string) => void;
   onDragEnd: (event: DragEndEvent, albumId: string) => void;
   onDeleteTrack: (albumId: string, trackId: string, trackTitle: string) => void;
   onTrackTitleChange: (albumId: string, trackId: string, newTitle: string) => Promise<void>;
@@ -108,6 +109,17 @@ type AlbumsTabContentProps = {
 };
 
 const albumTrackKey = (albumId: string, trackId: string) => `${albumId}:${trackId}`;
+
+const TRACK_UPLOAD_ACCEPT = 'audio/*,.wav,.flac,.aiff,.aif,.mp3,.m4a,.ogg,.opus';
+
+function TrackUploadFormatsHint({ ui }: { ui: IInterface | null }) {
+  return (
+    <p className="user-dashboard__track-upload-hint">
+      {ui?.dashboard?.trackUploadFormatsHint ??
+        'Supported: MP3, WAV, FLAC, M4A, OGG, Opus. Max 50 MB per file.'}
+    </p>
+  );
+}
 
 export function AlbumsTabContent({
   emailVerified,
@@ -140,6 +152,7 @@ export function AlbumsTabContent({
   onAlbumAccessMenuChange,
   onAlbumVisibilityChange,
   onTrackUpload,
+  onCancelTrackUpload,
   onDragEnd,
   onDeleteTrack,
   onTrackTitleChange,
@@ -479,6 +492,13 @@ export function AlbumsTabContent({
                             }}
                           />
                         </div>
+                        <DashboardButton
+                          variant="outline"
+                          className="user-dashboard__cancel-upload-button"
+                          onClick={() => onCancelTrackUpload(album.id)}
+                        >
+                          {ui?.dashboard?.cancelTrackUpload ?? 'Cancel upload'}
+                        </DashboardButton>
                       </div>
                     ) : album.tracks.length === 0 ? (
                       <>
@@ -488,7 +508,7 @@ export function AlbumsTabContent({
                           }}
                           type="file"
                           multiple
-                          accept="audio/*"
+                          accept={TRACK_UPLOAD_ACCEPT}
                           style={{ display: 'none' }}
                           onChange={(e) => {
                             const files = e.target.files;
@@ -507,6 +527,7 @@ export function AlbumsTabContent({
                           onUploadTracks={() => openTrackUploadForAlbum(album.id)}
                           className="user-dashboard__album-no-tracks-empty"
                         />
+                        <TrackUploadFormatsHint ui={ui} />
                       </>
                     ) : (
                       <>
@@ -519,7 +540,7 @@ export function AlbumsTabContent({
                           }}
                           type="file"
                           multiple
-                          accept="audio/*"
+                          accept={TRACK_UPLOAD_ACCEPT}
                           style={{ display: 'none' }}
                           onChange={(e) => {
                             const files = e.target.files;
@@ -539,6 +560,7 @@ export function AlbumsTabContent({
                         >
                           {ui?.dashboard?.chooseFiles ?? 'Choose files'}
                         </DashboardButton>
+                        <TrackUploadFormatsHint ui={ui} />
                       </>
                     )}
                   </div>

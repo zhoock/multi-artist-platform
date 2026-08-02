@@ -73,6 +73,19 @@ dialog {
       text-align: center;
     }
 
+    &__track-upload-hint {
+      margin: 0;
+      max-width: 28rem;
+      text-align: center;
+      color: var(--dashboard-text-secondary);
+      font-size: var(--dashboard-helper-font-size, 0.8125rem);
+      line-height: 1.4;
+    }
+
+    &__cancel-upload-button {
+      white-space: nowrap;
+    }
+
     &__choose-files-button {
       white-space: nowrap;
     }
