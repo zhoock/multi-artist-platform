@@ -5,6 +5,8 @@ import { useLang } from '@app/providers/lang';
 import { useFocusOnOpen } from '@shared/lib/hooks/useFocusOnOpen';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
+import { isPasswordLongEnough } from '@shared/lib/auth/passwordPolicy';
+import { PasswordStrengthIndicator } from '@shared/ui/passwordStrength';
 import './AuthForm.scss';
 
 type RegisterField = 'name' | 'email' | 'password' | 'confirmPassword';
@@ -29,6 +31,7 @@ export function RegisterForm({
   const copy = useMemo(() => {
     const reg = ui?.auth?.register;
     const val = ui?.auth?.validation;
+    const strength = ui?.auth?.resetPassword?.strength;
     const en = lang !== 'ru';
     const fallback = en
       ? {
@@ -51,7 +54,14 @@ export function RegisterForm({
           requiredPassword: 'Enter your password',
           requiredConfirmPassword: 'Confirm your password',
           passwordsMismatch: 'Passwords do not match',
-          passwordMinLength: 'Password must be at least 6 characters',
+          passwordMinLength: 'Password must be at least 8 characters long.',
+          strength: {
+            veryWeak: 'Very weak',
+            weak: 'Weak',
+            fair: 'Fair',
+            good: 'Good',
+            strong: 'Strong',
+          },
         }
       : {
           title: isArtist ? 'Регистрация артиста' : 'Регистрация слушателя',
@@ -73,10 +83,25 @@ export function RegisterForm({
           requiredPassword: 'Укажите пароль',
           requiredConfirmPassword: 'Подтвердите пароль',
           passwordsMismatch: 'Пароли не совпадают',
-          passwordMinLength: 'Пароль должен содержать минимум 6 символов',
+          passwordMinLength: 'Пароль должен содержать минимум 8 символов.',
+          strength: {
+            veryWeak: 'Очень слабый',
+            weak: 'Слабый',
+            fair: 'Средний',
+            good: 'Хороший',
+            strong: 'Сильный',
+          },
         };
-    return { ...fallback, ...reg, ...val };
-  }, [isArtist, lang, ui?.auth?.register, ui?.auth?.validation]);
+    return {
+      ...fallback,
+      ...reg,
+      ...val,
+      strength: {
+        ...fallback.strength,
+        ...strength,
+      },
+    };
+  }, [isArtist, lang, ui?.auth?.register, ui?.auth?.validation, ui?.auth?.resetPassword?.strength]);
 
   const nameLabel = isArtist ? copy.artistBandNameLabel : copy.nameLabel;
   const namePlaceholder = isArtist ? copy.artistBandNamePlaceholder : copy.namePlaceholder;
@@ -113,7 +138,7 @@ export function RegisterForm({
     }
     if (!password) {
       nextErrors.password = copy.requiredPassword;
-    } else if (password.length < 6) {
+    } else if (!isPasswordLongEnough(password)) {
       nextErrors.password = copy.passwordMinLength;
     }
     if (!confirmPassword) {
@@ -233,7 +258,14 @@ export function RegisterForm({
           autoComplete="new-password"
           disabled={loading}
           aria-invalid={!!fieldErrors.password}
-          aria-describedby={fieldErrors.password ? 'register-password-error' : undefined}
+          aria-describedby={
+            fieldErrors.password ? 'register-password-error' : 'register-password-strength'
+          }
+        />
+        <PasswordStrengthIndicator
+          password={password}
+          labels={copy.strength}
+          id="register-password-strength"
         />
         {fieldErrors.password ? (
           <p id="register-password-error" className="auth-form__field-error" role="alert">

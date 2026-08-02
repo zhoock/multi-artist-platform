@@ -25,7 +25,7 @@
         "requiredPassword": "Укажите пароль",
         "requiredConfirmPassword": "Подтвердите пароль",
         "passwordsMismatch": "Пароли не совпадают",
-        "passwordMinLength": "Пароль должен содержать минимум 6 символов"
+        "passwordMinLength": "Пароль должен содержать минимум 8 символов."
       },
       "login": {
         "title": "Вход",

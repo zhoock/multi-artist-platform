@@ -7,12 +7,11 @@ import { useLang } from '@app/providers/lang';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
-import { computePasswordStrength } from './passwordStrength';
+import { isPasswordLongEnough } from '@shared/lib/auth/passwordPolicy';
+import { PasswordStrengthIndicator } from '@shared/ui/passwordStrength';
 import { ModalBackdrop } from '@shared/ui/localModal';
 import '@features/auth/ui/AuthForm.scss';
 import './ResetPassword.scss';
-
-const MIN_PASSWORD_LENGTH = 8;
 
 function EyeIcon() {
   return (
@@ -146,17 +145,6 @@ export default function ResetPassword() {
     };
   }, [lang, ui?.auth?.resetPassword]);
 
-  const strengthLabels = useMemo(
-    () => [
-      copy.strength.veryWeak,
-      copy.strength.weak,
-      copy.strength.fair,
-      copy.strength.good,
-      copy.strength.strong,
-    ],
-    [copy.strength]
-  );
-
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -178,8 +166,6 @@ export default function ResetPassword() {
     }
   }, [tokenMissing, copy.errors.invalidLink]);
 
-  const strength = computePasswordStrength(password);
-
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -193,7 +179,7 @@ export default function ResetPassword() {
     if (!password) {
       setPasswordFieldError(copy.errors.passwordRequired);
       hasFieldError = true;
-    } else if (password.length < MIN_PASSWORD_LENGTH) {
+    } else if (!isPasswordLongEnough(password)) {
       setPasswordFieldError(copy.errors.passwordTooShort);
       hasFieldError = true;
     } else {
@@ -336,26 +322,11 @@ export default function ResetPassword() {
               </button>
             </div>
 
-            <div className="reset-password-form__strength" aria-hidden={!password}>
-              <div className="reset-password-form__strength-bars">
-                {[0, 1, 2, 3, 4].map((idx) => (
-                  <span
-                    key={idx}
-                    className={`reset-password-form__strength-bar${
-                      password && idx < strength.score
-                        ? ` reset-password-form__strength-bar--filled reset-password-form__strength-bar--level-${strength.score}`
-                        : ''
-                    }`}
-                  />
-                ))}
-              </div>
-              <span
-                id="reset-strength-label"
-                className={`reset-password-form__strength-label reset-password-form__strength-label--level-${strength.score}`}
-              >
-                {password ? strengthLabels[Math.max(0, strength.score - 1)] : ''}
-              </span>
-            </div>
+            <PasswordStrengthIndicator
+              password={password}
+              labels={copy.strength}
+              id="reset-strength-label"
+            />
 
             {passwordFieldError ? (
               <p id="reset-new-password-error" className="auth-form__field-error" role="alert">

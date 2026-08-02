@@ -28,8 +28,11 @@ const TOKEN_BYTES = 32;
 export const PASSWORD_RESET_TTL_MINUTES = 60;
 /** Per-user minimum interval between consecutive resend requests. */
 export const PASSWORD_RESET_USER_COOLDOWN_SECONDS = 60;
-/** Minimum acceptable new-password length (mirrors change-password). */
-export const PASSWORD_RESET_MIN_PASSWORD_LENGTH = 8;
+export {
+  MIN_PASSWORD_LENGTH as PASSWORD_RESET_MIN_PASSWORD_LENGTH,
+  validatePassword as validateNewPassword,
+  type PasswordPolicyError,
+} from './password-policy';
 
 export interface PasswordResetUserRow {
   id: string;
@@ -222,29 +225,4 @@ export async function applyPasswordResetForUser(
     [newPasswordHash, userId],
     0
   );
-}
-
-/**
- * Server-side password policy. Mirrors `change-password` (min 8 chars) and
- * adds a sanity-cap to keep bcrypt costs predictable.
- */
-export interface PasswordPolicyError {
-  code: 'PASSWORD_TOO_SHORT' | 'PASSWORD_TOO_LONG' | 'PASSWORD_REQUIRED';
-  message: string;
-}
-
-export function validateNewPassword(password: unknown): PasswordPolicyError | null {
-  if (typeof password !== 'string' || password.length === 0) {
-    return { code: 'PASSWORD_REQUIRED', message: 'Password is required' };
-  }
-  if (password.length < PASSWORD_RESET_MIN_PASSWORD_LENGTH) {
-    return {
-      code: 'PASSWORD_TOO_SHORT',
-      message: `Password must be at least ${PASSWORD_RESET_MIN_PASSWORD_LENGTH} characters long`,
-    };
-  }
-  if (password.length > 200) {
-    return { code: 'PASSWORD_TOO_LONG', message: 'Password is too long' };
-  }
-  return null;
 }

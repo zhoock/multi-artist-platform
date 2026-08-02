@@ -65,6 +65,7 @@ import {
   sendUserPasswordResetEmail,
   validateNewPassword,
 } from './lib/password-reset';
+import { validatePassword } from './lib/password-policy';
 import { normalizeAccountType, type AccountType } from './lib/account-type';
 
 interface UserRow extends VerificationUserRow {
@@ -770,6 +771,13 @@ export const handler: Handler = async (
 
       if (!data.email || !data.password) {
         return createErrorResponse(400, 'Email and password are required');
+      }
+
+      const registerPasswordError = validatePassword(data.password);
+      if (registerPasswordError) {
+        return createErrorResponse(400, registerPasswordError.message, CORS_HEADERS, {
+          code: registerPasswordError.code,
+        });
       }
 
       const accountType = normalizeAccountType(data.accountType);

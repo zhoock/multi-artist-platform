@@ -1,18 +1,19 @@
 /**
- * Lightweight password-strength heuristic for the reset-password form.
+ * Lightweight password-strength heuristic for auth forms.
  *
  * Goal: give the user a fast visual cue while typing — NOT a security check.
- * Real password policy is enforced server-side
- * (`netlify/functions/lib/password-reset.ts`).
+ * Real password policy is enforced server-side (`netlify/functions/lib/password-policy.ts`).
  *
  * Score is an integer 0..5:
  *   0 — empty
- *   1 — very weak  (< 8 chars)
+ *   1 — very weak  (< MIN_PASSWORD_LENGTH chars)
  *   2 — weak
  *   3 — fair
  *   4 — good
  *   5 — strong
  */
+
+import { MIN_PASSWORD_LENGTH } from './passwordPolicy';
 
 export interface PasswordStrength {
   /** 0..5 — used both for the bar fill count and the localized label. */
@@ -20,8 +21,6 @@ export interface PasswordStrength {
   /** True iff the password meets the absolute minimum length policy. */
   meetsMinLength: boolean;
 }
-
-const MIN_LENGTH = 8;
 
 function classesPresent(password: string): number {
   let classes = 0;
@@ -38,7 +37,7 @@ export function computePasswordStrength(password: string): PasswordStrength {
     return { score: 0, meetsMinLength: false };
   }
 
-  if (password.length < MIN_LENGTH) {
+  if (password.length < MIN_PASSWORD_LENGTH) {
     return { score: 1, meetsMinLength: false };
   }
 

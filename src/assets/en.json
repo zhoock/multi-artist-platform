@@ -25,7 +25,7 @@
         "requiredPassword": "Enter your password",
         "requiredConfirmPassword": "Confirm your password",
         "passwordsMismatch": "Passwords do not match",
-        "passwordMinLength": "Password must be at least 6 characters"
+        "passwordMinLength": "Password must be at least 8 characters long."
       },
       "login": {
         "title": "Sign in",

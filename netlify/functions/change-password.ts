@@ -17,6 +17,7 @@ import {
   handleError,
 } from './lib/api-helpers';
 import type { ApiResponse } from './lib/types';
+import { validatePassword } from './lib/password-policy';
 
 interface ChangePasswordRequest {
   currentPassword: string;
@@ -56,8 +57,11 @@ export const handler: Handler = async (
       return createErrorResponse(400, 'Current password and new password are required');
     }
 
-    if (data.newPassword.length < 8) {
-      return createErrorResponse(400, 'New password must be at least 8 characters long');
+    const passwordError = validatePassword(data.newPassword);
+    if (passwordError) {
+      return createErrorResponse(400, passwordError.message, undefined, {
+        code: passwordError.code,
+      });
     }
 
     if (data.newPassword === data.currentPassword) {

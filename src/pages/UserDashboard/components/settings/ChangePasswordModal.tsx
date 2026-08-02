@@ -10,6 +10,7 @@ import { DashboardButton } from '@shared/ui/dashboard';
 import '@shared/ui/dashboard-save/dashboard-save.scss';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 import { ModalCloseIcon } from '@shared/ui/icons/ModalCloseIcon';
+import { isPasswordLongEnough } from '@shared/lib/auth/passwordPolicy';
 import './ChangePasswordModal.style.scss';
 
 function PasswordVisibilityIcon({ visible }: { visible: boolean }) {
@@ -71,7 +72,7 @@ export function ChangePasswordModal({ isOpen, onClose }: ChangePasswordModalProp
     if (!newPassword) {
       return { newPassword: validation?.enterNewPassword ?? 'Enter new password' };
     }
-    if (newPassword.length < 8) {
+    if (!isPasswordLongEnough(newPassword)) {
       return {
         newPassword: validation?.passwordMinLength ?? 'New password must be at least 8 characters',
       };
