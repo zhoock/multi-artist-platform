@@ -142,6 +142,7 @@ const LANG_TEXTS = {
     articlePublished: 'Статья успешно опубликована',
     savingDraft: 'Сохранить черновик',
     savingDraftProgress: 'Сохранение черновика...',
+    noChangesHint: 'Нет изменений для сохранения',
     savingError: 'Ошибка при сохранении',
     addBlock: 'Добавить блок',
     close: 'Закрыть',
@@ -165,6 +166,7 @@ const LANG_TEXTS = {
     articlePublished: 'Article published successfully',
     savingDraft: 'Save draft',
     savingDraftProgress: 'Saving draft...',
+    noChangesHint: 'No changes to save',
     savingError: 'Error saving article',
     addBlock: 'Add Block',
     close: 'Close',
@@ -528,6 +530,11 @@ export function EditArticleModalV2({
   }, [hasChanges, handleCancel, onClose]);
 
   const isArticleSaveBusy = saveStatus === 'saving' || isPublishing || isSavingDraft;
+  const isCancelDisabled = isArticleSaveBusy || !hasChanges;
+  const isSaveDraftDisabled =
+    isPublishing || saveStatus === 'saving' || isSavingDraft || !hasChanges;
+  const isPublishDisabled = isPublishing || saveStatus === 'saving' || isSavingDraft || !hasChanges;
+  const noChangesActionHint = !hasChanges && !isArticleSaveBusy ? texts.noChangesHint : undefined;
 
   const popupRequestCloseRef = useRef<(() => void) | null>(null);
   const closeDialog = useCallback(() => {
@@ -2480,53 +2487,53 @@ export function EditArticleModalV2({
                 </div>
               </div>
 
-              {/* Footer с кнопками - показывается только при наличии изменений */}
-              {hasChanges && (
-                <div className="edit-article-v2__footer">
-                  <button
-                    type="button"
-                    className="edit-article-v2__button edit-article-v2__button--cancel"
-                    onClick={handleCancel}
-                    disabled={isArticleSaveBusy}
-                  >
-                    {texts.cancel}
-                  </button>
-                  <button
-                    type="button"
-                    className={`edit-article-v2__button edit-article-v2__button--draft${
-                      isSavingDraft ? ' edit-article-v2__button--publish-loading' : ''
-                    }`}
-                    onClick={handleSaveDraft}
-                    disabled={isPublishing || saveStatus === 'saving' || isSavingDraft}
-                  >
-                    {isSavingDraft ? (
-                      <>
-                        <DashboardSaveSpinner />
-                        {texts.savingDraftProgress}
-                      </>
-                    ) : (
-                      texts.savingDraft
-                    )}
-                  </button>
-                  <button
-                    type="button"
-                    className={`edit-article-v2__button edit-article-v2__button--publish${
-                      isPublishing ? ' edit-article-v2__button--publish-loading' : ''
-                    }`}
-                    onClick={handlePublish}
-                    disabled={isPublishing || saveStatus === 'saving' || isSavingDraft}
-                  >
-                    {isPublishing ? (
-                      <>
-                        <DashboardSaveSpinner />
-                        {texts.publishing}
-                      </>
-                    ) : (
-                      texts.publish
-                    )}
-                  </button>
-                </div>
-              )}
+              <div className="edit-article-v2__footer">
+                <button
+                  type="button"
+                  className="edit-article-v2__button edit-article-v2__button--cancel"
+                  onClick={handleCancel}
+                  disabled={isCancelDisabled}
+                  title={noChangesActionHint}
+                >
+                  {texts.cancel}
+                </button>
+                <button
+                  type="button"
+                  className={`edit-article-v2__button edit-article-v2__button--draft${
+                    isSavingDraft ? ' edit-article-v2__button--publish-loading' : ''
+                  }`}
+                  onClick={handleSaveDraft}
+                  disabled={isSaveDraftDisabled}
+                  title={noChangesActionHint}
+                >
+                  {isSavingDraft ? (
+                    <>
+                      <DashboardSaveSpinner />
+                      {texts.savingDraftProgress}
+                    </>
+                  ) : (
+                    texts.savingDraft
+                  )}
+                </button>
+                <button
+                  type="button"
+                  className={`edit-article-v2__button edit-article-v2__button--publish${
+                    isPublishing ? ' edit-article-v2__button--publish-loading' : ''
+                  }`}
+                  onClick={handlePublish}
+                  disabled={isPublishDisabled}
+                  title={noChangesActionHint}
+                >
+                  {isPublishing ? (
+                    <>
+                      <DashboardSaveSpinner />
+                      {texts.publishing}
+                    </>
+                  ) : (
+                    texts.publish
+                  )}
+                </button>
+              </div>
             </div>
 
             {/* Модал редактирования карусели */}
