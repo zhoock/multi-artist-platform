@@ -330,6 +330,16 @@ export interface IInterface {
     startExploring: string;
     close: string;
   };
+  consent?: {
+    bannerAriaLabel: string;
+    bannerTitle: string;
+    bannerDescription: string;
+    /** @deprecated Use bannerTitle + bannerDescription */
+    bannerText?: string;
+    accept: string;
+    decline: string;
+    privacyLink: string;
+  };
   artistOnboarding?: {
     welcomeGreeting: string;
     heroHeadline: string;

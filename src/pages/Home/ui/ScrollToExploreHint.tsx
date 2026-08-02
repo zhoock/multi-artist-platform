@@ -1,4 +1,5 @@
 import { useLang } from '@app/providers/lang';
+import { UNIVERSE_SCENE_OVERLAY_ATTR } from '@shared/lib/universeSceneOverlay';
 import './ScrollToExploreHint.scss';
 
 const LABELS = {
@@ -11,7 +12,11 @@ export function ScrollToExploreHint() {
   const label = LABELS[lang === 'ru' ? 'ru' : 'en'];
 
   return (
-    <p className="universe-scroll-hint" aria-hidden="true">
+    <p
+      className="universe-scroll-hint"
+      aria-hidden="true"
+      {...{ [UNIVERSE_SCENE_OVERLAY_ATTR]: '' }}
+    >
       <span className="universe-scroll-hint__icon" aria-hidden>
         <svg
           className="universe-scroll-hint__mouse"

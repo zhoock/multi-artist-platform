@@ -1,0 +1,133 @@
+@use '../../../scss/abstracts/mixins' as *;
+
+.consent-banner {
+  --consent-banner-player-gap: clamp(0.75rem, 1.5vi, 1rem);
+
+  position: fixed;
+  inset-inline: 0;
+  inset-block-end: calc(var(--layout-fixed-bottom-inset, 0px) + var(--consent-banner-player-gap));
+  z-index: 9990;
+  padding-inline: max(3vi, var(--ms-01));
+  padding-block-end: env(safe-area-inset-bottom, 0);
+  pointer-events: none;
+
+  &__card {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    inline-size: min(94vi, 1000px);
+    max-inline-size: 1000px;
+    margin-inline: auto;
+    padding: 1.125rem;
+    color: var(--white);
+    pointer-events: auto;
+    background: rgb(var(--mini-player-background, var(--graphite-green-rgb, 55 54 51)) / 92%);
+    border: 1px solid rgb(var(--dark-greenish-yellow-rgb) / 22%);
+    border-radius: var(--ms-0);
+    backdrop-filter: blur(18px);
+    box-shadow:
+      rgb(0 0 0 / 18%) 0 8px 20px -12px,
+      rgb(0 0 0 / 22%) 0 -4px 16px -12px;
+  }
+
+  &__main {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    min-width: 0;
+  }
+
+  &__icon {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    color: var(--dark-greenish-yellow);
+
+    svg {
+      display: block;
+      inline-size: 2rem;
+      block-size: 2rem;
+    }
+  }
+
+  &__copy {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+    min-width: 0;
+  }
+
+  &__title {
+    margin: 0;
+    color: var(--white);
+
+    @include dashboard-h2-title;
+  }
+
+  &__description {
+    margin: 0;
+
+    @include dashboard-helper-text(var(--warm-concrete));
+  }
+
+  &__link {
+    align-self: flex-start;
+    margin-top: 0.125rem;
+    color: var(--dark-greenish-yellow);
+    font-size: var(--dashboard-helper-font-size);
+    font-weight: var(--semibold, 600);
+    line-height: var(--dashboard-helper-line-height);
+    text-decoration: underline;
+    text-underline-offset: 0.14em;
+    transition: color 0.2s ease;
+
+    &:hover {
+      color: var(--honeydew-melon);
+    }
+  }
+
+  &__actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.625rem;
+    width: 100%;
+
+    .dashboard-button {
+      width: 100%;
+    }
+  }
+
+  @media (width >= 720px) {
+    &__card {
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1.25rem;
+      padding: 1.625rem;
+    }
+
+    &__main {
+      flex: 1 1 auto;
+      gap: 1.125rem;
+    }
+
+    &__icon svg {
+      inline-size: 2.375rem;
+      block-size: 2.375rem;
+    }
+
+    &__actions {
+      flex-direction: row;
+      flex-shrink: 0;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 0.75rem;
+      width: auto;
+
+      .dashboard-button {
+        width: auto;
+      }
+    }
+  }
+}

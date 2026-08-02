@@ -51,6 +51,8 @@ import {
   ArtistOnboardingRedirectController,
   PremiumCheckoutIntentResumeController,
 } from '@shared/lib/authIntent';
+import { AnalyticsController } from '@shared/lib/analytics';
+import { ConsentProvider } from '@shared/lib/consent';
 import { SessionExpiredRedirectController } from '@shared/lib/sessionExpired';
 import { ListenerWelcomeController } from '@features/listenerWelcome';
 import {
@@ -635,90 +637,93 @@ function Layout() {
   );
 
   return (
-    <PremiumSubscriptionProvider>
-      <ArchiveAccessModalProvider>
-        <DashboardModalShellContext.Provider value={dashboardModalShell}>
-          <CurrentArtistSync />
-          {/* БАЗОВЫЙ Helmet для всех страниц без собственного */}
-          <Helmet>
-            {/* динамический заголовок и описание */}
-            <title>{seo[lang].title}</title>
-            <meta name="description" content={seo[lang].desc} />
-            <meta name="color-scheme" content="dark light" />
-            <link rel="canonical" href={seo[lang].url} />
+    <ConsentProvider>
+      <PremiumSubscriptionProvider>
+        <ArchiveAccessModalProvider>
+          <DashboardModalShellContext.Provider value={dashboardModalShell}>
+            <CurrentArtistSync />
+            {/* БАЗОВЫЙ Helmet для всех страниц без собственного */}
+            <Helmet>
+              {/* динамический заголовок и описание */}
+              <title>{seo[lang].title}</title>
+              <meta name="description" content={seo[lang].desc} />
+              <meta name="color-scheme" content="dark light" />
+              <link rel="canonical" href={seo[lang].url} />
 
-            {publicPageHreflangLinks(seo.hreflang)}
+              {publicPageHreflangLinks(seo.hreflang)}
 
-            {/* Open Graph / Twitter */}
-            <meta property="og:type" content="website" />
-            <meta property="og:title" content={seo[lang].title} />
-            <meta property="og:description" content={seo[lang].desc} />
-            <meta property="og:url" content={seo[lang].url} />
-            <meta property="og:image" content={seo[lang].ogImage} />
-            <meta name="twitter:card" content="summary_large_image" />
-            <meta name="twitter:title" content={seo[lang].title} />
-            <meta name="twitter:description" content={seo[lang].desc} />
-            <meta name="twitter:image" content={seo[lang].ogImage} />
-            <meta name="twitter:url" content={seo[lang].url} />
-          </Helmet>
+              {/* Open Graph / Twitter */}
+              <meta property="og:type" content="website" />
+              <meta property="og:title" content={seo[lang].title} />
+              <meta property="og:description" content={seo[lang].desc} />
+              <meta property="og:url" content={seo[lang].url} />
+              <meta property="og:image" content={seo[lang].ogImage} />
+              <meta name="twitter:card" content="summary_large_image" />
+              <meta name="twitter:title" content={seo[lang].title} />
+              <meta name="twitter:description" content={seo[lang].desc} />
+              <meta name="twitter:image" content={seo[lang].ogImage} />
+              <meta name="twitter:url" content={seo[lang].url} />
+            </Helmet>
 
-          {isPaymentRoute ? (
-            <ErrorBoundary>
-              <main>{paymentRoutes}</main>
-            </ErrorBoundary>
-          ) : isMinimalLayoutRoute ? (
-            <MinimalLayout>{mainRoutes}</MinimalLayout>
-          ) : shouldHideChrome ? (
-            <ErrorBoundary>
-              <main>{notFoundRoutes}</main>
-            </ErrorBoundary>
-          ) : isHomeSceneRoute ? (
-            <ErrorBoundary>
-              <EmailVerificationBanner />
-              <main>
-                <ErrorBoundary>{standardRoutes}</ErrorBoundary>
-              </main>
-              <PlayerShell />
-            </ErrorBoundary>
-          ) : (
-            <ArtistPageAccessProvider>
+            {isPaymentRoute ? (
               <ErrorBoundary>
-                <Header
-                  theme={theme}
-                  onToggleTheme={toggleTheme}
-                  navMenuOpen={popup}
-                  onNavMenuToggle={() => {
-                    if (popup) dispatch(closePopup());
-                    else dispatch(openPopup());
-                  }}
-                />
+                <main>{paymentRoutes}</main>
+              </ErrorBoundary>
+            ) : isMinimalLayoutRoute ? (
+              <MinimalLayout>{mainRoutes}</MinimalLayout>
+            ) : shouldHideChrome ? (
+              <ErrorBoundary>
+                <main>{notFoundRoutes}</main>
+              </ErrorBoundary>
+            ) : isHomeSceneRoute ? (
+              <ErrorBoundary>
+                <EmailVerificationBanner />
                 <main>
-                  <EmailVerificationBanner />
-                  {!isHomeSceneRoute && !isLegalDocumentRoute && <Hero />}
-
-                  {/* если поместим popup внурь header, то popup будет обрезаться из-за css-фильтра (filter) внури header */}
-
-                  <Popup isActive={popup} onClose={() => dispatch(closePopup())}>
-                    <NavPopupMenu isActive={popup} />
-                  </Popup>
-
                   <ErrorBoundary>{standardRoutes}</ErrorBoundary>
                 </main>
-                <Footer />
                 <PlayerShell />
               </ErrorBoundary>
-            </ArtistPageAccessProvider>
-          )}
-          <EmailVerificationRefreshController />
-          <SessionExpiredRedirectController />
-          <PremiumEntitlementRefreshController />
-          <PremiumCheckoutIntentResumeController />
-          <AlbumCheckoutIntentResumeController />
-          <ArtistOnboardingRedirectController />
-          <ListenerWelcomeController />
-          <PremiumSuccessModalController />
-        </DashboardModalShellContext.Provider>
-      </ArchiveAccessModalProvider>
-    </PremiumSubscriptionProvider>
+            ) : (
+              <ArtistPageAccessProvider>
+                <ErrorBoundary>
+                  <Header
+                    theme={theme}
+                    onToggleTheme={toggleTheme}
+                    navMenuOpen={popup}
+                    onNavMenuToggle={() => {
+                      if (popup) dispatch(closePopup());
+                      else dispatch(openPopup());
+                    }}
+                  />
+                  <main>
+                    <EmailVerificationBanner />
+                    {!isHomeSceneRoute && !isLegalDocumentRoute && <Hero />}
+
+                    {/* если поместим popup внурь header, то popup будет обрезаться из-за css-фильтра (filter) внури header */}
+
+                    <Popup isActive={popup} onClose={() => dispatch(closePopup())}>
+                      <NavPopupMenu isActive={popup} />
+                    </Popup>
+
+                    <ErrorBoundary>{standardRoutes}</ErrorBoundary>
+                  </main>
+                  <Footer />
+                  <PlayerShell />
+                </ErrorBoundary>
+              </ArtistPageAccessProvider>
+            )}
+            <AnalyticsController />
+            <EmailVerificationRefreshController />
+            <SessionExpiredRedirectController />
+            <PremiumEntitlementRefreshController />
+            <PremiumCheckoutIntentResumeController />
+            <AlbumCheckoutIntentResumeController />
+            <ArtistOnboardingRedirectController />
+            <ListenerWelcomeController />
+            <PremiumSuccessModalController />
+          </DashboardModalShellContext.Provider>
+        </ArchiveAccessModalProvider>
+      </PremiumSubscriptionProvider>
+    </ConsentProvider>
   );
 }

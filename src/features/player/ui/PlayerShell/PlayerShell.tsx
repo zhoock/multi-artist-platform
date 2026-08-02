@@ -24,6 +24,11 @@ import AudioPlayer from '@features/player/ui/AudioPlayer/AudioPlayer';
 import type { RootState } from '@shared/model/appStore/types';
 import { savePlayerState } from '@features/player/model/lib/playerPersist';
 import { bootstrapPlayerSession } from '@features/player/model/lib/bootstrapPlayerSession';
+import {
+  clearFixedBottomInset,
+  measureFixedElementBottomInset,
+  setFixedBottomInset,
+} from '@shared/lib/layout';
 
 const DEFAULT_BG = 'rgba(var(--extra-background-color-rgb) / 80%)';
 
@@ -214,9 +219,11 @@ export const PlayerShell: React.FC = () => {
     isSeekingRef.current = isSeeking;
   }, [isSeeking]);
 
-  // Добавляем padding-bottom к footer, когда мини-плеер отображается
+  // Синхронизируем нижний layout-inset для fixed UI и padding footer при мини-плеере
   useLayoutEffect(() => {
     if (!shouldRenderMini) {
+      clearFixedBottomInset();
+
       const footerEl = document.querySelector('footer');
       if (footerEl) {
         (footerEl as HTMLElement).style.paddingBottom = '';
@@ -228,7 +235,15 @@ export const PlayerShell: React.FC = () => {
       const footerEl = document.querySelector('footer');
       const playerEl = miniPlayerRef.current;
 
-      if (!footerEl || !playerEl) return;
+      if (!playerEl) {
+        clearFixedBottomInset();
+        return;
+      }
+
+      const bottomInset = measureFixedElementBottomInset(playerEl);
+      setFixedBottomInset(bottomInset);
+
+      if (!footerEl) return;
 
       // Используем только высоту плеера, так как отступ снизу (3vi) уже учтён в позиционировании
       const playerHeight = playerEl.offsetHeight;
@@ -260,6 +275,7 @@ export const PlayerShell: React.FC = () => {
       cancelAnimationFrame(frameId);
       resizeObserver.disconnect();
       window.removeEventListener('resize', handleResize);
+      clearFixedBottomInset();
       const footerEl = document.querySelector('footer');
       if (footerEl) {
         (footerEl as HTMLElement).style.paddingBottom = '';

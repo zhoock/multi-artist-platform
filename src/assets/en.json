@@ -298,6 +298,15 @@
       "privacyPageTitle": "Privacy Policy",
       "privacyPageDescription": "Privacy policy and personal data processing terms"
     },
+    "consent": {
+      "bannerAriaLabel": "Analytics cookie consent",
+      "bannerTitle": "We use web analytics services",
+      "bannerDescription": "Google Analytics and Yandex Metrica help us improve the site. They will only be connected after your consent.",
+      "bannerText": "We use web analytics services (Google Analytics and Yandex Metrica) to understand how the site is used.",
+      "accept": "Accept",
+      "decline": "Decline",
+      "privacyLink": "Privacy Policy"
+    },
     "stems": {
       "pageTitle": "Mixer",
       "selectAlbumHint": "Choose an album to open its tracks and stems",

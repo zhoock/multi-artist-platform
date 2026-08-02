@@ -16,6 +16,7 @@ import {
   matchedSlugsFromQuery,
   UNIVERSE_SEARCH_SUGGESTION_LIMIT,
 } from '../lib/filterArtists';
+import { UNIVERSE_SCENE_OVERLAY_ATTR } from '@shared/lib/universeSceneOverlay';
 import './UniverseFloatingSearch.scss';
 
 type UniverseFloatingSearchProps = {
@@ -165,7 +166,7 @@ export function UniverseFloatingSearch({
   const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad|iPod/.test(navigator.platform);
 
   return (
-    <div className="universe-search" role="search">
+    <div className="universe-search" role="search" {...{ [UNIVERSE_SCENE_OVERLAY_ATTR]: '' }}>
       <div
         ref={shellRef}
         className={['universe-search__shell', expanded ? 'universe-search__shell--expanded' : '']

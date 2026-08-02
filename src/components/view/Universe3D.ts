@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import type { ProfileNameUpdatedDetail } from '@shared/lib/profileDisplayName';
+import { isUniverseSceneOverlayTarget } from '@shared/lib/universeSceneOverlay';
 
 /** Manhattan distance (px) before touch pan counts as drag, not tap. */
 const TOUCH_MOVE_THRESHOLD_PX = 5;
@@ -903,6 +904,10 @@ export class Universe3D {
       return;
     }
 
+    if (isUniverseSceneOverlayTarget(event.target)) {
+      return;
+    }
+
     if (this.activeCard && event.target instanceof Node && this.activeCard.contains(event.target)) {
       return;
     }
@@ -1309,24 +1314,13 @@ export class Universe3D {
     return this.activeCard !== null;
   }
 
-  /**
-   * Любой `dialog.popup` (дашборд, модалки, плеер) должен получать нативный скролл.
-   * Иначе глобальный `wheel` ниже делает preventDefault и ломает прокрутку текста в формах.
-   */
-  private isWheelInsideOpenPopupDialog(e: WheelEvent): boolean {
-    const t = e.target;
-    if (!t || !(t instanceof Element)) return false;
-    const dialogEl = t.closest('dialog.popup');
-    return dialogEl instanceof HTMLDialogElement && dialogEl.open;
-  }
-
   private handleWheel = (e: WheelEvent) => {
     if (this.isInteractionLocked()) {
       e.preventDefault();
       return;
     }
 
-    if (this.isWheelInsideOpenPopupDialog(e)) {
+    if (isUniverseSceneOverlayTarget(e.target)) {
       return;
     }
 
@@ -1353,6 +1347,7 @@ export class Universe3D {
 
   private handleMouseDown = (e: MouseEvent) => {
     if (this.isInteractionLocked()) return;
+    if (isUniverseSceneOverlayTarget(e.target)) return;
     this.isDragging = true;
     this.lastPointerX = e.clientX;
     this.lastPointerY = e.clientY;
@@ -1364,6 +1359,10 @@ export class Universe3D {
 
   private handleMouseMove = (e: MouseEvent) => {
     if (!this.isDragging || this.isInteractionLocked()) return;
+    if (isUniverseSceneOverlayTarget(e.target)) {
+      this.isDragging = false;
+      return;
+    }
 
     const rawDx = e.clientX - this.lastPointerX;
     const rawDy = e.clientY - this.lastPointerY;

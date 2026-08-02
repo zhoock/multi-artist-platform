@@ -52,6 +52,7 @@ import { ArtistPageUnderConstruction } from './ArtistPageUnderConstruction';
 import { ArtistPageBuilderPaymentBar } from './ArtistPageBuilderPaymentBar';
 import { ArtistPageSkeletonMain } from './ArtistPageSkeleton';
 import { ScrollToExploreHint } from './ScrollToExploreHint';
+import { UNIVERSE_SCENE_OVERLAY_ATTR } from '@shared/lib/universeSceneOverlay';
 import { useArtistPageBuilder } from '@shared/lib/hooks/useArtistPageBuilder';
 import { useArtistPageSeo } from '@shared/lib/hooks/useArtistPageSeo';
 import { buildLocalizedPublicPath } from '@shared/lib/i18n/routeLang';
@@ -417,7 +418,7 @@ export function HomePage() {
         onSearchMatchesChange={handleSearchMatchesChange}
         onNavigateToArtist={handleSearchSelectArtist}
       />
-      <div className="home-scene__actions">
+      <div className="home-scene__actions" {...{ [UNIVERSE_SCENE_OVERLAY_ATTR]: '' }}>
         {isAuthenticated() ? (
           <ProfileAvatarMenu />
         ) : (

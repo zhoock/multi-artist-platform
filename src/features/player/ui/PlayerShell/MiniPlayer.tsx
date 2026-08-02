@@ -8,6 +8,7 @@ import {
   playerTransportIconProps,
   PLAYER_MINI_ICON_SIZE,
 } from '@shared/ui/icons/playerActionIcon';
+import { UNIVERSE_SCENE_OVERLAY_ATTR } from '@shared/lib/universeSceneOverlay';
 
 import './style.scss';
 
@@ -44,6 +45,7 @@ export const MiniPlayer: React.FC<MiniPlayerProps> = ({
     <div
       ref={containerRef}
       className="mini-player"
+      {...{ [UNIVERSE_SCENE_OVERLAY_ATTR]: '' }}
       role="button"
       tabIndex={0}
       aria-label="Открыть полноэкранный плеер"

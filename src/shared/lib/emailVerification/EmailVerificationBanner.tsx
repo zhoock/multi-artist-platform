@@ -8,6 +8,7 @@ import { ModalCloseIcon } from '@shared/ui/icons/ModalCloseIcon';
 import { useEmailVerificationCopy } from './useEmailVerificationCopy';
 import { useResendCooldown } from './useResendCooldown';
 import { resolveVerificationEmailSend } from './resolveVerificationEmailSendResult';
+import { UNIVERSE_SCENE_OVERLAY_ATTR } from '@shared/lib/universeSceneOverlay';
 import './style.scss';
 
 const BANNER_DISMISSED_KEY = 'email-verification-banner-dismissed';
@@ -80,7 +81,12 @@ export function EmailVerificationBanner() {
 
   return (
     <>
-      <section className="email-verification-banner" role="status" aria-live="polite">
+      <section
+        className="email-verification-banner"
+        {...{ [UNIVERSE_SCENE_OVERLAY_ATTR]: '' }}
+        role="status"
+        aria-live="polite"
+      >
         <div className="email-verification-banner__inner">
           <span className="email-verification-banner__icon" aria-hidden="true">
             <TriangleAlertIcon {...dashboardActionIconProps({ size: 22, strokeWidth: 1.75 })} />
