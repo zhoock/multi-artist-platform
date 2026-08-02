@@ -24,11 +24,11 @@ describe('processingFailureKind', () => {
     });
   });
 
-  test('parseProcessingError detects legacy enqueue messages without prefix', () => {
+  test('parseProcessingError treats unprefixed worker errors as pipeline failures', () => {
     expect(
       parseProcessingError('Audio processing worker is unavailable. Please try again later.')
     ).toEqual({
-      kind: 'enqueue',
+      kind: 'pipeline',
       message: 'Audio processing worker is unavailable. Please try again later.',
     });
   });

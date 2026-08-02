@@ -43,15 +43,12 @@ export function StemsPlaygroundVisitorEmptyState({
       }
       title={title}
       description={description}
-      action={
-        <button
-          type="button"
-          className="stems-page__visitor-empty-action"
-          onClick={handleGoToArtist}
-        >
-          {goToArtistLabel}
-        </button>
-      }
+      primaryAction={{
+        label: goToArtistLabel,
+        onClick: handleGoToArtist,
+        buttonProps: { className: 'stems-page__visitor-empty-action' },
+      }}
+      actionsVariant="plain"
     />
   );
 }

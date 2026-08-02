@@ -255,8 +255,6 @@ export function refreshPremiumContentForArchiveChange(
 }
 
 /** @deprecated use refreshPremiumContentForArchiveChange */
-export const refreshPremiumContentAfterArchiveUnlock = refreshPremiumContentForArchiveChange;
-
 export const ARCHIVE_ARTIST_ADDED_EVENT = 'archive:artist-added';
 export const ARCHIVE_ARTIST_REMOVED_EVENT = 'archive:artist-removed';
 export const ARCHIVE_CHANGED_EVENT = 'archive:changed';

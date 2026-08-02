@@ -15,7 +15,7 @@ describe('hasPublishedPublicReleases', () => {
   test('returns true only for public releases with at least one track', () => {
     const album: AlbumEditable = {
       album: 'My Release',
-      artist: 'Band',
+      artistDisplayName: 'Band',
       fullName: 'Band — My Release',
       description: '',
       release: { date: '2024-01-01' },
@@ -33,7 +33,7 @@ describe('hasPublishedPublicReleases', () => {
       hasPublishedPublicReleases([
         {
           album: 'Hidden Release',
-          artist: 'Band',
+          artistDisplayName: 'Band',
           fullName: 'Band — Hidden Release',
           description: '',
           release: { date: '2024-01-01' },
@@ -52,7 +52,7 @@ describe('hasPublishedPublicReleases', () => {
       hasPublishedPublicReleases([
         {
           album: 'Draft',
-          artist: 'Band',
+          artistDisplayName: 'Band',
           fullName: 'Band — Draft',
           description: '',
           release: { date: '2024-01-01' },
@@ -63,7 +63,7 @@ describe('hasPublishedPublicReleases', () => {
         },
         {
           album: '   ',
-          artist: 'Band',
+          artistDisplayName: 'Band',
           fullName: 'Band',
           description: '',
           release: { date: '2024-01-01' },
@@ -74,7 +74,7 @@ describe('hasPublishedPublicReleases', () => {
         },
         {
           album: 'Empty Release',
-          artist: 'Band',
+          artistDisplayName: 'Band',
           fullName: 'Band — Empty Release',
           description: '',
           release: { date: '2024-01-01' },

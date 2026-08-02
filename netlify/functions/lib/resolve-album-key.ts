@@ -11,13 +11,12 @@ export function isAlbumUuid(value: string): boolean {
 /** SQL fragment: albums aliased as `a`, users as `u` (LEFT JOIN). */
 export const ALBUMS_USER_JOIN_SQL = 'LEFT JOIN users u ON u.id = a.user_id';
 
-/** Resolved display name: site_name → name → public_slug → legacy albums.artist. */
+/** Resolved display name from album owner's profile. */
 export const ARTIST_DISPLAY_NAME_SQL = `
   COALESCE(
     NULLIF(TRIM(u.site_name), ''),
     NULLIF(TRIM(u.name), ''),
-    NULLIF(TRIM(u.public_slug), ''),
-    NULLIF(TRIM(a.artist), '')
+    NULLIF(TRIM(u.public_slug), '')
   )
 `;
 
@@ -47,14 +46,8 @@ export function resolveArtistDisplayNameFromParts(input: {
   siteName?: string | null;
   userName?: string | null;
   publicSlug?: string | null;
-  legacyAlbumArtist?: string | null;
 }): string {
-  const fromUser =
-    input.siteName?.trim() || input.userName?.trim() || input.publicSlug?.trim() || '';
-  if (fromUser) {
-    return fromUser;
-  }
-  return input.legacyAlbumArtist?.trim() || '';
+  return input.siteName?.trim() || input.userName?.trim() || input.publicSlug?.trim() || '';
 }
 
 function mapAlbumRow(row: AlbumRow): ResolvedAlbum {
@@ -93,11 +86,10 @@ const ALBUM_ROW_PRIORITY = `
 
 /** Load artist display name when only user_id is known (e.g. after INSERT RETURNING *). */
 export async function fetchArtistDisplayNameForUserId(
-  userId: string | null | undefined,
-  legacyAlbumArtist?: string | null
+  userId: string | null | undefined
 ): Promise<string> {
   if (!userId?.trim()) {
-    return legacyAlbumArtist?.trim() || '';
+    return '';
   }
 
   const result = await query<{
@@ -114,14 +106,13 @@ export async function fetchArtistDisplayNameForUserId(
 
   const row = result.rows[0];
   if (!row) {
-    return legacyAlbumArtist?.trim() || '';
+    return '';
   }
 
   return resolveArtistDisplayNameFromParts({
     siteName: row.site_name,
     userName: row.name,
     publicSlug: row.public_slug,
-    legacyAlbumArtist,
   });
 }
 

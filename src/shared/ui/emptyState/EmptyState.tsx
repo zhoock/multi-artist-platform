@@ -11,6 +11,9 @@ export type EmptyStateAction = {
   onClick: () => void;
   icon?: ReactNode;
   variant?: 'primary' | 'outline';
+  destructive?: boolean;
+  disabled?: boolean;
+  buttonProps?: React.ButtonHTMLAttributes<HTMLButtonElement> & Record<string, unknown>;
 };
 
 export type EmptyStateProps = {
@@ -19,8 +22,6 @@ export type EmptyStateProps = {
   description?: ReactNode;
   primaryAction?: EmptyStateAction;
   secondaryAction?: EmptyStateAction;
-  /** @deprecated Prefer primaryAction / secondaryAction */
-  action?: ReactNode;
   tone?: EmptyStateTone;
   layout?: EmptyStateLayout;
   className?: string;
@@ -34,12 +35,17 @@ function renderConfiguredAction(
   fallbackVariant: 'primary' | 'outline'
 ) {
   const variant = action.variant ?? fallbackVariant;
+  const { className: buttonClassName, ...restButtonProps } = action.buttonProps ?? {};
 
   if (actionsVariant === 'dashboard') {
     return (
       <DashboardButton
         variant={variant === 'primary' ? 'primary' : 'outline'}
         onClick={action.onClick}
+        destructive={action.destructive}
+        disabled={action.disabled}
+        className={buttonClassName}
+        {...restButtonProps}
       >
         {action.icon}
         <span>{action.label}</span>
@@ -52,9 +58,12 @@ function renderConfiguredAction(
       type="button"
       className={clsx(
         'empty-state__action',
-        variant === 'primary' ? 'empty-state__action--primary' : 'empty-state__action--outline'
+        variant === 'primary' ? 'empty-state__action--primary' : 'empty-state__action--outline',
+        buttonClassName
       )}
       onClick={action.onClick}
+      disabled={action.disabled}
+      {...restButtonProps}
     >
       {action.icon ? <span className="empty-state__action-icon">{action.icon}</span> : null}
       <span>{action.label}</span>
@@ -68,7 +77,6 @@ export function EmptyState({
   description,
   primaryAction,
   secondaryAction,
-  action,
   tone = 'default',
   layout = 'inline',
   className,
@@ -99,7 +107,6 @@ export function EmptyState({
           {description}
         </p>
       ) : null}
-      {action}
       {hasConfiguredActions ? (
         <div className="empty-state__actions">
           {primaryAction ? renderConfiguredAction(primaryAction, actionsVariant, 'primary') : null}

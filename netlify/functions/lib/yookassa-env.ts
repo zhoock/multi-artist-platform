@@ -21,6 +21,3 @@ export function getYooKassaEnvCredentials(): YooKassaEnvCredentials | null {
 export function yookassaEnvConfigured(): boolean {
   return getYooKassaEnvCredentials() !== null;
 }
-
-/** @deprecated Use getYooKassaEnvCredentials */
-export const getPlatformYooKassaCredentials = getYooKassaEnvCredentials;

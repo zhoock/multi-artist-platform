@@ -14,8 +14,6 @@ import { selectPublicArtistSlug, setPublicArtistSlug } from '@shared/model/curre
 import type { TrackVisibility } from '@shared/lib/tracks/trackVisibility';
 import { normalizeTrackVisibility } from '@shared/lib/tracks/trackVisibility';
 
-import { hydrateMissingRuTranslationsOnArticle } from '../lib/hydrateMissingRuTranslations';
-
 import type { ArticlesState } from './types';
 
 /** Ignore stale `force` responses when a newer request for the same bucket is in flight. */
@@ -153,7 +151,7 @@ export const fetchArticles = createAsyncThunk<
           updatedAt: a.updatedAt as string | undefined,
           lang: a.lang as IArticles['lang'],
         } as IArticles;
-        return hydrateMissingRuTranslationsOnArticle(base);
+        return base;
       });
 
     try {

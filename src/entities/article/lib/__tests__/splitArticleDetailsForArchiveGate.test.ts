@@ -106,14 +106,14 @@ describe('splitArticleDetailsForArchiveGate', () => {
     const details: ArticledetailsProps[] = [
       { id: 1, title: 'Intro' },
       { id: 2, content: 'Teaser paragraph' },
-      { id: 3, images: ['a.jpg', 'b.jpg'] },
+      { id: 3, images: [{ imageKey: 'a.jpg' }, { imageKey: 'b.jpg' }] },
       { id: 4, content: 'After carousel' },
     ];
 
     expect(splitArticleDetailsForArchiveGate(details)).toEqual({
       previewDetails: [
         { id: 2, content: 'Teaser paragraph' },
-        { id: 3, images: ['a.jpg', 'b.jpg'] },
+        { id: 3, images: [{ imageKey: 'a.jpg' }, { imageKey: 'b.jpg' }] },
       ],
       lockedDetails: [
         { id: 1, title: 'Intro' },

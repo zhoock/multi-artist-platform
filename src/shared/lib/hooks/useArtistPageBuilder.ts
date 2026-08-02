@@ -62,7 +62,5 @@ export function useArtistPageBuilder(
     ...access,
     builderVisibility,
     skeletonVariant,
-    /** @deprecated Prefer `builderVisibility.canShowBlocks`. */
-    canShowBuilderBlocks: builderVisibility.canShowBlocks,
   };
 }

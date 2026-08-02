@@ -12,9 +12,6 @@ import { resetSessionExpiredHandlingState } from '@shared/lib/sessionExpired';
 const TOKEN_STORAGE_KEY = 'auth_token';
 const USER_STORAGE_KEY = 'auth_user';
 
-/** @deprecated Import from `@shared/lib/sessionExpired` — kept for existing imports. */
-export { AUTH_EXPIRED_BANNER_SESSION_KEY } from '@shared/lib/sessionExpired';
-
 /** Допуск по часам клиента/серверу при проверке exp */
 const JWT_EXP_LEEWAY_MS = 60_000;
 

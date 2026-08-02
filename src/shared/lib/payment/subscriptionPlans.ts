@@ -157,12 +157,6 @@ export function formatPlanArtistLimitParts(
   };
 }
 
-/** @deprecated Use formatPlanArtistLimitParts for plan card layout. */
-export function formatPlanArtistLimit(planSlug: SubscriptionPlanSlug, lang: 'en' | 'ru'): string {
-  const { prefix, count, suffix } = formatPlanArtistLimitParts(planSlug, lang);
-  return `${prefix} ${count} ${suffix}`;
-}
-
 export function formatPlanPricePeriod(planSlug: SubscriptionPlanSlug, lang: 'en' | 'ru'): string {
   const plan = PLAN_CATALOG[planSlug];
   if (plan.durationDays != null) {

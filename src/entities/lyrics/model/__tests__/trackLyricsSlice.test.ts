@@ -37,7 +37,7 @@ describe('applyTrackLyricsBundle', () => {
             data: [
               {
                 albumId: 'album-1',
-                artist: 'Artist',
+                artistDisplayName: 'Artist',
                 album: 'Album',
                 fullName: 'Artist — Album',
                 description: '',

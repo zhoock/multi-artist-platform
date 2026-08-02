@@ -16,11 +16,6 @@ function makeUser(accountType?: AuthUser['accountType']): AuthUser {
 }
 
 describe('accountType dashboard helpers', () => {
-  it('defaults legacy users without accountType to artist', () => {
-    expect(getAccountType(makeUser(undefined))).toBe('artist');
-    expect(getDefaultDashboardTab(makeUser(undefined))).toBe('albums');
-  });
-
   it('reads listener accountType from JWT when auth_user lacks the field', () => {
     const tokenPayload = btoa(JSON.stringify({ accountType: 'listener' }))
       .replace(/\+/g, '-')
@@ -48,12 +43,6 @@ describe('accountType dashboard helpers', () => {
     expect(getVisibleDashboardTabs(user)).toContain('albums');
     expect(getVisibleDashboardTabs(user)).toContain('mixer');
     expect(getDefaultDashboardTab(user)).toBe('albums');
-  });
-
-  it('resolveDashboardTab maps legacy profile slug to settings', () => {
-    const listener = makeUser('listener');
-    expect(resolveDashboardTab('profile', listener)).toBe('settings');
-    expect(isDashboardTabAllowed('profile', listener)).toBe(true);
   });
 
   it('resolveDashboardTab redirects disallowed tabs to role default', () => {

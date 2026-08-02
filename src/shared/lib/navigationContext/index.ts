@@ -2,7 +2,6 @@ export {
   readPreviousPath,
   resolveChildContextNavMode,
   resolveContextNavListSection,
-  resolveContextNavMode,
   resolveNavigationOrigin,
   type ContextNavMode,
   type NavListSection,

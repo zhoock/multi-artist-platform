@@ -1,5 +1,4 @@
 export type TheBandStorage =
-  | string[]
   | {
       ru?: string[];
       en?: string[];
@@ -19,24 +18,15 @@ export function hasFilledBandParagraphs(paragraphs: string[] | null | undefined)
 }
 
 export function parseTheBandStorage(theBand: TheBandStorage): { ru: string[]; en: string[] } {
-  if (!theBand) {
+  if (!theBand || typeof theBand !== 'object') {
     return { ru: [], en: [] };
   }
 
-  if (Array.isArray(theBand)) {
-    const normalized = normalizeBandParagraphs(theBand);
-    return { ru: normalized, en: normalized };
-  }
-
-  if (typeof theBand === 'object') {
-    const bandObj = theBand as { ru?: string[]; en?: string[] };
-    return {
-      ru: normalizeBandParagraphs(bandObj.ru),
-      en: normalizeBandParagraphs(bandObj.en),
-    };
-  }
-
-  return { ru: [], en: [] };
+  const bandObj = theBand as { ru?: string[]; en?: string[] };
+  return {
+    ru: normalizeBandParagraphs(bandObj.ru),
+    en: normalizeBandParagraphs(bandObj.en),
+  };
 }
 
 /**

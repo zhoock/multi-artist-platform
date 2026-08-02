@@ -50,15 +50,9 @@ function staleSnapshotPayload(getState: () => RootState): FetchDashboardAlbumsFu
   };
 }
 
-function albumHasDisplayableTitle(album: {
-  album?: unknown;
-  translations?: IAlbumTranslations;
-}): boolean {
+function albumHasDisplayableTitle(album: { album?: unknown }): boolean {
   const root = typeof album.album === 'string' ? album.album.trim() : '';
-  if (root) return true;
-  const en = album.translations?.en?.album?.trim() ?? '';
-  const ru = album.translations?.ru?.album?.trim() ?? '';
-  return Boolean(en || ru);
+  return Boolean(root);
 }
 
 export const fetchDashboardAlbums = createAsyncThunk<
@@ -74,7 +68,6 @@ export const fetchDashboardAlbums = createAsyncThunk<
       userId?: string;
       albumId: string;
       artistDisplayName?: string;
-      artist?: string;
       album: string;
       fullName?: string;
       description?: string;
@@ -88,18 +81,11 @@ export const fetchDashboardAlbums = createAsyncThunk<
       if (typeof album !== 'object' || album === null) return false;
       if (!('albumId' in album)) return false;
       if (typeof (album as { albumId: unknown }).albumId !== 'string') return false;
-      return albumHasDisplayableTitle(
-        album as { album?: unknown; translations?: IAlbumTranslations }
-      );
+      return albumHasDisplayableTitle(album as { album?: unknown });
     };
 
-    const readArtistDisplayNameFromApi = (album: {
-      artistDisplayName?: string;
-      artist?: string;
-    }): string => {
-      const resolved = album.artistDisplayName?.trim();
-      if (resolved) return resolved;
-      return album.artist?.trim() || '';
+    const readArtistDisplayNameFromApi = (album: { artistDisplayName?: string }): string => {
+      return album.artistDisplayName?.trim() || '';
     };
 
     const isValidTrack = (
@@ -174,7 +160,6 @@ export const fetchDashboardAlbums = createAsyncThunk<
           userId: album.userId,
           dbAlbumId: typeof rawAlbum.dbAlbumId === 'string' ? rawAlbum.dbAlbumId : undefined,
           albumId: album.albumId,
-          artist: '',
           artistDisplayName,
           album: album.album,
           fullName:

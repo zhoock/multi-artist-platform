@@ -1,5 +1,5 @@
 import {
-  LEGACY_BAND_PUBLIC_DOMAIN,
+  FORBIDDEN_PUBLIC_DOMAIN,
   LOCAL_DEV_FRONTEND_ORIGIN,
   buildPublicAppPath,
   isLocalBackendOrigin,
@@ -63,7 +63,7 @@ describe('publicSiteOrigin', () => {
     ];
 
     for (const url of urls) {
-      expect(url).not.toContain(LEGACY_BAND_PUBLIC_DOMAIN);
+      expect(url).not.toContain(FORBIDDEN_PUBLIC_DOMAIN);
     }
   });
 

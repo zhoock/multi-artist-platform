@@ -245,24 +245,6 @@ export function getTrackDownloadUrlForAlbumWithAuth(albumId: string, trackId: st
   return `/api/download?albumId=${encodeURIComponent(albumId)}&track=${encodeURIComponent(trackId)}`;
 }
 
-function parseFilenameFromContentDisposition(header: string | null): string | null {
-  if (!header) {
-    return null;
-  }
-
-  const match = header.match(/filename\*=UTF-8''([^;]+)|filename="([^"]+)"/i);
-  const raw = match?.[1] || match?.[2];
-  if (!raw) {
-    return null;
-  }
-
-  try {
-    return decodeURIComponent(raw);
-  } catch {
-    return raw;
-  }
-}
-
 function triggerBlobDownload(blob: Blob, filename: string): void {
   const downloadUrl = window.URL.createObjectURL(blob);
   const link = document.createElement('a');
@@ -273,70 +255,4 @@ function triggerBlobDownload(blob: Blob, filename: string): void {
   link.click();
   document.body.removeChild(link);
   window.URL.revokeObjectURL(downloadUrl);
-}
-
-/** @deprecated Prefer downloadOwnedAlbumZipByAuth for UI progress. Server zip has no byte progress until ready. */
-export async function downloadAlbumByAuth(
-  albumId: string,
-  fallbackFilename: string,
-  options?: { onProgress?: (progress: AlbumDownloadProgress) => void }
-): Promise<void> {
-  options?.onProgress?.({ percent: null });
-
-  const response = await fetchWithAuthSession(
-    `/api/download-album?albumId=${encodeURIComponent(albumId)}`,
-    {
-      headers: {
-        ...getAuthHeader(),
-      },
-    }
-  );
-
-  if (!response.ok) {
-    const errorData = (await response.json().catch(() => ({}))) as ApiMessageResponse;
-    throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
-  }
-
-  const filename =
-    parseFilenameFromContentDisposition(response.headers.get('Content-Disposition')) ??
-    fallbackFilename;
-  const contentLengthHeader = response.headers.get('Content-Length');
-  const totalBytes = contentLengthHeader ? Number.parseInt(contentLengthHeader, 10) : Number.NaN;
-  const hasKnownSize = Number.isFinite(totalBytes) && totalBytes > 0;
-
-  if (!response.body) {
-    options?.onProgress?.({ percent: 100 });
-    const blob = await response.blob();
-    triggerBlobDownload(blob, filename);
-    return;
-  }
-
-  const reader = response.body.getReader();
-  const chunks: BlobPart[] = [];
-  let receivedBytes = 0;
-
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) {
-      break;
-    }
-
-    chunks.push(value);
-    receivedBytes += value.byteLength;
-
-    if (hasKnownSize) {
-      options?.onProgress?.({
-        percent: Math.min(99, Math.round((receivedBytes / totalBytes) * 100)),
-      });
-    } else {
-      options?.onProgress?.({ percent: null });
-    }
-  }
-
-  options?.onProgress?.({ percent: 100 });
-
-  const blob = new Blob(chunks, {
-    type: response.headers.get('Content-Type') ?? 'application/zip',
-  });
-  triggerBlobDownload(blob, filename);
 }

@@ -22,9 +22,7 @@ export function ConsentBanner() {
   const privacyLabel = copy?.privacyLink ?? ui?.links?.privacyPageTitle ?? 'Privacy Policy';
   const title = copy?.bannerTitle ?? 'Analytics cookies';
   const description =
-    copy?.bannerDescription ??
-    copy?.bannerText ??
-    'We use analytics services to understand how the site is used.';
+    copy?.bannerDescription ?? 'We use analytics services to understand how the site is used.';
 
   return (
     <section

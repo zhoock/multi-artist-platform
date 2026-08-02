@@ -89,9 +89,8 @@ interface GetUserProfileResponse {
 }
 
 interface SaveUserProfileRequest {
-  theBand?: string[]; // Legacy: для обратной совместимости
-  theBandRu?: string[]; // Новый формат: русская версия
-  theBandEn?: string[]; // Новый формат: английская версия
+  theBandRu?: string[];
+  theBandEn?: string[];
   headerImages?: string[];
   siteName?: string;
   publicSlug?: string;
@@ -338,17 +337,11 @@ export const handler: Handler = async (
         updateValues.push(normalizedGenreCode);
       }
 
-      // Обработка theBand: поддерживаем как старый формат (theBand), так и новый (theBandRu/theBandEn)
-      if (
-        data.theBandRu !== undefined ||
-        data.theBandEn !== undefined ||
-        data.theBand !== undefined
-      ) {
-        // Сначала загружаем текущие данные, чтобы сохранить обе языковые версии
+      if (data.theBandRu !== undefined || data.theBandEn !== undefined) {
         let currentBandObj: { ru?: string[]; en?: string[] } = {};
 
         try {
-          const currentResult = await query<{ the_band: any }>(
+          const currentResult = await query<{ the_band: unknown }>(
             `SELECT the_band FROM users WHERE id = $1 AND is_active = true`,
             [userId],
             0
@@ -356,14 +349,15 @@ export const handler: Handler = async (
 
           if (currentResult.rows.length > 0 && currentResult.rows[0].the_band) {
             const currentBand = currentResult.rows[0].the_band;
-            if (Array.isArray(currentBand)) {
-              // Старый формат - преобразуем в новый
-              currentBandObj = { ru: currentBand, en: currentBand };
-            } else if (typeof currentBand === 'object' && currentBand !== null) {
-              // Уже новый формат
+            if (
+              typeof currentBand === 'object' &&
+              currentBand !== null &&
+              !Array.isArray(currentBand)
+            ) {
+              const bandObj = currentBand as { ru?: string[]; en?: string[] };
               currentBandObj = {
-                ru: currentBand.ru || [],
-                en: currentBand.en || [],
+                ru: bandObj.ru || [],
+                en: bandObj.en || [],
               };
             }
           }
@@ -373,9 +367,7 @@ export const handler: Handler = async (
 
         const ruWasUpdated = data.theBandRu !== undefined;
         const enWasUpdated = data.theBandEn !== undefined;
-        const legacyBothUpdated = data.theBand !== undefined && !ruWasUpdated && !enWasUpdated;
 
-        // Обновляем данные в зависимости от того, что пришло
         if (data.theBandRu !== undefined) {
           if (!Array.isArray(data.theBandRu)) {
             return {
@@ -404,38 +396,17 @@ export const handler: Handler = async (
           currentBandObj.en = normalizeBandParagraphs(data.theBandEn);
         }
 
-        // Обратная совместимость: если пришел старый формат theBand, обновляем оба языка
-        if (data.theBand !== undefined) {
-          if (!Array.isArray(data.theBand)) {
-            return {
-              statusCode: 400,
-              headers,
-              body: JSON.stringify({
-                success: false,
-                error: 'Invalid request data. theBand must be an array of strings',
-              } as SaveUserProfileResponse),
-            };
-          }
-          // Если не указаны явно ru/en, обновляем оба языка одинаково (для обратной совместимости)
-          if (data.theBandRu === undefined && data.theBandEn === undefined) {
-            const normalized = normalizeBandParagraphs(data.theBand);
-            currentBandObj.ru = normalized;
-            currentBandObj.en = normalized;
-          }
-        }
-
         const syncedBandObj = syncTheBandOnSave({
           bandObj: {
             ru: currentBandObj.ru ?? [],
             en: currentBandObj.en ?? [],
           },
-          ruWasUpdated: ruWasUpdated || legacyBothUpdated,
-          enWasUpdated: enWasUpdated || legacyBothUpdated,
+          ruWasUpdated,
+          enWasUpdated,
         });
         currentBandObj.ru = syncedBandObj.ru;
         currentBandObj.en = syncedBandObj.en;
 
-        // Сохраняем обновленный объект
         updateFields.push(`the_band = $${paramIndex++}::jsonb`);
         updateValues.push(JSON.stringify(currentBandObj));
       }
@@ -479,7 +450,6 @@ export const handler: Handler = async (
         siteName: data.siteName,
         theBandRuLength: data.theBandRu?.length || 0,
         theBandEnLength: data.theBandEn?.length || 0,
-        theBandLength: data.theBand?.length || 0, // Legacy
         headerImagesLength: data.headerImages?.length || 0,
       });
 

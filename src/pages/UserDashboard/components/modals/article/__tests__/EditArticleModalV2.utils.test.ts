@@ -145,7 +145,7 @@ describe('EditArticleModalV2.utils stable ids', () => {
       {
         type: 'carousel',
         blockId,
-        images: ['solo.jpg'],
+        images: [{ imageKey: 'solo.jpg' }],
         caption: 'caption',
       },
     ]);
@@ -156,23 +156,6 @@ describe('EditArticleModalV2.utils stable ids', () => {
       type: 'image',
       imageKey: 'solo.jpg',
       caption: 'caption',
-    });
-  });
-
-  it('loads legacy alt as caption on first carousel image', () => {
-    const blockId = generateId();
-    const loaded = normalizeDetailsToBlocks([
-      {
-        type: 'carousel',
-        blockId,
-        images: ['a.jpg', 'b.jpg'],
-        alt: 'Legacy caption',
-      },
-    ]);
-
-    expect(loaded[0]).toMatchObject({
-      type: 'carousel',
-      images: [{ imageKey: 'a.jpg', caption: 'Legacy caption' }, { imageKey: 'b.jpg' }],
     });
   });
 

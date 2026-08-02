@@ -320,7 +320,6 @@ export function AlbumsTabContent({
               })
             : isAlbumPublished({
                   isPublished: album.isPublished,
-                  isPublic: album.isPublic,
                 })
               ? null
               : 'draft';
@@ -328,7 +327,6 @@ export function AlbumsTabContent({
             ? isAlbumPublished(albumFromStore)
             : isAlbumPublished({
                 isPublished: album.isPublished,
-                isPublic: album.isPublic,
               });
           const albumVisibility = getAlbumVisibilityFromIsPublic(
             albumFromStore?.isPublic ?? album.isPublic
@@ -340,7 +338,6 @@ export function AlbumsTabContent({
             ? !isAlbumPublished(albumFromStore)
             : !isAlbumPublished({
                 isPublished: album.isPublished,
-                isPublic: album.isPublic,
               });
           const albumRowFlash = getDashboardRowFlashProps(
             `dashboard-album-row-${album.id}`,

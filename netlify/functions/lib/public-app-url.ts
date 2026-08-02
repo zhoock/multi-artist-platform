@@ -5,7 +5,7 @@
 
 export {
   LOCAL_DEV_FRONTEND_ORIGIN,
-  LEGACY_BAND_PUBLIC_DOMAIN,
+  FORBIDDEN_PUBLIC_DOMAIN,
   buildPublicAppPath,
   buildPublicSiteUrl,
   getPublicAppOrigin,

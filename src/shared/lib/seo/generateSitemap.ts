@@ -59,9 +59,6 @@ export function appendLocalizedSitemapEntries(
   }
 }
 
-/** @deprecated Use SITEMAP_PLATFORM_ENTRIES */
-export const SITEMAP_PUBLIC_ENTRIES = SITEMAP_PLATFORM_ENTRIES;
-
 function escapeXml(value: string): string {
   return value
     .replace(/&/g, '&amp;')

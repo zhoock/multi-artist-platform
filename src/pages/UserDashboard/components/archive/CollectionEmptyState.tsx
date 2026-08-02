@@ -1,8 +1,8 @@
 import { HeartHandshake as HeartHandshakeIcon, Search as SearchIcon } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
 import type { IInterface } from '@models';
-import { DashboardEmptyState, DashboardButton } from '@shared/ui/dashboard';
+import { DashboardEmptyState } from '@shared/ui/dashboard';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 
 type CollectionEmptyStateProps = {
@@ -13,6 +13,7 @@ type CollectionEmptyStateProps = {
 const COLLECTION_EMPTY_ICON_SIZE = 108;
 
 export function CollectionEmptyState({ ui, embedded = false }: CollectionEmptyStateProps) {
+  const navigate = useNavigate();
   const t = ui?.dashboard?.archive;
 
   return (
@@ -27,12 +28,11 @@ export function CollectionEmptyState({ ui, embedded = false }: CollectionEmptySt
         t?.emptyDescription ??
         'Add artists to your collection to access their exclusive content and updates.'
       }
-      action={
-        <DashboardButton variant="primary" as={Link} to="/">
-          <SearchIcon {...dashboardActionIconProps({ size: 18 })} />
-          <span>{t?.discoverArtists ?? 'Find artists'}</span>
-        </DashboardButton>
-      }
+      primaryAction={{
+        label: t?.discoverArtists ?? 'Find artists',
+        onClick: () => navigate('/'),
+        icon: <SearchIcon {...dashboardActionIconProps({ size: 18 })} />,
+      }}
     />
   );
 }

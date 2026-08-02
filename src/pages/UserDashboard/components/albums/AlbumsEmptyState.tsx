@@ -1,7 +1,7 @@
 import { Disc3 as Disc3Icon, Upload as UploadIcon } from 'lucide-react';
 
 import type { IInterface } from '@models';
-import { DashboardEmptyState, DashboardButton } from '@shared/ui/dashboard';
+import { DashboardEmptyState } from '@shared/ui/dashboard';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 import { bindDashboardPreloadIntentHandlers } from '../../lib/bindDashboardPreloadIntentHandlers';
 
@@ -30,12 +30,12 @@ export function AlbumsEmptyState({
         d?.albumsEmptyDescription ??
         'Upload your first album to share your music with the world and build your catalog.'
       }
-      action={
-        <DashboardButton variant="primary" onClick={onCreateAlbum} {...preloadHandlers}>
-          <UploadIcon {...dashboardActionIconProps({ size: 18 })} />
-          <span>{d?.createYourFirstAlbum ?? 'Create Your First Album'}</span>
-        </DashboardButton>
-      }
+      primaryAction={{
+        label: d?.createYourFirstAlbum ?? 'Create Your First Album',
+        onClick: onCreateAlbum,
+        icon: <UploadIcon {...dashboardActionIconProps({ size: 18 })} />,
+        buttonProps: preloadHandlers,
+      }}
     />
   );
 }

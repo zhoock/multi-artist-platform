@@ -96,7 +96,6 @@ function setupDashboardFetchContext(store: ReturnType<typeof createTestStore>) {
 const mockAlbum: AlbumEditable = {
   albumId: 'album-1',
   album: 'Test Album',
-  artist: '',
   artistDisplayName: 'Test Artist',
   fullName: 'Test Artist — Test Album',
   description: 'Test Description',

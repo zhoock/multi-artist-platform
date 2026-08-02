@@ -2,7 +2,6 @@ export { ArtistArchiveButton } from './ui/ArtistArchiveButton';
 export { useArtistArchiveStatus } from './lib/useArtistArchiveStatus';
 export {
   refreshPremiumContentForArchiveChange,
-  refreshPremiumContentAfterArchiveUnlock,
   awaitPremiumContentRefresh,
   dispatchArchiveArtistAdded,
   dispatchArchiveArtistRemoved,

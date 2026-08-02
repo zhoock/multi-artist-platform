@@ -1,16 +1,12 @@
 import type { AlbumEditable } from '@models';
 
 /** Альбом прошёл одноразовую публикацию (не черновик). */
-export function isAlbumPublished(album: Pick<AlbumEditable, 'isPublished' | 'isPublic'>): boolean {
-  if (typeof album.isPublished === 'boolean') {
-    return album.isPublished;
-  }
-  // Legacy до миграции 050: is_public=true означало «опубликован и видим»
-  return album.isPublic === true;
+export function isAlbumPublished(album: Pick<AlbumEditable, 'isPublished'>): boolean {
+  return album.isPublished === true;
 }
 
 /** Черновик — ещё не опубликован. */
-export function isAlbumDraft(album: Pick<AlbumEditable, 'isPublished' | 'isPublic'>): boolean {
+export function isAlbumDraft(album: Pick<AlbumEditable, 'isPublished'>): boolean {
   return !isAlbumPublished(album);
 }
 

@@ -1,14 +1,9 @@
 import type { ArticledetailsProps, CarouselImageItem } from '@models';
 
-import { resolveDetailCaption } from './resolveDetailCaption';
-
-type CarouselDetailSource = Pick<
-  ArticledetailsProps,
-  'images' | 'img' | 'caption' | 'alt' | 'type'
->;
+type CarouselDetailSource = Pick<ArticledetailsProps, 'images' | 'img' | 'caption' | 'type'>;
 
 export function parseCarouselImagesFromDetail(detail: CarouselDetailSource): CarouselImageItem[] {
-  const legacyCaption = resolveDetailCaption(detail);
+  const detailCaption = detail.caption?.trim() || undefined;
   const raw = detail.images ?? (Array.isArray(detail.img) ? detail.img : []);
 
   if (!Array.isArray(raw) || raw.length === 0) {
@@ -17,25 +12,18 @@ export function parseCarouselImagesFromDetail(detail: CarouselDetailSource): Car
 
   return raw
     .map((entry, index): CarouselImageItem | null => {
-      if (typeof entry === 'string') {
-        const imageKey = entry.trim();
-        if (!imageKey) return null;
-        return {
-          imageKey,
-          caption: index === 0 && legacyCaption ? legacyCaption : undefined,
-        };
-      }
+      if (!entry || typeof entry !== 'object') return null;
 
-      if (entry && typeof entry === 'object') {
-        const obj = entry as { imageKey?: unknown; key?: unknown; caption?: unknown };
-        const imageKey = String(obj.imageKey ?? obj.key ?? '').trim();
-        if (!imageKey) return null;
-        const caption =
-          typeof obj.caption === 'string' && obj.caption.trim() ? obj.caption.trim() : undefined;
-        return { imageKey, caption };
-      }
-
-      return null;
+      const obj = entry as { imageKey?: unknown; key?: unknown; caption?: unknown };
+      const imageKey = String(obj.imageKey ?? obj.key ?? '').trim();
+      if (!imageKey) return null;
+      const caption =
+        typeof obj.caption === 'string' && obj.caption.trim()
+          ? obj.caption.trim()
+          : index === 0
+            ? detailCaption
+            : undefined;
+      return { imageKey, caption };
     })
     .filter((item): item is CarouselImageItem => item !== null);
 }

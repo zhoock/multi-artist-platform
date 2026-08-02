@@ -13,7 +13,7 @@ function buildFatAlbum(): AlbumEditable {
     albumId: '23-remastered',
     dbAlbumId: 'uuid-album-1',
     userId: 'user-1',
-    artist: 'Legacy Artist',
+    artistDisplayName: 'Legacy Artist',
     album: '23',
     fullName: 'Artist — 23',
     description: 'Album description',

@@ -1,7 +1,7 @@
 import clsx from 'clsx';
 import type { ReactNode } from 'react';
 
-import { EmptyState, type EmptyStateLayout } from '@shared/ui/emptyState';
+import { EmptyState, type EmptyStateAction, type EmptyStateLayout } from '@shared/ui/emptyState';
 
 type DashboardEmptyStateVariant = 'tab' | 'card';
 
@@ -10,7 +10,7 @@ type DashboardEmptyStateProps = {
   icon?: ReactNode;
   title: ReactNode;
   description?: ReactNode;
-  action?: ReactNode;
+  primaryAction?: EmptyStateAction;
   className?: string;
   descriptionMultiline?: boolean;
 };
@@ -20,7 +20,7 @@ export function DashboardEmptyState({
   icon,
   title,
   description,
-  action,
+  primaryAction,
   className,
   descriptionMultiline = false,
 }: DashboardEmptyStateProps) {
@@ -32,7 +32,7 @@ export function DashboardEmptyState({
       icon={icon}
       title={title}
       description={description}
-      action={action}
+      primaryAction={primaryAction}
       className={clsx(
         className,
         'dashboard-empty-state',

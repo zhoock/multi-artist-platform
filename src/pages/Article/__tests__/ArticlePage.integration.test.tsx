@@ -36,7 +36,7 @@ describe('ArticlePage integration tests', () => {
         subtitle: 'Subtitle 1',
         content: 'Article content',
         img: 'image.jpg',
-        alt: 'Image alt',
+        caption: 'Image alt',
       },
     ],
   };

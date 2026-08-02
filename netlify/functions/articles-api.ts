@@ -31,7 +31,6 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { extractBaseName } from './lib/image-processor';
 import { createSupabaseAdminClient, STORAGE_BUCKET_NAME } from './lib/supabase';
 import { sanitizeUploadFileName } from './lib/sanitizeFileName';
-import { hydrateMissingRuTranslationsOnArticle } from '../../src/entities/article/lib/hydrateMissingRuTranslations';
 import { formatPostgresDateOnly } from '../../src/shared/lib/dateCalendar';
 import {
   normalizeTrackVisibility,
@@ -110,10 +109,10 @@ interface UpdateArticleRequest {
   hasDraftChanges?: boolean;
 }
 
-const LEGACY_ARTICLE_TRANSLATABLE_ROOT = ['nameArticle', 'description', 'details'] as const;
+const FORBIDDEN_ARTICLE_TRANSLATABLE_ROOT = ['nameArticle', 'description', 'details'] as const;
 
 function articleRequestHasForbiddenRootFields(body: Record<string, unknown>): string | null {
-  for (const key of LEGACY_ARTICLE_TRANSLATABLE_ROOT) {
+  for (const key of FORBIDDEN_ARTICLE_TRANSLATABLE_ROOT) {
     if (Object.prototype.hasOwnProperty.call(body, key) && body[key] !== undefined) {
       return `"${key}" must be sent only inside translations[lang], not at request root`;
     }
@@ -305,9 +304,7 @@ function mergeArticleRowsToApiData(rows: ArticleRow[], options?: MapArticleOptio
   const sorted = sortArticleRowsForMerge(rows);
   const payloads = sorted.map((row) => mapArticleToApiFormat(row, options));
   const merged = mergeArticleDataPayloads(payloads);
-  return hydrateMissingRuTranslationsOnArticle(
-    merged as import('../../src/models').IArticles
-  ) as ArticleData;
+  return merged as ArticleData;
 }
 
 async function buildPublicArticlePremiumContext(

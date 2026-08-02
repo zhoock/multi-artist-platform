@@ -208,7 +208,7 @@ export default function AudioPlayer({
       fallbackAlbumClientId({
         albumId: albumMeta.albumId ?? undefined,
         album: albumMeta.album ?? '',
-        artist: albumMeta.artist ?? '',
+        artistDisplayName: albumMeta.artist ?? '',
         userId: albumMeta.userId ?? undefined,
       }),
     [albumMeta.albumId, albumMeta.album, albumMeta.artist, albumMeta.userId]

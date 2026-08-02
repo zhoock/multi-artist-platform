@@ -73,7 +73,7 @@ const mockTrack: TracksProps = {
 const publishedAlbum: AlbumEditable = {
   albumId: 'test-album',
   album: 'Test Album',
-  artist: 'Test Artist',
+  artistDisplayName: 'Test Artist',
   fullName: 'Test Artist — Test Album',
   description: 'Desc',
   cover: 'cover',

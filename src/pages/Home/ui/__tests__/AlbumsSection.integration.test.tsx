@@ -9,7 +9,6 @@ jest.mock('@shared/lib/hooks/useArtistPageBuilder', () => ({
   useArtistPageBuilder: () => ({
     builderVisibility: { mode: 'hidden', canShowBlocks: false },
     skeletonVariant: 'public' as const,
-    canShowBuilderBlocks: false,
     hasPublicReleases: false,
     isOwner: false,
   }),
@@ -328,7 +327,7 @@ describe('AlbumsSection integration tests', () => {
               {
                 albumId: 'album-1',
                 album: 'Album 1',
-                artist: 'Artist 1',
+                artistDisplayName: 'Artist 1',
                 fullName: 'Artist 1 — Album 1',
                 description: '',
                 release: { date: '2024-01-01' },

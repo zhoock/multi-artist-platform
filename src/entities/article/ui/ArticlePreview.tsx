@@ -95,10 +95,10 @@ export function ArticlePreview({
       ? 'Renew support to continue reading.'
       : 'Продлите поддержку, чтобы продолжить чтение.');
 
-  const legacyOverlayTitle =
+  const defaultOverlayTitle =
     ui?.titles?.articleLockedOverlayTitle ??
     (lang === 'en' ? 'Subscribers only' : 'Только для подписчиков');
-  const legacyOverlayHint =
+  const defaultOverlayHint =
     ui?.titles?.articleLockedOverlayHint ??
     (lang === 'en'
       ? 'Active artist support required to read.'
@@ -113,7 +113,7 @@ export function ArticlePreview({
           ? renewOverlayTitle
           : paywallKind === 'subscription'
             ? subscriptionOverlayTitle
-            : legacyOverlayTitle;
+            : defaultOverlayTitle;
   const overlayHint =
     paywallKind === 'archive'
       ? archiveOverlayHint
@@ -123,7 +123,7 @@ export function ArticlePreview({
           ? renewOverlayHint
           : paywallKind === 'subscription'
             ? subscriptionOverlayHint
-            : legacyOverlayHint;
+            : defaultOverlayHint;
   const OverlayIcon =
     paywallKind === 'archive' || paywallKind === 'activate'
       ? ArtistArchiveLockIcon

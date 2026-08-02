@@ -30,22 +30,18 @@ import { updateAlbumsJson } from './lib/github-api';
 import { assertArtistVisibleToViewer } from './lib/artist-publication';
 import { isAlbumRowReadyToPublish } from './lib/album-publish';
 import { PublicArtistResolverError, resolvePublicArtistUserId } from './lib/public-artist-resolver';
-import { resolveTrackSrcToSupabasePublicUrl } from './lib/storage-public-url';
 import { resolveAssetForPlayback } from './lib/assetResolver';
 import {
   extractStoragePathFromTrackRef,
   removeTrackStoragePaths,
 } from './lib/track-storage-cleanup';
-import { fetchTrackAssetsByAlbumPks, resolvePipelineAvailable } from './lib/track-assets-loader';
-import { tracksTableHasPipelineColumns, trackAssetsTableExists } from './lib/track-pipeline-schema';
+import { fetchTrackAssetsByAlbumPks } from './lib/track-assets-loader';
 import { migrateUserAlbumAudioFolderAfterRename } from './lib/migrate-storage-album-folder';
 import { normalizeTrackIdString } from '../../src/shared/lib/tracks/normalizeTrackIdString';
 import { rankToOrderIndex } from '../../src/shared/lib/tracks/trackOrderIndex';
 import { normalizeStemsVisibility } from '../../src/shared/lib/stems/stemsVisibility';
 import { normalizeTrackVisibility } from '../../src/shared/lib/tracks/trackVisibility';
-import { hydrateMissingRuTranslationsOnAlbum } from '../../src/entities/album/lib/hydrateMissingRuTranslations';
 import type { TrackLyricsBundle } from '../../src/shared/lib/lyrics/types';
-import type { AlbumEditable } from '../../src/models';
 import { viewerHasPremiumAccessToArtist } from './lib/entitlements';
 import { artistHasMonetizationEnabled } from './lib/artist-monetization';
 import { resolveEffectiveContentVisibility } from '../../src/shared/lib/payment/artistMonetization';
@@ -54,14 +50,12 @@ import {
   ARTIST_DISPLAY_NAME_SQL,
   ALBUMS_USER_JOIN_SQL,
   fetchArtistDisplayNameForUserId,
-  resolveArtistDisplayNameFromParts,
 } from './lib/resolve-album-key';
 
 interface AlbumRow {
   id: string;
   user_id: string | null;
   album_id: string;
-  /** Legacy column; not written on create/update. Used only as resolver fallback. */
   artist: string;
   /** Populated when album row is loaded with users JOIN. */
   artist_display_name?: string | null;
@@ -329,12 +323,9 @@ async function fetchTracksRowsForAlbumPk(albumPk: string): Promise<TrackRow[]> {
   const hasStemsVis = await tracksTableHasStemsVisibilityColumn();
   const hasAudioTech = await tracksTableHasAudioTechnicalColumns();
   const hasAudioFileMeta = await tracksTableHasAudioFileMetaColumns();
-  const hasPipeline = await tracksTableHasPipelineColumns();
   const visibilityCol = hasVis ? ',\n                t.visibility' : '';
   const stemsVisibilityCol = hasStemsVis ? ',\n                t.stems_visibility' : '';
-  const pipelineCols = hasPipeline
-    ? `,\n                t.processing_status,\n                t.processing_error`
-    : '';
+  const pipelineCols = `,\n                t.processing_status,\n                t.processing_error`;
   const audioTechCols = hasAudioTech
     ? `,\n                t.audio_container,
                 t.audio_codec,
@@ -395,10 +386,10 @@ interface UpdateAlbumRequest {
   previousAlbumId?: string;
 }
 
-const LEGACY_ALBUM_TRANSLATABLE_ROOT = ['fullName', 'description', 'details'] as const;
+const FORBIDDEN_ALBUM_TRANSLATABLE_ROOT = ['fullName', 'description', 'details'] as const;
 
 function albumRequestHasForbiddenRootFields(body: Record<string, unknown>): string | null {
-  for (const key of LEGACY_ALBUM_TRANSLATABLE_ROOT) {
+  for (const key of FORBIDDEN_ALBUM_TRANSLATABLE_ROOT) {
     if (Object.prototype.hasOwnProperty.call(body, key) && body[key] !== undefined) {
       return `"${key}" must be sent only inside translations[lang], not at request root`;
     }
@@ -476,10 +467,7 @@ function readCoverCreditsFromRow(
  * Преобразует данные альбома из БД в формат API
  */
 function readArtistDisplayNameFromAlbumRow(album: AlbumRow): string {
-  if (album.artist_display_name?.trim()) {
-    return album.artist_display_name.trim();
-  }
-  return resolveArtistDisplayNameFromParts({ legacyAlbumArtist: album.artist });
+  return album.artist_display_name?.trim() || '';
 }
 
 async function queryAlbumRowByPk(albumPk: string): Promise<AlbumRow | null> {
@@ -501,7 +489,6 @@ function mapAlbumToApiFormat(
   lyricsByTrackId: Map<string, TrackLyricsBundle>,
   options?: {
     assetsByTrackId?: Map<string, import('./lib/assetResolver').TrackAssetRecord[]>;
-    pipelineAvailable?: boolean;
   }
 ): AlbumData {
   // Парсим details, если это строка (PostgreSQL может вернуть JSONB как строку)
@@ -607,27 +594,19 @@ function mapAlbumToApiFormat(
         } satisfies TrackLyricsBundle);
 
       const assets = options?.assetsByTrackId?.get(track.track_id) ?? [];
-      const pipelineAvailable = options?.pipelineAvailable === true;
       const processingStatus = (track.processing_status ??
         'ready') as TrackData['processingStatus'];
 
-      let resolvedSrc: string | undefined;
-      if (pipelineAvailable) {
-        const playback = resolveAssetForPlayback(
-          assets,
-          {
-            purpose: 'playback',
-            processingStatus: processingStatus ?? 'ready',
-            hasPremiumAccess: true,
-            legacySrc: track.src,
-            pipelineAvailable: true,
-          },
-          album.user_id
-        );
-        resolvedSrc = playback.url ?? undefined;
-      } else {
-        resolvedSrc = resolveTrackSrcToSupabasePublicUrl(track.src, album.user_id);
-      }
+      const playback = resolveAssetForPlayback(
+        assets,
+        {
+          purpose: 'playback',
+          processingStatus: processingStatus ?? 'ready',
+          hasPremiumAccess: true,
+        },
+        album.user_id
+      );
+      const resolvedSrc = playback.url ?? undefined;
 
       return {
         id: normalizeTrackIdString(track.track_id) || String(track.track_id),
@@ -638,11 +617,8 @@ function mapAlbumToApiFormat(
             : 0,
         duration: duration ?? 0,
         src: resolvedSrc,
-        processingStatus: pipelineAvailable ? processingStatus : undefined,
-        processingError:
-          pipelineAvailable && track.processing_error?.trim()
-            ? track.processing_error.trim()
-            : undefined,
+        processingStatus,
+        processingError: track.processing_error?.trim() ? track.processing_error.trim() : undefined,
         content: lyrics.content || undefined,
         authorship: lyrics.authorship || track.authorship || undefined,
         lyrics,
@@ -983,10 +959,9 @@ function applyPublicTrackAccessPolicy(
 async function loadAlbumDataFromRow(album: AlbumRow): Promise<AlbumData> {
   const rowLang = album.lang;
 
-  const [tracksRows, assetsByTrackId, pipelineAvailable] = await Promise.all([
+  const [tracksRows, assetsByTrackId] = await Promise.all([
     fetchTracksRowsForAlbumPk(album.id),
     fetchTrackAssetsByAlbumPks([album.id]),
-    resolvePipelineAvailable(),
   ]);
 
   if (album.album_id === '23-remastered') {
@@ -1050,7 +1025,6 @@ async function loadAlbumDataFromRow(album: AlbumRow): Promise<AlbumData> {
 
   const mapped = mapAlbumToApiFormat(album, tracksRows, lyricsByTrackId, {
     assetsByTrackId,
-    pipelineAvailable,
   });
   console.log(`[albums.ts GET] Album ${album.album_id} mapped tracks:`, {
     tracksCount: mapped.tracks.length,
@@ -1254,9 +1228,7 @@ export const handler: Handler = async (
           };
         }
 
-        albumsWithTracks.push(
-          hydrateMissingRuTranslationsOnAlbum(merged as AlbumEditable) as unknown as AlbumData
-        );
+        albumsWithTracks.push(merged as unknown as AlbumData);
       }
 
       return createSuccessResponse(albumsWithTracks);
@@ -1290,8 +1262,7 @@ export const handler: Handler = async (
       }
 
       const locale = data.translations?.[data.lang];
-      const legacyTitle = (locale as { album?: string } | undefined)?.album?.trim?.() ?? '';
-      const albumTitle = (typeof data.album === 'string' && data.album.trim()) || legacyTitle || '';
+      const albumTitle = typeof data.album === 'string' ? data.album.trim() : '';
 
       console.log('📝 POST /api/albums - Request data:', {
         albumId: data.albumId,
@@ -1315,10 +1286,7 @@ export const handler: Handler = async (
       }
 
       if (!albumTitle) {
-        return createErrorResponse(
-          400,
-          'Missing album title: set `album` at request root (or legacy translations[lang].album)'
-        );
+        return createErrorResponse(400, 'Missing album title: set `album` at request root');
       }
 
       const albumUserId = userId;
@@ -1370,10 +1338,7 @@ export const handler: Handler = async (
       );
 
       const createdRow = albumResult.rows[0];
-      const createdArtistDisplayName = await fetchArtistDisplayNameForUserId(
-        albumUserId,
-        createdRow.artist
-      );
+      const createdArtistDisplayName = await fetchArtistDisplayNameForUserId(albumUserId);
       const createdAlbum = mapAlbumToApiFormat(
         { ...createdRow, artist_display_name: createdArtistDisplayName },
         [],
@@ -1517,16 +1482,11 @@ export const handler: Handler = async (
             [data.albumId, userId, data.lang]
           );
           const sibling = siblingResult.rows[0];
-          const legacyPatchAlbum =
-            localePatch && typeof localePatch === 'object' && 'album' in localePatch
-              ? String((localePatch as { album?: string }).album ?? '').trim()
-              : '';
           const sharedAlbumTitle =
             (albumForDb !== undefined && String(albumForDb).trim() !== ''
               ? String(albumForDb).trim()
               : null) ||
             (typeof data.album === 'string' && data.album.trim()) ||
-            legacyPatchAlbum ||
             (sibling.album || '').trim();
           if (sibling && sharedAlbumTitle) {
             const client = await getClient();
@@ -2207,10 +2167,6 @@ export const handler: Handler = async (
 
           // Треки привязаны к UUID строки albums (отдельные строки на ru/en). Нельзя искать только
           // по lang из UI: трек, загруженный в русской версии, иначе не находится при удалении из EN.
-          const hasPipeline = await tracksTableHasPipelineColumns();
-          const hasAssetsTable = await trackAssetsTableExists();
-          const masterPathCol = hasPipeline ? 't.master_path' : 'NULL::text AS master_path';
-
           const trackOwnerResult = await query<{
             src: string | null;
             master_path: string | null;
@@ -2218,7 +2174,7 @@ export const handler: Handler = async (
             album_pk: string;
             lang: string;
           }>(
-            `SELECT t.src, ${masterPathCol}, t.id AS track_db_id, a.id AS album_pk, a.lang
+            `SELECT t.src, t.master_path, t.id AS track_db_id, a.id AS album_pk, a.lang
              FROM tracks t
              INNER JOIN albums a ON a.id = t.album_id
              WHERE a.user_id = $1
@@ -2237,12 +2193,10 @@ export const handler: Handler = async (
 
           const trackRow = trackOwnerResult.rows[0];
 
-          const assetPathsResult = hasAssetsTable
-            ? await query<{ path: string | null }>(
-                `SELECT path FROM track_assets WHERE track_id = $1::uuid AND path IS NOT NULL`,
-                [trackRow.track_db_id]
-              ).catch(() => ({ rows: [] as { path: string | null }[] }))
-            : { rows: [] as { path: string | null }[] };
+          const assetPathsResult = await query<{ path: string | null }>(
+            `SELECT path FROM track_assets WHERE track_id = $1::uuid AND path IS NOT NULL`,
+            [trackRow.track_db_id]
+          ).catch(() => ({ rows: [] as { path: string | null }[] }));
 
           const storagePathsToRemove = new Set<string>();
           for (const candidate of [

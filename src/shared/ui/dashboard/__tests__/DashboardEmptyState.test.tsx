@@ -1,7 +1,6 @@
 import { render, screen } from '@testing-library/react';
 
 import { DashboardEmptyState } from '../DashboardEmptyState';
-import { DashboardButton } from '../DashboardButton';
 
 describe('DashboardEmptyState', () => {
   it('renders tab variant', () => {
@@ -28,34 +27,18 @@ describe('DashboardEmptyState', () => {
     expect(screen.queryByRole('heading', { name: 'Drop tracks here' })).toBeNull();
   });
 
-  it('renders icon and action', () => {
+  it('renders icon and primary action', () => {
     render(
       <DashboardEmptyState
         variant="card"
         icon={<span data-testid="icon">icon</span>}
         title="Empty"
-        action={<button type="button">Add</button>}
+        primaryAction={{ label: 'Add', onClick: () => undefined }}
       />
     );
 
     expect(screen.getByTestId('icon')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Add' })).toBeTruthy();
-  });
-
-  it('accepts DashboardButton primary as action', () => {
-    const { container } = render(
-      <DashboardEmptyState
-        variant="tab"
-        title="No albums yet"
-        action={
-          <DashboardButton variant="primary" onClick={() => undefined}>
-            Create album
-          </DashboardButton>
-        }
-      />
-    );
-
-    expect(container.querySelector('.dashboard-button--primary')).toBeTruthy();
   });
 
   it('applies multiline description modifier', () => {

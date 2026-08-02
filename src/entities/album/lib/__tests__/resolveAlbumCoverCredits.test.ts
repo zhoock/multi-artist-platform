@@ -13,7 +13,7 @@ function albumWithCoverCredits(partial: {
 }): AlbumEditable {
   return {
     albumId: 'a1',
-    artist: 'Artist',
+    artistDisplayName: 'Artist',
     album: 'Album',
     release: partial.release,
     translations: {

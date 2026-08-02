@@ -154,9 +154,9 @@ export function resolveAlbumCoverCreditFieldForEdit(
     album.release && typeof album.release === 'object'
       ? (album.release as Record<string, unknown>)
       : undefined;
-  const legacy = rel?.[field];
-  if (typeof legacy === 'string' && legacy.trim()) {
-    return { value: legacy.trim(), isFallback: true, source: 'root' };
+  const releaseFieldValue = rel?.[field];
+  if (typeof releaseFieldValue === 'string' && releaseFieldValue.trim()) {
+    return { value: releaseFieldValue.trim(), isFallback: true, source: 'root' };
   }
   return { value: '', isFallback: false, source: 'root' };
 }
@@ -185,8 +185,8 @@ export function resolveAlbumCoverReleaseFieldsForDisplay(
       album.release && typeof album.release === 'object'
         ? (album.release as Record<string, unknown>)
         : undefined;
-    const legacy = rel?.[f];
-    out[f] = typeof legacy === 'string' ? legacy.trim() : '';
+    const releaseFieldValue = rel?.[f];
+    out[f] = typeof releaseFieldValue === 'string' ? releaseFieldValue.trim() : '';
   }
   return out;
 }
@@ -483,21 +483,7 @@ export function resolveAlbumFieldForEdit(
 ): ResolvedAlbumEditField {
   if (field === 'album') {
     const root = (album.album ?? '').trim();
-    if (root) return { value: root, isFallback: false, source: 'root' };
-    const legacy = resolveTranslationString(
-      {
-        en: album.translations?.en?.album,
-        ru: album.translations?.ru?.album,
-      },
-      lang
-    );
-    if (legacy)
-      return {
-        value: legacy,
-        isFallback: true,
-        source: lang,
-      };
-    return { value: '', isFallback: false, source: 'root' };
+    return { value: root, isFallback: false, source: 'root' };
   }
 
   const chain = buildTranslationFallbackLocales(
@@ -604,17 +590,7 @@ export function resolveAlbumStringField(
   lang: SupportedLang
 ): string {
   if (field === 'album') {
-    const root = (album.album ?? '').trim();
-    if (root) return root;
-    return (
-      resolveTranslationString(
-        {
-          en: album.translations?.en?.album,
-          ru: album.translations?.ru?.album,
-        },
-        lang
-      ) || ''
-    );
+    return (album.album ?? '').trim();
   }
   const fromTranslations = resolveTranslationString(albumTranslationStrings(album, field), lang);
   if (fromTranslations) return fromTranslations;
@@ -642,7 +618,7 @@ export function resolveAlbumEditableForDisplay(
   const fullNameRaw = resolveAlbumStringField(album, 'fullName', lang);
   const fullName =
     fullNameRaw ||
-    `${album.artistDisplayName || album.artist || ''}${(album.artistDisplayName || album.artist) && albumTitle ? ' — ' : ''}${albumTitle}`.trim();
+    `${album.artistDisplayName || ''}${album.artistDisplayName && albumTitle ? ' — ' : ''}${albumTitle}`.trim();
 
   const tracks = (album.tracks ?? []).map((t) => resolveTrackForDisplay(t, lang));
 

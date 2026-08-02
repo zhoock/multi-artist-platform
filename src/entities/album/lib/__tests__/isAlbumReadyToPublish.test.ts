@@ -14,7 +14,7 @@ const mockTrack = {
 
 const readyDraft: AlbumEditable = {
   album: 'Test Album',
-  artist: 'Artist',
+  artistDisplayName: 'Artist',
   fullName: 'Artist — Test Album',
   description: 'Description',
   cover: 'album-cover-base',

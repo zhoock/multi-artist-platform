@@ -131,22 +131,18 @@ export function isListBlockEmpty(items: ArticleListItem[]): boolean {
   return items.every((item) => isRichTextEmpty(item.content));
 }
 
-function cleanLegacyText(text: string): string {
-  return text.replace(/^\+\++/, '');
-}
-
 export function parseListItemsFromDetailContent(content: unknown[]): ArticleListItem[] {
   const out: ArticleListItem[] = [];
   for (const item of content) {
     if (typeof item === 'string') {
-      const text = cleanLegacyText(item).trim();
+      const text = item.trim();
       if (!text) continue;
       out.push({ id: generateListItemId(), content: markdownToRichText(text) });
       continue;
     }
     if (item && typeof item === 'object' && 'text' in item) {
       const raw = item as { id?: unknown; text?: unknown };
-      const text = cleanLegacyText(String(raw.text ?? '')).trim();
+      const text = String(raw.text ?? '').trim();
       if (!text) continue;
       const id = typeof raw.id === 'string' && raw.id.trim() ? raw.id.trim() : generateListItemId();
       out.push({ id, content: markdownToRichText(text) });
@@ -161,13 +157,9 @@ function serializeListItemsToDetailContent(
   return items
     .map((item) => ({
       id: item.id,
-      text: cleanLegacyText(richTextToMarkdown(item.content)),
+      text: richTextToMarkdown(item.content),
     }))
     .filter((item) => item.text.trim());
-}
-
-function hasPersistedBlockIds(details: ArticledetailsProps[]): boolean {
-  return details.some((detail) => typeof detail?.blockId === 'string' && detail.blockId.trim());
 }
 
 function detailWithBlockIdToBlock(detail: ArticledetailsProps): Block | null {
@@ -186,14 +178,14 @@ function detailWithBlockIdToBlock(detail: ArticledetailsProps): Block | null {
   }
 
   if (detail.title) {
-    return { id, type: 'title', content: markdownToRichText(cleanLegacyText(detail.title)) };
+    return { id, type: 'title', content: markdownToRichText(detail.title) };
   }
 
   if (detail.subtitle) {
     return {
       id,
       type: 'subtitle',
-      content: markdownToRichText(cleanLegacyText(detail.subtitle)),
+      content: markdownToRichText(detail.subtitle),
     };
   }
 
@@ -203,12 +195,12 @@ function detailWithBlockIdToBlock(detail: ArticledetailsProps): Block | null {
 
   if (typeof detail.content === 'string') {
     if (detail.blockKind === 'quote') {
-      return { id, type: 'quote', content: markdownToRichText(cleanLegacyText(detail.content)) };
+      return { id, type: 'quote', content: markdownToRichText(detail.content) };
     }
     return {
       id,
       type: 'paragraph',
-      content: markdownToRichText(cleanLegacyText(detail.content)),
+      content: markdownToRichText(detail.content),
     };
   }
 
@@ -221,79 +213,7 @@ function detailWithBlockIdToBlock(detail: ArticledetailsProps): Block | null {
   return null;
 }
 
-function legacyDetailToBlocks(detail: ArticledetailsProps): Block[] {
-  const blocks: Block[] = [];
-
-  if (detail.title) {
-    blocks.push({
-      id: detail.blockId?.trim() || generateId(),
-      type: 'title',
-      content: markdownToRichText(cleanLegacyText(detail.title)),
-    });
-  }
-
-  if (detail.subtitle) {
-    blocks.push({
-      id: generateId(),
-      type: 'subtitle',
-      content: markdownToRichText(cleanLegacyText(detail.subtitle)),
-    });
-  }
-
-  if (detail.type === 'image' && detail.img) {
-    const imageKey = typeof detail.img === 'string' ? detail.img : detail.img[0] || '';
-    if (imageKey) {
-      blocks.push({
-        id: detail.blockId?.trim() || generateId(),
-        type: 'image',
-        imageKey,
-        caption: resolveDetailCaption(detail),
-      });
-    }
-  }
-
-  if (detail.type === 'carousel') {
-    const images = parseCarouselImagesFromDetail(detail);
-    const block = blockFromPersistedCarouselImages(detail.blockId?.trim() || generateId(), images);
-    if (block) blocks.push(block);
-  }
-
-  if (detail.content) {
-    if (typeof detail.content === 'string') {
-      if (detail.content === '---') {
-        blocks.push({ id: generateId(), type: 'divider' });
-      } else {
-        blocks.push({
-          id: generateId(),
-          type: 'paragraph',
-          content: markdownToRichText(cleanLegacyText(detail.content)),
-        });
-      }
-    } else if (Array.isArray(detail.content)) {
-      const items = parseListItemsFromDetailContent(detail.content);
-      if (items.length > 0) {
-        blocks.push({
-          id: detail.blockId?.trim() || generateId(),
-          type: 'list',
-          items,
-        });
-      }
-    }
-  } else if (
-    !detail.title &&
-    !detail.subtitle &&
-    detail.type !== 'image' &&
-    detail.type !== 'carousel'
-  ) {
-    blocks.push({ id: generateId(), type: 'paragraph', content: emptyRichText() });
-  }
-
-  return blocks;
-}
-
-/**
- * Преобразует старую структуру details в новую структуру блоков
- */
+/** Преобразует persisted details (с blockId) в блоки редактора. */
 export function normalizeDetailsToBlocks(details: ArticledetailsProps[]): Block[] {
   if (!details || !Array.isArray(details) || details.length === 0) {
     return [{ id: generateId(), type: 'paragraph', content: emptyRichText() }];
@@ -301,17 +221,10 @@ export function normalizeDetailsToBlocks(details: ArticledetailsProps[]): Block[
 
   const blocks: Block[] = [];
 
-  if (hasPersistedBlockIds(details)) {
-    for (const detail of details) {
-      if (!detail) continue;
-      const block = detailWithBlockIdToBlock(detail);
-      if (block) blocks.push(block);
-    }
-  } else {
-    for (const detail of details) {
-      if (!detail) continue;
-      blocks.push(...legacyDetailToBlocks(detail));
-    }
+  for (const detail of details) {
+    if (!detail) continue;
+    const block = detailWithBlockIdToBlock(detail);
+    if (block) blocks.push(block);
   }
 
   if (blocks.length === 0) {
@@ -342,10 +255,10 @@ function blockToDetail(block: Block): ArticledetailsProps | null {
         type: 'text',
         blockId: block.id,
         blockKind: 'quote',
-        content: cleanLegacyText(richTextToMarkdown(block.content)) || undefined,
+        content: richTextToMarkdown(block.content) || undefined,
       };
     case 'paragraph': {
-      const text = cleanLegacyText(richTextToMarkdown(block.content));
+      const text = richTextToMarkdown(block.content);
       return {
         type: 'text',
         blockId: block.id,

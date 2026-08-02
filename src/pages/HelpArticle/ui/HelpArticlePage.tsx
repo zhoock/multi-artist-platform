@@ -343,7 +343,6 @@ function ArticleContent({
             type: 'carousel',
             images: details.img,
             caption: details.caption,
-            alt: details.alt,
             img: details.img,
           })
         : null;

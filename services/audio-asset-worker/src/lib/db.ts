@@ -127,12 +127,12 @@ export function createPipelineDb(client: pg.PoolClient, trace?: PipelineTraceCon
       });
     },
 
-    async syncLegacySrc(trackDbId, publicUrl) {
+    async syncTrackSrc(trackDbId, publicUrl) {
       const res = await client.query(
         `UPDATE tracks SET src = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $1`,
         [trackDbId, publicUrl]
       );
-      logDbWrite('syncLegacySrc', res.rowCount, { trackDbId, publicUrl });
+      logDbWrite('syncTrackSrc', res.rowCount, { trackDbId, publicUrl });
     },
 
     async snapshotTrackAssets(trackDbId) {

@@ -25,18 +25,7 @@ export function parseProcessingError(raw: string | null | undefined): {
       message: trimmed.slice(ENQUEUE_PROCESSING_ERROR_PREFIX.length).trim(),
     };
   }
-  if (isLegacyEnqueueFailureMessage(trimmed)) {
-    return { kind: 'enqueue', message: trimmed };
-  }
   return { kind: 'pipeline', message: trimmed };
-}
-
-function isLegacyEnqueueFailureMessage(message: string): boolean {
-  return (
-    message.includes('worker is not configured') ||
-    message.includes('worker is unavailable') ||
-    message.includes('worker rejected the job')
-  );
 }
 
 export function isFailedProcessingStatus(status: string | null | undefined): status is 'failed' {

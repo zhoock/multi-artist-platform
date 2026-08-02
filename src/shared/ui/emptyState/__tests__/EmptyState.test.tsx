@@ -25,12 +25,4 @@ describe('EmptyState', () => {
     expect(screen.getByRole('button', { name: 'Upload tracks' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Learn more' })).toBeTruthy();
   });
-
-  it('supports legacy action slot', () => {
-    render(
-      <EmptyState layout="card" title="Empty" action={<button type="button">Custom</button>} />
-    );
-
-    expect(screen.getByRole('button', { name: 'Custom' })).toBeTruthy();
-  });
 });

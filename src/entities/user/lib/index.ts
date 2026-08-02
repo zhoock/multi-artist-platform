@@ -117,26 +117,6 @@ export async function loadTheBandFromDatabase(
 }
 
 /**
- * Загружает описание группы (theBand) из статического JSON файла профиля
- */
-export async function loadTheBandFromProfileJson(lang: string): Promise<string[] | null> {
-  try {
-    const { getJSON } = await import('@shared/api/http');
-    const { resolveTheBandForLang, hasFilledBandParagraphs } = await import('@shared/lib/theBand');
-    const profile = await getJSON<{ theBand: { [key: string]: string[] } }>('profile.json');
-
-    const validLang = lang === 'en' ? 'en' : 'ru';
-    const paragraphs = resolveTheBandForLang(profile?.theBand ?? null, validLang);
-    return hasFilledBandParagraphs(paragraphs) ? paragraphs : null;
-  } catch (error) {
-    if (process.env.NODE_ENV === 'development') {
-      console.warn('⚠️ Ошибка загрузки theBand из profile.json:', error);
-    }
-    return null;
-  }
-}
-
-/**
  * Загружает изображения для шапки (header images) из БД для текущего пользователя
  */
 export async function loadHeaderImagesFromDatabase(
@@ -364,8 +344,7 @@ export async function loadTheBandBilingualFromDatabase(): Promise<{
 }
 
 /**
- * Сохраняет описание группы (theBand) в БД для текущего пользователя
- * Поддерживает как старый формат (один массив), так и новый (отдельно ru/en)
+ * Сохраняет описание группы (theBand) в БД для текущего пользователя.
  */
 export async function saveTheBandToDatabase(
   theBand: string[] | { ru: string[]; en: string[] },
@@ -375,20 +354,14 @@ export async function saveTheBandToDatabase(
     const { getAuthHeader } = await import('@shared/lib/auth');
     const authHeader = getAuthHeader();
 
-    // Определяем формат данных
-    let requestBody: { theBand?: string[]; theBandRu?: string[]; theBandEn?: string[] };
+    let requestBody: { theBandRu?: string[]; theBandEn?: string[] };
 
     if (Array.isArray(theBand)) {
-      // Старый формат или сохранение одного языка
-      if (lang) {
-        // Сохраняем только указанный язык
-        requestBody = lang === 'ru' ? { theBandRu: theBand } : { theBandEn: theBand };
-      } else {
-        // Для обратной совместимости: сохраняем оба языка одинаково
-        requestBody = { theBand };
+      if (!lang) {
+        throw new Error('lang is required when saving a single-language theBand array');
       }
+      requestBody = lang === 'ru' ? { theBandRu: theBand } : { theBandEn: theBand };
     } else {
-      // Новый формат: объект с ru и en
       requestBody = {
         theBandRu: theBand.ru,
         theBandEn: theBand.en,

@@ -27,9 +27,6 @@ export interface AssetResolverContext {
   hasPremiumAccess: boolean;
   codecSupport?: string[];
   networkBandwidthKbps?: number;
-  /** Legacy tracks.src when pipeline columns not yet populated */
-  legacySrc?: string | null;
-  pipelineAvailable?: boolean;
 }
 
 export interface AssetResolverResult {
@@ -77,18 +74,7 @@ export function selectAssetPath(
   assets: TrackAssetRecord[],
   ctx: AssetResolverContext
 ): AssetResolverResult {
-  const pipelineAvailable = ctx.pipelineAvailable !== false;
-
-  if (!pipelineAvailable && ctx.legacySrc?.trim()) {
-    return {
-      url: ctx.legacySrc.trim(),
-      asset: null,
-      processingStatus: ctx.processingStatus,
-    };
-  }
-
-  // Pipeline playback requires both track-level and asset-level readiness.
-  if (pipelineAvailable && ctx.processingStatus !== 'ready') {
+  if (ctx.processingStatus !== 'ready') {
     return {
       url: null,
       asset: null,

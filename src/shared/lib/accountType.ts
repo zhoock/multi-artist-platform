@@ -32,20 +32,10 @@ const ARTIST_TABS: DashboardTab[] = [
   'social-links',
 ];
 
-/** Legacy `/dashboard/profile` slug before Settings rename. */
-export function normalizeLegacyDashboardTabSlug(tab: string | undefined): string | undefined {
-  if (tab === 'profile') return 'settings';
-  return tab;
-}
-
 export function isDashboardTabSlug(value: string): value is DashboardTab {
-  const normalized = normalizeLegacyDashboardTabSlug(value);
-  return (
-    normalized !== undefined && (DASHBOARD_TAB_SLUGS as readonly string[]).includes(normalized)
-  );
+  return (DASHBOARD_TAB_SLUGS as readonly string[]).includes(value);
 }
 
-/** Legacy sessions without accountType are treated as artist (existing CMS users). */
 export function getAccountType(user: AuthUser | null | undefined): AccountType {
   if (user?.accountType === 'listener') return 'listener';
   if (user?.accountType === 'artist') return 'artist';
@@ -53,7 +43,7 @@ export function getAccountType(user: AuthUser | null | undefined): AccountType {
     const fromToken = readAccountTypeFromStoredToken();
     if (fromToken) return fromToken;
   }
-  return 'artist';
+  return 'listener';
 }
 
 export function isArtistAccount(user: AuthUser | null | undefined): boolean {
@@ -76,18 +66,16 @@ export function isDashboardTabAllowed(
   tab: string | undefined,
   user: AuthUser | null | undefined
 ): tab is DashboardTab {
-  const normalizedTab = normalizeLegacyDashboardTabSlug(tab);
-  if (!normalizedTab || !isDashboardTabSlug(normalizedTab)) return false;
-  return getVisibleDashboardTabs(user).includes(normalizedTab as DashboardTab);
+  if (!tab || !isDashboardTabSlug(tab)) return false;
+  return getVisibleDashboardTabs(user).includes(tab);
 }
 
 export function resolveDashboardTab(
   tab: string | undefined,
   user: AuthUser | null | undefined
 ): DashboardTab {
-  const normalizedTab = normalizeLegacyDashboardTabSlug(tab);
-  if (normalizedTab && isDashboardTabAllowed(normalizedTab, user)) {
-    return normalizedTab as DashboardTab;
+  if (tab && isDashboardTabAllowed(tab, user)) {
+    return tab;
   }
   return getDefaultDashboardTab(user);
 }

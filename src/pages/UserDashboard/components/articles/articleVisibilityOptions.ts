@@ -27,11 +27,6 @@ export function isArticlePublished(article: Pick<IArticles, 'isDraft'>): boolean
   return article.isDraft === false;
 }
 
-/** @deprecated Use isArticleNeverPublished */
-export function isArticleDraft(article: Pick<IArticles, 'isDraft'>): boolean {
-  return isArticleNeverPublished(article);
-}
-
 export function hasArticleDraftChanges(
   article: Pick<IArticles, 'isDraft' | 'hasDraftChanges'>
 ): boolean {
@@ -94,17 +89,4 @@ export function buildArticleVisibilityMenuOptions(
   });
 
   return filterVisibilityOptionsByMonetization(options, monetizationEnabled);
-}
-
-/** @deprecated Use `buildArticleVisibilityMenuOptions` */
-export const buildVisibilityMenuOptions = buildArticleVisibilityMenuOptions;
-
-export function getArticleVisibilityLabel(
-  visibility: TrackVisibility,
-  ui: IInterface | undefined,
-  lang: SupportedLang
-): string {
-  return (
-    buildArticleVisibilityMenuOptions(ui, lang).find((opt) => opt.value === visibility)?.label ?? ''
-  );
 }

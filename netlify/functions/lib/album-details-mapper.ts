@@ -304,8 +304,6 @@ function mergeTracks(
         purpose: 'playback',
         processingStatus,
         hasPremiumAccess: ctx.hasPremiumAccess,
-        legacySrc: track.src,
-        pipelineAvailable,
       },
       ctx.userId
     );
@@ -319,7 +317,6 @@ function mergeTracks(
         purpose: 'waveform',
         processingStatus,
         hasPremiumAccess: ctx.hasPremiumAccess,
-        pipelineAvailable,
       },
       ctx.userId
     );

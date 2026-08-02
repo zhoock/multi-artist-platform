@@ -3,12 +3,7 @@
  */
 
 import { query } from './db';
-import { getViewerEmailLower } from './entitlements';
-import {
-  activePurchaseFilter,
-  purchasesHasRevokedColumns,
-  purchasesHasUserIdColumn,
-} from './purchase-schema';
+import { activePurchaseFilter } from './purchase-schema';
 import {
   resolveAlbumByKey,
   resolveAlbumSlug,
@@ -52,10 +47,6 @@ export async function purchasesTableExists(): Promise<boolean> {
     ) as exists`
   );
   return tableCheckResult.rows[0]?.exists ?? false;
-}
-
-async function purchasesHasUserIdColumnLocal(): Promise<boolean> {
-  return purchasesHasUserIdColumn();
 }
 
 async function mapPurchaseRows(rows: PurchaseRow[]): Promise<PurchaseDto[]> {
@@ -106,53 +97,24 @@ async function mapPurchaseRows(rows: PurchaseRow[]): Promise<PurchaseDto[]> {
   );
 }
 
-/** Purchases owned by authenticated account (user_id, with email fallback for legacy rows). */
+/** Purchases owned by authenticated account (user_id). */
 export async function fetchPurchasesForAccountUser(userId: string): Promise<PurchaseDto[]> {
-  const accountEmailLower = await getViewerEmailLower(userId);
-  const hasUserId = await purchasesHasUserIdColumnLocal();
-  const revokedFilter = await activePurchaseFilter();
+  const revokedFilter = activePurchaseFilter();
 
-  let purchasesResult;
-
-  if (hasUserId) {
-    purchasesResult = await query<PurchaseRow>(
-      `SELECT id, order_id, album_id, purchase_token, purchased_at, download_count
-       FROM purchases
-       WHERE (
-         user_id = $1::uuid
-         OR (
-           user_id IS NULL
-           AND $2::text IS NOT NULL
-           AND LOWER(TRIM(customer_email)) = $2::text
-         )
-       )
-       ${revokedFilter}
-       ORDER BY purchased_at DESC`,
-      [userId, accountEmailLower]
-    );
-  } else if (accountEmailLower) {
-    purchasesResult = await query<PurchaseRow>(
-      `SELECT id, order_id, album_id, purchase_token, purchased_at, download_count
-       FROM purchases
-       WHERE LOWER(TRIM(customer_email)) = $1
-       ${revokedFilter}
-       ORDER BY purchased_at DESC`,
-      [accountEmailLower]
-    );
-  } else {
-    return [];
-  }
+  const purchasesResult = await query<PurchaseRow>(
+    `SELECT id, order_id, album_id, purchase_token, purchased_at, download_count
+     FROM purchases
+     WHERE user_id = $1::uuid
+     ${revokedFilter}
+     ORDER BY purchased_at DESC`,
+    [userId]
+  );
 
   return mapPurchaseRows(purchasesResult.rows);
 }
 
 /** Resolve user_id from checkout email when creating a purchase row. */
 export async function resolveUserIdForCustomerEmail(customerEmail: string): Promise<string | null> {
-  const hasUserId = await purchasesHasUserIdColumnLocal();
-  if (!hasUserId) {
-    return null;
-  }
-
   const result = await query<{ id: string }>(
     `SELECT id::text AS id FROM users WHERE LOWER(TRIM(email)) = LOWER(TRIM($1)) LIMIT 1`,
     [customerEmail]
@@ -172,32 +134,19 @@ export async function upsertPurchaseRecord(
   }
 
   const userId = await resolveUserIdForCustomerEmail(customerEmail);
-  const hasUserId = await purchasesHasUserIdColumnLocal();
-  const hasRevoked = await purchasesHasRevokedColumns();
-  const restoreRevoked = hasRevoked ? ', revoked_at = NULL, revoked_by_user = NULL' : '';
-
-  if (hasUserId) {
-    const purchaseResult = await query<{ id: string; purchase_token: string }>(
-      `INSERT INTO purchases (order_id, customer_email, album_id, user_id)
-       VALUES ($1, $2, $3, $4::uuid)
-       ON CONFLICT (customer_email, album_id)
-       DO UPDATE SET
-         order_id = EXCLUDED.order_id,
-         user_id = COALESCE(purchases.user_id, EXCLUDED.user_id)${restoreRevoked},
-         updated_at = CURRENT_TIMESTAMP
-       RETURNING id, purchase_token`,
-      [orderId, customerEmail, albumSlug, userId]
-    );
-    return purchaseResult.rows[0] ?? null;
-  }
 
   const purchaseResult = await query<{ id: string; purchase_token: string }>(
-    `INSERT INTO purchases (order_id, customer_email, album_id)
-     VALUES ($1, $2, $3)
+    `INSERT INTO purchases (order_id, customer_email, album_id, user_id)
+     VALUES ($1, $2, $3, $4::uuid)
      ON CONFLICT (customer_email, album_id)
-     DO UPDATE SET order_id = EXCLUDED.order_id, updated_at = CURRENT_TIMESTAMP
+     DO UPDATE SET
+       order_id = EXCLUDED.order_id,
+       user_id = COALESCE(purchases.user_id, EXCLUDED.user_id),
+       revoked_at = NULL,
+       revoked_by_user = NULL,
+       updated_at = CURRENT_TIMESTAMP
      RETURNING id, purchase_token`,
-    [orderId, customerEmail, albumSlug]
+    [orderId, customerEmail, albumSlug, userId]
   );
   return purchaseResult.rows[0] ?? null;
 }
@@ -215,29 +164,17 @@ export async function upsertPurchaseRecordSilent(
   }
 
   const userId = await resolveUserIdForCustomerEmail(customerEmail);
-  const hasUserId = await purchasesHasUserIdColumnLocal();
-  const hasRevoked = await purchasesHasRevokedColumns();
-  const restoreRevoked = hasRevoked ? ', revoked_at = NULL, revoked_by_user = NULL' : '';
-
-  if (hasUserId) {
-    await query(
-      `INSERT INTO purchases (order_id, customer_email, album_id, user_id)
-       VALUES ($1, $2, $3, $4::uuid)
-       ON CONFLICT (customer_email, album_id)
-       DO UPDATE SET
-         order_id = EXCLUDED.order_id,
-         user_id = COALESCE(purchases.user_id, EXCLUDED.user_id)${restoreRevoked},
-         updated_at = CURRENT_TIMESTAMP`,
-      [orderId, customerEmail, albumSlug, userId]
-    );
-    return;
-  }
 
   await query(
-    `INSERT INTO purchases (order_id, customer_email, album_id)
-     VALUES ($1, $2, $3)
+    `INSERT INTO purchases (order_id, customer_email, album_id, user_id)
+     VALUES ($1, $2, $3, $4::uuid)
      ON CONFLICT (customer_email, album_id)
-     DO UPDATE SET order_id = EXCLUDED.order_id, updated_at = CURRENT_TIMESTAMP`,
-    [orderId, customerEmail, albumSlug]
+     DO UPDATE SET
+       order_id = EXCLUDED.order_id,
+       user_id = COALESCE(purchases.user_id, EXCLUDED.user_id),
+       revoked_at = NULL,
+       revoked_by_user = NULL,
+       updated_at = CURRENT_TIMESTAMP`,
+    [orderId, customerEmail, albumSlug, userId]
   );
 }

@@ -73,10 +73,6 @@ describe('PLAN_CATALOG', () => {
 });
 
 describe('normalizeSubscriptionPlanSlug', () => {
-  test('maps legacy archive to explorer', () => {
-    expect(normalizeSubscriptionPlanSlug('archive')).toBe('explorer');
-  });
-
   test('accepts known plan slugs', () => {
     expect(normalizeSubscriptionPlanSlug('collector')).toBe('collector');
     expect(normalizeSubscriptionPlanSlug('archivist')).toBe('archivist');
@@ -125,18 +121,6 @@ describe('validatePremiumSubscriptionPayment', () => {
       productType: 'premium_subscription',
       userId: USER_ID,
       plan: 'explorer',
-      amountValue: '1.00',
-      currency: 'RUB',
-      amountsEqual,
-    });
-    expect(result).toEqual({ valid: true, planSlug: 'explorer' });
-  });
-
-  test('accepts legacy archive metadata as explorer', () => {
-    const result = validatePremiumSubscriptionPayment({
-      productType: 'premium_subscription',
-      userId: USER_ID,
-      plan: 'archive',
       amountValue: '1.00',
       currency: 'RUB',
       amountsEqual,

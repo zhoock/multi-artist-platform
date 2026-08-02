@@ -3,7 +3,6 @@ import { describe, expect, test } from '@jest/globals';
 import {
   comparePlanTiers,
   formatCollectionMenuSubtitle,
-  formatPlanArtistLimit,
   formatPlanStatusLabel,
   formatPlanSupportDuration,
   getPlanAmountRub,
@@ -192,15 +191,5 @@ describe('isCollectionOverPlanLimit', () => {
 
   test('returns false when within limit', () => {
     expect(isCollectionOverPlanLimit(2, 3)).toBe(false);
-  });
-});
-
-describe('formatPlanArtistLimit', () => {
-  test('formats singular artist copy', () => {
-    expect(formatPlanArtistLimit('explorer', 'en')).toBe('Up to 1 artist');
-  });
-
-  test('formats plural artist copy', () => {
-    expect(formatPlanArtistLimit('archivist', 'en')).toBe('Up to 3 artists');
   });
 });

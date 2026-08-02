@@ -78,22 +78,6 @@ export function resolveChildContextNavMode(origin: NavigationOrigin): ContextNav
   return origin.isArtistHubOrigin ? 'artist-only' : 'list-and-artist';
 }
 
-/** @deprecated Prefer resolveChildContextNavMode for Album/Article child pages. */
-export function resolveContextNavMode(
-  origin: NavigationOrigin,
-  options: {
-    fallbackSection?: NavListSection;
-    directEntryMode?: ContextNavMode;
-  } = {}
-): ContextNavMode {
-  const { fallbackSection = 'albums', directEntryMode = 'list-and-artist' } = options;
-
-  if (origin.isArtistHubOrigin) return 'artist-only';
-  if (origin.listSection) return 'list-and-artist';
-  if (origin.isDirectEntry) return directEntryMode;
-  return fallbackSection ? 'list-and-artist' : 'artist-only';
-}
-
 export function resolveContextNavListSection(
   origin: NavigationOrigin,
   fallbackSection: NavListSection

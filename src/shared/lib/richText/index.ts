@@ -62,7 +62,6 @@ export {
 
 export {
   ENABLE_EDITOR_DEBUG,
-  ENABLE_MARKDOWN_DEBUG,
   getDefaultEditorMode,
   getVisibleEditorModes,
   isMarkdownEditorEnabled,

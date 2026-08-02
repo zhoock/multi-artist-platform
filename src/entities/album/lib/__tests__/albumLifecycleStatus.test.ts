@@ -5,7 +5,7 @@ import { getAlbumListDraftBadge } from '../albumLifecycleStatus';
 
 describe('getAlbumListDraftBadge', () => {
   const baseAlbum: AlbumEditable = {
-    artist: '',
+    artistDisplayName: '',
     album: 'Test Album',
     fullName: 'Test Album',
     description: 'Description',

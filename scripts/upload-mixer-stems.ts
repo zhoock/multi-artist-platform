@@ -43,8 +43,14 @@ async function uploadMixerStems() {
     console.error('❌ Задайте MIGRATION_TARGET_USER_ID.');
     process.exit(1);
   }
-  const legacyUserDir = process.env.MIGRATION_LOCAL_IMAGES_USER_DIR?.trim() || 'legacy-user';
-  const MIXER_DIR = path.resolve(__dirname, '../src/images/users', legacyUserDir, 'stems/Mixer');
+  const migrationLocalUserDir =
+    process.env.MIGRATION_LOCAL_IMAGES_USER_DIR?.trim() || 'legacy-user';
+  const MIXER_DIR = path.resolve(
+    __dirname,
+    '../src/images/users',
+    migrationLocalUserDir,
+    'stems/Mixer'
+  );
 
   console.log('🚀 Загрузка файлов Mixer в Supabase Storage...\n');
   console.log(`📁 Директория: ${MIXER_DIR}\n`);

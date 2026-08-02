@@ -769,8 +769,6 @@ export function useArtistPageAccessState(
   const showArtistPageSkeleton = isArtistPublishedSurface && !pageReady;
 
   const showPublished = pageReady;
-  /** @deprecated Prefer `showArtistPageSkeleton`. */
-  const showArtistPageLayoutPendingLegacy = showArtistPageLayoutPending || showArtistPageSkeleton;
 
   return {
     isLoading,
@@ -789,7 +787,7 @@ export function useArtistPageAccessState(
     showArtistPageSkeleton,
     showArtistPageSurfacePending,
     showArtistPageHeroPending,
-    showArtistPageLayoutPending: showArtistPageLayoutPendingLegacy,
+    showArtistPageLayoutPending,
     headerImages,
     isHeaderImagesReady,
     albumDetailsReleaseGatePending,

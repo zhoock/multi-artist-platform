@@ -96,24 +96,22 @@ export function ArticlePage() {
     subtitle,
     content,
     img,
-    alt,
     caption,
     images,
     type,
     userId,
     blockKind,
   }: ArticledetailsProps) {
-    const mediaCaption = resolveDetailCaption({ caption, alt }) ?? '';
+    const mediaCaption = resolveDetailCaption({ caption }) ?? '';
     const imageList = images && Array.isArray(images) ? images : Array.isArray(img) ? img : null;
     const carouselItems =
       type === 'carousel' && imageList
-        ? parseCarouselImagesFromDetail({ type, images: imageList, caption, alt, img })
+        ? parseCarouselImagesFromDetail({ type, images: imageList, caption, img })
         : imageList && imageList.length >= 2
           ? parseCarouselImagesFromDetail({
               type: 'carousel',
               images: imageList,
               caption,
-              alt,
               img,
             })
           : null;
@@ -123,9 +121,7 @@ export function ArticlePage() {
         : null;
     const singleImage =
       imageList?.length === 1
-        ? typeof imageList[0] === 'string'
-          ? imageList[0]
-          : imageList[0].imageKey
+        ? imageList[0].imageKey
         : !imageList && img && typeof img === 'string'
           ? img
           : null;

@@ -39,7 +39,6 @@ describe('selectAssetPath', () => {
       purpose: 'playback',
       processingStatus: 'ready',
       hasPremiumAccess: false,
-      pipelineAvailable: true,
     });
     expect(result.url).toBe(ready128.path);
     expect(result.asset).toEqual({ type: 'stream', format: 'opus', variant: '128k' });
@@ -50,7 +49,6 @@ describe('selectAssetPath', () => {
       purpose: 'playback',
       processingStatus: 'ready',
       hasPremiumAccess: true,
-      pipelineAvailable: true,
     });
     expect(result.url).toBe(ready256.path);
     expect(result.asset?.variant).toBe('256k');
@@ -61,7 +59,6 @@ describe('selectAssetPath', () => {
       purpose: 'playback',
       processingStatus: 'processing',
       hasPremiumAccess: false,
-      pipelineAvailable: true,
     });
     expect(result.url).toBeNull();
   });
@@ -71,7 +68,6 @@ describe('selectAssetPath', () => {
       purpose: 'playback',
       processingStatus: 'processing',
       hasPremiumAccess: false,
-      pipelineAvailable: true,
     });
     expect(result.url).toBeNull();
     expect(result.asset).toBeNull();
@@ -82,20 +78,8 @@ describe('selectAssetPath', () => {
       purpose: 'playback',
       processingStatus: 'ready',
       hasPremiumAccess: false,
-      pipelineAvailable: true,
     });
     expect(result.url).toBe(ready128.path);
-  });
-
-  it('falls back to legacy src when pipeline unavailable', () => {
-    const result = selectAssetPath([], {
-      purpose: 'playback',
-      processingStatus: 'ready',
-      hasPremiumAccess: false,
-      pipelineAvailable: false,
-      legacySrc: 'https://example.com/legacy.mp3',
-    });
-    expect(result.url).toBe('https://example.com/legacy.mp3');
   });
 
   it('returns playback URL when stream ready and waveform failed', () => {
@@ -103,7 +87,6 @@ describe('selectAssetPath', () => {
       purpose: 'playback',
       processingStatus: 'ready',
       hasPremiumAccess: false,
-      pipelineAvailable: true,
     });
     expect(result.url).toBe(ready128.path);
   });
@@ -113,7 +96,6 @@ describe('selectAssetPath', () => {
       purpose: 'waveform',
       processingStatus: 'ready',
       hasPremiumAccess: false,
-      pipelineAvailable: true,
     });
     expect(result.url).toBe(readyWaveform.path);
     expect(result.asset).toEqual({ type: 'waveform', format: 'json', variant: 'default' });
@@ -126,7 +108,6 @@ describe('selectAssetPath', () => {
         purpose: 'waveform',
         processingStatus: 'ready',
         hasPremiumAccess: false,
-        pipelineAvailable: true,
       }
     );
     expect(result.url).toBeNull();
@@ -137,7 +118,6 @@ describe('selectAssetPath', () => {
       purpose: 'waveform',
       processingStatus: 'processing',
       hasPremiumAccess: false,
-      pipelineAvailable: true,
     });
     expect(result.url).toBeNull();
   });

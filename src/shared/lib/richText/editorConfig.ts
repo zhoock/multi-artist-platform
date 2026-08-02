@@ -4,9 +4,6 @@ export type RichTextBlockEditorMode = 'textarea' | 'preview' | 'rich';
 /** Скрытые режимы Preview/Markdown. Включить: ?editor=debug */
 export const ENABLE_EDITOR_DEBUG = false;
 
-/** @deprecated use ENABLE_EDITOR_DEBUG */
-export const ENABLE_MARKDOWN_DEBUG = ENABLE_EDITOR_DEBUG;
-
 export function isMarkdownEditorEnabled(): boolean {
   if (ENABLE_EDITOR_DEBUG) return true;
   if (typeof window !== 'undefined') {

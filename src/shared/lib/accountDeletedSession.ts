@@ -11,11 +11,6 @@ export function markAccountDeletedSession(): void {
   }
 }
 
-/** @deprecated Используйте markAccountDeletedSession */
-export function markAccountDeletedSkipReturn(): void {
-  markAccountDeletedSession();
-}
-
 export function shouldForcePostAuthHome(): boolean {
   try {
     return sessionStorage.getItem(ACCOUNT_DELETED_SKIP_RETURN_KEY) === '1';

@@ -5,8 +5,8 @@
 
 export const LOCAL_DEV_FRONTEND_ORIGIN = 'http://localhost:8080';
 
-/** @internal Regression guard — legacy band site domain must not appear in production URLs. */
-export const LEGACY_BAND_PUBLIC_DOMAIN = 'smolyanoechuchelko.ru';
+/** @internal Regression guard — old band site domain must not appear in production URLs. */
+export const FORBIDDEN_PUBLIC_DOMAIN = 'smolyanoechuchelko.ru';
 
 export function normalizeOrigin(url: string): string {
   return url.replace(/\/+$/, '');

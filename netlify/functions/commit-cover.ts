@@ -69,12 +69,6 @@ function buildCoverVariantStoragePaths(userId: string, base: string): string[] {
   return out;
 }
 
-/** Старый шаблон `albumId-cover.ext` из ранних версий. */
-function buildLegacyAlbumIdCoverPaths(userId: string, albumId: string): string[] {
-  const prefix = `users/${userId}/albums`;
-  return [`${prefix}/${albumId}-cover.jpg`, `${prefix}/${albumId}-cover.webp`];
-}
-
 async function fetchDistinctCoverBasesFromDb(userId: string, albumId: string): Promise<string[]> {
   try {
     const result = await query<{ cover: string | null }>(
@@ -281,9 +275,6 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
       for (const p of buildCoverVariantStoragePaths(userId, base)) {
         pathsToRemove.add(p);
       }
-    }
-    for (const p of buildLegacyAlbumIdCoverPaths(userId, albumId)) {
-      pathsToRemove.add(p);
     }
     if (pathsToRemove.size > 0) {
       const list = [...pathsToRemove];

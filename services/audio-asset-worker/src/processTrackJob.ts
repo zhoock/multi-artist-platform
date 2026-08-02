@@ -112,7 +112,7 @@ export async function processTrackJob(
           if (primary?.storagePath) {
             const publicUrl = buildPublicStorageUrl(primary.storagePath);
             if (publicUrl) {
-              await db.syncLegacySrc(payload.trackDbId, publicUrl);
+              await db.syncTrackSrc(payload.trackDbId, publicUrl);
             }
           }
           pipelineTrace('processTrackJob success path completed', undefined, trace);

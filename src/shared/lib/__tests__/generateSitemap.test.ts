@@ -7,7 +7,7 @@ import {
   generateSitemapXml,
   localizeSitemapEntriesForAllLangs,
 } from '../seo/generateSitemap';
-import { LEGACY_BAND_PUBLIC_DOMAIN } from '../publicSiteOrigin';
+import { FORBIDDEN_PUBLIC_DOMAIN } from '../publicSiteOrigin';
 
 describe('generateSitemap', () => {
   const origin = 'https://multi-artist-platform.netlify.app';
@@ -19,14 +19,14 @@ describe('generateSitemap', () => {
     expect(xml).toContain('<loc>https://multi-artist-platform.netlify.app/en</loc>');
     expect(xml).toContain('<loc>https://multi-artist-platform.netlify.app/ru/albums</loc>');
     expect(xml).not.toContain('<loc>https://multi-artist-platform.netlify.app/albums</loc>');
-    expect(xml).not.toContain(LEGACY_BAND_PUBLIC_DOMAIN);
+    expect(xml).not.toContain(FORBIDDEN_PUBLIC_DOMAIN);
   });
 
   it('generates robots.txt pointing at the same origin sitemap', () => {
     const robots = generateRobotsTxt(origin);
 
     expect(robots).toContain('Sitemap: https://multi-artist-platform.netlify.app/sitemap.xml');
-    expect(robots).not.toContain(LEGACY_BAND_PUBLIC_DOMAIN);
+    expect(robots).not.toContain(FORBIDDEN_PUBLIC_DOMAIN);
   });
 
   it('buildAbsoluteSitemapUrl keeps trailing slash only for home', () => {

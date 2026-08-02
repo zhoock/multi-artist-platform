@@ -5,12 +5,10 @@ import { renderWithProviders } from '@shared/lib/test-utils';
 
 const loadTheBandFromDatabase =
   jest.fn<(lang: string, options?: Record<string, unknown>) => Promise<string[] | null>>();
-const loadTheBandFromProfileJson = jest.fn<(lang: string) => Promise<string[] | null>>();
 
 jest.mock('@entities/user/lib', () => ({
   loadTheBandFromDatabase: (lang: string, options?: Record<string, unknown>) =>
     loadTheBandFromDatabase(lang, options),
-  loadTheBandFromProfileJson: (lang: string) => loadTheBandFromProfileJson(lang),
   loadSocialLinksFromDatabase: jest.fn(async () => ({})),
   loadHeaderImagesFromDatabase: jest.fn(async () => []),
 }));
@@ -65,8 +63,6 @@ function renderAboutSection() {
 describe('AboutSection integration tests', () => {
   beforeEach(() => {
     loadTheBandFromDatabase.mockReset();
-    loadTheBandFromProfileJson.mockReset();
-    loadTheBandFromProfileJson.mockResolvedValue(null);
   });
 
   test('не рендерит секцию на странице артиста без заполненного описания', async () => {

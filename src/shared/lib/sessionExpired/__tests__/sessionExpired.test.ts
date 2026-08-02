@@ -21,14 +21,13 @@ describe('sessionExpired helpers', () => {
     expect(mapApiCodeToBannerReason(undefined)).toBe('INVALID_SESSION');
   });
 
-  test('normalizeSessionExpiredBannerReason accepts codes and legacy English', () => {
+  test('normalizeSessionExpiredBannerReason accepts canonical codes only', () => {
     expect(normalizeSessionExpiredBannerReason('SESSION_EXPIRED')).toBe('SESSION_EXPIRED');
-    expect(normalizeSessionExpiredBannerReason('Session expired. Please sign in again.')).toBe(
-      'SESSION_EXPIRED'
-    );
-    expect(normalizeSessionExpiredBannerReason('Your session is no longer valid.')).toBe(
-      'INVALID_SESSION'
-    );
+    expect(normalizeSessionExpiredBannerReason('INVALID_SESSION')).toBe('INVALID_SESSION');
+    expect(
+      normalizeSessionExpiredBannerReason('Session expired. Please sign in again.')
+    ).toBeNull();
+    expect(normalizeSessionExpiredBannerReason('Your session is no longer valid.')).toBeNull();
   });
 
   test('tryScheduleSessionExpiredHandling dedupes parallel expiry handling', () => {

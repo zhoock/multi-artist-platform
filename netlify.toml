@@ -50,32 +50,6 @@
   status = 200
   force = true
 
-# Synced lyrics (legacy read API — prefer /api/track-lyrics)
-[[redirects]]
-  from = "/api/synced-lyrics*"
-  to = "/.netlify/functions/synced-lyrics"
-  status = 200
-  force = true
-
-[[redirects]]
-  from = "/api/save-track-text*"
-  to = "/.netlify/functions/save-track-text"
-  status = 200
-  force = true
-
-# Admin миграции
-[[redirects]]
-  from = "/api/apply-migrations*"
-  to = "/.netlify/functions/apply-migrations"
-  status = 200
-  force = true
-
-[[redirects]]
-  from = "/api/migrate-json-to-db*"
-  to = "/.netlify/functions/migrate-json-to-db"
-  status = 200
-  force = true
-
 # Mid-weight album page (before list catalog and /api/albums*)
 [[redirects]]
   from = "/api/artists/:slug/albums/:albumId"

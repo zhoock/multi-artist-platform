@@ -68,16 +68,12 @@ export function TrackLyricsPanel({
           }
           title={emptyTitle}
           description={emptyDescription}
-          action={
-            <DashboardButton
-              variant="primary"
-              onClick={() => onLyricsAction('add', albumId, track.id, track.title)}
-              {...lyricsPreloadHandlers}
-            >
-              <PlusIcon {...dashboardActionIconProps({ size: 18 })} />
-              {ui?.dashboard?.addLyrics ?? 'Add Lyrics'}
-            </DashboardButton>
-          }
+          primaryAction={{
+            label: ui?.dashboard?.addLyrics ?? 'Add Lyrics',
+            onClick: () => onLyricsAction('add', albumId, track.id, track.title),
+            icon: <PlusIcon {...dashboardActionIconProps({ size: 18 })} />,
+            buttonProps: lyricsPreloadHandlers,
+          }}
         />
       </div>
     );

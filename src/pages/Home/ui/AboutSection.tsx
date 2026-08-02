@@ -9,7 +9,7 @@ import { useLang } from '@app/providers/lang';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 import { useSiteArtistDisplayName } from '@shared/lib/hooks/useSiteArtistDisplayName';
-import { loadTheBandFromDatabase, loadTheBandFromProfileJson } from '@entities/user/lib';
+import { loadTheBandFromDatabase } from '@entities/user/lib';
 import { shouldShowArtistPageBuilderBlock } from '@shared/lib/artistPageBuilder';
 import { useArtistPageBuilder } from '@shared/lib/hooks/useArtistPageBuilder';
 import {
@@ -49,7 +49,6 @@ export function AboutSection({ isAboutModalOpen, onOpen, onClose }: AboutSection
 
   const [theBandFromDb, setTheBandFromDb] = useState<string[] | null>(null);
   const [isLoadingTheBand, setIsLoadingTheBand] = useState(true);
-  const [theBandFromProfileJson, setTheBandFromProfileJson] = useState<string[] | null>(null);
   const [theBandRefreshToken, setTheBandRefreshToken] = useState(0);
 
   const title = ui?.titles?.theBand ?? '';
@@ -100,40 +99,9 @@ export function AboutSection({ isAboutModalOpen, onOpen, onClose }: AboutSection
     };
   }, [lang, location.search, isArtistPage, artistSlug, theBandRefreshToken]);
 
-  useEffect(() => {
-    if (isArtistPage) {
-      setTheBandFromProfileJson(null);
-      return;
-    }
-
-    let cancelled = false;
-
-    (async () => {
-      try {
-        const profileData = await loadTheBandFromProfileJson(lang);
-        if (!cancelled) {
-          setTheBandFromProfileJson(profileData);
-        }
-      } catch (error) {
-        if (!cancelled) {
-          console.warn('⚠️ Ошибка загрузки theBand из profile.json:', error);
-          setTheBandFromProfileJson(null);
-        }
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [lang, isArtistPage]);
-
-  const theBand = (
-    isArtistPage
-      ? theBandFromDb || []
-      : hasFilledBandParagraphs(theBandFromDb)
-        ? theBandFromDb!
-        : theBandFromProfileJson || []
-  ).filter((paragraph) => typeof paragraph === 'string' && paragraph.trim().length > 0);
+  const theBand = (theBandFromDb || []).filter(
+    (paragraph) => typeof paragraph === 'string' && paragraph.trim().length > 0
+  );
   const previewParagraph = theBand[0];
   const showLabel = ui?.buttons?.show ?? '';
 

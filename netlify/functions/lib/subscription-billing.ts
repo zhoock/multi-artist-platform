@@ -14,9 +14,6 @@ export type SubscriptionPlanSlug = (typeof SUBSCRIPTION_PLAN_SLUGS)[number];
 
 export const DEFAULT_SUBSCRIPTION_PLAN: SubscriptionPlanSlug = 'explorer';
 
-/** @deprecated Legacy plan slug — normalized to explorer at read/validation time. */
-export const LEGACY_SUBSCRIPTION_PLAN = 'archive';
-
 export interface SubscriptionPlanDefinition {
   slotsLimit: number;
   /** Dev/test support period. Ignored when durationDays is set. */
@@ -67,7 +64,6 @@ export function normalizeSubscriptionPlanSlug(
 ): SubscriptionPlanSlug | null {
   if (!plan?.trim()) return null;
   const trimmed = plan.trim();
-  if (trimmed === LEGACY_SUBSCRIPTION_PLAN) return DEFAULT_SUBSCRIPTION_PLAN;
   if ((SUBSCRIPTION_PLAN_SLUGS as readonly string[]).includes(trimmed)) {
     return trimmed as SubscriptionPlanSlug;
   }

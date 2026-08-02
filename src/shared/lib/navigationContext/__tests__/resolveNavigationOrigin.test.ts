@@ -1,10 +1,6 @@
 import { describe, expect, test } from '@jest/globals';
 
-import {
-  resolveChildContextNavMode,
-  resolveContextNavMode,
-  resolveNavigationOrigin,
-} from '../resolveNavigationOrigin';
+import { resolveChildContextNavMode, resolveNavigationOrigin } from '../resolveNavigationOrigin';
 
 describe('resolveNavigationOrigin', () => {
   test('returns artist hub origin for home page', () => {
@@ -92,17 +88,5 @@ describe('resolveChildContextNavMode', () => {
         isDirectEntry: true,
       })
     ).toBe('list-and-artist');
-  });
-});
-
-describe('resolveContextNavMode', () => {
-  test('uses artist-only mode for artist hub origin', () => {
-    expect(
-      resolveContextNavMode({
-        isArtistHubOrigin: true,
-        listSection: null,
-        isDirectEntry: false,
-      })
-    ).toBe('artist-only');
   });
 });

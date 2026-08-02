@@ -94,9 +94,6 @@ export async function viewerHasPremiumAccessToArtist(
   return hasSubscription && activeInArchive;
 }
 
-/** @deprecated Use viewerHasPremiumAccessToArtist — kept for stale bundles / gradual migration. */
-export const viewerHasActiveSubscriptionToArtist = viewerHasPremiumAccessToArtist;
-
 function mockActiveSubscriptionForArtist(viewerUserId: string, artistOwnerUserId: string): boolean {
   const envAll = process.env.MOCK_ACTIVE_SUBSCRIPTION_USER_IDS?.trim();
   if (envAll) {

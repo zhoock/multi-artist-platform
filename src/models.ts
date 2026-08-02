@@ -57,8 +57,6 @@ export interface PopupProps extends HamburgerProps {
 
 /** Переводимые поля альбома (`translations.ru` / `translations.en`). Название альбома — только на корне `AlbumEditable.album`. */
 export interface IAlbumTranslationsLocale {
-  /** @deprecated Старые ответы API; не записывать. */
-  album?: string;
   fullName: string;
   description: string;
   details: detailsProps[];
@@ -77,10 +75,6 @@ export interface AlbumEditable {
   dbAlbumId?: string;
   /** Идентификатор альбома */
   albumId?: string;
-  /**
-   * @deprecated Legacy DB column `albums.artist`. Do not use — prefer `artistDisplayName`.
-   */
-  artist: string;
   /** Display name resolved from album owner's profile (site_name). Populated by API. */
   artistDisplayName?: string;
   /**
@@ -111,10 +105,7 @@ export interface AlbumEditable {
   };
   /** Дополнительная информация; каноническая запись блоков — в `translations[lang].details`. */
   details: detailsProps[];
-  /**
-   * Переводы альбома. Создание/обновление через API — только в `translations[lang]`.
-   * Плоские поля на корне — ответ БД и временный fallback для старых данных.
-   */
+  /** Переводы альбома. Создание/обновление через API — только в `translations[lang]`. */
   translations?: IAlbumTranslations;
   /** Треки */
   tracks: TracksProps[];
@@ -163,8 +154,6 @@ export interface SyncedLyricsLine {
 /** Переводимые поля трека внутри альбома (текст песни и синхронизация — на корне трека). */
 export interface IAlbumTrackTranslationsLocale {
   title: string;
-  /** @deprecated legacy; текст единый в `track.content` */
-  content?: string;
   authorship?: string;
 }
 
@@ -226,26 +215,23 @@ export interface IArticleTranslationsLocale {
 export type IArticleTranslations = Partial<Record<SupportedLang, IArticleTranslationsLocale>>;
 
 export type IArticles = {
-  id?: string; // UUID из БД (опционально для обратной совместимости)
+  id?: string;
   userId?: string;
-  articleId: string; // строковый идентификатор (article_id)
+  articleId: string;
   /** Заголовок для UI; каноническая запись — в `translations[lang].nameArticle`. */
   nameArticle: string;
   img: string;
   date: string;
   details: ArticledetailsProps[];
   description: string;
-  isDraft?: boolean; // Статус черновика (опционально для обратной совместимости)
+  isDraft?: boolean;
   /** У опубликованной статьи есть несохранённые в live-версию правки. */
   hasDraftChanges?: boolean;
   /** Доступ к статье на сайте (как у треков). */
   visibility?: TrackVisibility;
   /** Публичный API: контент скрыт до покупки альбома артиста (как playbackLocked у треков). */
   articleLocked?: boolean;
-  /**
-   * Переводы статьи. Создание/обновление через API — только в `translations[lang]`.
-   * Плоские поля на корне — ответ БД и временный fallback для старых данных.
-   */
+  /** Переводы статьи. Создание/обновление через API — только в `translations[lang]`. */
   translations?: IArticleTranslations;
   /** Внутренняя метка для merge по свежести строки (ответ API). */
   updatedAt?: string;
@@ -276,14 +262,12 @@ export interface ArticledetailsProps {
   type?: 'text' | 'image' | 'carousel'; // тип блока
   title?: string;
   img?: string; // для одиночного изображения
-  /** Карусель: массив ключей (legacy) или объектов с подписью на каждое фото. */
-  images?: string[] | CarouselImageItem[];
+  /** Карусель: объекты с ключом изображения и опциональной подписью. */
+  images?: CarouselImageItem[];
   subtitle?: string;
   content?: string | Array<string | { id: string; text: string }>;
-  /** Подпись к одиночному изображению; legacy — общая подпись карусели при images: string[]. */
+  /** Подпись к одиночному изображению или карусели. */
   caption?: string;
-  /** @deprecated Используйте caption. Читается только для старых статей. */
-  alt?: string;
 }
 
 export interface ArticleProps {
@@ -334,8 +318,6 @@ export interface IInterface {
     bannerAriaLabel: string;
     bannerTitle: string;
     bannerDescription: string;
-    /** @deprecated Use bannerTitle + bannerDescription */
-    bannerText?: string;
     accept: string;
     decline: string;
     privacyLink: string;

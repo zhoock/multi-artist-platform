@@ -39,7 +39,7 @@ export interface PipelineDb {
     output: PipelineOutputDefinition,
     error: string
   ): Promise<void>;
-  syncLegacySrc(trackDbId: string, publicUrl: string): Promise<void>;
+  syncTrackSrc(trackDbId: string, publicUrl: string): Promise<void>;
   snapshotTrackAssets(trackDbId: string): Promise<void>;
   getTrackProcessingStatus(trackDbId: string): Promise<string>;
   getPlaybackRequiredAssetStatuses(trackDbId: string): Promise<

@@ -50,12 +50,6 @@ export function normalizeSessionExpiredBannerReason(
   if (trimmed === 'SESSION_EXPIRED' || trimmed === 'INVALID_SESSION') {
     return trimmed;
   }
-  if (/session expired/i.test(trimmed)) {
-    return 'SESSION_EXPIRED';
-  }
-  if (trimmed.length > 0) {
-    return 'INVALID_SESSION';
-  }
   return null;
 }
 

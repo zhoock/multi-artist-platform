@@ -23,7 +23,7 @@ function createMockDb(overrides: Partial<PipelineDb> = {}): PipelineDb {
     markAssetProcessing: jest.fn(),
     markAssetReady: jest.fn(),
     markAssetFailed: jest.fn(),
-    syncLegacySrc: jest.fn(),
+    syncTrackSrc: jest.fn(),
     snapshotTrackAssets: jest.fn().mockResolvedValue(undefined),
     getTrackProcessingStatus: jest.fn().mockResolvedValue('ready'),
     getPlaybackRequiredAssetStatuses,

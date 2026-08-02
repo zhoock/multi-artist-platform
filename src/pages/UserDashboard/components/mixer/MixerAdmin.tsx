@@ -890,20 +890,17 @@ export function MixerAdmin({
                                         }
                                         title={labels.emptyTitle}
                                         description={labels.emptyDescription}
-                                        action={
-                                          <DashboardButton
-                                            variant="primary"
-                                            onClick={() =>
-                                              setAddModal({
-                                                albumId: storageAlbumId,
-                                                trackId: track.id,
-                                              })
-                                            }
-                                          >
+                                        primaryAction={{
+                                          label: labels.addStem,
+                                          onClick: () =>
+                                            setAddModal({
+                                              albumId: storageAlbumId,
+                                              trackId: track.id,
+                                            }),
+                                          icon: (
                                             <PlusIcon {...dashboardActionIconProps({ size: 18 })} />
-                                            {labels.addStem}
-                                          </DashboardButton>
-                                        }
+                                          ),
+                                        }}
                                       />
                                     ) : (
                                       <>

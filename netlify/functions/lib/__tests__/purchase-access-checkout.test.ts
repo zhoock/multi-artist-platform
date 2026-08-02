@@ -11,7 +11,6 @@ jest.mock('../db', () => ({
 
 jest.mock('../purchase-schema', () => ({
   activePurchaseFilter: jest.fn(async () => ''),
-  purchasesHasUserIdColumn: jest.fn(async () => true),
   purchasesHasRevokedColumns: jest.fn(async () => true),
 }));
 

@@ -49,7 +49,7 @@ describe('artistPageContent', () => {
       {
         albumId: 'a1',
         album: 'Draft',
-        artist: 'Band',
+        artistDisplayName: 'Band',
         fullName: 'Band — Draft',
         description: '',
         release: { date: '2024-01-01' },
@@ -61,7 +61,7 @@ describe('artistPageContent', () => {
       {
         albumId: 'a2',
         album: 'Public Empty',
-        artist: 'Band',
+        artistDisplayName: 'Band',
         fullName: 'Band — Public Empty',
         description: '',
         release: { date: '2024-01-01' },
@@ -73,7 +73,7 @@ describe('artistPageContent', () => {
       {
         albumId: 'a3',
         album: 'Published',
-        artist: 'Band',
+        artistDisplayName: 'Band',
         fullName: 'Band — Published',
         description: '',
         release: { date: '2024-01-01' },
@@ -85,7 +85,7 @@ describe('artistPageContent', () => {
       {
         albumId: 'a4',
         album: 'Hidden Release',
-        artist: 'Band',
+        artistDisplayName: 'Band',
         fullName: 'Band — Hidden Release',
         description: '',
         release: { date: '2024-01-01' },
@@ -107,7 +107,7 @@ describe('artistPageContent', () => {
         albums: [
           {
             album: 'Release',
-            artist: 'Band',
+            artistDisplayName: 'Band',
             fullName: 'Band — Release',
             description: '',
             release: { date: '2024-01-01' },

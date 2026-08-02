@@ -6,9 +6,6 @@ import { isAlbumReadyToPublish } from './isAlbumReadyToPublish';
 /** Бейдж жизненного цикла в списке альбомов (не видимость). */
 export type AlbumListDraftBadge = 'draft' | 'draft-changes' | 'ready-to-publish' | null;
 
-/** @deprecated Use AlbumListDraftBadge */
-export type AlbumLifecycleStatus = Exclude<AlbumListDraftBadge, null>;
-
 export function getAlbumListDraftBadge(album: AlbumEditable): AlbumListDraftBadge {
   if (!isAlbumPublished(album)) {
     return isAlbumReadyToPublish(album) ? 'ready-to-publish' : 'draft';
@@ -19,9 +16,4 @@ export function getAlbumListDraftBadge(album: AlbumEditable): AlbumListDraftBadg
   }
 
   return null;
-}
-
-/** @deprecated Use getAlbumListDraftBadge */
-export function getAlbumLifecycleStatus(album: AlbumEditable): AlbumLifecycleStatus | null {
-  return getAlbumListDraftBadge(album);
 }

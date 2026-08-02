@@ -4,7 +4,6 @@
 
 import { query } from './db';
 import type { TrackAssetRecord } from './assetResolver';
-import { trackAssetsTableExists, tracksTableHasPipelineColumns } from './track-pipeline-schema';
 
 export interface TrackAssetDbRow {
   track_id: string;
@@ -20,9 +19,6 @@ export async function fetchTrackAssetsByAlbumPks(
 ): Promise<Map<string, TrackAssetRecord[]>> {
   const byTrackId = new Map<string, TrackAssetRecord[]>();
   if (albumPks.length === 0) return byTrackId;
-
-  const hasTable = await trackAssetsTableExists();
-  if (!hasTable) return byTrackId;
 
   try {
     const result = await query<TrackAssetDbRow>(
@@ -52,9 +48,5 @@ export async function fetchTrackAssetsByAlbumPks(
 }
 
 export async function resolvePipelineAvailable(): Promise<boolean> {
-  const [hasPipeline, hasAssets] = await Promise.all([
-    tracksTableHasPipelineColumns(),
-    trackAssetsTableExists(),
-  ]);
-  return hasPipeline && hasAssets;
+  return true;
 }
