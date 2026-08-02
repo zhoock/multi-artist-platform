@@ -1,7 +1,13 @@
 // src/shared/lib/hooks/useImageColor.ts
 import { useEffect, useRef } from 'react';
-import { getColorSync, getPaletteSync } from 'colorthief';
+import { getPaletteSync } from 'colorthief';
 import { buildProxyImageUrlFromStoragePath } from '@shared/api/storage';
+import {
+  formatRgbTuple,
+  isImageColorDebugEnabled,
+  logBackgroundColorSelection,
+  selectBackgroundColorsWithDetails,
+} from '@shared/lib/imageColor/selectBackgroundColors';
 
 // Задача: нужно передать цвет от AlbumCover (внутри AudioPlayer) в Popup (в AlbumTracks).
 // Это задача подъёма состояния (lifting state up).
@@ -12,28 +18,48 @@ const COLOR_EXTRACTION_OPTIONS = {
   quality: 10,
 };
 
-function getDominantAndPalette(img: HTMLImageElement) {
-  const dominantColor = getColorSync(img, COLOR_EXTRACTION_OPTIONS);
-  const palette = getPaletteSync(img, { ...COLOR_EXTRACTION_OPTIONS, colorCount: 10 });
+type RgbTuple = [number, number, number];
 
-  if (!dominantColor || !palette) {
+function extractPalette(
+  img: HTMLImageElement,
+  quality: number = COLOR_EXTRACTION_OPTIONS.quality
+): RgbTuple[] | null {
+  const options = { ...COLOR_EXTRACTION_OPTIONS, quality };
+  const palette = getPaletteSync(img, { ...options, colorCount: 10 });
+
+  if (!palette) {
     return null;
   }
 
+  return palette.map((color) => color.array() as RgbTuple);
+}
+
+function toCallbackColors(palette: RgbTuple[]) {
+  const selection = selectBackgroundColorsWithDetails(palette);
+
   return {
-    dominant: dominantColor.array(),
-    palette: palette.map((color) => color.array()),
+    colors: {
+      dominant: formatRgbTuple(selection.primary),
+      palette: palette.map((color) => formatRgbTuple(color)),
+    },
+    selection,
   };
 }
 
-function toRgbColors(result: {
-  dominant: [number, number, number];
-  palette: [number, number, number][];
-}) {
-  return {
-    dominant: `rgb(${result.dominant.join(',')})`,
-    palette: result.palette.map((color) => `rgb(${color.join(',')})`),
-  };
+function reportColorSelectionDiagnostics(
+  coverKey: string,
+  palette: RgbTuple[],
+  selection: ReturnType<typeof selectBackgroundColorsWithDetails>,
+  imageSource?: string
+): void {
+  if (!isImageColorDebugEnabled()) {
+    return;
+  }
+
+  logBackgroundColorSelection(coverKey, palette, selection, {
+    imageSource,
+    quality: COLOR_EXTRACTION_OPTIONS.quality,
+  });
 }
 
 // Глобальный кеш для отслеживания уже обработанных изображений
@@ -68,8 +94,9 @@ export function clearImageColorCache(imgSrc: string): void {
   pathsToDelete.forEach((path) => processedImagesCache.delete(path));
 }
 
-/* Этот хук useImageColor предназначен для извлечения доминантного цвета
- * и палитры из изображения с использованием библиотеки Color Thief.
+/* Этот хук useImageColor предназначен для извлечения палитры
+ * из изображения с использованием библиотеки Color Thief и выбора
+ * двух цветов для фона плеера через selectBackgroundColors.
  * Он обрабатывает изображение и передаёт полученные цвета в onColorsExtracted.
  * */
 export function useImageColor(
@@ -97,6 +124,12 @@ export function useImageColor(
       if (!img) {
         return;
       }
+
+      const publishPalette = (palette: RgbTuple[], imageSource?: string) => {
+        const { colors, selection } = toCallbackColors(palette);
+        reportColorSelectionDiagnostics(imgSrc, palette, selection, imageSource);
+        onColorsExtractedRef.current?.(colors);
+      };
 
       // Извлечение цветов
       const getColors = () => {
@@ -141,15 +174,15 @@ export function useImageColor(
               proxyImg.onload = () => {
                 // Когда прокси-изображение загрузилось, используем его для извлечения цветов
                 try {
-                  const result = getDominantAndPalette(proxyImg);
-                  if (!result) {
+                  const palette = extractPalette(proxyImg);
+                  if (!palette) {
                     return;
                   }
 
                   processedImagesCache.add(imgSrc);
                   processedImagesCache.add(proxyUrl);
 
-                  onColorsExtractedRef.current?.(toRgbColors(result));
+                  publishPalette(palette, 'proxy Image');
                 } catch (error) {
                   console.error('Ошибка при извлечении цветов из прокси-изображения:', error);
                 }
@@ -199,8 +232,8 @@ export function useImageColor(
 
                   dataUrlImg.onload = () => {
                     try {
-                      const result = getDominantAndPalette(dataUrlImg);
-                      if (!result) {
+                      const palette = extractPalette(dataUrlImg);
+                      if (!palette) {
                         URL.revokeObjectURL(dataUrl);
                         return;
                       }
@@ -210,7 +243,7 @@ export function useImageColor(
                       processedImagesCache.add(dataUrl);
 
                       URL.revokeObjectURL(dataUrl); // Освобождаем память
-                      onColorsExtractedRef.current?.(toRgbColors(result));
+                      publishPalette(palette, 'data URL Image');
                     } catch (colorError) {
                       console.error('Ошибка при извлечении цветов из data URL:', colorError);
                       URL.revokeObjectURL(dataUrl);
@@ -225,14 +258,14 @@ export function useImageColor(
                   console.error('Ошибка при загрузке через fetch:', fetchError);
                   // Пробуем использовать оригинальное изображение как последний fallback
                   try {
-                    const result = getDominantAndPalette(img);
-                    if (!result) {
+                    const palette = extractPalette(img);
+                    if (!palette) {
                       return;
                     }
 
                     processedImagesCache.add(imgSrc);
 
-                    onColorsExtractedRef.current?.(toRgbColors(result));
+                    publishPalette(palette, 'original img (CORS fallback)');
                   } catch (fallbackError) {
                     console.error('Fallback также не сработал (CORS проблема):', fallbackError);
                   }
@@ -252,8 +285,8 @@ export function useImageColor(
             return;
           }
 
-          const result = getDominantAndPalette(img);
-          if (!result) {
+          const palette = extractPalette(img);
+          if (!palette) {
             return;
           }
 
@@ -264,8 +297,7 @@ export function useImageColor(
             processedImagesCache.add(actualImgSrc);
           }
 
-          // Вызывает onColorsExtracted через ref, чтобы избежать проблем с зависимостями
-          onColorsExtractedRef.current?.(toRgbColors(result));
+          publishPalette(palette, actualImgSrc);
         } catch (error) {
           console.error('Ошибка при извлечении цветов:', error);
           // При ошибке не добавляем в кеш, чтобы можно было повторить попытку

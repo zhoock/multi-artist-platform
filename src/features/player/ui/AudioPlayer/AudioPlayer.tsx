@@ -17,6 +17,11 @@ import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { playerActions, playerSelectors } from '@features/player';
 import { audioController } from '@features/player/model/lib/audioController';
 import { clearImageColorCache } from '@shared/lib/hooks/useImageColor';
+import {
+  formatRgbTuple,
+  parseRgbString,
+  selectBackgroundColors,
+} from '@shared/lib/imageColor/selectBackgroundColors';
 import { useLang } from '@app/providers/lang';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 
@@ -652,22 +657,20 @@ export default function AudioPlayer({
 
   /**
    * Обработчик извлечения цветов из обложки альбома.
-   * Вызывается когда компонент AlbumCover извлекает доминантный цвет и палитру из изображения.
-   *
-   * Что делает:
-   * 1. Проверяет что цвета ещё не установлены для этого альбома (предотвращает повторные вызовы)
-   * 2. Устанавливает флаг что цвета установлены
-   * 3. Создаёт градиент из доминантного цвета и 7-го цвета палитры и передаёт его в родительский компонент
-   *    для установки фона попапа с плеером
+   * dominant — выбранный primary, palette — исходная палитра ColorThief.
+   * Градиент строится через selectBackgroundColors (без фиксированных индексов).
    */
   const handleColorsExtracted = useCallback(
-    ({ dominant, palette }: { dominant: string; palette: string[] }) => {
+    ({ palette }: { dominant: string; palette: string[] }) => {
       if (bgColorSetForAlbumRef.current === albumId) {
         return;
       }
 
       bgColorSetForAlbumRef.current = albumId;
-      const gradientColor = `linear-gradient(var(--rotate, 132deg), ${dominant}, ${palette[6] || dominant})`;
+
+      const rgbPalette = palette.map(parseRgbString);
+      const { primary, secondary } = selectBackgroundColors(rgbPalette);
+      const gradientColor = `linear-gradient(var(--rotate, 132deg), ${formatRgbTuple(primary)}, ${formatRgbTuple(secondary)})`;
       setBgColor(gradientColor);
     },
     [albumId, setBgColor]
