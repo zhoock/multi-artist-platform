@@ -72,3 +72,25 @@ export function buildPublicArticlePagePath(
 export function buildSharedMixPagePath(lang: RouteLang, mixId: string): string {
   return buildLocalizedPublicPath(lang, sharedMixPathSegment(mixId));
 }
+
+/** Help center home: `/{lang}/help`. */
+export function buildHelpHomePath(lang: RouteLang): string {
+  return buildLocalizedPublicPath(lang, '/help');
+}
+
+/** Help category listing: `/{lang}/help/:categorySlug`. */
+export function buildHelpCategoryPath(lang: RouteLang, categorySlug: string): string {
+  return buildLocalizedPublicPath(lang, `/help/${encodeURIComponent(categorySlug.trim())}`);
+}
+
+/** Help article detail: `/{lang}/help/:categorySlug/:articleSlug`. */
+export function buildHelpArticlePath(
+  lang: RouteLang,
+  categorySlug: string,
+  articleSlug: string
+): string {
+  return buildLocalizedPublicPath(
+    lang,
+    `/help/${encodeURIComponent(categorySlug.trim())}/${encodeURIComponent(articleSlug.trim())}`
+  );
+}

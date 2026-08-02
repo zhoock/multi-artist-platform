@@ -538,6 +538,7 @@ export interface IInterface {
       connectSuccess: string;
       disconnectSuccess: string;
       disconnectConfirm: string;
+      helpArticleLink?: string;
       providers: Partial<
         Record<
           'yookassa' | 'stripe' | 'paypal',

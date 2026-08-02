@@ -292,6 +292,7 @@
     },
     "links": {
       "home": "главная",
+      "helpCenter": "Справочный центр",
       "publicOffer": "Публичная оферта",
       "offerPageTitle": "Публичная оферта",
       "offerPageDescription": "Публичная оферта о заключении договора розничной купли-продажи товаров дистанционным способом",
@@ -384,6 +385,7 @@
         "connectSuccess": "{provider} успешно подключен!",
         "disconnectSuccess": "{provider} успешно отключен",
         "disconnectConfirm": "Вы уверены, что хотите отключить {provider}? После этого вы не сможете принимать платежи через эту систему.",
+        "helpArticleLink": "Инструкция по подключению ЮKassa",
         "providers": {
           "yookassa": {
             "tagline": "Приём онлайн-платежей",

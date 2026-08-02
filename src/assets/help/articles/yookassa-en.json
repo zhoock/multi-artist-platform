@@ -1,0 +1,52 @@
+{
+  "slug": "yookassa",
+  "categorySlug": "payments",
+  "title": "Connect YooKassa",
+  "description": "Link your YooKassa store to accept payments for digital album purchases.",
+  "updatedAt": "2026-08-02",
+  "sortOrder": 1,
+  "searchKeywords": ["yookassa", "payment"],
+  "blocks": [
+    {
+      "blockId": "1",
+      "content": "YooKassa is the payment provider used on this platform for digital album purchases. After you connect your store, fans can pay in rubles on the YooKassa checkout page. Card details are entered on YooKassa’s side — the platform does not store them."
+    },
+    {
+      "blockId": "2",
+      "subtitle": "Before you start",
+      "content": [
+        "You need an artist account with a verified email address.",
+        "Create a store in your YooKassa dashboard if you do not have one yet.",
+        "You will need your Shop ID and Secret Key from YooKassa."
+      ]
+    },
+    {
+      "blockId": "3",
+      "subtitle": "Connect YooKassa in the dashboard",
+      "content": [
+        "Open **Dashboard → Payment Settings**.",
+        "Follow the steps shown on the page: sign in to YooKassa, create a store, and copy your credentials.",
+        "Click **Enter Shop ID and Secret Key**, paste **Shop ID** (Settings → Store) and **Secret Key** (Integration → API keys).",
+        "Click **Connect**. When connected, the YooKassa row shows as active and you can **Disconnect** at any time."
+      ]
+    },
+    {
+      "blockId": "4",
+      "subtitle": "Notes",
+      "content": [
+        "The Secret Key is shown only once when issued in YooKassa — save it before closing the page.",
+        "Album payments use the YooKassa settings connected to your artist account.",
+        "Premium subscription payments for listeners are processed separately through the platform’s own YooKassa configuration."
+      ]
+    },
+    {
+      "blockId": "5",
+      "subtitle": "Troubleshooting",
+      "content": [
+        "If connection fails, check that Shop ID and Secret Key are copied without extra spaces.",
+        "Make sure your YooKassa store is active and allowed to accept payments.",
+        "For YooKassa account issues, contact [YooKassa support](https://yookassa.ru/)."
+      ]
+    }
+  ]
+}

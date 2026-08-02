@@ -12,6 +12,7 @@ import type { IInterface } from '@models';
 import type { SupportedLang } from '@shared/model/lang';
 import type { AppDispatch } from '@shared/model/appStore/types';
 import { trackLyricsReducer } from '@entities/lyrics/model/trackLyricsSlice';
+import { createEmptyHelpState } from '@entities/help/model/testHelpers';
 
 // Мокируем getJSON
 jest.mock('@shared/api/http', () => ({
@@ -73,10 +74,7 @@ const createTestStore = () => {
         albumId: null,
         lastUpdated: null,
       }),
-      helpArticles: () => ({
-        en: { status: 'idle' as const, error: null, data: [], lastUpdated: null },
-        ru: { status: 'idle' as const, error: null, data: [], lastUpdated: null },
-      }),
+      help: () => createEmptyHelpState(),
       trackLyrics: trackLyricsReducer,
     },
   });
@@ -462,10 +460,7 @@ describe('uiDictionarySlice', () => {
           inFlightFetchContextKey: null,
         },
       },
-      helpArticles: {
-        en: { status: 'idle' as const, error: null, data: [], lastUpdated: null },
-        ru: { status: 'idle' as const, error: null, data: [], lastUpdated: null },
-      },
+      help: createEmptyHelpState(),
     };
 
     test('selectUiDictionaryStatus должен возвращать статус', () => {

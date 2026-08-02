@@ -1,0 +1,70 @@
+{
+  "version": 1,
+  "categories": [
+    {
+      "slug": "payments",
+      "title": "Payments",
+      "description": "Connect YooKassa and sell digital albums on your artist page.",
+      "sortOrder": 1
+    },
+    {
+      "slug": "publishing",
+      "title": "Publishing",
+      "description": "Publish albums and articles for your audience.",
+      "sortOrder": 2
+    },
+    {
+      "slug": "listeners",
+      "title": "For listeners",
+      "description": "Premium subscription and your artist collection.",
+      "sortOrder": 3
+    }
+  ],
+  "articles": [
+    {
+      "slug": "yookassa",
+      "categorySlug": "payments",
+      "title": "Connect YooKassa",
+      "description": "Link your YooKassa store to accept payments for digital album purchases.",
+      "updatedAt": "2026-08-02",
+      "sortOrder": 1,
+      "searchKeywords": ["yookassa", "yukassa", "payment", "shop id", "secret key"]
+    },
+    {
+      "slug": "album-sales",
+      "categorySlug": "payments",
+      "title": "Sell digital albums",
+      "description": "Enable paid downloads for an album and how checkout works for fans.",
+      "updatedAt": "2026-08-02",
+      "sortOrder": 2,
+      "searchKeywords": ["album", "sale", "price", "download", "checkout"]
+    },
+    {
+      "slug": "albums",
+      "categorySlug": "publishing",
+      "title": "Publish an album",
+      "description": "Prepare, publish, and manage visibility of albums on your artist page.",
+      "updatedAt": "2026-08-02",
+      "sortOrder": 1,
+      "searchKeywords": ["album", "publish", "draft", "release"]
+    },
+    {
+      "slug": "articles",
+      "categorySlug": "publishing",
+      "title": "Publish articles",
+      "description": "Write and publish articles on your public artist page.",
+      "updatedAt": "2026-08-02",
+      "sortOrder": 2,
+      "searchKeywords": ["articles", "posts", "publish", "draft"]
+    },
+    {
+      "slug": "premium-subscription",
+      "categorySlug": "listeners",
+      "title": "Premium subscription and Collection",
+      "description": "How Premium unlocks tracks, articles, stems, and downloads from artists in your collection.",
+      "updatedAt": "2026-08-02",
+      "sortOrder": 1,
+      "searchKeywords": ["premium", "subscription", "collection", "archive"]
+    }
+  ]
+}

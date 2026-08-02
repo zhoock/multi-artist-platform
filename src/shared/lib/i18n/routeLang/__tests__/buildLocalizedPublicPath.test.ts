@@ -19,7 +19,11 @@ describe('isInternalAppPath', () => {
     expect(isInternalAppPath('/pay/success')).toBe(true);
     expect(isInternalAppPath('/ru/pay/success')).toBe(true);
     expect(isInternalAppPath('/email-verified')).toBe(true);
-    expect(isInternalAppPath('/help/articles/1')).toBe(true);
+  });
+
+  test('help routes are public localized paths', () => {
+    expect(isInternalAppPath('/en/help')).toBe(false);
+    expect(isInternalAppPath('/ru/help/payments/yookassa')).toBe(false);
   });
 
   test('returns false for public localized routes', () => {

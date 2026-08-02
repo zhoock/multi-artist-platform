@@ -1,0 +1,42 @@
+{
+  "slug": "album-sales",
+  "categorySlug": "payments",
+  "title": "Sell digital albums",
+  "description": "Enable paid downloads for an album and how checkout works for fans.",
+  "updatedAt": "2026-08-02",
+  "sortOrder": 2,
+  "searchKeywords": ["album", "sale"],
+  "blocks": [
+    {
+      "blockId": "1",
+      "content": "You can offer a published album for paid download. Fans pay through YooKassa; after a successful payment they receive access to download the album."
+    },
+    {
+      "blockId": "2",
+      "subtitle": "Requirements",
+      "content": [
+        "YooKassa must be connected under **Dashboard → Payment Settings**.",
+        "The album must be published (not a draft)."
+      ]
+    },
+    {
+      "blockId": "3",
+      "subtitle": "Enable sales for an album",
+      "content": [
+        "Open **Dashboard → Albums** and edit the album.",
+        "In the album editor, set sales to **Sell** (or **Pre-order** if you use a future release date).",
+        "Enter the price in rubles and save your changes.",
+        "Publish the album if it is still a draft."
+      ]
+    },
+    {
+      "blockId": "4",
+      "subtitle": "What fans see",
+      "content": [
+        "On your public album page, fans see the price and a purchase option.",
+        "They enter an email and name, then are redirected to YooKassa to complete payment.",
+        "After payment, they can download the album according to the access rules on the site."
+      ]
+    }
+  ]
+}

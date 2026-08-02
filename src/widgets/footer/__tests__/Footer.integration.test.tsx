@@ -35,6 +35,7 @@ const uiDictionaryState = {
         },
         links: {
           publicOffer: 'Public Offer',
+          helpCenter: 'Help center',
         },
       },
     ],
@@ -163,6 +164,13 @@ describe('Footer integration tests', () => {
 
     const supportLink = await screen.findByRole('link', { name: /поддержка/i });
     expect(supportLink).toBeInTheDocument();
+  });
+
+  test('должен отобразить ссылку на справочный центр', async () => {
+    renderFooter();
+
+    const helpLink = await screen.findByRole('link', { name: /help center/i });
+    expect(helpLink).toHaveAttribute('href', '/en/help');
   });
 
   test('должен иметь role="contentinfo" для footer', async () => {

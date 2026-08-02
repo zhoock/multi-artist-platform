@@ -26,6 +26,7 @@ export const SITEMAP_PLATFORM_PATH_TEMPLATES: readonly SitemapEntry[] = [
   { path: '/stems', priority: '0.7', changefreq: 'weekly' },
   { path: '/offer', priority: '0.5', changefreq: 'monthly' },
   { path: '/privacy', priority: '0.5', changefreq: 'monthly' },
+  { path: '/help', priority: '0.6', changefreq: 'weekly' },
 ] as const;
 
 /** Expands unlocalized sitemap paths into `ru` + `en` entries. */

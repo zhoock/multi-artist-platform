@@ -11,6 +11,22 @@ import {
   type SitemapArtistRow,
 } from '../../../src/shared/lib/seo/buildDynamicSitemapEntries';
 import type { SitemapEntry } from '../../../src/shared/lib/seo/generateSitemap';
+import { fetchHelpSitemapEntries } from './help-sitemap-data';
+
+function dedupeSitemapEntries(entries: SitemapEntry[]): SitemapEntry[] {
+  const byPath = new Map<string, SitemapEntry>();
+  for (const entry of entries) {
+    const existing = byPath.get(entry.path);
+    if (!existing) {
+      byPath.set(entry.path, entry);
+      continue;
+    }
+    if (entry.lastmod && (!existing.lastmod || entry.lastmod > existing.lastmod)) {
+      byPath.set(entry.path, { ...existing, ...entry, lastmod: entry.lastmod });
+    }
+  }
+  return [...byPath.values()];
+}
 
 async function fetchVisibleArtists(): Promise<SitemapArtistRow[]> {
   const result = await query<SitemapArtistRow>(
@@ -143,13 +159,17 @@ async function fetchPublicArticles(): Promise<SitemapArticleRow[]> {
 }
 
 export async function fetchDynamicSitemapEntries(): Promise<SitemapEntry[]> {
-  const [artists, albums, articles] = await Promise.all([
+  const [artists, albums, articles, helpEntries] = await Promise.all([
     fetchVisibleArtists(),
     fetchPublicAlbums(),
     fetchPublicArticles(),
+    Promise.resolve(fetchHelpSitemapEntries()),
   ]);
 
-  return buildDynamicSitemapEntries({ artists, albums, articles });
+  return dedupeSitemapEntries([
+    ...buildDynamicSitemapEntries({ artists, albums, articles }),
+    ...helpEntries,
+  ]);
 }
 
 export { buildDynamicSitemapEntries };

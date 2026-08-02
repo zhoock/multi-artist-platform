@@ -1,0 +1,46 @@
+{
+  "slug": "albums",
+  "categorySlug": "publishing",
+  "title": "Publish an album",
+  "description": "Prepare, publish, and manage visibility of albums on your artist page.",
+  "updatedAt": "2026-08-02",
+  "sortOrder": 1,
+  "searchKeywords": ["album", "publish"],
+  "blocks": [
+    {
+      "blockId": "1",
+      "content": "Albums live in **Dashboard → Albums**. A draft stays private until you publish it. After publishing, the album can appear on your public artist page and in search, depending on visibility settings."
+    },
+    {
+      "blockId": "2",
+      "subtitle": "Before publishing",
+      "content": [
+        "Album title",
+        "Cover art",
+        "Description",
+        "At least one track",
+        "Release date and UPC/EAN",
+        "At least one genre"
+      ]
+    },
+    {
+      "blockId": "3",
+      "subtitle": "Publish an album",
+      "content": [
+        "Open **Dashboard → Albums**.",
+        "Complete the album editor and upload tracks.",
+        "When all required fields are filled, use **Publish** on the album row.",
+        "Your email must be verified to publish content."
+      ]
+    },
+    {
+      "blockId": "4",
+      "subtitle": "After publishing",
+      "content": [
+        "You can hide an album from visitors while keeping it published (**Hidden** visibility).",
+        "Edits to a published album may be saved as draft changes until you update the live version.",
+        "Use track visibility settings to control which tracks, stems, or downloads are public or subscriber-only."
+      ]
+    }
+  ]
+}

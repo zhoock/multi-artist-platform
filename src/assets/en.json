@@ -292,6 +292,7 @@
     },
     "links": {
       "home": "home",
+      "helpCenter": "Help center",
       "publicOffer": "Public Offer",
       "offerPageTitle": "Public Offer",
       "offerPageDescription": "Public offer for retail purchase and sale agreement via remote means",
@@ -384,6 +385,7 @@
         "connectSuccess": "{provider} connected successfully!",
         "disconnectSuccess": "{provider} disconnected successfully",
         "disconnectConfirm": "Are you sure you want to disconnect {provider}? You will no longer be able to accept payments through this provider.",
+        "helpArticleLink": "YooKassa setup guide",
         "providers": {
           "yookassa": {
             "tagline": "Online payments",

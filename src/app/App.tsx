@@ -83,7 +83,14 @@ const AllArticles = lazy(() => import('@pages/AllArticles'));
 const StemsPlayground = lazy(() => import('@pages/StemsPlayground/StemsPlayground'));
 const Home = lazy(() => import('@pages/Home'));
 const ArticlePage = lazy(() => import('@pages/Article'));
-const HelpArticlePage = lazy(() => import('@pages/HelpArticle'));
+const HelpLayout = lazy(() => import('@pages/Help').then((m) => ({ default: m.HelpLayout })));
+const HelpHomePage = lazy(() => import('@pages/Help').then((m) => ({ default: m.HelpHomePage })));
+const HelpCategoryPage = lazy(() =>
+  import('@pages/Help').then((m) => ({ default: m.HelpCategoryPage }))
+);
+const HelpArticlePage = lazy(() =>
+  import('@pages/Help').then((m) => ({ default: m.HelpArticlePage }))
+);
 const OfferPage = lazy(() => import('@pages/Offer'));
 const PrivacyPage = lazy(() => import('@pages/Privacy'));
 const UserDashboard = lazy(() => import('@pages/UserDashboard/UserDashboard'));
@@ -149,6 +156,30 @@ const offerPageElement = (
 const privacyPageElement = (
   <Suspense fallback={<PageLoader />}>
     <PrivacyPage />
+  </Suspense>
+);
+
+const helpLayoutElement = (
+  <Suspense fallback={<PageLoader />}>
+    <HelpLayout />
+  </Suspense>
+);
+
+const helpHomePageElement = (
+  <Suspense fallback={<PageLoader />}>
+    <HelpHomePage />
+  </Suspense>
+);
+
+const helpCategoryPageElement = (
+  <Suspense fallback={<PageLoader />}>
+    <HelpCategoryPage />
+  </Suspense>
+);
+
+const helpArticlePageElement = (
+  <Suspense fallback={<PageLoader />}>
+    <HelpArticlePage />
   </Suspense>
 );
 
@@ -311,7 +342,9 @@ function Layout() {
     '/albums/:albumId',
     '/articles',
     '/articles/:articleId',
-    '/help/articles/:articleId',
+    '/help',
+    '/help/:categorySlug',
+    '/help/:categorySlug/:articleSlug',
     '/offer',
     '/privacy',
     '/stems',
@@ -436,14 +469,7 @@ function Layout() {
   const mainRoutes = (
     <Routes location={activeLocation}>
       <Route path="/" element={<Navigate to={`/${DEFAULT_ROUTE_LANG}`} replace />} />
-      <Route
-        path="/help/articles/:articleId"
-        element={
-          <Suspense fallback={<PageLoader />}>
-            <HelpArticlePage />
-          </Suspense>
-        }
-      />
+      <Route path="/help" element={<Navigate to={`/${DEFAULT_ROUTE_LANG}/help`} replace />} />
       <Route
         path="/dashboard/:tab?"
         element={
@@ -492,6 +518,11 @@ function Layout() {
         <Route path="articles/:articleId" element={articlePageElement} />
         <Route path="offer" element={offerPageElement} />
         <Route path="privacy" element={privacyPageElement} />
+        <Route path="help" element={helpLayoutElement}>
+          <Route index element={helpHomePageElement} />
+          <Route path=":categorySlug/:articleSlug" element={helpArticlePageElement} />
+          <Route path=":categorySlug" element={helpCategoryPageElement} />
+        </Route>
         <Route path="stems" element={stemsPageElement} />
         <Route path="stems/mix/:mixId" element={stemsPageElement} />
         <Route path="dashboard/*" element={<UnprefixedRedirect />} />
@@ -499,7 +530,6 @@ function Layout() {
         <Route path="pay/*" element={<UnprefixedRedirect />} />
         <Route path="email-verified" element={<UnprefixedRedirect />} />
         <Route path="email-verification-expired" element={<UnprefixedRedirect />} />
-        <Route path="help/*" element={<UnprefixedRedirect />} />
         <Route path="*" element={<NotFoundPage />} />
       </Route>
       <Route path="*" element={<NotFoundPage />} />

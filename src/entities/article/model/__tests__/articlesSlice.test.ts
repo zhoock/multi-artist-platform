@@ -18,6 +18,7 @@ import { syncDashboardAlbumsPublicCatalogOverlay } from '@shared/lib/dashboardMo
 import { currentArtistReducer, setPublicArtistSlug } from '@shared/model/currentArtist';
 import { trackLyricsReducer } from '@entities/lyrics/model/trackLyricsSlice';
 import { createAlbumsTestState } from '@entities/album/model/__tests__/albumsTestState';
+import { createEmptyHelpState } from '@entities/help/model/testHelpers';
 
 const mockFetch = jest.fn() as jest.MockedFunction<typeof fetch>;
 const mockSuccessResponse = (data: unknown) =>
@@ -53,10 +54,7 @@ const createTestStore = () => {
         albumId: null,
         lastUpdated: null,
       }),
-      helpArticles: () => ({
-        en: { status: 'idle' as const, error: null, data: [], lastUpdated: null },
-        ru: { status: 'idle' as const, error: null, data: [], lastUpdated: null },
-      }),
+      help: () => createEmptyHelpState(),
       uiDictionary: () => ({
         en: { status: 'idle' as const, error: null, data: [], lastUpdated: null },
         ru: { status: 'idle' as const, error: null, data: [], lastUpdated: null },
@@ -549,10 +547,7 @@ describe('articlesSlice', () => {
       popup: { isOpen: false },
       player: initialPlayerState,
       albums: createAlbumsTestState(),
-      helpArticles: {
-        en: { status: 'idle' as const, error: null, data: [], lastUpdated: null },
-        ru: { status: 'idle' as const, error: null, data: [], lastUpdated: null },
-      },
+      help: createEmptyHelpState(),
       uiDictionary: {
         en: { status: 'idle' as const, error: null, data: [], lastUpdated: null },
         ru: { status: 'idle' as const, error: null, data: [], lastUpdated: null },

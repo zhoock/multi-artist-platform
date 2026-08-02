@@ -69,17 +69,17 @@
 
 **Entities (`src/entities/`):**
 
-| Алиас                   | Назначение                                       |
-| ----------------------- | ------------------------------------------------ |
-| `@entities/album`       | Альбомы: public catalog, details, dashboard CRUD |
-| `@entities/article`     | Статьи                                           |
-| `@entities/lyrics`      | Track lyrics API, slice, selectors               |
-| `@entities/track`       | Типы и утилиты треков                            |
-| `@entities/service`     | Кнопки стриминга / покупки                       |
-| `@entities/stem`        | Stems для mixer                                  |
-| `@entities/savedMix`    | Сохранённые миксы                                |
-| `@entities/helpArticle` | Help-статьи                                      |
-| `@entities/user`        | Пользователь / профиль                           |
+| Алиас                | Назначение                                       |
+| -------------------- | ------------------------------------------------ |
+| `@entities/album`    | Альбомы: public catalog, details, dashboard CRUD |
+| `@entities/article`  | Статьи                                           |
+| `@entities/lyrics`   | Track lyrics API, slice, selectors               |
+| `@entities/track`    | Типы и утилиты треков                            |
+| `@entities/service`  | Кнопки стриминга / покупки                       |
+| `@entities/stem`     | Stems для mixer                                  |
+| `@entities/savedMix` | Сохранённые миксы                                |
+| `@entities/help`     | Справочный центр (каталог + статьи)              |
+| `@entities/user`     | Пользователь / профиль                           |
 
 **Личный кабинет (`pages/UserDashboard/`):**
 

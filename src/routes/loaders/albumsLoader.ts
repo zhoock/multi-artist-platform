@@ -21,10 +21,14 @@ import {
   selectAlbumDetailsData,
 } from '@entities/album';
 import {
-  fetchHelpArticles,
-  selectHelpArticlesStatus,
-  selectHelpArticlesData,
-} from '@entities/helpArticle';
+  fetchHelpCatalog,
+  fetchHelpArticle,
+  selectHelpCatalogStatus,
+  selectHelpCatalog,
+  isHelpLoaderPath,
+  parseHelpArticleParamsFromPath,
+} from '@entities/help';
+import type { HelpCatalog } from '@entities/help';
 import {
   fetchUiDictionary,
   selectUiDictionaryStatus,
@@ -97,11 +101,11 @@ function unwrapLoaderDictionaryPromise(
   });
 }
 
-function unwrapLoaderHelpArticlesPromise(
-  fetchThunkPromise: { unwrap: () => Promise<IArticles[]> },
-  fallback: IArticles[]
-): Promise<IArticles[]> {
-  const createNeverResolvingPromise = () => new Promise<IArticles[]>(() => {});
+function unwrapLoaderHelpCatalogPromise(
+  fetchThunkPromise: { unwrap: () => Promise<HelpCatalog> },
+  fallback: HelpCatalog | null
+): Promise<HelpCatalog | null> {
+  const createNeverResolvingPromise = () => new Promise<HelpCatalog | null>(() => {});
 
   return fetchThunkPromise.unwrap().catch((error) => {
     if (isAbortLikeOrConditionSkipError(error)) {
@@ -115,7 +119,7 @@ export type AlbumsDeferred = {
   templateA: Promise<AlbumEditable[]>; // альбомы
   templateB: Promise<IArticles[]>; // статьи
   templateC: Promise<IInterface[]>; // UI-словарь – грузим ВСЕГДА
-  templateD: Promise<IArticles[]>; // статьи помощи
+  templateD: Promise<HelpCatalog | null>; // help catalog
   lang: string;
 };
 
@@ -211,7 +215,7 @@ export async function albumsLoader({ request }: LoaderFunctionArgs): Promise<Alb
   // По умолчанию — пустые промисы, чтобы типы были стабильными
   let templateA: Promise<AlbumEditable[]> = Promise.resolve([]);
   let templateB: Promise<IArticles[]> = Promise.resolve([]);
-  let templateD: Promise<IArticles[]> = Promise.resolve([]); // help articles
+  let templateD: Promise<HelpCatalog | null> = Promise.resolve(null); // help catalog
 
   // Альбомы нужны на "/", "/albums*", "/stems" (миксер) и "/dashboard*"
   if (
@@ -428,32 +432,34 @@ export async function albumsLoader({ request }: LoaderFunctionArgs): Promise<Alb
     }
   }
 
-  // Статьи помощи нужны на "/help/articles*"
-  if (routePathname.startsWith('/help/articles')) {
-    const status = selectHelpArticlesStatus(state, lang);
-    if (status === 'succeeded') {
-      templateD = Promise.resolve(selectHelpArticlesData(state, lang));
-    } else if (status === 'loading') {
-      // Данные уже загружаются - возвращаем текущие данные или пустой массив
-      // Это предотвращает зацикливание, когда loader вызывается повторно во время загрузки
-      const currentData = selectHelpArticlesData(state, lang);
-      templateD = Promise.resolve(currentData || []);
+  // Help center: catalog on all `/help*` routes; article body on article detail.
+  if (isHelpLoaderPath(routePathname)) {
+    const catalogStatus = selectHelpCatalogStatus(state, lang);
+    if (catalogStatus === 'succeeded') {
+      templateD = Promise.resolve(selectHelpCatalog(state, lang));
+    } else if (catalogStatus === 'loading') {
+      templateD = Promise.resolve(selectHelpCatalog(state, lang));
     } else {
-      const fetchThunkPromise = store.dispatch(fetchHelpArticles({ lang }));
+      const fetchCatalogPromise = store.dispatch(fetchHelpCatalog({ lang }));
 
-      const createNeverResolvingPromise = () => new Promise<IArticles[]>(() => {});
+      const createNeverResolvingPromise = () => new Promise<HelpCatalog | null>(() => {});
 
       if (signal.aborted) {
-        fetchThunkPromise.abort();
+        fetchCatalogPromise.abort();
         templateD = createNeverResolvingPromise();
       } else {
         const abortHandler = () => {
-          fetchThunkPromise.abort();
+          fetchCatalogPromise.abort();
         };
         signal.addEventListener('abort', abortHandler, { once: true });
 
-        templateD = unwrapLoaderHelpArticlesPromise(fetchThunkPromise, []);
+        templateD = unwrapLoaderHelpCatalogPromise(fetchCatalogPromise, null);
       }
+    }
+
+    const articleParams = parseHelpArticleParamsFromPath(routePathname);
+    if (articleParams) {
+      store.dispatch(fetchHelpArticle({ lang, slug: articleParams.articleSlug }));
     }
   }
 

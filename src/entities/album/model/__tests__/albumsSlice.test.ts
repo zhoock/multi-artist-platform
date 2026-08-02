@@ -13,6 +13,7 @@ import type { SupportedLang } from '@shared/model/lang';
 import type { AppDispatch } from '@shared/model/appStore/types';
 import { currentArtistReducer, setPublicArtistSlug } from '@shared/model/currentArtist';
 import { trackLyricsReducer } from '@entities/lyrics/model/trackLyricsSlice';
+import { createEmptyHelpState } from '@entities/help/model/testHelpers';
 import { syncDashboardAlbumsPublicCatalogOverlay } from '@shared/lib/dashboardModalBackground';
 
 const mockFetch = jest.fn() as jest.MockedFunction<typeof fetch>;
@@ -55,10 +56,7 @@ const createTestStore = () => {
           inFlightFetchContextKey: null,
         },
       }),
-      helpArticles: () => ({
-        en: { status: 'idle' as const, error: null, data: [], lastUpdated: null },
-        ru: { status: 'idle' as const, error: null, data: [], lastUpdated: null },
-      }),
+      help: () => createEmptyHelpState(),
       uiDictionary: () => ({
         en: { status: 'idle' as const, error: null, data: [], lastUpdated: null },
         ru: { status: 'idle' as const, error: null, data: [], lastUpdated: null },

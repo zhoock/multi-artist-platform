@@ -1,5 +1,6 @@
 import clsx from 'clsx';
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { ExternalLink as ExternalLinkIcon } from 'lucide-react';
 import { useLang } from '@app/providers/lang';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
@@ -18,6 +19,7 @@ import { DashboardSaveSpinner } from '@shared/ui/dashboard-save/DashboardSaveSpi
 import { usePaymentSettings } from '../model/usePaymentSettings';
 import { PAYMENT_PROVIDERS } from '../lib/constants';
 import { fillPaymentSettingsTemplate } from '../lib/fillPaymentSettingsTemplate';
+import { buildHelpArticlePath } from '@shared/lib/seo/publicPagePaths';
 import '@shared/ui/dashboard-save/dashboard-save.scss';
 import './PaymentSettings.style.scss';
 
@@ -201,6 +203,15 @@ export function PaymentSettings({ userId, active, onMountPinChange }: PaymentSet
                     <ExternalLinkIcon {...dashboardActionIconProps({ size: 18 })} />
                     <span>{providerCopy?.registerLink ?? 'Open YooKassa website →'}</span>
                   </a>
+
+                  <p className="payment-settings__help-link">
+                    <Link to={buildHelpArticlePath(lang, 'payments', 'yookassa')}>
+                      {copy?.helpArticleLink ??
+                        (lang === 'ru'
+                          ? 'Инструкция по подключению ЮKassa'
+                          : 'YooKassa setup guide')}
+                    </Link>
+                  </p>
 
                   <DashboardButton
                     variant="outline"

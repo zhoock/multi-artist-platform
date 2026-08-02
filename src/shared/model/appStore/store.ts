@@ -12,7 +12,7 @@ import { articlesReducer } from '@entities/article';
 import { albumsReducer } from '@entities/album';
 import { artistAlbumCatalogReducer } from '@entities/album/model/artistAlbumCatalogSlice';
 import { albumDetailsReducer } from '@entities/album/model/albumDetailsSlice';
-import { helpArticlesReducer } from '@entities/helpArticle';
+import { helpReducer } from '@entities/help';
 import { uiDictionaryReducer } from '@shared/model/uiDictionary';
 import { trackLyricsReducer } from '@entities/lyrics';
 
@@ -27,7 +27,7 @@ const rootReducer = {
   albums: albumsReducer,
   artistAlbumCatalog: artistAlbumCatalogReducer,
   albumDetails: albumDetailsReducer,
-  helpArticles: helpArticlesReducer,
+  help: helpReducer,
   uiDictionary: uiDictionaryReducer,
   trackLyrics: trackLyricsReducer,
 };

@@ -1,0 +1,41 @@
+{
+  "slug": "premium-subscription",
+  "categorySlug": "listeners",
+  "title": "Premium subscription and Collection",
+  "description": "How Premium unlocks tracks, articles, stems, and downloads from artists in your collection.",
+  "updatedAt": "2026-08-02",
+  "sortOrder": 1,
+  "searchKeywords": ["premium", "collection"],
+  "blocks": [
+    {
+      "blockId": "1",
+      "content": "Listeners can subscribe to **Premium** to add artists to their **Collection**. Artists in your collection unlock exclusive content across the platform: locked tracks, articles, stems, and album downloads."
+    },
+    {
+      "blockId": "2",
+      "subtitle": "Plans",
+      "content": [
+        "Premium plans differ by how many artist slots your collection can hold (Explorer, Collector, Archivist tiers).",
+        "Subscription is billed through YooKassa on the platform checkout page.",
+        "Revenue from subscriptions is distributed equally among supported artists."
+      ]
+    },
+    {
+      "blockId": "3",
+      "subtitle": "Add an artist to your collection",
+      "content": [
+        "Open an artist page and choose **Add to collection** when content is locked.",
+        "Select a Premium plan if you are not subscribed yet.",
+        "After payment, add the artist to an available slot in **Dashboard → Collection**."
+      ]
+    },
+    {
+      "blockId": "4",
+      "subtitle": "Manage subscription",
+      "content": [
+        "Open **Dashboard → Settings** to view your account.",
+        "Collection slots and active artists are managed under **Dashboard → Collection**."
+      ]
+    }
+  ]
+}

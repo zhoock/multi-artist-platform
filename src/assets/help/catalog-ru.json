@@ -1,0 +1,70 @@
+{
+  "version": 1,
+  "categories": [
+    {
+      "slug": "payments",
+      "title": "Платежи",
+      "description": "Подключение ЮKassa и продажа цифровых альбомов на странице артиста.",
+      "sortOrder": 1
+    },
+    {
+      "slug": "publishing",
+      "title": "Публикация",
+      "description": "Публикация альбомов и статей для вашей аудитории.",
+      "sortOrder": 2
+    },
+    {
+      "slug": "listeners",
+      "title": "Для слушателей",
+      "description": "Подписка Premium и коллекция артистов.",
+      "sortOrder": 3
+    }
+  ],
+  "articles": [
+    {
+      "slug": "yookassa",
+      "categorySlug": "payments",
+      "title": "Подключение ЮKassa",
+      "description": "Привязка магазина ЮKassa для приёма оплаты за цифровые альбомы.",
+      "updatedAt": "2026-08-02",
+      "sortOrder": 1,
+      "searchKeywords": ["юkassa", "yookassa", "платежи", "shop id", "секретный ключ"]
+    },
+    {
+      "slug": "album-sales",
+      "categorySlug": "payments",
+      "title": "Продажа цифровых альбомов",
+      "description": "Как включить платное скачивание альбома и как проходит оплата для слушателей.",
+      "updatedAt": "2026-08-02",
+      "sortOrder": 2,
+      "searchKeywords": ["альбом", "продажа", "цена", "скачивание"]
+    },
+    {
+      "slug": "albums",
+      "categorySlug": "publishing",
+      "title": "Публикация альбома",
+      "description": "Подготовка, публикация и управление видимостью альбомов на странице артиста.",
+      "updatedAt": "2026-08-02",
+      "sortOrder": 1,
+      "searchKeywords": ["альбом", "публикация", "черновик", "релиз"]
+    },
+    {
+      "slug": "articles",
+      "categorySlug": "publishing",
+      "title": "Публикация статей",
+      "description": "Как писать и публиковать статьи на публичной странице артиста.",
+      "updatedAt": "2026-08-02",
+      "sortOrder": 2,
+      "searchKeywords": ["статьи", "публикация", "черновик"]
+    },
+    {
+      "slug": "premium-subscription",
+      "categorySlug": "listeners",
+      "title": "Подписка Premium и коллекция",
+      "description": "Как Premium открывает треки, статьи, стемы и скачивание альбомов артистов из коллекции.",
+      "updatedAt": "2026-08-02",
+      "sortOrder": 1,
+      "searchKeywords": ["premium", "подписка", "коллекция"]
+    }
+  ]
+}

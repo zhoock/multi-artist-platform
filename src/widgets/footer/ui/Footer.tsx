@@ -18,6 +18,7 @@ import {
 } from '@shared/ui/artistPageBuilder';
 import { platformDisplayName } from '@shared/constants/platformBranding';
 import { buildLocalizedPublicPath } from '@shared/lib/i18n/routeLang';
+import { buildHelpHomePath } from '@shared/lib/seo/publicPagePaths';
 import { Link2 as Link2Icon } from 'lucide-react';
 import './style.scss';
 
@@ -104,6 +105,11 @@ function FooterComponent() {
           </li>
           <li>
             <small>{supportLink(ui?.titles?.support ?? 'Поддержка')}</small>
+          </li>
+          <li>
+            <small>
+              <Link to={buildHelpHomePath(lang)}>{ui?.links?.helpCenter ?? 'Help center'}</Link>
+            </small>
           </li>
           <li>
             <small>

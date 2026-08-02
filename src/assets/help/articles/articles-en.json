@@ -1,0 +1,42 @@
+{
+  "slug": "articles",
+  "categorySlug": "publishing",
+  "title": "Publish articles",
+  "description": "Write and publish articles on your public artist page.",
+  "updatedAt": "2026-08-02",
+  "sortOrder": 2,
+  "searchKeywords": ["articles", "posts"],
+  "blocks": [
+    {
+      "blockId": "1",
+      "content": "Articles are long-form posts on your artist page — news, stories, photo galleries, and more. Manage them under **Dashboard → Posts** (shown as **Posts** in English, **Статьи** in Russian)."
+    },
+    {
+      "blockId": "2",
+      "subtitle": "Create an article",
+      "content": [
+        "Open **Dashboard → Posts**.",
+        "Click **Upload New Article** or **Create article**.",
+        "Add a title, cover image, and content blocks.",
+        "Save as draft or publish when ready."
+      ]
+    },
+    {
+      "blockId": "3",
+      "subtitle": "Visibility",
+      "content": [
+        "**Public** — visible to everyone on your artist page.",
+        "**Subscribers only** — requires the listener to add you to their Premium collection.",
+        "**Hidden** — not shown on the public site."
+      ]
+    },
+    {
+      "blockId": "4",
+      "subtitle": "Public URLs",
+      "content": [
+        "Published articles appear under `/{language}/articles` on the platform and on your artist hub.",
+        "Your email must be verified to publish articles."
+      ]
+    }
+  ]
+}

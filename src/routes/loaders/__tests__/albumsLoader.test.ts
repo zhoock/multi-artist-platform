@@ -22,7 +22,8 @@ import { albumsReducer } from '@entities/album';
 import { artistAlbumCatalogReducer } from '@entities/album/model/artistAlbumCatalogSlice';
 import { albumDetailsReducer } from '@entities/album/model/albumDetailsSlice';
 import { articlesReducer } from '@entities/article';
-import { helpArticlesReducer } from '@entities/helpArticle';
+import { helpReducer } from '@entities/help';
+import { createEmptyHelpState } from '@entities/help/model/testHelpers';
 import { uiDictionaryReducer } from '@shared/model/uiDictionary';
 import { langReducer } from '@shared/model/lang';
 import { currentArtistReducer, setPublicArtistSlug } from '@shared/model/currentArtist';
@@ -44,7 +45,7 @@ function createTestStore(): AppStore {
       albums: albumsReducer,
       artistAlbumCatalog: artistAlbumCatalogReducer,
       albumDetails: albumDetailsReducer,
-      helpArticles: helpArticlesReducer,
+      help: helpReducer,
       uiDictionary: uiDictionaryReducer,
       trackLyrics: trackLyricsReducer,
     },

@@ -106,6 +106,24 @@ dialog {
         }
       }
 
+      &__help-link {
+        margin: 0;
+        font-size: var(--dashboard-font-size);
+        line-height: 1.45;
+
+        a {
+          color: var(--dark-greenish-yellow);
+          text-decoration: none;
+
+          @media (hover: hover) and (pointer: fine) {
+            &:hover {
+              text-decoration: underline;
+              text-underline-offset: 0.12em;
+            }
+          }
+        }
+      }
+
       &__provider-row {
         &.dashboard-row--action {
           grid-template-columns: minmax(0, 1fr) auto;
