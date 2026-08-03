@@ -10,6 +10,7 @@ import {
 import { getUserUserId, type ImageCategory } from '@config/user';
 import { sanitizeFileName } from '@shared/lib/sanitizeFileName';
 import { fetchWithAuthSession } from '@shared/lib/authFetch';
+import { getStorageErrorStatus } from '@shared/lib/errors/apiError';
 import { getProxyImagePath, resolveProxyImageOrigin } from '@shared/lib/proxyImageEnvironment';
 
 export interface UploadFileOptions {
@@ -156,13 +157,6 @@ export async function uploadFile(options: UploadFileOptions): Promise<string | n
     const fileName = sanitizeUploadFileName(rawFileName);
 
     const fileSizeMB = file.size / (1024 * 1024);
-    console.log('📤 [uploadFile] Начало загрузки:', {
-      category,
-      fileName,
-      fileSize: file.size,
-      fileSizeMB: fileSizeMB.toFixed(2),
-      fileType: file instanceof File ? file.type : 'unknown',
-    });
 
     // Предупреждение для больших файлов (Netlify Functions имеют лимит ~6MB для body)
     if (fileSizeMB > 5) {
@@ -179,13 +173,7 @@ export async function uploadFile(options: UploadFileOptions): Promise<string | n
       return null;
     }
 
-    console.log('🔄 [uploadFile] Конвертация в base64...');
-    const startConvert = Date.now();
     const fileBase64 = await fileToBase64(file);
-    const convertTime = Date.now() - startConvert;
-    console.log(
-      `✅ [uploadFile] Конвертация завершена за ${convertTime}ms, размер base64: ${fileBase64.length} символов`
-    );
 
     const { previousImageKey } = options;
 
@@ -204,12 +192,6 @@ export async function uploadFile(options: UploadFileOptions): Promise<string | n
     }
 
     const payloadSizeMB = JSON.stringify(payload).length / (1024 * 1024);
-    console.log('📡 [uploadFile] Отправка запроса к /api/upload-file...', {
-      payloadSize: JSON.stringify(payload).length,
-      payloadSizeMB: payloadSizeMB.toFixed(2),
-      fileName,
-      category,
-    });
 
     if (payloadSizeMB > 5.5) {
       console.error(
@@ -220,7 +202,6 @@ export async function uploadFile(options: UploadFileOptions): Promise<string | n
       );
     }
 
-    const startFetch = Date.now();
     const response = await fetchWithAuthSession('/api/upload-file', {
       method: 'POST',
       headers: {
@@ -229,8 +210,6 @@ export async function uploadFile(options: UploadFileOptions): Promise<string | n
       },
       body: JSON.stringify(payload),
     });
-    const fetchTime = Date.now() - startFetch;
-    console.log(`⏱️ [uploadFile] Запрос выполнен за ${fetchTime}ms, status: ${response.status}`);
 
     if (!response.ok) {
       let errorData: { error?: string; success?: boolean };
@@ -251,13 +230,7 @@ export async function uploadFile(options: UploadFileOptions): Promise<string | n
       return null;
     }
 
-    console.log('📥 [uploadFile] Парсинг ответа...');
     const result = await response.json();
-    console.log('✅ [uploadFile] Ответ получен:', {
-      success: result.success,
-      hasUrl: !!result.data?.url,
-      hasError: !!result.error,
-    });
 
     if (!result.success || !result.data?.url) {
       console.error('❌ [uploadFile] Upload failed:', result.error || 'Unknown error');
@@ -269,10 +242,6 @@ export async function uploadFile(options: UploadFileOptions): Promise<string | n
     // Для hero изображений result.data.url может содержать storagePath или уже готовый URL
     if (category === 'hero' && shouldBuildProxyUrlFromUploadResult(finalUrl)) {
       finalUrl = buildProxyImageUrlFromStoragePath(finalUrl);
-      console.log('🔗 [uploadFile] Сформирован proxy URL для hero:', {
-        storagePath: result.data.url,
-        finalUrl,
-      });
     }
 
     // Обложка статьи: storagePath users/.../articles/... → proxy (как hero)
@@ -283,10 +252,6 @@ export async function uploadFile(options: UploadFileOptions): Promise<string | n
       finalUrl.includes('/articles/')
     ) {
       finalUrl = buildProxyImageUrlFromStoragePath(finalUrl);
-      console.log('🔗 [uploadFile] Сформирован proxy URL для article cover:', {
-        storagePath: result.data.url,
-        finalUrl,
-      });
     }
 
     // Аватар: storagePath `users/.../profile/...` → proxy (все варианты имён, не только `profile-NNN`)
@@ -297,11 +262,6 @@ export async function uploadFile(options: UploadFileOptions): Promise<string | n
       finalUrl.includes('/profile/')
     ) {
       finalUrl = buildProxyImageUrlFromStoragePath(finalUrl);
-
-      console.log('🔗 [uploadFile] Сформирован proxy URL для profile:', {
-        storagePath: result.data.url,
-        finalUrl,
-      });
     }
 
     return finalUrl;
@@ -323,7 +283,6 @@ export async function listStorageByPrefix(prefix: string): Promise<string[] | nu
       return null;
     }
 
-    console.log('🔍 [listStorageByPrefix] Listing files in:', prefix);
     const { data, error } = await supabase.storage
       .from(STORAGE_BUCKET_NAME)
       .list(prefix, { limit: 1000 });
@@ -332,7 +291,7 @@ export async function listStorageByPrefix(prefix: string): Promise<string[] | nu
       console.error('❌ [listStorageByPrefix] Error listing storage prefix:', {
         prefix,
         error: error.message,
-        errorCode: (error as any).statusCode,
+        errorCode: getStorageErrorStatus(error),
         errorName: error.name,
       });
       return null;
@@ -342,27 +301,8 @@ export async function listStorageByPrefix(prefix: string): Promise<string[] | nu
     // В Supabase Storage папки имеют id === null и metadata === null
     // Файлы имеют id !== null
     const files = (data || []).filter((item) => item.id !== null);
-    const folders = (data || []).filter((item) => item.id === null && item.metadata === null);
 
     const fileNames = files.map((item) => item.name);
-    console.log('✅ [listStorageByPrefix] Found files:', {
-      prefix,
-      filesCount: fileNames.length,
-      foldersCount: folders.length,
-      files: fileNames,
-      folders: folders.map((f) => f.name),
-      allItems:
-        data?.map((item) => ({
-          name: item.name,
-          id: item.id,
-          isFile: item.id !== null,
-          isFolder: item.id === null && item.metadata === null,
-          updated_at: item.updated_at,
-          created_at: item.created_at,
-          last_accessed_at: item.last_accessed_at,
-          metadata: item.metadata,
-        })) || [],
-    });
 
     return fileNames;
   } catch (error) {
@@ -450,17 +390,6 @@ export function getStorageFileUrl(options: GetFileUrlOptions): string | null {
   }
   const { category, fileName } = options;
   const userId = resolvedUserId;
-
-  // Убираем логирование для предотвращения бесконечных циклов
-  // Если нужно отладить, используйте React DevTools или добавьте breakpoint
-  // if (process.env.NODE_ENV !== 'production' && typeof window !== 'undefined') {
-  //   console.log('[getStorageFileUrl]', {
-  //     category,
-  //     fileName,
-  //     userId: userId.substring(0, 8) + '...',
-  //     fromAuth: !!getUserUserId(),
-  //   });
-  // }
 
   const storagePath = getStoragePath(userId, category, fileName);
 
@@ -623,11 +552,6 @@ export async function deleteHeroImage(imageUrl: string): Promise<boolean> {
     if (!headers.Authorization && !headers.authorization) {
       headers.Authorization = `Bearer ${token}`;
     }
-
-    console.log('🗑️ [deleteHeroImage] Sending delete request:', {
-      imageUrl,
-      hasAuth: !!headers.Authorization || !!headers.authorization,
-    });
 
     const response = await fetchWithAuthSession('/api/delete-hero-image', {
       method: 'DELETE',

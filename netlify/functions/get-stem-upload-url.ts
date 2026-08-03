@@ -27,6 +27,7 @@ import {
   unauthorizedFromAuthHeader,
   parseJsonBody,
 } from './lib/api-helpers';
+import { getStorageErrorStatus } from './lib/error-utils';
 
 const STORAGE_BUCKET_NAME = 'user-media';
 
@@ -104,13 +105,6 @@ export const handler: Handler = async (
     // Формируем путь в Storage: users/{userId}/audio/{albumId}/{trackId}/{fileName}
     const storagePath = `users/${storageUserId}/audio/${albumId}/${trackId}/${fileName}`;
 
-    console.log('🔐 [get-stem-upload-url] Generating signed URL:', {
-      albumId,
-      trackId,
-      fileName,
-      storagePath,
-    });
-
     // Создаём Supabase клиент с service role key
     const supabase = createSupabaseAdminClient();
     if (!supabase) {
@@ -118,10 +112,6 @@ export const handler: Handler = async (
     }
 
     // Генерируем signed URL для загрузки (действителен 1 час)
-    console.log('🔄 [get-stem-upload-url] Creating signed upload URL...', {
-      bucket: STORAGE_BUCKET_NAME,
-      storagePath,
-    });
 
     const { data: signedUrlData, error: signedUrlError } = await supabase.storage
       .from(STORAGE_BUCKET_NAME)
@@ -133,7 +123,7 @@ export const handler: Handler = async (
       console.error('❌ [get-stem-upload-url] Failed to create signed URL:', {
         error: signedUrlError,
         errorMessage: signedUrlError?.message,
-        errorStatus: (signedUrlError as any)?.status,
+        errorStatus: getStorageErrorStatus(signedUrlError ?? {}),
         errorName: signedUrlError?.name,
         storagePath,
       });
@@ -142,12 +132,6 @@ export const handler: Handler = async (
         signedUrlError?.message || 'Failed to create signed upload URL'
       );
     }
-
-    console.log('✅ [get-stem-upload-url] Signed URL created successfully', {
-      hasSignedUrl: !!signedUrlData.signedUrl,
-      signedUrlPrefix: signedUrlData.signedUrl?.substring(0, 100) || 'N/A',
-      storagePath,
-    });
 
     return createSuccessResponse(
       {

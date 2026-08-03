@@ -290,6 +290,17 @@
       "premiumSuccessArchiveFull": "Collection is full",
       "premiumSuccessAddError": "Could not add artist"
     },
+    "search": {
+      "noResultsTitle": "Nothing found",
+      "noResultsDescription": "Try changing your query",
+      "clearSearch": "Clear search",
+      "artistsPlaceholder": "Search artists...",
+      "helpPlaceholder": "Search the help center..."
+    },
+    "help": {
+      "categoryEmptyTitle": "Articles coming soon",
+      "categoryEmptyDescription": "We're preparing content for this category. Check back later."
+    },
     "links": {
       "home": "home",
       "helpCenter": "Help center",

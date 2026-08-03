@@ -25,6 +25,7 @@ import { buildLocalizedPublicPath } from '@shared/lib/i18n/routeLang';
 import { buildPublicSiteUrl, getPublicSiteOrigin } from '@shared/lib/publicSiteOrigin';
 import { buildPublicPageHreflangUrls } from '@shared/lib/seo/buildPublicPageHreflangUrls';
 import { publicPageHreflangLinks } from '@shared/lib/seo/PublicPageHreflangLinks';
+import { isHelpLoaderPath } from '@entities/help/lib/helpRouteMatch';
 import { albumsLoader } from '@routes/loaders/albumsLoader';
 import { ArtistPageSkeleton } from '@pages/Home/ui/ArtistPageSkeleton';
 import { useLang } from '@app/providers/lang';
@@ -437,6 +438,13 @@ function Layout() {
   const isOfferRoute = matchPath({ path: '/offer', end: true }, pathnameWithoutLang);
   const isPrivacyRoute = matchPath({ path: '/privacy', end: true }, pathnameWithoutLang);
   const isLegalDocumentRoute = isOfferRoute || isPrivacyRoute;
+  const isHelpRoute = isHelpLoaderPath(location.pathname);
+
+  useEffect(() => {
+    if (isHelpRoute && popup) {
+      dispatch(closePopup());
+    }
+  }, [dispatch, isHelpRoute, popup]);
 
   const isServiceScreenRoute = isServiceScreenBodyClassActive({
     isPaymentRoute,
@@ -695,20 +703,26 @@ function Layout() {
                     theme={theme}
                     onToggleTheme={toggleTheme}
                     navMenuOpen={popup}
-                    onNavMenuToggle={() => {
-                      if (popup) dispatch(closePopup());
-                      else dispatch(openPopup());
-                    }}
+                    onNavMenuToggle={
+                      isHelpRoute
+                        ? undefined
+                        : () => {
+                            if (popup) dispatch(closePopup());
+                            else dispatch(openPopup());
+                          }
+                    }
                   />
                   <main>
                     <EmailVerificationBanner />
-                    {!isHomeSceneRoute && !isLegalDocumentRoute && <Hero />}
+                    {!isHomeSceneRoute && !isLegalDocumentRoute && !isHelpRoute && <Hero />}
 
                     {/* если поместим popup внурь header, то popup будет обрезаться из-за css-фильтра (filter) внури header */}
 
-                    <Popup isActive={popup} onClose={() => dispatch(closePopup())}>
-                      <NavPopupMenu isActive={popup} />
-                    </Popup>
+                    {!isHelpRoute ? (
+                      <Popup isActive={popup} onClose={() => dispatch(closePopup())}>
+                        <NavPopupMenu isActive={popup} />
+                      </Popup>
+                    ) : null}
 
                     <ErrorBoundary>{standardRoutes}</ErrorBoundary>
                   </main>

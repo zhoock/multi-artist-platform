@@ -47,10 +47,6 @@ function extractPreviewUrl(imageSetOrUrl: string): string {
   // Если это storagePath (начинается с "users/"), преобразуем в proxy URL
   if (imageSetOrUrl.startsWith('users/') && imageSetOrUrl.includes('/hero/')) {
     const proxyUrl = buildProxyImageUrlFromStoragePath(imageSetOrUrl);
-    console.log('🔄 [extractPreviewUrl] Преобразован storagePath в proxy URL:', {
-      original: imageSetOrUrl,
-      converted: proxyUrl,
-    });
     return proxyUrl;
   }
 
@@ -222,11 +218,6 @@ export function HeaderImagesUpload({
       }
 
       const fileName = `hero-${uniqueUploadFileSuffix()}.jpg`;
-      console.log('📤 [HeaderImagesUpload] Загрузка hero изображения:', {
-        fileName,
-        fileSize: croppedBlob.size,
-        userId: user.id,
-      });
 
       const url = await uploadFile({
         userId: user.id,
@@ -235,14 +226,6 @@ export function HeaderImagesUpload({
         fileName,
         contentType: 'image/jpeg',
         upsert: false,
-      });
-
-      console.log('📥 [HeaderImagesUpload] Результат загрузки:', {
-        url,
-        urlType: typeof url,
-        urlLength: url?.length,
-        isProxyUrl: url?.includes('proxy-image'),
-        isStoragePath: url?.startsWith('users/'),
       });
 
       if (!url) {
@@ -254,25 +237,12 @@ export function HeaderImagesUpload({
         url.startsWith('users/') && url.includes('/hero/')
           ? buildProxyImageUrlFromStoragePath(url)
           : url;
-      if (finalUrl !== url) {
-        console.log('🔄 [HeaderImagesUpload] Преобразован storagePath в proxy URL:', {
-          original: url,
-          converted: finalUrl,
-        });
-      }
 
       const newImages = [...images, finalUrl];
-      console.log('💾 [HeaderImagesUpload] Обновление списка изображений:', {
-        oldCount: images.length,
-        newCount: newImages.length,
-        newUrl: finalUrl,
-        allUrls: newImages,
-      });
 
       setImages(newImages);
 
       if (onImagesUpdated) {
-        console.log('📡 [HeaderImagesUpload] Отправка onImagesUpdated callback');
         onImagesUpdated(newImages);
       }
 
@@ -298,12 +268,6 @@ export function HeaderImagesUpload({
       return;
     }
 
-    console.log('🗑️ [HeaderImagesUpload] Удаление изображения:', {
-      index,
-      url: imageToRemove,
-      totalImages: images.length,
-    });
-
     // Удаляем все варианты изображения из Storage
     try {
       const deleted = await deleteHeroImage(imageToRemove);
@@ -315,7 +279,6 @@ export function HeaderImagesUpload({
           'Изображение удалено из списка, но могут остаться файлы в хранилище. Сохраните изменения для применения.'
         );
       } else {
-        console.log('✅ [HeaderImagesUpload] Изображение успешно удалено из Storage');
         setError(null);
       }
     } catch (error) {
@@ -327,16 +290,9 @@ export function HeaderImagesUpload({
 
     // Удаляем URL из массива
     const newImages = images.filter((_, i) => i !== index);
-    console.log('📝 [HeaderImagesUpload] Обновление списка изображений после удаления:', {
-      oldCount: images.length,
-      newCount: newImages.length,
-      removedIndex: index,
-      remainingImages: newImages,
-    });
 
     setImages(newImages);
     if (onImagesUpdated) {
-      console.log('📡 [HeaderImagesUpload] Отправка обновленного списка в родительский компонент');
       onImagesUpdated(newImages);
     }
   };

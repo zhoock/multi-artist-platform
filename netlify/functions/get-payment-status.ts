@@ -41,6 +41,12 @@ import {
 import { query } from './lib/db';
 import { resolveAlbumByKey } from './lib/resolve-album-key';
 import dns from 'node:dns';
+import {
+  getErrorCause,
+  getErrorCode,
+  getErrorMessage,
+  isFetchTimeoutError,
+} from './lib/error-utils';
 
 // Форсируем IPv4 для избежания проблем с fetch в некоторых сетях
 dns.setDefaultResultOrder('ipv4first');
@@ -187,8 +193,6 @@ async function getYooKassaCredentialsForOrder(orderId: string): Promise<{
     console.warn(`⚠️ No active YooKassa credentials for seller ${userId} (order ${orderId})`);
     return null;
   }
-
-  console.log(`✅ Using seller ${userId} YooKassa credentials for order ${orderId}`);
 
   return {
     shopId: userCredentials.shopId.trim(),
@@ -451,8 +455,6 @@ export const handler: Handler = async (
       'base64'
     );
 
-    console.log(`🔍 Checking payment status via YooKassa API: ${actualPaymentId}`);
-
     // Проверяем DNS резолюцию перед fetch (опционально, не фатально)
     const urlObj = new URL(paymentUrl);
     const dnsStartTime = Date.now();
@@ -460,20 +462,13 @@ export const handler: Handler = async (
     try {
       const addresses = await dns.promises.lookup(urlObj.hostname, { family: 4 }); // Форсируем IPv4
       const dnsDuration = Date.now() - dnsStartTime;
-
-      console.log('✅ DNS resolved:', {
-        hostname: urlObj.hostname,
-        address: addresses.address,
-        family: addresses.family,
-        duration: dnsDuration,
-      });
-    } catch (dnsError: any) {
+    } catch (dnsError: unknown) {
       const dnsDuration = Date.now() - dnsStartTime;
 
       console.warn('⚠️ DNS lookup failed:', {
         hostname: urlObj.hostname,
-        error: dnsError?.message,
-        code: dnsError?.code,
+        error: getErrorMessage(dnsError),
+        code: getErrorCode(dnsError),
         duration: dnsDuration,
       });
       // Продолжаем выполнение, возможно DNS резолвится при fetch
@@ -502,34 +497,29 @@ export const handler: Handler = async (
       });
 
       clearTimeout(timeoutId);
+    } catch (fetchError: unknown) {
       const fetchDuration = Date.now() - fetchStartTime;
-
-      console.log('✅ YooKassa response received:', {
-        status: yookassaResponse.status,
-        statusText: yookassaResponse.statusText,
-        duration: fetchDuration,
-      });
-    } catch (fetchError: any) {
-      const fetchDuration = Date.now() - fetchStartTime;
-      const isTimeoutError =
-        fetchError?.code === 'UND_ERR_CONNECT_TIMEOUT' ||
-        fetchError?.cause?.code === 'UND_ERR_CONNECT_TIMEOUT' ||
-        fetchError?.message?.includes('timeout') ||
-        fetchError?.message?.includes('aborted');
+      const isTimeoutError = isFetchTimeoutError(fetchError);
+      const cause = getErrorCause(fetchError);
 
       console.error('❌ Fetch error to YooKassa:', {
-        message: fetchError?.message,
-        code: fetchError?.code,
-        cause: fetchError?.cause,
-        causeCode: fetchError?.cause?.code,
-        causeMessage: fetchError?.cause?.message,
-        stack: fetchError?.stack,
+        message: getErrorMessage(fetchError),
+        code: getErrorCode(fetchError),
+        cause,
+        causeCode:
+          cause && typeof cause === 'object' && cause !== null && 'code' in cause
+            ? (cause as { code?: unknown }).code
+            : undefined,
+        causeMessage:
+          cause && typeof cause === 'object' && cause !== null && 'message' in cause
+            ? (cause as { message?: unknown }).message
+            : undefined,
+        stack: fetchError instanceof Error ? fetchError.stack : undefined,
         duration: fetchDuration,
         isTimeoutError,
         paymentUrlHost: urlObj.hostname,
       });
 
-      // В dev режиме возвращаем детали ошибки
       const isDev = process.env.NETLIFY_DEV === 'true' || process.env.NODE_ENV !== 'production';
 
       return {
@@ -538,17 +528,25 @@ export const handler: Handler = async (
         body: JSON.stringify({
           success: false,
           error: isDev
-            ? `Fetch failed: ${fetchError?.message || 'Unknown error'}`
+            ? `Fetch failed: ${getErrorMessage(fetchError) || 'Unknown error'}`
             : 'Failed to fetch payment status from payment service',
           ...(isDev && {
             details: {
-              code: fetchError?.code,
-              cause: fetchError?.cause
-                ? {
-                    code: fetchError.cause.code,
-                    message: fetchError.cause.message,
-                  }
-                : undefined,
+              code: getErrorCode(fetchError),
+              cause:
+                cause && typeof cause === 'object' && cause !== null
+                  ? {
+                      code:
+                        'code' in cause && typeof (cause as { code?: unknown }).code === 'string'
+                          ? (cause as { code: string }).code
+                          : undefined,
+                      message:
+                        'message' in cause &&
+                        typeof (cause as { message?: unknown }).message === 'string'
+                          ? (cause as { message: string }).message
+                          : undefined,
+                    }
+                  : undefined,
               isTimeoutError,
               durationMs: fetchDuration,
               paymentUrlHost: urlObj.hostname,
@@ -577,12 +575,6 @@ export const handler: Handler = async (
     }
 
     const paymentStatus: YooKassaPaymentStatus = await yookassaResponse.json();
-
-    console.log(`✅ Payment status from YooKassa:`, {
-      paymentId: paymentStatus.id,
-      status: paymentStatus.status,
-      paid: paymentStatus.paid,
-    });
 
     // Обновляем БД на основе реального статуса от YooKassa
     const orderUpdated = await applyAlbumPaymentSuccess(paymentStatus);
@@ -613,17 +605,23 @@ export const handler: Handler = async (
         ...(album ? { album } : {}),
       } as PaymentStatusResponse),
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const cause = getErrorCause(error);
     console.error('❌ Error getting payment status:', {
-      message: error?.message,
-      code: error?.code,
-      cause: error?.cause,
-      causeCode: error?.cause?.code,
-      causeMessage: error?.cause?.message,
-      stack: error?.stack,
+      message: getErrorMessage(error),
+      code: getErrorCode(error),
+      cause,
+      causeCode:
+        cause && typeof cause === 'object' && cause !== null && 'code' in cause
+          ? (cause as { code?: unknown }).code
+          : undefined,
+      causeMessage:
+        cause && typeof cause === 'object' && cause !== null && 'message' in cause
+          ? (cause as { message?: unknown }).message
+          : undefined,
+      stack: error instanceof Error ? error.stack : undefined,
     });
 
-    // В dev режиме возвращаем детали ошибки для диагностики
     const isDev = process.env.NETLIFY_DEV === 'true' || process.env.NODE_ENV !== 'production';
 
     return {
@@ -631,16 +629,26 @@ export const handler: Handler = async (
       headers,
       body: JSON.stringify({
         success: false,
-        error: isDev ? error?.message || 'Unknown error occurred' : 'Failed to get payment status',
+        error: isDev
+          ? getErrorMessage(error) || 'Unknown error occurred'
+          : 'Failed to get payment status',
         ...(isDev && {
           details: {
-            code: error?.code,
-            cause: error?.cause
-              ? {
-                  code: error.cause.code,
-                  message: error.cause.message,
-                }
-              : undefined,
+            code: getErrorCode(error),
+            cause:
+              cause && typeof cause === 'object' && cause !== null
+                ? {
+                    code:
+                      'code' in cause && typeof (cause as { code?: unknown }).code === 'string'
+                        ? (cause as { code: string }).code
+                        : undefined,
+                    message:
+                      'message' in cause &&
+                      typeof (cause as { message?: unknown }).message === 'string'
+                        ? (cause as { message: string }).message
+                        : undefined,
+                  }
+                : undefined,
           },
         }),
       } as PaymentStatusResponse),

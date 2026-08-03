@@ -127,15 +127,6 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
     const { fileBase64, albumId, artist, album, contentType, originalFileSize } = body;
 
     // Логируем входящие данные для диагностики
-    console.log('[upload-cover-draft] Request received:', {
-      hasFileBase64: !!fileBase64,
-      albumId,
-      artist,
-      album,
-      contentType,
-      originalFileSize,
-      path: event.path,
-    });
 
     if (!fileBase64) {
       return createErrorResponse(400, 'Missing required field: fileBase64');
@@ -233,7 +224,6 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
     }
 
     // Генерируем все варианты изображения
-    console.log('🖼️ Generating image variants for:', baseName);
     const variants = await generateImageVariants(originalBuffer, baseName);
 
     // Удаляем старые черновики для этого альбома (включая новые альбомы)
@@ -250,7 +240,6 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
         .map((f) => `${draftFolder}/${f.name}`);
 
       if (oldDrafts.length > 0) {
-        console.log(`🗑️ Removing ${oldDrafts.length} old draft files from ${draftFolder}`);
         await supabase.storage.from(STORAGE_BUCKET_NAME).remove(oldDrafts);
       }
     }
@@ -294,8 +283,6 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
     const previewFileName = `${baseName}-448.webp`;
     const previewPath = `drafts/${userId}/albums/${albumId || 'new'}/${previewFileName}`;
     const { data: urlData } = supabase.storage.from(STORAGE_BUCKET_NAME).getPublicUrl(previewPath);
-
-    console.log(`✅ Uploaded ${uploadedFiles.length} image variants`);
 
     return createSuccessResponse(
       {

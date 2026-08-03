@@ -3,10 +3,11 @@ import { useAppDispatch } from '@shared/lib/hooks/useAppDispatch';
 import { playerActions } from '@features/player';
 import { audioController } from '@features/player/model/lib/audioController';
 import type { PlayerTimeState } from '@features/player/model/types/playerSchema';
+import type { PlayerTrack } from '@features/player/model/types/playerSchema';
 import { trackDebug } from '../utils/debug';
 
 interface UseTrackNavigationParams {
-  playlist: any[];
+  playlist: PlayerTrack[];
   time: PlayerTimeState;
   resetInactivityTimer: () => void;
 }

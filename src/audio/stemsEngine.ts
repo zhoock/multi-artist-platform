@@ -69,7 +69,6 @@ export class StemEngine {
     // Используем Promise.allSettled вместо Promise.all, чтобы продолжать загрузку даже при ошибках
     const results = await Promise.allSettled(
       entries.map(async ([kind, url]) => {
-        console.log(`[StemEngine] Загрузка стема ${kind} с URL: ${url}`);
         const resp = await fetch(url, { cache: 'force-cache', ...this.fetchOptions });
 
         if (!resp.ok) {
@@ -93,7 +92,6 @@ export class StemEngine {
         const gain = this.ctx.createGain();
         gain.connect(this.masterGain);
         this.nodes.set(kind, { buffer: audio, source: null, gain });
-        console.log(`✅ [StemEngine] Стем ${kind} успешно загружен`);
         oneDone();
       })
     );

@@ -12,6 +12,7 @@ import { buildLocalizedPublicPath } from '@shared/lib/i18n/routeLang';
 import { buildPublicSiteUrl } from '@shared/lib/publicSiteOrigin';
 import { buildPublicPageHreflangUrls } from '@shared/lib/seo/buildPublicPageHreflangUrls';
 import { publicPageHreflangLinks } from '@shared/lib/seo/PublicPageHreflangLinks';
+import { formatLegalPageDate } from '@shared/lib/i18n/formatLegalPageDate';
 import '@pages/Offer/ui/style.scss';
 
 function hasParagraphText(value: string): boolean {
@@ -56,11 +57,7 @@ export function PrivacyPage() {
     };
   }, [lang]);
 
-  const currentDate = new Date().toLocaleDateString(lang === 'ru' ? 'ru-RU' : 'en-GB', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  });
+  const currentDate = formatLegalPageDate(lang);
 
   const pageTitle = ui?.links?.privacyPageTitle ?? 'Privacy';
   const pageDescription =

@@ -49,6 +49,15 @@ import {
 } from './lib/dev-payment-mode';
 import { completeDevAlbumPayment } from './lib/complete-dev-payment';
 import { findOrCreatePendingAlbumOrder } from './lib/find-or-create-pending-order';
+import {
+  asPostgresError,
+  getErrorCause,
+  getErrorCode,
+  getErrorMessage,
+  isFetchTimeoutError,
+  parseYooKassaErrorBody,
+  type YooKassaErrorBody,
+} from './lib/error-utils';
 
 dns.setDefaultResultOrder('ipv4first');
 
@@ -65,6 +74,8 @@ interface CreatePaymentRequest {
     country?: string;
     zip?: string;
   };
+  /** Infrastructure probe — no payment created */
+  diagnose?: boolean;
 }
 
 interface CreatePaymentResponse {
@@ -242,10 +253,10 @@ async function handleDiagnosticMode(
             ? undefined
             : `HTTP ${testResponse.status} (unauthenticated probe)`,
       };
-    } catch (testError: any) {
+    } catch (testError: unknown) {
       yookassaReachable = {
         ok: false,
-        error: testError?.message || 'Unknown error',
+        error: getErrorMessage(testError),
       };
     }
 
@@ -260,13 +271,13 @@ async function handleDiagnosticMode(
         },
       }),
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     return {
       statusCode: 500,
       headers,
       body: JSON.stringify({
         success: false,
-        error: error?.message || 'Diagnostic failed',
+        error: getErrorMessage(error) || 'Diagnostic failed',
       }),
     };
   }
@@ -276,12 +287,6 @@ export const handler: Handler = async (
   event: HandlerEvent,
   context: HandlerContext
 ): Promise<{ statusCode: number; headers: Record<string, string>; body: string }> => {
-  console.log('🔍 create-payment:', {
-    hasDb: !!process.env.DATABASE_URL,
-    nodeEnv: process.env.NODE_ENV,
-    netlifyDev: process.env.NETLIFY_DEV,
-  });
-
   // CORS headers для работы с фронтенда
   const headers = {
     'Access-Control-Allow-Origin': '*',
@@ -316,7 +321,7 @@ export const handler: Handler = async (
     const data: CreatePaymentRequest = JSON.parse(event.body || '{}');
 
     // Режим диагностики: если передан {"diagnose": true}, возвращаем статус без создания платежа
-    if ((data as any).diagnose === true) {
+    if (data.diagnose === true) {
       return await handleDiagnosticMode(headers);
     }
 
@@ -357,10 +362,6 @@ export const handler: Handler = async (
 
     const buyerUserId = getUserIdFromEvent(event);
     if (await buyerAlreadyOwnsAlbumForCheckout(buyerUserId, data.customerEmail, data.albumId)) {
-      console.log('ℹ️ create-payment blocked: buyer already owns album', {
-        albumId: data.albumId,
-        buyerUserId: buyerUserId ? `…${buyerUserId.slice(-6)}` : null,
-      });
       return {
         statusCode: 409,
         headers,
@@ -477,12 +478,6 @@ export const handler: Handler = async (
       }
     } else {
       // Reuse existing pending_payment order for same buyer + album (server-side idempotency).
-      console.log('📝 Finding or creating pending order in database...', {
-        albumId: data.albumId,
-        amount: albumPricing.amount,
-        customerEmail: data.customerEmail,
-        hasDbUrl: !!process.env.DATABASE_URL,
-      });
 
       try {
         const buyerDisplayName = data.billingData?.buyerDisplayName?.trim() || null;
@@ -499,18 +494,13 @@ export const handler: Handler = async (
         orderId = orderResolved.orderId;
         orderAmount = orderResolved.orderAmount;
         orderStatus = orderResolved.orderStatus;
-
-        if (orderResolved.reusedExisting) {
-          console.log('ℹ️ Reusing existing pending order:', { orderId, orderAmount, orderStatus });
-        } else {
-          console.log('✅ Order created:', { orderId, orderAmount, orderStatus });
-        }
-      } catch (dbError: any) {
+      } catch (dbError: unknown) {
+        const pg = asPostgresError(dbError);
         console.error('❌ Database error when creating order:', {
-          message: dbError?.message,
-          code: dbError?.code,
-          detail: dbError?.detail,
-          hint: dbError?.hint,
+          message: pg.message,
+          code: pg.code,
+          detail: pg.detail,
+          hint: pg.hint,
           hasDbUrl: !!process.env.DATABASE_URL,
         });
         throw dbError;
@@ -574,17 +564,6 @@ export const handler: Handler = async (
       };
     }
 
-    console.log('🔐 YooKassa credentials loaded (seller only, no platform fallback):', {
-      shopId,
-      sellerUserId,
-      shopIdLength: shopId.length,
-      secretKeyLength: secretKey.length,
-      secretKeyPrefix: `${secretKey.substring(0, 6)}***`,
-      credentialsSource: 'user_settings',
-      nodeEnv: process.env.NODE_ENV,
-      netlifyDev: process.env.NETLIFY_DEV,
-    });
-
     // Нормализуем телефон для YooKassa: только цифры, без символов
     // YooKassa требует формат: только цифры, без +, пробелов, скобок и т.п.
     // Для RU обычно: 11 цифр, начинается с 7 (например: 79211234567)
@@ -597,10 +576,6 @@ export const handler: Handler = async (
       // Для других стран может быть другая длина, но минимум 10 цифр
       if (phoneDigits.length >= 10 && phoneDigits.length <= 15) {
         normalizedPhone = phoneDigits;
-        console.log('✅ Phone normalized:', {
-          original: data.billingData.phone,
-          normalized: normalizedPhone,
-        });
       } else {
         console.warn('⚠️ Invalid phone format, skipping phone in receipt:', {
           original: data.billingData.phone,
@@ -640,14 +615,6 @@ export const handler: Handler = async (
     // ВАЖНО: параметр test работает ТОЛЬКО с тестовыми shop_id и secret_key
     // Если используете production креды, test нужно отключить
     const isTestMode = process.env.YOOKASSA_TEST_MODE === 'true';
-
-    console.log('🔧 YooKassa mode (seller shop from DB):', {
-      isTestMode,
-      YOOKASSA_TEST_MODE: process.env.YOOKASSA_TEST_MODE,
-      NODE_ENV: process.env.NODE_ENV,
-      NETLIFY_DEV: process.env.NETLIFY_DEV,
-      sellerShopIdPrefix: `${shopId.slice(0, 6)}...`,
-    });
 
     // Формируем запрос: если есть paymentToken (Checkout.js), используем payment_token в корне,
     // иначе используем только confirmation для redirect (умная оплата)
@@ -719,20 +686,13 @@ export const handler: Handler = async (
     try {
       const addresses = await dns.promises.lookup(urlObj.hostname, { family: 4 }); // Форсируем IPv4
       const dnsDuration = Date.now() - dnsStartTime;
-
-      console.log('✅ DNS resolved:', {
-        hostname: urlObj.hostname,
-        address: addresses.address,
-        family: addresses.family,
-        duration: dnsDuration,
-      });
-    } catch (dnsError: any) {
+    } catch (dnsError: unknown) {
       const dnsDuration = Date.now() - dnsStartTime;
 
       console.warn('⚠️ DNS lookup failed:', {
         hostname: urlObj.hostname,
-        error: dnsError?.message,
-        code: dnsError?.code,
+        error: getErrorMessage(dnsError),
+        code: getErrorCode(dnsError),
         duration: dnsDuration,
       });
       // Продолжаем выполнение, возможно DNS резолвится при fetch
@@ -761,10 +721,6 @@ export const handler: Handler = async (
 
         if (existingPaymentResult.rows.length > 0) {
           const existingPayment = existingPaymentResult.rows[0];
-          console.log(`ℹ️ Found existing pending payment for order ${orderId}:`, {
-            paymentId: existingPayment.provider_payment_id,
-            status: existingPayment.status,
-          });
 
           // Получаем актуальные данные платежа из YooKassa
           try {
@@ -787,12 +743,6 @@ export const handler: Handler = async (
                 existingPaymentData.status === 'pending' ||
                 existingPaymentData.status === 'waiting_for_capture'
               ) {
-                console.log(`✅ Returning existing pending payment:`, {
-                  paymentId: existingPaymentData.id,
-                  status: existingPaymentData.status,
-                  hasConfirmationUrl: !!existingPaymentData.confirmation?.confirmation_url,
-                });
-
                 return {
                   statusCode: 200,
                   headers,
@@ -807,9 +757,6 @@ export const handler: Handler = async (
               }
 
               // Если платеж завершен, продолжаем создание нового
-              console.log(
-                `ℹ️ Existing payment is ${existingPaymentData.status}, creating new payment`
-              );
             } else {
               console.warn(
                 `⚠️ Could not fetch existing payment status, creating new payment:`,
@@ -830,48 +777,8 @@ export const handler: Handler = async (
     const idempotenceKey = `order-${orderId}`;
 
     // Логируем детали запроса перед отправкой (после формирования yookassaRequest)
-    console.log('📤 Sending request to YooKassa:', {
-      url: apiUrl,
-      method: 'POST',
-      orderId,
-      idempotenceKey,
-      receiptCustomer: yookassaRequest.receipt
-        ? {
-            email: yookassaRequest.receipt.customer.email,
-            phone: yookassaRequest.receipt.customer.phone || 'not provided',
-            fullName: yookassaRequest.receipt.customer.full_name || 'not provided',
-          }
-        : 'not provided',
-      amount: yookassaRequest.amount.value,
-      currency: yookassaRequest.amount.currency,
-      capture: yookassaRequest.capture,
-      test: yookassaRequest.test, // ВАЖНО: проверяем, передаётся ли test
-      hasPaymentToken: !!yookassaRequest.payment_token, // payment_token в корне запроса для Checkout.js
-      hasConfirmation: !!yookassaRequest.confirmation,
-      returnUrl: yookassaRequest.confirmation?.return_url,
-    });
 
     // Логируем тело запроса для диагностики (без секретных данных)
-    console.log(
-      '📤 YooKassa request body:',
-      JSON.stringify(
-        {
-          ...yookassaRequest,
-          receipt: yookassaRequest.receipt
-            ? {
-                customer: {
-                  email: yookassaRequest.receipt.customer.email,
-                  phone: yookassaRequest.receipt.customer.phone ? '***' : undefined,
-                  full_name: yookassaRequest.receipt.customer.full_name || undefined,
-                },
-                items: yookassaRequest.receipt.items,
-              }
-            : undefined,
-        },
-        null,
-        2
-      )
-    );
 
     // Отправляем запрос к ЮKassa
     let yookassaResponse;
@@ -879,7 +786,7 @@ export const handler: Handler = async (
 
     // Retry логика для fetch запроса к YooKassa
     const maxRetries = 2;
-    let lastError: any = null;
+    let lastError: unknown = null;
 
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       try {
@@ -905,29 +812,18 @@ export const handler: Handler = async (
         clearTimeout(timeoutId);
         const fetchDuration = Date.now() - fetchStartTime;
 
-        console.log('✅ YooKassa response received:', {
-          status: yookassaResponse.status,
-          statusText: yookassaResponse.statusText,
-          duration: fetchDuration,
-          attempt: attempt + 1,
-        });
-
         // Если получили ответ, выходим из цикла retry
         break;
-      } catch (fetchError: any) {
+      } catch (fetchError: unknown) {
         const fetchDuration = Date.now() - fetchStartTime;
         lastError = fetchError;
 
-        const isTimeoutError =
-          fetchError?.code === 'UND_ERR_CONNECT_TIMEOUT' ||
-          fetchError?.cause?.code === 'UND_ERR_CONNECT_TIMEOUT' ||
-          fetchError?.message?.includes('timeout') ||
-          fetchError?.message?.includes('aborted');
+        const isTimeoutError = isFetchTimeoutError(fetchError);
 
         console.error(`❌ Fetch error to YooKassa (attempt ${attempt + 1}/${maxRetries + 1}):`, {
-          message: fetchError?.message,
-          code: fetchError?.code,
-          cause: fetchError?.cause,
+          message: getErrorMessage(fetchError),
+          code: getErrorCode(fetchError),
+          cause: getErrorCause(fetchError),
           duration: fetchDuration,
           isTimeoutError,
         });
@@ -951,7 +847,7 @@ export const handler: Handler = async (
       console.error('❌ All fetch attempts failed:', {
         attempts: maxRetries + 1,
         duration: fetchDuration,
-        lastError: lastError?.message,
+        lastError: getErrorMessage(lastError),
       });
       throw lastError || new Error('All fetch attempts failed');
     }
@@ -968,26 +864,24 @@ export const handler: Handler = async (
       });
 
       // Пытаемся распарсить JSON ошибки от YooKassa
-      let parsedError: any = null;
+      let parsedError: YooKassaErrorBody | null = null;
       let errorMessage = `Payment creation failed: ${yookassaResponse.statusText}`;
-      let errorDetails: any = {};
+      const errorDetails: { parameter?: string; code?: string } = {};
 
       try {
-        parsedError = JSON.parse(errorText);
+        parsedError = parseYooKassaErrorBody(errorText);
         console.error('❌ YooKassa error details:', JSON.stringify(parsedError, null, 2));
 
-        // YooKassa возвращает ошибки в формате:
-        // { "type": "error", "id": "...", "code": "...", "description": "...", "parameter": "..." }
-        if (parsedError.description) {
+        if (parsedError?.description) {
           errorMessage = parsedError.description;
         }
 
-        if (parsedError.parameter) {
+        if (parsedError?.parameter) {
           errorDetails.parameter = parsedError.parameter;
           errorMessage += ` (parameter: ${parsedError.parameter})`;
         }
 
-        if (parsedError.code) {
+        if (parsedError?.code) {
           errorDetails.code = parsedError.code;
         }
 
@@ -999,8 +893,8 @@ export const handler: Handler = async (
             secretKeyPrefix: secretKey?.substring(0, 6) + '***',
             secretKeyLength: secretKey?.length,
             credentialsSource: 'user_settings',
-            errorCode: parsedError.code,
-            errorDescription: parsedError.description,
+            errorCode: parsedError?.code,
+            errorDescription: parsedError?.description,
             nodeEnv: process.env.NODE_ENV,
             netlifyDev: process.env.NETLIFY_DEV,
           });
@@ -1027,14 +921,6 @@ export const handler: Handler = async (
     }
 
     const paymentData: YooKassaPaymentResponse = await yookassaResponse.json();
-
-    console.log('✅ Payment created:', {
-      paymentId: paymentData.id,
-      status: paymentData.status,
-      amount: paymentData.amount.value,
-      orderId,
-      albumId: data.albumId,
-    });
 
     // Сохраняем платеж в БД
     try {
@@ -1063,11 +949,6 @@ export const handler: Handler = async (
          WHERE id = $2`,
         [paymentData.id, orderId]
       );
-
-      console.log('✅ Payment saved to database:', {
-        orderId,
-        paymentId: paymentData.id,
-      });
     } catch (dbError) {
       console.error('❌ Error saving payment to database:', dbError);
       // Не прерываем процесс, платеж уже создан в ЮKassa
@@ -1084,43 +965,50 @@ export const handler: Handler = async (
         confirmationUrl: paymentData.confirmation?.confirmation_url || '',
       } as CreatePaymentResponse),
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('❌ Error creating payment:', error);
     console.error('❌ Error details:', {
-      message: error?.message,
-      code: error?.code,
-      cause: error?.cause,
-      stack: error?.stack,
+      message: getErrorMessage(error),
+      code: getErrorCode(error),
+      cause: getErrorCause(error),
+      stack: error instanceof Error ? error.stack : undefined,
     });
 
-    // Детальная информация об ошибке для диагностики
-    const errorDetails: any = {
+    const cause = getErrorCause(error);
+    const errorDetails: CreatePaymentResponse & {
+      errorCode?: string;
+      cause?: string;
+      stack?: string;
+      fullError?: string;
+    } = {
       success: false,
-      error: error?.message || 'Unknown error occurred',
+      error: getErrorMessage(error) || 'Unknown error occurred',
     };
 
-    // Добавляем детали для dev режима
-    if (error?.cause) {
-      errorDetails.code = error.cause.code;
-      errorDetails.cause = error.cause.message || error.cause.toString();
+    if (cause && typeof cause === 'object' && cause !== null) {
+      const causeRecord = cause as { code?: unknown; message?: unknown };
+      if (typeof causeRecord.code === 'string') {
+        errorDetails.errorCode = causeRecord.code;
+      }
+      errorDetails.cause =
+        typeof causeRecord.message === 'string' ? causeRecord.message : String(cause);
     }
 
-    // Добавляем код ошибки, если есть
-    if (error?.code) {
-      errorDetails.errorCode = error.code;
+    const code = getErrorCode(error);
+    if (code) {
+      errorDetails.errorCode = code;
     }
 
-    // В dev режиме возвращаем больше информации
     const isDev = process.env.NETLIFY_DEV === 'true' || process.env.NODE_ENV !== 'production';
-    if (isDev) {
-      errorDetails.stack = error?.stack;
-      errorDetails.fullError = error?.toString();
+    if (isDev && error instanceof Error) {
+      errorDetails.stack = error.stack;
+      errorDetails.fullError = error.toString();
     }
 
     return {
       statusCode: 500,
       headers,
-      body: JSON.stringify(errorDetails as CreatePaymentResponse),
+      body: JSON.stringify(errorDetails),
     };
   }
 };

@@ -27,6 +27,7 @@ import {
   unauthorizedFromAuthHeader,
   parseJsonBody,
 } from './lib/api-helpers';
+import { getStorageErrorStatus } from './lib/error-utils';
 import { createSupabaseAdminClient, STORAGE_BUCKET_NAME } from './lib/supabase';
 import { sanitizeUploadFileName } from './lib/sanitizeFileName';
 import {
@@ -156,21 +157,12 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
     }
 
     // Декодируем base64 в Buffer
-    console.log('🔄 [upload-file] Декодирование base64...', {
-      base64Length: fileBase64.length,
-      category: normalizedCategory,
-      fileName,
-      originalFileSize,
-    });
     const startDecode = Date.now();
     const fileBuffer = Buffer.from(fileBase64, 'base64');
     const decodeTime = Date.now() - startDecode;
 
     // Проверяем размер файла
     const receivedSize = fileBuffer.length;
-    console.log(
-      `✅ [upload-file] Декодирование завершено за ${decodeTime}ms, размер буфера: ${receivedSize} байт`
-    );
     if (originalFileSize && Math.abs(receivedSize - originalFileSize) > 100) {
       console.warn('File size mismatch:', {
         originalFileSize,
@@ -194,7 +186,6 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
       // Извлекаем базовое имя файла (без расширения)
       const baseName = extractBaseName(fileName);
 
-      console.log('🖼️ Generating hero image variants for:', baseName);
       const variants = await generateHeroImageVariants(fileBuffer, baseName);
 
       // Удаляем старые варианты этого изображения (если есть)
@@ -215,7 +206,6 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
           .map((f) => `${heroFolder}/${f.name}`);
 
         if (oldFiles.length > 0) {
-          console.log(`🗑️ Removing ${oldFiles.length} old hero image variants`);
           await supabase.storage.from(STORAGE_BUCKET_NAME).remove(oldFiles);
         }
       }
@@ -258,20 +248,12 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
         }
       }
 
-      console.log(`✅ Uploaded ${uploadedFiles.length} hero image variants`);
-
       // Используем -1920.jpg как основной файл (Full HD версия)
       const mainFileName = `${baseName}-1920.jpg`;
       const mainPath = getStoragePath(heroUserId, normalizedCategory, mainFileName);
 
       // Для hero изображений возвращаем storagePath, клиент сформирует URL через getStorageFileUrl
       // Это более надежно, чем формировать URL на сервере
-      console.log('📤 [upload-file] Hero image upload success:', {
-        mainPath,
-        baseName,
-        heroUserId,
-        category: normalizedCategory,
-      });
 
       // Генерируем proxy URL на клиенте через getStorageFileUrl
       // Возвращаем storagePath, который клиент использует для генерации URL
@@ -290,7 +272,6 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
       const articleUserId = targetUserId;
       const baseName = extractBaseName(fileName);
 
-      console.log('🖼️ Generating article cover variants for:', baseName);
       const variants = await generateArticleCoverVariants(fileBuffer, baseName);
 
       const articlesFolder = `users/${articleUserId}/articles`;
@@ -322,7 +303,6 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
           const prevBase = extractBaseName(prevSanitized);
           if (prevBase && prevBase !== baseName) {
             addFilesMatchingBase(prevBase);
-            console.log('🗑️ Article cover replace: removing previous base', prevBase);
           }
         }
       }
@@ -332,7 +312,6 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
 
       if (pathsToDelete.size > 0) {
         const pathsArray = [...pathsToDelete];
-        console.log(`🗑️ Removing ${pathsArray.length} article cover file(s) from storage`);
         await supabase.storage.from(STORAGE_BUCKET_NAME).remove(pathsArray);
       }
 
@@ -372,8 +351,6 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
         }
       }
 
-      console.log(`✅ Uploaded ${uploadedArticleFiles.length} article cover variants`);
-
       const previewPath = getStoragePath(articleUserId, 'articles', `${baseName}-320.webp`);
 
       return createSuccessResponse(
@@ -395,9 +372,6 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
       const uploadId = randomBytes(8).toString('hex');
       const baseName = `profile-${uploadId}`;
 
-      console.log('🖼️ [upload-file] Generating profile avatar variants for:', fileName, {
-        baseName,
-      });
       const variants = await generateProfileAvatarVariants(fileBuffer, baseName);
 
       const profileFolder = `users/${profileUserId}/profile`;
@@ -412,12 +386,6 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
       const toRemove = [...new Set(fromList)];
 
       if (toRemove.length > 0) {
-        console.log(
-          `🗑️ [upload-file] Removing ${toRemove.length} old avatar file(s) from storage`,
-          {
-            paths: toRemove,
-          }
-        );
         const { error: removeProfileErr } = await supabase.storage
           .from(STORAGE_BUCKET_NAME)
           .remove(toRemove);
@@ -463,10 +431,6 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
           );
         }
       }
-
-      console.log(
-        `✅ [upload-file] Uploaded ${uploadedProfileFiles.length} profile avatar variant(s)`
-      );
 
       const canonicalPath = getStoragePath(profileUserId, 'profile', `${baseName}-128.webp`);
 
@@ -530,14 +494,6 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
           : 'image/jpeg';
     const finalContentType = contentType || defaultContentType;
 
-    console.log('📤 [upload-file] Uploading file:', {
-      category: normalizedCategory,
-      storagePath,
-      fileSize: fileBuffer.length,
-      contentType: finalContentType,
-      targetUserId: targetUserId,
-    });
-
     const { data, error } = await supabase.storage
       .from(STORAGE_BUCKET_NAME)
       .upload(storagePath, fileBuffer, {
@@ -549,7 +505,7 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
     if (error) {
       console.error('Error uploading file to Supabase Storage:', {
         error: error.message,
-        status: (error as any)?.status,
+        status: getStorageErrorStatus(error),
         name: error.name,
         storagePath,
         fileSize: fileBuffer.length,

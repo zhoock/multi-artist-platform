@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { Link, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 
 import { useLang } from '@app/providers/lang';
 import { useAppDispatch } from '@shared/lib/hooks/useAppDispatch';
@@ -12,14 +12,15 @@ import {
   selectHelpCategoryBySlug,
 } from '@entities/help';
 import { HelpArticleSkeleton } from '@entities/help/ui/HelpArticleSkeleton';
-import { formatHelpDate } from '@entities/help';
 import { buildPublicSiteUrl } from '@shared/lib/publicSiteOrigin';
 import { buildHelpArticlePath, buildHelpCategoryPath } from '@shared/lib/seo/publicPagePaths';
 import { buildPublicPageHreflangUrls } from '@shared/lib/seo/buildPublicPageHreflangUrls';
 import { publicPageHreflangLinks } from '@shared/lib/seo/PublicPageHreflangLinks';
 import { ErrorMessage } from '@shared/ui/error-message';
 
-import { HelpPageShell } from './HelpLayout';
+import { HelpArticleListItem } from './HelpArticleListItem';
+import { HelpBreadcrumbs } from './HelpBreadcrumbs';
+import { HelpCategoryEmptyState } from './HelpCategoryEmptyState';
 
 export function HelpCategoryPage() {
   const { lang } = useLang();
@@ -71,29 +72,27 @@ export function HelpCategoryPage() {
         {publicPageHreflangLinks(hreflang)}
       </Helmet>
 
-      <HelpPageShell title={category.title} description={category.description}>
-        <ul className="help-center__article-index">
+      <HelpBreadcrumbs categorySlug={categorySlug} />
+
+      <header className="help-center__page-header">
+        <h1 className="help-center__title">{category.title}</h1>
+        {category.description ? <p className="help-center__lead">{category.description}</p> : null}
+      </header>
+
+      {articles.length === 0 ? (
+        <HelpCategoryEmptyState />
+      ) : (
+        <ul className="help-center__article-list">
           {articles.map((article) => (
-            <li key={article.slug} className="help-center__article-index-item">
-              <Link
-                to={buildHelpArticlePath(lang, categorySlug, article.slug)}
-                className="help-center__article-index-link"
-              >
-                <span className="help-center__article-index-title">{article.title}</span>
-                {article.description ? (
-                  <span className="help-center__article-index-description">
-                    {article.description}
-                  </span>
-                ) : null}
-                <time dateTime={article.updatedAt} className="help-center__article-index-date">
-                  {lang === 'en' ? 'Updated ' : 'Обновлено '}
-                  {formatHelpDate(article.updatedAt, lang)}
-                </time>
-              </Link>
-            </li>
+            <HelpArticleListItem
+              key={article.slug}
+              to={buildHelpArticlePath(lang, categorySlug, article.slug)}
+              title={article.title}
+              description={article.description}
+            />
           ))}
         </ul>
-      </HelpPageShell>
+      )}
     </>
   );
 }

@@ -63,9 +63,6 @@ export const handler: Handler = async (event: HandlerEvent, _context: HandlerCon
       return createErrorResponse(500, removeError.message);
     }
 
-    console.log(
-      `[delete-profile-avatar] removed ${paths.length} file(s) for user ${userId.substring(0, 8)}…`
-    );
     return createSuccessResponse({ deleted: paths.length, paths }, 200);
   } catch (error) {
     console.error('[delete-profile-avatar] Error:', error);

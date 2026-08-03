@@ -15,6 +15,7 @@
  */
 
 import type { Handler, HandlerEvent, HandlerContext } from '@netlify/functions';
+import { getErrorMessage } from './lib/error-utils';
 import { pingDatabase, query } from './lib/db';
 import { isEncryptionKeyConfigured } from './lib/crypto';
 
@@ -76,8 +77,8 @@ async function probeYookassaApi(apiUrl: string): Promise<CheckResult> {
         ? 'reachable (401/403 without merchant auth — expected)'
         : `reachable (HTTP ${res.status})`,
     };
-  } catch (e: any) {
-    return { ok: false, error: e?.message || 'fetch failed' };
+  } catch (e: unknown) {
+    return { ok: false, error: getErrorMessage(e) || 'fetch failed' };
   }
 }
 
@@ -152,8 +153,8 @@ export const handler: Handler = async (
         tenantStats = {
           activeYookassaSellersWithCredentials: Number.parseInt(r.rows[0]?.n || '0', 10),
         };
-      } catch (e: any) {
-        tenantStatsError = e?.message || 'tenant stats query failed';
+      } catch (e: unknown) {
+        tenantStatsError = getErrorMessage(e) || 'tenant stats query failed';
       }
     }
 
@@ -197,14 +198,14 @@ export const handler: Handler = async (
       headers,
       body: JSON.stringify(payload),
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     return {
       statusCode: 500,
       headers,
       body: JSON.stringify({
         success: false,
         status: 'unhealthy' as const,
-        error: error?.message || 'Health check failed',
+        error: getErrorMessage(error) || 'Health check failed',
       }),
     };
   }

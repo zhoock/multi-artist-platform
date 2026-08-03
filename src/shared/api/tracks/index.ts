@@ -198,10 +198,6 @@ export async function prepareAndUploadTrack(
   let trackTitle = titleOpt;
   if (!trackTitle) {
     const fileNameWithoutExt = file.name.replace(/\.[^/.]+$/, '');
-    console.log('📝 [prepareAndUploadTrack] Extracting title from filename:', {
-      originalFileName: file.name,
-      fileNameWithoutExt,
-    });
 
     // Убираем префиксы типа "01-", "03-", "1-", "10-" и т.д. в начале названия
     // Паттерн: опциональный номер (1-2 цифры), затем дефис, точка или пробел
@@ -211,13 +207,6 @@ export async function prepareAndUploadTrack(
     if (!trackTitle) {
       trackTitle = fileNameWithoutExt;
     }
-
-    console.log('📝 [prepareAndUploadTrack] Extracted title:', {
-      originalFileName: file.name,
-      extractedTitle: trackTitle,
-    });
-  } else {
-    console.log('📝 [prepareAndUploadTrack] Using provided title:', trackTitle);
   }
 
   if (!titleOpt) {
@@ -254,23 +243,9 @@ export async function prepareAndUploadTrack(
     throw new Error(errorCopy.invalidServerResponse);
   }
 
-  const { signedUrl, storagePath, authUserId } = signedUrlData;
-
-  console.log('🔐 [prepareAndUploadTrack] Got signed URL for upload:', {
-    authUserId,
-    storagePath,
-    hasSignedUrl: !!signedUrl,
-  });
+  const { signedUrl, storagePath } = signedUrlData;
 
   const fileSizeMB = (file.size / 1024 / 1024).toFixed(2);
-  console.log('📤 [prepareAndUploadTrack] Starting upload:', {
-    fileName,
-    storagePath,
-    fileSize: `${fileSizeMB} MB`,
-    fileType: file.type,
-    albumId,
-    trackId,
-  });
 
   // Для больших файлов (>50MB) добавляем предупреждение
   if (file.size > 50 * 1024 * 1024) {
@@ -292,9 +267,6 @@ export async function prepareAndUploadTrack(
   externalSignal?.addEventListener('abort', onExternalAbort);
 
   try {
-    console.log('🔄 [prepareAndUploadTrack] Uploading to Supabase Storage via signed URL...');
-    const uploadStartTime = Date.now();
-
     // Supabase Storage signed upload ожидает тот же формат, что и
     // storage-js uploadToSignedUrl: multipart FormData + x-upsert (не сырой PUT body).
     const formData = new FormData();
@@ -323,13 +295,6 @@ export async function prepareAndUploadTrack(
     }
 
     clearTimeout(timeoutId);
-    const uploadDuration = ((Date.now() - uploadStartTime) / 1000).toFixed(2);
-    console.log(`⏱️ [prepareAndUploadTrack] Upload completed in ${uploadDuration}s`);
-
-    console.log('✅ [prepareAndUploadTrack] File uploaded successfully:', {
-      fileName,
-      storagePath,
-    });
 
     const { buildStoragePublicObjectUrl } = await import('@config/supabase');
     const publicUrl = buildStoragePublicObjectUrl(storagePath);
@@ -351,12 +316,6 @@ export async function prepareAndUploadTrack(
         audioDuration: audioTech.audioDuration ?? duration,
       };
     }
-
-    console.log('✅ [prepareAndUploadTrack] Got public URL:', {
-      fileName,
-      url: publicUrl,
-      audioTech,
-    });
 
     return {
       fileName,

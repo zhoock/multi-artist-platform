@@ -40,6 +40,7 @@ import {
 import { readDashboardOpenIntent, stripDashboardOpenIntent } from '@shared/lib/dashboardOpenIntent';
 import { EmailVerificationOnboarding } from '@shared/lib/emailVerification';
 import { fetchWithAuthSession } from '@shared/lib/authFetch';
+import { getHttpErrorMessage, isConditionError } from '@shared/lib/errors/apiError';
 import { buildApiUrl } from '@shared/lib/artistQuery';
 import { isAlbumReadyToPublish } from '@entities/album/lib/isAlbumReadyToPublish';
 import { hasPublishedPublicReleases } from '@entities/album/lib/hasPublishedPublicReleases';
@@ -931,13 +932,14 @@ function UserDashboard() {
   useEffect(() => {
     if (!isArtist) return;
 
-    dispatch(fetchDashboardAlbums({ force: true, ownerDashboard: true })).catch((error: any) => {
-      // ConditionError - это нормально, condition отменил запрос
-      if (error?.name === 'ConditionError') {
-        return;
+    dispatch(fetchDashboardAlbums({ force: true, ownerDashboard: true })).catch(
+      (error: unknown) => {
+        if (isConditionError(error)) {
+          return;
+        }
+        console.error('Error fetching albums:', error);
       }
-      console.error('Error fetching albums:', error);
-    });
+    );
   }, [dispatch, lang, userId, albumsRouteScopeKey, isArtist]);
 
   // Статьи для вкладки posts: всегда `force`, иначе после смены аккаунта `fetchArticles.condition`
@@ -948,8 +950,8 @@ function UserDashboard() {
       return;
     }
 
-    dispatch(fetchArticles({ force: true, ownerDashboard: true })).catch((error: any) => {
-      if (error?.name === 'ConditionError') {
+    dispatch(fetchArticles({ force: true, ownerDashboard: true })).catch((error: unknown) => {
+      if (isConditionError(error)) {
         return;
       }
       console.error('Error fetching articles:', error);
@@ -1065,7 +1067,7 @@ function UserDashboard() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error((errorData as any)?.error || `HTTP error! status: ${response.status}`);
+        throw new Error(getHttpErrorMessage(errorData, response.status, 'error'));
       }
 
       // Обновляем данные из БД для синхронизации
@@ -1074,7 +1076,6 @@ function UserDashboard() {
         { type: 'trackContentChanged', albumId: album.albumId },
         { artistSlug: resolvePublicArtistSlugForRefresh() }
       );
-      console.log('✅ Tracks reordered successfully');
     } catch (error) {
       console.error('❌ Error reordering tracks:', error);
       setAlertModal({
@@ -1139,7 +1140,7 @@ function UserDashboard() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error((errorData as any)?.message || `HTTP error! status: ${response.status}`);
+        throw new Error(getHttpErrorMessage(errorData, response.status, 'message'));
       }
 
       // Обновляем локальное состояние
@@ -1158,7 +1159,6 @@ function UserDashboard() {
         { type: 'trackContentChanged', albumId },
         { artistSlug: resolvePublicArtistSlugForRefresh() }
       );
-      console.log('✅ Track title updated successfully');
     } catch (error) {
       console.error('❌ Error updating track title:', error);
       setAlertModal({
@@ -1224,7 +1224,7 @@ function UserDashboard() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error((errorData as any)?.message || `HTTP error! status: ${response.status}`);
+        throw new Error(getHttpErrorMessage(errorData, response.status, 'message'));
       }
 
       notifyPublicSurfaceChanged(
@@ -1387,7 +1387,7 @@ function UserDashboard() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error((errorData as any)?.error || `HTTP error! status: ${response.status}`);
+        throw new Error(getHttpErrorMessage(errorData, response.status, 'error'));
       }
 
       // Сразу убираем трек в UI (не ждём повторной загрузки)
@@ -1431,8 +1431,6 @@ function UserDashboard() {
         title: formatTrackDeletedSuccessMessage(trackTitle, ui),
         duration: TRACK_DELETED_TOAST_DURATION_MS,
       });
-
-      console.log('✅ Track deleted successfully:', { albumId, trackId });
     } catch (error) {
       console.error('❌ Error deleting track:', error);
       setAlertModal({
@@ -1594,7 +1592,7 @@ function UserDashboard() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error((errorData as any)?.error || `HTTP error! status: ${response.status}`);
+        throw new Error(getHttpErrorMessage(errorData, response.status, 'error'));
       }
 
       // Обновляем Redux store
@@ -1652,7 +1650,7 @@ function UserDashboard() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error((errorData as any)?.error || `HTTP error! status: ${response.status}`);
+        throw new Error(getHttpErrorMessage(errorData, response.status, 'error'));
       }
 
       // Обновляем Redux store
@@ -1678,8 +1676,6 @@ function UserDashboard() {
         title: formatAlbumDeletedSuccessMessage(deletedAlbumTitle, ui),
         duration: ALBUM_DELETED_TOAST_DURATION_MS,
       });
-
-      console.log('✅ Album deleted successfully:', albumId);
     } catch (error) {
       console.error('❌ Error deleting album:', error);
       setAlertModal({
@@ -2113,10 +2109,8 @@ function UserDashboard() {
           // Небольшая задержка для гарантии обновления БД
           await new Promise((resolve) => setTimeout(resolve, 300));
           await dispatch(fetchDashboardAlbums({ force: true, ownerDashboard: true })).unwrap();
-          console.log('✅ [handleTrackUpload] Albums refreshed from database');
-        } catch (fetchError: any) {
-          // ConditionError - это нормально, condition отменил запрос
-          if (fetchError?.name !== 'ConditionError') {
+        } catch (fetchError: unknown) {
+          if (!isConditionError(fetchError)) {
             console.error('⚠️ Failed to refresh albums:', fetchError);
           }
         }
@@ -2423,32 +2417,14 @@ function UserDashboard() {
       const searchAlbumId = updatedAlbum?.albumId || editAlbumModal.albumId;
 
       try {
-        console.log('🔄 [UserDashboard] Fetching albums after save...', {
-          originalAlbumId: editAlbumModal.albumId,
-          updatedAlbumId: updatedAlbum?.albumId,
-          isNewAlbum: !editAlbumModal.albumId,
-        });
         const fetchPayload = await dispatch(
           fetchDashboardAlbums({ force: true, ownerDashboard: true })
         ).unwrap();
         const result = fetchPayload.albums;
-        console.log('✅ [UserDashboard] Albums fetched:', {
-          count: result?.length || 0,
-          albumIds: result?.map((a: AlbumEditable) => a.albumId) || [],
-        });
 
         if (result && result.length > 0 && searchAlbumId) {
           const foundAlbum = result.find((a: AlbumEditable) => a.albumId === searchAlbumId);
-          if (foundAlbum) {
-            console.log('🔍 [UserDashboard] Updated album from fetchDashboardAlbums:', {
-              albumId: foundAlbum.albumId,
-              album: foundAlbum.album,
-              artistDisplayName: foundAlbum.artistDisplayName,
-              description: foundAlbum.description?.substring(0, 50) || '',
-              cover: foundAlbum.cover,
-              isNewAlbum: !editAlbumModal.albumId,
-            });
-          } else {
+          if (!foundAlbum) {
             console.warn(
               '⚠️ [UserDashboard] Updated album not found in fetchDashboardAlbums result:',
               {
@@ -2463,8 +2439,6 @@ function UserDashboard() {
         await new Promise((resolve) => setTimeout(resolve, 300));
 
         if (result && result.length > 0) {
-          console.log('🔄 [UserDashboard] Updating albumsData from fetchDashboardAlbums result...');
-
           const transformedAlbums = transformEditableAlbumsToAlbumData(
             result,
             siteArtistDisplayName,
@@ -2472,10 +2446,6 @@ function UserDashboard() {
           );
 
           setAlbumsData(withDashboardAlbumOwner(transformedAlbums, userId));
-          console.log('✅ [UserDashboard] albumsData updated:', {
-            count: transformedAlbums.length,
-            albumIds: transformedAlbums.map((a) => a.id),
-          });
         }
 
         await new Promise((resolve) => setTimeout(resolve, 200));

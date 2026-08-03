@@ -172,7 +172,6 @@ function logSupabaseClientConfigOnce(): void {
 
   const hasUrl = !!getSupabaseUrl();
   const hasAnonKey = !!getSupabaseAnonKey();
-  console.log('🔧 Supabase config:', { hasUrl, hasAnonKey });
 
   const env = getSafeEnv();
   if (env.NODE_ENV !== 'production' && (!hasUrl || !hasAnonKey)) {

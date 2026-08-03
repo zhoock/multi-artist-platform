@@ -83,6 +83,28 @@
     .empty-state--inline & {
       font-size: var(--ms-1);
     }
+
+    .empty-state--search-no-results & {
+      font-size: 0.9375rem;
+      font-weight: 600;
+      line-height: 1.35;
+    }
+
+    .empty-state--search-no-results-content & {
+      font-size: 1.125rem;
+      font-weight: 700;
+    }
+  }
+
+  &--search-no-results {
+    align-items: flex-start;
+    gap: var(--ms-02);
+    padding: var(--ms-01) var(--ms-0);
+    text-align: start;
+  }
+
+  &--search-no-results-content {
+    padding: var(--ms-2) 0;
   }
 
   &__description {
@@ -96,6 +118,17 @@
     .empty-state--card &,
     .empty-state--inline & {
       margin: 0 0 var(--ms-0);
+    }
+
+    .empty-state--search-no-results & {
+      margin: 0;
+      font-size: 0.8125rem;
+      line-height: 1.45;
+      max-width: none;
+    }
+
+    .empty-state--search-no-results-content & {
+      font-size: 0.9375rem;
     }
 
     .empty-state--tab & {

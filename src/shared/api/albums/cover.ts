@@ -199,8 +199,8 @@ export async function commitCover(
           isObject(json) && isObject(json.data)
             ? {
                 hasBaseName: 'baseName' in json.data,
-                baseNameType: typeof (json.data as any).baseName,
-                baseNameValue: (json.data as any).baseName,
+                baseNameType: typeof json.data.baseName,
+                baseNameValue: json.data.baseName,
                 extractedBaseName,
               }
             : 'not an object',

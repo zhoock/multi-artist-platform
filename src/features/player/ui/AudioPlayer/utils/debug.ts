@@ -11,9 +11,4 @@ export const trackDebug = (label: string, data: Record<string, unknown> = {}) =>
     (window as any).__playerDebug ??= [];
     (window as any).__playerDebug.push(entry);
   }
-  // Debug логи отключены для чистоты консоли
-  // Раскомментируйте следующую строку для включения debug логов:
-  // if (process.env.NODE_ENV === 'development') {
-  //   console.log('[player-debug]', entry);
-  // }
 };

@@ -572,14 +572,6 @@ function mapAlbumToApiFormat(
         }
       }
 
-      // Логируем для отладки, если duration отсутствует
-      if (duration == null && track.track_id) {
-        console.log(
-          `[albums.ts] ⚠️ Track ${track.track_id} (${track.title}) has no duration. Raw value:`,
-          track.duration
-        );
-      }
-
       const lyrics =
         lyricsByTrackId.get(track.track_id) ??
         ({
@@ -957,64 +949,10 @@ function applyPublicTrackAccessPolicy(
 
 /** Загрузка одной языковой версии альбома (как раньше один ряд albums + треки). */
 async function loadAlbumDataFromRow(album: AlbumRow): Promise<AlbumData> {
-  const rowLang = album.lang;
-
   const [tracksRows, assetsByTrackId] = await Promise.all([
     fetchTracksRowsForAlbumPk(album.id),
     fetchTrackAssetsByAlbumPks([album.id]),
   ]);
-
-  if (album.album_id === '23-remastered') {
-    console.log(`[albums.ts GET] 🔍 DEBUG tracks query for 23-remastered:`, {
-      albumId: album.album_id,
-      albumUUID: album.id,
-      lang: album.lang,
-      tracksCount: tracksRows.length,
-      tracks: tracksRows.map((t) => ({
-        trackId: t.track_id,
-        title: t.title,
-        orderIndex: t.order_index,
-      })),
-    });
-
-    if (tracksRows.length > 3) {
-      console.log(`[albums.ts GET] ⚠️ ПРОБЛЕМА: Найдено ${tracksRows.length} треков вместо 3!`);
-      const allTracksCheck = await query<{
-        track_id: string;
-        title: string;
-        album_uuid: string;
-        album_created_at: Date;
-      }>(
-        `SELECT t.track_id, t.title, a.id as album_uuid, a.created_at as album_created_at
-                   FROM tracks t
-                   INNER JOIN albums a ON t.album_id = a.id
-                   WHERE a.album_id = $1 AND a.lang = $2
-                   ORDER BY a.created_at DESC, t.order_index ASC`,
-        [album.album_id, album.lang]
-      );
-
-      console.log(`[albums.ts GET] Все треки для album_id='23-remastered' (${album.lang}):`, {
-        totalTracksInDB: allTracksCheck.rows.length,
-        uniqueAlbumUUIDs: Array.from(new Set(allTracksCheck.rows.map((r) => r.album_uuid))),
-        currentAlbumUUID: album.id,
-        tracksForCurrentAlbum: tracksRows.length,
-      });
-    }
-  }
-
-  console.log(`[albums.ts GET] Tracks loaded for album ${album.album_id} (${album.lang}):`, {
-    tracksCount: tracksRows.length,
-    tracksWithDuration: tracksRows.filter((t) => t.duration != null).length,
-    tracksWithoutDuration: tracksRows.filter((t) => t.duration == null).length,
-    sampleTrack: tracksRows[0]
-      ? {
-          trackId: tracksRows[0].track_id,
-          title: tracksRows[0].title,
-          duration: tracksRows[0].duration,
-          durationType: typeof tracksRows[0].duration,
-        }
-      : null,
-  });
 
   const lyricsByTrackId = await buildLyricsMapForAlbumTracks(
     album.album_id,
@@ -1025,19 +963,6 @@ async function loadAlbumDataFromRow(album: AlbumRow): Promise<AlbumData> {
 
   const mapped = mapAlbumToApiFormat(album, tracksRows, lyricsByTrackId, {
     assetsByTrackId,
-  });
-  console.log(`[albums.ts GET] Album ${album.album_id} mapped tracks:`, {
-    tracksCount: mapped.tracks.length,
-    tracksWithDuration: mapped.tracks.filter((t) => t.duration != null).length,
-    tracksWithoutDuration: mapped.tracks.filter((t) => t.duration == null).length,
-    sampleTrack: mapped.tracks[0]
-      ? {
-          id: mapped.tracks[0].id,
-          title: mapped.tracks[0].title,
-          duration: mapped.tracks[0].duration,
-          durationType: typeof mapped.tracks[0].duration,
-        }
-      : null,
   });
 
   return mapped;
@@ -1054,10 +979,6 @@ export const handler: Handler = async (
   // Игнорируем запросы к /cover/draft и /cover/commit - они должны обрабатываться отдельными функциями
   const path = event.path || '';
   if (path.includes('/cover/draft') || path.includes('/cover/commit')) {
-    console.log(
-      '[albums.ts] Ignoring cover request, should be handled by dedicated function:',
-      path
-    );
     return createErrorResponse(
       404,
       'This endpoint should be handled by upload-cover-draft or commit-cover function. Check netlify.toml redirects.'
@@ -1264,13 +1185,6 @@ export const handler: Handler = async (
       const locale = data.translations?.[data.lang];
       const albumTitle = typeof data.album === 'string' ? data.album.trim() : '';
 
-      console.log('📝 POST /api/albums - Request data:', {
-        albumId: data.albumId,
-        lang: data.lang,
-        hasTranslations: !!data.translations,
-        bodyKeys: Object.keys(data),
-      });
-
       if (!data.albumId || !data.lang || !validateLang(data.lang)) {
         console.error('❌ POST /api/albums - Validation failed:', {
           missingFields: {
@@ -1384,14 +1298,6 @@ export const handler: Handler = async (
           return createErrorResponse(400, forbiddenPut);
         }
 
-        console.log('📝 PUT /api/albums - Request data:', {
-          albumId: data.albumId,
-          lang: data.lang,
-          hasTranslations: data.translations !== undefined,
-          hasRelease: data.release !== undefined,
-          hasButtons: data.buttons !== undefined,
-        });
-
         if (!data.albumId || !data.lang || !validateLang(data.lang)) {
           return createErrorResponse(
             400,
@@ -1424,9 +1330,6 @@ export const handler: Handler = async (
             );
             return createErrorResponse(500, storageMigrate.message);
           }
-          console.log('[albums.ts PUT] Storage paths migrated after album id rename:', {
-            movedFiles: storageMigrate.movedFiles,
-          });
         }
 
         const localePatch = data.translations?.[data.lang];
@@ -1445,12 +1348,6 @@ export const handler: Handler = async (
           return undefined;
         })();
 
-        console.log('[albums.ts PUT] Searching for existing album:', {
-          albumId: data.albumId,
-          lang: data.lang,
-          userId,
-        });
-
         let existingAlbumResult;
         try {
           existingAlbumResult = await query<AlbumRow>(
@@ -1461,10 +1358,6 @@ export const handler: Handler = async (
             LIMIT 1`,
             [data.albumId, data.lang, userId]
           );
-          console.log('[albums.ts PUT] Album search result:', {
-            found: existingAlbumResult.rows.length > 0,
-            rowsCount: existingAlbumResult.rows.length,
-          });
         } catch (searchError) {
           console.error('❌ [albums.ts PUT] Error searching for album:', searchError);
           throw searchError;
@@ -1610,12 +1503,6 @@ export const handler: Handler = async (
               }
               await client.query('COMMIT');
               existingAlbum = insertRes.rows[0];
-              console.log('[albums.ts PUT] Created missing locale row and copied tracks', {
-                albumId: data.albumId,
-                lang: data.lang,
-                siblingLang: sibling.lang,
-                newAlbumPk,
-              });
             } catch (createErr) {
               try {
                 await client.query('ROLLBACK');
@@ -1700,23 +1587,6 @@ export const handler: Handler = async (
           };
         }
 
-        console.log('[albums.ts PUT] Found existing album:', {
-          id: existingAlbum.id,
-          albumId: existingAlbum.album_id,
-          lang: existingAlbum.lang,
-        });
-
-        // 🔍 DEBUG: Проверяем, что пришло в запросе
-        console.log('[albums.ts PUT] Request data:', {
-          albumId: data.albumId,
-          cover: data.cover,
-          coverType: typeof data.cover,
-          coverUndefined: data.cover === undefined,
-          coverNull: data.cover === null,
-          coverEmpty: data.cover === '',
-          allDataKeys: Object.keys(data),
-        });
-
         const updateFields: string[] = [];
         const updateValues: unknown[] = [];
         let paramIndex = 1;
@@ -1759,14 +1629,6 @@ export const handler: Handler = async (
         if (data.cover !== undefined && data.cover !== null && data.cover !== '') {
           updateFields.push(`cover = $${paramIndex++}::text`);
           updateValues.push(data.cover);
-          console.log('[albums.ts PUT] ✅ Cover will be updated to:', data.cover);
-        } else {
-          console.log('[albums.ts PUT] ⚠️ Cover NOT updated:', {
-            cover: data.cover,
-            undefined: data.cover === undefined,
-            null: data.cover === null,
-            empty: data.cover === '',
-          });
         }
         if (data.release !== undefined) {
           updateFields.push(`release = $${paramIndex++}::jsonb`);
@@ -1777,11 +1639,7 @@ export const handler: Handler = async (
           updateValues.push(JSON.stringify(data.buttons));
         }
         if (data.isPublic !== undefined) {
-          if (!existingAlbum.is_published) {
-            console.log(
-              '[albums.ts PUT] Ignoring isPublic on draft album (use publish: true to publish)'
-            );
-          } else {
+          if (existingAlbum.is_published) {
             updateFields.push(`is_public = $${paramIndex++}`);
             updateValues.push(data.isPublic);
           }
@@ -1802,19 +1660,6 @@ export const handler: Handler = async (
         } else {
           updateFields.push(`updated_at = CURRENT_TIMESTAMP`);
 
-          // 🔍 DEBUG: Проверяем, что будет отправлено в БД
-          console.log('[albums.ts PUT] Update query fields:', updateFields);
-          console.log('[albums.ts PUT] Update query values:', updateValues);
-          const coverIndex = updateFields.findIndex((f) => f.includes('cover'));
-          if (coverIndex >= 0) {
-            console.log('[albums.ts PUT] Cover will be updated:', {
-              field: updateFields[coverIndex],
-              value: updateValues[coverIndex],
-            });
-          } else {
-            console.log('[albums.ts PUT] ⚠️ Cover NOT in updateFields!');
-          }
-
           // Добавляем условия WHERE
           updateValues.push(existingAlbum.id);
 
@@ -1826,18 +1671,9 @@ export const handler: Handler = async (
         RETURNING *
       `;
 
-          console.log('[albums.ts PUT] Executing update query:', {
-            query: updateQuery.substring(0, 200),
-            paramsCount: updateValues.length,
-            fieldsCount: updateFields.length,
-          });
-
           let updateResult;
           try {
             updateResult = await query<AlbumRow>(updateQuery, updateValues);
-            console.log('[albums.ts PUT] Update query executed successfully:', {
-              rowsUpdated: updateResult.rows.length,
-            });
           } catch (updateError) {
             console.error('❌ [albums.ts PUT] Error executing update query:', updateError);
             console.error('❌ [albums.ts PUT] Update query was:', updateQuery);
@@ -1901,20 +1737,10 @@ export const handler: Handler = async (
           }
         }
 
-        // 🔍 DEBUG: Проверяем, что пришло из БД
-        console.log('[albums.ts PUT] Raw cover from DB:', {
-          type: typeof updatedAlbum.cover,
-          value: updatedAlbum.cover,
-          stringified: JSON.stringify(updatedAlbum.cover),
-        });
-
         // Загружаем треки для обновлённого альбома
         let tracksResult: { rows: TrackRow[] };
         try {
           tracksResult = { rows: await fetchTracksRowsForAlbumPk(updatedAlbum.id) };
-          console.log('[albums.ts PUT] Tracks loaded:', {
-            count: tracksResult.rows.length,
-          });
         } catch (tracksError) {
           console.error('❌ [albums.ts PUT] Error loading tracks:', tracksError);
           throw tracksError;
@@ -1929,22 +1755,10 @@ export const handler: Handler = async (
             updatedAlbum.lang
           );
           mappedAlbum = mapAlbumToApiFormat(updatedAlbum, tracksResult.rows, putLyricsMap);
-          console.log('[albums.ts PUT] Album mapped successfully');
         } catch (mapError) {
           console.error('❌ [albums.ts PUT] Error mapping album:', mapError);
           throw mapError;
         }
-
-        // 🔍 DEBUG: Проверяем, что получилось после маппинга
-        console.log('[albums.ts PUT] Mapped album:', {
-          albumId: mappedAlbum.albumId,
-          album: mappedAlbum.album, // Должно быть новое значение
-          artistDisplayName: mappedAlbum.artistDisplayName,
-          description: mappedAlbum.description?.substring(0, 50) || '',
-          cover: mappedAlbum.cover,
-          type: typeof mappedAlbum.cover,
-          stringified: JSON.stringify(mappedAlbum.cover),
-        });
 
         // Сохраняем в JSON через GitHub API (асинхронно, не блокируем ответ)
         const githubToken = process.env.GITHUB_TOKEN;
@@ -2041,7 +1855,7 @@ export const handler: Handler = async (
           albumId: string;
           lang: SupportedLang;
           trackOrders: Array<{ trackId: string; orderIndex: number }>;
-        }>(event.body, {} as any);
+        }>(event.body, { albumId: '', lang: 'en', trackOrders: [] });
 
         if (!data.albumId || !data.lang || !Array.isArray(data.trackOrders)) {
           return createErrorResponse(
@@ -2049,13 +1863,6 @@ export const handler: Handler = async (
             'Missing required fields: albumId, lang, trackOrders (ordered array of { trackId }, optional orderIndex ignored)'
           );
         }
-
-        console.log('🔄 PATCH /api/albums - Reorder tracks request:', {
-          albumId: data.albumId,
-          lang: data.lang,
-          trackOrders: data.trackOrders,
-          userId,
-        });
 
         // Находим все языковые версии альбома пользователя
         const albumRowsResult = await query<{ id: string; lang: string }>(
@@ -2116,12 +1923,6 @@ export const handler: Handler = async (
           client.release();
         }
 
-        console.log('✅ PATCH /api/albums - Tracks reordered:', {
-          albumId: data.albumId,
-          lang: data.lang,
-          tracksCount: orderedIds.length,
-        });
-
         return {
           statusCode: 200,
           headers: CORS_HEADERS,
@@ -2157,13 +1958,6 @@ export const handler: Handler = async (
           if (!validateLang(langFromQuery)) {
             return createErrorResponse(400, 'Invalid lang parameter. Must be "en" or "ru"');
           }
-
-          console.log('🗑️ DELETE /api/albums - Delete track request:', {
-            albumId: albumIdFromQuery,
-            trackId,
-            lang: langFromQuery,
-            userId,
-          });
 
           // Треки привязаны к UUID строки albums (отдельные строки на ru/en). Нельзя искать только
           // по lang из UI: трек, загруженный в русской версии, иначе не находится при удалении из EN.
@@ -2236,13 +2030,6 @@ export const handler: Handler = async (
             [albumIdFromQuery, String(trackId)]
           );
 
-          console.log('✅ DELETE /api/albums - Track deleted:', {
-            albumId: albumIdFromQuery,
-            trackId,
-            uiLang: langFromQuery,
-            trackRowLang: trackRow.lang,
-          });
-
           const remainingTracksResult = await query<{ count: string }>(
             `SELECT COUNT(*)::text AS count
              FROM tracks t
@@ -2256,9 +2043,6 @@ export const handler: Handler = async (
             await syncSharedAlbumMetadataAcrossLocales(userId, albumIdFromQuery, {
               isPublic: false,
               isPublished: false,
-            });
-            console.log('📋 DELETE /api/albums - Album reverted to draft (no tracks left):', {
-              albumId: albumIdFromQuery,
             });
           }
 
@@ -2292,12 +2076,6 @@ export const handler: Handler = async (
             'Missing required fields: albumId, lang (must be "en" or "ru")'
           );
         }
-
-        console.log('🗑️ DELETE /api/albums - Request data:', {
-          albumId: data.albumId,
-          lang: data.lang,
-          userId,
-        });
 
         // Сначала находим все записи альбома пользователя (все языковые версии)
         const findAlbumsResult = await query<AlbumRow>(
@@ -2397,12 +2175,6 @@ export const handler: Handler = async (
 
                 if (deleteError) {
                   console.warn('⚠️ Failed to delete cover files from storage:', deleteError);
-                } else {
-                  console.log('✅ Cover files deleted from storage:', {
-                    albumId: data.albumId,
-                    coversCount: uniqueCovers.length,
-                    variantsCount: allCoverPaths.length,
-                  });
                 }
               }
             }
@@ -2411,11 +2183,6 @@ export const handler: Handler = async (
             // Не блокируем удаление альбома, если обложки не удалились
           }
         }
-
-        console.log('✅ DELETE /api/albums - Album deleted:', {
-          albumId: data.albumId,
-          lang: data.lang,
-        });
 
         return {
           statusCode: 200,

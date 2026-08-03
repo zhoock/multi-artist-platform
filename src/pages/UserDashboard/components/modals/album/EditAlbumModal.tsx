@@ -1835,13 +1835,6 @@ export function EditAlbumModal({
   };
 
   const handlePublish = async () => {
-    console.log('🚀 [EditAlbumModal] handlePublish called', {
-      albumId,
-      hasAlbumId: !!albumId,
-      lang,
-      albumsFromStoreLength: albumsFromStore.length,
-    });
-
     const profileArtistName = getProfileArtistName();
     const effectiveArtistName = profileArtistName.trim();
 
@@ -1865,10 +1858,6 @@ export function EditAlbumModal({
 
       finalAlbumId = generateAlbumIdFromTitle(formData.title);
       lookupAlbumId = finalAlbumId;
-      console.log('🆕 [EditAlbumModal] Generated albumId for new album:', {
-        title: formData.title,
-        generatedAlbumId: finalAlbumId,
-      });
     } else {
       const idProp = albumId;
       // Текущий slug в БД: store и ref после переименования надёжнее, чем один только проп.
@@ -1894,14 +1883,6 @@ export function EditAlbumModal({
     const originalAlbum = albumsFromStore.find((a: AlbumEditable) => a.albumId === lookupAlbumId);
     const exists = !!originalAlbum;
     const method = exists ? 'PUT' : 'POST';
-
-    console.log('📋 [EditAlbumModal] Album version check:', {
-      originalAlbumId: albumId,
-      finalAlbumId,
-      lang,
-      exists,
-      method,
-    });
 
     // Если версии нет, нужен хотя бы минимальный набор данных для создания
     if (!exists && !formData.title) {
@@ -2286,7 +2267,6 @@ export function EditAlbumModal({
 
           if (baseName) {
             newCover = baseName;
-            console.log('✅ [EditAlbumModal] Cover committed successfully:', { baseName });
           } else {
             console.warn('⚠️ [EditAlbumModal] Cover commit succeeded but baseName not found');
           }
@@ -2357,14 +2337,6 @@ export function EditAlbumModal({
     const fullName =
       effectiveArtistName && albumTitle ? `${effectiveArtistName} — ${albumTitle}` : albumTitle;
 
-    console.log('📝 [EditAlbumModal] Form data before save:', {
-      method,
-      lang,
-      formDataTitle: formData.title,
-      formDataArtist: effectiveArtistName,
-      originalAlbumTitle: originalAlbum?.album,
-    });
-
     // Семантические блоки (участники, продюсеры, …) синхронизируются в en/ru; пользовательские — только в текущей локали.
     const updateData: Record<string, unknown> = {
       albumId: finalAlbumId,
@@ -2392,21 +2364,8 @@ export function EditAlbumModal({
       ...(newCover ? { cover: newCover } : {}),
     };
 
-    console.log('📦 [EditAlbumModal] Update data prepared:', {
-      albumId: updateData.albumId,
-      lang: updateData.lang,
-      hasTranslations: !!updateData.translations,
-      hasRelease: !!updateData.release,
-      hasButtons: !!updateData.buttons,
-    });
-
     try {
       const token = getToken();
-      console.log('🔐 [EditAlbumModal] Token check:', {
-        hasToken: !!token,
-        tokenLength: token?.length || 0,
-        tokenPreview: token ? `${token.substring(0, 20)}...` : 'null',
-      });
 
       if (!token) {
         console.error('❌ [EditAlbumModal] No token found! Cannot save album.');
@@ -2420,16 +2379,6 @@ export function EditAlbumModal({
         return;
       }
 
-      console.log('📤 [EditAlbumModal] Sending request:', {
-        url: '/api/albums',
-        method,
-        lang: normalizedLang,
-        albumId: updateData.albumId,
-        hasCover: !!updateData.cover,
-        hasToken: !!token,
-        tokenLength: token?.length || 0,
-      });
-
       const response = await fetchWithAuthSession('/api/albums', {
         method,
         headers: {
@@ -2437,13 +2386,6 @@ export function EditAlbumModal({
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(updateData),
-      });
-
-      console.log('📥 [EditAlbumModal] Response received:', {
-        status: response.status,
-        statusText: response.statusText,
-        ok: response.ok,
-        contentType: response.headers.get('content-type'),
       });
 
       if (!response.ok) {
@@ -2487,29 +2429,10 @@ export function EditAlbumModal({
       }
 
       const result = await response.json();
-      console.log('✅ [EditAlbumModal] Success:', {
-        success: result.success,
-        hasData: !!result.data,
-        dataLength: Array.isArray(result.data) ? result.data.length : 'not array',
-      });
-
-      // Детально логируем что вернул сервер
-      if (result.data && Array.isArray(result.data) && result.data.length > 0) {
-        const returnedAlbum = result.data[0];
-        console.log('📋 [EditAlbumModal] Album returned from server:', {
-          albumId: returnedAlbum.albumId,
-          album: returnedAlbum.album, // Должно быть "32"
-          artistDisplayName: returnedAlbum.artistDisplayName,
-          description: returnedAlbum.description?.substring(0, 50) || '',
-          cover: returnedAlbum.cover,
-        });
-      }
 
       // ВАЖНО: Форсим обновление Redux store для языка контента ПЕРЕД вызовом onNext
-      console.log('🔄 [EditAlbumModal] Forcing fetchDashboardAlbums for lang:', lang);
       try {
         await dispatch(fetchDashboardAlbums({ force: true, ownerDashboard: true })).unwrap();
-        console.log('✅ [EditAlbumModal] Redux store updated for', lang);
       } catch (fetchError) {
         console.error('❌ [EditAlbumModal] Failed to update Redux store:', fetchError);
         // Продолжаем выполнение даже если fetchDashboardAlbums не удался

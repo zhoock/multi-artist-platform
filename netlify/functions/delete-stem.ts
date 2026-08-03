@@ -93,8 +93,6 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
       return createErrorResponse(500, 'Failed to initialize Supabase client');
     }
 
-    console.log('🗑️ [delete-stem] Deleting stem file:', ownedStoragePath);
-
     // Удаляем файл из Storage
     const { error: deleteError } = await supabase.storage
       .from(STORAGE_BUCKET_NAME)
@@ -104,8 +102,6 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
       console.error('❌ [delete-stem] Error deleting file from Storage:', deleteError);
       return createErrorResponse(500, `Failed to delete file: ${deleteError.message}`);
     }
-
-    console.log('✅ [delete-stem] File successfully deleted from Storage:', ownedStoragePath);
 
     return createSuccessResponse(
       {

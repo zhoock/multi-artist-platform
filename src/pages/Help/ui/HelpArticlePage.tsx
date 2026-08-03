@@ -22,6 +22,9 @@ import { buildPublicPageHreflangUrls } from '@shared/lib/seo/buildPublicPageHref
 import { publicPageHreflangLinks } from '@shared/lib/seo/PublicPageHreflangLinks';
 import { ErrorMessage } from '@shared/ui/error-message';
 
+import { HelpArticleToc } from './HelpArticleToc';
+import { HelpBreadcrumbs } from './HelpBreadcrumbs';
+
 export function HelpArticlePage() {
   const { lang } = useLang();
   const dispatch = useAppDispatch();
@@ -57,7 +60,11 @@ export function HelpArticlePage() {
   const scrollToAnchor = (anchorId: string) => {
     const element = document.getElementById(anchorId);
     if (!element) return;
-    const offset = 80;
+    const rootStyles = getComputedStyle(document.documentElement);
+    const headerEl = document.querySelector('.header');
+    const headerHeight = headerEl?.getBoundingClientRect().height ?? 0;
+    const ms01 = parseFloat(rootStyles.getPropertyValue('--ms-01')) || 0;
+    const offset = headerHeight + ms01;
     const elementPosition = element.getBoundingClientRect().top;
     const offsetPosition = elementPosition + window.pageYOffset - offset;
     window.scrollTo({ top: offsetPosition, behavior: 'smooth' });
@@ -94,6 +101,8 @@ export function HelpArticlePage() {
     buildHelpArticlePath(routeLang, article.categorySlug, article.slug)
   );
 
+  const updatedLabel = lang === 'en' ? 'Updated ' : 'Обновлено ';
+
   return (
     <>
       <Helmet>
@@ -108,42 +117,32 @@ export function HelpArticlePage() {
         {publicPageHreflangLinks(hreflang)}
       </Helmet>
 
-      <h1 className="help-center__title">{article.title}</h1>
-      <time dateTime={article.updatedAt} className="help-center__date">
-        <small>
-          {lang === 'en' ? 'Last updated: ' : 'Последнее обновление: '}
-          {formatHelpDate(article.updatedAt, lang)}
-        </small>
-      </time>
+      <article className="help-center__article">
+        <div className="help-center__article-breadcrumbs">
+          <HelpBreadcrumbs categorySlug={categorySlug} articleTitle={article.title} />
+        </div>
 
-      {articleNavigation.length > 0 ? (
-        <nav
-          className="help-center__toc"
-          aria-label={lang === 'en' ? 'In this article' : 'В этой статье'}
-        >
-          <h2 className="help-center__toc-title">
-            {lang === 'en' ? 'In this article' : 'В этой статье'}
-          </h2>
-          <ul className="help-center__toc-list">
-            {articleNavigation.map((item) => (
-              <li
-                key={item.id}
-                className={`help-center__toc-item help-center__toc-item--level-${item.level}`}
-              >
-                <button
-                  type="button"
-                  className="help-center__toc-link"
-                  onClick={() => scrollToAnchor(item.id)}
-                >
-                  {item.text}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </nav>
-      ) : null}
+        <header className="help-center__article-header">
+          <h1 className="help-center__title">{article.title}</h1>
+          {article.description ? <p className="help-center__lead">{article.description}</p> : null}
+          <time dateTime={article.updatedAt} className="help-center__date">
+            {updatedLabel}
+            {formatHelpDate(article.updatedAt, lang)}
+          </time>
+        </header>
 
-      <HelpContentBlocks article={article} />
+        <div className="help-center__article-columns">
+          <div className="help-center__article-body">
+            <HelpContentBlocks article={article} />
+          </div>
+
+          <HelpArticleToc
+            items={articleNavigation}
+            onNavigate={scrollToAnchor}
+            className="help-center__article-toc"
+          />
+        </div>
+      </article>
     </>
   );
 }

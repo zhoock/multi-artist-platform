@@ -43,13 +43,6 @@ export function EditLyricsModal({
 
   // Обновляем состояние при изменении initialLyrics или initialAuthorship
   useEffect(() => {
-    if (process.env.NODE_ENV === 'development') {
-      console.log('[EditLyricsModal] initialLyrics changed:', {
-        initialLyricsLength: initialLyrics.length,
-        currentLyricsLength: lyricsText.length,
-        isOpen,
-      });
-    }
     // Обновляем только если модалка открыта, чтобы не сбрасывать изменения пользователя при закрытии
     if (isOpen) {
       setLyricsText(initialLyrics);
@@ -57,7 +50,6 @@ export function EditLyricsModal({
       setInitialLyricsValue(initialLyrics);
       setInitialAuthorshipValue(initialAuthorship || '');
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialLyrics, initialAuthorship, isOpen]);
 
   // Проверка наличия изменений

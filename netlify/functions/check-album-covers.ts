@@ -36,8 +36,6 @@ export const handler: Handler = async (event: HandlerEvent) => {
   }
 
   try {
-    console.log('🔍 Проверяем имена обложек альбомов в БД...\n');
-
     // Загружаем все альбомы
     const albumsResult = await query<AlbumRow>(
       `SELECT a.id, a.album_id, ${ARTIST_DISPLAY_NAME_SQL} AS artist_display_name, a.album, a.cover, a.lang
@@ -66,15 +64,8 @@ export const handler: Handler = async (event: HandlerEvent) => {
     const needsUpdate = covers.filter((c) => c.needsUpdate);
     const alreadyUpdated = covers.filter((c) => !c.needsUpdate && c.coverImg);
 
-    console.log(`📊 Всего альбомов: ${covers.length}`);
-    console.log(`✅ Уже обновлено: ${alreadyUpdated.length}`);
-    console.log(`⚠️  Требуют обновления: ${needsUpdate.length}`);
-
     if (needsUpdate.length > 0) {
-      console.log('\n📋 Альбомы, требующие обновления:');
-      needsUpdate.forEach((c) => {
-        console.log(`  - ${c.albumId} (${c.lang}): "${c.coverImg}"`);
-      });
+      needsUpdate.forEach((c) => {});
     }
 
     return createSuccessResponse(

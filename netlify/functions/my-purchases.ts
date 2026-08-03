@@ -44,7 +44,6 @@ export const handler: Handler = async (
       }
 
       const purchases = await fetchPurchasesForAccountUser(userId);
-      console.log('✅ [my-purchases] Fetched purchases for user:', userId, purchases.length);
 
       return {
         statusCode: 200,
@@ -80,7 +79,6 @@ export const handler: Handler = async (
         return createErrorResponse(404, 'Purchase not found or already removed');
       }
 
-      console.log('✅ [my-purchases] Revoked purchase:', purchaseId, 'for user:', userId);
       return createSuccessMessageResponse('Purchase removed from library');
     } catch (error) {
       console.error('❌ [my-purchases] DELETE error:', error);

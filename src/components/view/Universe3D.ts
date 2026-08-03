@@ -1722,9 +1722,13 @@ export class Universe3D {
 
     // обновление шейдеров облака
     this.cloudGroups.forEach((cloud) => {
-      cloud.children.forEach((layer: any, i) => {
-        if (layer.material?.uniforms?.u_time) {
-          layer.material.uniforms.u_time.value = t + i * 5;
+      cloud.children.forEach((layer, i) => {
+        const mesh = layer as THREE.Mesh;
+        const material = mesh.material;
+        if (!material || Array.isArray(material)) return;
+        const shaderMaterial = material as THREE.ShaderMaterial;
+        if (shaderMaterial.uniforms?.u_time) {
+          shaderMaterial.uniforms.u_time.value = t + i * 5;
         }
       });
     });

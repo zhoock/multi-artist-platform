@@ -200,8 +200,6 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
     const draftKeyParts = draftKey.split('/');
     const draftFolder = `drafts/${draftKeyParts.slice(0, -1).join('/')}`;
 
-    console.log('Looking for draft files in:', draftFolder);
-
     // Получаем список всех файлов в папке черновика
     const { data: draftFiles, error: listError } = await supabase.storage
       .from(STORAGE_BUCKET_NAME)
@@ -226,17 +224,10 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
       return createErrorResponse(404, 'No cover files found in draft');
     }
 
-    console.log(`Found ${coverFiles.length} cover variants to commit`);
-
     // Определяем базовое имя из первого файла
     // Формат файлов: Groupe-Cover-Album-Name-{suffix}
     // Нужно извлечь часть до первого суффикса (-64, -128, -448, -896, -1344)
     const firstFileName = coverFiles[0].name;
-
-    console.log('Extracting base name from:', {
-      firstFileName,
-      allFiles: coverFiles.map((f) => f.name),
-    });
 
     // Извлекаем базовое имя, убирая все суффиксы
     // Паттерн: ищем последний суффикс перед расширением
@@ -249,23 +240,14 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
     if (baseNameMatch) {
       // Используем извлеченное базовое имя
       finalBaseName = baseNameMatch[1];
-      console.log('✅ Base name extracted via regex:', finalBaseName);
     } else {
       // Fallback: пытаемся извлечь через extractBaseName и убрать суффиксы вручную
       let baseName = extractBaseName(firstFileName);
-      console.log('Base name after extractBaseName:', baseName);
 
       // Убираем возможные суффиксы (новый формат без @2x и @3x)
       const beforeSuffix = baseName.replace(/(?:-64|-128|-448|-896|-1344)$/, '');
       finalBaseName = beforeSuffix || `${albumId}-cover`;
-      console.log('✅ Base name after removing suffix:', finalBaseName);
     }
-
-    console.log('📝 Final base name for album:', {
-      firstFileName,
-      finalBaseName,
-      albumId,
-    });
 
     // Удаляем предыдущие файлы обложки в Storage по фактическому `albums.cover` в БД
     // (имя базы из нового черновика может отличаться — иначе старые объекты не находились).
@@ -278,9 +260,6 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
     }
     if (pathsToRemove.size > 0) {
       const list = [...pathsToRemove];
-      console.log(
-        `[commit-cover] Removing ${list.length} previous cover object paths from storage`
-      );
       const { error: removeError } = await supabase.storage.from(STORAGE_BUCKET_NAME).remove(list);
       if (removeError) {
         console.warn(
@@ -365,8 +344,6 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
     if (commitErrors.length > 0) {
       console.warn(`Some files failed to commit: ${commitErrors.join(', ')}`);
     }
-
-    console.log(`✅ Committed ${committedFiles.length} cover variants`);
 
     // Получаем публичный URL базового файла для превью (используем 448.webp)
     // Используем UUID пользователя из токена

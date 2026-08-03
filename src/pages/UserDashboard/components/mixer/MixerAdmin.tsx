@@ -131,8 +131,13 @@ export function MixerAdmin({
   tabActive = true,
   onMountPinChange,
 }: MixerAdminProps) {
-  // ui.dashboard.mixer пока не полностью описан в типах IInterface, берём через any.
-  const t = useMemo(() => (ui as any)?.dashboard?.mixer ?? {}, [ui]);
+  // Часть ключей mixer ещё не описана в IInterface — доступ через index signature.
+  const t = useMemo(
+    () =>
+      (ui?.dashboard?.mixer ?? {}) as NonNullable<IInterface['dashboard']>['mixer'] &
+        Record<string, string>,
+    [ui]
+  );
   const { lang } = useLang();
   const navigate = useNavigate();
   const location = useEffectiveLocation();
@@ -853,9 +858,7 @@ export function MixerAdmin({
                                     {String(trackIndex + 1).padStart(2, '0')}
                                   </span>
                                   <span className="user-dashboard__expanded-track-title">
-                                    {track.title ||
-                                      (track as any).trackTitle ||
-                                      (track as any).trackId}
+                                    {track.title || track.id}
                                   </span>
                                   <span className="user-dashboard__expanded-track-duration">
                                     {track.duration}

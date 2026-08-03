@@ -5,6 +5,7 @@
  */
 
 import type { HandlerEvent } from '@netlify/functions';
+import { getErrorMessage } from './error-utils';
 
 /** Диапазоны и одиночные IP из https://yookassa.ru/developers/using-api/webhooks */
 const YOOKASSA_IPV4_RULES: Array<{ cidr?: string; host?: string }> = [
@@ -141,8 +142,8 @@ export async function fetchPaymentFromYooKassaApi(
       return { ok: false, status: 502, error: 'Invalid payment JSON from YooKassa' };
     }
     return { ok: true, payment };
-  } catch (e: any) {
-    return { ok: false, status: 0, error: e?.message || 'fetch failed' };
+  } catch (e: unknown) {
+    return { ok: false, status: 0, error: getErrorMessage(e) || 'fetch failed' };
   }
 }
 

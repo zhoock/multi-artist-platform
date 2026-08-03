@@ -40,8 +40,6 @@ export const handler: Handler = async (event: HandlerEvent) => {
       return unauthorizedFromAuthHeader(event);
     }
 
-    console.log('🔄 Начинаем обновление имен обложек альбомов...\n');
-
     // Загружаем все альбомы
     const albumsResult = await query<AlbumRow>(
       `SELECT id, album_id, cover
@@ -49,8 +47,6 @@ export const handler: Handler = async (event: HandlerEvent) => {
        WHERE cover IS NOT NULL
        ORDER BY album_id, lang`
     );
-
-    console.log(`📋 Найдено альбомов: ${albumsResult.rows.length}`);
 
     const updates: Array<{ albumId: string; oldName: string; newName: string }> = [];
     let updatedCount = 0;
@@ -106,13 +102,8 @@ export const handler: Handler = async (event: HandlerEvent) => {
         });
 
         updatedCount++;
-        console.log(`✅ Обновлен альбом ${album.album_id}: "${oldName}" → "${newName}"`);
-      } else {
-        console.log(`⚠️  Пропущен альбом ${album.album_id}: "${oldName}" (неизвестный формат)`);
       }
     }
-
-    console.log(`\n📊 Итоги: обновлено ${updatedCount} альбомов`);
 
     return createSuccessResponse(
       {

@@ -280,15 +280,6 @@ export const handler: Handler = async (
           nextOrderIndex += TRACK_ORDER_INDEX_STEP;
         }
 
-        console.log('💾 [upload-tracks] Saving track to DB:', {
-          albumId: album.id,
-          trackId,
-          title,
-          duration,
-          url,
-          assignedOrderIndex,
-        });
-
         // #region agent log
         fetch('http://127.0.0.1:7242/ingest/0d98fd1d-24ff-4297-901e-115ee9f70125', {
           method: 'POST',
@@ -468,14 +459,6 @@ export const handler: Handler = async (
               masterPath: masterPathForDb,
             });
           }
-
-          console.log('✅ [upload-tracks] Track saved to DB:', {
-            trackId: savedTrack.track_id,
-            title: savedTrack.title,
-            dbId: savedTrack.id,
-            orderIndex: assignedOrderIndex,
-            hasPipeline,
-          });
 
           uploadedTracks.push({
             trackId,

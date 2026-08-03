@@ -14,6 +14,7 @@
  */
 
 import type { Handler, HandlerEvent } from '@netlify/functions';
+import { getErrorCode } from './lib/error-utils';
 import { query } from './lib/db';
 import { generateToken } from './lib/jwt';
 import * as bcrypt from 'bcryptjs';
@@ -840,8 +841,8 @@ export const handler: Handler = async (
             0
           );
           break;
-        } catch (error: any) {
-          const isUniqueViolation = error?.code === '23505';
+        } catch (error: unknown) {
+          const isUniqueViolation = getErrorCode(error) === '23505';
           if (isUniqueViolation && attempt < 1) {
             lastError = error;
             continue;

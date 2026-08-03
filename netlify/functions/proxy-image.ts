@@ -87,13 +87,6 @@ export const handler: Handler = async (
       decodedPath = decodedPath.split('?')[0];
     }
 
-    console.log('[proxy-image] Request details:', {
-      originalPath: imagePath,
-      decodedPath,
-      bucketName,
-      hasSpecialChars: /[()]/.test(decodedPath), // Проверяем наличие скобок
-    });
-
     // Формируем полный URL к изображению в Supabase Storage
     // Supabase Storage API требует кодирование пути через encodeURIComponent для каждого сегмента
     // Но слеши должны оставаться незакодированными
@@ -102,17 +95,8 @@ export const handler: Handler = async (
     const encodedPath = encodedSegments.join('/');
     const imageUrl = `${supabaseUrl}/storage/v1/object/public/${bucketName}/${encodedPath}`;
 
-    console.log('[proxy-image] Fetching from Supabase:', {
-      originalPath: imagePath,
-      decodedPath,
-      encodedPath,
-      imageUrl,
-    });
-
     // Загружаем изображение из Supabase
     let response = await fetch(imageUrl);
-
-    console.log('[proxy-image] Response status:', response.status, response.statusText);
 
     // Если файл не найден (404 или 400), пытаемся найти альтернативные варианты
     if (!response.ok && (response.status === 404 || response.status === 400)) {
@@ -149,13 +133,10 @@ export const handler: Handler = async (
           );
           const encodedFallbackPath = encodedFallbackSegments.join('/');
           const fallbackUrl = `${supabaseUrl}/storage/v1/object/public/${bucketName}/${encodedFallbackPath}`;
-          console.log('[proxy-image] Trying fallback path:', fallbackPath);
-          console.log('[proxy-image] Fallback URL:', fallbackUrl);
 
           const fallbackResponse = await fetch(fallbackUrl);
           if (fallbackResponse.ok) {
             response = fallbackResponse;
-            console.log('[proxy-image] Found fallback:', fallbackPath);
             break;
           }
         }
@@ -187,12 +168,10 @@ export const handler: Handler = async (
             );
             const encodedFallbackPath = encodedFallbackSegments.join('/');
             const fallbackUrl = `${supabaseUrl}/storage/v1/object/public/${bucketName}/${encodedFallbackPath}`;
-            console.log('[proxy-image] Trying fallback path (no suffix):', fallbackPath);
 
             const fallbackResponse = await fetch(fallbackUrl);
             if (fallbackResponse.ok) {
               response = fallbackResponse;
-              console.log('[proxy-image] Found fallback (no suffix):', fallbackPath);
               break;
             }
           }

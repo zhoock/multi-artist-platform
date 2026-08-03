@@ -100,7 +100,6 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
           storagePath = decodeURIComponent(pathMatch[1]);
           // Извлекаем имя файла из storage path
           fileName = storagePath.includes('/') ? storagePath.split('/').pop() || '' : storagePath;
-          console.log('📝 Extracted from proxy-image URL:', { storagePath, fileName });
         } catch (e) {
           console.error('Error decoding path from proxy-image URL:', e);
           return createErrorResponse(400, 'Invalid proxy-image URL format');
@@ -150,7 +149,6 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
 
     // Извлекаем базовое имя (без расширения и суффиксов размеров)
     const baseName = extractBaseName(fileName);
-    console.log('🗑️ Deleting hero image variants for base name:', baseName);
 
     // Находим все варианты этого изображения в Storage
     // Используем UUID пользователя из токена
@@ -167,7 +165,6 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
     }
 
     if (!existingFiles || existingFiles.length === 0) {
-      console.log('No files found in hero folder');
       return createSuccessResponse(
         {
           success: true,
@@ -187,7 +184,6 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
       .map((f) => `${heroFolder}/${f.name}`);
 
     if (filesToDelete.length === 0) {
-      console.log('No variants found for base name:', baseName);
       return createSuccessResponse(
         {
           success: true,
@@ -198,8 +194,6 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
       );
     }
 
-    console.log(`🗑️ Deleting ${filesToDelete.length} hero image variants:`, filesToDelete);
-
     // Удаляем все варианты
     const { error: deleteError } = await supabase.storage
       .from(STORAGE_BUCKET_NAME)
@@ -209,8 +203,6 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
       console.error('Error deleting hero image variants:', deleteError);
       return createErrorResponse(500, `Failed to delete files: ${deleteError.message}`);
     }
-
-    console.log(`✅ Successfully deleted ${filesToDelete.length} hero image variants`);
 
     return createSuccessResponse(
       {

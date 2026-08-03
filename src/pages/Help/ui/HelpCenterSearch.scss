@@ -1,0 +1,61 @@
+@use '../../../scss/abstracts/mixins' as *;
+
+.help-center-search {
+  margin-block-start: var(--ms-01);
+
+  &--home {
+    margin-block: var(--ms-3) var(--ms-3);
+  }
+
+  &__field {
+    display: flex;
+    align-items: center;
+    gap: var(--ms-01);
+    padding-block-end: var(--ms-01);
+    border-block-end: 1px solid var(--accent-color, #998238);
+  }
+
+  &__icon {
+    flex-shrink: 0;
+    color: var(--warm-concrete, #9b9b9a);
+  }
+
+  &__input {
+    flex: 1 1 auto;
+    min-inline-size: 0;
+    padding: 0;
+    color: var(--text-color, #ffffff);
+    font: inherit;
+    font-size: 1rem;
+    background: transparent;
+    border: none;
+    outline: none;
+
+    &::placeholder {
+      color: var(--warm-concrete, #9b9b9a);
+    }
+
+    &::-webkit-search-cancel-button {
+      display: none;
+    }
+  }
+
+  &__clear {
+    display: grid;
+    flex-shrink: 0;
+    place-items: center;
+    inline-size: 1.5rem;
+    block-size: 1.5rem;
+    padding: 0;
+    color: var(--warm-concrete, #9b9b9a);
+    background: transparent;
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: color 160ms ease;
+
+    &:hover {
+      color: var(--text-color, #ffffff);
+    }
+  }
+}

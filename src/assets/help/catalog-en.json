@@ -18,6 +18,24 @@
       "title": "For listeners",
       "description": "Premium subscription and your artist collection.",
       "sortOrder": 3
+    },
+    {
+      "slug": "profile-settings",
+      "title": "Profile and settings",
+      "description": "Manage your profile, preferences, and account security.",
+      "sortOrder": 4
+    },
+    {
+      "slug": "technical",
+      "title": "Technical issues",
+      "description": "Common troubleshooting, compatibility, and service status.",
+      "sortOrder": 5
+    },
+    {
+      "slug": "rules-policy",
+      "title": "Rules and policy",
+      "description": "Terms of use, public offer, and privacy policy.",
+      "sortOrder": 6
     }
   ],
   "articles": [

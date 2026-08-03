@@ -137,12 +137,6 @@ export const handler: Handler = async (
         };
       }
 
-      console.log('[update-track-title.ts] ✅ Track title updated:', {
-        albumId: data.albumId,
-        trackId: data.trackId,
-        newTitle: title,
-      });
-
       return {
         statusCode: 200,
         headers,

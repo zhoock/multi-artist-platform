@@ -445,14 +445,6 @@ export const handler: Handler = async (
         0
       );
 
-      console.log('✅ User profile updated:', {
-        userId,
-        siteName: data.siteName,
-        theBandRuLength: data.theBandRu?.length || 0,
-        theBandEnLength: data.theBandEn?.length || 0,
-        headerImagesLength: data.headerImages?.length || 0,
-      });
-
       return {
         statusCode: 200,
         headers,

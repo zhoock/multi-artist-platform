@@ -57,7 +57,6 @@ export function loadCheckoutJs(): Promise<void> {
       // Даем библиотеке время на инициализацию
       setTimeout(() => {
         if (isCheckoutJsLoaded()) {
-          console.log('✅ YooKassa Checkout.js loaded successfully');
           resolve();
         } else {
           reject(new Error('Checkout.js script loaded but YooMoneyCheckout is not available'));
@@ -189,7 +188,6 @@ export async function getPaymentToken(
 
     // Обработка результата согласно документации
     if (result.status === 'success' && result.data?.response?.paymentToken) {
-      console.log('✅ Payment token received from Checkout.js');
       return { token: result.data.response.paymentToken };
     }
 

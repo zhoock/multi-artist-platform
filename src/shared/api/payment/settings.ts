@@ -98,12 +98,6 @@ export async function savePaymentSettings(
   data: SavePaymentSettingsRequest
 ): Promise<PaymentSettingsResponse> {
   try {
-    console.log('📤 Saving payment settings:', {
-      provider: data.provider,
-      hasShopId: !!data.shopId,
-      hasSecretKey: !!data.secretKey,
-    });
-
     const { provider, shopId, secretKey, isActive } = data;
     const response = await authFetch('/api/payment-settings', {
       method: 'POST',

@@ -56,8 +56,6 @@ export const handler: Handler = async (
       return createErrorResponse(400, 'Invalid email format.');
     }
 
-    console.log('🧪 [test-email] Sending test purchase email to:', email);
-
     // Тестовый email: namespace orderId/paymentId per request so re-clicking the test
     // endpoint doesn't trip the new idempotency lock (each call gets a fresh row).
     const testStamp = Date.now().toString(36).toUpperCase();
@@ -77,8 +75,6 @@ export const handler: Handler = async (
       console.error('❌ [test-email] Failed to send email:', result.error);
       return createErrorResponse(500, result.error || 'Failed to send email');
     }
-
-    console.log('✅ [test-email] Test email sent successfully to:', email);
 
     return {
       statusCode: 200,

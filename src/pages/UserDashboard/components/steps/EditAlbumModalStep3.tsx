@@ -28,7 +28,7 @@ import {
 
 interface EditAlbumModalStep3Props {
   formData: AlbumFormData;
-  onFormDataChange: (field: keyof AlbumFormData, value: any) => void;
+  onFormDataChange: (field: keyof AlbumFormData, value: AlbumFormData[keyof AlbumFormData]) => void;
   addRecordedAtDraft: RecordingFormDraft;
   addMixedAtDraft: RecordingFormDraft;
   addMasteringDraft: RecordingFormDraft;

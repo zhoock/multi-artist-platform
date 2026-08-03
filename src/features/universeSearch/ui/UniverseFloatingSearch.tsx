@@ -10,7 +10,10 @@ import {
 import { Search as SearchIcon, X as XIcon } from 'lucide-react';
 import type { SceneArtist } from '@components/view/Universe3D';
 import { useLang } from '@app/providers/lang';
+import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
+import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
+import { SearchNoResultsEmptyState } from '@shared/ui/emptyState';
 import {
   filterArtistsForSearch,
   matchedSlugsFromQuery,
@@ -42,6 +45,8 @@ export function UniverseFloatingSearch({
   onNavigateToArtist,
 }: UniverseFloatingSearchProps) {
   const { lang } = useLang();
+  const ui = useAppSelector((state) => selectUiDictionaryFirst(state, lang));
+  const searchCopy = ui?.search;
   const listId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
   const shellRef = useRef<HTMLDivElement>(null);
@@ -130,7 +135,15 @@ export function UniverseFloatingSearch({
     return () => document.removeEventListener('mousedown', onPointerDown);
   }, [collapse, expanded, hasQuery]);
 
-  const showDropdown = expanded && hasQuery && suggestions.length > 0;
+  const showResultsPanel = expanded && hasQuery;
+  const showSuggestions = showResultsPanel && suggestions.length > 0;
+  const showNoResults = showResultsPanel && suggestions.length === 0;
+
+  const artistsPlaceholder =
+    searchCopy?.artistsPlaceholder ?? (lang === 'ru' ? 'Поиск артистов...' : 'Search artists...');
+  const clearSearchLabel =
+    searchCopy?.clearSearch ?? (lang === 'ru' ? 'Очистить поиск' : 'Clear search');
+  const collapsedSearchLabel = lang === 'ru' ? 'Поиск' : 'Search';
 
   const handleInputKeyDown = (event: ReactKeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'Escape') {
@@ -143,7 +156,7 @@ export function UniverseFloatingSearch({
       return;
     }
 
-    if (!showDropdown || suggestions.length === 0) return;
+    if (!showSuggestions || suggestions.length === 0) return;
 
     if (event.key === 'ArrowDown') {
       event.preventDefault();
@@ -188,7 +201,7 @@ export function UniverseFloatingSearch({
           }
           role={!expanded ? 'button' : undefined}
           tabIndex={!expanded ? 0 : undefined}
-          aria-label={!expanded ? 'Search artists' : undefined}
+          aria-label={!expanded ? collapsedSearchLabel : undefined}
         >
           <SearchIcon
             {...dashboardActionIconProps({
@@ -199,7 +212,7 @@ export function UniverseFloatingSearch({
 
           {!expanded ? (
             <span className="universe-search__collapsed-label" aria-hidden>
-              Search
+              {collapsedSearchLabel}
             </span>
           ) : (
             <input
@@ -208,12 +221,12 @@ export function UniverseFloatingSearch({
               className="universe-search__input"
               type="text"
               value={query}
-              placeholder="Search artists..."
+              placeholder={artistsPlaceholder}
               autoComplete="off"
               spellCheck={false}
               aria-autocomplete="list"
-              aria-controls={`${listId}-list`}
-              aria-expanded={showDropdown}
+              aria-controls={showResultsPanel ? `${listId}-panel` : undefined}
+              aria-expanded={showResultsPanel}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={handleInputKeyDown}
               onBlur={() => {
@@ -230,7 +243,7 @@ export function UniverseFloatingSearch({
             <button
               type="button"
               className="universe-search__clear"
-              aria-label="Clear search"
+              aria-label={clearSearchLabel}
               onClick={clearSearch}
             >
               <XIcon {...dashboardActionIconProps({ size: 14 })} />
@@ -238,47 +251,63 @@ export function UniverseFloatingSearch({
           ) : null}
         </div>
 
-        {showDropdown ? (
-          <ul
-            id={`${listId}-list`}
-            className="universe-search__dropdown universe-search__dropdown--open"
-            role="listbox"
+        {showResultsPanel ? (
+          <div
+            id={`${listId}-panel`}
+            className={[
+              'universe-search__dropdown',
+              'universe-search__dropdown--open',
+              showNoResults ? 'universe-search__dropdown--empty' : '',
+            ]
+              .filter(Boolean)
+              .join(' ')}
           >
-            {suggestions.map((artist, index) => {
-              const subtitle = genreSubtitle(artist, lang);
-              const initial = artist.name.trim().charAt(0).toUpperCase() || '?';
-              const cover = artist.headerImages?.[0];
+            {showSuggestions ? (
+              <ul className="universe-search__options" role="listbox">
+                {suggestions.map((artist, index) => {
+                  const subtitle = genreSubtitle(artist, lang);
+                  const initial = artist.name.trim().charAt(0).toUpperCase() || '?';
+                  const cover = artist.headerImages?.[0];
 
-              return (
-                <li
-                  key={artist.publicSlug}
-                  role="option"
-                  aria-selected={index === activeIndex}
-                  className={[
-                    'universe-search__option',
-                    index === activeIndex ? 'universe-search__option--active' : '',
-                  ]
-                    .filter(Boolean)
-                    .join(' ')}
-                  onMouseEnter={() => setActiveIndex(index)}
-                  onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => selectArtist(artist.publicSlug)}
-                >
-                  {cover ? (
-                    <img className="universe-search__avatar" src={cover} alt="" loading="lazy" />
-                  ) : (
-                    <span className="universe-search__avatar-fallback" aria-hidden>
-                      {initial}
-                    </span>
-                  )}
-                  <div className="universe-search__meta">
-                    <div className="universe-search__name">{artist.name}</div>
-                    {subtitle ? <div className="universe-search__sub">{subtitle}</div> : null}
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
+                  return (
+                    <li
+                      key={artist.publicSlug}
+                      role="option"
+                      aria-selected={index === activeIndex}
+                      className={[
+                        'universe-search__option',
+                        index === activeIndex ? 'universe-search__option--active' : '',
+                      ]
+                        .filter(Boolean)
+                        .join(' ')}
+                      onMouseEnter={() => setActiveIndex(index)}
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => selectArtist(artist.publicSlug)}
+                    >
+                      {cover ? (
+                        <img
+                          className="universe-search__avatar"
+                          src={cover}
+                          alt=""
+                          loading="lazy"
+                        />
+                      ) : (
+                        <span className="universe-search__avatar-fallback" aria-hidden>
+                          {initial}
+                        </span>
+                      )}
+                      <div className="universe-search__meta">
+                        <div className="universe-search__name">{artist.name}</div>
+                        {subtitle ? <div className="universe-search__sub">{subtitle}</div> : null}
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : (
+              <SearchNoResultsEmptyState className="universe-search__no-results" />
+            )}
+          </div>
         ) : null}
       </div>
     </div>

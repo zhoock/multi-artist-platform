@@ -300,6 +300,17 @@ export interface IInterface {
   links?: {
     [key: string]: string;
   };
+  search?: {
+    noResultsTitle: string;
+    noResultsDescription: string;
+    clearSearch?: string;
+    artistsPlaceholder?: string;
+    helpPlaceholder?: string;
+  };
+  help?: {
+    categoryEmptyTitle: string;
+    categoryEmptyDescription: string;
+  };
   stems?: {
     [key: string]: string;
   };

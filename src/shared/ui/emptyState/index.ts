@@ -5,3 +5,4 @@ export {
   type EmptyStateProps,
   type EmptyStateTone,
 } from './EmptyState';
+export { SearchNoResultsEmptyState } from './SearchNoResultsEmptyState';

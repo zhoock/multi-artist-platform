@@ -360,15 +360,6 @@ function mapArticleToApiFormat(article: ArticleRow, options?: MapArticleOptions)
       article.updated_at != null ? new Date(article.updated_at as Date).toISOString() : undefined,
   };
 
-  console.log('[mapArticleToApiFormat] Mapped article:', {
-    articleId: result.articleId,
-    nameArticle: result.nameArticle,
-    detailsType: typeof article.details,
-    detailsLength: Array.isArray(result.details) ? result.details.length : 'not array',
-    firstDetail:
-      Array.isArray(result.details) && result.details.length > 0 ? result.details[0] : null,
-  });
-
   return result;
 }
 
@@ -657,12 +648,6 @@ export const handler: Handler = async (
       }
 
       if (includeDrafts) {
-        console.log('[articles-api] GET with includeDrafts:', {
-          includeDrafts,
-          hasUserId: !!userId,
-          userId,
-          hasAuthHeader: !!(event.headers?.authorization || event.headers?.Authorization),
-        });
       }
       if (includeDrafts && !userId) {
         return unauthorizedFromAuthHeader(event);
@@ -908,12 +893,6 @@ export const handler: Handler = async (
     }
 
     if (event.httpMethod === 'PUT') {
-      console.log('[articles-api PUT] Request received', {
-        hasUserId: !!userId,
-        userId: userId?.substring(0, 10) + '...',
-        queryParams: event.queryStringParameters,
-      });
-
       const artistUserId = requireArtistAccount(event);
       if (!artistUserId) {
         return userId ? forbiddenArtistAccountResponse(event) : unauthorizedFromAuthHeader(event);
@@ -922,7 +901,6 @@ export const handler: Handler = async (
       const { id } = event.queryStringParameters || {};
 
       if (!id) {
-        console.log('[articles-api PUT] Bad request: no id in query params');
         return createErrorResponse(400, 'Article ID is required (query parameter: id)');
       }
 
@@ -1084,10 +1062,6 @@ export const handler: Handler = async (
             try {
               const pathsToRemove = storagePathsToRemoveForArticleCoverImg(prev, userId);
               if (pathsToRemove.length > 0) {
-                console.log('[articles-api PUT] Removing previous article cover from storage:', {
-                  previousImg: prev,
-                  pathsToRemove,
-                });
                 await removeStorageObjectsExact(supabaseAdmin, pathsToRemove);
               } else {
                 console.warn(

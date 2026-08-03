@@ -1,4 +1,5 @@
 @use '../../../scss/abstracts/mixins' as *;
+@use '../../../shared/ui/emptyState/style';
 
 .universe-search {
   position: absolute;
@@ -6,10 +7,10 @@
   inset-block-start: var(--scene-chrome-offset-block, var(--ms-0));
   inset-inline-start: var(--scene-chrome-offset-inline, var(--ms-0));
   max-inline-size: calc(
-    100% - 2 *
-      var(--scene-chrome-offset-inline, var(--ms-0)) - var(--scene-chrome-size, 2.75rem) - var(
-        --ms-0
-      )
+    100% - var(--scene-chrome-offset-inline, var(--ms-0)) - var(
+        --scene-chrome-offset-inline,
+        var(--ms-0)
+      ) - var(--scene-chrome-size, 2.75rem) - var(--ms-0)
   );
   pointer-events: none;
 
@@ -165,6 +166,31 @@
       opacity: 1;
       transform: translateY(0);
       pointer-events: auto;
+    }
+
+    &--empty {
+      padding: 0;
+    }
+  }
+
+  &__options {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ms-02);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  &__no-results {
+    inline-size: 100%;
+
+    .empty-state__title {
+      color: var(--white);
+    }
+
+    .empty-state__description {
+      color: rgb(var(--white-rgb) / 55%);
     }
   }
 

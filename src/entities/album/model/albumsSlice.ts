@@ -234,23 +234,6 @@ export const fetchDashboardAlbums = createAsyncThunk<
               return wrapAlbumsResult([]);
             }
 
-            const firstAlbum = result.data[0];
-            const firstTrack = firstAlbum?.tracks?.[0];
-            console.log('[albumsSlice] ✅ Данные из API:', {
-              source: 'API',
-              albumsCount: result.data.length,
-              firstAlbumId: firstAlbum?.albumId,
-              firstTrack: firstTrack
-                ? {
-                    id: firstTrack.id,
-                    title: firstTrack.title,
-                    hasDuration: 'duration' in firstTrack,
-                    duration: firstTrack.duration,
-                    durationType: typeof firstTrack.duration,
-                  }
-                : null,
-            });
-
             return wrapAlbumsResult(normalize(result.data));
           }
           throw new Error('Failed to fetch albums. Invalid response format.');

@@ -290,6 +290,17 @@
       "premiumSuccessArchiveFull": "Коллекция заполнена",
       "premiumSuccessAddError": "Не удалось добавить артиста"
     },
+    "search": {
+      "noResultsTitle": "Ничего не найдено",
+      "noResultsDescription": "Попробуйте изменить запрос",
+      "clearSearch": "Очистить поиск",
+      "artistsPlaceholder": "Поиск артистов...",
+      "helpPlaceholder": "Поиск по справочному центру..."
+    },
+    "help": {
+      "categoryEmptyTitle": "Статьи скоро появятся",
+      "categoryEmptyDescription": "Мы готовим материалы для этой категории. Загляните позже."
+    },
     "links": {
       "home": "главная",
       "helpCenter": "Справочный центр",

@@ -32,7 +32,7 @@ interface EditAlbumModalStep4Props {
   producerRole: string;
   producerURL: string;
   editingProducerIndex: number | null;
-  onFormDataChange: (field: keyof AlbumFormData, value: any) => void;
+  onFormDataChange: (field: keyof AlbumFormData, value: AlbumFormData[keyof AlbumFormData]) => void;
   onAddBandMemberNameChange: (value: string) => void;
   onAddBandMemberRoleChange: (value: string) => void;
   onAddBandMemberURLChange: (value: string) => void;

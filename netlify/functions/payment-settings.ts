@@ -287,12 +287,6 @@ export const handler: Handler = async (
         return json(403, { success: false, error: 'Forbidden' });
       }
 
-      console.log('📥 Payment settings save request:', {
-        provider: data.provider,
-        hasShopId: !!data.shopId,
-        hasSecretKey: !!data.secretKey,
-      });
-
       if (!data.provider) {
         return json(400, {
           success: false,
@@ -341,7 +335,6 @@ export const handler: Handler = async (
       const skipValidation = process.env.SKIP_YOOKASSA_VALIDATION === 'true';
 
       if (!skipValidation && data.provider === 'yookassa' && data.shopId && data.secretKey) {
-        console.log('🔍 Validating YooKassa credentials...');
         try {
           const validation = await validateYooKassaCredentials(data.shopId, data.secretKey);
 
@@ -362,8 +355,6 @@ export const handler: Handler = async (
             //     message: validation.error || 'Проверьте правильность Shop ID и Secret Key',
             //   } as PaymentSettingsResponse),
             // };
-          } else {
-            console.log('✅ YooKassa credentials validated successfully');
           }
         } catch (validationError) {
           console.error('❌ YooKassa validation error:', validationError);
@@ -374,7 +365,7 @@ export const handler: Handler = async (
           );
         }
       } else if (skipValidation) {
-        console.log('ℹ️ YooKassa validation skipped (SKIP_YOOKASSA_VALIDATION=true)');
+        // Validation skipped via SKIP_YOOKASSA_VALIDATION
       }
 
       const settings = await savePaymentSettings({

@@ -138,11 +138,6 @@ export async function loadHeaderImagesFromDatabase(
       authHeader = getAuthHeader();
     }
 
-    console.log('📡 [loadHeaderImagesFromDatabase] Отправляем запрос к /api/user-profile', {
-      useAuth,
-      hasAuth: useAuth && 'Authorization' in authHeader && !!authHeader.Authorization,
-    });
-
     const response = await fetchWithAuthSession(
       buildApiUrl('/api/user-profile', {}, { includeArtist, artistSlugOverride: slug }),
       {
@@ -156,12 +151,6 @@ export async function loadHeaderImagesFromDatabase(
       }
     );
 
-    console.log('📡 [loadHeaderImagesFromDatabase] Ответ получен:', {
-      status: response.status,
-      ok: response.ok,
-      contentType: response.headers.get('content-type'),
-    });
-
     if (!response.ok) {
       console.warn('⚠️ [loadHeaderImagesFromDatabase] Запрос не успешен:', response.status);
       return [];
@@ -174,21 +163,9 @@ export async function loadHeaderImagesFromDatabase(
     }
 
     const result: UserProfileResponse = await response.json();
-    console.log('📡 [loadHeaderImagesFromDatabase] Результат:', {
-      success: result.success,
-      hasData: !!result.data,
-      headerImages: result.data?.headerImages,
-      headerImagesLength: result.data?.headerImages?.length || 0,
-    });
 
     if (result.success && result.data && result.data.headerImages) {
       const convertedImages = result.data.headerImages.map((url) => normalizeProxyImageUrl(url));
-
-      console.log('✅ [loadHeaderImagesFromDatabase] Header images после преобразования:', {
-        originalCount: result.data.headerImages.length,
-        convertedCount: convertedImages.length,
-        convertedImages,
-      });
 
       return convertedImages;
     }

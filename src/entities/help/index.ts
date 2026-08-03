@@ -40,3 +40,5 @@ export {
   createHelpContentAnchor,
 } from './lib/buildHelpArticleNavigation';
 export { formatHelpDate } from './lib/formatHelpDate';
+export { filterHelpArticlesForSearch } from './lib/filterHelpArticlesForSearch';
+export { resolveHelpCategoryIcon } from './lib/resolveHelpCategoryIcon';

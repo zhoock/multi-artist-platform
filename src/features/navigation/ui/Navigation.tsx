@@ -1,18 +1,20 @@
 // src/components/Navigation/Navigation.tsx
 import { memo } from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 import clsx from 'clsx';
 import { NavigationProps } from '@models';
 import { useLang } from '@app/providers/lang';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 import { selectPublicArtistSlug } from '@shared/model/currentArtist';
+import { isHelpLoaderPath } from '@entities/help/lib/helpRouteMatch';
 import { buildLocalizedPublicPathWithArtist } from '@shared/lib/seo/publicPagePaths';
 import { useEffectiveSearchParams } from '@shared/lib/hooks/useEffectiveLocation';
 import './style.scss';
 
 const NavigationComponent = ({ onToggle }: NavigationProps) => {
   const { lang } = useLang();
+  const location = useLocation();
   const ui = useAppSelector((state) => selectUiDictionaryFirst(state, lang));
   const [searchParams] = useEffectiveSearchParams();
   const publicArtistSlugFromStore = useAppSelector(selectPublicArtistSlug);
@@ -29,6 +31,10 @@ const NavigationComponent = ({ onToggle }: NavigationProps) => {
   const labels = {
     stems: menu.stems ?? fallbackLabels.stems,
   };
+
+  if (isHelpLoaderPath(location.pathname)) {
+    return null;
+  }
 
   return (
     <nav className="header__menu">
