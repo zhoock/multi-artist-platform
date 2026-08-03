@@ -233,10 +233,7 @@
   &__article-columns {
     display: grid;
     grid-area: columns;
-    grid-template-areas:
-      'toc'
-      'body';
-    gap: var(--ms-2);
+    grid-template-areas: 'body';
     min-inline-size: 0;
 
     @include breakpoint(desktops) {
@@ -248,11 +245,13 @@
   }
 
   &__article-toc {
+    display: none;
     grid-area: toc;
 
     @include breakpoint(desktops) {
       position: sticky;
       top: var(--help-sticky-offset);
+      display: block;
       align-self: start;
       max-block-size: calc(100dvh - var(--help-sticky-offset) - var(--ms-2));
       overflow-y: auto;
@@ -295,8 +294,10 @@
   }
 
   &__toc-link {
+    position: relative;
     display: block;
     padding: var(--ms-01) 0;
+    padding-inline-start: var(--ms-01);
     color: var(--text-color, #ffffff);
     font: inherit;
     font-size: 0.875rem;
@@ -307,8 +308,27 @@
     cursor: pointer;
     transition: color 0.2s ease;
 
+    &::before {
+      position: absolute;
+      inset-block: 0.35em;
+      inset-inline-start: 0;
+      inline-size: 1px;
+      content: '';
+      background: transparent;
+      transition: background-color 0.2s ease;
+    }
+
     &:hover {
       color: var(--accent-color, #998238);
+    }
+
+    &--active {
+      color: var(--accent-color, #998238);
+      font-weight: 600;
+
+      &::before {
+        background: var(--accent-color, #998238);
+      }
     }
   }
 

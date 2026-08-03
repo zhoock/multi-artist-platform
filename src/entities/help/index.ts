@@ -42,3 +42,6 @@ export {
 export { formatHelpDate } from './lib/formatHelpDate';
 export { filterHelpArticlesForSearch } from './lib/filterHelpArticlesForSearch';
 export { resolveHelpCategoryIcon } from './lib/resolveHelpCategoryIcon';
+export { resolveActiveHelpSectionIndex } from './lib/resolveActiveHelpSectionIndex';
+export { getHelpArticleHeadings } from './lib/getHelpArticleHeadings';
+export { useHelpArticleActiveSection } from './lib/useHelpArticleActiveSection';

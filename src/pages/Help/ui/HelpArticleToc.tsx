@@ -4,11 +4,17 @@ import { useLang } from '@app/providers/lang';
 
 type HelpArticleTocProps = {
   items: HelpArticleNavItem[];
-  onNavigate: (anchorId: string) => void;
+  activeSectionIndex?: number;
+  onNavigate: (sectionIndex: number) => void;
   className?: string;
 };
 
-export function HelpArticleToc({ items, onNavigate, className }: HelpArticleTocProps) {
+export function HelpArticleToc({
+  items,
+  activeSectionIndex = -1,
+  onNavigate,
+  className,
+}: HelpArticleTocProps) {
   const { lang } = useLang();
 
   if (items.length === 0) {
@@ -21,20 +27,30 @@ export function HelpArticleToc({ items, onNavigate, className }: HelpArticleTocP
     <nav className={['help-center__toc', className].filter(Boolean).join(' ')} aria-label={label}>
       <h2 className="help-center__toc-title">{label}</h2>
       <ol className="help-center__toc-list">
-        {items.map((item) => (
-          <li
-            key={item.id}
-            className={`help-center__toc-item help-center__toc-item--level-${item.level}`}
-          >
-            <button
-              type="button"
-              className="help-center__toc-link"
-              onClick={() => onNavigate(item.id)}
+        {items.map((item, index) => {
+          const isActive = index === activeSectionIndex;
+
+          return (
+            <li
+              key={`${item.text}-${index}`}
+              className={`help-center__toc-item help-center__toc-item--level-${item.level}`}
             >
-              {item.text}
-            </button>
-          </li>
-        ))}
+              <button
+                type="button"
+                className={[
+                  'help-center__toc-link',
+                  isActive ? 'help-center__toc-link--active' : null,
+                ]
+                  .filter(Boolean)
+                  .join(' ')}
+                aria-current={isActive ? 'location' : undefined}
+                onClick={() => onNavigate(index)}
+              >
+                {item.text}
+              </button>
+            </li>
+          );
+        })}
       </ol>
     </nav>
   );

@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useCallback } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Navigate, useParams } from 'react-router-dom';
 
@@ -13,6 +13,8 @@ import {
   selectHelpArticleBySlug,
   selectHelpArticleEntry,
   selectHelpCatalogStatus,
+  useHelpArticleActiveSection,
+  getHelpArticleHeadings,
 } from '@entities/help';
 import { HelpArticleSkeleton } from '@entities/help/ui/HelpArticleSkeleton';
 import { HelpContentBlocks } from '@entities/help/ui/HelpContentBlocks';
@@ -56,19 +58,28 @@ export function HelpArticlePage() {
   }, [articleEntry?.status, articleSlug, dispatch, lang]);
 
   const articleNavigation = useMemo(() => buildHelpArticleNavigation(article), [article]);
+  const { activeSectionIndex, notifySectionNavigate } = useHelpArticleActiveSection(
+    articleNavigation.length
+  );
 
-  const scrollToAnchor = (anchorId: string) => {
-    const element = document.getElementById(anchorId);
-    if (!element) return;
-    const rootStyles = getComputedStyle(document.documentElement);
-    const headerEl = document.querySelector('.header');
-    const headerHeight = headerEl?.getBoundingClientRect().height ?? 0;
-    const ms01 = parseFloat(rootStyles.getPropertyValue('--ms-01')) || 0;
-    const offset = headerHeight + ms01;
-    const elementPosition = element.getBoundingClientRect().top;
-    const offsetPosition = elementPosition + window.pageYOffset - offset;
-    window.scrollTo({ top: offsetPosition, behavior: 'smooth' });
-  };
+  const scrollToAnchor = useCallback(
+    (sectionIndex: number) => {
+      notifySectionNavigate(sectionIndex);
+
+      const element = getHelpArticleHeadings()[sectionIndex];
+      if (!element) return;
+
+      const rootStyles = getComputedStyle(document.documentElement);
+      const headerEl = document.querySelector('.header');
+      const headerHeight = headerEl?.getBoundingClientRect().height ?? 0;
+      const ms01 = parseFloat(rootStyles.getPropertyValue('--ms-01')) || 0;
+      const offset = headerHeight + ms01;
+      const elementPosition = element.getBoundingClientRect().top;
+      const offsetPosition = elementPosition + window.pageYOffset - offset;
+      window.scrollTo({ top: offsetPosition, behavior: 'smooth' });
+    },
+    [notifySectionNavigate]
+  );
 
   if (!article) {
     const status = articleEntry?.status ?? (catalogStatus === 'loading' ? 'loading' : 'idle');
@@ -138,6 +149,7 @@ export function HelpArticlePage() {
 
           <HelpArticleToc
             items={articleNavigation}
+            activeSectionIndex={activeSectionIndex}
             onNavigate={scrollToAnchor}
             className="help-center__article-toc"
           />
