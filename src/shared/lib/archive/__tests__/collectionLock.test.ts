@@ -1,5 +1,6 @@
 import { describe, expect, test } from '@jest/globals';
 
+import { EMPTY_BILLING_SNAPSHOT } from '@shared/api/billing';
 import {
   canRemoveCollectionArtist,
   formatCollectionArtistReplaceInDaysLabel,
@@ -107,6 +108,7 @@ describe('normalizeCollectionArchive', () => {
       slotsUsed: 2,
       slotsLimit: 3,
       inactiveCount: 0,
+      billing: EMPTY_BILLING_SNAPSHOT,
       artists: [
         artist(),
         artist({ id: '2', artistUserId: 'a2', isActive: false, lockedUntil: LOCKED_UNTIL }),

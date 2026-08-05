@@ -20,6 +20,7 @@ import {
   getPlanSlotsLimit,
   normalizeSubscriptionPlanSlug,
   validatePremiumSubscriptionPayment,
+  validateRebindSubscriptionPayment,
 } from '../subscription-billing';
 
 const mockedQuery = query as jest.MockedFunction<typeof query>;
@@ -57,18 +58,25 @@ function subscriptionRow(overrides: Record<string, unknown> = {}) {
 }
 
 describe('PLAN_CATALOG', () => {
-  test('defines explorer, collector, archivist with dev slot limits', () => {
-    expect(getPlanSlotsLimit('explorer')).toBe(1);
-    expect(getPlanSlotsLimit('collector')).toBe(2);
-    expect(getPlanSlotsLimit('archivist')).toBe(3);
+  test('defines explorer, collector, archivist with production slot limits', () => {
+    expect(getPlanSlotsLimit('explorer')).toBe(20);
+    expect(getPlanSlotsLimit('collector')).toBe(60);
+    expect(getPlanSlotsLimit('archivist')).toBe(100);
   });
 
   test('uses 1-hour support period in development', () => {
     const from = new Date('2026-06-20T12:00:00.000Z');
     const expires = computeSupportExpiresAt('explorer', from);
-    expect(expires.getTime() - from.getTime()).toBe(
-      PLAN_CATALOG.explorer.durationHours * 60 * 60 * 1000
-    );
+    expect(expires.getTime() - from.getTime()).toBe(60 * 60 * 1000);
+  });
+
+  test('uses 30-day support period in production', () => {
+    process.env.NODE_ENV = 'production';
+    process.env.YOOKASSA_TEST_MODE = 'false';
+    process.env.NETLIFY_DEV = 'false';
+    const from = new Date('2026-06-20T12:00:00.000Z');
+    const expires = computeSupportExpiresAt('explorer', from);
+    expect(expires.getTime() - from.getTime()).toBe(30 * 24 * 60 * 60 * 1000);
   });
 });
 
@@ -165,6 +173,34 @@ describe('validatePremiumSubscriptionPayment', () => {
   });
 });
 
+describe('validateRebindSubscriptionPayment', () => {
+  const amountsEqual = (a: string, b: string) => a === b;
+
+  test('accepts valid rebind payment metadata', () => {
+    const result = validateRebindSubscriptionPayment({
+      productType: 'premium_subscription',
+      userId: USER_ID,
+      kind: 'rebind',
+      amountValue: '1.00',
+      currency: 'RUB',
+      amountsEqual,
+    });
+    expect(result).toEqual({ valid: true });
+  });
+
+  test('rejects wrong kind', () => {
+    const result = validateRebindSubscriptionPayment({
+      productType: 'premium_subscription',
+      userId: USER_ID,
+      kind: 'initial',
+      amountValue: '1.00',
+      currency: 'RUB',
+      amountsEqual,
+    });
+    expect(result).toEqual({ valid: false, reason: 'kind metadata' });
+  });
+});
+
 describe('fulfillSubscriptionPayment', () => {
   beforeEach(() => {
     jest.useFakeTimers();
@@ -181,7 +217,7 @@ describe('fulfillSubscriptionPayment', () => {
       fakeQueryResult([
         subscriptionRow({
           plan: 'collector',
-          slots_limit: 2,
+          slots_limit: 60,
           expires_at: new Date('2026-06-20T13:00:00.000Z'),
         }),
       ])
@@ -194,21 +230,21 @@ describe('fulfillSubscriptionPayment', () => {
     });
 
     expect(result.plan).toBe('collector');
-    expect(result.slotsLimit).toBe(2);
+    expect(result.slotsLimit).toBe(60);
     expect(result.expiresAt?.getTime()).toBe(new Date('2026-06-20T13:00:00.000Z').getTime());
 
     const insertCall = mockedQuery.mock.calls[1];
     expect(insertCall?.[1]).toEqual([
       USER_ID,
       'collector',
-      2,
+      60,
       'pay-new',
       new Date('2026-06-20T12:00:00.000Z'),
       new Date('2026-06-20T13:00:00.000Z'),
     ]);
   });
 
-  test('upgrade on active subscription updates plan, slots, and new period', async () => {
+  test('upgrade on active subscription updates plan, slots, and new period without deactivating archive', async () => {
     mockedQuery
       .mockResolvedValueOnce(
         fakeQueryResult([subscriptionRow({ plan: 'explorer', slots_limit: 1 })])
@@ -217,7 +253,7 @@ describe('fulfillSubscriptionPayment', () => {
         fakeQueryResult([
           subscriptionRow({
             plan: 'archivist',
-            slots_limit: 3,
+            slots_limit: 100,
             expires_at: new Date('2026-06-20T13:00:00.000Z'),
           }),
         ])
@@ -231,50 +267,17 @@ describe('fulfillSubscriptionPayment', () => {
     });
 
     expect(result.plan).toBe('archivist');
-    expect(result.slotsLimit).toBe(3);
+    expect(result.slotsLimit).toBe(100);
 
     const updateCall = mockedQuery.mock.calls[1];
     expect(updateCall?.[1]?.[1]).toBe('archivist');
-    expect(updateCall?.[1]?.[2]).toBe(3);
+    expect(updateCall?.[1]?.[2]).toBe(100);
     expect(updateCall?.[1]?.[6]).toEqual(new Date('2026-06-20T13:00:00.000Z'));
 
-    const deactivateCall = mockedQuery.mock.calls[2];
-    expect(String(deactivateCall?.[0])).toContain('is_active = false');
-    expect(String(deactivateCall?.[0])).toContain('locked_until = NULL');
-    expect(deactivateCall?.[1]?.[0]).toBe(USER_ID);
+    expect(mockedQuery.mock.calls[2]).toBeUndefined();
   });
 
-  test('downgrade deactivates all archive artists on plan change', async () => {
-    mockedQuery
-      .mockResolvedValueOnce(
-        fakeQueryResult([subscriptionRow({ plan: 'archivist', slots_limit: 3 })])
-      )
-      .mockResolvedValueOnce(
-        fakeQueryResult([
-          subscriptionRow({
-            plan: 'explorer',
-            slots_limit: 1,
-            expires_at: new Date('2026-06-20T13:00:00.000Z'),
-          }),
-        ])
-      )
-      .mockResolvedValueOnce(fakeQueryResult([], 3));
-
-    const result = await fulfillSubscriptionPayment({
-      userId: USER_ID,
-      planSlug: 'explorer',
-      providerPaymentId: 'pay-downgrade',
-    });
-
-    expect(result.plan).toBe('explorer');
-    expect(result.slotsLimit).toBe(1);
-
-    const deactivateCall = mockedQuery.mock.calls[2];
-    expect(String(deactivateCall?.[0])).toContain('is_active = false');
-    expect(deactivateCall?.[1]?.[0]).toBe(USER_ID);
-  });
-
-  test('does not reset archive on same-plan renewal', async () => {
+  test('same-plan renewal does not deactivate archive artists', async () => {
     mockedQuery
       .mockResolvedValueOnce(
         fakeQueryResult([
@@ -337,5 +340,72 @@ describe('fulfillSubscriptionPayment', () => {
     const updateCall = mockedQuery.mock.calls[1];
     expect(updateCall?.[1]?.[4]).toBe(true);
     expect(updateCall?.[1]?.[5]).toEqual(new Date('2026-06-20T12:00:00.000Z'));
+  });
+
+  test('resubscribe on expired clears stale autorenew and dunning fields', async () => {
+    mockedQuery
+      .mockResolvedValueOnce(
+        fakeQueryResult([
+          subscriptionRow({
+            status: 'expired',
+            plan: 'explorer',
+            slots_limit: 20,
+          }),
+        ])
+      )
+      .mockResolvedValueOnce(
+        fakeQueryResult([
+          subscriptionRow({
+            status: 'active',
+            plan: 'explorer',
+            slots_limit: 20,
+            expires_at: new Date('2026-06-20T13:00:00.000Z'),
+          }),
+        ])
+      );
+
+    await fulfillSubscriptionPayment({
+      userId: USER_ID,
+      planSlug: 'explorer',
+      providerPaymentId: 'pay-resubscribe',
+    });
+
+    const updateSql = String(mockedQuery.mock.calls[1]?.[0]);
+    expect(updateSql).toContain('scheduled_plan = CASE WHEN $5 THEN NULL');
+    expect(updateSql).toContain('renewal_attempt_count = CASE WHEN $5 THEN 0');
+    expect(updateSql).toContain('first_failed_at = CASE WHEN $5 THEN NULL');
+    expect(updateSql).toContain('next_charge_at = CASE WHEN $5 THEN NULL');
+    expect(mockedQuery.mock.calls[1]?.[1]?.[4]).toBe(true);
+  });
+
+  test('active renewal does not clear autorenew fields in UPDATE', async () => {
+    mockedQuery
+      .mockResolvedValueOnce(
+        fakeQueryResult([
+          subscriptionRow({
+            status: 'active',
+            plan: 'explorer',
+            slots_limit: 20,
+          }),
+        ])
+      )
+      .mockResolvedValueOnce(
+        fakeQueryResult([
+          subscriptionRow({
+            status: 'active',
+            plan: 'explorer',
+            slots_limit: 20,
+            expires_at: new Date('2026-06-20T13:00:00.000Z'),
+          }),
+        ])
+      );
+
+    await fulfillSubscriptionPayment({
+      userId: USER_ID,
+      planSlug: 'explorer',
+      providerPaymentId: 'pay-renew-active',
+    });
+
+    expect(mockedQuery.mock.calls[1]?.[1]?.[4]).toBe(false);
   });
 });

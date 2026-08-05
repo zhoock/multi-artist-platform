@@ -103,6 +103,15 @@ export interface YooKassaPaymentApiShape {
   paid?: boolean;
   cancelled_at?: string;
   captured_at?: string;
+  payment_method?: {
+    id?: string;
+    saved?: boolean;
+    type?: string;
+    card?: {
+      last4?: string;
+      card_type?: string;
+    } | null;
+  } | null;
 }
 
 export async function fetchPaymentFromYooKassaApi(

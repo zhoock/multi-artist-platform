@@ -13,14 +13,17 @@ import {
   getClientIpFromEvent,
   isNotificationIpAllowed,
   metaString,
-  type YooKassaPaymentApiShape,
 } from './yookassa-webhook-verify';
+import { mapYooKassaPaymentToProviderPayment } from './subscription-provider-payment';
+import { providerPaymentKind } from './subscription-provider-payment';
+import { processSubscriptionProviderPayment } from './subscription-payment-router';
+import { isRenewalSubscriptionPaymentKind } from './subscription-renewal-fulfillment';
+import { isRebindSubscriptionPaymentKind } from './subscription-rebind-fulfillment';
 import {
-  fulfillSubscriptionPayment,
   PREMIUM_SUBSCRIPTION_PRODUCT_TYPE,
-  type SubscriptionPlanSlug,
   updateSubscriptionPaymentStatus,
   validatePremiumSubscriptionPayment,
+  validateRebindSubscriptionPayment,
 } from './subscription-billing';
 
 interface PaymentWebhookBody {
@@ -180,15 +183,25 @@ export async function handlePremiumSubscriptionWebhookIfApplicable(
   const productType = metaString(api.metadata, 'productType');
   const userId = metaString(api.metadata, 'userId');
   const plan = metaString(api.metadata, 'plan');
+  const kind = metaString(api.metadata, 'kind');
 
-  const paymentValidation = validatePremiumSubscriptionPayment({
-    productType,
-    userId,
-    plan,
-    amountValue: api.amount.value,
-    currency: api.amount.currency,
-    amountsEqual,
-  });
+  const paymentValidation = isRebindSubscriptionPaymentKind(kind)
+    ? validateRebindSubscriptionPayment({
+        productType,
+        userId,
+        kind,
+        amountValue: api.amount.value,
+        currency: api.amount.currency,
+        amountsEqual,
+      })
+    : validatePremiumSubscriptionPayment({
+        productType,
+        userId,
+        plan,
+        amountValue: api.amount.value,
+        currency: api.amount.currency,
+        amountsEqual,
+      });
 
   if (!paymentValidation.valid) {
     return jsonResponse(
@@ -202,8 +215,6 @@ export async function handlePremiumSubscriptionWebhookIfApplicable(
     );
   }
 
-  const planSlug = paymentValidation.planSlug;
-
   const syntheticId = buildSyntheticEventId(data);
   const reserved = await reserveWebhookEvent(syntheticId, data.event, data.object.id);
   if (!reserved) {
@@ -216,9 +227,26 @@ export async function handlePremiumSubscriptionWebhookIfApplicable(
 
   try {
     if (data.event === 'payment.succeeded') {
-      await handleSubscriptionPaymentSucceeded(api, userId, planSlug);
+      const providerPayment = mapYooKassaPaymentToProviderPayment(api);
+      if (!providerPayment) {
+        return jsonResponse(
+          200,
+          { success: true, processed: false, message: 'Unsupported payment status' },
+          headers
+        );
+      }
+      await processSubscriptionProviderPayment(providerPayment, userId);
     } else if (data.event === 'payment.canceled') {
-      await updateSubscriptionPaymentStatus(api.id, 'canceled');
+      const providerPayment = mapYooKassaPaymentToProviderPayment(api);
+      if (
+        providerPayment &&
+        (isRenewalSubscriptionPaymentKind(providerPaymentKind(providerPayment)) ||
+          isRebindSubscriptionPaymentKind(providerPaymentKind(providerPayment)))
+      ) {
+        await processSubscriptionProviderPayment(providerPayment, userId);
+      } else {
+        await updateSubscriptionPaymentStatus(api.id, 'canceled');
+      }
     } else if (data.event === 'payment.waiting_for_capture') {
       await updateSubscriptionPaymentStatus(api.id, 'waiting_for_capture');
     }
@@ -243,13 +271,4 @@ export async function handlePremiumSubscriptionWebhookIfApplicable(
       headers
     );
   }
-}
-
-async function handleSubscriptionPaymentSucceeded(
-  api: YooKassaPaymentApiShape,
-  userId: string,
-  planSlug: SubscriptionPlanSlug
-): Promise<void> {
-  await updateSubscriptionPaymentStatus(api.id, 'succeeded');
-  await fulfillSubscriptionPayment({ userId, planSlug, providerPaymentId: api.id });
 }

@@ -1,0 +1,86 @@
+[
+  {
+    "scenario": "album title change",
+    "status": "FAIL",
+    "evidence": "TimeoutError: locator.waitFor: Timeout 20000ms exceeded.\nCall log:\n  - waiting for locator('.user-dashboard__album-item, .user-dashboard__album-row, [id^=\"dashboard-album-row\"]').filter({ hasText: '23' }).first() to be visible\n    45 × locator resolved to hidden <div tabindex=\"0\" role=\"button\" aria-expanded=\"false\" aria-label=\"Expand album\" class=\"dashboard-expandable-row-trigger user-dashboard__album-header user-dashboard__album-item\">…</div>\n",
+    "syncPath": "album title → EditAlbumModal save → notifyPublicSurfaceChanged/albumDetails"
+  },
+  {
+    "scenario": "album description change",
+    "status": "FAIL",
+    "evidence": "TimeoutError: locator.waitFor: Timeout 20000ms exceeded.\nCall log:\n  - waiting for locator('.user-dashboard__album-item, .user-dashboard__album-row, [id^=\"dashboard-album-row\"]').filter({ hasText: '23' }).first() to be visible\n    45 × locator resolved to hidden <div tabindex=\"0\" role=\"button\" aria-expanded=\"false\" aria-label=\"Expand album\" class=\"dashboard-expandable-row-trigger user-dashboard__album-header user-dashboard__album-item\">…</div>\n",
+    "syncPath": "description → EditAlbumModal → home albums__description sync"
+  },
+  {
+    "scenario": "cover change",
+    "status": "SKIP",
+    "evidence": "No dedicated test image fixture provided; skipping invasive cover upload",
+    "syncPath": ""
+  },
+  {
+    "scenario": "release date change",
+    "status": "FAIL",
+    "evidence": "TimeoutError: locator.waitFor: Timeout 20000ms exceeded.\nCall log:\n  - waiting for locator('.user-dashboard__album-item, .user-dashboard__album-row, [id^=\"dashboard-album-row\"]').filter({ hasText: '23' }).first() to be visible\n    45 × locator resolved to hidden <div tabindex=\"0\" role=\"button\" aria-expanded=\"false\" aria-label=\"Expand album\" class=\"dashboard-expandable-row-trigger user-dashboard__album-header user-dashboard__album-item\">…</div>\n",
+    "syncPath": "release.date → EditAlbumModal → album-details__released-time"
+  },
+  {
+    "scenario": "track title change",
+    "status": "FAIL",
+    "evidence": "TimeoutError: locator.waitFor: Timeout 15000ms exceeded.\nCall log:\n  - waiting for locator('.user-dashboard__expanded-track-title').filter({ hasText: 'Слипер' }).first() to be visible\n",
+    "syncPath": "update-track-title → AlbumTracks/TrackList sync"
+  },
+  {
+    "scenario": "track reorder",
+    "status": "FAIL",
+    "evidence": "Error: Drag handles not found",
+    "syncPath": "dnd-kit reorder → public TrackList order"
+  },
+  {
+    "scenario": "track upload",
+    "status": "SKIP",
+    "evidence": "No audio fixture available",
+    "syncPath": ""
+  },
+  {
+    "scenario": "track visibility",
+    "status": "FAIL",
+    "evidence": "TimeoutError: locator.waitFor: Timeout 15000ms exceeded.\nCall log:\n  - waiting for locator('.user-dashboard__expanded-track-title').filter({ hasText: 'Швайс' }).first() to be visible\n",
+    "syncPath": "update-track-visibility → AlbumTracks filter hidden"
+  },
+  {
+    "scenario": "album visibility",
+    "status": "FAIL",
+    "evidence": "Error: Timeout waiting for public update. last=\"23 :: Home\\nEN\\nMixer\\nС\\nСмоляное Чучелко\\nAlbums\\n23\\nСмоляное Чучелко\\nPlay\\n1\\nСлипер\\n3:00\\n2\\nШвайс\\n2:57\\nPurchase\\niTunes\\nBandcamp\\nAmazon\\nStream\\nApple Music\\nВКонтакте\\nYouTube\\nSpotify\\nYandex\\nDeezer\\nTidal\\nMusic\\nGenre\"",
+    "syncPath": "update-album-visibility → public album/home catalog"
+  },
+  {
+    "scenario": "publish album",
+    "status": "SKIP",
+    "evidence": "No draft album available for artist (all albums published)",
+    "syncPath": ""
+  },
+  {
+    "scenario": "delete track",
+    "status": "SKIP",
+    "evidence": "No disposable track; refusing destructive delete on real catalog tracks",
+    "syncPath": ""
+  },
+  {
+    "scenario": "delete album",
+    "status": "SKIP",
+    "evidence": "No disposable test album (e2e/test); refusing destructive delete",
+    "syncPath": ""
+  },
+  {
+    "scenario": "credits change",
+    "status": "FAIL",
+    "evidence": "TimeoutError: locator.waitFor: Timeout 20000ms exceeded.\nCall log:\n  - waiting for locator('.user-dashboard__album-item, .user-dashboard__album-row, [id^=\"dashboard-album-row\"]').filter({ hasText: '23' }).first() to be visible\n    3 × locator resolved to hidden <div tabindex=\"0\" role=\"button\" aria-expanded=\"false\" aria-label=\"Expand album\" class=\"dashboard-expandable-row-trigger user-dashboard__album-header user-dashboard__album-item\">…</div>\n",
+    "syncPath": "cover photographer credits → AlbumDetailsArtwork sync"
+  },
+  {
+    "scenario": "links change",
+    "status": "FAIL",
+    "evidence": "TimeoutError: locator.getAttribute: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator('a.social-networks__link.icon-instagram').first()\n",
+    "syncPath": "socialLinksChanged → Footer social-networks list"
+  }
+]

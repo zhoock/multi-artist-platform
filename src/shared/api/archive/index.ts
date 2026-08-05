@@ -5,6 +5,7 @@
 
 import { getAuthHeader } from '@shared/lib/auth';
 import { fetchWithAuthSession } from '@shared/lib/authFetch';
+import type { BillingSnapshot } from '@shared/api/billing';
 
 export interface ArchiveStatus {
   isPremium: boolean;
@@ -34,8 +35,11 @@ export interface MyArchiveData {
   slotsLimit: number;
   inactiveCount?: number;
   subscriptionExpiresAt?: string | null;
+  billing: BillingSnapshot;
   artists: MyArchiveArtist[];
 }
+
+export type { BillingSnapshot } from '@shared/api/billing';
 
 export type ArchiveApiErrorCode =
   | 'ARCHIVE_SLOTS_LIMIT'

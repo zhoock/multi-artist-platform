@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { Route, Routes } from 'react-router-dom';
 import { ArticlePage } from '../ui/ArticlePage';
 import { renderWithProviders } from '@shared/lib/test-utils';
+import { EMPTY_BILLING_SNAPSHOT } from '@shared/api/billing';
 import type { ArchiveStatus } from '@shared/api/archive';
 import type { IArticles } from '@models';
 
@@ -43,6 +44,7 @@ jest.mock('@features/premiumSubscription', () => ({
     slotsLimit: 3,
     slotsUsed: 0,
     planSlug: null,
+    billing: EMPTY_BILLING_SNAPSHOT,
     refetch: async () => {},
   })),
 }));
@@ -158,6 +160,7 @@ describe('ArticlePage paywall', () => {
       slotsLimit: 3,
       slotsUsed: 0,
       planSlug: null,
+      billing: EMPTY_BILLING_SNAPSHOT,
       refetch: async () => {},
     });
     jest.mocked(useArtistArchiveStatus).mockReturnValue({
@@ -193,6 +196,7 @@ describe('ArticlePage paywall', () => {
       slotsLimit: 3,
       slotsUsed: 0,
       planSlug: null,
+      billing: EMPTY_BILLING_SNAPSHOT,
       refetch: async () => {},
     });
 
@@ -220,6 +224,7 @@ describe('ArticlePage paywall', () => {
       slotsLimit: 3,
       slotsUsed: 1,
       planSlug: 'explorer',
+      billing: EMPTY_BILLING_SNAPSHOT,
       refetch: async () => {},
     });
     jest.mocked(useArtistArchiveStatus).mockReturnValue({
@@ -255,6 +260,7 @@ describe('ArticlePage paywall', () => {
       slotsLimit: 3,
       slotsUsed: 1,
       planSlug: 'explorer',
+      billing: EMPTY_BILLING_SNAPSHOT,
       refetch: async () => {},
     });
     jest.mocked(useArtistArchiveStatus).mockReturnValue({
@@ -290,6 +296,7 @@ describe('ArticlePage paywall', () => {
       slotsLimit: 3,
       slotsUsed: 1,
       planSlug: 'explorer',
+      billing: EMPTY_BILLING_SNAPSHOT,
       refetch: async () => {},
     });
     jest.mocked(useArtistArchiveStatus).mockReturnValue({

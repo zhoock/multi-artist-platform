@@ -1,0 +1,361 @@
+/**
+ * Premium subscription renewal engine (PR-7): charge creation + period-end expiry.
+ */
+
+import { attachDevSucceededSubscriptionCheckout } from './complete-dev-payment';
+import { isDevPaymentModeEnabled } from './dev-payment-mode';
+import { query } from './db';
+import {
+  attachProviderPaymentId,
+  cleanupPendingRenewalPayment,
+  createPendingSubscriptionPayment,
+  getPlanAmountRub,
+  getPlanDefinition,
+  resolveRenewalChargePlanSlug,
+} from './subscription-billing';
+import { isSubscriptionAutoRenewEnabled } from './subscription-feature-flag';
+import {
+  mapDevSubscriptionPaymentToProviderPayment,
+  type SubscriptionProviderPayment,
+} from './subscription-provider-payment';
+import { processSubscriptionProviderPayment } from './subscription-payment-router';
+import { applySubscriptionPeriodEnded } from './subscription-renewal-fulfillment';
+import { buildRenewalSubscriptionPaymentPayload } from './subscription-yookassa';
+import { mapSubscriptionRow, type SubscriptionRow } from './subscriptions';
+import { getYooKassaEnvCredentials } from './yookassa-env';
+
+const RENEWAL_CLAIM_LOCK_MS = 30 * 60 * 1000;
+
+interface YooKassaCreateResponse {
+  id: string;
+  status: string;
+}
+
+export interface RenewalChargeClaimResult {
+  row: SubscriptionRow;
+  previousNextChargeAt: Date;
+}
+
+export interface RenewalCycleResult {
+  chargesAttempted: number;
+  chargesSkipped: number;
+  periodsEnded: number;
+  errors: number;
+}
+
+function subscriptionSelectFields(alias = 's'): string {
+  return `
+    ${alias}.id, ${alias}.user_id, ${alias}.status, ${alias}.plan, ${alias}.slots_limit,
+    ${alias}.provider, ${alias}.provider_subscription_id, ${alias}.started_at, ${alias}.expires_at,
+    ${alias}.payment_method_id, ${alias}.next_charge_at, ${alias}.renewal_attempt_count,
+    ${alias}.scheduled_plan, ${alias}.first_failed_at, ${alias}.created_at, ${alias}.updated_at`;
+}
+
+export async function claimSubscriptionForRenewalCharge(
+  subscriptionId: string,
+  now: Date = new Date()
+): Promise<RenewalChargeClaimResult | null> {
+  const lockUntil = new Date(now.getTime() + RENEWAL_CLAIM_LOCK_MS);
+
+  const claimed = await query<SubscriptionRow & { previous_next_charge_at: Date }>(
+    `WITH candidate AS (
+       SELECT id, next_charge_at AS previous_next_charge_at
+       FROM subscriptions
+       WHERE id = $1::uuid
+         AND next_charge_at IS NOT NULL
+         AND next_charge_at <= $2
+         AND status IN ('active', 'past_due')
+         AND payment_method_id IS NOT NULL
+         AND NOT EXISTS (
+           SELECT 1
+           FROM subscription_payments sp
+           WHERE sp.user_id = subscriptions.user_id
+             AND sp.kind = 'renewal'
+             AND sp.status IN ('pending', 'waiting_for_capture')
+         )
+     )
+     UPDATE subscriptions s
+     SET next_charge_at = $3,
+         updated_at = CURRENT_TIMESTAMP
+     FROM candidate c
+     WHERE s.id = c.id
+     RETURNING ${subscriptionSelectFields('s')}, c.previous_next_charge_at`,
+    [subscriptionId, now, lockUntil]
+  );
+
+  const row = claimed.rows[0];
+  if (!row) return null;
+
+  const { previous_next_charge_at, ...subscriptionRow } = row;
+  return {
+    row: subscriptionRow,
+    previousNextChargeAt: previous_next_charge_at,
+  };
+}
+
+/** Restores scheduler eligibility after a failed charge attempt (PR-7.1). */
+export async function rollbackRenewalChargeAttempt(params: {
+  subscriptionId: string;
+  userId: string;
+  restoreNextChargeAt: Date;
+  subscriptionPaymentId?: string;
+}): Promise<void> {
+  if (params.subscriptionPaymentId) {
+    await cleanupPendingRenewalPayment(params.subscriptionPaymentId, params.userId);
+  }
+
+  await query(
+    `UPDATE subscriptions
+     SET next_charge_at = $2,
+         updated_at = CURRENT_TIMESTAMP
+     WHERE id = $1::uuid
+       AND user_id = $3::uuid`,
+    [params.subscriptionId, params.restoreNextChargeAt, params.userId]
+  );
+}
+
+export async function listChargeReadySubscriptionIds(now: Date = new Date()): Promise<string[]> {
+  const r = await query<{ id: string }>(
+    `SELECT id
+     FROM subscriptions
+     WHERE status IN ('active', 'past_due')
+       AND payment_method_id IS NOT NULL
+       AND next_charge_at IS NOT NULL
+       AND next_charge_at <= $1
+     ORDER BY next_charge_at ASC
+     LIMIT 100`,
+    [now]
+  );
+  return r.rows.map((row) => row.id);
+}
+
+export async function listPeriodEndedSubscriptionIds(
+  now: Date = new Date()
+): Promise<{ id: string; user_id: string }[]> {
+  const r = await query<{ id: string; user_id: string }>(
+    `SELECT id, user_id
+     FROM subscriptions
+     WHERE status = 'cancel_at_period_end'
+       AND expires_at IS NOT NULL
+       AND expires_at <= $1
+     ORDER BY expires_at ASC
+     LIMIT 100`,
+    [now]
+  );
+  return r.rows;
+}
+
+async function getUserEmail(userId: string): Promise<string | null> {
+  const r = await query<{ email: string }>(`SELECT email FROM users WHERE id = $1::uuid LIMIT 1`, [
+    userId,
+  ]);
+  return r.rows[0]?.email?.trim() ?? null;
+}
+
+async function createYooKassaRenewalPayment(params: {
+  subscriptionPaymentId: string;
+  userId: string;
+  planSlug: string;
+  paymentMethodId: string;
+  customerEmail: string;
+}): Promise<{ paymentId: string; status: string }> {
+  const yookassaCreds = getYooKassaEnvCredentials();
+  if (!yookassaCreds) {
+    throw new Error('YooKassa is not configured');
+  }
+
+  const planDefinition = getPlanDefinition(params.planSlug);
+  const amountValue = getPlanAmountRub(params.planSlug).toFixed(2);
+  const payload = buildRenewalSubscriptionPaymentPayload({
+    amountValue,
+    description: planDefinition.description,
+    userId: params.userId,
+    planSlug: params.planSlug,
+    customerEmail: params.customerEmail,
+    paymentMethodId: params.paymentMethodId,
+  });
+
+  const apiUrl = process.env.YOOKASSA_API_URL || 'https://api.yookassa.ru/v3/payments';
+  const authHeader = Buffer.from(`${yookassaCreds.shopId}:${yookassaCreds.secretKey}`).toString(
+    'base64'
+  );
+  const idempotenceKey = `renewal-${params.subscriptionPaymentId}`;
+
+  const response = await fetch(apiUrl, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Basic ${authHeader}`,
+      'Idempotence-Key': idempotenceKey,
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(
+      `YooKassa renewal create failed: ${response.status} ${errorText.slice(0, 200)}`
+    );
+  }
+
+  const paymentData = (await response.json()) as YooKassaCreateResponse;
+  if (!paymentData.id) {
+    throw new Error('Invalid YooKassa renewal response');
+  }
+
+  return { paymentId: paymentData.id, status: paymentData.status };
+}
+
+async function processRenewalProviderPaymentInline(
+  userId: string,
+  providerPayment: SubscriptionProviderPayment
+): Promise<void> {
+  await processSubscriptionProviderPayment(providerPayment, userId, { devMode: true });
+}
+
+export async function attemptRenewalChargeForSubscription(
+  subscriptionId: string,
+  now: Date = new Date()
+): Promise<'attempted' | 'skipped' | 'error'> {
+  if (!isSubscriptionAutoRenewEnabled()) return 'skipped';
+
+  const claim = await claimSubscriptionForRenewalCharge(subscriptionId, now);
+  if (!claim) return 'skipped';
+
+  const subscription = mapSubscriptionRow(claim.row);
+  const paymentMethodId = subscription.paymentMethodId?.trim();
+  if (!paymentMethodId) return 'skipped';
+
+  const chargePlanSlug = resolveRenewalChargePlanSlug(subscription);
+  let subscriptionPaymentId: string | undefined;
+
+  const rollback = async () => {
+    await rollbackRenewalChargeAttempt({
+      subscriptionId: subscription.id,
+      userId: subscription.userId,
+      restoreNextChargeAt: claim.previousNextChargeAt,
+      subscriptionPaymentId,
+    });
+  };
+
+  try {
+    if (!isDevPaymentModeEnabled()) {
+      const customerEmail = await getUserEmail(subscription.userId);
+      if (!customerEmail) {
+        console.error('[renewal-engine] missing user email for receipt', {
+          userIdSuffix: `…${subscription.userId.slice(-6)}`,
+        });
+        await rollback();
+        return 'error';
+      }
+    }
+
+    subscriptionPaymentId = await createPendingSubscriptionPayment(
+      subscription.userId,
+      chargePlanSlug,
+      'renewal'
+    );
+
+    if (isDevPaymentModeEnabled()) {
+      const { paymentId } = await attachDevSucceededSubscriptionCheckout({ subscriptionPaymentId });
+      await attachProviderPaymentId(subscriptionPaymentId, paymentId);
+
+      const row = await query<{
+        id: string;
+        user_id: string;
+        provider: string;
+        provider_payment_id: string | null;
+        status: string;
+        amount: string;
+        currency: string;
+        plan: string;
+        kind?: string;
+      }>(
+        `SELECT id, user_id, provider, provider_payment_id, status, amount::text AS amount, currency, plan, kind
+         FROM subscription_payments WHERE id = $1`,
+        [subscriptionPaymentId]
+      );
+
+      const paymentRow = row.rows[0];
+      if (!paymentRow?.provider_payment_id) {
+        await rollback();
+        return 'error';
+      }
+
+      const providerPayment = mapDevSubscriptionPaymentToProviderPayment(
+        paymentRow,
+        paymentRow.provider_payment_id
+      );
+      if (!providerPayment) {
+        await rollback();
+        return 'error';
+      }
+
+      await processRenewalProviderPaymentInline(subscription.userId, providerPayment);
+      return 'attempted';
+    }
+
+    const customerEmail = (await getUserEmail(subscription.userId))!;
+    const { paymentId, status } = await createYooKassaRenewalPayment({
+      subscriptionPaymentId,
+      userId: subscription.userId,
+      planSlug: chargePlanSlug,
+      paymentMethodId,
+      customerEmail,
+    });
+
+    await attachProviderPaymentId(subscriptionPaymentId, paymentId);
+
+    if (status === 'succeeded') {
+      const providerPayment: SubscriptionProviderPayment = {
+        id: paymentId,
+        status: 'succeeded',
+        amount: {
+          value: getPlanAmountRub(chargePlanSlug).toFixed(2),
+          currency: 'RUB',
+        },
+        metadata: {
+          productType: 'premium_subscription',
+          userId: subscription.userId,
+          plan: chargePlanSlug,
+          kind: 'renewal',
+        },
+        paymentMethod: { id: paymentMethodId, saved: true },
+      };
+      await processRenewalProviderPaymentInline(subscription.userId, providerPayment);
+    }
+
+    return 'attempted';
+  } catch (error) {
+    console.error('[renewal-engine] renewal charge attempt failed', error);
+    await rollback();
+    return 'error';
+  }
+}
+
+export async function runRenewalCycle(now: Date = new Date()): Promise<RenewalCycleResult> {
+  const result: RenewalCycleResult = {
+    chargesAttempted: 0,
+    chargesSkipped: 0,
+    periodsEnded: 0,
+    errors: 0,
+  };
+
+  if (!isSubscriptionAutoRenewEnabled()) {
+    return result;
+  }
+
+  for (const { id, user_id } of await listPeriodEndedSubscriptionIds(now)) {
+    const ended = await applySubscriptionPeriodEnded(id, user_id);
+    if (ended) result.periodsEnded += 1;
+  }
+
+  for (const subscriptionId of await listChargeReadySubscriptionIds(now)) {
+    const outcome = await attemptRenewalChargeForSubscription(subscriptionId, now);
+    if (outcome === 'attempted') result.chargesAttempted += 1;
+    else if (outcome === 'skipped') result.chargesSkipped += 1;
+    else result.errors += 1;
+  }
+
+  return result;
+}

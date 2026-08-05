@@ -12,7 +12,8 @@
 import { query } from './db';
 import { activePurchaseFilter } from './purchase-schema';
 import { userHasActiveArtistInArchive } from './archive';
-import { viewerHasActiveSubscription } from './subscriptions';
+import { hasPremiumAccess } from './subscription-access';
+import { getViewerSubscription } from './subscriptions';
 
 export {
   getViewerSubscription,
@@ -25,6 +26,8 @@ export {
   activateArtistsInArchive,
   countUserArchiveSlots,
   deactivateAllArchiveArtists,
+  deactivateExcessArchiveArtists,
+  extendActiveArchiveLockedUntil,
   getArchiveStatusForArtist,
   getUserArchiveArtists,
   removeArtistFromArchive,
@@ -87,7 +90,7 @@ export async function viewerHasPremiumAccessToArtist(
   }
 
   const [hasSubscription, activeInArchive] = await Promise.all([
-    viewerHasActiveSubscription(viewerUserId),
+    getViewerSubscription(viewerUserId).then((sub) => hasPremiumAccess(sub)),
     userHasActiveArtistInArchive(viewerUserId, artistId),
   ]);
 

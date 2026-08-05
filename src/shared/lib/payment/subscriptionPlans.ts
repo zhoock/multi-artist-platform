@@ -10,39 +10,36 @@ export type SubscriptionPlanSlug = (typeof SUBSCRIPTION_PLAN_SLUGS)[number];
 
 export const DEFAULT_SUBSCRIPTION_PLAN: SubscriptionPlanSlug = 'explorer';
 
-/** Matches backend fallback when user has no subscription row. */
-export const SUBSCRIPTION_SLOTS_LIMIT_FALLBACK = 3;
+/** Dev/test support period when {@link isPremiumSubscriptionDevTestPricing} is true. */
+export const DEV_SUPPORT_PERIOD_HOURS = 1;
 
 export interface SubscriptionPlanDefinition {
   slotsLimit: number;
-  durationHours: number;
-  durationDays?: number;
+  durationDays: number;
   priceRubProduction: number;
 }
 
-// DEVELOPMENT VALUES.
-// Replace before production:
-//
-// Explorer:  20 artists / 30 days
-// Collector: 60 artists / 30 days
-// Archivist: 100 artists / 30 days
+/** Production plan catalog (30-day billing period). Dev pricing/period via env — see .env.example. */
 export const PLAN_CATALOG: Record<SubscriptionPlanSlug, SubscriptionPlanDefinition> = {
   explorer: {
-    slotsLimit: 1,
-    durationHours: 1,
+    slotsLimit: 20,
+    durationDays: 30,
     priceRubProduction: 149,
   },
   collector: {
-    slotsLimit: 2,
-    durationHours: 1,
+    slotsLimit: 60,
+    durationDays: 30,
     priceRubProduction: 149,
   },
   archivist: {
-    slotsLimit: 3,
-    durationHours: 1,
-    priceRubProduction: 149,
+    slotsLimit: 100,
+    durationDays: 30,
+    priceRubProduction: 199,
   },
 };
+
+/** Matches backend fallback when user has no subscription row. */
+export const SUBSCRIPTION_SLOTS_LIMIT_FALLBACK = PLAN_CATALOG.archivist.slotsLimit;
 
 export const PLAN_TIER_ORDER: Record<SubscriptionPlanSlug, number> = {
   explorer: 0,
@@ -158,15 +155,10 @@ export function formatPlanArtistLimitParts(
 }
 
 export function formatPlanPricePeriod(planSlug: SubscriptionPlanSlug, lang: 'en' | 'ru'): string {
-  const plan = PLAN_CATALOG[planSlug];
-  if (plan.durationDays != null) {
-    return lang === 'en' ? '/ month' : '/ мес.';
+  if (isPremiumSubscriptionDevTestPricing()) {
+    return lang === 'en' ? '/ hour' : '/ час';
   }
-  const hours = plan.durationHours;
-  if (lang === 'en') {
-    return hours === 1 ? '/ hour' : `/ ${hours} hours`;
-  }
-  return hours === 1 ? '/ час' : `/ ${hours} ч`;
+  return lang === 'en' ? '/ month' : '/ мес.';
 }
 
 export function formatPlanSupportDuration(
@@ -174,16 +166,16 @@ export function formatPlanSupportDuration(
   lang: 'en' | 'ru'
 ): string {
   const plan = PLAN_CATALOG[planSlug];
-  if (plan.durationDays != null) {
-    return lang === 'en'
-      ? `${plan.durationDays} days support period`
-      : `${plan.durationDays} дней поддержки`;
+  if (isPremiumSubscriptionDevTestPricing()) {
+    const hours = DEV_SUPPORT_PERIOD_HOURS;
+    if (lang === 'en') {
+      return hours === 1 ? '1 hour support period' : `${hours} hours support period`;
+    }
+    return hours === 1 ? '1 час поддержки' : `${hours} ч поддержки`;
   }
-  const hours = plan.durationHours;
-  if (lang === 'en') {
-    return hours === 1 ? '1 hour support period' : `${hours} hours support period`;
-  }
-  return hours === 1 ? '1 час поддержки' : `${hours} ч поддержки`;
+  return lang === 'en'
+    ? `${plan.durationDays} days support period`
+    : `${plan.durationDays} дней поддержки`;
 }
 
 export type PlanCardActionVariant = 'primary' | 'outline';
@@ -255,10 +247,59 @@ export function comparePlanTiers(a: SubscriptionPlanSlug, b: SubscriptionPlanSlu
   return 0;
 }
 
+/** Upsell target for Collection billing summary (mockup: Archivist when below top tier). */
+export function resolveRecommendedPlanSlug(
+  currentPlanSlug: SubscriptionPlanSlug | null
+): SubscriptionPlanSlug | null {
+  if (currentPlanSlug === 'archivist') return null;
+  return 'archivist';
+}
+
 /** True when switching between existing plans (not renew / first purchase). */
 export function shouldConfirmSubscriptionPlanChange(
   currentPlanSlug: SubscriptionPlanSlug | null,
   targetPlanSlug: SubscriptionPlanSlug
 ): boolean {
   return currentPlanSlug !== null && currentPlanSlug !== targetPlanSlug;
+}
+
+export type PlanChangeAction = 'checkout' | 'upgrade' | 'downgrade' | 'blocked_downgrade';
+
+/**
+ * Routes plan picker actions when autoprenew billing is active.
+ * Legacy resubscribe / first purchase always uses checkout (initial).
+ */
+export function resolvePlanChangeAction(params: {
+  currentPlanSlug: SubscriptionPlanSlug | null;
+  targetPlanSlug: SubscriptionPlanSlug;
+  billingStatus: 'active' | 'cancel_at_period_end' | 'past_due' | 'expired' | null;
+  hasPremiumAccess: boolean;
+}): PlanChangeAction {
+  const { currentPlanSlug, targetPlanSlug, billingStatus, hasPremiumAccess } = params;
+
+  if (!shouldConfirmSubscriptionPlanChange(currentPlanSlug, targetPlanSlug)) {
+    return 'checkout';
+  }
+
+  const tierCompare = comparePlanTiers(currentPlanSlug!, targetPlanSlug);
+
+  if (!hasPremiumAccess || billingStatus === 'expired' || billingStatus === null) {
+    return 'checkout';
+  }
+
+  // tierCompare < 0 => target tier is higher (upgrade); > 0 => downgrade
+  if (billingStatus === 'past_due' && tierCompare > 0) {
+    return 'blocked_downgrade';
+  }
+
+  if (billingStatus === 'active' || billingStatus === 'cancel_at_period_end') {
+    if (tierCompare < 0) return 'upgrade';
+    if (tierCompare > 0) return 'downgrade';
+  }
+
+  if (billingStatus === 'past_due' && tierCompare < 0) {
+    return 'upgrade';
+  }
+
+  return 'checkout';
 }

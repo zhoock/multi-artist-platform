@@ -16,17 +16,18 @@
 
 ## Индекс
 
-| ID      | Тема                                            | Документ                                                                                                                |
-| ------- | ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| —       | **Implementation status (PR-1…12)**             | [subscription-implementation-status.md](./subscription-implementation-status.md)                                        |
-| ADR-001 | Статус подписки — только backend                | [subscription-premium-billing.md](./subscription-premium-billing.md#adr-001-subscription-status-is-backend-only)        |
-| ADR-002 | BillingScreen — только через resolver           | [subscription-premium-billing.md](./subscription-premium-billing.md#adr-002-billingscreen-is-derived-only-via-resolver) |
-| ADR-003 | UI не вычисляет hasPremiumAccess                | [subscription-premium-billing.md](./subscription-premium-billing.md#adr-003-ui-never-computes-haspremiumaccess)         |
-| ADR-004 | Без optimistic billing UI                       | [subscription-premium-billing.md](./subscription-premium-billing.md#adr-004-no-optimistic-billing-ui)                   |
-| ADR-005 | Upgrade — полная оплата и новый 30-дневный цикл | [subscription-premium-billing.md](./subscription-premium-billing.md#adr-005-upgrade-starts-a-new-30-day-billing-cycle)  |
-| ADR-006 | Downgrade — со следующего периода               | [subscription-premium-billing.md](./subscription-premium-billing.md#adr-006-downgrade-takes-effect-at-next-period)      |
-| ADR-007 | Grace period с сохранением доступа              | [subscription-premium-billing.md](./subscription-premium-billing.md#adr-007-grace-period-with-continued-premium-access) |
-| ADR-008 | Автопродление через ЮKassa на стороне магазина  | [subscription-premium-billing.md](./subscription-premium-billing.md#adr-008-yookassa-recurring-is-merchant-managed)     |
+| ID      | Тема                                            | Документ                                                                                                                     |
+| ------- | ----------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| —       | **Implementation status (PR-1…12)**             | [subscription-implementation-status.md](./subscription-implementation-status.md)                                             |
+| ADR-001 | Статус подписки — только backend                | [subscription-premium-billing.md](./subscription-premium-billing.md#adr-001-subscription-status-is-backend-only)             |
+| ADR-002 | BillingScreen — только через resolver           | [subscription-premium-billing.md](./subscription-premium-billing.md#adr-002-billingscreen-is-derived-only-via-resolver)      |
+| ADR-003 | UI не вычисляет hasPremiumAccess                | [subscription-premium-billing.md](./subscription-premium-billing.md#adr-003-ui-never-computes-haspremiumaccess)              |
+| ADR-004 | Без optimistic billing UI                       | [subscription-premium-billing.md](./subscription-premium-billing.md#adr-004-no-optimistic-billing-ui)                        |
+| ADR-005 | Upgrade — полная оплата и новый 30-дневный цикл | [subscription-premium-billing.md](./subscription-premium-billing.md#adr-005-upgrade-starts-a-new-30-day-billing-cycle)       |
+| ADR-006 | Downgrade — со следующего периода               | [subscription-premium-billing.md](./subscription-premium-billing.md#adr-006-downgrade-takes-effect-at-next-period)           |
+| ADR-007 | Grace period с сохранением доступа              | [subscription-premium-billing.md](./subscription-premium-billing.md#adr-007-grace-period-with-continued-premium-access)      |
+| ADR-008 | Автопродление через ЮKassa на стороне магазина  | [subscription-premium-billing.md](./subscription-premium-billing.md#adr-008-yookassa-recurring-is-merchant-managed)          |
+| ADR-009 | Раздельные fulfillment pipelines                | [subscription-premium-billing.md](./subscription-premium-billing.md#adr-009-subscription-fulfillment-pipelines-are-separate) |
 
 ## State ownership (Premium billing)
 

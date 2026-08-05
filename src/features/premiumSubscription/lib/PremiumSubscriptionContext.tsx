@@ -9,6 +9,7 @@ import {
 } from 'react';
 
 import { getMyArchive } from '@shared/api/archive';
+import { EMPTY_BILLING_SNAPSHOT, type BillingSnapshot } from '@shared/api/billing';
 import { AUTH_SESSION_CHANGED_EVENT, getToken } from '@shared/lib/auth';
 import type { SubscriptionPlanSlug } from '@shared/lib/payment/subscriptionPlans';
 import { resolveCurrentPlanSlug } from '@shared/lib/payment/subscriptionPlans';
@@ -19,6 +20,7 @@ export type PremiumSubscriptionContextValue = {
   slotsLimit: number;
   slotsUsed: number;
   planSlug: SubscriptionPlanSlug | null;
+  billing: BillingSnapshot;
   loading: boolean;
   refetch: () => Promise<void>;
 };
@@ -29,6 +31,7 @@ export function PremiumSubscriptionProvider({ children }: { children: ReactNode 
   const [isPremium, setIsPremium] = useState(false);
   const [slotsLimit, setSlotsLimit] = useState(3);
   const [slotsUsed, setSlotsUsed] = useState(0);
+  const [billing, setBilling] = useState<BillingSnapshot>(EMPTY_BILLING_SNAPSHOT);
   const [loading, setLoading] = useState(() => Boolean(getToken()));
 
   const refetch = useCallback(async () => {
@@ -36,6 +39,7 @@ export function PremiumSubscriptionProvider({ children }: { children: ReactNode 
       setIsPremium(false);
       setSlotsLimit(3);
       setSlotsUsed(0);
+      setBilling(EMPTY_BILLING_SNAPSHOT);
       setLoading(false);
       return;
     }
@@ -46,8 +50,10 @@ export function PremiumSubscriptionProvider({ children }: { children: ReactNode 
       setIsPremium(data.isPremium);
       setSlotsLimit(data.slotsLimit);
       setSlotsUsed(data.slotsUsed);
+      setBilling(data.billing ?? EMPTY_BILLING_SNAPSHOT);
     } catch {
       setIsPremium(false);
+      setBilling(EMPTY_BILLING_SNAPSHOT);
     } finally {
       setLoading(false);
     }
@@ -72,8 +78,8 @@ export function PremiumSubscriptionProvider({ children }: { children: ReactNode 
 
   const value = useMemo(() => {
     const planSlug = resolveCurrentPlanSlug({ isPremium, slotsLimit, slotsUsed });
-    return { isPremium, slotsLimit, slotsUsed, planSlug, loading, refetch };
-  }, [isPremium, loading, refetch, slotsLimit, slotsUsed]);
+    return { isPremium, slotsLimit, slotsUsed, planSlug, billing, loading, refetch };
+  }, [billing, isPremium, loading, refetch, slotsLimit, slotsUsed]);
 
   return (
     <PremiumSubscriptionContext.Provider value={value}>
@@ -90,6 +96,7 @@ export function usePremiumSubscription(): PremiumSubscriptionContextValue {
       slotsLimit: 3,
       slotsUsed: 0,
       planSlug: null,
+      billing: EMPTY_BILLING_SNAPSHOT,
       loading: false,
       refetch: async () => {},
     };

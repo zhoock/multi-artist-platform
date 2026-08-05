@@ -7,15 +7,22 @@ import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 import { ModalCloseIcon } from '@shared/ui/icons/ModalCloseIcon';
 import { usePremiumSubscription } from '@features/premiumSubscription';
+import { ARCHIVE_CHANGED_EVENT } from '@features/artistArchive';
 import { isEmailVerified } from '@shared/lib/auth';
 import { useEmailVerificationCopy } from '@shared/lib/emailVerification';
 import {
   SUBSCRIPTION_PLAN_SLUGS,
+  resolvePlanChangeAction,
   shouldConfirmSubscriptionPlanChange,
   type SubscriptionPlanSlug,
 } from '@shared/lib/payment/subscriptionPlans';
+import { useSubscriptionBilling } from '@shared/lib/subscription/useSubscriptionBilling';
 import { useAuthSessionUser } from '@shared/lib/hooks/useAuthSessionUser';
 import { LocalModal } from '@shared/ui/localModal';
+import {
+  ScheduleDowngradeConfirmModal,
+  UpgradePlanConfirmModal,
+} from '@pages/UserDashboard/components/archive/billingModals';
 
 import { SubscriptionPlanCard } from './SubscriptionPlanCard';
 import { SubscriptionPlanChangeConfirmModal } from './SubscriptionPlanChangeConfirmModal';
@@ -29,17 +36,33 @@ type Props = {
   onClose: (options?: CloseArchiveAccessModalOptions) => void;
 };
 
+type PendingPlanFlow = 'upgrade' | 'downgrade' | 'legacy';
+
+function formatEffectiveDate(iso: string | null, lang: 'en' | 'ru'): string | null {
+  if (!iso) return null;
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toLocaleDateString(lang === 'ru' ? 'ru-RU' : 'en-US', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
+}
+
 export function ArchiveAccessModalView({ dialogRef, onClose }: Props) {
   const { lang } = useLang() as { lang: 'ru' | 'en' };
   const viewer = useAuthSessionUser();
   const emailCopy = useEmailVerificationCopy();
-  const { isPremium, planSlug: currentPlanSlug, refetch } = usePremiumSubscription();
+  const { isPremium, planSlug: currentPlanSlug, billing, refetch } = usePremiumSubscription();
   const [loadingPlan, setLoadingPlan] = useState<SubscriptionPlanSlug | null>(null);
   const [pendingPlanChange, setPendingPlanChange] = useState<SubscriptionPlanSlug | null>(null);
+  const [pendingFlow, setPendingFlow] = useState<PendingPlanFlow | null>(null);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const { startCheckout } = useSubscriptionCheckout({ onClose });
+  const { scheduleDowngrade, loading: scheduleLoading } = useSubscriptionBilling();
   const ui = useAppSelector((state) => selectUiDictionaryFirst(state, lang));
   const emailBlocked = Boolean(viewer && !isEmailVerified(viewer));
+  const collectionCopy = ui?.dashboard?.collection;
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -61,7 +84,8 @@ export function ArchiveAccessModalView({ dialogRef, onClose }: Props) {
     (lang === 'en'
       ? 'Support more artists and unlock more music.'
       : 'Поддержите больше артистов и откройте больше музыки.');
-  const priceCurrency = ui?.titles?.archiveAccessPriceCurrency ?? '₽';
+  const priceCurrency =
+    collectionCopy?.billingPriceCurrency ?? ui?.titles?.archiveAccessPriceCurrency ?? '₽';
   const closeLabel = ui?.buttons?.articleLockedDialogClose ?? (lang === 'en' ? 'Close' : 'Закрыть');
   const footnote =
     ui?.titles?.archiveAccessFootnote?.trim() ??
@@ -70,11 +94,11 @@ export function ArchiveAccessModalView({ dialogRef, onClose }: Props) {
       : 'Все планы распределяют доход поровну между поддерживаемыми артистами. Ваша поддержка помогает артистам создавать музыку.');
 
   const proceedToCheckout = useCallback(
-    async (planSlug: SubscriptionPlanSlug) => {
+    async (planSlug: SubscriptionPlanSlug, intent?: 'upgrade') => {
       setLoadingPlan(planSlug);
       setCheckoutError(null);
 
-      const result = await startCheckout(planSlug);
+      const result = await startCheckout(planSlug, intent ? { intent } : undefined);
 
       if (!result.ok) {
         setCheckoutError(result.error);
@@ -82,40 +106,120 @@ export function ArchiveAccessModalView({ dialogRef, onClose }: Props) {
         return;
       }
 
-      // Auth overlay keeps this view mounted — clear loading so canceling auth
-      // does not leave "Redirecting…" stuck on the plan CTA.
       if (result.redirected === 'auth') {
         setLoadingPlan(null);
       }
-      // redirected === 'payment': keep loading until the browser leaves the page.
     },
     [startCheckout]
   );
 
   const handleSelectPlan = useCallback(
     (planSlug: SubscriptionPlanSlug) => {
-      if (shouldConfirmSubscriptionPlanChange(currentPlanSlug, planSlug)) {
-        setPendingPlanChange(planSlug);
+      setCheckoutError(null);
+
+      if (!shouldConfirmSubscriptionPlanChange(currentPlanSlug, planSlug)) {
+        void proceedToCheckout(planSlug);
         return;
       }
 
-      void proceedToCheckout(planSlug);
+      const action = resolvePlanChangeAction({
+        currentPlanSlug,
+        targetPlanSlug: planSlug,
+        billingStatus: billing.status,
+        hasPremiumAccess: billing.hasPremiumAccess,
+      });
+
+      if (action === 'blocked_downgrade') {
+        setCheckoutError(
+          collectionCopy?.billingDowngradeBlockedError ??
+            (lang === 'en'
+              ? 'Restore your support first — downgrades are only available with an active subscription.'
+              : 'Сначала восстановите поддержку — понижение тарифа доступно только при активной подписке.')
+        );
+        return;
+      }
+
+      if (action === 'checkout') {
+        setPendingFlow('legacy');
+      } else {
+        setPendingFlow(action);
+      }
+
+      setPendingPlanChange(planSlug);
     },
-    [currentPlanSlug, proceedToCheckout]
+    [
+      billing.hasPremiumAccess,
+      billing.status,
+      collectionCopy?.billingDowngradeBlockedError,
+      currentPlanSlug,
+      lang,
+      proceedToCheckout,
+    ]
   );
 
   const handleCancelPlanChange = useCallback(() => {
-    if (loadingPlan) return;
+    if (loadingPlan || scheduleLoading) return;
     setPendingPlanChange(null);
-  }, [loadingPlan]);
+    setPendingFlow(null);
+  }, [loadingPlan, scheduleLoading]);
 
-  const handleConfirmPlanChange = useCallback(() => {
-    if (!pendingPlanChange || loadingPlan) return;
+  const handleConfirmPlanChange = useCallback(async () => {
+    if (!pendingPlanChange || !currentPlanSlug || loadingPlan || scheduleLoading) return;
 
     const planSlug = pendingPlanChange;
+    const flow = pendingFlow;
+
+    if (flow === 'upgrade') {
+      setPendingPlanChange(null);
+      setPendingFlow(null);
+      void proceedToCheckout(planSlug, 'upgrade');
+      return;
+    }
+
+    if (flow === 'downgrade') {
+      setCheckoutError(null);
+      const result = await scheduleDowngrade(planSlug);
+
+      if (!result.ok) {
+        if (result.code === 'FEATURE_DISABLED') {
+          setPendingFlow('legacy');
+          return;
+        }
+        setCheckoutError(
+          result.error ??
+            collectionCopy?.billingPlanChangeError ??
+            (lang === 'en' ? 'Could not change plan' : 'Не удалось изменить тариф')
+        );
+        return;
+      }
+
+      window.dispatchEvent(new CustomEvent(ARCHIVE_CHANGED_EVENT));
+      await refetch();
+      setPendingPlanChange(null);
+      setPendingFlow(null);
+      return;
+    }
+
     setPendingPlanChange(null);
+    setPendingFlow(null);
     void proceedToCheckout(planSlug);
-  }, [loadingPlan, pendingPlanChange, proceedToCheckout]);
+  }, [
+    collectionCopy?.billingPlanChangeError,
+    currentPlanSlug,
+    lang,
+    loadingPlan,
+    pendingFlow,
+    pendingPlanChange,
+    proceedToCheckout,
+    refetch,
+    scheduleDowngrade,
+    scheduleLoading,
+  ]);
+
+  const effectiveDateLabel = formatEffectiveDate(billing.expiresAt, lang);
+  const confirmLoading = Boolean(
+    pendingPlanChange && (loadingPlan === pendingPlanChange || scheduleLoading)
+  );
 
   return (
     <>
@@ -188,15 +292,39 @@ export function ArchiveAccessModalView({ dialogRef, onClose }: Props) {
         </div>
       </LocalModal>
 
-      {pendingPlanChange && currentPlanSlug ? (
+      {pendingPlanChange && currentPlanSlug && pendingFlow === 'upgrade' ? (
+        <UpgradePlanConfirmModal
+          isOpen
+          currentPlanSlug={currentPlanSlug}
+          targetPlanSlug={pendingPlanChange}
+          priceCurrency={priceCurrency}
+          loading={confirmLoading}
+          onCancel={handleCancelPlanChange}
+          onConfirm={() => void handleConfirmPlanChange()}
+        />
+      ) : null}
+
+      {pendingPlanChange && currentPlanSlug && pendingFlow === 'downgrade' ? (
+        <ScheduleDowngradeConfirmModal
+          isOpen
+          currentPlanSlug={currentPlanSlug}
+          targetPlanSlug={pendingPlanChange}
+          effectiveDateLabel={effectiveDateLabel}
+          loading={confirmLoading}
+          onCancel={handleCancelPlanChange}
+          onConfirm={() => void handleConfirmPlanChange()}
+        />
+      ) : null}
+
+      {pendingPlanChange && currentPlanSlug && pendingFlow === 'legacy' ? (
         <SubscriptionPlanChangeConfirmModal
           isOpen
           currentPlanSlug={currentPlanSlug}
           targetPlanSlug={pendingPlanChange}
           priceCurrency={priceCurrency}
-          loading={loadingPlan === pendingPlanChange}
+          loading={confirmLoading}
           onCancel={handleCancelPlanChange}
-          onConfirm={handleConfirmPlanChange}
+          onConfirm={() => void handleConfirmPlanChange()}
         />
       ) : null}
     </>

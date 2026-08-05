@@ -18,6 +18,10 @@ import { getYooKassaEnvCredentials } from './lib/yookassa-env';
 import { resolveSubscriptionPaymentReturnUrl } from './lib/yookassa-return-url';
 import { attachDevSucceededSubscriptionCheckout } from './lib/complete-dev-payment';
 import {
+  buildInitialSubscriptionPaymentPayload,
+  buildUpgradeSubscriptionPaymentPayload,
+} from './lib/subscription-yookassa';
+import {
   isDevPaymentModeEnabled,
   logDevPaymentSubscriptionCreate,
   extractReturnToFromReturnUrl,
@@ -26,17 +30,25 @@ import {
   attachProviderPaymentId,
   createPendingSubscriptionPayment,
   DEFAULT_SUBSCRIPTION_PLAN,
+  findOpenSubscriptionPayment,
   getPlanAmountRub,
   getPlanDefinition,
   normalizeSubscriptionPlanSlug,
-  PREMIUM_SUBSCRIPTION_PRODUCT_TYPE,
 } from './lib/subscription-billing';
+import { isSubscriptionAutoRenewEnabled } from './lib/subscription-feature-flag';
+import {
+  assertUpgradeCheckoutAllowed,
+  assertUpgradeIntentRequiredForMidCycleUpgrade,
+  SubscriptionPlanScheduleError,
+} from './lib/subscription-plan-schedule';
+import { getViewerSubscription } from './lib/subscriptions';
 
 dns.setDefaultResultOrder('ipv4first');
 
 interface CreateSubscriptionPaymentBody {
   returnUrl?: string;
   plan?: string;
+  intent?: string;
 }
 
 interface YooKassaCreateResponse {
@@ -89,11 +101,62 @@ export const handler: Handler = async (event: HandlerEvent) => {
     return createErrorResponse(400, 'Invalid subscription plan');
   }
 
+  const openPayment = await findOpenSubscriptionPayment(userId);
+  if (openPayment) {
+    return createErrorResponse(
+      409,
+      'A subscription checkout is already in progress. Complete or wait for it to expire.',
+      undefined,
+      { code: 'CHECKOUT_IN_PROGRESS' }
+    );
+  }
+
+  const isUpgradeIntent = body.intent?.trim() === 'upgrade';
+
+  if (isSubscriptionAutoRenewEnabled()) {
+    const subscription = await getViewerSubscription(userId);
+
+    if (isUpgradeIntent) {
+      if (!subscription) {
+        return createErrorResponse(404, 'Subscription not found', undefined, {
+          code: 'NO_SUBSCRIPTION',
+        });
+      }
+
+      try {
+        assertUpgradeCheckoutAllowed(subscription, planSlug);
+      } catch (error) {
+        if (error instanceof SubscriptionPlanScheduleError) {
+          return createErrorResponse(error.httpStatus, error.message, undefined, {
+            code: error.code,
+          });
+        }
+        throw error;
+      }
+    } else if (subscription) {
+      try {
+        assertUpgradeIntentRequiredForMidCycleUpgrade(subscription, planSlug);
+      } catch (error) {
+        if (error instanceof SubscriptionPlanScheduleError) {
+          return createErrorResponse(error.httpStatus, error.message, undefined, {
+            code: error.code,
+          });
+        }
+        throw error;
+      }
+    }
+  } else if (isUpgradeIntent) {
+    return createErrorResponse(503, 'Upgrade checkout is not enabled', undefined, {
+      code: 'FEATURE_DISABLED',
+    });
+  }
+
   const planDefinition = getPlanDefinition(planSlug);
+  const paymentKind = isUpgradeIntent && isSubscriptionAutoRenewEnabled() ? 'upgrade' : 'initial';
 
   let subscriptionPaymentId: string;
   try {
-    subscriptionPaymentId = await createPendingSubscriptionPayment(userId, planSlug);
+    subscriptionPaymentId = await createPendingSubscriptionPayment(userId, planSlug, paymentKind);
   } catch (error) {
     console.error('[create-subscription-payment] failed to create pending row', error);
     return createErrorResponse(500, 'Could not start subscription checkout');
@@ -143,33 +206,24 @@ export const handler: Handler = async (event: HandlerEvent) => {
   const amountValue = getPlanAmountRub(planSlug).toFixed(2);
   const description = planDefinition.description;
 
-  const yookassaPayload = {
-    amount: { value: amountValue, currency: 'RUB' },
-    capture: true,
-    confirmation: {
-      type: 'redirect' as const,
-      return_url: returnUrl,
-    },
-    description,
-    metadata: {
-      productType: PREMIUM_SUBSCRIPTION_PRODUCT_TYPE,
-      userId,
-      plan: planSlug,
-    },
-    receipt: {
-      customer: { email: customerEmail },
-      items: [
-        {
+  const yookassaPayload =
+    paymentKind === 'upgrade'
+      ? buildUpgradeSubscriptionPaymentPayload({
+          amountValue,
           description,
-          quantity: '1',
-          amount: { value: amountValue, currency: 'RUB' },
-          vat_code: 1,
-          payment_subject: 'service',
-          payment_mode: 'full_payment',
-        },
-      ],
-    },
-  };
+          returnUrl,
+          userId,
+          planSlug,
+          customerEmail,
+        })
+      : buildInitialSubscriptionPaymentPayload({
+          amountValue,
+          description,
+          returnUrl,
+          userId,
+          planSlug,
+          customerEmail,
+        });
 
   const apiUrl = process.env.YOOKASSA_API_URL || 'https://api.yookassa.ru/v3/payments';
   const authHeader = Buffer.from(`${yookassaCreds.shopId}:${yookassaCreds.secretKey}`).toString(

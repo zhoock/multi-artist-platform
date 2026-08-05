@@ -4,6 +4,7 @@
  */
 
 import { isMissingRelationError, query } from './db';
+import { hasPremiumAccess } from './subscription-access';
 
 export const SUBSCRIPTION_STATUSES = [
   'active',
@@ -29,6 +30,8 @@ export interface Subscription {
   expiresAt: Date | null;
   /** YooKassa payment_method.id — populated when autoprenew is enabled (PR-1 schema). */
   paymentMethodId?: string | null;
+  /** Masked card label for BillingSnapshot (PR-9). */
+  paymentMethodTitle?: string | null;
   nextChargeAt?: Date | null;
   renewalAttemptCount?: number;
   scheduledPlan?: string | null;
@@ -47,6 +50,12 @@ export interface SubscriptionRow {
   provider_subscription_id: string | null;
   started_at: Date | null;
   expires_at: Date | null;
+  payment_method_id?: string | null;
+  payment_method_title?: string | null;
+  next_charge_at?: Date | null;
+  renewal_attempt_count?: number | null;
+  scheduled_plan?: string | null;
+  first_failed_at?: Date | null;
   created_at: Date;
   updated_at: Date;
 }
@@ -62,6 +71,12 @@ export function mapSubscriptionRow(row: SubscriptionRow): Subscription {
     providerSubscriptionId: row.provider_subscription_id,
     startedAt: row.started_at,
     expiresAt: row.expires_at,
+    paymentMethodId: row.payment_method_id ?? null,
+    paymentMethodTitle: row.payment_method_title ?? null,
+    nextChargeAt: row.next_charge_at ?? null,
+    renewalAttemptCount: row.renewal_attempt_count ?? undefined,
+    scheduledPlan: row.scheduled_plan ?? null,
+    firstFailedAt: row.first_failed_at ?? null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -85,6 +100,12 @@ export async function getViewerSubscription(userId: string): Promise<Subscriptio
          provider_subscription_id,
          started_at,
          expires_at,
+         payment_method_id,
+         payment_method_title,
+         next_charge_at,
+         renewal_attempt_count,
+         scheduled_plan,
+         first_failed_at,
          created_at,
          updated_at
        FROM subscriptions
@@ -105,7 +126,8 @@ export async function getViewerSubscription(userId: string): Promise<Subscriptio
 }
 
 /**
- * Активна только при status === 'active' и expires_at в будущем.
+ * Legacy premium check — status active + expires_at in the future.
+ * Prefer {@link hasPremiumAccess} for runtime entitlement (ADR-003).
  */
 export function isSubscriptionActive(subscription: Subscription | null | undefined): boolean {
   if (!subscription) return false;
@@ -121,8 +143,9 @@ export function isSubscriptionActive(subscription: Subscription | null | undefin
   return expiresAt.getTime() > Date.now();
 }
 
+/** @deprecated Prefer {@link hasPremiumAccess} via subscription-access (ADR-003). */
 export async function viewerHasActiveSubscription(userId: string | null): Promise<boolean> {
   if (!userId) return false;
   const subscription = await getViewerSubscription(userId);
-  return isSubscriptionActive(subscription);
+  return hasPremiumAccess(subscription);
 }

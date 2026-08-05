@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { Route, Routes } from 'react-router-dom';
 import { ArticlePreview } from '../ArticlePreview';
 import { renderWithProviders } from '@shared/lib/test-utils';
+import { EMPTY_BILLING_SNAPSHOT } from '@shared/api/billing';
 
 const mockOpen = jest.fn();
 const mockRequestAccess = jest.fn();
@@ -24,6 +25,7 @@ const premiumState = {
   slotsLimit: 3,
   slotsUsed: 0,
   planSlug: null,
+  billing: EMPTY_BILLING_SNAPSHOT,
   refetch: async () => {},
 };
 

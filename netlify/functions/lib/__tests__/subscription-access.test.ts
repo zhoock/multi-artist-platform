@@ -78,6 +78,20 @@ describe('hasPremiumAccessAutorenew', () => {
     expect(hasPremiumAccessAutorenew(sub({ status: 'past_due' }), NOW)).toBe(true);
   });
 
+  test('past_due: grants access during 7-day grace from first_failed_at when expires_at passed', () => {
+    const firstFailedAt = new Date('2026-08-01T00:00:00.000Z');
+    expect(
+      hasPremiumAccessAutorenew(sub({ status: 'past_due', expiresAt: PAST, firstFailedAt }), NOW)
+    ).toBe(true);
+  });
+
+  test('past_due: denies access after grace window', () => {
+    const firstFailedAt = new Date('2026-07-20T00:00:00.000Z');
+    expect(
+      hasPremiumAccessAutorenew(sub({ status: 'past_due', expiresAt: PAST, firstFailedAt }), NOW)
+    ).toBe(false);
+  });
+
   test('denies access when expired or legacy canceled', () => {
     expect(hasPremiumAccessAutorenew(sub({ status: 'expired' }), NOW)).toBe(false);
     expect(hasPremiumAccessAutorenew(sub({ status: 'canceled' }), NOW)).toBe(false);

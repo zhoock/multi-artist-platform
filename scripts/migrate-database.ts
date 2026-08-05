@@ -211,9 +211,15 @@ async function main() {
   console.log('🚀 Starting database migrations...');
   console.log(`   Database: ${databaseUrl.replace(/:[^:@]+@/, ':****@')}`); // Скрываем пароль
 
+  const connectionUrl = databaseUrl.toLowerCase();
+  const useSsl =
+    (connectionUrl.includes('supabase.com') || process.env.PGSSLMODE === 'require') &&
+    !connectionUrl.includes('localhost') &&
+    !connectionUrl.includes('127.0.0.1');
+
   const pool = new Pool({
     connectionString: databaseUrl,
-    ssl: { rejectUnauthorized: false }, // Supabase требует SSL всегда
+    ...(useSsl ? { ssl: { rejectUnauthorized: false } } : {}),
   });
 
   try {

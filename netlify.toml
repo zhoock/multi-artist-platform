@@ -227,6 +227,32 @@
   force = true
 
 [[redirects]]
+  from = "/api/subscription/auto-renew*"
+  to = "/.netlify/functions/patch-subscription-auto-renew"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/subscription/payment-method/rebind*"
+  to = "/.netlify/functions/post-subscription-payment-method-rebind"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/subscription/scheduled-plan*"
+  to = "/.netlify/functions/post-subscription-scheduled-plan"
+  status = 200
+  force = true
+  methods = ["POST", "OPTIONS"]
+
+[[redirects]]
+  from = "/api/subscription/scheduled-plan*"
+  to = "/.netlify/functions/delete-subscription-scheduled-plan"
+  status = 200
+  force = true
+  methods = ["DELETE"]
+
+[[redirects]]
   from = "/api/my-purchases*"
   to = "/.netlify/functions/my-purchases"
   status = 200
@@ -353,3 +379,6 @@
 # Redirects в netlify.toml глобальны (включая Netlify Dev) — см. docs Netlify.
 # Production/deploy-preview: scripts/generate-dist-redirects.ts → dist/_redirects в [build].command.
 # Netlify Dev проксирует /scripts/main.js на webpack (8080); historyApiFallback — там.
+
+[functions."scheduled-subscription-renewals"]
+  schedule = "*/15 * * * *"

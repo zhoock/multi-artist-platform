@@ -56,7 +56,10 @@ export type ArchiveAccessModalContextValue = {
   /** Route hidden-content clicks through premium / add-to-archive / allow access. */
   requestAccess: (options: RequestPremiumContentAccessOptions) => Promise<void>;
   /** Start YooKassa checkout for a known plan without opening the plan picker. */
-  startCheckout: (planSlug: SubscriptionPlanSlug) => Promise<SubscriptionCheckoutResult>;
+  startCheckout: (
+    planSlug: SubscriptionPlanSlug,
+    options?: import('./useSubscriptionCheckout').SubscriptionCheckoutOptions
+  ) => Promise<SubscriptionCheckoutResult>;
 };
 
 const ArchiveAccessModalContext = createContext<ArchiveAccessModalContextValue | null>(null);

@@ -10,6 +10,7 @@ import {
   CANONICAL_SUBSCRIPTION_STATUSES,
   deriveAutoRenewEnabled,
   normalizeCanonicalStatus,
+  SUBSCRIPTION_GRACE_PERIOD_MS,
 } from './subscription-state';
 
 export { CANONICAL_SUBSCRIPTION_STATUSES, deriveAutoRenewEnabled, normalizeCanonicalStatus };
@@ -29,6 +30,20 @@ function expiresAtMs(subscription: Subscription, now: Date): number | null {
       : new Date(subscription.expiresAt);
   if (Number.isNaN(expiresAt.getTime())) return null;
   return expiresAt.getTime();
+}
+
+function firstFailedAtMs(subscription: Subscription): number | null {
+  const anchor = subscription.firstFailedAt ?? subscription.expiresAt;
+  if (!anchor) return null;
+  const value = anchor instanceof Date ? anchor : new Date(anchor);
+  if (Number.isNaN(value.getTime())) return null;
+  return value.getTime();
+}
+
+function hasPremiumAccessDuringPastDueGrace(subscription: Subscription, now: Date): boolean {
+  const firstFailedMs = firstFailedAtMs(subscription);
+  if (firstFailedMs === null) return false;
+  return now.getTime() < firstFailedMs + SUBSCRIPTION_GRACE_PERIOD_MS;
 }
 
 /** Legacy premium check — status active + expires_at in the future. */
@@ -52,6 +67,10 @@ export function hasPremiumAccessAutorenew(
 
   const canonical = normalizeCanonicalStatus(subscription.status);
   if (!canonical || !PREMIUM_ACCESS_STATUSES.has(canonical)) return false;
+
+  if (canonical === 'past_due') {
+    return hasPremiumAccessDuringPastDueGrace(subscription, now);
+  }
 
   const ms = expiresAtMs(subscription, now);
   if (ms === null) return false;

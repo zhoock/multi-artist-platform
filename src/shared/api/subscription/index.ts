@@ -4,10 +4,12 @@
 
 import { getAuthHeader } from '@shared/lib/auth';
 import { fetchWithAuthSession } from '@shared/lib/authFetch';
+import type { MyArchiveData } from '@shared/api/archive';
 
 export interface CreateSubscriptionPaymentRequest {
   returnUrl?: string;
   plan?: 'explorer' | 'collector' | 'archivist';
+  intent?: 'upgrade';
 }
 
 export interface CreateSubscriptionPaymentResponse {
@@ -17,6 +19,22 @@ export interface CreateSubscriptionPaymentResponse {
     confirmationUrl?: string;
     subscriptionPaymentId?: string;
     /** Dev-only: payment persisted without YooKassa redirect */
+    devPaymentCompleted?: boolean;
+  };
+  error?: string;
+  code?: string;
+}
+
+export interface CreateSubscriptionPaymentMethodRebindRequest {
+  returnUrl?: string;
+}
+
+export interface CreateSubscriptionPaymentMethodRebindResponse {
+  success: boolean;
+  data?: {
+    paymentId: string;
+    confirmationUrl?: string;
+    subscriptionPaymentId?: string;
     devPaymentCompleted?: boolean;
   };
   error?: string;
@@ -35,10 +53,31 @@ export interface SubscriptionPaymentStatusResponse {
         productType?: string;
         userId?: string;
         plan?: string;
+        kind?: string;
       };
       confirmation_url?: string;
     };
     subscriptionActivated: boolean;
+    paymentMethodUpdated?: boolean;
+    archive?: MyArchiveData;
+  };
+  error?: string;
+  code?: string;
+}
+
+export interface PatchSubscriptionAutoRenewResponse {
+  success: boolean;
+  data?: {
+    archive: MyArchiveData;
+  };
+  error?: string;
+  code?: string;
+}
+
+export interface SubscriptionScheduledPlanResponse {
+  success: boolean;
+  data?: {
+    archive: MyArchiveData;
   };
   error?: string;
   code?: string;
@@ -63,6 +102,45 @@ export async function createSubscriptionPayment(
     });
 
     const payload = (await response.json().catch(() => ({}))) as CreateSubscriptionPaymentResponse;
+
+    if (!response.ok) {
+      return {
+        success: false,
+        error: payload.error || `HTTP ${response.status}`,
+        code: payload.code,
+      };
+    }
+
+    return payload;
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    };
+  }
+}
+
+export async function createSubscriptionPaymentMethodRebind(
+  data: CreateSubscriptionPaymentMethodRebindRequest = {}
+): Promise<CreateSubscriptionPaymentMethodRebindResponse> {
+  const authHeader = getAuthHeader();
+  if (!('Authorization' in authHeader)) {
+    return { success: false, error: 'Authentication required', code: 'UNAUTHORIZED' };
+  }
+
+  try {
+    const response = await fetchWithAuthSession('/api/subscription/payment-method/rebind', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeader,
+      },
+      body: JSON.stringify(data),
+    });
+
+    const payload = (await response
+      .json()
+      .catch(() => ({}))) as CreateSubscriptionPaymentMethodRebindResponse;
 
     if (!response.ok) {
       return {
@@ -107,6 +185,114 @@ export async function getSubscriptionPaymentStatus(params: {
     );
 
     const payload = (await response.json().catch(() => ({}))) as SubscriptionPaymentStatusResponse;
+
+    if (!response.ok) {
+      return {
+        success: false,
+        error: payload.error || `HTTP ${response.status}`,
+        code: payload.code,
+      };
+    }
+
+    return payload;
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    };
+  }
+}
+
+export async function patchSubscriptionAutoRenew(
+  autoRenewEnabled: boolean
+): Promise<PatchSubscriptionAutoRenewResponse> {
+  const authHeader = getAuthHeader();
+  if (!('Authorization' in authHeader)) {
+    return { success: false, error: 'Authentication required', code: 'UNAUTHORIZED' };
+  }
+
+  try {
+    const response = await fetchWithAuthSession('/api/subscription/auto-renew', {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeader,
+      },
+      body: JSON.stringify({ autoRenewEnabled }),
+    });
+
+    const payload = (await response.json().catch(() => ({}))) as PatchSubscriptionAutoRenewResponse;
+
+    if (!response.ok) {
+      return {
+        success: false,
+        error: payload.error || `HTTP ${response.status}`,
+        code: payload.code,
+      };
+    }
+
+    return payload;
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    };
+  }
+}
+
+export async function scheduleSubscriptionDowngrade(
+  plan: 'explorer' | 'collector' | 'archivist'
+): Promise<SubscriptionScheduledPlanResponse> {
+  const authHeader = getAuthHeader();
+  if (!('Authorization' in authHeader)) {
+    return { success: false, error: 'Authentication required', code: 'UNAUTHORIZED' };
+  }
+
+  try {
+    const response = await fetchWithAuthSession('/api/subscription/scheduled-plan', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeader,
+      },
+      body: JSON.stringify({ plan }),
+    });
+
+    const payload = (await response.json().catch(() => ({}))) as SubscriptionScheduledPlanResponse;
+
+    if (!response.ok) {
+      return {
+        success: false,
+        error: payload.error || `HTTP ${response.status}`,
+        code: payload.code,
+      };
+    }
+
+    return payload;
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    };
+  }
+}
+
+export async function cancelScheduledSubscriptionDowngrade(): Promise<SubscriptionScheduledPlanResponse> {
+  const authHeader = getAuthHeader();
+  if (!('Authorization' in authHeader)) {
+    return { success: false, error: 'Authentication required', code: 'UNAUTHORIZED' };
+  }
+
+  try {
+    const response = await fetchWithAuthSession('/api/subscription/scheduled-plan', {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeader,
+      },
+    });
+
+    const payload = (await response.json().catch(() => ({}))) as SubscriptionScheduledPlanResponse;
 
     if (!response.ok) {
       return {

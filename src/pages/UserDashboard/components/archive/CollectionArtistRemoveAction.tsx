@@ -30,7 +30,7 @@ const TOOLTIP_MAX_WIDTH_PX = 256;
 
 type Props = {
   artist: MyArchiveArtist;
-  isPremium: boolean;
+  hasPremiumAccess: boolean;
   lang: 'en' | 'ru';
   removeLabel: string;
   removeSubscriptionTooltip: string;
@@ -56,7 +56,7 @@ function computeLockTooltipStyle(trigger: HTMLElement): CSSProperties {
 
 export function CollectionArtistRemoveAction({
   artist,
-  isPremium,
+  hasPremiumAccess,
   lang,
   removeLabel,
   removeSubscriptionTooltip,
@@ -74,7 +74,7 @@ export function CollectionArtistRemoveAction({
   const tooltipId = useId();
 
   const artistIsLocked = isCollectionArtistLocked(artist);
-  const removable = canRemoveCollectionArtist(artist, isPremium);
+  const removable = canRemoveCollectionArtist(artist, hasPremiumAccess);
   const removeDisabled = actionBusy || !removable;
 
   const clearHideTimeout = useCallback(() => {
@@ -206,7 +206,7 @@ export function CollectionArtistRemoveAction({
   }
 
   const removeTooltip =
-    !removable && artist.isActive && !isPremium ? removeSubscriptionTooltip : undefined;
+    !removable && artist.isActive && !hasPremiumAccess ? removeSubscriptionTooltip : undefined;
 
   return (
     <DashboardButton

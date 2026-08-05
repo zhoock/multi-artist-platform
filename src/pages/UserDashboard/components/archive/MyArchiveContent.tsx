@@ -1,12 +1,4 @@
-import {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-  type CSSProperties,
-} from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import clsx from 'clsx';
 import { Link } from 'react-router-dom';
 
@@ -14,6 +6,7 @@ import { useLang } from '@app/providers/lang';
 import { useAppDispatch } from '@shared/lib/hooks/useAppDispatch';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
+import { EMPTY_BILLING_SNAPSHOT } from '@shared/api/billing';
 import {
   ArchiveApiError,
   activateArchiveArtistsApi,
@@ -22,6 +15,8 @@ import {
   type MyArchiveArtist,
   type MyArchiveData,
 } from '@shared/api/archive';
+import { resolveCollectionBillingScreen } from '@features/premiumSubscription/lib/resolveCollectionBillingScreen';
+import { resolveCollectionBillingOverlays } from '@features/premiumSubscription/lib/resolveCollectionBillingOverlays';
 import {
   canRemoveCollectionArtist,
   normalizeCollectionArchive,
@@ -31,27 +26,36 @@ import { CheckSquare, Plus as PlusIcon, Square } from 'lucide-react';
 import {
   dispatchArchiveArtistRemoved,
   refreshPremiumContentForArchiveChange,
+  ARCHIVE_CHANGED_EVENT,
 } from '@features/artistArchive';
 import { useArchiveAccessModal } from '@shared/lib/archiveAccessModal';
-import { getPlanDisplayName, resolveCurrentPlanSlug } from '@shared/lib/payment/subscriptionPlans';
+import type { SubscriptionPlanSlug } from '@shared/lib/payment/subscriptionPlans';
+import { resolveRecommendedPlanSlug } from '@shared/lib/payment/subscriptionPlans';
 import { DashboardButton, DashboardCard } from '@shared/ui/dashboard';
+import { useSubscriptionBilling } from '@shared/lib/subscription/useSubscriptionBilling';
+import { useSubscriptionRebindPayment } from '@shared/lib/subscription/useSubscriptionRebindPayment';
 
 import { CollectionArtistRemoveAction } from './CollectionArtistRemoveAction';
+import {
+  DisableAutoRenewConfirmModal,
+  EnableAutoRenewConfirmModal,
+  RebindPaymentMethodModal,
+  UpgradePlanConfirmModal,
+  type BillingAutoRenewModalVariant,
+} from './billingModals';
+import { CollectionBillingSummary, type CollectionBillingCopy } from './CollectionBillingSummary';
 import { CollectionEmptyState } from './CollectionEmptyState';
+import { formatCollectionRenewalDate } from './lib/collectionSubscriptionStatus';
 import { toast } from '@shared/lib/toast';
 import { ARCHIVE_ARTIST_REMOVED_TOAST_DURATION_MS } from '@shared/lib/toast/toastDurations';
-import {
-  formatCollectionRenewalDate,
-  formatSubscriptionDaysRemainingLabel,
-  getSubscriptionDaysRemaining,
-  resolveCollectionSubscriptionStatus,
-} from './lib/collectionSubscriptionStatus';
+import './billingModals/billingModals.scss';
+import './CollectionBillingSummary.scss';
 import './MyArchiveContent.scss';
 
 type RemovalToastKind = 'single' | 'bulk' | 'cleared';
 
-function canRemoveArtist(artist: MyArchiveArtist, isPremium: boolean): boolean {
-  return canRemoveCollectionArtist(artist, isPremium);
+function canRemoveArtist(artist: MyArchiveArtist, hasPremiumAccess: boolean): boolean {
+  return canRemoveCollectionArtist(artist, hasPremiumAccess);
 }
 
 type Props = {
@@ -82,6 +86,14 @@ export function MyArchiveContent({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const [bulkLoading, setBulkLoading] = useState(false);
   const [renewLoading, setRenewLoading] = useState(false);
+  const [autoRenewModal, setAutoRenewModal] = useState<BillingAutoRenewModalVariant | null>(null);
+  const [upgradePlanTarget, setUpgradePlanTarget] = useState<SubscriptionPlanSlug | null>(null);
+  const {
+    patchAutoRenew,
+    cancelScheduledDowngrade,
+    loading: autoRenewPatchLoading,
+  } = useSubscriptionBilling();
+  const { startRebind } = useSubscriptionRebindPayment();
   const skipNextArchiveReloadRef = useRef(false);
   const loadErrorTextRef = useRef<string | null>(null);
   const onContentReadyRef = useRef(onContentReady);
@@ -166,39 +178,71 @@ export function MyArchiveContent({
   const slotsUsed = data?.slotsUsed ?? 0;
   const slotsLimit = data?.slotsLimit ?? 3;
   const inactiveCount = data?.inactiveCount ?? data?.artists.filter((a) => !a.isActive).length ?? 0;
-  const isPremium = data?.isPremium ?? false;
-  const planSlug = useMemo(
-    () => (data ? resolveCurrentPlanSlug({ isPremium, slotsLimit, slotsUsed }) : null),
-    [data, isPremium, slotsLimit, slotsUsed]
+  const billing = data?.billing ?? EMPTY_BILLING_SNAPSHOT;
+  const hasPremiumAccess = billing.hasPremiumAccess;
+  const billingScreen = useMemo(() => resolveCollectionBillingScreen(billing), [billing]);
+  const billingOverlays = useMemo(
+    () =>
+      resolveCollectionBillingOverlays({
+        billing,
+        billingScreen,
+        slotsUsed,
+      }),
+    [billing, billingScreen, slotsUsed]
   );
+  const planSlug: SubscriptionPlanSlug | null = billing.plan;
   const slotsRemaining = Math.max(0, slotsLimit - slotsUsed);
-  const subscriptionExpiresAt = data?.subscriptionExpiresAt ?? null;
-  const subscriptionStatus = useMemo(() => {
-    if (!data || !planSlug) return null;
 
-    const resolved = resolveCollectionSubscriptionStatus({
-      isPremium,
-      expiresAt: subscriptionExpiresAt,
-    });
-    if (resolved) return resolved;
-    return isPremium ? 'active' : 'expired';
-  }, [data, isPremium, planSlug, subscriptionExpiresAt]);
-  const renewalDateLabel = useMemo(() => {
-    if (!subscriptionExpiresAt) return null;
-    return formatCollectionRenewalDate(subscriptionExpiresAt, lang);
-  }, [lang, subscriptionExpiresAt]);
-  const daysRemainingLabel = useMemo(() => {
-    if (!subscriptionExpiresAt || subscriptionStatus === 'expired') return null;
-    return formatSubscriptionDaysRemainingLabel(
-      getSubscriptionDaysRemaining(subscriptionExpiresAt),
-      lang
-    );
-  }, [lang, subscriptionExpiresAt, subscriptionStatus]);
-
-  const slotsProgress = useMemo(() => {
-    if (slotsLimit <= 0) return 0;
-    return Math.min(100, Math.round((slotsUsed / slotsLimit) * 100));
-  }, [slotsLimit, slotsUsed]);
+  const billingCopy = useMemo((): CollectionBillingCopy => {
+    const priceCurrency = ui?.dashboard?.forms?.priceCurrency ?? t?.billingPriceCurrency ?? '₽';
+    return {
+      billingCurrentPlanSection: t?.billingCurrentPlanSection ?? 'ТЕКУЩИЙ ПЛАН',
+      billingLastPlanSection: t?.billingLastPlanSection ?? 'ПОСЛЕДНИЙ ПЛАН',
+      billingSupportSection: t?.billingSupportSection ?? 'ПОДДЕРЖКА',
+      billingSupportActiveUntil: t?.billingSupportActiveUntil ?? 'Поддержка активна до {date}',
+      billingSupportExpiredOn: t?.billingSupportExpiredOn ?? 'Истёк {date}',
+      billingChangePlanButton: t?.billingChangePlanButton ?? t?.changePlanButton ?? 'Сменить план',
+      billingRecommendedPlanSection: t?.billingRecommendedPlanSection ?? 'РЕКОМЕНДУЕМЫЙ ПЛАН',
+      billingUpgradePlanButton: t?.billingUpgradePlanButton ?? 'Повысить тариф',
+      billingCollectionUsageSection: t?.billingCollectionUsageSection ?? 'Использование коллекции',
+      billingCollectionUsageCount: t?.billingCollectionUsageCount ?? '{used} из {limit}',
+      billingCancelledBannerTitle: t?.billingCancelledBannerTitle ?? 'Поддержка отменена',
+      billingCancelledBannerBody:
+        t?.billingCancelledBannerBody ??
+        'Автопродление отключено. Поддержка артистов сохранится до окончания оплаченного периода.',
+      billingCancelledBannerCta: t?.billingCancelledBannerCta ?? 'Возобновить поддержку',
+      billingExpiredBannerTitle: t?.billingExpiredBannerTitle ?? 'Поддержка завершена',
+      billingExpiredBannerBody:
+        t?.billingExpiredBannerBody ??
+        'Срок оплаченного периода закончился. Чтобы снова поддерживать любимых артистов и пользоваться премиум-функциями, выберите тариф.',
+      billingExpiredBannerCta: t?.billingExpiredBannerCta ?? 'Выбрать тариф',
+      billingPaymentFailedBannerTitle:
+        t?.billingPaymentFailedBannerTitle ?? 'Не удалось продлить поддержку',
+      billingPaymentFailedBannerBody:
+        t?.billingPaymentFailedBannerBody ??
+        'Не удалось списать ежемесячный платёж. Обновите платёжные данные, чтобы возобновить поддержку.',
+      billingPaymentFailedBannerCta:
+        t?.billingPaymentFailedBannerCta ?? 'Обновить платёжные данные',
+      billingPaymentFailedNextRetry:
+        t?.billingPaymentFailedNextRetry ?? 'Следующая попытка: {date}',
+      billingPaymentFailedGraceEnds:
+        t?.billingPaymentFailedGraceEnds ?? 'Доступ сохранится до: {date}',
+      billingPreBillingBannerTitle: t?.billingPreBillingBannerTitle ?? 'Скоро списание',
+      billingPreBillingBannerBody:
+        t?.billingPreBillingBannerBody ??
+        'Поддержка {plan} ({amount} {currency}) продлится {date}.',
+      billingDowngradeSlotsBannerTitle:
+        t?.billingDowngradeSlotsBannerTitle ?? 'Запланировано понижение тарифа',
+      billingDowngradeSlotsBannerBody:
+        t?.billingDowngradeSlotsBannerBody ??
+        'С {date} тариф изменится на {plan} ({limit} артистов). Сейчас в коллекции {used} артистов — удалите лишних или отмените понижение.',
+      billingDowngradeSlotsBannerCta:
+        t?.billingDowngradeSlotsBannerCta ?? 'Отменить плановое понижение',
+      billingDisableAutoRenewLink: t?.billingDisableAutoRenewLink ?? 'Отключить автопродление',
+      priceCurrency,
+      activeSlotsLabel: t?.activeSlotsLabel ?? 'артистов в коллекции',
+    };
+  }, [t, ui?.dashboard?.forms?.priceCurrency]);
 
   const exitSelectMode = useCallback(() => {
     setIsSelectMode(false);
@@ -283,7 +327,7 @@ export function MyArchiveContent({
   );
 
   const handleRemove = async (artist: MyArchiveArtist) => {
-    if (removingId || bulkLoading || !canRemoveArtist(artist, isPremium)) return;
+    if (removingId || bulkLoading || !canRemoveArtist(artist, hasPremiumAccess)) return;
 
     const previous = data;
     if (previous) {
@@ -337,7 +381,7 @@ export function MyArchiveContent({
     if (!data || bulkLoading || selectedIds.size === 0) return;
 
     const toRemove = data.artists.filter(
-      (artist) => selectedIds.has(artist.artistUserId) && canRemoveArtist(artist, isPremium)
+      (artist) => selectedIds.has(artist.artistUserId) && canRemoveArtist(artist, hasPremiumAccess)
     );
     await removeArtistsList(toRemove, 'bulk');
   };
@@ -346,13 +390,13 @@ export function MyArchiveContent({
     if (!data || bulkLoading || removingId) return;
 
     const toRemove = data.artists.filter(
-      (artist) => !artist.isActive && canRemoveArtist(artist, isPremium)
+      (artist) => !artist.isActive && canRemoveArtist(artist, hasPremiumAccess)
     );
     await removeArtistsList(toRemove, 'cleared');
   };
 
   const handleActivateSelected = async () => {
-    if (!data || bulkLoading || selectedIds.size === 0 || !isPremium) return;
+    if (!data || bulkLoading || selectedIds.size === 0 || !hasPremiumAccess) return;
 
     const inactiveSelected = data.artists.filter(
       (artist) => selectedIds.has(artist.artistUserId) && !artist.isActive
@@ -368,7 +412,7 @@ export function MyArchiveContent({
 
   const activateArtists = useCallback(
     async (artistUserIds: string[], options?: { exitSelectOnSuccess?: boolean }) => {
-      if (!data || bulkLoading || activatingId || artistUserIds.length === 0 || !isPremium) {
+      if (!data || bulkLoading || activatingId || artistUserIds.length === 0 || !hasPremiumAccess) {
         return;
       }
 
@@ -439,10 +483,20 @@ export function MyArchiveContent({
     }
   };
 
-  const handleRenewSubscription = useCallback(async () => {
-    if (renewLoading || bulkLoading) return;
+  const handleBillingBannerAction = useCallback(async () => {
+    if (renewLoading || bulkLoading || autoRenewPatchLoading) return;
 
-    if (!planSlug) {
+    if (billingScreen === 'CANCELLED') {
+      setAutoRenewModal('enable');
+      return;
+    }
+
+    if (billingScreen === 'PAYMENT_FAILED') {
+      setAutoRenewModal('enable-rebind');
+      return;
+    }
+
+    if (billingScreen === 'EXPIRED' || !planSlug) {
       openSupportModal();
       return;
     }
@@ -461,26 +515,112 @@ export function MyArchiveContent({
     if (result.redirected === 'auth') {
       setRenewLoading(false);
     }
-  }, [bulkLoading, openSupportModal, planSlug, renewLoading, startCheckout]);
+  }, [
+    autoRenewPatchLoading,
+    billingScreen,
+    bulkLoading,
+    openSupportModal,
+    planSlug,
+    renewLoading,
+    startCheckout,
+  ]);
 
-  const slotsUsedLabel = t?.activeSlotsLabel ?? 'slots used';
+  const applyArchivePatchResult = useCallback((archive: MyArchiveData) => {
+    setData(normalizeCollectionArchive(archive));
+    window.dispatchEvent(new CustomEvent(ARCHIVE_CHANGED_EVENT));
+  }, []);
+
+  const handleConfirmAutoRenewPatch = useCallback(async () => {
+    if (!autoRenewModal || autoRenewModal === 'enable-rebind') return;
+
+    setError(null);
+    const enable = autoRenewModal === 'enable';
+    const result = await patchAutoRenew(enable);
+
+    if (!result.ok) {
+      if (enable && result.code === 'PAYMENT_METHOD_REQUIRED') {
+        setAutoRenewModal('enable-rebind');
+        return;
+      }
+      setError(result.error);
+      return;
+    }
+
+    applyArchivePatchResult(result.archive);
+    setAutoRenewModal(null);
+  }, [applyArchivePatchResult, autoRenewModal, patchAutoRenew]);
+
+  const handleConfirmAutoRenewRebind = useCallback(async () => {
+    setRenewLoading(true);
+    setError(null);
+
+    const result = await startRebind();
+
+    if (!result.ok) {
+      setError(result.error);
+      setRenewLoading(false);
+    }
+  }, [startRebind]);
+
+  const handleDisableAutoRenew = useCallback(() => {
+    setAutoRenewModal('disable');
+  }, []);
+
+  const handleChangePlan = useCallback(() => {
+    openSupportModal();
+  }, [openSupportModal]);
+
+  const handleUpgradePlan = useCallback(() => {
+    const currentPlan = billing.plan;
+    const recommended = resolveRecommendedPlanSlug(currentPlan);
+    if (currentPlan && recommended) {
+      setUpgradePlanTarget(recommended);
+      return;
+    }
+    openSupportModal();
+  }, [billing.plan, openSupportModal]);
+
+  const handleConfirmUpgradePlan = useCallback(async () => {
+    if (!upgradePlanTarget || renewLoading) return;
+
+    setRenewLoading(true);
+    setError(null);
+
+    const result = await startCheckout(upgradePlanTarget, { intent: 'upgrade' });
+
+    if (!result.ok) {
+      setError(result.error);
+      setRenewLoading(false);
+      setUpgradePlanTarget(null);
+      return;
+    }
+
+    if (result.redirected === 'auth') {
+      setRenewLoading(false);
+      setUpgradePlanTarget(null);
+    }
+  }, [renewLoading, startCheckout, upgradePlanTarget]);
+
+  const handleCancelScheduledDowngrade = useCallback(async () => {
+    if (autoRenewPatchLoading || renewLoading) return;
+
+    setError(null);
+    const result = await cancelScheduledDowngrade();
+
+    if (!result.ok) {
+      setError(result.error);
+      return;
+    }
+
+    applyArchivePatchResult(result.archive);
+  }, [applyArchivePatchResult, autoRenewPatchLoading, cancelScheduledDowngrade, renewLoading]);
+
   const removeLabel = t?.remove ?? 'Remove';
   const removeLockedPeriodHint =
     t?.removeLockedPeriodHint ??
     'Each artist is locked in your collection for 30 days after being added.';
   const removeSubscriptionTooltip =
     t?.removeSubscriptionTooltip ?? 'Active support is required to remove active artists.';
-  const supportInactiveDescription =
-    t?.subscriptionExpiredDescription ??
-    t?.supportInactiveDescription ??
-    'Access to exclusive content is suspended.';
-  const renewSupportLabel =
-    t?.renewSupportButton ?? ui?.buttons?.artistCollectionRenew ?? 'Renew support';
-  const changePlanLabel = t?.changePlanButton ?? 'Change plan';
-  const planSectionLabel = t?.planSectionLabel ?? 'Plan';
-  const subscriptionSectionLabel = t?.subscriptionSectionLabel ?? 'Support';
-  const subscriptionExpiredStatusLabel = t?.subscriptionExpiredStatus ?? 'Expired';
-  const renewalDateTemplate = t?.subscriptionRenewalDate ?? 'Valid until {date}';
   const selectModeLabel = t?.selectMode ?? 'Select';
   const cancelSelectLabel = t?.cancelSelect ?? 'Done';
   const selectedCountLabel = t?.selectedCount ?? '{count} selected';
@@ -497,17 +637,21 @@ export function MyArchiveContent({
     data?.artists.filter((a) => selectedIds.has(a.artistUserId) && !a.isActive).length ?? 0;
   const activateCount = Math.min(selectedInactiveCount, slotsRemaining);
   const activateDisabled =
-    bulkLoading || activateCount === 0 || selectedInactiveCount === 0 || !isPremium;
+    bulkLoading || activateCount === 0 || selectedInactiveCount === 0 || !hasPremiumAccess;
   const removeSelectedDisabled =
     bulkLoading ||
     selectedCount === 0 ||
-    !data?.artists.some((a) => selectedIds.has(a.artistUserId) && canRemoveArtist(a, isPremium));
+    !data?.artists.some(
+      (a) => selectedIds.has(a.artistUserId) && canRemoveArtist(a, hasPremiumAccess)
+    );
 
   const isCollectionEmpty = (data?.artists.length ?? 0) === 0;
   const showFullTabEmptyState = Boolean(
-    data && !loading && !error && isCollectionEmpty && !planSlug
+    data && !loading && !error && isCollectionEmpty && billingScreen === 'NONE'
   );
-  const showInlineEmptyState = Boolean(data && !loading && !error && isCollectionEmpty && planSlug);
+  const showInlineEmptyState = Boolean(
+    data && !loading && !error && isCollectionEmpty && billingScreen !== 'NONE'
+  );
   // Пока идёт загрузка или нет данных — не рисуем summary «0 / 3» (пустая оболочка).
   // Parent показывает DashboardLoadingState через onContentBusy / !archiveContentReady.
   const shouldBlockShell = !hasLoadedOnce || loading || (!data && !error);
@@ -524,8 +668,56 @@ export function MyArchiveContent({
     );
   }
 
+  const billingExpiresLabel = billing.expiresAt
+    ? formatCollectionRenewalDate(billing.expiresAt, lang)
+    : null;
+  const billingChargeLabel = billing.nextChargeAt
+    ? formatCollectionRenewalDate(billing.nextChargeAt, lang)
+    : billingExpiresLabel;
+  const billingPriceCurrency =
+    ui?.dashboard?.forms?.priceCurrency ?? t?.billingPriceCurrency ?? '₽';
+  const autoRenewModalLoading = autoRenewPatchLoading || renewLoading;
+
   return (
     <>
+      <DisableAutoRenewConfirmModal
+        isOpen={autoRenewModal === 'disable'}
+        expiresLabel={billingExpiresLabel}
+        loading={autoRenewModalLoading}
+        onCancel={() => setAutoRenewModal(null)}
+        onConfirm={() => void handleConfirmAutoRenewPatch()}
+      />
+
+      <EnableAutoRenewConfirmModal
+        isOpen={autoRenewModal === 'enable'}
+        planSlug={planSlug}
+        chargeDateLabel={billingChargeLabel}
+        paymentMethodTitle={billing.paymentMethodTitle}
+        priceCurrency={billingPriceCurrency}
+        loading={autoRenewModalLoading}
+        onCancel={() => setAutoRenewModal(null)}
+        onConfirm={() => void handleConfirmAutoRenewPatch()}
+        onChangePaymentMethod={() => setAutoRenewModal('enable-rebind')}
+      />
+
+      <RebindPaymentMethodModal
+        isOpen={autoRenewModal === 'enable-rebind'}
+        loading={autoRenewModalLoading}
+        onCancel={() => setAutoRenewModal(null)}
+        onConfirm={() => void handleConfirmAutoRenewRebind()}
+      />
+
+      {upgradePlanTarget && billing.plan ? (
+        <UpgradePlanConfirmModal
+          isOpen
+          currentPlanSlug={billing.plan}
+          targetPlanSlug={upgradePlanTarget}
+          priceCurrency={billingPriceCurrency}
+          loading={renewLoading}
+          onCancel={() => setUpgradePlanTarget(null)}
+          onConfirm={() => void handleConfirmUpgradePlan()}
+        />
+      ) : null}
       <section
         className={clsx(
           'collection__tab',
@@ -535,93 +727,28 @@ export function MyArchiveContent({
       >
         <div className="user-dashboard__section">
           <div className="user-dashboard__albums-list">
-            <DashboardCard className="collection__summary-card">
-              <header
-                className={clsx(
-                  'collection__summary',
-                  subscriptionStatus && `collection__summary--${subscriptionStatus}`
-                )}
-              >
-                <div className="collection__summary-column collection__summary-plan">
-                  <h3 className="collection__summary-column-title">{planSectionLabel}</h3>
-                  {planSlug ? (
-                    <p className="collection__summary-value-title">
-                      {getPlanDisplayName(planSlug)}
-                    </p>
-                  ) : null}
-                  <div className="collection__summary-description">
-                    <p className="collection__summary-slots">
-                      <span className="collection__summary-slots-count" aria-live="polite">
-                        {slotsUsed} / {slotsLimit}
-                      </span>{' '}
-                      {slotsUsedLabel}
-                    </p>
-                    <div
-                      className="collection__summary-slots-progress"
-                      aria-hidden
-                      style={
-                        { '--collection-slots-progress': `${slotsProgress}%` } as CSSProperties
-                      }
-                    >
-                      <span className="collection__summary-slots-progress-fill" />
-                    </div>
-                  </div>
-                  <div className="collection__summary-action">
-                    <DashboardButton variant="outline" onClick={() => openSupportModal()}>
-                      {changePlanLabel}
-                    </DashboardButton>
-                  </div>
-                </div>
-
-                {subscriptionStatus ? (
-                  <div className="collection__summary-column collection__summary-subscription">
-                    <h3 className="collection__summary-column-title">{subscriptionSectionLabel}</h3>
-                    {subscriptionStatus === 'expired' ? (
-                      <>
-                        <p className="collection__summary-value-title collection__summary-value-title--expired">
-                          <span className="collection__summary-expired-dot" aria-hidden />
-                          {subscriptionExpiredStatusLabel}
-                        </p>
-                        <div className="collection__summary-description">
-                          <p className="collection__summary-description-text">
-                            {supportInactiveDescription}
-                          </p>
-                        </div>
-                        <div className="collection__summary-action">
-                          <DashboardButton
-                            variant="outline"
-                            destructive
-                            loading={renewLoading}
-                            disabled={renewLoading || bulkLoading}
-                            onClick={() => void handleRenewSubscription()}
-                          >
-                            {renewSupportLabel}
-                          </DashboardButton>
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                        {renewalDateLabel ? (
-                          <p className="collection__summary-value-title">
-                            {renewalDateTemplate.replace('{date}', renewalDateLabel)}
-                          </p>
-                        ) : null}
-                        {daysRemainingLabel ? (
-                          <div className="collection__summary-description">
-                            <p className="collection__summary-description-text">
-                              {daysRemainingLabel}
-                            </p>
-                          </div>
-                        ) : (
-                          <div className="collection__summary-description" aria-hidden />
-                        )}
-                        <div className="collection__summary-action" aria-hidden />
-                      </>
-                    )}
-                  </div>
-                ) : null}
-              </header>
-            </DashboardCard>
+            {billingScreen !== 'NONE' ? (
+              <CollectionBillingSummary
+                screen={billingScreen}
+                billing={billing}
+                overlays={billingOverlays}
+                slotsUsed={slotsUsed}
+                lang={lang}
+                copy={billingCopy}
+                changePlanLoading={renewLoading}
+                bannerActionLoading={renewLoading || autoRenewPatchLoading}
+                cancelScheduledDowngradeLoading={autoRenewPatchLoading}
+                onChangePlan={handleChangePlan}
+                onBannerAction={() => void handleBillingBannerAction()}
+                onUpgradePlan={handleUpgradePlan}
+                onCancelScheduledDowngrade={() => void handleCancelScheduledDowngrade()}
+                onDisableAutoRenew={
+                  billingScreen === 'ACTIVE' && billing.autoRenewEnabled
+                    ? handleDisableAutoRenew
+                    : undefined
+                }
+              />
+            ) : null}
 
             {error ? (
               <div className="collection__error" role="alert">
@@ -666,10 +793,10 @@ export function MyArchiveContent({
                       Boolean(activatingId) ||
                       bulkLoading ||
                       Boolean(removingId) ||
-                      !isPremium ||
+                      !hasPremiumAccess ||
                       slotsRemaining <= 0;
                     const activateRowLabel =
-                      slotsRemaining <= 0 || !isPremium
+                      slotsRemaining <= 0 || !hasPremiumAccess
                         ? `${activateArtistLabel}. ${activateLimitTemplate.replace('{count}', String(slotsRemaining))}`
                         : activateArtistLabel;
 
@@ -755,7 +882,7 @@ export function MyArchiveContent({
                               ) : null}
                               <CollectionArtistRemoveAction
                                 artist={artist}
-                                isPremium={isPremium}
+                                hasPremiumAccess={hasPremiumAccess}
                                 lang={lang}
                                 removeLabel={removeLabel}
                                 removeSubscriptionTooltip={removeSubscriptionTooltip}

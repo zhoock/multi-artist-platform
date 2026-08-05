@@ -36,6 +36,10 @@ type UseSubscriptionCheckoutOptions = {
   onClose?: (options?: CloseArchiveAccessModalOptions) => void;
 };
 
+export type SubscriptionCheckoutOptions = {
+  intent?: 'upgrade';
+};
+
 export function useSubscriptionCheckout({ onClose }: UseSubscriptionCheckoutOptions = {}) {
   const { lang } = useLang() as { lang: 'ru' | 'en' };
   const location = useLocation();
@@ -44,7 +48,10 @@ export function useSubscriptionCheckout({ onClose }: UseSubscriptionCheckoutOpti
   const emailCopy = useEmailVerificationCopy();
 
   const startCheckout = useCallback(
-    async (planSlug: SubscriptionPlanSlug): Promise<SubscriptionCheckoutResult> => {
+    async (
+      planSlug: SubscriptionPlanSlug,
+      options: SubscriptionCheckoutOptions = {}
+    ): Promise<SubscriptionCheckoutResult> => {
       const returnTo = readReturnPathFromLocation(location);
 
       if (viewer && !isEmailVerified(viewer)) {
@@ -75,7 +82,11 @@ export function useSubscriptionCheckout({ onClose }: UseSubscriptionCheckoutOpti
             ? buildSubscriptionPaymentStatusReturnUrl(returnTo)
             : undefined;
 
-        const result = await createSubscriptionPayment({ returnUrl, plan: planSlug });
+        const result = await createSubscriptionPayment({
+          returnUrl,
+          plan: planSlug,
+          intent: options.intent,
+        });
 
         if (!result.success || !result.data) {
           return {

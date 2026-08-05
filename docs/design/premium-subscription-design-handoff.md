@@ -90,15 +90,15 @@ State banners in upload **are part of** screen mockups (cancelled / expired / pa
 
 ## 3. Compliance check
 
-| Check                                                       | Result                                     |
-| ----------------------------------------------------------- | ------------------------------------------ |
-| One BillingScreen → one screen layout (uploaded)            | ✔ 4/4 uploaded screens map 1:1            |
-| Each backend status with premium/expired UI has screen      | ✔ except `NONE` (asset missing)           |
-| ADR BillingScreen enum names                                | ✔ match                                   |
-| State ownership                                             | ✔ layout from mockup; status from backend |
-| Interaction: banner on CANCELLED / EXPIRED / PAYMENT_FAILED | ✔ matches Interaction source              |
-| Interaction: no banner on ACTIVE                            | ✔                                         |
-| Modals in PR-5/6/9                                          | ⚠ assets not uploaded (see discrepancies) |
+| Check                                                       | Result                                         |
+| ----------------------------------------------------------- | ---------------------------------------------- |
+| One BillingScreen → one screen layout (uploaded)            | ✔ 4/4 uploaded screens map 1:1                |
+| Each backend status with premium/expired UI has screen      | ✔ except `NONE` (asset missing)               |
+| ADR BillingScreen enum names                                | ✔ match                                       |
+| State ownership                                             | ✔ layout from mockup; status from backend     |
+| Interaction: banner on CANCELLED / EXPIRED / PAYMENT_FAILED | ✔ matches Interaction source                  |
+| Interaction: no banner on ACTIVE                            | ✔                                             |
+| Modals in PR-5/6/9                                          | ✓ assets uploaded (2026-08-05 modal composite) |
 
 ---
 
@@ -107,7 +107,7 @@ State banners in upload **are part of** screen mockups (cancelled / expired / pa
 | #   | Type               | Description                                                                                                                                                                                                                                                |
 | --- | ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | D-1 | **Missing assets** | `subscriptions-none` not in upload. Required for `BillingScreen.NONE`.                                                                                                                                                                                     |
-| D-2 | **Missing assets** | All modals (`modal-disable-autorenew`, `modal-enable-autorenew`, plan change, rebind) not uploaded.                                                                                                                                                        |
+| D-2 | **Missing assets** | ~~All modals not uploaded.~~ **Resolved 2026-08-05** — modal composite PNG uploaded (`modal-disable-autorenew`, `modal-enable-autorenew`, `modal-rebind-card`).                                                                                            |
 | D-3 | **Missing assets** | Overlay banners `banner-pre-billing`, `banner-downgrade-slots` not uploaded.                                                                                                                                                                               |
 | D-4 | **Documentation**  | «Рекомендуемый план» upsell block on all 4 screens — not listed in ADR mapping table; treat as **shared chrome** on Collection billing layout (document in Interaction source v2026-08-05 amendment).                                                      |
 | D-5 | **Copy vs policy** | Mockup shows «Истёк {date}» on **payment-failed** screen while grace policy keeps access — UI label reflects billing period end, not entitlement; backend `hasPremiumAccess` remains true in `past_due`. Confirm with product (wording OK if intentional). |
@@ -119,28 +119,49 @@ State banners in upload **are part of** screen mockups (cancelled / expired / pa
 
 ## 5. Design Handoff Summary
 
-| Metric                              | Count |
-| ----------------------------------- | ----- |
-| Full screens in upload              | **4** |
-| Full screens required (incl. NONE)  | **5** |
-| Modals (documented, pending assets) | **6** |
-| Overlay banners (pending assets)    | **2** |
+| Metric                              | Count                                      |
+| ----------------------------------- | ------------------------------------------ |
+| Full screens in upload              | **4**                                      |
+| Full screens required (incl. NONE)  | **5**                                      |
+| Modals (documented, pending assets) | **3** (PR-5 composite uploaded 2026-08-05) |
+| Overlay banners (pending assets)    | **2**                                      |
 
-| Gate                                     | Status                                                       |
-| ---------------------------------------- | ------------------------------------------------------------ |
-| BillingScreen mapping (uploaded screens) | ✔ **COMPLETE**                                              |
-| BillingScreen `NONE`                     | ⚠ pending asset                                             |
-| Interaction Source (screens)             | ✔ **COMPLETE**                                              |
-| Interaction Source (modals)              | ⚠ pending assets                                            |
-| Modals copy                              | ⚠ pending assets                                            |
-| **PR-4** (data only)                     | **READY** — no UI                                            |
-| **PR-4b** (UI per mockup)                | **READY** for 4 screens; blocked on D-1, D-2 for full parity |
-| **PR-5**                                 | **READY** logic; **blocked** on modal assets (D-2)           |
-| **PR-6**                                 | **READY** logic; **blocked** on modal assets (D-2)           |
-| **PR-8**                                 | **READY** logic; **blocked** on banner assets (D-3)          |
-| **PR-9**                                 | **READY** logic; **blocked** on rebind modal (D-2)           |
+| Gate                                     | Status                                                                                            |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| BillingScreen mapping (uploaded screens) | ✔ **COMPLETE**                                                                                   |
+| BillingScreen `NONE`                     | ⚠ pending asset                                                                                  |
+| Interaction Source (screens)             | ✔ **COMPLETE**                                                                                   |
+| Interaction Source (modals)              | ✔ PR-5 modals signed off; PR-6 upgrade/downgrade assets pending                                  |
+| Modals copy                              | ✔ PR-5 copy deck; PR-6 pending                                                                   |
+| **PR-4** (data only)                     | **READY** — no UI                                                                                 |
+| **PR-4b** (UI per mockup)                | **READY** for 4 screens; blocked on D-1, D-2 for full parity                                      |
+| **PR-5**                                 | **Complete** — backend + modal UI signed off                                                      |
+| **PR-6**                                 | **Complete** — upgrade checkout + schedule downgrade                                              |
+| **PR-7**                                 | **Next** — renewal engine; apply `scheduled_plan` at renewal                                      |
+| **PR-8**                                 | **Complete** — [overlay spec](./pr-8-billing-overlays-design-review.md); D-3 PNG sign-off pending |
+| **PR-9**                                 | **READY** logic; **blocked** on rebind modal (D-2)                                                |
 
 **Design accepted for implementation** of uploaded screens and documented interactions. Missing assets must be supplied before modal/banner PR UI sign-off.
+
+---
+
+## PR-8 implementation handoff
+
+**Status:** Spec frozen — ready for implementation (2026-08-05).
+
+**Authoritative spec:** [pr-8-billing-overlays-design-review.md](./pr-8-billing-overlays-design-review.md)
+
+### Implementation constraints
+
+Implement PR-8 exactly according to [pr-8-billing-overlays-design-review.md](./pr-8-billing-overlays-design-review.md).
+
+- Do **not** modify `BillingScreen`, `BillingSnapshot`, `resolveCollectionBillingScreen()`, or any ADR.
+- Do **not** introduce new overlay types, visibility rules, or date calculations.
+- If implementation reveals a missing UX case, **stop and document it** instead of extending the architecture.
+
+During coding it is tempting to add “just one more banner”, state, or guard clause. If it is not in the spec — do not invent it; pause and ask product first.
+
+Visual assets for overlays (D-3) may reuse existing `BillingAlertBanner` chrome until PNG sign-off; that reuse is already in the spec and is not a scope expansion.
 
 ---
 

@@ -17,7 +17,6 @@ import {
   getUserIdFromEvent,
   unauthorizedFromAuthHeader,
 } from './lib/api-helpers';
-import { viewerHasActiveSubscription } from './lib/subscriptions';
 import { artistHasMonetizationEnabled } from './lib/artist-monetization';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -62,8 +61,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
 
   try {
     const entry = await addArtistToArchive(userId, artistUserId);
-    const isPremium = await viewerHasActiveSubscription(userId);
-    const status = await getArchiveStatusForArtist(userId, artistUserId, isPremium);
+    const status = await getArchiveStatusForArtist(userId, artistUserId);
 
     return createSuccessResponse({
       entry: {

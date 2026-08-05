@@ -140,7 +140,8 @@ Lowering slot limit mid-cycle would force removing supported artists immediately
 
 - **Downgrade** is **scheduled** for next renewal (`scheduled_plan` in DB).
 - **No charge** at schedule time; current plan and slots remain until `expires_at`.
-- At renewal: charge lower plan price; apply new `slots_limit`; if active artists exceed new limit, block renewal until user deactivates excess (policy in billing spec).
+- At renewal: charge lower plan price; apply new `slots_limit`.
+- After **successful** renewal payment, Renewal Engine **automatically deactivates only excess** archive artists (deterministic order: `locked_until DESC`, then `created_at DESC`).
 - UI shows “Effective from {date}” per Interaction source.
 
 ### Consequences
@@ -148,6 +149,7 @@ Lowering slot limit mid-cycle would force removing supported artists immediately
 - User keeps higher tier benefits until period end.
 - Renewal engine must read `scheduled_plan` when creating next charge.
 - Cancel scheduled downgrade = clear `scheduled_plan`.
+- On `DUNNING_EXHAUSTED` or `PERIOD_ENDED`, clear `scheduled_plan` so a stale downgrade cannot apply after resubscribe.
 
 ---
 
@@ -202,8 +204,95 @@ YooKassa provides **autopayments** (saved payment method + `payment_method_id`),
 
 ---
 
+## ADR-009: Subscription fulfillment pipelines are separate
+
+**Status:** Accepted  
+**Date:** 2026-08-05
+
+### Context
+
+Premium billing involves four distinct user intents that look similar in the plan picker but differ in **payment timing**, **DB mutations**, and **when plan/slots take effect**:
+
+- First purchase vs return after expiry (resubscribe) both use “checkout”, but are not mid-cycle plan changes.
+- **Upgrade** mid-cycle is immediate, full-price, and resets the billing period ([ADR-005](./subscription-premium-billing.md#adr-005-upgrade-starts-a-new-30-day-billing-cycle)).
+- **Downgrade** mid-cycle is never immediate; it is scheduled for the next period ([ADR-006](./subscription-premium-billing.md#adr-006-downgrade-takes-effect-at-next-period)).
+
+A single shared `fulfillSubscriptionPayment()` path for all checkouts caused downgrade to apply immediately, upgrade to share initial-checkout side effects, and archive artists to be deactivated outside renewal. **These pipelines must not be merged.**
+
+### Decision
+
+There are **four fulfillment pipelines**. Each has its own entry point, allowed triggers, and side effects. **Never route one intent through another pipeline.**
+
+#### Pipeline map
+
+```
+Initial (first purchase)
+  → POST /api/create-subscription-payment  (kind=initial, no intent)
+  → processInitialSubscriptionProviderPayment()
+  → fulfillInitialSubscriptionPayment() → fulfillSubscriptionPayment()
+
+Resubscribe (after expired / no active period)
+  → POST /api/create-subscription-payment  (kind=initial, no intent)
+  → same initial pipeline as above
+  → RESUBSCRIBE_SUCCEEDED (state machine) on fulfillment
+
+Upgrade (higher tier, mid-cycle)
+  → POST /api/create-subscription-payment  (intent=upgrade, kind=upgrade)
+  → processUpgradeSubscriptionProviderPayment()
+  → fulfillUpgradeSubscriptionPayment()
+  → PLAN_CHANGE_SUCCEEDED; clears dunning + scheduled_plan
+
+Downgrade (lower tier, mid-cycle)
+  → POST /api/subscription/scheduled-plan   (no checkout, no payment row)
+  → subscriptions.scheduled_plan = target
+  → plan / slots / expires_at unchanged until renewal
+  → DELETE /api/subscription/scheduled-plan to cancel
+
+Downgrade apply (at renewal only — PR-7+)
+  → renewal engine reads scheduled_plan
+  → charge lower plan; apply plan + slots_limit
+  → **only place** archive artists may be deactivated for slot reduction
+```
+
+#### Hard rules (invariants)
+
+| Rule     | Detail                                                                                                                                                                                                                           |
+| -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **I-P1** | Mid-cycle **upgrade** MUST use `intent=upgrade` and `kind=upgrade`. Initial checkout without intent for a higher tier while subscription is `active`, `cancel_at_period_end`, or `past_due` → **409 `UPGRADE_INTENT_REQUIRED`**. |
+| **I-P2** | Mid-cycle **downgrade** MUST NOT create `subscription_payments` or call YooKassa. Schedule only via `scheduled_plan`.                                                                                                            |
+| **I-P3** | **Upgrade** MUST NOT call `deactivateAllArchiveArtists`. Slots only increase at upgrade time.                                                                                                                                    |
+| **I-P4** | **Artist deactivation** for slot reduction happens **only** when the renewal engine applies `scheduled_plan` (PR-7). Nowhere else in the system.                                                                                 |
+| **I-P5** | Webhook/poll route by payment `kind`: `processInitialSubscriptionProviderPayment` rejects `upgrade`; `processUpgradeSubscriptionProviderPayment` rejects `initial`. Router: `subscription-payment-router.ts`.                    |
+| **I-P6** | Open checkout guard: pending/waiting payment → **409 `CHECKOUT_IN_PROGRESS`** (no auto-cancel).                                                                                                                                  |
+
+#### Code anchors (implementation)
+
+| Pipeline              | Primary modules                                                                          |
+| --------------------- | ---------------------------------------------------------------------------------------- |
+| Initial / resubscribe | `subscription-fulfillment.ts`, `fulfillSubscriptionPayment()`                            |
+| Upgrade               | `subscription-upgrade-fulfillment.ts`, `assertUpgradeIntentRequiredForMidCycleUpgrade()` |
+| Downgrade schedule    | `subscription-plan-schedule.ts`, `post-subscription-scheduled-plan.ts`                   |
+| Downgrade apply       | renewal engine — `subscription-renewal-fulfillment.ts`                                   |
+
+#### Related ADRs
+
+- Upgrade policy: [ADR-005](#adr-005-upgrade-starts-a-new-30-day-billing-cycle)
+- Downgrade policy: [ADR-006](#adr-006-downgrade-takes-effect-at-next-period)
+- Refetch after mutations: [ADR-004](#adr-004-no-optimistic-billing-ui)
+
+### Consequences
+
+- New plan-change behavior requires identifying the pipeline first — not extending a shared “fulfill payment” helper.
+- Plan picker UI may look unified; backend and API contracts stay split.
+- PR-7 (scheduler / renewal) owns `scheduled_plan` application and artist deactivation — PR-6 deliberately does not.
+- Feature flag off: schedule/upgrade guards return 503; legacy single checkout path remains until rollout.
+
+---
+
 ## Changelog
 
-| Date       | Change                                  |
-| ---------- | --------------------------------------- |
-| 2026-08-05 | Initial 8 ADRs for Premium autoprenewal |
+| Date       | Change                                                                         |
+| ---------- | ------------------------------------------------------------------------------ |
+| 2026-08-05 | ADR-006: excess artists deactivated at renewal apply (PR-7), not block-renewal |
+| 2026-08-05 | ADR-009: separate fulfillment pipelines (PR-6)                                 |
+| 2026-08-05 | Initial 8 ADRs for Premium autoprenewal                                        |

@@ -12,7 +12,6 @@ import {
   unauthorizedFromAuthHeader,
 } from './lib/api-helpers';
 import { getArchiveStatusForArtist } from './lib/archive';
-import { viewerHasActiveSubscription } from './lib/subscriptions';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -39,8 +38,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
   }
 
   try {
-    const isPremium = await viewerHasActiveSubscription(userId);
-    const status = await getArchiveStatusForArtist(userId, artistUserId, isPremium);
+    const status = await getArchiveStatusForArtist(userId, artistUserId);
     return createSuccessResponse(status);
   } catch (error) {
     console.error('❌ [archive-status]', error);

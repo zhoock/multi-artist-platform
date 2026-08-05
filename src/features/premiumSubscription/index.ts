@@ -1,7 +1,21 @@
+export type { BillingScreen } from './lib/billingScreen';
+export { BILLING_OVERLAY, BILLING_OVERLAYS, type BillingOverlay } from './lib/billingOverlay';
+export { resolveCollectionBillingScreen } from './lib/resolveCollectionBillingScreen';
+export { resolveCollectionBillingOverlays } from './lib/resolveCollectionBillingOverlays';
+export {
+  MAX_RENEWAL_ATTEMPTS,
+  PRE_BILLING_WINDOW_MS,
+  SUBSCRIPTION_GRACE_PERIOD_MS,
+  resolveDunningBannerSupplement,
+  resolveGraceEnd,
+  isWithinPreBillingWindow,
+  type DunningBannerSupplement,
+} from './lib/subscriptionBillingPolicy';
 export {
   PremiumSubscriptionProvider,
   usePremiumSubscription,
 } from './lib/PremiumSubscriptionContext';
+export type { PremiumSubscriptionContextValue } from './lib/PremiumSubscriptionContext';
 export { PremiumSuccessModalController } from './ui/PremiumSuccessModal';
 export { PremiumEntitlementRefreshController } from './ui/PremiumEntitlementRefreshController';
 export {

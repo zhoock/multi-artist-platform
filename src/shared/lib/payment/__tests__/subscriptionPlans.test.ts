@@ -12,14 +12,15 @@ import {
   resolvePlanCardAction,
   getPlanCardBadgeLabel,
   resolvePlanSlugFromSlotsLimit,
+  resolvePlanChangeAction,
   shouldConfirmSubscriptionPlanChange,
 } from '../subscriptionPlans';
 
 describe('PLAN_CATALOG (client)', () => {
-  test('uses dev slot limits', () => {
-    expect(PLAN_CATALOG.explorer.slotsLimit).toBe(1);
-    expect(PLAN_CATALOG.collector.slotsLimit).toBe(2);
-    expect(PLAN_CATALOG.archivist.slotsLimit).toBe(3);
+  test('uses production slot limits', () => {
+    expect(PLAN_CATALOG.explorer.slotsLimit).toBe(20);
+    expect(PLAN_CATALOG.collector.slotsLimit).toBe(60);
+    expect(PLAN_CATALOG.archivist.slotsLimit).toBe(100);
   });
 
   test('uses 1-hour support period in development', () => {
@@ -28,33 +29,33 @@ describe('PLAN_CATALOG (client)', () => {
 });
 
 describe('resolvePlanSlugFromSlotsLimit', () => {
-  test('maps dev slot limits to plan slugs', () => {
-    expect(resolvePlanSlugFromSlotsLimit(1)).toBe('explorer');
-    expect(resolvePlanSlugFromSlotsLimit(2)).toBe('collector');
-    expect(resolvePlanSlugFromSlotsLimit(3)).toBe('archivist');
+  test('maps production slot limits to plan slugs', () => {
+    expect(resolvePlanSlugFromSlotsLimit(20)).toBe('explorer');
+    expect(resolvePlanSlugFromSlotsLimit(60)).toBe('collector');
+    expect(resolvePlanSlugFromSlotsLimit(100)).toBe('archivist');
     expect(resolvePlanSlugFromSlotsLimit(99)).toBeNull();
   });
 });
 
 describe('resolveCurrentPlanSlug', () => {
   test('returns plan for active subscription', () => {
-    expect(resolveCurrentPlanSlug({ isPremium: true, slotsLimit: 2, slotsUsed: 1 })).toBe(
+    expect(resolveCurrentPlanSlug({ isPremium: true, slotsLimit: 60, slotsUsed: 1 })).toBe(
       'collector'
     );
   });
 
   test('returns plan for inactive subscription with collection', () => {
-    expect(resolveCurrentPlanSlug({ isPremium: false, slotsLimit: 1, slotsUsed: 1 })).toBe(
+    expect(resolveCurrentPlanSlug({ isPremium: false, slotsLimit: 20, slotsUsed: 1 })).toBe(
       'explorer'
     );
   });
 
   test('returns null for new user with default fallback limit', () => {
-    expect(resolveCurrentPlanSlug({ isPremium: false, slotsLimit: 3, slotsUsed: 0 })).toBeNull();
+    expect(resolveCurrentPlanSlug({ isPremium: false, slotsLimit: 100, slotsUsed: 0 })).toBeNull();
   });
 
   test('returns explorer for expired subscription without collection', () => {
-    expect(resolveCurrentPlanSlug({ isPremium: false, slotsLimit: 1, slotsUsed: 0 })).toBe(
+    expect(resolveCurrentPlanSlug({ isPremium: false, slotsLimit: 20, slotsUsed: 0 })).toBe(
       'explorer'
     );
   });
@@ -140,6 +141,63 @@ describe('shouldConfirmSubscriptionPlanChange', () => {
   test('skips confirmation for renew and first purchase', () => {
     expect(shouldConfirmSubscriptionPlanChange('explorer', 'explorer')).toBe(false);
     expect(shouldConfirmSubscriptionPlanChange(null, 'collector')).toBe(false);
+  });
+});
+
+describe('resolvePlanChangeAction', () => {
+  test('routes upgrade for higher tier on active subscription', () => {
+    expect(
+      resolvePlanChangeAction({
+        currentPlanSlug: 'explorer',
+        targetPlanSlug: 'archivist',
+        billingStatus: 'active',
+        hasPremiumAccess: true,
+      })
+    ).toBe('upgrade');
+  });
+
+  test('routes downgrade for lower tier on active subscription', () => {
+    expect(
+      resolvePlanChangeAction({
+        currentPlanSlug: 'archivist',
+        targetPlanSlug: 'explorer',
+        billingStatus: 'active',
+        hasPremiumAccess: true,
+      })
+    ).toBe('downgrade');
+  });
+
+  test('blocks downgrade during past_due', () => {
+    expect(
+      resolvePlanChangeAction({
+        currentPlanSlug: 'archivist',
+        targetPlanSlug: 'explorer',
+        billingStatus: 'past_due',
+        hasPremiumAccess: true,
+      })
+    ).toBe('blocked_downgrade');
+  });
+
+  test('routes upgrade during past_due', () => {
+    expect(
+      resolvePlanChangeAction({
+        currentPlanSlug: 'explorer',
+        targetPlanSlug: 'archivist',
+        billingStatus: 'past_due',
+        hasPremiumAccess: true,
+      })
+    ).toBe('upgrade');
+  });
+
+  test('uses checkout for expired resubscribe', () => {
+    expect(
+      resolvePlanChangeAction({
+        currentPlanSlug: 'explorer',
+        targetPlanSlug: 'archivist',
+        billingStatus: 'expired',
+        hasPremiumAccess: false,
+      })
+    ).toBe('checkout');
   });
 });
 

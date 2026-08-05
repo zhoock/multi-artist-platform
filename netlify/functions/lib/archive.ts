@@ -4,7 +4,10 @@
  */
 
 import { isMissingRelationError, query } from './db';
-import { getViewerSubscription, isSubscriptionActive } from './subscriptions';
+import { hasPremiumAccess } from './subscription-access';
+import { SUBSCRIPTION_SLOTS_LIMIT_FALLBACK } from './subscription-billing';
+import { buildBillingSnapshot, type BillingSnapshot } from './subscription-billing-snapshot';
+import { getViewerSubscription } from './subscriptions';
 
 export interface UserArchiveEntry {
   id: string;
@@ -214,6 +217,65 @@ export async function deactivateAllArchiveArtists(userId: string): Promise<numbe
   }
 }
 
+/**
+ * Deactivates active archive artists above slotsLimit (PR-7 renewal downgrade apply).
+ * Order: last added first — locked_until DESC NULLS LAST, then created_at DESC.
+ * Idempotent: second call with same limit deactivates 0 rows.
+ */
+export async function deactivateExcessArchiveArtists(
+  userId: string,
+  slotsLimit: number
+): Promise<number> {
+  if (slotsLimit < 0) return 0;
+
+  try {
+    const r = await query(
+      `WITH ranked AS (
+         SELECT id,
+                ROW_NUMBER() OVER (
+                  ORDER BY locked_until DESC NULLS LAST, created_at DESC
+                ) AS rn
+         FROM user_archive
+         WHERE user_id = $1::uuid AND is_active = true
+       ),
+       to_deactivate AS (
+         SELECT id FROM ranked WHERE rn > $2::int
+       )
+       UPDATE user_archive ua
+       SET is_active = false,
+           locked_until = NULL,
+           updated_at = CURRENT_TIMESTAMP
+       FROM to_deactivate td
+       WHERE ua.id = td.id`,
+      [userId, slotsLimit]
+    );
+    return r.rowCount ?? 0;
+  } catch (error) {
+    if (isMissingRelationError(error)) return 0;
+    throw error;
+  }
+}
+
+/** Extends locked_until for all active archive artists after a successful renewal. */
+export async function extendActiveArchiveLockedUntil(
+  userId: string,
+  lockedUntil: Date
+): Promise<number> {
+  try {
+    const r = await query(
+      `UPDATE user_archive
+       SET locked_until = $2::timestamptz,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE user_id = $1::uuid AND is_active = true`,
+      [userId, lockedUntil]
+    );
+    return r.rowCount ?? 0;
+  } catch (error) {
+    if (isMissingRelationError(error)) return 0;
+    throw error;
+  }
+}
+
 export async function activateArtistsInArchive(
   userId: string,
   artistUserIds: string[]
@@ -222,7 +284,7 @@ export async function activateArtistsInArchive(
   if (uniqueIds.length === 0) return 0;
 
   const subscription = await getViewerSubscription(userId);
-  if (!isSubscriptionActive(subscription)) {
+  if (!hasPremiumAccess(subscription)) {
     throw new ArchiveSubscriptionRequiredError('Active subscription required to activate artists');
   }
 
@@ -284,7 +346,7 @@ export async function addArtistToArchive(
     }
 
     const subscription = await getViewerSubscription(userId);
-    if (!isSubscriptionActive(subscription)) {
+    if (!hasPremiumAccess(subscription)) {
       throw new ArchiveSubscriptionRequiredError();
     }
 
@@ -314,7 +376,7 @@ export async function addArtistToArchive(
   }
 
   const subscription = await getViewerSubscription(userId);
-  if (!isSubscriptionActive(subscription)) {
+  if (!hasPremiumAccess(subscription)) {
     throw new ArchiveSubscriptionRequiredError();
   }
 
@@ -353,7 +415,7 @@ export async function removeArtistFromArchive(
 
   if (existing.is_active !== false) {
     const subscription = await getViewerSubscription(userId);
-    if (!isSubscriptionActive(subscription)) {
+    if (!hasPremiumAccess(subscription)) {
       throw new ArchiveSubscriptionRequiredError(
         'Active subscription required to remove active artists from collection'
       );
@@ -378,8 +440,7 @@ export async function removeArtistFromArchive(
 
 export async function getArchiveStatusForArtist(
   userId: string,
-  artistUserId: string,
-  isPremium: boolean
+  artistUserId: string
 ): Promise<ArchiveStatus> {
   const [artistInArchive, artistActiveInArchive, slotsUsed, subscription] = await Promise.all([
     userHasArtistInArchive(userId, artistUserId),
@@ -389,11 +450,11 @@ export async function getArchiveStatusForArtist(
   ]);
 
   return {
-    isPremium,
+    isPremium: hasPremiumAccess(subscription),
     artistInArchive,
     artistActiveInArchive,
     slotsUsed,
-    slotsLimit: subscription?.slotsLimit ?? 3,
+    slotsLimit: subscription?.slotsLimit ?? SUBSCRIPTION_SLOTS_LIMIT_FALLBACK,
   };
 }
 
@@ -417,6 +478,7 @@ export interface MyArchiveDto {
   slotsLimit: number;
   inactiveCount: number;
   subscriptionExpiresAt: string | null;
+  billing: BillingSnapshot;
   artists: MyArchiveArtistDto[];
 }
 
@@ -476,7 +538,7 @@ function pickFirstHeaderCover(userId: string, headerImages: unknown): string | n
 
 export async function getMyArchiveForUser(userId: string): Promise<MyArchiveDto> {
   const subscription = await getViewerSubscription(userId);
-  const slotsLimit = subscription?.slotsLimit ?? 3;
+  const slotsLimit = subscription?.slotsLimit ?? SUBSCRIPTION_SLOTS_LIMIT_FALLBACK;
 
   try {
     const now = new Date();
@@ -531,21 +593,23 @@ export async function getMyArchiveForUser(userId: string): Promise<MyArchiveDto>
     const inactiveCount = artists.filter((a) => !a.isActive).length;
 
     return {
-      isPremium: isSubscriptionActive(subscription),
+      isPremium: hasPremiumAccess(subscription),
       slotsUsed,
       slotsLimit,
       inactiveCount,
       subscriptionExpiresAt: toSubscriptionExpiresAtIso(subscription?.expiresAt),
+      billing: buildBillingSnapshot(subscription, { slotsLimitFallback: slotsLimit }),
       artists,
     };
   } catch (error) {
     if (isMissingRelationError(error)) {
       return {
-        isPremium: isSubscriptionActive(subscription),
+        isPremium: hasPremiumAccess(subscription),
         slotsUsed: 0,
         slotsLimit,
         inactiveCount: 0,
         subscriptionExpiresAt: toSubscriptionExpiresAtIso(subscription?.expiresAt),
+        billing: buildBillingSnapshot(subscription, { slotsLimitFallback: slotsLimit }),
         artists: [],
       };
     }

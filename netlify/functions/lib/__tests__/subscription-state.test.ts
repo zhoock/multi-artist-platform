@@ -10,6 +10,7 @@ import {
   SUBSCRIPTION_EVENTS,
   assertSubscriptionInvariants,
   canCreateRenewalPayment,
+  computeRenewalRetryChargeAt,
   deriveAutoRenewEnabled,
   getNextSubscriptionStatus,
   getSubscriptionInvariantViolations,
@@ -147,6 +148,7 @@ describe('getNextSubscriptionStatus — valid transitions', () => {
     { from: 'expired', event: 'RESUBSCRIBE_SUCCEEDED', to: 'active' },
     { from: 'active', event: 'PLAN_CHANGE_SUCCEEDED', to: 'active' },
     { from: 'cancel_at_period_end', event: 'PLAN_CHANGE_SUCCEEDED', to: 'active' },
+    { from: 'past_due', event: 'PLAN_CHANGE_SUCCEEDED', to: 'active' },
   ];
 
   test.each(cases)('$event: $from → $to', ({ from, event, to, context }) => {
@@ -454,6 +456,24 @@ describe('subscription invariants I1–I7', () => {
 describe('MAX_RENEWAL_ATTEMPTS', () => {
   test('matches billing policy (4 attempts / 7 days)', () => {
     expect(MAX_RENEWAL_ATTEMPTS).toBe(4);
+  });
+});
+
+describe('computeRenewalRetryChargeAt', () => {
+  const firstFailedAt = new Date('2026-08-05T12:00:00.000Z');
+
+  test('returns +24h after first failure', () => {
+    const next = computeRenewalRetryChargeAt(firstFailedAt, 1);
+    expect(next?.toISOString()).toBe('2026-08-06T12:00:00.000Z');
+  });
+
+  test('returns +72h after second failure', () => {
+    const next = computeRenewalRetryChargeAt(firstFailedAt, 2);
+    expect(next?.toISOString()).toBe('2026-08-08T12:00:00.000Z');
+  });
+
+  test('returns null when attempts exhausted', () => {
+    expect(computeRenewalRetryChargeAt(firstFailedAt, MAX_RENEWAL_ATTEMPTS)).toBeNull();
   });
 });
 

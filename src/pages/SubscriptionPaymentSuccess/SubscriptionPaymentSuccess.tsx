@@ -5,7 +5,7 @@ import { useLang } from '@app/providers/lang';
 import { platformDisplayName } from '@shared/constants/platformBranding';
 
 import { getSubscriptionPaymentStatus } from '@shared/api/subscription';
-import { dispatchSubscriptionActivated } from '@features/artistArchive';
+import { ARCHIVE_CHANGED_EVENT, dispatchSubscriptionActivated } from '@features/artistArchive';
 import { clearPremiumCheckoutAuthIntent } from '@shared/lib/authIntent';
 import {
   markPremiumCheckoutPending,
@@ -31,6 +31,7 @@ export default function SubscriptionPaymentSuccess() {
 
   const [status, setStatus] = useState<'loading' | 'success' | 'error' | 'canceled'>('loading');
   const [message, setMessage] = useState<string | null>(null);
+  const [isRebindFlow, setIsRebindFlow] = useState(false);
   const pollCountRef = useRef(0);
   const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const finishedRef = useRef(false);
@@ -77,6 +78,27 @@ export default function SubscriptionPaymentSuccess() {
     }
   }, [artistSlug, navigate, returnTo]);
 
+  const finishRebind = useCallback(() => {
+    if (finishedRef.current) return;
+    finishedRef.current = true;
+
+    window.dispatchEvent(new CustomEvent(ARCHIVE_CHANGED_EVENT));
+    setIsRebindFlow(true);
+    setStatus('success');
+
+    const target = returnTo?.trim();
+    if (target && target.startsWith('/')) {
+      window.setTimeout(
+        () =>
+          navigate(target, {
+            replace: true,
+            ...resolveDashboardModalOpenStateFromStoredBackground(),
+          }),
+        800
+      );
+    }
+  }, [navigate, returnTo]);
+
   useEffect(() => {
     if (!subscriptionPaymentId) {
       setStatus('error');
@@ -99,7 +121,16 @@ export default function SubscriptionPaymentSuccess() {
         return;
       }
 
-      const { payment, subscriptionActivated } = result.data;
+      const { payment, subscriptionActivated, paymentMethodUpdated } = result.data;
+      const rebindKind = payment.metadata?.kind === 'rebind';
+      if (rebindKind) {
+        setIsRebindFlow(true);
+      }
+
+      if (paymentMethodUpdated) {
+        finishRebind();
+        return;
+      }
 
       if (subscriptionActivated || payment.status === 'succeeded') {
         finishActivated();
@@ -108,7 +139,13 @@ export default function SubscriptionPaymentSuccess() {
 
       if (payment.status === 'canceled') {
         setStatus('canceled');
-        setMessage('Payment was canceled');
+        setMessage(
+          rebindKind
+            ? lang === 'en'
+              ? 'Payment method update was canceled'
+              : 'Обновление способа оплаты отменено'
+            : 'Payment was canceled'
+        );
         return;
       }
 
@@ -116,7 +153,11 @@ export default function SubscriptionPaymentSuccess() {
       if (pollCountRef.current >= MAX_POLLS) {
         setStatus('error');
         setMessage(
-          'Payment confirmation is taking longer than expected. Premium will activate shortly.'
+          rebindKind
+            ? lang === 'en'
+              ? 'Payment method confirmation is taking longer than expected.'
+              : 'Подтверждение способа оплаты занимает больше времени, чем ожидалось.'
+            : 'Payment confirmation is taking longer than expected. Premium will activate shortly.'
         );
         return;
       }
@@ -132,7 +173,15 @@ export default function SubscriptionPaymentSuccess() {
       cancelled = true;
       if (pollTimerRef.current) clearTimeout(pollTimerRef.current);
     };
-  }, [subscriptionPaymentId, finishActivated]);
+  }, [subscriptionPaymentId, finishActivated, finishRebind, lang]);
+
+  const loadingText = isRebindFlow
+    ? lang === 'en'
+      ? 'Confirming payment method update…'
+      : 'Подтверждаем обновление способа оплаты…'
+    : lang === 'en'
+      ? 'Confirming Premium payment…'
+      : 'Подтверждаем оплату Premium…';
 
   return (
     <>
@@ -144,11 +193,15 @@ export default function SubscriptionPaymentSuccess() {
       </Helmet>
       <div className="subscription-payment-success">
         {status === 'loading' && (
-          <p className="subscription-payment-success__text">Confirming Premium payment…</p>
+          <p className="subscription-payment-success__text">{loadingText}</p>
         )}
         {status === 'success' && (
           <p className="subscription-payment-success__text subscription-payment-success__text--ok">
-            Premium activated. Redirecting…
+            {isRebindFlow
+              ? lang === 'en'
+                ? 'Payment method updated. Redirecting…'
+                : 'Способ оплаты обновлён. Перенаправляем…'
+              : 'Premium activated. Redirecting…'}
           </p>
         )}
         {status === 'canceled' && (

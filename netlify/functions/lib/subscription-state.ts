@@ -21,6 +21,30 @@ export type SubscriptionPresenceStatus = 'none' | CanonicalSubscriptionStatus;
 /** Billing policy: max failed renewal attempts before DUNNING_EXHAUSTED (ADR-007). */
 export const MAX_RENEWAL_ATTEMPTS = 4;
 
+const HOUR_MS = 60 * 60 * 1000;
+
+/** Grace period after first failed renewal — premium access continues (ADR-007). */
+export const SUBSCRIPTION_GRACE_PERIOD_MS = 7 * 24 * HOUR_MS;
+
+/** Retry offsets from first_failed_at after attempts 1–3 fail (ADR-007). */
+export const RENEWAL_RETRY_OFFSETS_MS = [24 * HOUR_MS, 72 * HOUR_MS, 168 * HOUR_MS] as const;
+
+/**
+ * Next charge time after a failed renewal attempt.
+ * @param renewalAttemptCount count after the failure (1…MAX_RENEWAL_ATTEMPTS)
+ */
+export function computeRenewalRetryChargeAt(
+  firstFailedAt: Date,
+  renewalAttemptCount: number
+): Date | null {
+  if (renewalAttemptCount >= MAX_RENEWAL_ATTEMPTS) return null;
+  const offsetIndex = renewalAttemptCount - 1;
+  if (offsetIndex < 0 || offsetIndex >= RENEWAL_RETRY_OFFSETS_MS.length) return null;
+  const baseMs = firstFailedAt.getTime();
+  if (Number.isNaN(baseMs)) return null;
+  return new Date(baseMs + RENEWAL_RETRY_OFFSETS_MS[offsetIndex]!);
+}
+
 export const SUBSCRIPTION_EVENTS = [
   'INITIAL_PAYMENT_SUCCEEDED',
   'AUTO_RENEW_SUCCEEDED',
@@ -220,7 +244,9 @@ export function getNextSubscriptionStatus(
       break;
 
     case 'PLAN_CHANGE_SUCCEEDED':
-      if (from === 'active' || from === 'cancel_at_period_end') return 'active';
+      if (from === 'active' || from === 'cancel_at_period_end' || from === 'past_due') {
+        return 'active';
+      }
       break;
 
     default:
