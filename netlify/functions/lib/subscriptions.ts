@@ -5,7 +5,15 @@
 
 import { isMissingRelationError, query } from './db';
 
-export const SUBSCRIPTION_STATUSES = ['active', 'canceled', 'expired', 'trial', 'paused'] as const;
+export const SUBSCRIPTION_STATUSES = [
+  'active',
+  'cancel_at_period_end',
+  'past_due',
+  'canceled',
+  'expired',
+  'trial',
+  'paused',
+] as const;
 
 export type SubscriptionStatus = (typeof SUBSCRIPTION_STATUSES)[number];
 
@@ -19,6 +27,12 @@ export interface Subscription {
   providerSubscriptionId: string | null;
   startedAt: Date | null;
   expiresAt: Date | null;
+  /** YooKassa payment_method.id — populated when autoprenew is enabled (PR-1 schema). */
+  paymentMethodId?: string | null;
+  nextChargeAt?: Date | null;
+  renewalAttemptCount?: number;
+  scheduledPlan?: string | null;
+  firstFailedAt?: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }

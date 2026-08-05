@@ -168,10 +168,20 @@ PlayerTrack
 
 Generic API: `toast.show()` (in-memory only) · Cross-navigation: `arm*()` helpers · Исходники (план): `src/shared/lib/toast/`
 
+### Architecture Decision Records (ADR)
+
+→ [docs/adr/README.md](./adr/README.md)
+
+Зафиксированные решения (Premium billing, UI ownership, YooKassa autoprenewal и др.). При споре «почему так» — сначала ADR.
+
+**Статус реализации autoprenewal:** [subscription-implementation-status.md](./adr/subscription-implementation-status.md)
+
 ### Связанные документы
 
 - История миграции с legacy `components/`: [docs/fsd-migration-plan.md](./fsd-migration-plan.md)
 - Синхронизация текстов: [docs/architecture/lyrics-synchronization.md](./architecture/lyrics-synchronization.md)
 - Audio Asset Pipeline (playback vs optional assets): [docs/architecture/audio-asset-pipeline.md](./architecture/audio-asset-pipeline.md)
+- Premium billing ADR: [docs/adr/subscription-premium-billing.md](./adr/subscription-premium-billing.md)
+- Premium implementation status (PR-1…12): [docs/adr/subscription-implementation-status.md](./adr/subscription-implementation-status.md)
 
 Документ обновляйте при изменении структуры `src/`.
