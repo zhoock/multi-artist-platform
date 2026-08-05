@@ -1,6 +1,6 @@
 #!/usr/bin/env tsx
 /**
- * CI guard: ensure subscription autoprenew migrations 066–069 are applied.
+ * CI guard: ensure subscription autoprenew migrations 066–070 are applied.
  * Requires DATABASE_URL (fresh Postgres after `npm run migrate`).
  */
 
@@ -11,6 +11,7 @@ const REQUIRED_MIGRATIONS = [
   '067_subscription_payments_kind.sql',
   '068_subscription_payment_method_title.sql',
   '069_subscription_autorenew_backfill.sql',
+  '070_subscriptions_unique_user_id.sql',
 ] as const;
 
 async function main(): Promise<void> {
@@ -44,7 +45,7 @@ async function main(): Promise<void> {
       process.exit(1);
     }
 
-    console.log('✅ Subscription migrations 066–069 verified');
+    console.log('✅ Subscription migrations 066–070 verified');
   } finally {
     await pool.end();
   }

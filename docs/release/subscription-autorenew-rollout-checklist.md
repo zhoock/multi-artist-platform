@@ -2,7 +2,7 @@
 
 Production rollout guide for Premium subscription autoprenewal. Use after PR-10 P0 merge gate is green in CI.
 
-**Related:** [Implementation status](../adr/subscription-implementation-status.md) · [Autorenew backfill](../adr/subscription-autorenew-backfill.md) · [PR-10 E2E spec](../adr/pr-10-e2e-specification.md) · [Design handoff](../design/premium-subscription-design-handoff.md)
+**Related:** [Implementation status](../adr/subscription-implementation-status.md) · [Autorenew backfill](../adr/subscription-autorenew-backfill.md) · [PR-10 E2E spec](../adr/pr-10-e2e-specification.md) · [Design handoff](../design/premium-subscription-design-handoff.md) · [Operations guide](../operations/subscription-autorenew-operations.md)
 
 ---
 
@@ -168,6 +168,10 @@ Revert to previous deploy if critical defect. Flag-off preserves legacy one-time
 ---
 
 ## 7. Monitoring checklist
+
+**Structured logs & metrics (PR-10.3):** Parse Netlify function logs for `"domain":"subscription"`. Filter by `correlationId` to trace checkout → webhook/poll → fulfillment. Metric lines use `"level":"metric"`. Full reference: [Operations guide](../operations/subscription-autorenew-operations.md).
+
+**Diagnostics (read-only):** `dumpSubscriptionLifecycleDiagnostics(userId)` — subscription row, payments, BillingSnapshot, derived BillingScreen/overlays, invariants.
 
 **First 24–72 hours after production flag enable:**
 

@@ -37,6 +37,11 @@ import {
 } from './lib/subscription-billing';
 import { isSubscriptionAutoRenewEnabled } from './lib/subscription-feature-flag';
 import {
+  logSubscriptionEvent,
+  runWithSubscriptionObservability,
+  SUBSCRIPTION_LOG_EVENTS,
+} from './lib/subscription-observability';
+import {
   assertUpgradeCheckoutAllowed,
   assertUpgradeIntentRequiredForMidCycleUpgrade,
   SubscriptionPlanScheduleError,
@@ -267,11 +272,22 @@ export const handler: Handler = async (event: HandlerEvent) => {
     console.error('[create-subscription-payment] failed to attach provider payment id', error);
   }
 
-  console.log('[create-subscription-payment] created', {
-    userIdSuffix: `…${userId.slice(-6)}`,
-    paymentIdSuffix: `…${paymentData.id.slice(-6)}`,
-    subscriptionPaymentIdSuffix: `…${subscriptionPaymentId.slice(-6)}`,
-  });
+  await runWithSubscriptionObservability(
+    {
+      userId,
+      subscriptionPaymentId,
+      providerPaymentId: paymentData.id,
+      kind: paymentKind,
+      source: 'checkout',
+      correlationId: subscriptionPaymentId,
+    },
+    async () => {
+      logSubscriptionEvent(SUBSCRIPTION_LOG_EVENTS.CHECKOUT_CREATED, {
+        planSlug,
+        paymentKind,
+      });
+    }
+  );
 
   return createSuccessResponse({
     paymentId: paymentData.id,

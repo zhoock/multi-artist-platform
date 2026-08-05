@@ -1,10 +1,16 @@
 /**
  * Routes subscription provider payments to initial, upgrade, or renewal processors (PR-6 / PR-7).
+ * PR-10.3: observability at fulfillment boundary.
  */
 
 import { isInitialSubscriptionPaymentKind } from './subscription-fulfillment';
 import type { SubscriptionProviderPayment } from './subscription-provider-payment';
 import { providerPaymentKind } from './subscription-provider-payment';
+import {
+  beginSubscriptionFulfillmentObservability,
+  recordSubscriptionFulfillmentError,
+  recordSubscriptionFulfillmentOutcome,
+} from './subscription-observability-fulfillment';
 import {
   isRenewalSubscriptionPaymentKind,
   processRenewalSubscriptionProviderPayment,
@@ -26,6 +32,7 @@ import {
   type ProcessInitialSubscriptionProviderPaymentOptions,
   type ProcessInitialSubscriptionProviderPaymentResult,
 } from './subscription-fulfillment';
+import type { SubscriptionObservabilitySource } from './subscription-observability';
 
 export type ProcessSubscriptionProviderPaymentResult =
   | ProcessInitialSubscriptionProviderPaymentResult
@@ -35,15 +42,17 @@ export type ProcessSubscriptionProviderPaymentResult =
 
 export type ProcessSubscriptionProviderPaymentOptions =
   ProcessInitialSubscriptionProviderPaymentOptions &
-    ProcessUpgradeSubscriptionProviderPaymentOptions;
+    ProcessUpgradeSubscriptionProviderPaymentOptions & {
+      observabilitySource?: SubscriptionObservabilitySource;
+      subscriptionPaymentId?: string;
+    };
 
-export async function processSubscriptionProviderPayment(
+async function dispatchSubscriptionProviderPayment(
   payment: SubscriptionProviderPayment,
   userId: string,
-  options: ProcessSubscriptionProviderPaymentOptions = {}
+  kind: string | null | undefined,
+  options: ProcessSubscriptionProviderPaymentOptions
 ): Promise<ProcessSubscriptionProviderPaymentResult> {
-  const kind = providerPaymentKind(payment);
-
   if (isRebindSubscriptionPaymentKind(kind)) {
     return processRebindSubscriptionProviderPayment(payment, userId, options);
   }
@@ -61,6 +70,43 @@ export async function processSubscriptionProviderPayment(
   }
 
   throw Object.assign(new Error('Unsupported subscription payment kind'), { statusCode: 400 });
+}
+
+async function processWithObservability(
+  payment: SubscriptionProviderPayment,
+  userId: string,
+  kind: string | null | undefined,
+  options: ProcessSubscriptionProviderPaymentOptions
+): Promise<ProcessSubscriptionProviderPaymentResult> {
+  const resolvedKind = kind?.trim() || 'initial';
+  const source = options.observabilitySource ?? 'poll';
+
+  beginSubscriptionFulfillmentObservability({
+    userId,
+    kind: resolvedKind,
+    source,
+    providerPaymentId: payment.id,
+    subscriptionPaymentId: options.subscriptionPaymentId,
+    paymentStatus: payment.status,
+  });
+
+  try {
+    const result = await dispatchSubscriptionProviderPayment(payment, userId, kind, options);
+    recordSubscriptionFulfillmentOutcome(resolvedKind, source, result);
+    return result;
+  } catch (error) {
+    recordSubscriptionFulfillmentError(resolvedKind, source, error);
+    throw error;
+  }
+}
+
+export async function processSubscriptionProviderPayment(
+  payment: SubscriptionProviderPayment,
+  userId: string,
+  options: ProcessSubscriptionProviderPaymentOptions = {}
+): Promise<ProcessSubscriptionProviderPaymentResult> {
+  const kind = providerPaymentKind(payment);
+  return processWithObservability(payment, userId, kind, options);
 }
 
 export function resolveSubscriptionPaymentKindFromRow(
@@ -77,22 +123,5 @@ export async function processSubscriptionProviderPaymentForRow(
   options: ProcessSubscriptionProviderPaymentOptions = {}
 ): Promise<ProcessSubscriptionProviderPaymentResult> {
   const kind = resolveSubscriptionPaymentKindFromRow(rowKind, payment);
-
-  if (isRebindSubscriptionPaymentKind(kind)) {
-    return processRebindSubscriptionProviderPayment(payment, userId, options);
-  }
-
-  if (isRenewalSubscriptionPaymentKind(kind)) {
-    return processRenewalSubscriptionProviderPayment(payment, userId);
-  }
-
-  if (isUpgradeSubscriptionPaymentKind(kind)) {
-    return processUpgradeSubscriptionProviderPayment(payment, userId, options);
-  }
-
-  if (isInitialSubscriptionPaymentKind(kind)) {
-    return processInitialSubscriptionProviderPayment(payment, userId, options);
-  }
-
-  throw Object.assign(new Error('Unsupported subscription payment kind'), { statusCode: 400 });
+  return processWithObservability(payment, userId, kind, options);
 }

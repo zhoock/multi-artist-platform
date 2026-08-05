@@ -20,6 +20,11 @@ import {
 } from './subscription-provider-payment';
 import { processSubscriptionProviderPayment } from './subscription-payment-router';
 import { applySubscriptionPeriodEnded } from './subscription-renewal-fulfillment';
+import {
+  extendSubscriptionObservability,
+  logSubscriptionEvent,
+  SUBSCRIPTION_LOG_EVENTS,
+} from './subscription-observability';
 import { buildRenewalSubscriptionPaymentPayload } from './subscription-yookassa';
 import { mapSubscriptionRow, type SubscriptionRow } from './subscriptions';
 import { getYooKassaEnvCredentials } from './yookassa-env';
@@ -208,9 +213,34 @@ async function createYooKassaRenewalPayment(params: {
 
 async function processRenewalProviderPaymentInline(
   userId: string,
-  providerPayment: SubscriptionProviderPayment
+  providerPayment: SubscriptionProviderPayment,
+  subscriptionPaymentId: string
 ): Promise<void> {
-  await processSubscriptionProviderPayment(providerPayment, userId, { devMode: true });
+  await processSubscriptionProviderPayment(providerPayment, userId, {
+    devMode: true,
+    observabilitySource: 'scheduler',
+    subscriptionPaymentId,
+  });
+}
+
+type RenewalChargePhase = 'PRE_PROVIDER' | 'POST_PROVIDER';
+
+function logPostProviderFulfillmentFailure(params: {
+  subscriptionId: string;
+  userId: string;
+  subscriptionPaymentId?: string;
+  error: unknown;
+}): void {
+  logSubscriptionEvent(
+    SUBSCRIPTION_LOG_EVENTS.SCHEDULER_ERROR,
+    {
+      subscriptionId: params.subscriptionId,
+      subscriptionPaymentId: params.subscriptionPaymentId,
+      phase: 'POST_PROVIDER',
+      error: params.error instanceof Error ? params.error.message : String(params.error),
+    },
+    'error'
+  );
 }
 
 export async function attemptRenewalChargeForSubscription(
@@ -219,17 +249,41 @@ export async function attemptRenewalChargeForSubscription(
 ): Promise<'attempted' | 'skipped' | 'error'> {
   if (!isSubscriptionAutoRenewEnabled()) return 'skipped';
 
+  extendSubscriptionObservability({
+    subscriptionId,
+    kind: 'renewal',
+    source: 'scheduler',
+    correlationId: subscriptionId,
+  });
+
   const claim = await claimSubscriptionForRenewalCharge(subscriptionId, now);
-  if (!claim) return 'skipped';
+  if (!claim) {
+    logSubscriptionEvent(SUBSCRIPTION_LOG_EVENTS.SCHEDULER_CHARGE, {
+      subscriptionId,
+      outcome: 'skipped',
+      reason: 'claim_failed',
+    });
+    return 'skipped';
+  }
 
   const subscription = mapSubscriptionRow(claim.row);
+  extendSubscriptionObservability({ userId: subscription.userId, subscriptionId: subscription.id });
+
   const paymentMethodId = subscription.paymentMethodId?.trim();
-  if (!paymentMethodId) return 'skipped';
+  if (!paymentMethodId) {
+    logSubscriptionEvent(SUBSCRIPTION_LOG_EVENTS.SCHEDULER_CHARGE, {
+      subscriptionId,
+      outcome: 'skipped',
+      reason: 'missing_payment_method',
+    });
+    return 'skipped';
+  }
 
   const chargePlanSlug = resolveRenewalChargePlanSlug(subscription);
   let subscriptionPaymentId: string | undefined;
+  let phase: RenewalChargePhase = 'PRE_PROVIDER';
 
-  const rollback = async () => {
+  const rollbackPreProvider = async () => {
     await rollbackRenewalChargeAttempt({
       subscriptionId: subscription.id,
       userId: subscription.userId,
@@ -242,10 +296,12 @@ export async function attemptRenewalChargeForSubscription(
     if (!isDevPaymentModeEnabled()) {
       const customerEmail = await getUserEmail(subscription.userId);
       if (!customerEmail) {
-        console.error('[renewal-engine] missing user email for receipt', {
-          userIdSuffix: `…${subscription.userId.slice(-6)}`,
-        });
-        await rollback();
+        logSubscriptionEvent(
+          SUBSCRIPTION_LOG_EVENTS.SCHEDULER_ERROR,
+          { reason: 'missing_user_email' },
+          'error'
+        );
+        await rollbackPreProvider();
         return 'error';
       }
     }
@@ -259,6 +315,7 @@ export async function attemptRenewalChargeForSubscription(
     if (isDevPaymentModeEnabled()) {
       const { paymentId } = await attachDevSucceededSubscriptionCheckout({ subscriptionPaymentId });
       await attachProviderPaymentId(subscriptionPaymentId, paymentId);
+      phase = 'POST_PROVIDER';
 
       const row = await query<{
         id: string;
@@ -278,7 +335,12 @@ export async function attemptRenewalChargeForSubscription(
 
       const paymentRow = row.rows[0];
       if (!paymentRow?.provider_payment_id) {
-        await rollback();
+        logPostProviderFulfillmentFailure({
+          subscriptionId: subscription.id,
+          userId: subscription.userId,
+          subscriptionPaymentId,
+          error: new Error('provider_payment_id missing after attach'),
+        });
         return 'error';
       }
 
@@ -287,11 +349,20 @@ export async function attemptRenewalChargeForSubscription(
         paymentRow.provider_payment_id
       );
       if (!providerPayment) {
-        await rollback();
+        logPostProviderFulfillmentFailure({
+          subscriptionId: subscription.id,
+          userId: subscription.userId,
+          subscriptionPaymentId,
+          error: new Error('Failed to map dev provider payment'),
+        });
         return 'error';
       }
 
-      await processRenewalProviderPaymentInline(subscription.userId, providerPayment);
+      await processRenewalProviderPaymentInline(
+        subscription.userId,
+        providerPayment,
+        subscriptionPaymentId
+      );
       return 'attempted';
     }
 
@@ -305,6 +376,7 @@ export async function attemptRenewalChargeForSubscription(
     });
 
     await attachProviderPaymentId(subscriptionPaymentId, paymentId);
+    phase = 'POST_PROVIDER';
 
     if (status === 'succeeded') {
       const providerPayment: SubscriptionProviderPayment = {
@@ -322,13 +394,43 @@ export async function attemptRenewalChargeForSubscription(
         },
         paymentMethod: { id: paymentMethodId, saved: true },
       };
-      await processRenewalProviderPaymentInline(subscription.userId, providerPayment);
+      await processRenewalProviderPaymentInline(
+        subscription.userId,
+        providerPayment,
+        subscriptionPaymentId
+      );
     }
+
+    logSubscriptionEvent(SUBSCRIPTION_LOG_EVENTS.SCHEDULER_CHARGE, {
+      subscriptionId: subscription.id,
+      subscriptionPaymentId,
+      outcome: 'attempted',
+      phase,
+    });
 
     return 'attempted';
   } catch (error) {
-    console.error('[renewal-engine] renewal charge attempt failed', error);
-    await rollback();
+    if (phase === 'PRE_PROVIDER') {
+      logSubscriptionEvent(
+        SUBSCRIPTION_LOG_EVENTS.SCHEDULER_ERROR,
+        {
+          subscriptionId: subscription.id,
+          subscriptionPaymentId,
+          phase,
+          error: error instanceof Error ? error.message : String(error),
+        },
+        'error'
+      );
+      await rollbackPreProvider();
+      return 'error';
+    }
+
+    logPostProviderFulfillmentFailure({
+      subscriptionId: subscription.id,
+      userId: subscription.userId,
+      subscriptionPaymentId,
+      error,
+    });
     return 'error';
   }
 }

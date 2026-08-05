@@ -31,6 +31,13 @@ import { SUBSCRIPTION_PAYMENT_KIND_RENEWAL } from './subscription-yookassa';
 import type { Subscription } from './subscriptions';
 import { getViewerSubscription, mapSubscriptionRow, type SubscriptionRow } from './subscriptions';
 import { amountsEqual, metaString } from './yookassa-webhook-verify';
+import {
+  emitSubscriptionMetric,
+  extendSubscriptionObservability,
+  logSubscriptionEvent,
+  SUBSCRIPTION_LOG_EVENTS,
+  SUBSCRIPTION_METRICS,
+} from './subscription-observability';
 
 export interface ProcessRenewalSubscriptionProviderPaymentResult {
   subscriptionRenewed: boolean;
@@ -204,6 +211,12 @@ export async function handleRenewalPaymentFailure(params: {
   userId: string;
   providerPaymentId: string;
 }): Promise<{ handled: boolean; subscription: Subscription | null }> {
+  extendSubscriptionObservability({
+    userId: params.userId,
+    providerPaymentId: params.providerPaymentId,
+    kind: 'renewal',
+  });
+
   const existing = await getViewerSubscription(params.userId);
   if (!existing) {
     return { handled: false, subscription: null };
@@ -248,9 +261,18 @@ export async function handleRenewalPaymentFailure(params: {
       [existing.id, nextStatus, nextAttemptCount, firstFailedAt, params.userId]
     );
 
+    const nextSubscription = updated.rows[0] ? mapSubscriptionRow(updated.rows[0]) : existing;
+    emitSubscriptionMetric(SUBSCRIPTION_METRICS.RENEWAL_EXHAUSTED, { source: 'dunning' });
+    emitSubscriptionMetric(SUBSCRIPTION_METRICS.DUNNING_STEP, { outcome: 'exhausted' });
+    logSubscriptionEvent(SUBSCRIPTION_LOG_EVENTS.RENEWAL_EXHAUSTED, {
+      statusBefore: existing.status,
+      statusAfter: nextSubscription.status,
+      renewalAttemptCount: nextAttemptCount,
+    });
+
     return {
       handled: true,
-      subscription: updated.rows[0] ? mapSubscriptionRow(updated.rows[0]) : existing,
+      subscription: nextSubscription,
     };
   }
 
@@ -286,9 +308,22 @@ export async function handleRenewalPaymentFailure(params: {
     [existing.id, nextStatus, nextAttemptCount, firstFailedAt, nextChargeAt, params.userId]
   );
 
+  const nextSubscription = updated.rows[0] ? mapSubscriptionRow(updated.rows[0]) : existing;
+  emitSubscriptionMetric(SUBSCRIPTION_METRICS.RENEWAL_FAILED, { source: 'dunning' });
+  emitSubscriptionMetric(SUBSCRIPTION_METRICS.DUNNING_STEP, { outcome: 'retry_scheduled' });
+  logSubscriptionEvent(SUBSCRIPTION_LOG_EVENTS.DUNNING_STEP, {
+    statusBefore: existing.status,
+    statusAfter: nextSubscription.status,
+    renewalAttemptCount: nextAttemptCount,
+    attemptsRemaining: attemptsRemaining - 1,
+  });
+  logSubscriptionEvent(SUBSCRIPTION_LOG_EVENTS.RENEWAL_FAILED, {
+    renewalAttemptCount: nextAttemptCount,
+  });
+
   return {
     handled: true,
-    subscription: updated.rows[0] ? mapSubscriptionRow(updated.rows[0]) : existing,
+    subscription: nextSubscription,
   };
 }
 
@@ -328,7 +363,21 @@ export async function applySubscriptionPeriodEnded(
   );
 
   const row = updated.rows[0];
-  return row ? mapSubscriptionRow(row) : null;
+  if (row) {
+    const nextSubscription = mapSubscriptionRow(row);
+    extendSubscriptionObservability({
+      userId,
+      subscriptionId,
+      kind: 'renewal',
+      source: 'scheduler',
+    });
+    logSubscriptionEvent(SUBSCRIPTION_LOG_EVENTS.PERIOD_ENDED, {
+      statusBefore: existing.status,
+      statusAfter: nextSubscription.status,
+    });
+    return nextSubscription;
+  }
+  return null;
 }
 
 export async function processRenewalSubscriptionProviderPayment(
@@ -375,6 +424,15 @@ export async function processRenewalSubscriptionProviderPayment(
     const claim = await claimSubscriptionPaymentSuccess(payment.id, userId);
     if (claim === 'not_found') {
       throw Object.assign(new Error('Subscription payment not found'), { statusCode: 404 });
+    }
+
+    if (claim === 'rejected_terminal') {
+      const alreadyFulfilled = await isSubscriptionFulfilledForProviderPayment(userId, payment.id);
+      return {
+        subscriptionRenewed: alreadyFulfilled,
+        alreadyFulfilled,
+        planSlug,
+      };
     }
 
     const { fulfilled, alreadyFulfilled } = await fulfillRenewalSubscriptionPayment({

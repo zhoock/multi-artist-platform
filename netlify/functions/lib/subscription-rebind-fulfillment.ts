@@ -101,6 +101,11 @@ export async function fulfillRebindSubscriptionPayment(params: {
     throw Object.assign(new Error('Subscription payment not found'), { statusCode: 404 });
   }
 
+  if (claim === 'rejected_terminal') {
+    const existing = await getViewerSubscription(params.userId);
+    return { subscription: existing, applied: false, alreadyApplied: false };
+  }
+
   const subscription = await applyRebindPaymentMethod(
     params.userId,
     params.paymentMethodId,

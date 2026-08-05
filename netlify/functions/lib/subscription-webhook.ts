@@ -15,16 +15,22 @@ import {
   metaString,
 } from './yookassa-webhook-verify';
 import { mapYooKassaPaymentToProviderPayment } from './subscription-provider-payment';
-import { providerPaymentKind } from './subscription-provider-payment';
-import { processSubscriptionProviderPayment } from './subscription-payment-router';
-import { isRenewalSubscriptionPaymentKind } from './subscription-renewal-fulfillment';
 import { isRebindSubscriptionPaymentKind } from './subscription-rebind-fulfillment';
 import {
   PREMIUM_SUBSCRIPTION_PRODUCT_TYPE,
+  claimSubscriptionPaymentCanceled,
+  getSubscriptionPaymentByProviderId,
   updateSubscriptionPaymentStatus,
   validatePremiumSubscriptionPayment,
   validateRebindSubscriptionPayment,
 } from './subscription-billing';
+import { verifySubscriptionPaymentRowForWebhook } from './subscription-payment-row-verify';
+import { processSubscriptionProviderPaymentForRow } from './subscription-payment-router';
+import {
+  logSubscriptionEvent,
+  runWithSubscriptionObservability,
+  SUBSCRIPTION_LOG_EVENTS,
+} from './subscription-observability';
 
 interface PaymentWebhookBody {
   type: string;
@@ -77,6 +83,13 @@ async function releaseWebhookEvent(eventId: string): Promise<void> {
   await query(`DELETE FROM webhook_events WHERE provider = 'yookassa' AND event_id = $1`, [
     eventId,
   ]);
+}
+
+function logWebhookSkipped(
+  reason: string,
+  fields: Record<string, string | boolean | undefined> = {}
+): void {
+  logSubscriptionEvent(SUBSCRIPTION_LOG_EVENTS.WEBHOOK_SKIPPED, { reason, ...fields }, 'warn');
 }
 
 function isPremiumSubscriptionNotification(data: PaymentWebhookBody): boolean {
@@ -143,7 +156,7 @@ export async function handlePremiumSubscriptionWebhookIfApplicable(
 
   const yookassaCreds = getYooKassaEnvCredentials();
   if (!yookassaCreds) {
-    console.error('[subscription-webhook] YOOKASSA_SHOP_ID / YOOKASSA_SECRET_KEY missing');
+    logWebhookSkipped('yookassa_credentials_missing');
     return jsonResponse(
       200,
       { success: true, processed: false, message: 'Verification failed: YooKassa env credentials' },
@@ -215,9 +228,51 @@ export async function handlePremiumSubscriptionWebhookIfApplicable(
     );
   }
 
+  const paymentRow = await getSubscriptionPaymentByProviderId(api.id);
+  if (!paymentRow) {
+    logWebhookSkipped('payment_row_not_found', { providerPaymentIdSuffix: `…${api.id.slice(-6)}` });
+    return jsonResponse(
+      200,
+      {
+        success: true,
+        processed: false,
+        message: 'Verification failed: subscription payment row not found',
+      },
+      headers
+    );
+  }
+
+  const rowVerification = verifySubscriptionPaymentRowForWebhook({
+    row: paymentRow,
+    metadataUserId: userId,
+    metadataProductType: productType,
+    metadataKind: kind,
+    metadataPlan: plan,
+    amountValue: api.amount.value,
+    currency: api.amount.currency,
+    amountsEqual,
+  });
+
+  if (!rowVerification.ok) {
+    logWebhookSkipped('row_verification_failed', { reason: rowVerification.reason });
+    return jsonResponse(
+      200,
+      {
+        success: true,
+        processed: false,
+        message: `Verification failed: ${rowVerification.reason}`,
+      },
+      headers
+    );
+  }
+
+  const dbUserId = paymentRow.user_id;
+  const dbKind = paymentRow.kind;
+
   const syntheticId = buildSyntheticEventId(data);
   const reserved = await reserveWebhookEvent(syntheticId, data.event, data.object.id);
   if (!reserved) {
+    logWebhookSkipped('duplicate_webhook_event', { webhookEventId: syntheticId, duplicate: true });
     return jsonResponse(
       200,
       { success: true, processed: false, duplicate: true, message: 'Event already processed' },
@@ -226,35 +281,50 @@ export async function handlePremiumSubscriptionWebhookIfApplicable(
   }
 
   try {
-    if (data.event === 'payment.succeeded') {
-      const providerPayment = mapYooKassaPaymentToProviderPayment(api);
-      if (!providerPayment) {
-        return jsonResponse(
-          200,
-          { success: true, processed: false, message: 'Unsupported payment status' },
-          headers
-        );
-      }
-      await processSubscriptionProviderPayment(providerPayment, userId);
-    } else if (data.event === 'payment.canceled') {
-      const providerPayment = mapYooKassaPaymentToProviderPayment(api);
-      if (
-        providerPayment &&
-        (isRenewalSubscriptionPaymentKind(providerPaymentKind(providerPayment)) ||
-          isRebindSubscriptionPaymentKind(providerPaymentKind(providerPayment)))
-      ) {
-        await processSubscriptionProviderPayment(providerPayment, userId);
-      } else {
-        await updateSubscriptionPaymentStatus(api.id, 'canceled');
-      }
-    } else if (data.event === 'payment.waiting_for_capture') {
-      await updateSubscriptionPaymentStatus(api.id, 'waiting_for_capture');
-    }
+    await runWithSubscriptionObservability(
+      {
+        userId: dbUserId,
+        providerPaymentId: api.id,
+        subscriptionPaymentId: paymentRow.id,
+        kind: dbKind ?? kind ?? undefined,
+        source: 'webhook',
+        webhookEventId: syntheticId,
+        correlationId: paymentRow.id,
+      },
+      async () => {
+        logSubscriptionEvent(SUBSCRIPTION_LOG_EVENTS.WEBHOOK_RECEIVED, {
+          webhookEvent: data.event,
+          paymentStatus: api.status,
+        });
 
-    console.log('[subscription-webhook] processed', {
-      event: data.event,
-      userIdSuffix: `…${userId.slice(-6)}`,
-      paymentIdSuffix: `…${api.id.slice(-6)}`,
+        if (data.event === 'payment.succeeded') {
+          const providerPayment = mapYooKassaPaymentToProviderPayment(api);
+          if (!providerPayment) {
+            logWebhookSkipped('unsupported_payment_status');
+            return;
+          }
+          await processSubscriptionProviderPaymentForRow(providerPayment, dbUserId, dbKind, {
+            observabilitySource: 'webhook',
+            subscriptionPaymentId: paymentRow.id,
+          });
+        } else if (data.event === 'payment.canceled') {
+          const providerPayment = mapYooKassaPaymentToProviderPayment(api);
+          if (providerPayment) {
+            await processSubscriptionProviderPaymentForRow(providerPayment, dbUserId, dbKind, {
+              observabilitySource: 'webhook',
+              subscriptionPaymentId: paymentRow.id,
+            });
+          } else {
+            await claimSubscriptionPaymentCanceled(api.id, dbUserId);
+          }
+        } else if (data.event === 'payment.waiting_for_capture') {
+          await updateSubscriptionPaymentStatus(api.id, 'waiting_for_capture');
+        }
+      }
+    );
+
+    logSubscriptionEvent(SUBSCRIPTION_LOG_EVENTS.WEBHOOK_PROCESSED, {
+      webhookEvent: data.event,
     });
 
     return jsonResponse(
@@ -264,7 +334,11 @@ export async function handlePremiumSubscriptionWebhookIfApplicable(
     );
   } catch (error) {
     await releaseWebhookEvent(syntheticId);
-    console.error('[subscription-webhook] processing error', error);
+    logSubscriptionEvent(
+      SUBSCRIPTION_LOG_EVENTS.WEBHOOK_ERROR,
+      { error: error instanceof Error ? error.message : String(error) },
+      'error'
+    );
     return jsonResponse(
       503,
       { success: false, processed: false, message: 'Processing error; will retry' },

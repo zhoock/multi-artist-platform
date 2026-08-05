@@ -12,6 +12,13 @@ import {
 } from './subscription-billing';
 import { isMissingRelationError, query } from './db';
 import { isSubscriptionAutoRenewEnabled } from './subscription-feature-flag';
+import {
+  emitSubscriptionMetric,
+  extendSubscriptionObservability,
+  logSubscriptionEvent,
+  SUBSCRIPTION_LOG_EVENTS,
+  SUBSCRIPTION_METRICS,
+} from './subscription-observability';
 import { normalizeCanonicalStatus, toPresenceStatus } from './subscription-state';
 import {
   getViewerSubscription,
@@ -122,6 +129,19 @@ export async function scheduleSubscriptionDowngrade(
     }
 
     const nextSubscription = mapSubscriptionRow(row);
+    extendSubscriptionObservability({
+      userId,
+      subscriptionId: nextSubscription.id,
+      kind: 'scheduled_downgrade',
+      source: 'scheduled_plan',
+    });
+    emitSubscriptionMetric(SUBSCRIPTION_METRICS.SCHEDULED_DOWNGRADE_APPLIED);
+    logSubscriptionEvent(SUBSCRIPTION_LOG_EVENTS.SCHEDULED_DOWNGRADE_APPLIED, {
+      statusBefore: subscription.status,
+      statusAfter: nextSubscription.status,
+      targetPlanSlug,
+      scheduledPlan: nextSubscription.scheduledPlan,
+    });
     return {
       subscription: nextSubscription,
       billing: buildBillingSnapshot(nextSubscription),

@@ -139,6 +139,15 @@ export interface SubscriptionPaymentRow {
   updated_at: Date;
 }
 
+export async function countSubscriptionRowsForUser(userId: string): Promise<number> {
+  resolveE2eDatabaseUrl();
+  const result = await query<{ count: string }>(
+    `SELECT COUNT(*)::text AS count FROM subscriptions WHERE user_id = $1::uuid`,
+    [userId]
+  );
+  return Number.parseInt(result.rows[0]?.count ?? '0', 10);
+}
+
 export async function loadSubscriptionPaymentsForUser(
   userId: string,
   limit = 10

@@ -5,6 +5,7 @@
 
 import { query } from './db';
 import {
+  claimSubscriptionPaymentCanceled,
   claimSubscriptionPaymentSuccess,
   comparePlanTiers,
   computeSupportExpiresAt,
@@ -137,6 +138,7 @@ export async function fulfillUpgradeSubscriptionPayment(
          updated_at = CURRENT_TIMESTAMP
      WHERE id = $1::uuid
        AND user_id = $8::uuid
+       AND provider_subscription_id IS DISTINCT FROM $5
      RETURNING
        id,
        user_id,
@@ -168,6 +170,12 @@ export async function fulfillUpgradeSubscriptionPayment(
 
   const row = updated.rows[0];
   if (!row) {
+    const reloaded = await getViewerSubscription(params.userId);
+    if (reloaded?.providerSubscriptionId === params.providerPaymentId) {
+      let subscription = reloaded;
+      subscription = await maybePersistUpgradePaymentMethod(subscription, params.paymentMethodId);
+      return { subscription, fulfilled: false, alreadyFulfilled: true };
+    }
     throw new Error('Failed to apply upgrade to subscription');
   }
 
@@ -260,6 +268,14 @@ export async function processUpgradeSubscriptionProviderPayment(
       throw Object.assign(new Error('Subscription payment not found'), { statusCode: 404 });
     }
 
+    if (claim === 'rejected_terminal') {
+      return {
+        subscriptionActivated: false,
+        alreadyFulfilled: false,
+        planSlug,
+      };
+    }
+
     const paymentMethodId = resolveUpgradePaymentMethodId(payment, options);
 
     if (claim === 'already_succeeded') {
@@ -292,7 +308,7 @@ export async function processUpgradeSubscriptionProviderPayment(
   }
 
   if (payment.status === 'canceled') {
-    await updateSubscriptionPaymentStatus(payment.id, 'canceled');
+    await claimSubscriptionPaymentCanceled(payment.id, userId);
   } else if (payment.status === 'waiting_for_capture') {
     await updateSubscriptionPaymentStatus(payment.id, 'waiting_for_capture');
   } else if (payment.status === 'pending') {

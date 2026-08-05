@@ -293,7 +293,8 @@ export function resolveRenewalChargePlanSlug(
 }
 
 /**
- * Removes an orphan pending renewal row (PR-7.1) or marks it canceled when a provider id exists.
+ * Removes an orphan pending renewal row (PR-7.1).
+ * PR-10.1: never mutates rows that already have provider_payment_id (POST_PROVIDER safety).
  */
 export async function cleanupPendingRenewalPayment(
   subscriptionPaymentId: string,
@@ -318,7 +319,8 @@ export async function cleanupPendingRenewalPayment(
        WHERE id = $1
          AND user_id = $2::uuid
          AND kind = 'renewal'
-         AND status = 'pending'`,
+         AND status = 'pending'
+         AND provider_payment_id IS NULL`,
       [subscriptionPaymentId, userId]
     );
   } catch (error) {
@@ -373,10 +375,21 @@ export async function updateSubscriptionPaymentStatus(
   }
 }
 
-export type ClaimSubscriptionPaymentSuccessResult = 'claimed' | 'already_succeeded' | 'not_found';
+export type ClaimSubscriptionPaymentSuccessResult =
+  | 'claimed'
+  | 'already_succeeded'
+  | 'not_found'
+  | 'rejected_terminal';
+
+/** Statuses eligible for a first-time transition to succeeded (PR-10.2). */
+export const CLAIMABLE_SUBSCRIPTION_PAYMENT_SUCCESS_STATUSES = [
+  'pending',
+  'waiting_for_capture',
+] as const;
 
 /**
- * Atomically mark subscription payment succeeded. Returns `claimed` only for the first transition.
+ * Atomically mark subscription payment succeeded. Returns `claimed` only for the first transition
+ * from pending/waiting_for_capture. Terminal states (canceled, failed) cannot be resurrected.
  */
 export async function claimSubscriptionPaymentSuccess(
   providerPaymentId: string,
@@ -389,18 +402,16 @@ export async function claimSubscriptionPaymentSuccess(
        WHERE provider = 'yookassa'
          AND provider_payment_id = $1
          AND user_id = $2::uuid
-         AND status <> 'succeeded'
+         AND status = ANY($3::text[])
        RETURNING id`,
-      [providerPaymentId, userId]
+      [providerPaymentId, userId, CLAIMABLE_SUBSCRIPTION_PAYMENT_SUCCESS_STATUSES]
     );
     if (claimed.rows[0]?.id) return 'claimed';
 
     const existing = await getSubscriptionPaymentForUser(providerPaymentId, userId);
     if (!existing) return 'not_found';
     if (existing.status === 'succeeded') return 'already_succeeded';
-
-    await updateSubscriptionPaymentStatus(providerPaymentId, 'succeeded');
-    return 'claimed';
+    return 'rejected_terminal';
   } catch (error) {
     if (isMissingRelationError(error)) return 'not_found';
     throw error;
@@ -418,11 +429,28 @@ export async function isSubscriptionFulfilledForProviderPayment(
     `SELECT provider_subscription_id
      FROM subscriptions
      WHERE user_id = $1::uuid
-     ORDER BY created_at DESC
      LIMIT 1`,
     [userId]
   );
   return r.rows[0]?.provider_subscription_id === providerPaymentId;
+}
+
+async function loadSubscriptionByUserAndProviderPaymentId(
+  userId: string,
+  providerPaymentId: string
+): Promise<Subscription | null> {
+  const r = await query<SubscriptionRow>(
+    `SELECT
+       id, user_id, status, plan, slots_limit, provider, provider_subscription_id,
+       started_at, expires_at, created_at, updated_at
+     FROM subscriptions
+     WHERE user_id = $1::uuid
+       AND provider_subscription_id = $2
+     LIMIT 1`,
+    [userId, providerPaymentId]
+  );
+  const row = r.rows[0];
+  return row ? mapSubscriptionRow(row) : null;
 }
 
 export async function getSubscriptionPaymentByProviderId(
@@ -490,13 +518,13 @@ export async function fulfillSubscriptionPayment(params: {
        started_at, expires_at, created_at, updated_at
      FROM subscriptions
      WHERE user_id = $1::uuid
-     ORDER BY created_at DESC
      LIMIT 1`,
     [userId]
   );
 
   const now = new Date();
   const expiresAt = computeSupportExpiresAt(planSlug, now);
+  const providerId = providerPaymentId?.trim() || null;
 
   const row = existing.rows[0];
 
@@ -525,14 +553,21 @@ export async function fulfillSubscriptionPayment(params: {
              next_charge_at = CASE WHEN $5 THEN NULL ELSE next_charge_at END,
              updated_at = CURRENT_TIMESTAMP
          WHERE id = $1
+           AND ($4::text IS NULL OR provider_subscription_id IS DISTINCT FROM $4::text)
          RETURNING
            id, user_id, status, plan, slots_limit, provider, provider_subscription_id,
            started_at, expires_at, created_at, updated_at`,
-        [row.id, planSlug, slotsLimit, providerPaymentId ?? null, canReuse, now, expiresAt]
+        [row.id, planSlug, slotsLimit, providerId, canReuse, now, expiresAt]
       );
       const next = updated.rows[0];
-      if (!next) throw new Error('Failed to update subscription');
-      return mapSubscriptionRow(next);
+      if (next) return mapSubscriptionRow(next);
+
+      if (providerId) {
+        const reloaded = await loadSubscriptionByUserAndProviderPaymentId(userId, providerId);
+        if (reloaded) return reloaded;
+      }
+
+      throw new Error('Failed to update subscription');
     }
   }
 
@@ -540,13 +575,34 @@ export async function fulfillSubscriptionPayment(params: {
     `INSERT INTO subscriptions (
        user_id, status, plan, slots_limit, provider, provider_subscription_id, started_at, expires_at
      ) VALUES ($1::uuid, 'active', $2, $3, 'yookassa', $4, $5, $6)
+     ON CONFLICT (user_id) DO UPDATE SET
+       status = 'active',
+       plan = EXCLUDED.plan,
+       slots_limit = EXCLUDED.slots_limit,
+       provider = 'yookassa',
+       provider_subscription_id = COALESCE(EXCLUDED.provider_subscription_id, subscriptions.provider_subscription_id),
+       started_at = EXCLUDED.started_at,
+       expires_at = EXCLUDED.expires_at,
+       scheduled_plan = NULL,
+       renewal_attempt_count = 0,
+       first_failed_at = NULL,
+       next_charge_at = NULL,
+       updated_at = CURRENT_TIMESTAMP
+     WHERE EXCLUDED.provider_subscription_id IS NULL
+        OR subscriptions.provider_subscription_id IS DISTINCT FROM EXCLUDED.provider_subscription_id
      RETURNING
        id, user_id, status, plan, slots_limit, provider, provider_subscription_id,
        started_at, expires_at, created_at, updated_at`,
-    [userId, planSlug, slotsLimit, providerPaymentId ?? null, now, expiresAt]
+    [userId, planSlug, slotsLimit, providerId, now, expiresAt]
   );
 
   const created = inserted.rows[0];
-  if (!created) throw new Error('Failed to create subscription');
-  return mapSubscriptionRow(created);
+  if (created) return mapSubscriptionRow(created);
+
+  if (providerId) {
+    const reloaded = await loadSubscriptionByUserAndProviderPaymentId(userId, providerId);
+    if (reloaded) return reloaded;
+  }
+
+  throw new Error('Failed to create subscription');
 }

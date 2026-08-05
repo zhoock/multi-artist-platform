@@ -35,6 +35,15 @@ import {
   getSubscriptionPaymentByInternalId,
   PREMIUM_SUBSCRIPTION_PRODUCT_TYPE,
 } from './lib/subscription-billing';
+import {
+  beginSubscriptionFulfillmentObservability,
+  recordSubscriptionFulfillmentOutcome,
+} from './lib/subscription-observability-fulfillment';
+import {
+  logSubscriptionEvent,
+  runWithSubscriptionObservability,
+  SUBSCRIPTION_LOG_EVENTS,
+} from './lib/subscription-observability';
 
 dns.setDefaultResultOrder('ipv4first');
 
@@ -164,8 +173,14 @@ export const handler: Handler = async (event: HandlerEvent) => {
           devProviderPayment,
           userId,
           owned.kind,
-          { devMode: true }
+          { devMode: true, observabilitySource: 'poll', subscriptionPaymentId: owned.id }
         );
+
+        logSubscriptionEvent(SUBSCRIPTION_LOG_EVENTS.POLL_PROCESSED, {
+          subscriptionActivated,
+          isRebind: false,
+          planSlug,
+        });
 
         return createSuccessResponse({
           payment: buildPaymentResponse(devProviderPayment, {
@@ -222,37 +237,75 @@ export const handler: Handler = async (event: HandlerEvent) => {
   const plan = metaString(providerPayment.metadata, 'plan');
 
   try {
-    if (isRebind) {
-      const { paymentMethodUpdated, archive } =
-        await processRebindSubscriptionProviderPaymentWithArchive(providerPayment, userId);
+    return await runWithSubscriptionObservability(
+      {
+        userId,
+        providerPaymentId: paymentId,
+        subscriptionPaymentId: owned.id,
+        kind: owned.kind ?? undefined,
+        source: 'poll',
+        correlationId: owned.id,
+      },
+      async () => {
+        if (isRebind) {
+          beginSubscriptionFulfillmentObservability({
+            userId,
+            kind: 'rebind',
+            source: 'poll',
+            providerPaymentId: paymentId,
+            subscriptionPaymentId: owned.id,
+            paymentStatus: providerPayment.status,
+          });
 
-      return createSuccessResponse({
-        payment: buildPaymentResponse(providerPayment, {
-          productType,
-          userId: metaUserId,
-          plan: plan ?? DEFAULT_SUBSCRIPTION_PLAN,
-        }),
-        subscriptionActivated: false,
-        paymentMethodUpdated,
-        archive,
-      });
-    }
+          const { paymentMethodUpdated, archive } =
+            await processRebindSubscriptionProviderPaymentWithArchive(providerPayment, userId);
 
-    const { subscriptionActivated, planSlug } = await processSubscriptionProviderPaymentForRow(
-      providerPayment,
-      userId,
-      owned.kind
+          recordSubscriptionFulfillmentOutcome('rebind', 'poll', {
+            paymentMethodUpdated,
+            alreadyApplied: !paymentMethodUpdated,
+          });
+
+          logSubscriptionEvent(SUBSCRIPTION_LOG_EVENTS.POLL_PROCESSED, {
+            paymentMethodUpdated,
+            isRebind: true,
+          });
+
+          return createSuccessResponse({
+            payment: buildPaymentResponse(providerPayment, {
+              productType,
+              userId: metaUserId,
+              plan: plan ?? DEFAULT_SUBSCRIPTION_PLAN,
+            }),
+            subscriptionActivated: false,
+            paymentMethodUpdated,
+            archive,
+          });
+        }
+
+        const { subscriptionActivated, planSlug } = await processSubscriptionProviderPaymentForRow(
+          providerPayment,
+          userId,
+          owned.kind,
+          { observabilitySource: 'poll', subscriptionPaymentId: owned.id }
+        );
+
+        logSubscriptionEvent(SUBSCRIPTION_LOG_EVENTS.POLL_PROCESSED, {
+          subscriptionActivated,
+          isRebind: false,
+          planSlug,
+        });
+
+        return createSuccessResponse({
+          payment: buildPaymentResponse(providerPayment, {
+            productType,
+            userId: metaUserId,
+            plan: plan ?? planSlug ?? DEFAULT_SUBSCRIPTION_PLAN,
+          }),
+          subscriptionActivated,
+          paymentMethodUpdated: false,
+        });
+      }
     );
-
-    return createSuccessResponse({
-      payment: buildPaymentResponse(providerPayment, {
-        productType,
-        userId: metaUserId,
-        plan: plan ?? planSlug ?? DEFAULT_SUBSCRIPTION_PLAN,
-      }),
-      subscriptionActivated,
-      paymentMethodUpdated: false,
-    });
   } catch (error) {
     const statusCode =
       error && typeof error === 'object' && 'statusCode' in error

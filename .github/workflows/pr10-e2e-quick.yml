@@ -1,4 +1,4 @@
-# PR-10 P0 merge gate — real PostgreSQL, migrations 066–069, no shared Supabase.
+# PR-10 P0 merge gate — real PostgreSQL, migrations 066–070, no shared Supabase.
 # @see docs/adr/pr-10-e2e-specification.md §3.1
 name: PR-10 P0 E2E (merge gate)
 
@@ -81,7 +81,7 @@ jobs:
       - name: Apply database migrations (clean database)
         run: npm run migrate
 
-      - name: Verify subscription migrations 066–069
+      - name: Verify subscription migrations 066–070
         run: npx tsx scripts/ci/verify-subscription-migrations.ts
 
       - name: Run P0 E2E suite (merge gate)
