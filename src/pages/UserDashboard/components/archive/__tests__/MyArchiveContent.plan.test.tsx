@@ -37,6 +37,10 @@ jest.mock('@shared/lib/archiveAccessModal', () => ({
   }),
 }));
 
+jest.mock('@shared/lib/subscription/isSubscriptionAutoRenewClientEnabled', () => ({
+  isSubscriptionAutoRenewClientEnabled: () => true,
+}));
+
 function renderMyArchive(ui: React.ReactElement) {
   return renderWithProviders(<ToastProvider>{ui}</ToastProvider>);
 }

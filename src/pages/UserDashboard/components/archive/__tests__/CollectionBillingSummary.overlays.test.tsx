@@ -108,4 +108,57 @@ describe('CollectionBillingSummary overlays', () => {
     expect(screen.getByText(/Next retry:/)).toBeTruthy();
     expect(screen.getByText(/Access until:/)).toBeTruthy();
   });
+
+  test('hides resume and rebind CTAs when auto-renew actions are disabled', () => {
+    render(
+      <CollectionBillingSummary
+        screen="CANCELLED"
+        billing={{
+          ...EMPTY_BILLING_SNAPSHOT,
+          status: 'cancel_at_period_end',
+          hasPremiumAccess: true,
+          plan: 'collector',
+          slotsLimit: 2,
+          expiresAt: '2026-09-03T00:00:00.000Z',
+        }}
+        overlays={[]}
+        slotsUsed={1}
+        lang="en"
+        copy={copy}
+        autoRenewActionsEnabled={false}
+        onChangePlan={() => undefined}
+        onBannerAction={() => undefined}
+        onUpgradePlan={() => undefined}
+      />
+    );
+
+    expect(screen.getByText('Cancelled')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Resume' })).toBeNull();
+
+    render(
+      <CollectionBillingSummary
+        screen="PAYMENT_FAILED"
+        billing={{
+          ...EMPTY_BILLING_SNAPSHOT,
+          status: 'past_due',
+          hasPremiumAccess: true,
+          plan: 'collector',
+          slotsLimit: 2,
+          expiresAt: '2026-08-01T00:00:00.000Z',
+          nextChargeAt: '2026-08-08T12:00:00.000Z',
+          firstFailedAt: '2026-08-05T12:00:00.000Z',
+        }}
+        overlays={[]}
+        slotsUsed={1}
+        lang="en"
+        copy={copy}
+        autoRenewActionsEnabled={false}
+        onChangePlan={() => undefined}
+        onBannerAction={() => undefined}
+        onUpgradePlan={() => undefined}
+      />
+    );
+
+    expect(screen.queryByRole('button', { name: 'Update payment' })).toBeNull();
+  });
 });

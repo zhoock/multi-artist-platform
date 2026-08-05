@@ -15,6 +15,7 @@ import { MyArchiveContent } from '../MyArchiveContent';
 
 const getMyArchiveMock = jest.fn<() => Promise<unknown>>();
 const patchAutoRenewMock = jest.mocked(patchSubscriptionAutoRenew);
+const isAutoRenewClientEnabledMock = jest.fn(() => true);
 
 jest.mock('@shared/api/archive', () => ({
   getMyArchive: () => getMyArchiveMock(),
@@ -42,6 +43,10 @@ jest.mock('@shared/lib/archiveAccessModal', () => ({
     requestAccess: jest.fn(),
     startCheckout: jest.fn(),
   }),
+}));
+
+jest.mock('@shared/lib/subscription/isSubscriptionAutoRenewClientEnabled', () => ({
+  isSubscriptionAutoRenewClientEnabled: () => isAutoRenewClientEnabledMock(),
 }));
 
 function renderMyArchive(ui: React.ReactElement) {
@@ -82,10 +87,23 @@ function cancelledArchivePayload() {
   };
 }
 
+function activeArchivePayload() {
+  return {
+    ...cancelledArchivePayload(),
+    billing: {
+      ...cancelledArchivePayload().billing,
+      status: 'active' as const,
+      autoRenewEnabled: true,
+    },
+  };
+}
+
 describe('MyArchiveContent billing auto-renew modals', () => {
   beforeEach(() => {
     getMyArchiveMock.mockReset();
     patchAutoRenewMock.mockReset();
+    isAutoRenewClientEnabledMock.mockReset();
+    isAutoRenewClientEnabledMock.mockReturnValue(true);
   });
 
   test('opens enable modal from cancelled banner CTA', async () => {
@@ -170,5 +188,54 @@ describe('MyArchiveContent billing auto-renew modals', () => {
     expect(
       screen.getByRole('heading', { name: /Update payment method|Обновить способ оплаты/i })
     ).toBeTruthy();
+  });
+
+  test('hides auto-renew banner CTAs when client flag is off', async () => {
+    isAutoRenewClientEnabledMock.mockReturnValue(false);
+    getMyArchiveMock.mockResolvedValue(cancelledArchivePayload());
+
+    renderMyArchive(<MyArchiveContent active />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Support cancelled|Поддержка отменена/i)).toBeTruthy();
+    });
+
+    expect(
+      screen.queryByRole('button', { name: /Resume support|Возобновить поддержку/i })
+    ).toBeNull();
+  });
+
+  test('maps FEATURE_DISABLED patch error to localized copy', async () => {
+    getMyArchiveMock.mockResolvedValue(activeArchivePayload());
+    patchAutoRenewMock.mockResolvedValueOnce({
+      success: false,
+      error: 'Auto-renew is not enabled',
+      code: 'FEATURE_DISABLED',
+    });
+
+    renderMyArchive(<MyArchiveContent active />);
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('button', { name: /Disable auto-renew|Отключить автопродление/i })
+      ).toBeTruthy();
+    });
+
+    fireEvent.click(
+      screen.getByRole('button', { name: /Disable auto-renew|Отключить автопродление/i })
+    );
+
+    const confirmButton = document.querySelector(
+      '.billing-modal__primary-button'
+    ) as HTMLButtonElement | null;
+    expect(confirmButton).toBeTruthy();
+    fireEvent.click(confirmButton!);
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(/Could not update auto-renew|Не удалось обновить автопродление/i)
+      ).toBeTruthy();
+    });
+    expect(screen.queryByText('Auto-renew is not enabled')).toBeNull();
   });
 });

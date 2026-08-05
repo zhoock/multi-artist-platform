@@ -62,6 +62,8 @@ export type CollectionBillingSummaryProps = {
   changePlanLoading?: boolean;
   bannerActionLoading?: boolean;
   cancelScheduledDowngradeLoading?: boolean;
+  /** When false, hides disable/resume/rebind CTAs that require SUBSCRIPTION_AUTO_RENEW_ENABLED. */
+  autoRenewActionsEnabled?: boolean;
   onChangePlan: () => void;
   onBannerAction: () => void;
   onUpgradePlan: () => void;
@@ -137,6 +139,7 @@ export function CollectionBillingSummary({
   changePlanLoading = false,
   bannerActionLoading = false,
   cancelScheduledDowngradeLoading = false,
+  autoRenewActionsEnabled = true,
   onChangePlan,
   onBannerAction,
   onUpgradePlan,
@@ -180,9 +183,9 @@ export function CollectionBillingSummary({
         <BillingAlertBanner
           title={copy.billingCancelledBannerTitle}
           body={copy.billingCancelledBannerBody}
-          ctaLabel={copy.billingCancelledBannerCta}
+          ctaLabel={autoRenewActionsEnabled ? copy.billingCancelledBannerCta : undefined}
           loading={bannerActionLoading}
-          onAction={onBannerAction}
+          onAction={autoRenewActionsEnabled ? onBannerAction : undefined}
         />
       ) : null}
 
@@ -201,9 +204,9 @@ export function CollectionBillingSummary({
           title={copy.billingPaymentFailedBannerTitle}
           body={copy.billingPaymentFailedBannerBody}
           supplementalLines={dunningSupplementLines}
-          ctaLabel={copy.billingPaymentFailedBannerCta}
+          ctaLabel={autoRenewActionsEnabled ? copy.billingPaymentFailedBannerCta : undefined}
           loading={bannerActionLoading}
-          onAction={onBannerAction}
+          onAction={autoRenewActionsEnabled ? onBannerAction : undefined}
         />
       ) : null}
 
@@ -241,7 +244,7 @@ export function CollectionBillingSummary({
                   >
                     {copy.billingChangePlanButton}
                   </DashboardButton>
-                  {onDisableAutoRenew ? (
+                  {autoRenewActionsEnabled && onDisableAutoRenew ? (
                     <button
                       type="button"
                       className="collection-billing__disable-autorenew"

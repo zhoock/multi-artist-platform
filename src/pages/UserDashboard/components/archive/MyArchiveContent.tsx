@@ -34,6 +34,8 @@ import { resolveRecommendedPlanSlug } from '@shared/lib/payment/subscriptionPlan
 import { DashboardButton, DashboardCard } from '@shared/ui/dashboard';
 import { useSubscriptionBilling } from '@shared/lib/subscription/useSubscriptionBilling';
 import { useSubscriptionRebindPayment } from '@shared/lib/subscription/useSubscriptionRebindPayment';
+import { isSubscriptionAutoRenewClientEnabled } from '@shared/lib/subscription/isSubscriptionAutoRenewClientEnabled';
+import { resolveAutoRenewClientError } from '@shared/lib/subscription/resolveAutoRenewClientError';
 
 import { CollectionArtistRemoveAction } from './CollectionArtistRemoveAction';
 import {
@@ -100,6 +102,9 @@ export function MyArchiveContent({
   const onContentBusyRef = useRef(onContentBusy);
 
   const t = ui?.dashboard?.collection;
+  const autoRenewActionsEnabled = isSubscriptionAutoRenewClientEnabled();
+  const autoRenewPatchErrorText =
+    t?.billingAutoRenewPatchError ?? 'Не удалось обновить автопродление';
   loadErrorTextRef.current = t?.loadError ?? null;
   onContentReadyRef.current = onContentReady;
   onContentBusyRef.current = onContentBusy;
@@ -542,13 +547,13 @@ export function MyArchiveContent({
         setAutoRenewModal('enable-rebind');
         return;
       }
-      setError(result.error);
+      setError(resolveAutoRenewClientError(result, autoRenewPatchErrorText));
       return;
     }
 
     applyArchivePatchResult(result.archive);
     setAutoRenewModal(null);
-  }, [applyArchivePatchResult, autoRenewModal, patchAutoRenew]);
+  }, [applyArchivePatchResult, autoRenewModal, autoRenewPatchErrorText, patchAutoRenew]);
 
   const handleConfirmAutoRenewRebind = useCallback(async () => {
     setRenewLoading(true);
@@ -557,10 +562,10 @@ export function MyArchiveContent({
     const result = await startRebind();
 
     if (!result.ok) {
-      setError(result.error);
+      setError(resolveAutoRenewClientError(result, autoRenewPatchErrorText));
       setRenewLoading(false);
     }
-  }, [startRebind]);
+  }, [autoRenewPatchErrorText, startRebind]);
 
   const handleDisableAutoRenew = useCallback(() => {
     setAutoRenewModal('disable');
@@ -738,12 +743,13 @@ export function MyArchiveContent({
                 changePlanLoading={renewLoading}
                 bannerActionLoading={renewLoading || autoRenewPatchLoading}
                 cancelScheduledDowngradeLoading={autoRenewPatchLoading}
+                autoRenewActionsEnabled={autoRenewActionsEnabled}
                 onChangePlan={handleChangePlan}
                 onBannerAction={() => void handleBillingBannerAction()}
                 onUpgradePlan={handleUpgradePlan}
                 onCancelScheduledDowngrade={() => void handleCancelScheduledDowngrade()}
                 onDisableAutoRenew={
-                  billingScreen === 'ACTIVE' && billing.autoRenewEnabled
+                  autoRenewActionsEnabled && billingScreen === 'ACTIVE' && billing.autoRenewEnabled
                     ? handleDisableAutoRenew
                     : undefined
                 }

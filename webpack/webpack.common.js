@@ -204,6 +204,11 @@ module.exports = {
       'import.meta.env.VITE_DEV_PAYMENT_MODE': JSON.stringify(
         process.env.VITE_DEV_PAYMENT_MODE || ''
       ),
+      'import.meta.env.VITE_SUBSCRIPTION_AUTO_RENEW_ENABLED': JSON.stringify(
+        process.env.VITE_SUBSCRIPTION_AUTO_RENEW_ENABLED ||
+          process.env.SUBSCRIPTION_AUTO_RENEW_ENABLED ||
+          ''
+      ),
       'process.env.VITE_SUPABASE_URL': JSON.stringify(process.env.VITE_SUPABASE_URL || ''),
       'process.env.VITE_SUPABASE_ANON_KEY': JSON.stringify(
         process.env.VITE_SUPABASE_ANON_KEY || ''
