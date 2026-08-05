@@ -10,7 +10,7 @@ Living specification for Premium subscription integration tests. **Scenarios are
 
 Three tiers — **T1** backend lifecycle (real Postgres), **T2** UI billing (mocked `getMyArchive`), **T3** cross-layer smoke (webhook + poll races).
 
-**Assertion oracles:** `hasPremiumAccess` · `buildBillingSnapshot` · `resolveCollectionBillingScreen` · `resolveCollectionBillingOverlays` · `getSubscriptionInvariantViolations` (I1–I7).
+**Assertion oracles:** `hasPremiumAccess` · `buildBillingSnapshot` · `resolveCollectionBillingScreen` · `resolveCollectionBillingOverlays` · `getSubscriptionInvariantViolations` (I1–I6) · `canCreateRenewalPayment` (I7).
 
 ---
 
@@ -320,7 +320,7 @@ getSubscriptionInvariantViolations(mapToInvariantSnapshot(subscription), now);
 // Expected: [] or tagged e.g. ['I2'] for @known-gap-I2 scenarios
 ```
 
-Log violated ids: I1–I7, UNKNOWN_STATUS.
+Log violated ids: I1–I6, UNKNOWN_STATUS (I7 via `canCreateRenewalPayment` when testing renewal eligibility).
 
 ### 5.5 Archive state
 

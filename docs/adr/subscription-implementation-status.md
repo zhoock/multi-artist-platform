@@ -16,37 +16,75 @@
 
 ## Implementation Status
 
-**Last updated:** 2026-08-05 (PR-10 Phase 3 — CI merge gate)
+**Last updated:** 2026-08-05 — **Engineering complete** (PR-1…PR-10.3); rollout = PR-11 ops only
 
 ### Capability matrix (current)
 
-| Capability                        | Status | Notes                                                                                 |
-| --------------------------------- | ------ | ------------------------------------------------------------------------------------- |
-| Architecture (ADR-001…009)        | ✓      | Accepted; pipelines documented in ADR-009                                             |
-| Schema + access layer             | ✓      | Migration 066, `subscription-access.ts`                                               |
-| **Production PLAN_CATALOG (B-1)** | **✓**  | **30-day period; 20/60/100 slots; 149/149/199₽**                                      |
-| **Entitlement unification (B-2)** | **✓**  | **Runtime paths use `hasPremiumAccess()` (ADR-003)**                                  |
-| **Autorenew backfill (B-3)**      | **✓**  | **Migration 069 + [backfill doc](./subscription-autorenew-backfill.md)**              |
-| **Resubscribe cleanup (B-4)**     | **✓**  | **`fulfillSubscriptionPayment` clears stale dunning on reuse**                        |
-| State machine                     | ✓      | `subscription-state.ts` — wired in PATCH, renewal, upgrade                            |
-| Feature flag                      | ✓      | `SUBSCRIPTION_AUTO_RENEW_ENABLED` — default **off**                                   |
-| Initial checkout + PM persist     | ✓      | PR-3 / PR-3.1                                                                         |
-| BillingSnapshot API + context     | ✓      | PR-4                                                                                  |
-| Collection billing UI (screens)   | ✓      | PR-4b — merge gate passed                                                             |
-| PATCH auto-renew + modals         | ✓      | PR-5                                                                                  |
-| Upgrade + schedule downgrade      | ✓      | PR-6                                                                                  |
-| **Renewal engine + scheduler**    | **✓**  | **PR-7 + PR-7.1 — production-ready behind feature flag**                              |
-| Renewal hardening (idempotency)   | ✓      | PR-7.1 — integration review: no blockers                                              |
-| Dunning / grace **UI**            | ✓      | PR-8 — overlays + dunning supplements                                                 |
-| Rebind / change card              | ✓      | PR-9 — YooKassa rebind + `paymentMethodTitle`                                         |
-| **Integration E2E P0 (PR-10)**    | **✓**  | **22 P0 scenarios; green on real Postgres; [E2E spec](./pr-10-e2e-specification.md)** |
-| **CI merge gate (PR-10)**         | **✓**  | **`.github/workflows/pr10-e2e-quick.yml` — ephemeral Postgres**                       |
-| Production rollout                | —      | PR-11 — [rollout checklist](../release/subscription-autorenew-rollout-checklist.md)   |
+| Capability                        | Status | Notes                                                                                                          |
+| --------------------------------- | ------ | -------------------------------------------------------------------------------------------------------------- |
+| Architecture (ADR-001…009)        | ✓      | Accepted; pipelines documented in ADR-009                                                                      |
+| Schema + access layer             | ✓      | Migration 066, `subscription-access.ts`                                                                        |
+| **Production PLAN_CATALOG (B-1)** | **✓**  | **30-day period; 20/60/100 slots; 149/149/199₽**                                                               |
+| **Entitlement unification (B-2)** | **✓**  | **Runtime paths use `hasPremiumAccess()` (ADR-003)**                                                           |
+| **Autorenew backfill (B-3)**      | **✓**  | **Migration 069 + [backfill doc](./subscription-autorenew-backfill.md)**                                       |
+| **Resubscribe cleanup (B-4)**     | **✓**  | **`fulfillSubscriptionPayment` clears stale dunning on reuse**                                                 |
+| **Payment idempotency (PR-10.2)** | **✓**  | **Webhook DB cross-check; claim hardening; UNIQUE(user_id); fulfillment guards**                               |
+| **Observability (PR-10.3)**       | **✓**  | **Structured logs, metrics, correlation IDs, [ops guide](../operations/subscription-autorenew-operations.md)** |
+| State machine                     | ✓      | `subscription-state.ts` — wired in PATCH, renewal, upgrade                                                     |
+| Feature flag                      | ✓      | `SUBSCRIPTION_AUTO_RENEW_ENABLED` — default **off**                                                            |
+| Initial checkout + PM persist     | ✓      | PR-3 / PR-3.1                                                                                                  |
+| BillingSnapshot API + context     | ✓      | PR-4                                                                                                           |
+| Collection billing UI (screens)   | ✓      | PR-4b — merge gate passed                                                                                      |
+| PATCH auto-renew + modals         | ✓      | PR-5                                                                                                           |
+| Upgrade + schedule downgrade      | ✓      | PR-6                                                                                                           |
+| **Renewal engine + scheduler**    | **✓**  | **PR-7 + PR-7.1 — production-ready behind feature flag**                                                       |
+| Renewal hardening (idempotency)   | ✓      | PR-7.1 — integration review: no blockers                                                                       |
+| Dunning / grace **UI**            | ✓      | PR-8 — overlays + dunning supplements                                                                          |
+| Rebind / change card              | ✓      | PR-9 — YooKassa rebind + `paymentMethodTitle`                                                                  |
+| **Integration E2E P0 (PR-10)**    | **✓**  | **22 P0 scenarios; green on real Postgres; [E2E spec](./pr-10-e2e-specification.md)**                          |
+| **CI merge gate (PR-10)**         | **✓**  | **`.github/workflows/pr10-e2e-quick.yml` — ephemeral Postgres**                                                |
+| Production rollout                | —      | PR-11 — [rollout checklist](../release/subscription-autorenew-rollout-checklist.md)                            |
 
 **Prod today (flag off):** legacy one-time checkout; renewal scheduler no-op.  
 **Prod with flag on:** full server-side renewal lifecycle + billing overlay UI ready for staging QA.
 
-**Next:** PR-11 — staging rollout per [rollout checklist](../release/subscription-autorenew-rollout-checklist.md)
+**Engineering status:** **Complete** — no further feature PRs unless a production incident or new business requirement.  
+**Rollout (ops):** [rollout checklist](../release/subscription-autorenew-rollout-checklist.md) · [operations guide](../operations/subscription-autorenew-operations.md)
+
+**Invariants (I7 doc):** `getSubscriptionInvariantViolations` checks subscription-row rules **I1–I6**; **I7** = `canCreateRenewalPayment()` (renewal payment eligibility).
+
+---
+
+### ✅ PR-10.2 Complete — Payment/webhook idempotency hardening
+
+| Capability                                  | Status | Notes                                                                                       |
+| ------------------------------------------- | ------ | ------------------------------------------------------------------------------------------- |
+| `claimSubscriptionPaymentSuccess` hardening | ✓      | Only `pending`/`waiting_for_capture` → `succeeded`; `rejected_terminal` for canceled/failed |
+| Webhook DB cross-check                      | ✓      | `subscription-payment-row-verify.ts`; routes via DB `user_id` + `kind`                      |
+| Initial/upgrade fulfillment guards          | ✓      | `provider_subscription_id IS DISTINCT FROM` (parity with renewal PR-10.1)                   |
+| Single subscription per user                | ✓      | Migration `070_subscriptions_unique_user_id.sql`; INSERT `ON CONFLICT (user_id)`            |
+| Cancel path alignment                       | ✓      | Initial/upgrade/webhook cancel → `claimSubscriptionPaymentCanceled`                         |
+| Regression tests                            | ✓      | Unit: claim, row-verify; integration: `pr-10.2-idempotency.integration.test.ts`             |
+
+**Not modified:** UI, `BillingSnapshot`, `BillingScreen`, `BillingOverlay`, ADRs, feature flags, scheduler, rollout docs.
+
+**Apply with PR-10.2 deploy:** migration **070** (after 066–069).
+
+---
+
+### ✅ PR-10.3 Complete — Observability & operational hardening
+
+| Capability                   | Status | Notes                                                                                      |
+| ---------------------------- | ------ | ------------------------------------------------------------------------------------------ |
+| Structured lifecycle logging | ✓      | `subscription-observability.ts` — dot-notation events at all entry points                  |
+| Correlation IDs              | ✓      | `subscriptionPaymentId` / `providerPaymentId` / `subscriptionId` via AsyncLocalStorage     |
+| Lightweight metrics          | ✓      | JSON metric lines + in-memory counters (no external deps)                                  |
+| Lifecycle diagnostics        | ✓      | `subscription-lifecycle-diagnostics.ts` — read-only dump incl. BillingScreen/overlays      |
+| Operations docs              | ✓      | [subscription-autorenew-operations.md](../operations/subscription-autorenew-operations.md) |
+
+**Not modified:** business logic, UI, BillingSnapshot, BillingScreen, BillingOverlay, feature flags, scheduler algorithms, ADRs, schema.
+
+**Tests:** `subscription-observability.test.ts`, `subscription-lifecycle-diagnostics.test.ts`
 
 ---
 
@@ -144,7 +182,9 @@
 | Minor    | Scheduler batch `LIMIT 100`                                                       | Pre-rollout ops          |
 | Minor    | M-1: Rebind does not block renewal scheduler                                      | Accepted delta           |
 
-**Resolved in PR-7.1 (removed from this list):** B1 side-effect idempotency · B2 orphan pending renewal row · M1 ADR-007 grace access for `past_due`.
+**Resolved in PR-10.2:** R-1 webhook metadata-only routing · R-2 initial/upgrade concurrent webhook+poll · R-3 duplicate subscription rows · R-5 canceled payment resurrection. **R-4** mitigated via atomic claim + fulfillment idempotency guards (full multi-step transactions deferred).
+
+**Resolved in PR-10.1:** C-1 POST_PROVIDER double-charge · C-2 unauthenticated scheduler.
 
 ---
 
@@ -284,22 +324,22 @@
 
 ### ✅ PR-2 Complete — State Machine + Transitions
 
-| Capability                       | Status | Notes                                                                  |
-| -------------------------------- | ------ | ---------------------------------------------------------------------- |
-| State Machine (logic)            | ✓      | `subscription-state.ts` — transitions + invariants I1–I7               |
-| Access Layer integration         | ✓      | `normalizeCanonicalStatus`, `deriveAutoRenewEnabled` from state module |
-| Runtime (SM in prod)             | —      | PR-3+ (webhook/scheduler/API still unwired)                            |
-| Scheduler                        | —      | PR-7                                                                   |
-| Checkout (`save_payment_method`) | —      | PR-3                                                                   |
-| Webhooks / dunning               | —      | PR-8                                                                   |
-| Billing API (PATCH, schedule)    | —      | PR-5, PR-6                                                             |
-| BillingSnapshot in API           | —      | PR-4                                                                   |
-| UI (Collection billing)          | —      | PR-4b+                                                                 |
-| BillingScreen resolver           | —      | PR-4b                                                                  |
-| Context (new fields)             | —      | PR-4                                                                   |
-| Rebind / change card             | —      | PR-9                                                                   |
-| Dev mode parity                  | —      | PR-10                                                                  |
-| Production rollout               | —      | PR-11                                                                  |
+| Capability                       | Status | Notes                                                                                                                |
+| -------------------------------- | ------ | -------------------------------------------------------------------------------------------------------------------- |
+| State Machine (logic)            | ✓      | `subscription-state.ts` — transitions; I1–I6 in `getSubscriptionInvariantViolations`; I7 = `canCreateRenewalPayment` |
+| Access Layer integration         | ✓      | `normalizeCanonicalStatus`, `deriveAutoRenewEnabled` from state module                                               |
+| Runtime (SM in prod)             | —      | PR-3+ (webhook/scheduler/API still unwired)                                                                          |
+| Scheduler                        | —      | PR-7                                                                                                                 |
+| Checkout (`save_payment_method`) | —      | PR-3                                                                                                                 |
+| Webhooks / dunning               | —      | PR-8                                                                                                                 |
+| Billing API (PATCH, schedule)    | —      | PR-5, PR-6                                                                                                           |
+| BillingSnapshot in API           | —      | PR-4                                                                                                                 |
+| UI (Collection billing)          | —      | PR-4b+                                                                                                               |
+| BillingScreen resolver           | —      | PR-4b                                                                                                                |
+| Context (new fields)             | —      | PR-4                                                                                                                 |
+| Rebind / change card             | —      | PR-9                                                                                                                 |
+| Dev mode parity                  | —      | PR-10                                                                                                                |
+| Production rollout               | —      | PR-11                                                                                                                |
 
 **Prod behavior after PR-2:** без изменений — модуль pure logic, не вызывается из prod paths.
 
@@ -465,7 +505,7 @@ Verify: only `paymentMethodTitle` / PM fields change in billing summary; no scre
 
 - State machine: `netlify/functions/lib/subscription-state.ts`
   - `SUBSCRIPTION_EVENTS`, `getNextSubscriptionStatus`, `isValidSubscriptionTransition`
-  - Invariants I1–I7: `getSubscriptionInvariantViolations`, `assertSubscriptionInvariants`
+  - Invariants I1–I6: `getSubscriptionInvariantViolations`, `assertSubscriptionInvariants`; I7: `canCreateRenewalPayment`
   - Derived rules: `deriveAutoRenewEnabled`, `willScheduleCharge`, `canCreateRenewalPayment`
   - Legacy read mapping: `normalizeCanonicalStatus`, `toPresenceStatus`
 - Tests: `netlify/functions/lib/__tests__/subscription-state.test.ts`

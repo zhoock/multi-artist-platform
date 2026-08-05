@@ -327,7 +327,9 @@ function hasPremiumAccessForInvariant(snapshot: SubscriptionInvariantSnapshot, n
 const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
 
 /**
- * Validates subscription invariants I1–I7 from the state machine spec.
+ * Validates subscription-row invariants I1–I6 from the state machine spec.
+ * I7 (renewal payment rows only in active/past_due) is enforced via `canCreateRenewalPayment`
+ * at renewal row creation — not included here (requires payment-row context).
  * Returns a list of violated invariant ids (empty = all pass).
  */
 export function getSubscriptionInvariantViolations(
