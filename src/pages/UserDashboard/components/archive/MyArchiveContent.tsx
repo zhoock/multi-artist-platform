@@ -99,7 +99,7 @@ export function MyArchiveContent({
   const onContentReadyRef = useRef(onContentReady);
   const onContentBusyRef = useRef(onContentBusy);
 
-  const t = ui?.dashboard?.archive;
+  const t = ui?.dashboard?.collection;
   loadErrorTextRef.current = t?.loadError ?? null;
   onContentReadyRef.current = onContentReady;
   onContentBusyRef.current = onContentBusy;

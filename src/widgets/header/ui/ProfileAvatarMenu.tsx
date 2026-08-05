@@ -100,7 +100,7 @@ function ProfileAvatarMenuComponent({
   const avatarLabels = ui?.header?.avatarMenu;
   const locale = lang === 'ru' ? 'ru' : 'en';
   const collectionTitle =
-    ui?.dashboard?.archive?.title ?? (locale === 'en' ? 'Your Collection' : 'Ваша коллекция');
+    ui?.dashboard?.collection?.title ?? (locale === 'en' ? 'Your Collection' : 'Ваша коллекция');
   const collectionSubtitle = formatCollectionMenuSubtitle(planSlug, slotsUsed, locale);
   const { pathname } = location;
   const isSettingsActive = pathname.startsWith('/dashboard/settings');

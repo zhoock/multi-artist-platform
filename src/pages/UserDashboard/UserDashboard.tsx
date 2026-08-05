@@ -340,7 +340,7 @@ function dashboardHeadingForTab(tab: DashboardTab, ui: IInterface | null): strin
     case 'mixer':
       return d?.tabs?.mixer ?? 'Mixer';
     case 'collection':
-      return d?.archive?.title ?? d?.tabs?.archive ?? 'Your Collection';
+      return d?.collection?.title ?? d?.tabs?.archive ?? 'Your Collection';
     case 'payment-settings':
       return d?.tabs?.paymentSettings ?? 'Payment Settings';
     case 'my-purchases':

@@ -14,7 +14,7 @@ const COLLECTION_EMPTY_ICON_SIZE = 108;
 
 export function CollectionEmptyState({ ui, embedded = false }: CollectionEmptyStateProps) {
   const navigate = useNavigate();
-  const t = ui?.dashboard?.archive;
+  const t = ui?.dashboard?.collection;
 
   return (
     <DashboardEmptyState

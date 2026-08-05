@@ -418,7 +418,7 @@
           }
         }
       },
-      "archive": {
+      "collection": {
         "title": "Your Collection",
         "subtitle": "Artists in your collection unlock content across the platform: tracks, articles, stems and album downloads.",
         "slotsUsed": "collection slots used",
