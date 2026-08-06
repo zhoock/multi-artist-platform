@@ -3,6 +3,7 @@
  */
 
 import { isSubscriptionAutoRenewEnabled } from './subscription-feature-flag';
+import { SUBSCRIPTION_PLAN_PRICE_CURRENCY_CODE } from '../../../src/shared/lib/payment/subscriptionPlanCatalog';
 
 /** Must match PREMIUM_SUBSCRIPTION_PRODUCT_TYPE in subscription-billing.ts */
 const PREMIUM_SUBSCRIPTION_PRODUCT_TYPE = 'premium_subscription';
@@ -37,7 +38,7 @@ export function buildInitialSubscriptionPaymentPayload(
   params: BuildInitialSubscriptionPaymentPayloadParams
 ): Record<string, unknown> {
   const payload: Record<string, unknown> = {
-    amount: { value: params.amountValue, currency: 'RUB' },
+    amount: { value: params.amountValue, currency: SUBSCRIPTION_PLAN_PRICE_CURRENCY_CODE },
     capture: true,
     confirmation: {
       type: 'redirect',
@@ -56,7 +57,7 @@ export function buildInitialSubscriptionPaymentPayload(
         {
           description: params.description,
           quantity: '1',
-          amount: { value: params.amountValue, currency: 'RUB' },
+          amount: { value: params.amountValue, currency: SUBSCRIPTION_PLAN_PRICE_CURRENCY_CODE },
           vat_code: 1,
           payment_subject: 'service',
           payment_mode: 'full_payment',
@@ -86,7 +87,7 @@ export function buildUpgradeSubscriptionPaymentPayload(
   params: BuildUpgradeSubscriptionPaymentPayloadParams
 ): Record<string, unknown> {
   const payload: Record<string, unknown> = {
-    amount: { value: params.amountValue, currency: 'RUB' },
+    amount: { value: params.amountValue, currency: SUBSCRIPTION_PLAN_PRICE_CURRENCY_CODE },
     capture: true,
     confirmation: {
       type: 'redirect',
@@ -105,7 +106,7 @@ export function buildUpgradeSubscriptionPaymentPayload(
         {
           description: params.description,
           quantity: '1',
-          amount: { value: params.amountValue, currency: 'RUB' },
+          amount: { value: params.amountValue, currency: SUBSCRIPTION_PLAN_PRICE_CURRENCY_CODE },
           vat_code: 1,
           payment_subject: 'service',
           payment_mode: 'full_payment',
@@ -135,7 +136,7 @@ export function buildRebindSubscriptionPaymentPayload(
   params: BuildRebindSubscriptionPaymentPayloadParams
 ): Record<string, unknown> {
   return {
-    amount: { value: params.amountValue, currency: 'RUB' },
+    amount: { value: params.amountValue, currency: SUBSCRIPTION_PLAN_PRICE_CURRENCY_CODE },
     capture: true,
     confirmation: {
       type: 'redirect',
@@ -155,7 +156,7 @@ export function buildRebindSubscriptionPaymentPayload(
         {
           description: params.description,
           quantity: '1',
-          amount: { value: params.amountValue, currency: 'RUB' },
+          amount: { value: params.amountValue, currency: SUBSCRIPTION_PLAN_PRICE_CURRENCY_CODE },
           vat_code: 1,
           payment_subject: 'service',
           payment_mode: 'full_payment',
@@ -179,7 +180,7 @@ export function buildRenewalSubscriptionPaymentPayload(
   params: BuildRenewalSubscriptionPaymentPayloadParams
 ): Record<string, unknown> {
   return {
-    amount: { value: params.amountValue, currency: 'RUB' },
+    amount: { value: params.amountValue, currency: SUBSCRIPTION_PLAN_PRICE_CURRENCY_CODE },
     capture: true,
     payment_method_id: params.paymentMethodId,
     description: params.description,
@@ -195,7 +196,7 @@ export function buildRenewalSubscriptionPaymentPayload(
         {
           description: params.description,
           quantity: '1',
-          amount: { value: params.amountValue, currency: 'RUB' },
+          amount: { value: params.amountValue, currency: SUBSCRIPTION_PLAN_PRICE_CURRENCY_CODE },
           vat_code: 1,
           payment_subject: 'service',
           payment_mode: 'full_payment',

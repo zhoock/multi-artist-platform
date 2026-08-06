@@ -11,8 +11,15 @@ jest.mock('../db', () => ({
 
 import type { SubscriptionPaymentRow } from '../subscription-billing';
 import { verifySubscriptionPaymentRowForWebhook } from '../subscription-payment-row-verify';
+import {
+  formatPlanAmountValue,
+  getPlanPriceCurrencyCode,
+} from '../../../../src/shared/lib/payment/subscriptionPlanCatalog';
 
 const USER_ID = 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee';
+const CURRENCY = getPlanPriceCurrencyCode();
+const EXPLORER_AMOUNT = formatPlanAmountValue('explorer');
+const MISMATCH_AMOUNT = '99.00';
 
 function paymentRow(overrides: Partial<SubscriptionPaymentRow> = {}): SubscriptionPaymentRow {
   return {
@@ -21,8 +28,8 @@ function paymentRow(overrides: Partial<SubscriptionPaymentRow> = {}): Subscripti
     provider: 'yookassa',
     provider_payment_id: 'pay-1',
     status: 'pending',
-    amount: '1.00',
-    currency: 'RUB',
+    amount: EXPLORER_AMOUNT,
+    currency: CURRENCY,
     plan: 'explorer',
     kind: 'initial',
     ...overrides,
@@ -39,8 +46,8 @@ describe('verifySubscriptionPaymentRowForWebhook (PR-10.2)', () => {
       metadataProductType: 'premium_subscription',
       metadataKind: 'initial',
       metadataPlan: 'explorer',
-      amountValue: '1.00',
-      currency: 'RUB',
+      amountValue: EXPLORER_AMOUNT,
+      currency: CURRENCY,
       amountsEqual,
     });
 
@@ -54,8 +61,8 @@ describe('verifySubscriptionPaymentRowForWebhook (PR-10.2)', () => {
       metadataProductType: 'premium_subscription',
       metadataKind: 'initial',
       metadataPlan: 'explorer',
-      amountValue: '1.00',
-      currency: 'RUB',
+      amountValue: EXPLORER_AMOUNT,
+      currency: CURRENCY,
       amountsEqual,
     });
 
@@ -72,8 +79,8 @@ describe('verifySubscriptionPaymentRowForWebhook (PR-10.2)', () => {
       metadataProductType: 'premium_subscription',
       metadataKind: 'initial',
       metadataPlan: 'explorer',
-      amountValue: '1.00',
-      currency: 'RUB',
+      amountValue: EXPLORER_AMOUNT,
+      currency: CURRENCY,
       amountsEqual,
     });
 
@@ -90,8 +97,8 @@ describe('verifySubscriptionPaymentRowForWebhook (PR-10.2)', () => {
       metadataProductType: 'premium_subscription',
       metadataKind: 'initial',
       metadataPlan: 'explorer',
-      amountValue: '1.00',
-      currency: 'RUB',
+      amountValue: EXPLORER_AMOUNT,
+      currency: CURRENCY,
       amountsEqual,
     });
 
@@ -103,13 +110,13 @@ describe('verifySubscriptionPaymentRowForWebhook (PR-10.2)', () => {
 
   test('rejects amount mismatch', () => {
     const result = verifySubscriptionPaymentRowForWebhook({
-      row: paymentRow({ amount: '149.00' }),
+      row: paymentRow({ amount: MISMATCH_AMOUNT }),
       metadataUserId: USER_ID,
       metadataProductType: 'premium_subscription',
       metadataKind: 'initial',
       metadataPlan: 'explorer',
-      amountValue: '1.00',
-      currency: 'RUB',
+      amountValue: EXPLORER_AMOUNT,
+      currency: CURRENCY,
       amountsEqual,
     });
 
@@ -121,13 +128,13 @@ describe('verifySubscriptionPaymentRowForWebhook (PR-10.2)', () => {
 
   test('allows rebind without plan cross-check', () => {
     const result = verifySubscriptionPaymentRowForWebhook({
-      row: paymentRow({ kind: 'rebind', plan: 'explorer', amount: '1.00' }),
+      row: paymentRow({ kind: 'rebind', plan: 'explorer', amount: EXPLORER_AMOUNT }),
       metadataUserId: USER_ID,
       metadataProductType: 'premium_subscription',
       metadataKind: 'rebind',
       metadataPlan: 'explorer',
-      amountValue: '1.00',
-      currency: 'RUB',
+      amountValue: EXPLORER_AMOUNT,
+      currency: CURRENCY,
       amountsEqual,
     });
 

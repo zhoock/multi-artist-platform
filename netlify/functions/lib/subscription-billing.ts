@@ -2,51 +2,69 @@
  * Premium subscription billing (platform YooKassa) — isolated from album purchases.
  */
 
+import {
+  comparePlanTiers,
+  DEFAULT_SUBSCRIPTION_PLAN,
+  formatPlanAmountValue,
+  getPlanAmountRub,
+  getPlanCatalogEntry,
+  getPlanPriceCurrencyCode,
+  getPlanSlotsLimit,
+  isSubscriptionPlanCurrency,
+  isSubscriptionPlanSlug,
+  normalizeSubscriptionPlanSlug,
+  PLAN_TIER_ORDER,
+  SUBSCRIPTION_PLAN_CATALOG,
+  SUBSCRIPTION_PLAN_PRICE_CURRENCY_CODE,
+  SUBSCRIPTION_PLAN_PRICE_RUB,
+  SUBSCRIPTION_PLAN_SLUGS,
+  SUBSCRIPTION_SLOTS_LIMIT_FALLBACK,
+  type SubscriptionPlanCatalogEntry,
+  type SubscriptionPlanSlug,
+} from '../../../src/shared/lib/payment/subscriptionPlanCatalog';
+
 import { isMissingRelationError, query } from './db';
 import type { Subscription } from './subscriptions';
 import { mapSubscriptionRow, type SubscriptionRow } from './subscriptions';
 
+export {
+  comparePlanTiers,
+  DEFAULT_SUBSCRIPTION_PLAN,
+  formatPlanAmountValue,
+  getPlanAmountRub,
+  getPlanPriceCurrencyCode,
+  getPlanSlotsLimit,
+  isSubscriptionPlanSlug,
+  normalizeSubscriptionPlanSlug,
+  PLAN_TIER_ORDER,
+  SUBSCRIPTION_PLAN_PRICE_CURRENCY_CODE,
+  SUBSCRIPTION_PLAN_PRICE_RUB,
+  SUBSCRIPTION_PLAN_SLUGS,
+  SUBSCRIPTION_SLOTS_LIMIT_FALLBACK,
+  type SubscriptionPlanSlug,
+};
+
 export const PREMIUM_SUBSCRIPTION_PRODUCT_TYPE = 'premium_subscription';
-
-export const SUBSCRIPTION_PLAN_SLUGS = ['explorer', 'collector', 'archivist'] as const;
-export type SubscriptionPlanSlug = (typeof SUBSCRIPTION_PLAN_SLUGS)[number];
-
-export const DEFAULT_SUBSCRIPTION_PLAN: SubscriptionPlanSlug = 'explorer';
 
 /** Dev/test support period when {@link isPremiumSubscriptionDevTestPricing} is true. */
 export const DEV_SUPPORT_PERIOD_HOURS = 1;
 
-export interface SubscriptionPlanDefinition {
-  slotsLimit: number;
-  durationDays: number;
-  priceRubProduction: number;
+const PLAN_DESCRIPTIONS: Record<SubscriptionPlanSlug, string> = {
+  explorer: 'Explorer Support',
+  collector: 'Collector Support',
+  archivist: 'Archivist Support',
+};
+
+export interface SubscriptionPlanDefinition extends SubscriptionPlanCatalogEntry {
   description: string;
 }
 
-/** Production plan catalog (30-day billing period). Dev pricing/period via env — see .env.example. */
+/** Server view: shared catalog + YooKassa descriptions. */
 export const PLAN_CATALOG: Record<SubscriptionPlanSlug, SubscriptionPlanDefinition> = {
-  explorer: {
-    slotsLimit: 20,
-    durationDays: 30,
-    priceRubProduction: 149,
-    description: 'Explorer Support',
-  },
-  collector: {
-    slotsLimit: 60,
-    durationDays: 30,
-    priceRubProduction: 149,
-    description: 'Collector Support',
-  },
-  archivist: {
-    slotsLimit: 100,
-    durationDays: 30,
-    priceRubProduction: 199,
-    description: 'Archivist Support',
-  },
+  explorer: { ...SUBSCRIPTION_PLAN_CATALOG.explorer, description: PLAN_DESCRIPTIONS.explorer },
+  collector: { ...SUBSCRIPTION_PLAN_CATALOG.collector, description: PLAN_DESCRIPTIONS.collector },
+  archivist: { ...SUBSCRIPTION_PLAN_CATALOG.archivist, description: PLAN_DESCRIPTIONS.archivist },
 };
-
-/** Fallback slots limit when no subscription row exists (top tier). */
-export const SUBSCRIPTION_SLOTS_LIMIT_FALLBACK = PLAN_CATALOG.archivist.slotsLimit;
 
 export function isPremiumSubscriptionDevTestPricing(): boolean {
   return (
@@ -56,62 +74,22 @@ export function isPremiumSubscriptionDevTestPricing(): boolean {
   );
 }
 
-export function normalizeSubscriptionPlanSlug(
-  plan: string | null | undefined
-): SubscriptionPlanSlug | null {
-  if (!plan?.trim()) return null;
-  const trimmed = plan.trim();
-  if ((SUBSCRIPTION_PLAN_SLUGS as readonly string[]).includes(trimmed)) {
-    return trimmed as SubscriptionPlanSlug;
-  }
-  return null;
-}
-
-export function isSubscriptionPlanSlug(
-  plan: string | null | undefined
-): plan is SubscriptionPlanSlug {
-  return normalizeSubscriptionPlanSlug(plan) !== null;
-}
-
 export function getPlanDefinition(planSlug: SubscriptionPlanSlug): SubscriptionPlanDefinition {
   return PLAN_CATALOG[planSlug];
 }
 
-export function getPlanSlotsLimit(planSlug: SubscriptionPlanSlug): number {
-  return PLAN_CATALOG[planSlug].slotsLimit;
-}
-
-export function getPlanAmountRub(planSlug: SubscriptionPlanSlug): number {
-  if (isPremiumSubscriptionDevTestPricing()) return 1;
-  return PLAN_CATALOG[planSlug].priceRubProduction;
-}
-
 /** Minimal verification charge for payment-method rebind (PR-9). */
 export function getRebindAmountRub(): number {
-  if (isPremiumSubscriptionDevTestPricing()) return 1;
-  return 1;
+  return SUBSCRIPTION_PLAN_PRICE_RUB;
 }
 
 export const REBIND_PAYMENT_DESCRIPTION = 'Payment method verification';
-
-export const PLAN_TIER_ORDER: Record<SubscriptionPlanSlug, number> = {
-  explorer: 0,
-  collector: 1,
-  archivist: 2,
-};
-
-export function comparePlanTiers(a: SubscriptionPlanSlug, b: SubscriptionPlanSlug): -1 | 0 | 1 {
-  const diff = PLAN_TIER_ORDER[a] - PLAN_TIER_ORDER[b];
-  if (diff < 0) return -1;
-  if (diff > 0) return 1;
-  return 0;
-}
 
 export function computeSupportExpiresAt(
   planSlug: SubscriptionPlanSlug,
   from: Date = new Date()
 ): Date {
-  const plan = PLAN_CATALOG[planSlug];
+  const plan = getPlanCatalogEntry(planSlug);
   const expiresAt = new Date(from);
   if (isPremiumSubscriptionDevTestPricing()) {
     expiresAt.setTime(expiresAt.getTime() + DEV_SUPPORT_PERIOD_HOURS * 60 * 60 * 1000);
@@ -148,7 +126,7 @@ export function validatePremiumSubscriptionPayment(params: {
   }
 
   const expectedAmount = getPlanAmountRub(planSlug).toFixed(2);
-  if (!amountsEqual(amountValue, expectedAmount) || currency.trim().toUpperCase() !== 'RUB') {
+  if (!amountsEqual(amountValue, expectedAmount) || !isSubscriptionPlanCurrency(currency)) {
     return { valid: false, reason: 'amount or currency' };
   }
 
@@ -176,7 +154,7 @@ export function validateRebindSubscriptionPayment(params: {
   }
 
   const expectedAmount = getRebindAmountRub().toFixed(2);
-  if (!amountsEqual(amountValue, expectedAmount) || currency.trim().toUpperCase() !== 'RUB') {
+  if (!amountsEqual(amountValue, expectedAmount) || !isSubscriptionPlanCurrency(currency)) {
     return { valid: false, reason: 'amount or currency' };
   }
 
@@ -337,9 +315,9 @@ export async function createPendingSubscriptionPayment(
   const amount = kind === 'rebind' ? getRebindAmountRub() : getPlanAmountRub(planSlug);
   const result = await query<{ id: string }>(
     `INSERT INTO subscription_payments (user_id, provider, status, amount, currency, plan, kind)
-     VALUES ($1, 'yookassa', 'pending', $2, 'RUB', $3, $4)
+     VALUES ($1, 'yookassa', 'pending', $2, $5, $3, $4)
      RETURNING id`,
-    [userId, amount, planSlug, kind]
+    [userId, amount, planSlug, kind, SUBSCRIPTION_PLAN_PRICE_CURRENCY_CODE]
   );
   const id = result.rows[0]?.id;
   if (!id) throw new Error('Failed to create subscription payment row');

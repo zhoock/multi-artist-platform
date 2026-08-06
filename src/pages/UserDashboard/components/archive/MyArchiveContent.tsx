@@ -199,7 +199,6 @@ export function MyArchiveContent({
   const slotsRemaining = Math.max(0, slotsLimit - slotsUsed);
 
   const billingCopy = useMemo((): CollectionBillingCopy => {
-    const priceCurrency = ui?.dashboard?.forms?.priceCurrency ?? t?.billingPriceCurrency ?? '₽';
     return {
       billingCurrentPlanSection: t?.billingCurrentPlanSection ?? 'ТЕКУЩИЙ ПЛАН',
       billingLastPlanSection: t?.billingLastPlanSection ?? 'ПОСЛЕДНИЙ ПЛАН',
@@ -241,10 +240,9 @@ export function MyArchiveContent({
       billingDowngradeSlotsBannerCta:
         t?.billingDowngradeSlotsBannerCta ?? 'Отменить плановое понижение',
       billingDisableAutoRenewLink: t?.billingDisableAutoRenewLink ?? 'Отключить автопродление',
-      priceCurrency,
       activeSlotsLabel: t?.activeSlotsLabel ?? 'артистов в коллекции',
     };
-  }, [t, ui?.dashboard?.forms?.priceCurrency]);
+  }, [t]);
 
   const exitSelectMode = useCallback(() => {
     setIsSelectMode(false);
@@ -676,8 +674,6 @@ export function MyArchiveContent({
   const billingChargeLabel = billing.nextChargeAt
     ? formatCollectionRenewalDate(billing.nextChargeAt, lang)
     : billingExpiresLabel;
-  const billingPriceCurrency =
-    ui?.dashboard?.forms?.priceCurrency ?? t?.billingPriceCurrency ?? '₽';
   const autoRenewModalLoading = autoRenewPatchLoading || renewLoading;
 
   return (
@@ -695,7 +691,6 @@ export function MyArchiveContent({
         planSlug={planSlug}
         chargeDateLabel={billingChargeLabel}
         paymentMethodTitle={billing.paymentMethodTitle}
-        priceCurrency={billingPriceCurrency}
         loading={autoRenewModalLoading}
         onCancel={() => setAutoRenewModal(null)}
         onConfirm={() => void handleConfirmAutoRenewPatch()}
@@ -714,7 +709,6 @@ export function MyArchiveContent({
           isOpen
           currentPlanSlug={billing.plan}
           targetPlanSlug={upgradePlanTarget}
-          priceCurrency={billingPriceCurrency}
           loading={renewLoading}
           onCancel={() => setUpgradePlanTarget(null)}
           onConfirm={() => void handleConfirmUpgradePlan()}

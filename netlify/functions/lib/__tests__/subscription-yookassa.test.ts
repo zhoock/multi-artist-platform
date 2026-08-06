@@ -13,9 +13,17 @@ import {
   SUBSCRIPTION_PAYMENT_KIND_REBIND,
   SUBSCRIPTION_PAYMENT_KIND_RENEWAL,
 } from '../subscription-yookassa';
+import {
+  formatPlanAmountValue,
+  getPlanPriceCurrencyCode,
+} from '../../../../src/shared/lib/payment/subscriptionPlanCatalog';
+
+const CURRENCY = getPlanPriceCurrencyCode();
+const COLLECTOR_AMOUNT = formatPlanAmountValue('collector');
+const EXPLORER_AMOUNT = formatPlanAmountValue('explorer');
 
 const BASE_PARAMS = {
-  amountValue: '149.00',
+  amountValue: COLLECTOR_AMOUNT,
   description: 'Collector Support',
   returnUrl: 'https://example.com/pay/subscription-success',
   userId: 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee',
@@ -44,6 +52,7 @@ describe('buildInitialSubscriptionPaymentPayload', () => {
       plan: 'collector',
       kind: SUBSCRIPTION_PAYMENT_KIND_INITIAL,
     });
+    expect(payload.amount).toEqual({ value: COLLECTOR_AMOUNT, currency: CURRENCY });
     expect(payload.receipt).toBeDefined();
   });
 
@@ -58,7 +67,7 @@ describe('buildInitialSubscriptionPaymentPayload', () => {
 describe('buildRebindSubscriptionPaymentPayload', () => {
   test('uses redirect confirmation and rebind kind metadata', () => {
     const payload = buildRebindSubscriptionPaymentPayload({
-      amountValue: '1.00',
+      amountValue: COLLECTOR_AMOUNT,
       description: 'Payment method verification',
       returnUrl: BASE_PARAMS.returnUrl,
       userId: BASE_PARAMS.userId,
@@ -70,6 +79,7 @@ describe('buildRebindSubscriptionPaymentPayload', () => {
     expect((payload.metadata as Record<string, string>).kind).toBe(
       SUBSCRIPTION_PAYMENT_KIND_REBIND
     );
+    expect(payload.amount).toEqual({ value: COLLECTOR_AMOUNT, currency: CURRENCY });
     expect(payload.confirmation).toEqual({
       type: 'redirect',
       return_url: BASE_PARAMS.returnUrl,
@@ -80,7 +90,7 @@ describe('buildRebindSubscriptionPaymentPayload', () => {
 describe('buildRenewalSubscriptionPaymentPayload', () => {
   test('uses payment_method_id and renewal kind metadata', () => {
     const payload = buildRenewalSubscriptionPaymentPayload({
-      amountValue: '149.00',
+      amountValue: EXPLORER_AMOUNT,
       description: 'Explorer Support',
       userId: BASE_PARAMS.userId,
       planSlug: 'explorer',
@@ -90,6 +100,7 @@ describe('buildRenewalSubscriptionPaymentPayload', () => {
 
     expect(payload.payment_method_id).toBe('pm-saved-1');
     expect(payload.confirmation).toBeUndefined();
+    expect(payload.amount).toEqual({ value: EXPLORER_AMOUNT, currency: CURRENCY });
     expect((payload.metadata as Record<string, string>).kind).toBe(
       SUBSCRIPTION_PAYMENT_KIND_RENEWAL
     );

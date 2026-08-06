@@ -84,8 +84,6 @@ export function ArchiveAccessModalView({ dialogRef, onClose }: Props) {
     (lang === 'en'
       ? 'Support more artists and unlock more music.'
       : 'Поддержите больше артистов и откройте больше музыки.');
-  const priceCurrency =
-    collectionCopy?.billingPriceCurrency ?? ui?.titles?.archiveAccessPriceCurrency ?? '₽';
   const closeLabel = ui?.buttons?.articleLockedDialogClose ?? (lang === 'en' ? 'Close' : 'Закрыть');
   const footnote =
     ui?.titles?.archiveAccessFootnote?.trim() ??
@@ -256,7 +254,6 @@ export function ArchiveAccessModalView({ dialogRef, onClose }: Props) {
                 isPremium={isPremium}
                 lang={lang}
                 ui={ui}
-                priceCurrency={priceCurrency}
                 loadingPlan={loadingPlan}
                 onSelect={(slug) => void handleSelectPlan(slug)}
               />
@@ -297,7 +294,6 @@ export function ArchiveAccessModalView({ dialogRef, onClose }: Props) {
           isOpen
           currentPlanSlug={currentPlanSlug}
           targetPlanSlug={pendingPlanChange}
-          priceCurrency={priceCurrency}
           loading={confirmLoading}
           onCancel={handleCancelPlanChange}
           onConfirm={() => void handleConfirmPlanChange()}
@@ -321,7 +317,6 @@ export function ArchiveAccessModalView({ dialogRef, onClose }: Props) {
           isOpen
           currentPlanSlug={currentPlanSlug}
           targetPlanSlug={pendingPlanChange}
-          priceCurrency={priceCurrency}
           loading={confirmLoading}
           onCancel={handleCancelPlanChange}
           onConfirm={() => void handleConfirmPlanChange()}

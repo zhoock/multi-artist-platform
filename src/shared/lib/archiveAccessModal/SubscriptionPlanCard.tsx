@@ -5,6 +5,7 @@ import {
   formatPlanArtistLimitParts,
   formatPlanPricePeriod,
   getPlanDisplayName,
+  getPlanPriceCurrencyDisplay,
   getPlanPriceDisplayAmount,
   getPlanCardBadgeLabel,
   resolvePlanCardAction,
@@ -19,7 +20,6 @@ type Props = {
   isPremium: boolean;
   lang: 'en' | 'ru';
   ui: ReturnType<typeof selectUiDictionaryFirst>;
-  priceCurrency: string;
   loadingPlan: SubscriptionPlanSlug | null;
   onSelect: (planSlug: SubscriptionPlanSlug) => void;
 };
@@ -30,13 +30,13 @@ export function SubscriptionPlanCard({
   isPremium,
   lang,
   ui,
-  priceCurrency,
   loadingPlan,
   onSelect,
 }: Props) {
   const planName = getPlanDisplayName(planSlug);
   const artistLimit = formatPlanArtistLimitParts(planSlug, lang);
   const priceAmount = getPlanPriceDisplayAmount(planSlug);
+  const priceCurrency = getPlanPriceCurrencyDisplay();
   const pricePeriod = formatPlanPricePeriod(planSlug, lang);
   const isCurrent = currentPlanSlug === planSlug;
   const { label, badge, disabled } = resolvePlanCardAction({

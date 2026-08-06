@@ -1,6 +1,8 @@
 /**
  * Client mirror of SUBSCRIPTION_AUTO_RENEW_ENABLED (UX gate only — server enforces).
  * Reads the same root .env value injected via webpack DefinePlugin.
+ *
+ * Uses process.env — not import.meta.env, which breaks Jest.
  */
 
 function parseAutoRenewFlag(raw: string | undefined): boolean {
@@ -9,5 +11,5 @@ function parseAutoRenewFlag(raw: string | undefined): boolean {
 }
 
 export function isSubscriptionAutoRenewClientEnabled(): boolean {
-  return parseAutoRenewFlag(import.meta.env.VITE_SUBSCRIPTION_AUTO_RENEW_ENABLED);
+  return parseAutoRenewFlag(process.env.VITE_SUBSCRIPTION_AUTO_RENEW_ENABLED);
 }

@@ -10,6 +10,7 @@ import {
   formatPlanArtistLimitParts,
   formatPlanPricePeriod,
   getPlanDisplayName,
+  getPlanPriceCurrencyDisplay,
   getPlanPriceDisplayAmount,
   resolveRecommendedPlanSlug,
   type SubscriptionPlanSlug,
@@ -46,7 +47,6 @@ export type CollectionBillingCopy = {
   billingDowngradeSlotsBannerTitle: string;
   billingDowngradeSlotsBannerBody: string;
   billingDowngradeSlotsBannerCta: string;
-  priceCurrency: string;
   activeSlotsLabel: string;
   billingDisableAutoRenewLink: string;
 };
@@ -238,7 +238,7 @@ export function CollectionBillingSummary({
           <h3 className="collection-billing__section-title">{planSectionLabel(screen, copy)}</h3>
           {planSlug ? (
             <>
-              <PlanHeadline planSlug={planSlug} lang={lang} copy={copy} />
+              <PlanHeadline planSlug={planSlug} lang={lang} />
               <PlanStatusLine variant={statusVariant} text={statusText} />
               {screen === 'ACTIVE' ? (
                 <div className="collection-billing__plan-action">
@@ -271,7 +271,7 @@ export function CollectionBillingSummary({
             <h3 className="collection-billing__section-title">
               {copy.billingRecommendedPlanSection}
             </h3>
-            <PlanHeadline planSlug={recommendedPlanSlug} lang={lang} copy={copy} />
+            <PlanHeadline planSlug={recommendedPlanSlug} lang={lang} />
             <div className="collection-billing__plan-action">
               <DashboardButton variant="primary" onClick={onUpgradePlan}>
                 {copy.billingUpgradePlanButton}
@@ -299,25 +299,18 @@ export function CollectionBillingSummary({
   );
 }
 
-function PlanHeadline({
-  planSlug,
-  lang,
-  copy,
-}: {
-  planSlug: SubscriptionPlanSlug;
-  lang: 'en' | 'ru';
-  copy: CollectionBillingCopy;
-}) {
+function PlanHeadline({ planSlug, lang }: { planSlug: SubscriptionPlanSlug; lang: 'en' | 'ru' }) {
   const artistLimit = formatPlanArtistLimitParts(planSlug, lang);
   const priceAmount = getPlanPriceDisplayAmount(planSlug);
   const pricePeriod = formatPlanPricePeriod(planSlug, lang);
+  const priceCurrency = getPlanPriceCurrencyDisplay();
 
   return (
     <div className="collection-billing__plan-headline">
       <div className="collection-billing__plan-name-row">
         <p className="collection-billing__plan-name">{getPlanDisplayName(planSlug)}</p>
         <p className="collection-billing__plan-price">
-          {priceAmount} {copy.priceCurrency}
+          {priceAmount} {priceCurrency}
           {pricePeriod}
         </p>
       </div>

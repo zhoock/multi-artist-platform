@@ -7,6 +7,7 @@ import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 import {
   formatPlanArtistLimitParts,
   getPlanDisplayName,
+  getPlanPriceCurrencyDisplay,
   getPlanPriceDisplayAmount,
   type SubscriptionPlanSlug,
 } from '@shared/lib/payment/subscriptionPlans';
@@ -24,7 +25,6 @@ export type UpgradePlanConfirmModalProps = {
   isOpen: boolean;
   currentPlanSlug: SubscriptionPlanSlug;
   targetPlanSlug: SubscriptionPlanSlug;
-  priceCurrency: string;
   loading?: boolean;
   onCancel: () => void;
   onConfirm: () => void;
@@ -34,7 +34,6 @@ export function UpgradePlanConfirmModal({
   isOpen,
   currentPlanSlug,
   targetPlanSlug,
-  priceCurrency,
   loading = false,
   onCancel,
   onConfirm,
@@ -46,6 +45,7 @@ export function UpgradePlanConfirmModal({
   const targetPlanName = getPlanDisplayName(targetPlanSlug);
   const currentPlanName = getPlanDisplayName(currentPlanSlug);
   const priceAmount = getPlanPriceDisplayAmount(targetPlanSlug);
+  const priceCurrency = getPlanPriceCurrencyDisplay();
   const artistLimit = formatPlanArtistLimitParts(targetPlanSlug, lang);
 
   const copy = useMemo(

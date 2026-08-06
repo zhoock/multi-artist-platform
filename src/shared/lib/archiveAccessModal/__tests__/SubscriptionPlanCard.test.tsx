@@ -7,6 +7,7 @@ import { describe, test, expect, jest, beforeEach } from '@jest/globals';
 import { screen, fireEvent } from '@testing-library/react';
 
 import { renderWithProviders } from '@shared/lib/test-utils';
+import { PLAN_CATALOG } from '@shared/lib/payment/subscriptionPlans';
 import { SubscriptionPlanCard } from '../SubscriptionPlanCard';
 
 const createSubscriptionPaymentMock = jest.fn<(...args: unknown[]) => Promise<unknown>>();
@@ -27,7 +28,6 @@ describe('SubscriptionPlanCard', () => {
         isPremium={false}
         lang="en"
         ui={null}
-        priceCurrency="₽"
         loadingPlan={null}
         onSelect={jest.fn()}
       />
@@ -35,9 +35,9 @@ describe('SubscriptionPlanCard', () => {
 
     expect(screen.getByText('Collector')).toBeTruthy();
     expect(screen.getByText('Up to')).toBeTruthy();
-    expect(screen.getByText('2')).toBeTruthy();
+    expect(screen.getByText(String(PLAN_CATALOG.collector.slotsLimit))).toBeTruthy();
     expect(screen.getByText('artists')).toBeTruthy();
-    expect(screen.getByText('/ hour')).toBeTruthy();
+    expect(screen.getByText('/ month')).toBeTruthy();
     expect(screen.getByText('Locked tracks')).toBeTruthy();
     expect(screen.getByText('Locked articles')).toBeTruthy();
     expect(screen.getByText('Locked stems')).toBeTruthy();
@@ -53,7 +53,6 @@ describe('SubscriptionPlanCard', () => {
         isPremium
         lang="en"
         ui={null}
-        priceCurrency="₽"
         loadingPlan={null}
         onSelect={jest.fn()}
       />
@@ -75,7 +74,6 @@ describe('SubscriptionPlanCard', () => {
         isPremium={false}
         lang="en"
         ui={null}
-        priceCurrency="₽"
         loadingPlan={null}
         onSelect={onSelect}
       />
@@ -94,7 +92,6 @@ describe('SubscriptionPlanCard', () => {
         isPremium={false}
         lang="en"
         ui={null}
-        priceCurrency="₽"
         loadingPlan={null}
         onSelect={jest.fn()}
       />
@@ -114,7 +111,6 @@ describe('SubscriptionPlanCard', () => {
           isPremium={false}
           lang="en"
           ui={null}
-          priceCurrency="₽"
           loadingPlan={null}
           onSelect={onSelect}
         />
@@ -124,7 +120,6 @@ describe('SubscriptionPlanCard', () => {
           isPremium={false}
           lang="en"
           ui={null}
-          priceCurrency="₽"
           loadingPlan={null}
           onSelect={onSelect}
         />
@@ -134,7 +129,6 @@ describe('SubscriptionPlanCard', () => {
           isPremium={false}
           lang="en"
           ui={null}
-          priceCurrency="₽"
           loadingPlan={null}
           onSelect={onSelect}
         />
@@ -156,7 +150,6 @@ describe('SubscriptionPlanCard', () => {
         isPremium
         lang="en"
         ui={null}
-        priceCurrency="₽"
         loadingPlan={null}
         onSelect={onSelect}
       />

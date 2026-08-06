@@ -16,12 +16,19 @@ import {
   computeSupportExpiresAt,
   DEFAULT_SUBSCRIPTION_PLAN,
   fulfillSubscriptionPayment,
+  formatPlanAmountValue,
   getPlanAmountRub,
+  getPlanPriceCurrencyCode,
   getPlanSlotsLimit,
   normalizeSubscriptionPlanSlug,
   validatePremiumSubscriptionPayment,
   validateRebindSubscriptionPayment,
 } from '../subscription-billing';
+
+const SUBSCRIPTION_CURRENCY = getPlanPriceCurrencyCode();
+const EXPLORER_AMOUNT = formatPlanAmountValue('explorer');
+const COLLECTOR_AMOUNT = formatPlanAmountValue('collector');
+const MISMATCH_AMOUNT = '99.00';
 
 const mockedQuery = query as jest.MockedFunction<typeof query>;
 
@@ -109,11 +116,12 @@ describe('getPlanAmountRub', () => {
     expect(getPlanAmountRub('archivist')).toBe(1);
   });
 
-  test('returns catalog production price in production', () => {
+  test('returns catalog price in production', () => {
     process.env.NODE_ENV = 'production';
     process.env.YOOKASSA_TEST_MODE = 'false';
     process.env.NETLIFY_DEV = 'false';
-    expect(getPlanAmountRub('explorer')).toBe(PLAN_CATALOG.explorer.priceRubProduction);
+    expect(getPlanAmountRub('explorer')).toBe(1);
+    expect(getPlanAmountRub('archivist')).toBe(1);
   });
 });
 
@@ -129,8 +137,8 @@ describe('validatePremiumSubscriptionPayment', () => {
       productType: 'premium_subscription',
       userId: USER_ID,
       plan: 'explorer',
-      amountValue: '1.00',
-      currency: 'RUB',
+      amountValue: EXPLORER_AMOUNT,
+      currency: SUBSCRIPTION_CURRENCY,
       amountsEqual,
     });
     expect(result).toEqual({ valid: true, planSlug: 'explorer' });
@@ -141,8 +149,8 @@ describe('validatePremiumSubscriptionPayment', () => {
       productType: 'premium_subscription',
       userId: USER_ID,
       plan: 'collector',
-      amountValue: '1.00',
-      currency: 'RUB',
+      amountValue: COLLECTOR_AMOUNT,
+      currency: SUBSCRIPTION_CURRENCY,
       amountsEqual,
     });
     expect(result).toEqual({ valid: true, planSlug: 'collector' });
@@ -153,8 +161,8 @@ describe('validatePremiumSubscriptionPayment', () => {
       productType: 'premium_subscription',
       userId: USER_ID,
       plan: 'legacy',
-      amountValue: '1.00',
-      currency: 'RUB',
+      amountValue: EXPLORER_AMOUNT,
+      currency: SUBSCRIPTION_CURRENCY,
       amountsEqual,
     });
     expect(result).toEqual({ valid: false, reason: 'plan metadata' });
@@ -165,8 +173,8 @@ describe('validatePremiumSubscriptionPayment', () => {
       productType: 'premium_subscription',
       userId: USER_ID,
       plan: 'explorer',
-      amountValue: '99.00',
-      currency: 'RUB',
+      amountValue: MISMATCH_AMOUNT,
+      currency: SUBSCRIPTION_CURRENCY,
       amountsEqual,
     });
     expect(result).toEqual({ valid: false, reason: 'amount or currency' });
@@ -181,8 +189,8 @@ describe('validateRebindSubscriptionPayment', () => {
       productType: 'premium_subscription',
       userId: USER_ID,
       kind: 'rebind',
-      amountValue: '1.00',
-      currency: 'RUB',
+      amountValue: EXPLORER_AMOUNT,
+      currency: SUBSCRIPTION_CURRENCY,
       amountsEqual,
     });
     expect(result).toEqual({ valid: true });
@@ -193,8 +201,8 @@ describe('validateRebindSubscriptionPayment', () => {
       productType: 'premium_subscription',
       userId: USER_ID,
       kind: 'initial',
-      amountValue: '1.00',
-      currency: 'RUB',
+      amountValue: EXPLORER_AMOUNT,
+      currency: SUBSCRIPTION_CURRENCY,
       amountsEqual,
     });
     expect(result).toEqual({ valid: false, reason: 'kind metadata' });

@@ -13,6 +13,7 @@ import {
   devMockPaymentMethodTitle,
   formatPaymentMethodTitleFromCard,
 } from './subscription-payment-method';
+import { getPlanPriceCurrencyCode } from '../../../src/shared/lib/payment/subscriptionPlanCatalog';
 
 const PREMIUM_SUBSCRIPTION_PRODUCT_TYPE = 'premium_subscription';
 
@@ -128,7 +129,7 @@ export function mapDevSubscriptionPaymentToProviderPayment(
     status,
     amount: {
       value: String(row.amount),
-      currency: row.currency || 'RUB',
+      currency: row.currency || getPlanPriceCurrencyCode(),
     },
     metadata: {
       productType: PREMIUM_SUBSCRIPTION_PRODUCT_TYPE,

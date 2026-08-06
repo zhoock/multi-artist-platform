@@ -1012,11 +1012,8 @@ export interface IInterface {
       billingDowngradePlanFooterNote?: string;
       billingDowngradeBlockedError?: string;
       billingPlanChangeError?: string;
-      billingPriceCurrency?: string;
     };
-    forms?: {
-      priceCurrency?: string;
-    };
+    forms?: {};
     myPurchases?: {
       title: string;
       emptyTitle: string;

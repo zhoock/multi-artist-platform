@@ -279,9 +279,6 @@
       "archiveAccessFeatureArticles": "Закрытые статьи",
       "archiveAccessFeatureStems": "Закрытые стемы",
       "archiveAccessFeatureDownloads": "Скачивание альбомов",
-      "archiveAccessPriceAmount": "149",
-      "archiveAccessPriceCurrency": "₽",
-      "archiveAccessPricePeriod": "/ 30 дней",
       "artistArchiveFullTitle": "Коллекция заполнена",
       "artistArchiveFullMessage": "Все слоты коллекции заняты. Чтобы добавить этого артиста, удалите артиста из коллекции или смените тариф, чтобы получить больше слотов.",
       "premiumSuccessTitle": "Поддержка активна!",
@@ -558,8 +555,7 @@
         "billingDowngradePlanConfirm": "Запланировать смену",
         "billingDowngradePlanFooterNote": "Запланированную смену можно отменить в любой момент",
         "billingDowngradeBlockedError": "Сначала восстановите поддержку — понижение тарифа доступно только при активной подписке.",
-        "billingPlanChangeError": "Не удалось изменить тариф",
-        "billingPriceCurrency": "₽"
+        "billingPlanChangeError": "Не удалось изменить тариф"
       },
       "mixer": {
         "title": "Миксер",

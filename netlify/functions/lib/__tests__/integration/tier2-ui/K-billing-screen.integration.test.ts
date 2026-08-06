@@ -70,7 +70,6 @@ const COPY: CollectionBillingCopy = {
   billingDowngradeSlotsBannerTitle: 'Downgrade title',
   billingDowngradeSlotsBannerBody: 'Downgrade body {date} {plan} {used} {limit}',
   billingDowngradeSlotsBannerCta: 'Cancel downgrade',
-  priceCurrency: '₽',
   activeSlotsLabel: 'artists',
   billingDisableAutoRenewLink: 'Disable auto-renew',
 };

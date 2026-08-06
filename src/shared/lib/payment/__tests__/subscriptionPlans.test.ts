@@ -23,8 +23,8 @@ describe('PLAN_CATALOG (client)', () => {
     expect(PLAN_CATALOG.archivist.slotsLimit).toBe(100);
   });
 
-  test('uses 1-hour support period in development', () => {
-    expect(formatPlanSupportDuration('explorer', 'en')).toBe('1 hour support period');
+  test('uses 30-day support period label in development', () => {
+    expect(formatPlanSupportDuration('explorer', 'en')).toBe('30 days support period');
   });
 });
 
@@ -202,8 +202,10 @@ describe('resolvePlanChangeAction', () => {
 });
 
 describe('getPlanAmountRub', () => {
-  test('returns dev test price', () => {
+  test('returns billing QA test price for all plans', () => {
     expect(getPlanAmountRub('explorer')).toBe(1);
+    expect(getPlanAmountRub('collector')).toBe(1);
+    expect(getPlanAmountRub('archivist')).toBe(1);
   });
 });
 

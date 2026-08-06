@@ -279,9 +279,6 @@
       "archiveAccessFeatureArticles": "Locked articles",
       "archiveAccessFeatureStems": "Locked stems",
       "archiveAccessFeatureDownloads": "Album downloads",
-      "archiveAccessPriceAmount": "149",
-      "archiveAccessPriceCurrency": "₽",
-      "archiveAccessPricePeriod": "/ 30 days",
       "artistArchiveFullTitle": "Collection full",
       "artistArchiveFullMessage": "All collection slots are occupied. To add this artist, remove an artist from your collection or upgrade your plan to unlock more slots.",
       "premiumSuccessTitle": "Support is active!",
@@ -558,8 +555,7 @@
         "billingDowngradePlanConfirm": "Schedule change",
         "billingDowngradePlanFooterNote": "You can cancel the scheduled change anytime",
         "billingDowngradeBlockedError": "Restore your support first — downgrades are only available with an active subscription.",
-        "billingPlanChangeError": "Could not change plan",
-        "billingPriceCurrency": "₽"
+        "billingPlanChangeError": "Could not change plan"
       },
       "mixer": {
         "title": "Mixer",

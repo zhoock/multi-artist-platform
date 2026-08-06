@@ -5,6 +5,7 @@ import { useLang } from '@app/providers/lang';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 import {
+  getPlanPriceCurrencyDisplay,
   getPlanPriceDisplayAmount,
   type SubscriptionPlanSlug,
 } from '@shared/lib/payment/subscriptionPlans';
@@ -24,7 +25,6 @@ export type EnableAutoRenewConfirmModalProps = {
   planSlug: SubscriptionPlanSlug | null;
   chargeDateLabel: string | null;
   paymentMethodTitle: string | null;
-  priceCurrency: string;
   loading?: boolean;
   onCancel: () => void;
   onConfirm: () => void;
@@ -36,7 +36,6 @@ export function EnableAutoRenewConfirmModal({
   planSlug,
   chargeDateLabel,
   paymentMethodTitle,
-  priceCurrency,
   loading = false,
   onCancel,
   onConfirm,
@@ -75,6 +74,7 @@ export function EnableAutoRenewConfirmModal({
   );
 
   const priceAmount = planSlug ? getPlanPriceDisplayAmount(planSlug) : '—';
+  const priceCurrency = getPlanPriceCurrencyDisplay();
   const chargeDate = chargeDateLabel ?? '—';
   const hasPaymentMethod = Boolean(paymentMethodTitle?.trim());
 

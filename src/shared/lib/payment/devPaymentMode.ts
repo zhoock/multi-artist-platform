@@ -1,5 +1,7 @@
 /**
  * Client-side dev payment mode flag (UX only — server enforces DEV_PAYMENT_MODE).
+ *
+ * Uses process.env (inlined by webpack DefinePlugin) — not import.meta.env, which breaks Jest.
  */
 
 const DEV_PAYMENT_BANNER = '🧪 DEV PAYMENT MODE';
@@ -9,7 +11,8 @@ function emitDevPaymentLog(lines: string[]): void {
 }
 
 export function isDevPaymentModeClientEnabled(): boolean {
-  return Boolean(import.meta.env.DEV) && import.meta.env.VITE_DEV_PAYMENT_MODE === 'true';
+  const isDev = process.env.NODE_ENV !== 'production';
+  return isDev && process.env.VITE_DEV_PAYMENT_MODE === 'true';
 }
 
 /** Browser console: client redirect after dev album checkout. */

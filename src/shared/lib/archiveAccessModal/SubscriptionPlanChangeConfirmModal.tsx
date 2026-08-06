@@ -7,6 +7,7 @@ import {
   formatPlanArtistLimitParts,
   formatPlanPricePeriod,
   getPlanDisplayName,
+  getPlanPriceCurrencyDisplay,
   getPlanPriceDisplayAmount,
   type SubscriptionPlanSlug,
 } from '@shared/lib/payment/subscriptionPlans';
@@ -21,7 +22,6 @@ type Props = {
   isOpen: boolean;
   currentPlanSlug: SubscriptionPlanSlug;
   targetPlanSlug: SubscriptionPlanSlug;
-  priceCurrency: string;
   loading: boolean;
   onCancel: () => void;
   onConfirm: () => void;
@@ -30,14 +30,14 @@ type Props = {
 type PlanColumnProps = {
   label: string;
   planSlug: SubscriptionPlanSlug;
-  priceCurrency: string;
   lang: 'en' | 'ru';
 };
 
-function PlanCompareColumn({ label, planSlug, priceCurrency, lang }: PlanColumnProps) {
+function PlanCompareColumn({ label, planSlug, lang }: PlanColumnProps) {
   const planName = getPlanDisplayName(planSlug);
   const artistLimit = formatPlanArtistLimitParts(planSlug, lang);
   const priceAmount = getPlanPriceDisplayAmount(planSlug);
+  const priceCurrency = getPlanPriceCurrencyDisplay();
   const pricePeriod = formatPlanPricePeriod(planSlug, lang);
 
   return (
@@ -58,7 +58,6 @@ export function SubscriptionPlanChangeConfirmModal({
   isOpen,
   currentPlanSlug,
   targetPlanSlug,
-  priceCurrency,
   loading,
   onCancel,
   onConfirm,
@@ -136,21 +135,11 @@ export function SubscriptionPlanChangeConfirmModal({
               className="subscription-plan-change-modal__compare"
               aria-label={`${currentPlanLabel} → ${newPlanLabel}`}
             >
-              <PlanCompareColumn
-                label={currentPlanLabel}
-                planSlug={currentPlanSlug}
-                priceCurrency={priceCurrency}
-                lang={lang}
-              />
+              <PlanCompareColumn label={currentPlanLabel} planSlug={currentPlanSlug} lang={lang} />
               <span className="subscription-plan-change-modal__compare-arrow" aria-hidden>
                 <ArrowRight {...dashboardActionIconProps({ size: 16 })} />
               </span>
-              <PlanCompareColumn
-                label={newPlanLabel}
-                planSlug={targetPlanSlug}
-                priceCurrency={priceCurrency}
-                lang={lang}
-              />
+              <PlanCompareColumn label={newPlanLabel} planSlug={targetPlanSlug} lang={lang} />
             </div>
           </div>
 

@@ -216,6 +216,12 @@ module.exports = {
       'process.env.VITE_USE_SUPABASE_STORAGE': JSON.stringify(
         process.env.VITE_USE_SUPABASE_STORAGE || 'false'
       ),
+      'process.env.VITE_DEV_PAYMENT_MODE': JSON.stringify(process.env.VITE_DEV_PAYMENT_MODE || ''),
+      'process.env.VITE_SUBSCRIPTION_AUTO_RENEW_ENABLED': JSON.stringify(
+        process.env.VITE_SUBSCRIPTION_AUTO_RENEW_ENABLED ||
+          process.env.SUBSCRIPTION_AUTO_RENEW_ENABLED ||
+          ''
+      ),
       'process.env.VITE_RAW_ASSETS_BASE_URL': JSON.stringify(
         process.env.VITE_RAW_ASSETS_BASE_URL || ''
       ),

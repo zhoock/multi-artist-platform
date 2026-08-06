@@ -1,22 +1,19 @@
 /**
- * Premium subscription display price — mirrors netlify/functions/lib/subscription-billing.ts.
+ * Premium subscription display price — delegates to shared plan catalog.
  */
 
-export const PREMIUM_SUBSCRIPTION_AMOUNT_RUB_PRODUCTION = 149;
+import { getPlanAmountRub, SUBSCRIPTION_PLAN_PRICE_RUB } from './subscriptionPlanCatalog';
 
-export function isPremiumSubscriptionDevTestPricing(): boolean {
-  return (
-    process.env.NODE_ENV !== 'production' ||
-    process.env.YOOKASSA_TEST_MODE === 'true' ||
-    process.env.NETLIFY_DEV === 'true'
-  );
-}
+export { SUBSCRIPTION_PLAN_PRICE_RUB };
+
+/** @deprecated Use getPlanAmountRub(planSlug) — kept for legacy imports. */
+export const PREMIUM_SUBSCRIPTION_AMOUNT_RUB_PRODUCTION = SUBSCRIPTION_PLAN_PRICE_RUB;
 
 export function getPremiumSubscriptionAmountRub(): number {
-  return isPremiumSubscriptionDevTestPricing() ? 1 : PREMIUM_SUBSCRIPTION_AMOUNT_RUB_PRODUCTION;
+  return getPlanAmountRub('explorer');
 }
 
 /** Price string for UI (modal, marketing copy). */
 export function getPremiumSubscriptionPriceDisplayAmount(): string {
-  return String(getPremiumSubscriptionAmountRub());
+  return String(getPlanAmountRub('explorer'));
 }

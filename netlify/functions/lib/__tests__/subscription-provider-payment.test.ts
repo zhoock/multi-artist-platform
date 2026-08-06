@@ -7,13 +7,21 @@ import {
   mapDevSubscriptionPaymentToProviderPayment,
   mapYooKassaPaymentToProviderPayment,
 } from '../subscription-provider-payment';
+import {
+  formatPlanAmountValue,
+  getPlanPriceCurrencyCode,
+} from '../../../../src/shared/lib/payment/subscriptionPlanCatalog';
+
+const CURRENCY = getPlanPriceCurrencyCode();
+const COLLECTOR_AMOUNT = formatPlanAmountValue('collector');
+const EXPLORER_AMOUNT = formatPlanAmountValue('explorer');
 
 describe('mapYooKassaPaymentToProviderPayment', () => {
   test('maps payment_method and metadata', () => {
     const dto = mapYooKassaPaymentToProviderPayment({
       id: 'pay-1',
       status: 'succeeded',
-      amount: { value: '149.00', currency: 'RUB' },
+      amount: { value: COLLECTOR_AMOUNT, currency: CURRENCY },
       metadata: {
         productType: 'premium_subscription',
         userId: 'user-1',
@@ -27,7 +35,7 @@ describe('mapYooKassaPaymentToProviderPayment', () => {
     expect(dto).toEqual({
       id: 'pay-1',
       status: 'succeeded',
-      amount: { value: '149.00', currency: 'RUB' },
+      amount: { value: COLLECTOR_AMOUNT, currency: CURRENCY },
       metadata: {
         productType: 'premium_subscription',
         userId: 'user-1',
@@ -44,7 +52,7 @@ describe('mapYooKassaPaymentToProviderPayment', () => {
       mapYooKassaPaymentToProviderPayment({
         id: 'pay-1',
         status: 'refunded',
-        amount: { value: '1.00', currency: 'RUB' },
+        amount: { value: EXPLORER_AMOUNT, currency: CURRENCY },
       })
     ).toBeNull();
   });
@@ -59,8 +67,8 @@ describe('mapDevSubscriptionPaymentToProviderPayment', () => {
         provider: 'yookassa',
         provider_payment_id: 'pay-dev',
         status: 'succeeded',
-        amount: '1.00',
-        currency: 'RUB',
+        amount: EXPLORER_AMOUNT,
+        currency: CURRENCY,
         plan: 'explorer',
       },
       'pay-dev'
@@ -80,8 +88,8 @@ describe('mapDevSubscriptionPaymentToProviderPayment', () => {
         provider: 'yookassa',
         provider_payment_id: 'pay-dev',
         status: 'succeeded',
-        amount: '1.00',
-        currency: 'RUB',
+        amount: EXPLORER_AMOUNT,
+        currency: CURRENCY,
         plan: 'explorer',
         kind: 'rebind',
       },

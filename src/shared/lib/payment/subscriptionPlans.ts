@@ -1,60 +1,34 @@
 /**
- * Client-side mirror of netlify/functions/lib/subscription-billing.ts PLAN_CATALOG.
- * Keep in sync when changing server plan definitions.
+ * Client helpers for Premium subscription plan UI.
+ * Catalog + pricing: subscriptionPlanCatalog.ts (shared with server).
  */
 
-import { isPremiumSubscriptionDevTestPricing } from './premiumSubscriptionPricing';
+export {
+  comparePlanTiers,
+  DEFAULT_SUBSCRIPTION_PLAN,
+  getPlanAmountRub,
+  getPlanPriceCurrencyDisplay,
+  getPlanCatalogEntry as getPlanDefinition,
+  SUBSCRIPTION_PLAN_PRICE_CURRENCY,
+  PLAN_CATALOG,
+  PLAN_TIER_ORDER,
+  SUBSCRIPTION_PLAN_CATALOG,
+  SUBSCRIPTION_PLAN_PRICE_RUB,
+  SUBSCRIPTION_PLAN_SLUGS,
+  SUBSCRIPTION_SLOTS_LIMIT_FALLBACK,
+  type SubscriptionPlanCatalogEntry as SubscriptionPlanDefinition,
+  type SubscriptionPlanSlug,
+} from './subscriptionPlanCatalog';
 
-export const SUBSCRIPTION_PLAN_SLUGS = ['explorer', 'collector', 'archivist'] as const;
-export type SubscriptionPlanSlug = (typeof SUBSCRIPTION_PLAN_SLUGS)[number];
-
-export const DEFAULT_SUBSCRIPTION_PLAN: SubscriptionPlanSlug = 'explorer';
-
-/** Dev/test support period when {@link isPremiumSubscriptionDevTestPricing} is true. */
-export const DEV_SUPPORT_PERIOD_HOURS = 1;
-
-export interface SubscriptionPlanDefinition {
-  slotsLimit: number;
-  durationDays: number;
-  priceRubProduction: number;
-}
-
-/** Production plan catalog (30-day billing period). Dev pricing/period via env — see .env.example. */
-export const PLAN_CATALOG: Record<SubscriptionPlanSlug, SubscriptionPlanDefinition> = {
-  explorer: {
-    slotsLimit: 20,
-    durationDays: 30,
-    priceRubProduction: 149,
-  },
-  collector: {
-    slotsLimit: 60,
-    durationDays: 30,
-    priceRubProduction: 149,
-  },
-  archivist: {
-    slotsLimit: 100,
-    durationDays: 30,
-    priceRubProduction: 199,
-  },
-};
-
-/** Matches backend fallback when user has no subscription row. */
-export const SUBSCRIPTION_SLOTS_LIMIT_FALLBACK = PLAN_CATALOG.archivist.slotsLimit;
-
-export const PLAN_TIER_ORDER: Record<SubscriptionPlanSlug, number> = {
-  explorer: 0,
-  collector: 1,
-  archivist: 2,
-};
-
-export function getPlanDefinition(planSlug: SubscriptionPlanSlug): SubscriptionPlanDefinition {
-  return PLAN_CATALOG[planSlug];
-}
-
-export function getPlanAmountRub(planSlug: SubscriptionPlanSlug): number {
-  if (isPremiumSubscriptionDevTestPricing()) return 1;
-  return PLAN_CATALOG[planSlug].priceRubProduction;
-}
+import {
+  comparePlanTiers,
+  getPlanAmountRub,
+  PLAN_CATALOG,
+  PLAN_TIER_ORDER,
+  SUBSCRIPTION_PLAN_SLUGS,
+  SUBSCRIPTION_SLOTS_LIMIT_FALLBACK,
+  type SubscriptionPlanSlug,
+} from './subscriptionPlanCatalog';
 
 export function getPlanPriceDisplayAmount(planSlug: SubscriptionPlanSlug): string {
   return String(getPlanAmountRub(planSlug));
@@ -154,10 +128,7 @@ export function formatPlanArtistLimitParts(
   };
 }
 
-export function formatPlanPricePeriod(planSlug: SubscriptionPlanSlug, lang: 'en' | 'ru'): string {
-  if (isPremiumSubscriptionDevTestPricing()) {
-    return lang === 'en' ? '/ hour' : '/ час';
-  }
+export function formatPlanPricePeriod(_planSlug: SubscriptionPlanSlug, lang: 'en' | 'ru'): string {
   return lang === 'en' ? '/ month' : '/ мес.';
 }
 
@@ -166,13 +137,6 @@ export function formatPlanSupportDuration(
   lang: 'en' | 'ru'
 ): string {
   const plan = PLAN_CATALOG[planSlug];
-  if (isPremiumSubscriptionDevTestPricing()) {
-    const hours = DEV_SUPPORT_PERIOD_HOURS;
-    if (lang === 'en') {
-      return hours === 1 ? '1 hour support period' : `${hours} hours support period`;
-    }
-    return hours === 1 ? '1 час поддержки' : `${hours} ч поддержки`;
-  }
   return lang === 'en'
     ? `${plan.durationDays} days support period`
     : `${plan.durationDays} дней поддержки`;
@@ -240,14 +204,6 @@ export function resolvePlanCardAction(params: {
   };
 }
 
-export function comparePlanTiers(a: SubscriptionPlanSlug, b: SubscriptionPlanSlug): -1 | 0 | 1 {
-  const diff = PLAN_TIER_ORDER[a] - PLAN_TIER_ORDER[b];
-  if (diff < 0) return -1;
-  if (diff > 0) return 1;
-  return 0;
-}
-
-/** Upsell target for Collection billing summary (mockup: Archivist when below top tier). */
 export function resolveRecommendedPlanSlug(
   currentPlanSlug: SubscriptionPlanSlug | null
 ): SubscriptionPlanSlug | null {
@@ -255,7 +211,6 @@ export function resolveRecommendedPlanSlug(
   return 'archivist';
 }
 
-/** True when switching between existing plans (not renew / first purchase). */
 export function shouldConfirmSubscriptionPlanChange(
   currentPlanSlug: SubscriptionPlanSlug | null,
   targetPlanSlug: SubscriptionPlanSlug
@@ -265,10 +220,6 @@ export function shouldConfirmSubscriptionPlanChange(
 
 export type PlanChangeAction = 'checkout' | 'upgrade' | 'downgrade' | 'blocked_downgrade';
 
-/**
- * Routes plan picker actions when autoprenew billing is active.
- * Legacy resubscribe / first purchase always uses checkout (initial).
- */
 export function resolvePlanChangeAction(params: {
   currentPlanSlug: SubscriptionPlanSlug | null;
   targetPlanSlug: SubscriptionPlanSlug;
@@ -287,7 +238,6 @@ export function resolvePlanChangeAction(params: {
     return 'checkout';
   }
 
-  // tierCompare < 0 => target tier is higher (upgrade); > 0 => downgrade
   if (billingStatus === 'past_due' && tierCompare > 0) {
     return 'blocked_downgrade';
   }

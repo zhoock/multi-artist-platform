@@ -11,6 +11,7 @@ import {
   createPendingSubscriptionPayment,
   getPlanAmountRub,
   getPlanDefinition,
+  getPlanPriceCurrencyCode,
   resolveRenewalChargePlanSlug,
 } from './subscription-billing';
 import { isSubscriptionAutoRenewEnabled } from './subscription-feature-flag';
@@ -384,7 +385,7 @@ export async function attemptRenewalChargeForSubscription(
         status: 'succeeded',
         amount: {
           value: getPlanAmountRub(chargePlanSlug).toFixed(2),
-          currency: 'RUB',
+          currency: getPlanPriceCurrencyCode(),
         },
         metadata: {
           productType: 'premium_subscription',
