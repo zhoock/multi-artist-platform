@@ -86,7 +86,12 @@
     align-items: center;
     gap: 0.2rem;
     min-width: 0;
+    padding: 16px;
     text-align: center;
+    background: transparent;
+    border: 1px solid var(--dashboard-card-border);
+    border-radius: 12px;
+    box-sizing: border-box;
   }
 
   &__plan-label {
