@@ -65,6 +65,7 @@
 | `npm run dev:worker`        | Только воркер на хосте                                                   |
 | `npm run dev:docker:down`   | Остановить Docker-контейнер воркера                                      |
 | `npm run dev:netlify`       | Только Netlify Dev, без проверки воркера                                 |
+| `npm run dev:scheduler`     | Только sidecar автопродления (обычно не нужен отдельно)                  |
 | `npm start`                 | Только webpack dev server (без Netlify Functions)                        |
 | `npm run build`             | Production-сборка                                                        |
 
@@ -74,6 +75,7 @@
 - **Netlify Dev** — прокси на **8888**
 - **Audio Asset Worker** — порт **8090** (FFmpeg, Opus в `derived/`)
 - **Netlify Functions** — `http://localhost:8888/.netlify/functions/*`
+- **Local renewal scheduler sidecar (PR-10.4)** — вместе с `npm run dev`, `dev:all`, `dev:docker`; см. § «Автопродление локально»
 
 При `npm run dev` (без `:all`) в терминале появится предупреждение, если `ASSET_WORKER_URL` задан, но воркер не отвечает на `/health`:
 
@@ -100,6 +102,46 @@
 - `NETLIFY_SITE_URL` - URL продакшн сайта (для проксирования API вместо локальных функций)
 - `DEV_PAYMENT_MODE=true` — локальный checkout альбомов и подписок без YooKassa (см. `docs/dev-payment-mode.md`)
 - `ASSET_WORKER_URL` + `ASSET_WORKER_WEBHOOK_SECRET` — обработка аудио после загрузки трека. Без них загрузка проходит, но статус «Обработка не запущена».
+
+## Автопродление локально (PR-10.4)
+
+Netlify Scheduled Functions **не** запускаются под `netlify dev`. Для локального теста автопродления sidecar (`scripts/dev-subscription-scheduler-tick.ts`) автоматически стартует вместе с `npm run dev`, `dev:all` и `dev:docker`.
+
+**Как это работает**
+
+1. Sidecar раз в `LOCAL_RENEWAL_SCHEDULER_INTERVAL_MS` (по умолчанию **60 с**) отправляет `POST` на `/.netlify/functions/scheduled-subscription-renewals` с телом `{ "next_run": "<ISO-8601>" }` — тот же формат, что у Netlify cron.
+2. Выполняется **production handler** → `runRenewalCycle()` → существующий renewal engine. Отдельной dev-логики продления нет.
+3. В dev/test период поддержки — **1 час** (`DEV_SUPPORT_PERIOD_HOURS` в `subscription-billing.ts` при `NETLIFY_DEV=true`). После истечения `next_charge_at` продление срабатывает в течение ~1 минуты без ручных команд.
+
+**Обязательно для auto-renew локально**
+
+```bash
+SUBSCRIPTION_AUTO_RENEW_ENABLED=true
+```
+
+Рекомендуется также `DEV_PAYMENT_MODE=true` (уже задано в `netlify.toml` для `[context.dev]`).
+
+**Опционально**
+
+| Переменная                            | По умолчанию              | Назначение                                       |
+| ------------------------------------- | ------------------------- | ------------------------------------------------ |
+| `LOCAL_RENEWAL_SCHEDULER`             | включён при условиях выше | `false` — отключить sidecar                      |
+| `LOCAL_RENEWAL_SCHEDULER_INTERVAL_MS` | `60000`                   | Интервал опроса (мс)                             |
+| `LOCAL_NETLIFY_PORT`                  | `8888`                    | Порт Netlify Dev (`netlify.toml` → `[dev].port`) |
+
+**Отключить sidecar**
+
+```bash
+LOCAL_RENEWAL_SCHEDULER=false
+```
+
+**Production**
+
+На production расписание задаёт только Netlify Scheduled Functions (`*/15 * * * *` в `netlify.toml`). Sidecar не деплоится и не используется.
+
+**Dunning / grace (ADR-007)**
+
+Sidecar ускоряет только **period-end renewal**. Retry-интервалы dunning (+24h / +72h / +168h) не сжимаются — для них используйте E2E-тесты или ручное смещение `next_charge_at` в БД.
 
 ## Обработка аудио
 
