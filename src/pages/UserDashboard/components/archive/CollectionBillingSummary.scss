@@ -10,7 +10,7 @@ dialog {
       &__banner {
         display: flex;
         flex-wrap: wrap;
-        align-items: flex-start;
+        align-items: center;
         gap: var(--ms-01);
         padding: var(--ms-01) var(--ms-0);
         background: rgb(var(--dark-greenish-yellow-rgb) / 6%);
@@ -23,11 +23,7 @@ dialog {
         flex-shrink: 0;
         align-items: center;
         justify-content: center;
-        width: 1.75rem;
-        height: 1.75rem;
         color: var(--dark-greenish-yellow);
-        background: rgb(var(--dark-greenish-yellow-rgb) / 14%);
-        border-radius: 50%;
       }
 
       &__banner-text {
@@ -64,7 +60,6 @@ dialog {
       }
 
       &__accent-button {
-        align-self: flex-start;
         color: var(--dark-greenish-yellow) !important;
         border-color: rgb(var(--dark-greenish-yellow-rgb) / 55%) !important;
 

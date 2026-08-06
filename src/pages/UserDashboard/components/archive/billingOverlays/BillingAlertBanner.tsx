@@ -23,7 +23,7 @@ export function BillingAlertBanner({
   return (
     <div className="collection-billing__banner">
       <span className="collection-billing__banner-icon" aria-hidden>
-        <AlertCircle {...dashboardActionIconProps({ size: 20 })} />
+        <AlertCircle {...dashboardActionIconProps({ size: 24 })} />
       </span>
       <div className="collection-billing__banner-text">
         <p className="collection-billing__banner-title">{title}</p>
