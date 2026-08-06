@@ -23,6 +23,7 @@ const copy: CollectionBillingCopy = {
   billingLastPlanSection: 'LAST PLAN',
   billingSupportSection: 'SUPPORT',
   billingSupportActiveUntil: 'Active until {date}',
+  billingNextChargeOn: 'Next charge — {date}',
   billingSupportExpiredOn: 'Expired {date}',
   billingChangePlanButton: 'Change plan',
   billingRecommendedPlanSection: 'RECOMMENDED',
@@ -40,8 +41,6 @@ const copy: CollectionBillingCopy = {
   billingPaymentFailedBannerCta: 'Update payment',
   billingPaymentFailedNextRetry: 'Next retry: {date}',
   billingPaymentFailedGraceEnds: 'Access until: {date}',
-  billingPreBillingBannerTitle: 'Pre-billing title',
-  billingPreBillingBannerBody: 'Pre-billing body {date} {plan} {amount} {currency}',
   billingDowngradeSlotsBannerTitle: 'Downgrade title',
   billingDowngradeSlotsBannerBody: 'Downgrade body {date} {plan} {used} {limit}',
   billingDowngradeSlotsBannerCta: 'Cancel downgrade',
@@ -65,7 +64,7 @@ describe('CollectionBillingSummary overlays', () => {
           nextChargeAt: '2026-08-07T12:00:00.000Z',
           expiresAt: '2026-09-03T00:00:00.000Z',
         }}
-        overlays={[BILLING_OVERLAY.DOWNGRADE_SLOTS, BILLING_OVERLAY.PRE_BILLING]}
+        overlays={[BILLING_OVERLAY.DOWNGRADE_SLOTS]}
         slotsUsed={2}
         lang="en"
         copy={copy}
@@ -77,8 +76,34 @@ describe('CollectionBillingSummary overlays', () => {
     );
 
     expect(screen.getByText('Downgrade title')).toBeTruthy();
-    expect(screen.getByText('Pre-billing title')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Cancel downgrade' })).toBeTruthy();
+  });
+
+  test('shows next charge date in ACTIVE current plan card', () => {
+    render(
+      <CollectionBillingSummary
+        screen="ACTIVE"
+        billing={{
+          ...EMPTY_BILLING_SNAPSHOT,
+          status: 'active',
+          hasPremiumAccess: true,
+          plan: 'collector',
+          slotsLimit: 2,
+          nextChargeAt: '2026-08-06T00:00:00.000Z',
+          expiresAt: '2026-09-03T00:00:00.000Z',
+        }}
+        overlays={[]}
+        slotsUsed={1}
+        lang="en"
+        copy={copy}
+        onChangePlan={() => undefined}
+        onBannerAction={() => undefined}
+        onUpgradePlan={() => undefined}
+      />
+    );
+
+    expect(screen.getByText(/Next charge —/)).toBeTruthy();
+    expect(screen.queryByText(/Active until/)).toBeNull();
   });
 
   test('renders dunning supplemental lines on PAYMENT_FAILED', () => {

@@ -3,8 +3,8 @@
  *
  * Spec: docs/adr/pr-10-e2e-specification.md §2 Group L
  * Scenarios:
- *   L-001 @p1 — ACTIVE pre-billing only
- *   L-002 @p1 — ACTIVE downgrade + pre-billing
+ *   L-001 @p1 — ACTIVE no overlays
+ *   L-002 @p1 — ACTIVE downgrade overlay only
  *   L-003 @p1 — ACTIVE schedule without excess slots
  *   L-004 @p1 — CANCELLED downgrade only
  *   L-005 @p1 — PAYMENT_FAILED no overlays
@@ -20,10 +20,10 @@ import type { E2eScenarioMeta } from '../../helpers/subscription-e2e-tags';
 registerTier2UiHooks();
 
 const SCENARIOS: E2eScenarioMeta[] = [
-  { id: 'L-001', title: 'ACTIVE pre-billing overlay only', priority: 'P1', tier: 'tier2-ui' },
+  { id: 'L-001', title: 'ACTIVE no overlays', priority: 'P1', tier: 'tier2-ui' },
   {
     id: 'L-002',
-    title: 'ACTIVE downgrade and pre-billing overlays',
+    title: 'ACTIVE downgrade overlay only',
     priority: 'P1',
     tier: 'tier2-ui',
   },

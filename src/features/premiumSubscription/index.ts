@@ -4,11 +4,9 @@ export { resolveCollectionBillingScreen } from './lib/resolveCollectionBillingSc
 export { resolveCollectionBillingOverlays } from './lib/resolveCollectionBillingOverlays';
 export {
   MAX_RENEWAL_ATTEMPTS,
-  PRE_BILLING_WINDOW_MS,
   SUBSCRIPTION_GRACE_PERIOD_MS,
   resolveDunningBannerSupplement,
   resolveGraceEnd,
-  isWithinPreBillingWindow,
   type DunningBannerSupplement,
 } from './lib/subscriptionBillingPolicy';
 export {

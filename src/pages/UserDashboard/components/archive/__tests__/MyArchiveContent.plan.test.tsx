@@ -81,6 +81,7 @@ function billingActive(overrides: Partial<BillingSnapshot> = {}): BillingSnapsho
     plan: 'explorer',
     slotsLimit: 1,
     expiresAt: '2026-08-03T12:00:00.000Z',
+    nextChargeAt: '2026-08-03T12:00:00.000Z',
     autoRenewEnabled: true,
     hasPremiumAccess: true,
     ...overrides,
@@ -141,7 +142,7 @@ describe('MyArchiveContent plan display', () => {
       expect(screen.getByText('Explorer')).toBeTruthy();
     });
 
-    expect(screen.getByText(/Support active until|Поддержка активна до/i)).toBeTruthy();
+    expect(screen.getByText(/Next charge —|Следующее списание —/i)).toBeTruthy();
     expect(screen.getByText(/1 of 1|1 из 1/)).toBeTruthy();
     expect(document.querySelector('.collection-billing')).toBeTruthy();
     expect(screen.getByText(/Change plan|Сменить план/i)).toBeTruthy();
@@ -158,7 +159,7 @@ describe('MyArchiveContent plan display', () => {
     renderWithProviders(<MyArchiveContent active />);
 
     await waitFor(() => {
-      expect(screen.getByText(/Support active until|Поддержка активна до/i)).toBeTruthy();
+      expect(screen.getByText(/Next charge —|Следующее списание —/i)).toBeTruthy();
     });
 
     expect(document.querySelector('.collection__summary--expiring')).toBeNull();

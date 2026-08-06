@@ -20,7 +20,7 @@ function chargeInDays(days: number): string {
 describe('resolveCollectionBillingOverlays', () => {
   test.each([
     {
-      label: 'ACTIVE + T-2 pre-billing only',
+      label: 'ACTIVE with upcoming charge shows no overlays',
       billing: snap({
         status: 'active',
         hasPremiumAccess: true,
@@ -31,10 +31,10 @@ describe('resolveCollectionBillingOverlays', () => {
       }),
       billingScreen: 'ACTIVE' as const,
       slotsUsed: 1,
-      expected: [BILLING_OVERLAY.PRE_BILLING],
+      expected: [],
     },
     {
-      label: 'ACTIVE + scheduled downgrade + pre-billing (both overlays)',
+      label: 'ACTIVE + scheduled downgrade with excess slots',
       billing: snap({
         status: 'active',
         hasPremiumAccess: true,
@@ -45,7 +45,7 @@ describe('resolveCollectionBillingOverlays', () => {
       }),
       billingScreen: 'ACTIVE' as const,
       slotsUsed: 25,
-      expected: [BILLING_OVERLAY.DOWNGRADE_SLOTS, BILLING_OVERLAY.PRE_BILLING],
+      expected: [BILLING_OVERLAY.DOWNGRADE_SLOTS],
     },
     {
       label: 'ACTIVE outside pre-billing window',
@@ -73,7 +73,7 @@ describe('resolveCollectionBillingOverlays', () => {
       }),
       billingScreen: 'ACTIVE' as const,
       slotsUsed: 1,
-      expected: [BILLING_OVERLAY.PRE_BILLING],
+      expected: [],
     },
     {
       label: 'CANCELLED + downgrade only',
@@ -145,7 +145,6 @@ describe('resolveCollectionBillingOverlays', () => {
       billing,
       billingScreen,
       slotsUsed,
-      now: NOW,
     });
 
     expect(overlays).toEqual(expected);
@@ -163,25 +162,8 @@ describe('resolveCollectionBillingOverlays', () => {
       }),
       billingScreen: 'ACTIVE',
       slotsUsed: 25,
-      now: NOW,
     });
 
     expect(new Set(overlays).size).toBe(overlays.length);
-  });
-
-  test('pre-billing hidden when charge time has passed', () => {
-    const overlays = resolveCollectionBillingOverlays({
-      billing: snap({
-        status: 'active',
-        hasPremiumAccess: true,
-        plan: 'collector',
-        nextChargeAt: new Date('2026-08-05T11:00:00.000Z').toISOString(),
-      }),
-      billingScreen: 'ACTIVE',
-      slotsUsed: 1,
-      now: NOW,
-    });
-
-    expect(overlays).toEqual([]);
   });
 });

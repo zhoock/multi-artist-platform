@@ -6,7 +6,6 @@ import type { BillingSnapshot } from '@shared/api/billing';
 
 import type { CollectionBillingCopy } from '../CollectionBillingSummary';
 
-import { PreBillingBanner } from './PreBillingBanner';
 import { ScheduledDowngradeBanner } from './ScheduledDowngradeBanner';
 
 export type CollectionBillingOverlayProps = {
@@ -29,18 +28,6 @@ export function CollectionBillingOverlay({
   onCancelScheduledDowngrade,
 }: CollectionBillingOverlayProps) {
   switch (overlay) {
-    case BILLING_OVERLAY.PRE_BILLING:
-      return (
-        <PreBillingBanner
-          billing={billing}
-          lang={lang}
-          copy={{
-            title: copy.billingPreBillingBannerTitle,
-            body: copy.billingPreBillingBannerBody,
-            priceCurrency: copy.priceCurrency,
-          }}
-        />
-      );
     case BILLING_OVERLAY.DOWNGRADE_SLOTS:
       return (
         <ScheduledDowngradeBanner

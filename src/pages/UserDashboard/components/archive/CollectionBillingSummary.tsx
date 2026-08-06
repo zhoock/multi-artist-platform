@@ -25,6 +25,7 @@ export type CollectionBillingCopy = {
   billingLastPlanSection: string;
   billingSupportSection: string;
   billingSupportActiveUntil: string;
+  billingNextChargeOn: string;
   billingSupportExpiredOn: string;
   billingChangePlanButton: string;
   billingRecommendedPlanSection: string;
@@ -42,8 +43,6 @@ export type CollectionBillingCopy = {
   billingPaymentFailedBannerCta: string;
   billingPaymentFailedNextRetry: string;
   billingPaymentFailedGraceEnds: string;
-  billingPreBillingBannerTitle: string;
-  billingPreBillingBannerBody: string;
   billingDowngradeSlotsBannerTitle: string;
   billingDowngradeSlotsBannerBody: string;
   billingDowngradeSlotsBannerCta: string;
@@ -157,6 +156,9 @@ export function CollectionBillingSummary({
   const expiresLabel = billing.expiresAt
     ? formatCollectionRenewalDate(billing.expiresAt, lang)
     : null;
+  const nextChargeLabel = billing.nextChargeAt
+    ? formatCollectionRenewalDate(billing.nextChargeAt, lang)
+    : null;
 
   const recommendedPlanSlug = resolveRecommendedPlanSlug(planSlug);
   const slotsLimit = billing.slotsLimit;
@@ -169,9 +171,13 @@ export function CollectionBillingSummary({
       ? expiresLabel
         ? copy.billingSupportExpiredOn.replace('{date}', expiresLabel)
         : copy.billingSupportExpiredOn.replace('{date}', '—')
-      : expiresLabel
-        ? copy.billingSupportActiveUntil.replace('{date}', expiresLabel)
-        : copy.billingSupportActiveUntil.replace('{date}', '—');
+      : screen === 'ACTIVE'
+        ? nextChargeLabel
+          ? copy.billingNextChargeOn.replace('{date}', nextChargeLabel)
+          : copy.billingNextChargeOn.replace('{date}', '—')
+        : expiresLabel
+          ? copy.billingSupportActiveUntil.replace('{date}', expiresLabel)
+          : copy.billingSupportActiveUntil.replace('{date}', '—');
 
   const usageCountLabel = copy.billingCollectionUsageCount
     .replace('{used}', String(slotsUsed))
@@ -267,11 +273,7 @@ export function CollectionBillingSummary({
             </h3>
             <PlanHeadline planSlug={recommendedPlanSlug} lang={lang} copy={copy} />
             <div className="collection-billing__plan-action">
-              <DashboardButton
-                variant="outline"
-                className="collection-billing__upgrade-button"
-                onClick={onUpgradePlan}
-              >
+              <DashboardButton variant="primary" onClick={onUpgradePlan}>
                 {copy.billingUpgradePlanButton}
               </DashboardButton>
             </div>

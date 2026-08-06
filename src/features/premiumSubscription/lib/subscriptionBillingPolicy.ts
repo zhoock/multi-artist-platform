@@ -2,9 +2,6 @@ import type { BillingSnapshot } from '@shared/api/billing';
 
 const HOUR_MS = 60 * 60 * 1000;
 
-/** Design handoff T−3 — must match docs/design/pr-8-billing-overlays-design-review.md */
-export const PRE_BILLING_WINDOW_MS = 3 * 24 * HOUR_MS;
-
 /** ADR-007 — must match netlify/functions/lib/subscription-state.ts */
 export const SUBSCRIPTION_GRACE_PERIOD_MS = 7 * 24 * HOUR_MS;
 
@@ -22,16 +19,6 @@ function parseIsoMs(iso: string | null | undefined): number | null {
   if (!iso) return null;
   const ms = new Date(iso).getTime();
   return Number.isNaN(ms) ? null : ms;
-}
-
-export function isWithinPreBillingWindow(
-  nextChargeAt: string | null | undefined,
-  now: Date = new Date()
-): boolean {
-  const chargeMs = parseIsoMs(nextChargeAt);
-  if (chargeMs === null) return false;
-  const nowMs = now.getTime();
-  return nowMs >= chargeMs - PRE_BILLING_WINDOW_MS && nowMs < chargeMs;
 }
 
 export function resolveGraceEnd(firstFailedAt: string | null | undefined): string | null {

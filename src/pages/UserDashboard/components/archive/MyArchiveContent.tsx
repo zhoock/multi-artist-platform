@@ -205,6 +205,7 @@ export function MyArchiveContent({
       billingLastPlanSection: t?.billingLastPlanSection ?? 'ПОСЛЕДНИЙ ПЛАН',
       billingSupportSection: t?.billingSupportSection ?? 'ПОДДЕРЖКА',
       billingSupportActiveUntil: t?.billingSupportActiveUntil ?? 'Поддержка активна до {date}',
+      billingNextChargeOn: t?.billingNextChargeOn ?? 'Следующее списание — {date}',
       billingSupportExpiredOn: t?.billingSupportExpiredOn ?? 'Истёк {date}',
       billingChangePlanButton: t?.billingChangePlanButton ?? t?.changePlanButton ?? 'Сменить план',
       billingRecommendedPlanSection: t?.billingRecommendedPlanSection ?? 'РЕКОМЕНДУЕМЫЙ ПЛАН',
@@ -232,10 +233,6 @@ export function MyArchiveContent({
         t?.billingPaymentFailedNextRetry ?? 'Следующая попытка: {date}',
       billingPaymentFailedGraceEnds:
         t?.billingPaymentFailedGraceEnds ?? 'Доступ сохранится до: {date}',
-      billingPreBillingBannerTitle: t?.billingPreBillingBannerTitle ?? 'Скоро списание',
-      billingPreBillingBannerBody:
-        t?.billingPreBillingBannerBody ??
-        'Поддержка {plan} ({amount} {currency}) продлится {date}.',
       billingDowngradeSlotsBannerTitle:
         t?.billingDowngradeSlotsBannerTitle ?? 'Запланировано понижение тарифа',
       billingDowngradeSlotsBannerBody:

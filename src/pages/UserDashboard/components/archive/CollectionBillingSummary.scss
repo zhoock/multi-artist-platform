@@ -68,18 +68,6 @@ dialog {
         }
       }
 
-      &__upgrade-button {
-        width: 100%;
-        color: var(--deep-black, #0a0a0a) !important;
-        background: var(--dark-greenish-yellow) !important;
-        border-color: var(--dark-greenish-yellow) !important;
-
-        &:hover:not(:disabled) {
-          background: color-mix(in srgb, var(--dark-greenish-yellow) 88%, white) !important;
-          border-color: color-mix(in srgb, var(--dark-greenish-yellow) 88%, white) !important;
-        }
-      }
-
       &__plan-cards {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));

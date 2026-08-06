@@ -939,6 +939,7 @@ export interface IInterface {
       billingLastPlanSection?: string;
       billingSupportSection?: string;
       billingSupportActiveUntil?: string;
+      billingNextChargeOn?: string;
       billingSupportExpiredOn?: string;
       billingChangePlanButton?: string;
       billingRecommendedPlanSection?: string;
@@ -956,8 +957,6 @@ export interface IInterface {
       billingPaymentFailedBannerCta?: string;
       billingPaymentFailedNextRetry?: string;
       billingPaymentFailedGraceEnds?: string;
-      billingPreBillingBannerTitle?: string;
-      billingPreBillingBannerBody?: string;
       billingDowngradeSlotsBannerTitle?: string;
       billingDowngradeSlotsBannerBody?: string;
       billingDowngradeSlotsBannerCta?: string;

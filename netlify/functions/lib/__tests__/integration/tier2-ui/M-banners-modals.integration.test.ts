@@ -7,7 +7,7 @@
  *   M-002 @p1 — Expired banner + renew CTA
  *   M-003 @p1 — Payment failed banner + rebind CTA
  *   M-004 @p1 — Disable auto-renew link (ACTIVE)
- *   M-005 @p1 — Pre-billing overlay banner
+ *   M-005 @p1 — ACTIVE next charge in plan card
  *   M-006 @p1 — Downgrade slots overlay
  *   M-007 @p1 — DisableAutoRenewModal
  *   M-008 @p1 — EnableAutoRenewModal
@@ -28,7 +28,7 @@ const SCENARIOS: E2eScenarioMeta[] = [
   { id: 'M-002', title: 'expired banner and renew CTA', priority: 'P1', tier: 'tier2-ui' },
   { id: 'M-003', title: 'payment failed banner and rebind CTA', priority: 'P1', tier: 'tier2-ui' },
   { id: 'M-004', title: 'disable auto-renew link on ACTIVE', priority: 'P1', tier: 'tier2-ui' },
-  { id: 'M-005', title: 'pre-billing overlay banner', priority: 'P1', tier: 'tier2-ui' },
+  { id: 'M-005', title: 'ACTIVE next charge in plan card', priority: 'P1', tier: 'tier2-ui' },
   { id: 'M-006', title: 'downgrade slots overlay', priority: 'P1', tier: 'tier2-ui' },
   { id: 'M-007', title: 'DisableAutoRenewModal flow', priority: 'P1', tier: 'tier2-ui' },
   { id: 'M-008', title: 'EnableAutoRenewModal flow', priority: 'P1', tier: 'tier2-ui' },

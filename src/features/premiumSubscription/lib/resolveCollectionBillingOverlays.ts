@@ -6,13 +6,11 @@ import {
 
 import { BILLING_OVERLAY, type BillingOverlay } from './billingOverlay';
 import type { BillingScreen } from './billingScreen';
-import { isWithinPreBillingWindow } from './subscriptionBillingPolicy';
 
 export type ResolveCollectionBillingOverlaysInput = {
   billing: BillingSnapshot;
   billingScreen: BillingScreen;
   slotsUsed: number;
-  now?: Date;
 };
 
 function hasExcessSlotsForScheduledDowngrade(billing: BillingSnapshot, slotsUsed: number): boolean {
@@ -24,7 +22,7 @@ function hasExcessSlotsForScheduledDowngrade(billing: BillingSnapshot, slotsUsed
 }
 
 function collectEligibleOverlays(input: ResolveCollectionBillingOverlaysInput): BillingOverlay[] {
-  const { billing, billingScreen, slotsUsed, now = new Date() } = input;
+  const { billing, billingScreen, slotsUsed } = input;
 
   if (
     billingScreen === 'NONE' ||
@@ -43,16 +41,11 @@ function collectEligibleOverlays(input: ResolveCollectionBillingOverlaysInput): 
     overlays.push(BILLING_OVERLAY.DOWNGRADE_SLOTS);
   }
 
-  if (billingScreen === 'ACTIVE' && isWithinPreBillingWindow(billing.nextChargeAt, now)) {
-    overlays.push(BILLING_OVERLAY.PRE_BILLING);
-  }
-
   return overlays;
 }
 
 /**
- * Returns overlay enums in fixed render order: DOWNGRADE_SLOTS (50) then PRE_BILLING (40).
- * UI must render the array as-is — no filtering or re-sorting.
+ * Returns overlay enums in fixed render order. UI must render the array as-is — no filtering or re-sorting.
  */
 export function resolveCollectionBillingOverlays(
   input: ResolveCollectionBillingOverlaysInput
