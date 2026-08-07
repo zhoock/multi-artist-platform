@@ -11,8 +11,10 @@ import {
 import { getMyArchive } from '@shared/api/archive';
 import { EMPTY_BILLING_SNAPSHOT, type BillingSnapshot } from '@shared/api/billing';
 import { AUTH_SESSION_CHANGED_EVENT, getToken } from '@shared/lib/auth';
-import type { SubscriptionPlanSlug } from '@shared/lib/payment/subscriptionPlans';
-import { resolveCurrentPlanSlug } from '@shared/lib/payment/subscriptionPlans';
+import {
+  resolveEffectiveSubscriptionPlanSlug,
+  type SubscriptionPlanSlug,
+} from '@shared/lib/payment/subscriptionPlans';
 import { ARCHIVE_CHANGED_EVENT, SUBSCRIPTION_ACTIVATED_EVENT } from '@features/artistArchive';
 
 export type PremiumSubscriptionContextValue = {
@@ -66,18 +68,31 @@ export function PremiumSubscriptionProvider({ children }: { children: ReactNode 
       void refetch();
     };
 
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') {
+        void refetch();
+      }
+    };
+
     window.addEventListener(SUBSCRIPTION_ACTIVATED_EVENT, onChanged);
     window.addEventListener(ARCHIVE_CHANGED_EVENT, onChanged);
     window.addEventListener(AUTH_SESSION_CHANGED_EVENT, onChanged);
+    document.addEventListener('visibilitychange', onVisible);
     return () => {
       window.removeEventListener(SUBSCRIPTION_ACTIVATED_EVENT, onChanged);
       window.removeEventListener(ARCHIVE_CHANGED_EVENT, onChanged);
       window.removeEventListener(AUTH_SESSION_CHANGED_EVENT, onChanged);
+      document.removeEventListener('visibilitychange', onVisible);
     };
   }, [refetch]);
 
   const value = useMemo(() => {
-    const planSlug = resolveCurrentPlanSlug({ isPremium, slotsLimit, slotsUsed });
+    const planSlug = resolveEffectiveSubscriptionPlanSlug({
+      billing,
+      slotsLimit,
+      slotsUsed,
+      isPremium,
+    });
     return { isPremium, slotsLimit, slotsUsed, planSlug, billing, loading, refetch };
   }, [billing, isPremium, loading, refetch, slotsLimit, slotsUsed]);
 

@@ -21,6 +21,8 @@ import {
   type PremiumCheckoutIntentContext,
 } from '@shared/lib/authIntent';
 
+import { usePremiumSubscription } from '@features/premiumSubscription';
+
 import { AddArtistToArchiveModalView } from './AddArtistToArchiveModalView';
 import { ArchiveAccessModalView } from './ArchiveAccessModalView';
 import {
@@ -92,6 +94,7 @@ function ArchiveFullAlert({
 export function ArchiveAccessModalProvider({ children }: { children: ReactNode }) {
   const premiumDialogRef = useRef<HTMLDialogElement>(null);
   const addArtistDialogRef = useRef<HTMLDialogElement>(null);
+  const { refetch: refetchPremiumSubscription } = usePremiumSubscription();
   const viewer = useAuthSessionUser();
   const { openDashboard } = useArtistPageBuilderNav();
   const [pendingAccess, setPendingAccess] = useState<PendingPremiumContentAccess | null>(null);
@@ -128,9 +131,11 @@ export function ArchiveAccessModalProvider({ children }: { children: ReactNode }
   }, [close]);
 
   const showPremiumModal = useCallback(() => {
-    premiumDialogRef.current?.showModal();
-    promoteToastLayers();
-  }, []);
+    void refetchPremiumSubscription().finally(() => {
+      premiumDialogRef.current?.showModal();
+      promoteToastLayers();
+    });
+  }, [refetchPremiumSubscription]);
 
   const showAddArtistModal = useCallback((ctx: PendingPremiumContentAccess) => {
     setPendingAccess(ctx);

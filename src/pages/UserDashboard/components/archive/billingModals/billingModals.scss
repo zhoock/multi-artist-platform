@@ -169,64 +169,6 @@ dialog {
       opacity: 0.85;
     }
   }
-
-  &__empty-state {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.35rem;
-    padding: var(--ms-1) var(--ms-0);
-    text-align: center;
-    border: 1px dashed rgb(255 255 255 / 18%);
-    border-radius: var(--ms-01);
-  }
-
-  &__empty-icon {
-    position: relative;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 2.5rem;
-    height: 2.5rem;
-    color: var(--dashboard-text-secondary);
-    background: rgb(255 255 255 / 4%);
-    border-radius: var(--ms-01);
-
-    &--payment-add {
-      width: 2.75rem;
-      height: 2.75rem;
-    }
-  }
-
-  &__empty-icon-plus {
-    position: absolute;
-    right: -0.1rem;
-    bottom: -0.1rem;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 1rem;
-    height: 1rem;
-    color: var(--dashboard-text-secondary);
-    background: var(--dashboard-card-bg);
-    border-radius: 50%;
-  }
-
-  &__empty-title {
-    margin: 0;
-    color: var(--dashboard-text-primary);
-    font-size: var(--dashboard-font-size);
-    font-weight: 600;
-    line-height: 1.35;
-  }
-
-  &__empty-text {
-    margin: 0;
-    max-width: 18rem;
-    color: var(--dashboard-text-secondary);
-    font-size: var(--dashboard-font-size);
-    line-height: 1.45;
-  }
 }
 
 @include dashboard-modal.dashboard-nested-modal-backdrop;

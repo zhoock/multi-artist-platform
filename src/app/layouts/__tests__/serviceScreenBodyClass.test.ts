@@ -21,14 +21,14 @@ describe('isServiceScreenBodyClassActive', () => {
     ).toBe(true);
   });
 
-  test('does not apply for payment or standard routes', () => {
+  test('applies for payment return routes and not for standard routes', () => {
     expect(
       isServiceScreenBodyClassActive({
         isPaymentRoute: true,
-        shouldHideChrome: true,
-        isMinimalLayoutRoute: true,
+        shouldHideChrome: false,
+        isMinimalLayoutRoute: false,
       })
-    ).toBe(false);
+    ).toBe(true);
 
     expect(
       isServiceScreenBodyClassActive({

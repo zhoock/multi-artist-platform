@@ -141,3 +141,36 @@ export function useRenewalBillingSync({
 export const useRenewalBillingRefresh = useRenewalBillingSync;
 
 export type UseRenewalBillingRefreshParams = UseRenewalBillingSyncParams;
+
+export function shouldEnableScheduledPlanBillingSync(params: {
+  active: boolean;
+  scheduledPlan: string | null | undefined;
+}): boolean {
+  return params.active && Boolean(params.scheduledPlan?.trim());
+}
+
+export type UseScheduledPlanBillingSyncParams = {
+  enabled: boolean;
+  onRefresh: () => void | Promise<void>;
+};
+
+/** Polls while a scheduled downgrade is pending until the server applies it. */
+export function useScheduledPlanBillingSync({
+  enabled,
+  onRefresh,
+}: UseScheduledPlanBillingSyncParams): void {
+  const onRefreshRef = useRef(onRefresh);
+  onRefreshRef.current = onRefresh;
+
+  useEffect(() => {
+    if (!enabled) return undefined;
+
+    void onRefreshRef.current();
+    const pollIntervalId = setInterval(
+      () => void onRefreshRef.current(),
+      RENEWAL_BILLING_REFRESH_INTERVAL_MS
+    );
+
+    return () => clearInterval(pollIntervalId);
+  }, [enabled]);
+}

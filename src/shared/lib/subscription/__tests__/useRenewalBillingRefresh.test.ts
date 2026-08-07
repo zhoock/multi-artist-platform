@@ -7,7 +7,9 @@ import { RENEWAL_OVERDUE_IN_PROGRESS_MS } from '../renewalCountdown';
 import {
   RENEWAL_BILLING_REFRESH_INTERVAL_MS,
   shouldEnableRenewalBillingSync,
+  shouldEnableScheduledPlanBillingSync,
   useRenewalBillingSync,
+  useScheduledPlanBillingSync,
 } from '../useRenewalBillingRefresh';
 
 describe('shouldEnableRenewalBillingSync', () => {
@@ -47,6 +49,23 @@ describe('shouldEnableRenewalBillingSync', () => {
         cancelledPeriodEndAt: '2026-08-07T12:05:00.000Z',
       })
     ).toBe(true);
+  });
+});
+
+describe('shouldEnableScheduledPlanBillingSync', () => {
+  test('polls while scheduled downgrade is pending on an active tab', () => {
+    expect(
+      shouldEnableScheduledPlanBillingSync({
+        active: true,
+        scheduledPlan: 'explorer',
+      })
+    ).toBe(true);
+    expect(
+      shouldEnableScheduledPlanBillingSync({
+        active: false,
+        scheduledPlan: 'explorer',
+      })
+    ).toBe(false);
   });
 });
 
@@ -252,5 +271,31 @@ describe('useRenewalBillingSync', () => {
     jest.advanceTimersByTime(60 * 60 * 1000);
     expect(onRefresh).toHaveBeenCalledTimes(callsBeforeClose);
     expect(jest.getTimerCount()).toBe(0);
+  });
+});
+
+describe('useScheduledPlanBillingSync', () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date('2026-08-07T12:00:00.000Z'));
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  test('polls while a scheduled downgrade is pending', () => {
+    const onRefresh = jest.fn<() => void>();
+
+    renderHook(() =>
+      useScheduledPlanBillingSync({
+        enabled: true,
+        onRefresh,
+      })
+    );
+
+    expect(onRefresh).toHaveBeenCalledTimes(1);
+    jest.advanceTimersByTime(RENEWAL_BILLING_REFRESH_INTERVAL_MS);
+    expect(onRefresh).toHaveBeenCalledTimes(2);
   });
 });

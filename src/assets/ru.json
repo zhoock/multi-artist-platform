@@ -527,7 +527,7 @@
         "billingRebindPaymentTitle": "Обновить способ оплаты",
         "billingRebindPaymentIntro": "Чтобы возобновить автопродление, добавьте или обновите способ оплаты для вашей подписки.",
         "billingRebindPaymentEmptyTitle": "Способ оплаты не добавлен",
-        "billingRebindPaymentEmptyBody": "Добавьте новую карту или выберите другой доступный способ оплаты.",
+        "billingRebindPaymentEmptyBody": "Добавьте банковскую карту, чтобы возобновить автопродление.",
         "billingRebindPaymentSecureTitle": "Безопасные платежи",
         "billingRebindPaymentSecureBody": "Ваши данные защищены. Мы не храним реквизиты карты и используем безопасное соединение.",
         "billingRebindPaymentConfirm": "Добавить способ оплаты",

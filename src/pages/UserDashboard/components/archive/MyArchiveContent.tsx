@@ -7,6 +7,7 @@ import { useAppDispatch } from '@shared/lib/hooks/useAppDispatch';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 import { EMPTY_BILLING_SNAPSHOT } from '@shared/api/billing';
+import type { BillingSnapshot } from '@shared/api/billing';
 import {
   ArchiveApiError,
   activateArchiveArtistsApi,
@@ -30,8 +31,12 @@ import {
 } from '@features/artistArchive';
 import { useArchiveAccessModal } from '@shared/lib/archiveAccessModal';
 import type { SubscriptionPlanSlug } from '@shared/lib/payment/subscriptionPlans';
-import { resolveRecommendedPlanSlug } from '@shared/lib/payment/subscriptionPlans';
+import {
+  resolveRecommendedPlanSlug,
+  resolvePlanChangeAction,
+} from '@shared/lib/payment/subscriptionPlans';
 import { DashboardButton, DashboardCard } from '@shared/ui/dashboard';
+import { AlertModal } from '@shared/ui/alertModal';
 import { useSubscriptionBilling } from '@shared/lib/subscription/useSubscriptionBilling';
 import { useSubscriptionRebindPayment } from '@shared/lib/subscription/useSubscriptionRebindPayment';
 import { isSubscriptionAutoRenewClientEnabled } from '@shared/lib/subscription/isSubscriptionAutoRenewClientEnabled';
@@ -54,7 +59,10 @@ import {
 import {
   shouldEnableRenewalBillingSync,
   useRenewalBillingSync,
+  shouldEnableScheduledPlanBillingSync,
+  useScheduledPlanBillingSync,
 } from '@shared/lib/subscription/useRenewalBillingRefresh';
+import { billingSnapshotFingerprint } from '@shared/lib/subscription/billingSnapshotFingerprint';
 import { toast } from '@shared/lib/toast';
 import { ARCHIVE_ARTIST_REMOVED_TOAST_DURATION_MS } from '@shared/lib/toast/toastDurations';
 import './billingModals/billingModals.scss';
@@ -88,7 +96,8 @@ export function MyArchiveContent({
   const [data, setData] = useState<MyArchiveData | null>(null);
   const [loading, setLoading] = useState(true);
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [alertModal, setAlertModal] = useState<{ message: string } | null>(null);
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [activatingId, setActivatingId] = useState<string | null>(null);
   const [isSelectMode, setIsSelectMode] = useState(false);
@@ -104,11 +113,18 @@ export function MyArchiveContent({
   } = useSubscriptionBilling();
   const { startRebind } = useSubscriptionRebindPayment();
   const skipNextArchiveReloadRef = useRef(false);
+  const billingFingerprintRef = useRef<string | null>(null);
   const loadErrorTextRef = useRef<string | null>(null);
   const onContentReadyRef = useRef(onContentReady);
   const onContentBusyRef = useRef(onContentBusy);
 
   const t = ui?.dashboard?.collection;
+  const alertModalTitle = ui?.dashboard?.error ?? (lang === 'en' ? 'Error' : 'Ошибка');
+  const alertModalCloseLabel =
+    ui?.buttons?.articleLockedDialogClose ?? (lang === 'en' ? 'Close' : 'Закрыть');
+  const showErrorAlert = useCallback((message: string) => {
+    setAlertModal({ message });
+  }, []);
   const autoRenewActionsEnabled = isSubscriptionAutoRenewClientEnabled();
   const autoRenewPatchErrorText =
     t?.billingAutoRenewPatchError ?? 'Не удалось обновить автопродление';
@@ -138,16 +154,32 @@ export function MyArchiveContent({
     [t?.artistRemovedToast, t?.artistsRemovedToast, t?.collectionClearedToast]
   );
 
+  const publishBillingSnapshotIfChanged = useCallback((billing: BillingSnapshot) => {
+    const fingerprint = billingSnapshotFingerprint(billing);
+    const previous = billingFingerprintRef.current;
+    billingFingerprintRef.current = fingerprint;
+    if (previous !== null && previous !== fingerprint) {
+      window.dispatchEvent(new CustomEvent(ARCHIVE_CHANGED_EVENT));
+    }
+  }, []);
+
   const loadArchive = useCallback(async () => {
     setLoading(true);
     onContentBusyRef.current?.();
-    setError(null);
+    setLoadError(null);
+    setAlertModal(null);
     try {
       const next = normalizeCollectionArchive(await getMyArchive());
       setData(next);
+      publishBillingSnapshotIfChanged(next.billing ?? EMPTY_BILLING_SNAPSHOT);
     } catch (err) {
       console.error('[MyArchiveContent] load failed', err);
-      setError(
+      setLoadError(
+        err instanceof Error
+          ? err.message
+          : (loadErrorTextRef.current ?? 'Failed to load collection')
+      );
+      showErrorAlert(
         err instanceof Error
           ? err.message
           : (loadErrorTextRef.current ?? 'Failed to load collection')
@@ -156,17 +188,18 @@ export function MyArchiveContent({
       setLoading(false);
       setHasLoadedOnce(true);
     }
-  }, [lang]);
+  }, [lang, publishBillingSnapshotIfChanged, showErrorAlert]);
 
   const refreshArchiveBilling = useCallback(async () => {
     if (!active) return;
     try {
       const next = normalizeCollectionArchive(await getMyArchive());
       setData(next);
+      publishBillingSnapshotIfChanged(next.billing ?? EMPTY_BILLING_SNAPSHOT);
     } catch (err) {
       console.error('[MyArchiveContent] billing refresh failed', err);
     }
-  }, [active]);
+  }, [active, publishBillingSnapshotIfChanged]);
 
   useEffect(() => {
     if (!active) return;
@@ -221,6 +254,13 @@ export function MyArchiveContent({
   useRenewalBillingSync({
     enabled: shouldSyncRenewalBilling,
     nextChargeAt: billingSyncTarget,
+    onRefresh: refreshArchiveBilling,
+  });
+  useScheduledPlanBillingSync({
+    enabled: shouldEnableScheduledPlanBillingSync({
+      active,
+      scheduledPlan: billing.scheduledPlan,
+    }),
     onRefresh: refreshArchiveBilling,
   });
   const billingOverlays = useMemo(
@@ -328,7 +368,8 @@ export function MyArchiveContent({
       if (!data || bulkLoading || toRemove.length === 0) return;
 
       setBulkLoading(true);
-      setError(null);
+      setLoadError(null);
+      setAlertModal(null);
 
       try {
         let latest = data;
@@ -348,7 +389,7 @@ export function MyArchiveContent({
         }
       } catch (err) {
         void loadArchive();
-        setError(
+        showErrorAlert(
           err instanceof Error ? err.message : (t?.removeError ?? 'Failed to remove artists')
         );
       } finally {
@@ -363,6 +404,7 @@ export function MyArchiveContent({
       lang,
       loadArchive,
       showRemovalToast,
+      showErrorAlert,
       t?.removeError,
     ]
   );
@@ -383,7 +425,8 @@ export function MyArchiveContent({
     }
 
     setRemovingId(artist.artistUserId);
-    setError(null);
+    setLoadError(null);
+    setAlertModal(null);
 
     try {
       const { archive } = await removeArtistFromArchiveApi(artist.artistUserId);
@@ -412,7 +455,7 @@ export function MyArchiveContent({
           : err instanceof Error
             ? err.message
             : (t?.removeError ?? 'Failed to remove artist');
-      setError(message);
+      showErrorAlert(message);
     } finally {
       setRemovingId(null);
     }
@@ -463,7 +506,8 @@ export function MyArchiveContent({
       } else {
         setActivatingId(artistUserIds[0] ?? null);
       }
-      setError(null);
+      setLoadError(null);
+      setAlertModal(null);
 
       try {
         const { archive } = await activateArchiveArtistsApi(artistUserIds);
@@ -496,7 +540,7 @@ export function MyArchiveContent({
             : err instanceof Error
               ? err.message
               : (t?.activateError ?? 'Failed to activate artists');
-        setError(message);
+        showErrorAlert(message);
       } finally {
         if (isBulkActivate) {
           setBulkLoading(false);
@@ -515,6 +559,8 @@ export function MyArchiveContent({
       slotsRemaining,
       t?.activateError,
       t?.activateLimitError,
+      hasPremiumAccess,
+      showErrorAlert,
     ]
   );
 
@@ -543,12 +589,13 @@ export function MyArchiveContent({
     }
 
     setRenewLoading(true);
-    setError(null);
+    setLoadError(null);
+    setAlertModal(null);
 
     const result = await startCheckout(planSlug);
 
     if (!result.ok) {
-      setError(result.error);
+      showErrorAlert(result.error);
       setRenewLoading(false);
       return;
     }
@@ -574,7 +621,8 @@ export function MyArchiveContent({
   const handleConfirmAutoRenewPatch = useCallback(async () => {
     if (!autoRenewModal || autoRenewModal === 'enable-rebind') return;
 
-    setError(null);
+    setLoadError(null);
+    setAlertModal(null);
     const enable = autoRenewModal === 'enable';
     const result = await patchAutoRenew(enable);
 
@@ -583,7 +631,7 @@ export function MyArchiveContent({
         setAutoRenewModal('enable-rebind');
         return;
       }
-      setError(resolveAutoRenewClientError(result, autoRenewPatchErrorText));
+      showErrorAlert(resolveAutoRenewClientError(result, autoRenewPatchErrorText));
       return;
     }
 
@@ -593,12 +641,13 @@ export function MyArchiveContent({
 
   const handleConfirmAutoRenewRebind = useCallback(async () => {
     setRenewLoading(true);
-    setError(null);
+    setLoadError(null);
+    setAlertModal(null);
 
     const result = await startRebind();
 
     if (!result.ok) {
-      setError(resolveAutoRenewClientError(result, autoRenewPatchErrorText));
+      showErrorAlert(resolveAutoRenewClientError(result, autoRenewPatchErrorText));
       setRenewLoading(false);
     }
   }, [autoRenewPatchErrorText, startRebind]);
@@ -625,12 +674,22 @@ export function MyArchiveContent({
     if (!upgradePlanTarget || renewLoading) return;
 
     setRenewLoading(true);
-    setError(null);
+    setLoadError(null);
+    setAlertModal(null);
 
-    const result = await startCheckout(upgradePlanTarget, { intent: 'upgrade' });
+    const checkoutAction = resolvePlanChangeAction({
+      currentPlanSlug: billing.plan,
+      targetPlanSlug: upgradePlanTarget,
+      billingStatus: billing.status,
+      hasPremiumAccess: billing.hasPremiumAccess,
+    });
+    const checkoutOptions =
+      checkoutAction === 'upgrade' ? { intent: 'upgrade' as const } : undefined;
+
+    const result = await startCheckout(upgradePlanTarget, checkoutOptions);
 
     if (!result.ok) {
-      setError(result.error);
+      showErrorAlert(result.error);
       setRenewLoading(false);
       setUpgradePlanTarget(null);
       return;
@@ -640,16 +699,24 @@ export function MyArchiveContent({
       setRenewLoading(false);
       setUpgradePlanTarget(null);
     }
-  }, [renewLoading, startCheckout, upgradePlanTarget]);
+  }, [
+    billing.hasPremiumAccess,
+    billing.plan,
+    billing.status,
+    renewLoading,
+    startCheckout,
+    upgradePlanTarget,
+  ]);
 
   const handleCancelScheduledDowngrade = useCallback(async () => {
     if (autoRenewPatchLoading || renewLoading) return;
 
-    setError(null);
+    setLoadError(null);
+    setAlertModal(null);
     const result = await cancelScheduledDowngrade();
 
     if (!result.ok) {
-      setError(result.error);
+      showErrorAlert(result.error);
       return;
     }
 
@@ -688,24 +755,38 @@ export function MyArchiveContent({
 
   const isCollectionEmpty = (data?.artists.length ?? 0) === 0;
   const showFullTabEmptyState = Boolean(
-    data && !loading && !error && isCollectionEmpty && billingScreen === 'NONE'
+    data && !loading && !loadError && isCollectionEmpty && billingScreen === 'NONE'
   );
   const showInlineEmptyState = Boolean(
-    data && !loading && !error && isCollectionEmpty && billingScreen !== 'NONE'
+    data && !loading && !loadError && isCollectionEmpty && billingScreen !== 'NONE'
   );
   // Пока идёт загрузка или нет данных — не рисуем summary «0 / 3» (пустая оболочка).
   // Parent показывает DashboardLoadingState через onContentBusy / !archiveContentReady.
-  const shouldBlockShell = !hasLoadedOnce || loading || (!data && !error);
+  const shouldBlockShell = !hasLoadedOnce || loading || (!data && !loadError);
+
+  const errorAlertModal = alertModal ? (
+    <AlertModal
+      isOpen
+      title={alertModalTitle}
+      message={alertModal.message}
+      variant="error"
+      closeLabel={alertModalCloseLabel}
+      onClose={() => setAlertModal(null)}
+    />
+  ) : null;
 
   if (shouldBlockShell) {
-    return null;
+    return errorAlertModal;
   }
 
   if (showFullTabEmptyState) {
     return (
-      <section className="collection__tab collection__tab--empty">
-        <CollectionEmptyState ui={ui} />
-      </section>
+      <>
+        <section className="collection__tab collection__tab--empty">
+          <CollectionEmptyState ui={ui} />
+        </section>
+        {errorAlertModal}
+      </>
     );
   }
 
@@ -782,12 +863,6 @@ export function MyArchiveContent({
                     : undefined
                 }
               />
-            ) : null}
-
-            {error ? (
-              <div className="collection__error" role="alert">
-                {error}
-              </div>
             ) : null}
 
             {showInlineEmptyState ? (
@@ -968,6 +1043,7 @@ export function MyArchiveContent({
           </div>
         </div>
       </section>
+      {errorAlertModal}
     </>
   );
 }

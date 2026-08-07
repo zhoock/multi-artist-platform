@@ -53,7 +53,9 @@ export function ArchiveAccessModalView({ dialogRef, onClose }: Props) {
   const { lang } = useLang() as { lang: 'ru' | 'en' };
   const viewer = useAuthSessionUser();
   const emailCopy = useEmailVerificationCopy();
-  const { isPremium, planSlug: currentPlanSlug, billing, refetch } = usePremiumSubscription();
+  const { planSlug: resolvedPlanSlug, billing, slotsLimit, refetch } = usePremiumSubscription();
+  const currentPlanSlug = resolvedPlanSlug;
+  const hasActivePremium = billing.hasPremiumAccess;
   const [loadingPlan, setLoadingPlan] = useState<SubscriptionPlanSlug | null>(null);
   const [pendingPlanChange, setPendingPlanChange] = useState<SubscriptionPlanSlug | null>(null);
   const [pendingFlow, setPendingFlow] = useState<PendingPlanFlow | null>(null);
@@ -251,7 +253,7 @@ export function ArchiveAccessModalView({ dialogRef, onClose }: Props) {
                 key={planSlug}
                 planSlug={planSlug}
                 currentPlanSlug={currentPlanSlug}
-                isPremium={isPremium}
+                isPremium={hasActivePremium}
                 lang={lang}
                 ui={ui}
                 loadingPlan={loadingPlan}

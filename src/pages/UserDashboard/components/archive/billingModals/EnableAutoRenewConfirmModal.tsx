@@ -64,7 +64,7 @@ export function EnableAutoRenewConfirmModal({
       paymentEmptyTitle: t?.billingRebindPaymentEmptyTitle ?? 'Способ оплаты не добавлен',
       paymentEmptyBody:
         t?.billingRebindPaymentEmptyBody ??
-        'Добавьте новую карту или выберите другой доступный способ оплаты.',
+        'Добавьте банковскую карту, чтобы возобновить автопродление.',
       changePayment: t?.billingEnableAutoRenewChangePayment ?? 'Изменить способ оплаты',
       cancelNote:
         t?.billingEnableAutoRenewCancelNote ??

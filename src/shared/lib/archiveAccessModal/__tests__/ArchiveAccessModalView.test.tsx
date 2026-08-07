@@ -184,6 +184,141 @@ describe('ArchiveAccessModalView current plan', () => {
     ).toBeTruthy();
   });
 
+  test('regression: refetch on open shows renew after subscription lapses', async () => {
+    getMyArchiveMock
+      .mockResolvedValueOnce({
+        isPremium: true,
+        slotsUsed: 0,
+        slotsLimit: 20,
+        billing: {
+          status: 'cancel_at_period_end',
+          plan: 'explorer',
+          slotsLimit: 20,
+          expiresAt: '2026-08-07T10:00:00.000Z',
+          autoRenewEnabled: false,
+          hasPremiumAccess: true,
+          hasSavedPaymentMethod: true,
+          paymentMethodTitle: 'Bank card *4242',
+          nextChargeAt: null,
+          scheduledPlan: null,
+          renewalAttemptCount: null,
+          firstFailedAt: null,
+        },
+        artists: [],
+      })
+      .mockResolvedValue({
+        isPremium: false,
+        slotsUsed: 0,
+        slotsLimit: 20,
+        billing: {
+          status: 'expired',
+          plan: 'explorer',
+          slotsLimit: 20,
+          expiresAt: '2026-08-07T10:00:00.000Z',
+          autoRenewEnabled: false,
+          hasPremiumAccess: false,
+          hasSavedPaymentMethod: true,
+          paymentMethodTitle: 'Bank card *4242',
+          nextChargeAt: null,
+          scheduledPlan: null,
+          renewalAttemptCount: null,
+          firstFailedAt: null,
+        },
+        artists: [],
+      });
+    getTokenMock.mockReturnValue('test-token');
+
+    renderWithProviders(
+      <PremiumSubscriptionProvider>
+        <ArchiveAccessModalProvider>
+          <OpenModalButton />
+        </ArchiveAccessModalProvider>
+      </PremiumSubscriptionProvider>,
+      { preloadedState: { lang: { current: 'en' } } }
+    );
+
+    await waitFor(() => {
+      expect(getMyArchiveMock).toHaveBeenCalled();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open Artist Support' }));
+
+    await waitFor(() => {
+      const explorerCard = getPlanCard('Explorer');
+      expect(within(explorerCard).getByText('Expired')).toBeTruthy();
+      expect(within(explorerCard).getByRole('button', { name: 'Renew Explorer' })).toBeEnabled();
+    });
+  });
+
+  test('regression: refetch on open reflects scheduled downgrade after renewal', async () => {
+    getMyArchiveMock
+      .mockResolvedValueOnce({
+        isPremium: true,
+        slotsUsed: 0,
+        slotsLimit: 60,
+        billing: {
+          status: 'active',
+          plan: 'collector',
+          slotsLimit: 60,
+          expiresAt: '2026-09-07T10:00:00.000Z',
+          autoRenewEnabled: true,
+          hasPremiumAccess: true,
+          hasSavedPaymentMethod: true,
+          paymentMethodTitle: 'Bank card *4242',
+          nextChargeAt: '2026-08-07T10:00:00.000Z',
+          scheduledPlan: 'explorer',
+          renewalAttemptCount: null,
+          firstFailedAt: null,
+        },
+        artists: [],
+      })
+      .mockResolvedValue({
+        isPremium: true,
+        slotsUsed: 0,
+        slotsLimit: 20,
+        billing: {
+          status: 'active',
+          plan: 'explorer',
+          slotsLimit: 20,
+          expiresAt: '2026-09-07T10:00:00.000Z',
+          autoRenewEnabled: true,
+          hasPremiumAccess: true,
+          hasSavedPaymentMethod: true,
+          paymentMethodTitle: 'Bank card *4242',
+          nextChargeAt: '2026-09-07T10:00:00.000Z',
+          scheduledPlan: null,
+          renewalAttemptCount: null,
+          firstFailedAt: null,
+        },
+        artists: [],
+      });
+    getTokenMock.mockReturnValue('test-token');
+
+    renderWithProviders(
+      <PremiumSubscriptionProvider>
+        <ArchiveAccessModalProvider>
+          <OpenModalButton />
+        </ArchiveAccessModalProvider>
+      </PremiumSubscriptionProvider>,
+      { preloadedState: { lang: { current: 'en' } } }
+    );
+
+    await waitFor(() => {
+      expect(getMyArchiveMock).toHaveBeenCalled();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open Artist Support' }));
+
+    await waitFor(() => {
+      const explorerCard = getPlanCard('Explorer');
+      expect(explorerCard.classList.contains('dashboard-card--selected')).toBe(true);
+      expect(within(explorerCard).getByRole('button', { name: 'Current Plan' })).toBeDisabled();
+      expect(
+        within(getPlanCard('Collector')).getByRole('button', { name: 'Switch to Collector' })
+      ).toBeTruthy();
+    });
+  });
+
   test('does not highlight any plan for a new user', async () => {
     renderModalWithProviderOrder({ isPremium: false, slotsUsed: 0, slotsLimit: 3 });
     await openModal();

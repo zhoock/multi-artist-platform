@@ -30,6 +30,8 @@ import {
   type SubscriptionPlanSlug,
 } from './subscriptionPlanCatalog';
 
+import type { BillingSnapshot } from '@shared/api/billing';
+
 export function getPlanPriceDisplayAmount(planSlug: SubscriptionPlanSlug): string {
   return String(getPlanAmountRub(planSlug));
 }
@@ -68,6 +70,30 @@ export function resolveCurrentPlanSlug(params: {
   }
   if (resolved === 'explorer' || resolved === 'collector') return resolved;
   return null;
+}
+
+/** Prefer slotsLimit when it disagrees with billing.plan (e.g. after scheduled downgrade). */
+export function resolveEffectiveSubscriptionPlanSlug(params: {
+  billing: Pick<BillingSnapshot, 'plan'>;
+  slotsLimit: number;
+  slotsUsed: number;
+  isPremium: boolean;
+}): SubscriptionPlanSlug | null {
+  const fromBilling = params.billing.plan;
+  const fromSlots = resolvePlanSlugFromSlotsLimit(params.slotsLimit);
+
+  if (fromBilling && fromSlots && fromBilling !== fromSlots) {
+    return fromSlots;
+  }
+
+  return (
+    fromBilling ??
+    resolveCurrentPlanSlug({
+      isPremium: params.isPremium,
+      slotsLimit: params.slotsLimit,
+      slotsUsed: params.slotsUsed,
+    })
+  );
 }
 
 export function isCollectionOverPlanLimit(slotsUsed: number, slotsLimit: number): boolean {

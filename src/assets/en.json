@@ -527,7 +527,7 @@
         "billingRebindPaymentTitle": "Update payment method",
         "billingRebindPaymentIntro": "To resume auto-renew, add or update a payment method for your subscription.",
         "billingRebindPaymentEmptyTitle": "No payment method added",
-        "billingRebindPaymentEmptyBody": "Add a new card or choose another available payment method.",
+        "billingRebindPaymentEmptyBody": "Add a bank card to resume auto-renewal.",
         "billingRebindPaymentSecureTitle": "Secure payments",
         "billingRebindPaymentSecureBody": "Your data is protected. We do not store card details and use a secure connection.",
         "billingRebindPaymentConfirm": "Add payment method",

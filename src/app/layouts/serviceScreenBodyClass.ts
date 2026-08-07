@@ -5,5 +5,5 @@ export function isServiceScreenBodyClassActive(input: {
   isMinimalLayoutRoute: boolean;
 }): boolean {
   const { isPaymentRoute, shouldHideChrome, isMinimalLayoutRoute } = input;
-  return !isPaymentRoute && (shouldHideChrome || isMinimalLayoutRoute);
+  return isPaymentRoute || shouldHideChrome || isMinimalLayoutRoute;
 }

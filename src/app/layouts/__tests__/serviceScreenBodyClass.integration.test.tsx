@@ -87,4 +87,16 @@ describe('service screen body class integration', () => {
 
     expect(document.body.classList.contains('page--service-screen')).toBe(true);
   });
+
+  test('applies page--service-screen for payment return routes', () => {
+    render(
+      <AppLayoutShell isPaymentRoute={true} shouldHideChrome={false} isMinimalLayoutRoute={false}>
+        <main>
+          <div>Confirming payment…</div>
+        </main>
+      </AppLayoutShell>
+    );
+
+    expect(document.body.classList.contains('page--service-screen')).toBe(true);
+  });
 });

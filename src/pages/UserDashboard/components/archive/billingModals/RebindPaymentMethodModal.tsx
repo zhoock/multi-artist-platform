@@ -6,7 +6,6 @@ import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 
 import {
-  BillingModalEmptyState,
   BillingModalInfoCard,
   BillingModalInfoText,
   BillingModalIntro,
@@ -39,7 +38,7 @@ export function RebindPaymentMethodModal({
       emptyTitle: t?.billingRebindPaymentEmptyTitle ?? 'Способ оплаты не добавлен',
       emptyBody:
         t?.billingRebindPaymentEmptyBody ??
-        'Добавьте новую карту или выберите другой доступный способ оплаты.',
+        'Добавьте банковскую карту, чтобы возобновить автопродление.',
       secureTitle: t?.billingRebindPaymentSecureTitle ?? 'Безопасные платежи',
       secureBody:
         t?.billingRebindPaymentSecureBody ??
@@ -66,11 +65,9 @@ export function RebindPaymentMethodModal({
     >
       <BillingModalIntro>{copy.intro}</BillingModalIntro>
 
-      <BillingModalEmptyState
-        iconVariant="payment-add"
-        title={copy.emptyTitle}
-        body={copy.emptyBody}
-      />
+      <BillingModalInfoCard icon={CreditCard} title={copy.emptyTitle} variant="neutral" mutedIcon>
+        <BillingModalInfoText>{copy.emptyBody}</BillingModalInfoText>
+      </BillingModalInfoCard>
 
       <BillingModalInfoCard icon={Lock} title={copy.secureTitle} variant="neutral" mutedIcon>
         <BillingModalInfoText>{copy.secureBody}</BillingModalInfoText>

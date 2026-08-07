@@ -1,5 +1,5 @@
 import clsx from 'clsx';
-import { CreditCard, Plus, type LucideIcon } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
 
 import { DashboardButton } from '@shared/ui/dashboard';
@@ -132,47 +132,6 @@ export function BillingModalInfoText({ children, title }: { children: ReactNode;
     <p className="billing-modal__info-text" title={title}>
       {children}
     </p>
-  );
-}
-
-export function BillingModalPaymentAddIcon() {
-  return (
-    <span className="billing-modal__empty-icon billing-modal__empty-icon--payment-add" aria-hidden>
-      <CreditCard {...dashboardActionIconProps({ size: 22, strokeWidth: 1.5 })} />
-      <Plus
-        className="billing-modal__empty-icon-plus"
-        {...dashboardActionIconProps({ size: 12, strokeWidth: 2 })}
-      />
-    </span>
-  );
-}
-
-export function BillingModalEmptyState({
-  icon: Icon,
-  iconVariant,
-  title,
-  body,
-}: {
-  icon?: LucideIcon;
-  iconVariant?: 'payment-add';
-  title: string;
-  body: string;
-}) {
-  const iconNode =
-    iconVariant === 'payment-add' ? (
-      <BillingModalPaymentAddIcon />
-    ) : Icon ? (
-      <span className="billing-modal__empty-icon" aria-hidden>
-        <Icon {...dashboardActionIconProps({ size: 22 })} />
-      </span>
-    ) : null;
-
-  return (
-    <div className="billing-modal__empty-state">
-      {iconNode}
-      <p className="billing-modal__empty-title">{title}</p>
-      <p className="billing-modal__empty-text">{body}</p>
-    </div>
   );
 }
 

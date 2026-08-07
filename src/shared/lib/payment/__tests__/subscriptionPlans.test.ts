@@ -9,6 +9,7 @@ import {
   isCollectionOverPlanLimit,
   PLAN_CATALOG,
   resolveCurrentPlanSlug,
+  resolveEffectiveSubscriptionPlanSlug,
   resolvePlanCardAction,
   getPlanCardBadgeLabel,
   resolvePlanSlugFromSlotsLimit,
@@ -59,6 +60,30 @@ describe('resolveCurrentPlanSlug', () => {
     expect(resolveCurrentPlanSlug({ isPremium: false, slotsLimit: 20, slotsUsed: 0 })).toBe(
       'explorer'
     );
+  });
+});
+
+describe('resolveEffectiveSubscriptionPlanSlug', () => {
+  test('prefers slotsLimit when billing.plan is stale after downgrade', () => {
+    expect(
+      resolveEffectiveSubscriptionPlanSlug({
+        billing: { plan: 'collector' },
+        slotsLimit: 20,
+        slotsUsed: 0,
+        isPremium: true,
+      })
+    ).toBe('explorer');
+  });
+
+  test('uses billing.plan when it matches slotsLimit', () => {
+    expect(
+      resolveEffectiveSubscriptionPlanSlug({
+        billing: { plan: 'explorer' },
+        slotsLimit: 20,
+        slotsUsed: 0,
+        isPremium: true,
+      })
+    ).toBe('explorer');
   });
 });
 
