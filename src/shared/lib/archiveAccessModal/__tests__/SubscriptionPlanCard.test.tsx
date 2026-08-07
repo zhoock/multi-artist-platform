@@ -158,4 +158,23 @@ describe('SubscriptionPlanCard', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Switch to Archivist' }));
     expect(onSelect).toHaveBeenCalledWith('archivist');
   });
+
+  test('shows cancel change action for scheduled target plan', () => {
+    const onSelect = jest.fn();
+    renderWithProviders(
+      <SubscriptionPlanCard
+        planSlug="explorer"
+        currentPlanSlug="collector"
+        scheduledTargetPlanSlug="explorer"
+        isPremium
+        lang="ru"
+        ui={null}
+        loadingPlan={null}
+        onSelect={onSelect}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Отменить смену' }));
+    expect(onSelect).toHaveBeenCalledWith('explorer');
+  });
 });

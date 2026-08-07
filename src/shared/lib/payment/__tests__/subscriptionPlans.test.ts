@@ -8,6 +8,7 @@ import {
   getPlanAmountRub,
   isCollectionOverPlanLimit,
   PLAN_CATALOG,
+  resolveActiveScheduledPlanChange,
   resolveCurrentPlanSlug,
   resolveEffectiveSubscriptionPlanSlug,
   resolvePlanCardAction,
@@ -146,6 +147,77 @@ describe('resolvePlanCardAction', () => {
     expect(getPlanCardBadgeLabel('current', 'en')).toBe('Current Plan');
     expect(getPlanCardBadgeLabel('expired', 'ru')).toBe('Истёк');
     expect(getPlanCardBadgeLabel(null, 'en')).toBeNull();
+  });
+
+  test('shows cancel change for scheduled target plan', () => {
+    expect(
+      resolvePlanCardAction({
+        planSlug: 'explorer',
+        currentPlanSlug: 'collector',
+        scheduledTargetPlanSlug: 'explorer',
+        isPremium: true,
+        lang: 'ru',
+      })
+    ).toEqual({
+      label: 'Отменить смену',
+      variant: 'outline',
+      badge: null,
+      disabled: false,
+    });
+  });
+});
+
+describe('resolveActiveScheduledPlanChange', () => {
+  const futureDate = '2099-01-15T10:00:00.000Z';
+  const pastDate = '2020-01-15T10:00:00.000Z';
+
+  test('returns scheduled change when downgrade is pending', () => {
+    expect(
+      resolveActiveScheduledPlanChange({
+        scheduledPlan: 'explorer',
+        effectiveFrom: futureDate,
+        hasPremiumAccess: true,
+        currentPlanSlug: 'collector',
+        now: Date.parse('2026-01-01T00:00:00.000Z'),
+      })
+    ).toEqual({
+      targetPlanSlug: 'explorer',
+      effectiveFrom: futureDate,
+    });
+  });
+
+  test('returns null when scheduled plan matches current plan', () => {
+    expect(
+      resolveActiveScheduledPlanChange({
+        scheduledPlan: 'collector',
+        effectiveFrom: futureDate,
+        hasPremiumAccess: true,
+        currentPlanSlug: 'collector',
+      })
+    ).toBeNull();
+  });
+
+  test('returns null when effective date is in the past', () => {
+    expect(
+      resolveActiveScheduledPlanChange({
+        scheduledPlan: 'explorer',
+        effectiveFrom: pastDate,
+        hasPremiumAccess: true,
+        currentPlanSlug: 'collector',
+        now: Date.parse('2026-01-01T00:00:00.000Z'),
+      })
+    ).toBeNull();
+  });
+
+  test('returns null without premium access', () => {
+    expect(
+      resolveActiveScheduledPlanChange({
+        scheduledPlan: 'explorer',
+        effectiveFrom: futureDate,
+        hasPremiumAccess: false,
+        currentPlanSlug: 'collector',
+      })
+    ).toBeNull();
   });
 });
 

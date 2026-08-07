@@ -12,6 +12,7 @@ import { isEmailVerified } from '@shared/lib/auth';
 import { useEmailVerificationCopy } from '@shared/lib/emailVerification';
 import {
   SUBSCRIPTION_PLAN_SLUGS,
+  resolveActiveScheduledPlanChange,
   resolvePlanChangeAction,
   shouldConfirmSubscriptionPlanChange,
   type SubscriptionPlanSlug,
@@ -19,6 +20,7 @@ import {
 import { useSubscriptionBilling } from '@shared/lib/subscription/useSubscriptionBilling';
 import { useAuthSessionUser } from '@shared/lib/hooks/useAuthSessionUser';
 import { LocalModal } from '@shared/ui/localModal';
+import { AlertModal } from '@shared/ui/alertModal';
 import {
   ScheduleDowngradeConfirmModal,
   UpgradePlanConfirmModal,
@@ -26,6 +28,8 @@ import {
 
 import { SubscriptionPlanCard } from './SubscriptionPlanCard';
 import { SubscriptionPlanChangeConfirmModal } from './SubscriptionPlanChangeConfirmModal';
+import { SubscriptionPlanScheduledBanner } from './SubscriptionPlanScheduledBanner';
+import { ScheduledPlanChangeDetailsModal } from './ScheduledPlanChangeDetailsModal';
 import type { CloseArchiveAccessModalOptions } from './archiveAccessModalContext';
 import { useSubscriptionCheckout } from './useSubscriptionCheckout';
 
@@ -59,9 +63,14 @@ export function ArchiveAccessModalView({ dialogRef, onClose }: Props) {
   const [loadingPlan, setLoadingPlan] = useState<SubscriptionPlanSlug | null>(null);
   const [pendingPlanChange, setPendingPlanChange] = useState<SubscriptionPlanSlug | null>(null);
   const [pendingFlow, setPendingFlow] = useState<PendingPlanFlow | null>(null);
-  const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  const [alertModal, setAlertModal] = useState<{ message: string } | null>(null);
+  const [scheduledDetailsOpen, setScheduledDetailsOpen] = useState(false);
   const { startCheckout } = useSubscriptionCheckout({ onClose });
-  const { scheduleDowngrade, loading: scheduleLoading } = useSubscriptionBilling();
+  const {
+    scheduleDowngrade,
+    cancelScheduledDowngrade,
+    loading: scheduleLoading,
+  } = useSubscriptionBilling();
   const ui = useAppSelector((state) => selectUiDictionaryFirst(state, lang));
   const emailBlocked = Boolean(viewer && !isEmailVerified(viewer));
   const collectionCopy = ui?.dashboard?.collection;
@@ -93,15 +102,41 @@ export function ArchiveAccessModalView({ dialogRef, onClose }: Props) {
       ? 'All plans distribute revenue equally among supported artists. Your support helps artists keep creating the music you love.'
       : 'Все планы распределяют доход поровну между поддерживаемыми артистами. Ваша поддержка помогает артистам создавать музыку.');
 
+  const scheduledPlanChange = resolveActiveScheduledPlanChange({
+    scheduledPlan: billing.scheduledPlan,
+    effectiveFrom: billing.expiresAt ?? billing.nextChargeAt,
+    hasPremiumAccess: billing.hasPremiumAccess,
+    currentPlanSlug,
+  });
+  const scheduledEffectiveDateLabel = scheduledPlanChange
+    ? formatEffectiveDate(scheduledPlanChange.effectiveFrom, lang)
+    : null;
+  const scheduledBannerTitleTemplate =
+    ui?.titles?.subscriptionPlanScheduledBannerTitle ??
+    (lang === 'en' ? 'Transition to {plan} scheduled' : 'Переход на {plan} запланирован');
+  const scheduledBannerBodyTemplate =
+    ui?.titles?.subscriptionPlanScheduledBannerBody ??
+    (lang === 'en'
+      ? 'It will take effect on {date} at the next renewal.'
+      : 'Он вступит в силу {date} при следующем продлении.');
+  const scheduledBannerDetailsLabel =
+    ui?.titles?.subscriptionPlanScheduledBannerDetails ?? (lang === 'en' ? 'Details' : 'Подробнее');
+  const alertModalTitle = ui?.dashboard?.error ?? (lang === 'en' ? 'Error' : 'Ошибка');
+  const alertModalButtonText = ui?.buttons?.ok ?? (lang === 'en' ? 'OK' : 'OK');
+
+  const showErrorAlert = useCallback((message: string) => {
+    setAlertModal({ message });
+  }, []);
+
   const proceedToCheckout = useCallback(
     async (planSlug: SubscriptionPlanSlug, intent?: 'upgrade') => {
       setLoadingPlan(planSlug);
-      setCheckoutError(null);
+      setAlertModal(null);
 
       const result = await startCheckout(planSlug, intent ? { intent } : undefined);
 
       if (!result.ok) {
-        setCheckoutError(result.error);
+        showErrorAlert(result.error);
         setLoadingPlan(null);
         return;
       }
@@ -110,12 +145,53 @@ export function ArchiveAccessModalView({ dialogRef, onClose }: Props) {
         setLoadingPlan(null);
       }
     },
-    [startCheckout]
+    [showErrorAlert, startCheckout]
   );
+
+  const handleCancelScheduledChange = useCallback(async () => {
+    if (!scheduledPlanChange || loadingPlan || scheduleLoading) return;
+
+    setAlertModal(null);
+    setLoadingPlan(scheduledPlanChange.targetPlanSlug);
+
+    try {
+      const result = await cancelScheduledDowngrade();
+
+      if (!result.ok) {
+        showErrorAlert(
+          result.error ??
+            collectionCopy?.billingPlanChangeError ??
+            (lang === 'en'
+              ? 'Could not cancel scheduled change'
+              : 'Не удалось отменить запланированную смену')
+        );
+        return;
+      }
+
+      window.dispatchEvent(new CustomEvent(ARCHIVE_CHANGED_EVENT));
+      await refetch();
+    } finally {
+      setLoadingPlan(null);
+    }
+  }, [
+    cancelScheduledDowngrade,
+    collectionCopy?.billingPlanChangeError,
+    lang,
+    loadingPlan,
+    refetch,
+    scheduleLoading,
+    scheduledPlanChange,
+    showErrorAlert,
+  ]);
 
   const handleSelectPlan = useCallback(
     (planSlug: SubscriptionPlanSlug) => {
-      setCheckoutError(null);
+      setAlertModal(null);
+
+      if (scheduledPlanChange && planSlug === scheduledPlanChange.targetPlanSlug) {
+        void handleCancelScheduledChange();
+        return;
+      }
 
       if (!shouldConfirmSubscriptionPlanChange(currentPlanSlug, planSlug)) {
         void proceedToCheckout(planSlug);
@@ -130,7 +206,7 @@ export function ArchiveAccessModalView({ dialogRef, onClose }: Props) {
       });
 
       if (action === 'blocked_downgrade') {
-        setCheckoutError(
+        showErrorAlert(
           collectionCopy?.billingDowngradeBlockedError ??
             (lang === 'en'
               ? 'Restore your support first — downgrades are only available with an active subscription.'
@@ -152,8 +228,11 @@ export function ArchiveAccessModalView({ dialogRef, onClose }: Props) {
       billing.status,
       collectionCopy?.billingDowngradeBlockedError,
       currentPlanSlug,
+      handleCancelScheduledChange,
       lang,
       proceedToCheckout,
+      scheduledPlanChange,
+      showErrorAlert,
     ]
   );
 
@@ -177,7 +256,7 @@ export function ArchiveAccessModalView({ dialogRef, onClose }: Props) {
     }
 
     if (flow === 'downgrade') {
-      setCheckoutError(null);
+      setAlertModal(null);
       const result = await scheduleDowngrade(planSlug);
 
       if (!result.ok) {
@@ -185,7 +264,7 @@ export function ArchiveAccessModalView({ dialogRef, onClose }: Props) {
           setPendingFlow('legacy');
           return;
         }
-        setCheckoutError(
+        showErrorAlert(
           result.error ??
             collectionCopy?.billingPlanChangeError ??
             (lang === 'en' ? 'Could not change plan' : 'Не удалось изменить тариф')
@@ -214,6 +293,7 @@ export function ArchiveAccessModalView({ dialogRef, onClose }: Props) {
     refetch,
     scheduleDowngrade,
     scheduleLoading,
+    showErrorAlert,
   ]);
 
   const effectiveDateLabel = formatEffectiveDate(billing.expiresAt, lang);
@@ -247,27 +327,39 @@ export function ArchiveAccessModalView({ dialogRef, onClose }: Props) {
             </button>
           </header>
 
+          {scheduledPlanChange && scheduledEffectiveDateLabel ? (
+            <SubscriptionPlanScheduledBanner
+              targetPlanSlug={scheduledPlanChange.targetPlanSlug}
+              effectiveDateLabel={scheduledEffectiveDateLabel}
+              titleTemplate={scheduledBannerTitleTemplate}
+              bodyTemplate={scheduledBannerBodyTemplate}
+              detailsLabel={scheduledBannerDetailsLabel}
+              onDetails={() => setScheduledDetailsOpen(true)}
+            />
+          ) : null}
+
           <div className="subscription-plan-modal__plans" role="list">
             {SUBSCRIPTION_PLAN_SLUGS.map((planSlug) => (
               <SubscriptionPlanCard
                 key={planSlug}
                 planSlug={planSlug}
                 currentPlanSlug={currentPlanSlug}
+                scheduledTargetPlanSlug={scheduledPlanChange?.targetPlanSlug ?? null}
                 isPremium={hasActivePremium}
                 lang={lang}
                 ui={ui}
-                loadingPlan={loadingPlan}
+                loadingPlan={
+                  loadingPlan ??
+                  (scheduleLoading && scheduledPlanChange
+                    ? scheduledPlanChange.targetPlanSlug
+                    : null)
+                }
                 onSelect={(slug) => void handleSelectPlan(slug)}
               />
             ))}
           </div>
 
-          {checkoutError ? (
-            <p className="subscription-plan-modal__error" role="alert">
-              {checkoutError}
-            </p>
-          ) : null}
-          {emailBlocked && !checkoutError ? (
+          {emailBlocked ? (
             <p className="subscription-plan-modal__error" role="status">
               {emailCopy.restrictedPremium ??
                 (lang === 'en'
@@ -322,6 +414,28 @@ export function ArchiveAccessModalView({ dialogRef, onClose }: Props) {
           loading={confirmLoading}
           onCancel={handleCancelPlanChange}
           onConfirm={() => void handleConfirmPlanChange()}
+        />
+      ) : null}
+
+      {scheduledPlanChange && currentPlanSlug && scheduledDetailsOpen ? (
+        <ScheduledPlanChangeDetailsModal
+          isOpen
+          currentPlanSlug={currentPlanSlug}
+          targetPlanSlug={scheduledPlanChange.targetPlanSlug}
+          effectiveDateLabel={scheduledEffectiveDateLabel}
+          onClose={() => setScheduledDetailsOpen(false)}
+        />
+      ) : null}
+
+      {alertModal ? (
+        <AlertModal
+          isOpen
+          variant="error"
+          title={alertModalTitle}
+          message={alertModal.message}
+          buttonText={alertModalButtonText}
+          closeLabel={closeLabel}
+          onClose={() => setAlertModal(null)}
         />
       ) : null}
     </>

@@ -247,17 +247,9 @@
 
 [[redirects]]
   from = "/api/subscription/scheduled-plan*"
-  to = "/.netlify/functions/post-subscription-scheduled-plan"
+  to = "/.netlify/functions/subscription-scheduled-plan"
   status = 200
   force = true
-  methods = ["POST", "OPTIONS"]
-
-[[redirects]]
-  from = "/api/subscription/scheduled-plan*"
-  to = "/.netlify/functions/delete-subscription-scheduled-plan"
-  status = 200
-  force = true
-  methods = ["DELETE"]
 
 [[redirects]]
   from = "/api/my-purchases*"

@@ -172,6 +172,49 @@ export type PlanCardActionVariant = 'primary' | 'outline';
 
 export type PlanCardBadge = 'current' | 'expired' | null;
 
+export type ActiveScheduledPlanChange = {
+  targetPlanSlug: SubscriptionPlanSlug;
+  effectiveFrom: string;
+};
+
+/** Returns a pending scheduled plan change when it should appear in the plan picker. */
+export function resolveActiveScheduledPlanChange(params: {
+  scheduledPlan: SubscriptionPlanSlug | null;
+  effectiveFrom: string | null;
+  hasPremiumAccess: boolean;
+  currentPlanSlug: SubscriptionPlanSlug | null;
+  now?: number;
+}): ActiveScheduledPlanChange | null {
+  const { scheduledPlan, effectiveFrom, hasPremiumAccess, currentPlanSlug } = params;
+
+  if (!scheduledPlan || !currentPlanSlug || !hasPremiumAccess) {
+    return null;
+  }
+
+  if (scheduledPlan === currentPlanSlug) {
+    return null;
+  }
+
+  if (!effectiveFrom) {
+    return null;
+  }
+
+  const effectiveDate = new Date(effectiveFrom);
+  if (Number.isNaN(effectiveDate.getTime())) {
+    return null;
+  }
+
+  const now = params.now ?? Date.now();
+  if (effectiveDate.getTime() <= now) {
+    return null;
+  }
+
+  return {
+    targetPlanSlug: scheduledPlan,
+    effectiveFrom,
+  };
+}
+
 export function getPlanCardBadgeLabel(badge: PlanCardBadge, lang: 'en' | 'ru'): string | null {
   if (badge === 'current') {
     return lang === 'en' ? 'Current Plan' : 'Текущий план';
@@ -185,6 +228,7 @@ export function getPlanCardBadgeLabel(badge: PlanCardBadge, lang: 'en' | 'ru'): 
 export function resolvePlanCardAction(params: {
   planSlug: SubscriptionPlanSlug;
   currentPlanSlug: SubscriptionPlanSlug | null;
+  scheduledTargetPlanSlug?: SubscriptionPlanSlug | null;
   isPremium: boolean;
   lang: 'en' | 'ru';
 }): {
@@ -195,6 +239,16 @@ export function resolvePlanCardAction(params: {
 } {
   const name = getPlanDisplayName(params.planSlug);
   const isCurrent = params.currentPlanSlug === params.planSlug;
+  const scheduledTarget = params.scheduledTargetPlanSlug ?? null;
+
+  if (scheduledTarget && params.planSlug === scheduledTarget) {
+    return {
+      label: params.lang === 'en' ? 'Cancel change' : 'Отменить смену',
+      variant: 'outline',
+      badge: null,
+      disabled: false,
+    };
+  }
 
   if (isCurrent) {
     if (params.isPremium) {

@@ -17,6 +17,7 @@ import { getSubscriptionPlanFeatures } from './subscriptionPlanFeatures';
 type Props = {
   planSlug: SubscriptionPlanSlug;
   currentPlanSlug: SubscriptionPlanSlug | null;
+  scheduledTargetPlanSlug?: SubscriptionPlanSlug | null;
   isPremium: boolean;
   lang: 'en' | 'ru';
   ui: ReturnType<typeof selectUiDictionaryFirst>;
@@ -27,6 +28,7 @@ type Props = {
 export function SubscriptionPlanCard({
   planSlug,
   currentPlanSlug,
+  scheduledTargetPlanSlug = null,
   isPremium,
   lang,
   ui,
@@ -39,15 +41,17 @@ export function SubscriptionPlanCard({
   const priceCurrency = getPlanPriceCurrencyDisplay();
   const pricePeriod = formatPlanPricePeriod(planSlug, lang);
   const isCurrent = currentPlanSlug === planSlug;
-  const { label, badge, disabled } = resolvePlanCardAction({
+  const { label, badge, disabled, variant } = resolvePlanCardAction({
     planSlug,
     currentPlanSlug,
+    scheduledTargetPlanSlug,
     isPremium,
     lang,
   });
   const badgeLabel = getPlanCardBadgeLabel(badge, lang);
   const isLoading = loadingPlan === planSlug;
   const isButtonDisabled = Boolean(loadingPlan) || disabled;
+  const buttonVariant = scheduledTargetPlanSlug ? variant : disabled ? 'outline' : 'primary';
 
   const features = getSubscriptionPlanFeatures(lang, ui);
   const redirectingLabel = lang === 'en' ? 'Redirecting…' : 'Переход к оплате…';
@@ -89,7 +93,7 @@ export function SubscriptionPlanCard({
 
       <DashboardButton
         type="button"
-        variant={disabled ? 'outline' : 'primary'}
+        variant={buttonVariant}
         className="subscription-plan-modal__plan-cta"
         disabled={isButtonDisabled}
         loading={isLoading}

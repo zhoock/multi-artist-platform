@@ -8,6 +8,8 @@ import { describe, test, expect, jest, beforeEach } from '@jest/globals';
 import { screen, waitFor, fireEvent, within } from '@testing-library/react';
 
 import { PremiumSubscriptionProvider } from '@features/premiumSubscription';
+import type { MyArchiveData } from '@shared/api/archive';
+import type { CanonicalSubscriptionStatus } from '@shared/api/billing';
 import { renderWithProviders } from '@shared/lib/test-utils';
 import { ArchiveAccessModalProvider, useArchiveAccessModal } from '../archiveAccessModalContext';
 
@@ -29,11 +31,17 @@ jest.mock('@shared/lib/auth', () => ({
 
 jest.mock('@shared/api/subscription', () => ({
   createSubscriptionPayment: jest.fn(),
+  cancelScheduledSubscriptionDowngrade: jest.fn(),
+  scheduleSubscriptionDowngrade: jest.fn(),
 }));
 
-import { createSubscriptionPayment } from '@shared/api/subscription';
+import {
+  cancelScheduledSubscriptionDowngrade,
+  createSubscriptionPayment,
+} from '@shared/api/subscription';
 
 const createSubscriptionPaymentMock = jest.mocked(createSubscriptionPayment);
+const cancelScheduledSubscriptionDowngradeMock = jest.mocked(cancelScheduledSubscriptionDowngrade);
 
 function OpenModalButton() {
   const { open } = useArchiveAccessModal();
@@ -48,13 +56,49 @@ type ArchiveFixture = {
   isPremium: boolean;
   slotsUsed: number;
   slotsLimit: number;
+  scheduledPlan?: 'explorer' | 'collector' | 'archivist' | null;
 };
+
+function resolvePlanFromSlotsLimit(
+  slotsLimit: number
+): 'explorer' | 'collector' | 'archivist' | null {
+  if (slotsLimit === 20) return 'explorer';
+  if (slotsLimit === 60) return 'collector';
+  if (slotsLimit === 100) return 'archivist';
+  return null;
+}
+
+function buildArchiveResponse(archive: ArchiveFixture): MyArchiveData {
+  const plan = resolvePlanFromSlotsLimit(archive.slotsLimit);
+  const status: CanonicalSubscriptionStatus = archive.isPremium ? 'active' : 'expired';
+
+  return {
+    isPremium: archive.isPremium,
+    slotsUsed: archive.slotsUsed,
+    slotsLimit: archive.slotsLimit,
+    artists: [],
+    billing: {
+      status,
+      plan,
+      slotsLimit: archive.slotsLimit,
+      expiresAt: '2099-08-07T10:00:00.000Z',
+      autoRenewEnabled: true,
+      hasPremiumAccess: archive.isPremium,
+      hasSavedPaymentMethod: true,
+      paymentMethodTitle: 'Bank card *4242',
+      nextChargeAt: '2099-08-07T10:00:00.000Z',
+      scheduledPlan: archive.scheduledPlan ?? null,
+      renewalAttemptCount: null,
+      firstFailedAt: null,
+    },
+  };
+}
 
 function renderModalWithProviderOrder(
   archive: ArchiveFixture,
   order: 'correct' | 'wrong' = 'correct'
 ) {
-  getMyArchiveMock.mockResolvedValue({ ...archive, artists: [] });
+  getMyArchiveMock.mockResolvedValue(buildArchiveResponse(archive));
   getTokenMock.mockReturnValue('test-token');
 
   const tree =
@@ -109,10 +153,21 @@ describe('ArchiveAccessModalView current plan', () => {
       success: true,
       data: { paymentId: 'pay-test-1', confirmationUrl: 'https://pay.example/checkout' },
     });
+    cancelScheduledSubscriptionDowngradeMock.mockReset();
+    cancelScheduledSubscriptionDowngradeMock.mockResolvedValue({
+      success: true,
+      data: {
+        archive: buildArchiveResponse({
+          isPremium: true,
+          slotsUsed: 0,
+          slotsLimit: 60,
+        }),
+      },
+    });
   });
 
   test('highlights Explorer when Explorer is active', async () => {
-    renderModalWithProviderOrder({ isPremium: true, slotsUsed: 1, slotsLimit: 1 });
+    renderModalWithProviderOrder({ isPremium: true, slotsUsed: 1, slotsLimit: 20 });
     await openModal();
 
     const explorerCard = getPlanCard('Explorer');
@@ -132,7 +187,7 @@ describe('ArchiveAccessModalView current plan', () => {
   });
 
   test('highlights Collector when collection is full (Upgrade Plan path)', async () => {
-    renderModalWithProviderOrder({ isPremium: true, slotsUsed: 2, slotsLimit: 2 });
+    renderModalWithProviderOrder({ isPremium: true, slotsUsed: 2, slotsLimit: 60 });
     await openModal();
 
     const collectorCard = getPlanCard('Collector');
@@ -152,7 +207,7 @@ describe('ArchiveAccessModalView current plan', () => {
   });
 
   test('highlights Archivist when Archivist is active', async () => {
-    renderModalWithProviderOrder({ isPremium: true, slotsUsed: 2, slotsLimit: 3 });
+    renderModalWithProviderOrder({ isPremium: true, slotsUsed: 2, slotsLimit: 100 });
     await openModal();
 
     const archivistCard = getPlanCard('Archivist');
@@ -172,7 +227,7 @@ describe('ArchiveAccessModalView current plan', () => {
   });
 
   test('shows expired Collector with renew action when support is inactive', async () => {
-    renderModalWithProviderOrder({ isPremium: false, slotsUsed: 1, slotsLimit: 2 });
+    renderModalWithProviderOrder({ isPremium: false, slotsUsed: 1, slotsLimit: 60 });
     await openModal();
 
     const collectorCard = getPlanCard('Collector');
@@ -331,7 +386,7 @@ describe('ArchiveAccessModalView current plan', () => {
   });
 
   test('regression: wrong provider order leaves modal without current plan', async () => {
-    renderModalWithProviderOrder({ isPremium: true, slotsUsed: 2, slotsLimit: 2 }, 'wrong');
+    renderModalWithProviderOrder({ isPremium: true, slotsUsed: 2, slotsLimit: 60 }, 'wrong');
     await openModal();
 
     expect(document.querySelector('.dashboard-card--selected')).toBeNull();
@@ -399,24 +454,35 @@ describe('ArchiveAccessModalView plan change confirmation', () => {
       success: true,
       data: { paymentId: 'pay-test-1', confirmationUrl: 'https://pay.example/checkout' },
     });
+    cancelScheduledSubscriptionDowngradeMock.mockReset();
+    cancelScheduledSubscriptionDowngradeMock.mockResolvedValue({
+      success: true,
+      data: {
+        archive: buildArchiveResponse({
+          isPremium: true,
+          slotsUsed: 0,
+          slotsLimit: 60,
+        }),
+      },
+    });
   });
 
   test('shows confirmation modal when switching plans', async () => {
-    renderModalWithProviderOrder({ isPremium: true, slotsUsed: 1, slotsLimit: 1 });
+    renderModalWithProviderOrder({ isPremium: true, slotsUsed: 1, slotsLimit: 20 });
     await openModal();
 
     fireEvent.click(
       within(getPlanCard('Collector')).getByRole('button', { name: 'Switch to Collector' })
     );
 
-    expect(screen.getByRole('heading', { name: 'Switch to the Collector plan?' })).toBeTruthy();
-    expect(screen.getByText('Current plan')).toBeTruthy();
-    expect(screen.getByText('New plan')).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Upgrade to Collector?' })).toBeTruthy();
+    expect(screen.getByText(/Current plan:/i)).toBeTruthy();
+    expect(screen.getByText(/New plan:/i)).toBeTruthy();
     expect(createSubscriptionPaymentMock).not.toHaveBeenCalled();
   });
 
   test('cancel closes confirmation without starting checkout', async () => {
-    renderModalWithProviderOrder({ isPremium: true, slotsUsed: 1, slotsLimit: 1 });
+    renderModalWithProviderOrder({ isPremium: true, slotsUsed: 1, slotsLimit: 20 });
     await openModal();
 
     fireEvent.click(
@@ -424,12 +490,12 @@ describe('ArchiveAccessModalView plan change confirmation', () => {
     );
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
 
-    expect(screen.queryByRole('heading', { name: 'Switch to the Collector plan?' })).toBeNull();
+    expect(screen.queryByRole('heading', { name: 'Upgrade to Collector?' })).toBeNull();
     expect(createSubscriptionPaymentMock).not.toHaveBeenCalled();
   });
 
   test('confirm proceeds to checkout for selected plan', async () => {
-    renderModalWithProviderOrder({ isPremium: true, slotsUsed: 1, slotsLimit: 1 });
+    renderModalWithProviderOrder({ isPremium: true, slotsUsed: 1, slotsLimit: 20 });
     await openModal();
 
     fireEvent.click(
@@ -445,7 +511,7 @@ describe('ArchiveAccessModalView plan change confirmation', () => {
   });
 
   test('renew current plan skips confirmation modal', async () => {
-    renderModalWithProviderOrder({ isPremium: false, slotsUsed: 1, slotsLimit: 2 });
+    renderModalWithProviderOrder({ isPremium: false, slotsUsed: 1, slotsLimit: 60 });
     await openModal();
 
     fireEvent.click(
@@ -473,6 +539,125 @@ describe('ArchiveAccessModalView plan change confirmation', () => {
       expect(createSubscriptionPaymentMock).toHaveBeenCalledWith(
         expect.objectContaining({ plan: 'explorer' })
       );
+    });
+  });
+});
+
+describe('ArchiveAccessModalView scheduled plan change', () => {
+  beforeEach(() => {
+    getMyArchiveMock.mockReset();
+    getTokenMock.mockReset();
+    getUserMock.mockReset();
+    getUserMock.mockReturnValue({ id: 'user-1', email: 'user@example.com' });
+    createSubscriptionPaymentMock.mockReset();
+    cancelScheduledSubscriptionDowngradeMock.mockReset();
+    cancelScheduledSubscriptionDowngradeMock.mockResolvedValue({
+      success: true,
+      data: {
+        archive: buildArchiveResponse({
+          isPremium: true,
+          slotsUsed: 0,
+          slotsLimit: 60,
+        }),
+      },
+    });
+  });
+
+  test('shows banner and cancel change on target plan while downgrade is scheduled', async () => {
+    getMyArchiveMock.mockResolvedValue(
+      buildArchiveResponse({
+        isPremium: true,
+        slotsUsed: 0,
+        slotsLimit: 60,
+        scheduledPlan: 'explorer',
+      })
+    );
+    getTokenMock.mockReturnValue('test-token');
+
+    renderWithProviders(
+      <PremiumSubscriptionProvider>
+        <ArchiveAccessModalProvider>
+          <OpenModalButton />
+        </ArchiveAccessModalProvider>
+      </PremiumSubscriptionProvider>,
+      { preloadedState: { lang: { current: 'en' } } }
+    );
+
+    await waitFor(() => {
+      expect(getMyArchiveMock).toHaveBeenCalled();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open Artist Support' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Transition to Explorer scheduled')).toBeTruthy();
+      expect(screen.getByRole('button', { name: 'Details' })).toBeTruthy();
+    });
+
+    const collectorCard = getPlanCard('Collector');
+    expect(collectorCard.classList.contains('dashboard-card--selected')).toBe(true);
+    expect(within(collectorCard).getByRole('button', { name: 'Current Plan' })).toBeDisabled();
+    expect(
+      within(getPlanCard('Explorer')).getByRole('button', { name: 'Cancel change' })
+    ).toBeTruthy();
+    expect(
+      within(getPlanCard('Archivist')).getByRole('button', { name: 'Switch to Archivist' })
+    ).toBeTruthy();
+  });
+
+  test('cancel change clears scheduled downgrade UI', async () => {
+    let scheduledPlan: 'explorer' | null = 'explorer';
+    getMyArchiveMock.mockImplementation(async () =>
+      buildArchiveResponse({
+        isPremium: true,
+        slotsUsed: 0,
+        slotsLimit: 60,
+        scheduledPlan,
+      })
+    );
+    cancelScheduledSubscriptionDowngradeMock.mockImplementation(async () => {
+      scheduledPlan = null;
+      return {
+        success: true,
+        data: {
+          archive: buildArchiveResponse({
+            isPremium: true,
+            slotsUsed: 0,
+            slotsLimit: 60,
+            scheduledPlan: null,
+          }),
+        },
+      };
+    });
+    getTokenMock.mockReturnValue('test-token');
+
+    renderWithProviders(
+      <PremiumSubscriptionProvider>
+        <ArchiveAccessModalProvider>
+          <OpenModalButton />
+        </ArchiveAccessModalProvider>
+      </PremiumSubscriptionProvider>,
+      { preloadedState: { lang: { current: 'en' } } }
+    );
+
+    await waitFor(() => {
+      expect(getMyArchiveMock).toHaveBeenCalled();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open Artist Support' }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Cancel change' })).toBeTruthy();
+    });
+
+    fireEvent.click(within(getPlanCard('Explorer')).getByRole('button', { name: 'Cancel change' }));
+
+    await waitFor(() => {
+      expect(cancelScheduledSubscriptionDowngradeMock).toHaveBeenCalled();
+      expect(screen.queryByText('Transition to Explorer scheduled')).toBeNull();
+      expect(
+        within(getPlanCard('Explorer')).getByRole('button', { name: 'Switch to Explorer' })
+      ).toBeTruthy();
     });
   });
 });
