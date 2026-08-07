@@ -37,6 +37,17 @@ describe('shouldEnableRenewalBillingSync', () => {
       })
     ).toBe(false);
   });
+
+  test('polls when cancelled subscription period is ending', () => {
+    expect(
+      shouldEnableRenewalBillingSync({
+        active: true,
+        autoRenewEnabled: false,
+        nextChargeAt: null,
+        cancelledPeriodEndAt: '2026-08-07T12:05:00.000Z',
+      })
+    ).toBe(true);
+  });
 });
 
 describe('useRenewalBillingSync', () => {

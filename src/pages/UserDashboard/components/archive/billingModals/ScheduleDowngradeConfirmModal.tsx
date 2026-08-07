@@ -90,11 +90,6 @@ export function ScheduleDowngradeConfirmModal({
       confirm:
         t?.billingDowngradePlanConfirm ??
         (lang === 'en' ? 'Schedule change' : 'Запланировать смену'),
-      footerNote:
-        t?.billingDowngradePlanFooterNote ??
-        (lang === 'en'
-          ? 'You can cancel the scheduled change anytime'
-          : 'Запланированную смену можно отменить в любой момент'),
       cancel: ui?.buttons?.cancel ?? (lang === 'en' ? 'Cancel' : 'Отмена'),
       close: ui?.buttons?.articleLockedDialogClose ?? (lang === 'en' ? 'Close' : 'Закрыть'),
     }),
@@ -117,7 +112,6 @@ export function ScheduleDowngradeConfirmModal({
       closeLabel={copy.close}
       loading={loading}
       onClose={onCancel}
-      footerNote={copy.footerNote}
       cancelLabel={copy.cancel}
       confirmLabel={copy.confirm}
       onConfirm={onConfirm}

@@ -207,8 +207,14 @@ export function resolvePlanCardAction(params: {
 export function resolveRecommendedPlanSlug(
   currentPlanSlug: SubscriptionPlanSlug | null
 ): SubscriptionPlanSlug | null {
-  if (currentPlanSlug === 'archivist') return null;
-  return 'archivist';
+  if (!currentPlanSlug) return null;
+
+  const currentIndex = SUBSCRIPTION_PLAN_SLUGS.indexOf(currentPlanSlug);
+  if (currentIndex < 0 || currentIndex >= SUBSCRIPTION_PLAN_SLUGS.length - 1) {
+    return null;
+  }
+
+  return SUBSCRIPTION_PLAN_SLUGS[currentIndex + 1];
 }
 
 export function shouldConfirmSubscriptionPlanChange(

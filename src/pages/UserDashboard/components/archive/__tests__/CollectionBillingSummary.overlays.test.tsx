@@ -23,6 +23,8 @@ const copy: CollectionBillingCopy = {
   billingLastPlanSection: 'LAST PLAN',
   billingSupportSection: 'SUPPORT',
   billingSupportActiveUntil: 'Active until {date}',
+  billingSupportRemainingRelative: 'Support continues for {remaining} (until {until})',
+  billingSupportRemainingAbsolute: 'Support continues until {date}',
   billingNextChargeOn: 'Next charge — {date}',
   billingSupportExpiredOn: 'Expired {date}',
   billingChangePlanButton: 'Change plan',

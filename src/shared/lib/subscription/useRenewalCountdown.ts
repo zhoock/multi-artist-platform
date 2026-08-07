@@ -49,9 +49,10 @@ export function useRenewalCountdown(
 ): RenewalCountdownState {
   const now = useRenewalCountdownClock();
   const targetIdRef = useRef<symbol | null>(null);
+  const countdownTarget = nextChargeAt ?? expiresAt ?? null;
 
   useEffect(() => {
-    if (!nextChargeAt) {
+    if (!countdownTarget) {
       if (targetIdRef.current) {
         unregisterRenewalCountdownTarget(targetIdRef.current);
         targetIdRef.current = null;
@@ -59,7 +60,7 @@ export function useRenewalCountdown(
       return undefined;
     }
 
-    const targetMs = new Date(nextChargeAt).getTime();
+    const targetMs = new Date(countdownTarget).getTime();
     if (Number.isNaN(targetMs)) {
       if (targetIdRef.current) {
         unregisterRenewalCountdownTarget(targetIdRef.current);
@@ -69,9 +70,9 @@ export function useRenewalCountdown(
     }
 
     if (!targetIdRef.current) {
-      targetIdRef.current = registerRenewalCountdownTarget(nextChargeAt);
+      targetIdRef.current = registerRenewalCountdownTarget(countdownTarget);
     } else {
-      updateRenewalCountdownTarget(targetIdRef.current, nextChargeAt);
+      updateRenewalCountdownTarget(targetIdRef.current, countdownTarget);
     }
 
     return () => {
@@ -80,7 +81,7 @@ export function useRenewalCountdown(
         targetIdRef.current = null;
       }
     };
-  }, [nextChargeAt]);
+  }, [countdownTarget]);
 
   return resolveRenewalCountdownDisplay({
     nextChargeAt,

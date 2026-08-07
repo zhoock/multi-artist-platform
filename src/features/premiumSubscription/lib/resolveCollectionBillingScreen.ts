@@ -33,11 +33,23 @@ export function isInAutorenewRenewalGrace(
  * Maps backend BillingSnapshot → BillingScreen (ADR-002).
  * NONE ⇔ billing.status === null only.
  */
+function isCancelledPeriodEnded(billing: BillingSnapshot, now: Date): boolean {
+  if (billing.status !== 'cancel_at_period_end') return false;
+  if (!billing.expiresAt?.trim()) return false;
+
+  const expiresMs = new Date(billing.expiresAt).getTime();
+  return !Number.isNaN(expiresMs) && expiresMs <= now.getTime();
+}
+
 export function resolveCollectionBillingScreen(
   billing: BillingSnapshot,
   now: Date = new Date()
 ): BillingScreen {
   if (billing.status === null) return 'NONE';
+
+  if (isCancelledPeriodEnded(billing, now)) {
+    return 'EXPIRED';
+  }
 
   if (!billing.hasPremiumAccess) {
     if (isInAutorenewRenewalGrace(billing, now)) {

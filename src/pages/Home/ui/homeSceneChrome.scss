@@ -15,6 +15,8 @@
   --scene-chrome-backdrop: blur(14px) saturate(120%);
   --scene-chrome-transition: border-color 220ms ease, background 220ms ease;
 
+  background: var(--black, #000000);
+
   @include breakpoint(desktops) {
     --scene-chrome-offset-block: 1.5rem;
     --scene-chrome-offset-inline: 2rem;

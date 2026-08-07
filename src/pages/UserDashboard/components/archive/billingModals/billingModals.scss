@@ -1,12 +1,13 @@
 @use '../../../../../scss/abstracts/mixins' as *;
 @use '../../../../../scss/components/modal' as dashboard-modal;
 
+dialog {
+  @include dashboard-modal.dashboard-modal-dialog-buttons;
+}
+
 .billing-modal {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 100vh;
-  padding: var(--ms-1);
+  @include dashboard-modal.dashboard-modal-shell($padding: var(--ms-1));
+
   box-sizing: border-box;
 
   &__card {
@@ -23,12 +24,22 @@
     box-sizing: border-box;
   }
 
-  &__topbar {
+  &__header {
+    flex-shrink: 0;
+
+    @include dashboard-modal.dashboard-modal-header(
+      $padding: var(--ms-1) var(--ms-2),
+      $border-bottom: var(--dashboard-divider),
+      $background: var(--dashboard-card-bg)
+    );
+  }
+
+  &__header-main {
     display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
+    flex: 1;
+    align-items: center;
     gap: var(--ms-01);
-    padding: var(--ms-1) var(--ms-1) 0;
+    min-width: 0;
   }
 
   &__header-icon {
@@ -36,11 +47,14 @@
     flex-shrink: 0;
     align-items: center;
     justify-content: center;
-    width: 2.5rem;
-    height: 2.5rem;
     color: var(--dark-greenish-yellow);
-    background: rgb(var(--dark-greenish-yellow-rgb) / 14%);
-    border-radius: 50%;
+  }
+
+  &__title {
+    flex: 1;
+    min-width: 0;
+
+    @include dashboard-modal.dashboard-modal-title($margin: 0, $padding: 0, $line-height: 1.25);
   }
 
   &__close {
@@ -55,22 +69,11 @@
     display: flex;
     flex-direction: column;
     gap: var(--ms-0);
-    padding: var(--ms-01) var(--ms-1) var(--ms-0);
-  }
-
-  &__title {
-    margin: 0;
-    padding: 0 var(--ms-1);
-    color: var(--dashboard-text-primary);
-    font-size: var(--dashboard-heading-font-size);
-    line-height: 1.25;
-
-    @include dashboard-isolate-heading;
+    padding: var(--ms-1) var(--ms-2) var(--ms-0);
   }
 
   &__intro {
     margin: 0;
-    padding: 0 var(--ms-1);
     color: var(--dashboard-text-secondary);
     font-size: var(--dashboard-font-size);
     line-height: 1.45;
@@ -78,7 +81,6 @@
 
   &__note {
     margin: 0;
-    padding: 0 var(--ms-1);
     color: var(--dashboard-text-secondary);
     font-size: var(--dashboard-font-size);
     line-height: 1.45;
@@ -87,7 +89,6 @@
   &__info-card {
     display: flex;
     gap: var(--ms-01);
-    margin: 0 var(--ms-1);
     padding: var(--ms-01) var(--ms-0);
     border-radius: var(--ms-01);
 
@@ -174,7 +175,6 @@
     flex-direction: column;
     align-items: center;
     gap: 0.35rem;
-    margin: 0 var(--ms-1);
     padding: var(--ms-1) var(--ms-0);
     text-align: center;
     border: 1px dashed rgb(255 255 255 / 18%);
@@ -227,36 +227,6 @@
     font-size: var(--dashboard-font-size);
     line-height: 1.45;
   }
-
-  &__actions {
-    margin-top: 0;
-    padding: var(--ms-0) var(--ms-1) var(--ms-01);
-  }
-
-  &__primary-button {
-    color: var(--deep-black, #0a0a0a) !important;
-    background: var(--dark-greenish-yellow) !important;
-    border-color: var(--dark-greenish-yellow) !important;
-
-    &:hover:not(:disabled) {
-      background: color-mix(in srgb, var(--dark-greenish-yellow) 88%, white) !important;
-      border-color: color-mix(in srgb, var(--dark-greenish-yellow) 88%, white) !important;
-    }
-  }
-
-  &__footer-note {
-    display: flex;
-    align-items: center;
-    gap: 0.45rem;
-    margin: 0;
-    padding: 0 var(--ms-1) var(--ms-1);
-    color: var(--dashboard-text-secondary);
-    font-size: 0.82rem;
-    line-height: 1.35;
-  }
-
-  &__footer-note-icon {
-    flex-shrink: 0;
-    opacity: 0.85;
-  }
 }
+
+@include dashboard-modal.dashboard-nested-modal-backdrop;

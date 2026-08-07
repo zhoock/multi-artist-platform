@@ -55,7 +55,6 @@ import {
   shouldEnableRenewalBillingSync,
   useRenewalBillingSync,
 } from '@shared/lib/subscription/useRenewalBillingRefresh';
-import { formatCollectionRenewalDate } from './lib/collectionSubscriptionStatus';
 import { toast } from '@shared/lib/toast';
 import { ARCHIVE_ARTIST_REMOVED_TOAST_DURATION_MS } from '@shared/lib/toast/toastDurations';
 import './billingModals/billingModals.scss';
@@ -210,15 +209,18 @@ export function MyArchiveContent({
     () => resolveCollectionBillingScreen(billing, billingNow),
     [billing, billingNow]
   );
+  const cancelledPeriodEndAt = billing.status === 'cancel_at_period_end' ? billing.expiresAt : null;
+  const billingSyncTarget = billing.nextChargeAt ?? cancelledPeriodEndAt;
   const shouldSyncRenewalBilling = shouldEnableRenewalBillingSync({
     active,
     autoRenewEnabled: billing.autoRenewEnabled,
     nextChargeAt: billing.nextChargeAt,
+    cancelledPeriodEndAt,
   });
 
   useRenewalBillingSync({
     enabled: shouldSyncRenewalBilling,
-    nextChargeAt: billing.nextChargeAt,
+    nextChargeAt: billingSyncTarget,
     onRefresh: refreshArchiveBilling,
   });
   const billingOverlays = useMemo(
@@ -239,6 +241,10 @@ export function MyArchiveContent({
       billingLastPlanSection: t?.billingLastPlanSection ?? 'ПОСЛЕДНИЙ ПЛАН',
       billingSupportSection: t?.billingSupportSection ?? 'ПОДДЕРЖКА',
       billingSupportActiveUntil: t?.billingSupportActiveUntil ?? 'Поддержка активна до {date}',
+      billingSupportRemainingRelative:
+        t?.billingSupportRemainingRelative ?? 'Поддержка сохранится ещё {remaining} (до {until})',
+      billingSupportRemainingAbsolute:
+        t?.billingSupportRemainingAbsolute ?? 'Поддержка сохранится до {date}',
       billingNextChargeOn: t?.billingNextChargeOn ?? 'Следующее списание — {date}',
       billingSupportExpiredOn: t?.billingSupportExpiredOn ?? 'Истёк {date}',
       billingChangePlanButton: t?.billingChangePlanButton ?? t?.changePlanButton ?? 'Сменить план',
@@ -703,16 +709,14 @@ export function MyArchiveContent({
     );
   }
 
-  const billingExpiresLabel = billing.expiresAt
-    ? formatCollectionRenewalDate(billing.expiresAt, lang)
-    : null;
   const autoRenewModalLoading = autoRenewPatchLoading || renewLoading;
 
   return (
     <>
       <DisableAutoRenewConfirmModal
         isOpen={autoRenewModal === 'disable'}
-        expiresLabel={billingExpiresLabel}
+        nextChargeAt={billing.nextChargeAt}
+        expiresAt={billing.expiresAt}
         loading={autoRenewModalLoading}
         onCancel={() => setAutoRenewModal(null)}
         onConfirm={() => void handleConfirmAutoRenewPatch()}

@@ -182,33 +182,14 @@ dialog {
         line-height: 1.35;
       }
 
-      &__status-dot {
-        flex-shrink: 0;
-        width: 0.42rem;
-        height: 0.42rem;
-        border-radius: 50%;
-      }
-
       &__status-calendar {
         flex-shrink: 0;
         opacity: 0.85;
       }
 
-      &__status-line--active {
-        color: var(--dark-greenish-yellow);
-
-        .collection-billing__status-dot {
-          background: var(--dark-greenish-yellow);
-          box-shadow: 0 0 6px rgb(var(--dark-greenish-yellow-rgb) / 55%);
-        }
-      }
-
+      &__status-line--active,
       &__status-line--cancelled {
         color: var(--dark-greenish-yellow);
-
-        .collection-billing__status-dot {
-          background: var(--dark-greenish-yellow);
-        }
       }
 
       &__status-line--lapsed {

@@ -90,11 +90,6 @@ export function UpgradePlanConfirmModal({
           : 'Поддерживаемые артисты остаются в коллекции. При повышении тарифа артисты не удаляются.'),
       confirm:
         t?.billingUpgradePlanConfirm ?? (lang === 'en' ? 'Proceed to payment' : 'Перейти к оплате'),
-      footerNote:
-        t?.billingUpgradePlanRedirectNote ??
-        (lang === 'en'
-          ? 'You will be redirected to a secure payment page'
-          : 'Вы будете перенаправлены на безопасную страницу оплаты'),
       cancel: ui?.buttons?.cancel ?? (lang === 'en' ? 'Cancel' : 'Отмена'),
       close: ui?.buttons?.articleLockedDialogClose ?? (lang === 'en' ? 'Close' : 'Закрыть'),
     }),
@@ -116,7 +111,6 @@ export function UpgradePlanConfirmModal({
       closeLabel={copy.close}
       loading={loading}
       onClose={onCancel}
-      footerNote={copy.footerNote}
       cancelLabel={copy.cancel}
       confirmLabel={copy.confirm}
       onConfirm={onConfirm}

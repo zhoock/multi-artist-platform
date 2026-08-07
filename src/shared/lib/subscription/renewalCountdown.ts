@@ -246,14 +246,31 @@ export function resolveRenewalCountdownDisplay(params: {
   }
 
   if (params.expiresAt) {
-    const dateLabel = formatRenewalChargeDate(params.expiresAt, params.lang);
-    if (dateLabel) {
+    const targetMs = new Date(params.expiresAt).getTime();
+    if (!Number.isNaN(targetMs)) {
+      const remainingMs = targetMs - now.getTime();
+      const title = formatRenewalChargeDateTime(params.expiresAt, params.lang);
+
+      if (remainingMs <= 0) {
+        return {
+          label: formatRenewalChargeDate(params.expiresAt, params.lang),
+          title,
+          source: 'expiresAt',
+          isRelative: false,
+          isOverdue: true,
+        };
+      }
+
+      const core = formatRelativeRenewalCore({
+        nextChargeAt: params.expiresAt,
+        lang: params.lang,
+        now,
+      });
+
       return {
-        label: dateLabel,
-        title: formatRenewalChargeDateTime(params.expiresAt, params.lang),
+        ...core,
+        title,
         source: 'expiresAt',
-        isRelative: false,
-        isOverdue: false,
       };
     }
   }

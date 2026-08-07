@@ -179,7 +179,7 @@ describe('resolveRenewalCountdownDisplay', () => {
     expect(display.title).toMatch(/2026/);
   });
 
-  test('falls back to expiresAt date when nextChargeAt is missing', () => {
+  test('falls back to expiresAt absolute date when nextChargeAt is missing and period is far away', () => {
     const display = resolveRenewalCountdownDisplay({
       nextChargeAt: null,
       expiresAt: chargeAtOffset(30 * 24 * 60 * 60 * 1000),
@@ -191,6 +191,36 @@ describe('resolveRenewalCountdownDisplay', () => {
     expect(display.label).toMatch(/2026/);
     expect(display.isRelative).toBe(false);
     expect(display.title).toMatch(/2026/);
+  });
+
+  test('falls back to expiresAt relative countdown when nextChargeAt is missing and period is near', () => {
+    const display = resolveRenewalCountdownDisplay({
+      nextChargeAt: null,
+      expiresAt: chargeAtOffset(5 * 60 * 1000),
+      lang: 'ru',
+      now: NOW,
+    });
+
+    expect(display.source).toBe('expiresAt');
+    expect(display.label).toBe('через 5 минут');
+    expect(display.isRelative).toBe(true);
+    expect(display.title).toMatch(/2026/);
+  });
+
+  test('falls back to expiresAt absolute date when period already ended', () => {
+    const expiresAt = chargeAtOffset(-5 * 60 * 1000);
+    const display = resolveRenewalCountdownDisplay({
+      nextChargeAt: null,
+      expiresAt,
+      lang: 'ru',
+      now: NOW,
+    });
+
+    expect(display.source).toBe('expiresAt');
+    expect(display.isRelative).toBe(false);
+    expect(display.isOverdue).toBe(true);
+    expect(display.label).toMatch(/2026/);
+    expect(display.label).not.toMatch(/обновляется|ожидается/i);
   });
 
   test('returns empty display when neither timestamp is available', () => {

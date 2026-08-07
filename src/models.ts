@@ -939,6 +939,8 @@ export interface IInterface {
       billingLastPlanSection?: string;
       billingSupportSection?: string;
       billingSupportActiveUntil?: string;
+      billingSupportRemainingRelative?: string;
+      billingSupportRemainingAbsolute?: string;
       billingNextChargeOn?: string;
       billingSupportExpiredOn?: string;
       billingChangePlanButton?: string;
@@ -964,8 +966,10 @@ export interface IInterface {
       billingDisableAutoRenewTitle?: string;
       billingDisableAutoRenewIntro?: string;
       billingDisableAutoRenewAccessTitle?: string;
-      billingDisableAutoRenewAccessBody?: string;
-      billingDisableAutoRenewAfterNote?: string;
+      billingDisableAutoRenewAccessBodyRelative?: string;
+      billingDisableAutoRenewAccessBodyAbsolute?: string;
+      billingDisableAutoRenewAfterNoteLine1?: string;
+      billingDisableAutoRenewAfterNoteLine2?: string;
       billingDisableAutoRenewConfirm?: string;
       billingEnableAutoRenewTitle?: string;
       billingEnableAutoRenewIntro?: string;

@@ -84,7 +84,7 @@ describe('useRenewalCountdown', () => {
 
     expect(result.current.source).toBe('expiresAt');
     expect(result.current.label).toMatch(/2026/);
-    expect(getRenewalCountdownTargetCountForTests()).toBe(0);
+    expect(getRenewalCountdownTargetCountForTests()).toBe(1);
   });
 
   test('keeps a single countdown target when nextChargeAt advances across renewals', () => {

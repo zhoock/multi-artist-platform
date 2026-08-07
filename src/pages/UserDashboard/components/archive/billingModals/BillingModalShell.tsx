@@ -1,5 +1,5 @@
 import clsx from 'clsx';
-import { CreditCard, Lock, Plus, type LucideIcon } from 'lucide-react';
+import { CreditCard, Plus, type LucideIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
 
 import { DashboardButton } from '@shared/ui/dashboard';
@@ -12,13 +12,12 @@ import './billingModals.scss';
 type BillingModalShellProps = {
   isOpen: boolean;
   titleId: string;
-  headerIcon: LucideIcon;
+  headerIcon?: LucideIcon;
   title: string;
   closeLabel: string;
   loading?: boolean;
   onClose: () => void;
   children: ReactNode;
-  footerNote: string;
   cancelLabel: string;
   confirmLabel: string;
   onConfirm: () => void;
@@ -33,7 +32,6 @@ export function BillingModalShell({
   loading = false,
   onClose,
   children,
-  footerNote,
   cancelLabel,
   confirmLabel,
   onConfirm,
@@ -48,10 +46,17 @@ export function BillingModalShell({
     >
       <div className="billing-modal">
         <div className="billing-modal__card">
-          <div className="billing-modal__topbar">
-            <span className="billing-modal__header-icon" aria-hidden>
-              <HeaderIcon {...dashboardActionIconProps({ size: 20 })} />
-            </span>
+          <header className="billing-modal__header">
+            <div className="billing-modal__header-main">
+              {HeaderIcon ? (
+                <span className="billing-modal__header-icon" aria-hidden>
+                  <HeaderIcon {...dashboardActionIconProps({ size: 20 })} />
+                </span>
+              ) : null}
+              <h2 id={titleId} className="billing-modal__title">
+                {title}
+              </h2>
+            </div>
             <PopupCloseButton
               type="button"
               className="billing-modal__close"
@@ -60,21 +65,16 @@ export function BillingModalShell({
             >
               <ModalCloseIcon />
             </PopupCloseButton>
-          </div>
-
-          <h2 id={titleId} className="billing-modal__title">
-            {title}
-          </h2>
+          </header>
 
           <div className="billing-modal__body">{children}</div>
 
-          <footer className="dashboard-modal-footer billing-modal__actions">
+          <footer className="dashboard-modal-footer">
             <DashboardButton variant="outline" disabled={loading} onClick={onClose}>
               {cancelLabel}
             </DashboardButton>
             <DashboardButton
-              variant="outline"
-              className="billing-modal__primary-button"
+              variant="primary"
               loading={loading}
               disabled={loading}
               onClick={onConfirm}
@@ -82,11 +82,6 @@ export function BillingModalShell({
               {confirmLabel}
             </DashboardButton>
           </footer>
-
-          <p className="billing-modal__footer-note">
-            <Lock className="billing-modal__footer-note-icon" size={14} aria-hidden />
-            {footerNote}
-          </p>
         </div>
       </div>
     </Popup>
@@ -132,8 +127,12 @@ export function BillingModalNote({ children }: { children: ReactNode }) {
   return <p className="billing-modal__note">{children}</p>;
 }
 
-export function BillingModalInfoText({ children }: { children: ReactNode }) {
-  return <p className="billing-modal__info-text">{children}</p>;
+export function BillingModalInfoText({ children, title }: { children: ReactNode; title?: string }) {
+  return (
+    <p className="billing-modal__info-text" title={title}>
+      {children}
+    </p>
+  );
 }
 
 export function BillingModalPaymentAddIcon() {

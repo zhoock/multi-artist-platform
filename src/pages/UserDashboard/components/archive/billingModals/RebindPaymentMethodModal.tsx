@@ -45,9 +45,6 @@ export function RebindPaymentMethodModal({
         t?.billingRebindPaymentSecureBody ??
         'Ваши данные защищены. Мы не храним реквизиты карты и используем безопасное соединение.',
       confirm: t?.billingRebindPaymentConfirm ?? 'Добавить способ оплаты',
-      footerNote:
-        t?.billingRebindPaymentRedirectNote ??
-        'Вы будете перенаправлены на безопасную страницу оплаты',
       cancel: ui?.buttons?.cancel ?? (lang === 'en' ? 'Cancel' : 'Отмена'),
       close: ui?.buttons?.articleLockedDialogClose ?? (lang === 'en' ? 'Close' : 'Закрыть'),
     }),
@@ -63,7 +60,6 @@ export function RebindPaymentMethodModal({
       closeLabel={copy.close}
       loading={loading}
       onClose={onCancel}
-      footerNote={copy.footerNote}
       cancelLabel={copy.cancel}
       confirmLabel={copy.confirm}
       onConfirm={onConfirm}

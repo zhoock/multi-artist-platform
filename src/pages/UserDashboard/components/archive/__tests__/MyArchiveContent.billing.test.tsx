@@ -4,7 +4,7 @@
 
 import React from 'react';
 import { beforeEach, describe, expect, jest, test } from '@jest/globals';
-import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 
 import { EMPTY_BILLING_SNAPSHOT } from '@shared/api/billing';
 import { patchSubscriptionAutoRenew } from '@shared/api/subscription';
@@ -153,11 +153,9 @@ describe('MyArchiveContent billing auto-renew modals', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /Resume support|Возобновить поддержку/i }));
 
-    const confirmButton = document.querySelector(
-      '.billing-modal__primary-button'
-    ) as HTMLButtonElement | null;
-    expect(confirmButton).toBeTruthy();
-    fireEvent.click(confirmButton!);
+    fireEvent.click(
+      screen.getByRole('button', { name: /^Resume auto-renew$|^Возобновить автопродление$/i })
+    );
 
     await waitFor(() => {
       expect(patchAutoRenewMock).toHaveBeenCalledWith(true);
@@ -227,11 +225,13 @@ describe('MyArchiveContent billing auto-renew modals', () => {
       screen.getByRole('button', { name: /Disable auto-renew|Отключить автопродление/i })
     );
 
-    const confirmButton = document.querySelector(
-      '.billing-modal__primary-button'
-    ) as HTMLButtonElement | null;
-    expect(confirmButton).toBeTruthy();
-    fireEvent.click(confirmButton!);
+    const footer = document.querySelector('.dashboard-modal-footer');
+    expect(footer).toBeTruthy();
+    fireEvent.click(
+      within(footer as HTMLElement).getByRole('button', {
+        name: /Disable auto-renew|Отключить автопродление/i,
+      })
+    );
 
     await waitFor(() => {
       expect(

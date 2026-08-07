@@ -26,8 +26,14 @@ export function shouldEnableRenewalBillingSync(params: {
   active: boolean;
   autoRenewEnabled: boolean;
   nextChargeAt: string | null | undefined;
+  /** Poll when a cancelled subscription period ends (nextChargeAt is cleared). */
+  cancelledPeriodEndAt?: string | null | undefined;
 }): boolean {
-  return params.active && params.autoRenewEnabled && Boolean(params.nextChargeAt);
+  if (params.active && params.autoRenewEnabled && Boolean(params.nextChargeAt)) {
+    return true;
+  }
+
+  return params.active && Boolean(params.cancelledPeriodEndAt);
 }
 
 function parseChargeTargetMs(nextChargeAt: string | null | undefined): number | null {

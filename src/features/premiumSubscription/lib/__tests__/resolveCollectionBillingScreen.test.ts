@@ -180,6 +180,20 @@ describe('resolveCollectionBillingScreen', () => {
     ).toBe('EXPIRED');
   });
 
+  test('EXPIRED when cancel_at_period_end period ended on client clock', () => {
+    const expiresAt = new Date('2026-08-07T12:00:00.000Z');
+    expect(
+      resolveCollectionBillingScreen(
+        snap({
+          status: 'cancel_at_period_end',
+          hasPremiumAccess: true,
+          expiresAt: expiresAt.toISOString(),
+        }),
+        new Date('2026-08-07T12:01:00.000Z')
+      )
+    ).toBe('EXPIRED');
+  });
+
   test('EXPIRED for expired status in grace window — not grace', () => {
     expect(resolveCollectionBillingScreen(graceEligible({ status: 'expired' }), IN_GRACE_NOW)).toBe(
       'EXPIRED'

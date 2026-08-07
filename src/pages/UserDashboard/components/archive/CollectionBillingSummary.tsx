@@ -3,7 +3,11 @@ import { Calendar } from 'lucide-react';
 import { type CSSProperties, useMemo } from 'react';
 
 import type { BillingSnapshot } from '@shared/api/billing';
-import { useRenewalCountdown } from '@shared/lib/subscription/useRenewalCountdown';
+import { formatRenewalAccessRemainingLabel } from '@shared/lib/subscription/formatRenewalAccessRemainingLabel';
+import {
+  useRenewalCountdown,
+  useRenewalCountdownClock,
+} from '@shared/lib/subscription/useRenewalCountdown';
 import type { BillingOverlay } from '@features/premiumSubscription/lib/billingOverlay';
 import type { BillingScreen } from '@features/premiumSubscription/lib/billingScreen';
 import { resolveDunningBannerSupplement } from '@features/premiumSubscription/lib/subscriptionBillingPolicy';
@@ -27,6 +31,8 @@ export type CollectionBillingCopy = {
   billingLastPlanSection: string;
   billingSupportSection: string;
   billingSupportActiveUntil: string;
+  billingSupportRemainingRelative: string;
+  billingSupportRemainingAbsolute: string;
   billingNextChargeOn: string;
   billingSupportExpiredOn: string;
   billingChangePlanButton: string;
@@ -132,9 +138,7 @@ function PlanStatusLine({
     >
       {variant === 'lapsed' ? (
         <Calendar className="collection-billing__status-calendar" aria-hidden size={16} />
-      ) : (
-        <span className="collection-billing__status-dot" aria-hidden />
-      )}
+      ) : null}
       {text}
     </p>
   );
@@ -157,7 +161,31 @@ export function CollectionBillingSummary({
   onCancelScheduledDowngrade,
   onDisableAutoRenew,
 }: CollectionBillingSummaryProps) {
+  const now = useRenewalCountdownClock();
   const renewalCountdown = useRenewalCountdown(billing.nextChargeAt, billing.expiresAt, lang);
+  const accessCountdown = useRenewalCountdown(null, billing.expiresAt, lang);
+
+  const cancelledSupportLabel = useMemo(
+    () =>
+      formatRenewalAccessRemainingLabel({
+        countdown: accessCountdown,
+        targetIso: billing.expiresAt,
+        lang,
+        now,
+        templates: {
+          relative: copy.billingSupportRemainingRelative,
+          absolute: copy.billingSupportRemainingAbsolute,
+        },
+      }),
+    [
+      accessCountdown,
+      billing.expiresAt,
+      copy.billingSupportRemainingAbsolute,
+      copy.billingSupportRemainingRelative,
+      lang,
+      now,
+    ]
+  );
 
   const dunningSupplementLines = useMemo(
     () =>
@@ -190,9 +218,7 @@ export function CollectionBillingSummary({
         ? nextChargeLabel
           ? copy.billingNextChargeOn.replace('{date}', nextChargeLabel)
           : copy.billingNextChargeOn.replace('{date}', '—')
-        : expiresLabel
-          ? copy.billingSupportActiveUntil.replace('{date}', expiresLabel)
-          : copy.billingSupportActiveUntil.replace('{date}', '—');
+        : cancelledSupportLabel.label;
 
   const usageCountLabel = copy.billingCollectionUsageCount
     .replace('{used}', String(slotsUsed))
@@ -257,7 +283,13 @@ export function CollectionBillingSummary({
               <PlanStatusLine
                 variant={statusVariant}
                 text={statusText}
-                title={screen === 'ACTIVE' ? renewalCountdown.title : undefined}
+                title={
+                  screen === 'ACTIVE'
+                    ? renewalCountdown.title
+                    : screen === 'CANCELLED'
+                      ? cancelledSupportLabel.title
+                      : undefined
+                }
               />
               {screen === 'ACTIVE' ? (
                 <div className="collection-billing__plan-action">

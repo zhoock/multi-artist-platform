@@ -132,7 +132,7 @@ app.post('/jobs/regenerate', async (req, res) => {
 });
 
 const port = Number(process.env.PORT || 8090);
-app.listen(port, async () => {
+const server = app.listen(port, async () => {
   const tools = await getFfmpegToolsStatus();
   const version = tools.ffmpeg ? await getFfmpegVersionLabel() : null;
   console.log(`audio-asset-worker listening on ${port}`);
@@ -142,4 +142,14 @@ app.listen(port, async () => {
     console.error(`⚠️  ${ffmpegToolsErrorMessage(tools)}`);
     console.error('   Jobs will return 503 until ffmpeg and ffprobe are on PATH.');
   }
+});
+
+server.on('error', (err: NodeJS.ErrnoException) => {
+  if (err.code === 'EADDRINUSE') {
+    console.error(`\n❌ Port ${port} is already in use.`);
+    console.error('   Run from repo root: npm run dev:free-ports\n');
+    process.exit(1);
+  }
+
+  throw err;
 });

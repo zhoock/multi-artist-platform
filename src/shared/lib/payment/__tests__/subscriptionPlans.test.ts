@@ -13,6 +13,7 @@ import {
   getPlanCardBadgeLabel,
   resolvePlanSlugFromSlotsLimit,
   resolvePlanChangeAction,
+  resolveRecommendedPlanSlug,
   shouldConfirmSubscriptionPlanChange,
 } from '../subscriptionPlans';
 
@@ -141,6 +142,18 @@ describe('shouldConfirmSubscriptionPlanChange', () => {
   test('skips confirmation for renew and first purchase', () => {
     expect(shouldConfirmSubscriptionPlanChange('explorer', 'explorer')).toBe(false);
     expect(shouldConfirmSubscriptionPlanChange(null, 'collector')).toBe(false);
+  });
+});
+
+describe('resolveRecommendedPlanSlug', () => {
+  test('returns the next tier after the current plan', () => {
+    expect(resolveRecommendedPlanSlug('explorer')).toBe('collector');
+    expect(resolveRecommendedPlanSlug('collector')).toBe('archivist');
+  });
+
+  test('returns null for the top tier or missing plan', () => {
+    expect(resolveRecommendedPlanSlug('archivist')).toBeNull();
+    expect(resolveRecommendedPlanSlug(null)).toBeNull();
   });
 });
 

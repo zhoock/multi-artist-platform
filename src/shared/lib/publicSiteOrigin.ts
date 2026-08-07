@@ -12,6 +12,12 @@ export function normalizeOrigin(url: string): string {
   return url.replace(/\/+$/, '');
 }
 
+function readProcessEnv(name: string): string | undefined {
+  if (typeof process === 'undefined') return undefined;
+  const value = process.env[name];
+  return typeof value === 'string' ? value.trim() : undefined;
+}
+
 export function isLocalBackendOrigin(url: string): boolean {
   try {
     const parsed = new URL(url);
@@ -31,13 +37,11 @@ export function isLocalBackendOrigin(url: string): boolean {
  */
 export function resolvePublicSiteOriginFromEnv(): string {
   const candidates = [
-    process.env.PUBLIC_APP_URL,
-    process.env.NETLIFY_SITE_URL,
-    process.env.URL,
-    process.env.DEPLOY_PRIME_URL,
-  ]
-    .map((value) => value?.trim())
-    .filter((value): value is string => Boolean(value));
+    readProcessEnv('PUBLIC_APP_URL'),
+    readProcessEnv('NETLIFY_SITE_URL'),
+    readProcessEnv('URL'),
+    readProcessEnv('DEPLOY_PRIME_URL'),
+  ].filter((value): value is string => Boolean(value));
 
   for (const raw of candidates) {
     const origin = normalizeOrigin(raw);
@@ -59,6 +63,10 @@ export function getPublicSiteOrigin(): string {
     if (!isLocalBackendOrigin(origin)) {
       return origin;
     }
+
+    // Netlify Dev serves the UI on :8888 — use canonical local frontend origin in browser
+    // (process.env is not available client-side without webpack DefinePlugin shims).
+    return LOCAL_DEV_FRONTEND_ORIGIN;
   }
 
   return resolvePublicSiteOriginFromEnv();

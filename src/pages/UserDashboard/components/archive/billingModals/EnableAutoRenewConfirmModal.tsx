@@ -70,7 +70,6 @@ export function EnableAutoRenewConfirmModal({
         t?.billingEnableAutoRenewCancelNote ??
         'Вы можете отменить автопродление в любой момент. Доступ сохранится до конца оплаченного периода.',
       confirm: t?.billingEnableAutoRenewConfirm ?? 'Возобновить автопродление',
-      footerNote: t?.billingModalImmediateEffect ?? 'Изменения вступят в силу немедленно',
       cancel: ui?.buttons?.cancel ?? (lang === 'en' ? 'Cancel' : 'Отмена'),
       close: ui?.buttons?.articleLockedDialogClose ?? (lang === 'en' ? 'Close' : 'Закрыть'),
     }),
@@ -95,7 +94,6 @@ export function EnableAutoRenewConfirmModal({
       closeLabel={copy.close}
       loading={loading}
       onClose={onCancel}
-      footerNote={copy.footerNote}
       cancelLabel={copy.cancel}
       confirmLabel={copy.confirm}
       onConfirm={onConfirm}
