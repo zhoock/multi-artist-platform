@@ -16,6 +16,7 @@
 // Shell is transparent (same as Auth `publicBackdrop` / `.local-modal`).
 // Dim the page via ::backdrop — not an opaque dialog fill.
 dialog.popup:has(.user-dashboard) {
+  padding: 0;
   color: var(--dashboard-text-primary);
   background: transparent;
 

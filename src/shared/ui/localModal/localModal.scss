@@ -1,6 +1,8 @@
 @use '../../../scss/abstracts/modal-backdrop' as *;
 
-.local-modal {
+// Beat `dialog:not(...)` in popup/style.scss (0,2,1) — otherwise 18px padding
+// leaves transparent gutters that show body `#000` under public backdrops.
+dialog.popup.local-modal {
   margin: auto;
   padding: 0;
   background: transparent;

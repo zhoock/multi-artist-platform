@@ -111,6 +111,9 @@ body {
       flex-direction: column;
       min-block-size: 0;
 
+      /* Пустая зона между hero/секциями и footer — не body #000 (видно под модальным дашбордом). */
+      background: var(--main-background-color, #20201d);
+
       > .hero {
         flex-shrink: 0;
 
@@ -135,8 +138,8 @@ body {
         flex-shrink: 0;
       }
 
-      /* Фон страницы заполняет оставшееся место в main, футер — внизу viewport */
-      > :last-child.main-background {
+      /* Растягиваем последнюю контентную секцию; :last-child ломается из‑за <dialog> после Routes. */
+      > section.main-background:last-of-type {
         flex: 1 0 auto;
       }
     }
