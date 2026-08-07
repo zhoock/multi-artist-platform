@@ -31,6 +31,8 @@ export interface BillingSnapshot {
   expiresAt: string | null;
   autoRenewEnabled: boolean;
   hasPremiumAccess: boolean;
+  /** Derived from payment_method_id — independent of masked card title for UI. */
+  hasSavedPaymentMethod: boolean;
   paymentMethodTitle: string | null;
   nextChargeAt: string | null;
   scheduledPlan: SubscriptionPlanSlug | null;
@@ -52,6 +54,12 @@ function toIso(date: Date | null | undefined): string | null {
   const value = date instanceof Date ? date : new Date(date);
   if (Number.isNaN(value.getTime())) return null;
   return value.toISOString();
+}
+
+export function deriveHasSavedPaymentMethod(
+  subscription: Subscription | null | undefined
+): boolean {
+  return Boolean(subscription?.paymentMethodId?.trim());
 }
 
 /** Returns masked payment method title when stored; preserves existing title when a new mask is unavailable. */
@@ -84,6 +92,7 @@ export function buildBillingSnapshot(
       expiresAt: null,
       autoRenewEnabled: false,
       hasPremiumAccess: false,
+      hasSavedPaymentMethod: false,
       paymentMethodTitle: null,
       nextChargeAt: null,
       scheduledPlan: null,
@@ -101,6 +110,7 @@ export function buildBillingSnapshot(
     expiresAt: toIso(subscription.expiresAt),
     autoRenewEnabled: deriveAutoRenewEnabled(subscription.status),
     hasPremiumAccess: hasPremiumAccess(subscription, now),
+    hasSavedPaymentMethod: deriveHasSavedPaymentMethod(subscription),
     paymentMethodTitle: derivePaymentMethodTitle(subscription),
     nextChargeAt: toIso(subscription.nextChargeAt),
     scheduledPlan: normalizePlanSlug(subscription.scheduledPlan),

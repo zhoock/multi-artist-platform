@@ -14,6 +14,9 @@ import {
 
 config({ path: resolve(process.cwd(), '.env') });
 
+/** npm run dev — always on; wins over .env.example default false */
+process.env.SUBSCRIPTION_AUTO_RENEW_ENABLED = 'true';
+
 const BANNER = '🔄 LOCAL RENEWAL SCHEDULER';
 
 const NETLIFY_DEV_WAIT_MS = 2_000;
@@ -28,8 +31,9 @@ function sleep(ms: number): Promise<void> {
 
 function isTransientFetchFailure(error: unknown): boolean {
   if (!error || typeof error !== 'object') return false;
-  const { name, code } = error as { name?: string; code?: string };
-  if (name === 'AbortError' || name === 'TimeoutError') return true;
+  const err = error as { name?: string; code?: string; cause?: { code?: string } };
+  if (err.name === 'AbortError' || err.name === 'TimeoutError') return true;
+  const code = err.code ?? err.cause?.code;
   return (
     code === 'ECONNREFUSED' ||
     code === 'ECONNRESET' ||

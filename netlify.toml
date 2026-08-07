@@ -134,7 +134,7 @@
 # Auth
 [[redirects]]
   from = "/api/auth/*"
-  to = "/.netlify/functions/auth"
+  to = "/.netlify/functions/auth/:splat"
   status = 200
   force = true
 
@@ -216,7 +216,13 @@
 
 # Purchases
 [[redirects]]
-  from = "/api/create-subscription-payment*"
+  from = "/api/create-subscription-payment"
+  to = "/.netlify/functions/create-subscription-payment"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/create-subscription-payment/*"
   to = "/.netlify/functions/create-subscription-payment"
   status = 200
   force = true

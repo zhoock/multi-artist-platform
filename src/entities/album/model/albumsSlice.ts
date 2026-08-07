@@ -214,14 +214,21 @@ export const fetchDashboardAlbums = createAsyncThunk<
           headers.Authorization = `Bearer ${token}`;
         }
 
-        const response = await fetchWithAuthSession(
-          buildApiUrl('/api/albums', {}, { includeArtist: false }),
-          {
+        const fetchDashboardAlbumsOnce = () =>
+          fetchWithAuthSession(buildApiUrl('/api/albums', {}, { includeArtist: false }), {
             signal: controller.signal,
             cache: 'no-store',
             headers,
-          }
-        );
+          });
+
+        let response = await fetchDashboardAlbumsOnce();
+        if (
+          !response.ok &&
+          (response.status === 500 || response.status === 502 || response.status === 503)
+        ) {
+          await new Promise((resolve) => setTimeout(resolve, 2000));
+          response = await fetchDashboardAlbumsOnce();
+        }
 
         clearTimeout(timeoutId);
         if (response.ok) {

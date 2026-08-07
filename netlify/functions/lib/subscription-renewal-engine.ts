@@ -353,7 +353,8 @@ export async function attemptRenewalChargeForSubscription(
 
       const providerPayment = mapDevSubscriptionPaymentToProviderPayment(
         paymentRow,
-        paymentRow.provider_payment_id
+        paymentRow.provider_payment_id,
+        { devMode: true }
       );
       if (!providerPayment) {
         logPostProviderFulfillmentFailure({

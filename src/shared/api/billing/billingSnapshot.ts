@@ -18,6 +18,8 @@ export interface BillingSnapshot {
   expiresAt: string | null;
   autoRenewEnabled: boolean;
   hasPremiumAccess: boolean;
+  /** True when subscription.payment_method_id is stored (renewal can charge). */
+  hasSavedPaymentMethod: boolean;
   paymentMethodTitle: string | null;
   nextChargeAt: string | null;
   scheduledPlan: SubscriptionPlanSlug | null;
@@ -33,6 +35,7 @@ export const EMPTY_BILLING_SNAPSHOT: BillingSnapshot = {
   expiresAt: null,
   autoRenewEnabled: false,
   hasPremiumAccess: false,
+  hasSavedPaymentMethod: false,
   paymentMethodTitle: null,
   nextChargeAt: null,
   scheduledPlan: null,

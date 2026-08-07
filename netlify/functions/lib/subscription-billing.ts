@@ -7,7 +7,6 @@ import {
   DEFAULT_SUBSCRIPTION_PLAN,
   formatPlanAmountValue,
   getPlanAmountRub,
-  getPlanCatalogEntry,
   getPlanPriceCurrencyCode,
   getPlanSlotsLimit,
   isSubscriptionPlanCurrency,
@@ -46,8 +45,8 @@ export {
 
 export const PREMIUM_SUBSCRIPTION_PRODUCT_TYPE = 'premium_subscription';
 
-/** Dev/test support period when {@link isPremiumSubscriptionDevTestPricing} is true. */
-export const DEV_SUPPORT_PERIOD_HOURS = 1;
+/** Temporary: 5-minute support period for all environments (checkout, renewal, upgrade, resubscribe). */
+export const SUPPORT_PERIOD_MS = 5 * 60 * 1000;
 
 const PLAN_DESCRIPTIONS: Record<SubscriptionPlanSlug, string> = {
   explorer: 'Explorer Support',
@@ -66,14 +65,6 @@ export const PLAN_CATALOG: Record<SubscriptionPlanSlug, SubscriptionPlanDefiniti
   archivist: { ...SUBSCRIPTION_PLAN_CATALOG.archivist, description: PLAN_DESCRIPTIONS.archivist },
 };
 
-export function isPremiumSubscriptionDevTestPricing(): boolean {
-  return (
-    process.env.NETLIFY_DEV === 'true' ||
-    process.env.NODE_ENV !== 'production' ||
-    process.env.YOOKASSA_TEST_MODE === 'true'
-  );
-}
-
 export function getPlanDefinition(planSlug: SubscriptionPlanSlug): SubscriptionPlanDefinition {
   return PLAN_CATALOG[planSlug];
 }
@@ -86,16 +77,11 @@ export function getRebindAmountRub(): number {
 export const REBIND_PAYMENT_DESCRIPTION = 'Payment method verification';
 
 export function computeSupportExpiresAt(
-  planSlug: SubscriptionPlanSlug,
+  _planSlug: SubscriptionPlanSlug,
   from: Date = new Date()
 ): Date {
-  const plan = getPlanCatalogEntry(planSlug);
   const expiresAt = new Date(from);
-  if (isPremiumSubscriptionDevTestPricing()) {
-    expiresAt.setTime(expiresAt.getTime() + DEV_SUPPORT_PERIOD_HOURS * 60 * 60 * 1000);
-  } else {
-    expiresAt.setDate(expiresAt.getDate() + plan.durationDays);
-  }
+  expiresAt.setTime(expiresAt.getTime() + SUPPORT_PERIOD_MS);
   return expiresAt;
 }
 

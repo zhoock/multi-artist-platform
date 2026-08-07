@@ -2552,6 +2552,10 @@ function UserDashboard() {
   const albumsInitialLoading =
     isArtist && (albumsStatus === 'loading' || albumsStatus === 'idle') && albumsData.length === 0;
   const albumsLoadFailed = albumsStatus === 'failed';
+  /** Albums fetch failure must not block settings, collection, posts, etc. */
+  const albumsDependentTabs: DashboardTab[] = ['albums', 'mixer'];
+  const showAlbumsShellError =
+    albumsLoadFailed && isArtist && albumsDependentTabs.includes(activeTab);
 
   const dashboardHeading = dashboardHeadingForTab(activeTab, ui);
 
@@ -2606,7 +2610,7 @@ function UserDashboard() {
                   activeTab === 'albums' &&
                   emailVerified ? (
                     <DashboardLoadingState className="user-dashboard__tab-loading" />
-                  ) : albumsLoadFailed ? (
+                  ) : showAlbumsShellError ? (
                     <div
                       className="user-dashboard__error user-dashboard__error--tab-shell"
                       role="alert"

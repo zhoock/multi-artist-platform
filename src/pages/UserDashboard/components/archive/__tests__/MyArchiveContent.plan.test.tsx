@@ -84,6 +84,8 @@ function billingActive(overrides: Partial<BillingSnapshot> = {}): BillingSnapsho
     nextChargeAt: '2026-08-03T12:00:00.000Z',
     autoRenewEnabled: true,
     hasPremiumAccess: true,
+    hasSavedPaymentMethod: true,
+    paymentMethodTitle: 'Visa •••• 4242',
     ...overrides,
   };
 }

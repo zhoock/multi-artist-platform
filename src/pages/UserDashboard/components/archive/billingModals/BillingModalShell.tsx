@@ -198,6 +198,16 @@ export function BillingModalLinkButton({
   );
 }
 
-export function BillingModalDateHighlight({ children }: { children: ReactNode }) {
-  return <span className="billing-modal__info-highlight">{children}</span>;
+export function BillingModalDateHighlight({
+  children,
+  title,
+}: {
+  children: ReactNode;
+  title?: string;
+}) {
+  return (
+    <span className="billing-modal__info-highlight" title={title}>
+      {children}
+    </span>
+  );
 }

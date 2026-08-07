@@ -32,7 +32,7 @@
     "rename-audio-folder": "tsx scripts/rename-audio-folder.ts",
     "recalculate-durations": "tsx scripts/recalculate-track-durations.ts",
     "predev": "tsx scripts/remove-dist-redirects-for-dev.ts",
-    "dev:netlify": "netlify dev",
+    "dev:netlify": "tsx scripts/run-netlify-dev-local.ts",
     "dev:scheduler": "cross-env NETLIFY_DEV=true tsx scripts/dev-subscription-scheduler-tick.ts",
     "dev": "tsx scripts/check-audio-asset-worker.ts && npm run predev && concurrently -n netlify,scheduler -c blue,magenta \"npm run dev:netlify\" \"npm run dev:scheduler\"",
     "dev:worker": "npm run dev --prefix services/audio-asset-worker",

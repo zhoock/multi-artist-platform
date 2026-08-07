@@ -7,6 +7,7 @@ import type { Subscription } from '../subscriptions';
 import {
   buildBillingSnapshot,
   billingStatusFromSubscription,
+  deriveHasSavedPaymentMethod,
   derivePaymentMethodTitle,
 } from '../subscription-billing-snapshot';
 
@@ -47,6 +48,7 @@ describe('buildBillingSnapshot', () => {
       expiresAt: null,
       autoRenewEnabled: false,
       hasPremiumAccess: false,
+      hasSavedPaymentMethod: false,
       paymentMethodTitle: null,
       nextChargeAt: null,
       scheduledPlan: null,
@@ -111,7 +113,23 @@ describe('buildBillingSnapshot', () => {
     );
 
     expect(snapshot.scheduledPlan).toBe('explorer');
+    expect(snapshot.hasSavedPaymentMethod).toBe(true);
     expect(snapshot.paymentMethodTitle).toBeNull();
+  });
+
+  test('hasSavedPaymentMethod true when paymentMethodId set without title', () => {
+    const snapshot = buildBillingSnapshot(
+      sub({ paymentMethodId: 'pm-1', paymentMethodTitle: null }),
+      { now: NOW }
+    );
+
+    expect(snapshot.hasSavedPaymentMethod).toBe(true);
+    expect(snapshot.paymentMethodTitle).toBeNull();
+  });
+
+  test('hasSavedPaymentMethod false when no paymentMethodId', () => {
+    const snapshot = buildBillingSnapshot(sub(), { now: NOW });
+    expect(snapshot.hasSavedPaymentMethod).toBe(false);
   });
 
   test('includes masked paymentMethodTitle when stored', () => {
@@ -124,6 +142,16 @@ describe('buildBillingSnapshot', () => {
     );
 
     expect(snapshot.paymentMethodTitle).toBe('Visa •••• 4242');
+  });
+});
+
+describe('deriveHasSavedPaymentMethod', () => {
+  test('true when paymentMethodId is stored', () => {
+    expect(deriveHasSavedPaymentMethod(sub({ paymentMethodId: 'pm-1' }))).toBe(true);
+  });
+
+  test('false when paymentMethodId is missing', () => {
+    expect(deriveHasSavedPaymentMethod(sub())).toBe(false);
   });
 });
 

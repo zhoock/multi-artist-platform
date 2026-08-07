@@ -47,6 +47,14 @@ import {
 } from './billingModals';
 import { CollectionBillingSummary, type CollectionBillingCopy } from './CollectionBillingSummary';
 import { CollectionEmptyState } from './CollectionEmptyState';
+import {
+  useRenewalCountdown,
+  useRenewalCountdownClock,
+} from '@shared/lib/subscription/useRenewalCountdown';
+import {
+  shouldEnableRenewalBillingSync,
+  useRenewalBillingSync,
+} from '@shared/lib/subscription/useRenewalBillingRefresh';
 import { formatCollectionRenewalDate } from './lib/collectionSubscriptionStatus';
 import { toast } from '@shared/lib/toast';
 import { ARCHIVE_ARTIST_REMOVED_TOAST_DURATION_MS } from '@shared/lib/toast/toastDurations';
@@ -151,6 +159,16 @@ export function MyArchiveContent({
     }
   }, [lang]);
 
+  const refreshArchiveBilling = useCallback(async () => {
+    if (!active) return;
+    try {
+      const next = normalizeCollectionArchive(await getMyArchive());
+      setData(next);
+    } catch (err) {
+      console.error('[MyArchiveContent] billing refresh failed', err);
+    }
+  }, [active]);
+
   useEffect(() => {
     if (!active) return;
     void loadArchive();
@@ -185,7 +203,24 @@ export function MyArchiveContent({
   const inactiveCount = data?.inactiveCount ?? data?.artists.filter((a) => !a.isActive).length ?? 0;
   const billing = data?.billing ?? EMPTY_BILLING_SNAPSHOT;
   const hasPremiumAccess = billing.hasPremiumAccess;
-  const billingScreen = useMemo(() => resolveCollectionBillingScreen(billing), [billing]);
+  const renewalCountdown = useRenewalCountdown(billing.nextChargeAt, billing.expiresAt, lang);
+  const billingChargeLabel = renewalCountdown.label;
+  const billingNow = useRenewalCountdownClock();
+  const billingScreen = useMemo(
+    () => resolveCollectionBillingScreen(billing, billingNow),
+    [billing, billingNow]
+  );
+  const shouldSyncRenewalBilling = shouldEnableRenewalBillingSync({
+    active,
+    autoRenewEnabled: billing.autoRenewEnabled,
+    nextChargeAt: billing.nextChargeAt,
+  });
+
+  useRenewalBillingSync({
+    enabled: shouldSyncRenewalBilling,
+    nextChargeAt: billing.nextChargeAt,
+    onRefresh: refreshArchiveBilling,
+  });
   const billingOverlays = useMemo(
     () =>
       resolveCollectionBillingOverlays({
@@ -671,9 +706,6 @@ export function MyArchiveContent({
   const billingExpiresLabel = billing.expiresAt
     ? formatCollectionRenewalDate(billing.expiresAt, lang)
     : null;
-  const billingChargeLabel = billing.nextChargeAt
-    ? formatCollectionRenewalDate(billing.nextChargeAt, lang)
-    : billingExpiresLabel;
   const autoRenewModalLoading = autoRenewPatchLoading || renewLoading;
 
   return (
@@ -690,6 +722,7 @@ export function MyArchiveContent({
         isOpen={autoRenewModal === 'enable'}
         planSlug={planSlug}
         chargeDateLabel={billingChargeLabel}
+        nextChargeAt={billing.nextChargeAt}
         paymentMethodTitle={billing.paymentMethodTitle}
         loading={autoRenewModalLoading}
         onCancel={() => setAutoRenewModal(null)}

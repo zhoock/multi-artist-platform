@@ -190,6 +190,7 @@ describe('Group K — BillingScreen + BillingSnapshot @tier2', () => {
       await expectBillingSnapshot(snapshot, {
         status: 'active',
         hasPremiumAccess: true,
+        hasSavedPaymentMethod: true,
         plan: 'collector',
       });
 

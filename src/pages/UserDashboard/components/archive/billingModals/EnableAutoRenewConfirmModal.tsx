@@ -9,6 +9,7 @@ import {
   getPlanPriceDisplayAmount,
   type SubscriptionPlanSlug,
 } from '@shared/lib/payment/subscriptionPlans';
+import { formatRenewalChargeDateTime } from '@shared/lib/subscription/renewalCountdown';
 
 import {
   BillingModalDateHighlight,
@@ -24,6 +25,8 @@ export type EnableAutoRenewConfirmModalProps = {
   isOpen: boolean;
   planSlug: SubscriptionPlanSlug | null;
   chargeDateLabel: string | null;
+  /** Used for absolute-date tooltip on the charge line. */
+  nextChargeAt?: string | null;
   paymentMethodTitle: string | null;
   loading?: boolean;
   onCancel: () => void;
@@ -35,6 +38,7 @@ export function EnableAutoRenewConfirmModal({
   isOpen,
   planSlug,
   chargeDateLabel,
+  nextChargeAt,
   paymentMethodTitle,
   loading = false,
   onCancel,
@@ -76,6 +80,7 @@ export function EnableAutoRenewConfirmModal({
   const priceAmount = planSlug ? getPlanPriceDisplayAmount(planSlug) : '—';
   const priceCurrency = getPlanPriceCurrencyDisplay();
   const chargeDate = chargeDateLabel ?? '—';
+  const chargeDateTooltip = nextChargeAt ? formatRenewalChargeDateTime(nextChargeAt, lang) : null;
   const hasPaymentMethod = Boolean(paymentMethodTitle?.trim());
 
   const priceLineParts = copy.nextChargePriceLine.split('{price}');
@@ -107,7 +112,9 @@ export function EnableAutoRenewConfirmModal({
         </BillingModalInfoText>
         <BillingModalInfoText>
           {copy.nextChargeDateLine.split('{date}')[0]}
-          <BillingModalDateHighlight>{chargeDate}</BillingModalDateHighlight>
+          <BillingModalDateHighlight title={chargeDateTooltip ?? undefined}>
+            {chargeDate}
+          </BillingModalDateHighlight>
           {copy.nextChargeDateLine.split('{date}')[1] ?? ''}
         </BillingModalInfoText>
       </BillingModalInfoCard>

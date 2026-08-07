@@ -3,6 +3,7 @@ import { Calendar } from 'lucide-react';
 import { type CSSProperties, useMemo } from 'react';
 
 import type { BillingSnapshot } from '@shared/api/billing';
+import { useRenewalCountdown } from '@shared/lib/subscription/useRenewalCountdown';
 import type { BillingOverlay } from '@features/premiumSubscription/lib/billingOverlay';
 import type { BillingScreen } from '@features/premiumSubscription/lib/billingScreen';
 import { resolveDunningBannerSupplement } from '@features/premiumSubscription/lib/subscriptionBillingPolicy';
@@ -96,27 +97,38 @@ function planStatusVariant(screen: BillingScreen): PlanStatusVariant {
 function formatDunningSupplementLines(
   billing: BillingSnapshot,
   copy: CollectionBillingCopy,
-  lang: 'en' | 'ru'
+  lang: 'en' | 'ru',
+  nextRetryLabel: string | null
 ): string[] {
   return resolveDunningBannerSupplement(billing).flatMap((supplement) => {
+    if (supplement.kind === 'nextRetry') {
+      if (!nextRetryLabel) return [];
+      return [copy.billingPaymentFailedNextRetry.replace('{date}', nextRetryLabel)];
+    }
+
     const dateLabel = formatCollectionRenewalDate(supplement.at, lang);
     if (!dateLabel) return [];
-
-    if (supplement.kind === 'nextRetry') {
-      return [copy.billingPaymentFailedNextRetry.replace('{date}', dateLabel)];
-    }
 
     return [copy.billingPaymentFailedGraceEnds.replace('{date}', dateLabel)];
   });
 }
 
-function PlanStatusLine({ variant, text }: { variant: PlanStatusVariant; text: string }) {
+function PlanStatusLine({
+  variant,
+  text,
+  title,
+}: {
+  variant: PlanStatusVariant;
+  text: string;
+  title?: string | null;
+}) {
   return (
     <p
       className={clsx(
         'collection-billing__status-line',
         `collection-billing__status-line--${variant}`
       )}
+      title={title ?? undefined}
     >
       {variant === 'lapsed' ? (
         <Calendar className="collection-billing__status-calendar" aria-hidden size={16} />
@@ -145,9 +157,14 @@ export function CollectionBillingSummary({
   onCancelScheduledDowngrade,
   onDisableAutoRenew,
 }: CollectionBillingSummaryProps) {
+  const renewalCountdown = useRenewalCountdown(billing.nextChargeAt, billing.expiresAt, lang);
+
   const dunningSupplementLines = useMemo(
-    () => (screen === 'PAYMENT_FAILED' ? formatDunningSupplementLines(billing, copy, lang) : []),
-    [billing, copy, lang, screen]
+    () =>
+      screen === 'PAYMENT_FAILED'
+        ? formatDunningSupplementLines(billing, copy, lang, renewalCountdown.label)
+        : [],
+    [billing, copy, lang, renewalCountdown.label, screen]
   );
 
   if (screen === 'NONE') return null;
@@ -156,9 +173,7 @@ export function CollectionBillingSummary({
   const expiresLabel = billing.expiresAt
     ? formatCollectionRenewalDate(billing.expiresAt, lang)
     : null;
-  const nextChargeLabel = billing.nextChargeAt
-    ? formatCollectionRenewalDate(billing.nextChargeAt, lang)
-    : null;
+  const nextChargeLabel = renewalCountdown.label;
 
   const recommendedPlanSlug = resolveRecommendedPlanSlug(planSlug);
   const slotsLimit = billing.slotsLimit;
@@ -239,7 +254,11 @@ export function CollectionBillingSummary({
           {planSlug ? (
             <>
               <PlanHeadline planSlug={planSlug} lang={lang} />
-              <PlanStatusLine variant={statusVariant} text={statusText} />
+              <PlanStatusLine
+                variant={statusVariant}
+                text={statusText}
+                title={screen === 'ACTIVE' ? renewalCountdown.title : undefined}
+              />
               {screen === 'ACTIVE' ? (
                 <div className="collection-billing__plan-action">
                   <DashboardButton

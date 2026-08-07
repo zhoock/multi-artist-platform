@@ -94,6 +94,8 @@ function activeArchivePayload() {
       ...cancelledArchivePayload().billing,
       status: 'active' as const,
       autoRenewEnabled: true,
+      hasSavedPaymentMethod: true,
+      paymentMethodTitle: 'Visa •••• 4242',
     },
   };
 }

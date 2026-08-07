@@ -61,6 +61,7 @@ describe('dumpSubscriptionLifecycleDiagnostics (PR-10.3)', () => {
 
     expect(dump.userId).toBe(USER_ID);
     expect(dump.billingSnapshot?.status).toBe('active');
+    expect(dump.billingSnapshot?.hasSavedPaymentMethod).toBe(true);
     expect(dump.billingScreen).toBe('ACTIVE');
     expect(Array.isArray(dump.billingOverlays)).toBe(true);
     expect(dump.invariantViolations).toEqual([]);
