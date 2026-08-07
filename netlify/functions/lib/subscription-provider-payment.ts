@@ -115,14 +115,13 @@ export function mapDevSubscriptionPaymentToProviderPayment(
   if (!status) return null;
 
   const kind = row.kind?.trim() || SUBSCRIPTION_PAYMENT_KIND_INITIAL;
-  const devPaymentMethod =
-    options.devMode && kind === SUBSCRIPTION_PAYMENT_KIND_REBIND
-      ? {
-          id: devMockPaymentMethodId(providerPaymentId),
-          saved: true,
-          title: devMockPaymentMethodTitle(providerPaymentId),
-        }
-      : null;
+  const devPaymentMethod = options.devMode
+    ? {
+        id: devMockPaymentMethodId(providerPaymentId),
+        saved: true,
+        title: devMockPaymentMethodTitle(providerPaymentId),
+      }
+    : null;
 
   return {
     id: providerPaymentId,

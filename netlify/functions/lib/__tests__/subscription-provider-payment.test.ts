@@ -59,7 +59,7 @@ describe('mapYooKassaPaymentToProviderPayment', () => {
 });
 
 describe('mapDevSubscriptionPaymentToProviderPayment', () => {
-  test('maps dev checkout row', () => {
+  test('maps dev checkout row without payment method when devMode is off', () => {
     const dto = mapDevSubscriptionPaymentToProviderPayment(
       {
         id: 'internal-1',
@@ -78,6 +78,30 @@ describe('mapDevSubscriptionPaymentToProviderPayment', () => {
     expect(dto?.status).toBe('succeeded');
     expect(dto?.metadata.kind).toBe('initial');
     expect(dto?.paymentMethod).toBeNull();
+  });
+
+  test('maps dev initial and renewal rows with mock payment method in devMode', () => {
+    for (const kind of ['initial', 'renewal'] as const) {
+      const dto = mapDevSubscriptionPaymentToProviderPayment(
+        {
+          id: 'internal-1',
+          user_id: 'user-1',
+          provider: 'yookassa',
+          provider_payment_id: 'pay-dev',
+          status: 'succeeded',
+          amount: EXPLORER_AMOUNT,
+          currency: CURRENCY,
+          plan: 'explorer',
+          kind,
+        },
+        'pay-dev',
+        { devMode: true }
+      );
+
+      expect(dto?.metadata.kind).toBe(kind);
+      expect(dto?.paymentMethod?.id).toBe('dev-pm-pay-dev');
+      expect(dto?.paymentMethod?.saved).toBe(true);
+    }
   });
 
   test('maps dev rebind row with mock payment method in devMode', () => {

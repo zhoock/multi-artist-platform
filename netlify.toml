@@ -14,6 +14,7 @@
 [context.dev.environment]
   PUBLIC_APP_URL = "http://localhost:8080"
   DEV_PAYMENT_MODE = "true"
+  SUBSCRIPTION_AUTO_RENEW_ENABLED = "true"
 
 # ---------- Статические файлы ----------
 [[redirects]]

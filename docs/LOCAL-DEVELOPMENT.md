@@ -143,6 +143,10 @@ LOCAL_RENEWAL_SCHEDULER=false
 
 Sidecar ускоряет только **period-end renewal**. Retry-интервалы dunning (+24h / +72h / +168h) не сжимаются — для них используйте E2E-тесты или ручное смещение `next_charge_at` в БД.
 
+**Регрессионные скрипты**
+
+Проверка полной цепочки autorenew (backend + UI): [`docs/autorenew-verification.md`](./autorenew-verification.md) — `npm run verify:autorenew`, `seed:autorenew-ui`, `capture:autorenew-ui`.
+
 ## Обработка аудио
 
 После загрузки WAV Netlify ставит задачу во внешний воркер (FFmpeg).

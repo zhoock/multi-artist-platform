@@ -14,6 +14,7 @@ import {
 import {
   isRenewalSubscriptionPaymentKind,
   processRenewalSubscriptionProviderPayment,
+  type ProcessRenewalSubscriptionProviderPaymentOptions,
   type ProcessRenewalSubscriptionProviderPaymentResult,
 } from './subscription-renewal-fulfillment';
 import {
@@ -42,7 +43,8 @@ export type ProcessSubscriptionProviderPaymentResult =
 
 export type ProcessSubscriptionProviderPaymentOptions =
   ProcessInitialSubscriptionProviderPaymentOptions &
-    ProcessUpgradeSubscriptionProviderPaymentOptions & {
+    ProcessUpgradeSubscriptionProviderPaymentOptions &
+    ProcessRenewalSubscriptionProviderPaymentOptions & {
       observabilitySource?: SubscriptionObservabilitySource;
       subscriptionPaymentId?: string;
     };
@@ -58,7 +60,7 @@ async function dispatchSubscriptionProviderPayment(
   }
 
   if (isRenewalSubscriptionPaymentKind(kind)) {
-    return processRenewalSubscriptionProviderPayment(payment, userId);
+    return processRenewalSubscriptionProviderPayment(payment, userId, options);
   }
 
   if (isUpgradeSubscriptionPaymentKind(kind)) {

@@ -114,12 +114,12 @@ export async function fulfillInitialSubscriptionPayment(
     if (!subscription) {
       throw new Error('Subscription row missing after fulfilled payment');
     }
-    await maybePersistPaymentMethod(
+    const updatedSubscription = await maybePersistPaymentMethod(
       subscription,
       params.paymentMethodId,
       params.paymentMethodTitle
     );
-    return { subscription, fulfilled: false, alreadyFulfilled: true };
+    return { subscription: updatedSubscription, fulfilled: false, alreadyFulfilled: true };
   }
 
   const subscription = await fulfillSubscriptionPayment({
@@ -128,9 +128,13 @@ export async function fulfillInitialSubscriptionPayment(
     providerPaymentId: params.providerPaymentId,
   });
 
-  await maybePersistPaymentMethod(subscription, params.paymentMethodId, params.paymentMethodTitle);
+  const updatedSubscription = await maybePersistPaymentMethod(
+    subscription,
+    params.paymentMethodId,
+    params.paymentMethodTitle
+  );
 
-  return { subscription, fulfilled: true, alreadyFulfilled: false };
+  return { subscription: updatedSubscription, fulfilled: true, alreadyFulfilled: false };
 }
 
 async function maybePersistPaymentMethod(
@@ -140,14 +144,10 @@ async function maybePersistPaymentMethod(
 ): Promise<Subscription> {
   if (!isSubscriptionAutoRenewEnabled()) return subscription;
 
-  const pmId = paymentMethodId?.trim() || null;
+  const pmId = paymentMethodId?.trim() || subscription.paymentMethodId?.trim() || null;
   if (!pmId) return subscription;
 
-  if (subscription.paymentMethodId?.trim()) {
-    return subscription;
-  }
-
-  const title = paymentMethodTitle?.trim() || null;
+  const title = paymentMethodTitle?.trim() || subscription.paymentMethodTitle?.trim() || null;
 
   await persistInitialAutorenewFieldsIfMissing(
     subscription.id,

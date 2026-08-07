@@ -65,13 +65,15 @@ export async function claimSubscriptionForRenewalCharge(
 
   const claimed = await query<SubscriptionRow & { previous_next_charge_at: Date }>(
     `WITH candidate AS (
-       SELECT id, next_charge_at AS previous_next_charge_at
+       SELECT id, COALESCE(next_charge_at, expires_at) AS previous_next_charge_at
        FROM subscriptions
        WHERE id = $1::uuid
-         AND next_charge_at IS NOT NULL
-         AND next_charge_at <= $2
          AND status IN ('active', 'past_due')
          AND payment_method_id IS NOT NULL
+         AND (
+           (next_charge_at IS NOT NULL AND next_charge_at <= $2)
+           OR (next_charge_at IS NULL AND expires_at IS NOT NULL AND expires_at <= $2)
+         )
          AND NOT EXISTS (
            SELECT 1
            FROM subscription_payments sp
@@ -126,9 +128,11 @@ export async function listChargeReadySubscriptionIds(now: Date = new Date()): Pr
      FROM subscriptions
      WHERE status IN ('active', 'past_due')
        AND payment_method_id IS NOT NULL
-       AND next_charge_at IS NOT NULL
-       AND next_charge_at <= $1
-     ORDER BY next_charge_at ASC
+       AND (
+         (next_charge_at IS NOT NULL AND next_charge_at <= $1)
+         OR (next_charge_at IS NULL AND expires_at IS NOT NULL AND expires_at <= $1)
+       )
+     ORDER BY COALESCE(next_charge_at, expires_at) ASC
      LIMIT 100`,
     [now]
   );
@@ -215,12 +219,14 @@ async function createYooKassaRenewalPayment(params: {
 async function processRenewalProviderPaymentInline(
   userId: string,
   providerPayment: SubscriptionProviderPayment,
-  subscriptionPaymentId: string
+  subscriptionPaymentId: string,
+  now: Date
 ): Promise<void> {
   await processSubscriptionProviderPayment(providerPayment, userId, {
     devMode: true,
     observabilitySource: 'scheduler',
     subscriptionPaymentId,
+    now,
   });
 }
 
@@ -362,7 +368,8 @@ export async function attemptRenewalChargeForSubscription(
       await processRenewalProviderPaymentInline(
         subscription.userId,
         providerPayment,
-        subscriptionPaymentId
+        subscriptionPaymentId,
+        now
       );
       return 'attempted';
     }
@@ -398,7 +405,8 @@ export async function attemptRenewalChargeForSubscription(
       await processRenewalProviderPaymentInline(
         subscription.userId,
         providerPayment,
-        subscriptionPaymentId
+        subscriptionPaymentId,
+        now
       );
     }
 

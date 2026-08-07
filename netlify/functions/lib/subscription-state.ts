@@ -281,15 +281,18 @@ function parseNextChargeAtMs(nextChargeAt: Date | null | undefined): number | nu
   return Number.isNaN(ms) ? null : ms;
 }
 
-/** PM saved and next_charge_at reached — scheduler would attempt a charge. */
+/** PM saved and next_charge_at (or expires_at fallback) reached — scheduler would attempt a charge. */
 export function isChargeReady(
   snapshot: SubscriptionInvariantSnapshot,
   now: Date = new Date()
 ): boolean {
   if (!snapshot.paymentMethodId?.trim()) return false;
   const nextChargeAtMs = parseNextChargeAtMs(snapshot.nextChargeAt);
-  if (nextChargeAtMs === null) return false;
-  return nextChargeAtMs <= now.getTime();
+  if (nextChargeAtMs !== null) {
+    return nextChargeAtMs <= now.getTime();
+  }
+  const expiresMs = expiresAtMs(snapshot.expiresAt, now);
+  return expiresMs !== null && expiresMs <= now.getTime();
 }
 
 /** Scheduler may create a charge when lifecycle status and billing preconditions hold. */

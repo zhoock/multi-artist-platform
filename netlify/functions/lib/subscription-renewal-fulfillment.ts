@@ -16,6 +16,7 @@ import {
   validatePremiumSubscriptionPayment,
   type SubscriptionPlanSlug,
 } from './subscription-billing';
+import { isSubscriptionAutoRenewEnabled } from './subscription-feature-flag';
 import type { SubscriptionProviderPayment } from './subscription-provider-payment';
 import { providerPaymentKind } from './subscription-provider-payment';
 import {
@@ -45,6 +46,11 @@ export interface ProcessRenewalSubscriptionProviderPaymentResult {
   planSlug: SubscriptionPlanSlug;
 }
 
+export interface ProcessRenewalSubscriptionProviderPaymentOptions {
+  /** Pin fulfillment clock (scheduler tick / tests). */
+  now?: Date;
+}
+
 export function isRenewalSubscriptionPaymentKind(kind: string | null | undefined): boolean {
   return kind?.trim() === SUBSCRIPTION_PAYMENT_KIND_RENEWAL;
 }
@@ -71,6 +77,8 @@ export async function fulfillRenewalSubscriptionPayment(params: {
   userId: string;
   planSlug: SubscriptionPlanSlug;
   providerPaymentId: string;
+  /** Scheduler / tests may pin clock; defaults to wall time. */
+  now?: Date;
 }): Promise<{ subscription: Subscription; fulfilled: boolean; alreadyFulfilled: boolean }> {
   const paymentAlreadyApplied = await isSubscriptionFulfilledForProviderPayment(
     params.userId,
@@ -124,9 +132,10 @@ export async function fulfillRenewalSubscriptionPayment(params: {
     throw error;
   }
 
-  const now = new Date();
+  const now = params.now ?? new Date();
   const expiresAt = computeSupportExpiresAt(appliedPlanSlug, now);
-  const nextChargeAt = existing.paymentMethodId?.trim() ? expiresAt : null;
+  const nextChargeAt =
+    isSubscriptionAutoRenewEnabled() && existing.paymentMethodId?.trim() ? expiresAt : null;
 
   const updated = await query<SubscriptionRow>(
     `UPDATE subscriptions
@@ -382,7 +391,8 @@ export async function applySubscriptionPeriodEnded(
 
 export async function processRenewalSubscriptionProviderPayment(
   payment: SubscriptionProviderPayment,
-  userId: string
+  userId: string,
+  options: ProcessRenewalSubscriptionProviderPaymentOptions = {}
 ): Promise<ProcessRenewalSubscriptionProviderPaymentResult> {
   const metaUserId = metaString(payment.metadata, 'userId');
   const productType = metaString(payment.metadata, 'productType');
@@ -439,6 +449,7 @@ export async function processRenewalSubscriptionProviderPayment(
       userId,
       planSlug,
       providerPaymentId: payment.id,
+      now: options.now,
     });
 
     return {

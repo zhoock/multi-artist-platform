@@ -189,6 +189,29 @@ describe('fulfillInitialSubscriptionPayment idempotency', () => {
     expect(mockedFulfill).not.toHaveBeenCalled();
     expect(String(mockedQuery.mock.calls[0]?.[0])).toContain('COALESCE(payment_method_id');
   });
+
+  test('flag on: backfills next_charge_at when PM already on subscription row', async () => {
+    process.env.SUBSCRIPTION_AUTO_RENEW_ENABLED = 'true';
+    mockedIsFulfilled.mockResolvedValue(false);
+    mockedFulfill.mockResolvedValue(
+      subscription({
+        paymentMethodId: 'pm-existing',
+        nextChargeAt: null,
+      })
+    );
+    mockedQuery.mockResolvedValueOnce(fakeQueryResult([]));
+
+    const result = await fulfillInitialSubscriptionPayment({
+      userId: USER_ID,
+      planSlug: 'collector',
+      providerPaymentId: 'pay-1',
+    });
+
+    expect(mockedQuery).toHaveBeenCalledTimes(1);
+    expect(String(mockedQuery.mock.calls[0]?.[0])).toContain('next_charge_at = COALESCE');
+    expect(result.subscription.nextChargeAt).toEqual(EXPIRES);
+    expect(result.subscription.paymentMethodId).toBe('pm-existing');
+  });
 });
 
 describe('processInitialSubscriptionProviderPayment', () => {
