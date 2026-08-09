@@ -26,6 +26,8 @@ export interface CreatePaymentResponse {
   orderId?: string;
   /** Dev-only: payment fulfilled server-side without YooKassa redirect */
   devPaymentCompleted?: boolean;
+  /** Purchase restored from an already-paid order (no new YooKassa payment). */
+  fulfillmentRecovered?: boolean;
   error?: string;
   message?: string;
 }

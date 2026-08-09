@@ -48,7 +48,11 @@ import {
   extractReturnToFromReturnUrl,
 } from './lib/dev-payment-mode';
 import { completeDevAlbumPayment } from './lib/complete-dev-payment';
-import { findOrCreatePendingAlbumOrder } from './lib/find-or-create-pending-order';
+import {
+  CheckoutAlreadyOwnedError,
+  isAlbumFulfillmentHardError,
+  resolveAlbumCheckoutOrder,
+} from './lib/album-checkout-resolve';
 import {
   asPostgresError,
   getErrorCause,
@@ -85,6 +89,8 @@ interface CreatePaymentResponse {
   orderId?: string;
   /** Dev-only: payment fulfilled server-side without YooKassa redirect */
   devPaymentCompleted?: boolean;
+  /** Purchase restored from an already-paid order (no new YooKassa payment). */
+  fulfillmentRecovered?: boolean;
   error?: string;
   message?: string;
 }
@@ -477,12 +483,12 @@ export const handler: Handler = async (
         }
       }
     } else {
-      // Reuse existing pending_payment order for same buyer + album (server-side idempotency).
+      // Recovery (paid without purchase) → pending reuse/create, under advisory lock.
 
       try {
         const buyerDisplayName = data.billingData?.buyerDisplayName?.trim() || null;
 
-        const orderResolved = await findOrCreatePendingAlbumOrder({
+        const checkoutResolved = await resolveAlbumCheckoutOrder({
           sellerUserId,
           albumId: data.albumId,
           customerEmail: data.customerEmail,
@@ -491,10 +497,48 @@ export const handler: Handler = async (
           customerPhone: data.billingData?.phone || null,
         });
 
-        orderId = orderResolved.orderId;
-        orderAmount = orderResolved.orderAmount;
-        orderStatus = orderResolved.orderStatus;
+        if (checkoutResolved.kind === 'recovered') {
+          return {
+            statusCode: 200,
+            headers,
+            body: JSON.stringify({
+              success: true,
+              orderId: checkoutResolved.orderId,
+              paymentId: checkoutResolved.paymentId,
+              fulfillmentRecovered: true,
+            } as CreatePaymentResponse),
+          };
+        }
+
+        orderId = checkoutResolved.orderId;
+        orderAmount = checkoutResolved.orderAmount;
+        orderStatus = checkoutResolved.orderStatus;
       } catch (dbError: unknown) {
+        if (dbError instanceof CheckoutAlreadyOwnedError) {
+          return {
+            statusCode: 409,
+            headers,
+            body: JSON.stringify({
+              success: false,
+              error: 'ALREADY_OWNED',
+              message: 'This album is already in My Purchases.',
+            } as CreatePaymentResponse),
+          };
+        }
+
+        if (isAlbumFulfillmentHardError(dbError)) {
+          console.error('❌ Album checkout recovery failed:', dbError);
+          return {
+            statusCode: 503,
+            headers,
+            body: JSON.stringify({
+              success: false,
+              error: 'FULFILLMENT_FAILED',
+              message: 'Could not restore purchase for a completed payment. Please try again.',
+            } as CreatePaymentResponse),
+          };
+        }
+
         const pg = asPostgresError(dbError);
         console.error('❌ Database error when creating order:', {
           message: pg.message,

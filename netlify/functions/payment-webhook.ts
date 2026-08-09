@@ -15,8 +15,7 @@
 
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { query } from './lib/db';
-import { upsertPurchaseRecord } from './lib/purchases';
-import { resolveAlbumByKey } from './lib/resolve-album-key';
+import { applyAlbumPaymentSucceededFulfillment } from './lib/fulfill-album-purchase';
 import { getDecryptedSecretKey } from './payment-settings';
 import {
   amountsEqual,
@@ -411,29 +410,27 @@ async function handlePaymentSucceeded(
   order: OrderCtx,
   rawForDb: string
 ): Promise<void> {
-  const payUp = await query(
-    `UPDATE payments
-     SET status = 'succeeded',
-         updated_at = CURRENT_TIMESTAMP,
-         raw_last_event = $1::jsonb
-     WHERE provider = 'yookassa' AND provider_payment_id = $2`,
-    [rawForDb, api.id]
+  const existingPayment = await query<{ id: string }>(
+    `SELECT id FROM payments
+     WHERE provider = 'yookassa' AND provider_payment_id = $1
+     LIMIT 1`,
+    [api.id]
   );
-  if ((payUp.rowCount ?? 0) === 0) {
+  if (existingPayment.rows.length === 0) {
     throw new Error('payment_row_missing_for_webhook');
   }
 
-  await query(
-    `UPDATE orders
-     SET status = 'paid',
-         paid_at = COALESCE($1::timestamp, CURRENT_TIMESTAMP),
-         payment_id = COALESCE(payment_id, $3),
-         updated_at = CURRENT_TIMESTAMP
-     WHERE id = $2`,
-    [api.captured_at ?? null, order.id, api.id]
-  );
-
-  await tryPurchaseSideEffects(order.id, api);
+  await applyAlbumPaymentSucceededFulfillment({
+    orderId: order.id,
+    providerPaymentId: api.id,
+    paymentStatus: 'succeeded',
+    amountValue: api.amount.value,
+    currency: api.amount.currency,
+    capturedAt: api.captured_at ?? null,
+    rawLastEvent: rawForDb,
+    albumKey: metaString(api.metadata, 'albumId') ?? order.album_id,
+    customerEmail: metaString(api.metadata, 'customerEmail') ?? undefined,
+  });
 }
 
 async function handlePaymentCanceled(
@@ -473,95 +470,5 @@ async function handleWaitingForCapture(
   );
   if ((payUp.rowCount ?? 0) === 0) {
     throw new Error('payment_row_missing_for_webhook');
-  }
-}
-
-async function tryPurchaseSideEffects(
-  orderId: string,
-  api: YooKassaPaymentApiShape
-): Promise<void> {
-  const albumIdMeta = metaString(api.metadata, 'albumId');
-  const customerEmailMeta = metaString(api.metadata, 'customerEmail');
-
-  const orderResult = await query<{
-    album_id: string;
-    customer_email: string;
-    buyer_display_name: string | null;
-  }>(
-    `SELECT album_id, customer_email, buyer_display_name
-     FROM orders WHERE id = $1`,
-    [orderId]
-  );
-
-  if (orderResult.rows.length === 0) {
-    throw new Error('order_not_found_for_purchase_fulfillment');
-  }
-
-  const row = orderResult.rows[0];
-  const albumKey = row.album_id || albumIdMeta;
-  const customerEmail = row.customer_email || customerEmailMeta;
-
-  if (!albumKey || !customerEmail) {
-    throw new Error('missing_album_or_customer_for_purchase_fulfillment');
-  }
-
-  console.log('yookassa_webhook.purchase_upsert', {
-    orderIdSuffix: `…${orderId.slice(-6)}`,
-    albumKeySuffix: albumKey.length > 8 ? `…${albumKey.slice(-8)}` : albumKey,
-  });
-
-  const purchase = await upsertPurchaseRecord(orderId, customerEmail, albumKey);
-
-  if (!purchase) {
-    throw new Error('purchase_record_not_created');
-  }
-
-  const album = await resolveAlbumByKey(albumKey);
-
-  if (!album) {
-    console.error('yookassa_webhook.album_missing_for_email', {
-      albumKeySuffix: albumKey.slice(-8),
-    });
-    return;
-  }
-
-  try {
-    const { sendPurchaseEmail } = await import('./lib/email');
-    const { resolveEmailLocaleForAddress } = await import('./lib/user-preferred-language');
-    const customerName = row.buyer_display_name?.trim() || undefined;
-
-    const locale = await resolveEmailLocaleForAddress(customerEmail, album.lang);
-
-    const emailResult = await sendPurchaseEmail({
-      to: customerEmail,
-      customerName,
-      albumName: album.album,
-      artistName: album.artistDisplayName,
-      orderId,
-      albumSlug: album.albumSlug,
-      artistPublicSlug: album.artistPublicSlug,
-      albumCover: album.cover,
-      albumUserId: album.userId,
-      albumLang: album.lang,
-      paymentId: api.id,
-      locale,
-    });
-
-    if (emailResult.alreadySent) {
-      console.log('yookassa_webhook.email_already_sent', {
-        orderIdSuffix: `…${orderId.slice(-6)}`,
-        paymentIdSuffix: `…${api.id.slice(-6)}`,
-      });
-    } else if (!emailResult.success) {
-      console.error('yookassa_webhook.email_failed', {
-        orderIdSuffix: `…${orderId.slice(-6)}`,
-        err: emailResult.error,
-      });
-    }
-  } catch (emailErr) {
-    console.error('yookassa_webhook.email_exception', {
-      orderIdSuffix: `…${orderId.slice(-6)}`,
-      err: emailErr instanceof Error ? emailErr.message : String(emailErr),
-    });
   }
 }

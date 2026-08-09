@@ -296,21 +296,26 @@ export function AlbumCheckoutModal({ isOpen, album, onClose }: AlbumCheckoutModa
         return;
       }
 
-      if (result.devPaymentCompleted && result.orderId) {
-        if (typeof window !== 'undefined') {
-          const statusUrl = buildAlbumPaymentDevStatusUrl({
-            orderId: result.orderId,
-            returnTo,
-          });
-          logDevPaymentAlbumRedirect({
-            orderId: result.orderId,
-            paymentId: result.paymentId,
-            redirectUrl: (() => {
-              const parsed = new URL(statusUrl);
-              return `${parsed.pathname}${parsed.search}`;
-            })(),
-          });
-          window.location.href = statusUrl;
+      if (result.devPaymentCompleted || result.fulfillmentRecovered) {
+        if (result.orderId && typeof window !== 'undefined') {
+          if (result.devPaymentCompleted) {
+            const statusUrl = buildAlbumPaymentDevStatusUrl({
+              orderId: result.orderId,
+              returnTo,
+            });
+            logDevPaymentAlbumRedirect({
+              orderId: result.orderId,
+              paymentId: result.paymentId,
+              redirectUrl: (() => {
+                const parsed = new URL(statusUrl);
+                return `${parsed.pathname}${parsed.search}`;
+              })(),
+            });
+            window.location.href = statusUrl;
+            return;
+          }
+
+          window.location.href = buildAlbumPaymentSuccessUrl(result.orderId);
         }
         return;
       }

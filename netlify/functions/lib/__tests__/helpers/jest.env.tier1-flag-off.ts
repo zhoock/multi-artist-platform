@@ -5,3 +5,7 @@ process.env.SUBSCRIPTION_AUTO_RENEW_ENABLED = 'false';
 process.env.DEV_PAYMENT_MODE = 'true';
 process.env.NODE_ENV = 'test';
 process.env.YOOKASSA_TEST_MODE = 'true';
+/** Parallel fulfillment tests (webhook + poll) need >2 connections (tx + nested queries). */
+if (!process.env.PG_POOL_MAX?.trim()) {
+  process.env.PG_POOL_MAX = '10';
+}
