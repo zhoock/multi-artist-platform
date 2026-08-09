@@ -51,7 +51,7 @@ const COPY: CollectionBillingCopy = {
   billingSupportActiveUntil: 'Active until {date}',
   billingNextChargeOn: 'Next charge — {date}',
   billingSupportExpiredOn: 'Expired {date}',
-  billingChangePlanButton: 'Change plan',
+  billingChangePlanButton: 'Change',
   billingRecommendedPlanSection: 'RECOMMENDED',
   billingUpgradePlanButton: 'Upgrade',
   billingCollectionUsageSection: 'Usage',

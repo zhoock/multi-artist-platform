@@ -287,7 +287,7 @@ export function MyArchiveContent({
         t?.billingSupportRemainingAbsolute ?? 'Поддержка сохранится до {date}',
       billingNextChargeOn: t?.billingNextChargeOn ?? 'Следующее списание — {date}',
       billingSupportExpiredOn: t?.billingSupportExpiredOn ?? 'Истёк {date}',
-      billingChangePlanButton: t?.billingChangePlanButton ?? t?.changePlanButton ?? 'Сменить план',
+      billingChangePlanButton: t?.billingChangePlanButton ?? t?.changePlanButton ?? 'Сменить',
       billingRecommendedPlanSection: t?.billingRecommendedPlanSection ?? 'РЕКОМЕНДУЕМЫЙ ПЛАН',
       billingUpgradePlanButton: t?.billingUpgradePlanButton ?? 'Повысить тариф',
       billingCollectionUsageSection: t?.billingCollectionUsageSection ?? 'Использование коллекции',

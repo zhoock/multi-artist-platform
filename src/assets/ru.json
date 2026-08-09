@@ -491,7 +491,7 @@
         "billingSupportRemainingAbsolute": "Поддержка сохранится до {date}",
         "billingNextChargeOn": "Следующее списание — {date}",
         "billingSupportExpiredOn": "Истёк {date}",
-        "billingChangePlanButton": "Сменить план",
+        "billingChangePlanButton": "Сменить",
         "billingRecommendedPlanSection": "РЕКОМЕНДУЕМЫЙ ПЛАН",
         "billingUpgradePlanButton": "Повысить тариф",
         "billingCollectionUsageSection": "Использование коллекции",

@@ -147,7 +147,7 @@ describe('MyArchiveContent plan display', () => {
     expect(screen.getByText(/Next charge —|Следующее списание —/i)).toBeTruthy();
     expect(screen.getByText(/1 of 1|1 из 1/)).toBeTruthy();
     expect(document.querySelector('.collection-billing')).toBeTruthy();
-    expect(screen.getByText(/Change plan|Сменить план/i)).toBeTruthy();
+    expect(screen.getByText(/Change$|Сменить$/)).toBeTruthy();
   });
 
   test('does not show expiring-specific chrome for near-expiry active support', async () => {
@@ -466,10 +466,10 @@ describe('MyArchiveContent plan display', () => {
     renderWithProviders(<MyArchiveContent active />);
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /Change plan|Сменить план/i })).toBeTruthy();
+      expect(screen.getByRole('button', { name: /Change$|Сменить$/ })).toBeTruthy();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: /Change plan|Сменить план/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Change$|Сменить$/ }));
     expect(openSupportModalMock).toHaveBeenCalledTimes(1);
   });
 
@@ -493,7 +493,7 @@ describe('MyArchiveContent plan display', () => {
     expect(screen.getByRole('button', { name: /Find artists|Найти артистов/i })).toBeTruthy();
     expect(screen.queryByText('Manage Plan →')).toBeNull();
     expect(screen.queryByText('0/3')).toBeNull();
-    expect(screen.queryByRole('button', { name: /Change plan|Сменить план/i })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Change$|Сменить$/ })).toBeNull();
   });
 
   test('shows header and empty state when collection is empty but subscription is active', async () => {
@@ -514,7 +514,7 @@ describe('MyArchiveContent plan display', () => {
 
     expect(screen.getByText('Your collection is empty')).toBeTruthy();
     expect(screen.getByRole('button', { name: /Find artists|Найти артистов/i })).toBeTruthy();
-    expect(screen.getByRole('button', { name: /Change plan|Сменить план/i })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Change$|Сменить$/ })).toBeTruthy();
     expect(document.querySelector('.collection__list-card')).toBeNull();
     expect(document.querySelector('.collection__embedded-empty-state')).toBeTruthy();
   });

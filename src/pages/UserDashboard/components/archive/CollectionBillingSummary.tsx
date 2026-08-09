@@ -322,7 +322,7 @@ export function CollectionBillingSummary({
                 </div>
               </div>
               {screen === 'ACTIVE' ? (
-                <div className="collection-billing__plan-action">
+                <div className="collection-billing__plan-action collection-billing__plan-action--inline">
                   <DashboardButton
                     variant="outline"
                     loading={changePlanLoading}
