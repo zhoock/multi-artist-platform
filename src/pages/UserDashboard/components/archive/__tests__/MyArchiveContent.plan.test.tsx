@@ -229,10 +229,49 @@ describe('MyArchiveContent plan display', () => {
     expect(screen.getByText(/Support ended|Поддержка завершена/i)).toBeTruthy();
     expect(screen.getByText(/Expired|Истёк/i)).toBeTruthy();
     expect(document.querySelector('.collection-billing--expired')).toBeTruthy();
+    expect(document.querySelector('.collection-billing__banner--error')).toBeTruthy();
+    expect(
+      document.querySelector(
+        '.collection-billing--expired .collection-billing__status-line--expired'
+      )
+    ).toBeTruthy();
+    expect(
+      screen.getByRole('button', { name: /Renew Explorer|Возобновить Explorer/i })
+    ).toBeTruthy();
+    expect(
+      screen.getByRole('button', { name: /Switch to Collector|Перейти на Collector/i })
+    ).toBeTruthy();
 
     fireEvent.click(screen.getByRole('button', { name: /Choose a plan|Выбрать тариф/i }));
 
     expect(openSupportModalMock).toHaveBeenCalled();
+  });
+
+  test('renew current plan button starts checkout for expired support', async () => {
+    getMyArchiveMock.mockResolvedValue({
+      isPremium: false,
+      slotsUsed: 2,
+      slotsLimit: 20,
+      inactiveCount: 0,
+      subscriptionExpiresAt: '2026-08-07T12:00:00.000Z',
+      billing: billingExpired({ plan: 'explorer', slotsLimit: 20 }),
+      artists: [activeArtist('a1', 'Artist')],
+    });
+
+    renderWithProviders(<MyArchiveContent active />);
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('button', { name: /Renew Explorer|Возобновить Explorer/i })
+      ).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /Renew Explorer|Возобновить Explorer/i }));
+
+    await waitFor(() => {
+      expect(startCheckoutMock).toHaveBeenCalledWith('explorer');
+    });
+    expect(openSupportModalMock).not.toHaveBeenCalled();
   });
 
   test('shows no renew banner when support is active and slots remain', async () => {

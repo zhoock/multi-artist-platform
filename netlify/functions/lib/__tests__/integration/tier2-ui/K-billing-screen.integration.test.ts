@@ -152,6 +152,7 @@ function renderBillingScreen(
       copy: COPY,
       onChangePlan: () => undefined,
       onBannerAction: () => undefined,
+      onRenewCurrentPlan: () => undefined,
       onUpgradePlan: () => undefined,
     })
   );

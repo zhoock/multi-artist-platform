@@ -17,6 +17,7 @@ import {
   getPlanDisplayName,
   getPlanPriceCurrencyDisplay,
   getPlanPriceDisplayAmount,
+  resolvePlanCardAction,
   resolveRecommendedPlanSlug,
   type SubscriptionPlanSlug,
 } from '@shared/lib/payment/subscriptionPlans';
@@ -72,12 +73,13 @@ export type CollectionBillingSummaryProps = {
   autoRenewActionsEnabled?: boolean;
   onChangePlan: () => void;
   onBannerAction: () => void;
+  onRenewCurrentPlan: () => void;
   onUpgradePlan: () => void;
   onCancelScheduledDowngrade?: () => void;
   onDisableAutoRenew?: () => void;
 };
 
-type PlanStatusVariant = 'active' | 'cancelled' | 'lapsed';
+type PlanStatusVariant = 'active' | 'cancelled' | 'lapsed' | 'expired';
 
 function planSectionLabel(screen: BillingScreen, copy: CollectionBillingCopy): string {
   if (screen === 'EXPIRED' || screen === 'PAYMENT_FAILED') {
@@ -92,8 +94,9 @@ function planStatusVariant(screen: BillingScreen): PlanStatusVariant {
       return 'active';
     case 'CANCELLED':
       return 'cancelled';
-    case 'PAYMENT_FAILED':
     case 'EXPIRED':
+      return 'expired';
+    case 'PAYMENT_FAILED':
       return 'lapsed';
     default:
       return 'active';
@@ -136,7 +139,7 @@ function PlanStatusLine({
       )}
       title={title ?? undefined}
     >
-      {variant === 'lapsed' ? (
+      {variant === 'lapsed' || variant === 'expired' ? (
         <Calendar className="collection-billing__status-calendar" aria-hidden size={16} />
       ) : null}
       {text}
@@ -157,6 +160,7 @@ export function CollectionBillingSummary({
   autoRenewActionsEnabled = true,
   onChangePlan,
   onBannerAction,
+  onRenewCurrentPlan,
   onUpgradePlan,
   onCancelScheduledDowngrade,
   onDisableAutoRenew,
@@ -204,13 +208,34 @@ export function CollectionBillingSummary({
   const nextChargeLabel = renewalCountdown.label;
 
   const recommendedPlanSlug = resolveRecommendedPlanSlug(planSlug);
+  const currentPlanIsPremium =
+    screen === 'ACTIVE' || screen === 'CANCELLED' || screen === 'PAYMENT_FAILED';
+  const currentPlanAction =
+    planSlug && screen !== 'ACTIVE'
+      ? resolvePlanCardAction({
+          planSlug,
+          currentPlanSlug: planSlug,
+          isPremium: currentPlanIsPremium,
+          lang,
+        })
+      : null;
+  const recommendedPlanAction =
+    recommendedPlanSlug && planSlug
+      ? resolvePlanCardAction({
+          planSlug: recommendedPlanSlug,
+          currentPlanSlug: planSlug,
+          isPremium: currentPlanIsPremium,
+          lang,
+        })
+      : null;
+  const showCurrentPlanRenewAction = planSlug && screen === 'EXPIRED';
   const slotsLimit = billing.slotsLimit;
   const slotsProgress =
     slotsLimit <= 0 ? 0 : Math.min(100, Math.round((slotsUsed / slotsLimit) * 100));
 
   const statusVariant = planStatusVariant(screen);
   const statusText =
-    statusVariant === 'lapsed'
+    statusVariant === 'lapsed' || statusVariant === 'expired'
       ? expiresLabel
         ? copy.billingSupportExpiredOn.replace('{date}', expiresLabel)
         : copy.billingSupportExpiredOn.replace('{date}', '—')
@@ -242,6 +267,7 @@ export function CollectionBillingSummary({
           body={copy.billingExpiredBannerBody}
           ctaLabel={copy.billingExpiredBannerCta}
           loading={bannerActionLoading}
+          tone="error"
           onAction={onBannerAction}
         />
       ) : null}
@@ -279,18 +305,22 @@ export function CollectionBillingSummary({
           <h3 className="collection-billing__section-title">{planSectionLabel(screen, copy)}</h3>
           {planSlug ? (
             <>
-              <PlanHeadline planSlug={planSlug} lang={lang} />
-              <PlanStatusLine
-                variant={statusVariant}
-                text={statusText}
-                title={
-                  screen === 'ACTIVE'
-                    ? renewalCountdown.title
-                    : screen === 'CANCELLED'
-                      ? cancelledSupportLabel.title
-                      : undefined
-                }
-              />
+              <div className="collection-billing__plan-body">
+                <PlanHeadline planSlug={planSlug} lang={lang} />
+                <div className="collection-billing__plan-status-slot">
+                  <PlanStatusLine
+                    variant={statusVariant}
+                    text={statusText}
+                    title={
+                      screen === 'ACTIVE'
+                        ? renewalCountdown.title
+                        : screen === 'CANCELLED'
+                          ? cancelledSupportLabel.title
+                          : undefined
+                    }
+                  />
+                </div>
+              </div>
               {screen === 'ACTIVE' ? (
                 <div className="collection-billing__plan-action">
                   <DashboardButton
@@ -312,6 +342,17 @@ export function CollectionBillingSummary({
                     </button>
                   ) : null}
                 </div>
+              ) : showCurrentPlanRenewAction ? (
+                <div className="collection-billing__plan-action">
+                  <DashboardButton
+                    variant={currentPlanAction?.variant ?? 'outline'}
+                    loading={changePlanLoading || bannerActionLoading}
+                    disabled={changePlanLoading || bannerActionLoading}
+                    onClick={onRenewCurrentPlan}
+                  >
+                    {currentPlanAction?.label ?? copy.billingExpiredBannerCta}
+                  </DashboardButton>
+                </div>
               ) : null}
             </>
           ) : null}
@@ -322,10 +363,19 @@ export function CollectionBillingSummary({
             <h3 className="collection-billing__section-title">
               {copy.billingRecommendedPlanSection}
             </h3>
-            <PlanHeadline planSlug={recommendedPlanSlug} lang={lang} />
+            <div className="collection-billing__plan-body">
+              <PlanHeadline planSlug={recommendedPlanSlug} lang={lang} />
+              <div
+                className="collection-billing__plan-status-slot collection-billing__plan-status-slot--placeholder"
+                aria-hidden
+              />
+            </div>
             <div className="collection-billing__plan-action">
-              <DashboardButton variant="primary" onClick={onUpgradePlan}>
-                {copy.billingUpgradePlanButton}
+              <DashboardButton
+                variant={recommendedPlanAction?.variant ?? 'primary'}
+                onClick={onUpgradePlan}
+              >
+                {recommendedPlanAction?.label ?? copy.billingUpgradePlanButton}
               </DashboardButton>
             </div>
           </DashboardCard>

@@ -39,6 +39,16 @@ dialog {
         line-height: 1.35;
       }
 
+      &__banner--error {
+        background: var(--dashboard-error-bg);
+        border-color: var(--dashboard-error-border);
+
+        .collection-billing__banner-icon,
+        .collection-billing__banner-title {
+          color: var(--error-color);
+        }
+      }
+
       &__banner-body {
         margin: 0.35em 0 0;
         color: var(--dashboard-text-secondary);
@@ -84,6 +94,24 @@ dialog {
         gap: var(--ms-01);
         min-height: 100%;
         padding: var(--ms-1);
+      }
+
+      &__plan-body {
+        display: flex;
+        flex: 1;
+        flex-direction: column;
+        gap: var(--ms-01);
+        min-height: 0;
+      }
+
+      &__plan-status-slot {
+        display: flex;
+        align-items: center;
+        min-height: calc(16px * 1.35);
+
+        &--placeholder {
+          visibility: hidden;
+        }
       }
 
       &__section-title {
@@ -197,6 +225,15 @@ dialog {
 
         .collection-billing__status-calendar {
           color: var(--dashboard-text-secondary);
+        }
+      }
+
+      &__status-line--expired {
+        color: var(--error-color);
+
+        .collection-billing__status-calendar {
+          color: var(--error-color);
+          opacity: 1;
         }
       }
 

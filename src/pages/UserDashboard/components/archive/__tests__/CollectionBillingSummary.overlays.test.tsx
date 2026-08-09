@@ -71,6 +71,7 @@ describe('CollectionBillingSummary overlays', () => {
         copy={copy}
         onChangePlan={() => undefined}
         onBannerAction={() => undefined}
+        onRenewCurrentPlan={() => undefined}
         onUpgradePlan={() => undefined}
         onCancelScheduledDowngrade={() => undefined}
       />
@@ -99,6 +100,7 @@ describe('CollectionBillingSummary overlays', () => {
         copy={copy}
         onChangePlan={() => undefined}
         onBannerAction={() => undefined}
+        onRenewCurrentPlan={() => undefined}
         onUpgradePlan={() => undefined}
       />
     );
@@ -127,6 +129,7 @@ describe('CollectionBillingSummary overlays', () => {
         copy={copy}
         onChangePlan={() => undefined}
         onBannerAction={() => undefined}
+        onRenewCurrentPlan={() => undefined}
         onUpgradePlan={() => undefined}
       />
     );
@@ -154,6 +157,7 @@ describe('CollectionBillingSummary overlays', () => {
         autoRenewActionsEnabled={false}
         onChangePlan={() => undefined}
         onBannerAction={() => undefined}
+        onRenewCurrentPlan={() => undefined}
         onUpgradePlan={() => undefined}
       />
     );
@@ -181,6 +185,7 @@ describe('CollectionBillingSummary overlays', () => {
         autoRenewActionsEnabled={false}
         onChangePlan={() => undefined}
         onBannerAction={() => undefined}
+        onRenewCurrentPlan={() => undefined}
         onUpgradePlan={() => undefined}
       />
     );

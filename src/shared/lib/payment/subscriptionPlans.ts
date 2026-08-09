@@ -260,7 +260,7 @@ export function resolvePlanCardAction(params: {
       };
     }
     return {
-      label: params.lang === 'en' ? `Renew ${name}` : `Продлить ${name}`,
+      label: params.lang === 'en' ? `Renew ${name}` : `Возобновить ${name}`,
       variant: 'outline',
       badge: 'expired',
       disabled: false,

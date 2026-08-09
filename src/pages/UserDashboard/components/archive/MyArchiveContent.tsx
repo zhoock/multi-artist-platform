@@ -613,6 +613,49 @@ export function MyArchiveContent({
     startCheckout,
   ]);
 
+  const handleRenewCurrentPlan = useCallback(async () => {
+    if (renewLoading || bulkLoading || autoRenewPatchLoading) return;
+
+    if (billingScreen === 'CANCELLED') {
+      setAutoRenewModal('enable');
+      return;
+    }
+
+    if (billingScreen === 'PAYMENT_FAILED') {
+      setAutoRenewModal('enable-rebind');
+      return;
+    }
+
+    if (!planSlug) {
+      openSupportModal();
+      return;
+    }
+
+    setRenewLoading(true);
+    setLoadError(null);
+    setAlertModal(null);
+
+    const result = await startCheckout(planSlug);
+
+    if (!result.ok) {
+      showErrorAlert(result.error);
+      setRenewLoading(false);
+      return;
+    }
+
+    if (result.redirected === 'auth') {
+      setRenewLoading(false);
+    }
+  }, [
+    autoRenewPatchLoading,
+    billingScreen,
+    bulkLoading,
+    openSupportModal,
+    planSlug,
+    renewLoading,
+    startCheckout,
+  ]);
+
   const applyArchivePatchResult = useCallback((archive: MyArchiveData) => {
     setData(normalizeCollectionArchive(archive));
     window.dispatchEvent(new CustomEvent(ARCHIVE_CHANGED_EVENT));
@@ -855,6 +898,7 @@ export function MyArchiveContent({
                 autoRenewActionsEnabled={autoRenewActionsEnabled}
                 onChangePlan={handleChangePlan}
                 onBannerAction={() => void handleBillingBannerAction()}
+                onRenewCurrentPlan={() => void handleRenewCurrentPlan()}
                 onUpgradePlan={handleUpgradePlan}
                 onCancelScheduledDowngrade={() => void handleCancelScheduledDowngrade()}
                 onDisableAutoRenew={
