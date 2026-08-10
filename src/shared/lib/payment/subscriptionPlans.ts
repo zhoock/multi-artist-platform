@@ -304,6 +304,35 @@ export function shouldConfirmSubscriptionPlanChange(
   return currentPlanSlug !== null && currentPlanSlug !== targetPlanSlug;
 }
 
+/** True when clicking the plan card CTA proceeds directly to YooKassa checkout (not a confirm modal). */
+export function shouldShowPlanCardCheckoutAutopaymentDisclosure(params: {
+  planSlug: SubscriptionPlanSlug;
+  currentPlanSlug: SubscriptionPlanSlug | null;
+  scheduledTargetPlanSlug?: SubscriptionPlanSlug | null;
+  isPremium: boolean;
+}): boolean {
+  const { planSlug, currentPlanSlug, scheduledTargetPlanSlug, isPremium } = params;
+
+  if (scheduledTargetPlanSlug && planSlug === scheduledTargetPlanSlug) {
+    return false;
+  }
+
+  const isCurrent = currentPlanSlug === planSlug;
+  if (isCurrent && isPremium) {
+    return false;
+  }
+
+  if (isCurrent && !isPremium) {
+    return true;
+  }
+
+  if (!shouldConfirmSubscriptionPlanChange(currentPlanSlug, planSlug)) {
+    return true;
+  }
+
+  return false;
+}
+
 export type PlanChangeAction = 'checkout' | 'upgrade' | 'downgrade' | 'blocked_downgrade';
 
 export function resolvePlanChangeAction(params: {

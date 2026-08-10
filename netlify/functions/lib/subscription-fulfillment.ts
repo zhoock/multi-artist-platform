@@ -131,7 +131,8 @@ export async function fulfillInitialSubscriptionPayment(
   const updatedSubscription = await maybePersistPaymentMethod(
     subscription,
     params.paymentMethodId,
-    params.paymentMethodTitle
+    params.paymentMethodTitle,
+    { allowBindWhenEmpty: true }
   );
 
   return { subscription: updatedSubscription, fulfilled: true, alreadyFulfilled: false };
@@ -140,12 +141,18 @@ export async function fulfillInitialSubscriptionPayment(
 async function maybePersistPaymentMethod(
   subscription: Subscription,
   paymentMethodId: string | null | undefined,
-  paymentMethodTitle: string | null | undefined
+  paymentMethodTitle: string | null | undefined,
+  options: { allowBindWhenEmpty?: boolean } = {}
 ): Promise<Subscription> {
   if (!isSubscriptionAutoRenewEnabled()) return subscription;
 
-  const pmId = paymentMethodId?.trim() || subscription.paymentMethodId?.trim() || null;
+  const pmId = paymentMethodId?.trim() || null;
   if (!pmId) return subscription;
+
+  const existingPm = subscription.paymentMethodId?.trim();
+  if (!existingPm && !options.allowBindWhenEmpty) {
+    return subscription;
+  }
 
   const title = paymentMethodTitle?.trim() || subscription.paymentMethodTitle?.trim() || null;
 

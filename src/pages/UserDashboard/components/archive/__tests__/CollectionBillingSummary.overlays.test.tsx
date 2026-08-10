@@ -48,6 +48,9 @@ const copy: CollectionBillingCopy = {
   billingDowngradeSlotsBannerCta: 'Cancel downgrade',
   activeSlotsLabel: 'artists',
   billingDisableAutoRenewLink: 'Disable auto-renew',
+  billingPaymentMethodSection: 'Payment method',
+  billingPaymentMethodChangeLink: 'Change payment method',
+  billingUnlinkPaymentLink: 'Unlink card',
 };
 
 describe('CollectionBillingSummary overlays', () => {

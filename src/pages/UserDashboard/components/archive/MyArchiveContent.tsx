@@ -47,6 +47,7 @@ import {
   DisableAutoRenewConfirmModal,
   EnableAutoRenewConfirmModal,
   RebindPaymentMethodModal,
+  UnlinkPaymentMethodConfirmModal,
   UpgradePlanConfirmModal,
   type BillingAutoRenewModalVariant,
 } from './billingModals';
@@ -105,10 +106,13 @@ export function MyArchiveContent({
   const [bulkLoading, setBulkLoading] = useState(false);
   const [renewLoading, setRenewLoading] = useState(false);
   const [autoRenewModal, setAutoRenewModal] = useState<BillingAutoRenewModalVariant | null>(null);
+  const [unlinkModalOpen, setUnlinkModalOpen] = useState(false);
+  const [unlinkModalError, setUnlinkModalError] = useState<string | null>(null);
   const [upgradePlanTarget, setUpgradePlanTarget] = useState<SubscriptionPlanSlug | null>(null);
   const {
     patchAutoRenew,
     cancelScheduledDowngrade,
+    unlinkPaymentMethod,
     loading: autoRenewPatchLoading,
   } = useSubscriptionBilling();
   const { startRebind } = useSubscriptionRebindPayment();
@@ -128,6 +132,7 @@ export function MyArchiveContent({
   const autoRenewActionsEnabled = isSubscriptionAutoRenewClientEnabled();
   const autoRenewPatchErrorText =
     t?.billingAutoRenewPatchError ?? 'Не удалось обновить автопродление';
+  const unlinkPaymentErrorText = t?.billingUnlinkPaymentError ?? 'Не удалось отвязать карту';
   loadErrorTextRef.current = t?.loadError ?? null;
   onContentReadyRef.current = onContentReady;
   onContentBusyRef.current = onContentBusy;
@@ -321,6 +326,9 @@ export function MyArchiveContent({
       billingDowngradeSlotsBannerCta:
         t?.billingDowngradeSlotsBannerCta ?? 'Отменить плановое понижение',
       billingDisableAutoRenewLink: t?.billingDisableAutoRenewLink ?? 'Отключить автопродление',
+      billingPaymentMethodSection: t?.billingPaymentMethodSection ?? 'Способ оплаты',
+      billingPaymentMethodChangeLink: t?.billingPaymentMethodChangeLink ?? 'Изменить способ оплаты',
+      billingUnlinkPaymentLink: t?.billingUnlinkPaymentLink ?? 'Отвязать карту',
       activeSlotsLabel: t?.activeSlotsLabel ?? 'артистов в коллекции',
     };
   }, [t]);
@@ -661,6 +669,25 @@ export function MyArchiveContent({
     window.dispatchEvent(new CustomEvent(ARCHIVE_CHANGED_EVENT));
   }, []);
 
+  const applyBillingPatchResult = useCallback(
+    (billing: BillingSnapshot) => {
+      skipNextArchiveReloadRef.current = true;
+      setData((prev) => {
+        if (!prev) return prev;
+        const next = normalizeCollectionArchive({
+          ...prev,
+          billing,
+          isPremium: billing.hasPremiumAccess,
+          subscriptionExpiresAt: billing.expiresAt ?? prev.subscriptionExpiresAt,
+          slotsLimit: billing.slotsLimit,
+        });
+        publishBillingSnapshotIfChanged(next.billing);
+        return next;
+      });
+    },
+    [publishBillingSnapshotIfChanged]
+  );
+
   const handleConfirmAutoRenewPatch = useCallback(async () => {
     if (!autoRenewModal || autoRenewModal === 'enable-rebind') return;
 
@@ -694,6 +721,32 @@ export function MyArchiveContent({
       setRenewLoading(false);
     }
   }, [autoRenewPatchErrorText, startRebind]);
+
+  const handleOpenChangePaymentMethod = useCallback(() => {
+    setAutoRenewModal('rebind');
+  }, []);
+
+  const handleOpenUnlinkPaymentMethod = useCallback(() => {
+    setUnlinkModalError(null);
+    setUnlinkModalOpen(true);
+  }, []);
+
+  const handleConfirmUnlinkPaymentMethod = useCallback(async () => {
+    setUnlinkModalError(null);
+    setLoadError(null);
+    setAlertModal(null);
+
+    const result = await unlinkPaymentMethod();
+
+    if (!result.ok) {
+      setUnlinkModalError(resolveAutoRenewClientError(result, unlinkPaymentErrorText));
+      return;
+    }
+
+    applyBillingPatchResult(result.billing);
+    setUnlinkModalOpen(false);
+    setUnlinkModalError(null);
+  }, [applyBillingPatchResult, unlinkPaymentErrorText, unlinkPaymentMethod]);
 
   const handleDisableAutoRenew = useCallback(() => {
     setAutoRenewModal('disable');
@@ -859,10 +912,24 @@ export function MyArchiveContent({
       />
 
       <RebindPaymentMethodModal
-        isOpen={autoRenewModal === 'enable-rebind'}
+        isOpen={autoRenewModal === 'enable-rebind' || autoRenewModal === 'rebind'}
         loading={autoRenewModalLoading}
         onCancel={() => setAutoRenewModal(null)}
         onConfirm={() => void handleConfirmAutoRenewRebind()}
+      />
+
+      <UnlinkPaymentMethodConfirmModal
+        isOpen={unlinkModalOpen}
+        paymentMethodTitle={billing.paymentMethodTitle}
+        expiresAt={billing.expiresAt}
+        showAutoRenewDisableNote={billingScreen === 'ACTIVE' && billing.autoRenewEnabled}
+        loading={autoRenewModalLoading}
+        errorMessage={unlinkModalError}
+        onCancel={() => {
+          setUnlinkModalOpen(false);
+          setUnlinkModalError(null);
+        }}
+        onConfirm={() => void handleConfirmUnlinkPaymentMethod()}
       />
 
       {upgradePlanTarget && billing.plan ? (
@@ -904,6 +971,16 @@ export function MyArchiveContent({
                 onDisableAutoRenew={
                   autoRenewActionsEnabled && billingScreen === 'ACTIVE' && billing.autoRenewEnabled
                     ? handleDisableAutoRenew
+                    : undefined
+                }
+                onChangePaymentMethod={
+                  autoRenewActionsEnabled && billing.hasSavedPaymentMethod
+                    ? handleOpenChangePaymentMethod
+                    : undefined
+                }
+                onUnlinkPaymentMethod={
+                  autoRenewActionsEnabled && billing.hasSavedPaymentMethod
+                    ? handleOpenUnlinkPaymentMethod
                     : undefined
                 }
               />

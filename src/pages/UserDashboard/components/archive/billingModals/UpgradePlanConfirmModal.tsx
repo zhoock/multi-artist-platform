@@ -20,6 +20,8 @@ import {
   BillingModalNote,
   BillingModalShell,
 } from './BillingModalShell';
+import { SubscriptionCheckoutAutopaymentDisclosure } from '@shared/lib/archiveAccessModal/SubscriptionCheckoutAutopaymentDisclosure';
+import { isSubscriptionAutoRenewClientEnabled } from '@shared/lib/subscription/isSubscriptionAutoRenewClientEnabled';
 
 export type UpgradePlanConfirmModalProps = {
   isOpen: boolean;
@@ -101,6 +103,7 @@ export function UpgradePlanConfirmModal({
     .replace('{price}', priceAmount)
     .replace('{currency}', priceCurrency);
   const slotsBody = copy.slotsBodyTemplate.replace('{count}', artistLimit.count);
+  const showCheckoutAutopaymentDisclosure = isSubscriptionAutoRenewClientEnabled();
 
   return (
     <BillingModalShell
@@ -140,6 +143,15 @@ export function UpgradePlanConfirmModal({
       </BillingModalInfoCard>
 
       <BillingModalNote>{copy.note}</BillingModalNote>
+
+      {showCheckoutAutopaymentDisclosure ? (
+        <SubscriptionCheckoutAutopaymentDisclosure
+          planSlug={targetPlanSlug}
+          lang={lang}
+          ui={ui}
+          className="billing-modal__checkout-autopayment"
+        />
+      ) : null}
     </BillingModalShell>
   );
 }

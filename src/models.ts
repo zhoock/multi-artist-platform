@@ -971,6 +971,17 @@ export interface IInterface {
       billingDisableAutoRenewAfterNoteLine1?: string;
       billingDisableAutoRenewAfterNoteLine2?: string;
       billingDisableAutoRenewConfirm?: string;
+      billingPaymentMethodSection?: string;
+      billingPaymentMethodChangeLink?: string;
+      billingUnlinkPaymentLink?: string;
+      billingUnlinkPaymentTitle?: string;
+      billingUnlinkPaymentIntro?: string;
+      billingUnlinkPaymentCardTitle?: string;
+      billingUnlinkPaymentAccessTitle?: string;
+      billingUnlinkPaymentAccessBodyAbsolute?: string;
+      billingUnlinkPaymentAutoRenewNote?: string;
+      billingUnlinkPaymentConfirm?: string;
+      billingUnlinkPaymentError?: string;
       billingEnableAutoRenewTitle?: string;
       billingEnableAutoRenewIntro?: string;
       billingEnableAutoRenewNextChargeTitle?: string;

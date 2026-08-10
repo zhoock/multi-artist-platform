@@ -1,5 +1,5 @@
 /**
- * UI tests for PATCH auto-renew modal flows in MyArchiveContent (PR-5).
+ * UI tests for billing flows in MyArchiveContent (auto-renew + payment method unlink).
  */
 
 import React from 'react';
@@ -7,7 +7,10 @@ import { beforeEach, describe, expect, jest, test } from '@jest/globals';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 
 import { EMPTY_BILLING_SNAPSHOT } from '@shared/api/billing';
-import { patchSubscriptionAutoRenew } from '@shared/api/subscription';
+import {
+  deleteSubscriptionPaymentMethod,
+  patchSubscriptionAutoRenew,
+} from '@shared/api/subscription';
 import { renderWithProviders } from '@shared/lib/test-utils';
 import { ToastProvider } from '@shared/lib/toast/ToastProvider';
 
@@ -15,6 +18,8 @@ import { MyArchiveContent } from '../MyArchiveContent';
 
 const getMyArchiveMock = jest.fn<() => Promise<unknown>>();
 const patchAutoRenewMock = jest.mocked(patchSubscriptionAutoRenew);
+const deletePaymentMethodMock = jest.mocked(deleteSubscriptionPaymentMethod);
+const startRebindMock = jest.fn<() => Promise<{ ok: boolean; error?: string }>>();
 const isAutoRenewClientEnabledMock = jest.fn(() => true);
 
 jest.mock('@shared/api/archive', () => ({
@@ -26,12 +31,13 @@ jest.mock('@shared/api/archive', () => ({
 
 jest.mock('@shared/api/subscription', () => ({
   patchSubscriptionAutoRenew: jest.fn(),
+  deleteSubscriptionPaymentMethod: jest.fn(),
   createSubscriptionPaymentMethodRebind: jest.fn(),
 }));
 
 jest.mock('@shared/lib/subscription/useSubscriptionRebindPayment', () => ({
   useSubscriptionRebindPayment: () => ({
-    startRebind: jest.fn(),
+    startRebind: () => startRebindMock(),
   }),
 }));
 
@@ -53,21 +59,51 @@ function renderMyArchive(ui: React.ReactElement) {
   return renderWithProviders(<ToastProvider>{ui}</ToastProvider>);
 }
 
-function cancelledArchivePayload() {
+function getPaymentMethodCard(): HTMLElement | null {
+  return document.querySelector('.collection-billing__payment-method-card');
+}
+
+function getModalDialog(titleId: string): HTMLElement {
+  const title = document.getElementById(titleId);
+  if (!title) {
+    throw new Error(`Modal with title id "${titleId}" not found`);
+  }
+  const dialog = title.closest('dialog');
+  if (!dialog) {
+    throw new Error(`Dialog for title id "${titleId}" not found`);
+  }
+  return dialog as HTMLElement;
+}
+
+function getUnlinkModalDialog(): HTMLElement {
+  return getModalDialog('billing-unlink-payment-title');
+}
+
+function getDisableAutoRenewModalDialog(): HTMLElement {
+  return getModalDialog('billing-disable-autorenew-title');
+}
+
+const EXPIRES_AT = '2026-09-03T00:00:00.000Z';
+
+function baseArchivePayload(billingOverrides: Record<string, unknown> = {}) {
   return {
     isPremium: true,
     slotsUsed: 1,
     slotsLimit: 1,
     inactiveCount: 0,
-    subscriptionExpiresAt: '2026-09-03T00:00:00.000Z',
+    subscriptionExpiresAt: EXPIRES_AT,
     billing: {
       ...EMPTY_BILLING_SNAPSHOT,
-      status: 'cancel_at_period_end' as const,
+      status: 'active' as const,
       plan: 'explorer' as const,
       slotsLimit: 1,
-      expiresAt: '2026-09-03T00:00:00.000Z',
-      autoRenewEnabled: false,
+      expiresAt: EXPIRES_AT,
+      autoRenewEnabled: true,
       hasPremiumAccess: true,
+      hasSavedPaymentMethod: true,
+      paymentMethodTitle: 'Visa •••• 4242',
+      nextChargeAt: EXPIRES_AT,
+      ...billingOverrides,
     },
     artists: [
       {
@@ -88,22 +124,25 @@ function cancelledArchivePayload() {
 }
 
 function activeArchivePayload() {
-  return {
-    ...cancelledArchivePayload(),
-    billing: {
-      ...cancelledArchivePayload().billing,
-      status: 'active' as const,
-      autoRenewEnabled: true,
-      hasSavedPaymentMethod: true,
-      paymentMethodTitle: 'Visa •••• 4242',
-    },
-  };
+  return baseArchivePayload();
+}
+
+function cancelledArchivePayload() {
+  return baseArchivePayload({
+    status: 'cancel_at_period_end',
+    autoRenewEnabled: false,
+    hasSavedPaymentMethod: true,
+    paymentMethodTitle: 'Visa •••• 4242',
+    nextChargeAt: null,
+  });
 }
 
 describe('MyArchiveContent billing auto-renew modals', () => {
   beforeEach(() => {
     getMyArchiveMock.mockReset();
     patchAutoRenewMock.mockReset();
+    deletePaymentMethodMock.mockReset();
+    startRebindMock.mockReset();
     isAutoRenewClientEnabledMock.mockReset();
     isAutoRenewClientEnabledMock.mockReturnValue(true);
   });
@@ -160,6 +199,7 @@ describe('MyArchiveContent billing auto-renew modals', () => {
     await waitFor(() => {
       expect(patchAutoRenewMock).toHaveBeenCalledWith(true);
     });
+    expect(deletePaymentMethodMock).not.toHaveBeenCalled();
   });
 
   test('opens rebind modal from payment failed banner CTA', async () => {
@@ -225,10 +265,9 @@ describe('MyArchiveContent billing auto-renew modals', () => {
       screen.getByRole('button', { name: /Disable auto-renew|Отключить автопродление/i })
     );
 
-    const footer = document.querySelector('.dashboard-modal-footer');
-    expect(footer).toBeTruthy();
+    const disableModal = getDisableAutoRenewModalDialog();
     fireEvent.click(
-      within(footer as HTMLElement).getByRole('button', {
+      within(disableModal).getByRole('button', {
         name: /Disable auto-renew|Отключить автопродление/i,
       })
     );
@@ -239,5 +278,255 @@ describe('MyArchiveContent billing auto-renew modals', () => {
       ).toBeTruthy();
     });
     expect(screen.queryByText('Auto-renew is not enabled')).toBeNull();
+  });
+});
+
+describe('MyArchiveContent payment method unlink', () => {
+  beforeEach(() => {
+    getMyArchiveMock.mockReset();
+    patchAutoRenewMock.mockReset();
+    deletePaymentMethodMock.mockReset();
+    startRebindMock.mockReset();
+    isAutoRenewClientEnabledMock.mockReturnValue(true);
+  });
+
+  test('shows payment method card when saved PM exists', async () => {
+    getMyArchiveMock.mockResolvedValue(activeArchivePayload());
+
+    renderMyArchive(<MyArchiveContent active />);
+
+    await waitFor(() => {
+      expect(getPaymentMethodCard()).toBeTruthy();
+    });
+
+    const card = getPaymentMethodCard() as HTMLElement;
+    expect(within(card).getByText('Visa •••• 4242')).toBeTruthy();
+    expect(
+      within(card).getByRole('heading', { name: /^Payment method$|^Способ оплаты$/i })
+    ).toBeTruthy();
+  });
+
+  test('hides payment method card when no saved PM', async () => {
+    getMyArchiveMock.mockResolvedValue(
+      baseArchivePayload({
+        hasSavedPaymentMethod: false,
+        paymentMethodTitle: null,
+      })
+    );
+
+    renderMyArchive(<MyArchiveContent active />);
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('button', { name: /Disable auto-renew|Отключить автопродление/i })
+      ).toBeTruthy();
+    });
+
+    expect(getPaymentMethodCard()).toBeNull();
+  });
+
+  test('unlink opens confirmation modal', async () => {
+    getMyArchiveMock.mockResolvedValue(activeArchivePayload());
+
+    renderMyArchive(<MyArchiveContent active />);
+
+    await waitFor(() => {
+      expect(getPaymentMethodCard()).toBeTruthy();
+    });
+
+    const card = getPaymentMethodCard() as HTMLElement;
+    fireEvent.click(within(card).getByRole('button', { name: /Unlink card|Отвязать карту/i }));
+
+    expect(screen.getByRole('heading', { name: /Unlink card\?|Отвязать карту\?/i })).toBeTruthy();
+  });
+
+  test('confirm unlink calls DELETE and updates UI without reload', async () => {
+    getMyArchiveMock.mockResolvedValueOnce(activeArchivePayload());
+    deletePaymentMethodMock.mockResolvedValueOnce({
+      success: true,
+      data: {
+        billing: {
+          ...activeArchivePayload().billing,
+          status: 'cancel_at_period_end',
+          autoRenewEnabled: false,
+          hasSavedPaymentMethod: false,
+          paymentMethodTitle: null,
+          nextChargeAt: null,
+          expiresAt: EXPIRES_AT,
+          hasPremiumAccess: true,
+        },
+      },
+    });
+
+    renderMyArchive(<MyArchiveContent active />);
+
+    await waitFor(() => {
+      expect(getPaymentMethodCard()).toBeTruthy();
+    });
+
+    const card = getPaymentMethodCard() as HTMLElement;
+    fireEvent.click(within(card).getByRole('button', { name: /Unlink card|Отвязать карту/i }));
+
+    const unlinkModal = getUnlinkModalDialog();
+    fireEvent.click(
+      within(unlinkModal).getByRole('button', {
+        name: /^Unlink card$|^Отвязать карту$/i,
+      })
+    );
+
+    await waitFor(() => {
+      expect(deletePaymentMethodMock).toHaveBeenCalledTimes(1);
+    });
+    expect(patchAutoRenewMock).not.toHaveBeenCalled();
+    expect(getMyArchiveMock).toHaveBeenCalledTimes(1);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Support cancelled|Поддержка отменена/i)).toBeTruthy();
+    });
+    expect(getPaymentMethodCard()).toBeNull();
+  });
+
+  test('ACTIVE transitions to CANCELLED and preserves expiresAt after unlink', async () => {
+    getMyArchiveMock.mockResolvedValueOnce(activeArchivePayload());
+    deletePaymentMethodMock.mockResolvedValueOnce({
+      success: true,
+      data: {
+        billing: {
+          ...activeArchivePayload().billing,
+          status: 'cancel_at_period_end',
+          autoRenewEnabled: false,
+          hasSavedPaymentMethod: false,
+          paymentMethodTitle: null,
+          nextChargeAt: null,
+          expiresAt: EXPIRES_AT,
+        },
+      },
+    });
+
+    renderMyArchive(<MyArchiveContent active />);
+
+    await waitFor(() => {
+      expect(getPaymentMethodCard()).toBeTruthy();
+    });
+
+    const card = getPaymentMethodCard() as HTMLElement;
+    fireEvent.click(within(card).getByRole('button', { name: /Unlink card|Отвязать карту/i }));
+
+    const unlinkModal = getUnlinkModalDialog();
+    fireEvent.click(
+      within(unlinkModal).getByRole('button', {
+        name: /^Unlink card$|^Отвязать карту$/i,
+      })
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/Support cancelled|Поддержка отменена/i)).toBeTruthy();
+    });
+    expect(
+      screen.queryByRole('button', { name: /Disable auto-renew|Отключить автопродление/i })
+    ).toBeNull();
+  });
+
+  test('change payment method and unlink are separate actions', async () => {
+    getMyArchiveMock.mockResolvedValue(activeArchivePayload());
+    startRebindMock.mockResolvedValueOnce({ ok: true });
+
+    renderMyArchive(<MyArchiveContent active />);
+
+    await waitFor(() => {
+      expect(getPaymentMethodCard()).toBeTruthy();
+    });
+
+    const card = getPaymentMethodCard() as HTMLElement;
+    fireEvent.click(
+      within(card).getByRole('button', { name: /Change payment method|Изменить способ оплаты/i })
+    );
+
+    expect(
+      screen.getByRole('heading', { name: /Update payment method|Обновить способ оплаты/i })
+    ).toBeTruthy();
+    expect(deletePaymentMethodMock).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: /Cancel|Отмена/i }));
+
+    fireEvent.click(within(card).getByRole('button', { name: /Unlink card|Отвязать карту/i }));
+    expect(screen.getByRole('heading', { name: /Unlink card\?|Отвязать карту\?/i })).toBeTruthy();
+  });
+
+  test('disable auto-renew does not call DELETE', async () => {
+    const payload = activeArchivePayload();
+    getMyArchiveMock.mockResolvedValueOnce(payload);
+    patchAutoRenewMock.mockResolvedValueOnce({
+      success: true,
+      data: {
+        archive: {
+          ...payload,
+          billing: {
+            ...payload.billing,
+            status: 'cancel_at_period_end',
+            autoRenewEnabled: false,
+            nextChargeAt: null,
+          },
+        },
+      },
+    });
+
+    renderMyArchive(<MyArchiveContent active />);
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('button', { name: /Disable auto-renew|Отключить автопродление/i })
+      ).toBeTruthy();
+    });
+
+    fireEvent.click(
+      screen.getByRole('button', { name: /Disable auto-renew|Отключить автопродление/i })
+    );
+
+    const disableModal = getDisableAutoRenewModalDialog();
+    fireEvent.click(
+      within(disableModal).getByRole('button', {
+        name: /Disable auto-renew|Отключить автопродление/i,
+      })
+    );
+
+    await waitFor(() => {
+      expect(patchAutoRenewMock).toHaveBeenCalledWith(false);
+    });
+    expect(deletePaymentMethodMock).not.toHaveBeenCalled();
+    expect(getPaymentMethodCard()).toBeTruthy();
+    expect(within(getPaymentMethodCard() as HTMLElement).getByText('Visa •••• 4242')).toBeTruthy();
+  });
+
+  test('unlink error is shown in modal', async () => {
+    getMyArchiveMock.mockResolvedValue(activeArchivePayload());
+    deletePaymentMethodMock.mockResolvedValueOnce({
+      success: false,
+      error: 'Payment method unlink is not enabled',
+      code: 'FEATURE_DISABLED',
+    });
+
+    renderMyArchive(<MyArchiveContent active />);
+
+    await waitFor(() => {
+      expect(getPaymentMethodCard()).toBeTruthy();
+    });
+
+    const card = getPaymentMethodCard() as HTMLElement;
+    fireEvent.click(within(card).getByRole('button', { name: /Unlink card|Отвязать карту/i }));
+
+    const unlinkModal = getUnlinkModalDialog();
+    fireEvent.click(
+      within(unlinkModal).getByRole('button', {
+        name: /^Unlink card$|^Отвязать карту$/i,
+      })
+    );
+
+    await waitFor(() => {
+      expect(
+        within(unlinkModal).getByText(/Could not unlink card|Не удалось отвязать карту/i)
+      ).toBeTruthy();
+    });
+    expect(within(card).getByText('Visa •••• 4242')).toBeTruthy();
   });
 });

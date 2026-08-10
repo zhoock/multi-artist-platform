@@ -240,6 +240,12 @@
   force = true
 
 [[redirects]]
+  from = "/api/subscription/payment-method"
+  to = "/.netlify/functions/delete-subscription-payment-method"
+  status = 200
+  force = true
+
+[[redirects]]
   from = "/api/subscription/payment-method/rebind*"
   to = "/.netlify/functions/post-subscription-payment-method-rebind"
   status = 200

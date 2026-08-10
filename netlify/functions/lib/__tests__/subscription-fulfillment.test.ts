@@ -173,11 +173,12 @@ describe('fulfillInitialSubscriptionPayment idempotency', () => {
     expect(result.alreadyFulfilled).toBe(false);
   });
 
-  test('flag on: backfills PM on already fulfilled payment', async () => {
+  test('flag on: does not backfill PM on already fulfilled payment when PM was unlinked', async () => {
     process.env.SUBSCRIPTION_AUTO_RENEW_ENABLED = 'true';
     mockedIsFulfilled.mockResolvedValue(true);
-    mockedGetSubscription.mockResolvedValue(subscription());
-    mockedQuery.mockResolvedValueOnce(fakeQueryResult([]));
+    mockedGetSubscription.mockResolvedValue(
+      subscription({ paymentMethodId: null, paymentMethodTitle: null })
+    );
 
     await fulfillInitialSubscriptionPayment({
       userId: USER_ID,
@@ -187,15 +188,15 @@ describe('fulfillInitialSubscriptionPayment idempotency', () => {
     });
 
     expect(mockedFulfill).not.toHaveBeenCalled();
-    expect(String(mockedQuery.mock.calls[0]?.[0])).toContain('COALESCE(payment_method_id');
+    expect(mockedQuery).not.toHaveBeenCalled();
   });
 
-  test('flag on: backfills next_charge_at when PM already on subscription row', async () => {
+  test('flag on: backfills next_charge_at on first bind when paymentMethodId provided', async () => {
     process.env.SUBSCRIPTION_AUTO_RENEW_ENABLED = 'true';
     mockedIsFulfilled.mockResolvedValue(false);
     mockedFulfill.mockResolvedValue(
       subscription({
-        paymentMethodId: 'pm-existing',
+        paymentMethodId: null,
         nextChargeAt: null,
       })
     );
@@ -205,12 +206,12 @@ describe('fulfillInitialSubscriptionPayment idempotency', () => {
       userId: USER_ID,
       planSlug: 'collector',
       providerPaymentId: 'pay-1',
+      paymentMethodId: 'pm-yk',
     });
 
     expect(mockedQuery).toHaveBeenCalledTimes(1);
-    expect(String(mockedQuery.mock.calls[0]?.[0])).toContain('next_charge_at = COALESCE');
-    expect(result.subscription.nextChargeAt).toEqual(EXPIRES);
-    expect(result.subscription.paymentMethodId).toBe('pm-existing');
+    expect(String(mockedQuery.mock.calls[0]?.[0])).toContain('COALESCE(payment_method_id');
+    expect(result.subscription.paymentMethodId).toBe('pm-yk');
   });
 });
 

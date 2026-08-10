@@ -2,6 +2,7 @@
  * Platform Premium subscription checkout API.
  */
 
+import type { BillingSnapshot } from '@shared/api/billing';
 import { getAuthHeader } from '@shared/lib/auth';
 import { fetchWithAuthSession } from '@shared/lib/authFetch';
 import type { MyArchiveData } from '@shared/api/archive';
@@ -69,6 +70,15 @@ export interface PatchSubscriptionAutoRenewResponse {
   success: boolean;
   data?: {
     archive: MyArchiveData;
+  };
+  error?: string;
+  code?: string;
+}
+
+export interface DeleteSubscriptionPaymentMethodResponse {
+  success: boolean;
+  data?: {
+    billing: BillingSnapshot;
   };
   error?: string;
   code?: string;
@@ -185,6 +195,42 @@ export async function getSubscriptionPaymentStatus(params: {
     );
 
     const payload = (await response.json().catch(() => ({}))) as SubscriptionPaymentStatusResponse;
+
+    if (!response.ok) {
+      return {
+        success: false,
+        error: payload.error || `HTTP ${response.status}`,
+        code: payload.code,
+      };
+    }
+
+    return payload;
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    };
+  }
+}
+
+export async function deleteSubscriptionPaymentMethod(): Promise<DeleteSubscriptionPaymentMethodResponse> {
+  const authHeader = getAuthHeader();
+  if (!('Authorization' in authHeader)) {
+    return { success: false, error: 'Authentication required', code: 'UNAUTHORIZED' };
+  }
+
+  try {
+    const response = await fetchWithAuthSession('/api/subscription/payment-method', {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeader,
+      },
+    });
+
+    const payload = (await response
+      .json()
+      .catch(() => ({}))) as DeleteSubscriptionPaymentMethodResponse;
 
     if (!response.ok) {
       return {

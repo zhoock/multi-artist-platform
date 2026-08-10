@@ -1,8 +1,10 @@
 import { useCallback, useState } from 'react';
 
+import type { BillingSnapshot } from '@shared/api/billing';
 import type { MyArchiveData } from '@shared/api/archive';
 import {
   cancelScheduledSubscriptionDowngrade,
+  deleteSubscriptionPaymentMethod,
   patchSubscriptionAutoRenew,
   scheduleSubscriptionDowngrade,
 } from '@shared/api/subscription';
@@ -13,6 +15,10 @@ export type PatchAutoRenewResult =
   | { ok: false; error: string; code?: string };
 
 export type ScheduleDowngradeResult = PatchAutoRenewResult;
+
+export type UnlinkPaymentMethodResult =
+  | { ok: true; billing: BillingSnapshot }
+  | { ok: false; error: string; code?: string };
 
 export function useSubscriptionBilling() {
   const [loading, setLoading] = useState(false);
@@ -80,5 +86,30 @@ export function useSubscriptionBilling() {
     }
   }, []);
 
-  return { patchAutoRenew, scheduleDowngrade, cancelScheduledDowngrade, loading };
+  const unlinkPaymentMethod = useCallback(async (): Promise<UnlinkPaymentMethodResult> => {
+    setLoading(true);
+    try {
+      const response = await deleteSubscriptionPaymentMethod();
+
+      if (!response.success || !response.data?.billing) {
+        return {
+          ok: false,
+          error: response.error ?? 'Failed to unlink payment method',
+          code: response.code,
+        };
+      }
+
+      return { ok: true, billing: response.data.billing };
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  return {
+    patchAutoRenew,
+    scheduleDowngrade,
+    cancelScheduledDowngrade,
+    unlinkPaymentMethod,
+    loading,
+  };
 }

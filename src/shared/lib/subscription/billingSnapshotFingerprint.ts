@@ -8,6 +8,9 @@ export function billingSnapshotFingerprint(billing: BillingSnapshot): string {
     billing.slotsLimit,
     billing.status ?? '',
     billing.hasPremiumAccess,
+    billing.autoRenewEnabled,
+    billing.hasSavedPaymentMethod,
+    billing.paymentMethodTitle ?? '',
     billing.nextChargeAt ?? '',
     billing.expiresAt ?? '',
   ].join('|');

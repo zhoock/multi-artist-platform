@@ -17,6 +17,7 @@ import {
   resolvePlanChangeAction,
   resolveRecommendedPlanSlug,
   shouldConfirmSubscriptionPlanChange,
+  shouldShowPlanCardCheckoutAutopaymentDisclosure,
 } from '../subscriptionPlans';
 
 describe('PLAN_CATALOG (client)', () => {
@@ -361,5 +362,58 @@ describe('isCollectionOverPlanLimit', () => {
 
   test('returns false when within limit', () => {
     expect(isCollectionOverPlanLimit(2, 3)).toBe(false);
+  });
+});
+
+describe('shouldShowPlanCardCheckoutAutopaymentDisclosure', () => {
+  test('shows for new-user checkout path', () => {
+    expect(
+      shouldShowPlanCardCheckoutAutopaymentDisclosure({
+        planSlug: 'explorer',
+        currentPlanSlug: null,
+        isPremium: false,
+      })
+    ).toBe(true);
+  });
+
+  test('shows for expired renew path', () => {
+    expect(
+      shouldShowPlanCardCheckoutAutopaymentDisclosure({
+        planSlug: 'explorer',
+        currentPlanSlug: 'explorer',
+        isPremium: false,
+      })
+    ).toBe(true);
+  });
+
+  test('hides for current active plan', () => {
+    expect(
+      shouldShowPlanCardCheckoutAutopaymentDisclosure({
+        planSlug: 'explorer',
+        currentPlanSlug: 'explorer',
+        isPremium: true,
+      })
+    ).toBe(false);
+  });
+
+  test('hides for scheduled downgrade cancel action', () => {
+    expect(
+      shouldShowPlanCardCheckoutAutopaymentDisclosure({
+        planSlug: 'explorer',
+        currentPlanSlug: 'collector',
+        scheduledTargetPlanSlug: 'explorer',
+        isPremium: true,
+      })
+    ).toBe(false);
+  });
+
+  test('hides for upgrade switch that opens confirm modal first', () => {
+    expect(
+      shouldShowPlanCardCheckoutAutopaymentDisclosure({
+        planSlug: 'archivist',
+        currentPlanSlug: 'explorer',
+        isPremium: true,
+      })
+    ).toBe(false);
   });
 });

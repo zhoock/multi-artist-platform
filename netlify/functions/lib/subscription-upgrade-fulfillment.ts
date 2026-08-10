@@ -180,7 +180,9 @@ export async function fulfillUpgradeSubscriptionPayment(
   }
 
   let subscription = mapSubscriptionRow(row);
-  subscription = await maybePersistUpgradePaymentMethod(subscription, params.paymentMethodId);
+  subscription = await maybePersistUpgradePaymentMethod(subscription, params.paymentMethodId, {
+    allowBindWhenEmpty: true,
+  });
 
   if (subscription.paymentMethodId?.trim() && subscription.expiresAt) {
     await query(
@@ -197,12 +199,18 @@ export async function fulfillUpgradeSubscriptionPayment(
 
 async function maybePersistUpgradePaymentMethod(
   subscription: Subscription,
-  paymentMethodId: string | null | undefined
+  paymentMethodId: string | null | undefined,
+  options: { allowBindWhenEmpty?: boolean } = {}
 ): Promise<Subscription> {
   if (!isSubscriptionAutoRenewEnabled()) return subscription;
 
   const pmId = paymentMethodId?.trim() || null;
   if (!pmId) return subscription;
+
+  const existingPm = subscription.paymentMethodId?.trim();
+  if (!existingPm && !options.allowBindWhenEmpty) {
+    return subscription;
+  }
 
   const expiresAt = subscription.expiresAt;
   await query(

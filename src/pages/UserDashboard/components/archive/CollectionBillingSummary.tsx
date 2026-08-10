@@ -57,6 +57,9 @@ export type CollectionBillingCopy = {
   billingDowngradeSlotsBannerCta: string;
   activeSlotsLabel: string;
   billingDisableAutoRenewLink: string;
+  billingPaymentMethodSection: string;
+  billingPaymentMethodChangeLink: string;
+  billingUnlinkPaymentLink: string;
 };
 
 export type CollectionBillingSummaryProps = {
@@ -77,6 +80,8 @@ export type CollectionBillingSummaryProps = {
   onUpgradePlan: () => void;
   onCancelScheduledDowngrade?: () => void;
   onDisableAutoRenew?: () => void;
+  onChangePaymentMethod?: () => void;
+  onUnlinkPaymentMethod?: () => void;
 };
 
 type PlanStatusVariant = 'active' | 'cancelled' | 'lapsed' | 'expired';
@@ -164,6 +169,8 @@ export function CollectionBillingSummary({
   onUpgradePlan,
   onCancelScheduledDowngrade,
   onDisableAutoRenew,
+  onChangePaymentMethod,
+  onUnlinkPaymentMethod,
 }: CollectionBillingSummaryProps) {
   const now = useRenewalCountdownClock();
   const renewalCountdown = useRenewalCountdown(billing.nextChargeAt, billing.expiresAt, lang);
@@ -248,6 +255,9 @@ export function CollectionBillingSummary({
   const usageCountLabel = copy.billingCollectionUsageCount
     .replace('{used}', String(slotsUsed))
     .replace('{limit}', String(slotsLimit));
+
+  const showPaymentMethodCard = billing.hasSavedPaymentMethod;
+  const paymentMethodTitle = billing.paymentMethodTitle?.trim() || '—';
 
   return (
     <div className={clsx('collection-billing', `collection-billing--${screen.toLowerCase()}`)}>
@@ -381,6 +391,35 @@ export function CollectionBillingSummary({
           </DashboardCard>
         ) : null}
       </div>
+
+      {showPaymentMethodCard ? (
+        <DashboardCard className="collection-billing__payment-method-card">
+          <h3 className="collection-billing__section-title">{copy.billingPaymentMethodSection}</h3>
+          <p className="collection-billing__payment-method-title">{paymentMethodTitle}</p>
+          <div className="collection-billing__payment-method-actions">
+            {onChangePaymentMethod ? (
+              <button
+                type="button"
+                className="collection-billing__payment-method-link"
+                disabled={changePlanLoading || bannerActionLoading}
+                onClick={onChangePaymentMethod}
+              >
+                {copy.billingPaymentMethodChangeLink}
+              </button>
+            ) : null}
+            {onUnlinkPaymentMethod ? (
+              <button
+                type="button"
+                className="collection-billing__payment-method-link collection-billing__payment-method-link--destructive"
+                disabled={changePlanLoading || bannerActionLoading}
+                onClick={onUnlinkPaymentMethod}
+              >
+                {copy.billingUnlinkPaymentLink}
+              </button>
+            ) : null}
+          </div>
+        </DashboardCard>
+      ) : null}
 
       <DashboardCard className="collection-billing__usage-card">
         <h3 className="collection-billing__section-title">{copy.billingCollectionUsageSection}</h3>
