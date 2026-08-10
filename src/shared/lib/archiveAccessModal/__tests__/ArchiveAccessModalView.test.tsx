@@ -42,6 +42,11 @@ import {
 
 const createSubscriptionPaymentMock = jest.mocked(createSubscriptionPayment);
 const cancelScheduledSubscriptionDowngradeMock = jest.mocked(cancelScheduledSubscriptionDowngrade);
+const isAutoRenewClientEnabledMock = jest.fn(() => false);
+
+jest.mock('@shared/lib/subscription/isSubscriptionAutoRenewClientEnabled', () => ({
+  isSubscriptionAutoRenewClientEnabled: () => isAutoRenewClientEnabledMock(),
+}));
 
 function OpenModalButton() {
   const { open } = useArchiveAccessModal();
@@ -540,6 +545,75 @@ describe('ArchiveAccessModalView plan change confirmation', () => {
         expect.objectContaining({ plan: 'explorer' })
       );
     });
+  });
+});
+
+describe('ArchiveAccessModalView pricing autopayment disclosure', () => {
+  beforeEach(() => {
+    getMyArchiveMock.mockReset();
+    getTokenMock.mockReset();
+    getUserMock.mockReset();
+    createSubscriptionPaymentMock.mockReset();
+    getTokenMock.mockReturnValue('token-1');
+    getUserMock.mockReturnValue({ id: 'user-1', email: 'user@example.com' });
+    getMyArchiveMock.mockResolvedValue(
+      buildArchiveResponse({ isPremium: false, slotsUsed: 0, slotsLimit: 3 })
+    );
+  });
+
+  test('shows compact disclosure below plan cards when auto-renew flag is on', async () => {
+    isAutoRenewClientEnabledMock.mockReturnValue(true);
+    renderModalWithProviderOrder({ isPremium: false, slotsUsed: 0, slotsLimit: 3 });
+    await openModal();
+
+    expect(screen.getByRole('note')).toBeTruthy();
+    expect(
+      screen.getByText(
+        /Auto-renewal: when you pay for the selected plan, your payment method will be saved/
+      )
+    ).toBeTruthy();
+    expect(
+      screen.getByText(/The next charge will be at the selected plan price every 30 days/)
+    ).toBeTruthy();
+    expect(
+      screen.getByText(
+        /On the YooKassa page you will separately confirm saving your payment method/
+      )
+    ).toBeTruthy();
+    expect(
+      document.querySelector(
+        '.subscription-plan-modal__plan-card .subscription-plan-modal__autopayment-note'
+      )
+    ).toBeNull();
+  });
+
+  test('hides disclosure when auto-renew flag is off', async () => {
+    isAutoRenewClientEnabledMock.mockReturnValue(false);
+    renderModalWithProviderOrder({ isPremium: false, slotsUsed: 0, slotsLimit: 3 });
+    await openModal();
+
+    expect(screen.queryByRole('note')).toBeNull();
+    expect(screen.queryByText(/Auto-renewal: when you pay for the selected plan/i)).toBeNull();
+  });
+
+  test('direct checkout CTA still starts payment without extra modal when flag is on', async () => {
+    isAutoRenewClientEnabledMock.mockReturnValue(true);
+    createSubscriptionPaymentMock.mockResolvedValue({
+      success: true,
+      data: { paymentId: 'pay-test-1', confirmationUrl: 'https://pay.example/checkout' },
+    });
+
+    renderModalWithProviderOrder({ isPremium: false, slotsUsed: 0, slotsLimit: 3 });
+    await openModal();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Choose Explorer' }));
+
+    await waitFor(() => {
+      expect(createSubscriptionPaymentMock).toHaveBeenCalledWith(
+        expect.objectContaining({ plan: 'explorer' })
+      );
+    });
+    expect(screen.queryByRole('heading', { name: 'Subscribe to Explorer?' })).toBeNull();
   });
 });
 

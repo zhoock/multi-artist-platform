@@ -33,9 +33,7 @@ import { useArchiveAccessModal } from '@shared/lib/archiveAccessModal';
 import type { SubscriptionPlanSlug } from '@shared/lib/payment/subscriptionPlans';
 import {
   resolveRecommendedPlanSlug,
-  resolveDirectCheckoutConfirmMode,
   resolvePlanChangeAction,
-  shouldShowCheckoutAutopaymentDisclosure,
 } from '@shared/lib/payment/subscriptionPlans';
 import { DashboardButton, DashboardCard } from '@shared/ui/dashboard';
 import { AlertModal } from '@shared/ui/alertModal';
@@ -51,7 +49,6 @@ import {
   RebindPaymentMethodModal,
   UnlinkPaymentMethodConfirmModal,
   UpgradePlanConfirmModal,
-  SubscriptionCheckoutConfirmModal,
   type BillingAutoRenewModalVariant,
 } from './billingModals';
 import { CollectionBillingSummary, type CollectionBillingCopy } from './CollectionBillingSummary';
@@ -112,7 +109,6 @@ export function MyArchiveContent({
   const [unlinkModalOpen, setUnlinkModalOpen] = useState(false);
   const [unlinkModalError, setUnlinkModalError] = useState<string | null>(null);
   const [upgradePlanTarget, setUpgradePlanTarget] = useState<SubscriptionPlanSlug | null>(null);
-  const [checkoutConfirmPlan, setCheckoutConfirmPlan] = useState<SubscriptionPlanSlug | null>(null);
   const {
     patchAutoRenew,
     cancelScheduledDowngrade,
@@ -582,55 +578,6 @@ export function MyArchiveContent({
     }
   };
 
-  const runCheckout = useCallback(
-    async (targetPlanSlug: SubscriptionPlanSlug) => {
-      setRenewLoading(true);
-      setLoadError(null);
-      setAlertModal(null);
-
-      const result = await startCheckout(targetPlanSlug);
-
-      if (!result.ok) {
-        showErrorAlert(result.error);
-        setRenewLoading(false);
-        return;
-      }
-
-      if (result.redirected === 'auth') {
-        setRenewLoading(false);
-      }
-    },
-    [showErrorAlert, startCheckout]
-  );
-
-  const requestCheckout = useCallback(
-    (targetPlanSlug: SubscriptionPlanSlug) => {
-      if (renewLoading || bulkLoading || autoRenewPatchLoading) return;
-
-      if (
-        isSubscriptionAutoRenewClientEnabled() &&
-        shouldShowCheckoutAutopaymentDisclosure({
-          planSlug: targetPlanSlug,
-          currentPlanSlug: billing.plan,
-          isPremium: billing.hasPremiumAccess,
-        })
-      ) {
-        setCheckoutConfirmPlan(targetPlanSlug);
-        return;
-      }
-
-      void runCheckout(targetPlanSlug);
-    },
-    [
-      autoRenewPatchLoading,
-      billing.hasPremiumAccess,
-      billing.plan,
-      bulkLoading,
-      renewLoading,
-      runCheckout,
-    ]
-  );
-
   const handleBillingBannerAction = useCallback(async () => {
     if (renewLoading || bulkLoading || autoRenewPatchLoading) return;
 
@@ -649,7 +596,21 @@ export function MyArchiveContent({
       return;
     }
 
-    requestCheckout(planSlug);
+    setRenewLoading(true);
+    setLoadError(null);
+    setAlertModal(null);
+
+    const result = await startCheckout(planSlug);
+
+    if (!result.ok) {
+      showErrorAlert(result.error);
+      setRenewLoading(false);
+      return;
+    }
+
+    if (result.redirected === 'auth') {
+      setRenewLoading(false);
+    }
   }, [
     autoRenewPatchLoading,
     billingScreen,
@@ -657,7 +618,7 @@ export function MyArchiveContent({
     openSupportModal,
     planSlug,
     renewLoading,
-    requestCheckout,
+    startCheckout,
   ]);
 
   const handleRenewCurrentPlan = useCallback(async () => {
@@ -678,7 +639,21 @@ export function MyArchiveContent({
       return;
     }
 
-    requestCheckout(planSlug);
+    setRenewLoading(true);
+    setLoadError(null);
+    setAlertModal(null);
+
+    const result = await startCheckout(planSlug);
+
+    if (!result.ok) {
+      showErrorAlert(result.error);
+      setRenewLoading(false);
+      return;
+    }
+
+    if (result.redirected === 'auth') {
+      setRenewLoading(false);
+    }
   }, [
     autoRenewPatchLoading,
     billingScreen,
@@ -686,16 +661,8 @@ export function MyArchiveContent({
     openSupportModal,
     planSlug,
     renewLoading,
-    requestCheckout,
+    startCheckout,
   ]);
-
-  const handleConfirmCheckout = useCallback(async () => {
-    if (!checkoutConfirmPlan || renewLoading) return;
-
-    const targetPlanSlug = checkoutConfirmPlan;
-    setCheckoutConfirmPlan(null);
-    await runCheckout(targetPlanSlug);
-  }, [checkoutConfirmPlan, renewLoading, runCheckout]);
 
   const applyArchivePatchResult = useCallback((archive: MyArchiveData) => {
     setData(normalizeCollectionArchive(archive));
@@ -973,20 +940,6 @@ export function MyArchiveContent({
           loading={renewLoading}
           onCancel={() => setUpgradePlanTarget(null)}
           onConfirm={() => void handleConfirmUpgradePlan()}
-        />
-      ) : null}
-
-      {checkoutConfirmPlan ? (
-        <SubscriptionCheckoutConfirmModal
-          isOpen
-          planSlug={checkoutConfirmPlan}
-          mode={resolveDirectCheckoutConfirmMode({
-            planSlug: checkoutConfirmPlan,
-            currentPlanSlug: billing.plan,
-          })}
-          loading={renewLoading}
-          onCancel={() => setCheckoutConfirmPlan(null)}
-          onConfirm={() => void handleConfirmCheckout()}
         />
       ) : null}
       <section

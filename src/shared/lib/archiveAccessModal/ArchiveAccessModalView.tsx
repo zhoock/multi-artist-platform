@@ -1,5 +1,3 @@
-import { Users } from 'lucide-react';
-
 import { useState, useCallback, useEffect, type RefObject } from 'react';
 
 import { useLang } from '@app/providers/lang';
@@ -13,10 +11,8 @@ import { useEmailVerificationCopy } from '@shared/lib/emailVerification';
 import {
   SUBSCRIPTION_PLAN_SLUGS,
   resolveActiveScheduledPlanChange,
-  resolveDirectCheckoutConfirmMode,
   resolvePlanChangeAction,
   shouldConfirmSubscriptionPlanChange,
-  shouldShowCheckoutAutopaymentDisclosure,
   type SubscriptionPlanSlug,
 } from '@shared/lib/payment/subscriptionPlans';
 import { useSubscriptionBilling } from '@shared/lib/subscription/useSubscriptionBilling';
@@ -26,11 +22,11 @@ import { LocalModal } from '@shared/ui/localModal';
 import { AlertModal } from '@shared/ui/alertModal';
 import {
   ScheduleDowngradeConfirmModal,
-  SubscriptionCheckoutConfirmModal,
   UpgradePlanConfirmModal,
 } from '@pages/UserDashboard/components/archive/billingModals';
 
 import { SubscriptionPlanCard } from './SubscriptionPlanCard';
+import { SubscriptionPricingAutopaymentDisclosure } from './SubscriptionPricingAutopaymentDisclosure';
 import { SubscriptionPlanChangeConfirmModal } from './SubscriptionPlanChangeConfirmModal';
 import { SubscriptionPlanScheduledBanner } from './SubscriptionPlanScheduledBanner';
 import { ScheduledPlanChangeDetailsModal } from './ScheduledPlanChangeDetailsModal';
@@ -44,7 +40,7 @@ type Props = {
   onClose: (options?: CloseArchiveAccessModalOptions) => void;
 };
 
-type PendingPlanFlow = 'upgrade' | 'downgrade' | 'legacy' | 'checkout';
+type PendingPlanFlow = 'upgrade' | 'downgrade' | 'legacy';
 
 function formatEffectiveDate(iso: string | null, lang: 'en' | 'ru'): string | null {
   if (!iso) return null;
@@ -100,11 +96,6 @@ export function ArchiveAccessModalView({ dialogRef, onClose }: Props) {
       ? 'Support more artists and unlock more music.'
       : 'Поддержите больше артистов и откройте больше музыки.');
   const closeLabel = ui?.buttons?.articleLockedDialogClose ?? (lang === 'en' ? 'Close' : 'Закрыть');
-  const footnote =
-    ui?.titles?.archiveAccessFootnote?.trim() ??
-    (lang === 'en'
-      ? 'All plans distribute revenue equally among supported artists. Your support helps artists keep creating the music you love.'
-      : 'Все планы распределяют доход поровну между поддерживаемыми артистами. Ваша поддержка помогает артистам создавать музыку.');
 
   const scheduledPlanChange = resolveActiveScheduledPlanChange({
     scheduledPlan: billing.scheduledPlan,
@@ -127,6 +118,7 @@ export function ArchiveAccessModalView({ dialogRef, onClose }: Props) {
     ui?.titles?.subscriptionPlanScheduledBannerDetails ?? (lang === 'en' ? 'Details' : 'Подробнее');
   const alertModalTitle = ui?.dashboard?.error ?? (lang === 'en' ? 'Error' : 'Ошибка');
   const alertModalButtonText = ui?.buttons?.ok ?? (lang === 'en' ? 'OK' : 'OK');
+  const showPricingAutopaymentDisclosure = isSubscriptionAutoRenewClientEnabled();
 
   const showErrorAlert = useCallback((message: string) => {
     setAlertModal({ message });
@@ -198,20 +190,6 @@ export function ArchiveAccessModalView({ dialogRef, onClose }: Props) {
       }
 
       if (!shouldConfirmSubscriptionPlanChange(currentPlanSlug, planSlug)) {
-        if (
-          isSubscriptionAutoRenewClientEnabled() &&
-          shouldShowCheckoutAutopaymentDisclosure({
-            planSlug,
-            currentPlanSlug,
-            scheduledTargetPlanSlug: scheduledPlanChange?.targetPlanSlug ?? null,
-            isPremium: hasActivePremium,
-          })
-        ) {
-          setPendingFlow('checkout');
-          setPendingPlanChange(planSlug);
-          return;
-        }
-
         void proceedToCheckout(planSlug);
         return;
       }
@@ -248,7 +226,6 @@ export function ArchiveAccessModalView({ dialogRef, onClose }: Props) {
       currentPlanSlug,
       handleCancelScheduledChange,
       lang,
-      hasActivePremium,
       proceedToCheckout,
       scheduledPlanChange,
       showErrorAlert,
@@ -262,19 +239,10 @@ export function ArchiveAccessModalView({ dialogRef, onClose }: Props) {
   }, [loadingPlan, scheduleLoading]);
 
   const handleConfirmPlanChange = useCallback(async () => {
-    if (!pendingPlanChange || loadingPlan || scheduleLoading) return;
+    if (!pendingPlanChange || !currentPlanSlug || loadingPlan || scheduleLoading) return;
 
     const planSlug = pendingPlanChange;
     const flow = pendingFlow;
-
-    if (flow === 'checkout') {
-      setPendingPlanChange(null);
-      setPendingFlow(null);
-      void proceedToCheckout(planSlug);
-      return;
-    }
-
-    if (!currentPlanSlug) return;
 
     if (flow === 'upgrade') {
       setPendingPlanChange(null);
@@ -387,6 +355,10 @@ export function ArchiveAccessModalView({ dialogRef, onClose }: Props) {
             ))}
           </div>
 
+          {showPricingAutopaymentDisclosure ? (
+            <SubscriptionPricingAutopaymentDisclosure lang={lang} ui={ui} />
+          ) : null}
+
           {emailBlocked ? (
             <p className="subscription-plan-modal__error" role="status">
               {emailCopy.restrictedPremium ??
@@ -395,35 +367,8 @@ export function ArchiveAccessModalView({ dialogRef, onClose }: Props) {
                   : 'Подтвердите email, чтобы начать поддержку')}
             </p>
           ) : null}
-          {footnote ? (
-            <footer className="subscription-plan-modal__footnote-footer">
-              <div className="subscription-plan-modal__footnote-inner">
-                <Users
-                  className="subscription-plan-modal__footnote-icon"
-                  size={18}
-                  strokeWidth={1.75}
-                  aria-hidden
-                />
-                <p className="subscription-plan-modal__footnote">{footnote}</p>
-              </div>
-            </footer>
-          ) : null}
         </div>
       </LocalModal>
-
-      {pendingPlanChange && pendingFlow === 'checkout' ? (
-        <SubscriptionCheckoutConfirmModal
-          isOpen
-          planSlug={pendingPlanChange}
-          mode={resolveDirectCheckoutConfirmMode({
-            planSlug: pendingPlanChange,
-            currentPlanSlug,
-          })}
-          loading={confirmLoading}
-          onCancel={handleCancelPlanChange}
-          onConfirm={() => void handleConfirmPlanChange()}
-        />
-      ) : null}
 
       {pendingPlanChange && currentPlanSlug && pendingFlow === 'upgrade' ? (
         <UpgradePlanConfirmModal

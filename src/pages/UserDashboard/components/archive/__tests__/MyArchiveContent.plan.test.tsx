@@ -269,14 +269,6 @@ describe('MyArchiveContent plan display', () => {
     fireEvent.click(screen.getByRole('button', { name: /Renew Explorer|Возобновить Explorer/i }));
 
     await waitFor(() => {
-      expect(
-        screen.getByRole('heading', { name: /Renew Explorer|Возобновить Explorer/i })
-      ).toBeTruthy();
-    });
-
-    fireEvent.click(screen.getByRole('button', { name: /Proceed to payment|Перейти к оплате/i }));
-
-    await waitFor(() => {
       expect(startCheckoutMock).toHaveBeenCalledWith('explorer');
     });
     expect(openSupportModalMock).not.toHaveBeenCalled();

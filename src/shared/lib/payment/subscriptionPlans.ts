@@ -333,17 +333,6 @@ export function shouldShowCheckoutAutopaymentDisclosure(params: {
   return false;
 }
 
-export function resolveDirectCheckoutConfirmMode(params: {
-  planSlug: SubscriptionPlanSlug;
-  currentPlanSlug: SubscriptionPlanSlug | null;
-}): 'subscribe' | 'renew' {
-  if (params.currentPlanSlug === params.planSlug) {
-    return 'renew';
-  }
-
-  return 'subscribe';
-}
-
 export type PlanChangeAction = 'checkout' | 'upgrade' | 'downgrade' | 'blocked_downgrade';
 
 export function resolvePlanChangeAction(params: {
