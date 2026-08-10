@@ -11,6 +11,8 @@ import {
   getPlanPriceDisplayAmount,
   type SubscriptionPlanSlug,
 } from '@shared/lib/payment/subscriptionPlans';
+import { SubscriptionCheckoutAutopaymentDisclosure } from '@shared/lib/archiveAccessModal/SubscriptionCheckoutAutopaymentDisclosure';
+import { isSubscriptionAutoRenewClientEnabled } from '@shared/lib/subscription/isSubscriptionAutoRenewClientEnabled';
 import { DashboardButton } from '@shared/ui/dashboard';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 import { ModalCloseIcon } from '@shared/ui/icons/ModalCloseIcon';
@@ -94,6 +96,7 @@ export function SubscriptionPlanChangeConfirmModal({
     (lang === 'en' ? 'Proceed to payment' : 'Перейти к оплате');
   const cancelLabel = ui?.buttons?.cancel ?? (lang === 'en' ? 'Cancel' : 'Отмена');
   const closeLabel = ui?.buttons?.articleLockedDialogClose ?? (lang === 'en' ? 'Close' : 'Закрыть');
+  const showCheckoutAutopaymentDisclosure = isSubscriptionAutoRenewClientEnabled();
 
   return (
     <Popup
@@ -141,6 +144,15 @@ export function SubscriptionPlanChangeConfirmModal({
               </span>
               <PlanCompareColumn label={newPlanLabel} planSlug={targetPlanSlug} lang={lang} />
             </div>
+
+            {showCheckoutAutopaymentDisclosure ? (
+              <SubscriptionCheckoutAutopaymentDisclosure
+                planSlug={targetPlanSlug}
+                lang={lang}
+                ui={ui}
+                className="billing-modal__checkout-autopayment"
+              />
+            ) : null}
           </div>
 
           <footer className="dashboard-modal-footer subscription-plan-change-modal__footer">

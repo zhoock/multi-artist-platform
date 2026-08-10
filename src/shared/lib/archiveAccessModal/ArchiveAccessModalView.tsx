@@ -13,16 +13,20 @@ import { useEmailVerificationCopy } from '@shared/lib/emailVerification';
 import {
   SUBSCRIPTION_PLAN_SLUGS,
   resolveActiveScheduledPlanChange,
+  resolveDirectCheckoutConfirmMode,
   resolvePlanChangeAction,
   shouldConfirmSubscriptionPlanChange,
+  shouldShowCheckoutAutopaymentDisclosure,
   type SubscriptionPlanSlug,
 } from '@shared/lib/payment/subscriptionPlans';
 import { useSubscriptionBilling } from '@shared/lib/subscription/useSubscriptionBilling';
+import { isSubscriptionAutoRenewClientEnabled } from '@shared/lib/subscription/isSubscriptionAutoRenewClientEnabled';
 import { useAuthSessionUser } from '@shared/lib/hooks/useAuthSessionUser';
 import { LocalModal } from '@shared/ui/localModal';
 import { AlertModal } from '@shared/ui/alertModal';
 import {
   ScheduleDowngradeConfirmModal,
+  SubscriptionCheckoutConfirmModal,
   UpgradePlanConfirmModal,
 } from '@pages/UserDashboard/components/archive/billingModals';
 
@@ -40,7 +44,7 @@ type Props = {
   onClose: (options?: CloseArchiveAccessModalOptions) => void;
 };
 
-type PendingPlanFlow = 'upgrade' | 'downgrade' | 'legacy';
+type PendingPlanFlow = 'upgrade' | 'downgrade' | 'legacy' | 'checkout';
 
 function formatEffectiveDate(iso: string | null, lang: 'en' | 'ru'): string | null {
   if (!iso) return null;
@@ -194,6 +198,20 @@ export function ArchiveAccessModalView({ dialogRef, onClose }: Props) {
       }
 
       if (!shouldConfirmSubscriptionPlanChange(currentPlanSlug, planSlug)) {
+        if (
+          isSubscriptionAutoRenewClientEnabled() &&
+          shouldShowCheckoutAutopaymentDisclosure({
+            planSlug,
+            currentPlanSlug,
+            scheduledTargetPlanSlug: scheduledPlanChange?.targetPlanSlug ?? null,
+            isPremium: hasActivePremium,
+          })
+        ) {
+          setPendingFlow('checkout');
+          setPendingPlanChange(planSlug);
+          return;
+        }
+
         void proceedToCheckout(planSlug);
         return;
       }
@@ -230,6 +248,7 @@ export function ArchiveAccessModalView({ dialogRef, onClose }: Props) {
       currentPlanSlug,
       handleCancelScheduledChange,
       lang,
+      hasActivePremium,
       proceedToCheckout,
       scheduledPlanChange,
       showErrorAlert,
@@ -243,10 +262,19 @@ export function ArchiveAccessModalView({ dialogRef, onClose }: Props) {
   }, [loadingPlan, scheduleLoading]);
 
   const handleConfirmPlanChange = useCallback(async () => {
-    if (!pendingPlanChange || !currentPlanSlug || loadingPlan || scheduleLoading) return;
+    if (!pendingPlanChange || loadingPlan || scheduleLoading) return;
 
     const planSlug = pendingPlanChange;
     const flow = pendingFlow;
+
+    if (flow === 'checkout') {
+      setPendingPlanChange(null);
+      setPendingFlow(null);
+      void proceedToCheckout(planSlug);
+      return;
+    }
+
+    if (!currentPlanSlug) return;
 
     if (flow === 'upgrade') {
       setPendingPlanChange(null);
@@ -382,6 +410,20 @@ export function ArchiveAccessModalView({ dialogRef, onClose }: Props) {
           ) : null}
         </div>
       </LocalModal>
+
+      {pendingPlanChange && pendingFlow === 'checkout' ? (
+        <SubscriptionCheckoutConfirmModal
+          isOpen
+          planSlug={pendingPlanChange}
+          mode={resolveDirectCheckoutConfirmMode({
+            planSlug: pendingPlanChange,
+            currentPlanSlug,
+          })}
+          loading={confirmLoading}
+          onCancel={handleCancelPlanChange}
+          onConfirm={() => void handleConfirmPlanChange()}
+        />
+      ) : null}
 
       {pendingPlanChange && currentPlanSlug && pendingFlow === 'upgrade' ? (
         <UpgradePlanConfirmModal

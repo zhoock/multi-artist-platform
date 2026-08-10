@@ -27,7 +27,7 @@ export function SubscriptionCheckoutAutopaymentDisclosure({
   planSlug,
   lang,
   ui,
-  className = 'subscription-plan-modal__checkout-autopayment',
+  className = 'billing-modal__checkout-autopayment',
 }: Props) {
   const t = ui?.titles;
   const planName = getPlanDisplayName(planSlug);

@@ -131,4 +131,36 @@
   &__footer {
     margin-top: 0;
   }
+
+  .billing-modal__checkout-autopayment {
+    margin: 0;
+    padding: 0.75rem 0.85rem;
+    text-align: left;
+    background: rgb(var(--dark-greenish-yellow-rgb, 200 176 109) / 8%);
+    border: 1px solid rgb(var(--dark-greenish-yellow-rgb, 200 176 109) / 22%);
+    border-radius: var(--ms-02);
+  }
+
+  .billing-modal__checkout-autopayment__title {
+    margin: 0 0 0.45rem;
+    color: var(--dashboard-text-primary);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    line-height: 1.35;
+  }
+
+  .billing-modal__checkout-autopayment__text {
+    margin: 0 0 0.35rem;
+    color: var(--dashboard-text-secondary);
+    font-size: 0.75rem;
+    line-height: 1.45;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+
+  .billing-modal__checkout-autopayment__text--note {
+    font-size: 0.6875rem;
+  }
 }

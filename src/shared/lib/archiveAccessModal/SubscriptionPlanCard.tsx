@@ -9,13 +9,10 @@ import {
   getPlanPriceDisplayAmount,
   getPlanCardBadgeLabel,
   resolvePlanCardAction,
-  shouldShowPlanCardCheckoutAutopaymentDisclosure,
   type SubscriptionPlanSlug,
 } from '@shared/lib/payment/subscriptionPlans';
-import { isSubscriptionAutoRenewClientEnabled } from '@shared/lib/subscription/isSubscriptionAutoRenewClientEnabled';
 import { DashboardButton, DashboardCard } from '@shared/ui/dashboard';
 import { getSubscriptionPlanFeatures } from './subscriptionPlanFeatures';
-import { SubscriptionCheckoutAutopaymentDisclosure } from './SubscriptionCheckoutAutopaymentDisclosure';
 
 type Props = {
   planSlug: SubscriptionPlanSlug;
@@ -55,15 +52,6 @@ export function SubscriptionPlanCard({
   const isLoading = loadingPlan === planSlug;
   const isButtonDisabled = Boolean(loadingPlan) || disabled;
   const buttonVariant = scheduledTargetPlanSlug ? variant : disabled ? 'outline' : 'primary';
-  const showCheckoutAutopaymentDisclosure =
-    isSubscriptionAutoRenewClientEnabled() &&
-    !isButtonDisabled &&
-    shouldShowPlanCardCheckoutAutopaymentDisclosure({
-      planSlug,
-      currentPlanSlug,
-      scheduledTargetPlanSlug,
-      isPremium,
-    });
 
   const features = getSubscriptionPlanFeatures(lang, ui);
   const redirectingLabel = lang === 'en' ? 'Redirecting…' : 'Переход к оплате…';
@@ -102,10 +90,6 @@ export function SubscriptionPlanCard({
       </p>
 
       <hr className="subscription-plan-modal__plan-divider" aria-hidden />
-
-      {showCheckoutAutopaymentDisclosure ? (
-        <SubscriptionCheckoutAutopaymentDisclosure planSlug={planSlug} lang={lang} ui={ui} />
-      ) : null}
 
       <DashboardButton
         type="button"

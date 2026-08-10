@@ -10,12 +10,6 @@ import { renderWithProviders } from '@shared/lib/test-utils';
 import { PLAN_CATALOG } from '@shared/lib/payment/subscriptionPlans';
 import { SubscriptionPlanCard } from '../SubscriptionPlanCard';
 
-const isAutoRenewClientEnabledMock = jest.fn(() => true);
-
-jest.mock('@shared/lib/subscription/isSubscriptionAutoRenewClientEnabled', () => ({
-  isSubscriptionAutoRenewClientEnabled: () => isAutoRenewClientEnabledMock(),
-}));
-
 const createSubscriptionPaymentMock = jest.fn<(...args: unknown[]) => Promise<unknown>>();
 jest.mock('@shared/api/subscription', () => ({
   createSubscriptionPayment: (...args: unknown[]) => createSubscriptionPaymentMock(...args),
@@ -24,7 +18,6 @@ jest.mock('@shared/api/subscription', () => ({
 describe('SubscriptionPlanCard', () => {
   beforeEach(() => {
     createSubscriptionPaymentMock.mockReset();
-    isAutoRenewClientEnabledMock.mockReturnValue(true);
   });
 
   test('renders reference-style plan details from catalog', () => {
@@ -185,7 +178,7 @@ describe('SubscriptionPlanCard', () => {
     expect(onSelect).toHaveBeenCalledWith('explorer');
   });
 
-  test('shows checkout autopayment disclosure for direct checkout when flag is on', () => {
+  test('does not render checkout autopayment disclosure inside the plan card', () => {
     renderWithProviders(
       <SubscriptionPlanCard
         planSlug="collector"
@@ -198,49 +191,7 @@ describe('SubscriptionPlanCard', () => {
       />
     );
 
-    expect(screen.getByText('Автопродление и сохранение способа оплаты')).toBeTruthy();
-    expect(
-      screen.getByText(/При оплате тарифа Collector ваш способ оплаты будет сохранён/)
-    ).toBeTruthy();
-    expect(
-      screen.getByText(
-        `Следующее списание: ${PLAN_CATALOG.collector.priceRubProduction} ₽ каждые ${PLAN_CATALOG.collector.durationDays} дней.`
-      )
-    ).toBeTruthy();
-    expect(screen.getByText(/На странице YooKassa вы отдельно подтвердите/)).toBeTruthy();
-  });
-
-  test('hides checkout autopayment disclosure when auto-renew flag is off', () => {
-    isAutoRenewClientEnabledMock.mockReturnValue(false);
-
-    renderWithProviders(
-      <SubscriptionPlanCard
-        planSlug="collector"
-        currentPlanSlug={null}
-        isPremium={false}
-        lang="en"
-        ui={null}
-        loadingPlan={null}
-        onSelect={jest.fn()}
-      />
-    );
-
-    expect(screen.queryByText(/Auto-renewal and saved payment method/i)).toBeNull();
-  });
-
-  test('hides checkout autopayment disclosure for upgrade switch path', () => {
-    renderWithProviders(
-      <SubscriptionPlanCard
-        planSlug="archivist"
-        currentPlanSlug="explorer"
-        isPremium
-        lang="en"
-        ui={null}
-        loadingPlan={null}
-        onSelect={jest.fn()}
-      />
-    );
-
-    expect(screen.queryByText(/Auto-renewal and saved payment method/i)).toBeNull();
+    expect(screen.queryByText('Автопродление и сохранение способа оплаты')).toBeNull();
+    expect(screen.queryByText(/При оплате тарифа Collector/)).toBeNull();
   });
 });

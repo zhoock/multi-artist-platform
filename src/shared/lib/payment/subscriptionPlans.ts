@@ -304,8 +304,8 @@ export function shouldConfirmSubscriptionPlanChange(
   return currentPlanSlug !== null && currentPlanSlug !== targetPlanSlug;
 }
 
-/** True when clicking the plan card CTA proceeds directly to YooKassa checkout (not a confirm modal). */
-export function shouldShowPlanCardCheckoutAutopaymentDisclosure(params: {
+/** True when checkout proceeds to YooKassa with saved payment method (needs disclosure in confirm step). */
+export function shouldShowCheckoutAutopaymentDisclosure(params: {
   planSlug: SubscriptionPlanSlug;
   currentPlanSlug: SubscriptionPlanSlug | null;
   scheduledTargetPlanSlug?: SubscriptionPlanSlug | null;
@@ -331,6 +331,17 @@ export function shouldShowPlanCardCheckoutAutopaymentDisclosure(params: {
   }
 
   return false;
+}
+
+export function resolveDirectCheckoutConfirmMode(params: {
+  planSlug: SubscriptionPlanSlug;
+  currentPlanSlug: SubscriptionPlanSlug | null;
+}): 'subscribe' | 'renew' {
+  if (params.currentPlanSlug === params.planSlug) {
+    return 'renew';
+  }
+
+  return 'subscribe';
 }
 
 export type PlanChangeAction = 'checkout' | 'upgrade' | 'downgrade' | 'blocked_downgrade';

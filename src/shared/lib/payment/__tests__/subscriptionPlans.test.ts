@@ -17,7 +17,7 @@ import {
   resolvePlanChangeAction,
   resolveRecommendedPlanSlug,
   shouldConfirmSubscriptionPlanChange,
-  shouldShowPlanCardCheckoutAutopaymentDisclosure,
+  shouldShowCheckoutAutopaymentDisclosure,
 } from '../subscriptionPlans';
 
 describe('PLAN_CATALOG (client)', () => {
@@ -365,10 +365,10 @@ describe('isCollectionOverPlanLimit', () => {
   });
 });
 
-describe('shouldShowPlanCardCheckoutAutopaymentDisclosure', () => {
+describe('shouldShowCheckoutAutopaymentDisclosure', () => {
   test('shows for new-user checkout path', () => {
     expect(
-      shouldShowPlanCardCheckoutAutopaymentDisclosure({
+      shouldShowCheckoutAutopaymentDisclosure({
         planSlug: 'explorer',
         currentPlanSlug: null,
         isPremium: false,
@@ -378,7 +378,7 @@ describe('shouldShowPlanCardCheckoutAutopaymentDisclosure', () => {
 
   test('shows for expired renew path', () => {
     expect(
-      shouldShowPlanCardCheckoutAutopaymentDisclosure({
+      shouldShowCheckoutAutopaymentDisclosure({
         planSlug: 'explorer',
         currentPlanSlug: 'explorer',
         isPremium: false,
@@ -388,7 +388,7 @@ describe('shouldShowPlanCardCheckoutAutopaymentDisclosure', () => {
 
   test('hides for current active plan', () => {
     expect(
-      shouldShowPlanCardCheckoutAutopaymentDisclosure({
+      shouldShowCheckoutAutopaymentDisclosure({
         planSlug: 'explorer',
         currentPlanSlug: 'explorer',
         isPremium: true,
@@ -398,7 +398,7 @@ describe('shouldShowPlanCardCheckoutAutopaymentDisclosure', () => {
 
   test('hides for scheduled downgrade cancel action', () => {
     expect(
-      shouldShowPlanCardCheckoutAutopaymentDisclosure({
+      shouldShowCheckoutAutopaymentDisclosure({
         planSlug: 'explorer',
         currentPlanSlug: 'collector',
         scheduledTargetPlanSlug: 'explorer',
@@ -409,7 +409,7 @@ describe('shouldShowPlanCardCheckoutAutopaymentDisclosure', () => {
 
   test('hides for upgrade switch that opens confirm modal first', () => {
     expect(
-      shouldShowPlanCardCheckoutAutopaymentDisclosure({
+      shouldShowCheckoutAutopaymentDisclosure({
         planSlug: 'archivist',
         currentPlanSlug: 'explorer',
         isPremium: true,
