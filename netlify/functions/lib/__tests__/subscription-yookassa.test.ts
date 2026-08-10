@@ -54,6 +54,8 @@ describe('buildInitialSubscriptionPaymentPayload', () => {
     });
     expect(payload.amount).toEqual({ value: COLLECTOR_AMOUNT, currency: CURRENCY });
     expect(payload.receipt).toBeDefined();
+    const receiptItem = (payload.receipt as { items: Array<{ payment_mode: string }> }).items[0];
+    expect(receiptItem.payment_mode).toBe('full_prepayment');
   });
 
   test('flag on: includes save_payment_method and kind metadata', () => {

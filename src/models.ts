@@ -1037,6 +1037,9 @@ export interface IInterface {
       billingCheckoutInvalidPlan?: string;
       billingCheckoutProviderUnavailable?: string;
       billingCheckoutPaymentMethodRequired?: string;
+      billingCheckoutCreateFailed?: string;
+      billingCheckoutAutopaymentsNotEnabled?: string;
+      billingCheckoutReceiptRejected?: string;
     };
     forms?: {};
     myPurchases?: {

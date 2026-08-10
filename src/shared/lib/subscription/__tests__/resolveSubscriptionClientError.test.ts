@@ -36,6 +36,21 @@ describe('resolveSubscriptionClientError', () => {
     ).toBe(ruCopy.billingCheckoutInProgress);
   });
 
+  test('maps YOOKASSA_CHECKOUT_FAILED to localized copy', () => {
+    expect(
+      resolveSubscriptionClientError(
+        {
+          code: 'YOOKASSA_CHECKOUT_FAILED',
+          error: 'Failed to create subscription payment',
+        },
+        {
+          ...ruCopy,
+          billingCheckoutCreateFailed: 'Не удалось создать платёж.',
+        }
+      )
+    ).toBe('Не удалось создать платёж.');
+  });
+
   test('hides FEATURE_DISABLED internal text', () => {
     expect(
       resolveSubscriptionClientError(

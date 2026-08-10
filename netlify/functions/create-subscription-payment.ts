@@ -47,6 +47,10 @@ import {
   SubscriptionPlanScheduleError,
 } from './lib/subscription-plan-schedule';
 import { getViewerSubscription } from './lib/subscriptions';
+import {
+  mapYooKassaSubscriptionCheckoutFailure,
+  parseYooKassaApiErrorBody,
+} from './lib/yookassa-subscription-checkout';
 
 dns.setDefaultResultOrder('ipv4first');
 
@@ -254,11 +258,18 @@ export const handler: Handler = async (event: HandlerEvent) => {
 
   if (!yookassaResponse.ok) {
     const errorText = await yookassaResponse.text();
+    const providerError = parseYooKassaApiErrorBody(errorText);
+    const failure = mapYooKassaSubscriptionCheckoutFailure(yookassaResponse.status, providerError);
     console.error('[create-subscription-payment] YooKassa error', {
       status: yookassaResponse.status,
+      providerCode: failure.providerCode,
+      providerDescription: failure.providerDescription,
       errorText: errorText.slice(0, 500),
     });
-    return createErrorResponse(502, 'Failed to create subscription payment');
+    return createErrorResponse(failure.httpStatus, failure.message, undefined, {
+      code: failure.code,
+      details: failure.providerDescription,
+    });
   }
 
   const paymentData = (await yookassaResponse.json()) as YooKassaCreateResponse;

@@ -20,6 +20,9 @@ export type SubscriptionClientErrorCopy = {
   billingCheckoutInvalidPlan?: string;
   billingCheckoutProviderUnavailable?: string;
   billingCheckoutPaymentMethodRequired?: string;
+  billingCheckoutCreateFailed?: string;
+  billingCheckoutAutopaymentsNotEnabled?: string;
+  billingCheckoutReceiptRejected?: string;
   billingAutoRenewPatchError?: string;
   billingUnlinkPaymentError?: string;
 };
@@ -37,6 +40,9 @@ const CODE_TO_COPY_KEY: Partial<Record<string, keyof SubscriptionClientErrorCopy
   NOT_A_DOWNGRADE: 'billingCheckoutInvalidPlan',
   YOOKASSA_NOT_CONFIGURED: 'billingCheckoutProviderUnavailable',
   PAYMENT_METHOD_REQUIRED: 'billingCheckoutPaymentMethodRequired',
+  YOOKASSA_CHECKOUT_FAILED: 'billingCheckoutCreateFailed',
+  YOOKASSA_AUTOPAYMENTS_NOT_ENABLED: 'billingCheckoutAutopaymentsNotEnabled',
+  YOOKASSA_RECEIPT_REJECTED: 'billingCheckoutReceiptRejected',
 };
 
 function resolveGenericMessage(copy: SubscriptionClientErrorCopy): string {
@@ -87,6 +93,9 @@ export function pickSubscriptionClientErrorCopy(
         billingCheckoutInvalidPlan?: string;
         billingCheckoutProviderUnavailable?: string;
         billingCheckoutPaymentMethodRequired?: string;
+        billingCheckoutCreateFailed?: string;
+        billingCheckoutAutopaymentsNotEnabled?: string;
+        billingCheckoutReceiptRejected?: string;
         billingAutoRenewPatchError?: string;
         billingUnlinkPaymentError?: string;
       }
@@ -108,6 +117,9 @@ export function pickSubscriptionClientErrorCopy(
     billingCheckoutInvalidPlan: collection.billingCheckoutInvalidPlan,
     billingCheckoutProviderUnavailable: collection.billingCheckoutProviderUnavailable,
     billingCheckoutPaymentMethodRequired: collection.billingCheckoutPaymentMethodRequired,
+    billingCheckoutCreateFailed: collection.billingCheckoutCreateFailed,
+    billingCheckoutAutopaymentsNotEnabled: collection.billingCheckoutAutopaymentsNotEnabled,
+    billingCheckoutReceiptRejected: collection.billingCheckoutReceiptRejected,
     billingAutoRenewPatchError: collection.billingAutoRenewPatchError,
     billingUnlinkPaymentError: collection.billingUnlinkPaymentError,
   };

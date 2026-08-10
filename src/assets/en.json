@@ -592,7 +592,10 @@
         "billingCheckoutInvalidStatus": "Plan change is not available for your current subscription status.",
         "billingCheckoutInvalidPlan": "The selected plan is not available.",
         "billingCheckoutProviderUnavailable": "The payment service is temporarily unavailable. Please try again later.",
-        "billingCheckoutPaymentMethodRequired": "Link a payment method first."
+        "billingCheckoutPaymentMethodRequired": "Link a payment method first.",
+        "billingCheckoutCreateFailed": "Could not create the payment. Please try again later or contact support.",
+        "billingCheckoutAutopaymentsNotEnabled": "Autopayments are not enabled in YooKassa for the platform shop. Please contact support.",
+        "billingCheckoutReceiptRejected": "YooKassa rejected the fiscal receipt. Please contact support."
       },
       "mixer": {
         "title": "Mixer",

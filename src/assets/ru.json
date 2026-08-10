@@ -592,7 +592,10 @@
         "billingCheckoutInvalidStatus": "Смена тарифа недоступна в текущем статусе подписки.",
         "billingCheckoutInvalidPlan": "Выбранный тариф недоступен.",
         "billingCheckoutProviderUnavailable": "Платёжный сервис временно недоступен. Попробуйте позже.",
-        "billingCheckoutPaymentMethodRequired": "Сначала привяжите способ оплаты."
+        "billingCheckoutPaymentMethodRequired": "Сначала привяжите способ оплаты.",
+        "billingCheckoutCreateFailed": "Не удалось создать платёж. Попробуйте позже или обратитесь в поддержку.",
+        "billingCheckoutAutopaymentsNotEnabled": "Автоплатежи не включены в настройках YooKassa для платформенного магазина. Обратитесь в поддержку.",
+        "billingCheckoutReceiptRejected": "Ошибка фискального чека в YooKassa. Обратитесь в поддержку."
       },
       "mixer": {
         "title": "Миксер",
