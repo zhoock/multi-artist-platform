@@ -85,14 +85,16 @@ Document counts in rollout ticket. See [subscription-autorenew-backfill.md](../a
 
 **Default today:** `SUBSCRIPTION_AUTO_RENEW_ENABLED=false` — legacy one-time checkout only; renewal scheduler no-op.
 
-| Step | Environment | Action                                                   |
-| ---- | ----------- | -------------------------------------------------------- |
-| 1    | Staging     | Migrations 066–069 applied; 069 verification queries run |
-| 2    | Staging     | Set `SUBSCRIPTION_AUTO_RENEW_ENABLED=true`               |
-| 3    | Staging     | Manual QA (§8) + optional `npm run test:e2e:nightly`     |
-| 4    | Production  | Migrations 066–069 + 069 verification                    |
-| 5    | Production  | Enable flag during low-traffic window                    |
-| 6    | Production  | Confirm scheduler runs (§5) and monitor (§7)             |
+**Single env var:** set only `SUBSCRIPTION_AUTO_RENEW_ENABLED` in Netlify (build + functions). Do **not** set `VITE_SUBSCRIPTION_AUTO_RENEW_ENABLED` — production webpack ignores it. **Redeploy** after toggling so the client bundle matches function runtime.
+
+| Step | Environment | Action                                                      |
+| ---- | ----------- | ----------------------------------------------------------- |
+| 1    | Staging     | Migrations 066–069 applied; 069 verification queries run    |
+| 2    | Staging     | Set `SUBSCRIPTION_AUTO_RENEW_ENABLED=true` **and redeploy** |
+| 3    | Staging     | Manual QA (§8) + optional `npm run test:e2e:nightly`        |
+| 4    | Production  | Migrations 066–069 + 069 verification                       |
+| 5    | Production  | Enable flag during low-traffic window **and redeploy**      |
+| 6    | Production  | Confirm scheduler runs (§5) and monitor (§7)                |
 
 **Do not enable production flag before:** migrations applied, 069 verified, YooKassa prerequisites (§4), staging sign-off.
 
@@ -140,7 +142,7 @@ Optional: set `SUBSCRIPTION_CRON_SECRET` if manual trigger endpoint is used.
 ### Immediate (flag off)
 
 1. Set `SUBSCRIPTION_AUTO_RENEW_ENABLED=false` in Netlify production env
-2. Redeploy or wait for env propagation
+2. **Redeploy** (client bundle is build-time; env-only change leaves stale UI until rebuild)
 3. Scheduler stops enqueueing new renewal charges (existing pending payments may still complete via webhook)
 
 ### Data rollback (069 only, pre-renewal activity)

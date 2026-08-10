@@ -163,6 +163,25 @@ describe('useRenewalBillingSync', () => {
     expect(onRefresh).not.toHaveBeenCalled();
   });
 
+  test('polls slowly when charge is overdue but paid period is still active', () => {
+    const onRefresh = jest.fn<() => void>();
+    const nextChargeAt = new Date('2026-08-07T11:50:00.000Z').toISOString();
+    const expiresAt = new Date('2026-08-07T12:10:00.000Z').toISOString();
+
+    renderHook(() =>
+      useRenewalBillingSync({
+        enabled: true,
+        nextChargeAt,
+        expiresAt,
+        onRefresh,
+      })
+    );
+
+    expect(onRefresh).toHaveBeenCalledTimes(1);
+    jest.advanceTimersByTime(60 * 1000);
+    expect(onRefresh.mock.calls.length).toBeGreaterThanOrEqual(2);
+  });
+
   test('does not poll when disabled', () => {
     const onRefresh = jest.fn<() => void>();
     const nextChargeAt = new Date('2026-08-07T12:00:00.000Z').toISOString();

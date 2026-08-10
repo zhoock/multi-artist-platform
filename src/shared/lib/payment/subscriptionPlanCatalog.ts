@@ -81,6 +81,13 @@ export function getPlanCatalogEntry(planSlug: SubscriptionPlanSlug): Subscriptio
   return SUBSCRIPTION_PLAN_CATALOG[planSlug];
 }
 
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+/** Production support period length for a plan (from catalog durationDays). */
+export function getPlanSupportPeriodMs(planSlug: SubscriptionPlanSlug): number {
+  return getPlanCatalogEntry(planSlug).durationDays * MS_PER_DAY;
+}
+
 export function getPlanSlotsLimit(planSlug: SubscriptionPlanSlug): number {
   return SUBSCRIPTION_PLAN_CATALOG[planSlug].slotsLimit;
 }

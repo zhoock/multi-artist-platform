@@ -12,13 +12,13 @@ describe('resolveAutoRenewClientError', () => {
     ).toBe('Could not update auto-renew');
   });
 
-  test('passes through other API errors', () => {
+  test('uses generic copy for unknown coded API errors', () => {
     expect(
       resolveAutoRenewClientError(
         { code: 'INVALID_TRANSITION', error: 'Transition not allowed' },
         'Could not update auto-renew'
       )
-    ).toBe('Transition not allowed');
+    ).toBe('Could not update auto-renew');
   });
 
   test('falls back when error text is missing', () => {

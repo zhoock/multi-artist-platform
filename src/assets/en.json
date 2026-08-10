@@ -582,7 +582,17 @@
         "billingDowngradePlanConfirm": "Schedule change",
         "billingDowngradePlanFooterNote": "You can cancel the scheduled change anytime",
         "billingDowngradeBlockedError": "Restore your support first — downgrades are only available with an active subscription.",
-        "billingPlanChangeError": "Could not change plan"
+        "billingPlanChangeError": "Could not change plan",
+        "billingCheckoutErrorGeneric": "Could not complete the request. Please try again.",
+        "billingCheckoutUpgradeIntentRequired": "Could not start the plan upgrade. Refresh the page and try again.",
+        "billingCheckoutInProgress": "A checkout is already in progress. Complete it or wait a few minutes.",
+        "billingCheckoutNoSubscription": "Subscription not found.",
+        "billingCheckoutEmailNotVerified": "Verify your email to continue.",
+        "billingCheckoutNotAnUpgrade": "The selected plan is not higher than your current plan.",
+        "billingCheckoutInvalidStatus": "Plan change is not available for your current subscription status.",
+        "billingCheckoutInvalidPlan": "The selected plan is not available.",
+        "billingCheckoutProviderUnavailable": "The payment service is temporarily unavailable. Please try again later.",
+        "billingCheckoutPaymentMethodRequired": "Link a payment method first."
       },
       "mixer": {
         "title": "Mixer",

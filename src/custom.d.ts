@@ -24,7 +24,10 @@ declare global {
     readonly VITE_RAW_ASSETS_BASE_URL?: string;
     /** Local dev: skip YooKassa redirect (requires server DEV_PAYMENT_MODE=true) */
     readonly VITE_DEV_PAYMENT_MODE?: string;
-    /** Mirror of SUBSCRIPTION_AUTO_RENEW_ENABLED — gates auto-renew UI actions */
+    /**
+     * Build-time injection from SUBSCRIPTION_AUTO_RENEW_ENABLED (see webpack DefinePlugin).
+     * Not a separate production config — do not set in Netlify env.
+     */
     readonly VITE_SUBSCRIPTION_AUTO_RENEW_ENABLED?: string;
     /** True when webpack build is not production */
     readonly DEV?: boolean;

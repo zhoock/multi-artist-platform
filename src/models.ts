@@ -1027,6 +1027,16 @@ export interface IInterface {
       billingDowngradePlanFooterNote?: string;
       billingDowngradeBlockedError?: string;
       billingPlanChangeError?: string;
+      billingCheckoutErrorGeneric?: string;
+      billingCheckoutUpgradeIntentRequired?: string;
+      billingCheckoutInProgress?: string;
+      billingCheckoutNoSubscription?: string;
+      billingCheckoutEmailNotVerified?: string;
+      billingCheckoutNotAnUpgrade?: string;
+      billingCheckoutInvalidStatus?: string;
+      billingCheckoutInvalidPlan?: string;
+      billingCheckoutProviderUnavailable?: string;
+      billingCheckoutPaymentMethodRequired?: string;
     };
     forms?: {};
     myPurchases?: {

@@ -9,6 +9,7 @@ import {
   getPlanAmountRub,
   getPlanPriceCurrencyCode,
   getPlanSlotsLimit,
+  getPlanSupportPeriodMs,
   isSubscriptionPlanCurrency,
   isSubscriptionPlanSlug,
   normalizeSubscriptionPlanSlug,
@@ -22,6 +23,7 @@ import {
   type SubscriptionPlanSlug,
 } from '../../../src/shared/lib/payment/subscriptionPlanCatalog';
 
+import { isDevPaymentModeEnabled } from './dev-payment-mode';
 import { isMissingRelationError, query } from './db';
 import type { Subscription } from './subscriptions';
 import { mapSubscriptionRow, type SubscriptionRow } from './subscriptions';
@@ -33,6 +35,7 @@ export {
   getPlanAmountRub,
   getPlanPriceCurrencyCode,
   getPlanSlotsLimit,
+  getPlanSupportPeriodMs,
   isSubscriptionPlanSlug,
   normalizeSubscriptionPlanSlug,
   PLAN_TIER_ORDER,
@@ -45,8 +48,11 @@ export {
 
 export const PREMIUM_SUBSCRIPTION_PRODUCT_TYPE = 'premium_subscription';
 
-/** Temporary: 5-minute support period for all environments (checkout, renewal, upgrade, resubscribe). */
-export const SUPPORT_PERIOD_MS = 5 * 60 * 1000;
+/** Short support period for DEV_PAYMENT_MODE QA cycles (checkout, renewal, upgrade, resubscribe). */
+export const DEV_SUPPORT_PERIOD_MS = 5 * 60 * 1000;
+
+/** @deprecated Alias for DEV_SUPPORT_PERIOD_MS — use resolveSupportPeriodMs(planSlug) in new code. */
+export const SUPPORT_PERIOD_MS = DEV_SUPPORT_PERIOD_MS;
 
 const PLAN_DESCRIPTIONS: Record<SubscriptionPlanSlug, string> = {
   explorer: 'Explorer Support',
@@ -76,12 +82,24 @@ export function getRebindAmountRub(): number {
 
 export const REBIND_PAYMENT_DESCRIPTION = 'Payment method verification';
 
+/** True when checkout/renewal should use the short QA support window instead of catalog durationDays. */
+export function usesDevSupportPeriod(): boolean {
+  return isDevPaymentModeEnabled();
+}
+
+export function resolveSupportPeriodMs(planSlug: SubscriptionPlanSlug): number {
+  if (usesDevSupportPeriod()) {
+    return DEV_SUPPORT_PERIOD_MS;
+  }
+  return getPlanSupportPeriodMs(planSlug);
+}
+
 export function computeSupportExpiresAt(
-  _planSlug: SubscriptionPlanSlug,
+  planSlug: SubscriptionPlanSlug,
   from: Date = new Date()
 ): Date {
   const expiresAt = new Date(from);
-  expiresAt.setTime(expiresAt.getTime() + SUPPORT_PERIOD_MS);
+  expiresAt.setTime(expiresAt.getTime() + resolveSupportPeriodMs(planSlug));
   return expiresAt;
 }
 
@@ -181,6 +199,49 @@ export interface SubscriptionPaymentRow {
 }
 
 const OPEN_SUBSCRIPTION_PAYMENT_STATUSES = ['pending', 'waiting_for_capture'] as const;
+
+const CHECKOUT_SUBSCRIPTION_PAYMENT_KINDS = ['initial', 'upgrade', 'rebind'] as const;
+
+/** Cancel checkout rows that never reached YooKassa (failed bootstrap / closed tab before attach). */
+export async function releaseAbandonedCheckoutPayments(userId: string): Promise<number> {
+  try {
+    const released = await query<{ id: string }>(
+      `UPDATE subscription_payments
+       SET status = 'canceled', updated_at = CURRENT_TIMESTAMP
+       WHERE user_id = $1::uuid
+         AND status = 'pending'
+         AND provider_payment_id IS NULL
+         AND kind = ANY($2::text[])
+       RETURNING id`,
+      [userId, CHECKOUT_SUBSCRIPTION_PAYMENT_KINDS]
+    );
+    return released.rowCount ?? 0;
+  } catch (error) {
+    if (isMissingRelationError(error)) return 0;
+    throw error;
+  }
+}
+
+export async function findOpenCheckoutSubscriptionPayment(
+  userId: string
+): Promise<{ id: string } | null> {
+  try {
+    const result = await query<{ id: string }>(
+      `SELECT id
+       FROM subscription_payments
+       WHERE user_id = $1::uuid
+         AND kind = ANY($3::text[])
+         AND status = ANY($2::text[])
+       ORDER BY created_at DESC
+       LIMIT 1`,
+      [userId, OPEN_SUBSCRIPTION_PAYMENT_STATUSES, CHECKOUT_SUBSCRIPTION_PAYMENT_KINDS]
+    );
+    return result.rows[0] ?? null;
+  } catch (error) {
+    if (isMissingRelationError(error)) return null;
+    throw error;
+  }
+}
 
 export async function findOpenSubscriptionPayment(userId: string): Promise<{ id: string } | null> {
   try {

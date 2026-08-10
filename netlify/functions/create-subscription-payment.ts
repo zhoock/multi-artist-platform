@@ -30,11 +30,11 @@ import {
   attachProviderPaymentId,
   createPendingSubscriptionPayment,
   DEFAULT_SUBSCRIPTION_PLAN,
-  findOpenSubscriptionPayment,
   getPlanAmountRub,
   getPlanDefinition,
   normalizeSubscriptionPlanSlug,
 } from './lib/subscription-billing';
+import { findBlockingCheckoutPayment } from './lib/subscription-checkout-guard';
 import { isSubscriptionAutoRenewEnabled } from './lib/subscription-feature-flag';
 import {
   logSubscriptionEvent,
@@ -106,7 +106,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
     return createErrorResponse(400, 'Invalid subscription plan');
   }
 
-  const openPayment = await findOpenSubscriptionPayment(userId);
+  const openPayment = await findBlockingCheckoutPayment(userId);
   if (openPayment) {
     return createErrorResponse(
       409,

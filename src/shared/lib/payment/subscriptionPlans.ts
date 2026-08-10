@@ -32,6 +32,8 @@ import {
 
 import type { BillingSnapshot } from '@shared/api/billing';
 
+export type SubscriptionCheckoutIntent = 'upgrade';
+
 export function getPlanPriceDisplayAmount(planSlug: SubscriptionPlanSlug): string {
   return String(getPlanAmountRub(planSlug));
 }
@@ -349,7 +351,7 @@ export function resolvePlanChangeAction(params: {
 
   const tierCompare = comparePlanTiers(currentPlanSlug!, targetPlanSlug);
 
-  if (!hasPremiumAccess || billingStatus === 'expired' || billingStatus === null) {
+  if (!hasPremiumAccess || billingStatus === 'expired') {
     return 'checkout';
   }
 
@@ -357,14 +359,57 @@ export function resolvePlanChangeAction(params: {
     return 'blocked_downgrade';
   }
 
-  if (billingStatus === 'active' || billingStatus === 'cancel_at_period_end') {
+  if (
+    billingStatus === 'active' ||
+    billingStatus === 'cancel_at_period_end' ||
+    billingStatus === 'past_due' ||
+    billingStatus === null
+  ) {
     if (tierCompare < 0) return 'upgrade';
     if (tierCompare > 0) return 'downgrade';
   }
 
-  if (billingStatus === 'past_due' && tierCompare < 0) {
-    return 'upgrade';
-  }
-
   return 'checkout';
+}
+
+/** Authoritative plan for billing checkout (server subscription.plan). */
+export function resolveBillingCurrentPlanSlug(params: {
+  billing: Pick<BillingSnapshot, 'plan'>;
+  resolvedPlanSlug: SubscriptionPlanSlug | null;
+  slotsLimit?: number;
+}): SubscriptionPlanSlug | null {
+  if (params.billing.plan) {
+    return params.billing.plan;
+  }
+  if (params.resolvedPlanSlug) {
+    return params.resolvedPlanSlug;
+  }
+  if (params.slotsLimit != null) {
+    return resolvePlanSlugFromSlotsLimit(params.slotsLimit);
+  }
+  return null;
+}
+
+/** Maps plan-change action to create-subscription-payment intent (I-P1). */
+export function resolveSubscriptionCheckoutIntent(params: {
+  currentPlanSlug: SubscriptionPlanSlug | null;
+  targetPlanSlug: SubscriptionPlanSlug;
+  billing: Pick<BillingSnapshot, 'plan' | 'status' | 'hasPremiumAccess'>;
+  hasPremiumAccessOverride?: boolean;
+  slotsLimit?: number;
+}): SubscriptionCheckoutIntent | undefined {
+  const hasPremiumAccess =
+    params.billing.hasPremiumAccess || params.hasPremiumAccessOverride === true;
+  const billingCurrentPlanSlug = resolveBillingCurrentPlanSlug({
+    billing: params.billing,
+    resolvedPlanSlug: params.currentPlanSlug,
+    slotsLimit: params.slotsLimit,
+  });
+  const action = resolvePlanChangeAction({
+    currentPlanSlug: billingCurrentPlanSlug,
+    targetPlanSlug: params.targetPlanSlug,
+    billingStatus: params.billing.status,
+    hasPremiumAccess,
+  });
+  return action === 'upgrade' ? 'upgrade' : undefined;
 }

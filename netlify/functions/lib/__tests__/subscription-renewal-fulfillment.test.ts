@@ -52,12 +52,17 @@ jest.mock('../subscription-billing', () => ({
   validatePremiumSubscriptionPayment: jest.fn(() => ({ valid: true, planSlug: 'explorer' })),
 }));
 
+jest.mock('../subscription-feature-flag', () => ({
+  isSubscriptionAutoRenewEnabled: jest.fn(() => true),
+}));
+
 import { query } from '../db';
 import { deactivateExcessArchiveArtists, extendActiveArchiveLockedUntil } from '../archive';
 import {
   claimSubscriptionPaymentCanceled,
   claimSubscriptionPaymentSuccess,
   isSubscriptionFulfilledForProviderPayment,
+  updateSubscriptionPaymentStatus,
 } from '../subscription-billing';
 import { getViewerSubscription } from '../subscriptions';
 import {
@@ -85,6 +90,9 @@ const mockedClaimSuccess = claimSubscriptionPaymentSuccess as jest.MockedFunctio
 >;
 const mockedClaimCanceled = claimSubscriptionPaymentCanceled as jest.MockedFunction<
   typeof claimSubscriptionPaymentCanceled
+>;
+const mockedUpdatePaymentStatus = updateSubscriptionPaymentStatus as jest.MockedFunction<
+  typeof updateSubscriptionPaymentStatus
 >;
 
 const USER_ID = 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee';
@@ -185,6 +193,33 @@ describe('fulfillRenewalSubscriptionPayment', () => {
     expect(String(mockedQuery.mock.calls[0]?.[0])).toContain('scheduled_plan = NULL');
   });
 
+  test('sets next_charge_at equal to expires_at when payment method exists', async () => {
+    const expectedExpires = new Date('2026-09-10T00:00:00.000Z');
+    mockedIsFulfilled.mockResolvedValue(false);
+    mockedGetSub.mockResolvedValue(activeSub({ paymentMethodId: 'pm-1' }));
+    mockedQuery.mockResolvedValue(
+      fakeQueryResult([
+        subscriptionRowFrom(
+          activeSub({
+            providerSubscriptionId: PAYMENT_ID,
+            expiresAt: expectedExpires,
+            nextChargeAt: expectedExpires,
+          })
+        ),
+      ])
+    );
+
+    await fulfillRenewalSubscriptionPayment({
+      userId: USER_ID,
+      planSlug: 'explorer',
+      providerPaymentId: PAYMENT_ID,
+    });
+
+    const updateParams = mockedQuery.mock.calls[0]?.[1] as unknown[];
+    expect(updateParams[5]).toEqual(expectedExpires);
+    expect(updateParams[6]).toEqual(expectedExpires);
+  });
+
   test('skips subscription update when already fulfilled but still runs archive side effects', async () => {
     mockedIsFulfilled.mockResolvedValue(true);
     mockedGetSub.mockResolvedValue(
@@ -281,6 +316,21 @@ describe('applySubscriptionPeriodEnded', () => {
   });
 });
 
+function renewalPayment(status: 'succeeded' | 'pending' | 'canceled') {
+  return {
+    id: PAYMENT_ID,
+    status,
+    amount: { value: '1.00', currency: 'RUB' },
+    metadata: {
+      productType: 'premium_subscription',
+      userId: USER_ID,
+      plan: 'explorer',
+      kind: 'renewal',
+    },
+    paymentMethod: null,
+  };
+}
+
 describe('processRenewalSubscriptionProviderPayment', () => {
   test('routes succeeded renewal through fulfillment', async () => {
     mockedClaimSuccess.mockResolvedValue('claimed');
@@ -337,5 +387,69 @@ describe('processRenewalSubscriptionProviderPayment', () => {
 
     expect(mockedClaimCanceled).toHaveBeenCalledWith(PAYMENT_ID, USER_ID);
     expect(mockedQuery).toHaveBeenCalled();
+  });
+
+  test('routes pending renewal through status update only', async () => {
+    const result = await processRenewalSubscriptionProviderPayment(
+      renewalPayment('pending'),
+      USER_ID
+    );
+
+    expect(result.subscriptionRenewed).toBe(false);
+    expect(mockedUpdatePaymentStatus).toHaveBeenCalledWith(PAYMENT_ID, 'pending');
+    expect(mockedClaimSuccess).not.toHaveBeenCalled();
+    expect(mockedClaimCanceled).not.toHaveBeenCalled();
+  });
+
+  test('webhook replay after sync succeeded is idempotent', async () => {
+    mockedClaimSuccess.mockResolvedValueOnce('claimed').mockResolvedValueOnce('already_succeeded');
+    mockedIsFulfilled.mockResolvedValue(false);
+    mockedGetSub.mockResolvedValue(activeSub({ scheduledPlan: 'explorer' }));
+    mockedQuery.mockResolvedValue(
+      fakeQueryResult([
+        subscriptionRowFrom(activeSub({ plan: 'explorer', slotsLimit: 1, scheduledPlan: null })),
+      ])
+    );
+
+    const payment = renewalPayment('succeeded');
+    const first = await processRenewalSubscriptionProviderPayment(payment, USER_ID);
+    mockedIsFulfilled.mockResolvedValue(true);
+    const second = await processRenewalSubscriptionProviderPayment(payment, USER_ID);
+
+    expect(first.subscriptionRenewed).toBe(true);
+    expect(second.alreadyFulfilled).toBe(true);
+    expect(mockedClaimSuccess).toHaveBeenCalledTimes(2);
+    expect(mockedIsFulfilled).toHaveBeenCalledTimes(2);
+  });
+
+  test('webhook replay after sync pending is idempotent', async () => {
+    const payment = renewalPayment('pending');
+
+    await processRenewalSubscriptionProviderPayment(payment, USER_ID);
+    await processRenewalSubscriptionProviderPayment(payment, USER_ID);
+
+    expect(mockedUpdatePaymentStatus).toHaveBeenCalledTimes(2);
+    expect(mockedUpdatePaymentStatus).toHaveBeenNthCalledWith(1, PAYMENT_ID, 'pending');
+    expect(mockedUpdatePaymentStatus).toHaveBeenNthCalledWith(2, PAYMENT_ID, 'pending');
+    expect(mockedClaimSuccess).not.toHaveBeenCalled();
+    expect(mockedClaimCanceled).not.toHaveBeenCalled();
+  });
+
+  test('webhook replay after sync canceled does not double dunning', async () => {
+    mockedClaimCanceled.mockResolvedValueOnce('claimed').mockResolvedValueOnce('already_terminal');
+    mockedGetSub.mockResolvedValue(activeSub());
+    mockedQuery.mockResolvedValue(
+      fakeQueryResult([subscriptionRowFrom(activeSub({ status: 'past_due' }))])
+    );
+
+    const payment = renewalPayment('canceled');
+    await processRenewalSubscriptionProviderPayment(payment, USER_ID);
+    await processRenewalSubscriptionProviderPayment(payment, USER_ID);
+
+    expect(mockedClaimCanceled).toHaveBeenCalledTimes(2);
+    const dunningUpdates = mockedQuery.mock.calls.filter(([sql]) =>
+      String(sql).includes('renewal_attempt_count')
+    );
+    expect(dunningUpdates).toHaveLength(1);
   });
 });

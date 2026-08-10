@@ -18,6 +18,7 @@ import { isSubscriptionAutoRenewEnabled } from './subscription-feature-flag';
 import {
   mapDevSubscriptionPaymentToProviderPayment,
   type SubscriptionProviderPayment,
+  type SubscriptionProviderPaymentStatus,
 } from './subscription-provider-payment';
 import { processSubscriptionProviderPayment } from './subscription-payment-router';
 import { applySubscriptionPeriodEnded } from './subscription-renewal-fulfillment';
@@ -223,11 +224,16 @@ async function processRenewalProviderPaymentInline(
   now: Date
 ): Promise<void> {
   await processSubscriptionProviderPayment(providerPayment, userId, {
-    devMode: true,
     observabilitySource: 'scheduler',
     subscriptionPaymentId,
     now,
   });
+}
+
+function isInlineSyncRenewalProviderStatus(
+  status: string
+): status is SubscriptionProviderPaymentStatus {
+  return status === 'succeeded' || status === 'pending' || status === 'canceled';
 }
 
 type RenewalChargePhase = 'PRE_PROVIDER' | 'POST_PROVIDER';
@@ -387,10 +393,10 @@ export async function attemptRenewalChargeForSubscription(
     await attachProviderPaymentId(subscriptionPaymentId, paymentId);
     phase = 'POST_PROVIDER';
 
-    if (status === 'succeeded') {
+    if (isInlineSyncRenewalProviderStatus(status)) {
       const providerPayment: SubscriptionProviderPayment = {
         id: paymentId,
-        status: 'succeeded',
+        status,
         amount: {
           value: getPlanAmountRub(chargePlanSlug).toFixed(2),
           currency: getPlanPriceCurrencyCode(),

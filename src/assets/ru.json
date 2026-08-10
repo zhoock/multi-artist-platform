@@ -582,7 +582,17 @@
         "billingDowngradePlanConfirm": "Запланировать смену",
         "billingDowngradePlanFooterNote": "Запланированную смену можно отменить в любой момент",
         "billingDowngradeBlockedError": "Сначала восстановите поддержку — понижение тарифа доступно только при активной подписке.",
-        "billingPlanChangeError": "Не удалось изменить тариф"
+        "billingPlanChangeError": "Не удалось изменить тариф",
+        "billingCheckoutErrorGeneric": "Не удалось выполнить операцию. Попробуйте ещё раз.",
+        "billingCheckoutUpgradeIntentRequired": "Не удалось начать повышение тарифа. Обновите страницу и попробуйте снова.",
+        "billingCheckoutInProgress": "Оплата уже начата. Завершите её или подождите несколько минут.",
+        "billingCheckoutNoSubscription": "Подписка не найдена.",
+        "billingCheckoutEmailNotVerified": "Подтвердите email, чтобы продолжить.",
+        "billingCheckoutNotAnUpgrade": "Выбранный тариф не выше текущего.",
+        "billingCheckoutInvalidStatus": "Смена тарифа недоступна в текущем статусе подписки.",
+        "billingCheckoutInvalidPlan": "Выбранный тариф недоступен.",
+        "billingCheckoutProviderUnavailable": "Платёжный сервис временно недоступен. Попробуйте позже.",
+        "billingCheckoutPaymentMethodRequired": "Сначала привяжите способ оплаты."
       },
       "mixer": {
         "title": "Миксер",

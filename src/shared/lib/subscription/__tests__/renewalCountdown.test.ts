@@ -145,6 +145,20 @@ describe('formatRelativeRenewalTime', () => {
     ).toBe(RENEWAL_COUNTDOWN_OVERDUE_AWAITING.ru);
   });
 
+  test('uses expiresAt when nextChargeAt is stale after plan extension', () => {
+    const staleChargeAt = chargeAtOffset(-10 * 60 * 1000);
+    const freshExpiresAt = chargeAtOffset(4 * 60 * 1000);
+
+    expect(
+      resolveRenewalCountdownDisplay({
+        nextChargeAt: staleChargeAt,
+        expiresAt: freshExpiresAt,
+        lang: 'ru',
+        now: NOW,
+      }).label
+    ).toMatch(/^через /);
+  });
+
   test('uses correct Russian declensions', () => {
     expect(
       formatRelativeRenewalTime({

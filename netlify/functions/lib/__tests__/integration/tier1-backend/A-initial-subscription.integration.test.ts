@@ -14,8 +14,15 @@ import {
 } from '../../../subscription-billing';
 import { buildBillingSnapshot } from '../../../subscription-billing-snapshot';
 import { hasPremiumAccess } from '../../../subscription-access';
-import { mapDevSubscriptionPaymentToProviderPayment } from '../../../subscription-provider-payment';
+import {
+  mapDevSubscriptionPaymentToProviderPayment,
+  type SubscriptionProviderPayment,
+} from '../../../subscription-provider-payment';
 import { processSubscriptionProviderPaymentForRow } from '../../../subscription-payment-router';
+import {
+  buildInitialSubscriptionPaymentPayload,
+  devMockPaymentMethodId,
+} from '../../../subscription-yookassa';
 import { setActiveE2eContext } from '../../helpers/subscription-e2e-context';
 import {
   buildSnapshotFromSubscription,
@@ -95,7 +102,15 @@ const SCENARIOS: E2eScenarioMeta[] = [
 ];
 
 const P0_IDS = new Set(['A-BOTH-001', 'A-BOTH-004']);
+const IMPLEMENTED_IDS = new Set([...P0_IDS, 'A-ON-005']);
 const dbTest = isE2eDatabaseConfigured() ? test : test.skip;
+
+function isoDate(value: Date | string | null | undefined): string | null {
+  if (value == null) return null;
+  const d = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toISOString();
+}
 
 function invariantOpts(ctx: ReturnType<typeof createE2eContext>) {
   return {
@@ -210,5 +225,124 @@ describe('Group A — Initial subscription @tier1', () => {
     }, E2E_TIME_ANCHOR);
   });
 
-  registerScenarioTodos(SCENARIOS.filter((s) => !P0_IDS.has(s.id)));
+  dbTest(buildTaggedTestName(SCENARIOS[4]!), async () => {
+    await withFrozenTime(async () => {
+      const ctx = createE2eContext('A-ON-005', { frozenNow: E2E_TIME_ANCHOR });
+      setActiveE2eContext(ctx);
+      expect(ctx.flagAutoRenew).toBe(true);
+
+      const checkoutPayload = buildInitialSubscriptionPaymentPayload({
+        amountValue: '1.00',
+        description: 'Explorer Support',
+        returnUrl: 'https://example.test/dashboard/collection?payment=success',
+        userId: ctx.userId,
+        planSlug: 'explorer',
+        customerEmail: 'a-on-005@pr10-e2e.test',
+      });
+      expect(checkoutPayload.save_payment_method).toBe(true);
+      expect(checkoutPayload.capture).toBe(true);
+      expect(checkoutPayload.metadata).toMatchObject({
+        productType: 'premium_subscription',
+        userId: ctx.userId,
+        plan: 'explorer',
+        kind: 'initial',
+      });
+      expect(checkoutPayload.confirmation).toEqual({
+        type: 'redirect',
+        return_url: 'https://example.test/dashboard/collection?payment=success',
+      });
+      expect(checkoutPayload).not.toHaveProperty('payment_method_id');
+
+      expect(await loadSubscriptionForUser(ctx.userId)).toBeNull();
+
+      const subscriptionPaymentId = await createPendingSubscriptionPayment(
+        ctx.userId,
+        'explorer',
+        'initial'
+      );
+      const { paymentId } = await attachDevSucceededSubscriptionCheckout({ subscriptionPaymentId });
+      const row = await getSubscriptionPaymentByInternalId(subscriptionPaymentId, ctx.userId);
+      if (!row?.provider_payment_id) throw new Error('provider_payment_id missing');
+
+      const providerPayment = mapDevSubscriptionPaymentToProviderPayment(row, paymentId, {
+        devMode: true,
+      });
+      if (!providerPayment) throw new Error('provider payment missing');
+
+      expect(providerPayment.paymentMethod?.saved).toBe(true);
+      expect(providerPayment.paymentMethod?.id).toBe(devMockPaymentMethodId(paymentId));
+
+      const first = await processSubscriptionProviderPaymentForRow(
+        providerPayment,
+        ctx.userId,
+        row.kind,
+        { devMode: true, observabilitySource: 'webhook' }
+      );
+      expect(first.subscriptionActivated).toBe(true);
+      expect(first.alreadyFulfilled).toBe(false);
+
+      const subscription = await loadSubscriptionForUser(ctx.userId);
+      const expectedPmId = devMockPaymentMethodId(paymentId);
+
+      await expectSubscriptionState(
+        subscription,
+        {
+          status: 'active',
+          plan: 'explorer',
+          paymentMethodId: expectedPmId,
+          providerSubscriptionId: paymentId,
+        },
+        { context: ctx }
+      );
+
+      expect(isoDate(subscription?.nextChargeAt)).toBe(isoDate(subscription?.expiresAt));
+      expect(subscription?.nextChargeAt).not.toBeNull();
+
+      const snapshot = buildSnapshotFromSubscription(subscription, E2E_TIME_ANCHOR);
+      await expectBillingSnapshot(snapshot, {
+        status: 'active',
+        hasPremiumAccess: true,
+        hasSavedPaymentMethod: true,
+        autoRenewEnabled: true,
+      });
+
+      const replay = await processSubscriptionProviderPaymentForRow(
+        providerPayment,
+        ctx.userId,
+        row.kind,
+        { devMode: true, observabilitySource: 'poll' }
+      );
+      expect(replay.alreadyFulfilled).toBe(true);
+
+      const afterReplay = await loadSubscriptionForUser(ctx.userId);
+      expect(afterReplay?.paymentMethodId).toBe(expectedPmId);
+      expect(isoDate(afterReplay?.nextChargeAt)).toBe(isoDate(subscription?.nextChargeAt));
+
+      const alternatePmPayment: SubscriptionProviderPayment = {
+        ...providerPayment,
+        paymentMethod: {
+          id: '00000000-0000-4000-8000-000000000099',
+          saved: true,
+          title: 'Visa •••• 9999',
+        },
+      };
+      const replayAlternatePm = await processSubscriptionProviderPaymentForRow(
+        alternatePmPayment,
+        ctx.userId,
+        row.kind,
+        { devMode: false, observabilitySource: 'webhook' }
+      );
+      expect(replayAlternatePm.alreadyFulfilled).toBe(true);
+
+      const afterAlternatePm = await loadSubscriptionForUser(ctx.userId);
+      expect(afterAlternatePm?.paymentMethodId).toBe(expectedPmId);
+      expect(isoDate(afterAlternatePm?.nextChargeAt)).toBe(isoDate(subscription?.nextChargeAt));
+
+      if (subscription) {
+        await expectInvariantSet(subscription, { violations: [] }, invariantOpts(ctx));
+      }
+    }, E2E_TIME_ANCHOR);
+  });
+
+  registerScenarioTodos(SCENARIOS.filter((s) => !IMPLEMENTED_IDS.has(s.id)));
 });

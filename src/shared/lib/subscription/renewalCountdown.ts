@@ -130,6 +130,35 @@ function formatOverdueLabel(overdueMs: number, lang: RenewalLang): string {
   return RENEWAL_COUNTDOWN_OVERDUE_AWAITING[lang];
 }
 
+/** When period was extended (upgrade/renewal) but nextChargeAt is stale in the snapshot. */
+function resolveEffectiveNextChargeAt(params: {
+  nextChargeAt: string;
+  expiresAt: string | null | undefined;
+  now: Date;
+}): string {
+  const nextChargeMs = new Date(params.nextChargeAt).getTime();
+  if (Number.isNaN(nextChargeMs)) {
+    return params.nextChargeAt;
+  }
+
+  if (!params.expiresAt) {
+    return params.nextChargeAt;
+  }
+
+  const expiresMs = new Date(params.expiresAt).getTime();
+  if (Number.isNaN(expiresMs)) {
+    return params.nextChargeAt;
+  }
+
+  const nowMs = params.now.getTime();
+  const overdueMs = nowMs - nextChargeMs;
+  if (overdueMs > RENEWAL_OVERDUE_IN_PROGRESS_MS && expiresMs > nowMs && expiresMs > nextChargeMs) {
+    return params.expiresAt;
+  }
+
+  return params.nextChargeAt;
+}
+
 export function getRenewalCountdownRemainingMs(
   nextChargeAt: string,
   now: Date = new Date()
@@ -229,17 +258,22 @@ export function resolveRenewalCountdownDisplay(params: {
   const now = params.now ?? new Date();
 
   if (params.nextChargeAt) {
-    const targetMs = new Date(params.nextChargeAt).getTime();
+    const effectiveNextChargeAt = resolveEffectiveNextChargeAt({
+      nextChargeAt: params.nextChargeAt,
+      expiresAt: params.expiresAt,
+      now,
+    });
+    const targetMs = new Date(effectiveNextChargeAt).getTime();
     if (!Number.isNaN(targetMs)) {
       const core = formatRelativeRenewalCore({
-        nextChargeAt: params.nextChargeAt,
+        nextChargeAt: effectiveNextChargeAt,
         lang: params.lang,
         now,
       });
 
       return {
         ...core,
-        title: formatRenewalChargeDateTime(params.nextChargeAt, params.lang),
+        title: formatRenewalChargeDateTime(effectiveNextChargeAt, params.lang),
         source: 'nextChargeAt',
       };
     }

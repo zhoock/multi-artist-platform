@@ -15,7 +15,9 @@ import {
   getPlanCardBadgeLabel,
   resolvePlanSlugFromSlotsLimit,
   resolvePlanChangeAction,
+  resolveBillingCurrentPlanSlug,
   resolveRecommendedPlanSlug,
+  resolveSubscriptionCheckoutIntent,
   shouldConfirmSubscriptionPlanChange,
   shouldShowCheckoutAutopaymentDisclosure,
 } from '../subscriptionPlans';
@@ -309,6 +311,82 @@ describe('resolvePlanChangeAction', () => {
         hasPremiumAccess: false,
       })
     ).toBe('checkout');
+  });
+
+  test('routes upgrade when billing status is null but premium access is active', () => {
+    expect(
+      resolvePlanChangeAction({
+        currentPlanSlug: 'explorer',
+        targetPlanSlug: 'collector',
+        billingStatus: null,
+        hasPremiumAccess: true,
+      })
+    ).toBe('upgrade');
+  });
+});
+
+describe('resolveBillingCurrentPlanSlug', () => {
+  test('prefers billing.plan over slots-derived plan', () => {
+    expect(
+      resolveBillingCurrentPlanSlug({
+        billing: { plan: 'explorer' },
+        resolvedPlanSlug: 'collector',
+      })
+    ).toBe('explorer');
+  });
+
+  test('falls back to slots limit when billing plan is missing', () => {
+    expect(
+      resolveBillingCurrentPlanSlug({
+        billing: { plan: null },
+        resolvedPlanSlug: null,
+        slotsLimit: 60,
+      })
+    ).toBe('collector');
+  });
+});
+
+describe('resolveSubscriptionCheckoutIntent', () => {
+  test('returns upgrade for mid-cycle higher tier', () => {
+    expect(
+      resolveSubscriptionCheckoutIntent({
+        currentPlanSlug: 'explorer',
+        targetPlanSlug: 'archivist',
+        billing: {
+          plan: 'explorer',
+          status: 'active',
+          hasPremiumAccess: true,
+        },
+      })
+    ).toBe('upgrade');
+  });
+
+  test('returns undefined for initial purchase', () => {
+    expect(
+      resolveSubscriptionCheckoutIntent({
+        currentPlanSlug: null,
+        targetPlanSlug: 'explorer',
+        billing: {
+          plan: null,
+          status: null,
+          hasPremiumAccess: false,
+        },
+      })
+    ).toBeUndefined();
+  });
+
+  test('uses billing.plan when resolved plan slug is missing', () => {
+    expect(
+      resolveSubscriptionCheckoutIntent({
+        currentPlanSlug: null,
+        targetPlanSlug: 'collector',
+        billing: {
+          plan: 'explorer',
+          status: 'active',
+          hasPremiumAccess: true,
+        },
+      })
+    ).toBe('upgrade');
   });
 });
 

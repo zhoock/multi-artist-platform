@@ -11,11 +11,17 @@ import { useEmailVerificationCopy } from '@shared/lib/emailVerification';
 import {
   SUBSCRIPTION_PLAN_SLUGS,
   resolveActiveScheduledPlanChange,
+  resolveBillingCurrentPlanSlug,
   resolvePlanChangeAction,
+  resolveSubscriptionCheckoutIntent,
   shouldConfirmSubscriptionPlanChange,
   type SubscriptionPlanSlug,
 } from '@shared/lib/payment/subscriptionPlans';
 import { useSubscriptionBilling } from '@shared/lib/subscription/useSubscriptionBilling';
+import {
+  pickSubscriptionClientErrorCopy,
+  resolveSubscriptionClientError,
+} from '@shared/lib/subscription/resolveSubscriptionClientError';
 import { isSubscriptionAutoRenewClientEnabled } from '@shared/lib/subscription/isSubscriptionAutoRenewClientEnabled';
 import { useAuthSessionUser } from '@shared/lib/hooks/useAuthSessionUser';
 import { LocalModal } from '@shared/ui/localModal';
@@ -57,9 +63,20 @@ export function ArchiveAccessModalView({ dialogRef, onClose }: Props) {
   const { lang } = useLang() as { lang: 'ru' | 'en' };
   const viewer = useAuthSessionUser();
   const emailCopy = useEmailVerificationCopy();
-  const { planSlug: resolvedPlanSlug, billing, slotsLimit, refetch } = usePremiumSubscription();
+  const {
+    planSlug: resolvedPlanSlug,
+    billing,
+    slotsLimit,
+    refetch,
+    isPremium,
+  } = usePremiumSubscription();
   const currentPlanSlug = resolvedPlanSlug;
-  const hasActivePremium = billing.hasPremiumAccess;
+  const billingCurrentPlanSlug = resolveBillingCurrentPlanSlug({
+    billing,
+    resolvedPlanSlug: currentPlanSlug,
+    slotsLimit,
+  });
+  const hasActivePremium = billing.hasPremiumAccess || isPremium;
   const [loadingPlan, setLoadingPlan] = useState<SubscriptionPlanSlug | null>(null);
   const [pendingPlanChange, setPendingPlanChange] = useState<SubscriptionPlanSlug | null>(null);
   const [pendingFlow, setPendingFlow] = useState<PendingPlanFlow | null>(null);
@@ -74,6 +91,7 @@ export function ArchiveAccessModalView({ dialogRef, onClose }: Props) {
   const ui = useAppSelector((state) => selectUiDictionaryFirst(state, lang));
   const emailBlocked = Boolean(viewer && !isEmailVerified(viewer));
   const collectionCopy = ui?.dashboard?.collection;
+  const subscriptionErrorCopy = pickSubscriptionClientErrorCopy(collectionCopy);
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -129,10 +147,22 @@ export function ArchiveAccessModalView({ dialogRef, onClose }: Props) {
       setLoadingPlan(planSlug);
       setAlertModal(null);
 
-      const result = await startCheckout(planSlug, intent ? { intent } : undefined);
+      const checkoutIntent =
+        intent ??
+        resolveSubscriptionCheckoutIntent({
+          currentPlanSlug,
+          targetPlanSlug: planSlug,
+          billing,
+          hasPremiumAccessOverride: hasActivePremium,
+          slotsLimit,
+        });
+      const result = await startCheckout(
+        planSlug,
+        checkoutIntent ? { intent: checkoutIntent } : undefined
+      );
 
       if (!result.ok) {
-        showErrorAlert(result.error);
+        showErrorAlert(resolveSubscriptionClientError(result, subscriptionErrorCopy));
         setLoadingPlan(null);
         return;
       }
@@ -141,7 +171,7 @@ export function ArchiveAccessModalView({ dialogRef, onClose }: Props) {
         setLoadingPlan(null);
       }
     },
-    [showErrorAlert, startCheckout]
+    [billing, currentPlanSlug, hasActivePremium, showErrorAlert, slotsLimit, startCheckout]
   );
 
   const handleCancelScheduledChange = useCallback(async () => {
@@ -155,7 +185,7 @@ export function ArchiveAccessModalView({ dialogRef, onClose }: Props) {
 
       if (!result.ok) {
         showErrorAlert(
-          result.error ??
+          resolveSubscriptionClientError(result, subscriptionErrorCopy) ??
             collectionCopy?.billingPlanChangeError ??
             (lang === 'en'
               ? 'Could not cancel scheduled change'
@@ -189,16 +219,16 @@ export function ArchiveAccessModalView({ dialogRef, onClose }: Props) {
         return;
       }
 
-      if (!shouldConfirmSubscriptionPlanChange(currentPlanSlug, planSlug)) {
+      if (!shouldConfirmSubscriptionPlanChange(billingCurrentPlanSlug, planSlug)) {
         void proceedToCheckout(planSlug);
         return;
       }
 
       const action = resolvePlanChangeAction({
-        currentPlanSlug,
+        currentPlanSlug: billingCurrentPlanSlug,
         targetPlanSlug: planSlug,
         billingStatus: billing.status,
-        hasPremiumAccess: billing.hasPremiumAccess,
+        hasPremiumAccess: billing.hasPremiumAccess || hasActivePremium,
       });
 
       if (action === 'blocked_downgrade') {
@@ -220,8 +250,10 @@ export function ArchiveAccessModalView({ dialogRef, onClose }: Props) {
       setPendingPlanChange(planSlug);
     },
     [
+      hasActivePremium,
       billing.hasPremiumAccess,
       billing.status,
+      billingCurrentPlanSlug,
       collectionCopy?.billingDowngradeBlockedError,
       currentPlanSlug,
       handleCancelScheduledChange,
@@ -239,7 +271,7 @@ export function ArchiveAccessModalView({ dialogRef, onClose }: Props) {
   }, [loadingPlan, scheduleLoading]);
 
   const handleConfirmPlanChange = useCallback(async () => {
-    if (!pendingPlanChange || !currentPlanSlug || loadingPlan || scheduleLoading) return;
+    if (!pendingPlanChange || !billingCurrentPlanSlug || loadingPlan || scheduleLoading) return;
 
     const planSlug = pendingPlanChange;
     const flow = pendingFlow;
@@ -261,7 +293,7 @@ export function ArchiveAccessModalView({ dialogRef, onClose }: Props) {
           return;
         }
         showErrorAlert(
-          result.error ??
+          resolveSubscriptionClientError(result, subscriptionErrorCopy) ??
             collectionCopy?.billingPlanChangeError ??
             (lang === 'en' ? 'Could not change plan' : 'Не удалось изменить тариф')
         );
@@ -279,8 +311,8 @@ export function ArchiveAccessModalView({ dialogRef, onClose }: Props) {
     setPendingFlow(null);
     void proceedToCheckout(planSlug);
   }, [
+    billingCurrentPlanSlug,
     collectionCopy?.billingPlanChangeError,
-    currentPlanSlug,
     lang,
     loadingPlan,
     pendingFlow,
@@ -370,10 +402,10 @@ export function ArchiveAccessModalView({ dialogRef, onClose }: Props) {
         </div>
       </LocalModal>
 
-      {pendingPlanChange && currentPlanSlug && pendingFlow === 'upgrade' ? (
+      {pendingPlanChange && billingCurrentPlanSlug && pendingFlow === 'upgrade' ? (
         <UpgradePlanConfirmModal
           isOpen
-          currentPlanSlug={currentPlanSlug}
+          currentPlanSlug={billingCurrentPlanSlug}
           targetPlanSlug={pendingPlanChange}
           loading={confirmLoading}
           onCancel={handleCancelPlanChange}
@@ -381,10 +413,10 @@ export function ArchiveAccessModalView({ dialogRef, onClose }: Props) {
         />
       ) : null}
 
-      {pendingPlanChange && currentPlanSlug && pendingFlow === 'downgrade' ? (
+      {pendingPlanChange && billingCurrentPlanSlug && pendingFlow === 'downgrade' ? (
         <ScheduleDowngradeConfirmModal
           isOpen
-          currentPlanSlug={currentPlanSlug}
+          currentPlanSlug={billingCurrentPlanSlug}
           targetPlanSlug={pendingPlanChange}
           effectiveDateLabel={effectiveDateLabel}
           loading={confirmLoading}
@@ -393,10 +425,10 @@ export function ArchiveAccessModalView({ dialogRef, onClose }: Props) {
         />
       ) : null}
 
-      {pendingPlanChange && currentPlanSlug && pendingFlow === 'legacy' ? (
+      {pendingPlanChange && billingCurrentPlanSlug && pendingFlow === 'legacy' ? (
         <SubscriptionPlanChangeConfirmModal
           isOpen
-          currentPlanSlug={currentPlanSlug}
+          currentPlanSlug={billingCurrentPlanSlug}
           targetPlanSlug={pendingPlanChange}
           loading={confirmLoading}
           onCancel={handleCancelPlanChange}

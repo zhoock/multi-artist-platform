@@ -1,6 +1,9 @@
 /**
  * Client mirror of SUBSCRIPTION_AUTO_RENEW_ENABLED (UX gate only — server enforces).
- * Reads the same root .env value injected via webpack DefinePlugin.
+ *
+ * Value is injected at webpack build time from SUBSCRIPTION_AUTO_RENEW_ENABLED
+ * (production) or VITE_SUBSCRIPTION_AUTO_RENEW_ENABLED || SUBSCRIPTION_* (dev).
+ * Configure only SUBSCRIPTION_AUTO_RENEW_ENABLED in production; redeploy after toggling.
  *
  * Uses process.env — not import.meta.env, which breaks Jest.
  */

@@ -19,6 +19,31 @@ const TsconfigPathsPlugin = require('tsconfig-paths-webpack-plugin'); // Пла�
 // переменная production получит либо false, либо true
 const production = process.env.NODE_ENV === 'production';
 
+/**
+ * Client bundle flag for auto-renew UI (disclosure, billing actions).
+ * Single source of truth: SUBSCRIPTION_AUTO_RENEW_ENABLED (same as Netlify Functions).
+ * In production builds VITE_SUBSCRIPTION_AUTO_RENEW_ENABLED is ignored so frontend/backend
+ * cannot be toggled independently via Netlify env. Dev/test may still use VITE_* override.
+ */
+function resolveSubscriptionAutoRenewClientFlag() {
+  const backendFlag = process.env.SUBSCRIPTION_AUTO_RENEW_ENABLED || '';
+  const viteOverride = process.env.VITE_SUBSCRIPTION_AUTO_RENEW_ENABLED || '';
+
+  if (production) {
+    if (viteOverride && viteOverride.trim().toLowerCase() !== backendFlag.trim().toLowerCase()) {
+      console.warn(
+        '[webpack] Ignoring VITE_SUBSCRIPTION_AUTO_RENEW_ENABLED in production build. ' +
+          'Set SUBSCRIPTION_AUTO_RENEW_ENABLED only (then redeploy).'
+      );
+    }
+    return backendFlag;
+  }
+
+  return viteOverride || backendFlag;
+}
+
+const subscriptionAutoRenewClientFlag = resolveSubscriptionAutoRenewClientFlag();
+
 module.exports = {
   entry: path.resolve(__dirname, '..', './src/index.tsx'), // Основной файл для React с TypeScript
   output: {
@@ -205,9 +230,7 @@ module.exports = {
         process.env.VITE_DEV_PAYMENT_MODE || ''
       ),
       'import.meta.env.VITE_SUBSCRIPTION_AUTO_RENEW_ENABLED': JSON.stringify(
-        process.env.VITE_SUBSCRIPTION_AUTO_RENEW_ENABLED ||
-          process.env.SUBSCRIPTION_AUTO_RENEW_ENABLED ||
-          ''
+        subscriptionAutoRenewClientFlag
       ),
       'process.env.VITE_SUPABASE_URL': JSON.stringify(process.env.VITE_SUPABASE_URL || ''),
       'process.env.VITE_SUPABASE_ANON_KEY': JSON.stringify(
@@ -218,9 +241,7 @@ module.exports = {
       ),
       'process.env.VITE_DEV_PAYMENT_MODE': JSON.stringify(process.env.VITE_DEV_PAYMENT_MODE || ''),
       'process.env.VITE_SUBSCRIPTION_AUTO_RENEW_ENABLED': JSON.stringify(
-        process.env.VITE_SUBSCRIPTION_AUTO_RENEW_ENABLED ||
-          process.env.SUBSCRIPTION_AUTO_RENEW_ENABLED ||
-          ''
+        subscriptionAutoRenewClientFlag
       ),
       'process.env.VITE_RAW_ASSETS_BASE_URL': JSON.stringify(
         process.env.VITE_RAW_ASSETS_BASE_URL || ''

@@ -28,6 +28,7 @@ import {
   dispatchArchiveArtistRemoved,
   refreshPremiumContentForArchiveChange,
   ARCHIVE_CHANGED_EVENT,
+  SUBSCRIPTION_ACTIVATED_EVENT,
 } from '@features/artistArchive';
 import { useArchiveAccessModal } from '@shared/lib/archiveAccessModal';
 import type { SubscriptionPlanSlug } from '@shared/lib/payment/subscriptionPlans';
@@ -259,6 +260,7 @@ export function MyArchiveContent({
   useRenewalBillingSync({
     enabled: shouldSyncRenewalBilling,
     nextChargeAt: billingSyncTarget,
+    expiresAt: billing.expiresAt,
     onRefresh: refreshArchiveBilling,
   });
   useScheduledPlanBillingSync({
@@ -268,6 +270,15 @@ export function MyArchiveContent({
     }),
     onRefresh: refreshArchiveBilling,
   });
+
+  useEffect(() => {
+    if (!active) return;
+    const onSubscriptionActivated = () => {
+      void refreshArchiveBilling();
+    };
+    window.addEventListener(SUBSCRIPTION_ACTIVATED_EVENT, onSubscriptionActivated);
+    return () => window.removeEventListener(SUBSCRIPTION_ACTIVATED_EVENT, onSubscriptionActivated);
+  }, [active, refreshArchiveBilling]);
   const billingOverlays = useMemo(
     () =>
       resolveCollectionBillingOverlays({

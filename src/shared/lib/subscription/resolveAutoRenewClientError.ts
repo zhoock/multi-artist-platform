@@ -2,17 +2,21 @@
  * Maps auto-renew API failures to user-facing copy; hides internal FEATURE_DISABLED text.
  */
 
-export type AutoRenewClientErrorSource = {
-  error?: string;
-  code?: string;
-};
+import {
+  resolveSubscriptionClientError,
+  type SubscriptionClientErrorSource,
+} from './resolveSubscriptionClientError';
+
+export type AutoRenewClientErrorSource = SubscriptionClientErrorSource;
 
 export function resolveAutoRenewClientError(
   result: AutoRenewClientErrorSource,
   genericMessage: string
 ): string {
-  if (result.code === 'FEATURE_DISABLED') {
-    return genericMessage;
-  }
-  return result.error ?? genericMessage;
+  return resolveSubscriptionClientError(result, {
+    billingAutoRenewPatchError: genericMessage,
+    billingCheckoutErrorGeneric: genericMessage,
+    billingPlanChangeError: genericMessage,
+    billingUnlinkPaymentError: genericMessage,
+  });
 }

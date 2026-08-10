@@ -19,6 +19,12 @@ import {
 import { useAuthSessionUser } from '@shared/lib/hooks/useAuthSessionUser';
 import type { SubscriptionPlanSlug } from '@shared/lib/payment/subscriptionPlans';
 import { logDevPaymentSubscriptionRedirect } from '@shared/lib/payment/devPaymentMode';
+import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
+import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
+import {
+  pickSubscriptionClientErrorCopy,
+  resolveSubscriptionClientError,
+} from '@shared/lib/subscription/resolveSubscriptionClientError';
 
 import type { CloseArchiveAccessModalOptions } from './archiveAccessModalContext';
 
@@ -30,7 +36,7 @@ export type SubscriptionCheckoutResult =
    * (plan picker / renew buttons) so canceling auth does not leave a stuck CTA.
    */
   | { ok: true; redirected: 'auth' }
-  | { ok: false; error: string };
+  | { ok: false; error: string; code?: string };
 
 type UseSubscriptionCheckoutOptions = {
   onClose?: (options?: CloseArchiveAccessModalOptions) => void;
@@ -46,6 +52,8 @@ export function useSubscriptionCheckout({ onClose }: UseSubscriptionCheckoutOpti
   const navigate = useNavigate();
   const viewer = useAuthSessionUser();
   const emailCopy = useEmailVerificationCopy();
+  const ui = useAppSelector((state) => selectUiDictionaryFirst(state, lang));
+  const subscriptionErrorCopy = pickSubscriptionClientErrorCopy(ui?.dashboard?.collection);
 
   const startCheckout = useCallback(
     async (
@@ -91,7 +99,11 @@ export function useSubscriptionCheckout({ onClose }: UseSubscriptionCheckoutOpti
         if (!result.success || !result.data) {
           return {
             ok: false,
-            error: result.error || 'Could not start checkout',
+            error: resolveSubscriptionClientError(
+              { error: result.error, code: result.code },
+              subscriptionErrorCopy
+            ),
+            code: result.code,
           };
         }
 
@@ -125,16 +137,26 @@ export function useSubscriptionCheckout({ onClose }: UseSubscriptionCheckoutOpti
 
         return {
           ok: false,
-          error: 'Payment provider did not return a checkout URL',
+          error:
+            subscriptionErrorCopy.billingCheckoutErrorGeneric ??
+            subscriptionErrorCopy.billingPlanChangeError ??
+            (lang === 'en'
+              ? 'Payment provider did not return a checkout URL'
+              : 'Платёжный сервис не вернул ссылку на оплату'),
         };
       } catch (error) {
         return {
           ok: false,
-          error: error instanceof Error ? error.message : 'Checkout failed',
+          error: resolveSubscriptionClientError(
+            {
+              error: error instanceof Error ? error.message : undefined,
+            },
+            subscriptionErrorCopy
+          ),
         };
       }
     },
-    [emailCopy.restrictedPremium, lang, location, navigate, onClose, viewer]
+    [emailCopy.restrictedPremium, lang, location, navigate, onClose, subscriptionErrorCopy, viewer]
   );
 
   return { startCheckout };

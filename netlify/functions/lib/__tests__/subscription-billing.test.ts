@@ -15,13 +15,16 @@ import {
   PLAN_CATALOG,
   computeSupportExpiresAt,
   DEFAULT_SUBSCRIPTION_PLAN,
+  DEV_SUPPORT_PERIOD_MS,
   fulfillSubscriptionPayment,
   formatPlanAmountValue,
   getPlanAmountRub,
   getPlanPriceCurrencyCode,
   getPlanSlotsLimit,
+  getPlanSupportPeriodMs,
   normalizeSubscriptionPlanSlug,
-  SUPPORT_PERIOD_MS,
+  resolveSupportPeriodMs,
+  usesDevSupportPeriod,
   validatePremiumSubscriptionPayment,
   validateRebindSubscriptionPayment,
 } from '../subscription-billing';
@@ -71,17 +74,50 @@ describe('PLAN_CATALOG', () => {
     expect(getPlanSlotsLimit('collector')).toBe(60);
     expect(getPlanSlotsLimit('archivist')).toBe(100);
   });
+});
 
-  test('uses 5-minute support period in all environments', () => {
-    const from = new Date('2026-06-20T12:00:00.000Z');
-    const expires = computeSupportExpiresAt('explorer', from);
-    expect(expires.getTime() - from.getTime()).toBe(SUPPORT_PERIOD_MS);
+describe('support period', () => {
+  const from = new Date('2026-06-20T12:00:00.000Z');
+  const savedEnv = { ...process.env };
 
+  afterEach(() => {
+    process.env = { ...savedEnv };
+  });
+
+  test('production uses catalog durationDays (30 days)', () => {
+    delete process.env.DEV_PAYMENT_MODE;
     process.env.NODE_ENV = 'production';
-    process.env.YOOKASSA_TEST_MODE = 'false';
     process.env.NETLIFY_DEV = 'false';
-    const prodExpires = computeSupportExpiresAt('collector', from);
-    expect(prodExpires.getTime() - from.getTime()).toBe(SUPPORT_PERIOD_MS);
+    process.env.CONTEXT = 'production';
+
+    expect(usesDevSupportPeriod()).toBe(false);
+    expect(getPlanSupportPeriodMs('explorer')).toBe(30 * 24 * 60 * 60 * 1000);
+    expect(resolveSupportPeriodMs('collector')).toBe(getPlanSupportPeriodMs('collector'));
+
+    const expires = computeSupportExpiresAt('explorer', from);
+    expect(expires.getTime() - from.getTime()).toBe(getPlanSupportPeriodMs('explorer'));
+  });
+
+  test('dev payment mode uses short QA support period', () => {
+    process.env.DEV_PAYMENT_MODE = 'true';
+    process.env.NETLIFY_DEV = 'true';
+    process.env.NODE_ENV = 'development';
+
+    expect(usesDevSupportPeriod()).toBe(true);
+    expect(resolveSupportPeriodMs('archivist')).toBe(DEV_SUPPORT_PERIOD_MS);
+
+    const expires = computeSupportExpiresAt('archivist', from);
+    expect(expires.getTime() - from.getTime()).toBe(DEV_SUPPORT_PERIOD_MS);
+  });
+
+  test('renewal scheduling uses the same expires_at window as computeSupportExpiresAt', () => {
+    delete process.env.DEV_PAYMENT_MODE;
+    process.env.NODE_ENV = 'production';
+    process.env.NETLIFY_DEV = 'false';
+    process.env.CONTEXT = 'production';
+
+    const expiresAt = computeSupportExpiresAt('explorer', from);
+    expect(expiresAt.getTime() - from.getTime()).toBe(getPlanSupportPeriodMs('explorer'));
   });
 });
 

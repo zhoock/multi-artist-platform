@@ -71,7 +71,7 @@ async function main(): Promise<void> {
       break;
     }
   }
-  log('0. Client bundle VITE_SUBSCRIPTION_AUTO_RENEW_ENABLED', {
+  log('0. Client bundle auto-renew flag (from SUBSCRIPTION_AUTO_RENEW_ENABLED at build)', {
     clientFlagValue,
     clientFlagEnabled: clientFlagValue === 'true',
   });

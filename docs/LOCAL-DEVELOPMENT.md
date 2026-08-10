@@ -111,13 +111,15 @@ Netlify Scheduled Functions **не** запускаются под `netlify dev`
 
 1. Sidecar раз в `LOCAL_RENEWAL_SCHEDULER_INTERVAL_MS` (по умолчанию **60 с**) отправляет `POST` на `/.netlify/functions/scheduled-subscription-renewals` с телом `{ "next_run": "<ISO-8601>" }` — тот же формат, что у Netlify cron.
 2. Выполняется **production handler** → `runRenewalCycle()` → существующий renewal engine. Отдельной dev-логики продления нет.
-3. В dev/test период поддержки — **1 час** (`DEV_SUPPORT_PERIOD_HOURS` в `subscription-billing.ts` при `NETLIFY_DEV=true`). После истечения `next_charge_at` продление срабатывает в течение ~1 минуты без ручных команд.
+3. В dev/test при `DEV_PAYMENT_MODE=true` период поддержки — **5 минут** (`DEV_SUPPORT_PERIOD_MS` в `subscription-billing.ts`). Production использует `durationDays` из plan catalog (30 дней). После истечения `next_charge_at` продление срабатывает в течение ~1 минуты без ручных команд.
 
 **Обязательно для auto-renew локально**
 
 ```bash
 SUBSCRIPTION_AUTO_RENEW_ENABLED=true
 ```
+
+Достаточно одной переменной: webpack (dev) и Netlify Functions читают её же. Отдельный `VITE_SUBSCRIPTION_AUTO_RENEW_ENABLED` в production не задаётся; в dev-сборке его можно использовать только как локальный override UI (backend всё равно смотрит на `SUBSCRIPTION_*`).
 
 Рекомендуется также `DEV_PAYMENT_MODE=true` (уже задано в `netlify.toml` для `[context.dev]`).
 
@@ -138,6 +140,8 @@ LOCAL_RENEWAL_SCHEDULER=false
 **Production**
 
 На production расписание задаёт только Netlify Scheduled Functions (`*/15 * * * *` в `netlify.toml`). Sidecar не деплоится и не используется.
+
+Autorenew включается **только** через `SUBSCRIPTION_AUTO_RENEW_ENABLED` в Netlify env (build + functions). После смены значения нужен **redeploy**, чтобы client bundle совпал с runtime. Не задавайте `VITE_SUBSCRIPTION_AUTO_RENEW_ENABLED` в Netlify — production webpack его игнорирует.
 
 **Dunning / grace (ADR-007)**
 

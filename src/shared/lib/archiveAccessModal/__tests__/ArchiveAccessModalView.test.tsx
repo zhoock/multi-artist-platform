@@ -510,7 +510,78 @@ describe('ArchiveAccessModalView plan change confirmation', () => {
 
     await waitFor(() => {
       expect(createSubscriptionPaymentMock).toHaveBeenCalledWith(
-        expect.objectContaining({ plan: 'collector' })
+        expect.objectContaining({ plan: 'collector', intent: 'upgrade' })
+      );
+    });
+  });
+
+  test('passes upgrade intent when auto-renew flag is on', async () => {
+    isAutoRenewClientEnabledMock.mockReturnValue(true);
+    renderModalWithProviderOrder({ isPremium: true, slotsUsed: 1, slotsLimit: 20 });
+    await openModal();
+
+    fireEvent.click(
+      within(getPlanCard('Collector')).getByRole('button', { name: 'Switch to Collector' })
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Proceed to payment' }));
+
+    await waitFor(() => {
+      expect(createSubscriptionPaymentMock).toHaveBeenCalledWith(
+        expect.objectContaining({ plan: 'collector', intent: 'upgrade' })
+      );
+    });
+  });
+
+  test('passes upgrade intent through legacy confirm when billing snapshot is stale', async () => {
+    isAutoRenewClientEnabledMock.mockReturnValue(true);
+    getMyArchiveMock.mockResolvedValue({
+      isPremium: true,
+      slotsUsed: 1,
+      slotsLimit: 20,
+      artists: [],
+      billing: {
+        status: 'active',
+        plan: 'explorer',
+        slotsLimit: 20,
+        expiresAt: '2099-08-07T10:00:00.000Z',
+        autoRenewEnabled: true,
+        hasPremiumAccess: false,
+        hasSavedPaymentMethod: true,
+        paymentMethodTitle: 'Bank card *4242',
+        nextChargeAt: '2099-08-07T10:00:00.000Z',
+        scheduledPlan: null,
+        renewalAttemptCount: null,
+        firstFailedAt: null,
+      },
+    });
+    getTokenMock.mockReturnValue('test-token');
+
+    renderWithProviders(
+      <PremiumSubscriptionProvider>
+        <ArchiveAccessModalProvider>
+          <OpenModalButton />
+        </ArchiveAccessModalProvider>
+      </PremiumSubscriptionProvider>,
+      { preloadedState: { lang: { current: 'en' } } }
+    );
+
+    await waitFor(() => {
+      expect(getMyArchiveMock).toHaveBeenCalled();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open Artist Support' }));
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'Choose your plan' })).toBeTruthy();
+    });
+
+    fireEvent.click(
+      within(getPlanCard('Collector')).getByRole('button', { name: 'Switch to Collector' })
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Proceed to payment' }));
+
+    await waitFor(() => {
+      expect(createSubscriptionPaymentMock).toHaveBeenCalledWith(
+        expect.objectContaining({ plan: 'collector', intent: 'upgrade' })
       );
     });
   });
