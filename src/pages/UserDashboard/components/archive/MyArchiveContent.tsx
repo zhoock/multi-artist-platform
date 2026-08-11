@@ -7,6 +7,9 @@ import { useAppDispatch } from '@shared/lib/hooks/useAppDispatch';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 import { EMPTY_BILLING_SNAPSHOT } from '@shared/api/billing';
+import { resolveCollectionBillingScreen } from '@features/premiumSubscription';
+import { useArchiveAccessModal } from '@shared/lib/archiveAccessModal';
+import { useRenewalCountdownClock } from '@shared/lib/subscription/useRenewalCountdown';
 import {
   ArchiveApiError,
   activateArchiveArtistsApi,
@@ -33,6 +36,7 @@ import { billingSnapshotFingerprint } from '@shared/lib/subscription/billingSnap
 import { toast } from '@shared/lib/toast';
 import { ARCHIVE_ARTIST_REMOVED_TOAST_DURATION_MS } from '@shared/lib/toast/toastDurations';
 
+import { BillingAlertBanner } from './billingOverlays/BillingAlertBanner';
 import { CollectionArtistRemoveAction } from './CollectionArtistRemoveAction';
 import { CollectionEmptyState } from './CollectionEmptyState';
 import { CollectionSlotsIndicator } from './CollectionSlotsIndicator';
@@ -62,6 +66,8 @@ export function MyArchiveContent({
   const dispatch = useAppDispatch();
   const ui = useAppSelector((state) => selectUiDictionaryFirst(state, lang));
   const premium = usePremiumSubscription();
+  const { open: openSupportModal } = useArchiveAccessModal();
+  const billingNow = useRenewalCountdownClock();
 
   const [data, setData] = useState<MyArchiveData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -192,6 +198,38 @@ export function MyArchiveContent({
     }),
     [t?.activeSlotsLabel, t?.billingCollectionUsageCount, t?.billingCollectionUsageSection]
   );
+
+  const billingScreen = useMemo(
+    () => resolveCollectionBillingScreen(premium.billing ?? EMPTY_BILLING_SNAPSHOT, billingNow),
+    [billingNow, premium.billing]
+  );
+
+  const expiredBannerCopy = useMemo(
+    () => ({
+      title: t?.billingExpiredBannerTitle ?? 'Поддержка завершена',
+      body:
+        t?.collectionExpiredBannerBody ??
+        'Срок оплаченного периода закончился. Артисты останутся в вашей коллекции, но доступ к премиум-функциям приостановлен. Чтобы снова поддерживать любимых артистов, выберите тариф.',
+      cta: t?.billingExpiredBannerCta ?? 'Выбрать тариф',
+    }),
+    [t?.billingExpiredBannerCta, t?.billingExpiredBannerTitle, t?.collectionExpiredBannerBody]
+  );
+
+  const expiredBanner = useMemo(() => {
+    if (billingScreen !== 'EXPIRED') return null;
+
+    return (
+      <div className="collection-billing collection-billing--expired collection__expired-banner-wrap">
+        <BillingAlertBanner
+          title={expiredBannerCopy.title}
+          body={expiredBannerCopy.body}
+          ctaLabel={expiredBannerCopy.cta}
+          tone="error"
+          onAction={() => openSupportModal()}
+        />
+      </div>
+    );
+  }, [billingScreen, expiredBannerCopy, openSupportModal]);
 
   const exitSelectMode = useCallback(() => {
     setIsSelectMode(false);
@@ -489,6 +527,7 @@ export function MyArchiveContent({
     return (
       <>
         <section className="collection__tab collection__tab--empty">
+          {expiredBanner}
           <div className="collection-billing collection__slots-wrap">
             <CollectionSlotsIndicator
               slotsUsed={slotsUsed}
@@ -508,6 +547,7 @@ export function MyArchiveContent({
       <section className={clsx('collection__tab', isSelectMode && 'collection__tab--select-mode')}>
         <div className="user-dashboard__section">
           <div className="user-dashboard__albums-list">
+            {expiredBanner}
             <div className="collection-billing collection__slots-wrap">
               <CollectionSlotsIndicator
                 slotsUsed={slotsUsed}

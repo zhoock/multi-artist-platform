@@ -141,6 +141,59 @@ describe('MyArchiveContent collection', () => {
     resetToastStoreForTests();
   });
 
+  test('shows expired banner with choose plan action and no billing cards', async () => {
+    getMyArchiveMock.mockResolvedValue(
+      archivePayload({
+        isPremium: false,
+        slotsUsed: 1,
+        slotsLimit: 20,
+        billing: billingExpired({ plan: 'archivist', slotsLimit: 20 }),
+        artists: [activeArtist('a1', 'Beatles')],
+      })
+    );
+
+    renderMyArchive(<MyArchiveContent active />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Support ended|Поддержка завершена/i)).toBeTruthy();
+    });
+
+    expect(
+      screen.getByText(
+        /Artists will remain in your collection|Артисты останутся в вашей коллекции/i
+      )
+    ).toBeTruthy();
+    expect(document.querySelector('.collection-billing__banner--error')).toBeTruthy();
+    expect(document.querySelector('.collection-billing__plan-card')).toBeNull();
+    expect(screen.getByText(/1 of 20|1 из 20/)).toBeTruthy();
+    expect(screen.getByText('Beatles')).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: /Choose a plan|Выбрать тариф/i }));
+    expect(openSupportModalMock).toHaveBeenCalled();
+  });
+
+  test('shows expired banner on empty collection without billing UI', async () => {
+    getMyArchiveMock.mockResolvedValue({
+      isPremium: false,
+      slotsUsed: 0,
+      slotsLimit: 20,
+      inactiveCount: 0,
+      subscriptionExpiresAt: null,
+      billing: billingExpired({ plan: 'archivist', slotsLimit: 20 }),
+      artists: [],
+    });
+
+    renderMyArchive(<MyArchiveContent active />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Support ended|Поддержка завершена/i)).toBeTruthy();
+    });
+
+    expect(screen.getByText(/Your collection is empty|Ваша коллекция пуста/i)).toBeTruthy();
+    expect(document.querySelector('.collection-billing__plan-card')).toBeNull();
+    expect(screen.queryByRole('button', { name: /Change$|Сменить$/ })).toBeNull();
+  });
+
   test('shows inactive toolbar when plan changed and inactive artists remain', async () => {
     getMyArchiveMock.mockResolvedValue(
       archivePayload({
@@ -611,7 +664,9 @@ describe('MyArchiveContent collection', () => {
     expect(container.querySelector('.collection__list-card.dashboard-card')).toBeTruthy();
     expect(container.querySelector('.collection__artist-row')).toBeTruthy();
     expect(container.querySelector('.collection__artist-row .status-badge')).toBeNull();
-    expect(container.querySelector('.dashboard-button--destructive')).toBeTruthy();
+    expect(
+      container.querySelector('.collection__remove-action.dashboard-button--destructive')
+    ).toBeTruthy();
   });
 
   test('select mode shows bottom action bar', async () => {

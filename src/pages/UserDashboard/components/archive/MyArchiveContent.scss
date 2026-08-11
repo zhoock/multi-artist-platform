@@ -343,6 +343,11 @@ dialog {
 
       &__remove-action {
         justify-self: end;
+        color: var(--error-color);
+
+        &:disabled {
+          color: var(--error-color);
+        }
       }
 
       &__lock-action {

@@ -954,6 +954,7 @@ export interface IInterface {
       billingCancelledBannerCta?: string;
       billingExpiredBannerTitle?: string;
       billingExpiredBannerBody?: string;
+      collectionExpiredBannerBody?: string;
       billingExpiredBannerCta?: string;
       billingPaymentFailedBannerTitle?: string;
       billingPaymentFailedBannerBody?: string;

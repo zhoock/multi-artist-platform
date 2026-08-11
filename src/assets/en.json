@@ -510,6 +510,7 @@
         "billingCancelledBannerCta": "Resume support",
         "billingExpiredBannerTitle": "Support ended",
         "billingExpiredBannerBody": "Your paid period has ended. Choose a plan to support artists again and use premium features.",
+        "collectionExpiredBannerBody": "Your paid period has ended. Artists will remain in your collection, but premium features are suspended. Choose a plan to support your favorite artists again.",
         "billingExpiredBannerCta": "Choose a plan",
         "billingPaymentFailedBannerTitle": "Could not renew support",
         "billingPaymentFailedBannerBody": "We could not charge your monthly payment. Update your payment details to restore support.",
