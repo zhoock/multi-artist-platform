@@ -321,6 +321,27 @@ export function resolveRenewalChargePlanSlug(
  * Removes an orphan pending renewal row (PR-7.1).
  * PR-10.1: never mutates rows that already have provider_payment_id (POST_PROVIDER safety).
  */
+/**
+ * Cancels orphan pending renewal rows for a user (no provider_payment_id yet).
+ * Safe on unlink: YooKassa was never contacted for these rows.
+ */
+export async function cancelOrphanPendingRenewalPayments(userId: string): Promise<void> {
+  try {
+    await query(
+      `UPDATE subscription_payments
+       SET status = 'canceled', updated_at = CURRENT_TIMESTAMP
+       WHERE user_id = $1::uuid
+         AND kind = 'renewal'
+         AND status IN ('pending', 'waiting_for_capture')
+         AND provider_payment_id IS NULL`,
+      [userId]
+    );
+  } catch (error) {
+    if (isMissingRelationError(error)) return;
+    throw error;
+  }
+}
+
 export async function cleanupPendingRenewalPayment(
   subscriptionPaymentId: string,
   userId: string

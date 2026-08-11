@@ -136,6 +136,7 @@ describe('processRebindSubscriptionProviderPayment', () => {
       startedAt: new Date('2026-07-01'),
       expiresAt: new Date('2026-09-03'),
       paymentMethodId: 'pm-old',
+      nextChargeAt: new Date('2026-09-03'),
       createdAt: new Date('2026-07-01'),
       updatedAt: new Date('2026-08-05'),
     });
@@ -156,13 +157,38 @@ describe('processRebindSubscriptionProviderPayment', () => {
     expect(String(mockedQuery.mock.calls[0]?.[0])).toContain('payment_method_title');
   });
 
-  test('duplicate callback is idempotent', async () => {
+  test('duplicate callback is idempotent when PM is still linked', async () => {
     mockedClaim.mockResolvedValue('already_succeeded');
 
     const result = await processRebindSubscriptionProviderPayment(rebindPayment(), USER_ID);
 
     expect(result.paymentMethodUpdated).toBe(true);
     expect(result.alreadyApplied).toBe(true);
+  });
+
+  test('stale rebind after unlink does not restore PM', async () => {
+    mockedGetSubscription.mockResolvedValue({
+      id: 'sub-1',
+      userId: USER_ID,
+      status: 'cancel_at_period_end',
+      plan: 'collector',
+      slotsLimit: 2,
+      provider: 'yookassa',
+      providerSubscriptionId: 'pay-old',
+      startedAt: new Date('2026-07-01'),
+      expiresAt: new Date('2026-09-03'),
+      paymentMethodId: null,
+      paymentMethodTitle: null,
+      nextChargeAt: null,
+      createdAt: new Date('2026-07-01'),
+      updatedAt: new Date('2026-08-05'),
+    });
+
+    const result = await processRebindSubscriptionProviderPayment(rebindPayment(), USER_ID);
+
+    expect(result.paymentMethodUpdated).toBe(false);
+    expect(result.alreadyApplied).toBe(false);
+    expect(mockedQuery).not.toHaveBeenCalled();
   });
 
   test('cancelled rebind updates payment status only', async () => {
@@ -211,6 +237,8 @@ describe('processRebindSubscriptionProviderPaymentWithArchive', () => {
       providerSubscriptionId: null,
       startedAt: null,
       expiresAt: new Date('2026-09-03'),
+      paymentMethodId: 'pm-old',
+      nextChargeAt: new Date('2026-09-03'),
       createdAt: new Date(),
       updatedAt: new Date(),
     });

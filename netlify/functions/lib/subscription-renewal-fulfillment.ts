@@ -112,75 +112,121 @@ export async function fulfillRenewalSubscriptionPayment(params: {
   }
 
   const presence = toPresenceStatus(existing);
-  if (presence !== 'active' && presence !== 'past_due') {
+  const scheduledPlanSlug = normalizeSubscriptionPlanSlug(existing.scheduledPlan);
+  const appliedPlanSlug = scheduledPlanSlug ?? params.planSlug;
+  const appliedSlotsLimit = getPlanSlotsLimit(appliedPlanSlug);
+  const now = params.now ?? new Date();
+  const expiresAt = computeSupportExpiresAt(appliedPlanSlug, now);
+
+  let updated: { rows: SubscriptionRow[] };
+
+  if (presence === 'cancel_at_period_end') {
+    // In-flight renewal charged before auto-renew was disabled/unlinked: honor paid period
+    // without re-enabling auto-renew or restoring payment_method_id.
+    updated = await query<SubscriptionRow>(
+      `UPDATE subscriptions
+       SET plan = $2,
+           slots_limit = $3,
+           provider = 'yookassa',
+           provider_subscription_id = $4,
+           expires_at = $5,
+           scheduled_plan = NULL,
+           renewal_attempt_count = 0,
+           first_failed_at = NULL,
+           next_charge_at = NULL,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $1::uuid
+         AND user_id = $6::uuid
+         AND provider_subscription_id IS DISTINCT FROM $4
+       RETURNING
+         id,
+         user_id,
+         status,
+         plan,
+         slots_limit,
+         provider,
+         provider_subscription_id,
+         started_at,
+         expires_at,
+         payment_method_id,
+         next_charge_at,
+         renewal_attempt_count,
+         scheduled_plan,
+         first_failed_at,
+         created_at,
+         updated_at`,
+      [
+        existing.id,
+        appliedPlanSlug,
+        appliedSlotsLimit,
+        params.providerPaymentId,
+        expiresAt,
+        params.userId,
+      ]
+    );
+  } else if (presence === 'active' || presence === 'past_due') {
+    let nextStatus;
+    try {
+      nextStatus = getNextSubscriptionStatus(presence, resolveRenewalSuccessEvent(presence));
+    } catch (error) {
+      if (error instanceof InvalidSubscriptionTransitionError) {
+        throw Object.assign(new Error(error.message), { statusCode: 409 });
+      }
+      throw error;
+    }
+
+    const nextChargeAt =
+      isSubscriptionAutoRenewEnabled() && existing.paymentMethodId?.trim() ? expiresAt : null;
+
+    updated = await query<SubscriptionRow>(
+      `UPDATE subscriptions
+       SET status = $2,
+           plan = $3,
+           slots_limit = $4,
+           provider = 'yookassa',
+           provider_subscription_id = $5,
+           expires_at = $6,
+           scheduled_plan = NULL,
+           renewal_attempt_count = 0,
+           first_failed_at = NULL,
+           next_charge_at = $7,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $1::uuid
+         AND user_id = $8::uuid
+         AND provider_subscription_id IS DISTINCT FROM $5
+       RETURNING
+         id,
+         user_id,
+         status,
+         plan,
+         slots_limit,
+         provider,
+         provider_subscription_id,
+         started_at,
+         expires_at,
+         payment_method_id,
+         next_charge_at,
+         renewal_attempt_count,
+         scheduled_plan,
+         first_failed_at,
+         created_at,
+         updated_at`,
+      [
+        existing.id,
+        nextStatus,
+        appliedPlanSlug,
+        appliedSlotsLimit,
+        params.providerPaymentId,
+        expiresAt,
+        nextChargeAt,
+        params.userId,
+      ]
+    );
+  } else {
     throw Object.assign(new Error('Renewal fulfillment requires active or past_due subscription'), {
       statusCode: 409,
     });
   }
-
-  const scheduledPlanSlug = normalizeSubscriptionPlanSlug(existing.scheduledPlan);
-  const appliedPlanSlug = scheduledPlanSlug ?? params.planSlug;
-  const appliedSlotsLimit = getPlanSlotsLimit(appliedPlanSlug);
-
-  let nextStatus;
-  try {
-    nextStatus = getNextSubscriptionStatus(presence, resolveRenewalSuccessEvent(presence));
-  } catch (error) {
-    if (error instanceof InvalidSubscriptionTransitionError) {
-      throw Object.assign(new Error(error.message), { statusCode: 409 });
-    }
-    throw error;
-  }
-
-  const now = params.now ?? new Date();
-  const expiresAt = computeSupportExpiresAt(appliedPlanSlug, now);
-  const nextChargeAt =
-    isSubscriptionAutoRenewEnabled() && existing.paymentMethodId?.trim() ? expiresAt : null;
-
-  const updated = await query<SubscriptionRow>(
-    `UPDATE subscriptions
-     SET status = $2,
-         plan = $3,
-         slots_limit = $4,
-         provider = 'yookassa',
-         provider_subscription_id = $5,
-         expires_at = $6,
-         scheduled_plan = NULL,
-         renewal_attempt_count = 0,
-         first_failed_at = NULL,
-         next_charge_at = $7,
-         updated_at = CURRENT_TIMESTAMP
-     WHERE id = $1::uuid
-       AND user_id = $8::uuid
-       AND provider_subscription_id IS DISTINCT FROM $5
-     RETURNING
-       id,
-       user_id,
-       status,
-       plan,
-       slots_limit,
-       provider,
-       provider_subscription_id,
-       started_at,
-       expires_at,
-       payment_method_id,
-       next_charge_at,
-       renewal_attempt_count,
-       scheduled_plan,
-       first_failed_at,
-       created_at,
-       updated_at`,
-    [
-      existing.id,
-      nextStatus,
-      appliedPlanSlug,
-      appliedSlotsLimit,
-      params.providerPaymentId,
-      expiresAt,
-      nextChargeAt,
-      params.userId,
-    ]
-  );
 
   let subscription: Subscription;
 

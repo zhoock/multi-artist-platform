@@ -193,6 +193,51 @@ describe('fulfillRenewalSubscriptionPayment', () => {
     expect(String(mockedQuery.mock.calls[0]?.[0])).toContain('scheduled_plan = NULL');
   });
 
+  test('honors in-flight renewal after unlink: cancel_at_period_end extends period without restoring PM', async () => {
+    const expectedExpires = new Date('2026-09-10T00:00:00.000Z');
+    mockedIsFulfilled.mockResolvedValue(false);
+    mockedGetSub.mockResolvedValue(
+      activeSub({
+        status: 'cancel_at_period_end',
+        paymentMethodId: null,
+        nextChargeAt: null,
+        scheduledPlan: 'explorer',
+        plan: 'collector',
+        slotsLimit: 2,
+      })
+    );
+    mockedQuery.mockResolvedValue(
+      fakeQueryResult([
+        subscriptionRowFrom(
+          activeSub({
+            status: 'cancel_at_period_end',
+            plan: 'explorer',
+            slotsLimit: 1,
+            paymentMethodId: null,
+            nextChargeAt: null,
+            scheduledPlan: null,
+            providerSubscriptionId: PAYMENT_ID,
+            expiresAt: expectedExpires,
+          })
+        ),
+      ])
+    );
+
+    const result = await fulfillRenewalSubscriptionPayment({
+      userId: USER_ID,
+      planSlug: 'explorer',
+      providerPaymentId: PAYMENT_ID,
+    });
+
+    expect(result.fulfilled).toBe(true);
+    const updateSql = String(mockedQuery.mock.calls[0]?.[0]);
+    expect(updateSql).not.toMatch(/\bstatus\s*=/);
+    expect(updateSql).toContain('next_charge_at = NULL');
+    const updateParams = mockedQuery.mock.calls[0]?.[1] as unknown[];
+    expect(updateParams[4]).toEqual(expectedExpires);
+    expect(mockedDeactivateExcess).toHaveBeenCalledWith(USER_ID, 1);
+  });
+
   test('sets next_charge_at equal to expires_at when payment method exists', async () => {
     const expectedExpires = new Date('2026-09-10T00:00:00.000Z');
     mockedIsFulfilled.mockResolvedValue(false);

@@ -5,6 +5,7 @@
 
 import type { PoolClient } from 'pg';
 
+import { cancelOrphanPendingRenewalPayments } from './subscription-billing';
 import { buildBillingSnapshot, type BillingSnapshot } from './subscription-billing-snapshot';
 import { isMissingRelationError, withTransaction } from './db';
 import { isSubscriptionAutoRenewEnabled } from './subscription-feature-flag';
@@ -139,6 +140,8 @@ export async function unlinkSubscriptionPaymentMethod(
           500
         );
       }
+
+      await cancelOrphanPendingRenewalPayments(userId);
 
       const subscription = mapSubscriptionRow(updatedRow);
       return {

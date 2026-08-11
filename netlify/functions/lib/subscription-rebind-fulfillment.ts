@@ -63,12 +63,25 @@ function resolvePaymentMethodTitleFromRebindPayment(
   return formatPaymentMethodTitle(payment.paymentMethod);
 }
 
+/** Unlink clears both PM and next_charge_at; stale rebind must not restore PM after that. */
+function isSubscriptionPaymentMethodUnlinked(subscription: Subscription): boolean {
+  return !subscription.paymentMethodId?.trim() && subscription.nextChargeAt == null;
+}
+
 async function applyRebindPaymentMethod(
   userId: string,
   paymentMethodId: string,
   paymentMethodTitle: string | null
-): Promise<Subscription | null> {
+): Promise<{ subscription: Subscription | null; updated: boolean }> {
   const existing = await getViewerSubscription(userId);
+  if (!existing) {
+    return { subscription: null, updated: false };
+  }
+
+  if (isSubscriptionPaymentMethodUnlinked(existing)) {
+    return { subscription: existing, updated: false };
+  }
+
   const resolvedTitle = derivePaymentMethodTitle(existing, paymentMethodTitle);
 
   const updated = await query<SubscriptionRow>(
@@ -86,7 +99,11 @@ async function applyRebindPaymentMethod(
   );
 
   const row = updated.rows[0];
-  return row ? mapSubscriptionRow(row) : null;
+  if (!row) {
+    return { subscription: null, updated: false };
+  }
+
+  return { subscription: mapSubscriptionRow(row), updated: true };
 }
 
 export async function fulfillRebindSubscriptionPayment(params: {
@@ -106,7 +123,7 @@ export async function fulfillRebindSubscriptionPayment(params: {
     return { subscription: existing, applied: false, alreadyApplied: false };
   }
 
-  const subscription = await applyRebindPaymentMethod(
+  const { subscription, updated } = await applyRebindPaymentMethod(
     params.userId,
     params.paymentMethodId,
     params.paymentMethodTitle
@@ -118,8 +135,8 @@ export async function fulfillRebindSubscriptionPayment(params: {
 
   return {
     subscription,
-    applied: claim === 'claimed',
-    alreadyApplied: claim === 'already_succeeded',
+    applied: updated && claim === 'claimed',
+    alreadyApplied: updated && claim === 'already_succeeded',
   };
 }
 
