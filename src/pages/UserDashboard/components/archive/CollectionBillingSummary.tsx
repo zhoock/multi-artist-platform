@@ -74,6 +74,8 @@ export type CollectionBillingSummaryProps = {
   cancelScheduledDowngradeLoading?: boolean;
   /** When false, hides disable/resume/rebind CTAs that require SUBSCRIPTION_AUTO_RENEW_ENABLED. */
   autoRenewActionsEnabled?: boolean;
+  /** When false, hides the collection usage card (shown on Collection tab instead). */
+  showUsageCard?: boolean;
   onChangePlan: () => void;
   onBannerAction: () => void;
   onRenewCurrentPlan: () => void;
@@ -163,6 +165,7 @@ export function CollectionBillingSummary({
   bannerActionLoading = false,
   cancelScheduledDowngradeLoading = false,
   autoRenewActionsEnabled = true,
+  showUsageCard = true,
   onChangePlan,
   onBannerAction,
   onRenewCurrentPlan,
@@ -421,20 +424,24 @@ export function CollectionBillingSummary({
         </DashboardCard>
       ) : null}
 
-      <DashboardCard className="collection-billing__usage-card">
-        <h3 className="collection-billing__section-title">{copy.billingCollectionUsageSection}</h3>
-        <p className="collection-billing__usage-count">
-          <span className="collection-billing__usage-count-value">{usageCountLabel}</span>{' '}
-          {copy.activeSlotsLabel}
-        </p>
-        <div
-          className="collection-billing__usage-progress"
-          aria-hidden
-          style={{ '--collection-slots-progress': `${slotsProgress}%` } as CSSProperties}
-        >
-          <span className="collection-billing__usage-progress-fill" />
-        </div>
-      </DashboardCard>
+      {showUsageCard ? (
+        <DashboardCard className="collection-billing__usage-card">
+          <h3 className="collection-billing__section-title">
+            {copy.billingCollectionUsageSection}
+          </h3>
+          <p className="collection-billing__usage-count">
+            <span className="collection-billing__usage-count-value">{usageCountLabel}</span>{' '}
+            {copy.activeSlotsLabel}
+          </p>
+          <div
+            className="collection-billing__usage-progress"
+            aria-hidden
+            style={{ '--collection-slots-progress': `${slotsProgress}%` } as CSSProperties}
+          >
+            <span className="collection-billing__usage-progress-fill" />
+          </div>
+        </DashboardCard>
+      ) : null}
     </div>
   );
 }

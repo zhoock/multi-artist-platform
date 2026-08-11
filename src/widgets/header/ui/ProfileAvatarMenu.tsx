@@ -16,11 +16,12 @@ import {
   IconCollection,
   IconLogOut,
   IconSettings,
+  IconSubscription,
   IconUpgradeSparkle,
 } from './headerProfileMenuIcons';
 import { usePremiumSubscription } from '@features/premiumSubscription';
 import { formatCollectionMenuSubtitle } from '@shared/lib/payment/subscriptionPlans';
-import { COLLECTION_DASHBOARD_PATH } from '@shared/lib/accountType';
+import { COLLECTION_DASHBOARD_PATH, SUBSCRIPTION_DASHBOARD_PATH } from '@shared/lib/accountType';
 import './profileAvatarMenu.scss';
 
 export type ProfileAvatarMenuProps = {
@@ -101,10 +102,13 @@ function ProfileAvatarMenuComponent({
   const locale = lang === 'ru' ? 'ru' : 'en';
   const collectionTitle =
     ui?.dashboard?.collection?.title ?? (locale === 'en' ? 'Your Collection' : 'Ваша коллекция');
+  const subscriptionTitle =
+    ui?.dashboard?.tabs?.subscription ?? (locale === 'en' ? 'Subscription' : 'Подписка');
   const collectionSubtitle = formatCollectionMenuSubtitle(planSlug, slotsUsed, locale);
   const { pathname } = location;
   const isSettingsActive = pathname.startsWith('/dashboard/settings');
   const isCollectionActive = pathname.startsWith(COLLECTION_DASHBOARD_PATH);
+  const isSubscriptionActive = pathname.startsWith(SUBSCRIPTION_DASHBOARD_PATH);
 
   return (
     <div className="header__profile-wrap" ref={wrapRef}>
@@ -191,7 +195,22 @@ function ProfileAvatarMenuComponent({
                   <span className="header__profile-menu-item-subtitle">{collectionSubtitle}</span>
                 </span>
               </Link>
-            ) : !isPremium ? (
+            ) : null}
+            <Link
+              className={clsx(
+                'header__profile-menu-item',
+                isSubscriptionActive && 'header__profile-menu-item--active'
+              )}
+              role="menuitem"
+              to={SUBSCRIPTION_DASHBOARD_PATH}
+              state={dashboardLinkState}
+              onClick={() => updateOpen(false)}
+              aria-current={isSubscriptionActive ? 'page' : undefined}
+            >
+              <IconSubscription className="header__profile-menu-icon" />
+              <span>{subscriptionTitle}</span>
+            </Link>
+            {!planSlug && !isPremium ? (
               <button
                 type="button"
                 className="header__profile-menu-item header__profile-menu-item--upgrade"

@@ -1,4 +1,5 @@
 import {
+  BadgeCheck as BadgeCheckIcon,
   CircleStar as CircleStarIcon,
   HeartHandshake as HeartHandshakeIcon,
   LogOut as LogOutIcon,
@@ -38,4 +39,8 @@ export function IconLogOut({ className }: HeaderProfileMenuIconProps) {
 
 export function IconCollection({ className }: HeaderProfileMenuIconProps) {
   return <HeartHandshakeIcon {...headerProfileMenuIconProps(className)} />;
+}
+
+export function IconSubscription({ className }: HeaderProfileMenuIconProps) {
+  return <BadgeCheckIcon {...headerProfileMenuIconProps(className)} />;
 }

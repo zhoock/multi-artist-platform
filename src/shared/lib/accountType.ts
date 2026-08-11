@@ -6,6 +6,8 @@ export const DASHBOARD_PATH = '/dashboard';
 
 export const COLLECTION_DASHBOARD_PATH = `${DASHBOARD_PATH}/collection`;
 
+export const SUBSCRIPTION_DASHBOARD_PATH = `${DASHBOARD_PATH}/subscription`;
+
 export const DASHBOARD_TAB_SLUGS = [
   'albums',
   'posts',
@@ -15,11 +17,12 @@ export const DASHBOARD_TAB_SLUGS = [
   'social-links',
   'mixer',
   'collection',
+  'subscription',
 ] as const;
 
 export type DashboardTab = (typeof DASHBOARD_TAB_SLUGS)[number];
 
-const LISTENER_TABS: DashboardTab[] = ['settings', 'my-purchases', 'collection'];
+const LISTENER_TABS: DashboardTab[] = ['settings', 'my-purchases', 'collection', 'subscription'];
 
 const ARTIST_TABS: DashboardTab[] = [
   'settings',
@@ -27,6 +30,7 @@ const ARTIST_TABS: DashboardTab[] = [
   'posts',
   'mixer',
   'collection',
+  'subscription',
   'payment-settings',
   'my-purchases',
   'social-links',

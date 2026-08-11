@@ -7,7 +7,6 @@ import { useAppDispatch } from '@shared/lib/hooks/useAppDispatch';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 import { EMPTY_BILLING_SNAPSHOT } from '@shared/api/billing';
-import type { BillingSnapshot } from '@shared/api/billing';
 import {
   ArchiveApiError,
   activateArchiveArtistsApi,
@@ -16,58 +15,27 @@ import {
   type MyArchiveArtist,
   type MyArchiveData,
 } from '@shared/api/archive';
-import { resolveCollectionBillingScreen } from '@features/premiumSubscription/lib/resolveCollectionBillingScreen';
-import { resolveCollectionBillingOverlays } from '@features/premiumSubscription/lib/resolveCollectionBillingOverlays';
 import {
   canRemoveCollectionArtist,
   normalizeCollectionArchive,
 } from '@shared/lib/archive/collectionLock';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 import { CheckSquare, Plus as PlusIcon, Square } from 'lucide-react';
+import { usePremiumSubscription } from '@features/premiumSubscription';
 import {
   dispatchArchiveArtistRemoved,
   refreshPremiumContentForArchiveChange,
   ARCHIVE_CHANGED_EVENT,
-  SUBSCRIPTION_ACTIVATED_EVENT,
 } from '@features/artistArchive';
-import { useArchiveAccessModal } from '@shared/lib/archiveAccessModal';
-import type { SubscriptionPlanSlug } from '@shared/lib/payment/subscriptionPlans';
-import {
-  resolveRecommendedPlanSlug,
-  resolvePlanChangeAction,
-} from '@shared/lib/payment/subscriptionPlans';
 import { DashboardButton, DashboardCard } from '@shared/ui/dashboard';
 import { AlertModal } from '@shared/ui/alertModal';
-import { useSubscriptionBilling } from '@shared/lib/subscription/useSubscriptionBilling';
-import { useSubscriptionRebindPayment } from '@shared/lib/subscription/useSubscriptionRebindPayment';
-import { isSubscriptionAutoRenewClientEnabled } from '@shared/lib/subscription/isSubscriptionAutoRenewClientEnabled';
-import { resolveAutoRenewClientError } from '@shared/lib/subscription/resolveAutoRenewClientError';
-
-import { CollectionArtistRemoveAction } from './CollectionArtistRemoveAction';
-import {
-  DisableAutoRenewConfirmModal,
-  EnableAutoRenewConfirmModal,
-  RebindPaymentMethodModal,
-  UnlinkPaymentMethodConfirmModal,
-  UpgradePlanConfirmModal,
-  type BillingAutoRenewModalVariant,
-} from './billingModals';
-import { CollectionBillingSummary, type CollectionBillingCopy } from './CollectionBillingSummary';
-import { CollectionEmptyState } from './CollectionEmptyState';
-import {
-  useRenewalCountdown,
-  useRenewalCountdownClock,
-} from '@shared/lib/subscription/useRenewalCountdown';
-import {
-  shouldEnableRenewalBillingSync,
-  useRenewalBillingSync,
-  shouldEnableScheduledPlanBillingSync,
-  useScheduledPlanBillingSync,
-} from '@shared/lib/subscription/useRenewalBillingRefresh';
 import { billingSnapshotFingerprint } from '@shared/lib/subscription/billingSnapshotFingerprint';
 import { toast } from '@shared/lib/toast';
 import { ARCHIVE_ARTIST_REMOVED_TOAST_DURATION_MS } from '@shared/lib/toast/toastDurations';
-import './billingModals/billingModals.scss';
+
+import { CollectionArtistRemoveAction } from './CollectionArtistRemoveAction';
+import { CollectionEmptyState } from './CollectionEmptyState';
+import { CollectionSlotsIndicator } from './CollectionSlotsIndicator';
 import './CollectionBillingSummary.scss';
 import './MyArchiveContent.scss';
 
@@ -93,7 +61,7 @@ export function MyArchiveContent({
   const { lang } = useLang() as { lang: 'ru' | 'en' };
   const dispatch = useAppDispatch();
   const ui = useAppSelector((state) => selectUiDictionaryFirst(state, lang));
-  const { open: openSupportModal, startCheckout } = useArchiveAccessModal();
+  const premium = usePremiumSubscription();
 
   const [data, setData] = useState<MyArchiveData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -105,18 +73,6 @@ export function MyArchiveContent({
   const [isSelectMode, setIsSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const [bulkLoading, setBulkLoading] = useState(false);
-  const [renewLoading, setRenewLoading] = useState(false);
-  const [autoRenewModal, setAutoRenewModal] = useState<BillingAutoRenewModalVariant | null>(null);
-  const [unlinkModalOpen, setUnlinkModalOpen] = useState(false);
-  const [unlinkModalError, setUnlinkModalError] = useState<string | null>(null);
-  const [upgradePlanTarget, setUpgradePlanTarget] = useState<SubscriptionPlanSlug | null>(null);
-  const {
-    patchAutoRenew,
-    cancelScheduledDowngrade,
-    unlinkPaymentMethod,
-    loading: autoRenewPatchLoading,
-  } = useSubscriptionBilling();
-  const { startRebind } = useSubscriptionRebindPayment();
   const skipNextArchiveReloadRef = useRef(false);
   const billingFingerprintRef = useRef<string | null>(null);
   const loadErrorTextRef = useRef<string | null>(null);
@@ -127,16 +83,13 @@ export function MyArchiveContent({
   const alertModalTitle = ui?.dashboard?.error ?? (lang === 'en' ? 'Error' : 'Ошибка');
   const alertModalCloseLabel =
     ui?.buttons?.articleLockedDialogClose ?? (lang === 'en' ? 'Close' : 'Закрыть');
-  const showErrorAlert = useCallback((message: string) => {
-    setAlertModal({ message });
-  }, []);
-  const autoRenewActionsEnabled = isSubscriptionAutoRenewClientEnabled();
-  const autoRenewPatchErrorText =
-    t?.billingAutoRenewPatchError ?? 'Не удалось обновить автопродление';
-  const unlinkPaymentErrorText = t?.billingUnlinkPaymentError ?? 'Не удалось отвязать карту';
   loadErrorTextRef.current = t?.loadError ?? null;
   onContentReadyRef.current = onContentReady;
   onContentBusyRef.current = onContentBusy;
+
+  const showErrorAlert = useCallback((message: string) => {
+    setAlertModal({ message });
+  }, []);
 
   const showRemovalToast = useCallback(
     (kind: RemovalToastKind, count = 1) => {
@@ -160,7 +113,7 @@ export function MyArchiveContent({
     [t?.artistRemovedToast, t?.artistsRemovedToast, t?.collectionClearedToast]
   );
 
-  const publishBillingSnapshotIfChanged = useCallback((billing: BillingSnapshot) => {
+  const publishBillingSnapshotIfChanged = useCallback((billing: typeof EMPTY_BILLING_SNAPSHOT) => {
     const fingerprint = billingSnapshotFingerprint(billing);
     const previous = billingFingerprintRef.current;
     billingFingerprintRef.current = fingerprint;
@@ -194,18 +147,7 @@ export function MyArchiveContent({
       setLoading(false);
       setHasLoadedOnce(true);
     }
-  }, [lang, publishBillingSnapshotIfChanged, showErrorAlert]);
-
-  const refreshArchiveBilling = useCallback(async () => {
-    if (!active) return;
-    try {
-      const next = normalizeCollectionArchive(await getMyArchive());
-      setData(next);
-      publishBillingSnapshotIfChanged(next.billing ?? EMPTY_BILLING_SNAPSHOT);
-    } catch (err) {
-      console.error('[MyArchiveContent] billing refresh failed', err);
-    }
-  }, [active, publishBillingSnapshotIfChanged]);
+  }, [publishBillingSnapshotIfChanged, showErrorAlert]);
 
   useEffect(() => {
     if (!active) return;
@@ -236,113 +178,20 @@ export function MyArchiveContent({
     return () => window.removeEventListener('archive:changed', onChanged);
   }, [active, loadArchive]);
 
-  const slotsUsed = data?.slotsUsed ?? 0;
-  const slotsLimit = data?.slotsLimit ?? 3;
+  const slotsUsed = data?.slotsUsed ?? premium.slotsUsed;
+  const slotsLimit = premium.billing.slotsLimit ?? data?.slotsLimit ?? premium.slotsLimit ?? 3;
   const inactiveCount = data?.inactiveCount ?? data?.artists.filter((a) => !a.isActive).length ?? 0;
-  const billing = data?.billing ?? EMPTY_BILLING_SNAPSHOT;
-  const hasPremiumAccess = billing.hasPremiumAccess;
-  const renewalCountdown = useRenewalCountdown(billing.nextChargeAt, billing.expiresAt, lang);
-  const billingChargeLabel = renewalCountdown.label;
-  const billingNow = useRenewalCountdownClock();
-  const billingScreen = useMemo(
-    () => resolveCollectionBillingScreen(billing, billingNow),
-    [billing, billingNow]
-  );
-  const cancelledPeriodEndAt = billing.status === 'cancel_at_period_end' ? billing.expiresAt : null;
-  const billingSyncTarget = billing.nextChargeAt ?? cancelledPeriodEndAt;
-  const shouldSyncRenewalBilling = shouldEnableRenewalBillingSync({
-    active,
-    autoRenewEnabled: billing.autoRenewEnabled,
-    nextChargeAt: billing.nextChargeAt,
-    cancelledPeriodEndAt,
-  });
-
-  useRenewalBillingSync({
-    enabled: shouldSyncRenewalBilling,
-    nextChargeAt: billingSyncTarget,
-    expiresAt: billing.expiresAt,
-    onRefresh: refreshArchiveBilling,
-  });
-  useScheduledPlanBillingSync({
-    enabled: shouldEnableScheduledPlanBillingSync({
-      active,
-      scheduledPlan: billing.scheduledPlan,
-    }),
-    onRefresh: refreshArchiveBilling,
-  });
-
-  useEffect(() => {
-    if (!active) return;
-    const onSubscriptionActivated = () => {
-      void refreshArchiveBilling();
-    };
-    window.addEventListener(SUBSCRIPTION_ACTIVATED_EVENT, onSubscriptionActivated);
-    return () => window.removeEventListener(SUBSCRIPTION_ACTIVATED_EVENT, onSubscriptionActivated);
-  }, [active, refreshArchiveBilling]);
-  const billingOverlays = useMemo(
-    () =>
-      resolveCollectionBillingOverlays({
-        billing,
-        billingScreen,
-        slotsUsed,
-      }),
-    [billing, billingScreen, slotsUsed]
-  );
-  const planSlug: SubscriptionPlanSlug | null = billing.plan;
+  const hasPremiumAccess = premium.billing.hasPremiumAccess;
   const slotsRemaining = Math.max(0, slotsLimit - slotsUsed);
 
-  const billingCopy = useMemo((): CollectionBillingCopy => {
-    return {
-      billingCurrentPlanSection: t?.billingCurrentPlanSection ?? 'ТЕКУЩИЙ ПЛАН',
-      billingLastPlanSection: t?.billingLastPlanSection ?? 'ПОСЛЕДНИЙ ПЛАН',
-      billingSupportSection: t?.billingSupportSection ?? 'ПОДДЕРЖКА',
-      billingSupportActiveUntil: t?.billingSupportActiveUntil ?? 'Поддержка активна до {date}',
-      billingSupportRemainingRelative:
-        t?.billingSupportRemainingRelative ?? 'Поддержка сохранится ещё {remaining} (до {until})',
-      billingSupportRemainingAbsolute:
-        t?.billingSupportRemainingAbsolute ?? 'Поддержка сохранится до {date}',
-      billingNextChargeOn: t?.billingNextChargeOn ?? 'Следующее списание — {date}',
-      billingSupportExpiredOn: t?.billingSupportExpiredOn ?? 'Истёк {date}',
-      billingChangePlanButton: t?.billingChangePlanButton ?? t?.changePlanButton ?? 'Сменить',
-      billingRecommendedPlanSection: t?.billingRecommendedPlanSection ?? 'РЕКОМЕНДУЕМЫЙ ПЛАН',
-      billingUpgradePlanButton: t?.billingUpgradePlanButton ?? 'Повысить тариф',
-      billingCollectionUsageSection: t?.billingCollectionUsageSection ?? 'Использование коллекции',
-      billingCollectionUsageCount: t?.billingCollectionUsageCount ?? '{used} из {limit}',
-      billingCancelledBannerTitle: t?.billingCancelledBannerTitle ?? 'Поддержка отменена',
-      billingCancelledBannerBody:
-        t?.billingCancelledBannerBody ??
-        'Автопродление отключено. Поддержка артистов сохранится до окончания оплаченного периода.',
-      billingCancelledBannerCta: t?.billingCancelledBannerCta ?? 'Возобновить поддержку',
-      billingExpiredBannerTitle: t?.billingExpiredBannerTitle ?? 'Поддержка завершена',
-      billingExpiredBannerBody:
-        t?.billingExpiredBannerBody ??
-        'Срок оплаченного периода закончился. Чтобы снова поддерживать любимых артистов и пользоваться премиум-функциями, выберите тариф.',
-      billingExpiredBannerCta: t?.billingExpiredBannerCta ?? 'Выбрать тариф',
-      billingPaymentFailedBannerTitle:
-        t?.billingPaymentFailedBannerTitle ?? 'Не удалось продлить поддержку',
-      billingPaymentFailedBannerBody:
-        t?.billingPaymentFailedBannerBody ??
-        'Не удалось списать ежемесячный платёж. Обновите платёжные данные, чтобы возобновить поддержку.',
-      billingPaymentFailedBannerCta:
-        t?.billingPaymentFailedBannerCta ?? 'Обновить платёжные данные',
-      billingPaymentFailedNextRetry:
-        t?.billingPaymentFailedNextRetry ?? 'Следующая попытка: {date}',
-      billingPaymentFailedGraceEnds:
-        t?.billingPaymentFailedGraceEnds ?? 'Доступ сохранится до: {date}',
-      billingDowngradeSlotsBannerTitle:
-        t?.billingDowngradeSlotsBannerTitle ?? 'Запланировано понижение тарифа',
-      billingDowngradeSlotsBannerBody:
-        t?.billingDowngradeSlotsBannerBody ??
-        'С {date} тариф изменится на {plan} ({limit} артистов). Сейчас в коллекции {used} артистов — удалите лишних или отмените понижение.',
-      billingDowngradeSlotsBannerCta:
-        t?.billingDowngradeSlotsBannerCta ?? 'Отменить плановое понижение',
-      billingDisableAutoRenewLink: t?.billingDisableAutoRenewLink ?? 'Отключить автопродление',
-      billingPaymentMethodSection: t?.billingPaymentMethodSection ?? 'Способ оплаты',
-      billingPaymentMethodChangeLink: t?.billingPaymentMethodChangeLink ?? 'Изменить способ оплаты',
-      billingUnlinkPaymentLink: t?.billingUnlinkPaymentLink ?? 'Отвязать карту',
+  const slotsIndicatorCopy = useMemo(
+    () => ({
+      sectionLabel: t?.billingCollectionUsageSection ?? 'Использование коллекции',
+      usageCount: t?.billingCollectionUsageCount ?? '{used} из {limit}',
       activeSlotsLabel: t?.activeSlotsLabel ?? 'артистов в коллекции',
-    };
-  }, [t]);
+    }),
+    [t?.activeSlotsLabel, t?.billingCollectionUsageCount, t?.billingCollectionUsageSection]
+  );
 
   const exitSelectMode = useCallback(() => {
     setIsSelectMode(false);
@@ -420,7 +269,6 @@ export function MyArchiveContent({
       data,
       dispatch,
       exitSelectMode,
-      lang,
       loadArchive,
       showRemovalToast,
       showErrorAlert,
@@ -574,7 +422,6 @@ export function MyArchiveContent({
       data,
       dispatch,
       exitSelectMode,
-      lang,
       slotsRemaining,
       t?.activateError,
       t?.activateLimitError,
@@ -588,247 +435,6 @@ export function MyArchiveContent({
       await activateArtists([artist.artistUserId]);
     }
   };
-
-  const handleBillingBannerAction = useCallback(async () => {
-    if (renewLoading || bulkLoading || autoRenewPatchLoading) return;
-
-    if (billingScreen === 'CANCELLED') {
-      setAutoRenewModal('enable');
-      return;
-    }
-
-    if (billingScreen === 'PAYMENT_FAILED') {
-      setAutoRenewModal('enable-rebind');
-      return;
-    }
-
-    if (billingScreen === 'EXPIRED' || !planSlug) {
-      openSupportModal();
-      return;
-    }
-
-    setRenewLoading(true);
-    setLoadError(null);
-    setAlertModal(null);
-
-    const result = await startCheckout(planSlug);
-
-    if (!result.ok) {
-      showErrorAlert(result.error);
-      setRenewLoading(false);
-      return;
-    }
-
-    if (result.redirected === 'auth') {
-      setRenewLoading(false);
-    }
-  }, [
-    autoRenewPatchLoading,
-    billingScreen,
-    bulkLoading,
-    openSupportModal,
-    planSlug,
-    renewLoading,
-    startCheckout,
-  ]);
-
-  const handleRenewCurrentPlan = useCallback(async () => {
-    if (renewLoading || bulkLoading || autoRenewPatchLoading) return;
-
-    if (billingScreen === 'CANCELLED') {
-      setAutoRenewModal('enable');
-      return;
-    }
-
-    if (billingScreen === 'PAYMENT_FAILED') {
-      setAutoRenewModal('enable-rebind');
-      return;
-    }
-
-    if (!planSlug) {
-      openSupportModal();
-      return;
-    }
-
-    setRenewLoading(true);
-    setLoadError(null);
-    setAlertModal(null);
-
-    const result = await startCheckout(planSlug);
-
-    if (!result.ok) {
-      showErrorAlert(result.error);
-      setRenewLoading(false);
-      return;
-    }
-
-    if (result.redirected === 'auth') {
-      setRenewLoading(false);
-    }
-  }, [
-    autoRenewPatchLoading,
-    billingScreen,
-    bulkLoading,
-    openSupportModal,
-    planSlug,
-    renewLoading,
-    startCheckout,
-  ]);
-
-  const applyArchivePatchResult = useCallback((archive: MyArchiveData) => {
-    setData(normalizeCollectionArchive(archive));
-    window.dispatchEvent(new CustomEvent(ARCHIVE_CHANGED_EVENT));
-  }, []);
-
-  const applyBillingPatchResult = useCallback(
-    (billing: BillingSnapshot) => {
-      skipNextArchiveReloadRef.current = true;
-      setData((prev) => {
-        if (!prev) return prev;
-        const next = normalizeCollectionArchive({
-          ...prev,
-          billing,
-          isPremium: billing.hasPremiumAccess,
-          subscriptionExpiresAt: billing.expiresAt ?? prev.subscriptionExpiresAt,
-          slotsLimit: billing.slotsLimit,
-        });
-        publishBillingSnapshotIfChanged(next.billing);
-        return next;
-      });
-    },
-    [publishBillingSnapshotIfChanged]
-  );
-
-  const handleConfirmAutoRenewPatch = useCallback(async () => {
-    if (!autoRenewModal || autoRenewModal === 'enable-rebind') return;
-
-    setLoadError(null);
-    setAlertModal(null);
-    const enable = autoRenewModal === 'enable';
-    const result = await patchAutoRenew(enable);
-
-    if (!result.ok) {
-      if (enable && result.code === 'PAYMENT_METHOD_REQUIRED') {
-        setAutoRenewModal('enable-rebind');
-        return;
-      }
-      showErrorAlert(resolveAutoRenewClientError(result, autoRenewPatchErrorText));
-      return;
-    }
-
-    applyArchivePatchResult(result.archive);
-    setAutoRenewModal(null);
-  }, [applyArchivePatchResult, autoRenewModal, autoRenewPatchErrorText, patchAutoRenew]);
-
-  const handleConfirmAutoRenewRebind = useCallback(async () => {
-    setRenewLoading(true);
-    setLoadError(null);
-    setAlertModal(null);
-
-    const result = await startRebind();
-
-    if (!result.ok) {
-      showErrorAlert(resolveAutoRenewClientError(result, autoRenewPatchErrorText));
-      setRenewLoading(false);
-    }
-  }, [autoRenewPatchErrorText, startRebind]);
-
-  const handleOpenChangePaymentMethod = useCallback(() => {
-    setAutoRenewModal('rebind');
-  }, []);
-
-  const handleOpenUnlinkPaymentMethod = useCallback(() => {
-    setUnlinkModalError(null);
-    setUnlinkModalOpen(true);
-  }, []);
-
-  const handleConfirmUnlinkPaymentMethod = useCallback(async () => {
-    setUnlinkModalError(null);
-    setLoadError(null);
-    setAlertModal(null);
-
-    const result = await unlinkPaymentMethod();
-
-    if (!result.ok) {
-      setUnlinkModalError(resolveAutoRenewClientError(result, unlinkPaymentErrorText));
-      return;
-    }
-
-    applyBillingPatchResult(result.billing);
-    setUnlinkModalOpen(false);
-    setUnlinkModalError(null);
-  }, [applyBillingPatchResult, unlinkPaymentErrorText, unlinkPaymentMethod]);
-
-  const handleDisableAutoRenew = useCallback(() => {
-    setAutoRenewModal('disable');
-  }, []);
-
-  const handleChangePlan = useCallback(() => {
-    openSupportModal();
-  }, [openSupportModal]);
-
-  const handleUpgradePlan = useCallback(() => {
-    const currentPlan = billing.plan;
-    const recommended = resolveRecommendedPlanSlug(currentPlan);
-    if (currentPlan && recommended) {
-      setUpgradePlanTarget(recommended);
-      return;
-    }
-    openSupportModal();
-  }, [billing.plan, openSupportModal]);
-
-  const handleConfirmUpgradePlan = useCallback(async () => {
-    if (!upgradePlanTarget || renewLoading) return;
-
-    setRenewLoading(true);
-    setLoadError(null);
-    setAlertModal(null);
-
-    const checkoutAction = resolvePlanChangeAction({
-      currentPlanSlug: billing.plan,
-      targetPlanSlug: upgradePlanTarget,
-      billingStatus: billing.status,
-      hasPremiumAccess: billing.hasPremiumAccess,
-    });
-    const checkoutOptions =
-      checkoutAction === 'upgrade' ? { intent: 'upgrade' as const } : undefined;
-
-    const result = await startCheckout(upgradePlanTarget, checkoutOptions);
-
-    if (!result.ok) {
-      showErrorAlert(result.error);
-      setRenewLoading(false);
-      setUpgradePlanTarget(null);
-      return;
-    }
-
-    if (result.redirected === 'auth') {
-      setRenewLoading(false);
-      setUpgradePlanTarget(null);
-    }
-  }, [
-    billing.hasPremiumAccess,
-    billing.plan,
-    billing.status,
-    renewLoading,
-    startCheckout,
-    upgradePlanTarget,
-  ]);
-
-  const handleCancelScheduledDowngrade = useCallback(async () => {
-    if (autoRenewPatchLoading || renewLoading) return;
-
-    setLoadError(null);
-    setAlertModal(null);
-    const result = await cancelScheduledDowngrade();
-
-    if (!result.ok) {
-      showErrorAlert(result.error);
-      return;
-    }
-
-    applyArchivePatchResult(result.archive);
-  }, [applyArchivePatchResult, autoRenewPatchLoading, cancelScheduledDowngrade, renewLoading]);
 
   const removeLabel = t?.remove ?? 'Remove';
   const removeLockedPeriodHint =
@@ -861,14 +467,7 @@ export function MyArchiveContent({
     );
 
   const isCollectionEmpty = (data?.artists.length ?? 0) === 0;
-  const showFullTabEmptyState = Boolean(
-    data && !loading && !loadError && isCollectionEmpty && billingScreen === 'NONE'
-  );
-  const showInlineEmptyState = Boolean(
-    data && !loading && !loadError && isCollectionEmpty && billingScreen !== 'NONE'
-  );
-  // Пока идёт загрузка или нет данных — не рисуем summary «0 / 3» (пустая оболочка).
-  // Parent показывает DashboardLoadingState через onContentBusy / !archiveContentReady.
+  const showFullTabEmptyState = Boolean(data && !loading && !loadError && isCollectionEmpty);
   const shouldBlockShell = !hasLoadedOnce || loading || (!data && !loadError);
 
   const errorAlertModal = alertModal ? (
@@ -890,6 +489,13 @@ export function MyArchiveContent({
     return (
       <>
         <section className="collection__tab collection__tab--empty">
+          <div className="collection-billing collection__slots-wrap">
+            <CollectionSlotsIndicator
+              slotsUsed={slotsUsed}
+              slotsLimit={slotsLimit}
+              copy={slotsIndicatorCopy}
+            />
+          </div>
           <CollectionEmptyState ui={ui} />
         </section>
         {errorAlertModal}
@@ -897,109 +503,20 @@ export function MyArchiveContent({
     );
   }
 
-  const autoRenewModalLoading = autoRenewPatchLoading || renewLoading;
-
   return (
     <>
-      <DisableAutoRenewConfirmModal
-        isOpen={autoRenewModal === 'disable'}
-        nextChargeAt={billing.nextChargeAt}
-        expiresAt={billing.expiresAt}
-        loading={autoRenewModalLoading}
-        onCancel={() => setAutoRenewModal(null)}
-        onConfirm={() => void handleConfirmAutoRenewPatch()}
-      />
-
-      <EnableAutoRenewConfirmModal
-        isOpen={autoRenewModal === 'enable'}
-        planSlug={planSlug}
-        chargeDateLabel={billingChargeLabel}
-        nextChargeAt={billing.nextChargeAt}
-        paymentMethodTitle={billing.paymentMethodTitle}
-        loading={autoRenewModalLoading}
-        onCancel={() => setAutoRenewModal(null)}
-        onConfirm={() => void handleConfirmAutoRenewPatch()}
-        onChangePaymentMethod={() => setAutoRenewModal('enable-rebind')}
-      />
-
-      <RebindPaymentMethodModal
-        isOpen={autoRenewModal === 'enable-rebind' || autoRenewModal === 'rebind'}
-        loading={autoRenewModalLoading}
-        onCancel={() => setAutoRenewModal(null)}
-        onConfirm={() => void handleConfirmAutoRenewRebind()}
-      />
-
-      <UnlinkPaymentMethodConfirmModal
-        isOpen={unlinkModalOpen}
-        paymentMethodTitle={billing.paymentMethodTitle}
-        expiresAt={billing.expiresAt}
-        showAutoRenewDisableNote={billingScreen === 'ACTIVE' && billing.autoRenewEnabled}
-        loading={autoRenewModalLoading}
-        errorMessage={unlinkModalError}
-        onCancel={() => {
-          setUnlinkModalOpen(false);
-          setUnlinkModalError(null);
-        }}
-        onConfirm={() => void handleConfirmUnlinkPaymentMethod()}
-      />
-
-      {upgradePlanTarget && billing.plan ? (
-        <UpgradePlanConfirmModal
-          isOpen
-          currentPlanSlug={billing.plan}
-          targetPlanSlug={upgradePlanTarget}
-          loading={renewLoading}
-          onCancel={() => setUpgradePlanTarget(null)}
-          onConfirm={() => void handleConfirmUpgradePlan()}
-        />
-      ) : null}
-      <section
-        className={clsx(
-          'collection__tab',
-          isSelectMode && 'collection__tab--select-mode',
-          showInlineEmptyState && 'collection__tab--empty-with-summary'
-        )}
-      >
+      <section className={clsx('collection__tab', isSelectMode && 'collection__tab--select-mode')}>
         <div className="user-dashboard__section">
           <div className="user-dashboard__albums-list">
-            {billingScreen !== 'NONE' ? (
-              <CollectionBillingSummary
-                screen={billingScreen}
-                billing={billing}
-                overlays={billingOverlays}
+            <div className="collection-billing collection__slots-wrap">
+              <CollectionSlotsIndicator
                 slotsUsed={slotsUsed}
-                lang={lang}
-                copy={billingCopy}
-                changePlanLoading={renewLoading}
-                bannerActionLoading={renewLoading || autoRenewPatchLoading}
-                cancelScheduledDowngradeLoading={autoRenewPatchLoading}
-                autoRenewActionsEnabled={autoRenewActionsEnabled}
-                onChangePlan={handleChangePlan}
-                onBannerAction={() => void handleBillingBannerAction()}
-                onRenewCurrentPlan={() => void handleRenewCurrentPlan()}
-                onUpgradePlan={handleUpgradePlan}
-                onCancelScheduledDowngrade={() => void handleCancelScheduledDowngrade()}
-                onDisableAutoRenew={
-                  autoRenewActionsEnabled && billingScreen === 'ACTIVE' && billing.autoRenewEnabled
-                    ? handleDisableAutoRenew
-                    : undefined
-                }
-                onChangePaymentMethod={
-                  autoRenewActionsEnabled && billing.hasSavedPaymentMethod
-                    ? handleOpenChangePaymentMethod
-                    : undefined
-                }
-                onUnlinkPaymentMethod={
-                  autoRenewActionsEnabled && billing.hasSavedPaymentMethod
-                    ? handleOpenUnlinkPaymentMethod
-                    : undefined
-                }
+                slotsLimit={slotsLimit}
+                copy={slotsIndicatorCopy}
               />
-            ) : null}
+            </div>
 
-            {showInlineEmptyState ? (
-              <CollectionEmptyState ui={ui} embedded />
-            ) : data ? (
+            {data ? (
               <DashboardCard className="collection__list-card">
                 {inactiveCount > 0 ? (
                   <div className="collection__inactive-toolbar">

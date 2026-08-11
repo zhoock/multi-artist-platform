@@ -1,4 +1,5 @@
 import {
+  BadgeCheck as BadgeCheckIcon,
   CreditCard as CreditCardIcon,
   Disc as DiscIcon,
   FileText as FileTextIcon,
@@ -19,6 +20,7 @@ const DASHBOARD_NAV_TAB_ICONS: Record<DashboardTab, LucideIcon> = {
   posts: FileTextIcon,
   mixer: SlidersHorizontalIcon,
   collection: HeartHandshakeIcon,
+  subscription: BadgeCheckIcon,
   'payment-settings': CreditCardIcon,
   'my-purchases': ShoppingBagIcon,
   'social-links': Link2Icon,

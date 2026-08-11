@@ -127,6 +127,8 @@ import { MyPurchasesContent } from './components/purchases/MyPurchasesContent';
 import { MixerAdmin } from './components/mixer/MixerAdmin';
 import { MixerEmptyState } from './components/mixer/MixerEmptyState';
 import { MyArchiveContent } from './components/archive/MyArchiveContent';
+import { SubscriptionContent } from './components/archive/SubscriptionContent';
+import { DashboardBillingSync } from './components/DashboardBillingSync';
 import { SocialLinksContent } from './components/social/SocialLinksContent';
 import type { AlbumEditable, IArticles, IInterface, DashboardTrackVisibilityLabels } from '@models';
 import {
@@ -341,6 +343,8 @@ function dashboardHeadingForTab(tab: DashboardTab, ui: IInterface | null): strin
       return d?.tabs?.mixer ?? 'Mixer';
     case 'collection':
       return d?.collection?.title ?? d?.tabs?.archive ?? 'Your Collection';
+    case 'subscription':
+      return d?.tabs?.subscription ?? 'Subscription';
     case 'payment-settings':
       return d?.tabs?.paymentSettings ?? 'Payment Settings';
     case 'my-purchases':
@@ -438,6 +442,13 @@ function UserDashboard() {
   }, []);
   const handleCollectionContentBusy = useCallback(() => {
     setCollectionContentReady(false);
+  }, []);
+  const [subscriptionContentReady, setSubscriptionContentReady] = useState(false);
+  const handleSubscriptionContentReady = useCallback(() => {
+    setSubscriptionContentReady(true);
+  }, []);
+  const handleSubscriptionContentBusy = useCallback(() => {
+    setSubscriptionContentReady(false);
   }, []);
 
   const [isDeleteAccountModalOpen, setIsDeleteAccountModalOpen] = useState(false);
@@ -646,12 +657,19 @@ function UserDashboard() {
 
   const { shouldMount } = useDashboardMountedTabs(activeTab, pinnedTabs);
   const collectionMounted = shouldMount('collection');
+  const subscriptionMounted = shouldMount('subscription');
 
   useEffect(() => {
     if (!collectionMounted) {
       setCollectionContentReady(false);
     }
   }, [collectionMounted]);
+
+  useEffect(() => {
+    if (!subscriptionMounted) {
+      setSubscriptionContentReady(false);
+    }
+  }, [subscriptionMounted]);
 
   const onAvatarAlert = useCallback(
     ({ message, variant = 'error' }: { message: string; variant?: 'error' | 'warning' }) => {
@@ -2585,6 +2603,7 @@ function UserDashboard() {
 
               {/* Main body with sidebar and content */}
               <div className="user-dashboard__body">
+                <DashboardBillingSync />
                 {/* Sidebar navigation */}
                 <nav className="user-dashboard__sidebar">
                   {visibleTabs.map((tab) => (
@@ -2712,6 +2731,31 @@ function UserDashboard() {
                               onContentReady={handleCollectionContentReady}
                               onContentBusy={handleCollectionContentBusy}
                               onMountPinChange={(pinned) => setTabPinned('collection', pinned)}
+                            />
+                          </div>
+                        </div>
+                      ) : null}
+                      {subscriptionMounted ? (
+                        <div
+                          className="user-dashboard__tab-panel user-dashboard__tab-panel--subscription"
+                          hidden={activeTab !== 'subscription'}
+                          aria-hidden={activeTab !== 'subscription'}
+                        >
+                          {activeTab === 'subscription' && !subscriptionContentReady ? (
+                            <DashboardLoadingState className="user-dashboard__tab-loading" />
+                          ) : null}
+                          <div
+                            className={clsx(
+                              'user-dashboard__subscription-content',
+                              !subscriptionContentReady &&
+                                'user-dashboard__subscription-content--pending'
+                            )}
+                          >
+                            <SubscriptionContent
+                              active={activeTab === 'subscription'}
+                              onContentReady={handleSubscriptionContentReady}
+                              onContentBusy={handleSubscriptionContentBusy}
+                              onMountPinChange={(pinned) => setTabPinned('subscription', pinned)}
                             />
                           </div>
                         </div>

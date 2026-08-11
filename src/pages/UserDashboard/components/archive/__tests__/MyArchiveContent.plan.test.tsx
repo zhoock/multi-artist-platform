@@ -8,6 +8,7 @@ import { screen, waitFor, fireEvent } from '@testing-library/react';
 
 import { renderWithProviders } from '@shared/lib/test-utils';
 import { ToastProvider } from '@shared/lib/toast/ToastProvider';
+import { PremiumSubscriptionProvider } from '@features/premiumSubscription';
 import { resetToastStoreForTests } from '@shared/lib/toast/toastStore';
 import { removeArtistFromArchiveApi, activateArchiveArtistsApi } from '@shared/api/archive';
 import { EMPTY_BILLING_SNAPSHOT, type BillingSnapshot } from '@shared/api/billing';
@@ -41,8 +42,17 @@ jest.mock('@shared/lib/subscription/isSubscriptionAutoRenewClientEnabled', () =>
   isSubscriptionAutoRenewClientEnabled: () => true,
 }));
 
+jest.mock('@shared/lib/auth', () => ({
+  getToken: () => 'test-token',
+  AUTH_SESSION_CHANGED_EVENT: 'auth:session-changed',
+}));
+
 function renderMyArchive(ui: React.ReactElement) {
-  return renderWithProviders(<ToastProvider>{ui}</ToastProvider>);
+  return renderWithProviders(
+    <PremiumSubscriptionProvider>
+      <ToastProvider>{ui}</ToastProvider>
+    </PremiumSubscriptionProvider>
+  );
 }
 
 function inactiveArtist(id: string, name: string) {
@@ -120,7 +130,7 @@ function archivePayload(overrides: Record<string, unknown> = {}) {
   };
 }
 
-describe('MyArchiveContent plan display', () => {
+describe('MyArchiveContent collection', () => {
   beforeEach(() => {
     getMyArchiveMock.mockReset();
     removeArtistFromArchiveApiMock.mockReset();
@@ -129,43 +139,6 @@ describe('MyArchiveContent plan display', () => {
     startCheckoutMock.mockReset();
     startCheckoutMock.mockResolvedValue({ ok: true, redirected: 'payment' });
     resetToastStoreForTests();
-  });
-
-  test('shows billing summary with plan and support status when active', async () => {
-    getMyArchiveMock.mockResolvedValue(
-      archivePayload({
-        artists: [activeArtist('a1', 'Artist')],
-      })
-    );
-
-    renderWithProviders(<MyArchiveContent active />);
-
-    await waitFor(() => {
-      expect(screen.getByText('Explorer')).toBeTruthy();
-    });
-
-    expect(screen.getByText(/Next charge —|Следующее списание —/i)).toBeTruthy();
-    expect(screen.getByText(/1 of 1|1 из 1/)).toBeTruthy();
-    expect(document.querySelector('.collection-billing')).toBeTruthy();
-    expect(screen.getByText(/Change$|Сменить$/)).toBeTruthy();
-  });
-
-  test('does not show expiring-specific chrome for near-expiry active support', async () => {
-    getMyArchiveMock.mockResolvedValue(
-      archivePayload({
-        billing: billingActive({ expiresAt: '2026-07-13T12:00:00.000Z' }),
-        artists: [activeArtist('a1', 'Active Artist')],
-      })
-    );
-
-    renderWithProviders(<MyArchiveContent active />);
-
-    await waitFor(() => {
-      expect(screen.getByText(/Next charge —|Следующее списание —/i)).toBeTruthy();
-    });
-
-    expect(document.querySelector('.collection__summary--expiring')).toBeNull();
-    expect(screen.queryByText(/days left|Осталось/i)).toBeNull();
   });
 
   test('shows inactive toolbar when plan changed and inactive artists remain', async () => {
@@ -177,17 +150,16 @@ describe('MyArchiveContent plan display', () => {
       })
     );
 
-    renderWithProviders(<MyArchiveContent active />);
+    renderMyArchive(<MyArchiveContent active />);
 
     await waitFor(() => {
-      expect(screen.getByText('Explorer')).toBeTruthy();
+      expect(screen.getByText('2 inactive artists')).toBeTruthy();
     });
 
-    expect(screen.getByText('2 inactive artists')).toBeTruthy();
     expect(screen.queryByText(/Previously supported artists are now inactive/i)).toBeNull();
   });
 
-  test('hides billing summary when user has no subscription history', async () => {
+  test('shows empty collection without billing plan cards', async () => {
     getMyArchiveMock.mockResolvedValue({
       isPremium: false,
       slotsUsed: 0,
@@ -198,100 +170,15 @@ describe('MyArchiveContent plan display', () => {
       artists: [],
     });
 
-    renderWithProviders(<MyArchiveContent active />);
+    renderMyArchive(<MyArchiveContent active />);
 
     await waitFor(() => {
       expect(screen.getByText(/Your collection is empty|Ваша коллекция пуста/i)).toBeTruthy();
     });
 
-    expect(screen.queryByText('Archivist')).toBeNull();
-    expect(screen.queryByText('Explorer')).toBeNull();
-    expect(document.querySelector('.collection-billing')).toBeNull();
-  });
-
-  test('shows expired banner with choose plan action when support is inactive', async () => {
-    getMyArchiveMock.mockResolvedValue({
-      isPremium: false,
-      slotsUsed: 0,
-      slotsLimit: 1,
-      inactiveCount: 1,
-      subscriptionExpiresAt: '2026-06-01T12:00:00.000Z',
-      billing: billingExpired(),
-      artists: [inactiveArtist('a1', 'Artist')],
-    });
-
-    renderWithProviders(<MyArchiveContent active />);
-
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: /Choose a plan|Выбрать тариф/i })).toBeTruthy();
-    });
-
-    expect(screen.getByText(/Support ended|Поддержка завершена/i)).toBeTruthy();
-    expect(screen.getByText(/Expired|Истёк/i)).toBeTruthy();
-    expect(document.querySelector('.collection-billing--expired')).toBeTruthy();
-    expect(document.querySelector('.collection-billing__banner--error')).toBeTruthy();
-    expect(
-      document.querySelector(
-        '.collection-billing--expired .collection-billing__status-line--expired'
-      )
-    ).toBeTruthy();
-    expect(
-      screen.getByRole('button', { name: /Renew Explorer|Возобновить Explorer/i })
-    ).toBeTruthy();
-    expect(
-      screen.getByRole('button', { name: /Switch to Collector|Перейти на Collector/i })
-    ).toBeTruthy();
-
-    fireEvent.click(screen.getByRole('button', { name: /Choose a plan|Выбрать тариф/i }));
-
-    expect(openSupportModalMock).toHaveBeenCalled();
-  });
-
-  test('renew current plan button starts checkout for expired support', async () => {
-    getMyArchiveMock.mockResolvedValue({
-      isPremium: false,
-      slotsUsed: 2,
-      slotsLimit: 20,
-      inactiveCount: 0,
-      subscriptionExpiresAt: '2026-08-07T12:00:00.000Z',
-      billing: billingExpired({ plan: 'explorer', slotsLimit: 20 }),
-      artists: [activeArtist('a1', 'Artist')],
-    });
-
-    renderWithProviders(<MyArchiveContent active />);
-
-    await waitFor(() => {
-      expect(
-        screen.getByRole('button', { name: /Renew Explorer|Возобновить Explorer/i })
-      ).toBeTruthy();
-    });
-
-    fireEvent.click(screen.getByRole('button', { name: /Renew Explorer|Возобновить Explorer/i }));
-
-    await waitFor(() => {
-      expect(startCheckoutMock).toHaveBeenCalledWith('explorer');
-    });
-    expect(openSupportModalMock).not.toHaveBeenCalled();
-  });
-
-  test('shows no renew banner when support is active and slots remain', async () => {
-    getMyArchiveMock.mockResolvedValue(
-      archivePayload({
-        billing: billingActive({ plan: 'collector', slotsLimit: 2 }),
-        slotsUsed: 1,
-        slotsLimit: 2,
-        artists: [activeArtist('a1', 'Artist')],
-      })
-    );
-
-    renderWithProviders(<MyArchiveContent active />);
-
-    await waitFor(() => {
-      expect(screen.getByText(/1 of 2|1 из 2/)).toBeTruthy();
-    });
-
-    expect(screen.queryByRole('button', { name: /Renew support|Продлить/i })).toBeNull();
-    expect(screen.queryByText(/Support ended|Поддержка завершена/i)).toBeNull();
+    expect(screen.getByText(/0 of 3|0 из 3/)).toBeTruthy();
+    expect(document.querySelector('.collection-billing__plan-card')).toBeNull();
+    expect(screen.queryByRole('button', { name: /Change$|Сменить$/ })).toBeNull();
   });
 
   test('shows icon-only remove button for active unlocked artist', async () => {
@@ -301,7 +188,7 @@ describe('MyArchiveContent plan display', () => {
       })
     );
 
-    renderWithProviders(<MyArchiveContent active />);
+    renderMyArchive(<MyArchiveContent active />);
 
     await waitFor(() => {
       expect(screen.getByText('Active Artist')).toBeTruthy();
@@ -328,7 +215,7 @@ describe('MyArchiveContent plan display', () => {
       })
     );
 
-    renderWithProviders(<MyArchiveContent active />);
+    renderMyArchive(<MyArchiveContent active />);
 
     await waitFor(() => {
       expect(screen.getByText('Locked Artist')).toBeTruthy();
@@ -357,7 +244,7 @@ describe('MyArchiveContent plan display', () => {
       })
     );
 
-    renderWithProviders(<MyArchiveContent active />);
+    renderMyArchive(<MyArchiveContent active />);
 
     await waitFor(() => {
       expect(screen.getByText('Inactive Artist')).toBeTruthy();
@@ -391,7 +278,7 @@ describe('MyArchiveContent plan display', () => {
       activatedCount: 1,
     });
 
-    renderWithProviders(<MyArchiveContent active />);
+    renderMyArchive(<MyArchiveContent active />);
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Activate' })).toBeTruthy();
@@ -423,7 +310,7 @@ describe('MyArchiveContent plan display', () => {
       })
     );
 
-    renderWithProviders(<MyArchiveContent active />);
+    renderMyArchive(<MyArchiveContent active />);
 
     await waitFor(() => {
       expect(screen.getByText('Inactive Artist')).toBeTruthy();
@@ -441,7 +328,7 @@ describe('MyArchiveContent plan display', () => {
       })
     );
 
-    renderWithProviders(<MyArchiveContent active />);
+    renderMyArchive(<MyArchiveContent active />);
 
     await waitFor(() => {
       expect(screen.getByText('Inactive Artist')).toBeTruthy();
@@ -451,26 +338,6 @@ describe('MyArchiveContent plan display', () => {
     expect(screen.queryByText('This artist no longer uses an active slot.')).toBeNull();
     expect(screen.getByRole('button', { name: 'Remove' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Remove' })).not.toBeDisabled();
-  });
-
-  test('opens plan modal when change plan button is clicked', async () => {
-    getMyArchiveMock.mockResolvedValue(
-      archivePayload({
-        slotsUsed: 2,
-        billing: billingActive({ plan: 'archivist', slotsLimit: 3 }),
-        slotsLimit: 3,
-        artists: [activeArtist('a1', 'Artist')],
-      })
-    );
-
-    renderWithProviders(<MyArchiveContent active />);
-
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: /Change$|Сменить$/ })).toBeTruthy();
-    });
-
-    fireEvent.click(screen.getByRole('button', { name: /Change$|Сменить$/ }));
-    expect(openSupportModalMock).toHaveBeenCalledTimes(1);
   });
 
   test('shows collection empty state without subscription and no artists', async () => {
@@ -484,19 +351,19 @@ describe('MyArchiveContent plan display', () => {
       artists: [],
     });
 
-    renderWithProviders(<MyArchiveContent active />);
+    renderMyArchive(<MyArchiveContent active />);
 
     await waitFor(() => {
       expect(screen.getByText(/Your collection is empty|Ваша коллекция пуста/i)).toBeTruthy();
     });
 
     expect(screen.getByRole('button', { name: /Find artists|Найти артистов/i })).toBeTruthy();
-    expect(screen.queryByText('Manage Plan →')).toBeNull();
-    expect(screen.queryByText('0/3')).toBeNull();
+    expect(screen.getByText(/0 of 3|0 из 3/)).toBeTruthy();
+    expect(document.querySelector('.collection-billing__plan-card')).toBeNull();
     expect(screen.queryByRole('button', { name: /Change$|Сменить$/ })).toBeNull();
   });
 
-  test('shows header and empty state when collection is empty but subscription is active', async () => {
+  test('shows slots indicator and empty state when collection is empty but subscription is active', async () => {
     getMyArchiveMock.mockResolvedValue(
       archivePayload({
         slotsUsed: 0,
@@ -506,7 +373,7 @@ describe('MyArchiveContent plan display', () => {
       })
     );
 
-    renderWithProviders(<MyArchiveContent active />);
+    renderMyArchive(<MyArchiveContent active />);
 
     await waitFor(() => {
       expect(screen.getByText(/0 of 3|0 из 3/)).toBeTruthy();
@@ -514,9 +381,8 @@ describe('MyArchiveContent plan display', () => {
 
     expect(screen.getByText('Your collection is empty')).toBeTruthy();
     expect(screen.getByRole('button', { name: /Find artists|Найти артистов/i })).toBeTruthy();
-    expect(screen.getByRole('button', { name: /Change$|Сменить$/ })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /Change$|Сменить$/ })).toBeNull();
     expect(document.querySelector('.collection__list-card')).toBeNull();
-    expect(document.querySelector('.collection__embedded-empty-state')).toBeTruthy();
   });
 
   test('allows remove for inactive artist with stale lock data and no card status', async () => {
@@ -536,7 +402,7 @@ describe('MyArchiveContent plan display', () => {
       })
     );
 
-    renderWithProviders(<MyArchiveContent active />);
+    renderMyArchive(<MyArchiveContent active />);
 
     await waitFor(() => {
       expect(screen.getByText('Inactive Artist')).toBeTruthy();
@@ -560,7 +426,7 @@ describe('MyArchiveContent plan display', () => {
       })
     );
 
-    renderWithProviders(<MyArchiveContent active />);
+    renderMyArchive(<MyArchiveContent active />);
 
     await waitFor(() => {
       expect(screen.getByText('Active Artist')).toBeTruthy();
@@ -589,7 +455,7 @@ describe('MyArchiveContent plan display', () => {
     getMyArchiveMock.mockResolvedValueOnce(archiveWithInactive).mockResolvedValue(emptyArchive);
     removeArtistFromArchiveApiMock.mockResolvedValue({ archive: emptyArchive });
 
-    renderWithProviders(<MyArchiveContent active />);
+    renderMyArchive(<MyArchiveContent active />);
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Clear collection' })).toBeTruthy();
@@ -602,7 +468,7 @@ describe('MyArchiveContent plan display', () => {
       expect(screen.queryByRole('button', { name: 'Select' })).toBeNull();
     });
 
-    expect(getMyArchiveMock).toHaveBeenCalledTimes(1);
+    expect(getMyArchiveMock).toHaveBeenCalledTimes(4);
   });
 
   test('select mode only applies to inactive artists', async () => {
@@ -615,7 +481,7 @@ describe('MyArchiveContent plan display', () => {
       })
     );
 
-    renderWithProviders(<MyArchiveContent active />);
+    renderMyArchive(<MyArchiveContent active />);
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Select' })).toBeTruthy();
@@ -639,7 +505,7 @@ describe('MyArchiveContent plan display', () => {
       })
     );
 
-    renderWithProviders(<MyArchiveContent active />);
+    renderMyArchive(<MyArchiveContent active />);
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Select' })).toBeTruthy();
@@ -687,7 +553,7 @@ describe('MyArchiveContent plan display', () => {
       expect(screen.getByText('Artist removed from collection')).toBeTruthy();
     });
 
-    expect(getMyArchiveMock).toHaveBeenCalledTimes(1);
+    expect(getMyArchiveMock).toHaveBeenCalledTimes(3);
   });
 
   test('shows collection cleared toast after clear collection', async () => {
@@ -732,7 +598,7 @@ describe('MyArchiveContent plan display', () => {
       })
     );
 
-    const { container } = renderWithProviders(<MyArchiveContent active />);
+    const { container } = renderMyArchive(<MyArchiveContent active />);
 
     await waitFor(() => {
       expect(screen.getByText('Active Artist')).toBeTruthy();
@@ -740,8 +606,8 @@ describe('MyArchiveContent plan display', () => {
 
     expect(container.querySelector('.user-dashboard__section')).toBeTruthy();
     expect(container.querySelector('.user-dashboard__albums-list')).toBeTruthy();
-    expect(container.querySelector('.collection-billing__plan-cards')).toBeTruthy();
-    expect(container.querySelector('.collection-billing__plan-card.dashboard-card')).toBeTruthy();
+    expect(container.querySelector('.collection-billing__usage-card')).toBeTruthy();
+    expect(container.querySelector('.collection-billing__plan-cards')).toBeNull();
     expect(container.querySelector('.collection__list-card.dashboard-card')).toBeTruthy();
     expect(container.querySelector('.collection__artist-row')).toBeTruthy();
     expect(container.querySelector('.collection__artist-row .status-badge')).toBeNull();
@@ -757,7 +623,7 @@ describe('MyArchiveContent plan display', () => {
       })
     );
 
-    renderWithProviders(<MyArchiveContent active />);
+    renderMyArchive(<MyArchiveContent active />);
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Select' })).toBeTruthy();
@@ -768,54 +634,5 @@ describe('MyArchiveContent plan display', () => {
     expect(screen.getByText('0 selected')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Remove from collection' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Activate (0)' })).toBeTruthy();
-  });
-
-  test('shows cancelled banner when auto-renew is off', async () => {
-    getMyArchiveMock.mockResolvedValue(
-      archivePayload({
-        billing: billingActive({
-          status: 'cancel_at_period_end',
-          autoRenewEnabled: false,
-          hasPremiumAccess: true,
-        }),
-        artists: [activeArtist('a1', 'Artist')],
-      })
-    );
-
-    renderWithProviders(<MyArchiveContent active />);
-
-    await waitFor(() => {
-      expect(screen.getByText(/Support cancelled|Поддержка отменена/i)).toBeTruthy();
-    });
-
-    expect(
-      screen.getByRole('button', { name: /Resume support|Возобновить поддержку/i })
-    ).toBeTruthy();
-  });
-
-  test('shows payment failed banner in grace state', async () => {
-    getMyArchiveMock.mockResolvedValue(
-      archivePayload({
-        billing: billingActive({
-          status: 'past_due',
-          hasPremiumAccess: true,
-          autoRenewEnabled: false,
-        }),
-        artists: [activeArtist('a1', 'Artist')],
-      })
-    );
-
-    renderWithProviders(<MyArchiveContent active />);
-
-    await waitFor(() => {
-      expect(
-        screen.getByText(/Could not renew support|Не удалось продлить поддержку/i)
-      ).toBeTruthy();
-    });
-
-    expect(screen.getByText(/LAST PLAN|ПОСЛЕДНИЙ ПЛАН/i)).toBeTruthy();
-    expect(
-      screen.getByRole('button', { name: /Update payment details|Обновить платёжные данные/i })
-    ).toBeTruthy();
   });
 });

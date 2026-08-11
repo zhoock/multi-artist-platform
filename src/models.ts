@@ -518,6 +518,7 @@ export interface IInterface {
       myPurchases?: string;
       mixer?: string;
       archive?: string;
+      subscription?: string;
       socialLinks?: string;
     };
     socialLinks?: {

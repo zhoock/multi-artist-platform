@@ -32,9 +32,14 @@ describe('accountType dashboard helpers', () => {
     localStorage.removeItem('auth_user');
   });
 
-  it('listener sees settings, purchases, and collection only', () => {
+  it('listener sees settings, purchases, collection, and subscription', () => {
     const user = makeUser('listener');
-    expect(getVisibleDashboardTabs(user)).toEqual(['settings', 'my-purchases', 'collection']);
+    expect(getVisibleDashboardTabs(user)).toEqual([
+      'settings',
+      'my-purchases',
+      'collection',
+      'subscription',
+    ]);
     expect(getDefaultDashboardTab(user)).toBe('settings');
   });
 
