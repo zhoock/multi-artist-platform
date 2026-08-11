@@ -3,15 +3,24 @@
  */
 
 import { describe, expect, test } from '@jest/globals';
+import crypto from 'node:crypto';
 
+import { attachDevSucceededSubscriptionCheckout } from '../../../complete-dev-payment';
 import {
   attachProviderPaymentId,
+  claimSubscriptionPaymentCanceled,
   computeSupportExpiresAt,
   createPendingSubscriptionPayment,
+  getSubscriptionPaymentByInternalId,
 } from '../../../subscription-billing';
 import { buildBillingSnapshot } from '../../../subscription-billing-snapshot';
 import { hasPremiumAccess } from '../../../subscription-access';
-import type { SubscriptionProviderPayment } from '../../../subscription-provider-payment';
+import {
+  mapDevSubscriptionPaymentToProviderPayment,
+  type SubscriptionProviderPayment,
+} from '../../../subscription-provider-payment';
+import { devMockPaymentMethodId } from '../../../subscription-yookassa';
+import { processSubscriptionProviderPaymentForRow } from '../../../subscription-payment-router';
 import {
   applySubscriptionPeriodEnded,
   processRenewalSubscriptionProviderPayment,
@@ -19,6 +28,7 @@ import {
 import {
   attemptRenewalChargeForSubscription,
   claimSubscriptionForRenewalCharge,
+  listChargeReadySubscriptionIds,
   runRenewalCycle,
 } from '../../../subscription-renewal-engine';
 import { computeRenewalRetryChargeAt } from '../../../subscription-state';
@@ -126,6 +136,34 @@ const SCENARIOS: E2eScenarioMeta[] = [
     tier: 'tier1-backend',
   },
   {
+    id: 'E-ON-011',
+    title: 'duplicate renewal webhook',
+    priority: 'P1',
+    flags: ['on'],
+    tier: 'tier1-backend',
+  },
+  {
+    id: 'E-ON-012',
+    title: 'renewal webhook poll race',
+    priority: 'P1',
+    flags: ['on'],
+    tier: 'tier1-backend',
+  },
+  {
+    id: 'E-ON-013',
+    title: 'duplicate renewal canceled webhook',
+    priority: 'P1',
+    flags: ['on'],
+    tier: 'tier1-backend',
+  },
+  {
+    id: 'E-ON-014',
+    title: 'payment method preserved after failed renewal',
+    priority: 'P1',
+    flags: ['on'],
+    tier: 'tier1-backend',
+  },
+  {
     id: 'E-OFF-011',
     title: 'scheduler no-op when flag OFF',
     priority: 'P1',
@@ -143,6 +181,10 @@ const IMPLEMENTED_IDS = new Set([
   'E-ON-007',
   'E-ON-008',
   'E-ON-010',
+  'E-ON-011',
+  'E-ON-012',
+  'E-ON-013',
+  'E-ON-014',
 ]);
 
 const RENEWAL_CLAIM_LOCK_MS = 30 * 60 * 1000;
@@ -186,6 +228,53 @@ async function simulateCanceledRenewalPayment(
   };
 
   await processRenewalSubscriptionProviderPayment(canceledPayment, userId);
+}
+
+async function executeRenewalChargePendingWebhookFulfillment(
+  subscriptionId: string,
+  userId: string,
+  plan: 'explorer' | 'collector',
+  paymentMethodId: string,
+  now: Date
+): Promise<{
+  providerPayment: SubscriptionProviderPayment;
+  paymentId: string;
+  rowKind: string;
+  subscriptionPaymentId: string;
+}> {
+  const claim = await claimSubscriptionForRenewalCharge(subscriptionId, now);
+  if (!claim) {
+    throw new Error('Failed to claim subscription for renewal charge');
+  }
+
+  const subscriptionPaymentId = await createPendingSubscriptionPayment(userId, plan, 'renewal');
+  const { paymentId } = await attachDevSucceededSubscriptionCheckout({ subscriptionPaymentId });
+  await attachProviderPaymentId(subscriptionPaymentId, paymentId);
+
+  const row = await getSubscriptionPaymentByInternalId(subscriptionPaymentId, userId);
+  if (!row?.provider_payment_id) {
+    throw new Error('provider_payment_id missing on renewal payment row');
+  }
+  if (row.kind !== 'renewal') {
+    throw new Error(`Expected renewal payment kind, got ${row.kind ?? 'null'}`);
+  }
+
+  const providerPayment = mapDevSubscriptionPaymentToProviderPayment(row, paymentId, {
+    devMode: true,
+  });
+  if (!providerPayment) {
+    throw new Error('Failed to map dev provider payment for renewal');
+  }
+
+  return {
+    providerPayment: {
+      ...providerPayment,
+      paymentMethod: { id: paymentMethodId, saved: true, title: null },
+    },
+    paymentId,
+    rowKind: row.kind,
+    subscriptionPaymentId: row.id,
+  };
 }
 
 describe('Group E — Renewal @tier1', () => {
@@ -983,6 +1072,571 @@ describe('Group E — Renewal @tier1', () => {
         hasSavedPaymentMethod: true,
         autoRenewEnabled: true,
       });
+    }, E2E_TIME_ANCHOR);
+  });
+
+  flagOnDbTest(buildTaggedTestName(SCENARIOS[10]!), async () => {
+    await withFrozenTime(async () => {
+      const ctx = createE2eContext('E-ON-011', { frozenNow: E2E_TIME_ANCHOR });
+      setActiveE2eContext(ctx);
+
+      const paymentMethodId = 'pm-e-dup-webhook';
+      const chargeReadyAt = new Date('2026-08-05T00:00:00.000Z');
+      const initialExpiresAt = chargeReadyAt;
+
+      const sub = await seedSubscription({
+        userId: ctx.userId,
+        status: 'active',
+        plan: 'explorer',
+        expiresAt: initialExpiresAt,
+        paymentMethodId,
+        nextChargeAt: chargeReadyAt,
+      });
+
+      const { providerPayment, paymentId, rowKind } =
+        await executeRenewalChargePendingWebhookFulfillment(
+          sub.id,
+          ctx.userId,
+          'explorer',
+          paymentMethodId,
+          E2E_TIME_ANCHOR
+        );
+
+      const renewalPaymentsBefore = (await loadSubscriptionPaymentsForUser(ctx.userId, 20)).filter(
+        (row) => row.kind === 'renewal'
+      );
+      expect(renewalPaymentsBefore).toHaveLength(1);
+      expect(renewalPaymentsBefore[0]?.status).toBe('succeeded');
+      expect(renewalPaymentsBefore[0]?.provider_payment_id).toBe(paymentId);
+
+      const beforeFulfillment = await loadSubscriptionForUser(ctx.userId);
+      expect(beforeFulfillment?.expiresAt.getTime()).toBe(initialExpiresAt.getTime());
+
+      const firstWebhook = await processSubscriptionProviderPaymentForRow(
+        providerPayment,
+        ctx.userId,
+        rowKind,
+        { devMode: true, observabilitySource: 'webhook', now: E2E_TIME_ANCHOR }
+      );
+      expect(firstWebhook.subscriptionRenewed).toBe(true);
+      expect(firstWebhook.alreadyFulfilled).toBe(false);
+
+      let subscription = await loadSubscriptionForUser(ctx.userId);
+      const expectedExpiresAt = computeSupportExpiresAt('explorer', E2E_TIME_ANCHOR);
+      await expectSubscriptionState(
+        subscription,
+        {
+          status: 'active',
+          plan: 'explorer',
+          renewalAttemptCount: 0,
+          firstFailedAt: null,
+          paymentMethodId,
+          nextChargeAt: expectedExpiresAt,
+          expiresAt: expectedExpiresAt,
+          providerSubscriptionId: paymentId,
+        },
+        { context: ctx }
+      );
+
+      const snapshotAfterFirstFulfillment = {
+        expiresAt: subscription!.expiresAt,
+        nextChargeAt: subscription!.nextChargeAt,
+        plan: subscription!.plan,
+        paymentMethodId: subscription!.paymentMethodId,
+        renewalAttemptCount: subscription!.renewalAttemptCount,
+        firstFailedAt: subscription!.firstFailedAt,
+      };
+
+      const renewalPaymentsAfterFirst = (
+        await loadSubscriptionPaymentsForUser(ctx.userId, 20)
+      ).filter((row) => row.kind === 'renewal');
+      expect(renewalPaymentsAfterFirst).toHaveLength(1);
+      expect(renewalPaymentsAfterFirst[0]?.status).toBe('succeeded');
+      expect(renewalPaymentsAfterFirst[0]?.provider_payment_id).toBe(paymentId);
+
+      const secondWebhook = await processSubscriptionProviderPaymentForRow(
+        providerPayment,
+        ctx.userId,
+        rowKind,
+        { devMode: true, observabilitySource: 'webhook', now: E2E_TIME_ANCHOR }
+      );
+      expect(secondWebhook.alreadyFulfilled).toBe(true);
+      expect(secondWebhook.subscriptionRenewed).toBe(true);
+
+      subscription = await loadSubscriptionForUser(ctx.userId);
+      expect(subscription?.expiresAt.getTime()).toBe(
+        snapshotAfterFirstFulfillment.expiresAt.getTime()
+      );
+      expect(subscription?.nextChargeAt?.getTime()).toBe(
+        snapshotAfterFirstFulfillment.nextChargeAt?.getTime()
+      );
+      expect(subscription?.plan).toBe(snapshotAfterFirstFulfillment.plan);
+      expect(subscription?.paymentMethodId).toBe(snapshotAfterFirstFulfillment.paymentMethodId);
+      expect(subscription?.renewalAttemptCount).toBe(
+        snapshotAfterFirstFulfillment.renewalAttemptCount
+      );
+      expect(subscription?.firstFailedAt).toBe(snapshotAfterFirstFulfillment.firstFailedAt);
+
+      const renewalPaymentsAfterSecond = (
+        await loadSubscriptionPaymentsForUser(ctx.userId, 20)
+      ).filter((row) => row.kind === 'renewal');
+      expect(renewalPaymentsAfterSecond).toHaveLength(1);
+      expect(renewalPaymentsAfterSecond[0]?.status).toBe('succeeded');
+      expect(renewalPaymentsAfterSecond[0]?.provider_payment_id).toBe(paymentId);
+
+      const snapshot = buildBillingSnapshot(subscription, { now: E2E_TIME_ANCHOR });
+      await expectBillingSnapshot(snapshot, {
+        status: 'active',
+        plan: 'explorer',
+        hasPremiumAccess: true,
+        hasSavedPaymentMethod: true,
+        autoRenewEnabled: true,
+        renewalAttemptCount: 0,
+      });
+
+      if (subscription) {
+        await expectInvariantSet(
+          subscription,
+          { violations: [] },
+          { context: ctx, now: E2E_TIME_ANCHOR }
+        );
+      }
+    }, E2E_TIME_ANCHOR);
+  });
+
+  flagOnDbTest(buildTaggedTestName(SCENARIOS[11]!), async () => {
+    await withFrozenTime(async () => {
+      const ctx = createE2eContext('E-ON-012', { frozenNow: E2E_TIME_ANCHOR });
+      setActiveE2eContext(ctx);
+
+      const paymentMethodId = 'pm-e-webhook-poll-race';
+      const chargeReadyAt = new Date('2026-08-05T00:00:00.000Z');
+      const initialExpiresAt = chargeReadyAt;
+
+      const sub = await seedSubscription({
+        userId: ctx.userId,
+        status: 'active',
+        plan: 'explorer',
+        expiresAt: initialExpiresAt,
+        paymentMethodId,
+        nextChargeAt: chargeReadyAt,
+      });
+
+      const { providerPayment, paymentId, rowKind, subscriptionPaymentId } =
+        await executeRenewalChargePendingWebhookFulfillment(
+          sub.id,
+          ctx.userId,
+          'explorer',
+          paymentMethodId,
+          E2E_TIME_ANCHOR
+        );
+
+      const renewalPaymentsBefore = (await loadSubscriptionPaymentsForUser(ctx.userId, 20)).filter(
+        (row) => row.kind === 'renewal'
+      );
+      expect(renewalPaymentsBefore).toHaveLength(1);
+      expect(renewalPaymentsBefore[0]?.status).toBe('succeeded');
+      expect(renewalPaymentsBefore[0]?.provider_payment_id).toBe(paymentId);
+
+      const beforeFulfillment = await loadSubscriptionForUser(ctx.userId);
+      expect(beforeFulfillment?.expiresAt.getTime()).toBe(initialExpiresAt.getTime());
+      expect(beforeFulfillment?.renewalAttemptCount).toBe(0);
+      expect(beforeFulfillment?.firstFailedAt).toBeNull();
+      expect(beforeFulfillment?.paymentMethodId).toBe(paymentMethodId);
+      expect(beforeFulfillment?.scheduledPlan).toBeNull();
+
+      const fulfillmentOptions = { devMode: true as const, now: E2E_TIME_ANCHOR };
+
+      const [webhookResult, pollResult] = await Promise.all([
+        processSubscriptionProviderPaymentForRow(providerPayment, ctx.userId, rowKind, {
+          ...fulfillmentOptions,
+          observabilitySource: 'webhook',
+        }),
+        processSubscriptionProviderPaymentForRow(providerPayment, ctx.userId, rowKind, {
+          ...fulfillmentOptions,
+          observabilitySource: 'poll',
+          subscriptionPaymentId,
+        }),
+      ]);
+
+      expect(webhookResult.subscriptionRenewed || pollResult.subscriptionRenewed).toBe(true);
+      expect(webhookResult.alreadyFulfilled || pollResult.alreadyFulfilled).toBe(true);
+      expect(webhookResult.alreadyFulfilled && pollResult.alreadyFulfilled).toBe(false);
+
+      const freshFulfillment = [webhookResult, pollResult].filter(
+        (result) => result.subscriptionRenewed && !result.alreadyFulfilled
+      );
+      const idempotentOutcome = [webhookResult, pollResult].filter(
+        (result) => result.alreadyFulfilled
+      );
+      expect(freshFulfillment).toHaveLength(1);
+      expect(idempotentOutcome).toHaveLength(1);
+
+      const expectedExpiresAt = computeSupportExpiresAt('explorer', E2E_TIME_ANCHOR);
+      let subscription = await loadSubscriptionForUser(ctx.userId);
+      await expectSubscriptionState(
+        subscription,
+        {
+          status: 'active',
+          plan: 'explorer',
+          scheduledPlan: null,
+          renewalAttemptCount: 0,
+          firstFailedAt: null,
+          paymentMethodId,
+          nextChargeAt: expectedExpiresAt,
+          expiresAt: expectedExpiresAt,
+          providerSubscriptionId: paymentId,
+        },
+        { context: ctx }
+      );
+      expect(subscription?.nextChargeAt?.getTime()).toBe(subscription?.expiresAt.getTime());
+
+      const snapshotAfterRace = {
+        expiresAt: subscription!.expiresAt,
+        nextChargeAt: subscription!.nextChargeAt,
+        plan: subscription!.plan,
+        scheduledPlan: subscription!.scheduledPlan,
+        paymentMethodId: subscription!.paymentMethodId,
+        renewalAttemptCount: subscription!.renewalAttemptCount,
+        firstFailedAt: subscription!.firstFailedAt,
+      };
+
+      const renewalPaymentsAfterRace = (
+        await loadSubscriptionPaymentsForUser(ctx.userId, 20)
+      ).filter((row) => row.kind === 'renewal');
+      expect(renewalPaymentsAfterRace).toHaveLength(1);
+      expect(renewalPaymentsAfterRace[0]?.status).toBe('succeeded');
+      expect(renewalPaymentsAfterRace[0]?.provider_payment_id).toBe(paymentId);
+
+      const schedulerOutcome = await attemptRenewalChargeForSubscription(sub.id, E2E_TIME_ANCHOR);
+      expect(schedulerOutcome).toBe('skipped');
+
+      subscription = await loadSubscriptionForUser(ctx.userId);
+      expect(subscription?.expiresAt.getTime()).toBe(snapshotAfterRace.expiresAt.getTime());
+      expect(subscription?.nextChargeAt?.getTime()).toBe(snapshotAfterRace.nextChargeAt?.getTime());
+      expect(subscription?.plan).toBe(snapshotAfterRace.plan);
+      expect(subscription?.scheduledPlan).toBe(snapshotAfterRace.scheduledPlan);
+      expect(subscription?.paymentMethodId).toBe(snapshotAfterRace.paymentMethodId);
+      expect(subscription?.renewalAttemptCount).toBe(snapshotAfterRace.renewalAttemptCount);
+      expect(subscription?.firstFailedAt).toBe(snapshotAfterRace.firstFailedAt);
+      expect(subscription?.providerSubscriptionId).toBe(paymentId);
+
+      const renewalPaymentsAfterScheduler = (
+        await loadSubscriptionPaymentsForUser(ctx.userId, 20)
+      ).filter((row) => row.kind === 'renewal');
+      expect(renewalPaymentsAfterScheduler).toHaveLength(1);
+      expect(renewalPaymentsAfterScheduler[0]?.status).toBe('succeeded');
+
+      const snapshot = buildBillingSnapshot(subscription, { now: E2E_TIME_ANCHOR });
+      await expectBillingSnapshot(snapshot, {
+        status: 'active',
+        plan: 'explorer',
+        hasPremiumAccess: true,
+        hasSavedPaymentMethod: true,
+        autoRenewEnabled: true,
+        renewalAttemptCount: 0,
+      });
+
+      if (subscription) {
+        await expectInvariantSet(
+          subscription,
+          { violations: [] },
+          { context: ctx, now: E2E_TIME_ANCHOR }
+        );
+      }
+    }, E2E_TIME_ANCHOR);
+  });
+
+  flagOnDbTest(buildTaggedTestName(SCENARIOS[12]!), async () => {
+    await withFrozenTime(async (time) => {
+      const ctx = createE2eContext('E-ON-013', { frozenNow: E2E_TIME_ANCHOR });
+      setActiveE2eContext(ctx);
+
+      const paymentMethodId = 'pm-e-dup-canceled';
+      const chargeReadyAt = new Date('2026-08-05T00:00:00.000Z');
+      const initialExpiresAt = new Date('2026-09-03T00:00:00.000Z');
+
+      const sub = await seedSubscription({
+        userId: ctx.userId,
+        status: 'active',
+        plan: 'explorer',
+        expiresAt: initialExpiresAt,
+        paymentMethodId,
+        nextChargeAt: chargeReadyAt,
+      });
+
+      const subscriptionPaymentId = await createPendingSubscriptionPayment(
+        ctx.userId,
+        'explorer',
+        'renewal'
+      );
+      const paymentId = crypto.randomUUID();
+      await attachProviderPaymentId(subscriptionPaymentId, paymentId);
+
+      const row = await getSubscriptionPaymentByInternalId(subscriptionPaymentId, ctx.userId);
+      if (!row) throw new Error('renewal payment row missing');
+
+      const canceledPayment: SubscriptionProviderPayment = {
+        id: paymentId,
+        status: 'canceled',
+        amount: { value: '1.00', currency: 'RUB' },
+        metadata: {
+          productType: 'premium_subscription',
+          userId: ctx.userId,
+          plan: 'explorer',
+          kind: 'renewal',
+        },
+        paymentMethod: { id: paymentMethodId, saved: true, title: null },
+      };
+
+      const webhookOptions = {
+        devMode: true as const,
+        observabilitySource: 'webhook' as const,
+        now: E2E_TIME_ANCHOR,
+      };
+
+      const firstWebhook = await processSubscriptionProviderPaymentForRow(
+        canceledPayment,
+        ctx.userId,
+        row.kind,
+        webhookOptions
+      );
+      expect(firstWebhook.subscriptionRenewed).toBe(false);
+      expect(firstWebhook.alreadyFulfilled).toBe(false);
+
+      const renewalPaymentsAfterFirst = (
+        await loadSubscriptionPaymentsForUser(ctx.userId, 20)
+      ).filter((paymentRow) => paymentRow.kind === 'renewal');
+      expect(renewalPaymentsAfterFirst).toHaveLength(1);
+      expect(renewalPaymentsAfterFirst[0]?.status).toBe('canceled');
+      expect(renewalPaymentsAfterFirst[0]?.provider_payment_id).toBe(paymentId);
+
+      let subscription = await loadSubscriptionForUser(ctx.userId);
+      if (!subscription?.firstFailedAt) {
+        throw new Error('first_failed_at missing after first canceled webhook');
+      }
+      const firstFailedAt =
+        subscription.firstFailedAt instanceof Date
+          ? subscription.firstFailedAt
+          : new Date(subscription.firstFailedAt);
+      const expectedRetryAt = computeRenewalRetryChargeAt(firstFailedAt, 1);
+      if (!expectedRetryAt) {
+        throw new Error('expected retry charge time missing after first canceled webhook');
+      }
+
+      await expectSubscriptionState(
+        subscription,
+        {
+          status: 'past_due',
+          renewalAttemptCount: 1,
+          firstFailedAt,
+          nextChargeAt: expectedRetryAt,
+          paymentMethodId,
+        },
+        { context: ctx }
+      );
+      expect(subscription?.expiresAt.getTime()).toBe(initialExpiresAt.getTime());
+      expect(hasPremiumAccess(subscription, E2E_TIME_ANCHOR)).toBe(true);
+
+      const snapshotAfterFirstCanceled = {
+        renewalAttemptCount: subscription!.renewalAttemptCount,
+        firstFailedAt: subscription!.firstFailedAt,
+        nextChargeAt: subscription!.nextChargeAt,
+        paymentMethodId: subscription!.paymentMethodId,
+        status: subscription!.status,
+      };
+
+      expect(await listChargeReadySubscriptionIds(E2E_TIME_ANCHOR)).not.toContain(sub.id);
+
+      const secondWebhook = await processSubscriptionProviderPaymentForRow(
+        canceledPayment,
+        ctx.userId,
+        row.kind,
+        webhookOptions
+      );
+      expect(secondWebhook.subscriptionRenewed).toBe(false);
+      expect(secondWebhook.alreadyFulfilled).toBe(false);
+      expect(await claimSubscriptionPaymentCanceled(paymentId, ctx.userId)).toBe(
+        'already_terminal'
+      );
+
+      subscription = await loadSubscriptionForUser(ctx.userId);
+      expect(subscription?.status).toBe(snapshotAfterFirstCanceled.status);
+      expect(subscription?.renewalAttemptCount).toBe(
+        snapshotAfterFirstCanceled.renewalAttemptCount
+      );
+      expect(subscription?.firstFailedAt?.getTime()).toBe(firstFailedAt.getTime());
+      expect(subscription?.nextChargeAt?.getTime()).toBe(expectedRetryAt.getTime());
+      expect(subscription?.paymentMethodId).toBe(snapshotAfterFirstCanceled.paymentMethodId);
+
+      const renewalPaymentsAfterSecond = (
+        await loadSubscriptionPaymentsForUser(ctx.userId, 20)
+      ).filter((paymentRow) => paymentRow.kind === 'renewal');
+      expect(renewalPaymentsAfterSecond).toHaveLength(1);
+      expect(renewalPaymentsAfterSecond[0]?.status).toBe('canceled');
+      expect(renewalPaymentsAfterSecond[0]?.provider_payment_id).toBe(paymentId);
+
+      time.set(expectedRetryAt);
+      expect(await listChargeReadySubscriptionIds(time.now())).toContain(sub.id);
+
+      const snapshot = buildBillingSnapshot(subscription, { now: E2E_TIME_ANCHOR });
+      await expectBillingSnapshot(snapshot, {
+        status: 'past_due',
+        hasPremiumAccess: true,
+        renewalAttemptCount: 1,
+        hasSavedPaymentMethod: true,
+      });
+
+      if (subscription) {
+        await expectInvariantSet(
+          subscription,
+          { violations: [] },
+          { context: ctx, now: E2E_TIME_ANCHOR }
+        );
+      }
+    }, E2E_TIME_ANCHOR);
+  });
+
+  flagOnDbTest(buildTaggedTestName(SCENARIOS[13]!), async () => {
+    await withFrozenTime(async (time) => {
+      const ctx = createE2eContext('E-ON-014', { frozenNow: E2E_TIME_ANCHOR });
+      setActiveE2eContext(ctx);
+
+      const paymentMethodId = 'pm-e-preserve';
+      const initialExpiresAt = new Date('2026-09-03T00:00:00.000Z');
+      const initialNextChargeAt = new Date('2026-08-05T00:00:00.000Z');
+
+      const sub = await seedSubscription({
+        userId: ctx.userId,
+        status: 'active',
+        plan: 'explorer',
+        expiresAt: initialExpiresAt,
+        paymentMethodId,
+        nextChargeAt: initialNextChargeAt,
+      });
+
+      const subscriptionPaymentId = await createPendingSubscriptionPayment(
+        ctx.userId,
+        'explorer',
+        'renewal'
+      );
+      await attachProviderPaymentId(subscriptionPaymentId, FIXED_RENEWAL_PAYMENT_ID);
+
+      const canceledPayment: SubscriptionProviderPayment = {
+        id: FIXED_RENEWAL_PAYMENT_ID,
+        status: 'canceled',
+        amount: { value: '1.00', currency: 'RUB' },
+        metadata: {
+          productType: 'premium_subscription',
+          userId: ctx.userId,
+          plan: 'explorer',
+          kind: 'renewal',
+        },
+        paymentMethod: { id: paymentMethodId, saved: true, title: null },
+      };
+
+      await processRenewalSubscriptionProviderPayment(canceledPayment, ctx.userId);
+
+      let subscription = await loadSubscriptionForUser(ctx.userId);
+      if (!subscription?.firstFailedAt) {
+        throw new Error('first_failed_at missing after renewal cancel');
+      }
+      const firstFailedAt =
+        subscription.firstFailedAt instanceof Date
+          ? subscription.firstFailedAt
+          : new Date(subscription.firstFailedAt);
+      const expectedRetryAt = computeRenewalRetryChargeAt(firstFailedAt, 1);
+      if (!expectedRetryAt) throw new Error('expected retry charge time missing');
+
+      await expectSubscriptionState(
+        subscription,
+        {
+          status: 'past_due',
+          renewalAttemptCount: 1,
+          firstFailedAt,
+          nextChargeAt: expectedRetryAt,
+          paymentMethodId,
+        },
+        { context: ctx }
+      );
+      expect(subscription?.paymentMethodTitle).toBeNull();
+      expect(subscription?.expiresAt.getTime()).toBe(initialExpiresAt.getTime());
+      expect(hasPremiumAccess(subscription, E2E_TIME_ANCHOR)).toBe(true);
+
+      const renewalPaymentsAfterFailure = (
+        await loadSubscriptionPaymentsForUser(ctx.userId, 20)
+      ).filter((row) => row.kind === 'renewal');
+      expect(renewalPaymentsAfterFailure).toHaveLength(1);
+      expect(renewalPaymentsAfterFailure[0]?.status).toBe('canceled');
+
+      time.set(expectedRetryAt);
+
+      const beforeRetry = await loadSubscriptionForUser(ctx.userId);
+      expect(beforeRetry?.paymentMethodId).toBe(paymentMethodId);
+
+      const outcome = await attemptRenewalChargeForSubscription(sub.id, expectedRetryAt);
+      expect(outcome).toBe('attempted');
+
+      const expectedExpiresAt = computeSupportExpiresAt('explorer', expectedRetryAt);
+      subscription = await loadSubscriptionForUser(ctx.userId);
+      await expectSubscriptionState(
+        subscription,
+        {
+          status: 'active',
+          renewalAttemptCount: 0,
+          firstFailedAt: null,
+          nextChargeAt: expectedExpiresAt,
+          expiresAt: expectedExpiresAt,
+          paymentMethodId,
+        },
+        { context: ctx }
+      );
+      expect(subscription?.nextChargeAt?.getTime()).toBe(subscription?.expiresAt.getTime());
+
+      const renewalPaymentsAfterRetry = (
+        await loadSubscriptionPaymentsForUser(ctx.userId, 20)
+      ).filter((row) => row.kind === 'renewal');
+      expect(renewalPaymentsAfterRetry).toHaveLength(2);
+
+      const canceledRenewal = renewalPaymentsAfterRetry.find(
+        (row) => row.provider_payment_id === FIXED_RENEWAL_PAYMENT_ID
+      );
+      const succeededRenewal = renewalPaymentsAfterRetry.find(
+        (row) => row.provider_payment_id !== FIXED_RENEWAL_PAYMENT_ID
+      );
+      expect(canceledRenewal?.status).toBe('canceled');
+      expect(succeededRenewal?.status).toBe('succeeded');
+
+      if (!succeededRenewal?.provider_payment_id) {
+        throw new Error('retry renewal payment missing provider_payment_id');
+      }
+      const retryProviderPayment = mapDevSubscriptionPaymentToProviderPayment(
+        succeededRenewal,
+        succeededRenewal.provider_payment_id,
+        { devMode: true }
+      );
+      expect(retryProviderPayment?.paymentMethod?.id).toBe(
+        devMockPaymentMethodId(succeededRenewal.provider_payment_id)
+      );
+      expect(subscription?.paymentMethodId).toBe(paymentMethodId);
+      expect(subscription?.paymentMethodId).not.toBe(retryProviderPayment?.paymentMethod?.id);
+
+      const snapshot = buildBillingSnapshot(subscription, { now: expectedRetryAt });
+      await expectBillingSnapshot(snapshot, {
+        status: 'active',
+        hasPremiumAccess: true,
+        renewalAttemptCount: 0,
+        hasSavedPaymentMethod: true,
+        autoRenewEnabled: true,
+      });
+
+      if (subscription) {
+        await expectInvariantSet(
+          subscription,
+          { violations: [] },
+          { context: ctx, now: expectedRetryAt }
+        );
+      }
     }, E2E_TIME_ANCHOR);
   });
 

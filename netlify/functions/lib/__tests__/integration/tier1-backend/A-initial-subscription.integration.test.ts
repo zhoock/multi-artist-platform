@@ -38,7 +38,10 @@ import {
 } from '../../helpers/subscription-e2e-setup';
 import { buildTaggedTestName, type E2eScenarioMeta } from '../../helpers/subscription-e2e-tags';
 import { E2E_TIME_ANCHOR, withFrozenTime } from '../../helpers/subscription-e2e-time';
-import { loadSubscriptionForUser } from '../../helpers/subscription-e2e-seed';
+import {
+  loadSubscriptionForUser,
+  loadSubscriptionPaymentsForUser,
+} from '../../helpers/subscription-e2e-seed';
 
 registerTier1BackendHooks();
 
@@ -102,8 +105,12 @@ const SCENARIOS: E2eScenarioMeta[] = [
 ];
 
 const P0_IDS = new Set(['A-BOTH-001', 'A-BOTH-004']);
-const IMPLEMENTED_IDS = new Set([...P0_IDS, 'A-ON-005']);
+const IMPLEMENTED_IDS = new Set([...P0_IDS, 'A-ON-005', 'A-OFF-006']);
 const dbTest = isE2eDatabaseConfigured() ? test : test.skip;
+const flagOffDbTest =
+  isE2eDatabaseConfigured() && process.env.SUBSCRIPTION_AUTO_RENEW_ENABLED !== 'true'
+    ? test
+    : test.skip;
 
 function isoDate(value: Date | string | null | undefined): string | null {
   if (value == null) return null;
@@ -337,6 +344,103 @@ describe('Group A — Initial subscription @tier1', () => {
       const afterAlternatePm = await loadSubscriptionForUser(ctx.userId);
       expect(afterAlternatePm?.paymentMethodId).toBe(expectedPmId);
       expect(isoDate(afterAlternatePm?.nextChargeAt)).toBe(isoDate(subscription?.nextChargeAt));
+
+      if (subscription) {
+        await expectInvariantSet(subscription, { violations: [] }, invariantOpts(ctx));
+      }
+    }, E2E_TIME_ANCHOR);
+  });
+
+  flagOffDbTest(buildTaggedTestName(SCENARIOS[5]!), async () => {
+    await withFrozenTime(async () => {
+      const ctx = createE2eContext('A-OFF-006', { frozenNow: E2E_TIME_ANCHOR });
+      setActiveE2eContext(ctx);
+      expect(ctx.flagAutoRenew).toBe(false);
+
+      const checkoutPayload = buildInitialSubscriptionPaymentPayload({
+        amountValue: '1.00',
+        description: 'Explorer Support',
+        returnUrl: 'https://example.test/dashboard/collection?payment=success',
+        userId: ctx.userId,
+        planSlug: 'explorer',
+        customerEmail: 'a-off-006@pr10-e2e.test',
+      });
+      expect(checkoutPayload.save_payment_method).toBeUndefined();
+      expect(checkoutPayload).not.toHaveProperty('save_payment_method');
+      expect(checkoutPayload.capture).toBe(true);
+      expect(checkoutPayload.metadata).toMatchObject({
+        productType: 'premium_subscription',
+        userId: ctx.userId,
+        plan: 'explorer',
+        kind: 'initial',
+      });
+      expect(checkoutPayload.confirmation).toEqual({
+        type: 'redirect',
+        return_url: 'https://example.test/dashboard/collection?payment=success',
+      });
+      expect(checkoutPayload).not.toHaveProperty('payment_method_id');
+
+      expect(await loadSubscriptionForUser(ctx.userId)).toBeNull();
+
+      const subscriptionPaymentId = await createPendingSubscriptionPayment(
+        ctx.userId,
+        'explorer',
+        'initial'
+      );
+      const { paymentId } = await attachDevSucceededSubscriptionCheckout({ subscriptionPaymentId });
+      const row = await getSubscriptionPaymentByInternalId(subscriptionPaymentId, ctx.userId);
+      if (!row?.provider_payment_id) throw new Error('provider_payment_id missing');
+
+      const providerPayment = mapDevSubscriptionPaymentToProviderPayment(row, paymentId, {
+        devMode: true,
+      });
+      if (!providerPayment) throw new Error('provider payment missing');
+
+      expect(providerPayment.paymentMethod?.saved).toBe(true);
+      expect(providerPayment.paymentMethod?.id).toBe(devMockPaymentMethodId(paymentId));
+
+      const result = await processSubscriptionProviderPaymentForRow(
+        providerPayment,
+        ctx.userId,
+        row.kind,
+        { devMode: true, observabilitySource: 'webhook' }
+      );
+      expect(result.subscriptionActivated).toBe(true);
+      expect(result.alreadyFulfilled).toBe(false);
+
+      const subscription = await loadSubscriptionForUser(ctx.userId);
+      await expectSubscriptionState(
+        subscription,
+        {
+          status: 'active',
+          plan: 'explorer',
+          paymentMethodId: null,
+          paymentMethodTitle: null,
+          nextChargeAt: null,
+          providerSubscriptionId: paymentId,
+        },
+        { context: ctx }
+      );
+
+      expect(providerPayment.paymentMethod?.id).toBe(devMockPaymentMethodId(paymentId));
+      expect(subscription?.paymentMethodId).toBeNull();
+
+      const initialPayments = (await loadSubscriptionPaymentsForUser(ctx.userId, 10)).filter(
+        (paymentRow) => paymentRow.kind === 'initial'
+      );
+      expect(initialPayments).toHaveLength(1);
+      expect(initialPayments[0]?.status).toBe('succeeded');
+      expect(initialPayments[0]?.provider_payment_id).toBe(paymentId);
+
+      expect(hasPremiumAccess(subscription, E2E_TIME_ANCHOR)).toBe(true);
+
+      const snapshot = buildSnapshotFromSubscription(subscription, E2E_TIME_ANCHOR);
+      await expectBillingSnapshot(snapshot, {
+        status: 'active',
+        hasPremiumAccess: true,
+        hasSavedPaymentMethod: false,
+        nextChargeAt: null,
+      });
 
       if (subscription) {
         await expectInvariantSet(subscription, { violations: [] }, invariantOpts(ctx));
