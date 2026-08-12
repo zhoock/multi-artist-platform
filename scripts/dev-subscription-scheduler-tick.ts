@@ -1,27 +1,24 @@
 /**
- * PR-10.4 — Dev sidecar: periodically POSTs to scheduled-subscription-renewals
- * with the Netlify Scheduled Functions payload. No renewal business logic here.
+ * PR-10.4 — Dev sidecar: periodically runs runRenewalCycle() in-process.
+ * Netlify Dev blocks HTTP POST to scheduled functions; direct invocation uses the same engine.
  */
 import { config } from 'dotenv';
 import { resolve } from 'path';
 
 import {
-  buildNetlifyScheduledInvocationBody,
-  buildScheduledSubscriptionRenewalsUrl,
+  bootstrapLocalRenewalSchedulerEnv,
   getLocalRenewalSchedulerIntervalMs,
   isLocalRenewalSchedulerEnabled,
+  runLocalRenewalCycleTick,
 } from '../netlify/functions/lib/local-renewal-scheduler';
 
 config({ path: resolve(process.cwd(), '.env') });
-
-/** npm run dev — always on; wins over .env.example default false */
-process.env.SUBSCRIPTION_AUTO_RENEW_ENABLED = 'true';
+bootstrapLocalRenewalSchedulerEnv();
 
 const BANNER = '🔄 LOCAL RENEWAL SCHEDULER';
 
-const NETLIFY_DEV_WAIT_MS = 2_000;
-const NETLIFY_DEV_MAX_ATTEMPTS = 90;
-const TICK_TIMEOUT_MS = 120_000;
+const DB_WAIT_MS = 2_000;
+const DB_MAX_ATTEMPTS = 45;
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolveSleep) => {
@@ -29,76 +26,32 @@ function sleep(ms: number): Promise<void> {
   });
 }
 
-function isTransientFetchFailure(error: unknown): boolean {
-  if (!error || typeof error !== 'object') return false;
-  const err = error as { name?: string; code?: string; cause?: { code?: string } };
-  if (err.name === 'AbortError' || err.name === 'TimeoutError') return true;
-  const code = err.code ?? err.cause?.code;
-  return (
-    code === 'ECONNREFUSED' ||
-    code === 'ECONNRESET' ||
-    code === 'ENOTFOUND' ||
-    code === 'ETIMEDOUT' ||
-    code === 'ECONNABORTED' ||
-    code === 'EAI_AGAIN'
-  );
-}
+async function waitForDatabase(): Promise<boolean> {
+  const { query } = await import('../netlify/functions/lib/db');
 
-async function postScheduledRenewals(url: string): Promise<Response | null> {
-  try {
-    return await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: buildNetlifyScheduledInvocationBody(),
-      signal: AbortSignal.timeout(TICK_TIMEOUT_MS),
-    });
-  } catch (error) {
-    if (isTransientFetchFailure(error)) {
-      return null;
-    }
-    throw error;
-  }
-}
-
-async function waitForNetlifyDev(url: string): Promise<boolean> {
-  for (let attempt = 1; attempt <= NETLIFY_DEV_MAX_ATTEMPTS; attempt += 1) {
-    const response = await postScheduledRenewals(url);
-    if (response) {
+  for (let attempt = 1; attempt <= DB_MAX_ATTEMPTS; attempt += 1) {
+    try {
+      await query('SELECT 1');
       return true;
-    }
-    if (attempt < NETLIFY_DEV_MAX_ATTEMPTS) {
-      await sleep(NETLIFY_DEV_WAIT_MS);
+    } catch {
+      if (attempt < DB_MAX_ATTEMPTS) {
+        await sleep(DB_WAIT_MS);
+      }
     }
   }
+
   return false;
 }
 
-async function invokeScheduledRenewals(url: string): Promise<void> {
+async function invokeRenewalCycle(): Promise<void> {
   try {
-    const response = await postScheduledRenewals(url);
-    if (!response) {
-      console.warn(`${BANNER} tick skipped — Netlify Dev unreachable at ${url}`);
-      return;
-    }
-
-    const text = await response.text();
-    let body: Record<string, unknown> = {};
-    try {
-      body = JSON.parse(text) as Record<string, unknown>;
-    } catch {
-      body = { raw: text.slice(0, 200) };
-    }
-
-    if (!response.ok) {
-      console.warn(`${BANNER} tick failed HTTP ${response.status}:`, body);
-      return;
-    }
+    const result = await runLocalRenewalCycleTick();
 
     const summary = {
-      chargesAttempted: body.chargesAttempted,
-      chargesSkipped: body.chargesSkipped,
-      periodsEnded: body.periodsEnded,
-      errors: body.errors,
+      chargesAttempted: result.chargesAttempted,
+      chargesSkipped: result.chargesSkipped,
+      periodsEnded: result.periodsEnded,
+      errors: result.errors,
     };
 
     const hasActivity = Object.values(summary).some(
@@ -108,7 +61,7 @@ async function invokeScheduledRenewals(url: string): Promise<void> {
       console.log(`${BANNER} tick:`, summary);
     }
   } catch (error) {
-    console.warn(`${BANNER} tick skipped — request failed:`, error);
+    console.warn(`${BANNER} tick failed:`, error);
   }
 }
 
@@ -132,21 +85,20 @@ async function main(): Promise<void> {
     return;
   }
 
-  const url = buildScheduledSubscriptionRenewalsUrl();
   const intervalMs = getLocalRenewalSchedulerIntervalMs();
 
-  console.log(`${BANNER} enabled — POST ${url} every ${intervalMs / 1000}s`);
+  console.log(`${BANNER} enabled — runRenewalCycle() every ${intervalMs / 1000}s (in-process)`);
   console.log(
     `${BANNER} production uses Netlify Scheduled Functions (*/15); this sidecar is dev-only.\n`
   );
 
-  const ready = await waitForNetlifyDev(url);
+  const ready = await waitForDatabase();
   if (!ready) {
-    console.error(`${BANNER} Netlify Dev did not become ready at ${url}`);
+    console.error(`${BANNER} database did not become ready (check DATABASE_URL in .env)`);
     process.exit(1);
   }
 
-  console.log(`${BANNER} Netlify Dev ready — ticking.\n`);
+  console.log(`${BANNER} database ready — ticking.\n`);
 
   let running = true;
   const shutdown = (): void => {
@@ -158,12 +110,12 @@ async function main(): Promise<void> {
   process.on('SIGINT', shutdown);
   process.on('SIGTERM', shutdown);
 
-  await invokeScheduledRenewals(url);
+  await invokeRenewalCycle();
 
   while (running) {
     await sleep(intervalMs);
     if (!running) break;
-    await invokeScheduledRenewals(url);
+    await invokeRenewalCycle();
   }
 }
 

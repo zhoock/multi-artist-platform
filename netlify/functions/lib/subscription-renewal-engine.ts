@@ -7,8 +7,10 @@ import { isDevPaymentModeEnabled } from './dev-payment-mode';
 import { query } from './db';
 import {
   attachProviderPaymentId,
+  cancelOrphanPendingRenewalPayments,
   cleanupPendingRenewalPayment,
   createPendingSubscriptionPayment,
+  DEV_SUPPORT_PERIOD_MS,
   getPlanAmountRub,
   getPlanDefinition,
   getPlanPriceCurrencyCode,
@@ -31,7 +33,33 @@ import { buildRenewalSubscriptionPaymentPayload } from './subscription-yookassa'
 import { mapSubscriptionRow, type SubscriptionRow } from './subscriptions';
 import { getYooKassaEnvCredentials } from './yookassa-env';
 
-const RENEWAL_CLAIM_LOCK_MS = 30 * 60 * 1000;
+const PRODUCTION_RENEWAL_CLAIM_LOCK_MS = 30 * 60 * 1000;
+
+/** Dev QA periods are 5 min — a 30 min claim lock blocks retries for most of a test cycle. */
+export function resolveRenewalClaimLockMs(now: Date = new Date()): number {
+  if (isDevPaymentModeEnabled()) {
+    return Math.max(DEV_SUPPORT_PERIOD_MS * 2, 2 * 60 * 1000);
+  }
+  void now;
+  return PRODUCTION_RENEWAL_CLAIM_LOCK_MS;
+}
+
+const CHARGE_DUE_ELIGIBILITY = `
+       status IN ('active', 'past_due')
+       AND payment_method_id IS NOT NULL
+       AND (
+         (next_charge_at IS NOT NULL AND next_charge_at <= $1)
+         OR (next_charge_at IS NULL AND expires_at IS NOT NULL AND expires_at <= $1)
+       )`;
+
+const CHARGE_READY_PENDING_RENEWAL_GUARD = `
+  AND NOT EXISTS (
+    SELECT 1
+    FROM subscription_payments sp
+    WHERE sp.user_id = subscriptions.user_id
+      AND sp.kind = 'renewal'
+      AND sp.status IN ('pending', 'waiting_for_capture')
+  )`;
 
 interface YooKassaCreateResponse {
   id: string;
@@ -62,7 +90,7 @@ export async function claimSubscriptionForRenewalCharge(
   subscriptionId: string,
   now: Date = new Date()
 ): Promise<RenewalChargeClaimResult | null> {
-  const lockUntil = new Date(now.getTime() + RENEWAL_CLAIM_LOCK_MS);
+  const lockUntil = new Date(now.getTime() + resolveRenewalClaimLockMs(now));
 
   const claimed = await query<SubscriptionRow & { previous_next_charge_at: Date }>(
     `WITH candidate AS (
@@ -75,13 +103,7 @@ export async function claimSubscriptionForRenewalCharge(
            (next_charge_at IS NOT NULL AND next_charge_at <= $2)
            OR (next_charge_at IS NULL AND expires_at IS NOT NULL AND expires_at <= $2)
          )
-         AND NOT EXISTS (
-           SELECT 1
-           FROM subscription_payments sp
-           WHERE sp.user_id = subscriptions.user_id
-             AND sp.kind = 'renewal'
-             AND sp.status IN ('pending', 'waiting_for_capture')
-         )
+         ${CHARGE_READY_PENDING_RENEWAL_GUARD}
      )
      UPDATE subscriptions s
      SET next_charge_at = $3,
@@ -100,6 +122,39 @@ export async function claimSubscriptionForRenewalCharge(
     row: subscriptionRow,
     previousNextChargeAt: previous_next_charge_at,
   };
+}
+
+/** Clears orphan pending renewal rows that block scheduler claim (PR-7.1 / dev sidecar races). */
+export async function reconcileRenewalClaimBlockers(subscriptionId: string): Promise<void> {
+  const owner = await query<{ user_id: string }>(
+    `SELECT user_id FROM subscriptions WHERE id = $1::uuid LIMIT 1`,
+    [subscriptionId]
+  );
+  const userId = owner.rows[0]?.user_id;
+  if (!userId) return;
+  await cancelOrphanPendingRenewalPayments(userId);
+}
+
+/** Charge-due subs regardless of pending renewal guard — used only for orphan cleanup before selection. */
+export async function listChargeDueSubscriptionIds(now: Date = new Date()): Promise<string[]> {
+  const r = await query<{ id: string }>(
+    `SELECT id
+     FROM subscriptions
+     WHERE ${CHARGE_DUE_ELIGIBILITY}
+     ORDER BY COALESCE(next_charge_at, expires_at) ASC
+     LIMIT 100`,
+    [now]
+  );
+  return r.rows.map((row) => row.id);
+}
+
+/** Reconcile orphan pending renewals for charge-due subs before NOT EXISTS pending filters them out. */
+export async function reconcileOrphanPendingRenewalsBeforeChargeSelection(
+  now: Date = new Date()
+): Promise<void> {
+  for (const subscriptionId of await listChargeDueSubscriptionIds(now)) {
+    await reconcileRenewalClaimBlockers(subscriptionId);
+  }
 }
 
 /** Restores scheduler eligibility after a failed charge attempt (PR-7.1). */
@@ -127,12 +182,8 @@ export async function listChargeReadySubscriptionIds(now: Date = new Date()): Pr
   const r = await query<{ id: string }>(
     `SELECT id
      FROM subscriptions
-     WHERE status IN ('active', 'past_due')
-       AND payment_method_id IS NOT NULL
-       AND (
-         (next_charge_at IS NOT NULL AND next_charge_at <= $1)
-         OR (next_charge_at IS NULL AND expires_at IS NOT NULL AND expires_at <= $1)
-       )
+     WHERE ${CHARGE_DUE_ELIGIBILITY}
+       ${CHARGE_READY_PENDING_RENEWAL_GUARD}
      ORDER BY COALESCE(next_charge_at, expires_at) ASC
      LIMIT 100`,
     [now]
@@ -269,7 +320,13 @@ export async function attemptRenewalChargeForSubscription(
     correlationId: subscriptionId,
   });
 
-  const claim = await claimSubscriptionForRenewalCharge(subscriptionId, now);
+  const claim = await claimSubscriptionForRenewalCharge(subscriptionId, now).then(
+    async (firstClaim) => {
+      if (firstClaim) return firstClaim;
+      await reconcileRenewalClaimBlockers(subscriptionId);
+      return claimSubscriptionForRenewalCharge(subscriptionId, now);
+    }
+  );
   if (!claim) {
     logSubscriptionEvent(SUBSCRIPTION_LOG_EVENTS.SCHEDULER_CHARGE, {
       subscriptionId,
@@ -467,6 +524,8 @@ export async function runRenewalCycle(now: Date = new Date()): Promise<RenewalCy
     const ended = await applySubscriptionPeriodEnded(id, user_id);
     if (ended) result.periodsEnded += 1;
   }
+
+  await reconcileOrphanPendingRenewalsBeforeChargeSelection(now);
 
   for (const subscriptionId of await listChargeReadySubscriptionIds(now)) {
     const outcome = await attemptRenewalChargeForSubscription(subscriptionId, now);

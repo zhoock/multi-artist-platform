@@ -3,7 +3,10 @@
  * Dev tooling only; production uses Netlify Scheduled Functions (netlify.toml).
  */
 
+import crypto from 'node:crypto';
+
 import { isSubscriptionAutoRenewEnabled } from './subscription-feature-flag';
+import type { RenewalCycleResult } from './subscription-renewal-engine';
 
 export const DEFAULT_LOCAL_RENEWAL_SCHEDULER_INTERVAL_MS = 60_000;
 
@@ -46,16 +49,19 @@ export function isLocalRenewalSchedulerEnabled(): boolean {
 
 export function getLocalRenewalSchedulerIntervalMs(): number {
   const raw = process.env.LOCAL_RENEWAL_SCHEDULER_INTERVAL_MS?.trim();
-  if (!raw) {
-    return DEFAULT_LOCAL_RENEWAL_SCHEDULER_INTERVAL_MS;
+  if (raw) {
+    const parsed = Number.parseInt(raw, 10);
+    if (Number.isFinite(parsed) && parsed >= 1_000) {
+      return parsed;
+    }
   }
 
-  const parsed = Number.parseInt(raw, 10);
-  if (!Number.isFinite(parsed) || parsed < 1_000) {
-    return DEFAULT_LOCAL_RENEWAL_SCHEDULER_INTERVAL_MS;
+  // 5-minute dev support periods need faster ticks than production */15 cron.
+  if (process.env.DEV_PAYMENT_MODE === 'true') {
+    return 15_000;
   }
 
-  return parsed;
+  return DEFAULT_LOCAL_RENEWAL_SCHEDULER_INTERVAL_MS;
 }
 
 export function getLocalNetlifyDevPort(): number {
@@ -76,4 +82,49 @@ export function buildScheduledSubscriptionRenewalsUrl(port?: number): string {
 /** Netlify Scheduled Functions invoke payload (PR-10.1 auth). */
 export function buildNetlifyScheduledInvocationBody(at: Date = new Date()): string {
   return JSON.stringify({ next_run: at.toISOString() });
+}
+
+/**
+ * Ensures dev sidecar process env matches Netlify Functions `[context.dev]` defaults.
+ * Sidecar runs outside Netlify Dev, so netlify.toml env is not applied automatically.
+ */
+export function bootstrapLocalRenewalSchedulerEnv(): void {
+  process.env.SUBSCRIPTION_AUTO_RENEW_ENABLED = 'true';
+  if (!process.env.DEV_PAYMENT_MODE?.trim()) {
+    process.env.DEV_PAYMENT_MODE = 'true';
+  }
+  if (!process.env.CONTEXT?.trim()) {
+    process.env.CONTEXT = 'dev';
+  }
+  if (!process.env.NODE_ENV?.trim()) {
+    process.env.NODE_ENV = 'development';
+  }
+}
+
+/**
+ * Runs one renewal cycle in-process (same engine as scheduled-subscription-renewals).
+ * Netlify Dev rejects HTTP POST to scheduled functions — dev sidecar must call this directly.
+ */
+export async function runLocalRenewalCycleTick(
+  now: Date = new Date()
+): Promise<RenewalCycleResult> {
+  const { runRenewalCycle } = await import('./subscription-renewal-engine');
+  const { logSubscriptionEvent, runWithSubscriptionObservability, SUBSCRIPTION_LOG_EVENTS } =
+    await import('./subscription-observability');
+
+  const correlationId = crypto.randomUUID();
+
+  const result = await runWithSubscriptionObservability(
+    { source: 'scheduler', kind: 'renewal', correlationId },
+    () => runRenewalCycle(now)
+  );
+
+  logSubscriptionEvent(SUBSCRIPTION_LOG_EVENTS.SCHEDULER_CYCLE, {
+    chargesAttempted: result.chargesAttempted,
+    chargesSkipped: result.chargesSkipped,
+    periodsEnded: result.periodsEnded,
+    errors: result.errors,
+  });
+
+  return result;
 }

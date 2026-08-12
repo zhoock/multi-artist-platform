@@ -1,16 +1,37 @@
 import {
+  bootstrapLocalRenewalSchedulerEnv,
   buildNetlifyScheduledInvocationBody,
   buildScheduledSubscriptionRenewalsUrl,
   DEFAULT_LOCAL_RENEWAL_SCHEDULER_INTERVAL_MS,
   getLocalNetlifyDevPort,
   getLocalRenewalSchedulerIntervalMs,
   isLocalRenewalSchedulerEnabled,
+  runLocalRenewalCycleTick,
 } from '../local-renewal-scheduler';
+
+jest.mock('../subscription-renewal-engine', () => ({
+  runRenewalCycle: jest.fn(),
+}));
+
+jest.mock('../subscription-observability', () => ({
+  logSubscriptionEvent: jest.fn(),
+  runWithSubscriptionObservability: jest.fn((_ctx: unknown, fn: () => unknown) => fn()),
+  SUBSCRIPTION_LOG_EVENTS: { SCHEDULER_CYCLE: 'subscription.scheduler.cycle' },
+}));
+
+import { runRenewalCycle } from '../subscription-renewal-engine';
+import {
+  logSubscriptionEvent,
+  runWithSubscriptionObservability,
+} from '../subscription-observability';
+
+const mockedRunRenewalCycle = runRenewalCycle as jest.MockedFunction<typeof runRenewalCycle>;
 
 describe('local-renewal-scheduler (PR-10.4)', () => {
   const envKeys = [
     'LOCAL_RENEWAL_SCHEDULER',
     'SUBSCRIPTION_AUTO_RENEW_ENABLED',
+    'DEV_PAYMENT_MODE',
     'CONTEXT',
     'NODE_ENV',
     'NETLIFY_DEV',
@@ -21,6 +42,7 @@ describe('local-renewal-scheduler (PR-10.4)', () => {
   const originalEnv: Partial<Record<(typeof envKeys)[number], string | undefined>> = {};
 
   beforeEach(() => {
+    jest.clearAllMocks();
     for (const key of envKeys) {
       originalEnv[key] = process.env[key];
       delete process.env[key];
@@ -85,8 +107,13 @@ describe('local-renewal-scheduler (PR-10.4)', () => {
     expect(isLocalRenewalSchedulerEnabled()).toBe(true);
   });
 
-  it('defaults interval to 60 seconds', () => {
+  it('defaults interval to 60 seconds without dev payment mode', () => {
     expect(getLocalRenewalSchedulerIntervalMs()).toBe(DEFAULT_LOCAL_RENEWAL_SCHEDULER_INTERVAL_MS);
+  });
+
+  it('defaults interval to 15 seconds when DEV_PAYMENT_MODE=true', () => {
+    process.env.DEV_PAYMENT_MODE = 'true';
+    expect(getLocalRenewalSchedulerIntervalMs()).toBe(15_000);
   });
 
   it('parses LOCAL_RENEWAL_SCHEDULER_INTERVAL_MS', () => {
@@ -112,5 +139,42 @@ describe('local-renewal-scheduler (PR-10.4)', () => {
     expect(JSON.parse(buildNetlifyScheduledInvocationBody(at))).toEqual({
       next_run: '2026-08-06T12:00:00.000Z',
     });
+  });
+
+  it('bootstrapLocalRenewalSchedulerEnv sets dev defaults without overriding explicit DEV_PAYMENT_MODE', () => {
+    process.env.DEV_PAYMENT_MODE = 'false';
+    bootstrapLocalRenewalSchedulerEnv();
+    expect(process.env.SUBSCRIPTION_AUTO_RENEW_ENABLED).toBe('true');
+    expect(process.env.DEV_PAYMENT_MODE).toBe('false');
+    expect(process.env.CONTEXT).toBe('dev');
+    expect(process.env.NODE_ENV).toBe('development');
+  });
+
+  it('bootstrapLocalRenewalSchedulerEnv defaults DEV_PAYMENT_MODE when unset', () => {
+    bootstrapLocalRenewalSchedulerEnv();
+    expect(process.env.DEV_PAYMENT_MODE).toBe('true');
+  });
+
+  it('runLocalRenewalCycleTick delegates to runRenewalCycle with scheduler observability', async () => {
+    const at = new Date('2026-08-06T12:00:00.000Z');
+    mockedRunRenewalCycle.mockResolvedValue({
+      chargesAttempted: 1,
+      chargesSkipped: 0,
+      periodsEnded: 0,
+      errors: 0,
+    });
+
+    const result = await runLocalRenewalCycleTick(at);
+
+    expect(runWithSubscriptionObservability).toHaveBeenCalledWith(
+      expect.objectContaining({ source: 'scheduler', kind: 'renewal' }),
+      expect.any(Function)
+    );
+    expect(mockedRunRenewalCycle).toHaveBeenCalledWith(at);
+    expect(logSubscriptionEvent).toHaveBeenCalledWith(
+      'subscription.scheduler.cycle',
+      expect.objectContaining({ chargesAttempted: 1 })
+    );
+    expect(result.chargesAttempted).toBe(1);
   });
 });

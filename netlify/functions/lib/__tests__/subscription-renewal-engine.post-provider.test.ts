@@ -28,6 +28,7 @@ jest.mock('../complete-dev-payment', () => ({
 
 jest.mock('../subscription-billing', () => ({
   attachProviderPaymentId: jest.fn(),
+  cancelOrphanPendingRenewalPayments: jest.fn(),
   cleanupPendingRenewalPayment: jest.fn(),
   createPendingSubscriptionPayment: jest.fn(),
   getPlanAmountRub: jest.fn(() => 1),
@@ -49,6 +50,7 @@ import { isDevPaymentModeEnabled } from '../dev-payment-mode';
 import { query } from '../db';
 import {
   attachProviderPaymentId,
+  cancelOrphanPendingRenewalPayments,
   cleanupPendingRenewalPayment,
   createPendingSubscriptionPayment,
 } from '../subscription-billing';
@@ -68,6 +70,9 @@ const mockedAttachProvider = attachProviderPaymentId as jest.MockedFunction<
 >;
 const mockedCleanup = cleanupPendingRenewalPayment as jest.MockedFunction<
   typeof cleanupPendingRenewalPayment
+>;
+const mockedCancelOrphan = cancelOrphanPendingRenewalPayments as jest.MockedFunction<
+  typeof cancelOrphanPendingRenewalPayments
 >;
 const mockedProcess = processSubscriptionProviderPayment as jest.MockedFunction<
   typeof processSubscriptionProviderPayment
@@ -146,6 +151,7 @@ beforeEach(() => {
   mockedAttachDev.mockResolvedValue({ paymentId: PROVIDER_PAYMENT_ID });
   mockedAttachProvider.mockResolvedValue(undefined);
   mockedCleanup.mockResolvedValue(undefined);
+  mockedCancelOrphan.mockResolvedValue(undefined);
   mockedMapDev.mockReturnValue({
     id: PROVIDER_PAYMENT_ID,
     status: 'succeeded',
@@ -161,6 +167,50 @@ beforeEach(() => {
 });
 
 describe('attemptRenewalChargeForSubscription POST_PROVIDER (PR-10.1)', () => {
+  test('reconciles orphan pending renewal and retries claim once', async () => {
+    let claimAttempts = 0;
+    mockedQuery.mockImplementation(async (text) => {
+      const sql = String(text);
+      if (sql.includes('WITH candidate AS')) {
+        claimAttempts += 1;
+        return fakeQueryResult(claimAttempts === 1 ? [] : [claimRow()]);
+      }
+      if (sql.includes('SELECT user_id FROM subscriptions WHERE id = $1')) {
+        return fakeQueryResult([{ user_id: USER_ID }]);
+      }
+      if (sql.includes('FROM subscription_payments WHERE id = $1')) {
+        return fakeQueryResult([
+          {
+            id: PAYMENT_ROW_ID,
+            user_id: USER_ID,
+            provider: 'yookassa',
+            provider_payment_id: PROVIDER_PAYMENT_ID,
+            status: 'pending',
+            amount: '1.00',
+            currency: 'RUB',
+            plan: 'explorer',
+            kind: 'renewal',
+          },
+        ]);
+      }
+      return fakeQueryResult();
+    });
+    mockedProcess.mockResolvedValue({
+      subscriptionRenewed: true,
+      alreadyFulfilled: false,
+      planSlug: 'explorer',
+    });
+
+    const outcome = await attemptRenewalChargeForSubscription(
+      SUB_ID,
+      new Date('2026-08-05T12:00:00.000Z')
+    );
+
+    expect(outcome).toBe('attempted');
+    expect(mockedCancelOrphan).toHaveBeenCalledWith(USER_ID);
+    expect(claimAttempts).toBe(2);
+  });
+
   test('does not rollback when inline fulfillment fails after provider attach', async () => {
     mockedProcess.mockRejectedValue(new Error('fulfillment failed'));
 

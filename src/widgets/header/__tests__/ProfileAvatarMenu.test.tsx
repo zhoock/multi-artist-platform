@@ -55,6 +55,17 @@ import { useOwnArtistPageSummary } from '@shared/lib/hooks/useOwnArtistPageSumma
 const premiumMock = jest.mocked(usePremiumSubscription);
 const ownArtistPageMock = jest.mocked(useOwnArtistPageSummary);
 
+const DEFAULT_OWN_ARTIST_PAGE_SUMMARY = {
+  publicSlug: null,
+  hasPublicReleases: false,
+  hasPublicPageContent: false,
+  needsOnboarding: false,
+  albumsCount: 0,
+  articlesCount: 0,
+  profileIsEmpty: true,
+  isLoading: false,
+} as const;
+
 function renderMenu(initialEntries: string[] = ['/']) {
   return renderWithProviders(<ProfileAvatarMenu />, {
     initialEntries,
@@ -77,10 +88,7 @@ describe('ProfileAvatarMenu dashboard links', () => {
   beforeEach(() => {
     cleanup();
     openPremiumModalMock.mockReset();
-    ownArtistPageMock.mockReturnValue({
-      publicSlug: null,
-      hasPublicPageContent: false,
-    });
+    ownArtistPageMock.mockReturnValue({ ...DEFAULT_OWN_ARTIST_PAGE_SUMMARY });
   });
 
   test('shows Subscription link to /dashboard/subscription for active subscribers', async () => {

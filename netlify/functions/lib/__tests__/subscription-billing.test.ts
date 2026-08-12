@@ -457,5 +457,48 @@ describe('fulfillSubscriptionPayment', () => {
     });
 
     expect(mockedQuery.mock.calls[1]?.[1]?.[4]).toBe(false);
+    const updateSql = String(mockedQuery.mock.calls[1]?.[0]);
+    expect(updateSql).toContain('next_charge_at = CASE WHEN $5 THEN NULL ELSE $7 END');
+    expect(mockedQuery.mock.calls[1]?.[1]?.[6]).toEqual(expiresAt);
+  });
+
+  test('active initial checkout sets next_charge_at to new expires_at instead of preserving stale value', async () => {
+    const startedAt = new Date('2026-06-20T12:00:00.000Z');
+    const expiresAt = computeSupportExpiresAt('explorer', startedAt);
+    const staleNextCharge = new Date('2026-06-01T00:00:00.000Z');
+
+    mockedQuery
+      .mockResolvedValueOnce(
+        fakeQueryResult([
+          subscriptionRow({
+            status: 'active',
+            plan: 'explorer',
+            slots_limit: 20,
+            next_charge_at: staleNextCharge,
+          }),
+        ])
+      )
+      .mockResolvedValueOnce(
+        fakeQueryResult([
+          subscriptionRow({
+            status: 'active',
+            plan: 'explorer',
+            slots_limit: 20,
+            expires_at: expiresAt,
+            next_charge_at: expiresAt,
+          }),
+        ])
+      );
+
+    await fulfillSubscriptionPayment({
+      userId: USER_ID,
+      planSlug: 'explorer',
+      providerPaymentId: 'pay-active-extend',
+    });
+
+    expect(mockedQuery.mock.calls[1]?.[1]?.[4]).toBe(false);
+    expect(mockedQuery.mock.calls[1]?.[1]?.[6]).toEqual(expiresAt);
+    const updateSql = String(mockedQuery.mock.calls[1]?.[0]);
+    expect(updateSql).toContain('next_charge_at = CASE WHEN $5 THEN NULL ELSE $7 END');
   });
 });

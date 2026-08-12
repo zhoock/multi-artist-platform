@@ -16,15 +16,36 @@ jest.mock('../subscription-feature-flag', () => ({
 
 jest.mock('../subscription-billing', () => ({
   cleanupPendingRenewalPayment: jest.fn(),
+  cancelOrphanPendingRenewalPayments: jest.fn(),
+  attachProviderPaymentId: jest.fn(),
+  createPendingSubscriptionPayment: jest.fn(),
+  getPlanAmountRub: jest.fn(() => 1),
+  getPlanDefinition: jest.fn(() => ({ description: 'test', slotsLimit: 20 })),
+  getPlanPriceCurrencyCode: jest.fn(() => 'RUB'),
+  resolveRenewalChargePlanSlug: jest.fn((plan: string) => plan),
+}));
+
+jest.mock('../subscription-renewal-fulfillment', () => ({
+  applySubscriptionPeriodEnded: jest.fn(async () => false),
 }));
 
 import { query } from '../db';
-import { cleanupPendingRenewalPayment } from '../subscription-billing';
-import { rollbackRenewalChargeAttempt } from '../subscription-renewal-engine';
+import {
+  cancelOrphanPendingRenewalPayments,
+  cleanupPendingRenewalPayment,
+} from '../subscription-billing';
+import {
+  reconcileOrphanPendingRenewalsBeforeChargeSelection,
+  rollbackRenewalChargeAttempt,
+  runRenewalCycle,
+} from '../subscription-renewal-engine';
 
 const mockedQuery = query as jest.MockedFunction<typeof query>;
 const mockedCleanup = cleanupPendingRenewalPayment as jest.MockedFunction<
   typeof cleanupPendingRenewalPayment
+>;
+const mockedCancelOrphans = cancelOrphanPendingRenewalPayments as jest.MockedFunction<
+  typeof cancelOrphanPendingRenewalPayments
 >;
 
 const SUB_ID = 'sub-11111111-2222-4333-8444-555555555555';
@@ -43,6 +64,7 @@ beforeEach(() => {
   jest.clearAllMocks();
   mockedQuery.mockResolvedValue(fakeQueryResult());
   mockedCleanup.mockResolvedValue(undefined);
+  mockedCancelOrphans.mockResolvedValue(undefined);
 });
 
 describe('rollbackRenewalChargeAttempt', () => {
@@ -68,5 +90,45 @@ describe('rollbackRenewalChargeAttempt', () => {
 
     expect(mockedCleanup).not.toHaveBeenCalled();
     expect(mockedQuery).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('reconcileOrphanPendingRenewalsBeforeChargeSelection', () => {
+  test('reconciles orphan pending for charge-due subscriptions without pending guard', async () => {
+    const dueSubId = 'sub-due-1111-2222-4333-8444-555555555555';
+    const userId = 'user-aaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee';
+    const now = new Date('2026-08-11T12:00:00.000Z');
+
+    mockedQuery
+      .mockResolvedValueOnce(fakeQueryResult([{ id: dueSubId }]))
+      .mockResolvedValueOnce(fakeQueryResult([{ user_id: userId }]));
+
+    await reconcileOrphanPendingRenewalsBeforeChargeSelection(now);
+
+    const dueListSql = String(mockedQuery.mock.calls[0]?.[0]);
+    expect(dueListSql).not.toContain('NOT EXISTS');
+    expect(mockedCancelOrphans).toHaveBeenCalledWith(userId);
+  });
+});
+
+describe('runRenewalCycle orphan reconcile ordering', () => {
+  test('reconciles charge-due subs before charge-ready selection', async () => {
+    const dueSubId = 'sub-due-1111-2222-4333-8444-555555555555';
+    const userId = 'user-aaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee';
+    const now = new Date('2026-08-11T12:00:00.000Z');
+
+    mockedQuery
+      .mockResolvedValueOnce(fakeQueryResult([]))
+      .mockResolvedValueOnce(fakeQueryResult([{ id: dueSubId }]))
+      .mockResolvedValueOnce(fakeQueryResult([{ user_id: userId }]))
+      .mockResolvedValueOnce(fakeQueryResult([]));
+
+    await runRenewalCycle(now);
+
+    const dueListSql = String(mockedQuery.mock.calls[1]?.[0]);
+    const readyListSql = String(mockedQuery.mock.calls[3]?.[0]);
+    expect(dueListSql).not.toContain('NOT EXISTS');
+    expect(readyListSql).toContain('NOT EXISTS');
+    expect(mockedCancelOrphans).toHaveBeenCalledWith(userId);
   });
 });
