@@ -27,6 +27,7 @@ import {
   getRebindAmountRub,
   normalizeSubscriptionPlanSlug,
   REBIND_PAYMENT_DESCRIPTION,
+  releaseAbandonedCheckoutPayments,
 } from './lib/subscription-billing';
 import { isSubscriptionAutoRenewEnabled } from './lib/subscription-feature-flag';
 import { buildRebindSubscriptionPaymentPayload } from './lib/subscription-yookassa';
@@ -93,6 +94,8 @@ export const handler: Handler = async (event: HandlerEvent) => {
   } catch {
     return createErrorResponse(400, 'Invalid JSON body');
   }
+
+  await releaseAbandonedCheckoutPayments(userId);
 
   const openPayment = await findOpenSubscriptionPayment(userId);
   if (openPayment) {
