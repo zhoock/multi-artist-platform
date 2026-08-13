@@ -48,6 +48,8 @@ export interface PopupProps extends HamburgerProps {
   publicBackdrop?: boolean;
   /** При открытии dialog фокусировать первый интерактивный элемент (по умолчанию true). */
   autoFocusFirstElement?: boolean;
+  /** CSS selector for the initial focus target when autoFocusFirstElement is true. */
+  initialFocusSelector?: string;
 }
 
 /**

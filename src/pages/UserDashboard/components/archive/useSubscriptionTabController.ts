@@ -10,10 +10,6 @@ import { usePremiumSubscription } from '@features/premiumSubscription';
 import { ARCHIVE_CHANGED_EVENT, SUBSCRIPTION_ACTIVATED_EVENT } from '@features/artistArchive';
 import { useArchiveAccessModal } from '@shared/lib/archiveAccessModal';
 import type { SubscriptionPlanSlug } from '@shared/lib/payment/subscriptionPlans';
-import {
-  resolveRecommendedPlanSlug,
-  resolvePlanChangeAction,
-} from '@shared/lib/payment/subscriptionPlans';
 import { useSubscriptionBilling } from '@shared/lib/subscription/useSubscriptionBilling';
 import { useSubscriptionRebindPayment } from '@shared/lib/subscription/useSubscriptionRebindPayment';
 import { isSubscriptionAutoRenewClientEnabled } from '@shared/lib/subscription/isSubscriptionAutoRenewClientEnabled';
@@ -51,7 +47,6 @@ export function useSubscriptionTabController({
   const [autoRenewModal, setAutoRenewModal] = useState<BillingAutoRenewModalVariant | null>(null);
   const [unlinkModalOpen, setUnlinkModalOpen] = useState(false);
   const [unlinkModalError, setUnlinkModalError] = useState<string | null>(null);
-  const [upgradePlanTarget, setUpgradePlanTarget] = useState<SubscriptionPlanSlug | null>(null);
   const [billingPatch, setBillingPatch] = useState<BillingSnapshot | null>(null);
 
   const {
@@ -374,52 +369,8 @@ export function useSubscriptionTabController({
   }, [openSupportModal]);
 
   const handleUpgradePlan = useCallback(() => {
-    const currentPlan = billingSnapshot.plan;
-    const recommended = resolveRecommendedPlanSlug(currentPlan);
-    if (currentPlan && recommended) {
-      setUpgradePlanTarget(recommended);
-      return;
-    }
     openSupportModal();
-  }, [billingSnapshot.plan, openSupportModal]);
-
-  const handleConfirmUpgradePlan = useCallback(async () => {
-    if (!upgradePlanTarget || renewLoading) return;
-
-    setRenewLoading(true);
-    setAlertModalMessage(null);
-
-    const checkoutAction = resolvePlanChangeAction({
-      currentPlanSlug: billingSnapshot.plan,
-      targetPlanSlug: upgradePlanTarget,
-      billingStatus: billingSnapshot.status,
-      hasPremiumAccess: billingSnapshot.hasPremiumAccess,
-    });
-    const checkoutOptions =
-      checkoutAction === 'upgrade' ? { intent: 'upgrade' as const } : undefined;
-
-    const result = await startCheckout(upgradePlanTarget, checkoutOptions);
-
-    if (!result.ok) {
-      showErrorAlert(result.error);
-      setRenewLoading(false);
-      setUpgradePlanTarget(null);
-      return;
-    }
-
-    if (result.redirected === 'auth') {
-      setRenewLoading(false);
-      setUpgradePlanTarget(null);
-    }
-  }, [
-    billingSnapshot.hasPremiumAccess,
-    billingSnapshot.plan,
-    billingSnapshot.status,
-    renewLoading,
-    showErrorAlert,
-    startCheckout,
-    upgradePlanTarget,
-  ]);
+  }, [openSupportModal]);
 
   const handleCancelScheduledDowngrade = useCallback(async () => {
     if (autoRenewPatchLoading || renewLoading) return;
@@ -462,8 +413,6 @@ export function useSubscriptionTabController({
     setUnlinkModalOpen,
     unlinkModalError,
     setUnlinkModalError,
-    upgradePlanTarget,
-    setUpgradePlanTarget,
     renewLoading,
     autoRenewPatchLoading,
     autoRenewModalLoading,
@@ -484,7 +433,6 @@ export function useSubscriptionTabController({
     handleDisableAutoRenew,
     handleChangePlan,
     handleUpgradePlan,
-    handleConfirmUpgradePlan,
     handleCancelScheduledDowngrade,
     openSupportModal,
   };

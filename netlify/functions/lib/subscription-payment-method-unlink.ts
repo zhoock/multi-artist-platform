@@ -50,6 +50,7 @@ const SUBSCRIPTION_RETURNING = `
   renewal_attempt_count,
   scheduled_plan,
   first_failed_at,
+  payment_method_epoch,
   created_at,
   updated_at`;
 
@@ -125,6 +126,7 @@ export async function unlinkSubscriptionPaymentMethod(
              payment_method_title = NULL,
              next_charge_at = NULL,
              status = $2,
+             payment_method_epoch = payment_method_epoch + 1,
              updated_at = CURRENT_TIMESTAMP
          WHERE id = $1::uuid
            AND user_id = $3::uuid

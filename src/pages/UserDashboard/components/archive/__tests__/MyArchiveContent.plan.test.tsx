@@ -172,7 +172,7 @@ describe('MyArchiveContent collection', () => {
     expect(openSupportModalMock).toHaveBeenCalled();
   });
 
-  test('shows expired banner on empty collection without billing UI', async () => {
+  test('hides expired banner on empty collection', async () => {
     getMyArchiveMock.mockResolvedValue({
       isPremium: false,
       slotsUsed: 0,
@@ -186,10 +186,10 @@ describe('MyArchiveContent collection', () => {
     renderMyArchive(<MyArchiveContent active />);
 
     await waitFor(() => {
-      expect(screen.getByText(/Support ended|Поддержка завершена/i)).toBeTruthy();
+      expect(screen.getByText(/Your collection is empty|Ваша коллекция пуста/i)).toBeTruthy();
     });
 
-    expect(screen.getByText(/Your collection is empty|Ваша коллекция пуста/i)).toBeTruthy();
+    expect(screen.queryByText(/Support ended|Поддержка завершена/i)).toBeNull();
     expect(document.querySelector('.collection-billing__plan-card')).toBeNull();
     expect(screen.queryByRole('button', { name: /Change$|Сменить$/ })).toBeNull();
   });
@@ -229,7 +229,7 @@ describe('MyArchiveContent collection', () => {
       expect(screen.getByText(/Your collection is empty|Ваша коллекция пуста/i)).toBeTruthy();
     });
 
-    expect(screen.getByText(/0 of 3|0 из 3/)).toBeTruthy();
+    expect(screen.queryByText(/0 of 3|0 из 3/)).toBeNull();
     expect(document.querySelector('.collection-billing__plan-card')).toBeNull();
     expect(screen.queryByRole('button', { name: /Change$|Сменить$/ })).toBeNull();
   });
@@ -411,12 +411,12 @@ describe('MyArchiveContent collection', () => {
     });
 
     expect(screen.getByRole('button', { name: /Find artists|Найти артистов/i })).toBeTruthy();
-    expect(screen.getByText(/0 of 3|0 из 3/)).toBeTruthy();
+    expect(screen.queryByText(/0 of 3|0 из 3/)).toBeNull();
     expect(document.querySelector('.collection-billing__plan-card')).toBeNull();
     expect(screen.queryByRole('button', { name: /Change$|Сменить$/ })).toBeNull();
   });
 
-  test('shows slots indicator and empty state when collection is empty but subscription is active', async () => {
+  test('hides slots indicator on empty collection even when subscription is active', async () => {
     getMyArchiveMock.mockResolvedValue(
       archivePayload({
         slotsUsed: 0,
@@ -429,10 +429,10 @@ describe('MyArchiveContent collection', () => {
     renderMyArchive(<MyArchiveContent active />);
 
     await waitFor(() => {
-      expect(screen.getByText(/0 of 3|0 из 3/)).toBeTruthy();
+      expect(screen.getByText('Your collection is empty')).toBeTruthy();
     });
 
-    expect(screen.getByText('Your collection is empty')).toBeTruthy();
+    expect(screen.queryByText(/0 of 3|0 из 3/)).toBeNull();
     expect(screen.getByRole('button', { name: /Find artists|Найти артистов/i })).toBeTruthy();
     expect(screen.queryByRole('button', { name: /Change$|Сменить$/ })).toBeNull();
     expect(document.querySelector('.collection__list-card')).toBeNull();

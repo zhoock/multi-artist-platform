@@ -36,6 +36,8 @@ export interface Subscription {
   renewalAttemptCount?: number;
   scheduledPlan?: string | null;
   firstFailedAt?: Date | null;
+  /** Incremented on payment-method unlink; rebind checkout captures at POST. */
+  paymentMethodEpoch?: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -56,6 +58,7 @@ export interface SubscriptionRow {
   renewal_attempt_count?: number | null;
   scheduled_plan?: string | null;
   first_failed_at?: Date | null;
+  payment_method_epoch?: number | null;
   created_at: Date;
   updated_at: Date;
 }
@@ -77,6 +80,7 @@ export function mapSubscriptionRow(row: SubscriptionRow): Subscription {
     renewalAttemptCount: row.renewal_attempt_count ?? undefined,
     scheduledPlan: row.scheduled_plan ?? null,
     firstFailedAt: row.first_failed_at ?? null,
+    paymentMethodEpoch: row.payment_method_epoch ?? 0,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -106,6 +110,7 @@ export async function getViewerSubscription(userId: string): Promise<Subscriptio
          renewal_attempt_count,
          scheduled_plan,
          first_failed_at,
+         payment_method_epoch,
          created_at,
          updated_at
        FROM subscriptions

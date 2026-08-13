@@ -220,6 +220,29 @@ describe('SubscriptionContent plan display', () => {
     expect(openSupportModalMock).toHaveBeenCalledTimes(1);
   });
 
+  test('opens plan modal when upgrade plan button is clicked', async () => {
+    getMyArchiveMock.mockResolvedValue(
+      archivePayload({
+        billing: billingActive({ plan: 'explorer', slotsLimit: 20 }),
+        slotsLimit: 20,
+      })
+    );
+
+    renderSubscription(<SubscriptionContent active />);
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('button', { name: /Switch to Collector|Перейти на Collector/i })
+      ).toBeTruthy();
+    });
+
+    fireEvent.click(
+      screen.getByRole('button', { name: /Switch to Collector|Перейти на Collector/i })
+    );
+    expect(openSupportModalMock).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole('heading', { name: /Upgrade to Collector/i })).toBeNull();
+  });
+
   test('shows cancelled banner when auto-renew is off', async () => {
     getMyArchiveMock.mockResolvedValue(
       archivePayload({
@@ -240,6 +263,7 @@ describe('SubscriptionContent plan display', () => {
     expect(
       screen.getByRole('button', { name: /Resume support|Возобновить поддержку/i })
     ).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Change$|Сменить$/ })).toBeTruthy();
   });
 
   test('checkout return URL preserves subscription dashboard path', () => {

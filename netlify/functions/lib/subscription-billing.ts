@@ -404,6 +404,47 @@ export async function markSubscriptionRebindResumeAutoRenewIntent(
   );
 }
 
+export const REBIND_OUTCOME_STALE_AFTER_UNLINK = 'stale_after_unlink';
+export const REBIND_OUTCOME_APPLIED = 'applied';
+
+export function readPaymentMethodEpoch(rawLastEvent: unknown): number {
+  if (rawLastEvent == null || typeof rawLastEvent !== 'object') return 0;
+  const epoch = (rawLastEvent as Record<string, unknown>).paymentMethodEpoch;
+  if (typeof epoch === 'number' && Number.isFinite(epoch)) return epoch;
+  if (typeof epoch === 'string') {
+    const parsed = Number(epoch);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return 0;
+}
+
+export function readRebindOutcome(rawLastEvent: unknown): string | null {
+  if (rawLastEvent == null || typeof rawLastEvent !== 'object') return null;
+  const outcome = (rawLastEvent as Record<string, unknown>).rebindOutcome;
+  return typeof outcome === 'string' && outcome.trim() ? outcome.trim() : null;
+}
+
+/** Snapshot current subscription epoch into the rebind payment row at POST. */
+export async function markSubscriptionRebindPaymentMethodEpoch(
+  subscriptionPaymentId: string,
+  userId: string
+): Promise<void> {
+  const epochResult = await query<{ payment_method_epoch: number }>(
+    `SELECT payment_method_epoch
+     FROM subscriptions
+     WHERE user_id = $1::uuid
+     LIMIT 1`,
+    [userId]
+  );
+  const epoch = epochResult.rows[0]?.payment_method_epoch ?? 0;
+  await query(
+    `UPDATE subscription_payments
+     SET raw_last_event = COALESCE(raw_last_event, '{}'::jsonb) || $2::jsonb
+     WHERE id = $1`,
+    [subscriptionPaymentId, JSON.stringify({ paymentMethodEpoch: epoch })]
+  );
+}
+
 export async function attachProviderPaymentId(
   subscriptionPaymentId: string,
   providerPaymentId: string

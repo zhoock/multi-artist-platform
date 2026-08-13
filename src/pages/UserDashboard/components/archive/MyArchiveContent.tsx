@@ -217,6 +217,7 @@ export function MyArchiveContent({
 
   const expiredBanner = useMemo(() => {
     if (billingScreen !== 'EXPIRED') return null;
+    if ((data?.artists.length ?? 0) === 0) return null;
 
     return (
       <div className="collection-billing collection-billing--expired collection__expired-banner-wrap">
@@ -229,7 +230,7 @@ export function MyArchiveContent({
         />
       </div>
     );
-  }, [billingScreen, expiredBannerCopy, openSupportModal]);
+  }, [billingScreen, data?.artists.length, expiredBannerCopy, openSupportModal]);
 
   const exitSelectMode = useCallback(() => {
     setIsSelectMode(false);
@@ -527,15 +528,7 @@ export function MyArchiveContent({
     return (
       <>
         <section className="collection__tab collection__tab--empty">
-          {expiredBanner}
-          <div className="collection-billing collection__slots-wrap">
-            <CollectionSlotsIndicator
-              slotsUsed={slotsUsed}
-              slotsLimit={slotsLimit}
-              copy={slotsIndicatorCopy}
-            />
-          </div>
-          <CollectionEmptyState ui={ui} />
+          <CollectionEmptyState ui={ui} embedded />
         </section>
         {errorAlertModal}
       </>

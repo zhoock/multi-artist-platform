@@ -167,6 +167,7 @@ describe('CollectionBillingSummary overlays', () => {
 
     expect(screen.getByText('Cancelled')).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Resume' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Change' })).toBeTruthy();
 
     render(
       <CollectionBillingSummary

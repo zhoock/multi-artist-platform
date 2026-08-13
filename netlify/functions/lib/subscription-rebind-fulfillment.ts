@@ -4,13 +4,19 @@
  * Resume-from-cancel continues via existing USER_ENABLE_AUTO_RENEW after a successful apply.
  */
 
-import { query } from './db';
+import type { PoolClient } from 'pg';
+
+import { withTransaction } from './db';
 import { getMyArchiveForUser } from './archive';
 import {
-  claimSubscriptionPaymentSuccess,
+  ClaimSubscriptionPaymentSuccessResult,
+  CLAIMABLE_SUBSCRIPTION_PAYMENT_SUCCESS_STATUSES,
   getRebindAmountRub,
-  getSubscriptionPaymentForUser,
   PREMIUM_SUBSCRIPTION_PRODUCT_TYPE,
+  readPaymentMethodEpoch,
+  readRebindOutcome,
+  REBIND_OUTCOME_APPLIED,
+  REBIND_OUTCOME_STALE_AFTER_UNLINK,
   updateSubscriptionPaymentStatus,
   validateRebindSubscriptionPayment,
 } from './subscription-billing';
@@ -35,15 +41,43 @@ import {
 export interface ProcessRebindSubscriptionProviderPaymentResult {
   paymentMethodUpdated: boolean;
   alreadyApplied: boolean;
+  staleAfterUnlink: boolean;
 }
 
 export interface ProcessRebindSubscriptionProviderPaymentOptions {
   devMode?: boolean;
 }
 
+export interface FulfillRebindSubscriptionPaymentResult {
+  subscription: Subscription | null;
+  applied: boolean;
+  alreadyApplied: boolean;
+  staleAfterUnlink: boolean;
+}
+
 export function isRebindSubscriptionPaymentKind(kind: string | null | undefined): boolean {
   return kind?.trim() === SUBSCRIPTION_PAYMENT_KIND_REBIND;
 }
+
+const SUBSCRIPTION_RETURNING = `
+  id,
+  user_id,
+  status,
+  plan,
+  slots_limit,
+  provider,
+  provider_subscription_id,
+  started_at,
+  expires_at,
+  payment_method_id,
+  payment_method_title,
+  next_charge_at,
+  renewal_attempt_count,
+  scheduled_plan,
+  first_failed_at,
+  payment_method_epoch,
+  created_at,
+  updated_at`;
 
 function isResumeAutoRenewRebindPayment(payment: SubscriptionProviderPayment): boolean {
   return metaString(payment.metadata, 'resumeAutoRenew') === 'true';
@@ -74,68 +108,77 @@ function resolvePaymentMethodTitleFromRebindPayment(
 }
 
 /** Unlink clears both PM and next_charge_at; stale rebind must not restore PM after that. */
-function isSubscriptionPaymentMethodUnlinked(subscription: Subscription): boolean {
+export function isSubscriptionPaymentMethodUnlinked(subscription: Subscription): boolean {
   return !subscription.paymentMethodId?.trim() && subscription.nextChargeAt == null;
 }
 
-function toTimestamp(value: Date | string | null | undefined): number | null {
-  if (value == null) return null;
-  const time = value instanceof Date ? value.getTime() : new Date(value).getTime();
-  return Number.isNaN(time) ? null : time;
-}
-
-/** Stale: payment created before unlink/update. Fresh: created_at >= unlink/update time. */
-function isStaleRebindAfterUnlink(
-  subscription: Subscription,
-  paymentCreatedAt: Date | string | null | undefined
-): boolean {
+/** Stale when checkout captured an older PM generation than the current unlinked subscription. */
+export function isStaleRebindByEpoch(subscription: Subscription, paymentEpoch: number): boolean {
   if (!isSubscriptionPaymentMethodUnlinked(subscription)) return false;
-  const paymentTs = toTimestamp(paymentCreatedAt);
-  const unlinkTs = toTimestamp(subscription.updatedAt);
-  if (paymentTs == null || unlinkTs == null) return true;
-  return paymentTs < unlinkTs;
+  const currentEpoch = subscription.paymentMethodEpoch ?? 0;
+  return paymentEpoch < currentEpoch;
 }
 
-async function applyRebindPaymentMethod(
-  userId: string,
-  paymentMethodId: string,
-  paymentMethodTitle: string | null,
-  providerPaymentId: string
-): Promise<{ subscription: Subscription | null; updated: boolean }> {
-  const existing = await getViewerSubscription(userId);
-  if (!existing) {
-    return { subscription: null, updated: false };
-  }
-
-  if (isSubscriptionPaymentMethodUnlinked(existing)) {
-    const paymentRow = await getSubscriptionPaymentForUser(providerPaymentId, userId);
-    if (isStaleRebindAfterUnlink(existing, paymentRow?.created_at ?? null)) {
-      return { subscription: existing, updated: false };
-    }
-  }
-
-  const resolvedTitle = derivePaymentMethodTitle(existing, paymentMethodTitle);
-
-  const updated = await query<SubscriptionRow>(
-    `UPDATE subscriptions
-     SET payment_method_id = $2,
-         payment_method_title = $3,
-         updated_at = CURRENT_TIMESTAMP
-     WHERE user_id = $1::uuid
-     RETURNING
-       id, user_id, status, plan, slots_limit, provider, provider_subscription_id,
-       started_at, expires_at, payment_method_id, payment_method_title,
-       next_charge_at, renewal_attempt_count, scheduled_plan, first_failed_at,
-       created_at, updated_at`,
-    [userId, paymentMethodId, resolvedTitle]
+async function claimSubscriptionPaymentSuccessInTransaction(
+  client: PoolClient,
+  providerPaymentId: string,
+  userId: string
+): Promise<ClaimSubscriptionPaymentSuccessResult> {
+  const claimed = await client.query<{ id: string }>(
+    `UPDATE subscription_payments
+     SET status = 'succeeded', updated_at = CURRENT_TIMESTAMP
+     WHERE provider = 'yookassa'
+       AND provider_payment_id = $1
+       AND user_id = $2::uuid
+       AND status = ANY($3::text[])
+     RETURNING id`,
+    [providerPaymentId, userId, CLAIMABLE_SUBSCRIPTION_PAYMENT_SUCCESS_STATUSES]
   );
+  if (claimed.rows[0]?.id) return 'claimed';
 
-  const row = updated.rows[0];
-  if (!row) {
-    return { subscription: null, updated: false };
+  const existing = await client.query<{ status: string }>(
+    `SELECT status
+     FROM subscription_payments
+     WHERE provider = 'yookassa'
+       AND provider_payment_id = $1
+       AND user_id = $2::uuid
+     LIMIT 1`,
+    [providerPaymentId, userId]
+  );
+  const row = existing.rows[0];
+  if (!row) return 'not_found';
+  if (row.status === 'succeeded') return 'already_succeeded';
+  return 'rejected_terminal';
+}
+
+async function markRebindOutcomeInTransaction(
+  client: PoolClient,
+  paymentRowId: string,
+  userId: string,
+  outcome: typeof REBIND_OUTCOME_STALE_AFTER_UNLINK | typeof REBIND_OUTCOME_APPLIED,
+  options: { markSucceeded?: boolean } = {}
+): Promise<void> {
+  const payload = JSON.stringify({ rebindOutcome: outcome });
+  if (options.markSucceeded) {
+    await client.query(
+      `UPDATE subscription_payments
+       SET status = 'succeeded',
+           updated_at = CURRENT_TIMESTAMP,
+           raw_last_event = COALESCE(raw_last_event, '{}'::jsonb) || $3::jsonb
+       WHERE id = $1
+         AND user_id = $2::uuid`,
+      [paymentRowId, userId, payload]
+    );
+    return;
   }
 
-  return { subscription: mapSubscriptionRow(row), updated: true };
+  await client.query(
+    `UPDATE subscription_payments
+     SET raw_last_event = COALESCE(raw_last_event, '{}'::jsonb) || $3::jsonb
+     WHERE id = $1
+       AND user_id = $2::uuid`,
+    [paymentRowId, userId, payload]
+  );
 }
 
 export async function fulfillRebindSubscriptionPayment(params: {
@@ -143,34 +186,118 @@ export async function fulfillRebindSubscriptionPayment(params: {
   providerPaymentId: string;
   paymentMethodId: string;
   paymentMethodTitle: string | null;
-}): Promise<{ subscription: Subscription | null; applied: boolean; alreadyApplied: boolean }> {
-  const claim = await claimSubscriptionPaymentSuccess(params.providerPaymentId, params.userId);
+}): Promise<FulfillRebindSubscriptionPaymentResult> {
+  return withTransaction(async (client) => {
+    const paymentResult = await client.query<{
+      id: string;
+      status: string;
+      raw_last_event: unknown;
+    }>(
+      `SELECT id, status, raw_last_event
+       FROM subscription_payments
+       WHERE provider = 'yookassa'
+         AND provider_payment_id = $1
+         AND user_id = $2::uuid
+       FOR UPDATE`,
+      [params.providerPaymentId, params.userId]
+    );
+    const paymentRow = paymentResult.rows[0];
+    if (!paymentRow) {
+      throw Object.assign(new Error('Subscription payment not found'), { statusCode: 404 });
+    }
 
-  if (claim === 'not_found') {
-    throw Object.assign(new Error('Subscription payment not found'), { statusCode: 404 });
-  }
+    const subscriptionResult = await client.query<SubscriptionRow>(
+      `SELECT ${SUBSCRIPTION_RETURNING.replace(/\n\s+/g, ' ')}
+       FROM subscriptions
+       WHERE user_id = $1::uuid
+       FOR UPDATE`,
+      [params.userId]
+    );
+    const subscriptionRow = subscriptionResult.rows[0];
+    if (!subscriptionRow) {
+      throw Object.assign(new Error('Subscription not found'), { statusCode: 404 });
+    }
 
-  if (claim === 'rejected_terminal') {
-    const existing = await getViewerSubscription(params.userId);
-    return { subscription: existing, applied: false, alreadyApplied: false };
-  }
+    const subscription = mapSubscriptionRow(subscriptionRow);
+    const existingOutcome = readRebindOutcome(paymentRow.raw_last_event);
 
-  const { subscription, updated } = await applyRebindPaymentMethod(
-    params.userId,
-    params.paymentMethodId,
-    params.paymentMethodTitle,
-    params.providerPaymentId
-  );
+    if (existingOutcome === REBIND_OUTCOME_STALE_AFTER_UNLINK) {
+      return {
+        subscription,
+        applied: false,
+        alreadyApplied: false,
+        staleAfterUnlink: true,
+      };
+    }
 
-  if (!subscription) {
-    throw Object.assign(new Error('Subscription not found'), { statusCode: 404 });
-  }
+    if (existingOutcome === REBIND_OUTCOME_APPLIED) {
+      const pmApplied = Boolean(subscription.paymentMethodId?.trim());
+      return {
+        subscription,
+        applied: false,
+        alreadyApplied: pmApplied,
+        staleAfterUnlink: false,
+      };
+    }
 
-  return {
-    subscription,
-    applied: updated && claim === 'claimed',
-    alreadyApplied: updated && claim === 'already_succeeded',
-  };
+    const paymentEpoch = readPaymentMethodEpoch(paymentRow.raw_last_event);
+    if (isStaleRebindByEpoch(subscription, paymentEpoch)) {
+      await markRebindOutcomeInTransaction(
+        client,
+        paymentRow.id,
+        params.userId,
+        REBIND_OUTCOME_STALE_AFTER_UNLINK,
+        { markSucceeded: paymentRow.status !== 'succeeded' }
+      );
+      return {
+        subscription,
+        applied: false,
+        alreadyApplied: false,
+        staleAfterUnlink: true,
+      };
+    }
+
+    const resolvedTitle = derivePaymentMethodTitle(subscription, params.paymentMethodTitle);
+    const updated = await client.query<SubscriptionRow>(
+      `UPDATE subscriptions
+       SET payment_method_id = $2,
+           payment_method_title = $3,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE user_id = $1::uuid
+       RETURNING ${SUBSCRIPTION_RETURNING}`,
+      [params.userId, params.paymentMethodId, resolvedTitle]
+    );
+    const updatedRow = updated.rows[0];
+    if (!updatedRow) {
+      throw Object.assign(new Error('Subscription update failed'), { statusCode: 500 });
+    }
+
+    const claim = await claimSubscriptionPaymentSuccessInTransaction(
+      client,
+      params.providerPaymentId,
+      params.userId
+    );
+    if (claim === 'not_found') {
+      throw Object.assign(new Error('Subscription payment not found'), { statusCode: 404 });
+    }
+    if (claim === 'rejected_terminal') {
+      throw Object.assign(new Error('Subscription payment in terminal state'), { statusCode: 409 });
+    }
+
+    await markRebindOutcomeInTransaction(
+      client,
+      paymentRow.id,
+      params.userId,
+      REBIND_OUTCOME_APPLIED
+    );
+
+    return {
+      subscription: mapSubscriptionRow(updatedRow),
+      applied: claim === 'claimed',
+      alreadyApplied: claim === 'already_succeeded',
+      staleAfterUnlink: false,
+    };
+  });
 }
 
 export async function processRebindSubscriptionProviderPayment(
@@ -218,7 +345,7 @@ export async function processRebindSubscriptionProviderPayment(
 
     const paymentMethodTitle = resolvePaymentMethodTitleFromRebindPayment(payment, options);
 
-    const { applied, alreadyApplied } = await fulfillRebindSubscriptionPayment({
+    const { applied, alreadyApplied, staleAfterUnlink } = await fulfillRebindSubscriptionPayment({
       userId,
       providerPaymentId: payment.id,
       paymentMethodId,
@@ -249,6 +376,7 @@ export async function processRebindSubscriptionProviderPayment(
     return {
       paymentMethodUpdated,
       alreadyApplied,
+      staleAfterUnlink,
     };
   }
 
@@ -260,7 +388,7 @@ export async function processRebindSubscriptionProviderPayment(
     await updateSubscriptionPaymentStatus(payment.id, 'pending');
   }
 
-  return { paymentMethodUpdated: false, alreadyApplied: false };
+  return { paymentMethodUpdated: false, alreadyApplied: false, staleAfterUnlink: false };
 }
 
 export async function processRebindSubscriptionProviderPaymentWithArchive(

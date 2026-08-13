@@ -70,6 +70,7 @@ function statusResponse(
       },
       subscriptionActivated: false,
       paymentMethodUpdated: false,
+      staleAfterUnlink: false,
       ...overrides,
     },
   };
@@ -93,19 +94,54 @@ describe('SubscriptionPaymentSuccess rebind success-flow', () => {
     jest.clearAllMocks();
   });
 
-  test('rebind succeeded without paymentMethodUpdated is not a successful rebind or activation', async () => {
-    getStatusMock.mockResolvedValue(statusResponse());
+  test('rebind with staleAfterUnlink shows a terminal stale message', async () => {
+    getStatusMock.mockResolvedValue(statusResponse({ staleAfterUnlink: true }));
 
     renderSuccessPage();
 
     await waitFor(() => {
-      expect(screen.getByText(/Способ оплаты не обновлён/i)).toBeTruthy();
+      expect(screen.getByText(/карта не была привязана/i)).toBeTruthy();
     });
 
     expect(screen.queryByText(/Способ оплаты обновлён/i)).toBeNull();
     expect(screen.queryByText(/Premium activated/i)).toBeNull();
     expect(dispatchActivatedMock).not.toHaveBeenCalled();
     expect(navigateMock).not.toHaveBeenCalled();
+  });
+
+  test('rebind succeeded without paymentMethodUpdated keeps polling (transient)', async () => {
+    jest.useFakeTimers();
+    getStatusMock
+      .mockResolvedValueOnce(
+        statusResponse({
+          payment: {
+            id: 'pay-1',
+            status: 'pending',
+            paid: false,
+            amount: { value: '1.00', currency: 'RUB' },
+            metadata: {
+              productType: 'premium_subscription',
+              kind: 'rebind',
+            },
+          },
+        })
+      )
+      .mockResolvedValueOnce(statusResponse({ paymentMethodUpdated: true }));
+
+    renderSuccessPage();
+
+    await waitFor(() => {
+      expect(getStatusMock).toHaveBeenCalledTimes(1);
+    });
+
+    await jest.advanceTimersByTimeAsync(3000);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Способ оплаты обновлён/i)).toBeTruthy();
+    });
+
+    expect(getStatusMock).toHaveBeenCalledTimes(2);
+    jest.useRealTimers();
   });
 
   test('rebind with paymentMethodUpdated shows successful payment method update', async () => {

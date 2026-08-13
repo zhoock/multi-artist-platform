@@ -69,7 +69,7 @@ export async function seedSubscription(params: SeedSubscriptionParams = {}): Pro
        id, user_id, status, plan, slots_limit, provider, provider_subscription_id,
        started_at, expires_at, payment_method_id, payment_method_title,
        next_charge_at, renewal_attempt_count, scheduled_plan, first_failed_at,
-       created_at, updated_at`,
+       payment_method_epoch, created_at, updated_at`,
     [
       p.userId,
       p.status,
@@ -114,7 +114,7 @@ export async function loadSubscriptionForUser(userId: string): Promise<Subscript
        id, user_id, status, plan, slots_limit, provider, provider_subscription_id,
        started_at, expires_at, payment_method_id, payment_method_title,
        next_charge_at, renewal_attempt_count, scheduled_plan, first_failed_at,
-       created_at, updated_at
+       payment_method_epoch, created_at, updated_at
      FROM subscriptions
      WHERE user_id = $1::uuid
      ORDER BY created_at DESC

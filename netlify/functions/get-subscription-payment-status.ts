@@ -153,7 +153,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
 
       try {
         if (isRebind) {
-          const { paymentMethodUpdated, archive } =
+          const { paymentMethodUpdated, staleAfterUnlink, archive } =
             await processRebindSubscriptionProviderPaymentWithArchive(devProviderPayment, userId, {
               devMode: true,
             });
@@ -167,6 +167,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
             }),
             subscriptionActivated: false,
             paymentMethodUpdated,
+            staleAfterUnlink,
             archive,
           });
         }
@@ -260,16 +261,18 @@ export const handler: Handler = async (event: HandlerEvent) => {
             paymentStatus: providerPayment.status,
           });
 
-          const { paymentMethodUpdated, archive } =
+          const { paymentMethodUpdated, staleAfterUnlink, archive } =
             await processRebindSubscriptionProviderPaymentWithArchive(providerPayment, userId);
 
           recordSubscriptionFulfillmentOutcome('rebind', 'poll', {
             paymentMethodUpdated,
             alreadyApplied: !paymentMethodUpdated,
+            staleAfterUnlink,
           });
 
           logSubscriptionEvent(SUBSCRIPTION_LOG_EVENTS.POLL_PROCESSED, {
             paymentMethodUpdated,
+            staleAfterUnlink,
             isRebind: true,
           });
 
@@ -282,6 +285,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
             }),
             subscriptionActivated: false,
             paymentMethodUpdated,
+            staleAfterUnlink,
             archive,
           });
         }

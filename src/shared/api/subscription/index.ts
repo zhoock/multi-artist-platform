@@ -61,6 +61,7 @@ export interface SubscriptionPaymentStatusResponse {
     };
     subscriptionActivated: boolean;
     paymentMethodUpdated?: boolean;
+    staleAfterUnlink?: boolean;
     archive?: MyArchiveData;
   };
   error?: string;

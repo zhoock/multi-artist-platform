@@ -29,7 +29,9 @@ export default function SubscriptionPaymentSuccess() {
   const returnTo = searchParams.get('returnTo');
   const artistSlug = searchParams.get('artist');
 
-  const [status, setStatus] = useState<'loading' | 'success' | 'error' | 'canceled'>('loading');
+  const [status, setStatus] = useState<'loading' | 'success' | 'error' | 'canceled' | 'stale'>(
+    'loading'
+  );
   const [message, setMessage] = useState<string | null>(null);
   const [isRebindFlow, setIsRebindFlow] = useState(false);
   const pollCountRef = useRef(0);
@@ -121,7 +123,8 @@ export default function SubscriptionPaymentSuccess() {
         return;
       }
 
-      const { payment, subscriptionActivated, paymentMethodUpdated } = result.data;
+      const { payment, subscriptionActivated, paymentMethodUpdated, staleAfterUnlink } =
+        result.data;
       const rebindKind = payment.metadata?.kind === 'rebind';
       if (rebindKind) {
         setIsRebindFlow(true);
@@ -130,6 +133,18 @@ export default function SubscriptionPaymentSuccess() {
       if (rebindKind) {
         if (paymentMethodUpdated) {
           finishRebind();
+          return;
+        }
+
+        if (staleAfterUnlink) {
+          if (finishedRef.current) return;
+          finishedRef.current = true;
+          setStatus('stale');
+          setMessage(
+            lang === 'en'
+              ? 'Payment succeeded, but the card was not linked because the payment method was unlinked before the operation completed.'
+              : 'Платёж прошёл, но карта не была привязана: способ оплаты был отвязан до завершения операции.'
+          );
           return;
         }
 
@@ -143,13 +158,7 @@ export default function SubscriptionPaymentSuccess() {
           return;
         }
 
-        if (payment.status === 'succeeded') {
-          setStatus('error');
-          setMessage(
-            lang === 'en' ? 'Payment method was not updated.' : 'Способ оплаты не обновлён.'
-          );
-          return;
-        }
+        // Transient: provider not terminal yet — keep polling.
       } else {
         if (paymentMethodUpdated) {
           finishRebind();
@@ -224,6 +233,11 @@ export default function SubscriptionPaymentSuccess() {
           </p>
         )}
         {status === 'canceled' && (
+          <p className="subscription-payment-success__text subscription-payment-success__text--warn">
+            {message}
+          </p>
+        )}
+        {status === 'stale' && (
           <p className="subscription-payment-success__text subscription-payment-success__text--warn">
             {message}
           </p>

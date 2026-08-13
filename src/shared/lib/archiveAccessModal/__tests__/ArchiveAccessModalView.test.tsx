@@ -472,7 +472,7 @@ describe('ArchiveAccessModalView plan change confirmation', () => {
     });
   });
 
-  test('shows confirmation modal when switching plans', async () => {
+  test('shows compact confirmation modal when switching plans', async () => {
     renderModalWithProviderOrder({ isPremium: true, slotsUsed: 1, slotsLimit: 20 });
     await openModal();
 
@@ -480,9 +480,12 @@ describe('ArchiveAccessModalView plan change confirmation', () => {
       within(getPlanCard('Collector')).getByRole('button', { name: 'Switch to Collector' })
     );
 
-    expect(screen.getByRole('heading', { name: 'Upgrade to Collector?' })).toBeTruthy();
-    expect(screen.getByText(/Current plan:/i)).toBeTruthy();
-    expect(screen.getByText(/New plan:/i)).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Switch to the Collector plan?' })).toBeTruthy();
+    expect(
+      screen.getByText(/After payment, your current collection will become inactive/i)
+    ).toBeTruthy();
+    expect(screen.queryByRole('heading', { name: 'Upgrade to Collector?' })).toBeNull();
+    expect(screen.queryByText('Due today')).toBeNull();
     expect(createSubscriptionPaymentMock).not.toHaveBeenCalled();
   });
 
@@ -495,6 +498,7 @@ describe('ArchiveAccessModalView plan change confirmation', () => {
     );
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
 
+    expect(screen.queryByRole('heading', { name: 'Switch to the Collector plan?' })).toBeNull();
     expect(screen.queryByRole('heading', { name: 'Upgrade to Collector?' })).toBeNull();
     expect(createSubscriptionPaymentMock).not.toHaveBeenCalled();
   });
@@ -532,7 +536,7 @@ describe('ArchiveAccessModalView plan change confirmation', () => {
     });
   });
 
-  test('passes upgrade intent through legacy confirm when billing snapshot is stale', async () => {
+  test('passes upgrade intent through compact confirm when billing snapshot is stale', async () => {
     isAutoRenewClientEnabledMock.mockReturnValue(true);
     getMyArchiveMock.mockResolvedValue({
       isPremium: true,
@@ -584,6 +588,19 @@ describe('ArchiveAccessModalView plan change confirmation', () => {
         expect.objectContaining({ plan: 'collector', intent: 'upgrade' })
       );
     });
+  });
+
+  test('expired subscription shows compact confirmation when switching to Collector', async () => {
+    renderModalWithProviderOrder({ isPremium: false, slotsUsed: 1, slotsLimit: 20 });
+    await openModal();
+
+    fireEvent.click(
+      within(getPlanCard('Collector')).getByRole('button', { name: 'Switch to Collector' })
+    );
+
+    expect(screen.getByRole('heading', { name: 'Switch to the Collector plan?' })).toBeTruthy();
+    expect(screen.queryByRole('heading', { name: 'Upgrade to Collector?' })).toBeNull();
+    expect(screen.queryByText('Due today')).toBeNull();
   });
 
   test('renew current plan skips confirmation modal', async () => {

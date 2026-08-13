@@ -56,6 +56,7 @@ jest.mock('../subscription-billing', () => {
     createPendingSubscriptionPayment: jest.fn(),
     attachProviderPaymentId: jest.fn(),
     markSubscriptionRebindResumeAutoRenewIntent: jest.fn(),
+    markSubscriptionRebindPaymentMethodEpoch: jest.fn(),
   };
 });
 
@@ -66,6 +67,7 @@ import {
   createPendingSubscriptionPayment,
   findOpenSubscriptionPayment,
   markSubscriptionRebindResumeAutoRenewIntent,
+  markSubscriptionRebindPaymentMethodEpoch,
   releaseAbandonedCheckoutPayments,
 } from '../subscription-billing';
 import { getViewerSubscription } from '../subscriptions';
@@ -135,6 +137,7 @@ beforeEach(() => {
   mockedQuery.mockResolvedValue(fakeQueryResult([{ email: 'zhoock@zhoock.ru' }]));
   mockedCreatePending.mockResolvedValue('new-rebind-id');
   mockedAttachDev.mockResolvedValue({ paymentId: 'dev-pay-id' });
+  (markSubscriptionRebindPaymentMethodEpoch as jest.Mock).mockResolvedValue(undefined);
 
   mockedReleaseAbandoned.mockImplementation(async () => {
     const before = payments.length;

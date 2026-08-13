@@ -26,10 +26,7 @@ import { isSubscriptionAutoRenewClientEnabled } from '@shared/lib/subscription/i
 import { useAuthSessionUser } from '@shared/lib/hooks/useAuthSessionUser';
 import { LocalModal } from '@shared/ui/localModal';
 import { AlertModal } from '@shared/ui/alertModal';
-import {
-  ScheduleDowngradeConfirmModal,
-  UpgradePlanConfirmModal,
-} from '@pages/UserDashboard/components/archive/billingModals';
+import { ScheduleDowngradeConfirmModal } from '@pages/UserDashboard/components/archive/billingModals';
 
 import { SubscriptionPlanCard } from './SubscriptionPlanCard';
 import { SubscriptionPricingAutopaymentDisclosure } from './SubscriptionPricingAutopaymentDisclosure';
@@ -46,7 +43,7 @@ type Props = {
   onClose: (options?: CloseArchiveAccessModalOptions) => void;
 };
 
-type PendingPlanFlow = 'upgrade' | 'downgrade' | 'legacy';
+type PendingPlanFlow = 'downgrade' | 'legacy';
 
 function formatEffectiveDate(iso: string | null, lang: 'en' | 'ru'): string | null {
   if (!iso) return null;
@@ -241,11 +238,7 @@ export function ArchiveAccessModalView({ dialogRef, onClose }: Props) {
         return;
       }
 
-      if (action === 'checkout') {
-        setPendingFlow('legacy');
-      } else {
-        setPendingFlow(action);
-      }
+      setPendingFlow(action === 'downgrade' ? 'downgrade' : 'legacy');
 
       setPendingPlanChange(planSlug);
     },
@@ -275,13 +268,6 @@ export function ArchiveAccessModalView({ dialogRef, onClose }: Props) {
 
     const planSlug = pendingPlanChange;
     const flow = pendingFlow;
-
-    if (flow === 'upgrade') {
-      setPendingPlanChange(null);
-      setPendingFlow(null);
-      void proceedToCheckout(planSlug, 'upgrade');
-      return;
-    }
 
     if (flow === 'downgrade') {
       setAlertModal(null);
@@ -401,17 +387,6 @@ export function ArchiveAccessModalView({ dialogRef, onClose }: Props) {
           ) : null}
         </div>
       </LocalModal>
-
-      {pendingPlanChange && billingCurrentPlanSlug && pendingFlow === 'upgrade' ? (
-        <UpgradePlanConfirmModal
-          isOpen
-          currentPlanSlug={billingCurrentPlanSlug}
-          targetPlanSlug={pendingPlanChange}
-          loading={confirmLoading}
-          onCancel={handleCancelPlanChange}
-          onConfirm={() => void handleConfirmPlanChange()}
-        />
-      ) : null}
 
       {pendingPlanChange && billingCurrentPlanSlug && pendingFlow === 'downgrade' ? (
         <ScheduleDowngradeConfirmModal

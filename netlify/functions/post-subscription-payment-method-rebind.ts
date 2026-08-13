@@ -26,6 +26,7 @@ import {
   findOpenSubscriptionPayment,
   getRebindAmountRub,
   markSubscriptionRebindResumeAutoRenewIntent,
+  markSubscriptionRebindPaymentMethodEpoch,
   normalizeSubscriptionPlanSlug,
   REBIND_PAYMENT_DESCRIPTION,
   releaseAbandonedCheckoutPayments,
@@ -126,6 +127,16 @@ export const handler: Handler = async (event: HandlerEvent) => {
     subscriptionPaymentId = await createPendingSubscriptionPayment(userId, planSlug, 'rebind');
   } catch (error) {
     console.error('[post-subscription-payment-method-rebind] failed to create pending row', error);
+    return createErrorResponse(500, 'Could not start payment method rebind');
+  }
+
+  try {
+    await markSubscriptionRebindPaymentMethodEpoch(subscriptionPaymentId, userId);
+  } catch (error) {
+    console.error(
+      '[post-subscription-payment-method-rebind] failed to persist payment method epoch',
+      error
+    );
     return createErrorResponse(500, 'Could not start payment method rebind');
   }
 

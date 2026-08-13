@@ -2586,7 +2586,12 @@ function UserDashboard() {
           </title>
         </Helmet>
 
-        <Popup isActive={true} onClose={closeDashboard} publicBackdrop>
+        <Popup
+          isActive={true}
+          onClose={closeDashboard}
+          publicBackdrop
+          initialFocusSelector=".user-dashboard__nav-item--active"
+        >
           <div className="user-dashboard">
             {/* Main card container */}
             <div className="user-dashboard__card">

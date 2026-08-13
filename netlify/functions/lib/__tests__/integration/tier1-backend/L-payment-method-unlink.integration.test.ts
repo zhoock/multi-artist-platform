@@ -11,6 +11,8 @@ import {
   computeSupportExpiresAt,
   createPendingSubscriptionPayment,
   getSubscriptionPaymentByInternalId,
+  markSubscriptionRebindPaymentMethodEpoch,
+  readPaymentMethodEpoch,
 } from '../../../subscription-billing';
 import { hasPremiumAccess } from '../../../subscription-access';
 import { listChargeReadySubscriptionIds } from '../../../subscription-renewal-engine';
@@ -53,6 +55,7 @@ async function createDevRebindProviderPayment(
     'explorer',
     'rebind'
   );
+  await markSubscriptionRebindPaymentMethodEpoch(subscriptionPaymentId, userId);
   if (options.resumeAutoRenew) {
     await query(
       `UPDATE subscription_payments
@@ -250,6 +253,7 @@ describe('Group L — Payment method unlink @tier1', () => {
         'explorer',
         'rebind'
       );
+      await markSubscriptionRebindPaymentMethodEpoch(subscriptionPaymentId, ctx.userId);
       const { paymentId } = await attachDevSucceededSubscriptionCheckout({ subscriptionPaymentId });
       const row = await getSubscriptionPaymentByInternalId(subscriptionPaymentId, ctx.userId);
       if (!row) throw new Error('payment row missing');
@@ -292,7 +296,14 @@ describe('Group L — Payment method unlink @tier1', () => {
 
       const stalePayments = await loadSubscriptionPaymentsForUser(ctx.userId, 5);
       const staleRow = stalePayments.find((p) => p.id === subscriptionPaymentId);
-      expect(staleRow?.created_at.getTime()).toBeLessThan(unlinked!.updatedAt.getTime());
+      const stalePaymentRow = await getSubscriptionPaymentByInternalId(
+        subscriptionPaymentId,
+        ctx.userId
+      );
+      expect(readPaymentMethodEpoch(stalePaymentRow?.raw_last_event)).toBeLessThan(
+        unlinked!.paymentMethodEpoch ?? 0
+      );
+      expect(staleRow?.id).toBe(subscriptionPaymentId);
     }, E2E_TIME_ANCHOR);
   });
 
@@ -324,6 +335,7 @@ describe('Group L — Payment method unlink @tier1', () => {
         'explorer',
         'rebind'
       );
+      await markSubscriptionRebindPaymentMethodEpoch(subscriptionPaymentId, ctx.userId);
       const { paymentId } = await attachDevSucceededSubscriptionCheckout({ subscriptionPaymentId });
       const row = await getSubscriptionPaymentByInternalId(subscriptionPaymentId, ctx.userId);
       if (!row) throw new Error('payment row missing');
@@ -369,6 +381,7 @@ describe('Group L — Payment method unlink @tier1', () => {
         'explorer',
         'rebind'
       );
+      await markSubscriptionRebindPaymentMethodEpoch(subscriptionPaymentId, ctx.userId);
       const { paymentId } = await attachDevSucceededSubscriptionCheckout({ subscriptionPaymentId });
       const row = await getSubscriptionPaymentByInternalId(subscriptionPaymentId, ctx.userId);
       if (!row) throw new Error('payment row missing');

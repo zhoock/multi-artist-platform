@@ -10,7 +10,6 @@ import {
   EnableAutoRenewConfirmModal,
   RebindPaymentMethodModal,
   UnlinkPaymentMethodConfirmModal,
-  UpgradePlanConfirmModal,
 } from './billingModals';
 import { CollectionBillingSummary } from './CollectionBillingSummary';
 import { useSubscriptionTabController } from './useSubscriptionTabController';
@@ -56,8 +55,6 @@ export function SubscriptionContent({
     setUnlinkModalOpen,
     unlinkModalError,
     setUnlinkModalError,
-    upgradePlanTarget,
-    setUpgradePlanTarget,
     renewLoading,
     autoRenewPatchLoading,
     autoRenewModalLoading,
@@ -78,7 +75,6 @@ export function SubscriptionContent({
     handleDisableAutoRenew,
     handleChangePlan,
     handleUpgradePlan,
-    handleConfirmUpgradePlan,
     handleCancelScheduledDowngrade,
     openSupportModal,
   } = controller;
@@ -169,17 +165,6 @@ export function SubscriptionContent({
         }}
         onConfirm={() => void handleConfirmUnlinkPaymentMethod()}
       />
-
-      {upgradePlanTarget && billing.plan ? (
-        <UpgradePlanConfirmModal
-          isOpen
-          currentPlanSlug={billing.plan}
-          targetPlanSlug={upgradePlanTarget}
-          loading={renewLoading}
-          onCancel={() => setUpgradePlanTarget(null)}
-          onConfirm={() => void handleConfirmUpgradePlan()}
-        />
-      ) : null}
 
       <section
         className={clsx('subscription__tab', `subscription__tab--${billingScreen.toLowerCase()}`)}

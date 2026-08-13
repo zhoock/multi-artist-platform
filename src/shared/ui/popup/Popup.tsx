@@ -7,6 +7,9 @@ import { PopupContext } from './PopupContext';
 import './style.scss';
 import '../localModal/localModal.scss';
 
+const FOCUSABLE_SELECTOR =
+  'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
+
 const PopupComponent = ({
   children,
   isActive,
@@ -17,6 +20,7 @@ const PopupComponent = ({
   requestCloseRef,
   publicBackdrop,
   autoFocusFirstElement = true,
+  initialFocusSelector,
   'aria-labelledby': ariaLabelledBy,
 }: PopupProps) => {
   const dialogRef = useRef<HTMLDialogElement>(null);
@@ -81,17 +85,19 @@ const PopupComponent = ({
         // Фокус на первом фокусируемом элементе внутри dialog для доступности
         // Используем setTimeout для предотвращения конфликтов с расширениями браузера
         setTimeout(() => {
-          const firstFocusable = dialog.querySelector<HTMLElement>(
-            'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-          );
-          firstFocusable?.focus();
+          const initialFocusTarget = initialFocusSelector
+            ? dialog.querySelector<HTMLElement>(initialFocusSelector)
+            : null;
+          const focusTarget =
+            initialFocusTarget ?? dialog.querySelector<HTMLElement>(FOCUSABLE_SELECTOR);
+          focusTarget?.focus({ preventScroll: true });
         }, 0);
       }
     } else if (!isActive && dialog.open) {
       closingProgrammaticallyRef.current = true;
       dialog.close();
     }
-  }, [isActive, autoFocusFirstElement]);
+  }, [isActive, autoFocusFirstElement, initialFocusSelector]);
 
   useEffect(() => {
     const dialog = dialogRef.current;
