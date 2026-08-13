@@ -4,6 +4,7 @@
 
 import { describe, expect, test } from '@jest/globals';
 
+import { query } from '../../../db';
 import { attachDevSucceededSubscriptionCheckout } from '../../../complete-dev-payment';
 import {
   attachProviderPaymentId,
@@ -42,6 +43,33 @@ const flagOnDbTest =
   isE2eDatabaseConfigured() && process.env.SUBSCRIPTION_AUTO_RENEW_ENABLED === 'true'
     ? test
     : test.skip;
+
+async function createDevRebindProviderPayment(
+  userId: string,
+  options: { resumeAutoRenew?: boolean } = {}
+) {
+  const subscriptionPaymentId = await createPendingSubscriptionPayment(
+    userId,
+    'explorer',
+    'rebind'
+  );
+  if (options.resumeAutoRenew) {
+    await query(
+      `UPDATE subscription_payments
+       SET raw_last_event = COALESCE(raw_last_event, '{}'::jsonb) || $2::jsonb
+       WHERE id = $1`,
+      [subscriptionPaymentId, JSON.stringify({ resumeAutoRenew: true })]
+    );
+  }
+  const { paymentId } = await attachDevSucceededSubscriptionCheckout({ subscriptionPaymentId });
+  const row = await getSubscriptionPaymentByInternalId(subscriptionPaymentId, userId);
+  if (!row) throw new Error('payment row missing');
+  const providerPayment = mapDevSubscriptionPaymentToProviderPayment(row, paymentId, {
+    devMode: true,
+  });
+  if (!providerPayment) throw new Error('provider payment missing');
+  return { providerPayment, paymentId };
+}
 
 describe('Group L — Payment method unlink @tier1', () => {
   flagOnDbTest('L-ON-001 @p0 active + PM → unlink clears PM and disables auto-renew', async () => {
@@ -261,6 +289,231 @@ describe('Group L — Payment method unlink @tier1', () => {
       after = await loadSubscriptionForUser(ctx.userId);
       expect(after?.paymentMethodId).toBeNull();
       expect(after?.paymentMethodTitle).toBeNull();
+
+      const stalePayments = await loadSubscriptionPaymentsForUser(ctx.userId, 5);
+      const staleRow = stalePayments.find((p) => p.id === subscriptionPaymentId);
+      expect(staleRow?.created_at.getTime()).toBeLessThan(unlinked!.updatedAt.getTime());
+    }, E2E_TIME_ANCHOR);
+  });
+
+  flagOnDbTest('L-ON-011 @p0 unlink then fresh rebind restores PM without auto-renew', async () => {
+    await withFrozenTime(async () => {
+      const ctx = createE2eContext('L-ON-011', { frozenNow: E2E_TIME_ANCHOR });
+      setActiveE2eContext(ctx);
+
+      const expiresAt = new Date('2026-09-03T00:00:00.000Z');
+      await seedSubscription({
+        userId: ctx.userId,
+        status: 'active',
+        plan: 'explorer',
+        expiresAt,
+        paymentMethodId: 'pm-l-fresh-rebind',
+        paymentMethodTitle: 'Visa •••• 4242',
+        nextChargeAt: expiresAt,
+        providerSubscriptionId: 'pay-l-fresh-initial',
+      });
+
+      await unlinkSubscriptionPaymentMethod(ctx.userId);
+      const unlinked = await loadSubscriptionForUser(ctx.userId);
+      expect(unlinked?.paymentMethodId).toBeNull();
+      expect(unlinked?.status).toBe('cancel_at_period_end');
+      expect(unlinked?.nextChargeAt).toBeNull();
+
+      const subscriptionPaymentId = await createPendingSubscriptionPayment(
+        ctx.userId,
+        'explorer',
+        'rebind'
+      );
+      const { paymentId } = await attachDevSucceededSubscriptionCheckout({ subscriptionPaymentId });
+      const row = await getSubscriptionPaymentByInternalId(subscriptionPaymentId, ctx.userId);
+      if (!row) throw new Error('payment row missing');
+
+      const providerPayment = mapDevSubscriptionPaymentToProviderPayment(row, paymentId, {
+        devMode: true,
+      });
+      if (!providerPayment) throw new Error('provider payment missing');
+
+      const result = await processRebindSubscriptionProviderPayment(providerPayment, ctx.userId, {
+        devMode: true,
+      });
+      expect(result.paymentMethodUpdated).toBe(true);
+
+      const after = await loadSubscriptionForUser(ctx.userId);
+      expect(after?.paymentMethodId?.startsWith('dev-pm-')).toBe(true);
+      expect(after?.paymentMethodTitle).toBeTruthy();
+      expect(after?.status).toBe('cancel_at_period_end');
+      expect(after?.nextChargeAt).toBeNull();
+    }, E2E_TIME_ANCHOR);
+  });
+
+  flagOnDbTest('L-ON-012 @p0 duplicate fresh rebind after unlink is idempotent', async () => {
+    await withFrozenTime(async () => {
+      const ctx = createE2eContext('L-ON-012', { frozenNow: E2E_TIME_ANCHOR });
+      setActiveE2eContext(ctx);
+
+      const expiresAt = new Date('2026-09-03T00:00:00.000Z');
+      await seedSubscription({
+        userId: ctx.userId,
+        status: 'active',
+        plan: 'explorer',
+        expiresAt,
+        paymentMethodId: 'pm-l-fresh-dup',
+        paymentMethodTitle: 'Visa •••• 1111',
+        nextChargeAt: expiresAt,
+      });
+
+      await unlinkSubscriptionPaymentMethod(ctx.userId);
+
+      const subscriptionPaymentId = await createPendingSubscriptionPayment(
+        ctx.userId,
+        'explorer',
+        'rebind'
+      );
+      const { paymentId } = await attachDevSucceededSubscriptionCheckout({ subscriptionPaymentId });
+      const row = await getSubscriptionPaymentByInternalId(subscriptionPaymentId, ctx.userId);
+      if (!row) throw new Error('payment row missing');
+      const providerPayment = mapDevSubscriptionPaymentToProviderPayment(row, paymentId, {
+        devMode: true,
+      });
+      if (!providerPayment) throw new Error('provider payment missing');
+
+      const first = await processRebindSubscriptionProviderPayment(providerPayment, ctx.userId, {
+        devMode: true,
+      });
+      expect(first.paymentMethodUpdated).toBe(true);
+
+      const afterFirst = await loadSubscriptionForUser(ctx.userId);
+      const pmAfterFirst = afterFirst?.paymentMethodId ?? null;
+
+      const second = await processRebindSubscriptionProviderPayment(providerPayment, ctx.userId, {
+        devMode: true,
+      });
+      expect(second.paymentMethodUpdated).toBe(true);
+
+      const afterSecond = await loadSubscriptionForUser(ctx.userId);
+      expect(afterSecond?.paymentMethodId).toBe(pmAfterFirst);
+      expect(afterSecond?.status).toBe('cancel_at_period_end');
+      expect(afterSecond?.nextChargeAt).toBeNull();
+    }, E2E_TIME_ANCHOR);
+  });
+
+  flagOnDbTest('L-ON-013 @p0 resume → no PM → rebind succeeded → auto-renew enabled', async () => {
+    await withFrozenTime(async () => {
+      const ctx = createE2eContext('L-ON-013', { frozenNow: E2E_TIME_ANCHOR });
+      setActiveE2eContext(ctx);
+
+      const expiresAt = new Date('2026-09-03T00:00:00.000Z');
+      await seedSubscription({
+        userId: ctx.userId,
+        status: 'active',
+        plan: 'explorer',
+        expiresAt,
+        paymentMethodId: 'pm-l-resume-rebind',
+        paymentMethodTitle: 'Visa •••• 4242',
+        nextChargeAt: expiresAt,
+      });
+
+      await unlinkSubscriptionPaymentMethod(ctx.userId);
+      const unlinked = await loadSubscriptionForUser(ctx.userId);
+      expect(unlinked?.paymentMethodId).toBeNull();
+      expect(unlinked?.status).toBe('cancel_at_period_end');
+      expect(unlinked?.nextChargeAt).toBeNull();
+
+      const { providerPayment } = await createDevRebindProviderPayment(ctx.userId, {
+        resumeAutoRenew: true,
+      });
+      expect(providerPayment.metadata.resumeAutoRenew).toBe('true');
+
+      const result = await processRebindSubscriptionProviderPayment(providerPayment, ctx.userId, {
+        devMode: true,
+      });
+      expect(result.paymentMethodUpdated).toBe(true);
+
+      const after = await loadSubscriptionForUser(ctx.userId);
+      expect(after?.paymentMethodId?.startsWith('dev-pm-')).toBe(true);
+      expect(after?.paymentMethodTitle).toBeTruthy();
+      expect(after?.status).toBe('active');
+      expect(after?.nextChargeAt?.toISOString()).toBe(expiresAt.toISOString());
+    }, E2E_TIME_ANCHOR);
+  });
+
+  flagOnDbTest(
+    'L-ON-014 @p0 change payment method rebind does not change auto-renew state',
+    async () => {
+      await withFrozenTime(async () => {
+        const ctx = createE2eContext('L-ON-014', { frozenNow: E2E_TIME_ANCHOR });
+        setActiveE2eContext(ctx);
+
+        const expiresAt = new Date('2026-09-03T00:00:00.000Z');
+        await seedSubscription({
+          userId: ctx.userId,
+          status: 'cancel_at_period_end',
+          plan: 'explorer',
+          expiresAt,
+          paymentMethodId: 'pm-l-change-card',
+          paymentMethodTitle: 'Visa •••• 1111',
+          nextChargeAt: null,
+        });
+
+        const { providerPayment } = await createDevRebindProviderPayment(ctx.userId);
+        expect(providerPayment.metadata.resumeAutoRenew).toBeUndefined();
+
+        const result = await processRebindSubscriptionProviderPayment(providerPayment, ctx.userId, {
+          devMode: true,
+        });
+        expect(result.paymentMethodUpdated).toBe(true);
+
+        const after = await loadSubscriptionForUser(ctx.userId);
+        expect(after?.paymentMethodId?.startsWith('dev-pm-')).toBe(true);
+        expect(after?.status).toBe('cancel_at_period_end');
+        expect(after?.nextChargeAt).toBeNull();
+      }, E2E_TIME_ANCHOR);
+    }
+  );
+
+  flagOnDbTest('L-ON-015 @p0 duplicate resume-flow rebind is idempotent', async () => {
+    await withFrozenTime(async () => {
+      const ctx = createE2eContext('L-ON-015', { frozenNow: E2E_TIME_ANCHOR });
+      setActiveE2eContext(ctx);
+
+      const expiresAt = new Date('2026-09-03T00:00:00.000Z');
+      await seedSubscription({
+        userId: ctx.userId,
+        status: 'active',
+        plan: 'explorer',
+        expiresAt,
+        paymentMethodId: 'pm-l-resume-dup',
+        paymentMethodTitle: 'Visa •••• 2222',
+        nextChargeAt: expiresAt,
+      });
+
+      await unlinkSubscriptionPaymentMethod(ctx.userId);
+
+      const { providerPayment } = await createDevRebindProviderPayment(ctx.userId, {
+        resumeAutoRenew: true,
+      });
+
+      const first = await processRebindSubscriptionProviderPayment(providerPayment, ctx.userId, {
+        devMode: true,
+      });
+      expect(first.paymentMethodUpdated).toBe(true);
+
+      const afterFirst = await loadSubscriptionForUser(ctx.userId);
+      expect(afterFirst?.status).toBe('active');
+      const pmAfterFirst = afterFirst?.paymentMethodId ?? null;
+      const nextChargeAfterFirst = afterFirst?.nextChargeAt?.toISOString() ?? null;
+
+      const second = await processRebindSubscriptionProviderPayment(providerPayment, ctx.userId, {
+        devMode: true,
+      });
+      expect(second.paymentMethodUpdated).toBe(true);
+      expect(second.alreadyApplied).toBe(true);
+
+      const afterSecond = await loadSubscriptionForUser(ctx.userId);
+      expect(afterSecond?.paymentMethodId).toBe(pmAfterFirst);
+      expect(afterSecond?.status).toBe('active');
+      expect(afterSecond?.nextChargeAt?.toISOString()).toBe(nextChargeAfterFirst);
+      expect(afterSecond?.nextChargeAt?.toISOString()).toBe(expiresAt.toISOString());
     }, E2E_TIME_ANCHOR);
   });
 

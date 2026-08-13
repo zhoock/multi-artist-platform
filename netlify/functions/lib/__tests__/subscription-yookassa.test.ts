@@ -81,11 +81,36 @@ describe('buildRebindSubscriptionPaymentPayload', () => {
     expect((payload.metadata as Record<string, string>).kind).toBe(
       SUBSCRIPTION_PAYMENT_KIND_REBIND
     );
+    expect((payload.metadata as Record<string, string>).resumeAutoRenew).toBeUndefined();
     expect(payload.amount).toEqual({ value: COLLECTOR_AMOUNT, currency: CURRENCY });
     expect(payload.confirmation).toEqual({
       type: 'redirect',
       return_url: BASE_PARAMS.returnUrl,
     });
+  });
+
+  test('includes resumeAutoRenew metadata only when requested', () => {
+    const withIntentParams = {
+      amountValue: COLLECTOR_AMOUNT,
+      description: 'Payment method verification',
+      returnUrl: BASE_PARAMS.returnUrl,
+      userId: BASE_PARAMS.userId,
+      planSlug: 'collector',
+      customerEmail: BASE_PARAMS.customerEmail,
+      resumeAutoRenew: true,
+    };
+    const withIntent = buildRebindSubscriptionPaymentPayload(withIntentParams);
+    const withoutIntent = buildRebindSubscriptionPaymentPayload({
+      amountValue: COLLECTOR_AMOUNT,
+      description: 'Payment method verification',
+      returnUrl: BASE_PARAMS.returnUrl,
+      userId: BASE_PARAMS.userId,
+      planSlug: 'collector',
+      customerEmail: BASE_PARAMS.customerEmail,
+    });
+
+    expect((withIntent.metadata as Record<string, string>).resumeAutoRenew).toBe('true');
+    expect((withoutIntent.metadata as Record<string, string>).resumeAutoRenew).toBeUndefined();
   });
 });
 

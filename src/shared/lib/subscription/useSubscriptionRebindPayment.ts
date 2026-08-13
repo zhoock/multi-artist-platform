@@ -13,6 +13,10 @@ import {
 import { useAuthSessionUser } from '@shared/lib/hooks/useAuthSessionUser';
 import { logDevPaymentSubscriptionRedirect } from '@shared/lib/payment/devPaymentMode';
 
+export type StartSubscriptionRebindOptions = {
+  resumeAutoRenew?: boolean;
+};
+
 export type SubscriptionRebindResult =
   | { ok: true; redirected: 'payment' }
   | { ok: false; error: string };
@@ -23,72 +27,78 @@ export function useSubscriptionRebindPayment() {
   const viewer = useAuthSessionUser();
   const emailCopy = useEmailVerificationCopy();
 
-  const startRebind = useCallback(async (): Promise<SubscriptionRebindResult> => {
-    const returnTo = readReturnPathFromLocation(location);
+  const startRebind = useCallback(
+    async (options: StartSubscriptionRebindOptions = {}): Promise<SubscriptionRebindResult> => {
+      const returnTo = readReturnPathFromLocation(location);
 
-    if (viewer && !isEmailVerified(viewer)) {
-      return {
-        ok: false,
-        error:
-          emailCopy.restrictedPremium ??
-          (lang === 'en'
-            ? 'Verify your email to update payment method'
-            : 'Подтвердите email, чтобы обновить способ оплаты'),
-      };
-    }
-
-    if (!getToken() && !viewer?.id) {
-      return { ok: false, error: 'Authentication required' };
-    }
-
-    try {
-      const returnUrl =
-        typeof window !== 'undefined'
-          ? buildSubscriptionPaymentStatusReturnUrl(returnTo)
-          : undefined;
-
-      const result = await createSubscriptionPaymentMethodRebind({ returnUrl });
-
-      if (!result.success || !result.data) {
+      if (viewer && !isEmailVerified(viewer)) {
         return {
           ok: false,
-          error: result.error || 'Could not start payment method update',
+          error:
+            emailCopy.restrictedPremium ??
+            (lang === 'en'
+              ? 'Verify your email to update payment method'
+              : 'Подтвердите email, чтобы обновить способ оплаты'),
         };
       }
 
-      if (result.data.devPaymentCompleted && result.data.subscriptionPaymentId) {
-        const statusUrl = buildSubscriptionPaymentDevStatusUrl({
-          subscriptionPaymentId: result.data.subscriptionPaymentId,
-          returnTo,
-        });
-        logDevPaymentSubscriptionRedirect({
-          subscriptionPaymentId: result.data.subscriptionPaymentId,
-          paymentId: result.data.paymentId,
-          redirectUrl: (() => {
-            const parsed = new URL(statusUrl);
-            return `${parsed.pathname}${parsed.search}`;
-          })(),
-        });
-        window.location.href = statusUrl;
-        return { ok: true, redirected: 'payment' };
+      if (!getToken() && !viewer?.id) {
+        return { ok: false, error: 'Authentication required' };
       }
 
-      if (result.data.confirmationUrl) {
-        window.location.href = result.data.confirmationUrl;
-        return { ok: true, redirected: 'payment' };
-      }
+      try {
+        const returnUrl =
+          typeof window !== 'undefined'
+            ? buildSubscriptionPaymentStatusReturnUrl(returnTo)
+            : undefined;
 
-      return {
-        ok: false,
-        error: 'Payment provider did not return a checkout URL',
-      };
-    } catch (error) {
-      return {
-        ok: false,
-        error: error instanceof Error ? error.message : 'Payment method update failed',
-      };
-    }
-  }, [emailCopy.restrictedPremium, lang, location, viewer]);
+        const result = await createSubscriptionPaymentMethodRebind({
+          returnUrl,
+          ...(options.resumeAutoRenew ? { intent: 'resume-auto-renew' as const } : {}),
+        });
+
+        if (!result.success || !result.data) {
+          return {
+            ok: false,
+            error: result.error || 'Could not start payment method update',
+          };
+        }
+
+        if (result.data.devPaymentCompleted && result.data.subscriptionPaymentId) {
+          const statusUrl = buildSubscriptionPaymentDevStatusUrl({
+            subscriptionPaymentId: result.data.subscriptionPaymentId,
+            returnTo,
+          });
+          logDevPaymentSubscriptionRedirect({
+            subscriptionPaymentId: result.data.subscriptionPaymentId,
+            paymentId: result.data.paymentId,
+            redirectUrl: (() => {
+              const parsed = new URL(statusUrl);
+              return `${parsed.pathname}${parsed.search}`;
+            })(),
+          });
+          window.location.href = statusUrl;
+          return { ok: true, redirected: 'payment' };
+        }
+
+        if (result.data.confirmationUrl) {
+          window.location.href = result.data.confirmationUrl;
+          return { ok: true, redirected: 'payment' };
+        }
+
+        return {
+          ok: false,
+          error: 'Payment provider did not return a checkout URL',
+        };
+      } catch (error) {
+        return {
+          ok: false,
+          error: error instanceof Error ? error.message : 'Payment method update failed',
+        };
+      }
+    },
+    [emailCopy.restrictedPremium, lang, location, viewer]
+  );
 
   return { startRebind };
 }

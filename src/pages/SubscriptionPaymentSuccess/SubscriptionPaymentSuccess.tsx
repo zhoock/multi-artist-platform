@@ -127,26 +127,45 @@ export default function SubscriptionPaymentSuccess() {
         setIsRebindFlow(true);
       }
 
-      if (paymentMethodUpdated) {
-        finishRebind();
-        return;
-      }
+      if (rebindKind) {
+        if (paymentMethodUpdated) {
+          finishRebind();
+          return;
+        }
 
-      if (subscriptionActivated || payment.status === 'succeeded') {
-        finishActivated();
-        return;
-      }
-
-      if (payment.status === 'canceled') {
-        setStatus('canceled');
-        setMessage(
-          rebindKind
-            ? lang === 'en'
+        if (payment.status === 'canceled') {
+          setStatus('canceled');
+          setMessage(
+            lang === 'en'
               ? 'Payment method update was canceled'
               : 'Обновление способа оплаты отменено'
-            : 'Payment was canceled'
-        );
-        return;
+          );
+          return;
+        }
+
+        if (payment.status === 'succeeded') {
+          setStatus('error');
+          setMessage(
+            lang === 'en' ? 'Payment method was not updated.' : 'Способ оплаты не обновлён.'
+          );
+          return;
+        }
+      } else {
+        if (paymentMethodUpdated) {
+          finishRebind();
+          return;
+        }
+
+        if (subscriptionActivated || payment.status === 'succeeded') {
+          finishActivated();
+          return;
+        }
+
+        if (payment.status === 'canceled') {
+          setStatus('canceled');
+          setMessage('Payment was canceled');
+          return;
+        }
       }
 
       pollCountRef.current += 1;

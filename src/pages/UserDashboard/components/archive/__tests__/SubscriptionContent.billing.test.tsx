@@ -20,7 +20,8 @@ import { SubscriptionContent } from '../SubscriptionContent';
 const getMyArchiveMock = jest.fn<() => Promise<unknown>>();
 const patchAutoRenewMock = jest.mocked(patchSubscriptionAutoRenew);
 const deletePaymentMethodMock = jest.mocked(deleteSubscriptionPaymentMethod);
-const startRebindMock = jest.fn<() => Promise<{ ok: boolean; error?: string }>>();
+const startRebindMock =
+  jest.fn<(options?: { resumeAutoRenew?: boolean }) => Promise<{ ok: boolean; error?: string }>>();
 const isAutoRenewClientEnabledMock = jest.fn(() => true);
 
 jest.mock('@shared/lib/auth', () => ({
@@ -43,7 +44,7 @@ jest.mock('@shared/api/subscription', () => ({
 
 jest.mock('@shared/lib/subscription/useSubscriptionRebindPayment', () => ({
   useSubscriptionRebindPayment: () => ({
-    startRebind: () => startRebindMock(),
+    startRebind: (options?: { resumeAutoRenew?: boolean }) => startRebindMock(options),
   }),
 }));
 
@@ -147,6 +148,16 @@ function cancelledArchivePayload() {
   });
 }
 
+function cancelledNoPaymentMethodArchivePayload() {
+  return baseArchivePayload({
+    status: 'cancel_at_period_end',
+    autoRenewEnabled: false,
+    hasSavedPaymentMethod: false,
+    paymentMethodTitle: null,
+    nextChargeAt: null,
+  });
+}
+
 describe('SubscriptionContent billing auto-renew modals', () => {
   beforeEach(() => {
     getMyArchiveMock.mockReset();
@@ -210,6 +221,91 @@ describe('SubscriptionContent billing auto-renew modals', () => {
       expect(patchAutoRenewMock).toHaveBeenCalledWith(true);
     });
     expect(deletePaymentMethodMock).not.toHaveBeenCalled();
+  });
+
+  test('resume without payment method starts rebind with resumeAutoRenew intent', async () => {
+    getMyArchiveMock.mockResolvedValue(cancelledNoPaymentMethodArchivePayload());
+    patchAutoRenewMock.mockResolvedValueOnce({
+      success: false,
+      error: 'Payment method required to enable auto-renew',
+      code: 'PAYMENT_METHOD_REQUIRED',
+    });
+    startRebindMock.mockResolvedValueOnce({ ok: true });
+
+    renderSubscription(<SubscriptionContent active />);
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('button', { name: /Resume support|Возобновить поддержку/i })
+      ).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /Resume support|Возобновить поддержку/i }));
+    fireEvent.click(
+      screen.getByRole('button', { name: /^Resume auto-renew$|^Возобновить автопродление$/i })
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('heading', { name: /Update payment method|Обновить способ оплаты/i })
+      ).toBeTruthy();
+    });
+
+    fireEvent.click(
+      screen.getByRole('button', { name: /Add payment method|Добавить способ оплаты/i })
+    );
+
+    await waitFor(() => {
+      expect(startRebindMock).toHaveBeenCalledWith({ resumeAutoRenew: true });
+    });
+  });
+
+  test('change payment method rebind does not pass resumeAutoRenew intent', async () => {
+    getMyArchiveMock.mockResolvedValue(activeArchivePayload());
+    startRebindMock.mockResolvedValueOnce({ ok: true });
+
+    renderSubscription(<SubscriptionContent active />);
+
+    await waitFor(() => {
+      expect(getPaymentMethodCard()).toBeTruthy();
+    });
+
+    const card = getPaymentMethodCard() as HTMLElement;
+    fireEvent.click(
+      within(card).getByRole('button', { name: /Change payment method|Изменить способ оплаты/i })
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: /Add payment method|Добавить способ оплаты/i })
+    );
+
+    await waitFor(() => {
+      expect(startRebindMock).toHaveBeenCalled();
+    });
+    expect(startRebindMock.mock.calls[0]?.[0]?.resumeAutoRenew).not.toBe(true);
+  });
+
+  test('archive refresh after resume rebind shows active subscription with next charge', async () => {
+    let payload: unknown = cancelledNoPaymentMethodArchivePayload();
+    getMyArchiveMock.mockImplementation(async () => payload);
+
+    renderSubscription(<SubscriptionContent active />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Support cancelled|Поддержка отменена/i)).toBeTruthy();
+    });
+
+    payload = activeArchivePayload();
+    window.dispatchEvent(new CustomEvent('archive:changed'));
+
+    await waitFor(() => {
+      expect(screen.queryByText(/Support cancelled|Поддержка отменена/i)).toBeNull();
+    });
+    expect(getPaymentMethodCard()).toBeTruthy();
+    expect(within(getPaymentMethodCard() as HTMLElement).getByText(/Visa •••• 4242/)).toBeTruthy();
+    expect(document.querySelector('.collection-billing__status-line--active')).toBeTruthy();
+    expect(document.querySelector('.collection-billing__status-line--active')?.textContent).toMatch(
+      /Next charge|Следующее списание/i
+    );
   });
 
   test('opens rebind modal from payment failed banner CTA', async () => {

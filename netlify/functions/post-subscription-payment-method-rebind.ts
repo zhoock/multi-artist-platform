@@ -25,12 +25,16 @@ import {
   createPendingSubscriptionPayment,
   findOpenSubscriptionPayment,
   getRebindAmountRub,
+  markSubscriptionRebindResumeAutoRenewIntent,
   normalizeSubscriptionPlanSlug,
   REBIND_PAYMENT_DESCRIPTION,
   releaseAbandonedCheckoutPayments,
 } from './lib/subscription-billing';
 import { isSubscriptionAutoRenewEnabled } from './lib/subscription-feature-flag';
-import { buildRebindSubscriptionPaymentPayload } from './lib/subscription-yookassa';
+import {
+  buildRebindSubscriptionPaymentPayload,
+  SUBSCRIPTION_REBIND_INTENT_RESUME_AUTO_RENEW,
+} from './lib/subscription-yookassa';
 import { getViewerSubscription } from './lib/subscriptions';
 import { getYooKassaEnvCredentials } from './lib/yookassa-env';
 import { resolveSubscriptionPaymentReturnUrl } from './lib/yookassa-return-url';
@@ -39,6 +43,7 @@ dns.setDefaultResultOrder('ipv4first');
 
 interface RebindPaymentMethodBody {
   returnUrl?: string;
+  intent?: string;
 }
 
 interface YooKassaCreateResponse {
@@ -124,6 +129,19 @@ export const handler: Handler = async (event: HandlerEvent) => {
     return createErrorResponse(500, 'Could not start payment method rebind');
   }
 
+  const resumeAutoRenew = body.intent === SUBSCRIPTION_REBIND_INTENT_RESUME_AUTO_RENEW;
+  if (resumeAutoRenew) {
+    try {
+      await markSubscriptionRebindResumeAutoRenewIntent(subscriptionPaymentId);
+    } catch (error) {
+      console.error(
+        '[post-subscription-payment-method-rebind] failed to persist resume intent',
+        error
+      );
+      return createErrorResponse(500, 'Could not start payment method rebind');
+    }
+  }
+
   let refererOrigin: string | null = null;
   if (event.headers.referer) {
     try {
@@ -173,6 +191,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
     userId,
     planSlug,
     customerEmail,
+    resumeAutoRenew,
   });
 
   const apiUrl = process.env.YOOKASSA_API_URL || 'https://api.yookassa.ru/v3/payments';

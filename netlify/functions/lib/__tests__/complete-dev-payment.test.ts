@@ -57,6 +57,9 @@ describe('complete-dev-payment', () => {
 
     expect(paymentId).toMatch(UUID_RE);
     expect(query).toHaveBeenCalledTimes(1);
+    expect(String(query.mock.calls[0][0])).toContain(
+      "COALESCE(raw_last_event, '{}'::jsonb) || $3::jsonb"
+    );
     expect(query.mock.calls[0][1]).toEqual([
       subscriptionPaymentId,
       paymentId,

@@ -115,6 +115,11 @@ export function mapDevSubscriptionPaymentToProviderPayment(
   if (!status) return null;
 
   const kind = row.kind?.trim() || SUBSCRIPTION_PAYMENT_KIND_INITIAL;
+  const rawLastEvent =
+    row.raw_last_event && typeof row.raw_last_event === 'object'
+      ? (row.raw_last_event as Record<string, unknown>)
+      : null;
+  const resumeAutoRenew = rawLastEvent?.resumeAutoRenew === true;
   const devPaymentMethod = options.devMode
     ? {
         id: devMockPaymentMethodId(providerPaymentId),
@@ -135,6 +140,7 @@ export function mapDevSubscriptionPaymentToProviderPayment(
       userId: row.user_id,
       plan: row.plan,
       kind,
+      ...(resumeAutoRenew ? { resumeAutoRenew: 'true' } : {}),
     },
     paymentMethod: devPaymentMethod,
   };

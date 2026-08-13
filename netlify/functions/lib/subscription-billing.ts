@@ -196,6 +196,7 @@ export interface SubscriptionPaymentRow {
   plan: string;
   kind?: SubscriptionPaymentKind;
   raw_last_event?: unknown;
+  created_at?: Date;
 }
 
 const OPEN_SUBSCRIPTION_PAYMENT_STATUSES = ['pending', 'waiting_for_capture'] as const;
@@ -392,6 +393,17 @@ export async function createPendingSubscriptionPayment(
   return id;
 }
 
+export async function markSubscriptionRebindResumeAutoRenewIntent(
+  subscriptionPaymentId: string
+): Promise<void> {
+  await query(
+    `UPDATE subscription_payments
+     SET raw_last_event = COALESCE(raw_last_event, '{}'::jsonb) || $2::jsonb
+     WHERE id = $1`,
+    [subscriptionPaymentId, JSON.stringify({ resumeAutoRenew: true })]
+  );
+}
+
 export async function attachProviderPaymentId(
   subscriptionPaymentId: string,
   providerPaymentId: string
@@ -504,7 +516,7 @@ export async function getSubscriptionPaymentByProviderId(
 ): Promise<SubscriptionPaymentRow | null> {
   try {
     const r = await query<SubscriptionPaymentRow>(
-      `SELECT id, user_id, provider, provider_payment_id, status, amount::text AS amount, currency, plan, kind, raw_last_event
+      `SELECT id, user_id, provider, provider_payment_id, status, amount::text AS amount, currency, plan, kind, raw_last_event, created_at
        FROM subscription_payments
        WHERE provider = 'yookassa' AND provider_payment_id = $1
        LIMIT 1`,
@@ -532,7 +544,7 @@ export async function getSubscriptionPaymentByInternalId(
 ): Promise<SubscriptionPaymentRow | null> {
   try {
     const r = await query<SubscriptionPaymentRow>(
-      `SELECT id, user_id, provider, provider_payment_id, status, amount::text AS amount, currency, plan, kind
+      `SELECT id, user_id, provider, provider_payment_id, status, amount::text AS amount, currency, plan, kind, raw_last_event, created_at
        FROM subscription_payments
        WHERE id = $1 AND user_id = $2::uuid
        LIMIT 1`,

@@ -55,6 +55,7 @@ jest.mock('../subscription-billing', () => {
     findOpenSubscriptionPayment: jest.fn(),
     createPendingSubscriptionPayment: jest.fn(),
     attachProviderPaymentId: jest.fn(),
+    markSubscriptionRebindResumeAutoRenewIntent: jest.fn(),
   };
 });
 
@@ -64,6 +65,7 @@ import { attachDevSucceededSubscriptionCheckout } from '../complete-dev-payment'
 import {
   createPendingSubscriptionPayment,
   findOpenSubscriptionPayment,
+  markSubscriptionRebindResumeAutoRenewIntent,
   releaseAbandonedCheckoutPayments,
 } from '../subscription-billing';
 import { getViewerSubscription } from '../subscriptions';
@@ -95,6 +97,9 @@ const mockedCreatePending = createPendingSubscriptionPayment as jest.MockedFunct
 >;
 const mockedAttachDev = attachDevSucceededSubscriptionCheckout as jest.MockedFunction<
   typeof attachDevSucceededSubscriptionCheckout
+>;
+const mockedMarkResumeIntent = markSubscriptionRebindResumeAutoRenewIntent as jest.MockedFunction<
+  typeof markSubscriptionRebindResumeAutoRenewIntent
 >;
 
 let payments: FakePayment[] = [];
@@ -210,5 +215,27 @@ describe('POST /api/subscription/payment-method/rebind checkout guard', () => {
 
     expect(response?.statusCode).toBe(409);
     expect(mockedCreatePending).not.toHaveBeenCalled();
+  });
+});
+
+describe('POST /api/subscription/payment-method/rebind resume intent', () => {
+  test('persists resume-auto-renew intent on the payment row', async () => {
+    const response = await handler(
+      {
+        ...rebindEvent(),
+        body: JSON.stringify({ intent: 'resume-auto-renew' }),
+      },
+      {} as never
+    );
+
+    expect(response?.statusCode).toBe(200);
+    expect(mockedMarkResumeIntent).toHaveBeenCalledWith('new-rebind-id');
+  });
+
+  test('does not persist resume intent for ordinary rebind', async () => {
+    const response = await handler(rebindEvent(), {} as never);
+
+    expect(response?.statusCode).toBe(200);
+    expect(mockedMarkResumeIntent).not.toHaveBeenCalled();
   });
 });

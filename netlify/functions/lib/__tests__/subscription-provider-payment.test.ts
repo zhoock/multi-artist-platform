@@ -124,5 +124,28 @@ describe('mapDevSubscriptionPaymentToProviderPayment', () => {
     expect(dto?.metadata.kind).toBe('rebind');
     expect(dto?.paymentMethod?.id).toMatch(/^dev-pm-/);
     expect(dto?.paymentMethod?.title).toMatch(/^Visa •••• \d{4}$/);
+    expect(dto?.metadata.resumeAutoRenew).toBeUndefined();
+  });
+
+  test('copies resumeAutoRenew intent from raw_last_event', () => {
+    const dto = mapDevSubscriptionPaymentToProviderPayment(
+      {
+        id: 'internal-1',
+        user_id: 'user-1',
+        provider: 'yookassa',
+        provider_payment_id: 'pay-dev',
+        status: 'succeeded',
+        amount: EXPLORER_AMOUNT,
+        currency: CURRENCY,
+        plan: 'explorer',
+        kind: 'rebind',
+        raw_last_event: { resumeAutoRenew: true, devPaymentMode: true },
+      },
+      'pay-dev',
+      { devMode: true }
+    );
+
+    expect(dto?.metadata.kind).toBe('rebind');
+    expect(dto?.metadata.resumeAutoRenew).toBe('true');
   });
 });

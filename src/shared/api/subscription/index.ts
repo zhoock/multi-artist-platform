@@ -28,6 +28,7 @@ export interface CreateSubscriptionPaymentResponse {
 
 export interface CreateSubscriptionPaymentMethodRebindRequest {
   returnUrl?: string;
+  intent?: 'resume-auto-renew';
 }
 
 export interface CreateSubscriptionPaymentMethodRebindResponse {

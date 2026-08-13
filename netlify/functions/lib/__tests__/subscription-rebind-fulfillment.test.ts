@@ -18,6 +18,7 @@ jest.mock('../subscription-billing', () => ({
   getRebindAmountRub: jest.fn(() => 1),
   updateSubscriptionPaymentStatus: jest.fn(),
   validateRebindSubscriptionPayment: jest.fn(),
+  getSubscriptionPaymentForUser: jest.fn(),
   PREMIUM_SUBSCRIPTION_PRODUCT_TYPE: 'premium_subscription',
 }));
 
@@ -40,14 +41,30 @@ jest.mock('../subscriptions', () => ({
   })),
 }));
 
+jest.mock('../subscription-auto-renew-patch', () => ({
+  patchSubscriptionAutoRenew: jest.fn(),
+  SubscriptionAutoRenewPatchError: class SubscriptionAutoRenewPatchError extends Error {
+    constructor(
+      message: string,
+      public readonly code: string,
+      public readonly httpStatus: number
+    ) {
+      super(message);
+      this.name = 'SubscriptionAutoRenewPatchError';
+    }
+  },
+}));
+
 import { query } from '../db';
 import { getMyArchiveForUser } from '../archive';
 import {
   claimSubscriptionPaymentSuccess,
+  getSubscriptionPaymentForUser,
   updateSubscriptionPaymentStatus,
   validateRebindSubscriptionPayment,
 } from '../subscription-billing';
 import { getViewerSubscription } from '../subscriptions';
+import { patchSubscriptionAutoRenew } from '../subscription-auto-renew-patch';
 import {
   fulfillRebindSubscriptionPayment,
   processRebindSubscriptionProviderPayment,
@@ -70,8 +87,31 @@ const mockedGetArchive = getMyArchiveForUser as jest.MockedFunction<typeof getMy
 const mockedUpdateStatus = updateSubscriptionPaymentStatus as jest.MockedFunction<
   typeof updateSubscriptionPaymentStatus
 >;
+const mockedGetPayment = getSubscriptionPaymentForUser as jest.MockedFunction<
+  typeof getSubscriptionPaymentForUser
+>;
+const mockedPatchAutoRenew = patchSubscriptionAutoRenew as jest.MockedFunction<
+  typeof patchSubscriptionAutoRenew
+>;
 
 const USER_ID = 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee';
+const UNLINK_AT = new Date('2026-08-05T12:00:00.000Z');
+const STALE_PAYMENT_CREATED_AT = new Date('2026-08-05T11:00:00.000Z');
+const FRESH_PAYMENT_CREATED_AT = new Date('2026-08-05T12:00:01.000Z');
+
+function resumeRebindPayment(
+  overrides: Partial<SubscriptionProviderPayment> = {}
+): SubscriptionProviderPayment {
+  const base = rebindPayment(overrides);
+  return {
+    ...base,
+    metadata: {
+      ...base.metadata,
+      resumeAutoRenew: 'true',
+      ...overrides.metadata,
+    },
+  };
+}
 
 function rebindPayment(
   overrides: Partial<SubscriptionProviderPayment> = {}
@@ -91,6 +131,42 @@ function rebindPayment(
       saved: true,
       title: 'Visa •••• 4242',
     },
+    ...overrides,
+  };
+}
+
+function paymentRow(overrides: Record<string, unknown> = {}) {
+  return {
+    id: 'sp-rebind-1',
+    user_id: USER_ID,
+    provider: 'yookassa',
+    provider_payment_id: 'pay-rebind-1',
+    status: 'succeeded',
+    amount: '1.00',
+    currency: 'RUB',
+    plan: 'collector',
+    kind: SUBSCRIPTION_PAYMENT_KIND_REBIND,
+    created_at: STALE_PAYMENT_CREATED_AT,
+    ...overrides,
+  };
+}
+
+function unlinkedSubscription(overrides: Record<string, unknown> = {}) {
+  return {
+    id: 'sub-1',
+    userId: USER_ID,
+    status: 'cancel_at_period_end' as const,
+    plan: 'collector',
+    slotsLimit: 2,
+    provider: 'yookassa',
+    providerSubscriptionId: 'pay-old',
+    startedAt: new Date('2026-07-01'),
+    expiresAt: new Date('2026-09-03'),
+    paymentMethodId: null,
+    paymentMethodTitle: null,
+    nextChargeAt: null,
+    createdAt: new Date('2026-07-01'),
+    updatedAt: UNLINK_AT,
     ...overrides,
   };
 }
@@ -142,6 +218,16 @@ describe('processRebindSubscriptionProviderPayment', () => {
     });
     mockedClaim.mockResolvedValue('claimed');
     mockedQuery.mockResolvedValue({ rows: [subscriptionRow()] } as QueryResult);
+    mockedGetPayment.mockResolvedValue(paymentRow() as never);
+    mockedPatchAutoRenew.mockResolvedValue({
+      subscription: unlinkedSubscription({
+        status: 'active',
+        paymentMethodId: 'pm-new',
+        paymentMethodTitle: 'Visa •••• 4242',
+        nextChargeAt: new Date('2026-09-03'),
+      }),
+      billing: {} as never,
+    });
   });
 
   afterEach(() => {
@@ -167,28 +253,97 @@ describe('processRebindSubscriptionProviderPayment', () => {
   });
 
   test('stale rebind after unlink does not restore PM', async () => {
-    mockedGetSubscription.mockResolvedValue({
-      id: 'sub-1',
-      userId: USER_ID,
-      status: 'cancel_at_period_end',
-      plan: 'collector',
-      slotsLimit: 2,
-      provider: 'yookassa',
-      providerSubscriptionId: 'pay-old',
-      startedAt: new Date('2026-07-01'),
-      expiresAt: new Date('2026-09-03'),
-      paymentMethodId: null,
-      paymentMethodTitle: null,
-      nextChargeAt: null,
-      createdAt: new Date('2026-07-01'),
-      updatedAt: new Date('2026-08-05'),
-    });
+    mockedGetSubscription.mockResolvedValue(unlinkedSubscription());
+    mockedGetPayment.mockResolvedValue(
+      paymentRow({ created_at: STALE_PAYMENT_CREATED_AT }) as never
+    );
 
     const result = await processRebindSubscriptionProviderPayment(rebindPayment(), USER_ID);
 
     expect(result.paymentMethodUpdated).toBe(false);
     expect(result.alreadyApplied).toBe(false);
     expect(mockedQuery).not.toHaveBeenCalled();
+  });
+
+  test('fresh rebind after unlink restores PM without enabling auto-renew', async () => {
+    mockedGetSubscription.mockResolvedValue(unlinkedSubscription());
+    mockedGetPayment.mockResolvedValue(
+      paymentRow({ created_at: FRESH_PAYMENT_CREATED_AT }) as never
+    );
+    mockedQuery.mockResolvedValue({
+      rows: [
+        subscriptionRow({
+          status: 'cancel_at_period_end',
+          payment_method_id: 'pm-new',
+          next_charge_at: null,
+        }),
+      ],
+    } as QueryResult);
+
+    const result = await processRebindSubscriptionProviderPayment(rebindPayment(), USER_ID);
+
+    expect(result.paymentMethodUpdated).toBe(true);
+    expect(result.alreadyApplied).toBe(false);
+    expect(mockedQuery).toHaveBeenCalledTimes(1);
+    const sql = String(mockedQuery.mock.calls[0]?.[0]);
+    expect(sql).toContain('payment_method_id');
+    expect(sql).not.toMatch(/next_charge_at\s*=/);
+    expect(sql).not.toMatch(/SET[\s\S]*\bstatus\s*=/);
+    expect(mockedPatchAutoRenew).not.toHaveBeenCalled();
+  });
+
+  test('rebind created at unlink timestamp is treated as fresh', async () => {
+    mockedGetSubscription.mockResolvedValue(unlinkedSubscription());
+    mockedGetPayment.mockResolvedValue(paymentRow({ created_at: UNLINK_AT }) as never);
+    mockedQuery.mockResolvedValue({
+      rows: [
+        subscriptionRow({
+          status: 'cancel_at_period_end',
+          payment_method_id: 'pm-new',
+          next_charge_at: null,
+        }),
+      ],
+    } as QueryResult);
+
+    const result = await processRebindSubscriptionProviderPayment(rebindPayment(), USER_ID);
+
+    expect(result.paymentMethodUpdated).toBe(true);
+    expect(mockedQuery).toHaveBeenCalledTimes(1);
+  });
+
+  test('duplicate callback of a fresh post-unlink rebind is idempotent', async () => {
+    const linkedAfterFreshRebind = {
+      ...unlinkedSubscription(),
+      paymentMethodId: 'pm-new',
+      paymentMethodTitle: 'Visa •••• 4242',
+    };
+    mockedGetSubscription
+      .mockResolvedValueOnce(unlinkedSubscription())
+      .mockResolvedValueOnce(unlinkedSubscription())
+      .mockResolvedValueOnce(linkedAfterFreshRebind)
+      .mockResolvedValueOnce(linkedAfterFreshRebind);
+    mockedGetPayment.mockResolvedValue(
+      paymentRow({ created_at: FRESH_PAYMENT_CREATED_AT }) as never
+    );
+    mockedClaim.mockResolvedValueOnce('claimed').mockResolvedValueOnce('already_succeeded');
+    mockedQuery.mockResolvedValue({
+      rows: [
+        subscriptionRow({
+          status: 'cancel_at_period_end',
+          payment_method_id: 'pm-new',
+          next_charge_at: null,
+        }),
+      ],
+    } as QueryResult);
+
+    const first = await processRebindSubscriptionProviderPayment(rebindPayment(), USER_ID);
+    const second = await processRebindSubscriptionProviderPayment(rebindPayment(), USER_ID);
+
+    expect(first.paymentMethodUpdated).toBe(true);
+    expect(first.alreadyApplied).toBe(false);
+    expect(second.paymentMethodUpdated).toBe(true);
+    expect(second.alreadyApplied).toBe(true);
+    expect(mockedQuery).toHaveBeenCalledTimes(2);
   });
 
   test('cancelled rebind updates payment status only', async () => {
@@ -219,6 +374,100 @@ describe('processRebindSubscriptionProviderPayment', () => {
     ).rejects.toMatchObject({
       statusCode: 400,
     });
+  });
+
+  test('resume → no PM → rebind succeeded → enables auto-renew', async () => {
+    mockedGetSubscription.mockResolvedValue(unlinkedSubscription());
+    mockedGetPayment.mockResolvedValue(
+      paymentRow({ created_at: FRESH_PAYMENT_CREATED_AT }) as never
+    );
+    mockedQuery.mockResolvedValue({
+      rows: [
+        subscriptionRow({
+          status: 'cancel_at_period_end',
+          payment_method_id: 'pm-new',
+          next_charge_at: null,
+        }),
+      ],
+    } as QueryResult);
+
+    const result = await processRebindSubscriptionProviderPayment(resumeRebindPayment(), USER_ID);
+
+    expect(result.paymentMethodUpdated).toBe(true);
+    expect(mockedPatchAutoRenew).toHaveBeenCalledTimes(1);
+    expect(mockedPatchAutoRenew).toHaveBeenCalledWith(USER_ID, true);
+  });
+
+  test('change payment method rebind does not change auto-renew state', async () => {
+    mockedGetSubscription.mockResolvedValue({
+      ...unlinkedSubscription(),
+      paymentMethodId: 'pm-old',
+      paymentMethodTitle: 'Visa •••• 1111',
+    });
+    mockedQuery.mockResolvedValue({
+      rows: [
+        subscriptionRow({
+          status: 'cancel_at_period_end',
+          payment_method_id: 'pm-new',
+          next_charge_at: null,
+        }),
+      ],
+    } as QueryResult);
+
+    const result = await processRebindSubscriptionProviderPayment(rebindPayment(), USER_ID);
+
+    expect(result.paymentMethodUpdated).toBe(true);
+    expect(mockedPatchAutoRenew).not.toHaveBeenCalled();
+  });
+
+  test('duplicate resume-flow rebind is idempotent', async () => {
+    const linkedAfterResume = {
+      ...unlinkedSubscription(),
+      status: 'active' as const,
+      paymentMethodId: 'pm-new',
+      paymentMethodTitle: 'Visa •••• 4242',
+      nextChargeAt: new Date('2026-09-03'),
+    };
+    mockedGetSubscription
+      .mockResolvedValueOnce(unlinkedSubscription())
+      .mockResolvedValueOnce(unlinkedSubscription())
+      .mockResolvedValueOnce(linkedAfterResume)
+      .mockResolvedValueOnce(linkedAfterResume);
+    mockedGetPayment.mockResolvedValue(
+      paymentRow({ created_at: FRESH_PAYMENT_CREATED_AT }) as never
+    );
+    mockedClaim.mockResolvedValueOnce('claimed').mockResolvedValueOnce('already_succeeded');
+    mockedQuery.mockResolvedValue({
+      rows: [
+        subscriptionRow({
+          status: 'cancel_at_period_end',
+          payment_method_id: 'pm-new',
+          next_charge_at: null,
+        }),
+      ],
+    } as QueryResult);
+
+    const first = await processRebindSubscriptionProviderPayment(resumeRebindPayment(), USER_ID);
+    const second = await processRebindSubscriptionProviderPayment(resumeRebindPayment(), USER_ID);
+
+    expect(first.paymentMethodUpdated).toBe(true);
+    expect(first.alreadyApplied).toBe(false);
+    expect(second.paymentMethodUpdated).toBe(true);
+    expect(second.alreadyApplied).toBe(true);
+    expect(mockedPatchAutoRenew).toHaveBeenCalledTimes(1);
+    expect(mockedPatchAutoRenew).toHaveBeenCalledWith(USER_ID, true);
+  });
+
+  test('stale resume-flow rebind does not enable auto-renew', async () => {
+    mockedGetSubscription.mockResolvedValue(unlinkedSubscription());
+    mockedGetPayment.mockResolvedValue(
+      paymentRow({ created_at: STALE_PAYMENT_CREATED_AT }) as never
+    );
+
+    const result = await processRebindSubscriptionProviderPayment(resumeRebindPayment(), USER_ID);
+
+    expect(result.paymentMethodUpdated).toBe(false);
+    expect(mockedPatchAutoRenew).not.toHaveBeenCalled();
   });
 });
 

@@ -12,6 +12,8 @@ export const SUBSCRIPTION_PAYMENT_KIND_INITIAL = 'initial';
 export const SUBSCRIPTION_PAYMENT_KIND_UPGRADE = 'upgrade';
 export const SUBSCRIPTION_PAYMENT_KIND_RENEWAL = 'renewal';
 export const SUBSCRIPTION_PAYMENT_KIND_REBIND = 'rebind';
+export const SUBSCRIPTION_REBIND_INTENT_RESUME_AUTO_RENEW = 'resume-auto-renew';
+export const SUBSCRIPTION_REBIND_RESUME_AUTO_RENEW_METADATA_KEY = 'resumeAutoRenew';
 
 export interface BuildInitialSubscriptionPaymentPayloadParams {
   amountValue: string;
@@ -129,6 +131,7 @@ export interface BuildRebindSubscriptionPaymentPayloadParams {
   userId: string;
   planSlug: string;
   customerEmail: string;
+  resumeAutoRenew?: boolean;
 }
 
 /** Builds POST /v3/payments body for payment-method rebind (PR-9). */
@@ -149,6 +152,9 @@ export function buildRebindSubscriptionPaymentPayload(
       userId: params.userId,
       plan: params.planSlug,
       kind: SUBSCRIPTION_PAYMENT_KIND_REBIND,
+      ...(params.resumeAutoRenew
+        ? { [SUBSCRIPTION_REBIND_RESUME_AUTO_RENEW_METADATA_KEY]: 'true' }
+        : {}),
     },
     receipt: {
       customer: { email: params.customerEmail },

@@ -1,6 +1,7 @@
 /**
  * Rebind payment method fulfillment (PR-9).
- * Updates payment_method_id + payment_method_title only — no subscription status mutation.
+ * Updates payment_method_id + payment_method_title only.
+ * Resume-from-cancel continues via existing USER_ENABLE_AUTO_RENEW after a successful apply.
  */
 
 import { query } from './db';
@@ -8,6 +9,7 @@ import { getMyArchiveForUser } from './archive';
 import {
   claimSubscriptionPaymentSuccess,
   getRebindAmountRub,
+  getSubscriptionPaymentForUser,
   PREMIUM_SUBSCRIPTION_PRODUCT_TYPE,
   updateSubscriptionPaymentStatus,
   validateRebindSubscriptionPayment,
@@ -25,6 +27,10 @@ import {
   SUBSCRIPTION_PAYMENT_KIND_REBIND,
 } from './subscription-yookassa';
 import { amountsEqual, metaString } from './yookassa-webhook-verify';
+import {
+  patchSubscriptionAutoRenew,
+  SubscriptionAutoRenewPatchError,
+} from './subscription-auto-renew-patch';
 
 export interface ProcessRebindSubscriptionProviderPaymentResult {
   paymentMethodUpdated: boolean;
@@ -37,6 +43,10 @@ export interface ProcessRebindSubscriptionProviderPaymentOptions {
 
 export function isRebindSubscriptionPaymentKind(kind: string | null | undefined): boolean {
   return kind?.trim() === SUBSCRIPTION_PAYMENT_KIND_REBIND;
+}
+
+function isResumeAutoRenewRebindPayment(payment: SubscriptionProviderPayment): boolean {
+  return metaString(payment.metadata, 'resumeAutoRenew') === 'true';
 }
 
 function resolvePaymentMethodIdFromRebindPayment(
@@ -68,10 +78,29 @@ function isSubscriptionPaymentMethodUnlinked(subscription: Subscription): boolea
   return !subscription.paymentMethodId?.trim() && subscription.nextChargeAt == null;
 }
 
+function toTimestamp(value: Date | string | null | undefined): number | null {
+  if (value == null) return null;
+  const time = value instanceof Date ? value.getTime() : new Date(value).getTime();
+  return Number.isNaN(time) ? null : time;
+}
+
+/** Stale: payment created before unlink/update. Fresh: created_at >= unlink/update time. */
+function isStaleRebindAfterUnlink(
+  subscription: Subscription,
+  paymentCreatedAt: Date | string | null | undefined
+): boolean {
+  if (!isSubscriptionPaymentMethodUnlinked(subscription)) return false;
+  const paymentTs = toTimestamp(paymentCreatedAt);
+  const unlinkTs = toTimestamp(subscription.updatedAt);
+  if (paymentTs == null || unlinkTs == null) return true;
+  return paymentTs < unlinkTs;
+}
+
 async function applyRebindPaymentMethod(
   userId: string,
   paymentMethodId: string,
-  paymentMethodTitle: string | null
+  paymentMethodTitle: string | null,
+  providerPaymentId: string
 ): Promise<{ subscription: Subscription | null; updated: boolean }> {
   const existing = await getViewerSubscription(userId);
   if (!existing) {
@@ -79,7 +108,10 @@ async function applyRebindPaymentMethod(
   }
 
   if (isSubscriptionPaymentMethodUnlinked(existing)) {
-    return { subscription: existing, updated: false };
+    const paymentRow = await getSubscriptionPaymentForUser(providerPaymentId, userId);
+    if (isStaleRebindAfterUnlink(existing, paymentRow?.created_at ?? null)) {
+      return { subscription: existing, updated: false };
+    }
   }
 
   const resolvedTitle = derivePaymentMethodTitle(existing, paymentMethodTitle);
@@ -126,7 +158,8 @@ export async function fulfillRebindSubscriptionPayment(params: {
   const { subscription, updated } = await applyRebindPaymentMethod(
     params.userId,
     params.paymentMethodId,
-    params.paymentMethodTitle
+    params.paymentMethodTitle,
+    params.providerPaymentId
   );
 
   if (!subscription) {
@@ -192,8 +225,29 @@ export async function processRebindSubscriptionProviderPayment(
       paymentMethodTitle,
     });
 
+    const paymentMethodUpdated = applied || alreadyApplied;
+
+    if (
+      paymentMethodUpdated &&
+      isResumeAutoRenewRebindPayment(payment) &&
+      existing.status === 'cancel_at_period_end'
+    ) {
+      try {
+        await patchSubscriptionAutoRenew(userId, true);
+      } catch (error) {
+        if (
+          error instanceof SubscriptionAutoRenewPatchError &&
+          error.code === 'INVALID_TRANSITION'
+        ) {
+          // Already active — duplicate resume-flow rebind is idempotent.
+        } else {
+          throw error;
+        }
+      }
+    }
+
     return {
-      paymentMethodUpdated: applied || alreadyApplied,
+      paymentMethodUpdated,
       alreadyApplied,
     };
   }

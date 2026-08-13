@@ -328,13 +328,15 @@ export function useSubscriptionTabController({
     setRenewLoading(true);
     setAlertModalMessage(null);
 
-    const result = await startRebind();
+    const result = await startRebind({
+      resumeAutoRenew: autoRenewModal === 'enable-rebind',
+    });
 
     if (!result.ok) {
       showErrorAlert(resolveAutoRenewClientError(result, autoRenewPatchErrorText));
       setRenewLoading(false);
     }
-  }, [autoRenewPatchErrorText, showErrorAlert, startRebind]);
+  }, [autoRenewModal, autoRenewPatchErrorText, showErrorAlert, startRebind]);
 
   const handleOpenChangePaymentMethod = useCallback(() => {
     setAutoRenewModal('rebind');

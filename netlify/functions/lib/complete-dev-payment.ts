@@ -69,7 +69,7 @@ export async function attachDevSucceededSubscriptionCheckout(
     `UPDATE subscription_payments
      SET provider_payment_id = $2,
          status = 'succeeded',
-         raw_last_event = $3::jsonb,
+         raw_last_event = COALESCE(raw_last_event, '{}'::jsonb) || $3::jsonb,
          updated_at = CURRENT_TIMESTAMP
      WHERE id = $1
      RETURNING id`,

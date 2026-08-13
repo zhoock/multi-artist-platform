@@ -60,6 +60,7 @@ function buildPaymentResponse(
     productType?: string;
     userId?: string;
     plan?: string;
+    kind?: string;
   }
 ) {
   return {
@@ -162,6 +163,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
               productType: PREMIUM_SUBSCRIPTION_PRODUCT_TYPE,
               userId,
               plan: owned.plan,
+              kind: owned.kind,
             }),
             subscriptionActivated: false,
             paymentMethodUpdated,
@@ -187,6 +189,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
             productType: PREMIUM_SUBSCRIPTION_PRODUCT_TYPE,
             userId,
             plan: planSlug,
+            kind: owned.kind,
           }),
           subscriptionActivated,
           paymentMethodUpdated: false,
@@ -275,6 +278,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
               productType,
               userId: metaUserId,
               plan: plan ?? DEFAULT_SUBSCRIPTION_PLAN,
+              kind: owned.kind,
             }),
             subscriptionActivated: false,
             paymentMethodUpdated,
@@ -300,6 +304,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
             productType,
             userId: metaUserId,
             plan: plan ?? planSlug ?? DEFAULT_SUBSCRIPTION_PLAN,
+            kind: owned.kind,
           }),
           subscriptionActivated,
           paymentMethodUpdated: false,
