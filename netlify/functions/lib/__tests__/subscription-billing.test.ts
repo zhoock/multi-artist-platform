@@ -422,7 +422,8 @@ describe('fulfillSubscriptionPayment', () => {
     expect(updateSql).toContain('scheduled_plan = CASE WHEN $5 THEN NULL');
     expect(updateSql).toContain('renewal_attempt_count = CASE WHEN $5 THEN 0');
     expect(updateSql).toContain('first_failed_at = CASE WHEN $5 THEN NULL');
-    expect(updateSql).toContain('next_charge_at = CASE WHEN $5 THEN NULL');
+    expect(updateSql).toContain('WHEN $5 THEN NULL::timestamptz');
+    expect(updateSql).toContain('ELSE $7::timestamptz');
     expect(mockedQuery.mock.calls[1]?.[1]?.[4]).toBe(true);
   });
 
@@ -458,7 +459,8 @@ describe('fulfillSubscriptionPayment', () => {
 
     expect(mockedQuery.mock.calls[1]?.[1]?.[4]).toBe(false);
     const updateSql = String(mockedQuery.mock.calls[1]?.[0]);
-    expect(updateSql).toContain('next_charge_at = CASE WHEN $5 THEN NULL ELSE $7 END');
+    expect(updateSql).toContain('WHEN $5 THEN NULL::timestamptz');
+    expect(updateSql).toContain('ELSE $7::timestamptz');
     expect(mockedQuery.mock.calls[1]?.[1]?.[6]).toEqual(expiresAt);
   });
 
@@ -499,6 +501,7 @@ describe('fulfillSubscriptionPayment', () => {
     expect(mockedQuery.mock.calls[1]?.[1]?.[4]).toBe(false);
     expect(mockedQuery.mock.calls[1]?.[1]?.[6]).toEqual(expiresAt);
     const updateSql = String(mockedQuery.mock.calls[1]?.[0]);
-    expect(updateSql).toContain('next_charge_at = CASE WHEN $5 THEN NULL ELSE $7 END');
+    expect(updateSql).toContain('WHEN $5 THEN NULL::timestamptz');
+    expect(updateSql).toContain('ELSE $7::timestamptz');
   });
 });

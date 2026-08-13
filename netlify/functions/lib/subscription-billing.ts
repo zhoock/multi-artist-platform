@@ -596,7 +596,10 @@ export async function fulfillSubscriptionPayment(params: {
              scheduled_plan = CASE WHEN $5 THEN NULL ELSE scheduled_plan END,
              renewal_attempt_count = CASE WHEN $5 THEN 0 ELSE renewal_attempt_count END,
              first_failed_at = CASE WHEN $5 THEN NULL ELSE first_failed_at END,
-             next_charge_at = CASE WHEN $5 THEN NULL ELSE $7 END,
+             next_charge_at = CASE
+               WHEN $5 THEN NULL::timestamptz
+               ELSE $7::timestamptz
+             END,
              updated_at = CURRENT_TIMESTAMP
          WHERE id = $1
            AND ($4::text IS NULL OR provider_subscription_id IS DISTINCT FROM $4::text)

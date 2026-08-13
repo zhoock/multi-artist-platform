@@ -12,7 +12,7 @@ import {
   runRenewalCycle,
 } from '../../../subscription-renewal-engine';
 import { setActiveE2eContext } from '../../helpers/subscription-e2e-context';
-import { createE2eContext } from '../../helpers/subscription-e2e-fixtures';
+import { createE2eContext, TEST_USER_ARTIST_A } from '../../helpers/subscription-e2e-fixtures';
 import {
   isE2eDatabaseConfigured,
   registerTier1BackendHooks,
@@ -43,12 +43,31 @@ const SCENARIOS: E2eScenarioMeta[] = [
     flags: ['on'],
     tier: 'tier1-backend',
   },
+  {
+    id: 'E-ON-017',
+    title: 'fulfillSubscriptionPayment UPDATE casts $7 so PostgreSQL type deduction succeeds',
+    priority: 'P0',
+    flags: ['on'],
+    tier: 'tier1-backend',
+  },
 ];
 
 const flagOnDbTest =
   isE2eDatabaseConfigured() && process.env.SUBSCRIPTION_AUTO_RENEW_ENABLED === 'true'
     ? test
     : test.skip;
+
+async function fulfillSubscriptionPaymentRejectingParam7TypeError(
+  params: Parameters<typeof fulfillSubscriptionPayment>[0]
+): Promise<Awaited<ReturnType<typeof fulfillSubscriptionPayment>>> {
+  try {
+    return await fulfillSubscriptionPayment(params);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    expect(message).not.toMatch(/inconsistent types deduced for parameter \$7/i);
+    throw error;
+  }
+}
 
 async function seedOrphanPendingRenewal(userId: string): Promise<string> {
   const result = await query<{ id: string }>(
@@ -150,6 +169,53 @@ describe('Group E — orphan pending & next_charge_at @tier1', () => {
         now: E2E_TIME_ANCHOR,
       });
       expect(countdown.isOverdue).toBe(false);
+    }, E2E_TIME_ANCHOR);
+  });
+
+  flagOnDbTest(buildTaggedTestName(SCENARIOS[2]!), async () => {
+    await withFrozenTime(async () => {
+      const ctx = createE2eContext('E-ON-017', { frozenNow: E2E_TIME_ANCHOR });
+      setActiveE2eContext(ctx);
+
+      await seedSubscription({
+        userId: ctx.userId,
+        status: 'expired',
+        plan: 'explorer',
+        expiresAt: new Date('2026-07-01T00:00:00.000Z'),
+        nextChargeAt: new Date('2026-07-01T00:00:00.000Z'),
+        providerSubscriptionId: 'pay-expired-previous',
+      });
+
+      const resubscribed = await fulfillSubscriptionPaymentRejectingParam7TypeError({
+        userId: ctx.userId,
+        planSlug: 'explorer',
+        providerPaymentId: 'pay-resubscribe-$7',
+      });
+      expect(resubscribed.status).toBe('active');
+      const resubscribedRow = await loadSubscriptionForUser(ctx.userId);
+      expect(resubscribedRow?.nextChargeAt).toBeNull();
+
+      const staleNextCharge = new Date('2026-08-01T00:00:00.000Z');
+      await seedSubscription({
+        userId: TEST_USER_ARTIST_A,
+        status: 'active',
+        plan: 'explorer',
+        expiresAt: new Date('2026-08-04T00:00:00.000Z'),
+        nextChargeAt: staleNextCharge,
+        providerSubscriptionId: 'pay-active-previous',
+      });
+
+      const extended = await fulfillSubscriptionPaymentRejectingParam7TypeError({
+        userId: TEST_USER_ARTIST_A,
+        planSlug: 'explorer',
+        providerPaymentId: 'pay-active-extend-$7',
+      });
+      expect(extended.status).toBe('active');
+      const extendedRow = await loadSubscriptionForUser(TEST_USER_ARTIST_A);
+      expect(extendedRow?.nextChargeAt).not.toBeNull();
+      expect(extendedRow?.nextChargeAt?.getTime()).toBe(extendedRow?.expiresAt.getTime());
+      expect(extendedRow?.nextChargeAt?.getTime()).toBe(extended.expiresAt?.getTime());
+      expect(extendedRow?.nextChargeAt?.getTime()).not.toBe(staleNextCharge.getTime());
     }, E2E_TIME_ANCHOR);
   });
 });
