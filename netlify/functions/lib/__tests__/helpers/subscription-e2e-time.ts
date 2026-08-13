@@ -53,3 +53,20 @@ export const E2E_TIME_OFFSETS = {
 export function addMs(from: Date, ms: number): Date {
   return new Date(from.getTime() + ms);
 }
+
+/** Keep seeded expires_at ahead of PostgreSQL CURRENT_TIMESTAMP for the whole test run. */
+export const E2E_SCHEDULER_SAFE_EXPIRES_MARGIN_MS = 7 * 24 * 60 * 60 * 1000;
+
+/**
+ * Wall-clock anchor for DB-backed tests that share DATABASE_URL with the dev renewal scheduler.
+ * Jest fake timers do not affect PostgreSQL CURRENT_TIMESTAMP; frozen E2E_TIME_ANCHOR leaves
+ * expires_at in the past so applySubscriptionPeriodEnded can flip cancel_at_period_end → expired.
+ */
+export function e2eSchedulerSafeNow(): Date {
+  return new Date();
+}
+
+/** Seed expires_at far enough in the future to survive concurrent runRenewalCycle() ticks. */
+export function e2eSchedulerSafeExpiresAt(from: Date = e2eSchedulerSafeNow()): Date {
+  return addMs(from, E2E_SCHEDULER_SAFE_EXPIRES_MARGIN_MS);
+}

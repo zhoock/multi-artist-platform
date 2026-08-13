@@ -32,7 +32,13 @@ import {
   isE2eDatabaseConfigured,
   registerTier1BackendHooks,
 } from '../../helpers/subscription-e2e-setup';
-import { E2E_TIME_ANCHOR, withFrozenTime } from '../../helpers/subscription-e2e-time';
+import {
+  E2E_TIME_ANCHOR,
+  addMs,
+  e2eSchedulerSafeExpiresAt,
+  e2eSchedulerSafeNow,
+  withFrozenTime,
+} from '../../helpers/subscription-e2e-time';
 import {
   loadSubscriptionForUser,
   loadSubscriptionPaymentsForUser,
@@ -591,93 +597,84 @@ describe('Group L — Payment method unlink @tier1', () => {
   flagOnDbTest(
     'L-ON-008 @p0 unlink during in-flight renewal honors succeeded charge without restoring PM',
     async () => {
-      await withFrozenTime(async () => {
-        const ctx = createE2eContext('L-ON-008', { frozenNow: E2E_TIME_ANCHOR });
-        setActiveE2eContext(ctx);
+      // Wall-clock aligned: dev scheduler + PostgreSQL CURRENT_TIMESTAMP ignore Jest fake timers.
+      const now = e2eSchedulerSafeNow();
+      const ctx = createE2eContext('L-ON-008', { frozenNow: now });
+      setActiveE2eContext(ctx);
 
-        const expiresAt = new Date('2026-08-01T00:00:00.000Z');
-        await seedSubscription({
-          userId: ctx.userId,
-          status: 'active',
-          plan: 'explorer',
-          expiresAt,
-          paymentMethodId: 'pm-l-inflight-renewal',
-          paymentMethodTitle: 'Visa •••• 4242',
-          nextChargeAt: expiresAt,
-          providerSubscriptionId: 'pay-l-prior-renewal',
-        });
+      const expiresAt = e2eSchedulerSafeExpiresAt(now);
+      await seedSubscription({
+        userId: ctx.userId,
+        status: 'active',
+        plan: 'explorer',
+        expiresAt,
+        startedAt: addMs(now, -5 * 60 * 1000),
+        paymentMethodId: 'pm-l-inflight-renewal',
+        paymentMethodTitle: 'Visa •••• 4242',
+        nextChargeAt: expiresAt,
+        providerSubscriptionId: 'pay-l-prior-renewal',
+      });
 
-        const subscriptionPaymentId = await createPendingSubscriptionPayment(
-          ctx.userId,
-          'explorer',
-          'renewal'
-        );
-        const { paymentId } = await attachDevSucceededSubscriptionCheckout({
-          subscriptionPaymentId,
-        });
-        await attachProviderPaymentId(subscriptionPaymentId, paymentId);
+      const subscriptionPaymentId = await createPendingSubscriptionPayment(
+        ctx.userId,
+        'explorer',
+        'renewal'
+      );
+      const { paymentId } = await attachDevSucceededSubscriptionCheckout({
+        subscriptionPaymentId,
+      });
+      await attachProviderPaymentId(subscriptionPaymentId, paymentId);
 
-        const row = await getSubscriptionPaymentByInternalId(subscriptionPaymentId, ctx.userId);
-        if (!row) throw new Error('payment row missing');
-        const providerPayment = mapDevSubscriptionPaymentToProviderPayment(row, paymentId, {
-          devMode: true,
-        });
-        if (!providerPayment) throw new Error('provider payment missing');
+      const row = await getSubscriptionPaymentByInternalId(subscriptionPaymentId, ctx.userId);
+      if (!row) throw new Error('payment row missing');
+      const providerPayment = mapDevSubscriptionPaymentToProviderPayment(row, paymentId, {
+        devMode: true,
+      });
+      if (!providerPayment) throw new Error('provider payment missing');
 
-        await unlinkSubscriptionPaymentMethod(ctx.userId);
+      await unlinkSubscriptionPaymentMethod(ctx.userId);
 
-        const unlinked = await loadSubscriptionForUser(ctx.userId);
-        expect(unlinked?.status).toBe('cancel_at_period_end');
-        expect(unlinked?.paymentMethodId).toBeNull();
-        expect(unlinked?.nextChargeAt).toBeNull();
+      const unlinked = await loadSubscriptionForUser(ctx.userId);
+      expect(unlinked?.status).toBe('cancel_at_period_end');
+      expect(unlinked?.paymentMethodId).toBeNull();
+      expect(unlinked?.nextChargeAt).toBeNull();
 
-        const expectedExpiresAt = computeSupportExpiresAt('explorer', E2E_TIME_ANCHOR);
+      const expectedExpiresAt = computeSupportExpiresAt('explorer', now);
 
-        const first = await processRenewalSubscriptionProviderPayment(providerPayment, ctx.userId, {
-          now: E2E_TIME_ANCHOR,
-        });
-        expect(first.subscriptionRenewed).toBe(true);
-        expect(first.alreadyFulfilled).toBe(false);
+      const first = await processRenewalSubscriptionProviderPayment(providerPayment, ctx.userId, {
+        now,
+      });
+      expect(first.subscriptionRenewed).toBe(true);
+      expect(first.alreadyFulfilled).toBe(false);
 
-        const afterFirst = await loadSubscriptionForUser(ctx.userId);
-        expect(afterFirst?.status).toBe('cancel_at_period_end');
-        expect(afterFirst?.paymentMethodId).toBeNull();
-        expect(afterFirst?.paymentMethodTitle).toBeNull();
-        expect(afterFirst?.nextChargeAt).toBeNull();
-        expect(afterFirst?.providerSubscriptionId).toBe(paymentId);
-        expect(afterFirst?.expiresAt?.toISOString()).toBe(expectedExpiresAt.toISOString());
-        expect(hasPremiumAccess(afterFirst, E2E_TIME_ANCHOR)).toBe(true);
+      const afterFirst = await loadSubscriptionForUser(ctx.userId);
+      expect(afterFirst?.status).toBe('cancel_at_period_end');
+      expect(afterFirst?.paymentMethodId).toBeNull();
+      expect(afterFirst?.paymentMethodTitle).toBeNull();
+      expect(afterFirst?.nextChargeAt).toBeNull();
+      expect(afterFirst?.providerSubscriptionId).toBe(paymentId);
+      expect(afterFirst?.expiresAt?.toISOString()).toBe(expectedExpiresAt.toISOString());
+      expect(hasPremiumAccess(afterFirst, now)).toBe(true);
 
-        const second = await processRenewalSubscriptionProviderPayment(
-          providerPayment,
-          ctx.userId,
-          {
-            now: E2E_TIME_ANCHOR,
-          }
-        );
-        expect(second.alreadyFulfilled).toBe(true);
+      const second = await processRenewalSubscriptionProviderPayment(providerPayment, ctx.userId, {
+        now,
+      });
+      expect(second.alreadyFulfilled).toBe(true);
 
-        const renewalPayments = (await loadSubscriptionPaymentsForUser(ctx.userId, 20)).filter(
-          (p) => p.kind === 'renewal'
-        );
-        expect(renewalPayments).toHaveLength(1);
-        expect(renewalPayments[0]?.status).toBe('succeeded');
+      const renewalPayments = (await loadSubscriptionPaymentsForUser(ctx.userId, 20)).filter(
+        (p) => p.kind === 'renewal'
+      );
+      expect(renewalPayments).toHaveLength(1);
+      expect(renewalPayments[0]?.status).toBe('succeeded');
 
-        const afterSecond = await loadSubscriptionForUser(ctx.userId);
-        expect(afterSecond?.expiresAt?.toISOString()).toBe(expectedExpiresAt.toISOString());
-        expect(afterSecond?.paymentMethodId).toBeNull();
-        expect(afterSecond?.status).toBe('cancel_at_period_end');
+      const afterSecond = await loadSubscriptionForUser(ctx.userId);
+      expect(afterSecond?.expiresAt?.toISOString()).toBe(expectedExpiresAt.toISOString());
+      expect(afterSecond?.paymentMethodId).toBeNull();
+      expect(afterSecond?.status).toBe('cancel_at_period_end');
 
-        expect(await listChargeReadySubscriptionIds(E2E_TIME_ANCHOR)).not.toContain(
-          afterSecond!.id
-        );
+      expect(await listChargeReadySubscriptionIds(now)).not.toContain(afterSecond!.id);
 
-        await expectInvariantSet(
-          afterSecond!,
-          { violations: [] },
-          { context: ctx, now: E2E_TIME_ANCHOR }
-        );
-      }, E2E_TIME_ANCHOR);
+      await expectInvariantSet(afterSecond!, { violations: [] }, { context: ctx, now });
     }
   );
 
