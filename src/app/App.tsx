@@ -28,6 +28,7 @@ import { publicPageHreflangLinks } from '@shared/lib/seo/PublicPageHreflangLinks
 import { isHelpLoaderPath } from '@entities/help/lib/helpRouteMatch';
 import { albumsLoader } from '@routes/loaders/albumsLoader';
 import { ArtistPageSkeleton } from '@pages/Home/ui/ArtistPageSkeleton';
+import { AlbumSkeleton } from '@shared/ui/skeleton';
 import { useLang } from '@app/providers/lang';
 import { useAppDispatch } from '@shared/lib/hooks/useAppDispatch';
 import { setPublicArtistSlug } from '@shared/model/currentArtist';
@@ -131,7 +132,7 @@ const allAlbumsPageElement = (
 );
 
 const albumPageElement = (
-  <Suspense fallback={<PageLoader />}>
+  <Suspense fallback={<AlbumSkeleton />}>
     <Album />
   </Suspense>
 );
