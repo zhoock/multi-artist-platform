@@ -224,7 +224,7 @@ export const PlayerShell: React.FC = () => {
     if (!shouldRenderMini) {
       clearFixedBottomInset();
 
-      const footerEl = document.querySelector('footer');
+      const footerEl = document.querySelector('footer[role="contentinfo"]');
       if (footerEl) {
         (footerEl as HTMLElement).style.paddingBottom = '';
       }
@@ -232,7 +232,7 @@ export const PlayerShell: React.FC = () => {
     }
 
     const updateFooterPadding = () => {
-      const footerEl = document.querySelector('footer');
+      const footerEl = document.querySelector('footer[role="contentinfo"]');
       const playerEl = miniPlayerRef.current;
 
       if (!playerEl) {
@@ -245,9 +245,7 @@ export const PlayerShell: React.FC = () => {
 
       if (!footerEl) return;
 
-      // Используем только высоту плеера, так как отступ снизу (3vi) уже учтён в позиционировании
-      const playerHeight = playerEl.offsetHeight;
-      (footerEl as HTMLElement).style.paddingBottom = `${playerHeight}px`;
+      (footerEl as HTMLElement).style.paddingBottom = `${bottomInset}px`;
     };
 
     // Обновляем после рендера
@@ -276,12 +274,12 @@ export const PlayerShell: React.FC = () => {
       resizeObserver.disconnect();
       window.removeEventListener('resize', handleResize);
       clearFixedBottomInset();
-      const footerEl = document.querySelector('footer');
+      const footerEl = document.querySelector('footer[role="contentinfo"]');
       if (footerEl) {
         (footerEl as HTMLElement).style.paddingBottom = '';
       }
     };
-  }, [shouldRenderMini]);
+  }, [shouldRenderMini, location.pathname, location.search]);
 
   const canRenderPopup = Boolean(albumMeta);
 
