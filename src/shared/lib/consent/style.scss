@@ -4,9 +4,11 @@
   --consent-banner-player-gap: clamp(0.75rem, 1.5vi, 1rem);
 
   position: fixed;
-  inset-inline: 0;
-  inset-block-end: calc(var(--layout-fixed-bottom-inset, 0px) + var(--consent-banner-player-gap));
+  top: auto;
+  bottom: calc(var(--layout-fixed-bottom-inset, 0px) + var(--consent-banner-player-gap));
   z-index: 9990;
+  inset-inline: 0;
+  inset-block: auto calc(var(--layout-fixed-bottom-inset, 0px) + var(--consent-banner-player-gap));
   padding-inline: max(3vi, var(--ms-01));
   padding-block-end: env(safe-area-inset-bottom, 0);
   pointer-events: none;
