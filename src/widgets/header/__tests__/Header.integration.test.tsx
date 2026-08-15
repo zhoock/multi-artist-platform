@@ -50,20 +50,14 @@ describe('Header integration tests', () => {
     expect(state.lang.current).toBe('ru');
   });
 
-  test('должен вызвать onToggleTheme при переключении темы', async () => {
-    const user = userEvent.setup();
-    const handleToggleTheme = jest.fn();
-
-    renderWithProviders(<Header theme="dark" onToggleTheme={handleToggleTheme} />, {
+  test('не должен показывать переключатель темы, пока light theme отключена', () => {
+    renderWithProviders(<Header theme="dark" onToggleTheme={() => {}} />, {
       preloadedState: {
         lang: { current: 'en' },
       },
     });
 
-    const themeToggle = screen.getByRole('checkbox');
-    await user.click(themeToggle);
-
-    expect(handleToggleTheme).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
   });
 
   test('должен отобразить ссылку на главную', () => {

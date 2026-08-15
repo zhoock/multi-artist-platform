@@ -226,17 +226,9 @@ html.theme-light {
   }
 }
 
-@media (prefers-color-scheme: light) {
-  html:not(.theme-dark) {
-    .service-buttons__download-icon {
-      color: var(--graphite-green, #373633);
-    }
+// Light theme is temporarily disabled; keep html.theme-light rules for a future re-enable.
 
-    .service-buttons__download-price {
-      color: var(--graphite-green, #373633);
-    }
-  }
-}
+/* prefers-color-scheme light overrides were removed while light theme is disabled. */
 
 .service-buttons__link--download:hover:not(
     .service-buttons__link--downloading,

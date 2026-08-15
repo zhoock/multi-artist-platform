@@ -73,6 +73,7 @@ import { isServiceScreenBodyClassActive } from '@app/layouts/serviceScreenBodyCl
 import { UnprefixedRedirect } from '@app/layouts/UnprefixedRedirect';
 import { DEFAULT_ROUTE_LANG, stripLangPrefix } from '@shared/lib/i18n/routeLang';
 import { ToastProvider, NavigationToastHydrator } from '@shared/lib/toast';
+import { applyForcedDarkTheme, resolveInitialTheme } from '@shared/lib/theme';
 
 function isDashboardAppPathname(pathname: string): boolean {
   return pathname === '/dashboard' || pathname.startsWith('/dashboard/');
@@ -285,12 +286,7 @@ function Layout() {
       return 'dark';
     }
 
-    const stored = localStorage.getItem('theme');
-    if (stored === 'light' || stored === 'dark') {
-      return stored;
-    }
-
-    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    return resolveInitialTheme(localStorage.getItem('theme'));
   });
 
   const previousLangRef = useRef(lang);
@@ -302,9 +298,7 @@ function Layout() {
   }, [dispatch, lang]);
 
   useEffect(() => {
-    document.documentElement.classList.toggle('theme-dark', theme === 'dark');
-    document.documentElement.classList.toggle('theme-light', theme === 'light');
-    localStorage.setItem('theme', theme);
+    applyForcedDarkTheme();
   }, [theme]);
 
   const toggleTheme = () => {

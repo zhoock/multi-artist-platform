@@ -12,9 +12,7 @@ html.theme-light {
   @include light-theme-variables;
 }
 
-@media (prefers-color-scheme: light) {
-  // При системной светлой теме сразу задаём светлые переменные — без ожидания JS и без «мигания».
-  html {
-    @include light-theme-variables;
-  }
-}
+// Light theme is temporarily disabled. Keep html.theme-light for a future re-enable,
+// but do not auto-apply light variables from the OS color scheme.
+
+/* prefers-color-scheme light variables were removed while light theme is disabled. */

@@ -120,20 +120,7 @@ const HeaderComponent = ({
             </ul>
           </div>
 
-          <div className="theme-toggler">
-            <label className="theme-toggler__label">
-              <input
-                type="checkbox"
-                className="theme-toggler__control"
-                checked={theme === 'light'}
-                onChange={onToggleTheme}
-                aria-label={
-                  theme === 'light' ? 'Переключить на тёмную тему' : 'Переключить на светлую тему'
-                }
-              />
-              <div></div>
-            </label>
-          </div>
+          {/* Theme toggle temporarily hidden while light theme is disabled. */}
         </div>
 
         <div className="header__trailing">
