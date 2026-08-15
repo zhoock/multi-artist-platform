@@ -29,7 +29,7 @@ export function SubscriptionPricingAutopaymentDisclosure({ lang, ui }: Props) {
         t?.subscriptionPricingAutopaymentBodyLine ??
           (lang === 'en'
             ? 'Auto-renewal: when you pay for the selected plan, your payment method will be saved for automatic subscription renewal. The next charge will be at the selected plan price every {durationDays} days. You can turn off auto-renewal or unlink your card in Dashboard → Collection → Payment method.'
-            : 'Автопродление: при оплате выбранного тарифа способ оплаты будет сохранён для автоматического продления подписки. Следующее списание — по цене выбранного тарифа каждые {durationDays} дней. Автопродление можно отключить или отвязать карту в Кабинет → Коллекция → Способ оплаты.'),
+            : 'Автопродление: при оплате выбранного тарифа способ оплаты будет сохранён для автоматического продления подписки. Следующее списание — по цене выбранного тарифа каждые {durationDays} дней. Автопродление можно отключить или изменить в Кабинет → Подписка.'),
         { durationDays }
       ),
       yookassaNote:

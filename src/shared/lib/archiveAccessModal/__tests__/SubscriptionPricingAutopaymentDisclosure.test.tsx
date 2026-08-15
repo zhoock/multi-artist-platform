@@ -26,9 +26,7 @@ describe('SubscriptionPricingAutopaymentDisclosure', () => {
       )
     ).toBeTruthy();
     expect(
-      screen.getByText(
-        /Автопродление можно отключить или отвязать карту в Кабинет → Коллекция → Способ оплаты/
-      )
+      screen.getByText(/Автопродление можно отключить или изменить в Кабинет → Подписка/)
     ).toBeTruthy();
     expect(
       screen.getByText(/На странице YooKassa вы отдельно подтвердите сохранение способа оплаты/)
