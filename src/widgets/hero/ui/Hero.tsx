@@ -328,21 +328,29 @@ export function Hero() {
     navigate(buildLocalizedPublicPath(lang, '/'));
   };
 
-  const handleHeroCanvasClick = (event: MouseEvent<HTMLDivElement>) => {
-    const universe = universeRef.current;
-    if (universe?.isArtistCardTarget(event.target)) {
+  const handleHeroNavigateClick = (event: MouseEvent<HTMLElement>) => {
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+    if (
+      target.closest(
+        '.hero__archive-slot, .hero__image-slot, .artist-page-builder-block, .artist-archive-button'
+      )
+    ) {
+      return;
+    }
+    if (universeRef.current?.isArtistCardTarget(target)) {
       return;
     }
     handleNavigateHome();
   };
 
-  const handleHeroCanvasKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+  const handleHeroNavigateKeyDown = (event: KeyboardEvent<HTMLElement>) => {
     if (event.key !== 'Enter' && event.key !== ' ') return;
     event.preventDefault();
     handleNavigateHome();
   };
 
-  const heroCanvasAriaLabel =
+  const heroNavigateAriaLabel =
     displayName.trim().length > 0
       ? lang === 'ru'
         ? `${displayName}, перейти на главную`
@@ -355,18 +363,13 @@ export function Hero() {
       style={
         heroUsesInlineBackground ? { backgroundImage: backgroundImage || undefined } : undefined
       }
+      tabIndex={showPublishedHeroChrome ? 0 : undefined}
+      role={showPublishedHeroChrome ? 'button' : undefined}
+      aria-label={showPublishedHeroChrome ? heroNavigateAriaLabel : undefined}
+      onClick={showPublishedHeroChrome ? handleHeroNavigateClick : undefined}
+      onKeyDown={showPublishedHeroChrome ? handleHeroNavigateKeyDown : undefined}
     >
-      {showPublishedHeroChrome ? (
-        <div
-          ref={heroCanvasRef}
-          className="hero__canvas"
-          tabIndex={0}
-          role="button"
-          aria-label={heroCanvasAriaLabel}
-          onClick={handleHeroCanvasClick}
-          onKeyDown={handleHeroCanvasKeyDown}
-        />
-      ) : null}
+      {showPublishedHeroChrome ? <div ref={heroCanvasRef} className="hero__canvas" /> : null}
       <div className="hero__content">
         <div className="hero__headline">
           <div className="hero__headline-main">

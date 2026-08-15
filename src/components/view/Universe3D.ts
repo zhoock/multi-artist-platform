@@ -375,7 +375,9 @@ export class Universe3D {
       this.initControls();
     }
 
-    this.initArtistHoverCursor();
+    if (!this.isHeroPreview) {
+      this.initArtistHoverCursor();
+    }
 
     if (options?.isHeroPreview !== true) {
       window.addEventListener('click', this.onClick);
@@ -1978,7 +1980,7 @@ export class Universe3D {
         this.searchActive && this.searchMatchedSlugSet.has(artistData.publicSlug);
       const isSearchDim = this.searchActive && !isSearchMatch;
 
-      const isHovered = mesh === this.hoveredObject;
+      const isHovered = !this.isHeroPreview && mesh === this.hoveredObject;
       const isCardActive = this.activeCard !== null;
       const isCardTarget = mesh === this.cardAnchorObject;
 

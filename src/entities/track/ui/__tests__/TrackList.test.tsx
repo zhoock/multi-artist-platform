@@ -3,6 +3,7 @@
 import { describe, expect, jest, test } from '@jest/globals';
 import { render } from '@testing-library/react';
 import type { TrackDetails } from '@entities/album/model/albumDetails';
+import { initialPlayerState } from '@features/player/model/types/playerSchema';
 import type { AppStore, RootState } from '@shared/model/appStore/types';
 import { TrackList } from '../TrackList';
 
@@ -16,15 +17,8 @@ jest.mock('@shared/lib/hooks/useAppSelector', () => ({
 
 function createMockStore(): AppStore {
   const state = {
-    player: {
-      currentTrackIndex: 0,
-      isPlaying: false,
-      shuffle: false,
-      albumId: null,
-      playlist: [],
-      progress: 0,
-    },
-  } as RootState;
+    player: initialPlayerState,
+  } as unknown as RootState;
 
   return {
     getState: () => state,
@@ -38,8 +32,18 @@ const baseTrack = (overrides: Partial<TrackDetails>): TrackDetails => ({
   title: 'Track',
   duration: 120,
   src: 'track.mp3',
+  orderIndex: 0,
   visibility: 'public',
   playbackLocked: false,
+  stemsAvailability: 'public',
+  audioContainer: null,
+  audioCodec: null,
+  audioBitrate: null,
+  audioSampleRate: null,
+  audioBitDepth: null,
+  audioChannels: null,
+  audioDuration: null,
+  audioFileSize: null,
   ...overrides,
 });
 

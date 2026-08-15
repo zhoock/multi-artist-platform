@@ -86,6 +86,15 @@ jest.mock('@shared/lib/authFetch', () => ({
   ),
 }));
 
+const artistAlbumCatalogState = {
+  status: 'idle' as const,
+  error: null,
+  data: [],
+  lastUpdated: null,
+  fetchContextKey: null,
+  artistMissing: false,
+};
+
 jest.mock('@/components/view/Universe3D', () => {
   const actual = jest.requireActual<typeof import('@/components/view/Universe3D')>(
     '@/components/view/Universe3D'
@@ -119,15 +128,13 @@ describe('Hero canvas navigation', () => {
     jest.mocked(Universe3D).mockClear();
   });
 
-  test('click canvas navigates home without activating artist card', async () => {
+  test('click hero section navigates home without activating artist card', async () => {
     renderWithProviders(<Hero />, {
       initialEntries: ['/?artist=beatles'],
       preloadedState: {
         lang: { current: 'en' },
         currentArtist: { publicSlug: 'beatles' },
-        artistAlbumCatalog: {
-          artistMissing: false,
-        },
+        artistAlbumCatalog: artistAlbumCatalogState,
       },
     });
 
@@ -135,8 +142,8 @@ describe('Hero canvas navigation', () => {
       expect(jest.mocked(Universe3D)).toHaveBeenCalled();
     });
 
-    const canvasButton = screen.getByRole('button', { name: /Beatles, go to home page/i });
-    fireEvent.click(canvasButton);
+    const heroButton = screen.getByRole('button', { name: /Beatles, go to home page/i });
+    fireEvent.click(heroButton);
 
     expect(mockTryActivateArtistFromClick).not.toHaveBeenCalled();
     expect(mockActivatePrimaryArtist).not.toHaveBeenCalled();
@@ -145,15 +152,33 @@ describe('Hero canvas navigation', () => {
     expect(document.querySelector('.universe3d-card')).toBeNull();
   });
 
+  test('click hero title navigates home', async () => {
+    renderWithProviders(<Hero />, {
+      initialEntries: ['/?artist=beatles'],
+      preloadedState: {
+        lang: { current: 'en' },
+        currentArtist: { publicSlug: 'beatles' },
+        artistAlbumCatalog: artistAlbumCatalogState,
+      },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { level: 1, name: 'Beatles' })).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole('heading', { level: 1, name: 'Beatles' }));
+
+    expect(navigateMock).toHaveBeenCalledWith('/en');
+    expect(sessionStorage.getItem(UNIVERSE_FOCUS_ARTIST_STORAGE_KEY)).toBe('beatles');
+  });
+
   test('keyboard activation navigates home without opening artist card', async () => {
     renderWithProviders(<Hero />, {
       initialEntries: ['/?artist=beatles'],
       preloadedState: {
         lang: { current: 'en' },
         currentArtist: { publicSlug: 'beatles' },
-        artistAlbumCatalog: {
-          artistMissing: false,
-        },
+        artistAlbumCatalog: artistAlbumCatalogState,
       },
     });
 
@@ -161,8 +186,8 @@ describe('Hero canvas navigation', () => {
       expect(jest.mocked(Universe3D)).toHaveBeenCalled();
     });
 
-    const canvasButton = screen.getByRole('button', { name: /Beatles, go to home page/i });
-    fireEvent.keyDown(canvasButton, { key: 'Enter' });
+    const heroButton = screen.getByRole('button', { name: /Beatles, go to home page/i });
+    fireEvent.keyDown(heroButton, { key: 'Enter' });
 
     expect(mockActivatePrimaryArtist).not.toHaveBeenCalled();
     expect(navigateMock).toHaveBeenCalledWith('/en');

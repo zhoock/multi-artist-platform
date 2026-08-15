@@ -228,5 +228,22 @@ describe('Universe3D artist activation', () => {
       universe.destroy();
       container.remove();
     });
+
+    test('hovering artist point does not set canvas pointer cursor', () => {
+      const { container, universe } = createUniverse({ isHeroPreview: true });
+      mockPointRaycastHit(universe);
+
+      const canvas = container.querySelector('canvas');
+      expect(canvas).toBeTruthy();
+
+      canvas?.dispatchEvent(
+        new MouseEvent('mousemove', { clientX: 100, clientY: 100, bubbles: true })
+      );
+
+      expect(canvas?.style.cursor).not.toBe('pointer');
+
+      universe.destroy();
+      container.remove();
+    });
   });
 });
