@@ -375,6 +375,8 @@ export class Universe3D {
       this.initControls();
     }
 
+    this.initArtistHoverCursor();
+
     if (options?.isHeroPreview !== true) {
       window.addEventListener('click', this.onClick);
       window.addEventListener('keydown', this.handleKeyDown);
@@ -415,6 +417,24 @@ export class Universe3D {
     }
     this.searchActive = true;
     this.searchMatchedSlugSet = new Set(matchedSlugs);
+  }
+
+  /** Main Universe3D only: same activation as scene click (includes label sprites). */
+  tryActivateArtistFromClick(event: MouseEvent): boolean {
+    if (this.isHeroPreview) return false;
+    return this.activateArtistFromClientEvent(event, { dismissCardOnMiss: false });
+  }
+
+  /** Main Universe3D only: keyboard activation for single-artist focus. */
+  activatePrimaryArtist(): boolean {
+    if (this.isHeroPreview) return false;
+    if (this.clickableNodes.length !== 1) return false;
+    this.handleArtistNodeActivation(this.clickableNodes[0]);
+    return true;
+  }
+
+  isArtistCardTarget(target: EventTarget | null): boolean {
+    return !!(this.activeCard && target instanceof Node && this.activeCard.contains(target));
   }
 
   /** Cinematic in-scene navigation from search (fly-to + active node + card). */
@@ -900,23 +920,26 @@ export class Universe3D {
   };
 
   private onClick = (event: MouseEvent) => {
+    this.activateArtistFromClientEvent(event, { dismissCardOnMiss: true });
+  };
+
+  private activateArtistFromClientEvent(
+    event: MouseEvent,
+    options?: { dismissCardOnMiss?: boolean }
+  ): boolean {
     if (Date.now() < this.ignoreClickUntil) {
-      return;
+      return false;
     }
 
     if (isUniverseSceneOverlayTarget(event.target)) {
-      return;
+      return false;
     }
 
     if (this.activeCard && event.target instanceof Node && this.activeCard.contains(event.target)) {
-      return;
+      return false;
     }
 
-    const rect = this.renderer.domElement.getBoundingClientRect();
-    this.mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-    this.mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-
-    this.raycaster.setFromCamera(this.mouse, this.camera);
+    this.updateMouseFromClientEvent(event);
 
     const intersects = this.raycaster.intersectObjects(this.clickableNodes, true);
 
@@ -924,14 +947,57 @@ export class Universe3D {
       const artistNode = this.resolveArtistNodeFromIntersection(intersects[i].object);
       if (artistNode) {
         this.handleArtistNodeActivation(artistNode);
-        return;
+        return true;
       }
     }
 
-    if (this.activeCard) {
+    const labelSprites = this.collectVisibleArtistLabelSprites();
+    if (labelSprites.length > 0) {
+      const labelHits = this.raycaster.intersectObjects(labelSprites, false);
+      for (let i = 0; i < labelHits.length; i++) {
+        const artistNode = this.resolveArtistNodeFromLabelSprite(
+          labelHits[i].object as THREE.Sprite
+        );
+        if (artistNode) {
+          this.handleArtistNodeActivation(artistNode);
+          return true;
+        }
+      }
+    }
+
+    if (options?.dismissCardOnMiss && this.activeCard) {
       this.dismissCard();
     }
-  };
+
+    return false;
+  }
+
+  private updateMouseFromClientEvent(event: MouseEvent): void {
+    const rect = this.renderer.domElement.getBoundingClientRect();
+    this.mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+    this.mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+    this.raycaster.setFromCamera(this.mouse, this.camera);
+  }
+
+  private collectVisibleArtistLabelSprites(): THREE.Sprite[] {
+    const sprites: THREE.Sprite[] = [];
+    for (const mesh of this.clickableNodes) {
+      const sprite = mesh.userData?.label as THREE.Sprite | null;
+      if (!sprite?.visible) continue;
+      const opacity = (sprite.material as THREE.SpriteMaterial).opacity;
+      if (opacity > 0.01) {
+        sprites.push(sprite);
+      }
+    }
+    return sprites;
+  }
+
+  private resolveArtistNodeFromLabelSprite(sprite: THREE.Sprite): THREE.Object3D | null {
+    for (const mesh of this.clickableNodes) {
+      if (mesh.userData?.label === sprite) return mesh;
+    }
+    return null;
+  }
 
   private dismissCard() {
     this.activeCard?.remove();
@@ -1303,11 +1369,16 @@ export class Universe3D {
     window.addEventListener('mousemove', this.handleMouseMove);
 
     const canvas = this.renderer.domElement;
-    canvas.addEventListener('mousemove', this.handleMouseMoveForZoom);
     canvas.addEventListener('touchstart', this.handleTouchStart, { passive: false });
     canvas.addEventListener('touchmove', this.handleTouchMove, { passive: false });
     canvas.addEventListener('touchend', this.handleTouchEnd);
     canvas.addEventListener('touchcancel', this.handleTouchCancel);
+  }
+
+  private initArtistHoverCursor() {
+    const canvas = this.renderer.domElement;
+    canvas.addEventListener('mousemove', this.handleArtistHoverCursor);
+    canvas.addEventListener('mouseleave', this.handleArtistHoverCursorLeave);
   }
 
   private isInteractionLocked() {
@@ -1382,24 +1453,52 @@ export class Universe3D {
     this.lastPointerY = e.clientY;
   };
 
-  private handleMouseMoveForZoom = (e: MouseEvent) => {
+  private handleArtistHoverCursor = (e: MouseEvent) => {
+    this.updateArtistHoverCursor(e.clientX, e.clientY);
+  };
+
+  private handleArtistHoverCursorLeave = () => {
+    this.hoveredObject = null;
+    this.renderer.domElement.style.cursor = 'default';
+  };
+
+  private updateArtistHoverCursor(clientX: number, clientY: number): void {
     const rect = this.renderer.domElement.getBoundingClientRect();
 
-    this.mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-    this.mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+    this.mouse.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+    this.mouse.y = -((clientY - rect.top) / rect.height) * 2 + 1;
 
     this.raycaster.setFromCamera(this.mouse, this.camera);
 
     const intersects = this.raycaster.intersectObjects(this.clickableNodes, true);
 
-    if (intersects.length > 0) {
-      this.hoveredObject = intersects[0].object;
-      this.renderer.domElement.style.cursor = 'pointer';
-    } else {
-      this.hoveredObject = null;
-      this.renderer.domElement.style.cursor = 'default';
+    for (let i = 0; i < intersects.length; i++) {
+      const artistNode = this.resolveArtistNodeFromIntersection(intersects[i].object);
+      if (artistNode) {
+        this.hoveredObject = artistNode;
+        this.renderer.domElement.style.cursor = 'pointer';
+        return;
+      }
     }
-  };
+
+    const labelSprites = this.collectVisibleArtistLabelSprites();
+    if (labelSprites.length > 0) {
+      const labelHits = this.raycaster.intersectObjects(labelSprites, false);
+      for (let i = 0; i < labelHits.length; i++) {
+        const artistNode = this.resolveArtistNodeFromLabelSprite(
+          labelHits[i].object as THREE.Sprite
+        );
+        if (artistNode) {
+          this.hoveredObject = artistNode;
+          this.renderer.domElement.style.cursor = 'pointer';
+          return;
+        }
+      }
+    }
+
+    this.hoveredObject = null;
+    this.renderer.domElement.style.cursor = 'default';
+  }
 
   private handleTouchStart = (e: TouchEvent) => {
     this.isTouchActive = true;
@@ -2037,7 +2136,8 @@ export class Universe3D {
     window.removeEventListener('mousemove', this.handleMouseMove);
 
     const canvas = this.renderer.domElement;
-    canvas.removeEventListener('mousemove', this.handleMouseMoveForZoom);
+    canvas.removeEventListener('mousemove', this.handleArtistHoverCursor);
+    canvas.removeEventListener('mouseleave', this.handleArtistHoverCursorLeave);
     canvas.removeEventListener('touchstart', this.handleTouchStart);
     canvas.removeEventListener('touchmove', this.handleTouchMove);
     canvas.removeEventListener('touchend', this.handleTouchEnd);

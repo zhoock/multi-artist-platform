@@ -197,7 +197,16 @@
 
       .tracks__lock-icon {
         flex-shrink: 0;
-        color: var(--link-subtitle-color);
+        color: var(--time-color, #9b9b9a);
+        opacity: 0.72;
+      }
+
+      .tracks__duration-lock {
+        display: inline-flex;
+        flex: 0 0 auto;
+        align-items: center;
+        justify-content: center;
+        margin-inline-end: calc(var(--ms-01) * 0.5);
       }
 
       .tracks__duration {
@@ -207,8 +216,8 @@
       }
 
       @media (hover: hover) and (pointer: fine) {
-        &:enabled:hover,
-        &:enabled:focus-visible {
+        &:enabled:hover:not(.tracks__btn--locked),
+        &:enabled:focus-visible:not(.tracks__btn--locked) {
           color: var(--button-color-hover, #373633);
           background: var(--button-background-color-hover, #998238);
           border-radius: var(--ms-01);
@@ -238,49 +247,27 @@
 
       &--locked {
         cursor: pointer;
-        margin-block: 0.45rem;
-        padding-block: 0.55rem;
-        padding-inline: var(--ms-01);
-        border-block-start: none;
-        border-block-end: none;
-        color: var(--time-color);
-        background: var(--link-button-background-color) !important;
-        border-radius: var(--ms-01);
 
-        &:first-child {
-          margin-block-start: 0;
+        .tracks__title-text {
+          color: var(--time-color, #9b9b9a);
         }
 
-        &:last-child {
-          border-block-end: none;
-        }
-
-        .tracks__symbol-lock {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          color: var(--link-subtitle-color);
-        }
-
-        .tracks__lock-icon--lead {
-          flex-shrink: 0;
-        }
-
-        .tracks__title-text,
         .tracks__duration {
-          color: var(--link-subtitle-color);
+          color: var(--time-color, #9b9b9a);
         }
 
         @media (hover: hover) and (pointer: fine) {
           &:hover,
           &:focus-visible {
-            color: var(--time-color);
-            background: var(--extra-background-color);
-            border-radius: var(--ms-01);
+            color: inherit;
+            background: var(--main-background-color, #20201d);
+            border-radius: 0;
+            border-block-start-color: var(--hr-color, #3d3c3a);
+            border-block-end-color: var(--hr-color, #3d3c3a);
 
             .tracks__title-text,
             .tracks__duration {
-              color: var(--time-color);
+              color: var(--time-color, #9b9b9a);
             }
           }
         }

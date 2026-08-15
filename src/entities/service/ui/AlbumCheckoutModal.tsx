@@ -444,7 +444,6 @@ export function AlbumCheckoutModal({ isOpen, album, onClose }: AlbumCheckoutModa
                 <DashboardButton
                   type="button"
                   variant="primary"
-                  className="album-checkout-modal__action"
                   loading={isDownloading}
                   disabled={isDownloading}
                   onClick={() => void handleDownloadOwned()}
@@ -481,7 +480,6 @@ export function AlbumCheckoutModal({ isOpen, album, onClose }: AlbumCheckoutModa
                 <DashboardButton
                   type="button"
                   variant="primary"
-                  className="album-checkout-modal__action"
                   onClick={() => handleGoToAuth('register')}
                 >
                   {labels.authGateCreateAccount}
@@ -489,7 +487,6 @@ export function AlbumCheckoutModal({ isOpen, album, onClose }: AlbumCheckoutModa
                 <DashboardButton
                   type="button"
                   variant="outline"
-                  className="album-checkout-modal__action"
                   onClick={() => handleGoToAuth('login')}
                 >
                   {labels.authGateSignIn}
@@ -563,7 +560,6 @@ export function AlbumCheckoutModal({ isOpen, album, onClose }: AlbumCheckoutModa
                 <DashboardButton
                   type="submit"
                   variant="primary"
-                  className="album-checkout-modal__action"
                   loading={isSubmitting}
                   disabled={isSubmitting}
                 >

@@ -7,6 +7,7 @@ import { useLang } from '@app/providers/lang';
 import { fetchWithAuthSession } from '@shared/lib/authFetch';
 import { invalidateMyPurchasesCache } from '@shared/api/purchases';
 import { redirectToAlbumReturnPath } from '@shared/lib/albumPurchaseSuccessToast';
+import { DashboardButton } from '@shared/ui/dashboard';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 import AlbumCover from '@entities/album/ui/AlbumCover';
@@ -143,16 +144,6 @@ const labelsFor = (lang: string, ui: ReturnType<typeof selectUiDictionaryFirst> 
     downloadLinkSentPrefix:
       copy?.downloadLinkSentPrefix ??
       (en ? 'Purchase confirmation sent to' : 'Подтверждение покупки отправлено на'),
-    redirectCountdownOne:
-      copy?.redirectCountdownOne ??
-      (en
-        ? 'Returning to the album page in {seconds} sec'
-        : 'Возвращаемся на страницу альбома через {seconds} сек'),
-    redirectCountdownMany:
-      copy?.redirectCountdownMany ??
-      (en
-        ? 'Returning to the album page in {seconds} sec'
-        : 'Возвращаемся на страницу альбома через {seconds} сек'),
     home: copy?.home ?? (en ? 'Home' : 'На главную'),
     returnNow: copy?.returnNow ?? (en ? 'Return now' : 'Вернуться сейчас'),
     tryAgain: copy?.tryAgain ?? (en ? 'Try again' : 'Попробовать снова'),
@@ -259,7 +250,6 @@ function PaymentSuccess() {
   const [error, setError] = useState<PaymentUiError | null>(null);
   const [statusCheckTimedOut, setStatusCheckTimedOut] = useState(false);
   const [pollSession, setPollSession] = useState(0);
-  const [redirectCountdown, setRedirectCountdown] = useState(5);
 
   const pollCountRef = useRef(0);
   const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -442,27 +432,6 @@ function PaymentSuccess() {
     }
   }, [payment?.status, isPreviewMode]);
 
-  useEffect(() => {
-    if (payment?.status !== 'succeeded' || !returnTo) {
-      return undefined;
-    }
-
-    const countdownInterval = setInterval(() => {
-      setRedirectCountdown((prev) => {
-        if (prev <= 1) {
-          clearInterval(countdownInterval);
-          if (!isPreviewMode) {
-            redirectToAlbumReturnPath(returnTo);
-          }
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => clearInterval(countdownInterval);
-  }, [payment?.status, returnTo, isPreviewMode]);
-
   const getIncompleteStatusUi = (): StatusInfo => ({
     title: labels.incompleteTitle,
     message: labels.incompleteMessage,
@@ -534,20 +503,12 @@ function PaymentSuccess() {
             <div className="payment-success__status payment-success__status--pending">
               <h1 className="payment-success__title">{labels.pollTimeoutTitle}</h1>
               <div className="payment-success__pending-actions">
-                <button
-                  type="button"
-                  className="payment-success__button payment-success__button--primary"
-                  onClick={handleRecheckPayment}
-                >
+                <DashboardButton variant="primary" onClick={handleRecheckPayment}>
                   {labels.checkAgain}
-                </button>
-                <button
-                  type="button"
-                  className="payment-success__button"
-                  onClick={() => navigate('/')}
-                >
+                </DashboardButton>
+                <DashboardButton variant="outline" onClick={() => navigate('/')}>
                   {labels.home}
-                </button>
+                </DashboardButton>
               </div>
             </div>
           ) : error ? (
@@ -555,13 +516,9 @@ function PaymentSuccess() {
               <div className="payment-success__error">
                 <h1>{labels.verifyErrorTitle}</h1>
                 <p>{errorMessage}</p>
-                <button
-                  type="button"
-                  className="payment-success__button"
-                  onClick={() => window.location.reload()}
-                >
+                <DashboardButton variant="primary" onClick={() => window.location.reload()}>
                   {labels.reloadPage}
-                </button>
+                </DashboardButton>
               </div>
             ) : (
               <div className="payment-success__loading">
@@ -605,43 +562,20 @@ function PaymentSuccess() {
                 </>
               )}
 
-              {returnTo && redirectCountdown > 0 && (
-                <p className="payment-success__redirect-note">
-                  {(redirectCountdown === 1
-                    ? labels.redirectCountdownOne
-                    : labels.redirectCountdownMany
-                  )
-                    .split('{seconds}')
-                    .map((segment, index, segments) => (
-                      <React.Fragment key={index}>
-                        {segment}
-                        {index < segments.length - 1 && (
-                          <span className="payment-success__redirect-count">
-                            {redirectCountdown}
-                          </span>
-                        )}
-                      </React.Fragment>
-                    ))}
-                </p>
-              )}
-
-              {returnTo ? (
-                <button
-                  type="button"
-                  className="payment-success__button payment-success__button--outline"
-                  onClick={() => redirectToAlbumReturnPath(returnTo)}
-                >
-                  {labels.returnNow}
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  className="payment-success__button payment-success__button--outline"
-                  onClick={() => navigate('/')}
-                >
-                  {labels.returnHome}
-                </button>
-              )}
+              <div className="payment-success__actions">
+                {returnTo ? (
+                  <DashboardButton
+                    variant="primary"
+                    onClick={() => redirectToAlbumReturnPath(returnTo)}
+                  >
+                    {labels.returnNow}
+                  </DashboardButton>
+                ) : (
+                  <DashboardButton variant="outline" onClick={() => navigate('/')}>
+                    {labels.returnHome}
+                  </DashboardButton>
+                )}
+              </div>
             </div>
           ) : showFailOutcome && payment ? (
             (() => {
@@ -656,30 +590,23 @@ function PaymentSuccess() {
 
                   <div className="payment-success__pending-actions">
                     {resumeCheckoutHref && isPendingLike ? (
-                      <a
+                      <DashboardButton
+                        as="a"
+                        variant="primary"
                         href={resumeCheckoutHref}
-                        className="payment-success__button payment-success__button--primary"
                         target="_self"
                         rel="noopener noreferrer"
                       >
                         {labels.tryAgain}
-                      </a>
+                      </DashboardButton>
                     ) : (
-                      <button
-                        type="button"
-                        className="payment-success__button payment-success__button--primary"
-                        onClick={handleTryAgainNavigate}
-                      >
+                      <DashboardButton variant="primary" onClick={handleTryAgainNavigate}>
                         {labels.tryAgain}
-                      </button>
+                      </DashboardButton>
                     )}
-                    <button
-                      type="button"
-                      className="payment-success__button"
-                      onClick={() => navigate('/')}
-                    >
+                    <DashboardButton variant="outline" onClick={() => navigate('/')}>
                       {labels.home}
-                    </button>
+                    </DashboardButton>
                   </div>
                 </div>
               );
@@ -688,13 +615,11 @@ function PaymentSuccess() {
             <div className="payment-success__error">
               <h1>{labels.orderNotFoundTitle}</h1>
               <p>{labels.orderNotFoundMessage}</p>
-              <button
-                type="button"
-                className="payment-success__button"
-                onClick={() => navigate('/')}
-              >
-                {labels.returnHome}
-              </button>
+              <div className="payment-success__actions">
+                <DashboardButton variant="outline" onClick={() => navigate('/')}>
+                  {labels.returnHome}
+                </DashboardButton>
+              </div>
             </div>
           )}
         </div>

@@ -200,15 +200,10 @@ $album-checkout-modal-gap: var(--ms-0);
     );
 
     display: flex;
-    flex-direction: column;
+    flex-wrap: wrap;
+    justify-content: flex-end;
     gap: var(--ms-01);
-  }
-
-  &__action {
-    inline-size: 100%;
-    min-block-size: 2.75rem;
-    text-transform: none !important;
-    letter-spacing: normal !important;
+    margin-top: var(--ms-01);
   }
 
   &__field {

@@ -28,6 +28,7 @@ const canvas2DContextMock = {
   arc: jest.fn(),
   fill: jest.fn(),
   fillText: jest.fn(),
+  measureText: jest.fn((text: string) => ({ width: String(text).length * 8 })),
   save: jest.fn(),
   restore: jest.fn(),
   translate: jest.fn(),

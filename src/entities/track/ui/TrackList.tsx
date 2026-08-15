@@ -187,18 +187,9 @@ export function TrackList({ tracks, album, store, onSelectTrack }: TrackListProp
             onClick={() => onSelectTrack({ index, track, isActive, isPlayingNow })}
           >
             <span className="tracks__symbol">
-              {playbackLocked ? (
-                <span className="tracks__symbol-lock" aria-hidden>
-                  <LockIcon
-                    {...dashboardActionIconProps({
-                      size: 18,
-                      className: 'tracks__lock-icon tracks__lock-icon--lead',
-                    })}
-                  />
-                </span>
-              ) : (
+              <span className="tracks__symbol-index">{index + 1}</span>
+              {!playbackLocked ? (
                 <>
-                  <span className="tracks__symbol-index">{index + 1}</span>
                   <span className="tracks__symbol-play" aria-hidden>
                     <Play
                       {...playerTransportIconProps(TRACK_LIST_PLAY_ICON_SIZE, {
@@ -215,11 +206,21 @@ export function TrackList({ tracks, album, store, onSelectTrack }: TrackListProp
                     <span />
                   </span>
                 </>
-              )}
+              ) : null}
             </span>
             <span className="tracks__title">
               <span className="tracks__title-text">{track.title}</span>
             </span>
+            {playbackLocked ? (
+              <span className="tracks__duration-lock" aria-hidden>
+                <LockIcon
+                  {...dashboardActionIconProps({
+                    size: 14,
+                    className: 'tracks__lock-icon',
+                  })}
+                />
+              </span>
+            ) : null}
             <span className="tracks__duration">{formatDuration(track.duration)}</span>
           </button>
         );

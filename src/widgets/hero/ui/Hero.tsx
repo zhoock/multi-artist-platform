@@ -1,5 +1,5 @@
 // src/widgets/hero/ui/Hero.tsx
-import { useEffect, useRef, useMemo, useState } from 'react';
+import { useEffect, useRef, useMemo, useState, type KeyboardEvent, type MouseEvent } from 'react';
 import { useLocation, useNavigate, type Location } from 'react-router-dom';
 import { useLang } from '@app/providers/lang';
 import { fetchWithAuthSession } from '@shared/lib/authFetch';
@@ -45,6 +45,7 @@ export function Hero() {
   const { lang } = useLang() as { lang: 'ru' | 'en' };
   const publicArtistSlug = useAppSelector(selectPublicArtistSlug);
   const heroCanvasRef = useRef<HTMLDivElement | null>(null);
+  const universeRef = useRef<Universe3D | null>(null);
   const { overlayOpen: dashboardOverlayOpen, surfaceLocation } = useDashboardModalShell();
   const isDashboardRoute = location.pathname.startsWith('/dashboard') && !dashboardOverlayOpen;
   /**
@@ -281,12 +282,14 @@ export function Hero() {
         buildArtistProfileHref: (publicSlug) =>
           buildArtistPagePath(langForCanvasRef.current, publicSlug),
       });
+      universeRef.current = universe;
     };
 
     void run();
 
     return () => {
       cancelled = true;
+      universeRef.current = null;
       universe?.destroy();
       el.replaceChildren();
     };
@@ -325,6 +328,27 @@ export function Hero() {
     navigate(buildLocalizedPublicPath(lang, '/'));
   };
 
+  const handleHeroCanvasClick = (event: MouseEvent<HTMLDivElement>) => {
+    const universe = universeRef.current;
+    if (universe?.isArtistCardTarget(event.target)) {
+      return;
+    }
+    handleNavigateHome();
+  };
+
+  const handleHeroCanvasKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    event.preventDefault();
+    handleNavigateHome();
+  };
+
+  const heroCanvasAriaLabel =
+    displayName.trim().length > 0
+      ? lang === 'ru'
+        ? `${displayName}, перейти на главную`
+        : `${displayName}, go to home page`
+      : undefined;
+
   return (
     <section
       className={heroClassName}
@@ -333,7 +357,15 @@ export function Hero() {
       }
     >
       {showPublishedHeroChrome ? (
-        <div ref={heroCanvasRef} className="hero__canvas" onClick={handleNavigateHome} />
+        <div
+          ref={heroCanvasRef}
+          className="hero__canvas"
+          tabIndex={0}
+          role="button"
+          aria-label={heroCanvasAriaLabel}
+          onClick={handleHeroCanvasClick}
+          onKeyDown={handleHeroCanvasKeyDown}
+        />
       ) : null}
       <div className="hero__content">
         <div className="hero__headline">
