@@ -68,6 +68,30 @@ describe('Popup initial focus', () => {
     expect(screen.getByRole('button', { name: 'Close' })).not.toHaveFocus();
   });
 
+  test('initial autofocus uses focusVisible false to avoid spurious focus ring', () => {
+    const focusSpy = jest.spyOn(HTMLElement.prototype, 'focus');
+
+    renderPopup(
+      <div>
+        <PopupCloseButton aria-label="Close">X</PopupCloseButton>
+        <button type="button" className="target-nav">
+          Subscription
+        </button>
+      </div>,
+      { initialFocusSelector: '.target-nav' }
+    );
+
+    act(() => {
+      jest.runAllTimers();
+    });
+
+    expect(focusSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ preventScroll: true, focusVisible: false })
+    );
+
+    focusSpy.mockRestore();
+  });
+
   test('falls back to first focusable when initialFocusSelector misses', () => {
     renderPopup(
       <div>

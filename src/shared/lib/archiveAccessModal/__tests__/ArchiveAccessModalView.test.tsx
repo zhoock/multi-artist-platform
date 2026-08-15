@@ -99,6 +99,44 @@ function buildArchiveResponse(archive: ArchiveFixture): MyArchiveData {
   };
 }
 
+/** Production no-subscription snapshot: status null, slotsLimit = catalog max fallback (100). */
+function buildNoSubscriptionArchiveResponse(slotsLimit = 100): MyArchiveData {
+  return {
+    isPremium: false,
+    slotsUsed: 0,
+    slotsLimit,
+    artists: [],
+    billing: {
+      status: null,
+      plan: null,
+      slotsLimit,
+      expiresAt: null,
+      autoRenewEnabled: false,
+      hasPremiumAccess: false,
+      hasSavedPaymentMethod: false,
+      paymentMethodTitle: null,
+      nextChargeAt: null,
+      scheduledPlan: null,
+      renewalAttemptCount: null,
+      firstFailedAt: null,
+    },
+  };
+}
+
+function renderNoSubscriptionModal(slotsLimit = 100) {
+  getMyArchiveMock.mockResolvedValue(buildNoSubscriptionArchiveResponse(slotsLimit));
+  getTokenMock.mockReturnValue('test-token');
+
+  return renderWithProviders(
+    <PremiumSubscriptionProvider>
+      <ArchiveAccessModalProvider>
+        <OpenModalButton />
+      </ArchiveAccessModalProvider>
+    </PremiumSubscriptionProvider>,
+    { preloadedState: { lang: { current: 'en' } } }
+  );
+}
+
 function renderModalWithProviderOrder(
   archive: ArchiveFixture,
   order: 'correct' | 'wrong' = 'correct'
@@ -633,6 +671,81 @@ describe('ArchiveAccessModalView plan change confirmation', () => {
         expect.objectContaining({ plan: 'explorer' })
       );
     });
+  });
+
+  test('new user with production slots fallback goes straight to initial checkout', async () => {
+    createSubscriptionPaymentMock.mockResolvedValue({
+      success: true,
+      data: { paymentId: 'pay-test-1', confirmationUrl: 'https://pay.example/checkout' },
+    });
+
+    renderNoSubscriptionModal(100);
+    await openModal();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Choose Explorer' }));
+
+    expect(screen.queryByRole('heading', { name: 'Switch to the Explorer plan?' })).toBeNull();
+    expect(screen.queryByText('Current plan')).toBeNull();
+
+    await waitFor(() => {
+      expect(createSubscriptionPaymentMock).toHaveBeenCalledWith(
+        expect.objectContaining({ plan: 'explorer' })
+      );
+    });
+    expect(createSubscriptionPaymentMock.mock.calls[0]?.[0]?.intent).toBeUndefined();
+  });
+
+  test.each([
+    ['Explorer', 'explorer'],
+    ['Collector', 'collector'],
+    ['Archivist', 'archivist'],
+  ])(
+    'new user choosing %s skips plan-change modal (slotsLimit fallback)',
+    async (planName, planSlug) => {
+      createSubscriptionPaymentMock.mockResolvedValue({
+        success: true,
+        data: { paymentId: 'pay-test-1', confirmationUrl: 'https://pay.example/checkout' },
+      });
+
+      renderNoSubscriptionModal(100);
+      await openModal();
+
+      fireEvent.click(screen.getByRole('button', { name: `Choose ${planName}` }));
+
+      expect(screen.queryByRole('heading', { name: `Switch to the ${planName} plan?` })).toBeNull();
+
+      await waitFor(() => {
+        expect(createSubscriptionPaymentMock).toHaveBeenCalledWith(
+          expect.objectContaining({ plan: planSlug })
+        );
+      });
+    }
+  );
+
+  test('active Explorer → Collector shows plan-change modal', async () => {
+    renderModalWithProviderOrder({ isPremium: true, slotsUsed: 1, slotsLimit: 20 });
+    await openModal();
+
+    fireEvent.click(
+      within(getPlanCard('Collector')).getByRole('button', { name: 'Switch to Collector' })
+    );
+
+    expect(screen.getByRole('heading', { name: 'Switch to the Collector plan?' })).toBeTruthy();
+    expect(screen.getByText('Current plan')).toBeTruthy();
+    expect(createSubscriptionPaymentMock).not.toHaveBeenCalled();
+  });
+
+  test('active Archivist → Explorer shows plan-change modal', async () => {
+    isAutoRenewClientEnabledMock.mockReturnValue(true);
+    renderModalWithProviderOrder({ isPremium: true, slotsUsed: 1, slotsLimit: 100 });
+    await openModal();
+
+    fireEvent.click(
+      within(getPlanCard('Explorer')).getByRole('button', { name: 'Switch to Explorer' })
+    );
+
+    expect(screen.getByRole('heading', { name: 'Switch to Explorer next period?' })).toBeTruthy();
+    expect(createSubscriptionPaymentMock).not.toHaveBeenCalled();
   });
 });
 

@@ -374,13 +374,19 @@ export function resolvePlanChangeAction(params: {
 
 /** Authoritative plan for billing checkout (server subscription.plan). */
 export function resolveBillingCurrentPlanSlug(params: {
-  billing: Pick<BillingSnapshot, 'plan'>;
+  billing: Pick<BillingSnapshot, 'plan' | 'status'>;
   resolvedPlanSlug: SubscriptionPlanSlug | null;
   slotsLimit?: number;
 }): SubscriptionPlanSlug | null {
   if (params.billing.plan) {
     return params.billing.plan;
   }
+
+  // No subscription row — collection slots fallback (100 = archivist catalog max) is not a plan.
+  if (params.billing.status === null) {
+    return params.resolvedPlanSlug;
+  }
+
   if (params.resolvedPlanSlug) {
     return params.resolvedPlanSlug;
   }

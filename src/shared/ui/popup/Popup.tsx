@@ -10,6 +10,13 @@ import '../localModal/localModal.scss';
 const FOCUSABLE_SELECTOR =
   'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
 
+/** DOM FocusOptions.focusVisible — not in older lib.dom typings yet. */
+type FocusOptionsWithVisible = FocusOptions & { focusVisible?: boolean };
+
+function focusWithoutVisibleRing(element: HTMLElement): void {
+  element.focus({ preventScroll: true, focusVisible: false } as FocusOptionsWithVisible);
+}
+
 const PopupComponent = ({
   children,
   isActive,
@@ -90,7 +97,10 @@ const PopupComponent = ({
             : null;
           const focusTarget =
             initialFocusTarget ?? dialog.querySelector<HTMLElement>(FOCUSABLE_SELECTOR);
-          focusTarget?.focus({ preventScroll: true });
+          // Modal open autofocus: keep focus for screen readers/Tab order, hide mouse-open ring.
+          if (focusTarget) {
+            focusWithoutVisibleRing(focusTarget);
+          }
         }, 0);
       }
     } else if (!isActive && dialog.open) {

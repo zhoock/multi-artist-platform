@@ -329,20 +329,96 @@ describe('resolveBillingCurrentPlanSlug', () => {
   test('prefers billing.plan over slots-derived plan', () => {
     expect(
       resolveBillingCurrentPlanSlug({
-        billing: { plan: 'explorer' },
+        billing: { plan: 'explorer', status: 'active' },
         resolvedPlanSlug: 'collector',
       })
     ).toBe('explorer');
   });
 
-  test('falls back to slots limit when billing plan is missing', () => {
+  test('falls back to slots limit when billing plan is missing on expired subscription', () => {
     expect(
       resolveBillingCurrentPlanSlug({
-        billing: { plan: null },
+        billing: { plan: null, status: 'expired' },
         resolvedPlanSlug: null,
         slotsLimit: 60,
       })
     ).toBe('collector');
+  });
+
+  test('does not infer archivist from slots fallback when user has no subscription', () => {
+    expect(
+      resolveBillingCurrentPlanSlug({
+        billing: { plan: null, status: null },
+        resolvedPlanSlug: null,
+        slotsLimit: 100,
+      })
+    ).toBeNull();
+  });
+});
+
+describe('resolveBillingCurrentPlanSlug — new user initial checkout', () => {
+  const noSubscriptionBilling = {
+    plan: null,
+    status: null,
+    hasPremiumAccess: false,
+  } as const;
+
+  test.each(['explorer', 'collector', 'archivist'] as const)(
+    'new user choosing %s skips plan-change confirmation',
+    (targetPlanSlug) => {
+      expect(
+        shouldConfirmSubscriptionPlanChange(
+          resolveBillingCurrentPlanSlug({
+            billing: noSubscriptionBilling,
+            resolvedPlanSlug: null,
+            slotsLimit: 100,
+          }),
+          targetPlanSlug
+        )
+      ).toBe(false);
+    }
+  );
+
+  test.each(['explorer', 'collector', 'archivist'] as const)(
+    'new user choosing %s uses initial checkout intent',
+    (targetPlanSlug) => {
+      expect(
+        resolveSubscriptionCheckoutIntent({
+          currentPlanSlug: null,
+          targetPlanSlug,
+          billing: noSubscriptionBilling,
+          slotsLimit: 100,
+        })
+      ).toBeUndefined();
+    }
+  );
+});
+
+describe('resolveBillingCurrentPlanSlug — existing subscription plan change', () => {
+  test('active Explorer → Collector requires confirmation', () => {
+    expect(
+      shouldConfirmSubscriptionPlanChange(
+        resolveBillingCurrentPlanSlug({
+          billing: { plan: 'explorer', status: 'active' },
+          resolvedPlanSlug: 'explorer',
+          slotsLimit: 20,
+        }),
+        'collector'
+      )
+    ).toBe(true);
+  });
+
+  test('active Archivist → Explorer requires confirmation', () => {
+    expect(
+      shouldConfirmSubscriptionPlanChange(
+        resolveBillingCurrentPlanSlug({
+          billing: { plan: 'archivist', status: 'active' },
+          resolvedPlanSlug: 'archivist',
+          slotsLimit: 100,
+        }),
+        'explorer'
+      )
+    ).toBe(true);
   });
 });
 

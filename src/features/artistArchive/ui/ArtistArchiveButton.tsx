@@ -86,6 +86,11 @@ export function ArtistArchiveButton({ artistUserId, monetizationEnabled = false 
         return;
       }
 
+      if (buttonState === 'in_collection_active') {
+        openDashboard('collection');
+        return;
+      }
+
       if (buttonState === 'in_collection_inactive') {
         if (!artistUserId) return;
         try {
@@ -124,6 +129,7 @@ export function ArtistArchiveButton({ artistUserId, monetizationEnabled = false 
       artistUserId,
       buttonState,
       dispatch,
+      openDashboard,
       openRenewModal,
       publicArtistSlug,
     ]
@@ -142,10 +148,7 @@ export function ArtistArchiveButton({ artistUserId, monetizationEnabled = false 
   }
 
   const isDisabled =
-    buttonState === 'loading' ||
-    buttonState === 'adding' ||
-    buttonState === 'activating' ||
-    buttonState === 'in_collection_active';
+    buttonState === 'loading' || buttonState === 'adding' || buttonState === 'activating';
 
   const buttonLabel =
     buttonState === 'loading'

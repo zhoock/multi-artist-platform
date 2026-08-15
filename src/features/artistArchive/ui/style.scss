@@ -64,15 +64,8 @@
     &--in_archive {
       border-color: rgb(var(--dark-greenish-yellow-rgb, 153 130 56) / 55%);
       color: rgb(var(--dark-greenish-yellow-rgb, 153 130 56) / 85%);
-
-      &[disabled] {
-        cursor: default;
-        opacity: 0.92;
-        background: transparent;
-
-        // Keep hit-testing so hero's cursor:pointer does not show through.
-        pointer-events: auto;
-      }
+      opacity: 0.92;
+      cursor: pointer;
     }
 
     &--in_collection_inactive,

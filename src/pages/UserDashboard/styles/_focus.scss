@@ -6,6 +6,16 @@ dialog {
     --dashboard-focus-ring-width: 2px;
     --dashboard-focus-ring-offset: 2px;
 
+    :where(a, button, [role='button'], [tabindex]:not([tabindex='-1'])):focus:not(
+        :focus-visible,
+        .dashboard-form-input,
+        .dashboard-form-textarea,
+        .dashboard-form-select__trigger,
+        .dashboard-form-select__option
+      ) {
+      outline: none;
+    }
+
     :where(a, button, [role='button'], [tabindex]:not([tabindex='-1'])):focus-visible:not(
         .dashboard-form-input,
         .dashboard-form-textarea,
