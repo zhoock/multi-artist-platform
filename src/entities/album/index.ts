@@ -1,4 +1,5 @@
 export { default as AlbumCover } from './ui/AlbumCover';
+export { default as CatalogAlbumCover } from './ui/CatalogAlbumCover';
 export { AlbumCoverImage, type AlbumCoverImageProps } from './ui/AlbumCoverImage';
 export { default as WrapperAlbumCover } from './ui/WrapperAlbumCover';
 export { default as AlbumDetails } from './ui/AlbumDetails/AlbumDetails';
