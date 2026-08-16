@@ -6,6 +6,7 @@ import {
   createSupabaseClient,
   createSupabaseAdminClient,
   STORAGE_BUCKET_NAME,
+  buildStoragePublicObjectUrl,
 } from '@config/supabase';
 import { getUserUserId, type ImageCategory } from '@config/user';
 import { sanitizeFileName } from '@shared/lib/sanitizeFileName';
@@ -244,14 +245,15 @@ export async function uploadFile(options: UploadFileOptions): Promise<string | n
       finalUrl = buildProxyImageUrlFromStoragePath(finalUrl);
     }
 
-    // Обложка статьи: storagePath users/.../articles/... → proxy (как hero)
+    // Article cover upload returns storagePath — map to direct CDN (display-only, no proxy).
     if (
       category === 'articles' &&
       typeof finalUrl === 'string' &&
       finalUrl.startsWith('users/') &&
-      finalUrl.includes('/articles/')
+      finalUrl.includes('/articles/') &&
+      finalUrl.includes('article_cover_')
     ) {
-      finalUrl = buildProxyImageUrlFromStoragePath(finalUrl);
+      finalUrl = buildStoragePublicObjectUrl(finalUrl) ?? finalUrl;
     }
 
     // Аватар: storagePath `users/.../profile/...` → proxy (все варианты имён, не только `profile-NNN`)
