@@ -4,7 +4,11 @@ import { memo, useMemo } from 'react';
 import { getImageUrl } from '@shared/api/albums';
 import type { CoverProps } from 'models';
 import { useImageColor } from '@shared/lib/hooks/useImageColor';
-import { getAlbumStorageBaseName } from '@shared/lib/albumCoverUrl';
+import {
+  getAlbumCoverCacheVersion,
+  getAlbumStorageBaseName,
+  pickAlbumCoverStorageWidth,
+} from '@shared/lib/albumCoverUrl';
 
 type ImageFormat = 'webp' | 'jpg';
 type Density = 1 | 2 | 3;
@@ -26,10 +30,6 @@ const DENSITY_SUFFIX: Record<ImageFormat, Record<Density, (base: number) => stri
   },
 };
 
-// Supabase деривативы фиксированы (по твоему описанию)
-const SUPA_WEBP_SIZES = [448, 896, 1344] as const;
-const SUPA_JPG_SIZES = [448, 896] as const;
-
 const formatDescriptor = (density: Density) => `${density}x`;
 
 function withCacheBust(url: string, cacheBust?: string) {
@@ -44,24 +44,9 @@ function isSupabaseStorageEnabled() {
   return true;
 }
 
-/**
- * Берём "не меньше цели", чтобы не апскейлить (лучше чуть больше, чем меньше).
- * Если всё меньше — берём максимальный.
- */
-function pickCeilOrMax(target: number, candidates: readonly number[]) {
-  for (const c of candidates) {
-    if (c >= target) return c;
-  }
-  return candidates[candidates.length - 1];
-}
-
 function supaSuffix(format: ImageFormat, targetPx: number): string | null {
-  if (format === 'webp') {
-    const px = pickCeilOrMax(targetPx, SUPA_WEBP_SIZES);
-    return `-${px}.webp`;
-  }
-  const px = pickCeilOrMax(targetPx, SUPA_JPG_SIZES);
-  return `-${px}.jpg`;
+  const px = pickAlbumCoverStorageWidth(targetPx, format);
+  return format === 'webp' ? `-${px}.webp` : `-${px}.jpg`;
 }
 
 const buildSrcSet = ({
@@ -86,7 +71,7 @@ const buildSrcSet = ({
       let suffix: string | null = null;
 
       if (useSupabaseStorage) {
-        // Supabase деривативы -448/-896/-1344 (webp) и -448/-896 (jpg)
+        // Supabase деривативы -128/-448/-896/-1344 (webp) и -128/-448/-896 (jpg)
         suffix = supaSuffix(format, baseSize * density);
       } else {
         suffix = DENSITY_SUFFIX[format][density]?.(baseSize) ?? null;
@@ -133,10 +118,8 @@ function AlbumCover({
     return Array.from(unique).sort((a, b) => a - b) as Density[];
   }, [densities]);
 
-  /**
-   * cacheBust уникальный на монтирование + пересчитывается при смене обложки
-   */
-  const cacheBust = useMemo(() => `${Date.now()}`, [baseName]);
+  /** Стабильный ключ: меняется только при смене cover identity (новый baseName после commit). */
+  const cacheBust = useMemo(() => getAlbumCoverCacheVersion(img), [img]);
 
   const webpSrcSet = useMemo(
     () =>

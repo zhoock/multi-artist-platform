@@ -205,7 +205,7 @@ function PaymentSuccessPurchasedAlbum({
             userId={album.userId ?? undefined}
             fullName={album.title}
             size={72}
-            densities={[1, 2]}
+            densities={[1]}
             sizes="72px"
           />
         </div>

@@ -9,6 +9,30 @@ const STORAGE_VARIANT_SUFFIX_RE = /(?:-64|-128|-448|-896|-1344)$/;
 /** Админ-превью в списке/миксер: тот размер, что в {@link generateImageVariants}. */
 const ADMIN_THUMB = '-128';
 
+/** Ширины деривативов в Storage для публичного {@link AlbumCover} (без -64 — только admin fallback). */
+export const ALBUM_COVER_PUBLIC_WEBP_WIDTHS = [128, 448, 896, 1344] as const;
+export const ALBUM_COVER_PUBLIC_JPG_WIDTHS = [128, 448, 896] as const;
+
+/**
+ * Выбирает ближайший дериватив ≥ targetPx (без апскейла). Совпадает с логикой `AlbumCover` srcset.
+ */
+export function pickAlbumCoverStorageWidth(targetPx: number, format: 'webp' | 'jpg'): number {
+  const candidates =
+    format === 'webp' ? ALBUM_COVER_PUBLIC_WEBP_WIDTHS : ALBUM_COVER_PUBLIC_JPG_WIDTHS;
+  for (const width of candidates) {
+    if (width >= targetPx) return width;
+  }
+  return candidates[candidates.length - 1];
+}
+
+/**
+ * Стабильный cache-bust key для URL обложки.
+ * При замене обложки commit создаёт новый `album_cover_{uuid}_…` baseName — ключ меняется автоматически.
+ */
+export function getAlbumCoverCacheVersion(cover: string): string {
+  return getAlbumStorageBaseName(cover);
+}
+
 /**
  * Базовое имя файла обложки в `users/{userId}/albums/` без расширения и без суффикса размера.
  * Нужно, если в БД оказалось полное имя варианта (`…-448.webp`) или лишний `-128` в конце.

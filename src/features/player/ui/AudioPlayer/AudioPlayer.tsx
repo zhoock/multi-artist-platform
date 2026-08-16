@@ -693,19 +693,20 @@ export default function AudioPlayer({
    * Это предотвращает ненужные ре-рендеры когда другие части компонента обновляются.
    * Обложка пересоздаётся только если изменяются её пропсы (img, fullName, albumId, onColorsExtracted).
    *
-   * ВАЖНО: key используется только для идентификации альбома, не для пересоздания при showLyrics.
+   * Обложка пересоздаётся при смене альбома или режима lyrics (другой srcset).
    */
   const memoizedAlbumCover = useMemo(
     () => (
       <AlbumCover
-        key={`album-cover-${albumId}`}
+        key={`album-cover-${albumId}-${showLyrics ? 'lyrics' : 'full'}`}
         img={coverKey}
         userId={albumMeta.userId ?? undefined}
         fullName={coverFullName}
         onColorsExtracted={handleColorsExtracted}
+        {...(showLyrics ? { size: 150, densities: [1, 2] as const, sizes: '150px' } : undefined)}
       />
     ),
-    [albumId, coverKey, albumMeta.userId, coverFullName, handleColorsExtracted]
+    [albumId, coverKey, albumMeta.userId, coverFullName, handleColorsExtracted, showLyrics]
   );
 
   /**

@@ -303,15 +303,15 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
       // Определяем Content-Type
       const contentType = finalFileName.endsWith('.webp') ? 'image/webp' : 'image/jpeg';
 
-      // Загружаем в финальный путь
-      // cacheControl: '0' - отключаем кэширование на уровне CDN/Supabase
-      // Cache-bust на клиенте (через ?v=baseName) обеспечит обновление изображений
+      // Имена файлов содержат UUID (`album_cover_{uuid}_…`) — при замене обложки путь новый.
+      // Длинный max-age безопасен: старые объекты удаляются commit-cover, клиент bust'ит по baseName.
+      const COVER_VARIANT_CACHE_MAX_AGE_SEC = 31_536_000; // 1 year
       const { error: uploadError } = await supabase.storage
         .from(STORAGE_BUCKET_NAME)
         .upload(finalPath, fileBuffer, {
           contentType,
           upsert: true,
-          cacheControl: '0', // Отключаем кэширование, так как используем cache-bust на клиенте
+          cacheControl: String(COVER_VARIANT_CACHE_MAX_AGE_SEC),
         });
 
       if (uploadError) {
