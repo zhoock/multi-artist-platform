@@ -32,5 +32,5 @@ export default function CatalogAlbumCover(props: CatalogAlbumCoverProps) {
 
   const coverProps = getCatalogAlbumCoverProps(isGridLayout);
 
-  return <AlbumCover {...props} {...coverProps} />;
+  return <AlbumCover {...props} {...coverProps} imageSource="cdn" />;
 }

@@ -201,6 +201,8 @@ export interface CoverProps {
   size?: number;
   densities?: Array<1 | 2 | 3>;
   sizes?: string;
+  /** Default `proxy` — direct Supabase CDN is opt-in for display-only contexts. */
+  imageSource?: 'proxy' | 'cdn';
 }
 
 export interface String {

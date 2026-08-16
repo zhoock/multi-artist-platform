@@ -5,6 +5,7 @@ import { getImageUrl } from '@shared/api/albums';
 import type { CoverProps } from 'models';
 import { useImageColor } from '@shared/lib/hooks/useImageColor';
 import { getAlbumStorageBaseName } from '@shared/lib/albumCoverUrl';
+import { getAlbumCoverPublicUrl } from '@shared/lib/albumCoverPublicUrl';
 
 type ImageFormat = 'webp' | 'jpg';
 type Density = 1 | 2 | 3;
@@ -64,6 +65,19 @@ function supaSuffix(format: ImageFormat, targetPx: number): string | null {
   return `-${px}.jpg`;
 }
 
+function resolveAlbumCoverImageUrl(
+  img: string,
+  suffix: string,
+  userId: string | undefined,
+  imageSource: 'proxy' | 'cdn'
+): string | null {
+  if (imageSource === 'cdn') {
+    return userId ? getAlbumCoverPublicUrl(userId, img, suffix) : null;
+  }
+
+  return getImageUrl(img, suffix, userId ? { userId, category: 'albums' } : undefined);
+}
+
 const buildSrcSet = ({
   img,
   userId,
@@ -71,6 +85,7 @@ const buildSrcSet = ({
   format,
   densities,
   cacheBust,
+  imageSource,
 }: {
   img: string;
   userId?: string;
@@ -78,6 +93,7 @@ const buildSrcSet = ({
   format: ImageFormat;
   densities: Density[];
   cacheBust?: string;
+  imageSource: 'proxy' | 'cdn';
 }) => {
   const useSupabaseStorage = isSupabaseStorageEnabled();
 
@@ -94,7 +110,7 @@ const buildSrcSet = ({
 
       if (!suffix) return null;
 
-      const url = getImageUrl(img, suffix, userId ? { userId, category: 'albums' } : undefined);
+      const url = resolveAlbumCoverImageUrl(img, suffix, userId, imageSource);
       if (url == null) {
         console.error('[BUG] AlbumCover buildSrcSet: getImageUrl returned null', {
           img,
@@ -120,6 +136,7 @@ function AlbumCover({
   densities,
   sizes,
   onColorsExtracted,
+  imageSource = 'proxy',
 }: CoverProps & {
   onColorsExtracted?: (colors: { dominant: string; palette: string[] }) => void;
 }) {
@@ -147,8 +164,9 @@ function AlbumCover({
         format: 'webp',
         densities: densitySteps,
         cacheBust,
+        imageSource,
       }),
-    [baseName, userId, effectiveBaseSize, densitySteps, cacheBust]
+    [baseName, userId, effectiveBaseSize, densitySteps, cacheBust, imageSource]
   );
 
   const jpegSrcSet = useMemo(
@@ -160,8 +178,9 @@ function AlbumCover({
         format: 'jpg',
         densities: densitySteps,
         cacheBust,
+        imageSource,
       }),
-    [baseName, userId, effectiveBaseSize, densitySteps, cacheBust]
+    [baseName, userId, effectiveBaseSize, densitySteps, cacheBust, imageSource]
   );
 
   const fallbackSrc = useMemo(() => {
@@ -169,11 +188,7 @@ function AlbumCover({
 
     if (useSupabaseStorage) {
       const suffix = supaSuffix('webp', effectiveBaseSize) ?? '-448.webp';
-      const url = getImageUrl(
-        baseName,
-        suffix,
-        userId ? { userId, category: 'albums' } : undefined
-      );
+      const url = resolveAlbumCoverImageUrl(baseName, suffix, userId, imageSource);
       if (url == null) {
         console.error('[BUG] AlbumCover fallbackSrc: getImageUrl returned null', {
           img: baseName,
@@ -197,7 +212,7 @@ function AlbumCover({
     }
 
     return withCacheBust(baseUrl, cacheBust);
-  }, [baseName, userId, effectiveBaseSize, cacheBust]);
+  }, [baseName, userId, effectiveBaseSize, cacheBust, imageSource]);
 
   const resolvedSizes =
     sizes ??
@@ -234,6 +249,7 @@ export default memo(AlbumCover, (prevProps, nextProps) => {
     prevProps.size === nextProps.size &&
     prevProps.densities === nextProps.densities &&
     prevProps.sizes === nextProps.sizes &&
+    prevProps.imageSource === nextProps.imageSource &&
     callbacksEqual
   );
 });

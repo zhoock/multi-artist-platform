@@ -412,6 +412,7 @@ export function AlbumCheckoutModal({ isOpen, album, onClose }: AlbumCheckoutModa
                   size={128}
                   densities={[1, 2]}
                   sizes="128px"
+                  imageSource="cdn"
                 />
               ) : (
                 <div className="album-checkout-modal__hero-cover-placeholder" aria-hidden="true" />
