@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect } from 'react';
 import { useEffectiveSearchParams } from '@shared/lib/hooks/useEffectiveLocation';
-import { WrapperAlbumCover, AlbumCover } from '@entities/album';
+import { WrapperAlbumCover, CatalogAlbumCover } from '@entities/album';
 import { ErrorI18n } from '@shared/ui/error-message';
 import { AlbumsSkeleton } from '@shared/ui/skeleton/AlbumsSkeleton';
 import { ArtistSectionHeading } from '@shared/ui/artistSectionHeading';
@@ -194,7 +194,7 @@ export function AlbumsSection({ isOwner = false }: { isOwner?: boolean }) {
                   album={album.title}
                   date={album.releaseDate}
                 >
-                  <AlbumCover
+                  <CatalogAlbumCover
                     img={album.cover || ''}
                     userId={album.userId}
                     fullName={formatAlbumDisplayFullName(siteArtistName, album.title)}

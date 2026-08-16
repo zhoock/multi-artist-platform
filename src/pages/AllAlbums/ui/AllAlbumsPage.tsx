@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState, useRef } from 'react';
 import { Helmet } from 'react-helmet-async';
 import {
   WrapperAlbumCover,
-  AlbumCover,
+  CatalogAlbumCover,
   fetchArtistAlbumCatalog,
   selectArtistAlbumCatalogStatus,
   selectArtistAlbumCatalogCacheIsStale,
@@ -185,7 +185,7 @@ export function AllAlbumsPage() {
                   album={album.title}
                   date={album.releaseDate}
                 >
-                  <AlbumCover
+                  <CatalogAlbumCover
                     img={album.cover || ''}
                     userId={album.userId}
                     fullName={formatAlbumDisplayFullName(siteArtistName, album.title)}
