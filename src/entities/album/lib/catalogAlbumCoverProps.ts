@@ -1,5 +1,14 @@
 import type { CoverProps } from 'models';
-import { pickAlbumCoverStorageWidth } from '@shared/lib/albumCoverUrl';
+
+/** Matches Supabase webp variants (see AlbumCover / commit-cover pipeline). */
+const SUPA_WEBP_SIZES = [448, 896, 1344] as const;
+
+function pickCeilOrMax(target: number, candidates: readonly number[]) {
+  for (const c of candidates) {
+    if (c >= target) return c;
+  }
+  return candidates[candidates.length - 1];
+}
 
 /** Matches `@include breakpoint(tablet)` in album list grid (`width >= 768px`). */
 export const CATALOG_COVER_TABLET_MQ = '(min-width: 768px)';
@@ -40,5 +49,5 @@ export function pickCatalogWebpVariantForDpr(dpr: number, isGridLayout: boolean)
     return Math.max(best, candidate) as 1 | 2 | 3;
   }, densitySteps[0]);
 
-  return pickAlbumCoverStorageWidth(size * selectedDensity, 'webp');
+  return pickCeilOrMax(size * selectedDensity, SUPA_WEBP_SIZES);
 }
