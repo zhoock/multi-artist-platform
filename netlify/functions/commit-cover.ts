@@ -305,13 +305,13 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
 
       // Имена файлов содержат UUID (`album_cover_{uuid}_…`) — при замене обложки путь новый.
       // Длинный max-age безопасен: старые объекты удаляются commit-cover, клиент bust'ит по baseName.
-      const COVER_VARIANT_CACHE_MAX_AGE_SEC = 31_536_000; // 1 year
+      const COVER_VARIANT_CACHE_CONTROL = '31536000, immutable'; // 1 year (Supabase adds max-age= prefix)
       const { error: uploadError } = await supabase.storage
         .from(STORAGE_BUCKET_NAME)
         .upload(finalPath, fileBuffer, {
           contentType,
           upsert: true,
-          cacheControl: String(COVER_VARIANT_CACHE_MAX_AGE_SEC),
+          cacheControl: COVER_VARIANT_CACHE_CONTROL,
         });
 
       if (uploadError) {
