@@ -88,6 +88,10 @@ function ProfileAvatarMenuComponent({
   const handleLogout = useCallback(() => {
     updateOpen(false);
     clearAuth();
+    if (typeof window !== 'undefined') {
+      window.location.replace(buildLocalizedPublicPath(lang, '/'));
+      return;
+    }
     navigate(buildLocalizedPublicPath(lang, '/'));
   }, [lang, navigate, updateOpen]);
 

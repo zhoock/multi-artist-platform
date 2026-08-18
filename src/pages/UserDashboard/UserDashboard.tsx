@@ -65,10 +65,8 @@ import {
   isSessionExpiredHandlingPending,
 } from '@shared/lib/sessionExpired';
 import { openOwnArtistPage } from '@shared/lib/ownArtistPage';
-import {
-  artistHasPublicPageContent,
-  isArticlePublicOnArtistPage,
-} from '@shared/lib/artistPageContent';
+import { isArticlePublicOnArtistPage } from '@shared/lib/artistPageContent';
+import { buildLocalizedPublicPath } from '@shared/lib/i18n/routeLang/buildLocalizedPublicPath';
 import { platformDisplayName } from '@shared/constants/platformBranding';
 import { useOwnArtistPageSummary } from '@shared/lib/hooks/useOwnArtistPageSummary';
 import { useAuthSessionUser } from '@shared/lib/hooks/useAuthSessionUser';
@@ -400,16 +398,9 @@ function UserDashboard() {
   const articlesStatus = useAppSelector(selectDashboardArticlesStatus);
   const articlesError = useAppSelector(selectDashboardArticlesError);
   const articlesFromStore = useAppSelector((state) => selectDashboardArticlesDataResolved(state));
-  const { profileIsEmpty } = useOwnArtistPageSummary();
-  const isArtistPagePublic = useMemo(
-    () =>
-      artistHasPublicPageContent({
-        albums: albumsFromStore,
-        articles: articlesFromStore,
-        profileHasPublicBody: !profileIsEmpty,
-      }),
-    [albumsFromStore, articlesFromStore, profileIsEmpty]
-  );
+  const { hasPublicPageContent: isArtistPagePublic, isLoading: isArtistPageSummaryLoading } =
+    useOwnArtistPageSummary();
+  const isArtistPageVisibilityKnown = !isArtistPageSummaryLoading;
   const sessionUser = useAuthSessionUser();
   const lastSessionUserRef = useRef(sessionUser);
   if (sessionUser) {
@@ -723,8 +714,12 @@ function UserDashboard() {
 
   const handleLogout = useCallback(() => {
     clearAuth();
+    if (typeof window !== 'undefined') {
+      window.location.replace(buildLocalizedPublicPath(lang, '/'));
+      return;
+    }
     navigate({ pathname: '/', search: '' }, { replace: true });
-  }, [navigate]);
+  }, [lang, navigate]);
 
   const handleAccountDeleted = useCallback(() => {
     setIsDeleteAccountModalOpen(false);
@@ -2869,6 +2864,7 @@ function UserDashboard() {
                                   emailVerified={emailVerified}
                                   isListener={isListener}
                                   isArtistPagePublic={isArtistPagePublic}
+                                  isArtistPageVisibilityKnown={isArtistPageVisibilityKnown}
                                   profilePublicSlug={profilePublicSlug ?? ''}
                                   onOpenArtistPage={() => {
                                     if (!profilePublicSlug) return;
