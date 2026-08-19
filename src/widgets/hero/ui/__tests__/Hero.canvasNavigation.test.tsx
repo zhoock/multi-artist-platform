@@ -20,7 +20,6 @@ jest.mock('react-router-dom', () => {
 jest.mock('@shared/lib/hooks/useArtistPageBuilder', () => ({
   useArtistPageBuilder: jest.fn(() => ({
     builderVisibility: { mode: 'hidden', canShowBlocks: false },
-    skeletonVariant: 'public' as const,
     isLoading: false,
     isOwner: false,
     ownerResolved: true,

@@ -48,25 +48,10 @@
 
   &__hero-headline {
     display: grid;
+    grid-template-areas: 'title';
     grid-template-columns: minmax(0, 1fr);
     align-items: end;
     gap: $ms-01;
-  }
-
-  &__hero--public &__hero-headline {
-    grid-template-areas: 'title';
-  }
-
-  &__hero--builder &__hero-headline {
-    grid-template-areas:
-      'title'
-      'cover';
-
-    @include breakpoint(tablet) {
-      grid-template-areas: 'title cover';
-      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-      gap: $ms-0 $ms-01;
-    }
   }
 
   &__hero-title {
@@ -76,49 +61,6 @@
     block-size: calc(clamp(1.618rem, 1.1474rem + 2.3529vw, 2.618rem) * 1.15);
     margin: 0;
     border-radius: var(--ms-01);
-  }
-
-  /**
-   * Outer card rectangles only — sizes mirror builder blocks
-   * (section / bar / hero cover), without internal icon/text layout.
-   */
-  &__card {
-    box-sizing: border-box;
-    display: block;
-    inline-size: 100%;
-    border-radius: var(--ms-01);
-
-    &--hero-cover {
-      grid-area: cover;
-      align-self: stretch;
-      min-block-size: 8rem;
-      block-size: 100%;
-    }
-
-    /* ~ icon 34 + title + 2 desc lines + gaps + section padding ms-3*2 */
-    &--section {
-      min-block-size: calc(
-        34px + (1.125rem * 1.35) + (0.9375rem * 1.55 * 2) + var(--ms-02) * 3 + var(--ms-3) * 2
-      );
-    }
-
-    /* ~ icon 24 + bar padding ms-01*2, single title line */
-    &--bar {
-      min-block-size: calc(24px + var(--ms-01) * 2 + 0.5rem);
-    }
-  }
-
-  &__payment-bar {
-    background: linear-gradient(180deg, rgb(0 0 0 / 92%) 0%, rgb(8 10 18 / 96%) 100%);
-    border-block-end: 1px solid rgb(250 171 31 / 18%);
-    padding-block: $ms-1;
-  }
-
-  &__payment-bar-inner {
-    inline-size: min(100vi, 1000px);
-    margin: 0 auto;
-    padding-inline: $ms-1;
-    box-sizing: border-box;
   }
 
   &__section-heading {
@@ -150,10 +92,6 @@
 
   &__about {
     padding-block-end: $ms-1;
-  }
-
-  &__footer-social {
-    margin-block-end: var(--ms-1);
   }
 
   .albums__list {

@@ -17,7 +17,6 @@ jest.mock('@entities/user/lib', () => ({
 jest.mock('@shared/lib/hooks/useArtistPageBuilder', () => ({
   useArtistPageBuilder: jest.fn(() => ({
     builderVisibility: { mode: 'hidden', canShowBlocks: false },
-    skeletonVariant: 'public' as const,
     showArtistPageSkeleton: false,
   })),
 }));

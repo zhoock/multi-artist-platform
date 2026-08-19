@@ -45,7 +45,6 @@ jest.mock('@shared/lib/hooks/useArtistPageBuilder', () => ({
     showNotFound: false,
     showVisitorUnderConstruction: false,
     showArtistPageSkeleton: false,
-    skeletonVariant: 'public' as const,
     builderVisibility: { canShowBlocks: false },
     hasPublicReleases: false,
   }),
