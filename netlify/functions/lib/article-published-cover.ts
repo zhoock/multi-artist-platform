@@ -9,7 +9,7 @@ export function normalizeArticleCoverKey(raw: string | null | undefined): string
   return typeof raw === 'string' ? raw.trim() : '';
 }
 
-/** Public/catalog responses: use published snapshot when draft changes are pending. */
+/** Public/catalog responses: published snapshot only — never fall back to draft img. */
 export function resolvePublicArticleImg(
   article: ArticleCoverRow,
   usePublishedSnapshot: boolean
@@ -22,11 +22,11 @@ export function resolvePublicArticleImg(
     return live;
   }
 
-  if (!isDraft) {
-    return published || live;
+  if (isDraft) {
+    return published;
   }
 
-  return live;
+  return published;
 }
 
 /** Do not delete storage objects that are still referenced by the public snapshot. */

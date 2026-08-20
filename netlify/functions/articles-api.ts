@@ -1011,7 +1011,7 @@ export const handler: Handler = async (
           return createErrorResponse(400, 'No draft changes to discard for this article');
         }
 
-        const restoredPublishedImg = shared.published_img ?? shared.img;
+        const restoredPublishedImg = shared.published_img;
         const draftImg = shared.img;
 
         await query(
