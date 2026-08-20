@@ -30,6 +30,7 @@ import { PublicArtistResolverError, resolvePublicArtistUserId } from './lib/publ
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { extractBaseName } from './lib/image-processor';
 import { createSupabaseAdminClient, STORAGE_BUCKET_NAME } from './lib/supabase';
+import { removeArticleCoverVariantsByImgKey } from './lib/article-cover-storage';
 import { sanitizeUploadFileName } from './lib/sanitizeFileName';
 import { formatPostgresDateOnly } from '../../src/shared/lib/dateCalendar';
 import {
@@ -1060,15 +1061,7 @@ export const handler: Handler = async (
           const supabaseAdmin = createSupabaseAdminClient();
           if (supabaseAdmin) {
             try {
-              const pathsToRemove = storagePathsToRemoveForArticleCoverImg(prev, userId);
-              if (pathsToRemove.length > 0) {
-                await removeStorageObjectsExact(supabaseAdmin, pathsToRemove);
-              } else {
-                console.warn(
-                  '[articles-api PUT] Could not resolve storage path for previous cover:',
-                  prev
-                );
-              }
+              await removeArticleCoverVariantsByImgKey(supabaseAdmin, userId, prev);
             } catch (cleanupErr) {
               console.error(
                 '[articles-api PUT] Previous cover image storage cleanup failed:',

@@ -22,7 +22,6 @@ jest.mock('@shared/lib/hooks/useArtistPageBuilder', () => ({
     builderVisibility: false,
     monetizationEnabled: false,
     showArtistPageSkeleton: false,
-    skeletonVariant: 'visitor' as const,
   }),
 }));
 

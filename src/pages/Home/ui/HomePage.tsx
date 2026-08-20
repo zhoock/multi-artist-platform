@@ -387,7 +387,7 @@ export function HomePage() {
       return (
         <>
           {artistSeoHelmet}
-          <ArtistPageSkeletonMain variant={artistPageAccess.skeletonVariant} />
+          <ArtistPageSkeletonMain />
         </>
       );
     }

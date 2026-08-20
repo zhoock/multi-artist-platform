@@ -1,7 +1,4 @@
-import type { ImageCategory } from '@config/user';
-import { getImageUrl } from '@shared/api/albums';
-
-const ALBUMS: ImageCategory = 'albums';
+import { getAlbumCoverPublicUrl } from '@shared/lib/albumCoverPublicUrl';
 
 /** Суффиксы вариантов в Storage (совпадают с commit-cover / image-processor). */
 const STORAGE_VARIANT_SUFFIX_RE = /(?:-64|-128|-448|-896|-1344)$/;
@@ -68,9 +65,9 @@ export function getAlbumCoverAdminVariantUrls(
   const base = getAlbumStorageBaseName(cover);
 
   return {
-    webp: getImageUrl(`${base}${ADMIN_THUMB}.webp`, '', { userId, category: ALBUMS }),
-    jpg: getImageUrl(`${base}${ADMIN_THUMB}.jpg`, '', { userId, category: ALBUMS }),
-    pipelineJpg64: getImageUrl(`${base}-64.jpg`, '', { userId, category: ALBUMS }),
-    pipelineJpg448: getImageUrl(`${base}-448.jpg`, '', { userId, category: ALBUMS }),
+    webp: getAlbumCoverPublicUrl(userId, `${base}${ADMIN_THUMB}.webp`),
+    jpg: getAlbumCoverPublicUrl(userId, `${base}${ADMIN_THUMB}.jpg`),
+    pipelineJpg64: getAlbumCoverPublicUrl(userId, `${base}-64.jpg`),
+    pipelineJpg448: getAlbumCoverPublicUrl(userId, `${base}-448.jpg`),
   };
 }

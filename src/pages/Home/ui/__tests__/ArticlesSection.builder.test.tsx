@@ -33,7 +33,6 @@ const baseAccess = {
 jest.mock('@shared/lib/hooks/useArtistPageBuilder', () => ({
   useArtistPageBuilder: jest.fn(() => ({
     builderVisibility: { mode: 'hidden', canShowBlocks: false },
-    skeletonVariant: 'public' as const,
     ...baseAccess,
   })),
 }));
@@ -44,7 +43,6 @@ describe('ArticlesSection — builder visibility', () => {
   beforeEach(() => {
     jest.mocked(useArtistPageBuilder).mockReturnValue({
       builderVisibility: { mode: 'hidden', canShowBlocks: false },
-      skeletonVariant: 'public',
       ...baseAccess,
     });
   });
@@ -82,7 +80,6 @@ describe('ArticlesSection — builder visibility', () => {
   test('владелец видит builder при пустых статьях', () => {
     jest.mocked(useArtistPageBuilder).mockReturnValue({
       builderVisibility: { mode: 'active', canShowBlocks: true },
-      skeletonVariant: 'builder',
       ...baseAccess,
       isOwner: true,
       hasPublicReleases: true,

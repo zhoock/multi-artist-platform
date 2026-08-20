@@ -33,7 +33,6 @@ const baseAccess = {
 jest.mock('@shared/lib/hooks/useArtistPageBuilder', () => ({
   useArtistPageBuilder: jest.fn(() => ({
     builderVisibility: { mode: 'active', canShowBlocks: true },
-    skeletonVariant: 'builder' as const,
     ...baseAccess,
   })),
 }));
@@ -56,7 +55,6 @@ describe('ArtistPageBuilderPaymentBar', () => {
   beforeEach(() => {
     jest.mocked(useArtistPageBuilder).mockReturnValue({
       builderVisibility: { mode: 'active', canShowBlocks: true },
-      skeletonVariant: 'builder',
       ...baseAccess,
     });
   });
@@ -64,7 +62,6 @@ describe('ArtistPageBuilderPaymentBar', () => {
   test('does not show connect CTA while payment status is unresolved', () => {
     jest.mocked(useArtistPageBuilder).mockReturnValue({
       builderVisibility: { mode: 'active', canShowBlocks: true },
-      skeletonVariant: 'builder',
       ...baseAccess,
       paymentSurfaceReady: false,
       monetizationEnabled: false,
@@ -82,7 +79,6 @@ describe('ArtistPageBuilderPaymentBar', () => {
   test('does not show connect CTA when monetization is already enabled', () => {
     jest.mocked(useArtistPageBuilder).mockReturnValue({
       builderVisibility: { mode: 'active', canShowBlocks: true },
-      skeletonVariant: 'builder',
       ...baseAccess,
       paymentSurfaceReady: true,
       monetizationEnabled: true,

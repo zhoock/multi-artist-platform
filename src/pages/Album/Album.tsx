@@ -274,6 +274,7 @@ export default function Album() {
             img={album.cover || ''}
             userId={album.userId}
             fullName={formatAlbumDisplayFullName(siteArtistName, album.title)}
+            imageSource="cdn"
           />
           <Share url={canonical} />
         </div>

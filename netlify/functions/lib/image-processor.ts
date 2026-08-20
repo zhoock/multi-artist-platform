@@ -122,45 +122,52 @@ export async function generateHeroImageVariants(
   return results;
 }
 
+/** Canonical 3:2 article cover height for a given variant width. */
+export function articleCoverHeightForWidth(width: number): number {
+  return Math.round((width * 2) / 3);
+}
+
+/** Article cover variant widths (canonical 3:2 crop at generation time). */
+export const ARTICLE_COVER_VARIANT_WIDTHS = [128, 448, 896, 1344] as const;
+
+export const ARTICLE_COVER_CACHE_CONTROL = 'max-age=31536000, immutable';
+
 /**
- * Обложки статей (article_cover_*): публичный список/страница — 896px, админ-превью — 320px.
- * WebP + JPEG для совместимости и ретины.
+ * Обложки статей (article_cover_*): canonical 3:2 crop, variants -128 / -448 / -896 / -1344.
+ * WebP + JPEG для совместимости.
  */
 export async function generateArticleCoverVariants(
   imageBuffer: Buffer,
   baseName: string
 ): Promise<Record<string, Buffer>> {
-  const variants: ImageVariant[] = [
-    { suffix: '-896.webp', width: 896, format: 'webp', quality: 85 },
-    { suffix: '-896.jpg', width: 896, format: 'jpg', quality: 85 },
-    { suffix: '-320.webp', width: 320, format: 'webp', quality: 85 },
-    { suffix: '-320.jpg', width: 320, format: 'jpg', quality: 85 },
+  const widths = ARTICLE_COVER_VARIANT_WIDTHS;
+  const formats: Array<{ format: 'webp' | 'jpg'; quality: number }> = [
+    { format: 'webp', quality: 85 },
+    { format: 'jpg', quality: 85 },
   ];
 
   const results: Record<string, Buffer> = {};
 
-  const metadata = await sharp(imageBuffer).metadata();
-  const originalWidth = metadata.width || 1;
-  const originalHeight = metadata.height || 1;
-  const aspectRatio = originalWidth / originalHeight;
+  for (const width of widths) {
+    const height = articleCoverHeightForWidth(width);
 
-  for (const variant of variants) {
-    const height = variant.height || Math.round(variant.width / aspectRatio);
+    for (const { format, quality } of formats) {
+      const suffix = `-${width}.${format === 'jpg' ? 'jpg' : 'webp'}`;
 
-    let sharpInstance = sharp(imageBuffer).resize(variant.width, height, {
-      fit: 'cover',
-      position: 'center',
-    });
+      let sharpInstance = sharp(imageBuffer).resize(width, height, {
+        fit: 'cover',
+        position: 'center',
+      });
 
-    if (variant.format === 'webp') {
-      sharpInstance = sharpInstance.webp({ quality: variant.quality || 85 });
-    } else if (variant.format === 'jpg') {
-      sharpInstance = sharpInstance.jpeg({ quality: variant.quality || 85, mozjpeg: true });
+      if (format === 'webp') {
+        sharpInstance = sharpInstance.webp({ quality });
+      } else {
+        sharpInstance = sharpInstance.jpeg({ quality, mozjpeg: true });
+      }
+
+      const buffer = await sharpInstance.toBuffer();
+      results[`${baseName}${suffix}`] = buffer;
     }
-
-    const buffer = await sharpInstance.toBuffer();
-    const fileName = `${baseName}${variant.suffix}`;
-    results[fileName] = buffer;
   }
 
   return results;

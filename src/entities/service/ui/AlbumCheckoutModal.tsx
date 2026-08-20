@@ -409,9 +409,10 @@ export function AlbumCheckoutModal({ isOpen, album, onClose }: AlbumCheckoutModa
                   img={album.cover}
                   userId={album.userId}
                   fullName={formatAlbumDisplayFullName(siteArtistName, album.title)}
-                  size={96}
-                  densities={[1]}
-                  sizes="96px"
+                  size={128}
+                  densities={[1, 2]}
+                  sizes="128px"
+                  imageSource="cdn"
                 />
               ) : (
                 <div className="album-checkout-modal__hero-cover-placeholder" aria-hidden="true" />

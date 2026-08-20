@@ -1,7 +1,6 @@
 import { describe, expect, test } from '@jest/globals';
 import {
   resolveArtistPageBuilderVisibility,
-  resolveArtistPageSkeletonVariant,
   shouldShowArtistPageBuilderBlock,
   shouldShowArtistPageBuilderPaymentBlock,
 } from '../resolveArtistPageBuilderVisibility';
@@ -88,55 +87,5 @@ describe('shouldShowArtistPageBuilderPaymentBlock', () => {
         { resolved: true, monetizationEnabled: false }
       )
     ).toBe(false);
-  });
-});
-
-describe('resolveArtistPageSkeletonVariant', () => {
-  test('returns public for visitors', () => {
-    expect(
-      resolveArtistPageSkeletonVariant({
-        canShowBlocks: false,
-        isOwner: false,
-        ownerResolved: true,
-        ownerContentLoaded: true,
-        ownerStillNeedsOnboarding: false,
-      })
-    ).toBe('public');
-  });
-
-  test('returns builder when canShowBlocks is already true', () => {
-    expect(
-      resolveArtistPageSkeletonVariant({
-        canShowBlocks: true,
-        isOwner: true,
-        ownerResolved: true,
-        ownerContentLoaded: true,
-        ownerStillNeedsOnboarding: false,
-      })
-    ).toBe('builder');
-  });
-
-  test('returns builder while owner content hydrates after identity is known', () => {
-    expect(
-      resolveArtistPageSkeletonVariant({
-        canShowBlocks: false,
-        isOwner: true,
-        ownerResolved: true,
-        ownerContentLoaded: false,
-        ownerStillNeedsOnboarding: false,
-      })
-    ).toBe('builder');
-  });
-
-  test('returns public while onboarding is still required', () => {
-    expect(
-      resolveArtistPageSkeletonVariant({
-        canShowBlocks: false,
-        isOwner: true,
-        ownerResolved: true,
-        ownerContentLoaded: false,
-        ownerStillNeedsOnboarding: true,
-      })
-    ).toBe('public');
   });
 });

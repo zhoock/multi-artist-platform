@@ -66,6 +66,7 @@ export const MiniPlayer: React.FC<MiniPlayerProps> = ({
             size={64}
             densities={[1, 2]}
             sizes="(max-width: 767px) 40px, 64px"
+            imageSource="cdn"
           />
         ) : (
           <div className="mini-player__cover-placeholder" aria-hidden />

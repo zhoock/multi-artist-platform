@@ -207,6 +207,7 @@ function PaymentSuccessPurchasedAlbum({
             size={72}
             densities={[1]}
             sizes="72px"
+            imageSource="cdn"
           />
         </div>
       ) : (

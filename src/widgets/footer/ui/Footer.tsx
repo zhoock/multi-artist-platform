@@ -10,7 +10,6 @@ import { buildSupportMailtoHref } from '@shared/lib/supportEmail';
 import { shouldShowArtistPageBuilderBlock } from '@shared/lib/artistPageBuilder';
 import { useArtistPageBuilder } from '@shared/lib/hooks/useArtistPageBuilder';
 import { useEffectiveSearchParams } from '@shared/lib/hooks/useEffectiveLocation';
-import { ArtistPageSkeletonFooterSocial } from '@pages/Home/ui/ArtistPageSkeleton';
 import {
   ArtistPageBuilderBlock,
   artistPageBuilderBarIconProps,
@@ -35,9 +34,7 @@ function FooterComponent() {
   }, [searchParams, artistSlugFromStore]);
 
   const [socialItems, setSocialItems] = useState<Array<{ platform: string; href: string }>>([]);
-  const { builderVisibility, showArtistPageSkeleton, skeletonVariant } = useArtistPageBuilder(
-    artistSlug ?? ''
-  );
+  const { builderVisibility, showArtistPageSkeleton } = useArtistPageBuilder(artistSlug ?? '');
   const { openDashboard } = useArtistPageBuilderNav();
   const showSocialBuilder =
     Boolean(artistSlug) &&
@@ -68,9 +65,7 @@ function FooterComponent() {
   return (
     <footer role="contentinfo" className="footer extra-background">
       <div className="wrapper">
-        {showArtistPageSkeleton ? (
-          <ArtistPageSkeletonFooterSocial variant={skeletonVariant} />
-        ) : socialItems.length > 0 ? (
+        {showArtistPageSkeleton ? null : socialItems.length > 0 ? (
           <ul className="social-networks-list">
             {socialItems.map((item) => (
               <li className="social-networks-list__item" key={item.platform}>

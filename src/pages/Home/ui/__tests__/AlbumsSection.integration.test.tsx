@@ -8,7 +8,6 @@ import { createAlbumsTestState } from '@entities/album/model/__tests__/albumsTes
 jest.mock('@shared/lib/hooks/useArtistPageBuilder', () => ({
   useArtistPageBuilder: () => ({
     builderVisibility: { mode: 'hidden', canShowBlocks: false },
-    skeletonVariant: 'public' as const,
     hasPublicReleases: false,
     isOwner: false,
   }),

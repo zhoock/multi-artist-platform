@@ -58,6 +58,8 @@ type SettingsPageContentProps = {
   emailVerified: boolean;
   isListener: boolean;
   isArtistPagePublic: boolean;
+  /** False while artist page visibility is still loading — hide the private badge until known. */
+  isArtistPageVisibilityKnown: boolean;
   profilePublicSlug?: string | null;
   onOpenArtistPage: () => void;
   onDeleteAccount: () => void;
@@ -85,6 +87,7 @@ export function SettingsPageContent({
   emailVerified,
   isListener,
   isArtistPagePublic,
+  isArtistPageVisibilityKnown,
   profilePublicSlug,
   onOpenArtistPage,
   onDeleteAccount,
@@ -238,7 +241,7 @@ export function SettingsPageContent({
         <DashboardSection
           title={d?.publicProfilePreview?.sectionTitle ?? 'Profile'}
           headingExtra={
-            !isListener && !isArtistPagePublic ? (
+            !isListener && isArtistPageVisibilityKnown && !isArtistPagePublic ? (
               <StatusBadge variant="private">
                 {d?.profileHero?.pagePrivate ?? 'Page is private'}
               </StatusBadge>

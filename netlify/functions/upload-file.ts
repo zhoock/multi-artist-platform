@@ -35,6 +35,7 @@ import {
   generateArticleCoverVariants,
   generateProfileAvatarVariants,
   extractBaseName,
+  ARTICLE_COVER_CACHE_CONTROL,
 } from './lib/image-processor';
 import {
   AVATAR_MAX_FILE_SIZE_BYTES,
@@ -267,7 +268,7 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
       );
     }
 
-    // Обложка статьи (article_cover_*): варианты -896 / -320 (webp + jpg)
+    // Обложка статьи (article_cover_*): варианты -128 / -448 / -896 / -1344 (webp + jpg), canonical 3:2
     if (normalizedCategory === 'articles' && fileName.startsWith('article_cover_')) {
       const articleUserId = targetUserId;
       const baseName = extractBaseName(fileName);
@@ -327,7 +328,7 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
           .upload(variantPath, buffer, {
             contentType: variantContentType,
             upsert: true,
-            cacheControl: '3600',
+            cacheControl: ARTICLE_COVER_CACHE_CONTROL,
           });
 
         if (variantError) {
@@ -351,7 +352,7 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
         }
       }
 
-      const previewPath = getStoragePath(articleUserId, 'articles', `${baseName}-320.webp`);
+      const previewPath = getStoragePath(articleUserId, 'articles', `${baseName}-448.webp`);
 
       return createSuccessResponse(
         {
