@@ -12,7 +12,7 @@ export function AlbumSkeleton({ tracksCount = 3 }: AlbumSkeletonProps) {
           <div className="skeleton skeleton--context-nav" />
         </nav>
 
-        <div className="item album-skeleton__cover-block">
+        <div className="item item-type-a album-skeleton__cover-block">
           <div className="skeleton skeleton--album-cover" />
           <ul className="share-list" role="list" aria-label="Скелетон кнопок поделиться">
             <li className="share-list__item">
@@ -21,7 +21,7 @@ export function AlbumSkeleton({ tracksCount = 3 }: AlbumSkeletonProps) {
           </ul>
         </div>
 
-        <div className="item">
+        <div className="item item-type-a">
           <h2 className="album-title">
             <div className="skeleton skeleton--album-title" />
           </h2>

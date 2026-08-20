@@ -13,8 +13,15 @@
       grid-column: initial;
     }
 
+    // Cover + track list: single column at all breakpoints (no side-by-side with cover).
     &-type-a {
       grid-column: span 2;
+
+      &:has(.album-cover, .skeleton--album-cover) {
+        inline-size: 100%;
+        max-inline-size: 448px;
+        margin-inline: auto;
+      }
     }
   }
 }

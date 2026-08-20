@@ -269,7 +269,7 @@ export default function Album() {
           listTo={albumsListLink}
         />
 
-        <div className="item">
+        <div className="item item-type-a">
           <AlbumCover
             img={album.cover || ''}
             userId={album.userId}
@@ -278,7 +278,7 @@ export default function Album() {
           <Share url={canonical} />
         </div>
 
-        <div className="item">
+        <div className="item item-type-a">
           <AlbumTracks
             album={album}
             isOwner={isAlbumOwner}
