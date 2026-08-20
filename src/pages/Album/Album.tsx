@@ -276,7 +276,6 @@ export default function Album() {
             fullName={formatAlbumDisplayFullName(siteArtistName, album.title)}
             imageSource="cdn"
           />
-          <Share url={canonical} />
         </div>
 
         <div className="item item-type-a">
@@ -285,6 +284,10 @@ export default function Album() {
             isOwner={isAlbumOwner}
             ownerDashboardAlbumId={album.albumId ?? albumId}
           />
+        </div>
+
+        <div className="item item-type-a album__share">
+          <Share url={canonical} />
         </div>
 
         {showPurchaseSection === true && (

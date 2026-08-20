@@ -14,11 +14,6 @@ export function AlbumSkeleton({ tracksCount = 3 }: AlbumSkeletonProps) {
 
         <div className="item item-type-a album-skeleton__cover-block">
           <div className="skeleton skeleton--album-cover" />
-          <ul className="share-list" role="list" aria-label="Скелетон кнопок поделиться">
-            <li className="share-list__item">
-              <div className="share-list__link skeleton" />
-            </li>
-          </ul>
         </div>
 
         <div className="item item-type-a">
@@ -47,6 +42,14 @@ export function AlbumSkeleton({ tracksCount = 3 }: AlbumSkeletonProps) {
               </div>
             ))}
           </div>
+        </div>
+
+        <div className="item item-type-a album__share">
+          <ul className="share-list" role="list" aria-label="Скелетон кнопок поделиться">
+            <li className="share-list__item">
+              <div className="share-list__link skeleton" />
+            </li>
+          </ul>
         </div>
       </div>
     </section>
