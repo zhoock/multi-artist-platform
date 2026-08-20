@@ -4,7 +4,7 @@ import type { ArticleProps } from '@/models';
 import { useLang } from '@app/providers/lang';
 import { formatDateInWords, LocaleKey } from '@entities/article/lib/formatDate';
 import { buildPublicArticlePagePath } from '@shared/lib/seo/publicPagePaths';
-import { ArticleCoverImage } from './ArticleCoverImage';
+import { ArticleCoverDisplay } from './ArticleCoverDisplay';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 import { SubscriberContentLockIcon } from '@shared/ui/icons/SubscriberContentLockIcon';
@@ -134,7 +134,7 @@ export function ArticlePreview({
       <article className="articles__card">
         <Link to={articleTo}>
           <div className="articles__picture">
-            <ArticleCoverImage
+            <ArticleCoverDisplay
               img={img}
               userId={userId}
               role="public"
@@ -163,7 +163,7 @@ export function ArticlePreview({
     >
       <Link to={articleTo} className="articles__card-hit">
         <div className="articles__picture">
-          <ArticleCoverImage
+          <ArticleCoverDisplay
             img={img}
             userId={userId}
             role="public"

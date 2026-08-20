@@ -313,6 +313,7 @@ export function EditArticleModalV2({
   const [currentArticle, setCurrentArticle] = useState<IArticles | null>(null);
   const {
     coverUpload,
+    coverRemoved,
     displayCoverKey,
     hasCoverChanges,
     resetCoverUpload,
@@ -328,6 +329,7 @@ export function EditArticleModalV2({
     disabled: isPublishing || isSavingDraft,
   });
   const coverTexts = useMemo(() => getArticleEditorCoverTexts(lang, ui), [lang, ui]);
+  const coverLoadKeyRef = useRef<string | null>(null);
 
   // Очистка таймера текстовых изменений при размонтировании
   useEffect(() => {
@@ -343,7 +345,11 @@ export function EditArticleModalV2({
     if (!isOpen) return;
 
     const loadArticle = async () => {
-      resetCoverUpload();
+      const coverLoadKey = `${article.articleId}:${lang}`;
+      if (coverLoadKeyRef.current !== coverLoadKey) {
+        resetCoverUpload();
+        coverLoadKeyRef.current = coverLoadKey;
+      }
 
       // Если это новая статья (articleId начинается с "new-"), пропускаем загрузку
       if (article.articleId.startsWith('new-')) {
@@ -436,6 +442,7 @@ export function EditArticleModalV2({
   useEffect(() => {
     isMountedRef.current = isOpen;
     if (!isOpen) {
+      coverLoadKeyRef.current = null;
       setAutofocusParagraphBlockId(null);
       setFocusBlockId(null);
       setIsDocumentSelected(false);
@@ -661,8 +668,8 @@ export function EditArticleModalV2({
           console.warn('Failed to update Redux store:', error);
         }
 
-        // Live article save (already published) must revalidate public articles — not only Publish.
-        onArticlePersisted?.({ affectsPublicSurface: !neverPublished });
+        // Draft save must not invalidate the public surface — text and cover stay on published snapshot.
+        onArticlePersisted?.({ affectsPublicSurface: false });
         showEditorToast({ kind: 'draft-saved' });
       } else if (await abortSaveFailureIfSessionInterrupted(response, fetchInit)) {
         return;
@@ -2322,6 +2329,7 @@ export function EditArticleModalV2({
                     <ArticleEditorCover
                       articleId={currentArticle.articleId}
                       coverKey={displayCoverKey}
+                      coverRemoved={coverRemoved}
                       ownerUserId={currentArticle.userId ?? article.userId}
                       uploadState={coverUpload}
                       disabled={isPublishing || isSavingDraft}

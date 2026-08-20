@@ -21,6 +21,10 @@ const EMPTY_COVER_UPLOAD: ArticleCoverUploadState = {
   dragActive: false,
 };
 
+function createEmptyCoverUpload(): ArticleCoverUploadState {
+  return { ...EMPTY_COVER_UPLOAD };
+}
+
 type UseArticleEditorCoverOptions = {
   /** Last saved cover key (from article in DB). */
   savedCoverKey: string;
@@ -40,7 +44,7 @@ export function useArticleEditorCover({
   ui,
   disabled = false,
 }: UseArticleEditorCoverOptions) {
-  const [coverUpload, setCoverUpload] = useState<ArticleCoverUploadState>(EMPTY_COVER_UPLOAD);
+  const [coverUpload, setCoverUpload] = useState<ArticleCoverUploadState>(createEmptyCoverUpload);
   const [coverRemoved, setCoverRemoved] = useState(false);
   const localPreviewRef = useRef<string | null>(null);
   const pendingFileRef = useRef<File | null>(null);
@@ -59,7 +63,7 @@ export function useArticleEditorCover({
     pendingFileRef.current = null;
     uploadedPendingKeyRef.current = null;
     setCoverRemoved(false);
-    setCoverUpload(EMPTY_COVER_UPLOAD);
+    setCoverUpload(createEmptyCoverUpload());
   }, [clearLocalPreview]);
 
   /**
@@ -71,7 +75,7 @@ export function useArticleEditorCover({
     pendingFileRef.current = null;
     uploadedPendingKeyRef.current = null;
     setCoverRemoved(false);
-    setCoverUpload(EMPTY_COVER_UPLOAD);
+    setCoverUpload(createEmptyCoverUpload());
   }, [clearLocalPreview]);
 
   useEffect(() => {
@@ -85,7 +89,7 @@ export function useArticleEditorCover({
   const hasCoverChanges = coverRemoved || Boolean(coverUpload.preview);
 
   /** Cover key to show in the editor (empty when removed or replaced by local preview). */
-  const displayCoverKey = coverRemoved || coverUpload.preview ? '' : savedCoverKey;
+  const displayCoverKey = coverRemoved ? '' : coverUpload.preview ? '' : savedCoverKey;
 
   const selectCoverFile = useCallback(
     (file: File) => {
@@ -165,7 +169,7 @@ export function useArticleEditorCover({
     pendingFileRef.current = null;
     uploadedPendingKeyRef.current = null;
     setCoverRemoved(true);
-    setCoverUpload(EMPTY_COVER_UPLOAD);
+    setCoverUpload(createEmptyCoverUpload());
   }, [clearLocalPreview, disabled]);
 
   /**

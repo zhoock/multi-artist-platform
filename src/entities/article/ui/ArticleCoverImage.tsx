@@ -4,7 +4,7 @@ import {
   buildArticleCoverSrcSet,
   getArticleCoverAdminVariantUrls,
   getArticleCoverVariantPublicUrl,
-  isArticleCoverStorageKey,
+  hasArticleCover,
   pickArticleCoverJpgWidth,
   pickArticleCoverWebpWidth,
   type ArticleCoverDisplayRole,
@@ -38,11 +38,12 @@ function ArticleCoverAdminImage({
   decoding,
   debugLabel,
 }: Omit<ArticleCoverImageProps, 'role'>) {
+  const [loadFailed, setLoadFailed] = useState(false);
   const { webp, jpg } = getArticleCoverAdminVariantUrls(img, userId);
   const webpSrc = webp ? optionalMediaSrc(webp, `${debugLabel}:webp`, { hasUserId: true }) : null;
   const jpgSrc = jpg ? optionalMediaSrc(jpg, `${debugLabel}:jpg`, { hasUserId: true }) : null;
 
-  if (!jpgSrc && !webpSrc) {
+  if (loadFailed || (!jpgSrc && !webpSrc)) {
     return (
       <ArticleCoverPlaceholder
         alt={alt}
@@ -62,6 +63,7 @@ function ArticleCoverAdminImage({
         className={className}
         loading={loading}
         decoding={decoding}
+        onError={() => setLoadFailed(true)}
       />
     </picture>
   );
@@ -87,6 +89,7 @@ function ArticleCoverResponsiveImage({
   sizes: string;
   maxVariantWidth: number;
 }) {
+  const [loadFailed, setLoadFailed] = useState(false);
   const densitySteps = useMemo(() => {
     const unique = new Set<Density>(densities as Density[]);
     unique.add(1);
@@ -129,7 +132,7 @@ function ArticleCoverResponsiveImage({
     return getArticleCoverVariantPublicUrl(img, userId, width, 'jpg') ?? '';
   }, [img, userId, baseSize, maxVariantWidth]);
 
-  if (!fallbackSrc && !jpgFallbackSrc) {
+  if (loadFailed || (!fallbackSrc && !jpgFallbackSrc)) {
     return (
       <ArticleCoverPlaceholder
         alt={alt}
@@ -151,6 +154,7 @@ function ArticleCoverResponsiveImage({
         loading={loading}
         decoding={decoding}
         sizes={sizes}
+        onError={() => setLoadFailed(true)}
       />
     </picture>
   );
@@ -239,7 +243,7 @@ export function ArticleCoverImage({
   decoding = 'async',
   debugLabel = 'ArticleCoverImage',
 }: ArticleCoverImageProps) {
-  if (!img?.trim()) {
+  if (!hasArticleCover(img)) {
     return (
       <ArticleCoverPlaceholder
         alt={alt}
@@ -250,7 +254,7 @@ export function ArticleCoverImage({
     );
   }
 
-  if (!userId || !isArticleCoverStorageKey(img)) {
+  if (!userId) {
     return (
       <ArticleCoverPlaceholder
         alt={alt}
@@ -260,11 +264,13 @@ export function ArticleCoverImage({
       />
     );
   }
+
+  const coverKey = img.trim();
 
   if (role === 'admin') {
     return (
       <ArticleCoverAdminImage
-        img={img}
+        img={coverKey}
         userId={userId}
         alt={alt}
         className={className}
@@ -278,7 +284,7 @@ export function ArticleCoverImage({
   if (role === 'editor') {
     return (
       <ArticleCoverEditorImage
-        img={img}
+        img={coverKey}
         userId={userId}
         alt={alt}
         className={className}
@@ -291,7 +297,7 @@ export function ArticleCoverImage({
 
   return (
     <ArticleCoverPublicImage
-      img={img}
+      img={coverKey}
       userId={userId}
       alt={alt}
       className={className}

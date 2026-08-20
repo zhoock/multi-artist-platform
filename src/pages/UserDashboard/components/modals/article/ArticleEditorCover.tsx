@@ -23,6 +23,7 @@ type ArticleEditorCoverTexts = {
 type ArticleEditorCoverProps = {
   articleId: string;
   coverKey: string;
+  coverRemoved?: boolean;
   ownerUserId?: string;
   uploadState: ArticleCoverUploadState;
   disabled?: boolean;
@@ -36,6 +37,7 @@ type ArticleEditorCoverProps = {
 export function ArticleEditorCover({
   articleId,
   coverKey,
+  coverRemoved = false,
   ownerUserId,
   uploadState,
   disabled = false,
@@ -46,7 +48,7 @@ export function ArticleEditorCover({
   onRemove,
 }: ArticleEditorCoverProps) {
   const inputId = `edit-article-cover-input-${articleId}`;
-  const hasCover = Boolean(coverKey || uploadState.preview);
+  const hasCover = !coverRemoved && Boolean(coverKey || uploadState.preview);
   const isUploading = uploadState.status === 'uploading';
 
   return (
@@ -108,6 +110,7 @@ export function ArticleEditorCover({
             destructive
             disabled={disabled || isUploading}
             onClick={(event) => {
+              event.preventDefault();
               event.stopPropagation();
               onRemove();
             }}

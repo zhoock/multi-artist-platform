@@ -13,6 +13,7 @@ import { shouldUsePublicArtistCatalogInRedux } from '@shared/lib/dashboardModalB
 import { selectPublicArtistSlug, setPublicArtistSlug } from '@shared/model/currentArtist';
 import type { TrackVisibility } from '@shared/lib/tracks/trackVisibility';
 import { normalizeTrackVisibility } from '@shared/lib/tracks/trackVisibility';
+import { hasArticleCover } from '@shared/lib/articleCoverUrl';
 
 import type { ArticlesState } from './types';
 
@@ -131,12 +132,13 @@ export const fetchArticles = createAsyncThunk<
         if (!a || typeof a !== 'object') {
           return article as IArticles;
         }
+        const rawImg = String(a.img ?? '').trim();
         const base = {
           id: a.id as string | undefined,
           userId: a.userId as string | undefined,
           articleId: String(a.articleId ?? ''),
           nameArticle: String(a.nameArticle ?? ''),
-          img: String(a.img ?? ''),
+          img: hasArticleCover(rawImg) ? rawImg : '',
           date: String(a.date ?? ''),
           details: Array.isArray(a.details) ? (a.details as IArticles['details']) : [],
           description: String(a.description ?? ''),

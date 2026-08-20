@@ -31,6 +31,11 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { extractBaseName } from './lib/image-processor';
 import { createSupabaseAdminClient, STORAGE_BUCKET_NAME } from './lib/supabase';
 import { removeArticleCoverVariantsByImgKey } from './lib/article-cover-storage';
+import {
+  resolveArticleCoverWriteState,
+  resolvePublicArticleImg,
+  shouldDeleteReplacedArticleCoverKey,
+} from './lib/article-published-cover';
 import { sanitizeUploadFileName } from './lib/sanitizeFileName';
 import { formatPostgresDateOnly } from '../../src/shared/lib/dateCalendar';
 import {
@@ -48,6 +53,7 @@ interface ArticleRow {
   name_article: string;
   description: string;
   img: string;
+  published_img?: string | null;
   date: Date;
   details: unknown[];
   lang: string;
@@ -108,6 +114,8 @@ interface UpdateArticleRequest {
   isDraft?: boolean;
   /** Явный сброс при публикации: `false` вместе с `isDraft: false`. */
   hasDraftChanges?: boolean;
+  /** Revert locale + cover to last published snapshot (published article only). */
+  discardDraftChanges?: boolean;
 }
 
 const FORBIDDEN_ARTICLE_TRANSLATABLE_ROOT = ['nameArticle', 'description', 'details'] as const;
@@ -179,6 +187,7 @@ async function syncSharedArticleMetadataAcrossLocales(
   articleId: string,
   patch: {
     img?: string | null;
+    publishedImg?: string | null;
     date?: string;
     isDraft?: boolean;
     hasDraftChanges?: boolean;
@@ -191,6 +200,10 @@ async function syncSharedArticleMetadataAcrossLocales(
   if (patch.img !== undefined) {
     sets.push(`img = $${i++}`);
     values.push(patch.img);
+  }
+  if (patch.publishedImg !== undefined) {
+    sets.push(`published_img = $${i++}`);
+    values.push(patch.publishedImg);
   }
   if (patch.date !== undefined) {
     sets.push(`date = $${i++}::date`);
@@ -349,7 +362,7 @@ function mapArticleToApiFormat(article: ArticleRow, options?: MapArticleOptions)
     userId: article.user_id || undefined,
     articleId: article.article_id, // строковый идентификатор
     nameArticle: published?.nameArticle ?? article.name_article,
-    img: article.img || '',
+    img: resolvePublicArticleImg(article, options?.usePublishedSnapshot === true),
     date: formatPostgresDateOnly(article.date),
     details: (details as unknown[]) || [],
     description: published?.description ?? article.description ?? '',
@@ -375,6 +388,26 @@ function parseDetailsArray(details: unknown): unknown[] {
     }
   }
   return Array.isArray(details) ? details : [];
+}
+
+async function removeArticleCoverKeyIfSafe(
+  userId: string,
+  coverKey: string | null | undefined,
+  publishedSnapshotKey: string | null | undefined
+): Promise<void> {
+  if (!shouldDeleteReplacedArticleCoverKey(coverKey, publishedSnapshotKey)) {
+    return;
+  }
+  const supabaseAdmin = createSupabaseAdminClient();
+  if (!supabaseAdmin) {
+    console.warn('[articles-api] Supabase admin client missing; skipped cover removal');
+    return;
+  }
+  try {
+    await removeArticleCoverVariantsByImgKey(supabaseAdmin, userId, coverKey!.trim());
+  } catch (cleanupErr) {
+    console.error('[articles-api] Article cover storage cleanup failed:', cleanupErr);
+  }
 }
 
 const INVALID_ARTICLE_STEMS = new Set(['', 'proxy-image']);
@@ -668,6 +701,7 @@ export const handler: Handler = async (
               name_article,
               description,
               img,
+              published_img,
               date,
               details,
               lang,
@@ -844,15 +878,17 @@ export const handler: Handler = async (
       const publishedName = isDraft ? null : locale.nameArticle;
       const publishedDescription = isDraft ? null : (locale.description ?? null);
       const publishedDetails = isDraft ? null : JSON.stringify(locale.details);
+      const publishedImg = isDraft ? null : data.img || null;
 
       const result = await query<ArticleRow>(
-        `INSERT INTO articles (user_id, article_id, name_article, description, img, date, details, lang, is_draft, has_draft_changes, published_name_article, published_description, published_details, created_at, updated_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8, $9, $10, $11, $12, $13::jsonb, NOW(), NOW())
+        `INSERT INTO articles (user_id, article_id, name_article, description, img, published_img, date, details, lang, is_draft, has_draft_changes, published_name_article, published_description, published_details, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9, $10, $11, $12, $13, $14::jsonb, NOW(), NOW())
          ON CONFLICT (user_id, article_id, lang)
          DO UPDATE SET
            name_article = EXCLUDED.name_article,
            description = EXCLUDED.description,
            img = EXCLUDED.img,
+           published_img = EXCLUDED.published_img,
            date = EXCLUDED.date,
            details = EXCLUDED.details,
            is_draft = EXCLUDED.is_draft,
@@ -861,13 +897,14 @@ export const handler: Handler = async (
            published_description = EXCLUDED.published_description,
            published_details = EXCLUDED.published_details,
            updated_at = CURRENT_TIMESTAMP
-         RETURNING id, user_id, article_id, name_article, description, img, date, details, lang, is_draft, has_draft_changes, published_name_article, published_description, published_details, visibility, created_at, updated_at`,
+         RETURNING id, user_id, article_id, name_article, description, img, published_img, date, details, lang, is_draft, has_draft_changes, published_name_article, published_description, published_details, visibility, created_at, updated_at`,
         [
           userId,
           data.articleId,
           locale.nameArticle,
           locale.description ?? null,
           data.img || null,
+          publishedImg,
           data.date,
           JSON.stringify(locale.details),
           data.lang,
@@ -881,6 +918,7 @@ export const handler: Handler = async (
 
       await syncSharedArticleMetadataAcrossLocales(userId, data.articleId, {
         img: data.img !== undefined ? data.img : undefined,
+        publishedImg,
         date: data.date,
         isDraft,
         hasDraftChanges,
@@ -944,18 +982,59 @@ export const handler: Handler = async (
         return createErrorResponse(400, 'articleId in body does not match article');
       }
 
-      const previousImgRow = await query<{ img: string | null }>(
-        `SELECT img FROM articles
+      const previousMetaRow = await query<{ img: string | null; published_img: string | null }>(
+        `SELECT img, published_img FROM articles
          WHERE user_id = $1::uuid AND article_id = $2
          ORDER BY updated_at DESC NULLS LAST
          LIMIT 1`,
         [userId, resolvedArticleId]
       );
-      const previousImg = previousImgRow.rows[0]?.img ?? null;
+      const previousImg = previousMetaRow.rows[0]?.img ?? null;
+      const previousPublishedImg = previousMetaRow.rows[0]?.published_img ?? null;
+
+      if (data.discardDraftChanges === true) {
+        const sharedState = await query<{
+          img: string | null;
+          published_img: string | null;
+          is_draft: boolean;
+          has_draft_changes: boolean;
+        }>(
+          `SELECT img, published_img, is_draft, has_draft_changes
+           FROM articles
+           WHERE user_id = $1::uuid AND article_id = $2
+           ORDER BY updated_at DESC NULLS LAST
+           LIMIT 1`,
+          [userId, resolvedArticleId]
+        );
+        const shared = sharedState.rows[0];
+        if (!shared || shared.is_draft || !shared.has_draft_changes) {
+          return createErrorResponse(400, 'No draft changes to discard for this article');
+        }
+
+        const restoredPublishedImg = shared.published_img ?? shared.img;
+        const draftImg = shared.img;
+
+        await query(
+          `UPDATE articles
+           SET
+             name_article = published_name_article,
+             description = published_description,
+             details = published_details,
+             img = $3,
+             published_img = $3,
+             has_draft_changes = false,
+             updated_at = CURRENT_TIMESTAMP
+           WHERE user_id = $1::uuid AND article_id = $2`,
+          [userId, resolvedArticleId, restoredPublishedImg]
+        );
+
+        await removeArticleCoverKeyIfSafe(userId, draftImg, restoredPublishedImg);
+        return createSuccessMessageResponse('Article draft changes discarded');
+      }
 
       const patch = data.translations?.[data.lang];
       const existingLocale = await query<ArticleRow>(
-        `SELECT id, user_id, article_id, name_article, description, img, date, details, lang, is_draft, has_draft_changes, published_name_article, published_description, published_details, visibility, created_at, updated_at
+        `SELECT id, user_id, article_id, name_article, description, img, published_img, date, details, lang, is_draft, has_draft_changes, published_name_article, published_description, published_details, visibility, created_at, updated_at
          FROM articles
          WHERE user_id = $1::uuid AND article_id = $2 AND lang = $3`,
         [userId, resolvedArticleId, data.lang]
@@ -968,18 +1047,40 @@ export const handler: Handler = async (
           patch.details !== undefined);
 
       const hasSharedPatch =
-        data.img !== undefined || data.date !== undefined || data.isDraft !== undefined;
+        data.img !== undefined ||
+        data.date !== undefined ||
+        data.isDraft !== undefined ||
+        data.hasDraftChanges !== undefined;
 
       if (!hasLocalePatch && !hasSharedPatch) {
         return createErrorResponse(400, 'No fields to update');
       }
 
+      const cur = existingLocale.rows[0];
+      const isExplicitPublish =
+        data.isDraft === false &&
+        Object.prototype.hasOwnProperty.call(data, 'hasDraftChanges') &&
+        data.hasDraftChanges === false;
+      const isDraftRequest = data.isDraft === true;
+      const hasImgPatch = data.img !== undefined;
+      const hasWorkingPatch = (hasLocalePatch || hasImgPatch) && !isDraftRequest;
+
+      const coverWrite = resolveArticleCoverWriteState({
+        curIsDraft: cur?.is_draft ?? true,
+        curHasDraftChanges: cur?.has_draft_changes ?? false,
+        curImg: cur?.img ?? previousImg,
+        curPublishedImg: cur?.published_img ?? previousPublishedImg,
+        isExplicitPublish,
+        isDraftRequest,
+        hasWorkingPatch,
+        requestedImg: data.img,
+      });
+
       if (hasLocalePatch) {
-        const cur = existingLocale.rows[0];
         const nameArticle = patch!.nameArticle ?? cur?.name_article ?? '';
         const description = patch!.description ?? cur?.description ?? '';
         const detailsArr = patch!.details ?? parseDetailsArray(cur?.details);
-        const imgVal = data.img !== undefined ? data.img : (cur?.img ?? null);
+        const imgVal = coverWrite.img;
         let dateVal: string;
         if (data.date !== undefined) {
           dateVal = data.date;
@@ -996,6 +1097,11 @@ export const handler: Handler = async (
           description: description || '',
           detailsArr,
         });
+        const mergedHasDraftChanges = isExplicitPublish
+          ? false
+          : isDraftRequest
+            ? false
+            : writeState.hasDraftChanges || coverWrite.hasDraftChanges;
 
         if (!nameArticle || !Array.isArray(detailsArr)) {
           return createErrorResponse(
@@ -1005,13 +1111,14 @@ export const handler: Handler = async (
         }
 
         await query<ArticleRow>(
-          `INSERT INTO articles (user_id, article_id, name_article, description, img, date, details, lang, is_draft, has_draft_changes, published_name_article, published_description, published_details, created_at, updated_at)
-           VALUES ($1::uuid, $2, $3, $4, $5, $6, $7::jsonb, $8, $9, $10, $11, $12, $13::jsonb, NOW(), NOW())
+          `INSERT INTO articles (user_id, article_id, name_article, description, img, published_img, date, details, lang, is_draft, has_draft_changes, published_name_article, published_description, published_details, created_at, updated_at)
+           VALUES ($1::uuid, $2, $3, $4, $5, $6, $7, $8::jsonb, $9, $10, $11, $12, $13, $14::jsonb, NOW(), NOW())
            ON CONFLICT (user_id, article_id, lang)
            DO UPDATE SET
              name_article = EXCLUDED.name_article,
              description = EXCLUDED.description,
              img = EXCLUDED.img,
+             published_img = EXCLUDED.published_img,
              date = EXCLUDED.date,
              details = EXCLUDED.details,
              is_draft = EXCLUDED.is_draft,
@@ -1027,11 +1134,12 @@ export const handler: Handler = async (
             nameArticle,
             description || null,
             imgVal,
+            coverWrite.publishedImg,
             dateVal,
             JSON.stringify(detailsArr),
             data.lang,
             writeState.isDraft,
-            writeState.hasDraftChanges,
+            mergedHasDraftChanges,
             writeState.publishedName,
             writeState.publishedDescription,
             writeState.publishedDetails != null
@@ -1041,39 +1149,31 @@ export const handler: Handler = async (
         );
 
         await syncSharedArticleMetadataAcrossLocales(userId, resolvedArticleId, {
-          img: imgVal ?? undefined,
+          img: imgVal,
+          publishedImg: coverWrite.publishedImg,
           date: dateVal,
           isDraft: writeState.isDraft,
-          hasDraftChanges: writeState.hasDraftChanges,
+          hasDraftChanges: mergedHasDraftChanges,
         });
       } else if (hasSharedPatch) {
         await syncSharedArticleMetadataAcrossLocales(userId, resolvedArticleId, {
-          img: data.img !== undefined ? data.img : undefined,
+          img: data.img !== undefined ? coverWrite.img : undefined,
+          publishedImg: coverWrite.publishedImg,
           date: data.date !== undefined ? data.date : undefined,
           isDraft: data.isDraft !== undefined ? data.isDraft : undefined,
+          hasDraftChanges: isExplicitPublish
+            ? false
+            : isDraftRequest
+              ? false
+              : coverWrite.hasDraftChanges,
         });
       }
 
-      if (data.img !== undefined) {
-        const prev = String(previousImg ?? '').trim();
-        const next = String(data.img).trim();
-        if (prev && prev !== next) {
-          const supabaseAdmin = createSupabaseAdminClient();
-          if (supabaseAdmin) {
-            try {
-              await removeArticleCoverVariantsByImgKey(supabaseAdmin, userId, prev);
-            } catch (cleanupErr) {
-              console.error(
-                '[articles-api PUT] Previous cover image storage cleanup failed:',
-                cleanupErr
-              );
-            }
-          } else {
-            console.warn(
-              '[articles-api PUT] Supabase admin client missing; skipped previous cover removal'
-            );
-          }
-        }
+      if (hasImgPatch && previousImg !== coverWrite.img) {
+        await removeArticleCoverKeyIfSafe(userId, previousImg, coverWrite.publishedImg);
+      }
+      if (isExplicitPublish) {
+        await removeArticleCoverKeyIfSafe(userId, previousPublishedImg, coverWrite.publishedImg);
       }
 
       return createSuccessMessageResponse('Article updated successfully');

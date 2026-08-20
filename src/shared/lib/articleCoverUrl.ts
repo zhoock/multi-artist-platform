@@ -14,7 +14,12 @@ export const ARTICLE_COVER_CATALOG_MAX_JPG_WIDTH = 896;
  * Обложки из дашборда: ключ в БД с префиксом `article_cover_`.
  */
 export function isArticleCoverStorageKey(img: string | undefined | null): boolean {
-  return typeof img === 'string' && img.startsWith('article_cover_');
+  return typeof img === 'string' && img.trim().startsWith('article_cover_');
+}
+
+/** True when the article row has a dashboard/storage cover key to resolve (not null/empty/legacy). */
+export function hasArticleCover(img: string | undefined | null): img is string {
+  return isArticleCoverStorageKey(img);
 }
 
 export function getArticleStorageBaseName(cover: string): string {

@@ -2,9 +2,10 @@ import React, { type KeyboardEvent } from 'react';
 import clsx from 'clsx';
 import { Pencil as PencilIcon, Trash2 as Trash2Icon } from 'lucide-react';
 
-import { ArticleCoverImage, ArticleCoverPlaceholder } from '@entities/article';
+import { ArticleCoverDisplay } from '@entities/article';
 import type { IArticles, IInterface } from '@models';
 import { formatDate } from '@shared/api/albums';
+import { hasArticleCover } from '@shared/lib/articleCoverUrl';
 import { EmailVerificationOnboarding } from '@shared/lib/emailVerification';
 import { normalizeTrackVisibility, type TrackVisibility } from '@shared/lib/tracks/trackVisibility';
 import type { SupportedLang } from '@shared/model/lang';
@@ -94,7 +95,7 @@ export function PostsTabContent({
           const articleDraftBadge = getArticleListDraftBadge(article);
           const articleIsPublished = isArticlePublished(article);
 
-          if (article.img && !article.userId) {
+          if (hasArticleCover(article.img) && !article.userId) {
             console.error('[BUG] article.userId missing', {
               articleId: article.articleId,
               context: 'articlesList',
@@ -141,31 +142,15 @@ export function PostsTabContent({
                 aria-label={article.nameArticle || editLabel}
               >
                 <div className="user-dashboard__album-thumbnail user-dashboard__album-thumbnail--article">
-                  {article.img ? (
-                    articleOwnerId ? (
-                      <ArticleCoverImage
-                        img={article.img}
-                        userId={articleOwnerId}
-                        role="admin"
-                        alt={article.nameArticle}
-                        loading="lazy"
-                        decoding="async"
-                        debugLabel={`UserDashboard:articleThumb:${article.articleId}`}
-                      />
-                    ) : (
-                      <ArticleCoverPlaceholder
-                        alt={article.nameArticle}
-                        loading="lazy"
-                        decoding="async"
-                      />
-                    )
-                  ) : (
-                    <ArticleCoverPlaceholder
-                      alt={article.nameArticle}
-                      loading="lazy"
-                      decoding="async"
-                    />
-                  )}
+                  <ArticleCoverDisplay
+                    img={article.img}
+                    userId={articleOwnerId}
+                    role="admin"
+                    alt={article.nameArticle}
+                    loading="lazy"
+                    decoding="async"
+                    debugLabel={`UserDashboard:articleThumb:${article.articleId}`}
+                  />
                 </div>
                 <div className="user-dashboard__album-info">
                   <div className="user-dashboard__album-title-row">

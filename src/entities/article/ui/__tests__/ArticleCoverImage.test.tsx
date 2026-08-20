@@ -73,4 +73,11 @@ describe('ArticleCoverImage CDN variants', () => {
     expect(document.querySelector('.article-cover-placeholder')).toBeTruthy();
     expect(document.querySelector('source[type="image/webp"]')).toBeNull();
   });
+
+  test('empty img shows placeholder', () => {
+    render(<ArticleCoverImage img="" userId={TEST_USER_ID} role="admin" alt="No cover" />);
+
+    expect(document.querySelector('.article-cover-placeholder')).toBeTruthy();
+    expect(document.querySelector('picture')).toBeNull();
+  });
 });
