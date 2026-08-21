@@ -1,4 +1,5 @@
 @use '../abstracts/mixins' as dashboard;
+@use 'fullscreen-loading' as fs-loading;
 
 @mixin dashboard-modal-dialog-buttons($font-size: 12px, $line-height: 16px) {
   button {

@@ -236,58 +236,61 @@ export function PreviewLyricsModal({
             </PopupCloseButton>
           </div>
           <div className="preview-lyrics-modal__divider"></div>
-          <div className="preview-lyrics-modal__player">
-            <button
-              type="button"
-              className="preview-lyrics-modal__play-button"
-              onClick={togglePlay}
-              aria-label={isPlaying ? 'Pause' : 'Play'}
-              disabled={!audioPlaybackUrl}
-            >
-              {isPlaying ? (
-                <Pause {...playerTransportIconProps(LYRICS_MODAL_TRANSPORT_ICON_SIZE)} />
-              ) : (
-                <Play
-                  {...playerTransportIconProps(LYRICS_MODAL_TRANSPORT_ICON_SIZE, {
-                    className: 'preview-lyrics-modal__play-icon',
-                  })}
-                />
-              )}
-            </button>
-            <div className="preview-lyrics-modal__time">{formatTime(currentTime)}</div>
-            <div
-              className="preview-lyrics-modal__progress-bar"
-              onClick={audioPlaybackUrl ? handleSeek : undefined}
-              style={{ cursor: audioPlaybackUrl ? 'pointer' : 'default' }}
-            >
-              <div
-                className="preview-lyrics-modal__progress-fill"
-                style={{ width: `${progress * 100}%` }}
-              />
-            </div>
-            <div className="preview-lyrics-modal__duration">{formatTime(duration)}</div>
-          </div>
-          <div className="preview-lyrics-modal__divider"></div>
-          <div className="preview-lyrics-modal__content">
-            <div className="preview-lyrics-modal__lyrics" ref={lyricsContainerRef}>
-              {linesWithAuthorship.map((line, index) => {
-                const isActive = currentLineIndex === index;
-                return (
+          <div className="preview-lyrics-modal__body">
+            <div className="preview-lyrics-modal__content-column">
+              <div className="preview-lyrics-modal__player">
+                <button
+                  type="button"
+                  className="preview-lyrics-modal__play-button"
+                  onClick={togglePlay}
+                  aria-label={isPlaying ? 'Pause' : 'Play'}
+                  disabled={!audioPlaybackUrl}
+                >
+                  {isPlaying ? (
+                    <Pause {...playerTransportIconProps(LYRICS_MODAL_TRANSPORT_ICON_SIZE)} />
+                  ) : (
+                    <Play
+                      {...playerTransportIconProps(LYRICS_MODAL_TRANSPORT_ICON_SIZE, {
+                        className: 'preview-lyrics-modal__play-icon',
+                      })}
+                    />
+                  )}
+                </button>
+                <div className="preview-lyrics-modal__time">{formatTime(currentTime)}</div>
+                <div
+                  className="preview-lyrics-modal__progress-bar"
+                  onClick={audioPlaybackUrl ? handleSeek : undefined}
+                  style={{ cursor: audioPlaybackUrl ? 'pointer' : 'default' }}
+                >
                   <div
-                    key={index}
-                    ref={(el) => {
-                      if (el) {
-                        lineRefs.current.set(index, el);
-                      } else {
-                        lineRefs.current.delete(index);
-                      }
-                    }}
-                    className={`preview-lyrics-modal__lyric-line ${isActive ? 'preview-lyrics-modal__lyric-line--active' : ''}`}
-                  >
-                    {line.text}
-                  </div>
-                );
-              })}
+                    className="preview-lyrics-modal__progress-fill"
+                    style={{ width: `${progress * 100}%` }}
+                  />
+                </div>
+                <div className="preview-lyrics-modal__duration">{formatTime(duration)}</div>
+              </div>
+              <div className="preview-lyrics-modal__content">
+                <div className="preview-lyrics-modal__lyrics" ref={lyricsContainerRef}>
+                  {linesWithAuthorship.map((line, index) => {
+                    const isActive = currentLineIndex === index;
+                    return (
+                      <div
+                        key={index}
+                        ref={(el) => {
+                          if (el) {
+                            lineRefs.current.set(index, el);
+                          } else {
+                            lineRefs.current.delete(index);
+                          }
+                        }}
+                        className={`preview-lyrics-modal__lyric-line ${isActive ? 'preview-lyrics-modal__lyric-line--active' : ''}`}
+                      >
+                        {line.text}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
           </div>
         </div>

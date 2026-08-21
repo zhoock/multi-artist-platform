@@ -648,194 +648,210 @@ export function SyncLyricsModal({
 
             <div className="sync-lyrics-modal__divider"></div>
 
-            <div className="sync-lyrics-modal__player">
-              <button
-                type="button"
-                onClick={togglePlayPause}
-                className="sync-lyrics-modal__play-button"
-                aria-label={isPlaying ? 'Пауза' : 'Воспроизведение'}
-                disabled={!audioPlaybackUrl}
-              >
-                {isPlaying ? (
-                  <Pause {...playerTransportIconProps(LYRICS_MODAL_TRANSPORT_ICON_SIZE)} />
-                ) : (
-                  <Play
-                    {...playerTransportIconProps(LYRICS_MODAL_TRANSPORT_ICON_SIZE, {
-                      className: 'sync-lyrics-modal__play-icon',
-                    })}
-                  />
-                )}
-              </button>
+            <div className="sync-lyrics-modal__body">
+              <div className="sync-lyrics-modal__content-column">
+                <div className="sync-lyrics-modal__player">
+                  <button
+                    type="button"
+                    onClick={togglePlayPause}
+                    className="sync-lyrics-modal__play-button"
+                    aria-label={isPlaying ? 'Пауза' : 'Воспроизведение'}
+                    disabled={!audioPlaybackUrl}
+                  >
+                    {isPlaying ? (
+                      <Pause {...playerTransportIconProps(LYRICS_MODAL_TRANSPORT_ICON_SIZE)} />
+                    ) : (
+                      <Play
+                        {...playerTransportIconProps(LYRICS_MODAL_TRANSPORT_ICON_SIZE, {
+                          className: 'sync-lyrics-modal__play-icon',
+                        })}
+                      />
+                    )}
+                  </button>
 
-              {/* tracks__duration не ломаем */}
-              <div className="sync-lyrics-modal__time">{formatTimeCompact(currentTime)}</div>
-              <div className="sync-lyrics-modal__progress-bar" onClick={handleProgressClick}>
-                <div
-                  className="sync-lyrics-modal__progress-fill"
-                  style={{ width: `${progress}%` }}
-                />
-              </div>
-              <div className="sync-lyrics-modal__duration">{formatTimeCompact(duration)}</div>
-            </div>
-
-            <div className="sync-lyrics-modal__divider"></div>
-
-            <div className="sync-lyrics-modal__content">
-              {isLoading ? (
-                <DashboardLoadingState className="sync-lyrics-modal__loading" />
-              ) : displayLines.length === 0 ? (
-                <div className="sync-lyrics-modal__empty">
-                  {ui?.dashboard?.noLyrics ?? 'Нет текста для синхронизации'}
-                </div>
-              ) : (
-                <div className="sync-lyrics-modal__table">
-                  <div className="sync-lyrics-modal__table-header">
-                    <div className="sync-lyrics-modal__table-col sync-lyrics-modal__table-col--number">
-                      #
-                    </div>
-                    <div className="sync-lyrics-modal__table-col sync-lyrics-modal__table-col--lyrics">
-                      Lyrics
-                    </div>
-                    <div className="sync-lyrics-modal__table-col sync-lyrics-modal__table-col--start">
-                      Start
-                    </div>
-                    <div className="sync-lyrics-modal__table-col sync-lyrics-modal__table-col--end">
-                      End
-                    </div>
-                    <div className="sync-lyrics-modal__table-col sync-lyrics-modal__table-col--clear"></div>
+                  {/* tracks__duration не ломаем */}
+                  <div className="sync-lyrics-modal__time">{formatTimeCompact(currentTime)}</div>
+                  <div className="sync-lyrics-modal__progress-bar" onClick={handleProgressClick}>
+                    <div
+                      className="sync-lyrics-modal__progress-fill"
+                      style={{ width: `${progress}%` }}
+                    />
                   </div>
+                  <div className="sync-lyrics-modal__duration">{formatTimeCompact(duration)}</div>
+                </div>
 
-                  <div className="sync-lyrics-modal__table-body">
-                    {displayLines.map((line, displayIndex) => {
-                      const isAuthorship = isVirtualAuthorshipLine(line);
-                      const lyricIndex = displayIndex;
-                      const isActive = isAuthorship
-                        ? activeLineIndex === 'authorship'
-                        : activeLineIndex === lyricIndex;
-
-                      return (
-                        <div
-                          key={isAuthorship ? 'authorship' : `lyric-${lyricIndex}-${line.text}`}
-                          className={`sync-lyrics-modal__table-row${
-                            isActive ? ' sync-lyrics-modal__table-row--active' : ''
-                          }`}
-                        >
-                          <div className="sync-lyrics-modal__table-col sync-lyrics-modal__table-col--number">
-                            {displayIndex + 1}
-                          </div>
-
-                          <div className="sync-lyrics-modal__table-col sync-lyrics-modal__table-col--lyrics">
-                            {line.text}
-                          </div>
-
-                          <div className="sync-lyrics-modal__table-col sync-lyrics-modal__table-col--start">
-                            {isAuthorship ? (
-                              <span className="sync-lyrics-modal__time-disabled">
-                                {formatTime(authorshipTiming?.start ?? 0)}
-                              </span>
-                            ) : (
-                              <button
-                                type="button"
-                                onClick={() => setLineTime(lyricIndex, 'startTime')}
-                                className="sync-lyrics-modal__time-btn"
-                                disabled={currentTime === 0 && !isPlaying}
-                              >
-                                {formatTime(line.startTime)}
-                              </button>
-                            )}
-                          </div>
-
-                          <div className="sync-lyrics-modal__table-col sync-lyrics-modal__table-col--end">
-                            {isAuthorship ? (
-                              <span className="sync-lyrics-modal__time-disabled">
-                                {formatTime(duration)}
-                              </span>
-                            ) : line.endTime !== undefined && line.endTime > 0 ? (
-                              <button
-                                type="button"
-                                onClick={() => setLineTime(lyricIndex, 'endTime')}
-                                className="sync-lyrics-modal__time-btn"
-                                disabled={currentTime === 0 && !isPlaying}
-                              >
-                                {formatTime(line.endTime)}
-                              </button>
-                            ) : (
-                              <button
-                                type="button"
-                                onClick={() => setLineTime(lyricIndex, 'endTime')}
-                                className="sync-lyrics-modal__time-btn sync-lyrics-modal__time-btn--set"
-                                disabled={currentTime === 0 && !isPlaying}
-                              >
-                                Set end
-                              </button>
-                            )}
-                          </div>
-
-                          <div className="sync-lyrics-modal__table-col sync-lyrics-modal__table-col--clear">
-                            {!isAuthorship &&
-                              ((line.startTime ?? 0) > 0 ||
-                                (line.endTime !== undefined && line.endTime > 0)) && (
-                                <button
-                                  type="button"
-                                  onClick={() => clearLineTiming(lyricIndex)}
-                                  className="sync-lyrics-modal__clear-btn"
-                                  title={ui?.dashboard?.clearLineTimings ?? 'Remove line timings'}
-                                  aria-label={
-                                    ui?.dashboard?.clearLineTimings ?? 'Remove line timings'
-                                  }
-                                >
-                                  <Trash2 {...dashboardActionIconProps({ size: 16 })} />
-                                </button>
-                              )}
-                          </div>
+                <div className="sync-lyrics-modal__content">
+                  {isLoading ? (
+                    <DashboardLoadingState className="sync-lyrics-modal__loading" />
+                  ) : displayLines.length === 0 ? (
+                    <div className="sync-lyrics-modal__empty">
+                      {ui?.dashboard?.noLyrics ?? 'Нет текста для синхронизации'}
+                    </div>
+                  ) : (
+                    <div className="sync-lyrics-modal__table">
+                      <div className="sync-lyrics-modal__table-header">
+                        <div className="sync-lyrics-modal__table-col sync-lyrics-modal__table-col--number">
+                          #
                         </div>
-                      );
-                    })}
-                  </div>
+                        <div className="sync-lyrics-modal__table-col sync-lyrics-modal__table-col--lyrics">
+                          Lyrics
+                        </div>
+                        <div className="sync-lyrics-modal__table-col sync-lyrics-modal__table-col--start">
+                          Start
+                        </div>
+                        <div className="sync-lyrics-modal__table-col sync-lyrics-modal__table-col--end">
+                          End
+                        </div>
+                        <div className="sync-lyrics-modal__table-col sync-lyrics-modal__table-col--clear"></div>
+                      </div>
+
+                      <div className="sync-lyrics-modal__table-body">
+                        {displayLines.map((line, displayIndex) => {
+                          const isAuthorship = isVirtualAuthorshipLine(line);
+                          const lyricIndex = displayIndex;
+                          const isActive = isAuthorship
+                            ? activeLineIndex === 'authorship'
+                            : activeLineIndex === lyricIndex;
+
+                          return (
+                            <div
+                              key={isAuthorship ? 'authorship' : `lyric-${lyricIndex}-${line.text}`}
+                              className={`sync-lyrics-modal__table-row${
+                                isActive ? ' sync-lyrics-modal__table-row--active' : ''
+                              }`}
+                            >
+                              <div className="sync-lyrics-modal__table-col sync-lyrics-modal__table-col--number">
+                                {displayIndex + 1}
+                              </div>
+
+                              <div className="sync-lyrics-modal__table-col sync-lyrics-modal__table-col--lyrics">
+                                {line.text}
+                              </div>
+
+                              <div className="sync-lyrics-modal__table-col sync-lyrics-modal__table-col--start">
+                                {isAuthorship ? (
+                                  <span className="sync-lyrics-modal__time-disabled">
+                                    {formatTime(authorshipTiming?.start ?? 0)}
+                                  </span>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={() => setLineTime(lyricIndex, 'startTime')}
+                                    className="sync-lyrics-modal__time-btn"
+                                    disabled={currentTime === 0 && !isPlaying}
+                                  >
+                                    {formatTime(line.startTime)}
+                                  </button>
+                                )}
+                              </div>
+
+                              <div className="sync-lyrics-modal__table-col sync-lyrics-modal__table-col--end">
+                                {isAuthorship ? (
+                                  <span className="sync-lyrics-modal__time-disabled">
+                                    {formatTime(duration)}
+                                  </span>
+                                ) : line.endTime !== undefined && line.endTime > 0 ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => setLineTime(lyricIndex, 'endTime')}
+                                    className="sync-lyrics-modal__time-btn"
+                                    disabled={currentTime === 0 && !isPlaying}
+                                  >
+                                    {formatTime(line.endTime)}
+                                  </button>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={() => setLineTime(lyricIndex, 'endTime')}
+                                    className="sync-lyrics-modal__time-btn sync-lyrics-modal__time-btn--set"
+                                    disabled={currentTime === 0 && !isPlaying}
+                                  >
+                                    Set end
+                                  </button>
+                                )}
+                              </div>
+
+                              <div className="sync-lyrics-modal__table-col sync-lyrics-modal__table-col--clear">
+                                {!isAuthorship &&
+                                  ((line.startTime ?? 0) > 0 ||
+                                    (line.endTime !== undefined && line.endTime > 0)) && (
+                                    <button
+                                      type="button"
+                                      onClick={() => clearLineTiming(lyricIndex)}
+                                      className="sync-lyrics-modal__clear-btn"
+                                      title={
+                                        ui?.dashboard?.clearLineTimings ?? 'Remove line timings'
+                                      }
+                                      aria-label={
+                                        ui?.dashboard?.clearLineTimings ?? 'Remove line timings'
+                                      }
+                                    >
+                                      <Trash2 {...dashboardActionIconProps({ size: 16 })} />
+                                    </button>
+                                  )}
+                              </div>
+
+                              <div
+                                className="sync-lyrics-modal__table-row-break"
+                                aria-hidden="true"
+                              />
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
-              )}
+              </div>
             </div>
 
             {!isLoading && displayLines.length > 0 && (
               <>
                 <div className="sync-lyrics-modal__divider"></div>
                 <div className="sync-lyrics-modal__actions">
-                  <button
-                    type="button"
-                    className="sync-lyrics-modal__button sync-lyrics-modal__button--danger"
-                    onClick={handleRemoveSyncClick}
-                    disabled={!canRemoveSync || isSaving || isRemovingSync}
-                  >
-                    {ui?.dashboard?.removeSyncLyrics ?? 'Remove synchronization'}
-                  </button>
-
-                  <button
-                    type="button"
-                    className="sync-lyrics-modal__button sync-lyrics-modal__button--cancel"
-                    onClick={handleRequestClose}
-                    disabled={isSaving || isRemovingSync}
-                  >
-                    {ui?.dashboard?.cancel ?? 'Cancel'}
-                  </button>
-
-                  <div className="sync-lyrics-modal__actions-right">
+                  <div className="sync-lyrics-modal__actions-bar">
                     <button
                       type="button"
-                      onClick={handleSave}
-                      disabled={!isDirty || isSaving || isRemovingSync}
-                      className={`sync-lyrics-modal__button sync-lyrics-modal__button--primary${
-                        isSaving ? ' sync-lyrics-modal__button--primary-loading' : ''
-                      }`}
+                      className="sync-lyrics-modal__button sync-lyrics-modal__button--danger"
+                      onClick={handleRemoveSyncClick}
+                      disabled={!canRemoveSync || isSaving || isRemovingSync}
                     >
-                      {isSaving ? (
-                        <>
-                          <span className="sync-lyrics-modal__button-spinner" aria-hidden />
-                          {ui?.dashboard?.saving ?? 'Saving...'}
-                        </>
-                      ) : (
-                        (ui?.dashboard?.save ?? 'Save')
-                      )}
+                      <Trash2
+                        {...dashboardActionIconProps({ size: 16 })}
+                        className="sync-lyrics-modal__button-icon"
+                        aria-hidden
+                      />
+                      {ui?.dashboard?.removeSyncLyrics ?? 'Remove synchronization'}
                     </button>
+
+                    <div className="sync-lyrics-modal__actions-main">
+                      <button
+                        type="button"
+                        className="sync-lyrics-modal__button sync-lyrics-modal__button--cancel"
+                        onClick={handleRequestClose}
+                        disabled={isSaving || isRemovingSync}
+                      >
+                        {ui?.dashboard?.cancel ?? 'Cancel'}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={handleSave}
+                        disabled={!isDirty || isSaving || isRemovingSync}
+                        className={`sync-lyrics-modal__button sync-lyrics-modal__button--primary${
+                          isSaving ? ' sync-lyrics-modal__button--primary-loading' : ''
+                        }`}
+                      >
+                        {isSaving ? (
+                          <>
+                            <span className="sync-lyrics-modal__button-spinner" aria-hidden />
+                            {ui?.dashboard?.saving ?? 'Saving...'}
+                          </>
+                        ) : (
+                          (ui?.dashboard?.save ?? 'Save')
+                        )}
+                      </button>
+                    </div>
                   </div>
                 </div>
               </>

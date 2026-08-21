@@ -1,42 +1,13 @@
-// src/pages/UserDashboard/components/PreviewLyricsModal.style.scss
 @use '../../../../../scss/abstracts/mixins' as *;
 @use '../../../../../scss/components/modal' as *;
+@use 'lyrics-fullscreen-surface' as lyrics-fs;
+@include lyrics-fs.lyrics-fullscreen-dialog('preview-lyrics-modal');
 
 dialog {
   @include dashboard-modal-dialog-buttons;
+  @include lyrics-fs.lyrics-fullscreen-shell('preview-lyrics-modal');
 
   .preview-lyrics-modal {
-    @include dashboard-modal-shell;
-
-    &__card {
-      overflow-x: hidden;
-
-      @include dashboard-modal-panel;
-    }
-
-    &__header {
-      @include dashboard-modal-header($gap: var(--ms-0));
-    }
-
-    &__title {
-      @include dashboard-modal-title;
-    }
-
-    &__close {
-      @include dashboard-modal-close($disabled: false, $reset-text: true);
-    }
-
-    &__divider {
-      @include dashboard-modal-divider;
-    }
-
-    &__player {
-      display: flex;
-      align-items: center;
-      gap: var(--ms-0);
-      min-width: 0;
-    }
-
     &__play-button {
       display: flex;
       align-items: center;
@@ -55,6 +26,10 @@ dialog {
 
       &:focus {
         outline: none;
+      }
+
+      &:focus-visible {
+        @include dashboard-focus-ring;
       }
 
       &:hover {
@@ -82,10 +57,6 @@ dialog {
       min-width: 0;
       overflow: hidden;
       cursor: pointer;
-
-      &:not(:has(+ *)) {
-        cursor: default;
-      }
     }
 
     &__progress-fill {
@@ -104,20 +75,14 @@ dialog {
       flex-shrink: 0;
     }
 
-    &__content {
-      display: flex;
-      flex-direction: column;
-      gap: 0;
-      min-width: 0;
-    }
-
     &__lyrics {
       display: flex;
       flex-direction: column;
+      flex: 1 1 0;
       gap: var(--ms-01);
+      min-height: 0;
+      max-height: none;
       padding: var(--ms-1) 0;
-      min-height: 200px;
-      max-height: 320px;
       overflow: hidden auto;
     }
 
@@ -144,5 +109,4 @@ dialog {
   }
 }
 
-// Overlay для модалки поверх модалки
 @include dashboard-nested-modal-backdrop('dialog dialog dialog::backdrop');

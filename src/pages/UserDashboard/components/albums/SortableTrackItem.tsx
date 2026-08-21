@@ -361,85 +361,87 @@ export function SortableTrackItem({
               suppressed={suppressProcessingStatus}
             />
 
-            <span className="user-dashboard__expanded-track-access-slot">
-              <button
-                ref={accessBtnRef}
-                type="button"
-                className="user-dashboard__track-access-button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  toggleAccessMenu(e);
-                }}
-                aria-expanded={accessMenuOpen}
-                aria-haspopup="menu"
-                aria-label={trackAccessAria}
-              >
-                <span className="user-dashboard__track-access-button-icon" aria-hidden>
-                  <TrackVisibilityIcon visibility={trackVisibility} size={18} />
-                </span>
-              </button>
-            </span>
+            <div className="user-dashboard__expanded-track-toolbar">
+              <span className="user-dashboard__expanded-track-access-slot">
+                <button
+                  ref={accessBtnRef}
+                  type="button"
+                  className="user-dashboard__track-access-button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleAccessMenu(e);
+                  }}
+                  aria-expanded={accessMenuOpen}
+                  aria-haspopup="menu"
+                  aria-label={trackAccessAria}
+                >
+                  <span className="user-dashboard__track-access-button-icon" aria-hidden>
+                    <TrackVisibilityIcon visibility={trackVisibility} size={18} />
+                  </span>
+                </button>
+              </span>
 
-            <div className="user-dashboard__expanded-track-actions">
-              {onReplaceTrackAudio ? (
-                <>
-                  <input
-                    ref={replaceAudioInputRef}
-                    type="file"
-                    accept="audio/*,.wav,.flac,.aiff,.aif,.mp3,.m4a,.ogg,.opus"
-                    style={{ display: 'none' }}
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        onReplaceTrackAudio(albumId, track.id, track.title, file);
+              <div className="user-dashboard__expanded-track-actions">
+                {onReplaceTrackAudio ? (
+                  <>
+                    <input
+                      ref={replaceAudioInputRef}
+                      type="file"
+                      accept="audio/*,.wav,.flac,.aiff,.aif,.mp3,.m4a,.ogg,.opus"
+                      style={{ display: 'none' }}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          onReplaceTrackAudio(albumId, track.id, track.title, file);
+                        }
+                        if (e.target) {
+                          e.target.value = '';
+                        }
+                      }}
+                    />
+                    <DashboardButton
+                      variant="icon"
+                      disabled={
+                        replaceAudioDisabled ||
+                        isEditing ||
+                        replacingTrackId === track.id ||
+                        retryingTrackProcessingId === track.id
                       }
-                      if (e.target) {
-                        e.target.value = '';
-                      }
-                    }}
-                  />
-                  <DashboardButton
-                    variant="icon"
-                    disabled={
-                      replaceAudioDisabled ||
-                      isEditing ||
-                      replacingTrackId === track.id ||
-                      retryingTrackProcessingId === track.id
-                    }
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      replaceAudioInputRef.current?.click();
-                    }}
-                    aria-label={ui?.dashboard?.replaceTrackAudio ?? 'Replace audio'}
-                    title={ui?.dashboard?.replaceTrackAudio ?? 'Replace audio'}
-                  >
-                    <ReplaceIcon {...dashboardActionIconProps()} />
-                  </DashboardButton>
-                </>
-              ) : null}
-              <DashboardButton
-                variant="icon"
-                disabled={isEditing}
-                aria-pressed={isEditing}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleEdit(e);
-                }}
-                aria-label={ui?.dashboard?.editTrack ?? 'Edit track'}
-              >
-                <PencilIcon {...dashboardActionIconProps()} />
-              </DashboardButton>
-              <DashboardButton
-                variant="icon"
-                destructive
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleDelete(e);
-                }}
-                aria-label={ui?.dashboard?.deleteTrack ?? 'Delete track'}
-              >
-                <Trash2Icon {...dashboardActionIconProps()} />
-              </DashboardButton>
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        replaceAudioInputRef.current?.click();
+                      }}
+                      aria-label={ui?.dashboard?.replaceTrackAudio ?? 'Replace audio'}
+                      title={ui?.dashboard?.replaceTrackAudio ?? 'Replace audio'}
+                    >
+                      <ReplaceIcon {...dashboardActionIconProps()} />
+                    </DashboardButton>
+                  </>
+                ) : null}
+                <DashboardButton
+                  variant="icon"
+                  disabled={isEditing}
+                  aria-pressed={isEditing}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleEdit(e);
+                  }}
+                  aria-label={ui?.dashboard?.editTrack ?? 'Edit track'}
+                >
+                  <PencilIcon {...dashboardActionIconProps()} />
+                </DashboardButton>
+                <DashboardButton
+                  variant="icon"
+                  destructive
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDelete(e);
+                  }}
+                  aria-label={ui?.dashboard?.deleteTrack ?? 'Delete track'}
+                >
+                  <Trash2Icon {...dashboardActionIconProps()} />
+                </DashboardButton>
+              </div>
             </div>
           </div>
 

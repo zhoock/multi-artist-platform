@@ -127,7 +127,6 @@ import { MixerEmptyState } from './components/mixer/MixerEmptyState';
 import { MyArchiveContent } from './components/archive/MyArchiveContent';
 import { SubscriptionContent } from './components/archive/SubscriptionContent';
 import { DashboardBillingSync } from './components/DashboardBillingSync';
-import { SocialLinksContent } from './components/social/SocialLinksContent';
 import type { AlbumEditable, IArticles, IInterface, DashboardTrackVisibilityLabels } from '@models';
 import {
   transformEditableAlbumsToAlbumData,
@@ -331,8 +330,6 @@ function dashboardHeadingForTab(tab: DashboardTab, ui: IInterface | null): strin
   switch (tab) {
     case 'settings':
       return d?.settings ?? 'Settings';
-    case 'social-links':
-      return d?.tabs?.socialLinks ?? d?.socialLinks?.title ?? 'Social Links';
     case 'albums':
       return d?.tabs?.albums ?? 'Albums';
     case 'posts':
@@ -2531,7 +2528,7 @@ function UserDashboard() {
     closeDialog: closeEditTrackDialog,
   });
 
-  if (tabFromRoute === 'profile') {
+  if (tabFromRoute === 'profile' || tabFromRoute === 'social-links') {
     return <Navigate to={`${DASHBOARD_PATH}/settings`} replace state={location.state} />;
   }
 
@@ -2672,18 +2669,6 @@ function UserDashboard() {
                           <MyPurchasesContent
                             active={activeTab === 'my-purchases'}
                             onMountPinChange={(pinned) => setTabPinned('my-purchases', pinned)}
-                          />
-                        </div>
-                      ) : null}
-                      {isArtist && shouldMount('social-links') ? (
-                        <div
-                          className="user-dashboard__tab-panel"
-                          hidden={activeTab !== 'social-links'}
-                          aria-hidden={activeTab !== 'social-links'}
-                        >
-                          <SocialLinksContent
-                            active={activeTab === 'social-links'}
-                            onMountPinChange={(pinned) => setTabPinned('social-links', pinned)}
                           />
                         </div>
                       ) : null}

@@ -126,83 +126,90 @@ export function EditLyricsModal({
 
           <div className="edit-lyrics-modal__divider" />
 
-          <textarea
-            className="edit-lyrics-modal__textarea"
-            value={lyricsText}
-            onChange={(e) => setLyricsText(e.target.value)}
-          />
+          <div className="edit-lyrics-modal__body">
+            <div className="edit-lyrics-modal__content-column">
+              <textarea
+                className="edit-lyrics-modal__textarea"
+                value={lyricsText}
+                onChange={(e) => setLyricsText(e.target.value)}
+              />
 
-          <div className="edit-lyrics-modal__field">
-            <label className="edit-lyrics-modal__label" htmlFor="edit-lyrics-authorship">
-              {ui?.dashboard?.authorship ?? 'Written by: '}
-            </label>
-            <input
-              type="text"
-              className="edit-lyrics-modal__input"
-              name="authorship"
-              id="edit-lyrics-authorship"
-              autoComplete="off"
-              autoCorrect="off"
-              autoCapitalize="off"
-              spellCheck={false}
-              data-gramm="false"
-              data-lpignore="true"
-              data-form-type="other"
-              inputMode="text"
-              aria-autocomplete="none"
-              placeholder={
-                ui?.dashboard?.authorshipPlaceholder ?? 'For example: John Doe — words and music'
-              }
-              value={authorship}
-              onChange={(e) => setAuthorship(e.target.value)}
-              onFocus={(e) => {
-                // Предотвращаем всплытие события, чтобы избежать конфликтов с расширениями браузера
-                e.stopPropagation();
-              }}
-              onBlur={(e) => {
-                e.stopPropagation();
-              }}
-              onClick={(e) => {
-                e.stopPropagation();
-              }}
-              onKeyDown={(e) => {
-                e.stopPropagation();
-              }}
-              onKeyUp={(e) => {
-                e.stopPropagation();
-              }}
-              onKeyPress={(e) => {
-                e.stopPropagation();
-              }}
-              onInput={(e) => {
-                e.stopPropagation();
-              }}
-            />
+              <div className="edit-lyrics-modal__field">
+                <label className="edit-lyrics-modal__label" htmlFor="edit-lyrics-authorship">
+                  {ui?.dashboard?.authorship ?? 'Written by: '}
+                </label>
+                <input
+                  type="text"
+                  className="edit-lyrics-modal__input"
+                  name="authorship"
+                  id="edit-lyrics-authorship"
+                  autoComplete="off"
+                  autoCorrect="off"
+                  autoCapitalize="off"
+                  spellCheck={false}
+                  data-gramm="false"
+                  data-lpignore="true"
+                  data-form-type="other"
+                  inputMode="text"
+                  aria-autocomplete="none"
+                  placeholder={
+                    ui?.dashboard?.authorshipPlaceholder ??
+                    'For example: John Doe — words and music'
+                  }
+                  value={authorship}
+                  onChange={(e) => setAuthorship(e.target.value)}
+                  onFocus={(e) => {
+                    // Предотвращаем всплытие события, чтобы избежать конфликтов с расширениями браузера
+                    e.stopPropagation();
+                  }}
+                  onBlur={(e) => {
+                    e.stopPropagation();
+                  }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                  }}
+                  onKeyDown={(e) => {
+                    e.stopPropagation();
+                  }}
+                  onKeyUp={(e) => {
+                    e.stopPropagation();
+                  }}
+                  onKeyPress={(e) => {
+                    e.stopPropagation();
+                  }}
+                  onInput={(e) => {
+                    e.stopPropagation();
+                  }}
+                />
+              </div>
+            </div>
           </div>
 
           <div className="edit-lyrics-modal__divider" />
 
           <div className="edit-lyrics-modal__actions">
-            <DashboardButton variant="outline" onClick={handleCancel} disabled={isSaving}>
-              {ui?.dashboard?.cancel ?? 'Cancel'}
-            </DashboardButton>
-            <button
-              type="button"
-              className={`edit-lyrics-modal__button edit-lyrics-modal__button--primary${
-                isSaving ? ' edit-lyrics-modal__button--primary-loading' : ''
-              }`}
-              onClick={handleSave}
-              disabled={isSaving || !hasChanges}
-            >
-              {isSaving ? (
-                <>
-                  <DashboardSaveSpinner />
-                  {ui?.dashboard?.saving ?? 'Saving...'}
-                </>
-              ) : (
-                (ui?.dashboard?.save ?? 'Save')
-              )}
-            </button>
+            <div className="edit-lyrics-modal__actions-bar">
+              <DashboardButton variant="outline" onClick={handleCancel} disabled={isSaving}>
+                {ui?.dashboard?.cancel ?? 'Cancel'}
+              </DashboardButton>
+              <button
+                type="button"
+                className={`edit-lyrics-modal__button edit-lyrics-modal__button--primary${
+                  isSaving ? ' edit-lyrics-modal__button--primary-loading' : ''
+                }`}
+                onClick={handleSave}
+                disabled={isSaving || !hasChanges}
+              >
+                {isSaving ? (
+                  <>
+                    <DashboardSaveSpinner />
+                    {ui?.dashboard?.saving ?? 'Saving...'}
+                  </>
+                ) : (
+                  (ui?.dashboard?.save ?? 'Save')
+                )}
+              </button>
+            </div>
           </div>
         </div>
       </div>

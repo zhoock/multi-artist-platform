@@ -105,6 +105,49 @@
     letter-spacing: 0.12em;
   }
 
+  &__about-band {
+    position: relative;
+    min-width: 0;
+  }
+
+  &__about-band-textarea.dashboard-form-textarea {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    min-height: 7.5rem;
+    padding: var(--ms-01) var(--ms-0);
+    padding-block-end: calc(var(--ms-0) + var(--ms-01));
+    overflow-x: hidden;
+    overflow-wrap: anywhere;
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    resize: none;
+
+    &:focus,
+    &:focus-visible {
+      outline: none;
+      border: none;
+      box-shadow: none;
+    }
+  }
+
+  .dashboard-card:has(&__about-band-textarea:focus-visible) {
+    border-color: var(--dashboard-focus-ring-color, var(--dark-greenish-yellow));
+  }
+
+  &__about-band-count {
+    position: absolute;
+    right: var(--ms-0);
+    bottom: var(--ms-01);
+    margin: 0;
+    pointer-events: none;
+    font-variant-numeric: tabular-nums;
+
+    @include dashboard-helper-text;
+  }
+
   &__header-images-section {
     scroll-margin-top: var(--ms-1);
   }
@@ -144,5 +187,69 @@
     height: 1px;
     opacity: 0;
     pointer-events: none;
+  }
+
+  // Mobile: stack each Settings field as label above a full-width control.
+  @media not ($tablets) {
+    &__avatar-row {
+      flex-flow: column nowrap;
+      align-items: stretch;
+    }
+
+    &__avatar {
+      align-self: center;
+    }
+
+    &__avatar-actions {
+      flex-flow: column nowrap;
+      align-items: stretch;
+
+      .dashboard-button {
+        width: 100%;
+      }
+    }
+
+    &__avatar-hint {
+      flex: none;
+    }
+
+    &__slug-control {
+      width: 100%;
+    }
+
+    .dashboard-row,
+    .dashboard-row--start,
+    .dashboard-row--action {
+      grid-template-columns: minmax(0, 1fr);
+      align-items: stretch;
+    }
+
+    .dashboard-row__control {
+      min-width: 0;
+      width: 100%;
+    }
+
+    .dashboard-row__value:empty {
+      display: none;
+    }
+
+    .dashboard-form-input,
+    .dashboard-form-textarea,
+    .dashboard-form-select {
+      max-width: 100%;
+    }
+
+    .social-links .dashboard-row,
+    .social-links .dashboard-row--start,
+    .social-links .dashboard-row--action {
+      grid-template-columns: max-content minmax(0, 1fr);
+      align-items: center;
+    }
+
+    .dashboard-row--action > .dashboard-button {
+      grid-column: auto;
+      justify-self: stretch;
+      width: 100%;
+    }
   }
 }

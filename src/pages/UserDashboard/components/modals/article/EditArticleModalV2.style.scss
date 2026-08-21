@@ -2,6 +2,7 @@
 @use '@entities/article/ui/style.scss' as *;
 @use '../../../../../scss/abstracts/mixins' as *;
 @use '../../../../../scss/components/modal' as *;
+@use '../../../../../scss/components/fullscreen-loading' as fs-loading;
 @use './edit-article-media-buttons' as *;
 
 @mixin edit-article-icon-btn($size: var(--dashboard-btn-height), $border-radius: null) {
@@ -170,6 +171,8 @@ dialog.popup:has(.edit-article-v2) {
     padding: 0;
   }
 }
+
+@include fs-loading.dashboard-fullscreen-dialog-root-loading('.edit-article-v2__loading');
 
 dialog {
   @include dashboard-modal-dialog-buttons;
@@ -1176,11 +1179,6 @@ dialog {
       width: calc(var(--ms-0) * 1.2);
       font-size: var(--ms-0);
       text-align: center;
-    }
-
-    &__loading {
-      flex: 1;
-      min-height: min(480px, 58vh);
     }
   }
 }

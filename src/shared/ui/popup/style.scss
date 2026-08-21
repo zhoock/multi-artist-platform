@@ -23,6 +23,19 @@
   }
 }
 
+.popup__focus-sentinel {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 dialog:not(.toast-viewport-layer, .toast-top-layer) {
   max-inline-size: 100%;
   max-block-size: 100%;
@@ -91,6 +104,9 @@ dialog:not(.toast-viewport-layer, .toast-top-layer) {
         .edit-article-v2,
         .carousel-edit-modal,
         .edit-article-v2__carousel-edit-modal,
+        .edit-lyrics-modal,
+        .preview-lyrics-modal,
+        .sync-lyrics-modal,
         .subscription-plan-modal__card,
         .add-artist-to-archive-modal__card,
         .add-stem-modal,

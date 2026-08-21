@@ -1,44 +1,16 @@
-// src/pages/UserDashboard/components/SyncLyricsModal.style.scss
 @use '../../../../../scss/abstracts/mixins' as *;
 @use '../../../../../scss/components/modal' as *;
+@use 'lyrics-fullscreen-surface' as lyrics-fs;
+@include lyrics-fs.lyrics-fullscreen-dialog('sync-lyrics-modal');
 
 dialog {
   @include dashboard-modal-dialog-buttons;
+  @include lyrics-fs.lyrics-fullscreen-shell('sync-lyrics-modal');
 
   .sync-lyrics-modal {
-    @include dashboard-modal-shell;
-
-    &__card {
-      overflow-x: hidden;
-
-      @include dashboard-modal-panel;
-    }
-
     &__card--saving {
       pointer-events: none;
       user-select: none;
-    }
-
-    &__header {
-      @include dashboard-modal-header($gap: var(--ms-0));
-    }
-
-    &__title {
-      @include dashboard-modal-title;
-    }
-
-    &__close {
-      @include dashboard-modal-close($reset-text: true);
-    }
-
-    &__divider {
-      @include dashboard-modal-divider;
-    }
-
-    &__player {
-      display: flex;
-      align-items: center;
-      gap: var(--ms-0);
     }
 
     &__play-button {
@@ -66,6 +38,10 @@ dialog {
         outline: none;
       }
 
+      &:focus-visible {
+        @include dashboard-focus-ring;
+      }
+
       &:disabled {
         opacity: 0.5;
         cursor: not-allowed;
@@ -91,6 +67,7 @@ dialog {
       background: var(--dashboard-hover-bg);
       border-radius: 2px;
       flex: 1;
+      min-width: 0;
       overflow: hidden;
       cursor: pointer;
     }
@@ -115,21 +92,9 @@ dialog {
       flex-shrink: 0;
     }
 
-    &__content {
-      display: flex;
-      flex-direction: column;
-      gap: 0;
-      min-height: 200px;
-      max-height: 320px;
-      overflow-y: auto;
-    }
-
-    &__loading {
-      min-height: 200px;
-    }
-
     &__empty {
       display: flex;
+      flex: 1 1 0;
       align-items: center;
       justify-content: center;
       padding: var(--ms-2);
@@ -142,29 +107,34 @@ dialog {
     &__table {
       display: flex;
       flex-direction: column;
+      flex: 1 1 0;
+      min-height: 0;
       width: 100%;
     }
 
     &__table-header {
       display: grid;
-      grid-template-columns: 40px 1fr 100px 120px 40px;
+      grid-template-columns: 40px minmax(0, 1fr) 100px 120px 40px;
       gap: var(--ms-01);
-      padding: var(--ms-01) var(--ms-0);
+      flex-shrink: 0;
+      padding: var(--ms-01) var(--ms-1);
       border-bottom: 1px solid var(--dashboard-divider);
     }
 
     &__table-body {
       display: flex;
       flex-direction: column;
-      max-height: 320px;
+      flex: 1 1 0;
+      min-height: 0;
+      max-height: none;
       overflow-y: auto;
     }
 
     &__table-row {
       display: grid;
-      grid-template-columns: 40px 1fr 100px 120px 40px;
+      grid-template-columns: 40px minmax(0, 1fr) 100px 120px 40px;
       gap: var(--ms-01);
-      padding: var(--ms-01) var(--ms-0);
+      padding: var(--ms-01) var(--ms-1);
       border-bottom: 1px solid var(--dashboard-divider);
       transition: background-color 0.2s;
 
@@ -184,6 +154,7 @@ dialog {
     &__table-col {
       display: flex;
       align-items: center;
+      min-width: 0;
       color: var(--dashboard-text-primary);
       font-size: var(--ms-0);
       font-weight: 400;
@@ -196,7 +167,6 @@ dialog {
       }
 
       &--lyrics {
-        flex: 1;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
@@ -284,25 +254,39 @@ dialog {
       }
     }
 
-    &__actions {
-      display: flex;
+    &__actions-bar {
       justify-content: space-between;
-      align-items: center;
+      flex-wrap: nowrap;
       gap: var(--ms-0);
-      flex-wrap: wrap;
     }
 
-    &__actions-left {
-      margin-right: auto;
-    }
-
-    &__actions-right {
+    &__actions-main {
       display: flex;
       align-items: center;
       gap: var(--ms-0);
+      flex-shrink: 0;
     }
 
     &__button {
+      &--danger {
+        --dashboard-btn-ghost-text: var(--pink-terracotta);
+        --dashboard-btn-ghost-hover-text: var(--pink-terracotta);
+
+        display: inline-flex;
+        align-items: center;
+        gap: var(--ms-01);
+
+        @include dashboard-btn-ghost;
+      }
+
+      &-icon {
+        flex-shrink: 0;
+
+        @include breakpoint(tablet) {
+          display: none;
+        }
+      }
+
       &--cancel {
         @include dashboard-btn-ghost;
       }
@@ -315,44 +299,203 @@ dialog {
         @include dashboard-modal-inline-loading;
       }
 
-      &--danger {
-        --dashboard-btn-ghost-text: var(--pink-terracotta);
-        --dashboard-btn-ghost-hover-text: var(--pink-terracotta);
-
-        @include dashboard-btn-ghost;
-      }
-
       &-spinner {
         @include dashboard-modal-spinner(sync-lyrics-modal-spin);
       }
     }
 
-    @include breakpoint(phones) {
-      &__card {
-        padding: var(--ms-1);
+    @media not ($tablets) {
+      &__player {
+        gap: var(--ms-01);
+        padding-block: var(--ms-01);
       }
 
-      &__table-header,
+      &__time,
+      &__duration {
+        min-width: calc(var(--ms-0) * 2.5);
+        font-size: var(--dashboard-helper-font-size);
+      }
+
+      &__table {
+        overflow-x: hidden;
+      }
+
+      &__table-header {
+        display: none;
+      }
+
+      &__table-body {
+        display: flex;
+        flex-direction: column;
+        gap: var(--ms-0);
+        padding-block: var(--ms-01);
+        padding-bottom: var(--ms-0);
+        overflow-x: hidden;
+      }
+
       &__table-row {
-        grid-template-columns: 30px 1fr 80px 100px 30px;
-        gap: var(--ms-02);
-        padding: var(--ms-01);
+        display: flex;
+        flex-wrap: wrap;
+        align-items: flex-start;
+        gap: var(--ms-01) var(--ms-0);
+        padding: var(--ms-0);
+        background: var(--dashboard-card-bg);
+        border: 1px solid var(--dashboard-card-border);
+        border-radius: var(--ms-01);
+        transition:
+          background-color 0.2s,
+          border-color 0.2s;
+        border-bottom: 1px solid var(--dashboard-card-border);
+
+        &:last-child {
+          border-bottom: 1px solid var(--dashboard-card-border);
+        }
+
+        &--active {
+          border-color: rgb(var(--dashboard-accent-rgb) / 35%);
+          background: var(--dashboard-hover-bg);
+        }
+      }
+
+      &__table-row-break {
+        flex: 0 0 100%;
+        order: 4;
+        width: 0;
+        height: 0;
+        overflow: hidden;
       }
 
       &__table-col {
-        font-size: calc(var(--ms-0) * 0.9);
+        &--number {
+          order: 1;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+          min-width: calc(var(--ms-1) * 1.25);
+          height: calc(var(--ms-1) * 1.25);
+          padding-inline: var(--ms-02);
+          color: var(--dashboard-text-primary);
+          font-size: var(--dashboard-helper-font-size);
+          font-weight: 600;
+          line-height: 1;
+          background: var(--dashboard-hover-bg);
+          border: 1px solid var(--dashboard-card-border);
+          border-radius: var(--ms-02);
+        }
 
         &--lyrics {
-          white-space: normal;
+          order: 2;
+          flex: 1 1 0;
+          align-items: flex-start;
+          align-self: center;
+          min-width: 0;
           overflow: visible;
           text-overflow: clip;
+          white-space: normal;
+          overflow-wrap: break-word;
+          word-break: normal;
+        }
+
+        &--clear {
+          order: 3;
+          flex-shrink: 0;
+          align-self: flex-start;
+          margin-inline-start: auto;
+        }
+
+        &--start {
+          order: 5;
+          flex: 1 1 calc(50% - var(--ms-01));
+          flex-direction: column;
+          align-items: stretch;
+          gap: var(--ms-02);
+          min-width: calc(50% - var(--ms-01));
+
+          &::before {
+            content: 'Start';
+            color: var(--dashboard-text-secondary);
+            font-size: var(--dashboard-helper-font-size);
+            line-height: var(--dashboard-helper-line-height);
+          }
+        }
+
+        &--end {
+          order: 6;
+          flex: 1 1 calc(50% - var(--ms-01));
+          flex-direction: column;
+          align-items: stretch;
+          gap: var(--ms-02);
+          min-width: calc(50% - var(--ms-01));
+
+          &::before {
+            content: 'End';
+            color: var(--dashboard-text-secondary);
+            font-size: var(--dashboard-helper-font-size);
+            line-height: var(--dashboard-helper-line-height);
+          }
         }
       }
 
       &__time-btn {
-        min-width: calc(var(--ms-0) * 3);
-        padding: var(--ms-02) var(--ms-01);
-        font-size: calc(var(--ms-0) * 0.9);
+        width: 100%;
+        min-width: 0;
+        padding: var(--ms-01) var(--ms-0);
+        text-align: center;
+        box-sizing: border-box;
+
+        &--set {
+          min-width: 0;
+        }
+      }
+
+      &__time-disabled {
+        display: block;
+        width: 100%;
+        padding: var(--ms-01) var(--ms-0);
+        text-align: center;
+        box-sizing: border-box;
+      }
+
+      &__actions {
+        padding-bottom: env(safe-area-inset-bottom, 0);
+      }
+
+      &__actions-bar {
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        gap: var(--ms-0);
+      }
+
+      &__button--danger {
+        align-self: flex-start;
+      }
+
+      &__actions-main {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: var(--ms-0);
+        width: 100%;
+
+        .sync-lyrics-modal__button {
+          width: 100%;
+          justify-content: center;
+        }
+      }
+    }
+
+    @include breakpoint(tablet) {
+      &__table-row-break {
+        display: none;
+      }
+
+      &__table-col {
+        order: unset;
+      }
+
+      &__actions-main {
+        display: contents;
       }
     }
   }
@@ -364,5 +507,4 @@ dialog {
   }
 }
 
-// Overlay для модалки поверх модалки
 @include dashboard-nested-modal-backdrop;

@@ -87,7 +87,7 @@ function FooterComponent() {
               icon={<Link2Icon {...artistPageBuilderBarIconProps()} />}
               title={ui?.artistPageBuilder?.social?.title ?? 'Add social media'}
               actionLabel={ui?.artistPageBuilder?.social?.cta ?? 'Add social networks'}
-              onAction={() => openDashboard('social-links')}
+              onAction={() => openDashboard('settings')}
             />
           </div>
         ) : null}

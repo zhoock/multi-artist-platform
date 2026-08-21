@@ -4,7 +4,6 @@ import {
   Disc as DiscIcon,
   FileText as FileTextIcon,
   HeartHandshake as HeartHandshakeIcon,
-  Link2 as Link2Icon,
   ShoppingBag as ShoppingBagIcon,
   Settings as SettingsIcon,
   SlidersHorizontal as SlidersHorizontalIcon,
@@ -23,7 +22,6 @@ const DASHBOARD_NAV_TAB_ICONS: Record<DashboardTab, LucideIcon> = {
   subscription: BadgeCheckIcon,
   'payment-settings': CreditCardIcon,
   'my-purchases': ShoppingBagIcon,
-  'social-links': Link2Icon,
 };
 
 export function DashboardNavTabIcon({ tab }: { tab: DashboardTab }) {

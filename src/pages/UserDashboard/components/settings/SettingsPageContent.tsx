@@ -26,11 +26,13 @@ import { SettingsSelect } from '../modals/settings/SettingsSelect';
 import { HeaderImagesUpload } from '../upload/HeaderImagesUpload';
 import { ChangePasswordModal } from './ChangePasswordModal';
 import { useSettingsPage } from './useSettingsPage';
+import { SocialLinksContent } from '../social/SocialLinksContent';
 import { getDashboardRowFlashProps, useDashboardRowFlash } from '../../lib/dashboardRowStateFlash';
 import './SettingsPageContent.style.scss';
 
 const SETTINGS_HEADER_IMAGES_FLASH_ID = 'settings-header-images-section';
 const HEADER_IMAGES_SCROLL_FLASH_DELAY_MS = 650;
+const ABOUT_BAND_MAX_LENGTH = 1000;
 
 function scrollDashboardSectionIntoView(section: HTMLElement): void {
   const scrollContainer = section.closest<HTMLElement>('.user-dashboard__content');
@@ -111,6 +113,7 @@ export function SettingsPageContent({
   const [verificationEmailError, setVerificationEmailError] = useState<string | null>(null);
   const [headerImagesUploading, setHeaderImagesUploading] = useState(false);
   const headerImagesSectionRef = useRef<HTMLDivElement>(null);
+  const [socialLinksPinned, setSocialLinksPinned] = useState(false);
   const { flashes: headerImagesSectionFlashes, flashRow: flashHeaderImagesSection } =
     useDashboardRowFlash();
   const emailVerificationCopy = useEmailVerificationCopy();
@@ -145,8 +148,8 @@ export function SettingsPageContent({
 
   useEffect(() => {
     if (!onMountPinChange) return;
-    onMountPinChange(hasUnsavedChanges || headerImagesUploading || isBusy);
-  }, [hasUnsavedChanges, headerImagesUploading, isBusy, onMountPinChange]);
+    onMountPinChange(hasUnsavedChanges || headerImagesUploading || isBusy || socialLinksPinned);
+  }, [hasUnsavedChanges, headerImagesUploading, isBusy, onMountPinChange, socialLinksPinned]);
 
   useLayoutEffect(() => {
     if (!scrollToHeaderImages || !enabled || isListener) return;
@@ -190,6 +193,7 @@ export function SettingsPageContent({
   const displayNamePlaceholder = isListener
     ? (d?.profileFields?.namePlaceholder ?? 'Enter your name')
     : (d?.settingsModal?.placeholders?.bandName ?? 'Enter the name of your band');
+  const aboutBandTitle = d?.settingsModal?.fields?.aboutBand ?? 'About the Band';
   const verifyEmailLabel = isCoolingDown
     ? `${emailVerificationCopy.resendEmail} (${remaining}s)`
     : emailVerificationCopy.resendEmail;
@@ -363,67 +367,88 @@ export function SettingsPageContent({
                     </DashboardButton>
                   </div>
                 </DashboardRow>
-
-                <DashboardRow
-                  label={d?.settingsModal?.fields?.aboutBand ?? 'About the Band'}
-                  labelFor="settings-about-band"
-                  variant="start"
-                >
-                  {isLoadingAboutText ? (
-                    <div className="dashboard-form-loading" aria-busy="true">
-                      <DashboardSpinner />
-                    </div>
-                  ) : (
-                    <textarea
-                      id="settings-about-band"
-                      className="dashboard-form-textarea"
-                      placeholder={
-                        d?.settingsModal?.placeholders?.aboutBand ??
-                        'Enter band description. Each line will be a separate paragraph.'
-                      }
-                      value={aboutText}
-                      onChange={(event) => handleAboutChange(event.target.value)}
-                      onBlur={handleAboutBlur}
-                      rows={6}
-                    />
-                  )}
-                </DashboardRow>
               </>
             ) : null}
           </DashboardCard>
         </DashboardSection>
 
         {!isListener ? (
-          <div
-            ref={headerImagesSectionRef}
-            className="user-dashboard__settings-page__header-images-section"
-          >
-            <DashboardSection title={d?.settingsModal?.fields?.headerImages ?? 'Header Images'}>
+          <>
+            <DashboardSection title={aboutBandTitle}>
               <DashboardCard>
-                <div
-                  className={clsx(
-                    'user-dashboard__settings-page__header-images',
-                    headerImagesSectionFlash.className
-                  )}
-                  style={headerImagesSectionFlash.style}
-                  data-visibility-flash={headerImagesSectionFlash['data-visibility-flash']}
-                >
-                  {isLoadingHeaderImages ? (
+                <div className="user-dashboard__settings-page__about-band">
+                  {isLoadingAboutText ? (
                     <div className="dashboard-form-loading" aria-busy="true">
                       <DashboardSpinner />
                     </div>
                   ) : (
-                    <HeaderImagesUpload
-                      layout="inline"
-                      currentImages={headerImages}
-                      onImagesUpdated={handleHeaderImagesUpdated}
-                      onUploadingChange={setHeaderImagesUploading}
-                    />
+                    <>
+                      <textarea
+                        id="settings-about-band"
+                        className="dashboard-form-textarea user-dashboard__settings-page__about-band-textarea"
+                        aria-label={aboutBandTitle}
+                        aria-describedby="settings-about-band-count"
+                        placeholder={
+                          d?.settingsModal?.placeholders?.aboutBand ??
+                          'Enter band description. Each line will be a separate paragraph.'
+                        }
+                        value={aboutText}
+                        onChange={(event) => handleAboutChange(event.target.value)}
+                        onBlur={handleAboutBlur}
+                        rows={6}
+                        maxLength={ABOUT_BAND_MAX_LENGTH}
+                      />
+                      <span
+                        id="settings-about-band-count"
+                        className="user-dashboard__settings-page__about-band-count"
+                        aria-live="polite"
+                      >
+                        {aboutText.length} / {ABOUT_BAND_MAX_LENGTH}
+                      </span>
+                    </>
                   )}
                 </div>
               </DashboardCard>
             </DashboardSection>
-          </div>
+
+            <SocialLinksContent
+              active={enabled}
+              onMountPinChange={setSocialLinksPinned}
+              onNotAuthorized={onNotAuthorized}
+              onSaveError={onSaveError}
+            />
+
+            <div
+              ref={headerImagesSectionRef}
+              className="user-dashboard__settings-page__header-images-section"
+            >
+              <DashboardSection title={d?.settingsModal?.fields?.headerImages ?? 'Header Images'}>
+                <DashboardCard>
+                  <div
+                    className={clsx(
+                      'user-dashboard__settings-page__header-images',
+                      headerImagesSectionFlash.className
+                    )}
+                    style={headerImagesSectionFlash.style}
+                    data-visibility-flash={headerImagesSectionFlash['data-visibility-flash']}
+                  >
+                    {isLoadingHeaderImages ? (
+                      <div className="dashboard-form-loading" aria-busy="true">
+                        <DashboardSpinner />
+                      </div>
+                    ) : (
+                      <HeaderImagesUpload
+                        layout="inline"
+                        currentImages={headerImages}
+                        onImagesUpdated={handleHeaderImagesUpdated}
+                        onUploadingChange={setHeaderImagesUploading}
+                      />
+                    )}
+                  </div>
+                </DashboardCard>
+              </DashboardSection>
+            </div>
+          </>
         ) : null}
 
         <DashboardSection

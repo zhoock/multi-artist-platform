@@ -573,7 +573,7 @@ async function main() {
     await gotoPublicHome(page);
     await page.waitForSelector('.footer', { timeout: 20000 });
     const beforeHref = await page.locator('a.social-networks__link.icon-instagram').first().getAttribute('href').catch(() => null);
-    await openDashboardOverlay(page, 'social-links');
+    await openDashboardOverlay(page, 'settings');
     await page.waitForSelector('#social-link-instagram', { timeout: 20000 });
     const oldVal = await page.locator('#social-link-instagram').inputValue();
     const marker = `e2e${Date.now()}`;
@@ -581,7 +581,7 @@ async function main() {
       ? oldVal.replace(/\/?$/, '') + (oldVal.includes('?') ? '&' : '?') + `e2e=${marker}`
       : `https://instagram.com/e2e_${marker}`;
     await page.fill('#social-link-instagram', newVal);
-    await page.locator('footer.social-links__footer button, .social-links__footer button, button', { hasText: /Save|Сохранить/i }).first().click();
+    await page.locator('#social-link-instagram').press('Enter');
     await page.waitForTimeout(1500);
     await closeDashboard(page);
     const afterHref = await waitForTextChange(
@@ -592,9 +592,9 @@ async function main() {
     );
     report('links change', 'PASS', `before="${beforeHref}" after="${afterHref}"`);
     // revert
-    await openDashboardOverlay(page, 'social-links');
+    await openDashboardOverlay(page, 'settings');
     await page.fill('#social-link-instagram', oldVal);
-    await page.locator('button', { hasText: /Save|Сохранить/i }).first().click();
+    await page.locator('#social-link-instagram').blur();
     await page.waitForTimeout(1000);
     await closeDashboard(page);
   } catch (e) {

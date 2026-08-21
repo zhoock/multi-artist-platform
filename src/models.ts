@@ -46,9 +46,9 @@ export interface PopupProps extends HamburgerProps {
   requestCloseRef?: MutableRefObject<(() => void) | null>;
   /** Shared public-site modal backdrop (`--public-modal-backdrop-*`). */
   publicBackdrop?: boolean;
-  /** При открытии dialog фокусировать первый интерактивный элемент (по умолчанию true). */
+  /** При открытии dialog фокусировать нейтральный sentinel (по умолчанию true). */
   autoFocusFirstElement?: boolean;
-  /** CSS selector for the initial focus target when autoFocusFirstElement is true. */
+  /** CSS selector for the initial focus target when autoFocusFirstElement is true. Defaults to `.popup__focus-sentinel`. */
   initialFocusSelector?: string;
 }
 

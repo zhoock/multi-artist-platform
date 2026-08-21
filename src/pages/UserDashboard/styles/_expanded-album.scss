@@ -55,17 +55,49 @@ dialog {
         height: auto;
         min-height: calc(var(--ms-0) * 2 + #{$expanded-track-title-control-height});
         padding-block: var(--ms-01);
+
+        @media not ($tablets) {
+          flex-wrap: nowrap;
+          align-items: center;
+          min-height: 0;
+        }
+      }
+
+      @media not ($tablets) {
+        display: grid;
+        grid-template-columns: auto auto auto minmax(0, 1fr);
+        grid-template-rows: auto auto;
+        align-items: center;
+        gap: var(--ms-01);
+        row-gap: var(--ms-02);
+        height: auto;
+        min-height: 0;
+        padding: var(--ms-01);
+
+        &:has(.user-dashboard__track-processing) {
+          grid-template-rows: auto auto auto;
+        }
       }
     }
 
     &__expanded-track-drag {
       flex-shrink: 0;
+
+      @media not ($tablets) {
+        grid-column: 1;
+        grid-row: 1;
+      }
     }
 
     &__expanded-track-chevron {
       display: inline-flex;
       flex-shrink: 0;
       color: var(--dashboard-text-secondary);
+
+      @media not ($tablets) {
+        grid-column: 2;
+        grid-row: 1;
+      }
     }
 
     &__expanded-track-number {
@@ -74,6 +106,11 @@ dialog {
       color: var(--dashboard-text-secondary);
       font-size: var(--dashboard-font-size);
       font-variant-numeric: tabular-nums;
+
+      @media not ($tablets) {
+        grid-column: 3;
+        grid-row: 1;
+      }
     }
 
     &__expanded-track-title-slot {
@@ -83,6 +120,15 @@ dialog {
       align-items: stretch;
       height: $expanded-track-title-control-height;
       margin-inline-end: var(--ms-02);
+
+      @media not ($tablets) {
+        grid-column: 4;
+        grid-row: 1;
+        align-self: center;
+        height: auto;
+        min-height: $expanded-track-title-control-height;
+        margin-inline-end: 0;
+      }
     }
 
     &__expanded-track-title {
@@ -98,6 +144,27 @@ dialog {
       white-space: nowrap;
       background: transparent;
       border-color: transparent;
+
+      @media not ($tablets) {
+        display: -webkit-box;
+        overflow: hidden;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
+        white-space: normal;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+      }
+    }
+
+    &__expanded-track-header > &__expanded-track-title {
+      @media not ($tablets) {
+        grid-column: 4;
+        grid-row: 1;
+        align-self: center;
+        height: auto;
+        min-height: $expanded-track-title-control-height;
+        margin-inline-end: 0;
+      }
     }
 
     &__expanded-track-title-input.dashboard-form-input {
@@ -154,6 +221,14 @@ dialog {
       gap: var(--ms-02);
       order: 10;
       margin-top: var(--ms-02);
+
+      @media not ($tablets) {
+        grid-column: 1 / -1;
+        grid-row: 3;
+        flex: none;
+        order: unset;
+        margin-top: 0;
+      }
     }
 
     &__track-processing-retry {
@@ -168,6 +243,10 @@ dialog {
       flex-shrink: 0;
     }
 
+    &__expanded-track-toolbar {
+      display: contents;
+    }
+
     &__expanded-track-actions {
       display: flex;
       align-items: center;
@@ -175,8 +254,34 @@ dialog {
       flex-shrink: 0;
     }
 
+    @media not ($tablets) {
+      &__expanded-track-toolbar {
+        display: flex;
+        grid-column: 1 / -1;
+        grid-row: 2;
+        align-items: center;
+        justify-content: flex-end;
+        gap: var(--ms-02);
+        min-width: 0;
+      }
+
+      &__expanded-track-header > &__expanded-track-access-slot {
+        display: inline-flex;
+        grid-column: 1 / -1;
+        grid-row: 2;
+        justify-self: end;
+      }
+
+      &__expanded-track-header > &__track-processing-badge {
+        grid-column: 1 / -1;
+        grid-row: 3;
+        justify-self: end;
+      }
+    }
+
     &__expanded-track-body {
       padding: 0 var(--ms-01) var(--ms-01);
+      min-width: 0;
     }
   }
 }

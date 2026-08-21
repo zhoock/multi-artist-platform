@@ -47,6 +47,10 @@ dialog {
     &__tab-loading {
       flex: 1;
       min-height: min(480px, 58vh);
+
+      @media (not ($tablets)), ((not ($desktops)) and (height < 500px)) {
+        min-height: 0;
+      }
     }
 
     &__tab-panel--collection {

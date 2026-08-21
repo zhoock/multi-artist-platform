@@ -14,7 +14,6 @@ export const DASHBOARD_TAB_SLUGS = [
   'payment-settings',
   'my-purchases',
   'settings',
-  'social-links',
   'mixer',
   'collection',
   'subscription',
@@ -33,7 +32,6 @@ const ARTIST_TABS: DashboardTab[] = [
   'subscription',
   'payment-settings',
   'my-purchases',
-  'social-links',
 ];
 
 export function isDashboardTabSlug(value: string): value is DashboardTab {

@@ -34,7 +34,7 @@ describe('Popup initial focus', () => {
     jest.useRealTimers();
   });
 
-  test('focuses first focusable element by default', () => {
+  test('focuses neutral sentinel by default instead of the close button', () => {
     renderPopup(
       <div>
         <PopupCloseButton aria-label="Close">X</PopupCloseButton>
@@ -46,7 +46,8 @@ describe('Popup initial focus', () => {
       jest.runAllTimers();
     });
 
-    expect(screen.getByRole('button', { name: 'Close' })).toHaveFocus();
+    expect(document.querySelector('.popup__focus-sentinel')).toHaveFocus();
+    expect(screen.getByRole('button', { name: 'Close' })).not.toHaveFocus();
   });
 
   test('focuses initialFocusSelector target when provided', () => {
@@ -92,7 +93,7 @@ describe('Popup initial focus', () => {
     focusSpy.mockRestore();
   });
 
-  test('falls back to first focusable when initialFocusSelector misses', () => {
+  test('falls back to focus sentinel when initialFocusSelector misses', () => {
     renderPopup(
       <div>
         <PopupCloseButton aria-label="Close">X</PopupCloseButton>
@@ -105,7 +106,8 @@ describe('Popup initial focus', () => {
       jest.runAllTimers();
     });
 
-    expect(screen.getByRole('button', { name: 'Close' })).toHaveFocus();
+    expect(document.querySelector('.popup__focus-sentinel')).toHaveFocus();
+    expect(screen.getByRole('button', { name: 'Close' })).not.toHaveFocus();
   });
 
   test('does not move focus when autoFocusFirstElement is false', () => {
@@ -121,6 +123,42 @@ describe('Popup initial focus', () => {
       </div>,
       { autoFocusFirstElement: false }
     );
+
+    act(() => {
+      jest.runAllTimers();
+    });
+
+    expect(externalButton).toHaveFocus();
+    externalButton.remove();
+  });
+
+  test('restores focus to the opener after the dialog closes', async () => {
+    const externalButton = document.createElement('button');
+    externalButton.type = 'button';
+    externalButton.textContent = 'Outside';
+    document.body.appendChild(externalButton);
+
+    act(() => {
+      externalButton.focus();
+    });
+
+    const { rerender } = render(
+      <Popup isActive onClose={() => undefined}>
+        <PopupCloseButton aria-label="Close">X</PopupCloseButton>
+      </Popup>
+    );
+
+    act(() => {
+      jest.runAllTimers();
+    });
+
+    act(() => {
+      rerender(
+        <Popup isActive={false} onClose={() => undefined}>
+          <PopupCloseButton aria-label="Close">X</PopupCloseButton>
+        </Popup>
+      );
+    });
 
     act(() => {
       jest.runAllTimers();
