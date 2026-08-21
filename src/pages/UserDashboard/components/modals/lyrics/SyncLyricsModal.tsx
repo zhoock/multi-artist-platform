@@ -24,6 +24,11 @@ import {
   resolveLyricsSyncState,
 } from '@shared/lib/lyrics';
 import {
+  areSyncEditorSnapshotsEqual,
+  cloneSyncEditorSnapshot,
+  type SyncEditorSnapshot,
+} from '@shared/lib/lyrics/syncEditorDraft';
+import {
   deleteTrackLyricsSyncApi,
   fetchTrackLyricsBundle,
   resolveTrackLyricsBundle,
@@ -107,6 +112,8 @@ const formatTimeCompact = (seconds: number): string => {
 
 const normalize = (s: string) => (s || '').trim();
 
+const EMPTY_SYNC_SNAPSHOT: SyncEditorSnapshot = { lines: [], authorship: '' };
+
 function formatLyricsSyncRemovedToastTitle(
   ui: ReturnType<typeof selectUiDictionaryFirst>,
   lang: string
@@ -148,16 +155,41 @@ export function SyncLyricsModal({
   const [trackAuthorship, setTrackAuthorship] = useState<string>('');
   /** null → trackLyricsSlice; set after GET / save / remove to match persisted DB state. */
   const [persistedSyncOverride, setPersistedSyncOverride] = useState<boolean | null>(null);
+  const [savedSnapshot, setSavedSnapshot] = useState<SyncEditorSnapshot>(EMPTY_SYNC_SNAPSHOT);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isRemovingSync, setIsRemovingSync] = useState(false);
-  const [isDirty, setIsDirty] = useState(false);
 
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  const commitSavedSnapshot = useCallback((snapshot: SyncEditorSnapshot) => {
+    const next = cloneSyncEditorSnapshot(snapshot);
+    setSavedSnapshot(next);
+    setSyncedLines(next.lines);
+    setTrackAuthorship(next.authorship);
+  }, []);
+
+  const currentSnapshot = useMemo(
+    (): SyncEditorSnapshot => ({
+      lines: syncedLines,
+      authorship: trackAuthorship,
+    }),
+    [syncedLines, trackAuthorship]
+  );
+
+  const hasChanges = useMemo(
+    () => !areSyncEditorSnapshotsEqual(currentSnapshot, savedSnapshot),
+    [currentSnapshot, savedSnapshot]
+  );
+
+  const discardDraft = useCallback(() => {
+    setSyncedLines(savedSnapshot.lines.map((line) => ({ ...line })));
+    setTrackAuthorship(savedSnapshot.authorship);
+  }, [savedSnapshot]);
 
   // race-protection
   const requestIdRef = useRef(0);
@@ -221,9 +253,9 @@ export function SyncLyricsModal({
     // мгновенно чистим UI
     setSyncedLines([]);
     setTrackAuthorship('');
+    setSavedSnapshot(EMPTY_SYNC_SNAPSHOT);
     setPersistedSyncOverride(null);
     setIsLoading(true);
-    setIsDirty(false);
 
     // важно: сброс таймера/длительности, чтобы ничего “старого” не синкалось
     setCurrentTime(0);
@@ -311,13 +343,13 @@ export function SyncLyricsModal({
         const authorshipToUse = normalize(authorship || propAuthorship || '');
 
         setPersistedSyncOverride(bundle.state === 'synced');
-        setTrackAuthorship(authorshipToUse);
-        setSyncedLines(lines);
+        commitSavedSnapshot({ lines, authorship: authorshipToUse });
       } catch (error) {
         console.error('[SyncLyricsModal] Load error:', error);
         if (!isRequestValid()) return;
         setSyncedLines([]);
         setTrackAuthorship('');
+        setSavedSnapshot(EMPTY_SYNC_SNAPSHOT);
         setPersistedSyncOverride(false);
       } finally {
         if (isRequestValid()) setIsLoading(false);
@@ -330,7 +362,7 @@ export function SyncLyricsModal({
       requestIdRef.current += 1;
     };
     // ❗ duration НЕ включаем в deps: иначе при загрузке метаданных будет повторная загрузка текста
-  }, [isOpen, albumId, trackId, lang, propAuthorship, initialLyricsText]);
+  }, [isOpen, albumId, trackId, lang, propAuthorship, initialLyricsText, commitSavedSnapshot]);
 
   const displayLines = useMemo((): DisplayLine[] => {
     const auth = trackAuthorship.trim();
@@ -404,7 +436,6 @@ export function SyncLyricsModal({
           newLines[lineIndex - 1] = { ...prevLine, endTime: time };
         }
 
-        setIsDirty(true);
         return newLines;
       });
     },
@@ -424,7 +455,6 @@ export function SyncLyricsModal({
         endTime: undefined,
       };
 
-      setIsDirty(true);
       return newLines;
     });
   }, []);
@@ -463,9 +493,10 @@ export function SyncLyricsModal({
         : await deleteTrackLyricsSyncApi(albumId, trackId);
 
       const { lines, authorship } = buildSyncEditorLinesFromBundle(bundle, initialLyricsText);
-      setSyncedLines(lines);
-      setTrackAuthorship(normalize(authorship || authorshipToSave || propAuthorship || ''));
-      setIsDirty(false);
+      commitSavedSnapshot({
+        lines,
+        authorship: normalize(authorship || authorshipToSave || propAuthorship || ''),
+      });
 
       if (audioRef.current) {
         audioRef.current.pause();
@@ -499,6 +530,7 @@ export function SyncLyricsModal({
     onSyncSaved,
     trackAuthorship,
     initialLyricsText,
+    commitSavedSnapshot,
   ]);
 
   const clearAllLocalTimings = useCallback(() => {
@@ -509,7 +541,6 @@ export function SyncLyricsModal({
         endTime: undefined,
       }))
     );
-    setIsDirty(false);
 
     if (audioRef.current) {
       audioRef.current.pause();
@@ -525,11 +556,11 @@ export function SyncLyricsModal({
     try {
       const bundle = await deleteTrackLyricsSyncApi(albumId, trackId);
       const { lines, authorship } = buildSyncEditorLinesFromBundle(bundle, initialLyricsText);
-
-      setSyncedLines(lines);
-      setTrackAuthorship(normalize(authorship || propAuthorship || ''));
+      commitSavedSnapshot({
+        lines,
+        authorship: normalize(authorship || propAuthorship || ''),
+      });
       setPersistedSyncOverride(false);
-      setIsDirty(false);
 
       if (audioRef.current) {
         audioRef.current.pause();
@@ -558,7 +589,7 @@ export function SyncLyricsModal({
     } finally {
       setIsRemovingSync(false);
     }
-  }, [albumId, trackId, initialLyricsText, lang, onSave, propAuthorship, ui]);
+  }, [albumId, trackId, initialLyricsText, lang, onSave, propAuthorship, ui, commitSavedSnapshot]);
 
   const handleRemoveSyncClick = useCallback(() => {
     if (hasPersistedSync) {
@@ -596,8 +627,9 @@ export function SyncLyricsModal({
   const progress = duration > 0 ? Math.min(100, Math.max(0, (currentTime / duration) * 100)) : 0;
 
   const finalizeSyncLyricsClose = useCallback(() => {
+    discardDraft();
     onClose();
-  }, [onClose]);
+  }, [discardDraft, onClose]);
 
   const popupRequestCloseRef = useRef<(() => void) | null>(null);
   const closeDialog = useCallback(() => {
@@ -607,7 +639,7 @@ export function SyncLyricsModal({
   const syncLyricsCloseGuard = useCloseWithUnsavedConfirmation({
     isOpen,
     isBusy: isSaving || isRemovingSync,
-    hasUnsavedChanges: isDirty,
+    hasUnsavedChanges: hasChanges,
     closeDialog,
   });
 
@@ -616,6 +648,12 @@ export function SyncLyricsModal({
   const handleRequestClose = useCallback(() => {
     requestSyncLyricsClose();
   }, [requestSyncLyricsClose]);
+
+  const cancelAndClose = useCallback(() => {
+    if (isSaving || isRemovingSync) return;
+    discardDraft();
+    closeDialog();
+  }, [closeDialog, discardDraft, isRemovingSync, isSaving]);
 
   return (
     <>
@@ -828,7 +866,7 @@ export function SyncLyricsModal({
                       <button
                         type="button"
                         className="sync-lyrics-modal__button sync-lyrics-modal__button--cancel"
-                        onClick={handleRequestClose}
+                        onClick={cancelAndClose}
                         disabled={isSaving || isRemovingSync}
                       >
                         {ui?.dashboard?.cancel ?? 'Cancel'}
@@ -837,7 +875,7 @@ export function SyncLyricsModal({
                       <button
                         type="button"
                         onClick={handleSave}
-                        disabled={!isDirty || isSaving || isRemovingSync}
+                        disabled={!hasChanges || isSaving || isRemovingSync}
                         className={`sync-lyrics-modal__button sync-lyrics-modal__button--primary${
                           isSaving ? ' sync-lyrics-modal__button--primary-loading' : ''
                         }`}
@@ -863,7 +901,10 @@ export function SyncLyricsModal({
           labels={getCloseDiscardConfirmLabels(ui ?? undefined)}
           titleId={syncLyricsCloseGuard.discardTitleDomId}
           onStay={syncLyricsCloseGuard.dismissDiscardDialog}
-          onDiscard={syncLyricsCloseGuard.finalizeCloseWithoutSaving}
+          onDiscard={() => {
+            discardDraft();
+            syncLyricsCloseGuard.finalizeCloseWithoutSaving();
+          }}
         />
       </Popup>
 

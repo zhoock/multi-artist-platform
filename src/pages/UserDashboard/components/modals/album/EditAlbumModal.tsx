@@ -3235,16 +3235,20 @@ export function EditAlbumModal({
               </button>
             </div>
 
-            {editLocaleFallbackNotice ? (
-              <p className="edit-album-modal__locale-fallback" role="status">
-                {editLocaleFallbackNotice}
-              </p>
-            ) : null}
+            <div className="edit-album-modal__body">
+              <div className="edit-album-modal__content-column">
+                {editLocaleFallbackNotice ? (
+                  <p className="edit-album-modal__locale-fallback" role="status">
+                    {editLocaleFallbackNotice}
+                  </p>
+                ) : null}
 
-            <div className="edit-album-modal__form">
-              {renderStepContent()}
+                <div className="edit-album-modal__form">{renderStepContent()}</div>
+              </div>
+            </div>
 
-              <div className="edit-album-modal__actions">
+            <div className="edit-album-modal__actions">
+              <div className="edit-album-modal__actions-bar">
                 <div className="edit-album-modal__actions-leading">
                   <button
                     type="button"

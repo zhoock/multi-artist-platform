@@ -1,11 +1,11 @@
 // src/pages/UserDashboard/components/EditLyricsModal.tsx
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import React, { useCallback, useMemo, useRef } from 'react';
 import { Popup } from '@shared/ui/popup';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 import { useLang } from '@app/providers/lang';
 import { useDashboardSaveLock } from '@shared/lib/hooks/useDashboardSaveLock';
-import { DashboardButton } from '@shared/ui/dashboard';
+import { useModalDraftSession } from '@shared/lib/hooks/useModalDraftSession';
 import { DashboardSaveSpinner } from '@shared/ui/dashboard-save/DashboardSaveSpinner';
 import { ModalCloseIcon } from '@shared/ui/icons/ModalCloseIcon';
 import '@shared/ui/dashboard-save/dashboard-save.scss';
@@ -15,6 +15,17 @@ import {
   getCloseDiscardConfirmLabels,
 } from '../../shared/EditableCardField';
 import './EditLyricsModal.style.scss';
+
+type EditLyricsDraft = {
+  lyrics: string;
+  authorship: string;
+};
+
+function areEditLyricsDraftsEqual(left: EditLyricsDraft, right: EditLyricsDraft): boolean {
+  return (
+    left.lyrics.trim() === right.lyrics.trim() && left.authorship.trim() === right.authorship.trim()
+  );
+}
 
 interface EditLyricsModalProps {
   isOpen: boolean;
@@ -34,55 +45,20 @@ export function EditLyricsModal({
   const { lang } = useLang();
   const ui = useAppSelector((state) => selectUiDictionaryFirst(state, lang));
   const { isSaving, withSaving } = useDashboardSaveLock();
-  const [lyricsText, setLyricsText] = useState(initialLyrics);
-  const [authorship, setAuthorship] = useState(initialAuthorship || '');
 
-  // Исходные значения для отслеживания изменений
-  const [initialLyricsValue, setInitialLyricsValue] = useState(initialLyrics);
-  const [initialAuthorshipValue, setInitialAuthorshipValue] = useState(initialAuthorship || '');
+  const baseline = useMemo<EditLyricsDraft>(
+    () => ({
+      lyrics: initialLyrics,
+      authorship: initialAuthorship || '',
+    }),
+    [initialLyrics, initialAuthorship]
+  );
 
-  // Обновляем состояние при изменении initialLyrics или initialAuthorship
-  useEffect(() => {
-    // Обновляем только если модалка открыта, чтобы не сбрасывать изменения пользователя при закрытии
-    if (isOpen) {
-      setLyricsText(initialLyrics);
-      setAuthorship(initialAuthorship || '');
-      setInitialLyricsValue(initialLyrics);
-      setInitialAuthorshipValue(initialAuthorship || '');
-    }
-  }, [initialLyrics, initialAuthorship, isOpen]);
-
-  // Проверка наличия изменений
-  const hasChanges = useMemo(() => {
-    return (
-      lyricsText.trim() !== initialLyricsValue.trim() ||
-      authorship.trim() !== initialAuthorshipValue.trim()
-    );
-  }, [lyricsText, initialLyricsValue, authorship, initialAuthorshipValue]);
-
-  // Отмена изменений
-  const handleCancel = useCallback(() => {
-    setLyricsText(initialLyricsValue);
-    setAuthorship(initialAuthorshipValue);
-  }, [initialLyricsValue, initialAuthorshipValue]);
-
-  const handleSave = () => {
-    void withSaving(async () => {
-      try {
-        await onSave(lyricsText, authorship.trim() || undefined);
-        setInitialLyricsValue(lyricsText);
-        setInitialAuthorshipValue(authorship.trim() || '');
-        onClose();
-      } catch (error) {
-        console.error('Error saving lyrics:', error);
-      }
-    });
-  };
-
-  const finalizeLyricsModalClose = useCallback(() => {
-    if (hasChanges) handleCancel();
-    onClose();
-  }, [hasChanges, handleCancel, onClose]);
+  const { draft, setDraft, hasChanges, discardDraft, commitDraft } = useModalDraftSession({
+    isOpen,
+    baseline,
+    isEqual: areEditLyricsDraftsEqual,
+  });
 
   const popupRequestCloseRef = useRef<(() => void) | null>(null);
   const closeDialog = useCallback(() => {
@@ -95,6 +71,33 @@ export function EditLyricsModal({
     hasUnsavedChanges: hasChanges,
     closeDialog,
   });
+
+  const finalizeLyricsModalClose = useCallback(() => {
+    discardDraft();
+    onClose();
+  }, [discardDraft, onClose]);
+
+  const cancelAndClose = useCallback(() => {
+    if (isSaving) return;
+    discardDraft();
+    closeDialog();
+  }, [closeDialog, discardDraft, isSaving]);
+
+  const handleSave = () => {
+    void withSaving(async () => {
+      try {
+        const authorship = draft.authorship.trim();
+        await onSave(draft.lyrics, authorship || undefined);
+        commitDraft({
+          lyrics: draft.lyrics,
+          authorship,
+        });
+        onClose();
+      } catch (error) {
+        console.error('Error saving lyrics:', error);
+      }
+    });
+  };
 
   return (
     <Popup
@@ -130,8 +133,8 @@ export function EditLyricsModal({
             <div className="edit-lyrics-modal__content-column">
               <textarea
                 className="edit-lyrics-modal__textarea"
-                value={lyricsText}
-                onChange={(e) => setLyricsText(e.target.value)}
+                value={draft.lyrics}
+                onChange={(e) => setDraft({ ...draft, lyrics: e.target.value })}
               />
 
               <div className="edit-lyrics-modal__field">
@@ -156,10 +159,9 @@ export function EditLyricsModal({
                     ui?.dashboard?.authorshipPlaceholder ??
                     'For example: John Doe — words and music'
                   }
-                  value={authorship}
-                  onChange={(e) => setAuthorship(e.target.value)}
+                  value={draft.authorship}
+                  onChange={(e) => setDraft({ ...draft, authorship: e.target.value })}
                   onFocus={(e) => {
-                    // Предотвращаем всплытие события, чтобы избежать конфликтов с расширениями браузера
                     e.stopPropagation();
                   }}
                   onBlur={(e) => {
@@ -189,9 +191,14 @@ export function EditLyricsModal({
 
           <div className="edit-lyrics-modal__actions">
             <div className="edit-lyrics-modal__actions-bar">
-              <DashboardButton variant="outline" onClick={handleCancel} disabled={isSaving}>
+              <button
+                type="button"
+                className="edit-lyrics-modal__button edit-lyrics-modal__button--cancel"
+                onClick={cancelAndClose}
+                disabled={isSaving}
+              >
                 {ui?.dashboard?.cancel ?? 'Cancel'}
-              </DashboardButton>
+              </button>
               <button
                 type="button"
                 className={`edit-lyrics-modal__button edit-lyrics-modal__button--primary${
@@ -218,7 +225,10 @@ export function EditLyricsModal({
         labels={getCloseDiscardConfirmLabels(ui ?? undefined)}
         titleId={lyricsCloseGuard.discardTitleDomId}
         onStay={lyricsCloseGuard.dismissDiscardDialog}
-        onDiscard={lyricsCloseGuard.finalizeCloseWithoutSaving}
+        onDiscard={() => {
+          discardDraft();
+          lyricsCloseGuard.finalizeCloseWithoutSaving();
+        }}
       />
     </Popup>
   );

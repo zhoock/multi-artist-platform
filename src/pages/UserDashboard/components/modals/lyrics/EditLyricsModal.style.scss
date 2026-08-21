@@ -53,6 +53,10 @@ dialog {
     }
 
     &__button {
+      &--cancel {
+        @include dashboard-btn-ghost;
+      }
+
       &--primary {
         @include dashboard-btn-primary;
       }
