@@ -12,9 +12,13 @@ dialog {
       flex: 1;
       gap: var(--ms-1);
       width: 100%;
-      padding: var(--ms-1);
+      padding: var(--ms-0);
       overflow-y: auto;
       background: var(--dashboard-card-bg);
+
+      @include breakpoint(tablet) {
+        padding: var(--ms-1);
+      }
     }
 
     /** Оболочка под вкладки: стабильная высота, без скачка при смене таба */

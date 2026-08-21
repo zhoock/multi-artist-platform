@@ -83,21 +83,33 @@ dialog {
     // Sidebar navigation
     &__sidebar {
       display: flex;
-      flex-flow: row wrap;
+      flex-flow: row nowrap;
+      flex-shrink: 0;
       gap: var(--ms-02);
       width: 100%;
-      min-width: 100%;
+      min-width: 0;
+      max-width: 100%;
       padding: var(--ms-01) var(--ms-01);
+      overflow: auto hidden;
+      overscroll-behavior-x: contain;
+      -webkit-overflow-scrolling: touch;
       border-bottom: 1px solid var(--dashboard-card-border);
       background: var(--dashboard-card-bg);
+      touch-action: pan-x;
+
+      @extend %hide-scrollbar;
 
       @include breakpoint(tablet) {
         flex-flow: column nowrap;
+        flex-shrink: 1;
         width: 200px;
         min-width: 200px;
+        max-width: none;
         padding: var(--ms-1) var(--ms-01);
-        border-bottom: none;
         overflow: hidden auto;
+        overscroll-behavior-x: auto;
+        touch-action: auto;
+        border-bottom: none;
       }
     }
 
@@ -111,14 +123,18 @@ dialog {
 
     &__nav-item {
       display: inline-flex;
+      flex: 0 0 auto;
       align-items: center;
       gap: var(--ms-02);
       width: auto;
       min-width: auto;
+      margin-right: var(--ms-01);
+      margin-bottom: 0;
       padding: var(--ms-01) var(--ms-0);
       color: var(--dashboard-text-secondary);
       font-size: var(--dashboard-font-size);
       line-height: 1.2;
+      white-space: nowrap;
       background: transparent;
       border: none;
       border-radius: var(--ms-02);
@@ -126,8 +142,6 @@ dialog {
       transition:
         color 0.2s ease,
         background-color 0.2s ease;
-      margin-right: var(--ms-01);
-      margin-bottom: var(--ms-01);
 
       &:hover {
         color: var(--dashboard-text-primary);
@@ -145,8 +159,9 @@ dialog {
       }
 
       @include breakpoint(tablet) {
+        flex: none;
         width: 100%;
-        margin-bottom: 0;
+        white-space: normal;
       }
     }
 
