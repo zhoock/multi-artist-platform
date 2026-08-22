@@ -4,8 +4,51 @@ import type { AlbumFormData } from '../modals/album/EditAlbumModal.types';
 import type { IInterface } from '@models';
 import { PURCHASE_SERVICES, STREAMING_SERVICES } from '../modals/album/EditAlbumModal.constants';
 import { EMPTY_LINK, linkEditHasChanges } from '../modals/album/EditAlbumModal.utils';
+import { SettingsSelect } from '../modals/settings/SettingsSelect';
 import { InlineEditDiscardDialog, getInlineEditDiscardLabels } from '../shared/EditableCardField';
 import { EditAlbumEditIcon, EditAlbumRemoveIcon } from './EditAlbumStepIcons';
+
+type LinkService = {
+  id: string;
+  name: string;
+};
+
+type LinkServiceSelectProps = {
+  id: string;
+  value: string;
+  services: readonly LinkService[];
+  placeholder: string;
+  onChange: (value: string) => void;
+  onKeyDown?: (event: React.KeyboardEvent<HTMLDivElement>) => void;
+};
+
+function LinkServiceSelect({
+  id,
+  value,
+  services,
+  placeholder,
+  onChange,
+  onKeyDown,
+}: LinkServiceSelectProps) {
+  const options = useMemo(
+    () => [
+      { value: '', label: placeholder },
+      ...services.map((service) => ({ value: service.id, label: service.name })),
+    ],
+    [placeholder, services]
+  );
+
+  return (
+    <SettingsSelect
+      id={id}
+      value={value}
+      options={options}
+      onChange={onChange}
+      onKeyDown={onKeyDown}
+      className="dashboard-form-select--embedded"
+    />
+  );
+}
 
 interface EditAlbumModalStep5Props {
   formData: AlbumFormData;
@@ -162,23 +205,16 @@ export function EditAlbumModalStep5({
               >
                 {isEditing ? (
                   <div className="edit-album-modal__list-item-edit-wrapper">
-                    <select
-                      name="purchase-link-service"
-                      autoComplete="off"
-                      className="edit-album-modal__list-item-input edit-album-modal__list-item-input--title"
+                    <LinkServiceSelect
+                      id="purchase-link-service"
                       value={purchaseLinkService}
-                      onChange={(e) => onPurchaseLinkServiceChange(e.target.value)}
+                      services={PURCHASE_SERVICES}
+                      placeholder={
+                        ui?.dashboard?.editAlbumModal?.step5?.selectService ?? 'Select service'
+                      }
+                      onChange={onPurchaseLinkServiceChange}
                       onKeyDown={purchaseKeyHandlers}
-                    >
-                      <option value="">
-                        {ui?.dashboard?.editAlbumModal?.step5?.selectService ?? 'Select service'}
-                      </option>
-                      {PURCHASE_SERVICES.map((s) => (
-                        <option key={s.id} value={s.id}>
-                          {s.name}
-                        </option>
-                      ))}
-                    </select>
+                    />
 
                     {purchaseLinkService.trim() ? (
                       <>
@@ -251,23 +287,16 @@ export function EditAlbumModalStep5({
           {editingPurchaseLink === null && (
             <div className="edit-album-modal__list-item edit-album-modal__list-item--links edit-album-modal__list-item--editing">
               <div className="edit-album-modal__list-item-edit-wrapper">
-                <select
-                  name="purchase-link-service"
-                  autoComplete="off"
-                  className="edit-album-modal__list-item-input edit-album-modal__list-item-input--title"
+                <LinkServiceSelect
+                  id="purchase-link-service-new"
                   value={purchaseLinkService}
-                  onChange={(e) => onPurchaseLinkServiceChange(e.target.value)}
+                  services={PURCHASE_SERVICES}
+                  placeholder={
+                    ui?.dashboard?.editAlbumModal?.step5?.selectService ?? 'Select service'
+                  }
+                  onChange={onPurchaseLinkServiceChange}
                   onKeyDown={purchaseKeyHandlers}
-                >
-                  <option value="">
-                    {ui?.dashboard?.editAlbumModal?.step5?.selectService ?? 'Select service'}
-                  </option>
-                  {PURCHASE_SERVICES.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name}
-                    </option>
-                  ))}
-                </select>
+                />
 
                 {purchaseLinkService.trim() ? (
                   <>
@@ -325,23 +354,16 @@ export function EditAlbumModalStep5({
               >
                 {isEditing ? (
                   <div className="edit-album-modal__list-item-edit-wrapper">
-                    <select
-                      name="streaming-link-service"
-                      autoComplete="off"
-                      className="edit-album-modal__list-item-input edit-album-modal__list-item-input--title"
+                    <LinkServiceSelect
+                      id="streaming-link-service"
                       value={streamingLinkService}
-                      onChange={(e) => onStreamingLinkServiceChange(e.target.value)}
+                      services={STREAMING_SERVICES}
+                      placeholder={
+                        ui?.dashboard?.editAlbumModal?.step5?.selectService ?? 'Select service'
+                      }
+                      onChange={onStreamingLinkServiceChange}
                       onKeyDown={streamingKeyHandlers}
-                    >
-                      <option value="">
-                        {ui?.dashboard?.editAlbumModal?.step5?.selectService ?? 'Select service'}
-                      </option>
-                      {STREAMING_SERVICES.map((s) => (
-                        <option key={s.id} value={s.id}>
-                          {s.name}
-                        </option>
-                      ))}
-                    </select>
+                    />
 
                     {streamingLinkService.trim() ? (
                       <>
@@ -414,23 +436,16 @@ export function EditAlbumModalStep5({
           {editingStreamingLink === null && (
             <div className="edit-album-modal__list-item edit-album-modal__list-item--links edit-album-modal__list-item--editing">
               <div className="edit-album-modal__list-item-edit-wrapper">
-                <select
-                  name="streaming-link-service"
-                  autoComplete="off"
-                  className="edit-album-modal__list-item-input edit-album-modal__list-item-input--title"
+                <LinkServiceSelect
+                  id="streaming-link-service-new"
                   value={streamingLinkService}
-                  onChange={(e) => onStreamingLinkServiceChange(e.target.value)}
+                  services={STREAMING_SERVICES}
+                  placeholder={
+                    ui?.dashboard?.editAlbumModal?.step5?.selectService ?? 'Select service'
+                  }
+                  onChange={onStreamingLinkServiceChange}
                   onKeyDown={streamingKeyHandlers}
-                >
-                  <option value="">
-                    {ui?.dashboard?.editAlbumModal?.step5?.selectService ?? 'Select service'}
-                  </option>
-                  {STREAMING_SERVICES.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name}
-                    </option>
-                  ))}
-                </select>
+                />
 
                 {streamingLinkService.trim() ? (
                   <>

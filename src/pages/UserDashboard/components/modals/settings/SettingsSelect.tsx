@@ -1,10 +1,7 @@
 import clsx from 'clsx';
-import React, { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
-import { createPortal } from 'react-dom';
-import {
-  DASHBOARD_ACCESS_MENU_Z_INDEX,
-  resolveDashboardAccessMenuPortalFromElement,
-} from '../../../lib/useDashboardAccessMenu';
+import React, { useEffect, useRef, useState } from 'react';
+import { DashboardFormSelectChevron } from './DashboardFormSelectChevron';
+import { DashboardFormSelectDropdown } from './DashboardFormSelectDropdown';
 
 export type SettingsSelectOption = {
   value: string;
@@ -17,23 +14,9 @@ type SettingsSelectProps = {
   options: SettingsSelectOption[];
   onChange: (value: string) => void;
   disabled?: boolean;
+  className?: string;
+  onKeyDown?: (event: React.KeyboardEvent<HTMLDivElement>) => void;
 };
-
-function getDropdownStyle(trigger: HTMLElement | null): CSSProperties {
-  if (!trigger) {
-    return { position: 'fixed', visibility: 'hidden' };
-  }
-
-  const rect = trigger.getBoundingClientRect();
-
-  return {
-    position: 'fixed',
-    top: rect.bottom + 4,
-    left: rect.left,
-    width: rect.width,
-    zIndex: DASHBOARD_ACCESS_MENU_Z_INDEX,
-  };
-}
 
 export function SettingsSelect({
   id,
@@ -41,36 +24,30 @@ export function SettingsSelect({
   options,
   onChange,
   disabled = false,
+  className,
+  onKeyDown,
 }: SettingsSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [dropdownStyle, setDropdownStyle] = useState<CSSProperties>(() => getDropdownStyle(null));
+  const [highlightedIndex, setHighlightedIndex] = useState(0);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const selectRef = useRef<HTMLDivElement>(null);
+  const optionRefs = useRef<Array<HTMLButtonElement | null>>([]);
 
+  const isEmbedded = className?.includes('dashboard-form-select--embedded') ?? false;
   const selectedOption = options.find((option) => option.value === value) ?? options[0];
-
-  const updateDropdownPosition = () => {
-    setDropdownStyle(getDropdownStyle(selectRef.current));
-  };
-
-  useLayoutEffect(() => {
-    if (!isOpen) return;
-    updateDropdownPosition();
-  }, [isOpen]);
 
   useEffect(() => {
     if (!isOpen) return;
 
-    const handleReposition = () => updateDropdownPosition();
+    const currentIndex = options.findIndex((option) => option.value === value);
+    setHighlightedIndex(currentIndex >= 0 ? currentIndex : 0);
+  }, [isOpen, options, value]);
 
-    window.addEventListener('resize', handleReposition);
-    window.addEventListener('scroll', handleReposition, true);
+  useEffect(() => {
+    if (!isOpen) return;
 
-    return () => {
-      window.removeEventListener('resize', handleReposition);
-      window.removeEventListener('scroll', handleReposition, true);
-    };
-  }, [isOpen]);
+    optionRefs.current[highlightedIndex]?.scrollIntoView?.({ block: 'nearest' });
+  }, [highlightedIndex, isOpen]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -114,44 +91,48 @@ export function SettingsSelect({
     setIsOpen(false);
   };
 
-  const portalRoot =
-    isOpen && typeof document !== 'undefined'
-      ? resolveDashboardAccessMenuPortalFromElement(selectRef.current)
-      : null;
+  const handleTriggerKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (disabled) return;
 
-  const dropdown = isOpen ? (
-    <div
-      ref={dropdownRef}
-      className="dashboard-form-select__dropdown dashboard-form-select__dropdown--fixed"
-      style={dropdownStyle}
-      role="listbox"
-    >
-      {options.map((option) => (
-        <button
-          key={option.value}
-          type="button"
-          role="option"
-          aria-selected={value === option.value}
-          className={clsx(
-            'dashboard-form-select__option',
-            value === option.value && 'dashboard-form-select__option--selected'
-          )}
-          onClick={() => handleSelect(option.value)}
-        >
-          {option.label}
-        </button>
-      ))}
-    </div>
-  ) : null;
+    if (isOpen) {
+      if (event.key === 'ArrowDown') {
+        event.preventDefault();
+        setHighlightedIndex((index) => Math.min(index + 1, options.length - 1));
+        return;
+      }
+
+      if (event.key === 'ArrowUp') {
+        event.preventDefault();
+        setHighlightedIndex((index) => Math.max(index - 1, 0));
+        return;
+      }
+
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        const highlighted = options[highlightedIndex];
+        if (highlighted) {
+          handleSelect(highlighted.value);
+        }
+        return;
+      }
+    } else if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      toggleDropdown();
+      return;
+    }
+
+    onKeyDown?.(event);
+  };
 
   return (
-    <div className="dashboard-form-select">
+    <div className={clsx('dashboard-form-select', className)}>
       <div
         ref={selectRef}
         id={id}
         className={clsx(
           'dashboard-form-select__trigger',
-          isOpen && 'dashboard-form-select__trigger--open'
+          isOpen && 'dashboard-form-select__trigger--open',
+          isEmbedded && 'dashboard-form-select__trigger--embedded'
         )}
         onClick={toggleDropdown}
         role="button"
@@ -159,38 +140,41 @@ export function SettingsSelect({
         aria-haspopup="listbox"
         aria-expanded={isOpen}
         aria-disabled={disabled}
-        onKeyDown={(event) => {
-          if (disabled) return;
-          if (event.key === 'Enter' || event.key === ' ') {
-            event.preventDefault();
-            toggleDropdown();
-          }
-        }}
+        onKeyDown={handleTriggerKeyDown}
       >
-        <span className="dashboard-form-select__value">{selectedOption?.label ?? ''}</span>
-        <svg
+        <span
           className={clsx(
-            'dashboard-form-select__arrow',
-            isOpen && 'dashboard-form-select__arrow--open'
+            'dashboard-form-select__value',
+            !value && 'dashboard-form-select__value--placeholder'
           )}
-          width="12"
-          height="8"
-          viewBox="0 0 12 8"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
-          aria-hidden
         >
-          <path
-            d="M1 1L6 6L11 1"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
+          {selectedOption?.label ?? ''}
+        </span>
+        <DashboardFormSelectChevron open={isOpen} />
       </div>
 
-      {portalRoot && dropdown ? createPortal(dropdown, portalRoot) : null}
+      <DashboardFormSelectDropdown isOpen={isOpen} triggerRef={selectRef} dropdownRef={dropdownRef}>
+        {options.map((option, index) => (
+          <button
+            key={option.value || '__empty__'}
+            ref={(element) => {
+              optionRefs.current[index] = element;
+            }}
+            type="button"
+            role="option"
+            aria-selected={value === option.value}
+            className={clsx(
+              'dashboard-form-select__option',
+              value === option.value && 'dashboard-form-select__option--selected',
+              highlightedIndex === index && 'dashboard-form-select__option--highlighted'
+            )}
+            onClick={() => handleSelect(option.value)}
+            onMouseEnter={() => setHighlightedIndex(index)}
+          >
+            {option.label}
+          </button>
+        ))}
+      </DashboardFormSelectDropdown>
     </div>
   );
 }

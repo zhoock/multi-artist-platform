@@ -878,9 +878,15 @@ export function EditAlbumModal({
   // Закрытие dropdown при клике вне него
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (genreDropdownRef.current && !genreDropdownRef.current.contains(event.target as Node)) {
-        setGenreDropdownOpen(false);
+      const target = event.target as Node;
+      if (genreDropdownRef.current?.contains(target)) return;
+      if (
+        target instanceof Element &&
+        target.closest('[data-dashboard-form-select-dropdown="genre"]')
+      ) {
+        return;
       }
+      setGenreDropdownOpen(false);
     };
 
     if (genreDropdownOpen) document.addEventListener('mousedown', handleClickOutside);

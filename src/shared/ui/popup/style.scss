@@ -123,7 +123,9 @@ dialog:not(.toast-viewport-layer, .toast-top-layer) {
         .stem-deleted-toast,
         .archive-artist-removed-toast,
         .lyrics-sync-saved-toast,
-        .lyrics-sync-removed-toast
+        .lyrics-sync-removed-toast,
+        .dashboard-form-select__dropdown,
+        .user-dashboard__track-access-menu
       ) {
       max-height: 85vh;
       min-height: 60vh;

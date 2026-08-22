@@ -1,12 +1,13 @@
 // src/pages/UserDashboard/components/steps/EditAlbumModalStep2.tsx
-import React from 'react';
+import clsx from 'clsx';
+import React, { useRef } from 'react';
 import type { AlbumFormData } from '../modals/album/EditAlbumModal.types';
 import type { IInterface } from '@models';
 import { GENRE_OPTIONS, MAX_TAGS } from '../modals/album/EditAlbumModal.constants';
 import type { SupportedLang } from '@shared/model/lang';
+import { DashboardFormSelectChevron } from '../modals/settings/DashboardFormSelectChevron';
+import { DashboardFormSelectDropdown } from '../modals/settings/DashboardFormSelectDropdown';
 import {
-  EditAlbumChevronDownIcon,
-  EditAlbumChevronUpIcon,
   EditAlbumPlusIcon,
   EditAlbumRemoveIcon,
   editAlbumAddButtonLabel,
@@ -49,6 +50,8 @@ export function EditAlbumModalStep2({
   onRemoveTag,
   ui,
 }: EditAlbumModalStep2Props) {
+  const genreTriggerRef = useRef<HTMLDivElement>(null);
+
   const getGenreLabelByCode = (code: string) => {
     const option = GENRE_OPTIONS.find((item) => item.code === code);
     if (!option) return code;
@@ -63,9 +66,17 @@ export function EditAlbumModalStep2({
       <div className="edit-album-modal__field" data-step2-field="genre">
         <label className="edit-album-modal__label">{step2Ui?.genre ?? 'Genre'}</label>
 
-        <div className="edit-album-modal__multiselect" ref={genreDropdownRef}>
+        <div
+          className="dashboard-form-select edit-album-modal__genre-select"
+          ref={genreDropdownRef}
+        >
           <div
-            className={`edit-album-modal__multiselect-input${genreRequired ? ' edit-album-modal__multiselect-input--invalid' : ''}`}
+            ref={genreTriggerRef}
+            className={clsx(
+              'dashboard-form-select__trigger',
+              genreDropdownOpen && 'dashboard-form-select__trigger--open',
+              genreRequired && 'edit-album-modal__genre-select-trigger--invalid'
+            )}
             onClick={onGenreDropdownToggle}
             role="button"
             tabIndex={0}
@@ -75,11 +86,13 @@ export function EditAlbumModalStep2({
                 onGenreDropdownToggle();
               }
             }}
+            aria-haspopup="listbox"
+            aria-expanded={genreDropdownOpen}
             aria-invalid={genreRequired}
             aria-describedby={genreRequired ? 'album-genre-required-error' : undefined}
           >
             {formData.genreCodes.length > 0 ? (
-              <div className="edit-album-modal__tags-container">
+              <div className="edit-album-modal__tags-container edit-album-modal__genre-select-chips">
                 {formData.genreCodes.map((genreCode) => (
                   <span key={genreCode} className="edit-album-modal__tag">
                     {getGenreLabelByCode(genreCode)}
@@ -98,30 +111,42 @@ export function EditAlbumModalStep2({
                 ))}
               </div>
             ) : (
-              <span className="edit-album-modal__multiselect-placeholder">
+              <span className="dashboard-form-select__value dashboard-form-select__value--placeholder">
                 {ui?.dashboard?.editAlbumModal?.step2?.selectGenres ?? 'Select genres...'}
               </span>
             )}
 
-            <span className="edit-album-modal__multiselect-arrow">
-              {genreDropdownOpen ? <EditAlbumChevronUpIcon /> : <EditAlbumChevronDownIcon />}
-            </span>
+            <DashboardFormSelectChevron open={genreDropdownOpen} />
           </div>
 
-          {genreDropdownOpen && (
-            <div className="edit-album-modal__multiselect-dropdown">
-              {GENRE_OPTIONS.map((option) => (
-                <label key={option.code} className="edit-album-modal__multiselect-option">
-                  <input
-                    type="checkbox"
-                    checked={formData.genreCodes.includes(option.code)}
-                    onChange={() => onGenreToggle(option.code)}
-                  />
-                  <span>{lang === 'ru' ? option.label.ru : option.label.en}</span>
-                </label>
-              ))}
-            </div>
-          )}
+          <DashboardFormSelectDropdown
+            isOpen={genreDropdownOpen}
+            triggerRef={genreTriggerRef}
+            dataAttribute="genre"
+          >
+            {GENRE_OPTIONS.map((option) => {
+              const isSelected = formData.genreCodes.includes(option.code);
+              const label = lang === 'ru' ? option.label.ru : option.label.en;
+
+              return (
+                <button
+                  key={option.code}
+                  type="button"
+                  role="option"
+                  aria-selected={isSelected}
+                  className={clsx(
+                    'dashboard-form-select__option',
+                    'dashboard-form-select__option--checkbox',
+                    isSelected && 'dashboard-form-select__option--selected'
+                  )}
+                  onClick={() => onGenreToggle(option.code)}
+                >
+                  <input type="checkbox" tabIndex={-1} readOnly checked={isSelected} aria-hidden />
+                  <span>{label}</span>
+                </button>
+              );
+            })}
+          </DashboardFormSelectDropdown>
         </div>
         {genreRequired ? (
           <p id="album-genre-required-error" className="edit-album-modal__field-error" role="alert">

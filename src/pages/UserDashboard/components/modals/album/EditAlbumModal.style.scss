@@ -440,119 +440,25 @@ dialog {
       }
     }
 
-    // Multi-select for genres
-    &__multiselect {
-      position: relative;
-      width: 100%;
-    }
-
-    &__multiselect-input {
-      position: relative;
-      display: flex;
-      align-items: center;
-      min-height: calc(var(--ms-0) * 2);
-      padding: var(--ms-01);
-      color: var(--dashboard-text-primary) !important;
-      font-size: var(--ms-0) !important;
-      background: var(--dashboard-card-bg) !important;
-      border: 1px solid var(--dashboard-card-border) !important;
-      border-radius: var(--ms-01) !important;
-      cursor: pointer;
-      box-sizing: border-box !important;
-      gap: var(--ms-01);
-
-      @include breakpoint(phones) {
-        min-height: calc(var(--ms-0) * 1.5);
-        padding: var(--ms-02) var(--ms-01);
-        font-size: var(--dashboard-helper-font-size) !important;
+    // Genre multi-select (Step 2) — shares dashboard-form-select with Step 5 Links
+    &__genre-select {
+      .dashboard-form-select__trigger {
+        flex-wrap: wrap;
+        align-items: center;
       }
 
-      &:focus {
-        outline: none !important;
-        border-color: var(--dark-greenish-yellow) !important;
-      }
-
-      &--invalid {
+      &-trigger--invalid {
         border-color: var(--pink-terracotta) !important;
 
-        &:focus {
+        &:focus-visible {
           border-color: var(--pink-terracotta) !important;
           box-shadow: 0 0 0 2px rgb(207 128 125 / 28%) !important;
         }
       }
-    }
 
-    &__multiselect-placeholder {
-      color: var(--dashboard-text-secondary);
-    }
-
-    &__multiselect-arrow {
-      display: inline-flex;
-      margin-left: auto;
-      color: var(--dashboard-text-secondary);
-      flex-shrink: 0;
-      align-items: center;
-    }
-
-    &__multiselect-dropdown {
-      position: absolute;
-      top: 100%;
-      right: 0;
-      left: 0;
-      z-index: 10;
-      margin-top: var(--ms-01);
-      padding: var(--ms-01);
-      background: var(--dashboard-card-bg);
-      border: 1px solid var(--dashboard-card-border);
-      border-radius: var(--ms-01);
-      max-height: 300px;
-      overflow-y: auto;
-      box-shadow: 0 4px 16px rgb(var(--black-rgb) / 10%);
-
-      @include breakpoint(phones) {
-        max-height: 250px;
-        padding: var(--ms-02);
-      }
-    }
-
-    &__multiselect-option {
-      display: flex;
-      align-items: center;
-      gap: var(--ms-01);
-      padding: var(--ms-01);
-      color: var(--dashboard-text-primary);
-      cursor: pointer;
-      border-radius: var(--ms-02);
-      transition: background-color 0.2s;
-
-      @include breakpoint(phones) {
-        padding: var(--ms-02);
-        gap: var(--ms-02);
-      }
-
-      &:hover {
-        background: var(--dashboard-hover-bg);
-      }
-
-      input[type='checkbox'] {
-        width: var(--ms-0);
-        height: var(--ms-0);
-        cursor: pointer;
-        accent-color: var(--dark-greenish-yellow);
-
-        @include breakpoint(phones) {
-          width: calc(var(--ms-0) * 0.9);
-          height: calc(var(--ms-0) * 0.9);
-        }
-      }
-
-      span {
+      &-chips {
         flex: 1;
-        font-size: var(--ms-0);
-
-        @include breakpoint(phones) {
-          font-size: var(--dashboard-helper-font-size);
-        }
+        min-width: 0;
       }
     }
 
@@ -868,10 +774,6 @@ dialog {
       @include breakpoint(phones) {
         flex-wrap: wrap;
       }
-    }
-
-    select.edit-album-modal__list-item-input {
-      cursor: pointer;
     }
 
     &__link-content {
