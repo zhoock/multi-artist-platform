@@ -18,9 +18,11 @@
       grid-column: span 2;
 
       &:has(.album-cover, .skeleton--album-cover) {
-        inline-size: 100%;
+        inline-size: min(100%, 448px);
         max-inline-size: 448px;
         margin-inline: auto;
+        justify-self: center;
+        min-inline-size: 0;
       }
     }
   }

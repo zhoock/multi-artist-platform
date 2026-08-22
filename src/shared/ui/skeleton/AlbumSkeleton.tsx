@@ -1,3 +1,5 @@
+import '@entities/album/ui/album-layout.scss';
+import '@shared/ui/contextNav/contextNav.scss';
 import './AlbumSkeleton.scss';
 
 interface AlbumSkeletonProps {
@@ -21,11 +23,14 @@ export function AlbumSkeleton({ tracksCount = 3 }: AlbumSkeletonProps) {
             <div className="skeleton skeleton--album-title" />
           </h2>
 
+          <h3 className="album-artist">
+            <div className="skeleton skeleton--album-artist" />
+          </h3>
+
           <div className="wrapper-album-play">
             <div className="skeleton skeleton--play-button-horizontal">
               <div className="skeleton skeleton--play-icon" />
-              <div className="skeleton skeleton--play-progress" />
-              <div className="skeleton skeleton--play-spacer" />
+              <div className="skeleton skeleton--play-label" />
             </div>
           </div>
 
