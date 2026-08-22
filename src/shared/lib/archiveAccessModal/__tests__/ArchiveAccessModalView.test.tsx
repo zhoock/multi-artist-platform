@@ -27,6 +27,7 @@ jest.mock('@shared/lib/auth', () => ({
   isEmailVerified: () => true,
   subscribeAuthSession: () => () => {},
   getAuthSessionIdentityKey: () => 'user:user-1',
+  getAuthSessionUserSnapshot: () => getUserMock(),
 }));
 
 jest.mock('@shared/api/subscription', () => ({

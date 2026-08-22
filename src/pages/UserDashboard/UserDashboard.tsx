@@ -20,6 +20,7 @@ import type { DragEndEvent } from '@dnd-kit/core';
 import { getAlbumsDashboardRouteScopeKey } from '@shared/lib/albumsRouteScope';
 import { toLocalYYYYMMDD } from '@shared/lib/dateCalendar';
 import { Popup, PopupCloseButton } from '@shared/ui/popup';
+import { ErrorBoundary } from '@shared/ui/error-boundary';
 import { ConfirmationModal } from '@shared/ui/confirmationModal';
 import { AlertModal } from '@shared/ui/alertModal';
 import { DashboardButton, DashboardLoadingState } from '@shared/ui/dashboard';
@@ -3070,4 +3071,12 @@ function UserDashboard() {
   );
 }
 
-export default UserDashboard;
+function UserDashboardWithErrorBoundary() {
+  return (
+    <ErrorBoundary>
+      <UserDashboard />
+    </ErrorBoundary>
+  );
+}
+
+export default UserDashboardWithErrorBoundary;

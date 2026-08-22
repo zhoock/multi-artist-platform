@@ -183,24 +183,39 @@ export function getToken(): string | null {
   }
 }
 
+/** Читает `auth_user` без purge/clear — безопасно для snapshot во время render. */
+export function readStoredAuthUser(): AuthUser | null {
+  try {
+    const userStr = localStorage.getItem(USER_STORAGE_KEY);
+    if (!userStr) return null;
+    return JSON.parse(userStr) as AuthUser;
+  } catch (error) {
+    console.error('❌ Failed to read stored auth user:', error);
+    return null;
+  }
+}
+
 /**
  * Получает данные пользователя из localStorage
  */
 export function getUser(): AuthUser | null {
   try {
     purgeInvalidAuthSessionFromStorage();
-    const userStr = localStorage.getItem(USER_STORAGE_KEY);
-    if (!userStr) return null;
-    return JSON.parse(userStr) as AuthUser;
+    return readStoredAuthUser();
   } catch (error) {
     console.error('❌ Failed to get user:', error);
     return null;
   }
 }
 
+/** Snapshot пользователя для `useSyncExternalStore` — без side effects в render. */
+export function getAuthSessionUserSnapshot(): AuthUser | null {
+  return readStoredAuthUser();
+}
+
 /** Стабильный ключ сессии для сравнения в `useSyncExternalStore` (смена id/email). */
 export function getAuthSessionIdentityKey(): string {
-  const u = getUser();
+  const u = readStoredAuthUser();
   if (!u) return '';
   return `${u.id}\0${u.email}`;
 }

@@ -592,9 +592,9 @@ function Layout() {
     </Routes>
   ) : null;
 
-  const standardRoutes = (
+  const publicAndOverlayRoutes = (
     <>
-      {mainRoutes}
+      <ErrorBoundary>{mainRoutes}</ErrorBoundary>
       {authModalRoutes}
       {dashboardModalRoutes}
     </>
@@ -684,46 +684,42 @@ function Layout() {
                 <main>{notFoundRoutes}</main>
               </ErrorBoundary>
             ) : isHomeSceneRoute ? (
-              <ErrorBoundary>
+              <>
                 <EmailVerificationBanner />
-                <main>
-                  <ErrorBoundary>{standardRoutes}</ErrorBoundary>
-                </main>
+                <main>{publicAndOverlayRoutes}</main>
                 <PlayerShell />
-              </ErrorBoundary>
+              </>
             ) : (
               <ArtistPageAccessProvider>
-                <ErrorBoundary>
-                  <Header
-                    theme={theme}
-                    onToggleTheme={toggleTheme}
-                    navMenuOpen={popup}
-                    onNavMenuToggle={
-                      isHelpRoute
-                        ? undefined
-                        : () => {
-                            if (popup) dispatch(closePopup());
-                            else dispatch(openPopup());
-                          }
-                    }
-                  />
-                  <main>
-                    <EmailVerificationBanner />
-                    {!isHomeSceneRoute && !isLegalDocumentRoute && !isHelpRoute && <Hero />}
+                <Header
+                  theme={theme}
+                  onToggleTheme={toggleTheme}
+                  navMenuOpen={popup}
+                  onNavMenuToggle={
+                    isHelpRoute
+                      ? undefined
+                      : () => {
+                          if (popup) dispatch(closePopup());
+                          else dispatch(openPopup());
+                        }
+                  }
+                />
+                <main>
+                  <EmailVerificationBanner />
+                  {!isHomeSceneRoute && !isLegalDocumentRoute && !isHelpRoute && <Hero />}
 
-                    {/* если поместим popup внурь header, то popup будет обрезаться из-за css-фильтра (filter) внури header */}
+                  {/* если поместим popup внурь header, то popup будет обрезаться из-за css-фильтра (filter) внури header */}
 
-                    {!isHelpRoute ? (
-                      <Popup isActive={popup} onClose={() => dispatch(closePopup())}>
-                        <NavPopupMenu isActive={popup} />
-                      </Popup>
-                    ) : null}
+                  {!isHelpRoute ? (
+                    <Popup isActive={popup} onClose={() => dispatch(closePopup())}>
+                      <NavPopupMenu isActive={popup} />
+                    </Popup>
+                  ) : null}
 
-                    <ErrorBoundary>{standardRoutes}</ErrorBoundary>
-                  </main>
-                  <Footer />
-                  <PlayerShell />
-                </ErrorBoundary>
+                  {publicAndOverlayRoutes}
+                </main>
+                <Footer />
+                <PlayerShell />
               </ArtistPageAccessProvider>
             )}
             <AnalyticsController />
