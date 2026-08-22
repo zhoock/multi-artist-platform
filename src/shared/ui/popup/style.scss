@@ -75,6 +75,7 @@ dialog:not(.toast-viewport-layer, .toast-top-layer) {
     &.popup[open]:not(
       :has(
         .user-dashboard,
+        .edit-album-modal,
         .player,
         .alert-modal,
         .confirmation-modal,

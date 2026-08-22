@@ -412,10 +412,6 @@ $ms-4: 123.363px; // 6.854rem;
   justify-content: space-between;
   cursor: pointer;
   text-align: left;
-
-  &--open {
-    border-color: var(--dark-greenish-yellow);
-  }
 }
 
 @mixin dashboard-modal-footer(

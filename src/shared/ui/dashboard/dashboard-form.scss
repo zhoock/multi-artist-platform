@@ -14,6 +14,11 @@
 
   &__trigger {
     @include dashboard-form-select-trigger;
+
+    &:focus,
+    &:focus-visible {
+      border-color: var(--dashboard-card-border);
+    }
   }
 
   &__value {
@@ -35,6 +40,7 @@
     transition: transform 0.2s ease;
 
     &--open {
+      color: var(--dark-greenish-yellow);
       transform: rotate(180deg);
     }
   }
