@@ -289,6 +289,8 @@
       "subscriptionCheckoutAutopaymentFrequencyLine": "Автопродление будет выполняться каждые {durationDays} дней, пока оно включено.",
       "subscriptionCheckoutAutopaymentManageLine": "Вы можете в любой момент отключить автопродление или отвязать карту в разделе Кабинет → Коллекция → Способ оплаты. Доступ сохранится до конца уже оплаченного периода.",
       "subscriptionCheckoutAutopaymentYookassaNote": "На странице YooKassa вы отдельно подтвердите сохранение способа оплаты.",
+      "subscriptionPricingPurposeLead": "Подписка предоставляет доступ к премиум-функциям выбранного тарифа:",
+      "subscriptionPricingPurposeRest": "закрытым трекам, статьям, материалам и скачиванию альбомов.",
       "subscriptionPricingAutopaymentBodyLine": "Автопродление: при оплате выбранного тарифа способ оплаты будет сохранён для автоматического продления подписки. Следующее списание — по цене выбранного тарифа каждые {durationDays} дней. Автопродление можно отключить или изменить в Кабинет → Подписка.",
       "subscriptionPricingAutopaymentYookassaNote": "На странице YooKassa вы отдельно подтвердите сохранение способа оплаты.",
       "artistArchiveFullTitle": "Коллекция заполнена",

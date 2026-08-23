@@ -30,6 +30,7 @@ import { ScheduleDowngradeConfirmModal } from '@pages/UserDashboard/components/a
 
 import { SubscriptionPlanCard } from './SubscriptionPlanCard';
 import { SubscriptionPricingAutopaymentDisclosure } from './SubscriptionPricingAutopaymentDisclosure';
+import { SubscriptionPricingPurposeDisclosure } from './SubscriptionPricingPurposeDisclosure';
 import { SubscriptionPlanChangeConfirmModal } from './SubscriptionPlanChangeConfirmModal';
 import { SubscriptionPlanScheduledBanner } from './SubscriptionPlanScheduledBanner';
 import { ScheduledPlanChangeDetailsModal } from './ScheduledPlanChangeDetailsModal';
@@ -372,6 +373,8 @@ export function ArchiveAccessModalView({ dialogRef, onClose }: Props) {
               />
             ))}
           </div>
+
+          <SubscriptionPricingPurposeDisclosure lang={lang} ui={ui} />
 
           {showPricingAutopaymentDisclosure ? (
             <SubscriptionPricingAutopaymentDisclosure lang={lang} ui={ui} />

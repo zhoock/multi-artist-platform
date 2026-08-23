@@ -768,6 +768,12 @@ describe('ArchiveAccessModalView pricing autopayment disclosure', () => {
     renderModalWithProviderOrder({ isPremium: false, slotsUsed: 0, slotsLimit: 3 });
     await openModal();
 
+    expect(
+      screen.getByText(/Subscription gives access to premium features of the selected plan:/)
+    ).toBeTruthy();
+    expect(
+      screen.getByText(/closed tracks, articles, materials, and album downloads\./)
+    ).toBeTruthy();
     expect(screen.getByRole('note')).toBeTruthy();
     expect(
       screen.getByText(
@@ -787,13 +793,24 @@ describe('ArchiveAccessModalView pricing autopayment disclosure', () => {
         '.subscription-plan-modal__plan-card .subscription-plan-modal__autopayment-note'
       )
     ).toBeNull();
+
+    const purpose = document.querySelector('.subscription-plan-modal__pricing-purpose');
+    const autopayment = document.querySelector('.subscription-plan-modal__autopayment-note');
+    expect(purpose).toBeTruthy();
+    expect(autopayment).toBeTruthy();
+    expect(
+      purpose!.compareDocumentPosition(autopayment!) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
   });
 
-  test('hides disclosure when auto-renew flag is off', async () => {
+  test('shows payment purpose disclosure even when auto-renew flag is off', async () => {
     isAutoRenewClientEnabledMock.mockReturnValue(false);
     renderModalWithProviderOrder({ isPremium: false, slotsUsed: 0, slotsLimit: 3 });
     await openModal();
 
+    expect(
+      screen.getByText(/Subscription gives access to premium features of the selected plan:/)
+    ).toBeTruthy();
     expect(screen.queryByRole('note')).toBeNull();
     expect(screen.queryByText(/Auto-renewal: when you pay for the selected plan/i)).toBeNull();
   });

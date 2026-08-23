@@ -259,6 +259,37 @@
     text-align: center;
   }
 
+  &__pricing-purpose {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    width: 100%;
+    margin: var(--ms-1) 0 0;
+    color: var(--dashboard-text-secondary);
+    font-size: var(--dashboard-helper-font-size);
+    line-height: var(--dashboard-helper-line-height);
+    text-align: left;
+  }
+
+  &__pricing-purpose-icon {
+    flex-shrink: 0;
+    margin-top: 0.08rem;
+    color: var(--dashboard-text-secondary);
+  }
+
+  &__pricing-purpose-text {
+    min-width: 0;
+    flex: 1;
+  }
+
+  &__pricing-purpose-lead {
+    color: var(--dark-greenish-yellow, #c8b06d);
+  }
+
+  &__pricing-purpose-rest {
+    color: var(--dashboard-text-secondary);
+  }
+
   &__autopayment-note {
     display: flex;
     flex-direction: column;

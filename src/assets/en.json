@@ -289,6 +289,8 @@
       "subscriptionCheckoutAutopaymentFrequencyLine": "Auto-renewal will occur every {durationDays} days while it is enabled.",
       "subscriptionCheckoutAutopaymentManageLine": "You can turn off auto-renewal or unlink your card at any time in Dashboard → Collection → Payment method. Access continues until the end of the period already paid for.",
       "subscriptionCheckoutAutopaymentYookassaNote": "On the YooKassa page you will separately confirm saving your payment method.",
+      "subscriptionPricingPurposeLead": "Subscription gives access to premium features of the selected plan:",
+      "subscriptionPricingPurposeRest": "closed tracks, articles, materials, and album downloads.",
       "subscriptionPricingAutopaymentBodyLine": "Auto-renewal: when you pay for the selected plan, your payment method will be saved for automatic subscription renewal. The next charge will be at the selected plan price every {durationDays} days. You can turn off auto-renewal or unlink your card in Dashboard → Collection → Payment method.",
       "subscriptionPricingAutopaymentYookassaNote": "On the YooKassa page you will separately confirm saving your payment method.",
       "artistArchiveFullTitle": "Collection full",
