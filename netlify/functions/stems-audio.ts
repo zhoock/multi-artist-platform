@@ -8,15 +8,19 @@ import { resolveStemTrackAccessAllowed } from './lib/stem-track-access';
 import {
   assertArtistUserId,
   assertSafeStemSegment,
-  downloadStemFileFromStorage,
+  createSupabaseAdminClient,
+  getStemStoragePath,
+  STORAGE_BUCKET_NAME,
   verifyStemTrackAccessToken,
 } from './lib/stems-access';
+
+/** Short-lived signed URL for playback redirect (access gate remains on this function). */
+const STEM_SIGNED_URL_TTL_SECONDS = 600;
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
   'Access-Control-Allow-Methods': 'GET, OPTIONS',
-  'Cache-Control': 'private, max-age=3600',
 } as const;
 
 export const handler: Handler = async (event: HandlerEvent) => {
@@ -81,20 +85,33 @@ export const handler: Handler = async (event: HandlerEvent) => {
   }
 
   try {
-    const downloaded = await downloadStemFileFromStorage(artistUserId, albumId, trackId, file);
-    if (!downloaded) {
-      return createErrorResponse(404, 'Stem file not found');
+    const supabase = createSupabaseAdminClient();
+    if (!supabase) {
+      return createErrorResponse(500, 'Storage is not configured');
+    }
+
+    const storagePath = getStemStoragePath(artistUserId, albumId, trackId, file);
+    const { data, error } = await supabase.storage
+      .from(STORAGE_BUCKET_NAME)
+      .createSignedUrl(storagePath, STEM_SIGNED_URL_TTL_SECONDS);
+
+    if (error || !data?.signedUrl) {
+      const message = error?.message?.toLowerCase() ?? '';
+      if (message.includes('not found') || message.includes('object not found')) {
+        return createErrorResponse(404, 'Stem file not found');
+      }
+      console.error('❌ [stems-audio] signed URL failed', error);
+      return createErrorResponse(500, 'Failed to create stem audio URL');
     }
 
     return {
-      statusCode: 200,
+      statusCode: 302,
       headers: {
         ...CORS_HEADERS,
-        'Content-Type': downloaded.contentType,
-        'Content-Length': String(downloaded.buffer.length),
+        Location: data.signedUrl,
+        'Cache-Control': 'private, no-cache',
       },
-      body: downloaded.buffer.toString('base64'),
-      isBase64Encoded: true,
+      body: '',
     };
   } catch (error) {
     console.error('❌ [stems-audio]', error);
