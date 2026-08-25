@@ -3,6 +3,7 @@
  */
 
 import { buildBillingSnapshot, type BillingSnapshot } from './subscription-billing-snapshot';
+import { checkBillingMutationAllowed } from './subscription-billing-origin';
 import { isMissingRelationError, query } from './db';
 import { isSubscriptionAutoRenewEnabled } from './subscription-feature-flag';
 import {
@@ -44,6 +45,15 @@ export async function patchSubscriptionAutoRenew(
   const subscription = await getViewerSubscription(userId);
   if (!subscription) {
     throw new SubscriptionAutoRenewPatchError('Subscription not found', 'NO_SUBSCRIPTION', 404);
+  }
+
+  const billingGuard = checkBillingMutationAllowed(subscription);
+  if (!billingGuard.allowed) {
+    throw new SubscriptionAutoRenewPatchError(
+      'Subscription billing origin is incompatible with this runtime',
+      'BILLING_ORIGIN_MISMATCH',
+      409
+    );
   }
 
   const presence = toPresenceStatus(subscription);
@@ -92,6 +102,7 @@ export async function patchSubscriptionAutoRenew(
          renewal_attempt_count,
          scheduled_plan,
          first_failed_at,
+         billing_origin,
          created_at,
          updated_at`,
       [subscription.id, nextStatus, nextChargeAt, userId]

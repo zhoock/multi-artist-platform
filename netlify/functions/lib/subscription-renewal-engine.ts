@@ -5,6 +5,7 @@
 import { attachDevSucceededSubscriptionCheckout } from './complete-dev-payment';
 import { isDevPaymentModeEnabled } from './dev-payment-mode';
 import { query } from './db';
+import { sqlBillingOriginFilterForRuntime } from './subscription-billing-origin';
 import {
   attachProviderPaymentId,
   cancelOrphanPendingRenewalPayments,
@@ -83,7 +84,8 @@ function subscriptionSelectFields(alias = 's'): string {
     ${alias}.id, ${alias}.user_id, ${alias}.status, ${alias}.plan, ${alias}.slots_limit,
     ${alias}.provider, ${alias}.provider_subscription_id, ${alias}.started_at, ${alias}.expires_at,
     ${alias}.payment_method_id, ${alias}.next_charge_at, ${alias}.renewal_attempt_count,
-    ${alias}.scheduled_plan, ${alias}.first_failed_at, ${alias}.created_at, ${alias}.updated_at`;
+    ${alias}.scheduled_plan, ${alias}.first_failed_at, ${alias}.billing_origin,
+    ${alias}.created_at, ${alias}.updated_at`;
 }
 
 export async function claimSubscriptionForRenewalCharge(
@@ -103,6 +105,7 @@ export async function claimSubscriptionForRenewalCharge(
            (next_charge_at IS NOT NULL AND next_charge_at <= $2)
            OR (next_charge_at IS NULL AND expires_at IS NOT NULL AND expires_at <= $2)
          )
+         ${sqlBillingOriginFilterForRuntime()}
          ${CHARGE_READY_PENDING_RENEWAL_GUARD}
      )
      UPDATE subscriptions s
@@ -141,6 +144,7 @@ export async function listChargeDueSubscriptionIds(now: Date = new Date()): Prom
     `SELECT id
      FROM subscriptions
      WHERE ${CHARGE_DUE_ELIGIBILITY}
+       ${sqlBillingOriginFilterForRuntime()}
      ORDER BY COALESCE(next_charge_at, expires_at) ASC
      LIMIT 100`,
     [now]
@@ -183,6 +187,7 @@ export async function listChargeReadySubscriptionIds(now: Date = new Date()): Pr
     `SELECT id
      FROM subscriptions
      WHERE ${CHARGE_DUE_ELIGIBILITY}
+       ${sqlBillingOriginFilterForRuntime()}
        ${CHARGE_READY_PENDING_RENEWAL_GUARD}
      ORDER BY COALESCE(next_charge_at, expires_at) ASC
      LIMIT 100`,
@@ -200,6 +205,7 @@ export async function listPeriodEndedSubscriptionIds(
      WHERE status = 'cancel_at_period_end'
        AND expires_at IS NOT NULL
        AND expires_at <= $1
+       ${sqlBillingOriginFilterForRuntime()}
      ORDER BY expires_at ASC
      LIMIT 100`,
     [now]

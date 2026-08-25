@@ -12,6 +12,7 @@ const REQUIRED_MIGRATIONS = [
   '068_subscription_payment_method_title.sql',
   '069_subscription_autorenew_backfill.sql',
   '070_subscriptions_unique_user_id.sql',
+  '073_subscriptions_billing_origin.sql',
 ] as const;
 
 async function main(): Promise<void> {
@@ -45,7 +46,7 @@ async function main(): Promise<void> {
       process.exit(1);
     }
 
-    console.log('✅ Subscription migrations 066–070 verified');
+    console.log('✅ Subscription migrations 066–073 verified');
   } finally {
     await pool.end();
   }

@@ -22,6 +22,7 @@
     "test:e2e:nightly": "jest --config jest.config.pr10.ts --testNamePattern='@p0|@p1' --verbose",
     "test:e2e:full": "jest --config jest.config.pr10.ts --verbose",
     "migrate": "tsx scripts/migrate-database.ts",
+    "migrate:test": "tsx scripts/migrate-test-database.ts",
     "verify:autorenew": "cross-env NETLIFY_DEV=true NODE_ENV=development DEV_PAYMENT_MODE=true SUBSCRIPTION_AUTO_RENEW_ENABLED=true tsx scripts/verify-autorenew-cycle.ts",
     "seed:autorenew-ui": "cross-env NETLIFY_DEV=true NODE_ENV=development DEV_PAYMENT_MODE=true SUBSCRIPTION_AUTO_RENEW_ENABLED=true tsx scripts/seed-autorenew-ui-proof.ts",
     "capture:autorenew-ui": "tsx scripts/capture-autorenew-ui-proof.ts",

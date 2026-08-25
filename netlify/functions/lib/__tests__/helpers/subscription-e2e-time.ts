@@ -58,7 +58,7 @@ export function addMs(from: Date, ms: number): Date {
 export const E2E_SCHEDULER_SAFE_EXPIRES_MARGIN_MS = 7 * 24 * 60 * 60 * 1000;
 
 /**
- * Wall-clock anchor for DB-backed tests that share DATABASE_URL with the dev renewal scheduler.
+ * Wall-clock anchor for DB-backed integration tests (DATABASE_URL_TEST).
  * Jest fake timers do not affect PostgreSQL CURRENT_TIMESTAMP; frozen E2E_TIME_ANCHOR leaves
  * expires_at in the past so applySubscriptionPeriodEnded can flip cancel_at_period_end → expired.
  */

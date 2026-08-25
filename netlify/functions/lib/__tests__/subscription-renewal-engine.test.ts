@@ -38,6 +38,7 @@ import {
   reconcileOrphanPendingRenewalsBeforeChargeSelection,
   rollbackRenewalChargeAttempt,
   runRenewalCycle,
+  listChargeReadySubscriptionIds,
 } from '../subscription-renewal-engine';
 
 const mockedQuery = query as jest.MockedFunction<typeof query>;
@@ -130,5 +131,20 @@ describe('runRenewalCycle orphan reconcile ordering', () => {
     expect(dueListSql).not.toContain('NOT EXISTS');
     expect(readyListSql).toContain('NOT EXISTS');
     expect(mockedCancelOrphans).toHaveBeenCalledWith(userId);
+  });
+});
+
+describe('listChargeReadySubscriptionIds billing_origin filter', () => {
+  test('includes runtime billing_origin SQL fragment', async () => {
+    process.env.DEV_PAYMENT_MODE = 'true';
+    process.env.NETLIFY_DEV = 'true';
+    process.env.NODE_ENV = 'test';
+
+    await listChargeReadySubscriptionIds(new Date());
+
+    const readyListSql = String(
+      mockedQuery.mock.calls.find((c) => String(c[0]).includes('NOT EXISTS'))?.[0]
+    );
+    expect(readyListSql).toContain("billing_origin = 'dev'");
   });
 });

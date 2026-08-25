@@ -18,6 +18,8 @@ export const SUBSCRIPTION_STATUSES = [
 
 export type SubscriptionStatus = (typeof SUBSCRIPTION_STATUSES)[number];
 
+export type BillingOrigin = 'production' | 'dev';
+
 export interface Subscription {
   id: string;
   userId: string;
@@ -38,6 +40,8 @@ export interface Subscription {
   firstFailedAt?: Date | null;
   /** Incremented on payment-method unlink; rebind checkout captures at POST. */
   paymentMethodEpoch?: number;
+  /** Immutable after first fulfillment — dev vs production billing isolation. */
+  billingOrigin?: BillingOrigin;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -59,6 +63,7 @@ export interface SubscriptionRow {
   scheduled_plan?: string | null;
   first_failed_at?: Date | null;
   payment_method_epoch?: number | null;
+  billing_origin?: BillingOrigin | null;
   created_at: Date;
   updated_at: Date;
 }
@@ -81,6 +86,7 @@ export function mapSubscriptionRow(row: SubscriptionRow): Subscription {
     scheduledPlan: row.scheduled_plan ?? null,
     firstFailedAt: row.first_failed_at ?? null,
     paymentMethodEpoch: row.payment_method_epoch ?? 0,
+    billingOrigin: row.billing_origin === 'dev' ? 'dev' : 'production',
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -111,6 +117,7 @@ export async function getViewerSubscription(userId: string): Promise<Subscriptio
          scheduled_plan,
          first_failed_at,
          payment_method_epoch,
+         billing_origin,
          created_at,
          updated_at
        FROM subscriptions

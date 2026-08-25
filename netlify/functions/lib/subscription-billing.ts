@@ -25,6 +25,7 @@ import {
 
 import { isDevPaymentModeEnabled } from './dev-payment-mode';
 import { isMissingRelationError, query } from './db';
+import { resolveBillingOriginForNewSubscription } from './subscription-billing-origin';
 import type { Subscription } from './subscriptions';
 import { mapSubscriptionRow, type SubscriptionRow } from './subscriptions';
 
@@ -541,7 +542,7 @@ async function loadSubscriptionByUserAndProviderPaymentId(
   const r = await query<SubscriptionRow>(
     `SELECT
        id, user_id, status, plan, slots_limit, provider, provider_subscription_id,
-       started_at, expires_at, created_at, updated_at
+       started_at, expires_at, billing_origin, created_at, updated_at
      FROM subscriptions
      WHERE user_id = $1::uuid
        AND provider_subscription_id = $2
@@ -614,7 +615,7 @@ export async function fulfillSubscriptionPayment(params: {
   const existing = await query<SubscriptionRow>(
     `SELECT
        id, user_id, status, plan, slots_limit, provider, provider_subscription_id,
-       started_at, expires_at, created_at, updated_at
+       started_at, expires_at, billing_origin, created_at, updated_at
      FROM subscriptions
      WHERE user_id = $1::uuid
      LIMIT 1`,
@@ -624,6 +625,7 @@ export async function fulfillSubscriptionPayment(params: {
   const now = new Date();
   const expiresAt = computeSupportExpiresAt(planSlug, now);
   const providerId = providerPaymentId?.trim() || null;
+  const billingOrigin = resolveBillingOriginForNewSubscription();
 
   const row = existing.rows[0];
 
@@ -658,7 +660,7 @@ export async function fulfillSubscriptionPayment(params: {
            AND ($4::text IS NULL OR provider_subscription_id IS DISTINCT FROM $4::text)
          RETURNING
            id, user_id, status, plan, slots_limit, provider, provider_subscription_id,
-           started_at, expires_at, created_at, updated_at`,
+           started_at, expires_at, billing_origin, created_at, updated_at`,
         [row.id, planSlug, slotsLimit, providerId, canReuse, now, expiresAt]
       );
       const next = updated.rows[0];
@@ -675,8 +677,8 @@ export async function fulfillSubscriptionPayment(params: {
 
   const inserted = await query<SubscriptionRow>(
     `INSERT INTO subscriptions (
-       user_id, status, plan, slots_limit, provider, provider_subscription_id, started_at, expires_at
-     ) VALUES ($1::uuid, 'active', $2, $3, 'yookassa', $4, $5, $6)
+       user_id, status, plan, slots_limit, provider, provider_subscription_id, started_at, expires_at, billing_origin
+     ) VALUES ($1::uuid, 'active', $2, $3, 'yookassa', $4, $5, $6, $7)
      ON CONFLICT (user_id) DO UPDATE SET
        status = 'active',
        plan = EXCLUDED.plan,
@@ -694,8 +696,8 @@ export async function fulfillSubscriptionPayment(params: {
         OR subscriptions.provider_subscription_id IS DISTINCT FROM EXCLUDED.provider_subscription_id
      RETURNING
        id, user_id, status, plan, slots_limit, provider, provider_subscription_id,
-       started_at, expires_at, created_at, updated_at`,
-    [userId, planSlug, slotsLimit, providerId, now, expiresAt]
+       started_at, expires_at, billing_origin, created_at, updated_at`,
+    [userId, planSlug, slotsLimit, providerId, now, expiresAt, billingOrigin]
   );
 
   const created = inserted.rows[0];

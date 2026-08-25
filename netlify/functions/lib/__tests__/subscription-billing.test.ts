@@ -279,7 +279,15 @@ describe('fulfillSubscriptionPayment', () => {
     expect(result.expiresAt?.getTime()).toBe(expiresAt.getTime());
 
     const insertCall = mockedQuery.mock.calls[1];
-    expect(insertCall?.[1]).toEqual([USER_ID, 'collector', 60, 'pay-new', startedAt, expiresAt]);
+    expect(insertCall?.[1]).toEqual([
+      USER_ID,
+      'collector',
+      60,
+      'pay-new',
+      startedAt,
+      expiresAt,
+      'production',
+    ]);
   });
 
   test('upgrade on active subscription updates plan, slots, and new period without deactivating archive', async () => {

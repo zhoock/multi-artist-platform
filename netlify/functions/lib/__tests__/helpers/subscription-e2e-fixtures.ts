@@ -26,6 +26,7 @@ export type SeedSubscriptionParams = {
   renewalAttemptCount?: number;
   firstFailedAt?: Date | null;
   providerSubscriptionId?: string | null;
+  billingOrigin?: 'production' | 'dev';
 };
 
 export type SeedArchiveArtistParams = {
@@ -75,6 +76,7 @@ export function defaultSeedSubscriptionParams(
     renewalAttemptCount: 0,
     firstFailedAt: null,
     providerSubscriptionId: null,
+    billingOrigin: 'dev',
     ...overrides,
   };
 }

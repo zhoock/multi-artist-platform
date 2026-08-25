@@ -16,6 +16,7 @@ import {
 } from './yookassa-webhook-verify';
 import { mapYooKassaPaymentToProviderPayment } from './subscription-provider-payment';
 import { isRebindSubscriptionPaymentKind } from './subscription-rebind-fulfillment';
+import { checkBillingMutationAllowed } from './subscription-billing-origin';
 import {
   PREMIUM_SUBSCRIPTION_PRODUCT_TYPE,
   claimSubscriptionPaymentCanceled,
@@ -26,6 +27,7 @@ import {
 } from './subscription-billing';
 import { verifySubscriptionPaymentRowForWebhook } from './subscription-payment-row-verify';
 import { processSubscriptionProviderPaymentForRow } from './subscription-payment-router';
+import { getViewerSubscription } from './subscriptions';
 import {
   logSubscriptionEvent,
   runWithSubscriptionObservability,
@@ -268,6 +270,26 @@ export async function handlePremiumSubscriptionWebhookIfApplicable(
 
   const dbUserId = paymentRow.user_id;
   const dbKind = paymentRow.kind;
+
+  if (data.event === 'payment.succeeded') {
+    const subscription = await getViewerSubscription(dbUserId);
+    const billingGuard = checkBillingMutationAllowed(subscription);
+    if (!billingGuard.allowed) {
+      logWebhookSkipped('billing_origin_mismatch', {
+        reason: billingGuard.reason,
+        billingOrigin: subscription?.billingOrigin ?? undefined,
+      });
+      return jsonResponse(
+        200,
+        {
+          success: true,
+          processed: false,
+          message: 'Skipped: subscription billing origin incompatible with production runtime',
+        },
+        headers
+      );
+    }
+  }
 
   const syntheticId = buildSyntheticEventId(data);
   const reserved = await reserveWebhookEvent(syntheticId, data.event, data.object.id);

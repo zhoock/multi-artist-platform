@@ -1,6 +1,6 @@
 /**
  * PR-10 database seed builders (integration tier only).
- * Requires DATABASE_URL_TEST (or DATABASE_URL) and migrations 066–069.
+ * Requires DATABASE_URL_TEST and migrations 066–073.
  */
 
 import { query } from '../../db';
@@ -14,9 +14,11 @@ import {
 } from './subscription-e2e-fixtures';
 
 export function resolveE2eDatabaseUrl(): string {
-  const url = process.env.DATABASE_URL_TEST?.trim() || process.env.DATABASE_URL?.trim();
+  const url = process.env.DATABASE_URL_TEST?.trim();
   if (!url) {
-    throw new Error('PR-10 integration tests require DATABASE_URL_TEST or DATABASE_URL to be set');
+    throw new Error(
+      'PR-10 integration tests require DATABASE_URL_TEST (dedicated Postgres). See .env.example.'
+    );
   }
   return url;
 }
@@ -59,17 +61,17 @@ export async function seedSubscription(params: SeedSubscriptionParams = {}): Pro
     `INSERT INTO subscriptions (
        user_id, status, plan, slots_limit, provider, provider_subscription_id,
        started_at, expires_at, payment_method_id, payment_method_title,
-       next_charge_at, renewal_attempt_count, scheduled_plan, first_failed_at
+       next_charge_at, renewal_attempt_count, scheduled_plan, first_failed_at, billing_origin
      ) VALUES (
        $1::uuid, $2, $3, $4, 'yookassa', $5,
        $6, $7, $8, $9,
-       $10, $11, $12, $13
+       $10, $11, $12, $13, $14
      )
      RETURNING
        id, user_id, status, plan, slots_limit, provider, provider_subscription_id,
        started_at, expires_at, payment_method_id, payment_method_title,
        next_charge_at, renewal_attempt_count, scheduled_plan, first_failed_at,
-       payment_method_epoch, created_at, updated_at`,
+       payment_method_epoch, billing_origin, created_at, updated_at`,
     [
       p.userId,
       p.status,
@@ -84,6 +86,7 @@ export async function seedSubscription(params: SeedSubscriptionParams = {}): Pro
       p.renewalAttemptCount ?? 0,
       p.scheduledPlan ?? null,
       p.firstFailedAt ?? null,
+      p.billingOrigin ?? 'production',
     ]
   );
 
@@ -114,7 +117,7 @@ export async function loadSubscriptionForUser(userId: string): Promise<Subscript
        id, user_id, status, plan, slots_limit, provider, provider_subscription_id,
        started_at, expires_at, payment_method_id, payment_method_title,
        next_charge_at, renewal_attempt_count, scheduled_plan, first_failed_at,
-       payment_method_epoch, created_at, updated_at
+       payment_method_epoch, billing_origin, created_at, updated_at
      FROM subscriptions
      WHERE user_id = $1::uuid
      ORDER BY created_at DESC

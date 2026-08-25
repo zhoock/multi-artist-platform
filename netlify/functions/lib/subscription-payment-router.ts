@@ -11,6 +11,10 @@ import {
   recordSubscriptionFulfillmentError,
   recordSubscriptionFulfillmentOutcome,
 } from './subscription-observability-fulfillment';
+import { DEFAULT_SUBSCRIPTION_PLAN } from './subscription-billing';
+import { checkBillingMutationAllowed } from './subscription-billing-origin';
+import { logSubscriptionEvent, SUBSCRIPTION_LOG_EVENTS } from './subscription-observability';
+import { getViewerSubscription } from './subscriptions';
 import {
   isRenewalSubscriptionPaymentKind,
   processRenewalSubscriptionProviderPayment,
@@ -74,6 +78,19 @@ async function dispatchSubscriptionProviderPayment(
   throw Object.assign(new Error('Unsupported subscription payment kind'), { statusCode: 400 });
 }
 
+function buildBillingOriginSkipResult(
+  kind: string | null | undefined,
+  planSlug = DEFAULT_SUBSCRIPTION_PLAN
+): ProcessSubscriptionProviderPaymentResult {
+  if (isRebindSubscriptionPaymentKind(kind)) {
+    return { paymentMethodUpdated: false, alreadyApplied: false, staleAfterUnlink: false };
+  }
+  if (isRenewalSubscriptionPaymentKind(kind)) {
+    return { subscriptionRenewed: false, alreadyFulfilled: false, planSlug };
+  }
+  return { subscriptionActivated: false, alreadyFulfilled: false, planSlug };
+}
+
 async function processWithObservability(
   payment: SubscriptionProviderPayment,
   userId: string,
@@ -91,6 +108,27 @@ async function processWithObservability(
     subscriptionPaymentId: options.subscriptionPaymentId,
     paymentStatus: payment.status,
   });
+
+  const subscription = await getViewerSubscription(userId);
+  const billingGuard = checkBillingMutationAllowed(subscription);
+  if (!billingGuard.allowed) {
+    logSubscriptionEvent(
+      SUBSCRIPTION_LOG_EVENTS.FULFILLMENT_REJECTED,
+      {
+        kind: resolvedKind,
+        source,
+        reason: billingGuard.reason,
+        billingOrigin: subscription?.billingOrigin ?? null,
+      },
+      'warn'
+    );
+    const skipResult = buildBillingOriginSkipResult(
+      kind,
+      payment.metadata?.plan?.trim() || DEFAULT_SUBSCRIPTION_PLAN
+    );
+    recordSubscriptionFulfillmentOutcome(resolvedKind, source, skipResult);
+    return skipResult;
+  }
 
   try {
     const result = await dispatchSubscriptionProviderPayment(payment, userId, kind, options);

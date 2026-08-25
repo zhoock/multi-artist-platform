@@ -35,6 +35,8 @@ import {
   getSubscriptionPaymentByInternalId,
   PREMIUM_SUBSCRIPTION_PRODUCT_TYPE,
 } from './lib/subscription-billing';
+import { checkBillingMutationAllowed } from './lib/subscription-billing-origin';
+import { getViewerSubscription } from './lib/subscriptions';
 import {
   beginSubscriptionFulfillmentObservability,
   recordSubscriptionFulfillmentOutcome,
@@ -261,6 +263,31 @@ export const handler: Handler = async (event: HandlerEvent) => {
             paymentStatus: providerPayment.status,
           });
 
+          const subscription = await getViewerSubscription(userId);
+          const billingGuard = checkBillingMutationAllowed(subscription);
+          if (!billingGuard.allowed) {
+            logSubscriptionEvent(
+              SUBSCRIPTION_LOG_EVENTS.FULFILLMENT_REJECTED,
+              {
+                source: 'poll',
+                reason: billingGuard.reason,
+                billingOrigin: subscription?.billingOrigin ?? null,
+              },
+              'warn'
+            );
+            return createSuccessResponse({
+              payment: buildPaymentResponse(providerPayment, {
+                productType,
+                userId: metaUserId,
+                plan: plan ?? DEFAULT_SUBSCRIPTION_PLAN,
+                kind: owned.kind,
+              }),
+              subscriptionActivated: false,
+              paymentMethodUpdated: false,
+              staleAfterUnlink: false,
+            });
+          }
+
           const { paymentMethodUpdated, staleAfterUnlink, archive } =
             await processRebindSubscriptionProviderPaymentWithArchive(providerPayment, userId);
 
@@ -287,6 +314,30 @@ export const handler: Handler = async (event: HandlerEvent) => {
             paymentMethodUpdated,
             staleAfterUnlink,
             archive,
+          });
+        }
+
+        const subscription = await getViewerSubscription(userId);
+        const billingGuard = checkBillingMutationAllowed(subscription);
+        if (!billingGuard.allowed) {
+          logSubscriptionEvent(
+            SUBSCRIPTION_LOG_EVENTS.FULFILLMENT_REJECTED,
+            {
+              source: 'poll',
+              reason: billingGuard.reason,
+              billingOrigin: subscription?.billingOrigin ?? null,
+            },
+            'warn'
+          );
+          return createSuccessResponse({
+            payment: buildPaymentResponse(providerPayment, {
+              productType,
+              userId: metaUserId,
+              plan: plan ?? DEFAULT_SUBSCRIPTION_PLAN,
+              kind: owned.kind,
+            }),
+            subscriptionActivated: false,
+            paymentMethodUpdated: false,
           });
         }
 
