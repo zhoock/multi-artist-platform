@@ -12,46 +12,100 @@ export function filterValidHeroHeaderImages(images: string[] | null | undefined)
   });
 }
 
-function formatBackgroundImageUrl(imageUrl: string): string {
-  if (!imageUrl || !imageUrl.trim()) {
-    return '';
-  }
+export type HeroCoverSources = {
+  avif: string | null;
+  webp: string | null;
+  jpg: string;
+};
 
-  if (imageUrl.startsWith("url('") || imageUrl.startsWith('url("')) {
-    return imageUrl;
+function stripCssUrlWrapper(value: string): string {
+  const trimmed = value.trim();
+  if (trimmed.startsWith("url('") || trimmed.startsWith('url("')) {
+    const match = trimmed.match(/url\(["']([^"']+)["']\)/);
+    return match?.[1]?.trim() ?? trimmed;
   }
-
-  if (imageUrl.includes('image-set')) {
-    const jpgMatch = imageUrl.match(/url\(["']([^"']+\.jpg[^"']*)["']\)/);
-    if (jpgMatch?.[1]) {
-      return `url('${jpgMatch[1]}')`;
-    }
-    const webpMatch = imageUrl.match(/url\(["']([^"']+\.webp[^"']*)["']\)/);
-    if (webpMatch?.[1]) {
-      return `url('${webpMatch[1]}')`;
-    }
-    const firstMatch = imageUrl.match(/url\(["']([^"']+)["']\)/);
-    if (firstMatch?.[1]) {
-      return `url('${firstMatch[1]}')`;
-    }
-  }
-
-  return `url('${imageUrl}')`;
+  return trimmed;
 }
 
-/** Stable pick per visual context — same slug/path always maps to the same cover on first paint. */
-export function pickHeroBackgroundImage(headerImages: string[], visualSeed: string): string {
-  if (headerImages.length === 0) {
-    return '';
+function deriveHeroVariantUrl(url: string, targetExt: 'avif' | 'webp' | 'jpg'): string | null {
+  const base = stripCssUrlWrapper(url);
+  if (!base) return null;
+
+  const sizedMatch = base.match(/^(.*)-1920\.(avif|webp|jpe?g)$/i);
+  if (sizedMatch) {
+    const prefix = sizedMatch[1];
+    if (targetExt === 'jpg') return `${prefix}-1920.jpg`;
+    return `${prefix}-1920.${targetExt}`;
   }
 
+  const extMatch = base.match(/^(.*)\.(avif|webp|jpe?g)$/i);
+  if (!extMatch) {
+    return targetExt === 'jpg' ? base : null;
+  }
+
+  const prefix = extMatch[1];
+  if (targetExt === 'jpg') return `${prefix}.jpg`;
+  return `${prefix}.${targetExt}`;
+}
+
+function parseImageSetHeroSources(rawUrl: string): HeroCoverSources | null {
+  const avifMatch = rawUrl.match(/url\(["']([^"']+\.avif[^"']*)["']\)/i);
+  const webpMatch = rawUrl.match(/url\(["']([^"']+\.webp[^"']*)["']\)/i);
+  const jpgMatch = rawUrl.match(/url\(["']([^"']+\.jpe?g[^"']*)["']\)/i);
+
+  const jpg = jpgMatch?.[1] ? normalizeProxyImageUrl(jpgMatch[1]) : null;
+  if (!jpg) return null;
+
+  return {
+    avif: avifMatch?.[1] ? normalizeProxyImageUrl(avifMatch[1]) : deriveHeroVariantUrl(jpg, 'avif'),
+    webp: webpMatch?.[1] ? normalizeProxyImageUrl(webpMatch[1]) : deriveHeroVariantUrl(jpg, 'webp'),
+    jpg,
+  };
+}
+
+/** Resolve AVIF → WebP → JPG sources for a single stored hero URL. */
+export function resolveHeroCoverSourcesFromUrl(rawUrl: string): HeroCoverSources | null {
+  if (!rawUrl?.trim()) return null;
+
+  if (rawUrl.includes('image-set')) {
+    return parseImageSetHeroSources(rawUrl);
+  }
+
+  const normalized = normalizeProxyImageUrl(stripCssUrlWrapper(rawUrl));
+  if (!normalized) return null;
+
+  const jpg = deriveHeroVariantUrl(normalized, 'jpg');
+  if (!jpg) return null;
+
+  return {
+    avif: deriveHeroVariantUrl(normalized, 'avif'),
+    webp: deriveHeroVariantUrl(normalized, 'webp'),
+    jpg,
+  };
+}
+
+function pickHeroHeaderImageUrl(headerImages: string[], visualSeed: string): string {
   let hash = 0;
   for (let i = 0; i < visualSeed.length; i++) {
     hash = (hash * 31 + visualSeed.charCodeAt(i)) >>> 0;
   }
+  return headerImages[hash % headerImages.length] ?? '';
+}
 
-  const imageUrl = headerImages[hash % headerImages.length];
-  return formatBackgroundImageUrl(normalizeProxyImageUrl(imageUrl));
+/** Stable pick per visual context — same slug/path always maps to the same cover on first paint. */
+export function pickHeroCoverSources(
+  headerImages: string[],
+  visualSeed: string
+): HeroCoverSources | null {
+  if (headerImages.length === 0) return null;
+  return resolveHeroCoverSourcesFromUrl(pickHeroHeaderImageUrl(headerImages, visualSeed));
+}
+
+/** @deprecated Prefer pickHeroCoverSources + <picture>. Kept for legacy CSS background callers. */
+export function pickHeroBackgroundImage(headerImages: string[], visualSeed: string): string {
+  const sources = pickHeroCoverSources(headerImages, visualSeed);
+  if (!sources) return '';
+  return `url('${sources.jpg}')`;
 }
 
 const headerImagesCache = new Map<string, string[]>();

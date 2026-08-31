@@ -728,8 +728,8 @@ export function useArtistPageAccessState(
     catalogArtistMissing;
 
   /**
-   * Hero зависит от headerImages: до ответа API не показываем страницу с Hero,
-   * чтобы не мигать upload-slot ↔ cover после первого рендера.
+   * Hero cover URL pending: only while headerImages fetch is in flight.
+   * Does not wait on owner identity, catalog, articles, about, or payment gates.
    */
   const showArtistPageHeroPending =
     Boolean(normalizedArtistSlug) &&
@@ -737,7 +737,6 @@ export function useArtistPageAccessState(
     !showOnboardingSkeleton &&
     !showNotFound &&
     !showVisitorUnderConstruction &&
-    !showArtistPageSurfacePending &&
     !isHeaderImagesReady;
 
   const showArtistPageLayoutPending = showArtistPageSurfacePending || showArtistPageHeroPending;

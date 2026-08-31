@@ -66,22 +66,16 @@ jest.mock('@shared/ui/artistPageBuilder', () => {
   };
 });
 
-jest.mock('@shared/lib/authFetch', () => ({
-  fetchWithAuthSession: jest.fn(() =>
-    Promise.resolve({
-      ok: true,
-      json: async () => ({
-        success: true,
-        data: [
-          {
-            name: 'Beatles',
-            publicSlug: 'beatles',
-            genreCode: 'rock',
-            userId: 'user-1',
-          },
-        ],
-      }),
-    })
+jest.mock('@shared/lib/publicArtistsCache', () => ({
+  ensurePublicArtistsLoaded: jest.fn(() =>
+    Promise.resolve([
+      {
+        name: 'Beatles',
+        publicSlug: 'beatles',
+        genreCode: 'rock',
+        userId: 'user-1',
+      },
+    ])
   ),
 }));
 

@@ -2,10 +2,10 @@
 import { useEffect, useRef, useMemo, useState, type KeyboardEvent, type MouseEvent } from 'react';
 import { useLocation, useNavigate, type Location } from 'react-router-dom';
 import { useLang } from '@app/providers/lang';
-import { fetchWithAuthSession } from '@shared/lib/authFetch';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { useArtistPageBuilder } from '@shared/lib/hooks/useArtistPageBuilder';
-import { pickHeroBackgroundImage } from '@shared/lib/artistHeroHeaderImages';
+import { pickHeroCoverSources } from '@shared/lib/artistHeroHeaderImages';
+import { ensurePublicArtistsLoaded } from '@shared/lib/publicArtistsCache';
 import { shouldShowArtistPageBuilderBlock } from '@shared/lib/artistPageBuilder';
 import {
   ArtistPageBuilderBlock,
@@ -30,16 +30,28 @@ import { buildArtistPagePath } from '@shared/lib/seo/publicPagePaths';
 import { ArtistArchiveButton } from '@features/artistArchive';
 import { readStoredProfileDisplayName } from '@shared/lib/profileDisplayName';
 import { ArtistPageSkeletonHero } from '@pages/Home/ui/ArtistPageSkeleton';
+import { HeroCoverImage } from './HeroCoverImage';
 import './style.scss';
 
 const HERO_CLUSTER_PALETTE = [0x4d80ff, 0xff8a47, 0x53d8a2, 0xb086ff, 0xf2cd5d, 0x5ec9f5] as const;
 
 const defaultArtistName = '';
 
+function scheduleAfterHeroCoverPaint(onReady: () => void): () => void {
+  if (typeof requestIdleCallback !== 'undefined') {
+    const id = requestIdleCallback(onReady, { timeout: 2500 });
+    return () => cancelIdleCallback(id);
+  }
+
+  const timeoutId = window.setTimeout(onReady, 150);
+  return () => window.clearTimeout(timeoutId);
+}
+
 export function Hero() {
   const [artistPageMeta, setArtistPageMeta] = useState<{
     userId: string;
   } | null>(null);
+  const [universeInitAllowed, setUniverseInitAllowed] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const { lang } = useLang() as { lang: 'ru' | 'en' };
@@ -89,7 +101,6 @@ export function Hero() {
     builderVisibility,
     hasPublicReleases,
     ownerHasPublicPageContent,
-    showArtistPageSurfacePending,
     showArtistPageHeroPending,
     headerImages,
     isHeaderImagesReady,
@@ -97,7 +108,6 @@ export function Hero() {
     albumDetailsReleaseGatePending,
     catalogReleaseGatePending,
   } = artistPageAccess;
-  const showHeroLoadingShell = showArtistPageSurfacePending || showArtistPageHeroPending;
   const heroReleaseGatePending = albumDetailsReleaseGatePending || catalogReleaseGatePending;
   const ownerShowsPublishedHero =
     artistPageAccess.isOwner &&
@@ -127,10 +137,14 @@ export function Hero() {
   );
 
   const heroVisualKey = `${stripLangPrefix(heroPathname)}|${heroPublicArtistSlug}`;
-  const backgroundImage = useMemo(
-    () => pickHeroBackgroundImage(headerImages, heroVisualKey),
+  const heroCoverSources = useMemo(
+    () => pickHeroCoverSources(headerImages, heroVisualKey),
     [headerImages, heroVisualKey]
   );
+  const showHeroCoverImage = Boolean(heroCoverSources) && !showHeroImageBuilder;
+
+  /** Skeleton only while hero cover URL is unknown — not while other page surfaces load. */
+  const showHeroLoadingShell = showArtistPageHeroPending;
 
   useEffect(() => {
     if (!hasArtistParam || !artistParamKey) {
@@ -140,35 +154,16 @@ export function Hero() {
 
     let cancelled = false;
 
-    const loadArtistMeta = async () => {
-      try {
-        const response = await fetchWithAuthSession('/api/public-artists');
-        const payload = (await response.json()) as {
-          success?: boolean;
-          data?: SceneArtist[];
-        };
-        if (!response.ok || !payload.success || !Array.isArray(payload.data)) {
-          if (!cancelled) setArtistPageMeta(null);
-          return;
-        }
+    void ensurePublicArtistsLoaded().then((artists) => {
+      if (cancelled) return;
 
-        const match =
-          payload.data.find((artist) => artist.publicSlug?.trim() === artistParamKey) ?? null;
-        if (!cancelled) {
-          if (match?.userId) {
-            setArtistPageMeta({
-              userId: match.userId,
-            });
-          } else {
-            setArtistPageMeta(null);
-          }
-        }
-      } catch {
-        if (!cancelled) setArtistPageMeta(null);
+      const match = artists.find((artist) => artist.publicSlug?.trim() === artistParamKey) ?? null;
+      if (match?.userId) {
+        setArtistPageMeta({ userId: match.userId });
+      } else {
+        setArtistPageMeta(null);
       }
-    };
-
-    void loadArtistMeta();
+    });
 
     return () => {
       cancelled = true;
@@ -205,7 +200,35 @@ export function Hero() {
       !hasArtistParam ||
       !artistParamKey ||
       hideHeroForArtistOnboarding ||
-      showHeroLoadingShell ||
+      !showPublishedHeroChrome
+    ) {
+      setUniverseInitAllowed(false);
+      return;
+    }
+
+    if (!isHeaderImagesReady) {
+      setUniverseInitAllowed(false);
+      return;
+    }
+
+    return scheduleAfterHeroCoverPaint(() => {
+      setUniverseInitAllowed(true);
+    });
+  }, [
+    artistParamKey,
+    hasArtistParam,
+    hideHeroForArtistOnboarding,
+    isHeaderImagesReady,
+    showPublishedHeroChrome,
+    heroCoverSources,
+  ]);
+
+  useEffect(() => {
+    if (
+      !universeInitAllowed ||
+      !hasArtistParam ||
+      !artistParamKey ||
+      hideHeroForArtistOnboarding ||
       !showPublishedHeroChrome
     )
       return;
@@ -221,12 +244,8 @@ export function Hero() {
       let allPublicArtists: SceneArtist[] = [];
 
       try {
-        const response = await fetchWithAuthSession('/api/public-artists');
-        const payload = (await response.json()) as { success?: boolean; data?: SceneArtist[] };
-        if (response.ok && payload.success && Array.isArray(payload.data)) {
-          allPublicArtists = payload.data;
-          sceneArtist = payload.data.find((a) => a.publicSlug?.trim() === artistParamKey) ?? null;
-        }
+        allPublicArtists = await ensurePublicArtistsLoaded();
+        sceneArtist = allPublicArtists.find((a) => a.publicSlug?.trim() === artistParamKey) ?? null;
       } catch {
         // ignore: fallback artist below
       }
@@ -296,8 +315,8 @@ export function Hero() {
     artistParamKey,
     hasArtistParam,
     hideHeroForArtistOnboarding,
-    showHeroLoadingShell,
     showPublishedHeroChrome,
+    universeInitAllowed,
   ]);
 
   if (hideHeroForArtistOnboarding) {
@@ -308,10 +327,9 @@ export function Hero() {
     return <ArtistPageSkeletonHero />;
   }
 
-  const heroUsesInlineBackground = Boolean(backgroundImage) && !showHeroImageBuilder;
-
   const heroClassName = [
     'hero',
+    showHeroCoverImage ? 'hero--has-cover-image' : '',
     showPageBuilderPreReleaseShell ? 'hero--page-builder-pre-release' : '',
     showOwnerPreReleaseHeroImage ? 'hero--page-builder-pre-release-with-image' : '',
     showPublishedHeroChrome ? 'hero--navigate-home' : '',
@@ -359,15 +377,15 @@ export function Hero() {
   return (
     <section
       className={heroClassName}
-      style={
-        heroUsesInlineBackground ? { backgroundImage: backgroundImage || undefined } : undefined
-      }
       tabIndex={showPublishedHeroChrome ? 0 : undefined}
       role={showPublishedHeroChrome ? 'button' : undefined}
       aria-label={showPublishedHeroChrome ? heroNavigateAriaLabel : undefined}
       onClick={showPublishedHeroChrome ? handleHeroNavigateClick : undefined}
       onKeyDown={showPublishedHeroChrome ? handleHeroNavigateKeyDown : undefined}
     >
+      {showHeroCoverImage && heroCoverSources ? (
+        <HeroCoverImage sources={heroCoverSources} />
+      ) : null}
       {showPublishedHeroChrome ? <div ref={heroCanvasRef} className="hero__canvas" /> : null}
       <div className="hero__content">
         <div className="hero__headline">

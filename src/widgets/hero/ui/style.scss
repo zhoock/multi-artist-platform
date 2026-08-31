@@ -7,6 +7,7 @@
   display: flex;
   align-items: end;
   min-height: 0;
+  overflow: hidden;
   background-repeat: no-repeat;
   background-attachment: fixed;
   background-position: right calc($ms-1 * 2);
@@ -27,6 +28,85 @@
     background-size: auto 15vw;
   }
 
+  /**
+   * Out-of-flow layer — visual equivalent of section background-image.
+   * Matches legacy background-size / background-position per breakpoint.
+   */
+  &__cover-layer {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    pointer-events: none;
+  }
+
+  &__cover {
+    display: block;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+  }
+
+  &__cover-image {
+    position: absolute;
+    display: block;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    max-width: none;
+    pointer-events: none;
+
+    /*
+     * Legacy: background-size: contain; background-position: right calc($ms-1 * 2)
+     * Contained painting — anchor top-right; vertical calc() aligns matching points
+     * only when the painted height fills the box (see tablet/desktop below).
+     */
+    @include breakpoint(old-phones) {
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      object-position: right top;
+    }
+
+    @include breakpoint(phones) {
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      object-position: right top;
+    }
+
+    /*
+     * Legacy: background-size: auto 22vw / auto 15vw (height = hero block-size);
+     * background-position: right calc($ms-1 * 2) — horizontal flush right;
+     * vertical calc aligns the same point on image and box → tops coincide when heights match.
+     * Equivalent: height 100%, width auto, top/right 0 — not object-fit: contain.
+     */
+    @include breakpoint(tablet) {
+      top: 0;
+      right: 0;
+      left: auto;
+      width: auto;
+      height: 100%;
+    }
+
+    @include breakpoint(desktops) {
+      top: 0;
+      right: 0;
+      left: auto;
+      width: auto;
+      height: 100%;
+    }
+  }
+
+  &--has-cover-image {
+    background-image: none !important;
+  }
+
   &--navigate-home {
     cursor: pointer;
   }
@@ -35,6 +115,8 @@
     content: '';
     position: absolute;
     inset: 0;
+    z-index: 1;
+    pointer-events: none;
 
     @include breakpoint(old-phones) {
       background: var(--deep-coal, #20201d);
@@ -65,14 +147,14 @@
   &__canvas {
     position: absolute;
     inset: 0;
-    z-index: 1;
+    z-index: 2;
     cursor: inherit;
     min-height: 120px;
   }
 
   &__content {
     position: relative;
-    z-index: 2;
+    z-index: 3;
     inline-size: min(100vi, 1000px);
     margin: 0 auto;
     padding: 0 $ms-1 $ms-01;
@@ -190,10 +272,18 @@
   &--has-image-builder {
     @include breakpoint(tablet) {
       background-image: none !important;
+
+      .hero__cover-layer {
+        display: none;
+      }
     }
 
     @include breakpoint(desktops) {
       background-image: none !important;
+
+      .hero__cover-layer {
+        display: none;
+      }
     }
 
     .hero__headline {
@@ -288,4 +378,14 @@
 main:has(> .email-verification-banner) .hero {
   background-attachment: scroll;
   background-position: right top;
+
+  &.hero--has-cover-image .hero__cover-layer {
+    position: absolute;
+    inset: 0;
+    block-size: auto;
+  }
+
+  &.hero--has-cover-image .hero__cover-image {
+    object-position: right top;
+  }
 }
