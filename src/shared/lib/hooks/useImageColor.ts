@@ -1,7 +1,6 @@
 // src/shared/lib/hooks/useImageColor.ts
 import { useEffect, useRef } from 'react';
-import { getPaletteSync } from 'colorthief';
-import { buildProxyImageUrlFromStoragePath } from '@shared/api/storage';
+import { buildProxyImageUrlFromStoragePath } from '@shared/lib/proxyImageUrl';
 import {
   formatRgbTuple,
   isImageColorDebugEnabled,
@@ -20,10 +19,11 @@ const COLOR_EXTRACTION_OPTIONS = {
 
 type RgbTuple = [number, number, number];
 
-function extractPalette(
+async function extractPalette(
   img: HTMLImageElement,
   quality: number = COLOR_EXTRACTION_OPTIONS.quality
-): RgbTuple[] | null {
+): Promise<RgbTuple[] | null> {
+  const { getPaletteSync } = await import('colorthief');
   const options = { ...COLOR_EXTRACTION_OPTIONS, quality };
   const palette = getPaletteSync(img, { ...options, colorCount: 10 });
 
@@ -173,19 +173,20 @@ export function useImageColor(
 
               proxyImg.onload = () => {
                 // Когда прокси-изображение загрузилось, используем его для извлечения цветов
-                try {
-                  const palette = extractPalette(proxyImg);
-                  if (!palette) {
-                    return;
-                  }
+                void extractPalette(proxyImg)
+                  .then((palette) => {
+                    if (!palette) {
+                      return;
+                    }
 
-                  processedImagesCache.add(imgSrc);
-                  processedImagesCache.add(proxyUrl);
+                    processedImagesCache.add(imgSrc);
+                    processedImagesCache.add(proxyUrl);
 
-                  publishPalette(palette, 'proxy Image');
-                } catch (error) {
-                  console.error('Ошибка при извлечении цветов из прокси-изображения:', error);
-                }
+                    publishPalette(palette, 'proxy Image');
+                  })
+                  .catch((error) => {
+                    console.error('Ошибка при извлечении цветов из прокси-изображения:', error);
+                  });
               };
 
               proxyImg.onerror = async (e) => {
@@ -231,23 +232,24 @@ export function useImageColor(
                   dataUrlImg.src = dataUrl;
 
                   dataUrlImg.onload = () => {
-                    try {
-                      const palette = extractPalette(dataUrlImg);
-                      if (!palette) {
+                    void extractPalette(dataUrlImg)
+                      .then((palette) => {
+                        if (!palette) {
+                          URL.revokeObjectURL(dataUrl);
+                          return;
+                        }
+
+                        processedImagesCache.add(imgSrc);
+                        processedImagesCache.add(proxyUrl);
+                        processedImagesCache.add(dataUrl);
+
+                        URL.revokeObjectURL(dataUrl); // Освобождаем память
+                        publishPalette(palette, 'data URL Image');
+                      })
+                      .catch((colorError) => {
+                        console.error('Ошибка при извлечении цветов из data URL:', colorError);
                         URL.revokeObjectURL(dataUrl);
-                        return;
-                      }
-
-                      processedImagesCache.add(imgSrc);
-                      processedImagesCache.add(proxyUrl);
-                      processedImagesCache.add(dataUrl);
-
-                      URL.revokeObjectURL(dataUrl); // Освобождаем память
-                      publishPalette(palette, 'data URL Image');
-                    } catch (colorError) {
-                      console.error('Ошибка при извлечении цветов из data URL:', colorError);
-                      URL.revokeObjectURL(dataUrl);
-                    }
+                      });
                   };
 
                   dataUrlImg.onerror = () => {
@@ -257,18 +259,19 @@ export function useImageColor(
                 } catch (fetchError) {
                   console.error('Ошибка при загрузке через fetch:', fetchError);
                   // Пробуем использовать оригинальное изображение как последний fallback
-                  try {
-                    const palette = extractPalette(img);
-                    if (!palette) {
-                      return;
-                    }
+                  void extractPalette(img)
+                    .then((palette) => {
+                      if (!palette) {
+                        return;
+                      }
 
-                    processedImagesCache.add(imgSrc);
+                      processedImagesCache.add(imgSrc);
 
-                    publishPalette(palette, 'original img (CORS fallback)');
-                  } catch (fallbackError) {
-                    console.error('Fallback также не сработал (CORS проблема):', fallbackError);
-                  }
+                      publishPalette(palette, 'original img (CORS fallback)');
+                    })
+                    .catch((fallbackError) => {
+                      console.error('Fallback также не сработал (CORS проблема):', fallbackError);
+                    });
                 }
               };
 
@@ -285,22 +288,27 @@ export function useImageColor(
             return;
           }
 
-          const palette = extractPalette(img);
-          if (!palette) {
-            return;
-          }
+          void extractPalette(img)
+            .then((palette) => {
+              if (!palette) {
+                return;
+              }
 
-          // Помечаем изображение как обработанное ПЕРЕД вызовом колбэка
-          // Добавляем в кеш и базовый путь, и реальный путь для надежности
-          processedImagesCache.add(imgSrc);
-          if (actualImgSrc !== imgSrc) {
-            processedImagesCache.add(actualImgSrc);
-          }
+              // Помечаем изображение как обработанное ПЕРЕД вызовом колбэка
+              // Добавляем в кеш и базовый путь, и реальный путь для надежности
+              processedImagesCache.add(imgSrc);
+              if (actualImgSrc !== imgSrc) {
+                processedImagesCache.add(actualImgSrc);
+              }
 
-          publishPalette(palette, actualImgSrc);
+              publishPalette(palette, actualImgSrc);
+            })
+            .catch((error) => {
+              console.error('Ошибка при извлечении цветов:', error);
+              // При ошибке не добавляем в кеш, чтобы можно было повторить попытку
+            });
         } catch (error) {
           console.error('Ошибка при извлечении цветов:', error);
-          // При ошибке не добавляем в кеш, чтобы можно было повторить попытку
         }
       };
 

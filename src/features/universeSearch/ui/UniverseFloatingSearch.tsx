@@ -8,7 +8,7 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
 } from 'react';
 import { Search as SearchIcon, X as XIcon } from 'lucide-react';
-import type { SceneArtist } from '@components/view/Universe3D';
+import type { SceneArtist } from '@components/view/universe3dTypes';
 import { useLang } from '@app/providers/lang';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';

@@ -21,6 +21,59 @@ type PublicArticlesRow = {
   has_public_articles: boolean;
 };
 
+/** Profile JSONB fields used for visitor-facing page visibility (mirrors hasPublicProfileContent SQL). */
+export type ArtistProfileContentFields = {
+  header_images?: unknown;
+  the_band?: unknown;
+  social_links?: unknown;
+};
+
+const EMPTY_THE_BAND_TEXTS = new Set(['null', '[]', '{}', '{"ru":[],"en":[]}']);
+
+function trimText(value: unknown): string {
+  return typeof value === 'string' ? value.trim() : String(value ?? '').trim();
+}
+
+/**
+ * In-memory equivalent of hasPublicProfileContent(userId) SQL on users.header_images / the_band / social_links.
+ */
+export function hasPublicProfileContentFromFields(fields: ArtistProfileContentFields): boolean {
+  const headerImages = fields.header_images;
+  if (Array.isArray(headerImages)) {
+    const hasHeaderImage = headerImages.some((img) => {
+      if (typeof img === 'string') {
+        return img.trim() !== '';
+      }
+      if (img == null) {
+        return false;
+      }
+      const asText = trimText(typeof img === 'object' ? JSON.stringify(img) : img);
+      const unquoted = asText.replace(/^"(.*)"$/, '$1').trim();
+      return unquoted !== '';
+    });
+    if (hasHeaderImage) {
+      return true;
+    }
+  }
+
+  const theBand = fields.the_band;
+  if (theBand != null) {
+    const bandText = trimText(typeof theBand === 'string' ? theBand : JSON.stringify(theBand));
+    if (bandText !== '' && !EMPTY_THE_BAND_TEXTS.has(bandText)) {
+      return true;
+    }
+  }
+
+  const socialLinks = fields.social_links;
+  if (socialLinks && typeof socialLinks === 'object' && !Array.isArray(socialLinks)) {
+    return Object.values(socialLinks as Record<string, unknown>).some(
+      (value) => typeof value === 'string' && value.trim() !== ''
+    );
+  }
+
+  return false;
+}
+
 /**
  * Catalog/search visibility: at least one public non-hidden track on a public release.
  */
@@ -98,23 +151,36 @@ async function hasPublicProfileContent(userId: string): Promise<boolean> {
   return Boolean(result.rows[0]?.has_profile_content);
 }
 
+export type AssertArtistVisibleOptions = {
+  /** When provided, profile content visibility is evaluated in-memory (no extra users read). */
+  profileContentFields?: ArtistProfileContentFields;
+};
+
 /** Visitor-facing page content beyond catalog eligibility. */
-export async function artistHasPublicPageContent(userId: string): Promise<boolean> {
+export async function artistHasPublicPageContent(
+  userId: string,
+  options?: AssertArtistVisibleOptions
+): Promise<boolean> {
+  const profileContentCheck = options?.profileContentFields
+    ? Promise.resolve(hasPublicProfileContentFromFields(options.profileContentFields))
+    : hasPublicProfileContent(userId);
+
   const [tracks, articles, profile] = await Promise.all([
     hasPublishedTracks(userId),
     hasPublicArticles(userId),
-    hasPublicProfileContent(userId),
+    profileContentCheck,
   ]);
   return tracks || articles || profile;
 }
 
 export async function assertArtistVisibleToViewer(
   targetUserId: string,
-  viewerUserId: string | null | undefined
+  viewerUserId: string | null | undefined,
+  options?: AssertArtistVisibleOptions
 ): Promise<void> {
   if (viewerUserId && viewerUserId === targetUserId) return;
 
-  const visible = await artistHasPublicPageContent(targetUserId);
+  const visible = await artistHasPublicPageContent(targetUserId, options);
   if (!visible) {
     throw new PublicArtistResolverError(404, 'Artist not found', 'ARTIST_NOT_PUBLISHED');
   }

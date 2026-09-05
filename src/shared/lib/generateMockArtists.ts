@@ -1,4 +1,4 @@
-import type { SceneArtist } from '@components/view/Universe3D';
+import type { SceneArtist } from '@components/view/universe3dTypes';
 
 const GENRES = ['rock', 'punk', 'grunge', 'metal', 'alternative'];
 

@@ -1,9 +1,14 @@
-import { describe, expect, test } from '@jest/globals';
+import { describe, expect, test, beforeEach, afterEach } from '@jest/globals';
 import {
+  buildHeroVisualKey,
   filterValidHeroHeaderImages,
+  invalidateArtistHeroHeaderImagesCache,
   pickHeroBackgroundImage,
   pickHeroCoverSources,
+  preloadHeroCoverFromHeaderImages,
+  resolveHeroCoverPreloadTarget,
   resolveHeroCoverSourcesFromUrl,
+  setCachedArtistHeroHeaderImages,
 } from '../artistHeroHeaderImages';
 
 describe('filterValidHeroHeaderImages', () => {
@@ -72,5 +77,115 @@ describe('pickHeroBackgroundImage', () => {
     const second = pickHeroBackgroundImage(images, 'artist:test');
     expect(first).toBe(second);
     expect(first).toMatch(/^url\('/);
+  });
+});
+
+describe('buildHeroVisualKey', () => {
+  test('matches Hero pathname|slug seed', () => {
+    expect(buildHeroVisualKey('/ru', 'Test-Artist')).toBe('/|test-artist');
+  });
+});
+
+describe('resolveHeroCoverPreloadTarget', () => {
+  test('prefers avif when avif source exists', () => {
+    const jpg = '/api/proxy-image?path=users/u1/hero/cover-1920.jpg';
+    const sources = pickHeroCoverSources([jpg], 'seed');
+    expect(sources).not.toBeNull();
+
+    expect(resolveHeroCoverPreloadTarget(sources!)).toEqual({
+      href: sources!.avif,
+      type: 'image/avif',
+    });
+  });
+
+  test('falls back to jpg when modern formats are unavailable', () => {
+    const coverWithoutExt = 'https://cdn.example/users/u1/hero/cover-no-ext';
+    const sources = resolveHeroCoverSourcesFromUrl(coverWithoutExt);
+    expect(sources).not.toBeNull();
+    expect(resolveHeroCoverPreloadTarget(sources!)).toEqual({
+      href: coverWithoutExt,
+      type: 'image/jpeg',
+    });
+  });
+});
+
+describe('preloadHeroCoverFromHeaderImages', () => {
+  beforeEach(() => {
+    invalidateArtistHeroHeaderImagesCache();
+    document.head
+      .querySelectorAll('link[data-hero-cover-preload]')
+      .forEach((node) => node.remove());
+  });
+
+  afterEach(() => {
+    document.head
+      .querySelectorAll('link[data-hero-cover-preload]')
+      .forEach((node) => node.remove());
+  });
+
+  function readPreloadLinks() {
+    return Array.from(document.head.querySelectorAll('link[data-hero-cover-preload]')).map(
+      (node) => {
+        const link = node as HTMLLinkElement;
+        return {
+          href: link.getAttribute('href'),
+          type: link.getAttribute('type'),
+          as: link.as || link.getAttribute('as'),
+          fetchPriority: link.fetchPriority || link.getAttribute('fetchpriority'),
+        };
+      }
+    );
+  }
+
+  test('preloads a single avif typed link for modern picture sources', () => {
+    const jpg = '/api/proxy-image?path=users/u1/hero/cover-1920.jpg';
+    const seed = buildHeroVisualKey('/ru', 'test-artist');
+    const sources = pickHeroCoverSources([jpg], seed);
+
+    preloadHeroCoverFromHeaderImages('test-artist', [jpg], seed);
+
+    expect(readPreloadLinks()).toEqual([
+      {
+        href: sources?.avif,
+        type: 'image/avif',
+        as: 'image',
+        fetchPriority: 'high',
+      },
+    ]);
+  });
+
+  test('preloads jpg only when avif/webp are unavailable', () => {
+    const coverWithoutExt = 'https://cdn.example/users/u1/hero/cover-no-ext';
+
+    preloadHeroCoverFromHeaderImages('test-artist', [coverWithoutExt], '/|test-artist');
+
+    expect(readPreloadLinks()).toEqual([
+      {
+        href: coverWithoutExt,
+        type: 'image/jpeg',
+        as: 'image',
+        fetchPriority: 'high',
+      },
+    ]);
+  });
+
+  test('dedupes preload for the same artist and cover URL', () => {
+    const jpg = '/api/proxy-image?path=users/u1/hero/cover-1920.jpg';
+    const seed = buildHeroVisualKey('/ru', 'test-artist');
+
+    preloadHeroCoverFromHeaderImages('test-artist', [jpg], seed);
+    preloadHeroCoverFromHeaderImages('test-artist', [jpg], seed);
+
+    expect(readPreloadLinks()).toHaveLength(1);
+  });
+
+  test('setCachedArtistHeroHeaderImages starts typed preload before React render', () => {
+    const jpg = '/api/proxy-image?path=users/u1/hero/cover-1920.jpg';
+
+    setCachedArtistHeroHeaderImages('test-artist', [jpg]);
+
+    const links = readPreloadLinks();
+    expect(links).toHaveLength(1);
+    expect(links[0]?.type).toBe('image/avif');
   });
 });

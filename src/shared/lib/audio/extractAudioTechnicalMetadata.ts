@@ -1,4 +1,3 @@
-import { parseBlob } from 'music-metadata';
 import {
   buildAudioTechnicalMetadata,
   emptyAudioTechnicalMetadata,
@@ -14,6 +13,7 @@ export async function extractAudioTechnicalMetadata(file: Blob): Promise<AudioTe
   const fileSize = typeof file.size === 'number' && file.size > 0 ? file.size : null;
 
   try {
+    const { parseBlob } = await import('music-metadata');
     const metadata = await parseBlob(file, { duration: true });
     return buildAudioTechnicalMetadata({
       container: metadata.format.container,

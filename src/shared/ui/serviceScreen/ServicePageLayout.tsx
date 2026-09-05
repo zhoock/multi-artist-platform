@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react';
 import {
   ServiceContent,
   type ServiceContentAction,
@@ -5,10 +6,13 @@ import {
   type ServiceContentSecondaryAction,
 } from './ServiceContent';
 import { ServiceOverlay } from './ServiceOverlay';
-import { ServiceScene } from './ServiceScene';
-import type { ServiceSceneId } from './scene';
-import { ServiceSceneProvider } from './scene';
+import { ServiceSceneProvider } from './scene/ServiceSceneContext';
+import type { ServiceSceneId } from './scene/types';
 import './ServicePageLayout.scss';
+
+const ServiceScene = lazy(() =>
+  import('./ServiceScene').then((m) => ({ default: m.ServiceScene }))
+);
 
 export type ServicePageLayoutAction = ServiceContentAction;
 export type ServicePageLayoutSecondaryAction = ServiceContentSecondaryAction;
@@ -20,7 +24,9 @@ export function ServicePageLayout({ titleId, scene, ...contentProps }: ServicePa
   return (
     <ServiceSceneProvider scene={scene}>
       <section className="service-page-layout" aria-labelledby={titleId}>
-        <ServiceScene />
+        <Suspense fallback={null}>
+          <ServiceScene />
+        </Suspense>
         <ServiceOverlay />
         <ServiceContent titleId={titleId} {...contentProps} />
       </section>

@@ -33,7 +33,7 @@ if (existsSync(envPath)) {
 
 import { promises as fs } from 'fs';
 import * as path from 'path';
-import { uploadFileAdmin } from '../src/shared/api/storage';
+import { uploadFileAdmin } from '../src/shared/api/storage/storageSupabaseClient';
 
 const MIXER_FILES = ['drums.png', 'bass.png', 'guitars.png', 'vocals.png'];
 

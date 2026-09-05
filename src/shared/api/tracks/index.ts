@@ -174,7 +174,8 @@ export async function prepareAndUploadTrack(
   if (externalSignal?.aborted) {
     throw new Error(errorCopy.uploadCancelled);
   }
-  const { createSupabaseClient, STORAGE_BUCKET_NAME } = await import('@config/supabase');
+  const { createSupabaseClient } = await import('@config/supabase');
+  const { STORAGE_BUCKET_NAME } = await import('@config/supabaseStorageUrl');
   const { getToken } = await import('@shared/lib/auth');
 
   const token = getToken();
@@ -296,7 +297,7 @@ export async function prepareAndUploadTrack(
 
     clearTimeout(timeoutId);
 
-    const { buildStoragePublicObjectUrl } = await import('@config/supabase');
+    const { buildStoragePublicObjectUrl } = await import('@config/supabaseStorageUrl');
     const publicUrl = buildStoragePublicObjectUrl(storagePath);
 
     if (!publicUrl) {

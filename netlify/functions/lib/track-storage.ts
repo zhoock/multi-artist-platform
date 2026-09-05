@@ -2,7 +2,8 @@
  * Resolve Supabase Storage public URLs for album tracks.
  */
 
-import { createSupabaseClient, STORAGE_BUCKET_NAME } from '../../../src/config/supabase';
+import { createSupabaseClient } from '../../../src/config/supabase';
+import { STORAGE_BUCKET_NAME } from '../../../src/config/supabaseStorageUrl';
 
 export async function resolveTrackPublicUrl(
   src: string,

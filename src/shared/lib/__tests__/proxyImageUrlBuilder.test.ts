@@ -14,7 +14,10 @@ import {
   getProxyImagePath,
   resolveProxyImageOrigin,
 } from '@shared/lib/proxyImageEnvironment';
-import { buildProxyImageUrlFromStoragePath, normalizeProxyImageUrl } from '@shared/api/storage';
+import {
+  buildProxyImageUrlFromStoragePath,
+  normalizeProxyImageUrl,
+} from '@shared/lib/proxyImageUrl';
 
 const storagePath = 'users/uuid/hero/hero-1-1920.jpg';
 

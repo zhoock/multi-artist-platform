@@ -1,11 +1,14 @@
-import { useLayoutEffect } from 'react';
+import { Suspense, lazy, useLayoutEffect } from 'react';
 import { Outlet, useParams } from 'react-router-dom';
 
 import { useLang } from '@app/providers/lang';
 import { isRouteLang } from '@shared/lib/i18n/routeLang';
 import { useAppDispatch } from '@shared/lib/hooks/useAppDispatch';
 import { langActions } from '@shared/model/lang/langSlice';
-import { NotFoundPage } from '@widgets/notFound';
+
+const NotFoundPage = lazy(() =>
+  import('@widgets/notFound').then((m) => ({ default: m.NotFoundPage }))
+);
 
 /**
  * Validates `/:lang` and syncs URL locale → Redux (single source of truth on prefixed routes).
@@ -29,7 +32,11 @@ export function LangLayout() {
   }, [dispatch, isValidLang, langParam]);
 
   if (!isValidLang) {
-    return <NotFoundPage />;
+    return (
+      <Suspense fallback={null}>
+        <NotFoundPage />
+      </Suspense>
+    );
   }
 
   return <Outlet />;

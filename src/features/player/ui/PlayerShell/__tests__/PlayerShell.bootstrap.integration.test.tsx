@@ -38,6 +38,13 @@ jest.mock('@features/player/model/lib/playerPersist', () => ({
   clearPlayerState: jest.fn(),
 }));
 
+jest.mock('../loadAudioPlayerModule', () => ({
+  loadAudioPlayerModule: () =>
+    Promise.resolve({
+      default: () => <div data-testid="audio-player" />,
+    }),
+}));
+
 jest.mock('@features/player/ui/AudioPlayer/AudioPlayer', () => ({
   __esModule: true,
   default: () => <div data-testid="audio-player" />,
@@ -197,7 +204,9 @@ describe('PlayerShell bootstrap integration', () => {
     });
 
     expect(screen.getByTestId('player-popup')).toBeTruthy();
-    expect(screen.getByTestId('audio-player')).toBeTruthy();
+    await waitFor(() => {
+      expect(screen.getByTestId('audio-player')).toBeTruthy();
+    });
     expect(screen.queryByTestId('mini-player')).toBeNull();
   });
 

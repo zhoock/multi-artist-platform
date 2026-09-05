@@ -1,4 +1,5 @@
-import { createSupabaseClient, STORAGE_BUCKET_NAME } from '../src/config/supabase';
+import { createSupabaseClient } from '../src/config/supabase';
+import { STORAGE_BUCKET_NAME } from '../src/config/supabaseStorageUrl';
 
 async function testStorage() {
   const supabase = createSupabaseClient();

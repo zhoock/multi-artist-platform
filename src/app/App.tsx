@@ -39,12 +39,11 @@ import { fetchUiDictionary } from '@shared/model/uiDictionary';
 import { closePopup, getIsPopupOpen, openPopup } from '@features/popupToggle';
 
 import { Popup, PopupHamburgerToggle, usePopup } from '@shared/ui/popup';
-import { NotFoundPage } from '@widgets/notFound';
 import { Hero } from '@widgets/hero';
 import { Header } from '@widgets/header';
 import { Footer } from '@widgets/footer';
 import { Navigation } from '@features/navigation';
-import { PlayerShell } from '@features/player';
+import { PlayerShell } from '@features/player/ui/PlayerShell';
 import { ErrorBoundary } from '@shared/ui/error-boundary';
 import { ArchiveAccessModalProvider } from '@shared/lib/archiveAccessModal';
 import {
@@ -107,9 +106,20 @@ const EmailVerificationExpired = lazy(
   () => import('@pages/EmailVerificationExpired/EmailVerificationExpired')
 );
 const ResetPassword = lazy(() => import('@pages/ResetPassword/ResetPassword'));
+const NotFoundPage = lazy(() =>
+  import('@widgets/notFound').then((m) => ({ default: m.NotFoundPage }))
+);
 
 // Компонент для отображения загрузки
 const PageLoader = () => <p>Загрузка...</p>;
+
+function NotFoundRoute() {
+  return (
+    <Suspense fallback={<PageLoader />}>
+      <NotFoundPage />
+    </Suspense>
+  );
+}
 
 /** Suspense для lazy Home: на artist hub — нейтральный public-скелетон. */
 function HomeRouteSuspenseFallback() {
@@ -199,7 +209,7 @@ const router = createBrowserRouter([
     path: '/*',
     element: <Layout />,
     loader: albumsLoader, // загружаем данные для альбомов, статей и UI-словарик
-    errorElement: <NotFoundPage />,
+    errorElement: <NotFoundRoute />,
   },
 ]);
 
@@ -533,9 +543,9 @@ function Layout() {
         <Route path="pay/*" element={<UnprefixedRedirect />} />
         <Route path="email-verified" element={<UnprefixedRedirect />} />
         <Route path="email-verification-expired" element={<UnprefixedRedirect />} />
-        <Route path="*" element={<NotFoundPage />} />
+        <Route path="*" element={<NotFoundRoute />} />
       </Route>
-      <Route path="*" element={<NotFoundPage />} />
+      <Route path="*" element={<NotFoundRoute />} />
     </Routes>
   );
 
@@ -602,7 +612,7 @@ function Layout() {
 
   const notFoundRoutes = (
     <Routes>
-      <Route path="*" element={<NotFoundPage />} />
+      <Route path="*" element={<NotFoundRoute />} />
     </Routes>
   );
 
@@ -640,7 +650,7 @@ function Layout() {
           </Suspense>
         }
       />
-      <Route path="*" element={<NotFoundPage />} />
+      <Route path="*" element={<NotFoundRoute />} />
     </Routes>
   );
 

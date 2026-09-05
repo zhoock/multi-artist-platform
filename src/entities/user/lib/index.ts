@@ -3,7 +3,8 @@
  */
 import { buildApiUrl } from '@shared/lib/artistQuery';
 import { fetchWithAuthSession } from '@shared/lib/authFetch';
-import { normalizeProxyImageUrl } from '@shared/api/storage';
+import { normalizeProxyImageUrl } from '@shared/lib/proxyImageUrl';
+import { fetchPublicArtistUserProfile } from '@shared/lib/publicArtistUserProfile';
 import { parseSocialLinksFromApi, type SocialLinks } from '@shared/constants/socialLinks';
 
 export interface UserProfile {
@@ -28,6 +29,7 @@ interface UserProfileLoadOptions {
   noBandFallback?: boolean;
   /** Публичный slug; если не задан, берётся из Redux `currentArtist` на клиенте. */
   artistSlugOverride?: string | null;
+  lang?: string;
 }
 
 async function resolvePublicArtistSlugForProfile(
@@ -60,6 +62,18 @@ export async function loadTheBandFromDatabase(
     const slug = await resolvePublicArtistSlugForProfile(options);
     if (includeArtist && !useAuth && !slug?.trim()) {
       return null;
+    }
+
+    if (!useAuth && includeArtist && slug?.trim()) {
+      const profile = await fetchPublicArtistUserProfile(slug, {
+        lang,
+        noBandFallback: options.noBandFallback,
+      });
+      if (!profile) return null;
+      const paragraphs = profile.theBand.filter(
+        (paragraph) => typeof paragraph === 'string' && paragraph.trim().length > 0
+      );
+      return paragraphs.length > 0 ? paragraphs : null;
     }
 
     let authHeader = {};
@@ -130,8 +144,11 @@ export async function loadHeaderImagesFromDatabase(
       return [];
     }
 
-    // Для публичных страниц не передаем Authorization header
-    // API вернет данные админа для публичного доступа
+    if (!useAuth && includeArtist && slug?.trim()) {
+      const profile = await fetchPublicArtistUserProfile(slug, { lang: options.lang });
+      return profile?.headerImages ?? [];
+    }
+
     let authHeader = {};
     if (useAuth) {
       const { getAuthHeader } = await import('@shared/lib/auth');
@@ -190,6 +207,11 @@ export async function loadSocialLinksFromDatabase(
     const slug = await resolvePublicArtistSlugForProfile(options);
     if (includeArtist && !useAuth && !slug?.trim()) {
       return {};
+    }
+
+    if (!useAuth && includeArtist && slug?.trim()) {
+      const profile = await fetchPublicArtistUserProfile(slug, { lang: options.lang });
+      return profile?.socialLinks ?? {};
     }
 
     let authHeader = {};

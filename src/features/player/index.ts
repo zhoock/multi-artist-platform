@@ -7,8 +7,6 @@ export type {
 } from './model/types/playerSchema';
 export { toPlayerTrack, toPlayerTracks } from './model/lib/toPlayerTrack';
 export * as playerSelectors from './model/selectors/playerSelectors';
-export { AudioPlayer } from './ui/AudioPlayer';
-export { PlayerShell } from './ui/PlayerShell';
 export { savePlayerState, loadPlayerState, clearPlayerState } from './model/lib/playerPersist';
 export {
   bootstrapPlayerSession,

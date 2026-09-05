@@ -1,4 +1,4 @@
-import { buildStoragePublicObjectUrl } from '@config/supabase';
+import { buildStoragePublicObjectUrl } from '@config/supabaseStorageUrl';
 import { getArticleStorageBaseName } from '@shared/lib/articleCoverUrl';
 
 const IMAGE_EXT_PATTERN = /\.(jpg|jpeg|png|webp|gif)$/i;

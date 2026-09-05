@@ -35,7 +35,8 @@ if (existsSync(envPath)) {
   });
 }
 
-import { createSupabaseClient, STORAGE_BUCKET_NAME } from '../src/config/supabase';
+import { createSupabaseClient } from '../src/config/supabase';
+import { STORAGE_BUCKET_NAME } from '../src/config/supabaseStorageUrl';
 
 async function checkBucket() {
   console.log('🔍 Проверка bucket...\n');

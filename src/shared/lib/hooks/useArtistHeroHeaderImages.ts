@@ -1,15 +1,54 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useState } from 'react';
 import {
   fetchArtistHeroHeaderImages,
   filterValidHeroHeaderImages,
+  getCachedArtistHeroHeaderImages,
   invalidateArtistHeroHeaderImagesCache,
+  preloadHeroCoverFromHeaderImages,
   setCachedArtistHeroHeaderImages,
 } from '@shared/lib/artistHeroHeaderImages';
+import {
+  ensurePublicArtistsLoaded,
+  getCachedPublicArtistHeaderImages,
+} from '@shared/lib/publicArtistsCache';
+
+function resolveHeaderImagesFromCaches(artistSlug: string): string[] {
+  if (!artistSlug) return [];
+  const profileCached = getCachedArtistHeroHeaderImages(artistSlug);
+  if (profileCached !== null) return profileCached;
+  const publicCached = getCachedPublicArtistHeaderImages(artistSlug);
+  if (publicCached) return filterValidHeroHeaderImages(publicCached);
+  return [];
+}
+
+function readInitialHeaderImages(artistSlug: string): string[] {
+  return resolveHeaderImagesFromCaches(artistSlug);
+}
+
+function readInitialHeaderImagesReady(artistSlug: string): boolean {
+  if (!artistSlug) return true;
+  return getCachedArtistHeroHeaderImages(artistSlug) !== null;
+}
+
+function applyPublicArtistHeaderImages(
+  artistSlug: string,
+  setHeaderImages: (images: string[]) => void
+): boolean {
+  const publicCached = getCachedPublicArtistHeaderImages(artistSlug);
+  if (!publicCached) return false;
+  const valid = filterValidHeroHeaderImages(publicCached);
+  if (valid.length === 0) return false;
+  setHeaderImages(valid);
+  preloadHeroCoverFromHeaderImages(artistSlug, valid);
+  return true;
+}
 
 export function useArtistHeroHeaderImages(artistSlug: string) {
   const normalizedSlug = artistSlug.trim().toLowerCase();
-  const [headerImages, setHeaderImages] = useState<string[]>([]);
-  const [isHeaderImagesReady, setIsHeaderImagesReady] = useState(() => !normalizedSlug);
+  const [headerImages, setHeaderImages] = useState(() => readInitialHeaderImages(normalizedSlug));
+  const [isHeaderImagesReady, setIsHeaderImagesReady] = useState(() =>
+    readInitialHeaderImagesReady(normalizedSlug)
+  );
 
   const loadImages = useCallback(
     async (options?: { keepReady?: boolean }) => {
@@ -19,9 +58,18 @@ export function useArtistHeroHeaderImages(artistSlug: string) {
         return;
       }
 
-      if (!options?.keepReady) {
-        setIsHeaderImagesReady(false);
+      const cached = getCachedArtistHeroHeaderImages(normalizedSlug);
+      if (cached !== null) {
+        setHeaderImages(cached);
+        setIsHeaderImagesReady(true);
+        return;
       }
+
+      applyPublicArtistHeaderImages(normalizedSlug, setHeaderImages);
+
+      void ensurePublicArtistsLoaded().then(() => {
+        applyPublicArtistHeaderImages(normalizedSlug, setHeaderImages);
+      });
 
       const images = await fetchArtistHeroHeaderImages(normalizedSlug);
       setHeaderImages(images);
@@ -30,7 +78,7 @@ export function useArtistHeroHeaderImages(artistSlug: string) {
     [normalizedSlug]
   );
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     void loadImages();
   }, [loadImages]);
 

@@ -14,6 +14,9 @@ declare module '*.module.sass' {
   export default classes;
 }
 
+declare module '*.scss';
+declare module '*.css';
+
 // Типы для переменных окружения (Vite-стиль через webpack DefinePlugin)
 declare global {
   interface ImportMetaEnv {

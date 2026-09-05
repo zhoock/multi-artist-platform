@@ -11,6 +11,10 @@ jest.mock('react-router-dom', () => ({
   useNavigate: () => mockNavigate,
 }));
 
+jest.mock('@shared/ui/serviceScreen/ServiceScene', () => ({
+  ServiceScene: () => null,
+}));
+
 describe('NotFoundPage integration tests', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -51,7 +55,7 @@ describe('NotFoundPage integration tests', () => {
     await user.click(button);
 
     await waitFor(() => {
-      expect(mockNavigate).toHaveBeenCalledWith('/', { replace: true });
+      expect(mockNavigate).toHaveBeenCalledWith('/en', { replace: true });
     });
   });
 });

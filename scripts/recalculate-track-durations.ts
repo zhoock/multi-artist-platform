@@ -12,7 +12,8 @@ import { query, closePool } from '../netlify/functions/lib/db';
 import * as fs from 'fs';
 import * as path from 'path';
 import { parseFile } from 'music-metadata';
-import { createSupabaseAdminClient, STORAGE_BUCKET_NAME } from '../src/config/supabase';
+import { createSupabaseAdminClient } from '../src/config/supabase';
+import { STORAGE_BUCKET_NAME } from '../src/config/supabaseStorageUrl';
 
 // Загружаем переменные окружения из .env файла
 const envPath = path.resolve(__dirname, '../.env');

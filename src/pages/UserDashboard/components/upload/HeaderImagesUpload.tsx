@@ -6,11 +6,8 @@ import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 import { useLang } from '@app/providers/lang';
 import { CoverImageCropModal } from '../modals/cover/CoverImageCropModal';
-import {
-  uploadFile,
-  deleteHeroImage,
-  buildProxyImageUrlFromStoragePath,
-} from '@shared/api/storage';
+import { buildProxyImageUrlFromStoragePath } from '@shared/lib/proxyImageUrl';
+import { uploadFile, deleteHeroImage } from '@shared/api/storage';
 import { getUser } from '@shared/lib/auth';
 import { uniqueUploadFileSuffix } from '@shared/lib/uniqueUploadFileSuffix';
 import './HeaderImagesUpload.style.scss';

@@ -71,6 +71,19 @@ jest.mock('@shared/lib/hooks/useSiteArtistDisplayName', () => ({
   useSiteArtistDisplayName: () => ({ displayName: 'Test Artist' }),
 }));
 
+jest.mock('@/components/view/loadUniverse3DModule', () => ({
+  loadUniverse3DModule: jest.fn(() =>
+    Promise.resolve({
+      Universe3D: class Universe3D {
+        destroy() {}
+        setSearchHighlight() {}
+        navigateToArtistFromSearch() {}
+        focusOnArtist() {}
+      },
+    })
+  ),
+}));
+
 jest.mock('@/components/view/Universe3D', () => ({
   Universe3D: class Universe3D {
     destroy() {}

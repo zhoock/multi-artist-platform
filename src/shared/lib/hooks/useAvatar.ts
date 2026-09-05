@@ -13,11 +13,8 @@ import {
   isProfileAvatarPlaceholderUrl,
   profileAvatarRetinaUrlFrom1x,
 } from '@shared/lib/avatarUpload';
-import {
-  buildProxyImageUrlFromStoragePath,
-  deleteProfileAvatarFromServer,
-  uploadFile,
-} from '@shared/api/storage';
+import { buildProxyImageUrlFromStoragePath } from '@shared/lib/proxyImageUrl';
+import { deleteProfileAvatarFromServer, uploadFile } from '@shared/api/storage';
 
 /** @deprecated Старый глобальный ключ — кэш был общий для всех аккаунтов; не использовать для чтения. */
 export const PROFILE_AVATAR_LOCALSTORAGE_KEY = 'user-avatar-url';

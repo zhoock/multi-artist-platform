@@ -1,40 +1,25 @@
 /**
- * API для работы с Supabase Storage
+ * API для работы с Supabase Storage (upload/delete via Netlify + URL helpers).
+ * Supabase JS client operations live in ./storageSupabaseClient.ts.
  */
 
-import {
-  createSupabaseClient,
-  createSupabaseAdminClient,
-  STORAGE_BUCKET_NAME,
-  buildStoragePublicObjectUrl,
-} from '@config/supabase';
-import { getUserUserId, type ImageCategory } from '@config/user';
+import { buildStoragePublicObjectUrl } from '@config/supabaseStorageUrl';
+import { getUserUserId } from '@config/user';
 import { sanitizeFileName } from '@shared/lib/sanitizeFileName';
 import { fetchWithAuthSession } from '@shared/lib/authFetch';
-import { getStorageErrorStatus } from '@shared/lib/errors/apiError';
-import { getProxyImagePath, resolveProxyImageOrigin } from '@shared/lib/proxyImageEnvironment';
+import {
+  buildProxyImageUrlFromStoragePath,
+  normalizeProxyImageUrl,
+} from '@shared/lib/proxyImageUrl';
+import { getPublicStorageFileUrl } from '@shared/lib/storagePublicFileUrl';
 
-export interface UploadFileOptions {
-  userId?: string;
-  category: ImageCategory;
-  file: File | Blob;
-  fileName: string;
-  contentType?: string;
-  upsert?: boolean; // Заменить файл, если существует
-  /** При замене обложки статьи — ключ предыдущего файла в БД (имя в Storage), чтобы удалить старые объекты с другим baseName */
-  previousImageKey?: string;
-}
+import type { GetFileUrlOptions, UploadFileOptions } from './storageTypes';
 
-export interface GetFileUrlOptions {
-  userId?: string;
-  category: ImageCategory;
-  fileName: string;
-  expiresIn?: number; // Время жизни ссылки в секундах (по умолчанию 1 час)
-}
-
+export type { GetFileUrlOptions, UploadFileOptions };
 export { sanitizeFileName };
+export { buildProxyImageUrlFromStoragePath, normalizeProxyImageUrl };
+export { buildStoragePublicObjectUrl } from '@config/supabaseStorageUrl';
 
-/** Имя для загрузки: basename нормализуем; полный путь `users/...` не трогаем. */
 function sanitizeUploadFileName(fileName: string): string {
   if (fileName.startsWith('users/')) {
     return fileName;
@@ -42,38 +27,6 @@ function sanitizeUploadFileName(fileName: string): string {
   return sanitizeFileName(fileName);
 }
 
-/**
- * Совпадение ключа в bucket с полем в БД: uploadFile кладёт sanitizeFileName(name).
- * Если в БД осталось имя с пробелами — приводим к тому же виду.
- * Не вызываем sanitize для «нормальных» имён (альбомы): там lower-case ломает регистр ключей в Storage.
- */
-function normalizeStorageFileNameForLookup(fileName: string): string {
-  if (/\s/.test(fileName)) {
-    return sanitizeUploadFileName(fileName);
-  }
-  return fileName;
-}
-
-/**
- * Получить путь к файлу в Storage
- */
-function getStoragePath(userId: string, category: ImageCategory, fileName: string): string {
-  let normalizedFileName = fileName;
-
-  if (normalizedFileName.startsWith('users/')) {
-    const parts = normalizedFileName.split('/');
-    const last = parts.pop() ?? '';
-    if (!last) return normalizedFileName;
-    parts.push(normalizeStorageFileNameForLookup(last));
-    return parts.join('/');
-  }
-
-  return `users/${userId}/${category}/${normalizeStorageFileNameForLookup(normalizedFileName)}`;
-}
-
-/**
- * Конвертирует File/Blob в base64 строку (без префикса data:...)
- */
 async function fileToBase64(file: File | Blob): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -87,53 +40,6 @@ async function fileToBase64(file: File | Blob): Promise<string> {
   });
 }
 
-/**
- * Локальный URL для proxy-image по пути в bucket `users/...`.
- * Единственная точка построения proxy URL для storage paths.
- */
-export function buildProxyImageUrlFromStoragePath(storagePath: string): string {
-  const origin = resolveProxyImageOrigin();
-  const proxyPath = getProxyImagePath();
-  return `${origin}${proxyPath}?path=${encodeURIComponent(storagePath)}`;
-}
-
-function extractStoragePathFromProxyInput(input: string): string | null {
-  if (input.startsWith('users/')) {
-    return input;
-  }
-
-  const pathMatch = input.match(/[?&]path=([^&]+)/);
-  if (pathMatch) {
-    return decodeURIComponent(pathMatch[1]);
-  }
-
-  return null;
-}
-
-/** Rewrites stale dev proxy URLs or bare hero storage paths into a current proxy URL. */
-export function normalizeProxyImageUrl(url: string): string {
-  if (!url) {
-    return url;
-  }
-
-  const isStaleLocal =
-    url.includes('localhost') || url.includes('127.0.0.1') || url.includes(':8080');
-
-  if (isStaleLocal) {
-    const path = extractStoragePathFromProxyInput(url);
-    if (path) {
-      return buildProxyImageUrlFromStoragePath(path);
-    }
-    return url;
-  }
-
-  if (url.startsWith('users/') && url.includes('/hero/')) {
-    return buildProxyImageUrlFromStoragePath(url);
-  }
-
-  return url;
-}
-
 function shouldBuildProxyUrlFromUploadResult(url: string): boolean {
   if (url.startsWith('users/')) {
     return true;
@@ -141,11 +47,6 @@ function shouldBuildProxyUrlFromUploadResult(url: string): boolean {
   return !url.includes('proxy-image') && !url.includes('supabase.co');
 }
 
-/**
- * Загрузить файл в Supabase Storage
- * @param options - опции загрузки
- * @returns URL загруженного файла или null в случае ошибки
- */
 export async function uploadFile(options: UploadFileOptions): Promise<string | null> {
   try {
     const resolvedUserId = options.userId ?? getUserUserId();
@@ -159,14 +60,12 @@ export async function uploadFile(options: UploadFileOptions): Promise<string | n
 
     const fileSizeMB = file.size / (1024 * 1024);
 
-    // Предупреждение для больших файлов (Netlify Functions имеют лимит ~6MB для body)
     if (fileSizeMB > 5) {
       console.warn(
         `⚠️ [uploadFile] Файл очень большой (${fileSizeMB.toFixed(2)}MB). Могут возникнуть проблемы с загрузкой через Netlify Function.`
       );
     }
 
-    // Достаём токен (динамический импорт, чтобы избежать циклических зависимостей)
     const { getToken } = await import('@shared/lib/auth');
     const token = getToken();
     if (!token) {
@@ -216,7 +115,7 @@ export async function uploadFile(options: UploadFileOptions): Promise<string | n
       let errorData: { error?: string; success?: boolean };
       try {
         errorData = await response.json();
-      } catch (parseError) {
+      } catch {
         const text = await response.text().catch(() => 'Unable to read response');
         errorData = { error: `HTTP ${response.status}: ${text}` };
       }
@@ -240,12 +139,10 @@ export async function uploadFile(options: UploadFileOptions): Promise<string | n
 
     let finalUrl = result.data.url;
 
-    // Для hero изображений result.data.url может содержать storagePath или уже готовый URL
     if (category === 'hero' && shouldBuildProxyUrlFromUploadResult(finalUrl)) {
       finalUrl = buildProxyImageUrlFromStoragePath(finalUrl);
     }
 
-    // Article cover upload returns storagePath — map to direct CDN (display-only, no proxy).
     if (
       category === 'articles' &&
       typeof finalUrl === 'string' &&
@@ -256,7 +153,6 @@ export async function uploadFile(options: UploadFileOptions): Promise<string | n
       finalUrl = buildStoragePublicObjectUrl(finalUrl) ?? finalUrl;
     }
 
-    // Аватар: storagePath `users/.../profile/...` → proxy (все варианты имён, не только `profile-NNN`)
     if (
       category === 'profile' &&
       typeof finalUrl === 'string' &&
@@ -273,225 +169,17 @@ export async function uploadFile(options: UploadFileOptions): Promise<string | n
   }
 }
 
-/**
- * Получить список файлов/папок в произвольном префиксе хранилища (public bucket)
- * @param prefix полный путь внутри bucket, например "users/{uuid}/audio" или "users/{uuid}/audio/23_Mixer"
- */
-export async function listStorageByPrefix(prefix: string): Promise<string[] | null> {
-  try {
-    const supabase = createSupabaseClient();
-    if (!supabase) {
-      console.error('Supabase client is not available. Please set required environment variables.');
-      return null;
-    }
-
-    const { data, error } = await supabase.storage
-      .from(STORAGE_BUCKET_NAME)
-      .list(prefix, { limit: 1000 });
-
-    if (error) {
-      console.error('❌ [listStorageByPrefix] Error listing storage prefix:', {
-        prefix,
-        error: error.message,
-        errorCode: getStorageErrorStatus(error),
-        errorName: error.name,
-      });
-      return null;
-    }
-
-    // Фильтруем только файлы (не папки)
-    // В Supabase Storage папки имеют id === null и metadata === null
-    // Файлы имеют id !== null
-    const files = (data || []).filter((item) => item.id !== null);
-
-    const fileNames = files.map((item) => item.name);
-
-    return fileNames;
-  } catch (error) {
-    console.error('❌ [listStorageByPrefix] Exception:', error);
-    return null;
-  }
-}
-
-/**
- * Сформировать прокси URL по полному пути в Storage
- * @param storagePath полный путь, например "users/{uuid}/audio/23_Mixer/01_FRB_drums.mp3"
- */
 export function buildProxyUrlFromPath(storagePath: string): string {
   const origin =
     typeof window !== 'undefined' ? window.location.origin : process.env.NETLIFY_SITE_URL || '';
   return `${origin}/api/proxy-image?path=${encodeURIComponent(storagePath)}`;
 }
 
-/**
- * Загрузить файл в Supabase Storage используя service role key (обходит RLS)
- * ⚠️ ВАЖНО: Использовать ТОЛЬКО в серверных скриптах/функциях, НИКОГДА на клиенте!
- * @param options - опции загрузки
- * @returns URL загруженного файла или null в случае ошибки
- */
-export async function uploadFileAdmin(options: UploadFileOptions): Promise<string | null> {
-  try {
-    const {
-      userId: explicitUserId,
-      category,
-      file,
-      fileName: rawFileName,
-      contentType,
-      upsert = false,
-    } = options;
-    const fileName = sanitizeUploadFileName(rawFileName);
-    const userId = explicitUserId;
-    if (!userId) {
-      console.error('[BUG] userId is missing in uploadFileAdmin.');
-      return null;
-    }
-
-    const supabase = createSupabaseAdminClient();
-    if (!supabase) {
-      console.error(
-        'Supabase admin client is not available. Please set SUPABASE_SERVICE_ROLE_KEY environment variable.'
-      );
-      return null;
-    }
-
-    const storagePath = getStoragePath(userId, category, fileName);
-
-    const { data, error } = await supabase.storage
-      .from(STORAGE_BUCKET_NAME)
-      .upload(storagePath, file, {
-        contentType: contentType || (file instanceof File ? file.type : 'image/jpeg'),
-        upsert,
-        cacheControl: '3600', // Кеш на 1 час
-      });
-
-    if (error) {
-      console.error('Error uploading file to Supabase Storage:', error);
-      return null;
-    }
-
-    // Получаем публичный URL файла
-    const { data: urlData } = supabase.storage.from(STORAGE_BUCKET_NAME).getPublicUrl(storagePath);
-
-    return urlData.publicUrl;
-  } catch (error) {
-    console.error('Error in uploadFileAdmin:', error);
-    return null;
-  }
-}
-
-/**
- * Получить публичный URL файла из Supabase Storage
- * @param options - опции для получения URL
- * @returns Публичный URL или null, если нет userId / клиента Supabase (ошибка в консоли)
- */
+/** @see getPublicStorageFileUrl — URL-only, без Supabase JS client. */
 export function getStorageFileUrl(options: GetFileUrlOptions): string | null {
-  const resolvedUserId = options.userId ?? getUserUserId();
-  if (!resolvedUserId) {
-    console.error('[BUG] userId is missing in getStorageFileUrl (pass options.userId or sign in).');
-    return null;
-  }
-  const { category, fileName } = options;
-  const userId = resolvedUserId;
-
-  const storagePath = getStoragePath(userId, category, fileName);
-
-  // Для аудио лучше использовать прямой публичный URL, чтобы браузер корректно получал метаданные
-  if (category === 'audio') {
-    const supabase = createSupabaseClient();
-    if (!supabase) {
-      console.error(
-        '[BUG] getStorageFileUrl: Supabase client is not available (check VITE_SUPABASE_*).'
-      );
-      return null;
-    }
-    const { data } = supabase.storage.from(STORAGE_BUCKET_NAME).getPublicUrl(storagePath);
-    return data.publicUrl;
-  }
-
-  // Для изображений оставляем прокси через Netlify функцию
-  return buildProxyImageUrlFromStoragePath(storagePath);
+  return getPublicStorageFileUrl(options);
 }
 
-/**
- * Получить временную (signed) URL файла из Supabase Storage
- * Используется для приватных файлов
- * @param options - опции для получения URL
- * @returns Временный URL файла или null в случае ошибки
- */
-export async function getStorageSignedUrl(options: GetFileUrlOptions): Promise<string | null> {
-  try {
-    const resolvedUserId = options.userId ?? getUserUserId();
-    if (!resolvedUserId) {
-      console.error('[BUG] userId is missing in getStorageSignedUrl.');
-      return null;
-    }
-    const { category, fileName, expiresIn = 3600 } = options;
-    const userId = resolvedUserId;
-
-    const supabase = createSupabaseClient();
-    if (!supabase) {
-      console.error('Supabase client is not available. Please set required environment variables.');
-      return null;
-    }
-
-    const storagePath = getStoragePath(userId, category, fileName);
-
-    const { data, error } = await supabase.storage
-      .from(STORAGE_BUCKET_NAME)
-      .createSignedUrl(storagePath, expiresIn);
-
-    if (error) {
-      console.error('Error creating signed URL:', error);
-      return null;
-    }
-
-    return data.signedUrl;
-  } catch (error) {
-    console.error('Error in getStorageSignedUrl:', error);
-    return null;
-  }
-}
-
-/**
- * Удалить файл из Supabase Storage
- * @param userId - ID пользователя
- * @param category - категория файла
- * @param fileName - имя файла
- * @returns true если успешно, false в случае ошибки
- */
-export async function deleteStorageFile(
-  userId: string,
-  category: ImageCategory,
-  fileName: string
-): Promise<boolean> {
-  try {
-    const supabase = createSupabaseClient();
-    if (!supabase) {
-      console.error('Supabase client is not available. Please set required environment variables.');
-      return false;
-    }
-
-    const storagePath = getStoragePath(userId, category, fileName);
-
-    const { error } = await supabase.storage.from(STORAGE_BUCKET_NAME).remove([storagePath]);
-
-    if (error) {
-      console.error('Error deleting file from Supabase Storage:', error);
-      return false;
-    }
-
-    return true;
-  } catch (error) {
-    console.error('Error in deleteStorageFile:', error);
-    return false;
-  }
-}
-
-/**
- * Удалить все файлы аватара (`profile.*` и `profile-128|256.*`) в Storage через Netlify Function + service role.
- * Надёжнее, чем deleteStorageFile с anon key (политики RLS).
- * @returns true при успехе (в т.ч. если файлов не было)
- */
 export async function deleteProfileAvatarFromServer(): Promise<boolean> {
   try {
     const { getAuthHeader, getToken } = await import('@shared/lib/auth');
@@ -529,11 +217,6 @@ export async function deleteProfileAvatarFromServer(): Promise<boolean> {
   }
 }
 
-/**
- * Удалить hero изображение и все его варианты из Storage
- * @param imageUrl - URL изображения (может быть полный URL, image-set() строка или простой путь)
- * @returns true если успешно, false в случае ошибки
- */
 export async function deleteHeroImage(imageUrl: string): Promise<boolean> {
   try {
     const { getAuthHeader, getToken } = await import('@shared/lib/auth');
@@ -550,7 +233,6 @@ export async function deleteHeroImage(imageUrl: string): Promise<boolean> {
       ...authHeader,
     };
 
-    // Убеждаемся, что Authorization заголовок присутствует
     if (!headers.Authorization && !headers.authorization) {
       headers.Authorization = `Bearer ${token}`;
     }
@@ -572,38 +254,5 @@ export async function deleteHeroImage(imageUrl: string): Promise<boolean> {
   } catch (error) {
     console.error('Error in deleteHeroImage:', error);
     return false;
-  }
-}
-
-/**
- * Получить список файлов в категории пользователя
- * @param userId - ID пользователя
- * @param category - категория файлов
- * @returns Массив имен файлов или null в случае ошибки
- */
-export async function listStorageFiles(
-  userId: string,
-  category: ImageCategory
-): Promise<string[] | null> {
-  try {
-    const supabase = createSupabaseClient();
-    if (!supabase) {
-      console.error('Supabase client is not available. Please set required environment variables.');
-      return null;
-    }
-
-    const folderPath = `users/${userId}/${category}`;
-
-    const { data, error } = await supabase.storage.from(STORAGE_BUCKET_NAME).list(folderPath);
-
-    if (error) {
-      console.error('Error listing files from Supabase Storage:', error);
-      return null;
-    }
-
-    return data?.map((file) => file.name) || [];
-  } catch (error) {
-    console.error('Error in listStorageFiles:', error);
-    return null;
   }
 }

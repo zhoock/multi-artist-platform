@@ -1,8 +1,6 @@
-import {
-  Universe3D,
-  type SceneArtist,
-  UNIVERSE_FOCUS_ARTIST_STORAGE_KEY,
-} from '../../../components/view/Universe3D';
+import type { SceneArtist } from '../../../components/view/universe3dTypes';
+import { UNIVERSE_FOCUS_ARTIST_STORAGE_KEY } from '../../../components/view/universe3dConstants';
+import { loadUniverse3DModule } from '../../../components/view/loadUniverse3DModule';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -58,10 +56,17 @@ import { useArtistPageSeo } from '@shared/lib/hooks/useArtistPageSeo';
 import { buildLocalizedPublicPath } from '@shared/lib/i18n/routeLang';
 import { buildPublicPageHreflangUrls } from '@shared/lib/seo/buildPublicPageHreflangUrls';
 import { ArtistPageSeoHelmet } from './ArtistPageSeoHelmet';
-import '../../../components/view/Universe3D.style.scss';
+import { scheduleAfterPostPaint } from '@shared/lib/scheduleAfterPostPaint';
 import './homeSceneChrome.scss';
 
 const HOME_USE_MOCKS_STORAGE_KEY = 'homeUseMocks';
+
+type HomeUniverseHandle = {
+  destroy: () => void;
+  setSearchHighlight: (matchedSlugs: string[] | null) => void;
+  navigateToArtistFromSearch: (publicSlug: string) => void;
+  focusOnArtist: (publicSlug: string) => void;
+};
 
 export function HomePage() {
   const dispatch = useAppDispatch();
@@ -71,13 +76,15 @@ export function HomePage() {
   const { lang } = useLang();
   const ui = useAppSelector((state) => selectUiDictionaryFirst(state, lang));
   const sceneRef = useRef<HTMLDivElement | null>(null);
-  const universeRef = useRef<Universe3D | null>(null);
+  const universeRef = useRef<HomeUniverseHandle | null>(null);
   /** Read at interaction time so Universe3D init does not rerun on locale-only changes. */
   const langForUniverseRef = useRef(lang);
   const locationForUniverseRef = useRef(location);
   langForUniverseRef.current = lang;
   locationForUniverseRef.current = location;
   const [isAboutModalOpen, setIsAboutModalOpen] = useState(false);
+  /** Defer heavy artist-page mount until after Hero paint (LCP experiment). */
+  const [shouldRevealFullPage, setShouldRevealFullPage] = useState(false);
   const [useMocks, setUseMocks] = useState(() => {
     try {
       return sessionStorage.getItem(HOME_USE_MOCKS_STORAGE_KEY) === '1';
@@ -153,6 +160,18 @@ export function HomePage() {
   ]);
 
   useEffect(() => {
+    setShouldRevealFullPage(false);
+
+    if (!hasArtistParam || !artistPageAccess.pageReady) {
+      return;
+    }
+
+    return scheduleAfterPostPaint(() => {
+      setShouldRevealFullPage(true);
+    });
+  }, [artistPageAccess.pageReady, artistSlug, hasArtistParam]);
+
+  useEffect(() => {
     const onboardingSurface =
       artistPageAccess.showOnboarding || artistPageAccess.showOnboardingSkeleton;
     document.body.classList.toggle('page--artist-onboarding', onboardingSurface);
@@ -179,7 +198,7 @@ export function HomePage() {
 
     setSceneArtists([]);
 
-    let universe: Universe3D | null = null;
+    let universe: HomeUniverseHandle | null = null;
     let cancelled = false;
 
     const init = async () => {
@@ -222,6 +241,10 @@ export function HomePage() {
 
       if (cancelled || !sceneRef.current) return;
       setSceneArtists(artists);
+
+      const { Universe3D } = await loadUniverse3DModule();
+      if (cancelled || !sceneRef.current) return;
+
       universe = new Universe3D(sceneRef.current, artists, {
         onNavigateToArtist: (publicSlug) => {
           sessionStorage.setItem(UNIVERSE_FOCUS_ARTIST_STORAGE_KEY, publicSlug);
@@ -383,7 +406,7 @@ export function HomePage() {
       );
     }
 
-    if (!artistPageAccess.pageReady) {
+    if (!artistPageAccess.pageReady || !shouldRevealFullPage) {
       return (
         <>
           {artistSeoHelmet}

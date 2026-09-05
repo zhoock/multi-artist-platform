@@ -1,5 +1,7 @@
-import { normalizeProxyImageUrl } from '@shared/api/storage';
-import { loadHeaderImagesFromDatabase } from '@entities/user/lib';
+import { stripLangPrefix } from '@shared/lib/i18n/routeLang';
+import { normalizeProxyImageUrl } from '@shared/lib/proxyImageUrl';
+import { getCachedPublicArtistHeaderImages } from '@shared/lib/publicArtistsCache';
+import { fetchPublicArtistUserProfile } from '@shared/lib/publicArtistUserProfile';
 
 export function filterValidHeroHeaderImages(images: string[] | null | undefined): string[] {
   return (images || []).filter((url) => {
@@ -110,20 +112,146 @@ export function pickHeroBackgroundImage(headerImages: string[], visualSeed: stri
 
 const headerImagesCache = new Map<string, string[]>();
 const headerImagesInflight = new Map<string, Promise<string[]>>();
+/** slug → primary preload href (avif, else webp, else jpg) */
+const preloadedHeroCoverBySlug = new Map<string, string>();
 
-export function invalidateArtistHeroHeaderImagesCache(artistSlug?: string): void {
-  if (!artistSlug?.trim()) {
-    headerImagesCache.clear();
-    headerImagesInflight.clear();
+const HERO_COVER_PRELOAD_ATTR = 'data-hero-cover-preload';
+
+/** Same visual seed as Hero — keeps cover pick stable for preload vs <img>. */
+export function buildHeroVisualKey(pathname: string, artistSlug: string): string {
+  return `${stripLangPrefix(pathname)}|${artistSlug.trim().toLowerCase()}`;
+}
+
+function readHeroVisualKeyForPreload(artistSlug: string): string {
+  if (typeof window === 'undefined') {
+    return buildHeroVisualKey('/', artistSlug);
+  }
+  return buildHeroVisualKey(window.location.pathname, artistSlug);
+}
+
+function clearHeroCoverPreloadLinks(artistSlug?: string): void {
+  if (typeof document === 'undefined') return;
+  const selector = artistSlug?.trim()
+    ? `link[${HERO_COVER_PRELOAD_ATTR}="${artistSlug.trim().toLowerCase()}"]`
+    : `link[${HERO_COVER_PRELOAD_ATTR}]`;
+  document.querySelectorAll(selector).forEach((node) => node.remove());
+}
+
+function appendHeroCoverPreloadLink(href: string, type: string, artistSlug: string): void {
+  const link = document.createElement('link');
+  link.rel = 'preload';
+  link.as = 'image';
+  link.href = href;
+  link.type = type;
+  link.setAttribute(HERO_COVER_PRELOAD_ATTR, artistSlug);
+  link.setAttribute('fetchpriority', 'high');
+  if ('fetchPriority' in link) {
+    link.fetchPriority = 'high';
+  }
+  document.head.appendChild(link);
+}
+
+/** Same selection order as HeroCoverImage <picture>: AVIF → WebP → JPG. */
+export function resolveHeroCoverPreloadTarget(
+  sources: HeroCoverSources
+): { href: string; type: string } | null {
+  if (!sources.jpg) return null;
+  if (sources.avif) {
+    return { href: sources.avif, type: 'image/avif' };
+  }
+  if (sources.webp) {
+    return { href: sources.webp, type: 'image/webp' };
+  }
+  return { href: sources.jpg, type: 'image/jpeg' };
+}
+
+/**
+ * Native preload for the single format the browser will pick from <picture>.
+ * One typed <link rel="preload"> avoids duplicate AVIF+WebP or JPG+AVIF fetches.
+ */
+export function preloadHeroCoverSources(sources: HeroCoverSources, artistSlug: string): void {
+  if (typeof document === 'undefined') return;
+
+  const slug = artistSlug.trim().toLowerCase();
+  if (!slug) return;
+
+  const target = resolveHeroCoverPreloadTarget(sources);
+  if (!target) return;
+
+  if (preloadedHeroCoverBySlug.get(slug) === target.href) return;
+
+  clearHeroCoverPreloadLinks(slug);
+  preloadedHeroCoverBySlug.set(slug, target.href);
+  appendHeroCoverPreloadLink(target.href, target.type, slug);
+}
+
+/**
+ * Start Hero LCP image fetch as soon as headerImages are known — before React mounts <img>.
+ * Uses typed <link rel="preload"> so the browser picks the same format as <picture>.
+ */
+export function preloadHeroCoverFromHeaderImages(
+  artistSlug: string,
+  headerImages: string[],
+  visualSeed?: string
+): void {
+  if (typeof window === 'undefined') return;
+
+  const slug = artistSlug.trim().toLowerCase();
+  if (!slug) return;
+
+  const valid = filterValidHeroHeaderImages(headerImages);
+  if (valid.length === 0) return;
+
+  const seed = visualSeed ?? readHeroVisualKeyForPreload(slug);
+  const sources = pickHeroCoverSources(valid, seed);
+  if (!sources) return;
+
+  preloadHeroCoverSources(sources, slug);
+}
+
+function tryPreloadHeroCoverImages(artistSlug: string, headerImages: string[]): void {
+  preloadHeroCoverFromHeaderImages(artistSlug, headerImages);
+}
+
+/** Sync read after loader prefetch or prior fetch — `null` when slug not resolved yet. */
+export function getCachedArtistHeroHeaderImages(artistSlug: string): string[] | null {
+  const slug = artistSlug.trim().toLowerCase();
+  if (!slug || !headerImagesCache.has(slug)) {
+    return null;
+  }
+  return headerImagesCache.get(slug)!;
+}
+
+/**
+ * @deprecated Header inflight is owned by fetchPublicArtistUserProfile.
+ * Kept for compatibility with existing imports/tests.
+ */
+export function syncHeaderImagesInflightFromProfileFetch(
+  artistSlug: string,
+  profileNetworkPromise: Promise<unknown>
+): void {
+  const slug = artistSlug.trim().toLowerCase();
+  if (!slug || headerImagesCache.has(slug) || headerImagesInflight.has(slug)) {
     return;
   }
 
-  const slug = artistSlug.trim().toLowerCase();
-  headerImagesCache.delete(slug);
-  headerImagesInflight.delete(slug);
+  const headerPromise = profileNetworkPromise
+    .then(() => headerImagesCache.get(slug) ?? [])
+    .catch(() => {
+      headerImagesInflight.delete(slug);
+      if (!headerImagesCache.has(slug)) {
+        headerImagesCache.set(slug, []);
+      }
+      return headerImagesCache.get(slug)!;
+    });
+
+  headerImagesInflight.set(slug, headerPromise);
 }
 
-export async function fetchArtistHeroHeaderImages(artistSlug: string): Promise<string[]> {
+export async function fetchArtistHeroHeaderImages(
+  artistSlug: string,
+  lang?: string
+): Promise<string[]> {
   const slug = artistSlug.trim().toLowerCase();
   if (!slug) {
     return [];
@@ -138,10 +266,17 @@ export async function fetchArtistHeroHeaderImages(artistSlug: string): Promise<s
     return inflight;
   }
 
-  const promise = loadHeaderImagesFromDatabase(false, { artistSlugOverride: slug })
-    .then((images) => filterValidHeroHeaderImages(images))
+  const promise = fetchPublicArtistUserProfile(slug, { lang })
+    .then((profile) => {
+      const fromProfile = filterValidHeroHeaderImages(profile?.headerImages ?? []);
+      if (fromProfile.length > 0) {
+        return fromProfile;
+      }
+      const fromPublic = getCachedPublicArtistHeaderImages(slug);
+      return filterValidHeroHeaderImages(fromPublic ?? []);
+    })
     .then((images) => {
-      headerImagesCache.set(slug, images);
+      setCachedArtistHeroHeaderImages(slug, images);
       headerImagesInflight.delete(slug);
       return images;
     })
@@ -155,9 +290,27 @@ export async function fetchArtistHeroHeaderImages(artistSlug: string): Promise<s
   return promise;
 }
 
+export function invalidateArtistHeroHeaderImagesCache(artistSlug?: string): void {
+  if (!artistSlug?.trim()) {
+    headerImagesCache.clear();
+    headerImagesInflight.clear();
+    preloadedHeroCoverBySlug.clear();
+    clearHeroCoverPreloadLinks();
+    return;
+  }
+
+  const slug = artistSlug.trim().toLowerCase();
+  headerImagesCache.delete(slug);
+  headerImagesInflight.delete(slug);
+  preloadedHeroCoverBySlug.delete(slug);
+  clearHeroCoverPreloadLinks(slug);
+}
+
 export function setCachedArtistHeroHeaderImages(artistSlug: string, images: string[]): void {
   const slug = artistSlug.trim().toLowerCase();
   if (!slug) return;
-  headerImagesCache.set(slug, filterValidHeroHeaderImages(images));
+  const valid = filterValidHeroHeaderImages(images);
+  headerImagesCache.set(slug, valid);
   headerImagesInflight.delete(slug);
+  tryPreloadHeroCoverImages(slug, valid);
 }

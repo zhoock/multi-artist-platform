@@ -1,10 +1,18 @@
 // src/widgets/hero/ui/Hero.tsx
-import { useEffect, useRef, useMemo, useState, type KeyboardEvent, type MouseEvent } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useMemo,
+  useState,
+  type KeyboardEvent,
+  type MouseEvent,
+} from 'react';
 import { useLocation, useNavigate, type Location } from 'react-router-dom';
 import { useLang } from '@app/providers/lang';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { useArtistPageBuilder } from '@shared/lib/hooks/useArtistPageBuilder';
-import { pickHeroCoverSources } from '@shared/lib/artistHeroHeaderImages';
+import { pickHeroCoverSources, buildHeroVisualKey } from '@shared/lib/artistHeroHeaderImages';
 import { ensurePublicArtistsLoaded } from '@shared/lib/publicArtistsCache';
 import { shouldShowArtistPageBuilderBlock } from '@shared/lib/artistPageBuilder';
 import {
@@ -18,14 +26,11 @@ import { selectArtistAlbumCatalogArtistMissing } from '@entities/album';
 import { selectPublicArtistSlug } from '@shared/model/currentArtist';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 import { isAuthOverlayPathname } from '@shared/lib/publicArtistContext';
-import {
-  Universe3D,
-  type SceneArtist,
-  UNIVERSE_FOCUS_ARTIST_STORAGE_KEY,
-} from '@/components/view/Universe3D';
-import '@/components/view/Universe3D.style.scss';
+import type { SceneArtist } from '@/components/view/universe3dTypes';
+import { UNIVERSE_FOCUS_ARTIST_STORAGE_KEY } from '@/components/view/universe3dConstants';
+import { loadUniverse3DModule } from '@/components/view/loadUniverse3DModule';
 import { useDashboardModalShell } from '@shared/lib/dashboardModalShellContext';
-import { buildLocalizedPublicPath, stripLangPrefix } from '@shared/lib/i18n/routeLang';
+import { buildLocalizedPublicPath } from '@shared/lib/i18n/routeLang';
 import { buildArtistPagePath } from '@shared/lib/seo/publicPagePaths';
 import { ArtistArchiveButton } from '@features/artistArchive';
 import { readStoredProfileDisplayName } from '@shared/lib/profileDisplayName';
@@ -37,27 +42,59 @@ const HERO_CLUSTER_PALETTE = [0x4d80ff, 0xff8a47, 0x53d8a2, 0xb086ff, 0xf2cd5d, 
 
 const defaultArtistName = '';
 
-function scheduleAfterHeroCoverPaint(onReady: () => void): () => void {
-  if (typeof requestIdleCallback !== 'undefined') {
-    const id = requestIdleCallback(onReady, { timeout: 2500 });
-    return () => cancelIdleCallback(id);
-  }
+type HeroUniverseHandle = {
+  destroy: () => void;
+  isArtistCardTarget: (target: Element) => boolean;
+};
 
-  const timeoutId = window.setTimeout(onReady, 150);
-  return () => window.clearTimeout(timeoutId);
+/**
+ * Defer work until after the browser has painted the current frame (double rAF),
+ * then optionally yield via requestIdleCallback so LCP can complete first.
+ */
+function scheduleAfterHeroCoverPaint(onReady: () => void): () => void {
+  let cancelled = false;
+  let rafId1 = 0;
+  let rafId2 = 0;
+  let idleId: number | undefined;
+  let timeoutId: number | undefined;
+
+  const scheduleIdle = () => {
+    if (cancelled) return;
+    if (typeof requestIdleCallback !== 'undefined') {
+      idleId = requestIdleCallback(onReady, { timeout: 2500 });
+      return;
+    }
+    timeoutId = window.setTimeout(onReady, 150);
+  };
+
+  rafId1 = requestAnimationFrame(() => {
+    if (cancelled) return;
+    rafId2 = requestAnimationFrame(scheduleIdle);
+  });
+
+  return () => {
+    cancelled = true;
+    cancelAnimationFrame(rafId1);
+    if (rafId2) cancelAnimationFrame(rafId2);
+    if (idleId !== undefined && typeof cancelIdleCallback !== 'undefined') {
+      cancelIdleCallback(idleId);
+    }
+    if (timeoutId !== undefined) window.clearTimeout(timeoutId);
+  };
 }
 
 export function Hero() {
   const [artistPageMeta, setArtistPageMeta] = useState<{
     userId: string;
   } | null>(null);
+  const [heroCoverPaintReady, setHeroCoverPaintReady] = useState(false);
   const [universeInitAllowed, setUniverseInitAllowed] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const { lang } = useLang() as { lang: 'ru' | 'en' };
   const publicArtistSlug = useAppSelector(selectPublicArtistSlug);
   const heroCanvasRef = useRef<HTMLDivElement | null>(null);
-  const universeRef = useRef<Universe3D | null>(null);
+  const universeRef = useRef<HeroUniverseHandle | null>(null);
   const { overlayOpen: dashboardOverlayOpen, surfaceLocation } = useDashboardModalShell();
   const isDashboardRoute = location.pathname.startsWith('/dashboard') && !dashboardOverlayOpen;
   /**
@@ -136,12 +173,20 @@ export function Hero() {
     }
   );
 
-  const heroVisualKey = `${stripLangPrefix(heroPathname)}|${heroPublicArtistSlug}`;
+  const heroVisualKey = buildHeroVisualKey(heroPathname, heroPublicArtistSlug);
   const heroCoverSources = useMemo(
     () => pickHeroCoverSources(headerImages, heroVisualKey),
     [headerImages, heroVisualKey]
   );
   const showHeroCoverImage = Boolean(heroCoverSources) && !showHeroImageBuilder;
+
+  const handleHeroCoverReadyForPaint = useCallback(() => {
+    setHeroCoverPaintReady(true);
+  }, []);
+
+  useEffect(() => {
+    setHeroCoverPaintReady(false);
+  }, [heroCoverSources?.avif, heroCoverSources?.jpg, heroCoverSources?.webp, showHeroCoverImage]);
 
   /** Skeleton only while hero cover URL is unknown — not while other page surfaces load. */
   const showHeroLoadingShell = showArtistPageHeroPending;
@@ -206,7 +251,12 @@ export function Hero() {
       return;
     }
 
-    if (!isHeaderImagesReady) {
+    if (showHeroCoverImage) {
+      if (!heroCoverPaintReady) {
+        setUniverseInitAllowed(false);
+        return;
+      }
+    } else if (!isHeaderImagesReady) {
       setUniverseInitAllowed(false);
       return;
     }
@@ -217,10 +267,11 @@ export function Hero() {
   }, [
     artistParamKey,
     hasArtistParam,
+    heroCoverPaintReady,
     hideHeroForArtistOnboarding,
     isHeaderImagesReady,
+    showHeroCoverImage,
     showPublishedHeroChrome,
-    heroCoverSources,
   ]);
 
   useEffect(() => {
@@ -236,7 +287,7 @@ export function Hero() {
     if (!el) return;
     if (el.childElementCount > 0) return;
 
-    let universe: Universe3D | null = null;
+    let universe: HeroUniverseHandle | null = null;
     let cancelled = false;
 
     const run = async () => {
@@ -290,6 +341,10 @@ export function Hero() {
         };
       }
 
+      if (cancelled || !heroCanvasRef.current) return;
+      if (heroCanvasRef.current.childElementCount > 0) return;
+
+      const { Universe3D } = await loadUniverse3DModule();
       if (cancelled || !heroCanvasRef.current) return;
       if (heroCanvasRef.current.childElementCount > 0) return;
 
@@ -384,7 +439,7 @@ export function Hero() {
       onKeyDown={showPublishedHeroChrome ? handleHeroNavigateKeyDown : undefined}
     >
       {showHeroCoverImage && heroCoverSources ? (
-        <HeroCoverImage sources={heroCoverSources} />
+        <HeroCoverImage sources={heroCoverSources} onReadyForPaint={handleHeroCoverReadyForPaint} />
       ) : null}
       {showPublishedHeroChrome ? <div ref={heroCanvasRef} className="hero__canvas" /> : null}
       <div className="hero__content">

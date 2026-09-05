@@ -1,5 +1,6 @@
 import { describe, test, expect, beforeEach, afterEach, jest } from '@jest/globals';
 import { render, screen } from '@testing-library/react';
+import { getAlbumCoverCacheVersion } from '@shared/lib/albumCoverUrl';
 import AlbumCover from '../AlbumCover';
 
 jest.mock('@shared/lib/hooks/useImageColor', () => ({
@@ -16,12 +17,10 @@ describe('AlbumCover imageSource', () => {
 
   beforeEach(() => {
     process.env = { ...originalEnv, VITE_SUPABASE_URL: SUPABASE_URL };
-    jest.spyOn(Date, 'now').mockReturnValue(1_700_000_000_000);
   });
 
   afterEach(() => {
     process.env = originalEnv;
-    jest.restoreAllMocks();
   });
 
   test('default imageSource uses proxy URLs', () => {
@@ -57,7 +56,7 @@ describe('AlbumCover imageSource', () => {
       `${SUPABASE_URL}/storage/v1/object/public/user-media/`
     );
     expect(img.getAttribute('src')).toContain(
-      `${COVER_KEY}-448.webp?v=${encodeURIComponent(String(1_700_000_000_000))}`
+      `${COVER_KEY}-448.webp?v=${encodeURIComponent(getAlbumCoverCacheVersion(COVER_KEY))}`
     );
     expect(img.getAttribute('src')).not.toContain('/api/proxy-image');
   });

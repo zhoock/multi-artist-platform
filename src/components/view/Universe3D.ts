@@ -1,6 +1,12 @@
 import * as THREE from 'three';
 import type { ProfileNameUpdatedDetail } from '@shared/lib/profileDisplayName';
 import { isUniverseSceneOverlayTarget } from '@shared/lib/universeSceneOverlay';
+import './Universe3D.style.scss';
+import { UNIVERSE_FOCUS_ARTIST_STORAGE_KEY } from './universe3dConstants';
+import type { SceneArtist } from './universe3dTypes';
+
+export { UNIVERSE_FOCUS_ARTIST_STORAGE_KEY } from './universe3dConstants';
+export type { SceneArtist } from './universe3dTypes';
 
 /** Manhattan distance (px) before touch pan counts as drag, not tap. */
 const TOUCH_MOVE_THRESHOLD_PX = 5;
@@ -149,24 +155,8 @@ function sampleCloudLabelPositionsWithMinSep(
   return fallback;
 }
 
-/** sessionStorage key: set before opening `/?artist=`, read on home cloud init to focus camera. */
-export const UNIVERSE_FOCUS_ARTIST_STORAGE_KEY = 'focusArtist';
-
 const ARTIST_MEDIA_PLACEHOLDER_ICON_SVG =
   '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="universe3d-card__media-icon"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><path d="M16 3.128a4 4 0 0 1 0 7.744"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><circle cx="9" cy="7" r="4"/></svg>';
-
-export type SceneArtist = {
-  userId?: string;
-  name: string;
-  publicSlug: string;
-  genreCode: string;
-  genreLabel?: { ru: string; en: string };
-  headerImages?: string[];
-  /** Active payment acceptance for this artist (premium / collection UI). */
-  monetizationEnabled?: boolean;
-  /** Hex (e.g. 0x4d80ff); overrides palette for cluster tint (hero / custom). */
-  clusterColor?: number;
-};
 
 type ClusterConfig = {
   genreCode: string;

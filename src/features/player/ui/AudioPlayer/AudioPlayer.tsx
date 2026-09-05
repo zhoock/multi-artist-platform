@@ -38,7 +38,7 @@ import { usePlayerControls } from './hooks/usePlayerControls';
 import { useTimeDisplay } from './hooks/useTimeDisplay';
 import { useTrackNavigation } from './hooks/useTrackNavigation';
 import { usePlayerToggles } from './hooks/usePlayerToggles';
-import { UNIVERSE_FOCUS_ARTIST_STORAGE_KEY } from '@/components/view/Universe3D';
+import { UNIVERSE_FOCUS_ARTIST_STORAGE_KEY } from '@/components/view/universe3dConstants';
 import { siteArtistUiLabel } from '@shared/lib/profileDisplayName';
 import { buildArtistPagePath, buildPublicAlbumPagePath } from '@shared/lib/seo/publicPagePaths';
 import { fallbackAlbumClientId } from '@shared/lib/albumClientId';

@@ -4,6 +4,18 @@ interface UserIdRow {
   id: string;
 }
 
+/** Profile row loaded in one query by public_slug (GET /api/user-profile?artist=). */
+export interface PublicArtistProfileRow {
+  id: string;
+  name?: string | null;
+  public_slug?: string | null;
+  the_band: unknown;
+  header_images?: unknown;
+  social_links?: unknown;
+  site_name?: string | null;
+  genre_code?: string | null;
+}
+
 export class PublicArtistResolverError extends Error {
   statusCode: number;
   code?: string;
@@ -47,6 +59,10 @@ export async function resolvePublicArtistUserId(artistSlug?: string | null): Pro
     return bySlug.rows[0].id;
   }
 
+  return resolveDefaultPublicArtistUserId();
+}
+
+async function resolveDefaultPublicArtistUserId(): Promise<string> {
   const defaultUser = await query<UserIdRow>(
     `SELECT id
      FROM users
@@ -64,4 +80,32 @@ export async function resolvePublicArtistUserId(artistSlug?: string | null): Pro
   }
 
   return defaultUser.rows[0].id;
+}
+
+/**
+ * Loads an active artist profile row by public slug in a single query.
+ * Used by GET /api/user-profile?artist= to avoid a separate id lookup + profile fetch.
+ */
+export async function fetchPublicArtistProfileBySlug(
+  artistSlug: string
+): Promise<PublicArtistProfileRow> {
+  const normalizedSlug = normalizeArtistSlug(artistSlug);
+  if (!normalizedSlug) {
+    throw new PublicArtistResolverError(404, 'Artist not found', 'ARTIST_NOT_FOUND');
+  }
+
+  const result = await query<PublicArtistProfileRow>(
+    `SELECT id, name, public_slug, the_band, header_images, social_links, site_name, genre_code
+     FROM users
+     WHERE public_slug = $1 AND is_active = true
+     LIMIT 1`,
+    [normalizedSlug],
+    0
+  );
+
+  if (result.rows.length === 0) {
+    throw new PublicArtistResolverError(404, 'Artist not found', 'ARTIST_NOT_FOUND');
+  }
+
+  return result.rows[0];
 }

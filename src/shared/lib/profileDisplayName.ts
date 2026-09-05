@@ -1,10 +1,15 @@
 import { getStore } from '@shared/model/appStore';
 import { selectPublicArtistSlug } from '@shared/model/currentArtist';
-
-import { fetchWithAuthSession } from '@shared/lib/authFetch';
-import { getAuthHeader } from '@shared/lib/auth';
-
-import { buildApiUrl } from './artistQuery';
+import {
+  filterValidHeroHeaderImages,
+  invalidateArtistHeroHeaderImagesCache,
+  setCachedArtistHeroHeaderImages,
+} from '@shared/lib/artistHeroHeaderImages';
+import {
+  fetchPublicArtistUserProfile,
+  getCachedPublicArtistUserProfile,
+  invalidatePublicArtistUserProfileCache,
+} from '@shared/lib/publicArtistUserProfile';
 
 export const PROFILE_NAME_STORAGE_KEY = 'profile-name';
 
@@ -38,15 +43,18 @@ export type PublicProfileForDisplay = {
   publicSlug: string | null;
 };
 
-const profileCache = new Map<string, PublicProfileForDisplay>();
-const profileInflight = new Map<string, Promise<PublicProfileForDisplay>>();
-
 function resolveArtistSlug(artistSlugOverride?: string | null): string {
   return (artistSlugOverride?.trim() || selectPublicArtistSlug(getStore().getState()) || '').trim();
 }
 
-function profileCacheKey(lang: string, slug: string): string {
-  return `${lang}:${slug.toLowerCase()}`;
+function mapProfileToDisplay(
+  profile: ReturnType<typeof getCachedPublicArtistUserProfile>
+): PublicProfileForDisplay {
+  const displayName = (profile?.siteName ?? profile?.name ?? '').trim();
+  return {
+    displayName,
+    publicSlug: profile?.publicSlug ?? null,
+  };
 }
 
 export function getCachedPublicProfileForDisplay(
@@ -55,22 +63,15 @@ export function getCachedPublicProfileForDisplay(
 ): PublicProfileForDisplay | null {
   const slug = resolveArtistSlug(artistSlugOverride);
   if (!slug) return null;
-  return profileCache.get(profileCacheKey(lang, slug)) ?? null;
+  const profile = getCachedPublicArtistUserProfile(slug, lang);
+  if (!profile) return null;
+  const mapped = mapProfileToDisplay(profile);
+  return mapped.displayName.trim() ? mapped : null;
 }
 
 export function invalidatePublicProfileDisplayCache(slug?: string): void {
-  if (!slug?.trim()) {
-    profileCache.clear();
-    profileInflight.clear();
-    return;
-  }
-  const normalized = slug.trim().toLowerCase();
-  for (const key of [...profileCache.keys()]) {
-    if (key.endsWith(`:${normalized}`)) {
-      profileCache.delete(key);
-      profileInflight.delete(key);
-    }
-  }
+  invalidatePublicArtistUserProfileCache(slug);
+  invalidateArtistHeroHeaderImagesCache(slug);
 }
 
 /** Стартует загрузку профиля заранее (route loader, prefetch). */
@@ -88,39 +89,18 @@ async function fetchPublicProfileForDisplayNetwork(
   slug: string
 ): Promise<PublicProfileForDisplay> {
   const fallbackName = '';
+  const profile = await fetchPublicArtistUserProfile(slug, { lang });
 
-  try {
-    const url = buildApiUrl(
-      '/api/user-profile',
-      { lang },
-      { includeArtist: true, artistSlugOverride: slug }
-    );
-    const response = await fetchWithAuthSession(url, {
-      headers: {
-        'Content-Type': 'application/json',
-        ...getAuthHeader(),
-      },
-    });
-    if (!response.ok) {
-      return { displayName: fallbackName, publicSlug: null };
-    }
-    const result = (await response.json()) as {
-      success?: boolean;
-      data?: {
-        siteName?: string | null;
-        name?: string | null;
-        publicSlug?: string | null;
-      };
-    };
-    if (!result.success || !result.data) {
-      return { displayName: fallbackName, publicSlug: null };
-    }
-    const displayName = (result.data.siteName ?? result.data.name ?? '').trim() || fallbackName;
-    const publicSlug = result.data.publicSlug?.trim() || null;
-    return { displayName, publicSlug };
-  } catch {
+  if (!profile) {
+    setCachedArtistHeroHeaderImages(slug, []);
     return { displayName: fallbackName, publicSlug: null };
   }
+
+  const headerImages = filterValidHeroHeaderImages(profile.headerImages);
+  setCachedArtistHeroHeaderImages(slug, headerImages);
+
+  const displayName = (profile.siteName ?? profile.name ?? '').trim() || fallbackName;
+  return { displayName, publicSlug: profile.publicSlug };
 }
 
 /**
@@ -136,28 +116,10 @@ export async function fetchPublicProfileForDisplay(
     return { displayName: readStoredProfileDisplayName(), publicSlug: null };
   }
 
-  const key = profileCacheKey(lang, slug);
-  const cached = profileCache.get(key);
+  const cached = getCachedPublicProfileForDisplay(lang, slug);
   if (cached?.displayName.trim()) return cached;
 
-  const pending = profileInflight.get(key);
-  if (pending) return pending;
-
-  const promise = fetchPublicProfileForDisplayNetwork(lang, slug)
-    .then((result) => {
-      if (result.displayName.trim()) {
-        profileCache.set(key, result);
-      }
-      profileInflight.delete(key);
-      return result;
-    })
-    .catch((error) => {
-      profileInflight.delete(key);
-      throw error;
-    });
-
-  profileInflight.set(key, promise);
-  return promise;
+  return fetchPublicProfileForDisplayNetwork(lang, slug);
 }
 
 /**

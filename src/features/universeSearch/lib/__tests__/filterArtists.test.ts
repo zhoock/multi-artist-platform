@@ -1,5 +1,5 @@
 import { describe, expect, test } from '@jest/globals';
-import type { SceneArtist } from '@components/view/Universe3D';
+import type { SceneArtist } from '@components/view/universe3dTypes';
 import { filterArtistsForSearch, matchedSlugsFromQuery } from '../filterArtists';
 
 const artists: SceneArtist[] = [

@@ -1,4 +1,4 @@
-import type { SceneArtist } from '@components/view/Universe3D';
+import type { SceneArtist } from '@components/view/universe3dTypes';
 import { fetchWithAuthSession } from '@shared/lib/authFetch';
 
 let artistsBySlug = new Map<string, SceneArtist>();
@@ -17,6 +17,15 @@ export function getPublicArtistDisplayName(slug: string): string {
   const key = slug.trim().toLowerCase();
   if (!key) return '';
   return artistsBySlug.get(key)?.name?.trim() ?? '';
+}
+
+/** Sync read of headerImages from loader prefetch — before /api/user-profile resolves. */
+export function getCachedPublicArtistHeaderImages(slug: string): string[] | null {
+  const key = slug.trim().toLowerCase();
+  if (!key || artistsBySlug.size === 0) return null;
+  const images = artistsBySlug.get(key)?.headerImages;
+  if (!images?.length) return null;
+  return images;
 }
 
 async function fetchPublicArtistsFromNetwork(): Promise<SceneArtist[]> {

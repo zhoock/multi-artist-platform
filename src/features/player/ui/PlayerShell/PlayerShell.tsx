@@ -1,5 +1,14 @@
 // src/features/player/ui/PlayerShell/PlayerShell.tsx
-import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, {
+  Suspense,
+  lazy,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   useEffectiveLocation,
@@ -20,7 +29,7 @@ import { playerActions } from '@features/player/model/slice/playerSlice';
 import * as playerSelectors from '@features/player/model/selectors/playerSelectors';
 import { audioController } from '@features/player/model/lib/audioController';
 import { MiniPlayer } from './MiniPlayer';
-import AudioPlayer from '@features/player/ui/AudioPlayer/AudioPlayer';
+import type { PlayerAlbumMeta } from '@features/player/model/types/playerSchema';
 import type { RootState } from '@shared/model/appStore/types';
 import { savePlayerState } from '@features/player/model/lib/playerPersist';
 import { bootstrapPlayerSession } from '@features/player/model/lib/bootstrapPlayerSession';
@@ -31,6 +40,25 @@ import {
 } from '@shared/lib/layout';
 
 const DEFAULT_BG = 'rgba(var(--extra-background-color-rgb) / 80%)';
+
+const LazyAudioPlayer = lazy(() =>
+  import(/* webpackChunkName: "audio-player-bootstrap" */ './loadAudioPlayerModule').then((m) =>
+    m.loadAudioPlayerModule()
+  )
+);
+
+type AudioPlayerShellProps = {
+  albumMeta: PlayerAlbumMeta;
+  setBgColor: (color: string) => void;
+};
+
+function FullScreenAudioPlayer({ albumMeta, setBgColor }: AudioPlayerShellProps) {
+  return (
+    <Suspense fallback={null}>
+      <LazyAudioPlayer albumMeta={albumMeta} setBgColor={setBgColor} />
+    </Suspense>
+  );
+}
 
 // Вычисляем нижний отступ как 3vi (3% ширины viewport), чтобы он соответствовал боковым отступам
 const getDefaultBottomOffset = (): number => {
@@ -476,10 +504,10 @@ export const PlayerShell: React.FC = () => {
         />
       )}
 
-      {canRenderPopup && albumMeta && (
-        <Popup isActive={isFullScreen} bgColor={bgColor} onClose={handleClose}>
+      {isFullScreen && canRenderPopup && albumMeta && (
+        <Popup isActive bgColor={bgColor} onClose={handleClose}>
           <PopupHamburgerToggle isActive />
-          <AudioPlayer albumMeta={albumMeta} setBgColor={setBgColor} />
+          <FullScreenAudioPlayer albumMeta={albumMeta} setBgColor={setBgColor} />
         </Popup>
       )}
     </>

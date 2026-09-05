@@ -41,6 +41,7 @@ import {
 } from '@shared/lib/artistPageContent';
 import { fetchOwnArtistPageState } from '@shared/lib/ownArtistPage';
 import { fetchPublicProfileForDisplay } from '@shared/lib/profileDisplayName';
+import { fetchPublicArtistUserProfile } from '@shared/lib/publicArtistUserProfile';
 import { getPaymentSettings } from '@shared/api/payment/settings';
 import { resolveMonetizationEnabled } from '@shared/lib/payment/artistMonetization';
 import { subscribeArtistMonetizationChanged } from '@shared/lib/payment/artistMonetizationEvents';
@@ -403,43 +404,15 @@ export function useArtistPageAccessState(
 
     void (async () => {
       try {
-        const response = await fetchWithAuthSession(
-          buildApiUrl(
-            '/api/user-profile',
-            { lang },
-            { includeArtist: true, artistSlugOverride: normalizedArtist }
-          ),
-          {
-            cache: 'no-cache',
-            headers: {
-              'Cache-Control': 'no-cache',
-              ...getAuthHeader(),
-            },
-          }
-        );
+        const profile = await fetchPublicArtistUserProfile(normalizedArtist, { lang });
         if (cancelled) return;
 
-        if (!response.ok) {
-          setVisitorProfileHasPublicBody(false);
-          visitorProfileReadyForSlugRef.current = normalizedArtist;
-          return;
-        }
-
-        const result = (await response.json()) as {
-          success?: boolean;
-          data?: {
-            theBand?: string[];
-            headerImages?: string[];
-            socialLinks?: Record<string, string | undefined>;
-          };
-        };
-
         setVisitorProfileHasPublicBody(
-          result.success
+          profile
             ? profileHasPublicBodyContent({
-                theBand: result.data?.theBand,
-                headerImages: result.data?.headerImages,
-                socialLinks: result.data?.socialLinks,
+                theBand: profile.theBand,
+                headerImages: profile.headerImages,
+                socialLinks: profile.socialLinks,
               })
             : false
         );
@@ -489,7 +462,7 @@ export function useArtistPageAccessState(
         setAboutSurfaceReady(true);
       });
 
-    void loadSocialLinksFromDatabase({ artistSlugOverride: normalizedArtist })
+    void loadSocialLinksFromDatabase({ artistSlugOverride: normalizedArtist, lang })
       .catch(() => ({}))
       .finally(() => {
         if (!cancelled) setSocialSurfaceReady(true);
@@ -728,16 +701,10 @@ export function useArtistPageAccessState(
     catalogArtistMissing;
 
   /**
-   * Hero cover URL pending: only while headerImages fetch is in flight.
-   * Does not wait on owner identity, catalog, articles, about, or payment gates.
+   * Hero shell renders immediately; cover URL mounts when headerImages resolve.
+   * (No full-hero skeleton while /api/user-profile is in flight.)
    */
-  const showArtistPageHeroPending =
-    Boolean(normalizedArtistSlug) &&
-    !showOnboarding &&
-    !showOnboardingSkeleton &&
-    !showNotFound &&
-    !showVisitorUnderConstruction &&
-    !isHeaderImagesReady;
+  const showArtistPageHeroPending = false;
 
   const showArtistPageLayoutPending = showArtistPageSurfacePending || showArtistPageHeroPending;
 

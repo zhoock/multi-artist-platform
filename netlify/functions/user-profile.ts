@@ -16,7 +16,10 @@ import {
 } from './lib/api-helpers';
 import { classifyAuthorizationHeader } from './lib/jwt';
 import { assertArtistVisibleToViewer } from './lib/artist-publication';
-import { PublicArtistResolverError, resolvePublicArtistUserId } from './lib/public-artist-resolver';
+import {
+  PublicArtistResolverError,
+  fetchPublicArtistProfileBySlug,
+} from './lib/public-artist-resolver';
 import {
   normalizeBandParagraphs,
   resolveTheBandForLang,
@@ -126,11 +129,13 @@ export const handler: Handler = async (
     if (event.httpMethod === 'GET') {
       let targetUserId = userId;
       const artistSlug = event.queryStringParameters?.artist?.trim();
+      let prefetchedPublicArtist: UserProfileRow | null = null;
 
       // Публичный режим: нужен artist. Если artist нет, но есть JWT — профиль текущего пользователя (админка).
       if (artistSlug) {
         try {
-          targetUserId = await resolvePublicArtistUserId(artistSlug);
+          prefetchedPublicArtist = await fetchPublicArtistProfileBySlug(artistSlug);
+          targetUserId = prefetchedPublicArtist.id;
         } catch (error) {
           if (error instanceof PublicArtistResolverError) {
             return {
@@ -148,7 +153,13 @@ export const handler: Handler = async (
 
         const viewerUserId = getUserIdFromEvent(event);
         try {
-          await assertArtistVisibleToViewer(targetUserId, viewerUserId);
+          await assertArtistVisibleToViewer(targetUserId, viewerUserId, {
+            profileContentFields: {
+              header_images: prefetchedPublicArtist.header_images,
+              the_band: prefetchedPublicArtist.the_band,
+              social_links: prefetchedPublicArtist.social_links,
+            },
+          });
         } catch (error) {
           if (error instanceof PublicArtistResolverError) {
             return {
@@ -178,25 +189,30 @@ export const handler: Handler = async (
         };
       }
 
-      const result = await query<UserProfileRow>(
-        `SELECT name, public_slug, the_band, header_images, social_links, site_name, genre_code
-         FROM users WHERE id = $1 AND is_active = true`,
-        [targetUserId],
-        0
-      );
+      let user: UserProfileRow;
+      if (prefetchedPublicArtist) {
+        user = prefetchedPublicArtist;
+      } else {
+        const result = await query<UserProfileRow>(
+          `SELECT name, public_slug, the_band, header_images, social_links, site_name, genre_code
+           FROM users WHERE id = $1 AND is_active = true`,
+          [targetUserId],
+          0
+        );
 
-      if (!result || result.rows.length === 0) {
-        return {
-          statusCode: 404,
-          headers,
-          body: JSON.stringify({
-            success: false,
-            error: 'User not found',
-          } as GetUserProfileResponse),
-        };
+        if (!result || result.rows.length === 0) {
+          return {
+            statusCode: 404,
+            headers,
+            body: JSON.stringify({
+              success: false,
+              error: 'User not found',
+            } as GetUserProfileResponse),
+          };
+        }
+
+        user = result.rows[0];
       }
-
-      const user = result.rows[0];
 
       // Получаем язык из query параметров (по умолчанию 'ru')
       const lang = (event.queryStringParameters?.lang || 'ru').toLowerCase();

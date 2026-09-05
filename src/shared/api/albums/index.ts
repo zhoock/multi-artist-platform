@@ -1,6 +1,6 @@
-import { buildStoragePublicObjectUrl } from '@config/supabase';
+import { buildStoragePublicObjectUrl } from '@config/supabaseStorageUrl';
 import { getUserUserId, type ImageCategory } from '@config/user';
-import { getStorageFileUrl } from '@shared/api/storage';
+import { getPublicStorageFileUrl } from '@shared/lib/storagePublicFileUrl';
 
 export interface ImageUrlOptions {
   userId?: string;
@@ -72,9 +72,9 @@ export function getImageUrl(
 
     // Используем Supabase Storage, если включено
     if (shouldUseSupabaseStorage(options)) {
-      const url = getStorageFileUrl({ userId, category, fileName });
+      const url = getPublicStorageFileUrl({ userId, category, fileName });
       if (url == null) {
-        console.error('[BUG] getImageUrl: getStorageFileUrl returned null', {
+        console.error('[BUG] getImageUrl: getPublicStorageFileUrl returned null', {
           userId,
           category,
           fileName,
@@ -200,7 +200,7 @@ export function getUserAudioUrl(
       );
       return null;
     }
-    return getStorageFileUrl({
+    return getPublicStorageFileUrl({
       userId,
       category: 'audio',
       fileName: normalizedPath,

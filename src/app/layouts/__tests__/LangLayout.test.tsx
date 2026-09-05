@@ -83,9 +83,9 @@ describe('LangLayout', () => {
     expect(mockDispatch).not.toHaveBeenCalled();
   });
 
-  test('shows 404 for unsupported locale segment', () => {
+  test('shows 404 for unsupported locale segment', async () => {
     renderLangRoute('/de');
-    expect(screen.getByTestId('not-found')).toBeTruthy();
+    expect(await screen.findByTestId('not-found')).toBeTruthy();
     expect(screen.queryByTestId('home')).toBeNull();
   });
 });

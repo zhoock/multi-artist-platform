@@ -50,6 +50,42 @@ module.exports = {
           priority: 20,
           reuseExistingChunk: true,
         },
+        // colorthief — только при открытии full-screen player (useImageColor callback)
+        colorthief: {
+          test: /[\\/]node_modules[\\/]colorthief[\\/]/,
+          name: 'colorthief',
+          chunks: 'async',
+          priority: 50,
+          enforce: true,
+          reuseExistingChunk: true,
+        },
+        // three.js — только async chunks (Universe3D / service scenes)
+        three: {
+          test: /[\\/]node_modules[\\/]three[\\/]/,
+          name: 'three',
+          chunks: 'async',
+          priority: 50,
+          enforce: true,
+          reuseExistingChunk: true,
+        },
+        // music-metadata — только при probe аудио при upload в UserDashboard
+        audioMetadata: {
+          test: /[\\/]node_modules[\\/](music-metadata|file-type|strtok3|@tokenizer)[\\/]/,
+          name: 'audio-metadata',
+          chunks: 'async',
+          priority: 50,
+          enforce: true,
+          reuseExistingChunk: true,
+        },
+        // Supabase JS SDK — auth/storage client ops (dashboard), not Hero URL helpers
+        supabase: {
+          test: /[\\/]node_modules[\\/]@supabase[\\/]/,
+          name: 'supabase',
+          chunks: 'async',
+          priority: 50,
+          enforce: true,
+          reuseExistingChunk: true,
+        },
         // Остальные vendor библиотеки
         vendor: {
           test: /[\\/]node_modules[\\/]/,

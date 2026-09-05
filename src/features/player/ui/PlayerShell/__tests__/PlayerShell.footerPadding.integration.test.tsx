@@ -41,6 +41,13 @@ jest.mock('@features/player/model/lib/playerPersist', () => ({
   clearPlayerState: jest.fn(),
 }));
 
+jest.mock('../loadAudioPlayerModule', () => ({
+  loadAudioPlayerModule: () =>
+    Promise.resolve({
+      default: () => <div data-testid="audio-player" />,
+    }),
+}));
+
 jest.mock('@features/player/ui/AudioPlayer/AudioPlayer', () => ({
   __esModule: true,
   default: () => <div data-testid="audio-player" />,

@@ -1,4 +1,4 @@
-import type { SceneArtist } from '@components/view/Universe3D';
+import type { SceneArtist } from '@components/view/universe3dTypes';
 
 export const UNIVERSE_SEARCH_SUGGESTION_LIMIT = 8;
 

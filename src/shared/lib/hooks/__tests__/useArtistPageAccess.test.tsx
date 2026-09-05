@@ -55,11 +55,13 @@ jest.mock('@shared/lib/auth', () => {
     isAuthenticated: jest.fn(() => false),
     getAuthHeader: jest.fn(() => ({})),
     getUser: jest.fn(() => null),
+    getToken: jest.fn(() => null),
   };
 });
 
 import { fetchWithAuthSession } from '@shared/lib/authFetch';
-import { getUser, isAuthenticated } from '@shared/lib/auth';
+import { getToken, getUser, isAuthenticated } from '@shared/lib/auth';
+import { invalidatePublicArtistUserProfileCache } from '@shared/lib/publicArtistUserProfile';
 
 const mockTrack: TracksProps = {
   id: '1',
@@ -114,6 +116,7 @@ function createWrapper(
 
 describe('useArtistPageAccess — album surface reload', () => {
   beforeEach(() => {
+    invalidatePublicArtistUserProfileCache();
     jest.mocked(fetchWithAuthSession).mockResolvedValue({
       ok: true,
       json: async () => ({
@@ -584,6 +587,7 @@ describe('useArtistPageAccess — published surface without releases', () => {
 
 describe('useArtistPageAccess — visitor unpublished artist', () => {
   beforeEach(() => {
+    invalidatePublicArtistUserProfileCache();
     jest.mocked(isAuthenticated).mockReturnValue(false);
     jest.mocked(fetchWithAuthSession).mockResolvedValue({
       ok: false,
@@ -863,27 +867,39 @@ describe('useArtistPageAccess — owner builder eligibility', () => {
 
 describe('useArtistPageAccess — stems hero release gate', () => {
   beforeEach(() => {
+    invalidatePublicArtistUserProfileCache();
     jest.mocked(isAuthenticated).mockReturnValue(true);
     jest.mocked(getUser).mockReturnValue({ id: 'owner-1' } as never);
+    jest.mocked(getToken).mockReturnValue('owner-token');
     writeCachedOwnPublicSlug('owner-1', 'test-artist');
-    jest.mocked(fetchWithAuthSession).mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        success: true,
-        data: {
-          publicSlug: 'test-artist',
-          theBand: ['Bio paragraph'],
-          headerImages: ['https://example.com/hero.jpg'],
-          socialLinks: {},
-        },
-      }),
-    } as Response);
+    jest.mocked(fetchWithAuthSession).mockImplementation(async (input: RequestInfo | URL) => {
+      const href = String(input);
+      if (href.includes('/api/albums')) {
+        return {
+          ok: true,
+          json: async () => ({ success: true, data: [publishedAlbum] }),
+        } as Response;
+      }
+      return {
+        ok: true,
+        json: async () => ({
+          success: true,
+          data: {
+            publicSlug: 'test-artist',
+            theBand: ['Bio paragraph'],
+            headerImages: ['https://example.com/hero.jpg'],
+            socialLinks: {},
+          },
+        }),
+      } as Response;
+    });
   });
 
   afterEach(() => {
     clearCachedOwnPublicSlug();
     jest.mocked(isAuthenticated).mockReturnValue(false);
     jest.mocked(getUser).mockReturnValue(null);
+    jest.mocked(getToken).mockReturnValue(null);
   });
 
   const ownerStemsBaseState = {
@@ -982,6 +998,7 @@ describe('useArtistPageAccess — stems hero release gate', () => {
 
 describe('useArtistPageAccess — visitor /stems reload', () => {
   beforeEach(() => {
+    invalidatePublicArtistUserProfileCache();
     jest.mocked(isAuthenticated).mockReturnValue(false);
     jest.mocked(getUser).mockReturnValue(null);
     jest.mocked(fetchWithAuthSession).mockResolvedValue({
@@ -1030,7 +1047,7 @@ describe('useArtistPageAccess — visitor /stems reload', () => {
             error: null,
             data: [],
             lastUpdated: Date.now(),
-            fetchContextKey: 'test-artist',
+            fetchContextKey: 'public:test-artist',
             artistMissing: false,
           },
         },
