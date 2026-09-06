@@ -69,6 +69,47 @@ export function invalidatePublicArtistUserProfileCache(artistSlug?: string): voi
   }
 }
 
+/** Drop in-flight profile requests so stale responses cannot overwrite a Dashboard hero save. */
+export function clearPublicArtistUserProfileInflight(artistSlug?: string): void {
+  if (!artistSlug?.trim()) {
+    profileInflight.clear();
+    return;
+  }
+
+  const normalized = artistSlug.trim().toLowerCase();
+  for (const key of [...profileInflight.keys()]) {
+    if (key.startsWith(`${normalized}:`)) {
+      profileInflight.delete(key);
+    }
+  }
+}
+
+/** Upsert headerImages on cached profile rows (creates a minimal row when missing). */
+export function setCachedPublicArtistUserProfileHeaderImages(
+  artistSlug: string,
+  headerImages: string[]
+): void {
+  const slug = artistSlug.trim().toLowerCase();
+  if (!slug) return;
+
+  const normalized = headerImages.map((url) => normalizeProxyImageUrl(String(url)));
+  const emptyProfile: PublicArtistUserProfileData = {
+    name: null,
+    publicSlug: slug,
+    theBand: [],
+    headerImages: normalized,
+    siteName: null,
+    genreCode: null,
+    socialLinks: {},
+  };
+
+  for (const lang of ['ru', 'en'] as const) {
+    const key = publicArtistUserProfileCacheKey(slug, lang);
+    const existing = profileCache.get(key);
+    profileCache.set(key, existing ? { ...existing, headerImages: normalized } : emptyProfile);
+  }
+}
+
 function mapProfileResponse(
   result: PublicArtistProfileResponse
 ): PublicArtistUserProfileData | null {

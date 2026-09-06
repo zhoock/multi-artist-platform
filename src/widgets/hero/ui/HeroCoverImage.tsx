@@ -24,17 +24,23 @@ export function HeroCoverImage({ sources, onReadyForPaint }: HeroCoverImageProps
     if (!img) return;
 
     return scheduleHeroCoverImagePaintReady(img, onReadyForPaint);
-  }, [onReadyForPaint, sources.avif, sources.jpg, sources.webp]);
+  }, [onReadyForPaint, sources.avifSrcSet, sources.jpg, sources.webpSrcSet]);
 
   return (
     <div className="hero__cover-layer" aria-hidden="true">
       <picture className="hero__cover">
-        {sources.avif ? <source srcSet={sources.avif} type="image/avif" /> : null}
-        {sources.webp ? <source srcSet={sources.webp} type="image/webp" /> : null}
+        {sources.avifSrcSet ? (
+          <source srcSet={sources.avifSrcSet} sizes={sources.sizes} type="image/avif" />
+        ) : null}
+        {sources.webpSrcSet ? (
+          <source srcSet={sources.webpSrcSet} sizes={sources.sizes} type="image/webp" />
+        ) : null}
         <img
           ref={imgRef}
           className="hero__cover-image"
           src={sources.jpg}
+          srcSet={sources.jpgSrcSet}
+          sizes={sources.sizes}
           alt=""
           width={HERO_COVER_INTRINSIC_WIDTH}
           height={HERO_COVER_INTRINSIC_HEIGHT}

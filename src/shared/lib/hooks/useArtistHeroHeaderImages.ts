@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import {
   fetchArtistHeroHeaderImages,
   filterValidHeroHeaderImages,
@@ -45,6 +45,7 @@ function applyPublicArtistHeaderImages(
 
 export function useArtistHeroHeaderImages(artistSlug: string) {
   const normalizedSlug = artistSlug.trim().toLowerCase();
+  const skipArtistUpdatedReloadRef = useRef(false);
   const [headerImages, setHeaderImages] = useState(() => readInitialHeaderImages(normalizedSlug));
   const [isHeaderImagesReady, setIsHeaderImagesReady] = useState(() =>
     readInitialHeaderImagesReady(normalizedSlug)
@@ -94,10 +95,15 @@ export function useArtistHeroHeaderImages(artistSlug: string) {
       }
       setHeaderImages(validImages);
       setIsHeaderImagesReady(true);
+      skipArtistUpdatedReloadRef.current = true;
     };
 
     const handleArtistUpdated = () => {
       if (!normalizedSlug) return;
+      if (skipArtistUpdatedReloadRef.current) {
+        skipArtistUpdatedReloadRef.current = false;
+        return;
+      }
       invalidateArtistHeroHeaderImagesCache(normalizedSlug);
       void loadImages({ keepReady: true });
     };

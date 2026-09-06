@@ -78,11 +78,14 @@ export async function generateHeroImageVariants(
   imageBuffer: Buffer,
   baseName: string
 ): Promise<Record<string, Buffer>> {
-  // Варианты для hero изображений: оптимизированное количество
-  // Используем только один размер (1920px) и несколько форматов для уменьшения времени обработки
-  // Browser выберет оптимальный формат из image-set()
+  // Hero: responsive widths for LCP (browser picks via srcset + sizes on the client).
   const variants: ImageVariant[] = [
-    // Desktop Full HD - основной размер для hero
+    { suffix: '-896.avif', width: 896, format: 'avif', quality: 80 },
+    { suffix: '-896.webp', width: 896, format: 'webp', quality: 85 },
+    { suffix: '-896.jpg', width: 896, format: 'jpg', quality: 85 },
+    { suffix: '-1280.avif', width: 1280, format: 'avif', quality: 80 },
+    { suffix: '-1280.webp', width: 1280, format: 'webp', quality: 85 },
+    { suffix: '-1280.jpg', width: 1280, format: 'jpg', quality: 85 },
     { suffix: '-1920.avif', width: 1920, format: 'avif', quality: 80 },
     { suffix: '-1920.webp', width: 1920, format: 'webp', quality: 85 },
     { suffix: '-1920.jpg', width: 1920, format: 'jpg', quality: 85 },

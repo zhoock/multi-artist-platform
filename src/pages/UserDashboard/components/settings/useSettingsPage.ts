@@ -368,7 +368,10 @@ export function useSettingsPage({
       setInitialHeaderImages([...safe]);
       notifyPublicSurfaceChanged(
         { type: 'profileChanged', aspects: ['headerImages'] },
-        { headerImages: safe }
+        {
+          headerImages: safe,
+          artistSlug: publicSlug.trim() || undefined,
+        }
       );
     },
     [initialHeaderImages, persistProfile]

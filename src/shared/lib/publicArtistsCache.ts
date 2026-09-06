@@ -28,6 +28,18 @@ export function getCachedPublicArtistHeaderImages(slug: string): string[] | null
   return images;
 }
 
+/** Apply Dashboard hero save to the in-memory public-artists index. */
+export function patchCachedPublicArtistHeaderImages(
+  artistSlug: string,
+  headerImages: string[]
+): void {
+  const key = artistSlug.trim().toLowerCase();
+  if (!key) return;
+  const artist = artistsBySlug.get(key);
+  if (!artist) return;
+  artistsBySlug.set(key, { ...artist, headerImages: [...headerImages] });
+}
+
 async function fetchPublicArtistsFromNetwork(): Promise<SceneArtist[]> {
   const response = await fetchWithAuthSession('/api/public-artists', { cache: 'no-store' });
   const payload = (await response.json()) as { success?: boolean; data?: SceneArtist[] };

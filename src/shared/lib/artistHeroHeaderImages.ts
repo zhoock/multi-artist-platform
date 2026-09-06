@@ -14,10 +14,22 @@ export function filterValidHeroHeaderImages(images: string[] | null | undefined)
   });
 }
 
+/** Matches HeroCoverImage sizes — derived from existing Hero CSS geometry. */
+export const HERO_COVER_SIZES = '(min-width: 1024px) 25vw, (min-width: 768px) 37vw, 100vw';
+
+export const HERO_COVER_VARIANT_WIDTHS = [896, 1280, 1920] as const;
+export type HeroCoverVariantWidth = (typeof HERO_COVER_VARIANT_WIDTHS)[number];
+
 export type HeroCoverSources = {
+  /** Largest JPG for <img src> fallback. */
+  jpg: string;
+  avifSrcSet: string | null;
+  webpSrcSet: string | null;
+  jpgSrcSet: string;
+  sizes: string;
+  /** Largest AVIF/WebP URLs — effect deps / legacy callers. */
   avif: string | null;
   webp: string | null;
-  jpg: string;
 };
 
 function stripCssUrlWrapper(value: string): string {
@@ -29,15 +41,41 @@ function stripCssUrlWrapper(value: string): string {
   return trimmed;
 }
 
-function deriveHeroVariantUrl(url: string, targetExt: 'avif' | 'webp' | 'jpg'): string | null {
+function extractHeroVariantPrefix(base: string): string | null {
+  if (!base) return null;
+
+  const sizedMatch = base.match(/^(.*)-(896|1280|1920)\.(avif|webp|jpe?g)$/i);
+  if (sizedMatch) {
+    return sizedMatch[1];
+  }
+
+  const extMatch = base.match(/^(.*)\.(avif|webp|jpe?g)$/i);
+  if (extMatch) {
+    return extMatch[1];
+  }
+
+  return base;
+}
+
+function heroVariantExtension(targetExt: 'avif' | 'webp' | 'jpg'): string {
+  return targetExt === 'jpg' ? 'jpg' : targetExt;
+}
+
+/** Resolve a hero storage/proxy URL for a specific width + format. */
+export function deriveHeroVariantUrl(
+  url: string,
+  targetExt: 'avif' | 'webp' | 'jpg',
+  width: HeroCoverVariantWidth = 1920
+): string | null {
   const base = stripCssUrlWrapper(url);
   if (!base) return null;
 
-  const sizedMatch = base.match(/^(.*)-1920\.(avif|webp|jpe?g)$/i);
+  const prefix = extractHeroVariantPrefix(base);
+  if (!prefix) return null;
+
+  const sizedMatch = base.match(/^(.*)-(896|1280|1920)\.(avif|webp|jpe?g)$/i);
   if (sizedMatch) {
-    const prefix = sizedMatch[1];
-    if (targetExt === 'jpg') return `${prefix}-1920.jpg`;
-    return `${prefix}-1920.${targetExt}`;
+    return normalizeProxyImageUrl(`${prefix}-${width}.${heroVariantExtension(targetExt)}`);
   }
 
   const extMatch = base.match(/^(.*)\.(avif|webp|jpe?g)$/i);
@@ -45,9 +83,44 @@ function deriveHeroVariantUrl(url: string, targetExt: 'avif' | 'webp' | 'jpg'): 
     return targetExt === 'jpg' ? base : null;
   }
 
-  const prefix = extMatch[1];
-  if (targetExt === 'jpg') return `${prefix}.jpg`;
-  return `${prefix}.${targetExt}`;
+  if (targetExt === 'jpg') return normalizeProxyImageUrl(`${prefix}.jpg`);
+  return normalizeProxyImageUrl(`${prefix}.${targetExt}`);
+}
+
+function buildHeroSrcSet(canonicalJpg: string, targetExt: 'avif' | 'webp' | 'jpg'): string | null {
+  const base = stripCssUrlWrapper(canonicalJpg);
+  const prefix = extractHeroVariantPrefix(base);
+  if (!prefix) return null;
+
+  const hasSizedSuffix = /-(896|1280|1920)\.(avif|webp|jpe?g)$/i.test(base);
+  if (!hasSizedSuffix) {
+    const single = deriveHeroVariantUrl(canonicalJpg, targetExt);
+    return single ? `${single} 1920w` : null;
+  }
+
+  return HERO_COVER_VARIANT_WIDTHS.map((width) => {
+    const url = deriveHeroVariantUrl(canonicalJpg, targetExt, width);
+    return url ? `${url} ${width}w` : null;
+  })
+    .filter((entry): entry is string => Boolean(entry))
+    .join(', ');
+}
+
+function buildHeroCoverSources(canonicalJpg: string): HeroCoverSources {
+  const jpg = normalizeProxyImageUrl(stripCssUrlWrapper(canonicalJpg));
+  const avifSrcSet = buildHeroSrcSet(jpg, 'avif');
+  const webpSrcSet = buildHeroSrcSet(jpg, 'webp');
+  const jpgSrcSet = buildHeroSrcSet(jpg, 'jpg') ?? `${jpg} 1920w`;
+
+  return {
+    jpg,
+    avifSrcSet,
+    webpSrcSet,
+    jpgSrcSet,
+    sizes: HERO_COVER_SIZES,
+    avif: deriveHeroVariantUrl(jpg, 'avif', 1920),
+    webp: deriveHeroVariantUrl(jpg, 'webp', 1920),
+  };
 }
 
 function parseImageSetHeroSources(rawUrl: string): HeroCoverSources | null {
@@ -58,11 +131,7 @@ function parseImageSetHeroSources(rawUrl: string): HeroCoverSources | null {
   const jpg = jpgMatch?.[1] ? normalizeProxyImageUrl(jpgMatch[1]) : null;
   if (!jpg) return null;
 
-  return {
-    avif: avifMatch?.[1] ? normalizeProxyImageUrl(avifMatch[1]) : deriveHeroVariantUrl(jpg, 'avif'),
-    webp: webpMatch?.[1] ? normalizeProxyImageUrl(webpMatch[1]) : deriveHeroVariantUrl(jpg, 'webp'),
-    jpg,
-  };
+  return buildHeroCoverSources(jpg);
 }
 
 /** Resolve AVIF → WebP → JPG sources for a single stored hero URL. */
@@ -79,11 +148,7 @@ export function resolveHeroCoverSourcesFromUrl(rawUrl: string): HeroCoverSources
   const jpg = deriveHeroVariantUrl(normalized, 'jpg');
   if (!jpg) return null;
 
-  return {
-    avif: deriveHeroVariantUrl(normalized, 'avif'),
-    webp: deriveHeroVariantUrl(normalized, 'webp'),
-    jpg,
-  };
+  return buildHeroCoverSources(jpg);
 }
 
 function pickHeroHeaderImageUrl(headerImages: string[], visualSeed: string): string {
@@ -101,6 +166,40 @@ export function pickHeroCoverSources(
 ): HeroCoverSources | null {
   if (headerImages.length === 0) return null;
   return resolveHeroCoverSourcesFromUrl(pickHeroHeaderImageUrl(headerImages, visualSeed));
+}
+
+/** CSS slot width implied by HERO_COVER_SIZES for a viewport. */
+export function resolveHeroCoverSlotWidth(viewportWidth: number): number {
+  if (viewportWidth >= 1024) return viewportWidth * 0.25;
+  if (viewportWidth >= 768) return viewportWidth * 0.37;
+  return viewportWidth;
+}
+
+/** Pick the smallest hero variant width that covers slot × DPR. */
+export function resolveHeroCoverVariantWidth(
+  viewportWidth: number,
+  devicePixelRatio = 1
+): HeroCoverVariantWidth {
+  const needed = resolveHeroCoverSlotWidth(viewportWidth) * devicePixelRatio;
+  for (const width of HERO_COVER_VARIANT_WIDTHS) {
+    if (width >= needed) {
+      return width;
+    }
+  }
+  return 1920;
+}
+
+export function resolveHeroCoverViewportMetrics(): {
+  viewportWidth: number;
+  devicePixelRatio: number;
+} {
+  if (typeof window === 'undefined') {
+    return { viewportWidth: 1920, devicePixelRatio: 1 };
+  }
+  return {
+    viewportWidth: window.innerWidth,
+    devicePixelRatio: window.devicePixelRatio || 1,
+  };
 }
 
 /** @deprecated Prefer pickHeroCoverSources + <picture>. Kept for legacy CSS background callers. */
@@ -151,18 +250,42 @@ function appendHeroCoverPreloadLink(href: string, type: string, artistSlug: stri
   document.head.appendChild(link);
 }
 
-/** Same selection order as HeroCoverImage <picture>: AVIF → WebP → JPG. */
+/**
+ * Same selection order as HeroCoverImage <picture>: AVIF → WebP → JPG,
+ * at the variant width the browser would pick for the current viewport.
+ */
 export function resolveHeroCoverPreloadTarget(
-  sources: HeroCoverSources
+  sources: HeroCoverSources,
+  viewportWidth?: number,
+  devicePixelRatio?: number
 ): { href: string; type: string } | null {
   if (!sources.jpg) return null;
-  if (sources.avif) {
-    return { href: sources.avif, type: 'image/avif' };
+
+  const metrics =
+    viewportWidth != null
+      ? { viewportWidth, devicePixelRatio: devicePixelRatio ?? 1 }
+      : resolveHeroCoverViewportMetrics();
+  const variantWidth = resolveHeroCoverVariantWidth(
+    metrics.viewportWidth,
+    metrics.devicePixelRatio
+  );
+
+  const avif = deriveHeroVariantUrl(sources.jpg, 'avif', variantWidth);
+  if (avif) {
+    return { href: avif, type: 'image/avif' };
   }
-  if (sources.webp) {
-    return { href: sources.webp, type: 'image/webp' };
+
+  const webp = deriveHeroVariantUrl(sources.jpg, 'webp', variantWidth);
+  if (webp) {
+    return { href: webp, type: 'image/webp' };
   }
-  return { href: sources.jpg, type: 'image/jpeg' };
+
+  const jpg = deriveHeroVariantUrl(sources.jpg, 'jpg', variantWidth);
+  if (jpg) {
+    return { href: jpg, type: 'image/jpeg' };
+  }
+
+  return null;
 }
 
 /**
@@ -194,7 +317,7 @@ export function preloadHeroCoverFromHeaderImages(
   headerImages: string[],
   visualSeed?: string
 ): void {
-  if (typeof window === 'undefined') return;
+  if (typeof document === 'undefined') return;
 
   const slug = artistSlug.trim().toLowerCase();
   if (!slug) return;
@@ -268,9 +391,8 @@ export async function fetchArtistHeroHeaderImages(
 
   const promise = fetchPublicArtistUserProfile(slug, { lang })
     .then((profile) => {
-      const fromProfile = filterValidHeroHeaderImages(profile?.headerImages ?? []);
-      if (fromProfile.length > 0) {
-        return fromProfile;
+      if (profile) {
+        return filterValidHeroHeaderImages(profile.headerImages ?? []);
       }
       const fromPublic = getCachedPublicArtistHeaderImages(slug);
       return filterValidHeroHeaderImages(fromPublic ?? []);

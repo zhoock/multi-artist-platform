@@ -86,6 +86,33 @@ module.exports = {
           enforce: true,
           reuseExistingChunk: true,
         },
+        // @dnd-kit — drag-and-drop в UserDashboard
+        dndKit: {
+          test: /[\\/]node_modules[\\/]@dnd-kit[\\/]/,
+          name: 'dnd-kit',
+          chunks: 'async',
+          priority: 50,
+          enforce: true,
+          reuseExistingChunk: true,
+        },
+        // jszip — скачивание purchases в UserDashboard
+        jszip: {
+          test: /[\\/]node_modules[\\/]jszip[\\/]/,
+          name: 'jszip',
+          chunks: 'async',
+          priority: 50,
+          enforce: true,
+          reuseExistingChunk: true,
+        },
+        // react-easy-crop — crop обложки в UserDashboard
+        reactEasyCrop: {
+          test: /[\\/]node_modules[\\/]react-easy-crop[\\/]/,
+          name: 'react-easy-crop',
+          chunks: 'async',
+          priority: 50,
+          enforce: true,
+          reuseExistingChunk: true,
+        },
         // Остальные vendor библиотеки
         vendor: {
           test: /[\\/]node_modules[\\/]/,

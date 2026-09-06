@@ -8,7 +8,15 @@ import { fetchArticles } from '@entities/article';
 import { getStore } from '@shared/model/appStore';
 import { invalidateArtistHeroHeaderImagesCache } from '@shared/lib/artistHeroHeaderImages';
 import { invalidatePublicProfileDisplayCache } from '@shared/lib/profileDisplayName';
-import { reloadPublicArtists } from '@shared/lib/publicArtistsCache';
+import {
+  patchCachedPublicArtistHeaderImages,
+  reloadPublicArtists,
+} from '@shared/lib/publicArtistsCache';
+import {
+  clearPublicArtistUserProfileInflight,
+  invalidatePublicArtistUserProfileCache,
+  setCachedPublicArtistUserProfileHeaderImages,
+} from '@shared/lib/publicArtistUserProfile';
 import { dispatchArtistMonetizationChanged } from '@shared/lib/payment/artistMonetizationEvents';
 import type { PublicSurfaceScope, ResolvedPublicSurfacePlan } from './types';
 
@@ -136,9 +144,14 @@ export function executePublicSurfaceRevalidate(input: ExecutePublicSurfaceRevali
   }
 
   if (scopeSet.has('heroImages')) {
+    clearPublicArtistUserProfileInflight(slug);
     invalidateArtistHeroHeaderImagesCache(slug);
-    if (input.headerImages) {
+    if (Array.isArray(input.headerImages)) {
+      setCachedPublicArtistUserProfileHeaderImages(slug, input.headerImages);
+      patchCachedPublicArtistHeaderImages(slug, input.headerImages);
       dispatchHeaderImagesUpdated(input.headerImages);
+    } else {
+      invalidatePublicArtistUserProfileCache(slug);
     }
   }
 

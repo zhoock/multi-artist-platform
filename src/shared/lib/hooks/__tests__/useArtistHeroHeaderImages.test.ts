@@ -37,12 +37,15 @@ import {
   prefetchPublicProfileForDisplay,
 } from '@shared/lib/profileDisplayName';
 import { useArtistHeroHeaderImages } from '../useArtistHeroHeaderImages';
+import { notifyPublicSurfaceChanged } from '@shared/lib/publicSurfaceSync';
 
 const mockFetch = fetchWithAuthSession as jest.MockedFunction<
   (input: string, init?: RequestInit) => Promise<Response>
 >;
 
 const HERO_URL = '/api/proxy-image?path=users/u1/hero/cover-1920.jpg';
+const NEW_HERO_URL = '/api/proxy-image?path=users/u1/hero/cover-new-1920.jpg';
+const OLD_HERO_URL = '/api/proxy-image?path=users/u1/hero/cover-old-1920.jpg';
 
 function mockProfileResponse(headerImages: string[]) {
   mockFetch.mockResolvedValue({
@@ -162,7 +165,29 @@ describe('useArtistHeroHeaderImages', () => {
   });
 
   test('public-artists only path before profile cache is set', async () => {
-    mockPublicArtistsResponse([HERO_URL]);
+    mockFetch.mockImplementation((url) => {
+      if (String(url).includes('/api/user-profile')) {
+        return Promise.resolve({ ok: false } as Response);
+      }
+      if (String(url).includes('/api/public-artists')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            success: true,
+            data: [
+              {
+                userId: 'u1',
+                name: 'Test Artist',
+                publicSlug: 'test-artist',
+                genreCode: 'rock',
+                headerImages: [HERO_URL],
+              },
+            ],
+          }),
+        } as Response);
+      }
+      return Promise.reject(new Error(`unexpected url ${url}`));
+    });
 
     prefetchPublicArtists();
 
@@ -170,6 +195,51 @@ describe('useArtistHeroHeaderImages', () => {
 
     await waitFor(() => {
       expect(result.current.headerImages).toEqual([HERO_URL]);
+    });
+  });
+
+  test('dashboard headerImages save updates open artist page without reload', async () => {
+    mockProfileResponse([OLD_HERO_URL]);
+    await fetchPublicProfileForDisplay('ru', 'test-artist');
+
+    const { result } = renderHook(() => useArtistHeroHeaderImages('test-artist'));
+
+    expect(result.current.headerImages).toEqual([OLD_HERO_URL]);
+
+    notifyPublicSurfaceChanged(
+      { type: 'profileChanged', aspects: ['headerImages'] },
+      { headerImages: [NEW_HERO_URL], artistSlug: 'test-artist' }
+    );
+
+    await waitFor(() => {
+      expect(result.current.headerImages).toEqual([NEW_HERO_URL]);
+    });
+    expect(getCachedArtistHeroHeaderImages('test-artist')).toEqual([NEW_HERO_URL]);
+  });
+
+  test('delete then upload save replaces stale hero URL without reload', async () => {
+    mockProfileResponse([OLD_HERO_URL]);
+    await fetchPublicProfileForDisplay('ru', 'test-artist');
+
+    const { result } = renderHook(() => useArtistHeroHeaderImages('test-artist'));
+    expect(result.current.headerImages).toEqual([OLD_HERO_URL]);
+
+    notifyPublicSurfaceChanged(
+      { type: 'profileChanged', aspects: ['headerImages'] },
+      { headerImages: [], artistSlug: 'test-artist' }
+    );
+
+    await waitFor(() => {
+      expect(result.current.headerImages).toEqual([]);
+    });
+
+    notifyPublicSurfaceChanged(
+      { type: 'profileChanged', aspects: ['headerImages'] },
+      { headerImages: [NEW_HERO_URL], artistSlug: 'test-artist' }
+    );
+
+    await waitFor(() => {
+      expect(result.current.headerImages).toEqual([NEW_HERO_URL]);
     });
   });
 });
