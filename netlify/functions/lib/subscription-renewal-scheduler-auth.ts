@@ -1,5 +1,6 @@
 /**
  * PR-10.1 — Authorization for scheduled renewal invocations (C-2).
+ * P0-1 — Fail-closed: next_run payload alone is never authentication.
  */
 
 import { timingSafeEqual } from 'crypto';
@@ -24,7 +25,7 @@ function secretsEqual(provided: string, expected: string): boolean {
   return timingSafeEqual(a, b);
 }
 
-/** True when body matches Netlify scheduled function payload ({ next_run: ISO-8601 }). */
+/** True when body matches Netlify scheduled function payload ({ next_run: ISO-8601 }). Detection only — not authentication. */
 export function isNetlifyScheduledInvocation(body: string | null | undefined): boolean {
   if (!body?.trim()) return false;
 
@@ -39,6 +40,15 @@ export function isNetlifyScheduledInvocation(body: string | null | undefined): b
   } catch {
     return false;
   }
+}
+
+/**
+ * Netlify platform schedule signal. External HTTP clients cannot forge X-Nf-* headers in production
+ * (Netlify strips them at the edge); only the internal Clockwork scheduler sets this value.
+ */
+export function isTrustedNetlifyPlatformSchedule(event: HandlerEvent): boolean {
+  const nfEvent = readHeader(event, 'x-nf-event') ?? readHeader(event, 'x-netlify-event');
+  return nfEvent?.toLowerCase() === 'schedule';
 }
 
 function hasValidCronSecret(event: HandlerEvent): boolean {
@@ -57,8 +67,27 @@ function hasValidCronSecret(event: HandlerEvent): boolean {
   return false;
 }
 
-/** Fail closed unless Netlify scheduled payload or valid SUBSCRIPTION_CRON_SECRET. */
+/**
+ * Platform cron invocations carry no client secret. When SUBSCRIPTION_CRON_SECRET is configured
+ * server-side and the request is a trusted Netlify schedule event, inject Bearer auth from env.
+ */
+function resolveSchedulerAuthEvent(event: HandlerEvent): HandlerEvent {
+  if (hasValidCronSecret(event)) return event;
+  if (!isTrustedNetlifyPlatformSchedule(event)) return event;
+
+  const secret = process.env.SUBSCRIPTION_CRON_SECRET?.trim();
+  if (!secret) return event;
+
+  return {
+    ...event,
+    headers: {
+      ...event.headers,
+      authorization: `Bearer ${secret}`,
+    },
+  };
+}
+
+/** Fail closed unless valid SUBSCRIPTION_CRON_SECRET (header or platform schedule bootstrap). */
 export function authorizeScheduledRenewalInvocation(event: HandlerEvent): boolean {
-  if (isNetlifyScheduledInvocation(event.body)) return true;
-  return hasValidCronSecret(event);
+  return hasValidCronSecret(resolveSchedulerAuthEvent(event));
 }
