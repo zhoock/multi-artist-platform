@@ -326,13 +326,6 @@
   status = 200
   force = true
 
-# Test email (для тестирования отправки email)
-[[redirects]]
-  from = "/api/test-email*"
-  to = "/.netlify/functions/test-email"
-  status = 200
-  force = true
-
 # Download album zip (must be before /api/download*)
 [[redirects]]
   from = "/api/download-album*"

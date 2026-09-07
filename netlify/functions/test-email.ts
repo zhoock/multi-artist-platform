@@ -1,11 +1,11 @@
 /**
- * Тестовая функция для отправки email через Resend
+ * Dev-only helper for sending a sample purchase email through Resend.
  *
- * Использование:
+ * Disabled on production deploys (see test-email-endpoint.ts).
+ *
+ * Local Netlify Dev:
  * GET /.netlify/functions/test-email?email=your@email.com
- * или
- * POST /.netlify/functions/test-email
- * Body: { email: "your@email.com" }
+ * POST /.netlify/functions/test-email  Body: { email: "your@email.com" }
  */
 
 import type { Handler, HandlerEvent } from '@netlify/functions';
@@ -13,10 +13,10 @@ import { sendPurchaseEmail } from './lib/email';
 import {
   createOptionsResponse,
   createErrorResponse,
-  createSuccessResponse,
   CORS_HEADERS,
   parseJsonBody,
 } from './lib/api-helpers';
+import { isTestEmailEndpointEnabled } from './lib/test-email-endpoint';
 
 interface TestEmailRequest {
   email?: string;
@@ -25,6 +25,10 @@ interface TestEmailRequest {
 export const handler: Handler = async (
   event: HandlerEvent
 ): Promise<{ statusCode: number; headers: Record<string, string>; body: string }> => {
+  if (!isTestEmailEndpointEnabled()) {
+    return createErrorResponse(404, 'Not found');
+  }
+
   // Обработка preflight запроса
   if (event.httpMethod === 'OPTIONS') {
     return createOptionsResponse();

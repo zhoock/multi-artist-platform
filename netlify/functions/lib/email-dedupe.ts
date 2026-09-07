@@ -5,7 +5,7 @@
  * The purchase confirmation email has three potential firing sites:
  *   1. YooKassa webhook `payment.succeeded` → `tryPurchaseSideEffects`
  *   2. `/api/get-payment-status` polling fallback (frontend success page)
- *   3. Manual `/api/test-email` (dev only)
+ *   3. Manual `/.netlify/functions/test-email` (dev only)
  *
  * Until now (1) and (2) both checked `webhook_events` for the *event* row before
  * sending, but the check was read-only — concurrent webhook + polling, page reloads
