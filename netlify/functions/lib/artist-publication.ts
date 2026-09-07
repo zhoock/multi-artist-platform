@@ -161,14 +161,22 @@ export async function artistHasPublicPageContent(
   userId: string,
   options?: AssertArtistVisibleOptions
 ): Promise<boolean> {
-  const profileContentCheck = options?.profileContentFields
-    ? Promise.resolve(hasPublicProfileContentFromFields(options.profileContentFields))
-    : hasPublicProfileContent(userId);
+  if (options?.profileContentFields) {
+    if (hasPublicProfileContentFromFields(options.profileContentFields)) {
+      return true;
+    }
+
+    const [tracks, articles] = await Promise.all([
+      hasPublishedTracks(userId),
+      hasPublicArticles(userId),
+    ]);
+    return tracks || articles;
+  }
 
   const [tracks, articles, profile] = await Promise.all([
     hasPublishedTracks(userId),
     hasPublicArticles(userId),
-    profileContentCheck,
+    hasPublicProfileContent(userId),
   ]);
   return tracks || articles || profile;
 }

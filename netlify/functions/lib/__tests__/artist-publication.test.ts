@@ -66,7 +66,41 @@ describe('artist-publication', () => {
   });
 
   describe('artistHasPublicPageContent with preloaded profile fields', () => {
-    test('uses in-memory profile content and runs tracks/articles queries in parallel', async () => {
+    test('short-circuits tracks/articles when profile fields already prove public content', async () => {
+      mockQuery.mockImplementation(async () => {
+        throw new Error('should not query when profileContentFields prove visibility');
+      });
+
+      const visible = await artistHasPublicPageContent('user-hero', {
+        profileContentFields: {
+          header_images: ['/api/proxy-image?path=users/u1/hero/cover-1920.jpg'],
+          the_band: { ru: [], en: [] },
+          social_links: {},
+        },
+      });
+
+      expect(visible).toBe(true);
+      expect(mockQuery).not.toHaveBeenCalled();
+    });
+
+    test('short-circuits on the_band without tracks/articles SQL', async () => {
+      mockQuery.mockImplementation(async () => {
+        throw new Error('should not query when the_band proves visibility');
+      });
+
+      const visible = await artistHasPublicPageContent('user-about', {
+        profileContentFields: {
+          header_images: [],
+          the_band: { ru: ['About the band'], en: [] },
+          social_links: {},
+        },
+      });
+
+      expect(visible).toBe(true);
+      expect(mockQuery).not.toHaveBeenCalled();
+    });
+
+    test('runs tracks/articles queries when profile fields are empty', async () => {
       let inFlight = 0;
       let maxInFlight = 0;
 

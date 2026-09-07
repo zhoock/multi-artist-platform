@@ -45,16 +45,16 @@ describe('user-profile GET ?artist=', () => {
     mockQuery.mockReset();
   });
 
-  test('published artist with tracks returns 200 and unchanged response shape', async () => {
+  test('published artist with profile content returns 200 with a single users query', async () => {
     mockQuery.mockImplementation(async (sql: string) => {
       if (sql.includes('WHERE public_slug = $1')) {
         return { rows: [publishedArtistRow] } as never;
       }
       if (sql.includes('has_published_tracks')) {
-        return { rows: [{ has_published_tracks: true }] } as never;
+        throw new Error('should not check tracks when profile fields prove visibility');
       }
       if (sql.includes('has_public_articles')) {
-        return { rows: [{ has_public_articles: false }] } as never;
+        throw new Error('should not check articles when profile fields prove visibility');
       }
       if (sql.includes('has_profile_content')) {
         throw new Error('should not re-read users row for public artist GET');
@@ -67,6 +67,7 @@ describe('user-profile GET ?artist=', () => {
 
     const response = await handler(makeGetEvent('test-artist'), {} as never);
     expect(response?.statusCode).toBe(200);
+    expect(mockQuery).toHaveBeenCalledTimes(1);
 
     const body = JSON.parse(String(response?.body));
     expect(body.success).toBe(true);
