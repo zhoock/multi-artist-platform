@@ -298,10 +298,20 @@ export function AlbumCheckoutModal({ isOpen, album, onClose }: AlbumCheckoutModa
 
       if (result.devPaymentCompleted || result.fulfillmentRecovered) {
         if (result.orderId && typeof window !== 'undefined') {
+          const checkoutToken =
+            result.statusToken && result.statusTokenExpiresAt != null
+              ? {
+                  statusToken: result.statusToken,
+                  statusTokenExpiresAt: result.statusTokenExpiresAt,
+                }
+              : undefined;
+
           if (result.devPaymentCompleted) {
             const statusUrl = buildAlbumPaymentDevStatusUrl({
               orderId: result.orderId,
               returnTo,
+              statusToken: result.statusToken,
+              statusTokenExpiresAt: result.statusTokenExpiresAt,
             });
             logDevPaymentAlbumRedirect({
               orderId: result.orderId,
@@ -315,7 +325,7 @@ export function AlbumCheckoutModal({ isOpen, album, onClose }: AlbumCheckoutModa
             return;
           }
 
-          window.location.href = buildAlbumPaymentSuccessUrl(result.orderId);
+          window.location.href = buildAlbumPaymentSuccessUrl(result.orderId, checkoutToken);
         }
         return;
       }
@@ -328,7 +338,14 @@ export function AlbumCheckoutModal({ isOpen, album, onClose }: AlbumCheckoutModa
       }
 
       if (result.orderId && typeof window !== 'undefined') {
-        window.location.href = buildAlbumPaymentSuccessUrl(result.orderId);
+        const checkoutToken =
+          result.statusToken && result.statusTokenExpiresAt != null
+            ? {
+                statusToken: result.statusToken,
+                statusTokenExpiresAt: result.statusTokenExpiresAt,
+              }
+            : undefined;
+        window.location.href = buildAlbumPaymentSuccessUrl(result.orderId, checkoutToken);
         return;
       }
 

@@ -39,6 +39,10 @@ import {
   logDevPaymentAlbumStatus,
 } from './lib/dev-payment-mode';
 import { query } from './lib/db';
+import {
+  createOrderStatusAccessDeniedResponse,
+  verifyOrderStatusAccess,
+} from './lib/order-status-access';
 import { resolveAlbumByKey } from './lib/resolve-album-key';
 import dns from 'node:dns';
 import {
@@ -346,32 +350,23 @@ export const handler: Handler = async (
     let resolvedOrderId: string | undefined;
 
     if (orderId) {
+      const access = verifyOrderStatusAccess(orderId, event, headers);
+      if (!access.ok) {
+        return access.response;
+      }
+
       const orderResult = await query<{ payment_id: string | null }>(
         'SELECT payment_id FROM orders WHERE id = $1',
         [orderId]
       );
 
       if (orderResult.rows.length === 0) {
-        return {
-          statusCode: 404,
-          headers,
-          body: JSON.stringify({
-            success: false,
-            error: 'Order not found',
-          } as PaymentStatusResponse),
-        };
+        return createOrderStatusAccessDeniedResponse(headers);
       }
 
       actualPaymentId = orderResult.rows[0].payment_id || undefined;
       if (!actualPaymentId) {
-        return {
-          statusCode: 400,
-          headers,
-          body: JSON.stringify({
-            success: false,
-            error: 'Order has no payment_id',
-          } as PaymentStatusResponse),
-        };
+        return createOrderStatusAccessDeniedResponse(headers);
       }
       resolvedOrderId = orderId;
     } else if (paymentId) {
@@ -379,16 +374,16 @@ export const handler: Handler = async (
         paymentId,
       ]);
       if (byPayment.rows.length === 0) {
-        return {
-          statusCode: 404,
-          headers,
-          body: JSON.stringify({
-            success: false,
-            error: 'No order found for this payment',
-          } as PaymentStatusResponse),
-        };
+        return createOrderStatusAccessDeniedResponse(headers);
       }
       resolvedOrderId = byPayment.rows[0].id;
+
+      const access = verifyOrderStatusAccess(resolvedOrderId, event, headers);
+      if (!access.ok) {
+        return access.response;
+      }
+
+      actualPaymentId = paymentId;
     }
 
     if (!actualPaymentId || !resolvedOrderId) {

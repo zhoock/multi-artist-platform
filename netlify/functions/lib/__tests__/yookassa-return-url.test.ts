@@ -1,4 +1,5 @@
 import { LOCAL_DEV_FRONTEND_ORIGIN } from '../public-app-url';
+import { createCheckoutStatusToken } from '../checkout-status-token';
 import {
   ALBUM_PAY_STATUS_PATH,
   resolveAlbumPaymentReturnUrl,
@@ -15,6 +16,7 @@ describe('yookassa-return-url', () => {
     'NETLIFY_SITE_URL',
     'URL',
     'DEPLOY_PRIME_URL',
+    'JWT_SECRET',
   ] as const;
 
   const originalEnv: Partial<Record<(typeof envKeys)[number], string | undefined>> = {};
@@ -106,5 +108,22 @@ describe('yookassa-return-url', () => {
 
     expect(albumUrl).not.toContain('smolyanoechuchelko.ru');
     expect(subscriptionUrl).not.toContain('smolyanoechuchelko.ru');
+  });
+
+  it('includes checkout status token params when provided', () => {
+    process.env.JWT_SECRET = 'test-yookassa-return-url-secret-with-enough-length';
+    const checkoutStatusToken = createCheckoutStatusToken('ord-token-1');
+
+    const url = resolveAlbumPaymentReturnUrl({
+      orderId: 'ord-token-1',
+      checkoutStatusToken,
+    });
+
+    const parsed = new URL(url);
+    expect(parsed.searchParams.get('orderId')).toBe('ord-token-1');
+    expect(parsed.searchParams.get('statusToken')).toBe(checkoutStatusToken.token);
+    expect(parsed.searchParams.get('statusTokenExpiresAt')).toBe(
+      String(checkoutStatusToken.expiresAt)
+    );
   });
 });

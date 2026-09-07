@@ -5,6 +5,11 @@
  * Never rely on client flags — server functions call isDevPaymentModeEnabled() only.
  */
 
+import {
+  appendCheckoutStatusTokenToSearchParams,
+  type CheckoutStatusToken,
+} from './checkout-status-token';
+
 const DEV_PAYMENT_RAW_MARKER = 'devPaymentMode' as const;
 const DEV_PAYMENT_BANNER = '🧪 DEV PAYMENT MODE';
 
@@ -103,8 +108,15 @@ export function logDevPaymentSubscriptionStatus(params: {
   ]);
 }
 
-export function buildAlbumStatusRedirectPath(orderId: string, returnTo?: string): string {
+export function buildAlbumStatusRedirectPath(
+  orderId: string,
+  returnTo?: string,
+  checkoutStatusToken?: CheckoutStatusToken
+): string {
   const qs = new URLSearchParams({ orderId });
+  if (checkoutStatusToken) {
+    appendCheckoutStatusTokenToSearchParams(qs, checkoutStatusToken);
+  }
   if (returnTo?.trim()) {
     qs.set('returnTo', returnTo.trim());
   }

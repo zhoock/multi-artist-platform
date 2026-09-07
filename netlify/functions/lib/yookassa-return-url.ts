@@ -1,4 +1,8 @@
 import { buildPublicAppPath } from './public-app-url';
+import {
+  appendCheckoutStatusTokenToSearchParams,
+  type CheckoutStatusToken,
+} from './checkout-status-token';
 
 /** Neutral landing after YooKassa; client redirects to success/fail once status is known. */
 export const ALBUM_PAY_STATUS_PATH = '/pay/status';
@@ -53,13 +57,19 @@ export function resolveAlbumPaymentReturnUrl(options: {
   requestedUrl?: string | null;
   refererOrigin?: string | null;
   orderId: string;
+  checkoutStatusToken?: CheckoutStatusToken;
 }): string {
+  const queryParams = new URLSearchParams({ orderId: options.orderId });
+  if (options.checkoutStatusToken) {
+    appendCheckoutStatusTokenToSearchParams(queryParams, options.checkoutStatusToken);
+  }
+
   return resolveYooKassaReturnUrl({
     requestedUrl: options.requestedUrl,
     envReturnUrl: process.env.YOOKASSA_RETURN_URL,
     refererOrigin: options.refererOrigin,
     successPath: ALBUM_PAY_STATUS_PATH,
-    queryParams: { orderId: options.orderId },
+    queryParams: Object.fromEntries(queryParams.entries()),
   });
 }
 

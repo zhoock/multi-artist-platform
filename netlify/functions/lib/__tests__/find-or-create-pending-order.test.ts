@@ -14,6 +14,7 @@ import { query, withTransaction } from '../db';
 import {
   findOrCreatePendingAlbumOrder,
   normalizeCheckoutCustomerEmail,
+  orderCheckoutEmailMatches,
   pendingOrderAdvisoryLockKey,
 } from '../find-or-create-pending-order';
 
@@ -50,6 +51,17 @@ function mockClient(queries: Array<{ rows: unknown[] }>): PoolClient {
 describe('normalizeCheckoutCustomerEmail', () => {
   test('lowercases and trims', () => {
     expect(normalizeCheckoutCustomerEmail('  Buyer@Example.com  ')).toBe('buyer@example.com');
+  });
+});
+
+describe('orderCheckoutEmailMatches', () => {
+  test('matches case-insensitively', () => {
+    expect(orderCheckoutEmailMatches('Victim@Example.com', 'victim@example.com')).toBe(true);
+    expect(orderCheckoutEmailMatches('  victim@example.com ', 'Victim@Example.com')).toBe(true);
+  });
+
+  test('rejects different emails', () => {
+    expect(orderCheckoutEmailMatches('victim@example.com', 'attacker@example.com')).toBe(false);
   });
 });
 

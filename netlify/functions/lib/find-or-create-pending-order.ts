@@ -14,6 +14,17 @@ export function normalizeCheckoutCustomerEmail(email: string): string {
   return email.trim().toLowerCase();
 }
 
+/** Whether submitted checkout email may continue an existing order. */
+export function orderCheckoutEmailMatches(
+  orderCustomerEmail: string,
+  submittedCustomerEmail: string
+): boolean {
+  return (
+    normalizeCheckoutCustomerEmail(orderCustomerEmail) ===
+    normalizeCheckoutCustomerEmail(submittedCustomerEmail)
+  );
+}
+
 /** Stable key for pg_advisory_xact_lock(hashtext(...)). */
 export function pendingOrderAdvisoryLockKey(albumId: string, customerEmail: string): string {
   return `pending_order:${albumId}:${normalizeCheckoutCustomerEmail(customerEmail)}`;

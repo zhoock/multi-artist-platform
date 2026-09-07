@@ -4,6 +4,10 @@ import { useSearchParams, useNavigate, useLocation } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import './PaymentSuccess.style.scss';
 import { useLang } from '@app/providers/lang';
+import {
+  appendCheckoutStatusTokenQuery,
+  readCheckoutStatusTokenParams,
+} from '@shared/lib/payment/checkoutStatusTokenParams';
 import { fetchWithAuthSession } from '@shared/lib/authFetch';
 import { invalidateMyPurchasesCache } from '@shared/api/purchases';
 import { redirectToAlbumReturnPath } from '@shared/lib/albumPurchaseSuccessToast';
@@ -235,6 +239,10 @@ function PaymentSuccess() {
   const paymentIdParam = searchParams.get('paymentId');
   const orderIdParam = searchParams.get('orderId');
   const returnToParam = searchParams.get('returnTo');
+  const checkoutStatusToken = useMemo(
+    () => readCheckoutStatusTokenParams(searchParams),
+    [searchParams]
+  );
   const isPreviewMode = isPaymentSuccessPreviewActive(searchParams.get('preview'));
   const previewState = useMemo(
     () => (isPreviewMode ? buildPaymentSuccessPreviewState(returnToParam) : null),
@@ -262,18 +270,21 @@ function PaymentSuccess() {
   }, []);
 
   const resolveApiQuery = useCallback((): string | null => {
+    const query = new URLSearchParams();
     if (paymentIdParam) {
-      return `paymentId=${encodeURIComponent(paymentIdParam)}`;
+      query.set('paymentId', paymentIdParam);
+    } else if (orderIdParam) {
+      if (isYooKassaPaymentId(orderIdParam)) {
+        query.set('paymentId', orderIdParam);
+      } else {
+        query.set('orderId', orderIdParam);
+      }
+    } else {
+      return null;
     }
-    if (!orderIdParam) return null;
-    if (isYooKassaPaymentId(orderIdParam)) {
-      return `paymentId=${encodeURIComponent(orderIdParam)}`;
-    }
-    if (isOrderUUID(orderIdParam)) {
-      return `orderId=${encodeURIComponent(orderIdParam)}`;
-    }
-    return `orderId=${encodeURIComponent(orderIdParam)}`;
-  }, [paymentIdParam, orderIdParam]);
+    appendCheckoutStatusTokenQuery(query, checkoutStatusToken);
+    return query.toString();
+  }, [paymentIdParam, orderIdParam, checkoutStatusToken]);
 
   const fetchPaymentOnce = useCallback(async (): Promise<{ stop: boolean; fatal: boolean }> => {
     const apiQuery = resolveApiQuery();

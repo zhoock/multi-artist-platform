@@ -53,6 +53,8 @@ import {
   isAlbumFulfillmentHardError,
   resolveAlbumCheckoutOrder,
 } from './lib/album-checkout-resolve';
+import { createCheckoutStatusToken, type CheckoutStatusToken } from './lib/checkout-status-token';
+import { orderCheckoutEmailMatches } from './lib/find-or-create-pending-order';
 import {
   asPostgresError,
   getErrorCause,
@@ -64,6 +66,26 @@ import {
 } from './lib/error-utils';
 
 dns.setDefaultResultOrder('ipv4first');
+
+function albumCheckoutSuccessResponse(
+  headers: Record<string, string>,
+  orderId: string,
+  body: Omit<CreatePaymentResponse, 'statusToken' | 'statusTokenExpiresAt' | 'orderId'>,
+  checkoutStatusToken?: CheckoutStatusToken
+): { statusCode: number; headers: Record<string, string>; body: string } {
+  const { token, expiresAt } = checkoutStatusToken ?? createCheckoutStatusToken(orderId);
+  return {
+    statusCode: 200,
+    headers,
+    body: JSON.stringify({
+      ...body,
+      success: true,
+      orderId,
+      statusToken: token,
+      statusTokenExpiresAt: expiresAt,
+    } satisfies CreatePaymentResponse),
+  };
+}
 
 interface CreatePaymentRequest {
   albumId: string;
@@ -91,6 +113,9 @@ interface CreatePaymentResponse {
   devPaymentCompleted?: boolean;
   /** Purchase restored from an already-paid order (no new YooKassa payment). */
   fulfillmentRecovered?: boolean;
+  /** Signed token for polling order/payment status (guest + authenticated checkout). */
+  statusToken?: string;
+  statusTokenExpiresAt?: number;
   error?: string;
   message?: string;
 }
@@ -409,7 +434,10 @@ export const handler: Handler = async (
         amount: number;
         status: string;
         payment_id: string | null;
-      }>('SELECT id, amount, status, payment_id FROM orders WHERE id = $1', [data.orderId]);
+        customer_email: string;
+      }>('SELECT id, amount, status, payment_id, customer_email FROM orders WHERE id = $1', [
+        data.orderId,
+      ]);
 
       if (orderResult.rows.length === 0) {
         return {
@@ -423,6 +451,18 @@ export const handler: Handler = async (
       }
 
       const order = orderResult.rows[0];
+
+      if (!orderCheckoutEmailMatches(order.customer_email, data.customerEmail)) {
+        return {
+          statusCode: 403,
+          headers,
+          body: JSON.stringify({
+            success: false,
+            error: 'Access denied',
+          } as CreatePaymentResponse),
+        };
+      }
+
       orderId = order.id;
       orderAmount = parseFloat(order.amount.toString());
       orderStatus = order.status;
@@ -469,17 +509,11 @@ export const handler: Handler = async (
           // Получаем актуальный статус платежа от ЮKassa
           // Для упрощения возвращаем существующий payment_id
           // В реальности нужно проверить статус через API ЮKassa
-          return {
-            statusCode: 200,
-            headers,
-            body: JSON.stringify({
-              success: true,
-              paymentId: payment.provider_payment_id,
-              orderId,
-              confirmationUrl: '', // Нужно получить из ЮKassa API
-              message: 'Payment already exists for this order',
-            } as CreatePaymentResponse),
-          };
+          return albumCheckoutSuccessResponse(headers, orderId, {
+            paymentId: payment.provider_payment_id,
+            confirmationUrl: '',
+            message: 'Payment already exists for this order',
+          });
         }
       }
     } else {
@@ -498,16 +532,10 @@ export const handler: Handler = async (
         });
 
         if (checkoutResolved.kind === 'recovered') {
-          return {
-            statusCode: 200,
-            headers,
-            body: JSON.stringify({
-              success: true,
-              orderId: checkoutResolved.orderId,
-              paymentId: checkoutResolved.paymentId,
-              fulfillmentRecovered: true,
-            } as CreatePaymentResponse),
-          };
+          return albumCheckoutSuccessResponse(headers, checkoutResolved.orderId, {
+            paymentId: checkoutResolved.paymentId,
+            fulfillmentRecovered: true,
+          });
         }
 
         orderId = checkoutResolved.orderId;
@@ -563,16 +591,10 @@ export const handler: Handler = async (
         returnTo: extractReturnToFromReturnUrl(data.returnUrl),
       });
 
-      return {
-        statusCode: 200,
-        headers,
-        body: JSON.stringify({
-          success: true,
-          orderId,
-          paymentId,
-          devPaymentCompleted: true,
-        } as CreatePaymentResponse),
-      };
+      return albumCheckoutSuccessResponse(headers, orderId, {
+        paymentId,
+        devPaymentCompleted: true,
+      });
     }
 
     let shopId: string;
@@ -644,10 +666,13 @@ export const handler: Handler = async (
       }
     }
 
+    const checkoutStatusToken = createCheckoutStatusToken(orderId);
+
     const returnUrl = resolveAlbumPaymentReturnUrl({
       requestedUrl: data.returnUrl,
       refererOrigin,
       orderId,
+      checkoutStatusToken,
     });
 
     // Формируем запрос к ЮKassa
@@ -787,17 +812,16 @@ export const handler: Handler = async (
                 existingPaymentData.status === 'pending' ||
                 existingPaymentData.status === 'waiting_for_capture'
               ) {
-                return {
-                  statusCode: 200,
+                return albumCheckoutSuccessResponse(
                   headers,
-                  body: JSON.stringify({
-                    success: true,
+                  orderId,
+                  {
                     paymentId: existingPaymentData.id,
-                    orderId,
                     confirmationUrl: existingPaymentData.confirmation?.confirmation_url || '',
                     message: 'Using existing pending payment',
-                  } as CreatePaymentResponse),
-                };
+                  },
+                  checkoutStatusToken
+                );
               }
 
               // Если платеж завершен, продолжаем создание нового
@@ -999,16 +1023,15 @@ export const handler: Handler = async (
     }
 
     // Возвращаем URL для подтверждения платежа
-    return {
-      statusCode: 200,
+    return albumCheckoutSuccessResponse(
       headers,
-      body: JSON.stringify({
-        success: true,
+      orderId,
+      {
         paymentId: paymentData.id,
-        orderId,
         confirmationUrl: paymentData.confirmation?.confirmation_url || '',
-      } as CreatePaymentResponse),
-    };
+      },
+      checkoutStatusToken
+    );
   } catch (error: unknown) {
     console.error('❌ Error creating payment:', error);
     console.error('❌ Error details:', {

@@ -8,6 +8,7 @@
 
 import type { Handler, HandlerEvent, HandlerContext } from '@netlify/functions';
 import { query } from './lib/db';
+import { verifyOrderStatusAccess } from './lib/order-status-access';
 
 interface OrderStatusResponse {
   success: boolean;
@@ -67,6 +68,11 @@ export const handler: Handler = async (
           error: 'orderId parameter is required',
         } as OrderStatusResponse),
       };
+    }
+
+    const access = verifyOrderStatusAccess(orderId, event, headers);
+    if (!access.ok) {
+      return access.response;
     }
 
     // Получаем заказ из БД

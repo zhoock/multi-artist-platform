@@ -28,6 +28,9 @@ export interface CreatePaymentResponse {
   devPaymentCompleted?: boolean;
   /** Purchase restored from an already-paid order (no new YooKassa payment). */
   fulfillmentRecovered?: boolean;
+  /** Signed token for polling order/payment status. */
+  statusToken?: string;
+  statusTokenExpiresAt?: number;
   error?: string;
   message?: string;
 }

@@ -9,6 +9,10 @@ import {
   ALBUM_PAY_SUCCESS_PATH,
   SUBSCRIPTION_PAY_SUCCESS_PATH,
 } from './paymentRoutes';
+import {
+  appendCheckoutStatusTokenParams,
+  type CheckoutStatusTokenParams,
+} from './payment/checkoutStatusTokenParams';
 import { buildPublicSiteUrl } from './publicSiteOrigin';
 
 /** Same-site absolute URL for an internal relative path (e.g. `/pay/status?…`). */
@@ -28,17 +32,31 @@ export function buildAlbumPaymentStatusReturnUrl(returnTo: string): string {
 export function buildAlbumPaymentDevStatusUrl(input: {
   orderId: string;
   returnTo: string;
+  statusToken?: string;
+  statusTokenExpiresAt?: number;
 }): string {
   const params = new URLSearchParams();
   params.set('orderId', input.orderId.trim());
   params.set('returnTo', input.returnTo);
+  if (input.statusToken && input.statusTokenExpiresAt != null) {
+    appendCheckoutStatusTokenParams(params, {
+      statusToken: input.statusToken,
+      statusTokenExpiresAt: input.statusTokenExpiresAt,
+    });
+  }
   return buildInternalAppSiteUrl(`${ALBUM_PAY_STATUS_PATH}?${params.toString()}`);
 }
 
 /** Direct success URL when payment completes without YooKassa redirect. */
-export function buildAlbumPaymentSuccessUrl(orderId: string): string {
+export function buildAlbumPaymentSuccessUrl(
+  orderId: string,
+  checkoutStatusToken?: CheckoutStatusTokenParams
+): string {
   const params = new URLSearchParams();
   params.set('orderId', orderId.trim());
+  if (checkoutStatusToken) {
+    appendCheckoutStatusTokenParams(params, checkoutStatusToken);
+  }
   return buildInternalAppSiteUrl(`${ALBUM_PAY_SUCCESS_PATH}?${params.toString()}`);
 }
 
