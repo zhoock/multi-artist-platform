@@ -35,6 +35,11 @@ import {
   extractStoragePathFromTrackRef,
   removeTrackStoragePaths,
 } from './lib/track-storage-cleanup';
+import {
+  cleanupSupersededAlbumCoversBestEffort,
+  fetchDistinctCoverBasesFromDb,
+  normalizeCoverBaseName,
+} from './lib/album-cover-storage';
 import { fetchTrackAssetsByAlbumPks } from './lib/track-assets-loader';
 import { migrateUserAlbumAudioFolderAfterRename } from './lib/migrate-storage-album-folder';
 import { normalizeTrackIdString } from '../../src/shared/lib/tracks/normalizeTrackIdString';
@@ -1213,6 +1218,13 @@ export const handler: Handler = async (
 
       const releaseForDb = stripReleaseCoverCredits(data.release || {});
 
+      const postCoverBase =
+        data.cover !== undefined && data.cover !== null && String(data.cover).trim() !== ''
+          ? normalizeCoverBaseName(String(data.cover))
+          : null;
+      const previousCoverBasesForPost =
+        postCoverBase != null ? await fetchDistinctCoverBasesFromDb(albumUserId, data.albumId) : [];
+
       const albumResult = await query<AlbumRow>(
         `INSERT INTO albums (
           user_id, album_id, artist, album, full_name, description,
@@ -1265,6 +1277,14 @@ export const handler: Handler = async (
         new Map()
       );
 
+      if (postCoverBase) {
+        await cleanupSupersededAlbumCoversBestEffort(
+          albumUserId,
+          previousCoverBasesForPost,
+          postCoverBase
+        );
+      }
+
       return {
         statusCode: 201,
         headers: CORS_HEADERS,
@@ -1310,6 +1330,13 @@ export const handler: Handler = async (
             'Missing required fields: albumId, lang (must be "en" or "ru")'
           );
         }
+
+        const putCoverBase =
+          data.cover !== undefined && data.cover !== null && String(data.cover).trim() !== ''
+            ? normalizeCoverBaseName(String(data.cover))
+            : null;
+        const previousCoverBasesForPut =
+          putCoverBase != null ? await fetchDistinctCoverBasesFromDb(userId, data.albumId) : [];
 
         const previousAlbumIdRaw =
           typeof data.previousAlbumId === 'string' ? data.previousAlbumId.trim() : '';
@@ -1829,6 +1856,14 @@ export const handler: Handler = async (
           });
         } else {
           console.warn('⚠️ GITHUB_TOKEN not set, skipping JSON update');
+        }
+
+        if (putCoverBase) {
+          await cleanupSupersededAlbumCoversBestEffort(
+            userId,
+            previousCoverBasesForPut,
+            putCoverBase
+          );
         }
 
         return {

@@ -91,6 +91,8 @@ import {
   updateBandMemberPreservingId,
   updateRecordingEntryPreservingId,
   buildRecordingEntryFromEditFields,
+  planAlbumCoverForSave,
+  extractCommittedCoverBaseName,
 } from './EditAlbumModal.utils';
 import type { AlbumDiscardAuxState } from './EditAlbumModal.utils';
 import { recordingEntryEditHasChanges } from './recordingEntryEditHasChanges';
@@ -226,6 +228,8 @@ export function EditAlbumModal({
 
   const [albumArtPreview, setAlbumArtPreview] = useState<string | null>(null);
   const [coverDraftKey, setCoverDraftKey] = useState<string | null>(null);
+  /** Staged cover committed to Storage — survives DB failure for retry without re-commit. */
+  const committedCoverBaseNameRef = useRef<string | null>(null);
 
   const [uploadProgress, setUploadProgress] = useState<number>(0);
   const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'uploaded' | 'error'>(
@@ -732,6 +736,7 @@ export function EditAlbumModal({
 
     setAlbumArtPreview(null);
     setCoverDraftKey(null);
+    committedCoverBaseNameRef.current = null;
     setUploadProgress(0);
     setUploadStatus('idle');
     setUploadError(null);
@@ -817,6 +822,7 @@ export function EditAlbumModal({
       setUploadStatus('uploading');
       setUploadError(null);
       setCoverDraftKey(null);
+      committedCoverBaseNameRef.current = null;
 
       // локальное превью (не течёт)
       setLocalPreview(file);
@@ -1805,7 +1811,11 @@ export function EditAlbumModal({
     if (currentStep === 1) {
       const invalid = getAlbumStep1InvalidFields(formData, {
         effectiveAllowDownloadSale: saleModeForValidation,
-        cover: { albumArtPreview, coverDraftKey },
+        cover: {
+          albumArtPreview,
+          coverDraftKey,
+          committedCoverBaseName: committedCoverBaseNameRef.current,
+        },
       });
       setStep1InvalidFields(invalid);
       if (invalid.length > 0) {
@@ -1931,7 +1941,11 @@ export function EditAlbumModal({
 
     const step1Invalid = getAlbumStep1InvalidFields(formData, {
       effectiveAllowDownloadSale: saleModeForValidation,
-      cover: { albumArtPreview, coverDraftKey },
+      cover: {
+        albumArtPreview,
+        coverDraftKey,
+        committedCoverBaseName: committedCoverBaseNameRef.current,
+      },
     });
     if (step1Invalid.length > 0) {
       setStep1InvalidFields(step1Invalid);
@@ -2248,31 +2262,24 @@ export function EditAlbumModal({
     const normalizedLang = lang;
 
     let newCover: string | undefined;
-    const currentCoverDraftKey = coverDraftKey;
+    const coverSavePlan = planAlbumCoverForSave(coverDraftKey, committedCoverBaseNameRef.current);
 
-    if (currentCoverDraftKey) {
+    if (coverSavePlan.action === 'useCommitted') {
+      newCover = coverSavePlan.baseName;
+    } else if (coverSavePlan.action === 'commitDraft') {
       try {
-        const commitResult = await commitCover(currentCoverDraftKey, finalAlbumId, {
+        const commitResult = await commitCover(coverSavePlan.draftKey, finalAlbumId, {
           artist: effectiveArtistName,
           album: formData.title || originalAlbum?.album || '',
           lang: normalizedLang,
         });
 
         if (commitResult.success && commitResult.data) {
-          const data = commitResult.data as any;
-
-          const fromFile = (name?: string) =>
-            name
-              ? name.replace(/\.(webp|jpg)$/i, '').replace(/-(64|128|448|896|1344)$/i, '')
-              : undefined;
-
-          const baseName =
-            data?.baseName ||
-            fromFile(data?.storagePath?.split('/').pop()) ||
-            fromFile(data?.url?.split('/').pop());
-
+          const baseName = extractCommittedCoverBaseName(commitResult.data);
           if (baseName) {
             newCover = baseName;
+            committedCoverBaseNameRef.current = baseName;
+            setCoverDraftKey(null);
           } else {
             console.warn('⚠️ [EditAlbumModal] Cover commit succeeded but baseName not found');
           }
@@ -2403,6 +2410,9 @@ export function EditAlbumModal({
         });
         throw new Error((errorData as any)?.error || `HTTP error! status: ${response.status}`);
       }
+
+      committedCoverBaseNameRef.current = null;
+      setCoverDraftKey(null);
 
       if (method === 'PUT' && exists) {
         const otherLang: SupportedLang = normalizedLang === 'en' ? 'ru' : 'en';

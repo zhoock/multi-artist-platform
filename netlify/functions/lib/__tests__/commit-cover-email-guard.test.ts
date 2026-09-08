@@ -22,14 +22,14 @@ jest.mock('../email-verification', () => ({
   guardUserEmailVerifiedForUpload: jest.fn(),
 }));
 
-jest.mock('@supabase/supabase-js', () => ({
-  createClient: jest.fn(),
+jest.mock('../supabase', () => ({
+  STORAGE_BUCKET_NAME: 'user-media',
+  createSupabaseAdminClient: jest.fn(),
 }));
 
 import { requireAuth } from '../api-helpers';
 import { guardUserEmailVerifiedForUpload } from '../email-verification';
-import { query } from '../db';
-import { createClient } from '@supabase/supabase-js';
+import { createSupabaseAdminClient } from '../supabase';
 import { handler } from '../../commit-cover';
 
 const USER_ID = 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee';
@@ -40,8 +40,9 @@ const DRAFT_KEY = `${USER_ID}/albums/${ALBUM_ID}/draft-cover`;
 const mockedRequireAuth = requireAuth as jest.MockedFunction<typeof requireAuth>;
 const mockedGuardUserEmailVerifiedForUpload =
   guardUserEmailVerifiedForUpload as jest.MockedFunction<typeof guardUserEmailVerifiedForUpload>;
-const mockedQuery = query as jest.MockedFunction<typeof query>;
-const mockedCreateClient = createClient as jest.MockedFunction<typeof createClient>;
+const mockedCreateSupabaseAdminClient = createSupabaseAdminClient as jest.MockedFunction<
+  typeof createSupabaseAdminClient
+>;
 
 function buildPostEvent(body: Record<string, unknown>): HandlerEvent {
   return {
@@ -94,7 +95,7 @@ function createSupabaseMock(options: {
     },
   };
 
-  mockedCreateClient.mockReturnValue(supabase as never);
+  mockedCreateSupabaseAdminClient.mockReturnValue(supabase as never);
 
   return { uploaded, removed };
 }
@@ -102,7 +103,6 @@ function createSupabaseMock(options: {
 beforeEach(() => {
   jest.clearAllMocks();
   mockedRequireAuth.mockReturnValue(USER_ID);
-  mockedQuery.mockResolvedValue({ rows: [] } as never);
   process.env.SUPABASE_URL = 'https://example.supabase.co';
   process.env.SUPABASE_SERVICE_ROLE_KEY = 'service-role-key';
 });
@@ -126,7 +126,7 @@ describe('commit-cover email verification guard', () => {
 
     expect(response.statusCode).toBe(403);
     expect(mockedGuardUserEmailVerifiedForUpload).toHaveBeenCalledWith(USER_ID);
-    expect(mockedCreateClient).not.toHaveBeenCalled();
+    expect(mockedCreateSupabaseAdminClient).not.toHaveBeenCalled();
     const payload = JSON.parse(response.body);
     expect(payload.code).toBe('EMAIL_NOT_VERIFIED');
   });
@@ -162,7 +162,7 @@ describe('commit-cover email verification guard', () => {
     );
 
     expect(response.statusCode).toBe(403);
-    expect(mockedCreateClient).not.toHaveBeenCalled();
+    expect(mockedCreateSupabaseAdminClient).not.toHaveBeenCalled();
     expect(JSON.parse(response.body).error).toMatch(/does not belong to current user/i);
   });
 

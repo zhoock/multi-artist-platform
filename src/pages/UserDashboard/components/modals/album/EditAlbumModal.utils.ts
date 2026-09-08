@@ -762,16 +762,59 @@ export type AlbumStep4InvalidField = 'albumCoverDesigner' | 'bandMembers' | 'pro
 export type AlbumCoverStep1State = {
   albumArtPreview: string | null;
   coverDraftKey: string | null;
+  /** Staged cover already committed to Storage — retry DB save without re-commit. */
+  committedCoverBaseName?: string | null;
 };
 
 export function hasAlbumCoverForStep1(
   formData: AlbumFormData,
   coverState: AlbumCoverStep1State
 ): boolean {
+  if (coverState.committedCoverBaseName?.trim()) return true;
   if (coverState.coverDraftKey) return true;
   if (coverState.albumArtPreview?.trim()) return true;
   if (formData.albumArt instanceof File) return true;
   return false;
+}
+
+export type AlbumCoverSavePlan =
+  | { action: 'none' }
+  | { action: 'useCommitted'; baseName: string }
+  | { action: 'commitDraft'; draftKey: string };
+
+/**
+ * Decide whether to commit a draft, reuse a staged committed cover, or skip cover changes.
+ * Mirrors article editor `uploadedPendingKeyRef` — DB failure retries skip Storage commit.
+ */
+export function planAlbumCoverForSave(
+  coverDraftKey: string | null,
+  committedCoverBaseName: string | null
+): AlbumCoverSavePlan {
+  const staged = committedCoverBaseName?.trim();
+  if (staged) {
+    return { action: 'useCommitted', baseName: staged };
+  }
+  const draft = coverDraftKey?.trim();
+  if (draft) {
+    return { action: 'commitDraft', draftKey: draft };
+  }
+  return { action: 'none' };
+}
+
+/** Extract baseName from commit-cover response with storagePath/url fallbacks. */
+export function extractCommittedCoverBaseName(data: {
+  baseName?: string;
+  storagePath?: string;
+  url?: string;
+}): string | undefined {
+  if (data.baseName?.trim()) {
+    return data.baseName.trim();
+  }
+
+  const fromFile = (name?: string) =>
+    name ? name.replace(/\.(webp|jpg)$/i, '').replace(/-(64|128|448|896|1344)$/i, '') : undefined;
+
+  return fromFile(data.storagePath?.split('/').pop()) ?? fromFile(data.url?.split('/').pop());
 }
 
 /** Minimum album regular price (matches YooKassa / server checkout validation). */
