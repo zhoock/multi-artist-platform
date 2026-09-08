@@ -62,9 +62,10 @@ export function useArtistPageSeo({
   }, [aboutRefreshToken, enabled, forcePlatformFallback, lang, normalizedSlug]);
 
   const routeLang = lang as RouteLang;
-  const canonicalPath = normalizedSlug
-    ? buildArtistPagePath(routeLang, normalizedSlug)
-    : buildLocalizedPublicPath(routeLang, '/');
+  const canonicalPath =
+    forcePlatformFallback || !normalizedSlug
+      ? buildLocalizedPublicPath(routeLang, '/')
+      : buildArtistPagePath(routeLang, normalizedSlug);
   const canonicalUrl = buildPublicSiteUrl(canonicalPath);
 
   return useMemo(

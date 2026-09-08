@@ -69,7 +69,7 @@ function artistSeoDescriptionFallback(lang: string, artistName: string): string 
 
 /**
  * Artist page SEO: artist name + about excerpt when available; platform SEO as fallback.
- * Canonical always reflects the artist URL when slug is present.
+ * Caller supplies canonical (artist URL for public pages; platform home when forcePlatformFallback).
  */
 export function buildArtistPageSeo(
   input: ArtistPageSeoInput,
