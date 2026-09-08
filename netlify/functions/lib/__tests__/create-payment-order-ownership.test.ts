@@ -3,7 +3,7 @@ import type { HandlerEvent } from '@netlify/functions';
 const queryMock = jest.fn();
 const resolveAlbumSlugMock = jest.fn();
 const buyerAlreadyOwnsMock = jest.fn();
-const resolveAlbumPurchasePricingMock = jest.fn();
+const resolveValidatedAlbumCheckoutPricingMock = jest.fn();
 const getUserIdFromEventMock = jest.fn();
 const syncPendingOrderAmountMock = jest.fn();
 const invalidateStaleAlbumCheckoutPaymentMock = jest.fn();
@@ -21,8 +21,8 @@ jest.mock('../purchase-access', () => ({
 }));
 
 jest.mock('../resolve-album-purchase', () => ({
-  resolveAlbumPurchasePricing: (...args: unknown[]) => resolveAlbumPurchasePricingMock(...args),
-  resolveValidatedAlbumCheckoutPricing: jest.fn(),
+  resolveValidatedAlbumCheckoutPricing: (...args: unknown[]) =>
+    resolveValidatedAlbumCheckoutPricingMock(...args),
 }));
 
 jest.mock('../api-helpers', () => ({
@@ -110,7 +110,7 @@ function setupExistingPendingOrderMocks(customerEmail = VICTIM_EMAIL) {
   resolveAlbumSlugMock.mockImplementation(async (value: string) => value);
   getUserIdFromEventMock.mockReturnValue(null);
   buyerAlreadyOwnsMock.mockResolvedValue(false);
-  resolveAlbumPurchasePricingMock.mockResolvedValue({
+  resolveValidatedAlbumCheckoutPricingMock.mockResolvedValue({
     ok: true,
     pricing: { amount: 500, description: 'Album' },
   });
@@ -155,7 +155,7 @@ describe('create-payment existing order ownership', () => {
     queryMock.mockReset();
     resolveAlbumSlugMock.mockReset();
     buyerAlreadyOwnsMock.mockReset();
-    resolveAlbumPurchasePricingMock.mockReset();
+    resolveValidatedAlbumCheckoutPricingMock.mockReset();
     getUserIdFromEventMock.mockReset();
     syncPendingOrderAmountMock.mockReset();
     invalidateStaleAlbumCheckoutPaymentMock.mockReset();

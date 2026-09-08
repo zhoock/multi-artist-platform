@@ -36,10 +36,7 @@ import { getUserIdFromEvent } from './lib/api-helpers';
 import { query } from './lib/db';
 import { buyerAlreadyOwnsAlbumForCheckout } from './lib/purchase-access';
 import { resolveAlbumSellerUserId } from './lib/resolveAlbumSellerUserId';
-import {
-  resolveAlbumPurchasePricing,
-  resolveValidatedAlbumCheckoutPricing,
-} from './lib/resolve-album-purchase';
+import { resolveValidatedAlbumCheckoutPricing } from './lib/resolve-album-purchase';
 import { resolveAlbumSlug } from './lib/resolve-album-key';
 import { resolveAlbumPaymentReturnUrl } from './lib/yookassa-return-url';
 import {
@@ -412,31 +409,12 @@ export const handler: Handler = async (
       };
     }
 
-    const albumPricingResolved = data.orderId
-      ? await resolveAlbumPurchasePricing(data.albumId)
-      : await resolveValidatedAlbumCheckoutPricing(data.albumId);
-
-    if (!albumPricingResolved.ok) {
-      return {
-        statusCode: albumPricingResolved.statusCode,
-        headers,
-        body: JSON.stringify({
-          success: false,
-          error: albumPricingResolved.error,
-        } as CreatePaymentResponse),
-      };
-    }
-
-    const albumPricing = albumPricingResolved.pricing;
-    const paymentDescription = albumPricing.description;
-
     // Создаем или получаем заказ
     let orderId: string;
     let orderAmount: number;
     let orderStatus: string;
 
     if (data.orderId) {
-      // Проверяем существующий заказ
       const orderResult = await query<{
         id: string;
         amount: number;
@@ -471,9 +449,38 @@ export const handler: Handler = async (
         };
       }
 
+      if (order.status === 'paid') {
+        return {
+          statusCode: 400,
+          headers,
+          body: JSON.stringify({
+            success: false,
+            error: 'Order already paid',
+          } as CreatePaymentResponse),
+        };
+      }
+
       orderId = order.id;
       orderStatus = order.status;
+    }
 
+    const albumPricingResolved = await resolveValidatedAlbumCheckoutPricing(data.albumId);
+
+    if (!albumPricingResolved.ok) {
+      return {
+        statusCode: albumPricingResolved.statusCode,
+        headers,
+        body: JSON.stringify({
+          success: false,
+          error: albumPricingResolved.error,
+        } as CreatePaymentResponse),
+      };
+    }
+
+    const albumPricing = albumPricingResolved.pricing;
+    const paymentDescription = albumPricing.description;
+
+    if (data.orderId) {
       try {
         orderAmount = await syncPendingOrderAmount(orderId, albumPricing.amount);
       } catch (syncError) {
@@ -495,18 +502,6 @@ export const handler: Handler = async (
           body: JSON.stringify({
             success: false,
             error: 'Order amount is invalid',
-          } as CreatePaymentResponse),
-        };
-      }
-
-      // Если заказ уже оплачен, не создаем новый платеж
-      if (orderStatus === 'paid') {
-        return {
-          statusCode: 400,
-          headers,
-          body: JSON.stringify({
-            success: false,
-            error: 'Order already paid',
           } as CreatePaymentResponse),
         };
       }

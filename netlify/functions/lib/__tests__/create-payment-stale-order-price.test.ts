@@ -3,7 +3,6 @@ import type { HandlerEvent } from '@netlify/functions';
 const queryMock = jest.fn();
 const resolveAlbumSlugMock = jest.fn();
 const buyerAlreadyOwnsMock = jest.fn();
-const resolveAlbumPurchasePricingMock = jest.fn();
 const resolveValidatedAlbumCheckoutPricingMock = jest.fn();
 const getUserIdFromEventMock = jest.fn();
 const syncPendingOrderAmountMock = jest.fn();
@@ -23,7 +22,6 @@ jest.mock('../purchase-access', () => ({
 }));
 
 jest.mock('../resolve-album-purchase', () => ({
-  resolveAlbumPurchasePricing: (...args: unknown[]) => resolveAlbumPurchasePricingMock(...args),
   resolveValidatedAlbumCheckoutPricing: (...args: unknown[]) =>
     resolveValidatedAlbumCheckoutPricingMock(...args),
 }));
@@ -123,7 +121,7 @@ function setupExistingOrderFlow(options: {
   resolveAlbumSlugMock.mockImplementation(async (value: string) => value);
   getUserIdFromEventMock.mockReturnValue(null);
   buyerAlreadyOwnsMock.mockResolvedValue(false);
-  resolveAlbumPurchasePricingMock.mockResolvedValue(pricing(options.currentAlbumPrice));
+  resolveValidatedAlbumCheckoutPricingMock.mockResolvedValue(pricing(options.currentAlbumPrice));
   syncPendingOrderAmountMock.mockResolvedValue(syncedAmount);
   invalidateStaleAlbumCheckoutPaymentMock.mockResolvedValue(
     options.stalePaymentOutcome ?? 'invalidated'
@@ -190,7 +188,6 @@ describe('create-payment stale pending order price', () => {
     queryMock.mockReset();
     resolveAlbumSlugMock.mockReset();
     buyerAlreadyOwnsMock.mockReset();
-    resolveAlbumPurchasePricingMock.mockReset();
     resolveValidatedAlbumCheckoutPricingMock.mockReset();
     getUserIdFromEventMock.mockReset();
     syncPendingOrderAmountMock.mockReset();
@@ -317,7 +314,7 @@ describe('create-payment stale pending order price', () => {
     );
 
     expect(syncPendingOrderAmountMock).toHaveBeenCalledWith(ORDER_ID, 200);
-    expect(resolveAlbumPurchasePricingMock).toHaveBeenCalledWith(ALBUM_SLUG);
+    expect(resolveValidatedAlbumCheckoutPricingMock).toHaveBeenCalledWith(ALBUM_SLUG);
   });
 
   it('uses server pricing for new checkout without orderId', async () => {
