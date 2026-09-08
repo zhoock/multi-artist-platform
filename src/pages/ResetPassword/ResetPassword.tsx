@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, FormEvent } from 'react';
 import { Lock as LockIcon } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
+import { noindexRobotsMetaElement } from '@shared/lib/seo/noindexRobotsMeta';
 import { resetPassword } from '@shared/lib/auth';
 import { useLang } from '@app/providers/lang';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
@@ -232,6 +233,7 @@ export default function ResetPassword() {
       <section className="reset-password-page" aria-labelledby="reset-password-success-title">
         <Helmet>
           <title>{copy.successTitle}</title>
+          {noindexRobotsMetaElement}
         </Helmet>
         <ModalBackdrop className="reset-password-page__backdrop" />
         <div className="reset-password-page__container reset-password-page__container--success">
@@ -261,6 +263,7 @@ export default function ResetPassword() {
     <section className="reset-password-page" aria-labelledby="reset-password-title">
       <Helmet>
         <title>{copy.title}</title>
+        {noindexRobotsMetaElement}
       </Helmet>
       <ModalBackdrop className="reset-password-page__backdrop" />
       <div className="reset-password-page__container">

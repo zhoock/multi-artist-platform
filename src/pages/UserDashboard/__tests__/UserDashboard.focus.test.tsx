@@ -9,6 +9,7 @@ import { renderWithProviders } from '@shared/lib/test-utils';
 import { ToastProvider } from '@shared/lib/toast/ToastProvider';
 import { PremiumSubscriptionProvider } from '@features/premiumSubscription';
 import { EMPTY_BILLING_SNAPSHOT } from '@shared/api/billing';
+import { expectNoindexRobotsMeta } from '@shared/lib/seo/__tests__/helmetRobotsTestUtils';
 
 const getMyArchiveMock = jest.fn<() => Promise<unknown>>();
 
@@ -188,6 +189,18 @@ describe('UserDashboard initial focus', () => {
 
   afterEach(() => {
     jest.useRealTimers();
+  });
+
+  test('sets noindex robots meta on dashboard routes', async () => {
+    jest.useRealTimers();
+    renderDashboard(['/dashboard/subscription']);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('subscription-content-stub')).toBeTruthy();
+    });
+
+    await expectNoindexRobotsMeta();
+    jest.useFakeTimers();
   });
 
   test('focuses active nav item instead of close button on subscription reload', async () => {

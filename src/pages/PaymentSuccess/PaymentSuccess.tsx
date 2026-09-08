@@ -2,6 +2,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams, useNavigate, useLocation } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
+import { noindexRobotsMetaElement } from '@shared/lib/seo/noindexRobotsMeta';
 import './PaymentSuccess.style.scss';
 import { useLang } from '@app/providers/lang';
 import {
@@ -503,6 +504,7 @@ function PaymentSuccess() {
     <>
       <Helmet>
         <title>{pageTitle}</title>
+        {noindexRobotsMetaElement}
       </Helmet>
       <div className="payment-success">
         <div className="payment-success__container">

@@ -1,8 +1,10 @@
 // src/pages/Album/Album.tsx
 
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, type ReactNode } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
+
+import { noindexRobotsMetaElement } from '@shared/lib/seo/noindexRobotsMeta';
 
 import {
   AlbumCover,
@@ -53,6 +55,17 @@ import {
 } from '@shared/lib/seo/publicPagePaths';
 import { ContextNav } from '@shared/ui/contextNav';
 import '@entities/album/ui/album-layout.scss';
+
+function AlbumUnavailableSurface({ children }: { children: ReactNode }) {
+  return (
+    <>
+      <Helmet>{noindexRobotsMetaElement}</Helmet>
+      <section className="album main-background" aria-label="Блок c альбомом">
+        <div className="wrapper album__wrapper">{children}</div>
+      </section>
+    </>
+  );
+}
 
 export default function Album() {
   const dispatch = useAppDispatch();
@@ -176,11 +189,9 @@ export default function Album() {
 
   if (artistParam && albumDetailsStatus === 'failed') {
     return (
-      <section className="album main-background" aria-label="Блок c альбомом">
-        <div className="wrapper album__wrapper">
-          <ErrorI18n code="albumLoadFailed" />
-        </div>
-      </section>
+      <AlbumUnavailableSurface>
+        <ErrorI18n code="albumLoadFailed" />
+      </AlbumUnavailableSurface>
     );
   }
 
@@ -196,11 +207,9 @@ export default function Album() {
       return <ArtistNotFound />;
     }
     return (
-      <section className="album main-background" aria-label="Блок c альбомом">
-        <div className="wrapper album__wrapper">
-          <ErrorI18n code="albumNotFound" />
-        </div>
-      </section>
+      <AlbumUnavailableSurface>
+        <ErrorI18n code="albumNotFound" />
+      </AlbumUnavailableSurface>
     );
   }
 
@@ -210,11 +219,9 @@ export default function Album() {
       return <AlbumSkeleton />;
     }
     return (
-      <section className="album main-background" aria-label="Блок c альбомом">
-        <div className="wrapper album__wrapper">
-          <ErrorI18n code="albumNotFound" />
-        </div>
-      </section>
+      <AlbumUnavailableSurface>
+        <ErrorI18n code="albumNotFound" />
+      </AlbumUnavailableSurface>
     );
   }
 
@@ -222,20 +229,16 @@ export default function Album() {
   const inArtistPublicContext = Boolean(artistParam?.trim());
   if (!album.visibility.isPublished && !isAlbumOwner) {
     return (
-      <section className="album main-background" aria-label="Блок c альбомом">
-        <div className="wrapper album__wrapper">
-          <ErrorI18n code="albumNotFound" />
-        </div>
-      </section>
+      <AlbumUnavailableSurface>
+        <ErrorI18n code="albumNotFound" />
+      </AlbumUnavailableSurface>
     );
   }
   if (!album.visibility.isPublic && !isAlbumOwner && !inArtistPublicContext) {
     return (
-      <section className="album main-background" aria-label="Блок c альбомом">
-        <div className="wrapper album__wrapper">
-          <ErrorI18n code="albumNotFound" />
-        </div>
-      </section>
+      <AlbumUnavailableSurface>
+        <ErrorI18n code="albumNotFound" />
+      </AlbumUnavailableSurface>
     );
   }
 

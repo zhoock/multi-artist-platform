@@ -10,6 +10,7 @@ import {
   type Location,
 } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
+import { noindexRobotsMetaElement } from '@shared/lib/seo/noindexRobotsMeta';
 import { useLang } from '@app/providers/lang';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { useAppDispatch } from '@shared/lib/hooks/useAppDispatch';
@@ -2624,6 +2625,7 @@ function UserDashboard() {
           <title>
             {dashboardHeading} — {platformDisplayName(lang)}
           </title>
+          {noindexRobotsMetaElement}
         </Helmet>
 
         <Popup

@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { Helmet } from 'react-helmet-async';
+import { noindexRobotsMetaElement } from '@shared/lib/seo/noindexRobotsMeta';
 import './ServiceContent.scss';
 
 export type ServiceContentAction = {
@@ -37,6 +38,7 @@ export function ServiceContent({
     <div className="service-content">
       <Helmet>
         <title>{pageTitle}</title>
+        {noindexRobotsMetaElement}
       </Helmet>
 
       <h1 id={titleId} className="service-content__title">

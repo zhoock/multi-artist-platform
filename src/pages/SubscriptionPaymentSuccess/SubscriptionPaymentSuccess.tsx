@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
+import { noindexRobotsMetaElement } from '@shared/lib/seo/noindexRobotsMeta';
 import { useLang } from '@app/providers/lang';
 import { platformDisplayName } from '@shared/constants/platformBranding';
 
@@ -218,6 +219,7 @@ export default function SubscriptionPaymentSuccess() {
           {lang === 'en' ? 'Premium subscription' : 'Подписка Premium'} —{' '}
           {platformDisplayName(lang)}
         </title>
+        {noindexRobotsMetaElement}
       </Helmet>
       <div className="subscription-payment-success">
         {status === 'loading' && (

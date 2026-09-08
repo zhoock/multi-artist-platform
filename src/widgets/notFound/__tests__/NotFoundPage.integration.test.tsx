@@ -3,6 +3,7 @@ import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { NotFoundPage } from '../NotFoundPage';
 import { renderWithProviders } from '@shared/lib/test-utils';
+import { expectNoindexRobotsMeta } from '@shared/lib/seo/__tests__/helmetRobotsTestUtils';
 
 const mockNavigate = jest.fn();
 
@@ -20,7 +21,7 @@ describe('NotFoundPage integration tests', () => {
     jest.clearAllMocks();
   });
 
-  test('должен отобразить заголовок 404', () => {
+  test('должен отобразить заголовок 404', async () => {
     renderWithProviders(<NotFoundPage />, {
       preloadedState: {
         lang: { current: 'en' },
@@ -30,6 +31,7 @@ describe('NotFoundPage integration tests', () => {
     expect(screen.getByRole('heading', { name: '404' })).toBeInTheDocument();
     expect(screen.getByText(/looks like you got lost in space/i)).toBeInTheDocument();
     expect(screen.getByText(/the page you're looking for doesn't exist/i)).toBeInTheDocument();
+    await expectNoindexRobotsMeta();
   });
 
   test('должен отобразить кнопку "Back to Home"', () => {

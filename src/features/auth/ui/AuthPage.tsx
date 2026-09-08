@@ -38,6 +38,7 @@ import { useAuthSessionUser } from '@shared/lib/hooks/useAuthSessionUser';
 import { useBodyScrollLock } from '@shared/lib/hooks/useBodyScrollLock';
 import { Popup, PopupCloseButton } from '@shared/ui/popup';
 import { ModalCloseIcon } from '@shared/ui/icons/ModalCloseIcon';
+import { NoindexHelmet } from '@shared/lib/seo/noindexRobotsMeta';
 import { LoginForm } from './LoginForm';
 import { RegisterForm } from './RegisterForm';
 import { RoleSelectionScreen } from './RoleSelectionScreen';
@@ -278,6 +279,7 @@ export function AuthPage() {
 
   return (
     <>
+      <NoindexHelmet />
       <VerifyEmailModal
         isOpen={showVerifyEmailModal && needsVerification}
         onContinueLater={handleVerifyContinueLater}

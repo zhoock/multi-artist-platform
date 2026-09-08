@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useLang } from '@app/providers/lang';
 import { buildLocalizedPublicPath } from '@shared/lib/i18n/routeLang/buildLocalizedPublicPath';
+import { NoindexHelmet } from '@shared/lib/seo/noindexRobotsMeta';
 import './style.scss';
 
 const COPY = {
@@ -21,16 +22,22 @@ export function ArtistNotFound() {
   const copy = COPY[lang === 'ru' ? 'ru' : 'en'];
 
   return (
-    <section className="artist-not-found main-background" aria-labelledby="artist-not-found-title">
-      <div className="artist-not-found__inner wrapper">
-        <h1 id="artist-not-found-title" className="artist-not-found__title">
-          {copy.title}
-        </h1>
-        <p className="artist-not-found__subtitle">{copy.subtitle}</p>
-        <Link to={buildLocalizedPublicPath(lang, '/')} className="artist-not-found__cta" replace>
-          {copy.backToHome}
-        </Link>
-      </div>
-    </section>
+    <>
+      <NoindexHelmet />
+      <section
+        className="artist-not-found main-background"
+        aria-labelledby="artist-not-found-title"
+      >
+        <div className="artist-not-found__inner wrapper">
+          <h1 id="artist-not-found-title" className="artist-not-found__title">
+            {copy.title}
+          </h1>
+          <p className="artist-not-found__subtitle">{copy.subtitle}</p>
+          <Link to={buildLocalizedPublicPath(lang, '/')} className="artist-not-found__cta" replace>
+            {copy.backToHome}
+          </Link>
+        </div>
+      </section>
+    </>
   );
 }
