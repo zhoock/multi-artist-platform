@@ -67,6 +67,7 @@ async function fetchVisibleArtists(): Promise<SitemapArtistRow[]> {
          FROM albums a
          INNER JOIN tracks t ON t.album_id = a.id
          WHERE a.user_id = aa.id
+           AND a.is_published = true
            AND a.is_public = true
            AND btrim(COALESCE(a.album, '')) <> ''
            AND COALESCE(t.visibility, 'public') <> 'hidden'

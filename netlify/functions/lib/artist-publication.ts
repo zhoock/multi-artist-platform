@@ -75,7 +75,7 @@ export function hasPublicProfileContentFromFields(fields: ArtistProfileContentFi
 }
 
 /**
- * Catalog/search visibility: at least one public non-hidden track on a public release.
+ * Catalog/search visibility: at least one public non-hidden track on a published public release.
  */
 export async function getArtistPublicationSignals(
   userId: string
@@ -86,6 +86,7 @@ export async function getArtistPublicationSignals(
        FROM tracks t
        INNER JOIN albums a ON t.album_id = a.id
        WHERE a.user_id = u.id
+         AND a.is_published = true
          AND a.is_public = true
          AND btrim(COALESCE(a.album, '')) <> ''
          AND COALESCE(t.visibility, 'public') <> 'hidden'

@@ -3,7 +3,9 @@ import { isArtistPublishedFromSignals } from '../artist-publication-signals';
 import {
   artistHasPublicPageContent,
   assertArtistVisibleToViewer,
+  getArtistPublicationSignals,
   hasPublicProfileContentFromFields,
+  isArtistProfilePublished,
 } from '../artist-publication';
 import { PublicArtistResolverError } from '../public-artist-resolver';
 
@@ -177,6 +179,101 @@ describe('artist-publication', () => {
       });
 
       expect(visible).toBe(false);
+    });
+  });
+
+  describe('album publication visibility (SEO-003/SEO-004)', () => {
+    function tracksPublicationSql(sql: string): string {
+      const match = mockQuery.mock.calls.find(([calledSql]) =>
+        String(calledSql).includes('has_published_tracks')
+      );
+      return String(match?.[0] ?? sql);
+    }
+
+    test('Case A: unpublished public album does not publish artist via tracks', async () => {
+      mockQuery.mockImplementation(async (sql: string) => {
+        if (sql.includes('has_published_tracks')) {
+          expect(sql).toContain('a.is_published = true');
+          expect(sql).toContain('a.is_public = true');
+          return { rows: [{ has_published_tracks: false }] } as never;
+        }
+        if (sql.includes('has_public_articles')) {
+          return { rows: [{ has_public_articles: false }] } as never;
+        }
+        if (sql.includes('has_profile_content')) {
+          return { rows: [{ has_profile_content: false }] } as never;
+        }
+        throw new Error(`unexpected query: ${sql}`);
+      });
+
+      const visible = await artistHasPublicPageContent('user-unpublished-public-album');
+      const published = await isArtistProfilePublished('user-unpublished-public-album');
+
+      expect(visible).toBe(false);
+      expect(published).toBe(false);
+      expect(tracksPublicationSql('')).toContain('a.is_published = true');
+    });
+
+    test('Case B: published public album keeps artist public via tracks', async () => {
+      mockQuery.mockImplementation(async (sql: string) => {
+        if (sql.includes('has_published_tracks')) {
+          return { rows: [{ has_published_tracks: true }] } as never;
+        }
+        if (sql.includes('has_public_articles')) {
+          return { rows: [{ has_public_articles: false }] } as never;
+        }
+        if (sql.includes('has_profile_content')) {
+          return { rows: [{ has_profile_content: false }] } as never;
+        }
+        throw new Error(`unexpected query: ${sql}`);
+      });
+
+      const signals = await getArtistPublicationSignals('user-published-public-album');
+      const visible = await artistHasPublicPageContent('user-published-public-album');
+      const published = await isArtistProfilePublished('user-published-public-album');
+
+      expect(signals.hasPublishedTracks).toBe(true);
+      expect(visible).toBe(true);
+      expect(published).toBe(true);
+    });
+
+    test('Case C: private published album does not publish artist via tracks', async () => {
+      mockQuery.mockImplementation(async (sql: string) => {
+        if (sql.includes('has_published_tracks')) {
+          expect(sql).toContain('a.is_public = true');
+          return { rows: [{ has_published_tracks: false }] } as never;
+        }
+        if (sql.includes('has_public_articles')) {
+          return { rows: [{ has_public_articles: false }] } as never;
+        }
+        if (sql.includes('has_profile_content')) {
+          return { rows: [{ has_profile_content: false }] } as never;
+        }
+        throw new Error(`unexpected query: ${sql}`);
+      });
+
+      const published = await isArtistProfilePublished('user-private-album');
+
+      expect(published).toBe(false);
+    });
+
+    test('Case D: profile-only artist remains public without published albums', async () => {
+      mockQuery.mockImplementation(async (sql: string) => {
+        if (sql.includes('has_published_tracks')) {
+          return { rows: [{ has_published_tracks: false }] } as never;
+        }
+        if (sql.includes('has_public_articles')) {
+          return { rows: [{ has_public_articles: false }] } as never;
+        }
+        if (sql.includes('has_profile_content')) {
+          return { rows: [{ has_profile_content: true }] } as never;
+        }
+        throw new Error(`unexpected query: ${sql}`);
+      });
+
+      const visible = await artistHasPublicPageContent('user-profile-only');
+
+      expect(visible).toBe(true);
     });
   });
 
