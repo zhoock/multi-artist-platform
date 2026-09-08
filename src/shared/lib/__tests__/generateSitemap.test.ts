@@ -17,7 +17,10 @@ describe('generateSitemap', () => {
 
     expect(xml).toContain('<loc>https://multi-artist-platform.netlify.app/ru</loc>');
     expect(xml).toContain('<loc>https://multi-artist-platform.netlify.app/en</loc>');
-    expect(xml).toContain('<loc>https://multi-artist-platform.netlify.app/ru/albums</loc>');
+    expect(xml).not.toContain('<loc>https://multi-artist-platform.netlify.app/ru/albums</loc>');
+    expect(xml).not.toContain('<loc>https://multi-artist-platform.netlify.app/en/albums</loc>');
+    expect(xml).not.toContain('<loc>https://multi-artist-platform.netlify.app/ru/articles</loc>');
+    expect(xml).not.toContain('<loc>https://multi-artist-platform.netlify.app/en/articles</loc>');
     expect(xml).not.toContain('<loc>https://multi-artist-platform.netlify.app/albums</loc>');
     expect(xml).not.toContain(FORBIDDEN_PUBLIC_DOMAIN);
   });
@@ -50,8 +53,12 @@ describe('generateSitemap', () => {
 
     expect(paths).toContain('/ru');
     expect(paths).toContain('/en');
-    expect(paths).toContain('/ru/albums');
-    expect(paths).toContain('/en/albums');
+    expect(paths).toContain('/ru/stems');
+    expect(paths).toContain('/en/stems');
+    expect(paths).not.toContain('/ru/albums');
+    expect(paths).not.toContain('/en/albums');
+    expect(paths).not.toContain('/ru/articles');
+    expect(paths).not.toContain('/en/articles');
     expect(paths).not.toContain('/');
     expect(paths).not.toContain('/albums');
   });

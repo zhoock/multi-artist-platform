@@ -21,8 +21,6 @@ export interface SitemapEntry {
 /** Platform-wide SPA routes (no auth, payment, or dashboard URLs) — unlocalized templates. */
 export const SITEMAP_PLATFORM_PATH_TEMPLATES: readonly SitemapEntry[] = [
   { path: '/', priority: '1.0', changefreq: 'daily' },
-  { path: '/albums', priority: '0.8', changefreq: 'daily' },
-  { path: '/articles', priority: '0.8', changefreq: 'daily' },
   { path: '/stems', priority: '0.7', changefreq: 'weekly' },
   { path: '/offer', priority: '0.5', changefreq: 'monthly' },
   { path: '/privacy', priority: '0.5', changefreq: 'monthly' },

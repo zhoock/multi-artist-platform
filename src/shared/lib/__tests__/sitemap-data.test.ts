@@ -31,10 +31,10 @@ describe('buildDynamicSitemapEntries', () => {
 
     expect(paths).toContain('/ru');
     expect(paths).toContain('/en');
-    expect(paths).toContain('/ru/albums');
-    expect(paths).toContain('/en/albums');
-    expect(paths).toContain('/ru/articles');
-    expect(paths).toContain('/en/articles');
+    expect(paths).not.toContain('/ru/albums');
+    expect(paths).not.toContain('/en/albums');
+    expect(paths).not.toContain('/ru/articles');
+    expect(paths).not.toContain('/en/articles');
     expect(paths).toContain('/ru/stems');
     expect(paths).toContain('/en/stems');
     expect(paths).toContain('/ru/offer');
