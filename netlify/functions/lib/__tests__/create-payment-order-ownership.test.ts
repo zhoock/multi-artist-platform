@@ -5,6 +5,8 @@ const resolveAlbumSlugMock = jest.fn();
 const buyerAlreadyOwnsMock = jest.fn();
 const resolveAlbumPurchasePricingMock = jest.fn();
 const getUserIdFromEventMock = jest.fn();
+const syncPendingOrderAmountMock = jest.fn();
+const invalidateStaleAlbumCheckoutPaymentMock = jest.fn();
 
 jest.mock('../db', () => ({
   query: (...args: unknown[]) => queryMock(...args),
@@ -45,6 +47,30 @@ jest.mock('../email', () => ({
   sendPurchaseEmail: jest.fn(),
 }));
 
+jest.mock('../sync-pending-order-amount', () => ({
+  syncPendingOrderAmount: (...args: unknown[]) => syncPendingOrderAmountMock(...args),
+  albumCheckoutIdempotenceKey: (orderId: string, amount: number) =>
+    `order-${orderId}-${amount.toFixed(2).replace('.', '-')}`,
+}));
+
+jest.mock('../album-checkout-payment', () => ({
+  invalidateStaleAlbumCheckoutPayment: (...args: unknown[]) =>
+    invalidateStaleAlbumCheckoutPaymentMock(...args),
+  isReusableAlbumCheckoutPayment: (
+    payment: { status: string; amount: { value: string } },
+    amount: number
+  ) =>
+    (payment.status === 'pending' || payment.status === 'waiting_for_capture') &&
+    payment.amount.value === amount.toFixed(2),
+}));
+
+jest.mock('../../payment-settings', () => ({
+  getDecryptedSecretKey: jest.fn().mockResolvedValue({
+    shopId: 'shop-id',
+    secretKey: 'secret-key',
+  }),
+}));
+
 import { handler as getOrderStatusHandler } from '../../get-order-status';
 import { handler as getPaymentStatusHandler } from '../../get-payment-status';
 import { handler as createPaymentHandler } from '../../create-payment';
@@ -55,6 +81,8 @@ const SELLER_ID = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
 const PAYMENT_ID = 'cccccccc-cccc-cccc-cccc-cccccccccccc';
 const VICTIM_EMAIL = 'victim@example.com';
 const ATTACKER_EMAIL = 'attacker@example.com';
+
+const originalFetch = global.fetch;
 
 function buildCreatePaymentEvent(body: Record<string, unknown>): HandlerEvent {
   return {
@@ -86,6 +114,8 @@ function setupExistingPendingOrderMocks(customerEmail = VICTIM_EMAIL) {
     ok: true,
     pricing: { amount: 500, description: 'Album' },
   });
+  syncPendingOrderAmountMock.mockResolvedValue(500);
+  invalidateStaleAlbumCheckoutPaymentMock.mockResolvedValue('reusable');
 
   queryMock.mockImplementation(async (sql: string) => {
     if (sql.includes('SELECT user_id, album_id FROM orders')) {
@@ -101,6 +131,22 @@ function setupExistingPendingOrderMocks(customerEmail = VICTIM_EMAIL) {
     }
     throw new Error(`Unexpected query: ${sql}`);
   });
+
+  global.fetch = jest.fn(async (input: RequestInfo | URL) => {
+    const url = String(input);
+    if (url.includes(`/payments/${PAYMENT_ID}`)) {
+      return {
+        ok: true,
+        json: async () => ({
+          id: PAYMENT_ID,
+          status: 'pending',
+          amount: { value: '500.00', currency: 'RUB' },
+          confirmation: { confirmation_url: 'https://yookassa.test/pay' },
+        }),
+      } as Response;
+    }
+    throw new Error(`Unexpected fetch: ${url}`);
+  }) as typeof fetch;
 }
 
 describe('create-payment existing order ownership', () => {
@@ -111,10 +157,13 @@ describe('create-payment existing order ownership', () => {
     buyerAlreadyOwnsMock.mockReset();
     resolveAlbumPurchasePricingMock.mockReset();
     getUserIdFromEventMock.mockReset();
+    syncPendingOrderAmountMock.mockReset();
+    invalidateStaleAlbumCheckoutPaymentMock.mockReset();
   });
 
   afterEach(() => {
     delete process.env.JWT_SECRET;
+    global.fetch = originalFetch;
   });
 
   it('denies existing pending order when customerEmail does not match', async () => {

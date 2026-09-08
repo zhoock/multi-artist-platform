@@ -9,6 +9,10 @@
 
 import type { PoolClient } from 'pg';
 import { query, withTransaction } from './db';
+import {
+  syncPendingOrderAmount,
+  syncPendingOrderAmountInTransaction,
+} from './sync-pending-order-amount';
 
 export function normalizeCheckoutCustomerEmail(email: string): string {
   return email.trim().toLowerCase();
@@ -107,7 +111,9 @@ async function loadPendingOrderFallback(
     return null;
   }
 
-  return rowToResult(fallback.rows[0], true);
+  const row = fallback.rows[0];
+  const syncedAmount = await syncPendingOrderAmount(row.id, input.amount);
+  return rowToResult({ ...row, amount: syncedAmount }, true);
 }
 
 /**
@@ -132,7 +138,13 @@ export async function findOrCreatePendingAlbumOrder(
       );
 
       if (existing.rows.length > 0) {
-        return rowToResult(existing.rows[0], true);
+        const existingRow = existing.rows[0];
+        const syncedAmount = await syncPendingOrderAmountInTransaction(
+          client,
+          existingRow.id,
+          input.amount
+        );
+        return rowToResult({ ...existingRow, amount: syncedAmount }, true);
       }
 
       const inserted = await client.query<{ id: string; amount: string | number; status: string }>(

@@ -56,6 +56,14 @@ import {
 import { createCheckoutStatusToken, type CheckoutStatusToken } from './lib/checkout-status-token';
 import { orderCheckoutEmailMatches } from './lib/find-or-create-pending-order';
 import {
+  invalidateStaleAlbumCheckoutPayment,
+  isReusableAlbumCheckoutPayment,
+} from './lib/album-checkout-payment';
+import {
+  albumCheckoutIdempotenceKey,
+  syncPendingOrderAmount,
+} from './lib/sync-pending-order-amount';
+import {
   asPostgresError,
   getErrorCause,
   getErrorCode,
@@ -464,8 +472,21 @@ export const handler: Handler = async (
       }
 
       orderId = order.id;
-      orderAmount = parseFloat(order.amount.toString());
       orderStatus = order.status;
+
+      try {
+        orderAmount = await syncPendingOrderAmount(orderId, albumPricing.amount);
+      } catch (syncError) {
+        console.error('❌ Failed to sync pending order amount:', syncError);
+        return {
+          statusCode: 400,
+          headers,
+          body: JSON.stringify({
+            success: false,
+            error: 'Order amount could not be updated to current album price',
+          } as CreatePaymentResponse),
+        };
+      }
 
       if (!Number.isFinite(orderAmount) || orderAmount < 0.01) {
         return {
@@ -488,33 +509,6 @@ export const handler: Handler = async (
             error: 'Order already paid',
           } as CreatePaymentResponse),
         };
-      }
-
-      // Если есть активный платеж, возвращаем его URL
-      if (order.payment_id) {
-        const paymentResult = await query<{
-          provider_payment_id: string;
-          status: string;
-        }>(
-          `SELECT provider_payment_id, status 
-           FROM payments 
-           WHERE order_id = $1 AND status IN ('pending', 'waiting_for_capture')
-           ORDER BY created_at DESC 
-           LIMIT 1`,
-          [orderId]
-        );
-
-        if (paymentResult.rows.length > 0) {
-          const payment = paymentResult.rows[0];
-          // Получаем актуальный статус платежа от ЮKassa
-          // Для упрощения возвращаем существующий payment_id
-          // В реальности нужно проверить статус через API ЮKassa
-          return albumCheckoutSuccessResponse(headers, orderId, {
-            paymentId: payment.provider_payment_id,
-            confirmationUrl: '',
-            message: 'Payment already exists for this order',
-          });
-        }
       }
     } else {
       // Recovery (paid without purchase) → pending reuse/create, under advisory lock.
@@ -771,7 +765,7 @@ export const handler: Handler = async (
     const authHeader = Buffer.from(`${shopId}:${secretKey}`).toString('base64');
 
     // Проверяем существующие pending платежи для этого заказа
-    // ВАЖНО: Избегаем создания дублей pending платежей
+    // ВАЖНО: Избегаем создания дублей pending платежей; stale amount → invalidate
     if (orderId) {
       try {
         const existingPaymentResult = await query<{
@@ -790,9 +784,15 @@ export const handler: Handler = async (
 
         if (existingPaymentResult.rows.length > 0) {
           const existingPayment = existingPaymentResult.rows[0];
+          const staleOutcome = await invalidateStaleAlbumCheckoutPayment(
+            orderId,
+            existingPayment.provider_payment_id,
+            orderAmount,
+            shopId,
+            secretKey
+          );
 
-          // Получаем актуальные данные платежа из YooKassa
-          try {
+          if (staleOutcome === 'reusable') {
             const apiUrl = process.env.YOOKASSA_API_URL || 'https://api.yookassa.ru/v3/payments';
             const paymentUrl = `${apiUrl}/${existingPayment.provider_payment_id}`;
             const existingPaymentResponse = await fetch(paymentUrl, {
@@ -807,11 +807,7 @@ export const handler: Handler = async (
               const existingPaymentData: YooKassaPaymentResponse =
                 await existingPaymentResponse.json();
 
-              // Если платеж все еще pending, возвращаем его confirmation_url
-              if (
-                existingPaymentData.status === 'pending' ||
-                existingPaymentData.status === 'waiting_for_capture'
-              ) {
+              if (isReusableAlbumCheckoutPayment(existingPaymentData, orderAmount)) {
                 return albumCheckoutSuccessResponse(
                   headers,
                   orderId,
@@ -823,16 +819,7 @@ export const handler: Handler = async (
                   checkoutStatusToken
                 );
               }
-
-              // Если платеж завершен, продолжаем создание нового
-            } else {
-              console.warn(
-                `⚠️ Could not fetch existing payment status, creating new payment:`,
-                existingPaymentResponse.status
-              );
             }
-          } catch (fetchError) {
-            console.warn('⚠️ Error fetching existing payment, creating new payment:', fetchError);
           }
         }
       } catch (dbError) {
@@ -840,9 +827,8 @@ export const handler: Handler = async (
       }
     }
 
-    // Ключ идемпотентности стабильный по orderId для предотвращения дублей
-    // YooKassa вернет тот же платеж при повторном запросе с тем же ключом
-    const idempotenceKey = `order-${orderId}`;
+    // Ключ идемпотентности включает сумму — иначе YooKassa вернёт платёж на устаревшую цену
+    const idempotenceKey = albumCheckoutIdempotenceKey(orderId, orderAmount);
 
     // Логируем детали запроса перед отправкой (после формирования yookassaRequest)
 

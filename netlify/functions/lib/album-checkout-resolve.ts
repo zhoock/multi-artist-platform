@@ -18,6 +18,10 @@ import {
   type FindOrCreatePendingOrderInput,
   type FindOrCreatePendingOrderResult,
 } from './find-or-create-pending-order';
+import {
+  syncPendingOrderAmount,
+  syncPendingOrderAmountInTransaction,
+} from './sync-pending-order-amount';
 
 export class CheckoutAlreadyOwnedError extends Error {
   constructor() {
@@ -155,9 +159,15 @@ async function resolveAlbumCheckoutInTransaction(
   );
 
   if (existingPending.rows.length > 0) {
+    const existingRow = existingPending.rows[0];
+    const syncedAmount = await syncPendingOrderAmountInTransaction(
+      client,
+      existingRow.id,
+      input.amount
+    );
     return {
       kind: 'pending',
-      ...rowToPendingResult(existingPending.rows[0], true),
+      ...rowToPendingResult({ ...existingRow, amount: syncedAmount }, true),
     };
   }
 
@@ -266,7 +276,9 @@ async function resolvePendingFallback(
     return null;
   }
 
-  return rowToPendingResult(fallback.rows[0], true);
+  const row = fallback.rows[0];
+  const syncedAmount = await syncPendingOrderAmount(row.id, input.amount);
+  return rowToPendingResult({ ...row, amount: syncedAmount }, true);
 }
 
 export function isAlbumFulfillmentHardError(error: unknown): error is AlbumFulfillmentError {

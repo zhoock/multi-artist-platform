@@ -10,7 +10,16 @@ jest.mock('../db', () => ({
   withTransaction: jest.fn(),
 }));
 
+jest.mock('../sync-pending-order-amount', () => ({
+  syncPendingOrderAmount: jest.fn(),
+  syncPendingOrderAmountInTransaction: jest.fn(),
+}));
+
 import { query, withTransaction } from '../db';
+import {
+  syncPendingOrderAmount,
+  syncPendingOrderAmountInTransaction,
+} from '../sync-pending-order-amount';
 import {
   findOrCreatePendingAlbumOrder,
   normalizeCheckoutCustomerEmail,
@@ -20,6 +29,12 @@ import {
 
 const mockedQuery = query as jest.MockedFunction<typeof query>;
 const mockedWithTransaction = withTransaction as jest.MockedFunction<typeof withTransaction>;
+const mockedSyncInTransaction = syncPendingOrderAmountInTransaction as jest.MockedFunction<
+  typeof syncPendingOrderAmountInTransaction
+>;
+const mockedSyncPendingOrderAmount = syncPendingOrderAmount as jest.MockedFunction<
+  typeof syncPendingOrderAmount
+>;
 
 const SELLER_ID = '11111111-1111-4111-8111-111111111111';
 const ALBUM_SLUG = 'sample-album';
@@ -76,21 +91,24 @@ describe('pendingOrderAdvisoryLockKey', () => {
 describe('findOrCreatePendingAlbumOrder', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockedSyncInTransaction.mockImplementation(async (_client, _orderId, amount) => amount);
   });
 
-  test('reuses existing pending order inside transaction', async () => {
+  test('reuses existing pending order and syncs amount to current price', async () => {
     mockedWithTransaction.mockImplementation(async (fn) => {
       const client = mockClient([
         { rows: [] }, // advisory lock
         {
-          rows: [{ id: ORDER_ID, amount: '499.00', status: 'pending_payment' }],
+          rows: [{ id: ORDER_ID, amount: '100.00', status: 'pending_payment' }],
         },
       ]);
       return fn(client);
     });
+    mockedSyncInTransaction.mockResolvedValueOnce(499);
 
     const result = await findOrCreatePendingAlbumOrder(baseInput);
 
+    expect(mockedSyncInTransaction).toHaveBeenCalledWith(expect.anything(), ORDER_ID, 499);
     expect(result).toEqual({
       orderId: ORDER_ID,
       orderAmount: 499,
@@ -128,11 +146,13 @@ describe('findOrCreatePendingAlbumOrder', () => {
       oid: 0,
       fields: [],
     });
+    mockedSyncPendingOrderAmount.mockResolvedValueOnce(499);
 
     const result = await findOrCreatePendingAlbumOrder(baseInput);
 
     expect(result.reusedExisting).toBe(true);
     expect(result.orderId).toBe(ORDER_ID);
+    expect(mockedSyncPendingOrderAmount).toHaveBeenCalledWith(ORDER_ID, 499);
     expect(mockedQuery).toHaveBeenCalledTimes(1);
   });
 });
