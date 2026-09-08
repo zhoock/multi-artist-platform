@@ -171,6 +171,10 @@ import {
 } from '@shared/lib/tracks/trackUploadErrorMessages';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 import { ExternalLink as ExternalLinkIcon } from 'lucide-react';
+import {
+  commitTrackUploadBatchToDb,
+  resolveTrackUploadBatchPostStorageDecision,
+} from './lib/trackUploadBatchCommit';
 
 /** Сообщение об успешной загрузке треков: RU — формы 1 трек / 2 трека / 5 треков. */
 function formatUploadedTracksSuccessMessage(
@@ -2040,20 +2044,25 @@ function UserDashboard() {
         }
       }
 
+      const postStorageDecision = resolveTrackUploadBatchPostStorageDecision(
+        abortController.signal,
+        tracksData.length
+      );
+
+      if (postStorageDecision.action === 'cancel') {
+        setAlertModal({
+          isOpen: true,
+          title: cancelledMessage,
+          message: formatUploadFailuresMessage(uploadFailures, ui),
+          variant: 'info',
+        });
+        return;
+      }
+
       // Обновляем прогресс: сохранение метаданных в БД (80-100%)
       setUploadProgress((prev) => ({ ...prev, [albumId]: 90 }));
 
-      if (tracksData.length === 0) {
-        if (abortController.signal.aborted) {
-          setAlertModal({
-            isOpen: true,
-            title: cancelledMessage,
-            message: formatUploadFailuresMessage(uploadFailures, ui),
-            variant: 'info',
-          });
-          return;
-        }
-
+      if (postStorageDecision.action === 'all_failed') {
         setAlertModal({
           isOpen: true,
           title: ui?.dashboard?.error ?? (lang === 'ru' ? 'Ошибка' : 'Error'),
@@ -2063,8 +2072,25 @@ function UserDashboard() {
         return;
       }
 
-      // Загружаем треки
-      const result = await uploadTracks(albumId, lang, tracksData);
+      const commitOutcome = await commitTrackUploadBatchToDb({
+        abortSignal: abortController.signal,
+        albumId,
+        lang,
+        tracksData,
+        uploadTracksFn: uploadTracks,
+      });
+
+      if (commitOutcome.status === 'cancelled') {
+        setAlertModal({
+          isOpen: true,
+          title: cancelledMessage,
+          message: formatUploadFailuresMessage(uploadFailures, ui),
+          variant: 'info',
+        });
+        return;
+      }
+
+      const result = commitOutcome.result;
 
       if (result.success && result.data) {
         const fromResponse = Array.isArray(result.data) ? result.data.length : 0;
