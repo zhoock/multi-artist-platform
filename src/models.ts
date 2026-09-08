@@ -608,6 +608,8 @@ export interface IInterface {
     albumPublishHintNeedsTracks?: string;
     albumPublishHintNeedsCover?: string;
     albumPublishHintNeedsFields?: string;
+    albumPublishHintTracksProcessing?: string;
+    albumPublishHintTracksFailed?: string;
     albumPublishHintReady?: string;
     publishAlbumFailed?: string;
     logout: string;

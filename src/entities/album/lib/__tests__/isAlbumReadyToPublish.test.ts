@@ -27,7 +27,7 @@ const readyDraft: AlbumEditable = {
 };
 
 describe('isAlbumReadyToPublish', () => {
-  test('returns true when draft has cover, tracks, and required metadata', () => {
+  test('returns true when draft has cover, legacy track src, and required metadata', () => {
     expect(isAlbumReadyToPublish(readyDraft)).toBe(true);
   });
 
@@ -38,6 +38,36 @@ describe('isAlbumReadyToPublish', () => {
   test('returns false without tracks', () => {
     expect(isAlbumReadyToPublish({ ...readyDraft, tracks: [] })).toBe(false);
   });
+
+  test('returns false when visible pipeline track is pending', () => {
+    expect(
+      isAlbumReadyToPublish({
+        ...readyDraft,
+        tracks: [
+          {
+            ...mockTrack,
+            src: '',
+            processingStatus: 'pending',
+          },
+        ],
+      })
+    ).toBe(false);
+  });
+
+  test('returns true when visible pipeline track is ready (client uses src from store)', () => {
+    expect(
+      isAlbumReadyToPublish({
+        ...readyDraft,
+        tracks: [
+          {
+            ...mockTrack,
+            src: 'https://cdn.example/track.opus',
+            processingStatus: 'ready',
+          },
+        ],
+      })
+    ).toBe(true);
+  });
 });
 
 describe('getAlbumPublishHintKey', () => {
@@ -47,6 +77,24 @@ describe('getAlbumPublishHintKey', () => {
 
   test('returns tracks when cover exists but tracks are missing', () => {
     expect(getAlbumPublishHintKey({ ...readyDraft, tracks: [] })).toBe('tracks');
+  });
+
+  test('returns processing when visible track is pending', () => {
+    expect(
+      getAlbumPublishHintKey({
+        ...readyDraft,
+        tracks: [{ ...mockTrack, src: '', processingStatus: 'processing' }],
+      })
+    ).toBe('processing');
+  });
+
+  test('returns processingFailed when visible track failed', () => {
+    expect(
+      getAlbumPublishHintKey({
+        ...readyDraft,
+        tracks: [{ ...mockTrack, src: '', processingStatus: 'failed' }],
+      })
+    ).toBe('processingFailed');
   });
 
   test('returns ready for publishable draft', () => {

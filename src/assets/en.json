@@ -701,6 +701,8 @@
       "albumPublishHintNeedsTracks": "Upload at least one track to publish this album.",
       "albumPublishHintNeedsCover": "Upload album cover art to publish this album.",
       "albumPublishHintNeedsFields": "Complete all required album fields to publish.",
+      "albumPublishHintTracksProcessing": "Wait until all tracks finish processing before publishing.",
+      "albumPublishHintTracksFailed": "Some tracks failed processing. Retry or replace them before publishing.",
       "albumPublishHintReady": "This album is ready for publication.",
       "publishAlbumFailed": "Could not publish album. Please try again.",
       "logout": "Logout",

@@ -276,6 +276,21 @@ export function AlbumsTabContent({
         (lang !== 'ru'
           ? 'Complete all required album fields to publish.'
           : 'Заполните все обязательные поля альбома для публикации.'),
+      tracks:
+        ui?.dashboard?.albumPublishHintNeedsTracks ??
+        (lang !== 'ru'
+          ? 'Upload at least one track to publish this album.'
+          : 'Загрузите хотя бы один трек для публикации альбома.'),
+      processing:
+        ui?.dashboard?.albumPublishHintTracksProcessing ??
+        (lang !== 'ru'
+          ? 'Wait until all tracks finish processing before publishing.'
+          : 'Дождитесь окончания обработки всех треков перед публикацией.'),
+      processingFailed:
+        ui?.dashboard?.albumPublishHintTracksFailed ??
+        (lang !== 'ru'
+          ? 'Some tracks failed processing. Retry or replace them before publishing.'
+          : 'У некоторых треков ошибка обработки. Повторите или замените их перед публикацией.'),
     }),
     [lang, ui?.dashboard]
   );
@@ -645,11 +660,17 @@ export function AlbumsTabContent({
                               </>
                             )}
                           </button>
-                          {!canPublishAlbum && publishHintKey !== 'tracks' ? (
+                          {!canPublishAlbum && publishHintKey !== 'ready' ? (
                             <p className="user-dashboard__publish-album-hint">
                               {publishHintKey === 'cover'
                                 ? publishHintCopy.cover
-                                : publishHintCopy.fields}
+                                : publishHintKey === 'tracks'
+                                  ? publishHintCopy.tracks
+                                  : publishHintKey === 'processing'
+                                    ? publishHintCopy.processing
+                                    : publishHintKey === 'processingFailed'
+                                      ? publishHintCopy.processingFailed
+                                      : publishHintCopy.fields}
                             </p>
                           ) : null}
                         </div>

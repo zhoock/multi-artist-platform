@@ -701,6 +701,8 @@
       "albumPublishHintNeedsTracks": "Загрузите хотя бы один трек для публикации альбома.",
       "albumPublishHintNeedsCover": "Загрузите обложку альбома для публикации.",
       "albumPublishHintNeedsFields": "Заполните все обязательные поля альбома для публикации.",
+      "albumPublishHintTracksProcessing": "Дождитесь окончания обработки всех треков перед публикацией.",
+      "albumPublishHintTracksFailed": "У некоторых треков ошибка обработки. Повторите или замените их перед публикацией.",
       "albumPublishHintReady": "Альбом готов к публикации.",
       "publishAlbumFailed": "Не удалось опубликовать альбом. Попробуйте снова.",
       "logout": "Выйти",

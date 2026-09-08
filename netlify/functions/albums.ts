@@ -28,7 +28,7 @@ import { classifyAuthorizationHeader } from './lib/jwt';
 import type { ApiResponse, SupportedLang } from './lib/types';
 import { updateAlbumsJson } from './lib/github-api';
 import { assertArtistVisibleToViewer } from './lib/artist-publication';
-import { isAlbumRowReadyToPublish } from './lib/album-publish';
+import { isAlbumRowReadyToPublish, loadAlbumPublishTrackContext } from './lib/album-publish';
 import { PublicArtistResolverError, resolvePublicArtistUserId } from './lib/public-artist-resolver';
 import { resolveAssetForPlayback } from './lib/assetResolver';
 import {
@@ -1564,25 +1564,19 @@ export const handler: Handler = async (
             return createErrorResponse(400, 'Album is already published.');
           }
 
-          const trackCountResult = await query<{ count: string }>(
-            `SELECT COUNT(*)::text AS count
-             FROM tracks t
-             INNER JOIN albums a ON a.id = t.album_id
-             WHERE a.user_id = $1 AND a.album_id = $2`,
-            [userId, data.albumId]
-          );
-          const trackCount = Number(trackCountResult.rows[0]?.count ?? 0);
-
-          const canonicalRowResult = await query<AlbumRow>(
-            `SELECT * FROM albums
-             WHERE user_id = $1 AND album_id = $2
-             ORDER BY updated_at DESC NULLS LAST, created_at DESC
-             LIMIT 1`,
-            [userId, data.albumId]
-          );
+          const [trackContext, canonicalRowResult] = await Promise.all([
+            loadAlbumPublishTrackContext(userId, data.albumId),
+            query<AlbumRow>(
+              `SELECT * FROM albums
+               WHERE user_id = $1 AND album_id = $2
+               ORDER BY updated_at DESC NULLS LAST, created_at DESC
+               LIMIT 1`,
+              [userId, data.albumId]
+            ),
+          ]);
           const rowForCheck = canonicalRowResult.rows[0] ?? existingAlbum;
 
-          if (!isAlbumRowReadyToPublish(rowForCheck, trackCount)) {
+          if (!isAlbumRowReadyToPublish(rowForCheck, trackContext)) {
             return createErrorResponse(400, 'Album is not ready to publish.');
           }
 
