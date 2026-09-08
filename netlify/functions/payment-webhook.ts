@@ -20,13 +20,19 @@ import { getDecryptedSecretKey } from './payment-settings';
 import {
   amountsEqual,
   expectedStatusForEvent,
+  expectedStatusForRefundEvent,
   fetchPaymentFromYooKassaApi,
+  fetchRefundFromYooKassaApi,
   getClientIpFromEvent,
+  isFullRefundAmount,
   isNotificationIpAllowed,
   metaString,
   type YooKassaPaymentApiShape,
+  type YooKassaRefundApiShape,
 } from './lib/yookassa-webhook-verify';
 import { handlePremiumSubscriptionWebhookIfApplicable } from './lib/subscription-webhook';
+import { getSubscriptionPaymentByProviderId } from './lib/subscription-billing';
+import { revokeAlbumPurchaseForRefund } from './lib/revoke-album-purchase-refund';
 
 interface PaymentWebhookBody {
   type: string;
@@ -34,6 +40,7 @@ interface PaymentWebhookBody {
   object: {
     id: string;
     status: string;
+    payment_id?: string;
     amount: {
       value: string;
       currency: string;
@@ -69,6 +76,8 @@ const PROCESSED_EVENTS = new Set([
   'payment.canceled',
   'payment.waiting_for_capture',
 ]);
+
+const REFUND_EVENTS = new Set(['refund.succeeded']);
 
 /** Без последних октетов / короткий префикс для безопасных логов */
 function maskClientIp(raw: string | null): string {
@@ -209,6 +218,10 @@ export const handler: Handler = async (event: HandlerEvent) => {
       { success: true, processed: false, message: 'Ignored: not a notification' },
       headers
     );
+  }
+
+  if (REFUND_EVENTS.has(data.event)) {
+    return handleRefundWebhook(event, data, headers);
   }
 
   if (!data.object?.id) {
@@ -470,5 +483,222 @@ async function handleWaitingForCapture(
   );
   if ((payUp.rowCount ?? 0) === 0) {
     throw new Error('payment_row_missing_for_webhook');
+  }
+}
+
+async function handleRefundWebhook(
+  event: HandlerEvent,
+  data: PaymentWebhookBody,
+  headers: Record<string, string>
+) {
+  const refundId = data.object?.id?.trim();
+  const providerPaymentId = data.object?.payment_id?.trim();
+
+  if (!refundId) {
+    return jsonResponse(
+      200,
+      { success: true, processed: false, message: 'Ignored: missing refund id' },
+      headers
+    );
+  }
+
+  if (!providerPaymentId) {
+    return jsonResponse(
+      200,
+      { success: true, processed: false, message: 'Ignored: missing payment id on refund' },
+      headers
+    );
+  }
+
+  const clientIp = getClientIpFromEvent(event);
+  const skipIpCheck = process.env.SKIP_YOOKASSA_WEBHOOK_IP_CHECK === 'true';
+  const allowUnknownIp = process.env.NETLIFY_DEV === 'true';
+
+  if (!isNotificationIpAllowed(clientIp, { skip: skipIpCheck, allowUnknownIp })) {
+    console.warn('yookassa_refund_webhook.ip_rejected', { clientIpMasked: maskClientIp(clientIp) });
+    return jsonResponse(
+      200,
+      { success: true, processed: false, message: 'Verification failed: client IP' },
+      headers
+    );
+  }
+
+  const expectedRefundStatus = expectedStatusForRefundEvent(data.event);
+  if (!expectedRefundStatus) {
+    return jsonResponse(
+      200,
+      { success: true, processed: false, message: 'No expected refund status mapping' },
+      headers
+    );
+  }
+
+  const subscriptionPayment = await getSubscriptionPaymentByProviderId(providerPaymentId);
+  if (subscriptionPayment) {
+    console.log('yookassa_refund_webhook.subscription_payment_skipped', {
+      paymentIdSuffix: `…${providerPaymentId.slice(-6)}`,
+    });
+    return jsonResponse(
+      200,
+      { success: true, processed: false, message: 'Subscription refund not handled here' },
+      headers
+    );
+  }
+
+  const resolved = await resolveOrderContext(providerPaymentId, undefined);
+  if (!resolved.ok) {
+    console.warn('yookassa_refund_webhook.tenant_resolve_failed', {
+      reason: resolved.reason,
+      paymentIdSuffix: `…${providerPaymentId.slice(-6)}`,
+    });
+    return jsonResponse(
+      200,
+      { success: true, processed: false, message: 'Verification failed: order resolution' },
+      headers
+    );
+  }
+
+  const { order } = resolved;
+  const creds = await getDecryptedSecretKey(order.user_id, 'yookassa');
+  if (!creds?.shopId || !creds.secretKey) {
+    console.error('yookassa_refund_webhook.missing_seller_credentials', {
+      sellerHint: `…${order.user_id.slice(-6)}`,
+      orderIdSuffix: `…${order.id.slice(-6)}`,
+    });
+    return jsonResponse(
+      200,
+      { success: true, processed: false, message: 'Verification failed: seller credentials' },
+      headers
+    );
+  }
+
+  const apiResult = await fetchRefundFromYooKassaApi(refundId, creds.shopId, creds.secretKey);
+  if (!apiResult.ok) {
+    const retryable = apiResult.status === 0 || apiResult.status >= 500 || apiResult.status === 429;
+    console.error('yookassa_refund_webhook.api_fetch_failed', {
+      httpStatus: apiResult.status,
+      retryable,
+      refundIdSuffix: `…${refundId.slice(-6)}`,
+    });
+    return jsonResponse(
+      retryable ? 503 : 200,
+      {
+        success: !retryable,
+        processed: false,
+        message: retryable ? 'YooKassa API temporarily unavailable' : 'API verification failed',
+      },
+      headers
+    );
+  }
+
+  const api = apiResult.refund;
+  if (api.status !== expectedRefundStatus) {
+    console.warn('yookassa_refund_webhook.status_mismatch', {
+      event: data.event,
+      expected: expectedRefundStatus,
+      actual: api.status,
+      refundIdSuffix: `…${api.id.slice(-6)}`,
+    });
+    return jsonResponse(
+      200,
+      { success: true, processed: false, message: 'Verification failed: refund status mismatch' },
+      headers
+    );
+  }
+
+  if (api.payment_id !== providerPaymentId) {
+    console.warn('yookassa_refund_webhook.payment_id_mismatch', {
+      refundIdSuffix: `…${api.id.slice(-6)}`,
+    });
+    return jsonResponse(
+      200,
+      { success: true, processed: false, message: 'Verification failed: refund payment_id' },
+      headers
+    );
+  }
+
+  if (
+    !amountsEqual(api.amount.value, data.object.amount.value) ||
+    !currenciesMatch(api.amount.currency, data.object.amount.currency)
+  ) {
+    console.warn('yookassa_refund_webhook.amount_mismatch', {
+      refundIdSuffix: `…${api.id.slice(-6)}`,
+    });
+    return jsonResponse(
+      200,
+      { success: true, processed: false, message: 'Verification failed: refund amount mismatch' },
+      headers
+    );
+  }
+
+  if (!isFullRefundAmount(api.amount.value, order.amount)) {
+    console.log('yookassa_refund_webhook.partial_refund_skipped', {
+      orderIdSuffix: `…${order.id.slice(-6)}`,
+      refundAmount: api.amount.value,
+      orderAmount: order.amount,
+    });
+    return jsonResponse(
+      200,
+      { success: true, processed: false, message: 'Partial refund: purchase not revoked' },
+      headers
+    );
+  }
+
+  const syntheticId = buildSyntheticEventId(data);
+  const reserved = await reserveWebhookEvent(syntheticId, data.event, providerPaymentId);
+  if (!reserved) {
+    console.log('yookassa_refund_webhook.duplicate', {
+      event: data.event,
+      refundIdSuffix: `…${refundId.slice(-6)}`,
+    });
+    return jsonResponse(
+      200,
+      { success: true, processed: false, duplicate: true, message: 'Event already processed' },
+      headers
+    );
+  }
+
+  try {
+    await handleRefundSucceeded(api, order.id);
+    console.log('yookassa_refund_webhook.processed', {
+      event: data.event,
+      orderIdSuffix: `…${order.id.slice(-6)}`,
+      refundIdSuffix: `…${api.id.slice(-6)}`,
+    });
+    return jsonResponse(
+      200,
+      { success: true, processed: true, message: 'Refund webhook processed' },
+      headers
+    );
+  } catch (e) {
+    await releaseWebhookEvent(syntheticId);
+    console.error('yookassa_refund_webhook.processing_error', {
+      event: data.event,
+      err: e instanceof Error ? e.message : String(e),
+      orderIdSuffix: `…${order.id.slice(-6)}`,
+    });
+    return jsonResponse(
+      503,
+      { success: false, processed: false, message: 'Processing error; will retry' },
+      headers
+    );
+  }
+}
+
+async function handleRefundSucceeded(api: YooKassaRefundApiShape, orderId: string): Promise<void> {
+  const paymentRow = await query<{ id: string }>(
+    `SELECT id FROM payments
+     WHERE provider = 'yookassa' AND provider_payment_id = $1
+     LIMIT 1`,
+    [api.payment_id]
+  );
+  if (paymentRow.rows.length === 0) {
+    throw new Error('payment_row_missing_for_refund_webhook');
+  }
+
+  const revokeResult = await revokeAlbumPurchaseForRefund(orderId);
+  if (revokeResult.outcome === 'no_purchase') {
+    console.warn('yookassa_refund_webhook.no_purchase_for_order', {
+      orderIdSuffix: `…${orderId.slice(-6)}`,
+    });
   }
 }

@@ -197,3 +197,86 @@ export async function countPurchaseEmailReservations(orderId: string): Promise<n
   );
   return Number.parseInt(result.rows[0]?.count ?? '0', 10);
 }
+
+export async function getPurchaseRevokedAt(): Promise<Date | null> {
+  const result = await query<{ revoked_at: Date | null }>(
+    `SELECT revoked_at
+     FROM purchases
+     WHERE album_id = $1
+       AND LOWER(TRIM(customer_email)) = LOWER(TRIM($2))
+     LIMIT 1`,
+    [ALBUM_E2E_SLUG, ALBUM_E2E_BUYER_EMAIL]
+  );
+  return result.rows[0]?.revoked_at ?? null;
+}
+
+export async function getPurchaseToken(): Promise<string | null> {
+  const result = await query<{ purchase_token: string }>(
+    `SELECT purchase_token::text AS purchase_token
+     FROM purchases
+     WHERE album_id = $1
+       AND LOWER(TRIM(customer_email)) = LOWER(TRIM($2))
+     LIMIT 1`,
+    [ALBUM_E2E_SLUG, ALBUM_E2E_BUYER_EMAIL]
+  );
+  return result.rows[0]?.purchase_token ?? null;
+}
+
+export async function seedSecondBuyerAlbumPurchase(): Promise<{
+  orderId: string;
+  providerPaymentId: string;
+  buyerEmail: string;
+  buyerId: string;
+}> {
+  const buyerId = 'dddddddd-dddd-4ddd-8ddd-dddddddddd99';
+  const buyerEmail = 'album-buyer-2@pr10-e2e.test';
+  const orderId = crypto.randomUUID();
+  const paymentRowId = crypto.randomUUID();
+  const providerPaymentId = crypto.randomUUID();
+
+  await query(
+    `INSERT INTO users (id, email, password_hash, name, genre_code, public_slug)
+     VALUES ($1::uuid, $2, 'e2e-hash', 'Album E2E Buyer 2', 'other', 'album-e2e-buyer-2')
+     ON CONFLICT (id) DO NOTHING`,
+    [buyerId, buyerEmail]
+  );
+
+  await query(
+    `INSERT INTO orders (
+       id, user_id, album_id, amount, currency, customer_email,
+       buyer_display_name, status, payment_provider, payment_id, paid_at
+     ) VALUES (
+       $1, $2::uuid, $3, $4, 'RUB', $5,
+       'E2E Buyer 2', 'paid', 'yookassa', $6, CURRENT_TIMESTAMP
+     )`,
+    [orderId, ALBUM_E2E_ARTIST_ID, ALBUM_E2E_SLUG, ALBUM_E2E_AMOUNT, buyerEmail, providerPaymentId]
+  );
+
+  await query(
+    `INSERT INTO payments (
+       id, order_id, provider, provider_payment_id, status, amount, currency
+     ) VALUES ($1, $2, 'yookassa', $3, 'succeeded', $4, 'RUB')`,
+    [paymentRowId, orderId, providerPaymentId, ALBUM_E2E_AMOUNT.toFixed(2)]
+  );
+
+  await query(
+    `INSERT INTO purchases (order_id, customer_email, album_id, user_id)
+     VALUES ($1, $2, $3, $4::uuid)`,
+    [orderId, buyerEmail, ALBUM_E2E_SLUG, buyerId]
+  );
+
+  return { orderId, providerPaymentId, buyerEmail, buyerId };
+}
+
+export async function isPurchaseActiveForEmail(email: string): Promise<boolean> {
+  const result = await query<{ one: number }>(
+    `SELECT 1 AS one
+     FROM purchases
+     WHERE album_id = $1
+       AND LOWER(TRIM(customer_email)) = LOWER(TRIM($2))
+       AND revoked_at IS NULL
+     LIMIT 1`,
+    [ALBUM_E2E_SLUG, email]
+  );
+  return result.rows.length > 0;
+}

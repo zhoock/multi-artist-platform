@@ -114,6 +114,16 @@ export interface YooKassaPaymentApiShape {
   } | null;
 }
 
+/** Refund object from GET /v3/refunds/{id} (YooKassa API). */
+export interface YooKassaRefundApiShape {
+  id: string;
+  status: string;
+  payment_id: string;
+  amount: { value: string; currency: string };
+  created_at?: string;
+  metadata?: Record<string, unknown>;
+}
+
 export async function fetchPaymentFromYooKassaApi(
   paymentId: string,
   shopId: string,
@@ -162,6 +172,59 @@ export function expectedStatusForEvent(eventName: string): string | null {
   if (eventName === 'payment.canceled') return 'canceled';
   if (eventName === 'payment.waiting_for_capture') return 'waiting_for_capture';
   return null;
+}
+
+/** Ожидаемый статус объекта возврата для refund webhook event. */
+export function expectedStatusForRefundEvent(eventName: string): string | null {
+  if (eventName === 'refund.succeeded') return 'succeeded';
+  return null;
+}
+
+export async function fetchRefundFromYooKassaApi(
+  refundId: string,
+  shopId: string,
+  secretKey: string
+): Promise<
+  { ok: true; refund: YooKassaRefundApiShape } | { ok: false; status: number; error: string }
+> {
+  const base = (process.env.YOOKASSA_API_URL || 'https://api.yookassa.ru/v3/payments').replace(
+    /\/payments\/?$/,
+    ''
+  );
+  const url = `${base}/refunds/${refundId}`;
+  const auth = Buffer.from(`${shopId.trim()}:${secretKey.trim()}`).toString('base64');
+
+  try {
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: {
+        Authorization: `Basic ${auth}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!res.ok) {
+      const text = await res.text();
+      return {
+        ok: false,
+        status: res.status,
+        error: text.slice(0, 200) || `HTTP ${res.status}`,
+      };
+    }
+
+    const refund = (await res.json()) as YooKassaRefundApiShape;
+    if (!refund?.id || !refund?.status || !refund?.payment_id) {
+      return { ok: false, status: 502, error: 'Invalid refund JSON from YooKassa' };
+    }
+    return { ok: true, refund };
+  } catch (e: unknown) {
+    return { ok: false, status: 0, error: getErrorMessage(e) || 'fetch failed' };
+  }
+}
+
+/** Whether refund amount covers the full order amount (album purchases are single-price). */
+export function isFullRefundAmount(refundAmount: string, orderAmount: string): boolean {
+  return amountsEqual(refundAmount, orderAmount);
 }
 
 export function amountsEqual(a: string, b: string): boolean {
