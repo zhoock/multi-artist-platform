@@ -378,5 +378,8 @@
 # Production/deploy-preview: scripts/generate-dist-redirects.ts → dist/_redirects в [build].command.
 # Netlify Dev проксирует /scripts/main.js на webpack (8080); historyApiFallback — там.
 
+[functions."public-document"]
+  included_files = ["netlify/functions/_document/**"]
+
 [functions."scheduled-subscription-renewals"]
   schedule = "*/15 * * * *"
