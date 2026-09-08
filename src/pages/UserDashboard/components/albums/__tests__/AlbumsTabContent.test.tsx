@@ -174,4 +174,19 @@ describe('AlbumsTabContent', () => {
     expect(cta).toBeTruthy();
     expect(cta?.textContent).toContain('Upload New Album');
   });
+
+  it('shows email verification onboarding instead of upload UI when unverified', () => {
+    renderWithProviders(<AlbumsTabContent {...createBaseProps({ emailVerified: false })} />);
+
+    expect(screen.getByRole('region', { name: /verify your email/i })).toBeTruthy();
+    expect(screen.queryByText('Upload New Album')).toBeNull();
+    expect(screen.queryByText('No albums yet')).toBeNull();
+  });
+
+  it('keeps upload flow available for verified artists', () => {
+    render(<AlbumsTabContent {...createBaseProps({ emailVerified: true })} />);
+
+    expect(screen.getByText('No albums yet')).toBeTruthy();
+    expect(screen.queryByRole('region', { name: /verify your email/i })).toBeNull();
+  });
 });

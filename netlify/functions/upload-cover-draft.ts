@@ -121,6 +121,12 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
       return unauthorizedFromAuthHeader(event);
     }
 
+    const { guardUserEmailVerifiedForUpload } = await import('./lib/email-verification');
+    const emailGuardResponse = await guardUserEmailVerifiedForUpload(userId);
+    if (emailGuardResponse) {
+      return emailGuardResponse;
+    }
+
     // Парсим JSON body
     const body = parseJsonBody<Partial<UploadCoverDraftRequest>>(event.body, {});
 

@@ -3,6 +3,7 @@
  */
 
 import { clearPremiumCheckoutAuthIntent } from '@shared/lib/authIntent';
+import { clearPendingUploadAlbumIntent } from '@shared/lib/dashboardOpenIntent';
 import { getLang } from '@shared/lib/lang';
 import { getStore } from '@shared/model/appStore';
 import { resetCatalogAfterAuthEnd } from '@shared/lib/resetCatalogAfterAuthEnd';
@@ -273,6 +274,7 @@ export function clearAuth(): void {
     localStorage.removeItem(USER_STORAGE_KEY);
     clearCachedOwnPublicSlug();
     clearPremiumCheckoutAuthIntent();
+    clearPendingUploadAlbumIntent();
     try {
       resetCatalogAfterAuthEnd(getStore().dispatch);
     } catch {

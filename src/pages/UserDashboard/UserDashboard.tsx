@@ -38,7 +38,13 @@ import {
   localizeDashboardModalBackground,
   resolveDashboardModalCloseTarget,
 } from '@shared/lib/dashboardModalBackground';
-import { readDashboardOpenIntent, stripDashboardOpenIntent } from '@shared/lib/dashboardOpenIntent';
+import {
+  readDashboardOpenIntent,
+  stripDashboardOpenIntent,
+  clearPendingUploadAlbumIntent,
+  readPendingUploadAlbumIntent,
+  savePendingUploadAlbumIntent,
+} from '@shared/lib/dashboardOpenIntent';
 import { EmailVerificationOnboarding } from '@shared/lib/emailVerification';
 import { fetchWithAuthSession } from '@shared/lib/authFetch';
 import { getHttpErrorMessage, isConditionError } from '@shared/lib/errors/apiError';
@@ -533,10 +539,17 @@ function UserDashboard() {
     setEditArticleModal({ isOpen: true, article: createNewDraftArticle() });
   }, []);
 
-  const openEditAlbumModal = useCallback((albumId?: string) => {
-    preloadEditAlbumModal();
-    setEditAlbumModal({ isOpen: true, ...(albumId ? { albumId } : {}) });
-  }, []);
+  const openEditAlbumModal = useCallback(
+    (albumId?: string) => {
+      if (!emailVerified) {
+        savePendingUploadAlbumIntent(albumId);
+        return;
+      }
+      preloadEditAlbumModal();
+      setEditAlbumModal({ isOpen: true, ...(albumId ? { albumId } : {}) });
+    },
+    [emailVerified]
+  );
   const [isLoadingTracks, setIsLoadingTracks] = useState<boolean>(false);
   const [isUploadingTracks, setIsUploadingTracks] = useState<{ [albumId: string]: boolean }>({});
   const [uploadProgress, setUploadProgress] = useState<{ [albumId: string]: number }>({});
@@ -737,21 +750,29 @@ function UserDashboard() {
 
   const consumeDashboardOpenIntent = useCallback(() => {
     const intent = readDashboardOpenIntent(location.state);
-    if (!intent) return;
+    const pendingUpload = readPendingUploadAlbumIntent();
+    const wantsUploadModal = Boolean(intent?.openEditAlbumModal || pendingUpload);
+    if (!intent && !pendingUpload) return;
 
-    const nextState = stripDashboardOpenIntent(intent);
-    const replaceState = Object.keys(nextState).length > 0 ? nextState : null;
+    const nextState = intent ? stripDashboardOpenIntent(intent) : null;
+    const replaceState = nextState && Object.keys(nextState).length > 0 ? nextState : null;
     let consumed = false;
 
-    if (intent.openEditAlbumModal) {
+    if (wantsUploadModal) {
       if (emailVerified) {
         preloadEditAlbumModal();
-        setEditAlbumModal({ isOpen: true });
+        setEditAlbumModal({
+          isOpen: true,
+          ...(pendingUpload?.albumId ? { albumId: pendingUpload.albumId } : {}),
+        });
+        clearPendingUploadAlbumIntent();
         consumed = true;
+      } else {
+        savePendingUploadAlbumIntent(pendingUpload?.albumId);
       }
     }
 
-    if (intent.openNewArticleModal) {
+    if (intent?.openNewArticleModal) {
       if (emailVerified) {
         preloadEditArticleModal();
         setEditArticleModal({ isOpen: true, article: createNewDraftArticle() });
@@ -759,12 +780,12 @@ function UserDashboard() {
       consumed = true;
     }
 
-    if (intent.scrollToHeaderImages && !isListener) {
+    if (intent?.scrollToHeaderImages && !isListener) {
       setScrollSettingsToHeaderImages(true);
       consumed = true;
     }
 
-    if (consumed) {
+    if (consumed && intent) {
       navigate(
         { pathname: location.pathname, search: location.search, hash: location.hash },
         { replace: true, state: replaceState }

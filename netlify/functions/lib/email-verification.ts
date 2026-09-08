@@ -3,6 +3,7 @@
  */
 
 import crypto from 'node:crypto';
+import { createErrorResponse } from './api-helpers';
 import { query } from './db';
 import { sendVerificationEmail } from './email';
 import { normalizeEmailLocale, type EmailLocale } from './email-locale';
@@ -140,6 +141,22 @@ export async function isUserEmailVerified(userId: string): Promise<boolean> {
     0
   );
   return Boolean(result.rows[0]?.is_email_verified);
+}
+
+export function createEmailNotVerifiedResponse() {
+  return createErrorResponse(403, 'Email verification required', undefined, {
+    code: 'EMAIL_NOT_VERIFIED',
+  });
+}
+
+/** Returns an error response when the user must verify email before upload mutations. */
+export async function guardUserEmailVerifiedForUpload(
+  userId: string
+): Promise<ReturnType<typeof createErrorResponse> | null> {
+  if (await isUserEmailVerified(userId)) {
+    return null;
+  }
+  return createEmailNotVerifiedResponse();
 }
 
 export function mapAuthUser(user: VerificationUserRow) {

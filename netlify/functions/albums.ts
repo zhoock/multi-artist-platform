@@ -1165,6 +1165,12 @@ export const handler: Handler = async (
           : unauthorizedFromAuthHeader(event);
       }
 
+      const { guardUserEmailVerifiedForUpload } = await import('./lib/email-verification');
+      const emailGuardResponse = await guardUserEmailVerifiedForUpload(userId);
+      if (emailGuardResponse) {
+        return emailGuardResponse;
+      }
+
       let data: CreateAlbumRequest;
       try {
         data = parseJsonBody<CreateAlbumRequest>(event.body, {} as CreateAlbumRequest);
