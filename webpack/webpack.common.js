@@ -185,6 +185,10 @@ module.exports = {
           to: path.resolve(__dirname, '../dist/images'), // Папка назначения в dist
         },
         {
+          from: path.resolve(__dirname, '../src/og'),
+          to: path.resolve(__dirname, '../dist/og'),
+        },
+        {
           from: path.resolve(__dirname, '../src/assets'), // Путь к JSON файлам в src/assets
           to: path.resolve(__dirname, '../dist/assets'), // Папка назначения в dist
           filter: (resourcePath) => {

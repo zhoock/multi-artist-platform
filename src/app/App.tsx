@@ -23,6 +23,7 @@ import { Helmet } from 'react-helmet-async';
 import { platformSeoForLang } from '@shared/constants/platformBranding';
 import { buildLocalizedPublicPath } from '@shared/lib/i18n/routeLang';
 import { buildPublicSiteUrl, getPublicSiteOrigin } from '@shared/lib/publicSiteOrigin';
+import { buildDefaultOgImageUrl } from '@shared/lib/seo/defaultOgImage';
 import { buildPublicPageHreflangUrls } from '@shared/lib/seo/buildPublicPageHreflangUrls';
 import { publicPageHreflangLinks } from '@shared/lib/seo/PublicPageHreflangLinks';
 import { isHelpLoaderPath } from '@entities/help/lib/helpRouteMatch';
@@ -317,6 +318,7 @@ function Layout() {
 
   const siteOrigin = getPublicSiteOrigin();
   const seo = useMemo(() => {
+    const defaultOgImage = buildDefaultOgImageUrl(siteOrigin);
     const hreflang = buildPublicPageHreflangUrls((routeLang) =>
       buildLocalizedPublicPath(routeLang, '/')
     );
@@ -326,13 +328,13 @@ function Layout() {
         title: platformSeoForLang('ru').title,
         desc: platformSeoForLang('ru').description,
         url: hreflang.ru,
-        ogImage: buildPublicSiteUrl('/og/default.jpg'),
+        ogImage: defaultOgImage,
       },
       en: {
         title: platformSeoForLang('en').title,
         desc: platformSeoForLang('en').description,
         url: hreflang.en,
-        ogImage: buildPublicSiteUrl('/og/default_en.jpg'),
+        ogImage: defaultOgImage,
       },
     };
   }, [siteOrigin]);
