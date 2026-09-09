@@ -2,13 +2,11 @@ import type { PublicPageHreflangUrls } from './buildPublicPageHreflangUrls';
 
 /** Native `<link rel="alternate">` nodes — use as `{publicPageHreflangLinks(hreflang)}` inside `<Helmet>`. */
 export function publicPageHreflangLinks(hreflang: PublicPageHreflangUrls) {
-  return (
-    <>
-      <link rel="alternate" href={hreflang.ru} hrefLang="ru" />
-      <link rel="alternate" href={hreflang.en} hrefLang="en" />
-      <link rel="alternate" href={hreflang.xDefault} hrefLang="x-default" />
-    </>
-  );
+  return [
+    <link key="hreflang-ru" rel="alternate" href={hreflang.ru} hrefLang="ru" />,
+    <link key="hreflang-en" rel="alternate" href={hreflang.en} hrefLang="en" />,
+    <link key="hreflang-xd" rel="alternate" href={hreflang.xDefault} hrefLang="x-default" />,
+  ];
 }
 
 type PublicPageHreflangLinksProps = {

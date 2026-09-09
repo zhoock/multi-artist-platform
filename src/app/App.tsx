@@ -26,6 +26,7 @@ import { buildPublicSiteUrl, getPublicSiteOrigin } from '@shared/lib/publicSiteO
 import { buildDefaultOgImageUrl } from '@shared/lib/seo/defaultOgImage';
 import { buildPublicPageHreflangUrls } from '@shared/lib/seo/buildPublicPageHreflangUrls';
 import { publicPageHreflangLinks } from '@shared/lib/seo/PublicPageHreflangLinks';
+import { routeHasPageLevelHreflang } from '@shared/lib/seo/routeHasPageLevelHreflang';
 import { isHelpLoaderPath } from '@entities/help/lib/helpRouteMatch';
 import { albumsLoader } from '@routes/loaders/albumsLoader';
 import { ArtistPageSkeleton } from '@pages/Home/ui/ArtistPageSkeleton';
@@ -446,6 +447,7 @@ function Layout() {
   const isPrivacyRoute = matchPath({ path: '/privacy', end: true }, pathnameWithoutLang);
   const isLegalDocumentRoute = isOfferRoute || isPrivacyRoute;
   const isHelpRoute = isHelpLoaderPath(location.pathname);
+  const pageOwnsHreflang = routeHasPageLevelHreflang(activePathnameWithoutLang, hasArtistParam);
 
   useEffect(() => {
     if (isHelpRoute && popup) {
@@ -670,7 +672,7 @@ function Layout() {
               <meta name="color-scheme" content="dark light" />
               <link rel="canonical" href={seo[lang].url} />
 
-              {publicPageHreflangLinks(seo.hreflang)}
+              {!pageOwnsHreflang ? publicPageHreflangLinks(seo.hreflang) : null}
 
               {/* Open Graph / Twitter */}
               <meta property="og:type" content="website" />
