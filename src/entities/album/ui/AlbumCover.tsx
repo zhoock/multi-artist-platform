@@ -122,6 +122,8 @@ function AlbumCover({
   sizes,
   onColorsExtracted,
   imageSource = 'proxy',
+  loading = 'lazy',
+  fetchPriority,
 }: CoverProps & {
   onColorsExtracted?: (colors: { dominant: string; palette: string[] }) => void;
 }) {
@@ -209,7 +211,8 @@ function AlbumCover({
       <img
         ref={imgRef}
         className="album-cover__image"
-        loading="lazy"
+        loading={loading}
+        fetchPriority={fetchPriority}
         decoding="async"
         src={fallbackSrc}
         srcSet={jpegSrcSet}
@@ -233,6 +236,8 @@ export default memo(AlbumCover, (prevProps, nextProps) => {
     prevProps.densities === nextProps.densities &&
     prevProps.sizes === nextProps.sizes &&
     prevProps.imageSource === nextProps.imageSource &&
+    prevProps.loading === nextProps.loading &&
+    prevProps.fetchPriority === nextProps.fetchPriority &&
     callbacksEqual
   );
 });

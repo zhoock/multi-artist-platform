@@ -203,6 +203,10 @@ export interface CoverProps {
   sizes?: string;
   /** Default `proxy` — direct Supabase CDN is opt-in for display-only contexts. */
   imageSource?: 'proxy' | 'cdn';
+  /** Default `lazy`. Use `eager` only for above-the-fold LCP cover. */
+  loading?: 'lazy' | 'eager';
+  /** React maps to `fetchpriority`; use `high` for the first visible cover only. */
+  fetchPriority?: 'high' | 'low' | 'auto';
 }
 
 export interface String {

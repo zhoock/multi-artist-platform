@@ -39,6 +39,40 @@ describe('AlbumCover imageSource', () => {
     expect(img.getAttribute('src')).not.toContain('supabase.co');
   });
 
+  test('defaults to lazy loading without fetchPriority', () => {
+    render(
+      <AlbumCover
+        img={COVER_KEY}
+        userId={TEST_USER_ID}
+        fullName="Album"
+        size={448}
+        densities={[1]}
+      />
+    );
+
+    const img = screen.getByRole('img', { name: /обложка альбома/i });
+    expect(img).toHaveAttribute('loading', 'lazy');
+    expect(img.getAttribute('fetchpriority')).toBeNull();
+  });
+
+  test('supports eager loading and high fetchPriority for LCP cover', () => {
+    render(
+      <AlbumCover
+        img={COVER_KEY}
+        userId={TEST_USER_ID}
+        fullName="Album"
+        size={448}
+        densities={[1]}
+        loading="eager"
+        fetchPriority="high"
+      />
+    );
+
+    const img = screen.getByRole('img', { name: /обложка альбома/i });
+    expect(img).toHaveAttribute('loading', 'eager');
+    expect(img).toHaveAttribute('fetchpriority', 'high');
+  });
+
   test('imageSource="cdn" uses Supabase public URLs', () => {
     render(
       <AlbumCover

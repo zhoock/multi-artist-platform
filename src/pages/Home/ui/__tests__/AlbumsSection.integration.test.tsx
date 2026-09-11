@@ -164,6 +164,38 @@ describe('AlbumsSection integration tests', () => {
     expect(screen.getByAltText(/Обложка альбома Album 1/)).toBeInTheDocument();
   });
 
+  test('первой обложке альбома — eager + fetchPriority high, остальным — lazy', () => {
+    renderWithProviders(<AlbumsSection />, {
+      initialEntries: ['/?artist=test-artist'],
+      preloadedState: {
+        lang: { current: 'en' },
+        currentArtist: { publicSlug: 'test-artist' },
+        albums: createAlbumsTestState(),
+        artistAlbumCatalog: createCatalogTestState({
+          status: 'succeeded',
+          data: mockCatalogAlbums,
+          lastUpdated: Date.now(),
+        }),
+        uiDictionary: {
+          en: {
+            status: 'succeeded',
+            error: null,
+            data: [{ menu: {}, buttons: {}, titles: { albums: 'Albums' } }],
+            lastUpdated: Date.now(),
+          },
+          ru: { status: 'idle', error: null, data: [], lastUpdated: null },
+        },
+      },
+    });
+
+    const covers = screen.getAllByRole('img', { name: /обложка альбома/i });
+    expect(covers).toHaveLength(2);
+    expect(covers[0]).toHaveAttribute('loading', 'eager');
+    expect(covers[0]).toHaveAttribute('fetchpriority', 'high');
+    expect(covers[1]).toHaveAttribute('loading', 'lazy');
+    expect(covers[1].getAttribute('fetchpriority')).toBeNull();
+  });
+
   test('должен отобразить список альбомов', () => {
     renderWithProviders(<AlbumsSection />, {
       initialEntries: ['/?artist=test-artist'],

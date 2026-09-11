@@ -187,7 +187,7 @@ export function AlbumsSection({ isOwner = false }: { isOwner?: boolean }) {
         ) : (
           <>
             <div className="albums__list">
-              {displayedAlbums.map((album) => (
+              {displayedAlbums.map((album, index) => (
                 <WrapperAlbumCover
                   key={album.albumId}
                   albumId={album.albumId}
@@ -198,6 +198,8 @@ export function AlbumsSection({ isOwner = false }: { isOwner?: boolean }) {
                     img={album.cover || ''}
                     userId={album.userId}
                     fullName={formatAlbumDisplayFullName(siteArtistName, album.title)}
+                    loading={index === 0 ? 'eager' : 'lazy'}
+                    fetchPriority={index === 0 ? 'high' : undefined}
                   />
                 </WrapperAlbumCover>
               ))}

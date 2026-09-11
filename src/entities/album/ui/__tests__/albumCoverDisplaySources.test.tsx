@@ -91,6 +91,18 @@ describe('call sites opt into CDN album covers', () => {
     expect(source).toContain('imageSource="cdn"');
   });
 
+  test('Album page LCP cover uses eager loading and high fetchPriority', () => {
+    const source = readFileSync(join(process.cwd(), 'src/pages/Album/Album.tsx'), 'utf8');
+    expect(source).toContain('loading="eager"');
+    expect(source).toContain('fetchPriority="high"');
+  });
+
+  test('Artist page first catalog cover uses eager loading and high fetchPriority', () => {
+    const source = readFileSync(join(process.cwd(), 'src/pages/Home/ui/AlbumsSection.tsx'), 'utf8');
+    expect(source).toMatch(/index === 0 \? 'eager' : 'lazy'/);
+    expect(source).toMatch(/index === 0 \? 'high' : undefined/);
+  });
+
   test('Checkout modal passes imageSource="cdn"', () => {
     const source = readFileSync(
       join(process.cwd(), 'src/entities/service/ui/AlbumCheckoutModal.tsx'),

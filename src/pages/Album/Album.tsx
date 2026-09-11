@@ -281,6 +281,8 @@ export default function Album() {
             userId={album.userId}
             fullName={formatAlbumDisplayFullName(siteArtistName, album.title)}
             imageSource="cdn"
+            loading="eager"
+            fetchPriority="high"
           />
         </div>
 
