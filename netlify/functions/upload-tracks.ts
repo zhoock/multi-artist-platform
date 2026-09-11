@@ -54,6 +54,7 @@ import {
   collectSupersededTrackStoragePaths,
   removeTrackStoragePaths,
 } from './lib/track-storage-cleanup';
+import { assertOwnedTrackStoragePath, TrackStoragePathError } from './lib/track-storage-path';
 
 interface TrackUploadRequest {
   albumId: string;
@@ -256,6 +257,21 @@ export const handler: Handler = async (
       );
     }
 
+    const validatedStoragePaths = new Map<string, string>();
+    for (const track of tracksToSave) {
+      try {
+        validatedStoragePaths.set(
+          track.trackId,
+          assertOwnedTrackStoragePath(track.storagePath, userId)
+        );
+      } catch (error) {
+        if (error instanceof TrackStoragePathError) {
+          return createErrorResponse(error.statusCode, error.message);
+        }
+        throw error;
+      }
+    }
+
     const client = await getClient();
     try {
       await client.query('BEGIN');
@@ -311,9 +327,7 @@ export const handler: Handler = async (
         }).catch(() => {});
         // #endregion
 
-        const masterPathForDb = storagePath.startsWith('users/')
-          ? storagePath
-          : storagePath.replace(/^\/+/, '');
+        const masterPathForDb = validatedStoragePaths.get(trackId) ?? storagePath;
         const srcForDb = hasPipeline
           ? ''
           : (resolveTrackSrcToSupabasePublicUrl(url, album.user_id) ?? url);
