@@ -406,26 +406,28 @@ export function HomePage() {
       );
     }
 
-    if (!artistPageAccess.pageReady || !shouldRevealFullPage) {
-      return (
-        <>
-          {artistSeoHelmet}
-          <ArtistPageSkeletonMain />
-        </>
-      );
-    }
+    const fullPageReady = artistPageAccess.pageReady && shouldRevealFullPage;
+    /** Albums grid owns the LCP cover — it must not wait for the remaining surfaces. */
+    const showAlbums = fullPageReady || artistPageAccess.albumsSurfaceReady;
 
+    // Slot order stays fixed so the albums grid is not remounted when the page completes.
     return (
       <>
         {artistSeoHelmet}
-        <ArtistPageBuilderPaymentBar />
-        <AlbumsSection isOwner={artistPageAccess.isOwner} />
-        <ArticlesSection />
-        <AboutSection
-          isAboutModalOpen={isAboutModalOpen}
-          onOpen={() => setIsAboutModalOpen(true)}
-          onClose={() => setIsAboutModalOpen(false)}
-        />
+        {fullPageReady ? <ArtistPageBuilderPaymentBar /> : null}
+        {showAlbums ? <AlbumsSection isOwner={artistPageAccess.isOwner} /> : null}
+        {fullPageReady ? (
+          <>
+            <ArticlesSection />
+            <AboutSection
+              isAboutModalOpen={isAboutModalOpen}
+              onOpen={() => setIsAboutModalOpen(true)}
+              onClose={() => setIsAboutModalOpen(false)}
+            />
+          </>
+        ) : (
+          <ArtistPageSkeletonMain withAlbums={!showAlbums} />
+        )}
       </>
     );
   }

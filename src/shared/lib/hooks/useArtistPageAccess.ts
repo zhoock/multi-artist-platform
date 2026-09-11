@@ -105,6 +105,11 @@ export type ArtistPageAccessValue = {
   showNotFound: boolean;
   showPublished: boolean;
   pageReady: boolean;
+  /**
+   * Albums grid holds the LCP cover, so it mounts as soon as the thin catalog it renders
+   * is ready — without waiting for articles / about / social / payment surfaces.
+   */
+  albumsSurfaceReady: boolean;
   showArtistPageSkeleton: boolean;
   showArtistPageSurfacePending: boolean;
   showArtistPageHeroPending: boolean;
@@ -718,6 +723,19 @@ export function useArtistPageAccessState(
     !showNotFound &&
     !showVisitorUnderConstruction;
 
+  /**
+   * Albums grid depends only on the thin catalog it renders. Articles / about / social /
+   * payment / display-name surfaces resolve later and must not delay the first album cover.
+   * Requiring published public releases also rules out the not-found and under-construction
+   * surfaces, so no public content can appear ahead of its access gate.
+   */
+  const albumsSurfaceReady =
+    isArtistPublishedSurface &&
+    ownerResolved &&
+    (!isOwner || ownerContentLoaded) &&
+    !albumsBlockPageReady &&
+    thinCatalogHasPublicReleases;
+
   const pageReady =
     isArtistPublishedSurface &&
     ownerResolved &&
@@ -750,6 +768,7 @@ export function useArtistPageAccessState(
     showNotFound,
     showPublished,
     pageReady,
+    albumsSurfaceReady,
     showArtistPageSkeleton,
     showArtistPageSurfacePending,
     showArtistPageHeroPending,

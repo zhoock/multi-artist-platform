@@ -1063,3 +1063,189 @@ describe('useArtistPageAccess — visitor /stems reload', () => {
     });
   });
 });
+
+describe('useArtistPageAccess — albumsSurfaceReady (LCP album cover gate)', () => {
+  const publicCatalogAlbum = {
+    albumId: 'album-1',
+    slug: 'album-1',
+    title: 'Album 1',
+    cover: 'cover1',
+    releaseDate: '2024-01-01',
+    trackCount: 1,
+    duration: 180,
+    userId: 'user-1',
+    isPublished: true,
+    isPublic: true,
+    hasLockedTracks: false,
+    hasStems: false,
+  };
+
+  /** Articles stay idle on `/?artist=` so `pageReady` can never flip during these tests. */
+  function artistHomeState(catalog: Record<string, unknown>) {
+    return {
+      lang: { current: 'en' as const },
+      currentArtist: { publicSlug: 'test-artist' },
+      articles: {
+        status: 'idle' as const,
+        error: null,
+        data: [],
+        lastUpdated: null,
+        lastPublicArtistSlug: null,
+        dashboard: {
+          status: 'idle' as const,
+          error: null,
+          data: [],
+          lastUpdated: null,
+        },
+      },
+      albums: {
+        dashboard: {
+          status: 'idle' as const,
+          error: null,
+          data: [],
+          lastUpdated: null,
+          inFlightFetchContextKey: null,
+        },
+      },
+      artistAlbumCatalog: {
+        status: 'idle' as const,
+        error: null,
+        data: [],
+        lastUpdated: null,
+        fetchContextKey: null,
+        artistMissing: false,
+        ...catalog,
+      },
+    };
+  }
+
+  beforeEach(() => {
+    invalidatePublicArtistUserProfileCache();
+    jest.mocked(isAuthenticated).mockReturnValue(false);
+    jest.mocked(getUser).mockReturnValue(null);
+    jest.mocked(getToken).mockReturnValue(null);
+    jest.mocked(fetchWithAuthSession).mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        success: true,
+        data: {
+          theBand: ['Artist bio'],
+          headerImages: ['https://example.com/hero.jpg'],
+          socialLinks: {},
+        },
+      }),
+    } as Response);
+  });
+
+  test('каталог с публичным релизом открывает альбомы, пока pageReady ещё ждёт статьи', async () => {
+    const { result } = renderHook(() => useArtistPageAccess('test-artist'), {
+      wrapper: createWrapper(
+        artistHomeState({
+          status: 'succeeded',
+          data: [publicCatalogAlbum],
+          lastUpdated: Date.now(),
+          fetchContextKey: 'public:test-artist',
+        })
+      ),
+    });
+
+    await waitFor(() => {
+      expect(result.current.albumsSurfaceReady).toBe(true);
+    });
+
+    // Articles surface never resolves here — albums must not be coupled to it.
+    expect(result.current.pageReady).toBe(false);
+    expect(result.current.hasPublicReleases).toBe(true);
+  });
+
+  test('альбомы не ждут about / social / payment / displayName поверхностей', async () => {
+    // `fetchWithAuthSession` never settles: profile-backed gates stay pending for the whole test.
+    jest.mocked(fetchWithAuthSession).mockReturnValue(new Promise<Response>(() => {}));
+
+    const { result } = renderHook(() => useArtistPageAccess('test-artist'), {
+      wrapper: createWrapper(
+        artistHomeState({
+          status: 'succeeded',
+          data: [publicCatalogAlbum],
+          lastUpdated: Date.now(),
+          fetchContextKey: 'public:test-artist',
+        })
+      ),
+    });
+
+    await waitFor(() => {
+      expect(result.current.albumsSurfaceReady).toBe(true);
+    });
+
+    expect(result.current.paymentSurfaceReady).toBe(false);
+    expect(result.current.pageReady).toBe(false);
+  });
+
+  test('каталог ещё грузится — альбомы закрыты', async () => {
+    const { result } = renderHook(() => useArtistPageAccess('test-artist'), {
+      wrapper: createWrapper(artistHomeState({ status: 'loading' })),
+    });
+
+    await waitFor(() => {
+      expect(result.current.ownerResolved).toBe(true);
+    });
+
+    expect(result.current.albumsSurfaceReady).toBe(false);
+  });
+
+  test('каталог загружен, но публичных релизов нет — альбомы закрыты', async () => {
+    const { result } = renderHook(() => useArtistPageAccess('test-artist'), {
+      wrapper: createWrapper(
+        artistHomeState({
+          status: 'succeeded',
+          data: [],
+          lastUpdated: Date.now(),
+          fetchContextKey: 'public:test-artist',
+        })
+      ),
+    });
+
+    await waitFor(() => {
+      expect(result.current.ownerResolved).toBe(true);
+    });
+
+    expect(result.current.albumsSurfaceReady).toBe(false);
+  });
+
+  test('непубличный / неопубликованный альбом не открывает раннюю выдачу', async () => {
+    const { result } = renderHook(() => useArtistPageAccess('test-artist'), {
+      wrapper: createWrapper(
+        artistHomeState({
+          status: 'succeeded',
+          data: [{ ...publicCatalogAlbum, isPublished: false, isPublic: false }],
+          lastUpdated: Date.now(),
+          fetchContextKey: 'public:test-artist',
+        })
+      ),
+    });
+
+    await waitFor(() => {
+      expect(result.current.ownerResolved).toBe(true);
+    });
+
+    expect(result.current.albumsSurfaceReady).toBe(false);
+    expect(result.current.hasPublicReleases).toBe(false);
+  });
+
+  test('фоновой refetch с last-good строками держит альбомы открытыми (SWR)', async () => {
+    const { result } = renderHook(() => useArtistPageAccess('test-artist'), {
+      wrapper: createWrapper(
+        artistHomeState({
+          status: 'loading',
+          data: [publicCatalogAlbum],
+          lastUpdated: Date.now(),
+          fetchContextKey: 'public:test-artist',
+        })
+      ),
+    });
+
+    await waitFor(() => {
+      expect(result.current.albumsSurfaceReady).toBe(true);
+    });
+  });
+});

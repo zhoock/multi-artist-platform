@@ -25,15 +25,22 @@ export function ArtistPageSkeletonHero() {
   );
 }
 
-export function ArtistPageSkeletonMain() {
+type ArtistPageSkeletonMainProps = {
+  /** Artist page mounts the real albums grid ahead of the rest of the page (LCP cover). */
+  withAlbums?: boolean;
+};
+
+export function ArtistPageSkeletonMain({ withAlbums = true }: ArtistPageSkeletonMainProps = {}) {
   return (
     <div className="artist-page-skeleton__main" aria-busy="true" aria-label="Loading artist page">
-      <section id="albums" className="albums main-background" aria-hidden="true">
-        <div className="wrapper">
-          <div className="skeleton artist-page-skeleton__section-heading" />
-          <AlbumsSkeleton count={3} />
-        </div>
-      </section>
+      {withAlbums ? (
+        <section id="albums" className="albums main-background" aria-hidden="true">
+          <div className="wrapper">
+            <div className="skeleton artist-page-skeleton__section-heading" />
+            <AlbumsSkeleton count={3} />
+          </div>
+        </section>
+      ) : null}
 
       <section id="articles" className="articles main-background" aria-hidden="true">
         <div className="wrapper articles__wrapper">

@@ -17,6 +17,7 @@ const baseAccess = {
   showNotFound: false,
   showPublished: true,
   pageReady: true,
+  albumsSurfaceReady: false,
   showArtistPageSkeleton: false,
   showArtistPageSurfacePending: false,
   showArtistPageHeroPending: false,
