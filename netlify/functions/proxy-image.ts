@@ -4,6 +4,7 @@
  */
 
 import type { Handler, HandlerEvent, HandlerContext } from '@netlify/functions';
+import { assertPublicProxyImagePath, ProxyImagePathError } from './lib/proxy-image-path';
 
 export const handler: Handler = async (
   event: HandlerEvent,
@@ -68,23 +69,22 @@ export const handler: Handler = async (
       };
     }
 
-    // Декодируем путь (на случай если он был закодирован дважды)
-    let decodedPath = imagePath;
+    let decodedPath: string;
     try {
-      decodedPath = decodeURIComponent(imagePath);
-      // Если после декодирования всё ещё есть закодированные символы, декодируем ещё раз
-      if (decodedPath.includes('%')) {
-        decodedPath = decodeURIComponent(decodedPath);
+      decodedPath = assertPublicProxyImagePath(imagePath);
+    } catch (error) {
+      if (error instanceof ProxyImagePathError) {
+        console.warn('[proxy-image] Path rejected:', {
+          statusCode: error.statusCode,
+          message: error.message,
+        });
+        return {
+          statusCode: error.statusCode,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: error.message }),
+        };
       }
-    } catch (e) {
-      // Если декодирование не удалось, используем исходный путь
-      console.warn('[proxy-image] Failed to decode path, using original:', imagePath);
-      decodedPath = imagePath;
-    }
-
-    // Не допускаем, чтобы `?t=...` (cache-bust) из query попал в path — иначе имя объекта в Storage будет `file.webp?t=...` (404)
-    if (decodedPath.includes('?')) {
-      decodedPath = decodedPath.split('?')[0];
+      throw error;
     }
 
     // Формируем полный URL к изображению в Supabase Storage
