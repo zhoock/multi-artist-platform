@@ -67,6 +67,11 @@ export function HelpCategoryPage() {
         ) : null}
         <meta property="og:type" content="website" />
         <meta property="og:url" content={canonical} />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={category.title} />
+        {category.description ? (
+          <meta name="twitter:description" content={category.description} />
+        ) : null}
         <meta name="twitter:url" content={canonical} />
         <link rel="canonical" href={canonical} />
         {publicPageHreflangLinks(hreflang)}

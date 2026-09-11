@@ -258,6 +258,9 @@ export default function Album() {
         <meta property="og:title" content={seoTitle} />
         <meta property="og:description" content={seoDesc} />
         <meta property="og:url" content={canonical} />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={seoTitle} />
+        <meta name="twitter:description" content={seoDesc} />
         <meta name="twitter:url" content={canonical} />
         <link rel="canonical" href={canonical} />
         {publicPageHreflangLinks(hreflang)}

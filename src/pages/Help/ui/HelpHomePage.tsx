@@ -72,6 +72,9 @@ export function HelpHomePage() {
         <meta property="og:description" content={pageDescription} />
         <meta property="og:type" content="website" />
         <meta property="og:url" content={canonical} />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={pageTitle} />
+        <meta name="twitter:description" content={pageDescription} />
         <meta name="twitter:url" content={canonical} />
         <link rel="canonical" href={canonical} />
         {publicPageHreflangLinks(hreflang)}

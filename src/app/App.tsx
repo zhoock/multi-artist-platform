@@ -674,15 +674,19 @@ function Layout() {
 
               {!pageOwnsHreflang ? publicPageHreflangLinks(seo.hreflang) : null}
 
-              {/* Open Graph / Twitter */}
+              {/* Open Graph / Twitter — platform title/description only on Home (page Helmets own deep routes) */}
               <meta property="og:type" content="website" />
-              <meta property="og:title" content={seo[lang].title} />
-              <meta property="og:description" content={seo[lang].desc} />
+              {!pageOwnsHreflang ? <meta property="og:title" content={seo[lang].title} /> : null}
+              {!pageOwnsHreflang ? (
+                <meta property="og:description" content={seo[lang].desc} />
+              ) : null}
+              {!pageOwnsHreflang ? <meta name="twitter:title" content={seo[lang].title} /> : null}
+              {!pageOwnsHreflang ? (
+                <meta name="twitter:description" content={seo[lang].desc} />
+              ) : null}
               <meta property="og:url" content={seo[lang].url} />
               <meta property="og:image" content={seo[lang].ogImage} />
               <meta name="twitter:card" content="summary_large_image" />
-              <meta name="twitter:title" content={seo[lang].title} />
-              <meta name="twitter:description" content={seo[lang].desc} />
               <meta name="twitter:image" content={seo[lang].ogImage} />
               <meta name="twitter:url" content={seo[lang].url} />
             </Helmet>
