@@ -174,12 +174,22 @@ export async function artistHasPublicPageContent(
     return tracks || articles;
   }
 
-  const [tracks, articles, profile] = await Promise.all([
-    hasPublishedTracks(userId),
+  // Published tracks alone decide this gate for every visible artist in production, so probing
+  // them first turns the passing case into a single round-trip: three concurrent queries against
+  // the default pool max of 2 otherwise cost two DB waves.
+  //
+  // Articles and profile stay a Promise.all pair, which keeps the previous all-or-nothing error
+  // behaviour for them — a rejection on either still fails the whole gate rather than being
+  // masked by the other returning true.
+  if (await hasPublishedTracks(userId)) {
+    return true;
+  }
+
+  const [articles, profile] = await Promise.all([
     hasPublicArticles(userId),
     hasPublicProfileContent(userId),
   ]);
-  return tracks || articles || profile;
+  return articles || profile;
 }
 
 export async function assertArtistVisibleToViewer(
