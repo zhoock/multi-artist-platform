@@ -143,6 +143,10 @@ function renderArtistHome() {
   return render(<HomePage />, { wrapper: Wrapper });
 }
 
+function skeletonWrapper() {
+  return document.querySelector('.artist-page-skeleton__main');
+}
+
 function albumsSkeletonBlock() {
   return document.querySelector('.artist-page-skeleton__main #albums');
 }
@@ -170,9 +174,16 @@ describe('HomePage — ранний рендер AlbumsSection (LCP обложк
     renderArtistHome();
 
     expect(screen.getByTestId('albums-section')).toBeInTheDocument();
-    // Остальная страница ещё в скелетоне, но альбомы уже реальные.
-    expect(document.querySelector('.artist-page-skeleton__main')).toBeInTheDocument();
     expect(albumsSkeletonBlock()).not.toBeInTheDocument();
+  });
+
+  test('скелетон не остаётся под ранними альбомами — иначе его смещает вниз (CLS)', () => {
+    artistPageBuilderStub.albumsSurfaceReady = true;
+
+    renderArtistHome();
+
+    expect(screen.getByTestId('albums-section')).toBeInTheDocument();
+    expect(skeletonWrapper()).not.toBeInTheDocument();
   });
 
   test('articles / about / payment gates не блокируют альбомы', () => {
@@ -192,6 +203,7 @@ describe('HomePage — ранний рендер AlbumsSection (LCP обложк
     renderArtistHome();
 
     expect(screen.queryByTestId('albums-section')).not.toBeInTheDocument();
+    expect(skeletonWrapper()).toBeInTheDocument();
     expect(albumsSkeletonBlock()).toBeInTheDocument();
   });
 
@@ -223,6 +235,6 @@ describe('HomePage — ранний рендер AlbumsSection (LCP обложк
     expect(screen.getByTestId('albums-section')).toBeInTheDocument();
     expect(screen.getByTestId('about-section')).toBeInTheDocument();
     expect(screen.getByTestId('payment-bar')).toBeInTheDocument();
-    expect(document.querySelector('.artist-page-skeleton__main')).not.toBeInTheDocument();
+    expect(skeletonWrapper()).not.toBeInTheDocument();
   });
 });

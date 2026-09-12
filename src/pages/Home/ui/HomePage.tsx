@@ -411,6 +411,8 @@ export function HomePage() {
     const showAlbums = fullPageReady || artistPageAccess.albumsSurfaceReady;
 
     // Slot order stays fixed so the albums grid is not remounted when the page completes.
+    // The skeleton never coexists with the albums grid: mounting the grid ahead of a still
+    // painted skeleton wrapper pushes that wrapper down the page and costs ~0.43 CLS.
     return (
       <>
         {artistSeoHelmet}
@@ -425,9 +427,9 @@ export function HomePage() {
               onClose={() => setIsAboutModalOpen(false)}
             />
           </>
-        ) : (
-          <ArtistPageSkeletonMain withAlbums={!showAlbums} />
-        )}
+        ) : !showAlbums ? (
+          <ArtistPageSkeletonMain />
+        ) : null}
       </>
     );
   }
