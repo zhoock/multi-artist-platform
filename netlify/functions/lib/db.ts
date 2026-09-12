@@ -19,6 +19,22 @@ declare global {
 
 const DEFAULT_POOL_MAX = 2;
 
+/**
+ * Reconnecting to the Supabase pooler costs ~2s (TCP + TLS + SCRAM), so on Netlify Functions an
+ * idle connection must outlive the gap between two warm invocations — the container is frozen,
+ * not torn down, so the 10s idle timer would otherwise fire on thaw and close every connection.
+ *
+ * CLI scripts import this module as well and none of them call closePool(): they keep the short
+ * timeout and the unref'd-idle behaviour that lets a one-shot process exit on its own.
+ */
+const SERVERLESS_IDLE_TIMEOUT_MS = 300_000;
+const CLI_IDLE_TIMEOUT_MS = 10_000;
+
+/** True inside the AWS Lambda runtime that hosts Netlify Functions (both vars are reserved). */
+function isServerlessRuntime(): boolean {
+  return Boolean(process.env.AWS_LAMBDA_FUNCTION_NAME || process.env.LAMBDA_TASK_ROOT);
+}
+
 function poolFingerprint(connectionString: string): string {
   return connectionString.trim();
 }
@@ -74,12 +90,14 @@ function createPoolInstance(connectionString: string): Pool {
     }
   }
 
+  const serverless = isServerlessRuntime();
+
   const instance = new Pool({
     connectionString,
     max: resolvePoolMax(),
-    idleTimeoutMillis: 10_000,
+    idleTimeoutMillis: serverless ? SERVERLESS_IDLE_TIMEOUT_MS : CLI_IDLE_TIMEOUT_MS,
     connectionTimeoutMillis: 30_000,
-    allowExitOnIdle: true,
+    allowExitOnIdle: !serverless,
     keepAlive: true,
     keepAliveInitialDelayMillis: 10_000,
     ssl: useSSL ? { rejectUnauthorized: false } : false,
