@@ -142,29 +142,35 @@ export const handler: Handler = async (
     }
 
     const isOwnerViewer = Boolean(authUserId && authUserId === targetUserId);
-    const monetizationEnabled = await artistHasMonetizationEnabled(targetUserId);
-    const hasPremiumAccess = await viewerHasPremiumAccessToArtist(authUserId, targetUserId);
 
-    const albumsResult = await query<AlbumLocaleRow>(
-      `SELECT
-         a.id,
-         a.user_id,
-         a.album_id,
-         a.album,
-         a.cover,
-         a.release,
-         a.is_public,
-         a.is_published,
-         a.lang,
-         a.updated_at
-       FROM albums a
-       WHERE a.user_id = $1
-       ORDER BY a.album_id,
-         CASE a.lang WHEN 'ru' THEN 0 WHEN 'en' THEN 1 ELSE 2 END,
-         a.updated_at DESC NULLS LAST,
-         a.created_at DESC`,
-      [targetUserId]
-    );
+    // Monetization and albums both key off targetUserId only and neither reads the other's
+    // result, so they share one round-trip wave. Two concurrent queries is the pool ceiling
+    // (PG_POOL_MAX defaults to 2), which is why the premium check below stays sequential.
+    const [monetizationEnabled, albumsResult] = await Promise.all([
+      artistHasMonetizationEnabled(targetUserId),
+      query<AlbumLocaleRow>(
+        `SELECT
+           a.id,
+           a.user_id,
+           a.album_id,
+           a.album,
+           a.cover,
+           a.release,
+           a.is_public,
+           a.is_published,
+           a.lang,
+           a.updated_at
+         FROM albums a
+         WHERE a.user_id = $1
+         ORDER BY a.album_id,
+           CASE a.lang WHEN 'ru' THEN 0 WHEN 'en' THEN 1 ELSE 2 END,
+           a.updated_at DESC NULLS LAST,
+           a.created_at DESC`,
+        [targetUserId]
+      ),
+    ]);
+
+    const hasPremiumAccess = await viewerHasPremiumAccessToArtist(authUserId, targetUserId);
 
     const byAlbumId = new Map<string, AlbumLocaleRow[]>();
     const albumIdsOrdered: string[] = [];
