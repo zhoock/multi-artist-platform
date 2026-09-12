@@ -66,6 +66,18 @@ interface TrackAggRow {
   has_stems: boolean | null;
 }
 
+/**
+ * One row of the albums ⟕ tracks catalog query: every album locale row repeats once per track,
+ * and a locale row with no tracks still arrives once with all track columns NULL.
+ */
+interface CatalogJoinRow extends AlbumLocaleRow {
+  track_id: string | null;
+  duration: number | null;
+  visibility: string | null;
+  stems_visibility: string | null;
+  has_stems: boolean | null;
+}
+
 function parseReleaseDate(release: unknown): string {
   if (!release || typeof release !== 'object') return '';
   const date = (release as { date?: unknown }).date;
@@ -143,12 +155,17 @@ export const handler: Handler = async (
 
     const isOwnerViewer = Boolean(authUserId && authUserId === targetUserId);
 
-    // Monetization and albums both key off targetUserId only and neither reads the other's
+    // Monetization and the catalog both key off targetUserId only and neither reads the other's
     // result, so they share one round-trip wave. Two concurrent queries is the pool ceiling
     // (PG_POOL_MAX defaults to 2), which is why the premium check below stays sequential.
-    const [monetizationEnabled, albumsResult] = await Promise.all([
+    //
+    // Tracks join in the same query instead of a follow-up round-trip: tracks.album_id is a FK on
+    // the album *locale* row, so the join fans out per track without ever multiplying locales.
+    // LEFT is required — a locale row with zero tracks still supplies title / cover / release /
+    // publication flags (production has one: album `23-remastered`, lang `en`).
+    const [monetizationEnabled, catalogResult] = await Promise.all([
       artistHasMonetizationEnabled(targetUserId),
-      query<AlbumLocaleRow>(
+      query<CatalogJoinRow>(
         `SELECT
            a.id,
            a.user_id,
@@ -159,8 +176,14 @@ export const handler: Handler = async (
            a.is_public,
            a.is_published,
            a.lang,
-           a.updated_at
+           a.updated_at,
+           t.track_id,
+           t.duration,
+           t.visibility,
+           t.stems_visibility,
+           t.has_stems
          FROM albums a
+         LEFT JOIN tracks t ON t.album_id = a.id
          WHERE a.user_id = $1
          ORDER BY a.album_id,
            CASE a.lang WHEN 'ru' THEN 0 WHEN 'en' THEN 1 ELSE 2 END,
@@ -172,69 +195,48 @@ export const handler: Handler = async (
 
     const hasPremiumAccess = await viewerHasPremiumAccessToArtist(authUserId, targetUserId);
 
+    // Flat join rows → the locale-row / track-row shape the rest of the handler consumes.
+    // Locale rows dedupe on the album primary key, so first occurrence carries the SQL ORDER BY.
     const byAlbumId = new Map<string, AlbumLocaleRow[]>();
     const albumIdsOrdered: string[] = [];
-    for (const row of albumsResult.rows) {
-      if (!byAlbumId.has(row.album_id)) {
-        albumIdsOrdered.push(row.album_id);
-        byAlbumId.set(row.album_id, []);
-      }
-      byAlbumId.get(row.album_id)!.push(row);
-    }
-
-    const albumPks = albumsResult.rows.map((r) => r.id);
+    const seenAlbumPks = new Set<string>();
     const trackByPk = new Map<string, TrackAggRow[]>();
 
-    if (albumPks.length > 0) {
-      let tracksResult: { rows: TrackAggRow[] };
-      try {
-        tracksResult = await query<TrackAggRow>(
-          `SELECT
-             t.album_id AS album_pk,
-             t.track_id,
-             t.duration,
-             t.visibility,
-             t.stems_visibility,
-             t.has_stems
-           FROM tracks t
-           WHERE t.album_id = ANY($1::uuid[])`,
-          [albumPks]
-        );
-      } catch {
-        // Pre-migration fallback without visibility / has_stems columns.
-        try {
-          tracksResult = await query<TrackAggRow>(
-            `SELECT
-               t.album_id AS album_pk,
-               t.track_id,
-               t.duration,
-               t.visibility,
-               t.stems_visibility,
-               false AS has_stems
-             FROM tracks t
-             WHERE t.album_id = ANY($1::uuid[])`,
-            [albumPks]
-          );
-        } catch {
-          tracksResult = await query<TrackAggRow>(
-            `SELECT
-               t.album_id AS album_pk,
-               t.track_id,
-               t.duration,
-               NULL::text AS visibility,
-               NULL::text AS stems_visibility,
-               false AS has_stems
-             FROM tracks t
-             WHERE t.album_id = ANY($1::uuid[])`,
-            [albumPks]
-          );
+    for (const row of catalogResult.rows) {
+      if (!seenAlbumPks.has(row.id)) {
+        seenAlbumPks.add(row.id);
+        if (!byAlbumId.has(row.album_id)) {
+          albumIdsOrdered.push(row.album_id);
+          byAlbumId.set(row.album_id, []);
         }
+        byAlbumId.get(row.album_id)!.push({
+          id: row.id,
+          user_id: row.user_id,
+          album_id: row.album_id,
+          album: row.album,
+          cover: row.cover,
+          release: row.release,
+          is_public: row.is_public,
+          is_published: row.is_published,
+          lang: row.lang,
+          updated_at: row.updated_at,
+        });
       }
-      for (const row of tracksResult.rows) {
-        const list = trackByPk.get(row.album_pk) ?? [];
-        list.push(row);
-        trackByPk.set(row.album_pk, list);
-      }
+
+      // NULL track_id marks a locale row that has no tracks — not a track. Counting it would
+      // inflate trackCount and push a trackless album past the publication gate below.
+      if (row.track_id === null || row.track_id === undefined) continue;
+
+      const list = trackByPk.get(row.id) ?? [];
+      list.push({
+        album_pk: row.id,
+        track_id: row.track_id,
+        duration: row.duration,
+        visibility: row.visibility,
+        stems_visibility: row.stems_visibility,
+        has_stems: row.has_stems,
+      });
+      trackByPk.set(row.id, list);
     }
 
     const catalog: CatalogAlbumDto[] = [];
