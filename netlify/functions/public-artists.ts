@@ -1,6 +1,5 @@
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { query } from './lib/db';
-import { isArtistProfilePublished } from './lib/artist-publication';
 import {
   createErrorResponse,
   createOptionsResponse,
@@ -63,6 +62,9 @@ export const handler: Handler = async (
   }
 
   try {
+    // The publication gate is a correlated EXISTS rather than a join: an artist has one row per
+    // release per locale in `albums`, so joining would emit the same artist once per matching
+    // track. Nothing downstream dedupes.
     const rows = await query<PublicArtistRow>(
       `SELECT
          u.id,
@@ -82,17 +84,20 @@ export const handler: Handler = async (
         AND ups.is_active = true
        WHERE u.is_active = true
          AND u.public_slug IS NOT NULL
+         AND EXISTS (
+           SELECT 1
+           FROM tracks t
+           INNER JOIN albums a ON t.album_id = a.id
+           WHERE a.user_id = u.id
+             AND a.is_published = true
+             AND a.is_public = true
+             AND btrim(COALESCE(a.album, '')) <> ''
+             AND COALESCE(t.visibility, 'public') <> 'hidden'
+         )
        ORDER BY u.id ASC`
     );
 
-    const publishedRows = [];
-    for (const row of rows.rows) {
-      if (await isArtistProfilePublished(row.id)) {
-        publishedRows.push(row);
-      }
-    }
-
-    const artists: PublicArtistDto[] = publishedRows.map((row) => {
+    const artists: PublicArtistDto[] = rows.rows.map((row) => {
       const genreCode = row.genre_code || 'other';
       const genreLabel = {
         en: row.label_en || 'Other',
