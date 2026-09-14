@@ -76,9 +76,13 @@ export function useSettingsPage({
   const [isSavingAboutText, setIsSavingAboutText] = useState(false);
   const [nameError, setNameError] = useState<string | null>(null);
 
-  const saveProfileRef = useRef<(() => Promise<void>) | undefined>(undefined);
+  const saveProfileRef = useRef<((source: 'siteName' | 'publicSlug') => Promise<void>) | undefined>(
+    undefined
+  );
   const saveAboutRef = useRef<(() => Promise<void>) | undefined>(undefined);
   const aboutDebounceRef = useRef<number | null>(null);
+  const skipReloadRef = useRef(false);
+  const aboutSyncLangRef = useRef(currentLang);
 
   const languages = [
     { value: 'ru', label: 'Русский' },
@@ -135,92 +139,60 @@ export function useSettingsPage({
     [formatSaveError, onNotAuthorized, onSaveError]
   );
 
-  const saveProfileFields = useCallback(async () => {
-    const needsSiteNameUpdate = name !== initialName;
-    const needsPublicSlugUpdate = publicSlug !== initialPublicSlug;
-    const needsGenreUpdate = genreCode !== initialGenreCode;
-    const safeHeaderImages = Array.isArray(headerImages) ? headerImages : [];
-    const safeInitialHeaderImages = Array.isArray(initialHeaderImages) ? initialHeaderImages : [];
-    const needsHeaderImagesUpdate =
-      safeHeaderImages.length !== safeInitialHeaderImages.length ||
-      safeHeaderImages.some((url, index) => url !== safeInitialHeaderImages[index]);
+  const saveProfileFields = useCallback(
+    async (source: 'siteName' | 'publicSlug') => {
+      const updateData: Record<string, unknown> = {};
 
-    if (
-      !needsSiteNameUpdate &&
-      !needsPublicSlugUpdate &&
-      !needsGenreUpdate &&
-      !needsHeaderImagesUpdate
-    ) {
-      return;
-    }
-
-    const updateData: Record<string, unknown> = {};
-    if (needsSiteNameUpdate) {
-      const trimmedName = name.trim();
-      if (!trimmedName) {
-        const message = isListener
-          ? 'Name is required'
-          : (ui?.auth?.register?.siteBandNameRequired ?? 'Site / band name is required');
-        setNameError(message);
-        setName(initialName);
-      } else {
+      if (source === 'siteName') {
+        if (name === initialName) return;
+        const trimmedName = name.trim();
+        if (!trimmedName) {
+          const message = isListener
+            ? 'Name is required'
+            : (ui?.auth?.register?.siteBandNameRequired ?? 'Site / band name is required');
+          setNameError(message);
+          setName(initialName);
+          return;
+        }
         updateData.siteName = trimmedName;
+      } else {
+        const nextSlug = normalizePublicSlug(publicSlug);
+        if (nextSlug !== publicSlug) {
+          setPublicSlug(nextSlug);
+        }
+        if (nextSlug === initialPublicSlug) return;
+        updateData.publicSlug = nextSlug.trim();
       }
-    }
-    if (needsPublicSlugUpdate) updateData.publicSlug = publicSlug.trim();
-    if (needsGenreUpdate) updateData.genreCode = genreCode;
-    if (needsHeaderImagesUpdate) updateData.headerImages = safeHeaderImages;
 
-    if (Object.keys(updateData).length === 0) {
-      return;
-    }
+      const ok = await persistProfile(updateData);
+      if (!ok) return;
 
-    const savedSiteName = updateData.siteName as string | undefined;
-
-    const ok = await persistProfile(updateData);
-    if (!ok) return;
-
-    if (savedSiteName !== undefined) {
-      setNameError(null);
-      localStorage.setItem('profile-name', savedSiteName);
-      updateStoredUserName(savedSiteName);
-    }
-
-    const aspects: ProfileAspect[] = [];
-    if (savedSiteName !== undefined) aspects.push('name');
-    if (needsPublicSlugUpdate) aspects.push('slug');
-    if (needsGenreUpdate) aspects.push('genre');
-    if (needsHeaderImagesUpdate) aspects.push('headerImages');
-
-    notifyPublicSurfaceChanged(
-      { type: 'profileChanged', aspects },
-      {
-        artistSlug: publicSlug.trim() || undefined,
-        displayName: savedSiteName,
-        headerImages: needsHeaderImagesUpdate ? safeHeaderImages : undefined,
+      if (typeof updateData.siteName === 'string') {
+        const savedSiteName = updateData.siteName;
+        setNameError(null);
+        localStorage.setItem('profile-name', savedSiteName);
+        updateStoredUserName(savedSiteName);
+        notifyPublicSurfaceChanged(
+          { type: 'profileChanged', aspects: ['name'] },
+          {
+            artistSlug: publicSlug.trim() || undefined,
+            displayName: savedSiteName,
+          }
+        );
+        setInitialName(savedSiteName);
+        setName(savedSiteName);
+        return;
       }
-    );
 
-    if (savedSiteName !== undefined) {
-      setInitialName(savedSiteName);
-      setName(savedSiteName);
-    }
-    setInitialPublicSlug(publicSlug);
-    setInitialGenreCode(genreCode);
-    setInitialHeaderImages([...safeHeaderImages]);
-  }, [
-    genreCode,
-    headerImages,
-    initialGenreCode,
-    initialHeaderImages,
-    initialName,
-    initialPublicSlug,
-    isListener,
-    name,
-    persistProfile,
-    publicSlug,
-    ui,
-  ]);
+      const savedSlug = updateData.publicSlug as string;
+      notifyPublicSurfaceChanged(
+        { type: 'profileChanged', aspects: ['slug'] },
+        { artistSlug: savedSlug || undefined }
+      );
+      setInitialPublicSlug(savedSlug);
+    },
+    [initialName, initialPublicSlug, isListener, name, persistProfile, publicSlug, ui]
+  );
 
   saveProfileRef.current = saveProfileFields;
 
@@ -331,7 +303,7 @@ export function useSettingsPage({
   }, []);
 
   const handleNameBlur = useCallback(() => {
-    void saveProfileRef.current?.();
+    void saveProfileRef.current?.('siteName');
   }, []);
 
   const handlePublicSlugChange = useCallback((value: string) => {
@@ -340,7 +312,7 @@ export function useSettingsPage({
 
   const handlePublicSlugBlur = useCallback(() => {
     setPublicSlug((prev) => normalizePublicSlug(prev));
-    void saveProfileRef.current?.();
+    void saveProfileRef.current?.('publicSlug');
   }, []);
 
   const handleGenreChange = useCallback(
@@ -383,6 +355,9 @@ export function useSettingsPage({
       window.clearTimeout(aboutDebounceRef.current);
     }
     aboutDebounceRef.current = window.setTimeout(() => {
+      // Cleared before saving so the unmount flush can tell "still pending" from "already
+      // fired" and never sends the same text twice.
+      aboutDebounceRef.current = null;
       void saveAboutRef.current?.();
     }, 800);
   }, []);
@@ -397,14 +372,21 @@ export function useSettingsPage({
 
   useEffect(() => {
     return () => {
-      if (aboutDebounceRef.current !== null) {
-        window.clearTimeout(aboutDebounceRef.current);
-      }
+      if (aboutDebounceRef.current === null) return;
+      window.clearTimeout(aboutDebounceRef.current);
+      aboutDebounceRef.current = null;
+      // saveAboutRef holds the latest render's closure, so the pending text is flushed rather
+      // than dropped; saveAboutText itself no-ops when the value matches what is already saved.
+      void saveAboutRef.current?.();
     };
   }, []);
 
   useEffect(() => {
     if (!enabled) return;
+    // Re-entering the tab must not pull DB values over edits that never reached the DB (a failed
+    // save keeps them local). Dirty state is read through a ref instead of a dependency, which
+    // would refetch on every keystroke and let each load retrigger itself.
+    if (skipReloadRef.current) return;
 
     const loadSiteName = async () => {
       setIsLoadingProfile(true);
@@ -522,6 +504,15 @@ export function useSettingsPage({
 
   useEffect(() => {
     if (!enabled) return;
+
+    const langChanged = aboutSyncLangRef.current !== currentLang;
+    aboutSyncLangRef.current = currentLang;
+
+    // `enabled` is a dependency, so tab re-entry re-runs this effect. The about draft lives
+    // only in `aboutText` until save; applying the stored RU/EN copy would drop it. A
+    // language change still has to show the matching stored copy.
+    if (!langChanged && skipReloadRef.current) return;
+
     const currentText = currentLang === 'ru' ? aboutTextRu : aboutTextEn;
     setAboutText(currentText);
     setInitialAboutText(currentText);
@@ -559,6 +550,9 @@ export function useSettingsPage({
       publicSlug,
     ]
   );
+
+  // Gated on hasLoadedOnce so the first open always loads, even though nothing can be dirty yet.
+  skipReloadRef.current = hasLoadedOnce && hasUnsavedChanges;
 
   return {
     ui,
