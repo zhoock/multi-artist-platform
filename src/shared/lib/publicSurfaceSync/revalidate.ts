@@ -18,6 +18,7 @@ import {
   setCachedPublicArtistUserProfileHeaderImages,
 } from '@shared/lib/publicArtistUserProfile';
 import { dispatchArtistMonetizationChanged } from '@shared/lib/payment/artistMonetizationEvents';
+import { normalizeProxyImageUrl } from '@shared/lib/proxyImageUrl';
 import type { PublicSurfaceScope, ResolvedPublicSurfacePlan } from './types';
 
 export type ExecutePublicSurfaceRevalidateInput = ResolvedPublicSurfacePlan & {
@@ -147,9 +148,12 @@ export function executePublicSurfaceRevalidate(input: ExecutePublicSurfaceRevali
     clearPublicArtistUserProfileInflight(slug);
     invalidateArtistHeroHeaderImagesCache(slug);
     if (Array.isArray(input.headerImages)) {
-      setCachedPublicArtistUserProfileHeaderImages(slug, input.headerImages);
-      patchCachedPublicArtistHeaderImages(slug, input.headerImages);
-      dispatchHeaderImagesUpdated(input.headerImages);
+      // The Dashboard hands over canonical storage paths; these caches mirror the
+      // /api/public-artists shape, whose readers (Universe3D cards, Hero) expect browser URLs.
+      const displayUrls = input.headerImages.map((value) => normalizeProxyImageUrl(String(value)));
+      setCachedPublicArtistUserProfileHeaderImages(slug, displayUrls);
+      patchCachedPublicArtistHeaderImages(slug, displayUrls);
+      dispatchHeaderImagesUpdated(displayUrls);
     } else {
       invalidatePublicArtistUserProfileCache(slug);
     }

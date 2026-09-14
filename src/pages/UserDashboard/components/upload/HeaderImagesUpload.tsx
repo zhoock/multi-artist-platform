@@ -6,7 +6,10 @@ import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 import { useLang } from '@app/providers/lang';
 import { CoverImageCropModal } from '../modals/cover/CoverImageCropModal';
-import { buildProxyImageUrlFromStoragePath } from '@shared/lib/proxyImageUrl';
+import {
+  extractStoragePathFromProxyInput,
+  normalizeProxyImageUrl,
+} from '@shared/lib/proxyImageUrl';
 import { uploadFile, deleteHeroImage } from '@shared/api/storage';
 import { getUser } from '@shared/lib/auth';
 import { uniqueUploadFileSuffix } from '@shared/lib/uniqueUploadFileSuffix';
@@ -36,31 +39,25 @@ const ALLOWED_TYPES = [
 const MAX_IMAGES = 10; // Максимальное количество изображений
 
 /**
- * Извлекает простой URL из image-set() строки для использования в <img src>
- * @param imageSetOrUrl - image-set() строка или простой URL или storagePath
+ * Единственная точка, где сохранённое значение превращается в URL для <img src>.
+ *
+ * Список хранит канонические storage paths (`users/<uid>/hero/<file>`), поэтому URL строится
+ * здесь, а не при загрузке. normalizeProxyImageUrl также чинит унаследованные localhost URL,
+ * которые могли остаться в уже загруженном client state.
+ *
+ * @param imageSetOrUrl - storagePath, простой URL или image-set() строка
  * @returns простой URL для превью
  */
 function extractPreviewUrl(imageSetOrUrl: string): string {
-  // Если это storagePath (начинается с "users/"), преобразуем в proxy URL
-  if (imageSetOrUrl.startsWith('users/') && imageSetOrUrl.includes('/hero/')) {
-    const proxyUrl = buildProxyImageUrlFromStoragePath(imageSetOrUrl);
-    return proxyUrl;
-  }
-
-  // Если это уже простой URL (proxy URL или Supabase URL), возвращаем как есть
-  if (!imageSetOrUrl.includes('image-set')) {
-    return imageSetOrUrl;
-  }
-
   // Извлекаем первый URL из image-set()
   // Паттерн: url('/images/hero/2.avif') или url('/images/hero/2.jpg')
-  const urlMatch = imageSetOrUrl.match(/url\(['"]([^'"]+)['"]\)/);
-  if (urlMatch && urlMatch[1]) {
-    return urlMatch[1];
+  if (imageSetOrUrl.includes('image-set')) {
+    const urlMatch = imageSetOrUrl.match(/url\(['"]([^'"]+)['"]\)/);
+    // Если не удалось извлечь, возвращаем как есть (на случай ошибки)
+    return urlMatch?.[1] ? normalizeProxyImageUrl(urlMatch[1]) : imageSetOrUrl;
   }
 
-  // Если не удалось извлечь, возвращаем как есть (на случай ошибки)
-  return imageSetOrUrl;
+  return normalizeProxyImageUrl(imageSetOrUrl);
 }
 
 function validateImageFile(file: File): Promise<{ valid: boolean; error?: string }> {
@@ -229,13 +226,9 @@ export function HeaderImagesUpload({
         throw new Error('Failed to upload image');
       }
 
-      // Убеждаемся, что URL это proxy URL, а не storagePath
-      const finalUrl =
-        url.startsWith('users/') && url.includes('/hero/')
-          ? buildProxyImageUrlFromStoragePath(url)
-          : url;
-
-      const newImages = [...images, finalUrl];
+      // Держим в списке каноническое значение (storage path) — ровно то, что сохраняет API.
+      // URL для показа строится в extractPreviewUrl.
+      const newImages = [...images, extractStoragePathFromProxyInput(url) ?? url];
 
       setImages(newImages);
 

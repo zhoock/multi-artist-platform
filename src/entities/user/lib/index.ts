@@ -3,7 +3,6 @@
  */
 import { buildApiUrl } from '@shared/lib/artistQuery';
 import { fetchWithAuthSession } from '@shared/lib/authFetch';
-import { normalizeProxyImageUrl } from '@shared/lib/proxyImageUrl';
 import { fetchPublicArtistUserProfile } from '@shared/lib/publicArtistUserProfile';
 import { parseSocialLinksFromApi, type SocialLinks } from '@shared/constants/socialLinks';
 
@@ -131,7 +130,10 @@ export async function loadTheBandFromDatabase(
 }
 
 /**
- * Загружает изображения для шапки (header images) из БД для текущего пользователя
+ * Загружает изображения для шапки (header images) из БД для текущего пользователя.
+ *
+ * Returns the values as stored (`users/<uid>/hero/<file>` for anything saved after the save-layer
+ * normalization) — never origin-prefixed. Callers that render must convert to a browser URL.
  */
 export async function loadHeaderImagesFromDatabase(
   useAuth: boolean = false,
@@ -182,9 +184,10 @@ export async function loadHeaderImagesFromDatabase(
     const result: UserProfileResponse = await response.json();
 
     if (result.success && result.data && result.data.headerImages) {
-      const convertedImages = result.data.headerImages.map((url) => normalizeProxyImageUrl(url));
-
-      return convertedImages;
+      // Returned verbatim: the Dashboard edits these values and saves them back, so prefixing the
+      // current origin here would persist a dev/prod host into users.header_images. Browser URLs
+      // are built at the render boundary (see HeaderImagesUpload) instead.
+      return result.data.headerImages.map((value) => String(value));
     }
 
     console.warn('⚠️ [loadHeaderImagesFromDatabase] Header images не найдены в ответе');

@@ -10,7 +10,8 @@ export function buildProxyImageUrlFromStoragePath(storagePath: string): string {
   return `${origin}${proxyPath}?path=${encodeURIComponent(storagePath)}`;
 }
 
-function extractStoragePathFromProxyInput(input: string): string | null {
+/** Inverse of {@link buildProxyImageUrlFromStoragePath}: `null` when no storage path is present. */
+export function extractStoragePathFromProxyInput(input: string): string | null {
   if (input.startsWith('users/')) {
     return input;
   }

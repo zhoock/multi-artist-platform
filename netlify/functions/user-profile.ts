@@ -16,6 +16,7 @@ import {
 } from './lib/api-helpers';
 import { classifyAuthorizationHeader } from './lib/jwt';
 import { assertArtistVisibleToViewer } from './lib/artist-publication';
+import { HeaderImagesValidationError, normalizeHeaderImagesForSave } from './lib/header-images';
 import {
   PublicArtistResolverError,
   fetchPublicArtistProfileBySlug,
@@ -428,8 +429,25 @@ export const handler: Handler = async (
       }
 
       if (data.headerImages !== undefined) {
+        let headerImages: string[];
+        try {
+          headerImages = normalizeHeaderImagesForSave(data.headerImages, userId);
+        } catch (error) {
+          if (error instanceof HeaderImagesValidationError) {
+            return {
+              statusCode: error.statusCode,
+              headers,
+              body: JSON.stringify({
+                success: false,
+                error: error.message,
+              } as SaveUserProfileResponse),
+            };
+          }
+          throw error;
+        }
+
         updateFields.push(`header_images = $${paramIndex++}::jsonb`);
-        updateValues.push(JSON.stringify(data.headerImages || []));
+        updateValues.push(JSON.stringify(headerImages));
       }
 
       const normalizedSocialLinks = normalizeSocialLinksForSave(data.socialLinks);

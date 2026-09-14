@@ -16,6 +16,7 @@ import {
 } from '@shared/lib/proxyImageEnvironment';
 import {
   buildProxyImageUrlFromStoragePath,
+  extractStoragePathFromProxyInput,
   normalizeProxyImageUrl,
 } from '@shared/lib/proxyImageUrl';
 
@@ -80,5 +81,45 @@ describe('normalizeProxyImageUrl', () => {
   it('leaves unrelated URLs unchanged', () => {
     const url = 'https://cdn.example.com/cover.jpg';
     expect(normalizeProxyImageUrl(url)).toBe(url);
+  });
+});
+
+describe('extractStoragePathFromProxyInput', () => {
+  it('returns a bare storage path as is', () => {
+    expect(extractStoragePathFromProxyInput(storagePath)).toBe(storagePath);
+  });
+
+  it('decodes the path parameter of a dev proxy URL', () => {
+    const url = `http://localhost:8080${NETLIFY_FUNCTIONS_PROXY_IMAGE_PATH}?path=${encodeURIComponent(storagePath)}`;
+
+    expect(extractStoragePathFromProxyInput(url)).toBe(storagePath);
+  });
+
+  it('decodes the path parameter of a production proxy URL', () => {
+    const url = `https://multi-artist-platform.netlify.app${NETLIFY_API_PROXY_IMAGE_PATH}?path=${encodeURIComponent(storagePath)}`;
+
+    expect(extractStoragePathFromProxyInput(url)).toBe(storagePath);
+  });
+
+  it('decodes the path parameter of a root-relative proxy URL', () => {
+    const url = `${NETLIFY_API_PROXY_IMAGE_PATH}?path=${encodeURIComponent(storagePath)}`;
+
+    expect(extractStoragePathFromProxyInput(url)).toBe(storagePath);
+  });
+
+  it('round-trips a built proxy URL back to its storage path', () => {
+    (resolveProxyImageOrigin as jest.Mock).mockReturnValue(
+      'https://multi-artist-platform.netlify.app'
+    );
+    (getProxyImagePath as jest.Mock).mockReturnValue(NETLIFY_API_PROXY_IMAGE_PATH);
+
+    const built = buildProxyImageUrlFromStoragePath(storagePath);
+
+    expect(extractStoragePathFromProxyInput(built)).toBe(storagePath);
+  });
+
+  it('returns null when there is no storage path to extract', () => {
+    expect(extractStoragePathFromProxyInput('https://cdn.example.com/cover.jpg')).toBeNull();
+    expect(extractStoragePathFromProxyInput('hero-main')).toBeNull();
   });
 });
