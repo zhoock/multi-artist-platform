@@ -4,7 +4,7 @@ import { isDashboardAppPathname } from '@shared/lib/albumsRouteScope';
 
 /**
  * Блокирует уход с Dashboard через роутинг и предупреждает при закрытии вкладки,
- * пока `active === true` (редактор альбома открыт и есть несохранённые изменения).
+ * пока `active === true` (открыт редактор альбома или статьи с несохранёнными изменениями).
  */
 export function useUnsavedNavigationLeaveGuard(active: boolean) {
   const shouldBlockNavigation = useCallback<BlockerFunction>(

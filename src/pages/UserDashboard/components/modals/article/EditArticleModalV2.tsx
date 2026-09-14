@@ -31,6 +31,7 @@ import { getToken } from '@shared/lib/auth';
 import { fetchWithAuthSession, shouldSuppressApiErrorUi } from '@shared/lib/authFetch';
 import { fetchArticles, resolveArticleForDisplay } from '@entities/article';
 import type { IArticles } from '@models';
+import type { SupportedLang } from '@shared/model/lang';
 import type { Block, ArticleMeta, BlockType, CarouselImageItem } from './EditArticleModalV2.utils';
 import {
   normalizeDetailsToBlocks,
@@ -121,6 +122,7 @@ interface EditArticleModalV2Props {
   onClose: () => void;
   publicArtistSlug?: string | null;
   onArticlePersisted?: (options: { affectsPublicSurface: boolean }) => void;
+  onDiscardRiskChange?: (hasRisk: boolean) => void;
 }
 
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
@@ -231,8 +233,9 @@ export function EditArticleModalV2({
   onClose,
   publicArtistSlug,
   onArticlePersisted,
+  onDiscardRiskChange,
 }: EditArticleModalV2Props) {
-  const { lang } = useLang();
+  const { lang, setLang } = useLang();
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const texts = LANG_TEXTS[lang];
@@ -330,6 +333,12 @@ export function EditArticleModalV2({
   });
   const coverTexts = useMemo(() => getArticleEditorCoverTexts(lang, ui), [lang, ui]);
   const coverLoadKeyRef = useRef<string | null>(null);
+  const hasChangesRef = useRef(false);
+  const loadedLangRef = useRef<SupportedLang | null>(null);
+  const pendingLangSwitchRef = useRef<SupportedLang | null>(null);
+  const loadGenerationRef = useRef(0);
+  const saveDraftShortcutLockRef = useRef(false);
+  const [langSwitchDiscardOpen, setLangSwitchDiscardOpen] = useState(false);
 
   // Очистка таймера текстовых изменений при размонтировании
   useEffect(() => {
@@ -340,12 +349,50 @@ export function EditArticleModalV2({
     };
   }, []);
 
-  // Загрузка статьи при открытии
+  // Загрузка статьи при открытии и при смене языка, если редактор чистый.
+  // Dirty language switch must not reload: that would overwrite the unsaved draft
+  // with the other locale's saved translation.
+  useLayoutEffect(() => {
+    if (!isOpen) return;
+    const loadedLang = loadedLangRef.current;
+    if (hasChangesRef.current && loadedLang != null && lang !== loadedLang) {
+      pendingLangSwitchRef.current = lang;
+      setLangSwitchDiscardOpen(true);
+      setLang(loadedLang);
+    }
+  }, [isOpen, lang, setLang]);
+
   useEffect(() => {
     if (!isOpen) return;
 
+    const loadedLang = loadedLangRef.current;
+    if (hasChangesRef.current && loadedLang != null) {
+      if (lang !== loadedLang) {
+        loadGenerationRef.current += 1;
+      }
+      return;
+    }
+
+    const langForThisLoad = lang;
+    const generation = ++loadGenerationRef.current;
+
+    const shouldAbortLoadApply = (): boolean => {
+      if (generation !== loadGenerationRef.current) return true;
+      if (
+        hasChangesRef.current &&
+        loadedLangRef.current != null &&
+        langForThisLoad !== loadedLangRef.current
+      ) {
+        pendingLangSwitchRef.current = langForThisLoad;
+        setLangSwitchDiscardOpen(true);
+        setLang(loadedLangRef.current);
+        return true;
+      }
+      return false;
+    };
+
     const loadArticle = async () => {
-      const coverLoadKey = `${article.articleId}:${lang}`;
+      const coverLoadKey = `${article.articleId}:${langForThisLoad}`;
       if (coverLoadKeyRef.current !== coverLoadKey) {
         resetCoverUpload();
         coverLoadKeyRef.current = coverLoadKey;
@@ -353,6 +400,7 @@ export function EditArticleModalV2({
 
       // Если это новая статья (articleId начинается с "new-"), пропускаем загрузку
       if (article.articleId.startsWith('new-')) {
+        if (shouldAbortLoadApply()) return;
         setIsLoading(false);
         setCurrentArticle(article);
         setOriginalIsDraft(true);
@@ -374,6 +422,7 @@ export function EditArticleModalV2({
         setInitialImg(article.img || '');
         setHistoryState(createHistoryState());
         typingSnapshotPendingRef.current = false;
+        loadedLangRef.current = langForThisLoad;
         return;
       }
 
@@ -388,6 +437,7 @@ export function EditArticleModalV2({
             Authorization: `Bearer ${token}`,
           },
         });
+        if (shouldAbortLoadApply()) return;
         if (response.ok) {
           const data = await response.json();
           const articlesList = Array.isArray(data) ? data : (data.data ?? data.articles ?? []);
@@ -395,6 +445,7 @@ export function EditArticleModalV2({
             (a: IArticles) => a.articleId === article.articleId
           );
           if (articleForEdit) {
+            if (shouldAbortLoadApply()) return;
             setCurrentArticle(articleForEdit);
             setOriginalIsDraft(articleForEdit.isDraft ?? true);
 
@@ -413,7 +464,7 @@ export function EditArticleModalV2({
               parsedDetails = [];
             }
             // Инициализируем блоки и мета
-            const resolved = resolveArticleForDisplay(articleForEdit, lang);
+            const resolved = resolveArticleForDisplay(articleForEdit, langForThisLoad);
             const loadedBlocks = normalizeDetailsToBlocks(resolved.details || parsedDetails);
             setBlocks(loadedBlocks);
             setInitialBlocks(JSON.parse(JSON.stringify(loadedBlocks))); // Deep copy
@@ -426,23 +477,31 @@ export function EditArticleModalV2({
             setInitialImg(resolved.img || articleForEdit.img || '');
             setHistoryState(createHistoryState());
             typingSnapshotPendingRef.current = false;
+            loadedLangRef.current = langForThisLoad;
           }
         }
       } catch (error) {
         console.error('Error loading article:', error);
       } finally {
-        setIsLoading(false);
+        if (generation === loadGenerationRef.current) {
+          setIsLoading(false);
+        }
       }
     };
 
-    loadArticle();
-  }, [isOpen, article.articleId, lang, resetCoverUpload]);
+    void loadArticle();
+  }, [isOpen, article.articleId, lang, resetCoverUpload, setLang]);
 
   // Очистка при закрытии
   useEffect(() => {
     isMountedRef.current = isOpen;
     if (!isOpen) {
       coverLoadKeyRef.current = null;
+      loadedLangRef.current = null;
+      pendingLangSwitchRef.current = null;
+      loadGenerationRef.current += 1;
+      saveDraftShortcutLockRef.current = false;
+      setLangSwitchDiscardOpen(false);
       setAutofocusParagraphBlockId(null);
       setFocusBlockId(null);
       setIsDocumentSelected(false);
@@ -522,6 +581,16 @@ export function EditArticleModalV2({
 
     return blocksChanged || metaChanged || coverChanged;
   }, [blocks, initialBlocks, meta, initialMeta, hasCoverChanges, blocksAreEqual]);
+  hasChangesRef.current = hasChanges;
+
+  const reportedDiscardRiskRef = useRef<boolean | null>(null);
+  useLayoutEffect(() => {
+    if (!onDiscardRiskChange) return;
+    const next = Boolean(isOpen && hasChanges);
+    if (reportedDiscardRiskRef.current === next) return;
+    reportedDiscardRiskRef.current = next;
+    onDiscardRiskChange(next);
+  }, [hasChanges, isOpen, onDiscardRiskChange]);
 
   // Отмена изменений
   const handleCancel = useCallback(() => {
@@ -531,13 +600,34 @@ export function EditArticleModalV2({
     resetCoverUpload();
   }, [initialBlocks, initialMeta, initialImg, resetCoverUpload]);
 
+  const dismissLangSwitchDiscard = useCallback(() => {
+    pendingLangSwitchRef.current = null;
+    setLangSwitchDiscardOpen(false);
+    const loadedLang = loadedLangRef.current;
+    if (loadedLang && lang !== loadedLang) {
+      setLang(loadedLang);
+    }
+  }, [lang, setLang]);
+
+  const confirmLangSwitchDiscard = useCallback(() => {
+    const nextLang = pendingLangSwitchRef.current;
+    pendingLangSwitchRef.current = null;
+    setLangSwitchDiscardOpen(false);
+    handleCancel();
+    // Allow the following language load even before the next render recomputes hasChanges.
+    hasChangesRef.current = false;
+    if (nextLang) {
+      setLang(nextLang);
+    }
+  }, [handleCancel, setLang]);
+
   const finalizeArticleModalClose = useCallback(() => {
     if (hasChanges) handleCancel();
     onClose();
   }, [hasChanges, handleCancel, onClose]);
 
   const isArticleSaveBusy = saveStatus === 'saving' || isPublishing || isSavingDraft;
-  const isCancelDisabled = isArticleSaveBusy || !hasChanges;
+  const isCancelDisabled = isArticleSaveBusy || langSwitchDiscardOpen;
   const isSaveDraftDisabled =
     isPublishing || saveStatus === 'saving' || isSavingDraft || !hasChanges;
   const isPublishDisabled = isPublishing || saveStatus === 'saving' || isSavingDraft || !hasChanges;
@@ -1143,6 +1233,20 @@ export function EditArticleModalV2({
       if (typeof event.key !== 'string') return;
       const key = event.key.toLowerCase();
 
+      // Cmd+S / Ctrl+S → existing Save draft (not Publish). Same enabled semantics as the button.
+      if ((event.metaKey || event.ctrlKey) && !event.altKey && !event.shiftKey && key === 's') {
+        event.preventDefault();
+        event.stopPropagation();
+        if (isSaveDraftDisabled || saveDraftShortcutLockRef.current) {
+          return;
+        }
+        saveDraftShortcutLockRef.current = true;
+        void handleSaveDraft().finally(() => {
+          saveDraftShortcutLockRef.current = false;
+        });
+        return;
+      }
+
       // Проверяем Undo/Redo до проверки фокуса в текстовом поле
       if (metaKey && key === 'z') {
         if (event.shiftKey) {
@@ -1215,6 +1319,8 @@ export function EditArticleModalV2({
     redo,
     selectEntireDocument,
     clearEntireDocument,
+    handleSaveDraft,
+    isSaveDraftDisabled,
   ]);
 
   useEffect(() => {
@@ -2248,7 +2354,9 @@ export function EditArticleModalV2({
         onClose={finalizeArticleModalClose}
         onCancelRequest={() => articleCloseGuard.requestClose()}
         requestCloseRef={popupRequestCloseRef}
-        closeBlocked={isArticleSaveBusy || articleCloseGuard.discardDialogOpen}
+        closeBlocked={
+          isArticleSaveBusy || articleCloseGuard.discardDialogOpen || langSwitchDiscardOpen
+        }
         autoFocusFirstElement={false}
       >
         {isLoading ? (
@@ -2499,9 +2607,8 @@ export function EditArticleModalV2({
                 <button
                   type="button"
                   className="edit-article-v2__button edit-article-v2__button--cancel"
-                  onClick={handleCancel}
+                  onClick={() => articleCloseGuard.requestClose()}
                   disabled={isCancelDisabled}
-                  title={noChangesActionHint}
                 >
                   {texts.cancel}
                 </button>
@@ -2578,7 +2685,17 @@ export function EditArticleModalV2({
           labels={getCloseDiscardConfirmLabels(ui ?? undefined)}
           titleId={articleCloseGuard.discardTitleDomId}
           onStay={articleCloseGuard.dismissDiscardDialog}
-          onDiscard={articleCloseGuard.finalizeCloseWithoutSaving}
+          onDiscard={() => {
+            articleCloseGuard.dismissDiscardDialog();
+            finalizeArticleModalClose();
+          }}
+        />
+        <InlineEditDiscardDialog
+          open={langSwitchDiscardOpen}
+          labels={getCloseDiscardConfirmLabels(ui ?? undefined)}
+          titleId="article-editor-lang-switch-discard-title"
+          onStay={dismissLangSwitchDiscard}
+          onDiscard={confirmLangSwitchDiscard}
         />
         <input
           ref={imageUploadInputRef}

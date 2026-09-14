@@ -78,6 +78,7 @@ export type DashboardLazyModalsProps = {
   getTrackLyricsText: (albumId: string, trackId: string) => string;
   getTrackAuthorship: (albumId: string, trackId: string) => string | undefined;
   onEditAlbumDiscardRiskChange: (hasRisk: boolean) => void;
+  onEditArticleDiscardRiskChange: (hasRisk: boolean) => void;
   onEditAlbumNext: (
     formData: AlbumFormData,
     updatedAlbum?: AlbumEditable,
@@ -107,6 +108,7 @@ export function DashboardLazyModals({
   getTrackLyricsText,
   getTrackAuthorship,
   onEditAlbumDiscardRiskChange,
+  onEditArticleDiscardRiskChange,
   onEditAlbumNext,
   onSyncLyricsSave,
   onSyncLyricsSaved,
@@ -196,6 +198,7 @@ export function DashboardLazyModals({
             onClose={onCloseEditArticle}
             publicArtistSlug={profilePublicSlug}
             onArticlePersisted={onArticlePersisted}
+            onDiscardRiskChange={onEditArticleDiscardRiskChange}
           />
         </Suspense>
       ) : null}

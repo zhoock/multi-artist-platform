@@ -22,13 +22,18 @@ import {
 import { notifyPublicSurfaceChanged, type ProfileAspect } from '@shared/lib/publicSurfaceSync';
 import { GENRE_OPTIONS } from '../modals/album/EditAlbumModal.constants';
 
-function normalizePublicSlug(value: string): string {
+/** Input-time: keep a trailing hyphen so "my-band" can be typed without the "-" vanishing. */
+function sanitizePublicSlugInput(value: string): string {
   return value
     .toLowerCase()
     .replace(/[^a-z0-9-]/g, '-')
     .replace(/-+/g, '-')
-    .replace(/^-+/, '')
-    .replace(/-+$/, '');
+    .replace(/^-+/, '');
+}
+
+/** Blur/save-time: same rules as input, plus strip trailing hyphens to match backend. */
+function normalizePublicSlug(value: string): string {
+  return sanitizePublicSlugInput(value).replace(/-+$/, '');
 }
 
 type UseSettingsPageOptions = {
@@ -160,6 +165,8 @@ export function useSettingsPage({
         if (nextSlug !== publicSlug) {
           setPublicSlug(nextSlug);
         }
+        // Backend rejects empty publicSlug with 400; empty string is not "delete slug".
+        if (!nextSlug) return;
         if (nextSlug === initialPublicSlug) return;
         updateData.publicSlug = nextSlug.trim();
       }
@@ -307,7 +314,7 @@ export function useSettingsPage({
   }, []);
 
   const handlePublicSlugChange = useCallback((value: string) => {
-    setPublicSlug(normalizePublicSlug(value));
+    setPublicSlug(sanitizePublicSlugInput(value));
   }, []);
 
   const handlePublicSlugBlur = useCallback(() => {

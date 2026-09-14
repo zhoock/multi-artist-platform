@@ -611,8 +611,20 @@ function UserDashboard() {
     setAlbumEditorDiscardRisk(false);
     setEditAlbumModal(null);
   }, []);
+  const [articleEditorDiscardRisk, setArticleEditorDiscardRisk] = useState(false);
+  const handleArticleEditorDiscardRiskChange = useCallback((hasRisk: boolean) => {
+    setArticleEditorDiscardRisk(hasRisk);
+  }, []);
+  const closeEditArticleModal = useCallback(() => {
+    setArticleEditorDiscardRisk(false);
+    setEditArticleModal(null);
+  }, []);
   const albumEditorLeaveGuardActive = Boolean(editAlbumModal?.isOpen) && albumEditorDiscardRisk;
-  const albumEditorRouteLeaveBlocker = useUnsavedNavigationLeaveGuard(albumEditorLeaveGuardActive);
+  const articleEditorLeaveGuardActive =
+    Boolean(editArticleModal?.isOpen) && articleEditorDiscardRisk;
+  const unsavedEditorRouteLeaveBlocker = useUnsavedNavigationLeaveGuard(
+    albumEditorLeaveGuardActive || articleEditorLeaveGuardActive
+  );
 
   const [confirmationModal, setConfirmationModal] = useState<{
     isOpen: boolean;
@@ -740,8 +752,7 @@ function UserDashboard() {
   const handleAccountDeleted = useCallback(() => {
     setIsDeleteAccountModalOpen(false);
     setConfirmationModal(null);
-    setAlertModal(null);
-    setEditArticleModal(null);
+    closeEditArticleModal();
     closeEditAlbumModal();
     clearDashboardModalBackground();
     clearAuth();
@@ -751,7 +762,7 @@ function UserDashboard() {
       return;
     }
     navigate({ pathname: '/', search: '' }, { replace: true });
-  }, [navigate]);
+  }, [closeEditAlbumModal, closeEditArticleModal, navigate]);
 
   const consumeDashboardOpenIntent = useCallback(() => {
     const intent = readDashboardOpenIntent(location.state);
@@ -2950,12 +2961,13 @@ function UserDashboard() {
           onClosePreviewLyrics={() => setPreviewLyricsModal(null)}
           onCloseSyncLyrics={() => setSyncLyricsModal(null)}
           onCloseEditAlbum={closeEditAlbumModal}
-          onCloseEditArticle={() => setEditArticleModal(null)}
+          onCloseEditArticle={closeEditArticleModal}
           onAddLyricsSave={handleAddLyrics}
           onEditLyricsSave={handleSaveLyrics}
           getTrackLyricsText={getTrackLyricsText}
           getTrackAuthorship={getTrackAuthorship}
           onEditAlbumDiscardRiskChange={handleAlbumEditorDiscardRiskChange}
+          onEditArticleDiscardRiskChange={handleArticleEditorDiscardRiskChange}
           onEditAlbumNext={handleEditAlbumNext}
           onSyncLyricsSave={(bundle) => {
             dispatch(applyTrackLyricsBundle(bundle));
@@ -3104,14 +3116,14 @@ function UserDashboard() {
           copy={deleteAccountCopy}
         />
 
-        {albumEditorRouteLeaveBlocker.state === 'blocked' ? (
+        {unsavedEditorRouteLeaveBlocker.state === 'blocked' ? (
           <ConfirmationModal
             isOpen
             message={getCloseDiscardConfirmLabels(ui ?? undefined).message}
             cancelText={getCloseDiscardConfirmLabels(ui ?? undefined).stay}
             confirmText={getCloseDiscardConfirmLabels(ui ?? undefined).discard}
-            onCancel={() => albumEditorRouteLeaveBlocker.reset?.()}
-            onConfirm={() => albumEditorRouteLeaveBlocker.proceed?.()}
+            onCancel={() => unsavedEditorRouteLeaveBlocker.reset?.()}
+            onConfirm={() => unsavedEditorRouteLeaveBlocker.proceed?.()}
             variant="warning"
           />
         ) : null}
