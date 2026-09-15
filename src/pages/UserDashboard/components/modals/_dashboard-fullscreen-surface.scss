@@ -15,7 +15,7 @@
   }
 }
 
-@mixin dashboard-fullscreen-shell($block) {
+@mixin dashboard-fullscreen-shell($block, $panel: 'card', $scroll: 'body') {
   .#{$block} {
     @include dashboard-modal-shell($padding: 0);
 
@@ -27,7 +27,7 @@
     min-block-size: 100dvb;
     max-block-size: 100dvb;
 
-    &__card {
+    &__#{$panel} {
       @include dashboard-modal-panel(
         $padding: 0,
         $gap: 0,
@@ -78,7 +78,7 @@
       display: none;
     }
 
-    &__body {
+    &__#{$scroll} {
       display: flex;
       flex: 1 1 0;
       flex-direction: column;
@@ -113,16 +113,18 @@
       border-bottom: 1px solid var(--dashboard-divider);
     }
 
-    &__content {
-      display: flex;
-      flex-direction: column;
-      flex: 1 1 0;
-      min-height: 0;
-      min-width: 0;
-      overflow: hidden;
+    @if $scroll != 'content' {
+      &__content {
+        display: flex;
+        flex-direction: column;
+        flex: 1 1 0;
+        min-height: 0;
+        min-width: 0;
+        overflow: hidden;
 
-      @include fs-loading.dashboard-fullscreen-workspace-loading-host;
-      @include fs-loading.dashboard-fullscreen-workspace-loading-overlay;
+        @include fs-loading.dashboard-fullscreen-workspace-loading-host;
+        @include fs-loading.dashboard-fullscreen-workspace-loading-overlay;
+      }
     }
 
     &__actions {

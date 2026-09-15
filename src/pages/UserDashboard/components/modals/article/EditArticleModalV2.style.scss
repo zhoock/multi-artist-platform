@@ -3,6 +3,7 @@
 @use '../../../../../scss/abstracts/mixins' as *;
 @use '../../../../../scss/components/modal' as *;
 @use '../../../../../scss/components/fullscreen-loading' as fs-loading;
+@use '../dashboard-fullscreen-surface' as dashboard-fs;
 @use './edit-article-media-buttons' as *;
 
 @mixin edit-article-icon-btn($size: var(--dashboard-btn-height), $border-radius: null) {
@@ -163,36 +164,22 @@
   }
 }
 
-// Редактор статьи — на всю ширину (и высоту) окна; инset dialog мешает full-bleed
-dialog.popup:has(.edit-article-v2) {
-  padding: 0;
-
-  @include breakpoint(tablet) {
-    padding: 0;
-  }
-}
-
+@include dashboard-fs.dashboard-fullscreen-dialog('edit-article-v2');
 @include fs-loading.dashboard-fullscreen-dialog-root-loading('.edit-article-v2__loading');
 
 dialog {
   @include dashboard-modal-dialog-buttons;
+  @include dashboard-fs.dashboard-fullscreen-shell(
+    'edit-article-v2',
+    $panel: 'container',
+    $scroll: 'content'
+  );
 
   .edit-article-v2 {
-    @include dashboard-modal-shell($padding: 0);
-
-    box-sizing: border-box;
-    width: 100%;
-    min-block-size: 100dvb;
-
     &__container {
-      @include dashboard-modal-panel(
-        $padding: null,
-        $gap: null,
-        $overflow-y: null,
-        $mobile-max-height: 100dvb,
-        $desktop-width: 100%,
-        $desktop-height: 100dvb
-      );
+      box-sizing: border-box;
+      padding: env(safe-area-inset-top, 0) env(safe-area-inset-right, 0)
+        env(safe-area-inset-bottom, 0) env(safe-area-inset-left, 0);
     }
 
     &__container--saving {
@@ -479,12 +466,14 @@ dialog {
       }
     }
 
+    // Article body is the scroll container (album shell uses &__body for that).
     &__content {
       position: relative;
       flex: 1 1 0;
-      overflow-y: auto;
-      padding: var(--ms-2);
       min-height: 0;
+      overflow: hidden auto;
+      overscroll-behavior: contain;
+      padding: var(--ms-2);
     }
 
     // Колонка контента — та же ширина, что у .wrapper на ArticlePage (min(100vi, 1000px)).
@@ -492,9 +481,11 @@ dialog {
       --edit-article-gutter-inline-size: 36px;
       --edit-article-gutter-gap: var(--ms-01);
 
+      flex: 0 0 auto;
       inline-size: min(100%, 1000px);
       max-inline-size: 1000px;
       margin-inline: auto;
+      padding-inline: 0;
       position: relative;
     }
 
