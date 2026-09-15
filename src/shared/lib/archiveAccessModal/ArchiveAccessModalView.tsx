@@ -342,52 +342,54 @@ export function ArchiveAccessModalView({ dialogRef, onClose }: Props) {
             </button>
           </header>
 
-          {scheduledPlanChange && scheduledEffectiveDateLabel ? (
-            <SubscriptionPlanScheduledBanner
-              targetPlanSlug={scheduledPlanChange.targetPlanSlug}
-              effectiveDateLabel={scheduledEffectiveDateLabel}
-              titleTemplate={scheduledBannerTitleTemplate}
-              bodyTemplate={scheduledBannerBodyTemplate}
-              detailsLabel={scheduledBannerDetailsLabel}
-              onDetails={() => setScheduledDetailsOpen(true)}
-            />
-          ) : null}
-
-          <div className="subscription-plan-modal__plans" role="list">
-            {SUBSCRIPTION_PLAN_SLUGS.map((planSlug) => (
-              <SubscriptionPlanCard
-                key={planSlug}
-                planSlug={planSlug}
-                currentPlanSlug={currentPlanSlug}
-                scheduledTargetPlanSlug={scheduledPlanChange?.targetPlanSlug ?? null}
-                isPremium={hasActivePremium}
-                lang={lang}
-                ui={ui}
-                loadingPlan={
-                  loadingPlan ??
-                  (scheduleLoading && scheduledPlanChange
-                    ? scheduledPlanChange.targetPlanSlug
-                    : null)
-                }
-                onSelect={(slug) => void handleSelectPlan(slug)}
+          <div className="subscription-plan-modal__body">
+            {scheduledPlanChange && scheduledEffectiveDateLabel ? (
+              <SubscriptionPlanScheduledBanner
+                targetPlanSlug={scheduledPlanChange.targetPlanSlug}
+                effectiveDateLabel={scheduledEffectiveDateLabel}
+                titleTemplate={scheduledBannerTitleTemplate}
+                bodyTemplate={scheduledBannerBodyTemplate}
+                detailsLabel={scheduledBannerDetailsLabel}
+                onDetails={() => setScheduledDetailsOpen(true)}
               />
-            ))}
+            ) : null}
+
+            <div className="subscription-plan-modal__plans" role="list">
+              {SUBSCRIPTION_PLAN_SLUGS.map((planSlug) => (
+                <SubscriptionPlanCard
+                  key={planSlug}
+                  planSlug={planSlug}
+                  currentPlanSlug={currentPlanSlug}
+                  scheduledTargetPlanSlug={scheduledPlanChange?.targetPlanSlug ?? null}
+                  isPremium={hasActivePremium}
+                  lang={lang}
+                  ui={ui}
+                  loadingPlan={
+                    loadingPlan ??
+                    (scheduleLoading && scheduledPlanChange
+                      ? scheduledPlanChange.targetPlanSlug
+                      : null)
+                  }
+                  onSelect={(slug) => void handleSelectPlan(slug)}
+                />
+              ))}
+            </div>
+
+            <SubscriptionPricingPurposeDisclosure lang={lang} ui={ui} />
+
+            {showPricingAutopaymentDisclosure ? (
+              <SubscriptionPricingAutopaymentDisclosure lang={lang} ui={ui} />
+            ) : null}
+
+            {emailBlocked ? (
+              <p className="subscription-plan-modal__error" role="status">
+                {emailCopy.restrictedPremium ??
+                  (lang === 'en'
+                    ? 'Verify your email to start support'
+                    : 'Подтвердите email, чтобы начать поддержку')}
+              </p>
+            ) : null}
           </div>
-
-          <SubscriptionPricingPurposeDisclosure lang={lang} ui={ui} />
-
-          {showPricingAutopaymentDisclosure ? (
-            <SubscriptionPricingAutopaymentDisclosure lang={lang} ui={ui} />
-          ) : null}
-
-          {emailBlocked ? (
-            <p className="subscription-plan-modal__error" role="status">
-              {emailCopy.restrictedPremium ??
-                (lang === 'en'
-                  ? 'Verify your email to start support'
-                  : 'Подтвердите email, чтобы начать поддержку')}
-            </p>
-          ) : null}
         </div>
       </LocalModal>
 
