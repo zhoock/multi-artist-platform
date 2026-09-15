@@ -1032,7 +1032,11 @@ export class Universe3D {
     this.dismissCard();
   };
 
-  /** Viewport Y (px): max bottom edge of the card (above scroll hint / mini-player / viewport). */
+  /**
+   * Desktop only: max bottom edge of the card in viewport Y (px).
+   * Keeps the anchored card above the scroll hint / mini-player.
+   * Mobile centering must not use this — the hint is an overlay, not a layout edge.
+   */
   private getViewportBottomLimitY(): number {
     const margin = 16;
     const gapAboveChrome = 12;
@@ -1056,14 +1060,67 @@ export class Universe3D {
     return window.innerWidth < 768;
   }
 
+  /** Lowest viewport Y of the floating top chrome (search / profile / sign-in). */
+  private getTopChromeBottomViewport(): number | null {
+    const selectors = [
+      '.universe-search__field',
+      '.home-scene__sign-in',
+      '.home-scene .header__profile',
+    ];
+    let bottom: number | null = null;
+    for (const selector of selectors) {
+      const el = document.querySelector(selector);
+      if (!(el instanceof HTMLElement)) continue;
+      const rect = el.getBoundingClientRect();
+      if (rect.height <= 0) continue;
+      bottom = bottom == null ? rect.bottom : Math.max(bottom, rect.bottom);
+    }
+    return bottom;
+  }
+
+  /**
+   * Mobile available scene, in viewport Y: below top chrome, above the mini-player.
+   * The scroll hint is not part of this rect — it sits in the leftover gap as an overlay.
+   */
+  private getMobileSceneVerticalBounds(): { minTopViewport: number; maxBottomViewport: number } {
+    const margin = 16;
+    const gapAboveChrome = 12;
+    const layerRect = this.uiLayer.getBoundingClientRect();
+
+    let minTopViewport = layerRect.top + margin;
+    const chromeBottom = this.getTopChromeBottomViewport();
+    if (chromeBottom != null) {
+      minTopViewport = Math.max(minTopViewport, chromeBottom + gapAboveChrome);
+    }
+
+    let maxBottomViewport = layerRect.bottom - margin;
+    const mini = document.querySelector('.mini-player');
+    if (mini instanceof HTMLElement) {
+      maxBottomViewport = Math.min(
+        maxBottomViewport,
+        mini.getBoundingClientRect().top - gapAboveChrome
+      );
+    }
+
+    return { minTopViewport, maxBottomViewport };
+  }
+
+  /** Center the card in the available mobile scene, in uiLayer (position:absolute) coordinates. */
   private centerCard(card: HTMLElement) {
-    const vw = window.innerWidth;
-    const vh = window.innerHeight;
+    const layerRect = this.uiLayer.getBoundingClientRect();
     const rect = card.getBoundingClientRect();
     const w = rect.width;
     const h = rect.height;
-    const left = (vw - w) / 2;
-    const top = (vh - h) / 2;
+    const { minTopViewport, maxBottomViewport } = this.getMobileSceneVerticalBounds();
+
+    const left = (layerRect.width - w) / 2;
+    const centerY = (minTopViewport + maxBottomViewport) / 2;
+    let top = centerY - h / 2 - layerRect.top;
+
+    const minTopLocal = minTopViewport - layerRect.top;
+    const maxTopLocal = maxBottomViewport - layerRect.top - h;
+    top = THREE.MathUtils.clamp(top, minTopLocal, Math.max(minTopLocal, maxTopLocal));
+
     card.style.left = `${left}px`;
     card.style.top = `${top}px`;
   }
@@ -1091,9 +1148,19 @@ export class Universe3D {
   private layoutCard(card: HTMLElement, anchorX: number, anchorY: number) {
     const margin = 16;
     const layerRect = this.uiLayer.getBoundingClientRect();
-    const bottomLimitViewport = this.getViewportBottomLimitY();
-    const maxBottomLocal = bottomLimitViewport - layerRect.top;
-    const minTopLocal = Math.max(0, margin - layerRect.top);
+    let minTopLocal: number;
+    let maxBottomLocal: number;
+
+    if (this.isMobile()) {
+      const { minTopViewport, maxBottomViewport } = this.getMobileSceneVerticalBounds();
+      minTopLocal = minTopViewport - layerRect.top;
+      maxBottomLocal = maxBottomViewport - layerRect.top;
+    } else {
+      const bottomLimitViewport = this.getViewportBottomLimitY();
+      maxBottomLocal = bottomLimitViewport - layerRect.top;
+      minTopLocal = Math.max(0, margin - layerRect.top);
+    }
+
     const availableHeight = Math.max(120, maxBottomLocal - minTopLocal);
 
     card.style.maxHeight = '';
