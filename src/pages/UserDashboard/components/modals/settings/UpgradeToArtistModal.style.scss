@@ -82,6 +82,7 @@
     padding: 0.65rem 0.75rem;
     color: var(--dashboard-text-primary);
     font: inherit;
+    font-size: var(--dashboard-input-font-size);
     background: var(--dashboard-input-bg, rgb(255 255 255 / 4%));
     border: 1px solid var(--dashboard-card-border);
     border-radius: 6px;

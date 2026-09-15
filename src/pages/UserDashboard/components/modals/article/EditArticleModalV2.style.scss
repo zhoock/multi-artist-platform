@@ -1150,7 +1150,7 @@ dialog {
       height: 28px;
       padding: 0;
       color: var(--dashboard-text-primary);
-      font-size: 15px;
+      font-size: max(15px, var(--dashboard-input-font-size));
       background: transparent;
       border: none;
       outline: none;

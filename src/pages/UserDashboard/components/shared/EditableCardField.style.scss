@@ -48,6 +48,7 @@
   min-width: 0;
   padding: var(--ms-01) var(--ms-0);
   color: var(--white) !important;
+  font-size: var(--dashboard-input-font-size);
   font-family: inherit;
   background: var(--deep-black) !important;
   border: 1px solid var(--iron-slate) !important;
@@ -66,7 +67,6 @@
 
   &--title {
     max-width: 100%;
-    font-size: var(--dashboard-font-size);
   }
 
   &[type='date'] {
@@ -88,12 +88,10 @@
 
   &--description {
     color: var(--warm-concrete) !important;
-    font-size: var(--dashboard-font-size);
   }
 
   &--url {
     color: var(--warm-concrete) !important;
-    font-size: var(--dashboard-font-size);
   }
 }
 

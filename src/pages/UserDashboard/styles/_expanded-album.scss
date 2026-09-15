@@ -3,7 +3,7 @@
 @use '../../../scss/abstracts/mixins' as *;
 
 // Matches @include dashboard-form-input (12px 16px, line-height 1.5, 1px border)
-$expanded-track-title-control-height: calc(24px + var(--dashboard-font-size) * 1.5 + 2px);
+$expanded-track-title-control-height: calc(24px + var(--dashboard-input-font-size) * 1.5 + 2px);
 
 dialog {
   .user-dashboard {

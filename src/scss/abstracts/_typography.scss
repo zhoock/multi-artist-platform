@@ -31,6 +31,9 @@
 
   // Dashboard font sizes
   --dashboard-font-size: 14px;
+
+  // Поля ввода: 16px на phone/touch, иначе iOS Safari зумит страницу при фокусе.
+  --dashboard-input-font-size: var(--dashboard-font-size);
   --dashboard-helper-font-size: 12px;
   --dashboard-helper-line-height: 1.4;
   --dashboard-heading-font-size: 18px;
@@ -41,4 +44,14 @@
   --dashboard-row-label-color: rgb(255 255 255 / 62%);
   --dashboard-row-label-weight: 400;
   --dashboard-form-label-weight: 500;
+}
+
+// iOS Safari зумит focused input/textarea, если computed font-size < 16px.
+// Desktop оставляем 14px. Покрываем портрет телефона, landscape iPhone и coarse pointer (iPhone/iPad).
+@media (width < 768px),
+  ((width < 1024px) and (height < 500px)),
+  ((hover: none) and (pointer: coarse)) {
+  :root {
+    --dashboard-input-font-size: 16px;
+  }
 }

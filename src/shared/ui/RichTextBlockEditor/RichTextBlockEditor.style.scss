@@ -160,6 +160,7 @@
     height: 28px;
     padding: 0 8px;
     color: var(--dashboard-text-primary, #f0f0f0);
+    font-size: var(--dashboard-input-font-size);
     background: var(--dashboard-hover-bg, rgb(255 255 255 / 6%));
     border: 1px solid var(--dashboard-card-border, rgb(255 255 255 / 18%));
     border-radius: 4px;
