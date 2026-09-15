@@ -72,6 +72,7 @@ import { MinimalLayout } from '@app/layouts/MinimalLayout';
 import { isMinimalLayoutPathname } from '@app/layouts/minimalLayoutRoutes';
 import { isServiceScreenBodyClassActive } from '@app/layouts/serviceScreenBodyClass';
 import { UnprefixedRedirect } from '@app/layouts/UnprefixedRedirect';
+import { InitialAppLoader, PageRouteLoader } from '@app/ui/InitialAppLoader';
 import { DEFAULT_ROUTE_LANG, stripLangPrefix } from '@shared/lib/i18n/routeLang';
 import { ToastProvider, NavigationToastHydrator } from '@shared/lib/toast';
 import { applyForcedDarkTheme, resolveInitialTheme } from '@shared/lib/theme';
@@ -112,8 +113,8 @@ const NotFoundPage = lazy(() =>
   import('@widgets/notFound').then((m) => ({ default: m.NotFoundPage }))
 );
 
-// Компонент для отображения загрузки
-const PageLoader = () => <p>Загрузка...</p>;
+/** Lazy-route fallback after chrome is on screen. First bootstrap uses InitialAppLoader. */
+const PageLoader = PageRouteLoader;
 
 function NotFoundRoute() {
   return (
@@ -129,7 +130,7 @@ function HomeRouteSuspenseFallback() {
   if (searchParams.get('artist')?.trim()) {
     return <ArtistPageSkeleton part="main" />;
   }
-  return <PageLoader />;
+  return <InitialAppLoader />;
 }
 
 const homePageElement = (
@@ -223,7 +224,7 @@ export default function App() {
         <RouterProvider
           router={router}
           future={{ v7_startTransition: true }}
-          fallbackElement={<p>Загрузка...</p>}
+          fallbackElement={<InitialAppLoader />}
         />
       </ToastProvider>
     </ErrorBoundary>
