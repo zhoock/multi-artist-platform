@@ -17,7 +17,17 @@
 
   @supports selector(body:has(.mini-player)) {
     body:has(.mini-player) & {
-      inset-block-end: calc(4.75rem + var(--ms-1) + env(safe-area-inset-bottom, 0px));
+      // Same containing block as the fixed mini-player. The JS inset can be 0px
+      // on first paint; 4.75rem keeps the hint above the player in that case.
+      --scroll-hint-player-clearance: max(
+        var(--layout-fixed-bottom-inset, 0px),
+        4.75rem,
+        env(safe-area-inset-bottom, 0px)
+      );
+
+      position: fixed;
+      z-index: 20001;
+      inset-block-end: calc(var(--scroll-hint-player-clearance) + var(--ms-01));
     }
   }
 
