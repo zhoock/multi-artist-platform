@@ -153,13 +153,25 @@ dialog:not(.toast-viewport-layer, .toast-top-layer) {
     backdrop-filter: blur(20px);
 
     .popup__gradient {
+      // Не совмещать filter и transform на одном слое: в Safari/iOS GPU
+      // клипит blur по border-box композитного слоя, пока анимируется --rotate,
+      // и в центре появляется прямоугольник размером scale(0.7).
+      // Тот же блоб (70% от слоя 100% с origin по центру + прежний сдвиг),
+      // без transform; padding даёт место для blur-outset, если слой всё же клипнется.
+      --gradient-blur: calc(var(--card-height) / 6);
+      --gradient-outset: calc(var(--gradient-blur) * 2);
+
       position: absolute;
       z-index: -1;
-      filter: blur(calc(var(--card-height) / 6));
-      transform: scale(0.7);
-      inline-size: 100%;
-      block-size: 100%;
-      inset-block-start: calc(var(--card-height) / 6);
+      box-sizing: content-box;
+      filter: blur(var(--gradient-blur));
+      inline-size: 70%;
+      block-size: 70%;
+      padding: var(--gradient-outset);
+      inset-inline-start: calc(15% - var(--gradient-outset));
+      inset-block-start: calc(var(--card-height) / 6 + 15% - var(--gradient-outset));
+      background-origin: content-box !important;
+      background-clip: content-box !important;
       animation: spin 11.125s linear infinite;
 
       @media (prefers-reduced-motion: reduce) {
