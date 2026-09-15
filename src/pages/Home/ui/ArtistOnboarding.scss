@@ -10,6 +10,10 @@
   --onboarding-card-bg: rgb(255 255 255 / 3%);
   --onboarding-hero-image: url('/images/onboarding-hero.png');
 
+  display: flex;
+  flex-direction: column;
+  flex: 1 0 auto;
+  padding-block-end: clamp($ms-3, 10vw, $ms-4);
   background: #050505;
   font-family: var(--base-font-family);
   font-weight: var(--regular, 400);

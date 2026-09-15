@@ -145,22 +145,21 @@ body {
     }
   }
 
-  /* Onboarding: main длиннее hero — #root с auto вместо 100vb, иначе footer «прилипает» к ~59vw */
+  /* Онбординг: main растёт с контентом, лишнее место viewport — в main, не во footer. */
   &.page--artist-onboarding {
     #root {
-      block-size: auto;
       min-block-size: 100dvb;
       grid-template:
         'header' calc(1.618rem * 2)
-        'main' auto
+        'main' minmax(min-content, 1fr)
         'footer' auto / 1fr;
     }
 
     #root main {
-      display: block;
-      min-block-size: 0;
+      display: flex;
+      flex-direction: column;
+      min-block-size: min-content;
       overflow: visible;
-      padding-block-end: clamp($ms-3, 10vw, $ms-4);
     }
   }
 
