@@ -1,9 +1,72 @@
+@use '../../../../../scss/abstracts/mixins' as *;
 @use '../dashboard-fullscreen-surface' as dashboard-fs;
+
+// Phone portrait, plus landscape phones whose width crosses $tablets
+// while height is still a phone viewport. Same query as the dashboard shell.
+@mixin lyrics-mobile-fullscreen {
+  @media (not ($tablets)), ((not ($desktops)) and (height < 500px)) {
+    @content;
+  }
+}
 
 @mixin lyrics-fullscreen-dialog($root-class) {
   @include dashboard-fs.dashboard-fullscreen-dialog($root-class);
+
+  // Beat `body:has(.user-dashboard) dialog.popup[open]:not(:has(...))`
+  // (align-items: center + leftover UA max-height/margin on <dialog>).
+  html
+    body:has(.user-dashboard)
+    dialog:not(.toast-viewport-layer, .toast-top-layer).popup[open]:has(.#{$root-class}),
+  html body dialog:not(.toast-viewport-layer, .toast-top-layer).popup[open]:has(.#{$root-class}) {
+    @include lyrics-mobile-fullscreen {
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      justify-content: flex-start;
+      inset: 0;
+      box-sizing: border-box;
+      width: 100%;
+      max-width: 100%;
+      height: 100dvb;
+      min-height: 100dvb;
+      max-height: 100dvb;
+      inline-size: 100%;
+      max-inline-size: 100%;
+      block-size: 100dvb;
+      min-block-size: 100dvb;
+      max-block-size: 100dvb;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      overscroll-behavior: none;
+      background: var(--dashboard-card-bg);
+      border: none;
+      border-radius: 0;
+    }
+  }
 }
 
 @mixin lyrics-fullscreen-shell($block) {
   @include dashboard-fs.dashboard-fullscreen-shell($block);
+
+  .#{$block} {
+    @include lyrics-mobile-fullscreen {
+      width: 100%;
+      height: 100%;
+      min-height: 0;
+      max-height: none;
+      min-block-size: 0;
+      max-block-size: none;
+
+      &__card {
+        box-sizing: border-box;
+        width: 100%;
+        height: 100%;
+        min-height: 0;
+        max-height: none;
+        padding: env(safe-area-inset-top, 0) env(safe-area-inset-right, 0)
+          env(safe-area-inset-bottom, 0) env(safe-area-inset-left, 0);
+      }
+    }
+  }
 }

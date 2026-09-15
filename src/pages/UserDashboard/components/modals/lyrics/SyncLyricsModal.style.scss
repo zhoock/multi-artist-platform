@@ -457,10 +457,6 @@ dialog {
         box-sizing: border-box;
       }
 
-      &__actions {
-        padding-bottom: env(safe-area-inset-bottom, 0);
-      }
-
       &__actions-bar {
         display: flex;
         flex-direction: column;
@@ -469,7 +465,7 @@ dialog {
       }
 
       &__button--danger {
-        align-self: flex-start;
+        align-self: flex-end;
       }
 
       &__actions-main {
