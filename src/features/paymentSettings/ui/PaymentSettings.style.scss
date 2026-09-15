@@ -127,9 +127,17 @@ dialog {
       &__provider-row {
         &.dashboard-row--action {
           grid-template-columns: minmax(0, 1fr) auto;
+          align-items: center;
+          min-width: 0;
 
           .dashboard-row__control {
             display: none;
+          }
+
+          // Override dashboard-row--action wrapping the button onto the next row below 40rem.
+          > .dashboard-button {
+            grid-column: auto;
+            place-self: center end;
           }
         }
       }
@@ -138,6 +146,7 @@ dialog {
         display: flex;
         align-items: center;
         align-self: center;
+        min-width: 0;
         margin-bottom: 0;
       }
 
