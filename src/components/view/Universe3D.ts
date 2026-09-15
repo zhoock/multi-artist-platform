@@ -932,7 +932,11 @@ export class Universe3D {
     }
 
     this.updateMouseFromClientEvent(event);
+    return this.activateArtistFromCurrentRay(options);
+  }
 
+  /** Point then label sprites — shared by desktop click and mobile tap. */
+  private activateArtistFromCurrentRay(options?: { dismissCardOnMiss?: boolean }): boolean {
     const intersects = this.raycaster.intersectObjects(this.clickableNodes, true);
 
     for (let i = 0; i < intersects.length; i++) {
@@ -1758,19 +1762,12 @@ export class Universe3D {
       return;
     }
 
-    // 👉 SINGLE TAP (с задержкой)
+    // 👉 SINGLE TAP (с задержкой) — same point+label activation as desktop click
     this.tapTimeout = window.setTimeout(() => {
-      const intersects = this.raycaster.intersectObjects(this.clickableNodes, true);
-
-      for (let i = 0; i < intersects.length; i++) {
-        const artistNode = this.resolveArtistNodeFromIntersection(intersects[i].object);
-        if (artistNode) {
-          this.handleArtistNodeActivation(artistNode);
-          return;
-        }
+      const activated = this.activateArtistFromCurrentRay({ dismissCardOnMiss: false });
+      if (!activated) {
+        this.dismissCard();
       }
-
-      this.dismissCard();
     }, 250);
   }
 

@@ -54,6 +54,7 @@ describe('Universe3D artist activation', () => {
   });
 
   afterEach(() => {
+    jest.useRealTimers();
     jest.restoreAllMocks();
   });
 
@@ -134,6 +135,13 @@ describe('Universe3D artist activation', () => {
     return mesh;
   }
 
+  function tapCanvas(universe: Universe3D, clientX: number, clientY: number) {
+    (
+      universe as unknown as { performCanvasTouchTap: (x: number, y: number) => void }
+    ).performCanvasTouchTap(clientX, clientY);
+    jest.advanceTimersByTime(250);
+  }
+
   describe('main Universe3D mode', () => {
     test('activatePrimaryArtist opens artist card', () => {
       const { container, universe } = createUniverse();
@@ -181,6 +189,36 @@ describe('Universe3D artist activation', () => {
 
       universe.destroy();
       container.remove();
+    });
+
+    test('mobile tap artist label opens same artist card', () => {
+      jest.useFakeTimers();
+      const { container, universe } = createUniverse();
+      mockLabelRaycastHit(universe);
+
+      tapCanvas(universe, 100, 100);
+
+      expect(container.querySelector('.universe3d-card')).not.toBeNull();
+      expect(container.querySelector('.universe3d-card__title')?.textContent).toBe('Beatles');
+
+      universe.destroy();
+      container.remove();
+      jest.useRealTimers();
+    });
+
+    test('mobile tap artist point opens artist card', () => {
+      jest.useFakeTimers();
+      const { container, universe } = createUniverse();
+      mockPointRaycastHit(universe);
+
+      tapCanvas(universe, 100, 100);
+
+      expect(container.querySelector('.universe3d-card')).not.toBeNull();
+      expect(container.querySelector('.universe3d-card__title')?.textContent).toBe('Beatles');
+
+      universe.destroy();
+      container.remove();
+      jest.useRealTimers();
     });
 
     test('hovering artist name uses same pointer cursor as artist dot', () => {
