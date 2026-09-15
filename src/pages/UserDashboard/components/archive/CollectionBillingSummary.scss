@@ -80,11 +80,13 @@ dialog {
 
       &__plan-cards {
         display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-columns: minmax(0, 1fr);
         gap: var(--ms-01);
+        width: 100%;
+        min-width: 0;
 
-        @include breakpoint(old-phones) {
-          grid-template-columns: minmax(0, 1fr);
+        @include breakpoint(tablet) {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
         }
       }
 
@@ -92,6 +94,8 @@ dialog {
         display: flex;
         flex-direction: column;
         gap: var(--ms-01);
+        width: 100%;
+        min-width: 0;
         min-height: 100%;
         padding: var(--ms-1);
       }
