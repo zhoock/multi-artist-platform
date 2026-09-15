@@ -279,6 +279,7 @@ export function EditArticleModalV2({
   // Ref для отложенной установки фокуса после удаления блока
   const pendingFocusRef = useRef<PendingFocus | null>(null);
   const contentColumnRef = useRef<HTMLDivElement>(null);
+  const articleTitleInputRef = useRef<HTMLTextAreaElement>(null);
   const imageUploadBlockIdRef = useRef<string | null>(null);
   const imageUploadInputRef = useRef<HTMLInputElement>(null);
 
@@ -1669,19 +1670,51 @@ export function EditArticleModalV2({
   }, [blocks, createBlock, focusEditorBlock, saveSnapshot]);
 
   const handleArticleTitleKeyDown = useCallback(
-    (event: React.KeyboardEvent<HTMLInputElement>) => {
-      if (event.key !== 'Enter' || event.shiftKey) return;
+    (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      if (event.key !== 'Enter') return;
+
+      event.preventDefault();
+      if (event.shiftKey) return;
 
       const input = event.currentTarget;
       const cursorAtEnd =
         input.selectionStart === input.selectionEnd && input.selectionStart === input.value.length;
       if (!cursorAtEnd) return;
 
-      event.preventDefault();
       insertParagraphBelowArticleTitle();
     },
     [insertParagraphBelowArticleTitle]
   );
+
+  const syncArticleTitleHeight = useCallback(() => {
+    const el = articleTitleInputRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${el.scrollHeight}px`;
+  }, []);
+
+  useLayoutEffect(() => {
+    syncArticleTitleHeight();
+  }, [meta.title, isLoading, syncArticleTitleHeight]);
+
+  useEffect(() => {
+    if (isLoading) return;
+
+    const sync = () => syncArticleTitleHeight();
+    window.addEventListener('resize', sync);
+
+    const column = contentColumnRef.current;
+    let observer: ResizeObserver | undefined;
+    if (typeof ResizeObserver !== 'undefined' && column) {
+      observer = new ResizeObserver(sync);
+      observer.observe(column);
+    }
+
+    return () => {
+      window.removeEventListener('resize', sync);
+      observer?.disconnect();
+    };
+  }, [isLoading, syncArticleTitleHeight]);
 
   const handleRichBlockBackspace = useCallback(
     (blockId: string, detail: RichBackspaceDetail) => {
@@ -2423,11 +2456,18 @@ export function EditArticleModalV2({
                   data-document-selected={isDocumentSelected ? 'true' : undefined}
                 >
                   <h2 className="edit-article-v2__article-title">
-                    <input
-                      type="text"
+                    <textarea
+                      ref={articleTitleInputRef}
                       className="edit-article-v2__article-title-input"
+                      rows={1}
+                      wrap="soft"
                       value={meta.title}
-                      onChange={(e) => setMeta((prev) => ({ ...prev, title: e.target.value }))}
+                      onChange={(e) =>
+                        setMeta((prev) => ({
+                          ...prev,
+                          title: e.target.value.replace(/\r?\n/g, ' '),
+                        }))
+                      }
                       onKeyDown={handleArticleTitleKeyDown}
                       placeholder={texts.title}
                       aria-label={texts.title}

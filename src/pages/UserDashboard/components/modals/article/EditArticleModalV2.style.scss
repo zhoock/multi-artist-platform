@@ -237,6 +237,24 @@ dialog {
 
     &__footer {
       @include dashboard-modal-footer($padding: var(--ms-1) var(--ms-2), $margin-top: 0);
+
+      box-sizing: border-box;
+      width: 100%;
+      max-width: 100%;
+      min-width: 0;
+
+      // Phone: album actions-bar uses tighter padding + safe-area; article has three nowrap
+      // buttons so gap/padding-inline must shrink with the viewport instead of overflowing.
+      @media (not ($tablets)) {
+        justify-content: flex-end;
+        gap: clamp(0.25rem, 1.2vw, var(--ms-0));
+        padding: var(--ms-1) clamp(0.45rem, 2.2vw, var(--ms-1));
+        padding-bottom: calc(var(--ms-1) + env(safe-area-inset-bottom, 0));
+      }
+
+      @include breakpoint(old-phones) {
+        flex-wrap: wrap;
+      }
     }
 
     &__cover {
@@ -438,6 +456,8 @@ dialog {
     }
 
     &__button {
+      box-sizing: border-box;
+
       &--cancel {
         @include dashboard-btn-ghost;
       }
@@ -464,16 +484,33 @@ dialog {
       &--publish-loading {
         @include dashboard-modal-inline-loading;
       }
+
+      @media (not ($tablets)) {
+        &--cancel,
+        &--draft,
+        &--publish {
+          flex: 1 1 auto;
+          min-width: min-content;
+          max-width: 100%;
+          padding-inline: clamp(0.35rem, 1.8vw, var(--ms-0));
+        }
+      }
     }
 
     // Article body is the scroll container (album shell uses &__body for that).
     &__content {
       position: relative;
       flex: 1 1 0;
+      min-width: 0;
       min-height: 0;
       overflow: hidden auto;
       overscroll-behavior: contain;
       padding: var(--ms-2);
+
+      @media (not ($tablets)) {
+        // Keep start padding for the block gutter; free the end so the title caret fits.
+        padding-inline: var(--ms-2) var(--ms-02);
+      }
     }
 
     // Колонка контента — та же ширина, что у .wrapper на ArticlePage (min(100vi, 1000px)).
@@ -481,7 +518,8 @@ dialog {
       --edit-article-gutter-inline-size: 36px;
       --edit-article-gutter-gap: var(--ms-01);
 
-      flex: 0 0 auto;
+      flex: 0 1 auto;
+      min-width: 0;
       inline-size: min(100%, 1000px);
       max-inline-size: 1000px;
       margin-inline: auto;
@@ -490,13 +528,19 @@ dialog {
     }
 
     &__article-title {
+      min-width: 0;
+      max-width: 100%;
       margin: 0 0 var(--ms-2);
     }
 
     &__article-title-input {
       display: block;
+      box-sizing: border-box;
       width: 100%;
-      padding: 0;
+      max-width: 100%;
+      min-width: 0;
+      min-height: 1.2em;
+      padding: 0 0.2ch 0 0;
       color: var(--text-color, var(--dashboard-text-primary));
       font-size: clamp(1.75rem, 4vw, 2.5rem);
       line-height: 1.2;
@@ -505,6 +549,11 @@ dialog {
       background: transparent;
       border: none;
       outline: none;
+      resize: none;
+      overflow: hidden;
+      overflow-wrap: break-word;
+      white-space: pre-wrap;
+      field-sizing: content;
       text-transform: none !important;
       letter-spacing: normal !important;
 
