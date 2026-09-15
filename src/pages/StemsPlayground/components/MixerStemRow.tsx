@@ -1,6 +1,11 @@
 // src/pages/StemsPlayground/components/MixerStemRow.tsx
 import clsx from 'clsx';
 import { StemIcon, type StemCategory } from '@entities/stem';
+import {
+  applyNativeRangeFromClientX,
+  captureRangePointer,
+  releaseRangePointer,
+} from '@shared/lib/nativeRangePointer';
 
 type MixerStemRowProps = {
   name: string;
@@ -17,16 +22,13 @@ type MixerStemRowProps = {
   onToggleSolo: () => void;
 };
 
-/** Maps a pointer X onto the native range track (0..100), including edges. */
 function applySliderPercentFromClientX(
   el: HTMLInputElement,
   clientX: number,
   onVolumeChange: (volume: number) => void
 ) {
-  const rect = el.getBoundingClientRect();
-  if (rect.width <= 0) return;
-  const next = Math.round(Math.min(1, Math.max(0, (clientX - rect.left) / rect.width)) * 100);
-  el.style.setProperty('--progress-width', `${next}%`);
+  const next = applyNativeRangeFromClientX(el, clientX, '--progress-width');
+  if (next == null) return;
   onVolumeChange(next / 100);
 }
 
@@ -49,11 +51,7 @@ export function MixerStemRow({
   const onSliderPointerDown: React.PointerEventHandler<HTMLInputElement> = (event) => {
     if (disabled) return;
     if (event.pointerType === 'mouse' && event.button !== 0) return;
-    try {
-      event.currentTarget.setPointerCapture(event.pointerId);
-    } catch {
-      // Synthetic/automation events may not have an active pointer.
-    }
+    captureRangePointer(event.currentTarget, event.pointerId);
     applySliderPercentFromClientX(event.currentTarget, event.clientX, onVolumeChange);
   };
 
@@ -63,13 +61,7 @@ export function MixerStemRow({
   };
 
   const onSliderPointerEnd: React.PointerEventHandler<HTMLInputElement> = (event) => {
-    try {
-      if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-        event.currentTarget.releasePointerCapture(event.pointerId);
-      }
-    } catch {
-      // Ignore missing capture on synthetic events.
-    }
+    releaseRangePointer(event.currentTarget, event.pointerId);
   };
 
   return (

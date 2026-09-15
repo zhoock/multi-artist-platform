@@ -27,6 +27,7 @@ import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 
 import { debugLog, trackDebug } from './utils/debug';
 import { formatTimerValue } from './utils/formatTime';
+import { createPlayerRangePointerHandlers } from './lib/createPlayerRangePointerHandlers';
 import { useLyricsScrollRestore } from './hooks/useLyricsScrollRestore';
 import { useLyricsManualScroll } from './hooks/useLyricsManualScroll';
 import { useLyricsAutoScroll } from './hooks/useLyricsAutoScroll';
@@ -653,6 +654,15 @@ export default function AudioPlayer({
       resetInactivityTimer();
     },
     [dispatch, resetInactivityTimer]
+  );
+
+  const progressPointerHandlers = useMemo(
+    () => createPlayerRangePointerHandlers('--progress-width', handleProgressChange, handleSeekEnd),
+    [handleProgressChange, handleSeekEnd]
+  );
+  const volumePointerHandlers = useMemo(
+    () => createPlayerRangePointerHandlers('--volume-progress-width', handleVolumeChange),
+    [handleVolumeChange]
   );
 
   /**
@@ -1352,16 +1362,25 @@ export default function AudioPlayer({
         <div className="player__progress-bar">
           <input
             ref={progressInputRef}
+            className="player__progress-range"
             type="range"
             value={progress}
             min="0"
             max="100"
+            aria-label="Позиция трека"
             onChange={handleProgressChange}
             onInput={handleProgressChange} // onInput срабатывает раньше onChange и мгновенно
             onMouseUp={handleSeekEnd} // для десктопа
             onTouchEnd={handleSeekEnd} // для мобильных
             onMouseDown={resetInactivityTimer} // Сбрасываем таймер при начале взаимодействия
             onTouchStart={resetInactivityTimer} // Сбрасываем таймер при начале взаимодействия
+            onPointerDown={(event) => {
+              resetInactivityTimer();
+              progressPointerHandlers.onPointerDown(event);
+            }}
+            onPointerMove={progressPointerHandlers.onPointerMove}
+            onPointerUp={progressPointerHandlers.onPointerUp}
+            onPointerCancel={progressPointerHandlers.onPointerCancel}
           />
         </div>
         {/* Время: текущее и оставшееся */}
@@ -1478,7 +1497,20 @@ export default function AudioPlayer({
           <span className="player__volume-icon" aria-hidden>
             <Volume {...playerIconProps(PLAYER_VOLUME_ICON_SIZE)} />
           </span>
-          <input type="range" value={volume} min="0" max="100" onChange={handleVolumeChange} />
+          <input
+            className="player__volume-range"
+            type="range"
+            value={volume}
+            min="0"
+            max="100"
+            aria-label="Громкость"
+            onChange={handleVolumeChange}
+            onInput={handleVolumeChange}
+            onPointerDown={volumePointerHandlers.onPointerDown}
+            onPointerMove={volumePointerHandlers.onPointerMove}
+            onPointerUp={volumePointerHandlers.onPointerUp}
+            onPointerCancel={volumePointerHandlers.onPointerCancel}
+          />
           <span className="player__volume-icon" aria-hidden>
             <Volume2 {...playerIconProps(PLAYER_VOLUME_ICON_SIZE)} />
           </span>
