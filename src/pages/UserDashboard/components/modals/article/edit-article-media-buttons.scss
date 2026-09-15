@@ -85,3 +85,62 @@
     border-color: var(--dashboard-btn-destructive-active-bg);
   }
 }
+
+// Mobile article editor must use the same fullscreen surface as EditAlbumModal.
+// The article modal has its own nested panel, so these selectors deliberately outrank
+// the generic dashboard-modal-card styles applied later by EditArticleModalV2.style.scss.
+dialog.popup:has(.edit-article-v2) {
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  overflow: hidden;
+
+  > .edit-article-v2 {
+    align-items: stretch;
+    justify-content: stretch;
+    box-sizing: border-box;
+    width: 100%;
+    height: 100dvb;
+    min-height: 100dvb;
+    max-height: 100dvb;
+    padding: 0;
+  }
+
+  .edit-article-v2__container {
+    box-sizing: border-box;
+    width: 100%;
+    height: 100dvb;
+    min-height: 100dvb;
+    max-height: 100dvb;
+    max-width: none;
+    padding: 0;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    overflow: hidden;
+  }
+
+  .edit-article-v2__footer {
+    flex-wrap: wrap;
+    min-width: 0;
+  }
+
+  .edit-article-v2__button {
+    min-width: 0;
+  }
+
+  @media (width < 768px) {
+    .edit-article-v2__footer {
+      align-items: stretch;
+      gap: var(--ms-01);
+      padding-inline: var(--ms-1);
+      padding-bottom: calc(var(--ms-1) + env(safe-area-inset-bottom, 0));
+    }
+
+    .edit-article-v2__button {
+      flex: 1 1 auto;
+      min-width: 0;
+      white-space: normal;
+    }
+  }
+}
