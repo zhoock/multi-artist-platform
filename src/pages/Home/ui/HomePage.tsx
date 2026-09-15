@@ -61,6 +61,18 @@ import './homeSceneChrome.scss';
 
 const HOME_USE_MOCKS_STORAGE_KEY = 'homeUseMocks';
 
+function isEditableTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  const tag = target.tagName;
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true;
+  const contentEditableAttr = target.getAttribute('contenteditable');
+  if (contentEditableAttr !== null && contentEditableAttr.toLowerCase() !== 'false') {
+    return true;
+  }
+  if (target.isContentEditable) return true;
+  return Boolean(target.closest('[contenteditable]:not([contenteditable="false"])'));
+}
+
 type HomeUniverseHandle = {
   destroy: () => void;
   setSearchHighlight: (matchedSlugs: string[] | null) => void;
@@ -92,6 +104,17 @@ export function HomePage() {
       return false;
     }
   });
+  const toggleUseMocks = useCallback(() => {
+    setUseMocks((prev) => {
+      const next = !prev;
+      try {
+        sessionStorage.setItem(HOME_USE_MOCKS_STORAGE_KEY, next ? '1' : '0');
+      } catch {
+        // sessionStorage may be unavailable
+      }
+      return next;
+    });
+  }, []);
   const [universeRefreshToken, setUniverseRefreshToken] = useState(0);
   const [sceneArtists, setSceneArtists] = useState<SceneArtist[]>([]);
   const hasArtistParam = !!searchParams.get('artist');
@@ -361,6 +384,23 @@ export function HomePage() {
     };
   }, [dispatch, hasArtistParam, navigate, useMocks, universeRefreshToken]);
 
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'production') return;
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.repeat) return;
+      if (!(event.metaKey || event.ctrlKey) || !event.shiftKey || event.altKey) return;
+      if (event.code !== 'KeyM' && event.key.toLowerCase() !== 'm') return;
+      if (isEditableTarget(event.target)) return;
+
+      event.preventDefault();
+      toggleUseMocks();
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [toggleUseMocks]);
+
   if (hasArtistParam) {
     if (hideArtistPageAfterOwnDelete) {
       return null;
@@ -465,19 +505,6 @@ export function HomePage() {
             {ui?.header?.signIn ?? 'Sign in'}
           </button>
         )}
-        <button
-          type="button"
-          className="home-scene__dev-toggle"
-          onClick={() => {
-            setUseMocks((prev) => {
-              const next = !prev;
-              sessionStorage.setItem(HOME_USE_MOCKS_STORAGE_KEY, next ? '1' : '0');
-              return next;
-            });
-          }}
-        >
-          {useMocks ? 'Mocks: ON' : 'Mocks: OFF'}
-        </button>
       </div>
       <div
         ref={sceneRef}
