@@ -5,6 +5,7 @@ const resolveAlbumSlugMock = jest.fn();
 const buyerAlreadyOwnsMock = jest.fn();
 const resolveValidatedAlbumCheckoutPricingMock = jest.fn();
 const getUserIdFromEventMock = jest.fn();
+const getViewerEmailLowerMock = jest.fn();
 const syncPendingOrderAmountMock = jest.fn();
 const invalidateStaleAlbumCheckoutPaymentMock = jest.fn();
 
@@ -26,7 +27,12 @@ jest.mock('../resolve-album-purchase', () => ({
 }));
 
 jest.mock('../api-helpers', () => ({
+  ...jest.requireActual('../api-helpers'),
   getUserIdFromEvent: (...args: unknown[]) => getUserIdFromEventMock(...args),
+}));
+
+jest.mock('../entitlements', () => ({
+  getViewerEmailLower: (...args: unknown[]) => getViewerEmailLowerMock(...args),
 }));
 
 jest.mock('../dev-payment-mode', () => ({
@@ -75,6 +81,7 @@ const ORDER_ID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
 const ALBUM_SLUG = 'sample-album';
 const SELLER_ID = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
 const PAYMENT_ID = 'cccccccc-cccc-cccc-cccc-cccccccccccc';
+const BUYER_ID = 'dddddddd-dddd-dddd-dddd-dddddddddddd';
 const CUSTOMER_EMAIL = 'buyer@example.com';
 const ATTACKER_EMAIL = 'attacker@example.com';
 
@@ -115,7 +122,8 @@ function pendingOrderRow(customerEmail = CUSTOMER_EMAIL) {
 
 function setupBaseOrderMocks(customerEmail = CUSTOMER_EMAIL) {
   resolveAlbumSlugMock.mockImplementation(async (value: string) => value);
-  getUserIdFromEventMock.mockReturnValue(null);
+  getUserIdFromEventMock.mockReturnValue(BUYER_ID);
+  getViewerEmailLowerMock.mockResolvedValue(customerEmail.toLowerCase());
   buyerAlreadyOwnsMock.mockResolvedValue(false);
   syncPendingOrderAmountMock.mockResolvedValue(100);
 
@@ -154,6 +162,7 @@ describe('create-payment disabled sale retry (P1-3)', () => {
     buyerAlreadyOwnsMock.mockReset();
     resolveValidatedAlbumCheckoutPricingMock.mockReset();
     getUserIdFromEventMock.mockReset();
+    getViewerEmailLowerMock.mockReset();
     syncPendingOrderAmountMock.mockReset();
     invalidateStaleAlbumCheckoutPaymentMock.mockReset();
     global.fetch = jest.fn() as typeof fetch;

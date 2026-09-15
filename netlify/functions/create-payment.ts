@@ -32,8 +32,9 @@
 
 import type { Handler, HandlerEvent, HandlerContext } from '@netlify/functions';
 import dns from 'node:dns';
-import { getUserIdFromEvent } from './lib/api-helpers';
+import { getUserIdFromEvent, unauthorizedFromAuthHeader } from './lib/api-helpers';
 import { query } from './lib/db';
+import { getViewerEmailLower } from './lib/entitlements';
 import { buyerAlreadyOwnsAlbumForCheckout } from './lib/purchase-access';
 import { resolveAlbumSellerUserId } from './lib/resolveAlbumSellerUserId';
 import { resolveValidatedAlbumCheckoutPricing } from './lib/resolve-album-purchase';
@@ -373,6 +374,36 @@ export const handler: Handler = async (
       };
     }
 
+    const buyerUserId = getUserIdFromEvent(event);
+    if (!buyerUserId) {
+      return unauthorizedFromAuthHeader(event);
+    }
+
+    const accountEmail = await getViewerEmailLower(buyerUserId);
+    if (!accountEmail) {
+      return {
+        statusCode: 400,
+        headers,
+        body: JSON.stringify({
+          success: false,
+          error: 'User email is required for album checkout',
+        } as CreatePaymentResponse),
+      };
+    }
+
+    if (!orderCheckoutEmailMatches(accountEmail, data.customerEmail)) {
+      return {
+        statusCode: 403,
+        headers,
+        body: JSON.stringify({
+          success: false,
+          error: 'Access denied',
+        } as CreatePaymentResponse),
+      };
+    }
+
+    data.customerEmail = accountEmail;
+
     const albumSlug = await resolveAlbumSlug(data.albumId);
     if (!albumSlug) {
       return {
@@ -396,7 +427,6 @@ export const handler: Handler = async (
     }
     const sellerUserId = sellerResolved.sellerUserId;
 
-    const buyerUserId = getUserIdFromEvent(event);
     if (await buyerAlreadyOwnsAlbumForCheckout(buyerUserId, data.customerEmail, data.albumId)) {
       return {
         statusCode: 409,

@@ -2,6 +2,7 @@
  * API для работы с платежами через ЮKassa.
  */
 
+import { getAuthHeader } from '@shared/lib/auth';
 import { fetchWithAuthSession } from '@shared/lib/authFetch';
 
 export interface CreatePaymentRequest {
@@ -33,6 +34,7 @@ export interface CreatePaymentResponse {
   statusTokenExpiresAt?: number;
   error?: string;
   message?: string;
+  code?: string;
 }
 
 /** Server error code when buyer already owns the album (HTTP 409). */
@@ -97,11 +99,17 @@ export async function getYooKassaShopId(
  * @returns Promise с результатом создания платежа
  */
 export async function createPayment(data: CreatePaymentRequest): Promise<CreatePaymentResponse> {
+  const authHeader = getAuthHeader();
+  if (!('Authorization' in authHeader)) {
+    return { success: false, error: 'Authentication required', code: 'UNAUTHORIZED' };
+  }
+
   try {
     const response = await fetchWithAuthSession('/api/create-payment', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        ...authHeader,
       },
       body: JSON.stringify(data),
     });
@@ -114,6 +122,7 @@ export async function createPayment(data: CreatePaymentRequest): Promise<CreateP
         success: false,
         error: errorData.error || `HTTP ${response.status}`,
         message: errorData.message,
+        code: errorData.code,
       };
     }
 

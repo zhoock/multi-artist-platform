@@ -5,6 +5,7 @@ const resolveAlbumSlugMock = jest.fn();
 const buyerAlreadyOwnsMock = jest.fn();
 const resolveValidatedAlbumCheckoutPricingMock = jest.fn();
 const getUserIdFromEventMock = jest.fn();
+const getViewerEmailLowerMock = jest.fn();
 const syncPendingOrderAmountMock = jest.fn();
 const invalidateStaleAlbumCheckoutPaymentMock = jest.fn();
 const resolveAlbumCheckoutOrderMock = jest.fn();
@@ -27,7 +28,12 @@ jest.mock('../resolve-album-purchase', () => ({
 }));
 
 jest.mock('../api-helpers', () => ({
+  ...jest.requireActual('../api-helpers'),
   getUserIdFromEvent: (...args: unknown[]) => getUserIdFromEventMock(...args),
+}));
+
+jest.mock('../entitlements', () => ({
+  getViewerEmailLower: (...args: unknown[]) => getViewerEmailLowerMock(...args),
 }));
 
 jest.mock('../dev-payment-mode', () => ({
@@ -76,6 +82,7 @@ const ORDER_ID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
 const ALBUM_SLUG = 'sample-album';
 const SELLER_ID = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
 const PAYMENT_ID = 'cccccccc-cccc-cccc-cccc-cccccccccccc';
+const BUYER_ID = 'dddddddd-dddd-dddd-dddd-dddddddddddd';
 const CUSTOMER_EMAIL = 'buyer@example.com';
 
 const originalFetch = global.fetch;
@@ -119,7 +126,8 @@ function setupExistingOrderFlow(options: {
 }) {
   const syncedAmount = options.syncedAmount ?? options.currentAlbumPrice;
   resolveAlbumSlugMock.mockImplementation(async (value: string) => value);
-  getUserIdFromEventMock.mockReturnValue(null);
+  getUserIdFromEventMock.mockReturnValue(BUYER_ID);
+  getViewerEmailLowerMock.mockResolvedValue(CUSTOMER_EMAIL);
   buyerAlreadyOwnsMock.mockResolvedValue(false);
   resolveValidatedAlbumCheckoutPricingMock.mockResolvedValue(pricing(options.currentAlbumPrice));
   syncPendingOrderAmountMock.mockResolvedValue(syncedAmount);
@@ -190,6 +198,7 @@ describe('create-payment stale pending order price', () => {
     buyerAlreadyOwnsMock.mockReset();
     resolveValidatedAlbumCheckoutPricingMock.mockReset();
     getUserIdFromEventMock.mockReset();
+    getViewerEmailLowerMock.mockReset();
     syncPendingOrderAmountMock.mockReset();
     invalidateStaleAlbumCheckoutPaymentMock.mockReset();
     resolveAlbumCheckoutOrderMock.mockReset();
@@ -319,7 +328,8 @@ describe('create-payment stale pending order price', () => {
 
   it('uses server pricing for new checkout without orderId', async () => {
     resolveAlbumSlugMock.mockImplementation(async (value: string) => value);
-    getUserIdFromEventMock.mockReturnValue(null);
+    getUserIdFromEventMock.mockReturnValue(BUYER_ID);
+    getViewerEmailLowerMock.mockResolvedValue(CUSTOMER_EMAIL);
     buyerAlreadyOwnsMock.mockResolvedValue(false);
     resolveValidatedAlbumCheckoutPricingMock.mockResolvedValue(pricing(150));
     resolveAlbumCheckoutOrderMock.mockResolvedValue({
@@ -372,7 +382,8 @@ describe('create-payment stale pending order price', () => {
 
     expect(resolveValidatedAlbumCheckoutPricingMock).toHaveBeenCalledWith(ALBUM_SLUG);
     expect(resolveAlbumCheckoutOrderMock).toHaveBeenCalledWith(
-      expect.objectContaining({ amount: 150 })
+      expect.objectContaining({ amount: 150, customerEmail: CUSTOMER_EMAIL })
     );
+    expect(buyerAlreadyOwnsMock).toHaveBeenCalledWith(BUYER_ID, CUSTOMER_EMAIL, ALBUM_SLUG);
   });
 });

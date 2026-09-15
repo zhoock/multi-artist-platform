@@ -5,6 +5,7 @@ const resolveAlbumSlugMock = jest.fn();
 const buyerAlreadyOwnsMock = jest.fn();
 const resolveValidatedAlbumCheckoutPricingMock = jest.fn();
 const getUserIdFromEventMock = jest.fn();
+const getViewerEmailLowerMock = jest.fn();
 const syncPendingOrderAmountMock = jest.fn();
 const invalidateStaleAlbumCheckoutPaymentMock = jest.fn();
 
@@ -26,7 +27,12 @@ jest.mock('../resolve-album-purchase', () => ({
 }));
 
 jest.mock('../api-helpers', () => ({
+  ...jest.requireActual('../api-helpers'),
   getUserIdFromEvent: (...args: unknown[]) => getUserIdFromEventMock(...args),
+}));
+
+jest.mock('../entitlements', () => ({
+  getViewerEmailLower: (...args: unknown[]) => getViewerEmailLowerMock(...args),
 }));
 
 jest.mock('../dev-payment-mode', () => ({
@@ -79,6 +85,7 @@ const ORDER_ID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
 const ALBUM_SLUG = 'sample-album';
 const SELLER_ID = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
 const PAYMENT_ID = 'cccccccc-cccc-cccc-cccc-cccccccccccc';
+const BUYER_ID = 'dddddddd-dddd-dddd-dddd-dddddddddddd';
 const VICTIM_EMAIL = 'victim@example.com';
 const ATTACKER_EMAIL = 'attacker@example.com';
 
@@ -108,7 +115,8 @@ function pendingOrderRow(customerEmail = VICTIM_EMAIL) {
 
 function setupExistingPendingOrderMocks(customerEmail = VICTIM_EMAIL) {
   resolveAlbumSlugMock.mockImplementation(async (value: string) => value);
-  getUserIdFromEventMock.mockReturnValue(null);
+  getUserIdFromEventMock.mockReturnValue(BUYER_ID);
+  getViewerEmailLowerMock.mockResolvedValue(customerEmail.toLowerCase());
   buyerAlreadyOwnsMock.mockResolvedValue(false);
   resolveValidatedAlbumCheckoutPricingMock.mockResolvedValue({
     ok: true,
@@ -157,6 +165,7 @@ describe('create-payment existing order ownership', () => {
     buyerAlreadyOwnsMock.mockReset();
     resolveValidatedAlbumCheckoutPricingMock.mockReset();
     getUserIdFromEventMock.mockReset();
+    getViewerEmailLowerMock.mockReset();
     syncPendingOrderAmountMock.mockReset();
     invalidateStaleAlbumCheckoutPaymentMock.mockReset();
   });
@@ -166,8 +175,62 @@ describe('create-payment existing order ownership', () => {
     global.fetch = originalFetch;
   });
 
+  it('returns 401 when JWT is missing', async () => {
+    setupExistingPendingOrderMocks(VICTIM_EMAIL);
+    getUserIdFromEventMock.mockReturnValue(null);
+
+    const response = await createPaymentHandler(
+      buildCreatePaymentEvent({
+        albumId: ALBUM_SLUG,
+        customerEmail: VICTIM_EMAIL,
+        orderId: ORDER_ID,
+      }),
+      {} as never,
+      {} as never
+    );
+    const body = JSON.parse(response.body);
+
+    expect(response.statusCode).toBe(401);
+    expect(body.success).toBe(false);
+    expect(body.code).toBe('UNAUTHORIZED');
+    expect(body.statusToken).toBeUndefined();
+    expect(body.paymentId).toBeUndefined();
+    expect(body.confirmationUrl).toBeUndefined();
+    expect(resolveAlbumSlugMock).not.toHaveBeenCalled();
+    expect(buyerAlreadyOwnsMock).not.toHaveBeenCalled();
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  it('denies checkout when JWT account email does not match body customerEmail', async () => {
+    setupExistingPendingOrderMocks(VICTIM_EMAIL);
+    getViewerEmailLowerMock.mockResolvedValue(VICTIM_EMAIL);
+
+    const response = await createPaymentHandler(
+      buildCreatePaymentEvent({
+        albumId: ALBUM_SLUG,
+        customerEmail: ATTACKER_EMAIL,
+        orderId: ORDER_ID,
+      }),
+      {} as never,
+      {} as never
+    );
+    const body = JSON.parse(response.body);
+
+    expect(response.statusCode).toBe(403);
+    expect(body.success).toBe(false);
+    expect(body.error).toBe('Access denied');
+    expect(body.statusToken).toBeUndefined();
+    expect(body.paymentId).toBeUndefined();
+    expect(body.confirmationUrl).toBeUndefined();
+    expect(resolveAlbumSlugMock).not.toHaveBeenCalled();
+    expect(buyerAlreadyOwnsMock).not.toHaveBeenCalled();
+    expect(syncPendingOrderAmountMock).not.toHaveBeenCalled();
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
   it('denies existing pending order when customerEmail does not match', async () => {
     setupExistingPendingOrderMocks(VICTIM_EMAIL);
+    getViewerEmailLowerMock.mockResolvedValue(ATTACKER_EMAIL);
 
     const response = await createPaymentHandler(
       buildCreatePaymentEvent({
@@ -207,6 +270,7 @@ describe('create-payment existing order ownership', () => {
     expect(body.statusToken).toBeTruthy();
     expect(body.statusTokenExpiresAt).toBeTruthy();
     expect(body.paymentId).toBe(PAYMENT_ID);
+    expect(buyerAlreadyOwnsMock).toHaveBeenCalledWith(BUYER_ID, VICTIM_EMAIL, ALBUM_SLUG);
   });
 
   it('matches customer email case-insensitively for existing order', async () => {
@@ -229,6 +293,7 @@ describe('create-payment existing order ownership', () => {
 
   it('blocks full exploit chain: no statusToken then status endpoints stay closed', async () => {
     setupExistingPendingOrderMocks(VICTIM_EMAIL);
+    getViewerEmailLowerMock.mockResolvedValue(ATTACKER_EMAIL);
 
     const createResponse = await createPaymentHandler(
       buildCreatePaymentEvent({
