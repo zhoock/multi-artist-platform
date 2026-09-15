@@ -1,5 +1,5 @@
 import { describe, expect, it, jest, beforeEach } from '@jest/globals';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 
 import type { AlbumData } from '@entities/album/lib/transformEditableAlbumData';
@@ -157,6 +157,44 @@ describe('AlbumsTabContent', () => {
     );
 
     expect(document.querySelector('.user-dashboard__expanded-track-card--expanded')).toBeTruthy();
+  });
+
+  it('releases expand-trigger focus when opening the album editor from row actions', () => {
+    const onEditAlbum = jest.fn();
+    renderWithProviders(
+      <AlbumsTabContent
+        {...createBaseProps({
+          albumsData: [sampleAlbum],
+          onEditAlbum,
+        })}
+      />
+    );
+
+    const trigger = document.querySelector('.dashboard-expandable-row-trigger');
+    expect(trigger).toBeInstanceOf(HTMLElement);
+    (trigger as HTMLElement).focus();
+    expect(document.activeElement).toBe(trigger);
+
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'Edit Album' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Edit Album' }));
+
+    expect(onEditAlbum).toHaveBeenCalledWith('album-1');
+    expect(document.activeElement).not.toBe(trigger);
+  });
+
+  it('keeps keyboard focus on the expand trigger until row actions are used', () => {
+    renderWithProviders(
+      <AlbumsTabContent
+        {...createBaseProps({
+          albumsData: [sampleAlbum],
+        })}
+      />
+    );
+
+    const trigger = document.querySelector('.dashboard-expandable-row-trigger');
+    expect(trigger).toBeInstanceOf(HTMLElement);
+    (trigger as HTMLElement).focus();
+    expect(document.activeElement).toBe(trigger);
   });
 
   it('uses DashboardButton primary for footer upload action', () => {

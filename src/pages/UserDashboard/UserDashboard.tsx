@@ -113,6 +113,7 @@ import type { AlbumFormData } from './components/modals/album/EditAlbumModal.typ
 import { DashboardLazyModals } from './components/shell/DashboardLazyModals';
 import { DashboardNavTabIcon } from './lib/dashboardNavTabIcon';
 import { useDashboardRowFlash } from './lib/dashboardRowStateFlash';
+import { releaseAlbumExpandTriggerFocusAfterDialogClose } from './lib/releaseAlbumExpandTriggerFocus';
 import {
   preloadEditAlbumModal,
   preloadEditArticleModal,
@@ -610,6 +611,7 @@ function UserDashboard() {
   const closeEditAlbumModal = useCallback(() => {
     setAlbumEditorDiscardRisk(false);
     setEditAlbumModal(null);
+    releaseAlbumExpandTriggerFocusAfterDialogClose();
   }, []);
   const [articleEditorDiscardRisk, setArticleEditorDiscardRisk] = useState(false);
   const handleArticleEditorDiscardRiskChange = useCallback((hasRisk: boolean) => {

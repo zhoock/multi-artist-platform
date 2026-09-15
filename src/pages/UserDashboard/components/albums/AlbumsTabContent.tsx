@@ -41,6 +41,7 @@ import {
 import { DashboardExpandChevron } from '../../lib/dashboardExpandChevron';
 import { useDashboardAccordionOnboarding } from '../../lib/dashboardAccordionOnboarding';
 import { bindDashboardPreloadIntentHandlers } from '../../lib/bindDashboardPreloadIntentHandlers';
+import { releaseAlbumExpandTriggerFocus } from '../../lib/releaseAlbumExpandTriggerFocus';
 import { AlbumAccessControl } from './AlbumAccessControl';
 import { AlbumLifecycleBadge } from './AlbumLifecycleBadge';
 import { AlbumNoTracksEmptyState } from './AlbumNoTracksEmptyState';
@@ -420,6 +421,10 @@ export function AlbumsTabContent({
                   className="user-dashboard__album-item-actions"
                   onClick={(e) => e.stopPropagation()}
                   onMouseDown={(e) => e.stopPropagation()}
+                  onPointerDown={(e) => {
+                    e.stopPropagation();
+                    releaseAlbumExpandTriggerFocus();
+                  }}
                 >
                   {albumIsPublished ? (
                     <AlbumAccessControl
