@@ -508,8 +508,9 @@ dialog {
       padding: var(--ms-2);
 
       @media (not ($tablets)) {
-        // Keep start padding for the block gutter; free the end so the title caret fits.
-        padding-inline: var(--ms-2) var(--ms-02);
+        // Same inline gutter as other dashboard fullscreen editors
+        // (`&__content-column { padding-inline: var(--ms-1) }` in the shell mixin).
+        padding-inline: var(--ms-1);
       }
     }
 
@@ -572,6 +573,11 @@ dialog {
       gap: var(--ms-2);
       margin-inline-start: calc(-1 * var(--edit-article-gutter-offset));
       padding-inline-start: var(--edit-article-gutter-offset);
+
+      @media (not ($tablets)) {
+        // Phone gutter is only --ms-1; do not hang the 36px block rail into it.
+        --edit-article-gutter-offset: 0;
+      }
     }
 
     // Используем реальные стили статьи из HelpArticle (скопированы из help-article__body)
