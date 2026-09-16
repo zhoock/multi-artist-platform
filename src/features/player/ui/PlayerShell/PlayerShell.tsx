@@ -10,10 +10,7 @@ import React, {
   useState,
 } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import {
-  useEffectiveLocation,
-  useEffectiveSearchParams,
-} from '@shared/lib/hooks/useEffectiveLocation';
+import { useEffectiveLocation } from '@shared/lib/hooks/useEffectiveLocation';
 import { useDashboardModalShell } from '@shared/lib/dashboardModalShellContext';
 import { useStore } from 'react-redux';
 import { useLang } from '@app/providers/lang';
@@ -73,7 +70,6 @@ export const PlayerShell: React.FC = () => {
   const navigate = useNavigate();
   const store = useStore<RootState>();
   const { lang } = useLang();
-  const [searchParams] = useEffectiveSearchParams();
   const { overlayOpen: dashboardOverlayOpen } = useDashboardModalShell();
 
   const albumMeta = useAppSelector(playerSelectors.selectAlbumMeta);
@@ -86,12 +82,11 @@ export const PlayerShell: React.FC = () => {
   const sourceLocation = useAppSelector(playerSelectors.selectSourceLocation);
 
   const isDashboardRoute = dashboardOverlayOpen || liveLocation.pathname.startsWith('/dashboard');
+  /** Slug of the artist who owns the current playback session — never the page `?artist=` context. */
   const artistSlugForProfile = useMemo(() => {
     if (isDashboardRoute) return null;
-    const u = searchParams.get('artist')?.trim() ?? '';
-    const m = albumMeta?.publicSlug?.trim() ?? '';
-    return u || m || null;
-  }, [isDashboardRoute, searchParams, albumMeta?.publicSlug]);
+    return albumMeta?.publicSlug?.trim() || null;
+  }, [isDashboardRoute, albumMeta?.publicSlug]);
 
   const { displayName: siteArtistDisplayName } = useSiteArtistDisplayName(lang, {
     variant: isDashboardRoute ? 'authenticated' : 'public',
@@ -102,6 +97,9 @@ export const PlayerShell: React.FC = () => {
   useEffect(() => {
     const meta = albumMeta;
     if (!meta?.albumId || meta.album == null) return;
+    if (!isDashboardRoute && !meta.publicSlug?.trim()) {
+      return;
+    }
 
     const resolved = siteArtistDisplayName.trim() || readStoredProfileDisplayName().trim();
     const artistLabel = resolved ? resolved : '—';
@@ -118,6 +116,7 @@ export const PlayerShell: React.FC = () => {
     );
   }, [
     dispatch,
+    isDashboardRoute,
     siteArtistDisplayName,
     albumMeta?.albumId,
     albumMeta?.album,
