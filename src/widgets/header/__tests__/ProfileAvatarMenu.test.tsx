@@ -60,6 +60,7 @@ const DEFAULT_OWN_ARTIST_PAGE_SUMMARY = {
   hasPublicReleases: false,
   hasPublicPageContent: false,
   needsOnboarding: false,
+  onboardingStateKnown: false,
   albumsCount: 0,
   articlesCount: 0,
   profileIsEmpty: true,

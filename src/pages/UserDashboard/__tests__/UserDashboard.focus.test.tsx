@@ -75,6 +75,7 @@ jest.mock('@shared/lib/hooks/useOwnArtistPageSummary', () => ({
     hasPublicReleases: false,
     hasPublicPageContent: false,
     needsOnboarding: false,
+    onboardingStateKnown: false,
     albumsCount: 0,
     articlesCount: 0,
     profileIsEmpty: true,

@@ -370,8 +370,13 @@ export function useArtistPageAccessState(
       }
       void fetchOwnArtistPageState(lang).then((state) => {
         if (cancelled) return;
-        setOwnerNeedsOnboarding(state.needsOnboarding);
-        setOwnerHasPublicPageContent(state.hasPublicPageContent);
+        if (state.onboardingStateKnown) {
+          setOwnerNeedsOnboarding(state.needsOnboarding);
+          setOwnerHasPublicPageContent(state.hasPublicPageContent);
+        } else {
+          setOwnerNeedsOnboarding(false);
+          setOwnerHasPublicPageContent(false);
+        }
         setOwnerContentLoaded(true);
         ownerContentReadyForSlugRef.current = normalizedArtist;
       });

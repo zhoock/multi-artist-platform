@@ -12,7 +12,7 @@ import {
   profileHasPublicBodyContent,
 } from '@shared/lib/artistPageContent';
 import { fetchWithAuthSession } from '@shared/lib/authFetch';
-import { getAuthHeader, getUser, isEmailVerified, type AuthUser } from '@shared/lib/auth';
+import { getAuthHeader, getUser, type AuthUser } from '@shared/lib/auth';
 import { buildApiUrl } from '@shared/lib/artistQuery';
 import { writeCachedOwnPublicSlug } from '@shared/lib/ownPublicSlugCache';
 import {
@@ -29,6 +29,8 @@ export type OwnArtistPageState = {
   hasPublicReleases: boolean;
   hasPublicPageContent: boolean;
   needsOnboarding: boolean;
+  /** False while profile/albums/articles did not all succeed — do not redirect to onboarding. */
+  onboardingStateKnown: boolean;
   albumsCount: number;
   articlesCount: number;
   profileIsEmpty: boolean;
@@ -52,14 +54,14 @@ export function isOnOwnArtistOnboardingPage(
   return currentArtist === publicSlug.trim().toLowerCase();
 }
 
-/** Post-registration flag or unverified artist landing on home without releases. */
+/** Post-registration one-shot only — post-login home landing uses AuthPage.resolveArtistOnboardingDestination. */
 export function shouldTryArtistOnboardingRedirect(
   user: AuthUser | null | undefined,
   options: { pendingRegistration: boolean; onDefaultHome: boolean }
 ): boolean {
+  void options.onDefaultHome;
   if (!user || !isArtistAccount(user)) return false;
-  if (options.pendingRegistration) return true;
-  return options.onDefaultHome && !isEmailVerified(user);
+  return options.pendingRegistration;
 }
 
 /**
@@ -87,9 +89,12 @@ export async function resolveArtistOnboardingDestination(
     return defaultDestination;
   }
 
+  const state = await fetchOwnArtistPageState(lang);
   if (pendingRegistration) clearFirstArtistOnboardingPending();
 
-  const state = await fetchOwnArtistPageState(lang);
+  if (!state.onboardingStateKnown) {
+    return defaultDestination;
+  }
   if (state.needsOnboarding && state.publicSlug) {
     return buildOwnArtistPagePath(lang as RouteLang, state.publicSlug);
   }
@@ -118,6 +123,7 @@ export async function fetchOwnArtistPageState(lang: string): Promise<OwnArtistPa
     hasPublicReleases: false,
     hasPublicPageContent: false,
     needsOnboarding: false,
+    onboardingStateKnown: false,
     albumsCount: 0,
     articlesCount: 0,
     profileIsEmpty: true,
@@ -181,21 +187,29 @@ export async function fetchOwnArtistPageState(lang: string): Promise<OwnArtistPa
       ),
     ]);
 
-    const albumsResult = albumsResponse.ok
-      ? ((await albumsResponse.json()) as { success?: boolean; data?: unknown })
-      : null;
+    if (!albumsResponse.ok || !articlesResponse.ok) {
+      return {
+        publicSlug,
+        hasPublicReleases: false,
+        hasPublicPageContent: false,
+        needsOnboarding: false,
+        onboardingStateKnown: false,
+        albumsCount: 0,
+        articlesCount: 0,
+        profileIsEmpty,
+      };
+    }
+
+    const albumsResult = (await albumsResponse.json()) as { success?: boolean; data?: unknown };
     const albums = albumsResult?.success ? normalizeAlbums(albumsResult.data) : [];
     const albumsCount = countUniqueAlbums(albums);
     const hasPublicReleases = hasPublishedPublicReleases(albums);
 
-    let articles: IArticles[] = [];
-    if (articlesResponse.ok) {
-      const articlesPayload = await articlesResponse.json();
-      const list = Array.isArray(articlesPayload)
-        ? articlesPayload
-        : (articlesPayload.data ?? articlesPayload.articles ?? []);
-      articles = normalizeArticles(list);
-    }
+    const articlesPayload = await articlesResponse.json();
+    const list = Array.isArray(articlesPayload)
+      ? articlesPayload
+      : (articlesPayload.data ?? articlesPayload.articles ?? []);
+    const articles = normalizeArticles(list);
     const articlesCount = countUniqueArticles(articles);
     const profileHasPublicBody = profileHasPublicBodyContent({
       siteName: profileData?.siteName,
@@ -217,6 +231,7 @@ export async function fetchOwnArtistPageState(lang: string): Promise<OwnArtistPa
       articlesCount,
       profileIsEmpty,
       needsOnboarding: needsArtistOnboarding({ albumsCount, articlesCount, profileIsEmpty }),
+      onboardingStateKnown: true,
     };
   } catch {
     return empty;

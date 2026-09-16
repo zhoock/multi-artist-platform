@@ -18,8 +18,8 @@ import { shouldResumePremiumCheckoutAfterAuth } from './premiumCheckoutIntent';
 import { clearFirstArtistOnboardingPending } from './artistOnboardingRedirect';
 
 /**
- * Redirects artists without public releases to owner onboarding after registration
- * or when an unverified artist lands on universe home after login.
+ * One-shot redirect to owner onboarding after registration (pending localStorage flag).
+ * Reload on universe home and post-login routing are handled elsewhere (AuthPage).
  */
 export function ArtistOnboardingRedirectController() {
   const location = useLocation();
@@ -53,7 +53,7 @@ export function ArtistOnboardingRedirectController() {
       const state = await fetchOwnArtistPageState(lang);
       if (pendingRegistration) clearFirstArtistOnboardingPending();
 
-      if (!state.needsOnboarding || !state.publicSlug) return;
+      if (!state.onboardingStateKnown || !state.needsOnboarding || !state.publicSlug) return;
 
       const targetPath = buildOwnArtistPagePath(lang, state.publicSlug);
       if (isOnOwnArtistOnboardingPage(location.pathname, location.search, state.publicSlug)) {
