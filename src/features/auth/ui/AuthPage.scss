@@ -2,7 +2,7 @@
 // (--public-modal-backdrop-* tokens in localModal.scss).
 
 dialog.popup.local-modal:has(.auth-page) {
-  overflow: hidden;
+  overflow: hidden auto;
 }
 
 .auth-page {
