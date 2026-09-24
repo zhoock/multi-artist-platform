@@ -407,7 +407,12 @@ export function HomePage() {
     }
 
     const artistSeoHelmet = (
-      <ArtistPageSeoHelmet seo={artistPageSeo} hreflang={artistPageHreflang} />
+      <ArtistPageSeoHelmet
+        seo={artistPageSeo}
+        hreflang={artistPageHreflang}
+        artistEntityName={artistPageSeo.artistEntityName}
+        headerImageUrl={artistPageSeo.headerImageUrl}
+      />
     );
 
     if (artistPageAccess.showNotFound) {

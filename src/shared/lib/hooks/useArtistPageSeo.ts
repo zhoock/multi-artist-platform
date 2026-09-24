@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 
-import { loadTheBandFromDatabase } from '@entities/user/lib';
+import { fetchPublicArtistUserProfile } from '@shared/lib/publicArtistUserProfile';
 import { buildArtistPageSeo, type ResolvedPageSeo } from '@shared/constants/platformBranding';
 import type { RouteLang } from '@shared/lib/i18n/routeLang';
 import { buildLocalizedPublicPath } from '@shared/lib/i18n/routeLang/buildLocalizedPublicPath';
@@ -15,17 +15,24 @@ export type UseArtistPageSeoOptions = {
   forcePlatformFallback?: boolean;
 };
 
+export type ArtistPageSeoResult = ResolvedPageSeo & {
+  headerImageUrl: string | null;
+  /** Public display name used for artist-specific SEO and JSON-LD. */
+  artistEntityName: string;
+};
+
 export function useArtistPageSeo({
   lang,
   artistSlug,
   enabled,
   forcePlatformFallback = false,
-}: UseArtistPageSeoOptions): ResolvedPageSeo {
+}: UseArtistPageSeoOptions): ArtistPageSeoResult {
   const normalizedSlug = artistSlug.trim();
   const { displayName } = useSiteArtistDisplayName(lang, {
     artistSlug: enabled && normalizedSlug ? normalizedSlug : null,
   });
   const [aboutText, setAboutText] = useState<string | null>(null);
+  const [headerImageUrl, setHeaderImageUrl] = useState<string | null>(null);
   const [aboutRefreshToken, setAboutRefreshToken] = useState(0);
 
   useEffect(() => {
@@ -39,21 +46,27 @@ export function useArtistPageSeo({
   useEffect(() => {
     if (!enabled || !normalizedSlug || forcePlatformFallback) {
       setAboutText(null);
+      setHeaderImageUrl(null);
       return undefined;
     }
 
     let cancelled = false;
 
-    void loadTheBandFromDatabase(lang, {
-      artistSlugOverride: normalizedSlug,
-      includeArtist: true,
-    }).then((paragraphs) => {
+    void fetchPublicArtistUserProfile(normalizedSlug, { lang }).then((profile) => {
       if (cancelled) return;
+      if (!profile) {
+        setAboutText(null);
+        setHeaderImageUrl(null);
+        return;
+      }
       const first =
-        paragraphs
-          ?.find((paragraph) => typeof paragraph === 'string' && paragraph.trim())
+        profile.theBand
+          .find((paragraph) => typeof paragraph === 'string' && paragraph.trim())
           ?.trim() ?? null;
       setAboutText(first);
+      const image =
+        profile.headerImages.find((url) => typeof url === 'string' && url.trim())?.trim() ?? null;
+      setHeaderImageUrl(image);
     });
 
     return () => {
@@ -69,8 +82,8 @@ export function useArtistPageSeo({
   const canonicalUrl = buildPublicSiteUrl(canonicalPath);
 
   return useMemo(
-    () =>
-      buildArtistPageSeo(
+    () => ({
+      ...buildArtistPageSeo(
         {
           lang,
           artistSlug: normalizedSlug,
@@ -80,6 +93,17 @@ export function useArtistPageSeo({
         },
         canonicalUrl
       ),
-    [aboutText, canonicalUrl, displayName, forcePlatformFallback, lang, normalizedSlug]
+      headerImageUrl,
+      artistEntityName: displayName?.trim() ?? '',
+    }),
+    [
+      aboutText,
+      canonicalUrl,
+      displayName,
+      forcePlatformFallback,
+      headerImageUrl,
+      lang,
+      normalizedSlug,
+    ]
   );
 }

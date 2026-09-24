@@ -18,8 +18,16 @@ jest.mock('@shared/lib/hooks/useSiteArtistDisplayName', () => ({
   })),
 }));
 
-jest.mock('@entities/user/lib', () => ({
-  loadTheBandFromDatabase: jest.fn(async () => ['Artist bio excerpt.']),
+jest.mock('@shared/lib/publicArtistUserProfile', () => ({
+  fetchPublicArtistUserProfile: jest.fn(async () => ({
+    name: null,
+    publicSlug: 'published-artist',
+    theBand: ['Artist bio excerpt.'],
+    headerImages: ['https://cdn.example.com/hero.webp'],
+    siteName: 'Published Artist',
+    genreCode: null,
+    socialLinks: {},
+  })),
 }));
 
 describe('useArtistPageSeo', () => {
@@ -61,6 +69,7 @@ describe('useArtistPageSeo', () => {
     expect(result.current.title).toBe('Published Artist — Site Name');
     expect(result.current.canonical).toBe('https://example.com/en?artist=published-artist');
     expect(result.current.isArtistSpecific).toBe(true);
+    expect(result.current.headerImageUrl).toBe('https://cdn.example.com/hero.webp');
   });
 
   it('keeps artist URL canonical for under-construction artists without forcePlatformFallback', () => {

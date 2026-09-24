@@ -33,6 +33,10 @@ import { ContextNav } from '@shared/ui/contextNav';
 import { buildPublicSiteUrl } from '@shared/lib/publicSiteOrigin';
 import { buildPublicPageHreflangUrls } from '@shared/lib/seo/buildPublicPageHreflangUrls';
 import { publicPageHreflangLinks } from '@shared/lib/seo/PublicPageHreflangLinks';
+import { hasArticleCover } from '@shared/lib/articleCoverUrl';
+import { getArticleCoverPublicUrl } from '@shared/lib/articleCoverPublicUrl';
+import { buildArticleJsonLd } from '@shared/lib/seo/jsonLd/buildPublicPageJsonLd';
+import { jsonLdScriptText } from '@shared/lib/seo/jsonLd/JsonLdScript';
 import { ArtistArchiveLockIcon } from '@shared/ui/icons/ArtistArchiveLockIcon';
 import { SubscriberContentLockIcon } from '@shared/ui/icons/SubscriberContentLockIcon';
 import { useArchiveAccessModal } from '@shared/lib/archiveAccessModal';
@@ -197,6 +201,7 @@ export function ArticlePage() {
           formatDate={formatDate}
           lang={locale}
           artistSlug={artistSlug}
+          siteArtistName={siteArtistName}
           renderBlock={Block}
         />
       </div>
@@ -211,6 +216,7 @@ type ArticleContentProps = {
   formatDate: (value: string) => string;
   lang: LocaleKey;
   artistSlug: string | null;
+  siteArtistName: string;
   renderBlock: (details: ArticledetailsProps) => JSX.Element;
 };
 
@@ -221,6 +227,7 @@ function ArticleContent({
   formatDate,
   lang,
   artistSlug,
+  siteArtistName,
   renderBlock,
 }: ArticleContentProps) {
   const dispatch = useAppDispatch();
@@ -454,6 +461,32 @@ function ArticleContent({
   const hreflang = buildPublicPageHreflangUrls((routeLang) =>
     buildPublicArticlePagePath(routeLang, article.articleId, artistSlug)
   );
+  const trimmedArtistSlug = artistSlug?.trim() ?? '';
+  const artistPageUrl = trimmedArtistSlug
+    ? buildPublicSiteUrl(buildArtistPagePath(lang, trimmedArtistSlug))
+    : '';
+  const articleCoverImageUrl =
+    article.userId && hasArticleCover(article.img)
+      ? getArticleCoverPublicUrl({
+          userId: article.userId,
+          fileNameOrCoverKey: article.img,
+          suffix: '-448.webp',
+        })
+      : null;
+  const articleJsonLd =
+    trimmedArtistSlug && siteArtistName.trim() && article.date.trim()
+      ? buildArticleJsonLd({
+          headline: seoTitle,
+          description: seoDesc,
+          datePublished: article.date,
+          url: canonical,
+          imageUrl: articleCoverImageUrl,
+          author: {
+            name: siteArtistName,
+            url: artistPageUrl,
+          },
+        })
+      : null;
 
   const renderDetailBlocks = (blocks: typeof article.details, keyPrefix: string) =>
     blocks.map((d, index) => (
@@ -621,6 +654,9 @@ function ArticleContent({
         <meta name="twitter:url" content={canonical} />
         <link rel="canonical" href={canonical} />
         {publicPageHreflangLinks(hreflang)}
+        {articleJsonLd ? (
+          <script type="application/ld+json">{jsonLdScriptText(articleJsonLd)}</script>
+        ) : null}
       </Helmet>
 
       <time dateTime={article.date}>

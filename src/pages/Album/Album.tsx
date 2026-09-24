@@ -46,6 +46,9 @@ import { formatAlbumDisplayFullName } from '@shared/lib/profileDisplayName';
 import { buildPublicSiteUrl } from '@shared/lib/publicSiteOrigin';
 import { buildPublicPageHreflangUrls } from '@shared/lib/seo/buildPublicPageHreflangUrls';
 import { publicPageHreflangLinks } from '@shared/lib/seo/PublicPageHreflangLinks';
+import { getAlbumCoverPublicUrl } from '@shared/lib/albumCoverPublicUrl';
+import { buildAlbumJsonLd } from '@shared/lib/seo/jsonLd/buildPublicPageJsonLd';
+import { jsonLdScriptText } from '@shared/lib/seo/jsonLd/JsonLdScript';
 import { shouldShowAlbumsLoadingShell } from '@shared/lib/hooks/useShowAlbumsLoadingShell';
 import { resolveChildContextNavMode, useNavigationOrigin } from '@shared/lib/navigationContext';
 import {
@@ -248,6 +251,25 @@ export default function Album() {
   const hreflang = buildPublicPageHreflangUrls((routeLang) =>
     buildPublicAlbumPagePath(routeLang, albumId, artistSlug)
   );
+  const artistPageUrl = buildPublicSiteUrl(buildArtistPagePath(lang, artistSlug));
+  const albumCoverImageUrl =
+    album.userId && album.cover
+      ? getAlbumCoverPublicUrl({
+          userId: album.userId,
+          fileNameOrCoverKey: album.cover,
+          suffix: '-448.webp',
+        })
+      : null;
+  const albumJsonLd = buildAlbumJsonLd({
+    name: album.title,
+    description: seoDesc,
+    url: canonical,
+    imageUrl: albumCoverImageUrl,
+    artist: {
+      name: siteArtistName,
+      url: artistPageUrl,
+    },
+  });
 
   return (
     <section className="album main-background" aria-label="Блок c альбомом">
@@ -264,6 +286,7 @@ export default function Album() {
         <meta name="twitter:url" content={canonical} />
         <link rel="canonical" href={canonical} />
         {publicPageHreflangLinks(hreflang)}
+        <script type="application/ld+json">{jsonLdScriptText(albumJsonLd)}</script>
       </Helmet>
 
       <div className="wrapper album__wrapper">

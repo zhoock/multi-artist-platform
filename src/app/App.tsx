@@ -27,6 +27,9 @@ import { buildDefaultOgImageUrl } from '@shared/lib/seo/defaultOgImage';
 import { buildPublicPageHreflangUrls } from '@shared/lib/seo/buildPublicPageHreflangUrls';
 import { publicPageHreflangLinks } from '@shared/lib/seo/PublicPageHreflangLinks';
 import { routeHasPageLevelHreflang } from '@shared/lib/seo/routeHasPageLevelHreflang';
+import { buildPlatformHomeJsonLd } from '@shared/lib/seo/jsonLd/buildPublicPageJsonLd';
+import { jsonLdScriptText } from '@shared/lib/seo/jsonLd/JsonLdScript';
+import { platformDisplayName } from '@shared/constants/platformBranding';
 import { isHelpLoaderPath } from '@entities/help/lib/helpRouteMatch';
 import { albumsLoader } from '@routes/loaders/albumsLoader';
 import { ArtistPageSkeleton } from '@pages/Home/ui/ArtistPageSkeleton';
@@ -450,6 +453,16 @@ function Layout() {
   const isHelpRoute = isHelpLoaderPath(location.pathname);
   const pageOwnsHreflang = routeHasPageLevelHreflang(activePathnameWithoutLang, hasArtistParam);
 
+  const platformHomeJsonLd = useMemo(() => {
+    if (!isHomeSceneRoute) return null;
+    return buildPlatformHomeJsonLd({
+      lang,
+      siteUrl: seo[lang].url,
+      siteName: platformDisplayName(lang),
+      description: seo[lang].desc,
+    });
+  }, [isHomeSceneRoute, lang, seo]);
+
   useEffect(() => {
     if (isHelpRoute && popup) {
       dispatch(closePopup());
@@ -691,6 +704,9 @@ function Layout() {
               <meta name="twitter:card" content="summary_large_image" />
               <meta name="twitter:image" content={seo[lang].ogImage} />
               <meta name="twitter:url" content={seo[lang].url} />
+              {platformHomeJsonLd ? (
+                <script type="application/ld+json">{jsonLdScriptText(platformHomeJsonLd)}</script>
+              ) : null}
             </Helmet>
 
             {isPaymentRoute ? (
