@@ -7,8 +7,14 @@ import type { RootState } from '@shared/model/appStore/types';
 import { createInitialLangState, createLangExtraReducers } from '@shared/lib/redux/createLangSlice';
 
 import type { UiDictionaryState } from './types';
+import {
+  INVALID_UI_DICTIONARY_MESSAGE,
+  isValidUiDictionaryPayload,
+} from './validateUiDictionaryPayload';
 
 const initialState: UiDictionaryState = createInitialLangState<IInterface[]>([]);
+
+export { INVALID_UI_DICTIONARY_MESSAGE } from './validateUiDictionaryPayload';
 
 export const fetchUiDictionary = createAsyncThunk<
   IInterface[],
@@ -18,7 +24,10 @@ export const fetchUiDictionary = createAsyncThunk<
   'uiDictionary/fetchByLang',
   async ({ lang }, { signal, rejectWithValue }) => {
     try {
-      const dictionary = await getJSON<IInterface[]>(`${lang}.json`, signal);
+      const dictionary = await getJSON<unknown>(`${lang}.json`, signal);
+      if (!isValidUiDictionaryPayload(dictionary)) {
+        return rejectWithValue(INVALID_UI_DICTIONARY_MESSAGE);
+      }
       return dictionary;
     } catch (error) {
       if (error instanceof Error) {

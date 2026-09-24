@@ -1,6 +1,10 @@
 import { describe, test, expect, jest, beforeEach } from '@jest/globals';
 import { configureStore } from '@reduxjs/toolkit';
-import { fetchUiDictionary, uiDictionaryReducer } from '../uiDictionarySlice';
+import {
+  fetchUiDictionary,
+  uiDictionaryReducer,
+  INVALID_UI_DICTIONARY_MESSAGE,
+} from '../uiDictionarySlice';
 import {
   selectUiDictionaryStatus,
   selectUiDictionaryError,
@@ -247,19 +251,83 @@ describe('uiDictionarySlice', () => {
       expect(selectUiDictionaryData(state, 'ru')[0].titles?.albums).toBe('Альбомы');
     });
 
-    test('должен обработать пустой массив данных', async () => {
+    test('должен отклонить пустой массив данных', async () => {
       mockGetJSON.mockResolvedValueOnce([]);
 
       const store = createTestStore();
       const result = await (store.dispatch as AppDispatch)(fetchUiDictionary({ lang: 'en' }));
 
-      expect(result.type).toBe('uiDictionary/fetchByLang/fulfilled');
-      expect(result.payload).toEqual([]);
+      expect(result.type).toBe('uiDictionary/fetchByLang/rejected');
+
+      const state = store.getState();
+      expect(selectUiDictionaryStatus(state, 'en')).toBe('failed');
+      expect(selectUiDictionaryError(state, 'en')).toBe(INVALID_UI_DICTIONARY_MESSAGE);
+      expect(selectUiDictionaryData(state, 'en')).toEqual([]);
+      expect(selectUiDictionaryFirst(state, 'en')).toBeNull();
+    });
+
+    test('должен отклонить malformed payload (не массив)', async () => {
+      mockGetJSON.mockResolvedValueOnce({ menu: {} });
+
+      const store = createTestStore();
+      const result = await (store.dispatch as AppDispatch)(fetchUiDictionary({ lang: 'en' }));
+
+      expect(result.type).toBe('uiDictionary/fetchByLang/rejected');
+
+      const state = store.getState();
+      expect(selectUiDictionaryStatus(state, 'en')).toBe('failed');
+      expect(selectUiDictionaryError(state, 'en')).toBe(INVALID_UI_DICTIONARY_MESSAGE);
+    });
+
+    test('должен отклонить malformed payload (пустой объект в массиве)', async () => {
+      mockGetJSON.mockResolvedValueOnce([null]);
+
+      const store = createTestStore();
+      await (store.dispatch as AppDispatch)(fetchUiDictionary({ lang: 'en' }));
+
+      const state = store.getState();
+      expect(selectUiDictionaryStatus(state, 'en')).toBe('failed');
+      expect(selectUiDictionaryError(state, 'en')).toBe(INVALID_UI_DICTIONARY_MESSAGE);
+    });
+
+    test('после успешной загрузки failed refresh сохраняет предыдущие данные', async () => {
+      mockGetJSON.mockResolvedValueOnce(mockDictionary);
+
+      const store = createTestStore();
+      await (store.dispatch as AppDispatch)(fetchUiDictionary({ lang: 'en' }));
+
+      expect(selectUiDictionaryData(store.getState(), 'en')).toEqual(mockDictionary);
+
+      store.dispatch(fetchUiDictionary.pending('refresh-test', { lang: 'en' }));
+      store.dispatch(
+        fetchUiDictionary.rejected(
+          new Error(INVALID_UI_DICTIONARY_MESSAGE),
+          'refresh-test',
+          { lang: 'en' },
+          INVALID_UI_DICTIONARY_MESSAGE
+        )
+      );
+
+      const state = store.getState();
+      expect(selectUiDictionaryStatus(state, 'en')).toBe('failed');
+      expect(selectUiDictionaryError(state, 'en')).toBe(INVALID_UI_DICTIONARY_MESSAGE);
+      expect(selectUiDictionaryData(state, 'en')).toEqual(mockDictionary);
+      expect(selectUiDictionaryFirst(state, 'en')?.titles?.albums).toBe('Albums');
+    });
+
+    test('retry после invalid payload загружает валидный словарь', async () => {
+      mockGetJSON.mockResolvedValueOnce([]).mockResolvedValueOnce(mockDictionary);
+
+      const store = createTestStore();
+      await (store.dispatch as AppDispatch)(fetchUiDictionary({ lang: 'en' }));
+      expect(selectUiDictionaryStatus(store.getState(), 'en')).toBe('failed');
+
+      await (store.dispatch as AppDispatch)(fetchUiDictionary({ lang: 'en' }));
 
       const state = store.getState();
       expect(selectUiDictionaryStatus(state, 'en')).toBe('succeeded');
-      expect(selectUiDictionaryData(state, 'en')).toEqual([]);
-      expect(selectUiDictionaryFirst(state, 'en')).toBeNull();
+      expect(selectUiDictionaryData(state, 'en')).toEqual(mockDictionary);
+      expect(mockGetJSON).toHaveBeenCalledTimes(2);
     });
 
     test('должен обработать ошибку без Error объекта (null)', async () => {

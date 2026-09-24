@@ -37,7 +37,7 @@ import { setPublicArtistSlug } from '@shared/model/currentArtist';
 import { purgeInvalidAuthSessionFromStorage } from '@shared/lib/auth';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { useEffectiveSearchParams } from '@shared/lib/hooks/useEffectiveLocation';
-import { fetchUiDictionary } from '@shared/model/uiDictionary';
+import { fetchUiDictionary, UiDictionaryFailureBanner } from '@shared/model/uiDictionary';
 import { closePopup, getIsPopupOpen, openPopup } from '@features/popupToggle';
 
 import { Popup, PopupHamburgerToggle, usePopup } from '@shared/ui/popup';
@@ -665,6 +665,7 @@ function Layout() {
         <ArchiveAccessModalProvider>
           <DashboardModalShellContext.Provider value={dashboardModalShell}>
             <CurrentArtistSync />
+            <UiDictionaryFailureBanner />
             {/* БАЗОВЫЙ Helmet для всех страниц без собственного */}
             <Helmet>
               {/* динамический заголовок и описание */}
