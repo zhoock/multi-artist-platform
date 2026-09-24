@@ -330,6 +330,14 @@
       "decline": "Decline",
       "privacyLink": "Privacy Policy"
     },
+    "player": {
+      "previousTrack": "Previous track",
+      "play": "Play",
+      "pause": "Pause",
+      "nextTrack": "Next track",
+      "openFullPlayer": "Open full player",
+      "closePlayer": "Close player"
+    },
     "stems": {
       "pageTitle": "Mixer",
       "selectAlbumHint": "Choose an album to open its tracks and stems",

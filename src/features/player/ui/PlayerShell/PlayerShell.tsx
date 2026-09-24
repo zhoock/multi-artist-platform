@@ -31,6 +31,10 @@ import type { RootState } from '@shared/model/appStore/types';
 import { savePlayerState } from '@features/player/model/lib/playerPersist';
 import { bootstrapPlayerSession } from '@features/player/model/lib/bootstrapPlayerSession';
 import {
+  getPlayerA11yLabels,
+  selectPlayerUiForA11y,
+} from '@features/player/lib/getPlayerA11yLabels';
+import {
   clearFixedBottomInset,
   measureFixedElementBottomInset,
   setFixedBottomInset,
@@ -70,6 +74,8 @@ export const PlayerShell: React.FC = () => {
   const navigate = useNavigate();
   const store = useStore<RootState>();
   const { lang } = useLang();
+  const ui = useAppSelector((state) => selectPlayerUiForA11y(state, lang));
+  const playerA11yLabels = useMemo(() => getPlayerA11yLabels(lang, ui), [lang, ui]);
   const { overlayOpen: dashboardOverlayOpen } = useDashboardModalShell();
 
   const albumMeta = useAppSelector(playerSelectors.selectAlbumMeta);
@@ -505,7 +511,7 @@ export const PlayerShell: React.FC = () => {
 
       {isFullScreen && canRenderPopup && albumMeta && (
         <Popup isActive bgColor={bgColor} onClose={handleClose}>
-          <PopupHamburgerToggle isActive />
+          <PopupHamburgerToggle isActive accessibleName={playerA11yLabels.closePlayer} />
           <FullScreenAudioPlayer albumMeta={albumMeta} setBgColor={setBgColor} />
         </Popup>
       )}

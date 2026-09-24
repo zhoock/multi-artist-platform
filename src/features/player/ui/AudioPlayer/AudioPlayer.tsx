@@ -23,7 +23,10 @@ import {
   selectBackgroundColors,
 } from '@shared/lib/imageColor/selectBackgroundColors';
 import { useLang } from '@app/providers/lang';
-import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
+import {
+  getPlayerA11yLabels,
+  selectPlayerUiForA11y,
+} from '@features/player/lib/getPlayerA11yLabels';
 
 import { debugLog, trackDebug } from './utils/debug';
 import { formatTimerValue } from './utils/formatTime';
@@ -97,7 +100,8 @@ export default function AudioPlayer({
 
   // Состояние для синхронизированного текста
   const { lang } = useLang();
-  const ui = useAppSelector((state) => selectUiDictionaryFirst(state, lang));
+  const ui = useAppSelector((state) => selectPlayerUiForA11y(state, lang));
+  const playerA11yLabels = useMemo(() => getPlayerA11yLabels(lang, ui), [lang, ui]);
   const [syncedLyrics, setSyncedLyrics] = useState<SyncedLyricsLine[] | null>(null);
   const [authorshipText, setAuthorshipText] = useState<string | null>(null); // текст авторства
   const [currentLineIndex, setCurrentLineIndex] = useState<number | null>(null);
@@ -1394,6 +1398,7 @@ export default function AudioPlayer({
         <button
           type="button"
           className="player__transport-button"
+          aria-label={playerA11yLabels.previousTrack}
           onMouseDown={(e) => {
             e.preventDefault(); // Предотвращаем focus и клик при удержании
             handleRewindStart('backward');
@@ -1426,11 +1431,13 @@ export default function AudioPlayer({
             {...playerTransportIconProps(PLAYER_TRANSPORT_ICON_SIZE, {
               className: 'player__transport-icon player__transport-icon--back',
             })}
+            aria-hidden
           />
         </button>
         <button
           type="button"
           className="player__transport-button player__transport-button--play"
+          aria-label={isPlaying ? playerA11yLabels.pause : playerA11yLabels.play}
           onClick={() => {
             togglePlayPause();
             resetInactivityTimer();
@@ -1441,18 +1448,21 @@ export default function AudioPlayer({
               {...playerTransportIconProps(PLAYER_TRANSPORT_PLAY_ICON_SIZE, {
                 className: 'player__transport-icon',
               })}
+              aria-hidden
             />
           ) : (
             <Play
               {...playerTransportIconProps(PLAYER_TRANSPORT_PLAY_ICON_SIZE, {
                 className: 'player__transport-icon player__transport-icon--play',
               })}
+              aria-hidden
             />
           )}
         </button>
         <button
           type="button"
           className="player__transport-button"
+          aria-label={playerA11yLabels.nextTrack}
           onMouseDown={(e) => {
             e.preventDefault(); // Предотвращаем focus и клик при удержании
             handleRewindStart('forward');
@@ -1485,6 +1495,7 @@ export default function AudioPlayer({
             {...playerTransportIconProps(PLAYER_TRANSPORT_ICON_SIZE, {
               className: 'player__transport-icon player__transport-icon--forward',
             })}
+            aria-hidden
           />
         </button>
       </div>
@@ -1530,6 +1541,7 @@ export default function AudioPlayer({
           }}
           className={`player__control-button ${shuffle ? 'player__control-button--active' : ''}`}
           aria-label={shuffle ? 'Выключить перемешивание' : 'Включить перемешивание'}
+          aria-pressed={shuffle}
         >
           <span className="player__control-button-icon" aria-hidden>
             <Shuffle {...playerIconProps(PLAYER_SECONDARY_ICON_SIZE)} />

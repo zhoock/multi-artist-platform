@@ -20,7 +20,6 @@
   box-shadow:
     rgb(0 0 0 / 18%) 0 8px 20px -12px,
     rgb(0 0 0 / 22%) 0 -4px 16px -12px;
-  cursor: pointer;
 
   @include breakpoint(mobileonly) {
     padding-inline: var(--ms-0, 12px);
@@ -41,6 +40,7 @@
     inline-size: 40px;
     block-size: 40px;
     padding: 0;
+    flex-shrink: 0;
 
     @include breakpoint(tablet) {
       inline-size: 64px;
@@ -75,6 +75,33 @@
     text-overflow: ellipsis;
     white-space: nowrap;
     overflow: hidden;
+    min-width: 0;
+  }
+
+  &__expand {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    gap: var(--ms-01);
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    color: inherit;
+    font: inherit;
+    text-align: start;
+    background: transparent;
+    border: none;
+    border-radius: var(--ms-02);
+    cursor: pointer;
+
+    @include breakpoint(mobileonly) {
+      gap: var(--ms-0, 12px);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--dark-greenish-yellow, #c8b06d);
+      outline-offset: 2px;
+    }
   }
 
   &__control {

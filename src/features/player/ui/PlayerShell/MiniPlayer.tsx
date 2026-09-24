@@ -1,5 +1,5 @@
 // src/features/player/ui/PlayerShell/MiniPlayer.tsx
-import React from 'react';
+import React, { useMemo } from 'react';
 import clsx from 'clsx';
 import { Pause, Play, SkipForward } from 'lucide-react';
 import AlbumCover from '@entities/album/ui/AlbumCover';
@@ -9,6 +9,12 @@ import {
   PLAYER_MINI_ICON_SIZE,
 } from '@shared/ui/icons/playerActionIcon';
 import { UNIVERSE_SCENE_OVERLAY_ATTR } from '@shared/lib/universeSceneOverlay';
+import { useLang } from '@app/providers/lang';
+import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
+import {
+  getPlayerA11yLabels,
+  selectPlayerUiForA11y,
+} from '@features/player/lib/getPlayerA11yLabels';
 
 import './style.scss';
 
@@ -41,51 +47,45 @@ export const MiniPlayer: React.FC<MiniPlayerProps> = ({
   forwardHandlers,
   containerRef,
 }) => {
-  return (
-    <div
-      ref={containerRef}
-      className="mini-player"
-      {...{ [UNIVERSE_SCENE_OVERLAY_ATTR]: '' }}
-      role="button"
-      tabIndex={0}
-      aria-label="Открыть полноэкранный плеер"
-      onClick={onExpand}
-      onKeyDown={(event) => {
-        if (event.key === 'Enter' || event.key === ' ') {
-          event.preventDefault();
-          onExpand();
-        }
-      }}
-    >
-      <div className="mini-player__cover">
-        {cover ? (
-          <AlbumCover
-            img={cover}
-            userId={userId}
-            fullName=""
-            size={64}
-            densities={[1, 2]}
-            sizes="(max-width: 767px) 40px, 64px"
-            imageSource="cdn"
-          />
-        ) : (
-          <div className="mini-player__cover-placeholder" aria-hidden />
-        )}
-      </div>
+  const { lang } = useLang();
+  const ui = useAppSelector((state) => selectPlayerUiForA11y(state, lang));
+  const labels = useMemo(() => getPlayerA11yLabels(lang, ui), [lang, ui]);
 
-      <div className="mini-player__title" title={title}>
-        {title}
-      </div>
+  return (
+    <div ref={containerRef} className="mini-player" {...{ [UNIVERSE_SCENE_OVERLAY_ATTR]: '' }}>
+      <button
+        type="button"
+        className="mini-player__expand"
+        aria-label={labels.openFullPlayer}
+        onClick={onExpand}
+      >
+        <div className="mini-player__cover">
+          {cover ? (
+            <AlbumCover
+              img={cover}
+              userId={userId}
+              fullName=""
+              size={64}
+              densities={[1, 2]}
+              sizes="(max-width: 767px) 40px, 64px"
+              imageSource="cdn"
+            />
+          ) : (
+            <div className="mini-player__cover-placeholder" aria-hidden />
+          )}
+        </div>
+
+        <span className="mini-player__title" title={title}>
+          {title}
+        </span>
+      </button>
 
       <div className="mini-player__controls" aria-label="Управление воспроизведением">
         <button
           type="button"
           className="mini-player__control mini-player__control--transport"
-          onClick={(event) => {
-            event.stopPropagation();
-            onToggle();
-          }}
-          aria-label={isPlaying ? 'Пауза' : 'Воспроизвести'}
+          onClick={onToggle}
+          aria-label={isPlaying ? labels.pause : labels.play}
         >
           {isPlaying ? (
             <span className="mini-player__control-glyph" aria-hidden>
@@ -108,35 +108,21 @@ export const MiniPlayer: React.FC<MiniPlayerProps> = ({
         <button
           type="button"
           className="mini-player__control mini-player__control--transport"
-          onMouseDown={(event) => {
-            event.stopPropagation();
-            forwardHandlers.onMouseDown(event);
-          }}
-          onMouseUp={(event) => {
-            event.stopPropagation();
-            forwardHandlers.onMouseUp();
-          }}
-          onMouseLeave={(event) => {
-            event.stopPropagation();
-            forwardHandlers.onMouseLeave();
-          }}
-          onTouchStart={(event) => {
-            event.stopPropagation();
-            forwardHandlers.onTouchStart(event);
-          }}
-          onTouchEnd={(event) => {
-            event.stopPropagation();
-            forwardHandlers.onTouchEnd(event);
-          }}
+          onMouseDown={forwardHandlers.onMouseDown}
+          onMouseUp={forwardHandlers.onMouseUp}
+          onMouseLeave={forwardHandlers.onMouseLeave}
+          onTouchStart={forwardHandlers.onTouchStart}
+          onTouchEnd={forwardHandlers.onTouchEnd}
           onClick={(event) => {
             event.stopPropagation();
           }}
-          aria-label="Следующий трек"
+          aria-label={labels.nextTrack}
         >
           <SkipForward
             {...playerTransportIconProps(PLAYER_MINI_ICON_SIZE, {
               className: clsx('mini-player__control-icon', 'mini-player__control-icon--forward'),
             })}
+            aria-hidden
           />
         </button>
       </div>

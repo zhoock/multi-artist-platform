@@ -13,6 +13,8 @@ export interface NavigationProps {
 }
 
 export interface HamburgerProps extends NavigationProps {
+  /** Overrides default open/close menu text for screen readers (e.g. player close). */
+  accessibleName?: string;
   /** Отвечает за состояние Popup (открыт/закрыт) */
   isActive: boolean;
   /**
@@ -340,6 +342,14 @@ export interface IInterface {
     accept: string;
     decline: string;
     privacyLink: string;
+  };
+  player?: {
+    previousTrack: string;
+    play: string;
+    pause: string;
+    nextTrack: string;
+    openFullPlayer: string;
+    closePlayer: string;
   };
   artistOnboarding?: {
     welcomeGreeting: string;

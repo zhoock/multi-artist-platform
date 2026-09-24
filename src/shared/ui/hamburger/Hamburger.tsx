@@ -14,6 +14,7 @@ const HamburgerComponent = ({
   className,
   variant = 'floating',
   behindDialogOverlap,
+  accessibleName,
 }: HamburgerProps) => {
   return (
     <button
@@ -33,7 +34,9 @@ const HamburgerComponent = ({
       <span className="one" aria-hidden="true"></span>
       <span className="two" aria-hidden="true"></span>
       <span className="three" aria-hidden="true"></span>
-      <span className="visually-hidden">{!isActive ? 'Открыть меню' : 'Скрыть меню'}</span>
+      <span className="visually-hidden">
+        {accessibleName ?? (!isActive ? 'Открыть меню' : 'Скрыть меню')}
+      </span>
     </button>
   );
 };
