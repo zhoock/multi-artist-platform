@@ -64,6 +64,30 @@
     @include adjust-font-size-to($ms-01, 0.382, $ms-01);
   }
 
+  .mixer-level__error {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ms-01);
+    align-items: flex-start;
+    padding: var(--ms-01);
+    background: rgb(255 255 255 / 3%);
+    border: 1px solid var(--hr-color);
+    border-radius: var(--ms-01);
+  }
+
+  .mixer-level__error-text {
+    margin: 0;
+    color: var(--text-color);
+
+    @include adjust-font-size-to($ms-01, 0.382, $ms-01);
+  }
+
+  .mixer-level__error-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--ms-02);
+  }
+
   /* ─────────────── Уровень 1: альбомы ─────────────── */
 
   .mixer-album-list {
@@ -273,6 +297,35 @@
         }
       }
     }
+  }
+
+  .mixer-player__load-error,
+  .mixer-player__partial-warning,
+  .mixer-player__play-feedback {
+    margin: 0;
+    color: var(--text-color);
+
+    @include adjust-font-size-to($ms-01, 0.382, $ms-01);
+  }
+
+  .mixer-player__load-error {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ms-02);
+    align-items: flex-start;
+    padding: var(--ms-01);
+    background: rgb(255 255 255 / 3%);
+    border: 1px solid var(--hr-color);
+    border-radius: var(--ms-01);
+  }
+
+  .mixer-player__load-error-text {
+    margin: 0;
+  }
+
+  .mixer-player__partial-warning,
+  .mixer-player__play-feedback {
+    opacity: 0.85;
   }
 
   .mixer-player__shared-note {
@@ -546,6 +599,20 @@
       pointer-events: none;
     }
 
+    &--load-failed {
+      border-color: rgb(207 128 125 / 45%);
+    }
+
+    &__load-failed-tag {
+      display: block;
+      margin-block-start: 0.15em;
+      color: var(--error-color, #cf807d);
+      font-weight: var(--regular);
+      opacity: 0.95;
+
+      @include adjust-font-size-to($ms-02, 0.382, $ms-01);
+    }
+
     &__icon {
       display: inline-flex;
       align-items: center;
@@ -709,6 +776,10 @@
   &.is-loading {
     cursor: default;
   }
+}
+
+.stems__wave-placeholder {
+  min-height: 64px;
 }
 
 .stems__wave-track {

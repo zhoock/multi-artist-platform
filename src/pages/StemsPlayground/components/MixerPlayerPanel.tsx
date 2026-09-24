@@ -1,10 +1,18 @@
 // src/pages/StemsPlayground/components/MixerPlayerPanel.tsx
-import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
+import {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import type { ReactNode } from 'react';
 import { Pause, Play } from 'lucide-react';
 import clsx from 'clsx';
 import { Waveform } from '@shared/ui/waveform';
-import { StemEngine } from '@audio/stemsEngine';
+import { StemEngine, StemEnginePlayError } from '@audio/stemsEngine';
 import { getAuthHeader } from '@shared/lib/auth';
 import {
   panelStateToSettings,
@@ -22,11 +30,16 @@ import {
 
 type StemMixState = PanelStemState;
 
-type MixerPlayerPanelLabels = {
+export type MixerPlayerPanelLabels = {
   play: string;
   pause: string;
   solo: string;
   mute: string;
+  stemsLoadError: string;
+  retry: string;
+  stemLoadFailed: string;
+  playBlocked: string;
+  partialStemsFailed: string;
 };
 
 export type MixerPlayerPanelHandle = {
@@ -45,6 +58,21 @@ type MixerPlayerPanelProps = {
   sharedNote?: ReactNode;
 };
 
+type LoadStatus = 'loading' | 'ready' | 'error';
+
+function resolvePlayFeedbackMessage(error: unknown, labels: MixerPlayerPanelLabels): string {
+  if (error instanceof StemEnginePlayError) {
+    if (error.code === 'AUDIO_CONTEXT_BLOCKED') {
+      return labels.playBlocked;
+    }
+    return labels.stemsLoadError;
+  }
+  if (error instanceof DOMException && error.name === 'NotAllowedError') {
+    return labels.playBlocked;
+  }
+  return labels.stemsLoadError;
+}
+
 /** Полноценный микшер трека: Play, Waveform, список стемов с громкостью и Solo/Mute. */
 function MixerPlayerPanelInner(
   { track, labels, initialMix, sharedNote }: MixerPlayerPanelProps,
@@ -52,8 +80,11 @@ function MixerPlayerPanelInner(
 ) {
   const engineRef = useRef<StemEngine | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [loadStatus, setLoadStatus] = useState<LoadStatus>('loading');
   const [loadProgress, setLoadProgress] = useState(0);
+  const [loadGeneration, setLoadGeneration] = useState(0);
+  const [failedStemIds, setFailedStemIds] = useState<Set<string>>(() => new Set());
+  const [playFeedback, setPlayFeedback] = useState('');
   const [time, setTime] = useState({ current: 0, duration: 0 });
   const [mix, setMix] = useState<Record<string, StemMixState>>({});
 
@@ -63,30 +94,39 @@ function MixerPlayerPanelInner(
   const isPlayingRef = useRef(false);
   const mixRef = useRef<Record<string, StemMixState>>({});
   const initialMixRef = useRef<SavedMixSetting[] | undefined>(initialMix);
+  const initialMixAppliedRef = useRef(false);
 
   isPlayingRef.current = isPlaying;
   mixRef.current = mix;
   initialMixRef.current = initialMix;
 
+  const loading = loadStatus === 'loading';
+  const transportDisabled = loadStatus !== 'ready';
+
   /** Применяет настройки к движку и состоянию UI; недостающие стемы — дефолт. */
-  const applyMix = (settings: SavedMixSetting[]) => {
-    const byId = new Map(settings.map((s) => [s.stemId, s]));
-    const engine = engineRef.current;
-    const next: Record<string, StemMixState> = {};
-    for (const stem of track.stems) {
-      const s = byId.get(stem.id);
-      const state: StemMixState = {
-        volume: s ? Math.max(0, Math.min(1, s.volume)) : 1,
-        muted: s?.muted ?? false,
-        soloed: s?.solo ?? false,
-      };
-      next[stem.id] = state;
-      engine?.setVolume(stem.id, state.volume);
-      engine?.setMuted(stem.id, state.muted);
-      engine?.setSolo(stem.id, state.soloed);
-    }
-    setMix(next);
-  };
+  const applyMix = useCallback(
+    (settings: SavedMixSetting[]) => {
+      const byId = new Map(settings.map((s) => [s.stemId, s]));
+      const engine = engineRef.current;
+      const next: Record<string, StemMixState> = {};
+      for (const stem of track.stems) {
+        const s = byId.get(stem.id);
+        const state: StemMixState = {
+          volume: s ? Math.max(0, Math.min(1, s.volume)) : 1,
+          muted: s?.muted ?? false,
+          soloed: s?.solo ?? false,
+        };
+        next[stem.id] = state;
+        if (engine?.hasPlayableNodes()) {
+          engine.setVolume(stem.id, state.volume);
+          engine.setMuted(stem.id, state.muted);
+          engine.setSolo(stem.id, state.soloed);
+        }
+      }
+      setMix(next);
+    },
+    [track.stems]
+  );
 
   useImperativeHandle(
     ref,
@@ -94,9 +134,7 @@ function MixerPlayerPanelInner(
       getMixSettings: () => panelStateToSettings(mixRef.current),
       applyMix,
     }),
-    // applyMix замыкает актуальный track через ref-стейт движка; пересоздаём при смене трека.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [track.id]
+    [applyMix]
   );
 
   const validStems = useMemo(() => {
@@ -109,51 +147,74 @@ function MixerPlayerPanelInner(
     return map;
   }, [track]);
 
-  // Создаём движок при монтировании трека (компонент пересоздаётся по ключу track.id).
+  const retryLoad = useCallback(() => {
+    setIsPlaying(false);
+    setPlayFeedback('');
+    setFailedStemIds(new Set());
+    initialMixAppliedRef.current = false;
+    setLoadGeneration((n) => n + 1);
+  }, []);
+
+  // Создаём движок при монтировании трека или Retry (компонент пересоздаётся по ключу track.id).
   useEffect(() => {
     setMix(
       Object.fromEntries(
         track.stems.map((stem) => [stem.id, { volume: 1, muted: false, soloed: false }])
       )
     );
+    setIsPlaying(false);
+    setPlayFeedback('');
+    setFailedStemIds(new Set());
+    initialMixAppliedRef.current = false;
 
     if (Object.keys(validStems).length === 0) {
-      setLoading(false);
+      engineRef.current = null;
+      setLoadStatus('error');
+      setLoadProgress(0);
       return;
     }
 
-    setLoading(true);
+    setLoadStatus('loading');
     setLoadProgress(0);
-    setIsPlaying(false);
 
     const engine = new StemEngine(validStems, undefined, { headers: getAuthHeader() });
     engineRef.current = engine;
 
     let disposed = false;
-    (async () => {
+    void (async () => {
       try {
-        await engine.loadAll((p) => setLoadProgress(p));
+        const result = await engine.loadAll((p) => {
+          if (!disposed) setLoadProgress(p);
+        });
         if (disposed) return;
-        // Shared-микс: применяем сохранённые настройки один раз после загрузки.
+
+        setFailedStemIds(new Set(result.failedStemIds));
+        setLoadStatus('ready');
+
         const preset = initialMixRef.current;
-        if (preset && preset.length > 0) {
+        if (preset && preset.length > 0 && !initialMixAppliedRef.current) {
           applyMix(preset);
+          initialMixAppliedRef.current = true;
         }
-        setLoading(false);
       } catch (error) {
         console.error('❌ [MixerPlayerPanel] Ошибка при загрузке стемов:', error);
-        if (!disposed) setLoading(false);
+        if (!disposed) {
+          engineRef.current = null;
+          engine.dispose();
+          setLoadStatus('error');
+          setFailedStemIds(new Set(Object.keys(validStems)));
+        }
       }
     })();
 
     return () => {
       disposed = true;
       engine.dispose();
-      engineRef.current = null;
+      if (engineRef.current === engine) {
+        engineRef.current = null;
+      }
     };
-    // applyMix стабилен в рамках монтирования трека (компонент пересоздаётся по key={track.id}).
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [track.id, validStems, track.stems]);
+  }, [track.id, validStems, track.stems, loadGeneration, applyMix]);
 
   // RAF-цикл прогресса воспроизведения.
   useEffect(() => {
@@ -176,22 +237,34 @@ function MixerPlayerPanelInner(
 
   const togglePlay = async () => {
     const e = engineRef.current;
-    if (!e || loading) return;
+    if (!e || transportDisabled) return;
     if (!isPlaying) {
-      await e.play();
-      setIsPlaying(true);
+      try {
+        await e.play();
+        setIsPlaying(e.isPlaying);
+        setPlayFeedback('');
+      } catch (error) {
+        setIsPlaying(false);
+        setPlayFeedback(resolvePlayFeedbackMessage(error, labels));
+      }
     } else {
-      await e.pause();
+      try {
+        await e.pause();
+      } catch (error) {
+        console.warn('[MixerPlayerPanel] pause failed', error);
+      }
       setIsPlaying(false);
     }
   };
 
   const setVolume = (stemId: string, volume: number) => {
+    if (failedStemIds.has(stemId)) return;
     engineRef.current?.setVolume(stemId, volume);
     setMix((m) => ({ ...m, [stemId]: { ...m[stemId], volume } }));
   };
 
   const toggleMute = (stemId: string) => {
+    if (failedStemIds.has(stemId)) return;
     setMix((m) => {
       const next = !m[stemId]?.muted;
       engineRef.current?.setMuted(stemId, next);
@@ -200,6 +273,7 @@ function MixerPlayerPanelInner(
   };
 
   const toggleSolo = (stemId: string) => {
+    if (failedStemIds.has(stemId)) return;
     setMix((m) => {
       const next = !m[stemId]?.soloed;
       engineRef.current?.setSolo(stemId, next);
@@ -210,16 +284,18 @@ function MixerPlayerPanelInner(
   const seekToClientX = (clientX: number) => {
     const wrap = waveWrapRef.current;
     const e = engineRef.current;
-    if (!wrap || !e || !Number.isFinite(e.getDuration())) return;
+    if (!wrap || !e || transportDisabled || !Number.isFinite(e.getDuration())) return;
     const rect = wrap.getBoundingClientRect();
     const ratio = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
     const newTime = ratio * e.getDuration();
-    e.seek(newTime);
+    void e.seek(newTime).catch((error) => {
+      console.warn('[MixerPlayerPanel] seek failed', error);
+    });
     setTime((t) => ({ ...t, current: newTime }));
   };
 
   const onPointerDown: React.PointerEventHandler<HTMLDivElement> = (evt) => {
-    if (loading) return;
+    if (transportDisabled) return;
     draggingRef.current = true;
     wasPlayingRef.current = isPlayingRef.current;
     evt.currentTarget.setPointerCapture(evt.pointerId);
@@ -227,7 +303,7 @@ function MixerPlayerPanelInner(
   };
 
   const onPointerMove: React.PointerEventHandler<HTMLDivElement> = (evt) => {
-    if (!draggingRef.current || loading) return;
+    if (!draggingRef.current || transportDisabled) return;
     seekToClientX(evt.clientX);
   };
 
@@ -236,15 +312,39 @@ function MixerPlayerPanelInner(
     evt.currentTarget.releasePointerCapture(evt.pointerId);
   };
 
+  const showPartialWarning = loadStatus === 'ready' && failedStemIds.size > 0;
+
   return (
     <div className="mixer-player">
       {sharedNote ? <div className="mixer-player__shared-note">{sharedNote}</div> : null}
+
+      {loadStatus === 'error' ? (
+        <div className="mixer-player__load-error" role="alert">
+          <p className="mixer-player__load-error-text">{labels.stemsLoadError}</p>
+          <button type="button" className="btn" onClick={retryLoad}>
+            {labels.retry}
+          </button>
+        </div>
+      ) : null}
+
+      {showPartialWarning ? (
+        <p className="mixer-player__partial-warning" role="status">
+          {labels.partialStemsFailed}
+        </p>
+      ) : null}
+
+      {playFeedback ? (
+        <p className="mixer-player__play-feedback" role="alert">
+          {playFeedback}
+        </p>
+      ) : null}
+
       <div className="mixer-player__transport">
         <button
           className="btn"
-          onClick={togglePlay}
+          onClick={() => void togglePlay()}
           type="button"
-          disabled={loading}
+          disabled={transportDisabled}
           aria-pressed={isPlaying}
         >
           <span className="mixer-player__transport-icon" aria-hidden>
@@ -266,9 +366,9 @@ function MixerPlayerPanelInner(
         <div className={clsx('stems__wave-wrap', { 'is-loading': loading })}>
           <button
             className="mixer-player__wave-play"
-            onClick={togglePlay}
+            onClick={() => void togglePlay()}
             type="button"
-            disabled={loading}
+            disabled={transportDisabled}
             aria-pressed={isPlaying}
             aria-label={isPlaying ? labels.pause : labels.play}
           >
@@ -301,6 +401,8 @@ function MixerPlayerPanelInner(
                   />
                 </div>
               </div>
+            ) : loadStatus === 'error' ? (
+              <div className="stems__wave-placeholder" aria-hidden />
             ) : (
               <>
                 <Waveform waveformUrl={track.waveformUrl} progress={progress} height={64} />
@@ -323,6 +425,7 @@ function MixerPlayerPanelInner(
       <div className="mixer-stem-list">
         {track.stems.map((stem) => {
           const state = mix[stem.id] ?? { volume: 1, muted: false, soloed: false };
+          const stemFailed = failedStemIds.has(stem.id);
           return (
             <MixerStemRow
               key={stem.id}
@@ -331,7 +434,9 @@ function MixerPlayerPanelInner(
               volume={state.volume}
               muted={state.muted}
               soloed={state.soloed}
-              disabled={loading}
+              disabled={loading || stemFailed}
+              loadFailed={stemFailed}
+              loadFailedLabel={labels.stemLoadFailed}
               soloLabel={labels.solo}
               muteLabel={labels.mute}
               onVolumeChange={(v) => setVolume(stem.id, v)}

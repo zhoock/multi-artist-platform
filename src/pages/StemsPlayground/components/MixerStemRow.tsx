@@ -15,6 +15,9 @@ type MixerStemRowProps = {
   muted: boolean;
   soloed: boolean;
   disabled?: boolean;
+  /** Stem audio failed to load — show indicator, controls stay inactive. */
+  loadFailed?: boolean;
+  loadFailedLabel?: string;
   soloLabel: string;
   muteLabel: string;
   onVolumeChange: (volume: number) => void;
@@ -40,6 +43,8 @@ export function MixerStemRow({
   muted,
   soloed,
   disabled = false,
+  loadFailed = false,
+  loadFailedLabel = '',
   soloLabel,
   muteLabel,
   onVolumeChange,
@@ -65,11 +70,24 @@ export function MixerStemRow({
   };
 
   return (
-    <div className={clsx('mixer-stem', { 'mixer-stem--muted': muted, 'is-disabled': disabled })}>
+    <div
+      className={clsx('mixer-stem', {
+        'mixer-stem--muted': muted,
+        'mixer-stem--load-failed': loadFailed,
+        'is-disabled': disabled,
+      })}
+    >
       <span className="mixer-stem__icon">
         <StemIcon category={category} className="mixer-stem__icon-svg" />
       </span>
-      <span className="mixer-stem__name">{name}</span>
+      <span className="mixer-stem__name">
+        {name}
+        {loadFailed && loadFailedLabel ? (
+          <span className="mixer-stem__load-failed-tag" title={loadFailedLabel}>
+            {loadFailedLabel}
+          </span>
+        ) : null}
+      </span>
       <input
         className="mixer-stem__slider"
         type="range"

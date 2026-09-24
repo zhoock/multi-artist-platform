@@ -180,6 +180,11 @@ export default function StemsPlayground() {
     pause: buttons.pause ?? 'Pause',
     solo: stems.solo ?? 'Solo',
     mute: stems.mute ?? 'Mute',
+    stemsLoadError: stems.stemsLoadError ?? 'Could not load stems',
+    retry: stems.retry ?? 'Retry',
+    stemLoadFailed: stems.stemLoadFailed ?? 'Failed to load',
+    playBlocked: stems.playBlocked ?? 'Tap Play again to start audio',
+    partialStemsFailed: stems.partialStemsFailed ?? 'Some stems could not be loaded',
   };
 
   // ── Saved Mixes state ─────────────────────────────────────────────
@@ -192,6 +197,11 @@ export default function StemsPlayground() {
 
   // ── Shared-link (read-only пресет) ────────────────────────────────
   const [sharedMix, setSharedMix] = useState<SharedMix | null>(null);
+  const [sharedMixFetchState, setSharedMixFetchState] = useState<
+    'idle' | 'loading' | 'error' | 'ok'
+  >('idle');
+  const [sharedMixFetchGeneration, setSharedMixFetchGeneration] = useState(0);
+  const [sharedMixApplyError, setSharedMixApplyError] = useState(false);
   const sharedAppliedRef = useRef(false);
 
   const showToast = (message: string) => {
@@ -266,15 +276,20 @@ export default function StemsPlayground() {
   useEffect(() => {
     if (!mixId) {
       setSharedMix(null);
+      setSharedMixFetchState('idle');
+      setSharedMixApplyError(false);
       sharedAppliedRef.current = false;
       return;
     }
     let cancelled = false;
+    setSharedMixFetchState('loading');
+    setSharedMixApplyError(false);
     getSharedMix(mixId)
       .then((mix) => {
         if (cancelled) return;
         sharedAppliedRef.current = false;
         setSharedMix(mix);
+        setSharedMixFetchState('ok');
         dispatch(setPublicArtistSlug(mix.artistSlug || null));
 
         const slug = mix.artistSlug?.trim();
@@ -287,24 +302,62 @@ export default function StemsPlayground() {
       })
       .catch((error) => {
         console.error('[stems] shared mix load failed', error);
+        if (!cancelled) {
+          setSharedMix(null);
+          setSharedMixFetchState('error');
+        }
       });
     return () => {
       cancelled = true;
     };
-  }, [mixId, dispatch, navigate]);
+  }, [mixId, dispatch, navigate, sharedMixFetchGeneration]);
+
+  const retrySharedMixFetch = useCallback(() => {
+    sharedAppliedRef.current = false;
+    setSharedMixApplyError(false);
+    setSharedMixFetchGeneration((n) => n + 1);
+  }, []);
+
+  const retrySharedMixApply = useCallback(() => {
+    if (!sharedMix) return;
+    sharedAppliedRef.current = false;
+    setSharedMixApplyError(false);
+    void loadAlbumTracks(sharedMix.albumId, { force: true }).then((loaded) => {
+      if (!loaded) {
+        setSharedMixApplyError(true);
+        return;
+      }
+      const track = loaded.tracks.find((t) => t.id === sharedMix.trackId);
+      if (!track || track.locked) {
+        setSharedMixApplyError(true);
+        return;
+      }
+      sharedAppliedRef.current = true;
+      selectAlbum(loaded.albumId);
+      selectTrack(track.id);
+    });
+  }, [loadAlbumTracks, selectAlbum, selectTrack, sharedMix]);
 
   // Shared mix: load AlbumDetails + stems for the target album, then drill in.
   useEffect(() => {
-    if (!sharedMix || sharedAppliedRef.current) return;
+    if (!sharedMix || sharedAppliedRef.current || sharedMixFetchState !== 'ok') return;
     const albumShell = albums.find((a) => a.albumId === sharedMix.albumId);
     if (!albumShell) return;
 
     let cancelled = false;
+    setSharedMixApplyError(false);
     void (async () => {
       const loaded = await loadAlbumTracks(sharedMix.albumId, { force: true });
-      if (cancelled || !loaded) return;
+      if (cancelled) return;
+      if (!loaded) {
+        setSharedMixApplyError(true);
+        return;
+      }
       const track = loaded.tracks.find((t) => t.id === sharedMix.trackId);
-      if (!track || track.locked) return;
+      if (!track || track.locked) {
+        setSharedMixApplyError(true);
+        return;
+      }
       sharedAppliedRef.current = true;
       selectAlbum(loaded.albumId);
       selectTrack(track.id);
@@ -313,7 +366,7 @@ export default function StemsPlayground() {
     return () => {
       cancelled = true;
     };
-  }, [sharedMix, albums, loadAlbumTracks, selectAlbum, selectTrack]);
+  }, [sharedMix, albums, loadAlbumTracks, selectAlbum, selectTrack, sharedMixFetchState]);
 
   const isSharedTrack =
     Boolean(sharedMix) && view === 'mixer' && selectedTrack?.id === sharedMix?.trackId;
@@ -413,6 +466,13 @@ export default function StemsPlayground() {
 
   const dashboard = (ui?.dashboard ?? {}) as Record<string, string>;
 
+  const openMixerPath = buildLocalizedPublicPathWithArtist(lang, '/stems', artistSlug);
+  const sharedMixLoadErrorText = stems.sharedMixLoadError ?? 'Could not open this shared mix';
+  const sharedMixApplyErrorText =
+    stems.sharedMixApplyError ?? 'Could not load the track for this shared mix';
+  const tracksLoadErrorText = stems.tracksLoadError ?? 'Could not load tracks';
+  const backToMixerLabel = stems.backToMixer ?? 'Open Mixer';
+
   const myMixesLabels = {
     title: stems.myMixes ?? 'My mixes',
     empty: stems.noMixes ?? 'No saved mixes yet',
@@ -428,6 +488,82 @@ export default function StemsPlayground() {
         : '"{name}" will be permanently deleted.',
     deleteIrreversible: dashboard.confirmActionIrreversible ?? 'This action cannot be undone.',
   };
+
+  if (mixId && sharedMixFetchState === 'loading') {
+    return (
+      <section className="stems-page main-background" aria-label="Блок c миксером">
+        <StemsPlaygroundSeoHelmet
+          title={pageTitle}
+          description={seoDescription}
+          canonical={canonical}
+          hreflang={hreflang}
+        />
+        <div className="wrapper">
+          <ContextNav mode="artist-only" artistName={siteArtistName} artistTo={artistHubPath} />
+          <h2>{pageTitle}</h2>
+          <div className="mixer">
+            <MixerAlbumListSkeleton />
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  if (mixId && sharedMixFetchState === 'error') {
+    return (
+      <section className="stems-page main-background" aria-label="Блок c миксером">
+        <StemsPlaygroundSeoHelmet
+          title={pageTitle}
+          description={seoDescription}
+          canonical={canonical}
+          hreflang={hreflang}
+        />
+        <div className="wrapper">
+          <ContextNav mode="artist-only" artistName={siteArtistName} artistTo={artistHubPath} />
+          <h2>{pageTitle}</h2>
+          <div className="mixer-level__error" role="alert">
+            <p className="mixer-level__error-text">{sharedMixLoadErrorText}</p>
+            <div className="mixer-level__error-actions">
+              <button type="button" className="btn" onClick={retrySharedMixFetch}>
+                {playerLabels.retry}
+              </button>
+              <button type="button" className="btn" onClick={() => navigate(openMixerPath)}>
+                {backToMixerLabel}
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  if (mixId && sharedMixApplyError) {
+    return (
+      <section className="stems-page main-background" aria-label="Блок c миксером">
+        <StemsPlaygroundSeoHelmet
+          title={pageTitle}
+          description={seoDescription}
+          canonical={canonical}
+          hreflang={hreflang}
+        />
+        <div className="wrapper">
+          <ContextNav mode="artist-only" artistName={siteArtistName} artistTo={artistHubPath} />
+          <h2>{pageTitle}</h2>
+          <div className="mixer-level__error" role="alert">
+            <p className="mixer-level__error-text">{sharedMixApplyErrorText}</p>
+            <div className="mixer-level__error-actions">
+              <button type="button" className="btn" onClick={retrySharedMixApply}>
+                {playerLabels.retry}
+              </button>
+              <button type="button" className="btn" onClick={() => navigate(openMixerPath)}>
+                {backToMixerLabel}
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+    );
+  }
 
   if (showEmptyCatalogResolving) {
     return (
@@ -547,6 +683,17 @@ export default function StemsPlayground() {
                 <MixerTrackListSkeleton
                   count={selectedAlbum.listedTrackCount > 0 ? selectedAlbum.listedTrackCount : 3}
                 />
+              ) : selectedAlbum.tracksStatus === 'failed' ? (
+                <div className="mixer-level__error" role="alert">
+                  <p className="mixer-level__error-text">{tracksLoadErrorText}</p>
+                  <button
+                    type="button"
+                    className="btn"
+                    onClick={() => void loadAlbumTracks(selectedAlbum.albumId, { force: true })}
+                  >
+                    {playerLabels.retry}
+                  </button>
+                </div>
               ) : selectedAlbum.tracks.length === 0 ? (
                 <p className="mixer-level__hint">{noAlbumsLabel || stems.emptyTitle}</p>
               ) : (

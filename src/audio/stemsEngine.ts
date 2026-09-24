@@ -7,6 +7,23 @@
  */
 type StemMap = Record<string, string>;
 
+export type StemLoadResult = {
+  loadedStemIds: string[];
+  failedStemIds: string[];
+};
+
+export type StemEnginePlayErrorCode = 'NO_PLAYABLE_STEMS' | 'AUDIO_CONTEXT_BLOCKED';
+
+export class StemEnginePlayError extends Error {
+  readonly code: StemEnginePlayErrorCode;
+
+  constructor(message: string, code: StemEnginePlayErrorCode, options?: { cause?: unknown }) {
+    super(message, options);
+    this.name = 'StemEnginePlayError';
+    this.code = code;
+  }
+}
+
 type Nodes = {
   buffer: AudioBuffer;
   source: AudioBufferSourceNode | null;
@@ -46,8 +63,16 @@ export class StemEngine {
     if (this.ctx.state === 'suspended') await this.ctx.resume();
   }
 
+  get loadedStemCount(): number {
+    return this.nodes.size;
+  }
+
+  hasPlayableNodes(): boolean {
+    return this.nodes.size > 0;
+  }
+
   /** Предзагрузка и декодирование всех stem'ов; progress(0..1) — опциональный колбэк */
-  async loadAll(progress?: (p: number) => void) {
+  async loadAll(progress?: (p: number) => void): Promise<StemLoadResult> {
     const entries = Object.entries(this.stems).filter(
       ([, url]) => url && typeof url === 'string' && url.trim() !== ''
     ) as [string, string][];
@@ -55,7 +80,7 @@ export class StemEngine {
     if (entries.length === 0) {
       console.warn('[StemEngine] Нет валидных стемов для загрузки');
       progress?.(1);
-      return;
+      throw new Error('Нет валидных стемов для загрузки');
     }
 
     let done = 0;
@@ -110,9 +135,22 @@ export class StemEngine {
       });
     }
 
+    const loadedStemIds: string[] = [];
+    const failedStemIds: string[] = [];
+    entries.forEach(([stemId], index) => {
+      const outcome = results[index];
+      if (outcome?.status === 'fulfilled') {
+        loadedStemIds.push(stemId);
+      } else {
+        failedStemIds.push(stemId);
+      }
+    });
+
     if (this.nodes.size === 0) {
       throw new Error('Не удалось загрузить ни одного стема');
     }
+
+    return { loadedStemIds, failedStemIds };
   }
 
   /** Длительность (берём из первого буфера) */
@@ -172,7 +210,18 @@ export class StemEngine {
 
   /** Запуск синхронно с общего такта */
   async play(from?: number) {
-    await this.unlock();
+    if (this.nodes.size === 0) {
+      throw new StemEnginePlayError('No playable stems loaded', 'NO_PLAYABLE_STEMS');
+    }
+
+    try {
+      await this.unlock();
+    } catch (error) {
+      throw new StemEnginePlayError('Audio context could not start', 'AUDIO_CONTEXT_BLOCKED', {
+        cause: error,
+      });
+    }
+
     if (typeof from === 'number') {
       this.startOffset = Math.max(0, Math.min(from, this.duration));
     }
