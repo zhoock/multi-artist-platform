@@ -62,6 +62,7 @@ jest.mock('@shared/lib/auth', () => {
 import { fetchWithAuthSession } from '@shared/lib/authFetch';
 import { getToken, getUser, isAuthenticated } from '@shared/lib/auth';
 import { invalidatePublicArtistUserProfileCache } from '@shared/lib/publicArtistUserProfile';
+import { invalidatePublicArtistsCache } from '@shared/lib/publicArtistsCache';
 
 const mockTrack: TracksProps = {
   id: '1',
@@ -116,6 +117,7 @@ function createWrapper(
 
 describe('useArtistPageAccess — album surface reload', () => {
   beforeEach(() => {
+    invalidatePublicArtistsCache();
     invalidatePublicArtistUserProfileCache();
     jest.mocked(fetchWithAuthSession).mockResolvedValue({
       ok: true,
@@ -582,6 +584,105 @@ describe('useArtistPageAccess — published surface without releases', () => {
       expect(result.current.pageReady).toBe(true);
       expect(result.current.showArtistPageSkeleton).toBe(false);
     });
+  });
+});
+
+describe('useArtistPageAccess — visitor monetization via publicArtistsCache', () => {
+  beforeEach(() => {
+    invalidatePublicArtistUserProfileCache();
+    jest.mocked(isAuthenticated).mockReturnValue(false);
+    jest.mocked(fetchWithAuthSession).mockImplementation(async (input: RequestInfo | URL) => {
+      const href =
+        typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+      if (href.includes('user-profile')) {
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            data: { publicSlug: 'test-artist', siteName: 'Band' },
+          }),
+        } as Response;
+      }
+      if (href.includes('/api/public-artists')) {
+        throw new Error('useArtistPageAccess must not fetch /api/public-artists directly');
+      }
+      return { ok: false, json: async () => ({}) } as Response;
+    });
+  });
+
+  test('visitor monetization читает artist через ensurePublicArtistsLoaded', async () => {
+    const publicArtistsCache = jest.requireActual<typeof import('@shared/lib/publicArtistsCache')>(
+      '@shared/lib/publicArtistsCache'
+    );
+    const ensureSpy = jest
+      .spyOn(publicArtistsCache, 'ensurePublicArtistsLoaded')
+      .mockResolvedValue([
+        {
+          name: 'Band',
+          publicSlug: 'test-artist',
+          genreCode: 'other',
+          monetizationEnabled: true,
+        },
+      ]);
+
+    const { result } = renderHook(() => useArtistPageAccess('test-artist'), {
+      wrapper: createWrapper({
+        lang: { current: 'en' },
+        currentArtist: { publicSlug: 'test-artist' },
+        articles: {
+          status: 'succeeded',
+          error: null,
+          data: [],
+          lastUpdated: Date.now(),
+          lastPublicArtistSlug: 'test-artist',
+          dashboard: {
+            status: 'idle',
+            error: null,
+            data: [],
+            lastUpdated: null,
+          },
+        },
+        albums: {
+          dashboard: {
+            status: 'idle',
+            error: null,
+            data: [],
+            lastUpdated: null,
+            inFlightFetchContextKey: null,
+          },
+        },
+        artistAlbumCatalog: {
+          status: 'succeeded',
+          error: null,
+          data: [
+            {
+              albumId: 'album-1',
+              slug: 'album-1',
+              title: 'Album 1',
+              cover: 'cover1',
+              releaseDate: '2024-01-01',
+              trackCount: 1,
+              duration: 180,
+              userId: 'user-1',
+              isPublished: true,
+              isPublic: true,
+              hasLockedTracks: false,
+              hasStems: false,
+            },
+          ],
+          lastUpdated: Date.now(),
+          fetchContextKey: 'public:test-artist',
+          artistMissing: false,
+        },
+      }),
+    });
+
+    await waitFor(() => {
+      expect(ensureSpy).toHaveBeenCalled();
+      expect(result.current.monetizationEnabled).toBe(true);
+    });
+
+    ensureSpy.mockRestore();
   });
 });
 
@@ -1120,6 +1221,7 @@ describe('useArtistPageAccess — albumsSurfaceReady (LCP album cover gate)', ()
   }
 
   beforeEach(() => {
+    invalidatePublicArtistsCache();
     invalidatePublicArtistUserProfileCache();
     jest.mocked(isAuthenticated).mockReturnValue(false);
     jest.mocked(getUser).mockReturnValue(null);

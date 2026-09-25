@@ -313,24 +313,7 @@ export async function albumsLoader({ request }: LoaderFunctionArgs): Promise<Alb
     } else {
       // Home / All Albums / other public: thin CatalogAlbum on the surface — never fat.
       templateA = Promise.resolve([]);
-      if (
-        publicArtistFromUrl &&
-        shouldDeferPublicArtistCatalogToSurface(loaderPathname, publicArtistFromUrl)
-      ) {
-        const fetchThunkPromise = store.dispatch(
-          fetchArtistAlbumCatalog({ publicArtistSlug: publicArtistFromUrl })
-        );
-        if (signal.aborted) {
-          fetchThunkPromise.abort();
-        } else {
-          const abortHandler = () => {
-            fetchThunkPromise.abort();
-          };
-          signal.addEventListener('abort', abortHandler, { once: true });
-          // Surface also force-fetches; loader prefetch is best-effort.
-          void fetchThunkPromise.unwrap().catch(() => undefined);
-        }
-      }
+      // Defer routes (`/?artist=`, `/albums?artist=`, …): surface owns initial thin catalog fetch.
     }
   }
 
@@ -384,27 +367,9 @@ export async function albumsLoader({ request }: LoaderFunctionArgs): Promise<Alb
         publicArtistSlug
       );
 
-      // `/?artist=`: surface owns force refresh; loader only best-effort prefetch (как catalog).
+      // Defer routes: Home / AllAlbums / Stems surfaces own initial public articles fetch.
       if (deferArticlesToSurface) {
         templateB = Promise.resolve(selectArticlesData(state));
-        if (publicArtistSlug) {
-          const fetchThunkPromise = store.dispatch(
-            fetchArticles({
-              force: true,
-              forcePublicCatalog: true,
-              publicArtistSlug,
-            })
-          );
-          if (signal.aborted) {
-            fetchThunkPromise.abort();
-          } else {
-            const abortHandler = () => {
-              fetchThunkPromise.abort();
-            };
-            signal.addEventListener('abort', abortHandler, { once: true });
-            void fetchThunkPromise.unwrap().catch(() => undefined);
-          }
-        }
       } else if (cacheOk) {
         templateB = Promise.resolve(selectArticlesData(state));
       } else {

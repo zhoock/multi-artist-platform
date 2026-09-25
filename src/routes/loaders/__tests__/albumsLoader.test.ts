@@ -172,6 +172,18 @@ describe('albumsLoader — defer public catalog to HomePage', () => {
 
     expect(store.getState().albums.dashboard.status).toBe('idle');
     expect(store.getState().albums.dashboard.inFlightFetchContextKey).toBeNull();
+    expect(store.getState().artistAlbumCatalog.status).toBe('idle');
+    expect(store.getState().articles.status).toBe('idle');
+  });
+
+  test('на /albums?artist= не стартует thin catalog (ждёт AllAlbumsPage surface)', async () => {
+    const args = makeRequest('/albums?artist=foo');
+    await albumsLoader({
+      request: args.request,
+      params: {},
+    } as Parameters<typeof albumsLoader>[0]);
+
+    expect(store.getState().artistAlbumCatalog.status).toBe('idle');
     expect(store.getState().articles.status).toBe('idle');
   });
 
@@ -222,6 +234,24 @@ describe('albumsLoader — defer public catalog to HomePage', () => {
     expect(store.getState().albums.dashboard.status).toBe('idle');
     expect(store.getState().albums.dashboard.inFlightFetchContextKey).toBeNull();
     expect(store.getState().artistAlbumCatalog.status).toBe('loading');
+  });
+
+  test('на /articles?artist= стартует public articles (non-defer route)', async () => {
+    jest.spyOn(globalThis, 'fetch').mockImplementation(
+      () =>
+        new Promise(() => {
+          /* keep articles in loading */
+        }) as Promise<Response>
+    );
+
+    const args = makeRequest('/articles?artist=foo');
+    await albumsLoader({
+      request: args.request,
+      params: {},
+    } as Parameters<typeof albumsLoader>[0]);
+
+    expect(store.getState().articles.status).toBe('loading');
+    expect(store.getState().artistAlbumCatalog.status).toBe('idle');
   });
 
   test('на /en/albums синхронизирует lang из URL в Redux', async () => {

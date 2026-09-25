@@ -32,6 +32,7 @@ import { useAppDispatch } from '@shared/lib/hooks/useAppDispatch';
 import { buildApiUrl } from '@shared/lib/artistQuery';
 import { buildPublicAlbumsFetchContextKey } from '@shared/lib/publicCatalogCacheKey';
 import { fetchWithAuthSession } from '@shared/lib/authFetch';
+import { ensurePublicArtistsLoaded } from '@shared/lib/publicArtistsCache';
 import { getAuthHeader, getUser, isAuthenticated } from '@shared/lib/auth';
 import { isCachedOwnArtistSlug, writeCachedOwnPublicSlug } from '@shared/lib/ownPublicSlugCache';
 import {
@@ -520,17 +521,9 @@ export function useArtistPageAccessState(
           return;
         }
 
-        const response = await fetchWithAuthSession('/api/public-artists');
-        const payload = (await response.json()) as {
-          success?: boolean;
-          data?: Array<{ publicSlug?: string; monetizationEnabled?: boolean }>;
-        };
+        const publicArtists = await ensurePublicArtistsLoaded();
         if (cancelled) return;
-        if (!response.ok || !payload.success || !Array.isArray(payload.data)) {
-          setMonetizationEnabled(false);
-          return;
-        }
-        const match = payload.data.find(
+        const match = publicArtists.find(
           (artist) => normalizeSlug(artist.publicSlug ?? '') === normalizedArtist
         );
         setMonetizationEnabled(Boolean(match?.monetizationEnabled));

@@ -155,7 +155,7 @@ export function HomePage() {
   /**
    * Единственный источник первичной загрузки публичного каталога на `/?artist=`.
    * Thin catalog → Artist Page cards; Universe play → catalog + AlbumDetails (не fat `/api/albums`).
-   * Loader при defer не диспатчит fetch (см. shouldDeferPublicArtistCatalogToSurface).
+   * Loader на defer-маршрутах не диспатчит catalog/articles (см. shouldDeferPublicArtistCatalogToSurface).
    */
   useEffect(() => {
     if (!shouldUsePublicArtistCatalogInRedux()) return;
