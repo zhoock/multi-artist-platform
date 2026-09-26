@@ -792,6 +792,53 @@
   .stems__wave-wrap.is-loading & {
     cursor: default;
   }
+
+  .mixer-player__seek-range {
+    --mixer-seek-width: 0%;
+
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    appearance: none;
+    cursor: inherit;
+    background: transparent;
+    pointer-events: none;
+    touch-action: none;
+
+    &:focus-visible {
+      outline: 2px solid var(--accent-color, #998238);
+      outline-offset: -2px;
+    }
+
+    &::-webkit-slider-runnable-track {
+      height: 100%;
+      background: transparent;
+      border: none;
+    }
+
+    &::-moz-range-track {
+      height: 100%;
+      background: transparent;
+      border: none;
+    }
+
+    &::-webkit-slider-thumb {
+      appearance: none;
+      width: 1px;
+      height: 1px;
+      opacity: 0;
+    }
+
+    &::-moz-range-thumb {
+      width: 1px;
+      height: 1px;
+      opacity: 0;
+      border: none;
+    }
+  }
 }
 
 /* канвас волны */

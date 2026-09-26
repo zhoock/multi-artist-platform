@@ -185,6 +185,7 @@ export default function StemsPlayground() {
     stemLoadFailed: stems.stemLoadFailed ?? 'Failed to load',
     playBlocked: stems.playBlocked ?? 'Tap Play again to start audio',
     partialStemsFailed: stems.partialStemsFailed ?? 'Some stems could not be loaded',
+    trackPosition: stems.trackPosition ?? 'Track position',
   };
 
   // ── Saved Mixes state ─────────────────────────────────────────────

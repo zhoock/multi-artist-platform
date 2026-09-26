@@ -40,6 +40,7 @@ export type MixerPlayerPanelLabels = {
   stemLoadFailed: string;
   playBlocked: string;
   partialStemsFailed: string;
+  trackPosition: string;
 };
 
 export type MixerPlayerPanelHandle = {
@@ -89,6 +90,7 @@ function MixerPlayerPanelInner(
   const [mix, setMix] = useState<Record<string, StemMixState>>({});
 
   const waveWrapRef = useRef<HTMLDivElement | null>(null);
+  const seekRangeRef = useRef<HTMLInputElement | null>(null);
   const draggingRef = useRef(false);
   const wasPlayingRef = useRef(false);
   const isPlayingRef = useRef(false);
@@ -234,6 +236,40 @@ function MixerPlayerPanelInner(
   }, []);
 
   const progress = time.duration > 0 ? time.current / time.duration : 0;
+  const seekPercent =
+    time.duration > 0 ? Math.min(100, Math.max(0, Math.round(progress * 100))) : 0;
+
+  const seekToTime = useCallback(
+    (newTime: number) => {
+      const e = engineRef.current;
+      if (!e || transportDisabled || !Number.isFinite(e.getDuration()) || e.getDuration() <= 0) {
+        return;
+      }
+      const duration = e.getDuration();
+      const clamped = Math.min(duration, Math.max(0, newTime));
+      void e.seek(clamped).catch((error) => {
+        console.warn('[MixerPlayerPanel] seek failed', error);
+      });
+      setTime((t) => ({ current: clamped, duration: t.duration > 0 ? t.duration : duration }));
+      const percent = (clamped / duration) * 100;
+      seekRangeRef.current?.style.setProperty('--mixer-seek-width', `${percent}%`);
+    },
+    [transportDisabled]
+  );
+
+  const handleSeekRangeChange = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      const e = engineRef.current;
+      if (!e || transportDisabled) return;
+      const duration = e.getDuration();
+      if (!Number.isFinite(duration) || duration <= 0) return;
+
+      const value = Number(event.target.value);
+      event.target.style.setProperty('--mixer-seek-width', `${value}%`);
+      seekToTime((value / 100) * duration);
+    },
+    [seekToTime, transportDisabled]
+  );
 
   const togglePlay = async () => {
     const e = engineRef.current;
@@ -287,11 +323,7 @@ function MixerPlayerPanelInner(
     if (!wrap || !e || transportDisabled || !Number.isFinite(e.getDuration())) return;
     const rect = wrap.getBoundingClientRect();
     const ratio = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
-    const newTime = ratio * e.getDuration();
-    void e.seek(newTime).catch((error) => {
-      console.warn('[MixerPlayerPanel] seek failed', error);
-    });
-    setTime((t) => ({ ...t, current: newTime }));
+    seekToTime(ratio * e.getDuration());
   };
 
   const onPointerDown: React.PointerEventHandler<HTMLDivElement> = (evt) => {
@@ -407,6 +439,19 @@ function MixerPlayerPanelInner(
               <>
                 <Waveform waveformUrl={track.waveformUrl} progress={progress} height={64} />
                 <div className="stems__wave-cursor" style={{ left: `${progress * 100}%` }} />
+                <input
+                  ref={seekRangeRef}
+                  type="range"
+                  className="mixer-player__seek-range"
+                  min={0}
+                  max={100}
+                  value={seekPercent}
+                  disabled={transportDisabled}
+                  aria-label={labels.trackPosition}
+                  style={{ '--mixer-seek-width': `${seekPercent}%` } as React.CSSProperties}
+                  onChange={handleSeekRangeChange}
+                  onInput={handleSeekRangeChange}
+                />
               </>
             )}
           </div>
