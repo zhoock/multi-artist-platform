@@ -145,7 +145,7 @@ export function PostsTabContent({
                   <ArticleCoverDisplay
                     img={article.img}
                     userId={articleOwnerId}
-                    role="admin"
+                    displayRole="admin"
                     alt={article.nameArticle}
                     loading="lazy"
                     decoding="async"
