@@ -1,5 +1,13 @@
 // src/pages/UserDashboard/components/PreviewLyricsModal.tsx
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  useMemo,
+  type ChangeEvent,
+  type CSSProperties,
+} from 'react';
 import { Popup, PopupCloseButton } from '@shared/ui/popup';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
@@ -193,7 +201,10 @@ export function PreviewLyricsModal({
     }
   }, [currentLineIndex]);
 
-  const progress = duration > 0 ? currentTime / duration : 0;
+  const progressPercent =
+    duration > 0 ? Math.min(100, Math.max(0, (currentTime / duration) * 100)) : 0;
+
+  const progressSeekLabel = lang === 'ru' ? 'Позиция трека' : 'Track position';
 
   const togglePlay = useCallback(() => {
     if (!audioRef.current) return;
@@ -210,15 +221,16 @@ export function PreviewLyricsModal({
     }
   }, [isPlaying]);
 
-  const handleSeek = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!audioRef.current || !duration) return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const percentage = x / rect.width;
-    const newTime = percentage * duration;
-    audioRef.current.currentTime = newTime;
-    setCurrentTime(newTime);
-  };
+  const handleProgressSeek = useCallback(
+    (e: ChangeEvent<HTMLInputElement>) => {
+      if (!audioRef.current || !duration) return;
+      const newTime = Number(e.target.value);
+      if (!Number.isFinite(newTime)) return;
+      audioRef.current.currentTime = newTime;
+      setCurrentTime(newTime);
+    },
+    [duration]
+  );
 
   return (
     <Popup isActive={isOpen} onClose={onClose}>
@@ -257,16 +269,19 @@ export function PreviewLyricsModal({
                   )}
                 </button>
                 <div className="preview-lyrics-modal__time">{formatTime(currentTime)}</div>
-                <div
+                <input
+                  type="range"
                   className="preview-lyrics-modal__progress-bar"
-                  onClick={audioPlaybackUrl ? handleSeek : undefined}
-                  style={{ cursor: audioPlaybackUrl ? 'pointer' : 'default' }}
-                >
-                  <div
-                    className="preview-lyrics-modal__progress-fill"
-                    style={{ width: `${progress * 100}%` }}
-                  />
-                </div>
+                  min={0}
+                  max={duration > 0 ? duration : 0}
+                  step={0.05}
+                  value={duration > 0 ? currentTime : 0}
+                  disabled={!audioPlaybackUrl || duration <= 0}
+                  aria-label={progressSeekLabel}
+                  style={{ '--sync-seek-percent': `${progressPercent}%` } as CSSProperties}
+                  onChange={handleProgressSeek}
+                  onInput={handleProgressSeek}
+                />
                 <div className="preview-lyrics-modal__duration">{formatTime(duration)}</div>
               </div>
               <div className="preview-lyrics-modal__content">

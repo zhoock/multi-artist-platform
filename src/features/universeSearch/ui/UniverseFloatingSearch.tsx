@@ -220,6 +220,7 @@ export function UniverseFloatingSearch({
               id={listId}
               className="universe-search__input"
               type="text"
+              role="combobox"
               value={query}
               placeholder={artistsPlaceholder}
               autoComplete="off"
@@ -227,6 +228,9 @@ export function UniverseFloatingSearch({
               aria-autocomplete="list"
               aria-controls={showResultsPanel ? `${listId}-panel` : undefined}
               aria-expanded={showResultsPanel}
+              aria-activedescendant={
+                showSuggestions && activeIndex >= 0 ? `${listId}-option-${activeIndex}` : undefined
+              }
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={handleInputKeyDown}
               onBlur={() => {
@@ -272,6 +276,7 @@ export function UniverseFloatingSearch({
                   return (
                     <li
                       key={artist.publicSlug}
+                      id={`${listId}-option-${index}`}
                       role="option"
                       aria-selected={index === activeIndex}
                       className={[
@@ -283,6 +288,12 @@ export function UniverseFloatingSearch({
                       onMouseEnter={() => setActiveIndex(index)}
                       onMouseDown={(e) => e.preventDefault()}
                       onClick={() => selectArtist(artist.publicSlug)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          selectArtist(artist.publicSlug);
+                        }
+                      }}
                     >
                       {cover ? (
                         <img

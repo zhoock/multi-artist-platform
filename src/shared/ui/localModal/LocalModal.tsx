@@ -1,4 +1,4 @@
-import { useEffect, type LegacyRef, type ReactNode, type RefObject } from 'react';
+import { useEffect, useRef, type LegacyRef, type ReactNode, type RefObject } from 'react';
 import clsx from 'clsx';
 
 import { promoteToastLayers } from '@shared/lib/toast/useToastLayerDialog';
@@ -29,6 +29,22 @@ export function LocalModal({
   children,
   closeOnBackdropClick = true,
 }: LocalModalProps) {
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+
+    const handleCancel = (event: Event) => {
+      event.preventDefault();
+      onCloseRef.current();
+    };
+
+    dialog.addEventListener('cancel', handleCancel);
+    return () => dialog.removeEventListener('cancel', handleCancel);
+  }, [dialogRef]);
+
   useEffect(() => {
     if (isOpen === undefined) return;
 
@@ -49,12 +65,16 @@ export function LocalModal({
       className={clsx('popup', 'local-modal', className)}
       aria-labelledby={ariaLabelledBy}
       aria-modal="true"
-      onClick={(event) => {
-        if (closeOnBackdropClick && event.target === dialogRef.current) {
-          onClose();
-        }
-      }}
     >
+      {closeOnBackdropClick ? (
+        <button
+          type="button"
+          className="local-modal__backdrop"
+          tabIndex={-1}
+          aria-hidden="true"
+          onClick={() => onCloseRef.current()}
+        />
+      ) : null}
       {children}
     </dialog>
   );

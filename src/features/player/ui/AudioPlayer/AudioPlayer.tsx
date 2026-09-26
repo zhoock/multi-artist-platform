@@ -5,7 +5,7 @@
  * Компонент получает данные из стейта через селекторы и диспатчит действия для управления плеером.
  */
 import React, { useRef, useEffect, useLayoutEffect, useCallback, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useEffectiveLocation } from '@shared/lib/hooks/useEffectiveLocation';
 import { flushSync } from 'react-dom';
 import { AlbumCover } from '@entities/album';
@@ -78,7 +78,6 @@ export default function AudioPlayer({
   // Получаем функцию для диспатча действий
   const dispatch = useAppDispatch();
   const location = useEffectiveLocation();
-  const navigate = useNavigate();
   const isFullScreenPlayer = location.hash === '#player';
   const [isLandscapeBlocked, setIsLandscapeBlocked] = useState(false);
 
@@ -1062,26 +1061,55 @@ export default function AudioPlayer({
 
   const albumTitle = albumMeta.album?.trim() || '';
 
-  const handleAlbumOpen = useCallback(() => {
-    if (!albumIdForLink) return;
-    const path = buildPublicAlbumPagePath(lang, albumIdForLink, artistSlugForProfileLink ?? '');
-    const { pathname, search } = new URL(path, 'http://local');
-    const target = { pathname, search: search || undefined };
-    dispatch(playerActions.setSourceLocation(target));
-    navigate(path, { replace: false });
-  }, [albumIdForLink, artistSlugForProfileLink, dispatch, lang, navigate]);
+  const albumPagePath = useMemo(() => {
+    if (!albumIdForLink) return null;
+    return buildPublicAlbumPagePath(lang, albumIdForLink, artistSlugForProfileLink ?? '');
+  }, [albumIdForLink, artistSlugForProfileLink, lang]);
 
-  const handleArtistProfileOpen = useCallback(() => {
-    const slug = artistSlugForProfileLink;
-    if (!slug) return;
-    const path = buildArtistPagePath(lang, slug);
-    const { pathname, search } = new URL(path, 'http://local');
-    const target = { pathname, search: search || undefined };
-    sessionStorage.setItem(UNIVERSE_FOCUS_ARTIST_STORAGE_KEY, slug);
-    // Keep PlayerShell close flow consistent: when dialog closes, it will navigate to sourceLocation.
-    dispatch(playerActions.setSourceLocation(target));
-    navigate(path, { replace: false });
-  }, [artistSlugForProfileLink, dispatch, lang, navigate]);
+  const artistPagePath = useMemo(() => {
+    if (!artistSlugForProfileLink) return null;
+    return buildArtistPagePath(lang, artistSlugForProfileLink);
+  }, [artistSlugForProfileLink, lang]);
+
+  const artistDisplayLabel = siteArtistUiLabel(albumMeta.artist ?? '', 'Unknown Artist');
+
+  const handleAlbumLinkClick = useCallback(
+    (event: React.MouseEvent<HTMLAnchorElement>) => {
+      event.stopPropagation();
+      if (!albumPagePath) return;
+      if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+        return;
+      }
+      const { pathname, search } = new URL(albumPagePath, 'http://local');
+      dispatch(playerActions.setSourceLocation({ pathname, search: search || undefined }));
+    },
+    [albumPagePath, dispatch]
+  );
+
+  const handleArtistLinkClick = useCallback(
+    (event: React.MouseEvent<HTMLAnchorElement>) => {
+      event.stopPropagation();
+      const slug = artistSlugForProfileLink;
+      if (!slug || !artistPagePath) return;
+      sessionStorage.setItem(UNIVERSE_FOCUS_ARTIST_STORAGE_KEY, slug);
+      if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+        return;
+      }
+      const { pathname, search } = new URL(artistPagePath, 'http://local');
+      dispatch(playerActions.setSourceLocation({ pathname, search: search || undefined }));
+    },
+    [artistPagePath, artistSlugForProfileLink, dispatch]
+  );
+
+  const handleArtistLinkAuxClick = useCallback(
+    (event: React.MouseEvent<HTMLAnchorElement>) => {
+      const slug = artistSlugForProfileLink;
+      if (!slug || event.button !== 1) return;
+      event.stopPropagation();
+      sessionStorage.setItem(UNIVERSE_FOCUS_ARTIST_STORAGE_KEY, slug);
+    },
+    [artistSlugForProfileLink]
+  );
 
   useEffect(() => {
     if (!isFullScreenPlayer) {
@@ -1131,60 +1159,25 @@ export default function AudioPlayer({
         </div>
         <div className="player__track-info">
           <h2>{currentTrack?.title || 'Unknown Track'}</h2>
-          <p
-            className={albumIdForLink ? 'player__album-link' : 'player__album-name'}
-            role={albumIdForLink ? 'link' : undefined}
-            tabIndex={albumIdForLink ? 0 : undefined}
-            onClick={
-              albumIdForLink
-                ? (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    handleAlbumOpen();
-                  }
-                : undefined
-            }
-            onKeyDown={
-              albumIdForLink
-                ? (e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      handleAlbumOpen();
-                    }
-                  }
-                : undefined
-            }
-          >
-            {albumTitle || 'Unknown Album'}
-          </p>
-          <p
-            className={artistSlugForProfileLink ? 'player__artist-link' : 'player__artist-name'}
-            role={artistSlugForProfileLink ? 'link' : undefined}
-            tabIndex={artistSlugForProfileLink ? 0 : undefined}
-            onClick={
-              artistSlugForProfileLink
-                ? (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    handleArtistProfileOpen();
-                  }
-                : undefined
-            }
-            onKeyDown={
-              artistSlugForProfileLink
-                ? (e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      handleArtistProfileOpen();
-                    }
-                  }
-                : undefined
-            }
-          >
-            {siteArtistUiLabel(albumMeta.artist ?? '', 'Unknown Artist')}
-          </p>
+          {albumPagePath ? (
+            <Link to={albumPagePath} className="player__album-link" onClick={handleAlbumLinkClick}>
+              {albumTitle || 'Unknown Album'}
+            </Link>
+          ) : (
+            <p className="player__album-name">{albumTitle || 'Unknown Album'}</p>
+          )}
+          {artistPagePath ? (
+            <Link
+              to={artistPagePath}
+              className="player__artist-link"
+              onClick={handleArtistLinkClick}
+              onAuxClick={handleArtistLinkAuxClick}
+            >
+              {artistDisplayLabel}
+            </Link>
+          ) : (
+            <p className="player__artist-name">{artistDisplayLabel}</p>
+          )}
         </div>
       </div>
 

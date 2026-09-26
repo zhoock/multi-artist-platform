@@ -137,6 +137,7 @@
   }
 
   &__dropzone {
+    display: block;
     padding: var(--ms-1);
     text-align: center;
     background: var(--dashboard-card-bg);

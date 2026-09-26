@@ -429,15 +429,8 @@ export function Hero() {
         : `${displayName}, go to home page`
       : undefined;
 
-  return (
-    <section
-      className={heroClassName}
-      tabIndex={showPublishedHeroChrome ? 0 : undefined}
-      role={showPublishedHeroChrome ? 'button' : undefined}
-      aria-label={showPublishedHeroChrome ? heroNavigateAriaLabel : undefined}
-      onClick={showPublishedHeroChrome ? handleHeroNavigateClick : undefined}
-      onKeyDown={showPublishedHeroChrome ? handleHeroNavigateKeyDown : undefined}
-    >
+  const heroBody = (
+    <>
       {showHeroCoverImage && heroCoverSources ? (
         <HeroCoverImage sources={heroCoverSources} onReadyForPaint={handleHeroCoverReadyForPaint} />
       ) : null}
@@ -469,8 +462,25 @@ export function Hero() {
           ) : null}
         </div>
       </div>
-    </section>
+    </>
   );
+
+  if (showPublishedHeroChrome) {
+    return (
+      <div
+        className={heroClassName}
+        tabIndex={0}
+        role="button"
+        aria-label={heroNavigateAriaLabel}
+        onClick={handleHeroNavigateClick}
+        onKeyDown={handleHeroNavigateKeyDown}
+      >
+        {heroBody}
+      </div>
+    );
+  }
+
+  return <section className={heroClassName}>{heroBody}</section>;
 }
 
 export default Hero;

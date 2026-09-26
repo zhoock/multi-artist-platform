@@ -3,10 +3,11 @@ import { hasArticleCover, type ArticleCoverDisplayRole } from '@shared/lib/artic
 import { ArticleCoverImage } from './ArticleCoverImage';
 import { ArticleCoverPlaceholder } from './ArticleCoverPlaceholder';
 
-type ArticleCoverDisplayProps = {
+export type ArticleCoverDisplayProps = {
   img: string | null | undefined;
   userId: string | undefined;
-  role: ArticleCoverDisplayRole;
+  /** Selects CDN cover variant — not an ARIA role. */
+  displayRole: ArticleCoverDisplayRole;
   alt: string;
   className?: string;
   loading?: 'lazy' | 'eager';
@@ -20,7 +21,7 @@ type ArticleCoverDisplayProps = {
 export function ArticleCoverDisplay({
   img,
   userId,
-  role,
+  displayRole,
   alt,
   className,
   loading = 'lazy',
@@ -42,7 +43,7 @@ export function ArticleCoverDisplay({
     <ArticleCoverImage
       img={img.trim()}
       userId={userId}
-      role={role}
+      displayRole={displayRole}
       alt={alt}
       className={className}
       loading={loading}

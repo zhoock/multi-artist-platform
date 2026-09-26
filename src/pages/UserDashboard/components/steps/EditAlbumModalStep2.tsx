@@ -88,7 +88,6 @@ export function EditAlbumModalStep2({
             }}
             aria-haspopup="listbox"
             aria-expanded={genreDropdownOpen}
-            aria-invalid={genreRequired}
             aria-describedby={genreRequired ? 'album-genre-required-error' : undefined}
           >
             {formData.genreCodes.length > 0 ? (

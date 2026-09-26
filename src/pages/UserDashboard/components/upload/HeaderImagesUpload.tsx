@@ -1,5 +1,5 @@
 // src/pages/UserDashboard/components/HeaderImagesUpload.tsx
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useId, useState, useRef, useEffect } from 'react';
 import { X as XIcon, Upload as UploadIcon, Plus as PlusIcon } from 'lucide-react';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
@@ -126,6 +126,9 @@ export function HeaderImagesUpload({
   }, [isUploading, onUploadingChange]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const fileInputId = useId();
+  const uploadCoverLabel =
+    ui?.dashboard?.settingsModal?.buttons?.uploadCover ?? 'Загрузить изображение';
 
   // Синхронизируем images с currentImages при изменении пропсов
   useEffect(() => {
@@ -324,6 +327,7 @@ export function HeaderImagesUpload({
               <button
                 type="button"
                 className="header-images-upload__inline-add"
+                aria-controls={fileInputId}
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isUploading}
               >
@@ -351,6 +355,7 @@ export function HeaderImagesUpload({
           {error ? <div className="header-images-upload__error">{error}</div> : null}
 
           <input
+            id={fileInputId}
             ref={fileInputRef}
             type="file"
             accept="image/jpeg,image/jpg,image/png,image/webp,image/gif,image/avif,image/heic,image/heif"
@@ -402,19 +407,17 @@ export function HeaderImagesUpload({
         )}
 
         {images.length < MAX_IMAGES && (
-          <div
+          <label
+            htmlFor={fileInputId}
             className="header-images-upload__dropzone"
             onDrop={handleDrop}
             onDragOver={handleDragOver}
-            onClick={() => fileInputRef.current?.click()}
           >
             <UploadIcon
               className="header-images-upload__dropzone-icon"
               {...dashboardActionIconProps({ size: 32 })}
             />
-            <div className="header-images-upload__dropzone-text">
-              {ui?.dashboard?.settingsModal?.buttons?.uploadCover ?? 'Загрузить изображение'}
-            </div>
+            <div className="header-images-upload__dropzone-text">{uploadCoverLabel}</div>
             <div className="header-images-upload__dropzone-hint">
               {ui?.dashboard?.settingsModal?.hints?.coverImage ??
                 'Рекомендуемое разрешение: 2560 × 1522'}
@@ -422,12 +425,13 @@ export function HeaderImagesUpload({
             <div className="header-images-upload__dropzone-count">
               {images.length} / {MAX_IMAGES}
             </div>
-          </div>
+          </label>
         )}
 
         {error && <div className="header-images-upload__error">{error}</div>}
 
         <input
+          id={fileInputId}
           ref={fileInputRef}
           type="file"
           accept="image/jpeg,image/jpg,image/png,image/webp,image/gif,image/avif,image/heic,image/heif"

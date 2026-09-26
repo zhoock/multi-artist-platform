@@ -1,4 +1,4 @@
-import { useState, MouseEvent } from 'react';
+import { useState } from 'react';
 import './style.scss';
 
 type SharePlatform = 'facebook' | 'twitter';
@@ -42,8 +42,7 @@ type ShareProps = {
 export function Share({ url }: ShareProps) {
   const [isOpen, setIsOpen] = useState(false);
 
-  const handleToggle = (event: MouseEvent<HTMLElement>) => {
-    event.preventDefault();
+  const handleToggle = () => {
     setIsOpen((prev) => !prev);
   };
 
@@ -54,41 +53,36 @@ export function Share({ url }: ShareProps) {
   };
 
   return (
-    <ul className="share-list js-share-item" role="list" aria-label="Поделиться">
-      <li className="share-list__item" onClick={handleToggle}>
+    <ul className="share-list js-share-item" aria-label="Поделиться">
+      <li className="share-list__item">
         <button
           type="button"
           className={`share-list__link icon-share ${isOpen ? 'active' : ''}`}
           aria-label="Поделиться"
           aria-expanded={isOpen}
           aria-haspopup="menu"
+          onClick={handleToggle}
         ></button>
       </li>
       <li className={`share-list__item ${isOpen ? 'show' : ''}`} role="none">
-        <a
+        <button
+          type="button"
           className="share-list__link icon-facebook1"
-          href="#"
           aria-label="Поделиться на Facebook"
-          onClick={(e) => {
-            e.preventDefault();
-            handleShare('facebook');
-          }}
+          onClick={() => handleShare('facebook')}
         >
           <span className="visually-hidden">Facebook</span>
-        </a>
+        </button>
       </li>
       <li className={`share-list__item ${isOpen ? 'show' : ''}`} role="none">
-        <a
+        <button
+          type="button"
           className="share-list__link icon-twitter"
-          href="#"
           aria-label="Поделиться на Twitter"
-          onClick={(e) => {
-            e.preventDefault();
-            handleShare('twitter');
-          }}
+          onClick={() => handleShare('twitter')}
         >
           <span className="visually-hidden">Twitter</span>
-        </a>
+        </button>
       </li>
     </ul>
   );

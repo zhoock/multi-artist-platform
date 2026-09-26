@@ -121,7 +121,21 @@
   backdrop-filter: blur(4px);
 }
 
+.edit-album-modal__inline-discard-backdrop {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  border: none;
+  inset: 0;
+  cursor: default;
+}
+
 .edit-album-modal__inline-discard-panel {
+  position: relative;
+  z-index: 1;
   width: min(100%, 22rem);
   padding: var(--ms-0);
   color: var(--white);

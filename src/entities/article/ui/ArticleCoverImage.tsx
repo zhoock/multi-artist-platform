@@ -16,10 +16,10 @@ import {
 } from '@entities/article/lib/catalogArticleCoverProps';
 import { ArticleCoverPlaceholder } from './ArticleCoverPlaceholder';
 
-type ArticleCoverImageProps = {
+export type ArticleCoverImageProps = {
   img: string;
   userId: string | undefined;
-  role: ArticleCoverDisplayRole;
+  displayRole: ArticleCoverDisplayRole;
   alt: string;
   className?: string;
   loading?: 'lazy' | 'eager';
@@ -37,7 +37,7 @@ function ArticleCoverAdminImage({
   loading,
   decoding,
   debugLabel,
-}: Omit<ArticleCoverImageProps, 'role'>) {
+}: Omit<ArticleCoverImageProps, 'displayRole'>) {
   const [loadFailed, setLoadFailed] = useState(false);
   const { webp, jpg } = getArticleCoverAdminVariantUrls(img, userId);
   const webpSrc = webp ? optionalMediaSrc(webp, `${debugLabel}:webp`, { hasUserId: true }) : null;
@@ -81,7 +81,7 @@ function ArticleCoverResponsiveImage({
   densities,
   sizes,
   maxVariantWidth,
-}: Omit<ArticleCoverImageProps, 'role' | 'img' | 'userId'> & {
+}: Omit<ArticleCoverImageProps, 'displayRole' | 'img' | 'userId'> & {
   img: string;
   userId: string;
   baseSize: number;
@@ -160,7 +160,7 @@ function ArticleCoverResponsiveImage({
   );
 }
 
-function ArticleCoverPublicImage(props: Omit<ArticleCoverImageProps, 'role'>) {
+function ArticleCoverPublicImage(props: Omit<ArticleCoverImageProps, 'displayRole'>) {
   const [isGridLayout, setIsGridLayout] = useState(() => {
     if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
       return false;
@@ -205,7 +205,7 @@ function ArticleCoverPublicImage(props: Omit<ArticleCoverImageProps, 'role'>) {
   );
 }
 
-function ArticleCoverEditorImage(props: Omit<ArticleCoverImageProps, 'role'>) {
+function ArticleCoverEditorImage(props: Omit<ArticleCoverImageProps, 'displayRole'>) {
   if (!props.userId) {
     return (
       <ArticleCoverPlaceholder
@@ -236,7 +236,7 @@ function ArticleCoverEditorImage(props: Omit<ArticleCoverImageProps, 'role'>) {
 export function ArticleCoverImage({
   img,
   userId,
-  role,
+  displayRole,
   alt,
   className,
   loading = 'lazy',
@@ -267,7 +267,7 @@ export function ArticleCoverImage({
 
   const coverKey = img.trim();
 
-  if (role === 'admin') {
+  if (displayRole === 'admin') {
     return (
       <ArticleCoverAdminImage
         img={coverKey}
@@ -281,7 +281,7 @@ export function ArticleCoverImage({
     );
   }
 
-  if (role === 'editor') {
+  if (displayRole === 'editor') {
     return (
       <ArticleCoverEditorImage
         img={coverKey}

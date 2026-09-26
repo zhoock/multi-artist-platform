@@ -201,6 +201,8 @@ dialog {
     &__track-drag-handle {
       display: flex;
       align-items: center;
+      padding: 0;
+      border: 0;
       cursor: grab;
       color: var(--dashboard-text-secondary);
       user-select: none;
@@ -208,6 +210,7 @@ dialog {
       min-width: 24px;
       background: transparent;
       transition: color 0.2s ease;
+      appearance: none;
 
       &:hover {
         color: var(--dashboard-text-primary);

@@ -35,6 +35,8 @@ export function CarouselEditModal({
 }: CarouselEditModalProps) {
   const { lang } = useLang();
   const ui = useAppSelector((state) => selectUiDictionaryFirst(state, lang));
+  const carouselThumbAlt = (index: number) =>
+    lang === 'ru' ? `Слайд карусели ${index + 1}` : `Carousel slide ${index + 1}`;
   const [imageKeys, setImageKeys] = useState<string[]>(initialImageKeys);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -142,9 +144,9 @@ export function CarouselEditModal({
                   return (
                     <div key={imageKey} className="edit-article-v2__carousel-edit-thumbnail">
                       {thumbUrl ? (
-                        <img src={thumbUrl} alt={`Image ${index + 1}`} />
+                        <img src={thumbUrl} alt={carouselThumbAlt(index)} />
                       ) : (
-                        <ArticleCoverPlaceholder alt={`Image ${index + 1}`} />
+                        <ArticleCoverPlaceholder alt={carouselThumbAlt(index)} />
                       )}
                       <button
                         type="button"

@@ -169,11 +169,7 @@ export function ArtistArchiveButton({ artistUserId, monetizationEnabled = false 
 
   return (
     <>
-      <div
-        className="artist-archive-button"
-        onClick={(event) => event.stopPropagation()}
-        onKeyDown={(event) => event.stopPropagation()}
-      >
+      <div className="artist-archive-button">
         <button
           type="button"
           className={`artist-archive-button__btn artist-archive-button__btn--${buttonState}`}
@@ -203,7 +199,10 @@ export function ArtistArchiveButton({ artistUserId, monetizationEnabled = false 
           <button
             type="button"
             className="artist-archive-button__error"
-            onClick={clearError}
+            onClick={(event) => {
+              event.stopPropagation();
+              clearError();
+            }}
             title={error}
           >
             !

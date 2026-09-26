@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { beforeEach, describe, expect, jest, test } from '@jest/globals';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import { SyncLyricsModal } from '../SyncLyricsModal';
@@ -24,6 +24,9 @@ jest.mock('@shared/lib/hooks/useAppSelector', () => ({
               syncLyricsTitle: 'Sync lyrics',
               close: 'Close',
             },
+            player: {
+              trackPosition: 'Track position',
+            },
           },
         ],
       },
@@ -33,6 +36,10 @@ jest.mock('@shared/lib/hooks/useAppSelector', () => ({
 jest.mock('@shared/model/uiDictionary', () => ({
   selectUiDictionaryFirst: (state: { uiDictionary: { entries: Array<{ dashboard?: object }> } }) =>
     state.uiDictionary.entries[0],
+}));
+
+jest.mock('@shared/api/albums', () => ({
+  getUserAudioUrl: () => 'blob:sync-lyrics-test',
 }));
 
 jest.mock('@entities/lyrics', () => ({
@@ -98,5 +105,48 @@ describe('SyncLyricsModal cancel semantics', () => {
 
     expect(onSave).not.toHaveBeenCalled();
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('SyncLyricsModal seek accessibility', () => {
+  beforeEach(() => {
+    jest.spyOn(HTMLDialogElement.prototype, 'showModal').mockImplementation(function showModal(
+      this: HTMLDialogElement
+    ) {
+      this.open = true;
+    });
+    jest.spyOn(HTMLDialogElement.prototype, 'close').mockImplementation(function close(
+      this: HTMLDialogElement
+    ) {
+      this.open = false;
+      this.dispatchEvent(new Event('close'));
+    });
+  });
+
+  test('exposes seek slider with accessible name and keyboard-friendly range control', async () => {
+    render(
+      <SyncLyricsModal
+        isOpen
+        albumId="album-1"
+        trackId="track-1"
+        trackTitle="Track"
+        trackSrc="track.mp3"
+        trackDurationSeconds={120}
+        mediaOwnerUserId="user-1"
+        initialLyricsText="Line one"
+        onClose={jest.fn()}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole('slider', { name: 'Track position' })).toBeTruthy();
+    });
+
+    const slider = screen.getByRole('slider', { name: 'Track position' }) as HTMLInputElement;
+    expect(slider.max).toBe('120');
+    expect(slider.disabled).toBe(false);
+
+    fireEvent.change(slider, { target: { value: '30' } });
+    expect(slider.value).toBe('30');
   });
 });

@@ -14,13 +14,18 @@
 
   &__link {
     display: grid;
+    width: 100%;
+    padding: 0;
     color: var(--link-button-color, #dddddd);
+    font: inherit;
+    text-align: inherit;
     background: var(--link-button-background-color, #373633);
     border: none;
     border-radius: var(--ms-01);
     place-items: center;
     min-block-size: var(--ms-3);
     cursor: pointer;
+    appearance: none;
     text-decoration: none;
     transition:
       background-color 0.2s ease,

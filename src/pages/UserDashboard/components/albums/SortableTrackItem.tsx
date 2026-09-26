@@ -310,7 +310,8 @@ export function SortableTrackItem({
             onClick={handleHeaderClick}
             onKeyDown={handleHeaderKeyDown}
           >
-            <div
+            <button
+              type="button"
               {...attributes}
               {...listeners}
               className="user-dashboard__expanded-track-drag user-dashboard__track-drag-handle"
@@ -319,8 +320,10 @@ export function SortableTrackItem({
               onClick={(e) => e.stopPropagation()}
               onKeyDown={(e) => e.stopPropagation()}
             >
-              <span className="user-dashboard__track-drag-icon">⋮⋮</span>
-            </div>
+              <span className="user-dashboard__track-drag-icon" aria-hidden>
+                ⋮⋮
+              </span>
+            </button>
 
             <span className="user-dashboard__expanded-track-chevron" aria-hidden>
               <DashboardExpandChevron expanded={isOpen} />

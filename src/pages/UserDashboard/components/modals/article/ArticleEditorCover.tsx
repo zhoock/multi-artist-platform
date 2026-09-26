@@ -73,7 +73,7 @@ export function ArticleEditorCover({
               <ArticleCoverImage
                 img={coverKey}
                 userId={ownerUserId}
-                role="editor"
+                displayRole="editor"
                 alt=""
                 className="edit-article-v2__cover-image"
                 debugLabel={`EditArticleModal:cover:${articleId}`}

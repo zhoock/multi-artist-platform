@@ -4,7 +4,8 @@ import React from 'react';
 import { describe, expect, jest, test, beforeEach } from '@jest/globals';
 import { configureStore } from '@reduxjs/toolkit';
 import { Provider } from 'react-redux';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 
 import { playerReducer } from '@features/player/model/slice/playerSlice';
 import { initialPlayerState } from '@features/player/model/types/playerSchema';
@@ -21,9 +22,13 @@ jest.mock('@shared/lib/hooks/useEffectiveLocation', () => ({
   useEffectiveLocation: () => ({ pathname: '/ru/albums/demo', search: '', hash: '#player' }),
 }));
 
-jest.mock('react-router-dom', () => ({
-  useNavigate: () => jest.fn(),
-}));
+jest.mock('react-router-dom', () => {
+  const actual = jest.requireActual('react-router-dom') as typeof import('react-router-dom');
+  return {
+    ...actual,
+    useNavigate: () => jest.fn(),
+  };
+});
 
 jest.mock('@app/providers/lang', () => ({
   useLang: jest.fn(),
@@ -120,6 +125,8 @@ jest.mock('../hooks/usePlayerToggles', () => ({
   usePlayerToggles: () => playerTogglesReturn,
 }));
 
+import { UNIVERSE_FOCUS_ARTIST_STORAGE_KEY } from '@/components/view/universe3dConstants';
+import { buildArtistPagePath, buildPublicAlbumPagePath } from '@shared/lib/seo/publicPagePaths';
 import { useLang } from '@app/providers/lang';
 import AudioPlayer from '../AudioPlayer';
 
@@ -164,11 +171,15 @@ function renderPlayer(isPlaying: boolean, shuffle = false) {
     },
   });
 
-  return render(
-    <Provider store={store}>
-      <AudioPlayer albumMeta={albumMeta} setBgColor={jest.fn()} />
-    </Provider>
+  const view = render(
+    <MemoryRouter>
+      <Provider store={store}>
+        <AudioPlayer albumMeta={albumMeta} setBgColor={jest.fn()} />
+      </Provider>
+    </MemoryRouter>
   );
+
+  return { store, ...view };
 }
 
 describe('AudioPlayer transport accessibility', () => {
@@ -205,32 +216,34 @@ describe('AudioPlayer transport accessibility', () => {
 
     mockUseLang.mockReturnValue({ lang: 'ru', setLang: jest.fn() });
     rerender(
-      <Provider
-        store={configureStore({
-          reducer: { player: playerReducer, uiDictionary: uiDictionaryReducer },
-          preloadedState: {
-            player: {
-              ...initialPlayerState,
-              isPlaying: true,
-              playlist: [
-                {
-                  id: '1',
-                  title: 'Track One',
-                  duration: 180,
-                  src: 'https://example.com/a.mp3',
-                  hasStems: false,
-                },
-              ],
-              currentTrackIndex: 0,
-              albumMeta,
-              time: { current: 0, duration: 180 },
+      <MemoryRouter>
+        <Provider
+          store={configureStore({
+            reducer: { player: playerReducer, uiDictionary: uiDictionaryReducer },
+            preloadedState: {
+              player: {
+                ...initialPlayerState,
+                isPlaying: true,
+                playlist: [
+                  {
+                    id: '1',
+                    title: 'Track One',
+                    duration: 180,
+                    src: 'https://example.com/a.mp3',
+                    hasStems: false,
+                  },
+                ],
+                currentTrackIndex: 0,
+                albumMeta,
+                time: { current: 0, duration: 180 },
+              },
+              uiDictionary: emptyUiDictionary,
             },
-            uiDictionary: emptyUiDictionary,
-          },
-        })}
-      >
-        <AudioPlayer albumMeta={albumMeta} setBgColor={jest.fn()} />
-      </Provider>
+          })}
+        >
+          <AudioPlayer albumMeta={albumMeta} setBgColor={jest.fn()} />
+        </Provider>
+      </MemoryRouter>
     );
 
     expect(screen.getByRole('button', { name: 'Пауза' })).toBeTruthy();
@@ -242,5 +255,92 @@ describe('AudioPlayer transport accessibility', () => {
       'aria-pressed',
       'true'
     );
+  });
+});
+
+describe('AudioPlayer metadata links', () => {
+  const expectedAlbumPath = buildPublicAlbumPagePath('en', 'demo-album', 'demo-artist');
+  const expectedArtistPath = buildArtistPagePath('en', 'demo-artist');
+
+  beforeEach(() => {
+    mockUseLang.mockReturnValue({ lang: 'en', setLang: jest.fn() });
+    sessionStorage.clear();
+    class ResizeObserverMock {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    }
+    global.ResizeObserver = ResizeObserverMock as unknown as typeof ResizeObserver;
+    Object.defineProperty(window, 'matchMedia', {
+      writable: true,
+      value: jest.fn().mockImplementation((query: unknown) => ({
+        matches: false,
+        media: String(query),
+        addEventListener: jest.fn(),
+        removeEventListener: jest.fn(),
+      })),
+    });
+  });
+
+  test('album metadata uses native link with public album destination', () => {
+    renderPlayer(false);
+
+    const albumLink = screen.getByRole('link', { name: 'Demo Album' });
+    expect(albumLink).toHaveAttribute('href', expectedAlbumPath);
+    expect(albumLink).toHaveClass('player__album-link');
+  });
+
+  test('album link click sets sourceLocation for PlayerShell close flow', () => {
+    const { store } = renderPlayer(false);
+    const albumLink = screen.getByRole('link', { name: 'Demo Album' });
+    const { pathname, search } = new URL(expectedAlbumPath, 'http://local');
+
+    fireEvent.click(albumLink);
+
+    expect(store.getState().player.sourceLocation).toEqual({
+      pathname,
+      search: search || undefined,
+    });
+  });
+
+  test('album link modified click does not set sourceLocation', () => {
+    const { store } = renderPlayer(false);
+    const albumLink = screen.getByRole('link', { name: 'Demo Album' });
+
+    fireEvent.click(albumLink, { metaKey: true });
+
+    expect(store.getState().player.sourceLocation).toBeNull();
+  });
+
+  test('artist metadata uses native link with public artist destination', () => {
+    renderPlayer(false);
+
+    const artistLink = screen.getByRole('link', { name: 'Demo Artist' });
+    expect(artistLink).toHaveAttribute('href', expectedArtistPath);
+    expect(artistLink).toHaveClass('player__artist-link');
+  });
+
+  test('artist link click sets sourceLocation and universe focus sessionStorage', () => {
+    const { store } = renderPlayer(false);
+    const artistLink = screen.getByRole('link', { name: 'Demo Artist' });
+    const { pathname, search } = new URL(expectedArtistPath, 'http://local');
+
+    fireEvent.click(artistLink);
+
+    expect(store.getState().player.sourceLocation).toEqual({
+      pathname,
+      search: search || undefined,
+    });
+    expect(sessionStorage.getItem(UNIVERSE_FOCUS_ARTIST_STORAGE_KEY)).toBe('demo-artist');
+  });
+
+  test('artist link modified click keeps sessionStorage but skips sourceLocation', () => {
+    const { store } = renderPlayer(false);
+    const artistLink = screen.getByRole('link', { name: 'Demo Artist' });
+
+    fireEvent.click(artistLink, { metaKey: true });
+
+    expect(sessionStorage.getItem(UNIVERSE_FOCUS_ARTIST_STORAGE_KEY)).toBe('demo-artist');
+    expect(store.getState().player.sourceLocation).toBeNull();
   });
 });

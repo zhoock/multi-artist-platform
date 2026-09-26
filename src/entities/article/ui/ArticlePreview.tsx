@@ -137,7 +137,7 @@ export function ArticlePreview({
             <ArticleCoverDisplay
               img={img}
               userId={userId}
-              role="public"
+              displayRole="public"
               alt={nameArticle}
               loading="lazy"
               decoding="async"
@@ -166,7 +166,7 @@ export function ArticlePreview({
           <ArticleCoverDisplay
             img={img}
             userId={userId}
-            role="public"
+            displayRole="public"
             alt=""
             loading="lazy"
             decoding="async"

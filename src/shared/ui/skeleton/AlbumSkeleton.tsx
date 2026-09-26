@@ -50,7 +50,7 @@ export function AlbumSkeleton({ tracksCount = 3 }: AlbumSkeletonProps) {
         </div>
 
         <div className="item item-type-a album__share">
-          <ul className="share-list" role="list" aria-label="Скелетон кнопок поделиться">
+          <ul className="share-list" aria-label="Скелетон кнопок поделиться">
             <li className="share-list__item">
               <div className="share-list__link skeleton" />
             </li>

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, type RefObject } from 'react';
+import { useCallback, useMemo, type RefObject } from 'react';
 
 import { useLang } from '@app/providers/lang';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
@@ -144,19 +144,6 @@ export function ListenerWelcomeModal({ dialogRef, open, onDismiss }: ListenerWel
   const handleDismiss = useCallback(() => {
     onDismiss();
   }, [onDismiss]);
-
-  useEffect(() => {
-    const dialog = dialogRef.current;
-    if (!dialog || !open) return;
-
-    const onCancel = (event: Event) => {
-      event.preventDefault();
-      handleDismiss();
-    };
-
-    dialog.addEventListener('cancel', onCancel);
-    return () => dialog.removeEventListener('cancel', onCancel);
-  }, [dialogRef, handleDismiss, open]);
 
   return (
     <LocalModal

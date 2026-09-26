@@ -62,6 +62,8 @@ export default [
       },
     },
     rules: {
+      ...jsxA11yPlugin.flatConfigs.recommended.rules,
+
       quotes: ['error', 'single', { avoidEscape: true }],
       semi: ['error', 'always'],
 
@@ -78,6 +80,28 @@ export default [
       // реактовые хуки — ТУТ (где плагин подключён)
       'react-hooks/rules-of-hooks': 'error',
       'react-hooks/exhaustive-deps': 'warn',
+    },
+  },
+
+  // --- jsx-a11y: test harness mocks (non-production DOM) ---
+  {
+    files: ['src/**/__tests__/**/*.{js,jsx,ts,tsx}'],
+    rules: {
+      'jsx-a11y/click-events-have-key-events': 'off',
+      'jsx-a11y/no-static-element-interactions': 'off',
+      'jsx-a11y/role-has-required-aria-props': 'off',
+    },
+  },
+
+  // --- jsx-a11y: ARIA 1.3 aria-description on native buttons (plugin false positive) ---
+  {
+    files: [
+      'src/entities/track/ui/TrackList.tsx',
+      'src/widgets/albumTracks/ui/AlbumTracks.tsx',
+      'src/pages/StemsPlayground/components/MixerTrackRow.tsx',
+    ],
+    rules: {
+      'jsx-a11y/role-supports-aria-props': 'off',
     },
   },
 

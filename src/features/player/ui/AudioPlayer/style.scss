@@ -332,7 +332,9 @@
     }
 
     .player__artist-link {
+      color: inherit;
       cursor: pointer;
+      text-decoration: none;
       transition: opacity 0.2s ease;
 
       &:hover {

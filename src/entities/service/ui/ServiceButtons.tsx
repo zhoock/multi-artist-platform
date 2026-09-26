@@ -158,9 +158,7 @@ function ServiceButtonsContent({
   const showDownloadButton = downloadButtonEnabled;
   const albumPrice = showDownloadButton ? getAlbumPrice(album).formatted : '';
 
-  const handlePurchaseButtonClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
-    e.preventDefault();
-
+  const handlePurchaseButtonClick = () => {
     if (canDownload) {
       if (isDownloadingAlbum || !albumKey) {
         return;
@@ -268,8 +266,8 @@ function ServiceButtonsContent({
             )}
             {showDownloadButton && !ownershipLoading && (
               <li className="service-buttons__list-item service-buttons__list-item--buy-album">
-                <a
-                  href="#"
+                <button
+                  type="button"
                   className={`service-buttons__link service-buttons__link--download${
                     isDownloadingAlbum ? ' service-buttons__link--downloading' : ''
                   }${
@@ -292,9 +290,8 @@ function ServiceButtonsContent({
                             .filter(Boolean)
                             .join(', ')
                   }
-                  aria-disabled={isDownloadingAlbum}
-                  aria-busy={isDownloadingAlbum}
-                  tabIndex={isDownloadingAlbum ? -1 : 0}
+                  aria-busy={isDownloadingAlbum ? true : undefined}
+                  disabled={isDownloadingAlbum}
                   onClick={handlePurchaseButtonClick}
                 >
                   <span className="service-buttons__download-icon" aria-hidden="true">
@@ -338,7 +335,7 @@ function ServiceButtonsContent({
                       />
                     </span>
                   )}
-                </a>
+                </button>
               </li>
             )}
             <GetButton

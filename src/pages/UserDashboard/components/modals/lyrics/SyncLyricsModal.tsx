@@ -6,7 +6,8 @@ import {
   useRef,
   useLayoutEffect,
   useMemo,
-  type MouseEvent,
+  type ChangeEvent,
+  type CSSProperties,
 } from 'react';
 import { Popup } from '@shared/ui/popup';
 import { AlertModal } from '@shared/ui/alertModal';
@@ -611,20 +612,21 @@ export function SyncLyricsModal({
     }
   }, [isPlaying]);
 
-  const handleProgressClick = useCallback(
-    (e: MouseEvent<HTMLDivElement>) => {
+  const handleProgressSeek = useCallback(
+    (e: ChangeEvent<HTMLInputElement>) => {
       if (!audioRef.current || !duration) return;
-      const rect = e.currentTarget.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const percentage = x / rect.width;
-      const newTime = percentage * duration;
+      const newTime = Number(e.target.value);
+      if (!Number.isFinite(newTime)) return;
       audioRef.current.currentTime = newTime;
       setCurrentTime(newTime);
     },
     [duration]
   );
 
-  const progress = duration > 0 ? Math.min(100, Math.max(0, (currentTime / duration) * 100)) : 0;
+  const progressSeekLabel = lang === 'ru' ? 'Позиция трека' : 'Track position';
+
+  const progressPercent =
+    duration > 0 ? Math.min(100, Math.max(0, (currentTime / duration) * 100)) : 0;
 
   const finalizeSyncLyricsClose = useCallback(() => {
     discardDraft();
@@ -709,12 +711,19 @@ export function SyncLyricsModal({
 
                   {/* tracks__duration не ломаем */}
                   <div className="sync-lyrics-modal__time">{formatTimeCompact(currentTime)}</div>
-                  <div className="sync-lyrics-modal__progress-bar" onClick={handleProgressClick}>
-                    <div
-                      className="sync-lyrics-modal__progress-fill"
-                      style={{ width: `${progress}%` }}
-                    />
-                  </div>
+                  <input
+                    type="range"
+                    className="sync-lyrics-modal__progress-bar"
+                    min={0}
+                    max={duration > 0 ? duration : 0}
+                    step={0.05}
+                    value={duration > 0 ? currentTime : 0}
+                    disabled={!audioPlaybackUrl || duration <= 0}
+                    aria-label={progressSeekLabel}
+                    style={{ '--sync-seek-percent': `${progressPercent}%` } as CSSProperties}
+                    onChange={handleProgressSeek}
+                    onInput={handleProgressSeek}
+                  />
                   <div className="sync-lyrics-modal__duration">{formatTimeCompact(duration)}</div>
                 </div>
 

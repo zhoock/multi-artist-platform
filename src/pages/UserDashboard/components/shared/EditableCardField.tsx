@@ -1,5 +1,5 @@
 // src/pages/UserDashboard/components/shared/EditableCardField.tsx
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import type { IInterface } from '@models';
 import { EditAlbumEditIcon, EditAlbumRemoveIcon } from '../steps/EditAlbumStepIcons';
 import './EditableCardField.style.scss';
@@ -40,9 +40,14 @@ export function InlineEditDiscardDialog({
       role="dialog"
       aria-modal="true"
       aria-labelledby={titleId}
-      onClick={onStay}
     >
-      <div className="edit-album-modal__inline-discard-panel" onClick={(e) => e.stopPropagation()}>
+      <button
+        type="button"
+        className="edit-album-modal__inline-discard-backdrop"
+        aria-label={labels.stay}
+        onClick={onStay}
+      />
+      <div className="edit-album-modal__inline-discard-panel">
         <p id={titleId} className="edit-album-modal__inline-discard-message">
           {labels.message}
         </p>
@@ -145,7 +150,13 @@ export function EditableCardField({
   ui,
 }: EditableCardFieldProps) {
   const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
+  const titleInputRef = useRef<HTMLInputElement>(null);
   const discardLabels = getInlineEditDiscardLabels(ui);
+
+  useEffect(() => {
+    if (!isEditing || !autoFocusTitle) return;
+    titleInputRef.current?.focus();
+  }, [autoFocusTitle, isEditing]);
 
   const saveDisabled =
     hasUnsavedChanges === undefined
@@ -194,12 +205,12 @@ export function EditableCardField({
         <div className="edit-album-modal__list-item edit-album-modal__list-item--editing">
           <div className="edit-album-modal__list-item-edit-wrapper">
             <input
+              ref={titleInputRef}
               type="text"
               className="edit-album-modal__list-item-input edit-album-modal__list-item-input--title"
               placeholder={titlePlaceholder}
               value={editTitle}
               onChange={(e) => onTitleChange(e.target.value)}
-              autoFocus={autoFocusTitle}
               onKeyDown={keyHandlers}
             />
             {descriptionPlaceholder && descriptionPlaceholder.trim() !== '' && (

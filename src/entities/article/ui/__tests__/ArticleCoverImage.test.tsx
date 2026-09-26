@@ -31,7 +31,9 @@ describe('ArticleCoverImage CDN variants', () => {
   });
 
   test('dashboard admin role uses -128 CDN URL', () => {
-    render(<ArticleCoverImage img={COVER_KEY} userId={TEST_USER_ID} role="admin" alt="Article" />);
+    render(
+      <ArticleCoverImage img={COVER_KEY} userId={TEST_USER_ID} displayRole="admin" alt="Article" />
+    );
 
     const img = screen.getByRole('img', { name: 'Article' });
     expect(img.getAttribute('src')).toContain(`${SUPABASE_URL}/storage/v1/object/public/`);
@@ -40,7 +42,9 @@ describe('ArticleCoverImage CDN variants', () => {
   });
 
   test('public grid role builds srcset capped at -896', () => {
-    render(<ArticleCoverImage img={COVER_KEY} userId={TEST_USER_ID} role="public" alt="Article" />);
+    render(
+      <ArticleCoverImage img={COVER_KEY} userId={TEST_USER_ID} displayRole="public" alt="Article" />
+    );
 
     const source = document.querySelector('source[type="image/webp"]');
     expect(source?.getAttribute('srcset')).toContain('-448.webp');
@@ -51,7 +55,12 @@ describe('ArticleCoverImage CDN variants', () => {
 
   test('editor role allows -1344 in webp srcset at 2x', () => {
     render(
-      <ArticleCoverImage img={COVER_KEY} userId={TEST_USER_ID} role="editor" alt="Editor cover" />
+      <ArticleCoverImage
+        img={COVER_KEY}
+        userId={TEST_USER_ID}
+        displayRole="editor"
+        alt="Editor cover"
+      />
     );
 
     const source = document.querySelector('source[type="image/webp"]');
@@ -65,7 +74,7 @@ describe('ArticleCoverImage CDN variants', () => {
       <ArticleCoverImage
         img="recording_album_legacy"
         userId={TEST_USER_ID}
-        role="public"
+        displayRole="public"
         alt="Legacy"
       />
     );
@@ -75,7 +84,7 @@ describe('ArticleCoverImage CDN variants', () => {
   });
 
   test('empty img shows placeholder', () => {
-    render(<ArticleCoverImage img="" userId={TEST_USER_ID} role="admin" alt="No cover" />);
+    render(<ArticleCoverImage img="" userId={TEST_USER_ID} displayRole="admin" alt="No cover" />);
 
     expect(document.querySelector('.article-cover-placeholder')).toBeTruthy();
     expect(document.querySelector('picture')).toBeNull();
