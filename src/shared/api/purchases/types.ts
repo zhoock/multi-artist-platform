@@ -20,7 +20,6 @@ export interface Purchase {
   artistDisplayName: string;
   album: string;
   cover: string | null;
-  purchaseToken: string;
   purchasedAt: string;
   downloadCount: number;
   tracks: PurchaseTrack[];

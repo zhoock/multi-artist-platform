@@ -58,11 +58,6 @@ export async function revokePurchase(purchaseId: string): Promise<void> {
   invalidateMyPurchasesCache();
 }
 
-/** Download URL for a track by purchase token */
-export function getTrackDownloadUrl(purchaseToken: string, trackId: string): string {
-  return `/api/download?token=${encodeURIComponent(purchaseToken)}&track=${encodeURIComponent(trackId)}`;
-}
-
 function buildAlbumZipFileName(artist: string, album: string): string {
   const slug = (value: string) =>
     value
@@ -117,60 +112,6 @@ function guessExtensionFromResponse(response: Response, fallback = '.mp3'): stri
 export type AlbumDownloadProgress = {
   percent: number | null;
 };
-
-/** Download full album as zip via per-track entitlement-checked downloads. */
-export async function downloadAlbumZip(
-  purchase: Purchase,
-  options?: { onProgress?: (progress: AlbumDownloadProgress) => void }
-): Promise<{
-  blob: Blob;
-  filename: string;
-}> {
-  if (purchase.tracks.length === 0) {
-    throw new Error('No tracks available for download');
-  }
-
-  const { default: JSZip } = await import('jszip');
-  const zip = new JSZip();
-  const totalTracks = purchase.tracks.length;
-  const trackProgressCap = 90;
-
-  for (let index = 0; index < totalTracks; index += 1) {
-    options?.onProgress?.({
-      percent: Math.max(1, Math.round((index / totalTracks) * trackProgressCap)),
-    });
-
-    const track = purchase.tracks[index];
-    const response = await fetch(getTrackDownloadUrl(purchase.purchaseToken, track.trackId));
-
-    if (!response.ok) {
-      throw new Error(`Failed to download track: ${track.title}`);
-    }
-
-    const blob = await response.blob();
-    const ext = guessExtensionFromResponse(response);
-    zip.file(buildZipEntryFileName(index, track.trackId, track.title, ext), blob);
-
-    options?.onProgress?.({
-      percent: Math.round(((index + 1) / totalTracks) * trackProgressCap),
-    });
-  }
-
-  options?.onProgress?.({ percent: 92 });
-
-  const blob = await zip.generateAsync({ type: 'blob' }, (metadata) => {
-    options?.onProgress?.({
-      percent: 90 + Math.round(metadata.percent * 0.1),
-    });
-  });
-
-  options?.onProgress?.({ percent: 100 });
-
-  return {
-    blob,
-    filename: buildAlbumZipFileName(purchase.artistDisplayName, purchase.album),
-  };
-}
 
 export interface OwnedAlbumDownloadTrack {
   trackId: string;

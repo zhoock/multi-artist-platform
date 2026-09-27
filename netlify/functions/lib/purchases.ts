@@ -29,7 +29,6 @@ export interface PurchaseDto {
   artistDisplayName: string;
   album: string;
   cover: string | null;
-  purchaseToken: string;
   purchasedAt: string;
   downloadCount: number;
   tracks: Array<{
@@ -71,7 +70,6 @@ async function mapPurchaseRows(rows: PurchaseRow[]): Promise<PurchaseDto[]> {
           artistDisplayName: 'Unknown',
           album: purchaseRow.album_id,
           cover: null,
-          purchaseToken: purchaseRow.purchase_token,
           purchasedAt: purchaseRow.purchased_at.toISOString(),
           downloadCount: purchaseRow.download_count,
           tracks: [],
@@ -88,7 +86,6 @@ async function mapPurchaseRows(rows: PurchaseRow[]): Promise<PurchaseDto[]> {
         artistDisplayName: album.artistDisplayName,
         album: album.album,
         cover: album.cover || null,
-        purchaseToken: purchaseRow.purchase_token,
         purchasedAt: purchaseRow.purchased_at.toISOString(),
         downloadCount: purchaseRow.download_count,
         tracks,

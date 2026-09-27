@@ -10,10 +10,24 @@ import { MyPurchasesContent } from '../MyPurchasesContent';
 
 const getMyPurchasesMock = jest.fn<() => Promise<Purchase[]>>();
 const revokePurchaseMock = jest.fn<(purchaseId: string) => Promise<void>>();
+const downloadOwnedAlbumZipByAuthMock =
+  jest.fn<
+    (params: {
+      albumId: string;
+      artist: string;
+      album: string;
+      tracks: { trackId: string; title: string }[];
+    }) => Promise<void>
+  >();
 
 jest.mock('@shared/api/purchases', () => ({
   getMyPurchases: () => getMyPurchasesMock(),
-  downloadAlbumZip: jest.fn(),
+  downloadOwnedAlbumZipByAuth: (params: {
+    albumId: string;
+    artist: string;
+    album: string;
+    tracks: { trackId: string; title: string }[];
+  }) => downloadOwnedAlbumZipByAuthMock(params),
   revokePurchase: (purchaseId: string) => revokePurchaseMock(purchaseId),
 }));
 
@@ -33,7 +47,6 @@ const samplePurchase: Purchase = {
   artistDisplayName: 'Test Artist',
   album: 'Test Album',
   cover: 'cover.jpg',
-  purchaseToken: 'token-1',
   purchasedAt: '2026-01-15T12:00:00.000Z',
   downloadCount: 3,
   tracks: [
@@ -46,6 +59,8 @@ describe('MyPurchasesContent', () => {
   beforeEach(() => {
     getMyPurchasesMock.mockReset();
     revokePurchaseMock.mockReset();
+    downloadOwnedAlbumZipByAuthMock.mockReset();
+    downloadOwnedAlbumZipByAuthMock.mockResolvedValue(undefined);
     sessionStorage.clear();
     resetToastStoreForTests();
   });
@@ -169,6 +184,29 @@ describe('MyPurchasesContent', () => {
     expect(screen.getByRole('button', { name: 'Download' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Remove' })).toBeTruthy();
     expect(container.querySelector('.my-purchases__remove-hint')).toBeNull();
+  });
+
+  it('downloads album via authenticated flow without purchase token', async () => {
+    getMyPurchasesMock.mockResolvedValue([samplePurchase]);
+
+    renderMyPurchases(<MyPurchasesContent active />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Test Artist — Test Album')).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Download' }));
+
+    await waitFor(() => {
+      expect(downloadOwnedAlbumZipByAuthMock).toHaveBeenCalledTimes(1);
+    });
+
+    expect(downloadOwnedAlbumZipByAuthMock).toHaveBeenCalledWith({
+      albumId: 'album-1',
+      artist: 'Test Artist',
+      album: 'Test Album',
+      tracks: samplePurchase.tracks,
+    });
   });
 
   it('shows success toast after purchase is removed', async () => {

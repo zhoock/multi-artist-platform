@@ -9,7 +9,7 @@ import type { SupportedLang } from '@shared/model/lang';
 import { DashboardButton, DashboardCard, DashboardLoadingState } from '@shared/ui/dashboard';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 import {
-  downloadAlbumZip,
+  downloadOwnedAlbumZipByAuth,
   getMyPurchases,
   revokePurchase,
   type Purchase,
@@ -23,18 +23,6 @@ import {
 } from '@shared/lib/toast/toastDurations';
 import { MyPurchasesEmptyState } from './MyPurchasesEmptyState';
 import './MyPurchasesContent.scss';
-
-function triggerBlobDownload(blob: Blob, filename: string) {
-  const downloadUrl = window.URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = downloadUrl;
-  link.download = filename;
-  link.style.display = 'none';
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  window.URL.revokeObjectURL(downloadUrl);
-}
 
 function formatTracksCount(
   count: number,
@@ -116,8 +104,12 @@ export function MyPurchasesContent({ active, onMountPinChange }: MyPurchasesCont
 
     try {
       setDownloadingAlbums((prev) => new Set(prev).add(purchase.id));
-      const { blob, filename } = await downloadAlbumZip(purchase);
-      triggerBlobDownload(blob, filename);
+      await downloadOwnedAlbumZipByAuth({
+        albumId: purchase.albumId,
+        artist: purchase.artistDisplayName,
+        album: purchase.album,
+        tracks: purchase.tracks,
+      });
     } catch (err) {
       console.error('Error downloading album:', err);
       toast.show({

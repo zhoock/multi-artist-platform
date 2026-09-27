@@ -27,7 +27,6 @@ function purchase(id: string, albumId = `album-${id}`): Purchase {
     artistDisplayName: 'Artist',
     album: 'Album',
     cover: null,
-    purchaseToken: `tok-${id}`,
     purchasedAt: '2026-01-01T00:00:00.000Z',
     downloadCount: 0,
     tracks: [],
