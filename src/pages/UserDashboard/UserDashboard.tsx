@@ -617,6 +617,10 @@ function UserDashboard() {
   const handleArticleEditorDiscardRiskChange = useCallback((hasRisk: boolean) => {
     setArticleEditorDiscardRisk(hasRisk);
   }, []);
+  const [settingsIdentityDiscardRisk, setSettingsIdentityDiscardRisk] = useState(false);
+  const handleSettingsIdentityDiscardRiskChange = useCallback((hasRisk: boolean) => {
+    setSettingsIdentityDiscardRisk(hasRisk);
+  }, []);
   const closeEditArticleModal = useCallback(() => {
     setArticleEditorDiscardRisk(false);
     setEditArticleModal(null);
@@ -625,7 +629,7 @@ function UserDashboard() {
   const articleEditorLeaveGuardActive =
     Boolean(editArticleModal?.isOpen) && articleEditorDiscardRisk;
   const unsavedEditorRouteLeaveBlocker = useUnsavedNavigationLeaveGuard(
-    albumEditorLeaveGuardActive || articleEditorLeaveGuardActive
+    albumEditorLeaveGuardActive || articleEditorLeaveGuardActive || settingsIdentityDiscardRisk
   );
 
   const [confirmationModal, setConfirmationModal] = useState<{
@@ -2937,6 +2941,9 @@ function UserDashboard() {
                                   onNotAuthorized={handleSettingsNotAuthorized}
                                   onSaveError={handleSettingsSaveError}
                                   onMountPinChange={(pinned) => setTabPinned('settings', pinned)}
+                                  onIdentityDiscardRiskChange={
+                                    handleSettingsIdentityDiscardRiskChange
+                                  }
                                 />
                               </div>
                             </div>
@@ -3015,6 +3022,7 @@ function UserDashboard() {
                         value={editTrackTitleDraft}
                         onChange={(e) => setEditTrackTitleDraft(e.target.value)}
                         id="edit-track-title-input"
+                        // eslint-disable-next-line jsx-a11y/no-autofocus -- modal entry focus for track rename
                         autoFocus
                       />
                     </div>

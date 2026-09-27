@@ -26,7 +26,7 @@ import { SettingsSelect } from '../modals/settings/SettingsSelect';
 import { getCloseDiscardConfirmLabels, InlineEditDiscardDialog } from '../shared/EditableCardField';
 import { HeaderImagesUpload } from '../upload/HeaderImagesUpload';
 import { ChangePasswordModal } from './ChangePasswordModal';
-import { useSettingsPage } from './useSettingsPage';
+import { useSettingsPage, type UseSettingsPageOptions } from './useSettingsPage';
 import { SocialLinksContent } from '../social/SocialLinksContent';
 import { getDashboardRowFlashProps, useDashboardRowFlash } from '../../lib/dashboardRowStateFlash';
 import './SettingsPageContent.style.scss';
@@ -52,7 +52,7 @@ function scrollDashboardSectionIntoView(section: HTMLElement): void {
   });
 }
 
-type SettingsPageContentProps = {
+export type SettingsPageContentProps = {
   enabled: boolean;
   scrollToHeaderImages?: boolean;
   onScrollToHeaderImagesHandled?: () => void;
@@ -79,6 +79,7 @@ type SettingsPageContentProps = {
   onNotAuthorized?: () => void;
   onSaveError?: (message: string) => void;
   onMountPinChange?: (pinned: boolean) => void;
+  onIdentityDiscardRiskChange?: UseSettingsPageOptions['onIdentityDiscardRiskChange'];
 };
 
 export function SettingsPageContent({
@@ -107,6 +108,7 @@ export function SettingsPageContent({
   onNotAuthorized,
   onSaveError,
   onMountPinChange,
+  onIdentityDiscardRiskChange,
 }: SettingsPageContentProps) {
   const [isChangeEmailOpen, setIsChangeEmailOpen] = useState(false);
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
@@ -148,7 +150,14 @@ export function SettingsPageContent({
     hasLoadedOnce,
     isBusy,
     hasUnsavedChanges,
-  } = useSettingsPage({ enabled, userName, isListener, onNotAuthorized, onSaveError });
+  } = useSettingsPage({
+    enabled,
+    userName,
+    isListener,
+    onNotAuthorized,
+    onSaveError,
+    onIdentityDiscardRiskChange,
+  });
 
   useEffect(() => {
     if (!onMountPinChange) return;

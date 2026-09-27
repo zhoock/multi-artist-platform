@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, type Location } from 'react-router-dom';
 import { useLang } from '@app/providers/lang';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
@@ -36,12 +36,13 @@ function normalizePublicSlug(value: string): string {
   return sanitizePublicSlugInput(value).replace(/-+$/, '');
 }
 
-type UseSettingsPageOptions = {
+export type UseSettingsPageOptions = {
   enabled: boolean;
   userName?: string;
   isListener?: boolean;
   onNotAuthorized?: () => void;
   onSaveError?: (message: string) => void;
+  onIdentityDiscardRiskChange?: (hasRisk: boolean) => void;
 };
 
 export function useSettingsPage({
@@ -50,6 +51,7 @@ export function useSettingsPage({
   isListener = false,
   onNotAuthorized,
   onSaveError,
+  onIdentityDiscardRiskChange,
 }: UseSettingsPageOptions) {
   const { lang: currentLang, setLang } = useLang();
   const location = useLocation();
@@ -570,10 +572,29 @@ export function useSettingsPage({
     return headerImages.some((image, index) => image !== initialHeaderImages[index]);
   }, [headerImages, initialHeaderImages]);
 
+  const hasIdentityUnsavedChanges = useMemo(
+    () => name !== initialName || publicSlug !== initialPublicSlug,
+    [initialName, initialPublicSlug, name, publicSlug]
+  );
+
+  const reportedIdentityDiscardRiskRef = useRef<boolean | null>(null);
+  useLayoutEffect(() => {
+    if (!onIdentityDiscardRiskChange) return;
+    const next = hasIdentityUnsavedChanges;
+    if (reportedIdentityDiscardRiskRef.current !== next) {
+      reportedIdentityDiscardRiskRef.current = next;
+      onIdentityDiscardRiskChange(next);
+    }
+    return () => {
+      if (reportedIdentityDiscardRiskRef.current === false) return;
+      reportedIdentityDiscardRiskRef.current = false;
+      onIdentityDiscardRiskChange(false);
+    };
+  }, [hasIdentityUnsavedChanges, onIdentityDiscardRiskChange]);
+
   const hasUnsavedChanges = useMemo(
     () =>
-      name !== initialName ||
-      publicSlug !== initialPublicSlug ||
+      hasIdentityUnsavedChanges ||
       genreCode !== initialGenreCode ||
       aboutText !== initialAboutText ||
       aboutTextRu !== initialAboutTextRu ||
@@ -588,11 +609,8 @@ export function useSettingsPage({
       initialAboutText,
       initialAboutTextEn,
       initialAboutTextRu,
+      hasIdentityUnsavedChanges,
       initialGenreCode,
-      initialName,
-      initialPublicSlug,
-      name,
-      publicSlug,
     ]
   );
 
@@ -631,5 +649,6 @@ export function useSettingsPage({
     isSavingAboutText,
     isBusy: isSavingProfile || isSavingAboutText,
     hasUnsavedChanges,
+    hasIdentityUnsavedChanges,
   };
 }
