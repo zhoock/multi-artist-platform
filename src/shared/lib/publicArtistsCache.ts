@@ -49,13 +49,22 @@ async function fetchPublicArtistsFromNetwork(): Promise<SceneArtist[]> {
   return [];
 }
 
+function getOrFetchPublicArtists(): Promise<SceneArtist[]> {
+  if (artistsBySlug.size > 0) {
+    return Promise.resolve(Array.from(artistsBySlug.values()));
+  }
+  if (!inflight) {
+    inflight = fetchPublicArtistsFromNetwork()
+      .catch(() => [] as SceneArtist[])
+      .finally(() => {
+        inflight = null;
+      });
+  }
+  return inflight;
+}
+
 export function prefetchPublicArtists(): void {
-  if (artistsBySlug.size > 0 || inflight) return;
-  inflight = fetchPublicArtistsFromNetwork()
-    .catch(() => [] as SceneArtist[])
-    .finally(() => {
-      inflight = null;
-    });
+  void getOrFetchPublicArtists();
 }
 
 /** Drop in-memory public-artists list so the next ensure/reload hits the network. */
@@ -80,11 +89,5 @@ export function reloadPublicArtists(): Promise<SceneArtist[]> {
 
 /** Дождаться списка артистов (общий promise с prefetch / loader). */
 export async function ensurePublicArtistsLoaded(): Promise<SceneArtist[]> {
-  if (artistsBySlug.size > 0) {
-    return Array.from(artistsBySlug.values());
-  }
-  if (!inflight) {
-    prefetchPublicArtists();
-  }
-  return (await inflight) ?? [];
+  return getOrFetchPublicArtists();
 }

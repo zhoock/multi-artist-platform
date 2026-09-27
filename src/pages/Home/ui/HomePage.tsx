@@ -17,7 +17,10 @@ import { playerActions, toPlayerTracks } from '@features/player';
 import { getUserAudioUrl } from '@shared/api/albums';
 import { emptyStringMediaSrc } from '@shared/lib/media/optionalMediaUrl';
 import { shouldUsePublicArtistCatalogInRedux } from '@shared/lib/dashboardModalBackground';
-import { bootstrapPublicArtistPageSurfaces } from '@shared/lib/bootstrapPublicArtistPageSurfaces';
+import {
+  bootstrapPublicArtistArticlesCatalog,
+  bootstrapPublicArtistPageSurfaces,
+} from '@shared/lib/bootstrapPublicArtistPageSurfaces';
 import { fetchDashboardAlbums } from '@entities/album';
 import { fetchArticles } from '@entities/article';
 import { generateMockArtists } from '@shared/lib/generateMockArtists';
@@ -162,7 +165,24 @@ export function HomePage() {
     if (!hasArtistParam) return;
 
     bootstrapPublicArtistPageSurfaces(dispatch, artistSlug);
-  }, [artistSlug, dispatch, hasArtistParam, location.pathname, location.search]);
+  }, [artistSlug, dispatch, hasArtistParam]);
+
+  /** Articles are not LCP-critical — defer until after the first paint opportunity. */
+  useEffect(() => {
+    if (!shouldUsePublicArtistCatalogInRedux()) return;
+    if (!hasArtistParam) return;
+
+    let cancelled = false;
+    const cancelSchedule = scheduleAfterPostPaint(() => {
+      if (cancelled) return;
+      bootstrapPublicArtistArticlesCatalog(dispatch, artistSlug);
+    });
+
+    return () => {
+      cancelled = true;
+      cancelSchedule();
+    };
+  }, [artistSlug, dispatch, hasArtistParam]);
 
   /**
    * Owner Dashboard fat-albums (`AlbumEditable`). Не зависит от thin CatalogAlbum fetch.

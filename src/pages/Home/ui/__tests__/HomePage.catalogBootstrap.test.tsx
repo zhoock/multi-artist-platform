@@ -8,10 +8,25 @@ const mockFetchArtistAlbumCatalog = jest.fn((arg: unknown) => ({
   type: 'artistAlbumCatalog/fetch/pending',
   meta: { arg },
 }));
-const mockFetchArticles = jest.fn((arg: unknown) => ({
-  type: 'articles/fetchMerged/pending',
-  meta: { arg },
+const mockBootstrapArticles = jest.fn();
+const mockScheduleAfterPostPaint = jest.fn((onReady: () => void) => {
+  onReady();
+  return () => {};
+});
+
+jest.mock('@shared/lib/scheduleAfterPostPaint', () => ({
+  scheduleAfterPostPaint: (onReady: () => void) => mockScheduleAfterPostPaint(onReady),
 }));
+
+jest.mock('@shared/lib/bootstrapPublicArtistPageSurfaces', () => {
+  const actual = jest.requireActual<typeof import('@shared/lib/bootstrapPublicArtistPageSurfaces')>(
+    '@shared/lib/bootstrapPublicArtistPageSurfaces'
+  );
+  return {
+    ...actual,
+    bootstrapPublicArtistArticlesCatalog: (...args: unknown[]) => mockBootstrapArticles(...args),
+  };
+});
 
 jest.mock('@shared/lib/dashboardModalBackground', () => {
   const actual = jest.requireActual<typeof import('@shared/lib/dashboardModalBackground')>(
@@ -32,10 +47,6 @@ jest.mock('@entities/album', () => {
   };
 });
 
-jest.mock('@entities/article', () => ({
-  fetchArticles: (arg: unknown) => mockFetchArticles(arg),
-}));
-
 jest.mock('@shared/lib/hooks/useArtistPageBuilder', () => ({
   useArtistPageBuilder: () => ({
     isOwner: false,
@@ -45,6 +56,8 @@ jest.mock('@shared/lib/hooks/useArtistPageBuilder', () => ({
     showNotFound: false,
     showVisitorUnderConstruction: false,
     showArtistPageSkeleton: false,
+    albumsSurfaceReady: false,
+    pageReady: false,
     builderVisibility: { canShowBlocks: false },
     hasPublicReleases: false,
   }),
@@ -160,24 +173,28 @@ function renderArtistHome(initialEntries = ['/?artist=beatles']) {
 describe('HomePage catalog bootstrap under dashboard overlay', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockScheduleAfterPostPaint.mockImplementation((onReady: () => void) => {
+      onReady();
+      return () => {};
+    });
   });
 
-  test('запускает bootstrap fetch каталога и статей, когда dashboard overlay держит public catalog', async () => {
+  test('запускает bootstrap каталога сразу и статьи после post-paint (не на LCP path)', async () => {
     jest.mocked(shouldUsePublicArtistCatalogInRedux).mockReturnValue(true);
 
     renderArtistHome();
 
     await waitFor(() => {
       expect(mockFetchArtistAlbumCatalog).toHaveBeenCalledWith({
-        force: true,
         publicArtistSlug: 'beatles',
       });
-      expect(mockFetchArticles).toHaveBeenCalledWith({
-        force: true,
-        forcePublicCatalog: true,
-        publicArtistSlug: 'beatles',
-      });
+      expect(mockScheduleAfterPostPaint).toHaveBeenCalled();
+      expect(mockBootstrapArticles).toHaveBeenCalled();
     });
+
+    const catalogOrder = mockFetchArtistAlbumCatalog.mock.invocationCallOrder[0];
+    const articlesOrder = mockBootstrapArticles.mock.invocationCallOrder[0];
+    expect(catalogOrder).toBeLessThan(articlesOrder);
   });
 
   test('не запускает bootstrap fetch на полноэкранном dashboard без public overlay', async () => {
@@ -187,7 +204,19 @@ describe('HomePage catalog bootstrap under dashboard overlay', () => {
 
     await waitFor(() => {
       expect(mockFetchArtistAlbumCatalog).not.toHaveBeenCalled();
-      expect(mockFetchArticles).not.toHaveBeenCalled();
+      expect(mockBootstrapArticles).not.toHaveBeenCalled();
     });
+  });
+
+  test('не вызывает articles bootstrap до scheduleAfterPostPaint', async () => {
+    jest.mocked(shouldUsePublicArtistCatalogInRedux).mockReturnValue(true);
+    mockScheduleAfterPostPaint.mockImplementation(() => () => {});
+
+    renderArtistHome();
+
+    await waitFor(() => {
+      expect(mockFetchArtistAlbumCatalog).toHaveBeenCalled();
+    });
+    expect(mockBootstrapArticles).not.toHaveBeenCalled();
   });
 });
