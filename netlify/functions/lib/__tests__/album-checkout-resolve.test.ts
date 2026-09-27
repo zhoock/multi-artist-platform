@@ -79,7 +79,6 @@ describe('resolveAlbumCheckoutOrder', () => {
       mockedFindSucceededPayment.mockResolvedValueOnce({ provider_payment_id: PAYMENT_ID });
       mockedFulfillInTx.mockResolvedValueOnce({
         purchaseId: 'purchase-1',
-        purchaseToken: 'token-1',
         paymentId: PAYMENT_ID,
       });
       return fn(client);

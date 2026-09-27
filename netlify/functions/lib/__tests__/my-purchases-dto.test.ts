@@ -23,14 +23,13 @@ describe('fetchPurchasesForAccountUser', () => {
     fetchTracksForResolvedAlbumMock.mockReset();
   });
 
-  test('does not expose purchase_token in API DTO', async () => {
+  test('does not expose purchase token fields in API DTO', async () => {
     queryMock.mockResolvedValue({
       rows: [
         {
           id: 'purchase-uuid',
           order_id: 'order-uuid',
           album_id: 'album-slug',
-          purchase_token: 'secret-token-uuid',
           purchased_at: new Date('2026-01-01T00:00:00.000Z'),
           download_count: 2,
         },
@@ -58,6 +57,5 @@ describe('fetchPurchasesForAccountUser', () => {
       album: 'Album Title',
     });
     expect(purchases[0]).not.toHaveProperty('purchaseToken');
-    expect(JSON.stringify(purchases[0])).not.toContain('secret-token-uuid');
   });
 });

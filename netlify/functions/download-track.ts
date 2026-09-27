@@ -1,7 +1,6 @@
 /**
  * Netlify Function для скачивания треков
- * GET /api/download?token={purchase_token}&track={track_id}
- * или GET /api/download?albumId={album_slug}&track={track_id} с Authorization (покупка этого альбома или подписка).
+ * GET /api/download?albumId={album_slug}&track={track_id} с Authorization (покупка этого альбома или подписка).
  */
 
 import type { Handler, HandlerEvent } from '@netlify/functions';
@@ -12,7 +11,7 @@ import {
   getViewerEmailLower,
   viewerHasPremiumAccessToArtist,
 } from './lib/entitlements';
-import { isAlbumOwnedByUser, isPurchaseTokenActive } from './lib/purchase-access';
+import { isAlbumOwnedByUser } from './lib/purchase-access';
 import { resolveTrackPublicUrl } from './lib/track-storage';
 
 export const handler: Handler = async (
@@ -27,7 +26,6 @@ export const handler: Handler = async (
   }
 
   try {
-    const purchaseToken = event.queryStringParameters?.token?.trim();
     const trackId = event.queryStringParameters?.track?.trim();
     const albumIdParam = event.queryStringParameters?.albumId?.trim();
     const authUserId = getUserIdFromEvent(event);
@@ -40,52 +38,37 @@ export const handler: Handler = async (
       };
     }
 
-    let purchaseRowId: string | null = null;
-    let resolvedAlbumId: string;
-
-    if (purchaseToken) {
-      const activePurchase = await isPurchaseTokenActive(purchaseToken);
-      if (!activePurchase) {
-        return {
-          statusCode: 404,
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ error: 'Purchase not found or invalid token' }),
-        };
-      }
-      purchaseRowId = activePurchase.id;
-      resolvedAlbumId = activePurchase.albumId;
-    } else if (authUserId && albumIdParam) {
-      const ownerId = await getArtistUserIdForAlbumSlug(albumIdParam);
-      if (!ownerId) {
-        return {
-          statusCode: 404,
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ error: 'Album not found' }),
-        };
-      }
-      const emailLower = await getViewerEmailLower(authUserId);
-      const purchased = await isAlbumOwnedByUser(authUserId, emailLower, albumIdParam);
-      const subscribed = await viewerHasPremiumAccessToArtist(authUserId, ownerId);
-      if (!purchased && !subscribed) {
-        return {
-          statusCode: 403,
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            error: 'Download not allowed: purchase this album or subscribe for access',
-          }),
-        };
-      }
-      resolvedAlbumId = albumIdParam;
-    } else {
+    if (!albumIdParam || !authUserId) {
       return {
         statusCode: 400,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          error:
-            'Provide purchase token: ?token=...&track=... or signed-in download: ?albumId=...&track=... with Authorization',
+          error: 'Signed-in download required: ?albumId=...&track=... with Authorization header',
         }),
       };
     }
+
+    const ownerId = await getArtistUserIdForAlbumSlug(albumIdParam);
+    if (!ownerId) {
+      return {
+        statusCode: 404,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ error: 'Album not found' }),
+      };
+    }
+    const emailLower = await getViewerEmailLower(authUserId);
+    const purchased = await isAlbumOwnedByUser(authUserId, emailLower, albumIdParam);
+    const subscribed = await viewerHasPremiumAccessToArtist(authUserId, ownerId);
+    if (!purchased && !subscribed) {
+      return {
+        statusCode: 403,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          error: 'Download not allowed: purchase this album or subscribe for access',
+        }),
+      };
+    }
+    const resolvedAlbumId = albumIdParam;
 
     const trackResult = await query<{
       src: string | null;
@@ -130,19 +113,6 @@ export const handler: Handler = async (
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ error: 'Track file not found in storage' }),
       };
-    }
-
-    if (purchaseRowId) {
-      query(
-        `UPDATE purchases
-         SET download_count = download_count + 1,
-             last_downloaded_at = CURRENT_TIMESTAMP,
-             updated_at = CURRENT_TIMESTAMP
-         WHERE id = $1`,
-        [purchaseRowId]
-      ).catch((error) => {
-        console.error('❌ Failed to update download count:', error);
-      });
     }
 
     return {

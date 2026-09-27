@@ -22,7 +22,6 @@ export class AlbumFulfillmentError extends Error {
 
 export type FulfillAlbumPurchaseResult = {
   purchaseId: string;
-  purchaseToken: string;
   paymentId: string;
 };
 
@@ -82,14 +81,14 @@ async function upsertPurchaseRecordWithClient(
   orderId: string,
   customerEmail: string,
   albumId: string
-): Promise<{ id: string; purchase_token: string }> {
+): Promise<{ id: string }> {
   const albumSlug = await resolveAlbumSlug(albumId);
   if (!albumSlug) {
     throw new AlbumFulfillmentError('album_not_found_for_purchase', 'ALBUM_NOT_FOUND');
   }
 
   const userId = await resolveUserIdForCustomerEmail(customerEmail);
-  const purchaseResult = await client.query<{ id: string; purchase_token: string }>(
+  const purchaseResult = await client.query<{ id: string }>(
     `INSERT INTO purchases (order_id, customer_email, album_id, user_id)
      VALUES ($1, $2, $3, $4::uuid)
      ON CONFLICT (customer_email, album_id)
@@ -99,7 +98,7 @@ async function upsertPurchaseRecordWithClient(
        revoked_at = NULL,
        revoked_by_user = NULL,
        updated_at = CURRENT_TIMESTAMP
-     RETURNING id, purchase_token`,
+     RETURNING id`,
     [orderId, customerEmail, albumSlug, userId]
   );
 
@@ -140,7 +139,6 @@ export async function fulfillPaidOrderPurchaseInTransaction(
 
   return {
     purchaseId: purchase.id,
-    purchaseToken: purchase.purchase_token,
     paymentId: payment.provider_payment_id,
   };
 }

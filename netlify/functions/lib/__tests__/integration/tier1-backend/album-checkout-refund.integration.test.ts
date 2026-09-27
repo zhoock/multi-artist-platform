@@ -11,7 +11,6 @@ import {
   ALBUM_E2E_BUYER_ID,
   ALBUM_E2E_SLUG,
   getPurchaseRevokedAt,
-  getPurchaseToken,
   isPurchaseActiveForEmail,
   seedAlbumCheckoutUsers,
   seedAlbumOrderWithPayment,
@@ -23,7 +22,7 @@ import {
   isE2eDatabaseConfigured,
   registerTier1BackendHooks,
 } from '../../helpers/subscription-e2e-setup';
-import { isAlbumOwnedByUser, isPurchaseTokenActive } from '../../../purchase-access';
+import { isAlbumOwnedByUser } from '../../../purchase-access';
 
 const fetchRefundFromYooKassaApiMock = jest.fn();
 const getDecryptedSecretKeyMock = jest.fn();
@@ -102,12 +101,9 @@ describe('Album purchase refund revocation @tier1', () => {
       },
     });
 
-    const tokenBefore = await getPurchaseToken();
-    expect(tokenBefore).toBeTruthy();
     expect(
       await isAlbumOwnedByUser(ALBUM_E2E_BUYER_ID, ALBUM_E2E_BUYER_EMAIL, ALBUM_E2E_SLUG)
     ).toBe(true);
-    expect(await isPurchaseTokenActive(tokenBefore!)).not.toBeNull();
 
     const response = await paymentWebhookHandler(
       buildRefundWebhookEvent(refundId, providerPaymentId),
@@ -121,7 +117,6 @@ describe('Album purchase refund revocation @tier1', () => {
     expect(
       await isAlbumOwnedByUser(ALBUM_E2E_BUYER_ID, ALBUM_E2E_BUYER_EMAIL, ALBUM_E2E_SLUG)
     ).toBe(false);
-    expect(await isPurchaseTokenActive(tokenBefore!)).toBeNull();
     void orderId;
   });
 

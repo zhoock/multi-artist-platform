@@ -16,7 +16,6 @@ export interface PurchaseRow {
   id: string;
   order_id: string;
   album_id: string;
-  purchase_token: string;
   purchased_at: Date;
   download_count: number;
 }
@@ -99,7 +98,7 @@ export async function fetchPurchasesForAccountUser(userId: string): Promise<Purc
   const revokedFilter = activePurchaseFilter();
 
   const purchasesResult = await query<PurchaseRow>(
-    `SELECT id, order_id, album_id, purchase_token, purchased_at, download_count
+    `SELECT id, order_id, album_id, purchased_at, download_count
      FROM purchases
      WHERE user_id = $1::uuid
      ${revokedFilter}
@@ -117,35 +116,6 @@ export async function resolveUserIdForCustomerEmail(customerEmail: string): Prom
     [customerEmail]
   );
   return result.rows[0]?.id ?? null;
-}
-
-export async function upsertPurchaseRecord(
-  orderId: string,
-  customerEmail: string,
-  albumId: string
-): Promise<{ id: string; purchase_token: string } | null> {
-  const albumSlug = await resolveAlbumSlug(albumId);
-  if (!albumSlug) {
-    console.error('[purchases] upsertPurchaseRecord: album not found for key:', albumId);
-    return null;
-  }
-
-  const userId = await resolveUserIdForCustomerEmail(customerEmail);
-
-  const purchaseResult = await query<{ id: string; purchase_token: string }>(
-    `INSERT INTO purchases (order_id, customer_email, album_id, user_id)
-     VALUES ($1, $2, $3, $4::uuid)
-     ON CONFLICT (customer_email, album_id)
-     DO UPDATE SET
-       order_id = EXCLUDED.order_id,
-       user_id = COALESCE(purchases.user_id, EXCLUDED.user_id),
-       revoked_at = NULL,
-       revoked_by_user = NULL,
-       updated_at = CURRENT_TIMESTAMP
-     RETURNING id, purchase_token`,
-    [orderId, customerEmail, albumSlug, userId]
-  );
-  return purchaseResult.rows[0] ?? null;
 }
 
 /** Idempotent purchase upsert without RETURNING (email send path). */

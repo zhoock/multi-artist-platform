@@ -75,7 +75,7 @@ Fulfillment → ...            (get-*-status)
 
 - production (при выключенном флаге код идёт в YooKassa без изменений);
 - `PaymentStatus` / `PaymentSuccess` / `SubscriptionPaymentSuccess`;
-- выдачу покупки (`upsertPurchaseRecord`) и активацию подписки (`fulfillSubscriptionPayment`);
+- выдачу покупки (`applyAlbumPaymentSucceededFulfillment`) и активацию подписки (`fulfillSubscriptionPayment`);
 - письма (`sendPurchaseEmail` + dedupe);
 - My Purchases / Premium entitlements.
 

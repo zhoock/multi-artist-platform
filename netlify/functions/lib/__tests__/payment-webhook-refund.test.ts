@@ -43,7 +43,6 @@ jest.mock('../subscription-webhook', () => ({
 jest.mock('../fulfill-album-purchase', () => ({
   applyAlbumPaymentSucceededFulfillment: jest.fn(async () => ({
     purchaseId: 'pur-1',
-    purchaseToken: 'token-1',
     paymentId: 'pay-1',
   })),
 }));

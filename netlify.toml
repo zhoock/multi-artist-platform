@@ -326,13 +326,6 @@
   status = 200
   force = true
 
-# Download album zip (must be before /api/download*)
-[[redirects]]
-  from = "/api/download-album*"
-  to = "/.netlify/functions/download-album"
-  status = 200
-  force = true
-
 # Download track
 [[redirects]]
   from = "/api/download*"

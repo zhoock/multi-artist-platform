@@ -210,18 +210,6 @@ export async function getPurchaseRevokedAt(): Promise<Date | null> {
   return result.rows[0]?.revoked_at ?? null;
 }
 
-export async function getPurchaseToken(): Promise<string | null> {
-  const result = await query<{ purchase_token: string }>(
-    `SELECT purchase_token::text AS purchase_token
-     FROM purchases
-     WHERE album_id = $1
-       AND LOWER(TRIM(customer_email)) = LOWER(TRIM($2))
-     LIMIT 1`,
-    [ALBUM_E2E_SLUG, ALBUM_E2E_BUYER_EMAIL]
-  );
-  return result.rows[0]?.purchase_token ?? null;
-}
-
 export async function seedSecondBuyerAlbumPurchase(): Promise<{
   orderId: string;
   providerPaymentId: string;

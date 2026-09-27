@@ -56,28 +56,6 @@ export async function buyerAlreadyOwnsAlbumForCheckout(
   return false;
 }
 
-export async function isPurchaseTokenActive(purchaseToken: string): Promise<{
-  id: string;
-  albumId: string;
-} | null> {
-  const revokedFilter = activePurchaseFilter();
-  const result = await query<{ id: string; album_id: string }>(
-    `SELECT id, album_id
-     FROM purchases
-     WHERE purchase_token = $1::uuid
-       ${revokedFilter}
-     LIMIT 1`,
-    [purchaseToken]
-  );
-
-  const row = result.rows[0];
-  if (!row) {
-    return null;
-  }
-
-  return { id: row.id, albumId: row.album_id };
-}
-
 export async function revokePurchaseForUser(
   userId: string,
   _emailLower: string | null,
