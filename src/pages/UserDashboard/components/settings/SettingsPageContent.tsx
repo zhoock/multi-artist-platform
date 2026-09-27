@@ -23,6 +23,7 @@ import {
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 import { StatusBadge } from '@shared/ui/statusBadge';
 import { SettingsSelect } from '../modals/settings/SettingsSelect';
+import { getCloseDiscardConfirmLabels, InlineEditDiscardDialog } from '../shared/EditableCardField';
 import { HeaderImagesUpload } from '../upload/HeaderImagesUpload';
 import { ChangePasswordModal } from './ChangePasswordModal';
 import { useSettingsPage } from './useSettingsPage';
@@ -138,6 +139,9 @@ export function SettingsPageContent({
     headerImages,
     handleHeaderImagesUpdated,
     handleLanguageChange,
+    aboutLangSwitchDiscardOpen,
+    dismissAboutLangSwitchDiscard,
+    confirmAboutLangSwitchDiscard,
     handleNameBlur,
     isLoadingAboutText,
     isLoadingHeaderImages,
@@ -563,6 +567,14 @@ export function SettingsPageContent({
       <ChangePasswordModal
         isOpen={isChangePasswordOpen}
         onClose={() => setIsChangePasswordOpen(false)}
+      />
+
+      <InlineEditDiscardDialog
+        open={aboutLangSwitchDiscardOpen}
+        labels={getCloseDiscardConfirmLabels(ui ?? undefined)}
+        titleId="settings-about-lang-switch-discard-title"
+        onStay={dismissAboutLangSwitchDiscard}
+        onDiscard={confirmAboutLangSwitchDiscard}
       />
     </>
   );

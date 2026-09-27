@@ -88,6 +88,8 @@ export function useSettingsPage({
   const aboutDebounceRef = useRef<number | null>(null);
   const skipReloadRef = useRef(false);
   const aboutSyncLangRef = useRef(currentLang);
+  const pendingAboutLangSwitchRef = useRef<'ru' | 'en' | null>(null);
+  const [aboutLangSwitchDiscardOpen, setAboutLangSwitchDiscardOpen] = useState(false);
 
   const languages = [
     { value: 'ru', label: 'Русский' },
@@ -252,9 +254,8 @@ export function useSettingsPage({
 
   saveAboutRef.current = saveAboutText;
 
-  const handleLanguageChange = useCallback(
-    (value: string) => {
-      const nextLang = value as 'ru' | 'en';
+  const applyLanguageChange = useCallback(
+    (nextLang: 'ru' | 'en') => {
       if (nextLang === currentLang) return;
       setLang(nextLang);
 
@@ -303,6 +304,39 @@ export function useSettingsPage({
     },
     [currentLang, dashboardSurfaceFromLayout, location, navigate, setLang]
   );
+
+  const handleLanguageChange = useCallback(
+    (value: string) => {
+      const nextLang = value as 'ru' | 'en';
+      if (nextLang === currentLang) return;
+
+      if (aboutText !== initialAboutText) {
+        pendingAboutLangSwitchRef.current = nextLang;
+        setAboutLangSwitchDiscardOpen(true);
+        return;
+      }
+
+      applyLanguageChange(nextLang);
+    },
+    [aboutText, applyLanguageChange, currentLang, initialAboutText]
+  );
+
+  const dismissAboutLangSwitchDiscard = useCallback(() => {
+    pendingAboutLangSwitchRef.current = null;
+    setAboutLangSwitchDiscardOpen(false);
+  }, []);
+
+  const confirmAboutLangSwitchDiscard = useCallback(() => {
+    const nextLang = pendingAboutLangSwitchRef.current;
+    pendingAboutLangSwitchRef.current = null;
+    setAboutLangSwitchDiscardOpen(false);
+    if (!nextLang) return;
+
+    const storedText = nextLang === 'ru' ? aboutTextRu : aboutTextEn;
+    setAboutText(storedText);
+    setInitialAboutText(storedText);
+    applyLanguageChange(nextLang);
+  }, [aboutTextEn, aboutTextRu, applyLanguageChange]);
 
   const handleNameChange = useCallback((value: string) => {
     setName(value);
@@ -516,14 +550,18 @@ export function useSettingsPage({
     aboutSyncLangRef.current = currentLang;
 
     // `enabled` is a dependency, so tab re-entry re-runs this effect. The about draft lives
-    // only in `aboutText` until save; applying the stored RU/EN copy would drop it. A
-    // language change still has to show the matching stored copy.
+    // only in `aboutText` until save; applying the stored RU/EN copy would drop it.
     if (!langChanged && skipReloadRef.current) return;
+
+    // Never apply stored locale text over an unsaved About draft (language switch is gated in UI).
+    if (langChanged && aboutText !== initialAboutText) {
+      return;
+    }
 
     const currentText = currentLang === 'ru' ? aboutTextRu : aboutTextEn;
     setAboutText(currentText);
     setInitialAboutText(currentText);
-  }, [aboutTextEn, aboutTextRu, currentLang, enabled]);
+  }, [aboutText, aboutTextEn, aboutTextRu, currentLang, enabled, initialAboutText]);
 
   const headerImagesDirty = useMemo(() => {
     if (headerImages.length !== initialHeaderImages.length) {
@@ -580,6 +618,9 @@ export function useSettingsPage({
     headerImages,
     handleHeaderImagesUpdated,
     handleLanguageChange,
+    aboutLangSwitchDiscardOpen,
+    dismissAboutLangSwitchDiscard,
+    confirmAboutLangSwitchDiscard,
     handleNameBlur,
     normalizePublicSlug,
     isLoadingProfile,
