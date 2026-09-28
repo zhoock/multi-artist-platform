@@ -13,11 +13,17 @@ jest.mock('@shared/lib/profileDisplayName', () => ({
   prefetchPublicProfileForDisplay: jest.fn(),
 }));
 
+jest.mock('@shared/lib/authFetch', () => ({
+  fetchWithAuthSession: jest.fn(),
+}));
+
 import {
   albumsLoader,
   isAlbumDetailLoaderPath,
   shouldDeferPublicArtistCatalogToSurface,
 } from '../albumsLoader';
+import { bootstrapPublicArtistAlbumCatalog } from '@shared/lib/bootstrapPublicArtistPageSurfaces';
+import { fetchWithAuthSession } from '@shared/lib/authFetch';
 import { albumsReducer } from '@entities/album';
 import { artistAlbumCatalogReducer } from '@entities/album/model/artistAlbumCatalogSlice';
 import { albumDetailsReducer } from '@entities/album/model/albumDetailsSlice';
@@ -161,9 +167,17 @@ describe('albumsLoader — defer public catalog to HomePage', () => {
       meta: { arg: { lang: 'en' }, requestId: 'test', requestStatus: 'fulfilled' },
     });
     jest.spyOn(appStore, 'getStore').mockReturnValue(store);
+    jest.mocked(fetchWithAuthSession).mockReset();
   });
 
-  test('на /?artist= не стартует загрузку каталога (ждёт HomePage)', async () => {
+  test('на /?artist= стартует thin catalog из loader (до HomePage mount)', async () => {
+    jest.mocked(fetchWithAuthSession).mockImplementation(
+      () =>
+        new Promise(() => {
+          /* keep thin catalog in loading */
+        }) as ReturnType<typeof fetchWithAuthSession>
+    );
+
     const args = makeRequest('/?artist=foo');
     await albumsLoader({
       request: args.request,
@@ -172,18 +186,75 @@ describe('albumsLoader — defer public catalog to HomePage', () => {
 
     expect(store.getState().albums.dashboard.status).toBe('idle');
     expect(store.getState().albums.dashboard.inFlightFetchContextKey).toBeNull();
-    expect(store.getState().artistAlbumCatalog.status).toBe('idle');
+    expect(store.getState().artistAlbumCatalog.status).toBe('loading');
     expect(store.getState().articles.status).toBe('idle');
   });
 
-  test('на /albums?artist= не стартует thin catalog (ждёт AllAlbumsPage surface)', async () => {
+  test('на /en?artist=slug передаёт publicArtistSlug в thin catalog fetch', async () => {
+    const mockFetch = jest.mocked(fetchWithAuthSession);
+    mockFetch.mockImplementation(
+      () =>
+        new Promise(() => {
+          /* in flight */
+        }) as ReturnType<typeof fetchWithAuthSession>
+    );
+
+    const args = makeRequest('/en?artist=smolyanoe-chuchelko');
+    await albumsLoader({
+      request: args.request,
+      params: {},
+    } as Parameters<typeof albumsLoader>[0]);
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      '/api/artists/smolyanoe-chuchelko/albums',
+      expect.objectContaining({ cache: 'no-store' })
+    );
+  });
+
+  test('HomePage bootstrap не даёт второй HTTP, если loader уже грузит каталог', async () => {
+    let catalogHttpCalls = 0;
+    jest.mocked(fetchWithAuthSession).mockImplementation(async (...args: unknown[]) => {
+      const url = String(args[0]);
+      if (url.includes('/api/artists/foo/albums')) {
+        catalogHttpCalls += 1;
+        await new Promise((r) => setTimeout(r, 50));
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ success: true, data: [] }),
+        } as Response;
+      }
+      return { ok: true, status: 200, json: async () => ({}) } as Response;
+    });
+
+    const args = makeRequest('/?artist=foo');
+    await albumsLoader({
+      request: args.request,
+      params: {},
+    } as Parameters<typeof albumsLoader>[0]);
+
+    bootstrapPublicArtistAlbumCatalog(store.dispatch, 'foo');
+    bootstrapPublicArtistAlbumCatalog(store.dispatch, 'foo');
+
+    await new Promise((r) => setTimeout(r, 80));
+    expect(catalogHttpCalls).toBe(1);
+  });
+
+  test('на /albums?artist= стартует thin catalog из loader', async () => {
+    jest.mocked(fetchWithAuthSession).mockImplementation(
+      () =>
+        new Promise(() => {
+          /* keep thin catalog in loading */
+        }) as ReturnType<typeof fetchWithAuthSession>
+    );
+
     const args = makeRequest('/albums?artist=foo');
     await albumsLoader({
       request: args.request,
       params: {},
     } as Parameters<typeof albumsLoader>[0]);
 
-    expect(store.getState().artistAlbumCatalog.status).toBe('idle');
+    expect(store.getState().artistAlbumCatalog.status).toBe('loading');
     expect(store.getState().articles.status).toBe('idle');
   });
 
@@ -218,11 +289,11 @@ describe('albumsLoader — defer public catalog to HomePage', () => {
   });
 
   test('на /stems?artist= не стартует fat fetchDashboardAlbums (thin catalog на Mixer)', async () => {
-    jest.spyOn(globalThis, 'fetch').mockImplementation(
+    jest.mocked(fetchWithAuthSession).mockImplementation(
       () =>
         new Promise(() => {
           /* keep thin catalog in loading */
-        }) as Promise<Response>
+        }) as ReturnType<typeof fetchWithAuthSession>
     );
 
     const args = makeRequest('/stems?artist=foo');
@@ -237,11 +308,11 @@ describe('albumsLoader — defer public catalog to HomePage', () => {
   });
 
   test('на /articles?artist= стартует public articles (non-defer route)', async () => {
-    jest.spyOn(globalThis, 'fetch').mockImplementation(
+    jest.mocked(fetchWithAuthSession).mockImplementation(
       () =>
         new Promise(() => {
           /* keep articles in loading */
-        }) as Promise<Response>
+        }) as ReturnType<typeof fetchWithAuthSession>
     );
 
     const args = makeRequest('/articles?artist=foo');

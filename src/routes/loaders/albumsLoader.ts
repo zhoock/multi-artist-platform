@@ -313,7 +313,24 @@ export async function albumsLoader({ request }: LoaderFunctionArgs): Promise<Alb
     } else {
       // Home / All Albums / other public: thin CatalogAlbum on the surface — never fat.
       templateA = Promise.resolve([]);
-      // Defer routes (`/?artist=`, `/albums?artist=`, …): surface owns initial thin catalog fetch.
+      // Defer routes: start thin catalog early (HomePage bootstrap remains fallback via Redux condition).
+      if (
+        publicArtistFromUrl &&
+        shouldDeferPublicArtistCatalogToSurface(loaderPathname, publicArtistFromUrl)
+      ) {
+        const fetchThunkPromise = store.dispatch(
+          fetchArtistAlbumCatalog({ publicArtistSlug: publicArtistFromUrl })
+        );
+        if (signal.aborted) {
+          fetchThunkPromise.abort();
+        } else {
+          const abortHandler = () => {
+            fetchThunkPromise.abort();
+          };
+          signal.addEventListener('abort', abortHandler, { once: true });
+          void fetchThunkPromise.unwrap().catch(() => undefined);
+        }
+      }
     }
   }
 
