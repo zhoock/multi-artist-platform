@@ -463,12 +463,7 @@ export function HomePage() {
     }
 
     if (artistPageAccess.showVisitorUnderConstruction) {
-      return (
-        <>
-          {artistSeoHelmet}
-          <ArtistPageUnderConstruction />
-        </>
-      );
+      return <ArtistPageUnderConstruction />;
     }
 
     const fullPageReady = artistPageAccess.pageReady && shouldRevealFullPage;
