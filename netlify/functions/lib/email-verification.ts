@@ -1,5 +1,9 @@
 /**
  * Email verification helpers (token generation, DB updates)
+ *
+ * Threat model (aligned with password-reset.ts):
+ *   - Plaintext tokens live only in the email URL; the DB stores a SHA-256 hex digest.
+ *   - Tokens expire after TOKEN_TTL_HOURS; columns are cleared on successful verify.
  */
 
 import crypto from 'node:crypto';
@@ -12,6 +16,7 @@ import { buildEmailVerificationUrl } from './public-app-url';
 
 const TOKEN_BYTES = 32;
 const TOKEN_TTL_HOURS = 24;
+export const VERIFICATION_TOKEN_TTL_HOURS = TOKEN_TTL_HOURS;
 export const VERIFICATION_EMAIL_COOLDOWN_SECONDS = 60;
 
 export type VerificationEmailAllowResult =
@@ -30,6 +35,11 @@ export interface VerificationUserRow {
 
 export function generateVerificationToken(): string {
   return crypto.randomBytes(TOKEN_BYTES).toString('hex');
+}
+
+/** SHA-256 hex digest of the raw verification token (same convention as password reset). */
+export function hashEmailVerificationToken(token: string): string {
+  return crypto.createHash('sha256').update(token, 'utf8').digest('hex');
 }
 
 export function verificationExpiresAt(): Date {
@@ -77,15 +87,16 @@ export async function assertVerificationEmailAllowed(
 
 export async function assignVerificationToken(userId: string): Promise<string> {
   const token = generateVerificationToken();
+  const tokenHash = hashEmailVerificationToken(token);
   const expiresAt = verificationExpiresAt();
 
   await query(
     `UPDATE users
-     SET email_verification_token = $1,
+     SET email_verification_token_hash = $1,
          email_verification_expires_at = $2,
          updated_at = CURRENT_TIMESTAMP
      WHERE id = $3`,
-    [token, expiresAt.toISOString(), userId],
+    [tokenHash, expiresAt.toISOString(), userId],
     0
   );
 
@@ -95,7 +106,7 @@ export async function assignVerificationToken(userId: string): Promise<string> {
 export async function clearVerificationToken(userId: string): Promise<void> {
   await query(
     `UPDATE users
-     SET email_verification_token = NULL,
+     SET email_verification_token_hash = NULL,
          email_verification_expires_at = NULL,
          updated_at = CURRENT_TIMESTAMP
      WHERE id = $1`,
@@ -108,13 +119,34 @@ export async function markEmailVerified(userId: string): Promise<void> {
   await query(
     `UPDATE users
      SET is_email_verified = true,
-         email_verification_token = NULL,
+         email_verification_token_hash = NULL,
          email_verification_expires_at = NULL,
          updated_at = CURRENT_TIMESTAMP
      WHERE id = $1`,
     [userId],
     0
   );
+}
+
+/**
+ * Resolve a plaintext verification token to its user row. Does not check expiry;
+ * callers validate `email_verification_expires_at` separately.
+ */
+export async function findUserByVerificationToken(
+  token: string
+): Promise<VerificationUserRow | null> {
+  if (!token) return null;
+  const tokenHash = hashEmailVerificationToken(token);
+
+  const result = await query<VerificationUserRow>(
+    `SELECT id, email, name, role, account_type, is_email_verified
+     FROM users
+     WHERE email_verification_token_hash = $1`,
+    [tokenHash],
+    0
+  );
+
+  return result.rows[0] ?? null;
 }
 
 export async function sendUserVerificationEmail(

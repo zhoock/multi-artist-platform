@@ -32,10 +32,10 @@ import type { ApiResponse } from './lib/types';
 import {
   assignVerificationToken,
   assertVerificationEmailAllowed,
+  findUserByVerificationToken,
   mapAuthUser,
   markEmailVerified,
   sendUserVerificationEmail,
-  type VerificationUserRow,
 } from './lib/email-verification';
 import {
   deleteUserAccount,
@@ -256,15 +256,9 @@ async function handleVerifyEmailGet(
     };
   }
 
-  const result = await query<VerificationUserRow>(
-    `SELECT id, email, name, role, account_type, is_email_verified
-     FROM users
-     WHERE email_verification_token = $1`,
-    [token],
-    0
-  );
+  const user = await findUserByVerificationToken(token);
 
-  if (result.rows.length === 0) {
+  if (!user) {
     return {
       statusCode: 302,
       headers: {
@@ -273,8 +267,6 @@ async function handleVerifyEmailGet(
       body: '',
     };
   }
-
-  const user = result.rows[0];
 
   if (user.is_email_verified) {
     return {
