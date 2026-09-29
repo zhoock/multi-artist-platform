@@ -105,8 +105,10 @@ export function ArticlePage() {
     type,
     userId,
     blockKind,
-  }: ArticledetailsProps) {
+    articleTitle,
+  }: ArticledetailsProps & { articleTitle: string }) {
     const mediaCaption = resolveDetailCaption({ caption }) ?? '';
+    const contentImageAlt = mediaCaption || articleTitle;
     const imageList = images && Array.isArray(images) ? images : Array.isArray(img) ? img : null;
     const carouselItems =
       type === 'carousel' && imageList
@@ -150,7 +152,7 @@ export function ArticlePage() {
                 'ArticlePage:singleImage',
                 { hasUserId: !!userId }
               )}
-              alt={mediaCaption}
+              alt={contentImageAlt}
               loading="lazy"
               decoding="async"
             />
@@ -217,7 +219,7 @@ type ArticleContentProps = {
   lang: LocaleKey;
   artistSlug: string | null;
   siteArtistName: string;
-  renderBlock: (details: ArticledetailsProps) => JSX.Element;
+  renderBlock: (details: ArticledetailsProps & { articleTitle: string }) => JSX.Element;
 };
 
 function ArticleContent({
@@ -491,7 +493,7 @@ function ArticleContent({
   const renderDetailBlocks = (blocks: typeof article.details, keyPrefix: string) =>
     blocks.map((d, index) => (
       <Fragment key={`${keyPrefix}-${d.blockId ?? d.id ?? index}`}>
-        {renderBlock({ ...d, userId: article.userId })}
+        {renderBlock({ ...d, userId: article.userId, articleTitle: article.nameArticle })}
       </Fragment>
     ));
 
