@@ -35,6 +35,7 @@ import { buildArtistPagePath } from '@shared/lib/seo/publicPagePaths';
 import { ArtistArchiveButton } from '@features/artistArchive';
 import { readStoredProfileDisplayName } from '@shared/lib/profileDisplayName';
 import { ArtistPageSkeletonHero } from '@pages/Home/ui/ArtistPageSkeleton';
+import { usePrefersReducedMotion } from '@shared/lib/motion/prefersReducedMotion';
 import { HeroCoverImage } from './HeroCoverImage';
 import './style.scss';
 
@@ -179,6 +180,7 @@ export function Hero() {
     [headerImages, heroVisualKey]
   );
   const showHeroCoverImage = Boolean(heroCoverSources) && !showHeroImageBuilder;
+  const prefersReducedMotion = usePrefersReducedMotion();
 
   const handleHeroCoverReadyForPaint = useCallback(() => {
     setHeroCoverPaintReady(true);
@@ -245,7 +247,8 @@ export function Hero() {
       !hasArtistParam ||
       !artistParamKey ||
       hideHeroForArtistOnboarding ||
-      !showPublishedHeroChrome
+      !showPublishedHeroChrome ||
+      prefersReducedMotion
     ) {
       setUniverseInitAllowed(false);
       return;
@@ -272,6 +275,7 @@ export function Hero() {
     isHeaderImagesReady,
     showHeroCoverImage,
     showPublishedHeroChrome,
+    prefersReducedMotion,
   ]);
 
   useEffect(() => {
@@ -280,7 +284,8 @@ export function Hero() {
       !hasArtistParam ||
       !artistParamKey ||
       hideHeroForArtistOnboarding ||
-      !showPublishedHeroChrome
+      !showPublishedHeroChrome ||
+      prefersReducedMotion
     )
       return;
     const el = heroCanvasRef.current;
@@ -372,6 +377,7 @@ export function Hero() {
     hideHeroForArtistOnboarding,
     showPublishedHeroChrome,
     universeInitAllowed,
+    prefersReducedMotion,
   ]);
 
   if (hideHeroForArtistOnboarding) {
@@ -434,7 +440,9 @@ export function Hero() {
       {showHeroCoverImage && heroCoverSources ? (
         <HeroCoverImage sources={heroCoverSources} onReadyForPaint={handleHeroCoverReadyForPaint} />
       ) : null}
-      {showPublishedHeroChrome ? <div ref={heroCanvasRef} className="hero__canvas" /> : null}
+      {showPublishedHeroChrome && !prefersReducedMotion ? (
+        <div ref={heroCanvasRef} className="hero__canvas" />
+      ) : null}
       <div className="hero__content">
         <div className="hero__headline">
           <div className="hero__headline-main">

@@ -81,6 +81,18 @@ const HERO_JPG = '/api/proxy-image?path=users/u1/hero/cover-1920.jpg';
 
 describe('Hero Universe3D scheduling after cover paint', () => {
   beforeEach(() => {
+    Object.defineProperty(window, 'matchMedia', {
+      writable: true,
+      configurable: true,
+      value: jest.fn((query: string) => ({
+        matches: false,
+        media: query,
+        addEventListener: jest.fn(),
+        removeEventListener: jest.fn(),
+        dispatchEvent: jest.fn(),
+      })),
+    });
+
     navigateMock.mockReset();
     ensurePublicArtistsLoadedMock.mockClear();
     loadUniverse3DModuleMock.mockClear();

@@ -60,6 +60,7 @@ import { buildLocalizedPublicPath } from '@shared/lib/i18n/routeLang';
 import { buildPublicPageHreflangUrls } from '@shared/lib/seo/buildPublicPageHreflangUrls';
 import { ArtistPageSeoHelmet } from './ArtistPageSeoHelmet';
 import { scheduleAfterPostPaint } from '@shared/lib/scheduleAfterPostPaint';
+import { usePrefersReducedMotion } from '@shared/lib/motion/prefersReducedMotion';
 import './homeSceneChrome.scss';
 
 const HOME_USE_MOCKS_STORAGE_KEY = 'homeUseMocks';
@@ -107,6 +108,7 @@ export function HomePage() {
       return false;
     }
   });
+  const prefersReducedMotion = usePrefersReducedMotion();
   const toggleUseMocks = useCallback(() => {
     setUseMocks((prev) => {
       const next = !prev;
@@ -285,6 +287,8 @@ export function HomePage() {
       if (cancelled || !sceneRef.current) return;
       setSceneArtists(artists);
 
+      if (prefersReducedMotion) return;
+
       const { Universe3D } = await loadUniverse3DModule();
       if (cancelled || !sceneRef.current) return;
 
@@ -402,7 +406,7 @@ export function HomePage() {
         sceneRef.current.innerHTML = '';
       }
     };
-  }, [dispatch, hasArtistParam, navigate, useMocks, universeRefreshToken]);
+  }, [dispatch, hasArtistParam, navigate, prefersReducedMotion, useMocks, universeRefreshToken]);
 
   useEffect(() => {
     if (process.env.NODE_ENV === 'production') return;
