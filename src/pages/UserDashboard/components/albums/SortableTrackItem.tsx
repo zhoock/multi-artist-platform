@@ -249,12 +249,14 @@ export function SortableTrackItem({
     onToggle();
   };
 
-  const handleHeaderKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault();
-      handleHeaderClick();
-    }
+  const handleExpandClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation();
+    handleHeaderClick();
   };
+
+  const expandTrackAriaLabel = isOpen
+    ? `Collapse track ${track.title}`
+    : `Expand track ${track.title}`;
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -300,15 +302,13 @@ export function SortableTrackItem({
             isOpen && 'user-dashboard__expanded-track-card--expanded'
           )}
         >
+          {/* Pointer hit target for row expand; keyboard/screen readers use chevron expand button. */}
+          {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
           <div
             className={clsx('user-dashboard__expanded-track-header', {
               'user-dashboard__expanded-track-header--access-menu-open': accessMenuOpen,
             })}
-            role="button"
-            tabIndex={0}
-            aria-expanded={isOpen}
             onClick={handleHeaderClick}
-            onKeyDown={handleHeaderKeyDown}
           >
             <button
               type="button"
@@ -325,9 +325,26 @@ export function SortableTrackItem({
               </span>
             </button>
 
-            <span className="user-dashboard__expanded-track-chevron" aria-hidden>
-              <DashboardExpandChevron expanded={isOpen} />
-            </span>
+            <button
+              type="button"
+              className="user-dashboard__expanded-track-chevron"
+              aria-expanded={isOpen}
+              aria-label={expandTrackAriaLabel}
+              disabled={isEditing}
+              onClick={handleExpandClick}
+              style={{
+                padding: 0,
+                border: 'none',
+                background: 'transparent',
+                cursor: isEditing ? 'default' : 'pointer',
+                font: 'inherit',
+                color: 'inherit',
+              }}
+            >
+              <span aria-hidden="true">
+                <DashboardExpandChevron expanded={isOpen} />
+              </span>
+            </button>
 
             <span className="user-dashboard__expanded-track-number">
               {String(displayIndex).padStart(2, '0')}
