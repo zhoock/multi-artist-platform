@@ -3,7 +3,7 @@
  * Заменяет системные window.confirm()
  */
 
-import React from 'react';
+import React, { useId } from 'react';
 import { TriangleAlert as TriangleAlertIcon } from 'lucide-react';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 import { ModalCloseIcon } from '@shared/ui/icons/ModalCloseIcon';
@@ -40,9 +40,17 @@ export function ConfirmationModal({
   const showIrreversibleHint = irreversibleHint !== null;
   const irreversibleHintText =
     irreversibleHint === undefined ? 'This action cannot be undone.' : irreversibleHint;
+  const titleId = useId();
+  const messageId = useId();
+  const dialogAriaLabelledBy = title ? titleId : messageId;
 
   return (
-    <Popup isActive={isOpen} onClose={onCancel} bgColor="rgba(var(--deep-black-rgb) / 95%)">
+    <Popup
+      isActive={isOpen}
+      onClose={onCancel}
+      bgColor="rgba(var(--deep-black-rgb) / 95%)"
+      aria-labelledby={dialogAriaLabelledBy}
+    >
       <div className="confirmation-modal">
         <div className="confirmation-modal__container">
           <div className="confirmation-modal__header">
@@ -54,13 +62,21 @@ export function ConfirmationModal({
                   />
                 </span>
               )}
-              {title && <h2 className="confirmation-modal__title">{title}</h2>}
+              {title ? (
+                <h2 id={titleId} className="confirmation-modal__title">
+                  {title}
+                </h2>
+              ) : null}
             </div>
             <PopupCloseButton className="confirmation-modal__close" aria-label={closeLabel}>
               <ModalCloseIcon />
             </PopupCloseButton>
           </div>
-          {message ? <p className="confirmation-modal__message">{message}</p> : null}
+          {message ? (
+            <p id={title ? undefined : messageId} className="confirmation-modal__message">
+              {message}
+            </p>
+          ) : null}
           {showIrreversibleHint && irreversibleHintText ? (
             <p className="confirmation-modal__warning">{irreversibleHintText}</p>
           ) : null}

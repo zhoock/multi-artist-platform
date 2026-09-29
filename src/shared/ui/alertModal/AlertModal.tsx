@@ -4,6 +4,7 @@
  */
 
 import clsx from 'clsx';
+import { useId } from 'react';
 import { ModalCloseIcon } from '@shared/ui/icons/ModalCloseIcon';
 import { Popup, PopupCloseButton } from '../popup';
 import './style.scss';
@@ -40,6 +41,9 @@ export function AlertModal({
   variant = 'info',
 }: AlertModalProps) {
   const isDestructive = variant === 'error';
+  const titleId = useId();
+  const messageId = useId();
+  const dialogAriaLabelledBy = title ? titleId : messageId;
 
   const handleAction = () => {
     if (onAction) {
@@ -49,17 +53,29 @@ export function AlertModal({
   };
 
   return (
-    <Popup isActive={isOpen} onClose={onClose} publicBackdrop>
+    <Popup
+      isActive={isOpen}
+      onClose={onClose}
+      publicBackdrop
+      aria-labelledby={dialogAriaLabelledBy}
+    >
+      {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- shield only; not a control */}
       <div className="alert-modal" onClick={(event) => event.stopPropagation()}>
         <div className="alert-modal__card">
           <header className="alert-modal__header">
-            {title ? <h2 className="alert-modal__title">{title}</h2> : null}
+            {title ? (
+              <h2 id={titleId} className="alert-modal__title">
+                {title}
+              </h2>
+            ) : null}
             <PopupCloseButton type="button" className="alert-modal__close" aria-label={closeLabel}>
               <ModalCloseIcon />
             </PopupCloseButton>
           </header>
 
-          <p className="alert-modal__message">{message}</p>
+          <p id={title ? undefined : messageId} className="alert-modal__message">
+            {message}
+          </p>
 
           <footer className="alert-modal__footer">
             {secondaryButton ? (
