@@ -81,11 +81,24 @@ export function BlockImage({
     }
   }
 
-  const handleImageClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleImageSelect = () => {
     onSelect?.();
   };
 
+  const handleImageClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    handleImageSelect();
+  };
+
+  const handleImageContainerKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    if (e.target !== e.currentTarget) return;
+    e.preventDefault();
+    e.stopPropagation();
+    handleImageSelect();
+  };
+
+  /* eslint-disable jsx-a11y/no-static-element-interactions, jsx-a11y/no-noninteractive-tabindex -- editor block focus shell; image selection is on inner container */
   return (
     <div
       className="edit-article-v2__block edit-article-v2__block--image"
@@ -98,7 +111,10 @@ export function BlockImage({
         <div className="edit-article-v2__media-figure">
           <div
             className="edit-article-v2__image-container"
+            role="button"
+            tabIndex={0}
             onClick={handleImageClick}
+            onKeyDown={handleImageContainerKeyDown}
             onMouseEnter={() => setShowCarouselButton(true)}
             onMouseLeave={() => setShowCarouselButton(false)}
           >
