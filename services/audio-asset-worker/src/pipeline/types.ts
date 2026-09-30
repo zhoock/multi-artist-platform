@@ -74,4 +74,6 @@ export interface ProcessTrackJobPayload {
   trackId: string;
   masterPath: string;
   stages?: string[];
+  /** Re-run playback transcoding even when the track is already ready. */
+  force?: boolean;
 }

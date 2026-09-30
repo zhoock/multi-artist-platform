@@ -32,7 +32,7 @@ function logLockRetriesExhausted(payload: ProcessTrackJobPayload, attempts: numb
     stages,
     generators: getGeneratorsForStageIds(stages),
     attempts,
-    reason: 'advisory_lock_not_acquired',
+    reason: 'track_processing_lock_not_acquired',
   });
 }
 

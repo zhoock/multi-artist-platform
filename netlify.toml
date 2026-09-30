@@ -376,3 +376,13 @@
 
 [functions."scheduled-subscription-renewals"]
   schedule = "*/15 * * * *"
+
+# In-site audio processor. Include only the Linux binaries Lambda can execute.
+# ffprobe-static also ships macOS/Windows builds; bundling those exceeds the
+# Netlify function size limit.
+[functions."process-track-assets-background"]
+  memory = 1024
+  included_files = [
+    "node_modules/ffmpeg-static/ffmpeg",
+    "node_modules/ffprobe-static/bin/linux/x64/ffprobe",
+  ]

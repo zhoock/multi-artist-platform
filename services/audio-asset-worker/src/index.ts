@@ -4,6 +4,7 @@ import { pipelineTrace } from './lib/pipelineTrace.js';
 import { checkFfmpegToolsAvailable, getFfmpegVersionLabel } from './processors/ffmpegTranscoder.js';
 import { processTrackJobWithRetry } from './processTrackJobRetry.js';
 import type { ProcessTrackJobPayload } from './pipeline/types.js';
+import { beginTrackProcessingJob, finishTrackProcessingJob } from './trackProcessingGate.js';
 
 const app = express();
 app.use(express.json({ limit: '1mb' }));
@@ -71,25 +72,7 @@ app.post('/jobs/process-track', async (req, res) => {
     return;
   }
 
-  res.status(202).json({ accepted: true, trackId: payload.trackId });
-
-  pipelineTrace(
-    'HTTP /jobs/process-track accepted',
-    {
-      trackDbId: payload.trackDbId,
-      trackId: payload.trackId,
-      masterPath: payload.masterPath,
-      stages: payload.stages ?? '(default)',
-    },
-    { trackDbId: payload.trackDbId, trackId: payload.trackId }
-  );
-
-  void processTrackJobWithRetry(payload).catch((err) => {
-    console.error('[process-track] Job failed:', {
-      trackId: payload.trackId,
-      error: err instanceof Error ? err.message : String(err),
-    });
-  });
+  acceptTrackProcessingJob(res, payload, 'process-track');
 });
 
 app.post('/jobs/regenerate', async (req, res) => {
@@ -110,10 +93,23 @@ app.post('/jobs/regenerate', async (req, res) => {
     return;
   }
 
+  acceptTrackProcessingJob(res, payload, 'regenerate');
+});
+
+function acceptTrackProcessingJob(
+  res: express.Response,
+  payload: ProcessTrackJobPayload,
+  label: string
+): void {
+  if (!beginTrackProcessingJob(payload.trackDbId)) {
+    res.status(202).json({ accepted: true, duplicate: true, trackId: payload.trackId });
+    return;
+  }
+
   res.status(202).json({ accepted: true, trackId: payload.trackId });
 
   pipelineTrace(
-    'HTTP /jobs/regenerate accepted',
+    `HTTP /jobs/${label} accepted`,
     {
       trackDbId: payload.trackDbId,
       trackId: payload.trackId,
@@ -123,13 +119,17 @@ app.post('/jobs/regenerate', async (req, res) => {
     { trackDbId: payload.trackDbId, trackId: payload.trackId ?? payload.trackDbId }
   );
 
-  void processTrackJobWithRetry(payload).catch((err) => {
-    console.error('[regenerate] Job failed:', {
-      trackId: payload.trackId,
-      error: err instanceof Error ? err.message : String(err),
+  void processTrackJobWithRetry(payload)
+    .catch((err) => {
+      console.error(`[${label}] Job failed:`, {
+        trackId: payload.trackId,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    })
+    .finally(() => {
+      finishTrackProcessingJob(payload.trackDbId);
     });
-  });
-});
+}
 
 const port = Number(process.env.PORT || 8090);
 const server = app.listen(port, async () => {

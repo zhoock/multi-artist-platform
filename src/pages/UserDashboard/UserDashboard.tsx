@@ -109,6 +109,7 @@ import { getStore } from '@shared/model/appStore';
 import { uploadTracks, prepareAndUploadTrack, type TrackUploadData } from '@shared/api/tracks';
 import { regenerateTrackAssets } from '@shared/api/tracks/regenerateTrackAssets';
 import { TRACK_ORDER_INDEX_STEP } from '@shared/lib/tracks/trackOrderIndex';
+import { buildTrackProcessingFailedAfterUploadMessage } from './lib/trackProcessingAlertMessage';
 import type { AlbumFormData } from './components/modals/album/EditAlbumModal.types';
 import { DashboardLazyModals } from './components/shell/DashboardLazyModals';
 import { DashboardNavTabIcon } from './lib/dashboardNavTabIcon';
@@ -1776,7 +1777,9 @@ function UserDashboard() {
           return;
         }
 
-        markTrackProcessingPendingLocally(albumSlug, trackId);
+        if (result.enqueued) {
+          markTrackProcessingPendingLocally(albumSlug, trackId);
+        }
         try {
           await dispatch(fetchDashboardAlbums({ force: true, ownerDashboard: true })).unwrap();
         } catch (fetchError: unknown) {
@@ -1815,7 +1818,9 @@ function UserDashboard() {
           });
           return;
         }
-        markTrackProcessingPendingLocally(retryTracks.albumId, trackId);
+        if (result.enqueued) {
+          markTrackProcessingPendingLocally(retryTracks.albumId, trackId);
+        }
       }
 
       setAlertModal(null);
@@ -2201,9 +2206,13 @@ function UserDashboard() {
         );
 
         const partialFailuresMessage = formatUploadFailuresMessage(uploadFailures, ui);
-        const processingMessage =
+        const processingMessage = buildTrackProcessingFailedAfterUploadMessage(
+          failedProcessingTracks.map((entry) => ({
+            processingError: (entry as { processingError?: string | null }).processingError,
+          })),
           ui?.dashboard?.trackProcessingFailedAfterUpload ??
-          'Tracks were uploaded, but audio processing could not start.';
+            'Tracks were uploaded, but audio processing could not start.'
+        );
 
         if (failedProcessingTracks.length > 0) {
           const combinedMessage = [processingMessage, partialFailuresMessage]

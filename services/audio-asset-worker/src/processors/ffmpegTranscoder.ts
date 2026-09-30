@@ -2,6 +2,14 @@ import { spawn } from 'node:child_process';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 
+export function resolveFfmpegBinary(): string {
+  return process.env.FFMPEG_PATH?.trim() || 'ffmpeg';
+}
+
+export function resolveFfprobeBinary(): string {
+  return process.env.FFPROBE_PATH?.trim() || 'ffprobe';
+}
+
 export async function runFfmpeg(
   inputPath: string,
   outputPath: string,
@@ -12,7 +20,7 @@ export async function runFfmpeg(
   const args = ['-y', '-i', inputPath, ...outputArgs, outputPath];
 
   await new Promise<void>((resolve, reject) => {
-    const proc = spawn('ffmpeg', args, { stdio: ['ignore', 'pipe', 'pipe'] });
+    const proc = spawn(resolveFfmpegBinary(), args, { stdio: ['ignore', 'pipe', 'pipe'] });
     let stderr = '';
     proc.stderr.on('data', (chunk: Buffer) => {
       stderr += chunk.toString();
@@ -41,7 +49,7 @@ export async function runFfprobe(filePath: string): Promise<FfprobeResult> {
   const args = ['-v', 'quiet', '-print_format', 'json', '-show_format', '-show_streams', filePath];
 
   const stdout = await new Promise<string>((resolve, reject) => {
-    const proc = spawn('ffprobe', args, { stdio: ['ignore', 'pipe', 'pipe'] });
+    const proc = spawn(resolveFfprobeBinary(), args, { stdio: ['ignore', 'pipe', 'pipe'] });
     let out = '';
     let err = '';
     proc.stdout.on('data', (c: Buffer) => {
@@ -105,7 +113,9 @@ export async function runFfprobe(filePath: string): Promise<FfprobeResult> {
 
 export async function getFfmpegVersionLabel(): Promise<string> {
   return new Promise((resolve) => {
-    const proc = spawn('ffmpeg', ['-version'], { stdio: ['ignore', 'pipe', 'ignore'] });
+    const proc = spawn(resolveFfmpegBinary(), ['-version'], {
+      stdio: ['ignore', 'pipe', 'ignore'],
+    });
     let out = '';
     proc.stdout.on('data', (c: Buffer) => {
       out += c.toString();
@@ -132,6 +142,9 @@ export async function checkFfmpegToolsAvailable(): Promise<FfmpegToolAvailabilit
       proc.on('close', (code) => resolve(code === 0));
     });
 
-  const [ffmpeg, ffprobe] = await Promise.all([check('ffmpeg'), check('ffprobe')]);
+  const [ffmpeg, ffprobe] = await Promise.all([
+    check(resolveFfmpegBinary()),
+    check(resolveFfprobeBinary()),
+  ]);
   return { ffmpeg, ffprobe };
 }

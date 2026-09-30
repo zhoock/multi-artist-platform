@@ -1,6 +1,14 @@
 export const PROCESSING_ERROR_WORKER_NOT_CONFIGURED =
   'Audio processing worker is not configured. Please contact support or retry after the worker is available.';
 
+export function processingErrorWorkerNotConfigured(missing: string[]): string {
+  const names = missing.filter(Boolean);
+  if (names.length === 0) {
+    return PROCESSING_ERROR_WORKER_NOT_CONFIGURED;
+  }
+  return `${PROCESSING_ERROR_WORKER_NOT_CONFIGURED} Missing configuration: ${names.join(', ')}. Local .env is not deployed to Netlify.`;
+}
+
 export function processingErrorWorkerUnreachable(detail: string): string {
   const trimmed = detail.trim();
   return trimmed

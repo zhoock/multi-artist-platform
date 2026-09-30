@@ -68,7 +68,7 @@ Optional assets **не влияют** на `tracks.processing_status` и **не 
 
 **Regenerate API и bulk scripts только enqueue job — без `UPDATE … status = 'pending'` до worker.**
 
-Переход asset → `processing` происходит в worker **после** `pg_try_advisory_lock`, в `markAssetProcessing` на старте stage.
+Переход asset → `processing` происходит в worker **после** claim строки `tracks.processing_lock_token`, в `markAssetProcessing` на старте stage.
 
 Если lock занят другим job:
 

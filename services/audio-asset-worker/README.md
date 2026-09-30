@@ -2,7 +2,7 @@
 
 External processing service for the Audio Asset Pipeline. Runs FFmpeg transcoding and writes derived assets to Supabase Storage + Postgres.
 
-Concurrent jobs for the same track are deduplicated via **PostgreSQL advisory locks** (`pg_try_advisory_lock`) — duplicate webhooks return 202 and skip processing.
+Concurrent jobs for the same track are deduplicated by a conditional `UPDATE` of `tracks.processing_lock_token`. Duplicate jobs skip processing. This holds on the Supabase transaction pooler; a session advisory lock does not.
 
 ## Endpoints
 

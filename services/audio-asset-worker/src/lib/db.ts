@@ -1,15 +1,17 @@
+import { randomUUID } from 'node:crypto';
 import type pg from 'pg';
 import type { PipelineOutputDefinition } from '../../../../src/shared/lib/audio/audioAssetPipelineConfig.js';
 import {
   GENERATOR_VERSIONS,
   getPlaybackRequiredOutputs,
 } from '../../../../src/shared/lib/audio/audioAssetPipelineConfig.js';
+import {
+  claimTrackProcessingLockSql,
+  releaseTrackProcessingLockSql,
+} from '../../../../src/shared/lib/audio/trackProcessingLock.js';
 import type { PipelineDb } from '../pipeline/types.js';
 import { pipelineTrace, pipelineTraceWarn, type PipelineTraceContext } from './pipelineTrace.js';
 import { getPool } from './pool.js';
-
-/** Advisory lock class id for per-track audio processing jobs. */
-export const TRACK_PROCESS_LOCK_CLASS = 0x415544; // 'AUD'
 
 type AssetStatusRow = {
   type: string;
@@ -243,8 +245,10 @@ export function createPipelineDb(client: pg.PoolClient, trace?: PipelineTraceCon
 export type TrackJobRunResult = 'completed' | 'skipped';
 
 /**
- * Acquire a session-level advisory lock for one track, run the job, then release.
- * Returns 'skipped' when another worker already holds the lock (dedupe).
+ * Claim one track, run the job, then release the claim.
+ * Returns 'skipped' when another worker already holds a fresh claim.
+ * The claim is a committed row, so it survives the transaction pooler
+ * returning the connection between statements.
  */
 export async function runWithTrackProcessingLock(
   trackDbId: string,
@@ -253,30 +257,30 @@ export async function runWithTrackProcessingLock(
 ): Promise<TrackJobRunResult> {
   const pool = getPool();
   const client = await pool.connect();
+  const lockToken = randomUUID();
+  let acquired = false;
 
   try {
-    const lockResult = await client.query<{ acquired: boolean }>(
-      `SELECT pg_try_advisory_lock($1, hashtext($2::text)) AS acquired`,
-      [TRACK_PROCESS_LOCK_CLASS, trackDbId]
-    );
+    const lockResult = await client.query<{ id: string }>(claimTrackProcessingLockSql(), [
+      trackDbId,
+      lockToken,
+    ]);
+    acquired = lockResult.rows.length > 0;
 
-    if (!lockResult.rows[0]?.acquired) {
-      pipelineTraceWarn('advisory lock not acquired — job skipped', { trackDbId }, trace);
+    if (!acquired) {
+      pipelineTraceWarn('track processing lock not acquired — job skipped', { trackDbId }, trace);
       return 'skipped';
     }
 
-    pipelineTrace('advisory lock acquired', { trackDbId }, trace);
+    pipelineTrace('track processing lock acquired', { trackDbId }, trace);
 
     const db = createPipelineDb(client, trace);
     await fn(db);
     return 'completed';
   } finally {
-    await client
-      .query(`SELECT pg_advisory_unlock($1, hashtext($2::text))`, [
-        TRACK_PROCESS_LOCK_CLASS,
-        trackDbId,
-      ])
-      .catch(() => {});
+    if (acquired) {
+      await client.query(releaseTrackProcessingLockSql(), [trackDbId, lockToken]).catch(() => {});
+    }
     client.release();
   }
 }

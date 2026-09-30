@@ -4,8 +4,8 @@
  */
 
 import { ENABLED_PIPELINE_STAGE_IDS } from '../../../src/shared/lib/audio/audioAssetPipelineConfig';
+import { resolveAudioProcessorConfig, signInSiteProcessorBody } from './resolveAudioProcessor';
 import {
-  PROCESSING_ERROR_WORKER_NOT_CONFIGURED,
   processingErrorWorkerRejected,
   processingErrorWorkerUnreachable,
 } from './trackProcessingErrors';
@@ -36,33 +36,51 @@ export type EnqueueTrackProcessingResult =
 export async function enqueueTrackProcessing(
   payload: EnqueueTrackProcessingPayload
 ): Promise<EnqueueTrackProcessingResult> {
-  const workerUrl = (process.env.ASSET_WORKER_URL || '').replace(/\/$/, '');
-  const secret = process.env.ASSET_WORKER_WEBHOOK_SECRET || '';
+  const processor = resolveAudioProcessorConfig();
 
-  if (!workerUrl || !secret) {
-    const message = PROCESSING_ERROR_WORKER_NOT_CONFIGURED;
+  if (!processor.ok) {
     console.error('[enqueueTrackProcessing] Worker not configured — cannot enqueue job', {
       trackId: payload.trackId,
       trackDbId: payload.trackDbId,
-      hasWorkerUrl: Boolean(workerUrl),
-      hasSecret: Boolean(secret),
+      missing: processor.missing,
+      hasWorkerUrl: Boolean(process.env.ASSET_WORKER_URL?.trim()),
+      hasSecret: Boolean(process.env.ASSET_WORKER_WEBHOOK_SECRET?.trim()),
+      context: process.env.CONTEXT || null,
     });
-    return { ok: false, reason: 'worker_not_configured', message };
+    return { ok: false, reason: 'worker_not_configured', message: processor.message };
+  }
+
+  if (processor.source === 'netlify-background') {
+    console.warn(
+      '[enqueueTrackProcessing] ASSET_WORKER_URL is not set. Local .env is not deployed to Netlify, so this runtime is starting the in-site audio processor.',
+      {
+        trackId: payload.trackId,
+        trackDbId: payload.trackDbId,
+        mode: processor.mode,
+      }
+    );
   }
 
   const body = {
     ...payload,
     stages: payload.stages ?? ENABLED_PIPELINE_STAGE_IDS,
   };
+  const rawBody = JSON.stringify(body);
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+  if (processor.source === 'netlify-background') {
+    headers['X-Audio-Processor-Signature'] = signInSiteProcessorBody(processor.secret, rawBody);
+  } else {
+    headers.Authorization = `Bearer ${processor.secret}`;
+  }
 
   try {
-    const res = await fetch(`${workerUrl}/jobs/process-track`, {
+    const res = await fetch(processor.endpoint, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${secret}`,
-      },
-      body: JSON.stringify(body),
+      headers,
+      body: rawBody,
+      signal: AbortSignal.timeout(8_000),
     });
 
     if (!res.ok) {

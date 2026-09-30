@@ -2,7 +2,8 @@
  * POST /api/tracks/regenerate-assets — re-enqueue audio asset processing for a track.
  *
  * Does NOT reset track_assets or tracks.processing_status before enqueue.
- * Worker transitions assets to `processing` only after advisory lock is acquired.
+ * Worker transitions assets to `processing` only after the row claim is acquired.
+ * A second call while the track is pending or processing does not enqueue.
  */
 
 import type { Handler, HandlerEvent } from '@netlify/functions';
@@ -24,6 +25,11 @@ import {
   isOptionalOnlyGenerator,
   resolveRegenerateStagesForGenerator,
 } from '../../src/shared/lib/audio/audioAssetPipelineConfig';
+import { shouldSkipReadyTrackReprocess } from '../../src/shared/lib/audio/shouldSkipReadyTrackReprocess';
+import {
+  shouldRefuseInFlightTrackReprocess,
+  TRACK_PROCESSING_LOCK_LEASE_INTERVAL,
+} from '../../src/shared/lib/audio/trackProcessingLock';
 import { tracksTableHasPipelineColumns, trackAssetsTableExists } from './lib/track-pipeline-schema';
 
 interface RegenerateRequest {
@@ -31,6 +37,7 @@ interface RegenerateRequest {
   trackId: string;
   staleOnly?: boolean;
   generator?: string;
+  force?: boolean;
 }
 
 export const handler: Handler = async (event: HandlerEvent) => {
@@ -69,8 +76,13 @@ export const handler: Handler = async (event: HandlerEvent) => {
     album_db_id: string;
     album_slug: string;
     processing_status: string;
+    processing_lock_stale: boolean;
   }>(
-    `SELECT t.id, t.master_path, t.processing_status, a.id AS album_db_id, a.album_id AS album_slug
+    `SELECT t.id, t.master_path, t.processing_status, a.id AS album_db_id, a.album_id AS album_slug,
+            (
+              t.processing_locked_at IS NOT NULL
+              AND t.processing_locked_at < NOW() - INTERVAL '${TRACK_PROCESSING_LOCK_LEASE_INTERVAL}'
+            ) AS processing_lock_stale
      FROM tracks t
      INNER JOIN albums a ON a.id = t.album_id
      WHERE a.user_id = $1 AND a.album_id = $2 AND t.track_id = $3
@@ -89,6 +101,41 @@ export const handler: Handler = async (event: HandlerEvent) => {
 
   if (generator && !stages) {
     return createErrorResponse(400, `Unknown generator: ${generator}`);
+  }
+
+  if (
+    shouldSkipReadyTrackReprocess({
+      processingStatus: row.processing_status,
+      optionalOnly,
+      force: body.force === true,
+    })
+  ) {
+    return createSuccessResponse(
+      {
+        trackId,
+        enqueued: false,
+        reason: 'already_ready',
+        processingStatus: 'ready',
+      },
+      200
+    );
+  }
+
+  if (
+    shouldRefuseInFlightTrackReprocess({
+      processingStatus: row.processing_status,
+      lockStale: row.processing_lock_stale === true,
+    })
+  ) {
+    return createSuccessResponse(
+      {
+        trackId,
+        enqueued: false,
+        reason: 'already_running',
+        processingStatus: row.processing_status,
+      },
+      200
+    );
   }
 
   if (body.staleOnly && generator) {

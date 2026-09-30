@@ -2,7 +2,7 @@ import { getToken } from '@shared/lib/auth';
 import { fetchWithAuthSession } from '@shared/lib/authFetch';
 
 export type RegenerateTrackAssetsResult =
-  | { success: true; processingStatus: 'pending' }
+  | { success: true; processingStatus: 'pending' | 'ready'; enqueued: boolean }
   | { success: false; error: string };
 
 export async function regenerateTrackAssets(
@@ -35,5 +35,11 @@ export async function regenerateTrackAssets(
     };
   }
 
-  return { success: true, processingStatus: 'pending' };
+  const data =
+    typeof json === 'object' && json !== null && 'data' in json
+      ? (json as { data?: { enqueued?: boolean; processingStatus?: string } }).data
+      : undefined;
+  const enqueued = data?.enqueued !== false;
+  const processingStatus = data?.processingStatus === 'ready' ? 'ready' : 'pending';
+  return { success: true, processingStatus, enqueued };
 }

@@ -5,6 +5,7 @@ import {
   ENABLED_PIPELINE_STAGE_IDS,
   isOptionalOnlyPipelineRun,
 } from '../../../src/shared/lib/audio/audioAssetPipelineConfig.js';
+import { shouldSkipReadyTrackReprocess } from '../../../src/shared/lib/audio/shouldSkipReadyTrackReprocess.js';
 import { finalizeTrackProcessingStatus } from './finalizeTrackProcessingStatus.js';
 import { runWithTrackProcessingLock } from './lib/db.js';
 import { pipelineTrace, pipelineTraceWarn } from './lib/pipelineTrace.js';
@@ -12,13 +13,14 @@ import { buildPublicStorageUrl, createPipelineStorage } from './lib/storage.js';
 import { runPipeline } from './pipeline/runPipeline.js';
 import type { PipelineContext, ProcessTrackJobPayload } from './pipeline/types.js';
 
-export type ProcessTrackJobResult = 'completed' | 'skipped' | 'failed';
+export type ProcessTrackJobResult = 'completed' | 'skipped' | 'failed' | 'already_ready';
 
 export async function processTrackJob(
   payload: ProcessTrackJobPayload
 ): Promise<ProcessTrackJobResult> {
   const trace = { trackDbId: payload.trackDbId, trackId: payload.trackId };
   let jobFailed = false;
+  let alreadyReady = false;
 
   pipelineTrace(
     'processTrackJob start',
@@ -33,23 +35,35 @@ export async function processTrackJob(
   const runResult = await runWithTrackProcessingLock(
     payload.trackDbId,
     async (db) => {
+      const stageIds = payload.stages ?? ENABLED_PIPELINE_STAGE_IDS;
+      const optionalOnlyJob = isOptionalOnlyPipelineRun(stageIds);
+      const currentStatus = await db.getTrackProcessingStatus(payload.trackDbId);
+      if (
+        shouldSkipReadyTrackReprocess({
+          processingStatus: currentStatus,
+          optionalOnly: optionalOnlyJob,
+          force: payload.force,
+        })
+      ) {
+        alreadyReady = true;
+        pipelineTrace('track already ready — skipping reprocess', undefined, trace);
+        return;
+      }
+
       const storage = createPipelineStorage();
       const workDir = await fs.mkdtemp(path.join(os.tmpdir(), 'audio-asset-'));
       const masterLocalPath = path.join(workDir, 'master');
 
       try {
-        const stageIds = payload.stages ?? ENABLED_PIPELINE_STAGE_IDS;
-        const optionalOnlyJob = isOptionalOnlyPipelineRun(stageIds);
-
         if (!optionalOnlyJob) {
           pipelineTrace('setting track status processing', undefined, trace);
           await db.setProcessingStatus(payload.trackDbId, 'processing', null);
         } else {
-          const currentStatus = await db.getTrackProcessingStatus(payload.trackDbId);
-          if (currentStatus !== 'ready') {
+          const optionalStatus = await db.getTrackProcessingStatus(payload.trackDbId);
+          if (optionalStatus !== 'ready') {
             pipelineTrace(
               'optional-only job on non-ready track — setting processing',
-              { currentStatus },
+              { currentStatus: optionalStatus },
               trace
             );
             await db.setProcessingStatus(payload.trackDbId, 'processing', null);
@@ -129,6 +143,11 @@ export async function processTrackJob(
   if (runResult === 'skipped') {
     pipelineTraceWarn('processTrackJob skipped (duplicate lock)', undefined, trace);
     return 'skipped';
+  }
+
+  if (alreadyReady) {
+    pipelineTrace('processTrackJob finished', { result: 'already_ready' }, trace);
+    return 'already_ready';
   }
 
   pipelineTrace('processTrackJob finished', { result: jobFailed ? 'failed' : 'completed' }, trace);

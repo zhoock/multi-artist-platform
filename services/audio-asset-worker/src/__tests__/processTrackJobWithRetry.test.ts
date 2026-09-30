@@ -84,7 +84,7 @@ describe('processTrackJobWithRetry', () => {
         stages: ['generate-waveform'],
         generators: ['waveform'],
         attempts: 2,
-        reason: 'advisory_lock_not_acquired',
+        reason: 'track_processing_lock_not_acquired',
       })
     );
   });

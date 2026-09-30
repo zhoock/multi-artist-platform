@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { pipelineTrace } from './pipelineTrace.js';
 import type { PipelineStorage } from '../pipeline/types.js';
 
-const BUCKET = 'user-media';
+const BUCKET = (process.env.STORAGE_BUCKET_NAME || 'user-media').trim() || 'user-media';
 
 export function createPipelineStorage(): PipelineStorage {
   const supabaseUrl = process.env.SUPABASE_URL || '';
