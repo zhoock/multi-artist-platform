@@ -182,6 +182,10 @@ playerListenerMiddleware.startListening({
   effect: async (action, api: PlayerListenerApi) => {
     const state = api.getState();
     let { playlist = [], currentTrackIndex, isPlaying: wasPlaying, volume } = state.player;
+    const shouldContinuePlayback = wasPlaying || autoContinuePlaybackOnAdvance;
+    if (autoContinuePlaybackOnAdvance) {
+      autoContinuePlaybackOnAdvance = false;
+    }
     const delta: 1 | -1 = playerActions.nextTrack.match(action) ? 1 : -1;
 
     const current = playlist[currentTrackIndex];
@@ -220,9 +224,9 @@ playerListenerMiddleware.startListening({
 
     resetProgress(api);
     audioController.pause();
-    audioController.setSource(trackSrc, wasPlaying);
+    audioController.setSource(trackSrc, shouldContinuePlayback);
 
-    if (wasPlaying) {
+    if (shouldContinuePlayback) {
       const played = await tryPlayWithVolume(volume);
       if (!played) {
         api.dispatch(playerActions.pause());
@@ -336,6 +340,11 @@ let endedTrackIndex: number | null = null;
 let isNextTrackPending = false;
 // Уникальный ID для каждого вызова nextTrack из ended - используется для отслеживания дубликатов
 let lastNextTrackCallId: string | null = null;
+/**
+ * Браузер часто шлёт native `pause` сразу после `ended`, до nextTrack listener.
+ * Redux isPlaying успевает стать false, хотя пользователь слушал альбом — сохраняем intent здесь.
+ */
+let autoContinuePlaybackOnAdvance = false;
 
 export const attachAudioEvents = (dispatch: AppDispatch, getState: () => RootState): void => {
   audioController.ensureElementInDocument();
@@ -462,6 +471,7 @@ export const attachAudioEvents = (dispatch: AppDispatch, getState: () => RootSta
     endedTrackIndex = null;
     isNextTrackPending = false;
     lastNextTrackCallId = null;
+    autoContinuePlaybackOnAdvance = false;
   };
   el.addEventListener('loadedmetadata', loadedmetadataHandler);
 
@@ -500,7 +510,7 @@ export const attachAudioEvents = (dispatch: AppDispatch, getState: () => RootSta
     isNextTrackPending = true;
 
     const state = getState().player;
-    const { playlist = [], currentTrackIndex } = state;
+    const { playlist = [], currentTrackIndex, isPlaying: wasPlayingWhenEnded } = state;
 
     // Сохраняем индекс трека
     endedTrackIndex = currentTrackIndex;
@@ -567,23 +577,22 @@ export const attachAudioEvents = (dispatch: AppDispatch, getState: () => RootSta
         const { repeat, currentTrackIndex } = currentState;
         const isLastTrack = currentTrackIndex === playlist.length - 1;
 
-        if (repeat === 'one') {
-          // Зацикливание одного трека: перезапускаем текущий трек
-          // Сбрасываем прогресс и время в стейте
+        if (repeat === 'one' || (repeat === 'all' && playlist.length === 1)) {
+          // Зацикливание одного трека (или альбом из одного трека с repeat all)
           resetProgress({ dispatch, getState } as ListenerEffectAPI<RootState, AppDispatch>);
           audioController.setCurrentTime(0);
-          dispatch(playerActions.play());
+          if (wasPlayingWhenEnded) {
+            dispatch(playerActions.play());
+          }
         } else if (repeat === 'all') {
-          // Зацикливание плейлиста: переключаем на следующий трек (с зацикливанием)
+          autoContinuePlaybackOnAdvance = wasPlayingWhenEnded;
           dispatch(playerActions.nextTrack(playlist.length));
         } else {
           // repeat === 'none': переключаем на следующий трек, если он есть
-          // Останавливаем воспроизведение только если это последний трек
           if (isLastTrack) {
-            // Это последний трек - останавливаем воспроизведение
             dispatch(playerActions.pause());
           } else {
-            // Есть следующий трек - переключаемся на него
+            autoContinuePlaybackOnAdvance = wasPlayingWhenEnded;
             dispatch(playerActions.nextTrack(playlist.length));
           }
         }
