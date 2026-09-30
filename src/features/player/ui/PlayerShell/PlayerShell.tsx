@@ -209,6 +209,15 @@ export const PlayerShell: React.FC = () => {
     if (typeof window === 'undefined') {
       return;
     }
+    if (hasPlaylist && albumMeta?.albumId) {
+      audioController.ensureElementInDocument();
+    }
+  }, [hasPlaylist, albumMeta?.albumId]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
 
     bootstrapPlayerSession({
       dispatch,

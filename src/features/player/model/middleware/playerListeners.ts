@@ -323,6 +323,9 @@ let loadedmetadataHandler: (() => void) | null = null;
 let durationchangeHandler: (() => void) | null = null;
 let playingHandler: (() => void) | null = null;
 let pauseHandler: (() => void) | null = null;
+let playSyncHandler: (() => void) | null = null;
+let nativePauseSyncHandler: (() => void) | null = null;
+let errorHandler: (() => void) | null = null;
 
 // Флаг для предотвращения множественных вызовов ended подряд
 // Вынесен на уровень модуля, чтобы был доступен и в middleware, и в attachAudioEvents
@@ -335,6 +338,7 @@ let isNextTrackPending = false;
 let lastNextTrackCallId: string | null = null;
 
 export const attachAudioEvents = (dispatch: AppDispatch, getState: () => RootState): void => {
+  audioController.ensureElementInDocument();
   const el = audioController.element;
 
   // Удаляем старые обработчики, если они есть (защита от повторного вызова при hot reload)
@@ -361,6 +365,18 @@ export const attachAudioEvents = (dispatch: AppDispatch, getState: () => RootSta
   if (pauseHandler) {
     el.removeEventListener('pause', pauseHandler);
     pauseHandler = null;
+  }
+  if (playSyncHandler) {
+    el.removeEventListener('play', playSyncHandler);
+    playSyncHandler = null;
+  }
+  if (nativePauseSyncHandler) {
+    el.removeEventListener('pause', nativePauseSyncHandler);
+    nativePauseSyncHandler = null;
+  }
+  if (errorHandler) {
+    el.removeEventListener('error', errorHandler);
+    errorHandler = null;
   }
 
   // Устанавливаем начальную громкость из стейта
@@ -616,6 +632,34 @@ export const attachAudioEvents = (dispatch: AppDispatch, getState: () => RootSta
     lastStartedKey = key;
   };
   el.addEventListener('playing', playingHandler);
+
+  /**
+   * Синхронизация Redux isPlaying с фактическим состоянием HTMLAudioElement.
+   * Отдельные обработчики от GA pause — тот же тип события, разная ответственность.
+   */
+  playSyncHandler = () => {
+    const state = getState();
+    if (!state.player.isPlaying) {
+      dispatch(playerActions.play());
+    }
+  };
+  el.addEventListener('play', playSyncHandler);
+
+  nativePauseSyncHandler = () => {
+    const state = getState();
+    if (state.player.isPlaying) {
+      dispatch(playerActions.pause());
+    }
+  };
+  el.addEventListener('pause', nativePauseSyncHandler);
+
+  errorHandler = () => {
+    const state = getState();
+    if (state.player.isPlaying) {
+      dispatch(playerActions.pause());
+    }
+  };
+  el.addEventListener('error', errorHandler);
 
   /**
    * Событие pause срабатывает когда трек ставится на паузу.

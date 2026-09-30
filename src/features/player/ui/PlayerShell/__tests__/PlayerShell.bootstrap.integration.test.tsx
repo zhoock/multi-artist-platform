@@ -29,7 +29,12 @@ jest.mock('@features/player/model/lib/audioController', () => {
       removeEventListener: jest.fn(),
     } as unknown as HTMLAudioElement,
   };
-  return { audioController: mockAudio };
+  return {
+    audioController: {
+      ...mockAudio,
+      ensureElementInDocument: jest.fn(),
+    },
+  };
 });
 
 jest.mock('@features/player/model/lib/playerPersist', () => ({

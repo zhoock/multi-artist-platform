@@ -30,7 +30,10 @@ jest.mock('@features/player/model/lib/audioController', () => {
   };
 
   return {
-    audioController: mockAudio,
+    audioController: {
+      ...mockAudio,
+      ensureElementInDocument: jest.fn(),
+    },
   };
 });
 

@@ -226,7 +226,6 @@ export default function AudioPlayer({
       : albumMeta.album?.trim() || '');
 
   // Refs для работы с DOM элементами и хранения промежуточных значений
-  const audioContainerRef = useRef<HTMLDivElement | null>(null); // контейнер для прикрепления audio элемента к DOM
   const progressInputRef = useRef<HTMLInputElement | null>(null); // слайдер прогресса для установки CSS переменной
   const prevIsPlayingRef = useRef<boolean | null>(null); // предыдущее состояние isPlaying (null = ещё не установлено)
   const prevTrackIndexRef = useRef<number | null>(null); // предыдущий индекс трека (null = ещё не установлено)
@@ -466,15 +465,9 @@ export default function AudioPlayer({
     setLyricsOpacityMode('normal');
   }, [isIOSDevice, smoothScrollTo]);
 
-  /**
-   * Прикрепляем глобальный audio элемент к DOM при монтировании компонента.
-   * audioController.element - это единственный audio элемент на всё приложение (Singleton).
-   * Нужен для работы аудио (без DOM элемента он не может воспроизводиться).
-   */
+  /** Audio element lives on document.body (see audioController.ensureElementInDocument). */
   useEffect(() => {
-    if (audioContainerRef.current && !audioContainerRef.current.contains(audioController.element)) {
-      audioContainerRef.current.appendChild(audioController.element);
-    }
+    audioController.ensureElementInDocument();
   }, []);
 
   /**
@@ -1583,9 +1576,6 @@ export default function AudioPlayer({
           </span>
         </button>
       </div>
-
-      {/* Невидимый контейнер для прикрепления audio элемента к DOM */}
-      <div ref={audioContainerRef} style={{ display: 'none' }} />
     </div>
   );
 }

@@ -7,12 +7,39 @@
 class AudioController {
   private audio: HTMLAudioElement;
   private currentSrc: string = ''; // Отслеживаем установленный источник
+  /** Persistent DOM host — audio must stay mounted when Full Player UI unmounts. */
+  private mountHost: HTMLElement | null = null;
 
   constructor() {
     // Создаём один глобальный audio элемент
     this.audio = new Audio();
     // Предзагружаем только метаданные (не весь файл) для экономии трафика
     this.audio.preload = 'metadata';
+  }
+
+  /**
+   * Keeps the singleton audio element in document.body for the app lifetime.
+   * Must not be tied to Full Player mount/unmount or playback stops when closing #player.
+   */
+  ensureElementInDocument(): void {
+    if (typeof document === 'undefined') {
+      return;
+    }
+
+    if (this.mountHost && !this.mountHost.isConnected) {
+      this.mountHost = null;
+    }
+
+    if (!this.mountHost) {
+      this.mountHost = document.createElement('div');
+      this.mountHost.setAttribute('data-player-audio-mount', '');
+      this.mountHost.hidden = true;
+      document.body.appendChild(this.mountHost);
+    }
+
+    if (!this.mountHost.contains(this.audio)) {
+      this.mountHost.appendChild(this.audio);
+    }
   }
 
   /**
