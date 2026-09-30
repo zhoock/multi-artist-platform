@@ -71,6 +71,7 @@ export type SortableTrackItemProps = {
   onReplaceTrackAudio?: (albumId: string, trackId: string, trackTitle: string, file: File) => void;
   replaceAudioDisabled?: boolean;
   suppressProcessingStatus?: boolean;
+  pipelineAvailable?: boolean;
 };
 
 export function SortableTrackItem({
@@ -94,6 +95,7 @@ export function SortableTrackItem({
   onReplaceTrackAudio,
   replaceAudioDisabled = false,
   suppressProcessingStatus = false,
+  pipelineAvailable = false,
 }: SortableTrackItemProps) {
   const { lang } = useLang();
   const { monetizationEnabled } = useArtistMonetization();
@@ -379,6 +381,7 @@ export function SortableTrackItem({
               retrying={retryingTrackProcessingId === track.id}
               onRetry={onRetryTrackProcessing}
               suppressed={suppressProcessingStatus}
+              pipelineAvailable={pipelineAvailable}
             />
 
             <div className="user-dashboard__expanded-track-toolbar">

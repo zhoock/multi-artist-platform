@@ -110,6 +110,7 @@ import { uploadTracks, prepareAndUploadTrack, type TrackUploadData } from '@shar
 import { regenerateTrackAssets } from '@shared/api/tracks/regenerateTrackAssets';
 import { TRACK_ORDER_INDEX_STEP } from '@shared/lib/tracks/trackOrderIndex';
 import { buildTrackProcessingFailedAfterUploadMessage } from './lib/trackProcessingAlertMessage';
+import { useDashboardAlbumProcessingPoll } from './lib/useDashboardAlbumProcessingPoll';
 import type { AlbumFormData } from './components/modals/album/EditAlbumModal.types';
 import { DashboardLazyModals } from './components/shell/DashboardLazyModals';
 import { DashboardNavTabIcon } from './lib/dashboardNavTabIcon';
@@ -1056,6 +1057,13 @@ function UserDashboard() {
       abortController.abort();
     };
   }, [albumsFromStore, albumsStatus, lang, siteArtistDisplayName, userId]);
+
+  useDashboardAlbumProcessingPoll({
+    enabled: isArtist && activeTab === 'albums',
+    dispatch,
+    albumsFromStore,
+    albumsData,
+  });
 
   const toggleAlbum = (albumId: string) => {
     setExpandedAlbumId((prev) => (prev === albumId ? null : albumId));

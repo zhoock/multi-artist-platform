@@ -154,3 +154,44 @@ export function inferPipelineAvailableFromClientTracks(
 ): boolean {
   return tracks.some((track) => track.processingStatus != null);
 }
+
+/**
+ * Dashboard track badge: show in-progress while publish is blocked for processing,
+ * not only when processing_status is pending/processing (e.g. ready without src yet).
+ */
+export function isTrackAwaitingPublishPlayability(
+  track: TrackPublishReadinessInput,
+  pipelineAvailable: boolean,
+  mode: 'server' | 'client' = 'client'
+): boolean {
+  if (track.processingStatus === 'failed') {
+    return false;
+  }
+
+  if (isTrackPlayableForPublish(track, undefined, pipelineAvailable, mode)) {
+    return false;
+  }
+
+  if (track.processingStatus === 'pending' || track.processingStatus === 'processing') {
+    return true;
+  }
+
+  if (!pipelineAvailable) {
+    return !String(track.src ?? '').trim();
+  }
+
+  return track.processingStatus === 'ready' || track.processingStatus == null;
+}
+
+export function albumHasTracksAwaitingPublishPlayability(
+  tracks: TrackPublishReadinessInput[],
+  mode: 'server' | 'client' = 'client'
+): boolean {
+  const pipelineAvailable = inferPipelineAvailableFromClientTracks(tracks);
+  const deduped = dedupeTracksByTrackId(tracks);
+  return deduped.some(
+    (track) =>
+      isCatalogVisibleTrack(track.visibility, track.stemsVisibility) &&
+      isTrackAwaitingPublishPlayability(track, pipelineAvailable, mode)
+  );
+}

@@ -3,10 +3,17 @@ import clsx from 'clsx';
 import type { TrackData } from '@entities/album/lib/transformEditableAlbumData';
 import type { IInterface } from '@models';
 import { parseProcessingError } from '@shared/lib/tracks/processingFailureKind';
+import {
+  inferPipelineAvailableFromClientTracks,
+  isTrackAwaitingPublishPlayability,
+} from '@shared/lib/tracks/trackPublishReadiness';
 import { DashboardButton } from '@shared/ui/dashboard';
 
 type TrackProcessingStatusProps = {
-  track: Pick<TrackData, 'processingStatus' | 'processingError'>;
+  track: Pick<
+    TrackData,
+    'processingStatus' | 'processingError' | 'src' | 'visibility' | 'stemsVisibility'
+  >;
   ui?: IInterface;
   albumId: string;
   retrying?: boolean;
@@ -14,6 +21,7 @@ type TrackProcessingStatusProps = {
   trackId: string;
   /** Hide badge while album-level upload progress is active */
   suppressed?: boolean;
+  pipelineAvailable?: boolean;
 };
 
 export function TrackProcessingStatus({
@@ -24,14 +32,35 @@ export function TrackProcessingStatus({
   onRetry,
   trackId,
   suppressed = false,
+  pipelineAvailable: pipelineAvailableProp,
 }: TrackProcessingStatusProps) {
   const copy = ui?.dashboard?.trackProcessing;
 
-  if (suppressed || !track.processingStatus || track.processingStatus === 'ready') {
+  const pipelineAvailable =
+    pipelineAvailableProp ??
+    inferPipelineAvailableFromClientTracks([
+      {
+        trackId,
+        processingStatus: track.processingStatus,
+        src: track.src,
+      },
+    ]);
+  const awaitingPlayability = isTrackAwaitingPublishPlayability(
+    {
+      trackId,
+      processingStatus: track.processingStatus,
+      src: track.src,
+      visibility: track.visibility,
+      stemsVisibility: track.stemsVisibility,
+    },
+    pipelineAvailable
+  );
+
+  if (suppressed) {
     return null;
   }
 
-  if (track.processingStatus === 'pending' || track.processingStatus === 'processing') {
+  if (awaitingPlayability) {
     const label = copy?.processing ?? 'Processing…';
 
     return (
@@ -44,6 +73,10 @@ export function TrackProcessingStatus({
         {label}
       </span>
     );
+  }
+
+  if (!track.processingStatus || track.processingStatus === 'ready') {
+    return null;
   }
 
   const parsed = parseProcessingError(track.processingError);

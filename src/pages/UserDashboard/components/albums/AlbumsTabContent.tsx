@@ -17,6 +17,8 @@ import {
 } from '@dnd-kit/sortable';
 
 import { getAlbumPublishHintKey } from '@entities/album/lib/isAlbumReadyToPublish';
+import { mergeAlbumPublishTracksFromUi } from '@entities/album/lib/mergeAlbumPublishTracksFromUi';
+import { inferPipelineAvailableFromClientTracks } from '@shared/lib/tracks/trackPublishReadiness';
 import { isAlbumPublished } from '@entities/album/lib/albumPublication';
 import { hasPublishedPublicReleases } from '@entities/album/lib/hasPublishedPublicReleases';
 import { getAlbumListDraftBadge } from '@entities/album/lib/albumLifecycleStatus';
@@ -347,7 +349,16 @@ export function AlbumsTabContent({
           const albumVisibility = getAlbumVisibilityFromIsPublic(
             albumFromStore?.isPublic ?? album.isPublic
           );
-          const publishHintKey = albumFromStore ? getAlbumPublishHintKey(albumFromStore) : 'fields';
+          const albumPipelineAvailable = inferPipelineAvailableFromClientTracks(
+            album.tracks.map((track) => ({
+              trackId: track.id,
+              processingStatus: track.processingStatus,
+              src: track.src,
+            }))
+          );
+          const publishHintKey = albumFromStore
+            ? getAlbumPublishHintKey(mergeAlbumPublishTracksFromUi(albumFromStore, album))
+            : 'fields';
           const canPublishAlbum = publishHintKey === 'ready' && Boolean(albumFromStore);
           const isPublishingAlbum = publishingAlbumId === album.id;
           const showPublishControls = albumFromStore
@@ -417,6 +428,7 @@ export function AlbumsTabContent({
                     <div className="user-dashboard__album-year">{album.year}</div>
                   )}
                 </div>
+                {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- stop row toggle; controls inside are native buttons */}
                 <div
                   className="user-dashboard__album-item-actions"
                   onClick={(e) => e.stopPropagation()}
@@ -619,6 +631,7 @@ export function AlbumsTabContent({
                                 onReplaceTrackAudio={onReplaceTrackAudio}
                                 replaceAudioDisabled={Boolean(isUploadingTracks[album.id])}
                                 suppressProcessingStatus={Boolean(isUploadingTracks[album.id])}
+                                pipelineAvailable={albumPipelineAvailable}
                               />
                             );
                           })}

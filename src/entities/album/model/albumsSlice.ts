@@ -125,6 +125,17 @@ export const fetchDashboardAlbums = createAsyncThunk<
               const order_index =
                 typeof rawOrder === 'number' && !Number.isNaN(rawOrder) ? rawOrder : idx;
 
+              const rawProcessingStatus = (track as { processingStatus?: unknown })
+                .processingStatus;
+              const processingStatus =
+                rawProcessingStatus === 'pending' ||
+                rawProcessingStatus === 'processing' ||
+                rawProcessingStatus === 'ready' ||
+                rawProcessingStatus === 'failed'
+                  ? rawProcessingStatus
+                  : undefined;
+              const rawProcessingError = (track as { processingError?: unknown }).processingError;
+
               const normalizedTrack = {
                 id,
                 title: track.title,
@@ -142,6 +153,10 @@ export const fetchDashboardAlbums = createAsyncThunk<
                   (track as { stemsVisibility?: unknown }).stemsVisibility
                 ),
                 playbackLocked: Boolean((track as { playbackLocked?: unknown }).playbackLocked),
+                ...(processingStatus ? { processingStatus } : {}),
+                ...(typeof rawProcessingError === 'string' && rawProcessingError.trim()
+                  ? { processingError: rawProcessingError.trim() }
+                  : {}),
               };
 
               if (normalizedTrack.duration == null) {

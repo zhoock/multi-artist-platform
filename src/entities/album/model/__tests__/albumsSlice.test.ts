@@ -173,6 +173,42 @@ describe('albumsSlice', () => {
       expect(selectDashboardAlbumById(store.getState(), 'album-1')?.albumId).toBe('album-1');
     });
 
+    test('сохраняет processingStatus и processingError треков из API', async () => {
+      const store = createTestStore();
+      setupDashboardFetchContext(store);
+      mockFetch.mockResolvedValueOnce(
+        mockSuccessResponse([
+          {
+            ...mockAlbum,
+            tracks: [
+              {
+                id: 'track-1',
+                title: 'Track',
+                order_index: 0,
+                duration: 180,
+                src: '',
+                processingStatus: 'processing',
+                processingError: '[[enqueue]]temporary',
+              },
+            ],
+          },
+        ])
+      );
+
+      await (store.dispatch as AppDispatch)(
+        fetchDashboardAlbums({ force: true, ownerDashboard: true })
+      );
+
+      const tracks = selectDashboardAlbumsData(store.getState())[0]?.tracks;
+      expect(tracks?.[0]).toEqual(
+        expect.objectContaining({
+          id: 'track-1',
+          processingStatus: 'processing',
+          processingError: '[[enqueue]]temporary',
+        })
+      );
+    });
+
     test('без JWT возвращает пустой dashboard на /dashboard', async () => {
       const store = createTestStore();
       window.history.pushState({}, '', '/dashboard/albums');

@@ -1,9 +1,11 @@
 import { describe, expect, test } from '@jest/globals';
 
 import {
+  albumHasTracksAwaitingPublishPlayability,
   evaluateAlbumTracksPublishReadiness,
   getAlbumTracksPublishBlockKind,
   isCatalogVisibleTrack,
+  isTrackAwaitingPublishPlayability,
   isTrackPlayableForPublish,
 } from '../trackPublishReadiness';
 import type { TrackAssetRecord } from '../../audio/assetResolver';
@@ -165,6 +167,34 @@ describe('trackPublishReadiness', () => {
         undefined,
         false
       )
+    ).toBe(true);
+  });
+
+  test('awaiting publish playability stays true for ready without src on pipeline albums', () => {
+    expect(
+      isTrackAwaitingPublishPlayability(
+        { ...baseVisibleTrack, processingStatus: 'ready', src: '' },
+        true
+      )
+    ).toBe(true);
+    expect(
+      isTrackAwaitingPublishPlayability(
+        { ...baseVisibleTrack, processingStatus: 'ready', src: 'https://cdn/track.opus' },
+        true
+      )
+    ).toBe(false);
+  });
+
+  test('albumHasTracksAwaitingPublishPlayability ignores failed tracks', () => {
+    expect(
+      albumHasTracksAwaitingPublishPlayability([
+        { ...baseVisibleTrack, processingStatus: 'failed', src: '' },
+      ])
+    ).toBe(false);
+    expect(
+      albumHasTracksAwaitingPublishPlayability([
+        { ...baseVisibleTrack, processingStatus: 'processing', src: '' },
+      ])
     ).toBe(true);
   });
 
