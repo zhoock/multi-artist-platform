@@ -6,6 +6,7 @@ import { promoteToastLayers } from '@shared/lib/toast/useToastLayerDialog';
 import { PopupContext } from './PopupContext';
 import './style.scss';
 import '../localModal/localModal.scss';
+import { PLAYER_AMBIENT_GRADIENT_CLASSES } from './playerAmbientBackground';
 
 const FOCUSABLE_SELECTOR =
   'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
@@ -184,7 +185,9 @@ const PopupComponent = ({
       aria-labelledby={ariaLabelledBy}
     >
       {shouldRenderGradient && (
-        <div className="popup__gradient" style={{ background: bgColor }} aria-hidden="true"></div>
+        <div className={PLAYER_AMBIENT_GRADIENT_CLASSES.outer} aria-hidden="true">
+          <div className={PLAYER_AMBIENT_GRADIENT_CLASSES.inner} style={{ background: bgColor }} />
+        </div>
       )}
       <div
         ref={focusSentinelRef}

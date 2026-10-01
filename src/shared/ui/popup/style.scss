@@ -6,20 +6,16 @@
   --card-height: 65vh;
 }
 
-/* декларация @property --rotate */
-@property --rotate {
-  syntax: '<angle>';
-  inherits: false;
-  initial-value: 0deg;
-}
+// Duration synced with playerAmbientBackground.ts
+$player-ambient-gradient-duration: 11.125s;
 
-@keyframes spin {
-  0% {
-    --rotate: 0deg;
+@keyframes player-gradient-rotate {
+  from {
+    transform: rotate(0turn);
   }
 
-  100% {
-    --rotate: 360deg;
+  to {
+    transform: rotate(1turn);
   }
 }
 
@@ -143,41 +139,33 @@ dialog:not(.toast-viewport-layer, .toast-top-layer) {
     }
   }
 
-  // Плеер: живой градиент — только у слоя `.popup__gradient`.
-  // `animation: spin` НЕ на самом <dialog>: иначе анимируется --rotate на всём слое + backdrop-filter
-  // и в браузерах попап визуально «крутится»/наклоняется целиком вместо лёгкой крутящейся подложки.
+  // Full Player: blur/scale on `.popup__gradient`, rotation on `.popup__gradient-inner`.
   &.popup:has(.player) {
-    // Статичный угол градиента на диалоге (inline background использует var(--rotate))
+    // Static gradient angle on dialog (inline background uses var(--rotate))
     --rotate: 132deg;
 
     backdrop-filter: blur(20px);
 
     .popup__gradient {
-      // Не совмещать filter и transform на одном слое: в Safari/iOS GPU
-      // клипит blur по border-box композитного слоя, пока анимируется --rotate,
-      // и в центре появляется прямоугольник размером scale(0.7).
-      // Тот же блоб (70% от слоя 100% с origin по центру + прежний сдвиг),
-      // без transform; padding даёт место для blur-outset, если слой всё же клипнется.
-      --gradient-blur: calc(var(--card-height) / 6);
-      --gradient-outset: calc(var(--gradient-blur) * 2);
-
       position: absolute;
       z-index: -1;
-      box-sizing: content-box;
-      filter: blur(var(--gradient-blur));
-      inline-size: 70%;
-      block-size: 70%;
-      padding: var(--gradient-outset);
-      inset-inline-start: calc(15% - var(--gradient-outset));
-      inset-block-start: calc(var(--card-height) / 6 + 15% - var(--gradient-outset));
-      background-origin: content-box !important;
-      background-clip: content-box !important;
-      animation: spin 11.125s linear infinite;
+      filter: blur(calc(var(--card-height) / 6));
+      transform: scale(0.7);
+      inline-size: 100%;
+      block-size: 100%;
+      inset-block-start: calc(var(--card-height) / 6);
+      overflow: visible;
+      pointer-events: none;
 
-      @media (prefers-reduced-motion: reduce) {
-        --rotate: 132deg;
+      &-inner {
+        inline-size: 100%;
+        block-size: 100%;
+        transform-origin: center center;
+        animation: player-gradient-rotate $player-ambient-gradient-duration linear infinite;
 
-        animation: none;
+        @media (prefers-reduced-motion: reduce) {
+          animation: none;
+        }
       }
     }
   }
