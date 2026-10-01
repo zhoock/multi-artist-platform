@@ -4,6 +4,10 @@ import type { TrackLyricsBundle } from './types';
 
 const normalize = (text: string) => text.trim();
 
+function syncLineMatchesContentText(stored: SyncedLyricsLine, contentText: string): boolean {
+  return normalize(stored.text || '') === normalize(contentText);
+}
+
 /** Build sync-editor lines from canonical bundle + optional dashboard fallback text. */
 export function buildSyncEditorLinesFromBundle(
   bundle: TrackLyricsBundle,
@@ -20,19 +24,19 @@ export function buildSyncEditorLinesFromBundle(
     return { lines: [], authorship };
   }
 
-  const syncByNormalizedText = new Map<string, SyncedLyricsLine>();
-  if (bundle.state === 'synced' && bundle.syncedLines?.length) {
-    for (const line of bundle.syncedLines) {
-      const key = normalize(line.text || '');
-      if (key && !syncByNormalizedText.has(key)) {
-        syncByNormalizedText.set(key, line);
-      }
-    }
-  }
+  const syncedByIndex =
+    bundle.state === 'synced' && bundle.syncedLines?.length ? bundle.syncedLines : null;
 
-  const lines = contentLines.map((text) => {
-    const stored = syncByNormalizedText.get(normalize(text));
-    return stored ?? { text, startTime: 0, endTime: undefined };
+  const lines = contentLines.map((text, index) => {
+    const stored = syncedByIndex?.[index];
+    if (stored && syncLineMatchesContentText(stored, text)) {
+      return {
+        text,
+        startTime: stored.startTime,
+        endTime: stored.endTime,
+      };
+    }
+    return { text, startTime: 0, endTime: undefined };
   });
 
   return { lines, authorship };
