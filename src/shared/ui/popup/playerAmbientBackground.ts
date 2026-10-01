@@ -1,5 +1,5 @@
 /** Full Player ambient gradient — keep duration in sync with `popup/style.scss`. */
-export const PLAYER_AMBIENT_GRADIENT_DURATION_S = 11.125;
+export const PLAYER_AMBIENT_GRADIENT_DURATION_S = 20;
 
 export const PLAYER_AMBIENT_GRADIENT_EASING = 'linear' as const;
 

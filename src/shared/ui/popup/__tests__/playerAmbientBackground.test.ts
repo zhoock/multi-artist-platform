@@ -11,7 +11,7 @@ import {
 
 describe('playerAmbientBackground configuration', () => {
   test('uses stable duration and linear easing', () => {
-    expect(PLAYER_AMBIENT_GRADIENT_DURATION_S).toBe(11.125);
+    expect(PLAYER_AMBIENT_GRADIENT_DURATION_S).toBe(20);
     expect(PLAYER_AMBIENT_GRADIENT_EASING).toBe('linear');
   });
 
