@@ -15,8 +15,11 @@ export {
 } from './api/trackLyricsApi';
 
 export {
+  createEmptyTrackLyricsBundle,
   getLyricsActionsForState,
   getLyricsPreviewLinesFromBundle,
+  hasNonEmptyTrackLyricsEntity,
+  hasStoredTrackLyricsEntity,
   resolveTrackLyricsBundle,
   selectLyricsSyncState,
   selectTrackLyricsBundle,

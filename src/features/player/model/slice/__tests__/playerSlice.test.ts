@@ -329,7 +329,7 @@ describe('playerSlice', () => {
       expect(playlist[0].id).toBe('1');
     });
 
-    test('должен стрипать TracksProps до PlayerTrack (без content/lyrics/order_index)', () => {
+    test('должен стрипать TracksProps до PlayerTrack, сохранив lyrics для плеера', () => {
       const store = configureStore({
         reducer: {
           player: playerReducer,
@@ -363,18 +363,17 @@ describe('playerSlice', () => {
       );
 
       const playlist = selectPlaylist(store.getState() as RootState);
-      expect(playlist).toEqual([
-        {
-          id: '1',
-          title: 'Track 1',
-          duration: 180,
-          src: 'track1.mp3',
-          playbackLocked: false,
-          visibility: 'public',
-        },
-      ]);
-      expect(playlist[0]).not.toHaveProperty('content');
-      expect(playlist[0]).not.toHaveProperty('lyrics');
+      expect(playlist[0]).toMatchObject({
+        id: '1',
+        title: 'Track 1',
+        duration: 180,
+        src: 'track1.mp3',
+        playbackLocked: false,
+        visibility: 'public',
+        content: 'lyrics body',
+        authorship: 'Author',
+      });
+      expect(playlist[0]?.lyrics?.state).toBe('text-only');
       expect(playlist[0]).not.toHaveProperty('order_index');
     });
 

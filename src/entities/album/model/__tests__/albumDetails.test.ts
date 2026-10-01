@@ -4,7 +4,6 @@ import {
   normalizeAlbumDetails,
   isAlbumDetails,
   mapAlbumEditableToAlbumDetails,
-  ALBUM_DETAILS_EXCLUDED_TRACK_FIELDS,
   ALBUM_DETAILS_EXCLUDED_ALBUM_FIELDS,
 } from '../albumDetails';
 
@@ -218,7 +217,7 @@ describe('AlbumDetails model', () => {
     expect(album?.tracks[0]?.stemsAvailability).toBe('public');
   });
 
-  test('mapAlbumEditableToAlbumDetails strips lyrics and reshapes fields', () => {
+  test('mapAlbumEditableToAlbumDetails keeps lyrics for the player and reshapes fields', () => {
     const fat = buildFatAlbum();
     const details = mapAlbumEditableToAlbumDetails(fat);
 
@@ -237,12 +236,9 @@ describe('AlbumDetails model', () => {
     expect(track.audioContainer).toBe('mp3');
     expect(track.translations?.ru?.title).toBe('Трек Один');
 
-    const trackJson = JSON.stringify(track);
-    for (const field of ALBUM_DETAILS_EXCLUDED_TRACK_FIELDS) {
-      expect(trackJson).not.toContain(`"${field}"`);
-    }
-    expect(trackJson).not.toContain('Huge lyrics body');
-    expect(trackJson).not.toContain('syncedLines');
+    expect(track.lyrics?.state).toBe('synced');
+    expect(track.lyrics?.content).toContain('Huge lyrics body');
+    expect(track.content).toContain('Huge lyrics body');
 
     const albumJson = JSON.stringify(details);
     expect(albumJson).not.toContain('"hasDraftChanges"');
@@ -260,9 +256,8 @@ describe('AlbumDetails model', () => {
     }
   });
 
-  test('AlbumDetails payload is smaller than fat AlbumEditable with lyrics', () => {
+  test('AlbumDetails keeps the lyrics bundle and still drops fat-only fields', () => {
     const fat = buildFatAlbum();
-    // Simulate a heavier synced lyrics payload like production fat responses.
     const heavyLyrics = Array.from({ length: 40 }, (_, i) => ({
       text: `Synced lyric line number ${i} with some extra padding text`,
       startTime: i,
@@ -279,15 +274,12 @@ describe('AlbumDetails model', () => {
     };
 
     const details = mapAlbumEditableToAlbumDetails(fat);
-    const fatBytes = Buffer.byteLength(JSON.stringify(fat), 'utf8');
-    const detailsBytes = Buffer.byteLength(JSON.stringify(details), 'utf8');
-    const ratio = Number((detailsBytes / fatBytes).toFixed(3));
+    const detailsJson = JSON.stringify(details);
 
-    // Fixture with 40 synced lyric lines on one track (representative of fat /api/albums).
-    // Typical result: ~7.5KB → ~2.2KB (≈30% of fat size).
-    expect(detailsBytes).toBeLessThan(fatBytes);
-    expect(ratio).toBeLessThan(0.7);
-    expect(fatBytes).toBeGreaterThan(5000);
-    expect(detailsBytes).toBeLessThan(3000);
+    expect(details.tracks[0]?.lyrics?.state).toBe('synced');
+    expect(details.tracks[0]?.lyrics?.syncedLines).toHaveLength(40);
+    expect(detailsJson).not.toContain('"hasDraftChanges"');
+    expect(detailsJson).not.toContain('"order_index"');
+    expect(Object.prototype.hasOwnProperty.call(details, 'artist')).toBe(false);
   });
 });

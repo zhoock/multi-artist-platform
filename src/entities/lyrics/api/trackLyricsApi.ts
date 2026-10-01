@@ -1,6 +1,11 @@
 import type { SyncedLyricsLine } from '@models';
+import { createEmptyTrackLyricsBundle } from '../lib/selectors';
 import { getAuthHeader } from '@shared/lib/auth';
 import { fetchWithAuthSession } from '@shared/lib/authFetch';
+import {
+  resolvePublicArtistSlugForApi,
+  shouldSkipUnauthenticatedPublicArtistApi,
+} from '@shared/lib/publicArtistContext';
 import type { TrackLyricsBundle } from '@shared/lib/lyrics/types';
 
 type ApiResult = {
@@ -28,17 +33,43 @@ async function parseBundleResponse(response: Response): Promise<TrackLyricsBundl
   return result.data;
 }
 
+export class TrackLyricsUnavailableError extends Error {
+  constructor() {
+    super('Track lyrics are not available for this viewer');
+    this.name = 'TrackLyricsUnavailableError';
+  }
+}
+
+export type FetchTrackLyricsOptions = {
+  artistSlug?: string | null;
+  /**
+   * Player read path: 404 → empty bundle (lyrics confirmed absent).
+   * `{ success: true }` without `data` is access withheld — throws, does not invent empty.
+   */
+  tolerateMissing?: boolean;
+};
+
 export async function fetchTrackLyricsBundle(
   albumId: string,
   trackId: string | number,
-  lang: string
+  lang: string,
+  options?: FetchTrackLyricsOptions
 ): Promise<TrackLyricsBundle> {
+  const artistSlug = await resolvePublicArtistSlugForApi(options?.artistSlug);
+  if (await shouldSkipUnauthenticatedPublicArtistApi(artistSlug)) {
+    throw new Error('Missing public artist context for track lyrics');
+  }
+
   const params = new URLSearchParams({
     albumId,
     trackId: String(trackId),
     lang,
     _ts: String(Date.now()),
   });
+  if (artistSlug) {
+    params.set('artist', artistSlug);
+  }
+
   const response = await fetchWithAuthSession(`/api/track-lyrics?${params.toString()}`, {
     cache: 'no-store',
     headers: {
@@ -47,6 +78,22 @@ export async function fetchTrackLyricsBundle(
       ...getAuthHeader(),
     },
   });
+
+  if (options?.tolerateMissing) {
+    if (response.status === 404) {
+      return createEmptyTrackLyricsBundle(albumId, trackId, lang);
+    }
+    if (response.ok) {
+      const result = (await response.json()) as ApiResult;
+      if (result.success && result.data) {
+        return result.data;
+      }
+      if (result.success && !result.data) {
+        throw new TrackLyricsUnavailableError();
+      }
+    }
+  }
+
   return parseBundleResponse(response);
 }
 

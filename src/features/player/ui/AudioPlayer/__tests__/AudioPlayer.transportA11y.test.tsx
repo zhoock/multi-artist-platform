@@ -56,7 +56,7 @@ jest.mock('../hooks/useLyricsScrollRestore', () => ({ useLyricsScrollRestore: ()
 jest.mock('../hooks/useLyricsManualScroll', () => ({ useLyricsManualScroll: () => undefined }));
 jest.mock('../hooks/useLyricsAutoScroll', () => ({ useLyricsAutoScroll: () => undefined }));
 jest.mock('../hooks/useLyricsContent', () => ({
-  useLyricsContent: () => null,
+  useLyricsContent: () => ({ lyricsBundle: null, hasNonEmptyLyricsEntity: true }),
 }));
 jest.mock('../hooks/useSeek', () => ({
   useSeek: () => ({

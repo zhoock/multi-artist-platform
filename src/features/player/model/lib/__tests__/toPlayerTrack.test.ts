@@ -3,7 +3,7 @@ import { describe, expect, test } from '@jest/globals';
 import { toPlayerTrack, toPlayerTracks } from '../toPlayerTrack';
 
 describe('toPlayerTrack', () => {
-  test('strips fat TracksProps fields and keeps playback-only shape', () => {
+  test('keeps lyrics fields and strips the rest of a fat track', () => {
     const thin = toPlayerTrack(
       {
         id: 't1',
@@ -30,7 +30,7 @@ describe('toPlayerTrack', () => {
       'alb'
     );
 
-    expect(thin).toEqual({
+    expect(thin).toMatchObject({
       id: 't1',
       albumId: 'alb',
       title: 'Song',
@@ -38,7 +38,12 @@ describe('toPlayerTrack', () => {
       src: 'https://cdn.example/a.mp3',
       playbackLocked: true,
       visibility: 'subscribers_only',
+      content: 'full lyrics text that must not enter the player queue',
+      authorship: 'Writer',
     });
+    expect(thin?.lyrics?.state).toBe('synced');
+    expect(thin).not.toHaveProperty('translations');
+    expect(thin).not.toHaveProperty('order_index');
   });
 
   test('toPlayerTracks drops invalid rows', () => {

@@ -1,7 +1,9 @@
 /**
- * Mid-weight album page model — open-album payload without lyrics.
- * Not interchangeable with full `AlbumEditable` (Dashboard / fat `/api/albums`).
+ * Mid-weight album page model.
+ * Track rows keep the lyrics bundle the player queue needs. Not a full AlbumEditable.
  */
+
+import type { TrackLyricsBundle } from '@shared/lib/lyrics/types';
 
 import type { detailsProps, AlbumEditable, TracksProps } from '@models';
 import type { TrackVisibility } from '@shared/lib/tracks/trackVisibility';
@@ -52,8 +54,11 @@ export interface TrackDetails {
   waveformUrl?: string | null;
   /** Per-asset lifecycle from track_assets (waveform/json/default). */
   waveformStatus?: 'pending' | 'processing' | 'ready' | 'failed' | null;
-  /** Title per locale only — no lyrics / authorship blobs. */
+  /** Title per locale only — lyrics live on the track root, as on the old album payload. */
   translations?: Partial<Record<'en' | 'ru', { title: string }>>;
+  lyrics?: TrackLyricsBundle;
+  content?: string;
+  authorship?: string;
 }
 
 export interface AlbumDetailsLocale {
@@ -225,7 +230,36 @@ function normalizeTrackDetails(raw: unknown): TrackDetails | null {
           ? null
           : undefined,
     translations,
+    ...trackLyricsFields(v),
   };
+}
+
+function trackLyricsFields(
+  v: Record<string, unknown>
+): Pick<TrackDetails, 'lyrics' | 'content' | 'authorship'> {
+  const lyrics = readTrackLyrics(v.lyrics);
+  const content = typeof v.content === 'string' && v.content ? v.content : lyrics?.content;
+  const authorship =
+    typeof v.authorship === 'string' && v.authorship
+      ? v.authorship
+      : typeof lyrics?.authorship === 'string'
+        ? lyrics.authorship
+        : undefined;
+  return {
+    ...(lyrics ? { lyrics } : {}),
+    ...(content ? { content } : {}),
+    ...(authorship ? { authorship } : {}),
+  };
+}
+
+function readTrackLyrics(value: unknown): TrackLyricsBundle | undefined {
+  if (!value || typeof value !== 'object') return undefined;
+  const bundle = value as TrackLyricsBundle;
+  if (bundle.state !== 'synced' && bundle.state !== 'text-only' && bundle.state !== 'empty') {
+    return undefined;
+  }
+  if (typeof bundle.content !== 'string') return undefined;
+  return bundle;
 }
 
 export function isAlbumDetails(value: unknown): value is AlbumDetails {
@@ -307,7 +341,7 @@ export function normalizeAlbumDetails(raw: unknown): AlbumDetails | null {
 
 /**
  * Map a fat `AlbumEditable` (or equivalent) into AlbumDetails for parity checks.
- * Explicitly drops lyrics / content / authorship / stems-only dashboard fields.
+ * Keeps the track lyrics bundle for the player. Drops stems-only dashboard fields.
  */
 export function mapAlbumEditableToAlbumDetails(album: AlbumEditable): AlbumDetails {
   const release = parseRelease(album.release);
@@ -372,6 +406,9 @@ export function mapAlbumEditableToAlbumDetails(album: AlbumEditable): AlbumDetai
           ? track.processingStatus
           : undefined,
       translations: trackTranslations.en || trackTranslations.ru ? trackTranslations : undefined,
+      ...(track.lyrics ? { lyrics: track.lyrics } : {}),
+      ...(track.content ? { content: track.content } : {}),
+      ...(track.authorship ? { authorship: track.authorship } : {}),
     };
   });
 
@@ -398,12 +435,7 @@ export function mapAlbumEditableToAlbumDetails(album: AlbumEditable): AlbumDetai
 }
 
 /** Fields present on fat `/api/albums` tracks that AlbumDetails intentionally omits. */
-export const ALBUM_DETAILS_EXCLUDED_TRACK_FIELDS = [
-  'content',
-  'lyrics',
-  'authorship',
-  'syncedLines',
-] as const;
+export const ALBUM_DETAILS_EXCLUDED_TRACK_FIELDS = ['syncedLines'] as const;
 
 /** Fat album-level fields not carried into AlbumDetails (or reshaped). */
 export const ALBUM_DETAILS_EXCLUDED_ALBUM_FIELDS = [

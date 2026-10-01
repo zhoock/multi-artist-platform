@@ -1,7 +1,10 @@
 /**
  * Pure mappers for GET /api/artists/:slug/albums/:albumId (AlbumDetails).
- * No lyrics / content / authorship — those stay on /api/track-lyrics.
+ * Lyrics bundle is attached by the album-details handler for tracks already on the page
+ * (same embed the fat album payload used). Access rules for audio stay here.
  */
+
+import type { TrackLyricsBundle } from '../../../src/shared/lib/lyrics/types';
 
 import type { detailsProps } from '../../../src/models';
 import { normalizeTrackVisibility } from '../../../src/shared/lib/tracks/trackVisibility';
@@ -51,6 +54,9 @@ export interface TrackDetailsDto {
   waveformUrl?: string | null;
   waveformStatus?: ProcessingStatus | null;
   translations?: Partial<Record<'en' | 'ru', { title: string }>>;
+  lyrics?: TrackLyricsBundle;
+  content?: string;
+  authorship?: string;
 }
 
 export interface AlbumDetailsLocaleDto {

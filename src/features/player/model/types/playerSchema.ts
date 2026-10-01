@@ -2,6 +2,8 @@
  * Типы и начальное состояние для Redux стейта плеера.
  */
 
+import type { TrackLyricsBundle } from '@shared/lib/lyrics/types';
+
 // Состояние времени трека: текущая позиция и общая длительность
 export interface PlayerTimeState {
   current: number; // текущее время в секундах
@@ -19,8 +21,9 @@ export interface PlayerAlbumMeta {
 }
 
 /**
- * Thin playlist row — only fields needed for playback / queue UI.
- * No lyrics, stems, translations, or audio-* tech meta.
+ * Thin playlist row for playback / queue UI.
+ * Keeps the lyrics bundle (and plain content/authorship) the player used before
+ * the queue was detached from fat tracks. No stems, translations, or audio tech meta.
  */
 export interface PlayerTrack {
   /** Track id (same as TracksProps.id). */
@@ -31,6 +34,10 @@ export interface PlayerTrack {
   src: string;
   playbackLocked?: boolean;
   visibility?: 'public' | 'subscribers_only' | 'hidden';
+  /** Canonical lyrics bundle when the album payload included one. */
+  lyrics?: TrackLyricsBundle;
+  content?: string;
+  authorship?: string;
 }
 
 export interface PlayerSourceLocation {

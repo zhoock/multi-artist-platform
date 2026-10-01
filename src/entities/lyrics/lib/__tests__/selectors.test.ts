@@ -1,7 +1,10 @@
 import { describe, expect, it } from '@jest/globals';
 import { configureStore } from '@reduxjs/toolkit';
 
-import { resolveTrackLyricsBundle } from '@entities/lyrics/lib/selectors';
+import {
+  createEmptyTrackLyricsBundle,
+  resolveTrackLyricsBundle,
+} from '@entities/lyrics/lib/selectors';
 import { applyTrackLyricsBundle } from '@entities/lyrics/model/actions';
 import { trackLyricsReducer } from '@entities/lyrics/model/trackLyricsSlice';
 import type { RootState } from '@shared/model/appStore/types';
@@ -58,6 +61,26 @@ describe('resolveTrackLyricsBundle', () => {
     expect(resolved.syncedLines).toBeNull();
   });
 
+  it('uses a synced playlist fallback when the stored entity is empty', () => {
+    const store = configureStore({
+      reducer: { trackLyrics: trackLyricsReducer },
+    });
+
+    store.dispatch(
+      applyTrackLyricsBundle(createEmptyTrackLyricsBundle('album-1', 'track-1', 'ru'))
+    );
+
+    const resolved = resolveTrackLyricsBundle(
+      asRootState(store.getState()),
+      'album-1',
+      'track-1',
+      syncedBundle
+    );
+
+    expect(resolved.state).toBe('synced');
+    expect(resolved.syncedLines).toEqual(syncedBundle.syncedLines);
+  });
+
   it('uses hydration fallback until Redux is populated', () => {
     const store = configureStore({
       reducer: { trackLyrics: trackLyricsReducer },
@@ -94,6 +117,27 @@ describe('resolveTrackLyricsBundle', () => {
       'album-1',
       'track-1',
       enFallback
+    );
+
+    expect(resolved.state).toBe('synced');
+    expect(resolved.lang).toBe('ru');
+  });
+
+  it('prefers non-empty locale over empty placeholder in another locale', () => {
+    const store = configureStore({
+      reducer: { trackLyrics: trackLyricsReducer },
+    });
+
+    store.dispatch(applyTrackLyricsBundle(syncedBundle));
+    store.dispatch(
+      applyTrackLyricsBundle(createEmptyTrackLyricsBundle('album-1', 'track-1', 'en'))
+    );
+
+    const resolved = resolveTrackLyricsBundle(
+      asRootState(store.getState()),
+      'album-1',
+      'track-1',
+      null
     );
 
     expect(resolved.state).toBe('synced');

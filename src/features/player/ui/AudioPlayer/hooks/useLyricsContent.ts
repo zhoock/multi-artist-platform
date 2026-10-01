@@ -1,10 +1,24 @@
-import { useLayoutEffect } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import type { EqualityFn } from 'react-redux';
+import { useStore } from 'react-redux';
 
-import { resolveTrackLyricsBundle } from '@entities/lyrics';
+import {
+  applyTrackLyricsBundle,
+  fetchTrackLyricsBundle,
+  hasNonEmptyTrackLyricsEntity,
+  resolveTrackLyricsBundle,
+} from '@entities/lyrics';
 import type { SyncedLyricsLine } from '@models';
 import type { PlayerTrack } from '@features/player/model/types/playerSchema';
+import { useAppDispatch } from '@shared/lib/hooks/useAppDispatch';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
+import { useEffectiveLocation } from '@shared/lib/hooks/useEffectiveLocation';
+import type { RootState } from '@shared/model/appStore/types';
+import {
+  resolvePublicArtistSlugForApi,
+  shouldSkipUnauthenticatedPublicArtistApi,
+} from '@shared/lib/publicArtistContext';
+import { resolveLyricsSyncState } from '@shared/lib/lyrics';
 import type { TrackLyricsBundle } from '@shared/lib/lyrics/types';
 
 import { debugLog } from '../utils/debug';
@@ -21,6 +35,12 @@ interface UseLyricsContentParams {
   setIsLoadingSyncedLyrics: React.Dispatch<React.SetStateAction<boolean>>;
   setHasSyncedLyricsAvailable: React.Dispatch<React.SetStateAction<boolean>>;
 }
+
+export type UseLyricsContentResult = {
+  lyricsBundle: TrackLyricsBundle | null;
+  /** True when slice already has text-only/synced lyrics for this track (any locale). */
+  hasNonEmptyLyricsEntity: boolean;
+};
 
 const normalize = (text: string) => text.replace(/\r\n/g, '\n').trim();
 
@@ -70,6 +90,50 @@ function buildKaraokeLines(bundle: TrackLyricsBundle, duration: number): SyncedL
   return synced;
 }
 
+/**
+ * Hydration fallback from the playlist row until trackLyricsSlice is populated.
+ * Same contract as before the thin queue: embedded `track.lyrics`, else plain content.
+ */
+export function buildPlaylistLyricsFallback(
+  albumId: string,
+  track: PlayerTrack,
+  lang: string
+): TrackLyricsBundle | null {
+  if (track.lyrics && track.lyrics.state !== 'empty') {
+    return track.lyrics;
+  }
+
+  const content = track.content?.trim() ? track.content : '';
+  if (!content && !track.authorship?.trim()) {
+    return null;
+  }
+
+  const state = resolveLyricsSyncState({ content, syncedLines: null });
+  return {
+    albumId: albumId || '',
+    trackId: String(track.id),
+    lang: lang === 'ru' ? 'ru' : 'en',
+    content,
+    authorship: track.authorship,
+    syncedLines: null,
+    state,
+    syncedAt: null,
+  };
+}
+
+function resolveCanonicalAlbumId(
+  currentTrack: PlayerTrack,
+  albumIdFallback: string,
+  state: RootState
+): string {
+  return (
+    currentTrack.albumId?.trim() ||
+    state.player.albumMeta?.albumId?.trim() ||
+    state.player.albumId?.trim() ||
+    albumIdFallback
+  );
+}
+
 export function useLyricsContent({
   currentTrack,
   albumId,
@@ -81,22 +145,99 @@ export function useLyricsContent({
   setCurrentLineIndex,
   setIsLoadingSyncedLyrics,
   setHasSyncedLyricsAvailable,
-}: UseLyricsContentParams): TrackLyricsBundle | null {
-  // Playlist no longer carries lyrics — only trackLyricsSlice (hydrate via albums fetch / API).
+}: UseLyricsContentParams): UseLyricsContentResult {
+  const dispatch = useAppDispatch();
+  const store = useStore<RootState>();
+  const location = useEffectiveLocation();
+  const fetchGenerationRef = useRef(0);
+
+  const artistSlugFromUrl = useMemo(() => {
+    const raw = new URLSearchParams(location.search).get('artist');
+    return raw?.trim() || null;
+  }, [location.search]);
+
+  const artistSlugForLyrics = useAppSelector(
+    (state) => state.player.albumMeta?.publicSlug?.trim() || artistSlugFromUrl || null
+  );
+
+  const canonicalAlbumId = useAppSelector((state) => {
+    if (!currentTrack) return albumId;
+    return resolveCanonicalAlbumId(currentTrack, albumId, state);
+  });
+
+  const hasNonEmptyLyricsEntity = useAppSelector((state) => {
+    if (!currentTrack) return true;
+    return hasNonEmptyTrackLyricsEntity(state, canonicalAlbumId, currentTrack.id);
+  });
+
   const lyricsBundle = useAppSelector(
     (state): TrackLyricsBundle | null => {
       if (!currentTrack) return null;
-
-      const canonicalAlbumId =
-        currentTrack.albumId?.trim() ||
-        state.player.albumMeta?.albumId?.trim() ||
-        state.player.albumId?.trim() ||
-        albumId;
-
-      return resolveTrackLyricsBundle(state, canonicalAlbumId, currentTrack.id, null);
+      const fallback = buildPlaylistLyricsFallback(canonicalAlbumId, currentTrack, lang);
+      return resolveTrackLyricsBundle(state, canonicalAlbumId, currentTrack.id, fallback);
     },
     { equalityFn: areLyricsBundlesEqual }
   );
+
+  useEffect(() => {
+    if (!currentTrack || hasNonEmptyLyricsEntity) {
+      return;
+    }
+
+    const generation = ++fetchGenerationRef.current;
+    const trackId = String(currentTrack.id);
+    const albumIdForFetch = canonicalAlbumId;
+
+    setIsLoadingSyncedLyrics(true);
+
+    void (async () => {
+      try {
+        const artistSlug = await resolvePublicArtistSlugForApi(artistSlugForLyrics);
+        if (await shouldSkipUnauthenticatedPublicArtistApi(artistSlug)) {
+          debugLog('useLyricsContent: skip track-lyrics fetch (no public artist context)', {
+            albumId: albumIdForFetch,
+            trackId,
+          });
+          return;
+        }
+
+        const bundle = await fetchTrackLyricsBundle(albumIdForFetch, trackId, lang, {
+          artistSlug,
+          tolerateMissing: true,
+        });
+
+        if (fetchGenerationRef.current !== generation) {
+          return;
+        }
+
+        const existing = resolveTrackLyricsBundle(store.getState(), albumIdForFetch, trackId, null);
+        if (existing.state !== 'empty' && bundle.state === 'empty') {
+          return;
+        }
+
+        dispatch(applyTrackLyricsBundle(bundle));
+      } catch (error) {
+        debugLog('useLyricsContent: failed to fetch track lyrics bundle', { error });
+      } finally {
+        if (fetchGenerationRef.current === generation) {
+          setIsLoadingSyncedLyrics(false);
+        }
+      }
+    })();
+
+    return () => {
+      fetchGenerationRef.current += 1;
+    };
+  }, [
+    artistSlugForLyrics,
+    canonicalAlbumId,
+    currentTrack,
+    dispatch,
+    hasNonEmptyLyricsEntity,
+    lang,
+    setIsLoadingSyncedLyrics,
+    store,
+  ]);
 
   useLayoutEffect(() => {
     setCurrentLineIndex(null);
@@ -148,5 +289,5 @@ export function useLyricsContent({
     setHasSyncedLyricsAvailable,
   ]);
 
-  return lyricsBundle;
+  return { lyricsBundle, hasNonEmptyLyricsEntity } satisfies UseLyricsContentResult;
 }

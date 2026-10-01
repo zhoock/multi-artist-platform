@@ -34,7 +34,7 @@ import { createPlayerRangePointerHandlers } from './lib/createPlayerRangePointer
 import { useLyricsScrollRestore } from './hooks/useLyricsScrollRestore';
 import { useLyricsManualScroll } from './hooks/useLyricsManualScroll';
 import { useLyricsAutoScroll } from './hooks/useLyricsAutoScroll';
-import { useLyricsContent } from './hooks/useLyricsContent';
+import { useLyricsContent, type UseLyricsContentResult } from './hooks/useLyricsContent';
 import { useRewind } from './hooks/useRewind';
 import { useCurrentLineIndex } from './hooks/useCurrentLineIndex';
 import { useSeek } from './hooks/useSeek';
@@ -725,7 +725,7 @@ export default function AudioPlayer({
   }, [albumId]);
 
   // Canonical TrackLyricsBundle from trackLyricsSlice only (playlist no longer carries lyrics)
-  const lyricsBundle = useLyricsContent({
+  const { lyricsBundle, hasNonEmptyLyricsEntity }: UseLyricsContentResult = useLyricsContent({
     currentTrack,
     albumId,
     lang,
@@ -895,7 +895,11 @@ export default function AudioPlayer({
   // Sync availability from canonical bundle (same source as useLyricsContent / trackLyricsSlice)
   const hasSyncedLyricsHint = lyricsBundle?.state === 'synced';
 
-  const hasTextToShow = hasSyncedLyricsAvailable || hasSyncedLyricsHint || hasPlainLyrics;
+  const hasTextToShow =
+    hasSyncedLyricsAvailable ||
+    hasSyncedLyricsHint ||
+    hasPlainLyrics ||
+    (isLoadingSyncedLyrics && !hasNonEmptyLyricsEntity);
 
   // Ref для прямого доступа к элементу отображения времени
   const timeDisplayRef = useRef<HTMLDivElement | null>(null);

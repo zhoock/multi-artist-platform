@@ -2,7 +2,8 @@
  * Mid-weight album page payload — GET /api/artists/:slug/albums/:albumId
  *
  * Returns AlbumDetails (page fields + playable tracks).
- * Lyrics stay on /api/track-lyrics. Full CRUD/list remains on GET /api/albums.
+ * Track lyrics bundle is embedded for rows already returned (former fat album behavior).
+ * Full CRUD/list remains on GET /api/albums. /api/track-lyrics is unchanged.
  */
 
 import type { Handler, HandlerEvent } from '@netlify/functions';
@@ -25,6 +26,7 @@ import {
   type AlbumDetailsLocaleSource,
   type AlbumDetailsTrackSource,
 } from './lib/album-details-mapper';
+import { buildLyricsMapForAlbumTracks } from './lib/track-lyrics';
 import { fetchTrackAssetsByAlbumPks, resolvePipelineAvailable } from './lib/track-assets-loader';
 import { tracksTableHasPipelineColumns } from './lib/track-pipeline-schema';
 
@@ -68,6 +70,8 @@ interface TrackRow {
   audio_file_size: number | null;
   processing_status: string | null;
   master_path: string | null;
+  content: string | null;
+  authorship: string | null;
 }
 
 function parseSlugAndAlbumId(event: HandlerEvent): { slug: string; albumId: string } {
@@ -112,7 +116,9 @@ async function fetchTracksForAlbumPks(albumPks: string[]): Promise<Map<string, T
          t.audio_bit_depth,
          t.audio_channels,
          t.audio_duration,
-         t.audio_file_size${pipelineCols}
+         t.audio_file_size,
+         t.content,
+         t.authorship${pipelineCols}
        FROM tracks t
        WHERE t.album_id = ANY($1::uuid[])
        ORDER BY t.order_index ASC`,
@@ -143,7 +149,9 @@ async function fetchTracksForAlbumPks(albumPks: string[]): Promise<Map<string, T
          NULL::int AS audio_bit_depth,
          NULL::int AS audio_channels,
          NULL::float AS audio_duration,
-         NULL::int AS audio_file_size
+         NULL::int AS audio_file_size,
+         t.content,
+         t.authorship
        FROM tracks t
        WHERE t.album_id = ANY($1::uuid[])
        ORDER BY t.order_index ASC`,
@@ -307,6 +315,29 @@ export const handler: Handler = async (
         code: 'ALBUM_NOT_FOUND',
       });
     }
+
+    const lyricsSource = albumsResult.rows.find((row) => row.lang === 'ru') ?? albumsResult.rows[0];
+    const lyricsRows = tracksByPk.get(lyricsSource.id) ?? [];
+    const lyricsByTrackId = await buildLyricsMapForAlbumTracks(
+      lyricsSource.album_id,
+      lyricsSource.user_id ?? targetUserId,
+      lyricsRows.map((row) => ({
+        track_id: row.track_id,
+        content: row.content,
+        authorship: row.authorship,
+      })),
+      lyricsSource.lang
+    );
+    details.tracks = details.tracks.map((track) => {
+      const bundle = lyricsByTrackId.get(track.id);
+      if (!bundle || bundle.state === 'empty') return track;
+      return {
+        ...track,
+        lyrics: bundle,
+        content: bundle.content,
+        authorship: bundle.authorship,
+      };
+    });
 
     if (!isOwnerViewer && !isAlbumDetailsVisibleToPublicViewer(details)) {
       return createErrorResponse(404, 'Album not found', CORS_HEADERS, {

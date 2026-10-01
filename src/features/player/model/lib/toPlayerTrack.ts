@@ -1,5 +1,16 @@
 import { normalizeTrackIdString } from '@shared/lib/tracks/normalizeTrackIdString';
 import type { PlayerTrack } from '@features/player/model/types/playerSchema';
+import type { TrackLyricsBundle } from '@shared/lib/lyrics/types';
+
+function readLyricsBundle(value: unknown): TrackLyricsBundle | undefined {
+  if (!value || typeof value !== 'object') return undefined;
+  const bundle = value as TrackLyricsBundle;
+  if (bundle.state !== 'synced' && bundle.state !== 'text-only' && bundle.state !== 'empty') {
+    return undefined;
+  }
+  if (typeof bundle.content !== 'string' || typeof bundle.trackId !== 'string') return undefined;
+  return bundle;
+}
 
 /**
  * Strip a fat TracksProps (or legacy persisted row) down to PlayerTrack fields only.
@@ -29,6 +40,15 @@ export function toPlayerTrack(track: unknown, albumId?: string | null): PlayerTr
       ? visibility
       : undefined;
 
+  const lyrics = readLyricsBundle(row.lyrics);
+  const content = typeof row.content === 'string' ? row.content : lyrics?.content;
+  const authorship =
+    typeof row.authorship === 'string'
+      ? row.authorship
+      : typeof lyrics?.authorship === 'string'
+        ? lyrics.authorship
+        : undefined;
+
   return {
     id,
     albumId: resolvedAlbumId,
@@ -37,6 +57,9 @@ export function toPlayerTrack(track: unknown, albumId?: string | null): PlayerTr
     src,
     playbackLocked: Boolean(row.playbackLocked),
     ...(normalizedVisibility ? { visibility: normalizedVisibility } : {}),
+    ...(lyrics ? { lyrics } : {}),
+    ...(content ? { content } : {}),
+    ...(authorship ? { authorship } : {}),
   };
 }
 
