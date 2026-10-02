@@ -91,15 +91,18 @@
   object-fit: contain;
 }
 
-// Portal-меню: компактный overlay в стиле VK
+// Portal-меню: компактный overlay в стиле VK (координаты — inline fixed).
+// Must stay in popup/style.scss dialog direct-child exclusion list (dashboard shell `> *` rules).
 .edit-article-v2__vk-plus-menu {
-  position: absolute;
-  top: calc(100% + 8px);
-  left: 0;
-  z-index: 10001;
+  position: fixed;
+  box-sizing: border-box;
   display: flex;
+  flex: none;
+  align-self: flex-start;
   width: max-content;
   height: max-content;
+  min-width: 0;
+  min-height: 0;
   max-width: calc(100vw - 16px);
   padding: 4px;
   background: var(--dashboard-card-bg, #2b2b2b);
@@ -108,7 +111,7 @@
   box-shadow: 0 4px 16px rgb(0 0 0 / 32%);
   pointer-events: auto;
 
-  &::before {
+  &--below::before {
     content: '';
     position: absolute;
     top: -5px;
@@ -118,6 +121,19 @@
     background: var(--dashboard-card-bg, #2b2b2b);
     border-top: 1px solid var(--dashboard-card-border, rgb(255 255 255 / 12%));
     border-left: 1px solid var(--dashboard-card-border, rgb(255 255 255 / 12%));
+    transform: rotate(45deg);
+  }
+
+  &--above::before {
+    content: '';
+    position: absolute;
+    bottom: -5px;
+    left: 14px;
+    width: 10px;
+    height: 10px;
+    background: var(--dashboard-card-bg, #2b2b2b);
+    border-bottom: 1px solid var(--dashboard-card-border, rgb(255 255 255 / 12%));
+    border-right: 1px solid var(--dashboard-card-border, rgb(255 255 255 / 12%));
     transform: rotate(45deg);
   }
 }

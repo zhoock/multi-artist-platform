@@ -1,5 +1,6 @@
 // src/pages/UserDashboard/components/blocks/SortableBlock.tsx
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import {
@@ -24,6 +25,7 @@ import { BlockList } from './BlockList';
 import { BlockDivider } from './BlockDivider';
 import { BlockImage } from './BlockImage';
 import { BlockCarousel } from './BlockCarousel';
+import { useEditArticleVkPlusMenu } from '../../lib/useEditArticleVkPlusMenu';
 
 interface SortableBlockProps {
   /** Владелец медиа статьи (Storage path) */
@@ -286,7 +288,7 @@ export function SortableBlock({
 }
 
 // Компонент VK-стиля плюса
-function VkPlusInserter({
+export function VkPlusInserter({
   onSelect,
   onClose,
 }: {
@@ -295,7 +297,10 @@ function VkPlusInserter({
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
   const skipOutsideCloseRef = useRef(false);
+  const { menuLayout, portalRoot } = useEditArticleVkPlusMenu(isOpen, triggerRef, menuRef);
 
   const openMenu = useCallback(() => {
     skipOutsideCloseRef.current = true;
@@ -316,7 +321,7 @@ function VkPlusInserter({
       }
 
       const target = event.target as Node;
-      if (rootRef.current?.contains(target)) {
+      if (rootRef.current?.contains(target) || menuRef.current?.contains(target)) {
         return;
       }
 
@@ -354,6 +359,7 @@ function VkPlusInserter({
   return (
     <div ref={rootRef} className="edit-article-v2__vk-plus">
       <button
+        ref={triggerRef}
         type="button"
         className={`edit-article-v2__vk-plus-button${
           isOpen ? ' edit-article-v2__vk-plus-button--active' : ''
@@ -376,27 +382,39 @@ function VkPlusInserter({
       >
         <PlusIcon size={18} strokeWidth={2} aria-hidden />
       </button>
-      {isOpen && (
-        <div className="edit-article-v2__vk-plus-menu" role="menu">
-          {blockTypes.map(({ type, label, Icon }) => (
-            <button
-              key={type}
-              type="button"
-              className="edit-article-v2__vk-plus-menu-item"
-              role="menuitem"
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={(e) => {
-                onSelect(type);
-                closeMenu();
-                e.currentTarget.blur();
-              }}
-            >
-              <Icon aria-hidden="true" />
-              <span>{label}</span>
-            </button>
-          ))}
-        </div>
-      )}
+      {isOpen &&
+        portalRoot &&
+        createPortal(
+          <div
+            ref={menuRef}
+            className={`edit-article-v2__vk-plus-menu${
+              menuLayout.placement === 'above'
+                ? ' edit-article-v2__vk-plus-menu--above'
+                : ' edit-article-v2__vk-plus-menu--below'
+            }`}
+            style={menuLayout.style}
+            role="menu"
+          >
+            {blockTypes.map(({ type, label, Icon }) => (
+              <button
+                key={type}
+                type="button"
+                className="edit-article-v2__vk-plus-menu-item"
+                role="menuitem"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={(e) => {
+                  onSelect(type);
+                  closeMenu();
+                  e.currentTarget.blur();
+                }}
+              >
+                <Icon aria-hidden="true" />
+                <span>{label}</span>
+              </button>
+            ))}
+          </div>,
+          portalRoot
+        )}
     </div>
   );
 }
