@@ -17,6 +17,16 @@ export type EditArticleVkPlusMenuStyleResult = {
   placement: EditArticleVkPlusMenuPlacement;
 };
 
+export type EditArticleVkPlusMenuViewport = {
+  width: number;
+  height: number;
+};
+
+export type EditArticleVkPlusMenuVerticalBounds = {
+  minTop: number;
+  maxBottom: number;
+};
+
 /** Keeps portaled menu intrinsic-sized (overrides dashboard dialog `> *` shell rules). */
 const COMPACT_PORTAL_MENU_SIZING: CSSProperties = {
   width: 'max-content',
@@ -34,10 +44,53 @@ const HIDDEN_MENU_STYLE: CSSProperties = {
   ...COMPACT_PORTAL_MENU_SIZING,
 };
 
+export function resolveEditArticleVkPlusMenuVerticalBounds(
+  trigger: HTMLElement | null,
+  viewport: EditArticleVkPlusMenuViewport
+): EditArticleVkPlusMenuVerticalBounds {
+  const margin = EDIT_ARTICLE_VK_PLUS_MENU_VIEWPORT_MARGIN_PX;
+  const gap = EDIT_ARTICLE_VK_PLUS_MENU_GAP_PX;
+
+  let minTop = margin;
+  let maxBottom = viewport.height - margin;
+
+  if (!trigger) {
+    return { minTop, maxBottom };
+  }
+
+  const dialog =
+    (trigger.closest('dialog.popup') as HTMLElement | null) ??
+    (trigger.closest('dialog') as HTMLElement | null);
+
+  if (dialog) {
+    const header = dialog.querySelector('.edit-article-v2__header') as HTMLElement | null;
+    if (header) {
+      const headerBottom = header.getBoundingClientRect().bottom;
+      if (Number.isFinite(headerBottom)) {
+        minTop = Math.max(minTop, headerBottom + margin);
+      }
+    }
+
+    const footer = dialog.querySelector('.edit-article-v2__footer') as HTMLElement | null;
+    if (footer) {
+      const footerTop = footer.getBoundingClientRect().top;
+      if (Number.isFinite(footerTop)) {
+        maxBottom = Math.min(maxBottom, footerTop - gap);
+      }
+    }
+  }
+
+  if (maxBottom < minTop + gap) {
+    maxBottom = minTop + gap;
+  }
+
+  return { minTop, maxBottom };
+}
+
 export function getEditArticleVkPlusMenuStyle(
   trigger: HTMLElement | null,
   menuSize: EditArticleVkPlusMenuSize | null,
-  viewport: { width: number; height: number } = {
+  viewport: EditArticleVkPlusMenuViewport = {
     width: window.innerWidth,
     height: window.innerHeight,
   }
@@ -49,9 +102,10 @@ export function getEditArticleVkPlusMenuStyle(
   const rect = trigger.getBoundingClientRect();
   const gap = EDIT_ARTICLE_VK_PLUS_MENU_GAP_PX;
   const margin = EDIT_ARTICLE_VK_PLUS_MENU_VIEWPORT_MARGIN_PX;
+  const { minTop, maxBottom } = resolveEditArticleVkPlusMenuVerticalBounds(trigger, viewport);
 
-  const spaceBelow = viewport.height - rect.bottom - gap - margin;
-  const spaceAbove = rect.top - gap - margin;
+  const spaceBelow = maxBottom - rect.bottom - gap;
+  const spaceAbove = rect.top - gap - minTop;
 
   const fitsBelow = spaceBelow >= menuSize.height;
   const fitsAbove = spaceAbove >= menuSize.height;
@@ -59,7 +113,7 @@ export function getEditArticleVkPlusMenuStyle(
   const placement: EditArticleVkPlusMenuPlacement = openBelow ? 'below' : 'above';
 
   let top = openBelow ? rect.bottom + gap : rect.top - gap - menuSize.height;
-  top = Math.min(Math.max(margin, top), viewport.height - margin - menuSize.height);
+  top = Math.min(Math.max(minTop, top), maxBottom - menuSize.height);
 
   let left = rect.left;
   left = Math.min(Math.max(margin, left), viewport.width - margin - menuSize.width);

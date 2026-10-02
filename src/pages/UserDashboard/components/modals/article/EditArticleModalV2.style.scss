@@ -514,14 +514,17 @@ dialog {
     }
 
     // Article body is the scroll container (album shell uses &__body for that).
+    // display:block (not flex) so padding-block-end is included in scrollHeight at scroll end.
     &__content {
       position: relative;
+      display: block;
       flex: 1 1 0;
       min-width: 0;
       min-height: 0;
       overflow: hidden auto;
       overscroll-behavior: contain;
       padding: var(--ms-2);
+      padding-block-end: 32px;
 
       @media (not ($tablets)) {
         // Same inline gutter as other dashboard fullscreen editors
