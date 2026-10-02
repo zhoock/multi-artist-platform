@@ -7,6 +7,7 @@ import { DashboardSpinner } from '@shared/ui/dashboard';
 import { optionalMediaSrc } from '@shared/lib/media/optionalMediaUrl';
 import { ArticleCoverPlaceholder } from '@entities/article';
 import { uploadFile } from '@shared/api/storage';
+import { sanitizeFileName } from '@shared/lib/sanitizeFileName';
 import { uniqueUploadFileSuffix } from '@shared/lib/uniqueUploadFileSuffix';
 import { Popup } from '@shared/ui/popup';
 import { useLang } from '@app/providers/lang';
@@ -77,13 +78,13 @@ export function CarouselEditModal({
         const file = files[i];
         const fileExtension = file.name.split('.').pop() || 'jpg';
         const baseFileName = file.name.replace(/\.[^/.]+$/, '');
-        const fileName = `article_${uniqueUploadFileSuffix()}_${baseFileName}.${fileExtension}`;
-        const imageKey = fileName;
+        const rawFileName = `article_${uniqueUploadFileSuffix()}_${baseFileName}.${fileExtension}`;
+        const imageKey = sanitizeFileName(rawFileName);
 
         const url = await uploadFile({
           file,
           category: 'articles',
-          fileName,
+          fileName: imageKey,
           userId: mediaOwnerUserId,
         });
 

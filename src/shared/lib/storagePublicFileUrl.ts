@@ -17,8 +17,16 @@ function sanitizeUploadFileName(fileName: string): string {
   return sanitizeFileName(fileName);
 }
 
+/**
+ * Storage object names are `sanitizeFileName(input)`.
+ * Article body uploads (`article_*`, not covers) were persisted as the raw photo name,
+ * so lookup must use the same canonical key the uploader wrote to the bucket.
+ * Other names are canonicalized only when they contain whitespace (legacy space → `_`).
+ */
 function normalizeStorageFileNameForLookup(fileName: string): string {
-  if (/\s/.test(fileName)) {
+  const base = fileName.split('/').pop() ?? fileName;
+  const articleBodyImage = base.startsWith('article_') && !base.startsWith('article_cover_');
+  if (articleBodyImage || /\s/.test(fileName)) {
     return sanitizeUploadFileName(fileName);
   }
   return fileName;
