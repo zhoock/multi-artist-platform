@@ -191,4 +191,146 @@ describe('attachAudioEvents ended + repeat', () => {
 
     expect(store.getState().player.isPlaying).toBe(true);
   });
+
+  test('F) repeat all + NaN element.duration + playlist metadata → wrap and play', async () => {
+    const playSpy = mockPlayWithNativeSync();
+    Object.defineProperty(audioController.element, 'duration', {
+      writable: true,
+      configurable: true,
+      value: NaN,
+    });
+    audioController.element.currentTime = 220;
+
+    const store = createStore({
+      playlist: mockTracks,
+      currentTrackIndex: 2,
+      repeat: 'all',
+      isPlaying: true,
+      volume: 80,
+      time: { current: 219.8, duration: 220 },
+      progress: 99.9,
+    });
+
+    fireEndedWithNativePause();
+    await flushEndedAdvance();
+
+    expect(store.getState().player.currentTrackIndex).toBe(0);
+    expect(store.getState().player.isPlaying).toBe(true);
+    expect(playSpy).toHaveBeenCalled();
+  });
+
+  test('G) repeat one + NaN element.duration + metadata → seek 0 and play', async () => {
+    const playSpy = mockPlayWithNativeSync();
+    const setTimeSpy = jest.spyOn(audioController, 'setCurrentTime');
+    Object.defineProperty(audioController.element, 'duration', {
+      writable: true,
+      configurable: true,
+      value: NaN,
+    });
+    audioController.element.currentTime = 200;
+
+    const store = createStore({
+      playlist: mockTracks,
+      currentTrackIndex: 1,
+      repeat: 'one',
+      isPlaying: true,
+      time: { current: 199.6, duration: 200 },
+      progress: 99.8,
+    });
+
+    fireEndedWithNativePause();
+    await flushEndedAdvance();
+
+    expect(store.getState().player.currentTrackIndex).toBe(1);
+    expect(setTimeSpy).toHaveBeenCalledWith(0);
+    expect(playSpy).toHaveBeenCalled();
+    expect(store.getState().player.isPlaying).toBe(true);
+  });
+
+  test('H) repeat one + pause before ended → still restarts on natural end', async () => {
+    const playSpy = mockPlayWithNativeSync();
+    const setTimeSpy = jest.spyOn(audioController, 'setCurrentTime');
+    Object.defineProperty(audioController.element, 'duration', {
+      writable: true,
+      configurable: true,
+      value: 200,
+    });
+    audioController.element.currentTime = 200;
+
+    const store = createStore({
+      playlist: mockTracks,
+      currentTrackIndex: 1,
+      repeat: 'one',
+      isPlaying: true,
+      time: { current: 199.7, duration: 200 },
+      progress: 99.85,
+    });
+
+    audioController.element.dispatchEvent(new Event('pause'));
+    expect(store.getState().player.isPlaying).toBe(false);
+
+    audioController.element.dispatchEvent(new Event('ended'));
+    await flushEndedAdvance();
+
+    expect(setTimeSpy).toHaveBeenCalledWith(0);
+    expect(playSpy).toHaveBeenCalled();
+    expect(store.getState().player.isPlaying).toBe(true);
+  });
+
+  test('J) repeat all + pause before ended on last track → wrap 3→1 and play', async () => {
+    const playSpy = mockPlayWithNativeSync();
+    Object.defineProperty(audioController.element, 'duration', {
+      writable: true,
+      configurable: true,
+      value: 220,
+    });
+    audioController.element.currentTime = 220;
+
+    const store = createStore({
+      playlist: mockTracks,
+      currentTrackIndex: 2,
+      repeat: 'all',
+      isPlaying: true,
+      volume: 80,
+      time: { current: 219.7, duration: 220 },
+      progress: 99.86,
+    });
+
+    audioController.element.dispatchEvent(new Event('pause'));
+    expect(store.getState().player.isPlaying).toBe(false);
+
+    audioController.element.dispatchEvent(new Event('ended'));
+    await flushEndedAdvance();
+
+    expect(store.getState().player.currentTrackIndex).toBe(0);
+    expect(playSpy).toHaveBeenCalled();
+    expect(store.getState().player.isPlaying).toBe(true);
+  });
+
+  test('I) spurious ended at currentTime=0 without effective duration → no repeat restart', async () => {
+    const playSpy = jest.spyOn(audioController, 'play').mockResolvedValue(undefined);
+    const setTimeSpy = jest.spyOn(audioController, 'setCurrentTime');
+    Object.defineProperty(audioController.element, 'duration', {
+      writable: true,
+      configurable: true,
+      value: NaN,
+    });
+    audioController.element.currentTime = 0;
+
+    const store = createStore({
+      playlist: mockTracks,
+      currentTrackIndex: 1,
+      repeat: 'one',
+      isPlaying: false,
+      time: { current: 0, duration: NaN },
+      progress: 0,
+    });
+
+    fireEndedWithNativePause();
+    await flushEndedAdvance();
+
+    expect(playSpy).not.toHaveBeenCalled();
+    expect(setTimeSpy).not.toHaveBeenCalledWith(0);
+    expect(store.getState().player.currentTrackIndex).toBe(1);
+  });
 });

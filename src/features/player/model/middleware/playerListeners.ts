@@ -41,6 +41,64 @@ const getEffectiveTrackDuration = (
   return NaN;
 };
 
+const ENDED_POSITION_TOLERANCE_SECONDS = 0.5;
+
+/** Same duration sources as timeupdate, plus Redux time when the element has not decoded duration yet. */
+const resolveEndedTrackDuration = (
+  el: HTMLAudioElement,
+  playlistTrackDurationSeconds?: number,
+  reduxDuration?: number
+): number => {
+  const effective = getEffectiveTrackDuration(el, playlistTrackDurationSeconds);
+  if (isUsableMediaDuration(effective)) {
+    return effective;
+  }
+  if (reduxDuration !== undefined && isUsableMediaDuration(reduxDuration)) {
+    return reduxDuration;
+  }
+  return NaN;
+};
+
+/**
+ * True when playback reached the natural end (not a spurious ended at t≈0).
+ * Uses element time, Redux time/progress, and effective duration from metadata when needed.
+ */
+const isNaturalTrackEnd = (
+  el: HTMLAudioElement,
+  playlistTrackDurationSeconds: number | undefined,
+  reduxTime: { current: number; duration: number } | undefined,
+  progress: number | undefined
+): boolean => {
+  const duration = resolveEndedTrackDuration(el, playlistTrackDurationSeconds, reduxTime?.duration);
+  if (!isUsableMediaDuration(duration)) {
+    return false;
+  }
+
+  const { currentTime } = el;
+  const reduxCurrent = reduxTime?.current ?? NaN;
+  const atEndByElement =
+    Number.isFinite(currentTime) && currentTime >= duration - ENDED_POSITION_TOLERANCE_SECONDS;
+  const atEndByRedux =
+    Number.isFinite(reduxCurrent) && reduxCurrent >= duration - ENDED_POSITION_TOLERANCE_SECONDS;
+  const atEndByProgress =
+    typeof progress === 'number' && Number.isFinite(progress) && progress >= 99.5;
+
+  if (!atEndByElement && !atEndByRedux && !atEndByProgress) {
+    return false;
+  }
+
+  if (
+    Number.isFinite(currentTime) &&
+    currentTime <= ENDED_POSITION_TOLERANCE_SECONDS &&
+    !atEndByRedux &&
+    !atEndByProgress
+  ) {
+    return false;
+  }
+
+  return true;
+};
+
 // Создаём middleware для слушателей
 type PlayerListenerApi = ListenerEffectAPI<RootState, AppDispatch>;
 
@@ -510,7 +568,13 @@ export const attachAudioEvents = (dispatch: AppDispatch, getState: () => RootSta
     isNextTrackPending = true;
 
     const state = getState().player;
-    const { playlist = [], currentTrackIndex, isPlaying: wasPlayingWhenEnded } = state;
+    const {
+      playlist = [],
+      currentTrackIndex,
+      isPlaying: wasPlayingWhenEnded,
+      time: reduxTime,
+      progress: reduxProgress,
+    } = state;
 
     // Сохраняем индекс трека
     endedTrackIndex = currentTrackIndex;
@@ -526,11 +590,8 @@ export const attachAudioEvents = (dispatch: AppDispatch, getState: () => RootSta
       return;
     }
 
-    // Дополнительная проверка: убеждаемся, что трек действительно доиграл до конца
-    // (currentTime должен быть близок к duration или равен ему)
-    const { currentTime, duration } = el;
-    const isActuallyEnded =
-      Number.isFinite(duration) && duration > 0 && currentTime >= duration - 0.5;
+    const metaDuration = playlist[currentTrackIndex]?.duration;
+    const isActuallyEnded = isNaturalTrackEnd(el, metaDuration, reduxTime, reduxProgress);
 
     if (!isActuallyEnded) {
       // Сбрасываем флаги, если трек не доиграл
@@ -581,11 +642,11 @@ export const attachAudioEvents = (dispatch: AppDispatch, getState: () => RootSta
           // Зацикливание одного трека (или альбом из одного трека с repeat all)
           resetProgress({ dispatch, getState } as ListenerEffectAPI<RootState, AppDispatch>);
           audioController.setCurrentTime(0);
-          if (wasPlayingWhenEnded) {
-            dispatch(playerActions.play());
-          }
+          // Natural end: restart even if native pause already synced isPlaying to false
+          dispatch(playerActions.play());
         } else if (repeat === 'all') {
-          autoContinuePlaybackOnAdvance = wasPlayingWhenEnded;
+          // Natural end (isActuallyEnded): continue album even if native pause synced isPlaying first
+          autoContinuePlaybackOnAdvance = wasPlayingWhenEnded || isActuallyEnded;
           dispatch(playerActions.nextTrack(playlist.length));
         } else {
           // repeat === 'none': переключаем на следующий трек, если он есть
