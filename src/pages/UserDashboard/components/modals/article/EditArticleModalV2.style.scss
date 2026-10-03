@@ -425,10 +425,10 @@ dialog {
       }
 
       &.dashboard-button:focus-visible:not(:disabled) {
-        @include edit-article-image-controls-visible;
-
         color: var(--soft-red);
         border-color: rgb(var(--soft-red-rgb) / 38%);
+
+        @include edit-article-image-controls-visible;
       }
 
       @media (hover: hover) and (pointer: fine) {
