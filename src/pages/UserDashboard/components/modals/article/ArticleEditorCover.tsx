@@ -97,17 +97,27 @@ export function ArticleEditorCover({
                 </div>
               </div>
             ) : (
-              <label htmlFor={inputId} className="edit-article-v2__cover-replace">
-                <UploadIcon size={16} strokeWidth={2} aria-hidden />
-                {texts.replaceCover}
-              </label>
+              <>
+                <div className="edit-article-v2__cover-media-dim" aria-hidden />
+                <button
+                  type="button"
+                  className="edit-article-v2__cover-replace"
+                  disabled={disabled || isUploading}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    document.getElementById(inputId)?.click();
+                  }}
+                >
+                  <UploadIcon size={16} strokeWidth={2} aria-hidden />
+                  {texts.replaceCover}
+                </button>
+              </>
             )}
           </div>
 
           <DashboardButton
             variant="icon"
             className="edit-article-v2__cover-remove"
-            destructive
             disabled={disabled || isUploading}
             onClick={(event) => {
               event.preventDefault();

@@ -77,9 +77,12 @@
 // Общие селекторы img (должны быть перед более специфичными)
 // Селекторы img из вложенных блоков (менее специфичные, чем dialog .edit-article-v2__content.article .uncollapse img)
 .edit-article-v2__image-container img {
+  display: block;
   width: auto;
   max-width: 100%;
   height: auto;
+  margin: 0;
+  margin-block-end: 0;
   border-radius: var(--ms-01);
 }
 
@@ -88,6 +91,8 @@
   width: auto;
   max-width: 100%;
   height: auto;
+  margin: 0;
+  margin-block-end: 0;
   object-fit: contain;
 }
 
@@ -354,6 +359,18 @@ dialog {
 
     &__cover-preview-shell {
       position: relative;
+
+      &:hover,
+      &:focus-within {
+        .edit-article-v2__cover-media-dim {
+          @include edit-article-image-controls-visible;
+        }
+
+        .edit-article-v2__cover-replace,
+        .edit-article-v2__cover-remove {
+          @include edit-article-image-controls-visible;
+        }
+      }
     }
 
     &__cover-preview {
@@ -362,6 +379,10 @@ dialog {
       aspect-ratio: 16 / 9;
       background: var(--dashboard-hover-bg);
       border-radius: var(--ms-01);
+    }
+
+    &__cover-media-dim {
+      @include edit-article-image-media-dim;
     }
 
     &__cover-image {
@@ -375,21 +396,15 @@ dialog {
     &__cover-replace {
       position: absolute;
       inset: 50% auto auto 50%;
-      z-index: 1;
-      display: inline-flex;
-      align-items: center;
-      gap: 0.4rem;
-      padding: var(--ms-01) var(--ms-0);
-      color: var(--dashboard-text-primary);
-      font-size: var(--dashboard-helper-font-size);
-      line-height: 1.2;
-      background: rgb(var(--black-rgb) / 55%);
-      border-radius: var(--ms-02);
+      z-index: 2;
       transform: translate(-50%, -50%);
-      cursor: pointer;
-      backdrop-filter: blur(4px);
 
-      @include edit-article-media-btn($padding: var(--ms-01) var(--ms-0));
+      @include edit-article-image-action-btn($padding: var(--ms-01) var(--ms-0));
+      @include edit-article-image-controls-hidden;
+
+      &:focus-visible {
+        @include edit-article-image-controls-visible;
+      }
     }
 
     &__cover-remove {
@@ -397,17 +412,37 @@ dialog {
       top: var(--ms-01);
       right: var(--ms-01);
       z-index: 3;
-      pointer-events: auto;
-      color: var(--soft-red);
-      background: rgb(var(--black-rgb) / 55%);
-      border-color: transparent;
-      border-radius: 50%;
+
+      @include edit-article-image-action-icon-btn;
+      @include edit-article-image-controls-hidden;
+
+      &.dashboard-button {
+        color: var(--white);
+        background: rgb(var(--black-rgb) / 55%);
+        border: 1px solid rgb(255 255 255 / 22%);
+        border-radius: var(--ms-02);
+        box-shadow: none;
+      }
+
+      &.dashboard-button:focus-visible:not(:disabled) {
+        @include edit-article-image-controls-visible;
+
+        color: var(--soft-red);
+        border-color: rgb(var(--soft-red-rgb) / 38%);
+      }
 
       @media (hover: hover) and (pointer: fine) {
-        &:hover:not(:disabled) {
+        &.dashboard-button:hover:not(:disabled) {
           color: var(--soft-red);
           background: rgb(var(--black-rgb) / 72%);
+          border-color: rgb(var(--soft-red-rgb) / 38%);
         }
+      }
+
+      &.dashboard-button:active:not(:disabled) {
+        color: var(--soft-red);
+        background: rgb(var(--black-rgb) / 78%);
+        border-color: rgb(var(--soft-red-rgb) / 45%);
       }
     }
 
@@ -883,10 +918,25 @@ dialog {
 
     &__image-container {
       position: relative;
+      overflow: hidden;
+      width: fit-content;
+      max-width: 100%;
       margin-bottom: var(--ms-01);
+      border-radius: var(--ms-01);
       cursor: pointer;
 
-      // Стили img определены выше для соблюдения специфичности
+      &:hover,
+      &:focus-within,
+      &--controls-visible {
+        .edit-article-v2__image-media-dim,
+        .edit-article-v2__image-convert-to-carousel {
+          @include edit-article-image-controls-visible;
+        }
+      }
+    }
+
+    &__image-media-dim {
+      @include edit-article-image-media-dim($border-radius: inherit);
     }
 
     &__image-empty {
@@ -902,9 +952,14 @@ dialog {
       position: absolute;
       top: var(--ms-01);
       right: var(--ms-01);
-      z-index: 10;
+      z-index: 2;
 
-      @include edit-article-media-btn($padding: var(--ms-01) var(--ms-0));
+      @include edit-article-image-action-btn($padding: var(--ms-01) var(--ms-0));
+      @include edit-article-image-controls-hidden;
+
+      &:focus-visible {
+        @include edit-article-image-controls-visible;
+      }
     }
 
     &__media-figure {

@@ -1,5 +1,100 @@
 @use '../../../../../scss/abstracts/mixins' as *;
 
+// Полупрозрачные action-кнопки поверх изображений (обложка, фото в статье)
+@mixin edit-article-image-action-btn($padding: var(--ms-01) var(--ms-0)) {
+  & {
+    display: inline-flex;
+    margin: 0;
+    padding: $padding;
+    color: var(--white);
+    font-size: var(--dashboard-helper-font-size);
+    line-height: 1.2;
+    background: rgb(var(--black-rgb) / 55%);
+    border: 1px solid rgb(255 255 255 / 22%);
+    border-radius: var(--ms-02);
+    box-shadow: none;
+    align-items: center;
+    gap: 0.4rem;
+    font-weight: 500;
+    white-space: nowrap;
+    cursor: pointer;
+    backdrop-filter: blur(4px);
+    appearance: none;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    &:hover:not(:disabled) {
+      color: var(--white);
+      background: rgb(var(--black-rgb) / 72%);
+      border-color: rgb(255 255 255 / 32%);
+    }
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--dashboard-btn-focus-ring);
+    outline-offset: 2px;
+  }
+
+  &:active:not(:disabled) {
+    color: var(--white);
+    background: rgb(var(--black-rgb) / 78%);
+    border-color: rgb(255 255 255 / 32%);
+  }
+}
+
+@mixin edit-article-image-action-icon-btn($size: var(--dashboard-btn-height)) {
+  @include edit-article-image-action-btn($padding: 0);
+
+  & {
+    justify-content: center;
+    width: $size;
+    height: $size;
+    min-width: $size;
+    min-height: $size;
+  }
+}
+
+@mixin edit-article-image-media-dim($border-radius: null) {
+  & {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    background: rgb(var(--black-rgb) / 45%);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 220ms ease;
+
+    @if $border-radius {
+      border-radius: $border-radius;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    & {
+      transition-duration: 0.01ms;
+    }
+  }
+}
+
+@mixin edit-article-image-controls-hidden {
+  & {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 220ms ease;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition-duration: 0.01ms;
+  }
+}
+
+@mixin edit-article-image-controls-visible {
+  & {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
 // Кнопки поверх изображений: dashboard primary + непрозрачный фон карточки
 @mixin edit-article-media-btn(
   $padding: var(--dashboard-btn-padding-y) var(--dashboard-btn-padding-x)

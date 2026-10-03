@@ -1,4 +1,6 @@
 // src/pages/UserDashboard/components/blocks/BlockImage.tsx
+import clsx from 'clsx';
+import { Plus as PlusIcon } from 'lucide-react';
 import React, { useRef, useState } from 'react';
 import { getUserImageUrl } from '@shared/api/albums';
 import { getUser } from '@shared/lib/auth';
@@ -29,7 +31,6 @@ export function BlockImage({
 }: BlockImageProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
-  const [showCarouselButton, setShowCarouselButton] = useState(false);
   const captionValue = caption ?? '';
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -110,16 +111,17 @@ export function BlockImage({
       {imageKey && imageUrl ? (
         <div className="edit-article-v2__media-figure">
           <div
-            className="edit-article-v2__image-container"
+            className={clsx('edit-article-v2__image-container', {
+              'edit-article-v2__image-container--controls-visible': isSelected,
+            })}
             role="button"
             tabIndex={0}
             onClick={handleImageClick}
             onKeyDown={handleImageContainerKeyDown}
-            onMouseEnter={() => setShowCarouselButton(true)}
-            onMouseLeave={() => setShowCarouselButton(false)}
           >
             <img src={imageUrl} alt={captionValue.trim()} />
-            {(showCarouselButton || isSelected) && onConvertToCarousel && (
+            <div className="edit-article-v2__image-media-dim" aria-hidden />
+            {onConvertToCarousel ? (
               <button
                 type="button"
                 className="edit-article-v2__image-convert-to-carousel"
@@ -128,9 +130,10 @@ export function BlockImage({
                   onConvertToCarousel();
                 }}
               >
+                <PlusIcon size={16} strokeWidth={2} aria-hidden />
                 Создать карусель
               </button>
-            )}
+            ) : null}
           </div>
           {!isSelected && captionValue.trim() ? (
             <div className="edit-article-v2__media-caption-display">{captionValue.trim()}</div>
