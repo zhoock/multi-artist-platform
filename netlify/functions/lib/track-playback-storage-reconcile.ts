@@ -180,8 +180,18 @@ export async function verifyPlaybackStoragePathExists(
   return promise;
 }
 
+export type MarkPlaybackStorageMissingResult = {
+  assetsFailed: number;
+  tracksFailed: number;
+};
+
 /**
- * Idempotent: only updates rows still `ready` with matching playback path.
+ * Single statement: the stream asset and its track rows fail together, so
+ * `track_assets = failed` + `tracks = ready` cannot be left behind.
+ * Tracks are only failed through primary stream rows whose path is still `storagePath`
+ * (re-checked under row lock), so a stale reconcile for path A cannot fail a track
+ * whose current playback asset is path B.
+ * Also heals rows already split as failed asset (same path) + ready track.
  * Scoped to all locale rows for (userId, albumSlug, trackId).
  */
 export async function markPlaybackStorageMissingForAlbumTrack(
@@ -189,55 +199,90 @@ export async function markPlaybackStorageMissingForAlbumTrack(
   albumSlug: string,
   logicalTrackId: string,
   storagePath: string
-): Promise<boolean> {
+): Promise<MarkPlaybackStorageMissingResult> {
   const path = normalizeStoragePath(storagePath);
   const errorMessage = PLAYBACK_STORAGE_MISSING_ERROR.slice(0, 4000);
 
-  const assetResult = await query(
-    `UPDATE track_assets ta
-     SET status = 'failed',
-         error = $4,
-         updated_at = CURRENT_TIMESTAMP
-     FROM tracks t
-     INNER JOIN albums a ON a.id = t.album_id
-     WHERE ta.track_id = t.id
-       AND a.user_id = $1::uuid
-       AND a.album_id = $2
-       AND t.track_id = $3
-       AND ta.type = 'stream'
-       AND ta.format = 'opus'
-       AND ta.variant = '128k'
-       AND ta.status = 'ready'
-       AND ta.path IS NOT DISTINCT FROM $5`,
+  const result = await query<{ assets_failed: number; tracks_failed: number }>(
+    `WITH target_tracks AS (
+       SELECT t.id
+       FROM tracks t
+       INNER JOIN albums a ON a.id = t.album_id
+       WHERE a.user_id = $1::uuid
+         AND a.album_id = $2
+         AND t.track_id = $3
+     ),
+     failed_assets AS (
+       UPDATE track_assets ta
+       SET status = 'failed',
+           error = $4,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE ta.track_id IN (SELECT id FROM target_tracks)
+         AND ta.type = 'stream'
+         AND ta.format = 'opus'
+         AND ta.variant = '128k'
+         AND ta.status = 'ready'
+         AND ta.path IS NOT DISTINCT FROM $5
+       RETURNING ta.track_id
+     ),
+     already_failed_assets AS (
+       SELECT ta.track_id
+       FROM track_assets ta
+       WHERE ta.track_id IN (SELECT id FROM target_tracks)
+         AND ta.type = 'stream'
+         AND ta.format = 'opus'
+         AND ta.variant = '128k'
+         AND ta.status = 'failed'
+         AND ta.path IS NOT DISTINCT FROM $5
+       FOR UPDATE
+     ),
+     failed_tracks AS (
+       UPDATE tracks t
+       SET processing_status = 'failed',
+           processing_error = $4,
+           src = '',
+           updated_at = CURRENT_TIMESTAMP
+       WHERE t.processing_status = 'ready'
+         AND t.id IN (
+           SELECT track_id FROM failed_assets
+           UNION
+           SELECT track_id FROM already_failed_assets
+         )
+       RETURNING t.id
+     )
+     SELECT
+       (SELECT COUNT(*) FROM failed_assets)::int AS assets_failed,
+       (SELECT COUNT(*) FROM failed_tracks)::int AS tracks_failed`,
     [userId, albumSlug, logicalTrackId, errorMessage, path]
   );
 
-  const trackResult = await query(
-    `UPDATE tracks t
-     SET processing_status = 'failed',
-         processing_error = $4,
-         src = '',
-         updated_at = CURRENT_TIMESTAMP
-     FROM albums a
-     WHERE t.album_id = a.id
-       AND a.user_id = $1::uuid
-       AND a.album_id = $2
-       AND t.track_id = $3
-       AND t.processing_status = 'ready'
-       AND EXISTS (
-         SELECT 1
-         FROM track_assets ta
-         WHERE ta.track_id = t.id
-           AND ta.type = 'stream'
-           AND ta.format = 'opus'
-           AND ta.variant = '128k'
-           AND ta.status = 'ready'
-           AND ta.path IS NOT DISTINCT FROM $5
-       )`,
-    [userId, albumSlug, logicalTrackId, errorMessage, path]
-  );
+  const row = result.rows[0];
+  return {
+    assetsFailed: Number(row?.assets_failed ?? 0),
+    tracksFailed: Number(row?.tracks_failed ?? 0),
+  };
+}
 
-  return (assetResult.rowCount ?? 0) > 0 || (trackResult.rowCount ?? 0) > 0;
+function findPrimaryStreamAsset(assets: TrackAssetRecord[]): TrackAssetRecord | undefined {
+  return assets.find((a) => a.type === 'stream' && a.format === 'opus' && a.variant === '128k');
+}
+
+/**
+ * Playback path to verify for a `ready` track: the selected ready stream, or — when the
+ * primary stream is already `failed` while the track still says `ready` — that asset's path.
+ */
+function resolvePlaybackPathToVerify(assets: TrackAssetRecord[]): string | null {
+  const selected = selectAssetPath(assets, {
+    purpose: 'playback',
+    processingStatus: 'ready',
+    hasPremiumAccess: true,
+  });
+  const selectedPath = selected.url?.trim();
+  if (selectedPath) return selectedPath;
+
+  const primary = findPrimaryStreamAsset(assets);
+  const failedPath = primary?.status === 'failed' ? primary.path?.trim() : '';
+  return failedPath || null;
 }
 
 export type ReconcilePlaybackTrackInput = {
@@ -262,12 +307,7 @@ export async function reconcileReadyPlaybackStorageIfMissing(
     return { processingStatus: input.processingStatus, assets: input.assets, reconciled: false };
   }
 
-  const selected = selectAssetPath(input.assets, {
-    purpose: 'playback',
-    processingStatus: 'ready',
-    hasPremiumAccess: true,
-  });
-  const storagePath = selected.url?.trim();
+  const storagePath = resolvePlaybackPathToVerify(input.assets);
   if (!storagePath) {
     return { processingStatus: input.processingStatus, assets: input.assets, reconciled: false };
   }
@@ -277,14 +317,16 @@ export async function reconcileReadyPlaybackStorageIfMissing(
     return { processingStatus: input.processingStatus, assets: input.assets, reconciled: false };
   }
 
-  await markPlaybackStorageMissingForAlbumTrack(
+  const marked = await markPlaybackStorageMissingForAlbumTrack(
     input.userId,
     input.albumSlug,
     input.logicalTrackId,
     storagePath
   );
+  if (marked.tracksFailed === 0) {
+    return { processingStatus: input.processingStatus, assets: input.assets, reconciled: false };
+  }
 
-  const errorMessage = PLAYBACK_STORAGE_MISSING_ERROR;
   const assets = input.assets.map((asset) => {
     if (
       asset.type === 'stream' &&
