@@ -9,7 +9,10 @@ import {
 } from '../../../src/shared/lib/audio/assetResolver';
 import type { ProcessingStatus } from '../../../src/shared/lib/audio/audioAssetPipelineConfig';
 import { PLAYBACK_STORAGE_MISSING_ERROR } from '../../../src/shared/lib/tracks/playbackStorageMissing';
-import { normalizeStoragePath } from '../../../src/shared/lib/tracks/storagePathReference';
+import {
+  extractStoragePathFromTrackRef,
+  normalizeStoragePath,
+} from '../../../src/shared/lib/tracks/storagePathReference';
 import { query } from './db';
 import { createSupabaseAdminClient, STORAGE_BUCKET_NAME } from './supabase';
 
@@ -43,15 +46,90 @@ export function isSupabaseStorageObjectMissingMessage(message: string | undefine
   return lower.includes('not found') || lower.includes('object not found');
 }
 
+function storageErrorHttpStatus(error: unknown): number | null {
+  if (!error || typeof error !== 'object') return null;
+  const rec = error as Record<string, unknown>;
+  if (typeof rec.statusCode === 'number') return rec.statusCode;
+  const original = rec.originalError;
+  if (original && typeof original === 'object' && 'status' in original) {
+    const status = (original as { status?: unknown }).status;
+    if (typeof status === 'number') return status;
+  }
+  return null;
+}
+
+/** Matches real Supabase Storage responses for absent objects (download + signed URL). */
+export function isStorageErrorIndicatingMissing(error: unknown): boolean {
+  if (!error) return false;
+  if (typeof error !== 'object') return false;
+  const message = (error as { message?: unknown }).message;
+  if (typeof message === 'string' && isSupabaseStorageObjectMissingMessage(message)) {
+    return true;
+  }
+  const status = storageErrorHttpStatus(error);
+  return status === 400 || status === 404;
+}
+
+function buildPublicStorageObjectUrl(bucketRelativePath: string): string | null {
+  const supabaseUrl = (process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '').replace(
+    /\/$/,
+    ''
+  );
+  if (!supabaseUrl) return null;
+  const path = normalizeStoragePath(bucketRelativePath);
+  if (!path) return null;
+  return `${supabaseUrl}/storage/v1/object/public/${STORAGE_BUCKET_NAME}/${path}`;
+}
+
+function resolveBucketPathForVerify(storagePath: string, userId?: string): string {
+  const trimmed = storagePath.trim();
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+    const extracted = extractStoragePathFromTrackRef(trimmed, userId ?? '');
+    if (extracted) return normalizeStoragePath(extracted);
+  }
+  return normalizeStoragePath(trimmed);
+}
+
+async function verifyViaPublicHead(bucketRelativePath: string): Promise<boolean | null> {
+  const url = buildPublicStorageObjectUrl(bucketRelativePath);
+  if (!url) return null;
+  try {
+    const response = await fetch(url, { method: 'HEAD' });
+    if (response.ok) return true;
+    if (response.status === 400 || response.status === 404) return false;
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+async function verifyViaAdminDownload(
+  supabase: NonNullable<ReturnType<typeof createSupabaseAdminClient>>,
+  bucketRelativePath: string
+): Promise<boolean | null> {
+  const { data, error } = await supabase.storage
+    .from(STORAGE_BUCKET_NAME)
+    .download(bucketRelativePath);
+
+  if (!error && data) {
+    return true;
+  }
+  if (error && isStorageErrorIndicatingMissing(error)) {
+    return false;
+  }
+  return null;
+}
+
 export function resetPlaybackStorageVerifyCacheForTests(): void {
   globalThis.__playbackStorageVerifyCache = new Map();
   globalThis.__playbackStorageVerifyInflight = new Map();
 }
 
 export async function verifyPlaybackStoragePathExists(
-  storagePath: string
+  storagePath: string,
+  options?: { userId?: string }
 ): Promise<boolean | null> {
-  const normalized = normalizeStoragePath(storagePath);
+  const normalized = resolveBucketPathForVerify(storagePath, options?.userId);
   if (!normalized) return null;
 
   const cache = verifyCache();
@@ -66,24 +144,33 @@ export async function verifyPlaybackStoragePathExists(
 
   const promise = (async () => {
     const supabase = createSupabaseAdminClient();
-    if (!supabase) {
-      return null;
+    if (supabase) {
+      const adminResult = await verifyViaAdminDownload(supabase, normalized);
+      if (adminResult === true) {
+        cache.set(normalized, { present: true, checkedAt: Date.now() });
+        return true;
+      }
+      if (adminResult === false) {
+        return false;
+      }
     }
 
-    const { error } = await supabase.storage
-      .from(STORAGE_BUCKET_NAME)
-      .createSignedUrl(normalized, 60);
-
-    if (!error) {
+    const publicResult = await verifyViaPublicHead(normalized);
+    if (publicResult === true) {
       cache.set(normalized, { present: true, checkedAt: Date.now() });
       return true;
     }
-
-    if (isSupabaseStorageObjectMissingMessage(error.message)) {
+    if (publicResult === false) {
       return false;
     }
 
-    console.warn('[track-playback-storage-reconcile] Storage verify inconclusive:', error.message);
+    if (!supabase) {
+      console.warn(
+        '[track-playback-storage-reconcile] Storage verify skipped: no admin client and public HEAD inconclusive'
+      );
+    } else {
+      console.warn('[track-playback-storage-reconcile] Storage verify inconclusive for path');
+    }
     return null;
   })().finally(() => {
     inflight.delete(normalized);
@@ -185,7 +272,7 @@ export async function reconcileReadyPlaybackStorageIfMissing(
     return { processingStatus: input.processingStatus, assets: input.assets, reconciled: false };
   }
 
-  const exists = await verifyPlaybackStoragePathExists(storagePath);
+  const exists = await verifyPlaybackStoragePathExists(storagePath, { userId: input.userId });
   if (exists === null || exists === true) {
     return { processingStatus: input.processingStatus, assets: input.assets, reconciled: false };
   }

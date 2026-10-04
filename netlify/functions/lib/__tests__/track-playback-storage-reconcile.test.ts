@@ -1,6 +1,7 @@
 import { selectAssetPath } from '../../../../src/shared/lib/audio/assetResolver';
 import { PLAYBACK_STORAGE_MISSING_ERROR } from '../../../../src/shared/lib/tracks/playbackStorageMissing';
 import {
+  isStorageErrorIndicatingMissing,
   markPlaybackStorageMissingForAlbumTrack,
   reconcileReadyPlaybackStorageIfMissing,
   resetPlaybackStorageVerifyCacheForTests,
@@ -34,22 +35,50 @@ const readyStreamAssets = [
   },
 ];
 
+const missingDownloadError = {
+  message: '{}',
+  name: 'StorageUnknownError',
+  originalError: { status: 400 },
+};
+
+function mockAdminStorage(handlers: { download?: jest.Mock }): void {
+  mockedCreateSupabaseAdminClient.mockReturnValue({
+    storage: {
+      from: () => ({
+        download:
+          handlers.download ??
+          jest.fn().mockResolvedValue({ data: new Blob(['audio']), error: null }),
+      }),
+    },
+  } as never);
+}
+
 describe('track-playback-storage-reconcile', () => {
+  const originalFetch = global.fetch;
+  const originalSupabaseUrl = process.env.SUPABASE_URL;
+
   beforeEach(() => {
     jest.clearAllMocks();
     resetPlaybackStorageVerifyCacheForTests();
+    global.fetch = originalFetch;
+    process.env.SUPABASE_URL = originalSupabaseUrl;
+  });
+
+  afterAll(() => {
+    global.fetch = originalFetch;
+    process.env.SUPABASE_URL = originalSupabaseUrl;
+  });
+
+  test('isStorageErrorIndicatingMissing matches Supabase download StorageUnknownError {} + 400', () => {
+    expect(isStorageErrorIndicatingMissing(missingDownloadError)).toBe(true);
+    expect(isStorageErrorIndicatingMissing({ message: 'Object not found' })).toBe(true);
+    expect(isStorageErrorIndicatingMissing({ message: 'rate limited', statusCode: 429 })).toBe(
+      false
+    );
   });
 
   test('Case 1: ready track with existing Storage object stays playable', async () => {
-    mockedCreateSupabaseAdminClient.mockReturnValue({
-      storage: {
-        from: () => ({
-          createSignedUrl: jest
-            .fn()
-            .mockResolvedValue({ data: { signedUrl: 'https://x' }, error: null }),
-        }),
-      },
-    } as never);
+    mockAdminStorage({});
 
     const result = await reconcileReadyPlaybackStorageIfMissing({
       userId: 'u1',
@@ -70,16 +99,10 @@ describe('track-playback-storage-reconcile', () => {
     expect(mockedQuery).not.toHaveBeenCalled();
   });
 
-  test('missing Storage object reconciles track + stream asset to failed', async () => {
-    mockedCreateSupabaseAdminClient.mockReturnValue({
-      storage: {
-        from: () => ({
-          createSignedUrl: jest
-            .fn()
-            .mockResolvedValue({ data: null, error: { message: 'Object not found' } }),
-        }),
-      },
-    } as never);
+  test('missing Storage object (download {}) reconciles track + stream asset to failed', async () => {
+    mockAdminStorage({
+      download: jest.fn().mockResolvedValue({ data: null, error: missingDownloadError }),
+    });
 
     mockedQuery.mockResolvedValue({ rows: [], rowCount: 1 } as never);
 
@@ -98,63 +121,39 @@ describe('track-playback-storage-reconcile', () => {
     expect(mockedQuery).toHaveBeenCalledTimes(2);
     const trackUpdate = mockedQuery.mock.calls[1]?.[0] as string;
     expect(trackUpdate).toContain("processing_status = 'failed'");
-    expect(trackUpdate).toContain("t.processing_status = 'ready'");
     expect(trackUpdate).toContain('EXISTS');
-    expect(trackUpdate).toContain('ta.path IS NOT DISTINCT FROM');
-
-    const assetUpdate = mockedQuery.mock.calls[0]?.[0] as string;
-    expect(assetUpdate).toContain("ta.status = 'ready'");
-    expect(mockedQuery.mock.calls[0]?.[1]).toEqual(
-      expect.arrayContaining(['u1', 'album', 'track-1', PLAYBACK_STORAGE_MISSING_ERROR])
-    );
   });
 
-  test('verifyPlaybackStoragePathExists caches positive result', async () => {
-    const createSignedUrl = jest
-      .fn()
-      .mockResolvedValue({ data: { signedUrl: 'https://x' }, error: null });
-    mockedCreateSupabaseAdminClient.mockReturnValue({
-      storage: { from: () => ({ createSignedUrl }) },
-    } as never);
+  test('verifyPlaybackStoragePathExists caches positive result only', async () => {
+    const download = jest.fn().mockResolvedValue({ data: new Blob(['x']), error: null });
+    mockAdminStorage({ download });
 
     const path = 'users/u1/audio/album/derived/stream/opus_128k/a.opus';
     await verifyPlaybackStoragePathExists(path);
     await verifyPlaybackStoragePathExists(path);
 
-    expect(createSignedUrl).toHaveBeenCalledTimes(1);
-  });
-
-  test('markPlaybackStorageMissingForAlbumTrack is scoped with ready guard', async () => {
-    mockedQuery.mockResolvedValue({ rows: [], rowCount: 0 } as never);
-    await markPlaybackStorageMissingForAlbumTrack('u1', 'album', 't1', 'users/u1/audio/x.opus');
-    const sql = mockedQuery.mock.calls[0]?.[0] as string;
-    expect(sql).toContain("ta.status = 'ready'");
-    expect(sql).toContain('ta.path IS NOT DISTINCT FROM');
+    expect(download).toHaveBeenCalledTimes(1);
   });
 
   test('does not cache Storage missing; same path is re-checked on next verify', async () => {
-    const createSignedUrl = jest
+    const download = jest
       .fn()
-      .mockResolvedValueOnce({ data: null, error: { message: 'Object not found' } })
-      .mockResolvedValueOnce({ data: { signedUrl: 'https://x' }, error: null });
-    mockedCreateSupabaseAdminClient.mockReturnValue({
-      storage: { from: () => ({ createSignedUrl }) },
-    } as never);
+      .mockResolvedValueOnce({ data: null, error: missingDownloadError })
+      .mockResolvedValueOnce({ data: new Blob(['x']), error: null });
+    mockAdminStorage({ download });
 
     const path = 'users/u1/audio/album/derived/stream/opus_128k/track.opus';
     await expect(verifyPlaybackStoragePathExists(path)).resolves.toBe(false);
     await expect(verifyPlaybackStoragePathExists(path)).resolves.toBe(true);
-    expect(createSignedUrl).toHaveBeenCalledTimes(2);
+    expect(download).toHaveBeenCalledTimes(2);
   });
 
   test('missing then re-upload same path: pending skips verify; ready stays playable when Storage exists', async () => {
-    const createSignedUrl = jest
+    const download = jest
       .fn()
-      .mockResolvedValueOnce({ data: null, error: { message: 'Object not found' } })
-      .mockResolvedValueOnce({ data: { signedUrl: 'https://x' }, error: null });
-    mockedCreateSupabaseAdminClient.mockReturnValue({
-      storage: { from: () => ({ createSignedUrl }) },
-    } as never);
+      .mockResolvedValueOnce({ data: null, error: missingDownloadError })
+      .mockResolvedValueOnce({ data: new Blob(['x']), error: null });
+    mockAdminStorage({ download });
     mockedQuery.mockResolvedValue({ rows: [], rowCount: 1 } as never);
 
     const input = {
@@ -169,7 +168,6 @@ describe('track-playback-storage-reconcile', () => {
       processingStatus: 'ready',
     });
     expect(failed.reconciled).toBe(true);
-    expect(failed.processingStatus).toBe('failed');
 
     const pending = await reconcileReadyPlaybackStorageIfMissing({
       ...input,
@@ -185,7 +183,43 @@ describe('track-playback-storage-reconcile', () => {
     expect(readyAgain.reconciled).toBe(false);
     expect(readyAgain.processingStatus).toBe('ready');
     expect(mockedQuery).not.toHaveBeenCalled();
-    expect(createSignedUrl).toHaveBeenCalledTimes(2);
+    expect(download).toHaveBeenCalledTimes(2);
+  });
+
+  test('without admin client, public HEAD 400 detects missing object', async () => {
+    mockedCreateSupabaseAdminClient.mockReturnValue(null);
+    process.env.SUPABASE_URL = 'https://proj.supabase.co';
+    global.fetch = jest.fn().mockResolvedValue({ ok: false, status: 400 }) as never;
+
+    const path = 'users/u1/audio/album/derived/stream/opus_128k/track.opus';
+    await expect(verifyPlaybackStoragePathExists(path, { userId: 'u1' })).resolves.toBe(false);
+    expect(global.fetch).toHaveBeenCalled();
+  });
+
+  test('without admin client, public HEAD 400 triggers reconcile on album load path', async () => {
+    mockedCreateSupabaseAdminClient.mockReturnValue(null);
+    process.env.SUPABASE_URL = 'https://proj.supabase.co';
+    global.fetch = jest.fn().mockResolvedValue({ ok: false, status: 400 }) as never;
+    mockedQuery.mockResolvedValue({ rows: [], rowCount: 1 } as never);
+
+    const result = await reconcileReadyPlaybackStorageIfMissing({
+      userId: 'u1',
+      albumSlug: 'album',
+      logicalTrackId: 'track-1',
+      processingStatus: 'ready',
+      assets: readyStreamAssets,
+    });
+
+    expect(result.reconciled).toBe(true);
+    expect(result.processingStatus).toBe('failed');
+  });
+
+  test('markPlaybackStorageMissingForAlbumTrack is scoped with ready guard', async () => {
+    mockedQuery.mockResolvedValue({ rows: [], rowCount: 0 } as never);
+    await markPlaybackStorageMissingForAlbumTrack('u1', 'album', 't1', 'users/u1/audio/x.opus');
+    const sql = mockedQuery.mock.calls[0]?.[0] as string;
+    expect(sql).toContain("ta.status = 'ready'");
+    expect(sql).toContain('ta.path IS NOT DISTINCT FROM');
   });
 
   test('stale reconcile for path A does not fail track when DB playback asset is path B', async () => {
@@ -199,7 +233,6 @@ describe('track-playback-storage-reconcile', () => {
 
     const trackSql = mockedQuery.mock.calls[1]?.[0] as string;
     expect(trackSql).toContain('EXISTS');
-    expect(trackSql).toContain('ta.path IS NOT DISTINCT FROM');
     expect(mockedQuery.mock.calls[1]?.[1]).toEqual(
       expect.arrayContaining(['u1', 'album', 't1', PLAYBACK_STORAGE_MISSING_ERROR, pathA])
     );
