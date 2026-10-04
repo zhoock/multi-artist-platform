@@ -296,12 +296,18 @@ function mergeTracks(
       continue;
     }
 
+    const processingStatusEarly = (track.processingStatus ?? 'ready') as ProcessingStatus;
+    // Main audio missing (reconciled failed): hide from public tracklist; mixer-only rows stay.
+    if (trackVis !== 'hidden' && processingStatusEarly === 'failed') {
+      continue;
+    }
+
     const visibility = resolveEffectiveContentVisibility(trackVis, ctx.monetizationEnabled);
     const stemsAvailability = resolveEffectiveContentVisibility(stemsVis, ctx.monetizationEnabled);
     const needLock = visibility === 'subscribers_only' && !ctx.hasPremiumAccess;
     const trackKey = normalizeTrackIdString(track.trackId) || String(track.trackId);
     const assets = ctx.assetsByTrackId?.get(trackKey) ?? [];
-    const processingStatus = (track.processingStatus ?? 'ready') as ProcessingStatus;
+    const processingStatus = processingStatusEarly;
     const pipelineAvailable = ctx.pipelineAvailable === true;
 
     const resolved = resolveAssetForPlayback(

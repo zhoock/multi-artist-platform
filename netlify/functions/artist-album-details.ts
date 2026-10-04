@@ -28,7 +28,9 @@ import {
 } from './lib/album-details-mapper';
 import { buildLyricsMapForAlbumTracks } from './lib/track-lyrics';
 import { fetchTrackAssetsByAlbumPks, resolvePipelineAvailable } from './lib/track-assets-loader';
+import { reconcileAlbumPlaybackStorageBatch } from './lib/track-playback-storage-reconcile';
 import { tracksTableHasPipelineColumns } from './lib/track-pipeline-schema';
+import { normalizeTrackIdString } from '../../src/shared/lib/tracks/normalizeTrackIdString';
 
 interface AlbumLocaleRow {
   id: string;
@@ -275,11 +277,45 @@ export const handler: Handler = async (
     }
 
     const albumPks = albumsResult.rows.map((r) => r.id);
-    const [tracksByPk, assetsByTrackId, pipelineAvailable] = await Promise.all([
+    const [tracksByPk, assetsByTrackIdInitial, pipelineAvailable] = await Promise.all([
       fetchTracksForAlbumPks(albumPks),
       fetchTrackAssetsByAlbumPks(albumPks),
       resolvePipelineAvailable(),
     ]);
+
+    const reconcileTrackInputs: Array<{
+      logicalTrackId: string;
+      processingStatus: TrackRow['processing_status'];
+    }> = [];
+    const reconcileSeen = new Set<string>();
+    for (const rows of tracksByPk.values()) {
+      for (const row of rows) {
+        const logicalTrackId = normalizeTrackIdString(row.track_id) || String(row.track_id);
+        if (reconcileSeen.has(logicalTrackId)) continue;
+        reconcileSeen.add(logicalTrackId);
+        reconcileTrackInputs.push({
+          logicalTrackId,
+          processingStatus: row.processing_status,
+        });
+      }
+    }
+
+    const { assetsByTrackId, failedTrackIds } = await reconcileAlbumPlaybackStorageBatch(
+      targetUserId,
+      albumId,
+      reconcileTrackInputs,
+      assetsByTrackIdInitial
+    );
+
+    if (failedTrackIds.size > 0) {
+      for (const rows of tracksByPk.values()) {
+        for (const row of rows) {
+          const logicalTrackId = normalizeTrackIdString(row.track_id) || String(row.track_id);
+          if (!failedTrackIds.has(logicalTrackId)) continue;
+          row.processing_status = 'failed';
+        }
+      }
+    }
 
     const locales: AlbumDetailsLocaleSource[] = albumsResult.rows.map((row) => ({
       lang: row.lang,

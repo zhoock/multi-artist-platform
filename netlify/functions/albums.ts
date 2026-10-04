@@ -41,6 +41,8 @@ import {
   normalizeCoverBaseName,
 } from './lib/album-cover-storage';
 import { fetchTrackAssetsByAlbumPks } from './lib/track-assets-loader';
+import { reconcileAlbumPlaybackStorageBatch } from './lib/track-playback-storage-reconcile';
+import { PLAYBACK_STORAGE_MISSING_ERROR } from '../../src/shared/lib/tracks/playbackStorageMissing';
 import { migrateUserAlbumAudioFolderAfterRename } from './lib/migrate-storage-album-folder';
 import { normalizeTrackIdString } from '../../src/shared/lib/tracks/normalizeTrackIdString';
 import { rankToOrderIndex } from '../../src/shared/lib/tracks/trackOrderIndex';
@@ -924,6 +926,9 @@ function applyPublicTrackAccessPolicy(
    */
   const catalogTracks = album.tracks.filter((t) => {
     const trackVis = normalizeTrackVisibility(t.visibility);
+    if (trackVis !== 'hidden' && t.processingStatus === 'failed') {
+      return false;
+    }
     if (trackVis !== 'hidden') return true;
     return normalizeStemsVisibility(t.stemsVisibility) !== 'hidden';
   });
@@ -954,10 +959,38 @@ function applyPublicTrackAccessPolicy(
 
 /** Загрузка одной языковой версии альбома (как раньше один ряд albums + треки). */
 async function loadAlbumDataFromRow(album: AlbumRow): Promise<AlbumData> {
-  const [tracksRows, assetsByTrackId] = await Promise.all([
+  const [tracksRows, assetsByTrackIdInitial] = await Promise.all([
     fetchTracksRowsForAlbumPk(album.id),
     fetchTrackAssetsByAlbumPks([album.id]),
   ]);
+
+  const ownerUserId = album.user_id;
+  const albumSlug = album.album_id;
+  let assetsByTrackId = assetsByTrackIdInitial;
+
+  if (ownerUserId && albumSlug) {
+    const reconcileInputs = tracksRows.map((track) => ({
+      logicalTrackId: normalizeTrackIdString(track.track_id) || String(track.track_id),
+      processingStatus: track.processing_status as TrackRow['processing_status'],
+    }));
+    const { assetsByTrackId: reconciledAssets, failedTrackIds } =
+      await reconcileAlbumPlaybackStorageBatch(
+        ownerUserId,
+        albumSlug,
+        reconcileInputs,
+        assetsByTrackIdInitial
+      );
+    assetsByTrackId = reconciledAssets;
+    if (failedTrackIds.size > 0) {
+      for (const track of tracksRows) {
+        const logicalTrackId = normalizeTrackIdString(track.track_id) || String(track.track_id);
+        if (!failedTrackIds.has(logicalTrackId)) continue;
+        track.processing_status = 'failed';
+        track.processing_error = PLAYBACK_STORAGE_MISSING_ERROR;
+        track.src = '';
+      }
+    }
+  }
 
   const lyricsByTrackId = await buildLyricsMapForAlbumTracks(
     album.album_id,

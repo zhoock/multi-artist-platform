@@ -210,6 +210,57 @@ describe('album-details-mapper', () => {
     expect(dto!.tracks.map((t) => t.id)).toEqual(['mixer-only']);
   });
 
+  test('excludes public tracks with failed main audio from public tracklist', () => {
+    const dto = mapLocalesToAlbumDetails(
+      [
+        locale({
+          lang: 'en',
+          tracks: [
+            {
+              trackId: 'ghost',
+              title: 'Ghost',
+              duration: 60,
+              src: '',
+              orderIndex: 0,
+              visibility: 'public',
+              stemsVisibility: 'hidden',
+              processingStatus: 'failed',
+              audioContainer: null,
+              audioCodec: null,
+              audioBitrate: null,
+              audioSampleRate: null,
+              audioBitDepth: null,
+              audioChannels: null,
+              audioDuration: null,
+              audioFileSize: null,
+            },
+            {
+              trackId: 'mixer-only',
+              title: 'Mixer',
+              duration: 60,
+              src: '',
+              orderIndex: 1,
+              visibility: 'hidden',
+              stemsVisibility: 'public',
+              processingStatus: 'failed',
+              audioContainer: null,
+              audioCodec: null,
+              audioBitrate: null,
+              audioSampleRate: null,
+              audioBitDepth: null,
+              audioChannels: null,
+              audioDuration: null,
+              audioFileSize: null,
+            },
+          ],
+        }),
+      ],
+      { hasPremiumAccess: true, monetizationEnabled: true, pipelineAvailable: true }
+    );
+
+    expect(dto!.tracks.map((t) => t.id)).toEqual(['mixer-only']);
+  });
+
   test('isAlbumDetailsVisibleToPublicViewer gates unpublished albums', () => {
     const dto = mapLocalesToAlbumDetails([locale({ lang: 'en', isPublished: false })], {
       hasPremiumAccess: true,
