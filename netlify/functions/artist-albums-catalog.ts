@@ -23,6 +23,8 @@ import { resolveEffectiveContentVisibility } from '../../src/shared/lib/payment/
 import { normalizeTrackVisibility } from '../../src/shared/lib/tracks/trackVisibility';
 import { normalizeStemsVisibility } from '../../src/shared/lib/stems/stemsVisibility';
 import { mergeCatalogTrackLocales } from './lib/mergeCatalogTrackLocales';
+import { isPublicListedTrack } from '../../src/shared/lib/tracks/publicTrackPresentation';
+import { reconcileUserPublicPlayableTracks } from './lib/reconcile-user-public-playable-tracks';
 
 export interface CatalogAlbumDto {
   albumId: string;
@@ -64,6 +66,7 @@ interface TrackAggRow {
   visibility: string | null;
   stems_visibility: string | null;
   has_stems: boolean | null;
+  processing_status?: string | null;
 }
 
 /**
@@ -76,6 +79,7 @@ interface CatalogJoinRow extends AlbumLocaleRow {
   visibility: string | null;
   stems_visibility: string | null;
   has_stems: boolean | null;
+  processing_status: string | null;
 }
 
 function parseReleaseDate(release: unknown): string {
@@ -99,15 +103,6 @@ function langRank(lang: string): number {
   if (lang === 'ru') return 0;
   if (lang === 'en') return 1;
   return 2;
-}
-
-function isCatalogTrackVisible(
-  visibility: string | null | undefined,
-  stemsVisibility: string | null | undefined
-): boolean {
-  const trackVis = normalizeTrackVisibility(visibility);
-  if (trackVis !== 'hidden') return true;
-  return normalizeStemsVisibility(stemsVisibility) !== 'hidden';
 }
 
 export const handler: Handler = async (
@@ -155,6 +150,8 @@ export const handler: Handler = async (
 
     const isOwnerViewer = Boolean(authUserId && authUserId === targetUserId);
 
+    await reconcileUserPublicPlayableTracks(targetUserId);
+
     // Monetization and the catalog both key off targetUserId only and neither reads the other's
     // result, so they share one round-trip wave. Two concurrent queries is the pool ceiling
     // (PG_POOL_MAX defaults to 2), which is why the premium check below stays sequential.
@@ -181,7 +178,8 @@ export const handler: Handler = async (
            t.duration,
            t.visibility,
            t.stems_visibility,
-           t.has_stems
+           t.has_stems,
+           t.processing_status
          FROM albums a
          LEFT JOIN tracks t ON t.album_id = a.id
          WHERE a.user_id = $1
@@ -235,6 +233,7 @@ export const handler: Handler = async (
         visibility: row.visibility,
         stems_visibility: row.stems_visibility,
         has_stems: row.has_stems,
+        processing_status: row.processing_status,
       });
       trackByPk.set(row.id, list);
     }
@@ -289,7 +288,11 @@ export const handler: Handler = async (
           hasStems = true;
         }
 
-        if (!isCatalogTrackVisible(track.visibility, track.stems_visibility)) continue;
+        if (
+          !isPublicListedTrack(track.visibility, track.stems_visibility, track.processing_status)
+        ) {
+          continue;
+        }
 
         trackCount += 1;
         duration +=

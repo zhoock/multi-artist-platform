@@ -1,52 +1,87 @@
 import { describe, expect, test } from '@jest/globals';
-import type { CatalogAlbum } from '../../model/catalogAlbum';
+import type { AlbumEditable } from '@models';
+
 import {
-  filterCatalogAlbumsForArtistPageSurface,
-  hasPublishedPublicCatalogReleases,
-  albumDetailsHasPublicRelease,
+  dashboardAlbumHasPublicListedTrack,
+  filterDashboardAlbumsForPublicArtistPageSurface,
 } from '../catalogPublication';
 
-const base: CatalogAlbum = {
-  albumId: 'a1',
-  slug: 'a1',
-  title: 'Album',
-  cover: 'c',
-  releaseDate: '2024-01-01',
-  trackCount: 2,
-  duration: 200,
-  userId: 'u1',
-  isPublished: true,
-  isPublic: true,
-  hasLockedTracks: false,
-  hasStems: false,
-};
+function album(
+  overrides: Partial<AlbumEditable> & { tracks?: AlbumEditable['tracks'] }
+): AlbumEditable {
+  return {
+    albumId: 'rubber-soul',
+    album: 'Rubber Soul',
+    cover: 'cover',
+    isPublished: true,
+    isPublic: true,
+    release: { date: '1965-12-03' },
+    tracks: [],
+    ...overrides,
+  } as AlbumEditable;
+}
 
-describe('catalogPublication', () => {
-  test('hasPublishedPublicCatalogReleases requires visible album with tracks', () => {
-    expect(hasPublishedPublicCatalogReleases([base])).toBe(true);
-    expect(hasPublishedPublicCatalogReleases([{ ...base, trackCount: 0 }])).toBe(false);
-    expect(hasPublishedPublicCatalogReleases([{ ...base, isPublic: false }])).toBe(false);
+function track(
+  processingStatus: 'ready' | 'failed' | 'pending' | 'processing',
+  visibility: 'public' | 'hidden' = 'public'
+) {
+  return {
+    id: 't1',
+    title: 'Track',
+    src: processingStatus === 'ready' ? 'https://example/a.opus' : '',
+    duration: 120,
+    content: '',
+    order_index: 0,
+    visibility,
+    stemsVisibility: 'hidden' as const,
+    processingStatus,
+  };
+}
+
+describe('filterDashboardAlbumsForPublicArtistPageSurface', () => {
+  test('ready track → album visible on public artist page', () => {
+    const rows = filterDashboardAlbumsForPublicArtistPageSurface([
+      album({ tracks: [track('ready')] }),
+    ]);
+    expect(rows).toHaveLength(1);
+    expect(dashboardAlbumHasPublicListedTrack(rows[0]!)).toBe(true);
   });
 
-  test('albumDetailsHasPublicRelease mirrors catalog rules for AlbumDetails payload', () => {
+  test('failed-only track → album not visible on public artist page', () => {
     expect(
-      albumDetailsHasPublicRelease({
-        title: 'Album',
-        visibility: { isPublished: true, isPublic: true },
-        tracks: [{ id: 't1' }],
-      })
-    ).toBe(true);
-    expect(
-      albumDetailsHasPublicRelease({
-        title: 'Album',
-        visibility: { isPublished: true, isPublic: true },
-        tracks: [],
-      })
-    ).toBe(false);
+      filterDashboardAlbumsForPublicArtistPageSurface([album({ tracks: [track('failed')] })])
+    ).toHaveLength(0);
   });
 
-  test('filterCatalogAlbumsForArtistPageSurface hides empty albums for visitors', () => {
-    const albums = [base, { ...base, albumId: 'a2', trackCount: 0 }];
-    expect(filterCatalogAlbumsForArtistPageSurface(albums, false)).toHaveLength(1);
+  test('pending-only track → album not visible on public artist page', () => {
+    expect(
+      filterDashboardAlbumsForPublicArtistPageSurface([album({ tracks: [track('pending')] })])
+    ).toHaveLength(0);
+  });
+
+  test('processing-only track → album not visible on public artist page', () => {
+    expect(
+      filterDashboardAlbumsForPublicArtistPageSurface([album({ tracks: [track('processing')] })])
+    ).toHaveLength(0);
+  });
+
+  test('empty album → not visible on public artist page', () => {
+    expect(filterDashboardAlbumsForPublicArtistPageSurface([album({ tracks: [] })])).toHaveLength(
+      0
+    );
+  });
+
+  test('mixer-only (hidden + visible stems) with failed main audio stays listed', () => {
+    const rows = filterDashboardAlbumsForPublicArtistPageSurface([
+      album({
+        tracks: [
+          {
+            ...track('failed', 'hidden'),
+            stemsVisibility: 'public',
+          },
+        ],
+      }),
+    ]);
+    expect(rows).toHaveLength(1);
   });
 });

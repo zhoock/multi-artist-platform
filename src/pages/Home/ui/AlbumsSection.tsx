@@ -98,18 +98,9 @@ export function AlbumsSection({ isOwner = false }: { isOwner?: boolean }) {
       )
       .filter((album) => album.albumId);
 
+    // Public artist page cards come only from thin catalog — never fat `/api/albums` while stale.
     if (catalogCacheStale) {
-      const fromDashboard = filterAlbumsForArtistPageSurface(dashboardAlbums, true).map(
-        (album): AlbumCardView => ({
-          albumId: album.albumId ?? '',
-          title: album.album,
-          cover: album.cover || '',
-          userId: album.userId,
-          releaseDate: typeof album.release?.date === 'string' ? album.release.date : '',
-        })
-      );
-      const cards = fromDashboard.length > 0 ? fromDashboard : ownerDrafts;
-      return cards.filter((album) => album.albumId);
+      return ownerDrafts;
     }
 
     const draftIds = new Set(ownerDrafts.map((album) => album.albumId));

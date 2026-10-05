@@ -11,6 +11,7 @@ import { normalizeTrackVisibility } from '../../../src/shared/lib/tracks/trackVi
 import { normalizeStemsVisibility } from '../../../src/shared/lib/stems/stemsVisibility';
 import { resolveEffectiveContentVisibility } from '../../../src/shared/lib/payment/artistMonetization';
 import { normalizeTrackIdString } from '../../../src/shared/lib/tracks/normalizeTrackIdString';
+import { isPublicListedTrack } from '../../../src/shared/lib/tracks/publicTrackPresentation';
 import { resolveAssetForPlayback, type TrackAssetRecord } from './assetResolver';
 import type { ProcessingStatus } from '../../../src/shared/lib/audio/audioAssetPipelineConfig';
 import type { SupportedLang } from './types';
@@ -291,23 +292,16 @@ function mergeTracks(
     const trackVis = normalizeTrackVisibility(track.visibility);
     const stemsVis = normalizeStemsVisibility(track.stemsVisibility);
 
-    // Public album page: hide fully-hidden tracks (no Mixer stems either).
-    if (trackVis === 'hidden' && stemsVis === 'hidden') {
+    if (!isPublicListedTrack(track.visibility, track.stemsVisibility, track.processingStatus)) {
       continue;
     }
 
-    const processingStatusEarly = (track.processingStatus ?? 'ready') as ProcessingStatus;
-    // Main audio missing (reconciled failed): hide from public tracklist; mixer-only rows stay.
-    if (trackVis !== 'hidden' && processingStatusEarly === 'failed') {
-      continue;
-    }
-
+    const processingStatus = (track.processingStatus ?? 'ready') as ProcessingStatus;
     const visibility = resolveEffectiveContentVisibility(trackVis, ctx.monetizationEnabled);
     const stemsAvailability = resolveEffectiveContentVisibility(stemsVis, ctx.monetizationEnabled);
     const needLock = visibility === 'subscribers_only' && !ctx.hasPremiumAccess;
     const trackKey = normalizeTrackIdString(track.trackId) || String(track.trackId);
     const assets = ctx.assetsByTrackId?.get(trackKey) ?? [];
-    const processingStatus = processingStatusEarly;
     const pipelineAvailable = ctx.pipelineAvailable === true;
 
     const resolved = resolveAssetForPlayback(

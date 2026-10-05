@@ -3,10 +3,19 @@ import { fetchArtistAlbumCatalog } from '@entities/album';
 import { fetchArticles } from '@entities/article';
 import { shouldUsePublicArtistCatalogInRedux } from '@shared/lib/dashboardModalBackground';
 
-/** Thin catalog for LCP album cover — respects Redux `condition` (no redundant `force`). */
+export type BootstrapPublicArtistCatalogOptions = {
+  /**
+   * Background SWR refetch when Redux already holds this slug (artist page re-entry).
+   * Same mechanism as `executePublicSurfaceRevalidate` catalog scope — keeps last-good UI.
+   */
+  revalidate?: boolean;
+};
+
+/** Thin catalog for LCP album cover. Loader prefetch omits `revalidate`; artist surface entry sets it. */
 export function bootstrapPublicArtistAlbumCatalog(
   dispatch: AppDispatch,
-  artistSlug: string | null | undefined
+  artistSlug: string | null | undefined,
+  options?: BootstrapPublicArtistCatalogOptions
 ): void {
   const slug = artistSlug?.trim() ?? '';
   if (!slug || !shouldUsePublicArtistCatalogInRedux()) return;
@@ -14,6 +23,7 @@ export function bootstrapPublicArtistAlbumCatalog(
   void dispatch(
     fetchArtistAlbumCatalog({
       publicArtistSlug: slug,
+      force: options?.revalidate === true,
     })
   );
 }
@@ -40,7 +50,8 @@ export function bootstrapPublicArtistArticlesCatalog(
  */
 export function bootstrapPublicArtistPageSurfaces(
   dispatch: AppDispatch,
-  artistSlug: string | null | undefined
+  artistSlug: string | null | undefined,
+  options?: BootstrapPublicArtistCatalogOptions
 ): void {
-  bootstrapPublicArtistAlbumCatalog(dispatch, artistSlug);
+  bootstrapPublicArtistAlbumCatalog(dispatch, artistSlug, options);
 }

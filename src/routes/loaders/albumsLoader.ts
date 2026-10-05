@@ -15,10 +15,7 @@ import {
   fetchDashboardAlbums,
   fetchAlbumDetailsPage,
   fetchArtistAlbumCatalog,
-  buildAlbumDetailsFetchContextKey,
   selectAlbumDetailsStatus,
-  selectAlbumDetailsFetchContextKey,
-  selectAlbumDetailsData,
 } from '@entities/album';
 import {
   fetchHelpCatalog,
@@ -281,21 +278,14 @@ export async function albumsLoader({ request }: LoaderFunctionArgs): Promise<Alb
         '';
 
       if (publicArtistFromUrl && routeAlbumId) {
-        const desiredKey = buildAlbumDetailsFetchContextKey(publicArtistFromUrl, routeAlbumId);
         const detailsStatus = selectAlbumDetailsStatus(state);
-        const detailsKey = selectAlbumDetailsFetchContextKey(state);
-        const detailsData = selectAlbumDetailsData(state);
-        const detailsCacheValid =
-          detailsStatus === 'succeeded' &&
-          detailsKey === desiredKey &&
-          detailsData?.albumId === routeAlbumId;
 
-        if (!detailsCacheValid && detailsStatus !== 'loading') {
+        if (detailsStatus !== 'loading') {
           const fetchThunkPromise = store.dispatch(
             fetchAlbumDetailsPage({
               artistSlug: publicArtistFromUrl,
               albumId: routeAlbumId,
-              force: detailsStatus === 'failed',
+              force: true,
             })
           );
 

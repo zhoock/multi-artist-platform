@@ -48,6 +48,7 @@ import { normalizeTrackIdString } from '../../src/shared/lib/tracks/normalizeTra
 import { rankToOrderIndex } from '../../src/shared/lib/tracks/trackOrderIndex';
 import { normalizeStemsVisibility } from '../../src/shared/lib/stems/stemsVisibility';
 import { normalizeTrackVisibility } from '../../src/shared/lib/tracks/trackVisibility';
+import { isPublicListedTrack } from '../../src/shared/lib/tracks/publicTrackPresentation';
 import type { TrackLyricsBundle } from '../../src/shared/lib/lyrics/types';
 import { viewerHasPremiumAccessToArtist } from './lib/entitlements';
 import { artistHasMonetizationEnabled } from './lib/artist-monetization';
@@ -924,14 +925,9 @@ function applyPublicTrackAccessPolicy(
    * Скрытые треки не показываем на публичной витрине, кроме случая когда стемы
    * доступны в Mixer (stemsVisibility !== hidden) — тогда трек остаётся в API с visibility: hidden.
    */
-  const catalogTracks = album.tracks.filter((t) => {
-    const trackVis = normalizeTrackVisibility(t.visibility);
-    if (trackVis !== 'hidden' && t.processingStatus === 'failed') {
-      return false;
-    }
-    if (trackVis !== 'hidden') return true;
-    return normalizeStemsVisibility(t.stemsVisibility) !== 'hidden';
-  });
+  const catalogTracks = album.tracks.filter((t) =>
+    isPublicListedTrack(t.visibility, t.stemsVisibility, t.processingStatus)
+  );
 
   const nextTracks = catalogTracks.map((t) => {
     const visibility = resolveEffectiveContentVisibility(

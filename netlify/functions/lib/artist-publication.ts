@@ -1,4 +1,6 @@
 import { query } from './db';
+import { publicPlayableTrackSql } from './public-track-sql';
+import { reconcileUserPublicPlayableTracks } from './reconcile-user-public-playable-tracks';
 import { PublicArtistResolverError } from './public-artist-resolver';
 import {
   buildPublicationSignalsFromRow,
@@ -75,11 +77,14 @@ export function hasPublicProfileContentFromFields(fields: ArtistProfileContentFi
 }
 
 /**
- * Catalog/search visibility: at least one public non-hidden track on a published public release.
+ * Catalog/search visibility: at least one non-hidden track with `ready` main audio on a published
+ * public release.
  */
 export async function getArtistPublicationSignals(
   userId: string
 ): Promise<ArtistPublicationSignals> {
+  await reconcileUserPublicPlayableTracks(userId);
+
   const userResult = await query<PublicationRow>(
     `SELECT EXISTS (
        SELECT 1
@@ -89,7 +94,7 @@ export async function getArtistPublicationSignals(
          AND a.is_published = true
          AND a.is_public = true
          AND btrim(COALESCE(a.album, '')) <> ''
-         AND COALESCE(t.visibility, 'public') <> 'hidden'
+         AND ${publicPlayableTrackSql('t')}
      ) AS has_published_tracks
      FROM users u
      WHERE u.id = $1 AND u.is_active = true

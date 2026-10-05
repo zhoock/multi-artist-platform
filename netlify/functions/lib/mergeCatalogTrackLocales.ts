@@ -25,6 +25,8 @@ export type CatalogTrackLocaleRow = {
   visibility: string | null;
   stems_visibility: string | null;
   has_stems: boolean | null;
+  /** Taken from the preferred locale row, like the album page mapper. */
+  processing_status?: string | null;
 };
 
 const VISIBILITY_OPENNESS: Record<TrackVisibility, number> = {

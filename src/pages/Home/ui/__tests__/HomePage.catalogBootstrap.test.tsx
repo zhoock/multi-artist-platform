@@ -187,6 +187,7 @@ describe('HomePage catalog bootstrap under dashboard overlay', () => {
     await waitFor(() => {
       expect(mockFetchArtistAlbumCatalog).toHaveBeenCalledWith({
         publicArtistSlug: 'beatles',
+        force: true,
       });
       expect(mockScheduleAfterPostPaint).toHaveBeenCalled();
       expect(mockBootstrapArticles).toHaveBeenCalled();

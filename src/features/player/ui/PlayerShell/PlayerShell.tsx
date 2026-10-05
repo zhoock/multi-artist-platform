@@ -30,6 +30,7 @@ import type { PlayerAlbumMeta } from '@features/player/model/types/playerSchema'
 import type { RootState } from '@shared/model/appStore/types';
 import { savePlayerState } from '@features/player/model/lib/playerPersist';
 import { bootstrapPlayerSession } from '@features/player/model/lib/bootstrapPlayerSession';
+import { verifyRestoredPlayerQueue } from '@features/player/model/lib/verifyRestoredPlayerQueue';
 import {
   getPlayerA11yLabels,
   selectPlayerUiForA11y,
@@ -219,7 +220,7 @@ export const PlayerShell: React.FC = () => {
       return;
     }
 
-    bootstrapPlayerSession({
+    const bootstrap = bootstrapPlayerSession({
       dispatch,
       getState: store.getState,
       fallbackSourceLocation: {
@@ -227,6 +228,9 @@ export const PlayerShell: React.FC = () => {
         search: location.search || undefined,
       },
     });
+    if (bootstrap.restored && bootstrap.reason === 'hydrated-from-storage') {
+      void verifyRestoredPlayerQueue(dispatch, store.getState);
+    }
 
     stripOrphanPlayerHash();
   }, [dispatch, location.pathname, location.search, store, stripOrphanPlayerHash]);

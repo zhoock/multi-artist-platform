@@ -3,6 +3,7 @@
  */
 
 import { query } from '../db';
+import { publicListedTrackSql } from '../public-track-sql';
 import {
   PublicArtistResolverError,
   fetchPublicArtistProfileBySlug,
@@ -84,7 +85,8 @@ export async function isAlbumPubliclyAccessible(
     `SELECT COUNT(DISTINCT t.track_id)::text AS count
      FROM tracks t
      INNER JOIN albums a ON t.album_id = a.id
-     WHERE a.user_id = $1 AND a.album_id = $2`,
+     WHERE a.user_id = $1 AND a.album_id = $2
+       AND ${publicListedTrackSql('t')}`,
     [userId, albumId],
     0
   );

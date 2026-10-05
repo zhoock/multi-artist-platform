@@ -166,7 +166,7 @@ export function HomePage() {
     if (!shouldUsePublicArtistCatalogInRedux()) return;
     if (!hasArtistParam) return;
 
-    bootstrapPublicArtistPageSurfaces(dispatch, artistSlug);
+    bootstrapPublicArtistPageSurfaces(dispatch, artistSlug, { revalidate: true });
   }, [artistSlug, dispatch, hasArtistParam]);
 
   /** Articles are not LCP-critical — defer until after the first paint opportunity. */

@@ -39,34 +39,47 @@ jest.mock('@entities/album/api/fetchAlbumDetails', () => ({
   },
 }));
 
+const artistPageAccessState = {
+  isLoading: false,
+  isOwner: false,
+  ownerResolved: true,
+  ownerContentLoaded: true,
+  ownerStillNeedsOnboarding: false,
+  hasPublicReleases: true,
+  ownerHasPublicPageContent: true,
+  showOnboarding: false,
+  showOnboardingSkeleton: false,
+  showVisitorUnderConstruction: false,
+  showNotFound: false,
+  showPublished: true,
+  pageReady: true,
+  showArtistPageSkeleton: false,
+  showArtistPageSurfacePending: false,
+  showArtistPageHeroPending: false,
+  showArtistPageLayoutPending: false,
+  headerImages: [],
+  isHeaderImagesReady: true,
+  albumDetailsReleaseGatePending: false,
+  catalogReleaseGatePending: false,
+  suppressPublishedArtistChrome: false,
+  monetizationEnabled: false,
+  paymentSurfaceReady: true,
+};
+
 jest.mock('@shared/lib/hooks/useArtistPageAccess', () => ({
-  useArtistPageAccess: () => ({
-    isLoading: false,
-    isOwner: false,
-    ownerResolved: true,
-    ownerContentLoaded: true,
-    ownerStillNeedsOnboarding: false,
-    hasPublicReleases: true,
-    ownerHasPublicPageContent: true,
-    showOnboarding: false,
-    showOnboardingSkeleton: false,
-    showVisitorUnderConstruction: false,
-    showNotFound: false,
-    showPublished: true,
-    pageReady: true,
-    showArtistPageSkeleton: false,
-    showArtistPageSurfacePending: false,
-    showArtistPageHeroPending: false,
-    showArtistPageLayoutPending: false,
-    headerImages: [],
-    isHeaderImagesReady: true,
-    albumDetailsReleaseGatePending: false,
-    catalogReleaseGatePending: false,
-    suppressPublishedArtistChrome: false,
-    monetizationEnabled: false,
-    paymentSurfaceReady: true,
-  }),
+  useArtistPageAccess: () => artistPageAccessState,
 }));
+
+let authUser: { id: string } | null = null;
+
+jest.mock('@shared/lib/auth', () => {
+  const actual = jest.requireActual<typeof import('@shared/lib/auth')>('@shared/lib/auth');
+  return {
+    ...actual,
+    getAuthSessionUserSnapshot: () => authUser,
+    getUser: () => authUser,
+  };
+});
 
 jest.mock('@shared/lib/hooks/useRedirectHomeAfterOwnAccountDeleted', () => ({
   useRedirectHomeAfterOwnAccountDeleted: () => false,
@@ -104,6 +117,9 @@ describe('Album integration tests', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    artistPageAccessState.isOwner = false;
+    artistPageAccessState.isLoading = false;
+    authUser = null;
   });
 
   test('должен отобразить Loader во время загрузки AlbumDetails', () => {

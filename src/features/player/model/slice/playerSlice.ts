@@ -273,6 +273,69 @@ const playerSlice = createSlice({
       }
     },
     /**
+     * Убирает из очереди треки, которых больше нет в публичном альбоме (удалены, скрыты,
+     * playback-файл пропал). Если пропал текущий трек — воспроизведение останавливается;
+     * если очередь опустела — сессия плеера сбрасывается целиком (мини-плеер исчезает).
+     * `albumIds` — допустимые идентификаторы альбома (albumId / slug); чужой альбом не трогаем.
+     */
+    removeUnavailableTracks(
+      state,
+      action: PayloadAction<{ albumIds: readonly string[]; availableTrackIds: readonly string[] }>
+    ) {
+      const playerAlbumId = (state.albumMeta?.albumId ?? state.albumId ?? '').trim();
+      if (!playerAlbumId || !action.payload.albumIds.some((id) => id.trim() === playerAlbumId)) {
+        return;
+      }
+
+      const available = new Set(
+        action.payload.availableTrackIds.map((id) => normalizeTrackIdString(id))
+      );
+      const isAvailable = (track: PlayerTrack) => available.has(normalizeTrackIdString(track.id));
+
+      const currentTrack = state.playlist[state.currentTrackIndex];
+      const nextPlaylist = state.playlist.filter(isAvailable);
+      const nextOriginal = state.originalPlaylist.filter(isAvailable);
+      if (
+        nextPlaylist.length === state.playlist.length &&
+        nextOriginal.length === state.originalPlaylist.length
+      ) {
+        return;
+      }
+
+      if (nextPlaylist.length === 0) {
+        state.playlist = [];
+        state.originalPlaylist = [];
+        state.currentTrackIndex = 0;
+        state.isPlaying = false;
+        state.isSeeking = false;
+        state.progress = 0;
+        state.time = { current: 0, duration: NaN };
+        state.albumId = null;
+        state.albumTitle = null;
+        state.albumMeta = null;
+        state.sourceLocation = null;
+        state.showLyrics = false;
+        return;
+      }
+
+      const keptBeforeCurrent = state.playlist
+        .slice(0, state.currentTrackIndex)
+        .filter(isAvailable).length;
+      state.playlist = nextPlaylist;
+      state.originalPlaylist = nextOriginal;
+
+      if (currentTrack && isAvailable(currentTrack)) {
+        state.currentTrackIndex = Math.max(0, findTrackIndexById(nextPlaylist, currentTrack.id));
+        return;
+      }
+
+      state.currentTrackIndex = Math.min(keptBeforeCurrent, nextPlaylist.length - 1);
+      state.isPlaying = false;
+      state.isSeeking = false;
+      state.progress = 0;
+      state.time = { current: 0, duration: NaN };
+    },
+    /**
      * Переключает режим зацикливания треков.
      * Цикл: 'none' → 'all' → 'one' → 'none'
      */

@@ -369,8 +369,11 @@ describe('AlbumsSection integration tests', () => {
                     title: 'Track 1',
                     content: '',
                     duration: 180,
-                    src: 'track.mp3',
+                    src: '',
                     order_index: 10,
+                    visibility: 'public',
+                    stemsVisibility: 'hidden',
+                    processingStatus: 'failed',
                   },
                 ],
                 buttons: {},
@@ -402,5 +405,67 @@ describe('AlbumsSection integration tests', () => {
 
     expect(document.querySelectorAll('.skeleton--album-cover').length).toBeGreaterThan(0);
     expect(screen.queryByText('Album 1')).not.toBeInTheDocument();
+  });
+
+  test('owner + stale catalog: failed-only dashboard album is not projected on public artist page', () => {
+    renderWithProviders(<AlbumsSection isOwner />, {
+      initialEntries: ['/?artist=test-artist'],
+      preloadedState: {
+        lang: { current: 'en' },
+        currentArtist: { publicSlug: 'other-artist' },
+        albums: createAlbumsTestState({
+          dashboard: {
+            status: 'succeeded',
+            error: null,
+            data: [
+              {
+                albumId: 'rubber-soul',
+                album: 'Rubber Soul',
+                artistDisplayName: 'Beatles',
+                fullName: 'Beatles — Rubber Soul',
+                description: '',
+                release: { date: '1965-12-03' },
+                cover: 'cover-rs',
+                tracks: [
+                  {
+                    id: 'norwegian',
+                    title: 'Norwegian Wood',
+                    content: '',
+                    duration: 180,
+                    src: '',
+                    order_index: 1,
+                    visibility: 'public',
+                    stemsVisibility: 'hidden',
+                    processingStatus: 'failed',
+                  },
+                ],
+                buttons: {},
+                details: [],
+                isPublished: true,
+                isPublic: true,
+              },
+            ],
+            lastUpdated: Date.now(),
+            inFlightFetchContextKey: null,
+          },
+        }),
+        artistAlbumCatalog: createCatalogTestState({
+          status: 'idle',
+          data: [],
+          fetchContextKey: null,
+        }),
+        uiDictionary: {
+          en: {
+            status: 'succeeded',
+            error: null,
+            data: [{ menu: {}, buttons: {}, titles: { albums: 'Albums' } }],
+            lastUpdated: Date.now(),
+          },
+          ru: { status: 'idle', error: null, data: [], lastUpdated: null },
+        },
+      },
+    });
+
+    expect(screen.queryByText('Rubber Soul')).not.toBeInTheDocument();
   });
 });

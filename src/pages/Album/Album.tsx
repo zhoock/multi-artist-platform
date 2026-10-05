@@ -126,7 +126,7 @@ export default function Album() {
   useEffect(() => {
     const slug = artistParam?.trim();
     if (!slug || !albumId) return;
-    void dispatch(fetchAlbumDetailsPage({ artistSlug: slug, albumId }));
+    void dispatch(fetchAlbumDetailsPage({ artistSlug: slug, albumId, force: true }));
   }, [artistParam, albumId, dispatch]);
 
   const navigationOrigin = useNavigationOrigin();

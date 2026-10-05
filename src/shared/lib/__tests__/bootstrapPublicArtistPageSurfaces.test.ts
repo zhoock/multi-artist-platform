@@ -116,6 +116,30 @@ describe('bootstrapPublicArtistPageSurfaces (LCP path)', () => {
     expect(articlesCalls).toBe(0);
   });
 
+  test('revalidate option force-refetches when catalog cache is warm', async () => {
+    const store = createStore();
+    let catalogHttpCalls = 0;
+    mockFetchWithAuthSession.mockImplementation(async (...args: unknown[]) => {
+      const url = String(args[0]);
+      if (url.includes('/albums')) {
+        catalogHttpCalls += 1;
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ success: true, data: [] }),
+        };
+      }
+      return { ok: true, status: 200, json: async () => ({ data: [] }) };
+    });
+
+    bootstrapPublicArtistAlbumCatalog(store.dispatch, 'beatles');
+    await new Promise((r) => setTimeout(r, 30));
+    bootstrapPublicArtistAlbumCatalog(store.dispatch, 'beatles', { revalidate: true });
+    await new Promise((r) => setTimeout(r, 30));
+
+    expect(catalogHttpCalls).toBe(2);
+  });
+
   test('repeated album bootstrap does not start a second in-flight catalog fetch', async () => {
     const store = createStore();
     let catalogHttpCalls = 0;

@@ -12,6 +12,9 @@ import {
 } from '@reduxjs/toolkit';
 import { audioController } from '@features/player/model/lib/audioController';
 import { playerActions } from '@features/player/model/slice/playerSlice';
+import { applyPlayerQueueAvailability } from '@features/player/model/lib/playerQueueAvailability';
+import { clearPlayerState } from '@features/player/model/lib/playerPersist';
+import type { FetchAlbumDetailsPageResult } from '@entities/album/model/albumDetailsSlice';
 import type { RootState, AppDispatch } from '@shared/model/appStore/types';
 import { gaEvent } from '@shared/lib/analytics';
 import {
@@ -353,6 +356,47 @@ playerListenerMiddleware.startListening({
 
     // Теперь запускаем воспроизведение
     api.dispatch(playerActions.play());
+  },
+});
+
+/**
+ * Свежий ответ album details — источник истины о доступных треках альбома.
+ * Пропавшие из него треки (удалены / скрыты / нет playback-файла) убираем из очереди плеера.
+ */
+// Matched by type: importing the thunk here closes an import cycle through appStore.
+const ALBUM_DETAILS_FETCH_FULFILLED = 'albumDetails/fetch/fulfilled';
+
+playerListenerMiddleware.startListening({
+  predicate: (action): action is PayloadAction<FetchAlbumDetailsPageResult> =>
+    action.type === ALBUM_DETAILS_FETCH_FULFILLED,
+  effect: (action, api: PlayerListenerApi) => {
+    applyPlayerQueueAvailability(api.dispatch, api.getState, action.payload);
+  },
+});
+
+/**
+ * Если из очереди убран текущий трек — гасим аудио, чтобы его нельзя было доиграть.
+ * Пустая очередь = сессии нет: чистим localStorage, иначе F5 восстановит удалённый трек.
+ */
+playerListenerMiddleware.startListening({
+  actionCreator: playerActions.removeUnavailableTracks,
+  effect: (_action, api: PlayerListenerApi) => {
+    const before = api.getOriginalState().player;
+    const after = api.getState().player;
+    const beforeTrackId = before.playlist[before.currentTrackIndex]?.id;
+    const afterTrack = after.playlist[after.currentTrackIndex];
+
+    if (beforeTrackId !== afterTrack?.id) {
+      audioController.pause();
+      audioController.setSource(
+        afterTrack && !isTrackPlaybackBlocked(afterTrack) ? afterTrack.src : '',
+        false
+      );
+    }
+
+    if (after.playlist.length === 0) {
+      clearPlayerState();
+    }
   },
 });
 

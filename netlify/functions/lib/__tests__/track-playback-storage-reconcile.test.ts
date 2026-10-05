@@ -140,7 +140,7 @@ describe('track-playback-storage-reconcile', () => {
     ]);
   });
 
-  test('verifyPlaybackStoragePathExists caches positive result only', async () => {
+  test('verifyPlaybackStoragePathExists re-checks Storage on each call (no positive TTL cache)', async () => {
     const download = jest.fn().mockResolvedValue({ data: new Blob(['x']), error: null });
     mockAdminStorage({ download });
 
@@ -148,7 +148,7 @@ describe('track-playback-storage-reconcile', () => {
     await verifyPlaybackStoragePathExists(path);
     await verifyPlaybackStoragePathExists(path);
 
-    expect(download).toHaveBeenCalledTimes(1);
+    expect(download).toHaveBeenCalledTimes(2);
   });
 
   test('does not cache Storage missing; same path is re-checked on next verify', async () => {

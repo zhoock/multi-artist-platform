@@ -1,5 +1,7 @@
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { query } from './lib/db';
+import { publicPlayableTrackSql } from './lib/public-track-sql';
+import { reconcileUserPublicPlayableTracks } from './lib/reconcile-user-public-playable-tracks';
 import {
   createErrorResponse,
   createOptionsResponse,
@@ -50,6 +52,41 @@ function toHeaderImageUrl(userId: string, image: string): string {
   return `/api/proxy-image?path=${encodeURIComponent(path)}`;
 }
 
+async function fetchPublicArtistRows(): Promise<PublicArtistRow[]> {
+  const rows = await query<PublicArtistRow>(
+    `SELECT
+       u.id,
+       u.name,
+       u.site_name,
+       u.public_slug,
+       u.genre_code,
+       g.label_en,
+       g.label_ru,
+       u.header_images,
+       ups.shop_id AS monetization_shop_id
+     FROM users u
+     JOIN genres g ON g.code = u.genre_code
+     LEFT JOIN user_payment_settings ups
+       ON ups.user_id = u.id::text
+      AND ups.provider = 'yookassa'
+      AND ups.is_active = true
+     WHERE u.is_active = true
+       AND u.public_slug IS NOT NULL
+       AND EXISTS (
+         SELECT 1
+         FROM tracks t
+         INNER JOIN albums a ON t.album_id = a.id
+         WHERE a.user_id = u.id
+           AND a.is_published = true
+           AND a.is_public = true
+           AND btrim(COALESCE(a.album, '')) <> ''
+           AND ${publicPlayableTrackSql('t')}
+       )
+     ORDER BY u.id ASC`
+  );
+  return rows.rows;
+}
+
 export const handler: Handler = async (
   event: HandlerEvent
 ): Promise<{ statusCode: number; headers: Record<string, string>; body: string }> => {
@@ -65,39 +102,11 @@ export const handler: Handler = async (
     // The publication gate is a correlated EXISTS rather than a join: an artist has one row per
     // release per locale in `albums`, so joining would emit the same artist once per matching
     // track. Nothing downstream dedupes.
-    const rows = await query<PublicArtistRow>(
-      `SELECT
-         u.id,
-         u.name,
-         u.site_name,
-         u.public_slug,
-         u.genre_code,
-         g.label_en,
-         g.label_ru,
-         u.header_images,
-         ups.shop_id AS monetization_shop_id
-       FROM users u
-       JOIN genres g ON g.code = u.genre_code
-       LEFT JOIN user_payment_settings ups
-         ON ups.user_id = u.id::text
-        AND ups.provider = 'yookassa'
-        AND ups.is_active = true
-       WHERE u.is_active = true
-         AND u.public_slug IS NOT NULL
-         AND EXISTS (
-           SELECT 1
-           FROM tracks t
-           INNER JOIN albums a ON t.album_id = a.id
-           WHERE a.user_id = u.id
-             AND a.is_published = true
-             AND a.is_public = true
-             AND btrim(COALESCE(a.album, '')) <> ''
-             AND COALESCE(t.visibility, 'public') <> 'hidden'
-         )
-       ORDER BY u.id ASC`
-    );
+    const initialRows = await fetchPublicArtistRows();
+    await Promise.all(initialRows.map((row) => reconcileUserPublicPlayableTracks(row.id)));
+    const rows = await fetchPublicArtistRows();
 
-    const artists: PublicArtistDto[] = rows.rows.map((row) => {
+    const artists: PublicArtistDto[] = rows.map((row) => {
       const genreCode = row.genre_code || 'other';
       const genreLabel = {
         en: row.label_en || 'Other',

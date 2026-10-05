@@ -16,25 +16,12 @@ import {
 import { query } from './db';
 import { createSupabaseAdminClient, STORAGE_BUCKET_NAME } from './supabase';
 
-const VERIFY_OK_TTL_MS = 5 * 60 * 1000;
-
-type VerifyCacheEntry = { present: boolean; checkedAt: number };
-
 declare global {
   // eslint-disable-next-line no-var
-  var __playbackStorageVerifyCache: Map<string, VerifyCacheEntry> | undefined;
-  // eslint-disable-next-line no-var
-  var __playbackStorageVerifyInflight: Map<string, Promise<boolean>> | undefined;
+  var __playbackStorageVerifyInflight: Map<string, Promise<boolean | null>> | undefined;
 }
 
-function verifyCache(): Map<string, VerifyCacheEntry> {
-  if (!globalThis.__playbackStorageVerifyCache) {
-    globalThis.__playbackStorageVerifyCache = new Map();
-  }
-  return globalThis.__playbackStorageVerifyCache;
-}
-
-function inflightMap(): Map<string, Promise<boolean>> {
+function inflightMap(): Map<string, Promise<boolean | null>> {
   if (!globalThis.__playbackStorageVerifyInflight) {
     globalThis.__playbackStorageVerifyInflight = new Map();
   }
@@ -121,7 +108,6 @@ async function verifyViaAdminDownload(
 }
 
 export function resetPlaybackStorageVerifyCacheForTests(): void {
-  globalThis.__playbackStorageVerifyCache = new Map();
   globalThis.__playbackStorageVerifyInflight = new Map();
 }
 
@@ -132,12 +118,6 @@ export async function verifyPlaybackStoragePathExists(
   const normalized = resolveBucketPathForVerify(storagePath, options?.userId);
   if (!normalized) return null;
 
-  const cache = verifyCache();
-  const cached = cache.get(normalized);
-  if (cached?.present === true && Date.now() - cached.checkedAt < VERIFY_OK_TTL_MS) {
-    return true;
-  }
-
   const inflight = inflightMap();
   const existing = inflight.get(normalized);
   if (existing) return existing;
@@ -147,7 +127,6 @@ export async function verifyPlaybackStoragePathExists(
     if (supabase) {
       const adminResult = await verifyViaAdminDownload(supabase, normalized);
       if (adminResult === true) {
-        cache.set(normalized, { present: true, checkedAt: Date.now() });
         return true;
       }
       if (adminResult === false) {
@@ -157,7 +136,6 @@ export async function verifyPlaybackStoragePathExists(
 
     const publicResult = await verifyViaPublicHead(normalized);
     if (publicResult === true) {
-      cache.set(normalized, { present: true, checkedAt: Date.now() });
       return true;
     }
     if (publicResult === false) {

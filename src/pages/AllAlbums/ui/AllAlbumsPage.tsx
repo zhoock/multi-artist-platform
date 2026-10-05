@@ -73,7 +73,7 @@ export function AllAlbumsPage() {
    */
   useEffect(() => {
     if (!artistSlug.trim()) return;
-    void dispatch(fetchArtistAlbumCatalog({ publicArtistSlug: artistSlug }));
+    void dispatch(fetchArtistAlbumCatalog({ publicArtistSlug: artistSlug, force: true }));
   }, [artistSlug, dispatch]);
 
   // Сбрасываем счетчик при смене языка или данных
