@@ -35,6 +35,7 @@ import {
   extractStoragePathFromTrackRef,
   removeTrackStoragePaths,
 } from './lib/track-storage-cleanup';
+import { collectTrackStemStoragePaths } from './lib/track-stems-cleanup';
 import {
   cleanupSupersededAlbumCoversBestEffort,
   fetchDistinctCoverBasesFromDb,
@@ -2067,6 +2068,15 @@ export const handler: Handler = async (
             if (!candidate?.trim()) continue;
             const extracted = extractStoragePathFromTrackRef(candidate, userId);
             if (extracted) storagePathsToRemove.add(extracted);
+          }
+
+          const stemStoragePaths = await collectTrackStemStoragePaths(
+            userId,
+            albumIdFromQuery,
+            String(trackId)
+          );
+          for (const stemPath of stemStoragePaths) {
+            storagePathsToRemove.add(stemPath);
           }
 
           if (storagePathsToRemove.size > 0) {
