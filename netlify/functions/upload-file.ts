@@ -41,6 +41,7 @@ import {
   AVATAR_MAX_FILE_SIZE_BYTES,
   isProfileAvatarStorageObjectName,
 } from '../../src/shared/lib/avatarUpload';
+import { setProfileAvatarPathForUser } from './lib/profile-avatar-path';
 
 const ALLOWED_CATEGORIES: readonly ImageCategory[] = [
   'albums',
@@ -423,17 +424,34 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
         }
       }
 
-      if (uploadProfileErrors.length > 0) {
-        console.error('Some profile avatar variants failed to upload:', uploadProfileErrors);
-        if (uploadedProfileFiles.length === 0) {
-          return createErrorResponse(
-            500,
-            `Failed to upload any profile avatar variants: ${uploadProfileErrors.join(', ')}`
-          );
-        }
+      const canonicalFileName = `${baseName}-128.webp`;
+
+      if (!uploadedProfileFiles.includes(canonicalFileName)) {
+        console.error(
+          'Canonical profile avatar variant missing after upload:',
+          canonicalFileName,
+          uploadProfileErrors
+        );
+        return createErrorResponse(
+          500,
+          uploadProfileErrors.length > 0
+            ? `Failed to upload canonical profile avatar (${canonicalFileName}): ${uploadProfileErrors.join(', ')}`
+            : `Failed to upload canonical profile avatar (${canonicalFileName}).`
+        );
       }
 
-      const canonicalPath = getStoragePath(profileUserId, 'profile', `${baseName}-128.webp`);
+      if (uploadProfileErrors.length > 0) {
+        console.error('Some profile avatar variants failed to upload:', uploadProfileErrors);
+      }
+
+      const canonicalPath = getStoragePath(profileUserId, 'profile', canonicalFileName);
+
+      try {
+        await setProfileAvatarPathForUser(profileUserId, canonicalPath);
+      } catch (dbError) {
+        console.error('[upload-file] failed to persist profile_avatar_path:', dbError);
+        return createErrorResponse(500, 'Avatar uploaded but profile path could not be saved.');
+      }
 
       return createSuccessResponse(
         {

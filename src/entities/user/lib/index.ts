@@ -17,6 +17,7 @@ export interface UserProfileResponse {
     theBand: string[];
     headerImages?: string[];
     socialLinks?: SocialLinks;
+    profileAvatarPath?: string | null;
   } | null;
   error?: string;
 }

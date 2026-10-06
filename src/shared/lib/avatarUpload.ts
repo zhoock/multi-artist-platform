@@ -27,6 +27,15 @@ export function appendUrlCacheBustParam(url: string, bust: string): string {
   return `${url}${sep}t=${bust}`;
 }
 
+/** @deprecated Старый глобальный ключ — не использовать для чтения. */
+export const PROFILE_AVATAR_LOCALSTORAGE_KEY = 'user-avatar-url';
+
+const PROFILE_AVATAR_KEY_PREFIX = 'user-avatar-url:';
+
+export function getProfileAvatarLocalStorageKey(userId: string): string {
+  return `${PROFILE_AVATAR_KEY_PREFIX}${userId}`;
+}
+
 /** Пустой URL — нет загруженного аватара (не показываем дефолтную картинку). */
 export const DEFAULT_PROFILE_AVATAR_URL = '';
 

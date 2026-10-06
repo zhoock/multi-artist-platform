@@ -10,25 +10,27 @@ import {
   AVATAR_MAX_FILE_SIZE_BYTES,
   appendUrlCacheBustParam,
   DEFAULT_PROFILE_AVATAR_URL,
+  getProfileAvatarLocalStorageKey,
   isProfileAvatarPlaceholderUrl,
   profileAvatarRetinaUrlFrom1x,
+  PROFILE_AVATAR_LOCALSTORAGE_KEY,
 } from '@shared/lib/avatarUpload';
 import { buildProxyImageUrlFromStoragePath } from '@shared/lib/proxyImageUrl';
 import { deleteProfileAvatarFromServer, uploadFile } from '@shared/api/storage';
+import {
+  profileAvatarPathToDisplayUrl,
+  getResolvedProfileAvatarStoragePath,
+  invalidateProfileAvatarSession,
+  refreshProfileAvatarFromServer,
+  subscribeProfileAvatarSession,
+  isProfileAvatarSessionReady,
+} from '@shared/lib/profileAvatar';
 
-/** @deprecated Старый глобальный ключ — кэш был общий для всех аккаунтов; не использовать для чтения. */
-export const PROFILE_AVATAR_LOCALSTORAGE_KEY = 'user-avatar-url';
-
-const PROFILE_AVATAR_KEY_PREFIX = 'user-avatar-url:';
-
-export function getProfileAvatarLocalStorageKey(userId: string): string {
-  return `${PROFILE_AVATAR_KEY_PREFIX}${userId}`;
-}
-
-function getAvatarKeyForCurrentUser(): string | null {
-  const id = getUser()?.id;
-  return id ? getProfileAvatarLocalStorageKey(id) : null;
-}
+/** @deprecated Импортируйте из `@shared/lib/avatarUpload`. */
+export {
+  getProfileAvatarLocalStorageKey,
+  PROFILE_AVATAR_LOCALSTORAGE_KEY,
+} from '@shared/lib/avatarUpload';
 
 const DEFAULT_AVATAR = DEFAULT_PROFILE_AVATAR_URL;
 
@@ -39,7 +41,7 @@ function normalizeAvatarUrl(url: string | null): string {
   return url;
 }
 
-/** Событие после смены URL аватара в localStorage (для синхронизации шапки и т.п.) */
+/** Событие после смены URL аватара (для синхронизации шапки и т.п.) */
 export const PROFILE_AVATAR_CHANGED_EVENT = 'profile-avatar-changed';
 
 function dispatchProfileAvatarChanged() {
@@ -56,16 +58,24 @@ function readAvatarUrlFromStorageForKey(key: string): string | null {
   }
 }
 
-export function getStoredProfileAvatarUrl(): string {
-  const key = getAvatarKeyForCurrentUser();
-  if (!key) {
-    return DEFAULT_AVATAR;
+function resolveDisplayUrlFromServerOrCache(): string {
+  const path = getResolvedProfileAvatarStoragePath();
+  if (path !== undefined) {
+    return profileAvatarPathToDisplayUrl(path);
   }
-  const savedUrl = readAvatarUrlFromStorageForKey(key);
-  if (savedUrl) {
-    return normalizeAvatarUrl(savedUrl);
+
+  const key = getUser()?.id ? getProfileAvatarLocalStorageKey(getUser()!.id) : null;
+  if (key) {
+    const cached = readAvatarUrlFromStorageForKey(key);
+    if (cached) {
+      return normalizeAvatarUrl(cached);
+    }
   }
   return DEFAULT_AVATAR;
+}
+
+export function getStoredProfileAvatarUrl(): string {
+  return resolveDisplayUrlFromServerOrCache();
 }
 
 /** Первая буква имени или email для пустого аватара. */
@@ -77,40 +87,55 @@ export function getProfileAvatarInitials(): string {
 }
 
 /**
- * URL аватара из localStorage с подпиской на смену (шапка, главная сцена и т.д.).
+ * URL аватара с подпиской на server-side profile path и смену сессии.
  */
 export function useStoredProfileAvatarUrl(): string {
   const location = useLocation();
-  const [src, setSrc] = useState(getStoredProfileAvatarUrl);
+  const [src, setSrc] = useState(resolveDisplayUrlFromServerOrCache);
+
   const sync = useCallback(() => {
-    setSrc(getStoredProfileAvatarUrl());
+    setSrc(resolveDisplayUrlFromServerOrCache());
   }, []);
+
+  useEffect(() => {
+    void refreshProfileAvatarFromServer().then(sync);
+  }, [sync]);
 
   useEffect(() => {
     sync();
   }, [location.pathname, location.key, sync]);
 
   useEffect(() => {
+    return subscribeProfileAvatarSession(sync);
+  }, [sync]);
+
+  useEffect(() => {
     const onStorage = (e: StorageEvent) => {
-      const cur = getAvatarKeyForCurrentUser();
+      const userId = getUser()?.id;
+      const cur = userId ? getProfileAvatarLocalStorageKey(userId) : null;
       if (
         e.key === null ||
         (cur && e.key === cur) ||
-        e.key?.startsWith(PROFILE_AVATAR_KEY_PREFIX) ||
+        e.key?.startsWith('user-avatar-url:') ||
         e.key === PROFILE_AVATAR_LOCALSTORAGE_KEY
       ) {
-        sync();
+        if (!isProfileAvatarSessionReady()) {
+          sync();
+        }
       }
     };
     const onSession = () => {
-      sync();
+      invalidateProfileAvatarSession();
+      void refreshProfileAvatarFromServer().then(sync);
     };
+    const onAvatarChanged = () => sync();
+
     window.addEventListener('storage', onStorage);
-    window.addEventListener(PROFILE_AVATAR_CHANGED_EVENT, sync);
+    window.addEventListener(PROFILE_AVATAR_CHANGED_EVENT, onAvatarChanged);
     window.addEventListener(AUTH_SESSION_CHANGED_EVENT, onSession);
     return () => {
       window.removeEventListener('storage', onStorage);
-      window.removeEventListener(PROFILE_AVATAR_CHANGED_EVENT, sync);
+      window.removeEventListener(PROFILE_AVATAR_CHANGED_EVENT, onAvatarChanged);
       window.removeEventListener(AUTH_SESSION_CHANGED_EVENT, onSession);
     };
   }, [sync]);
@@ -124,16 +149,10 @@ const DEFAULT_FILE_TOO_LARGE_MSG =
 export type AvatarAlertVariant = 'error' | 'warning';
 
 export type UseAvatarOptions = {
-  /** Сообщение при превышении лимита (из UI-словаря) */
   avatarFileTooLargeMessage?: string;
-  /** Показать уведомление (AlertModal в дашборде). Без callback — только console.error. */
   onAvatarAlert?: (options: { message: string; variant?: AvatarAlertVariant }) => void;
 };
 
-/**
- * Хук для управления аватаром пользователя
- * @returns Объект с состоянием и функциями для работы с аватаром
- */
 export function useAvatar(options?: UseAvatarOptions) {
   const { onAvatarAlert } = options ?? {};
   const fileTooLargeMessage = options?.avatarFileTooLargeMessage ?? DEFAULT_FILE_TOO_LARGE_MSG;
@@ -150,24 +169,38 @@ export function useAvatar(options?: UseAvatarOptions) {
   );
 
   const [avatarSrc, setAvatarSrc] = useState<string>(() => {
-    try {
-      const key = getAvatarKeyForCurrentUser();
-      if (!key) {
-        return DEFAULT_AVATAR;
-      }
-      const savedUrl = readAvatarUrlFromStorageForKey(key);
-      if (savedUrl) {
-        const bust = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-        return appendUrlCacheBustParam(normalizeAvatarUrl(savedUrl), bust);
-      }
-    } catch (error) {
-      console.warn('Failed to load avatar URL from localStorage:', error);
+    const base = resolveDisplayUrlFromServerOrCache();
+    if (isProfileAvatarPlaceholderUrl(base)) {
+      return DEFAULT_AVATAR;
     }
-    return DEFAULT_AVATAR;
+    const bust = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+    return appendUrlCacheBustParam(base, bust);
   });
 
   const [isUploadingAvatar, setIsUploadingAvatar] = useState<boolean>(false);
   const avatarInputRef = useRef<HTMLInputElement | null>(null);
+
+  const applyResolvedDisplayUrl = useCallback((withCacheBust: boolean) => {
+    const display = resolveDisplayUrlFromServerOrCache();
+    if (isProfileAvatarPlaceholderUrl(display)) {
+      setAvatarSrc(DEFAULT_AVATAR);
+      return;
+    }
+    if (withCacheBust) {
+      const bust = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+      setAvatarSrc(appendUrlCacheBustParam(display, bust));
+    } else {
+      setAvatarSrc(display);
+    }
+  }, []);
+
+  useEffect(() => {
+    void refreshProfileAvatarFromServer().then(() => applyResolvedDisplayUrl(false));
+  }, [applyResolvedDisplayUrl]);
+
+  useEffect(() => {
+    return subscribeProfileAvatarSession(() => applyResolvedDisplayUrl(false));
+  }, [applyResolvedDisplayUrl]);
 
   useEffect(() => {
     const onSession = () => {
@@ -178,22 +211,12 @@ export function useAvatar(options?: UseAvatarOptions) {
       } catch {
         /* ignore */
       }
-      const key = getAvatarKeyForCurrentUser();
-      if (!key) {
-        setAvatarSrc(DEFAULT_AVATAR);
-        return;
-      }
-      const savedUrl = readAvatarUrlFromStorageForKey(key);
-      if (savedUrl) {
-        const bust = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-        setAvatarSrc(appendUrlCacheBustParam(normalizeAvatarUrl(savedUrl), bust));
-      } else {
-        setAvatarSrc(DEFAULT_AVATAR);
-      }
+      invalidateProfileAvatarSession();
+      void refreshProfileAvatarFromServer().then(() => applyResolvedDisplayUrl(false));
     };
     window.addEventListener(AUTH_SESSION_CHANGED_EVENT, onSession);
     return () => window.removeEventListener(AUTH_SESSION_CHANGED_EVENT, onSession);
-  }, []);
+  }, [applyResolvedDisplayUrl]);
 
   const handleAvatarClick = useCallback(() => {
     if (isUploadingAvatar) return;
@@ -204,7 +227,7 @@ export function useAvatar(options?: UseAvatarOptions) {
     if (isUploadingAvatar) return;
     setIsUploadingAvatar(true);
     try {
-      const key = getAvatarKeyForCurrentUser();
+      const key = getUser()?.id ? getProfileAvatarLocalStorageKey(getUser()!.id) : null;
       const ok = await deleteProfileAvatarFromServer();
       if (!ok) {
         showAvatarAlert(
@@ -219,6 +242,8 @@ export function useAvatar(options?: UseAvatarOptions) {
           console.warn('Failed to clear avatar from localStorage:', error);
         }
       }
+      invalidateProfileAvatarSession();
+      await refreshProfileAvatarFromServer();
       const bust = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
       setAvatarSrc(appendUrlCacheBustParam(DEFAULT_AVATAR, bust));
       dispatchProfileAvatarChanged();
@@ -247,8 +272,7 @@ export function useAvatar(options?: UseAvatarOptions) {
 
       setIsUploadingAvatar(true);
       try {
-        // Определяем расширение файла из MIME типа или имени файла
-        let fileExtension = '.jpg'; // По умолчанию
+        let fileExtension = '.jpg';
         if (file.type) {
           if (file.type === 'image/png') {
             fileExtension = '.png';
@@ -257,7 +281,6 @@ export function useAvatar(options?: UseAvatarOptions) {
           } else if (file.type === 'image/webp') {
             fileExtension = '.webp';
           } else {
-            // Пытаемся определить из имени файла
             const nameMatch = file.name.match(/\.([a-z0-9]+)$/i);
             if (nameMatch) {
               fileExtension = `.${nameMatch[1].toLowerCase()}`;
@@ -280,44 +303,42 @@ export function useAvatar(options?: UseAvatarOptions) {
           return;
         }
 
-        // API может вернуть storagePath `users/.../profile/...` — в браузер нужен proxy URL
         let displayUrl = result;
-        if (
+        if (displayUrl.startsWith('users/') && displayUrl.includes('/profile/')) {
+          displayUrl = profileAvatarPathToDisplayUrl(displayUrl);
+        } else if (
           !displayUrl.startsWith('http') &&
-          displayUrl.startsWith('users/') &&
-          displayUrl.includes('/profile/')
+          !displayUrl.startsWith('/') &&
+          displayUrl.startsWith('users/')
         ) {
           displayUrl = buildProxyImageUrlFromStoragePath(displayUrl);
         }
-        if (!displayUrl.startsWith('http')) {
+        if (!displayUrl.startsWith('http') && !displayUrl.startsWith('/')) {
           console.error('Invalid URL returned:', result, '->', displayUrl);
           showAvatarAlert('Не удалось обработать загруженное изображение. Повторите попытку.');
           return;
         }
 
-        // Используем URL, который вернула функция uploadFile (публичный URL из Supabase Storage)
-        // Добавляем агрессивный cache-bust для принудительного обновления изображения
+        invalidateProfileAvatarSession();
+        await refreshProfileAvatarFromServer();
+
+        const resolved = resolveDisplayUrlFromServerOrCache();
+        const finalDisplay = !isProfileAvatarPlaceholderUrl(resolved) ? resolved : displayUrl;
+
         const bust = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-        const avatarUrl = appendUrlCacheBustParam(displayUrl, bust);
+        const avatarUrl = appendUrlCacheBustParam(finalDisplay, bust);
 
-        // Предзагружаем новое изображение перед обновлением состояния
         const preloadImg = new Image();
-
         await new Promise<void>((resolve) => {
-          preloadImg.onload = () => {
-            resolve();
-          };
-          preloadImg.onerror = () => {
-            console.warn('⚠️ Failed to preload new avatar, but will try to display it anyway');
-            resolve();
-          };
+          preloadImg.onload = () => resolve();
+          preloadImg.onerror = () => resolve();
           preloadImg.src = avatarUrl;
         });
 
-        const storageKey = getAvatarKeyForCurrentUser();
+        const storageKey = getUser()?.id ? getProfileAvatarLocalStorageKey(getUser()!.id) : null;
         if (storageKey) {
           try {
-            localStorage.setItem(storageKey, displayUrl);
+            localStorage.setItem(storageKey, finalDisplay);
             if (localStorage.getItem(PROFILE_AVATAR_LOCALSTORAGE_KEY)) {
               localStorage.removeItem(PROFILE_AVATAR_LOCALSTORAGE_KEY);
             }
@@ -326,7 +347,6 @@ export function useAvatar(options?: UseAvatarOptions) {
           }
         }
 
-        // Обновляем состояние только после предзагрузки
         setAvatarSrc(avatarUrl);
         dispatchProfileAvatarChanged();
       } catch (error) {

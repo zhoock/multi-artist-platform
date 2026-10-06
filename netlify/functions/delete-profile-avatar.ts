@@ -16,6 +16,7 @@ import {
 } from './lib/api-helpers';
 import { createSupabaseAdminClient, STORAGE_BUCKET_NAME } from './lib/supabase';
 import { isProfileAvatarStorageObjectName } from '../../src/shared/lib/avatarUpload';
+import { clearProfileAvatarPathForUser } from './lib/profile-avatar-path';
 
 export const handler: Handler = async (event: HandlerEvent, _context: HandlerContext) => {
   if (event.httpMethod === 'OPTIONS') {
@@ -52,6 +53,7 @@ export const handler: Handler = async (event: HandlerEvent, _context: HandlerCon
     );
 
     if (profileFiles.length === 0) {
+      await clearProfileAvatarPathForUser(userId);
       return createSuccessResponse({ deleted: 0, paths: [] as string[] }, 200);
     }
 
@@ -62,6 +64,8 @@ export const handler: Handler = async (event: HandlerEvent, _context: HandlerCon
       console.error('[delete-profile-avatar] remove error:', removeError);
       return createErrorResponse(500, removeError.message);
     }
+
+    await clearProfileAvatarPathForUser(userId);
 
     return createSuccessResponse({ deleted: paths.length, paths }, 200);
   } catch (error) {

@@ -26,6 +26,7 @@ import {
   resolveTheBandForLang,
   syncTheBandOnSave,
 } from '../../src/shared/lib/theBand';
+import { reconcileProfileAvatarPathForUser } from './lib/profile-avatar-path';
 
 type SocialPlatform = 'instagram' | 'facebook' | 'youtube' | 'vk';
 
@@ -75,6 +76,7 @@ interface UserProfileRow {
   social_links?: any; // JSONB
   site_name?: string | null;
   genre_code?: string | null;
+  profile_avatar_path?: string | null;
 }
 
 interface GetUserProfileResponse {
@@ -88,6 +90,8 @@ interface GetUserProfileResponse {
     /** Canonical genre for catalog / clustering (`users.genre_code`). */
     genreCode?: string;
     socialLinks?: SocialLinks;
+    /** Canonical Storage path for account Profile Avatar (`users/.../profile/...-128.webp`). */
+    profileAvatarPath?: string | null;
   };
   error?: string;
 }
@@ -195,7 +199,7 @@ export const handler: Handler = async (
         user = prefetchedPublicArtist;
       } else {
         const result = await query<UserProfileRow>(
-          `SELECT name, public_slug, the_band, header_images, social_links, site_name, genre_code
+          `SELECT id, name, public_slug, the_band, header_images, social_links, site_name, genre_code, profile_avatar_path
            FROM users WHERE id = $1 AND is_active = true`,
           [targetUserId],
           0
@@ -238,20 +242,38 @@ export const handler: Handler = async (
         typeof rawGenre === 'string' && rawGenre.trim() ? rawGenre.trim().toLowerCase() : 'other';
       const socialLinks = parseSocialLinks(user.social_links);
 
+      const viewerUserId = getUserIdFromEvent(event);
+      const isOwnProfile = Boolean(viewerUserId) && viewerUserId === (user.id ?? targetUserId);
+
+      let profileAvatarPath: string | null =
+        typeof user.profile_avatar_path === 'string' && user.profile_avatar_path.trim()
+          ? user.profile_avatar_path.trim()
+          : null;
+
+      if (isOwnProfile && !profileAvatarPath) {
+        profileAvatarPath = await reconcileProfileAvatarPathForUser(targetUserId);
+      }
+
+      const responseData: GetUserProfileResponse['data'] = {
+        name: profileName,
+        publicSlug,
+        theBand,
+        headerImages,
+        siteName,
+        genreCode,
+        socialLinks,
+      };
+
+      if (isOwnProfile) {
+        responseData.profileAvatarPath = profileAvatarPath;
+      }
+
       return {
         statusCode: 200,
         headers,
         body: JSON.stringify({
           success: true,
-          data: {
-            name: profileName,
-            publicSlug,
-            theBand,
-            headerImages,
-            siteName,
-            genreCode,
-            socialLinks,
-          },
+          data: responseData,
         } as GetUserProfileResponse),
       };
     }
