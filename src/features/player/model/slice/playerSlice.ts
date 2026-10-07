@@ -12,6 +12,7 @@ import {
   PlayerTrack,
 } from '@features/player/model/types/playerSchema';
 import { toPlayerTracks } from '@features/player/model/lib/toPlayerTrack';
+import { syncPlayerAlbumMetaFromCurrentTrack } from '@features/player/model/lib/syncPlayerAlbumMetaFromCurrentTrack';
 import { normalizeTrackIdString } from '@shared/lib/tracks/normalizeTrackIdString';
 
 /**
@@ -135,12 +136,46 @@ const playerSlice = createSlice({
       }
     },
     /**
+     * Appends artist-queue tail tracks without moving the current track (shuffle must be off).
+     */
+    appendArtistQueueTracks(state, action: PayloadAction<readonly unknown[] | null | undefined>) {
+      if (state.shuffle) return;
+
+      const albumId = state.albumMeta?.albumId ?? state.albumId;
+      const incoming = toPlayerTracks(action.payload, albumId);
+      if (!incoming.length) return;
+
+      const currentTrackId = state.playlist[state.currentTrackIndex]?.id;
+      const existingIds = new Set(
+        state.originalPlaylist.map((track) => normalizeTrackIdString(track.id)).filter(Boolean)
+      );
+      const toAppend = incoming.filter((track) => {
+        const id = normalizeTrackIdString(track.id);
+        if (!id || existingIds.has(id)) return false;
+        existingIds.add(id);
+        return true;
+      });
+      if (!toAppend.length) return;
+
+      const merged = [...state.originalPlaylist, ...toAppend];
+      state.originalPlaylist = merged;
+      state.playlist = merged;
+
+      if (currentTrackId) {
+        const nextIndex = findTrackIndexById(state.playlist, currentTrackId);
+        if (nextIndex >= 0) {
+          state.currentTrackIndex = nextIndex;
+        }
+      }
+    },
+    /**
      * Устанавливает индекс текущего трека в плейлисте.
      * Используется когда пользователь выбирает конкретный трек.
      */
     setCurrentTrackIndex(state, action: PayloadAction<number>) {
       const idx = Math.max(0, action.payload);
       state.currentTrackIndex = idx;
+      syncPlayerAlbumMetaFromCurrentTrack(state);
     },
     /**
      * Переключает на следующий трек в плейлисте.
@@ -171,6 +206,7 @@ const playerSlice = createSlice({
         // ВСЕГДА используем модульную арифметику для ручного переключения
         // Это позволяет пользователю переключаться между треками даже при repeat: 'none'
         state.currentTrackIndex = expectedNewIndex;
+        syncPlayerAlbumMetaFromCurrentTrack(state);
       }
     },
     /**
@@ -188,6 +224,7 @@ const playerSlice = createSlice({
         // ВСЕГДА используем модульную арифметику для ручного переключения
         // Это позволяет пользователю переключаться между треками даже при repeat: 'none'
         state.currentTrackIndex = (oldIndex - 1 + total) % total;
+        syncPlayerAlbumMetaFromCurrentTrack(state);
       }
     },
     /**
@@ -326,10 +363,12 @@ const playerSlice = createSlice({
 
       if (currentTrack && isAvailable(currentTrack)) {
         state.currentTrackIndex = Math.max(0, findTrackIndexById(nextPlaylist, currentTrack.id));
+        syncPlayerAlbumMetaFromCurrentTrack(state);
         return;
       }
 
       state.currentTrackIndex = Math.min(keptBeforeCurrent, nextPlaylist.length - 1);
+      syncPlayerAlbumMetaFromCurrentTrack(state);
       state.isPlaying = false;
       state.isSeeking = false;
       state.progress = 0;
@@ -443,6 +482,8 @@ const playerSlice = createSlice({
       } else {
         state.controlsVisible = true;
       }
+
+      syncPlayerAlbumMetaFromCurrentTrack(state);
     },
   },
 });

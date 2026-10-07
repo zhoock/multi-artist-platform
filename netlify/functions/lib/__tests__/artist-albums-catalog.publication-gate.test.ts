@@ -21,11 +21,15 @@
 process.env.JWT_SECRET = process.env.JWT_SECRET?.trim() || 'characterization-test-secret-value';
 
 jest.mock('../db', () => ({ query: jest.fn() }));
+jest.mock('../reconcile-user-public-playable-tracks', () => ({
+  reconcileUserPublicPlayableTracks: jest.fn().mockResolvedValue(undefined),
+}));
 // Not part of the gate: kept mocked so a gate assertion never fails for an unrelated reason.
 jest.mock('../entitlements', () => ({ viewerHasPremiumAccessToArtist: jest.fn() }));
 jest.mock('../artist-monetization', () => ({ artistHasMonetizationEnabled: jest.fn() }));
 
 import { query } from '../db';
+import { reconcileUserPublicPlayableTracks } from '../reconcile-user-public-playable-tracks';
 import { viewerHasPremiumAccessToArtist } from '../entitlements';
 import { artistHasMonetizationEnabled } from '../artist-monetization';
 import { generateToken } from '../jwt';
@@ -137,6 +141,15 @@ describe('artist-albums-catalog publication gate (real gate, mocked driver)', ()
     jest.spyOn(console, 'error').mockImplementation(() => undefined);
     mockPremium.mockResolvedValue(false);
     mockMonetization.mockResolvedValue(false);
+  });
+
+  it('does not run playback storage reconcile on the catalog path', async () => {
+    wire({ tracks: true });
+
+    const response = await invoke(ANONYMOUS_EVENT);
+
+    expect(response.statusCode).toBe(200);
+    expect(reconcileUserPublicPlayableTracks).not.toHaveBeenCalled();
   });
 
   afterEach(() => {

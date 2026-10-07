@@ -35,6 +35,11 @@ module.exports = {
     port: 8080, // порт, чтобы открывать сайт по адресу localhost:8080, но можно поменять порт
     open: false, // Netlify Dev сам откроет браузер на порту 8888
     hot: true,
+    // Native WebSocket HMR — avoids sockjs-client `unload` listener (Permissions-Policy violation in Chrome).
+    webSocketServer: 'ws',
+    client: {
+      webSocketTransport: 'ws',
+    },
     allowedHosts: 'all', // Разрешаем доступ с любых хостов (для мобильных устройств в локальной сети)
     // Проксируем запросы к Netlify функциям
     // Если NETLIFY_SITE_URL установлен - проксируем на прод
@@ -84,5 +89,11 @@ module.exports = {
       },
     ],
   },
-  plugins: [new ReactRefreshWebpackPlugin()],
+  plugins: [
+    new ReactRefreshWebpackPlugin({
+      overlay: {
+        sockIntegration: path.resolve(__dirname, 'reactRefreshWDSSocket.js'),
+      },
+    }),
+  ],
 };

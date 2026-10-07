@@ -146,6 +146,18 @@ describe('artist-albums-catalog orchestration', () => {
     jest.restoreAllMocks();
   });
 
+  it('asks the publication gate to skip playback storage reconcile', async () => {
+    recordQueries();
+
+    await invoke(EVENT);
+
+    expect(mockGate).toHaveBeenCalledWith(
+      USER_ID,
+      null,
+      expect.objectContaining({ skipPlaybackStorageReconcile: true })
+    );
+  });
+
   it('starts the catalog query without waiting for the monetization lookup', async () => {
     const calls = recordQueries();
     let releaseMonetization: (value: boolean) => void = () => undefined;

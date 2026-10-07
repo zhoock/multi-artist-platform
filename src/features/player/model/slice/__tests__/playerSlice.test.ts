@@ -307,6 +307,27 @@ describe('playerSlice', () => {
     });
   });
 
+  describe('appendArtistQueueTracks action', () => {
+    test('appends tail tracks and keeps current track index stable', () => {
+      const store = configureStore({ reducer: { player: playerReducer } });
+      store.dispatch(
+        playerActions.setPlaylist([
+          { id: '1', title: 'A', duration: 1, src: 'a.mp3', albumId: 'album-1' },
+        ])
+      );
+      store.dispatch(playerActions.setCurrentTrackIndex(0));
+      store.dispatch(
+        playerActions.appendArtistQueueTracks([
+          { id: '2', title: 'B', duration: 1, src: 'b.mp3', albumId: 'album-2' },
+        ])
+      );
+
+      const state = store.getState().player;
+      expect(state.playlist.map((t) => t.id)).toEqual(['1', '2']);
+      expect(state.currentTrackIndex).toBe(0);
+    });
+  });
+
   describe('setPlaylist action', () => {
     const mockTracks: TracksProps[] = [
       { id: '1', title: 'Track 1', order_index: 0, content: '', duration: 180, src: 'track1.mp3' },

@@ -7,6 +7,7 @@ import {
   shouldSkipUnauthenticatedPublicArtistApi,
 } from '@shared/lib/publicArtistContext';
 import type { TrackLyricsBundle } from '@shared/lib/lyrics/types';
+import { artistPlayTrace } from '@features/universe/lib/artistPlayTrace';
 
 type ApiResult = {
   success: boolean;
@@ -89,6 +90,14 @@ export async function fetchTrackLyricsBundle(
         return result.data;
       }
       if (result.success && !result.data) {
+        artistPlayTrace('lyrics.request.done', {
+          httpStatus: response.status,
+          hasData: false,
+          withheld: true,
+          albumId,
+          trackId: String(trackId),
+          lang,
+        });
         throw new TrackLyricsUnavailableError();
       }
     }

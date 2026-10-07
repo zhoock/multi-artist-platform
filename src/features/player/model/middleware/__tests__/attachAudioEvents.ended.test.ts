@@ -2,7 +2,7 @@ import { describe, test, expect, jest, beforeEach, afterEach } from '@jest/globa
 import { configureStore } from '@reduxjs/toolkit';
 import { playerActions, playerReducer } from '../../slice/playerSlice';
 import { attachAudioEvents, playerListenerMiddleware } from '../playerListeners';
-import { initialPlayerState } from '../../types/playerSchema';
+import { initialPlayerState, type PlayerTrack } from '../../types/playerSchema';
 import { audioController } from '../../lib/audioController';
 import type { RootState } from '@shared/model/appStore/types';
 import type { TracksProps } from '@models';
@@ -305,6 +305,106 @@ describe('attachAudioEvents ended + repeat', () => {
     expect(store.getState().player.currentTrackIndex).toBe(0);
     expect(playSpy).toHaveBeenCalled();
     expect(store.getState().player.isPlaying).toBe(true);
+  });
+
+  test('K) repeat none + mid-queue ended → next track auto-plays (artist queue)', async () => {
+    const playSpy = mockPlayWithNativeSync();
+    const playlist: PlayerTrack[] = [
+      {
+        id: '1',
+        title: 'A1',
+        duration: 180,
+        src: 'a1.mp3',
+        albumId: 'album-1',
+        queueAlbumMeta: {
+          albumId: 'album-1',
+          album: 'Album One',
+          cover: 'cover-1.jpg',
+          userId: 'u1',
+          fullName: null,
+        },
+      },
+      {
+        id: '2',
+        title: 'A2',
+        duration: 200,
+        src: 'a2.mp3',
+        albumId: 'album-2',
+        queueAlbumMeta: {
+          albumId: 'album-2',
+          album: 'Album Two',
+          cover: 'cover-2.jpg',
+          userId: 'u1',
+          fullName: null,
+        },
+      },
+    ];
+
+    const store = createStore({
+      playlist,
+      currentTrackIndex: 0,
+      repeat: 'none',
+      isPlaying: true,
+      volume: 70,
+      albumMeta: {
+        albumId: 'album-1',
+        album: 'Album One',
+        artist: 'Artist',
+        fullName: 'Artist — Album One',
+        cover: 'cover-1.jpg',
+        publicSlug: 'artist-slug',
+        userId: 'u1',
+      },
+      time: { current: 179.8, duration: 180 },
+      progress: 99.9,
+    });
+
+    Object.defineProperty(audioController.element, 'duration', {
+      writable: true,
+      configurable: true,
+      value: 180,
+    });
+    audioController.element.currentTime = 180;
+
+    fireEndedWithNativePause();
+    await flushEndedAdvance();
+
+    const state = store.getState().player;
+    expect(state.currentTrackIndex).toBe(1);
+    expect(state.isPlaying).toBe(true);
+    expect(state.albumMeta?.cover).toBe('cover-2.jpg');
+    expect(state.albumMeta?.album).toBe('Album Two');
+    expect(playSpy).toHaveBeenCalled();
+  });
+
+  test('L) repeat none + pause before ended + mid-queue → auto-plays next track', async () => {
+    const playSpy = mockPlayWithNativeSync();
+    const store = createStore({
+      playlist: mockTracks,
+      currentTrackIndex: 0,
+      repeat: 'none',
+      isPlaying: true,
+      volume: 70,
+      time: { current: 179.8, duration: 180 },
+      progress: 99.9,
+    });
+
+    Object.defineProperty(audioController.element, 'duration', {
+      writable: true,
+      configurable: true,
+      value: 180,
+    });
+    audioController.element.currentTime = 180;
+
+    audioController.element.dispatchEvent(new Event('pause'));
+    expect(store.getState().player.isPlaying).toBe(false);
+
+    audioController.element.dispatchEvent(new Event('ended'));
+    await flushEndedAdvance();
+
+    expect(store.getState().player.currentTrackIndex).toBe(1);
+    expect(store.getState().player.isPlaying).toBe(true);
+    expect(playSpy).toHaveBeenCalled();
   });
 
   test('I) spurious ended at currentTime=0 without effective duration → no repeat restart', async () => {

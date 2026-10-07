@@ -21,6 +21,8 @@ import {
   findAdjacentPlayableIndex,
   isTrackPlaybackBlocked,
 } from '@shared/lib/tracks/trackPlayback';
+import { artistPlayTrace } from '@features/universe/lib/artistPlayTrace';
+import { prefetchLyricsForPlayerTrack } from '@entities/lyrics';
 
 const isUsableMediaDuration = (d: number): boolean => Number.isFinite(d) && d > 0 && d !== Infinity;
 
@@ -210,7 +212,8 @@ playerListenerMiddleware.startListening({
  */
 playerListenerMiddleware.startListening({
   actionCreator: playerActions.setCurrentTrackIndex,
-  effect: (_action, api: PlayerListenerApi) => {
+  effect: async (_action, api: PlayerListenerApi) => {
+    artistPlayTrace('listener.setCurrentTrackIndex');
     const state = api.getState();
     const track = state.player.playlist?.[state.player.currentTrackIndex];
     const src = track?.src;
@@ -226,9 +229,25 @@ playerListenerMiddleware.startListening({
       return;
     }
 
-    // setSource сам проверит, нужно ли загружать файл
-    // Для пустого плейлиста всё равно вызываем, чтобы сбросить источник
-    audioController.setSource(src, !!src && state.player.isPlaying);
+    const shouldAutoplay = state.player.isPlaying || autoContinuePlaybackOnAdvance;
+    if (autoContinuePlaybackOnAdvance) {
+      autoContinuePlaybackOnAdvance = false;
+    }
+
+    artistPlayTrace('listener.setCurrentTrackIndex.setSource', {
+      autoplay: shouldAutoplay,
+      srcLen: src.length,
+    });
+    audioController.setSource(src, shouldAutoplay);
+
+    if (shouldAutoplay && !state.player.isPlaying) {
+      const played = await tryPlayWithVolume(state.player.volume);
+      if (played) {
+        api.dispatch(playerActions.play());
+      }
+    }
+
+    prefetchLyricsForPlayerTrack(api.dispatch, api.getState);
   },
 });
 
@@ -304,22 +323,38 @@ playerListenerMiddleware.startListening({
 playerListenerMiddleware.startListening({
   actionCreator: playerActions.requestPlay,
   effect: async (_action, api: PlayerListenerApi) => {
+    artistPlayTrace('listener.requestPlay.start', {
+      index: api.getState().player.currentTrackIndex,
+    });
     const state = api.getState();
     const track = state.player.playlist?.[state.player.currentTrackIndex];
 
     if (!track?.src || isTrackPlaybackBlocked(track)) return;
 
     const el = audioController.element;
+    const trackSrc = String(track.src).trim();
 
-    // Если источник ещё не установлен (например, только что открыли плеер) — ставим его
-    if (!el.src) {
-      audioController.setSource(track.src, true);
+    artistPlayTrace('listener.requestPlay.trackSrc', {
+      srcLen: trackSrc.length,
+      currentSrcLen: audioController.getCurrentSrc().length,
+      elementSrcLen: String(el.src ?? '').length,
+    });
+
+    if (audioController.getCurrentSrc() !== trackSrc) {
+      artistPlayTrace('audio.setSource', { reason: 'track-changed' });
+      audioController.setSource(trackSrc, true);
+    } else if (!el.src) {
+      artistPlayTrace('audio.setSource', { reason: 'empty-element' });
+      audioController.setSource(trackSrc, true);
+    } else {
+      artistPlayTrace('audio.setSource', { reason: 'skipped-same-src' });
     }
 
-    // Ждём загрузки метаданных если они еще не загружены
+    // Ждём loadedmetadata / canplay (not canplaythrough) — enough to start streaming playback.
     // readyState: 0 = HAVE_NOTHING, 1 = HAVE_METADATA, 2 = HAVE_CURRENT_DATA, 3 = HAVE_FUTURE_DATA, 4 = HAVE_ENOUGH_DATA
     if (el.readyState < 2) {
-      // Ждём загрузки метаданных или хотя бы части данных
+      const waitStart = performance.now();
+      artistPlayTrace('audio.waitMetadata.start', { readyState: el.readyState });
       await new Promise<void>((resolve) => {
         let resolved = false;
         const resolveOnce = () => {
@@ -331,11 +366,13 @@ playerListenerMiddleware.startListening({
 
         // Слушаем событие loadedmetadata или canplay (когда можно начать воспроизведение)
         const onLoadedMetadata = () => {
+          artistPlayTrace('audio.loadedmetadata');
           el.removeEventListener('loadedmetadata', onLoadedMetadata);
           el.removeEventListener('canplay', onCanPlay);
           resolveOnce();
         };
         const onCanPlay = () => {
+          artistPlayTrace('audio.canplay');
           el.removeEventListener('loadedmetadata', onLoadedMetadata);
           el.removeEventListener('canplay', onCanPlay);
           resolveOnce();
@@ -352,9 +389,13 @@ playerListenerMiddleware.startListening({
           setTimeout(resolveOnce, 2000);
         }
       });
+      artistPlayTrace('audio.waitMetadata.done', {
+        ms: Math.round(performance.now() - waitStart),
+        readyState: el.readyState,
+      });
     }
 
-    // Теперь запускаем воспроизведение
+    artistPlayTrace('listener.requestPlay.dispatchPlay');
     api.dispatch(playerActions.play());
   },
 });
@@ -539,6 +580,7 @@ export const attachAudioEvents = (dispatch: AppDispatch, getState: () => RootSta
    * Сбрасываем время и прогресс, чтобы UI показал начало трека.
    */
   loadedmetadataHandler = () => {
+    artistPlayTrace('audio.loadedmetadata.global');
     const state = getState().player;
     const persistedTime = state.time?.current ?? 0;
     const { playlist = [], currentTrackIndex } = state;
@@ -697,7 +739,8 @@ export const attachAudioEvents = (dispatch: AppDispatch, getState: () => RootSta
           if (isLastTrack) {
             dispatch(playerActions.pause());
           } else {
-            autoContinuePlaybackOnAdvance = wasPlayingWhenEnded;
+            // Native pause often fires before ended; isActuallyEnded preserves advance intent.
+            autoContinuePlaybackOnAdvance = wasPlayingWhenEnded || isActuallyEnded;
             dispatch(playerActions.nextTrack(playlist.length));
           }
         }
@@ -725,6 +768,9 @@ export const attachAudioEvents = (dispatch: AppDispatch, getState: () => RootSta
    * Отправляем GA событие audio_start (только один раз для каждого трека).
    */
   playingHandler = () => {
+    artistPlayTrace('audio.playing', {
+      index: getState().player.currentTrackIndex,
+    });
     const state = getState();
     const { albumId, albumTitle, currentTrackIndex, playlist } = state.player;
     const track = playlist[currentTrackIndex];

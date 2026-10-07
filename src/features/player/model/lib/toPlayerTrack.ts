@@ -1,6 +1,24 @@
 import { normalizeTrackIdString } from '@shared/lib/tracks/normalizeTrackIdString';
-import type { PlayerTrack } from '@features/player/model/types/playerSchema';
+import type {
+  PlayerTrack,
+  PlayerTrackQueueAlbumMeta,
+} from '@features/player/model/types/playerSchema';
 import type { TrackLyricsBundle } from '@shared/lib/lyrics/types';
+
+function readQueueAlbumMeta(value: unknown): PlayerTrackQueueAlbumMeta | undefined {
+  if (!value || typeof value !== 'object') return undefined;
+  const row = value as Record<string, unknown>;
+  const albumId = typeof row.albumId === 'string' ? row.albumId.trim() : '';
+  if (!albumId) return undefined;
+
+  return {
+    albumId,
+    album: typeof row.album === 'string' ? row.album : null,
+    fullName: typeof row.fullName === 'string' ? row.fullName : null,
+    cover: typeof row.cover === 'string' ? row.cover : row.cover === null ? null : null,
+    userId: typeof row.userId === 'string' ? row.userId : row.userId === null ? null : null,
+  };
+}
 
 function readLyricsBundle(value: unknown): TrackLyricsBundle | undefined {
   if (!value || typeof value !== 'object') return undefined;
@@ -49,6 +67,8 @@ export function toPlayerTrack(track: unknown, albumId?: string | null): PlayerTr
         ? lyrics.authorship
         : undefined;
 
+  const queueAlbumMeta = readQueueAlbumMeta(row.queueAlbumMeta);
+
   return {
     id,
     albumId: resolvedAlbumId,
@@ -57,6 +77,7 @@ export function toPlayerTrack(track: unknown, albumId?: string | null): PlayerTr
     src,
     playbackLocked: Boolean(row.playbackLocked),
     ...(normalizedVisibility ? { visibility: normalizedVisibility } : {}),
+    ...(queueAlbumMeta ? { queueAlbumMeta } : {}),
     ...(lyrics ? { lyrics } : {}),
     ...(content ? { content } : {}),
     ...(authorship ? { authorship } : {}),

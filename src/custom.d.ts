@@ -17,6 +17,13 @@ declare module '*.module.sass' {
 declare module '*.scss';
 declare module '*.css';
 
+/** DOM attribute for LCP images (React 18 warns on camelCase `fetchPriority` on <img>). */
+declare module 'react' {
+  interface ImgHTMLAttributes<T> {
+    fetchpriority?: 'high' | 'low' | 'auto';
+  }
+}
+
 // Типы для переменных окружения (Vite-стиль через webpack DefinePlugin)
 declare global {
   interface ImportMetaEnv {

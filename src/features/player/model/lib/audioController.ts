@@ -1,4 +1,6 @@
 // src/features/player/model/lib/audioController.ts
+import { artistPlayTrace } from '@features/universe/lib/artistPlayTrace';
+
 /**
  * Контроллер для управления HTMLAudioElement.
  * Это единая точка доступа к аудио-элементу во всём приложении.
@@ -50,6 +52,10 @@ class AudioController {
     return this.audio;
   }
 
+  getCurrentSrc(): string {
+    return this.currentSrc;
+  }
+
   /**
    * Устанавливает источник аудио (URL трека) и загружает его.
    * Предотвращает повторную загрузку того же файла.
@@ -70,7 +76,12 @@ class AudioController {
     // Устанавливаем новый источник
     this.currentSrc = newSrc;
     this.audio.src = newSrc;
+    const loadStarted = performance.now();
     this.audio.load();
+    artistPlayTrace('audio.load.called', {
+      srcLen: newSrc.length,
+      ms: Math.round(performance.now() - loadStarted),
+    });
 
     if (!autoplay) {
       this.audio.pause();

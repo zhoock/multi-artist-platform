@@ -3,23 +3,23 @@ import type { EqualityFn } from 'react-redux';
 import { useStore } from 'react-redux';
 
 import {
-  applyTrackLyricsBundle,
-  fetchTrackLyricsBundle,
+  ensureTrackLyricsBundle,
   hasNonEmptyTrackLyricsEntity,
   resolveTrackLyricsBundle,
 } from '@entities/lyrics';
+import { describeTrackLyricsEntities } from '@entities/lyrics/lib/describeTrackLyricsEntities';
+import { trackLyricsEntityKey } from '@shared/lib/lyrics/types';
+import { normalizeTrackIdString } from '@shared/lib/tracks/normalizeTrackIdString';
 import type { SyncedLyricsLine } from '@models';
 import type { PlayerTrack } from '@features/player/model/types/playerSchema';
 import { useAppDispatch } from '@shared/lib/hooks/useAppDispatch';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { useEffectiveLocation } from '@shared/lib/hooks/useEffectiveLocation';
 import type { RootState } from '@shared/model/appStore/types';
-import {
-  resolvePublicArtistSlugForApi,
-  shouldSkipUnauthenticatedPublicArtistApi,
-} from '@shared/lib/publicArtistContext';
 import { resolveLyricsSyncState } from '@shared/lib/lyrics';
 import type { TrackLyricsBundle } from '@shared/lib/lyrics/types';
+
+import { artistPlayTrace } from '@features/universe/lib/artistPlayTrace';
 
 import { debugLog } from '../utils/debug';
 
@@ -192,30 +192,12 @@ export function useLyricsContent({
 
     void (async () => {
       try {
-        const artistSlug = await resolvePublicArtistSlugForApi(artistSlugForLyrics);
-        if (await shouldSkipUnauthenticatedPublicArtistApi(artistSlug)) {
-          debugLog('useLyricsContent: skip track-lyrics fetch (no public artist context)', {
-            albumId: albumIdForFetch,
-            trackId,
-          });
-          return;
-        }
-
-        const bundle = await fetchTrackLyricsBundle(albumIdForFetch, trackId, lang, {
-          artistSlug,
-          tolerateMissing: true,
+        await ensureTrackLyricsBundle(dispatch, () => store.getState(), {
+          albumId: albumIdForFetch,
+          trackId,
+          lang,
+          artistSlug: artistSlugForLyrics,
         });
-
-        if (fetchGenerationRef.current !== generation) {
-          return;
-        }
-
-        const existing = resolveTrackLyricsBundle(store.getState(), albumIdForFetch, trackId, null);
-        if (existing.state !== 'empty' && bundle.state === 'empty') {
-          return;
-        }
-
-        dispatch(applyTrackLyricsBundle(bundle));
       } catch (error) {
         debugLog('useLyricsContent: failed to fetch track lyrics bundle', { error });
       } finally {
@@ -238,6 +220,46 @@ export function useLyricsContent({
     setIsLoadingSyncedLyrics,
     store,
   ]);
+
+  useEffect(() => {
+    if (!currentTrack) {
+      return;
+    }
+    const logicalTrackId =
+      normalizeTrackIdString(String(currentTrack.id)) || String(currentTrack.id);
+    const readKeyPreferred = trackLyricsEntityKey(canonicalAlbumId, logicalTrackId, lang);
+    const entities = describeTrackLyricsEntities(
+      store.getState(),
+      canonicalAlbumId,
+      logicalTrackId
+    );
+
+    if (!lyricsBundle || lyricsBundle.state === 'empty') {
+      artistPlayTrace('lyrics.lookup', {
+        readAlbumId: canonicalAlbumId,
+        readTrackId: logicalTrackId,
+        readKeyPreferred,
+        uiLang: lang,
+        artistSlug: artistSlugForLyrics,
+        entities,
+        resolvedState: lyricsBundle?.state ?? 'none',
+      });
+      return;
+    }
+
+    artistPlayTrace('lyrics.resolved', {
+      readAlbumId: canonicalAlbumId,
+      readTrackId: logicalTrackId,
+      readKeyPreferred,
+      bundleAlbumId: lyricsBundle.albumId,
+      bundleTrackId: lyricsBundle.trackId,
+      bundleLang: lyricsBundle.lang,
+      state: lyricsBundle.state,
+      contentLength: lyricsBundle.content?.length ?? 0,
+      entities,
+      source: 'useLyricsContent',
+    });
+  }, [artistSlugForLyrics, canonicalAlbumId, currentTrack, lang, lyricsBundle, store]);
 
   useLayoutEffect(() => {
     setCurrentLineIndex(null);

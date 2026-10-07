@@ -212,7 +212,7 @@ function AlbumCover({
         ref={imgRef}
         className="album-cover__image"
         loading={loading}
-        fetchPriority={fetchPriority}
+        {...(fetchPriority ? { fetchpriority: fetchPriority } : {})}
         decoding="async"
         src={fallbackSrc}
         srcSet={jpegSrcSet}

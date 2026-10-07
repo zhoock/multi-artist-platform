@@ -62,6 +62,20 @@ function resolveTrackTitle(track: TrackDetails, lang: SupportedLang): string {
 }
 
 /**
+ * Minimal locale flatten for player queue / Play artist — skips heavy details merging.
+ */
+export function resolveAlbumDetailsForPlayback(
+  album: AlbumDetails,
+  lang: SupportedLang
+): AlbumDetails {
+  const tracks = album.tracks.map((track) => ({
+    ...track,
+    title: resolveTrackTitle(track, lang),
+  }));
+  return { ...album, tracks };
+}
+
+/**
  * Flat AlbumDetails snapshot for the current UI language.
  * Does not mutate stored translations; injects genre block + artwork credits for display.
  */

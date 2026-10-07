@@ -45,7 +45,7 @@ export function HeroCoverImage({ sources, onReadyForPaint }: HeroCoverImageProps
           width={HERO_COVER_INTRINSIC_WIDTH}
           height={HERO_COVER_INTRINSIC_HEIGHT}
           loading="eager"
-          fetchPriority="high"
+          fetchpriority="high"
           decoding="async"
         />
       </picture>

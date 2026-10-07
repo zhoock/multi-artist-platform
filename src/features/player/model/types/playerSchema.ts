@@ -20,6 +20,12 @@ export interface PlayerAlbumMeta {
   cover: string | null;
 }
 
+/** Album UI fields carried on a queue row (multi-album Play artist). */
+export type PlayerTrackQueueAlbumMeta = Pick<
+  PlayerAlbumMeta,
+  'albumId' | 'album' | 'fullName' | 'cover' | 'userId'
+>;
+
 /**
  * Thin playlist row for playback / queue UI.
  * Keeps the lyrics bundle (and plain content/authorship) the player used before
@@ -29,6 +35,8 @@ export interface PlayerTrack {
   /** Track id (same as TracksProps.id). */
   id: string;
   albumId?: string;
+  /** When set, player albumMeta/cover follow this track on index changes. */
+  queueAlbumMeta?: PlayerTrackQueueAlbumMeta;
   title: string;
   duration: number;
   src: string;

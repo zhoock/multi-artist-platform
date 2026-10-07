@@ -13,9 +13,6 @@ import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 import { ArtistNotFound } from '@shared/ui/artistNotFound';
 import { useRedirectHomeAfterOwnAccountDeleted } from '@shared/lib/hooks/useRedirectHomeAfterOwnAccountDeleted';
-import { playerActions, toPlayerTracks } from '@features/player';
-import { getUserAudioUrl } from '@shared/api/albums';
-import { emptyStringMediaSrc } from '@shared/lib/media/optionalMediaUrl';
 import { shouldUsePublicArtistCatalogInRedux } from '@shared/lib/dashboardModalBackground';
 import {
   bootstrapPublicArtistArticlesCatalog,
@@ -24,20 +21,11 @@ import {
 import { fetchDashboardAlbums } from '@entities/album';
 import { fetchArticles } from '@entities/article';
 import { generateMockArtists } from '@shared/lib/generateMockArtists';
-import { fetchUniverseArtistPlayAlbum } from '@features/universe/lib/fetchUniverseArtistPlayAlbum';
+import { startUniverseArtistPlayback } from '@features/universe/lib/startUniverseArtistPlayback';
+import { artistPlayTrace, artistPlayTraceStart } from '@features/universe/lib/artistPlayTrace';
 import { prepareUniverseData } from '@features/universe/model/prepareUniverseData';
 import { fetchWithAuthSession } from '@shared/lib/authFetch';
-import {
-  fetchPublicProfileForDisplay,
-  formatAlbumDisplayFullName,
-  readStoredProfileDisplayName,
-  siteArtistUiLabel,
-} from '@shared/lib/profileDisplayName';
-import { fallbackAlbumClientId } from '@shared/lib/albumClientId';
-import {
-  isTrackPlaybackBlocked,
-  resolveFirstPlayableIndex,
-} from '@shared/lib/tracks/trackPlayback';
+import { fetchPublicProfileForDisplay } from '@shared/lib/profileDisplayName';
 import { buildArtistPagePath } from '@shared/lib/seo/publicPagePaths';
 import { clearPremiumCheckoutAuthIntent } from '@shared/lib/authIntent';
 import { appendReturnTo } from '@shared/lib/authReturnUrl';
@@ -93,6 +81,7 @@ export function HomePage() {
   const ui = useAppSelector((state) => selectUiDictionaryFirst(state, lang));
   const sceneRef = useRef<HTMLDivElement | null>(null);
   const universeRef = useRef<HomeUniverseHandle | null>(null);
+  const artistPlayInflightRef = useRef<Promise<boolean> | null>(null);
   /** Read at interaction time so Universe3D init does not rerun on locale-only changes. */
   const langForUniverseRef = useRef(lang);
   const locationForUniverseRef = useRef(location);
@@ -302,85 +291,44 @@ export function HomePage() {
         onPlayArtist: async (artist) => {
           if (!artist?.publicSlug) return false;
 
-          const resolvedAlbum = await fetchUniverseArtistPlayAlbum(
-            artist.publicSlug,
-            langForUniverseRef.current
-          );
-          if (!resolvedAlbum) return false;
-
-          const albumId = fallbackAlbumClientId(resolvedAlbum);
-          const playlist = toPlayerTracks(
-            resolvedAlbum.tracks.map((track) => {
-              if (isTrackPlaybackBlocked(track)) {
-                return { ...track, src: '' };
-              }
-              return {
-                ...track,
-                src: emptyStringMediaSrc(
-                  getUserAudioUrl(track.src, undefined, resolvedAlbum.userId),
-                  'HomePage:heroPlaylist',
-                  { trackId: track.id, albumUserId: resolvedAlbum.userId }
-                ),
-              };
-            }),
-            albumId
-          );
-
-          const startIdx = resolveFirstPlayableIndex(playlist, 0);
-          if (startIdx === -1) {
-            return false;
+          if (artistPlayInflightRef.current) {
+            return artistPlayInflightRef.current;
           }
 
-          dispatch(playerActions.setPlaylist(playlist));
-          dispatch(playerActions.setCurrentTrackIndex(startIdx));
+          const slug = artist.publicSlug;
+          const run = (async (): Promise<boolean> => {
+            artistPlayTraceStart(slug);
+            artistPlayTrace('click.playArtist', { slug });
+            const result = await startUniverseArtistPlayback({
+              artistSlug: slug,
+              lang: langForUniverseRef.current,
+              dispatch,
+              sourceLocation: {
+                pathname: locationForUniverseRef.current.pathname,
+                search: locationForUniverseRef.current.search || undefined,
+              },
+            });
+            if (!result.ok) return false;
 
-          dispatch(
-            playerActions.setAlbumInfo({
-              albumId,
-              albumTitle: resolvedAlbum.title,
-            })
-          );
+            navigate(
+              {
+                pathname: locationForUniverseRef.current.pathname,
+                search: locationForUniverseRef.current.search || undefined,
+                hash: '',
+              },
+              { replace: true }
+            );
+            return true;
+          })();
 
-          const profileRow = await fetchPublicProfileForDisplay(
-            langForUniverseRef.current,
-            artist.publicSlug ?? null
-          );
-          const resolvedForTitle =
-            profileRow.displayName.trim() || readStoredProfileDisplayName().trim();
-          const displayArtist = siteArtistUiLabel(profileRow.displayName);
-          dispatch(
-            playerActions.setAlbumMeta({
-              albumId,
-              userId: resolvedAlbum.userId ?? null,
-              publicSlug: artist.publicSlug,
-              album: resolvedAlbum.title,
-              artist: displayArtist,
-              fullName:
-                formatAlbumDisplayFullName(resolvedForTitle, resolvedAlbum.title) ||
-                resolvedAlbum.title,
-              cover: resolvedAlbum.cover ?? null,
-            })
-          );
-
-          dispatch(
-            playerActions.setSourceLocation({
-              pathname: locationForUniverseRef.current.pathname,
-              search: locationForUniverseRef.current.search || undefined,
-            })
-          );
-
-          dispatch(playerActions.requestPlay());
-
-          // Force mini-player mode for this flow (avoid hidden mini when URL has #player).
-          navigate(
-            {
-              pathname: locationForUniverseRef.current.pathname,
-              search: locationForUniverseRef.current.search || undefined,
-              hash: '',
-            },
-            { replace: true }
-          );
-          return true;
+          artistPlayInflightRef.current = run;
+          try {
+            return await run;
+          } finally {
+            if (artistPlayInflightRef.current === run) {
+              artistPlayInflightRef.current = null;
+            }
+          }
         },
       });
 

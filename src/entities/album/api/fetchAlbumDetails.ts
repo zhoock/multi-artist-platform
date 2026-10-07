@@ -21,6 +21,8 @@ export class AlbumDetailsFetchError extends Error {
 
 export type FetchAlbumDetailsOptions = {
   signal?: AbortSignal;
+  /** Skip storage reconcile + lyrics embed (Universe artist Play bootstrap). */
+  playbackBootstrap?: boolean;
 };
 
 /**
@@ -44,8 +46,9 @@ export async function fetchAlbumDetails(
   const token = getToken();
   if (token) headers.Authorization = `Bearer ${token}`;
 
+  const bootstrapQuery = options.playbackBootstrap ? '?playbackBootstrap=1' : '';
   const response = await fetchWithAuthSession(
-    `/api/artists/${encodeURIComponent(slug)}/albums/${encodeURIComponent(id)}`,
+    `/api/artists/${encodeURIComponent(slug)}/albums/${encodeURIComponent(id)}${bootstrapQuery}`,
     {
       signal: options.signal,
       cache: 'no-store',

@@ -16,6 +16,7 @@ import {
   saveTrackLyricsSync,
   type TrackLyricsBundle,
 } from './lib/track-lyrics';
+import { decideTrackLyricsRead } from './lib/track-lyrics-access';
 
 type ApiResponse = {
   success: boolean;
@@ -91,15 +92,16 @@ export const handler: Handler = async (event: HandlerEvent) => {
       }
 
       if (artist?.trim()) {
-        const monetizationEnabled = await artistHasMonetizationEnabled(resolved.userId);
-        if (monetizationEnabled) {
-          const canRead = await viewerHasPremiumAccessToArtist(
-            getUserIdFromEvent(event),
-            resolved.userId
-          );
-          if (!canRead) {
-            return json(200, { success: true, data: undefined });
-          }
+        const authUserId = getUserIdFromEvent(event);
+        const decision = decideTrackLyricsRead({
+          hasArtistQuery: true,
+          authUserId,
+          artistUserId: resolved.userId,
+          monetizationEnabled: await artistHasMonetizationEnabled(resolved.userId),
+          hasPremiumAccess: await viewerHasPremiumAccessToArtist(authUserId, resolved.userId),
+        });
+        if (decision === 'omit') {
+          return json(200, { success: true, data: undefined });
         }
       }
 

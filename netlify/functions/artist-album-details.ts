@@ -76,6 +76,12 @@ interface TrackRow {
   authorship: string | null;
 }
 
+function parsePlaybackBootstrap(event: HandlerEvent): boolean {
+  const q = event.queryStringParameters ?? {};
+  const raw = (q.playbackBootstrap ?? q.playback_bootstrap ?? '').trim().toLowerCase();
+  return raw === '1' || raw === 'true' || raw === 'yes';
+}
+
 function parseSlugAndAlbumId(event: HandlerEvent): { slug: string; albumId: string } {
   const q = event.queryStringParameters ?? {};
   let slug = (q.slug ?? '').trim().toLowerCase();
@@ -89,6 +95,41 @@ function parseSlugAndAlbumId(event: HandlerEvent): { slug: string; albumId: stri
   }
 
   return { slug, albumId };
+}
+
+type AlbumDetailsTimingMark = { label: string; ms: number };
+
+function createAlbumDetailsTimer(): {
+  mark: (label: string) => void;
+  finish: () => AlbumDetailsTimingMark[];
+} {
+  const t0 = Date.now();
+  const marks: AlbumDetailsTimingMark[] = [];
+  return {
+    mark(label: string) {
+      marks.push({ label, ms: Date.now() - t0 });
+    },
+    finish() {
+      return marks;
+    },
+  };
+}
+
+function logAlbumDetailsTimings(
+  slug: string,
+  albumId: string,
+  playbackBootstrap: boolean,
+  marks: AlbumDetailsTimingMark[]
+): void {
+  if (process.env.ALBUM_DETAILS_TRACE !== '1') return;
+  const summary = Object.fromEntries(marks.map((m) => [m.label, m.ms]));
+  // eslint-disable-next-line no-console
+  console.info('[artist-album-details:timing]', {
+    slug,
+    albumId,
+    playbackBootstrap,
+    ...summary,
+  });
 }
 
 async function fetchTracksForAlbumPks(albumPks: string[]): Promise<Map<string, TrackRow[]>> {
@@ -202,6 +243,7 @@ export const handler: Handler = async (
     return createErrorResponse(405, 'Method not allowed. Use GET.');
   }
 
+  const timer = createAlbumDetailsTimer();
   try {
     const { slug, albumId } = parseSlugAndAlbumId(event);
     if (!slug) {
@@ -211,12 +253,16 @@ export const handler: Handler = async (
       return createErrorResponse(400, 'Missing albumId');
     }
 
+    const playbackBootstrap = parsePlaybackBootstrap(event);
+    timer.mark('request.received');
+
     const authVerdict = classifyAuthorizationHeader(getAuthorizationHeaderFromEvent(event));
     const authUserId = authVerdict.kind === 'valid' ? authVerdict.userId : null;
 
     let targetUserId: string;
     try {
       targetUserId = await resolvePublicArtistUserId(slug);
+      timer.mark('resolveArtist.done');
     } catch (error) {
       if (error instanceof PublicArtistResolverError) {
         return createErrorResponse(error.statusCode, error.message, CORS_HEADERS, {
@@ -227,7 +273,10 @@ export const handler: Handler = async (
     }
 
     try {
-      await assertArtistVisibleToViewer(targetUserId, authUserId);
+      await assertArtistVisibleToViewer(targetUserId, authUserId, {
+        skipPlaybackStorageReconcile: playbackBootstrap,
+      });
+      timer.mark('publicationGate.done');
     } catch (error) {
       if (error instanceof PublicArtistResolverError) {
         return createErrorResponse(error.statusCode, error.message, CORS_HEADERS, {
@@ -238,9 +287,12 @@ export const handler: Handler = async (
     }
 
     const isOwnerViewer = Boolean(authUserId && authUserId === targetUserId);
+    timer.mark('access.start');
     const monetizationEnabled = await artistHasMonetizationEnabled(targetUserId);
     const hasPremiumAccess = await viewerHasPremiumAccessToArtist(authUserId, targetUserId);
+    timer.mark('access.done');
 
+    timer.mark('albumLocalesQuery.start');
     const albumsResult = await query<AlbumLocaleRow>(
       `SELECT
          a.id,
@@ -269,6 +321,7 @@ export const handler: Handler = async (
          a.created_at DESC`,
       [targetUserId, albumId]
     );
+    timer.mark('albumLocalesQuery.done');
 
     if (albumsResult.rows.length === 0) {
       return createErrorResponse(404, 'Album not found', CORS_HEADERS, {
@@ -277,42 +330,51 @@ export const handler: Handler = async (
     }
 
     const albumPks = albumsResult.rows.map((r) => r.id);
+    timer.mark('tracksAssetsPipeline.start');
     const [tracksByPk, assetsByTrackIdInitial, pipelineAvailable] = await Promise.all([
       fetchTracksForAlbumPks(albumPks),
       fetchTrackAssetsByAlbumPks(albumPks),
       resolvePipelineAvailable(),
     ]);
+    timer.mark('tracksAssetsPipeline.done');
 
-    const reconcileTrackInputs: Array<{
-      logicalTrackId: string;
-      processingStatus: TrackRow['processing_status'];
-    }> = [];
-    const reconcileSeen = new Set<string>();
-    for (const rows of tracksByPk.values()) {
-      for (const row of rows) {
-        const logicalTrackId = normalizeTrackIdString(row.track_id) || String(row.track_id);
-        if (reconcileSeen.has(logicalTrackId)) continue;
-        reconcileSeen.add(logicalTrackId);
-        reconcileTrackInputs.push({
-          logicalTrackId,
-          processingStatus: row.processing_status,
-        });
-      }
-    }
+    let assetsByTrackId = assetsByTrackIdInitial;
 
-    const { assetsByTrackId, failedTrackIds } = await reconcileAlbumPlaybackStorageBatch(
-      targetUserId,
-      albumId,
-      reconcileTrackInputs,
-      assetsByTrackIdInitial
-    );
-
-    if (failedTrackIds.size > 0) {
+    if (!playbackBootstrap) {
+      const reconcileTrackInputs: Array<{
+        logicalTrackId: string;
+        processingStatus: TrackRow['processing_status'];
+      }> = [];
+      const reconcileSeen = new Set<string>();
       for (const rows of tracksByPk.values()) {
         for (const row of rows) {
           const logicalTrackId = normalizeTrackIdString(row.track_id) || String(row.track_id);
-          if (!failedTrackIds.has(logicalTrackId)) continue;
-          row.processing_status = 'failed';
+          if (reconcileSeen.has(logicalTrackId)) continue;
+          reconcileSeen.add(logicalTrackId);
+          reconcileTrackInputs.push({
+            logicalTrackId,
+            processingStatus: row.processing_status,
+          });
+        }
+      }
+
+      timer.mark('playbackStorageReconcile.start');
+      const reconciled = await reconcileAlbumPlaybackStorageBatch(
+        targetUserId,
+        albumId,
+        reconcileTrackInputs,
+        assetsByTrackIdInitial
+      );
+      timer.mark('playbackStorageReconcile.done');
+      assetsByTrackId = reconciled.assetsByTrackId;
+
+      if (reconciled.failedTrackIds.size > 0) {
+        for (const rows of tracksByPk.values()) {
+          for (const row of rows) {
+            const logicalTrackId = normalizeTrackIdString(row.track_id) || String(row.track_id);
+            if (!reconciled.failedTrackIds.has(logicalTrackId)) continue;
+            row.processing_status = 'failed';
+          }
         }
       }
     }
@@ -339,12 +401,14 @@ export const handler: Handler = async (
       tracks: (tracksByPk.get(row.id) ?? []).map(mapTrackRow),
     }));
 
+    timer.mark('mapDto.start');
     const details = mapLocalesToAlbumDetails(locales, {
       hasPremiumAccess,
       monetizationEnabled,
       assetsByTrackId,
       pipelineAvailable,
     });
+    timer.mark('mapDto.done');
 
     if (!details) {
       return createErrorResponse(404, 'Album not found', CORS_HEADERS, {
@@ -352,28 +416,33 @@ export const handler: Handler = async (
       });
     }
 
-    const lyricsSource = albumsResult.rows.find((row) => row.lang === 'ru') ?? albumsResult.rows[0];
-    const lyricsRows = tracksByPk.get(lyricsSource.id) ?? [];
-    const lyricsByTrackId = await buildLyricsMapForAlbumTracks(
-      lyricsSource.album_id,
-      lyricsSource.user_id ?? targetUserId,
-      lyricsRows.map((row) => ({
-        track_id: row.track_id,
-        content: row.content,
-        authorship: row.authorship,
-      })),
-      lyricsSource.lang
-    );
-    details.tracks = details.tracks.map((track) => {
-      const bundle = lyricsByTrackId.get(track.id);
-      if (!bundle || bundle.state === 'empty') return track;
-      return {
-        ...track,
-        lyrics: bundle,
-        content: bundle.content,
-        authorship: bundle.authorship,
-      };
-    });
+    if (!playbackBootstrap) {
+      const lyricsSource =
+        albumsResult.rows.find((row) => row.lang === 'ru') ?? albumsResult.rows[0];
+      const lyricsRows = tracksByPk.get(lyricsSource.id) ?? [];
+      timer.mark('lyrics.start');
+      const lyricsByTrackId = await buildLyricsMapForAlbumTracks(
+        lyricsSource.album_id,
+        lyricsSource.user_id ?? targetUserId,
+        lyricsRows.map((row) => ({
+          track_id: row.track_id,
+          content: row.content,
+          authorship: row.authorship,
+        })),
+        lyricsSource.lang
+      );
+      timer.mark('lyrics.done');
+      details.tracks = details.tracks.map((track) => {
+        const bundle = lyricsByTrackId.get(track.id);
+        if (!bundle || bundle.state === 'empty') return track;
+        return {
+          ...track,
+          lyrics: bundle,
+          content: bundle.content,
+          authorship: bundle.authorship,
+        };
+      });
+    }
 
     if (!isOwnerViewer && !isAlbumDetailsVisibleToPublicViewer(details)) {
       return createErrorResponse(404, 'Album not found', CORS_HEADERS, {
@@ -381,6 +450,8 @@ export const handler: Handler = async (
       });
     }
 
+    timer.mark('response.ready');
+    logAlbumDetailsTimings(slug, albumId, playbackBootstrap, timer.finish());
     return createSuccessResponse(details);
   } catch (error) {
     console.error('[artist-album-details]', error);

@@ -24,8 +24,6 @@ import { normalizeTrackVisibility } from '../../src/shared/lib/tracks/trackVisib
 import { normalizeStemsVisibility } from '../../src/shared/lib/stems/stemsVisibility';
 import { mergeCatalogTrackLocales } from './lib/mergeCatalogTrackLocales';
 import { isPublicListedTrack } from '../../src/shared/lib/tracks/publicTrackPresentation';
-import { reconcileUserPublicPlayableTracks } from './lib/reconcile-user-public-playable-tracks';
-
 export interface CatalogAlbumDto {
   albumId: string;
   slug: string;
@@ -105,6 +103,31 @@ function langRank(lang: string): number {
   return 2;
 }
 
+type CatalogTimingMark = { label: string; ms: number };
+
+function createCatalogRequestTimer(): {
+  mark: (label: string) => void;
+  finish: () => CatalogTimingMark[];
+} {
+  const t0 = Date.now();
+  const marks: CatalogTimingMark[] = [];
+  return {
+    mark(label: string) {
+      marks.push({ label, ms: Date.now() - t0 });
+    },
+    finish() {
+      return marks;
+    },
+  };
+}
+
+function logCatalogTimings(slug: string, marks: CatalogTimingMark[]): void {
+  if (process.env.CATALOG_TRACE !== '1') return;
+  const summary = Object.fromEntries(marks.map((m) => [m.label, m.ms]));
+  // eslint-disable-next-line no-console
+  console.info('[artist-albums-catalog:timing]', { slug, ...summary });
+}
+
 export const handler: Handler = async (
   event: HandlerEvent
 ): Promise<{ statusCode: number; headers: Record<string, string>; body: string }> => {
@@ -116,11 +139,14 @@ export const handler: Handler = async (
     return createErrorResponse(405, 'Method not allowed. Use GET.');
   }
 
+  const timer = createCatalogRequestTimer();
   try {
     const slug = parseSlugFromEvent(event);
     if (!slug) {
       return createErrorResponse(400, 'Missing artist slug');
     }
+
+    timer.mark('request.received');
 
     const authVerdict = classifyAuthorizationHeader(getAuthorizationHeaderFromEvent(event));
     const authUserId = authVerdict.kind === 'valid' ? authVerdict.userId : null;
@@ -128,6 +154,7 @@ export const handler: Handler = async (
     let targetUserId: string;
     try {
       targetUserId = await resolvePublicArtistUserId(slug);
+      timer.mark('resolveArtist.done');
     } catch (error) {
       if (error instanceof PublicArtistResolverError) {
         return createErrorResponse(error.statusCode, error.message, CORS_HEADERS, {
@@ -138,7 +165,10 @@ export const handler: Handler = async (
     }
 
     try {
-      await assertArtistVisibleToViewer(targetUserId, authUserId);
+      await assertArtistVisibleToViewer(targetUserId, authUserId, {
+        skipPlaybackStorageReconcile: true,
+      });
+      timer.mark('publicationGate.done');
     } catch (error) {
       if (error instanceof PublicArtistResolverError) {
         return createErrorResponse(error.statusCode, error.message, CORS_HEADERS, {
@@ -150,8 +180,6 @@ export const handler: Handler = async (
 
     const isOwnerViewer = Boolean(authUserId && authUserId === targetUserId);
 
-    await reconcileUserPublicPlayableTracks(targetUserId);
-
     // Monetization and the catalog both key off targetUserId only and neither reads the other's
     // result, so they share one round-trip wave. Two concurrent queries is the pool ceiling
     // (PG_POOL_MAX defaults to 2), which is why the premium check below stays sequential.
@@ -160,6 +188,7 @@ export const handler: Handler = async (
     // the album *locale* row, so the join fans out per track without ever multiplying locales.
     // LEFT is required — a locale row with zero tracks still supplies title / cover / release /
     // publication flags (production has one: album `23-remastered`, lang `en`).
+    timer.mark('catalogQuery.start');
     const [monetizationEnabled, catalogResult] = await Promise.all([
       artistHasMonetizationEnabled(targetUserId),
       query<CatalogJoinRow>(
@@ -190,8 +219,10 @@ export const handler: Handler = async (
         [targetUserId]
       ),
     ]);
+    timer.mark('catalogQuery.done');
 
     const hasPremiumAccess = await viewerHasPremiumAccessToArtist(authUserId, targetUserId);
+    timer.mark('premiumAccess.done');
 
     // Flat join rows → the locale-row / track-row shape the rest of the handler consumes.
     // Locale rows dedupe on the album primary key, so first occurrence carries the SQL ORDER BY.
@@ -327,6 +358,8 @@ export const handler: Handler = async (
       });
     }
 
+    timer.mark('response.ready');
+    logCatalogTimings(slug, timer.finish());
     return createSuccessResponse(catalog);
   } catch (error) {
     console.error('[artist-albums-catalog]', error);

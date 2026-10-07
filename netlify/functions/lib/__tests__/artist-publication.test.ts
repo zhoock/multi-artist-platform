@@ -13,18 +13,46 @@ jest.mock('../db', () => ({
   query: jest.fn(),
 }));
 
+jest.mock('../reconcile-user-public-playable-tracks', () => ({
+  reconcileUserPublicPlayableTracks: jest.fn().mockResolvedValue(undefined),
+}));
+
 import { query } from '../db';
+import { reconcileUserPublicPlayableTracks } from '../reconcile-user-public-playable-tracks';
 
 const mockQuery = query as jest.MockedFunction<typeof query>;
+
+const mockReconcile = reconcileUserPublicPlayableTracks as jest.MockedFunction<
+  typeof reconcileUserPublicPlayableTracks
+>;
 
 describe('artist-publication', () => {
   beforeEach(() => {
     mockQuery.mockReset();
+    mockReconcile.mockClear();
   });
 
   test('catalog includes artist only when there are published tracks', () => {
     expect(isArtistPublishedFromSignals({ hasPublishedTracks: true })).toBe(true);
     expect(isArtistPublishedFromSignals({ hasPublishedTracks: false })).toBe(false);
+  });
+
+  test('getArtistPublicationSignals skips reconcile when skipPlaybackStorageReconcile is set', async () => {
+    mockQuery.mockImplementation(async (sql: string) => {
+      if (sql.includes('has_published_tracks')) {
+        return { rows: [{ has_published_tracks: true }] } as never;
+      }
+      throw new Error(`unexpected query: ${sql}`);
+    });
+
+    await getArtistPublicationSignals('user-catalog-fast', {
+      skipPlaybackStorageReconcile: true,
+    });
+    expect(mockReconcile).not.toHaveBeenCalled();
+
+    mockReconcile.mockClear();
+    await getArtistPublicationSignals('user-default-reconcile');
+    expect(mockReconcile).toHaveBeenCalledWith('user-default-reconcile');
   });
 
   test('public albums without tracks do not publish profile to catalog', () => {
@@ -487,6 +515,7 @@ describe('artist-publication', () => {
       }) as never);
 
       const pending = artistHasPublicPageContent('user-concurrency');
+      await drainMicrotasks();
 
       // Wave 1 — Q2 on its own. Q3/Q4 cannot be in flight yet: the gate does not know whether it
       // needs them until Q2 answers.
@@ -528,10 +557,12 @@ describe('artist-publication', () => {
       }) as never);
 
       const pending = artistHasPublicPageContent('user-fast-path');
+      await drainMicrotasks();
 
       expect(mockQuery).toHaveBeenCalledTimes(1);
-      const q2Sql = [...settle.keys()][0];
-      settle.get(q2Sql)!([{ [TRACKS_ALIAS]: true }]);
+      const q2Sql = [...settle.keys()].find((sql) => sql.includes(TRACKS_ALIAS));
+      expect(q2Sql).toBeDefined();
+      settle.get(q2Sql!)!([{ [TRACKS_ALIAS]: true }]);
 
       await expect(pending).resolves.toBe(true);
       // Still one call after the gate has fully resolved: nothing was dispatched behind it.
