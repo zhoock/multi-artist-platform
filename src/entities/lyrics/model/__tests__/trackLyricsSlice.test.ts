@@ -50,7 +50,10 @@ describe('applyTrackLyricsBundle', () => {
                     title: 'Track',
                     order_index: 0,
                     duration: 0,
-                    src: '',
+                    src: 'https://cdn.example/stream.opus',
+                    visibility: 'public',
+                    stemsVisibility: 'public',
+                    processingStatus: 'ready',
                     content: '',
                     lyrics: {
                       albumId: 'album-1',
@@ -78,5 +81,10 @@ describe('applyTrackLyricsBundle', () => {
     );
     expect(state.albums.dashboard.data[0]?.tracks[0]?.lyrics).toEqual(bundle);
     expect(state.albums.dashboard.data[0]?.tracks[0]?.content).toBe('Hello world');
+    const track = state.albums.dashboard.data[0]?.tracks[0];
+    expect(track?.src).toBe('https://cdn.example/stream.opus');
+    expect(track?.processingStatus).toBe('ready');
+    expect(track?.visibility).toBe('public');
+    expect(track?.stemsVisibility).toBe('public');
   });
 });

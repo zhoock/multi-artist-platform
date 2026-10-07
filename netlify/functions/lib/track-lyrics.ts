@@ -8,8 +8,70 @@ import {
 import type { TrackLyricsBundle } from '../../../src/shared/lib/lyrics/types';
 
 import { query } from './db';
+import { tracksTableHasPipelineColumns } from './track-pipeline-schema';
 
 export type { TrackLyricsBundle };
+
+/** Playback / visibility fields copied when lyrics save inserts a missing locale row. */
+export type TrackRowMetaForLyricsUpsert = {
+  title: string | null;
+  duration: number | null;
+  src: string | null;
+  order_index: number | null;
+  authorship: string | null;
+  processing_status: string | null;
+  processing_error: string | null;
+  master_path: string | null;
+  visibility: string | null;
+  stems_visibility: string | null;
+};
+
+const TRACK_META_SELECT_BASE = `SELECT title, duration, src, order_index, authorship`;
+const TRACK_META_SELECT_PIPELINE = `${TRACK_META_SELECT_BASE},
+  processing_status, processing_error, master_path, visibility, stems_visibility`;
+
+function trackMetaSelectSql(hasPipeline: boolean): string {
+  return hasPipeline ? TRACK_META_SELECT_PIPELINE : TRACK_META_SELECT_BASE;
+}
+
+function pickTrackMetaField<T>(
+  canon: T | null | undefined,
+  locale: T | null | undefined,
+  fallback: T
+): T {
+  if (canon !== null && canon !== undefined) return canon;
+  if (locale !== null && locale !== undefined) return locale;
+  return fallback;
+}
+
+/** Prefer canonical row, then locale mirror — never reset ready tracks to pending on INSERT. */
+export function mergePlaybackMetaForLyricsUpsert(
+  existingCanon: Partial<TrackRowMetaForLyricsUpsert> | undefined,
+  existingLocale: Partial<TrackRowMetaForLyricsUpsert> | undefined
+): Pick<
+  TrackRowMetaForLyricsUpsert,
+  'processing_status' | 'processing_error' | 'master_path' | 'visibility' | 'stems_visibility'
+> {
+  return {
+    processing_status: pickTrackMetaField(
+      existingCanon?.processing_status,
+      existingLocale?.processing_status,
+      'pending'
+    ),
+    processing_error: pickTrackMetaField(
+      existingCanon?.processing_error,
+      existingLocale?.processing_error,
+      null
+    ),
+    master_path: pickTrackMetaField(existingCanon?.master_path, existingLocale?.master_path, null),
+    visibility: pickTrackMetaField(existingCanon?.visibility, existingLocale?.visibility, 'public'),
+    stems_visibility: pickTrackMetaField(
+      existingCanon?.stems_visibility,
+      existingLocale?.stems_visibility,
+      'public'
+    ),
+  };
+}
 
 export type AlbumLangRow = { id: string; lang: string; user_id?: string | null };
 
@@ -237,33 +299,30 @@ export async function saveTrackLyricsContent(
   const canonicalLang = canonicalStorageLang(canonicalAlbum.lang);
   const sameAlbumRow = canonicalDbId === localeDbId;
   const authorshipVal = input.authorship ?? null;
+  const hasPipeline = await tracksTableHasPipelineColumns();
 
-  type TrackMetaRow = {
-    title: string | null;
-    duration: number | null;
-    src: string | null;
-    order_index: number | null;
-    authorship: string | null;
-  };
+  const metaSelect = trackMetaSelectSql(hasPipeline);
 
-  const existingCanonResult = await query<TrackMetaRow>(
-    `SELECT title, duration, src, order_index, authorship
+  const existingCanonResult = await query<TrackRowMetaForLyricsUpsert>(
+    `${metaSelect}
      FROM tracks WHERE album_id = $1 AND track_id = $2 LIMIT 1`,
     [canonicalDbId, String(trackId)],
     0
   );
   const existingCanon = existingCanonResult.rows[0];
 
-  let existingLocale: TrackMetaRow | undefined;
+  let existingLocale: TrackRowMetaForLyricsUpsert | undefined;
   if (!sameAlbumRow) {
-    const localeRows = await query<TrackMetaRow>(
-      `SELECT title, duration, src, order_index, authorship
+    const localeRows = await query<TrackRowMetaForLyricsUpsert>(
+      `${metaSelect}
        FROM tracks WHERE album_id = $1 AND track_id = $2 LIMIT 1`,
       [localeDbId, String(trackId)],
       0
     );
     existingLocale = localeRows.rows[0];
   }
+
+  const mergedPlayback = mergePlaybackMetaForLyricsUpsert(existingCanon, existingLocale);
 
   const requestTitleHint =
     typeof input.trackTitle === 'string' && input.trackTitle.trim().length > 0
@@ -283,14 +342,28 @@ export async function saveTrackLyricsContent(
     ? authorshipVal
     : (existingCanon?.authorship ?? null);
 
+  const playbackInsertCols = hasPipeline
+    ? `, processing_status, processing_error, master_path, visibility, stems_visibility`
+    : '';
+  const playbackInsertVals = hasPipeline ? `, $9, $10, $11, $12, $13` : '';
+  const playbackParams = hasPipeline
+    ? [
+        mergedPlayback.processing_status,
+        mergedPlayback.processing_error,
+        mergedPlayback.master_path,
+        mergedPlayback.visibility,
+        mergedPlayback.stems_visibility,
+      ]
+    : [];
+
   await query(
     sameAlbumRow
-      ? `INSERT INTO tracks (album_id, track_id, title, duration, src, content, authorship, order_index, updated_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, COALESCE($8, 0), NOW())
+      ? `INSERT INTO tracks (album_id, track_id, title, duration, src, content, authorship, order_index${playbackInsertCols}, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, COALESCE($8, 0)${playbackInsertVals}, NOW())
          ON CONFLICT (album_id, track_id)
          DO UPDATE SET content = EXCLUDED.content, authorship = EXCLUDED.authorship, updated_at = NOW()`
-      : `INSERT INTO tracks (album_id, track_id, title, duration, src, content, authorship, order_index, updated_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, COALESCE($8, 0), NOW())
+      : `INSERT INTO tracks (album_id, track_id, title, duration, src, content, authorship, order_index${playbackInsertCols}, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, COALESCE($8, 0)${playbackInsertVals}, NOW())
          ON CONFLICT (album_id, track_id)
          DO UPDATE SET content = EXCLUDED.content, updated_at = NOW()`,
     [
@@ -302,32 +375,39 @@ export async function saveTrackLyricsContent(
       content,
       upsertAuthorshipOnCanon,
       mergedOrderIndex,
+      ...playbackParams,
     ],
     0
   );
 
   if (!sameAlbumRow) {
-    const canonMeta = await query<{
-      title: string | null;
-      duration: number | null;
-      src: string | null;
-      content: string | null;
-      order_index: number | null;
-    }>(
-      `SELECT title, duration, src, content, order_index FROM tracks WHERE album_id = $1 AND track_id = $2 LIMIT 1`,
+    const canonMeta = await query<TrackRowMetaForLyricsUpsert & { content: string | null }>(
+      `${metaSelect}, content
+       FROM tracks WHERE album_id = $1 AND track_id = $2 LIMIT 1`,
       [canonicalDbId, String(trackId)],
       0
     );
     const cm = canonMeta.rows[0];
+    const localePlayback = mergePlaybackMetaForLyricsUpsert(cm, existingLocale);
     const rowContent = cm?.content ?? content ?? '';
     const localeRowTitle =
       cm?.title?.trim() ||
       existingLocale?.title?.trim() ||
       requestTitleHint ||
       `Track ${String(trackId)}`;
+    const localePlaybackParams = hasPipeline
+      ? [
+          localePlayback.processing_status,
+          localePlayback.processing_error,
+          localePlayback.master_path,
+          localePlayback.visibility,
+          localePlayback.stems_visibility,
+        ]
+      : [];
+
     await query(
-      `INSERT INTO tracks (album_id, track_id, title, duration, src, content, authorship, order_index, updated_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, COALESCE($8, 0), NOW())
+      `INSERT INTO tracks (album_id, track_id, title, duration, src, content, authorship, order_index${playbackInsertCols}, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, COALESCE($8, 0)${playbackInsertVals}, NOW())
        ON CONFLICT (album_id, track_id)
        DO UPDATE SET authorship = EXCLUDED.authorship, updated_at = NOW()`,
       [
@@ -339,6 +419,7 @@ export async function saveTrackLyricsContent(
         rowContent,
         authorshipVal,
         cm?.order_index ?? existingLocale?.order_index ?? 0,
+        ...localePlaybackParams,
       ],
       0
     );
@@ -499,13 +580,4 @@ export async function buildLyricsMapForAlbumTracks(
   return map;
 }
 
-/** Merge lyrics bundles across locale payloads (ru-first timed sync). */
-export function mergeTrackLyricsBundles(bundles: TrackLyricsBundle[]): TrackLyricsBundle {
-  if (bundles.length === 0) {
-    throw new Error('mergeTrackLyricsBundles: empty');
-  }
-  const synced = bundles.find((b) => b.state === 'synced');
-  if (synced) return synced;
-  const withText = bundles.find((b) => b.content.trim());
-  return withText ?? bundles[0];
-}
+export { mergeTrackLyricsBundles } from './track-lyrics-merge';

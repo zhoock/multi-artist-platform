@@ -54,12 +54,13 @@ import type { TrackLyricsBundle } from '../../src/shared/lib/lyrics/types';
 import { viewerHasPremiumAccessToArtist } from './lib/entitlements';
 import { artistHasMonetizationEnabled } from './lib/artist-monetization';
 import { resolveEffectiveContentVisibility } from '../../src/shared/lib/payment/artistMonetization';
-import { buildLyricsMapForAlbumTracks, mergeTrackLyricsBundles } from './lib/track-lyrics';
+import { buildLyricsMapForAlbumTracks } from './lib/track-lyrics';
 import {
   ARTIST_DISPLAY_NAME_SQL,
   ALBUMS_USER_JOIN_SQL,
   fetchArtistDisplayNameForUserId,
 } from './lib/resolve-album-key';
+import { mergeTrackPayloads } from './lib/merge-track-payloads';
 
 interface AlbumRow {
   id: string;
@@ -777,80 +778,6 @@ function sortAlbumRowsForMerge(rows: AlbumRow[]): AlbumRow[] {
       rank(a.lang) - rank(b.lang) ||
       new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
   );
-}
-
-function pickFirstTrackWithId(sorted: AlbumData[], trackId: string): TrackData | undefined {
-  const tid = String(trackId);
-  for (const p of sorted) {
-    const m = p.tracks.find((t) => String(t.id) === tid);
-    if (m) return m;
-  }
-  return undefined;
-}
-
-/**
- * Текст и синхронизация — один канон (корень трека, приоритет ru-строки альбома).
- * В translations[lang] только title + authorship.
- *
- * Важно: не брать только `sorted[0].tracks` — если треки загружены только в en-строку альбома,
- * а ru-строка пустая, иначе сливной GET отдаёт 0 треков и кабинет «теряет» их.
- */
-function mergeTrackPayloads(payloads: AlbumData[]): TrackData[] {
-  const sorted = [...payloads].sort((a, b) => {
-    const rank = (l: string | undefined) => (l === 'ru' ? 0 : l === 'en' ? 1 : 2);
-    return rank(a.lang) - rank(b.lang);
-  });
-
-  const orderById = new Map<string, number>();
-  for (const p of sorted) {
-    for (const t of p.tracks) {
-      const id = String(t.id);
-      const ord =
-        typeof t.order_index === 'number' && !Number.isNaN(t.order_index) ? t.order_index : 0;
-      if (!orderById.has(id)) {
-        orderById.set(id, ord);
-      } else {
-        orderById.set(id, Math.min(orderById.get(id)!, ord));
-      }
-    }
-  }
-
-  const uniqueIds = [...orderById.keys()].sort((a, b) => {
-    const oa = orderById.get(a) ?? 0;
-    const ob = orderById.get(b) ?? 0;
-    if (oa !== ob) return oa - ob;
-    return a.localeCompare(b);
-  });
-
-  return uniqueIds.map((tid) => {
-    const ct = pickFirstTrackWithId(sorted, tid);
-    if (!ct) {
-      throw new Error(`mergeTrackPayloads: missing track ${tid}`);
-    }
-    const translations: Partial<Record<SupportedLang, TrackLocalePayload>> = {};
-    for (const p of sorted) {
-      if (!p.lang || !validateLang(p.lang)) continue;
-      const match = p.tracks.find((t) => String(t.id) === tid);
-      if (match) {
-        translations[p.lang] = {
-          title: match.title,
-          authorship: match.authorship,
-        };
-      }
-    }
-    const bundles = sorted
-      .map((p) => p.tracks.find((t) => String(t.id) === tid)?.lyrics)
-      .filter((b): b is TrackLyricsBundle => Boolean(b));
-    const mergedLyrics = mergeTrackLyricsBundles(bundles.length > 0 ? bundles : [ct.lyrics]);
-
-    return {
-      ...ct,
-      content: mergedLyrics.content,
-      authorship: mergedLyrics.authorship ?? ct.authorship,
-      lyrics: mergedLyrics,
-      translations,
-    };
-  });
 }
 
 function mergeAlbumDataPayloads(payloads: AlbumData[]): AlbumData {
