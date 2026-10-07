@@ -57,6 +57,33 @@ describe('ensureTrackLyricsBundle', () => {
     expect(store.getState().trackLyrics.entities['23:track-a:ru']?.content).toBe('Hello lyrics');
   });
 
+  test('writes bundle under request albumId/trackId when API returns different ids', async () => {
+    const store = createStore();
+    mockFetch.mockResolvedValue({
+      albumId: 'wrong-album-id',
+      trackId: 'wrong-track-id',
+      lang: 'ru',
+      content: 'Canonical key lyrics',
+      state: 'text-only',
+      syncedLines: null,
+      syncedAt: null,
+    });
+
+    await ensureTrackLyricsBundle(store.dispatch, store.getState as never, {
+      albumId: '23',
+      trackId: 'track-a',
+      lang: 'ru',
+      artistSlug: 'artist',
+    });
+
+    expect(store.getState().trackLyrics.entities['23:track-a:ru']?.content).toBe(
+      'Canonical key lyrics'
+    );
+    expect(
+      store.getState().trackLyrics.entities['wrong-album-id:wrong-track-id:ru']
+    ).toBeUndefined();
+  });
+
   test('does not duplicate in-flight or completed fetches (same logical track)', async () => {
     const store = createStore();
     let resolveFetch!: (value: Awaited<ReturnType<typeof fetchTrackLyricsBundle>>) => void;

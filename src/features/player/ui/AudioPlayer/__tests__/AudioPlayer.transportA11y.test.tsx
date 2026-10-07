@@ -48,6 +48,7 @@ jest.mock('@features/player/model/lib/audioController', () => {
     audioController: {
       element,
       setCurrentTime: jest.fn(),
+      ensureElementInDocument: jest.fn(),
     },
   };
 });
@@ -56,7 +57,12 @@ jest.mock('../hooks/useLyricsScrollRestore', () => ({ useLyricsScrollRestore: ()
 jest.mock('../hooks/useLyricsManualScroll', () => ({ useLyricsManualScroll: () => undefined }));
 jest.mock('../hooks/useLyricsAutoScroll', () => ({ useLyricsAutoScroll: () => undefined }));
 jest.mock('../hooks/useLyricsContent', () => ({
-  useLyricsContent: () => ({ lyricsBundle: null, hasNonEmptyLyricsEntity: true }),
+  useLyricsContent: () => ({
+    lyricsBundle: null,
+    hasNonEmptyLyricsEntity: true,
+    isLyricsHydrating: false,
+    isLyricsConfirmedUnavailable: false,
+  }),
 }));
 jest.mock('../hooks/useSeek', () => ({
   useSeek: () => ({

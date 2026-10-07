@@ -28,6 +28,8 @@ import {
   selectPlayerUiForA11y,
 } from '@features/player/lib/getPlayerA11yLabels';
 
+import { artistPlayTrace } from '@features/universe/lib/artistPlayTrace';
+
 import { debugLog, trackDebug } from './utils/debug';
 import { formatTimerValue } from './utils/formatTime';
 import { createPlayerRangePointerHandlers } from './lib/createPlayerRangePointerHandlers';
@@ -725,7 +727,12 @@ export default function AudioPlayer({
   }, [albumId]);
 
   // Canonical TrackLyricsBundle from trackLyricsSlice only (playlist no longer carries lyrics)
-  const { lyricsBundle, hasNonEmptyLyricsEntity }: UseLyricsContentResult = useLyricsContent({
+  const {
+    lyricsBundle,
+    hasNonEmptyLyricsEntity,
+    isLyricsHydrating,
+    isLyricsConfirmedUnavailable,
+  }: UseLyricsContentResult = useLyricsContent({
     currentTrack,
     albumId,
     lang,
@@ -778,18 +785,17 @@ export default function AudioPlayer({
     showControls();
   }, [currentTrack, albumId, lang, showControls]);
 
-  // Авто-выключение текста для треков без текста (по результатам useLyricsContent)
+  // Close lyrics mode only when hydration finished and lyrics are confirmed absent (not during load).
   useEffect(() => {
-    if (
-      !isLoadingSyncedLyrics &&
-      !syncedLyrics &&
-      !plainLyricsContent &&
-      currentTrack &&
-      showLyrics
-    ) {
+    if (showLyrics && isLyricsConfirmedUnavailable) {
+      artistPlayTrace('lyrics.mode.closed', {
+        reason: 'confirmed-unavailable',
+        trackId: currentTrack?.id ?? null,
+      });
       setShowLyrics(false);
+      dispatch(playerActions.setShowLyrics(false));
     }
-  }, [isLoadingSyncedLyrics, syncedLyrics, plainLyricsContent, currentTrack, showLyrics]);
+  }, [currentTrack?.id, dispatch, isLyricsConfirmedUnavailable, showLyrics]);
 
   // Определяем текущую строку на основе времени воспроизведения
   const currentLineIndexComputed = useCurrentLineIndex({
@@ -899,7 +905,43 @@ export default function AudioPlayer({
     hasSyncedLyricsAvailable ||
     hasSyncedLyricsHint ||
     hasPlainLyrics ||
+    isLyricsHydrating ||
     (isLoadingSyncedLyrics && !hasNonEmptyLyricsEntity);
+
+  useEffect(() => {
+    artistPlayTrace('lyrics.button.state', {
+      enabled: hasTextToShow,
+      hasPlainLyrics,
+      hasSyncedLyricsAvailable,
+      hasSyncedLyricsHint,
+      isLyricsHydrating,
+      isLyricsConfirmedUnavailable,
+      isLoadingSyncedLyrics,
+      trackId: currentTrack?.id ?? null,
+      bundleState: lyricsBundle?.state ?? null,
+    });
+  }, [
+    currentTrack?.id,
+    hasPlainLyrics,
+    hasSyncedLyricsAvailable,
+    hasSyncedLyricsHint,
+    hasTextToShow,
+    isLyricsConfirmedUnavailable,
+    isLyricsHydrating,
+    isLoadingSyncedLyrics,
+    lyricsBundle?.state,
+  ]);
+
+  useEffect(() => {
+    if (showLyrics) {
+      artistPlayTrace('lyrics.mode.opened', {
+        trackId: currentTrack?.id ?? null,
+        isLyricsHydrating,
+        hasPlainLyrics,
+        hasSyncedLyrics: !!(syncedLyrics && syncedLyrics.length > 0),
+      });
+    }
+  }, [showLyrics, currentTrack?.id, isLyricsHydrating, hasPlainLyrics, syncedLyrics]);
 
   // Ref для прямого доступа к элементу отображения времени
   const timeDisplayRef = useRef<HTMLDivElement | null>(null);
@@ -1036,7 +1078,8 @@ export default function AudioPlayer({
   const shouldPreferSynced =
     hasSyncedLyricsAvailable || (isLoadingSyncedLyrics && hasSyncedLyricsHint);
 
-  const shouldRenderSkeleton = showLyrics && !shouldRenderSyncedLyrics && shouldPreferSynced;
+  const shouldRenderSkeleton =
+    showLyrics && !shouldRenderSyncedLyrics && (shouldPreferSynced || isLyricsHydrating);
 
   const shouldRenderPlainLyrics =
     showLyrics && !shouldRenderSyncedLyrics && !shouldPreferSynced && !!plainLyricsContent;

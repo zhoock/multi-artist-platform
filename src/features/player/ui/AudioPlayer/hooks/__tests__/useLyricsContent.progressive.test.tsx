@@ -15,13 +15,17 @@ import { useLyricsContent } from '../useLyricsContent';
 
 jest.mock('../../utils/debug', () => ({ debugLog: jest.fn() }));
 
-jest.mock('@entities/lyrics/lib/ensureTrackLyricsBundle', () => ({
-  ensureTrackLyricsBundle: jest.fn(() => Promise.resolve()),
-}));
-
 jest.mock('@shared/lib/hooks/useEffectiveLocation', () => ({
   useEffectiveLocation: () => ({ pathname: '/ru', search: '?artist=demo', hash: '#player' }),
 }));
+
+jest.mock('@entities/lyrics/lib/ensureTrackLyricsBundle', () => {
+  const actual = jest.requireActual('@entities/lyrics/lib/ensureTrackLyricsBundle') as object;
+  return {
+    ...actual,
+    ensureTrackLyricsBundle: jest.fn(() => Promise.resolve()),
+  };
+});
 
 import { ensureTrackLyricsBundle } from '@entities/lyrics/lib/ensureTrackLyricsBundle';
 

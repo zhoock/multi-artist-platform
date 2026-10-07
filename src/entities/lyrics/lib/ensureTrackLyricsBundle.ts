@@ -23,6 +23,16 @@ export function resetTrackLyricsInflightForTests(): void {
   inflight.clear();
 }
 
+export function isTrackLyricsInflight(
+  artistSlug: string | null | undefined,
+  albumId: string,
+  trackId: string | number,
+  lang: string
+): boolean {
+  const id = normalizeTrackIdString(String(trackId)) || String(trackId);
+  return inflight.has(trackLyricsInflightKey(artistSlug, albumId.trim(), id, lang));
+}
+
 export type EnsureTrackLyricsInput = {
   albumId: string;
   trackId: string | number;
@@ -111,7 +121,8 @@ export async function ensureTrackLyricsBundle(
           state: bundle.state,
           contentLength: bundle.content?.length ?? 0,
         });
-        const writtenKeys = dispatchTrackLyricsBundle(dispatch, bundle, lang);
+        const normalizedBundle = { ...bundle, albumId, trackId };
+        const writtenKeys = dispatchTrackLyricsBundle(dispatch, normalizedBundle, lang);
         artistPlayTrace('lyrics.store.updated', {
           writtenKeys,
           readLookupAlbumId: albumId,

@@ -27,6 +27,7 @@ export {
 
 export {
   ensureTrackLyricsBundle,
+  isTrackLyricsInflight,
   resetTrackLyricsInflightForTests,
   trackLyricsInflightKey,
 } from './lib/ensureTrackLyricsBundle';
