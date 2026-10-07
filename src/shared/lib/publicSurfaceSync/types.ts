@@ -27,6 +27,7 @@ export type PublicSurfaceScope =
   | 'profileChrome'
   | 'displayName'
   | 'heroImages'
+  | 'userProfile'
   | 'publicArtists'
   | 'monetization'
   | 'stems';

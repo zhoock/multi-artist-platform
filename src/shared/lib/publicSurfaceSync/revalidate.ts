@@ -144,6 +144,11 @@ export function executePublicSurfaceRevalidate(input: ExecutePublicSurfaceRevali
     }
   }
 
+  if (scopeSet.has('userProfile')) {
+    clearPublicArtistUserProfileInflight(slug);
+    invalidatePublicArtistUserProfileCache(slug);
+  }
+
   if (scopeSet.has('heroImages')) {
     clearPublicArtistUserProfileInflight(slug);
     invalidateArtistHeroHeaderImagesCache(slug);

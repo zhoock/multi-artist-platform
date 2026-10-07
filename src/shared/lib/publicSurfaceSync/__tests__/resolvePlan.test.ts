@@ -43,6 +43,20 @@ describe('resolvePublicSurfacePlan', () => {
     expect(plan.scopes).toEqual(expect.arrayContaining(['profileChrome', 'publicArtists']));
   });
 
+  test('profile about invalidates shared user-profile cache', () => {
+    const plan = resolvePublicSurfacePlan({
+      type: 'profileChanged',
+      aspects: ['about'],
+    });
+    expect(plan.scopes).toEqual(expect.arrayContaining(['profileChrome', 'userProfile']));
+    expect(plan.broadcastArtistUpdated).toBe(true);
+  });
+
+  test('social links change invalidates user-profile cache', () => {
+    const plan = resolvePublicSurfacePlan({ type: 'socialLinksChanged' });
+    expect(plan.scopes).toEqual(expect.arrayContaining(['profileChrome', 'userProfile']));
+  });
+
   test('monetization cascades to gated surfaces', () => {
     const plan = resolvePublicSurfacePlan({ type: 'monetizationChanged', enabled: true });
     expect(plan.scopes).toEqual(

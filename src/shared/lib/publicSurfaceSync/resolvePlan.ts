@@ -69,10 +69,13 @@ export function resolvePublicSurfacePlan(
       if (change.aspects.includes('headerImages')) {
         scopes.push('heroImages');
       }
+      if (change.aspects.includes('about')) {
+        scopes.push('userProfile');
+      }
       break;
     }
     case 'socialLinksChanged':
-      scopes = ['profileChrome'];
+      scopes = ['profileChrome', 'userProfile'];
       broadcastArtistUpdated = true;
       break;
     case 'monetizationChanged':
