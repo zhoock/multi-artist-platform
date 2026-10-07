@@ -84,7 +84,10 @@ export const MiniPlayer: React.FC<MiniPlayerProps> = ({
         <button
           type="button"
           className="mini-player__control mini-player__control--transport"
-          onClick={onToggle}
+          onClick={(event) => {
+            event.stopPropagation();
+            onToggle();
+          }}
           aria-label={isPlaying ? labels.pause : labels.play}
         >
           {isPlaying ? (

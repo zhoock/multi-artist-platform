@@ -111,4 +111,28 @@
   width: 100%;
 
   @include button-variant($margin: 0);
+
+  &.universe3d-card__play--starting {
+    cursor: wait;
+    opacity: 0.92;
+  }
+
+  &.universe3d-card__play--starting::before {
+    content: '';
+    display: inline-block;
+    width: 0.85em;
+    height: 0.85em;
+    margin-right: 0.45em;
+    vertical-align: -0.1em;
+    border: 2px solid color-mix(in srgb, currentcolor 35%, transparent);
+    border-top-color: currentcolor;
+    border-radius: 50%;
+    animation: universe3d-card-play-spin 0.75s linear infinite;
+  }
+}
+
+@keyframes universe3d-card-play-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }

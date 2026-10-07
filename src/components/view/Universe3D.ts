@@ -1,5 +1,17 @@
 import * as THREE from 'three';
 import type { ProfileNameUpdatedDetail } from '@shared/lib/profileDisplayName';
+import {
+  applyUniverse3dCardPlayButtonState,
+  DEFAULT_UNIVERSE3D_ARTIST_CARD_PLAY_LABELS,
+  isUniverse3dCardPlayButtonStarting,
+  syncUniverse3dCardPlayButtonForSlug,
+  type Universe3dArtistCardPlayLabels,
+} from './universe3dArtistCardPlayButton';
+import {
+  isArtistCardPlayResume,
+  resolveArtistCardPlayButtonPhase,
+  type ArtistCardPlayPlayerSnapshot,
+} from '@features/universe/lib/artistCardPlayButtonPhase';
 import { isUniverseSceneOverlayTarget } from '@shared/lib/universeSceneOverlay';
 import './Universe3D.style.scss';
 import { UNIVERSE_FOCUS_ARTIST_STORAGE_KEY } from './universe3dConstants';
@@ -215,6 +227,9 @@ export class Universe3D {
   /** Mesh the card is tied to; position is reprojected on resize and each frame. */
   private cardAnchorObject: THREE.Object3D | null = null;
   private onPlayArtist?: (artist: SceneArtist) => boolean | Promise<boolean>;
+  private artistCardPlayLabels: Universe3dArtistCardPlayLabels =
+    DEFAULT_UNIVERSE3D_ARTIST_CARD_PLAY_LABELS;
+  private getArtistCardPlaySnapshot?: () => ArtistCardPlayPlayerSnapshot;
   private onNavigateToArtist?: (publicSlug: string) => void;
   private buildArtistProfileHrefFn?: (publicSlug: string) => string;
   private useContainerSize = false;
@@ -252,6 +267,8 @@ export class Universe3D {
     artists: SceneArtist[] = [],
     options?: {
       onPlayArtist?: (artist: SceneArtist) => boolean | Promise<boolean>;
+      artistCardPlayLabels?: Universe3dArtistCardPlayLabels;
+      getArtistCardPlaySnapshot?: () => ArtistCardPlayPlayerSnapshot;
       onNavigateToArtist?: (publicSlug: string) => void;
       buildArtistProfileHref?: (publicSlug: string) => string;
       clusterColor?: number;
@@ -302,6 +319,9 @@ export class Universe3D {
     container.appendChild(ui);
     this.uiLayer = ui;
     this.onPlayArtist = options?.onPlayArtist;
+    this.artistCardPlayLabels =
+      options?.artistCardPlayLabels ?? DEFAULT_UNIVERSE3D_ARTIST_CARD_PLAY_LABELS;
+    this.getArtistCardPlaySnapshot = options?.getArtistCardPlaySnapshot;
     this.onNavigateToArtist = options?.onNavigateToArtist;
     this.buildArtistProfileHrefFn = options?.buildArtistProfileHref;
 
@@ -423,6 +443,21 @@ export class Universe3D {
     if (this.clickableNodes.length !== 1) return false;
     this.handleArtistNodeActivation(this.clickableNodes[0]);
     return true;
+  }
+
+  /** Sync Play/Pause button from Redux player snapshot + starting slug. */
+  syncArtistCardPlayButtonState(): void {
+    if (!this.activeCard) return;
+    const slug = this.activeCard.dataset.artistSlug?.trim() ?? '';
+    if (!slug) return;
+    const snapshot = this.getArtistCardPlaySnapshot?.() ?? {
+      startingArtistSlug: null,
+      activeArtistSlug: null,
+      isPlaying: false,
+      hasActiveQueue: false,
+    };
+    const phase = resolveArtistCardPlayButtonPhase({ cardArtistSlug: slug, ...snapshot });
+    syncUniverse3dCardPlayButtonForSlug(this.activeCard, phase, this.artistCardPlayLabels);
   }
 
   isArtistCardTarget(target: EventTarget | null): boolean {
@@ -995,6 +1030,19 @@ export class Universe3D {
     return null;
   }
 
+  private syncArtistCardPlayButtonStateForCard(card: HTMLElement): void {
+    const slug = card.dataset.artistSlug?.trim() ?? '';
+    if (!slug) return;
+    const snapshot = this.getArtistCardPlaySnapshot?.() ?? {
+      startingArtistSlug: null,
+      activeArtistSlug: null,
+      isPlaying: false,
+      hasActiveQueue: false,
+    };
+    const phase = resolveArtistCardPlayButtonPhase({ cardArtistSlug: slug, ...snapshot });
+    syncUniverse3dCardPlayButtonForSlug(card, phase, this.artistCardPlayLabels);
+  }
+
   private dismissCard() {
     this.activeCard?.remove();
     this.activeCard = null;
@@ -1350,6 +1398,9 @@ export class Universe3D {
     const card = document.createElement('div');
     card.className = 'universe3d-card';
     card.style.visibility = 'hidden';
+    if (slug) {
+      card.dataset.artistSlug = slug;
+    }
     card.innerHTML = `
       ${slug ? '<a class="universe3d-card__media"></a>' : '<div class="universe3d-card__media" aria-hidden="true"></div>'}
       <div class="universe3d-card__body">
@@ -1404,13 +1455,40 @@ export class Universe3D {
 
     const playButton = card.querySelector('.universe3d-card__play');
     if (playButton instanceof HTMLButtonElement) {
+      playButton.textContent = this.artistCardPlayLabels.play;
+      this.syncArtistCardPlayButtonStateForCard(card);
+
       playButton.addEventListener('click', async (e) => {
         e.preventDefault();
         e.stopPropagation();
         if (!this.onPlayArtist) return;
-        const started = await this.onPlayArtist(data as SceneArtist);
-        if (started) {
-          this.dismissCard();
+        if (isUniverse3dCardPlayButtonStarting(playButton)) return;
+
+        const slug = typeof data.publicSlug === 'string' ? data.publicSlug.trim() : '';
+        const snapshot = this.getArtistCardPlaySnapshot?.() ?? {
+          startingArtistSlug: null,
+          activeArtistSlug: null,
+          isPlaying: false,
+          hasActiveQueue: false,
+        };
+        const phase = resolveArtistCardPlayButtonPhase({ cardArtistSlug: slug, ...snapshot });
+        if (phase === 'starting') return;
+
+        const coldStart = phase === 'play' && !isArtistCardPlayResume(slug, snapshot);
+        if (coldStart) {
+          applyUniverse3dCardPlayButtonState(playButton, {
+            phase: 'starting',
+            labels: this.artistCardPlayLabels,
+          });
+        }
+
+        try {
+          const started = await this.onPlayArtist(data as SceneArtist);
+          if (!started) {
+            this.syncArtistCardPlayButtonStateForCard(card);
+          }
+        } catch {
+          this.syncArtistCardPlayButtonStateForCard(card);
         }
       });
     }

@@ -23,6 +23,9 @@ import { fetchArticles } from '@entities/article';
 import { generateMockArtists } from '@shared/lib/generateMockArtists';
 import { startUniverseArtistPlayback } from '@features/universe/lib/startUniverseArtistPlayback';
 import { artistPlayTrace, artistPlayTraceStart } from '@features/universe/lib/artistPlayTrace';
+import { runArtistCardPlayAction } from '@features/universe/lib/runArtistCardPlayAction';
+import { resolveHomeArtistCardPlayLabels } from '@features/universe/lib/homeArtistPlayStartingLabels';
+import { playerActions, playerSelectors } from '@features/player';
 import { prepareUniverseData } from '@features/universe/model/prepareUniverseData';
 import { fetchWithAuthSession } from '@shared/lib/authFetch';
 import { fetchPublicProfileForDisplay } from '@shared/lib/profileDisplayName';
@@ -70,6 +73,7 @@ type HomeUniverseHandle = {
   setSearchHighlight: (matchedSlugs: string[] | null) => void;
   navigateToArtistFromSearch: (publicSlug: string) => void;
   focusOnArtist: (publicSlug: string) => void;
+  syncArtistCardPlayButtonState: () => void;
 };
 
 export function HomePage() {
@@ -82,6 +86,26 @@ export function HomePage() {
   const sceneRef = useRef<HTMLDivElement | null>(null);
   const universeRef = useRef<HomeUniverseHandle | null>(null);
   const artistPlayInflightRef = useRef<Promise<boolean> | null>(null);
+  const artistPlayStartingSlugRef = useRef<string | null>(null);
+  const [artistPlayStartingSlug, setArtistPlayStartingSlug] = useState<string | null>(null);
+  artistPlayStartingSlugRef.current = artistPlayStartingSlug;
+  const isPlayerPlaying = useAppSelector(playerSelectors.selectIsPlaying);
+  const playerArtistSlug = useAppSelector(
+    (state) => state.player.albumMeta?.publicSlug?.trim() ?? null
+  );
+  const hasPlayerQueue = useAppSelector((state) => state.player.playlist.length > 0);
+  const playerCardPlaySnapshotRef = useRef({
+    startingArtistSlug: null as string | null,
+    activeArtistSlug: null as string | null,
+    isPlaying: false,
+    hasActiveQueue: false,
+  });
+  playerCardPlaySnapshotRef.current = {
+    startingArtistSlug: artistPlayStartingSlug,
+    activeArtistSlug: playerArtistSlug,
+    isPlaying: isPlayerPlaying,
+    hasActiveQueue: hasPlayerQueue,
+  };
   /** Read at interaction time so Universe3D init does not rerun on locale-only changes. */
   const langForUniverseRef = useRef(lang);
   const locationForUniverseRef = useRef(location);
@@ -98,6 +122,7 @@ export function HomePage() {
     }
   });
   const prefersReducedMotion = usePrefersReducedMotion();
+  const artistCardPlayLabels = useMemo(() => resolveHomeArtistCardPlayLabels(lang, ui), [lang, ui]);
   const toggleUseMocks = useCallback(() => {
     setUseMocks((prev) => {
       const next = !prev;
@@ -232,7 +257,9 @@ export function HomePage() {
 
     setSceneArtists([]);
 
-    let universe: HomeUniverseHandle | null = null;
+    let universe3d: InstanceType<
+      Awaited<ReturnType<typeof loadUniverse3DModule>>['Universe3D']
+    > | null = null;
     let cancelled = false;
 
     const init = async () => {
@@ -281,63 +308,72 @@ export function HomePage() {
       const { Universe3D } = await loadUniverse3DModule();
       if (cancelled || !sceneRef.current) return;
 
-      universe = new Universe3D(sceneRef.current, artists, {
+      universe3d = new Universe3D(sceneRef.current, artists, {
         onNavigateToArtist: (publicSlug) => {
           sessionStorage.setItem(UNIVERSE_FOCUS_ARTIST_STORAGE_KEY, publicSlug);
           navigate(buildArtistPagePath(langForUniverseRef.current, publicSlug), { replace: false });
         },
         buildArtistProfileHref: (publicSlug) =>
           buildArtistPagePath(langForUniverseRef.current, publicSlug),
-        onPlayArtist: async (artist) => {
-          if (!artist?.publicSlug) return false;
-
-          if (artistPlayInflightRef.current) {
-            return artistPlayInflightRef.current;
-          }
-
-          const slug = artist.publicSlug;
-          const run = (async (): Promise<boolean> => {
+        artistCardPlayLabels,
+        getArtistCardPlaySnapshot: () => playerCardPlaySnapshotRef.current,
+        onPlayArtist: (artist) => {
+          const slug = artist?.publicSlug;
+          if (slug) {
             artistPlayTraceStart(slug);
             artistPlayTrace('click.playArtist', { slug });
-            const result = await startUniverseArtistPlayback({
-              artistSlug: slug,
-              lang: langForUniverseRef.current,
-              dispatch,
-              sourceLocation: {
-                pathname: locationForUniverseRef.current.pathname,
-                search: locationForUniverseRef.current.search || undefined,
-              },
-            });
-            if (!result.ok) return false;
-
-            navigate(
-              {
-                pathname: locationForUniverseRef.current.pathname,
-                search: locationForUniverseRef.current.search || undefined,
-                hash: '',
-              },
-              { replace: true }
-            );
-            return true;
-          })();
-
-          artistPlayInflightRef.current = run;
-          try {
-            return await run;
-          } finally {
-            if (artistPlayInflightRef.current === run) {
-              artistPlayInflightRef.current = null;
-            }
           }
+          return runArtistCardPlayAction({
+            publicSlug: slug,
+            readPlayerSnapshot: () => playerCardPlaySnapshotRef.current,
+            getInflight: () => artistPlayInflightRef.current,
+            setInflight: (promise) => {
+              artistPlayInflightRef.current = promise;
+            },
+            setStartingSlug: setArtistPlayStartingSlug,
+            pausePlayback: () => {
+              dispatch(playerActions.pause());
+            },
+            resumePlayback: () => {
+              dispatch(playerActions.play());
+            },
+            startArtistPlay: () =>
+              startUniverseArtistPlayback({
+                artistSlug: slug ?? '',
+                lang: langForUniverseRef.current,
+                dispatch,
+                sourceLocation: {
+                  pathname: locationForUniverseRef.current.pathname,
+                  search: locationForUniverseRef.current.search || undefined,
+                },
+              }),
+            onArtistPlaySuccess: () => {
+              navigate(
+                {
+                  pathname: locationForUniverseRef.current.pathname,
+                  search: locationForUniverseRef.current.search || undefined,
+                  hash: '',
+                },
+                { replace: true }
+              );
+            },
+          });
         },
       });
 
-      universeRef.current = universe;
+      universeRef.current = {
+        destroy: () => universe3d?.destroy(),
+        setSearchHighlight: (matchedSlugs) => universe3d?.setSearchHighlight(matchedSlugs),
+        navigateToArtistFromSearch: (publicSlug) =>
+          universe3d?.navigateToArtistFromSearch(publicSlug),
+        focusOnArtist: (publicSlug) => universe3d?.focusOnArtist(publicSlug),
+        syncArtistCardPlayButtonState: () => universe3d?.syncArtistCardPlayButtonState(),
+      };
 
       const focusSlug = sessionStorage.getItem(UNIVERSE_FOCUS_ARTIST_STORAGE_KEY);
       if (focusSlug) {
         setTimeout(() => {
-          universe?.focusOnArtist(focusSlug);
+          universe3d?.focusOnArtist(focusSlug);
         }, 300);
         sessionStorage.removeItem(UNIVERSE_FOCUS_ARTIST_STORAGE_KEY);
       }
@@ -349,12 +385,22 @@ export function HomePage() {
       cancelled = true;
       setSceneArtists([]);
       universeRef.current = null;
-      universe?.destroy();
+      universe3d?.destroy();
       if (sceneRef.current) {
         sceneRef.current.innerHTML = '';
       }
     };
   }, [dispatch, hasArtistParam, navigate, prefersReducedMotion, useMocks, universeRefreshToken]);
+
+  useEffect(() => {
+    universeRef.current?.syncArtistCardPlayButtonState();
+  }, [artistPlayStartingSlug, isPlayerPlaying, playerArtistSlug, hasPlayerQueue]);
+
+  useEffect(() => {
+    if (artistPlayStartingSlug && isPlayerPlaying) {
+      setArtistPlayStartingSlug(null);
+    }
+  }, [artistPlayStartingSlug, isPlayerPlaying]);
 
   useEffect(() => {
     if (process.env.NODE_ENV === 'production') return;

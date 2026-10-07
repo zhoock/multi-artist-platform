@@ -23,6 +23,16 @@ describe('isUniverseSceneOverlayTarget', () => {
     expect(isUniverseSceneOverlayTarget(document.getElementById('btn'))).toBe(true);
   });
 
+  it('returns true for mini-player controls even without overlay attr', () => {
+    document.body.innerHTML = `
+      <div class="mini-player">
+        <button id="pause" type="button">Pause</button>
+      </div>
+    `;
+
+    expect(isUniverseSceneOverlayTarget(document.getElementById('pause'))).toBe(true);
+  });
+
   it('returns true for in-scene artist cards', () => {
     document.body.innerHTML = `
       <article class="universe3d-card">

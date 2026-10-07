@@ -6,6 +6,7 @@ import { UNIVERSE_SCENE_OVERLAY_ATTR } from './constants';
  */
 const UNIVERSE_SCENE_OVERLAY_SELECTOR = [
   `[${UNIVERSE_SCENE_OVERLAY_ATTR}]`,
+  '.mini-player',
   '.universe3d-card',
   'dialog.popup[open]',
 ].join(', ');

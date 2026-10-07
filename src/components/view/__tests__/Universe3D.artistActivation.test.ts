@@ -58,7 +58,16 @@ describe('Universe3D artist activation', () => {
     jest.restoreAllMocks();
   });
 
-  function createUniverse(options?: { isHeroPreview?: boolean }) {
+  function createUniverse(options?: {
+    isHeroPreview?: boolean;
+    onPlayArtist?: (artist: { publicSlug?: string }) => boolean | Promise<boolean>;
+    getArtistCardPlaySnapshot?: () => {
+      startingArtistSlug: string | null;
+      activeArtistSlug: string | null;
+      isPlaying: boolean;
+      hasActiveQueue: boolean;
+    };
+  }) {
     const container = document.createElement('div');
     Object.defineProperty(container, 'clientWidth', { value: 800, configurable: true });
     Object.defineProperty(container, 'clientHeight', { value: 400, configurable: true });
@@ -77,6 +86,9 @@ describe('Universe3D artist activation', () => {
         disableCameraControls: true,
         embedInContainer: true,
         isHeroPreview: options?.isHeroPreview === true,
+        onPlayArtist: options?.onPlayArtist,
+        getArtistCardPlaySnapshot: options?.getArtistCardPlaySnapshot,
+        artistCardPlayLabels: { play: 'Play', starting: 'Loading…', pause: 'Pause' },
       }
     );
 
@@ -219,6 +231,235 @@ describe('Universe3D artist activation', () => {
       universe.destroy();
       container.remove();
       jest.useRealTimers();
+    });
+
+    function appendMiniPlayerPauseButton(): HTMLButtonElement {
+      const mini = document.createElement('div');
+      mini.className = 'mini-player';
+      const pause = document.createElement('button');
+      pause.type = 'button';
+      pause.className = 'mini-player__control';
+      pause.textContent = 'Pause';
+      mini.appendChild(pause);
+      document.body.appendChild(mini);
+      return pause;
+    }
+
+    function dispatchWindowBubbledClick(target: HTMLElement, clientX = 400, clientY = 720) {
+      target.dispatchEvent(
+        new MouseEvent('click', { bubbles: true, cancelable: true, clientX, clientY })
+      );
+    }
+
+    test('mini-player pause click does not dismiss open artist card', () => {
+      const { container, universe } = createUniverse();
+      const pauseButton = appendMiniPlayerPauseButton();
+
+      expect(universe.activatePrimaryArtist()).toBe(true);
+      expect(container.querySelector('.universe3d-card')).not.toBeNull();
+
+      dispatchWindowBubbledClick(pauseButton);
+      expect(container.querySelector('.universe3d-card')).not.toBeNull();
+
+      pauseButton.closest('.mini-player')?.remove();
+      universe.destroy();
+      container.remove();
+    });
+
+    test('mini-player play click does not dismiss open artist card', () => {
+      const { container, universe } = createUniverse({
+        getArtistCardPlaySnapshot: () => ({
+          startingArtistSlug: null,
+          activeArtistSlug: 'beatles',
+          isPlaying: false,
+          hasActiveQueue: true,
+        }),
+      });
+      const playButton = appendMiniPlayerPauseButton();
+      playButton.textContent = 'Play';
+
+      universe.activatePrimaryArtist();
+      universe.syncArtistCardPlayButtonState();
+      expect(container.querySelector('.universe3d-card')).not.toBeNull();
+
+      dispatchWindowBubbledClick(playButton);
+      expect(container.querySelector('.universe3d-card')).not.toBeNull();
+
+      playButton.closest('.mini-player')?.remove();
+      universe.destroy();
+      container.remove();
+    });
+
+    test('player snapshot sync (pause / auto-advance) keeps card open and updates button', () => {
+      let isPlaying = true;
+      const { container, universe } = createUniverse({
+        getArtistCardPlaySnapshot: () => ({
+          startingArtistSlug: null,
+          activeArtistSlug: 'beatles',
+          isPlaying,
+          hasActiveQueue: true,
+        }),
+      });
+
+      universe.activatePrimaryArtist();
+      universe.syncArtistCardPlayButtonState();
+      const cardPlay = container.querySelector('.universe3d-card__play') as HTMLButtonElement;
+      expect(cardPlay.dataset.playPhase).toBe('pause');
+
+      isPlaying = false;
+      universe.syncArtistCardPlayButtonState();
+      expect(container.querySelector('.universe3d-card')).not.toBeNull();
+      expect(cardPlay.dataset.playPhase).toBe('play');
+
+      isPlaying = true;
+      universe.syncArtistCardPlayButtonState();
+      expect(container.querySelector('.universe3d-card')).not.toBeNull();
+      expect(cardPlay.dataset.playPhase).toBe('pause');
+
+      universe.destroy();
+      container.remove();
+    });
+
+    test('click same artist node still dismisses card (manual close)', () => {
+      const { container, universe } = createUniverse();
+      mockPointRaycastHit(universe);
+
+      universe.activatePrimaryArtist();
+      expect(container.querySelector('.universe3d-card')).not.toBeNull();
+
+      const canvas = container.querySelector('canvas');
+      expect(canvas).toBeTruthy();
+      const event = new MouseEvent('click', { clientX: 100, clientY: 100, bubbles: true });
+      Object.defineProperty(event, 'target', { value: canvas, configurable: true });
+      window.dispatchEvent(event);
+
+      expect(container.querySelector('.universe3d-card')).toBeNull();
+
+      universe.destroy();
+      container.remove();
+    });
+
+    test('sync shows Pause when player reports same artist playing', () => {
+      const { container, universe } = createUniverse({
+        getArtistCardPlaySnapshot: () => ({
+          startingArtistSlug: null,
+          activeArtistSlug: 'beatles',
+          isPlaying: true,
+          hasActiveQueue: true,
+        }),
+      });
+
+      universe.activatePrimaryArtist();
+      universe.syncArtistCardPlayButtonState();
+      const playButton = container.querySelector('.universe3d-card__play') as HTMLButtonElement;
+      expect(playButton.textContent).toBe('Pause');
+      expect(playButton.dataset.playPhase).toBe('pause');
+
+      universe.destroy();
+      container.remove();
+    });
+
+    test('successful Artist Play keeps artist card open', async () => {
+      const onPlayArtist = jest.fn(async () => true);
+      const { container, universe } = createUniverse({ onPlayArtist });
+
+      expect(universe.activatePrimaryArtist()).toBe(true);
+      expect(container.querySelector('.universe3d-card')).not.toBeNull();
+
+      const playButton = container.querySelector('.universe3d-card__play') as HTMLButtonElement;
+      playButton.click();
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect(onPlayArtist).toHaveBeenCalledTimes(1);
+      expect(container.querySelector('.universe3d-card')).not.toBeNull();
+
+      universe.destroy();
+      container.remove();
+    });
+
+    test('Escape still dismisses artist card after successful play', async () => {
+      const onPlayArtist = jest.fn(async () => true);
+      const { container, universe } = createUniverse({ onPlayArtist });
+
+      universe.activatePrimaryArtist();
+      const playButton = container.querySelector('.universe3d-card__play') as HTMLButtonElement;
+      playButton.click();
+      await Promise.resolve();
+
+      expect(container.querySelector('.universe3d-card')).not.toBeNull();
+
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      expect(container.querySelector('.universe3d-card')).toBeNull();
+
+      universe.destroy();
+      container.remove();
+    });
+
+    test('selecting another artist replaces the open card', () => {
+      const container = document.createElement('div');
+      Object.defineProperty(container, 'clientWidth', { value: 800, configurable: true });
+      Object.defineProperty(container, 'clientHeight', { value: 400, configurable: true });
+      document.body.appendChild(container);
+
+      const universe = new Universe3D(
+        container,
+        [
+          { name: 'Beatles', publicSlug: 'beatles', genreCode: 'rock' },
+          { name: 'Stones', publicSlug: 'stones', genreCode: 'rock' },
+        ],
+        { disableCameraControls: true, embedInContainer: true }
+      );
+
+      const nodes = (universe as unknown as { clickableNodes: THREE.Object3D[] }).clickableNodes;
+      expect(nodes.length).toBe(2);
+
+      (
+        universe as unknown as { handleArtistNodeActivation: (o: THREE.Object3D) => void }
+      ).handleArtistNodeActivation(nodes[0]);
+      expect(container.querySelector('.universe3d-card__title')?.textContent).toBe('Beatles');
+
+      (
+        universe as unknown as { handleArtistNodeActivation: (o: THREE.Object3D) => void }
+      ).handleArtistNodeActivation(nodes[1]);
+      expect(container.querySelectorAll('.universe3d-card')).toHaveLength(1);
+      expect(container.querySelector('.universe3d-card__title')?.textContent).toBe('Stones');
+
+      universe.destroy();
+      container.remove();
+    });
+
+    test('play button shows starting state and ignores duplicate click until settled', async () => {
+      let resolvePlay!: (value: boolean) => void;
+      const onPlayArtist = jest.fn(
+        () =>
+          new Promise<boolean>((resolve) => {
+            resolvePlay = resolve;
+          })
+      );
+      const { container, universe } = createUniverse({ onPlayArtist });
+
+      expect(universe.activatePrimaryArtist()).toBe(true);
+      const playButton = container.querySelector('.universe3d-card__play') as HTMLButtonElement;
+      expect(playButton).toBeTruthy();
+
+      playButton.click();
+      expect(onPlayArtist).toHaveBeenCalledTimes(1);
+      expect(playButton.disabled).toBe(true);
+      expect(playButton.dataset.playStarting).toBe('1');
+
+      playButton.click();
+      expect(onPlayArtist).toHaveBeenCalledTimes(1);
+
+      resolvePlay(false);
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect(playButton.disabled).toBe(false);
+      expect(playButton.dataset.playStarting).toBeUndefined();
+
+      universe.destroy();
+      container.remove();
     });
 
     test('hovering artist name uses same pointer cursor as artist dot', () => {
