@@ -25,18 +25,4 @@ export {
   selectTrackLyricsBundle,
 } from './lib/selectors';
 
-export {
-  ensureTrackLyricsBundle,
-  isTrackLyricsInflight,
-  resetTrackLyricsInflightForTests,
-  trackLyricsInflightKey,
-} from './lib/ensureTrackLyricsBundle';
-
-export {
-  prefetchLyricsForPlayerTrack,
-  resolveAlbumIdForTrackLyrics,
-} from './lib/prefetchPlayerTrackLyrics';
-
-export { scheduleProgressiveLyricsAfterArtistPlayStart } from './lib/progressiveArtistPlayLyricsPrefetch';
-
 export type { TrackLyricsState } from './model/trackLyricsSlice';

@@ -19,10 +19,6 @@ jest.mock('@shared/lib/publicArtistsCache', () => ({
   getPublicArtistDisplayName: () => '',
 }));
 
-jest.mock('@entities/lyrics', () => ({
-  scheduleProgressiveLyricsAfterArtistPlayStart: jest.fn(),
-}));
-
 jest.mock('@shared/model/appStore', () => ({
   getStore: () => ({
     getState: () => ({

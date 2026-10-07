@@ -416,33 +416,32 @@ export const handler: Handler = async (
       });
     }
 
-    if (!playbackBootstrap) {
-      const lyricsSource =
-        albumsResult.rows.find((row) => row.lang === 'ru') ?? albumsResult.rows[0];
-      const lyricsRows = tracksByPk.get(lyricsSource.id) ?? [];
-      timer.mark('lyrics.start');
-      const lyricsByTrackId = await buildLyricsMapForAlbumTracks(
-        lyricsSource.album_id,
-        lyricsSource.user_id ?? targetUserId,
-        lyricsRows.map((row) => ({
-          track_id: row.track_id,
-          content: row.content,
-          authorship: row.authorship,
-        })),
-        lyricsSource.lang
-      );
-      timer.mark('lyrics.done');
-      details.tracks = details.tracks.map((track) => {
-        const bundle = lyricsByTrackId.get(track.id);
-        if (!bundle || bundle.state === 'empty') return track;
-        return {
-          ...track,
-          lyrics: bundle,
-          content: bundle.content,
-          authorship: bundle.authorship,
-        };
-      });
-    }
+    const lyricsSource = albumsResult.rows.find((row) => row.lang === 'ru') ?? albumsResult.rows[0];
+    const lyricsRows = tracksByPk.get(lyricsSource.id) ?? [];
+    const lyricsRowInputs = lyricsRows.map((row) => ({
+      track_id: row.track_id,
+      content: row.content,
+      authorship: row.authorship,
+    }));
+
+    timer.mark('lyrics.start');
+    const lyricsByTrackId = await buildLyricsMapForAlbumTracks(
+      lyricsSource.album_id,
+      lyricsSource.user_id ?? targetUserId,
+      lyricsRowInputs,
+      lyricsSource.lang
+    );
+    timer.mark('lyrics.done');
+    details.tracks = details.tracks.map((track) => {
+      const bundle = lyricsByTrackId.get(track.id);
+      if (!bundle || bundle.state === 'empty') return track;
+      return {
+        ...track,
+        lyrics: bundle,
+        content: bundle.content,
+        authorship: bundle.authorship,
+      };
+    });
 
     if (!isOwnerViewer && !isAlbumDetailsVisibleToPublicViewer(details)) {
       return createErrorResponse(404, 'Album not found', CORS_HEADERS, {

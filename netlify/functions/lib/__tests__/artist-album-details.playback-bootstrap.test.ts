@@ -49,7 +49,6 @@ const mockPipeline = resolvePipelineAvailable as unknown as jest.Mock;
 const mockHasPipelineCols = tracksTableHasPipelineColumns as unknown as jest.Mock;
 const mockReconcileBatch = reconcileAlbumPlaybackStorageBatch as unknown as jest.Mock;
 const mockLyrics = buildLyricsMapForAlbumTracks as unknown as jest.Mock;
-
 const BASE_EVENT = {
   httpMethod: 'GET',
   path: '/api/artists/smolyanoe-chuchelko/albums/23',
@@ -143,7 +142,7 @@ describe('artist-album-details playbackBootstrap', () => {
     jest.restoreAllMocks();
   });
 
-  it('skips storage reconcile and lyrics when playbackBootstrap=1', async () => {
+  it('skips storage reconcile but still embeds lyrics when playbackBootstrap=1', async () => {
     const response = await invoke({
       ...BASE_EVENT,
       queryStringParameters: {
@@ -160,7 +159,7 @@ describe('artist-album-details playbackBootstrap', () => {
       expect.objectContaining({ skipPlaybackStorageReconcile: true })
     );
     expect(mockReconcileBatch).not.toHaveBeenCalled();
-    expect(mockLyrics).not.toHaveBeenCalled();
+    expect(mockLyrics).toHaveBeenCalled();
   });
 
   it('runs storage reconcile and lyrics on the full album page path', async () => {

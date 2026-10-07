@@ -22,7 +22,6 @@ import {
   isTrackPlaybackBlocked,
 } from '@shared/lib/tracks/trackPlayback';
 import { artistPlayTrace } from '@features/universe/lib/artistPlayTrace';
-import { prefetchLyricsForPlayerTrack } from '@entities/lyrics';
 
 const isUsableMediaDuration = (d: number): boolean => Number.isFinite(d) && d > 0 && d !== Infinity;
 
@@ -246,8 +245,6 @@ playerListenerMiddleware.startListening({
         api.dispatch(playerActions.play());
       }
     }
-
-    prefetchLyricsForPlayerTrack(api.dispatch, api.getState);
   },
 });
 

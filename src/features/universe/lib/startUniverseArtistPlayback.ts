@@ -24,8 +24,6 @@ import {
   artistPlayTraceStart,
   installArtistPlayTraceReport,
 } from './artistPlayTrace';
-import { scheduleProgressiveLyricsAfterArtistPlayStart } from '@entities/lyrics';
-
 /** Defer tail append so remaining album-detail fetches do not compete with first-track audio. */
 const ARTIST_PLAY_TAIL_DEFER_MS = 1200;
 
@@ -106,15 +104,6 @@ export async function startUniverseArtistPlayback(
   });
   input.dispatch(playerActions.requestPlay());
   artistPlayTrace('redux.requestPlay.dispatched');
-
-  scheduleProgressiveLyricsAfterArtistPlayStart({
-    dispatch: input.dispatch,
-    getState: () => getStore().getState(),
-    lang: input.lang,
-    artistSlug: slug,
-    firstAlbum: resolvedAlbum,
-    currentTrackId: String(playlist[startIdx].id),
-  });
 
   void fetchPublicProfileForDisplay(input.lang, slug)
     .then((profileRow) => {

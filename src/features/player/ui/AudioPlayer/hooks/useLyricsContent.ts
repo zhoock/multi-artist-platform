@@ -1,28 +1,25 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import type { EqualityFn } from 'react-redux';
 import { useStore } from 'react-redux';
 
 import {
-  ensureTrackLyricsBundle,
-  isTrackLyricsInflight,
-} from '@entities/lyrics/lib/ensureTrackLyricsBundle';
-import {
+  applyTrackLyricsBundle,
+  fetchTrackLyricsBundle,
   hasNonEmptyTrackLyricsEntity,
   resolveTrackLyricsBundle,
-} from '@entities/lyrics/lib/selectors';
-import { describeTrackLyricsEntities } from '@entities/lyrics/lib/describeTrackLyricsEntities';
-import { trackLyricsEntityKey } from '@shared/lib/lyrics/types';
-import { normalizeTrackIdString } from '@shared/lib/tracks/normalizeTrackIdString';
+} from '@entities/lyrics';
 import type { SyncedLyricsLine } from '@models';
 import type { PlayerTrack } from '@features/player/model/types/playerSchema';
 import { useAppDispatch } from '@shared/lib/hooks/useAppDispatch';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { useEffectiveLocation } from '@shared/lib/hooks/useEffectiveLocation';
 import type { RootState } from '@shared/model/appStore/types';
+import {
+  resolvePublicArtistSlugForApi,
+  shouldSkipUnauthenticatedPublicArtistApi,
+} from '@shared/lib/publicArtistContext';
 import { resolveLyricsSyncState } from '@shared/lib/lyrics';
 import type { TrackLyricsBundle } from '@shared/lib/lyrics/types';
-
-import { artistPlayTrace } from '@features/universe/lib/artistPlayTrace';
 
 import { debugLog } from '../utils/debug';
 
@@ -43,10 +40,6 @@ export type UseLyricsContentResult = {
   lyricsBundle: TrackLyricsBundle | null;
   /** True when slice already has text-only/synced lyrics for this track (any locale). */
   hasNonEmptyLyricsEntity: boolean;
-  /** Remote lyrics fetch in progress for this track. */
-  isLyricsHydrating: boolean;
-  /** Fetch finished and track has no lyrics (not loading). */
-  isLyricsConfirmedUnavailable: boolean;
 };
 
 const normalize = (text: string) => text.replace(/\r\n/g, '\n').trim();
@@ -157,9 +150,6 @@ export function useLyricsContent({
   const store = useStore<RootState>();
   const location = useEffectiveLocation();
   const fetchGenerationRef = useRef(0);
-  const hydrationStartedRef = useRef(false);
-  const hydrationSettledRef = useRef(true);
-  const [hydrationTick, setHydrationTick] = useState(0);
 
   const artistSlugFromUrl = useMemo(() => {
     const raw = new URLSearchParams(location.search).get('artist');
@@ -180,20 +170,6 @@ export function useLyricsContent({
     return hasNonEmptyTrackLyricsEntity(state, canonicalAlbumId, currentTrack.id);
   });
 
-  const playlistFallback = useMemo(() => {
-    if (!currentTrack) return null;
-    return buildPlaylistLyricsFallback(canonicalAlbumId, currentTrack, lang);
-  }, [canonicalAlbumId, currentTrack, lang]);
-
-  const hasPlaylistLyricsFallback = !!playlistFallback && playlistFallback.state !== 'empty';
-
-  const lyricsInflight = useMemo(() => {
-    if (!currentTrack) return false;
-    const trackId = normalizeTrackIdString(String(currentTrack.id)) || String(currentTrack.id);
-    return isTrackLyricsInflight(artistSlugForLyrics, canonicalAlbumId, trackId, lang);
-    // hydrationTick: re-check inflight map after fetch lifecycle
-  }, [artistSlugForLyrics, canonicalAlbumId, currentTrack, lang, hydrationTick]);
-
   const lyricsBundle = useAppSelector(
     (state): TrackLyricsBundle | null => {
       if (!currentTrack) return null;
@@ -204,10 +180,7 @@ export function useLyricsContent({
   );
 
   useEffect(() => {
-    if (!currentTrack || hasNonEmptyLyricsEntity || hasPlaylistLyricsFallback) {
-      hydrationStartedRef.current = false;
-      hydrationSettledRef.current = true;
-      setIsLoadingSyncedLyrics(false);
+    if (!currentTrack || hasNonEmptyLyricsEntity) {
       return;
     }
 
@@ -215,37 +188,39 @@ export function useLyricsContent({
     const trackId = String(currentTrack.id);
     const albumIdForFetch = canonicalAlbumId;
 
-    hydrationStartedRef.current = true;
-    hydrationSettledRef.current = false;
-    setHydrationTick((n) => n + 1);
     setIsLoadingSyncedLyrics(true);
-    artistPlayTrace('lyrics.hydration.start', {
-      albumId: albumIdForFetch,
-      trackId,
-      lang,
-      artistSlug: artistSlugForLyrics,
-    });
 
     void (async () => {
       try {
-        await ensureTrackLyricsBundle(dispatch, () => store.getState(), {
-          albumId: albumIdForFetch,
-          trackId,
-          lang,
-          artistSlug: artistSlugForLyrics,
+        const artistSlug = await resolvePublicArtistSlugForApi(artistSlugForLyrics);
+        if (await shouldSkipUnauthenticatedPublicArtistApi(artistSlug)) {
+          debugLog('useLyricsContent: skip track-lyrics fetch (no public artist context)', {
+            albumId: albumIdForFetch,
+            trackId,
+          });
+          return;
+        }
+
+        const bundle = await fetchTrackLyricsBundle(albumIdForFetch, trackId, lang, {
+          artistSlug,
+          tolerateMissing: true,
         });
+
+        if (fetchGenerationRef.current !== generation) {
+          return;
+        }
+
+        const existing = resolveTrackLyricsBundle(store.getState(), albumIdForFetch, trackId, null);
+        if (existing.state !== 'empty' && bundle.state === 'empty') {
+          return;
+        }
+
+        dispatch(applyTrackLyricsBundle(bundle));
       } catch (error) {
         debugLog('useLyricsContent: failed to fetch track lyrics bundle', { error });
       } finally {
         if (fetchGenerationRef.current === generation) {
-          hydrationSettledRef.current = true;
-          setHydrationTick((n) => n + 1);
           setIsLoadingSyncedLyrics(false);
-          artistPlayTrace('lyrics.hydration.done', {
-            albumId: albumIdForFetch,
-            trackId,
-            lang,
-          });
         }
       }
     })();
@@ -259,51 +234,10 @@ export function useLyricsContent({
     currentTrack,
     dispatch,
     hasNonEmptyLyricsEntity,
-    hasPlaylistLyricsFallback,
     lang,
     setIsLoadingSyncedLyrics,
     store,
   ]);
-
-  useEffect(() => {
-    if (!currentTrack) {
-      return;
-    }
-    const logicalTrackId =
-      normalizeTrackIdString(String(currentTrack.id)) || String(currentTrack.id);
-    const readKeyPreferred = trackLyricsEntityKey(canonicalAlbumId, logicalTrackId, lang);
-    const entities = describeTrackLyricsEntities(
-      store.getState(),
-      canonicalAlbumId,
-      logicalTrackId
-    );
-
-    if (!lyricsBundle || lyricsBundle.state === 'empty') {
-      artistPlayTrace('lyrics.lookup', {
-        readAlbumId: canonicalAlbumId,
-        readTrackId: logicalTrackId,
-        readKeyPreferred,
-        uiLang: lang,
-        artistSlug: artistSlugForLyrics,
-        entities,
-        resolvedState: lyricsBundle?.state ?? 'none',
-      });
-      return;
-    }
-
-    artistPlayTrace('lyrics.resolved', {
-      readAlbumId: canonicalAlbumId,
-      readTrackId: logicalTrackId,
-      readKeyPreferred,
-      bundleAlbumId: lyricsBundle.albumId,
-      bundleTrackId: lyricsBundle.trackId,
-      bundleLang: lyricsBundle.lang,
-      state: lyricsBundle.state,
-      contentLength: lyricsBundle.content?.length ?? 0,
-      entities,
-      source: 'useLyricsContent',
-    });
-  }, [artistSlugForLyrics, canonicalAlbumId, currentTrack, lang, lyricsBundle, store]);
 
   useLayoutEffect(() => {
     setCurrentLineIndex(null);
@@ -317,6 +251,8 @@ export function useLyricsContent({
       return;
     }
 
+    setIsLoadingSyncedLyrics(true);
+
     try {
       if (lyricsBundle && lyricsBundle.state !== 'empty') {
         const plain = normalize(lyricsBundle.content);
@@ -324,7 +260,6 @@ export function useLyricsContent({
         setAuthorshipText(lyricsBundle.authorship?.trim() || null);
         setHasSyncedLyricsAvailable(lyricsBundle.state === 'synced');
         setSyncedLyrics(buildKaraokeLines(lyricsBundle, duration));
-        setIsLoadingSyncedLyrics(false);
       } else {
         setPlainLyricsContent(null);
         setAuthorshipText(null);
@@ -337,6 +272,8 @@ export function useLyricsContent({
       setPlainLyricsContent(null);
       setAuthorshipText(null);
       setHasSyncedLyricsAvailable(false);
+    } finally {
+      setIsLoadingSyncedLyrics(false);
     }
   }, [
     currentTrack,
@@ -352,24 +289,5 @@ export function useLyricsContent({
     setHasSyncedLyricsAvailable,
   ]);
 
-  const needsRemoteHydration =
-    !!currentTrack && !hasNonEmptyLyricsEntity && !hasPlaylistLyricsFallback;
-
-  const isLyricsHydrating =
-    needsRemoteHydration &&
-    (!hydrationStartedRef.current || !hydrationSettledRef.current || lyricsInflight);
-
-  const isLyricsConfirmedUnavailable =
-    needsRemoteHydration &&
-    hydrationStartedRef.current &&
-    hydrationSettledRef.current &&
-    !lyricsInflight &&
-    (!lyricsBundle || lyricsBundle.state === 'empty');
-
-  return {
-    lyricsBundle,
-    hasNonEmptyLyricsEntity,
-    isLyricsHydrating,
-    isLyricsConfirmedUnavailable,
-  } satisfies UseLyricsContentResult;
+  return { lyricsBundle, hasNonEmptyLyricsEntity } satisfies UseLyricsContentResult;
 }

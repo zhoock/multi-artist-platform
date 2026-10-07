@@ -43,12 +43,7 @@ jest.mock('@shared/lib/analytics', () => ({
   gaEvent: jest.fn(),
 }));
 
-jest.mock('@entities/lyrics', () => ({
-  prefetchLyricsForPlayerTrack: jest.fn(),
-}));
-
 import { audioController } from '@features/player/model/lib/audioController';
-import { prefetchLyricsForPlayerTrack } from '@entities/lyrics';
 import { gaEvent } from '@shared/lib/analytics';
 
 const mockAudioController = audioController as jest.Mocked<typeof audioController>;
@@ -280,7 +275,6 @@ describe('playerListeners middleware', () => {
       store.dispatch(playerActions.setCurrentTrackIndex(1));
 
       expect(mockAudioController.setSource).toHaveBeenCalledWith('track2.mp3', false);
-      expect(prefetchLyricsForPlayerTrack).toHaveBeenCalled();
     });
 
     test('должен сбросить прогресс при изменении трека', () => {

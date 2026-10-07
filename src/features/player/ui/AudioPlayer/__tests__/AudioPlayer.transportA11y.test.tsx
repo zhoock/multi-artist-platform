@@ -60,8 +60,6 @@ jest.mock('../hooks/useLyricsContent', () => ({
   useLyricsContent: () => ({
     lyricsBundle: null,
     hasNonEmptyLyricsEntity: true,
-    isLyricsHydrating: false,
-    isLyricsConfirmedUnavailable: false,
   }),
 }));
 jest.mock('../hooks/useSeek', () => ({
