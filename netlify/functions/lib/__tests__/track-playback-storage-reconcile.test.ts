@@ -3,6 +3,7 @@ import { PLAYBACK_STORAGE_MISSING_ERROR } from '../../../../src/shared/lib/track
 import {
   isStorageErrorIndicatingMissing,
   markPlaybackStorageMissingForAlbumTrack,
+  reconcileAlbumPlaybackStorageBatch,
   reconcileReadyPlaybackStorageIfMissing,
   resetPlaybackStorageVerifyCacheForTests,
   verifyPlaybackStoragePathExists,
@@ -48,32 +49,67 @@ function mockMarkResult(assetsFailed: number, tracksFailed: number): void {
   } as never);
 }
 
-function mockAdminStorage(handlers: { download?: jest.Mock }): void {
+type AdminStorageMockOptions = {
+  /** Admin authenticated HEAD: object exists (default true). */
+  headExists?: boolean;
+  /** Explicit HTTP status for admin HEAD (overrides headExists). */
+  headStatus?: number;
+};
+
+/**
+ * Mocks admin client + HEAD responses. Exposes storage.download mock — must stay unused.
+ */
+function mockAdminStorage(options: AdminStorageMockOptions = {}): { download: jest.Mock } {
+  const download = jest.fn();
   mockedCreateSupabaseAdminClient.mockReturnValue({
     storage: {
-      from: () => ({
-        download:
-          handlers.download ??
-          jest.fn().mockResolvedValue({ data: new Blob(['audio']), error: null }),
-      }),
+      from: () => ({ download }),
     },
   } as never);
+
+  process.env.SUPABASE_URL = process.env.SUPABASE_URL || 'https://proj.supabase.co';
+  process.env.SUPABASE_SERVICE_ROLE_KEY =
+    process.env.SUPABASE_SERVICE_ROLE_KEY || 'test-service-role-key';
+
+  const headExists = options.headExists !== false;
+  const headStatus = options.headStatus ?? (headExists ? 200 : 404);
+
+  global.fetch = jest.fn().mockImplementation((_url: RequestInfo, init?: RequestInit) => {
+    if (init?.method === 'HEAD') {
+      const ok = headStatus >= 200 && headStatus < 300;
+      return Promise.resolve({ ok, status: headStatus });
+    }
+    return Promise.resolve({ ok: false, status: 500 });
+  }) as never;
+
+  return { download };
+}
+
+function isAdminAuthenticatedHeadRequest(url: RequestInfo, init?: RequestInit): boolean {
+  if (init?.method !== 'HEAD') return false;
+  const href = String(url);
+  return (
+    href.includes('/storage/v1/object/user-media/') && !href.includes('/storage/v1/object/public/')
+  );
 }
 
 describe('track-playback-storage-reconcile', () => {
   const originalFetch = global.fetch;
   const originalSupabaseUrl = process.env.SUPABASE_URL;
+  const originalServiceRole = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   beforeEach(() => {
     jest.clearAllMocks();
     resetPlaybackStorageVerifyCacheForTests();
     global.fetch = originalFetch;
     process.env.SUPABASE_URL = originalSupabaseUrl;
+    process.env.SUPABASE_SERVICE_ROLE_KEY = originalServiceRole;
   });
 
   afterAll(() => {
     global.fetch = originalFetch;
     process.env.SUPABASE_URL = originalSupabaseUrl;
+    process.env.SUPABASE_SERVICE_ROLE_KEY = originalServiceRole;
   });
 
   test('isStorageErrorIndicatingMissing matches Supabase download StorageUnknownError {} + 400', () => {
@@ -84,8 +120,71 @@ describe('track-playback-storage-reconcile', () => {
     );
   });
 
+  describe('regression: existence verify must not download opus body', () => {
+    test('A. existing opus: verify → true and storage.download() is not called', async () => {
+      const { download } = mockAdminStorage({ headExists: true });
+
+      const path = 'users/u1/audio/album/derived/stream/opus_128k/a.opus';
+      await expect(verifyPlaybackStoragePathExists(path)).resolves.toBe(true);
+
+      expect(download).not.toHaveBeenCalled();
+      const headCalls = (global.fetch as jest.Mock).mock.calls.filter(([url, init]) =>
+        isAdminAuthenticatedHeadRequest(url, init)
+      );
+      expect(headCalls.length).toBeGreaterThanOrEqual(1);
+    });
+
+    test('B. missing opus: verify → false and reconcile recovery still runs', async () => {
+      const { download } = mockAdminStorage({ headExists: false, headStatus: 404 });
+      mockMarkResult(1, 1);
+
+      const path = readyStreamAssets[0]!.path;
+      await expect(verifyPlaybackStoragePathExists(path)).resolves.toBe(false);
+      expect(download).not.toHaveBeenCalled();
+
+      const result = await reconcileReadyPlaybackStorageIfMissing({
+        userId: 'u1',
+        albumSlug: 'album',
+        logicalTrackId: 'track-1',
+        processingStatus: 'ready',
+        assets: readyStreamAssets,
+      });
+
+      expect(result.reconciled).toBe(true);
+      expect(result.processingStatus).toBe('failed');
+      expect(download).not.toHaveBeenCalled();
+    });
+
+    test('C. Storage/API inconclusive HEAD → null (falls through); no download', async () => {
+      const { download } = mockAdminStorage({ headStatus: 503 });
+
+      const path = 'users/u1/audio/album/derived/stream/opus_128k/track.opus';
+      await expect(verifyPlaybackStoragePathExists(path)).resolves.toBe(null);
+      expect(download).not.toHaveBeenCalled();
+    });
+
+    test('D. batch reconcile path uses HEAD only (production caller shape)', async () => {
+      const { download } = mockAdminStorage({ headExists: true });
+      const assetsByTrackId = new Map([['track-1', readyStreamAssets]]);
+
+      await reconcileAlbumPlaybackStorageBatch(
+        'u1',
+        'album',
+        [{ logicalTrackId: 'track-1', processingStatus: 'ready' }],
+        assetsByTrackId
+      );
+
+      expect(download).not.toHaveBeenCalled();
+      expect(
+        (global.fetch as jest.Mock).mock.calls.some(([url, init]) =>
+          isAdminAuthenticatedHeadRequest(url, init)
+        )
+      ).toBe(true);
+    });
+  });
+
   test('Case 1: ready track with existing Storage object stays playable', async () => {
-    mockAdminStorage({});
+    const { download } = mockAdminStorage({ headExists: true });
 
     const result = await reconcileReadyPlaybackStorageIfMissing({
       userId: 'u1',
@@ -104,13 +203,11 @@ describe('track-playback-storage-reconcile', () => {
     });
     expect(selected.url).toContain('track.opus');
     expect(mockedQuery).not.toHaveBeenCalled();
+    expect(download).not.toHaveBeenCalled();
   });
 
-  test('missing Storage object (download {}) reconciles track + stream asset to failed', async () => {
-    mockAdminStorage({
-      download: jest.fn().mockResolvedValue({ data: null, error: missingDownloadError }),
-    });
-
+  test('missing Storage object (HEAD 404) reconciles track + stream asset to failed', async () => {
+    const { download } = mockAdminStorage({ headExists: false, headStatus: 400 });
     mockMarkResult(1, 1);
 
     const result = await reconcileReadyPlaybackStorageIfMissing({
@@ -124,6 +221,7 @@ describe('track-playback-storage-reconcile', () => {
     expect(result.reconciled).toBe(true);
     expect(result.processingStatus).toBe('failed');
     expect(result.assets[0]?.status).toBe('failed');
+    expect(download).not.toHaveBeenCalled();
 
     expect(mockedQuery).toHaveBeenCalledTimes(1);
     const sql = mockedQuery.mock.calls[0]?.[0] as string;
@@ -141,35 +239,49 @@ describe('track-playback-storage-reconcile', () => {
   });
 
   test('verifyPlaybackStoragePathExists re-checks Storage on each call (no positive TTL cache)', async () => {
-    const download = jest.fn().mockResolvedValue({ data: new Blob(['x']), error: null });
-    mockAdminStorage({ download });
+    const { download } = mockAdminStorage({ headExists: true });
 
     const path = 'users/u1/audio/album/derived/stream/opus_128k/a.opus';
     await verifyPlaybackStoragePathExists(path);
     await verifyPlaybackStoragePathExists(path);
 
-    expect(download).toHaveBeenCalledTimes(2);
+    const headCalls = (global.fetch as jest.Mock).mock.calls.filter(([url, init]) =>
+      isAdminAuthenticatedHeadRequest(url, init)
+    );
+    expect(headCalls).toHaveLength(2);
+    expect(download).not.toHaveBeenCalled();
   });
 
   test('does not cache Storage missing; same path is re-checked on next verify', async () => {
-    const download = jest
-      .fn()
-      .mockResolvedValueOnce({ data: null, error: missingDownloadError })
-      .mockResolvedValueOnce({ data: new Blob(['x']), error: null });
-    mockAdminStorage({ download });
+    let headCall = 0;
+    const { download } = mockAdminStorage({});
+    (global.fetch as jest.Mock).mockImplementation((_url: RequestInfo, init?: RequestInit) => {
+      if (init?.method === 'HEAD') {
+        headCall += 1;
+        const missing = headCall === 1;
+        return Promise.resolve({ ok: !missing, status: missing ? 400 : 200 });
+      }
+      return Promise.resolve({ ok: false, status: 500 });
+    });
 
     const path = 'users/u1/audio/album/derived/stream/opus_128k/track.opus';
     await expect(verifyPlaybackStoragePathExists(path)).resolves.toBe(false);
     await expect(verifyPlaybackStoragePathExists(path)).resolves.toBe(true);
-    expect(download).toHaveBeenCalledTimes(2);
+    expect(headCall).toBe(2);
+    expect(download).not.toHaveBeenCalled();
   });
 
   test('missing then re-upload same path: pending skips verify; ready stays playable when Storage exists', async () => {
-    const download = jest
-      .fn()
-      .mockResolvedValueOnce({ data: null, error: missingDownloadError })
-      .mockResolvedValueOnce({ data: new Blob(['x']), error: null });
-    mockAdminStorage({ download });
+    let headCall = 0;
+    const { download } = mockAdminStorage({});
+    (global.fetch as jest.Mock).mockImplementation((_url: RequestInfo, init?: RequestInit) => {
+      if (init?.method === 'HEAD') {
+        headCall += 1;
+        const missing = headCall === 1;
+        return Promise.resolve({ ok: !missing, status: missing ? 400 : 200 });
+      }
+      return Promise.resolve({ ok: false, status: 500 });
+    });
     mockMarkResult(1, 1);
 
     const input = {
@@ -199,7 +311,8 @@ describe('track-playback-storage-reconcile', () => {
     expect(readyAgain.reconciled).toBe(false);
     expect(readyAgain.processingStatus).toBe('ready');
     expect(mockedQuery).not.toHaveBeenCalled();
-    expect(download).toHaveBeenCalledTimes(2);
+    expect(headCall).toBe(2);
+    expect(download).not.toHaveBeenCalled();
   });
 
   test('without admin client, public HEAD 400 detects missing object', async () => {
@@ -251,8 +364,7 @@ describe('track-playback-storage-reconcile', () => {
   });
 
   test('repeat album load: failed stream asset + ready track is re-verified and synced to failed', async () => {
-    const download = jest.fn().mockResolvedValue({ data: null, error: missingDownloadError });
-    mockAdminStorage({ download });
+    const { download } = mockAdminStorage({ headExists: false, headStatus: 400 });
     mockMarkResult(0, 1);
 
     const splitAssets = [{ ...readyStreamAssets[0]!, status: 'failed' }];
@@ -264,17 +376,15 @@ describe('track-playback-storage-reconcile', () => {
       assets: splitAssets,
     });
 
-    expect(download).toHaveBeenCalledWith(readyStreamAssets[0]!.path);
     expect(result.reconciled).toBe(true);
     expect(result.processingStatus).toBe('failed');
+    expect(download).not.toHaveBeenCalled();
   });
 
   test('production split state (Norwegian Wood) syncs track to failed', async () => {
     const prodPath =
       'users/8e998d76-1131-42ec-b26e-ef18603d8cec/audio/rubber-soul/derived/stream/opus_128k/5a301b85-e687-4378-9707-816cae6bd4e9__Beatles-Norwegian-Wood-This-Bird-Has-Flown.opus';
-    mockAdminStorage({
-      download: jest.fn().mockResolvedValue({ data: null, error: missingDownloadError }),
-    });
+    mockAdminStorage({ headExists: false, headStatus: 400 });
     mockMarkResult(0, 1);
 
     const result = await reconcileReadyPlaybackStorageIfMissing({
@@ -299,7 +409,7 @@ describe('track-playback-storage-reconcile', () => {
   });
 
   test('failed stream asset whose object still exists leaves track untouched', async () => {
-    mockAdminStorage({});
+    mockAdminStorage({ headExists: true });
     const result = await reconcileReadyPlaybackStorageIfMissing({
       userId: 'u1',
       albumSlug: 'album',
@@ -313,9 +423,7 @@ describe('track-playback-storage-reconcile', () => {
   });
 
   test('stale reconcile for path A does not fail track when DB playback asset is path B', async () => {
-    mockAdminStorage({
-      download: jest.fn().mockResolvedValue({ data: null, error: missingDownloadError }),
-    });
+    mockAdminStorage({ headExists: false, headStatus: 400 });
     mockMarkResult(0, 0);
 
     const pathA = 'users/u1/audio/album/derived/stream/opus_128k/old.opus';
@@ -336,9 +444,7 @@ describe('track-playback-storage-reconcile', () => {
   });
 
   test('stems are untouched: SQL is scoped to the primary stream asset and tracks only', async () => {
-    mockAdminStorage({
-      download: jest.fn().mockResolvedValue({ data: null, error: missingDownloadError }),
-    });
+    mockAdminStorage({ headExists: false, headStatus: 400 });
     mockMarkResult(1, 1);
 
     const stemAsset = {

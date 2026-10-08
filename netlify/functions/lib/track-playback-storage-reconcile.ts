@@ -45,7 +45,7 @@ function storageErrorHttpStatus(error: unknown): number | null {
   return null;
 }
 
-/** Matches real Supabase Storage responses for absent objects (download + signed URL). */
+/** Matches real Supabase Storage responses for absent objects (Storage API + signed URL). */
 export function isStorageErrorIndicatingMissing(error: unknown): boolean {
   if (!error) return false;
   if (typeof error !== 'object') return false;
@@ -57,15 +57,37 @@ export function isStorageErrorIndicatingMissing(error: unknown): boolean {
   return status === 400 || status === 404;
 }
 
-function buildPublicStorageObjectUrl(bucketRelativePath: string): string | null {
+function getSupabaseStorageBaseUrl(): string | null {
   const supabaseUrl = (process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '').replace(
     /\/$/,
     ''
   );
-  if (!supabaseUrl) return null;
+  return supabaseUrl || null;
+}
+
+function encodeStorageObjectPath(bucketRelativePath: string): string | null {
   const path = normalizeStoragePath(bucketRelativePath);
   if (!path) return null;
-  return `${supabaseUrl}/storage/v1/object/public/${STORAGE_BUCKET_NAME}/${path}`;
+  return path
+    .split('/')
+    .map((segment) => encodeURIComponent(segment))
+    .join('/');
+}
+
+function buildPublicStorageObjectUrl(bucketRelativePath: string): string | null {
+  const supabaseUrl = getSupabaseStorageBaseUrl();
+  if (!supabaseUrl) return null;
+  const encodedPath = encodeStorageObjectPath(bucketRelativePath);
+  if (!encodedPath) return null;
+  return `${supabaseUrl}/storage/v1/object/public/${STORAGE_BUCKET_NAME}/${encodedPath}`;
+}
+
+function buildAuthenticatedStorageObjectUrl(bucketRelativePath: string): string | null {
+  const supabaseUrl = getSupabaseStorageBaseUrl();
+  if (!supabaseUrl) return null;
+  const encodedPath = encodeStorageObjectPath(bucketRelativePath);
+  if (!encodedPath) return null;
+  return `${supabaseUrl}/storage/v1/object/${STORAGE_BUCKET_NAME}/${encodedPath}`;
 }
 
 function resolveBucketPathForVerify(storagePath: string, userId?: string): string {
@@ -90,21 +112,28 @@ async function verifyViaPublicHead(bucketRelativePath: string): Promise<boolean 
   }
 }
 
-async function verifyViaAdminDownload(
-  supabase: NonNullable<ReturnType<typeof createSupabaseAdminClient>>,
-  bucketRelativePath: string
-): Promise<boolean | null> {
-  const { data, error } = await supabase.storage
-    .from(STORAGE_BUCKET_NAME)
-    .download(bucketRelativePath);
+/**
+ * Existence check via authenticated Storage object HEAD — no response body (no full opus download).
+ */
+async function verifyViaAdminHead(bucketRelativePath: string): Promise<boolean | null> {
+  const serviceRoleKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
+  const url = buildAuthenticatedStorageObjectUrl(bucketRelativePath);
+  if (!url || !serviceRoleKey) return null;
 
-  if (!error && data) {
-    return true;
+  try {
+    const response = await fetch(url, {
+      method: 'HEAD',
+      headers: {
+        Authorization: `Bearer ${serviceRoleKey}`,
+        apikey: serviceRoleKey,
+      },
+    });
+    if (response.ok) return true;
+    if (response.status === 400 || response.status === 404) return false;
+    return null;
+  } catch {
+    return null;
   }
-  if (error && isStorageErrorIndicatingMissing(error)) {
-    return false;
-  }
-  return null;
 }
 
 export function resetPlaybackStorageVerifyCacheForTests(): void {
@@ -125,7 +154,7 @@ export async function verifyPlaybackStoragePathExists(
   const promise = (async () => {
     const supabase = createSupabaseAdminClient();
     if (supabase) {
-      const adminResult = await verifyViaAdminDownload(supabase, normalized);
+      const adminResult = await verifyViaAdminHead(normalized);
       if (adminResult === true) {
         return true;
       }
