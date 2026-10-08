@@ -4,6 +4,7 @@ import {
   isStorageErrorIndicatingMissing,
   markPlaybackStorageMissingForAlbumTrack,
   reconcileAlbumPlaybackStorageBatch,
+  reconcileProcessedTrackPlaybackStorage,
   reconcileReadyPlaybackStorageIfMissing,
   resetPlaybackStorageVerifyCacheForTests,
   verifyPlaybackStoragePathExists,
@@ -466,5 +467,58 @@ describe('track-playback-storage-reconcile', () => {
     const sql = mockedQuery.mock.calls[0]?.[0] as string;
     expect(sql).not.toMatch(/stem/i);
     expect(sql.match(/ta\.type = 'stream'/g)).toHaveLength(2);
+  });
+});
+
+describe('reconcileProcessedTrackPlaybackStorage', () => {
+  const originalFetch = global.fetch;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    resetPlaybackStorageVerifyCacheForTests();
+    global.fetch = originalFetch;
+  });
+
+  afterAll(() => {
+    global.fetch = originalFetch;
+  });
+
+  const input = {
+    userId: 'u1',
+    albumSlug: 'album',
+    logicalTrackId: 'track-1',
+    trackDbId: '11111111-1111-4111-8111-111111111111',
+  };
+
+  test('HEADs a ready processed track and does not download the opus body', async () => {
+    const { download } = mockAdminStorage({ headExists: false });
+    mockedQuery.mockImplementation(async (sql: string) => {
+      if (sql.includes('FROM tracks') && sql.includes('processing_status')) {
+        return { rows: [{ processing_status: 'ready' }] } as never;
+      }
+      if (sql.includes('FROM track_assets')) {
+        return { rows: readyStreamAssets } as never;
+      }
+      return { rows: [{ assets_failed: 1, tracks_failed: 1 }], rowCount: 1 } as never;
+    });
+
+    await reconcileProcessedTrackPlaybackStorage(input);
+
+    expect(download).not.toHaveBeenCalled();
+    const headCalls = (global.fetch as jest.Mock).mock.calls.filter(([url, init]) =>
+      isAdminAuthenticatedHeadRequest(url, init)
+    );
+    expect(headCalls).toHaveLength(1);
+    expect(String(mockedQuery.mock.calls.at(-1)?.[0])).toContain('UPDATE track_assets');
+  });
+
+  test('does not touch Storage when the processed track is not ready', async () => {
+    const { download } = mockAdminStorage({ headExists: true });
+    mockedQuery.mockResolvedValue({ rows: [{ processing_status: 'processing' }] } as never);
+
+    await reconcileProcessedTrackPlaybackStorage(input);
+
+    expect(download).not.toHaveBeenCalled();
+    expect(global.fetch).not.toHaveBeenCalled();
   });
 });

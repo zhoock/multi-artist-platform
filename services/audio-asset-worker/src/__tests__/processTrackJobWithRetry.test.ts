@@ -7,6 +7,10 @@ jest.mock('../lib/logOperationalEvent.js', () => ({
   OPERATIONAL_EVENT_LOCK_RETRIES_EXHAUSTED: 'audio_asset_job_lock_retries_exhausted',
 }));
 
+jest.mock('../../../../netlify/functions/lib/track-playback-storage-reconcile.js', () => ({
+  reconcileProcessedTrackPlaybackStorage: jest.fn().mockResolvedValue(undefined),
+}));
+
 import { processTrackJob } from '../processTrackJob.js';
 import {
   logOperationalEvent,
@@ -14,6 +18,7 @@ import {
 } from '../lib/logOperationalEvent.js';
 import { processTrackJobWithRetry } from '../processTrackJobRetry.js';
 import type { ProcessTrackJobPayload } from '../pipeline/types.js';
+import { reconcileProcessedTrackPlaybackStorage } from '../../../../netlify/functions/lib/track-playback-storage-reconcile.js';
 
 const payload: ProcessTrackJobPayload = {
   userId: 'u1',
@@ -28,6 +33,7 @@ describe('processTrackJobWithRetry', () => {
   beforeEach(() => {
     jest.useFakeTimers();
     jest.mocked(processTrackJob).mockReset();
+    jest.mocked(reconcileProcessedTrackPlaybackStorage).mockClear();
   });
 
   afterEach(() => {
@@ -40,6 +46,26 @@ describe('processTrackJobWithRetry', () => {
       processTrackJobWithRetry(payload, { maxAttempts: 3, baseDelayMs: 100 })
     ).resolves.toBe('completed');
     expect(processTrackJob).toHaveBeenCalledTimes(1);
+    expect(reconcileProcessedTrackPlaybackStorage).toHaveBeenCalledWith({
+      userId: 'u1',
+      albumSlug: 'album',
+      logicalTrackId: 't1',
+      trackDbId: 'td1',
+    });
+  });
+
+  it('does not reconcile playback storage when processing fails or the lock is still held', async () => {
+    jest.mocked(processTrackJob).mockResolvedValueOnce('failed');
+    await expect(
+      processTrackJobWithRetry(payload, { maxAttempts: 1, baseDelayMs: 1 })
+    ).resolves.toBe('failed');
+    expect(reconcileProcessedTrackPlaybackStorage).not.toHaveBeenCalled();
+
+    jest.mocked(processTrackJob).mockResolvedValueOnce('skipped');
+    await expect(
+      processTrackJobWithRetry(payload, { maxAttempts: 1, baseDelayMs: 1 })
+    ).resolves.toBe('skipped');
+    expect(reconcileProcessedTrackPlaybackStorage).not.toHaveBeenCalled();
   });
 
   it('retries on skipped then succeeds', async () => {

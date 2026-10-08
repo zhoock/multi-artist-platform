@@ -1,7 +1,6 @@
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { query } from './lib/db';
 import { publicPlayableTrackSql } from './lib/public-track-sql';
-import { reconcileUserPublicPlayableTracks } from './lib/reconcile-user-public-playable-tracks';
 import {
   createErrorResponse,
   createOptionsResponse,
@@ -102,8 +101,6 @@ export const handler: Handler = async (
     // The publication gate is a correlated EXISTS rather than a join: an artist has one row per
     // release per locale in `albums`, so joining would emit the same artist once per matching
     // track. Nothing downstream dedupes.
-    const initialRows = await fetchPublicArtistRows();
-    await Promise.all(initialRows.map((row) => reconcileUserPublicPlayableTracks(row.id)));
     const rows = await fetchPublicArtistRows();
 
     const artists: PublicArtistDto[] = rows.map((row) => {

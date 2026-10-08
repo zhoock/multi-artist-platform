@@ -37,7 +37,7 @@ describe('artist-publication', () => {
     expect(isArtistPublishedFromSignals({ hasPublishedTracks: false })).toBe(false);
   });
 
-  test('getArtistPublicationSignals skips reconcile when skipPlaybackStorageReconcile is set', async () => {
+  test('publication signals do not reconcile playback storage', async () => {
     mockQuery.mockImplementation(async (sql: string) => {
       if (sql.includes('has_published_tracks')) {
         return { rows: [{ has_published_tracks: true }] } as never;
@@ -45,14 +45,9 @@ describe('artist-publication', () => {
       throw new Error(`unexpected query: ${sql}`);
     });
 
-    await getArtistPublicationSignals('user-catalog-fast', {
-      skipPlaybackStorageReconcile: true,
-    });
+    await getArtistPublicationSignals('user-catalog-fast');
+    await isArtistProfilePublished('user-catalog-fast');
     expect(mockReconcile).not.toHaveBeenCalled();
-
-    mockReconcile.mockClear();
-    await getArtistPublicationSignals('user-default-reconcile');
-    expect(mockReconcile).toHaveBeenCalledWith('user-default-reconcile');
   });
 
   test('public albums without tracks do not publish profile to catalog', () => {

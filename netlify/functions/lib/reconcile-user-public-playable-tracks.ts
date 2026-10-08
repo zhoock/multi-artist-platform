@@ -1,7 +1,8 @@
 /**
- * Runs existing playback Storage reconciliation for every public playable track (`ready`, not
- * hidden) on published public albums for one artist. Public catalog/search gates read DB status
- * only — this closes the window before those queries run.
+ * Artist-wide repair for public playable tracks whose database status is `ready`
+ * but whose playback object is missing from Storage.
+ * Public page and catalog reads must not call this. Per-track processing uses
+ * `reconcileProcessedTrackPlaybackStorage` instead.
  */
 
 import type { ProcessingStatus } from '../../../src/shared/lib/audio/audioAssetPipelineConfig';

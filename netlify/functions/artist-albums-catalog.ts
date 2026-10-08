@@ -165,9 +165,7 @@ export const handler: Handler = async (
     }
 
     try {
-      await assertArtistVisibleToViewer(targetUserId, authUserId, {
-        skipPlaybackStorageReconcile: true,
-      });
+      await assertArtistVisibleToViewer(targetUserId, authUserId);
       timer.mark('publicationGate.done');
     } catch (error) {
       if (error instanceof PublicArtistResolverError) {

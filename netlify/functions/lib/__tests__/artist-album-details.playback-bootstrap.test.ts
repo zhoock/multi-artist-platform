@@ -18,6 +18,8 @@ jest.mock('../track-assets-loader', () => ({
 jest.mock('../track-pipeline-schema', () => ({ tracksTableHasPipelineColumns: jest.fn() }));
 jest.mock('../track-playback-storage-reconcile', () => ({
   reconcileAlbumPlaybackStorageBatch: jest.fn(),
+  verifyPlaybackStoragePathExists: jest.fn(),
+  reconcileReadyPlaybackStorageIfMissing: jest.fn(),
 }));
 jest.mock('../track-lyrics', () => ({
   buildLyricsMapForAlbumTracks: jest.fn(),
@@ -31,7 +33,11 @@ import { classifyAuthorizationHeader } from '../jwt';
 import { resolvePublicArtistUserId } from '../public-artist-resolver';
 import { fetchTrackAssetsByAlbumPks, resolvePipelineAvailable } from '../track-assets-loader';
 import { tracksTableHasPipelineColumns } from '../track-pipeline-schema';
-import { reconcileAlbumPlaybackStorageBatch } from '../track-playback-storage-reconcile';
+import {
+  reconcileAlbumPlaybackStorageBatch,
+  reconcileReadyPlaybackStorageIfMissing,
+  verifyPlaybackStoragePathExists,
+} from '../track-playback-storage-reconcile';
 import { buildLyricsMapForAlbumTracks } from '../track-lyrics';
 import { handler } from '../../artist-album-details';
 
@@ -142,7 +148,7 @@ describe('artist-album-details playbackBootstrap', () => {
     jest.restoreAllMocks();
   });
 
-  it('skips storage reconcile but still embeds lyrics when playbackBootstrap=1', async () => {
+  it('playbackBootstrap=1 still returns the album with lyrics and does not reconcile storage', async () => {
     const response = await invoke({
       ...BASE_EVENT,
       queryStringParameters: {
@@ -153,23 +159,21 @@ describe('artist-album-details playbackBootstrap', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    expect(mockGate).toHaveBeenCalledWith(
-      USER_ID,
-      null,
-      expect.objectContaining({ skipPlaybackStorageReconcile: true })
-    );
+    expect(mockGate).toHaveBeenCalledWith(USER_ID, null);
     expect(mockReconcileBatch).not.toHaveBeenCalled();
+    expect(verifyPlaybackStoragePathExists).not.toHaveBeenCalled();
+    expect(reconcileReadyPlaybackStorageIfMissing).not.toHaveBeenCalled();
     expect(mockLyrics).toHaveBeenCalled();
   });
 
-  it('runs storage reconcile and lyrics on the full album page path', async () => {
+  it('full album page does not reconcile storage and still embeds lyrics', async () => {
     const response = await invoke(BASE_EVENT);
 
     expect(response.statusCode).toBe(200);
-    expect(mockGate).toHaveBeenCalledWith(USER_ID, null, {
-      skipPlaybackStorageReconcile: false,
-    });
-    expect(mockReconcileBatch).toHaveBeenCalled();
+    expect(mockGate).toHaveBeenCalledWith(USER_ID, null);
+    expect(mockReconcileBatch).not.toHaveBeenCalled();
+    expect(verifyPlaybackStoragePathExists).not.toHaveBeenCalled();
+    expect(reconcileReadyPlaybackStorageIfMissing).not.toHaveBeenCalled();
     expect(mockLyrics).toHaveBeenCalled();
   });
 });

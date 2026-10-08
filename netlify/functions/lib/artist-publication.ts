@@ -1,6 +1,5 @@
 import { query } from './db';
 import { publicPlayableTrackSql } from './public-track-sql';
-import { reconcileUserPublicPlayableTracks } from './reconcile-user-public-playable-tracks';
 import { PublicArtistResolverError } from './public-artist-resolver';
 import {
   buildPublicationSignalsFromRow,
@@ -78,21 +77,11 @@ export function hasPublicProfileContentFromFields(fields: ArtistProfileContentFi
 
 /**
  * Catalog/search visibility: at least one non-hidden track with `ready` main audio on a published
- * public release.
+ * public release. Reads database status only — playback Storage is not checked on this path.
  */
-export type ArtistPublicationOptions = {
-  /** Skip Storage HEAD/download reconciliation (lightweight catalog / play bootstrap). */
-  skipPlaybackStorageReconcile?: boolean;
-};
-
 export async function getArtistPublicationSignals(
-  userId: string,
-  options?: ArtistPublicationOptions
+  userId: string
 ): Promise<ArtistPublicationSignals> {
-  if (!options?.skipPlaybackStorageReconcile) {
-    await reconcileUserPublicPlayableTracks(userId);
-  }
-
   const userResult = await query<PublicationRow>(
     `SELECT EXISTS (
        SELECT 1
@@ -118,11 +107,8 @@ export async function getArtistPublicationSignals(
   return buildPublicationSignalsFromRow(userResult.rows[0]);
 }
 
-async function hasPublishedTracks(
-  userId: string,
-  options?: ArtistPublicationOptions
-): Promise<boolean> {
-  const signals = await getArtistPublicationSignals(userId, options);
+async function hasPublishedTracks(userId: string): Promise<boolean> {
+  const signals = await getArtistPublicationSignals(userId);
   return isArtistPublishedFromSignals(signals);
 }
 
@@ -171,8 +157,6 @@ async function hasPublicProfileContent(userId: string): Promise<boolean> {
 export type AssertArtistVisibleOptions = {
   /** When provided, profile content visibility is evaluated in-memory (no extra users read). */
   profileContentFields?: ArtistProfileContentFields;
-  /** Skip Storage reconciliation on the publication gate (catalog must stay fast). */
-  skipPlaybackStorageReconcile?: boolean;
 };
 
 /** Visitor-facing page content beyond catalog eligibility. */
@@ -180,16 +164,13 @@ export async function artistHasPublicPageContent(
   userId: string,
   options?: AssertArtistVisibleOptions
 ): Promise<boolean> {
-  const publicationOptions: ArtistPublicationOptions | undefined =
-    options?.skipPlaybackStorageReconcile ? { skipPlaybackStorageReconcile: true } : undefined;
-
   if (options?.profileContentFields) {
     if (hasPublicProfileContentFromFields(options.profileContentFields)) {
       return true;
     }
 
     const [tracks, articles] = await Promise.all([
-      hasPublishedTracks(userId, publicationOptions),
+      hasPublishedTracks(userId),
       hasPublicArticles(userId),
     ]);
     return tracks || articles;
@@ -202,7 +183,7 @@ export async function artistHasPublicPageContent(
   // Articles and profile stay a Promise.all pair, which keeps the previous all-or-nothing error
   // behaviour for them — a rejection on either still fails the whole gate rather than being
   // masked by the other returning true.
-  if (await hasPublishedTracks(userId, publicationOptions)) {
+  if (await hasPublishedTracks(userId)) {
     return true;
   }
 

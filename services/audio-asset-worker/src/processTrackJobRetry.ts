@@ -9,6 +9,7 @@ import {
 import { pipelineTrace, pipelineTraceWarn } from './lib/pipelineTrace.js';
 import { processTrackJob, type ProcessTrackJobResult } from './processTrackJob.js';
 import type { ProcessTrackJobPayload } from './pipeline/types.js';
+import { reconcileProcessedTrackPlaybackStorage } from '../../../netlify/functions/lib/track-playback-storage-reconcile.js';
 
 const SKIP_RETRY_MAX_ATTEMPTS = 6;
 const SKIP_RETRY_BASE_DELAY_MS = 3000;
@@ -51,6 +52,22 @@ export async function processTrackJobWithRetry(
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     const result = await processTrackJob(payload);
     if (result !== 'skipped') {
+      if (result === 'completed' || result === 'already_ready') {
+        try {
+          await reconcileProcessedTrackPlaybackStorage({
+            userId: payload.userId,
+            albumSlug: payload.albumSlug,
+            logicalTrackId: payload.trackId,
+            trackDbId: payload.trackDbId,
+          });
+        } catch (err) {
+          pipelineTraceWarn(
+            'playback storage reconcile after processing failed',
+            { error: err instanceof Error ? err.message : String(err) },
+            trace
+          );
+        }
+      }
       return result;
     }
 

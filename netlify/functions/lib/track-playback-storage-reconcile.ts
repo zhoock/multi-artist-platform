@@ -353,6 +353,58 @@ export async function reconcileReadyPlaybackStorageIfMissing(
   };
 }
 
+/**
+ * Playback Storage repair for an explicit processing job.
+ * Public catalog and page reads must not call this — they trust `processing_status`.
+ * After a track job finishes ready (or was already ready), one HEAD confirms the
+ * playback object. A missing object is marked failed in the database.
+ */
+export async function reconcileProcessedTrackPlaybackStorage(input: {
+  userId: string;
+  albumSlug: string;
+  logicalTrackId: string;
+  trackDbId: string;
+}): Promise<void> {
+  const statusResult = await query<{ processing_status: string | null }>(
+    `SELECT processing_status
+     FROM tracks
+     WHERE id = $1::uuid
+     LIMIT 1`,
+    [input.trackDbId],
+    0
+  );
+  const processingStatus = statusResult.rows[0]?.processing_status;
+  if (processingStatus !== 'ready') return;
+
+  const assetsResult = await query<{
+    type: string;
+    format: string;
+    variant: string;
+    status: string;
+    path: string | null;
+  }>(
+    `SELECT type, format, variant, status, path
+     FROM track_assets
+     WHERE track_id = $1::uuid`,
+    [input.trackDbId],
+    0
+  );
+
+  await reconcileReadyPlaybackStorageIfMissing({
+    userId: input.userId,
+    albumSlug: input.albumSlug,
+    logicalTrackId: input.logicalTrackId,
+    processingStatus: 'ready',
+    assets: assetsResult.rows.map((row) => ({
+      type: row.type,
+      format: row.format,
+      variant: row.variant,
+      status: row.status,
+      path: row.path,
+    })),
+  });
+}
+
 export async function reconcileAlbumPlaybackStorageBatch(
   userId: string,
   albumSlug: string,

@@ -5,7 +5,6 @@
 
 import { query } from './db';
 import { publicListedTrackSql, publicPlayableTrackSql } from './public-track-sql';
-import { reconcileUserPublicPlayableTracks } from './reconcile-user-public-playable-tracks';
 import {
   buildDynamicSitemapEntries,
   type SitemapAlbumRow,
@@ -28,26 +27,6 @@ function dedupeSitemapEntries(entries: SitemapEntry[]): SitemapEntry[] {
     }
   }
   return [...byPath.values()];
-}
-
-async function reconcileArtistsWithPublicPlayableTracks(): Promise<void> {
-  const result = await query<{ id: string }>(
-    `SELECT DISTINCT u.id
-     FROM users u
-     INNER JOIN albums a ON a.user_id = u.id
-     INNER JOIN tracks t ON t.album_id = a.id
-     WHERE u.is_active = true
-       AND u.public_slug IS NOT NULL
-       AND btrim(u.public_slug) <> ''
-       AND a.is_published = true
-       AND a.is_public = true
-       AND btrim(COALESCE(a.album, '')) <> ''
-       AND ${publicPlayableTrackSql('t')}`,
-    [],
-    0
-  );
-
-  await Promise.all(result.rows.map((row) => reconcileUserPublicPlayableTracks(row.id)));
 }
 
 async function fetchVisibleArtists(): Promise<SitemapArtistRow[]> {
@@ -176,8 +155,6 @@ async function fetchPublicArticles(): Promise<SitemapArticleRow[]> {
 }
 
 export async function fetchDynamicSitemapEntries(): Promise<SitemapEntry[]> {
-  await reconcileArtistsWithPublicPlayableTracks();
-
   const [artists, albums, articles, helpEntries] = await Promise.all([
     fetchVisibleArtists(),
     fetchPublicAlbums(),
