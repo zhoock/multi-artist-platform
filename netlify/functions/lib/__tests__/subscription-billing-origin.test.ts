@@ -5,6 +5,8 @@
 import { describe, expect, test, beforeEach, afterEach } from '@jest/globals';
 
 import {
+  allowsProductionBillingFulfillmentDespiteOriginGuard,
+  allowsProductionRebindOfDevSubscription,
   allowsProductionResubscribeOfEndedDevSubscription,
   checkBillingMutationAllowed,
   normalizeBillingOrigin,
@@ -124,6 +126,72 @@ describe('allowsProductionResubscribeOfEndedDevSubscription', () => {
         subscription: ended,
         paymentKind: 'initial',
         devMarkedPayment: true,
+      })
+    ).toBe(false);
+  });
+});
+
+describe('allowsProductionRebindOfDevSubscription', () => {
+  test('allows production poll/webhook rebind for dev-origin subscriptions', () => {
+    delete process.env.DEV_PAYMENT_MODE;
+    process.env.NODE_ENV = 'production';
+    process.env.CONTEXT = 'production';
+
+    expect(
+      allowsProductionRebindOfDevSubscription({
+        subscription: { billingOrigin: 'dev' },
+        paymentKind: 'rebind',
+      })
+    ).toBe(true);
+  });
+
+  test('does not allow rebind for production-origin or non-rebind kinds', () => {
+    delete process.env.DEV_PAYMENT_MODE;
+    process.env.NODE_ENV = 'production';
+    process.env.CONTEXT = 'production';
+
+    expect(
+      allowsProductionRebindOfDevSubscription({
+        subscription: { billingOrigin: 'production' },
+        paymentKind: 'rebind',
+      })
+    ).toBe(false);
+    expect(
+      allowsProductionRebindOfDevSubscription({
+        subscription: { billingOrigin: 'dev' },
+        paymentKind: 'renewal',
+      })
+    ).toBe(false);
+  });
+});
+
+describe('allowsProductionBillingFulfillmentDespiteOriginGuard', () => {
+  test('combines ended dev initial resubscribe and dev rebind exceptions', () => {
+    delete process.env.DEV_PAYMENT_MODE;
+    process.env.NODE_ENV = 'production';
+    process.env.CONTEXT = 'production';
+
+    const endedDev = { billingOrigin: 'dev' as const, status: 'expired' as const };
+
+    expect(
+      allowsProductionBillingFulfillmentDespiteOriginGuard({
+        subscription: endedDev,
+        paymentKind: 'initial',
+        devMarkedPayment: false,
+      })
+    ).toBe(true);
+    expect(
+      allowsProductionBillingFulfillmentDespiteOriginGuard({
+        subscription: { billingOrigin: 'dev', status: 'active' },
+        paymentKind: 'rebind',
+        devMarkedPayment: false,
+      })
+    ).toBe(true);
+    expect(
+      allowsProductionBillingFulfillmentDespiteOriginGuard({
+        subscription: endedDev,
+        paymentKind: 'renewal',
+        devMarkedPayment: false,
       })
     ).toBe(false);
   });

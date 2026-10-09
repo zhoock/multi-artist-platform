@@ -13,7 +13,7 @@ import {
 } from './subscription-observability-fulfillment';
 import { DEFAULT_SUBSCRIPTION_PLAN } from './subscription-billing';
 import {
-  allowsProductionResubscribeOfEndedDevSubscription,
+  allowsProductionBillingFulfillmentDespiteOriginGuard,
   checkBillingMutationAllowed,
 } from './subscription-billing-origin';
 import { logSubscriptionEvent, SUBSCRIPTION_LOG_EVENTS } from './subscription-observability';
@@ -116,12 +116,12 @@ async function processWithObservability(
 
   const subscription = await getViewerSubscription(userId);
   const billingGuard = checkBillingMutationAllowed(subscription);
-  const resubscribeAllowed = allowsProductionResubscribeOfEndedDevSubscription({
+  const fulfillmentAllowed = allowsProductionBillingFulfillmentDespiteOriginGuard({
     subscription,
     paymentKind: resolvedKind,
     devMarkedPayment: options.devMarkedPayment === true,
   });
-  if (!billingGuard.allowed && !resubscribeAllowed) {
+  if (!billingGuard.allowed && !fulfillmentAllowed) {
     logSubscriptionEvent(
       SUBSCRIPTION_LOG_EVENTS.FULFILLMENT_REJECTED,
       {

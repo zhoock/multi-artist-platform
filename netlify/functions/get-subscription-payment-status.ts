@@ -36,6 +36,7 @@ import {
   PREMIUM_SUBSCRIPTION_PRODUCT_TYPE,
 } from './lib/subscription-billing';
 import {
+  allowsProductionRebindOfDevSubscription,
   allowsProductionResubscribeOfEndedDevSubscription,
   checkBillingMutationAllowed,
 } from './lib/subscription-billing-origin';
@@ -268,7 +269,11 @@ export const handler: Handler = async (event: HandlerEvent) => {
 
           const subscription = await getViewerSubscription(userId);
           const billingGuard = checkBillingMutationAllowed(subscription);
-          if (!billingGuard.allowed) {
+          const rebindAllowed = allowsProductionRebindOfDevSubscription({
+            subscription,
+            paymentKind: owned.kind,
+          });
+          if (!billingGuard.allowed && !rebindAllowed) {
             logSubscriptionEvent(
               SUBSCRIPTION_LOG_EVENTS.FULFILLMENT_REJECTED,
               {

@@ -17,7 +17,7 @@ import {
 import { mapYooKassaPaymentToProviderPayment } from './subscription-provider-payment';
 import { isRebindSubscriptionPaymentKind } from './subscription-rebind-fulfillment';
 import {
-  allowsProductionResubscribeOfEndedDevSubscription,
+  allowsProductionBillingFulfillmentDespiteOriginGuard,
   checkBillingMutationAllowed,
 } from './subscription-billing-origin';
 import { isDevMarkedPayment } from './dev-payment-mode';
@@ -279,12 +279,12 @@ export async function handlePremiumSubscriptionWebhookIfApplicable(
   if (data.event === 'payment.succeeded') {
     const subscription = await getViewerSubscription(dbUserId);
     const billingGuard = checkBillingMutationAllowed(subscription);
-    const resubscribeAllowed = allowsProductionResubscribeOfEndedDevSubscription({
+    const fulfillmentAllowed = allowsProductionBillingFulfillmentDespiteOriginGuard({
       subscription,
       paymentKind: dbKind,
       devMarkedPayment,
     });
-    if (!billingGuard.allowed && !resubscribeAllowed) {
+    if (!billingGuard.allowed && !fulfillmentAllowed) {
       logWebhookSkipped('billing_origin_mismatch', {
         reason: billingGuard.reason,
         billingOrigin: subscription?.billingOrigin ?? undefined,

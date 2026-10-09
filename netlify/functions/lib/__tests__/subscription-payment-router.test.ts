@@ -41,14 +41,19 @@ jest.mock('../subscription-upgrade-fulfillment', () => ({
 }));
 
 jest.mock('../subscription-rebind-fulfillment', () => ({
-  isRebindSubscriptionPaymentKind: jest.fn(() => false),
-  processRebindSubscriptionProviderPayment: jest.fn(),
+  isRebindSubscriptionPaymentKind: jest.fn((kind: string | null | undefined) => kind === 'rebind'),
+  processRebindSubscriptionProviderPayment: jest.fn(async () => ({
+    paymentMethodUpdated: true,
+    alreadyApplied: false,
+    staleAfterUnlink: false,
+  })),
 }));
 
 import { getViewerSubscription } from '../subscriptions';
 import { processSubscriptionProviderPaymentForRow } from '../subscription-payment-router';
 import { processRenewalSubscriptionProviderPayment } from '../subscription-renewal-fulfillment';
 import { processInitialSubscriptionProviderPayment } from '../subscription-fulfillment';
+import { processRebindSubscriptionProviderPayment } from '../subscription-rebind-fulfillment';
 
 const mockedGetSubscription = getViewerSubscription as jest.MockedFunction<
   typeof getViewerSubscription
@@ -58,6 +63,9 @@ const mockedRenewal = processRenewalSubscriptionProviderPayment as jest.MockedFu
 >;
 const mockedInitial = processInitialSubscriptionProviderPayment as jest.MockedFunction<
   typeof processInitialSubscriptionProviderPayment
+>;
+const mockedRebind = processRebindSubscriptionProviderPayment as jest.MockedFunction<
+  typeof processRebindSubscriptionProviderPayment
 >;
 
 const USER_ID = 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee';
@@ -233,5 +241,50 @@ describe('processSubscriptionProviderPaymentForRow billing_origin guard', () => 
     expect(renewal).toMatchObject({ subscriptionRenewed: false, alreadyFulfilled: false });
     expect(mockedInitial).not.toHaveBeenCalled();
     expect(mockedRenewal).not.toHaveBeenCalled();
+  });
+
+  test('production runtime fulfills rebind for a dev-origin subscription', async () => {
+    delete process.env.DEV_PAYMENT_MODE;
+    process.env.NODE_ENV = 'production';
+    process.env.CONTEXT = 'production';
+    mockedGetSubscription.mockResolvedValue({
+      id: 'sub-dev',
+      userId: USER_ID,
+      status: 'expired',
+      plan: 'archivist',
+      slotsLimit: 100,
+      provider: 'yookassa',
+      providerSubscriptionId: '325b203f-000f-5000-b000-118c53aaa8d7',
+      startedAt: new Date('2026-10-09T16:18:05.591Z'),
+      expiresAt: new Date('2026-10-09T16:23:05.591Z'),
+      billingOrigin: 'dev',
+      createdAt: new Date('2026-10-09T16:18:05.591Z'),
+      updatedAt: new Date('2026-10-09T16:23:05.591Z'),
+    });
+
+    const result = await processSubscriptionProviderPaymentForRow(
+      {
+        id: '325b2836-000f-5000-b000-18c20154bf9d',
+        status: 'succeeded',
+        amount: { value: '1.00', currency: 'RUB' },
+        metadata: {
+          productType: 'premium_subscription',
+          userId: USER_ID,
+          plan: 'archivist',
+          kind: 'rebind',
+        },
+        paymentMethod: { id: 'pm-test', saved: true },
+      },
+      USER_ID,
+      'rebind',
+      { observabilitySource: 'poll', subscriptionPaymentId: 'b06b2047-19e9-4c04-bfb2-44e4e5e772b0' }
+    );
+
+    expect(result).toEqual({
+      paymentMethodUpdated: true,
+      alreadyApplied: false,
+      staleAfterUnlink: false,
+    });
+    expect(mockedRebind).toHaveBeenCalledTimes(1);
   });
 });

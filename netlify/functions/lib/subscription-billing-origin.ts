@@ -54,6 +54,10 @@ function isInitialCheckoutKind(kind: string | null | undefined): boolean {
   return !normalized || normalized === 'initial';
 }
 
+function isRebindCheckoutKind(kind: string | null | undefined): boolean {
+  return kind?.trim() === 'rebind';
+}
+
 function paidPeriodHasEnded(subscription: Pick<Subscription, 'status'>): boolean {
   return subscription.status === 'expired' || subscription.status === 'canceled';
 }
@@ -61,7 +65,7 @@ function paidPeriodHasEnded(subscription: Pick<Subscription, 'status'>): boolean
 /**
  * Production initial checkout may fulfill an ended dev-origin subscription.
  * The new period is stamped production. Dev-marked payments, live periods,
- * and renewal/upgrade/rebind stay on the normal origin guard.
+ * and renewal/upgrade stay on the normal origin guard.
  */
 export function allowsProductionResubscribeOfEndedDevSubscription(params: {
   subscription: Pick<Subscription, 'billingOrigin' | 'status'> | null | undefined;
@@ -75,6 +79,22 @@ export function allowsProductionResubscribeOfEndedDevSubscription(params: {
   const guard = checkBillingMutationAllowed(params.subscription);
   if (guard.allowed || guard.reason !== 'dev_subscription_production_runtime') return false;
   return paidPeriodHasEnded(params.subscription);
+}
+
+/**
+ * Production may apply a rebind on a dev-origin subscription: only payment_method_id/title
+ * change, no period extension and no billing_origin rewrite.
+ */
+export function allowsProductionRebindOfDevSubscription(params: {
+  subscription: Pick<Subscription, 'billingOrigin'> | null | undefined;
+  paymentKind: string | null | undefined;
+}): boolean {
+  if (isDevPaymentModeEnabled()) return false;
+  if (!isRebindCheckoutKind(params.paymentKind)) return false;
+  if (!params.subscription) return false;
+  if (normalizeBillingOrigin(params.subscription.billingOrigin) !== 'dev') return false;
+  const guard = checkBillingMutationAllowed(params.subscription);
+  return !guard.allowed && guard.reason === 'dev_subscription_production_runtime';
 }
 
 export function checkBillingMutationAllowed(
@@ -94,6 +114,19 @@ export function checkBillingMutationAllowed(
     return { allowed: false, reason: 'dev_subscription_production_runtime' };
   }
   return { allowed: true };
+}
+
+/** Whether poll/webhook may run subscription payment fulfillment for this row. */
+export function allowsProductionBillingFulfillmentDespiteOriginGuard(params: {
+  subscription: Pick<Subscription, 'billingOrigin' | 'status'> | null | undefined;
+  paymentKind: string | null | undefined;
+  devMarkedPayment: boolean;
+}): boolean {
+  if (checkBillingMutationAllowed(params.subscription).allowed) return true;
+  return (
+    allowsProductionResubscribeOfEndedDevSubscription(params) ||
+    allowsProductionRebindOfDevSubscription(params)
+  );
 }
 
 /** SQL fragment appended to scheduler eligibility queries for the active runtime. */
