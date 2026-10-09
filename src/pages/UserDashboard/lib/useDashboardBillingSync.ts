@@ -18,7 +18,7 @@ export function useDashboardBillingSync(): void {
 
   const refreshBilling = useCallback(async () => {
     try {
-      await refetch();
+      await refetch({ silent: true });
     } catch (err) {
       console.error('[DashboardBillingSync] billing refresh failed', err);
     }

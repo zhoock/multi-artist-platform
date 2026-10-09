@@ -8,7 +8,7 @@ import {
   type ReactNode,
 } from 'react';
 
-import { getMyArchive } from '@shared/api/archive';
+import { getMyArchive, type MyArchiveData } from '@shared/api/archive';
 import { EMPTY_BILLING_SNAPSHOT, type BillingSnapshot } from '@shared/api/billing';
 import { AUTH_SESSION_CHANGED_EVENT, getToken } from '@shared/lib/auth';
 import {
@@ -16,6 +16,17 @@ import {
   type SubscriptionPlanSlug,
 } from '@shared/lib/payment/subscriptionPlans';
 import { ARCHIVE_CHANGED_EVENT, SUBSCRIPTION_ACTIVATED_EVENT } from '@features/artistArchive';
+import {
+  beginMyArchiveProviderFetch,
+  isMyArchiveProviderFetchStale,
+} from '@shared/lib/archive/myArchiveFetchGeneration';
+import { traceCollectionExpiredBanner } from '@shared/lib/archive/collectionExpiredBannerTrace';
+import { traceCollectionRemove } from '@shared/lib/archive/collectionArtistRemoveTrace';
+
+export type PremiumSubscriptionRefetchOptions = {
+  /** Skip global loading flag — use for renewal polling and other background sync. */
+  silent?: boolean;
+};
 
 export type PremiumSubscriptionContextValue = {
   isPremium: boolean;
@@ -24,7 +35,11 @@ export type PremiumSubscriptionContextValue = {
   planSlug: SubscriptionPlanSlug | null;
   billing: BillingSnapshot;
   loading: boolean;
-  refetch: () => Promise<void>;
+  refetch: (options?: PremiumSubscriptionRefetchOptions) => Promise<void>;
+  /** Apply `/api/my-archive` fields without a second network round-trip. */
+  applyArchiveSnapshot: (
+    data: Pick<MyArchiveData, 'isPremium' | 'slotsLimit' | 'slotsUsed' | 'billing'>
+  ) => void;
 };
 
 const PremiumSubscriptionContext = createContext<PremiumSubscriptionContextValue | null>(null);
@@ -36,41 +51,85 @@ export function PremiumSubscriptionProvider({ children }: { children: ReactNode 
   const [billing, setBilling] = useState<BillingSnapshot>(EMPTY_BILLING_SNAPSHOT);
   const [loading, setLoading] = useState(() => Boolean(getToken()));
 
-  const refetch = useCallback(async () => {
-    if (!getToken()) {
-      setIsPremium(false);
-      setSlotsLimit(3);
-      setSlotsUsed(0);
-      setBilling(EMPTY_BILLING_SNAPSHOT);
-      setLoading(false);
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const data = await getMyArchive();
+  const applyArchiveSnapshot = useCallback(
+    (data: Pick<MyArchiveData, 'isPremium' | 'slotsLimit' | 'slotsUsed' | 'billing'>) => {
       setIsPremium(data.isPremium);
       setSlotsLimit(data.slotsLimit);
       setSlotsUsed(data.slotsUsed);
       setBilling(data.billing ?? EMPTY_BILLING_SNAPSHOT);
-    } catch {
-      setIsPremium(false);
-      setBilling(EMPTY_BILLING_SNAPSHOT);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+    },
+    []
+  );
+
+  const refetch = useCallback(
+    async (options?: PremiumSubscriptionRefetchOptions) => {
+      if (!getToken()) {
+        setIsPremium(false);
+        setSlotsLimit(3);
+        setSlotsUsed(0);
+        setBilling(EMPTY_BILLING_SNAPSHOT);
+        setLoading(false);
+        return;
+      }
+
+      const silent = options?.silent === true;
+      if (!silent) {
+        setLoading(true);
+      }
+      try {
+        const generation = beginMyArchiveProviderFetch();
+        const data = await getMyArchive();
+        if (isMyArchiveProviderFetchStale(generation)) {
+          traceCollectionRemove({
+            source: 'PremiumSubscriptionProvider.refetch(stale-skip)',
+            fetchGeneration: generation,
+            extra: silent ? 'silent' : 'foreground',
+          });
+          return;
+        }
+        applyArchiveSnapshot(data);
+        traceCollectionExpiredBanner({
+          source: 'PremiumSubscriptionProvider.refetch(apply)',
+          hasPremiumAccess: data.billing?.hasPremiumAccess,
+          status: data.billing?.status,
+          autoRenewEnabled: data.billing?.autoRenewEnabled,
+          hasSavedPaymentMethod: data.billing?.hasSavedPaymentMethod,
+          nextChargeAt: data.billing?.nextChargeAt,
+          expiresAt: data.billing?.expiresAt,
+        });
+        traceCollectionRemove({
+          source: 'PremiumSubscriptionProvider.refetch(apply)',
+          fetchGeneration: generation,
+          billingStatus: data.billing?.status,
+          hasPremiumAccess: data.billing?.hasPremiumAccess,
+          autoRenewEnabled: data.billing?.autoRenewEnabled,
+          hasSavedPaymentMethod: data.billing?.hasSavedPaymentMethod,
+          nextChargeAt: data.billing?.nextChargeAt,
+          expiresAt: data.billing?.expiresAt,
+          extra: silent ? 'silent' : 'foreground',
+        });
+      } catch {
+        setIsPremium(false);
+        setBilling(EMPTY_BILLING_SNAPSHOT);
+      } finally {
+        if (!silent) {
+          setLoading(false);
+        }
+      }
+    },
+    [applyArchiveSnapshot]
+  );
 
   useEffect(() => {
     void refetch();
 
     const onChanged = () => {
-      void refetch();
+      void refetch({ silent: true });
     };
 
     const onVisible = () => {
       if (document.visibilityState === 'visible') {
-        void refetch();
+        void refetch({ silent: true });
       }
     };
 
@@ -93,8 +152,17 @@ export function PremiumSubscriptionProvider({ children }: { children: ReactNode 
       slotsUsed,
       isPremium,
     });
-    return { isPremium, slotsLimit, slotsUsed, planSlug, billing, loading, refetch };
-  }, [billing, isPremium, loading, refetch, slotsLimit, slotsUsed]);
+    return {
+      isPremium,
+      slotsLimit,
+      slotsUsed,
+      planSlug,
+      billing,
+      loading,
+      refetch,
+      applyArchiveSnapshot,
+    };
+  }, [applyArchiveSnapshot, billing, isPremium, loading, refetch, slotsLimit, slotsUsed]);
 
   return (
     <PremiumSubscriptionContext.Provider value={value}>
@@ -114,6 +182,7 @@ export function usePremiumSubscription(): PremiumSubscriptionContextValue {
       billing: EMPTY_BILLING_SNAPSHOT,
       loading: false,
       refetch: async () => {},
+      applyArchiveSnapshot: () => {},
     };
   }
   return ctx;

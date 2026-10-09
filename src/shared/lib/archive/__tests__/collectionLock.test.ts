@@ -4,7 +4,9 @@ import { EMPTY_BILLING_SNAPSHOT } from '@shared/api/billing';
 import {
   canRemoveCollectionArtist,
   formatCollectionArtistReplaceInDaysLabel,
+  formatCollectionArtistReplaceInLabel,
   getCollectionArtistLockDaysRemaining,
+  getCollectionArtistLockMsRemaining,
   isCollectionArtistLocked,
   normalizeCollectionArchive,
   normalizeCollectionArtist,
@@ -46,6 +48,18 @@ describe('isCollectionArtistLocked', () => {
 });
 
 describe('canRemoveCollectionArtist', () => {
+  test('blocks active artists when time lock expired but subscription inactive', () => {
+    expect(
+      canRemoveCollectionArtist(artist({ lockedUntil: '2026-01-01T00:00:00.000Z' }), false, NOW)
+    ).toBe(false);
+  });
+
+  test('allows active artists when time lock expired and subscription active', () => {
+    expect(
+      canRemoveCollectionArtist(artist({ lockedUntil: '2026-01-01T00:00:00.000Z' }), true, NOW)
+    ).toBe(true);
+  });
+
   test('allows removing inactive artists regardless of lock', () => {
     expect(
       canRemoveCollectionArtist(
@@ -74,6 +88,10 @@ describe('normalizeCollectionArtist', () => {
 });
 
 describe('formatCollectionArtistReplaceInDaysLabel', () => {
+  test('returns empty string for zero days', () => {
+    expect(formatCollectionArtistReplaceInDaysLabel(0, 'ru')).toBe('');
+  });
+
   test('formats Russian plural forms', () => {
     expect(formatCollectionArtistReplaceInDaysLabel(1, 'ru')).toBe('Можно заменить через 1 день.');
     expect(formatCollectionArtistReplaceInDaysLabel(3, 'ru')).toBe('Можно заменить через 3 дня.');
@@ -89,6 +107,63 @@ describe('formatCollectionArtistReplaceInDaysLabel', () => {
   });
 });
 
+describe('formatCollectionArtistReplaceInLabel', () => {
+  const base = new Date('2026-06-01T12:00:00.000Z');
+
+  test('returns null when lock has expired', () => {
+    expect(formatCollectionArtistReplaceInLabel('2026-06-01T11:00:00.000Z', 'en', base)).toBeNull();
+  });
+
+  test('shows 5 minutes in English and Russian, not days', () => {
+    const lockedUntil = new Date(base.getTime() + 5 * 60 * 1000).toISOString();
+    expect(formatCollectionArtistReplaceInLabel(lockedUntil, 'en', base)).toBe(
+      'Can be replaced in 5 minutes.'
+    );
+    expect(formatCollectionArtistReplaceInLabel(lockedUntil, 'ru', base)).toBe(
+      'Можно заменить через 5 минут.'
+    );
+  });
+
+  test('shows minutes when less than one hour', () => {
+    const lockedUntil = new Date(base.getTime() + 45 * 60 * 1000).toISOString();
+    expect(formatCollectionArtistReplaceInLabel(lockedUntil, 'en', base)).toBe(
+      'Can be replaced in 45 minutes.'
+    );
+    expect(formatCollectionArtistReplaceInLabel(lockedUntil, 'ru', base)).toBe(
+      'Можно заменить через 45 минут.'
+    );
+  });
+
+  test('shows seconds when less than one minute', () => {
+    const lockedUntil = new Date(base.getTime() + 30 * 1000).toISOString();
+    expect(formatCollectionArtistReplaceInLabel(lockedUntil, 'en', base)).toBe(
+      'Can be replaced in 30 seconds.'
+    );
+    expect(formatCollectionArtistReplaceInLabel(lockedUntil, 'ru', base)).toBe(
+      'Можно заменить через 30 секунд.'
+    );
+  });
+
+  test('shows hours and minutes between one hour and one day', () => {
+    const lockedUntil = new Date(base.getTime() + (2 * 60 + 15) * 60 * 1000).toISOString();
+    expect(formatCollectionArtistReplaceInLabel(lockedUntil, 'en', base)).toBe(
+      'Can be replaced in 2 hours 15 minutes.'
+    );
+    expect(formatCollectionArtistReplaceInLabel(lockedUntil, 'ru', base)).toBe(
+      'Можно заменить через 2 часа 15 минут.'
+    );
+  });
+
+  test('shows days when at least one full day remains', () => {
+    expect(formatCollectionArtistReplaceInLabel(LOCKED_UNTIL, 'en', NOW)).toBe(
+      'Can be replaced in 30 days.'
+    );
+    expect(formatCollectionArtistReplaceInLabel(LOCKED_UNTIL, 'ru', NOW)).toBe(
+      'Можно заменить через 30 дней.'
+    );
+  });
+});
+
 describe('getCollectionArtistLockDaysRemaining', () => {
   test('returns remaining days until lock expires', () => {
     expect(getCollectionArtistLockDaysRemaining(LOCKED_UNTIL, NOW)).toBe(30);
@@ -98,6 +173,14 @@ describe('getCollectionArtistLockDaysRemaining', () => {
     expect(
       getCollectionArtistLockDaysRemaining(LOCKED_UNTIL, new Date('2026-08-01T00:00:00.000Z'))
     ).toBe(0);
+  });
+});
+
+describe('getCollectionArtistLockMsRemaining', () => {
+  test('returns exact milliseconds for short locks', () => {
+    const now = new Date('2026-06-01T12:00:00.000Z');
+    const lockedUntil = new Date(now.getTime() + 5 * 60 * 1000).toISOString();
+    expect(getCollectionArtistLockMsRemaining(lockedUntil, now)).toBe(5 * 60 * 1000);
   });
 });
 

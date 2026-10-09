@@ -360,6 +360,18 @@ dialog {
         color: var(--dashboard-text-secondary);
       }
 
+      &__subscription-gate-action {
+        position: relative;
+        display: inline-flex;
+        justify-self: end;
+      }
+
+      &__subscription-gate-btn {
+        color: var(--dashboard-text-secondary);
+        opacity: var(--dashboard-btn-disabled-opacity, 0.45);
+        cursor: help;
+      }
+
       &__action-bar {
         position: sticky;
         bottom: 0;

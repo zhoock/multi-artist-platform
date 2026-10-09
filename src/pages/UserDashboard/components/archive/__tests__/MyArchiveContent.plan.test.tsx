@@ -255,14 +255,15 @@ describe('MyArchiveContent collection', () => {
   });
 
   test('shows lock action with tooltip for locked active artist without status badges', async () => {
+    const lockedUntil = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
     getMyArchiveMock.mockResolvedValue(
       archivePayload({
-        subscriptionExpiresAt: '2026-07-20T12:00:00.000Z',
-        billing: billingActive({ expiresAt: '2026-09-01T12:00:00.000Z' }),
+        subscriptionExpiresAt: lockedUntil,
+        billing: billingActive({ expiresAt: lockedUntil }),
         artists: [
           activeArtist('a1', 'Locked Artist', {
             isLocked: true,
-            lockedUntil: '2026-09-01T12:00:00.000Z',
+            lockedUntil,
           }),
         ],
       })
@@ -283,7 +284,8 @@ describe('MyArchiveContent collection', () => {
 
     const tooltip = screen.getByRole('tooltip');
     expect(tooltip.textContent).toMatch(/Can be replaced in/i);
-    expect(tooltip.textContent).toMatch(/30 days after being added/i);
+    expect(tooltip.textContent).toMatch(/current paid subscription period/i);
+    expect(tooltip.textContent).not.toMatch(/30 days after being added/i);
   });
 
   test('shows activate and remove buttons for inactive artist', async () => {

@@ -102,6 +102,7 @@ describe('ProfileAvatarMenu dashboard links', () => {
       billing: { ...EMPTY_BILLING_SNAPSHOT, hasPremiumAccess: true, status: 'active' },
       loading: false,
       refetch: async () => {},
+      applyArchiveSnapshot: () => {},
     });
 
     renderMenu();
@@ -122,6 +123,7 @@ describe('ProfileAvatarMenu dashboard links', () => {
       billing: EMPTY_BILLING_SNAPSHOT,
       loading: false,
       refetch: async () => {},
+      applyArchiveSnapshot: () => {},
     });
 
     renderMenu();
@@ -142,6 +144,7 @@ describe('ProfileAvatarMenu dashboard links', () => {
       billing: { ...EMPTY_BILLING_SNAPSHOT, hasPremiumAccess: false, status: 'expired' },
       loading: false,
       refetch: async () => {},
+      applyArchiveSnapshot: () => {},
     });
 
     renderMenu();
@@ -160,6 +163,7 @@ describe('ProfileAvatarMenu dashboard links', () => {
       billing: { ...EMPTY_BILLING_SNAPSHOT, hasPremiumAccess: false, status: 'past_due' },
       loading: false,
       refetch: async () => {},
+      applyArchiveSnapshot: () => {},
     });
 
     renderMenu();
@@ -178,6 +182,7 @@ describe('ProfileAvatarMenu dashboard links', () => {
       billing: { ...EMPTY_BILLING_SNAPSHOT, hasPremiumAccess: true, status: 'active' },
       loading: false,
       refetch: async () => {},
+      applyArchiveSnapshot: () => {},
     });
 
     renderMenu(['/dashboard/subscription']);
@@ -197,6 +202,7 @@ describe('ProfileAvatarMenu dashboard links', () => {
       billing: { ...EMPTY_BILLING_SNAPSHOT, hasPremiumAccess: true, status: 'active' },
       loading: false,
       refetch: async () => {},
+      applyArchiveSnapshot: () => {},
     });
 
     renderMenu(['/dashboard/collection']);

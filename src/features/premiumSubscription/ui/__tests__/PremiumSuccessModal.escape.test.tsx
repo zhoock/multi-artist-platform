@@ -29,7 +29,12 @@ jest.mock('@features/premiumSubscription/lib/PremiumSubscriptionContext', () => 
   usePremiumSubscription: () => ({
     isPremium: true,
     slotsLimit: 20,
+    slotsUsed: 0,
     planSlug: 'explorer',
+    billing: {},
+    loading: false,
+    refetch: async () => {},
+    applyArchiveSnapshot: () => {},
   }),
 }));
 

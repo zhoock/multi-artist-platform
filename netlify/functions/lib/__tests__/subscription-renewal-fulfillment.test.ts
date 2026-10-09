@@ -189,7 +189,7 @@ describe('fulfillRenewalSubscriptionPayment', () => {
 
     expect(result.fulfilled).toBe(true);
     expect(mockedDeactivateExcess).toHaveBeenCalledWith(USER_ID, 1);
-    expect(mockedExtendLock).toHaveBeenCalled();
+    expect(mockedExtendLock).not.toHaveBeenCalled();
     expect(String(mockedQuery.mock.calls[0]?.[0])).toContain('scheduled_plan = NULL');
   });
 
@@ -284,7 +284,16 @@ describe('fulfillRenewalSubscriptionPayment', () => {
     expect(result.alreadyFulfilled).toBe(true);
     expect(mockedQuery).not.toHaveBeenCalled();
     expect(mockedDeactivateExcess).toHaveBeenCalledWith(USER_ID, 1);
-    expect(mockedExtendLock).toHaveBeenCalled();
+    expect(mockedExtendLock).not.toHaveBeenCalled();
+  });
+});
+
+describe('applyRenewalArchiveSideEffects', () => {
+  test('deactivates excess artists without shifting locked_until snapshots', async () => {
+    const expiresAt = new Date('2026-09-10T00:00:00.000Z');
+    await applyRenewalArchiveSideEffects({ userId: USER_ID, slotsLimit: 2, expiresAt });
+    expect(mockedDeactivateExcess).toHaveBeenCalledWith(USER_ID, 2);
+    expect(mockedExtendLock).not.toHaveBeenCalled();
   });
 });
 

@@ -24,7 +24,11 @@ dialog.popup.local-modal {
     cursor: default;
   }
 
-  > :not(.local-modal__backdrop) {
+  // Keep the focus sentinel out of flow. `position: relative` here used to
+  // override `.popup__focus-sentinel { position: absolute }`, so inside a
+  // flex dialog the clipped sentinel became a real column and pushed the
+  // modal card to the right half of the viewport.
+  > :not(.local-modal__backdrop, .popup__focus-sentinel) {
     position: relative;
     z-index: 1;
   }

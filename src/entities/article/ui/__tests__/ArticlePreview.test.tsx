@@ -27,6 +27,7 @@ const premiumState = {
   planSlug: null,
   billing: EMPTY_BILLING_SNAPSHOT,
   refetch: async () => {},
+  applyArchiveSnapshot: () => {},
 };
 
 jest.mock('@features/premiumSubscription', () => ({

@@ -3,7 +3,7 @@
  * Only pipeline that applies scheduled_plan and deactivates excess archive artists.
  */
 
-import { deactivateExcessArchiveArtists, extendActiveArchiveLockedUntil } from './archive';
+import { deactivateExcessArchiveArtists } from './archive';
 import { query } from './db';
 import {
   claimSubscriptionPaymentCanceled,
@@ -70,7 +70,7 @@ export async function applyRenewalArchiveSideEffects(params: {
   expiresAt: Date;
 }): Promise<void> {
   await deactivateExcessArchiveArtists(params.userId, params.slotsLimit);
-  await extendActiveArchiveLockedUntil(params.userId, params.expiresAt);
+  // Per-artist locked_until stays the snapshot set at add/activate — not shifted on renewal.
 }
 
 export async function fulfillRenewalSubscriptionPayment(params: {

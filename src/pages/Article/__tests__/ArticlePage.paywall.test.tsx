@@ -46,6 +46,7 @@ jest.mock('@features/premiumSubscription', () => ({
     planSlug: null,
     billing: EMPTY_BILLING_SNAPSHOT,
     refetch: async () => {},
+    applyArchiveSnapshot: () => {},
   })),
 }));
 
@@ -162,6 +163,7 @@ describe('ArticlePage paywall', () => {
       planSlug: null,
       billing: EMPTY_BILLING_SNAPSHOT,
       refetch: async () => {},
+      applyArchiveSnapshot: () => {},
     });
     jest.mocked(useArtistArchiveStatus).mockReturnValue({
       artistInArchive: false,
@@ -198,6 +200,7 @@ describe('ArticlePage paywall', () => {
       planSlug: null,
       billing: EMPTY_BILLING_SNAPSHOT,
       refetch: async () => {},
+      applyArchiveSnapshot: () => {},
     });
 
     renderLockedArticlePage();
@@ -226,6 +229,7 @@ describe('ArticlePage paywall', () => {
       planSlug: 'explorer',
       billing: EMPTY_BILLING_SNAPSHOT,
       refetch: async () => {},
+      applyArchiveSnapshot: () => {},
     });
     jest.mocked(useArtistArchiveStatus).mockReturnValue({
       artistInArchive: false,
@@ -262,6 +266,7 @@ describe('ArticlePage paywall', () => {
       planSlug: 'explorer',
       billing: EMPTY_BILLING_SNAPSHOT,
       refetch: async () => {},
+      applyArchiveSnapshot: () => {},
     });
     jest.mocked(useArtistArchiveStatus).mockReturnValue({
       artistInArchive: false,
@@ -298,6 +303,7 @@ describe('ArticlePage paywall', () => {
       planSlug: 'explorer',
       billing: EMPTY_BILLING_SNAPSHOT,
       refetch: async () => {},
+      applyArchiveSnapshot: () => {},
     });
     jest.mocked(useArtistArchiveStatus).mockReturnValue({
       artistInArchive: true,

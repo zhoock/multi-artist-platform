@@ -83,14 +83,21 @@ describe('isInAutorenewRenewalGrace', () => {
     ).toBe(false);
   });
 
-  test('false for expired status', () => {
+  test('true for expired status while settlement window is open', () => {
     expect(isInAutorenewRenewalGrace(graceEligible({ status: 'expired' }), IN_GRACE_NOW)).toBe(
-      false
+      true
     );
   });
 
-  test('false for past_due — grace must not mask payment failure', () => {
+  test('true for past_due while settlement window is open', () => {
     expect(isInAutorenewRenewalGrace(graceEligible({ status: 'past_due' }), IN_GRACE_NOW)).toBe(
+      true
+    );
+  });
+
+  test('false for past_due after settlement window (failed renewal)', () => {
+    const afterWindow = new Date(CHARGE_AT.getTime() + RENEWAL_OVERDUE_IN_PROGRESS_MS + 1000);
+    expect(isInAutorenewRenewalGrace(graceEligible({ status: 'past_due' }), afterWindow)).toBe(
       false
     );
   });
@@ -194,16 +201,23 @@ describe('resolveCollectionBillingScreen', () => {
     ).toBe('EXPIRED');
   });
 
-  test('EXPIRED for expired status in grace window — not grace', () => {
+  test('ACTIVE for expired status during autorenew settlement (no choose-plan banner)', () => {
     expect(resolveCollectionBillingScreen(graceEligible({ status: 'expired' }), IN_GRACE_NOW)).toBe(
-      'EXPIRED'
+      'ACTIVE'
     );
   });
 
-  test('PAYMENT_FAILED for past_due without access — not grace ACTIVE', () => {
+  test('ACTIVE for past_due during autorenew settlement', () => {
     expect(
       resolveCollectionBillingScreen(graceEligible({ status: 'past_due' }), IN_GRACE_NOW)
-    ).toBe('PAYMENT_FAILED');
+    ).toBe('ACTIVE');
+  });
+
+  test('PAYMENT_FAILED for past_due after settlement window', () => {
+    const afterWindow = new Date(CHARGE_AT.getTime() + RENEWAL_OVERDUE_IN_PROGRESS_MS + 1000);
+    expect(resolveCollectionBillingScreen(graceEligible({ status: 'past_due' }), afterWindow)).toBe(
+      'PAYMENT_FAILED'
+    );
   });
 
   test('EXPIRED when active overdue but no saved payment method', () => {

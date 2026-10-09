@@ -256,7 +256,10 @@ export async function deactivateExcessArchiveArtists(
   }
 }
 
-/** Extends locked_until for all active archive artists after a successful renewal. */
+/**
+ * Bulk-updates locked_until for all active archive artists (legacy helper).
+ * Renewal fulfillment no longer calls this — locks remain the add/activate snapshot.
+ */
 export async function extendActiveArchiveLockedUntil(
   userId: string,
   lockedUntil: Date

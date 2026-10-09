@@ -85,10 +85,12 @@ dialog:not(.toast-viewport-layer, .toast-top-layer) {
     align-items: center;
     justify-content: center;
 
-    // Размеры контента 600px × 680px для попапов в дашборде
-    // Применяем только к прямым детям, которые не имеют специфических классов
+    // Размеры контента для попапов в дашборде.
+    // Не включать `.popup__focus-sentinel`: вместе с flex-центрированием диалога
+    // он занимал левую колонку и сдвигал карточку вправо.
     > *:not(
         .popup__gradient,
+        .popup__focus-sentinel,
         .user-dashboard,
         .change-password-modal,
         .cover-image-crop-modal,

@@ -54,6 +54,12 @@ export function getRenewalCountdownNow(): Date {
   return new Date(nowMs);
 }
 
+/** Align shared clock after tab sleep / focus (lock expiry vs billing). */
+export function syncRenewalCountdownClockNow(): void {
+  nowMs = Date.now();
+  notifyListeners();
+}
+
 export function registerRenewalCountdownTarget(nextChargeAt: string | null | undefined): symbol {
   const id = Symbol('renewal-countdown-target');
   targets.set(id, nextChargeAt ?? null);
@@ -98,6 +104,11 @@ export function resetRenewalCountdownClockForTests(): void {
   listeners.clear();
   listenerCount = 0;
   nowMs = Date.now();
+}
+
+/** Pin shared clock for tests (simulates lag vs wall time). */
+export function setRenewalCountdownNowForTests(isoOrMs: string | number): void {
+  nowMs = typeof isoOrMs === 'number' ? isoOrMs : new Date(isoOrMs).getTime();
 }
 
 export function getRenewalCountdownClockTickIntervalForTests(): number {

@@ -480,7 +480,7 @@
         "canRemoveLabel": "Can be removed",
         "canRemoveHint": "You can remove this artist at any time.",
         "inactiveSlotHint": "This artist no longer uses an active slot.",
-        "removeLockedPeriodHint": "Each artist is locked in your collection for 30 days after being added.",
+        "removeLockedPeriodHint": "This artist is locked until the end of your current paid subscription period. Active support is required to remove active artists.",
         "removeSubscriptionTooltip": "Active support is required to remove artists.",
         "loading": "Loading collection…",
         "loadError": "Failed to load collection",

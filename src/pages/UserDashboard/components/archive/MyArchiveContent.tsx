@@ -9,6 +9,15 @@ import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 import { EMPTY_BILLING_SNAPSHOT } from '@shared/api/billing';
 import { resolveCollectionBillingScreen } from '@features/premiumSubscription';
 import { useArchiveAccessModal } from '@shared/lib/archiveAccessModal';
+import { traceCollectionExpiredBanner } from '@shared/lib/archive/collectionExpiredBannerTrace';
+import { traceCollectionRemove } from '@shared/lib/archive/collectionArtistRemoveTrace';
+import {
+  beginMyArchiveCollectionFetch,
+  isMyArchiveCollectionFetchStale,
+} from '@shared/lib/archive/myArchiveFetchGeneration';
+import { isAutoRenewCollectionRemoveHold } from '@shared/lib/subscription/autoRenewCollectionHold';
+import { resolveBillingEvaluationNow } from '@shared/lib/subscription/billingEvaluationNow';
+import { RENEWAL_COUNTDOWN_OVERDUE_IN_PROGRESS } from '@shared/lib/subscription/renewalCountdown';
 import { useRenewalCountdownClock } from '@shared/lib/subscription/useRenewalCountdown';
 import {
   ArchiveApiError,
@@ -32,7 +41,7 @@ import {
 } from '@features/artistArchive';
 import { DashboardButton, DashboardCard } from '@shared/ui/dashboard';
 import { AlertModal } from '@shared/ui/alertModal';
-import { billingSnapshotFingerprint } from '@shared/lib/subscription/billingSnapshotFingerprint';
+import { collectionArchiveEntitlementFingerprint } from '@shared/lib/subscription/billingSnapshotFingerprint';
 import { toast } from '@shared/lib/toast';
 import { ARCHIVE_ARTIST_REMOVED_TOAST_DURATION_MS } from '@shared/lib/toast/toastDurations';
 
@@ -48,6 +57,12 @@ type RemovalToastKind = 'single' | 'bulk' | 'cleared';
 function canRemoveArtist(artist: MyArchiveArtist, hasPremiumAccess: boolean): boolean {
   return canRemoveCollectionArtist(artist, hasPremiumAccess);
 }
+
+type LoadArchiveOptions = {
+  /** Keep collection visible — no dashboard tab loading shell (renewal / billing sync). */
+  silent?: boolean;
+  traceSource?: string;
+};
 
 type Props = {
   active: boolean;
@@ -80,7 +95,7 @@ export function MyArchiveContent({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const [bulkLoading, setBulkLoading] = useState(false);
   const skipNextArchiveReloadRef = useRef(false);
-  const billingFingerprintRef = useRef<string | null>(null);
+  const archiveEntitlementFingerprintRef = useRef<string | null>(null);
   const loadErrorTextRef = useRef<string | null>(null);
   const onContentReadyRef = useRef(onContentReady);
   const onContentBusyRef = useRef(onContentBusy);
@@ -119,41 +134,74 @@ export function MyArchiveContent({
     [t?.artistRemovedToast, t?.artistsRemovedToast, t?.collectionClearedToast]
   );
 
-  const publishBillingSnapshotIfChanged = useCallback((billing: typeof EMPTY_BILLING_SNAPSHOT) => {
-    const fingerprint = billingSnapshotFingerprint(billing);
-    const previous = billingFingerprintRef.current;
-    billingFingerprintRef.current = fingerprint;
+  const { applyArchiveSnapshot } = premium;
+
+  const publishArchiveEntitlementIfChanged = useCallback((next: MyArchiveData) => {
+    const fingerprint = collectionArchiveEntitlementFingerprint(next);
+    const previous = archiveEntitlementFingerprintRef.current;
+    archiveEntitlementFingerprintRef.current = fingerprint;
     if (previous !== null && previous !== fingerprint) {
       window.dispatchEvent(new CustomEvent(ARCHIVE_CHANGED_EVENT));
     }
   }, []);
 
-  const loadArchive = useCallback(async () => {
-    setLoading(true);
-    onContentBusyRef.current?.();
-    setLoadError(null);
-    setAlertModal(null);
-    try {
-      const next = normalizeCollectionArchive(await getMyArchive());
-      setData(next);
-      publishBillingSnapshotIfChanged(next.billing ?? EMPTY_BILLING_SNAPSHOT);
-    } catch (err) {
-      console.error('[MyArchiveContent] load failed', err);
-      setLoadError(
-        err instanceof Error
-          ? err.message
-          : (loadErrorTextRef.current ?? 'Failed to load collection')
-      );
-      showErrorAlert(
-        err instanceof Error
-          ? err.message
-          : (loadErrorTextRef.current ?? 'Failed to load collection')
-      );
-    } finally {
-      setLoading(false);
-      setHasLoadedOnce(true);
-    }
-  }, [publishBillingSnapshotIfChanged, showErrorAlert]);
+  const loadArchive = useCallback(
+    async (options?: LoadArchiveOptions) => {
+      const silent = options?.silent === true;
+      const traceSource =
+        options?.traceSource ?? (silent ? 'loadArchive(silent)' : 'loadArchive(initial)');
+      if (!silent) {
+        setLoading(true);
+        onContentBusyRef.current?.();
+        setLoadError(null);
+        setAlertModal(null);
+      }
+      const generation = beginMyArchiveCollectionFetch();
+      try {
+        const next = normalizeCollectionArchive(await getMyArchive());
+        if (isMyArchiveCollectionFetchStale(generation)) {
+          traceCollectionRemove({
+            source: `${traceSource}(stale-skip)`,
+            fetchGeneration: generation,
+          });
+          return;
+        }
+        setData(next);
+        applyArchiveSnapshot(next);
+        publishArchiveEntitlementIfChanged(next);
+        traceCollectionRemove({
+          source: `${traceSource}(apply)`,
+          fetchGeneration: generation,
+          billingStatus: next.billing?.status,
+          hasPremiumAccess: next.billing?.hasPremiumAccess,
+          autoRenewEnabled: next.billing?.autoRenewEnabled,
+          hasSavedPaymentMethod: next.billing?.hasSavedPaymentMethod,
+          nextChargeAt: next.billing?.nextChargeAt,
+          expiresAt: next.billing?.expiresAt,
+        });
+      } catch (err) {
+        console.error('[MyArchiveContent] load failed', err);
+        if (!silent) {
+          setLoadError(
+            err instanceof Error
+              ? err.message
+              : (loadErrorTextRef.current ?? 'Failed to load collection')
+          );
+          showErrorAlert(
+            err instanceof Error
+              ? err.message
+              : (loadErrorTextRef.current ?? 'Failed to load collection')
+          );
+        }
+      } finally {
+        if (!silent) {
+          setLoading(false);
+        }
+        setHasLoadedOnce(true);
+      }
+    },
+    [applyArchiveSnapshot, publishArchiveEntitlementIfChanged, showErrorAlert]
+  );
 
   useEffect(() => {
     if (!active) return;
@@ -178,16 +226,42 @@ export function MyArchiveContent({
         skipNextArchiveReloadRef.current = false;
         return;
       }
-      void loadArchive();
+      void loadArchive({ silent: true, traceSource: 'archive:changed' });
     };
     window.addEventListener('archive:changed', onChanged);
     return () => window.removeEventListener('archive:changed', onChanged);
   }, [active, loadArchive]);
 
+  const billingPeriodFingerprintRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!active || !hasLoadedOnce) return;
+    const fingerprint = `${premium.billing.expiresAt ?? ''}|${premium.billing.nextChargeAt ?? ''}|${premium.billing.hasPremiumAccess}`;
+    if (
+      billingPeriodFingerprintRef.current !== null &&
+      billingPeriodFingerprintRef.current !== fingerprint
+    ) {
+      void loadArchive({ silent: true, traceSource: 'billing-fingerprint' });
+    }
+    billingPeriodFingerprintRef.current = fingerprint;
+  }, [
+    active,
+    hasLoadedOnce,
+    loadArchive,
+    premium.billing.expiresAt,
+    premium.billing.hasPremiumAccess,
+    premium.billing.nextChargeAt,
+  ]);
+
   const slotsUsed = data?.slotsUsed ?? premium.slotsUsed;
   const slotsLimit = premium.billing.slotsLimit ?? data?.slotsLimit ?? premium.slotsLimit ?? 3;
   const inactiveCount = data?.inactiveCount ?? data?.artists.filter((a) => !a.isActive).length ?? 0;
   const hasPremiumAccess = premium.billing.hasPremiumAccess;
+  const billingEvaluationNow = useMemo(() => resolveBillingEvaluationNow(billingNow), [billingNow]);
+  const autorenewCollectionHold = useMemo(
+    () => isAutoRenewCollectionRemoveHold(premium.billing, billingEvaluationNow),
+    [billingEvaluationNow, premium.billing]
+  );
+  const autoRenewPendingLabel = RENEWAL_COUNTDOWN_OVERDUE_IN_PROGRESS[lang];
   const slotsRemaining = Math.max(0, slotsLimit - slotsUsed);
 
   const slotsIndicatorCopy = useMemo(
@@ -200,9 +274,65 @@ export function MyArchiveContent({
   );
 
   const billingScreen = useMemo(
-    () => resolveCollectionBillingScreen(premium.billing ?? EMPTY_BILLING_SNAPSHOT, billingNow),
-    [billingNow, premium.billing]
+    () =>
+      resolveCollectionBillingScreen(
+        premium.billing ?? EMPTY_BILLING_SNAPSHOT,
+        billingEvaluationNow
+      ),
+    [billingEvaluationNow, premium.billing]
   );
+
+  const showExpiredChoosePlanBanner =
+    billingScreen === 'EXPIRED' && !autorenewCollectionHold && (data?.artists.length ?? 0) > 0;
+
+  const lastBannerTraceRef = useRef<string | null>(null);
+  useLayoutEffect(() => {
+    const wallMs = typeof window !== 'undefined' ? Date.now() : billingNow.getTime();
+    const sharedMs = billingNow.getTime();
+    const fingerprint = [
+      billingScreen,
+      autorenewCollectionHold,
+      showExpiredChoosePlanBanner,
+      premium.billing.status,
+      premium.billing.hasPremiumAccess,
+      premium.billing.nextChargeAt,
+      sharedMs,
+      wallMs,
+    ].join('|');
+    if (lastBannerTraceRef.current === fingerprint) return;
+    lastBannerTraceRef.current = fingerprint;
+
+    traceCollectionExpiredBanner({
+      source: 'MyArchiveContent.billing-ui',
+      billingScreen,
+      autorenewCollectionHold,
+      showExpiredBanner: showExpiredChoosePlanBanner,
+      hasPremiumAccess: premium.billing.hasPremiumAccess,
+      status: premium.billing.status,
+      autoRenewEnabled: premium.billing.autoRenewEnabled,
+      hasSavedPaymentMethod: premium.billing.hasSavedPaymentMethod,
+      nextChargeAt: premium.billing.nextChargeAt,
+      expiresAt: premium.billing.expiresAt,
+      sharedClockMs: sharedMs,
+      wallClockMs: wallMs,
+      clockSkewMs: wallMs - sharedMs,
+      premiumLoading: premium.loading,
+      artistCount: data?.artists.length ?? 0,
+    });
+  }, [
+    autorenewCollectionHold,
+    billingNow,
+    billingScreen,
+    data?.artists.length,
+    premium.billing.autoRenewEnabled,
+    premium.billing.expiresAt,
+    premium.billing.hasPremiumAccess,
+    premium.billing.hasSavedPaymentMethod,
+    premium.billing.nextChargeAt,
+    premium.billing.status,
+    premium.loading,
+    showExpiredChoosePlanBanner,
+  ]);
 
   const expiredBannerCopy = useMemo(
     () => ({
@@ -216,8 +346,7 @@ export function MyArchiveContent({
   );
 
   const expiredBanner = useMemo(() => {
-    if (billingScreen !== 'EXPIRED') return null;
-    if ((data?.artists.length ?? 0) === 0) return null;
+    if (!showExpiredChoosePlanBanner) return null;
 
     return (
       <div className="collection-billing collection-billing--expired collection__expired-banner-wrap">
@@ -230,7 +359,7 @@ export function MyArchiveContent({
         />
       </div>
     );
-  }, [billingScreen, data?.artists.length, expiredBannerCopy, openSupportModal]);
+  }, [expiredBannerCopy, openSupportModal, showExpiredChoosePlanBanner]);
 
   const exitSelectMode = useCallback(() => {
     setIsSelectMode(false);
@@ -295,7 +424,7 @@ export function MyArchiveContent({
           showRemovalToast(toRemove.length === 1 ? 'single' : 'bulk', toRemove.length);
         }
       } catch (err) {
-        void loadArchive();
+        void loadArchive({ silent: true, traceSource: 'remove-error-recovery' });
         showErrorAlert(
           err instanceof Error ? err.message : (t?.removeError ?? 'Failed to remove artists')
         );
@@ -478,7 +607,7 @@ export function MyArchiveContent({
   const removeLabel = t?.remove ?? 'Remove';
   const removeLockedPeriodHint =
     t?.removeLockedPeriodHint ??
-    'Each artist is locked in your collection for 30 days after being added.';
+    'This artist is locked until the end of your current paid subscription period. Active support is required to remove active artists.';
   const removeSubscriptionTooltip =
     t?.removeSubscriptionTooltip ?? 'Active support is required to remove active artists.';
   const selectModeLabel = t?.selectMode ?? 'Select';
@@ -680,6 +809,15 @@ export function MyArchiveContent({
                                 removeLockedPeriodHint={removeLockedPeriodHint}
                                 actionBusy={actionBusy}
                                 onRemove={handleRemove}
+                                onTimeLockExpired={() =>
+                                  void loadArchive({
+                                    silent: true,
+                                    traceSource: 'time-lock-expired',
+                                  })
+                                }
+                                autorenewCollectionHold={autorenewCollectionHold}
+                                billing={premium.billing}
+                                autoRenewPendingLabel={autoRenewPendingLabel}
                               />
                             </div>
                           ) : null}
