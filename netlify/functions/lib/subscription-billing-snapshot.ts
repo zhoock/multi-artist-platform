@@ -9,6 +9,7 @@ import {
   normalizeCanonicalStatus,
   type CanonicalSubscriptionStatus,
 } from './subscription-access';
+import { isAutoRenewPatchBillingMutationAllowed } from './subscription-billing-origin';
 import { toPresenceStatus } from './subscription-state';
 import type { Subscription } from './subscriptions';
 
@@ -38,6 +39,8 @@ export interface BillingSnapshot {
   scheduledPlan: SubscriptionPlanSlug | null;
   renewalAttemptCount: number | null;
   firstFailedAt: string | null;
+  /** False when PATCH enable auto-renew is blocked for this subscription on the active runtime. */
+  autoRenewResumeAllowed: boolean;
 }
 
 function normalizePlanSlug(plan: string | null | undefined): SubscriptionPlanSlug | null {
@@ -98,6 +101,7 @@ export function buildBillingSnapshot(
       scheduledPlan: null,
       renewalAttemptCount: null,
       firstFailedAt: null,
+      autoRenewResumeAllowed: false,
     };
   }
 
@@ -117,6 +121,7 @@ export function buildBillingSnapshot(
     renewalAttemptCount:
       subscription.renewalAttemptCount != null ? subscription.renewalAttemptCount : null,
     firstFailedAt: toIso(subscription.firstFailedAt),
+    autoRenewResumeAllowed: isAutoRenewPatchBillingMutationAllowed(subscription, true),
   };
 }
 

@@ -96,6 +96,7 @@ function buildArchiveResponse(archive: ArchiveFixture): MyArchiveData {
       scheduledPlan: archive.scheduledPlan ?? null,
       renewalAttemptCount: null,
       firstFailedAt: null,
+      autoRenewResumeAllowed: true,
     },
   };
 }
@@ -120,6 +121,7 @@ function buildNoSubscriptionArchiveResponse(slotsLimit = 100): MyArchiveData {
       scheduledPlan: null,
       renewalAttemptCount: null,
       firstFailedAt: null,
+      autoRenewResumeAllowed: false,
     },
   };
 }
@@ -302,6 +304,7 @@ describe('ArchiveAccessModalView current plan', () => {
           scheduledPlan: null,
           renewalAttemptCount: null,
           firstFailedAt: null,
+          autoRenewResumeAllowed: true,
         },
         artists: [],
       })
@@ -322,6 +325,7 @@ describe('ArchiveAccessModalView current plan', () => {
           scheduledPlan: null,
           renewalAttemptCount: null,
           firstFailedAt: null,
+          autoRenewResumeAllowed: true,
         },
         artists: [],
       });
@@ -368,6 +372,7 @@ describe('ArchiveAccessModalView current plan', () => {
           scheduledPlan: 'explorer',
           renewalAttemptCount: null,
           firstFailedAt: null,
+          autoRenewResumeAllowed: true,
         },
         artists: [],
       })
@@ -388,6 +393,7 @@ describe('ArchiveAccessModalView current plan', () => {
           scheduledPlan: null,
           renewalAttemptCount: null,
           firstFailedAt: null,
+          autoRenewResumeAllowed: true,
         },
         artists: [],
       });
@@ -595,6 +601,7 @@ describe('ArchiveAccessModalView plan change confirmation', () => {
         scheduledPlan: null,
         renewalAttemptCount: null,
         firstFailedAt: null,
+        autoRenewResumeAllowed: true,
       },
     });
     getTokenMock.mockReturnValue('test-token');

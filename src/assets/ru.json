@@ -579,6 +579,7 @@
         "billingRebindPaymentRedirectNote": "Вы будете перенаправлены на безопасную страницу оплаты",
         "billingModalImmediateEffect": "Изменения вступят в силу немедленно",
         "billingAutoRenewPatchError": "Не удалось обновить автопродление",
+        "billingAutoRenewDevResumeBlocked": "Эта подписка оформлена в тестовом режиме — возобновить автопродление на боевом сайте нельзя. Выберите тариф и оформите поддержку заново с реальной картой.",
         "billingUpgradePlanTitle": "Повысить до {plan}?",
         "billingUpgradePlanIntro": "Вы оплатите полную стоимость нового тарифа. Новый период поддержки начнётся сразу после оплаты. Оставшееся время текущего периода не переносится.",
         "billingUpgradePlanChargeTitle": "К оплате сегодня",

@@ -94,7 +94,7 @@ function getDisableAutoRenewModalDialog(): HTMLElement {
   return getModalDialog('billing-disable-autorenew-title');
 }
 
-const EXPIRES_AT = '2026-09-03T00:00:00.000Z';
+const EXPIRES_AT = '2027-09-03T00:00:00.000Z';
 
 function baseArchivePayload(billingOverrides: Record<string, unknown> = {}) {
   return {
@@ -135,16 +135,18 @@ function baseArchivePayload(billingOverrides: Record<string, unknown> = {}) {
 }
 
 function activeArchivePayload() {
-  return baseArchivePayload();
+  return baseArchivePayload({ autoRenewResumeAllowed: true });
 }
 
-function cancelledArchivePayload() {
+function cancelledArchivePayload(overrides: Record<string, unknown> = {}) {
   return baseArchivePayload({
     status: 'cancel_at_period_end',
     autoRenewEnabled: false,
     hasSavedPaymentMethod: true,
     paymentMethodTitle: 'Visa •••• 4242',
     nextChargeAt: null,
+    autoRenewResumeAllowed: true,
+    ...overrides,
   });
 }
 
@@ -348,6 +350,54 @@ describe('SubscriptionContent billing auto-renew modals', () => {
 
     expect(
       screen.queryByRole('button', { name: /Resume support|Возобновить поддержку/i })
+    ).toBeNull();
+  });
+
+  test('cancelled banner offers choose plan when auto-renew resume is blocked', async () => {
+    getMyArchiveMock.mockResolvedValue(cancelledArchivePayload({ autoRenewResumeAllowed: false }));
+
+    renderSubscription(<SubscriptionContent active />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Support cancelled|Поддержка отменена/i)).toBeTruthy();
+    });
+
+    expect(screen.getByRole('button', { name: /Choose plan|Выбрать тариф/i })).toBeTruthy();
+    expect(
+      screen.queryByRole('button', { name: /Resume support|Возобновить поддержку/i })
+    ).toBeNull();
+  });
+
+  test('maps DEV_SUBSCRIPTION_RESUME_BLOCKED patch error to dedicated copy', async () => {
+    getMyArchiveMock.mockResolvedValue(cancelledArchivePayload());
+    patchAutoRenewMock.mockResolvedValueOnce({
+      success: false,
+      code: 'DEV_SUBSCRIPTION_RESUME_BLOCKED',
+      error: 'Test subscription cannot resume auto-renew on the live site',
+    });
+
+    renderSubscription(<SubscriptionContent active />);
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('button', { name: /Resume support|Возобновить поддержку/i })
+      ).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /Resume support|Возобновить поддержку/i }));
+
+    const enableModal = getModalDialog('billing-enable-autorenew-title');
+    fireEvent.click(
+      within(enableModal).getByRole('button', {
+        name: /^Resume auto-renew$|^Возобновить автопродление$/i,
+      })
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/test mode|тестовом режиме/i)).toBeTruthy();
+    });
+    expect(
+      screen.queryByText(/Could not update auto-renew|Не удалось обновить автопродление/i)
     ).toBeNull();
   });
 

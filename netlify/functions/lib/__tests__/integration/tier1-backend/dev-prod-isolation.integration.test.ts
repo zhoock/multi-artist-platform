@@ -220,5 +220,31 @@ describe('billing_origin dev/production isolation @p0', () => {
 
     expect(subscription.status).toBe('cancel_at_period_end');
     expect(billing.autoRenewEnabled).toBe(false);
+    expect(billing.autoRenewResumeAllowed).toBe(false);
+  });
+
+  test('patch auto-renew enable rejects dev subscription on production runtime', async () => {
+    if (!isE2eDatabaseConfigured()) return;
+
+    const expiresAt = new Date('2026-09-03T00:00:00.000Z');
+    await seedSubscription({
+      userId: TEST_USER_SUBSCRIBER,
+      billingOrigin: 'dev',
+      paymentMethodId: 'pm-dev-resume-blocked',
+      status: 'cancel_at_period_end',
+      expiresAt,
+      nextChargeAt: null,
+    });
+
+    delete process.env.DEV_PAYMENT_MODE;
+    delete process.env.NETLIFY_DEV;
+    process.env.NODE_ENV = 'production';
+    process.env.CONTEXT = 'production';
+    process.env.SUBSCRIPTION_AUTO_RENEW_ENABLED = 'true';
+
+    await expect(patchSubscriptionAutoRenew(TEST_USER_SUBSCRIBER, true)).rejects.toMatchObject({
+      code: 'DEV_SUBSCRIPTION_RESUME_BLOCKED',
+      httpStatus: 409,
+    });
   });
 });

@@ -25,6 +25,8 @@ export interface BillingSnapshot {
   scheduledPlan: SubscriptionPlanSlug | null;
   renewalAttemptCount: number | null;
   firstFailedAt: string | null;
+  /** False when resume auto-renew PATCH is blocked on the server runtime (e.g. dev-origin on prod). */
+  autoRenewResumeAllowed: boolean;
 }
 
 /** Fallback when context loads without archive data yet. */
@@ -41,4 +43,5 @@ export const EMPTY_BILLING_SNAPSHOT: BillingSnapshot = {
   scheduledPlan: null,
   renewalAttemptCount: null,
   firstFailedAt: null,
+  autoRenewResumeAllowed: false,
 };

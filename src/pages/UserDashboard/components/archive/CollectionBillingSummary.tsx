@@ -261,6 +261,8 @@ export function CollectionBillingSummary({
 
   const showPaymentMethodCard = billing.hasSavedPaymentMethod;
   const paymentMethodTitle = billing.paymentMethodTitle?.trim() || '—';
+  const cancelledAutoRenewResumeAllowed =
+    autoRenewActionsEnabled && billing.autoRenewResumeAllowed !== false;
 
   return (
     <div className={clsx('collection-billing', `collection-billing--${screen.toLowerCase()}`)}>
@@ -268,7 +270,13 @@ export function CollectionBillingSummary({
         <BillingAlertBanner
           title={copy.billingCancelledBannerTitle}
           body={copy.billingCancelledBannerBody}
-          ctaLabel={autoRenewActionsEnabled ? copy.billingCancelledBannerCta : undefined}
+          ctaLabel={
+            autoRenewActionsEnabled
+              ? cancelledAutoRenewResumeAllowed
+                ? copy.billingCancelledBannerCta
+                : copy.billingExpiredBannerCta
+              : undefined
+          }
           loading={bannerActionLoading}
           onAction={autoRenewActionsEnabled ? onBannerAction : undefined}
         />

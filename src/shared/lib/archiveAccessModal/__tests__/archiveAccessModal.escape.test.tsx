@@ -71,6 +71,7 @@ function buildArchiveResponse(): MyArchiveData {
       scheduledPlan: null,
       renewalAttemptCount: null,
       firstFailedAt: null,
+      autoRenewResumeAllowed: false,
     },
   };
 }

@@ -579,6 +579,7 @@
         "billingRebindPaymentRedirectNote": "You will be redirected to a secure payment page",
         "billingModalImmediateEffect": "Changes take effect immediately",
         "billingAutoRenewPatchError": "Could not update auto-renew",
+        "billingAutoRenewDevResumeBlocked": "This support plan was created in test mode and cannot be renewed on the live site. Choose a plan to subscribe again with a real payment method.",
         "billingUpgradePlanTitle": "Upgrade to {plan}?",
         "billingUpgradePlanIntro": "You will pay the full price of the new plan. A new support period starts immediately after payment. Remaining time on your current plan is not carried over.",
         "billingUpgradePlanChargeTitle": "Due today",

@@ -1023,6 +1023,7 @@ export interface IInterface {
       billingRebindPaymentRedirectNote?: string;
       billingModalImmediateEffect?: string;
       billingAutoRenewPatchError?: string;
+      billingAutoRenewDevResumeBlocked?: string;
       billingUpgradePlanTitle?: string;
       billingUpgradePlanIntro?: string;
       billingUpgradePlanChargeTitle?: string;

@@ -25,6 +25,30 @@ export function normalizeBillingOrigin(value: string | null | undefined): Billin
   return value === 'dev' ? 'dev' : 'production';
 }
 
+/** Production runtime may disable auto-renew on dev-origin rows (shared DB); enable stays guarded. */
+export function isAutoRenewPatchBillingMutationAllowed(
+  subscription: Pick<Subscription, 'billingOrigin'>,
+  autoRenewEnabled: boolean
+): boolean {
+  const guard = checkBillingMutationAllowed(subscription);
+  if (guard.allowed) return true;
+  return !autoRenewEnabled && !isDevPaymentModeEnabled();
+}
+
+export function resolveAutoRenewPatchOriginErrorCode(
+  subscription: Pick<Subscription, 'billingOrigin'>,
+  autoRenewEnabled: boolean
+): 'DEV_SUBSCRIPTION_RESUME_BLOCKED' | 'BILLING_ORIGIN_MISMATCH' {
+  if (
+    autoRenewEnabled &&
+    normalizeBillingOrigin(subscription.billingOrigin) === 'dev' &&
+    !isDevPaymentModeEnabled()
+  ) {
+    return 'DEV_SUBSCRIPTION_RESUME_BLOCKED';
+  }
+  return 'BILLING_ORIGIN_MISMATCH';
+}
+
 export function checkBillingMutationAllowed(
   subscription: Pick<Subscription, 'billingOrigin'> | null | undefined
 ): BillingOriginGuardResult {

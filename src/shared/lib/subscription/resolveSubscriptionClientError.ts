@@ -24,6 +24,7 @@ export type SubscriptionClientErrorCopy = {
   billingCheckoutAutopaymentsNotEnabled?: string;
   billingCheckoutReceiptRejected?: string;
   billingAutoRenewPatchError?: string;
+  billingAutoRenewDevResumeBlocked?: string;
   billingUnlinkPaymentError?: string;
 };
 
@@ -43,6 +44,7 @@ const CODE_TO_COPY_KEY: Partial<Record<string, keyof SubscriptionClientErrorCopy
   YOOKASSA_CHECKOUT_FAILED: 'billingCheckoutCreateFailed',
   YOOKASSA_AUTOPAYMENTS_NOT_ENABLED: 'billingCheckoutAutopaymentsNotEnabled',
   YOOKASSA_RECEIPT_REJECTED: 'billingCheckoutReceiptRejected',
+  DEV_SUBSCRIPTION_RESUME_BLOCKED: 'billingAutoRenewDevResumeBlocked',
 };
 
 function resolveGenericMessage(copy: SubscriptionClientErrorCopy): string {
@@ -97,6 +99,7 @@ export function pickSubscriptionClientErrorCopy(
         billingCheckoutAutopaymentsNotEnabled?: string;
         billingCheckoutReceiptRejected?: string;
         billingAutoRenewPatchError?: string;
+        billingAutoRenewDevResumeBlocked?: string;
         billingUnlinkPaymentError?: string;
       }
     | undefined
@@ -121,6 +124,7 @@ export function pickSubscriptionClientErrorCopy(
     billingCheckoutAutopaymentsNotEnabled: collection.billingCheckoutAutopaymentsNotEnabled,
     billingCheckoutReceiptRejected: collection.billingCheckoutReceiptRejected,
     billingAutoRenewPatchError: collection.billingAutoRenewPatchError,
+    billingAutoRenewDevResumeBlocked: collection.billingAutoRenewDevResumeBlocked,
     billingUnlinkPaymentError: collection.billingUnlinkPaymentError,
   };
 }

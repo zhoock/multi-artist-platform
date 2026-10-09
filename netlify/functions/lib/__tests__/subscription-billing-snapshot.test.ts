@@ -54,7 +54,23 @@ describe('buildBillingSnapshot', () => {
       scheduledPlan: null,
       renewalAttemptCount: null,
       firstFailedAt: null,
+      autoRenewResumeAllowed: false,
     });
+  });
+
+  test('production runtime: dev-origin subscription cannot resume auto-renew', () => {
+    delete process.env.DEV_PAYMENT_MODE;
+    delete process.env.NETLIFY_DEV;
+    process.env.NODE_ENV = 'production';
+
+    const snapshot = buildBillingSnapshot(sub({ billingOrigin: 'dev' }), { now: NOW });
+    expect(snapshot.autoRenewResumeAllowed).toBe(false);
+  });
+
+  test('production runtime: production-origin subscription can resume auto-renew', () => {
+    delete process.env.DEV_PAYMENT_MODE;
+    const snapshot = buildBillingSnapshot(sub({ billingOrigin: 'production' }), { now: NOW });
+    expect(snapshot.autoRenewResumeAllowed).toBe(true);
   });
 
   test('active subscription with flag off mirrors legacy premium', () => {

@@ -69,6 +69,16 @@ export function useSubscriptionTabController({
   const autoRenewActionsEnabled = isSubscriptionAutoRenewClientEnabled();
   const autoRenewPatchErrorText =
     t?.billingAutoRenewPatchError ?? 'Не удалось обновить автопродление';
+  const autoRenewClientErrorCollection = useMemo(
+    () => ({
+      billingAutoRenewDevResumeBlocked:
+        t?.billingAutoRenewDevResumeBlocked ??
+        (lang === 'en'
+          ? 'This support plan was created in test mode and cannot be renewed on the live site. Choose a plan to subscribe again with a real payment method.'
+          : 'Эта подписка оформлена в тестовом режиме — возобновить автопродление на боевом сайте нельзя. Выберите тариф и оформите поддержку заново с реальной картой.'),
+    }),
+    [lang, t?.billingAutoRenewDevResumeBlocked]
+  );
   const unlinkPaymentErrorText = t?.billingUnlinkPaymentError ?? 'Не удалось отвязать карту';
   const choosePlanCta =
     t?.billingExpiredBannerCta ??
@@ -210,6 +220,10 @@ export function useSubscriptionTabController({
     if (renewLoading || autoRenewPatchLoading) return;
 
     if (billingScreen === 'CANCELLED') {
+      if (billingSnapshot.autoRenewResumeAllowed === false) {
+        openSupportModal();
+        return;
+      }
       setAutoRenewModal('enable');
       return;
     }
@@ -241,6 +255,7 @@ export function useSubscriptionTabController({
   }, [
     autoRenewPatchLoading,
     billingScreen,
+    billingSnapshot.autoRenewResumeAllowed,
     openSupportModal,
     planSlug,
     renewLoading,
@@ -252,6 +267,10 @@ export function useSubscriptionTabController({
     if (renewLoading || autoRenewPatchLoading) return;
 
     if (billingScreen === 'CANCELLED') {
+      if (billingSnapshot.autoRenewResumeAllowed === false) {
+        openSupportModal();
+        return;
+      }
       setAutoRenewModal('enable');
       return;
     }
@@ -283,6 +302,7 @@ export function useSubscriptionTabController({
   }, [
     autoRenewPatchLoading,
     billingScreen,
+    billingSnapshot.autoRenewResumeAllowed,
     openSupportModal,
     planSlug,
     renewLoading,
@@ -302,7 +322,9 @@ export function useSubscriptionTabController({
         setAutoRenewModal('enable-rebind');
         return;
       }
-      showErrorAlert(resolveAutoRenewClientError(result, autoRenewPatchErrorText));
+      showErrorAlert(
+        resolveAutoRenewClientError(result, autoRenewPatchErrorText, autoRenewClientErrorCollection)
+      );
       return;
     }
 
@@ -312,6 +334,7 @@ export function useSubscriptionTabController({
     setAutoRenewModal(null);
   }, [
     autoRenewModal,
+    autoRenewClientErrorCollection,
     autoRenewPatchErrorText,
     notifyArchiveChanged,
     patchAutoRenew,
@@ -328,10 +351,18 @@ export function useSubscriptionTabController({
     });
 
     if (!result.ok) {
-      showErrorAlert(resolveAutoRenewClientError(result, autoRenewPatchErrorText));
+      showErrorAlert(
+        resolveAutoRenewClientError(result, autoRenewPatchErrorText, autoRenewClientErrorCollection)
+      );
       setRenewLoading(false);
     }
-  }, [autoRenewModal, autoRenewPatchErrorText, showErrorAlert, startRebind]);
+  }, [
+    autoRenewModal,
+    autoRenewClientErrorCollection,
+    autoRenewPatchErrorText,
+    showErrorAlert,
+    startRebind,
+  ]);
 
   const handleOpenChangePaymentMethod = useCallback(() => {
     setAutoRenewModal('rebind');
@@ -349,7 +380,9 @@ export function useSubscriptionTabController({
     const result = await unlinkPaymentMethod();
 
     if (!result.ok) {
-      setUnlinkModalError(resolveAutoRenewClientError(result, unlinkPaymentErrorText));
+      setUnlinkModalError(
+        resolveAutoRenewClientError(result, unlinkPaymentErrorText, autoRenewClientErrorCollection)
+      );
       return;
     }
 
@@ -358,7 +391,13 @@ export function useSubscriptionTabController({
     void refetch();
     setUnlinkModalOpen(false);
     setUnlinkModalError(null);
-  }, [notifyArchiveChanged, refetch, unlinkPaymentErrorText, unlinkPaymentMethod]);
+  }, [
+    autoRenewClientErrorCollection,
+    notifyArchiveChanged,
+    refetch,
+    unlinkPaymentErrorText,
+    unlinkPaymentMethod,
+  ]);
 
   const handleDisableAutoRenew = useCallback(() => {
     setAutoRenewModal('disable');

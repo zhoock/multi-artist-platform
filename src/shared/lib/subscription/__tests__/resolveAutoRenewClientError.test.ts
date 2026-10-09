@@ -21,6 +21,18 @@ describe('resolveAutoRenewClientError', () => {
     ).toBe('Could not update auto-renew');
   });
 
+  test('maps DEV_SUBSCRIPTION_RESUME_BLOCKED to dedicated copy', () => {
+    expect(
+      resolveAutoRenewClientError(
+        { code: 'DEV_SUBSCRIPTION_RESUME_BLOCKED', error: 'Test subscription cannot resume' },
+        'Could not update auto-renew',
+        {
+          billingAutoRenewDevResumeBlocked: 'Choose a plan to subscribe again.',
+        }
+      )
+    ).toBe('Choose a plan to subscribe again.');
+  });
+
   test('falls back when error text is missing', () => {
     expect(resolveAutoRenewClientError({ code: 'UNKNOWN' }, 'Generic')).toBe('Generic');
   });
