@@ -119,7 +119,9 @@ export async function fulfillUpgradeSubscriptionPayment(
   }
 
   const now = new Date();
-  const expiresAt = computeSupportExpiresAt(params.planSlug, now);
+  const expiresAt = computeSupportExpiresAt(params.planSlug, now, {
+    billingOrigin: existing.billingOrigin,
+  });
   const slotsLimit = getPlanSlotsLimit(params.planSlug);
   const nextChargeAt = existing.paymentMethodId?.trim() ? expiresAt : null;
 

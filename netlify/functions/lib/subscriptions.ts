@@ -42,7 +42,7 @@ export interface Subscription {
   paymentMethodEpoch?: number;
   /**
    * Dev vs production billing isolation.
-   * A production resubscribe after the paid period ends replaces a dev origin.
+   * A dev-origin period keeps the short QA window; production fulfillment does not rewrite it.
    */
   billingOrigin?: BillingOrigin;
   createdAt: Date;

@@ -116,7 +116,9 @@ export async function fulfillRenewalSubscriptionPayment(params: {
   const appliedPlanSlug = scheduledPlanSlug ?? params.planSlug;
   const appliedSlotsLimit = getPlanSlotsLimit(appliedPlanSlug);
   const now = params.now ?? new Date();
-  const expiresAt = computeSupportExpiresAt(appliedPlanSlug, now);
+  const expiresAt = computeSupportExpiresAt(appliedPlanSlug, now, {
+    billingOrigin: existing.billingOrigin,
+  });
 
   let updated: { rows: SubscriptionRow[] };
 

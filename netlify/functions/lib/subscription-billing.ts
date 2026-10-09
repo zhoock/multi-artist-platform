@@ -88,8 +88,14 @@ export function usesDevSupportPeriod(): boolean {
   return isDevPaymentModeEnabled();
 }
 
-export function resolveSupportPeriodMs(planSlug: SubscriptionPlanSlug): number {
-  if (usesDevSupportPeriod()) {
+export function resolveSupportPeriodMs(
+  planSlug: SubscriptionPlanSlug,
+  options?: { billingOrigin?: 'dev' | 'production' | null }
+): number {
+  // Dev-origin rows keep the QA window even when fulfillment runs on production.
+  // Production-origin rows keep the catalog length. Runtime dev mode still
+  // shortens only the runtime's own new checkouts via usesDevSupportPeriod().
+  if (options?.billingOrigin === 'dev' || usesDevSupportPeriod()) {
     return DEV_SUPPORT_PERIOD_MS;
   }
   return getPlanSupportPeriodMs(planSlug);
@@ -97,11 +103,93 @@ export function resolveSupportPeriodMs(planSlug: SubscriptionPlanSlug): number {
 
 export function computeSupportExpiresAt(
   planSlug: SubscriptionPlanSlug,
-  from: Date = new Date()
+  from: Date = new Date(),
+  options?: { billingOrigin?: 'dev' | 'production' | null }
 ): Date {
   const expiresAt = new Date(from);
-  expiresAt.setTime(expiresAt.getTime() + resolveSupportPeriodMs(planSlug));
+  expiresAt.setTime(expiresAt.getTime() + resolveSupportPeriodMs(planSlug, options));
   return expiresAt;
+}
+
+export interface DevResubscribePeriodRepairInput {
+  subscriptionId: string;
+  plan: string;
+  status: string;
+  billingOrigin: string | null;
+  startedAt: Date;
+  expiresAt: Date;
+  nextChargeAt: Date | null;
+  providerSubscriptionId: string | null;
+}
+
+export interface DevResubscribePeriodRepairTarget {
+  subscriptionId: string;
+  plan: string;
+  providerSubscriptionId: string;
+  startedAt: Date;
+  /** The catalog-length expiry that was written instead of the 5-minute window. */
+  appliedExpiresAt: Date;
+  appliedNextChargeAt: Date;
+}
+
+export type DevResubscribePeriodRepairPlan =
+  | {
+      action: 'repair';
+      expiresAt: Date;
+      nextChargeAt: Date;
+      billingOrigin: 'dev';
+      /** Past window must not stay chargeable for the dev renewal scheduler. */
+      status: 'active' | 'expired';
+    }
+  | { action: 'already_correct' }
+  | { action: 'reject'; reason: string };
+
+/** Pure guard for repairing one known dev-origin resubscribe that received the catalog period. */
+export function planDevResubscribePeriodRepair(
+  row: DevResubscribePeriodRepairInput,
+  target: DevResubscribePeriodRepairTarget,
+  now: Date = new Date()
+): DevResubscribePeriodRepairPlan {
+  if (row.subscriptionId !== target.subscriptionId) {
+    return { action: 'reject', reason: 'subscription_id' };
+  }
+  if (row.plan !== target.plan) return { action: 'reject', reason: 'plan' };
+  if (row.providerSubscriptionId !== target.providerSubscriptionId) {
+    return { action: 'reject', reason: 'provider_payment' };
+  }
+  if (row.startedAt.getTime() !== target.startedAt.getTime()) {
+    return { action: 'reject', reason: 'started_at' };
+  }
+  if (row.status !== 'active' && row.status !== 'expired') {
+    return { action: 'reject', reason: 'status' };
+  }
+
+  const correctExpires = new Date(row.startedAt.getTime() + DEV_SUPPORT_PERIOD_MS);
+  const correctStatus = correctExpires.getTime() <= now.getTime() ? 'expired' : 'active';
+  const alreadyCorrect =
+    row.expiresAt.getTime() === correctExpires.getTime() &&
+    row.nextChargeAt?.getTime() === correctExpires.getTime() &&
+    row.billingOrigin === 'dev' &&
+    row.status === correctStatus;
+  if (alreadyCorrect) return { action: 'already_correct' };
+
+  if (row.expiresAt.getTime() !== target.appliedExpiresAt.getTime()) {
+    return { action: 'reject', reason: 'expires_at_unexpected' };
+  }
+  if (row.nextChargeAt?.getTime() !== target.appliedNextChargeAt.getTime()) {
+    return { action: 'reject', reason: 'next_charge_at_unexpected' };
+  }
+  if (row.billingOrigin !== 'production') {
+    return { action: 'reject', reason: 'billing_origin_unexpected' };
+  }
+
+  return {
+    action: 'repair',
+    expiresAt: correctExpires,
+    nextChargeAt: correctExpires,
+    billingOrigin: 'dev',
+    status: correctStatus,
+  };
 }
 
 export type SubscriptionPaymentValidationResult =
@@ -623,11 +711,13 @@ export async function fulfillSubscriptionPayment(params: {
   );
 
   const now = new Date();
-  const expiresAt = computeSupportExpiresAt(planSlug, now);
   const providerId = providerPaymentId?.trim() || null;
-  const billingOrigin = resolveBillingOriginForNewSubscription();
-
   const row = existing.rows[0];
+  const preserveDevOrigin = row?.billing_origin === 'dev';
+  const expiresAt = computeSupportExpiresAt(planSlug, now, {
+    billingOrigin: preserveDevOrigin ? 'dev' : undefined,
+  });
+  const billingOrigin = preserveDevOrigin ? 'dev' : resolveBillingOriginForNewSubscription();
 
   if (row) {
     const canReuse =

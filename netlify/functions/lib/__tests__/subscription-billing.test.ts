@@ -18,6 +18,7 @@ import {
   DEFAULT_SUBSCRIPTION_PLAN,
   DEV_SUPPORT_PERIOD_MS,
   fulfillSubscriptionPayment,
+  planDevResubscribePeriodRepair,
   formatPlanAmountValue,
   getPlanAmountRub,
   getPlanPriceCurrencyCode,
@@ -111,6 +112,24 @@ describe('support period', () => {
     expect(expires.getTime() - from.getTime()).toBe(DEV_SUPPORT_PERIOD_MS);
   });
 
+  test('dev-origin period stays 5 minutes on production runtime, production origin stays 30 days', () => {
+    delete process.env.DEV_PAYMENT_MODE;
+    process.env.NODE_ENV = 'production';
+    process.env.NETLIFY_DEV = 'false';
+    process.env.CONTEXT = 'production';
+
+    const devExpires = computeSupportExpiresAt('archivist', from, { billingOrigin: 'dev' });
+    const productionExpires = computeSupportExpiresAt('archivist', from, {
+      billingOrigin: 'production',
+    });
+
+    expect(devExpires.getTime() - from.getTime()).toBe(DEV_SUPPORT_PERIOD_MS);
+    expect(productionExpires.getTime() - from.getTime()).toBe(getPlanSupportPeriodMs('archivist'));
+    expect(resolveSupportPeriodMs('explorer', { billingOrigin: 'production' })).toBe(
+      getPlanSupportPeriodMs('explorer')
+    );
+  });
+
   test('renewal scheduling uses the same expires_at window as computeSupportExpiresAt', () => {
     delete process.env.DEV_PAYMENT_MODE;
     process.env.NODE_ENV = 'production';
@@ -119,6 +138,118 @@ describe('support period', () => {
 
     const expiresAt = computeSupportExpiresAt('explorer', from);
     expect(expiresAt.getTime() - from.getTime()).toBe(getPlanSupportPeriodMs('explorer'));
+  });
+
+  test('dev-origin renewal keeps the 5-minute cycle on production runtime', () => {
+    delete process.env.DEV_PAYMENT_MODE;
+    process.env.NODE_ENV = 'production';
+    process.env.NETLIFY_DEV = 'false';
+    process.env.CONTEXT = 'production';
+
+    const renewed = computeSupportExpiresAt('archivist', from, { billingOrigin: 'dev' });
+    expect(renewed.getTime() - from.getTime()).toBe(5 * 60 * 1000);
+  });
+
+  test('repair of the misapplied catalog period restores started_at plus 5 minutes', () => {
+    const startedAt = new Date('2026-10-09T16:18:05.591Z');
+    const appliedExpiresAt = new Date('2026-11-08T16:18:05.591Z');
+    const target = {
+      subscriptionId: 'ed7c1ee2-c3fb-4082-bb3a-7714214b5486',
+      plan: 'archivist',
+      providerSubscriptionId: '325b203f-000f-5000-b000-118c53aaa8d7',
+      startedAt,
+      appliedExpiresAt,
+      appliedNextChargeAt: appliedExpiresAt,
+    };
+    const duringWindow = new Date(startedAt.getTime() + 60_000);
+    const plan = planDevResubscribePeriodRepair(
+      {
+        subscriptionId: target.subscriptionId,
+        plan: 'archivist',
+        status: 'active',
+        billingOrigin: 'production',
+        startedAt,
+        expiresAt: appliedExpiresAt,
+        nextChargeAt: appliedExpiresAt,
+        providerSubscriptionId: target.providerSubscriptionId,
+      },
+      target,
+      duringWindow
+    );
+
+    expect(plan).toEqual({
+      action: 'repair',
+      expiresAt: new Date(startedAt.getTime() + DEV_SUPPORT_PERIOD_MS),
+      nextChargeAt: new Date(startedAt.getTime() + DEV_SUPPORT_PERIOD_MS),
+      billingOrigin: 'dev',
+      status: 'active',
+    });
+    if (plan.action === 'repair') {
+      expect(plan.expiresAt.toISOString()).toBe('2026-10-09T16:23:05.591Z');
+    }
+
+    const afterWindow = planDevResubscribePeriodRepair(
+      {
+        subscriptionId: target.subscriptionId,
+        plan: 'archivist',
+        status: 'active',
+        billingOrigin: 'production',
+        startedAt,
+        expiresAt: appliedExpiresAt,
+        nextChargeAt: appliedExpiresAt,
+        providerSubscriptionId: target.providerSubscriptionId,
+      },
+      target,
+      new Date(startedAt.getTime() + DEV_SUPPORT_PERIOD_MS + 1)
+    );
+    expect(afterWindow).toMatchObject({ action: 'repair', status: 'expired' });
+  });
+
+  test('repair rejects a different production subscription and a second application', () => {
+    const startedAt = new Date('2026-10-09T16:18:05.591Z');
+    const appliedExpiresAt = new Date('2026-11-08T16:18:05.591Z');
+    const target = {
+      subscriptionId: 'ed7c1ee2-c3fb-4082-bb3a-7714214b5486',
+      plan: 'archivist',
+      providerSubscriptionId: '325b203f-000f-5000-b000-118c53aaa8d7',
+      startedAt,
+      appliedExpiresAt,
+      appliedNextChargeAt: appliedExpiresAt,
+    };
+
+    expect(
+      planDevResubscribePeriodRepair(
+        {
+          subscriptionId: 'other-subscription',
+          plan: 'archivist',
+          status: 'active',
+          billingOrigin: 'production',
+          startedAt,
+          expiresAt: appliedExpiresAt,
+          nextChargeAt: appliedExpiresAt,
+          providerSubscriptionId: target.providerSubscriptionId,
+        },
+        target
+      )
+    ).toEqual({ action: 'reject', reason: 'subscription_id' });
+
+    const correctExpires = new Date(startedAt.getTime() + DEV_SUPPORT_PERIOD_MS);
+    expect(
+      planDevResubscribePeriodRepair(
+        {
+          subscriptionId: target.subscriptionId,
+          plan: 'archivist',
+          status: 'expired',
+          billingOrigin: 'dev',
+          startedAt,
+          expiresAt: correctExpires,
+          nextChargeAt: correctExpires,
+          providerSubscriptionId: target.providerSubscriptionId,
+        },
+        target,
+        new Date(correctExpires.getTime() + 1)
+      )
+    ).toEqual({ action: 'already_correct' });
   });
 });
 
@@ -245,13 +376,17 @@ describe('validateRebindSubscriptionPayment', () => {
 });
 
 describe('fulfillSubscriptionPayment', () => {
+  let savedEnv: NodeJS.ProcessEnv;
+
   beforeEach(() => {
+    savedEnv = { ...process.env };
     jest.useFakeTimers();
     jest.setSystemTime(new Date('2026-06-20T12:00:00.000Z'));
     mockedQuery.mockReset();
   });
 
   afterEach(() => {
+    process.env = { ...savedEnv };
     jest.useRealTimers();
   });
 
@@ -436,13 +571,14 @@ describe('fulfillSubscriptionPayment', () => {
     expect(mockedQuery.mock.calls[1]?.[1]?.[4]).toBe(true);
   });
 
-  test('resubscribe after expiry stamps production billing origin and the snapshot is active', async () => {
+  test('resubscribe of an expired dev-origin row keeps the 5-minute window and dev origin', async () => {
     delete process.env.DEV_PAYMENT_MODE;
     process.env.NODE_ENV = 'production';
     process.env.NETLIFY_DEV = 'false';
     process.env.CONTEXT = 'production';
 
-    const expiresAt = new Date('2026-11-09T15:48:00.000Z');
+    const startedAt = new Date('2026-06-20T12:00:00.000Z');
+    const expiresAt = new Date(startedAt.getTime() + DEV_SUPPORT_PERIOD_MS);
     mockedQuery
       .mockResolvedValueOnce(
         fakeQueryResult([
@@ -451,7 +587,7 @@ describe('fulfillSubscriptionPayment', () => {
             plan: 'archivist',
             slots_limit: 100,
             billing_origin: 'dev',
-            expires_at: new Date('2026-10-09T15:45:00.000Z'),
+            expires_at: new Date('2026-06-20T11:55:00.000Z'),
           }),
         ])
       )
@@ -461,8 +597,9 @@ describe('fulfillSubscriptionPayment', () => {
             status: 'active',
             plan: 'archivist',
             slots_limit: 100,
-            billing_origin: 'production',
+            billing_origin: 'dev',
             provider_subscription_id: 'pay-resubscribe',
+            started_at: startedAt,
             expires_at: expiresAt,
           }),
         ])
@@ -474,18 +611,62 @@ describe('fulfillSubscriptionPayment', () => {
       providerPaymentId: 'pay-resubscribe',
     });
 
-    const updateSql = String(mockedQuery.mock.calls[1]?.[0]);
-    expect(updateSql).toContain('billing_origin = CASE WHEN $5 THEN $8 ELSE billing_origin END');
     expect(mockedQuery.mock.calls[1]?.[1]?.[4]).toBe(true);
-    expect(mockedQuery.mock.calls[1]?.[1]?.[7]).toBe('production');
+    expect(mockedQuery.mock.calls[1]?.[1]?.[6]).toEqual(expiresAt);
+    expect(mockedQuery.mock.calls[1]?.[1]?.[7]).toBe('dev');
 
     const snapshot = buildBillingSnapshot(subscription, {
-      now: new Date('2026-10-09T16:00:00.000Z'),
+      now: new Date(startedAt.getTime() + 60_000),
     });
     expect(snapshot.status).toBe('active');
     expect(snapshot.plan).toBe('archivist');
     expect(snapshot.hasPremiumAccess).toBe(true);
-    expect(subscription.billingOrigin).toBe('production');
+    expect(snapshot.expiresAt).toBe(expiresAt.toISOString());
+    expect(subscription.billingOrigin).toBe('dev');
+  });
+
+  test('resubscribe of an expired production row keeps the catalog period', async () => {
+    delete process.env.DEV_PAYMENT_MODE;
+    process.env.NODE_ENV = 'production';
+    process.env.NETLIFY_DEV = 'false';
+    process.env.CONTEXT = 'production';
+
+    const startedAt = new Date('2026-06-20T12:00:00.000Z');
+    const expiresAt = computeSupportExpiresAt('archivist', startedAt, {
+      billingOrigin: 'production',
+    });
+    mockedQuery
+      .mockResolvedValueOnce(
+        fakeQueryResult([
+          subscriptionRow({
+            status: 'expired',
+            plan: 'archivist',
+            slots_limit: 100,
+            billing_origin: 'production',
+          }),
+        ])
+      )
+      .mockResolvedValueOnce(
+        fakeQueryResult([
+          subscriptionRow({
+            status: 'active',
+            plan: 'archivist',
+            slots_limit: 100,
+            billing_origin: 'production',
+            expires_at: expiresAt,
+          }),
+        ])
+      );
+
+    await fulfillSubscriptionPayment({
+      userId: USER_ID,
+      planSlug: 'archivist',
+      providerPaymentId: 'pay-production',
+    });
+
+    expect(mockedQuery.mock.calls[1]?.[1]?.[6]).toEqual(expiresAt);
+    expect(expiresAt.getTime() - startedAt.getTime()).toBe(getPlanSupportPeriodMs('archivist'));
+    expect(mockedQuery.mock.calls[1]?.[1]?.[7]).toBe('production');
   });
 
   test('active renewal does not clear autorenew fields in UPDATE', async () => {
