@@ -49,7 +49,13 @@ export function createErrorResponse(
   statusCode: number,
   error: string,
   headers: Record<string, string> = CORS_HEADERS,
-  meta?: { code?: string; details?: string; retryAfterSeconds?: number }
+  meta?: {
+    code?: string;
+    details?: string;
+    retryAfterSeconds?: number;
+    subscriptionPaymentId?: string;
+    confirmationUrl?: string;
+  }
 ) {
   return {
     statusCode,
@@ -60,6 +66,8 @@ export function createErrorResponse(
       ...(meta?.code ? { code: meta.code } : {}),
       ...(meta?.details ? { details: meta.details } : {}),
       ...(meta?.retryAfterSeconds != null ? { retryAfterSeconds: meta.retryAfterSeconds } : {}),
+      ...(meta?.subscriptionPaymentId ? { subscriptionPaymentId: meta.subscriptionPaymentId } : {}),
+      ...(meta?.confirmationUrl ? { confirmationUrl: meta.confirmationUrl } : {}),
     }),
   };
 }

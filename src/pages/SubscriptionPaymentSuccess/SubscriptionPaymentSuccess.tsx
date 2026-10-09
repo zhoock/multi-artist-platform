@@ -166,7 +166,7 @@ export default function SubscriptionPaymentSuccess() {
           return;
         }
 
-        if (subscriptionActivated || payment.status === 'succeeded') {
+        if (subscriptionActivated) {
           finishActivated();
           return;
         }

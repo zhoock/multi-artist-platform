@@ -13,6 +13,7 @@ jest.mock('../db', () => ({
 jest.mock('../subscription-billing', () => ({
   fulfillSubscriptionPayment: jest.fn(),
   claimSubscriptionPaymentSuccess: jest.fn(),
+  claimSubscriptionPaymentCanceled: jest.fn(),
   isSubscriptionFulfilledForProviderPayment: jest.fn(),
   updateSubscriptionPaymentStatus: jest.fn(),
   validatePremiumSubscriptionPayment: jest.fn(),
@@ -24,6 +25,7 @@ jest.mock('../subscriptions', () => ({
 
 import { query } from '../db';
 import {
+  claimSubscriptionPaymentCanceled,
   claimSubscriptionPaymentSuccess,
   fulfillSubscriptionPayment,
   isSubscriptionFulfilledForProviderPayment,
@@ -44,6 +46,9 @@ const mockedFulfill = fulfillSubscriptionPayment as jest.MockedFunction<
 >;
 const mockedClaim = claimSubscriptionPaymentSuccess as jest.MockedFunction<
   typeof claimSubscriptionPaymentSuccess
+>;
+const mockedClaimCanceled = claimSubscriptionPaymentCanceled as jest.MockedFunction<
+  typeof claimSubscriptionPaymentCanceled
 >;
 const mockedIsFulfilled = isSubscriptionFulfilledForProviderPayment as jest.MockedFunction<
   typeof isSubscriptionFulfilledForProviderPayment
@@ -219,6 +224,7 @@ describe('processInitialSubscriptionProviderPayment', () => {
   beforeEach(() => {
     mockedValidate.mockReset();
     mockedClaim.mockReset();
+    mockedClaimCanceled.mockReset();
     mockedIsFulfilled.mockReset();
     mockedFulfill.mockReset();
     mockedGetSubscription.mockReset();
@@ -246,6 +252,47 @@ describe('processInitialSubscriptionProviderPayment', () => {
 
     expect(result.alreadyFulfilled).toBe(true);
     expect(mockedFulfill).not.toHaveBeenCalled();
+  });
+
+  test('repeat succeeded webhook does not fulfill twice', async () => {
+    mockedClaim.mockResolvedValueOnce('claimed').mockResolvedValueOnce('already_succeeded');
+    mockedIsFulfilled.mockResolvedValueOnce(false).mockResolvedValueOnce(true);
+    mockedGetSubscription.mockResolvedValue(subscription({ providerSubscriptionId: 'pay-1' }));
+
+    await processInitialSubscriptionProviderPayment(providerPayment(), USER_ID);
+    const repeat = await processInitialSubscriptionProviderPayment(providerPayment(), USER_ID);
+
+    expect(repeat.alreadyFulfilled).toBe(true);
+    expect(repeat.subscriptionActivated).toBe(true);
+    expect(mockedFulfill).toHaveBeenCalledTimes(1);
+  });
+
+  test('completes fulfillment when the payment is succeeded but the subscription was not updated', async () => {
+    mockedClaim.mockResolvedValue('already_succeeded');
+    mockedIsFulfilled.mockResolvedValue(false);
+    mockedFulfill.mockResolvedValue(
+      subscription({ status: 'active', providerSubscriptionId: 'pay-1' })
+    );
+
+    const result = await processInitialSubscriptionProviderPayment(providerPayment(), USER_ID);
+
+    expect(mockedFulfill).toHaveBeenCalledTimes(1);
+    expect(result.subscriptionActivated).toBe(true);
+    expect(result.alreadyFulfilled).toBe(false);
+  });
+
+  test('canceled payment does not activate the subscription', async () => {
+    mockedClaimCanceled.mockResolvedValue('claimed');
+
+    const result = await processInitialSubscriptionProviderPayment(
+      providerPayment({ status: 'canceled' }),
+      USER_ID
+    );
+
+    expect(result.subscriptionActivated).toBe(false);
+    expect(mockedFulfill).not.toHaveBeenCalled();
+    expect(mockedClaim).not.toHaveBeenCalled();
+    expect(mockedClaimCanceled).toHaveBeenCalledWith('pay-1', USER_ID);
   });
 
   test('webhook and poll share PM extraction from DTO', async () => {

@@ -182,4 +182,35 @@ describe('SubscriptionPaymentSuccess rebind success-flow', () => {
 
     expect(dispatchActivatedMock).toHaveBeenCalled();
   });
+
+  test('provider succeeded without subscription activation does not finish Premium', async () => {
+    jest.useFakeTimers();
+    getStatusMock.mockResolvedValue(
+      statusResponse({
+        payment: {
+          id: 'pay-initial',
+          status: 'succeeded',
+          paid: true,
+          amount: { value: '1.00', currency: 'RUB' },
+          metadata: {
+            productType: 'premium_subscription',
+            kind: 'initial',
+          },
+        },
+        subscriptionActivated: false,
+        paymentMethodUpdated: false,
+      })
+    );
+
+    const view = renderSuccessPage();
+
+    await waitFor(() => {
+      expect(getStatusMock).toHaveBeenCalledTimes(1);
+    });
+
+    expect(screen.queryByText(/Premium activated/i)).toBeNull();
+    expect(dispatchActivatedMock).not.toHaveBeenCalled();
+    view.unmount();
+    jest.useRealTimers();
+  });
 });

@@ -5,6 +5,7 @@
 import { describe, expect, test, beforeEach, afterEach } from '@jest/globals';
 
 import {
+  allowsProductionResubscribeOfEndedDevSubscription,
   checkBillingMutationAllowed,
   normalizeBillingOrigin,
   resolveBillingOriginForNewSubscription,
@@ -79,6 +80,52 @@ describe('checkBillingMutationAllowed', () => {
     expect(checkBillingMutationAllowed({ billingOrigin: 'production' })).toEqual({
       allowed: true,
     });
+  });
+});
+
+describe('allowsProductionResubscribeOfEndedDevSubscription', () => {
+  test('allows initial production checkout after a dev-origin period has ended', () => {
+    delete process.env.DEV_PAYMENT_MODE;
+    process.env.NODE_ENV = 'production';
+    process.env.CONTEXT = 'production';
+
+    expect(
+      allowsProductionResubscribeOfEndedDevSubscription({
+        subscription: { billingOrigin: 'dev', status: 'expired' },
+        paymentKind: 'initial',
+        devMarkedPayment: false,
+      })
+    ).toBe(true);
+  });
+
+  test('keeps an active dev-origin period, renewal, and dev-marked payments blocked', () => {
+    delete process.env.DEV_PAYMENT_MODE;
+    process.env.NODE_ENV = 'production';
+    process.env.CONTEXT = 'production';
+
+    const ended = { billingOrigin: 'dev' as const, status: 'expired' as const };
+
+    expect(
+      allowsProductionResubscribeOfEndedDevSubscription({
+        subscription: { billingOrigin: 'dev', status: 'active' },
+        paymentKind: 'initial',
+        devMarkedPayment: false,
+      })
+    ).toBe(false);
+    expect(
+      allowsProductionResubscribeOfEndedDevSubscription({
+        subscription: ended,
+        paymentKind: 'renewal',
+        devMarkedPayment: false,
+      })
+    ).toBe(false);
+    expect(
+      allowsProductionResubscribeOfEndedDevSubscription({
+        subscription: ended,
+        paymentKind: 'initial',
+        devMarkedPayment: true,
+      })
+    ).toBe(false);
   });
 });
 

@@ -40,7 +40,10 @@ export interface Subscription {
   firstFailedAt?: Date | null;
   /** Incremented on payment-method unlink; rebind checkout captures at POST. */
   paymentMethodEpoch?: number;
-  /** Immutable after first fulfillment — dev vs production billing isolation. */
+  /**
+   * Dev vs production billing isolation.
+   * A production resubscribe after the paid period ends replaces a dev origin.
+   */
   billingOrigin?: BillingOrigin;
   createdAt: Date;
   updatedAt: Date;

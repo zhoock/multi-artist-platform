@@ -49,6 +49,34 @@ export function resolveAutoRenewPatchOriginErrorCode(
   return 'BILLING_ORIGIN_MISMATCH';
 }
 
+function isInitialCheckoutKind(kind: string | null | undefined): boolean {
+  const normalized = kind?.trim();
+  return !normalized || normalized === 'initial';
+}
+
+function paidPeriodHasEnded(subscription: Pick<Subscription, 'status'>): boolean {
+  return subscription.status === 'expired' || subscription.status === 'canceled';
+}
+
+/**
+ * Production initial checkout may fulfill an ended dev-origin subscription.
+ * The new period is stamped production. Dev-marked payments, live periods,
+ * and renewal/upgrade/rebind stay on the normal origin guard.
+ */
+export function allowsProductionResubscribeOfEndedDevSubscription(params: {
+  subscription: Pick<Subscription, 'billingOrigin' | 'status'> | null | undefined;
+  paymentKind: string | null | undefined;
+  devMarkedPayment: boolean;
+}): boolean {
+  if (params.devMarkedPayment || isDevPaymentModeEnabled()) return false;
+  if (!isInitialCheckoutKind(params.paymentKind)) return false;
+  if (!params.subscription) return false;
+  if (normalizeBillingOrigin(params.subscription.billingOrigin) !== 'dev') return false;
+  const guard = checkBillingMutationAllowed(params.subscription);
+  if (guard.allowed || guard.reason !== 'dev_subscription_production_runtime') return false;
+  return paidPeriodHasEnded(params.subscription);
+}
+
 export function checkBillingMutationAllowed(
   subscription: Pick<Subscription, 'billingOrigin'> | null | undefined
 ): BillingOriginGuardResult {

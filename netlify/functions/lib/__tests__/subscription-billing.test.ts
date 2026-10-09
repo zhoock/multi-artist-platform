@@ -11,6 +11,7 @@ jest.mock('../db', () => ({
 }));
 
 import { query } from '../db';
+import { buildBillingSnapshot } from '../subscription-billing-snapshot';
 import {
   PLAN_CATALOG,
   computeSupportExpiresAt,
@@ -433,6 +434,58 @@ describe('fulfillSubscriptionPayment', () => {
     expect(updateSql).toContain('WHEN $5 THEN NULL::timestamptz');
     expect(updateSql).toContain('ELSE $7::timestamptz');
     expect(mockedQuery.mock.calls[1]?.[1]?.[4]).toBe(true);
+  });
+
+  test('resubscribe after expiry stamps production billing origin and the snapshot is active', async () => {
+    delete process.env.DEV_PAYMENT_MODE;
+    process.env.NODE_ENV = 'production';
+    process.env.NETLIFY_DEV = 'false';
+    process.env.CONTEXT = 'production';
+
+    const expiresAt = new Date('2026-11-09T15:48:00.000Z');
+    mockedQuery
+      .mockResolvedValueOnce(
+        fakeQueryResult([
+          subscriptionRow({
+            status: 'expired',
+            plan: 'archivist',
+            slots_limit: 100,
+            billing_origin: 'dev',
+            expires_at: new Date('2026-10-09T15:45:00.000Z'),
+          }),
+        ])
+      )
+      .mockResolvedValueOnce(
+        fakeQueryResult([
+          subscriptionRow({
+            status: 'active',
+            plan: 'archivist',
+            slots_limit: 100,
+            billing_origin: 'production',
+            provider_subscription_id: 'pay-resubscribe',
+            expires_at: expiresAt,
+          }),
+        ])
+      );
+
+    const subscription = await fulfillSubscriptionPayment({
+      userId: USER_ID,
+      planSlug: 'archivist',
+      providerPaymentId: 'pay-resubscribe',
+    });
+
+    const updateSql = String(mockedQuery.mock.calls[1]?.[0]);
+    expect(updateSql).toContain('billing_origin = CASE WHEN $5 THEN $8 ELSE billing_origin END');
+    expect(mockedQuery.mock.calls[1]?.[1]?.[4]).toBe(true);
+    expect(mockedQuery.mock.calls[1]?.[1]?.[7]).toBe('production');
+
+    const snapshot = buildBillingSnapshot(subscription, {
+      now: new Date('2026-10-09T16:00:00.000Z'),
+    });
+    expect(snapshot.status).toBe('active');
+    expect(snapshot.plan).toBe('archivist');
+    expect(snapshot.hasPremiumAccess).toBe(true);
+    expect(subscription.billingOrigin).toBe('production');
   });
 
   test('active renewal does not clear autorenew fields in UPDATE', async () => {

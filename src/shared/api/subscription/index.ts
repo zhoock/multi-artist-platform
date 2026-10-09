@@ -21,9 +21,13 @@ export interface CreateSubscriptionPaymentResponse {
     subscriptionPaymentId?: string;
     /** Dev-only: payment persisted without YooKassa redirect */
     devPaymentCompleted?: boolean;
+    /** Existing succeeded payment was applied. No new provider payment was created. */
+    subscriptionRecovered?: boolean;
   };
   error?: string;
   code?: string;
+  subscriptionPaymentId?: string;
+  confirmationUrl?: string;
 }
 
 export interface CreateSubscriptionPaymentMethodRebindRequest {
@@ -120,6 +124,8 @@ export async function createSubscriptionPayment(
         success: false,
         error: payload.error || `HTTP ${response.status}`,
         code: payload.code,
+        subscriptionPaymentId: payload.subscriptionPaymentId,
+        confirmationUrl: payload.confirmationUrl,
       };
     }
 

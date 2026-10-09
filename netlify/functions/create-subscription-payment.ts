@@ -34,7 +34,7 @@ import {
   getPlanDefinition,
   normalizeSubscriptionPlanSlug,
 } from './lib/subscription-billing';
-import { findBlockingCheckoutPayment } from './lib/subscription-checkout-guard';
+import { resolveOpenSubscriptionCheckout } from './lib/subscription-checkout-guard';
 import { isSubscriptionAutoRenewEnabled } from './lib/subscription-feature-flag';
 import {
   logSubscriptionEvent,
@@ -110,13 +110,24 @@ export const handler: Handler = async (event: HandlerEvent) => {
     return createErrorResponse(400, 'Invalid subscription plan');
   }
 
-  const openPayment = await findBlockingCheckoutPayment(userId);
-  if (openPayment) {
+  const openCheckout = await resolveOpenSubscriptionCheckout(userId);
+  if (openCheckout.type === 'recovered') {
+    return createSuccessResponse({
+      paymentId: openCheckout.providerPaymentId,
+      subscriptionPaymentId: openCheckout.subscriptionPaymentId,
+      subscriptionRecovered: true,
+    });
+  }
+  if (openCheckout.type === 'in_progress') {
     return createErrorResponse(
       409,
       'A subscription checkout is already in progress. Complete or wait for it to expire.',
       undefined,
-      { code: 'CHECKOUT_IN_PROGRESS' }
+      {
+        code: 'CHECKOUT_IN_PROGRESS',
+        subscriptionPaymentId: openCheckout.subscriptionPaymentId,
+        ...(openCheckout.confirmationUrl ? { confirmationUrl: openCheckout.confirmationUrl } : {}),
+      }
     );
   }
 

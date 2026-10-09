@@ -148,4 +148,90 @@ describe('processSubscriptionProviderPaymentForRow billing_origin guard', () => 
     });
     expect(mockedInitial).not.toHaveBeenCalled();
   });
+
+  test('production runtime fulfills initial checkout after a dev-origin period ends', async () => {
+    delete process.env.DEV_PAYMENT_MODE;
+    process.env.NODE_ENV = 'production';
+    process.env.CONTEXT = 'production';
+    mockedGetSubscription.mockResolvedValue({
+      id: 'sub-dev',
+      userId: USER_ID,
+      status: 'expired',
+      plan: 'archivist',
+      slotsLimit: 100,
+      provider: 'yookassa',
+      providerSubscriptionId: 'pay-dev-old',
+      startedAt: new Date('2026-10-09T10:00:00.000Z'),
+      expiresAt: new Date('2026-10-09T15:45:00.000Z'),
+      billingOrigin: 'dev',
+      createdAt: new Date('2026-10-09T10:00:00.000Z'),
+      updatedAt: new Date('2026-10-09T15:45:00.000Z'),
+    });
+
+    const result = await processSubscriptionProviderPaymentForRow(
+      {
+        id: '325b203f-000f-5000-b000-118c53aaa8d7',
+        status: 'succeeded',
+        amount: { value: '1.00', currency: 'RUB' },
+        metadata: {
+          productType: 'premium_subscription',
+          userId: USER_ID,
+          plan: 'archivist',
+          kind: 'initial',
+        },
+      },
+      USER_ID,
+      'initial',
+      { observabilitySource: 'webhook', devMarkedPayment: false }
+    );
+
+    expect(result).toEqual({
+      subscriptionActivated: true,
+      alreadyFulfilled: false,
+      planSlug: 'explorer',
+    });
+    expect(mockedInitial).toHaveBeenCalledTimes(1);
+  });
+
+  test('production runtime still skips dev-marked and renewal payments for an ended dev subscription', async () => {
+    delete process.env.DEV_PAYMENT_MODE;
+    process.env.NODE_ENV = 'production';
+    process.env.CONTEXT = 'production';
+    mockedGetSubscription.mockResolvedValue({
+      id: 'sub-dev',
+      userId: USER_ID,
+      status: 'expired',
+      plan: 'archivist',
+      slotsLimit: 100,
+      provider: 'yookassa',
+      providerSubscriptionId: 'pay-dev-old',
+      startedAt: new Date('2026-10-09T10:00:00.000Z'),
+      expiresAt: new Date('2026-10-09T15:45:00.000Z'),
+      billingOrigin: 'dev',
+      createdAt: new Date('2026-10-09T10:00:00.000Z'),
+      updatedAt: new Date('2026-10-09T15:45:00.000Z'),
+    });
+
+    const devMarked = await processSubscriptionProviderPaymentForRow(
+      {
+        ...renewalPayment,
+        id: 'pay-dev-marked',
+        metadata: { ...renewalPayment.metadata, kind: 'initial', plan: 'archivist' },
+      },
+      USER_ID,
+      'initial',
+      { observabilitySource: 'poll', devMarkedPayment: true }
+    );
+    const renewal = await processSubscriptionProviderPaymentForRow(
+      renewalPayment,
+      USER_ID,
+      'renewal',
+      { observabilitySource: 'webhook', devMarkedPayment: false }
+    );
+
+    expect(devMarked).toMatchObject({ subscriptionActivated: false, alreadyFulfilled: false });
+    expect(renewal).toMatchObject({ subscriptionRenewed: false, alreadyFulfilled: false });
+    expect(mockedInitial).not.toHaveBeenCalled();
+    expect(mockedRenewal).not.toHaveBeenCalled();
+  });
 });

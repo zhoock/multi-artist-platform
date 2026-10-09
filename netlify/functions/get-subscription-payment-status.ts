@@ -35,7 +35,10 @@ import {
   getSubscriptionPaymentByInternalId,
   PREMIUM_SUBSCRIPTION_PRODUCT_TYPE,
 } from './lib/subscription-billing';
-import { checkBillingMutationAllowed } from './lib/subscription-billing-origin';
+import {
+  allowsProductionResubscribeOfEndedDevSubscription,
+  checkBillingMutationAllowed,
+} from './lib/subscription-billing-origin';
 import { getViewerSubscription } from './lib/subscriptions';
 import {
   beginSubscriptionFulfillmentObservability,
@@ -319,7 +322,12 @@ export const handler: Handler = async (event: HandlerEvent) => {
 
         const subscription = await getViewerSubscription(userId);
         const billingGuard = checkBillingMutationAllowed(subscription);
-        if (!billingGuard.allowed) {
+        const resubscribeAllowed = allowsProductionResubscribeOfEndedDevSubscription({
+          subscription,
+          paymentKind: owned.kind,
+          devMarkedPayment: isDevMarkedPayment(owned.raw_last_event),
+        });
+        if (!billingGuard.allowed && !resubscribeAllowed) {
           logSubscriptionEvent(
             SUBSCRIPTION_LOG_EVENTS.FULFILLMENT_REJECTED,
             {
@@ -345,7 +353,11 @@ export const handler: Handler = async (event: HandlerEvent) => {
           providerPayment,
           userId,
           owned.kind,
-          { observabilitySource: 'poll', subscriptionPaymentId: owned.id }
+          {
+            observabilitySource: 'poll',
+            subscriptionPaymentId: owned.id,
+            devMarkedPayment: isDevMarkedPayment(owned.raw_last_event),
+          }
         );
 
         logSubscriptionEvent(SUBSCRIPTION_LOG_EVENTS.POLL_PROCESSED, {

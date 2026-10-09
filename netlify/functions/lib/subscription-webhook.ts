@@ -16,7 +16,11 @@ import {
 } from './yookassa-webhook-verify';
 import { mapYooKassaPaymentToProviderPayment } from './subscription-provider-payment';
 import { isRebindSubscriptionPaymentKind } from './subscription-rebind-fulfillment';
-import { checkBillingMutationAllowed } from './subscription-billing-origin';
+import {
+  allowsProductionResubscribeOfEndedDevSubscription,
+  checkBillingMutationAllowed,
+} from './subscription-billing-origin';
+import { isDevMarkedPayment } from './dev-payment-mode';
 import {
   PREMIUM_SUBSCRIPTION_PRODUCT_TYPE,
   claimSubscriptionPaymentCanceled,
@@ -270,11 +274,17 @@ export async function handlePremiumSubscriptionWebhookIfApplicable(
 
   const dbUserId = paymentRow.user_id;
   const dbKind = paymentRow.kind;
+  const devMarkedPayment = isDevMarkedPayment(paymentRow.raw_last_event);
 
   if (data.event === 'payment.succeeded') {
     const subscription = await getViewerSubscription(dbUserId);
     const billingGuard = checkBillingMutationAllowed(subscription);
-    if (!billingGuard.allowed) {
+    const resubscribeAllowed = allowsProductionResubscribeOfEndedDevSubscription({
+      subscription,
+      paymentKind: dbKind,
+      devMarkedPayment,
+    });
+    if (!billingGuard.allowed && !resubscribeAllowed) {
       logWebhookSkipped('billing_origin_mismatch', {
         reason: billingGuard.reason,
         billingOrigin: subscription?.billingOrigin ?? undefined,
@@ -328,6 +338,7 @@ export async function handlePremiumSubscriptionWebhookIfApplicable(
           await processSubscriptionProviderPaymentForRow(providerPayment, dbUserId, dbKind, {
             observabilitySource: 'webhook',
             subscriptionPaymentId: paymentRow.id,
+            devMarkedPayment,
           });
         } else if (data.event === 'payment.canceled') {
           const providerPayment = mapYooKassaPaymentToProviderPayment(api);
@@ -335,6 +346,7 @@ export async function handlePremiumSubscriptionWebhookIfApplicable(
             await processSubscriptionProviderPaymentForRow(providerPayment, dbUserId, dbKind, {
               observabilitySource: 'webhook',
               subscriptionPaymentId: paymentRow.id,
+              devMarkedPayment,
             });
           } else {
             await claimSubscriptionPaymentCanceled(api.id, dbUserId);

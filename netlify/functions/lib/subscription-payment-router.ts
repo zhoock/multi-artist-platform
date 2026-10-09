@@ -12,7 +12,10 @@ import {
   recordSubscriptionFulfillmentOutcome,
 } from './subscription-observability-fulfillment';
 import { DEFAULT_SUBSCRIPTION_PLAN } from './subscription-billing';
-import { checkBillingMutationAllowed } from './subscription-billing-origin';
+import {
+  allowsProductionResubscribeOfEndedDevSubscription,
+  checkBillingMutationAllowed,
+} from './subscription-billing-origin';
 import { logSubscriptionEvent, SUBSCRIPTION_LOG_EVENTS } from './subscription-observability';
 import { getViewerSubscription } from './subscriptions';
 import {
@@ -51,6 +54,8 @@ export type ProcessSubscriptionProviderPaymentOptions =
     ProcessRenewalSubscriptionProviderPaymentOptions & {
       observabilitySource?: SubscriptionObservabilitySource;
       subscriptionPaymentId?: string;
+      /** True when subscription_payments.raw_last_event is a dev-mode marker. */
+      devMarkedPayment?: boolean;
     };
 
 async function dispatchSubscriptionProviderPayment(
@@ -111,7 +116,12 @@ async function processWithObservability(
 
   const subscription = await getViewerSubscription(userId);
   const billingGuard = checkBillingMutationAllowed(subscription);
-  if (!billingGuard.allowed) {
+  const resubscribeAllowed = allowsProductionResubscribeOfEndedDevSubscription({
+    subscription,
+    paymentKind: resolvedKind,
+    devMarkedPayment: options.devMarkedPayment === true,
+  });
+  if (!billingGuard.allowed && !resubscribeAllowed) {
     logSubscriptionEvent(
       SUBSCRIPTION_LOG_EVENTS.FULFILLMENT_REJECTED,
       {

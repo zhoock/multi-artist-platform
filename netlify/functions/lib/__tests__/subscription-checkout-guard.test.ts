@@ -22,15 +22,23 @@ jest.mock('../yookassa-webhook-verify', () => ({
   fetchPaymentFromYooKassaApi: jest.fn(),
 }));
 
+jest.mock('../subscription-payment-router', () => ({
+  processSubscriptionProviderPaymentForRow: jest.fn(),
+}));
+
 import { query } from '../db';
 import { isDevMarkedPayment } from '../dev-payment-mode';
 import { getYooKassaEnvCredentials } from '../yookassa-env';
 import { fetchPaymentFromYooKassaApi } from '../yookassa-webhook-verify';
+import { processSubscriptionProviderPaymentForRow } from '../subscription-payment-router';
 import {
   findOpenCheckoutSubscriptionPayment,
   releaseAbandonedCheckoutPayments,
 } from '../subscription-billing';
-import { findBlockingCheckoutPayment } from '../subscription-checkout-guard';
+import {
+  findBlockingCheckoutPayment,
+  resolveOpenSubscriptionCheckout,
+} from '../subscription-checkout-guard';
 
 const mockedQuery = query as jest.MockedFunction<typeof query>;
 const mockedIsDevMarkedPayment = isDevMarkedPayment as jest.MockedFunction<
@@ -41,6 +49,9 @@ const mockedGetYooKassaEnvCredentials = getYooKassaEnvCredentials as jest.Mocked
 >;
 const mockedFetchPaymentFromYooKassaApi = fetchPaymentFromYooKassaApi as jest.MockedFunction<
   typeof fetchPaymentFromYooKassaApi
+>;
+const mockedProcessPayment = processSubscriptionProviderPaymentForRow as jest.MockedFunction<
+  typeof processSubscriptionProviderPaymentForRow
 >;
 
 const USER_ID = 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee';
@@ -134,6 +145,7 @@ describe('findBlockingCheckoutPayment', () => {
     const open = await findBlockingCheckoutPayment(USER_ID);
 
     expect(open).toBeNull();
+    expect(mockedProcessPayment).not.toHaveBeenCalled();
     expect(mockedFetchPaymentFromYooKassaApi).toHaveBeenCalledWith(
       PROVIDER_PAYMENT_ID,
       'shop-id',
@@ -170,6 +182,108 @@ describe('findBlockingCheckoutPayment', () => {
 
     expect(open).toEqual({ id: SUBSCRIPTION_PAYMENT_ID });
     expect(mockedFetchPaymentFromYooKassaApi).not.toHaveBeenCalled();
+    expect(mockedProcessPayment).not.toHaveBeenCalled();
     expect(mockedIsDevMarkedPayment).toHaveBeenCalledWith({ devPaymentMode: true });
+  });
+
+  test('recovers a succeeded provider payment without leaving checkout blocked', async () => {
+    mockedIsDevMarkedPayment.mockReturnValue(false);
+    mockedFetchPaymentFromYooKassaApi.mockResolvedValue({
+      ok: true,
+      payment: {
+        id: PROVIDER_PAYMENT_ID,
+        status: 'succeeded',
+        paid: true,
+        amount: { value: '1.00', currency: 'RUB' },
+        metadata: {
+          productType: 'premium_subscription',
+          userId: USER_ID,
+          plan: 'archivist',
+          kind: 'initial',
+        },
+      },
+    });
+    mockedProcessPayment.mockResolvedValue({
+      subscriptionActivated: true,
+      alreadyFulfilled: false,
+      planSlug: 'archivist',
+    });
+
+    mockedQuery
+      .mockResolvedValueOnce(fakeQueryResult([], 0))
+      .mockResolvedValueOnce(fakeQueryResult([{ id: SUBSCRIPTION_PAYMENT_ID }]))
+      .mockResolvedValueOnce(
+        fakeQueryResult([
+          {
+            id: SUBSCRIPTION_PAYMENT_ID,
+            user_id: USER_ID,
+            provider: 'yookassa',
+            provider_payment_id: PROVIDER_PAYMENT_ID,
+            status: 'pending',
+            amount: '1.00',
+            currency: 'RUB',
+            plan: 'archivist',
+            kind: 'initial',
+            raw_last_event: null,
+            created_at: new Date(),
+          },
+        ])
+      );
+
+    const resolution = await resolveOpenSubscriptionCheckout(USER_ID);
+
+    expect(resolution).toEqual({
+      type: 'recovered',
+      subscriptionPaymentId: SUBSCRIPTION_PAYMENT_ID,
+      providerPaymentId: PROVIDER_PAYMENT_ID,
+      subscriptionActivated: true,
+    });
+    expect(mockedProcessPayment).toHaveBeenCalledTimes(1);
+    expect(mockedProcessPayment.mock.calls[0]?.[2]).toBe('initial');
+  });
+
+  test('pending provider payment stays in progress and is not fulfilled', async () => {
+    mockedIsDevMarkedPayment.mockReturnValue(false);
+    mockedFetchPaymentFromYooKassaApi.mockResolvedValue({
+      ok: true,
+      payment: {
+        id: PROVIDER_PAYMENT_ID,
+        status: 'pending',
+        paid: false,
+        amount: { value: '1.00', currency: 'RUB' },
+        confirmation: { confirmation_url: 'https://yoomoney.ru/checkout/payments/v2/contract' },
+      },
+    });
+
+    mockedQuery
+      .mockResolvedValueOnce(fakeQueryResult([], 0))
+      .mockResolvedValueOnce(fakeQueryResult([{ id: SUBSCRIPTION_PAYMENT_ID }]))
+      .mockResolvedValueOnce(
+        fakeQueryResult([
+          {
+            id: SUBSCRIPTION_PAYMENT_ID,
+            user_id: USER_ID,
+            provider: 'yookassa',
+            provider_payment_id: PROVIDER_PAYMENT_ID,
+            status: 'pending',
+            amount: '1.00',
+            currency: 'RUB',
+            plan: 'archivist',
+            kind: 'initial',
+            raw_last_event: null,
+            created_at: new Date(),
+          },
+        ])
+      );
+
+    const resolution = await resolveOpenSubscriptionCheckout(USER_ID);
+
+    expect(resolution).toMatchObject({
+      type: 'in_progress',
+      subscriptionPaymentId: SUBSCRIPTION_PAYMENT_ID,
+      providerPaymentId: PROVIDER_PAYMENT_ID,
+      confirmationUrl: 'https://yoomoney.ru/checkout/payments/v2/contract',
+    });
+    expect(mockedProcessPayment).not.toHaveBeenCalled();
   });
 });

@@ -38,6 +38,14 @@ export type SubscriptionCheckoutResult =
   | { ok: true; redirected: 'auth' }
   | { ok: false; error: string; code?: string };
 
+function isHttpsUrl(value: string): boolean {
+  try {
+    return new URL(value).protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
 type UseSubscriptionCheckoutOptions = {
   onClose?: (options?: CloseArchiveAccessModalOptions) => void;
 };
@@ -96,7 +104,39 @@ export function useSubscriptionCheckout({ onClose }: UseSubscriptionCheckoutOpti
           intent: options.intent,
         });
 
+        const resumeExistingCheckout = (subscriptionPaymentId: string) => {
+          clearPremiumCheckoutAuthIntent();
+          savePremiumCheckoutArtistSlug();
+          onClose?.({ preserveCheckoutIntent: true });
+          window.location.href = buildSubscriptionPaymentDevStatusUrl({
+            subscriptionPaymentId,
+            returnTo,
+          });
+          return { ok: true as const, redirected: 'payment' as const };
+        };
+
+        if (
+          result.success &&
+          result.data?.subscriptionRecovered &&
+          result.data.subscriptionPaymentId
+        ) {
+          return resumeExistingCheckout(result.data.subscriptionPaymentId);
+        }
+
         if (!result.success || !result.data) {
+          if (result.code === 'CHECKOUT_IN_PROGRESS') {
+            const confirmationUrl = result.confirmationUrl?.trim();
+            if (confirmationUrl && isHttpsUrl(confirmationUrl)) {
+              clearPremiumCheckoutAuthIntent();
+              savePremiumCheckoutArtistSlug();
+              onClose?.({ preserveCheckoutIntent: true });
+              window.location.href = confirmationUrl;
+              return { ok: true, redirected: 'payment' };
+            }
+            if (result.subscriptionPaymentId) {
+              return resumeExistingCheckout(result.subscriptionPaymentId);
+            }
+          }
           return {
             ok: false,
             error: resolveSubscriptionClientError(

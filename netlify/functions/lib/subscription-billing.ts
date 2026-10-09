@@ -651,6 +651,7 @@ export async function fulfillSubscriptionPayment(params: {
              scheduled_plan = CASE WHEN $5 THEN NULL ELSE scheduled_plan END,
              renewal_attempt_count = CASE WHEN $5 THEN 0 ELSE renewal_attempt_count END,
              first_failed_at = CASE WHEN $5 THEN NULL ELSE first_failed_at END,
+             billing_origin = CASE WHEN $5 THEN $8 ELSE billing_origin END,
              next_charge_at = CASE
                WHEN $5 THEN NULL::timestamptz
                ELSE $7::timestamptz
@@ -661,7 +662,7 @@ export async function fulfillSubscriptionPayment(params: {
          RETURNING
            id, user_id, status, plan, slots_limit, provider, provider_subscription_id,
            started_at, expires_at, billing_origin, created_at, updated_at`,
-        [row.id, planSlug, slotsLimit, providerId, canReuse, now, expiresAt]
+        [row.id, planSlug, slotsLimit, providerId, canReuse, now, expiresAt, billingOrigin]
       );
       const next = updated.rows[0];
       if (next) return mapSubscriptionRow(next);
