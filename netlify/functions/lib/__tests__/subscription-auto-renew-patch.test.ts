@@ -2,7 +2,7 @@
  * Unit tests for patchSubscriptionAutoRenew (PR-5).
  */
 
-import { beforeEach, describe, expect, jest, test } from '@jest/globals';
+import { afterEach, beforeEach, describe, expect, jest, test } from '@jest/globals';
 import type { QueryResult } from 'pg';
 
 jest.mock('../db', () => ({
@@ -22,6 +22,7 @@ jest.mock('../subscriptions', () => ({
 import { query } from '../db';
 import { isSubscriptionAutoRenewEnabled } from '../subscription-feature-flag';
 import {
+  isAutoRenewPatchBillingMutationAllowed,
   patchSubscriptionAutoRenew,
   SubscriptionAutoRenewPatchError,
 } from '../subscription-auto-renew-patch';
@@ -94,6 +95,40 @@ function subscriptionRowFrom(sub: Subscription) {
     updated_at: sub.updatedAt,
   };
 }
+
+describe('isAutoRenewPatchBillingMutationAllowed', () => {
+  const originalDev = process.env.DEV_PAYMENT_MODE;
+  const originalNetlifyDev = process.env.NETLIFY_DEV;
+  const originalNodeEnv = process.env.NODE_ENV;
+
+  afterEach(() => {
+    if (originalDev === undefined) delete process.env.DEV_PAYMENT_MODE;
+    else process.env.DEV_PAYMENT_MODE = originalDev;
+    if (originalNetlifyDev === undefined) delete process.env.NETLIFY_DEV;
+    else process.env.NETLIFY_DEV = originalNetlifyDev;
+    if (originalNodeEnv === undefined) delete process.env.NODE_ENV;
+    else process.env.NODE_ENV = originalNodeEnv;
+  });
+
+  test('production runtime allows disable on dev-origin subscription', () => {
+    delete process.env.DEV_PAYMENT_MODE;
+    delete process.env.NETLIFY_DEV;
+    process.env.NODE_ENV = 'production';
+
+    expect(isAutoRenewPatchBillingMutationAllowed({ billingOrigin: 'dev' }, false)).toBe(true);
+    expect(isAutoRenewPatchBillingMutationAllowed({ billingOrigin: 'dev' }, true)).toBe(false);
+  });
+
+  test('dev runtime still blocks disable on production-origin subscription', () => {
+    process.env.DEV_PAYMENT_MODE = 'true';
+    process.env.NETLIFY_DEV = 'true';
+    process.env.NODE_ENV = 'development';
+
+    expect(isAutoRenewPatchBillingMutationAllowed({ billingOrigin: 'production' }, false)).toBe(
+      false
+    );
+  });
+});
 
 describe('patchSubscriptionAutoRenew', () => {
   beforeEach(() => {
@@ -210,5 +245,42 @@ describe('patchSubscriptionAutoRenew', () => {
     await expect(patchSubscriptionAutoRenew(USER_ID, true)).rejects.toBeInstanceOf(
       SubscriptionAutoRenewPatchError
     );
+  });
+
+  test('disable on dev-origin subscription in production runtime', async () => {
+    const originalDev = process.env.DEV_PAYMENT_MODE;
+    const originalNetlifyDev = process.env.NETLIFY_DEV;
+    const originalNodeEnv = process.env.NODE_ENV;
+
+    delete process.env.DEV_PAYMENT_MODE;
+    delete process.env.NETLIFY_DEV;
+    process.env.NODE_ENV = 'production';
+
+    mockedGetViewerSubscription.mockResolvedValue(activeSubscription({ billingOrigin: 'dev' }));
+
+    mockedQuery.mockResolvedValueOnce(
+      fakeQueryResult([
+        subscriptionRowFrom(
+          activeSubscription({
+            billingOrigin: 'dev',
+            status: 'cancel_at_period_end',
+            nextChargeAt: null,
+          })
+        ),
+      ])
+    );
+
+    try {
+      const result = await patchSubscriptionAutoRenew(USER_ID, false);
+      expect(result.subscription.status).toBe('cancel_at_period_end');
+      expect(mockedQuery).toHaveBeenCalled();
+    } finally {
+      if (originalDev === undefined) delete process.env.DEV_PAYMENT_MODE;
+      else process.env.DEV_PAYMENT_MODE = originalDev;
+      if (originalNetlifyDev === undefined) delete process.env.NETLIFY_DEV;
+      else process.env.NETLIFY_DEV = originalNetlifyDev;
+      if (originalNodeEnv === undefined) delete process.env.NODE_ENV;
+      else process.env.NODE_ENV = originalNodeEnv;
+    }
   });
 });

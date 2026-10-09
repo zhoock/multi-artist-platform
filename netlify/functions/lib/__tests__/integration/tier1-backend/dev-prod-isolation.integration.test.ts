@@ -171,7 +171,7 @@ describe('billing_origin dev/production isolation @p0', () => {
     expect(after.rows[0]?.expires_at.getTime()).toBe(before.rows[0]?.expires_at.getTime());
   });
 
-  test('patch auto-renew rejects cross-origin runtime', async () => {
+  test('patch auto-renew disable rejects production subscription on dev runtime', async () => {
     if (!isE2eDatabaseConfigured()) return;
 
     await seedSubscription({
@@ -192,5 +192,33 @@ describe('billing_origin dev/production isolation @p0', () => {
     await expect(patchSubscriptionAutoRenew(TEST_USER_SUBSCRIBER, false)).rejects.toMatchObject({
       code: 'BILLING_ORIGIN_MISMATCH',
     });
+  });
+
+  test('patch auto-renew disable allows dev subscription on production runtime', async () => {
+    if (!isE2eDatabaseConfigured()) return;
+
+    const expiresAt = new Date('2026-09-03T00:00:00.000Z');
+    await seedSubscription({
+      userId: TEST_USER_SUBSCRIBER,
+      billingOrigin: 'dev',
+      paymentMethodId: 'pm-dev-offboard',
+      status: 'active',
+      expiresAt,
+      nextChargeAt: expiresAt,
+    });
+
+    delete process.env.DEV_PAYMENT_MODE;
+    delete process.env.NETLIFY_DEV;
+    process.env.NODE_ENV = 'production';
+    process.env.CONTEXT = 'production';
+    process.env.SUBSCRIPTION_AUTO_RENEW_ENABLED = 'true';
+
+    const guard = checkBillingMutationAllowed({ billingOrigin: 'dev' });
+    expect(guard).toEqual({ allowed: false, reason: 'dev_subscription_production_runtime' });
+
+    const { subscription, billing } = await patchSubscriptionAutoRenew(TEST_USER_SUBSCRIBER, false);
+
+    expect(subscription.status).toBe('cancel_at_period_end');
+    expect(billing.autoRenewEnabled).toBe(false);
   });
 });

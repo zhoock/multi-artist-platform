@@ -59,6 +59,8 @@ export const handler: Handler = async (event: HandlerEvent) => {
       });
     }
     console.error('❌ [patch-subscription-auto-renew]', error);
-    return createErrorResponse(500, 'Failed to update auto-renew');
+    return createErrorResponse(500, 'Failed to update auto-renew', undefined, {
+      code: 'INTERNAL_ERROR',
+    });
   }
 };

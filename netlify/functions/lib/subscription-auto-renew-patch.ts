@@ -4,6 +4,7 @@
 
 import { buildBillingSnapshot, type BillingSnapshot } from './subscription-billing-snapshot';
 import { checkBillingMutationAllowed } from './subscription-billing-origin';
+import { isDevPaymentModeEnabled } from './dev-payment-mode';
 import { isMissingRelationError, query } from './db';
 import { isSubscriptionAutoRenewEnabled } from './subscription-feature-flag';
 import {
@@ -17,6 +18,16 @@ import {
   type Subscription,
   type SubscriptionRow,
 } from './subscriptions';
+
+/** Production runtime may disable auto-renew on dev-origin rows (shared DB / dev checkout); still blocks enable. */
+export function isAutoRenewPatchBillingMutationAllowed(
+  subscription: Pick<Subscription, 'billingOrigin'>,
+  autoRenewEnabled: boolean
+): boolean {
+  const guard = checkBillingMutationAllowed(subscription);
+  if (guard.allowed) return true;
+  return !autoRenewEnabled && !isDevPaymentModeEnabled();
+}
 
 export class SubscriptionAutoRenewPatchError extends Error {
   constructor(
@@ -47,8 +58,7 @@ export async function patchSubscriptionAutoRenew(
     throw new SubscriptionAutoRenewPatchError('Subscription not found', 'NO_SUBSCRIPTION', 404);
   }
 
-  const billingGuard = checkBillingMutationAllowed(subscription);
-  if (!billingGuard.allowed) {
+  if (!isAutoRenewPatchBillingMutationAllowed(subscription, autoRenewEnabled)) {
     throw new SubscriptionAutoRenewPatchError(
       'Subscription billing origin is incompatible with this runtime',
       'BILLING_ORIGIN_MISMATCH',
