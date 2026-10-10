@@ -5,15 +5,17 @@
 import { beforeEach, describe, expect, jest, test } from '@jest/globals';
 import type { QueryResult } from 'pg';
 
+const mockedQuery = jest.fn<(...args: unknown[]) => Promise<QueryResult>>();
+
 jest.mock('../db', () => ({
-  query: jest.fn(),
+  query: mockedQuery,
   isMissingRelationError: jest.fn(() => false),
+  withClient: jest.fn((fn: (client: { query: typeof mockedQuery }) => Promise<unknown>) =>
+    fn({ query: mockedQuery })
+  ),
 }));
 
-import { query } from '../db';
 import { cleanupPendingRenewalPayment } from '../subscription-billing';
-
-const mockedQuery = query as jest.MockedFunction<typeof query>;
 
 const PAYMENT_ROW_ID = 'pay-row-1';
 const USER_ID = 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee';

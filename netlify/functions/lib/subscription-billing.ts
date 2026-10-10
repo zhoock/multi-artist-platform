@@ -22,7 +22,9 @@ import {
   type SubscriptionPlanSlug,
 } from '../../../src/shared/lib/payment/subscriptionPlanCatalog';
 
-import { isMissingRelationError, query } from './db';
+import type { PoolClient } from 'pg';
+
+import { isMissingRelationError, query, withClient } from './db';
 import { resolveBillingOriginForNewSubscription } from './subscription-billing-origin';
 import type { Subscription } from './subscriptions';
 import { mapSubscriptionRow, type SubscriptionRow } from './subscriptions';
@@ -324,12 +326,13 @@ export async function cancelOrphanPendingRenewalPayments(userId: string): Promis
   }
 }
 
-export async function cleanupPendingRenewalPayment(
+export async function cleanupPendingRenewalPaymentWithClient(
+  client: PoolClient,
   subscriptionPaymentId: string,
   userId: string
 ): Promise<void> {
   try {
-    const deleted = await query<{ id: string }>(
+    const deleted = await client.query<{ id: string }>(
       `DELETE FROM subscription_payments
        WHERE id = $1
          AND user_id = $2::uuid
@@ -341,7 +344,7 @@ export async function cleanupPendingRenewalPayment(
     );
     if (deleted.rows[0]?.id) return;
 
-    await query(
+    await client.query(
       `UPDATE subscription_payments
        SET status = 'canceled', updated_at = CURRENT_TIMESTAMP
        WHERE id = $1
@@ -355,6 +358,15 @@ export async function cleanupPendingRenewalPayment(
     if (isMissingRelationError(error)) return;
     throw error;
   }
+}
+
+export async function cleanupPendingRenewalPayment(
+  subscriptionPaymentId: string,
+  userId: string
+): Promise<void> {
+  await withClient((client) =>
+    cleanupPendingRenewalPaymentWithClient(client, subscriptionPaymentId, userId)
+  );
 }
 
 export async function createPendingSubscriptionPayment(

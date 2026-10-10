@@ -5,9 +5,14 @@
 import { describe, expect, test, jest, beforeEach } from '@jest/globals';
 import type { QueryResult } from 'pg';
 
+const clientQuery = jest.fn();
+
 jest.mock('../db', () => ({
   query: jest.fn(),
   isMissingRelationError: jest.fn(() => false),
+  withTransaction: jest.fn((fn: (client: { query: typeof clientQuery }) => Promise<unknown>) =>
+    fn({ query: clientQuery })
+  ),
 }));
 
 jest.mock('../subscription-feature-flag', () => ({
@@ -16,6 +21,7 @@ jest.mock('../subscription-feature-flag', () => ({
 
 jest.mock('../subscription-billing', () => ({
   cleanupPendingRenewalPayment: jest.fn(),
+  cleanupPendingRenewalPaymentWithClient: jest.fn(),
   cancelOrphanPendingRenewalPayments: jest.fn(),
   attachProviderPaymentId: jest.fn(),
   createPendingSubscriptionPayment: jest.fn(),
@@ -32,7 +38,7 @@ jest.mock('../subscription-renewal-fulfillment', () => ({
 import { query } from '../db';
 import {
   cancelOrphanPendingRenewalPayments,
-  cleanupPendingRenewalPayment,
+  cleanupPendingRenewalPaymentWithClient,
 } from '../subscription-billing';
 import {
   reconcileOrphanPendingRenewalsBeforeChargeSelection,
@@ -43,8 +49,8 @@ import {
 } from '../subscription-renewal-engine';
 
 const mockedQuery = query as jest.MockedFunction<typeof query>;
-const mockedCleanup = cleanupPendingRenewalPayment as jest.MockedFunction<
-  typeof cleanupPendingRenewalPayment
+const mockedCleanupWithClient = cleanupPendingRenewalPaymentWithClient as jest.MockedFunction<
+  typeof cleanupPendingRenewalPaymentWithClient
 >;
 const mockedCancelOrphans = cancelOrphanPendingRenewalPayments as jest.MockedFunction<
   typeof cancelOrphanPendingRenewalPayments
@@ -65,7 +71,8 @@ function fakeQueryResult(
 beforeEach(() => {
   jest.clearAllMocks();
   mockedQuery.mockResolvedValue(fakeQueryResult());
-  mockedCleanup.mockResolvedValue(undefined);
+  mockedCleanupWithClient.mockResolvedValue(undefined);
+  clientQuery.mockResolvedValue(fakeQueryResult());
   mockedCancelOrphans.mockResolvedValue(undefined);
 });
 
@@ -78,9 +85,15 @@ describe('rollbackRenewalChargeAttempt', () => {
       subscriptionPaymentId: PAYMENT_ROW_ID,
     });
 
-    expect(mockedCleanup).toHaveBeenCalledWith(PAYMENT_ROW_ID, USER_ID);
-    expect(String(mockedQuery.mock.calls[0]?.[0])).toContain('next_charge_at = $2');
-    expect(mockedQuery.mock.calls[0]?.[1]).toEqual([SUB_ID, RESTORE_AT, USER_ID]);
+    expect(mockedCleanupWithClient).toHaveBeenCalledWith(
+      expect.objectContaining({ query: clientQuery }),
+      PAYMENT_ROW_ID,
+      USER_ID
+    );
+    const restoreCall = clientQuery.mock.calls.find(([sql]) =>
+      String(sql).includes('next_charge_at = $2')
+    );
+    expect(restoreCall?.[1]).toEqual([SUB_ID, RESTORE_AT, USER_ID]);
   });
 
   test('restores next_charge_at without cleanup when no payment row id', async () => {
@@ -90,7 +103,7 @@ describe('rollbackRenewalChargeAttempt', () => {
       restoreNextChargeAt: RESTORE_AT,
     });
 
-    expect(mockedCleanup).not.toHaveBeenCalled();
+    expect(mockedCleanupWithClient).not.toHaveBeenCalled();
     expect(mockedQuery).toHaveBeenCalledTimes(1);
   });
 });
@@ -108,7 +121,7 @@ describe('reconcileOrphanPendingRenewalsBeforeChargeSelection', () => {
     await reconcileOrphanPendingRenewalsBeforeChargeSelection(now);
 
     const dueListSql = String(mockedQuery.mock.calls[0]?.[0]);
-    expect(dueListSql).not.toContain('NOT EXISTS');
+    expect(dueListSql).not.toContain('subscription_payments');
     expect(mockedCancelOrphans).toHaveBeenCalledWith(userId);
   });
 });
@@ -129,8 +142,8 @@ describe('runRenewalCycle orphan reconcile ordering', () => {
 
     const dueListSql = String(mockedQuery.mock.calls[1]?.[0]);
     const readyListSql = String(mockedQuery.mock.calls[3]?.[0]);
-    expect(dueListSql).not.toContain('NOT EXISTS');
-    expect(readyListSql).toContain('NOT EXISTS');
+    expect(dueListSql).not.toContain('subscription_payments');
+    expect(readyListSql).toContain('subscription_payments');
     expect(mockedCancelOrphans).toHaveBeenCalledWith(userId);
   });
 });
@@ -155,7 +168,7 @@ describe('previewRenewalCycle', () => {
       expect(String(sql).trim()).toMatch(/^SELECT/i);
     }
     expect(mockedCancelOrphans).not.toHaveBeenCalled();
-    expect(mockedCleanup).not.toHaveBeenCalled();
+    expect(mockedCleanupWithClient).not.toHaveBeenCalled();
   });
 });
 
@@ -171,5 +184,20 @@ describe('listChargeReadySubscriptionIds billing_origin filter', () => {
       mockedQuery.mock.calls.find((c) => String(c[0]).includes('NOT EXISTS'))?.[0]
     );
     expect(readyListSql).toContain("billing_origin = 'dev'");
+    expect(readyListSql).not.toContain('@pr10-e2e.test');
+  });
+
+  test('excludes PR-10 e2e users on production runtime', async () => {
+    delete process.env.DEV_PAYMENT_MODE;
+    process.env.NODE_ENV = 'production';
+    process.env.CONTEXT = 'production';
+
+    await listChargeReadySubscriptionIds(new Date());
+
+    const readyListSql = String(
+      mockedQuery.mock.calls.find((c) => String(c[0]).includes('subscription_payments'))?.[0]
+    );
+    expect(readyListSql).toContain('@pr10-e2e.test');
+    expect(readyListSql).toContain("billing_origin = 'production'");
   });
 });

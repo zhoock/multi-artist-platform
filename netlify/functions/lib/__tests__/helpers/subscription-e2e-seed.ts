@@ -5,6 +5,7 @@
 
 import { query } from '../../db';
 import { mapSubscriptionRow, type Subscription, type SubscriptionRow } from '../../subscriptions';
+import { PR10_E2E_EMAIL_DOMAIN } from '../../subscription-pr10-e2e-constants';
 import {
   defaultSeedSubscriptionParams,
   TEST_USER_ARTIST_A,
@@ -37,7 +38,7 @@ export async function seedTestUser(
   options?: { name?: string; publicSlug?: string }
 ): Promise<void> {
   resolveE2eDatabaseUrl();
-  const safeEmail = email ?? `${userId.slice(0, 8)}@pr10-e2e.test`;
+  const safeEmail = email ?? `${userId.slice(0, 8)}${PR10_E2E_EMAIL_DOMAIN}`;
   const name = options?.name ?? 'PR-10 E2E User';
   const publicSlug = options?.publicSlug ?? `pr10-${userId.replace(/-/g, '')}`;
   await query(
@@ -49,7 +50,7 @@ export async function seedTestUser(
 }
 
 export async function seedDefaultE2eUsers(): Promise<void> {
-  await seedTestUser(TEST_USER_SUBSCRIBER, 'subscriber@pr10-e2e.test');
+  await seedTestUser(TEST_USER_SUBSCRIBER, `subscriber${PR10_E2E_EMAIL_DOMAIN}`);
   await seedTestUser(TEST_USER_ARTIST_A, 'artist-a@pr10-e2e.test');
 }
 

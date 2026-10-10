@@ -61,6 +61,27 @@ describe('billing_origin dev/production isolation @p0', () => {
     expect(readyIds).toEqual([]);
   });
 
+  test('PR-10 e2e user is invisible to production renewal scheduler even with billing_origin production', async () => {
+    if (!isE2eDatabaseConfigured()) return;
+
+    const dueAt = new Date(Date.now() - 60_000);
+    const seeded = await seedSubscription({
+      userId: TEST_USER_SUBSCRIBER,
+      billingOrigin: 'production',
+      paymentMethodId: 'pm-prod',
+      nextChargeAt: dueAt,
+      expiresAt: new Date(Date.now() + SUPPORT_PERIOD_MS),
+    });
+
+    delete process.env.DEV_PAYMENT_MODE;
+    process.env.NETLIFY_DEV = 'false';
+    process.env.NODE_ENV = 'production';
+    process.env.CONTEXT = 'production';
+
+    const readyIds = await listChargeReadySubscriptionIds(new Date());
+    expect(readyIds).not.toContain(seeded.id);
+  });
+
   test('dev runtime router skips production subscription renewal fulfillment', async () => {
     if (!isE2eDatabaseConfigured()) return;
 

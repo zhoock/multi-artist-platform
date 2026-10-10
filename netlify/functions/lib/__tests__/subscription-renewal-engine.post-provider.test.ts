@@ -5,9 +5,14 @@
 import { beforeEach, describe, expect, jest, test } from '@jest/globals';
 import type { QueryResult } from 'pg';
 
+const clientQuery = jest.fn<(...args: unknown[]) => Promise<QueryResult>>();
+
 jest.mock('../db', () => ({
   query: jest.fn(),
   isMissingRelationError: jest.fn(() => false),
+  withTransaction: jest.fn((fn: (client: { query: typeof clientQuery }) => Promise<unknown>) =>
+    fn({ query: clientQuery })
+  ),
 }));
 
 jest.mock('../subscription-feature-flag', () => ({
@@ -30,6 +35,7 @@ jest.mock('../subscription-billing', () => ({
   attachProviderPaymentId: jest.fn(),
   cancelOrphanPendingRenewalPayments: jest.fn(),
   cleanupPendingRenewalPayment: jest.fn(),
+  cleanupPendingRenewalPaymentWithClient: jest.fn(),
   createPendingSubscriptionPayment: jest.fn(),
   getPlanAmountRub: jest.fn(() => 1),
   getPlanDefinition: jest.fn(() => ({ description: 'test' })),
@@ -52,6 +58,7 @@ import {
   attachProviderPaymentId,
   cancelOrphanPendingRenewalPayments,
   cleanupPendingRenewalPayment,
+  cleanupPendingRenewalPaymentWithClient,
   createPendingSubscriptionPayment,
 } from '../subscription-billing';
 import { processSubscriptionProviderPayment } from '../subscription-payment-router';
@@ -70,6 +77,9 @@ const mockedAttachProvider = attachProviderPaymentId as jest.MockedFunction<
 >;
 const mockedCleanup = cleanupPendingRenewalPayment as jest.MockedFunction<
   typeof cleanupPendingRenewalPayment
+>;
+const mockedCleanupWithClient = cleanupPendingRenewalPaymentWithClient as jest.MockedFunction<
+  typeof cleanupPendingRenewalPaymentWithClient
 >;
 const mockedCancelOrphan = cancelOrphanPendingRenewalPayments as jest.MockedFunction<
   typeof cancelOrphanPendingRenewalPayments
@@ -151,6 +161,8 @@ beforeEach(() => {
   mockedAttachDev.mockResolvedValue({ paymentId: PROVIDER_PAYMENT_ID });
   mockedAttachProvider.mockResolvedValue(undefined);
   mockedCleanup.mockResolvedValue(undefined);
+  mockedCleanupWithClient.mockResolvedValue(undefined);
+  clientQuery.mockResolvedValue(fakeQueryResult());
   mockedCancelOrphan.mockResolvedValue(undefined);
   mockedMapDev.mockReturnValue({
     id: PROVIDER_PAYMENT_ID,
@@ -310,6 +322,111 @@ describe('attemptRenewalChargeForSubscription production POST inline sync', () =
 });
 
 describe('attemptRenewalChargeForSubscription PRE_PROVIDER (PR-10.1)', () => {
+  const originalFetch = global.fetch;
+
+  afterEach(() => {
+    global.fetch = originalFetch;
+  });
+
+  test('quarantines stub PM and skips when YooKassa reports payment_method not saved', async () => {
+    mockedDevMode.mockReturnValue(false);
+    mockedCreatePending.mockResolvedValue(PAYMENT_ROW_ID);
+    mockedQuery.mockImplementation(async (text) => {
+      const sql = String(text);
+      if (sql.includes('WITH candidate AS')) {
+        return fakeQueryResult([claimRow()]);
+      }
+      if (sql.includes('SELECT email FROM users')) {
+        return fakeQueryResult([{ email: 'renewal@test.example' }]);
+      }
+      return fakeQueryResult();
+    });
+    clientQuery.mockImplementation(async (text) => {
+      const sql = String(text);
+      if (sql.includes('payment_method_id = $3') && sql.includes('RETURNING id')) {
+        return fakeQueryResult([{ id: SUB_ID }]);
+      }
+      return fakeQueryResult();
+    });
+
+    global.fetch = jest.fn<typeof fetch>().mockResolvedValue({
+      ok: false,
+      status: 400,
+      text: async () =>
+        JSON.stringify({
+          description: 'This payment_method is not saved. Specify it with the saved=true value',
+          parameter: 'payment_method_id',
+        }),
+    } as Response);
+
+    const outcome = await attemptRenewalChargeForSubscription(
+      SUB_ID,
+      new Date('2026-08-05T12:00:00.000Z')
+    );
+
+    expect(outcome).toBe('skipped');
+    expect(mockedCleanupWithClient).toHaveBeenCalledWith(
+      expect.objectContaining({ query: clientQuery }),
+      PAYMENT_ROW_ID,
+      USER_ID
+    );
+    expect(mockedCleanup).not.toHaveBeenCalled();
+    const quarantineSql = clientQuery.mock.calls.find(([sql]) =>
+      String(sql).includes('payment_method_id = NULL')
+    );
+    expect(quarantineSql?.[1]).toEqual([SUB_ID, USER_ID, 'pm-test']);
+    expect(
+      clientQuery.mock.calls.filter(([sql]) => String(sql).includes('next_charge_at = $2'))
+    ).toHaveLength(0);
+    expect(mockedAttachProvider).not.toHaveBeenCalled();
+  });
+
+  test('rolls back generic YooKassa 400 without quarantining payment_method_id', async () => {
+    mockedDevMode.mockReturnValue(false);
+    mockedCreatePending.mockResolvedValue(PAYMENT_ROW_ID);
+    mockedQuery.mockImplementation(async (text) => {
+      const sql = String(text);
+      if (sql.includes('WITH candidate AS')) {
+        return fakeQueryResult([claimRow()]);
+      }
+      if (sql.includes('SELECT email FROM users')) {
+        return fakeQueryResult([{ email: 'renewal@test.example' }]);
+      }
+      return fakeQueryResult();
+    });
+
+    global.fetch = jest.fn<typeof fetch>().mockResolvedValue({
+      ok: false,
+      status: 400,
+      text: async () => JSON.stringify({ description: 'invalid_request' }),
+    } as Response);
+
+    const outcome = await attemptRenewalChargeForSubscription(
+      SUB_ID,
+      new Date('2026-08-05T12:00:00.000Z')
+    );
+
+    expect(outcome).toBe('error');
+    expect(mockedCleanupWithClient).toHaveBeenCalledWith(
+      expect.objectContaining({ query: clientQuery }),
+      PAYMENT_ROW_ID,
+      USER_ID
+    );
+    expect(mockedCleanup).not.toHaveBeenCalled();
+    expect(mockedAttachProvider).not.toHaveBeenCalled();
+
+    const quarantineSql = clientQuery.mock.calls.find(([sql]) =>
+      String(sql).includes('payment_method_id = NULL')
+    );
+    expect(quarantineSql).toBeUndefined();
+
+    const restoreCalls = clientQuery.mock.calls.filter(([sql]) =>
+      String(sql).includes('next_charge_at = $2')
+    );
+    expect(restoreCalls).toHaveLength(1);
+    expect(restoreCalls[0]?.[1]).toEqual([SUB_ID, PREVIOUS_NEXT_CHARGE, USER_ID]);
+  });
+
   test('rolls back when createPendingSubscriptionPayment fails', async () => {
     mockedCreatePending.mockRejectedValue(new Error('insert failed'));
 

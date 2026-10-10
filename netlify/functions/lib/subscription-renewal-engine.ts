@@ -4,12 +4,14 @@
 
 import { attachDevSucceededSubscriptionCheckout } from './complete-dev-payment';
 import { isDevPaymentModeEnabled } from './dev-payment-mode';
-import { query } from './db';
+import { query, withTransaction } from './db';
 import { sqlBillingOriginFilterForRuntime } from './subscription-billing-origin';
+import { sqlExcludePr10E2eIntegrationUsersFilter } from './subscription-renewal-scheduler-eligibility';
+import { isYooKassaPaymentMethodNotSavedError } from './yookassa-renewal-create-errors';
 import {
   attachProviderPaymentId,
   cancelOrphanPendingRenewalPayments,
-  cleanupPendingRenewalPayment,
+  cleanupPendingRenewalPaymentWithClient,
   createPendingSubscriptionPayment,
   getPlanAmountRub,
   getPlanDefinition,
@@ -70,6 +72,8 @@ interface YooKassaCreateResponse {
 export interface RenewalChargeClaimResult {
   row: SubscriptionRow;
   previousNextChargeAt: Date;
+  /** `next_charge_at` value written by this claim (claim lock). */
+  claimLockUntil: Date;
 }
 
 export interface RenewalCycleResult {
@@ -106,6 +110,7 @@ export async function claimSubscriptionForRenewalCharge(
            OR (next_charge_at IS NULL AND expires_at IS NOT NULL AND expires_at <= $2)
          )
          ${sqlBillingOriginFilterForRuntime()}
+         ${sqlExcludePr10E2eIntegrationUsersFilter()}
          ${CHARGE_READY_PENDING_RENEWAL_GUARD}
      )
      UPDATE subscriptions s
@@ -124,6 +129,7 @@ export async function claimSubscriptionForRenewalCharge(
   return {
     row: subscriptionRow,
     previousNextChargeAt: previous_next_charge_at,
+    claimLockUntil: lockUntil,
   };
 }
 
@@ -145,6 +151,7 @@ export async function listChargeDueSubscriptionIds(now: Date = new Date()): Prom
      FROM subscriptions
      WHERE ${CHARGE_DUE_ELIGIBILITY}
        ${sqlBillingOriginFilterForRuntime()}
+       ${sqlExcludePr10E2eIntegrationUsersFilter()}
      ORDER BY COALESCE(next_charge_at, expires_at) ASC
      LIMIT 100`,
     [now]
@@ -161,18 +168,18 @@ export async function reconcileOrphanPendingRenewalsBeforeChargeSelection(
   }
 }
 
-/** Restores scheduler eligibility after a failed charge attempt (PR-7.1). */
-export async function rollbackRenewalChargeAttempt(params: {
+type SubscriptionSqlRunner = (
+  text: string,
+  values?: unknown[]
+) => Promise<{ rows: { id?: string }[] }>;
+
+async function restoreSubscriptionNextChargeAt(params: {
   subscriptionId: string;
   userId: string;
   restoreNextChargeAt: Date;
-  subscriptionPaymentId?: string;
+  runQuery: SubscriptionSqlRunner;
 }): Promise<void> {
-  if (params.subscriptionPaymentId) {
-    await cleanupPendingRenewalPayment(params.subscriptionPaymentId, params.userId);
-  }
-
-  await query(
+  await params.runQuery(
     `UPDATE subscriptions
      SET next_charge_at = $2,
          updated_at = CURRENT_TIMESTAMP
@@ -182,12 +189,115 @@ export async function rollbackRenewalChargeAttempt(params: {
   );
 }
 
+async function restoreSubscriptionNextChargeAtIfClaimLockHeld(params: {
+  subscriptionId: string;
+  userId: string;
+  restoreNextChargeAt: Date;
+  claimLockUntil: Date;
+  runQuery: SubscriptionSqlRunner;
+}): Promise<boolean> {
+  const updated = await params.runQuery(
+    `UPDATE subscriptions
+     SET next_charge_at = $2,
+         updated_at = CURRENT_TIMESTAMP
+     WHERE id = $1::uuid
+       AND user_id = $3::uuid
+       AND next_charge_at = $4
+     RETURNING id`,
+    [params.subscriptionId, params.restoreNextChargeAt, params.userId, params.claimLockUntil]
+  );
+  return Boolean(updated.rows[0]?.id);
+}
+
+/** Restores scheduler eligibility after a failed charge attempt (PR-7.1). */
+export async function rollbackRenewalChargeAttempt(params: {
+  subscriptionId: string;
+  userId: string;
+  restoreNextChargeAt: Date;
+  subscriptionPaymentId?: string;
+}): Promise<void> {
+  if (params.subscriptionPaymentId) {
+    await withTransaction(async (client) => {
+      await cleanupPendingRenewalPaymentWithClient(
+        client,
+        params.subscriptionPaymentId!,
+        params.userId
+      );
+      await restoreSubscriptionNextChargeAt({
+        subscriptionId: params.subscriptionId,
+        userId: params.userId,
+        restoreNextChargeAt: params.restoreNextChargeAt,
+        runQuery: client.query.bind(client),
+      });
+    });
+    return;
+  }
+
+  await restoreSubscriptionNextChargeAt({
+    subscriptionId: params.subscriptionId,
+    userId: params.userId,
+    restoreNextChargeAt: params.restoreNextChargeAt,
+    runQuery: query,
+  });
+}
+
+export type PreProviderQuarantineResult =
+  | 'quarantined'
+  | 'payment_method_changed'
+  | 'payment_method_changed_next_charge_conflict';
+
+/** Atomically clears pending renewal and quarantines an invalid saved PM (PRE_PROVIDER). */
+export async function quarantinePreProviderInvalidRenewalPaymentMethod(params: {
+  subscriptionId: string;
+  userId: string;
+  attemptedPaymentMethodId: string;
+  subscriptionPaymentId: string;
+  restoreNextChargeAtIfPaymentMethodChanged: Date;
+  claimLockUntil: Date;
+}): Promise<PreProviderQuarantineResult> {
+  const attemptedPaymentMethodId = params.attemptedPaymentMethodId.trim();
+  return withTransaction(async (client) => {
+    await cleanupPendingRenewalPaymentWithClient(
+      client,
+      params.subscriptionPaymentId,
+      params.userId
+    );
+
+    const quarantined = await client.query<{ id: string }>(
+      `UPDATE subscriptions
+       SET payment_method_id = NULL,
+           payment_method_title = NULL,
+           next_charge_at = NULL,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $1::uuid
+         AND user_id = $2::uuid
+         AND payment_method_id = $3
+       RETURNING id`,
+      [params.subscriptionId, params.userId, attemptedPaymentMethodId]
+    );
+
+    if (quarantined.rows[0]?.id) {
+      return 'quarantined';
+    }
+
+    const restored = await restoreSubscriptionNextChargeAtIfClaimLockHeld({
+      subscriptionId: params.subscriptionId,
+      userId: params.userId,
+      restoreNextChargeAt: params.restoreNextChargeAtIfPaymentMethodChanged,
+      claimLockUntil: params.claimLockUntil,
+      runQuery: client.query.bind(client),
+    });
+    return restored ? 'payment_method_changed' : 'payment_method_changed_next_charge_conflict';
+  });
+}
+
 export async function listChargeReadySubscriptionIds(now: Date = new Date()): Promise<string[]> {
   const r = await query<{ id: string }>(
     `SELECT id
      FROM subscriptions
      WHERE ${CHARGE_DUE_ELIGIBILITY}
        ${sqlBillingOriginFilterForRuntime()}
+       ${sqlExcludePr10E2eIntegrationUsersFilter()}
        ${CHARGE_READY_PENDING_RENEWAL_GUARD}
      ORDER BY COALESCE(next_charge_at, expires_at) ASC
      LIMIT 100`,
@@ -490,6 +600,47 @@ export async function attemptRenewalChargeForSubscription(
     return 'attempted';
   } catch (error) {
     if (phase === 'PRE_PROVIDER') {
+      if (isYooKassaPaymentMethodNotSavedError(error)) {
+        if (subscriptionPaymentId) {
+          const quarantineOutcome = await quarantinePreProviderInvalidRenewalPaymentMethod({
+            subscriptionId: subscription.id,
+            userId: subscription.userId,
+            attemptedPaymentMethodId: paymentMethodId,
+            subscriptionPaymentId,
+            restoreNextChargeAtIfPaymentMethodChanged: claim.previousNextChargeAt,
+            claimLockUntil: claim.claimLockUntil,
+          });
+          if (quarantineOutcome === 'payment_method_changed_next_charge_conflict') {
+            logSubscriptionEvent(
+              SUBSCRIPTION_LOG_EVENTS.SCHEDULER_CHARGE,
+              {
+                subscriptionId: subscription.id,
+                subscriptionPaymentId,
+                outcome: 'skipped',
+                reason: 'renewal_next_charge_restore_skipped',
+                phase: 'PRE_PROVIDER',
+                claimLockUntil: claim.claimLockUntil.toISOString(),
+              },
+              'warn'
+            );
+          }
+        } else {
+          await rollbackPreProvider();
+        }
+        logSubscriptionEvent(
+          SUBSCRIPTION_LOG_EVENTS.SCHEDULER_CHARGE,
+          {
+            subscriptionId: subscription.id,
+            subscriptionPaymentId,
+            outcome: 'skipped',
+            reason: 'yookassa_payment_method_not_saved',
+            phase: 'PRE_PROVIDER',
+          },
+          'warn'
+        );
+        return 'skipped';
+      }
+
       logSubscriptionEvent(
         SUBSCRIPTION_LOG_EVENTS.SCHEDULER_ERROR,
         {
