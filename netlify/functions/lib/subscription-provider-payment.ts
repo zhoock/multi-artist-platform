@@ -54,12 +54,6 @@ export interface SubscriptionProviderPayment {
   test?: boolean;
 }
 
-export function isProviderTestPayment(
-  payment: Pick<SubscriptionProviderPayment, 'test'> | null | undefined
-): boolean {
-  return payment?.test === true;
-}
-
 function normalizeProviderStatus(status: string): SubscriptionProviderPaymentStatus | null {
   switch (status) {
     case 'pending':

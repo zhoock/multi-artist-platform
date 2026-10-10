@@ -38,7 +38,6 @@ export interface FulfillUpgradeSubscriptionPaymentParams {
   planSlug: SubscriptionPlanSlug;
   providerPaymentId: string;
   paymentMethodId?: string | null;
-  providerTestPayment?: boolean;
 }
 
 export interface ProcessUpgradeSubscriptionProviderPaymentResult {
@@ -120,9 +119,7 @@ export async function fulfillUpgradeSubscriptionPayment(
   }
 
   const now = new Date();
-  const expiresAt = computeSupportExpiresAt(params.planSlug, now, {
-    providerTestPayment: params.providerTestPayment === true,
-  });
+  const expiresAt = computeSupportExpiresAt(now);
   const slotsLimit = getPlanSlotsLimit(params.planSlug);
   const nextChargeAt = existing.paymentMethodId?.trim() ? expiresAt : null;
 
@@ -309,7 +306,6 @@ export async function processUpgradeSubscriptionProviderPayment(
       planSlug,
       providerPaymentId: payment.id,
       paymentMethodId,
-      providerTestPayment: payment.test === true,
     });
 
     return {

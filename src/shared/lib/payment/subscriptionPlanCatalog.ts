@@ -1,5 +1,5 @@
 /**
- * Single source of truth for Premium subscription plan catalog (slots, duration, price).
+ * Single source of truth for Premium subscription plan catalog (slots, price, display duration).
  *
  * Imported by:
  * - netlify/functions/lib/subscription-billing.ts (checkout + renewal amounts)
@@ -29,7 +29,10 @@ export interface SubscriptionPlanCatalogEntry {
   priceRubProduction: number;
 }
 
-/** Plan catalog — 30-day billing period display; dev support period length is server-only. */
+/**
+ * Plan catalog. `durationDays` is display copy only; the charged support period is
+ * SUPPORT_PERIOD_MS in netlify/functions/lib/subscription-billing.ts.
+ */
 export const SUBSCRIPTION_PLAN_CATALOG: Record<SubscriptionPlanSlug, SubscriptionPlanCatalogEntry> =
   {
     explorer: {
@@ -79,13 +82,6 @@ export function isSubscriptionPlanSlug(
 
 export function getPlanCatalogEntry(planSlug: SubscriptionPlanSlug): SubscriptionPlanCatalogEntry {
   return SUBSCRIPTION_PLAN_CATALOG[planSlug];
-}
-
-const MS_PER_DAY = 24 * 60 * 60 * 1000;
-
-/** Production support period length for a plan (from catalog durationDays). */
-export function getPlanSupportPeriodMs(planSlug: SubscriptionPlanSlug): number {
-  return getPlanCatalogEntry(planSlug).durationDays * MS_PER_DAY;
 }
 
 export function getPlanSlotsLimit(planSlug: SubscriptionPlanSlug): number {

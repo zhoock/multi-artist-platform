@@ -34,7 +34,7 @@ async function main(): Promise<void> {
   const {
     createPendingSubscriptionPayment,
     getSubscriptionPaymentByInternalId,
-    resolveSupportPeriodMs,
+    SUPPORT_PERIOD_MS,
   } = await import('../netlify/functions/lib/subscription-billing');
   const { mapDevSubscriptionPaymentToProviderPayment } = await import(
     '../netlify/functions/lib/subscription-provider-payment'
@@ -52,8 +52,8 @@ async function main(): Promise<void> {
   const { hasPremiumAccess } = await import('../netlify/functions/lib/subscription-access');
   const { isArchiveArtistLocked } = await import('../netlify/functions/lib/archive');
 
-  const periodMs = resolveSupportPeriodMs('explorer');
-  console.log(`Support period (dev): ${Math.round(periodMs / 1000)}s`);
+  const periodMs = SUPPORT_PERIOD_MS;
+  console.log(`Support period: ${Math.round(periodMs / 1000)}s`);
 
   await query(
     `INSERT INTO users (id, email, password_hash, name, genre_code, public_slug, is_active, is_email_verified, account_type)

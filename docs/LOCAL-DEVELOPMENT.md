@@ -111,7 +111,7 @@ Netlify Scheduled Functions **не** запускаются под `netlify dev`
 
 1. Sidecar раз в `LOCAL_RENEWAL_SCHEDULER_INTERVAL_MS` (по умолчанию **60 с**) отправляет `POST` на `/.netlify/functions/scheduled-subscription-renewals` с телом `{ "next_run": "<ISO-8601>" }` — тот же формат, что у Netlify cron.
 2. Выполняется **production handler** → `runRenewalCycle()` → существующий renewal engine. Отдельной dev-логики продления нет.
-3. В dev/test при `DEV_PAYMENT_MODE=true` период поддержки — **5 минут** (`DEV_SUPPORT_PERIOD_MS` в `subscription-billing.ts`). Production использует `durationDays` из plan catalog (30 дней). После истечения `next_charge_at` продление срабатывает в течение ~1 минуты без ручных команд.
+3. Период поддержки задаёт одна константа `SUPPORT_PERIOD_MS` в `subscription-billing.ts`. На время тестирования сайта — **5 минут** во всех окружениях (на запуске — 30 дней). После истечения `next_charge_at` продление срабатывает в течение ~1 минуты без ручных команд.
 
 **Обязательно для auto-renew локально**
 

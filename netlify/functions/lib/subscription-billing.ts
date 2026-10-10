@@ -9,7 +9,6 @@ import {
   getPlanAmountRub,
   getPlanPriceCurrencyCode,
   getPlanSlotsLimit,
-  getPlanSupportPeriodMs,
   isSubscriptionPlanCurrency,
   isSubscriptionPlanSlug,
   normalizeSubscriptionPlanSlug,
@@ -23,7 +22,6 @@ import {
   type SubscriptionPlanSlug,
 } from '../../../src/shared/lib/payment/subscriptionPlanCatalog';
 
-import { isDevPaymentModeEnabled } from './dev-payment-mode';
 import { isMissingRelationError, query } from './db';
 import { resolveBillingOriginForNewSubscription } from './subscription-billing-origin';
 import type { Subscription } from './subscriptions';
@@ -36,7 +34,6 @@ export {
   getPlanAmountRub,
   getPlanPriceCurrencyCode,
   getPlanSlotsLimit,
-  getPlanSupportPeriodMs,
   isSubscriptionPlanSlug,
   normalizeSubscriptionPlanSlug,
   PLAN_TIER_ORDER,
@@ -49,11 +46,11 @@ export {
 
 export const PREMIUM_SUBSCRIPTION_PRODUCT_TYPE = 'premium_subscription';
 
-/** Short support period for DEV_PAYMENT_MODE QA cycles (checkout, renewal, upgrade, resubscribe). */
-export const DEV_SUPPORT_PERIOD_MS = 5 * 60 * 1000;
-
-/** @deprecated Alias for DEV_SUPPORT_PERIOD_MS — use resolveSupportPeriodMs(planSlug) in new code. */
-export const SUPPORT_PERIOD_MS = DEV_SUPPORT_PERIOD_MS;
+/**
+ * Support period for every initial, renewed, and upgraded subscription.
+ * TEMP (site testing): 5 minutes. Set to 30 * 24 * 60 * 60 * 1000 for launch.
+ */
+export const SUPPORT_PERIOD_MS = 5 * 60 * 1000;
 
 const PLAN_DESCRIPTIONS: Record<SubscriptionPlanSlug, string> = {
   explorer: 'Explorer Support',
@@ -83,110 +80,8 @@ export function getRebindAmountRub(): number {
 
 export const REBIND_PAYMENT_DESCRIPTION = 'Payment method verification';
 
-/** True when checkout/renewal should use the short QA support window instead of catalog durationDays. */
-export function usesDevSupportPeriod(): boolean {
-  return isDevPaymentModeEnabled();
-}
-
-export function resolveSupportPeriodMs(
-  planSlug: SubscriptionPlanSlug,
-  options?: { providerTestPayment?: boolean }
-): number {
-  if (options?.providerTestPayment === true || usesDevSupportPeriod()) {
-    return DEV_SUPPORT_PERIOD_MS;
-  }
-  return getPlanSupportPeriodMs(planSlug);
-}
-
-export function computeSupportExpiresAt(
-  planSlug: SubscriptionPlanSlug,
-  from: Date = new Date(),
-  options?: { providerTestPayment?: boolean }
-): Date {
-  const expiresAt = new Date(from);
-  expiresAt.setTime(expiresAt.getTime() + resolveSupportPeriodMs(planSlug, options));
-  return expiresAt;
-}
-
-export interface DevResubscribePeriodRepairInput {
-  subscriptionId: string;
-  plan: string;
-  status: string;
-  billingOrigin: string | null;
-  startedAt: Date;
-  expiresAt: Date;
-  nextChargeAt: Date | null;
-  providerSubscriptionId: string | null;
-}
-
-export interface DevResubscribePeriodRepairTarget {
-  subscriptionId: string;
-  plan: string;
-  providerSubscriptionId: string;
-  startedAt: Date;
-  /** The catalog-length expiry that was written instead of the 5-minute window. */
-  appliedExpiresAt: Date;
-  appliedNextChargeAt: Date;
-}
-
-export type DevResubscribePeriodRepairPlan =
-  | {
-      action: 'repair';
-      expiresAt: Date;
-      nextChargeAt: Date;
-      billingOrigin: 'dev';
-      /** Past window must not stay chargeable for the dev renewal scheduler. */
-      status: 'active' | 'expired';
-    }
-  | { action: 'already_correct' }
-  | { action: 'reject'; reason: string };
-
-/** Pure guard for repairing one known dev-origin resubscribe that received the catalog period. */
-export function planDevResubscribePeriodRepair(
-  row: DevResubscribePeriodRepairInput,
-  target: DevResubscribePeriodRepairTarget,
-  now: Date = new Date()
-): DevResubscribePeriodRepairPlan {
-  if (row.subscriptionId !== target.subscriptionId) {
-    return { action: 'reject', reason: 'subscription_id' };
-  }
-  if (row.plan !== target.plan) return { action: 'reject', reason: 'plan' };
-  if (row.providerSubscriptionId !== target.providerSubscriptionId) {
-    return { action: 'reject', reason: 'provider_payment' };
-  }
-  if (row.startedAt.getTime() !== target.startedAt.getTime()) {
-    return { action: 'reject', reason: 'started_at' };
-  }
-  if (row.status !== 'active' && row.status !== 'expired') {
-    return { action: 'reject', reason: 'status' };
-  }
-
-  const correctExpires = new Date(row.startedAt.getTime() + DEV_SUPPORT_PERIOD_MS);
-  const correctStatus = correctExpires.getTime() <= now.getTime() ? 'expired' : 'active';
-  const alreadyCorrect =
-    row.expiresAt.getTime() === correctExpires.getTime() &&
-    row.nextChargeAt?.getTime() === correctExpires.getTime() &&
-    row.billingOrigin === 'dev' &&
-    row.status === correctStatus;
-  if (alreadyCorrect) return { action: 'already_correct' };
-
-  if (row.expiresAt.getTime() !== target.appliedExpiresAt.getTime()) {
-    return { action: 'reject', reason: 'expires_at_unexpected' };
-  }
-  if (row.nextChargeAt?.getTime() !== target.appliedNextChargeAt.getTime()) {
-    return { action: 'reject', reason: 'next_charge_at_unexpected' };
-  }
-  if (row.billingOrigin !== 'production') {
-    return { action: 'reject', reason: 'billing_origin_unexpected' };
-  }
-
-  return {
-    action: 'repair',
-    expiresAt: correctExpires,
-    nextChargeAt: correctExpires,
-    billingOrigin: 'dev',
-    status: correctStatus,
-  };
+export function computeSupportExpiresAt(from: Date = new Date()): Date {
+  return new Date(from.getTime() + SUPPORT_PERIOD_MS);
 }
 
 export type SubscriptionPaymentValidationResult =
@@ -692,9 +587,8 @@ export async function fulfillSubscriptionPayment(params: {
   userId: string;
   planSlug: SubscriptionPlanSlug;
   providerPaymentId?: string | null;
-  providerTestPayment?: boolean;
 }): Promise<Subscription> {
-  const { userId, planSlug, providerPaymentId, providerTestPayment } = params;
+  const { userId, planSlug, providerPaymentId } = params;
   const plan = getPlanDefinition(planSlug);
   const slotsLimit = plan.slotsLimit;
 
@@ -709,12 +603,11 @@ export async function fulfillSubscriptionPayment(params: {
   );
 
   const now = new Date();
+  const expiresAt = computeSupportExpiresAt(now);
   const providerId = providerPaymentId?.trim() || null;
-  const row = existing.rows[0];
-  const expiresAt = computeSupportExpiresAt(planSlug, now, {
-    providerTestPayment: providerTestPayment === true,
-  });
   const billingOrigin = resolveBillingOriginForNewSubscription();
+
+  const row = existing.rows[0];
 
   if (row) {
     const canReuse =

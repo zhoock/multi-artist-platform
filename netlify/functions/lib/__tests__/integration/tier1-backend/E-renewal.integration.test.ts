@@ -460,7 +460,7 @@ describe('Group E — Renewal @tier1', () => {
       const outcome = await attemptRenewalChargeForSubscription(sub.id, time.now());
       expect(outcome).toBe('attempted');
 
-      const expectedExpiresAt = computeSupportExpiresAt('explorer', expectedRetryAt);
+      const expectedExpiresAt = computeSupportExpiresAt(expectedRetryAt);
       subscription = await loadSubscriptionForUser(ctx.userId);
       await expectSubscriptionState(
         subscription,
@@ -1000,7 +1000,7 @@ describe('Group E — Renewal @tier1', () => {
       const outcome = await attemptRenewalChargeForSubscription(sub.id, E2E_TIME_ANCHOR);
       expect(outcome).toBe('attempted');
 
-      const expectedExpiresAt = computeSupportExpiresAt('collector', E2E_TIME_ANCHOR);
+      const expectedExpiresAt = computeSupportExpiresAt(E2E_TIME_ANCHOR);
       subscription = await loadSubscriptionForUser(ctx.userId);
       await expectSubscriptionState(
         subscription,
@@ -1122,7 +1122,7 @@ describe('Group E — Renewal @tier1', () => {
       expect(firstWebhook.alreadyFulfilled).toBe(false);
 
       let subscription = await loadSubscriptionForUser(ctx.userId);
-      const expectedExpiresAt = computeSupportExpiresAt('explorer', E2E_TIME_ANCHOR);
+      const expectedExpiresAt = computeSupportExpiresAt(E2E_TIME_ANCHOR);
       await expectSubscriptionState(
         subscription,
         {
@@ -1272,7 +1272,7 @@ describe('Group E — Renewal @tier1', () => {
       expect(freshFulfillment).toHaveLength(1);
       expect(idempotentOutcome).toHaveLength(1);
 
-      const expectedExpiresAt = computeSupportExpiresAt('explorer', E2E_TIME_ANCHOR);
+      const expectedExpiresAt = computeSupportExpiresAt(E2E_TIME_ANCHOR);
       let subscription = await loadSubscriptionForUser(ctx.userId);
       await expectSubscriptionState(
         subscription,
@@ -1577,7 +1577,7 @@ describe('Group E — Renewal @tier1', () => {
       const outcome = await attemptRenewalChargeForSubscription(sub.id, expectedRetryAt);
       expect(outcome).toBe('attempted');
 
-      const expectedExpiresAt = computeSupportExpiresAt('explorer', expectedRetryAt);
+      const expectedExpiresAt = computeSupportExpiresAt(expectedRetryAt);
       subscription = await loadSubscriptionForUser(ctx.userId);
       await expectSubscriptionState(
         subscription,

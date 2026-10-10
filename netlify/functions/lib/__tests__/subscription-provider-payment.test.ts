@@ -44,6 +44,7 @@ describe('mapYooKassaPaymentToProviderPayment', () => {
       },
       paymentMethod: { id: 'pm-1', saved: true, title: null },
       confirmationUrl: 'https://pay.example/confirm',
+      test: false,
     });
   });
 

@@ -11,7 +11,6 @@ import {
   cancelOrphanPendingRenewalPayments,
   cleanupPendingRenewalPayment,
   createPendingSubscriptionPayment,
-  DEV_SUPPORT_PERIOD_MS,
   getPlanAmountRub,
   getPlanDefinition,
   getPlanPriceCurrencyCode,
@@ -35,11 +34,12 @@ import { mapSubscriptionRow, type SubscriptionRow } from './subscriptions';
 import { getYooKassaEnvCredentials } from './yookassa-env';
 
 const PRODUCTION_RENEWAL_CLAIM_LOCK_MS = 30 * 60 * 1000;
+const DEV_RENEWAL_CLAIM_LOCK_MS = 10 * 60 * 1000;
 
-/** Dev QA periods are 5 min — a 30 min claim lock blocks retries for most of a test cycle. */
+/** Local dev scheduler ticks every minute — a 30 min claim lock blocks retries for most of a QA session. */
 export function resolveRenewalClaimLockMs(now: Date = new Date()): number {
   if (isDevPaymentModeEnabled()) {
-    return Math.max(DEV_SUPPORT_PERIOD_MS * 2, 2 * 60 * 1000);
+    return DEV_RENEWAL_CLAIM_LOCK_MS;
   }
   void now;
   return PRODUCTION_RENEWAL_CLAIM_LOCK_MS;

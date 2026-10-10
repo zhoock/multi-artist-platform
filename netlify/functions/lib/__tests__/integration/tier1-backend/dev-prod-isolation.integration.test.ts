@@ -5,7 +5,7 @@
 import { describe, expect, test } from '@jest/globals';
 
 import { query } from '../../../db';
-import { DEV_SUPPORT_PERIOD_MS } from '../../../subscription-billing';
+import { SUPPORT_PERIOD_MS } from '../../../subscription-billing';
 import { checkBillingMutationAllowed } from '../../../subscription-billing-origin';
 import { processSubscriptionProviderPaymentForRow } from '../../../subscription-payment-router';
 import { mapDevSubscriptionPaymentToProviderPayment } from '../../../subscription-provider-payment';
@@ -50,7 +50,7 @@ describe('billing_origin dev/production isolation @p0', () => {
       billingOrigin: 'dev',
       paymentMethodId: 'pm-dev-1',
       nextChargeAt: dueAt,
-      expiresAt: new Date(Date.now() + DEV_SUPPORT_PERIOD_MS),
+      expiresAt: new Date(Date.now() + SUPPORT_PERIOD_MS),
     });
 
     delete process.env.DEV_PAYMENT_MODE;
@@ -109,7 +109,7 @@ describe('billing_origin dev/production isolation @p0', () => {
   test('production runtime router skips dev subscription poll fulfillment', async () => {
     if (!isE2eDatabaseConfigured()) return;
 
-    const expiresAt = new Date(Date.now() + DEV_SUPPORT_PERIOD_MS);
+    const expiresAt = new Date(Date.now() + SUPPORT_PERIOD_MS);
     await seedSubscription({
       userId: TEST_USER_SUBSCRIBER,
       billingOrigin: 'dev',

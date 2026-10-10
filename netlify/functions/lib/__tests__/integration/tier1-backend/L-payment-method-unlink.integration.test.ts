@@ -639,7 +639,7 @@ describe('Group L — Payment method unlink @tier1', () => {
       expect(unlinked?.paymentMethodId).toBeNull();
       expect(unlinked?.nextChargeAt).toBeNull();
 
-      const expectedExpiresAt = computeSupportExpiresAt('explorer', now);
+      const expectedExpiresAt = computeSupportExpiresAt(now);
 
       const first = await processRenewalSubscriptionProviderPayment(providerPayment, ctx.userId, {
         now,

@@ -154,7 +154,7 @@ describe('Group E — orphan pending & next_charge_at @tier1', () => {
         providerPaymentId: 'pay-active-extend',
       });
 
-      const expectedExpires = computeSupportExpiresAt('explorer', E2E_TIME_ANCHOR);
+      const expectedExpires = computeSupportExpiresAt(E2E_TIME_ANCHOR);
       expect(updated.expiresAt?.getTime()).toBe(expectedExpires.getTime());
 
       const subscription = await loadSubscriptionForUser(ctx.userId);

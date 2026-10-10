@@ -5,7 +5,6 @@ import {
   getPlanAmountRub,
   getPlanPriceCurrencyCode,
   getPlanPriceCurrencyDisplay,
-  getPlanSupportPeriodMs,
   PLAN_CATALOG,
   SUBSCRIPTION_PLAN_CATALOG,
   SUBSCRIPTION_PLAN_PRICE_CURRENCY,
@@ -14,12 +13,11 @@ import {
 } from '../subscriptionPlanCatalog';
 
 describe('subscriptionPlanCatalog', () => {
-  test('defines shared slot limits and 30-day billing period', () => {
+  test('defines shared slot limits and 30-day display period', () => {
     expect(PLAN_CATALOG.explorer.slotsLimit).toBe(20);
     expect(PLAN_CATALOG.collector.slotsLimit).toBe(60);
     expect(PLAN_CATALOG.archivist.slotsLimit).toBe(100);
     expect(PLAN_CATALOG.explorer.durationDays).toBe(30);
-    expect(getPlanSupportPeriodMs('explorer')).toBe(30 * 24 * 60 * 60 * 1000);
   });
 
   test('uses single billing QA price for all plans', () => {
