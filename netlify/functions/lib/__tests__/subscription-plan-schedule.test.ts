@@ -2,7 +2,7 @@
  * Unit tests for subscription-plan-schedule (PR-6).
  */
 
-import { beforeEach, describe, expect, jest, test } from '@jest/globals';
+import { afterEach, beforeEach, describe, expect, jest, test } from '@jest/globals';
 import type { QueryResult } from 'pg';
 
 jest.mock('../db', () => ({
@@ -39,6 +39,8 @@ const mockedFlag = isSubscriptionAutoRenewEnabled as jest.MockedFunction<
 
 const USER_ID = 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee';
 const SUB_ID = 'bbbbbbbb-bbbb-4ccc-8ddd-eeeeeeeeeeee';
+/** Wall-clock–stable anchor: premium access checks use real time (see subscription-access.test). */
+const NOW = new Date('2026-08-05T12:00:00.000Z');
 const EXPIRES = new Date('2026-09-03T00:00:00.000Z');
 
 function fakeQueryResult(
@@ -93,8 +95,14 @@ function subscriptionRowFrom(sub: Subscription) {
 
 describe('scheduleSubscriptionDowngrade', () => {
   beforeEach(() => {
+    jest.useFakeTimers();
+    jest.setSystemTime(NOW);
     jest.clearAllMocks();
     mockedFlag.mockReturnValue(true);
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
   });
 
   test('sets scheduled_plan for lower tier', async () => {

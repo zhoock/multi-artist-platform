@@ -10,10 +10,15 @@ jest.mock('../db', () => ({
   isMissingRelationError: jest.fn(() => false),
 }));
 
+jest.mock('../subscription-billing', () => ({
+  cancelOrphanPendingRenewalPayments: jest.fn(() => Promise.resolve()),
+}));
+
 jest.mock('../subscription-feature-flag', () => ({
   isSubscriptionAutoRenewEnabled: jest.fn(() => true),
 }));
 
+import { cancelOrphanPendingRenewalPayments } from '../subscription-billing';
 import { withTransaction } from '../db';
 import { isSubscriptionAutoRenewEnabled } from '../subscription-feature-flag';
 import {
@@ -22,6 +27,9 @@ import {
 } from '../subscription-payment-method-unlink';
 
 const mockedWithTransaction = withTransaction as jest.MockedFunction<typeof withTransaction>;
+const mockedCancelOrphans = cancelOrphanPendingRenewalPayments as jest.MockedFunction<
+  typeof cancelOrphanPendingRenewalPayments
+>;
 const mockedFlag = isSubscriptionAutoRenewEnabled as jest.MockedFunction<
   typeof isSubscriptionAutoRenewEnabled
 >;
@@ -100,6 +108,7 @@ describe('unlinkSubscriptionPaymentMethod', () => {
 
     expect(String(clientQuery.mock.calls[1]?.[0])).toContain('payment_method_id = NULL');
     expect(clientQuery.mock.calls[1]?.[1]).toEqual([SUB_ID, 'cancel_at_period_end', USER_ID]);
+    expect(mockedCancelOrphans).toHaveBeenCalledWith(USER_ID);
   });
 
   test('past_due + PM → clears PM without changing status', async () => {
@@ -131,6 +140,7 @@ describe('unlinkSubscriptionPaymentMethod', () => {
     expect(result.subscription.status).toBe('past_due');
     expect(result.subscription.paymentMethodId).toBeNull();
     expect(clientQuery.mock.calls[1]?.[1]).toEqual([SUB_ID, 'past_due', USER_ID]);
+    expect(mockedCancelOrphans).toHaveBeenCalledWith(USER_ID);
   });
 
   test('idempotent when PM already absent', async () => {
@@ -149,6 +159,7 @@ describe('unlinkSubscriptionPaymentMethod', () => {
 
     expect(result.unlinked).toBe(false);
     expect(clientQuery).toHaveBeenCalledTimes(1);
+    expect(mockedCancelOrphans).not.toHaveBeenCalled();
   });
 
   test('no subscription → NO_SUBSCRIPTION', async () => {
