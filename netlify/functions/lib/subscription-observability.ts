@@ -44,6 +44,8 @@ export const SUBSCRIPTION_LOG_EVENTS = {
   POLL_ERROR: 'subscription.poll.error',
   SCHEDULER_CYCLE: 'subscription.scheduler.cycle',
   SCHEDULER_UNAUTHORIZED: 'subscription.scheduler.unauthorized',
+  SCHEDULER_DRY_RUN: 'subscription.scheduler.dry_run',
+  SCHEDULER_MODE_BLOCKED: 'subscription.scheduler.mode_blocked',
   SCHEDULER_CHARGE: 'subscription.scheduler.charge',
   SCHEDULER_ERROR: 'subscription.scheduler.error',
 } as const;

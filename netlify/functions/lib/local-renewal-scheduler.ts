@@ -5,6 +5,11 @@
 
 import crypto from 'node:crypto';
 
+import {
+  getLocalDatabaseBlockReason,
+  isLocalDatabaseHost,
+  resolveDatabaseUrlHost,
+} from './local-database-guard';
 import { isSubscriptionAutoRenewEnabled } from './subscription-feature-flag';
 import type { RenewalCycleResult } from './subscription-renewal-engine';
 
@@ -12,51 +17,25 @@ export const DEFAULT_LOCAL_RENEWAL_SCHEDULER_INTERVAL_MS = 60_000;
 
 const SCHEDULED_RENEWALS_PATH = '/.netlify/functions/scheduled-subscription-renewals';
 
-const LOCAL_SCHEDULER_DATABASE_HOSTS = new Set([
-  'localhost',
-  '127.0.0.1',
-  'host.docker.internal',
-  'postgres',
-]);
-
-/** Parse hostname from postgres/postgresql connection string. */
+/** Parse the host pg will connect to; null when it cannot be determined reliably. */
 export function parseDatabaseUrlHost(databaseUrl: string): string | null {
-  const trimmed = databaseUrl.trim();
-  try {
-    const httpLike = trimmed.replace(/^postgresql:/, 'http:').replace(/^postgres:/, 'http:');
-    return new URL(httpLike).hostname.toLowerCase();
-  } catch {
-    const match = trimmed.match(/@([^/?:@]+)/);
-    return match?.[1]?.toLowerCase() ?? null;
-  }
+  return resolveDatabaseUrlHost(databaseUrl).host;
 }
 
-export function isLocalSchedulerDatabaseHost(host: string): boolean {
-  const normalized = host.trim().toLowerCase();
-  if (LOCAL_SCHEDULER_DATABASE_HOSTS.has(normalized)) return true;
-  return normalized.endsWith('.local');
-}
+export const isLocalSchedulerDatabaseHost = isLocalDatabaseHost;
 
 /**
- * When set, local scheduler must not tick against remote/production DATABASE_URL unless explicitly allowed.
+ * Local sidecar refuses any non-local or unverifiable DATABASE_URL. There is no override:
+ * production renewals run only through the Netlify scheduled function.
  */
 export function getLocalSchedulerDatabaseBlockReason(): string | null {
-  if (process.env.ALLOW_LOCAL_SCHEDULER_ON_PRODUCTION_DB === 'true') {
-    return null;
-  }
-  const url = process.env.DATABASE_URL?.trim();
-  if (!url) {
-    return 'DATABASE_URL is not set';
-  }
-  const host = parseDatabaseUrlHost(url);
-  if (!host || !isLocalSchedulerDatabaseHost(host)) {
-    const label = host ?? 'unknown host';
-    return (
-      `Local renewal scheduler refuses remote DATABASE_URL host "${label}". ` +
-      'Use a local/staging Postgres in .env, or set ALLOW_LOCAL_SCHEDULER_ON_PRODUCTION_DB=true (unsafe).'
-    );
-  }
-  return null;
+  const reason = getLocalDatabaseBlockReason();
+  if (!reason) return null;
+  if (reason === 'DATABASE_URL is not set') return reason;
+  return (
+    `Local renewal scheduler refuses remote DATABASE_URL (${reason}). ` +
+    'Use a local Postgres (localhost / docker) in .env.'
+  );
 }
 
 function isExplicitOptOut(): boolean {
@@ -107,7 +86,7 @@ export function getLocalRenewalSchedulerIntervalMs(): number {
     }
   }
 
-  // 5-minute dev support periods need faster ticks than production */15 cron.
+  // 5-minute dev support periods need faster ticks than production */5 cron.
   if (process.env.DEV_PAYMENT_MODE === 'true') {
     return 15_000;
   }

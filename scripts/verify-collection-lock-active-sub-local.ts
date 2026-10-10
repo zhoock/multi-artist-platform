@@ -7,6 +7,8 @@ import { resolve } from 'path';
 import crypto from 'node:crypto';
 import bcrypt from 'bcryptjs';
 
+import { assertLocalDatabaseForScript } from '../netlify/functions/lib/local-database-guard';
+
 config({ path: resolve(process.cwd(), '.env') });
 
 process.env.NETLIFY_DEV = 'true';
@@ -22,6 +24,8 @@ function sleep(ms: number): Promise<void> {
 }
 
 async function main(): Promise<void> {
+  assertLocalDatabaseForScript('verify-collection-lock-active-sub-local');
+
   const subscriberId = crypto.randomUUID();
   const artistId = crypto.randomUUID();
   const email = `collection-lock-ui-${subscriberId.slice(0, 8)}@pr10-e2e.test`;

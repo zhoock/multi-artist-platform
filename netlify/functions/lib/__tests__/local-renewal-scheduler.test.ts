@@ -114,13 +114,71 @@ describe('local-renewal-scheduler (PR-10.4)', () => {
     expect(isLocalRenewalSchedulerEnabled()).toBe(false);
   });
 
-  it('allows remote DATABASE_URL only with explicit ALLOW_LOCAL_SCHEDULER_ON_PRODUCTION_DB', () => {
+  it.each(['true', 'TRUE', '1', 'yes', ' true'])(
+    'removed ALLOW_LOCAL_SCHEDULER_ON_PRODUCTION_DB=%p no longer unblocks a remote DATABASE_URL',
+    (value) => {
+      enableLocalSchedulerEnv();
+      process.env.DATABASE_URL =
+        'postgresql://user:pass@aws-1-ap-south-1.pooler.supabase.com:6543/postgres';
+      process.env.ALLOW_LOCAL_SCHEDULER_ON_PRODUCTION_DB = value;
+      expect(getLocalSchedulerDatabaseBlockReason()).toMatch(/refuses remote DATABASE_URL/);
+      expect(isLocalRenewalSchedulerEnabled()).toBe(false);
+    }
+  );
+
+  describe('no env combination unblocks a production DATABASE_URL', () => {
+    const combos: Array<Record<string, string | undefined>> = [];
+    for (const DEV_PAYMENT_MODE of [undefined, 'true', 'false'])
+      for (const NETLIFY_DEV of [undefined, 'true'])
+        for (const CONTEXT of [undefined, 'dev', 'production', 'deploy-preview'])
+          for (const NODE_ENV of ['development', 'production', 'test'])
+            for (const LOCAL_RENEWAL_SCHEDULER of [undefined, 'true'])
+              combos.push({
+                DEV_PAYMENT_MODE,
+                NETLIFY_DEV,
+                CONTEXT,
+                NODE_ENV,
+                LOCAL_RENEWAL_SCHEDULER,
+              });
+
+    it(`blocks all ${combos.length} combinations`, () => {
+      for (const combo of combos) {
+        for (const [key, value] of Object.entries(combo)) {
+          if (value === undefined) delete process.env[key];
+          else process.env[key] = value;
+        }
+        process.env.SUBSCRIPTION_AUTO_RENEW_ENABLED = 'true';
+        process.env.ALLOW_LOCAL_SCHEDULER_ON_PRODUCTION_DB = 'true';
+        process.env.DATABASE_URL =
+          'postgresql://user:pass@aws-1-ap-south-1.pooler.supabase.com:6543/postgres';
+
+        expect({ combo, blocked: getLocalSchedulerDatabaseBlockReason() !== null }).toEqual({
+          combo,
+          blocked: true,
+        });
+        expect({ combo, enabled: isLocalRenewalSchedulerEnabled() }).toEqual({
+          combo,
+          enabled: false,
+        });
+      }
+    });
+  });
+
+  it.each([
+    ['host override query param', 'postgresql://u:p@localhost:5432/app?host=prod.supabase.co'],
+    ['empty host', 'postgresql:///app'],
+    ['unparseable', 'not a url'],
+  ])('blocks %s even though it may look local', (_label, url) => {
     enableLocalSchedulerEnv();
+    process.env.DATABASE_URL = url;
+    expect(getLocalSchedulerDatabaseBlockReason()).toMatch(/refuses remote DATABASE_URL/);
+    expect(isLocalRenewalSchedulerEnabled()).toBe(false);
+  });
+
+  it('block reason never contains DATABASE_URL credentials', () => {
     process.env.DATABASE_URL =
-      'postgresql://user:pass@aws-1-ap-south-1.pooler.supabase.com:6543/postgres';
-    process.env.ALLOW_LOCAL_SCHEDULER_ON_PRODUCTION_DB = 'true';
-    expect(getLocalSchedulerDatabaseBlockReason()).toBeNull();
-    expect(isLocalRenewalSchedulerEnabled()).toBe(true);
+      'postgresql://user:topsecret@aws-1-ap-south-1.pooler.supabase.com:6543/postgres';
+    expect(getLocalSchedulerDatabaseBlockReason()).not.toContain('topsecret');
   });
 
   it('parseDatabaseUrlHost reads postgres connection hosts', () => {

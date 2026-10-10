@@ -8,6 +8,8 @@ import { resolve } from 'path';
 import crypto from 'node:crypto';
 import bcrypt from 'bcryptjs';
 
+import { assertLocalDatabaseForScript } from '../netlify/functions/lib/local-database-guard';
+
 config({ path: resolve(process.cwd(), '.env') });
 
 process.env.NETLIFY_DEV = 'true';
@@ -19,6 +21,8 @@ process.env.SUBSCRIPTION_AUTO_RENEW_ENABLED = 'true';
 const PROOF_PASSWORD = 'AutorenewProof1!';
 
 async function main(): Promise<void> {
+  assertLocalDatabaseForScript('seed:autorenew-ui');
+
   const userId = crypto.randomUUID();
   const email = `autorenew-ui-${userId.slice(0, 8)}@pr10-e2e.test`;
   const passwordHash = await bcrypt.hash(PROOF_PASSWORD, 10);

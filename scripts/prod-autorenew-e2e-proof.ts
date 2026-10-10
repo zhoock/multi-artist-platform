@@ -1,34 +1,70 @@
 /**
- * Production E2E proof: register → checkout → YooKassa → DB → my-archive → renewal.
- * Usage: npx tsx scripts/prod-autorenew-e2e-proof.ts [--skip-payment] [--skip-renewal]
+ * Production E2E proof: register → checkout → YooKassa → DB → my-archive.
+ * Does not invoke the remote Netlify scheduler (no mass renewal risk).
+ *
+ *   ALLOW_PRODUCTION_AUTORENEW_E2E=true \
+ *   PRODUCTION_AUTORENEW_E2E_BASE_URL=https://<temporary-deploy-origin> \
+ *   PRODUCTION_AUTORENEW_E2E_DATABASE_HOST=<host of DATABASE_URL> \
+ *   npx tsx scripts/prod-autorenew-e2e-proof.ts [--skip-payment] [--simulate-period-end]
+ *
+ * Site/DB alignment before registration is not verified here (would need a dedicated read-only
+ * fingerprint endpoint). After register, the script refuses SQL if the user is not visible in
+ * DATABASE_URL.
+ *
+ * Opt-in is NOT permission to move real money: local keys must be test_…; when the payment API
+ * returns a `test` field it must be true.
  */
 import { config } from 'dotenv';
 import { resolve } from 'path';
 import crypto from 'node:crypto';
 import { mkdirSync, writeFileSync } from 'node:fs';
 
+import {
+  assertProductionAutorenewE2eEnvironment,
+  assertYooKassaPaymentTestMode,
+  PRODUCTION_AUTORENEW_E2E_FORBIDDEN_OUTPUT_KEYS,
+} from '../netlify/functions/lib/production-autorenew-e2e-guard';
+
 config({ path: resolve(process.cwd(), '.env') });
 
-const PROD_BASE = 'https://multi-artist-platform.netlify.app';
-const PROD_AUTH = `${PROD_BASE}/.netlify/functions/auth`;
-const PROOF_PASSWORD = 'ProdAutorenewProof1!';
 const OUT_DIR = resolve(process.cwd(), 'tmp/prod-autorenew-proof');
 
 type Json = Record<string, unknown>;
 
 function log(step: string, data: Json): void {
   console.log(`\n=== ${step} ===`);
-  console.log(JSON.stringify(data, null, 2));
+  console.log(JSON.stringify(sanitizeForOutput(data), null, 2));
+}
+
+function sanitizeForOutput(value: unknown): unknown {
+  if (value === null || value === undefined) return value;
+  if (Array.isArray(value)) return value.map(sanitizeForOutput);
+  if (typeof value !== 'object') return value;
+  const out: Json = {};
+  for (const [key, nested] of Object.entries(value as Json)) {
+    if (PRODUCTION_AUTORENEW_E2E_FORBIDDEN_OUTPUT_KEYS.has(key)) continue;
+    if (key === 'body' && typeof nested === 'object' && nested !== null) {
+      out[key] = sanitizeForOutput(nested);
+      continue;
+    }
+    out[key] = sanitizeForOutput(nested);
+  }
+  return out;
+}
+
+function createProofPassword(): string {
+  return `Prf-${crypto.randomBytes(18).toString('base64url')}`;
 }
 
 async function api(
+  baseUrl: string,
   path: string,
   options: { method?: string; body?: Json; token?: string } = {}
 ): Promise<{ status: number; json: Json }> {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   if (options.token) headers.Authorization = `Bearer ${options.token}`;
 
-  const res = await fetch(`${PROD_BASE}${path}`, {
+  const res = await fetch(`${baseUrl}${path}`, {
     method: options.method ?? 'GET',
     headers,
     body: options.body ? JSON.stringify(options.body) : undefined,
@@ -39,53 +75,66 @@ async function api(
   try {
     json = JSON.parse(text) as Json;
   } catch {
-    json = { raw: text };
+    json = { parseError: true, length: text.length };
   }
   return { status: res.status, json };
 }
 
-async function main(): Promise<void> {
-  mkdirSync(OUT_DIR, { recursive: true });
-  const skipPayment = process.argv.includes('--skip-payment');
-  const skipRenewal = process.argv.includes('--skip-renewal');
+function describePaymentMethod(
+  method: { id?: string; saved?: boolean; type?: string } | null | undefined
+): Json {
+  return { type: method?.type ?? null, saved: method?.saved ?? null, hasId: Boolean(method?.id) };
+}
 
+function sanitizeBilling(billing: Json | undefined): Json | null {
+  if (!billing) return null;
+  return {
+    nextChargeAt: billing.nextChargeAt ?? null,
+    autoRenewEnabled: billing.autoRenewEnabled ?? null,
+    hasPremiumAccess: billing.hasPremiumAccess ?? null,
+    plan: billing.plan ?? null,
+  };
+}
+
+async function readClientAutoRenewFlag(baseUrl: string): Promise<string | null> {
+  const htmlRes = await fetch(`${baseUrl}/`);
+  const html = await htmlRes.text();
+  const scriptPaths = [...html.matchAll(/\/scripts\/[^"]+\.js/g)].map((m) => m[0]);
+  for (const scriptPath of scriptPaths) {
+    const js = await (await fetch(`${baseUrl}${scriptPath}`)).text();
+    const m = js.match(/parseAutoRenewFlag\("([^"]*)"\)/);
+    if (m) return m[1];
+  }
+  return null;
+}
+
+async function main(): Promise<void> {
+  const { baseUrl, skipPayment, simulatePeriodEnd } = assertProductionAutorenewE2eEnvironment({
+    argv: process.argv.slice(2),
+  });
+  mkdirSync(OUT_DIR, { recursive: true });
+
+  const proofPassword = createProofPassword();
   const suffix = crypto.randomUUID().slice(0, 8);
   const email = `prod-autorenew-${suffix}@pr10-e2e.test`;
   const name = `Prod Proof ${suffix}`;
 
-  // ── Step 0: Live bundle flag ──
-  const htmlRes = await fetch(`${PROD_BASE}/`);
-  const html = await htmlRes.text();
-  const scriptPaths = [...html.matchAll(/\/scripts\/[^"]+\.js/g)].map((m) => m[0]);
-  let clientFlagValue: string | null = null;
-  const scriptCandidates = [
-    ...scriptPaths,
-    // Lazy-loaded chunk (not in index.html) that contains isSubscriptionAutoRenewClientEnabled
-    '/scripts/6658.4195cd98c11935f80575.js',
-  ];
-  for (const scriptPath of scriptCandidates) {
-    const js = await (await fetch(`${PROD_BASE}${scriptPath}`)).text();
-    const m = js.match(/parseAutoRenewFlag\("([^"]*)"\)/);
-    if (m) {
-      clientFlagValue = m[1];
-      break;
-    }
-  }
+  const clientFlagValue = await readClientAutoRenewFlag(baseUrl);
   log('0. Client bundle auto-renew flag (from SUBSCRIPTION_AUTO_RENEW_ENABLED at build)', {
     clientFlagValue,
     clientFlagEnabled: clientFlagValue === 'true',
+    scriptsScanned: clientFlagValue !== null,
   });
   if (clientFlagValue !== 'true') {
     throw new Error('Client bundle not built with autorenew flag=true');
   }
 
-  // ── Step 1: Register ──
-  const register = await fetch(`${PROD_AUTH}/register`, {
+  const register = await fetch(`${baseUrl}/.netlify/functions/auth/register`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       email,
-      password: PROOF_PASSWORD,
+      password: proofPassword,
       name,
       accountType: 'listener',
       preferredLanguage: 'ru',
@@ -96,44 +145,68 @@ async function main(): Promise<void> {
   try {
     registerJson = JSON.parse(registerText) as Json;
   } catch {
-    registerJson = { raw: registerText };
+    registerJson = { parseError: true, length: registerText.length };
   }
-  log('1. Register', { status: register.status, email, body: registerJson });
-  if (register.status !== 200 && register.status !== 201) {
-    throw new Error(`Register failed: ${register.status}`);
-  }
-
   const registerData = (registerJson.data ?? registerJson) as Json;
   const userObj = registerData.user as Json | undefined;
   const userId = String(userObj?.id ?? registerData.id ?? '');
   const token = String(registerData.token ?? '');
+  log('1. Register', {
+    status: register.status,
+    hasEmail: Boolean(email),
+    hasUserId: Boolean(userId),
+    hasToken: Boolean(token),
+  });
+  if (register.status !== 200 && register.status !== 201) {
+    throw new Error(`Register failed: ${register.status}`);
+  }
   if (!userId || !token) throw new Error('Register missing userId or token');
 
   const { query } = await import('../netlify/functions/lib/db');
+  const visible = await query<{ id: string }>(
+    `SELECT id FROM users WHERE id = $1::uuid AND email = $2 LIMIT 1`,
+    [userId, email]
+  );
+  if (visible.rows.length !== 1) {
+    throw new Error(
+      `User registered via ${baseUrl} is not visible in DATABASE_URL — refusing SQL writes to an unexpected database`
+    );
+  }
   await query(`UPDATE users SET is_email_verified = true WHERE id = $1::uuid`, [userId]);
-  log('1b. Email verified (test setup)', { userId, is_email_verified: true });
+  log('1b. Email verified (test setup)', { hasUserId: true, is_email_verified: true });
 
-  // ── Step 2: Create checkout ──
-  const returnUrl = `${PROD_BASE}/dashboard/collection?payment=success`;
-  const checkout = await api('/.netlify/functions/create-subscription-payment', {
+  const returnUrl = `${baseUrl}/dashboard/collection?payment=success`;
+  const checkout = await api(baseUrl, '/.netlify/functions/create-subscription-payment', {
     method: 'POST',
     token,
     body: { plan: 'explorer', returnUrl },
   });
-  log('2. Create checkout', { status: checkout.status, body: checkout.json });
+  log('2. Create checkout', {
+    status: checkout.status,
+    hasData: Boolean(checkout.json.data ?? checkout.json),
+  });
   if (checkout.status !== 200) throw new Error(`Checkout failed: ${checkout.status}`);
 
   const checkoutData = (checkout.json.data ?? checkout.json) as Json;
   const paymentId = String(checkoutData.paymentId ?? '');
-  const confirmationUrl = String(checkoutData.confirmationUrl ?? '');
+  const hasConfirmationUrl = Boolean(checkoutData.confirmationUrl);
   if (!paymentId) throw new Error('Missing paymentId from checkout');
 
   writeFileSync(
     resolve(OUT_DIR, 'checkout.json'),
-    JSON.stringify({ email, password: PROOF_PASSWORD, userId, paymentId, confirmationUrl }, null, 2)
+    JSON.stringify(
+      sanitizeForOutput({
+        hasEmail: true,
+        hasUserId: true,
+        hasPaymentId: true,
+        hasConfirmationUrl,
+        checkoutStatus: checkout.status,
+      }),
+      null,
+      2
+    )
   );
 
-  // ── Step 3: YooKassa payment object (save_payment_method) ──
   const { getYooKassaEnvCredentials } = await import('../netlify/functions/lib/yookassa-env');
   const { fetchPaymentFromYooKassaApi } = await import(
     '../netlify/functions/lib/yookassa-webhook-verify'
@@ -146,16 +219,19 @@ async function main(): Promise<void> {
   if (!yk.ok) throw new Error(`YooKassa fetch failed: ${yk.status}`);
 
   const ykPayment = yk.payment as Json & {
+    test?: boolean;
     save_payment_method?: boolean;
     payment_method?: { id?: string; saved?: boolean; type?: string; card?: Json };
   };
 
+  assertYooKassaPaymentTestMode(ykPayment);
+
   log('3. YooKassa payment after checkout create', {
-    paymentId,
     status: ykPayment.status,
+    test: ykPayment.test === true,
     save_payment_method: ykPayment.save_payment_method ?? null,
-    payment_method: ykPayment.payment_method ?? null,
-    confirmationUrl: confirmationUrl.slice(0, 120),
+    payment_method: describePaymentMethod(ykPayment.payment_method),
+    hasConfirmationUrl,
   });
 
   if (ykPayment.save_payment_method !== true) {
@@ -165,12 +241,12 @@ async function main(): Promise<void> {
   }
 
   if (skipPayment) {
-    console.log('\n--skip-payment: complete YooKassa payment manually, then re-run with paymentId');
-    console.log(`confirmationUrl: ${confirmationUrl}`);
+    console.log(
+      '\n--skip-payment: complete YooKassa payment manually, then re-run without the flag.'
+    );
     return;
   }
 
-  // ── Step 4: Poll until succeeded (user must pay via confirmationUrl first if pending) ──
   let pollAttempts = 0;
   let paid = false;
   let finalYk = ykPayment;
@@ -178,6 +254,7 @@ async function main(): Promise<void> {
     const fresh = await fetchPaymentFromYooKassaApi(paymentId, creds.shopId, creds.secretKey);
     if (fresh.ok) {
       finalYk = fresh.payment as typeof ykPayment;
+      assertYooKassaPaymentTestMode(finalYk);
       if (finalYk.status === 'succeeded') {
         paid = true;
         break;
@@ -188,31 +265,30 @@ async function main(): Promise<void> {
   }
 
   if (!paid) {
-    console.log(
-      '\nPayment not succeeded yet. Open confirmation URL and pay, then re-run poll step.'
-    );
-    console.log(`confirmationUrl: ${confirmationUrl}`);
+    console.log('\nPayment not succeeded yet. Complete payment in YooKassa, then re-run.');
     throw new Error('Payment not succeeded within poll window');
   }
 
   log('4. YooKassa after payment succeeded', {
     status: finalYk.status,
-    payment_method_saved: finalYk.payment_method?.saved ?? null,
-    payment_method_id: finalYk.payment_method?.id ?? null,
+    test: finalYk.test === true,
+    payment_method: describePaymentMethod(finalYk.payment_method),
   });
 
   if (finalYk.payment_method?.saved !== true) {
     throw new Error('YooKassa payment_method.saved is not true after success');
   }
 
-  // Trigger fulfillment via production poll endpoint
   const poll = await api(
-    `/.netlify/functions/get-subscription-payment-status?paymentId=${paymentId}`,
+    baseUrl,
+    `/.netlify/functions/get-subscription-payment-status?paymentId=${encodeURIComponent(paymentId)}`,
     { token }
   );
-  log('4b. Production poll fulfillment', { status: poll.status, body: poll.json });
+  log('4b. Production poll fulfillment', {
+    status: poll.status,
+    success: poll.json.success ?? null,
+  });
 
-  // ── Step 5: DB subscription fields ──
   const sub = await query<{
     id: string;
     status: string;
@@ -225,12 +301,17 @@ async function main(): Promise<void> {
      FROM subscriptions WHERE user_id = $1::uuid`,
     [userId]
   );
+  if (sub.rows.length > 1) {
+    throw new Error(
+      `User has ${sub.rows.length} subscriptions in DATABASE_URL — refusing ambiguous subscription UPDATE`
+    );
+  }
   const row = sub.rows[0];
   log('5. DB subscriptions', {
-    subscriptionId: row?.id,
-    status: row?.status,
-    plan: row?.plan,
-    payment_method_id: row?.payment_method_id,
+    hasSubscription: Boolean(row),
+    status: row?.status ?? null,
+    plan: row?.plan ?? null,
+    hasPaymentMethod: Boolean(row?.payment_method_id),
     next_charge_at: row?.next_charge_at?.toISOString() ?? null,
     expires_at: row?.expires_at?.toISOString() ?? null,
   });
@@ -239,28 +320,22 @@ async function main(): Promise<void> {
     throw new Error('DB missing payment_method_id or next_charge_at after fulfillment');
   }
 
-  // ── Step 6: listChargeReadySubscriptionIds (should NOT include before period end) ──
   const { listChargeReadySubscriptionIds } = await import(
     '../netlify/functions/lib/subscription-renewal-engine'
   );
   const now = new Date();
   const chargeReadyNow = await listChargeReadySubscriptionIds(now);
   log('6. listChargeReadySubscriptionIds (now)', {
-    subscriptionId: row.id,
     included: chargeReadyNow.includes(row.id),
     chargeReadyCount: chargeReadyNow.length,
   });
 
-  // ── Step 7: /api/my-archive ──
-  const archive = await api('/.netlify/functions/my-archive', { token });
+  const archive = await api(baseUrl, '/.netlify/functions/my-archive', { token });
   const archiveData = (archive.json.data ?? archive.json) as Json;
-  const billing = archiveData.billing as Json | undefined;
+  const billing = sanitizeBilling(archiveData.billing as Json | undefined);
   log('7. /api/my-archive billing', {
     status: archive.status,
-    nextChargeAt: billing?.nextChargeAt ?? null,
-    autoRenewEnabled: billing?.autoRenewEnabled ?? null,
-    hasPremiumAccess: billing?.hasPremiumAccess ?? null,
-    plan: billing?.plan ?? null,
+    billing,
   });
 
   if (!billing?.nextChargeAt) {
@@ -270,29 +345,32 @@ async function main(): Promise<void> {
   writeFileSync(
     resolve(OUT_DIR, 'post-checkout-facts.json'),
     JSON.stringify(
-      {
-        email,
-        userId,
-        paymentId,
-        subscription: row,
-        yookassa: finalYk.payment_method,
+      sanitizeForOutput({
+        hasEmail: true,
+        hasUserId: true,
+        subscription: {
+          status: row.status,
+          plan: row.plan,
+          hasPaymentMethod: Boolean(row.payment_method_id),
+          next_charge_at: row.next_charge_at?.toISOString() ?? null,
+          expires_at: row.expires_at?.toISOString() ?? null,
+        },
+        yookassa: describePaymentMethod(finalYk.payment_method),
         billing,
-      },
+      }),
       null,
       2
     )
   );
 
-  if (skipRenewal) {
-    console.log('\nPost-checkout proof complete. Run capture script for UI screenshots.');
+  if (!simulatePeriodEnd) {
+    console.log('\nPost-checkout proof complete (remote scheduler is never invoked).');
+    console.log(`Artifacts: ${OUT_DIR}`);
     return;
   }
 
-  // ── Step 8: Simulate period end + scheduler ──
   const periodEnd = row.next_charge_at!;
   const past = new Date(periodEnd.getTime() + 60_000);
-  const expiresBefore = row.expires_at!.toISOString();
-  const nextChargeBefore = row.next_charge_at!.toISOString();
 
   await query(
     `UPDATE subscriptions
@@ -302,8 +380,7 @@ async function main(): Promise<void> {
   );
 
   const chargeReadyPast = await listChargeReadySubscriptionIds(past);
-  log('8. listChargeReadySubscriptionIds (simulated period end)', {
-    subscriptionId: row.id,
+  log('8. listChargeReadySubscriptionIds (simulated period end, local only)', {
     included: chargeReadyPast.includes(row.id),
     simulatedNow: past.toISOString(),
   });
@@ -312,90 +389,8 @@ async function main(): Promise<void> {
     throw new Error('Subscription not charge-ready after simulated period end');
   }
 
-  const cronSecret = process.env.SUBSCRIPTION_CRON_SECRET?.trim();
-  if (!cronSecret) {
-    throw new Error('SUBSCRIPTION_CRON_SECRET not in .env — cannot invoke production scheduler');
-  }
-
-  const schedulerRes = await fetch(
-    `${PROD_BASE}/.netlify/functions/scheduled-subscription-renewals`,
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${cronSecret}`,
-      },
-      body: JSON.stringify({ next_run: new Date().toISOString() }),
-    }
-  );
-  const schedulerJson = (await schedulerRes.json()) as Json;
-  log('9. Production scheduler run', {
-    status: schedulerRes.status,
-    body: schedulerJson,
-  });
-
-  if (schedulerRes.status !== 200) {
-    throw new Error(`Scheduler failed: ${schedulerRes.status}`);
-  }
-
-  const subAfter = await query<{
-    status: string;
-    payment_method_id: string | null;
-    next_charge_at: Date | null;
-    expires_at: Date | null;
-  }>(
-    `SELECT status, payment_method_id, next_charge_at, expires_at
-     FROM subscriptions WHERE user_id = $1::uuid`,
-    [userId]
-  );
-  const afterRow = subAfter.rows[0]!;
-
-  const renewalPayments = await query<{
-    kind: string;
-    status: string;
-    provider_payment_id: string | null;
-    created_at: Date;
-  }>(
-    `SELECT kind, status, provider_payment_id, created_at
-     FROM subscription_payments WHERE user_id = $1::uuid ORDER BY created_at`,
-    [userId]
-  );
-
-  log('10. Post-renewal DB', {
-    expires_at_before: expiresBefore,
-    next_charge_at_before: nextChargeBefore,
-    expires_at_after: afterRow.expires_at?.toISOString() ?? null,
-    next_charge_at_after: afterRow.next_charge_at?.toISOString() ?? null,
-    datesChanged:
-      afterRow.expires_at!.toISOString() !== expiresBefore ||
-      afterRow.next_charge_at!.toISOString() !== nextChargeBefore,
-    renewalPayments: renewalPayments.rows,
-  });
-
-  const archiveAfter = await api('/api/my-archive', { token });
-  const billingAfter = ((archiveAfter.json.data ?? archiveAfter.json) as Json).billing as Json;
-
-  log('11. /api/my-archive after renewal', {
-    nextChargeAt: billingAfter?.nextChargeAt ?? null,
-    hasPremiumAccess: billingAfter?.hasPremiumAccess ?? null,
-  });
-
-  writeFileSync(
-    resolve(OUT_DIR, 'post-renewal-facts.json'),
-    JSON.stringify(
-      {
-        scheduler: schedulerJson,
-        subscriptionAfter: afterRow,
-        renewalPayments: renewalPayments.rows,
-        billingAfter,
-      },
-      null,
-      2
-    )
-  );
-
-  console.log(`\nProof artifacts: ${OUT_DIR}`);
-  console.log(`Login: ${email} / ${PROOF_PASSWORD}`);
+  console.log('\nPeriod-end simulation complete. Remote scheduler was not invoked.');
+  console.log(`Artifacts: ${OUT_DIR}`);
 }
 
 main().catch((e) => {

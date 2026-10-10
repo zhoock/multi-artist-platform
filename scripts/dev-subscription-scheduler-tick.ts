@@ -96,7 +96,7 @@ async function main(): Promise<void> {
 
   console.log(`${BANNER} enabled — runRenewalCycle() every ${intervalMs / 1000}s (in-process)`);
   console.log(
-    `${BANNER} production uses Netlify Scheduled Functions (*/15); this sidecar is dev-only.\n`
+    `${BANNER} production uses Netlify Scheduled Functions (*/5); this sidecar is dev-only.\n`
   );
 
   const ready = await waitForDatabase();

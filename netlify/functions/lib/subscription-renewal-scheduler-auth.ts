@@ -91,3 +91,27 @@ function resolveSchedulerAuthEvent(event: HandlerEvent): HandlerEvent {
 export function authorizeScheduledRenewalInvocation(event: HandlerEvent): boolean {
   return hasValidCronSecret(resolveSchedulerAuthEvent(event));
 }
+
+export type SchedulerInvocationDiagnostics = {
+  secretConfigured: boolean;
+  platformScheduleHeader: boolean;
+  clockworkUserAgent: boolean;
+  nextRunPayload: boolean;
+  credentialHeaderPresent: boolean;
+  httpMethod: string | null;
+};
+
+/** Boolean-only invocation shape for logs; never includes header or secret values. */
+export function describeSchedulerInvocation(event: HandlerEvent): SchedulerInvocationDiagnostics {
+  const userAgent = readHeader(event, 'user-agent') ?? '';
+  return {
+    secretConfigured: Boolean(process.env.SUBSCRIPTION_CRON_SECRET?.trim()),
+    platformScheduleHeader: isTrustedNetlifyPlatformSchedule(event),
+    clockworkUserAgent: userAgent.toLowerCase().includes('netlify clockwork'),
+    nextRunPayload: isNetlifyScheduledInvocation(event.body),
+    credentialHeaderPresent: Boolean(
+      readHeader(event, 'authorization') ?? readHeader(event, 'x-subscription-cron-secret')
+    ),
+    httpMethod: event.httpMethod ?? null,
+  };
+}

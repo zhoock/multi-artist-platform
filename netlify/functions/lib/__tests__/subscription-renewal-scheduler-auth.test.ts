@@ -8,6 +8,7 @@ import type { HandlerEvent } from '@netlify/functions';
 
 import {
   authorizeScheduledRenewalInvocation,
+  describeSchedulerInvocation,
   isNetlifyScheduledInvocation,
   isTrustedNetlifyPlatformSchedule,
 } from '../subscription-renewal-scheduler-auth';
@@ -158,5 +159,47 @@ describe('authorizeScheduledRenewalInvocation', () => {
   test('rejects unauthorized invocations with empty body and no headers', () => {
     delete process.env.SUBSCRIPTION_CRON_SECRET;
     expect(authorizeScheduledRenewalInvocation(event({ body: null }))).toBe(false);
+  });
+});
+
+describe('describeSchedulerInvocation', () => {
+  test('reports booleans only and never echoes secret or credential values', () => {
+    process.env.SUBSCRIPTION_CRON_SECRET = 'diag-secret';
+
+    const diagnostics = describeSchedulerInvocation(
+      event({
+        body: scheduledBody(),
+        headers: {
+          'x-nf-event': 'schedule',
+          'user-agent': 'Netlify Clockwork',
+          authorization: 'Bearer leaked-token',
+        },
+      })
+    );
+
+    expect(diagnostics).toEqual({
+      secretConfigured: true,
+      platformScheduleHeader: true,
+      clockworkUserAgent: true,
+      nextRunPayload: true,
+      credentialHeaderPresent: true,
+      httpMethod: 'POST',
+    });
+    const serialized = JSON.stringify(diagnostics);
+    expect(serialized).not.toContain('diag-secret');
+    expect(serialized).not.toContain('leaked-token');
+  });
+
+  test('plain HTTP request without secret configured', () => {
+    delete process.env.SUBSCRIPTION_CRON_SECRET;
+
+    expect(describeSchedulerInvocation(event({ httpMethod: 'GET' }))).toEqual({
+      secretConfigured: false,
+      platformScheduleHeader: false,
+      clockworkUserAgent: false,
+      nextRunPayload: false,
+      credentialHeaderPresent: false,
+      httpMethod: 'GET',
+    });
   });
 });

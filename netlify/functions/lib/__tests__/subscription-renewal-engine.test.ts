@@ -36,6 +36,7 @@ import {
 } from '../subscription-billing';
 import {
   reconcileOrphanPendingRenewalsBeforeChargeSelection,
+  previewRenewalCycle,
   rollbackRenewalChargeAttempt,
   runRenewalCycle,
   listChargeReadySubscriptionIds,
@@ -131,6 +132,30 @@ describe('runRenewalCycle orphan reconcile ordering', () => {
     expect(dueListSql).not.toContain('NOT EXISTS');
     expect(readyListSql).toContain('NOT EXISTS');
     expect(mockedCancelOrphans).toHaveBeenCalledWith(userId);
+  });
+});
+
+describe('previewRenewalCycle', () => {
+  test('counts due subscriptions using SELECT only — no claims, reconciles or charges', async () => {
+    const now = new Date('2026-08-11T12:00:00.000Z');
+    mockedQuery.mockImplementation(async (sql: unknown) =>
+      String(sql).includes('cancel_at_period_end')
+        ? fakeQueryResult([{ id: 'ended-1', user_id: USER_ID }])
+        : fakeQueryResult([{ id: 'due-1' }, { id: 'due-2' }])
+    );
+
+    await expect(previewRenewalCycle(now)).resolves.toEqual({
+      autoRenewEnabled: true,
+      periodsEndedDue: 1,
+      chargesDue: 2,
+    });
+
+    expect(mockedQuery).toHaveBeenCalledTimes(2);
+    for (const [sql] of mockedQuery.mock.calls) {
+      expect(String(sql).trim()).toMatch(/^SELECT/i);
+    }
+    expect(mockedCancelOrphans).not.toHaveBeenCalled();
+    expect(mockedCleanup).not.toHaveBeenCalled();
   });
 });
 

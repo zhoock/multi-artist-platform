@@ -1,11 +1,13 @@
 /**
  * End-to-end proof: initial checkout → period end → scheduler renewal → fulfillment.
- * Fast-forwards period via DB (no 1h wait). Requires DATABASE_URL + migrations 066+.
+ * Fast-forwards period via DB (no real-time wait). Requires local DATABASE_URL + migrations 066+.
  * See docs/autorenew-verification.md
  */
 import { config } from 'dotenv';
 import { resolve } from 'path';
 import crypto from 'node:crypto';
+
+import { assertLocalDatabaseForScript } from '../netlify/functions/lib/local-database-guard';
 
 config({ path: resolve(process.cwd(), '.env') });
 
@@ -27,6 +29,8 @@ function logStep(step: string, ok: boolean, detail: Record<string, unknown>): vo
 }
 
 async function main(): Promise<void> {
+  assertLocalDatabaseForScript('verify:autorenew');
+
   const userId = crypto.randomUUID();
   const email = `autorenew-proof-${userId.slice(0, 8)}@pr10-e2e.test`;
 
@@ -34,9 +38,11 @@ async function main(): Promise<void> {
   const { attachDevSucceededSubscriptionCheckout } = await import(
     '../netlify/functions/lib/complete-dev-payment'
   );
-  const { createPendingSubscriptionPayment, getSubscriptionPaymentByInternalId } = await import(
-    '../netlify/functions/lib/subscription-billing'
-  );
+  const {
+    createPendingSubscriptionPayment,
+    getSubscriptionPaymentByInternalId,
+    SUPPORT_PERIOD_MS,
+  } = await import('../netlify/functions/lib/subscription-billing');
   const { mapDevSubscriptionPaymentToProviderPayment } = await import(
     '../netlify/functions/lib/subscription-provider-payment'
   );
@@ -105,7 +111,7 @@ async function main(): Promise<void> {
 
   const periodEnd = sub.nextChargeAt;
 
-  // ── 2. Simulate 1h period elapsed ──
+  // ── 2. Simulate period end (charge time = periodEnd + 1 min) ──
   const past = new Date(periodEnd.getTime() + 60_000);
   await query(
     `UPDATE subscriptions
@@ -167,15 +173,14 @@ async function main(): Promise<void> {
   });
 
   sub = await getViewerSubscription(userId);
-  const oneHourMs = 60 * 60 * 1000;
-  const expectedExpiresMs = past.getTime() + oneHourMs;
+  const expectedExpiresMs = past.getTime() + SUPPORT_PERIOD_MS;
   const expiresMs = sub?.expiresAt?.getTime() ?? 0;
   const nextChargeMs = sub?.nextChargeAt?.getTime() ?? 0;
   const expiresExtended = expiresMs >= expectedExpiresMs - 5_000;
   const nextChargeSet = nextChargeMs >= expectedExpiresMs - 5_000;
 
   logStep(
-    '7. Subscription dates updated (+1h period)',
+    '7. Subscription dates updated (+SUPPORT_PERIOD_MS after renewal)',
     expiresExtended && nextChargeSet && sub?.status === 'active',
     {
       status: sub?.status,

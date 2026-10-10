@@ -514,6 +514,25 @@ export async function attemptRenewalChargeForSubscription(
   }
 }
 
+export type RenewalCyclePreview = {
+  autoRenewEnabled: boolean;
+  periodsEndedDue: number;
+  chargesDue: number;
+};
+
+/** Read-only counterpart of runRenewalCycle: no claims, reconciles, payments or status changes. */
+export async function previewRenewalCycle(now: Date = new Date()): Promise<RenewalCyclePreview> {
+  const [periodEnded, chargeReady] = await Promise.all([
+    listPeriodEndedSubscriptionIds(now),
+    listChargeReadySubscriptionIds(now),
+  ]);
+  return {
+    autoRenewEnabled: isSubscriptionAutoRenewEnabled(),
+    periodsEndedDue: periodEnded.length,
+    chargesDue: chargeReady.length,
+  };
+}
+
 export async function runRenewalCycle(now: Date = new Date()): Promise<RenewalCycleResult> {
   const result: RenewalCycleResult = {
     chargesAttempted: 0,

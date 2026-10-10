@@ -122,7 +122,7 @@ Document counts in rollout ticket. See [subscription-autorenew-backfill.md](../a
 
 Renewal scheduler: `netlify/functions/scheduled-subscription-renewals.ts`
 
-- **Schedule:** every 15 minutes (`netlify.toml` → `[functions."scheduled-subscription-renewals"]`)
+- **Schedule:** every 5 minutes while `SUPPORT_PERIOD_MS` is the 5-minute test period (`netlify.toml` → `[functions."scheduled-subscription-renewals"]`)
 - **Gate:** no-op when `SUBSCRIPTION_AUTO_RENEW_ENABLED=false`
 - **When flag on:** claims rows where `next_charge_at <= NOW()`, creates renewal charges, runs dunning retries
 
@@ -133,7 +133,20 @@ Renewal scheduler: `netlify/functions/scheduled-subscription-renewals.ts`
 - [ ] Test subscription with `next_charge_at` in past (staging) receives renewal charge row
 - [ ] No duplicate charges on webhook retry (E-ON-002 P1 — spot-check manually)
 
-Optional: set `SUBSCRIPTION_CRON_SECRET` if manual trigger endpoint is used.
+Required: set `SUBSCRIPTION_CRON_SECRET` (Production context, Functions scope) and redeploy. Without it every scheduled run is rejected with `subscription.scheduler.unauthorized` (fail-closed) and no renewal is attempted.
+
+Run mode is fail-closed and independent of the secret:
+
+| `SUBSCRIPTION_SCHEDULER_DRY_RUN` | `SUBSCRIPTION_SCHEDULER_LIVE`                | Result after auth                                                  |
+| -------------------------------- | -------------------------------------------- | ------------------------------------------------------------------ |
+| `true` (any case)                | anything                                     | `previewRenewalCycle()` only, log `subscription.scheduler.dry_run` |
+| unset / empty / `false`          | exactly `true`                               | real `runRenewalCycle()`, log `subscription.scheduler.cycle`       |
+| unset / empty / `false`          | unset, `false`, `1`, `yes`, typo, whitespace | nothing runs, log `subscription.scheduler.mode_blocked`            |
+| any other value (`1`, `yes`, …)  | anything                                     | nothing runs, `reason: dry_run_flag_invalid`                       |
+
+Rollout order: secret + `SUBSCRIPTION_SCHEDULER_DRY_RUN=true` → redeploy → confirm a scheduled `dry_run` log with `platformScheduleHeader: true` → only then set `SUBSCRIPTION_SCHEDULER_LIVE=true`, remove dry-run, redeploy. Rollback: set dry-run back to `true` (or remove `LIVE`) and redeploy.
+
+These flags gate only the Netlify handler. `npm run dev:scheduler`, `npm run verify:autorenew` and `npm run seed:autorenew-ui` call the engine in-process and are not affected.
 
 ---
 
