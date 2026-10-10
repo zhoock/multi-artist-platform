@@ -5,7 +5,10 @@ import {
   DEFAULT_LOCAL_RENEWAL_SCHEDULER_INTERVAL_MS,
   getLocalNetlifyDevPort,
   getLocalRenewalSchedulerIntervalMs,
+  getLocalSchedulerDatabaseBlockReason,
   isLocalRenewalSchedulerEnabled,
+  isLocalSchedulerDatabaseHost,
+  parseDatabaseUrlHost,
   runLocalRenewalCycleTick,
 } from '../local-renewal-scheduler';
 
@@ -37,6 +40,8 @@ describe('local-renewal-scheduler (PR-10.4)', () => {
     'NETLIFY_DEV',
     'LOCAL_RENEWAL_SCHEDULER_INTERVAL_MS',
     'LOCAL_NETLIFY_PORT',
+    'DATABASE_URL',
+    'ALLOW_LOCAL_SCHEDULER_ON_PRODUCTION_DB',
   ] as const;
 
   const originalEnv: Partial<Record<(typeof envKeys)[number], string | undefined>> = {};
@@ -63,6 +68,7 @@ describe('local-renewal-scheduler (PR-10.4)', () => {
     process.env.SUBSCRIPTION_AUTO_RENEW_ENABLED = 'true';
     process.env.NETLIFY_DEV = 'true';
     process.env.NODE_ENV = 'development';
+    process.env.DATABASE_URL = 'postgresql://app:secret@localhost:5432/app';
   }
 
   it('is disabled when SUBSCRIPTION_AUTO_RENEW_ENABLED is off', () => {
@@ -100,10 +106,34 @@ describe('local-renewal-scheduler (PR-10.4)', () => {
     expect(isLocalRenewalSchedulerEnabled()).toBe(true);
   });
 
+  it('is disabled when DATABASE_URL points at a remote host', () => {
+    enableLocalSchedulerEnv();
+    process.env.DATABASE_URL =
+      'postgresql://user:pass@aws-1-ap-south-1.pooler.supabase.com:6543/postgres';
+    expect(getLocalSchedulerDatabaseBlockReason()).toMatch(/refuses remote DATABASE_URL/);
+    expect(isLocalRenewalSchedulerEnabled()).toBe(false);
+  });
+
+  it('allows remote DATABASE_URL only with explicit ALLOW_LOCAL_SCHEDULER_ON_PRODUCTION_DB', () => {
+    enableLocalSchedulerEnv();
+    process.env.DATABASE_URL =
+      'postgresql://user:pass@aws-1-ap-south-1.pooler.supabase.com:6543/postgres';
+    process.env.ALLOW_LOCAL_SCHEDULER_ON_PRODUCTION_DB = 'true';
+    expect(getLocalSchedulerDatabaseBlockReason()).toBeNull();
+    expect(isLocalRenewalSchedulerEnabled()).toBe(true);
+  });
+
+  it('parseDatabaseUrlHost reads postgres connection hosts', () => {
+    expect(parseDatabaseUrlHost('postgresql://u:p@127.0.0.1:5432/db')).toBe('127.0.0.1');
+    expect(isLocalSchedulerDatabaseHost('127.0.0.1')).toBe(true);
+    expect(isLocalSchedulerDatabaseHost('aws-1-ap-south-1.pooler.supabase.com')).toBe(false);
+  });
+
   it('is enabled when LOCAL_RENEWAL_SCHEDULER=true without NETLIFY_DEV', () => {
     process.env.SUBSCRIPTION_AUTO_RENEW_ENABLED = 'true';
     process.env.LOCAL_RENEWAL_SCHEDULER = 'true';
     process.env.NODE_ENV = 'development';
+    process.env.DATABASE_URL = 'postgresql://app:secret@localhost:5432/app';
     expect(isLocalRenewalSchedulerEnabled()).toBe(true);
   });
 

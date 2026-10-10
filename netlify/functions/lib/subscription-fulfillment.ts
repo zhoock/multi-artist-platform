@@ -33,6 +33,7 @@ export interface FulfillInitialSubscriptionPaymentParams {
   providerPaymentId: string;
   paymentMethodId?: string | null;
   paymentMethodTitle?: string | null;
+  providerTestPayment?: boolean;
 }
 
 export interface ProcessInitialSubscriptionProviderPaymentResult {
@@ -126,6 +127,7 @@ export async function fulfillInitialSubscriptionPayment(
     userId: params.userId,
     planSlug: params.planSlug,
     providerPaymentId: params.providerPaymentId,
+    providerTestPayment: params.providerTestPayment,
   });
 
   const updatedSubscription = await maybePersistPaymentMethod(
@@ -264,6 +266,7 @@ export async function processInitialSubscriptionProviderPayment(
       providerPaymentId: payment.id,
       paymentMethodId,
       paymentMethodTitle,
+      providerTestPayment: payment.test === true,
     });
 
     if (fulfilled && isResubscribe) {

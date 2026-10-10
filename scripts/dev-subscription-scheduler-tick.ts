@@ -8,6 +8,7 @@ import { resolve } from 'path';
 import {
   bootstrapLocalRenewalSchedulerEnv,
   getLocalRenewalSchedulerIntervalMs,
+  getLocalSchedulerDatabaseBlockReason,
   isLocalRenewalSchedulerEnabled,
   runLocalRenewalCycleTick,
 } from '../netlify/functions/lib/local-renewal-scheduler';
@@ -66,6 +67,12 @@ async function invokeRenewalCycle(): Promise<void> {
 }
 
 async function main(): Promise<void> {
+  const databaseBlock = getLocalSchedulerDatabaseBlockReason();
+  if (databaseBlock) {
+    console.error(`${BANNER} blocked: ${databaseBlock}`);
+    process.exit(1);
+  }
+
   if (!isLocalRenewalSchedulerEnabled()) {
     const reasons: string[] = [];
     if (process.env.LOCAL_RENEWAL_SCHEDULER?.trim().toLowerCase() === 'false') {

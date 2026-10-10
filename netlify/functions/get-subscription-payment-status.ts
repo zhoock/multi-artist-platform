@@ -33,11 +33,12 @@ import {
   DEFAULT_SUBSCRIPTION_PLAN,
   getSubscriptionPaymentForUser,
   getSubscriptionPaymentByInternalId,
+  isSubscriptionFulfilledForProviderPayment,
   PREMIUM_SUBSCRIPTION_PRODUCT_TYPE,
 } from './lib/subscription-billing';
 import {
+  allowsProductionBillingFulfillmentDespiteOriginGuard,
   allowsProductionRebindOfDevSubscription,
-  allowsProductionResubscribeOfEndedDevSubscription,
   checkBillingMutationAllowed,
 } from './lib/subscription-billing-origin';
 import { getViewerSubscription } from './lib/subscriptions';
@@ -325,14 +326,32 @@ export const handler: Handler = async (event: HandlerEvent) => {
           });
         }
 
+        if (providerPayment.status === 'succeeded') {
+          const alreadyApplied = await isSubscriptionFulfilledForProviderPayment(userId, paymentId);
+          if (alreadyApplied) {
+            return createSuccessResponse({
+              payment: buildPaymentResponse(providerPayment, {
+                productType,
+                userId: metaUserId,
+                plan: plan ?? DEFAULT_SUBSCRIPTION_PLAN,
+                kind: owned.kind,
+              }),
+              subscriptionActivated: true,
+              paymentMethodUpdated: false,
+            });
+          }
+        }
+
         const subscription = await getViewerSubscription(userId);
         const billingGuard = checkBillingMutationAllowed(subscription);
-        const resubscribeAllowed = allowsProductionResubscribeOfEndedDevSubscription({
+        const fulfillmentAllowed = allowsProductionBillingFulfillmentDespiteOriginGuard({
           subscription,
           paymentKind: owned.kind,
           devMarkedPayment: isDevMarkedPayment(owned.raw_last_event),
+          providerTestPayment: providerPayment.test === true,
+          providerPaymentSucceeded: providerPayment.status === 'succeeded',
         });
-        if (!billingGuard.allowed && !resubscribeAllowed) {
+        if (!billingGuard.allowed && !fulfillmentAllowed) {
           logSubscriptionEvent(
             SUBSCRIPTION_LOG_EVENTS.FULFILLMENT_REJECTED,
             {

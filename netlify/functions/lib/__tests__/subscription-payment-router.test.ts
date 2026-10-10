@@ -243,6 +243,55 @@ describe('processSubscriptionProviderPaymentForRow billing_origin guard', () => 
     expect(mockedRenewal).not.toHaveBeenCalled();
   });
 
+  test('production runtime fulfills YooKassa test initial on active dev-origin subscription', async () => {
+    delete process.env.DEV_PAYMENT_MODE;
+    process.env.NODE_ENV = 'production';
+    process.env.CONTEXT = 'production';
+    mockedGetSubscription.mockResolvedValue({
+      id: 'sub-dev',
+      userId: USER_ID,
+      status: 'active',
+      plan: 'archivist',
+      slotsLimit: 100,
+      provider: 'yookassa',
+      providerSubscriptionId: '4af0d1b5-0cb2-4088-b264-04cc1ced24e7',
+      startedAt: new Date('2026-10-09T17:02:04.923Z'),
+      expiresAt: new Date('2026-10-10T04:00:39.674Z'),
+      billingOrigin: 'dev',
+      createdAt: new Date('2026-10-09T17:02:04.923Z'),
+      updatedAt: new Date('2026-10-10T03:55:42.329Z'),
+    });
+
+    const result = await processSubscriptionProviderPaymentForRow(
+      {
+        id: '325b31b0-000f-5001-a000-163970d704e4',
+        status: 'succeeded',
+        test: true,
+        amount: { value: '1.00', currency: 'RUB' },
+        metadata: {
+          productType: 'premium_subscription',
+          userId: USER_ID,
+          plan: 'archivist',
+          kind: 'initial',
+        },
+      },
+      USER_ID,
+      'initial',
+      {
+        observabilitySource: 'poll',
+        subscriptionPaymentId: '2eb99e9a-1a23-444a-bc35-3b636f4926e9',
+        devMarkedPayment: false,
+      }
+    );
+
+    expect(result).toEqual({
+      subscriptionActivated: true,
+      alreadyFulfilled: false,
+      planSlug: 'explorer',
+    });
+    expect(mockedInitial).toHaveBeenCalledTimes(1);
+  });
+
   test('production runtime fulfills rebind for a dev-origin subscription', async () => {
     delete process.env.DEV_PAYMENT_MODE;
     process.env.NODE_ENV = 'production';

@@ -12,6 +12,53 @@ export const DEFAULT_LOCAL_RENEWAL_SCHEDULER_INTERVAL_MS = 60_000;
 
 const SCHEDULED_RENEWALS_PATH = '/.netlify/functions/scheduled-subscription-renewals';
 
+const LOCAL_SCHEDULER_DATABASE_HOSTS = new Set([
+  'localhost',
+  '127.0.0.1',
+  'host.docker.internal',
+  'postgres',
+]);
+
+/** Parse hostname from postgres/postgresql connection string. */
+export function parseDatabaseUrlHost(databaseUrl: string): string | null {
+  const trimmed = databaseUrl.trim();
+  try {
+    const httpLike = trimmed.replace(/^postgresql:/, 'http:').replace(/^postgres:/, 'http:');
+    return new URL(httpLike).hostname.toLowerCase();
+  } catch {
+    const match = trimmed.match(/@([^/?:@]+)/);
+    return match?.[1]?.toLowerCase() ?? null;
+  }
+}
+
+export function isLocalSchedulerDatabaseHost(host: string): boolean {
+  const normalized = host.trim().toLowerCase();
+  if (LOCAL_SCHEDULER_DATABASE_HOSTS.has(normalized)) return true;
+  return normalized.endsWith('.local');
+}
+
+/**
+ * When set, local scheduler must not tick against remote/production DATABASE_URL unless explicitly allowed.
+ */
+export function getLocalSchedulerDatabaseBlockReason(): string | null {
+  if (process.env.ALLOW_LOCAL_SCHEDULER_ON_PRODUCTION_DB === 'true') {
+    return null;
+  }
+  const url = process.env.DATABASE_URL?.trim();
+  if (!url) {
+    return 'DATABASE_URL is not set';
+  }
+  const host = parseDatabaseUrlHost(url);
+  if (!host || !isLocalSchedulerDatabaseHost(host)) {
+    const label = host ?? 'unknown host';
+    return (
+      `Local renewal scheduler refuses remote DATABASE_URL host "${label}". ` +
+      'Use a local/staging Postgres in .env, or set ALLOW_LOCAL_SCHEDULER_ON_PRODUCTION_DB=true (unsafe).'
+    );
+  }
+  return null;
+}
+
 function isExplicitOptOut(): boolean {
   const raw = process.env.LOCAL_RENEWAL_SCHEDULER?.trim().toLowerCase();
   return raw === 'false' || raw === '0' || raw === 'no';
@@ -29,6 +76,10 @@ function isLocalDevMarkerSet(): boolean {
  */
 export function isLocalRenewalSchedulerEnabled(): boolean {
   if (isExplicitOptOut()) {
+    return false;
+  }
+
+  if (getLocalSchedulerDatabaseBlockReason()) {
     return false;
   }
 

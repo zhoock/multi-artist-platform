@@ -112,20 +112,18 @@ describe('support period', () => {
     expect(expires.getTime() - from.getTime()).toBe(DEV_SUPPORT_PERIOD_MS);
   });
 
-  test('dev-origin period stays 5 minutes on production runtime, production origin stays 30 days', () => {
+  test('YooKassa test payments use 5 minutes on production runtime; live payments use catalog', () => {
     delete process.env.DEV_PAYMENT_MODE;
     process.env.NODE_ENV = 'production';
     process.env.NETLIFY_DEV = 'false';
     process.env.CONTEXT = 'production';
 
-    const devExpires = computeSupportExpiresAt('archivist', from, { billingOrigin: 'dev' });
-    const productionExpires = computeSupportExpiresAt('archivist', from, {
-      billingOrigin: 'production',
-    });
+    const testExpires = computeSupportExpiresAt('archivist', from, { providerTestPayment: true });
+    const liveExpires = computeSupportExpiresAt('archivist', from, { providerTestPayment: false });
 
-    expect(devExpires.getTime() - from.getTime()).toBe(DEV_SUPPORT_PERIOD_MS);
-    expect(productionExpires.getTime() - from.getTime()).toBe(getPlanSupportPeriodMs('archivist'));
-    expect(resolveSupportPeriodMs('explorer', { billingOrigin: 'production' })).toBe(
+    expect(testExpires.getTime() - from.getTime()).toBe(DEV_SUPPORT_PERIOD_MS);
+    expect(liveExpires.getTime() - from.getTime()).toBe(getPlanSupportPeriodMs('archivist'));
+    expect(resolveSupportPeriodMs('explorer', { providerTestPayment: false })).toBe(
       getPlanSupportPeriodMs('explorer')
     );
   });
@@ -140,13 +138,13 @@ describe('support period', () => {
     expect(expiresAt.getTime() - from.getTime()).toBe(getPlanSupportPeriodMs('explorer'));
   });
 
-  test('dev-origin renewal keeps the 5-minute cycle on production runtime', () => {
+  test('test renewal on production runtime keeps the 5-minute cycle', () => {
     delete process.env.DEV_PAYMENT_MODE;
     process.env.NODE_ENV = 'production';
     process.env.NETLIFY_DEV = 'false';
     process.env.CONTEXT = 'production';
 
-    const renewed = computeSupportExpiresAt('archivist', from, { billingOrigin: 'dev' });
+    const renewed = computeSupportExpiresAt('archivist', from, { providerTestPayment: true });
     expect(renewed.getTime() - from.getTime()).toBe(5 * 60 * 1000);
   });
 
@@ -571,7 +569,7 @@ describe('fulfillSubscriptionPayment', () => {
     expect(mockedQuery.mock.calls[1]?.[1]?.[4]).toBe(true);
   });
 
-  test('resubscribe of an expired dev-origin row keeps the 5-minute window and dev origin', async () => {
+  test('fulfill with providerTestPayment applies a 5-minute window on production runtime', async () => {
     delete process.env.DEV_PAYMENT_MODE;
     process.env.NODE_ENV = 'production';
     process.env.NETLIFY_DEV = 'false';
@@ -586,8 +584,7 @@ describe('fulfillSubscriptionPayment', () => {
             status: 'expired',
             plan: 'archivist',
             slots_limit: 100,
-            billing_origin: 'dev',
-            expires_at: new Date('2026-06-20T11:55:00.000Z'),
+            billing_origin: 'production',
           }),
         ])
       )
@@ -597,32 +594,22 @@ describe('fulfillSubscriptionPayment', () => {
             status: 'active',
             plan: 'archivist',
             slots_limit: 100,
-            billing_origin: 'dev',
-            provider_subscription_id: 'pay-resubscribe',
+            billing_origin: 'production',
+            provider_subscription_id: 'pay-test-initial',
             started_at: startedAt,
             expires_at: expiresAt,
           }),
         ])
       );
 
-    const subscription = await fulfillSubscriptionPayment({
+    await fulfillSubscriptionPayment({
       userId: USER_ID,
       planSlug: 'archivist',
-      providerPaymentId: 'pay-resubscribe',
+      providerPaymentId: 'pay-test-initial',
+      providerTestPayment: true,
     });
 
-    expect(mockedQuery.mock.calls[1]?.[1]?.[4]).toBe(true);
     expect(mockedQuery.mock.calls[1]?.[1]?.[6]).toEqual(expiresAt);
-    expect(mockedQuery.mock.calls[1]?.[1]?.[7]).toBe('dev');
-
-    const snapshot = buildBillingSnapshot(subscription, {
-      now: new Date(startedAt.getTime() + 60_000),
-    });
-    expect(snapshot.status).toBe('active');
-    expect(snapshot.plan).toBe('archivist');
-    expect(snapshot.hasPremiumAccess).toBe(true);
-    expect(snapshot.expiresAt).toBe(expiresAt.toISOString());
-    expect(subscription.billingOrigin).toBe('dev');
   });
 
   test('resubscribe of an expired production row keeps the catalog period', async () => {
@@ -632,9 +619,7 @@ describe('fulfillSubscriptionPayment', () => {
     process.env.CONTEXT = 'production';
 
     const startedAt = new Date('2026-06-20T12:00:00.000Z');
-    const expiresAt = computeSupportExpiresAt('archivist', startedAt, {
-      billingOrigin: 'production',
-    });
+    const expiresAt = computeSupportExpiresAt('archivist', startedAt);
     mockedQuery
       .mockResolvedValueOnce(
         fakeQueryResult([

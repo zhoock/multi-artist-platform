@@ -283,6 +283,8 @@ export async function handlePremiumSubscriptionWebhookIfApplicable(
       subscription,
       paymentKind: dbKind,
       devMarkedPayment,
+      providerTestPayment: api.test === true,
+      providerPaymentSucceeded: api.status === 'succeeded',
     });
     if (!billingGuard.allowed && !fulfillmentAllowed) {
       logWebhookSkipped('billing_origin_mismatch', {

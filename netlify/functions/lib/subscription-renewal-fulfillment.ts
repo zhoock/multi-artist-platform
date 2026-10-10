@@ -77,6 +77,7 @@ export async function fulfillRenewalSubscriptionPayment(params: {
   userId: string;
   planSlug: SubscriptionPlanSlug;
   providerPaymentId: string;
+  providerTestPayment?: boolean;
   /** Scheduler / tests may pin clock; defaults to wall time. */
   now?: Date;
 }): Promise<{ subscription: Subscription; fulfilled: boolean; alreadyFulfilled: boolean }> {
@@ -117,7 +118,7 @@ export async function fulfillRenewalSubscriptionPayment(params: {
   const appliedSlotsLimit = getPlanSlotsLimit(appliedPlanSlug);
   const now = params.now ?? new Date();
   const expiresAt = computeSupportExpiresAt(appliedPlanSlug, now, {
-    billingOrigin: existing.billingOrigin,
+    providerTestPayment: params.providerTestPayment === true,
   });
 
   let updated: { rows: SubscriptionRow[] };
@@ -497,6 +498,7 @@ export async function processRenewalSubscriptionProviderPayment(
       userId,
       planSlug,
       providerPaymentId: payment.id,
+      providerTestPayment: payment.test === true,
       now: options.now,
     });
 

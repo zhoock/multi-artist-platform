@@ -50,6 +50,14 @@ export interface SubscriptionProviderPayment {
   metadata: Record<string, string | undefined>;
   paymentMethod: SubscriptionProviderPaymentMethod | null;
   confirmationUrl?: string;
+  /** From YooKassa `test` — not the same as subscription billing_origin. */
+  test?: boolean;
+}
+
+export function isProviderTestPayment(
+  payment: Pick<SubscriptionProviderPayment, 'test'> | null | undefined
+): boolean {
+  return payment?.test === true;
 }
 
 function normalizeProviderStatus(status: string): SubscriptionProviderPaymentStatus | null {
@@ -101,6 +109,7 @@ export function mapYooKassaPaymentToProviderPayment(
     metadata,
     paymentMethod: mapPaymentMethod(api.payment_method),
     confirmationUrl: confirmation?.confirmation_url,
+    test: api.test === true,
   };
 }
 

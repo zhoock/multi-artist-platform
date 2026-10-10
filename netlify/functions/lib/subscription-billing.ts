@@ -90,12 +90,9 @@ export function usesDevSupportPeriod(): boolean {
 
 export function resolveSupportPeriodMs(
   planSlug: SubscriptionPlanSlug,
-  options?: { billingOrigin?: 'dev' | 'production' | null }
+  options?: { providerTestPayment?: boolean }
 ): number {
-  // Dev-origin rows keep the QA window even when fulfillment runs on production.
-  // Production-origin rows keep the catalog length. Runtime dev mode still
-  // shortens only the runtime's own new checkouts via usesDevSupportPeriod().
-  if (options?.billingOrigin === 'dev' || usesDevSupportPeriod()) {
+  if (options?.providerTestPayment === true || usesDevSupportPeriod()) {
     return DEV_SUPPORT_PERIOD_MS;
   }
   return getPlanSupportPeriodMs(planSlug);
@@ -104,7 +101,7 @@ export function resolveSupportPeriodMs(
 export function computeSupportExpiresAt(
   planSlug: SubscriptionPlanSlug,
   from: Date = new Date(),
-  options?: { billingOrigin?: 'dev' | 'production' | null }
+  options?: { providerTestPayment?: boolean }
 ): Date {
   const expiresAt = new Date(from);
   expiresAt.setTime(expiresAt.getTime() + resolveSupportPeriodMs(planSlug, options));
@@ -695,8 +692,9 @@ export async function fulfillSubscriptionPayment(params: {
   userId: string;
   planSlug: SubscriptionPlanSlug;
   providerPaymentId?: string | null;
+  providerTestPayment?: boolean;
 }): Promise<Subscription> {
-  const { userId, planSlug, providerPaymentId } = params;
+  const { userId, planSlug, providerPaymentId, providerTestPayment } = params;
   const plan = getPlanDefinition(planSlug);
   const slotsLimit = plan.slotsLimit;
 
@@ -713,11 +711,10 @@ export async function fulfillSubscriptionPayment(params: {
   const now = new Date();
   const providerId = providerPaymentId?.trim() || null;
   const row = existing.rows[0];
-  const preserveDevOrigin = row?.billing_origin === 'dev';
   const expiresAt = computeSupportExpiresAt(planSlug, now, {
-    billingOrigin: preserveDevOrigin ? 'dev' : undefined,
+    providerTestPayment: providerTestPayment === true,
   });
-  const billingOrigin = preserveDevOrigin ? 'dev' : resolveBillingOriginForNewSubscription();
+  const billingOrigin = resolveBillingOriginForNewSubscription();
 
   if (row) {
     const canReuse =

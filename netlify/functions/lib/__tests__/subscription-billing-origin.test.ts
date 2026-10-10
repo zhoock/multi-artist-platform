@@ -6,6 +6,7 @@ import { describe, expect, test, beforeEach, afterEach } from '@jest/globals';
 
 import {
   allowsProductionBillingFulfillmentDespiteOriginGuard,
+  allowsProductionYooKassaTestPaymentFulfillment,
   allowsProductionRebindOfDevSubscription,
   allowsProductionResubscribeOfEndedDevSubscription,
   checkBillingMutationAllowed,
@@ -165,6 +166,69 @@ describe('allowsProductionRebindOfDevSubscription', () => {
   });
 });
 
+describe('allowsProductionYooKassaTestPaymentFulfillment', () => {
+  test('allows succeeded YooKassa test payments for initial, renewal, and upgrade', () => {
+    delete process.env.DEV_PAYMENT_MODE;
+    process.env.NODE_ENV = 'production';
+    process.env.CONTEXT = 'production';
+
+    const base = {
+      devMarkedPayment: false,
+      providerTestPayment: true,
+      providerPaymentSucceeded: true,
+    };
+
+    expect(
+      allowsProductionYooKassaTestPaymentFulfillment({ ...base, paymentKind: 'initial' })
+    ).toBe(true);
+    expect(
+      allowsProductionYooKassaTestPaymentFulfillment({ ...base, paymentKind: 'renewal' })
+    ).toBe(true);
+    expect(
+      allowsProductionYooKassaTestPaymentFulfillment({ ...base, paymentKind: 'upgrade' })
+    ).toBe(true);
+  });
+
+  test('rejects live payments, dev-marked payments, rebind, and pending status', () => {
+    delete process.env.DEV_PAYMENT_MODE;
+    process.env.NODE_ENV = 'production';
+    process.env.CONTEXT = 'production';
+
+    expect(
+      allowsProductionYooKassaTestPaymentFulfillment({
+        paymentKind: 'initial',
+        devMarkedPayment: false,
+        providerTestPayment: false,
+        providerPaymentSucceeded: true,
+      })
+    ).toBe(false);
+    expect(
+      allowsProductionYooKassaTestPaymentFulfillment({
+        paymentKind: 'initial',
+        devMarkedPayment: true,
+        providerTestPayment: true,
+        providerPaymentSucceeded: true,
+      })
+    ).toBe(false);
+    expect(
+      allowsProductionYooKassaTestPaymentFulfillment({
+        paymentKind: 'rebind',
+        devMarkedPayment: false,
+        providerTestPayment: true,
+        providerPaymentSucceeded: true,
+      })
+    ).toBe(false);
+    expect(
+      allowsProductionYooKassaTestPaymentFulfillment({
+        paymentKind: 'initial',
+        devMarkedPayment: false,
+        providerTestPayment: true,
+        providerPaymentSucceeded: false,
+      })
+    ).toBe(false);
+  });
+});
+
 describe('allowsProductionBillingFulfillmentDespiteOriginGuard', () => {
   test('combines ended dev initial resubscribe and dev rebind exceptions', () => {
     delete process.env.DEV_PAYMENT_MODE;
@@ -192,6 +256,31 @@ describe('allowsProductionBillingFulfillmentDespiteOriginGuard', () => {
         subscription: endedDev,
         paymentKind: 'renewal',
         devMarkedPayment: false,
+      })
+    ).toBe(false);
+  });
+
+  test('allows YooKassa test checkout on active dev-origin row blocked by origin guard', () => {
+    delete process.env.DEV_PAYMENT_MODE;
+    process.env.NODE_ENV = 'production';
+    process.env.CONTEXT = 'production';
+
+    expect(
+      allowsProductionBillingFulfillmentDespiteOriginGuard({
+        subscription: { billingOrigin: 'dev', status: 'active' },
+        paymentKind: 'initial',
+        devMarkedPayment: false,
+        providerTestPayment: true,
+        providerPaymentSucceeded: true,
+      })
+    ).toBe(true);
+    expect(
+      allowsProductionBillingFulfillmentDespiteOriginGuard({
+        subscription: { billingOrigin: 'dev', status: 'active' },
+        paymentKind: 'initial',
+        devMarkedPayment: false,
+        providerTestPayment: false,
+        providerPaymentSucceeded: true,
       })
     ).toBe(false);
   });

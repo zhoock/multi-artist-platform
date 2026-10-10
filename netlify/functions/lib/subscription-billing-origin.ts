@@ -97,6 +97,28 @@ export function allowsProductionRebindOfDevSubscription(params: {
   return !guard.allowed && guard.reason === 'dev_subscription_production_runtime';
 }
 
+function isTestFulfillmentPaymentKind(kind: string | null | undefined): boolean {
+  const normalized = kind?.trim();
+  if (!normalized || normalized === 'initial') return true;
+  return normalized === 'renewal' || normalized === 'upgrade';
+}
+
+/**
+ * Production may fulfill a confirmed YooKassa test payment even when billing_origin
+ * would normally block (shared DB QA). Does not apply to dev-marked synthetic payments.
+ */
+export function allowsProductionYooKassaTestPaymentFulfillment(params: {
+  paymentKind: string | null | undefined;
+  devMarkedPayment: boolean;
+  providerTestPayment: boolean;
+  providerPaymentSucceeded: boolean;
+}): boolean {
+  if (params.devMarkedPayment || isDevPaymentModeEnabled()) return false;
+  if (!params.providerTestPayment || !params.providerPaymentSucceeded) return false;
+  if (!isTestFulfillmentPaymentKind(params.paymentKind)) return false;
+  return true;
+}
+
 export function checkBillingMutationAllowed(
   subscription: Pick<Subscription, 'billingOrigin'> | null | undefined
 ): BillingOriginGuardResult {
@@ -121,11 +143,19 @@ export function allowsProductionBillingFulfillmentDespiteOriginGuard(params: {
   subscription: Pick<Subscription, 'billingOrigin' | 'status'> | null | undefined;
   paymentKind: string | null | undefined;
   devMarkedPayment: boolean;
+  providerTestPayment?: boolean;
+  providerPaymentSucceeded?: boolean;
 }): boolean {
   if (checkBillingMutationAllowed(params.subscription).allowed) return true;
   return (
     allowsProductionResubscribeOfEndedDevSubscription(params) ||
-    allowsProductionRebindOfDevSubscription(params)
+    allowsProductionRebindOfDevSubscription(params) ||
+    allowsProductionYooKassaTestPaymentFulfillment({
+      paymentKind: params.paymentKind,
+      devMarkedPayment: params.devMarkedPayment,
+      providerTestPayment: params.providerTestPayment === true,
+      providerPaymentSucceeded: params.providerPaymentSucceeded === true,
+    })
   );
 }
 

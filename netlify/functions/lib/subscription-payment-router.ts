@@ -120,6 +120,8 @@ async function processWithObservability(
     subscription,
     paymentKind: resolvedKind,
     devMarkedPayment: options.devMarkedPayment === true,
+    providerTestPayment: payment.test === true,
+    providerPaymentSucceeded: payment.status === 'succeeded',
   });
   if (!billingGuard.allowed && !fulfillmentAllowed) {
     logSubscriptionEvent(

@@ -100,6 +100,8 @@ export interface YooKassaPaymentApiShape {
   status: string;
   amount: { value: string; currency: string };
   metadata?: Record<string, unknown>;
+  /** YooKassa test shop payment — short QA support period on production runtime. */
+  test?: boolean;
   paid?: boolean;
   cancelled_at?: string;
   captured_at?: string;
