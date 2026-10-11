@@ -6,7 +6,7 @@
 import { isMissingRelationError, query } from './db';
 import { hasPremiumAccess } from './subscription-access';
 import { SUBSCRIPTION_SLOTS_LIMIT_FALLBACK } from './subscription-billing';
-import { findUnresolvedRenewalAttemptForSubscription } from './subscription-billing';
+import { findOpenRenewalPayment } from './subscription-billing';
 import { buildBillingSnapshot, type BillingSnapshot } from './subscription-billing-snapshot';
 import { nudgeRenewalChargeIfDueForUser } from './subscription-renewal-nudge';
 import { getViewerSubscription } from './subscriptions';
@@ -546,8 +546,10 @@ async function buildArchiveBillingSnapshot(
   slotsLimit: number,
   now: Date
 ): Promise<BillingSnapshot> {
-  const hasUnresolvedRenewal = subscription?.id
-    ? Boolean(await findUnresolvedRenewalAttemptForSubscription(subscription.id))
+  // Read path: legacy columns only (user_id/kind/status). PR-4 fields (idempotence_key, …)
+  // require migrations 079–081; renewal engine uses findUnresolvedRenewalAttemptForSubscription.
+  const hasUnresolvedRenewal = subscription?.userId
+    ? Boolean(await findOpenRenewalPayment(subscription.userId))
     : false;
   return buildBillingSnapshot(subscription, {
     slotsLimitFallback: slotsLimit,

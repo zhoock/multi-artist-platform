@@ -108,9 +108,8 @@ export function PremiumSubscriptionProvider({ children }: { children: ReactNode 
           expiresAt: data.billing?.expiresAt,
           extra: silent ? 'silent' : 'foreground',
         });
-      } catch {
-        setIsPremium(false);
-        setBilling(EMPTY_BILLING_SNAPSHOT);
+      } catch (err) {
+        console.error('[PremiumSubscriptionProvider] my-archive refetch failed', err);
       } finally {
         if (!silent) {
           setLoading(false);
