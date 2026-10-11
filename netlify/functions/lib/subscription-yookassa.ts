@@ -11,6 +11,9 @@ const PREMIUM_SUBSCRIPTION_PRODUCT_TYPE = 'premium_subscription';
 export const SUBSCRIPTION_PAYMENT_KIND_INITIAL = 'initial';
 export const SUBSCRIPTION_PAYMENT_KIND_UPGRADE = 'upgrade';
 export const SUBSCRIPTION_PAYMENT_KIND_RENEWAL = 'renewal';
+
+/** YooKassa metadata key — internal subscription_payments.id (PR-4 renewal correlation). */
+export const RENEWAL_SUBSCRIPTION_PAYMENT_ID_METADATA_KEY = 'subscriptionPaymentId';
 export const SUBSCRIPTION_PAYMENT_KIND_REBIND = 'rebind';
 export const SUBSCRIPTION_REBIND_INTENT_RESUME_AUTO_RENEW = 'resume-auto-renew';
 export const SUBSCRIPTION_REBIND_RESUME_AUTO_RENEW_METADATA_KEY = 'resumeAutoRenew';
@@ -179,6 +182,8 @@ export interface BuildRenewalSubscriptionPaymentPayloadParams {
   planSlug: string;
   customerEmail: string;
   paymentMethodId: string;
+  /** Set when known before POST (frozen at attempt creation — PR-4). */
+  subscriptionPaymentId?: string;
 }
 
 /** Builds POST /v3/payments body for merchant-initiated Premium renewal (PR-7). */
@@ -195,6 +200,9 @@ export function buildRenewalSubscriptionPaymentPayload(
       userId: params.userId,
       plan: params.planSlug,
       kind: SUBSCRIPTION_PAYMENT_KIND_RENEWAL,
+      ...(params.subscriptionPaymentId?.trim()
+        ? { [RENEWAL_SUBSCRIPTION_PAYMENT_ID_METADATA_KEY]: params.subscriptionPaymentId.trim() }
+        : {}),
     },
     receipt: {
       customer: { email: params.customerEmail },

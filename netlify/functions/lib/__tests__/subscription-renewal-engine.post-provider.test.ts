@@ -27,6 +27,36 @@ jest.mock('../yookassa-env', () => ({
   getYooKassaEnvCredentials: jest.fn(() => ({ shopId: 'shop-test', secretKey: 'secret-test' })),
 }));
 
+const mockedGuardedPost = jest.fn();
+
+jest.mock('../subscription-renewal-dispatch-lease', () => ({
+  createRenewalDispatchRunId: jest.fn(() => 'run-test'),
+  acquireRenewalAttemptDispatchLease: jest.fn(async () => ({
+    ok: true,
+    lease: {
+      subscriptionPaymentId: '22222222-2222-4222-8222-222222222222',
+      userId: 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee',
+      token: 'run-test',
+      generation: 1,
+      leaseUntil: new Date('2099-01-01T00:00:00.000Z'),
+    },
+  })),
+  releaseRenewalAttemptDispatchLease: jest.fn(async () => undefined),
+  attachRenewalProviderPaymentIdWithFence: jest.fn(async () => 'attached'),
+}));
+
+jest.mock('../subscription-renewal-reconcile', () => ({
+  guardedRenewalYooKassaPost: (...args: unknown[]) => mockedGuardedPost(...args),
+  reconcileUnresolvedRenewalAttempts: jest.fn(async () => ({
+    examined: 0,
+    resolved: 0,
+    pending: 0,
+    needsReview: 0,
+    retryLater: 0,
+    errors: 0,
+  })),
+}));
+
 jest.mock('../complete-dev-payment', () => ({
   attachDevSucceededSubscriptionCheckout: jest.fn(),
 }));
@@ -37,11 +67,14 @@ jest.mock('../subscription-billing', () => ({
   claimRenewalFirstPostAt: jest.fn(async () => 'claimed' as const),
   cleanupPendingRenewalPayment: jest.fn(),
   cleanupPendingRenewalPaymentWithClient: jest.fn(),
-  createPendingSubscriptionPayment: jest.fn(),
+  createRenewalAttemptRow: jest.fn(),
+  findUnresolvedRenewalAttemptForSubscription: jest.fn(async () => null),
   getPlanAmountRub: jest.fn(() => 1),
   getPlanDefinition: jest.fn(() => ({ description: 'test' })),
   getPlanPriceCurrencyCode: jest.fn(() => 'RUB'),
+  getRenewalAttemptPostIdentity: jest.fn(),
   hasUnresolvedRenewalPostStartedWithClient: jest.fn(async () => false),
+  resolveRenewalAttemptNo: jest.fn(() => 1),
   resolveRenewalChargePlanSlug: jest.fn(() => 'explorer'),
 }));
 
@@ -56,22 +89,32 @@ jest.mock('../subscription-provider-payment', () => ({
 import { attachDevSucceededSubscriptionCheckout } from '../complete-dev-payment';
 import { isDevPaymentModeEnabled } from '../dev-payment-mode';
 import { query } from '../db';
+import { attachRenewalProviderPaymentIdWithFence } from '../subscription-renewal-dispatch-lease';
 import {
   attachProviderPaymentId,
   cancelOrphanPendingRenewalPayments,
   claimRenewalFirstPostAt,
   cleanupPendingRenewalPayment,
   cleanupPendingRenewalPaymentWithClient,
-  createPendingSubscriptionPayment,
+  createRenewalAttemptRow,
+  findUnresolvedRenewalAttemptForSubscription,
+  getRenewalAttemptPostIdentity,
   hasUnresolvedRenewalPostStartedWithClient,
 } from '../subscription-billing';
+import { buildRenewalYookassaCreatePayload } from '../subscription-renewal-post-payload';
 import { processSubscriptionProviderPayment } from '../subscription-payment-router';
 import { mapDevSubscriptionPaymentToProviderPayment } from '../subscription-provider-payment';
 import { attemptRenewalChargeForSubscription } from '../subscription-renewal-engine';
 
 const mockedQuery = query as jest.MockedFunction<typeof query>;
-const mockedCreatePending = createPendingSubscriptionPayment as jest.MockedFunction<
-  typeof createPendingSubscriptionPayment
+const mockedCreateAttempt = createRenewalAttemptRow as jest.MockedFunction<
+  typeof createRenewalAttemptRow
+>;
+const mockedFindUnresolved = findUnresolvedRenewalAttemptForSubscription as jest.MockedFunction<
+  typeof findUnresolvedRenewalAttemptForSubscription
+>;
+const mockedPostIdentity = getRenewalAttemptPostIdentity as jest.MockedFunction<
+  typeof getRenewalAttemptPostIdentity
 >;
 const mockedAttachDev = attachDevSucceededSubscriptionCheckout as jest.MockedFunction<
   typeof attachDevSucceededSubscriptionCheckout
@@ -103,12 +146,24 @@ const mockedMapDev = mapDevSubscriptionPaymentToProviderPayment as jest.MockedFu
 const mockedDevMode = isDevPaymentModeEnabled as jest.MockedFunction<
   typeof isDevPaymentModeEnabled
 >;
+const mockedAttachWithFence = attachRenewalProviderPaymentIdWithFence as jest.MockedFunction<
+  typeof attachRenewalProviderPaymentIdWithFence
+>;
 
 const SUB_ID = '11111111-1111-4111-8111-111111111111';
 const USER_ID = 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee';
 const PAYMENT_ROW_ID = '22222222-2222-4222-8222-222222222222';
 const PROVIDER_PAYMENT_ID = '33333333-3333-4333-8333-333333333333';
 const PREVIOUS_NEXT_CHARGE = new Date('2026-08-01T00:00:00.000Z');
+
+const MOCK_FROZEN_PAYLOAD = buildRenewalYookassaCreatePayload({
+  amountValue: '1.00',
+  description: 'test',
+  userId: USER_ID,
+  planSlug: 'explorer',
+  customerEmail: 'renewal@test.example',
+  paymentMethodId: 'pm-test',
+});
 
 function fakeQueryResult(
   rows: Record<string, unknown>[] = [],
@@ -167,7 +222,19 @@ beforeEach(() => {
     return fakeQueryResult();
   });
 
-  mockedCreatePending.mockResolvedValue(PAYMENT_ROW_ID);
+  mockedFindUnresolved.mockResolvedValue(null);
+  mockedCreateAttempt.mockResolvedValue(PAYMENT_ROW_ID);
+  mockedPostIdentity.mockResolvedValue({
+    ok: true,
+    idempotenceKey: `renewal-${PAYMENT_ROW_ID}`,
+    payload: MOCK_FROZEN_PAYLOAD,
+  });
+  mockedGuardedPost.mockResolvedValue({
+    ok: true,
+    paymentId: PROVIDER_PAYMENT_ID,
+    status: 'pending',
+    route: 'initial_post',
+  });
   mockedAttachDev.mockResolvedValue({ paymentId: PROVIDER_PAYMENT_ID });
   mockedAttachProvider.mockResolvedValue(undefined);
   mockedCleanup.mockResolvedValue(undefined);
@@ -255,8 +322,6 @@ describe('attemptRenewalChargeForSubscription POST_PROVIDER (PR-10.1)', () => {
 });
 
 describe('attemptRenewalChargeForSubscription production POST inline sync', () => {
-  const originalFetch = global.fetch;
-
   beforeEach(() => {
     mockedDevMode.mockReturnValue(false);
     mockedProcess.mockResolvedValue({
@@ -276,17 +341,15 @@ describe('attemptRenewalChargeForSubscription production POST inline sync', () =
     });
   });
 
-  afterEach(() => {
-    global.fetch = originalFetch;
-  });
-
   test.each(['succeeded', 'pending', 'canceled'] as const)(
     'routes sync %s POST response through shared processor without devMode',
     async (providerStatus) => {
-      global.fetch = jest.fn<typeof fetch>().mockResolvedValue({
+      mockedGuardedPost.mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ id: PROVIDER_PAYMENT_ID, status: providerStatus }),
-      } as Response);
+        paymentId: PROVIDER_PAYMENT_ID,
+        status: providerStatus,
+        route: 'initial_post',
+      });
 
       const outcome = await attemptRenewalChargeForSubscription(
         SUB_ID,
@@ -294,7 +357,17 @@ describe('attemptRenewalChargeForSubscription production POST inline sync', () =
       );
 
       expect(outcome).toBe('attempted');
-      expect(mockedAttachProvider).toHaveBeenCalledWith(PAYMENT_ROW_ID, PROVIDER_PAYMENT_ID);
+      expect(mockedGuardedPost).toHaveBeenCalledWith(
+        expect.objectContaining({
+          subscriptionPaymentId: PAYMENT_ROW_ID,
+          claimFirstPostWhenInitial: true,
+        })
+      );
+      expect(mockedAttachWithFence).toHaveBeenCalledWith(
+        expect.objectContaining({ subscriptionPaymentId: PAYMENT_ROW_ID }),
+        PROVIDER_PAYMENT_ID
+      );
+      expect(mockedAttachProvider).not.toHaveBeenCalled();
       expect(mockedProcess).toHaveBeenCalledTimes(1);
 
       const [providerPayment, userId, options] = mockedProcess.mock.calls[0]!;
@@ -317,10 +390,12 @@ describe('attemptRenewalChargeForSubscription production POST inline sync', () =
   );
 
   test('does not inline-process waiting_for_capture POST response', async () => {
-    global.fetch = jest.fn<typeof fetch>().mockResolvedValue({
+    mockedGuardedPost.mockResolvedValueOnce({
       ok: true,
-      json: async () => ({ id: PROVIDER_PAYMENT_ID, status: 'waiting_for_capture' }),
-    } as Response);
+      paymentId: PROVIDER_PAYMENT_ID,
+      status: 'waiting_for_capture',
+      route: 'initial_post',
+    });
 
     const outcome = await attemptRenewalChargeForSubscription(
       SUB_ID,
@@ -328,7 +403,10 @@ describe('attemptRenewalChargeForSubscription production POST inline sync', () =
     );
 
     expect(outcome).toBe('attempted');
-    expect(mockedAttachProvider).toHaveBeenCalledWith(PAYMENT_ROW_ID, PROVIDER_PAYMENT_ID);
+    expect(mockedAttachWithFence).toHaveBeenCalledWith(
+      expect.objectContaining({ subscriptionPaymentId: PAYMENT_ROW_ID }),
+      PROVIDER_PAYMENT_ID
+    );
     expect(mockedProcess).not.toHaveBeenCalled();
   });
 });
@@ -342,7 +420,7 @@ describe('attemptRenewalChargeForSubscription PRE_PROVIDER (PR-10.1)', () => {
 
   test('quarantines stub PM and skips when YooKassa reports payment_method not saved', async () => {
     mockedDevMode.mockReturnValue(false);
-    mockedCreatePending.mockResolvedValue(PAYMENT_ROW_ID);
+    mockedCreateAttempt.mockResolvedValue(PAYMENT_ROW_ID);
     mockedQuery.mockImplementation(async (text) => {
       const sql = String(text);
       if (sql.includes('WITH candidate AS')) {
@@ -361,15 +439,11 @@ describe('attemptRenewalChargeForSubscription PRE_PROVIDER (PR-10.1)', () => {
       return fakeQueryResult();
     });
 
-    global.fetch = jest.fn<typeof fetch>().mockResolvedValue({
-      ok: false,
-      status: 400,
-      text: async () =>
-        JSON.stringify({
-          description: 'This payment_method is not saved. Specify it with the saved=true value',
-          parameter: 'payment_method_id',
-        }),
-    } as Response);
+    mockedGuardedPost.mockRejectedValueOnce(
+      new Error(
+        'YooKassa renewal create failed: 400 {\n  "description" : "This payment_method is not saved. Specify it with the saved=true value",\n  "parameter" : "payment_method_id"\n}'
+      )
+    );
 
     const outcome = await attemptRenewalChargeForSubscription(
       SUB_ID,
@@ -395,7 +469,7 @@ describe('attemptRenewalChargeForSubscription PRE_PROVIDER (PR-10.1)', () => {
 
   test('does not restore next_charge_at after YooKassa 400 once first_post_at was claimed', async () => {
     mockedDevMode.mockReturnValue(false);
-    mockedCreatePending.mockResolvedValue(PAYMENT_ROW_ID);
+    mockedCreateAttempt.mockResolvedValue(PAYMENT_ROW_ID);
     mockedUnresolvedPost.mockResolvedValue(true);
     mockedQuery.mockImplementation(async (text) => {
       const sql = String(text);
@@ -408,11 +482,9 @@ describe('attemptRenewalChargeForSubscription PRE_PROVIDER (PR-10.1)', () => {
       return fakeQueryResult();
     });
 
-    global.fetch = jest.fn<typeof fetch>().mockResolvedValue({
-      ok: false,
-      status: 400,
-      text: async () => JSON.stringify({ description: 'invalid_request' }),
-    } as Response);
+    mockedGuardedPost.mockRejectedValueOnce(
+      new Error('YooKassa renewal create failed: 400 {"description":"invalid_request"}')
+    );
 
     const outcome = await attemptRenewalChargeForSubscription(
       SUB_ID,
@@ -420,7 +492,7 @@ describe('attemptRenewalChargeForSubscription PRE_PROVIDER (PR-10.1)', () => {
     );
 
     expect(outcome).toBe('error');
-    expect(mockedClaimFirstPost).toHaveBeenCalled();
+    expect(mockedGuardedPost).toHaveBeenCalled();
     expect(mockedCleanupWithClient).toHaveBeenCalledWith(
       expect.objectContaining({ query: clientQuery }),
       PAYMENT_ROW_ID,
@@ -439,8 +511,8 @@ describe('attemptRenewalChargeForSubscription PRE_PROVIDER (PR-10.1)', () => {
     expect(restoreCalls).toHaveLength(0);
   });
 
-  test('rolls back when createPendingSubscriptionPayment fails', async () => {
-    mockedCreatePending.mockRejectedValue(new Error('insert failed'));
+  test('rolls back when createRenewalAttemptRow fails', async () => {
+    mockedCreateAttempt.mockRejectedValue(new Error('insert failed'));
 
     const outcome = await attemptRenewalChargeForSubscription(
       SUB_ID,
@@ -450,7 +522,7 @@ describe('attemptRenewalChargeForSubscription PRE_PROVIDER (PR-10.1)', () => {
     expect(outcome).toBe('error');
     expect(mockedCleanup).not.toHaveBeenCalled();
     expect(mockedAttachProvider).not.toHaveBeenCalled();
-    expect(mockedClaimFirstPost).not.toHaveBeenCalled();
+    expect(mockedGuardedPost).not.toHaveBeenCalled();
 
     const restoreCalls = mockedQuery.mock.calls.filter(([sql]) =>
       String(sql).includes('next_charge_at = $2')
@@ -458,7 +530,7 @@ describe('attemptRenewalChargeForSubscription PRE_PROVIDER (PR-10.1)', () => {
     expect(restoreCalls.length).toBeGreaterThan(0);
   });
 
-  test('claims first_post_at before production POST', async () => {
+  test('guarded POST returns needs_review without attach when window expired', async () => {
     mockedDevMode.mockReturnValue(false);
     mockedQuery.mockImplementation(async (text) => {
       const sql = String(text);
@@ -470,43 +542,14 @@ describe('attemptRenewalChargeForSubscription PRE_PROVIDER (PR-10.1)', () => {
       }
       return fakeQueryResult();
     });
-    global.fetch = jest.fn<typeof fetch>().mockResolvedValue({
-      ok: true,
-      json: async () => ({ id: PROVIDER_PAYMENT_ID, status: 'pending' }),
-    } as Response);
-
-    await attemptRenewalChargeForSubscription(SUB_ID, new Date('2026-08-05T12:00:00.000Z'));
-
-    expect(mockedClaimFirstPost).toHaveBeenCalledWith(
-      PAYMENT_ROW_ID,
-      USER_ID,
-      new Date('2026-08-05T12:00:00.000Z')
-    );
-    expect(global.fetch).toHaveBeenCalled();
-  });
-
-  test('does not POST when first_post_at was already set on the row', async () => {
-    mockedDevMode.mockReturnValue(false);
-    mockedQuery.mockImplementation(async (text) => {
-      const sql = String(text);
-      if (sql.includes('WITH candidate AS')) {
-        return fakeQueryResult([claimRow()]);
-      }
-      if (sql.includes('SELECT email FROM users')) {
-        return fakeQueryResult([{ email: 'renewal@test.example' }]);
-      }
-      return fakeQueryResult();
-    });
-    mockedClaimFirstPost.mockResolvedValue('already_started');
-    global.fetch = jest.fn<typeof fetch>();
+    mockedGuardedPost.mockResolvedValueOnce({ ok: false, reason: 'needs_review' });
 
     const outcome = await attemptRenewalChargeForSubscription(
       SUB_ID,
       new Date('2026-08-05T12:00:00.000Z')
     );
 
-    expect(outcome).toBe('error');
-    expect(global.fetch).not.toHaveBeenCalled();
+    expect(outcome).toBe('skipped');
     expect(mockedAttachProvider).not.toHaveBeenCalled();
   });
 
@@ -523,7 +566,7 @@ describe('attemptRenewalChargeForSubscription PRE_PROVIDER (PR-10.1)', () => {
       return fakeQueryResult();
     });
     mockedUnresolvedPost.mockResolvedValue(true);
-    global.fetch = jest.fn<typeof fetch>().mockRejectedValue(new Error('network timeout'));
+    mockedGuardedPost.mockRejectedValueOnce(new Error('network timeout'));
 
     const outcome = await attemptRenewalChargeForSubscription(
       SUB_ID,
@@ -531,7 +574,7 @@ describe('attemptRenewalChargeForSubscription PRE_PROVIDER (PR-10.1)', () => {
     );
 
     expect(outcome).toBe('error');
-    expect(mockedClaimFirstPost).toHaveBeenCalled();
+    expect(mockedGuardedPost).toHaveBeenCalled();
     expect(mockedCleanupWithClient).toHaveBeenCalled();
     expect(
       clientQuery.mock.calls.filter(([sql]) => String(sql).includes('next_charge_at = $2'))

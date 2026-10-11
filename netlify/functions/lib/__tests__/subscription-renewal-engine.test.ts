@@ -25,7 +25,9 @@ jest.mock('../subscription-billing', () => ({
   cancelOrphanPendingRenewalPayments: jest.fn(),
   attachProviderPaymentId: jest.fn(),
   claimRenewalFirstPostAt: jest.fn(),
-  createPendingSubscriptionPayment: jest.fn(),
+  createRenewalAttemptRow: jest.fn(),
+  findUnresolvedRenewalAttemptForSubscription: jest.fn(async () => null),
+  getRenewalAttemptPostIdentity: jest.fn(),
   getPlanAmountRub: jest.fn(() => 1),
   getPlanDefinition: jest.fn(() => ({ description: 'test', slotsLimit: 20 })),
   getPlanPriceCurrencyCode: jest.fn(() => 'RUB'),
@@ -35,6 +37,18 @@ jest.mock('../subscription-billing', () => ({
 
 jest.mock('../subscription-renewal-fulfillment', () => ({
   applySubscriptionPeriodEnded: jest.fn(async () => false),
+}));
+
+jest.mock('../subscription-renewal-reconcile', () => ({
+  reconcileUnresolvedRenewalAttempts: jest.fn(async () => ({
+    examined: 0,
+    resolved: 0,
+    pending: 0,
+    needsReview: 0,
+    retryLater: 0,
+    errors: 0,
+  })),
+  guardedRenewalYooKassaPost: jest.fn(),
 }));
 
 import { query } from '../db';
@@ -49,6 +63,7 @@ import {
   runRenewalCycle,
   listChargeReadySubscriptionIds,
 } from '../subscription-renewal-engine';
+import { reconcileUnresolvedRenewalAttempts } from '../subscription-renewal-reconcile';
 
 const mockedQuery = query as jest.MockedFunction<typeof query>;
 const mockedCleanupWithClient = cleanupPendingRenewalPaymentWithClient as jest.MockedFunction<
@@ -56,6 +71,9 @@ const mockedCleanupWithClient = cleanupPendingRenewalPaymentWithClient as jest.M
 >;
 const mockedCancelOrphans = cancelOrphanPendingRenewalPayments as jest.MockedFunction<
   typeof cancelOrphanPendingRenewalPayments
+>;
+const mockedReconcileUnresolved = reconcileUnresolvedRenewalAttempts as jest.MockedFunction<
+  typeof reconcileUnresolvedRenewalAttempts
 >;
 
 const SUB_ID = 'sub-11111111-2222-4333-8444-555555555555';
@@ -147,6 +165,7 @@ describe('runRenewalCycle orphan reconcile ordering', () => {
     expect(dueListSql).not.toContain('subscription_payments');
     expect(readyListSql).toContain('subscription_payments');
     expect(mockedCancelOrphans).toHaveBeenCalledWith(userId);
+    expect(mockedReconcileUnresolved).toHaveBeenCalledWith(now);
   });
 });
 

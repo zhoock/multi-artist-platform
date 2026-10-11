@@ -24,11 +24,12 @@ import { isDevMarkedPayment } from './dev-payment-mode';
 import {
   PREMIUM_SUBSCRIPTION_PRODUCT_TYPE,
   claimSubscriptionPaymentCanceled,
-  getSubscriptionPaymentByProviderId,
   updateSubscriptionPaymentStatus,
   validatePremiumSubscriptionPayment,
   validateRebindSubscriptionPayment,
 } from './subscription-billing';
+import { resolveSubscriptionPaymentRowForVerifiedWebhook } from './subscription-renewal-webhook-correlation';
+import { RENEWAL_SUBSCRIPTION_PAYMENT_ID_METADATA_KEY } from './subscription-yookassa';
 import { verifySubscriptionPaymentRowForWebhook } from './subscription-payment-row-verify';
 import { processSubscriptionProviderPaymentForRow } from './subscription-payment-router';
 import { getViewerSubscription } from './subscriptions';
@@ -234,19 +235,35 @@ export async function handlePremiumSubscriptionWebhookIfApplicable(
     );
   }
 
-  const paymentRow = await getSubscriptionPaymentByProviderId(api.id);
-  if (!paymentRow) {
-    logWebhookSkipped('payment_row_not_found', { providerPaymentIdSuffix: `…${api.id.slice(-6)}` });
+  const metadataSubscriptionPaymentId = metaString(
+    api.metadata,
+    RENEWAL_SUBSCRIPTION_PAYMENT_ID_METADATA_KEY
+  );
+
+  const rowResolution = await resolveSubscriptionPaymentRowForVerifiedWebhook({
+    providerPaymentId: api.id,
+    userId,
+    metadataKind: kind,
+    metadataSubscriptionPaymentId,
+  });
+
+  if (!rowResolution.ok) {
+    logWebhookSkipped('payment_row_not_found', {
+      providerPaymentIdSuffix: `…${api.id.slice(-6)}`,
+      detail: rowResolution.reason,
+    });
     return jsonResponse(
       200,
       {
         success: true,
         processed: false,
-        message: 'Verification failed: subscription payment row not found',
+        message: `Verification failed: ${rowResolution.reason}`,
       },
       headers
     );
   }
+
+  const paymentRow = rowResolution.row;
 
   const rowVerification = verifySubscriptionPaymentRowForWebhook({
     row: paymentRow,
@@ -254,6 +271,7 @@ export async function handlePremiumSubscriptionWebhookIfApplicable(
     metadataProductType: productType,
     metadataKind: kind,
     metadataPlan: plan,
+    metadataSubscriptionPaymentId,
     amountValue: api.amount.value,
     currency: api.amount.currency,
     amountsEqual,

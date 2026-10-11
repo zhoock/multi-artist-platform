@@ -11,13 +11,15 @@ import { isYooKassaPaymentMethodNotSavedError } from './yookassa-renewal-create-
 import {
   attachProviderPaymentId,
   cancelOrphanPendingRenewalPayments,
-  claimRenewalFirstPostAt,
   cleanupPendingRenewalPaymentWithClient,
-  createPendingSubscriptionPayment,
+  createRenewalAttemptRow,
+  findUnresolvedRenewalAttemptForSubscription,
   getPlanAmountRub,
   getPlanDefinition,
   getPlanPriceCurrencyCode,
+  getRenewalAttemptPostIdentity,
   hasUnresolvedRenewalPostStartedWithClient,
+  resolveRenewalAttemptNo,
   resolveRenewalChargePlanSlug,
 } from './subscription-billing';
 import { isSubscriptionAutoRenewEnabled } from './subscription-feature-flag';
@@ -28,14 +30,27 @@ import {
 } from './subscription-provider-payment';
 import { processSubscriptionProviderPayment } from './subscription-payment-router';
 import { applySubscriptionPeriodEnded } from './subscription-renewal-fulfillment';
+import { reconcileUnresolvedRenewalAttempts } from './subscription-renewal-reconcile';
 import {
   extendSubscriptionObservability,
   logSubscriptionEvent,
   SUBSCRIPTION_LOG_EVENTS,
 } from './subscription-observability';
-import { buildRenewalSubscriptionPaymentPayload } from './subscription-yookassa';
+import {
+  buildRenewalYookassaCreatePayload,
+  renewalPayloadAmountValue,
+  renewalPayloadCurrency,
+  renewalPayloadPlanSlug,
+  type RenewalYookassaCreatePayload,
+} from './subscription-renewal-post-payload';
+import {
+  acquireRenewalAttemptDispatchLease,
+  attachRenewalProviderPaymentIdWithFence,
+  createRenewalDispatchRunId,
+  releaseRenewalAttemptDispatchLease,
+} from './subscription-renewal-dispatch-lease';
+import { guardedRenewalYooKassaPost } from './subscription-renewal-reconcile';
 import { mapSubscriptionRow, type SubscriptionRow } from './subscriptions';
-import { getYooKassaEnvCredentials } from './yookassa-env';
 
 const PRODUCTION_RENEWAL_CLAIM_LOCK_MS = 30 * 60 * 1000;
 const DEV_RENEWAL_CLAIM_LOCK_MS = 10 * 60 * 1000;
@@ -65,11 +80,6 @@ const CHARGE_READY_PENDING_RENEWAL_GUARD = `
       AND sp.kind = 'renewal'
       AND sp.status IN ('pending', 'waiting_for_capture')
   )`;
-
-interface YooKassaCreateResponse {
-  id: string;
-  status: string;
-}
 
 export interface RenewalChargeClaimResult {
   row: SubscriptionRow;
@@ -351,60 +361,6 @@ async function getUserEmail(userId: string): Promise<string | null> {
   return r.rows[0]?.email?.trim() ?? null;
 }
 
-async function createYooKassaRenewalPayment(params: {
-  subscriptionPaymentId: string;
-  userId: string;
-  planSlug: string;
-  paymentMethodId: string;
-  customerEmail: string;
-}): Promise<{ paymentId: string; status: string }> {
-  const yookassaCreds = getYooKassaEnvCredentials();
-  if (!yookassaCreds) {
-    throw new Error('YooKassa is not configured');
-  }
-
-  const planDefinition = getPlanDefinition(params.planSlug);
-  const amountValue = getPlanAmountRub(params.planSlug).toFixed(2);
-  const payload = buildRenewalSubscriptionPaymentPayload({
-    amountValue,
-    description: planDefinition.description,
-    userId: params.userId,
-    planSlug: params.planSlug,
-    customerEmail: params.customerEmail,
-    paymentMethodId: params.paymentMethodId,
-  });
-
-  const apiUrl = process.env.YOOKASSA_API_URL || 'https://api.yookassa.ru/v3/payments';
-  const authHeader = Buffer.from(`${yookassaCreds.shopId}:${yookassaCreds.secretKey}`).toString(
-    'base64'
-  );
-  const idempotenceKey = `renewal-${params.subscriptionPaymentId}`;
-
-  const response = await fetch(apiUrl, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Basic ${authHeader}`,
-      'Idempotence-Key': idempotenceKey,
-    },
-    body: JSON.stringify(payload),
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(
-      `YooKassa renewal create failed: ${response.status} ${errorText.slice(0, 200)}`
-    );
-  }
-
-  const paymentData = (await response.json()) as YooKassaCreateResponse;
-  if (!paymentData.id) {
-    throw new Error('Invalid YooKassa renewal response');
-  }
-
-  return { paymentId: paymentData.id, status: paymentData.status };
-}
-
 async function processRenewalProviderPaymentInline(
   userId: string,
   providerPayment: SubscriptionProviderPayment,
@@ -489,6 +445,7 @@ export async function attemptRenewalChargeForSubscription(
   const chargePlanSlug = resolveRenewalChargePlanSlug(subscription);
   let subscriptionPaymentId: string | undefined;
   let phase: RenewalChargePhase = 'PRE_PROVIDER';
+  let frozenPostIdentity: Awaited<ReturnType<typeof getRenewalAttemptPostIdentity>> | undefined;
 
   const rollbackPreProvider = async () => {
     await rollbackRenewalChargeAttempt({
@@ -513,11 +470,92 @@ export async function attemptRenewalChargeForSubscription(
       }
     }
 
-    subscriptionPaymentId = await createPendingSubscriptionPayment(
-      subscription.userId,
-      chargePlanSlug,
-      'renewal'
+    const periodEnd = subscription.expiresAt;
+    if (!periodEnd) {
+      logSubscriptionEvent(
+        SUBSCRIPTION_LOG_EVENTS.SCHEDULER_CHARGE,
+        {
+          subscriptionId: subscription.id,
+          outcome: 'skipped',
+          reason: 'missing_period_end',
+        },
+        'warn'
+      );
+      await rollbackPreProvider();
+      return 'skipped';
+    }
+
+    const existingAttempt = await findUnresolvedRenewalAttemptForSubscription(subscription.id);
+    if (existingAttempt) {
+      subscriptionPaymentId = existingAttempt.id;
+    } else {
+      let yookassaCreatePayload: RenewalYookassaCreatePayload;
+      if (!isDevPaymentModeEnabled()) {
+        const customerEmail = (await getUserEmail(subscription.userId))!;
+        yookassaCreatePayload = buildRenewalYookassaCreatePayload({
+          amountValue: getPlanAmountRub(chargePlanSlug).toFixed(2),
+          description: getPlanDefinition(chargePlanSlug).description,
+          userId: subscription.userId,
+          planSlug: chargePlanSlug,
+          customerEmail,
+          paymentMethodId,
+        });
+      } else {
+        const devEmail = (await getUserEmail(subscription.userId)) ?? 'dev-renewal@local.test';
+        yookassaCreatePayload = buildRenewalYookassaCreatePayload({
+          amountValue: getPlanAmountRub(chargePlanSlug).toFixed(2),
+          description: getPlanDefinition(chargePlanSlug).description,
+          userId: subscription.userId,
+          planSlug: chargePlanSlug,
+          customerEmail: devEmail,
+          paymentMethodId,
+        });
+      }
+
+      try {
+        subscriptionPaymentId = await createRenewalAttemptRow({
+          userId: subscription.userId,
+          subscriptionId: subscription.id,
+          periodEnd,
+          attemptNo: resolveRenewalAttemptNo(subscription),
+          planSlug: chargePlanSlug,
+          yookassaCreatePayload,
+        });
+      } catch (createError) {
+        const conflict = (createError as { renewalAttemptCreateConflict?: string })
+          .renewalAttemptCreateConflict;
+        if (conflict === 'open_renewal_for_subscription') {
+          const raced = await findUnresolvedRenewalAttemptForSubscription(subscription.id);
+          if (raced?.id) {
+            subscriptionPaymentId = raced.id;
+          } else {
+            throw createError;
+          }
+        } else {
+          throw createError;
+        }
+      }
+    }
+
+    frozenPostIdentity = await getRenewalAttemptPostIdentity(
+      subscriptionPaymentId,
+      subscription.userId
     );
+    if (!frozenPostIdentity.ok) {
+      logSubscriptionEvent(
+        SUBSCRIPTION_LOG_EVENTS.SCHEDULER_ERROR,
+        {
+          subscriptionId: subscription.id,
+          subscriptionPaymentId,
+          phase: 'PRE_PROVIDER',
+          reason: 'renewal_post_identity_invalid',
+          detail: frozenPostIdentity.reason,
+        },
+        'error'
+      );
+      await rollbackPreProvider();
+      return 'error';
+    }
 
     if (isDevPaymentModeEnabled()) {
       const { paymentId } = await attachDevSucceededSubscriptionCheckout({ subscriptionPaymentId });
@@ -575,75 +613,173 @@ export async function attemptRenewalChargeForSubscription(
       return 'attempted';
     }
 
-    const customerEmail = (await getUserEmail(subscription.userId))!;
-    const firstPostClaim = await claimRenewalFirstPostAt(
+    const postIdentity = frozenPostIdentity!;
+    const dispatchRunId = createRenewalDispatchRunId();
+    const leaseAcquire = await acquireRenewalAttemptDispatchLease({
       subscriptionPaymentId,
-      subscription.userId,
-      now
-    );
-    if (firstPostClaim === 'not_found') {
-      logSubscriptionEvent(
-        SUBSCRIPTION_LOG_EVENTS.SCHEDULER_ERROR,
-        {
-          subscriptionId: subscription.id,
-          subscriptionPaymentId,
-          phase: 'PRE_PROVIDER',
-          reason: 'renewal_first_post_claim_not_found',
-        },
-        'error'
-      );
-      await rollbackPreProvider();
-      return 'error';
-    }
-    if (firstPostClaim === 'already_started') {
+      userId: subscription.userId,
+      runId: dispatchRunId,
+      now,
+    });
+    if (!leaseAcquire.ok) {
       logSubscriptionEvent(
         SUBSCRIPTION_LOG_EVENTS.SCHEDULER_CHARGE,
         {
           subscriptionId: subscription.id,
           subscriptionPaymentId,
           outcome: 'skipped',
+          reason: 'renewal_dispatch_lease_unavailable',
+          detail: leaseAcquire.reason,
+          phase: 'PRE_PROVIDER',
+        },
+        'warn'
+      );
+      return 'skipped';
+    }
+    const dispatchLease = leaseAcquire.lease;
+
+    let postResult: Awaited<ReturnType<typeof guardedRenewalYooKassaPost>>;
+    try {
+      postResult = await guardedRenewalYooKassaPost({
+        subscriptionPaymentId,
+        userId: subscription.userId,
+        now,
+        claimFirstPostWhenInitial: true,
+        dispatchLease,
+      });
+    } catch (postError) {
+      await releaseRenewalAttemptDispatchLease(dispatchLease, now);
+      throw postError;
+    }
+
+    if (!postResult.ok) {
+      await releaseRenewalAttemptDispatchLease(dispatchLease, now);
+      if (postResult.reason === 'needs_review' || postResult.reason === 'invalid_first_post') {
+        logSubscriptionEvent(
+          SUBSCRIPTION_LOG_EVENTS.SCHEDULER_CHARGE,
+          {
+            subscriptionId: subscription.id,
+            subscriptionPaymentId,
+            outcome: 'skipped',
+            reason: 'renewal_post_needs_review',
+            phase: 'PRE_PROVIDER',
+          },
+          'warn'
+        );
+        return 'skipped';
+      }
+      if (postResult.reason === 'identity_invalid') {
+        logSubscriptionEvent(
+          SUBSCRIPTION_LOG_EVENTS.SCHEDULER_ERROR,
+          {
+            subscriptionId: subscription.id,
+            subscriptionPaymentId,
+            phase: 'PRE_PROVIDER',
+            reason: 'renewal_post_identity_invalid',
+            detail: postResult.detail,
+          },
+          'error'
+        );
+        await rollbackPreProvider();
+        return 'error';
+      }
+      if (postResult.reason === 'not_found') {
+        logSubscriptionEvent(
+          SUBSCRIPTION_LOG_EVENTS.SCHEDULER_ERROR,
+          {
+            subscriptionId: subscription.id,
+            subscriptionPaymentId,
+            phase: 'PRE_PROVIDER',
+            reason: 'renewal_first_post_claim_not_found',
+          },
+          'error'
+        );
+        await rollbackPreProvider();
+        return 'error';
+      }
+      if (postResult.reason === 'provider_id_use_get') {
+        logSubscriptionEvent(
+          SUBSCRIPTION_LOG_EVENTS.SCHEDULER_CHARGE,
+          {
+            subscriptionId: subscription.id,
+            subscriptionPaymentId,
+            outcome: 'skipped',
+            reason: 'renewal_post_deferred_to_reconcile',
+            phase: 'PRE_PROVIDER',
+          },
+          'warn'
+        );
+        return 'skipped';
+      }
+      await rollbackPreProvider();
+      return 'error';
+    }
+
+    if (postResult.route === 'repeat_post') {
+      logSubscriptionEvent(
+        SUBSCRIPTION_LOG_EVENTS.SCHEDULER_CHARGE,
+        {
+          subscriptionId: subscription.id,
+          subscriptionPaymentId,
+          outcome: 'resuming',
           reason: 'renewal_first_post_already_set',
           phase: 'PRE_PROVIDER',
         },
         'warn'
       );
-      await rollbackPreProvider();
-      return 'error';
     }
 
-    const { paymentId, status } = await createYooKassaRenewalPayment({
-      subscriptionPaymentId,
-      userId: subscription.userId,
-      planSlug: chargePlanSlug,
-      paymentMethodId,
-      customerEmail,
-    });
+    const { paymentId, status } = postResult;
 
-    await attachProviderPaymentId(subscriptionPaymentId, paymentId);
+    const attachOutcome = await attachRenewalProviderPaymentIdWithFence(dispatchLease, paymentId);
+    if (attachOutcome !== 'attached') {
+      await releaseRenewalAttemptDispatchLease(dispatchLease, now);
+      logSubscriptionEvent(
+        SUBSCRIPTION_LOG_EVENTS.SCHEDULER_CHARGE,
+        {
+          subscriptionId: subscription.id,
+          subscriptionPaymentId,
+          outcome: 'skipped',
+          reason: 'renewal_provider_attach_fence_rejected',
+          phase: 'PRE_PROVIDER',
+        },
+        'warn'
+      );
+      return 'skipped';
+    }
     phase = 'POST_PROVIDER';
 
-    if (isInlineSyncRenewalProviderStatus(status)) {
-      const providerPayment: SubscriptionProviderPayment = {
-        id: paymentId,
-        status,
-        amount: {
-          value: getPlanAmountRub(chargePlanSlug).toFixed(2),
-          currency: getPlanPriceCurrencyCode(),
-        },
-        metadata: {
-          productType: 'premium_subscription',
-          userId: subscription.userId,
-          plan: chargePlanSlug,
-          kind: 'renewal',
-        },
-        paymentMethod: { id: paymentMethodId, saved: true },
-      };
-      await processRenewalProviderPaymentInline(
-        subscription.userId,
-        providerPayment,
-        subscriptionPaymentId,
-        now
-      );
+    try {
+      if (isInlineSyncRenewalProviderStatus(status)) {
+        const amountValue =
+          renewalPayloadAmountValue(postIdentity.payload) ??
+          getPlanAmountRub(chargePlanSlug).toFixed(2);
+        const currency = renewalPayloadCurrency(postIdentity.payload) ?? getPlanPriceCurrencyCode();
+        const planFromPayload = renewalPayloadPlanSlug(postIdentity.payload) ?? chargePlanSlug;
+        const providerPayment: SubscriptionProviderPayment = {
+          id: paymentId,
+          status,
+          amount: {
+            value: amountValue,
+            currency,
+          },
+          metadata: {
+            productType: 'premium_subscription',
+            userId: subscription.userId,
+            plan: planFromPayload,
+            kind: 'renewal',
+          },
+          paymentMethod: { id: paymentMethodId, saved: true },
+        };
+        await processRenewalProviderPaymentInline(
+          subscription.userId,
+          providerPayment,
+          subscriptionPaymentId,
+          now
+        );
+      }
+    } finally {
+      await releaseRenewalAttemptDispatchLease(dispatchLease, now);
     }
 
     logSubscriptionEvent(SUBSCRIPTION_LOG_EVENTS.SCHEDULER_CHARGE, {
@@ -758,6 +894,7 @@ export async function runRenewalCycle(now: Date = new Date()): Promise<RenewalCy
   }
 
   await reconcileOrphanPendingRenewalsBeforeChargeSelection(now);
+  await reconcileUnresolvedRenewalAttempts(now);
 
   for (const subscriptionId of await listChargeReadySubscriptionIds(now)) {
     const outcome = await attemptRenewalChargeForSubscription(subscriptionId, now);

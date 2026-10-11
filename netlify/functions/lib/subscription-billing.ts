@@ -22,9 +22,20 @@ import {
   type SubscriptionPlanSlug,
 } from '../../../src/shared/lib/payment/subscriptionPlanCatalog';
 
+import { randomUUID } from 'node:crypto';
+
 import type { PoolClient } from 'pg';
 
-import { isMissingRelationError, query, withClient } from './db';
+import { isMissingRelationError, query, withClient, withTransaction } from './db';
+import { classifyRenewalAttemptInsertUniqueViolation } from './subscription-renewal-db-integrity';
+import {
+  embedRenewalSubscriptionPaymentIdInPayload,
+  hashRenewalRequestPayload,
+  readRenewalYookassaCreatePayload,
+  RENEWAL_YOOKASSA_CREATE_PAYLOAD_RAW_KEY,
+  verifyRenewalRequestPayloadHash,
+  type RenewalYookassaCreatePayload,
+} from './subscription-renewal-post-payload';
 import { resolveBillingOriginForNewSubscription } from './subscription-billing-origin';
 import type { Subscription } from './subscriptions';
 import { mapSubscriptionRow, type SubscriptionRow } from './subscriptions';
@@ -260,6 +271,257 @@ export async function findOpenRenewalPayment(userId: string): Promise<{ id: stri
     return result.rows[0] ?? null;
   } catch (error) {
     if (isMissingRelationError(error)) return null;
+    throw error;
+  }
+}
+
+export interface UnresolvedRenewalAttemptRow {
+  id: string;
+  idempotence_key: string | null;
+  request_payload_hash: string | null;
+  raw_last_event: unknown;
+}
+
+/** Open renewal attempt for a subscription whose outcome is not yet terminal (PR-3a). */
+export async function findUnresolvedRenewalAttemptForSubscription(
+  subscriptionId: string
+): Promise<UnresolvedRenewalAttemptRow | null> {
+  try {
+    const result = await query<UnresolvedRenewalAttemptRow>(
+      `SELECT sp.id, sp.idempotence_key, sp.request_payload_hash, sp.raw_last_event
+       FROM subscription_payments sp
+       WHERE sp.kind = 'renewal'
+         AND sp.status = ANY($2::text[])
+         AND sp.subscription_id = $1::uuid
+       ORDER BY sp.created_at DESC
+       LIMIT 1`,
+      [subscriptionId, OPEN_SUBSCRIPTION_PAYMENT_STATUSES]
+    );
+    return result.rows[0] ?? null;
+  } catch (error) {
+    if (isMissingRelationError(error)) return null;
+    throw error;
+  }
+}
+
+export function resolveRenewalAttemptNo(
+  subscription: Pick<Subscription, 'status' | 'renewalAttemptCount'>
+): number {
+  if (subscription.status === 'past_due') {
+    return (subscription.renewalAttemptCount ?? 0) + 1;
+  }
+  return 1;
+}
+
+export interface CreateRenewalAttemptRowParams {
+  userId: string;
+  subscriptionId: string;
+  periodEnd: Date;
+  attemptNo: number;
+  planSlug: SubscriptionPlanSlug;
+  yookassaCreatePayload: RenewalYookassaCreatePayload;
+}
+
+/** Creates a renewal attempt row with frozen YooKassa POST identity (PR-3a). */
+export async function createRenewalAttemptRow(
+  params: CreateRenewalAttemptRowParams
+): Promise<string> {
+  const subscriptionPaymentId = randomUUID();
+  const yookassaCreatePayload = embedRenewalSubscriptionPaymentIdInPayload(
+    params.yookassaCreatePayload,
+    subscriptionPaymentId
+  );
+  const requestPayloadHash = hashRenewalRequestPayload(yookassaCreatePayload);
+  const rawLastEvent = {
+    [RENEWAL_YOOKASSA_CREATE_PAYLOAD_RAW_KEY]: yookassaCreatePayload,
+  };
+  const amount = getPlanAmountRub(params.planSlug);
+
+  try {
+    return await withTransaction(async (client) => {
+      const inserted = await client.query<{ id: string }>(
+        `INSERT INTO subscription_payments (
+         id, user_id, provider, status, amount, currency, plan, kind,
+         subscription_id, period_end, attempt_no, request_payload_hash,
+         dispatch_phase, raw_last_event
+       )
+       VALUES (
+         $1::uuid, $2::uuid, 'yookassa', 'pending', $3, $4, $5, 'renewal',
+         $6::uuid, $7, $8, $9, 'created', $10::jsonb
+       )
+       RETURNING id`,
+        [
+          subscriptionPaymentId,
+          params.userId,
+          amount,
+          SUBSCRIPTION_PLAN_PRICE_CURRENCY_CODE,
+          params.planSlug,
+          params.subscriptionId,
+          params.periodEnd,
+          params.attemptNo,
+          requestPayloadHash,
+          JSON.stringify(rawLastEvent),
+        ]
+      );
+      const id = inserted.rows[0]?.id;
+      if (!id) {
+        throw new Error('Failed to create renewal attempt row');
+      }
+
+      const idempotenceKey = `renewal-${id}`;
+      await client.query(
+        `UPDATE subscription_payments
+       SET idempotence_key = $2,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $1::uuid`,
+        [id, idempotenceKey]
+      );
+      return id;
+    });
+  } catch (error) {
+    const conflict = classifyRenewalAttemptInsertUniqueViolation(error);
+    if (conflict) {
+      throw Object.assign(new Error('renewal_attempt_create_conflict'), {
+        renewalAttemptCreateConflict: conflict,
+      });
+    }
+    throw error;
+  }
+}
+
+export type RenewalAttemptPostIdentityResult =
+  | { ok: true; idempotenceKey: string; payload: RenewalYookassaCreatePayload }
+  | {
+      ok: false;
+      reason:
+        | 'not_found'
+        | 'missing_idempotence_key'
+        | 'missing_payload'
+        | 'missing_hash'
+        | 'hash_mismatch';
+    };
+
+/** Loads stored idempotence key and frozen POST body; verifies hash before any YooKassa POST. */
+export async function getRenewalAttemptPostIdentity(
+  subscriptionPaymentId: string,
+  userId: string
+): Promise<RenewalAttemptPostIdentityResult> {
+  try {
+    const result = await query<{
+      idempotence_key: string | null;
+      request_payload_hash: string | null;
+      raw_last_event: unknown;
+    }>(
+      `SELECT idempotence_key, request_payload_hash, raw_last_event
+       FROM subscription_payments
+       WHERE id = $1::uuid
+         AND user_id = $2::uuid
+         AND kind = 'renewal'
+       LIMIT 1`,
+      [subscriptionPaymentId, userId]
+    );
+    const row = result.rows[0];
+    if (!row) {
+      return { ok: false, reason: 'not_found' };
+    }
+
+    const idempotenceKey = row.idempotence_key?.trim();
+    if (!idempotenceKey) {
+      return { ok: false, reason: 'missing_idempotence_key' };
+    }
+
+    const payload = readRenewalYookassaCreatePayload(row.raw_last_event);
+    if (!payload) {
+      return { ok: false, reason: 'missing_payload' };
+    }
+
+    const hashCheck = verifyRenewalRequestPayloadHash(payload, row.request_payload_hash);
+    if (hashCheck === 'missing_hash') {
+      return { ok: false, reason: 'missing_hash' };
+    }
+    if (hashCheck === 'mismatch') {
+      return { ok: false, reason: 'hash_mismatch' };
+    }
+
+    return { ok: true, idempotenceKey, payload };
+  } catch (error) {
+    if (isMissingRelationError(error)) {
+      return { ok: false, reason: 'not_found' };
+    }
+    throw error;
+  }
+}
+
+export interface RenewalAttemptDispatchState {
+  id: string;
+  user_id: string;
+  subscription_id: string | null;
+  provider_payment_id: string | null;
+  first_post_at: Date | null;
+  status: string;
+  dispatch_phase: string | null;
+}
+
+export type RenewalAttemptReconcileRow = RenewalAttemptDispatchState;
+
+export async function getRenewalAttemptDispatchState(
+  subscriptionPaymentId: string,
+  userId: string
+): Promise<RenewalAttemptDispatchState | null> {
+  try {
+    const result = await query<RenewalAttemptDispatchState>(
+      `SELECT id, user_id, subscription_id, provider_payment_id, first_post_at, status, dispatch_phase
+       FROM subscription_payments
+       WHERE id = $1::uuid
+         AND user_id = $2::uuid
+         AND kind = 'renewal'
+       LIMIT 1`,
+      [subscriptionPaymentId, userId]
+    );
+    return result.rows[0] ?? null;
+  } catch (error) {
+    if (isMissingRelationError(error)) return null;
+    throw error;
+  }
+}
+
+/** Open renewal rows eligible for PR-3b reconciliation (includes needs_review — handled as no-op POST). */
+export async function listRenewalAttemptsForReconciliation(
+  limit = 100
+): Promise<RenewalAttemptReconcileRow[]> {
+  try {
+    const result = await query<RenewalAttemptReconcileRow>(
+      `SELECT id, user_id, subscription_id, provider_payment_id, first_post_at, status, dispatch_phase
+       FROM subscription_payments
+       WHERE kind = 'renewal'
+         AND status IN ('pending', 'waiting_for_capture')
+       ORDER BY created_at ASC
+       LIMIT $1`,
+      [limit]
+    );
+    return result.rows;
+  } catch (error) {
+    if (isMissingRelationError(error)) return [];
+    throw error;
+  }
+}
+
+export async function markRenewalAttemptNeedsReview(
+  subscriptionPaymentId: string,
+  userId: string
+): Promise<void> {
+  try {
+    await query(
+      `UPDATE subscription_payments
+       SET dispatch_phase = 'needs_review',
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $1::uuid
+         AND user_id = $2::uuid
+         AND kind = 'renewal'`,
+      [subscriptionPaymentId, userId]
+    );
+  } catch (error) {
+    if (isMissingRelationError(error)) return;
     throw error;
   }
 }
@@ -509,6 +771,70 @@ export async function attachProviderPaymentId(
      WHERE id = $1`,
     [subscriptionPaymentId, providerPaymentId]
   );
+}
+
+export type LinkProviderPaymentIdResult =
+  | 'attached'
+  | 'already_linked'
+  | 'provider_id_claimed_by_other_row'
+  | 'row_provider_mismatch'
+  | 'not_found';
+
+/** PR-4 — link YooKassa payment id without overwriting an existing different provider id. */
+export async function linkProviderPaymentIdToSubscriptionPaymentRow(params: {
+  subscriptionPaymentId: string;
+  userId: string;
+  providerPaymentId: string;
+}): Promise<LinkProviderPaymentIdResult> {
+  const subscriptionPaymentId = params.subscriptionPaymentId.trim();
+  const userId = params.userId.trim();
+  const providerPaymentId = params.providerPaymentId.trim();
+
+  try {
+    const other = await query<{ id: string }>(
+      `SELECT id FROM subscription_payments
+       WHERE provider = 'yookassa'
+         AND provider_payment_id = $1
+         AND id <> $2::uuid
+       LIMIT 1`,
+      [providerPaymentId, subscriptionPaymentId]
+    );
+    if (other.rows[0]?.id) {
+      return 'provider_id_claimed_by_other_row';
+    }
+
+    const existing = await getSubscriptionPaymentByInternalId(subscriptionPaymentId, userId);
+    if (!existing) {
+      return 'not_found';
+    }
+    const prior = existing.provider_payment_id?.trim();
+    if (prior && prior !== providerPaymentId) {
+      return 'row_provider_mismatch';
+    }
+    if (prior === providerPaymentId) {
+      return 'already_linked';
+    }
+
+    const updated = await query<{ id: string }>(
+      `UPDATE subscription_payments
+       SET provider_payment_id = $3,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $1::uuid
+         AND user_id = $2::uuid
+         AND provider_payment_id IS NULL
+       RETURNING id`,
+      [subscriptionPaymentId, userId, providerPaymentId]
+    );
+
+    if (updated.rows[0]?.id) {
+      return 'attached';
+    }
+
+    return 'row_provider_mismatch';
+  } catch (error) {
+    if (isMissingRelationError(error)) return 'not_found';
+    throw error;
+  }
 }
 
 export async function updateSubscriptionPaymentStatus(

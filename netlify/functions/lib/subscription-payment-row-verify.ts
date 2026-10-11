@@ -40,6 +40,7 @@ export function verifySubscriptionPaymentRowForWebhook(params: {
   metadataProductType: string | null | undefined;
   metadataKind: string | null | undefined;
   metadataPlan: string | null | undefined;
+  metadataSubscriptionPaymentId?: string | null | undefined;
   amountValue: string;
   currency: string;
   amountsEqual: (a: string, b: string) => boolean;
@@ -65,6 +66,14 @@ export function verifySubscriptionPaymentRowForWebhook(params: {
 
   if (!metadataKindMatchesRow(metadataKind, row.kind)) {
     return { ok: false, reason: 'kind mismatch between metadata and payment row' };
+  }
+
+  const metaInternalId = params.metadataSubscriptionPaymentId?.trim();
+  if (metaInternalId && metaInternalId !== row.id) {
+    return {
+      ok: false,
+      reason: 'subscriptionPaymentId metadata does not match payment row id',
+    };
   }
 
   const isRebind =

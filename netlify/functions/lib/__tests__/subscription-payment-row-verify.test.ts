@@ -39,6 +39,24 @@ function paymentRow(overrides: Partial<SubscriptionPaymentRow> = {}): Subscripti
 const amountsEqual = (a: string, b: string) => a === b;
 
 describe('verifySubscriptionPaymentRowForWebhook (PR-10.2)', () => {
+  test('rejects subscriptionPaymentId metadata that does not match row id (PR-4)', () => {
+    const result = verifySubscriptionPaymentRowForWebhook({
+      row: paymentRow({ id: 'sp-1', kind: 'renewal' }),
+      metadataUserId: USER_ID,
+      metadataProductType: 'premium_subscription',
+      metadataKind: 'renewal',
+      metadataPlan: 'explorer',
+      metadataSubscriptionPaymentId: 'sp-other',
+      amountValue: EXPLORER_AMOUNT,
+      currency: CURRENCY,
+      amountsEqual,
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.reason).toContain('subscriptionPaymentId');
+    }
+  });
+
   test('accepts consistent initial payment row', () => {
     const result = verifySubscriptionPaymentRowForWebhook({
       row: paymentRow(),
