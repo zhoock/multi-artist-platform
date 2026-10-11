@@ -11,6 +11,11 @@ import { PremiumSubscriptionProvider } from '@features/premiumSubscription';
 import type { MyArchiveData } from '@shared/api/archive';
 import type { CanonicalSubscriptionStatus } from '@shared/api/billing';
 import { renderWithProviders } from '@shared/lib/test-utils';
+import {
+  PLAN_CATALOG,
+  resolvePlanSlugFromSlotsLimit,
+  SUBSCRIPTION_SLOTS_LIMIT_FALLBACK,
+} from '@shared/lib/payment/subscriptionPlans';
 import { ArchiveAccessModalProvider, useArchiveAccessModal } from '../archiveAccessModalContext';
 
 const getMyArchiveMock = jest.fn<() => Promise<unknown>>();
@@ -65,18 +70,18 @@ type ArchiveFixture = {
   scheduledPlan?: 'explorer' | 'collector' | 'archivist' | null;
 };
 
-function resolvePlanFromSlotsLimit(
-  slotsLimit: number
-): 'explorer' | 'collector' | 'archivist' | null {
-  if (slotsLimit === 20) return 'explorer';
-  if (slotsLimit === 60) return 'collector';
-  if (slotsLimit === 100) return 'archivist';
-  return null;
-}
-
 function buildArchiveResponse(archive: ArchiveFixture): MyArchiveData {
-  const plan = resolvePlanFromSlotsLimit(archive.slotsLimit);
-  const status: CanonicalSubscriptionStatus = archive.isPremium ? 'active' : 'expired';
+  const planFromSlots = resolvePlanSlugFromSlotsLimit(archive.slotsLimit);
+  const isNoSubscriptionSnapshot =
+    !archive.isPremium &&
+    archive.slotsUsed === 0 &&
+    archive.slotsLimit === SUBSCRIPTION_SLOTS_LIMIT_FALLBACK;
+  const plan = isNoSubscriptionSnapshot ? null : planFromSlots;
+  const status: CanonicalSubscriptionStatus | null = archive.isPremium
+    ? 'active'
+    : isNoSubscriptionSnapshot
+      ? null
+      : 'expired';
 
   return {
     isPremium: archive.isPremium,
@@ -101,8 +106,10 @@ function buildArchiveResponse(archive: ArchiveFixture): MyArchiveData {
   };
 }
 
-/** Production no-subscription snapshot: status null, slotsLimit = catalog max fallback (100). */
-function buildNoSubscriptionArchiveResponse(slotsLimit = 100): MyArchiveData {
+/** Production no-subscription snapshot: status null, slotsLimit = catalog max fallback. */
+function buildNoSubscriptionArchiveResponse(
+  slotsLimit = SUBSCRIPTION_SLOTS_LIMIT_FALLBACK
+): MyArchiveData {
   return {
     isPremium: false,
     slotsUsed: 0,
@@ -126,7 +133,7 @@ function buildNoSubscriptionArchiveResponse(slotsLimit = 100): MyArchiveData {
   };
 }
 
-function renderNoSubscriptionModal(slotsLimit = 100) {
+function renderNoSubscriptionModal(slotsLimit = SUBSCRIPTION_SLOTS_LIMIT_FALLBACK) {
   getMyArchiveMock.mockResolvedValue(buildNoSubscriptionArchiveResponse(slotsLimit));
   getTokenMock.mockReturnValue('test-token');
 
@@ -206,14 +213,18 @@ describe('ArchiveAccessModalView current plan', () => {
         archive: buildArchiveResponse({
           isPremium: true,
           slotsUsed: 0,
-          slotsLimit: 60,
+          slotsLimit: PLAN_CATALOG.collector.slotsLimit,
         }),
       },
     });
   });
 
   test('highlights Explorer when Explorer is active', async () => {
-    renderModalWithProviderOrder({ isPremium: true, slotsUsed: 1, slotsLimit: 20 });
+    renderModalWithProviderOrder({
+      isPremium: true,
+      slotsUsed: 1,
+      slotsLimit: PLAN_CATALOG.explorer.slotsLimit,
+    });
     await openModal();
 
     const explorerCard = getPlanCard('Explorer');
@@ -233,7 +244,11 @@ describe('ArchiveAccessModalView current plan', () => {
   });
 
   test('highlights Collector when collection is full (Upgrade Plan path)', async () => {
-    renderModalWithProviderOrder({ isPremium: true, slotsUsed: 2, slotsLimit: 60 });
+    renderModalWithProviderOrder({
+      isPremium: true,
+      slotsUsed: 2,
+      slotsLimit: PLAN_CATALOG.collector.slotsLimit,
+    });
     await openModal();
 
     const collectorCard = getPlanCard('Collector');
@@ -253,7 +268,11 @@ describe('ArchiveAccessModalView current plan', () => {
   });
 
   test('highlights Archivist when Archivist is active', async () => {
-    renderModalWithProviderOrder({ isPremium: true, slotsUsed: 2, slotsLimit: 100 });
+    renderModalWithProviderOrder({
+      isPremium: true,
+      slotsUsed: 2,
+      slotsLimit: PLAN_CATALOG.archivist.slotsLimit,
+    });
     await openModal();
 
     const archivistCard = getPlanCard('Archivist');
@@ -273,7 +292,11 @@ describe('ArchiveAccessModalView current plan', () => {
   });
 
   test('shows expired Collector with renew action when support is inactive', async () => {
-    renderModalWithProviderOrder({ isPremium: false, slotsUsed: 1, slotsLimit: 60 });
+    renderModalWithProviderOrder({
+      isPremium: false,
+      slotsUsed: 1,
+      slotsLimit: PLAN_CATALOG.collector.slotsLimit,
+    });
     await openModal();
 
     const collectorCard = getPlanCard('Collector');
@@ -290,11 +313,11 @@ describe('ArchiveAccessModalView current plan', () => {
       .mockResolvedValueOnce({
         isPremium: true,
         slotsUsed: 0,
-        slotsLimit: 20,
+        slotsLimit: PLAN_CATALOG.explorer.slotsLimit,
         billing: {
           status: 'cancel_at_period_end',
           plan: 'explorer',
-          slotsLimit: 20,
+          slotsLimit: PLAN_CATALOG.explorer.slotsLimit,
           expiresAt: '2026-08-07T10:00:00.000Z',
           autoRenewEnabled: false,
           hasPremiumAccess: true,
@@ -311,11 +334,11 @@ describe('ArchiveAccessModalView current plan', () => {
       .mockResolvedValue({
         isPremium: false,
         slotsUsed: 0,
-        slotsLimit: 20,
+        slotsLimit: PLAN_CATALOG.explorer.slotsLimit,
         billing: {
           status: 'expired',
           plan: 'explorer',
-          slotsLimit: 20,
+          slotsLimit: PLAN_CATALOG.explorer.slotsLimit,
           expiresAt: '2026-08-07T10:00:00.000Z',
           autoRenewEnabled: false,
           hasPremiumAccess: false,
@@ -358,11 +381,11 @@ describe('ArchiveAccessModalView current plan', () => {
       .mockResolvedValueOnce({
         isPremium: true,
         slotsUsed: 0,
-        slotsLimit: 60,
+        slotsLimit: PLAN_CATALOG.collector.slotsLimit,
         billing: {
           status: 'active',
           plan: 'collector',
-          slotsLimit: 60,
+          slotsLimit: PLAN_CATALOG.collector.slotsLimit,
           expiresAt: '2026-09-07T10:00:00.000Z',
           autoRenewEnabled: true,
           hasPremiumAccess: true,
@@ -379,11 +402,11 @@ describe('ArchiveAccessModalView current plan', () => {
       .mockResolvedValue({
         isPremium: true,
         slotsUsed: 0,
-        slotsLimit: 20,
+        slotsLimit: PLAN_CATALOG.explorer.slotsLimit,
         billing: {
           status: 'active',
           plan: 'explorer',
-          slotsLimit: 20,
+          slotsLimit: PLAN_CATALOG.explorer.slotsLimit,
           expiresAt: '2026-09-07T10:00:00.000Z',
           autoRenewEnabled: true,
           hasPremiumAccess: true,
@@ -425,7 +448,7 @@ describe('ArchiveAccessModalView current plan', () => {
   });
 
   test('does not highlight any plan for a new user', async () => {
-    renderModalWithProviderOrder({ isPremium: false, slotsUsed: 0, slotsLimit: 3 });
+    renderNoSubscriptionModal();
     await openModal();
 
     expect(document.querySelector('.dashboard-card--selected')).toBeNull();
@@ -436,7 +459,10 @@ describe('ArchiveAccessModalView current plan', () => {
   });
 
   test('regression: wrong provider order leaves modal without current plan', async () => {
-    renderModalWithProviderOrder({ isPremium: true, slotsUsed: 2, slotsLimit: 60 }, 'wrong');
+    renderModalWithProviderOrder(
+      { isPremium: true, slotsUsed: 2, slotsLimit: PLAN_CATALOG.collector.slotsLimit },
+      'wrong'
+    );
     await openModal();
 
     expect(document.querySelector('.dashboard-card--selected')).toBeNull();
@@ -451,12 +477,7 @@ describe('ArchiveAccessModalView guest auth redirect', () => {
     getUserMock.mockReset();
     getTokenMock.mockReturnValue(null);
     getUserMock.mockReturnValue(null);
-    getMyArchiveMock.mockResolvedValue({
-      isPremium: false,
-      slotsUsed: 0,
-      slotsLimit: 3,
-      artists: [],
-    });
+    getMyArchiveMock.mockResolvedValue(buildNoSubscriptionArchiveResponse());
     createSubscriptionPaymentMock.mockReset();
   });
 
@@ -511,14 +532,18 @@ describe('ArchiveAccessModalView plan change confirmation', () => {
         archive: buildArchiveResponse({
           isPremium: true,
           slotsUsed: 0,
-          slotsLimit: 60,
+          slotsLimit: PLAN_CATALOG.collector.slotsLimit,
         }),
       },
     });
   });
 
   test('shows compact confirmation modal when switching plans', async () => {
-    renderModalWithProviderOrder({ isPremium: true, slotsUsed: 1, slotsLimit: 20 });
+    renderModalWithProviderOrder({
+      isPremium: true,
+      slotsUsed: 1,
+      slotsLimit: PLAN_CATALOG.explorer.slotsLimit,
+    });
     await openModal();
 
     fireEvent.click(
@@ -535,7 +560,11 @@ describe('ArchiveAccessModalView plan change confirmation', () => {
   });
 
   test('cancel closes confirmation without starting checkout', async () => {
-    renderModalWithProviderOrder({ isPremium: true, slotsUsed: 1, slotsLimit: 20 });
+    renderModalWithProviderOrder({
+      isPremium: true,
+      slotsUsed: 1,
+      slotsLimit: PLAN_CATALOG.explorer.slotsLimit,
+    });
     await openModal();
 
     fireEvent.click(
@@ -549,7 +578,11 @@ describe('ArchiveAccessModalView plan change confirmation', () => {
   });
 
   test('confirm proceeds to checkout for selected plan', async () => {
-    renderModalWithProviderOrder({ isPremium: true, slotsUsed: 1, slotsLimit: 20 });
+    renderModalWithProviderOrder({
+      isPremium: true,
+      slotsUsed: 1,
+      slotsLimit: PLAN_CATALOG.explorer.slotsLimit,
+    });
     await openModal();
 
     fireEvent.click(
@@ -566,7 +599,11 @@ describe('ArchiveAccessModalView plan change confirmation', () => {
 
   test('passes upgrade intent when auto-renew flag is on', async () => {
     isAutoRenewClientEnabledMock.mockReturnValue(true);
-    renderModalWithProviderOrder({ isPremium: true, slotsUsed: 1, slotsLimit: 20 });
+    renderModalWithProviderOrder({
+      isPremium: true,
+      slotsUsed: 1,
+      slotsLimit: PLAN_CATALOG.explorer.slotsLimit,
+    });
     await openModal();
 
     fireEvent.click(
@@ -586,12 +623,12 @@ describe('ArchiveAccessModalView plan change confirmation', () => {
     getMyArchiveMock.mockResolvedValue({
       isPremium: true,
       slotsUsed: 1,
-      slotsLimit: 20,
+      slotsLimit: PLAN_CATALOG.explorer.slotsLimit,
       artists: [],
       billing: {
         status: 'active',
         plan: 'explorer',
-        slotsLimit: 20,
+        slotsLimit: PLAN_CATALOG.explorer.slotsLimit,
         expiresAt: '2099-08-07T10:00:00.000Z',
         autoRenewEnabled: true,
         hasPremiumAccess: false,
@@ -637,7 +674,11 @@ describe('ArchiveAccessModalView plan change confirmation', () => {
   });
 
   test('expired subscription shows compact confirmation when switching to Collector', async () => {
-    renderModalWithProviderOrder({ isPremium: false, slotsUsed: 1, slotsLimit: 20 });
+    renderModalWithProviderOrder({
+      isPremium: false,
+      slotsUsed: 1,
+      slotsLimit: PLAN_CATALOG.explorer.slotsLimit,
+    });
     await openModal();
 
     fireEvent.click(
@@ -650,7 +691,11 @@ describe('ArchiveAccessModalView plan change confirmation', () => {
   });
 
   test('renew current plan skips confirmation modal', async () => {
-    renderModalWithProviderOrder({ isPremium: false, slotsUsed: 1, slotsLimit: 60 });
+    renderModalWithProviderOrder({
+      isPremium: false,
+      slotsUsed: 1,
+      slotsLimit: PLAN_CATALOG.collector.slotsLimit,
+    });
     await openModal();
 
     fireEvent.click(
@@ -667,7 +712,7 @@ describe('ArchiveAccessModalView plan change confirmation', () => {
   });
 
   test('first plan purchase skips confirmation modal', async () => {
-    renderModalWithProviderOrder({ isPremium: false, slotsUsed: 0, slotsLimit: 3 });
+    renderNoSubscriptionModal();
     await openModal();
 
     fireEvent.click(screen.getByRole('button', { name: 'Choose Explorer' }));
@@ -687,7 +732,7 @@ describe('ArchiveAccessModalView plan change confirmation', () => {
       data: { paymentId: 'pay-test-1', confirmationUrl: 'https://pay.example/checkout' },
     });
 
-    renderNoSubscriptionModal(100);
+    renderNoSubscriptionModal(SUBSCRIPTION_SLOTS_LIMIT_FALLBACK);
     await openModal();
 
     fireEvent.click(screen.getByRole('button', { name: 'Choose Explorer' }));
@@ -715,7 +760,7 @@ describe('ArchiveAccessModalView plan change confirmation', () => {
         data: { paymentId: 'pay-test-1', confirmationUrl: 'https://pay.example/checkout' },
       });
 
-      renderNoSubscriptionModal(100);
+      renderNoSubscriptionModal(SUBSCRIPTION_SLOTS_LIMIT_FALLBACK);
       await openModal();
 
       fireEvent.click(screen.getByRole('button', { name: `Choose ${planName}` }));
@@ -731,7 +776,11 @@ describe('ArchiveAccessModalView plan change confirmation', () => {
   );
 
   test('active Explorer → Collector shows plan-change modal', async () => {
-    renderModalWithProviderOrder({ isPremium: true, slotsUsed: 1, slotsLimit: 20 });
+    renderModalWithProviderOrder({
+      isPremium: true,
+      slotsUsed: 1,
+      slotsLimit: PLAN_CATALOG.explorer.slotsLimit,
+    });
     await openModal();
 
     fireEvent.click(
@@ -745,7 +794,11 @@ describe('ArchiveAccessModalView plan change confirmation', () => {
 
   test('active Archivist → Explorer shows plan-change modal', async () => {
     isAutoRenewClientEnabledMock.mockReturnValue(true);
-    renderModalWithProviderOrder({ isPremium: true, slotsUsed: 1, slotsLimit: 100 });
+    renderModalWithProviderOrder({
+      isPremium: true,
+      slotsUsed: 1,
+      slotsLimit: PLAN_CATALOG.archivist.slotsLimit,
+    });
     await openModal();
 
     fireEvent.click(
@@ -765,14 +818,12 @@ describe('ArchiveAccessModalView pricing autopayment disclosure', () => {
     createSubscriptionPaymentMock.mockReset();
     getTokenMock.mockReturnValue('token-1');
     getUserMock.mockReturnValue({ id: 'user-1', email: 'user@example.com' });
-    getMyArchiveMock.mockResolvedValue(
-      buildArchiveResponse({ isPremium: false, slotsUsed: 0, slotsLimit: 3 })
-    );
+    getMyArchiveMock.mockResolvedValue(buildNoSubscriptionArchiveResponse());
   });
 
   test('shows compact disclosure below plan cards when auto-renew flag is on', async () => {
     isAutoRenewClientEnabledMock.mockReturnValue(true);
-    renderModalWithProviderOrder({ isPremium: false, slotsUsed: 0, slotsLimit: 3 });
+    renderNoSubscriptionModal();
     await openModal();
 
     expect(
@@ -812,7 +863,7 @@ describe('ArchiveAccessModalView pricing autopayment disclosure', () => {
 
   test('shows payment purpose disclosure even when auto-renew flag is off', async () => {
     isAutoRenewClientEnabledMock.mockReturnValue(false);
-    renderModalWithProviderOrder({ isPremium: false, slotsUsed: 0, slotsLimit: 3 });
+    renderNoSubscriptionModal();
     await openModal();
 
     expect(
@@ -829,7 +880,7 @@ describe('ArchiveAccessModalView pricing autopayment disclosure', () => {
       data: { paymentId: 'pay-test-1', confirmationUrl: 'https://pay.example/checkout' },
     });
 
-    renderModalWithProviderOrder({ isPremium: false, slotsUsed: 0, slotsLimit: 3 });
+    renderNoSubscriptionModal();
     await openModal();
 
     fireEvent.click(screen.getByRole('button', { name: 'Choose Explorer' }));
@@ -857,7 +908,7 @@ describe('ArchiveAccessModalView scheduled plan change', () => {
         archive: buildArchiveResponse({
           isPremium: true,
           slotsUsed: 0,
-          slotsLimit: 60,
+          slotsLimit: PLAN_CATALOG.collector.slotsLimit,
         }),
       },
     });
@@ -868,7 +919,7 @@ describe('ArchiveAccessModalView scheduled plan change', () => {
       buildArchiveResponse({
         isPremium: true,
         slotsUsed: 0,
-        slotsLimit: 60,
+        slotsLimit: PLAN_CATALOG.collector.slotsLimit,
         scheduledPlan: 'explorer',
       })
     );
@@ -911,7 +962,7 @@ describe('ArchiveAccessModalView scheduled plan change', () => {
       buildArchiveResponse({
         isPremium: true,
         slotsUsed: 0,
-        slotsLimit: 60,
+        slotsLimit: PLAN_CATALOG.collector.slotsLimit,
         scheduledPlan,
       })
     );
@@ -923,7 +974,7 @@ describe('ArchiveAccessModalView scheduled plan change', () => {
           archive: buildArchiveResponse({
             isPremium: true,
             slotsUsed: 0,
-            slotsLimit: 60,
+            slotsLimit: PLAN_CATALOG.collector.slotsLimit,
             scheduledPlan: null,
           }),
         },

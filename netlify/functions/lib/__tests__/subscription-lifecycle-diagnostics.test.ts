@@ -38,7 +38,7 @@ describe('dumpSubscriptionLifecycleDiagnostics (PR-10.3)', () => {
       userId: USER_ID,
       status: 'active',
       plan: 'explorer',
-      slotsLimit: 20,
+      slotsLimit: 1,
       provider: 'yookassa',
       providerSubscriptionId: 'pay-1',
       startedAt: NOW,

@@ -382,7 +382,7 @@ export function resolveBillingCurrentPlanSlug(params: {
     return params.billing.plan;
   }
 
-  // No subscription row — collection slots fallback (100 = archivist catalog max) is not a plan.
+  // No subscription row — collection slots fallback (archivist catalog max) is not a plan.
   if (params.billing.status === null) {
     return params.resolvedPlanSlug;
   }

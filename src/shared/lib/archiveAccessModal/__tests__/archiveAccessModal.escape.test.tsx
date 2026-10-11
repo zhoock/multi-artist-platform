@@ -7,6 +7,7 @@ import { render, waitFor, fireEvent } from '@testing-library/react';
 import { PremiumSubscriptionProvider } from '@features/premiumSubscription';
 import type { MyArchiveData } from '@shared/api/archive';
 import { renderWithProviders } from '@shared/lib/test-utils';
+import { PLAN_CATALOG } from '@shared/lib/payment/subscriptionPlans';
 import { ArchiveAccessModalProvider, useArchiveAccessModal } from '../archiveAccessModalContext';
 
 const getMyArchiveMock = jest.fn<() => Promise<unknown>>();
@@ -56,12 +57,12 @@ function buildArchiveResponse(): MyArchiveData {
   return {
     isPremium: false,
     slotsUsed: 0,
-    slotsLimit: 20,
+    slotsLimit: PLAN_CATALOG.explorer.slotsLimit,
     artists: [],
     billing: {
       status: 'expired',
       plan: null,
-      slotsLimit: 20,
+      slotsLimit: PLAN_CATALOG.explorer.slotsLimit,
       expiresAt: null,
       autoRenewEnabled: false,
       hasPremiumAccess: false,

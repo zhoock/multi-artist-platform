@@ -7,6 +7,7 @@ import { act, render, waitFor, fireEvent, screen } from '@testing-library/react'
 import { PremiumSubscriptionProvider } from '@features/premiumSubscription';
 import type { MyArchiveData } from '@shared/api/archive';
 import { renderWithProviders } from '@shared/lib/test-utils';
+import { PLAN_CATALOG } from '@shared/lib/payment/subscriptionPlans';
 import { ArchiveAccessModalProvider, useArchiveAccessModal } from '../archiveAccessModalContext';
 
 const getMyArchiveMock = jest.fn<() => Promise<unknown>>();
@@ -61,12 +62,12 @@ function buildArchiveResponse(): MyArchiveData {
   return {
     isPremium: true,
     slotsUsed: 1,
-    slotsLimit: 20,
+    slotsLimit: PLAN_CATALOG.explorer.slotsLimit,
     artists: [],
     billing: {
       status: 'active',
       plan: 'explorer',
-      slotsLimit: 20,
+      slotsLimit: PLAN_CATALOG.explorer.slotsLimit,
       expiresAt: '2099-01-01T00:00:00.000Z',
       autoRenewEnabled: true,
       hasPremiumAccess: true,
@@ -94,7 +95,7 @@ describe('AddArtistToArchiveModal LocalModal Escape', () => {
       isPremium: true,
       artistInArchive: false,
       slotsUsed: 1,
-      slotsLimit: 20,
+      slotsLimit: PLAN_CATALOG.explorer.slotsLimit,
     });
 
     jest.spyOn(HTMLDialogElement.prototype, 'showModal').mockImplementation(function showModal(

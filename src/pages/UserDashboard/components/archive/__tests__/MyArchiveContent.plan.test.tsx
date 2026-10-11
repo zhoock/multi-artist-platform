@@ -12,6 +12,7 @@ import { PremiumSubscriptionProvider } from '@features/premiumSubscription';
 import { resetToastStoreForTests } from '@shared/lib/toast/toastStore';
 import { removeArtistFromArchiveApi, activateArchiveArtistsApi } from '@shared/api/archive';
 import { EMPTY_BILLING_SNAPSHOT, type BillingSnapshot } from '@shared/api/billing';
+import { PLAN_CATALOG } from '@shared/lib/payment/subscriptionPlans';
 import { MyArchiveContent } from '../MyArchiveContent';
 import type { SubscriptionCheckoutResult } from '@shared/lib/archiveAccessModal/useSubscriptionCheckout';
 
@@ -146,8 +147,11 @@ describe('MyArchiveContent collection', () => {
       archivePayload({
         isPremium: false,
         slotsUsed: 1,
-        slotsLimit: 20,
-        billing: billingExpired({ plan: 'archivist', slotsLimit: 20 }),
+        slotsLimit: PLAN_CATALOG.explorer.slotsLimit,
+        billing: billingExpired({
+          plan: 'archivist',
+          slotsLimit: PLAN_CATALOG.explorer.slotsLimit,
+        }),
         artists: [activeArtist('a1', 'Beatles')],
       })
     );
@@ -165,7 +169,13 @@ describe('MyArchiveContent collection', () => {
     ).toBeTruthy();
     expect(document.querySelector('.collection-billing__banner--error')).toBeTruthy();
     expect(document.querySelector('.collection-billing__plan-card')).toBeNull();
-    expect(screen.getByText(/1 of 20|1 из 20/)).toBeTruthy();
+    expect(
+      screen.getByText(
+        new RegExp(
+          `1 of ${PLAN_CATALOG.explorer.slotsLimit}|1 из ${PLAN_CATALOG.explorer.slotsLimit}`
+        )
+      )
+    ).toBeTruthy();
     expect(screen.getByText('Beatles')).toBeTruthy();
 
     fireEvent.click(screen.getByRole('button', { name: /Choose a plan|Выбрать тариф/i }));
@@ -176,10 +186,13 @@ describe('MyArchiveContent collection', () => {
     getMyArchiveMock.mockResolvedValue({
       isPremium: false,
       slotsUsed: 0,
-      slotsLimit: 20,
+      slotsLimit: PLAN_CATALOG.explorer.slotsLimit,
       inactiveCount: 0,
       subscriptionExpiresAt: null,
-      billing: billingExpired({ plan: 'archivist', slotsLimit: 20 }),
+      billing: billingExpired({
+        plan: 'archivist',
+        slotsLimit: PLAN_CATALOG.explorer.slotsLimit,
+      }),
       artists: [],
     });
 

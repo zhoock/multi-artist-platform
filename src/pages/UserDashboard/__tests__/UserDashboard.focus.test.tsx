@@ -6,6 +6,7 @@ import { act, render, screen, waitFor } from '@testing-library/react';
 import { Route, Routes } from 'react-router-dom';
 
 import { renderWithProviders } from '@shared/lib/test-utils';
+import { PLAN_CATALOG } from '@shared/lib/payment/subscriptionPlans';
 import { ToastProvider } from '@shared/lib/toast/ToastProvider';
 import { PremiumSubscriptionProvider } from '@features/premiumSubscription';
 import { EMPTY_BILLING_SNAPSHOT } from '@shared/api/billing';
@@ -172,14 +173,14 @@ describe('UserDashboard initial focus', () => {
     getMyArchiveMock.mockResolvedValue({
       isPremium: true,
       slotsUsed: 0,
-      slotsLimit: 20,
+      slotsLimit: PLAN_CATALOG.explorer.slotsLimit,
       inactiveCount: 0,
       artists: [],
       billing: {
         ...EMPTY_BILLING_SNAPSHOT,
         status: 'active',
         plan: 'explorer',
-        slotsLimit: 20,
+        slotsLimit: PLAN_CATALOG.explorer.slotsLimit,
         hasPremiumAccess: true,
         autoRenewEnabled: true,
         expiresAt: '2099-08-07T12:00:00.000Z',

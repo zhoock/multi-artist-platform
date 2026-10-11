@@ -12,9 +12,7 @@ import {
 import { isAutoRenewPatchBillingMutationAllowed } from './subscription-billing-origin';
 import { toPresenceStatus } from './subscription-state';
 import type { Subscription } from './subscriptions';
-
-/** Matches PLAN_CATALOG.archivist.slotsLimit — keep in sync with subscription-billing.ts */
-const SUBSCRIPTION_SLOTS_LIMIT_FALLBACK = 100;
+import { SUBSCRIPTION_SLOTS_LIMIT_FALLBACK } from '../../../src/shared/lib/payment/subscriptionPlanCatalog';
 
 export type SubscriptionPlanSlug = 'explorer' | 'collector' | 'archivist';
 

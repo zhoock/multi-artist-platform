@@ -67,10 +67,10 @@ function subscriptionRow(overrides: Record<string, unknown> = {}) {
 }
 
 describe('PLAN_CATALOG', () => {
-  test('defines explorer, collector, archivist with production slot limits', () => {
-    expect(getPlanSlotsLimit('explorer')).toBe(20);
-    expect(getPlanSlotsLimit('collector')).toBe(60);
-    expect(getPlanSlotsLimit('archivist')).toBe(100);
+  test('defines explorer, collector, archivist with catalog slot limits', () => {
+    expect(getPlanSlotsLimit('explorer')).toBe(PLAN_CATALOG.explorer.slotsLimit);
+    expect(getPlanSlotsLimit('collector')).toBe(PLAN_CATALOG.collector.slotsLimit);
+    expect(getPlanSlotsLimit('archivist')).toBe(PLAN_CATALOG.archivist.slotsLimit);
   });
 });
 
@@ -255,7 +255,7 @@ describe('fulfillSubscriptionPayment', () => {
       fakeQueryResult([
         subscriptionRow({
           plan: 'collector',
-          slots_limit: 60,
+          slots_limit: PLAN_CATALOG.collector.slotsLimit,
           expires_at: expiresAt,
         }),
       ])
@@ -268,14 +268,14 @@ describe('fulfillSubscriptionPayment', () => {
     });
 
     expect(result.plan).toBe('collector');
-    expect(result.slotsLimit).toBe(60);
+    expect(result.slotsLimit).toBe(PLAN_CATALOG.collector.slotsLimit);
     expect(result.expiresAt?.getTime()).toBe(expiresAt.getTime());
 
     const insertCall = mockedQuery.mock.calls[1];
     expect(insertCall?.[1]).toEqual([
       USER_ID,
       'collector',
-      60,
+      PLAN_CATALOG.collector.slotsLimit,
       'pay-new',
       startedAt,
       expiresAt,
@@ -295,7 +295,7 @@ describe('fulfillSubscriptionPayment', () => {
         fakeQueryResult([
           subscriptionRow({
             plan: 'archivist',
-            slots_limit: 100,
+            slots_limit: PLAN_CATALOG.archivist.slotsLimit,
             expires_at: expiresAt,
           }),
         ])
@@ -309,11 +309,11 @@ describe('fulfillSubscriptionPayment', () => {
     });
 
     expect(result.plan).toBe('archivist');
-    expect(result.slotsLimit).toBe(100);
+    expect(result.slotsLimit).toBe(PLAN_CATALOG.archivist.slotsLimit);
 
     const updateCall = mockedQuery.mock.calls[1];
     expect(updateCall?.[1]?.[1]).toBe('archivist');
-    expect(updateCall?.[1]?.[2]).toBe(100);
+    expect(updateCall?.[1]?.[2]).toBe(PLAN_CATALOG.archivist.slotsLimit);
     expect(updateCall?.[1]?.[6]).toEqual(expiresAt);
 
     expect(mockedQuery.mock.calls[2]).toBeUndefined();
@@ -398,7 +398,7 @@ describe('fulfillSubscriptionPayment', () => {
           subscriptionRow({
             status: 'expired',
             plan: 'explorer',
-            slots_limit: 20,
+            slots_limit: PLAN_CATALOG.explorer.slotsLimit,
           }),
         ])
       )
@@ -407,7 +407,7 @@ describe('fulfillSubscriptionPayment', () => {
           subscriptionRow({
             status: 'active',
             plan: 'explorer',
-            slots_limit: 20,
+            slots_limit: PLAN_CATALOG.explorer.slotsLimit,
             expires_at: expiresAt,
           }),
         ])
@@ -455,7 +455,7 @@ describe('fulfillSubscriptionPayment', () => {
             subscriptionRow({
               status: 'expired',
               plan: 'archivist',
-              slots_limit: 100,
+              slots_limit: PLAN_CATALOG.archivist.slotsLimit,
               billing_origin: rowOrigin,
             }),
           ])
@@ -465,7 +465,7 @@ describe('fulfillSubscriptionPayment', () => {
             subscriptionRow({
               status: 'active',
               plan: 'archivist',
-              slots_limit: 100,
+              slots_limit: PLAN_CATALOG.archivist.slotsLimit,
               billing_origin: devPaymentMode ? 'dev' : 'production',
               expires_at: expiresAt,
             }),
@@ -493,7 +493,7 @@ describe('fulfillSubscriptionPayment', () => {
           subscriptionRow({
             status: 'active',
             plan: 'explorer',
-            slots_limit: 20,
+            slots_limit: PLAN_CATALOG.explorer.slotsLimit,
           }),
         ])
       )
@@ -502,7 +502,7 @@ describe('fulfillSubscriptionPayment', () => {
           subscriptionRow({
             status: 'active',
             plan: 'explorer',
-            slots_limit: 20,
+            slots_limit: PLAN_CATALOG.explorer.slotsLimit,
             expires_at: expiresAt,
           }),
         ])
@@ -532,7 +532,7 @@ describe('fulfillSubscriptionPayment', () => {
           subscriptionRow({
             status: 'active',
             plan: 'explorer',
-            slots_limit: 20,
+            slots_limit: PLAN_CATALOG.explorer.slotsLimit,
             next_charge_at: staleNextCharge,
           }),
         ])
@@ -542,7 +542,7 @@ describe('fulfillSubscriptionPayment', () => {
           subscriptionRow({
             status: 'active',
             plan: 'explorer',
-            slots_limit: 20,
+            slots_limit: PLAN_CATALOG.explorer.slotsLimit,
             expires_at: expiresAt,
             next_charge_at: expiresAt,
           }),

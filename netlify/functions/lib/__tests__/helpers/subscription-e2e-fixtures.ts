@@ -5,6 +5,7 @@
 
 import type { SubscriptionPlanSlug } from '../../subscription-billing';
 import type { SubscriptionStatus } from '../../subscriptions';
+import { getPlanSlotsLimit } from '../../../../../src/shared/lib/payment/subscriptionPlanCatalog';
 
 /** Fixed UUIDs for reproducible seeds. */
 export const TEST_USER_SUBSCRIBER = 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee';
@@ -66,7 +67,7 @@ export function defaultSeedSubscriptionParams(
     userId: TEST_USER_SUBSCRIBER,
     status: 'active',
     plan: 'explorer',
-    slotsLimit: 20,
+    slotsLimit: getPlanSlotsLimit('explorer'),
     expiresAt,
     startedAt: overrides.startedAt ?? new Date('2026-08-05T12:00:00.000Z'),
     paymentMethodId: null,

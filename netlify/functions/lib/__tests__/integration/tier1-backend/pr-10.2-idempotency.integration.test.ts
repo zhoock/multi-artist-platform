@@ -11,6 +11,7 @@ import {
   claimSubscriptionPaymentCanceled,
   createPendingSubscriptionPayment,
   fulfillSubscriptionPayment,
+  getPlanSlotsLimit,
   getSubscriptionPaymentByInternalId,
 } from '../../../subscription-billing';
 import { mapDevSubscriptionPaymentToProviderPayment } from '../../../subscription-provider-payment';
@@ -166,7 +167,7 @@ describe('PR-10.2 — payment idempotency @tier1 @p0', () => {
         userId: ctx.userId,
         status: 'active',
         plan: 'explorer',
-        slotsLimit: 20,
+        slotsLimit: getPlanSlotsLimit('explorer'),
         expiresAt: new Date('2026-09-03T00:00:00.000Z'),
         paymentMethodId: 'pm-existing',
         nextChargeAt: new Date('2026-09-03T00:00:00.000Z'),

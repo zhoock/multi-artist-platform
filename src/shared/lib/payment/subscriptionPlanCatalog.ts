@@ -32,21 +32,24 @@ export interface SubscriptionPlanCatalogEntry {
 /**
  * Plan catalog. `durationDays` is display copy only; the charged support period is
  * SUPPORT_PERIOD_MS in netlify/functions/lib/subscription-billing.ts.
+ *
+ * TEMP (site testing): 1 / 2 / 3 artist slots until tariff-limit QA is complete.
+ * Restore 20 / 60 / 100 for production launch.
  */
 export const SUBSCRIPTION_PLAN_CATALOG: Record<SubscriptionPlanSlug, SubscriptionPlanCatalogEntry> =
   {
     explorer: {
-      slotsLimit: 20,
+      slotsLimit: 1,
       durationDays: 30,
       priceRubProduction: SUBSCRIPTION_PLAN_PRICE_RUB,
     },
     collector: {
-      slotsLimit: 60,
+      slotsLimit: 2,
       durationDays: 30,
       priceRubProduction: SUBSCRIPTION_PLAN_PRICE_RUB,
     },
     archivist: {
-      slotsLimit: 100,
+      slotsLimit: 3,
       durationDays: 30,
       priceRubProduction: SUBSCRIPTION_PLAN_PRICE_RUB,
     },

@@ -8,6 +8,7 @@ import { query } from '../../../db';
 import { attachDevSucceededSubscriptionCheckout } from '../../../complete-dev-payment';
 import {
   createPendingSubscriptionPayment,
+  getPlanSlotsLimit,
   getSubscriptionPaymentByInternalId,
 } from '../../../subscription-billing';
 import { mapDevSubscriptionPaymentToProviderPayment } from '../../../subscription-provider-payment';
@@ -129,7 +130,7 @@ describe('Group D — Scheduled downgrade @tier1', () => {
         userId: ctx.userId,
         status: 'active',
         plan: 'collector',
-        slotsLimit: 60,
+        slotsLimit: getPlanSlotsLimit('collector'),
         expiresAt: new Date('2026-08-05T00:00:00.000Z'),
         paymentMethodId: 'pm-d-renewal',
         nextChargeAt: new Date('2026-08-05T00:00:00.000Z'),
@@ -144,7 +145,7 @@ describe('Group D — Scheduled downgrade @tier1', () => {
         {
           status: 'active',
           plan: 'explorer',
-          slotsLimit: 20,
+          slotsLimit: getPlanSlotsLimit('explorer'),
           scheduledPlan: null,
         },
         { context: ctx }
@@ -153,7 +154,7 @@ describe('Group D — Scheduled downgrade @tier1', () => {
       const snapshot = buildBillingSnapshot(subscription, { now: E2E_TIME_ANCHOR });
       await expectBillingSnapshot(snapshot, {
         plan: 'explorer',
-        slotsLimit: 20,
+        slotsLimit: getPlanSlotsLimit('explorer'),
         scheduledPlan: null,
       });
 
@@ -181,7 +182,7 @@ describe('Group D — Scheduled downgrade @tier1', () => {
           userId: ctx.userId,
           status: 'active',
           plan: 'collector',
-          slotsLimit: 60,
+          slotsLimit: getPlanSlotsLimit('collector'),
           expiresAt: periodEnd,
           paymentMethodId: 'pm-d-excess',
           nextChargeAt: periodEnd,
@@ -218,7 +219,7 @@ describe('Group D — Scheduled downgrade @tier1', () => {
         const subscription = await loadSubscriptionForUser(ctx.userId);
         await expectSubscriptionState(
           subscription,
-          { plan: 'explorer', slotsLimit: 20 },
+          { plan: 'explorer', slotsLimit: getPlanSlotsLimit('explorer') },
           { context: ctx }
         );
 

@@ -14,9 +14,9 @@ import {
 
 describe('subscriptionPlanCatalog', () => {
   test('defines shared slot limits and 30-day display period', () => {
-    expect(PLAN_CATALOG.explorer.slotsLimit).toBe(20);
-    expect(PLAN_CATALOG.collector.slotsLimit).toBe(60);
-    expect(PLAN_CATALOG.archivist.slotsLimit).toBe(100);
+    expect(PLAN_CATALOG.explorer.slotsLimit).toBe(1);
+    expect(PLAN_CATALOG.collector.slotsLimit).toBe(2);
+    expect(PLAN_CATALOG.archivist.slotsLimit).toBe(3);
     expect(PLAN_CATALOG.explorer.durationDays).toBe(30);
   });
 

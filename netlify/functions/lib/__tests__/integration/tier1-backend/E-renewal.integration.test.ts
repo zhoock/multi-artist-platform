@@ -13,6 +13,7 @@ import {
   createRenewalAttemptRow,
   getPlanAmountRub,
   getPlanDefinition,
+  getPlanSlotsLimit,
   getSubscriptionPaymentByInternalId,
   type SubscriptionPlanSlug,
 } from '../../../subscription-billing';
@@ -1057,7 +1058,7 @@ describe('Group E — Renewal @tier1', () => {
         {
           status: 'active',
           plan: 'collector',
-          slotsLimit: 60,
+          slotsLimit: getPlanSlotsLimit('collector'),
           scheduledPlan: null,
           renewalAttemptCount: 0,
           firstFailedAt: null,
@@ -1103,7 +1104,7 @@ describe('Group E — Renewal @tier1', () => {
         {
           status: 'active',
           plan: 'collector',
-          slotsLimit: 60,
+          slotsLimit: getPlanSlotsLimit('collector'),
           scheduledPlan: null,
           renewalAttemptCount: 0,
           paymentMethodId,

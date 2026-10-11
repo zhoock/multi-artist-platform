@@ -4,6 +4,7 @@
 
 import { describe, expect, test, afterEach } from '@jest/globals';
 import type { Subscription } from '../subscriptions';
+import { SUBSCRIPTION_SLOTS_LIMIT_FALLBACK } from '../../../../src/shared/lib/payment/subscriptionPlanCatalog';
 import {
   buildBillingSnapshot,
   billingStatusFromSubscription,
@@ -44,7 +45,7 @@ describe('buildBillingSnapshot', () => {
     expect(snapshot).toEqual({
       status: null,
       plan: null,
-      slotsLimit: 100,
+      slotsLimit: SUBSCRIPTION_SLOTS_LIMIT_FALLBACK,
       expiresAt: null,
       autoRenewEnabled: false,
       hasPremiumAccess: false,

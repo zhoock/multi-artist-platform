@@ -29,7 +29,7 @@ jest.mock('../subscription-billing', () => ({
   findUnresolvedRenewalAttemptForSubscription: jest.fn(async () => null),
   getRenewalAttemptPostIdentity: jest.fn(),
   getPlanAmountRub: jest.fn(() => 1),
-  getPlanDefinition: jest.fn(() => ({ description: 'test', slotsLimit: 20 })),
+  getPlanDefinition: jest.fn(() => ({ description: 'test', slotsLimit: 1 })),
   getPlanPriceCurrencyCode: jest.fn(() => 'RUB'),
   hasUnresolvedRenewalPostStartedWithClient: jest.fn(async () => false),
   resolveRenewalChargePlanSlug: jest.fn((plan: string) => plan),

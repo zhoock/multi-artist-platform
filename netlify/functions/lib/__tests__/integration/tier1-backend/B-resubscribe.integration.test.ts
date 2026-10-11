@@ -7,6 +7,7 @@ import { describe, expect, test } from '@jest/globals';
 import { hasPremiumAccess } from '../../../subscription-access';
 import {
   createPendingSubscriptionPayment,
+  getPlanSlotsLimit,
   getSubscriptionPaymentByInternalId,
 } from '../../../subscription-billing';
 import { attachDevSucceededSubscriptionCheckout } from '../../../complete-dev-payment';
@@ -138,7 +139,7 @@ describe('Group B — Resubscribe @tier1', () => {
         userId: ctx.userId,
         status: 'expired',
         plan: 'explorer',
-        slotsLimit: 20,
+        slotsLimit: getPlanSlotsLimit('explorer'),
         expiresAt: new Date('2026-07-01T00:00:00.000Z'),
         paymentMethodId: null,
         nextChargeAt: null,

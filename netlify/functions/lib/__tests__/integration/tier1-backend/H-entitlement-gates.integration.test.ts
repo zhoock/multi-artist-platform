@@ -11,6 +11,7 @@ import {
   getMyArchiveForUser,
 } from '../../../archive';
 import { viewerHasPremiumAccessToArtist } from '../../../entitlements';
+import { getPlanSlotsLimit } from '../../../subscription-billing';
 import { hasPremiumAccess } from '../../../subscription-access';
 import { setActiveE2eContext } from '../../helpers/subscription-e2e-context';
 import {
@@ -161,7 +162,7 @@ describe('Group H — Entitlement gates @tier1', () => {
         userId: ctx.userId,
         status: 'active',
         plan: 'collector',
-        slotsLimit: 60,
+        slotsLimit: getPlanSlotsLimit('collector'),
         expiresAt: new Date('2026-09-03T00:00:00.000Z'),
         paymentMethodId: ctx.flagAutoRenew ? 'pm-h-parity' : null,
         nextChargeAt: ctx.flagAutoRenew ? new Date('2026-09-03T00:00:00.000Z') : null,

@@ -9,6 +9,7 @@ import { screen, waitFor, fireEvent } from '@testing-library/react';
 import { renderWithProviders } from '@shared/lib/test-utils';
 import { ToastProvider } from '@shared/lib/toast/ToastProvider';
 import { EMPTY_BILLING_SNAPSHOT, type BillingSnapshot } from '@shared/api/billing';
+import { PLAN_CATALOG } from '@shared/lib/payment/subscriptionPlans';
 import { PremiumSubscriptionProvider } from '@features/premiumSubscription';
 import type { SubscriptionCheckoutResult } from '@shared/lib/archiveAccessModal/useSubscriptionCheckout';
 import { buildSubscriptionPaymentStatusReturnUrl } from '@shared/lib/internalAppUrls';
@@ -65,12 +66,13 @@ function billingActive(overrides: Partial<BillingSnapshot> = {}): BillingSnapsho
     status: 'active',
     plan: 'explorer',
     slotsLimit: 1,
-    expiresAt: '2026-09-03T12:00:00.000Z',
-    nextChargeAt: '2026-09-03T12:00:00.000Z',
+    expiresAt: '2027-09-03T12:00:00.000Z',
+    nextChargeAt: '2027-09-03T12:00:00.000Z',
     autoRenewEnabled: true,
     hasPremiumAccess: true,
     hasSavedPaymentMethod: true,
     paymentMethodTitle: 'Visa •••• 4242',
+    autoRenewResumeAllowed: true,
     ...overrides,
   };
 }
@@ -97,7 +99,7 @@ function archivePayload(overrides: Record<string, unknown> = {}) {
     slotsUsed: 1,
     slotsLimit: 1,
     inactiveCount: 0,
-    subscriptionExpiresAt: '2026-09-03T12:00:00.000Z',
+    subscriptionExpiresAt: '2027-09-03T12:00:00.000Z',
     billing: billingActive(),
     artists: [],
     ...overrides,
@@ -182,8 +184,11 @@ describe('SubscriptionContent plan display', () => {
     getMyArchiveMock.mockResolvedValue({
       isPremium: false,
       slotsUsed: 0,
-      slotsLimit: 20,
-      billing: billingExpired({ plan: 'explorer', slotsLimit: 20 }),
+      slotsLimit: PLAN_CATALOG.explorer.slotsLimit,
+      billing: billingExpired({
+        plan: 'explorer',
+        slotsLimit: PLAN_CATALOG.explorer.slotsLimit,
+      }),
       artists: [],
     });
 
@@ -223,8 +228,11 @@ describe('SubscriptionContent plan display', () => {
   test('opens plan modal when upgrade plan button is clicked', async () => {
     getMyArchiveMock.mockResolvedValue(
       archivePayload({
-        billing: billingActive({ plan: 'explorer', slotsLimit: 20 }),
-        slotsLimit: 20,
+        billing: billingActive({
+          plan: 'explorer',
+          slotsLimit: PLAN_CATALOG.explorer.slotsLimit,
+        }),
+        slotsLimit: PLAN_CATALOG.explorer.slotsLimit,
       })
     );
 
@@ -250,6 +258,8 @@ describe('SubscriptionContent plan display', () => {
           status: 'cancel_at_period_end',
           autoRenewEnabled: false,
           hasPremiumAccess: true,
+          hasSavedPaymentMethod: true,
+          autoRenewResumeAllowed: true,
         }),
       })
     );

@@ -7,6 +7,7 @@ import { describe, expect, test } from '@jest/globals';
 import { attachDevSucceededSubscriptionCheckout } from '../../../complete-dev-payment';
 import {
   createPendingSubscriptionPayment,
+  getPlanSlotsLimit,
   getSubscriptionPaymentByInternalId,
 } from '../../../subscription-billing';
 import { hasPremiumAccess } from '../../../subscription-access';
@@ -99,7 +100,7 @@ describe('Group C — Upgrade @tier1', () => {
         userId: ctx.userId,
         status: 'active',
         plan: 'explorer',
-        slotsLimit: 20,
+        slotsLimit: getPlanSlotsLimit('explorer'),
         expiresAt: new Date('2026-09-03T00:00:00.000Z'),
         paymentMethodId: 'pm-upgrade-existing',
         nextChargeAt: new Date('2026-09-03T00:00:00.000Z'),
@@ -133,7 +134,7 @@ describe('Group C — Upgrade @tier1', () => {
         {
           status: 'active',
           plan: 'collector',
-          slotsLimit: 60,
+          slotsLimit: getPlanSlotsLimit('collector'),
         },
         { context: ctx }
       );
@@ -143,7 +144,7 @@ describe('Group C — Upgrade @tier1', () => {
       const snapshot = buildSnapshotFromSubscription(subscription, E2E_TIME_ANCHOR);
       await expectBillingSnapshot(snapshot, {
         plan: 'collector',
-        slotsLimit: 60,
+        slotsLimit: getPlanSlotsLimit('collector'),
         hasPremiumAccess: true,
       });
 

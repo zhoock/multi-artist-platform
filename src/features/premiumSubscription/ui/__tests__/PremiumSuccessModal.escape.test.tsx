@@ -4,6 +4,7 @@ import { describe, expect, jest, test, beforeEach } from '@jest/globals';
 import { useRef } from 'react';
 import { render, waitFor } from '@testing-library/react';
 
+import { PLAN_CATALOG } from '@shared/lib/payment/subscriptionPlans';
 import { PremiumSuccessModalView } from '../PremiumSuccessModal';
 import * as premiumSuccessStorage from '../../lib/premiumSuccessModalStorage';
 
@@ -28,7 +29,7 @@ jest.mock('@shared/model/uiDictionary', () => ({
 jest.mock('@features/premiumSubscription/lib/PremiumSubscriptionContext', () => ({
   usePremiumSubscription: () => ({
     isPremium: true,
-    slotsLimit: 20,
+    slotsLimit: PLAN_CATALOG.explorer.slotsLimit,
     slotsUsed: 0,
     planSlug: 'explorer',
     billing: {},

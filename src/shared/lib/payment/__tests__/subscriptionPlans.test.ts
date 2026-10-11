@@ -3,11 +3,13 @@ import { describe, expect, test } from '@jest/globals';
 import {
   comparePlanTiers,
   formatCollectionMenuSubtitle,
+  formatPlanArtistLimitParts,
   formatPlanStatusLabel,
   formatPlanSupportDuration,
   getPlanAmountRub,
   isCollectionOverPlanLimit,
   PLAN_CATALOG,
+  SUBSCRIPTION_SLOTS_LIMIT_FALLBACK,
   resolveActiveScheduledPlanChange,
   resolveCurrentPlanSlug,
   resolveEffectiveSubscriptionPlanSlug,
@@ -23,10 +25,11 @@ import {
 } from '../subscriptionPlans';
 
 describe('PLAN_CATALOG (client)', () => {
-  test('uses production slot limits', () => {
-    expect(PLAN_CATALOG.explorer.slotsLimit).toBe(20);
-    expect(PLAN_CATALOG.collector.slotsLimit).toBe(60);
-    expect(PLAN_CATALOG.archivist.slotsLimit).toBe(100);
+  test('uses catalog slot limits (shared with server)', () => {
+    expect(PLAN_CATALOG.explorer.slotsLimit).toBe(1);
+    expect(PLAN_CATALOG.collector.slotsLimit).toBe(2);
+    expect(PLAN_CATALOG.archivist.slotsLimit).toBe(3);
+    expect(SUBSCRIPTION_SLOTS_LIMIT_FALLBACK).toBe(PLAN_CATALOG.archivist.slotsLimit);
   });
 
   test('uses 30-day support period label in development', () => {
@@ -35,35 +38,74 @@ describe('PLAN_CATALOG (client)', () => {
 });
 
 describe('resolvePlanSlugFromSlotsLimit', () => {
-  test('maps production slot limits to plan slugs', () => {
-    expect(resolvePlanSlugFromSlotsLimit(20)).toBe('explorer');
-    expect(resolvePlanSlugFromSlotsLimit(60)).toBe('collector');
-    expect(resolvePlanSlugFromSlotsLimit(100)).toBe('archivist');
+  test('maps catalog slot limits to plan slugs', () => {
+    expect(resolvePlanSlugFromSlotsLimit(PLAN_CATALOG.explorer.slotsLimit)).toBe('explorer');
+    expect(resolvePlanSlugFromSlotsLimit(PLAN_CATALOG.collector.slotsLimit)).toBe('collector');
+    expect(resolvePlanSlugFromSlotsLimit(PLAN_CATALOG.archivist.slotsLimit)).toBe('archivist');
     expect(resolvePlanSlugFromSlotsLimit(99)).toBeNull();
+  });
+});
+
+describe('formatPlanArtistLimitParts', () => {
+  test('formats Russian artist limits for testing tiers', () => {
+    expect(formatPlanArtistLimitParts('explorer', 'ru')).toEqual({
+      prefix: 'До',
+      count: '1',
+      suffix: 'артиста',
+    });
+    expect(formatPlanArtistLimitParts('collector', 'ru').suffix).toBe('артистов');
+    expect(formatPlanArtistLimitParts('collector', 'ru').count).toBe('2');
+    expect(formatPlanArtistLimitParts('archivist', 'ru').count).toBe('3');
+  });
+});
+
+describe('isCollectionOverPlanLimit', () => {
+  test('allows at-limit collection and blocks one over', () => {
+    const limit = PLAN_CATALOG.explorer.slotsLimit;
+    expect(isCollectionOverPlanLimit(limit, limit)).toBe(false);
+    expect(isCollectionOverPlanLimit(limit + 1, limit)).toBe(true);
   });
 });
 
 describe('resolveCurrentPlanSlug', () => {
   test('returns plan for active subscription', () => {
-    expect(resolveCurrentPlanSlug({ isPremium: true, slotsLimit: 60, slotsUsed: 1 })).toBe(
-      'collector'
-    );
+    expect(
+      resolveCurrentPlanSlug({
+        isPremium: true,
+        slotsLimit: PLAN_CATALOG.collector.slotsLimit,
+        slotsUsed: 1,
+      })
+    ).toBe('collector');
   });
 
   test('returns plan for inactive subscription with collection', () => {
-    expect(resolveCurrentPlanSlug({ isPremium: false, slotsLimit: 20, slotsUsed: 1 })).toBe(
-      'explorer'
-    );
+    expect(
+      resolveCurrentPlanSlug({
+        isPremium: false,
+        slotsLimit: PLAN_CATALOG.explorer.slotsLimit,
+        slotsUsed: 1,
+      })
+    ).toBe('explorer');
   });
 
   test('returns null for new user with default fallback limit', () => {
-    expect(resolveCurrentPlanSlug({ isPremium: false, slotsLimit: 100, slotsUsed: 0 })).toBeNull();
+    expect(
+      resolveCurrentPlanSlug({
+        isPremium: false,
+        slotsLimit: SUBSCRIPTION_SLOTS_LIMIT_FALLBACK,
+        slotsUsed: 0,
+      })
+    ).toBeNull();
   });
 
   test('returns explorer for expired subscription without collection', () => {
-    expect(resolveCurrentPlanSlug({ isPremium: false, slotsLimit: 20, slotsUsed: 0 })).toBe(
-      'explorer'
-    );
+    expect(
+      resolveCurrentPlanSlug({
+        isPremium: false,
+        slotsLimit: PLAN_CATALOG.explorer.slotsLimit,
+        slotsUsed: 0,
+      })
+    ).toBe('explorer');
   });
 });
 
@@ -72,7 +114,7 @@ describe('resolveEffectiveSubscriptionPlanSlug', () => {
     expect(
       resolveEffectiveSubscriptionPlanSlug({
         billing: { plan: 'collector' },
-        slotsLimit: 20,
+        slotsLimit: PLAN_CATALOG.explorer.slotsLimit,
         slotsUsed: 0,
         isPremium: true,
       })
@@ -83,7 +125,7 @@ describe('resolveEffectiveSubscriptionPlanSlug', () => {
     expect(
       resolveEffectiveSubscriptionPlanSlug({
         billing: { plan: 'explorer' },
-        slotsLimit: 20,
+        slotsLimit: PLAN_CATALOG.explorer.slotsLimit,
         slotsUsed: 0,
         isPremium: true,
       })
@@ -340,7 +382,7 @@ describe('resolveBillingCurrentPlanSlug', () => {
       resolveBillingCurrentPlanSlug({
         billing: { plan: null, status: 'expired' },
         resolvedPlanSlug: null,
-        slotsLimit: 60,
+        slotsLimit: PLAN_CATALOG.collector.slotsLimit,
       })
     ).toBe('collector');
   });
@@ -350,7 +392,7 @@ describe('resolveBillingCurrentPlanSlug', () => {
       resolveBillingCurrentPlanSlug({
         billing: { plan: null, status: null },
         resolvedPlanSlug: null,
-        slotsLimit: 100,
+        slotsLimit: SUBSCRIPTION_SLOTS_LIMIT_FALLBACK,
       })
     ).toBeNull();
   });
@@ -371,7 +413,7 @@ describe('resolveBillingCurrentPlanSlug — new user initial checkout', () => {
           resolveBillingCurrentPlanSlug({
             billing: noSubscriptionBilling,
             resolvedPlanSlug: null,
-            slotsLimit: 100,
+            slotsLimit: SUBSCRIPTION_SLOTS_LIMIT_FALLBACK,
           }),
           targetPlanSlug
         )
@@ -387,7 +429,7 @@ describe('resolveBillingCurrentPlanSlug — new user initial checkout', () => {
           currentPlanSlug: null,
           targetPlanSlug,
           billing: noSubscriptionBilling,
-          slotsLimit: 100,
+          slotsLimit: SUBSCRIPTION_SLOTS_LIMIT_FALLBACK,
         })
       ).toBeUndefined();
     }
@@ -401,7 +443,7 @@ describe('resolveBillingCurrentPlanSlug — existing subscription plan change', 
         resolveBillingCurrentPlanSlug({
           billing: { plan: 'explorer', status: 'active' },
           resolvedPlanSlug: 'explorer',
-          slotsLimit: 20,
+          slotsLimit: PLAN_CATALOG.explorer.slotsLimit,
         }),
         'collector'
       )
@@ -414,7 +456,7 @@ describe('resolveBillingCurrentPlanSlug — existing subscription plan change', 
         resolveBillingCurrentPlanSlug({
           billing: { plan: 'archivist', status: 'active' },
           resolvedPlanSlug: 'archivist',
-          slotsLimit: 100,
+          slotsLimit: PLAN_CATALOG.archivist.slotsLimit,
         }),
         'explorer'
       )

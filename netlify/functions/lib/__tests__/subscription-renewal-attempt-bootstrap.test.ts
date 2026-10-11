@@ -112,7 +112,7 @@ function claimRow(overrides: Record<string, unknown> = {}) {
     user_id: USER_ID,
     status: 'active',
     plan: 'explorer',
-    slots_limit: 20,
+    slots_limit: 1,
     provider: 'yookassa',
     provider_subscription_id: null,
     started_at: new Date('2026-08-01T00:00:00.000Z'),

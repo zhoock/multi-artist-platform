@@ -9,6 +9,7 @@ import { describe, expect, test } from '@jest/globals';
 import { attachDevSucceededSubscriptionCheckout } from '../../../complete-dev-payment';
 import {
   createPendingSubscriptionPayment,
+  getPlanSlotsLimit,
   getSubscriptionPaymentByInternalId,
   type SubscriptionPlanSlug,
 } from '../../../subscription-billing';
@@ -162,7 +163,7 @@ describe('Group A — Initial subscription @tier1', () => {
         {
           status: 'active',
           plan: 'explorer',
-          slotsLimit: 20,
+          slotsLimit: getPlanSlotsLimit('explorer'),
         },
         { context: ctx }
       );

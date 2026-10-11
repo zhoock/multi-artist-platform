@@ -1,6 +1,7 @@
 import { describe, expect, test } from '@jest/globals';
 
 import { EMPTY_BILLING_SNAPSHOT, type BillingSnapshot } from '@shared/api/billing';
+import { PLAN_CATALOG } from '@shared/lib/payment/subscriptionPlans';
 
 import { BILLING_OVERLAY } from '../billingOverlay';
 import { resolveCollectionBillingOverlays } from '../resolveCollectionBillingOverlays';
@@ -25,7 +26,7 @@ describe('resolveCollectionBillingOverlays', () => {
         status: 'active',
         hasPremiumAccess: true,
         plan: 'collector',
-        slotsLimit: 60,
+        slotsLimit: PLAN_CATALOG.collector.slotsLimit,
         scheduledPlan: null,
         nextChargeAt: chargeInDays(2),
       }),
@@ -39,7 +40,7 @@ describe('resolveCollectionBillingOverlays', () => {
         status: 'active',
         hasPremiumAccess: true,
         plan: 'collector',
-        slotsLimit: 60,
+        slotsLimit: PLAN_CATALOG.collector.slotsLimit,
         scheduledPlan: 'explorer',
         nextChargeAt: chargeInDays(2),
       }),
@@ -53,7 +54,7 @@ describe('resolveCollectionBillingOverlays', () => {
         status: 'active',
         hasPremiumAccess: true,
         plan: 'collector',
-        slotsLimit: 60,
+        slotsLimit: PLAN_CATALOG.collector.slotsLimit,
         scheduledPlan: null,
         nextChargeAt: chargeInDays(5),
       }),
@@ -67,7 +68,7 @@ describe('resolveCollectionBillingOverlays', () => {
         status: 'active',
         hasPremiumAccess: true,
         plan: 'collector',
-        slotsLimit: 60,
+        slotsLimit: PLAN_CATALOG.collector.slotsLimit,
         scheduledPlan: 'explorer',
         nextChargeAt: chargeInDays(2),
       }),
@@ -81,7 +82,7 @@ describe('resolveCollectionBillingOverlays', () => {
         status: 'cancel_at_period_end',
         hasPremiumAccess: true,
         plan: 'collector',
-        slotsLimit: 60,
+        slotsLimit: PLAN_CATALOG.collector.slotsLimit,
         scheduledPlan: 'explorer',
         nextChargeAt: null,
         expiresAt: chargeInDays(10),
@@ -96,7 +97,7 @@ describe('resolveCollectionBillingOverlays', () => {
         status: 'cancel_at_period_end',
         hasPremiumAccess: true,
         plan: 'collector',
-        slotsLimit: 60,
+        slotsLimit: PLAN_CATALOG.collector.slotsLimit,
         scheduledPlan: null,
         nextChargeAt: null,
       }),
@@ -110,7 +111,7 @@ describe('resolveCollectionBillingOverlays', () => {
         status: 'past_due',
         hasPremiumAccess: true,
         plan: 'collector',
-        slotsLimit: 60,
+        slotsLimit: PLAN_CATALOG.collector.slotsLimit,
         scheduledPlan: 'explorer',
         nextChargeAt: chargeInDays(1),
         firstFailedAt: NOW.toISOString(),
@@ -125,7 +126,7 @@ describe('resolveCollectionBillingOverlays', () => {
         status: 'expired',
         hasPremiumAccess: false,
         plan: 'collector',
-        slotsLimit: 60,
+        slotsLimit: PLAN_CATALOG.collector.slotsLimit,
         scheduledPlan: 'explorer',
         nextChargeAt: chargeInDays(1),
       }),
@@ -156,7 +157,7 @@ describe('resolveCollectionBillingOverlays', () => {
         status: 'active',
         hasPremiumAccess: true,
         plan: 'collector',
-        slotsLimit: 60,
+        slotsLimit: PLAN_CATALOG.collector.slotsLimit,
         scheduledPlan: 'explorer',
         nextChargeAt: chargeInDays(2),
       }),

@@ -29,11 +29,13 @@ export interface BillingSnapshot {
   autoRenewResumeAllowed: boolean;
 }
 
+import { SUBSCRIPTION_SLOTS_LIMIT_FALLBACK } from '@shared/lib/payment/subscriptionPlanCatalog';
+
 /** Fallback when context loads without archive data yet. */
 export const EMPTY_BILLING_SNAPSHOT: BillingSnapshot = {
   status: null,
   plan: null,
-  slotsLimit: 3,
+  slotsLimit: SUBSCRIPTION_SLOTS_LIMIT_FALLBACK,
   expiresAt: null,
   autoRenewEnabled: false,
   hasPremiumAccess: false,

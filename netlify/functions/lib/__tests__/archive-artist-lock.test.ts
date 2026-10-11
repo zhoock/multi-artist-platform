@@ -25,6 +25,7 @@ import {
   activateArtistsInArchive,
   addArtistToArchive,
   ArchiveArtistLockedError,
+  ArchiveSlotsLimitError,
   ArchiveSubscriptionRequiredError,
   canRemoveArchiveArtist,
   deactivateAllArchiveArtists,
@@ -233,6 +234,47 @@ describe('addArtistToArchive', () => {
     const entry = await addArtistToArchive(USER_ID, ARTIST_A);
     expect(entry.isActive).toBe(true);
     expect(entry.lockedUntil).toEqual(PERIOD_END);
+  });
+
+  test('rejects new artist when active slots are at plan limit', async () => {
+    mockedQuery.mockImplementation(async (text: string) => {
+      const sql = text.replace(/\s+/g, ' ').trim();
+      if (sql.includes('FROM user_archive') && sql.includes('LIMIT 1')) {
+        return fakeQueryResult([]);
+      }
+      if (sql.startsWith('SELECT COUNT(*)')) {
+        return fakeQueryResult([{ count: '1' }]);
+      }
+      return fakeQueryResult([]);
+    });
+    mockedGetSubscription.mockResolvedValue(activeSubscription(1));
+    mockedHasPremiumAccess.mockReturnValue(true);
+
+    await expect(addArtistToArchive(USER_ID, ARTIST_A)).rejects.toBeInstanceOf(
+      ArchiveSlotsLimitError
+    );
+  });
+
+  test('allows add when slotsUsed is one below limit', async () => {
+    mockedQuery.mockImplementation(async (text: string) => {
+      const sql = text.replace(/\s+/g, ' ').trim();
+      if (sql.includes('FROM user_archive') && sql.includes('LIMIT 1')) {
+        return fakeQueryResult([]);
+      }
+      if (sql.startsWith('SELECT COUNT(*)')) {
+        return fakeQueryResult([{ count: '0' }]);
+      }
+      if (sql.startsWith('INSERT INTO user_archive')) {
+        return fakeQueryResult([archiveRow(true, PERIOD_END)]);
+      }
+      return fakeQueryResult([]);
+    });
+    mockedGetSubscription.mockResolvedValue(activeSubscription(1));
+    mockedHasPremiumAccess.mockReturnValue(true);
+
+    await expect(addArtistToArchive(USER_ID, ARTIST_A)).resolves.toMatchObject({
+      isActive: true,
+    });
   });
 
   test('does not update locked_until for idempotent add of active artist', async () => {

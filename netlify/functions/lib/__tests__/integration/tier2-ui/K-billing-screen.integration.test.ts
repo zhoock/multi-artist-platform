@@ -26,6 +26,7 @@ import { registerTier2UiHooks } from '../../helpers/subscription-e2e-ui-setup';
 import { buildTaggedTestName, type E2eScenarioMeta } from '../../helpers/subscription-e2e-tags';
 import { E2E_TIME_ANCHOR, withFrozenTime } from '../../helpers/subscription-e2e-time';
 import type { Subscription } from '../../../subscriptions';
+import { getPlanSlotsLimit } from '../../../../../../src/shared/lib/payment/subscriptionPlanCatalog';
 
 import {
   CollectionBillingSummary,
@@ -182,7 +183,7 @@ describe('Group K — BillingScreen + BillingSnapshot @tier2', () => {
       const subscription = subscriptionFromSeed('sub-k-active', {
         status: 'active',
         plan: 'collector',
-        slotsLimit: 60,
+        slotsLimit: getPlanSlotsLimit('collector'),
         paymentMethodId: 'pm-k-active',
         nextChargeAt: new Date('2026-09-03T00:00:00.000Z'),
       });
