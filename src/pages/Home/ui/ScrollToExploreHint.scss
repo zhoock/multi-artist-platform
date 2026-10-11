@@ -31,6 +31,13 @@
     }
   }
 
+  @supports selector(body:has(.consent-banner)) {
+    body:has(.mini-player):has(.consent-banner) & {
+      // Below .consent-banner (9990) while the banner is open; restores 20001 when it unmounts.
+      z-index: 9989;
+    }
+  }
+
   &__icon {
     display: flex;
     flex-shrink: 0;
