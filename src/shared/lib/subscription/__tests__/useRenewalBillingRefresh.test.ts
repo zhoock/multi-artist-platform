@@ -13,6 +13,17 @@ import {
 } from '../useRenewalBillingRefresh';
 
 describe('shouldEnableRenewalBillingSync', () => {
+  test('stays enabled when autoRenewSettlementPending even without nextChargeAt', () => {
+    expect(
+      shouldEnableRenewalBillingSync({
+        active: true,
+        autoRenewEnabled: true,
+        nextChargeAt: null,
+        autoRenewSettlementPending: true,
+      })
+    ).toBe(true);
+  });
+
   test('stays enabled when access lapsed but auto-renew is waiting on scheduler', () => {
     expect(
       shouldEnableRenewalBillingSync({
@@ -120,6 +131,31 @@ describe('useRenewalBillingSync', () => {
     const callsAfterWindow = onRefresh.mock.calls.length;
     jest.advanceTimersByTime(60 * 1000);
     expect(onRefresh).toHaveBeenCalledTimes(callsAfterWindow);
+  });
+
+  test('keeps polling when settlement pending even if nextChargeAt jumps to claim lock', () => {
+    const onRefresh = jest.fn<() => void>();
+    const initialChargeAt = new Date('2026-08-07T12:05:00.000Z').toISOString();
+    const claimLockAt = new Date('2026-08-07T12:35:00.000Z').toISOString();
+
+    const { rerender } = renderHook(
+      ({ pending, chargeAt }: { pending: boolean; chargeAt: string }) =>
+        useRenewalBillingSync({
+          enabled: true,
+          nextChargeAt: chargeAt,
+          autoRenewSettlementPending: pending,
+          onRefresh,
+        }),
+      { initialProps: { pending: true, chargeAt: initialChargeAt } }
+    );
+
+    jest.advanceTimersByTime(RENEWAL_BILLING_REFRESH_INTERVAL_MS);
+    expect(onRefresh.mock.calls.length).toBeGreaterThanOrEqual(2);
+
+    rerender({ pending: true, chargeAt: claimLockAt });
+    const callsAfterLock = onRefresh.mock.calls.length;
+    jest.advanceTimersByTime(RENEWAL_BILLING_REFRESH_INTERVAL_MS * 2);
+    expect(onRefresh.mock.calls.length).toBeGreaterThan(callsAfterLock);
   });
 
   test('stops polling when nextChargeAt moves to the next period', () => {

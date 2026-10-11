@@ -174,6 +174,19 @@ describe('resolveCollectionBillingScreen', () => {
     expect(resolveCollectionBillingScreen(graceEligible(), now)).toBe('EXPIRED');
   });
 
+  test('ACTIVE while autoRenewSettlementPending even after legacy grace window', () => {
+    const afterWindow = new Date(CHARGE_AT.getTime() + RENEWAL_OVERDUE_IN_PROGRESS_MS + 60_000);
+    expect(
+      resolveCollectionBillingScreen(
+        graceEligible({
+          autoRenewSettlementPending: true,
+          renewalChargeDueAt: CHARGE_AT.toISOString(),
+        }),
+        afterWindow
+      )
+    ).toBe('ACTIVE');
+  });
+
   test('EXPIRED for cancel_at_period_end after access lapsed — not grace', () => {
     expect(
       resolveCollectionBillingScreen(

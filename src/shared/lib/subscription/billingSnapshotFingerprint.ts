@@ -14,6 +14,8 @@ export function billingSnapshotFingerprint(billing: BillingSnapshot): string {
     billing.paymentMethodTitle ?? '',
     billing.nextChargeAt ?? '',
     billing.expiresAt ?? '',
+    billing.autoRenewSettlementPending,
+    billing.renewalChargeDueAt ?? '',
   ].join('|');
 }
 

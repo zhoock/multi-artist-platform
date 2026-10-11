@@ -8,7 +8,6 @@ import {
   type CSSProperties,
   type ReactNode,
 } from 'react';
-import type { BillingSnapshot } from '@shared/api/billing';
 import { createPortal } from 'react-dom';
 import clsx from 'clsx';
 import { Lock as LockIcon, Trash2 as Trash2Icon } from 'lucide-react';
@@ -34,6 +33,7 @@ import {
   unregisterRenewalCountdownTarget,
 } from '@shared/lib/subscription/renewalCountdownClock';
 import { useRenewalCountdownClock } from '@shared/lib/subscription/useRenewalCountdown';
+import type { AutoRenewCollectionHoldBilling } from '@shared/lib/subscription/autoRenewCollectionHold';
 
 const TOOLTIP_GAP_PX = 8;
 const TOOLTIP_MAX_WIDTH_PX = 256;
@@ -51,10 +51,7 @@ type Props = {
   onTimeLockExpired?: () => void;
   /** Post-period auto-renew hold — keep lock UI (covers stale `hasPremiumAccess`). */
   autorenewCollectionHold?: boolean;
-  billing?: Pick<
-    BillingSnapshot,
-    'autoRenewEnabled' | 'hasSavedPaymentMethod' | 'nextChargeAt' | 'expiresAt' | 'status'
-  >;
+  billing?: AutoRenewCollectionHoldBilling;
   /** Primary tooltip while auto-renew hold (e.g. «обновляется…»). */
   autoRenewPendingLabel?: string;
 };
@@ -265,12 +262,7 @@ export function CollectionArtistRemoveAction({
   const mode = resolveCollectionArtistRemoveButtonMode({
     artist,
     hasPremiumAccess,
-    billing: billing ?? {
-      autoRenewEnabled: false,
-      hasSavedPaymentMethod: false,
-      nextChargeAt: null,
-      expiresAt: null,
-    },
+    billing,
     now: lockNow,
   });
 

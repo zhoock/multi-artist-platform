@@ -157,6 +157,7 @@ function cancelledNoPaymentMethodArchivePayload() {
     hasSavedPaymentMethod: false,
     paymentMethodTitle: null,
     nextChargeAt: null,
+    autoRenewResumeAllowed: true,
   });
 }
 

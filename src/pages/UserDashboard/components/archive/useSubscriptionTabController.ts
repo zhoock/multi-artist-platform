@@ -19,6 +19,8 @@ import {
   useRenewalCountdownClock,
 } from '@shared/lib/subscription/useRenewalCountdown';
 import { billingSnapshotFingerprint } from '@shared/lib/subscription/billingSnapshotFingerprint';
+import { resolveBillingEvaluationNow } from '@shared/lib/subscription/billingEvaluationNow';
+import { resolveRenewalCountdownChargeAt } from '@shared/lib/subscription/deriveAutoRenewSettlement';
 
 import type { BillingAutoRenewModalVariant } from './billingModals';
 import type { CollectionBillingCopy } from './CollectionBillingSummary';
@@ -42,6 +44,7 @@ export function useSubscriptionTabController({
   const { billing, slotsUsed, refetch } = usePremiumSubscription();
 
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
+  const hasLoadedOnceRef = useRef(false);
   const [alertModalMessage, setAlertModalMessage] = useState<string | null>(null);
   const [renewLoading, setRenewLoading] = useState(false);
   const [autoRenewModal, setAutoRenewModal] = useState<BillingAutoRenewModalVariant | null>(null);
@@ -99,10 +102,17 @@ export function useSubscriptionTabController({
   }, [active, refetch]);
 
   useEffect(() => {
+    hasLoadedOnceRef.current = hasLoadedOnce;
+  }, [hasLoadedOnce]);
+
+  useEffect(() => {
     if (!active) return;
-    onContentBusyRef.current?.();
-    setHasLoadedOnce(false);
-    void refetch().finally(() => {
+    const isRepeatVisit = hasLoadedOnceRef.current;
+    if (!isRepeatVisit) {
+      onContentBusyRef.current?.();
+      setHasLoadedOnce(false);
+    }
+    void refetch({ silent: isRepeatVisit }).finally(() => {
       setHasLoadedOnce(true);
     });
   }, [active, refetch]);
@@ -135,16 +145,21 @@ export function useSubscriptionTabController({
   }, [billing, billingPatch]);
 
   const billingSnapshot = billingPatch ?? billing ?? EMPTY_BILLING_SNAPSHOT;
+  const billingNow = useRenewalCountdownClock();
+  const billingEvaluationNow = useMemo(() => resolveBillingEvaluationNow(billingNow), [billingNow]);
+  const renewalCountdownChargeAt = useMemo(
+    () => resolveRenewalCountdownChargeAt(billingSnapshot, billingEvaluationNow),
+    [billingEvaluationNow, billingSnapshot]
+  );
   const renewalCountdown = useRenewalCountdown(
-    billingSnapshot.nextChargeAt,
+    renewalCountdownChargeAt,
     billingSnapshot.expiresAt,
     lang
   );
   const billingChargeLabel = renewalCountdown.label;
-  const billingNow = useRenewalCountdownClock();
   const billingScreen = useMemo(
-    () => resolveCollectionBillingScreen(billingSnapshot, billingNow),
-    [billingSnapshot, billingNow]
+    () => resolveCollectionBillingScreen(billingSnapshot, billingEvaluationNow),
+    [billingSnapshot, billingEvaluationNow]
   );
 
   const billingOverlays = useMemo(

@@ -13,6 +13,7 @@ import { isAutoRenewPatchBillingMutationAllowed } from './subscription-billing-o
 import { toPresenceStatus } from './subscription-state';
 import type { Subscription } from './subscriptions';
 import { SUBSCRIPTION_SLOTS_LIMIT_FALLBACK } from '../../../src/shared/lib/payment/subscriptionPlanCatalog';
+import { deriveAutoRenewSettlementState } from '../../../src/shared/lib/subscription/deriveAutoRenewSettlement';
 
 export type SubscriptionPlanSlug = 'explorer' | 'collector' | 'archivist';
 
@@ -34,6 +35,8 @@ export interface BillingSnapshot {
   hasSavedPaymentMethod: boolean;
   paymentMethodTitle: string | null;
   nextChargeAt: string | null;
+  autoRenewSettlementPending: boolean;
+  renewalChargeDueAt: string | null;
   scheduledPlan: SubscriptionPlanSlug | null;
   renewalAttemptCount: number | null;
   firstFailedAt: string | null;
@@ -80,7 +83,12 @@ export function derivePaymentMethodTitle(
 
 export function buildBillingSnapshot(
   subscription: Subscription | null | undefined,
-  options: { slotsLimitFallback?: number; now?: Date } = {}
+  options: {
+    slotsLimitFallback?: number;
+    now?: Date;
+    /** Open renewal payment row exists for this subscription. */
+    hasUnresolvedRenewal?: boolean;
+  } = {}
 ): BillingSnapshot {
   const now = options.now ?? new Date();
   const slotsLimitFallback = options.slotsLimitFallback ?? SUBSCRIPTION_SLOTS_LIMIT_FALLBACK;
@@ -96,6 +104,8 @@ export function buildBillingSnapshot(
       hasSavedPaymentMethod: false,
       paymentMethodTitle: null,
       nextChargeAt: null,
+      autoRenewSettlementPending: false,
+      renewalChargeDueAt: null,
       scheduledPlan: null,
       renewalAttemptCount: null,
       firstFailedAt: null,
@@ -105,7 +115,7 @@ export function buildBillingSnapshot(
 
   const presence = toPresenceStatus(subscription);
 
-  return {
+  const baseFields = {
     status: presence === 'none' ? null : presence,
     plan: normalizePlanSlug(subscription.plan),
     slotsLimit: subscription.slotsLimit,
@@ -120,6 +130,17 @@ export function buildBillingSnapshot(
       subscription.renewalAttemptCount != null ? subscription.renewalAttemptCount : null,
     firstFailedAt: toIso(subscription.firstFailedAt),
     autoRenewResumeAllowed: isAutoRenewPatchBillingMutationAllowed(subscription, true),
+  } satisfies Omit<BillingSnapshot, 'autoRenewSettlementPending' | 'renewalChargeDueAt'>;
+
+  const settlement = deriveAutoRenewSettlementState(baseFields, {
+    now,
+    hasUnresolvedRenewal: options.hasUnresolvedRenewal === true,
+  });
+
+  return {
+    ...baseFields,
+    autoRenewSettlementPending: settlement.pending,
+    renewalChargeDueAt: settlement.chargeDueAt,
   };
 }
 

@@ -52,6 +52,8 @@ describe('buildBillingSnapshot', () => {
       hasSavedPaymentMethod: false,
       paymentMethodTitle: null,
       nextChargeAt: null,
+      autoRenewSettlementPending: false,
+      renewalChargeDueAt: null,
       scheduledPlan: null,
       renewalAttemptCount: null,
       firstFailedAt: null,
@@ -92,6 +94,23 @@ describe('buildBillingSnapshot', () => {
     expect(snapshot.status).toBe('cancel_at_period_end');
     expect(snapshot.autoRenewEnabled).toBe(false);
     expect(snapshot.hasPremiumAccess).toBe(true);
+  });
+
+  test('flags auto-renew settlement pending when charge is due without access', () => {
+    process.env.SUBSCRIPTION_AUTO_RENEW_ENABLED = 'true';
+    const periodEnd = new Date('2026-08-07T12:05:00.000Z');
+    const snapshot = buildBillingSnapshot(
+      sub({
+        expiresAt: periodEnd,
+        nextChargeAt: periodEnd,
+        paymentMethodId: 'pm-1',
+      }),
+      { now: new Date('2026-08-07T12:06:00.000Z') }
+    );
+
+    expect(snapshot.hasPremiumAccess).toBe(false);
+    expect(snapshot.autoRenewSettlementPending).toBe(true);
+    expect(snapshot.renewalChargeDueAt).toBe(periodEnd.toISOString());
   });
 
   test('flag on: past_due grants hasPremiumAccess during grace', () => {

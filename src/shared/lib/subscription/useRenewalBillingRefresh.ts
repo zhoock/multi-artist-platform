@@ -2,13 +2,13 @@ import { useEffect, useRef } from 'react';
 
 import { RENEWAL_OVERDUE_IN_PROGRESS_MS } from './renewalCountdown';
 
-/** Poll interval inside the post-charge renewal window. */
+/** Poll interval while renewal settlement is pending or inside the post-charge window. */
 export const RENEWAL_BILLING_REFRESH_INTERVAL_MS = 15_000;
 
 /** Slower poll while charge is overdue but the paid period has not ended yet. */
 export const RENEWAL_BILLING_OVERDUE_POLL_INTERVAL_MS = 60_000;
 
-/** How long after nextChargeAt we keep polling for an updated billing snapshot. */
+/** How long after nextChargeAt we keep fast polling when settlement is not server-flagged. */
 export const RENEWAL_BILLING_POLL_WINDOW_MS = RENEWAL_OVERDUE_IN_PROGRESS_MS;
 
 export type UseRenewalBillingSyncParams = {
@@ -17,6 +17,8 @@ export type UseRenewalBillingSyncParams = {
   nextChargeAt: string | null | undefined;
   /** Paid period end — keeps slow polling alive while renewal/upgrade may still apply. */
   expiresAt?: string | null | undefined;
+  /** Server/client settlement flag — keeps polling until renewal outcome is terminal. */
+  autoRenewSettlementPending?: boolean;
   onRefresh: () => void | Promise<void>;
   /** @deprecated Ignored — poll window is derived from nextChargeAt. */
   isOverdue?: boolean;
@@ -24,16 +26,19 @@ export type UseRenewalBillingSyncParams = {
 
 /**
  * Whether MyArchive should poll for a post-renewal billing snapshot.
- * Must stay true while billingScreen is EXPIRED but nextChargeAt is in the
- * renewal window — access lapses before the scheduler extends the period.
  */
 export function shouldEnableRenewalBillingSync(params: {
   active: boolean;
   autoRenewEnabled: boolean;
   nextChargeAt: string | null | undefined;
+  autoRenewSettlementPending?: boolean;
   /** Poll when a cancelled subscription period ends (nextChargeAt is cleared). */
   cancelledPeriodEndAt?: string | null | undefined;
 }): boolean {
+  if (params.active && params.autoRenewSettlementPending) {
+    return true;
+  }
+
   if (params.active && params.autoRenewEnabled && Boolean(params.nextChargeAt)) {
     return true;
   }
@@ -58,15 +63,15 @@ function canPollOverdueRenewal(params: {
 }
 
 /**
- * Polls /api/my-archive around billing.nextChargeAt:
- * - fast interval in [nextChargeAt, nextChargeAt + RENEWAL_BILLING_POLL_WINDOW_MS)
- * - slow interval while charge is overdue but expiresAt is still in the future
- * Stops early when nextChargeAt/expiresAt updates (renewal or plan change succeeded).
+ * Polls /api/my-archive around billing renewal:
+ * - while autoRenewSettlementPending → fast interval until cleared
+ * - legacy: fast interval in [nextChargeAt, nextChargeAt + poll window), then slow until expiresAt
  */
 export function useRenewalBillingSync({
   enabled,
   nextChargeAt,
   expiresAt,
+  autoRenewSettlementPending = false,
   onRefresh,
 }: UseRenewalBillingSyncParams): void {
   const onRefreshRef = useRef(onRefresh);
@@ -74,6 +79,13 @@ export function useRenewalBillingSync({
 
   useEffect(() => {
     if (!enabled) return undefined;
+
+    if (autoRenewSettlementPending) {
+      const refresh = () => void onRefreshRef.current();
+      refresh();
+      const pollIntervalId = setInterval(refresh, RENEWAL_BILLING_REFRESH_INTERVAL_MS);
+      return () => clearInterval(pollIntervalId);
+    }
 
     const targetMs = parseChargeTargetMs(nextChargeAt);
     if (targetMs === null) return undefined;
@@ -226,7 +238,7 @@ export function useRenewalBillingSync({
     }
 
     return clearAllTimers;
-  }, [enabled, expiresAt, nextChargeAt]);
+  }, [autoRenewSettlementPending, enabled, expiresAt, nextChargeAt]);
 }
 
 /** @deprecated Use useRenewalBillingSync */

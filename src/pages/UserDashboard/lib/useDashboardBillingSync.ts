@@ -33,9 +33,15 @@ export function useDashboardBillingSync(): void {
         active: true,
         autoRenewEnabled: billing.autoRenewEnabled,
         nextChargeAt: billing.nextChargeAt,
+        autoRenewSettlementPending: billing.autoRenewSettlementPending,
         cancelledPeriodEndAt,
       }),
-    [billing.autoRenewEnabled, billing.nextChargeAt, cancelledPeriodEndAt]
+    [
+      billing.autoRenewEnabled,
+      billing.autoRenewSettlementPending,
+      billing.nextChargeAt,
+      cancelledPeriodEndAt,
+    ]
   );
 
   const shouldSyncScheduledPlanBilling = useMemo(
@@ -51,6 +57,7 @@ export function useDashboardBillingSync(): void {
     enabled: shouldSyncRenewalBilling,
     nextChargeAt: billingSyncTarget,
     expiresAt: billing.expiresAt,
+    autoRenewSettlementPending: billing.autoRenewSettlementPending,
     onRefresh: refreshBilling,
   });
 

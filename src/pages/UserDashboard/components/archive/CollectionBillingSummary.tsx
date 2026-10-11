@@ -26,6 +26,7 @@ import { DashboardButton, DashboardCard } from '@shared/ui/dashboard';
 import { BillingAlertBanner } from './billingOverlays/BillingAlertBanner';
 import { CollectionBillingOverlay } from './billingOverlays/CollectionBillingOverlay';
 import { formatCollectionRenewalDate } from './lib/collectionSubscriptionStatus';
+import { resolveRenewalCountdownChargeAt } from '@shared/lib/subscription/deriveAutoRenewSettlement';
 
 export type CollectionBillingCopy = {
   billingCurrentPlanSection: string;
@@ -176,7 +177,11 @@ export function CollectionBillingSummary({
   onUnlinkPaymentMethod,
 }: CollectionBillingSummaryProps) {
   const now = useRenewalCountdownClock();
-  const renewalCountdown = useRenewalCountdown(billing.nextChargeAt, billing.expiresAt, lang);
+  const renewalCountdownChargeAt = useMemo(
+    () => resolveRenewalCountdownChargeAt(billing, now),
+    [billing, now]
+  );
+  const renewalCountdown = useRenewalCountdown(renewalCountdownChargeAt, billing.expiresAt, lang);
   const accessCountdown = useRenewalCountdown(null, billing.expiresAt, lang);
 
   const cancelledSupportLabel = useMemo(

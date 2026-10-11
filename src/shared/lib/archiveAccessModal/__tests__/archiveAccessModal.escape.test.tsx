@@ -6,6 +6,7 @@ import { render, waitFor, fireEvent } from '@testing-library/react';
 
 import { PremiumSubscriptionProvider } from '@features/premiumSubscription';
 import type { MyArchiveData } from '@shared/api/archive';
+import { EMPTY_BILLING_SNAPSHOT } from '@shared/api/billing';
 import { renderWithProviders } from '@shared/lib/test-utils';
 import { PLAN_CATALOG } from '@shared/lib/payment/subscriptionPlans';
 import { ArchiveAccessModalProvider, useArchiveAccessModal } from '../archiveAccessModalContext';
@@ -60,6 +61,7 @@ function buildArchiveResponse(): MyArchiveData {
     slotsLimit: PLAN_CATALOG.explorer.slotsLimit,
     artists: [],
     billing: {
+      ...EMPTY_BILLING_SNAPSHOT,
       status: 'expired',
       plan: null,
       slotsLimit: PLAN_CATALOG.explorer.slotsLimit,

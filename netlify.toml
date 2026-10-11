@@ -375,7 +375,7 @@
   included_files = ["netlify/functions/_document/**"]
 
 [functions."scheduled-subscription-renewals"]
-  schedule = "*/5 * * * *"
+  schedule = "*/1 * * * *"
 
 # In-site audio processor. Include only the Linux binaries Lambda can execute.
 # ffprobe-static also ships macOS/Windows builds; bundling those exceeds the

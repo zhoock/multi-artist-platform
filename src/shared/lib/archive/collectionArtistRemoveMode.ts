@@ -1,6 +1,9 @@
 import type { MyArchiveArtist } from '@shared/api/archive';
-import type { BillingSnapshot } from '@shared/api/billing';
-import { isAutoRenewCollectionRemoveHold } from '@shared/lib/subscription/autoRenewCollectionHold';
+import {
+  buildAutoRenewCollectionHoldBilling,
+  isAutoRenewCollectionRemoveHold,
+  type AutoRenewCollectionHoldBilling,
+} from '@shared/lib/subscription/autoRenewCollectionHold';
 
 import {
   canRemoveCollectionArtist,
@@ -9,16 +12,21 @@ import {
 } from './collectionLock';
 import type { CollectionRemoveButtonMode } from './collectionArtistRemoveTrace';
 
-export function resolveCollectionArtistRemoveButtonMode(params: {
+export type ResolveCollectionArtistRemoveButtonModeParams = {
   artist: Pick<MyArchiveArtist, 'isActive' | 'lockedUntil'>;
   hasPremiumAccess: boolean;
-  billing: Pick<
-    BillingSnapshot,
-    'autoRenewEnabled' | 'hasSavedPaymentMethod' | 'nextChargeAt' | 'expiresAt'
-  >;
+  billing?: Partial<AutoRenewCollectionHoldBilling> | null;
   now: Date;
-}): CollectionRemoveButtonMode {
-  const { artist, hasPremiumAccess, billing, now } = params;
+};
+
+export function resolveCollectionArtistRemoveButtonMode(
+  params: ResolveCollectionArtistRemoveButtonModeParams
+): CollectionRemoveButtonMode {
+  const { artist, hasPremiumAccess, now } = params;
+  const billing = buildAutoRenewCollectionHoldBilling({
+    billing: params.billing,
+    hasPremiumAccess,
+  });
 
   if (!isCollectionArtistActive(artist)) {
     return 'inactive-remove';

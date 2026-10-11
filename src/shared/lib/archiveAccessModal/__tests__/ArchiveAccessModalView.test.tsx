@@ -9,7 +9,7 @@ import { screen, waitFor, fireEvent, within } from '@testing-library/react';
 
 import { PremiumSubscriptionProvider } from '@features/premiumSubscription';
 import type { MyArchiveData } from '@shared/api/archive';
-import type { CanonicalSubscriptionStatus } from '@shared/api/billing';
+import { EMPTY_BILLING_SNAPSHOT, type CanonicalSubscriptionStatus } from '@shared/api/billing';
 import { renderWithProviders } from '@shared/lib/test-utils';
 import {
   PLAN_CATALOG,
@@ -89,6 +89,7 @@ function buildArchiveResponse(archive: ArchiveFixture): MyArchiveData {
     slotsLimit: archive.slotsLimit,
     artists: [],
     billing: {
+      ...EMPTY_BILLING_SNAPSHOT,
       status,
       plan,
       slotsLimit: archive.slotsLimit,
@@ -116,6 +117,7 @@ function buildNoSubscriptionArchiveResponse(
     slotsLimit,
     artists: [],
     billing: {
+      ...EMPTY_BILLING_SNAPSHOT,
       status: null,
       plan: null,
       slotsLimit,

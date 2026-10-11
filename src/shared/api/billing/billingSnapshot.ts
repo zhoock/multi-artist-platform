@@ -22,6 +22,10 @@ export interface BillingSnapshot {
   hasSavedPaymentMethod: boolean;
   paymentMethodTitle: string | null;
   nextChargeAt: string | null;
+  /** True while a renewal charge outcome is not yet terminal (open attempt, claim lock, or charge due). */
+  autoRenewSettlementPending: boolean;
+  /** Charge/period anchor for renewal UI — not scheduler claim-lock nextChargeAt. */
+  renewalChargeDueAt: string | null;
   scheduledPlan: SubscriptionPlanSlug | null;
   renewalAttemptCount: number | null;
   firstFailedAt: string | null;
@@ -42,6 +46,8 @@ export const EMPTY_BILLING_SNAPSHOT: BillingSnapshot = {
   hasSavedPaymentMethod: false,
   paymentMethodTitle: null,
   nextChargeAt: null,
+  autoRenewSettlementPending: false,
+  renewalChargeDueAt: null,
   scheduledPlan: null,
   renewalAttemptCount: null,
   firstFailedAt: null,

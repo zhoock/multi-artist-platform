@@ -6,7 +6,9 @@
 import { isMissingRelationError, query } from './db';
 import { hasPremiumAccess } from './subscription-access';
 import { SUBSCRIPTION_SLOTS_LIMIT_FALLBACK } from './subscription-billing';
+import { findUnresolvedRenewalAttemptForSubscription } from './subscription-billing';
 import { buildBillingSnapshot, type BillingSnapshot } from './subscription-billing-snapshot';
+import { nudgeRenewalChargeIfDueForUser } from './subscription-renewal-nudge';
 import { getViewerSubscription } from './subscriptions';
 
 export interface UserArchiveEntry {
@@ -539,12 +541,29 @@ function pickFirstHeaderCover(userId: string, headerImages: unknown): string | n
   return null;
 }
 
+async function buildArchiveBillingSnapshot(
+  subscription: Awaited<ReturnType<typeof getViewerSubscription>>,
+  slotsLimit: number,
+  now: Date
+): Promise<BillingSnapshot> {
+  const hasUnresolvedRenewal = subscription?.id
+    ? Boolean(await findUnresolvedRenewalAttemptForSubscription(subscription.id))
+    : false;
+  return buildBillingSnapshot(subscription, {
+    slotsLimitFallback: slotsLimit,
+    now,
+    hasUnresolvedRenewal,
+  });
+}
+
 export async function getMyArchiveForUser(userId: string): Promise<MyArchiveDto> {
+  const now = new Date();
+  await nudgeRenewalChargeIfDueForUser(userId, now);
   const subscription = await getViewerSubscription(userId);
   const slotsLimit = subscription?.slotsLimit ?? SUBSCRIPTION_SLOTS_LIMIT_FALLBACK;
+  const billing = await buildArchiveBillingSnapshot(subscription, slotsLimit, now);
 
   try {
-    const now = new Date();
     const r = await query<MyArchiveRow>(
       `SELECT
          ua.id,
@@ -596,23 +615,23 @@ export async function getMyArchiveForUser(userId: string): Promise<MyArchiveDto>
     const inactiveCount = artists.filter((a) => !a.isActive).length;
 
     return {
-      isPremium: hasPremiumAccess(subscription),
+      isPremium: hasPremiumAccess(subscription, now),
       slotsUsed,
       slotsLimit,
       inactiveCount,
       subscriptionExpiresAt: toSubscriptionExpiresAtIso(subscription?.expiresAt),
-      billing: buildBillingSnapshot(subscription, { slotsLimitFallback: slotsLimit }),
+      billing,
       artists,
     };
   } catch (error) {
     if (isMissingRelationError(error)) {
       return {
-        isPremium: hasPremiumAccess(subscription),
+        isPremium: hasPremiumAccess(subscription, now),
         slotsUsed: 0,
         slotsLimit,
         inactiveCount: 0,
         subscriptionExpiresAt: toSubscriptionExpiresAtIso(subscription?.expiresAt),
-        billing: buildBillingSnapshot(subscription, { slotsLimitFallback: slotsLimit }),
+        billing,
         artists: [],
       };
     }
