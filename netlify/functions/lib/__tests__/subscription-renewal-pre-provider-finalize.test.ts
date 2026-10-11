@@ -17,6 +17,7 @@ jest.mock('../db', () => ({
 
 jest.mock('../subscription-billing', () => ({
   cleanupPendingRenewalPaymentWithClient: jest.fn(),
+  hasUnresolvedRenewalPostStartedWithClient: jest.fn(async () => false),
 }));
 
 import { cleanupPendingRenewalPaymentWithClient } from '../subscription-billing';

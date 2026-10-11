@@ -11,11 +11,13 @@ import { isYooKassaPaymentMethodNotSavedError } from './yookassa-renewal-create-
 import {
   attachProviderPaymentId,
   cancelOrphanPendingRenewalPayments,
+  claimRenewalFirstPostAt,
   cleanupPendingRenewalPaymentWithClient,
   createPendingSubscriptionPayment,
   getPlanAmountRub,
   getPlanDefinition,
   getPlanPriceCurrencyCode,
+  hasUnresolvedRenewalPostStartedWithClient,
   resolveRenewalChargePlanSlug,
 } from './subscription-billing';
 import { isSubscriptionAutoRenewEnabled } from './subscription-feature-flag';
@@ -223,6 +225,25 @@ export async function rollbackRenewalChargeAttempt(params: {
         params.subscriptionPaymentId!,
         params.userId
       );
+      const unresolvedPost = await hasUnresolvedRenewalPostStartedWithClient(
+        client,
+        params.subscriptionPaymentId!,
+        params.userId
+      );
+      if (unresolvedPost) {
+        logSubscriptionEvent(
+          SUBSCRIPTION_LOG_EVENTS.SCHEDULER_CHARGE,
+          {
+            subscriptionId: params.subscriptionId,
+            subscriptionPaymentId: params.subscriptionPaymentId,
+            outcome: 'skipped',
+            reason: 'renewal_post_unresolved_skip_restore',
+            phase: 'PRE_PROVIDER',
+          },
+          'warn'
+        );
+        return;
+      }
       await restoreSubscriptionNextChargeAt({
         subscriptionId: params.subscriptionId,
         userId: params.userId,
@@ -555,6 +576,41 @@ export async function attemptRenewalChargeForSubscription(
     }
 
     const customerEmail = (await getUserEmail(subscription.userId))!;
+    const firstPostClaim = await claimRenewalFirstPostAt(
+      subscriptionPaymentId,
+      subscription.userId,
+      now
+    );
+    if (firstPostClaim === 'not_found') {
+      logSubscriptionEvent(
+        SUBSCRIPTION_LOG_EVENTS.SCHEDULER_ERROR,
+        {
+          subscriptionId: subscription.id,
+          subscriptionPaymentId,
+          phase: 'PRE_PROVIDER',
+          reason: 'renewal_first_post_claim_not_found',
+        },
+        'error'
+      );
+      await rollbackPreProvider();
+      return 'error';
+    }
+    if (firstPostClaim === 'already_started') {
+      logSubscriptionEvent(
+        SUBSCRIPTION_LOG_EVENTS.SCHEDULER_CHARGE,
+        {
+          subscriptionId: subscription.id,
+          subscriptionPaymentId,
+          outcome: 'skipped',
+          reason: 'renewal_first_post_already_set',
+          phase: 'PRE_PROVIDER',
+        },
+        'warn'
+      );
+      await rollbackPreProvider();
+      return 'error';
+    }
+
     const { paymentId, status } = await createYooKassaRenewalPayment({
       subscriptionPaymentId,
       userId: subscription.userId,

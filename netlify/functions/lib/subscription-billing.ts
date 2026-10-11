@@ -302,12 +302,9 @@ export function resolveRenewalChargePlanSlug(
 }
 
 /**
- * Removes an orphan pending renewal row (PR-7.1).
- * PR-10.1: never mutates rows that already have provider_payment_id (POST_PROVIDER safety).
- */
-/**
  * Cancels orphan pending renewal rows for a user (no provider_payment_id yet).
- * Safe on unlink: YooKassa was never contacted for these rows.
+ * PR-2: skips rows with first_post_at set (YooKassa POST may have started).
+ * Safe on unlink when first_post_at IS NULL: YooKassa was never contacted for those rows.
  */
 export async function cancelOrphanPendingRenewalPayments(userId: string): Promise<void> {
   try {
@@ -317,7 +314,8 @@ export async function cancelOrphanPendingRenewalPayments(userId: string): Promis
        WHERE user_id = $1::uuid
          AND kind = 'renewal'
          AND status IN ('pending', 'waiting_for_capture')
-         AND provider_payment_id IS NULL`,
+         AND provider_payment_id IS NULL
+         AND first_post_at IS NULL`,
       [userId]
     );
   } catch (error) {
@@ -339,6 +337,7 @@ export async function cleanupPendingRenewalPaymentWithClient(
          AND kind = 'renewal'
          AND status = 'pending'
          AND provider_payment_id IS NULL
+         AND first_post_at IS NULL
        RETURNING id`,
       [subscriptionPaymentId, userId]
     );
@@ -351,13 +350,75 @@ export async function cleanupPendingRenewalPaymentWithClient(
          AND user_id = $2::uuid
          AND kind = 'renewal'
          AND status = 'pending'
-         AND provider_payment_id IS NULL`,
+         AND provider_payment_id IS NULL
+         AND first_post_at IS NULL`,
       [subscriptionPaymentId, userId]
     );
   } catch (error) {
     if (isMissingRelationError(error)) return;
     throw error;
   }
+}
+
+export type ClaimRenewalFirstPostAtResult = 'claimed' | 'already_started' | 'not_found';
+
+/** Marks the first YooKassa POST intent for a renewal row (PR-2). */
+export async function claimRenewalFirstPostAt(
+  subscriptionPaymentId: string,
+  userId: string,
+  firstPostAt: Date = new Date()
+): Promise<ClaimRenewalFirstPostAtResult> {
+  try {
+    const claimed = await query<{ id: string }>(
+      `UPDATE subscription_payments
+       SET first_post_at = $3,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $1::uuid
+         AND user_id = $2::uuid
+         AND kind = 'renewal'
+         AND first_post_at IS NULL
+       RETURNING id`,
+      [subscriptionPaymentId, userId, firstPostAt]
+    );
+    if (claimed.rows[0]?.id) return 'claimed';
+
+    const existing = await query<{ first_post_at: Date | null }>(
+      `SELECT first_post_at
+       FROM subscription_payments
+       WHERE id = $1::uuid
+         AND user_id = $2::uuid
+         AND kind = 'renewal'
+       LIMIT 1`,
+      [subscriptionPaymentId, userId]
+    );
+    const row = existing.rows[0];
+    if (!row) return 'not_found';
+    if (row.first_post_at != null) return 'already_started';
+    return 'not_found';
+  } catch (error) {
+    if (isMissingRelationError(error)) return 'not_found';
+    throw error;
+  }
+}
+
+/** True when YooKassa POST may have been sent but provider id is not stored yet (PR-2). */
+export async function hasUnresolvedRenewalPostStartedWithClient(
+  client: PoolClient,
+  subscriptionPaymentId: string,
+  userId: string
+): Promise<boolean> {
+  const result = await client.query<{ id: string }>(
+    `SELECT id
+     FROM subscription_payments
+     WHERE id = $1::uuid
+       AND user_id = $2::uuid
+       AND kind = 'renewal'
+       AND first_post_at IS NOT NULL
+       AND provider_payment_id IS NULL
+     LIMIT 1`,
+    [subscriptionPaymentId, userId]
+  );
+  return Boolean(result.rows[0]?.id);
 }
 
 export async function cleanupPendingRenewalPayment(

@@ -37,6 +37,7 @@ describe('cleanupPendingRenewalPayment (PR-10.1)', () => {
     await cleanupPendingRenewalPayment(PAYMENT_ROW_ID, USER_ID);
 
     expect(String(mockedQuery.mock.calls[0]?.[0])).toContain('provider_payment_id IS NULL');
+    expect(String(mockedQuery.mock.calls[0]?.[0])).toContain('first_post_at IS NULL');
     expect(String(mockedQuery.mock.calls[0]?.[0])).toContain('DELETE FROM subscription_payments');
   });
 
@@ -49,6 +50,7 @@ describe('cleanupPendingRenewalPayment (PR-10.1)', () => {
     const updateSql = String(mockedQuery.mock.calls[1]?.[0]);
     expect(updateSql).toContain("status = 'canceled'");
     expect(updateSql).toContain('provider_payment_id IS NULL');
+    expect(updateSql).toContain('first_post_at IS NULL');
   });
 
   test('skips cancel UPDATE when DELETE succeeds', async () => {
