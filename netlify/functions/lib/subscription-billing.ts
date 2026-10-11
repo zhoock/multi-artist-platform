@@ -336,6 +336,7 @@ export async function createRenewalAttemptRow(
     [RENEWAL_YOOKASSA_CREATE_PAYLOAD_RAW_KEY]: yookassaCreatePayload,
   };
   const amount = getPlanAmountRub(params.planSlug);
+  const idempotenceKey = `renewal-${subscriptionPaymentId}`;
 
   try {
     return await withTransaction(async (client) => {
@@ -343,11 +344,11 @@ export async function createRenewalAttemptRow(
         `INSERT INTO subscription_payments (
          id, user_id, provider, status, amount, currency, plan, kind,
          subscription_id, period_end, attempt_no, request_payload_hash,
-         dispatch_phase, raw_last_event
+         dispatch_phase, idempotence_key, raw_last_event
        )
        VALUES (
          $1::uuid, $2::uuid, 'yookassa', 'pending', $3, $4, $5, 'renewal',
-         $6::uuid, $7, $8, $9, 'created', $10::jsonb
+         $6::uuid, $7, $8, $9, 'created', $10, $11::jsonb
        )
        RETURNING id`,
         [
@@ -360,6 +361,7 @@ export async function createRenewalAttemptRow(
           params.periodEnd,
           params.attemptNo,
           requestPayloadHash,
+          idempotenceKey,
           JSON.stringify(rawLastEvent),
         ]
       );
@@ -367,15 +369,6 @@ export async function createRenewalAttemptRow(
       if (!id) {
         throw new Error('Failed to create renewal attempt row');
       }
-
-      const idempotenceKey = `renewal-${id}`;
-      await client.query(
-        `UPDATE subscription_payments
-       SET idempotence_key = $2,
-           updated_at = CURRENT_TIMESTAMP
-       WHERE id = $1::uuid`,
-        [id, idempotenceKey]
-      );
       return id;
     });
   } catch (error) {
@@ -564,9 +557,9 @@ export function resolveRenewalChargePlanSlug(
 }
 
 /**
- * Cancels orphan pending renewal rows for a user (no provider_payment_id yet).
+ * Cancels legacy orphan pending renewal rows (no subscription link, no provider_payment_id yet).
  * PR-2: skips rows with first_post_at set (YooKassa POST may have started).
- * Safe on unlink when first_post_at IS NULL: YooKassa was never contacted for those rows.
+ * PR-4+: skips protocol attempts linked via subscription_id.
  */
 export async function cancelOrphanPendingRenewalPayments(userId: string): Promise<void> {
   try {
@@ -575,6 +568,7 @@ export async function cancelOrphanPendingRenewalPayments(userId: string): Promis
        SET status = 'canceled', updated_at = CURRENT_TIMESTAMP
        WHERE user_id = $1::uuid
          AND kind = 'renewal'
+         AND subscription_id IS NULL
          AND status IN ('pending', 'waiting_for_capture')
          AND provider_payment_id IS NULL
          AND first_post_at IS NULL`,

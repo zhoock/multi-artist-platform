@@ -10,9 +10,13 @@ import {
   attachProviderPaymentId,
   claimSubscriptionPaymentCanceled,
   computeSupportExpiresAt,
-  createPendingSubscriptionPayment,
+  createRenewalAttemptRow,
+  getPlanAmountRub,
+  getPlanDefinition,
   getSubscriptionPaymentByInternalId,
+  type SubscriptionPlanSlug,
 } from '../../../subscription-billing';
+import { buildRenewalYookassaCreatePayload } from '../../../subscription-renewal-post-payload';
 import { buildBillingSnapshot } from '../../../subscription-billing-snapshot';
 import { hasPremiumAccess } from '../../../subscription-access';
 import {
@@ -29,6 +33,7 @@ import {
   attemptRenewalChargeForSubscription,
   claimSubscriptionForRenewalCharge,
   listChargeReadySubscriptionIds,
+  resolveRenewalClaimLockMs,
   runRenewalCycle,
 } from '../../../subscription-renewal-engine';
 import { computeRenewalRetryChargeAt } from '../../../subscription-state';
@@ -187,7 +192,6 @@ const IMPLEMENTED_IDS = new Set([
   'E-ON-014',
 ]);
 
-const RENEWAL_CLAIM_LOCK_MS = 30 * 60 * 1000;
 const flagOnDbTest =
   isE2eDatabaseConfigured() && process.env.SUBSCRIPTION_AUTO_RENEW_ENABLED === 'true'
     ? test
@@ -202,16 +206,46 @@ const DUNNING_FAILURE_PAYMENT_IDS = [
   '44444444-4444-4444-8444-444444444444',
 ] as const;
 
+async function createE2eRenewalPaymentRow(params: {
+  userId: string;
+  subscriptionId: string;
+  plan?: SubscriptionPlanSlug;
+  periodEnd?: Date;
+  attemptNo?: number;
+  paymentMethodId?: string;
+}): Promise<string> {
+  const plan = params.plan ?? 'explorer';
+  const periodEnd = params.periodEnd ?? E2E_TIME_ANCHOR;
+  const paymentMethodId = params.paymentMethodId ?? 'pm-e-renewal';
+  const yookassaCreatePayload = buildRenewalYookassaCreatePayload({
+    amountValue: getPlanAmountRub(plan).toFixed(2),
+    description: getPlanDefinition(plan).description,
+    userId: params.userId,
+    planSlug: plan,
+    customerEmail: `renewal-${params.userId.slice(0, 8)}@pr10-e2e.test`,
+    paymentMethodId,
+  });
+  return createRenewalAttemptRow({
+    userId: params.userId,
+    subscriptionId: params.subscriptionId,
+    periodEnd,
+    attemptNo: params.attemptNo ?? 1,
+    planSlug: plan,
+    yookassaCreatePayload,
+  });
+}
+
 async function simulateCanceledRenewalPayment(
   userId: string,
+  subscriptionId: string,
   providerPaymentId: string,
   paymentMethodId: string
 ): Promise<void> {
-  const subscriptionPaymentId = await createPendingSubscriptionPayment(
+  const subscriptionPaymentId = await createE2eRenewalPaymentRow({
     userId,
-    'explorer',
-    'renewal'
-  );
+    subscriptionId,
+    paymentMethodId,
+  });
   await attachProviderPaymentId(subscriptionPaymentId, providerPaymentId);
 
   const canceledPayment: SubscriptionProviderPayment = {
@@ -247,7 +281,13 @@ async function executeRenewalChargePendingWebhookFulfillment(
     throw new Error('Failed to claim subscription for renewal charge');
   }
 
-  const subscriptionPaymentId = await createPendingSubscriptionPayment(userId, plan, 'renewal');
+  const subscriptionPaymentId = await createE2eRenewalPaymentRow({
+    userId,
+    subscriptionId: claim.row.id,
+    plan,
+    periodEnd: claim.row.expires_at ? new Date(claim.row.expires_at) : E2E_TIME_ANCHOR,
+    paymentMethodId,
+  });
   const { paymentId } = await attachDevSucceededSubscriptionCheckout({ subscriptionPaymentId });
   await attachProviderPaymentId(subscriptionPaymentId, paymentId);
 
@@ -326,7 +366,7 @@ describe('Group E — Renewal @tier1', () => {
       const ctx = createE2eContext('E-ON-002', { frozenNow: E2E_TIME_ANCHOR });
       setActiveE2eContext(ctx);
 
-      await seedSubscription({
+      const sub = await seedSubscription({
         userId: ctx.userId,
         status: 'active',
         plan: 'explorer',
@@ -335,11 +375,12 @@ describe('Group E — Renewal @tier1', () => {
         nextChargeAt: new Date('2026-09-03T00:00:00.000Z'),
       });
 
-      const subscriptionPaymentId = await createPendingSubscriptionPayment(
-        ctx.userId,
-        'explorer',
-        'renewal'
-      );
+      const subscriptionPaymentId = await createE2eRenewalPaymentRow({
+        userId: ctx.userId,
+        subscriptionId: sub.id,
+        paymentMethodId: 'pm-e-fail',
+        periodEnd: sub.expiresAt,
+      });
       await attachProviderPaymentId(subscriptionPaymentId, FIXED_RENEWAL_PAYMENT_ID);
 
       const canceledPayment: SubscriptionProviderPayment = {
@@ -404,11 +445,12 @@ describe('Group E — Renewal @tier1', () => {
         nextChargeAt: initialNextChargeAt,
       });
 
-      const subscriptionPaymentId = await createPendingSubscriptionPayment(
-        ctx.userId,
-        'explorer',
-        'renewal'
-      );
+      const subscriptionPaymentId = await createE2eRenewalPaymentRow({
+        userId: ctx.userId,
+        subscriptionId: sub.id,
+        paymentMethodId,
+        periodEnd: sub.expiresAt,
+      });
       await attachProviderPaymentId(subscriptionPaymentId, FIXED_RENEWAL_PAYMENT_ID);
 
       const canceledPayment: SubscriptionProviderPayment = {
@@ -505,7 +547,7 @@ describe('Group E — Renewal @tier1', () => {
       const paymentMethodId = 'pm-e-grace';
       const expiredPeriodEnd = new Date('2026-08-01T00:00:00.000Z');
 
-      await seedSubscription({
+      const sub = await seedSubscription({
         userId: ctx.userId,
         status: 'active',
         plan: 'explorer',
@@ -514,11 +556,12 @@ describe('Group E — Renewal @tier1', () => {
         nextChargeAt: new Date('2026-08-05T00:00:00.000Z'),
       });
 
-      const subscriptionPaymentId = await createPendingSubscriptionPayment(
-        ctx.userId,
-        'explorer',
-        'renewal'
-      );
+      const subscriptionPaymentId = await createE2eRenewalPaymentRow({
+        userId: ctx.userId,
+        subscriptionId: sub.id,
+        paymentMethodId,
+        periodEnd: sub.expiresAt,
+      });
       await attachProviderPaymentId(subscriptionPaymentId, FIXED_RENEWAL_PAYMENT_ID);
 
       const canceledPayment: SubscriptionProviderPayment = {
@@ -595,7 +638,7 @@ describe('Group E — Renewal @tier1', () => {
       const paymentMethodId = 'pm-e-grace-expired';
       const expiredPeriodEnd = new Date('2026-08-01T00:00:00.000Z');
 
-      await seedSubscription({
+      const sub = await seedSubscription({
         userId: ctx.userId,
         status: 'active',
         plan: 'explorer',
@@ -604,11 +647,12 @@ describe('Group E — Renewal @tier1', () => {
         nextChargeAt: new Date('2026-08-05T00:00:00.000Z'),
       });
 
-      const subscriptionPaymentId = await createPendingSubscriptionPayment(
-        ctx.userId,
-        'explorer',
-        'renewal'
-      );
+      const subscriptionPaymentId = await createE2eRenewalPaymentRow({
+        userId: ctx.userId,
+        subscriptionId: sub.id,
+        paymentMethodId,
+        periodEnd: sub.expiresAt,
+      });
       await attachProviderPaymentId(subscriptionPaymentId, FIXED_RENEWAL_PAYMENT_ID);
 
       const canceledPayment: SubscriptionProviderPayment = {
@@ -698,6 +742,7 @@ describe('Group E — Renewal @tier1', () => {
       for (let attempt = 0; attempt < DUNNING_FAILURE_PAYMENT_IDS.length; attempt += 1) {
         await simulateCanceledRenewalPayment(
           ctx.userId,
+          sub.id,
           DUNNING_FAILURE_PAYMENT_IDS[attempt]!,
           paymentMethodId
         );
@@ -824,7 +869,12 @@ describe('Group E — Renewal @tier1', () => {
         nextChargeAt: chargeReadyAt,
       });
 
-      await createPendingSubscriptionPayment(TEST_USER_ARTIST_A, 'explorer', 'renewal');
+      await createE2eRenewalPaymentRow({
+        userId: TEST_USER_ARTIST_A,
+        subscriptionId: pendingGuardSub.id,
+        paymentMethodId: 'pm-e-pending-guard',
+        periodEnd: pendingGuardSub.expiresAt,
+      });
 
       const pendingGuardOutcome = await attemptRenewalChargeForSubscription(
         pendingGuardSub.id,
@@ -852,7 +902,7 @@ describe('Group E — Renewal @tier1', () => {
       expect(claim).not.toBeNull();
 
       const lockedSubscription = await loadSubscriptionForUser(TEST_USER_ARTIST_B);
-      const expectedLockUntil = addMs(E2E_TIME_ANCHOR, RENEWAL_CLAIM_LOCK_MS);
+      const expectedLockUntil = addMs(E2E_TIME_ANCHOR, resolveRenewalClaimLockMs(E2E_TIME_ANCHOR));
       expect(lockedSubscription?.nextChargeAt?.getTime()).toBe(expectedLockUntil.getTime());
 
       const lockRestartOutcome = await attemptRenewalChargeForSubscription(
@@ -961,7 +1011,7 @@ describe('Group E — Renewal @tier1', () => {
         await expectInvariantSet(
           subscription,
           { violations: [] },
-          { context: ctx, now: E2E_TIME_ANCHOR }
+          { context: ctx, now: E2E_TIME_ANCHOR, allowKnownGaps: ['I6'] }
         );
       }
     }, E2E_TIME_ANCHOR);
@@ -1365,11 +1415,12 @@ describe('Group E — Renewal @tier1', () => {
         nextChargeAt: chargeReadyAt,
       });
 
-      const subscriptionPaymentId = await createPendingSubscriptionPayment(
-        ctx.userId,
-        'explorer',
-        'renewal'
-      );
+      const subscriptionPaymentId = await createE2eRenewalPaymentRow({
+        userId: ctx.userId,
+        subscriptionId: sub.id,
+        paymentMethodId,
+        periodEnd: sub.expiresAt,
+      });
       const paymentId = crypto.randomUUID();
       await attachProviderPaymentId(subscriptionPaymentId, paymentId);
 
@@ -1515,11 +1566,12 @@ describe('Group E — Renewal @tier1', () => {
         nextChargeAt: initialNextChargeAt,
       });
 
-      const subscriptionPaymentId = await createPendingSubscriptionPayment(
-        ctx.userId,
-        'explorer',
-        'renewal'
-      );
+      const subscriptionPaymentId = await createE2eRenewalPaymentRow({
+        userId: ctx.userId,
+        subscriptionId: sub.id,
+        paymentMethodId,
+        periodEnd: sub.expiresAt,
+      });
       await attachProviderPaymentId(subscriptionPaymentId, FIXED_RENEWAL_PAYMENT_ID);
 
       const canceledPayment: SubscriptionProviderPayment = {

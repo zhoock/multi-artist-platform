@@ -79,7 +79,9 @@ describe('cancelOrphanPendingRenewalPayments (PR-2)', () => {
   test('SQL excludes rows with first_post_at set', async () => {
     await cancelOrphanPendingRenewalPayments(USER_ID);
 
-    expect(String(mockedQuery.mock.calls[0]?.[0])).toContain('first_post_at IS NULL');
+    const sql = String(mockedQuery.mock.calls[0]?.[0]);
+    expect(sql).toContain('first_post_at IS NULL');
+    expect(sql).toContain('subscription_id IS NULL');
   });
 });
 

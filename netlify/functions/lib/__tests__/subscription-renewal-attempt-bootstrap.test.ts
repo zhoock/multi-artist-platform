@@ -147,9 +147,7 @@ describe('createRenewalAttemptRow (PR-3a)', () => {
     const frozenPayload = embedRenewalSubscriptionPaymentIdInPayload(payload, PAYMENT_ROW_ID);
     const expectedHash = hashRenewalRequestPayload(frozenPayload);
 
-    clientQuery
-      .mockResolvedValueOnce(fakeQueryResult([{ id: PAYMENT_ROW_ID }]))
-      .mockResolvedValueOnce(fakeQueryResult());
+    clientQuery.mockResolvedValueOnce(fakeQueryResult([{ id: PAYMENT_ROW_ID }]));
 
     const id = await createRenewalAttemptRow({
       userId: USER_ID,
@@ -166,6 +164,7 @@ describe('createRenewalAttemptRow (PR-3a)', () => {
     expect(insertSql).toContain('subscription_id');
     expect(insertSql).toContain('request_payload_hash');
     expect(insertSql).toContain('dispatch_phase');
+    expect(insertSql).toContain('idempotence_key');
     expect(insertSql).toContain('created');
     expect(clientQuery.mock.calls[0]?.[1]).toEqual(
       expect.arrayContaining([
@@ -177,15 +176,12 @@ describe('createRenewalAttemptRow (PR-3a)', () => {
         new Date('2026-09-01T00:00:00.000Z'),
         1,
         expectedHash,
+        `renewal-${PAYMENT_ROW_ID}`,
         expect.stringContaining('renewalYookassaCreatePayload'),
       ])
     );
 
-    const updateSql = String(clientQuery.mock.calls[1]?.[0]);
-    expect(updateSql).toContain('idempotence_key');
-    expect(clientQuery.mock.calls[1]?.[1]).toEqual([PAYMENT_ROW_ID, `renewal-${PAYMENT_ROW_ID}`]);
-
-    const rawJson = String(clientQuery.mock.calls[0]?.[1]?.[9] ?? '');
+    const rawJson = String(clientQuery.mock.calls[0]?.[1]?.[10] ?? '');
     expect(rawJson).toContain('subscriptionPaymentId');
     expect(readRenewalSubscriptionPaymentIdFromPayload(frozenPayload)).toBe(PAYMENT_ROW_ID);
   });
