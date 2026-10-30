@@ -30,7 +30,8 @@ export function resolveCollectionButtonState(options: {
   if (adding) return 'adding';
   if (activating) return 'activating';
   if (loading && !status) return 'loading';
-  if (!hasToken || !status) return 'not_premium';
+  if (!hasToken) return 'hidden';
+  if (!status) return 'not_premium';
 
   if (status.artistInArchive) {
     const isActive = status.artistActiveInArchive ?? status.isPremium;

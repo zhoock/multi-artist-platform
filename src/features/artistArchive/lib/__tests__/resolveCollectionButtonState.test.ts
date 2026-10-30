@@ -62,6 +62,20 @@ describe('resolveCollectionButtonState', () => {
     ).toBe('in_collection_inactive');
   });
 
+  test('visitor without auth token', () => {
+    expect(
+      resolveCollectionButtonState({
+        artistUserId: ARTIST_ID,
+        isOwner: false,
+        status: null,
+        loading: false,
+        adding: false,
+        activating: false,
+        hasToken: false,
+      })
+    ).toBe('hidden');
+  });
+
   test('not in collection without subscription', () => {
     expect(
       resolveCollectionButtonState({

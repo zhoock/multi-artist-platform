@@ -71,6 +71,16 @@ describe('ArtistArchiveButton', () => {
     expect(mockAddToArchive).not.toHaveBeenCalled();
   });
 
+  test('hidden state renders nothing', () => {
+    mockButtonState = 'hidden';
+
+    renderWithProviders(<ArtistArchiveButton artistUserId={ARTIST_ID} monetizationEnabled />, {
+      preloadedState: { lang: { current: 'ru' } },
+    });
+
+    expect(screen.queryByRole('button', { name: /Добавить в коллекцию/i })).toBeNull();
+  });
+
   test('can_add still adds artist to collection', async () => {
     mockButtonState = 'can_add';
 
