@@ -76,6 +76,7 @@ export default function StemsPlayground() {
     selectedTrack,
     selectAlbum,
     selectTrack,
+    openAlbumTrack,
     backToAlbums,
     backToTracks,
   } = useMixerNavigation(albums);
@@ -123,6 +124,88 @@ export default function StemsPlayground() {
     window.addEventListener('archive:changed', onArchiveChanged);
     return () => window.removeEventListener('archive:changed', onArchiveChanged);
   }, [dispatch, publicArtistSlug, selectedAlbum?.albumId, loadAlbumTracks]);
+
+  const deepLinkAlbumId = searchParams.get('album')?.trim() || '';
+  const deepLinkTrackId = searchParams.get('track')?.trim() || '';
+  const deepLinkHandledRef = useRef('');
+
+  useEffect(() => {
+    deepLinkHandledRef.current = '';
+  }, [artistSlug]);
+
+  useEffect(() => {
+    if (mixId || !artistSlug || !deepLinkAlbumId || !deepLinkTrackId) return;
+    if (loading || catalogHasStemAlbums === null) return;
+
+    const key = `${artistSlug}:${deepLinkAlbumId}:${deepLinkTrackId}`;
+    if (deepLinkHandledRef.current === key) return;
+
+    const albumInCatalog = albums.some((a) => a.albumId === deepLinkAlbumId);
+    if (!albumInCatalog) {
+      deepLinkHandledRef.current = key;
+      return;
+    }
+
+    let cancelled = false;
+
+    void (async () => {
+      const loaded = await loadAlbumTracks(deepLinkAlbumId);
+      if (cancelled) return;
+
+      const track = loaded?.tracks.find((t) => t.id === deepLinkTrackId);
+      if (!track) {
+        selectAlbum(deepLinkAlbumId);
+        deepLinkHandledRef.current = key;
+        return;
+      }
+
+      if (track.locked) {
+        selectAlbum(deepLinkAlbumId);
+        deepLinkHandledRef.current = key;
+        void requestAccess({
+          artistUserId: loaded?.userId,
+          artistSlug: publicArtistSlug ?? undefined,
+          onAccessGranted: () => {
+            refreshPremiumContentForArchiveChange(dispatch, publicArtistSlug, {
+              immediate: true,
+            });
+            if (loaded?.albumId) {
+              void loadAlbumTracks(loaded.albumId, { force: true }).then((refreshed) => {
+                if (!refreshed) return;
+                openAlbumTrack(deepLinkAlbumId, deepLinkTrackId);
+              });
+            }
+          },
+        });
+        return;
+      }
+
+      if (openAlbumTrack(deepLinkAlbumId, deepLinkTrackId)) {
+        deepLinkHandledRef.current = key;
+      } else {
+        selectAlbum(deepLinkAlbumId);
+        deepLinkHandledRef.current = key;
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    mixId,
+    artistSlug,
+    deepLinkAlbumId,
+    deepLinkTrackId,
+    loading,
+    catalogHasStemAlbums,
+    albums,
+    loadAlbumTracks,
+    selectAlbum,
+    openAlbumTrack,
+    requestAccess,
+    dispatch,
+    publicArtistSlug,
+  ]);
 
   const sectionRef = useRef<HTMLElement | null>(null);
   const panelRef = useRef<MixerPlayerPanelHandle | null>(null);

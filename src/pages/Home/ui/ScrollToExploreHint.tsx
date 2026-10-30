@@ -7,13 +7,15 @@ const LABELS = {
   ru: 'Прокрутите, чтобы исследовать',
 } as const;
 
-export function ScrollToExploreHint() {
+export function ScrollToExploreHint({ visible = true }: { visible?: boolean }) {
   const { lang } = useLang();
   const label = LABELS[lang === 'ru' ? 'ru' : 'en'];
 
   return (
     <p
-      className="universe-scroll-hint"
+      className={
+        visible ? 'universe-scroll-hint' : 'universe-scroll-hint universe-scroll-hint--hidden'
+      }
       aria-hidden="true"
       {...{ [UNIVERSE_SCENE_OVERLAY_ATTR]: '' }}
     >

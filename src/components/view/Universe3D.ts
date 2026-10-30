@@ -170,6 +170,17 @@ function sampleCloudLabelPositionsWithMinSep(
 const ARTIST_MEDIA_PLACEHOLDER_ICON_SVG =
   '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="universe3d-card__media-icon"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><path d="M16 3.128a4 4 0 0 1 0 7.744"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><circle cx="9" cy="7" r="4"/></svg>';
 
+const ARTIST_TITLE_CHEVRON_ICON_SVG =
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>';
+
+function appendArtistTitleChevron(link: HTMLAnchorElement): void {
+  const chevron = document.createElement('span');
+  chevron.className = 'universe3d-card__title-chevron';
+  chevron.setAttribute('aria-hidden', 'true');
+  chevron.innerHTML = ARTIST_TITLE_CHEVRON_ICON_SVG;
+  link.appendChild(chevron);
+}
+
 type ClusterConfig = {
   genreCode: string;
   center: THREE.Vector3;
@@ -232,6 +243,7 @@ export class Universe3D {
   private getArtistCardPlaySnapshot?: () => ArtistCardPlayPlayerSnapshot;
   private onNavigateToArtist?: (publicSlug: string) => void;
   private buildArtistProfileHrefFn?: (publicSlug: string) => string;
+  private onArtistCardOpenChange?: (open: boolean) => void;
   private useContainerSize = false;
   private resizeObserver: ResizeObserver | null = null;
   private attachedWindowClick = false;
@@ -271,6 +283,7 @@ export class Universe3D {
       getArtistCardPlaySnapshot?: () => ArtistCardPlayPlayerSnapshot;
       onNavigateToArtist?: (publicSlug: string) => void;
       buildArtistProfileHref?: (publicSlug: string) => string;
+      onArtistCardOpenChange?: (open: boolean) => void;
       clusterColor?: number;
       disableCameraControls?: boolean;
       embedInContainer?: boolean;
@@ -324,6 +337,7 @@ export class Universe3D {
     this.getArtistCardPlaySnapshot = options?.getArtistCardPlaySnapshot;
     this.onNavigateToArtist = options?.onNavigateToArtist;
     this.buildArtistProfileHrefFn = options?.buildArtistProfileHref;
+    this.onArtistCardOpenChange = options?.onArtistCardOpenChange;
 
     const clusters = this.buildClusters(artists);
     const focusSlug = sessionStorage.getItem(UNIVERSE_FOCUS_ARTIST_STORAGE_KEY);
@@ -938,7 +952,7 @@ export class Universe3D {
       const anchorData = this.cardAnchorObject.userData as SceneArtist;
       if (anchorData.publicSlug === slug) {
         anchorData.name = name;
-        const titleEl = this.activeCard.querySelector('.universe3d-card__title');
+        const titleEl = this.activeCard.querySelector('.universe3d-card__title-text');
         if (titleEl) {
           titleEl.textContent = name;
         }
@@ -1044,6 +1058,9 @@ export class Universe3D {
   }
 
   private dismissCard() {
+    if (this.activeCard) {
+      this.onArtistCardOpenChange?.(false);
+    }
     this.activeCard?.remove();
     this.activeCard = null;
     this.cardAnchorObject = null;
@@ -1419,7 +1436,11 @@ export class Universe3D {
       if (slug) {
         const link = document.createElement('a');
         link.className = 'universe3d-card__title';
-        link.textContent = title;
+        const nameSpan = document.createElement('span');
+        nameSpan.className = 'universe3d-card__title-text';
+        nameSpan.textContent = title;
+        link.appendChild(nameSpan);
+        appendArtistTitleChevron(link);
         this.bindArtistProfileLink(link, slug);
         titleSlot.replaceWith(link);
       } else {
@@ -1495,6 +1516,7 @@ export class Universe3D {
 
     this.uiLayer.appendChild(card);
     this.activeCard = card;
+    this.onArtistCardOpenChange?.(true);
 
     requestAnimationFrame(() => {
       if (this.activeCard !== card || !this.cardAnchorObject) return;

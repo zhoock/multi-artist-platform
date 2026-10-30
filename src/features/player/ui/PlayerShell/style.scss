@@ -62,6 +62,32 @@
     }
   }
 
+  &__mixer {
+    inline-size: 40px;
+    block-size: 40px;
+    flex-shrink: 0;
+
+    @include button-variant(
+      $color: var(--mini-player-button, var(--mini-player-text, var(--black, #000000))),
+      $background: transparent,
+      $hover-color: var(--mini-player-button, var(--mini-player-text, var(--black, #000000))),
+      $hover-background: rgb(255 255 255 / 18%),
+      $margin: 0,
+      $padding: 0,
+      $border-radius: var(--ms-02)
+    );
+
+    @include breakpoint(tablet) {
+      inline-size: 48px;
+      block-size: 48px;
+    }
+  }
+
+  &__mixer-icon {
+    display: block;
+    margin-inline: auto;
+  }
+
   &__controls {
     display: flex;
     align-items: center;
@@ -71,11 +97,44 @@
   &__title {
     flex: 1;
     margin: 0;
+    min-width: 0;
     font-size: clamp(0.85rem, 0.7rem + 0.4vw, 1rem);
+  }
+
+  &__title-line {
+    display: block;
+    overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    overflow: hidden;
     min-width: 0;
+  }
+
+  &__title-line--compact {
+    display: block;
+  }
+
+  &__title:has(.mini-player__title-stack) .mini-player__title-line--compact {
+    display: none;
+
+    @include breakpoint(tablet) {
+      display: block;
+    }
+  }
+
+  &__title-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    line-height: 1.2;
+    min-width: 0;
+
+    @include breakpoint(tablet) {
+      display: none;
+    }
+  }
+
+  &__title-line--track {
+    color: var(--link-subtitle-color, var(--time-color, #9b9b9a));
   }
 
   &__expand {

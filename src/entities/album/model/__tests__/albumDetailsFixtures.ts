@@ -1,4 +1,27 @@
-import type { AlbumDetails } from '../albumDetails';
+import type { AlbumDetails, TrackDetails } from '../albumDetails';
+
+export function createMockTrackDetails(
+  overrides: Partial<TrackDetails> & Pick<TrackDetails, 'id' | 'title'>
+): TrackDetails {
+  return {
+    orderIndex: 0,
+    duration: 180,
+    src: 'track.mp3',
+    playbackLocked: false,
+    visibility: 'public',
+    stemsAvailability: 'hidden',
+    hasStems: false,
+    audioContainer: null,
+    audioCodec: null,
+    audioBitrate: null,
+    audioSampleRate: null,
+    audioBitDepth: null,
+    audioChannels: null,
+    audioDuration: null,
+    audioFileSize: null,
+    ...overrides,
+  };
+}
 
 export function createMockAlbumDetails(overrides: Partial<AlbumDetails> = {}): AlbumDetails {
   return {
@@ -25,42 +48,14 @@ export function createMockAlbumDetails(overrides: Partial<AlbumDetails> = {}): A
     serviceButtons: {},
     visibility: { isPublished: true, isPublic: true },
     tracks: [
-      {
-        id: '1',
-        title: 'Track 1',
-        orderIndex: 0,
-        duration: 180,
-        src: 'track1.mp3',
-        playbackLocked: false,
-        visibility: 'public',
-        stemsAvailability: 'hidden',
-        audioContainer: null,
-        audioCodec: null,
-        audioBitrate: null,
-        audioSampleRate: null,
-        audioBitDepth: null,
-        audioChannels: null,
-        audioDuration: null,
-        audioFileSize: null,
-      },
-      {
+      createMockTrackDetails({ id: '1', title: 'Track 1', src: 'track1.mp3' }),
+      createMockTrackDetails({
         id: '2',
         title: 'Track 2',
         orderIndex: 1,
         duration: 200,
         src: 'track2.mp3',
-        playbackLocked: false,
-        visibility: 'public',
-        stemsAvailability: 'hidden',
-        audioContainer: null,
-        audioCodec: null,
-        audioBitrate: null,
-        audioSampleRate: null,
-        audioBitDepth: null,
-        audioChannels: null,
-        audioDuration: null,
-        audioFileSize: null,
-      },
+      }),
     ],
     ...overrides,
   };

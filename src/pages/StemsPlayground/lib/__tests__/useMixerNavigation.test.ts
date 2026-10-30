@@ -71,6 +71,23 @@ describe('useMixerNavigation', () => {
     expect(result.current.selectedAlbum).toBeNull();
   });
 
+  test('openAlbumTrack jumps to mixer for album and track', () => {
+    const { result } = renderHook(() => useMixerNavigation(albums));
+
+    act(() => result.current.openAlbumTrack('a2', 't3'));
+    expect(result.current.view).toBe('mixer');
+    expect(result.current.selectedAlbum?.albumId).toBe('a2');
+    expect(result.current.selectedTrack?.id).toBe('t3');
+  });
+
+  test('openAlbumTrack returns false when track id is not on the album', () => {
+    const { result } = renderHook(() => useMixerNavigation(albums));
+
+    expect(result.current.openAlbumTrack('a1', 'missing-track')).toBe(false);
+    expect(result.current.view).toBe('albums');
+    expect(result.current.selectedTrack).toBeNull();
+  });
+
   test('resets to albums when the selected album disappears from the catalog', () => {
     const { result, rerender } = renderHook(({ data }) => useMixerNavigation(data), {
       initialProps: { data: albums },

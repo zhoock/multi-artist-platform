@@ -69,6 +69,8 @@ export function toPlayerTrack(track: unknown, albumId?: string | null): PlayerTr
 
   const queueAlbumMeta = readQueueAlbumMeta(row.queueAlbumMeta);
 
+  const hasStems = row.hasStems === true;
+
   return {
     id,
     albumId: resolvedAlbumId,
@@ -81,6 +83,7 @@ export function toPlayerTrack(track: unknown, albumId?: string | null): PlayerTr
     ...(lyrics ? { lyrics } : {}),
     ...(content ? { content } : {}),
     ...(authorship ? { authorship } : {}),
+    ...(hasStems ? { hasStems: true } : {}),
   };
 }
 

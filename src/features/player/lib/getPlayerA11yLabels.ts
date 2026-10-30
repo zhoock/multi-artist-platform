@@ -10,6 +10,7 @@ export type PlayerA11yLabels = {
   nextTrack: string;
   openFullPlayer: string;
   closePlayer: string;
+  openMixer: string;
 };
 
 const FALLBACK: Record<SupportedLang, PlayerA11yLabels> = {
@@ -20,6 +21,7 @@ const FALLBACK: Record<SupportedLang, PlayerA11yLabels> = {
     nextTrack: 'Следующий трек',
     openFullPlayer: 'Открыть полноэкранный плеер',
     closePlayer: 'Закрыть плеер',
+    openMixer: 'Открыть микшер для этого трека',
   },
   en: {
     previousTrack: 'Previous track',
@@ -28,6 +30,7 @@ const FALLBACK: Record<SupportedLang, PlayerA11yLabels> = {
     nextTrack: 'Next track',
     openFullPlayer: 'Open full player',
     closePlayer: 'Close player',
+    openMixer: 'Open mixer for this track',
   },
 };
 
@@ -52,5 +55,6 @@ export function getPlayerA11yLabels(
     nextTrack: p?.nextTrack?.trim() || fb.nextTrack,
     openFullPlayer: p?.openFullPlayer?.trim() || fb.openFullPlayer,
     closePlayer: p?.closePlayer?.trim() || fb.closePlayer,
+    openMixer: p?.openMixer?.trim() || fb.openMixer,
   };
 }

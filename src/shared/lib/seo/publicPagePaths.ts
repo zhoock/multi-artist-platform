@@ -73,6 +73,23 @@ export function buildSharedMixPagePath(lang: RouteLang, mixId: string): string {
   return buildLocalizedPublicPath(lang, sharedMixPathSegment(mixId));
 }
 
+/** Public mixer deep-link for a specific track: `/{lang}/stems?artist=&album=&track=`. */
+export function buildArtistMixerTrackPath(
+  lang: RouteLang,
+  artistSlug: string,
+  albumId: string,
+  trackId: string
+): string {
+  const withArtist = withPublicArtistQuery('/stems', artistSlug);
+  const qMark = withArtist.indexOf('?');
+  const pathOnly = qMark === -1 ? withArtist : withArtist.slice(0, qMark);
+  const params = new URLSearchParams(qMark === -1 ? '' : withArtist.slice(qMark + 1));
+  params.set('album', albumId.trim());
+  params.set('track', trackId.trim());
+  const q = params.toString();
+  return buildLocalizedPublicPath(lang, q ? `${pathOnly}?${q}` : pathOnly);
+}
+
 /** Help center home: `/{lang}/help`. */
 export function buildHelpHomePath(lang: RouteLang): string {
   return buildLocalizedPublicPath(lang, '/help');

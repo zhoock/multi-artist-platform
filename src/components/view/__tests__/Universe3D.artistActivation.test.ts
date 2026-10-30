@@ -162,6 +162,7 @@ describe('Universe3D artist activation', () => {
       expect(universe.activatePrimaryArtist()).toBe(true);
       expect(container.querySelector('.universe3d-card')).not.toBeNull();
       expect(container.querySelector('.universe3d-card__title')?.textContent).toBe('Beatles');
+      expect(container.querySelector('.universe3d-card__title-chevron')).not.toBeNull();
 
       universe.destroy();
       container.remove();

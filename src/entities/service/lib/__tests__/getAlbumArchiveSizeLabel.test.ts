@@ -11,6 +11,7 @@ function track(
     playbackLocked: false,
     visibility: 'public',
     stemsAvailability: 'hidden',
+    hasStems: false,
     audioContainer: null,
     audioCodec: null,
     audioBitrate: null,

@@ -14,6 +14,7 @@ function track(partial: Partial<TrackDetails> & { id: string; title: string }): 
     playbackLocked: false,
     visibility: 'public',
     stemsAvailability: 'public',
+    hasStems: false,
     audioContainer: null,
     audioCodec: null,
     audioBitrate: null,

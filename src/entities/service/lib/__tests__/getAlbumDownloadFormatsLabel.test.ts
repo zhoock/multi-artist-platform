@@ -15,6 +15,7 @@ function track(partial: Partial<TrackDetails> & Pick<TrackDetails, 'src'>): Trac
     playbackLocked: false,
     visibility: 'public',
     stemsAvailability: 'hidden',
+    hasStems: false,
     audioContainer: null,
     audioCodec: null,
     audioBitrate: null,

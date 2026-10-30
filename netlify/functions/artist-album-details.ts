@@ -60,6 +60,7 @@ interface TrackRow {
   order_index: number | null;
   visibility: string | null;
   stems_visibility: string | null;
+  has_stems: boolean | null;
   audio_container: string | null;
   audio_codec: string | null;
   audio_bitrate: number | null;
@@ -150,6 +151,7 @@ async function fetchTracksForAlbumPks(albumPks: string[]): Promise<Map<string, T
          t.order_index,
          t.visibility,
          t.stems_visibility,
+         t.has_stems,
          t.audio_container,
          t.audio_codec,
          t.audio_bitrate,
@@ -183,6 +185,7 @@ async function fetchTracksForAlbumPks(albumPks: string[]): Promise<Map<string, T
          t.order_index,
          NULL::text AS visibility,
          NULL::text AS stems_visibility,
+         NULL::boolean AS has_stems,
          NULL::text AS audio_container,
          NULL::text AS audio_codec,
          NULL::int AS audio_bitrate,
@@ -217,6 +220,7 @@ function mapTrackRow(row: TrackRow): AlbumDetailsTrackSource {
       typeof row.order_index === 'number' && !Number.isNaN(row.order_index) ? row.order_index : 0,
     visibility: row.visibility,
     stemsVisibility: row.stems_visibility,
+    hasStems: row.has_stems === true,
     audioContainer: row.audio_container,
     audioCodec: row.audio_codec,
     audioBitrate: row.audio_bitrate,

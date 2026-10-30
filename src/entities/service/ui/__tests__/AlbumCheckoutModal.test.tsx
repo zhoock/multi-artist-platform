@@ -19,6 +19,10 @@ import { describe, test, expect, jest, beforeEach } from '@jest/globals';
 import { screen, fireEvent, waitFor } from '@testing-library/react';
 import { renderWithProviders } from '@shared/lib/test-utils';
 import type { AlbumDetails } from '@entities/album/model/albumDetails';
+import {
+  createMockAlbumDetails,
+  createMockTrackDetails,
+} from '@entities/album/model/__tests__/albumDetailsFixtures';
 
 type CreatePaymentResult = {
   success: boolean;
@@ -80,7 +84,7 @@ jest.mock('@entities/album/ui/AlbumCover', () => ({
 
 import { AlbumCheckoutModal } from '../AlbumCheckoutModal';
 
-const testAlbum: AlbumDetails = {
+const testAlbum: AlbumDetails = createMockAlbumDetails({
   albumId: 'album-1',
   slug: 'album-1',
   title: 'Sample Album',
@@ -88,60 +92,30 @@ const testAlbum: AlbumDetails = {
   userId: 'user-1',
   dbAlbumId: '',
   description: '',
-  details: [],
   release: {},
-  artwork: {
-    photographer: '',
-    photographerURL: '',
-    designer: '',
-    designerURL: '',
-  },
   purchase: {
     allowDownloadSale: 'yes',
     regularPrice: '4.99',
     currency: 'RUB',
   },
   serviceButtons: {},
-  visibility: { isPublished: true, isPublic: true },
   tracks: [
-    {
+    createMockTrackDetails({
       id: '1',
       title: 'Track A',
       duration: 180,
       src: 'a.mp3',
       orderIndex: 0,
-      playbackLocked: false,
-      visibility: 'public',
-      stemsAvailability: 'hidden',
-      audioContainer: null,
-      audioCodec: null,
-      audioBitrate: null,
-      audioSampleRate: null,
-      audioBitDepth: null,
-      audioChannels: null,
-      audioDuration: null,
-      audioFileSize: null,
-    },
-    {
+    }),
+    createMockTrackDetails({
       id: '2',
       title: 'Track B',
       duration: 200,
       src: 'b.mp3',
       orderIndex: 1,
-      playbackLocked: false,
-      visibility: 'public',
-      stemsAvailability: 'hidden',
-      audioContainer: null,
-      audioCodec: null,
-      audioBitrate: null,
-      audioSampleRate: null,
-      audioBitDepth: null,
-      audioChannels: null,
-      audioDuration: null,
-      audioFileSize: null,
-    },
+    }),
   ],
-};
+});
 
 function fillValidForm() {
   fireEvent.click(screen.getByRole('checkbox'));

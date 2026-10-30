@@ -1,5 +1,5 @@
 // src/pages/StemsPlayground/lib/useMixerNavigation.ts
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { MixerAlbum, MixerTrack, MixerView } from './types';
 
 export type MixerNavigation = {
@@ -8,6 +8,7 @@ export type MixerNavigation = {
   selectedTrack: MixerTrack | null;
   selectAlbum: (albumId: string) => void;
   selectTrack: (trackId: string) => void;
+  openAlbumTrack: (albumId: string, trackId: string) => boolean;
   backToAlbums: () => void;
   backToTracks: () => void;
 };
@@ -21,6 +22,8 @@ export function useMixerNavigation(albums: MixerAlbum[]): MixerNavigation {
   const [view, setView] = useState<MixerView>('albums');
   const [selectedAlbumId, setSelectedAlbumId] = useState<string | null>(null);
   const [selectedTrackId, setSelectedTrackId] = useState<string | null>(null);
+  const albumsRef = useRef(albums);
+  albumsRef.current = albums;
 
   const selectedAlbum = useMemo(
     () => albums.find((a) => a.albumId === selectedAlbumId) ?? null,
@@ -63,6 +66,16 @@ export function useMixerNavigation(albums: MixerAlbum[]): MixerNavigation {
     [albums, selectedAlbumId]
   );
 
+  const openAlbumTrack = useCallback((albumId: string, trackId: string): boolean => {
+    const album = albumsRef.current.find((a) => a.albumId === albumId.trim());
+    const track = album?.tracks.find((t) => t.id === trackId.trim());
+    if (!album || !track || track.locked) return false;
+    setSelectedAlbumId(album.albumId);
+    setSelectedTrackId(track.id);
+    setView('mixer');
+    return true;
+  }, []);
+
   const backToAlbums = useCallback(() => {
     setView('albums');
     setSelectedAlbumId(null);
@@ -80,6 +93,7 @@ export function useMixerNavigation(albums: MixerAlbum[]): MixerNavigation {
     selectedTrack,
     selectAlbum,
     selectTrack,
+    openAlbumTrack,
     backToAlbums,
     backToTracks,
   };

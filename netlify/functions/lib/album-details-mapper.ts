@@ -43,6 +43,8 @@ export interface TrackDetailsDto {
   playbackLocked: boolean;
   visibility: 'public' | 'subscribers_only' | 'hidden';
   stemsAvailability: 'public' | 'subscribers_only' | 'hidden';
+  /** Denormalized flag: track has stem manifest in Storage (see tracks.has_stems). */
+  hasStems: boolean;
   audioContainer: string | null;
   audioCodec: string | null;
   audioBitrate: number | null;
@@ -115,6 +117,7 @@ export interface AlbumDetailsTrackSource {
   orderIndex: number;
   visibility: string | null;
   stemsVisibility: string | null;
+  hasStems?: boolean | null;
   audioContainer: string | null;
   audioCodec: string | null;
   audioBitrate: number | null;
@@ -269,6 +272,10 @@ function mergeTracks(
         sourceById.set(id, track);
       } else {
         orderById.set(id, Math.min(orderById.get(id)!, track.orderIndex));
+        if (track.hasStems === true) {
+          const prev = sourceById.get(id)!;
+          sourceById.set(id, { ...prev, hasStems: true });
+        }
       }
       if (isSupportedLang(locale.lang)) {
         const prev = titlesById.get(id) ?? {};
@@ -299,6 +306,7 @@ function mergeTracks(
     const processingStatus = (track.processingStatus ?? 'ready') as ProcessingStatus;
     const visibility = resolveEffectiveContentVisibility(trackVis, ctx.monetizationEnabled);
     const stemsAvailability = resolveEffectiveContentVisibility(stemsVis, ctx.monetizationEnabled);
+    const hasStems = track.hasStems === true && stemsAvailability !== 'hidden';
     const needLock = visibility === 'subscribers_only' && !ctx.hasPremiumAccess;
     const trackKey = normalizeTrackIdString(track.trackId) || String(track.trackId);
     const assets = ctx.assetsByTrackId?.get(trackKey) ?? [];
@@ -342,6 +350,7 @@ function mergeTracks(
       playbackLocked: needLock,
       visibility,
       stemsAvailability,
+      hasStems,
       audioContainer: track.audioContainer?.trim() || null,
       audioCodec: track.audioCodec?.trim() || null,
       audioBitrate: optionalPositiveInt(track.audioBitrate),

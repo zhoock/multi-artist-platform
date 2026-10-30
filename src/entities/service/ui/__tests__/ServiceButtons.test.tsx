@@ -5,6 +5,10 @@ import { fireEvent, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import type { AlbumDetails } from '@entities/album/model/albumDetails';
+import {
+  createMockAlbumDetails,
+  createMockTrackDetails,
+} from '@entities/album/model/__tests__/albumDetailsFixtures';
 import { renderWithProviders } from '@shared/lib/test-utils';
 
 import { ServiceButtons } from '../ServiceButtons';
@@ -56,7 +60,7 @@ jest.mock('@entities/album/ui/AlbumCover', () => ({
   default: () => null,
 }));
 
-const testAlbum: AlbumDetails = {
+const testAlbum: AlbumDetails = createMockAlbumDetails({
   albumId: 'album-1',
   slug: 'album-1',
   title: 'Sample Album',
@@ -64,42 +68,23 @@ const testAlbum: AlbumDetails = {
   userId: 'user-1',
   dbAlbumId: '',
   description: '',
-  details: [],
   release: {},
-  artwork: {
-    photographer: '',
-    photographerURL: '',
-    designer: '',
-    designerURL: '',
-  },
   purchase: {
     allowDownloadSale: 'yes',
     regularPrice: '4.99',
     currency: 'RUB',
   },
   serviceButtons: { itunes: 'https://music.apple.com/album/1' },
-  visibility: { isPublished: true, isPublic: true },
   tracks: [
-    {
+    createMockTrackDetails({
       id: '1',
       title: 'Track A',
       duration: 180,
       src: 'a.mp3',
       orderIndex: 0,
-      playbackLocked: false,
-      visibility: 'public',
-      stemsAvailability: 'hidden',
-      audioContainer: null,
-      audioCodec: null,
-      audioBitrate: null,
-      audioSampleRate: null,
-      audioBitDepth: null,
-      audioChannels: null,
-      audioDuration: null,
-      audioFileSize: null,
-    },
+    }),
   ],
-};
+});
 
 describe('ServiceButtons purchase control', () => {
   beforeEach(() => {

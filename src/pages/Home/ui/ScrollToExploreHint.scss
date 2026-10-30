@@ -65,6 +65,11 @@
     font-weight: 400;
     letter-spacing: 0.03em;
   }
+
+  &--hidden {
+    visibility: hidden;
+    opacity: 0;
+  }
 }
 
 @keyframes universe-scroll-hint-in {

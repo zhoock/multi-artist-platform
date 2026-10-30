@@ -41,6 +41,8 @@ export interface TrackDetails {
   visibility: AlbumContentVisibility;
   /** Mixer stems access — same enum as track visibility (renamed from stemsVisibility). */
   stemsAvailability: AlbumContentVisibility;
+  /** True when Storage has a stem manifest for this track (tracks.has_stems). */
+  hasStems: boolean;
   audioContainer: string | null;
   audioCodec: string | null;
   audioBitrate: number | null;
@@ -203,6 +205,7 @@ function normalizeTrackDetails(raw: unknown): TrackDetails | null {
     playbackLocked: v.playbackLocked === true,
     visibility: normalizeTrackVisibility(v.visibility),
     stemsAvailability: normalizeStemsVisibility(v.stemsAvailability ?? v.stemsVisibility),
+    hasStems: v.hasStems === true,
     audioContainer: asNullableString(v.audioContainer),
     audioCodec: asNullableString(v.audioCodec),
     audioBitrate: asNullablePositiveNumber(v.audioBitrate),
@@ -390,6 +393,7 @@ export function mapAlbumEditableToAlbumDetails(album: AlbumEditable): AlbumDetai
       playbackLocked: track.playbackLocked === true,
       visibility: normalizeTrackVisibility(track.visibility),
       stemsAvailability: normalizeStemsVisibility(track.stemsVisibility),
+      hasStems: false,
       audioContainer: track.audioContainer ?? null,
       audioCodec: track.audioCodec ?? null,
       audioBitrate: track.audioBitrate ?? null,

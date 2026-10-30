@@ -1,11 +1,12 @@
 // src/features/player/ui/PlayerShell/MiniPlayer.tsx
 import React, { useMemo } from 'react';
 import clsx from 'clsx';
-import { Pause, Play, SkipForward } from 'lucide-react';
+import { Pause, Play, SkipForward, SlidersHorizontal } from 'lucide-react';
 import AlbumCover from '@entities/album/ui/AlbumCover';
 import {
   playerFilledPlayIconProps,
   playerTransportIconProps,
+  playerIconProps,
   PLAYER_MINI_ICON_SIZE,
 } from '@shared/ui/icons/playerActionIcon';
 import { UNIVERSE_SCENE_OVERLAY_ATTR } from '@shared/lib/universeSceneOverlay';
@@ -15,6 +16,7 @@ import {
   getPlayerA11yLabels,
   selectPlayerUiForA11y,
 } from '@features/player/lib/getPlayerA11yLabels';
+import { stripRedundantArtistPrefixFromTrackTitle } from '@features/player/lib/miniPlayerTrackTitle';
 
 import './style.scss';
 
@@ -27,7 +29,10 @@ interface ForwardHandlers {
 }
 
 interface MiniPlayerProps {
+  /** Desktop single-line label (current track title). */
   title: string;
+  /** Mobile stacked layout: artist on the first line. */
+  artist?: string | null;
   cover?: string | null;
   userId?: string;
   isPlaying: boolean;
@@ -35,10 +40,14 @@ interface MiniPlayerProps {
   onExpand: () => void;
   forwardHandlers: ForwardHandlers;
   containerRef?: React.Ref<HTMLDivElement>;
+  showMixerButton?: boolean;
+  onOpenMixer?: () => void;
+  openMixerLabel?: string;
 }
 
 export const MiniPlayer: React.FC<MiniPlayerProps> = ({
   title,
+  artist,
   cover,
   userId,
   isPlaying,
@@ -46,13 +55,47 @@ export const MiniPlayer: React.FC<MiniPlayerProps> = ({
   onExpand,
   forwardHandlers,
   containerRef,
+  showMixerButton = false,
+  onOpenMixer,
+  openMixerLabel,
 }) => {
   const { lang } = useLang();
   const ui = useAppSelector((state) => selectPlayerUiForA11y(state, lang));
   const labels = useMemo(() => getPlayerA11yLabels(lang, ui), [lang, ui]);
 
+  const artistLabel = artist?.trim() ?? '';
+  const trackLabel = useMemo(() => {
+    const raw = title.trim();
+    if (!artistLabel) return raw;
+    return stripRedundantArtistPrefixFromTrackTitle(artistLabel, raw);
+  }, [artistLabel, title]);
+  const showMobileStack = Boolean(artistLabel && trackLabel);
+  const hoverTitle = useMemo(() => {
+    if (showMobileStack) {
+      return `${artistLabel} — ${trackLabel}`;
+    }
+    return title;
+  }, [showMobileStack, artistLabel, trackLabel, title]);
+
   return (
     <div ref={containerRef} className="mini-player" {...{ [UNIVERSE_SCENE_OVERLAY_ATTR]: '' }}>
+      {showMixerButton && onOpenMixer ? (
+        <button
+          type="button"
+          className="mini-player__mixer"
+          aria-label={openMixerLabel ?? labels.openMixer}
+          onClick={(event) => {
+            event.stopPropagation();
+            onOpenMixer();
+          }}
+        >
+          <SlidersHorizontal
+            {...playerIconProps(PLAYER_MINI_ICON_SIZE, {
+              className: 'mini-player__mixer-icon',
+            })}
+          />
+        </button>
+      ) : null}
       <button
         type="button"
         className="mini-player__expand"
@@ -75,8 +118,18 @@ export const MiniPlayer: React.FC<MiniPlayerProps> = ({
           )}
         </div>
 
-        <span className="mini-player__title" title={title}>
-          {title}
+        <span className="mini-player__title" title={hoverTitle}>
+          <span className="mini-player__title-line mini-player__title-line--compact">{title}</span>
+          {showMobileStack ? (
+            <span className="mini-player__title-stack">
+              <span className="mini-player__title-line mini-player__title-line--artist">
+                {artistLabel}
+              </span>
+              <span className="mini-player__title-line mini-player__title-line--track">
+                {trackLabel}
+              </span>
+            </span>
+          ) : null}
         </span>
       </button>
 

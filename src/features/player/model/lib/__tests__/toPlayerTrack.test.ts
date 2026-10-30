@@ -46,6 +46,26 @@ describe('toPlayerTrack', () => {
     expect(thin).not.toHaveProperty('order_index');
   });
 
+  test('preserves hasStems when true', () => {
+    const thin = toPlayerTrack(
+      { id: 't1', title: 'Song', duration: 1, src: 'a.mp3', hasStems: true } as never,
+      'alb'
+    );
+    expect(thin?.hasStems).toBe(true);
+  });
+
+  test('omits hasStems when false or absent', () => {
+    expect(
+      toPlayerTrack({
+        id: 't1',
+        title: 'Song',
+        duration: 1,
+        src: 'a.mp3',
+        hasStems: false,
+      } as never)?.hasStems
+    ).toBeUndefined();
+  });
+
   test('toPlayerTracks drops invalid rows', () => {
     expect(
       toPlayerTracks([{ title: 'no-id', duration: 1, src: 'a.mp3' } as never, null, undefined])

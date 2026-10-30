@@ -46,6 +46,8 @@ export interface PlayerTrack {
   lyrics?: TrackLyricsBundle;
   content?: string;
   authorship?: string;
+  /** True when the track has stems in Storage (from AlbumDetails / queue bootstrap). */
+  hasStems?: boolean;
 }
 
 export interface PlayerSourceLocation {

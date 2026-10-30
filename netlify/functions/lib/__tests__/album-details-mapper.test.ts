@@ -401,4 +401,56 @@ describe('album-details-mapper', () => {
     expect(dto!.tracks[0]?.waveformUrl).toBeNull();
     expect(dto!.tracks[0]?.waveformStatus).toBe('ready');
   });
+
+  test('sets hasStems from track flag and hides when stems are hidden', () => {
+    const dto = mapLocalesToAlbumDetails(
+      [
+        locale({
+          lang: 'en',
+          tracks: [
+            {
+              trackId: 'stem-track',
+              title: 'With stems',
+              duration: 60,
+              src: 'a.mp3',
+              orderIndex: 0,
+              visibility: 'public',
+              stemsVisibility: 'public',
+              hasStems: true,
+              audioContainer: null,
+              audioCodec: null,
+              audioBitrate: null,
+              audioSampleRate: null,
+              audioBitDepth: null,
+              audioChannels: null,
+              audioDuration: null,
+              audioFileSize: null,
+            },
+            {
+              trackId: 'hidden-stems',
+              title: 'Hidden stems',
+              duration: 60,
+              src: 'b.mp3',
+              orderIndex: 1,
+              visibility: 'public',
+              stemsVisibility: 'hidden',
+              hasStems: true,
+              audioContainer: null,
+              audioCodec: null,
+              audioBitrate: null,
+              audioSampleRate: null,
+              audioBitDepth: null,
+              audioChannels: null,
+              audioDuration: null,
+              audioFileSize: null,
+            },
+          ],
+        }),
+      ],
+      { hasPremiumAccess: true, monetizationEnabled: true }
+    );
+
+    expect(dto!.tracks.find((t) => t.id === 'stem-track')?.hasStems).toBe(true);
+    expect(dto!.tracks.find((t) => t.id === 'hidden-stems')?.hasStems).toBe(false);
+  });
 });

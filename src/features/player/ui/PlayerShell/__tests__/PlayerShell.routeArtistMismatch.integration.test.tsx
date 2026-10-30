@@ -41,6 +41,8 @@ jest.mock('@features/player/model/lib/audioController', () => {
     setSource: jest.fn(),
     setCurrentTime: jest.fn(),
     setVolume: jest.fn(),
+    getCurrentSrc: jest.fn(() => ''),
+    ensureElementInDocument: jest.fn(),
     element: {
       currentTime: 0,
       duration: 180,

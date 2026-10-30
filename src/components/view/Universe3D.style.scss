@@ -77,11 +77,34 @@
 }
 
 .universe3d-card__title {
+  display: inline-flex;
+  gap: 0.35em;
+  align-items: center;
+  line-height: 1;
   text-decoration: none;
   font-family: var(--base-accent-font);
 
   @include link-colors(--link-color, --link-color-hover);
   @include adjust-font-size-to($ms-1, 0);
+}
+
+.universe3d-card__title-text {
+  display: block;
+}
+
+.universe3d-card__title-chevron {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  color: currentcolor;
+  transform: translateY(calc(0.07em + 2px));
+
+  svg {
+    display: block;
+    inline-size: 1em;
+    block-size: 1em;
+  }
 }
 
 .universe3d-card__chips {

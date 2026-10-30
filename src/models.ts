@@ -350,6 +350,7 @@ export interface IInterface {
     nextTrack: string;
     openFullPlayer: string;
     closePlayer: string;
+    openMixer?: string;
   };
   artistOnboarding?: {
     welcomeGreeting: string;

@@ -36,6 +36,7 @@ const baseTrack = (overrides: Partial<TrackDetails>): TrackDetails => ({
   visibility: 'public',
   playbackLocked: false,
   stemsAvailability: 'public',
+  hasStems: false,
   audioContainer: null,
   audioCodec: null,
   audioBitrate: null,

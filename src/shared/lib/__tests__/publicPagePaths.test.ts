@@ -2,6 +2,7 @@ import {
   buildArtistAlbumsCatalogPath,
   buildArtistArticlesCatalogPath,
   buildArtistPagePath,
+  buildArtistMixerTrackPath,
   buildLocalizedPublicPathWithArtist,
   buildPublicAlbumPagePath,
   buildPublicArticlePagePath,
@@ -36,6 +37,12 @@ describe('publicPagePaths — localized semantic builders', () => {
   test('buildLocalizedPublicPathWithArtist', () => {
     expect(buildLocalizedPublicPathWithArtist('en', '/stems', 'my-band')).toBe(
       '/en/stems?artist=my-band'
+    );
+  });
+
+  test('buildArtistMixerTrackPath', () => {
+    expect(buildArtistMixerTrackPath('en', 'my-band', 'rubber-soul', 'norwegian-wood')).toBe(
+      '/en/stems?artist=my-band&album=rubber-soul&track=norwegian-wood'
     );
   });
 });

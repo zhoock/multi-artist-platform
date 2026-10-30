@@ -135,6 +135,9 @@ export function HomePage() {
     });
   }, []);
   const [universeRefreshToken, setUniverseRefreshToken] = useState(0);
+  const [isUniverseArtistCardOpen, setIsUniverseArtistCardOpen] = useState(false);
+  const onArtistCardOpenChangeRef = useRef(setIsUniverseArtistCardOpen);
+  onArtistCardOpenChangeRef.current = setIsUniverseArtistCardOpen;
   const [sceneArtists, setSceneArtists] = useState<SceneArtist[]>([]);
   const hasArtistParam = !!searchParams.get('artist');
   const artistSlug = searchParams.get('artist') || '';
@@ -315,6 +318,7 @@ export function HomePage() {
         },
         buildArtistProfileHref: (publicSlug) =>
           buildArtistPagePath(langForUniverseRef.current, publicSlug),
+        onArtistCardOpenChange: (open) => onArtistCardOpenChangeRef.current(open),
         artistCardPlayLabels,
         getArtistCardPlaySnapshot: () => playerCardPlaySnapshotRef.current,
         onPlayArtist: (artist) => {
@@ -528,7 +532,7 @@ export function HomePage() {
         ref={sceneRef}
         style={{ width: '100%', height: '100%', minHeight: 0, position: 'relative' }}
       />
-      <ScrollToExploreHint />
+      <ScrollToExploreHint visible={!isUniverseArtistCardOpen} />
     </section>
   );
 }

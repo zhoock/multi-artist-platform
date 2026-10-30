@@ -28,6 +28,7 @@ import { audioController } from '@features/player/model/lib/audioController';
 import { MiniPlayer } from './MiniPlayer';
 import type { PlayerAlbumMeta } from '@features/player/model/types/playerSchema';
 import type { RootState } from '@shared/model/appStore/types';
+import { buildArtistMixerTrackPath } from '@shared/lib/seo/publicPagePaths';
 import { savePlayerState } from '@features/player/model/lib/playerPersist';
 import { bootstrapPlayerSession } from '@features/player/model/lib/bootstrapPlayerSession';
 import { verifyRestoredPlayerQueue } from '@features/player/model/lib/verifyRestoredPlayerQueue';
@@ -466,6 +467,27 @@ export const PlayerShell: React.FC = () => {
     );
   }, [dispatch, navigate, location.pathname, location.search]);
 
+  const mixerTarget = useMemo(() => {
+    if (!currentTrack || currentTrack.hasStems !== true) return null;
+    const artistSlug = albumMeta?.publicSlug?.trim() || '';
+    const albumId = (currentTrack.albumId ?? albumMeta?.albumId ?? '').trim();
+    const trackId = currentTrack.id.trim();
+    if (!artistSlug || !albumId || !trackId) return null;
+    return { artistSlug, albumId, trackId };
+  }, [albumMeta?.albumId, albumMeta?.publicSlug, currentTrack]);
+
+  const handleOpenMixer = useCallback(() => {
+    if (!mixerTarget) return;
+    navigate(
+      buildArtistMixerTrackPath(
+        lang,
+        mixerTarget.artistSlug,
+        mixerTarget.albumId,
+        mixerTarget.trackId
+      )
+    );
+  }, [lang, mixerTarget, navigate]);
+
   const handleClose = useCallback(() => {
     // Используем sourceLocation для возврата на исходную страницу
     // Если sourceLocation установлен, возвращаемся на него
@@ -512,6 +534,7 @@ export const PlayerShell: React.FC = () => {
       {shouldRenderMini && currentTrack && (
         <MiniPlayer
           title={currentTrack.title}
+          artist={albumMeta.artist}
           cover={albumMeta.cover}
           userId={albumMeta.userId ?? undefined}
           isPlaying={isPlaying}
@@ -519,6 +542,9 @@ export const PlayerShell: React.FC = () => {
           onExpand={handleExpand}
           forwardHandlers={forwardHandlers}
           containerRef={miniPlayerRef}
+          showMixerButton={Boolean(mixerTarget)}
+          onOpenMixer={handleOpenMixer}
+          openMixerLabel={playerA11yLabels.openMixer}
         />
       )}
 
