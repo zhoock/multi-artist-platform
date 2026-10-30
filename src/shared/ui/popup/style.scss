@@ -32,6 +32,11 @@ $player-ambient-gradient-duration: 20s;
   white-space: nowrap;
 }
 
+// Desktop scroll container only — mobile uses `__body` (see subscription-plan-fullscreen-dialog).
+dialog:not(.toast-viewport-layer, .toast-top-layer).popup.local-modal.subscription-plan-modal {
+  overflow: hidden auto;
+}
+
 dialog:not(.toast-viewport-layer, .toast-top-layer) {
   max-inline-size: 100%;
   max-block-size: 100%;
