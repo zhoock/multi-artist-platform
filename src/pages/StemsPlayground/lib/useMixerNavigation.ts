@@ -56,12 +56,14 @@ export function useMixerNavigation(
   const albumsRef = useRef(albums);
   albumsRef.current = albums;
 
+  // Re-apply deep-link target only when URL target changes, not when parent clears deep link for browse mode.
   useEffect(() => {
+    if (!trackDeepLink) return;
     const next = initialStateForDeepLink(trackDeepLink);
     setView(next.view);
     setSelectedAlbumId(next.selectedAlbumId);
     setSelectedTrackId(next.selectedTrackId);
-  }, [trackDeepLinkKey]);
+  }, [trackDeepLinkKey, trackDeepLink]);
 
   const selectedAlbum = useMemo(
     () => pickMixerAlbumForSelection(albums, selectedAlbumId),

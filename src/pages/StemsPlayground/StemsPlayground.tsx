@@ -80,6 +80,7 @@ export default function StemsPlayground() {
 
   const { albums, loading, catalogHasStemAlbums, tracksLoadingAlbumId, loadAlbumTracks } =
     useMixerCatalog();
+  const [deepLinkBrowseFallback, setDeepLinkBrowseFallback] = useState(false);
   const {
     view,
     selectedAlbum,
@@ -89,10 +90,11 @@ export default function StemsPlayground() {
     openAlbumTrack,
     backToAlbums,
     backToTracks,
-  } = useMixerNavigation(albums, { trackDeepLink });
+  } = useMixerNavigation(albums, {
+    trackDeepLink: deepLinkBrowseFallback ? null : trackDeepLink,
+  });
 
   const { requestAccess } = useArchiveAccessModal();
-  const [deepLinkBrowseFallback, setDeepLinkBrowseFallback] = useState(false);
 
   const handleSelectAlbum = useCallback(
     (albumId: string) => {
@@ -577,8 +579,18 @@ export default function StemsPlayground() {
   const trackDeepLinkReady =
     trackDeepLink != null && view === 'mixer' && selectedTrack?.id === trackDeepLink.trackId;
   const showTrackDeepLinkShell =
-    trackDeepLink != null && !trackDeepLinkReady && !deepLinkBrowseFallback;
+    trackDeepLink != null && view === 'mixer' && !trackDeepLinkReady && !deepLinkBrowseFallback;
   const suppressBrowseMixerUi = showTrackDeepLinkShell;
+
+  const handleBackToTracks = useCallback(() => {
+    setDeepLinkBrowseFallback(true);
+    backToTracks();
+  }, [backToTracks]);
+
+  const handleBackToAlbums = useCallback(() => {
+    setDeepLinkBrowseFallback(true);
+    backToAlbums();
+  }, [backToAlbums]);
 
   const myMixesLabels = {
     title: stems.myMixes ?? 'My mixes',
@@ -769,7 +781,7 @@ export default function StemsPlayground() {
 
           {view === 'tracks' && !suppressBrowseMixerUi && selectedAlbum && (
             <>
-              <MixerBackNav onBack={backToAlbums} ariaLabel={selectAlbumHint || pageTitle}>
+              <MixerBackNav onBack={handleBackToAlbums} ariaLabel={selectAlbumHint || pageTitle}>
                 <span className="mixer-back__title">{selectedAlbum.title}</span>
                 <span className="mixer-back__meta">
                   {[
@@ -816,7 +828,7 @@ export default function StemsPlayground() {
           {view === 'mixer' && selectedAlbum && selectedTrack && (
             <>
               <div className="mixer-track-head">
-                <MixerBackNav onBack={backToTracks} ariaLabel={pageTitle}>
+                <MixerBackNav onBack={handleBackToTracks} ariaLabel={pageTitle}>
                   <span className="mixer-back__title">{selectedTrack.title}</span>
                   <span className="mixer-back__meta">
                     {[selectedAlbum.title, formatTrackDuration(selectedTrack.duration)]

@@ -182,6 +182,33 @@ describe('useMixerNavigation', () => {
     expect(result.current.selectedAlbum?.albumId).toBe('a1');
   });
 
+  test('backToTracks from deep-link mixer shows track list state', () => {
+    const { result, rerender } = renderHook(
+      ({ data, deepLink, browseFallback }) =>
+        useMixerNavigation(data, {
+          trackDeepLink: browseFallback ? null : deepLink,
+        }),
+      {
+        initialProps: {
+          data: albums,
+          deepLink: { albumId: 'a1', trackId: 't1' } as const,
+          browseFallback: false,
+        },
+      }
+    );
+
+    expect(result.current.view).toBe('mixer');
+
+    act(() => {
+      rerender({ data: albums, deepLink: { albumId: 'a1', trackId: 't1' }, browseFallback: true });
+    });
+    act(() => result.current.backToTracks());
+
+    expect(result.current.view).toBe('tracks');
+    expect(result.current.selectedTrack).toBeNull();
+    expect(result.current.selectedAlbum?.albumId).toBe('a1');
+  });
+
   test('does not open mixer for locked tracks', () => {
     const albumsWithLocked: MixerAlbum[] = [
       {
