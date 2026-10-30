@@ -1,5 +1,7 @@
 import { useState, useCallback, useEffect, type RefObject } from 'react';
 
+import { useBodyScrollLock } from '@shared/lib/hooks/useBodyScrollLock';
+
 import { useLang } from '@app/providers/lang';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
@@ -80,6 +82,7 @@ export function ArchiveAccessModalView({ dialogRef, onClose }: Props) {
   const [pendingFlow, setPendingFlow] = useState<PendingPlanFlow | null>(null);
   const [alertModal, setAlertModal] = useState<{ message: string } | null>(null);
   const [scheduledDetailsOpen, setScheduledDetailsOpen] = useState(false);
+  const [planPickerOpen, setPlanPickerOpen] = useState(false);
   const { startCheckout } = useSubscriptionCheckout({ onClose });
   const {
     scheduleDowngrade,
@@ -96,12 +99,23 @@ export function ArchiveAccessModalView({ dialogRef, onClose }: Props) {
     if (!dialog) return;
 
     const handleShow = () => {
+      setPlanPickerOpen(true);
       void refetch();
     };
 
+    const handleClose = () => {
+      setPlanPickerOpen(false);
+    };
+
     dialog.addEventListener('show', handleShow);
-    return () => dialog.removeEventListener('show', handleShow);
+    dialog.addEventListener('close', handleClose);
+    return () => {
+      dialog.removeEventListener('show', handleShow);
+      dialog.removeEventListener('close', handleClose);
+    };
   }, [dialogRef, refetch]);
+
+  useBodyScrollLock(planPickerOpen);
 
   const title =
     ui?.titles?.subscriptionPlanPickerTitle ??

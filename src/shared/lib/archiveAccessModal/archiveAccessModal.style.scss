@@ -20,25 +20,52 @@ body:has(.user-dashboard) dialog.popup.local-modal.subscription-plan-modal[open]
   align-items: flex-start;
   justify-content: center;
   overflow: hidden auto;
+}
 
-  @include subscription-plan-mobile-fullscreen {
-    align-items: stretch;
-    justify-content: stretch;
-    margin: 0;
-    padding: 0;
-    inline-size: 100%;
-    max-inline-size: 100%;
-    max-width: 100%;
-    block-size: 100dvb;
-    min-block-size: 100dvb;
-    max-block-size: 100dvb;
-    overflow: hidden;
-    overscroll-behavior: none;
-    background: var(--dashboard-card-bg);
-    border: none;
-    border-radius: 0;
+// Beat `dialog.popup[open]:not(:has(...))` (align-items: center + UA dialog
+// margin) and `dialog.popup.local-modal { margin: auto }` on phones.
+@mixin subscription-plan-fullscreen-dialog {
+  html
+    body
+    dialog:not(
+      .toast-viewport-layer,
+      .toast-top-layer
+    ).popup.local-modal.subscription-plan-modal[open],
+  html
+    body:has(.user-dashboard)
+    dialog:not(
+      .toast-viewport-layer,
+      .toast-top-layer
+    ).popup.local-modal.subscription-plan-modal[open] {
+    @include subscription-plan-mobile-fullscreen {
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      justify-content: flex-start;
+      inset: 0;
+      box-sizing: border-box;
+      width: 100%;
+      max-width: 100%;
+      inline-size: 100%;
+      max-inline-size: 100%;
+      height: 100dvb;
+      min-height: 100dvb;
+      max-height: 100dvb;
+      block-size: 100dvb;
+      min-block-size: 100dvb;
+      max-block-size: 100dvb;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      overscroll-behavior: none;
+      background: var(--dashboard-card-bg);
+      border: none;
+      border-radius: 0;
+    }
   }
 }
+
+@include subscription-plan-fullscreen-dialog;
 
 .subscription-plan-modal {
   max-width: calc(100vw - 1.5rem);
@@ -70,6 +97,9 @@ body:has(.user-dashboard) dialog.popup.local-modal.subscription-plan-modal[open]
       max-width: 100%;
       height: 100%;
       min-height: 0;
+      max-height: none;
+      min-block-size: 0;
+      max-block-size: none;
       margin: 0;
       padding: env(safe-area-inset-top, 0) env(safe-area-inset-right, 0)
         env(safe-area-inset-bottom, 0) env(safe-area-inset-left, 0);
