@@ -464,6 +464,81 @@
     display: flex;
     flex-direction: column;
     gap: var(--ms-0);
+
+    &--skeleton {
+      .skeleton {
+        animation-delay: calc(var(--skeleton-index, 0) * 0.08s);
+      }
+    }
+
+    &__skeleton-back {
+      inline-size: 2.5rem;
+      block-size: 2.5rem;
+      border-radius: var(--ms-02);
+    }
+
+    &__skeleton-title {
+      flex: 1;
+      min-inline-size: 40%;
+      block-size: 1.25rem;
+      border-radius: var(--ms-02);
+    }
+
+    &__skeleton-actions {
+      inline-size: 8rem;
+      block-size: 2rem;
+      border-radius: var(--ms-02);
+    }
+
+    &__skeleton-waveform {
+      inline-size: 100%;
+      block-size: 5rem;
+      border-radius: var(--ms-01);
+
+      @include breakpoint(tablet) {
+        block-size: 6.5rem;
+      }
+    }
+  }
+
+  .mixer-track-head--skeleton {
+    display: flex;
+    align-items: center;
+    gap: var(--ms-01);
+    width: 100%;
+  }
+
+  .mixer-stem--skeleton {
+    display: grid;
+    grid-template-columns: auto minmax(4rem, 7rem) 1fr auto auto;
+    align-items: center;
+    gap: var(--ms-01);
+    padding: var(--ms-01);
+    background: rgba(var(--extra-background-color), 0.8);
+    border: 1px solid var(--hr-color);
+    border-radius: var(--ms-01);
+
+    .mixer-stem__skeleton-icon {
+      inline-size: 1.5rem;
+      block-size: 1.5rem;
+      border-radius: 50%;
+    }
+
+    .mixer-stem__skeleton-name {
+      block-size: 1rem;
+      border-radius: var(--ms-02);
+    }
+
+    .mixer-stem__skeleton-slider {
+      block-size: 0.5rem;
+      border-radius: var(--ms-02);
+    }
+
+    .mixer-stem__skeleton-btn {
+      inline-size: 2rem;
+      block-size: 2rem;
+      border-radius: var(--ms-02);
+    }
   }
 
   .mixer-player__wave-play {

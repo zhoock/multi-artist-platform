@@ -50,6 +50,16 @@ describe('useMixerNavigation', () => {
     expect(result.current.selectedTrack).toBeNull();
   });
 
+  test('starts on mixer view when track deep link is provided', () => {
+    const { result } = renderHook(() =>
+      useMixerNavigation(albums, {
+        trackDeepLink: { albumId: 'missing-album', trackId: 't1' },
+      })
+    );
+    expect(result.current.view).toBe('mixer');
+    expect(result.current.selectedTrack).toBeNull();
+  });
+
   test('drills down albums → tracks → mixer and back', () => {
     const { result } = renderHook(() => useMixerNavigation(albums));
 
@@ -78,6 +88,59 @@ describe('useMixerNavigation', () => {
     expect(result.current.view).toBe('mixer');
     expect(result.current.selectedAlbum?.albumId).toBe('a2');
     expect(result.current.selectedTrack?.id).toBe('t3');
+  });
+
+  test('openAlbumTrack uses hydrated album when catalog ref has no tracks yet', () => {
+    const shellsOnly: MixerAlbum[] = [
+      {
+        albumId: 'a1',
+        title: 'Album 1',
+        year: '2022',
+        listedTrackCount: 1,
+        tracksStatus: 'idle',
+        tracks: [],
+      },
+    ];
+    const loaded: MixerAlbum = {
+      albumId: 'a1',
+      title: 'Album 1',
+      year: '2022',
+      listedTrackCount: 1,
+      tracksStatus: 'loaded',
+      tracks: [
+        {
+          id: 't1',
+          title: 'Track 1',
+          duration: 120,
+          stems: [{ id: 's1', name: 'Drums', category: 'drums', url: 'u1' }],
+        },
+      ],
+    };
+    const { result, rerender } = renderHook(
+      ({ data, deepLink }) =>
+        useMixerNavigation(data, {
+          trackDeepLink: deepLink,
+        }),
+      {
+        initialProps: {
+          data: shellsOnly,
+          deepLink: { albumId: 'a1', trackId: 't1' } as const,
+        },
+      }
+    );
+
+    let opened = false;
+    act(() => {
+      opened = result.current.openAlbumTrack('a1', 't1', loaded);
+    });
+    expect(opened).toBe(true);
+    expect(result.current.view).toBe('mixer');
+
+    rerender({
+      data: [{ ...shellsOnly[0], ...loaded, tracksStatus: 'loaded' as const }],
+      deepLink: { albumId: 'a1', trackId: 't1' },
+    });
+    expect(result.current.selectedTrack?.id).toBe('t1');
   });
 
   test('openAlbumTrack returns false when track id is not on the album', () => {

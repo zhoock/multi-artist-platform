@@ -22,6 +22,7 @@ import type { RequestStatus } from '@entities/album/model/types';
 import { selectPublicArtistSlug } from '@shared/model/currentArtist';
 import { shouldShowAlbumsLoadingShell } from '@shared/lib/hooks/useShowAlbumsLoadingShell';
 import { buildMixerTracksFromAlbumDetails } from './buildMixerTracksFromAlbumDetails';
+import { findMixerAlbumByRouteId } from './findMixerAlbumByRouteId';
 import type { MixerAlbum } from './types';
 
 function yearFromReleaseDate(releaseDate: string): string {
@@ -83,6 +84,7 @@ export function useMixerCatalog(): MixerCatalog {
   const artistSlugRef = useRef(artistSlug);
   artistSlugRef.current = artistSlug;
   const inFlightRef = useRef<Set<string>>(new Set());
+  const loadPromisesRef = useRef<Map<string, Promise<MixerAlbum | null>>>(new Map());
   const albumsRef = useRef(albums);
   albumsRef.current = albums;
 
@@ -148,67 +150,90 @@ export function useMixerCatalog(): MixerCatalog {
       const slug = artistSlugRef.current.trim();
       if (!id || !slug) return null;
 
-      const current = albumsRef.current.find((album) => album.albumId === id);
+      const existingPromise = loadPromisesRef.current.get(id);
+      if (existingPromise && !options?.force) {
+        return existingPromise;
+      }
+
+      const current = findMixerAlbumByRouteId(albumsRef.current, id);
       if (!options?.force && current?.tracksStatus === 'loaded') {
         return current;
       }
-      if (inFlightRef.current.has(id)) {
-        return albumsRef.current.find((album) => album.albumId === id) ?? null;
-      }
 
-      inFlightRef.current.add(id);
-      setTracksLoadingAlbumId(id);
-      setAlbums((prev) =>
-        prev.map((album) =>
-          album.albumId === id ? { ...album, tracksStatus: 'loading' as const } : album
-        )
-      );
+      const run = (async (): Promise<MixerAlbum | null> => {
+        inFlightRef.current.add(id);
+        setTracksLoadingAlbumId(id);
+        setAlbums((prev) =>
+          prev.map((album) =>
+            album.albumId === id ? { ...album, tracksStatus: 'loading' as const } : album
+          )
+        );
 
-      try {
-        const details = await fetchAlbumDetails(slug, id);
-        const resolved = resolveAlbumDetailsForDisplay(details, langRef.current);
-        const storageUserId = resolved.userId?.trim() || current?.userId?.trim() || '';
-        if (!storageUserId) {
-          setAlbums((prev) =>
-            prev.map((album) =>
+        try {
+          const details = await fetchAlbumDetails(slug, id);
+          const resolved = resolveAlbumDetailsForDisplay(details, langRef.current);
+          const storageUserId = resolved.userId?.trim() || current?.userId?.trim() || '';
+          const canonicalAlbumId = resolved.albumId.trim() || id;
+
+          if (!storageUserId) {
+            setAlbums((prev) => {
+              const updated = prev.map((album) =>
+                album.albumId === id || album.albumId === canonicalAlbumId
+                  ? { ...album, tracks: [], tracksStatus: 'failed' as const }
+                  : album
+              );
+              albumsRef.current = updated;
+              return updated;
+            });
+            return null;
+          }
+
+          const tracks = await buildMixerTracksFromAlbumDetails(resolved, storageUserId);
+          const next: MixerAlbum = {
+            albumId: canonicalAlbumId,
+            title: resolved.title || canonicalAlbumId,
+            year: yearFromReleaseDate(
+              typeof resolved.release?.date === 'string' ? resolved.release.date : ''
+            ),
+            cover: resolved.cover || undefined,
+            userId: storageUserId,
+            listedTrackCount: current?.listedTrackCount ?? resolved.tracks.length,
+            tracks,
+            tracksStatus: 'loaded',
+          };
+
+          setAlbums((prev) => {
+            const updated = prev
+              .filter((album) => album.albumId !== id && album.albumId !== canonicalAlbumId)
+              .concat(next);
+            albumsRef.current = updated;
+            return updated;
+          });
+          return next;
+        } catch {
+          setAlbums((prev) => {
+            const updated = prev.map((album) =>
               album.albumId === id
                 ? { ...album, tracks: [], tracksStatus: 'failed' as const }
                 : album
-            )
-          );
+            );
+            albumsRef.current = updated;
+            return updated;
+          });
           return null;
+        } finally {
+          inFlightRef.current.delete(id);
+          setTracksLoadingAlbumId((prev) => (prev === id ? null : prev));
         }
+      })();
 
-        const tracks = await buildMixerTracksFromAlbumDetails(resolved, storageUserId);
-        const next: MixerAlbum = {
-          albumId: resolved.albumId,
-          title: resolved.title || resolved.albumId,
-          year: yearFromReleaseDate(
-            typeof resolved.release?.date === 'string' ? resolved.release.date : ''
-          ),
-          cover: resolved.cover || undefined,
-          userId: storageUserId,
-          listedTrackCount: current?.listedTrackCount ?? resolved.tracks.length,
-          tracks,
-          tracksStatus: 'loaded',
-        };
-
-        setAlbums((prev) => {
-          const exists = prev.some((album) => album.albumId === id);
-          if (!exists) return [...prev, next];
-          return prev.map((album) => (album.albumId === id ? next : album));
-        });
-        return next;
-      } catch {
-        setAlbums((prev) =>
-          prev.map((album) =>
-            album.albumId === id ? { ...album, tracks: [], tracksStatus: 'failed' as const } : album
-          )
-        );
-        return null;
+      loadPromisesRef.current.set(id, run);
+      try {
+        return await run;
       } finally {
-        inFlightRef.current.delete(id);
-        setTracksLoadingAlbumId((prev) => (prev === id ? null : prev));
+        if (loadPromisesRef.current.get(id) === run) {
+          loadPromisesRef.current.delete(id);
+        }
       }
     },
     []

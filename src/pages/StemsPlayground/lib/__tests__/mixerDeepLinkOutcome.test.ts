@@ -1,55 +1,88 @@
 import { describe, expect, test, jest } from '@jest/globals';
+import { resolveMixerTrackDeepLinkOutcome } from '../applyMixerTrackDeepLink';
+import type { MixerAlbum } from '../types';
 
-/**
- * Documents StemsPlayground deep-link outcomes (see StemsPlayground.tsx useEffect).
- * Pure decision table — kept in tests to avoid duplicating production logic in prod code.
- */
-type LoadedTrack = { id: string; locked?: boolean };
+const loadedAlbum = (tracks: MixerAlbum['tracks']): MixerAlbum => ({
+  albumId: 'rubber-soul',
+  title: 'Rubber Soul',
+  year: '1965',
+  listedTrackCount: tracks.length,
+  tracksStatus: 'loaded',
+  tracks,
+});
 
-type DeepLinkResult = { kind: 'open_mixer' } | { kind: 'tracks_list'; requestAccess?: boolean };
-
-function resolveMixerDeepLinkAfterLoad(
-  deepLinkTrackId: string,
-  loadedTracks: LoadedTrack[],
-  openAlbumTrack: (albumId: string, trackId: string) => boolean
-): DeepLinkResult {
-  const track = loadedTracks.find((t) => t.id === deepLinkTrackId);
-  if (!track) {
-    return { kind: 'tracks_list' };
-  }
-  if (track.locked) {
-    return { kind: 'tracks_list', requestAccess: true };
-  }
-  if (openAlbumTrack('album', deepLinkTrackId)) {
-    return { kind: 'open_mixer' };
-  }
-  return { kind: 'tracks_list' };
-}
-
-describe('mixer deep-link decision table (StemsPlayground contract)', () => {
-  test('opens mixer for matching unlocked track with stems', () => {
-    const result = resolveMixerDeepLinkAfterLoad(
-      't2',
-      [{ id: 't1' }, { id: 't2' }],
-      (_albumId, trackId) => trackId === 't2'
+describe('resolveMixerTrackDeepLinkOutcome', () => {
+  test('returns pending while album tracks are still loading', () => {
+    const outcome = resolveMixerTrackDeepLinkOutcome(
+      'rubber-soul',
+      't1',
+      { ...loadedAlbum([]), tracksStatus: 'loading' },
+      () => true
     );
-    expect(result).toEqual({ kind: 'open_mixer' });
+    expect(outcome).toEqual({ kind: 'pending' });
+  });
+
+  test('opens mixer for matching unlocked track with stems', () => {
+    const album = loadedAlbum([
+      {
+        id: 't2',
+        title: 'Norwegian Wood',
+        duration: 125,
+        stems: [{ id: 's1', name: 'Drums', category: 'drums', url: 'u1' }],
+      },
+    ]);
+    const openSpy = jest.fn(() => true);
+    const outcome = resolveMixerTrackDeepLinkOutcome('rubber-soul', 't2', album, openSpy);
+    expect(outcome.kind).toBe('open_mixer');
+    expect(openSpy).toHaveBeenCalledWith('rubber-soul', 't2', album);
   });
 
   test('stays on track list when requested track has no mixer row', () => {
-    const result = resolveMixerDeepLinkAfterLoad('missing', [{ id: 't1' }], () => true);
-    expect(result).toEqual({ kind: 'tracks_list' });
+    const outcome = resolveMixerTrackDeepLinkOutcome(
+      'rubber-soul',
+      'missing',
+      loadedAlbum([{ id: 't1', title: 'A', duration: 1, stems: [] }]),
+      () => true
+    );
+    expect(outcome).toEqual({ kind: 'tracks_list', albumId: 'rubber-soul' });
   });
 
   test('does not open mixer for locked track and signals requestAccess', () => {
     const openSpy = jest.fn(() => true);
-    const result = resolveMixerDeepLinkAfterLoad('t1', [{ id: 't1', locked: true }], openSpy);
-    expect(result).toEqual({ kind: 'tracks_list', requestAccess: true });
+    const outcome = resolveMixerTrackDeepLinkOutcome(
+      'rubber-soul',
+      't1',
+      loadedAlbum([{ id: 't1', title: 'Locked', duration: 1, locked: true, stems: [] }]),
+      openSpy
+    );
+    expect(outcome).toEqual({
+      kind: 'tracks_list',
+      albumId: 'rubber-soul',
+      requestAccess: true,
+    });
     expect(openSpy).not.toHaveBeenCalled();
   });
 
   test('does not substitute first available track when openAlbumTrack fails', () => {
-    const result = resolveMixerDeepLinkAfterLoad('t2', [{ id: 't1' }, { id: 't2' }], () => false);
-    expect(result).toEqual({ kind: 'tracks_list' });
+    const outcome = resolveMixerTrackDeepLinkOutcome(
+      'rubber-soul',
+      't2',
+      loadedAlbum([
+        {
+          id: 't1',
+          title: 'A',
+          duration: 1,
+          stems: [{ id: 's', name: 'S', category: 'drums', url: 'u' }],
+        },
+        {
+          id: 't2',
+          title: 'B',
+          duration: 1,
+          stems: [{ id: 's2', name: 'S2', category: 'bass', url: 'u2' }],
+        },
+      ]),
+      () => false
+    );
+    expect(outcome).toEqual({ kind: 'tracks_list', albumId: 'rubber-soul' });
   });
 });

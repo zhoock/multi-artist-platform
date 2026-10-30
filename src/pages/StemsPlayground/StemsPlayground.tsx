@@ -43,6 +43,8 @@ import {
 import type { SavedMix, SharedMix } from '@entities/savedMix';
 import { useMixerCatalog } from './lib/useMixerCatalog';
 import { useMixerNavigation } from './lib/useMixerNavigation';
+import { resolveMixerTrackDeepLinkOutcome } from './lib/applyMixerTrackDeepLink';
+import { readMixerTrackDeepLinkFromSearchParams } from './lib/readMixerTrackDeepLink';
 import { pluralizeTracks, type TrackCountLabels } from './lib/pluralizeTracks';
 import { formatTrackDuration } from './lib/formatTrackDuration';
 import { MixerAlbumList } from './components/MixerAlbumList';
@@ -50,6 +52,7 @@ import { MixerTrackList } from './components/MixerTrackList';
 import { MixerAlbumListSkeleton } from './components/MixerAlbumListSkeleton';
 import { MixerTrackListSkeleton } from './components/MixerTrackListSkeleton';
 import { MixerBackNav } from './components/MixerBackNav';
+import { MixerPlayerPanelSkeleton } from './components/MixerPlayerPanelSkeleton';
 import { MixerPlayerPanel, type MixerPlayerPanelHandle } from './components/MixerPlayerPanel';
 import { SaveMixModal } from './components/SaveMixModal';
 import { MyMixesModal } from './components/MyMixesModal';
@@ -68,6 +71,13 @@ export default function StemsPlayground() {
   const artistSlug = searchParams.get('artist')?.trim() || publicArtistSlugFromStore?.trim() || '';
   const publicArtistSlug = artistSlug || null;
 
+  const trackDeepLink = useMemo(
+    () => readMixerTrackDeepLinkFromSearchParams(searchParams, { mixId, artistSlug }),
+    [searchParams, mixId, artistSlug]
+  );
+  const deepLinkAlbumId = trackDeepLink?.albumId ?? '';
+  const deepLinkTrackId = trackDeepLink?.trackId ?? '';
+
   const { albums, loading, catalogHasStemAlbums, tracksLoadingAlbumId, loadAlbumTracks } =
     useMixerCatalog();
   const {
@@ -79,9 +89,10 @@ export default function StemsPlayground() {
     openAlbumTrack,
     backToAlbums,
     backToTracks,
-  } = useMixerNavigation(albums);
+  } = useMixerNavigation(albums, { trackDeepLink });
 
   const { requestAccess } = useArchiveAccessModal();
+  const [deepLinkBrowseFallback, setDeepLinkBrowseFallback] = useState(false);
 
   const handleSelectAlbum = useCallback(
     (albumId: string) => {
@@ -125,26 +136,22 @@ export default function StemsPlayground() {
     return () => window.removeEventListener('archive:changed', onArchiveChanged);
   }, [dispatch, publicArtistSlug, selectedAlbum?.albumId, loadAlbumTracks]);
 
-  const deepLinkAlbumId = searchParams.get('album')?.trim() || '';
-  const deepLinkTrackId = searchParams.get('track')?.trim() || '';
   const deepLinkHandledRef = useRef('');
 
   useEffect(() => {
+    setDeepLinkBrowseFallback(false);
     deepLinkHandledRef.current = '';
-  }, [artistSlug]);
+  }, [artistSlug, deepLinkAlbumId, deepLinkTrackId]);
 
   useEffect(() => {
-    if (mixId || !artistSlug || !deepLinkAlbumId || !deepLinkTrackId) return;
-    if (loading || catalogHasStemAlbums === null) return;
+    if (!trackDeepLink || !artistSlug) return;
+    if (catalogHasStemAlbums === false) {
+      setDeepLinkBrowseFallback(true);
+      return;
+    }
 
     const key = `${artistSlug}:${deepLinkAlbumId}:${deepLinkTrackId}`;
     if (deepLinkHandledRef.current === key) return;
-
-    const albumInCatalog = albums.some((a) => a.albumId === deepLinkAlbumId);
-    if (!albumInCatalog) {
-      deepLinkHandledRef.current = key;
-      return;
-    }
 
     let cancelled = false;
 
@@ -152,15 +159,20 @@ export default function StemsPlayground() {
       const loaded = await loadAlbumTracks(deepLinkAlbumId);
       if (cancelled) return;
 
-      const track = loaded?.tracks.find((t) => t.id === deepLinkTrackId);
-      if (!track) {
-        selectAlbum(deepLinkAlbumId);
-        deepLinkHandledRef.current = key;
+      const outcome = resolveMixerTrackDeepLinkOutcome(
+        deepLinkAlbumId,
+        deepLinkTrackId,
+        loaded,
+        openAlbumTrack
+      );
+
+      if (outcome.kind === 'pending') {
         return;
       }
 
-      if (track.locked) {
-        selectAlbum(deepLinkAlbumId);
+      if (outcome.kind === 'tracks_list' && outcome.requestAccess) {
+        setDeepLinkBrowseFallback(true);
+        selectAlbum(outcome.albumId);
         deepLinkHandledRef.current = key;
         void requestAccess({
           artistUserId: loaded?.userId,
@@ -169,36 +181,41 @@ export default function StemsPlayground() {
             refreshPremiumContentForArchiveChange(dispatch, publicArtistSlug, {
               immediate: true,
             });
-            if (loaded?.albumId) {
-              void loadAlbumTracks(loaded.albumId, { force: true }).then((refreshed) => {
-                if (!refreshed) return;
-                openAlbumTrack(deepLinkAlbumId, deepLinkTrackId);
-              });
-            }
+            const reloadId = loaded?.albumId ?? deepLinkAlbumId;
+            void loadAlbumTracks(reloadId, { force: true }).then((refreshed) => {
+              const retry = resolveMixerTrackDeepLinkOutcome(
+                deepLinkAlbumId,
+                deepLinkTrackId,
+                refreshed,
+                openAlbumTrack
+              );
+              if (retry.kind === 'open_mixer') {
+                setDeepLinkBrowseFallback(false);
+                deepLinkHandledRef.current = key;
+              }
+            });
           },
         });
         return;
       }
 
-      if (openAlbumTrack(deepLinkAlbumId, deepLinkTrackId)) {
-        deepLinkHandledRef.current = key;
-      } else {
-        selectAlbum(deepLinkAlbumId);
-        deepLinkHandledRef.current = key;
+      if (outcome.kind === 'tracks_list') {
+        setDeepLinkBrowseFallback(true);
+        selectAlbum(outcome.albumId);
       }
+
+      deepLinkHandledRef.current = key;
     })();
 
     return () => {
       cancelled = true;
     };
   }, [
-    mixId,
+    trackDeepLink,
     artistSlug,
     deepLinkAlbumId,
     deepLinkTrackId,
-    loading,
     catalogHasStemAlbums,
-    albums,
     loadAlbumTracks,
     selectAlbum,
     openAlbumTrack,
@@ -557,6 +574,12 @@ export default function StemsPlayground() {
   const tracksLoadErrorText = stems.tracksLoadError ?? 'Could not load tracks';
   const backToMixerLabel = stems.backToMixer ?? 'Open Mixer';
 
+  const trackDeepLinkReady =
+    trackDeepLink != null && view === 'mixer' && selectedTrack?.id === trackDeepLink.trackId;
+  const showTrackDeepLinkShell =
+    trackDeepLink != null && !trackDeepLinkReady && !deepLinkBrowseFallback;
+  const suppressBrowseMixerUi = showTrackDeepLinkShell;
+
   const myMixesLabels = {
     title: stems.myMixes ?? 'My mixes',
     empty: stems.noMixes ?? 'No saved mixes yet',
@@ -659,10 +682,12 @@ export default function StemsPlayground() {
           hreflang={hreflang}
         />
         <div className="wrapper">
-          <ContextNav mode="artist-only" artistName={siteArtistName} artistTo={artistHubPath} />
+          {!showTrackDeepLinkShell ? (
+            <ContextNav mode="artist-only" artistName={siteArtistName} artistTo={artistHubPath} />
+          ) : null}
           <h2>{pageTitle}</h2>
           <div className="mixer">
-            <MixerAlbumListSkeleton />
+            {showTrackDeepLinkShell ? <MixerPlayerPanelSkeleton /> : <MixerAlbumListSkeleton />}
           </div>
         </div>
       </section>
@@ -720,14 +745,16 @@ export default function StemsPlayground() {
       />
 
       <div className="wrapper">
-        {view === 'albums' ? (
+        {view === 'albums' && !suppressBrowseMixerUi ? (
           <ContextNav mode="artist-only" artistName={siteArtistName} artistTo={artistHubPath} />
         ) : null}
 
         <h2>{pageTitle}</h2>
 
         <div className="mixer">
-          {view === 'albums' && (
+          {showTrackDeepLinkShell ? <MixerPlayerPanelSkeleton /> : null}
+
+          {view === 'albums' && !suppressBrowseMixerUi && (
             <>
               <MixerAlbumList
                 albums={albums}
@@ -740,7 +767,7 @@ export default function StemsPlayground() {
             </>
           )}
 
-          {view === 'tracks' && selectedAlbum && (
+          {view === 'tracks' && !suppressBrowseMixerUi && selectedAlbum && (
             <>
               <MixerBackNav onBack={backToAlbums} ariaLabel={selectAlbumHint || pageTitle}>
                 <span className="mixer-back__title">{selectedAlbum.title}</span>
