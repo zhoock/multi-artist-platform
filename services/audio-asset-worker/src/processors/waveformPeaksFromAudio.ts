@@ -5,6 +5,7 @@ import {
   DEFAULT_WAVEFORM_POINT_COUNT,
   serializeWaveformPeaks,
 } from '../../../../src/shared/lib/audio/waveformPeaks.js';
+import { resolveFfmpegBinary } from './ffmpegTranscoder.js';
 
 export type WaveformPeaksGenerationResult = {
   pointCount: number;
@@ -28,7 +29,7 @@ async function decodeMonoPcmFromAudio(inputPath: string): Promise<Float32Array> 
 
   await new Promise<void>((resolve, reject) => {
     const args = ['-i', inputPath, '-ac', '1', '-f', 'f32le', 'pipe:1'];
-    const proc = spawn('ffmpeg', args, { stdio: ['ignore', 'pipe', 'pipe'] });
+    const proc = spawn(resolveFfmpegBinary(), args, { stdio: ['ignore', 'pipe', 'pipe'] });
     proc.stdout.on('data', (chunk: Buffer) => chunks.push(chunk));
     let stderr = '';
     proc.stderr.on('data', (chunk: Buffer) => {

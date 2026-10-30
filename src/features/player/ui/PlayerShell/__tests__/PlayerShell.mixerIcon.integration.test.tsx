@@ -5,7 +5,7 @@ import { Provider } from 'react-redux';
 import { MemoryRouter } from 'react-router-dom';
 import { configureStore } from '@reduxjs/toolkit';
 import { PlayerShell } from '../PlayerShell';
-import { playerReducer } from '@features/player/model/slice/playerSlice';
+import { playerReducer, playerActions } from '@features/player/model/slice/playerSlice';
 import { playerListenerMiddleware } from '@features/player/model/middleware/playerListeners';
 import { langReducer } from '@shared/model/lang/langSlice';
 import { popupReducer } from '@features/popupToggle/model/slice/popupSlice';
@@ -130,13 +130,14 @@ function createStore(playlist: PlayerTrack[], currentTrackIndex: number) {
 
 function renderShell(playlist: PlayerTrack[], currentTrackIndex: number) {
   const store = createStore(playlist, currentTrackIndex);
-  render(
+  const view = render(
     <Provider store={store}>
       <MemoryRouter initialEntries={['/en?artist=the-beatles']}>
         <PlayerShell />
       </MemoryRouter>
     </Provider>
   );
+  return { store, ...view };
 }
 
 describe('PlayerShell mini-player mixer icon', () => {
@@ -165,14 +166,70 @@ describe('PlayerShell mini-player mixer icon', () => {
     });
   });
 
-  test('hides mixer control when current track has no stems', async () => {
-    renderShell(
+  test('hides mixer control when hasStems is cleared on the current track', async () => {
+    const { store } = renderShell([track({ id: 't1', title: 'With stems', hasStems: true })], 0);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('mini-player').getAttribute('data-mixer')).toBe('true');
+    });
+
+    store.dispatch(
+      playerActions.syncTrackHasStemsInQueue({
+        albumId: 'album-1',
+        trackId: 't1',
+        hasStems: false,
+      })
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('mini-player').getAttribute('data-mixer')).toBe('false');
+    });
+  });
+
+  test('keeps mixer when another track in queue loses stems but current track still has them', async () => {
+    const { store } = renderShell(
       [
         track({ id: 't1', title: 'With stems', hasStems: true }),
-        track({ id: 't2', title: 'No stems' }),
+        track({ id: 't2', title: 'Also stems', hasStems: true }),
       ],
-      1
+      0
     );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('mini-player').getAttribute('data-mixer')).toBe('true');
+    });
+
+    store.dispatch(
+      playerActions.syncTrackHasStemsInQueue({
+        albumId: 'album-1',
+        trackId: 't2',
+        hasStems: false,
+      })
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('mini-player').getAttribute('data-mixer')).toBe('true');
+    });
+  });
+
+  test('shows no mixer after switching to a track whose stems were removed', async () => {
+    const { store } = renderShell(
+      [
+        track({ id: 't1', title: 'With stems', hasStems: true }),
+        track({ id: 't2', title: 'Also stems', hasStems: true }),
+      ],
+      0
+    );
+
+    store.dispatch(
+      playerActions.syncTrackHasStemsInQueue({
+        albumId: 'album-1',
+        trackId: 't2',
+        hasStems: false,
+      })
+    );
+
+    store.dispatch(playerActions.setCurrentTrackIndex(1));
 
     await waitFor(() => {
       expect(screen.getByTestId('mini-player').getAttribute('data-mixer')).toBe('false');

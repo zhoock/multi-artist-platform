@@ -14,6 +14,7 @@ import {
 import { toPlayerTracks } from '@features/player/model/lib/toPlayerTrack';
 import { syncPlayerAlbumMetaFromCurrentTrack } from '@features/player/model/lib/syncPlayerAlbumMetaFromCurrentTrack';
 import { normalizeTrackIdString } from '@shared/lib/tracks/normalizeTrackIdString';
+import { patchPlayerTrackListHasStems } from '@features/player/model/lib/patchPlayerTrackHasStems';
 
 /**
  * Перемешивает массив треков используя алгоритм Fisher-Yates.
@@ -315,6 +316,34 @@ const playerSlice = createSlice({
      * если очередь опустела — сессия плеера сбрасывается целиком (мини-плеер исчезает).
      * `albumIds` — допустимые идентификаторы альбома (albumId / slug); чужой альбом не трогаем.
      */
+    /**
+     * After a successful stems manifest write, sync hasStems on queue rows for that album track.
+     * Does not change playback index, isPlaying, or playlist order.
+     */
+    syncTrackHasStemsInQueue(
+      state,
+      action: PayloadAction<{ albumId: string; trackId: string; hasStems: boolean }>
+    ) {
+      const { albumId, trackId, hasStems } = action.payload;
+      const playlistPatch = patchPlayerTrackListHasStems(
+        state.playlist,
+        albumId,
+        trackId,
+        hasStems
+      );
+      if (playlistPatch.changed) {
+        state.playlist = playlistPatch.next;
+      }
+      const originalPatch = patchPlayerTrackListHasStems(
+        state.originalPlaylist,
+        albumId,
+        trackId,
+        hasStems
+      );
+      if (originalPatch.changed) {
+        state.originalPlaylist = originalPatch.next;
+      }
+    },
     removeUnavailableTracks(
       state,
       action: PayloadAction<{ albumIds: readonly string[]; availableTrackIds: readonly string[] }>

@@ -169,7 +169,12 @@ export async function saveStemsManifest(
   });
   const { signedUrl } = await getSignedUploadUrl(albumId, trackId, MANIFEST_FILE);
   await putToSignedUrl(signedUrl, file, MANIFEST_MIME);
-  await syncTrackHasStems(albumId, trackId, stems.length > 0);
+  const hasStems = stems.length > 0;
+  await syncTrackHasStems(albumId, trackId, hasStems);
+  const { syncTrackHasStemsInPlayer } = await import(
+    '@features/player/model/lib/syncTrackHasStemsInPlayer'
+  );
+  syncTrackHasStemsInPlayer({ albumId, trackId, hasStems });
   const { notifyPublicSurfaceChanged } = await import('@shared/lib/publicSurfaceSync');
   notifyPublicSurfaceChanged({ type: 'stemsChanged', albumId });
 }

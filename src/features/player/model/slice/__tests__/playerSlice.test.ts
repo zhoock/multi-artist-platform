@@ -1651,6 +1651,72 @@ describe('playerSlice', () => {
     });
   });
 
+  describe('syncTrackHasStemsInQueue', () => {
+    test('updates hasStems on playlist and originalPlaylist without changing index or isPlaying', () => {
+      const store = configureStore({
+        reducer: { player: playerReducer },
+        preloadedState: {
+          player: {
+            ...initialPlayerState,
+            isPlaying: true,
+            currentTrackIndex: 1,
+            playlist: [
+              {
+                id: 't1',
+                title: 'A',
+                duration: 1,
+                src: 'a.mp3',
+                albumId: 'album-1',
+                hasStems: true,
+              },
+              {
+                id: 't2',
+                title: 'B',
+                duration: 1,
+                src: 'b.mp3',
+                albumId: 'album-1',
+                hasStems: true,
+              },
+            ],
+            originalPlaylist: [
+              {
+                id: 't1',
+                title: 'A',
+                duration: 1,
+                src: 'a.mp3',
+                albumId: 'album-1',
+                hasStems: true,
+              },
+              {
+                id: 't2',
+                title: 'B',
+                duration: 1,
+                src: 'b.mp3',
+                albumId: 'album-1',
+                hasStems: true,
+              },
+            ],
+          },
+        },
+      });
+
+      store.dispatch(
+        playerActions.syncTrackHasStemsInQueue({
+          albumId: 'album-1',
+          trackId: 't2',
+          hasStems: false,
+        })
+      );
+
+      const state = store.getState() as RootState;
+      expect(state.player.isPlaying).toBe(true);
+      expect(state.player.currentTrackIndex).toBe(1);
+      expect(state.player.playlist[0].hasStems).toBe(true);
+      expect(state.player.playlist[1].hasStems).toBeUndefined();
+      expect(state.player.originalPlaylist[1].hasStems).toBeUndefined();
+    });
+  });
+
   describe('edge cases', () => {
     test('должен обработать неизвестное действие', () => {
       const store = configureStore({

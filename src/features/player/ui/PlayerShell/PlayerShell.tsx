@@ -188,6 +188,9 @@ export const PlayerShell: React.FC = () => {
         albumId: playerState.albumId,
         currentTrackIndex: playerState.currentTrackIndex,
         playlistLength: playerState.playlist.length,
+        stemsFlags: playerState.playlist.map(
+          (track) => `${track.id}:${track.hasStems === true ? 1 : 0}`
+        ),
         timeCurrent: Math.floor(playerState.time.current),
         timeDuration: Math.floor(
           Number.isFinite(playerState.time.duration) ? playerState.time.duration : 0
