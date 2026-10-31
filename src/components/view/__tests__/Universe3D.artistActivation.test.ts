@@ -482,6 +482,15 @@ describe('Universe3D artist activation', () => {
   });
 
   describe('hero preview mode', () => {
+    test('does not create artist points in the nebula', () => {
+      const { container, universe } = createUniverse({ isHeroPreview: true });
+      const nodes = (universe as unknown as { clickableNodes: THREE.Mesh[] }).clickableNodes;
+      expect(nodes).toHaveLength(0);
+
+      universe.destroy();
+      container.remove();
+    });
+
     test('activatePrimaryArtist does not open artist card', () => {
       const { container, universe } = createUniverse({ isHeroPreview: true });
 
@@ -494,7 +503,6 @@ describe('Universe3D artist activation', () => {
 
     test('tryActivateArtistFromClick does not open artist card', () => {
       const { container, universe } = createUniverse({ isHeroPreview: true });
-      mockLabelRaycastHit(universe);
 
       const canvas = container.querySelector('canvas');
       expect(canvas).toBeTruthy();
@@ -509,9 +517,8 @@ describe('Universe3D artist activation', () => {
       container.remove();
     });
 
-    test('hovering artist point does not set canvas pointer cursor', () => {
+    test('mousemove on canvas does not set pointer cursor', () => {
       const { container, universe } = createUniverse({ isHeroPreview: true });
-      mockPointRaycastHit(universe);
 
       const canvas = container.querySelector('canvas');
       expect(canvas).toBeTruthy();

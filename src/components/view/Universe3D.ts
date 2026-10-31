@@ -844,13 +844,6 @@ export class Universe3D {
     const diskRadius = innerRadiusMax * CLOUD_ARTIST_DISK_FR;
     const spreadZHalf = spreadZ * CLOUD_ARTIST_Z_FR * 0.5;
 
-    const labelPositions = sampleCloudLabelPositionsWithMinSep(
-      roster.length,
-      diskRadius,
-      spreadZHalf,
-      clusterSize
-    );
-
     const geometry = new THREE.PlaneGeometry(3, 3);
 
     for (let i = 0; i < 5; i++) {
@@ -867,6 +860,19 @@ export class Universe3D {
 
       group.add(layer);
     }
+
+    // Hero banner: nebula + genre label only (no artist nav points).
+    if (this.isHeroPreview) {
+      group.position.copy(position);
+      return group;
+    }
+
+    const labelPositions = sampleCloudLabelPositionsWithMinSep(
+      roster.length,
+      diskRadius,
+      spreadZHalf,
+      clusterSize
+    );
 
     // 🔥 Группы: случайно в цилиндре внутри облака + минимальный 3D зазор между метками
     roster.forEach((user, i) => {
