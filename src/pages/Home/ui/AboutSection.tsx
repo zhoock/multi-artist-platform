@@ -156,21 +156,22 @@ export function AboutSection({ isAboutModalOpen, onOpen, onClose }: AboutSection
         </h2>
 
         {previewParagraph && (
-          <Text className={`${aboutStyles.aboutText} ${aboutStyles.aboutTextPreview}`}>
-            {previewParagraph}
-          </Text>
-        )}
-
-        <div className={aboutStyles.aboutButtonWrapper}>
           <button
-            className={aboutStyles.aboutLookMore}
-            onClick={onOpen}
             type="button"
+            className={aboutStyles.aboutPreviewTrigger}
+            onClick={onOpen}
             aria-haspopup="dialog"
+            aria-expanded={isAboutModalOpen}
           >
-            {showLabel}
+            <Text className={`${aboutStyles.aboutText} ${aboutStyles.aboutTextPreview}`}>
+              {previewParagraph}
+            </Text>
+            <span className={aboutStyles.aboutPreviewFade} aria-hidden="true" />
+            <span className={aboutStyles.aboutPreviewMore} aria-hidden="true">
+              {showLabel}
+            </span>
           </button>
-        </div>
+        )}
 
         <Popup isActive={isAboutModalOpen} onClose={onClose} aria-labelledby="about-popup-title">
           <div className={aboutStyles.aboutPopup}>

@@ -143,6 +143,33 @@ describe('AboutSection integration tests', () => {
     });
   });
 
+  test('открывает модалку при клике по области превью описания', async () => {
+    loadTheBandFromDatabase.mockImplementation(() => Promise.resolve(['Описание группы']));
+
+    const onOpen = jest.fn();
+    renderWithProviders(
+      <AboutSection isAboutModalOpen={false} onOpen={onOpen} onClose={() => {}} />,
+      {
+        initialEntries: ['/?artist=test-artist'],
+        preloadedState: {
+          lang: { current: 'ru' },
+          uiDictionary: uiDictionaryState,
+        },
+      }
+    );
+
+    await waitFor(() => {
+      expect(document.getElementById('about')).toBeInTheDocument();
+    });
+
+    const previewTrigger = screen.getByRole('button', { name: /описание группы/i });
+    await act(async () => {
+      previewTrigger.click();
+    });
+
+    expect(onOpen).toHaveBeenCalledTimes(1);
+  });
+
   test('показывает описание на RU-странице, если текст сохранён только на EN', async () => {
     loadTheBandFromDatabase.mockResolvedValue(['English-only bio paragraph']);
 

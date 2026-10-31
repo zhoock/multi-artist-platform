@@ -23,17 +23,47 @@
     }
   }
 
-  &__buttonWrapper {
-    display: flex;
-    justify-content: flex-end;
-    margin-block-start: var(--ms-1);
+  &__preview-trigger {
+    position: relative;
+    display: block;
+    margin: 0;
+    padding: var(--ms-01);
+    color: inherit;
+    font: inherit;
+    text-align: start;
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    inline-size: 100%;
+    max-inline-size: 100%;
+    cursor: pointer;
+    overflow: hidden;
+
+    &:focus-visible {
+      outline: 2px solid rgb(255 255 255 / 35%);
+      outline-offset: 2px;
+    }
   }
 
-  &__look-more {
-    display: inline-flex;
-    align-items: center;
+  &__preview-fade {
+    position: absolute;
+    inset-block-end: var(--ms-01);
+    inset-inline-end: 0;
+    inline-size: min(48%, 14rem);
+    block-size: 1.55em;
+    background: linear-gradient(to right, transparent, var(--main-background-color, #20201d) 62%);
+    pointer-events: none;
+  }
 
-    @include button-variant;
+  &__preview-more {
+    position: absolute;
+    color: var(--text-color, #dddddd);
+    font-size: clamp(1rem, 0.915rem + 0.35vw, 1.125rem);
+    line-height: 1.55;
+    inset-block-end: var(--ms-01);
+    inset-inline-end: var(--ms-01);
+    font-weight: 700;
+    pointer-events: none;
   }
 
   &__popup {
@@ -84,5 +114,6 @@
     -webkit-line-clamp: 3;
     line-clamp: 3;
     overflow: hidden;
+    padding-inline-end: 0.15em;
   }
 }
