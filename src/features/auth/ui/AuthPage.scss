@@ -2,6 +2,9 @@
 // (--public-modal-backdrop-* tokens in localModal.scss).
 
 dialog.popup.local-modal:has(.auth-page) {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
   overflow: hidden auto;
 }
 
@@ -11,13 +14,18 @@ dialog.popup.local-modal:has(.auth-page) {
   justify-content: center;
   box-sizing: border-box;
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
   min-height: 100dvb;
   padding: var(--ms-0);
 }
 
 .auth-page__container {
   position: relative;
-  width: min(600px, 92vw);
+  box-sizing: border-box;
+  width: min(600px, 100%);
+  max-width: 100%;
+  min-width: 0;
   padding: var(--ms-2);
   color: var(--white);
   background: var(--deep-black);
@@ -27,8 +35,12 @@ dialog.popup.local-modal:has(.auth-page) {
 
   // Role selection: two cards side-by-side (~60–70% viewport on desktop)
   &--wide {
-    width: min(960px, 92vw);
+    width: min(960px, 100%);
     padding: var(--ms-2) var(--ms-2) var(--ms-1);
+
+    @media (width <= 640px) {
+      padding: var(--ms-1) var(--ms-0) var(--ms-0);
+    }
   }
 }
 

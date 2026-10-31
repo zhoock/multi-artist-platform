@@ -5,6 +5,8 @@
   flex-direction: column;
   gap: var(--ms-1);
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
   color: var(--white);
 
   &__intro {
@@ -32,9 +34,12 @@
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: var(--ms-1);
+    width: 100%;
+    min-width: 0;
+    align-items: stretch;
 
     @media (width <= 640px) {
-      grid-template-columns: 1fr;
+      grid-template-columns: minmax(0, 1fr);
     }
   }
 
@@ -43,7 +48,8 @@
     flex-direction: column;
     align-items: center;
     gap: var(--ms-0);
-    min-height: 100%;
+    min-width: 0;
+    height: 100%;
     padding: var(--ms-2) var(--ms-1);
     text-align: center;
     background: rgb(255 255 255 / 2%);
@@ -52,6 +58,10 @@
     transition:
       border-color 0.2s ease,
       background 0.2s ease;
+
+    @media (width <= 640px) {
+      padding: var(--ms-1) var(--ms-0);
+    }
 
     &--listener {
       --role-accent: #8fa0b3;
@@ -86,6 +96,7 @@
     color: var(--warm-concrete);
     font-size: 0.9375rem;
     line-height: 1.45;
+    overflow-wrap: anywhere;
   }
 
   &__card-divider {
@@ -99,9 +110,9 @@
     display: flex;
     flex-direction: column;
     gap: 0.55rem;
-    align-self: center;
-    width: max-content;
-    max-width: 100%;
+    align-self: stretch;
+    width: 100%;
+    min-width: 0;
     margin: 0;
     padding: 0;
     list-style: none;
@@ -110,10 +121,12 @@
 
   &__feature {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: 0.55rem;
+    min-width: 0;
     color: rgb(255 255 255 / 78%);
-    font-size: 0.875rem;
+    font-size: 0.75rem;
+    line-height: 1.4;
   }
 
   &__feature-icon {
@@ -134,8 +147,11 @@
     align-items: center;
     justify-content: center;
     gap: 0.4rem;
-    margin-top: auto;
     width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    white-space: normal;
+    line-height: 1.35;
     text-transform: none;
     letter-spacing: normal;
 
@@ -158,6 +174,11 @@
       $padding: var(--ms-01) var(--ms-0),
       $font-size: 0.9375rem
     );
+  }
+
+  // After dashboard-btn-* (`margin: 0`) so equal-height cards pin CTAs to the bottom.
+  &__card &__cta {
+    margin-top: auto;
   }
 
   &__footer {
