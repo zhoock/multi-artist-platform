@@ -173,13 +173,16 @@ const ARTIST_MEDIA_PLACEHOLDER_ICON_SVG =
 const ARTIST_TITLE_CHEVRON_ICON_SVG =
   '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>';
 
-function appendArtistTitleChevron(link: HTMLAnchorElement): void {
-  const chevron = document.createElement('span');
-  chevron.className = 'universe3d-card__title-chevron';
-  chevron.setAttribute('aria-hidden', 'true');
-  chevron.innerHTML = ARTIST_TITLE_CHEVRON_ICON_SVG;
-  link.appendChild(chevron);
-}
+const ARTIST_LABEL_CANVAS_WIDTH = 256;
+const ARTIST_LABEL_CANVAS_HEIGHT = 64;
+
+/** Normalized UV bounds for label text on the fixed-size label canvas (CanvasTexture flipY). */
+type ArtistLabelHitUv = {
+  u0: number;
+  u1: number;
+  v0: number;
+  v1: number;
+};
 
 type ClusterConfig = {
   genreCode: string;
@@ -273,6 +276,7 @@ export class Universe3D {
   /** Lerp(1.3, 0.5, smooth) from distance to nearest cloud; mouse/touch read between frames. */
   private proximityPanFactor = 1.3;
   private labelTextureCache = new Map<string, THREE.CanvasTexture>();
+  private labelHitUvCache = new Map<string, ArtistLabelHitUv>();
 
   constructor(
     container: HTMLElement,
@@ -291,6 +295,7 @@ export class Universe3D {
     }
   ) {
     this.labelTextureCache.clear();
+    this.labelHitUvCache.clear();
     this.containerEl = container;
     this.clusterColorOption = options?.clusterColor;
     this.useContainerSize = options?.embedInContainer === true;
@@ -763,26 +768,77 @@ export class Universe3D {
     return lines;
   }
 
+  private computeArtistLabelHitUv(
+    ctx: CanvasRenderingContext2D,
+    displayLines: string[],
+    textX: number,
+    startY: number,
+    lineHeight: number
+  ): ArtistLabelHitUv {
+    let hitLeft = Infinity;
+    let hitRight = -Infinity;
+    let hitTop = Infinity;
+    let hitBottom = -Infinity;
+    const pad = 2;
+
+    displayLines.forEach((line, i) => {
+      const metrics = ctx.measureText(line);
+      const baselineY = startY + i * lineHeight;
+      const boxLeft = metrics.actualBoundingBoxLeft ?? 0;
+      const boxRight = metrics.actualBoundingBoxRight ?? metrics.width;
+      const left = textX + boxLeft;
+      const right = textX + boxRight;
+      const ascent = metrics.actualBoundingBoxAscent ?? lineHeight;
+      const descent = metrics.actualBoundingBoxDescent ?? 4;
+      hitLeft = Math.min(hitLeft, left);
+      hitRight = Math.max(hitRight, right);
+      hitTop = Math.min(hitTop, baselineY - ascent);
+      hitBottom = Math.max(hitBottom, baselineY + descent);
+    });
+
+    hitLeft = Math.max(0, hitLeft - pad);
+    hitRight = Math.min(ARTIST_LABEL_CANVAS_WIDTH, hitRight + pad);
+    hitTop = Math.max(0, hitTop - pad);
+    hitBottom = Math.min(ARTIST_LABEL_CANVAS_HEIGHT, hitBottom + pad);
+
+    return {
+      u0: hitLeft / ARTIST_LABEL_CANVAS_WIDTH,
+      u1: hitRight / ARTIST_LABEL_CANVAS_WIDTH,
+      v0: 1 - hitBottom / ARTIST_LABEL_CANVAS_HEIGHT,
+      v1: 1 - hitTop / ARTIST_LABEL_CANVAS_HEIGHT,
+    };
+  }
+
+  private isArtistLabelSpriteHit(intersection: THREE.Intersection): boolean {
+    const sprite = intersection.object as THREE.Sprite;
+    const bounds = sprite.userData?.labelHitUv as ArtistLabelHitUv | undefined;
+    if (!bounds || !intersection.uv) {
+      return false;
+    }
+    const { x: u, y: v } = intersection.uv;
+    return u >= bounds.u0 && u <= bounds.u1 && v >= bounds.v0 && v <= bounds.v1;
+  }
+
   private createArtistLabelSprite(name: string): THREE.Sprite {
     let texture = this.labelTextureCache.get(name);
     if (!texture) {
       const canvas = document.createElement('canvas');
       const dpr = window.devicePixelRatio || 1;
 
-      canvas.width = 256 * dpr;
-      canvas.height = 64 * dpr;
+      canvas.width = ARTIST_LABEL_CANVAS_WIDTH * dpr;
+      canvas.height = ARTIST_LABEL_CANVAS_HEIGHT * dpr;
 
-      canvas.style.width = '256px';
-      canvas.style.height = '64px';
+      canvas.style.width = `${ARTIST_LABEL_CANVAS_WIDTH}px`;
+      canvas.style.height = `${ARTIST_LABEL_CANVAS_HEIGHT}px`;
 
       const ctx = canvas.getContext('2d')!;
       ctx.scale(dpr, dpr);
 
-      ctx.clearRect(0, 0, 256, 64);
+      ctx.clearRect(0, 0, ARTIST_LABEL_CANVAS_WIDTH, ARTIST_LABEL_CANVAS_HEIGHT);
 
       ctx.fillStyle = 'white';
       ctx.font = '24px Arial';
-      const maxWidth = 256 - 20;
+      const maxWidth = ARTIST_LABEL_CANVAS_WIDTH - 20;
       const lines = this.splitTextToLines(ctx, name, maxWidth);
 
       let displayLines: string[];
@@ -803,9 +859,13 @@ export class Universe3D {
 
       const lineHeight = 24;
       const startY = 28;
+      const textX = 10;
       displayLines.forEach((line, i) => {
-        ctx.fillText(line, 10, startY + i * lineHeight);
+        ctx.fillText(line, textX, startY + i * lineHeight);
       });
+
+      const hitUv = this.computeArtistLabelHitUv(ctx, displayLines, textX, startY, lineHeight);
+      this.labelHitUvCache.set(name, hitUv);
 
       texture = new THREE.CanvasTexture(canvas);
       texture.minFilter = THREE.LinearFilter;
@@ -822,6 +882,7 @@ export class Universe3D {
     const sprite = new THREE.Sprite(material);
     sprite.scale.set(0.5, 0.12, 1);
     sprite.userData.isLabel = true;
+    sprite.userData.labelHitUv = this.labelHitUvCache.get(name);
     return sprite;
   }
 
@@ -1006,6 +1067,9 @@ export class Universe3D {
     if (labelSprites.length > 0) {
       const labelHits = this.raycaster.intersectObjects(labelSprites, false);
       for (let i = 0; i < labelHits.length; i++) {
+        if (!this.isArtistLabelSpriteHit(labelHits[i])) {
+          continue;
+        }
         const artistNode = this.resolveArtistNodeFromLabelSprite(
           labelHits[i].object as THREE.Sprite
         );
@@ -1082,7 +1146,10 @@ export class Universe3D {
   private resolveArtistNodeFromIntersection(object: THREE.Object3D): THREE.Object3D | null {
     let current: THREE.Object3D | null = object;
     while (current) {
-      if (current.userData?.name) return current;
+      if (current.userData?.name) {
+        // Only the nav point sphere — not search ring / nav ambient children.
+        return object === current ? current : null;
+      }
       current = current.parent;
     }
     return null;
@@ -1440,15 +1507,23 @@ export class Universe3D {
     const titleSlot = card.querySelector('.universe3d-card__title');
     if (titleSlot) {
       if (slug) {
-        const link = document.createElement('a');
-        link.className = 'universe3d-card__title';
-        const nameSpan = document.createElement('span');
-        nameSpan.className = 'universe3d-card__title-text';
-        nameSpan.textContent = title;
-        link.appendChild(nameSpan);
-        appendArtistTitleChevron(link);
-        this.bindArtistProfileLink(link, slug);
-        titleSlot.replaceWith(link);
+        const titleWrap = document.createElement('span');
+        titleWrap.className = 'universe3d-card__title';
+
+        const nameLink = document.createElement('a');
+        nameLink.className = 'universe3d-card__title-text';
+        nameLink.textContent = title;
+        this.bindArtistProfileLink(nameLink, slug);
+        titleWrap.appendChild(nameLink);
+
+        const chevronLink = document.createElement('a');
+        chevronLink.className = 'universe3d-card__title-chevron';
+        chevronLink.setAttribute('aria-hidden', 'true');
+        chevronLink.innerHTML = ARTIST_TITLE_CHEVRON_ICON_SVG;
+        this.bindArtistProfileLink(chevronLink, slug);
+        titleWrap.appendChild(chevronLink);
+
+        titleSlot.replaceWith(titleWrap);
       } else {
         titleSlot.textContent = title;
       }
@@ -1654,6 +1729,9 @@ export class Universe3D {
     if (labelSprites.length > 0) {
       const labelHits = this.raycaster.intersectObjects(labelSprites, false);
       for (let i = 0; i < labelHits.length; i++) {
+        if (!this.isArtistLabelSpriteHit(labelHits[i])) {
+          continue;
+        }
         const artistNode = this.resolveArtistNodeFromLabelSprite(
           labelHits[i].object as THREE.Sprite
         );

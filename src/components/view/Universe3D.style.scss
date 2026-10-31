@@ -80,16 +80,19 @@
   display: inline-flex;
   gap: 0.35em;
   align-items: center;
+  width: fit-content;
+  max-width: 100%;
   line-height: 1;
-  text-decoration: none;
   font-family: var(--base-accent-font);
 
-  @include link-colors(--link-color, --link-color-hover);
   @include adjust-font-size-to($ms-1, 0);
 }
 
 .universe3d-card__title-text {
   display: block;
+  text-decoration: none;
+
+  @include link-colors(--link-color, --link-color-hover);
 }
 
 .universe3d-card__title-chevron {
@@ -98,7 +101,15 @@
   align-items: center;
   justify-content: center;
   color: currentcolor;
-  transform: translateY(calc(0.07em + 2px));
+  text-decoration: none;
+  transform: translateY(calc(0.07em + 2px)) translateX(0);
+  animation: universe3d-card-title-chevron-sway 2.8s ease-in-out infinite;
+
+  @include link-colors(--link-color, --link-color-hover);
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
 
   svg {
     display: block;
@@ -157,5 +168,16 @@
 @keyframes universe3d-card-play-spin {
   to {
     transform: rotate(360deg);
+  }
+}
+
+@keyframes universe3d-card-title-chevron-sway {
+  0%,
+  100% {
+    transform: translateY(calc(0.07em + 2px)) translateX(-3px);
+  }
+
+  50% {
+    transform: translateY(calc(0.07em + 2px)) translateX(3px);
   }
 }

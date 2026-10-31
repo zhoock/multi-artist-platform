@@ -111,11 +111,13 @@ describe('Universe3D artist activation', () => {
         return [];
       }
       if (objects.includes(sprite)) {
+        sprite.userData.labelHitUv = { u0: 0, u1: 1, v0: 0, v1: 1 };
         return [
           {
             object: sprite,
             distance: 1,
             point: new THREE.Vector3(),
+            uv: new THREE.Vector2(0.5, 0.5),
           } as THREE.Intersection,
         ];
       }
