@@ -6,13 +6,7 @@
 .about {
   padding-block-end: $ms-1;
 
-  &__content {
-    display: -webkit-box;
-    overflow: hidden;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 3;
-    line-clamp: 3;
-    gap: var(--ms-2);
+  &__text {
     margin-block: 0 var(--ms-2);
     color: var(--text-color, #dddddd);
     font-size: clamp(1rem, 0.915rem + 0.35vw, 1.125rem);
@@ -27,7 +21,7 @@
     position: relative;
     display: block;
     margin: 0;
-    padding: var(--ms-01);
+    padding: 0;
     color: inherit;
     font: inherit;
     text-align: start;
@@ -36,8 +30,8 @@
     border-radius: 0;
     inline-size: 100%;
     max-inline-size: 100%;
+    min-inline-size: 0;
     cursor: pointer;
-    overflow: hidden;
 
     &:focus-visible {
       outline: 2px solid rgb(255 255 255 / 35%);
@@ -47,7 +41,7 @@
 
   &__preview-fade {
     position: absolute;
-    inset-block-end: var(--ms-01);
+    inset-block-end: 0;
     inset-inline-end: 0;
     inline-size: min(48%, 14rem);
     block-size: 1.55em;
@@ -60,8 +54,8 @@
     color: var(--text-color, #dddddd);
     font-size: clamp(1rem, 0.915rem + 0.35vw, 1.125rem);
     line-height: 1.55;
-    inset-block-end: var(--ms-01);
-    inset-inline-end: var(--ms-01);
+    inset-block-end: 0;
+    inset-inline-end: 0;
     font-weight: 700;
     pointer-events: none;
   }
@@ -114,6 +108,8 @@
     -webkit-line-clamp: 3;
     line-clamp: 3;
     overflow: hidden;
-    padding-inline-end: 0.15em;
+
+    // Reserve space for the «ЕЩЁ» / «Show more» overlay so copy is not clipped at the edges.
+    padding-inline-end: max(4.5ch, 2.75rem);
   }
 }
