@@ -349,7 +349,7 @@ function dashboardHeadingForTab(tab: DashboardTab, ui: IInterface | null): strin
     case 'albums':
       return d?.tabs?.albums ?? 'Albums';
     case 'audience':
-      return d?.tabs?.audience ?? 'Audience';
+      return d?.tabs?.audience ?? 'Analytics';
     case 'posts':
       return d?.tabs?.posts ?? 'Articles';
     case 'mixer':

@@ -623,6 +623,9 @@ export interface IInterface {
       supporterDetail?: string;
       supporterBadgeActive?: string;
       supportersSectionHint?: string;
+      revenueTitle?: string;
+      revenueAlbumSales?: string;
+      revenueSubscriberSupport?: string;
       blockNoData?: string;
       emptyTitle?: string;
       emptyDescription?: string;

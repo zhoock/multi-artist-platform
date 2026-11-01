@@ -412,7 +412,7 @@
         "paymentSettings": "Payment Settings",
         "myPurchases": "My Purchases",
         "mixer": "Mixer",
-        "audience": "Audience",
+        "audience": "Analytics",
         "archive": "Collection",
         "subscription": "Subscription",
         "socialLinks": "Social Links"
@@ -499,6 +499,9 @@
         "supporterDetail": "In collection · Active support",
         "supporterBadgeActive": "Active",
         "supportersSectionHint": "Premium subscribers who added you to their active collection.",
+        "revenueTitle": "Revenue",
+        "revenueAlbumSales": "Album sales",
+        "revenueSubscriberSupport": "Subscriber support",
         "blockNoData": "No data yet",
         "emptyTitle": "No listens yet",
         "emptyDescription": "Statistics will appear after listeners play your tracks for at least 30 seconds.",

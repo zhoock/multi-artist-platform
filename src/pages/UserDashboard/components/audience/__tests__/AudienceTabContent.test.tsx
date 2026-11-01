@@ -38,6 +38,12 @@ const successPayload: ArtistAudienceResponse = {
   topTracks: [{ rank: 1, trackId: 'track-1', title: 'Track One', plays: 1 }],
   supporters: [],
   supportersTotal: 0,
+  revenue: {
+    currency: 'RUB',
+    albumSales: 4450,
+    subscriberSupport: 8000,
+    total: 12450,
+  },
 };
 
 describe('AudienceTabContent load states', () => {
@@ -92,6 +98,37 @@ describe('AudienceTabContent load states', () => {
     await waitFor(() => {
       expect(within(metricsRegion as HTMLElement).getAllByText('1')).toHaveLength(3);
     });
+  });
+
+  it('renders revenue breakdown from API data', async () => {
+    fetchArtistAudienceMock.mockResolvedValue(successPayload);
+
+    renderWithProviders(<AudienceTabContent active ui={null} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Revenue')).toBeInTheDocument();
+    });
+
+    expect(screen.getByText('12,450 ₽')).toBeInTheDocument();
+    expect(screen.getByText('Album sales')).toBeInTheDocument();
+    expect(screen.getByText('4,450 ₽')).toBeInTheDocument();
+    expect(screen.getByText('Subscriber support')).toBeInTheDocument();
+    expect(screen.getByText('8,000 ₽')).toBeInTheDocument();
+  });
+
+  it('shows unavailable revenue amounts on API error', async () => {
+    fetchArtistAudienceMock.mockRejectedValue(new Error('artist-audience:500'));
+
+    renderWithProviders(<AudienceTabContent active ui={null} />);
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toBeInTheDocument();
+    });
+
+    const revenuePanel = document.querySelector('.audience-tab__list-card--revenue');
+    expect(revenuePanel).not.toBeNull();
+    expect(within(revenuePanel as HTMLElement).getAllByText('—')).toHaveLength(3);
+    expect(within(revenuePanel as HTMLElement).queryByText('0 ₽')).not.toBeInTheDocument();
   });
 });
 

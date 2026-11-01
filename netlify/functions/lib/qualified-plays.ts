@@ -4,6 +4,7 @@
 
 import { normalizeAccountType } from './account-type';
 import { artistHasPublicPageContent } from './artist-publication';
+import { getArtistAudienceRevenue, type AudienceRevenue } from './artist-audience-revenue';
 import { query } from './db';
 import { viewerHasPremiumAccessToArtist } from './entitlements';
 import { hasPremiumAccess } from './subscription-access';
@@ -264,7 +265,10 @@ export interface ArtistAudienceStats {
   topTracks: AudienceTopTrack[];
   supporters: AudienceSupporter[];
   supportersTotal: number;
+  revenue: AudienceRevenue;
 }
+
+export type { AudienceRevenue };
 
 export async function countActiveCollectionForArtist(artistUserId: string): Promise<number> {
   const r = await query<{ count: string }>(
@@ -294,6 +298,7 @@ export async function getArtistAudienceStats(
     timelineRows,
     topTrackRows,
     archiveRows,
+    revenue,
   ] = await Promise.all([
     query<{ count: string }>(
       `SELECT COUNT(DISTINCT COALESCE(listener_user_id::text, 'anon:' || listener_anon_id::text))::text AS count
@@ -363,6 +368,7 @@ export async function getArtistAudienceStats(
          ORDER BY ua.created_at DESC`,
       [artistUserId]
     ),
+    getArtistAudienceRevenue(artistUserId, start),
   ]);
 
   const supporterRows: typeof archiveRows.rows = [];
@@ -418,6 +424,7 @@ export async function getArtistAudienceStats(
     topTracks,
     supporters: supportersFiltered.slice(0, supportersLimit),
     supportersTotal: supportersFiltered.length,
+    revenue,
   };
 }
 

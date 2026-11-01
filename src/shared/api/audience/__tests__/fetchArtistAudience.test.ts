@@ -38,6 +38,12 @@ describe('fetchArtistAudience', () => {
           topTracks: [],
           supporters: [],
           supportersTotal: 0,
+          revenue: {
+            currency: 'RUB',
+            albumSales: 0,
+            subscriberSupport: 0,
+            total: 0,
+          },
         },
       }),
     } as Response);

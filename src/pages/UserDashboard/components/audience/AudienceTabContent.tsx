@@ -9,6 +9,8 @@ import {
   CircleHelp as CircleHelpIcon,
   ChevronDown as ChevronDownIcon,
   TriangleAlert as TriangleAlertIcon,
+  ShoppingBag as ShoppingBagIcon,
+  HeartHandshake as HeartHandshakeIcon,
 } from 'lucide-react';
 
 import type { IInterface } from '@models';
@@ -21,6 +23,7 @@ import {
 import {
   fetchArtistAudience,
   type ArtistAudienceResponse,
+  type AudienceRevenue,
   type AudienceSupporter,
   type AudienceTimelinePoint,
 } from '@shared/api/audience';
@@ -52,6 +55,22 @@ function resolveLocale(ui: IInterface | null): string {
 function formatMetricValue(value: number, locale: string): string {
   return value.toLocaleString(locale);
 }
+
+function formatAudienceMoney(amount: number, locale: string, unavailable?: boolean): string {
+  if (unavailable) return '—';
+  const formatted = Math.round(amount).toLocaleString(locale, {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  });
+  return `${formatted} ₽`;
+}
+
+const EMPTY_REVENUE: AudienceRevenue = {
+  currency: 'RUB',
+  albumSales: 0,
+  subscriberSupport: 0,
+  total: 0,
+};
 
 function resolveSupporterAvatar(url: string | null): string | null {
   const displayUrl = profileAvatarPathToDisplayUrl(url);
@@ -152,6 +171,7 @@ function createEmptyAudienceResponse(period: AudiencePeriod): ArtistAudienceResp
     topTracks: [],
     supporters: [],
     supportersTotal: 0,
+    revenue: { ...EMPTY_REVENUE },
   };
 }
 
@@ -302,6 +322,59 @@ function MetricCard({ icon, label, hint, value, locale, valueUnavailable }: Metr
       </div>
       <p className="audience-tab__metric-value">{displayValue}</p>
     </DashboardCard>
+  );
+}
+
+type AudienceRevenuePanelProps = {
+  revenue: AudienceRevenue;
+  locale: string;
+  unavailable: boolean;
+  albumSalesLabel: string;
+  subscriberSupportLabel: string;
+};
+
+function AudienceRevenuePanel({
+  revenue,
+  locale,
+  unavailable,
+  albumSalesLabel,
+  subscriberSupportLabel,
+}: AudienceRevenuePanelProps) {
+  return (
+    <div className="audience-tab__revenue-body">
+      <p className="audience-tab__revenue-total">
+        {formatAudienceMoney(revenue.total, locale, unavailable)}
+      </p>
+      <hr className="audience-tab__revenue-divider" />
+      <ul className="audience-tab__revenue-lines">
+        <li className="audience-tab__revenue-line">
+          <span className="audience-tab__revenue-line-label">
+            <ShoppingBagIcon
+              className="audience-tab__revenue-line-icon"
+              {...dashboardActionIconProps({ size: 15 })}
+              aria-hidden
+            />
+            {albumSalesLabel}
+          </span>
+          <span className="audience-tab__revenue-line-value">
+            {formatAudienceMoney(revenue.albumSales, locale, unavailable)}
+          </span>
+        </li>
+        <li className="audience-tab__revenue-line">
+          <span className="audience-tab__revenue-line-label">
+            <HeartHandshakeIcon
+              className="audience-tab__revenue-line-icon"
+              {...dashboardActionIconProps({ size: 15 })}
+              aria-hidden
+            />
+            {subscriberSupportLabel}
+          </span>
+          <span className="audience-tab__revenue-line-value">
+            {formatAudienceMoney(revenue.subscriberSupport, locale, unavailable)}
+          </span>
+        </li>
+      </ul>
+    </div>
   );
 }
 
@@ -566,6 +639,19 @@ export function AudienceTabContent({ active, ui }: AudienceTabContentProps) {
               </div>
             ) : null}
           </div>
+        </DashboardCard>
+
+        <DashboardCard className="audience-tab__list-card audience-tab__list-card--revenue">
+          <div className="audience-tab__panel-header">
+            <h3 className="audience-tab__panel-title">{copy?.revenueTitle ?? 'Revenue'}</h3>
+          </div>
+          <AudienceRevenuePanel
+            revenue={metrics.revenue}
+            locale={locale}
+            unavailable={metricsUnavailable}
+            albumSalesLabel={copy?.revenueAlbumSales ?? 'Album sales'}
+            subscriberSupportLabel={copy?.revenueSubscriberSupport ?? 'Subscriber support'}
+          />
         </DashboardCard>
       </div>
     </div>

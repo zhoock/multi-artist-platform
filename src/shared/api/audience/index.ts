@@ -25,6 +25,13 @@ export interface AudienceSupporter {
   publicArtistSlug: string | null;
 }
 
+export interface AudienceRevenue {
+  currency: 'RUB';
+  albumSales: number;
+  subscriberSupport: number;
+  total: number;
+}
+
 export interface ArtistAudienceResponse {
   period: AudiencePeriod;
   listeners: number;
@@ -35,6 +42,7 @@ export interface ArtistAudienceResponse {
   topTracks: AudienceTopTrack[];
   supporters: AudienceSupporter[];
   supportersTotal: number;
+  revenue: AudienceRevenue;
 }
 
 export async function fetchArtistAudience(params: {

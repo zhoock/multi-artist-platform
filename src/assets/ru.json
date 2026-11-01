@@ -412,7 +412,7 @@
         "paymentSettings": "Платежи",
         "myPurchases": "Мои покупки",
         "mixer": "Миксер",
-        "audience": "Аудитория",
+        "audience": "Аналитика",
         "archive": "Коллекция",
         "subscription": "Подписка",
         "socialLinks": "Соцсети"
@@ -499,6 +499,9 @@
         "supporterDetail": "В коллекции · Активная поддержка",
         "supporterBadgeActive": "Активна",
         "supportersSectionHint": "Premium-подписчики, которые добавили вас в активную коллекцию.",
+        "revenueTitle": "Доходы",
+        "revenueAlbumSales": "Продажи альбомов",
+        "revenueSubscriberSupport": "Поддержка подписчиков",
         "blockNoData": "Пока нет данных",
         "emptyTitle": "Прослушиваний пока нет",
         "emptyDescription": "Статистика появится после первых квалифицированных прослушиваний ваших треков.",
