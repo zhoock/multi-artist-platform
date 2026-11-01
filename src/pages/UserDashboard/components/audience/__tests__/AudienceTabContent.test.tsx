@@ -89,3 +89,60 @@ describe('AudienceTabContent load states', () => {
     });
   });
 });
+
+describe('AudienceTabContent supporters avatars', () => {
+  beforeEach(() => {
+    fetchArtistAudienceMock.mockReset();
+  });
+
+  it('renders supporter photo inside the circular avatar container', async () => {
+    fetchArtistAudienceMock.mockResolvedValue({
+      ...successPayload,
+      supporters: [
+        {
+          userId: 'user-1',
+          displayName: 'Beatles',
+          avatarUrl: 'https://cdn.example/avatar.jpg',
+        },
+      ],
+      supportersTotal: 1,
+    });
+
+    renderWithProviders(<AudienceTabContent active ui={null} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Beatles')).toBeInTheDocument();
+    });
+
+    const avatar = document.querySelector('.audience-tab__supporter-avatar');
+    expect(avatar).not.toBeNull();
+    const img = avatar?.querySelector('img');
+    expect(img).not.toBeNull();
+    expect(img).toHaveAttribute('src', 'https://cdn.example/avatar.jpg');
+    expect(avatar?.querySelector('.audience-tab__supporter-initial')).toBeNull();
+  });
+
+  it('renders initial when supporter has no avatar URL', async () => {
+    fetchArtistAudienceMock.mockResolvedValue({
+      ...successPayload,
+      supporters: [
+        {
+          userId: 'user-2',
+          displayName: 'Anna',
+          avatarUrl: null,
+        },
+      ],
+      supportersTotal: 1,
+    });
+
+    renderWithProviders(<AudienceTabContent active ui={null} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Anna')).toBeInTheDocument();
+    });
+
+    const avatar = document.querySelector('.audience-tab__supporter-avatar');
+    expect(avatar?.querySelector('img')).toBeNull();
+    expect(avatar?.querySelector('.audience-tab__supporter-initial')).toHaveTextContent('A');
+  });
+});
