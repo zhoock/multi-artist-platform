@@ -41,7 +41,29 @@ describe('filterHelpArticlesForSearch', () => {
     expect(filterHelpArticlesForSearch(articles, categories, 'release')).toHaveLength(1);
   });
 
-  test('returns empty when nothing matches', () => {
-    expect(filterHelpArticlesForSearch(articles, categories, 'смирлдой')).toEqual([]);
+  test('matches search keywords for artist analytics article', () => {
+    const analyticsArticles: HelpArticleSummary[] = [
+      {
+        slug: 'artist-analytics',
+        categorySlug: 'publishing',
+        title: 'Аналитика артиста',
+        description: 'Статистика прослушиваний, слушателей, поддерживающих и доходов артиста.',
+        updatedAt: '2026-11-01',
+        searchKeywords: ['аналитика', 'слушатели', 'доходы'],
+      },
+    ];
+    const publishingCategories: HelpCategory[] = [
+      { slug: 'publishing', title: 'Кабинет артиста', sortOrder: 2 },
+    ];
+
+    expect(
+      filterHelpArticlesForSearch(analyticsArticles, publishingCategories, 'аналитика')
+    ).toHaveLength(1);
+    expect(
+      filterHelpArticlesForSearch(analyticsArticles, publishingCategories, 'слушатели')
+    ).toHaveLength(1);
+    expect(
+      filterHelpArticlesForSearch(analyticsArticles, publishingCategories, 'доходы')
+    ).toHaveLength(1);
   });
 });

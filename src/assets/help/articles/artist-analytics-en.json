@@ -1,0 +1,70 @@
+{
+  "slug": "artist-analytics",
+  "categorySlug": "publishing",
+  "title": "Artist analytics",
+  "description": "Listen stats, listeners, supporters, and artist revenue.",
+  "updatedAt": "2026-11-01",
+  "sortOrder": 3,
+  "searchKeywords": ["analytics", "listeners", "revenue"],
+  "blocks": [
+    {
+      "blockId": "1",
+      "subtitle": "Overview",
+      "content": "The **Analytics** section helps you understand listener interest in your music, track audience support, and see revenue from album sales and subscriptions. All metrics are available in the artist dashboard (**Dashboard → Analytics**)."
+    },
+    {
+      "blockId": "2",
+      "subtitle": "Choosing a period",
+      "content": [
+        "You can view stats for three periods: **Last 7 days**, **Last 30 days**, and **Last 90 days**.",
+        "The selected period applies to KPI cards, the chart, popular tracks, and revenue."
+      ]
+    },
+    {
+      "blockId": "3",
+      "subtitle": "Key metrics",
+      "content": [
+        "**Listeners** — unique listeners in the selected period. Each person is counted once, regardless of how many times they played your music.",
+        "**Plays** — listens that reached the qualified listen threshold. Pressing play alone does not always count.",
+        "**Regular listeners** — listeners who returned to your music on at least three different calendar days in the last 30 days.",
+        "**In collections** — users who added you to their collection."
+      ]
+    },
+    {
+      "blockId": "4",
+      "subtitle": "Listeners chart",
+      "content": "The **Unique listeners by day** chart shows daily unique listeners. It helps you spot trends and days with the most activity."
+    },
+    {
+      "blockId": "5",
+      "subtitle": "Popular tracks",
+      "content": "This block lists your most played tracks in the selected period. Ranking is based on qualified plays."
+    },
+    {
+      "blockId": "6",
+      "subtitle": "Supporters",
+      "content": [
+        "This list shows users who added you to their collection and have an active Premium subscription that unlocks your content.",
+        "If someone added you to their collection without an active subscription, they count toward **In collections** but do not appear in the supporters list."
+      ]
+    },
+    {
+      "blockId": "7",
+      "subtitle": "Revenue",
+      "content": [
+        "This block shows your revenue for the selected period split into two sources:",
+        "**Album sales** — confirmed paid purchases of your albums.",
+        "**Subscriber support** — your share of Premium subscription payments from users who included you in their collection.",
+        "The total is the sum of both sources.",
+        "Amounts are gross totals before payment provider fees.",
+        "Subscription revenue is shared among artists in the subscriber’s collection.",
+        "Single-album purchases and Premium subscriptions are separate income sources."
+      ]
+    },
+    {
+      "blockId": "8",
+      "subtitle": "When data is still empty",
+      "content": "If you are new to the platform, some metrics may stay at zero for a while. That is normal — stats appear as listeners play your music, add you to collections, and make purchases."
+    }
+  ]
+}

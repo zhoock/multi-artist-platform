@@ -9,8 +9,8 @@
     },
     {
       "slug": "publishing",
-      "title": "Publishing",
-      "description": "Publish albums and articles for your audience.",
+      "title": "Artist dashboard",
+      "description": "Managing music, publications, audience, and artist revenue.",
       "sortOrder": 2
     },
     {
@@ -74,6 +74,24 @@
       "updatedAt": "2026-08-02",
       "sortOrder": 2,
       "searchKeywords": ["articles", "posts", "publish", "draft"]
+    },
+    {
+      "slug": "artist-analytics",
+      "categorySlug": "publishing",
+      "title": "Artist analytics",
+      "description": "Listen stats, listeners, supporters, and artist revenue.",
+      "updatedAt": "2026-11-01",
+      "sortOrder": 3,
+      "searchKeywords": [
+        "analytics",
+        "listeners",
+        "plays",
+        "revenue",
+        "income",
+        "supporters",
+        "collection",
+        "premium"
+      ]
     },
     {
       "slug": "premium-subscription",
