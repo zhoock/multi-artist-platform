@@ -57,6 +57,20 @@ dialog {
       position: relative;
     }
 
+    /** Audience: allow scroll inside content; avoid fixed min-height clipping lower panels */
+    &__tab-shell:has(.user-dashboard__tab-panel--audience:not([hidden])) {
+      min-height: 0;
+    }
+
+    &__tab-panel--audience:not([hidden]) {
+      display: flex;
+      flex: 1;
+      flex-direction: column;
+      min-height: 0;
+      min-width: 0;
+      overflow: visible;
+    }
+
     &__collection-content {
       display: flex;
       flex: 1;

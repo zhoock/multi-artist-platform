@@ -2889,7 +2889,7 @@ function UserDashboard() {
                       ) : null}
                       {isArtist && shouldMount('audience') ? (
                         <div
-                          className="user-dashboard__tab-panel"
+                          className="user-dashboard__tab-panel user-dashboard__tab-panel--audience"
                           hidden={activeTab !== 'audience'}
                           aria-hidden={activeTab !== 'audience'}
                         >

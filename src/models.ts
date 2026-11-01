@@ -620,6 +620,10 @@ export interface IInterface {
       supportersEmpty?: string;
       showAllSupporters?: string;
       supporterStatusPremium?: string;
+      supporterDetail?: string;
+      supporterBadgeActive?: string;
+      supportersSectionHint?: string;
+      blockNoData?: string;
       emptyTitle?: string;
       emptyDescription?: string;
       error?: string;
