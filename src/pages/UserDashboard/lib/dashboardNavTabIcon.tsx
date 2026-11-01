@@ -3,6 +3,7 @@ import {
   CreditCard as CreditCardIcon,
   Disc as DiscIcon,
   FileText as FileTextIcon,
+  Headphones as HeadphonesIcon,
   HeartHandshake as HeartHandshakeIcon,
   ShoppingBag as ShoppingBagIcon,
   Settings as SettingsIcon,
@@ -16,6 +17,7 @@ import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 const DASHBOARD_NAV_TAB_ICONS: Record<DashboardTab, LucideIcon> = {
   settings: SettingsIcon,
   albums: DiscIcon,
+  audience: HeadphonesIcon,
   posts: FileTextIcon,
   mixer: SlidersHorizontalIcon,
   collection: HeartHandshakeIcon,

@@ -10,6 +10,7 @@ export const SUBSCRIPTION_DASHBOARD_PATH = `${DASHBOARD_PATH}/subscription`;
 
 export const DASHBOARD_TAB_SLUGS = [
   'albums',
+  'audience',
   'posts',
   'payment-settings',
   'my-purchases',
@@ -26,6 +27,7 @@ const LISTENER_TABS: DashboardTab[] = ['settings', 'my-purchases', 'collection',
 const ARTIST_TABS: DashboardTab[] = [
   'settings',
   'albums',
+  'audience',
   'posts',
   'mixer',
   'collection',

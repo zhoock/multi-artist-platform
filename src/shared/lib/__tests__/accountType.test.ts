@@ -46,6 +46,7 @@ describe('accountType dashboard helpers', () => {
   it('artist keeps full dashboard tabs', () => {
     const user = makeUser('artist');
     expect(getVisibleDashboardTabs(user)).toContain('albums');
+    expect(getVisibleDashboardTabs(user)).toContain('audience');
     expect(getVisibleDashboardTabs(user)).toContain('mixer');
     expect(getVisibleDashboardTabs(user)).not.toContain('social-links');
     expect(getDefaultDashboardTab(user)).toBe('albums');

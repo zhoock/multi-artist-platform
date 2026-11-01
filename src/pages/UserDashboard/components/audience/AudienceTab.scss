@@ -1,0 +1,219 @@
+.audience-tab {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ms-1);
+  width: 100%;
+
+  &__toolbar {
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  &__period-switch {
+    display: inline-flex;
+    padding: var(--ms-01);
+    background: rgb(255 255 255 / 2%);
+    border: 1px solid var(--dashboard-card-border);
+    border-radius: var(--ms-01);
+    flex-wrap: wrap;
+    gap: var(--ms-01);
+  }
+
+  &__period-button {
+    padding: var(--ms-01) var(--ms-0);
+    color: rgb(255 255 255 / 72%);
+    font: inherit;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: calc(var(--ms-01) - 2px);
+    cursor: pointer;
+
+    &--active {
+      border-color: var(--accent-color, var(--dark-greenish-yellow));
+      color: var(--accent-color, var(--dark-greenish-yellow));
+      background: rgb(255 255 255 / 4%);
+    }
+  }
+
+  &__metrics {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--ms-0);
+
+    @media (width >= 56rem) {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+  }
+
+  &__metric-card {
+    display: flex;
+    padding: var(--ms-0);
+    flex-direction: column;
+    gap: var(--ms-01);
+  }
+
+  &__metric-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--ms-01);
+    color: rgb(255 255 255 / 62%);
+  }
+
+  &__metric-label {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--ms-01);
+    font-size: var(--fs-sm, 0.875rem);
+  }
+
+  &__metric-hint {
+    display: inline-flex;
+    opacity: 0.75;
+    cursor: help;
+  }
+
+  &__metric-value {
+    margin: 0;
+    color: rgb(255 255 255 / 92%);
+    font-size: clamp(1.5rem, 2.5vw, 2rem);
+    font-weight: 600;
+  }
+
+  &__section {
+    margin-top: var(--ms-0);
+  }
+
+  &__chart-card {
+    padding: var(--ms-0);
+  }
+
+  &__chart {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+
+  &__chart-line {
+    stroke: var(--accent-color, var(--dark-greenish-yellow));
+    stroke-width: 2;
+  }
+
+  &__chart-dot {
+    fill: var(--accent-color, var(--dark-greenish-yellow));
+  }
+
+  &__chart-empty,
+  &__list-empty {
+    margin: 0;
+    padding: var(--ms-0);
+    color: rgb(255 255 255 / 58%);
+  }
+
+  &__rank-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  &__rank-row {
+    display: grid;
+    grid-template-columns: 2rem minmax(0, 1fr) auto;
+    gap: var(--ms-0);
+    align-items: center;
+    padding: var(--ms-01) var(--ms-0);
+    border-bottom: 1px solid var(--dashboard-divider);
+
+    &:last-child {
+      border-bottom: none;
+    }
+  }
+
+  &__rank-num {
+    color: rgb(255 255 255 / 45%);
+  }
+
+  &__rank-title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__rank-value {
+    color: var(--accent-color, var(--dark-greenish-yellow));
+    font-variant-numeric: tabular-nums;
+  }
+
+  &__supporters {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  &__supporter-row {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: var(--ms-0);
+    align-items: center;
+    padding: var(--ms-01) var(--ms-0);
+    border-bottom: 1px solid var(--dashboard-divider);
+
+    &:last-child {
+      border-bottom: none;
+    }
+  }
+
+  &__supporter-avatar {
+    display: inline-flex;
+    width: 2rem;
+    height: 2rem;
+    background: rgb(255 255 255 / 8%);
+    border-radius: 50%;
+    overflow: hidden;
+    align-items: center;
+    justify-content: center;
+
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+  }
+
+  &__supporter-initial {
+    color: rgb(255 255 255 / 72%);
+    font-size: 0.875rem;
+  }
+
+  &__supporter-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__supporter-status {
+    color: rgb(255 255 255 / 55%);
+    font-size: var(--fs-sm, 0.875rem);
+    white-space: nowrap;
+  }
+
+  &__section-footer {
+    padding: var(--ms-01) var(--ms-0) var(--ms-0);
+    border-top: 1px solid var(--dashboard-divider);
+  }
+
+  &__link-button {
+    padding: 0;
+    color: var(--accent-color, var(--dark-greenish-yellow));
+    font: inherit;
+    background: none;
+    border: none;
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 0.15em;
+  }
+
+  &__empty {
+    margin-bottom: var(--ms-0);
+  }
+}

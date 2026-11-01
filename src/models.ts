@@ -536,6 +536,7 @@ export interface IInterface {
       paymentSettings: string;
       myPurchases?: string;
       mixer?: string;
+      audience?: string;
       archive?: string;
       subscription?: string;
       socialLinks?: string;
@@ -591,6 +592,39 @@ export interface IInterface {
       >;
     };
     settings: string;
+    audience?: {
+      periodLabel?: string;
+      periods?: {
+        days7?: string;
+        days30?: string;
+        days90?: string;
+      };
+      metrics?: {
+        listeners?: string;
+        plays?: string;
+        regularListeners?: string;
+        inCollections?: string;
+      };
+      metricHints?: {
+        listeners?: string;
+        plays?: string;
+        regularListeners?: string;
+        inCollections?: string;
+      };
+      chartTitle?: string;
+      chartEmpty?: string;
+      topTracksTitle?: string;
+      topTracksEmpty?: string;
+      showAllTracks?: string;
+      supportersTitle?: string;
+      supportersEmpty?: string;
+      showAllSupporters?: string;
+      supporterStatusPremium?: string;
+      emptyTitle?: string;
+      emptyDescription?: string;
+      error?: string;
+      retry?: string;
+    };
     deleteAccount?: string;
     deleteAccountConfirmTitle?: string;
     deleteAccountWarningDescription?: string;

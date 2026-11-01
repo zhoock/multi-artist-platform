@@ -22,6 +22,18 @@ import {
   isTrackPlaybackBlocked,
 } from '@shared/lib/tracks/trackPlayback';
 import { artistPlayTrace } from '@features/universe/lib/artistPlayTrace';
+import {
+  beginQualifiedPlaySession,
+  onQualifiedPlayPause,
+  onQualifiedPlayPlaying,
+  onQualifiedPlaySeeked,
+  onQualifiedPlayWaiting,
+  resetQualifiedPlaySession,
+  resolveArtistUserIdForPlayerTrack,
+  restartQualifiedPlaySessionForSameTrack,
+  syncQualifiedPlaySeeking,
+  tickQualifiedPlayAccumulation,
+} from '@features/player/model/lib/qualifiedPlayTracker';
 
 const isUsableMediaDuration = (d: number): boolean => Number.isFinite(d) && d > 0 && d !== Infinity;
 
@@ -470,6 +482,8 @@ let pauseHandler: (() => void) | null = null;
 let playSyncHandler: (() => void) | null = null;
 let nativePauseSyncHandler: (() => void) | null = null;
 let errorHandler: (() => void) | null = null;
+let waitingHandler: (() => void) | null = null;
+let seekedHandler: (() => void) | null = null;
 
 // Флаг для предотвращения множественных вызовов ended подряд
 // Вынесен на уровень модуля, чтобы был доступен и в middleware, и в attachAudioEvents
@@ -527,6 +541,14 @@ export const attachAudioEvents = (dispatch: AppDispatch, getState: () => RootSta
     el.removeEventListener('error', errorHandler);
     errorHandler = null;
   }
+  if (waitingHandler) {
+    el.removeEventListener('waiting', waitingHandler);
+    waitingHandler = null;
+  }
+  if (seekedHandler) {
+    el.removeEventListener('seeked', seekedHandler);
+    seekedHandler = null;
+  }
 
   // Устанавливаем начальную громкость из стейта
   audioController.setVolume(getState().player.volume);
@@ -551,7 +573,11 @@ export const attachAudioEvents = (dispatch: AppDispatch, getState: () => RootSta
 
   timeupdateHandler = () => {
     const state = getState();
-    if (state.player.isSeeking) return;
+    const { currentTime, playbackRate } = el;
+    if (state.player.isSeeking) {
+      syncQualifiedPlaySeeking(true, currentTime);
+      return;
+    }
 
     const now = Date.now();
     // Throttling: обновляем только если прошло достаточно времени с последнего обновления
@@ -560,7 +586,6 @@ export const attachAudioEvents = (dispatch: AppDispatch, getState: () => RootSta
     }
     lastUpdateTime = now;
 
-    const { currentTime } = el;
     const { playlist = [], currentTrackIndex } = state.player;
     const metaDuration = playlist[currentTrackIndex]?.duration;
     const duration = getEffectiveTrackDuration(el, metaDuration);
@@ -569,6 +594,9 @@ export const attachAudioEvents = (dispatch: AppDispatch, getState: () => RootSta
     const progress = (currentTime / duration) * 100;
     dispatch(playerActions.setTime({ current: currentTime, duration }));
     dispatch(playerActions.setProgress(progress));
+
+    const rate = Number.isFinite(playbackRate) && playbackRate > 0 ? playbackRate : 1;
+    tickQualifiedPlayAccumulation(currentTime, rate, state.player.isPlaying);
   };
   el.addEventListener('timeupdate', timeupdateHandler);
 
@@ -605,6 +633,23 @@ export const attachAudioEvents = (dispatch: AppDispatch, getState: () => RootSta
     if (shouldRestorePosition) {
       audioController.setCurrentTime(restoredCurrent);
     }
+
+    const track = playlist[currentTrackIndex];
+    const albumSlug = track?.albumId ?? state.albumId ?? '';
+    if (albumSlug && track?.id) {
+      beginQualifiedPlaySession({
+        albumSlug,
+        logicalTrackId: track.id,
+        trackDurationSeconds: hasDuration ? duration : (track.duration ?? 0),
+        artistUserId: resolveArtistUserIdForPlayerTrack({
+          albumMetaUserId: state.albumMeta?.userId,
+          queueAlbumMetaUserId: track.queueAlbumMeta?.userId,
+        }),
+      });
+    } else {
+      resetQualifiedPlaySession();
+    }
+
     // Сбрасываем ключ для audio_start, чтобы событие отправилось для нового трека
     lastStartedKey = null;
     // Сбрасываем флаги обработки ended при загрузке нового трека
@@ -723,6 +768,7 @@ export const attachAudioEvents = (dispatch: AppDispatch, getState: () => RootSta
 
         if (repeat === 'one' || (repeat === 'all' && playlist.length === 1)) {
           // Зацикливание одного трека (или альбом из одного трека с repeat all)
+          restartQualifiedPlaySessionForSameTrack();
           resetProgress({ dispatch, getState } as ListenerEffectAPI<RootState, AppDispatch>);
           audioController.setCurrentTime(0);
           // Natural end: restart even if native pause already synced isPlaying to false
@@ -768,6 +814,7 @@ export const attachAudioEvents = (dispatch: AppDispatch, getState: () => RootSta
     artistPlayTrace('audio.playing', {
       index: getState().player.currentTrackIndex,
     });
+    onQualifiedPlayPlaying(el.currentTime);
     const state = getState();
     const { albumId, albumTitle, currentTrackIndex, playlist } = state.player;
     const track = playlist[currentTrackIndex];
@@ -823,6 +870,7 @@ export const attachAudioEvents = (dispatch: AppDispatch, getState: () => RootSta
    * Отправляем GA событие audio_pause.
    */
   pauseHandler = () => {
+    onQualifiedPlayPause(el.currentTime);
     const state = getState();
     const { albumId, albumTitle, currentTrackIndex, playlist } = state.player;
     const track = playlist[currentTrackIndex];
@@ -838,4 +886,14 @@ export const attachAudioEvents = (dispatch: AppDispatch, getState: () => RootSta
     });
   };
   el.addEventListener('pause', pauseHandler);
+
+  waitingHandler = () => {
+    onQualifiedPlayWaiting(el.currentTime);
+  };
+  el.addEventListener('waiting', waitingHandler);
+
+  seekedHandler = () => {
+    onQualifiedPlaySeeked(el.currentTime);
+  };
+  el.addEventListener('seeked', seekedHandler);
 };

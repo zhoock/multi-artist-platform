@@ -55,6 +55,7 @@ import { hasPublishedPublicReleases } from '@entities/album/lib/hasPublishedPubl
 import { albumVisibilityToIsPublic } from './components/albums/albumVisibilityOptions';
 import { AlbumsTabContent } from './components/albums/AlbumsTabContent';
 import { PostsTabContent } from './components/articles/PostsTabContent';
+import { AudienceTabContent } from './components/audience/AudienceTabContent';
 import {
   ALBUM_CREATED_TOAST_DURATION_MS,
   ALBUM_DELETED_TOAST_DURATION_MS,
@@ -347,6 +348,8 @@ function dashboardHeadingForTab(tab: DashboardTab, ui: IInterface | null): strin
       return d?.settings ?? 'Settings';
     case 'albums':
       return d?.tabs?.albums ?? 'Albums';
+    case 'audience':
+      return d?.tabs?.audience ?? 'Audience';
     case 'posts':
       return d?.tabs?.posts ?? 'Articles';
     case 'mixer':
@@ -2882,6 +2885,15 @@ function UserDashboard() {
                             replacingTrackId={replacingTrackId}
                             onReplaceTrackAudio={handleReplaceTrackAudioRequest}
                           />
+                        </div>
+                      ) : null}
+                      {isArtist && shouldMount('audience') ? (
+                        <div
+                          className="user-dashboard__tab-panel"
+                          hidden={activeTab !== 'audience'}
+                          aria-hidden={activeTab !== 'audience'}
+                        >
+                          <AudienceTabContent active={activeTab === 'audience'} ui={ui} />
                         </div>
                       ) : null}
                       {isArtist && shouldMount('posts') ? (

@@ -412,6 +412,7 @@
         "paymentSettings": "Payment Settings",
         "myPurchases": "My Purchases",
         "mixer": "Mixer",
+        "audience": "Audience",
         "archive": "Collection",
         "subscription": "Subscription",
         "socialLinks": "Social Links"
@@ -466,6 +467,39 @@
             "secretKeyHint": "Issue a Secret Key under Integration → API keys. Important: the key is shown only once — be sure to save it!"
           }
         }
+      },
+      "audience": {
+        "periodLabel": "Period",
+        "periods": {
+          "days7": "Last 7 days",
+          "days30": "Last 30 days",
+          "days90": "Last 90 days"
+        },
+        "metrics": {
+          "listeners": "Listeners",
+          "plays": "Plays",
+          "regularListeners": "Regular listeners",
+          "inCollections": "In collections"
+        },
+        "metricHints": {
+          "listeners": "Unique people with at least one qualified listen in the selected period.",
+          "plays": "Qualified plays in the period — each playback session counts once per track.",
+          "regularListeners": "Listeners who played your music on at least 3 different days in the last 30 days.",
+          "inCollections": "Users who currently have you in their active collection."
+        },
+        "chartTitle": "Unique listeners by day",
+        "chartEmpty": "No daily data for this period",
+        "topTracksTitle": "Popular tracks",
+        "topTracksEmpty": "No track plays yet",
+        "showAllTracks": "Show all tracks",
+        "supportersTitle": "Supporters",
+        "supportersEmpty": "No active supporters yet",
+        "showAllSupporters": "Show all supporters",
+        "supporterStatusPremium": "Premium supporter",
+        "emptyTitle": "No listens yet",
+        "emptyDescription": "Statistics will appear after listeners play your tracks for at least 30 seconds.",
+        "error": "Could not load audience statistics.",
+        "retry": "Try again"
       },
       "collection": {
         "title": "Your Collection",
