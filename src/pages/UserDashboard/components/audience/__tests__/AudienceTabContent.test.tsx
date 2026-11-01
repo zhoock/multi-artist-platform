@@ -102,7 +102,7 @@ describe('AudienceTabContent supporters avatars', () => {
         {
           userId: 'user-1',
           displayName: 'Beatles',
-          avatarUrl: 'https://cdn.example/avatar.jpg',
+          avatarUrl: 'users/user-1/profile/profile-abcd1234-128.webp',
           supportStatus: 'premium',
           addedToCollectionAt: '2026-10-01T12:00:00.000Z',
         },
@@ -120,7 +120,7 @@ describe('AudienceTabContent supporters avatars', () => {
     expect(avatar).not.toBeNull();
     const img = avatar?.querySelector('img');
     expect(img).not.toBeNull();
-    expect(img).toHaveAttribute('src', 'https://cdn.example/avatar.jpg');
+    expect(img).toHaveAttribute('src', expect.stringContaining('profile-abcd1234-128.webp'));
     expect(avatar?.querySelector('.audience-tab__supporter-initial')).toBeNull();
   });
 

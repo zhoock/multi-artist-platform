@@ -21,6 +21,7 @@ import {
   type ArtistAudienceResponse,
   type AudienceTimelinePoint,
 } from '@shared/api/audience';
+import { profileAvatarPathToDisplayUrl } from '@shared/lib/profileAvatar';
 import { DashboardButton, DashboardCard } from '@shared/ui/dashboard';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 
@@ -48,12 +49,8 @@ function formatMetricValue(value: number, locale: string): string {
 }
 
 function resolveSupporterAvatar(url: string | null): string | null {
-  if (!url?.trim()) return null;
-  const trimmed = url.trim();
-  if (trimmed.startsWith('http') || trimmed.startsWith('/api/proxy-image')) {
-    return trimmed;
-  }
-  return `/api/proxy-image?path=${encodeURIComponent(trimmed)}`;
+  const displayUrl = profileAvatarPathToDisplayUrl(url);
+  return displayUrl || null;
 }
 
 function formatPeriodLabel(period: AudiencePeriod, ui: IInterface | null): string {
