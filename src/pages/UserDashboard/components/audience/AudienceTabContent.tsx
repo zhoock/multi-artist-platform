@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import clsx from 'clsx';
 import {
   Headphones as HeadphonesIcon,
   Play as PlayIcon,
@@ -6,6 +7,7 @@ import {
   Heart as HeartIcon,
   CircleHelp as CircleHelpIcon,
   ChevronDown as ChevronDownIcon,
+  TriangleAlert as TriangleAlertIcon,
 } from 'lucide-react';
 
 import type { IInterface } from '@models';
@@ -19,7 +21,7 @@ import {
   type ArtistAudienceResponse,
   type AudienceTimelinePoint,
 } from '@shared/api/audience';
-import { DashboardCard } from '@shared/ui/dashboard';
+import { DashboardButton, DashboardCard } from '@shared/ui/dashboard';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 
 import './AudienceTab.scss';
@@ -32,7 +34,8 @@ type AudienceTabContentProps = {
 type LoadState =
   | { kind: 'idle' }
   | { kind: 'loading' }
-  | { kind: 'loaded'; data: ArtistAudienceResponse; apiError: boolean };
+  | { kind: 'success'; data: ArtistAudienceResponse }
+  | { kind: 'error' };
 
 function resolveLocale(ui: IInterface | null): string {
   const sample = ui?.dashboard?.audience?.periods?.days30 ?? '';
@@ -108,10 +111,12 @@ function ListenersTimelineChart({
   points,
   emptyLabel,
   locale,
+  showEmptyLabel = true,
 }: {
   points: AudienceTimelinePoint[];
   emptyLabel: string;
   locale: string;
+  showEmptyLabel?: boolean;
 }) {
   const width = 720;
   const height = 220;
@@ -218,7 +223,9 @@ function ListenersTimelineChart({
           </>
         ) : null}
       </svg>
-      {!hasPoints ? <p className="audience-tab__chart-empty">{emptyLabel}</p> : null}
+      {!hasPoints && showEmptyLabel ? (
+        <p className="audience-tab__chart-empty">{emptyLabel}</p>
+      ) : null}
     </div>
   );
 }
@@ -229,9 +236,12 @@ type MetricCardProps = {
   hint: string;
   value: number;
   locale: string;
+  valueUnavailable?: boolean;
 };
 
-function MetricCard({ icon, label, hint, value, locale }: MetricCardProps) {
+function MetricCard({ icon, label, hint, value, locale, valueUnavailable }: MetricCardProps) {
+  const displayValue = valueUnavailable ? '—' : formatMetricValue(value, locale);
+
   return (
     <DashboardCard className="audience-tab__metric-card">
       <div className="audience-tab__metric-head">
@@ -242,7 +252,7 @@ function MetricCard({ icon, label, hint, value, locale }: MetricCardProps) {
           {label}
         </p>
       </div>
-      <p className="audience-tab__metric-value">{formatMetricValue(value, locale)}</p>
+      <p className="audience-tab__metric-value">{displayValue}</p>
     </DashboardCard>
   );
 }
@@ -262,13 +272,9 @@ export function AudienceTabContent({ active, ui }: AudienceTabContentProps) {
     setLoadState({ kind: 'loading' });
     try {
       const data = await fetchArtistAudience({ period, tracksLimit, supportersLimit });
-      setLoadState({ kind: 'loaded', data, apiError: false });
+      setLoadState({ kind: 'success', data });
     } catch {
-      setLoadState({
-        kind: 'loaded',
-        data: createEmptyAudienceResponse(period),
-        apiError: true,
-      });
+      setLoadState({ kind: 'error' });
     }
   }, [period, tracksLimit, supportersLimit]);
 
@@ -285,23 +291,34 @@ export function AudienceTabContent({ active, ui }: AudienceTabContentProps) {
   }, [active, period]);
 
   const metrics = useMemo((): ArtistAudienceResponse => {
-    if (loadState.kind === 'loaded') {
+    if (loadState.kind === 'success') {
       return loadState.data;
     }
     return createEmptyAudienceResponse(period);
   }, [loadState, period]);
 
   const isLoading = loadState.kind === 'loading' || loadState.kind === 'idle';
+  const hasLoadError = loadState.kind === 'error';
+  const metricsUnavailable = hasLoadError;
+  const showEmptyStateCopy = loadState.kind === 'success';
 
   const listNoDataLabel = copy?.blockNoData ?? 'No data yet';
-  const canExpandTracks = !showAllTracks && metrics.topTracks.length >= 5;
+  const loadErrorMessage = copy?.error ?? 'Could not load audience statistics.';
+  const retryLabel = copy?.retry ?? 'Retry';
+  const canExpandTracks = !metricsUnavailable && !showAllTracks && metrics.topTracks.length >= 5;
 
   if (!active) {
     return null;
   }
 
+  const rootClassName = clsx(
+    'audience-tab',
+    isLoading && 'audience-tab--loading',
+    hasLoadError && 'audience-tab--load-error'
+  );
+
   return (
-    <div className={isLoading ? 'audience-tab audience-tab--loading' : 'audience-tab'}>
+    <div className={rootClassName}>
       <div className="audience-tab__toolbar">
         <label className="audience-tab__period-select">
           <span className="audience-tab__period-select-label">{copy?.periodLabel ?? 'Period'}</span>
@@ -321,6 +338,25 @@ export function AudienceTabContent({ active, ui }: AudienceTabContentProps) {
         </label>
       </div>
 
+      {hasLoadError ? (
+        <div className="audience-tab__load-error" role="alert" aria-live="polite">
+          <span className="audience-tab__load-error-icon" aria-hidden>
+            <TriangleAlertIcon {...dashboardActionIconProps({ size: 18, strokeWidth: 1.75 })} />
+          </span>
+          <p className="audience-tab__load-error-message">{loadErrorMessage}</p>
+          <DashboardButton
+            type="button"
+            variant="outline"
+            className="audience-tab__load-error-retry"
+            onClick={() => {
+              void loadStats();
+            }}
+          >
+            {retryLabel}
+          </DashboardButton>
+        </div>
+      ) : null}
+
       <div className="audience-tab__metrics" aria-busy={isLoading}>
         <MetricCard
           icon={<HeadphonesIcon {...dashboardActionIconProps({ size: 16 })} />}
@@ -331,6 +367,7 @@ export function AudienceTabContent({ active, ui }: AudienceTabContentProps) {
           }
           value={metrics.listeners}
           locale={locale}
+          valueUnavailable={metricsUnavailable}
         />
         <MetricCard
           icon={<PlayIcon {...dashboardActionIconProps({ size: 16 })} />}
@@ -341,6 +378,7 @@ export function AudienceTabContent({ active, ui }: AudienceTabContentProps) {
           }
           value={metrics.plays}
           locale={locale}
+          valueUnavailable={metricsUnavailable}
         />
         <MetricCard
           icon={<UsersIcon {...dashboardActionIconProps({ size: 16 })} />}
@@ -351,6 +389,7 @@ export function AudienceTabContent({ active, ui }: AudienceTabContentProps) {
           }
           value={metrics.regularListeners}
           locale={locale}
+          valueUnavailable={metricsUnavailable}
         />
         <MetricCard
           icon={<HeartIcon {...dashboardActionIconProps({ size: 16 })} />}
@@ -361,6 +400,7 @@ export function AudienceTabContent({ active, ui }: AudienceTabContentProps) {
           }
           value={metrics.collectionCount}
           locale={locale}
+          valueUnavailable={metricsUnavailable}
         />
       </div>
 
@@ -375,6 +415,7 @@ export function AudienceTabContent({ active, ui }: AudienceTabContentProps) {
             points={metrics.listenersTimeline}
             emptyLabel={listNoDataLabel}
             locale={locale}
+            showEmptyLabel={showEmptyStateCopy}
           />
         </div>
       </DashboardCard>
@@ -388,7 +429,9 @@ export function AudienceTabContent({ active, ui }: AudienceTabContentProps) {
           </div>
           <div className="audience-tab__list-body">
             {metrics.topTracks.length === 0 ? (
-              <p className="audience-tab__list-empty">{listNoDataLabel}</p>
+              showEmptyStateCopy ? (
+                <p className="audience-tab__list-empty">{listNoDataLabel}</p>
+              ) : null
             ) : (
               <ol className="audience-tab__rank-list">
                 {metrics.topTracks.map((track) => (
@@ -444,7 +487,9 @@ export function AudienceTabContent({ active, ui }: AudienceTabContentProps) {
           </div>
           <div className="audience-tab__list-body">
             {metrics.supporters.length === 0 ? (
-              <p className="audience-tab__list-empty">{listNoDataLabel}</p>
+              showEmptyStateCopy ? (
+                <p className="audience-tab__list-empty">{listNoDataLabel}</p>
+              ) : null
             ) : (
               <ul className="audience-tab__supporters">
                 {metrics.supporters.map((supporter) => {

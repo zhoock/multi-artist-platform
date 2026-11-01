@@ -1,4 +1,5 @@
 import { fetchWithAuthSession } from '@shared/lib/authFetch';
+import { getAuthHeader } from '@shared/lib/auth';
 import type { AudiencePeriod } from './types';
 
 export type { AudiencePeriod } from './types';
@@ -48,7 +49,13 @@ export async function fetchArtistAudience(params: {
     search.set('supportersLimit', String(params.supportersLimit));
   }
 
-  const response = await fetchWithAuthSession(`/api/artist-audience?${search.toString()}`);
+  const response = await fetchWithAuthSession(`/api/artist-audience?${search.toString()}`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeader(),
+    },
+  });
   if (!response.ok) {
     throw new Error(`artist-audience:${response.status}`);
   }
