@@ -22,6 +22,7 @@ export interface AudienceSupporter {
   avatarUrl: string | null;
   supportStatus: 'premium';
   addedToCollectionAt: string | null;
+  publicArtistSlug: string | null;
 }
 
 export interface ArtistAudienceResponse {

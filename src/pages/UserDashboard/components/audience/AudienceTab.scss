@@ -353,11 +353,54 @@
 
   &__supporter-row {
     display: grid;
-    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-columns: auto minmax(0, 1fr);
     gap: var(--ms-0);
     align-items: center;
     padding: var(--ms-01) var(--ms-0);
     border-bottom: 1px solid var(--dashboard-divider);
+
+    &--public-artist {
+      @media (hover: hover) and (pointer: fine) {
+        &:hover {
+          background: rgb(255 255 255 / 4%);
+        }
+      }
+    }
+  }
+
+  &__supporter-avatar-link {
+    display: inline-flex;
+    color: inherit;
+    text-decoration: none;
+    border-radius: 50%;
+    cursor: pointer;
+
+    &:focus-visible {
+      outline: 2px solid var(--audience-chart-accent);
+      outline-offset: 2px;
+    }
+  }
+
+  &__supporter-name-link {
+    overflow: hidden;
+    color: var(--audience-text);
+    text-decoration: none;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    cursor: pointer;
+
+    &:focus-visible {
+      outline: 2px solid var(--audience-chart-accent);
+      outline-offset: 2px;
+      border-radius: 2px;
+    }
+
+    @media (hover: hover) and (pointer: fine) {
+      .audience-tab__supporter-row--public-artist:hover & {
+        text-decoration: underline;
+        text-underline-offset: 0.15em;
+      }
+    }
   }
 
   &__supporter-avatar {
@@ -393,36 +436,12 @@
     font-weight: 500;
   }
 
-  &__supporter-meta {
-    display: flex;
-    min-width: 0;
-    flex-direction: column;
-    gap: 2px;
-  }
-
   &__supporter-name {
     overflow: hidden;
     color: var(--audience-text);
     text-overflow: ellipsis;
     white-space: nowrap;
-  }
-
-  &__supporter-detail {
-    overflow: hidden;
-    color: var(--audience-muted);
-    font-size: var(--fs-sm, 0.8125rem);
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  &__supporter-badge {
-    padding: var(--ms-01) var(--ms-0);
-    color: var(--audience-chart-accent);
-    font-size: var(--fs-sm, 0.8125rem);
-    white-space: nowrap;
-    background: transparent;
-    border: 1px solid rgb(255 255 255 / 14%);
-    border-radius: var(--ms-01);
+    min-width: 0;
   }
 
   &__section-footer {

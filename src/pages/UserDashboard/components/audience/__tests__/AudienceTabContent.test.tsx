@@ -3,6 +3,7 @@ import React from 'react';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 
 import { renderWithProviders } from '@shared/lib/test-utils';
+import { buildArtistPagePath } from '@shared/lib/seo/publicPagePaths';
 import type { ArtistAudienceResponse } from '@shared/api/audience';
 import { AudienceTabContent } from '../AudienceTabContent';
 
@@ -21,6 +22,10 @@ jest.mock('@shared/api/audience', () => ({
     tracksLimit?: number;
     supportersLimit?: number;
   }) => fetchArtistAudienceMock(params),
+}));
+
+jest.mock('@app/providers/lang', () => ({
+  useLang: () => ({ lang: 'en' }),
 }));
 
 const successPayload: ArtistAudienceResponse = {
@@ -105,6 +110,7 @@ describe('AudienceTabContent supporters avatars', () => {
           avatarUrl: 'users/user-1/profile/profile-abcd1234-128.webp',
           supportStatus: 'premium',
           addedToCollectionAt: '2026-10-01T12:00:00.000Z',
+          publicArtistSlug: 'beatles',
         },
       ],
       supportersTotal: 1,
@@ -134,6 +140,7 @@ describe('AudienceTabContent supporters avatars', () => {
           avatarUrl: null,
           supportStatus: 'premium',
           addedToCollectionAt: null,
+          publicArtistSlug: null,
         },
       ],
       supportersTotal: 1,
@@ -148,5 +155,63 @@ describe('AudienceTabContent supporters avatars', () => {
     const avatar = document.querySelector('.audience-tab__supporter-avatar');
     expect(avatar?.querySelector('img')).toBeNull();
     expect(avatar?.querySelector('.audience-tab__supporter-initial')).toHaveTextContent('A');
+  });
+
+  it('links avatar and name when supporter has a public artist profile', async () => {
+    fetchArtistAudienceMock.mockResolvedValue({
+      ...successPayload,
+      supporters: [
+        {
+          userId: 'user-1',
+          displayName: 'Beatles',
+          avatarUrl: null,
+          supportStatus: 'premium',
+          addedToCollectionAt: null,
+          publicArtistSlug: 'beatles',
+        },
+      ],
+      supportersTotal: 1,
+    });
+
+    renderWithProviders(<AudienceTabContent active ui={null} />);
+
+    await waitFor(() => {
+      expect(screen.getByRole('link', { name: 'Beatles' })).toBeInTheDocument();
+    });
+
+    const expectedPath = buildArtistPagePath('en', 'beatles');
+    const nameLink = screen.getByRole('link', { name: 'Beatles' });
+    expect(nameLink).toHaveAttribute('href', expectedPath);
+
+    const avatarLink = document.querySelector('.audience-tab__supporter-avatar-link');
+    expect(avatarLink).toHaveAttribute('href', expectedPath);
+    expect(document.querySelector('.audience-tab__supporter-row--public-artist')).not.toBeNull();
+  });
+
+  it('keeps listener supporters static without profile links', async () => {
+    fetchArtistAudienceMock.mockResolvedValue({
+      ...successPayload,
+      supporters: [
+        {
+          userId: 'user-2',
+          displayName: 'User_4F7D',
+          avatarUrl: null,
+          supportStatus: 'premium',
+          addedToCollectionAt: null,
+          publicArtistSlug: null,
+        },
+      ],
+      supportersTotal: 1,
+    });
+
+    renderWithProviders(<AudienceTabContent active ui={null} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('User_4F7D')).toBeInTheDocument();
+    });
+
+    expect(screen.queryByRole('link', { name: 'User_4F7D' })).not.toBeInTheDocument();
+    expect(document.querySelector('.audience-tab__supporter-avatar-link')).toBeNull();
+    expect(document.querySelector('.audience-tab__supporter-row--public-artist')).toBeNull();
   });
 });

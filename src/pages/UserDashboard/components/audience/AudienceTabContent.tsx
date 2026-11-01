@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import clsx from 'clsx';
+import { Link } from 'react-router-dom';
 import {
   Headphones as HeadphonesIcon,
   Play as PlayIcon,
@@ -11,6 +12,7 @@ import {
 } from 'lucide-react';
 
 import type { IInterface } from '@models';
+import { useLang } from '@app/providers/lang';
 import {
   AUDIENCE_PERIOD_OPTIONS,
   DEFAULT_AUDIENCE_PERIOD,
@@ -19,8 +21,11 @@ import {
 import {
   fetchArtistAudience,
   type ArtistAudienceResponse,
+  type AudienceSupporter,
   type AudienceTimelinePoint,
 } from '@shared/api/audience';
+import type { RouteLang } from '@shared/lib/i18n/routeLang';
+import { buildArtistPagePath } from '@shared/lib/seo/publicPagePaths';
 import { profileAvatarPathToDisplayUrl } from '@shared/lib/profileAvatar';
 import { DashboardButton, DashboardCard } from '@shared/ui/dashboard';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
@@ -51,6 +56,52 @@ function formatMetricValue(value: number, locale: string): string {
 function resolveSupporterAvatar(url: string | null): string | null {
   const displayUrl = profileAvatarPathToDisplayUrl(url);
   return displayUrl || null;
+}
+
+type AudienceSupporterRowProps = {
+  supporter: AudienceSupporter;
+  artistPagePath: string | null;
+};
+
+function AudienceSupporterRow({ supporter, artistPagePath }: AudienceSupporterRowProps) {
+  const avatar = resolveSupporterAvatar(supporter.avatarUrl);
+  const avatarContent = avatar ? (
+    <img src={avatar} alt="" loading="lazy" decoding="async" />
+  ) : (
+    <span className="audience-tab__supporter-initial">
+      {supporter.displayName.slice(0, 1).toUpperCase()}
+    </span>
+  );
+
+  const isPublicArtist = Boolean(artistPagePath);
+
+  return (
+    <li
+      className={clsx(
+        'audience-tab__supporter-row',
+        isPublicArtist && 'audience-tab__supporter-row--public-artist'
+      )}
+    >
+      {isPublicArtist && artistPagePath ? (
+        <Link to={artistPagePath} className="audience-tab__supporter-avatar-link">
+          <span className="audience-tab__supporter-avatar" aria-hidden>
+            {avatarContent}
+          </span>
+        </Link>
+      ) : (
+        <span className="audience-tab__supporter-avatar" aria-hidden>
+          {avatarContent}
+        </span>
+      )}
+      {isPublicArtist && artistPagePath ? (
+        <Link to={artistPagePath} className="audience-tab__supporter-name-link">
+          {supporter.displayName}
+        </Link>
+      ) : (
+        <span className="audience-tab__supporter-name">{supporter.displayName}</span>
+      )}
+    </li>
+  );
 }
 
 function formatPeriodLabel(period: AudiencePeriod, ui: IInterface | null): string {
@@ -255,6 +306,7 @@ function MetricCard({ icon, label, hint, value, locale, valueUnavailable }: Metr
 }
 
 export function AudienceTabContent({ active, ui }: AudienceTabContentProps) {
+  const { lang } = useLang() as { lang: RouteLang };
   const copy = ui?.dashboard?.audience;
   const locale = resolveLocale(ui);
   const [period, setPeriod] = useState<AudiencePeriod>(DEFAULT_AUDIENCE_PERIOD);
@@ -490,30 +542,14 @@ export function AudienceTabContent({ active, ui }: AudienceTabContentProps) {
             ) : (
               <ul className="audience-tab__supporters">
                 {metrics.supporters.map((supporter) => {
-                  const avatar = resolveSupporterAvatar(supporter.avatarUrl);
+                  const slug = supporter.publicArtistSlug?.trim();
+                  const artistPagePath = slug ? buildArtistPagePath(lang, slug) : null;
                   return (
-                    <li key={supporter.userId} className="audience-tab__supporter-row">
-                      <span className="audience-tab__supporter-avatar" aria-hidden>
-                        {avatar ? (
-                          <img src={avatar} alt="" loading="lazy" decoding="async" />
-                        ) : (
-                          <span className="audience-tab__supporter-initial">
-                            {supporter.displayName.slice(0, 1).toUpperCase()}
-                          </span>
-                        )}
-                      </span>
-                      <div className="audience-tab__supporter-meta">
-                        <span className="audience-tab__supporter-name">
-                          {supporter.displayName}
-                        </span>
-                        <span className="audience-tab__supporter-detail">
-                          {copy?.supporterDetail ?? 'In collection · Active support'}
-                        </span>
-                      </div>
-                      <span className="audience-tab__supporter-badge">
-                        {copy?.supporterBadgeActive ?? 'Active'}
-                      </span>
-                    </li>
+                    <AudienceSupporterRow
+                      key={supporter.userId}
+                      supporter={supporter}
+                      artistPagePath={artistPagePath}
+                    />
                   );
                 })}
               </ul>

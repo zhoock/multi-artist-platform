@@ -2,6 +2,8 @@
  * Qualified listen registration and audience metrics (artist dashboard).
  */
 
+import { normalizeAccountType } from './account-type';
+import { artistHasPublicPageContent } from './artist-publication';
 import { query } from './db';
 import { viewerHasPremiumAccessToArtist } from './entitlements';
 import { hasPremiumAccess } from './subscription-access';
@@ -248,6 +250,8 @@ export interface AudienceSupporter {
   avatarUrl: string | null;
   supportStatus: 'premium';
   addedToCollectionAt: string | null;
+  /** Set when supporter is an artist with visitor-facing public page content. */
+  publicArtistSlug: string | null;
 }
 
 export interface ArtistAudienceStats {
@@ -343,6 +347,7 @@ export async function getArtistAudienceStats(
       name: string | null;
       site_name: string | null;
       public_slug: string | null;
+      account_type: string | null;
       profile_avatar_path: string | null;
     }>(
       `SELECT ua.user_id::text AS user_id,
@@ -350,6 +355,7 @@ export async function getArtistAudienceStats(
                 u.name,
                 u.site_name,
                 u.public_slug,
+                u.account_type,
                 u.profile_avatar_path
          FROM user_archive ua
          INNER JOIN users u ON u.id = ua.user_id
@@ -359,22 +365,36 @@ export async function getArtistAudienceStats(
     ),
   ]);
 
-  const supportersFiltered: AudienceSupporter[] = [];
+  const supporterRows: typeof archiveRows.rows = [];
   for (const row of archiveRows.rows) {
     const hasPremium = await viewerHasPremiumAccessToArtist(row.user_id, artistUserId);
     if (!hasPremium) continue;
-
-    const displayName =
-      row.site_name?.trim() || row.name?.trim() || row.public_slug?.trim() || 'Listener';
-
-    supportersFiltered.push({
-      userId: row.user_id,
-      displayName,
-      avatarUrl: row.profile_avatar_path?.trim() || null,
-      supportStatus: 'premium',
-      addedToCollectionAt: row.created_at?.toISOString?.() ?? null,
-    });
+    supporterRows.push(row);
   }
+
+  const supportersFiltered: AudienceSupporter[] = await Promise.all(
+    supporterRows.map(async (row) => {
+      const displayName =
+        row.site_name?.trim() || row.name?.trim() || row.public_slug?.trim() || 'Listener';
+
+      const slug = row.public_slug?.trim() || null;
+      let publicArtistSlug: string | null = null;
+      if (slug && normalizeAccountType(row.account_type) === 'artist') {
+        if (await artistHasPublicPageContent(row.user_id)) {
+          publicArtistSlug = slug;
+        }
+      }
+
+      return {
+        userId: row.user_id,
+        displayName,
+        avatarUrl: row.profile_avatar_path?.trim() || null,
+        supportStatus: 'premium' as const,
+        addedToCollectionAt: row.created_at?.toISOString?.() ?? null,
+        publicArtistSlug,
+      };
+    })
+  );
 
   const topTracks: AudienceTopTrack[] = topTrackRows.rows.map((row, index) => ({
     rank: index + 1,
