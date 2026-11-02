@@ -25,6 +25,13 @@ function parseLimit(raw: string | null | undefined, fallback: number): number {
   return n;
 }
 
+function parseOffset(raw: string | null | undefined): number {
+  if (!raw?.trim()) return 0;
+  const n = Number.parseInt(raw, 10);
+  if (!Number.isFinite(n) || n < 0) return 0;
+  return n;
+}
+
 export const handler: Handler = async (event: HandlerEvent) => {
   if (event.httpMethod === 'OPTIONS') {
     return createOptionsResponse();
@@ -53,12 +60,16 @@ export const handler: Handler = async (event: HandlerEvent) => {
   }
 
   const tracksLimit = parseLimit(event.queryStringParameters?.tracksLimit, 5);
+  const tracksOffset = parseOffset(event.queryStringParameters?.tracksOffset);
   const supportersLimit = parseLimit(event.queryStringParameters?.supportersLimit, 5);
+  const supportersOffset = parseOffset(event.queryStringParameters?.supportersOffset);
 
   try {
     const stats = await getArtistAudienceStats(userId, period, {
       tracksLimit,
+      tracksOffset,
       supportersLimit,
+      supportersOffset,
     });
     return createSuccessResponse(stats);
   } catch (error) {

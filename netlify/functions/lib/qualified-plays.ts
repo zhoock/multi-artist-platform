@@ -243,6 +243,10 @@ export interface AudienceTopTrack {
   trackId: string;
   title: string;
   plays: number;
+  /** Base cover key from `albums.cover` (Storage derivative resolved on the client). */
+  albumCover: string | null;
+  /** Owner user id for `users/{id}/albums/` cover path. */
+  albumUserId: string | null;
 }
 
 export interface AudienceSupporter {
@@ -263,12 +267,16 @@ export interface ArtistAudienceStats {
   collectionCount: number;
   listenersTimeline: AudienceTimelinePoint[];
   topTracks: AudienceTopTrack[];
+  topTracksTotal: number;
   supporters: AudienceSupporter[];
   supportersTotal: number;
   revenue: AudienceRevenue;
 }
 
 export type { AudienceRevenue };
+
+export const AUDIENCE_TRACKS_PAGE_MAX = 500;
+export const AUDIENCE_SUPPORTERS_PAGE_MAX = 500;
 
 export async function countActiveCollectionForArtist(artistUserId: string): Promise<number> {
   const r = await query<{ count: string }>(
@@ -283,12 +291,22 @@ export async function countActiveCollectionForArtist(artistUserId: string): Prom
 export async function getArtistAudienceStats(
   artistUserId: string,
   period: AudiencePeriod,
-  options?: { tracksLimit?: number; supportersLimit?: number },
+  options?: {
+    tracksLimit?: number;
+    tracksOffset?: number;
+    supportersLimit?: number;
+    supportersOffset?: number;
+  },
   now = new Date()
 ): Promise<ArtistAudienceStats> {
   const start = periodStart(period, now);
-  const tracksLimit = Math.min(Math.max(options?.tracksLimit ?? 5, 1), 200);
-  const supportersLimit = Math.min(Math.max(options?.supportersLimit ?? 5, 1), 200);
+  const tracksOffset = Math.max(0, Math.trunc(options?.tracksOffset ?? 0));
+  const tracksLimit = Math.min(Math.max(options?.tracksLimit ?? 5, 1), AUDIENCE_TRACKS_PAGE_MAX);
+  const supportersOffset = Math.max(0, Math.trunc(options?.supportersOffset ?? 0));
+  const supportersLimit = Math.min(
+    Math.max(options?.supportersLimit ?? 5, 1),
+    AUDIENCE_SUPPORTERS_PAGE_MAX
+  );
 
   const [
     listenersRow,
@@ -296,6 +314,7 @@ export async function getArtistAudienceStats(
     regularRow,
     collectionCount,
     timelineRows,
+    topTracksTotalRow,
     topTrackRows,
     archiveRows,
     revenue,
@@ -334,17 +353,37 @@ export async function getArtistAudienceStats(
          ORDER BY day ASC`,
       [artistUserId, start]
     ),
-    query<{ track_uuid: string; title: string; plays: string }>(
+    query<{ count: string }>(
+      `SELECT COUNT(*)::text AS count
+         FROM (
+           SELECT t.id
+           FROM qualified_track_plays q
+           INNER JOIN tracks t ON t.id = q.track_id
+           WHERE q.artist_user_id = $1::uuid AND q.played_at >= $2
+           GROUP BY t.id
+         ) ranked_tracks`,
+      [artistUserId, start]
+    ),
+    query<{
+      track_uuid: string;
+      title: string;
+      plays: string;
+      album_cover: string | null;
+      album_user_id: string | null;
+    }>(
       `SELECT t.id::text AS track_uuid,
                 t.title,
-                COUNT(*)::text AS plays
+                COUNT(*)::text AS plays,
+                a.cover AS album_cover,
+                a.user_id::text AS album_user_id
          FROM qualified_track_plays q
          INNER JOIN tracks t ON t.id = q.track_id
+         LEFT JOIN albums a ON a.id = t.album_id
          WHERE q.artist_user_id = $1::uuid AND q.played_at >= $2
-         GROUP BY t.id, t.title
+         GROUP BY t.id, t.title, a.cover, a.user_id
          ORDER BY COUNT(*) DESC, t.title ASC
-         LIMIT $3`,
-      [artistUserId, start, tracksLimit]
+         LIMIT $3 OFFSET $4`,
+      [artistUserId, start, tracksLimit, tracksOffset]
     ),
     query<{
       user_id: string;
@@ -403,11 +442,15 @@ export async function getArtistAudienceStats(
   );
 
   const topTracks: AudienceTopTrack[] = topTrackRows.rows.map((row, index) => ({
-    rank: index + 1,
+    rank: tracksOffset + index + 1,
     trackId: row.track_uuid,
     title: row.title,
     plays: Number(row.plays ?? 0),
+    albumCover: row.album_cover?.trim() || null,
+    albumUserId: row.album_user_id?.trim() || null,
   }));
+
+  const topTracksTotal = Number(topTracksTotalRow.rows[0]?.count ?? 0);
 
   const listenersTimeline: AudienceTimelinePoint[] = timelineRows.rows.map((row) => ({
     date: row.day.toISOString().slice(0, 10),
@@ -422,7 +465,8 @@ export async function getArtistAudienceStats(
     collectionCount,
     listenersTimeline,
     topTracks,
-    supporters: supportersFiltered.slice(0, supportersLimit),
+    topTracksTotal,
+    supporters: supportersFiltered.slice(supportersOffset, supportersOffset + supportersLimit),
     supportersTotal: supportersFiltered.length,
     revenue,
   };

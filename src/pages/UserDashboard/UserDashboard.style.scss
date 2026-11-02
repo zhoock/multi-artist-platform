@@ -143,6 +143,10 @@ dialog.popup:has(.user-dashboard) {
         min-height: 0;
       }
 
+      &__tab-panel--audience:not([hidden]) {
+        flex: 0 0 auto;
+      }
+
       &__settings-tab:has(.user-dashboard__tab-loading) {
         display: flex;
         flex: 1;

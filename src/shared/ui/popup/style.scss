@@ -79,6 +79,7 @@ dialog:not(.toast-viewport-layer, .toast-top-layer) {
       :has(
         .user-dashboard,
         .edit-album-modal,
+        .audience-analytics-fullscreen,
         .player,
         .alert-modal,
         .confirmation-modal,
@@ -116,6 +117,7 @@ dialog:not(.toast-viewport-layer, .toast-top-layer) {
         .preview-lyrics-modal,
         .sync-lyrics-modal,
         .edit-album-modal,
+        .audience-analytics-fullscreen,
         .subscription-plan-modal__card,
         .add-artist-to-archive-modal__card,
         .add-stem-modal,

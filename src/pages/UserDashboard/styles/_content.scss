@@ -64,11 +64,18 @@ dialog {
 
     &__tab-panel--audience:not([hidden]) {
       display: flex;
-      flex: 1;
+      flex: 0 0 auto;
       flex-direction: column;
+      align-self: stretch;
+      width: 100%;
       min-height: 0;
       min-width: 0;
       overflow: visible;
+    }
+
+    /** Extra scroll room below analytics when scrolled to end (does not stretch cards). */
+    &__content:has(.user-dashboard__tab-panel--audience:not([hidden])) {
+      scroll-padding-bottom: 1.75rem;
     }
 
     &__collection-content {

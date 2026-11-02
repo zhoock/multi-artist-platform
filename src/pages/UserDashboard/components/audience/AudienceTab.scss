@@ -11,10 +11,10 @@
   width: 100%;
   max-width: 100%;
   min-height: 0;
-  flex: 1;
+  flex: 0 0 auto;
   flex-direction: column;
+  justify-content: flex-start;
   gap: var(--ms-0);
-  padding-bottom: var(--ms-01);
 
   &__toolbar {
     display: flex;
@@ -168,6 +168,32 @@
   &__panel-header {
     padding: var(--ms-0) var(--ms-0) var(--ms-01);
     border-bottom: 1px solid var(--dashboard-divider);
+
+    &--split {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--ms-01);
+    }
+  }
+
+  &__panel-show-all {
+    flex-shrink: 0;
+    padding: 0;
+    color: var(--audience-chart-accent);
+    font: inherit;
+    font-size: var(--fs-sm, 0.875rem);
+    white-space: nowrap;
+    cursor: pointer;
+    background: none;
+    border: none;
+
+    @media (hover: hover) and (pointer: fine) {
+      &:hover {
+        text-decoration: underline;
+        text-underline-offset: 0.15em;
+      }
+    }
   }
 
   &__panel-title {
@@ -179,12 +205,38 @@
     font-size: clamp(0.9375rem, 1.6vw, 1.0625rem);
     font-weight: 600;
     line-height: 1.3;
+    min-width: 0;
+  }
+
+  &--modal-surface {
+    display: block;
+    width: 100%;
+    max-width: none;
+    min-height: 0;
+    padding: 0;
   }
 
   &__panel-title-hint {
     display: inline-flex;
+    margin: 0;
+    padding: 0;
     color: var(--audience-muted);
+    line-height: 0;
+    background: transparent;
+    border: none;
+    border-radius: var(--ms-01);
+    align-items: center;
     cursor: help;
+
+    &:hover {
+      color: rgb(255 255 255 / 72%);
+    }
+
+    &:focus-visible {
+      color: rgb(255 255 255 / 72%);
+      outline: 1px solid var(--dashboard-divider, rgb(255 255 255 / 22%));
+      outline-offset: 2px;
+    }
   }
 
   &__chart-panel {
@@ -277,7 +329,8 @@
     text-align: center;
   }
 
-  &__columns {
+  &__columns,
+  &__list-columns {
     display: grid;
     flex-shrink: 0;
     grid-template-columns: minmax(0, 1fr);
@@ -285,8 +338,15 @@
     align-items: stretch;
 
     @media (width >= 40rem) {
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-template-columns: repeat(2, minmax(0, 1fr));
     }
+  }
+
+  &__revenue-card {
+    flex: 0 0 auto;
+    flex-shrink: 0;
+    width: 100%;
+    height: auto;
   }
 
   &__list-card {
@@ -295,6 +355,13 @@
     min-height: 11rem;
     flex-direction: column;
     background: var(--audience-panel-bg);
+
+    &--revenue {
+      height: auto;
+      min-height: 0;
+      flex: 0 0 auto;
+      align-self: stretch;
+    }
   }
 
   &__list-body {
@@ -312,37 +379,77 @@
 
   &__rank-row {
     display: grid;
-    grid-template-columns: 2.25rem minmax(0, 1fr) auto;
-    gap: var(--ms-0);
+    grid-template-columns: auto 44px minmax(0, 1fr) auto;
+    gap: 0.5rem;
     align-items: center;
     padding: var(--ms-01) var(--ms-0);
     border-bottom: 1px solid var(--dashboard-divider);
   }
 
   &__rank-num {
+    flex-shrink: 0;
     color: rgb(255 255 255 / 38%);
     font-size: var(--fs-sm, 0.875rem);
     font-variant-numeric: tabular-nums;
   }
 
-  &__rank-title {
+  &__rank-cover-frame {
+    width: 44px;
+    height: 44px;
     overflow: hidden;
+    line-height: 0;
+    border-radius: 4px;
+  }
+
+  &__rank-cover-frame picture {
+    display: block;
+    width: 44px;
+    height: 44px;
+  }
+
+  &__rank-cover-image,
+  &__rank-cover-frame img {
+    display: block;
+    width: 44px;
+    height: 44px;
+    aspect-ratio: 1 / 1;
+    object-fit: cover;
+    object-position: center;
+    border-radius: 4px;
+  }
+
+  &__rank-title {
+    min-width: 0;
     color: var(--audience-text);
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    overflow-wrap: anywhere;
   }
 
   &__rank-plays {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--ms-01);
+    flex-shrink: 0;
     color: var(--audience-chart-accent);
     font-variant-numeric: tabular-nums;
+    text-align: right;
     white-space: nowrap;
   }
 
-  &__rank-play-icon {
-    opacity: 0.75;
+  &__panel-hint-tooltip {
+    padding: var(--ms-01);
+    color: var(--audience-text);
+    font-size: var(--fs-sm, 0.875rem);
+    line-height: 1.45;
+    pointer-events: auto;
+    background: var(--dashboard-input-bg, rgb(22 22 22));
+    border: 1px solid var(--dashboard-divider, rgb(255 255 255 / 12%));
+    border-radius: var(--ms-01);
+    box-shadow: 0 0.35rem 1rem rgb(0 0 0 / 35%);
+
+    &--portal {
+      max-width: min(17.5rem, calc(100vw - 1rem));
+    }
+  }
+
+  &__panel-hint-tooltip-text {
+    margin: 0;
   }
 
   &__supporters {
@@ -470,38 +577,61 @@
 
   &__revenue-body {
     display: flex;
-    min-height: 0;
     padding: var(--ms-01) var(--ms-0) var(--ms-0);
-    flex: 1;
+    flex: 0 0 auto;
     flex-direction: column;
     gap: var(--ms-01);
+
+    &--summary {
+      flex-direction: row;
+      align-items: center;
+      gap: var(--ms-1);
+      padding: var(--ms-0) var(--ms-0) var(--ms-01);
+
+      @media (width < 40rem) {
+        flex-direction: column;
+        align-items: stretch;
+      }
+    }
+  }
+
+  &__revenue-vrule {
+    flex-shrink: 0;
+    align-self: stretch;
+    width: 1px;
+    min-height: 3rem;
+    background: var(--dashboard-divider);
+
+    @media (width < 40rem) {
+      display: none;
+    }
   }
 
   &__revenue-total {
+    flex-shrink: 0;
     margin: 0;
-    padding: var(--ms-01) 0;
+    padding: 0;
     color: var(--dashboard-success-text, #4caf50);
-    font-size: clamp(1.375rem, 2.2vw, 1.75rem);
+    font-size: clamp(1.75rem, 3vw, 2.25rem);
     font-weight: 600;
     font-variant-numeric: tabular-nums;
-    line-height: 1.15;
+    line-height: 1.1;
   }
 
   &__revenue-divider {
-    width: 100%;
-    height: 0;
-    margin: 0;
-    border: none;
-    border-top: 1px solid var(--dashboard-divider);
+    display: none;
   }
 
   &__revenue-lines {
     display: flex;
+    min-width: 0;
     margin: 0;
     padding: 0;
+    flex: 0 1 auto;
     list-style: none;
     flex-direction: column;
     gap: var(--ms-01);
+    justify-content: center;
   }
 
   &__revenue-line {
@@ -542,5 +672,11 @@
     .audience-tab__columns {
       opacity: 0.72;
     }
+  }
+
+  &__scroll-tail {
+    flex: 0 0 1.75rem;
+    width: 100%;
+    pointer-events: none;
   }
 }

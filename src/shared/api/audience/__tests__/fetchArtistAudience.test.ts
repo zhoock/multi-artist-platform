@@ -36,6 +36,7 @@ describe('fetchArtistAudience', () => {
           collectionCount: 1,
           listenersTimeline: [],
           topTracks: [],
+          topTracksTotal: 0,
           supporters: [],
           supportersTotal: 0,
           revenue: {

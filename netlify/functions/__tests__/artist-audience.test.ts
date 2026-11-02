@@ -81,6 +81,7 @@ describe('artist-audience handler', () => {
       collectionCount: 0,
       listenersTimeline: [],
       topTracks: [],
+      topTracksTotal: 0,
       supporters: [],
       supportersTotal: 0,
       revenue: {

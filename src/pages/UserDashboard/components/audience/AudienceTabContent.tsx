@@ -1,12 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import clsx from 'clsx';
-import { Link } from 'react-router-dom';
 import {
   Headphones as HeadphonesIcon,
   Play as PlayIcon,
   Users as UsersIcon,
   Heart as HeartIcon,
-  CircleHelp as CircleHelpIcon,
   ChevronDown as ChevronDownIcon,
   TriangleAlert as TriangleAlertIcon,
   ShoppingBag as ShoppingBagIcon,
@@ -24,16 +22,26 @@ import {
   fetchArtistAudience,
   type ArtistAudienceResponse,
   type AudienceRevenue,
-  type AudienceSupporter,
   type AudienceTimelinePoint,
 } from '@shared/api/audience';
 import type { RouteLang } from '@shared/lib/i18n/routeLang';
 import { buildArtistPagePath } from '@shared/lib/seo/publicPagePaths';
-import { profileAvatarPathToDisplayUrl } from '@shared/lib/profileAvatar';
+import { AlbumCoverImage } from '@entities/album/ui/AlbumCoverImage';
 import { DashboardButton, DashboardCard } from '@shared/ui/dashboard';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 
+import { AudienceSupportersSectionHint } from './AudienceSupportersSectionHint';
+import { AudienceSupporterRow } from './AudienceSupporterRow';
+import { AudienceTopTracksModal } from './AudienceTopTracksModal';
+import { AudienceSupportersListModal } from './AudienceSupportersListModal';
+
 import './AudienceTab.scss';
+import './AudienceAnalyticsListModal.scss';
+
+const COMPACT_TRACKS_VISIBLE = 2;
+const TRACKS_HAS_MORE_FETCH_LIMIT = 3;
+const COMPACT_SUPPORTERS_VISIBLE = 2;
+const DASHBOARD_SUPPORTERS_FETCH_LIMIT = 2;
 
 type AudienceTabContentProps = {
   active: boolean;
@@ -71,57 +79,6 @@ const EMPTY_REVENUE: AudienceRevenue = {
   subscriberSupport: 0,
   total: 0,
 };
-
-function resolveSupporterAvatar(url: string | null): string | null {
-  const displayUrl = profileAvatarPathToDisplayUrl(url);
-  return displayUrl || null;
-}
-
-type AudienceSupporterRowProps = {
-  supporter: AudienceSupporter;
-  artistPagePath: string | null;
-};
-
-function AudienceSupporterRow({ supporter, artistPagePath }: AudienceSupporterRowProps) {
-  const avatar = resolveSupporterAvatar(supporter.avatarUrl);
-  const avatarContent = avatar ? (
-    <img src={avatar} alt="" loading="lazy" decoding="async" />
-  ) : (
-    <span className="audience-tab__supporter-initial">
-      {supporter.displayName.slice(0, 1).toUpperCase()}
-    </span>
-  );
-
-  const isPublicArtist = Boolean(artistPagePath);
-
-  return (
-    <li
-      className={clsx(
-        'audience-tab__supporter-row',
-        isPublicArtist && 'audience-tab__supporter-row--public-artist'
-      )}
-    >
-      {isPublicArtist && artistPagePath ? (
-        <Link to={artistPagePath} className="audience-tab__supporter-avatar-link">
-          <span className="audience-tab__supporter-avatar" aria-hidden>
-            {avatarContent}
-          </span>
-        </Link>
-      ) : (
-        <span className="audience-tab__supporter-avatar" aria-hidden>
-          {avatarContent}
-        </span>
-      )}
-      {isPublicArtist && artistPagePath ? (
-        <Link to={artistPagePath} className="audience-tab__supporter-name-link">
-          {supporter.displayName}
-        </Link>
-      ) : (
-        <span className="audience-tab__supporter-name">{supporter.displayName}</span>
-      )}
-    </li>
-  );
-}
 
 function formatPeriodLabel(period: AudiencePeriod, ui: IInterface | null): string {
   const labels = ui?.dashboard?.audience?.periods;
@@ -169,6 +126,7 @@ function createEmptyAudienceResponse(period: AudiencePeriod): ArtistAudienceResp
     collectionCount: 0,
     listenersTimeline: [],
     topTracks: [],
+    topTracksTotal: 0,
     supporters: [],
     supportersTotal: 0,
     revenue: { ...EMPTY_REVENUE },
@@ -341,11 +299,11 @@ function AudienceRevenuePanel({
   subscriberSupportLabel,
 }: AudienceRevenuePanelProps) {
   return (
-    <div className="audience-tab__revenue-body">
+    <div className="audience-tab__revenue-body audience-tab__revenue-body--summary">
       <p className="audience-tab__revenue-total">
         {formatAudienceMoney(revenue.total, locale, unavailable)}
       </p>
-      <hr className="audience-tab__revenue-divider" />
+      <div className="audience-tab__revenue-vrule" aria-hidden />
       <ul className="audience-tab__revenue-lines">
         <li className="audience-tab__revenue-line">
           <span className="audience-tab__revenue-line-label">
@@ -384,21 +342,22 @@ export function AudienceTabContent({ active, ui }: AudienceTabContentProps) {
   const locale = resolveLocale(ui);
   const [period, setPeriod] = useState<AudiencePeriod>(DEFAULT_AUDIENCE_PERIOD);
   const [loadState, setLoadState] = useState<LoadState>({ kind: 'idle' });
-  const [showAllTracks, setShowAllTracks] = useState(false);
-  const [showAllSupporters, setShowAllSupporters] = useState(false);
-
-  const tracksLimit = showAllTracks ? 100 : 5;
-  const supportersLimit = showAllSupporters ? 100 : 5;
+  const [tracksModalOpen, setTracksModalOpen] = useState(false);
+  const [supportersModalOpen, setSupportersModalOpen] = useState(false);
 
   const loadStats = useCallback(async () => {
     setLoadState({ kind: 'loading' });
     try {
-      const data = await fetchArtistAudience({ period, tracksLimit, supportersLimit });
+      const data = await fetchArtistAudience({
+        period,
+        tracksLimit: TRACKS_HAS_MORE_FETCH_LIMIT,
+        supportersLimit: DASHBOARD_SUPPORTERS_FETCH_LIMIT,
+      });
       setLoadState({ kind: 'success', data });
     } catch {
       setLoadState({ kind: 'error' });
     }
-  }, [period, tracksLimit, supportersLimit]);
+  }, [period]);
 
   useEffect(() => {
     if (!active) return;
@@ -407,8 +366,8 @@ export function AudienceTabContent({ active, ui }: AudienceTabContentProps) {
 
   useEffect(() => {
     if (!active) {
-      setShowAllTracks(false);
-      setShowAllSupporters(false);
+      setTracksModalOpen(false);
+      setSupportersModalOpen(false);
     }
   }, [active, period]);
 
@@ -427,7 +386,14 @@ export function AudienceTabContent({ active, ui }: AudienceTabContentProps) {
   const listNoDataLabel = copy?.blockNoData ?? 'No data yet';
   const loadErrorMessage = copy?.error ?? 'Could not load audience statistics.';
   const retryLabel = copy?.retry ?? 'Retry';
-  const canExpandTracks = !metricsUnavailable && !showAllTracks && metrics.topTracks.length >= 5;
+  const showAllTracksLabel = copy?.showAll ?? copy?.showAllTracks ?? 'Show all';
+  const showAllSupportersLabel = copy?.showAllSupporters ?? 'Show all supporters';
+  const closeModalLabel = copy?.modalClose ?? 'Close';
+  const compactTracks = metrics.topTracks.slice(0, COMPACT_TRACKS_VISIBLE);
+  const compactSupporters = metrics.supporters.slice(0, COMPACT_SUPPORTERS_VISIBLE);
+  const canShowAllTracks = !metricsUnavailable && metrics.topTracksTotal > COMPACT_TRACKS_VISIBLE;
+  const canShowAllSupporters =
+    !metricsUnavailable && metrics.supportersTotal > COMPACT_SUPPORTERS_VISIBLE;
 
   if (!active) {
     return null;
@@ -542,79 +508,83 @@ export function AudienceTabContent({ active, ui }: AudienceTabContentProps) {
         </div>
       </DashboardCard>
 
-      <div className="audience-tab__columns">
+      <div className="audience-tab__list-columns">
         <DashboardCard className="audience-tab__list-card audience-tab__list-card--tracks">
-          <div className="audience-tab__panel-header">
+          <div className="audience-tab__panel-header audience-tab__panel-header--split">
             <h3 className="audience-tab__panel-title">
               {copy?.topTracksTitle ?? 'Popular tracks'}
             </h3>
+            {canShowAllTracks ? (
+              <button
+                type="button"
+                className="audience-tab__panel-show-all"
+                onClick={() => setTracksModalOpen(true)}
+              >
+                {showAllTracksLabel}
+              </button>
+            ) : null}
           </div>
           <div className="audience-tab__list-body">
-            {metrics.topTracks.length === 0 ? (
+            {compactTracks.length === 0 ? (
               showEmptyStateCopy ? (
                 <p className="audience-tab__list-empty">{listNoDataLabel}</p>
               ) : null
             ) : (
               <ol className="audience-tab__rank-list">
-                {metrics.topTracks.map((track) => (
+                {compactTracks.map((track) => (
                   <li key={track.trackId} className="audience-tab__rank-row">
-                    <span className="audience-tab__rank-num">
-                      {String(track.rank).padStart(2, '0')}
-                    </span>
+                    <span className="audience-tab__rank-num">{track.rank}</span>
+                    <div className="audience-tab__rank-cover-frame">
+                      <AlbumCoverImage
+                        cover={track.albumCover ?? ''}
+                        userId={track.albumUserId ?? undefined}
+                        alt=""
+                        className="audience-tab__rank-cover-image"
+                        loading="lazy"
+                        decoding="async"
+                      />
+                    </div>
                     <span className="audience-tab__rank-title">{track.title}</span>
                     <span className="audience-tab__rank-plays">
-                      <PlayIcon
-                        className="audience-tab__rank-play-icon"
-                        {...dashboardActionIconProps({ size: 14 })}
-                        aria-hidden
-                      />
                       {formatMetricValue(track.plays, locale)}
                     </span>
                   </li>
                 ))}
               </ol>
             )}
-            {canExpandTracks ? (
-              <div className="audience-tab__section-footer">
-                <button
-                  type="button"
-                  className="audience-tab__link-button"
-                  onClick={() => setShowAllTracks(true)}
-                >
-                  {copy?.showAllTracks ?? 'Show all tracks'} →
-                </button>
-              </div>
-            ) : null}
           </div>
         </DashboardCard>
 
         <DashboardCard className="audience-tab__list-card audience-tab__list-card--supporters">
-          <div className="audience-tab__panel-header">
+          <div className="audience-tab__panel-header audience-tab__panel-header--split">
             <h3 className="audience-tab__panel-title">
               <span>{copy?.supportersTitle ?? 'Supporters'}</span>
-              <span
-                className="audience-tab__panel-title-hint"
-                title={
+              <AudienceSupportersSectionHint
+                ariaLabel={copy?.supportersSectionHintAria ?? 'About supporters'}
+                tooltipText={
                   copy?.supportersSectionHint ??
-                  'Listeners with an active premium subscription who added you to their collection.'
+                  'Listeners with an active Premium subscription who have added you to their collection.'
                 }
-                aria-label={
-                  copy?.supportersSectionHint ??
-                  'Listeners with an active premium subscription who added you to their collection.'
-                }
-              >
-                <CircleHelpIcon {...dashboardActionIconProps({ size: 14 })} />
-              </span>
+              />
             </h3>
+            {canShowAllSupporters ? (
+              <button
+                type="button"
+                className="audience-tab__panel-show-all"
+                onClick={() => setSupportersModalOpen(true)}
+              >
+                {showAllSupportersLabel}
+              </button>
+            ) : null}
           </div>
           <div className="audience-tab__list-body">
-            {metrics.supporters.length === 0 ? (
+            {compactSupporters.length === 0 ? (
               showEmptyStateCopy ? (
                 <p className="audience-tab__list-empty">{listNoDataLabel}</p>
               ) : null
             ) : (
               <ul className="audience-tab__supporters">
-                {metrics.supporters.map((supporter) => {
+                {compactSupporters.map((supporter) => {
                   const slug = supporter.publicArtistSlug?.trim();
                   const artistPagePath = slug ? buildArtistPagePath(lang, slug) : null;
                   return (
@@ -627,33 +597,45 @@ export function AudienceTabContent({ active, ui }: AudienceTabContentProps) {
                 })}
               </ul>
             )}
-            {!showAllSupporters && metrics.supportersTotal > 5 ? (
-              <div className="audience-tab__section-footer">
-                <button
-                  type="button"
-                  className="audience-tab__link-button"
-                  onClick={() => setShowAllSupporters(true)}
-                >
-                  {copy?.showAllSupporters ?? 'Show all supporters'} →
-                </button>
-              </div>
-            ) : null}
           </div>
-        </DashboardCard>
-
-        <DashboardCard className="audience-tab__list-card audience-tab__list-card--revenue">
-          <div className="audience-tab__panel-header">
-            <h3 className="audience-tab__panel-title">{copy?.revenueTitle ?? 'Revenue'}</h3>
-          </div>
-          <AudienceRevenuePanel
-            revenue={metrics.revenue}
-            locale={locale}
-            unavailable={metricsUnavailable}
-            albumSalesLabel={copy?.revenueAlbumSales ?? 'Album sales'}
-            subscriberSupportLabel={copy?.revenueSubscriberSupport ?? 'Subscriber support'}
-          />
         </DashboardCard>
       </div>
+
+      <DashboardCard className="audience-tab__list-card audience-tab__list-card--revenue audience-tab__revenue-card">
+        <div className="audience-tab__panel-header">
+          <h3 className="audience-tab__panel-title">{copy?.revenueTitle ?? 'Revenue'}</h3>
+        </div>
+        <AudienceRevenuePanel
+          revenue={metrics.revenue}
+          locale={locale}
+          unavailable={metricsUnavailable}
+          albumSalesLabel={copy?.revenueAlbumSales ?? 'Album sales'}
+          subscriberSupportLabel={copy?.revenueSubscriberSupport ?? 'Subscriber support'}
+        />
+      </DashboardCard>
+
+      <div className="audience-tab__scroll-tail" aria-hidden />
+
+      <AudienceTopTracksModal
+        isOpen={tracksModalOpen}
+        period={period}
+        locale={locale}
+        title={copy?.topTracksTitle ?? 'Popular tracks'}
+        closeLabel={closeModalLabel}
+        trackColumnLabel={copy?.tracksModalTrackColumn ?? 'Track'}
+        playsColumnLabel={copy?.tracksModalPlaysColumn ?? 'Plays'}
+        errorLabel={loadErrorMessage}
+        onClose={() => setTracksModalOpen(false)}
+      />
+      <AudienceSupportersListModal
+        isOpen={supportersModalOpen}
+        period={period}
+        lang={lang}
+        title={copy?.supportersTitle ?? 'Supporters'}
+        closeLabel={closeModalLabel}
+        errorLabel={loadErrorMessage}
+        onClose={() => setSupportersModalOpen(false)}
+      />
     </div>
   );
 }

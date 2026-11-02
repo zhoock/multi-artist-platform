@@ -1,0 +1,145 @@
+@use '../../../../scss/abstracts/mixins' as *;
+@use '../../../../scss/components/modal' as dashboard-modal;
+@use '../../../../scss/components/fullscreen-loading' as fs-loading;
+@use '../modals/dashboard-fullscreen-surface' as dashboard-fs;
+@include dashboard-fs.dashboard-fullscreen-dialog('audience-analytics-fullscreen');
+@include fs-loading.dashboard-fullscreen-dialog-root-loading(
+  '.audience-analytics-fullscreen__loading'
+);
+
+dialog {
+  @include dashboard-modal.dashboard-modal-dialog-buttons;
+  @include dashboard-fs.dashboard-fullscreen-shell('audience-analytics-fullscreen');
+
+  .audience-analytics-fullscreen {
+    &__loading {
+      @include fs-loading.dashboard-fullscreen-stretch-loading;
+    }
+
+    &__error {
+      margin: 0;
+      padding: var(--ms-2) 0;
+      color: var(--dashboard-text-secondary);
+      font-size: var(--dashboard-font-size);
+      text-align: center;
+    }
+
+    &__table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    &__thead {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      background: var(--dashboard-card-bg);
+    }
+
+    &__th {
+      padding: var(--ms-01) 0;
+      color: var(--dashboard-text-secondary);
+      font-size: var(--fs-sm, 0.8125rem);
+      font-weight: 500;
+      line-height: 1.25;
+      text-align: left;
+      vertical-align: bottom;
+      border-bottom: 1px solid var(--dashboard-divider);
+
+      &--rank {
+        width: 1.75rem;
+        padding-right: 0.5rem;
+      }
+
+      &--cover {
+        width: 44px;
+        padding-right: 0.75rem;
+      }
+
+      &--track {
+        width: auto;
+      }
+
+      &--plays {
+        text-align: right;
+      }
+    }
+
+    &__row {
+      border-bottom: 1px solid var(--dashboard-divider);
+
+      &:last-child {
+        border-bottom: none;
+      }
+    }
+
+    &__td {
+      padding: 0.625rem 0;
+      color: var(--dashboard-text-primary);
+      font-size: var(--dashboard-font-size);
+      line-height: 1.25;
+      vertical-align: middle;
+
+      &--rank {
+        width: 1.75rem;
+        padding-right: 0.5rem;
+        color: var(--dashboard-text-secondary);
+        font-variant-numeric: tabular-nums;
+      }
+
+      &--cover {
+        width: 44px;
+        padding-right: 0.75rem;
+      }
+
+      &--title {
+        max-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      &--plays {
+        font-variant-numeric: tabular-nums;
+        text-align: right;
+        white-space: nowrap;
+      }
+    }
+
+    &__cover-frame {
+      display: block;
+      width: 44px;
+      height: 44px;
+      overflow: hidden;
+      line-height: 0;
+      border-radius: 4px;
+    }
+
+    &__cover-image {
+      display: block;
+      width: 44px;
+      height: 44px;
+      aspect-ratio: 1 / 1;
+      object-fit: cover;
+      object-position: center;
+      border-radius: 4px;
+    }
+
+    &__cover-frame picture {
+      display: block;
+      width: 44px;
+      height: 44px;
+      aspect-ratio: 1 / 1;
+    }
+
+    &__cover-frame img {
+      display: block;
+      width: 44px;
+      height: 44px;
+      aspect-ratio: 1 / 1;
+      object-fit: cover;
+      object-position: center;
+      border-radius: 4px;
+    }
+  }
+}

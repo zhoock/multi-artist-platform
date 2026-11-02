@@ -35,7 +35,17 @@ const successPayload: ArtistAudienceResponse = {
   regularListeners: 0,
   collectionCount: 1,
   listenersTimeline: [{ date: '2026-11-01', listeners: 1 }],
-  topTracks: [{ rank: 1, trackId: 'track-1', title: 'Track One', plays: 1 }],
+  topTracks: [
+    {
+      rank: 1,
+      trackId: 'track-1',
+      title: 'Track One',
+      plays: 1,
+      albumCover: null,
+      albumUserId: null,
+    },
+  ],
+  topTracksTotal: 1,
   supporters: [],
   supportersTotal: 0,
   revenue: {
@@ -66,6 +76,9 @@ describe('AudienceTabContent load states', () => {
     await waitFor(() => {
       expect(within(metricsRegion as HTMLElement).getAllByText('1')).toHaveLength(3);
     });
+
+    const scrollTail = document.querySelector('.audience-tab__scroll-tail');
+    expect(scrollTail).not.toBeNull();
 
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     expect(screen.queryByText('Could not load audience statistics.')).not.toBeInTheDocument();
