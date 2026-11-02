@@ -8,6 +8,10 @@ import {
   readNetlifyGeoHeader,
 } from '../netlify-geo';
 
+function encodeNetlifyGeoBase64(payload: Record<string, unknown>): string {
+  return Buffer.from(JSON.stringify(payload), 'utf8').toString('base64');
+}
+
 describe('parseListenGeoFromHeader', () => {
   test('parses valid x-nf-geo JSON', () => {
     expect(
@@ -64,6 +68,54 @@ describe('parseListenGeoFromHeader', () => {
     const result = parseListenGeoFromHeader(JSON.stringify({ city: longCity }));
     expect(result.listenCity).toHaveLength(LISTEN_CITY_MAX_LENGTH);
   });
+
+  test('parses Base64-encoded x-nf-geo JSON with city and country code', () => {
+    const header = encodeNetlifyGeoBase64({
+      city: 'Corvallis',
+      country: { code: 'US', name: 'United States' },
+    });
+    expect(parseListenGeoFromHeader(header)).toEqual({
+      listenCity: 'Corvallis',
+      listenCountryCode: 'US',
+    });
+  });
+
+  test('parses Base64 JSON with trim and country code normalization', () => {
+    const header = encodeNetlifyGeoBase64({
+      city: '  Tokyo ',
+      country: { code: 'jp', name: 'Japan' },
+    });
+    expect(parseListenGeoFromHeader(header)).toEqual({
+      listenCity: 'Tokyo',
+      listenCountryCode: 'JP',
+    });
+  });
+
+  test('returns nulls when Base64 is invalid', () => {
+    expect(parseListenGeoFromHeader('!!!not-valid-base64!!!')).toEqual({
+      listenCity: null,
+      listenCountryCode: null,
+    });
+  });
+
+  test('returns nulls when Base64 decodes but JSON is invalid', () => {
+    const header = Buffer.from('{not json', 'utf8').toString('base64');
+    expect(parseListenGeoFromHeader(header)).toEqual({
+      listenCity: null,
+      listenCountryCode: null,
+    });
+  });
+
+  test('applies city and country validation to Base64 payloads', () => {
+    const header = encodeNetlifyGeoBase64({
+      city: 'Berlin',
+      country: { code: 'DEU' },
+    });
+    expect(parseListenGeoFromHeader(header)).toEqual({
+      listenCity: 'Berlin',
+      listenCountryCode: null,
+    });
+  });
 });
 
 describe('readNetlifyGeoHeader / parseListenGeoFromEvent', () => {
@@ -88,6 +140,22 @@ describe('readNetlifyGeoHeader / parseListenGeoFromEvent', () => {
     expect(parseListenGeoFromEvent({ headers: {} } as HandlerEvent)).toEqual({
       listenCity: null,
       listenCountryCode: null,
+    });
+  });
+
+  test('reads Base64 x-nf-geo from handler event headers', () => {
+    const event = {
+      headers: {
+        'x-nf-geo': encodeNetlifyGeoBase64({
+          city: 'Paris',
+          country: { code: 'FR', name: 'France' },
+        }),
+      },
+    } as HandlerEvent;
+
+    expect(parseListenGeoFromEvent(event)).toEqual({
+      listenCity: 'Paris',
+      listenCountryCode: 'FR',
     });
   });
 });

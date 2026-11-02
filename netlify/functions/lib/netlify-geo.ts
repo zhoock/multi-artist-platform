@@ -42,21 +42,31 @@ function normalizeCountryCode(value: unknown): string | null {
   return upper;
 }
 
+function parseGeoPayload(rawHeader: string): unknown | null {
+  const trimmed = rawHeader.trim();
+  try {
+    return JSON.parse(trimmed);
+  } catch {
+    /* try Base64-encoded JSON (Netlify production format) */
+  }
+
+  try {
+    const decoded = Buffer.from(trimmed, 'base64').toString('utf8');
+    return JSON.parse(decoded);
+  } catch {
+    return null;
+  }
+}
+
 /**
- * Parses x-nf-geo JSON. Invalid or missing values become null; never throws.
+ * Parses x-nf-geo JSON (plain or Base64-encoded). Invalid or missing values become null; never throws.
  */
 export function parseListenGeoFromHeader(rawHeader: string | null | undefined): ParsedListenGeo {
   if (!rawHeader?.trim()) {
     return { listenCity: null, listenCountryCode: null };
   }
 
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(rawHeader);
-  } catch {
-    return { listenCity: null, listenCountryCode: null };
-  }
-
+  const parsed = parseGeoPayload(rawHeader);
   if (!parsed || typeof parsed !== 'object') {
     return { listenCity: null, listenCountryCode: null };
   }
