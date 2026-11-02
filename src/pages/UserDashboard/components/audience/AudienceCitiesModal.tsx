@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useId, useState } from 'react';
 
+import type { SupportedLang } from '@shared/model/lang';
 import {
   fetchAllAudienceCities,
   type AudienceListenCity,
@@ -9,13 +10,14 @@ import { DashboardLoadingState } from '@shared/ui/dashboard';
 
 import { AudienceAnalyticsListModalShell } from './AudienceAnalyticsListModalShell';
 import { formatAudienceCountryName, formatAudienceMetricValue } from './audienceFormatters';
+import { useAudienceCityRuIndex } from './useAudienceCityRuIndex';
 
 import './AudienceAnalyticsListModal.scss';
 
 type AudienceCitiesModalProps = {
   isOpen: boolean;
   period: AudiencePeriod;
-  locale: string;
+  lang: SupportedLang;
   title: string;
   closeLabel: string;
   cityColumnLabel: string;
@@ -28,7 +30,7 @@ type AudienceCitiesModalProps = {
 export function AudienceCitiesModal({
   isOpen,
   period,
-  locale,
+  lang,
   title,
   closeLabel,
   cityColumnLabel,
@@ -38,6 +40,7 @@ export function AudienceCitiesModal({
   onClose,
 }: AudienceCitiesModalProps) {
   const titleId = useId();
+  const formatCity = useAudienceCityRuIndex(isOpen && lang === 'ru', lang);
   const [cities, setCities] = useState<AudienceListenCity[]>([]);
   const [loadState, setLoadState] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
 
@@ -117,13 +120,13 @@ export function AudienceCitiesModal({
                   className="audience-analytics-fullscreen__td audience-analytics-fullscreen__td--title audience-analytics-fullscreen__td--city"
                   title={row.city}
                 >
-                  {row.city}
+                  {formatCity(row.city, row.countryCode)}
                 </td>
                 <td className="audience-analytics-fullscreen__td audience-analytics-fullscreen__td--country">
-                  {formatAudienceCountryName(row.countryCode, locale)}
+                  {formatAudienceCountryName(row.countryCode, lang)}
                 </td>
                 <td className="audience-analytics-fullscreen__td audience-analytics-fullscreen__td--plays">
-                  {formatAudienceMetricValue(row.plays, locale)}
+                  {formatAudienceMetricValue(row.plays, lang)}
                 </td>
               </tr>
             ))}

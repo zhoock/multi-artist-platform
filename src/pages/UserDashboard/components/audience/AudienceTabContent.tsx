@@ -24,7 +24,13 @@ import {
   type AudienceRevenue,
   type AudienceTimelinePoint,
 } from '@shared/api/audience';
-import type { RouteLang } from '@shared/lib/i18n/routeLang';
+import type { SupportedLang } from '@shared/model/lang';
+import {
+  formatAudienceCountryName,
+  formatAudienceMetricValue,
+  toAudienceIntlLocale,
+} from './audienceFormatters';
+import { useAudienceCityRuIndex } from './useAudienceCityRuIndex';
 import { buildArtistPagePath } from '@shared/lib/seo/publicPagePaths';
 import { AlbumCoverImage } from '@entities/album/ui/AlbumCoverImage';
 import { DashboardButton, DashboardCard } from '@shared/ui/dashboard';
@@ -35,7 +41,6 @@ import { AudienceSupporterRow } from './AudienceSupporterRow';
 import { AudienceTopTracksModal } from './AudienceTopTracksModal';
 import { AudienceSupportersListModal } from './AudienceSupportersListModal';
 import { AudienceCitiesModal } from './AudienceCitiesModal';
-import { formatAudienceCountryName, formatAudienceMetricValue } from './audienceFormatters';
 
 import './AudienceTab.scss';
 import './AudienceAnalyticsListModal.scss';
@@ -58,19 +63,13 @@ type LoadState =
   | { kind: 'success'; data: ArtistAudienceResponse }
   | { kind: 'error' };
 
-function resolveLocale(ui: IInterface | null): string {
-  const sample = ui?.dashboard?.audience?.periods?.days30 ?? '';
-  if (/последние/i.test(sample)) return 'ru-RU';
-  return 'en-US';
+function formatMetricValue(value: number, intlLocale: string): string {
+  return value.toLocaleString(intlLocale);
 }
 
-function formatMetricValue(value: number, locale: string): string {
-  return value.toLocaleString(locale);
-}
-
-function formatAudienceMoney(amount: number, locale: string, unavailable?: boolean): string {
+function formatAudienceMoney(amount: number, intlLocale: string, unavailable?: boolean): string {
   if (unavailable) return '—';
-  const formatted = Math.round(amount).toLocaleString(locale, {
+  const formatted = Math.round(amount).toLocaleString(intlLocale, {
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   });
@@ -91,10 +90,10 @@ function formatPeriodLabel(period: AudiencePeriod, ui: IInterface | null): strin
   return labels?.days30 ?? 'Last 30 days';
 }
 
-function formatChartAxisDate(isoDate: string, locale: string): string {
+function formatChartAxisDate(isoDate: string, intlLocale: string): string {
   const parsed = new Date(`${isoDate}T12:00:00`);
   if (Number.isNaN(parsed.getTime())) return isoDate;
-  return parsed.toLocaleDateString(locale, { day: 'numeric', month: 'short' });
+  return parsed.toLocaleDateString(intlLocale, { day: 'numeric', month: 'short' });
 }
 
 function pickChartLabelIndices(count: number, maxLabels: number): number[] {
@@ -343,9 +342,10 @@ function AudienceRevenuePanel({
 }
 
 export function AudienceTabContent({ active, ui }: AudienceTabContentProps) {
-  const { lang } = useLang() as { lang: RouteLang };
+  const { lang: uiLang } = useLang();
+  const lang = uiLang as SupportedLang;
   const copy = ui?.dashboard?.audience;
-  const locale = resolveLocale(ui);
+  const intlLocale = toAudienceIntlLocale(lang);
   const [period, setPeriod] = useState<AudiencePeriod>(DEFAULT_AUDIENCE_PERIOD);
   const [loadState, setLoadState] = useState<LoadState>({ kind: 'idle' });
   const [tracksModalOpen, setTracksModalOpen] = useState(false);
@@ -408,6 +408,9 @@ export function AudienceTabContent({ active, ui }: AudienceTabContentProps) {
   const canShowAllCities = !metricsUnavailable && metrics.topCitiesTotal > COMPACT_CITIES_VISIBLE;
   const citiesEmptyLabel = copy?.citiesEmpty ?? copy?.blockNoData ?? 'No data yet';
 
+  const needsRuCityIndex = active && lang === 'ru' && (compactCities.length > 0 || citiesModalOpen);
+  const formatCity = useAudienceCityRuIndex(needsRuCityIndex, lang);
+
   if (!active) {
     return null;
   }
@@ -467,7 +470,7 @@ export function AudienceTabContent({ active, ui }: AudienceTabContentProps) {
             'Unique people with at least one qualified listen in the selected period.'
           }
           value={metrics.listeners}
-          locale={locale}
+          locale={intlLocale}
           valueUnavailable={metricsUnavailable}
         />
         <MetricCard
@@ -478,7 +481,7 @@ export function AudienceTabContent({ active, ui }: AudienceTabContentProps) {
             'Qualified plays in the period — each playback session counts once per track.'
           }
           value={metrics.plays}
-          locale={locale}
+          locale={intlLocale}
           valueUnavailable={metricsUnavailable}
         />
         <MetricCard
@@ -489,7 +492,7 @@ export function AudienceTabContent({ active, ui }: AudienceTabContentProps) {
             'Listeners who played your music on at least 3 different days in the last 30 days.'
           }
           value={metrics.regularListeners}
-          locale={locale}
+          locale={intlLocale}
           valueUnavailable={metricsUnavailable}
         />
         <MetricCard
@@ -500,7 +503,7 @@ export function AudienceTabContent({ active, ui }: AudienceTabContentProps) {
             'Users who currently have you in their active collection.'
           }
           value={metrics.collectionCount}
-          locale={locale}
+          locale={intlLocale}
           valueUnavailable={metricsUnavailable}
         />
       </div>
@@ -515,7 +518,7 @@ export function AudienceTabContent({ active, ui }: AudienceTabContentProps) {
           <ListenersTimelineChart
             points={metrics.listenersTimeline}
             emptyLabel={listNoDataLabel}
-            locale={locale}
+            locale={intlLocale}
             showEmptyLabel={showEmptyStateCopy}
           />
         </div>
@@ -559,7 +562,7 @@ export function AudienceTabContent({ active, ui }: AudienceTabContentProps) {
                     </div>
                     <span className="audience-tab__rank-title">{track.title}</span>
                     <span className="audience-tab__rank-plays">
-                      {formatMetricValue(track.plays, locale)}
+                      {formatMetricValue(track.plays, intlLocale)}
                     </span>
                   </li>
                 ))}
@@ -643,13 +646,13 @@ export function AudienceTabContent({ active, ui }: AudienceTabContentProps) {
                 >
                   <span className="audience-tab__rank-num">{row.rank}</span>
                   <span className="audience-tab__rank-city" title={row.city}>
-                    {row.city}
+                    {formatCity(row.city, row.countryCode)}
                   </span>
                   <span className="audience-tab__rank-country">
-                    {formatAudienceCountryName(row.countryCode, locale)}
+                    {formatAudienceCountryName(row.countryCode, lang)}
                   </span>
                   <span className="audience-tab__rank-plays">
-                    {formatAudienceMetricValue(row.plays, locale)}
+                    {formatAudienceMetricValue(row.plays, lang)}
                   </span>
                 </li>
               ))}
@@ -664,7 +667,7 @@ export function AudienceTabContent({ active, ui }: AudienceTabContentProps) {
         </div>
         <AudienceRevenuePanel
           revenue={metrics.revenue}
-          locale={locale}
+          locale={intlLocale}
           unavailable={metricsUnavailable}
           albumSalesLabel={copy?.revenueAlbumSales ?? 'Album sales'}
           subscriberSupportLabel={copy?.revenueSubscriberSupport ?? 'Subscriber support'}
@@ -676,7 +679,7 @@ export function AudienceTabContent({ active, ui }: AudienceTabContentProps) {
       <AudienceTopTracksModal
         isOpen={tracksModalOpen}
         period={period}
-        locale={locale}
+        locale={intlLocale}
         title={copy?.topTracksTitle ?? 'Popular tracks'}
         closeLabel={closeModalLabel}
         trackColumnLabel={copy?.tracksModalTrackColumn ?? 'Track'}
@@ -696,7 +699,7 @@ export function AudienceTabContent({ active, ui }: AudienceTabContentProps) {
       <AudienceCitiesModal
         isOpen={citiesModalOpen}
         period={period}
-        locale={locale}
+        lang={lang}
         title={copy?.citiesTitle ?? 'Cities'}
         closeLabel={closeModalLabel}
         cityColumnLabel={copy?.citiesModalCityColumn ?? 'City'}

@@ -125,7 +125,8 @@
         "The Site uses cloud storage infrastructure to store and deliver uploaded media files. When media is uploaded or viewed, the infrastructure provider may receive technical request data and the transferred file content as required to provide the service.",
         "When you proceed to payment, you are taken to YooKassa. The service is used to accept payments for digital albums and Premium subscriptions. The Site sends the provider information needed for payment — including email, amount, and order description; for album purchases, the buyer's name may also be sent. Payment credentials are entered on YooKassa's side. Album payments may be processed through settings connected by the artist; Premium payments through the Site's settings (see the payment processing section).",
         "Transactional emails (email verification, password reset, purchase confirmation, account deletion notice) are sent through Resend. It receives the recipient address and message content — as needed to deliver the message. You do not visit Resend's website during normal use of the Site.",
-        "The list of third-party services may change as the Site evolves and new features are added. The current Privacy Policy is published on this page."
+        "The list of third-party services may change as the Site evolves and new features are added. The current Privacy Policy is published on this page.",
+        "Open geographic data: city names in the artist dashboard Analytics tab (Cities) may be shown in Russian using a local index derived from the GeoNames Gazetteer cities1000 dataset (Creative Commons Attribution 4.0 International, CC BY 4.0). Source: https://www.geonames.org/ — License: https://creativecommons.org/licenses/by/4.0/. The index is bundled with the Site and is not fetched from GeoNames when you use the dashboard."
       ]
     },
     {

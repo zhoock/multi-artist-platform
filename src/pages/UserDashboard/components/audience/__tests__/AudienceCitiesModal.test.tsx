@@ -15,6 +15,11 @@ jest.mock('@shared/api/audience', () => ({
   fetchAllAudienceCities: (period: string) => fetchAllAudienceCitiesMock(period),
 }));
 
+jest.mock('../geoAudienceCityRuIndex.json', () => ({
+  __esModule: true,
+  default: { 'VN|da nang': 'Дананг' },
+}));
+
 jest.mock('@app/providers/lang', () => ({
   useLang: () => ({ lang: 'en' }),
 }));
@@ -35,7 +40,7 @@ describe('AudienceCitiesModal', () => {
       <AudienceCitiesModal
         isOpen
         period="90d"
-        locale="en-US"
+        lang="en"
         title="Cities"
         closeLabel="Close"
         cityColumnLabel="City"
@@ -60,7 +65,7 @@ describe('AudienceCitiesModal', () => {
       <AudienceCitiesModal
         isOpen
         period="30d"
-        locale="en-US"
+        lang="en"
         title="Cities"
         closeLabel="Close"
         cityColumnLabel="City"
@@ -85,7 +90,7 @@ describe('AudienceCitiesModal', () => {
       <AudienceCitiesModal
         isOpen
         period="30d"
-        locale="en-US"
+        lang="en"
         title="Cities"
         closeLabel="Close"
         cityColumnLabel="City"
@@ -102,5 +107,31 @@ describe('AudienceCitiesModal', () => {
 
     expect(screen.getByText('Berlin')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Close' })).toBeInTheDocument();
+  });
+
+  it('localizes city and country for Russian UI', async () => {
+    fetchAllAudienceCitiesMock.mockResolvedValue([
+      { rank: 1, city: 'Da Nang', countryCode: 'VN', plays: 2 },
+    ]);
+
+    renderWithProviders(
+      <AudienceCitiesModal
+        isOpen
+        period="30d"
+        lang="ru"
+        title="Города"
+        closeLabel="Закрыть"
+        cityColumnLabel="Город"
+        countryColumnLabel="Страна"
+        playsColumnLabel="Прослушивания"
+        errorLabel="Ошибка"
+        onClose={() => {}}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Дананг')).toBeInTheDocument();
+    });
+    expect(screen.getByText('Вьетнам')).toBeInTheDocument();
   });
 });

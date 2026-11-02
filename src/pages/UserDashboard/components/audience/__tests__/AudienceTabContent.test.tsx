@@ -3,6 +3,7 @@ import React from 'react';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 
 import { renderWithProviders } from '@shared/lib/test-utils';
+import type { SupportedLang } from '@shared/model/lang';
 import { buildArtistPagePath } from '@shared/lib/seo/publicPagePaths';
 import type { ArtistAudienceResponse } from '@shared/api/audience';
 import { AudienceTabContent } from '../AudienceTabContent';
@@ -24,8 +25,18 @@ jest.mock('@shared/api/audience', () => ({
   }) => fetchArtistAudienceMock(params),
 }));
 
+const useLangMock = jest.fn((): { lang: SupportedLang; setLang: () => void } => ({
+  lang: 'en',
+  setLang: () => {},
+}));
+
+jest.mock('../geoAudienceCityRuIndex.json', () => ({
+  __esModule: true,
+  default: { 'VN|da nang': 'Дананг' },
+}));
+
 jest.mock('@app/providers/lang', () => ({
-  useLang: () => ({ lang: 'en' }),
+  useLang: () => useLangMock(),
 }));
 
 const successPayload: ArtistAudienceResponse = {
@@ -271,6 +282,7 @@ describe('AudienceTabContent supporters avatars', () => {
 describe('AudienceTabContent cities block', () => {
   beforeEach(() => {
     fetchArtistAudienceMock.mockReset();
+    useLangMock.mockReturnValue({ lang: 'en', setLang: () => {} });
   });
 
   it('shows at most two cities and Show all when topCitiesTotal exceeds two', async () => {
@@ -326,5 +338,21 @@ describe('AudienceTabContent cities block', () => {
 
     const cityEl = document.querySelector('.audience-tab__rank-city') as HTMLElement;
     expect(cityEl.textContent).toBe(longCity);
+  });
+
+  it('localizes city and country labels when UI language is Russian', async () => {
+    useLangMock.mockReturnValue({ lang: 'ru', setLang: () => {} });
+    fetchArtistAudienceMock.mockResolvedValue({
+      ...successPayload,
+      topCities: [{ rank: 1, city: 'Da Nang', countryCode: 'VN', plays: 4 }],
+      topCitiesTotal: 1,
+    });
+
+    renderWithProviders(<AudienceTabContent active ui={null} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Дананг')).toBeInTheDocument();
+    });
+    expect(screen.getByText('Вьетнам')).toBeInTheDocument();
   });
 });
