@@ -14,8 +14,11 @@ jest.mock('@shared/lib/auth', () => ({
 }));
 
 import {
+  AUDIENCE_CITIES_PAGE_MAX,
   AUDIENCE_TRACKS_PAGE_MAX,
+  fetchAllAudienceCities,
   fetchAllAudienceTopTracks,
+  type AudienceListenCity,
   type AudienceTopTrack,
 } from '../index';
 
@@ -56,6 +59,8 @@ describe('fetchAllAudienceTopTracks', () => {
             period: '30d',
             topTracks: page1,
             topTracksTotal: AUDIENCE_TRACKS_PAGE_MAX + 1,
+            topCities: [],
+            topCitiesTotal: 0,
             supporters: [],
             supportersTotal: 0,
             listeners: 0,
@@ -91,6 +96,85 @@ describe('fetchAllAudienceTopTracks', () => {
     const tracks = await fetchAllAudienceTopTracks('30d');
 
     expect(tracks).toHaveLength(AUDIENCE_TRACKS_PAGE_MAX + 1);
+    expect(fetchWithAuthSessionMock).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('fetchAllAudienceCities', () => {
+  beforeEach(() => {
+    fetchWithAuthSessionMock.mockReset();
+    getAuthHeaderMock.mockReset();
+    getAuthHeaderMock.mockReturnValue({ Authorization: 'Bearer test-token' });
+  });
+
+  it('loads every page until topCitiesTotal is reached', async () => {
+    const page1: AudienceListenCity[] = Array.from(
+      { length: AUDIENCE_CITIES_PAGE_MAX },
+      (_, i) => ({
+        rank: i + 1,
+        city: `City ${i}`,
+        countryCode: 'US',
+        plays: 1,
+      })
+    );
+    const page2: AudienceListenCity[] = [
+      {
+        rank: AUDIENCE_CITIES_PAGE_MAX + 1,
+        city: 'Last City',
+        countryCode: 'DE',
+        plays: 2,
+      },
+    ];
+
+    fetchWithAuthSessionMock
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          success: true,
+          data: {
+            period: '30d',
+            topCities: page1,
+            topCitiesTotal: AUDIENCE_CITIES_PAGE_MAX + 1,
+            topTracks: [],
+            topTracksTotal: 0,
+            supporters: [],
+            supportersTotal: 0,
+            listeners: 0,
+            plays: 0,
+            regularListeners: 0,
+            collectionCount: 0,
+            listenersTimeline: [],
+            revenue: { currency: 'RUB', albumSales: 0, subscriberSupport: 0, total: 0 },
+          },
+        }),
+      } as Response)
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          success: true,
+          data: {
+            period: '30d',
+            topCities: page2,
+            topCitiesTotal: AUDIENCE_CITIES_PAGE_MAX + 1,
+            topTracks: [],
+            topTracksTotal: 0,
+            supporters: [],
+            supportersTotal: 0,
+            listeners: 0,
+            plays: 0,
+            regularListeners: 0,
+            collectionCount: 0,
+            listenersTimeline: [],
+            revenue: { currency: 'RUB', albumSales: 0, subscriberSupport: 0, total: 0 },
+          },
+        }),
+      } as Response);
+
+    const cities = await fetchAllAudienceCities('30d');
+
+    expect(cities).toHaveLength(AUDIENCE_CITIES_PAGE_MAX + 1);
     expect(fetchWithAuthSessionMock).toHaveBeenCalledTimes(2);
   });
 });

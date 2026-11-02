@@ -362,6 +362,13 @@
       flex: 0 0 auto;
       align-self: stretch;
     }
+
+    &.audience-tab__cities-card {
+      height: auto;
+      min-height: 0;
+      flex: 0 0 auto;
+      align-self: stretch;
+    }
   }
 
   &__list-body {
@@ -369,6 +376,22 @@
     min-height: 0;
     flex: 1;
     flex-direction: column;
+  }
+
+  &__cities-card {
+    flex: 0 0 auto;
+    width: 100%;
+
+    .audience-tab__list-body {
+      flex: 0 0 auto;
+    }
+
+    .audience-tab__list-empty {
+      flex: 0 0 auto;
+      align-items: flex-start;
+      justify-content: flex-start;
+      padding: var(--ms-01) var(--ms-0);
+    }
   }
 
   &__rank-list {
@@ -384,6 +407,26 @@
     align-items: center;
     padding: var(--ms-01) var(--ms-0);
     border-bottom: 1px solid var(--dashboard-divider);
+  }
+
+  &__rank-row--city {
+    grid-template-columns: auto minmax(0, 1fr) minmax(0, 6rem) auto;
+  }
+
+  &__rank-country {
+    min-width: 0;
+    overflow: hidden;
+    color: var(--audience-muted);
+    font-size: var(--fs-sm, 0.875rem);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__rank-city {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   &__rank-num {

@@ -21,6 +21,15 @@ jest.mock('../subscriptions', () => ({
   getViewerSubscription: jest.fn(),
 }));
 
+jest.mock('../artist-audience-revenue', () => ({
+  getArtistAudienceRevenue: jest.fn(async () => ({
+    currency: 'RUB',
+    albumSales: 0,
+    subscriberSupport: 0,
+    total: 0,
+  })),
+}));
+
 import { query } from '../db';
 import { viewerHasPremiumAccessToArtist } from '../entitlements';
 import {
@@ -31,6 +40,7 @@ import {
   registerQualifiedPlay,
   resolveTrackForQualifiedPlay,
   countActiveCollectionForArtist,
+  getArtistAudienceStats,
 } from '../qualified-plays';
 
 const mockedQuery = query as jest.MockedFunction<typeof query>;
@@ -157,6 +167,53 @@ describe('registerQualifiedPlay', () => {
     });
     expect(result).toEqual({ ok: true, inserted: true });
   });
+
+  test('stores listen geo columns when provided', async () => {
+    mockTrack(200);
+    await registerQualifiedPlay({
+      albumSlug: 'album-1',
+      logicalTrackId: '1',
+      playbackSessionId: SESSION,
+      durationListenedSeconds: 40,
+      listenerUserId: LISTENER,
+      listenerAnonId: null,
+      listenCity: 'Berlin',
+      listenCountryCode: 'DE',
+    });
+
+    const insertCall = mockedQuery.mock.calls.find((call) =>
+      String(call[0]).startsWith('INSERT INTO qualified_track_plays')
+    );
+    expect(insertCall?.[1]).toEqual([
+      ARTIST,
+      TRACK_UUID,
+      LISTENER,
+      null,
+      SESSION,
+      40,
+      'Berlin',
+      'DE',
+    ]);
+  });
+
+  test('insert succeeds with null geo', async () => {
+    mockTrack(200);
+    const result = await registerQualifiedPlay({
+      albumSlug: 'album-1',
+      logicalTrackId: '1',
+      playbackSessionId: SESSION,
+      durationListenedSeconds: 40,
+      listenerUserId: LISTENER,
+      listenerAnonId: null,
+      listenCity: null,
+      listenCountryCode: null,
+    });
+    expect(result).toEqual({ ok: true, inserted: true });
+    const insertCall = mockedQuery.mock.calls.find((call) =>
+      String(call[0]).startsWith('INSERT INTO qualified_track_plays')
+    );
+    expect(insertCall?.[1]?.slice(6)).toEqual([null, null]);
+  });
 });
 
 describe('listenerIdentityKey', () => {
@@ -242,5 +299,91 @@ describe('artist audience authorization', () => {
     const ownerId = ARTIST;
     const requestedArtistId = ownerId;
     expect(requestedArtistId === ownerId).toBe(true);
+  });
+});
+
+function mockAudienceStatsQueries(cityRows: Array<{ city: string; code: string; plays: number }>) {
+  mockedPremium.mockResolvedValue(false);
+  mockedQuery.mockImplementation(async (sql: unknown) => {
+    const s = String(sql);
+    if (s.includes('ORDER BY day ASC')) {
+      return fakeQueryResult([]);
+    }
+    if (s.includes(') regulars')) {
+      return fakeQueryResult([{ count: '0' }]);
+    }
+    if (s.includes('COUNT(DISTINCT COALESCE(listener_user_id')) {
+      return fakeQueryResult([{ count: '0' }]);
+    }
+    if (
+      s.includes('SELECT COUNT(*)::text AS count') &&
+      s.includes('qualified_track_plays') &&
+      !s.includes('GROUP BY')
+    ) {
+      return fakeQueryResult([{ count: '0' }]);
+    }
+    if (s.includes('FROM user_archive')) {
+      if (s.includes('COUNT(*)')) {
+        return fakeQueryResult([{ count: '0' }]);
+      }
+      return fakeQueryResult([]);
+    }
+    if (s.includes('ranked_tracks')) {
+      return fakeQueryResult([{ count: '0' }]);
+    }
+    if (s.includes('FROM qualified_track_plays q') && s.includes('INNER JOIN tracks')) {
+      return fakeQueryResult([]);
+    }
+    if (s.includes('grouped_cities')) {
+      return fakeQueryResult([{ count: String(cityRows.length) }]);
+    }
+    if (s.includes('listen_city') && s.includes('GROUP BY listen_country_code')) {
+      return fakeQueryResult(
+        cityRows.map((row) => ({
+          listen_city: row.city,
+          listen_country_code: row.code,
+          plays: String(row.plays),
+        }))
+      );
+    }
+    return fakeQueryResult([]);
+  });
+}
+
+describe('getArtistAudienceStats top cities', () => {
+  beforeEach(() => {
+    mockedQuery.mockReset();
+  });
+
+  test('aggregates cities with country grouping and rank offset', async () => {
+    mockAudienceStatsQueries([
+      { city: 'Paris', code: 'FR', plays: 10 },
+      { city: 'Paris', code: 'US', plays: 3 },
+    ]);
+
+    const stats = await getArtistAudienceStats(ARTIST, '30d', {
+      citiesLimit: 10,
+      citiesOffset: 0,
+      tracksLimit: 1,
+      supportersLimit: 1,
+    });
+
+    expect(stats.topCitiesTotal).toBe(2);
+    expect(stats.topCities).toEqual([
+      { rank: 1, city: 'Paris', countryCode: 'FR', plays: 10 },
+      { rank: 2, city: 'Paris', countryCode: 'US', plays: 3 },
+    ]);
+  });
+
+  test('uses period start for city queries', async () => {
+    const fixedNow = new Date('2026-11-02T12:00:00.000Z');
+    mockAudienceStatsQueries([]);
+
+    await getArtistAudienceStats(ARTIST, '7d', { citiesLimit: 2 }, fixedNow);
+
+    const cityQuery = mockedQuery.mock.calls.find((call) =>
+      String(call[0]).includes('GROUP BY listen_country_code')
+    );
+    expect(cityQuery?.[1]?.[1]).toEqual(new Date('2026-10-26T12:00:00.000Z'));
   });
 });

@@ -46,6 +46,8 @@ const successPayload: ArtistAudienceResponse = {
     },
   ],
   topTracksTotal: 1,
+  topCities: [],
+  topCitiesTotal: 0,
   supporters: [],
   supportersTotal: 0,
   revenue: {
@@ -263,5 +265,66 @@ describe('AudienceTabContent supporters avatars', () => {
     expect(screen.queryByRole('link', { name: 'User_4F7D' })).not.toBeInTheDocument();
     expect(document.querySelector('.audience-tab__supporter-avatar-link')).toBeNull();
     expect(document.querySelector('.audience-tab__supporter-row--public-artist')).toBeNull();
+  });
+});
+
+describe('AudienceTabContent cities block', () => {
+  beforeEach(() => {
+    fetchArtistAudienceMock.mockReset();
+  });
+
+  it('shows at most two cities and Show all when topCitiesTotal exceeds two', async () => {
+    fetchArtistAudienceMock.mockResolvedValue({
+      ...successPayload,
+      topCities: [
+        { rank: 1, city: 'Berlin', countryCode: 'DE', plays: 12 },
+        { rank: 2, city: 'Paris', countryCode: 'FR', plays: 8 },
+      ],
+      topCitiesTotal: 4,
+    });
+
+    renderWithProviders(<AudienceTabContent active ui={null} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Berlin')).toBeInTheDocument();
+    });
+
+    expect(screen.getByText('Paris')).toBeInTheDocument();
+    const citiesCard = document.querySelector('.audience-tab__cities-card') as HTMLElement;
+    expect(within(citiesCard).getByRole('button', { name: 'Show all' })).toBeInTheDocument();
+  });
+
+  it('hides Show all when there are two or fewer cities', async () => {
+    fetchArtistAudienceMock.mockResolvedValue({
+      ...successPayload,
+      topCities: [{ rank: 1, city: 'Oslo', countryCode: 'NO', plays: 3 }],
+      topCitiesTotal: 1,
+    });
+
+    renderWithProviders(<AudienceTabContent active ui={null} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Oslo')).toBeInTheDocument();
+    });
+
+    expect(screen.queryByRole('button', { name: 'Show all' })).not.toBeInTheDocument();
+  });
+
+  it('renders long city names in the compact list row', async () => {
+    const longCity = 'A'.repeat(140);
+    fetchArtistAudienceMock.mockResolvedValue({
+      ...successPayload,
+      topCities: [{ rank: 1, city: longCity, countryCode: 'US', plays: 1 }],
+      topCitiesTotal: 1,
+    });
+
+    renderWithProviders(<AudienceTabContent active ui={null} />);
+
+    await waitFor(() => {
+      expect(document.querySelector('.audience-tab__rank-city')).not.toBeNull();
+    });
+
+    const cityEl = document.querySelector('.audience-tab__rank-city') as HTMLElement;
+    expect(cityEl.textContent).toBe(longCity);
   });
 });

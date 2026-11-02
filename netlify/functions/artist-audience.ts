@@ -61,6 +61,8 @@ export const handler: Handler = async (event: HandlerEvent) => {
 
   const tracksLimit = parseLimit(event.queryStringParameters?.tracksLimit, 5);
   const tracksOffset = parseOffset(event.queryStringParameters?.tracksOffset);
+  const citiesLimit = parseLimit(event.queryStringParameters?.citiesLimit, 5);
+  const citiesOffset = parseOffset(event.queryStringParameters?.citiesOffset);
   const supportersLimit = parseLimit(event.queryStringParameters?.supportersLimit, 5);
   const supportersOffset = parseOffset(event.queryStringParameters?.supportersOffset);
 
@@ -68,6 +70,8 @@ export const handler: Handler = async (event: HandlerEvent) => {
     const stats = await getArtistAudienceStats(userId, period, {
       tracksLimit,
       tracksOffset,
+      citiesLimit,
+      citiesOffset,
       supportersLimit,
       supportersOffset,
     });

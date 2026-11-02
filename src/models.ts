@@ -618,6 +618,12 @@ export interface IInterface {
       showAll?: string;
       showAllTracks?: string;
       showAllSupporters?: string;
+      showAllCities?: string;
+      citiesTitle?: string;
+      citiesEmpty?: string;
+      citiesModalCityColumn?: string;
+      citiesModalCountryColumn?: string;
+      citiesModalPlaysColumn?: string;
       tracksModalTrackColumn?: string;
       tracksModalPlaysColumn?: string;
       modalClose?: string;

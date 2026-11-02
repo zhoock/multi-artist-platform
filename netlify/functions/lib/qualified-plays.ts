@@ -157,6 +157,8 @@ export type RegisterQualifiedPlayInput = {
   durationListenedSeconds: number;
   listenerUserId: string | null;
   listenerAnonId: string | null;
+  listenCity?: string | null;
+  listenCountryCode?: string | null;
 };
 
 export type RegisterQualifiedPlayResult =
@@ -203,6 +205,9 @@ export async function registerQualifiedPlay(
     return { ok: false, code: 'NOT_QUALIFIED' };
   }
 
+  const listenCity = input.listenCity?.trim() || null;
+  const listenCountryCode = input.listenCountryCode?.trim() || null;
+
   const insert = await query<{ id: string }>(
     `INSERT INTO qualified_track_plays (
        artist_user_id,
@@ -210,9 +215,11 @@ export async function registerQualifiedPlay(
        listener_user_id,
        listener_anon_id,
        playback_session_id,
-       duration_listened_seconds
+       duration_listened_seconds,
+       listen_city,
+       listen_country_code
      )
-     VALUES ($1::uuid, $2::uuid, $3::uuid, $4::uuid, $5::uuid, $6)
+     VALUES ($1::uuid, $2::uuid, $3::uuid, $4::uuid, $5::uuid, $6, $7, $8)
      ON CONFLICT (playback_session_id, track_id) DO NOTHING
      RETURNING id::text AS id`,
     [
@@ -222,6 +229,8 @@ export async function registerQualifiedPlay(
       listenerAnonId,
       playbackSessionId,
       normalizedDuration,
+      listenCity,
+      listenCountryCode,
     ]
   );
 
@@ -259,6 +268,13 @@ export interface AudienceSupporter {
   publicArtistSlug: string | null;
 }
 
+export interface AudienceListenCity {
+  rank: number;
+  city: string;
+  countryCode: string;
+  plays: number;
+}
+
 export interface ArtistAudienceStats {
   period: AudiencePeriod;
   listeners: number;
@@ -268,6 +284,8 @@ export interface ArtistAudienceStats {
   listenersTimeline: AudienceTimelinePoint[];
   topTracks: AudienceTopTrack[];
   topTracksTotal: number;
+  topCities: AudienceListenCity[];
+  topCitiesTotal: number;
   supporters: AudienceSupporter[];
   supportersTotal: number;
   revenue: AudienceRevenue;
@@ -277,6 +295,7 @@ export type { AudienceRevenue };
 
 export const AUDIENCE_TRACKS_PAGE_MAX = 500;
 export const AUDIENCE_SUPPORTERS_PAGE_MAX = 500;
+export const AUDIENCE_CITIES_PAGE_MAX = 500;
 
 export async function countActiveCollectionForArtist(artistUserId: string): Promise<number> {
   const r = await query<{ count: string }>(
@@ -294,6 +313,8 @@ export async function getArtistAudienceStats(
   options?: {
     tracksLimit?: number;
     tracksOffset?: number;
+    citiesLimit?: number;
+    citiesOffset?: number;
     supportersLimit?: number;
     supportersOffset?: number;
   },
@@ -302,6 +323,8 @@ export async function getArtistAudienceStats(
   const start = periodStart(period, now);
   const tracksOffset = Math.max(0, Math.trunc(options?.tracksOffset ?? 0));
   const tracksLimit = Math.min(Math.max(options?.tracksLimit ?? 5, 1), AUDIENCE_TRACKS_PAGE_MAX);
+  const citiesOffset = Math.max(0, Math.trunc(options?.citiesOffset ?? 0));
+  const citiesLimit = Math.min(Math.max(options?.citiesLimit ?? 5, 1), AUDIENCE_CITIES_PAGE_MAX);
   const supportersOffset = Math.max(0, Math.trunc(options?.supportersOffset ?? 0));
   const supportersLimit = Math.min(
     Math.max(options?.supportersLimit ?? 5, 1),
@@ -316,6 +339,8 @@ export async function getArtistAudienceStats(
     timelineRows,
     topTracksTotalRow,
     topTrackRows,
+    topCitiesTotalRow,
+    topCityRows,
     archiveRows,
     revenue,
   ] = await Promise.all([
@@ -385,6 +410,33 @@ export async function getArtistAudienceStats(
          LIMIT $3 OFFSET $4`,
       [artistUserId, start, tracksLimit, tracksOffset]
     ),
+    query<{ count: string }>(
+      `SELECT COUNT(*)::text AS count
+         FROM (
+           SELECT listen_country_code, listen_city
+           FROM qualified_track_plays
+           WHERE artist_user_id = $1::uuid
+             AND played_at >= $2
+             AND listen_city IS NOT NULL
+             AND listen_country_code IS NOT NULL
+           GROUP BY listen_country_code, listen_city
+         ) grouped_cities`,
+      [artistUserId, start]
+    ),
+    query<{ listen_city: string; listen_country_code: string; plays: string }>(
+      `SELECT listen_city,
+                listen_country_code,
+                COUNT(*)::text AS plays
+         FROM qualified_track_plays
+         WHERE artist_user_id = $1::uuid
+           AND played_at >= $2
+           AND listen_city IS NOT NULL
+           AND listen_country_code IS NOT NULL
+         GROUP BY listen_country_code, listen_city
+         ORDER BY COUNT(*) DESC, listen_city ASC
+         LIMIT $3 OFFSET $4`,
+      [artistUserId, start, citiesLimit, citiesOffset]
+    ),
     query<{
       user_id: string;
       created_at: Date;
@@ -452,6 +504,15 @@ export async function getArtistAudienceStats(
 
   const topTracksTotal = Number(topTracksTotalRow.rows[0]?.count ?? 0);
 
+  const topCities: AudienceListenCity[] = topCityRows.rows.map((row, index) => ({
+    rank: citiesOffset + index + 1,
+    city: row.listen_city,
+    countryCode: row.listen_country_code,
+    plays: Number(row.plays ?? 0),
+  }));
+
+  const topCitiesTotal = Number(topCitiesTotalRow.rows[0]?.count ?? 0);
+
   const listenersTimeline: AudienceTimelinePoint[] = timelineRows.rows.map((row) => ({
     date: row.day.toISOString().slice(0, 10),
     listeners: Number(row.listeners ?? 0),
@@ -466,6 +527,8 @@ export async function getArtistAudienceStats(
     listenersTimeline,
     topTracks,
     topTracksTotal,
+    topCities,
+    topCitiesTotal,
     supporters: supportersFiltered.slice(supportersOffset, supportersOffset + supportersLimit),
     supportersTotal: supportersFiltered.length,
     revenue,

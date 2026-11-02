@@ -12,6 +12,7 @@ import {
 } from './lib/api-helpers';
 import { checkIpRateLimit } from './lib/ip-rate-limit';
 import { checkQualifiedPlayUserRateLimit } from './lib/qualified-play-rate-limit';
+import { parseListenGeoFromEvent } from './lib/netlify-geo';
 import { registerQualifiedPlay, isUuid } from './lib/qualified-plays';
 
 const RECORD_PLAY_IP_LIMIT = 180;
@@ -90,6 +91,8 @@ export const handler: Handler = async (event: HandlerEvent) => {
     }
   }
 
+  const { listenCity, listenCountryCode } = parseListenGeoFromEvent(event);
+
   const result = await registerQualifiedPlay({
     albumSlug,
     logicalTrackId,
@@ -97,6 +100,8 @@ export const handler: Handler = async (event: HandlerEvent) => {
     durationListenedSeconds,
     listenerUserId,
     listenerAnonId,
+    listenCity,
+    listenCountryCode,
   });
 
   if (!result.ok) {

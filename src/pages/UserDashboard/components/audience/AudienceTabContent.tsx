@@ -34,6 +34,8 @@ import { AudienceSupportersSectionHint } from './AudienceSupportersSectionHint';
 import { AudienceSupporterRow } from './AudienceSupporterRow';
 import { AudienceTopTracksModal } from './AudienceTopTracksModal';
 import { AudienceSupportersListModal } from './AudienceSupportersListModal';
+import { AudienceCitiesModal } from './AudienceCitiesModal';
+import { formatAudienceCountryName, formatAudienceMetricValue } from './audienceFormatters';
 
 import './AudienceTab.scss';
 import './AudienceAnalyticsListModal.scss';
@@ -41,6 +43,8 @@ import './AudienceAnalyticsListModal.scss';
 const COMPACT_TRACKS_VISIBLE = 2;
 const TRACKS_HAS_MORE_FETCH_LIMIT = 3;
 const COMPACT_SUPPORTERS_VISIBLE = 2;
+const COMPACT_CITIES_VISIBLE = 2;
+const CITIES_HAS_MORE_FETCH_LIMIT = 3;
 const DASHBOARD_SUPPORTERS_FETCH_LIMIT = 2;
 
 type AudienceTabContentProps = {
@@ -127,6 +131,8 @@ function createEmptyAudienceResponse(period: AudiencePeriod): ArtistAudienceResp
     listenersTimeline: [],
     topTracks: [],
     topTracksTotal: 0,
+    topCities: [],
+    topCitiesTotal: 0,
     supporters: [],
     supportersTotal: 0,
     revenue: { ...EMPTY_REVENUE },
@@ -344,6 +350,7 @@ export function AudienceTabContent({ active, ui }: AudienceTabContentProps) {
   const [loadState, setLoadState] = useState<LoadState>({ kind: 'idle' });
   const [tracksModalOpen, setTracksModalOpen] = useState(false);
   const [supportersModalOpen, setSupportersModalOpen] = useState(false);
+  const [citiesModalOpen, setCitiesModalOpen] = useState(false);
 
   const loadStats = useCallback(async () => {
     setLoadState({ kind: 'loading' });
@@ -351,6 +358,7 @@ export function AudienceTabContent({ active, ui }: AudienceTabContentProps) {
       const data = await fetchArtistAudience({
         period,
         tracksLimit: TRACKS_HAS_MORE_FETCH_LIMIT,
+        citiesLimit: CITIES_HAS_MORE_FETCH_LIMIT,
         supportersLimit: DASHBOARD_SUPPORTERS_FETCH_LIMIT,
       });
       setLoadState({ kind: 'success', data });
@@ -368,6 +376,7 @@ export function AudienceTabContent({ active, ui }: AudienceTabContentProps) {
     if (!active) {
       setTracksModalOpen(false);
       setSupportersModalOpen(false);
+      setCitiesModalOpen(false);
     }
   }, [active, period]);
 
@@ -388,12 +397,16 @@ export function AudienceTabContent({ active, ui }: AudienceTabContentProps) {
   const retryLabel = copy?.retry ?? 'Retry';
   const showAllTracksLabel = copy?.showAll ?? copy?.showAllTracks ?? 'Show all';
   const showAllSupportersLabel = copy?.showAllSupporters ?? 'Show all supporters';
+  const showAllCitiesLabel = copy?.showAllCities ?? copy?.showAll ?? 'Show all';
   const closeModalLabel = copy?.modalClose ?? 'Close';
   const compactTracks = metrics.topTracks.slice(0, COMPACT_TRACKS_VISIBLE);
   const compactSupporters = metrics.supporters.slice(0, COMPACT_SUPPORTERS_VISIBLE);
+  const compactCities = metrics.topCities.slice(0, COMPACT_CITIES_VISIBLE);
   const canShowAllTracks = !metricsUnavailable && metrics.topTracksTotal > COMPACT_TRACKS_VISIBLE;
   const canShowAllSupporters =
     !metricsUnavailable && metrics.supportersTotal > COMPACT_SUPPORTERS_VISIBLE;
+  const canShowAllCities = !metricsUnavailable && metrics.topCitiesTotal > COMPACT_CITIES_VISIBLE;
+  const citiesEmptyLabel = copy?.citiesEmpty ?? copy?.blockNoData ?? 'No data yet';
 
   if (!active) {
     return null;
@@ -601,6 +614,50 @@ export function AudienceTabContent({ active, ui }: AudienceTabContentProps) {
         </DashboardCard>
       </div>
 
+      <DashboardCard className="audience-tab__list-card audience-tab__cities-card">
+        <div className="audience-tab__panel-header audience-tab__panel-header--split">
+          <h3 className="audience-tab__panel-title">
+            <span>{copy?.citiesTitle ?? 'Cities'}</span>
+          </h3>
+          {canShowAllCities ? (
+            <button
+              type="button"
+              className="audience-tab__panel-show-all"
+              onClick={() => setCitiesModalOpen(true)}
+            >
+              {showAllCitiesLabel}
+            </button>
+          ) : null}
+        </div>
+        <div className="audience-tab__list-body">
+          {compactCities.length === 0 ? (
+            showEmptyStateCopy ? (
+              <p className="audience-tab__list-empty">{citiesEmptyLabel}</p>
+            ) : null
+          ) : (
+            <ol className="audience-tab__rank-list">
+              {compactCities.map((row) => (
+                <li
+                  key={`${row.countryCode}:${row.city}:${row.rank}`}
+                  className="audience-tab__rank-row audience-tab__rank-row--city"
+                >
+                  <span className="audience-tab__rank-num">{row.rank}</span>
+                  <span className="audience-tab__rank-city" title={row.city}>
+                    {row.city}
+                  </span>
+                  <span className="audience-tab__rank-country">
+                    {formatAudienceCountryName(row.countryCode, locale)}
+                  </span>
+                  <span className="audience-tab__rank-plays">
+                    {formatAudienceMetricValue(row.plays, locale)}
+                  </span>
+                </li>
+              ))}
+            </ol>
+          )}
+        </div>
+      </DashboardCard>
+
       <DashboardCard className="audience-tab__list-card audience-tab__list-card--revenue audience-tab__revenue-card">
         <div className="audience-tab__panel-header">
           <h3 className="audience-tab__panel-title">{copy?.revenueTitle ?? 'Revenue'}</h3>
@@ -635,6 +692,18 @@ export function AudienceTabContent({ active, ui }: AudienceTabContentProps) {
         closeLabel={closeModalLabel}
         errorLabel={loadErrorMessage}
         onClose={() => setSupportersModalOpen(false)}
+      />
+      <AudienceCitiesModal
+        isOpen={citiesModalOpen}
+        period={period}
+        locale={locale}
+        title={copy?.citiesTitle ?? 'Cities'}
+        closeLabel={closeModalLabel}
+        cityColumnLabel={copy?.citiesModalCityColumn ?? 'City'}
+        countryColumnLabel={copy?.citiesModalCountryColumn ?? 'Country'}
+        playsColumnLabel={copy?.citiesModalPlaysColumn ?? 'Plays'}
+        errorLabel={loadErrorMessage}
+        onClose={() => setCitiesModalOpen(false)}
       />
     </div>
   );

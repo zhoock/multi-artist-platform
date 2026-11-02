@@ -6,6 +6,7 @@ export type { AudiencePeriod } from './types';
 
 export const AUDIENCE_TRACKS_PAGE_MAX = 500;
 export const AUDIENCE_SUPPORTERS_PAGE_MAX = 500;
+export const AUDIENCE_CITIES_PAGE_MAX = 500;
 
 export interface AudienceTimelinePoint {
   date: string;
@@ -30,6 +31,13 @@ export interface AudienceSupporter {
   publicArtistSlug: string | null;
 }
 
+export interface AudienceListenCity {
+  rank: number;
+  city: string;
+  countryCode: string;
+  plays: number;
+}
+
 export interface AudienceRevenue {
   currency: 'RUB';
   albumSales: number;
@@ -46,6 +54,8 @@ export interface ArtistAudienceResponse {
   listenersTimeline: AudienceTimelinePoint[];
   topTracks: AudienceTopTrack[];
   topTracksTotal: number;
+  topCities: AudienceListenCity[];
+  topCitiesTotal: number;
   supporters: AudienceSupporter[];
   supportersTotal: number;
   revenue: AudienceRevenue;
@@ -55,6 +65,8 @@ export async function fetchArtistAudience(params: {
   period: AudiencePeriod;
   tracksLimit?: number;
   tracksOffset?: number;
+  citiesLimit?: number;
+  citiesOffset?: number;
   supportersLimit?: number;
   supportersOffset?: number;
 }): Promise<ArtistAudienceResponse> {
@@ -64,6 +76,12 @@ export async function fetchArtistAudience(params: {
   }
   if (params.tracksOffset != null && params.tracksOffset > 0) {
     search.set('tracksOffset', String(params.tracksOffset));
+  }
+  if (params.citiesLimit != null) {
+    search.set('citiesLimit', String(params.citiesLimit));
+  }
+  if (params.citiesOffset != null && params.citiesOffset > 0) {
+    search.set('citiesOffset', String(params.citiesOffset));
   }
   if (params.supportersLimit != null) {
     search.set('supportersLimit', String(params.supportersLimit));
@@ -112,6 +130,37 @@ export async function fetchAllAudienceTopTracks(
     }
     all.push(...page.topTracks);
     offset += page.topTracks.length;
+    if (all.length >= total) {
+      break;
+    }
+  }
+
+  return all;
+}
+
+export async function fetchAllAudienceCities(
+  period: AudiencePeriod
+): Promise<AudienceListenCity[]> {
+  const all: AudienceListenCity[] = [];
+  let offset = 0;
+  let total = Number.POSITIVE_INFINITY;
+
+  while (offset < total) {
+    const page = await fetchArtistAudience({
+      period,
+      citiesLimit: AUDIENCE_CITIES_PAGE_MAX,
+      citiesOffset: offset,
+      tracksLimit: 2,
+      supportersLimit: 2,
+    });
+    if (offset === 0) {
+      total = page.topCitiesTotal;
+    }
+    if (page.topCities.length === 0) {
+      break;
+    }
+    all.push(...page.topCities);
+    offset += page.topCities.length;
     if (all.length >= total) {
       break;
     }

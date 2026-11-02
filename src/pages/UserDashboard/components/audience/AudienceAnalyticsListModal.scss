@@ -60,6 +60,15 @@ dialog {
         width: auto;
       }
 
+      &--city {
+        width: auto;
+      }
+
+      &--country {
+        width: 8rem;
+        max-width: 40%;
+      }
+
       &--plays {
         text-align: right;
       }
@@ -97,6 +106,21 @@ dialog {
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
+      }
+
+      &--city {
+        max-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      &--country {
+        max-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        color: var(--dashboard-text-secondary);
       }
 
       &--plays {
