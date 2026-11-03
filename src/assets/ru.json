@@ -8,6 +8,7 @@
     },
     "header": {
       "signIn": "Войти",
+      "goToHome": "На главную",
       "openProfile": "Мой профиль",
       "avatarMenu": {
         "dashboard": "Панель управления",

@@ -384,6 +384,7 @@ export interface IInterface {
   /** Кнопка входа/регистрации в шапке; ссылка в кабинет по аватару */
   header?: {
     signIn: string;
+    goToHome?: string;
     openProfile: string;
     avatarMenu?: {
       dashboard: string;

@@ -68,7 +68,19 @@ describe('Header integration tests', () => {
     });
 
     const homeLink = screen.getByRole('link', { name: /home/i });
-    expect(homeLink).toHaveAttribute('href', '/');
+    expect(homeLink).toHaveAttribute('href', '/en');
+    expect(homeLink.querySelector('.logo__icon')).toBeTruthy();
+  });
+
+  test('ссылка на главную использует языковой префикс и локализованный aria-label', () => {
+    renderWithProviders(<Header theme="dark" onToggleTheme={() => {}} />, {
+      preloadedState: {
+        lang: { current: 'ru' },
+      },
+    });
+
+    const homeLink = screen.getByRole('link', { name: 'На главную' });
+    expect(homeLink).toHaveAttribute('href', '/ru');
   });
 
   test('должен закрыть меню языков при клике вне его', async () => {

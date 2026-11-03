@@ -35,14 +35,22 @@
     }
 
     .logo {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      line-height: 0;
       text-decoration: none;
-      font-weight: var(--bold, 700);
 
       @include link-colors(
         --links-header-color,
         --links-header-color-hover,
         --links-header-color-active
       );
+
+      &__icon {
+        display: block;
+        flex-shrink: 0;
+      }
     }
 
     .theme-toggler {

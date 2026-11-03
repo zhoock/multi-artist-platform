@@ -12,8 +12,8 @@ import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 import { isAuthenticated } from '@shared/lib/auth';
 import type { SupportedLang } from '@shared/model/lang';
 import { Hamburger } from '@shared/ui/hamburger';
+import { House as HouseIcon } from 'lucide-react';
 import { ProfileAvatarMenu } from './ProfileAvatarMenu';
-import { platformDisplayName } from '@shared/constants/platformBranding';
 import { buildLocalizedPublicPath, withLangPrefix } from '@shared/lib/i18n/routeLang';
 import './style.scss';
 
@@ -41,6 +41,7 @@ const HeaderComponent = ({
   const navigate = useNavigate();
   const ui = useAppSelector((state) => selectUiDictionaryFirst(state, lang));
   const localizedHomePath = buildLocalizedPublicPath(lang, '/');
+  const homeLinkLabel = ui?.header?.goToHome ?? (lang === 'en' ? 'Home' : 'На главную');
   const isAuthed = isAuthenticated();
   const authParams = new URLSearchParams({ mode: 'login' });
   const leaveDeletedArtistPage = shouldLeaveDeletedArtistPage();
@@ -89,8 +90,8 @@ const HeaderComponent = ({
     <header className="header">
       <div className="wrapper header__wrapper">
         <div className="header__start">
-          <Link className="logo" to={localizedHomePath}>
-            {ui?.listenerWelcome?.siteName ?? platformDisplayName(lang)}
+          <Link className="logo" to={localizedHomePath} aria-label={homeLinkLabel}>
+            <HouseIcon className="logo__icon" size={22} strokeWidth={2} aria-hidden />
           </Link>
 
           <div className="lang-menu" ref={langRef}>

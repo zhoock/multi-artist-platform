@@ -81,6 +81,32 @@
         $padding: var(--ms-01) var(--ms-01)
       );
 
+      @media (width < 768px) {
+        align-items: flex-start;
+        overflow: visible;
+        white-space: normal;
+        text-overflow: clip;
+
+        .tracks__symbol {
+          align-self: flex-start;
+        }
+
+        .tracks__title {
+          align-items: flex-start;
+        }
+
+        .tracks__title-text {
+          overflow: visible;
+          text-overflow: unset;
+          white-space: normal;
+          overflow-wrap: anywhere;
+        }
+
+        &.tracks__btn--playing {
+          overflow: hidden;
+        }
+      }
+
       &:where(*) {
         border-block-start: 1px solid var(--hr-color, #3d3c3a);
       }

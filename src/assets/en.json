@@ -8,6 +8,7 @@
     },
     "header": {
       "signIn": "Sign in",
+      "goToHome": "Home",
       "openProfile": "My profile",
       "avatarMenu": {
         "dashboard": "Dashboard",
