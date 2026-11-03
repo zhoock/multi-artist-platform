@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 
 import type { SupportedLang } from '@shared/model/lang';
 import {
@@ -17,6 +17,7 @@ import './AudienceAnalyticsListModal.scss';
 type AudienceCitiesModalProps = {
   isOpen: boolean;
   period: AudiencePeriod;
+  liveRevision?: number;
   lang: SupportedLang;
   title: string;
   closeLabel: string;
@@ -30,6 +31,7 @@ type AudienceCitiesModalProps = {
 export function AudienceCitiesModal({
   isOpen,
   period,
+  liveRevision = 0,
   lang,
   title,
   closeLabel,
@@ -40,30 +42,48 @@ export function AudienceCitiesModal({
   onClose,
 }: AudienceCitiesModalProps) {
   const titleId = useId();
+  const liveRevisionRef = useRef(liveRevision);
   const formatCity = useAudienceCityRuIndex(isOpen && lang === 'ru', lang);
   const [cities, setCities] = useState<AudienceListenCity[]>([]);
   const [loadState, setLoadState] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
 
-  const loadCities = useCallback(async () => {
-    setLoadState('loading');
-    try {
-      const loaded = await fetchAllAudienceCities(period);
-      setCities(loaded);
-      setLoadState('success');
-    } catch {
-      setLoadState('error');
-      setCities([]);
-    }
-  }, [period]);
+  const loadCities = useCallback(
+    async (options?: { silent?: boolean }) => {
+      const silent = options?.silent === true;
+      if (!silent) {
+        setLoadState('loading');
+      }
+      try {
+        const loaded = await fetchAllAudienceCities(period);
+        setCities(loaded);
+        setLoadState('success');
+      } catch {
+        if (!silent) {
+          setLoadState('error');
+          setCities([]);
+        }
+      }
+    },
+    [period]
+  );
 
   useEffect(() => {
     if (!isOpen) {
+      liveRevisionRef.current = liveRevision;
       setLoadState('idle');
       setCities([]);
       return;
     }
     void loadCities();
   }, [isOpen, loadCities]);
+
+  useEffect(() => {
+    if (!isOpen || liveRevision <= 0 || liveRevision === liveRevisionRef.current) {
+      return;
+    }
+    liveRevisionRef.current = liveRevision;
+    void loadCities({ silent: true });
+  }, [isOpen, liveRevision, loadCities]);
 
   return (
     <AudienceAnalyticsListModalShell

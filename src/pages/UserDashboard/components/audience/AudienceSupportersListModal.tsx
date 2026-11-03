@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 
 import {
   fetchAllAudienceSupporters,
@@ -18,6 +18,7 @@ import { AudienceSupporterRow } from './AudienceSupporterRow';
 type AudienceSupportersListModalProps = {
   isOpen: boolean;
   period: AudiencePeriod;
+  liveRevision?: number;
   lang: RouteLang;
   title: string;
   closeLabel: string;
@@ -28,6 +29,7 @@ type AudienceSupportersListModalProps = {
 export function AudienceSupportersListModal({
   isOpen,
   period,
+  liveRevision = 0,
   lang,
   title,
   closeLabel,
@@ -35,29 +37,47 @@ export function AudienceSupportersListModal({
   onClose,
 }: AudienceSupportersListModalProps) {
   const titleId = useId();
+  const liveRevisionRef = useRef(liveRevision);
   const [supporters, setSupporters] = useState<AudienceSupporter[]>([]);
   const [loadState, setLoadState] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
 
-  const loadSupporters = useCallback(async () => {
-    setLoadState('loading');
-    try {
-      const loaded = await fetchAllAudienceSupporters(period);
-      setSupporters(loaded);
-      setLoadState('success');
-    } catch {
-      setLoadState('error');
-      setSupporters([]);
-    }
-  }, [period]);
+  const loadSupporters = useCallback(
+    async (options?: { silent?: boolean }) => {
+      const silent = options?.silent === true;
+      if (!silent) {
+        setLoadState('loading');
+      }
+      try {
+        const loaded = await fetchAllAudienceSupporters(period);
+        setSupporters(loaded);
+        setLoadState('success');
+      } catch {
+        if (!silent) {
+          setLoadState('error');
+          setSupporters([]);
+        }
+      }
+    },
+    [period]
+  );
 
   useEffect(() => {
     if (!isOpen) {
+      liveRevisionRef.current = liveRevision;
       setLoadState('idle');
       setSupporters([]);
       return;
     }
     void loadSupporters();
   }, [isOpen, loadSupporters]);
+
+  useEffect(() => {
+    if (!isOpen || liveRevision <= 0 || liveRevision === liveRevisionRef.current) {
+      return;
+    }
+    liveRevisionRef.current = liveRevision;
+    void loadSupporters({ silent: true });
+  }, [isOpen, liveRevision, loadSupporters]);
 
   return (
     <AudienceAnalyticsListModalShell

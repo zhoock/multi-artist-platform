@@ -1,9 +1,7 @@
-import { useCallback, useEffect, useId, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 
 import {
-  fetchAllAudienceSupporters,
   fetchAllAudienceTopTracks,
-  fetchArtistAudience,
   type AudiencePeriod,
   type AudienceTopTrack,
 } from '@shared/api/audience';
@@ -17,6 +15,7 @@ import './AudienceAnalyticsListModal.scss';
 type AudienceTopTracksModalProps = {
   isOpen: boolean;
   period: AudiencePeriod;
+  liveRevision?: number;
   locale: string;
   title: string;
   closeLabel: string;
@@ -33,6 +32,7 @@ function formatMetricValue(value: number, locale: string): string {
 export function AudienceTopTracksModal({
   isOpen,
   period,
+  liveRevision = 0,
   locale,
   title,
   closeLabel,
@@ -42,29 +42,47 @@ export function AudienceTopTracksModal({
   onClose,
 }: AudienceTopTracksModalProps) {
   const titleId = useId();
+  const liveRevisionRef = useRef(liveRevision);
   const [tracks, setTracks] = useState<AudienceTopTrack[]>([]);
   const [loadState, setLoadState] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
 
-  const loadTracks = useCallback(async () => {
-    setLoadState('loading');
-    try {
-      const loaded = await fetchAllAudienceTopTracks(period);
-      setTracks(loaded);
-      setLoadState('success');
-    } catch {
-      setLoadState('error');
-      setTracks([]);
-    }
-  }, [period]);
+  const loadTracks = useCallback(
+    async (options?: { silent?: boolean }) => {
+      const silent = options?.silent === true;
+      if (!silent) {
+        setLoadState('loading');
+      }
+      try {
+        const loaded = await fetchAllAudienceTopTracks(period);
+        setTracks(loaded);
+        setLoadState('success');
+      } catch {
+        if (!silent) {
+          setLoadState('error');
+          setTracks([]);
+        }
+      }
+    },
+    [period]
+  );
 
   useEffect(() => {
     if (!isOpen) {
+      liveRevisionRef.current = liveRevision;
       setLoadState('idle');
       setTracks([]);
       return;
     }
     void loadTracks();
   }, [isOpen, loadTracks]);
+
+  useEffect(() => {
+    if (!isOpen || liveRevision <= 0 || liveRevision === liveRevisionRef.current) {
+      return;
+    }
+    liveRevisionRef.current = liveRevision;
+    void loadTracks({ silent: true });
+  }, [isOpen, liveRevision, loadTracks]);
 
   return (
     <AudienceAnalyticsListModalShell

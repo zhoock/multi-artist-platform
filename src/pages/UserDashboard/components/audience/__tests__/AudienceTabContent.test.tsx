@@ -1,12 +1,13 @@
 import { describe, expect, it, jest, beforeEach } from '@jest/globals';
 import React from 'react';
-import { fireEvent, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 
 import { renderWithProviders } from '@shared/lib/test-utils';
 import type { SupportedLang } from '@shared/model/lang';
 import { buildArtistPagePath } from '@shared/lib/seo/publicPagePaths';
 import type { ArtistAudienceResponse } from '@shared/api/audience';
 import { AudienceTabContent } from '../AudienceTabContent';
+import { useArtistAudienceLiveRefresh } from '../useArtistAudienceLiveRefresh';
 
 const fetchArtistAudienceMock =
   jest.fn<
@@ -24,6 +25,12 @@ jest.mock('@shared/api/audience', () => ({
     supportersLimit?: number;
   }) => fetchArtistAudienceMock(params),
 }));
+
+jest.mock('../useArtistAudienceLiveRefresh', () => ({
+  useArtistAudienceLiveRefresh: jest.fn(),
+}));
+
+const useArtistAudienceLiveRefreshMock = jest.mocked(useArtistAudienceLiveRefresh);
 
 const useLangMock = jest.fn((): { lang: SupportedLang; setLang: () => void } => ({
   lang: 'en',
@@ -72,6 +79,7 @@ const successPayload: ArtistAudienceResponse = {
 describe('AudienceTabContent load states', () => {
   beforeEach(() => {
     fetchArtistAudienceMock.mockReset();
+    useArtistAudienceLiveRefreshMock.mockReset();
   });
 
   it('renders real metric values when the API succeeds', async () => {
@@ -95,6 +103,50 @@ describe('AudienceTabContent load states', () => {
 
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     expect(screen.queryByText('Could not load audience statistics.')).not.toBeInTheDocument();
+  });
+
+  it('applies silent live refresh without returning to the loading shell', async () => {
+    let onLiveRefresh: (() => void | Promise<void>) | undefined;
+    useArtistAudienceLiveRefreshMock.mockImplementation(({ onRefresh }) => {
+      onLiveRefresh = onRefresh;
+    });
+
+    fetchArtistAudienceMock.mockResolvedValueOnce(successPayload).mockResolvedValueOnce({
+      ...successPayload,
+      collectionCount: 2,
+      supportersTotal: 1,
+      supporters: [
+        {
+          userId: 'supporter-1',
+          displayName: 'Fan',
+          avatarUrl: null,
+          supportStatus: 'premium' as const,
+          addedToCollectionAt: '2026-11-03T10:00:00.000Z',
+          publicArtistSlug: null,
+        },
+      ],
+    });
+
+    const { container } = renderWithProviders(<AudienceTabContent active ui={null} />);
+
+    await waitFor(() => {
+      expect(fetchArtistAudienceMock).toHaveBeenCalledTimes(1);
+    });
+
+    await waitFor(() => {
+      expect(container.querySelector('.audience-tab')).not.toHaveClass('audience-tab--loading');
+    });
+
+    await act(async () => {
+      await onLiveRefresh?.();
+    });
+
+    await waitFor(() => {
+      expect(fetchArtistAudienceMock).toHaveBeenCalledTimes(2);
+    });
+
+    expect(container.querySelector('.audience-tab')).not.toHaveClass('audience-tab--loading');
+    expect(screen.getByText('Fan')).toBeInTheDocument();
   });
 
   it('shows an error banner and unavailable metrics instead of false zeros', async () => {

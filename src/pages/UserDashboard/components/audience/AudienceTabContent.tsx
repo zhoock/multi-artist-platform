@@ -41,6 +41,11 @@ import { AudienceSupporterRow } from './AudienceSupporterRow';
 import { AudienceTopTracksModal } from './AudienceTopTracksModal';
 import { AudienceSupportersListModal } from './AudienceSupportersListModal';
 import { AudienceCitiesModal } from './AudienceCitiesModal';
+import {
+  beginArtistAudienceFetch,
+  isArtistAudienceFetchStale,
+} from './artistAudienceFetchGeneration';
+import { useArtistAudienceLiveRefresh } from './useArtistAudienceLiveRefresh';
 
 import './AudienceTab.scss';
 import './AudienceAnalyticsListModal.scss';
@@ -351,26 +356,55 @@ export function AudienceTabContent({ active, ui }: AudienceTabContentProps) {
   const [tracksModalOpen, setTracksModalOpen] = useState(false);
   const [supportersModalOpen, setSupportersModalOpen] = useState(false);
   const [citiesModalOpen, setCitiesModalOpen] = useState(false);
+  const [liveRevision, setLiveRevision] = useState(0);
 
-  const loadStats = useCallback(async () => {
-    setLoadState({ kind: 'loading' });
-    try {
-      const data = await fetchArtistAudience({
-        period,
-        tracksLimit: TRACKS_HAS_MORE_FETCH_LIMIT,
-        citiesLimit: CITIES_HAS_MORE_FETCH_LIMIT,
-        supportersLimit: DASHBOARD_SUPPORTERS_FETCH_LIMIT,
-      });
-      setLoadState({ kind: 'success', data });
-    } catch {
-      setLoadState({ kind: 'error' });
-    }
-  }, [period]);
+  const audienceFetchParams = useMemo(
+    () => ({
+      period,
+      tracksLimit: TRACKS_HAS_MORE_FETCH_LIMIT,
+      citiesLimit: CITIES_HAS_MORE_FETCH_LIMIT,
+      supportersLimit: DASHBOARD_SUPPORTERS_FETCH_LIMIT,
+    }),
+    [period]
+  );
+
+  const loadStats = useCallback(
+    async (options?: { silent?: boolean }) => {
+      const silent = options?.silent === true;
+      if (!silent) {
+        setLoadState({ kind: 'loading' });
+      }
+      const generation = beginArtistAudienceFetch();
+      try {
+        const data = await fetchArtistAudience(audienceFetchParams);
+        if (isArtistAudienceFetchStale(generation)) {
+          return;
+        }
+        setLoadState({ kind: 'success', data });
+        if (silent) {
+          setLiveRevision((value) => value + 1);
+        }
+      } catch {
+        if (isArtistAudienceFetchStale(generation)) {
+          return;
+        }
+        if (!silent) {
+          setLoadState({ kind: 'error' });
+        }
+      }
+    },
+    [audienceFetchParams]
+  );
 
   useEffect(() => {
     if (!active) return;
     void loadStats();
   }, [active, loadStats]);
+
+  useArtistAudienceLiveRefresh({
+    enabled: active && loadState.kind === 'success',
+    onRefresh: () => loadStats({ silent: true }),
+  });
 
   useEffect(() => {
     if (!active) {
@@ -679,6 +713,7 @@ export function AudienceTabContent({ active, ui }: AudienceTabContentProps) {
       <AudienceTopTracksModal
         isOpen={tracksModalOpen}
         period={period}
+        liveRevision={liveRevision}
         locale={intlLocale}
         title={copy?.topTracksTitle ?? 'Popular tracks'}
         closeLabel={closeModalLabel}
@@ -690,6 +725,7 @@ export function AudienceTabContent({ active, ui }: AudienceTabContentProps) {
       <AudienceSupportersListModal
         isOpen={supportersModalOpen}
         period={period}
+        liveRevision={liveRevision}
         lang={lang}
         title={copy?.supportersTitle ?? 'Supporters'}
         closeLabel={closeModalLabel}
@@ -699,6 +735,7 @@ export function AudienceTabContent({ active, ui }: AudienceTabContentProps) {
       <AudienceCitiesModal
         isOpen={citiesModalOpen}
         period={period}
+        liveRevision={liveRevision}
         lang={lang}
         title={copy?.citiesTitle ?? 'Cities'}
         closeLabel={closeModalLabel}
