@@ -96,10 +96,18 @@
     flex: 1;
     display: flex;
     flex-direction: column;
-    gap: var(--ms-1);
+    gap: calc(var(--ms-1) * 0.45);
     padding-block: 0 clamp(var(--ms-2), 4vw, var(--ms-4));
     padding-inline: clamp(var(--ms-2), 4vw, var(--ms-4));
     overflow: hidden auto;
+  }
+
+  &__popup-inner &__text {
+    margin-block-end: calc(var(--ms-2) * 0.45);
+
+    &:last-of-type {
+      margin-block-end: 0;
+    }
   }
 
   &__textPreview {
