@@ -381,11 +381,6 @@ function dedupeMergedAlbumDetailsWithMeta(
   const outD: detailsProps[] = [];
   const outM: ResolvedAlbumEditDetailBlockMeta[] = [];
 
-  for (const i of customIndices) {
-    outD.push(details[i]);
-    outM.push(blockMeta[i]);
-  }
-
   for (const kind of ALBUM_DETAIL_SEMANTIC_KIND_ORDER) {
     const indices = kindToIndices.get(kind);
     if (!indices?.length) continue;
@@ -397,6 +392,11 @@ function dedupeMergedAlbumDetailsWithMeta(
         : mergeAlbumDetailBlocksForKind(kind, blocks, lang);
     outD.push(mergedD);
     outM.push(mergeAlbumEditDetailBlockMetas(metas, lang));
+  }
+
+  for (const i of customIndices) {
+    outD.push(details[i]);
+    outM.push(blockMeta[i]);
   }
 
   return { details: outD, blockMeta: outM };

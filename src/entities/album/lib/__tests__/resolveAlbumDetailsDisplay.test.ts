@@ -36,4 +36,35 @@ describe('resolveAlbumDetailsForDisplay', () => {
     expect(resolved.artwork.photographer).toBe('Анна');
     expect(resolved.tracks[0]?.title).toBe('Один');
   });
+
+  test('orders music detail blocks: genre, semantic blocks, then custom credits', () => {
+    const details = createMockAlbumDetails({
+      release: { date: '2020-04-16', genreCodes: ['rock'] },
+      details: [
+        {
+          id: 9,
+          title: 'Эта запись была бы невозможна без',
+          content: ['Спасибо всем'],
+        },
+        { id: 2, title: 'Продюсирование', content: ['Producer — role'] },
+        { id: 3, title: 'Мастеринг', content: [{ dateFrom: '2020-01-01', studioText: 'CMS' }] },
+        { id: 4, title: 'Запись', content: [{ dateFrom: '2019-01-01', studioText: 'Studio' }] },
+        { id: 5, title: 'Сведение', content: [{ dateFrom: '2020-02-01', studioText: 'DTH' }] },
+        { id: 6, title: 'Сессионные музыканты', content: ['Guest — keys'] },
+        { id: 7, title: 'Исполнители', content: ['Artist One'] },
+      ],
+    });
+
+    const resolved = resolveAlbumDetailsForDisplay(details, 'ru');
+    expect(resolved.details.map((d) => d.title)).toEqual([
+      'Жанр',
+      'Исполнители',
+      'Сессионные музыканты',
+      'Запись',
+      'Сведение',
+      'Мастеринг',
+      'Продюсирование',
+      'Эта запись была бы невозможна без',
+    ]);
+  });
 });

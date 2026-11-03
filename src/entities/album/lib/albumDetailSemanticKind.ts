@@ -19,10 +19,10 @@ export type AlbumDetailSemanticKind =
 export const ALBUM_DETAIL_SEMANTIC_KIND_ORDER: AlbumDetailSemanticKind[] = [
   'bandMembers',
   'sessionMusicians',
-  'producing',
-  'mastering',
   'recordedAt',
   'mixedAt',
+  'mastering',
+  'producing',
 ];
 
 export function normalizeAlbumDetailTitle(t: string): string {
@@ -157,7 +157,7 @@ export function dedupeMergedAlbumDetailsForDisplay(
     );
   }
 
-  return [...custom, ...semantic];
+  return [...semantic, ...custom];
 }
 
 function parseDetailsPropsArray(raw: unknown): detailsProps[] {
@@ -271,5 +271,5 @@ export function mergeSemanticSourceIntoLocaleDetails(
     });
   }
 
-  return [...custom, ...semantic];
+  return [...semantic, ...custom];
 }
