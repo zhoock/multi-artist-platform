@@ -8,11 +8,19 @@
     margin-block: 0;
     text-align: center;
     margin-block-end: var(--ms-01);
+
+    @media (width < 768px) {
+      margin-block-end: 0;
+    }
   }
 
   .album-artist {
     margin-block: 0;
     text-align: center;
+
+    @media (width < 768px) {
+      margin-block-start: calc(-1 * var(--ms-02));
+    }
 
     a {
       text-decoration: none;
