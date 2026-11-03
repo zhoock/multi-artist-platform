@@ -27,6 +27,7 @@ import { buildDefaultOgImageUrl } from '@shared/lib/seo/defaultOgImage';
 import { buildPublicPageHreflangUrls } from '@shared/lib/seo/buildPublicPageHreflangUrls';
 import { publicPageHreflangLinks } from '@shared/lib/seo/PublicPageHreflangLinks';
 import { routeHasPageLevelHreflang } from '@shared/lib/seo/routeHasPageLevelHreflang';
+import { routeShowsArtistHeroBanner } from '@shared/lib/seo/routeShowsArtistHeroBanner';
 import { buildPlatformHomeJsonLd } from '@shared/lib/seo/jsonLd/buildPublicPageJsonLd';
 import { jsonLdScriptText } from '@shared/lib/seo/jsonLd/JsonLdScript';
 import { platformDisplayName } from '@shared/constants/platformBranding';
@@ -452,6 +453,7 @@ function Layout() {
   const isLegalDocumentRoute = isOfferRoute || isPrivacyRoute;
   const isHelpRoute = isHelpLoaderPath(location.pathname);
   const pageOwnsHreflang = routeHasPageLevelHreflang(activePathnameWithoutLang, hasArtistParam);
+  const showArtistHeroBanner = routeShowsArtistHeroBanner(activePathnameWithoutLang);
 
   const platformHomeJsonLd = useMemo(() => {
     if (!isHomeSceneRoute) return null;
@@ -742,7 +744,10 @@ function Layout() {
                 />
                 <main>
                   <EmailVerificationBanner />
-                  {!isHomeSceneRoute && !isLegalDocumentRoute && !isHelpRoute && <Hero />}
+                  {!isHomeSceneRoute &&
+                    !isLegalDocumentRoute &&
+                    !isHelpRoute &&
+                    showArtistHeroBanner && <Hero />}
 
                   {/* если поместим popup внурь header, то popup будет обрезаться из-за css-фильтра (filter) внури header */}
 
