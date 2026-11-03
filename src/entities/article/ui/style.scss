@@ -278,16 +278,7 @@
     mask-repeat: no-repeat;
     mask-size: 100% 100%;
 
-    &--compact {
-      min-block-size: 22rem;
-    }
-
-    &--medium {
-      min-block-size: 28rem;
-    }
-
     &--tall {
-      min-block-size: 34rem;
       max-block-size: 48rem;
     }
 
@@ -312,7 +303,7 @@
   }
 
   .article__paywall-tail-placeholder {
-    min-block-size: 100%;
+    block-size: clamp(3rem, 12vh, 5rem);
     background: repeating-linear-gradient(
       to bottom,
       rgb(255 255 255 / 4%) 0,
@@ -518,6 +509,11 @@
       text-underline-offset: 0.15em;
     }
   }
+}
+
+// ArticlePage (`.article > .wrapper`): subtitle h4 → content; ~35% less than `--ms-1`.
+.article > .wrapper h4:not([class]) {
+  margin-block-end: calc(var(--ms-1) * 0.65);
 }
 
 @keyframes skeleton-shimmer {
