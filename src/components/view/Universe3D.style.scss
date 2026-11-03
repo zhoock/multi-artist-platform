@@ -122,30 +122,17 @@
   margin-top: var(--ms-01);
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
   gap: var(--ms-01);
-  max-width: 100%;
 }
 
 .universe3d-card__chip {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  box-sizing: border-box;
-  max-width: 100%;
-  padding: 0.3125rem 0.625rem;
+  padding: var(--ms-02) var(--ms-0);
   color: var(--text-color, #ffffff);
   font-size: var(--dashboard-font-size);
-  font-weight: 500;
-  line-height: 1.125;
-  white-space: nowrap;
+  line-height: 1;
+  background: color-mix(in srgb, var(--button-background-color, #272a35) 76%, transparent);
+  border: 1px solid color-mix(in srgb, var(--hr-color, #3b3e48) 70%, transparent);
   border-radius: 999px;
-
-  &--genre {
-    flex-shrink: 0;
-    background: color-mix(in srgb, var(--button-background-color, #272a35) 88%, transparent);
-    border: 1px solid color-mix(in srgb, var(--hr-color, #3b3e48) 78%, transparent);
-  }
 }
 
 .universe3d-card__footer {

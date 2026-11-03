@@ -1469,7 +1469,7 @@ export class Universe3D {
     container.replaceChildren();
 
     const genreChip = document.createElement('span');
-    genreChip.className = 'universe3d-card__chip universe3d-card__chip--genre';
+    genreChip.className = 'universe3d-card__chip';
     genreChip.textContent = genreLabel;
     container.appendChild(genreChip);
   }
