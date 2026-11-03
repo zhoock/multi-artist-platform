@@ -6,6 +6,7 @@ import {
   createOptionsResponse,
   createSuccessResponse,
 } from './lib/api-helpers';
+import { fetchPublishedAlbumTagsByUserIds } from './lib/public-artist-album-tags';
 
 interface PublicArtistRow {
   id: string;
@@ -28,6 +29,8 @@ interface PublicArtistDto {
   headerImages: string[];
   /** Active payment acceptance — gates collection / exclusive content on the public page. */
   monetizationEnabled: boolean;
+  /** Tags from published album releases, deduped. Omitted when empty. */
+  albumTags?: string[];
 }
 
 function toHeaderImageUrl(userId: string, image: string): string {
@@ -102,6 +105,7 @@ export const handler: Handler = async (
     // release per locale in `albums`, so joining would emit the same artist once per matching
     // track. Nothing downstream dedupes.
     const rows = await fetchPublicArtistRows();
+    const tagsByUserId = await fetchPublishedAlbumTagsByUserIds(rows.map((row) => row.id));
 
     const artists: PublicArtistDto[] = rows.map((row) => {
       const genreCode = row.genre_code || 'other';
@@ -117,6 +121,8 @@ export const handler: Handler = async (
         .map((image) => toHeaderImageUrl(row.id, image))
         .filter(Boolean);
 
+      const albumTags = tagsByUserId.get(row.id);
+
       return {
         userId: row.id,
         name: displayName,
@@ -125,6 +131,7 @@ export const handler: Handler = async (
         genreLabel,
         headerImages: headerImageUrls,
         monetizationEnabled: Boolean(row.monetization_shop_id?.trim()),
+        ...(albumTags?.length ? { albumTags } : {}),
       };
     });
 

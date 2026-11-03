@@ -20,6 +20,7 @@ import {
   UNIVERSE_SEARCH_SUGGESTION_LIMIT,
 } from '../lib/filterArtists';
 import { UNIVERSE_SCENE_OVERLAY_ATTR } from '@shared/lib/universeSceneOverlay';
+import { UNIVERSE_SEARCH_APPLY_QUERY_EVENT } from '@shared/lib/universeSearchApplyQuery';
 import './UniverseFloatingSearch.scss';
 
 type UniverseFloatingSearchProps = {
@@ -74,6 +75,21 @@ export function UniverseFloatingSearch({
   useEffect(() => {
     setActiveIndex(-1);
   }, [trimmedQuery]);
+
+  useEffect(() => {
+    const onApplyQuery = (event: Event) => {
+      const detail = (event as CustomEvent<{ query?: string }>).detail;
+      const nextQuery = detail?.query?.trim() ?? '';
+      if (!nextQuery) return;
+      setExpanded(true);
+      setQuery(nextQuery);
+      setActiveIndex(-1);
+      requestAnimationFrame(() => inputRef.current?.focus());
+    };
+
+    window.addEventListener(UNIVERSE_SEARCH_APPLY_QUERY_EVENT, onApplyQuery);
+    return () => window.removeEventListener(UNIVERSE_SEARCH_APPLY_QUERY_EVENT, onApplyQuery);
+  }, []);
 
   const collapse = useCallback(() => {
     setExpanded(false);

@@ -14,7 +14,8 @@ export function filterArtistsForSearch(
     const name = artist.name.toLowerCase();
     const slug = artist.publicSlug.toLowerCase();
     const genre = (artist.genreLabel?.[lang] ?? artist.genreCode).toLowerCase();
-    return name.includes(q) || slug.includes(q) || genre.includes(q);
+    const tagMatch = (artist.albumTags ?? []).some((tag) => tag.toLowerCase().includes(q));
+    return name.includes(q) || slug.includes(q) || genre.includes(q) || tagMatch;
   });
 }
 

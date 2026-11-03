@@ -131,6 +131,9 @@ function wireDb(artists: FixtureArtist[], options: { profileContent?: boolean } 
         rows: artists.filter((a) => a.tracks.some((t) => trackQualifies(text, t))).map(artistRow),
       };
     }
+    if (/jsonb_array_elements_text/.test(text) && /release->'tags'/.test(text)) {
+      return { rows: [] };
+    }
     if (text.includes('public_slug = $1')) {
       const match = artists.find((a) => a.slug === params[0]);
       return { rows: match ? [{ id: match.id }] : [] };
