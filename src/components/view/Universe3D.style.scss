@@ -127,15 +127,6 @@
   max-width: 100%;
 }
 
-.universe3d-card__chips-separator {
-  flex-shrink: 0;
-  align-self: stretch;
-  width: 1px;
-  min-height: 1.125rem;
-  margin-inline: calc(var(--ms-02) * 0.5);
-  background: color-mix(in srgb, var(--hr-color, #3b3e48) 55%, transparent);
-}
-
 .universe3d-card__chip {
   display: inline-flex;
   align-items: center;
@@ -154,45 +145,6 @@
     flex-shrink: 0;
     background: color-mix(in srgb, var(--button-background-color, #272a35) 88%, transparent);
     border: 1px solid color-mix(in srgb, var(--hr-color, #3b3e48) 78%, transparent);
-  }
-
-  &--tag {
-    padding: 0.25rem 0.5rem;
-    color: color-mix(in srgb, var(--text-color, #ffffff) 82%, transparent);
-    font-size: calc(var(--dashboard-font-size) * 0.78);
-    line-height: 1.125;
-    background: color-mix(in srgb, var(--button-background-color, #272a35) 42%, transparent);
-    border: 1px solid color-mix(in srgb, var(--hr-color, #3b3e48) 38%, transparent);
-    transition:
-      background 0.15s ease,
-      border-color 0.15s ease,
-      color 0.15s ease;
-    cursor: pointer;
-    font-weight: 400;
-    appearance: none;
-
-    &:hover {
-      color: var(--text-color, #ffffff);
-      background: color-mix(in srgb, var(--button-background-color, #272a35) 58%, transparent);
-      border-color: color-mix(in srgb, var(--hr-color, #3b3e48) 52%, transparent);
-    }
-
-    &:focus-visible {
-      outline: 2px solid color-mix(in srgb, var(--text-color, #ffffff) 55%, transparent);
-      outline-offset: 2px;
-    }
-  }
-
-  &--sr-only {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    margin: -1px;
-    padding: 0;
-    border: 0;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
   }
 }
 

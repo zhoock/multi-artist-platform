@@ -12,8 +12,6 @@ import {
   resolveArtistCardPlayButtonPhase,
   type ArtistCardPlayPlayerSnapshot,
 } from '@features/universe/lib/artistCardPlayButtonPhase';
-import { splitVisibleAlbumTags } from '@features/universe/lib/artistAlbumTags';
-import { dispatchUniverseSearchApplyQuery } from '@shared/lib/universeSearchApplyQuery';
 import { isUniverseSceneOverlayTarget } from '@shared/lib/universeSceneOverlay';
 import './Universe3D.style.scss';
 import { UNIVERSE_FOCUS_ARTIST_STORAGE_KEY } from './universe3dConstants';
@@ -1467,49 +1465,13 @@ export class Universe3D {
     this.moveTo(pos.x, pos.y, desiredZ);
   }
 
-  private populateArtistCardChips(
-    container: HTMLElement,
-    genreLabel: string,
-    albumTags: string[] | undefined
-  ) {
+  private populateArtistCardChips(container: HTMLElement, genreLabel: string) {
     container.replaceChildren();
 
     const genreChip = document.createElement('span');
     genreChip.className = 'universe3d-card__chip universe3d-card__chip--genre';
     genreChip.textContent = genreLabel;
     container.appendChild(genreChip);
-
-    const { visible, overflow } = splitVisibleAlbumTags(albumTags);
-    const hasTags = visible.length > 0 || overflow.length > 0;
-    if (hasTags) {
-      const separator = document.createElement('span');
-      separator.className = 'universe3d-card__chips-separator';
-      separator.setAttribute('aria-hidden', 'true');
-      container.appendChild(separator);
-    }
-
-    const formatTagLabel = (tag: string) => (tag.startsWith('#') ? tag : `#${tag}`);
-
-    for (const tag of visible) {
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.className = 'universe3d-card__chip universe3d-card__chip--tag';
-      button.textContent = formatTagLabel(tag);
-      button.addEventListener('click', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        this.dismissCard();
-        dispatchUniverseSearchApplyQuery(tag);
-      });
-      container.appendChild(button);
-    }
-
-    for (const tag of overflow) {
-      const hidden = document.createElement('span');
-      hidden.className = 'universe3d-card__chip universe3d-card__chip--sr-only';
-      hidden.textContent = formatTagLabel(tag);
-      container.appendChild(hidden);
-    }
   }
 
   private showCard(obj: THREE.Object3D, options?: { skipFocus?: boolean }) {
@@ -1577,7 +1539,7 @@ export class Universe3D {
     const mediaEl = card.querySelector('.universe3d-card__media');
     const chipsEl = card.querySelector('.universe3d-card__chips');
     if (chipsEl instanceof HTMLElement) {
-      this.populateArtistCardChips(chipsEl, label, data.albumTags);
+      this.populateArtistCardChips(chipsEl, label);
     }
     if (mediaEl instanceof HTMLAnchorElement && slug) {
       this.bindArtistProfileLink(mediaEl, slug);
