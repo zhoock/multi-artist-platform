@@ -25,6 +25,7 @@ export interface AlbumData {
   releaseDate?: string;
   isPublic?: boolean;
   isPublished?: boolean;
+  copyrightRestricted?: boolean;
   tracks: TrackData[];
 }
 
@@ -158,6 +159,7 @@ export function transformEditableAlbumToAlbumData(
     cover: source.cover,
     isPublic: source.isPublic,
     isPublished: source.isPublished,
+    copyrightRestricted: source.copyrightRestricted,
     releaseDate: releaseDate
       ? releaseDate.toLocaleDateString('en-US', {
           year: 'numeric',

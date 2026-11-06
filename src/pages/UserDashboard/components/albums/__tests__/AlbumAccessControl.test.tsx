@@ -51,4 +51,29 @@ describe('AlbumAccessControl', () => {
     expect(screen.getByRole('menuitem', { name: /Visible/i })).toBeInTheDocument();
     expect(screen.getByRole('menuitem', { name: /Hidden/i })).toBeInTheDocument();
   });
+
+  it('does not open menu when copyright is restricted', async () => {
+    const user = userEvent.setup();
+    const onMenuOpenChange = jest.fn();
+
+    render(
+      <AlbumAccessControl
+        albumId="album-1"
+        visibility="public"
+        copyrightRestricted
+        ui={undefined}
+        lang="en"
+        menuOpen={false}
+        onMenuOpenChange={onMenuOpenChange}
+        onPickVisibility={jest.fn()}
+        getRowElement={() => document.body}
+      />
+    );
+
+    const trigger = screen.getByRole('button', { name: /album visibility/i });
+    expect(trigger).toBeDisabled();
+
+    await user.click(trigger);
+    expect(onMenuOpenChange).not.toHaveBeenCalled();
+  });
 });

@@ -77,6 +77,8 @@ interface AlbumRow {
   lang: string;
   is_public: boolean;
   is_published: boolean;
+  /** Admin copyright hold; synced across locale rows for one album_id. */
+  copyright_restricted?: boolean;
   created_at: Date;
   updated_at: Date;
   /** Кредиты обложки — на строку локали (миграция 029). */
@@ -139,6 +141,8 @@ interface AlbumData {
   designerURL?: string;
   isPublic?: boolean;
   isPublished?: boolean;
+  /** When true, publication visibility is controlled by admin (copyright). */
+  copyrightRestricted?: boolean;
   /** Внутренняя метка для merge по свежести строки (не язык). */
   updatedAt?: string;
   /** Присутствует у одноязычного ответа (POST и т.д.); у сливного GET отсутствует. */
@@ -636,6 +640,7 @@ function mapAlbumToApiFormat(
     }),
     isPublic: album.is_public,
     isPublished: album.is_published,
+    copyrightRestricted: album.copyright_restricted === true,
     updatedAt:
       album.updated_at != null ? new Date(album.updated_at as Date).toISOString() : undefined,
   };
@@ -832,6 +837,7 @@ function mergeAlbumDataPayloads(payloads: AlbumData[]): AlbumData {
     details: textRoot.details,
     isPublic: shared.isPublic,
     isPublished: shared.isPublished,
+    copyrightRestricted: sortedForShared.some((p) => p.copyrightRestricted === true),
     tracks,
     translations,
   };
@@ -1018,6 +1024,7 @@ export const handler: Handler = async (
              a.lang,
              a.is_public,
              a.is_published,
+             COALESCE(a.copyright_restricted, false) AS copyright_restricted,
              a.created_at,
              a.updated_at,
              a.photographer,

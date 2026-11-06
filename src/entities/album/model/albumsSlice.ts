@@ -187,6 +187,9 @@ export const fetchDashboardAlbums = createAsyncThunk<
           details: Array.isArray(album.details) ? album.details : [],
           isPublic: (album as { isPublic?: boolean }).isPublic,
           isPublished: (album as { isPublished?: boolean }).isPublished,
+          ...((album as { copyrightRestricted?: unknown }).copyrightRestricted === true
+            ? { copyrightRestricted: true }
+            : {}),
           translations: album.translations,
           tracks,
         } as AlbumEditable;

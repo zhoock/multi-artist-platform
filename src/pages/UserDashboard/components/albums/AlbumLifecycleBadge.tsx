@@ -21,6 +21,8 @@ function statusLabel(
       return d?.albumStatusReadyToPublish ?? (en ? 'Ready to Publish' : 'Готов к публикации');
     case 'draft-changes':
       return d?.articleStatusDraftChanges ?? (en ? 'Draft changes' : 'Черновые правки');
+    case 'copyright-restricted':
+      return d?.albumStatusTemporarilyHidden ?? (en ? 'Temporarily hidden' : 'Временно скрыт');
     default:
       return d?.albumStatusDraft ?? (en ? 'Draft' : 'Черновик');
   }
@@ -29,6 +31,10 @@ function statusLabel(
 function lifecycleVariant(status: Exclude<AlbumListDraftBadge, null>): StatusBadgeVariant {
   if (status === 'ready-to-publish') {
     return 'readyToPublish';
+  }
+
+  if (status === 'copyright-restricted') {
+    return 'notVerified';
   }
 
   return 'draft';

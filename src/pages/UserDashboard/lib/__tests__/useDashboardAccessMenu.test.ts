@@ -144,4 +144,23 @@ describe('useDashboardAccessMenu', () => {
 
     expect(getPortalRoot).toHaveBeenCalledWith(null);
   });
+
+  it('does not toggle when disabled', () => {
+    const onOpenChange = jest.fn();
+
+    const { result } = renderHook(() =>
+      useDashboardAccessMenu({
+        disabled: true,
+        open: false,
+        onOpenChange,
+        getPortalRoot: (_trigger) => document.body,
+      })
+    );
+
+    act(() => {
+      result.current.toggleMenu(mockToggleEvent());
+    });
+
+    expect(onOpenChange).not.toHaveBeenCalled();
+  });
 });

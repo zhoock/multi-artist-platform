@@ -336,11 +336,20 @@ export function AlbumsTabContent({
                     ? []
                     : (albumFromStore.tracks ?? []).slice(0, album.tracks.length),
               })
-            : isAlbumPublished({
-                  isPublished: album.isPublished,
-                })
-              ? null
-              : 'draft';
+            : getAlbumListDraftBadge({
+                artistDisplayName: '',
+                album: album.title,
+                fullName: album.title,
+                description: '',
+                cover: album.cover ?? '',
+                release: {},
+                buttons: {},
+                details: [],
+                tracks: [],
+                isPublic: album.isPublic,
+                isPublished: album.isPublished,
+                copyrightRestricted: album.copyrightRestricted === true,
+              });
           const albumIsPublished = albumFromStore
             ? isAlbumPublished(albumFromStore)
             : isAlbumPublished({
@@ -349,6 +358,7 @@ export function AlbumsTabContent({
           const albumVisibility = getAlbumVisibilityFromIsPublic(
             albumFromStore?.isPublic ?? album.isPublic
           );
+          const albumCopyrightRestricted = albumFromStore?.copyrightRestricted === true;
           const albumPipelineAvailable = inferPipelineAvailableFromClientTracks(
             album.tracks.map((track) => ({
               trackId: track.id,
@@ -442,6 +452,7 @@ export function AlbumsTabContent({
                     <AlbumAccessControl
                       albumId={album.id}
                       visibility={albumVisibility}
+                      copyrightRestricted={albumCopyrightRestricted}
                       ui={ui ?? undefined}
                       lang={lang}
                       menuOpen={albumAccessMenuAlbumId === album.id}

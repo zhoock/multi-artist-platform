@@ -1313,6 +1313,14 @@ function UserDashboard() {
     albumId: string,
     visibility: Extract<TrackVisibility, 'public' | 'hidden'>
   ) => {
+    const isCopyrightRestricted = Boolean(
+      selectDashboardAlbumsData(getStore().getState()).find((a) => a.albumId === albumId)
+        ?.copyrightRestricted
+    );
+    if (isCopyrightRestricted) {
+      return;
+    }
+
     const token = getToken();
     if (!token) {
       setAlertModal({

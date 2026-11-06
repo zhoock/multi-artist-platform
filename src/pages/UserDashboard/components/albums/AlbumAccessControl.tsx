@@ -13,11 +13,14 @@ import {
 
 type DashboardUi = NonNullable<IInterface['dashboard']> & {
   albumAccessAriaLabel?: string;
+  albumCopyrightRestrictedHint?: string;
 };
 
 export type AlbumAccessControlProps = {
   albumId: string;
   visibility: Extract<TrackVisibility, 'public' | 'hidden'>;
+  /** When true, show red/hidden orb and block changing visibility (admin copyright hold). */
+  copyrightRestricted?: boolean;
   ui: IInterface | undefined;
   lang: SupportedLang;
   menuOpen: boolean;
@@ -30,6 +33,7 @@ export type AlbumAccessControlProps = {
 export function AlbumAccessControl({
   albumId,
   visibility,
+  copyrightRestricted = false,
   ui,
   lang,
   menuOpen,
@@ -42,12 +46,23 @@ export function AlbumAccessControl({
     useDashboardAccessMenu({
       open: menuOpen,
       onOpenChange: onMenuOpenChange,
+      disabled: copyrightRestricted,
       repositionKey: albumId,
       getPortalRoot: (_trigger) => resolveDashboardAccessMenuPortalFromElement(getRowElement()),
     });
 
   const albumAccessAria =
     (ui?.dashboard as DashboardUi | undefined)?.albumAccessAriaLabel ?? 'Album visibility';
+
+  const copyrightHint =
+    (ui?.dashboard as DashboardUi | undefined)?.albumCopyrightRestrictedHint ??
+    (lang === 'en'
+      ? 'Album temporarily hidden by administration'
+      : 'Альбом временно скрыт администрацией');
+
+  const orbVisibility: Extract<TrackVisibility, 'public' | 'hidden'> = copyrightRestricted
+    ? 'hidden'
+    : visibility;
 
   const menuOptions = useMemo(
     () => buildAlbumVisibilityMenuOptions(ui, lang),
@@ -56,6 +71,9 @@ export function AlbumAccessControl({
 
   const pickVisibility = useCallback(
     async (v: Extract<TrackVisibility, 'public' | 'hidden'>) => {
+      if (copyrightRestricted) {
+        return;
+      }
       if (v === visibility) {
         closeMenu();
         return;
@@ -63,7 +81,7 @@ export function AlbumAccessControl({
       closeMenu();
       void onPickVisibility(v);
     },
-    [visibility, onPickVisibility, closeMenu]
+    [visibility, onPickVisibility, closeMenu, copyrightRestricted]
   );
 
   return (
@@ -71,15 +89,21 @@ export function AlbumAccessControl({
       <button
         ref={triggerRef}
         type="button"
-        className={buttonClassName ?? 'user-dashboard__article-access-button'}
+        className={clsx(
+          buttonClassName ?? 'user-dashboard__article-access-button',
+          copyrightRestricted && 'user-dashboard__article-access-button--disabled'
+        )}
         onClick={toggleMenu}
         onMouseDown={(e) => e.stopPropagation()}
+        disabled={copyrightRestricted}
         aria-expanded={menuOpen}
         aria-haspopup="menu"
+        aria-disabled={copyrightRestricted ? true : undefined}
         aria-label={albumAccessAria}
+        title={copyrightRestricted ? copyrightHint : undefined}
       >
         <span className="user-dashboard__article-access-button-icon" aria-hidden>
-          <TrackVisibilityIcon visibility={visibility} />
+          <TrackVisibilityIcon visibility={orbVisibility} />
         </span>
       </button>
 

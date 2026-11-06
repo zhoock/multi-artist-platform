@@ -26,4 +26,10 @@ describe('AlbumLifecycleBadge', () => {
 
     expect(container.querySelector('.status-badge')).toBeNull();
   });
+
+  it('uses error style for copyright-restricted', () => {
+    const { container } = render(<AlbumLifecycleBadge status="copyright-restricted" lang="en" />);
+
+    expect(container.querySelector('.status-badge--not-verified')).toBeTruthy();
+  });
 });

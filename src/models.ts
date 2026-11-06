@@ -98,6 +98,9 @@ export interface AlbumEditable {
   /** Видимость на странице артиста после публикации (синхронизируется по всем lang в БД). */
   isPublic?: boolean;
 
+  /** Админ временно скрыл альбом (авторское право); артист не меняет публикацию из кабинета. */
+  copyrightRestricted?: boolean;
+
   /** Есть неопубликованные правки после публикации (как у статей). */
   hasDraftChanges?: boolean;
 
@@ -358,6 +361,10 @@ export interface IInterface {
     roleOther: string;
     descriptionLabel: string;
     descriptionPlaceholder: string;
+    /** Shown under description field: minimum length requirement */
+    descriptionMinHint: string;
+    /** When non-empty but below minimum; use {{count}} for characters still needed */
+    descriptionTooShortHint: string;
     confirmLabel: string;
     submit: string;
     submitting: string;
@@ -761,6 +768,8 @@ export interface IInterface {
     albumStatusPublished?: string;
     albumStatusHidden?: string;
     albumStatusHiddenHint?: string;
+    /** Альбом временно скрыт администрацией (авторское право). */
+    albumStatusTemporarilyHidden?: string;
     albumPublishHintNeedsTracks?: string;
     albumPublishHintNeedsCover?: string;
     albumPublishHintNeedsFields?: string;
@@ -772,6 +781,7 @@ export interface IInterface {
     dangerZone?: string;
     deleteAccountShort?: string;
     albumAccessAriaLabel?: string;
+    albumCopyrightRestrictedHint?: string;
     profileFields: {
       name: string;
       namePlaceholder?: string;

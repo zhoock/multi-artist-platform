@@ -50,4 +50,10 @@ describe('getAlbumListDraftBadge', () => {
   test('returns null for published album even when hidden', () => {
     expect(getAlbumListDraftBadge({ ...baseAlbum, isPublic: false, isPublished: true })).toBeNull();
   });
+
+  test('returns copyright-restricted when administration holds the album', () => {
+    expect(getAlbumListDraftBadge({ ...baseAlbum, copyrightRestricted: true })).toBe(
+      'copyright-restricted'
+    );
+  });
 });

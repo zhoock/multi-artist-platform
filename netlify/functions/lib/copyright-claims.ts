@@ -3,6 +3,7 @@
  */
 
 import { query } from './db';
+import { MIN_COPYRIGHT_CLAIM_DESCRIPTION_CHARS } from '../../../src/shared/lib/copyright/copyrightClaimDescriptionRules';
 
 export type CopyrightContentType = 'album' | 'track';
 export type CopyrightClaimantType = 'copyright_owner' | 'authorized_representative' | 'other';
@@ -14,7 +15,7 @@ export const CLAIMANT_TYPES: readonly CopyrightClaimantType[] = [
 ] as const;
 
 export const MAX_DESCRIPTION_CHARS = 8000;
-export const MIN_DESCRIPTION_CHARS = 20;
+export const MIN_DESCRIPTION_CHARS = MIN_COPYRIGHT_CLAIM_DESCRIPTION_CHARS;
 export const MAX_CLAIMANT_NAME_CHARS = 255;
 export const MAX_REQUEST_BODY_BYTES = 65536;
 

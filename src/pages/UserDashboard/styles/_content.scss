@@ -238,6 +238,17 @@ dialog {
         background: var(--dashboard-hover-bg);
         border-color: var(--dashboard-card-border);
       }
+
+      &--disabled,
+      &:disabled {
+        cursor: not-allowed;
+        opacity: 0.85;
+
+        &:hover {
+          background: transparent;
+          border-color: transparent;
+        }
+      }
     }
 
     &__album-thumbnail {

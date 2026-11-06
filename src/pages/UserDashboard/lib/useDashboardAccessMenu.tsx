@@ -24,6 +24,8 @@ export type UseDashboardAccessMenuOptions = {
   /** Controlled open state (Album/Article). Omit for internal state (Stem, track row). */
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  /** When true, the trigger must not open or toggle the menu. */
+  disabled?: boolean;
   /** Re-run layout positioning when row identity changes. */
   repositionKey?: unknown;
   getPortalRoot: (trigger: HTMLElement | null) => HTMLElement | null;
@@ -85,6 +87,7 @@ export function getDashboardAccessMenuStyle(
 export function useDashboardAccessMenu({
   open: controlledOpen,
   onOpenChange,
+  disabled = false,
   repositionKey,
   getPortalRoot,
   menuWidth = DASHBOARD_ACCESS_MENU_WIDTH,
@@ -124,6 +127,12 @@ export function useDashboardAccessMenu({
       setMenuPos(null);
     }
   }, [menuOpen]);
+
+  useEffect(() => {
+    if (disabled && menuOpen) {
+      closeMenu();
+    }
+  }, [disabled, menuOpen, closeMenu]);
 
   useLayoutEffect(() => {
     if (!menuOpen) return;
@@ -187,6 +196,10 @@ export function useDashboardAccessMenu({
       e.stopPropagation();
       e.preventDefault();
 
+      if (disabled) {
+        return;
+      }
+
       if (menuOpen) {
         closeMenu();
         return;
@@ -195,7 +208,7 @@ export function useDashboardAccessMenu({
       setMenuPos(computeDashboardAccessMenuPosition(triggerRef.current, menuWidth));
       setMenuOpen(true);
     },
-    [menuOpen, closeMenu, setMenuOpen, menuWidth]
+    [menuOpen, closeMenu, setMenuOpen, menuWidth, disabled]
   );
 
   const portalMount = typeof document !== 'undefined' ? getPortalRoot(triggerRef.current) : null;

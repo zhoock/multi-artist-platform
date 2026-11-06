@@ -8,6 +8,7 @@ import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 import { buildPublicAlbumPagePath } from '@shared/lib/seo/publicPagePaths';
 import { formatAlbumDisplayFullName } from '@shared/lib/profileDisplayName';
 import { useSiteArtistDisplayName } from '@shared/lib/hooks/useSiteArtistDisplayName';
+import { MIN_COPYRIGHT_CLAIM_DESCRIPTION_CHARS } from '@shared/lib/copyright/copyrightClaimDescriptionRules';
 
 import './CopyrightReportPage.scss';
 
@@ -135,11 +136,13 @@ export default function CopyrightReportPage() {
 
   const backToAlbumPath = albumPath ?? '/';
 
+  const descriptionTrimmedLen = description.trim().length;
+
   const canSubmit =
     loadState === 'ready' &&
     name.trim().length > 0 &&
     email.trim().length > 0 &&
-    description.trim().length >= 20 &&
+    descriptionTrimmedLen >= MIN_COPYRIGHT_CLAIM_DESCRIPTION_CHARS &&
     confirmed &&
     !submitting;
 
@@ -295,10 +298,26 @@ export default function CopyrightReportPage() {
                     'Please describe why you believe this content infringes your copyright.'
                   }
                   required
-                  minLength={20}
+                  minLength={MIN_COPYRIGHT_CLAIM_DESCRIPTION_CHARS}
                   maxLength={8000}
                   rows={8}
                 />
+                <p className="copyright-report__muted copyright-report__description-hint">
+                  {copy?.descriptionMinHint ?? 'Use at least 20 characters.'}
+                </p>
+                {descriptionTrimmedLen > 0 &&
+                descriptionTrimmedLen < MIN_COPYRIGHT_CLAIM_DESCRIPTION_CHARS ? (
+                  <p
+                    className="copyright-report__error copyright-report__description-count"
+                    role="status"
+                  >
+                    {copy?.descriptionTooShortHint?.replace(
+                      '{{count}}',
+                      String(MIN_COPYRIGHT_CLAIM_DESCRIPTION_CHARS - descriptionTrimmedLen)
+                    ) ??
+                      `Add ${MIN_COPYRIGHT_CLAIM_DESCRIPTION_CHARS - descriptionTrimmedLen} more character(s).`}
+                  </p>
+                ) : null}
               </label>
 
               <label className="copyright-report__check">
