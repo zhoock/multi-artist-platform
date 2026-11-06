@@ -343,6 +343,89 @@ export interface IInterface {
     decline: string;
     privacyLink: string;
   };
+  /** Публичная форма жалобы на нарушение авторских прав */
+  copyrightReport?: {
+    pageTitle: string;
+    albumLink: string;
+    contentLabel: string;
+    contentTypeAlbum: string;
+    contentTypeTrack: string;
+    nameLabel: string;
+    emailLabel: string;
+    roleLegend: string;
+    roleOwner: string;
+    roleRep: string;
+    roleOther: string;
+    descriptionLabel: string;
+    descriptionPlaceholder: string;
+    confirmLabel: string;
+    submit: string;
+    submitting: string;
+    cancel: string;
+    loading: string;
+    successTitle: string;
+    successBody: string;
+    backToAlbum: string;
+    errors: {
+      missingParams: string;
+      notFound: string;
+      generic: string;
+      submit: string;
+    };
+  };
+  /** Админка: список жалоб */
+  adminCopyrightClaims?: {
+    pageTitle: string;
+    listSubtitle: string;
+    filterAll: string;
+    filterNew: string;
+    filterUnderReview: string;
+    filterResolved: string;
+    filterRejected: string;
+    newCount: string;
+    empty: string;
+    claimantPrefix: string;
+    statusNew: string;
+    statusUnderReview: string;
+    statusResolved: string;
+    statusRejected: string;
+    openContent: string;
+    loadError: string;
+    detailTitle: string;
+    statusLabel: string;
+    reportedSection: string;
+    claimantSection: string;
+    emailLabel: string;
+    typeLabel: string;
+    descriptionLabel: string;
+    submittedLabel: string;
+    backToList: string;
+    notFound: string;
+    actionsTitle: string;
+    startReview: string;
+    resolveClaim: string;
+    rejectClaim: string;
+    actionError: string;
+    internalNoteTitle: string;
+    internalNoteHint: string;
+    saveNote: string;
+    savingNote: string;
+    activityTitle: string;
+    auditSubmitted: string;
+    auditStatusChanged: string;
+    auditNoteUpdated: string;
+  };
+  /** Админка: внутренние уведомления */
+  adminPanelNotifications?: {
+    pageTitle: string;
+    navNotifications: string;
+    bellAriaLabel: string;
+    loadError: string;
+    empty: string;
+    unreadSummary: string;
+    copyrightClaimTitle: string;
+    copyrightClaimBody: string;
+  };
   player?: {
     previousTrack: string;
     play: string;

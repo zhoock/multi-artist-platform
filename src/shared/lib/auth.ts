@@ -138,6 +138,8 @@ export interface AuthUser {
   name: string | null;
   /** Роль с бэкенда; старые сессии могут не иметь поля */
   role?: 'user' | 'admin';
+  /** Платформенный админ (Admin Panel); предпочтительнее роли JWT из localStorage */
+  isAdmin?: boolean;
   /** listener | artist; старые сессии без поля — artist */
   accountType?: 'listener' | 'artist';
   /** Подтверждён ли email; старые сессии без поля считаются неподтверждёнными */
@@ -227,6 +229,7 @@ function authUserSnapshotEqual(a: AuthUser, b: AuthUser): boolean {
     a.email === b.email &&
     (a.name ?? null) === (b.name ?? null) &&
     a.role === b.role &&
+    a.isAdmin === b.isAdmin &&
     a.accountType === b.accountType &&
     a.isEmailVerified === b.isEmailVerified &&
     a.preferredLanguage === b.preferredLanguage

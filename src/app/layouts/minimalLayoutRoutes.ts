@@ -12,5 +12,13 @@ export const MINIMAL_LAYOUT_PATHS = [
 export function isMinimalLayoutPathname(pathname: string): boolean {
   const path = stripLangPrefix(pathname);
 
+  if (path === '/admin' || path.startsWith('/admin/')) {
+    return true;
+  }
+
+  if (path === '/copyright/report' || path.startsWith('/copyright/report')) {
+    return true;
+  }
+
   return MINIMAL_LAYOUT_PATHS.some((pattern) => matchPath({ path: pattern, end: true }, path));
 }

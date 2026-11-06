@@ -13,6 +13,7 @@ import { sendVerificationEmail } from './email';
 import { normalizeEmailLocale, type EmailLocale } from './email-locale';
 import { normalizeAccountType } from './account-type';
 import { buildEmailVerificationUrl } from './public-app-url';
+import { isPlatformAdminFromRow, jwtRoleFromDbUser } from './platform-admin';
 
 const TOKEN_BYTES = 32;
 const TOKEN_TTL_HOURS = 24;
@@ -28,6 +29,8 @@ export interface VerificationUserRow {
   email: string;
   name: string | null;
   role: string;
+  /** Platform admin flag (Admin Panel); optional on older rows before migration 085 */
+  is_admin?: boolean;
   account_type?: string | null;
   is_email_verified: boolean;
   preferred_language?: string | null;
@@ -139,7 +142,7 @@ export async function findUserByVerificationToken(
   const tokenHash = hashEmailVerificationToken(token);
 
   const result = await query<VerificationUserRow>(
-    `SELECT id, email, name, role, account_type, is_email_verified
+    `SELECT id, email, name, role, is_admin, account_type, is_email_verified
      FROM users
      WHERE email_verification_token_hash = $1`,
     [tokenHash],
@@ -192,11 +195,17 @@ export async function guardUserEmailVerifiedForUpload(
 }
 
 export function mapAuthUser(user: VerificationUserRow) {
+  const privilege = {
+    role: user.role,
+    is_admin: user.is_admin === true,
+  };
+  const jwtRole = jwtRoleFromDbUser(privilege);
   return {
     id: user.id,
     email: user.email,
     name: user.name,
-    role: user.role === 'admin' ? ('admin' as const) : ('user' as const),
+    role: jwtRole,
+    isAdmin: isPlatformAdminFromRow(privilege),
     accountType: normalizeAccountType(user.account_type),
     isEmailVerified: Boolean(user.is_email_verified),
     preferredLanguage: normalizeEmailLocale(user.preferred_language),

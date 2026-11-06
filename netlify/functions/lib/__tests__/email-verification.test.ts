@@ -9,6 +9,7 @@ interface FakeUserRow {
   email: string;
   name: string | null;
   role: string;
+  is_admin: boolean;
   account_type: string | null;
   is_email_verified: boolean;
   preferred_language: string | null;
@@ -27,6 +28,7 @@ function seedUser(row: Partial<FakeUserRow> & { id: string; email: string }): Fa
   const user: FakeUserRow = {
     name: null,
     role: 'user',
+    is_admin: false,
     account_type: 'listener',
     is_email_verified: false,
     preferred_language: null,
@@ -63,7 +65,7 @@ jest.mock('../db', () => ({
 
     if (
       sql.startsWith(
-        'SELECT id, email, name, role, account_type, is_email_verified FROM users WHERE email_verification_token_hash'
+        'SELECT id, email, name, role, is_admin, account_type, is_email_verified FROM users WHERE email_verification_token_hash'
       )
     ) {
       const [hash] = params as [string];
@@ -78,6 +80,7 @@ jest.mock('../db', () => ({
             email: row.email,
             name: row.name,
             role: row.role,
+            is_admin: row.is_admin,
             account_type: row.account_type,
             is_email_verified: row.is_email_verified,
           },

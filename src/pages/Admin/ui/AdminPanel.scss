@@ -1,0 +1,561 @@
+.admin-panel {
+  --admin-bg: #0d0d0d;
+  --admin-surface: #111111;
+  --admin-border: rgb(255 255 255 / 8%);
+  --admin-muted: rgb(255 255 255 / 55%);
+  --admin-accent: var(--accent-color, #998238);
+
+  display: flex;
+  color: rgb(255 255 255 / 92%);
+  background: var(--admin-bg);
+  min-height: 100vh;
+  font-family: var(--base-font, system-ui, sans-serif);
+}
+
+.admin-panel__sidebar {
+  display: flex;
+  width: 240px;
+  padding: 2rem 1.5rem;
+  flex-shrink: 0;
+  border-right: 1px solid var(--admin-border);
+  flex-direction: column;
+  gap: 1.75rem;
+}
+
+.admin-panel__brand {
+  color: var(--admin-muted);
+  font-size: 0.75rem;
+  font-family: var(--base-accent-font, Oswald, sans-serif);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+.admin-panel__nav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.admin-panel__nav-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.admin-panel__nav-label {
+  margin: 1rem 0 0.35rem;
+  color: var(--admin-muted);
+  font-size: 0.6875rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+
+  &:first-child {
+    margin-top: 0;
+  }
+}
+
+.admin-panel__link {
+  position: relative;
+  display: block;
+  padding: 0.4rem 0;
+  color: rgb(255 255 255 / 82%);
+  font-size: 0.9375rem;
+  border-radius: 4px;
+  transition: color 0.15s ease;
+  text-decoration: none;
+
+  &:hover {
+    color: var(--admin-accent);
+  }
+
+  &.admin-panel__link--active {
+    color: var(--admin-accent);
+  }
+
+  &.admin-panel__link--sub {
+    color: var(--admin-muted);
+    font-size: 0.875rem;
+    padding-left: 0.75rem;
+
+    &:hover,
+    &.admin-panel__link--active {
+      color: var(--admin-accent);
+    }
+  }
+}
+
+.admin-panel__divider {
+  height: 1px;
+  margin: 0.5rem 0;
+  background: var(--admin-border);
+}
+
+.admin-panel__back {
+  margin-top: auto;
+  padding-top: 1rem;
+}
+
+.admin-panel__main {
+  flex: 1;
+  padding: 2.5rem 3rem;
+  max-width: 960px;
+}
+
+.admin-panel__header-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.admin-panel__title {
+  margin: 0;
+  font-size: 1.75rem;
+  font-family: var(--base-accent-font, Oswald, sans-serif);
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  flex: 1;
+  min-width: 0;
+}
+
+.admin-panel__bell {
+  display: inline-flex;
+  padding: 0.25rem 0.35rem;
+  color: var(--admin-muted);
+  font-size: 1rem;
+  line-height: 1;
+  border-radius: 4px;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.15rem;
+  text-decoration: none;
+  flex-shrink: 0;
+
+  &:hover {
+    color: rgb(255 255 255 / 82%);
+    background: rgb(255 255 255 / 4%);
+  }
+}
+
+.admin-panel__bell-icon {
+  opacity: 0.85;
+}
+
+.admin-panel__bell-count {
+  color: var(--admin-accent);
+  font-size: 0.6875rem;
+  text-align: center;
+  font-weight: 500;
+  min-width: 1rem;
+}
+
+.admin-panel__nav-unread {
+  display: inline-block;
+  color: var(--admin-accent);
+  font-size: 0.6875rem;
+  line-height: 1;
+  margin-left: 0.35rem;
+  font-weight: 500;
+  vertical-align: super;
+}
+
+.admin-panel__subtitle {
+  margin: -1.25rem 0 2rem;
+  color: var(--admin-muted);
+  font-size: 1rem;
+}
+
+.admin-panel__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 1.25rem;
+}
+
+.admin-panel__stat {
+  padding: 1.25rem 1.35rem;
+  background: var(--admin-surface);
+  border: 1px solid var(--admin-border);
+  border-radius: 6px;
+}
+
+.admin-panel__stat-label {
+  color: var(--admin-muted);
+  font-size: 0.8125rem;
+  margin-bottom: 0.5rem;
+}
+
+.admin-panel__stat-value {
+  color: rgb(255 255 255 / 92%);
+  font-size: 1.25rem;
+  font-weight: 500;
+}
+
+.admin-panel__placeholder {
+  color: var(--admin-muted);
+  font-size: 0.95rem;
+  line-height: 1.6;
+  max-width: 42rem;
+
+  &--error {
+    color: #cc7777;
+  }
+}
+
+.admin-copyright-claims__filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0 0 1.25rem;
+}
+
+.admin-copyright-claims__filter {
+  padding: 0.35rem 0.65rem;
+  color: rgb(255 255 255 / 82%);
+  font-size: 0.8125rem;
+  line-height: 1.3;
+  background: transparent;
+  border: 1px solid var(--admin-border);
+  border-radius: 4px;
+  appearance: none;
+  cursor: pointer;
+
+  &:hover {
+    border-color: rgb(153 130 56 / 35%);
+  }
+
+  &--active {
+    border-color: rgb(153 130 56 / 55%);
+    color: var(--admin-accent);
+  }
+}
+
+.admin-copyright-claims {
+  display: flex;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.admin-copyright-claims__card {
+  display: block;
+  padding: 1.25rem 1.35rem;
+  color: inherit;
+  background: var(--admin-surface);
+  border: 1px solid var(--admin-border);
+  border-radius: 6px;
+  transition: border-color 0.15s ease;
+  text-decoration: none;
+
+  &:hover {
+    border-color: rgb(153 130 56 / 35%);
+  }
+}
+
+.admin-copyright-claims__title {
+  font-size: 1.0625rem;
+  font-weight: 500;
+  margin-bottom: 0.25rem;
+}
+
+.admin-copyright-claims__artist {
+  color: var(--admin-muted);
+  font-size: 0.9375rem;
+  margin-bottom: 0.5rem;
+}
+
+.admin-copyright-claims__claimant {
+  color: rgb(255 255 255 / 78%);
+  font-size: 0.875rem;
+  margin-bottom: 0.65rem;
+}
+
+.admin-copyright-claims__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.admin-copyright-claims__date {
+  color: var(--admin-muted);
+  font-size: 0.8125rem;
+}
+
+.admin-copyright-claims__badge {
+  color: var(--admin-accent);
+  font-size: 0.6875rem;
+  letter-spacing: 0.1em;
+}
+
+.admin-claim-detail {
+  max-width: 40rem;
+}
+
+.admin-claim-detail__h2 {
+  margin: 1.75rem 0 0.65rem;
+  color: var(--admin-muted);
+  font-size: 0.75rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-weight: 500;
+
+  &:first-of-type {
+    margin-top: 0.5rem;
+  }
+}
+
+.admin-claim-detail__card {
+  padding: 1.1rem 1.25rem;
+  background: var(--admin-surface);
+  border: 1px solid var(--admin-border);
+  border-radius: 6px;
+}
+
+.admin-claim-detail__strong {
+  font-size: 1.0625rem;
+  font-weight: 500;
+}
+
+.admin-claim-detail__muted {
+  color: var(--admin-muted);
+  font-size: 0.9375rem;
+  margin-top: 0.25rem;
+}
+
+.admin-claim-detail__type {
+  color: var(--admin-accent);
+  font-size: 0.75rem;
+  margin-top: 0.65rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.admin-claim-detail__link {
+  display: inline-block;
+  color: var(--admin-accent);
+  font-size: 0.875rem;
+  margin-top: 0.85rem;
+}
+
+.admin-claim-detail__block {
+  margin: 0;
+
+  dt {
+    color: var(--admin-muted);
+    font-size: 0.75rem;
+    margin-top: 0.75rem;
+
+    &:first-child {
+      margin-top: 0;
+    }
+  }
+
+  dd {
+    margin: 0.2rem 0 0;
+    font-size: 0.9375rem;
+  }
+}
+
+.admin-claim-detail__desc {
+  margin: 0;
+  padding: 1rem 1.1rem;
+  font-size: 0.9375rem;
+  line-height: 1.55;
+  background: var(--admin-surface);
+  border: 1px solid var(--admin-border);
+  border-radius: 6px;
+  white-space: pre-wrap;
+  font-family: inherit;
+}
+
+.admin-claim-detail__back {
+  display: inline-block;
+  color: var(--admin-accent);
+  font-size: 0.875rem;
+  margin-top: 2rem;
+}
+
+.admin-claim-detail__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.admin-claim-detail__btn {
+  padding: 0.45rem 0.85rem;
+  color: var(--admin-accent);
+  font-size: 0.875rem;
+  background: rgb(153 130 56 / 12%);
+  border: 1px solid rgb(153 130 56 / 55%);
+  border-radius: 4px;
+  appearance: none;
+  cursor: pointer;
+
+  &:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  &--secondary {
+    color: rgb(255 255 255 / 78%);
+    background: transparent;
+    border-color: var(--admin-border);
+  }
+
+  &--note {
+    margin-top: 0.5rem;
+  }
+}
+
+.admin-claim-detail__note {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 0.75rem 0.85rem;
+  color: inherit;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  background: var(--admin-surface);
+  border: 1px solid var(--admin-border);
+  border-radius: 6px;
+  max-width: 40rem;
+  box-sizing: border-box;
+  font-family: inherit;
+  resize: vertical;
+  min-height: 5rem;
+
+  &:disabled {
+    opacity: 0.6;
+  }
+}
+
+.admin-claim-detail__hint {
+  margin: 0.5rem 0 0;
+  color: var(--admin-muted);
+  font-size: 0.75rem;
+  max-width: 40rem;
+}
+
+.admin-claim-detail__muted--inline {
+  margin: 0;
+  font-size: 0.875rem;
+}
+
+.admin-claim-detail__activity {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-width: 40rem;
+}
+
+.admin-claim-detail__activity li {
+  padding: 0.55rem 0;
+  border-bottom: 1px solid var(--admin-border);
+
+  &:first-child {
+    padding-top: 0;
+  }
+
+  &:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+  }
+}
+
+.admin-claim-detail__activity-when {
+  color: var(--admin-muted);
+  font-size: 0.75rem;
+  margin-bottom: 0.2rem;
+}
+
+.admin-claim-detail__activity-line1 {
+  color: rgb(255 255 255 / 88%);
+  font-size: 0.8125rem;
+}
+
+.admin-claim-detail__activity-line2 {
+  color: var(--admin-muted);
+  font-size: 0.8125rem;
+  margin-top: 0.15rem;
+}
+
+.admin-notifications {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-width: 40rem;
+}
+
+.admin-notifications__main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.admin-notifications__title {
+  font-size: 0.9375rem;
+  font-weight: 500;
+}
+
+.admin-notifications__body {
+  color: var(--admin-muted);
+  font-size: 0.8125rem;
+  line-height: 1.45;
+}
+
+.admin-notifications__time {
+  color: var(--admin-muted);
+  font-size: 0.75rem;
+}
+
+.admin-notifications__row {
+  display: flex;
+  width: 100%;
+  padding: 0.85rem 0;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  transition: background 0.12s ease;
+  align-items: flex-start;
+  gap: 0.65rem;
+  border-bottom: 1px solid var(--admin-border);
+  cursor: pointer;
+
+  &:hover {
+    background: rgb(255 255 255 / 3%);
+  }
+}
+
+.admin-notifications__row--read .admin-notifications__title {
+  color: var(--admin-muted);
+}
+
+.admin-notifications li:first-child .admin-notifications__row {
+  padding-top: 0;
+}
+
+.admin-notifications li:last-child .admin-notifications__row {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.admin-notifications__dot {
+  color: var(--admin-accent);
+  font-size: 0.65rem;
+  line-height: 1.8;
+  flex-shrink: 0;
+  opacity: 0.85;
+}
+
+.admin-notifications__row--read .admin-notifications__dot {
+  color: var(--admin-muted);
+  opacity: 0.5;
+}

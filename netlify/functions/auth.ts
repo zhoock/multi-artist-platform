@@ -68,6 +68,7 @@ import {
 } from './lib/password-reset';
 import { validatePassword } from './lib/password-policy';
 import { normalizeAccountType, type AccountType } from './lib/account-type';
+import { jwtRoleFromDbUser } from './lib/platform-admin';
 
 interface UserRow extends VerificationUserRow {
   password_hash: string;
@@ -221,7 +222,7 @@ async function generateUniqueUsername(
 
 async function fetchUserById(userId: string): Promise<UserRow | null> {
   const result = await query<UserRow>(
-    `SELECT id, email, name, password_hash, is_active, role, account_type, is_email_verified, preferred_language
+    `SELECT id, email, name, password_hash, is_active, role, is_admin, account_type, is_email_verified, preferred_language
      FROM users
      WHERE id = $1`,
     [userId],
@@ -232,12 +233,8 @@ async function fetchUserById(userId: string): Promise<UserRow | null> {
 
 function buildAuthPayload(user: UserRow): AuthData {
   const accountType = normalizeAccountType(user.account_type);
-  const token = generateToken(
-    user.id,
-    user.email,
-    user.role === 'admin' ? 'admin' : 'user',
-    accountType
-  );
+  const jwtRole = jwtRoleFromDbUser({ role: user.role, is_admin: user.is_admin === true });
+  const token = generateToken(user.id, user.email, jwtRole, accountType);
   return { token, user: mapAuthUser(user) };
 }
 
@@ -535,7 +532,7 @@ async function handleUpgradeToArtist(
              public_slug = $4,
              updated_at = NOW()
          WHERE id = $1 AND account_type = 'listener'
-         RETURNING id, email, name, role, account_type, is_email_verified, preferred_language`,
+         RETURNING id, email, name, role, is_admin, account_type, is_email_verified, preferred_language`,
         [userId, artistName, username, publicSlug],
         0
       );
@@ -818,7 +815,7 @@ export const handler: Handler = async (
                is_active, is_email_verified, genre_code, preferred_language, account_type
              )
              VALUES ($1, $2, $3, $4, $5, $6, true, false, $7, $8, $9)
-             RETURNING id, email, name, role, account_type, is_email_verified, preferred_language`,
+             RETURNING id, email, name, role, is_admin, account_type, is_email_verified, preferred_language`,
             [
               normalizedEmail,
               displayName,
@@ -895,7 +892,7 @@ export const handler: Handler = async (
       }
 
       const result = await query<UserRow>(
-        `SELECT id, email, name, password_hash, is_active, role, account_type, is_email_verified, preferred_language
+        `SELECT id, email, name, password_hash, is_active, role, is_admin, account_type, is_email_verified, preferred_language
          FROM users
          WHERE email = $1`,
         [normalizedEmail],

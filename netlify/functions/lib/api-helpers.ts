@@ -11,6 +11,7 @@ import {
   type UserRole,
 } from './jwt';
 import { isArtistAccountType } from './account-type';
+import { assertUserIsPlatformAdmin } from './admin-privileges-db';
 import { PublicArtistResolverError } from './public-artist-resolver';
 
 /**
@@ -203,37 +204,22 @@ export function isAdminRole(role: UserRole): boolean {
 }
 
 /**
- * Проверяет авторизацию и права админа
- * @returns userId если пользователь авторизован и является админом, null иначе
+ * Проверяет авторизацию и права платформенного админа (Postgres: is_admin или legacy role=admin).
+ * JWT `role: admin` не доверяется как единственный сигнал.
  */
-export function requireAdmin(event: HandlerEvent): string | null {
+export async function requireAdmin(event: HandlerEvent): Promise<string | null> {
   const userId = getUserIdFromEvent(event);
   if (!userId) {
     console.warn('⚠️ requireAdmin: Authorization failed - no userId');
     return null;
   }
 
-  const auth =
-    (event.headers?.authorization as string | undefined) ||
-    (event.headers?.Authorization as string | undefined) ||
-    ((event as any).clientContext?.user?.token as string | undefined);
-
-  if (!auth) {
-    console.warn('⚠️ requireAdmin: Authorization header not found');
+  const ok = await assertUserIsPlatformAdmin(userId);
+  if (!ok) {
+    console.warn('⚠️ requireAdmin: User is not platform admin', { userId });
     return null;
   }
-
-  try {
-    const role = extractRoleFromToken(auth);
-    if (!isAdminRole(role)) {
-      console.warn('⚠️ requireAdmin: User is not admin', { userId, role });
-      return null;
-    }
-    return userId;
-  } catch (error) {
-    console.error('❌ Error checking admin status:', error);
-    return null;
-  }
+  return userId;
 }
 
 /**

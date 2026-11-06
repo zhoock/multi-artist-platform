@@ -131,6 +131,32 @@
   status = 200
   force = true
 
+# Copyright claims (public submit + admin list/detail — before generic /api/admin/*)
+[[redirects]]
+  from = "/api/copyright-claims*"
+  to = "/.netlify/functions/copyright-claims/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/admin/copyright-claims*"
+  to = "/.netlify/functions/admin-copyright-claims/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/admin/notifications*"
+  to = "/.netlify/functions/admin-notifications/:splat"
+  status = 200
+  force = true
+
+# Admin (platform)
+[[redirects]]
+  from = "/api/admin/*"
+  to = "/.netlify/functions/admin-panel-session/:splat"
+  status = 200
+  force = true
+
 # Auth
 [[redirects]]
   from = "/api/auth/*"

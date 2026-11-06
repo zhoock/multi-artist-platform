@@ -117,6 +117,14 @@ const NotFoundPage = lazy(() =>
   import('@widgets/notFound').then((m) => ({ default: m.NotFoundPage }))
 );
 
+const AdminPanelGate = lazy(() => import('@pages/Admin/AdminPanelGate'));
+const AdminDashboard = lazy(() => import('@pages/Admin/AdminDashboard'));
+const AdminCopyrightPlaceholder = lazy(() => import('@pages/Admin/AdminCopyrightPlaceholder'));
+const AdminCopyrightClaimsList = lazy(() => import('@pages/Admin/AdminCopyrightClaimsList'));
+const AdminCopyrightClaimDetail = lazy(() => import('@pages/Admin/AdminCopyrightClaimDetail'));
+const AdminNotificationsPage = lazy(() => import('@pages/Admin/AdminNotificationsPage'));
+const CopyrightReportPage = lazy(() => import('@pages/CopyrightReport/CopyrightReportPage'));
+
 /** Lazy-route fallback after chrome is on screen. First bootstrap uses InitialAppLoader. */
 const PageLoader = PageRouteLoader;
 
@@ -365,10 +373,16 @@ function Layout() {
     '/stems/mix/:mixId',
     '/dashboard',
     '/dashboard/:tab',
+    '/admin',
+    '/admin/copyright',
+    '/admin/copyright/claims',
+    '/admin/notifications',
     '/auth',
     '/auth/reset-password',
     '/email-verified',
     '/email-verification-expired',
+    '/copyright/report',
+    '/admin/copyright/claims/:id',
   ];
 
   const pathnameWithoutLang = stripLangPrefix(location.pathname);
@@ -543,6 +557,28 @@ function Layout() {
           </Suspense>
         }
       />
+      <Route
+        path="/copyright/report"
+        element={
+          <Suspense fallback={<PageLoader />}>
+            <CopyrightReportPage />
+          </Suspense>
+        }
+      />
+      <Route
+        path="/admin/*"
+        element={
+          <Suspense fallback={<PageLoader />}>
+            <AdminPanelGate />
+          </Suspense>
+        }
+      >
+        <Route index element={<AdminDashboard />} />
+        <Route path="copyright" element={<AdminCopyrightPlaceholder />} />
+        <Route path="copyright/claims/:id" element={<AdminCopyrightClaimDetail />} />
+        <Route path="copyright/claims" element={<AdminCopyrightClaimsList />} />
+        <Route path="notifications" element={<AdminNotificationsPage />} />
+      </Route>
       <Route path="/:lang" element={<LangLayout />}>
         <Route index element={homePageElement} />
         <Route path="albums" element={allAlbumsPageElement} />
@@ -563,6 +599,7 @@ function Layout() {
         <Route path="pay/*" element={<UnprefixedRedirect />} />
         <Route path="email-verified" element={<UnprefixedRedirect />} />
         <Route path="email-verification-expired" element={<UnprefixedRedirect />} />
+        <Route path="copyright/*" element={<UnprefixedRedirect />} />
         <Route path="*" element={<NotFoundRoute />} />
       </Route>
       <Route path="*" element={<NotFoundRoute />} />
