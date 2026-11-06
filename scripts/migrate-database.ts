@@ -114,20 +114,34 @@ async function runMigration(pool: Pool, migration: Migration): Promise<void> {
     // Удаляем однострочные комментарии (-- ...)
     sql = sql.replace(/--.*$/gm, '');
 
-    // Умная разбивка по ';' с учетом dollar-quoted strings ($$ ... $$)
+    // Умная разбивка по ';' с учётом dollar-quoted strings ($$ ... $$) и обычных '...'
+    // (иначе COMMENT ... IS '...; ...' ломается на `;` внутри строки).
     const commands: string[] = [];
     let currentCommand = '';
     let inDollarQuote = false;
     let dollarTag = '';
+    let inSingleQuote = false;
 
     for (let i = 0; i < sql.length; i++) {
       const char = sql[i];
-      const nextChar = sql[i + 1];
+
+      if (inSingleQuote) {
+        currentCommand += char;
+        if (char === "'") {
+          const next = sql[i + 1];
+          if (next === "'") {
+            currentCommand += next;
+            i += 1;
+          } else {
+            inSingleQuote = false;
+          }
+        }
+        continue;
+      }
 
       // Проверяем начало dollar-quoted string ($$ или $tag$)
       if (char === '$' && !inDollarQuote) {
-        // Ищем закрывающий $
-        let tagEnd = sql.indexOf('$', i + 1);
+        const tagEnd = sql.indexOf('$', i + 1);
         if (tagEnd !== -1) {
           dollarTag = sql.substring(i, tagEnd + 1);
           inDollarQuote = true;
@@ -146,9 +160,15 @@ async function runMigration(pool: Pool, migration: Migration): Promise<void> {
         continue;
       }
 
+      if (char === "'") {
+        inSingleQuote = true;
+        currentCommand += char;
+        continue;
+      }
+
       currentCommand += char;
 
-      // Если не в dollar-quote и встретили ';', это конец команды
+      // Конец команды: ';' вне dollar-quote и вне '...'
       if (!inDollarQuote && char === ';') {
         const trimmed = currentCommand.trim();
         if (trimmed.length > 0) {
