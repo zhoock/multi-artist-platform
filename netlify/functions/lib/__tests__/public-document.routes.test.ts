@@ -52,6 +52,8 @@ describe('public-document route classification', () => {
   });
 
   test('internal unprefixed routes → fast200', () => {
+    expect(classifyDocumentRoute('/admin', null)).toEqual({ type: 'fast200' });
+    expect(classifyDocumentRoute('/admin/copyright/claims', null)).toEqual({ type: 'fast200' });
     expect(classifyDocumentRoute('/dashboard/albums', null)).toEqual({ type: 'fast200' });
     expect(classifyDocumentRoute('/auth', null)).toEqual({ type: 'fast200' });
     expect(classifyDocumentRoute('/pay/success', null)).toEqual({ type: 'fast200' });
@@ -59,6 +61,8 @@ describe('public-document route classification', () => {
   });
 
   test('internal prefixed routes → fast200', () => {
+    expect(classifyDocumentRoute('/ru/admin', null)).toEqual({ type: 'fast200' });
+    expect(classifyDocumentRoute('/en/admin/notifications', null)).toEqual({ type: 'fast200' });
     expect(classifyDocumentRoute('/ru/dashboard', null)).toEqual({ type: 'fast200' });
     expect(classifyDocumentRoute('/en/auth/reset-password', null)).toEqual({ type: 'fast200' });
   });
