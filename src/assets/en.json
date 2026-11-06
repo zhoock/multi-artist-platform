@@ -408,6 +408,9 @@
       "notFound": "Claim not found.",
       "actionsTitle": "Actions",
       "startReview": "Start review",
+      "temporarilyHideAlbum": "Temporarily hide album",
+      "restoreAlbumPublication": "Restore album publication",
+      "albumRestrictedHint": "This album is temporarily hidden from the public catalog due to a copyright review.",
       "resolveClaim": "Resolve claim",
       "rejectClaim": "Reject claim",
       "actionError": "Could not update claim. Try again.",
@@ -418,7 +421,9 @@
       "activityTitle": "Activity",
       "auditSubmitted": "Claim submitted",
       "auditStatusChanged": "Admin changed status",
-      "auditNoteUpdated": "Admin updated internal note"
+      "auditNoteUpdated": "Admin updated internal note",
+      "auditAlbumRestricted": "Album temporarily hidden from public (copyright review)",
+      "auditAlbumReleased": "Copyright restriction lifted; album visibility restored"
     },
     "adminPanelNotifications": {
       "pageTitle": "Notifications",

@@ -8,6 +8,7 @@
 import type { ProcessingStatus } from '../../../src/shared/lib/audio/audioAssetPipelineConfig';
 import { normalizeTrackIdString } from '../../../src/shared/lib/tracks/normalizeTrackIdString';
 import { query } from './db';
+import { albumRowPublicDiscoverySql } from './album-public-sql';
 import { publicPlayableTrackSql } from './public-track-sql';
 import { fetchTrackAssetsByAlbumPks } from './track-assets-loader';
 import { reconcileAlbumPlaybackStorageBatch } from './track-playback-storage-reconcile';
@@ -34,6 +35,7 @@ export async function reconcileUserPublicPlayableTracks(userId: string): Promise
      WHERE a.user_id = $1::uuid
        AND a.is_published = true
        AND a.is_public = true
+       AND ${albumRowPublicDiscoverySql('a')}
        AND btrim(COALESCE(a.album, '')) <> ''
        AND ${publicPlayableTrackSql('t')}`,
     [uid],

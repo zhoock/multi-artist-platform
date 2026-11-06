@@ -939,6 +939,7 @@ export const handler: Handler = async (
              AND u.public_slug IS NOT NULL
              AND a.is_published = true
              AND COALESCE(a.is_public, true) = true
+             AND COALESCE(a.copyright_restricted, false) = false
            ORDER BY a.updated_at DESC NULLS LAST, a.created_at DESC
            LIMIT 1`,
           [albumId]

@@ -1,4 +1,5 @@
 import { query } from './db';
+import { albumRowPublicDiscoverySql } from './album-public-sql';
 import { publicPlayableTrackSql } from './public-track-sql';
 import { PublicArtistResolverError } from './public-artist-resolver';
 import {
@@ -90,6 +91,7 @@ export async function getArtistPublicationSignals(
        WHERE a.user_id = u.id
          AND a.is_published = true
          AND a.is_public = true
+         AND ${albumRowPublicDiscoverySql('a')}
          AND btrim(COALESCE(a.album, '')) <> ''
          AND ${publicPlayableTrackSql('t')}
      ) AS has_published_tracks

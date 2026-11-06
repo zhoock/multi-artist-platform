@@ -30,6 +30,7 @@ type AlbumPurchaseRow = {
   title: string | null;
   release: unknown;
   is_published: boolean | null;
+  copyright_restricted: boolean | null;
   artist_display_name: string | null;
 };
 
@@ -45,6 +46,7 @@ const ALBUM_PURCHASE_SELECT = `
          a.album AS title,
          a.release,
          a.is_published,
+         COALESCE(a.copyright_restricted, false) AS copyright_restricted,
          ${ARTIST_DISPLAY_NAME_SQL} AS artist_display_name
   FROM albums a
   ${ALBUMS_USER_JOIN_SQL}
@@ -111,6 +113,8 @@ function mapRowToPricing(row: AlbumPurchaseRow): AlbumPurchasePricing {
   const artistDisplayName = row.artist_display_name?.trim() || '';
   const amount = parsedAmount ?? 0;
 
+  const copyrightRestricted = row.copyright_restricted === true;
+
   return {
     albumSlug: row.album_slug,
     albumTitle,
@@ -119,7 +123,7 @@ function mapRowToPricing(row: AlbumPurchaseRow): AlbumPurchasePricing {
     priceMissing,
     currency,
     allowDownloadSale,
-    isPublished: row.is_published === true,
+    isPublished: row.is_published === true && !copyrightRestricted,
     description: buildPaymentDescription(albumTitle, artistDisplayName),
   };
 }

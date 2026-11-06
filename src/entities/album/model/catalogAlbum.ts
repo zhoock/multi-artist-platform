@@ -16,6 +16,8 @@ export interface CatalogAlbum {
   userId: string;
   isPublished: boolean;
   isPublic: boolean;
+  /** Present when API applies admin copyright restriction to catalog projection. */
+  copyrightRestricted?: boolean;
   /** Viewer needs entitlement for at least one listed track. */
   hasLockedTracks: boolean;
   /**
@@ -58,6 +60,7 @@ export function normalizeCatalogAlbum(raw: unknown): CatalogAlbum | null {
     userId: typeof v.userId === 'string' ? v.userId : '',
     isPublished: v.isPublished === true,
     isPublic: v.isPublic !== false,
+    ...(v.copyrightRestricted === true ? { copyrightRestricted: true } : {}),
     hasLockedTracks: v.hasLockedTracks === true,
     hasStems: v.hasStems === true,
   };

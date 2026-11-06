@@ -11,6 +11,7 @@ import {
   patchAdminCopyrightClaim,
   type AdminCopyrightClaimActivity,
   type AdminCopyrightClaimDetail as AdminCopyrightClaimDetailRow,
+  type AdminCopyrightClaimPatchAction,
   type CopyrightClaimAdminStatus,
 } from '@shared/lib/adminCopyrightClaimsApi';
 
@@ -99,7 +100,11 @@ export default function AdminCopyrightClaimDetailPage() {
     void load();
   }, [load]);
 
-  const applyPatch = async (body: { status?: CopyrightClaimAdminStatus; adminNote?: string }) => {
+  const applyPatch = async (body: {
+    status?: CopyrightClaimAdminStatus;
+    adminNote?: string;
+    action?: AdminCopyrightClaimPatchAction;
+  }) => {
     if (!id || !claim) return;
     setBusy(true);
     setActionError(null);
@@ -150,6 +155,22 @@ export default function AdminCopyrightClaimDetailPage() {
       if (row.action === 'claim_note_updated') {
         return { key: row.id, when, line1: copy.auditNoteUpdated, line2: null as string | null };
       }
+      if (row.action === 'claim_album_copyright_restricted') {
+        return {
+          key: row.id,
+          when,
+          line1: copy.auditAlbumRestricted,
+          line2: null as string | null,
+        };
+      }
+      if (row.action === 'claim_album_copyright_released') {
+        return {
+          key: row.id,
+          when,
+          line1: copy.auditAlbumReleased,
+          line2: null as string | null,
+        };
+      }
       return { key: row.id, when, line1: row.action, line2: null as string | null };
     });
   }, [activity, copy, lang]);
@@ -176,6 +197,11 @@ export default function AdminCopyrightClaimDetailPage() {
             </p>
           ) : null}
           <div className="admin-claim-detail__actions">
+            {claim.albumCopyrightRestricted ? (
+              <p className="admin-claim-detail__muted admin-claim-detail__muted--inline">
+                {copy?.albumRestrictedHint}
+              </p>
+            ) : null}
             {status === 'new' ? (
               <>
                 <button
@@ -185,6 +211,14 @@ export default function AdminCopyrightClaimDetailPage() {
                   onClick={() => void applyPatch({ status: 'under_review' })}
                 >
                   {copy?.startReview ?? 'Start review'}
+                </button>
+                <button
+                  type="button"
+                  className="admin-claim-detail__btn"
+                  disabled={busy}
+                  onClick={() => void applyPatch({ action: 'temporarilyHideAlbum' })}
+                >
+                  {copy?.temporarilyHideAlbum ?? 'Temporarily hide album'}
                 </button>
                 <button
                   type="button"
@@ -198,14 +232,25 @@ export default function AdminCopyrightClaimDetailPage() {
             ) : null}
             {status === 'under_review' ? (
               <>
-                <button
-                  type="button"
-                  className="admin-claim-detail__btn"
-                  disabled={busy}
-                  onClick={() => void applyPatch({ status: 'resolved' })}
-                >
-                  {copy?.resolveClaim ?? 'Resolve claim'}
-                </button>
+                {!claim.albumCopyrightRestricted ? (
+                  <button
+                    type="button"
+                    className="admin-claim-detail__btn"
+                    disabled={busy}
+                    onClick={() => void applyPatch({ action: 'temporarilyHideAlbum' })}
+                  >
+                    {copy?.temporarilyHideAlbum ?? 'Temporarily hide album'}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className="admin-claim-detail__btn"
+                    disabled={busy}
+                    onClick={() => void applyPatch({ action: 'restoreAlbumPublication' })}
+                  >
+                    {copy?.restoreAlbumPublication ?? 'Restore album publication'}
+                  </button>
+                )}
                 <button
                   type="button"
                   className="admin-claim-detail__btn admin-claim-detail__btn--secondary"

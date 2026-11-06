@@ -1,5 +1,6 @@
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { query } from './lib/db';
+import { albumRowPublicDiscoverySql } from './lib/album-public-sql';
 import { publicPlayableTrackSql } from './lib/public-track-sql';
 import {
   createErrorResponse,
@@ -81,6 +82,7 @@ async function fetchPublicArtistRows(): Promise<PublicArtistRow[]> {
          WHERE a.user_id = u.id
            AND a.is_published = true
            AND a.is_public = true
+           AND ${albumRowPublicDiscoverySql('a')}
            AND btrim(COALESCE(a.album, '')) <> ''
            AND ${publicPlayableTrackSql('t')}
        )

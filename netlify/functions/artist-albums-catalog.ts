@@ -35,6 +35,7 @@ export interface CatalogAlbumDto {
   userId: string;
   isPublished: boolean;
   isPublic: boolean;
+  copyrightRestricted?: boolean;
   /** Viewer would need entitlement for at least one listed track. */
   hasLockedTracks: boolean;
   /**
@@ -53,6 +54,7 @@ interface AlbumLocaleRow {
   release: unknown;
   is_public: boolean;
   is_published: boolean;
+  copyright_restricted: boolean;
   lang: string;
   updated_at: Date | string | null;
 }
@@ -199,6 +201,7 @@ export const handler: Handler = async (
            a.release,
            a.is_public,
            a.is_published,
+           COALESCE(a.copyright_restricted, false) AS copyright_restricted,
            a.lang,
            a.updated_at,
            t.track_id,
@@ -245,6 +248,7 @@ export const handler: Handler = async (
           release: row.release,
           is_public: row.is_public,
           is_published: row.is_published,
+          copyright_restricted: row.copyright_restricted === true,
           lang: row.lang,
           updated_at: row.updated_at,
         });
@@ -285,8 +289,9 @@ export const handler: Handler = async (
         (shared.album && String(shared.album).trim()) ||
         '';
 
+      const isCopyrightRestricted = shared.copyright_restricted === true;
       const isPublished = shared.is_published === true;
-      const isPublic = shared.is_public !== false;
+      const isPublic = shared.is_public !== false && !isCopyrightRestricted;
 
       // Unique track_ids across locales:
       // - presentation base: first locale (langRank: ru → en)
@@ -351,6 +356,7 @@ export const handler: Handler = async (
         userId: shared.user_id ?? targetUserId,
         isPublished,
         isPublic,
+        ...(isCopyrightRestricted ? { copyrightRestricted: true } : {}),
         hasLockedTracks,
         hasStems,
       });

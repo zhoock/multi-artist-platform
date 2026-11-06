@@ -3,13 +3,18 @@ import { isPublicListedTrack } from '@shared/lib/tracks/publicTrackPresentation'
 
 import type { CatalogAlbum } from '../model/catalogAlbum';
 import type { AlbumVisibilityInfo } from '../model/albumDetails';
-import { isAlbumDraft, isAlbumVisibleOnArtistPage } from './albumPublication';
+import {
+  isAlbumDraft,
+  isAlbumPublicSurfaceEligible,
+  isAlbumPublished,
+  isAlbumVisibleOnArtistPage,
+} from './albumPublication';
 
 /** Public thin-catalog eligibility (trackCount instead of tracks[]). */
 export function hasPublishedPublicCatalogReleases(albums: CatalogAlbum[]): boolean {
   return albums.some(
     (album) =>
-      isAlbumVisibleOnArtistPage(album) && album.title.trim().length > 0 && album.trackCount > 0
+      isAlbumPublicSurfaceEligible(album) && album.title.trim().length > 0 && album.trackCount > 0
   );
 }
 
@@ -23,7 +28,7 @@ export function albumDetailsHasPublicRelease(
 ): boolean {
   if (!album?.title?.trim()) return false;
   if ((album.tracks?.length ?? 0) === 0) return false;
-  return isAlbumVisibleOnArtistPage(album.visibility);
+  return isAlbumPublicSurfaceEligible(album.visibility);
 }
 
 /** Fat dashboard row: at least one track listed on the public artist page (mirrors thin catalog gates). */
@@ -57,11 +62,14 @@ export function filterCatalogAlbumsForArtistPageSurface(
     return albums.filter(
       (album) =>
         isAlbumDraft(album) ||
-        (isAlbumVisibleOnArtistPage(album) && album.title.trim().length > 0 && album.trackCount > 0)
+        (isAlbumPublished(album) &&
+          album.title.trim().length > 0 &&
+          album.trackCount > 0 &&
+          (album.isPublic !== false || album.copyrightRestricted === true))
     );
   }
   return albums.filter(
     (album) =>
-      isAlbumVisibleOnArtistPage(album) && album.title.trim().length > 0 && album.trackCount > 0
+      isAlbumPublicSurfaceEligible(album) && album.title.trim().length > 0 && album.trackCount > 0
   );
 }

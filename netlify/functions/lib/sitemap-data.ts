@@ -4,6 +4,7 @@
  */
 
 import { query } from './db';
+import { albumRowPublicDiscoverySql } from './album-public-sql';
 import { publicListedTrackSql, publicPlayableTrackSql } from './public-track-sql';
 import {
   buildDynamicSitemapEntries,
@@ -48,6 +49,7 @@ async function fetchVisibleArtists(): Promise<SitemapArtistRow[]> {
          WHERE a.user_id = aa.id
            AND a.is_published = true
            AND COALESCE(a.is_public, true) = true
+           AND ${albumRowPublicDiscoverySql('a')}
            AND btrim(COALESCE(a.album, '')) <> ''
            AND ${publicListedTrackSql('t')}
        ) AS has_public_albums,
@@ -67,6 +69,7 @@ async function fetchVisibleArtists(): Promise<SitemapArtistRow[]> {
          WHERE a.user_id = aa.id
            AND a.is_published = true
            AND a.is_public = true
+           AND ${albumRowPublicDiscoverySql('a')}
            AND btrim(COALESCE(a.album, '')) <> ''
            AND ${publicPlayableTrackSql('t')}
        )
@@ -114,6 +117,7 @@ async function fetchPublicAlbums(): Promise<SitemapAlbumRow[]> {
        AND btrim(u.public_slug) <> ''
        AND a.is_published = true
        AND COALESCE(a.is_public, true) = true
+       AND ${albumRowPublicDiscoverySql('a')}
        AND btrim(COALESCE(a.album, '')) <> ''
      GROUP BY u.id, u.public_slug, a.album_id
      HAVING EXISTS (
@@ -122,6 +126,7 @@ async function fetchPublicAlbums(): Promise<SitemapAlbumRow[]> {
        INNER JOIN tracks t ON t.album_id = a2.id
        WHERE a2.user_id = u.id
          AND a2.album_id = a.album_id
+         AND ${albumRowPublicDiscoverySql('a2')}
          AND ${publicListedTrackSql('t')}
      )
      ORDER BY u.public_slug ASC, a.album_id ASC`,

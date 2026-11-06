@@ -3,6 +3,7 @@
  */
 
 import { query } from '../db';
+import { albumRowPublicDiscoverySql } from '../album-public-sql';
 import { publicListedTrackSql } from '../public-track-sql';
 import {
   PublicArtistResolverError,
@@ -17,6 +18,7 @@ interface AlbumLocaleRow {
   album: string | null;
   is_public: boolean;
   is_published: boolean;
+  copyright_restricted: boolean;
 }
 
 interface TrackCountRow {
@@ -65,7 +67,7 @@ export async function isAlbumPubliclyAccessible(
   if (!userId) return false;
 
   const albumsResult = await query<AlbumLocaleRow>(
-    `SELECT a.album, a.is_public, a.is_published
+    `SELECT a.album, a.is_public, a.is_published, COALESCE(a.copyright_restricted, false) AS copyright_restricted
      FROM albums a
      WHERE a.user_id = $1 AND a.album_id = $2`,
     [userId, albumId],
@@ -78,14 +80,16 @@ export async function isAlbumPubliclyAccessible(
   const shared = albumsResult.rows.find((r) => r.is_published === true) ?? albumsResult.rows[0];
   const isPublished = shared.is_published === true;
   const isPublic = shared.is_public !== false;
+  const copyrightRestricted = albumsResult.rows.some((r) => r.copyright_restricted === true);
 
-  if (!isPublished || !isPublic || !title) return false;
+  if (!isPublished || !isPublic || copyrightRestricted || !title) return false;
 
   const trackCountResult = await query<TrackCountRow>(
     `SELECT COUNT(DISTINCT t.track_id)::text AS count
      FROM tracks t
      INNER JOIN albums a ON t.album_id = a.id
      WHERE a.user_id = $1 AND a.album_id = $2
+       AND ${albumRowPublicDiscoverySql('a')}
        AND ${publicListedTrackSql('t')}`,
     [userId, albumId],
     0

@@ -403,6 +403,9 @@ export interface IInterface {
     notFound: string;
     actionsTitle: string;
     startReview: string;
+    temporarilyHideAlbum: string;
+    restoreAlbumPublication: string;
+    albumRestrictedHint: string;
     resolveClaim: string;
     rejectClaim: string;
     actionError: string;
@@ -414,6 +417,8 @@ export interface IInterface {
     auditSubmitted: string;
     auditStatusChanged: string;
     auditNoteUpdated: string;
+    auditAlbumRestricted: string;
+    auditAlbumReleased: string;
   };
   /** Админка: внутренние уведомления */
   adminPanelNotifications?: {

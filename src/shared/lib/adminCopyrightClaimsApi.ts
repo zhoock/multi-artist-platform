@@ -37,7 +37,11 @@ export type AdminCopyrightClaimDetail = {
   artistSlug: string | null;
   albumSlug: string | null;
   trackSlug: string | null;
+  /** True when reported album (all locales) is under admin copyright restriction. */
+  albumCopyrightRestricted: boolean;
 };
+
+export type AdminCopyrightClaimPatchAction = 'temporarilyHideAlbum' | 'restoreAlbumPublication';
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
 
@@ -101,7 +105,11 @@ export async function fetchAdminCopyrightClaim(id: string): Promise<{
 
 export async function patchAdminCopyrightClaim(
   id: string,
-  body: { status?: CopyrightClaimAdminStatus; adminNote?: string }
+  body: {
+    status?: CopyrightClaimAdminStatus;
+    adminNote?: string;
+    action?: AdminCopyrightClaimPatchAction;
+  }
 ): Promise<{ claim: AdminCopyrightClaimDetail; activity: AdminCopyrightClaimActivity[] }> {
   const token = getToken();
   if (!token) {
@@ -110,6 +118,7 @@ export async function patchAdminCopyrightClaim(
   const payload: Record<string, unknown> = {};
   if (body.status !== undefined) payload.status = body.status;
   if (body.adminNote !== undefined) payload.adminNote = body.adminNote;
+  if (body.action !== undefined) payload.action = body.action;
 
   const res = await fetch(`/api/admin/copyright-claims/${encodeURIComponent(id)}`, {
     method: 'PATCH',

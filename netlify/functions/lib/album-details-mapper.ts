@@ -32,6 +32,8 @@ export interface AlbumDetailsPurchaseDto {
 export interface AlbumDetailsVisibilityDto {
   isPublished: boolean;
   isPublic: boolean;
+  /** True when admin temporarily hid the album for copyright review (not artist unpublish). */
+  copyrightRestricted?: boolean;
 }
 
 export interface TrackDetailsDto {
@@ -105,6 +107,7 @@ export interface AlbumDetailsLocaleSource {
   designerURL: string;
   isPublic: boolean;
   isPublished: boolean;
+  copyrightRestricted?: boolean;
   updatedAt: string | null;
   tracks: AlbumDetailsTrackSource[];
 }
@@ -388,7 +391,8 @@ export function mapLocalesToAlbumDetails(
     const tb = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
     return tb - ta;
   });
-  const shared = sortedForShared[0];
+  const shared = sortedForShared[0]!;
+  const copyrightRestricted = sortedForShared.some((l) => l.copyrightRestricted === true);
   const en = locales.find((l) => l.lang === 'en');
   const ru = locales.find((l) => l.lang === 'ru');
   const title =
@@ -437,6 +441,7 @@ export function mapLocalesToAlbumDetails(
     visibility: {
       isPublished: shared.isPublished === true,
       isPublic: shared.isPublic !== false,
+      ...(copyrightRestricted ? { copyrightRestricted: true } : {}),
     },
     tracks,
     translations: translations.en || translations.ru ? translations : undefined,
@@ -447,6 +452,7 @@ export function isAlbumDetailsVisibleToPublicViewer(album: AlbumDetailsDto): boo
   return (
     album.visibility.isPublished &&
     album.visibility.isPublic &&
+    album.visibility.copyrightRestricted !== true &&
     Boolean(album.title.trim()) &&
     album.tracks.length > 0
   );

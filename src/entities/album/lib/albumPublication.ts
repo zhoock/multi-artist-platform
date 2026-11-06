@@ -1,5 +1,7 @@
 import type { AlbumEditable } from '@models';
 
+import type { AlbumVisibilityInfo } from '../model/albumDetails';
+
 /** Альбом прошёл одноразовую публикацию (не черновик). */
 export function isAlbumPublished(album: Pick<AlbumEditable, 'isPublished'>): boolean {
   return album.isPublished === true;
@@ -15,4 +17,15 @@ export function isAlbumVisibleOnArtistPage(
   album: Pick<AlbumEditable, 'isPublished' | 'isPublic'>
 ): boolean {
   return isAlbumPublished(album) && album.isPublic !== false;
+}
+
+/** Published + public for visitors (excludes admin copyright restriction). */
+export function isAlbumPublicSurfaceEligible(
+  visibility: Pick<AlbumVisibilityInfo, 'isPublished' | 'isPublic' | 'copyrightRestricted'>
+): boolean {
+  return (
+    visibility.isPublished === true &&
+    visibility.isPublic !== false &&
+    visibility.copyrightRestricted !== true
+  );
 }

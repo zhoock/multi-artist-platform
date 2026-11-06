@@ -47,6 +47,7 @@ interface AlbumLocaleRow {
   designer_url: string | null;
   is_public: boolean;
   is_published: boolean;
+  copyright_restricted: boolean;
   lang: string;
   updated_at: Date | string | null;
 }
@@ -311,6 +312,7 @@ export const handler: Handler = async (
          a.designer_url,
          a.is_public,
          a.is_published,
+         COALESCE(a.copyright_restricted, false) AS copyright_restricted,
          a.lang,
          a.updated_at
        FROM albums a
@@ -356,6 +358,7 @@ export const handler: Handler = async (
       designerURL: String(row.designer_url ?? '').trim(),
       isPublic: row.is_public !== false,
       isPublished: row.is_published === true,
+      copyrightRestricted: row.copyright_restricted === true,
       updatedAt: row.updated_at != null ? new Date(row.updated_at as Date).toISOString() : null,
       tracks: (tracksByPk.get(row.id) ?? []).map(mapTrackRow),
     }));

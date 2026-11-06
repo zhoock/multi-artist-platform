@@ -36,7 +36,12 @@ export function assertAllowedStatusTransition(
 
 export async function insertCopyrightAuditEntry(input: {
   adminUserId: string | null;
-  action: 'claim_submitted' | 'claim_status_changed' | 'claim_note_updated';
+  action:
+    | 'claim_submitted'
+    | 'claim_status_changed'
+    | 'claim_note_updated'
+    | 'claim_album_copyright_restricted'
+    | 'claim_album_copyright_released';
   claimId: string;
   details: Record<string, unknown> | null;
 }): Promise<void> {

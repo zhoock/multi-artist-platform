@@ -1,4 +1,5 @@
 import { query } from './db';
+import { albumRowPublicDiscoverySql } from './album-public-sql';
 
 type AlbumTagRow = {
   user_id: string;
@@ -24,6 +25,7 @@ export async function fetchPublishedAlbumTagsByUserIds(
      WHERE a.user_id = ANY($1::uuid[])
        AND a.is_published = true
        AND COALESCE(a.is_public, true) = true
+       AND ${albumRowPublicDiscoverySql('a')}
        AND btrim(tag.value) <> ''
      ORDER BY a.user_id, a.updated_at DESC, tag.value ASC`,
     [userIds]

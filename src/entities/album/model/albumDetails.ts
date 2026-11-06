@@ -28,6 +28,8 @@ export interface AlbumPurchaseInfo {
 export interface AlbumVisibilityInfo {
   isPublished: boolean;
   isPublic: boolean;
+  /** Admin temporary hide during copyright review (distinct from artist unpublish). */
+  copyrightRestricted?: boolean;
 }
 
 /** Track row for the album page (list + player queue + purchase labels). */
@@ -336,6 +338,7 @@ export function normalizeAlbumDetails(raw: unknown): AlbumDetails | null {
     visibility: {
       isPublished: visibilityRaw ? visibilityRaw.isPublished === true : v.isPublished === true,
       isPublic: visibilityRaw ? visibilityRaw.isPublic !== false : v.isPublic !== false,
+      ...(visibilityRaw?.copyrightRestricted === true ? { copyrightRestricted: true } : {}),
     },
     tracks,
     translations,

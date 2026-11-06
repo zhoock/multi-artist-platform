@@ -57,6 +57,7 @@ export async function resolveAlbumForCopyrightReport(input: {
        AND LOWER(TRIM(u.public_slug)) = $2
        AND a.is_published = true
        AND a.is_public = true
+       AND COALESCE(a.copyright_restricted, false) = false
      ORDER BY a.album_id, (a.lang = 'en') DESC NULLS LAST, a.lang ASC
      LIMIT 1`,
     [albumSlug, slug],
@@ -91,6 +92,7 @@ export async function resolveTrackForCopyrightReport(input: {
        AND LOWER(TRIM(u.public_slug)) = $2
        AND a.is_published = true
        AND a.is_public = true
+       AND COALESCE(a.copyright_restricted, false) = false
      LIMIT 1`,
     [id, slug],
     0

@@ -27,6 +27,12 @@ import {
   MAX_ADMIN_NOTE_CHARS,
   type CopyrightClaimStatus,
 } from './lib/copyright-claims-admin';
+import type { CopyrightContentType } from './lib/copyright-claims';
+import {
+  applyCopyrightAlbumTemporaryHide,
+  restoreCopyrightAlbumAfterReview,
+  resolveTargetAlbumForCopyrightClaim,
+} from './lib/copyright-claims-album-hide';
 
 interface ClaimListRow {
   id: string;
@@ -55,6 +61,7 @@ interface ClaimDetailRow {
   artist_slug: string | null;
   album_slug: string | null;
   track_slug: string | null;
+  album_copyright_restricted: boolean | null;
 }
 
 const CLAIM_DETAIL_SELECT = `
@@ -125,7 +132,21 @@ const CLAIM_DETAIL_SELECT = `
          CASE c.content_type
            WHEN 'track' THEN (SELECT t.track_id FROM tracks t WHERE t.id::text = c.content_id LIMIT 1)
            ELSE NULL
-         END AS track_slug`;
+         END AS track_slug,
+         CASE c.content_type
+           WHEN 'album' THEN (
+             SELECT COALESCE(bool_or(COALESCE(a.copyright_restricted, false)), false)
+             FROM albums a
+             WHERE a.album_id = c.content_id
+           )
+           WHEN 'track' THEN (
+             SELECT COALESCE(bool_or(COALESCE(a.copyright_restricted, false)), false)
+             FROM tracks t
+             INNER JOIN albums a ON a.id = t.album_id
+             WHERE t.id::text = c.content_id
+           )
+           ELSE false
+         END AS album_copyright_restricted`;
 
 const LIST_SELECT = `
            c.id,
@@ -191,11 +212,51 @@ function parseListStatusFilter(event: HandlerEvent): CopyrightClaimStatus | 'all
   return null;
 }
 
-const PATCH_ALLOWED = new Set(['status', 'adminNote']);
+const PATCH_ALLOWED = new Set(['status', 'adminNote', 'action']);
 
 interface PatchBody {
   status?: string;
   adminNote?: string;
+  action?: string;
+}
+
+async function loadClaimDetailRow(id: string): Promise<ClaimDetailRow | null> {
+  const detail = await query<ClaimDetailRow>(
+    `SELECT ${CLAIM_DETAIL_SELECT}
+     FROM copyright_claims c
+     WHERE c.id = $1::uuid`,
+    [id],
+    0
+  );
+  return detail.rows[0] ?? null;
+}
+
+async function respondClaimDetail(id: string) {
+  const r = await loadClaimDetailRow(id);
+  if (!r) {
+    return createErrorResponse(404, 'Not found', CORS_HEADERS);
+  }
+  const auditRows = await fetchAuditLogForClaim(id);
+  const activity = auditRows.map((row) => ({
+    id: row.id,
+    action: row.action,
+    details: row.details,
+    createdAt:
+      row.created_at instanceof Date ? row.created_at.toISOString() : String(row.created_at),
+    adminUserId: row.admin_user_id,
+  }));
+  return createSuccessResponse({ claim: mapClaimDetail(r), activity });
+}
+
+const CLAIM_PATCH_ACTIONS = {
+  temporarilyHideAlbum: 'temporarilyHideAlbum',
+  restoreAlbumPublication: 'restoreAlbumPublication',
+} as const;
+
+type ClaimPatchAction = (typeof CLAIM_PATCH_ACTIONS)[keyof typeof CLAIM_PATCH_ACTIONS];
+
+function isClaimPatchAction(s: string): s is ClaimPatchAction {
+  return (Object.values(CLAIM_PATCH_ACTIONS) as string[]).includes(s);
 }
 
 function mapClaimDetail(r: ClaimDetailRow) {
@@ -215,6 +276,7 @@ function mapClaimDetail(r: ClaimDetailRow) {
     artistSlug: r.artist_slug,
     albumSlug: r.album_slug,
     trackSlug: r.track_slug,
+    albumCopyrightRestricted: r.album_copyright_restricted === true,
   };
 }
 
@@ -340,9 +402,31 @@ async function handlePatch(event: HandlerEvent, path: string, adminId: string) {
   const patch = body as PatchBody;
   const hasStatus = patch.status !== undefined;
   const hasNote = patch.adminNote !== undefined;
+  const rawAction = patch.action;
+  const hasAction = rawAction !== undefined;
 
-  if (!hasStatus && !hasNote) {
+  if (!hasStatus && !hasNote && !hasAction) {
     return createErrorResponse(400, 'No changes', CORS_HEADERS, { code: 'VALIDATION_ERROR' });
+  }
+
+  if (hasAction && (hasStatus || hasNote)) {
+    return createErrorResponse(
+      400,
+      'action cannot be combined with status or adminNote',
+      CORS_HEADERS,
+      {
+        code: 'VALIDATION_ERROR',
+      }
+    );
+  }
+
+  if (hasAction && typeof rawAction !== 'string') {
+    return createErrorResponse(400, 'Invalid action', CORS_HEADERS, { code: 'VALIDATION_ERROR' });
+  }
+
+  const actionNorm = hasAction ? rawAction.trim() : '';
+  if (hasAction && !isClaimPatchAction(actionNorm)) {
+    return createErrorResponse(400, 'Invalid action', CORS_HEADERS, { code: 'VALIDATION_ERROR' });
   }
 
   if (hasStatus && typeof patch.status !== 'string') {
@@ -379,6 +463,93 @@ async function handlePatch(event: HandlerEvent, path: string, adminId: string) {
     const fromStatus = row.status;
     const prevNote = row.admin_note;
 
+    if (hasAction && !hasStatus && !hasNote) {
+      if (fromStatus === 'resolved' || fromStatus === 'rejected') {
+        return createErrorResponse(400, 'Claim is closed', CORS_HEADERS, { code: 'CLAIM_CLOSED' });
+      }
+
+      const claimRow = await loadClaimDetailRow(id);
+      if (!claimRow) {
+        return createErrorResponse(404, 'Not found', CORS_HEADERS);
+      }
+      const albumTarget = await resolveTargetAlbumForCopyrightClaim({
+        contentType: claimRow.content_type as CopyrightContentType,
+        contentId: claimRow.content_id,
+      });
+      if (!albumTarget) {
+        return createErrorResponse(400, 'Target album not found', CORS_HEADERS, {
+          code: 'CONTENT_NOT_FOUND',
+        });
+      }
+
+      if (actionNorm === CLAIM_PATCH_ACTIONS.temporarilyHideAlbum) {
+        if (fromStatus !== 'new' && fromStatus !== 'under_review') {
+          return createErrorResponse(400, 'Invalid claim status for this action', CORS_HEADERS, {
+            code: 'INVALID_ACTION_FOR_STATUS',
+          });
+        }
+        const hide = await applyCopyrightAlbumTemporaryHide(
+          albumTarget.albumSlugId,
+          albumTarget.userId
+        );
+        if (!hide.ok) {
+          const codeMap: Record<string, string> = {
+            CONTENT_NOT_FOUND: 'CONTENT_NOT_FOUND',
+            ALREADY_RESTRICTED: 'ALREADY_RESTRICTED',
+          };
+          return createErrorResponse(
+            400,
+            hide.code === 'ALREADY_RESTRICTED'
+              ? 'Album already temporarily hidden'
+              : 'Target album not found',
+            CORS_HEADERS,
+            { code: codeMap[hide.code] ?? 'CONTENT_NOT_FOUND' }
+          );
+        }
+        await insertCopyrightAuditEntry({
+          adminUserId: adminId,
+          action: 'claim_album_copyright_restricted',
+          claimId: id,
+          details: {
+            albumSlug: albumTarget.albumSlugId,
+            updatedLocales: hide.updatedRowCount,
+          },
+        });
+        return respondClaimDetail(id);
+      }
+
+      if (actionNorm === CLAIM_PATCH_ACTIONS.restoreAlbumPublication) {
+        if (fromStatus !== 'under_review') {
+          return createErrorResponse(400, 'Invalid claim status for this action', CORS_HEADERS, {
+            code: 'INVALID_ACTION_FOR_STATUS',
+          });
+        }
+        const restore = await restoreCopyrightAlbumAfterReview(
+          albumTarget.albumSlugId,
+          albumTarget.userId
+        );
+        if (!restore.ok) {
+          const msg =
+            restore.code === 'NOT_RESTRICTED'
+              ? 'Album is not under copyright restriction'
+              : 'Target album not found';
+          const errCode =
+            restore.code === 'NOT_RESTRICTED' ? 'NOT_RESTRICTED' : 'CONTENT_NOT_FOUND';
+          return createErrorResponse(400, msg, CORS_HEADERS, { code: errCode });
+        }
+        await insertCopyrightAuditEntry({
+          adminUserId: adminId,
+          action: 'claim_album_copyright_released',
+          claimId: id,
+          details: {
+            albumSlug: albumTarget.albumSlugId,
+            updatedLocales: restore.updatedRowCount,
+          },
+        });
+        return respondClaimDetail(id);
+      }
+    }
+
     if (hasStatus && nextStatus) {
       if (nextStatus === fromStatus) {
         return createErrorResponse(400, 'Status unchanged', CORS_HEADERS, {
@@ -392,7 +563,7 @@ async function handlePatch(event: HandlerEvent, path: string, adminId: string) {
       const same =
         (prevNote == null && noteValue == null) ||
         (prevNote != null && noteValue != null && prevNote === noteValue);
-      if (same && !hasStatus) {
+      if (same && !hasStatus && !hasAction) {
         return createErrorResponse(400, 'Note unchanged', CORS_HEADERS, {
           code: 'VALIDATION_ERROR',
         });
@@ -433,25 +604,7 @@ async function handlePatch(event: HandlerEvent, path: string, adminId: string) {
       }
     }
 
-    const detail = await query<ClaimDetailRow>(
-      `SELECT ${CLAIM_DETAIL_SELECT}
-       FROM copyright_claims c
-       WHERE c.id = $1::uuid`,
-      [id],
-      0
-    );
-    const r = detail.rows[0]!;
-    const auditRows = await fetchAuditLogForClaim(id);
-    const activity = auditRows.map((row) => ({
-      id: row.id,
-      action: row.action,
-      details: row.details,
-      createdAt:
-        row.created_at instanceof Date ? row.created_at.toISOString() : String(row.created_at),
-      adminUserId: row.admin_user_id,
-    }));
-
-    return createSuccessResponse({ claim: mapClaimDetail(r), activity });
+    return respondClaimDetail(id);
   } catch (error: unknown) {
     const code = (error as { code?: string })?.code;
     if (code === 'INVALID_TRANSITION') {

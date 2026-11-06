@@ -408,6 +408,9 @@
       "notFound": "Жалоба не найдена.",
       "actionsTitle": "Действия",
       "startReview": "Начать рассмотрение",
+      "temporarilyHideAlbum": "Временно скрыть альбом",
+      "restoreAlbumPublication": "Вернуть альбом в публикацию",
+      "albumRestrictedHint": "Альбом временно скрыт из публичного каталога из‑за проверки по авторским правам.",
       "resolveClaim": "Решить жалобу",
       "rejectClaim": "Отклонить жалобу",
       "actionError": "Не удалось обновить жалобу. Повторите попытку.",
@@ -418,7 +421,9 @@
       "activityTitle": "История",
       "auditSubmitted": "Жалоба отправлена",
       "auditStatusChanged": "Администратор изменил статус",
-      "auditNoteUpdated": "Администратор обновил внутреннюю заметку"
+      "auditNoteUpdated": "Администратор обновил внутреннюю заметку",
+      "auditAlbumRestricted": "Альбом временно скрыт от публики (проверка по авторским правам)",
+      "auditAlbumReleased": "Ограничение по авторским правам снято; видимость альбома восстановлена"
     },
     "adminPanelNotifications": {
       "pageTitle": "Уведомления",
