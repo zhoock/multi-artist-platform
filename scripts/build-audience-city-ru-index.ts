@@ -16,6 +16,14 @@ const OUT_PATH = resolve(
   'src/pages/UserDashboard/components/audience/geoAudienceCityRuIndex.json'
 );
 
+/**
+ * Manual RU labels applied after GeoNames extraction so bad or odd exonyms are not
+ * reintroduced when re-running this script.
+ */
+const RU_CITY_DISPLAY_OVERRIDES: Record<string, string> = {
+  [audienceCityLookupKey('VN', 'Ho Chi Minh City')]: 'Хошимин',
+};
+
 function isBasicCyrillic(value: string): boolean {
   return /^[\u0400-\u045F\s'-]+$/.test(value) && /[\u0400-\u045F]/.test(value);
 }
@@ -71,6 +79,10 @@ async function main(): Promise<void> {
     if (!ruName) continue;
 
     index[audienceCityLookupKey(countryCode, asciiName)] = ruName;
+  }
+
+  for (const [key, ruLabel] of Object.entries(RU_CITY_DISPLAY_OVERRIDES)) {
+    index[key] = ruLabel;
   }
 
   writeFileSync(OUT_PATH, JSON.stringify(index));
