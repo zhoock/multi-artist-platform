@@ -34,6 +34,27 @@
       @include adjust-font-size-to($ms-3, 2);
     }
   }
+
+  &__copyright {
+    text-align: right;
+    padding-block-end: var(--ms-2);
+
+    &--after-metadata {
+      margin-block-start: var(--ms-1);
+    }
+  }
+
+  &__copyright-link {
+    color: var(--time-color, var(--quiet-gray, #828282));
+    font-size: 0.8125rem;
+    text-decoration: underline;
+    text-underline-offset: 0.15em;
+    text-decoration-thickness: 1px;
+
+    &:hover {
+      color: var(--accent-color, #998238);
+    }
+  }
 }
 
 hr {

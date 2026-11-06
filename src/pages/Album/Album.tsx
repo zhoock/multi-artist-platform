@@ -1,7 +1,7 @@
 // src/pages/Album/Album.tsx
 
 import { useEffect, useMemo, type ReactNode } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 
 import { noindexRobotsMetaElement } from '@shared/lib/seo/noindexRobotsMeta';
@@ -332,22 +332,21 @@ export default function Album() {
             <ServiceButtons album={album} section="Слушать" />
           </div>
         )}
-
-        {inArtistPublicContext && album.albumId && (
-          <div className="item album__copyright-report">
-            <Link
-              className="album__copyright-report-link"
-              to={`/copyright/report?contentType=album&contentId=${encodeURIComponent(
-                album.albumId
-              )}&artistSlug=${encodeURIComponent(artistSlug)}`}
-            >
-              {ui?.copyrightReport?.albumLink ?? 'Report copyright infringement'}
-            </Link>
-          </div>
-        )}
       </div>
 
-      <AlbumDetails album={album} />
+      <AlbumDetails
+        album={album}
+        copyrightReport={
+          inArtistPublicContext && album.albumId
+            ? {
+                to: `/copyright/report?contentType=album&contentId=${encodeURIComponent(
+                  album.albumId
+                )}&artistSlug=${encodeURIComponent(artistSlug)}`,
+                label: ui?.copyrightReport?.albumLink ?? 'Report copyright infringement',
+              }
+            : undefined
+        }
+      />
     </section>
   );
 }

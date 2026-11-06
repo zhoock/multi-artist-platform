@@ -34,24 +34,6 @@
   }
 }
 
-.album__copyright-report {
-  margin-block-start: var(--ms-2);
-  padding-block-end: var(--ms-1);
-  text-align: center;
-}
-
-.album__copyright-report-link {
-  color: rgb(255 255 255 / 42%);
-  font-size: 0.8125rem;
-  text-decoration: underline;
-  text-underline-offset: 0.15em;
-  text-decoration-thickness: 1px;
-
-  &:hover {
-    color: var(--accent-color, #998238);
-  }
-}
-
 // Album detail page: global `img { margin-block-end: $ms-1 }` adds space under the cover.
 .album {
   .album-cover__image {
