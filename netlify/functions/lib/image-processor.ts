@@ -3,6 +3,7 @@
  */
 
 import sharp from 'sharp';
+import { HERO_SHARP_QUALITY, HERO_VARIANT_FORMATS, HERO_VARIANT_WIDTHS } from './hero-variants';
 
 export interface ImageVariant {
   suffix: string; // например, "-448.jpg", "-896.webp" (новый формат без @2x и @3x)
@@ -79,17 +80,15 @@ export async function generateHeroImageVariants(
   baseName: string
 ): Promise<Record<string, Buffer>> {
   // Hero: responsive widths for LCP (browser picks via srcset + sizes on the client).
-  const variants: ImageVariant[] = [
-    { suffix: '-896.avif', width: 896, format: 'avif', quality: 80 },
-    { suffix: '-896.webp', width: 896, format: 'webp', quality: 85 },
-    { suffix: '-896.jpg', width: 896, format: 'jpg', quality: 85 },
-    { suffix: '-1280.avif', width: 1280, format: 'avif', quality: 80 },
-    { suffix: '-1280.webp', width: 1280, format: 'webp', quality: 85 },
-    { suffix: '-1280.jpg', width: 1280, format: 'jpg', quality: 85 },
-    { suffix: '-1920.avif', width: 1920, format: 'avif', quality: 80 },
-    { suffix: '-1920.webp', width: 1920, format: 'webp', quality: 85 },
-    { suffix: '-1920.jpg', width: 1920, format: 'jpg', quality: 85 },
-  ];
+  // Spec: `hero-variants.ts` + `artistHeroHeaderImages.HERO_COVER_VARIANT_WIDTHS`.
+  const variants: ImageVariant[] = HERO_VARIANT_WIDTHS.flatMap((width) =>
+    HERO_VARIANT_FORMATS.map((fmt) => ({
+      suffix: `-${width}.${fmt}`,
+      width,
+      format: fmt,
+      quality: HERO_SHARP_QUALITY[fmt],
+    }))
+  );
 
   const results: Record<string, Buffer> = {};
 

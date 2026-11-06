@@ -11,6 +11,7 @@ import {
   buildProxyImageUrlFromStoragePath,
   normalizeProxyImageUrl,
 } from '@shared/lib/proxyImageUrl';
+import { compressHeroJpegForNetlifyPayload } from '@shared/lib/heroUploadPayload';
 import { getPublicStorageFileUrl } from '@shared/lib/storagePublicFileUrl';
 
 import type { GetFileUrlOptions, UploadFileOptions } from './storageTypes';
@@ -51,14 +52,36 @@ export async function uploadFile(options: UploadFileOptions): Promise<string | n
   try {
     const resolvedUserId = options.userId ?? getUserUserId();
     if (!resolvedUserId) {
-      console.error('[BUG] userId is missing in uploadFile (pass options.userId or sign in).');
+      console.error('[uploadFile] failure', {
+        stage: 'auth',
+        reason: 'missing_user_id',
+        category: options.category,
+      });
       return null;
     }
     const userId = resolvedUserId;
     const { category, file, fileName: rawFileName, contentType } = options;
     const fileName = sanitizeUploadFileName(rawFileName);
 
-    const fileSizeMB = file.size / (1024 * 1024);
+    let fileForUpload: Blob = file;
+
+    if (category === 'hero') {
+      try {
+        fileForUpload = await compressHeroJpegForNetlifyPayload(file, {
+          fileName,
+          userId,
+        });
+      } catch (compressErr) {
+        console.error('[uploadFile] hero compression failed', {
+          stage: 'payload_size',
+          category: 'hero',
+          error: compressErr instanceof Error ? compressErr.message : String(compressErr),
+        });
+        throw compressErr;
+      }
+    }
+
+    const fileSizeMB = fileForUpload.size / (1024 * 1024);
 
     if (fileSizeMB > 5) {
       console.warn(
@@ -69,11 +92,15 @@ export async function uploadFile(options: UploadFileOptions): Promise<string | n
     const { getToken } = await import('@shared/lib/auth');
     const token = getToken();
     if (!token) {
-      console.error('❌ [uploadFile] User is not authenticated. Please log in to upload files.');
+      console.error('[uploadFile] failure', {
+        stage: 'auth',
+        reason: 'missing_token',
+        category,
+      });
       return null;
     }
 
-    const fileBase64 = await fileToBase64(file);
+    const fileBase64 = await fileToBase64(fileForUpload);
 
     const { previousImageKey } = options;
 
@@ -82,8 +109,14 @@ export async function uploadFile(options: UploadFileOptions): Promise<string | n
       fileName,
       userId,
       category,
-      contentType: contentType || (file instanceof File ? file.type : 'image/jpeg'),
-      originalFileSize: file.size,
+      contentType:
+        contentType ||
+        (category === 'hero'
+          ? 'image/jpeg'
+          : file instanceof File && file.type
+            ? file.type
+            : 'image/jpeg'),
+      originalFileSize: fileForUpload.size,
       originalFileName: file instanceof File ? file.name : undefined,
     };
 
@@ -91,28 +124,57 @@ export async function uploadFile(options: UploadFileOptions): Promise<string | n
       payload.previousImageKey = String(previousImageKey).trim();
     }
 
-    const payloadSizeMB = JSON.stringify(payload).length / (1024 * 1024);
+    const jsonBody = JSON.stringify(payload);
+    const payloadJsonChars = jsonBody.length;
+    const payloadSizeMB = payloadJsonChars / (1024 * 1024);
 
     if (payloadSizeMB > 5.5) {
-      console.error(
-        `❌ [uploadFile] Payload слишком большой (${payloadSizeMB.toFixed(2)}MB). Превышен лимит Netlify Function (~6MB).`
-      );
+      console.error('[uploadFile] failure', {
+        stage: 'payload_size',
+        category,
+        payloadJsonChars,
+        payloadSizeMB: Number(payloadSizeMB.toFixed(3)),
+        fileBytes: fileForUpload.size,
+        fileName,
+      });
       throw new Error(
-        `Файл слишком большой для загрузки через эту функцию (${(file.size / (1024 * 1024)).toFixed(2)}MB). Максимальный размер: ~5MB.`
+        `Файл слишком большой для загрузки через эту функцию (${(fileForUpload.size / (1024 * 1024)).toFixed(2)}MB). Максимальный размер: ~5MB.`
       );
     }
 
-    const response = await fetchWithAuthSession('/api/upload-file', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify(payload),
-    });
+    let response: Response;
+    try {
+      response = await fetchWithAuthSession('/api/upload-file', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: jsonBody,
+      });
+    } catch (fetchErr) {
+      console.error('[uploadFile] failure', {
+        stage: 'fetch_network',
+        category,
+        fileName,
+        payloadJsonChars,
+        message: fetchErr instanceof Error ? fetchErr.message : String(fetchErr),
+        name: fetchErr instanceof Error ? fetchErr.name : undefined,
+      });
+      return null;
+    }
+
+    const responseDiag = {
+      status: response.status,
+      ok: response.ok,
+      redirected: response.redirected,
+      type: response.type,
+      url: response.url,
+      contentType: response.headers.get('Content-Type'),
+    };
 
     if (!response.ok) {
-      let errorData: { error?: string; success?: boolean };
+      let errorData: { error?: string; success?: boolean; code?: string; details?: string };
       try {
         errorData = await response.json();
       } catch {
@@ -121,19 +183,55 @@ export async function uploadFile(options: UploadFileOptions): Promise<string | n
       }
       const serverMessage =
         typeof errorData?.error === 'string' ? errorData.error : JSON.stringify(errorData);
-      console.error('❌ Error uploading file via Netlify Function:', {
-        status: response.status,
+      console.error('[uploadFile] failure', {
+        stage: 'http_error',
+        category,
+        ...responseDiag,
         statusText: response.statusText,
         serverMessage,
-        url: response.url,
+        serverCode: errorData?.code,
+        serverDetails: errorData?.details,
+        requestPayloadJsonChars: payloadJsonChars,
+        fileName,
       });
       return null;
     }
 
-    const result = await response.json();
+    let result: { success?: boolean; data?: { url?: string }; error?: unknown };
+    try {
+      result = await response.json();
+    } catch (parseErr) {
+      const textPreview = await response.text().catch(() => '(no body)');
+      console.error('[uploadFile] failure', {
+        stage: 'response_json_parse',
+        category,
+        ...responseDiag,
+        parseError: parseErr instanceof Error ? parseErr.message : String(parseErr),
+        bodyPreview: textPreview.slice(0, 500),
+        fileName,
+      });
+      return null;
+    }
+
+    console.info('[uploadFile] response received', {
+      category,
+      fileName,
+      ...responseDiag,
+      success: result.success,
+      hasDataUrl: Boolean(result.data?.url),
+      serverError: result.error,
+      requestPayloadJsonChars: payloadJsonChars,
+    });
 
     if (!result.success || !result.data?.url) {
-      console.error('❌ [uploadFile] Upload failed:', result.error || 'Unknown error');
+      console.error('[uploadFile] failure', {
+        stage: 'server_body',
+        category,
+        ...responseDiag,
+        success: result.success,
+        serverError: result.error,
+        fileName,
+      });
       return null;
     }
 
@@ -164,7 +262,12 @@ export async function uploadFile(options: UploadFileOptions): Promise<string | n
 
     return finalUrl;
   } catch (error) {
-    console.error('Error in uploadFile:', error);
+    console.error('[uploadFile] failure', {
+      stage: 'exception',
+      category: options.category,
+      message: error instanceof Error ? error.message : String(error),
+      name: error instanceof Error ? error.name : undefined,
+    });
     return null;
   }
 }

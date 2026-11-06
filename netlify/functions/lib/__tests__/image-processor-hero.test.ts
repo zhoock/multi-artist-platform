@@ -1,5 +1,6 @@
 import { describe, test, expect } from '@jest/globals';
 import sharp from 'sharp';
+import { heroVariantFileNamesForBaseName } from '../hero-variants';
 import { generateHeroImageVariants } from '../image-processor';
 
 describe('generateHeroImageVariants', () => {
@@ -21,19 +22,7 @@ describe('generateHeroImageVariants', () => {
     const baseName = 'hero-1769199944514-ztdiqdk';
     const variants = await generateHeroImageVariants(source, baseName);
 
-    expect(Object.keys(variants).sort()).toEqual(
-      [
-        `${baseName}-896.avif`,
-        `${baseName}-896.webp`,
-        `${baseName}-896.jpg`,
-        `${baseName}-1280.avif`,
-        `${baseName}-1280.webp`,
-        `${baseName}-1280.jpg`,
-        `${baseName}-1920.avif`,
-        `${baseName}-1920.webp`,
-        `${baseName}-1920.jpg`,
-      ].sort()
-    );
+    expect(Object.keys(variants).sort()).toEqual(heroVariantFileNamesForBaseName(baseName).sort());
 
     const metadata896 = await sharp(variants[`${baseName}-896.avif`]).metadata();
     const metadata1280 = await sharp(variants[`${baseName}-1280.webp`]).metadata();

@@ -86,6 +86,13 @@ function getStoragePath(userId: string, category: ImageCategory, fileName: strin
 }
 
 export const handler: Handler = async (event: HandlerEvent, context: HandlerContext) => {
+  // Avoid waiting on open handles (e.g. HTTP keep-alive) after we return — common cause of
+  // "client sees network error / empty body" while background work (Storage) already finished.
+  const ctx = context as HandlerContext & { callbackWaitsForEmptyEventLoop?: boolean };
+  if (typeof ctx.callbackWaitsForEmptyEventLoop === 'boolean') {
+    ctx.callbackWaitsForEmptyEventLoop = false;
+  }
+
   // CORS preflight
   if (event.httpMethod === 'OPTIONS') {
     return createOptionsResponse();
@@ -182,13 +189,41 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
 
     // Для категории hero генерируем варианты изображений
     if (normalizedCategory === 'hero') {
+      const heroFlowT0 = Date.now();
+
       // Используем UUID пользователя из токена
       const heroUserId = userId;
 
       // Извлекаем базовое имя файла (без расширения)
       const baseName = extractBaseName(fileName);
 
-      const variants = await generateHeroImageVariants(fileBuffer, baseName);
+      let variants: Record<string, Buffer>;
+      try {
+        const genT0 = Date.now();
+        variants = await generateHeroImageVariants(fileBuffer, baseName);
+        console.info('[upload-file] hero variants generated', {
+          baseName,
+          heroUserId,
+          variantCount: Object.keys(variants).length,
+          generateMs: Date.now() - genT0,
+          decodeTimeMs: decodeTime,
+          inputBytes: fileBuffer.length,
+        });
+      } catch (heroGenErr) {
+        console.error('[upload-file] hero variant generation failed', {
+          baseName,
+          heroUserId,
+          decodeTimeMs: decodeTime,
+          inputBytes: fileBuffer.length,
+          elapsedMs: Date.now() - heroFlowT0,
+          message: heroGenErr instanceof Error ? heroGenErr.message : String(heroGenErr),
+          stack: heroGenErr instanceof Error ? heroGenErr.stack : undefined,
+        });
+        return createErrorResponse(500, 'Hero image processing failed', undefined, {
+          code: 'HERO_VARIANT_GENERATION_FAILED',
+          details: heroGenErr instanceof Error ? heroGenErr.message : String(heroGenErr),
+        });
+      }
 
       // Удаляем старые варианты этого изображения (если есть)
       const heroFolder = `users/${heroUserId}/hero`;
@@ -212,43 +247,91 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
         }
       }
 
-      // Загружаем все варианты
-      const uploadedFiles: string[] = [];
-      const uploadErrors: string[] = [];
+      const variantEntries = Object.entries(variants);
+      const expectedVariantCount = variantEntries.length;
 
-      for (const [variantFileName, buffer] of Object.entries(variants)) {
-        const variantPath = getStoragePath(heroUserId, normalizedCategory, variantFileName);
-        const variantContentType = variantFileName.endsWith('.avif')
-          ? 'image/avif'
-          : variantFileName.endsWith('.webp')
-            ? 'image/webp'
-            : 'image/jpeg';
+      const storageUploadT0 = Date.now();
+      const uploadResults = await Promise.all(
+        variantEntries.map(async ([variantFileName, buffer]) => {
+          const variantPath = getStoragePath(heroUserId, normalizedCategory, variantFileName);
+          const variantContentType = variantFileName.endsWith('.avif')
+            ? 'image/avif'
+            : variantFileName.endsWith('.webp')
+              ? 'image/webp'
+              : 'image/jpeg';
 
-        const { data: variantData, error: variantError } = await supabase.storage
-          .from(STORAGE_BUCKET_NAME)
-          .upload(variantPath, buffer, {
-            contentType: variantContentType,
-            upsert: true,
-            cacheControl: '3600', // Кеш на 1 час
-          });
+          const { error: variantError } = await supabase.storage
+            .from(STORAGE_BUCKET_NAME)
+            .upload(variantPath, buffer, {
+              contentType: variantContentType,
+              upsert: true,
+              cacheControl: '3600', // Кеш на 1 час
+            });
 
-        if (variantError) {
-          console.error(`Error uploading variant ${variantFileName}:`, variantError.message);
-          uploadErrors.push(`${variantFileName}: ${variantError.message}`);
-        } else {
-          uploadedFiles.push(variantFileName);
+          if (variantError) {
+            return {
+              ok: false as const,
+              variantFileName,
+              variantPath,
+              message: variantError.message,
+            };
+          }
+          return { ok: true as const, variantFileName, variantPath };
+        })
+      );
+
+      const uploadedPaths = uploadResults.filter((r) => r.ok).map((r) => r.variantPath);
+      const uploadErrors = uploadResults
+        .filter((r): r is Extract<(typeof uploadResults)[number], { ok: false }> => !r.ok)
+        .map((r) => ({ variantFileName: r.variantFileName, message: r.message }));
+
+      const uploadIncomplete =
+        uploadErrors.length > 0 || uploadedPaths.length !== expectedVariantCount;
+
+      if (uploadIncomplete) {
+        console.error('[upload-file] hero upload incomplete — rolling back batch', {
+          baseName,
+          heroUserId,
+          expectedVariantCount,
+          uploadedCount: uploadedPaths.length,
+          storageParallelUploadMs: Date.now() - storageUploadT0,
+          elapsedMs: Date.now() - heroFlowT0,
+          errors: uploadErrors,
+        });
+
+        if (uploadedPaths.length > 0) {
+          const { error: rollbackErr } = await supabase.storage
+            .from(STORAGE_BUCKET_NAME)
+            .remove(uploadedPaths);
+          if (rollbackErr) {
+            console.error('[upload-file] hero rollback remove failed', {
+              message: rollbackErr.message,
+              paths: uploadedPaths,
+            });
+          }
         }
+
+        const detailList = uploadErrors.map((e) => `${e.variantFileName}: ${e.message}`).join('; ');
+        return createErrorResponse(
+          500,
+          'Failed to upload hero image (all variants required)',
+          undefined,
+          {
+            code: 'HERO_VARIANT_UPLOAD_INCOMPLETE',
+            details:
+              detailList ||
+              `Expected ${expectedVariantCount} variants, uploaded ${uploadedPaths.length}`,
+          }
+        );
       }
 
-      if (uploadErrors.length > 0) {
-        console.error('Some hero image variants failed to upload:', uploadErrors);
-        if (uploadedFiles.length === 0) {
-          return createErrorResponse(
-            500,
-            `Failed to upload any hero image variants: ${uploadErrors.join(', ')}`
-          );
-        }
-      }
+      console.info('[upload-file] hero storage uploads completed', {
+        baseName,
+        heroUserId,
+        expectedVariantCount,
+        storageParallelUploadMs: Date.now() - storageUploadT0,
+        totalHeroFlowMs: Date.now() - heroFlowT0,
+      });
 
       // Используем -1920.jpg как основной файл (Full HD версия)
       const mainFileName = `${baseName}-1920.jpg`;
@@ -259,7 +342,7 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
 
       // Генерируем proxy URL на клиенте через getStorageFileUrl
       // Возвращаем storagePath, который клиент использует для генерации URL
-      return createSuccessResponse(
+      const success = createSuccessResponse(
         {
           url: mainPath, // Возвращаем storagePath, клиент сформирует proxy URL
           storagePath: mainPath,
@@ -267,6 +350,13 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
         },
         200
       );
+      console.info('[upload-file] hero success response', {
+        baseName,
+        mainPath,
+        totalHeroFlowMs: Date.now() - heroFlowT0,
+        responseBodyChars: success.body?.length ?? 0,
+      });
+      return success;
     }
 
     // Обложка статьи (article_cover_*): варианты -128 / -448 / -896 / -1344 (webp + jpg), canonical 3:2

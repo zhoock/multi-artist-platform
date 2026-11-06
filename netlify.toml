@@ -400,6 +400,10 @@
 [functions."public-document"]
   included_files = ["netlify/functions/_document/**"]
 
+# Hero: Sharp + 9× Storage; default 10s can cut off the HTTP response after uploads succeed.
+[functions."upload-file"]
+  timeout = 60
+
 [functions."scheduled-subscription-renewals"]
   schedule = "*/1 * * * *"
 

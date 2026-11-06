@@ -17,7 +17,8 @@ import './HeaderImagesUpload.style.scss';
 
 interface HeaderImagesUploadProps {
   currentImages?: string[];
-  onImagesUpdated?: (urls: string[]) => void;
+  /** Returns false when profile/header_images persistence failed (Storage may still be updated). */
+  onImagesUpdated?: (urls: string[]) => void | Promise<boolean>;
   layout?: 'stacked' | 'inline';
   onUploadingChange?: (uploading: boolean) => void;
 }
@@ -226,6 +227,11 @@ export function HeaderImagesUpload({
       });
 
       if (!url) {
+        console.error('[HeaderImagesUpload] Hero upload failed', {
+          fileName,
+          croppedBytes: croppedBlob.size,
+          userId: user.id,
+        });
         throw new Error('Failed to upload image');
       }
 
@@ -235,8 +241,25 @@ export function HeaderImagesUpload({
 
       setImages(newImages);
 
+      let profilePersistOk = true;
       if (onImagesUpdated) {
-        onImagesUpdated(newImages);
+        const persistResult = onImagesUpdated(newImages);
+        if (persistResult instanceof Promise) {
+          profilePersistOk = await persistResult;
+        }
+      }
+
+      if (!profilePersistOk) {
+        console.error(
+          '[HeaderImagesUpload] Hero uploaded to Storage but header_images save failed',
+          {
+            fileName,
+            canonicalPath: newImages[newImages.length - 1],
+            userId: user.id,
+          }
+        );
+        setImages(images);
+        throw new Error('Failed to persist header images');
       }
 
       setIsCropModalOpen(false);
@@ -286,7 +309,13 @@ export function HeaderImagesUpload({
 
     setImages(newImages);
     if (onImagesUpdated) {
-      onImagesUpdated(newImages);
+      void Promise.resolve(onImagesUpdated(newImages)).then((ok) => {
+        if (ok === false) {
+          console.error('[HeaderImagesUpload] header_images save failed after remove', {
+            removedIndex: index,
+          });
+        }
+      });
     }
   };
 

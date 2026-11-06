@@ -17,6 +17,10 @@ export function filterValidHeroHeaderImages(images: string[] | null | undefined)
 /** Matches HeroCoverImage sizes — derived from existing Hero CSS geometry. */
 export const HERO_COVER_SIZES = '(min-width: 1024px) 25vw, (min-width: 768px) 37vw, 100vw';
 
+/**
+ * Logical hero image widths in Storage (`{baseName}-{width}.{avif|webp|jpg}`).
+ * Must match `netlify/functions/lib/hero-variants.ts` / `generateHeroImageVariants`.
+ */
 export const HERO_COVER_VARIANT_WIDTHS = [896, 1280, 1920] as const;
 export type HeroCoverVariantWidth = (typeof HERO_COVER_VARIANT_WIDTHS)[number];
 

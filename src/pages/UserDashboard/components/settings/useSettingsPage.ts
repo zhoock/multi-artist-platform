@@ -371,15 +371,15 @@ export function useSettingsPage({
   );
 
   const handleHeaderImagesUpdated = useCallback(
-    async (urls: string[]) => {
+    async (urls: string[]): Promise<boolean> => {
       const safe = Array.isArray(urls) ? urls : [];
       setHeaderImages(safe);
       const safeInitial = Array.isArray(initialHeaderImages) ? initialHeaderImages : [];
       const changed =
         safe.length !== safeInitial.length || safe.some((url, index) => url !== safeInitial[index]);
-      if (!changed) return;
+      if (!changed) return true;
       const ok = await persistProfile({ headerImages: safe });
-      if (!ok) return;
+      if (!ok) return false;
       setInitialHeaderImages([...safe]);
       notifyPublicSurfaceChanged(
         { type: 'profileChanged', aspects: ['headerImages'] },
@@ -388,8 +388,9 @@ export function useSettingsPage({
           artistSlug: publicSlug.trim() || undefined,
         }
       );
+      return true;
     },
-    [initialHeaderImages, persistProfile]
+    [initialHeaderImages, persistProfile, publicSlug]
   );
 
   const handleAboutChange = useCallback((value: string) => {
