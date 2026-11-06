@@ -201,12 +201,14 @@
   }
 
   .universe3d-card__media-image {
+    display: block;
     width: 100%;
-    height: auto;
+    height: 100%;
     transition: transform 0.45s ease;
     transform: scale(1);
     max-height: none;
-    object-fit: initial;
+    object-fit: cover;
+    object-position: center;
     vertical-align: top;
     transform-origin: center center;
 
@@ -217,8 +219,10 @@
 
   .universe3d-card__media {
     &:not(.universe3d-card__media--empty) {
-      aspect-ratio: unset;
-      block-size: fit-content;
+      // Match empty-state geometry so intrinsic image dimensions cannot collapse
+      // the header before decode (avoids layout shift on first paint).
+      aspect-ratio: 16 / 9;
+      min-height: calc(9 * var(--ms-0));
       line-height: 0;
     }
 
