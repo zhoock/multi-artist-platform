@@ -8,6 +8,7 @@ import {
   pickHeroBackgroundImage,
   pickHeroCoverSources,
   preloadHeroCoverFromHeaderImages,
+  resetHeroCoverPickCacheForTests,
   resolveHeroCoverPreloadTarget,
   resolveHeroCoverSourcesFromUrl,
   resolveHeroCoverVariantWidth,
@@ -15,6 +16,11 @@ import {
 } from '../artistHeroHeaderImages';
 
 const HERO_JPG = '/api/proxy-image?path=users/u1/hero/cover-1920.jpg';
+const HERO_B_JPG = '/api/proxy-image?path=users/u1/hero/other-1920.jpg';
+
+beforeEach(() => {
+  resetHeroCoverPickCacheForTests();
+});
 
 function expectedSrcSet(ext: 'avif' | 'webp' | 'jpg'): string {
   const suffix = ext === 'jpg' ? 'jpg' : ext;
@@ -87,18 +93,72 @@ describe('pickHeroCoverSources', () => {
     expect(pickHeroCoverSources([], 'seed')).toBeNull();
   });
 
-  test('returns stable sources for the same seed', () => {
-    const images = [
-      '/api/proxy-image?path=users/u1/hero/a-1920.jpg',
-      '/api/proxy-image?path=users/u1/hero/b-1920.jpg',
-    ];
-    const first = pickHeroCoverSources(images, 'artist:test');
-    const second = pickHeroCoverSources(images, 'artist:test');
+  test('single image: deterministic jpg and srcsets for any visual key', () => {
+    const first = pickHeroCoverSources([HERO_JPG], '/|test-artist');
+    const second = pickHeroCoverSources([HERO_JPG], '/|test-artist');
     expect(first).toEqual(second);
-    expect(first?.jpg).toMatch(/-1920\.jpg$/);
+    expect(first?.jpg).toBe(HERO_JPG);
     expect(first?.avifSrcSet).toContain('896w');
     expect(first?.webpSrcSet).toContain('1280w');
     expect(first?.avif).toMatch(/-1920\.avif$/);
+  });
+
+  test('multiple images: stable across calls in the same page load (same slug in visual key)', () => {
+    const images = [HERO_JPG, HERO_B_JPG];
+    const key = buildHeroVisualKey('/en', 'test-artist');
+    const first = pickHeroCoverSources(images, key);
+    const second = pickHeroCoverSources(images, key);
+    expect(first?.jpg).toBe(second?.jpg);
+    expect([HERO_JPG, HERO_B_JPG]).toContain(first?.jpg ?? '');
+  });
+
+  test('multiple images: new page load can pick a different cover (cache cleared)', () => {
+    const images = [HERO_JPG, HERO_B_JPG];
+    const key = buildHeroVisualKey('/en', 'test-artist');
+
+    let firstJpg: string | undefined;
+    let secondJpg: string | undefined;
+    for (let attempt = 0; attempt < 40; attempt++) {
+      resetHeroCoverPickCacheForTests();
+      firstJpg = pickHeroCoverSources(images, key)?.jpg;
+      resetHeroCoverPickCacheForTests();
+      secondJpg = pickHeroCoverSources(images, key)?.jpg;
+      if (firstJpg !== secondJpg) break;
+    }
+    expect(firstJpg).toBeDefined();
+    expect(secondJpg).toBeDefined();
+    expect(firstJpg).not.toBe(secondJpg);
+  });
+
+  test('multiple images: pathname in visual key does not change the pick (preload vs Hero pathname)', () => {
+    const images = [HERO_JPG, HERO_B_JPG];
+    const slugKey = 'test-artist';
+    const a = pickHeroCoverSources(images, buildHeroVisualKey('/?artist=foo', slugKey));
+    const b = pickHeroCoverSources(images, buildHeroVisualKey('/ru?artist=foo', slugKey));
+    expect(a?.jpg).toBe(b?.jpg);
+  });
+
+  test('multiple images: preload and Hero share the same chosen base jpg', () => {
+    const images = [HERO_JPG, HERO_B_JPG];
+    const key = buildHeroVisualKey('/en', 'test-artist');
+    const fromPick = pickHeroCoverSources(images, key);
+    expect(fromPick).not.toBeNull();
+
+    document.head
+      .querySelectorAll('link[data-hero-cover-preload]')
+      .forEach((node) => node.remove());
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 412 });
+    Object.defineProperty(window, 'devicePixelRatio', { configurable: true, value: 2 });
+
+    preloadHeroCoverFromHeaderImages('test-artist', images, key);
+
+    const link = document.head.querySelector(
+      'link[data-hero-cover-preload="test-artist"]'
+    ) as HTMLLinkElement | null;
+    expect(link?.getAttribute('href')).toBeTruthy();
+
+    const expected = resolveHeroCoverPreloadTarget(fromPick!, 412, 2);
+    expect(link?.getAttribute('href')).toBe(expected?.href);
   });
 });
 
@@ -107,10 +167,11 @@ describe('pickHeroBackgroundImage', () => {
     expect(pickHeroBackgroundImage([], 'seed')).toBe('');
   });
 
-  test('returns stable background for the same seed', () => {
+  test('returns stable background for multiple images in one page load', () => {
     const images = ['https://cdn.example/a-1920.jpg', 'https://cdn.example/b-1920.jpg'];
-    const first = pickHeroBackgroundImage(images, 'artist:test');
-    const second = pickHeroBackgroundImage(images, 'artist:test');
+    const key = '/|artist';
+    const first = pickHeroBackgroundImage(images, key);
+    const second = pickHeroBackgroundImage(images, key);
     expect(first).toBe(second);
     expect(first).toMatch(/^url\('/);
   });
@@ -183,6 +244,7 @@ describe('resolveHeroCoverPreloadTarget', () => {
 describe('preloadHeroCoverFromHeaderImages', () => {
   beforeEach(() => {
     invalidateArtistHeroHeaderImagesCache();
+    resetHeroCoverPickCacheForTests();
     document.head
       .querySelectorAll('link[data-hero-cover-preload]')
       .forEach((node) => node.remove());

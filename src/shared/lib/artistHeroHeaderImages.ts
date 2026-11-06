@@ -155,15 +155,57 @@ export function resolveHeroCoverSourcesFromUrl(rawUrl: string): HeroCoverSources
   return buildHeroCoverSources(jpg);
 }
 
-function pickHeroHeaderImageUrl(headerImages: string[], visualSeed: string): string {
-  let hash = 0;
-  for (let i = 0; i < visualSeed.length; i++) {
-    hash = (hash * 31 + visualSeed.charCodeAt(i)) >>> 0;
-  }
-  return headerImages[hash % headerImages.length] ?? '';
+/**
+ * Slug part of `buildHeroVisualKey(pathname, slug)` — used so preload (may use
+ * `window.location.pathname`) and Hero (`heroPathname` incl. overlay) share one pick per artist.
+ */
+function heroCoverPickIdentityKey(visualKey: string): string {
+  const pipe = visualKey.lastIndexOf('|');
+  const raw = pipe >= 0 ? visualKey.slice(pipe + 1) : visualKey;
+  return raw.trim().toLowerCase();
 }
 
-/** Stable pick per visual context — same slug/path always maps to the same cover on first paint. */
+/** Sorted URL list fingerprint — changes when the set of hero photos changes. */
+function heroHeaderImagesSignature(headerImages: string[]): string {
+  if (headerImages.length === 0) return '';
+  return [...headerImages].sort().join('\n');
+}
+
+type HeroCoverPickEntry = { sig: string; index: number };
+
+/**
+ * In-memory only — clears on full page reload, stable during SPA navigation and re-renders.
+ * Keyed by artist slug + signature of current `headerImages`.
+ */
+const heroCoverPickByArtist = new Map<string, HeroCoverPickEntry>();
+
+/** @internal Test hook */
+export function resetHeroCoverPickCacheForTests(): void {
+  heroCoverPickByArtist.clear();
+}
+
+function pickHeroHeaderImageUrl(headerImages: string[], visualKey: string): string {
+  if (headerImages.length === 0) return '';
+  if (headerImages.length === 1) {
+    return headerImages[0] ?? '';
+  }
+
+  const cacheKey = heroCoverPickIdentityKey(visualKey);
+  const sig = heroHeaderImagesSignature(headerImages);
+  const existing = heroCoverPickByArtist.get(cacheKey);
+  if (existing && existing.sig === sig) {
+    return headerImages[existing.index % headerImages.length] ?? '';
+  }
+
+  const index = Math.floor(Math.random() * headerImages.length);
+  heroCoverPickByArtist.set(cacheKey, { sig, index });
+  return headerImages[index] ?? '';
+}
+
+/**
+ * Picks one stored hero (multiple URLs) once per full page load; same choice until the tab reloads
+ * or the set of hero image URLs changes. Preload and `<picture>` both use this via `visualKey`.
+ */
 export function pickHeroCoverSources(
   headerImages: string[],
   visualSeed: string
@@ -220,7 +262,7 @@ const preloadedHeroCoverBySlug = new Map<string, string>();
 
 const HERO_COVER_PRELOAD_ATTR = 'data-hero-cover-preload';
 
-/** Same visual seed as Hero — keeps cover pick stable for preload vs <img>. */
+/** Same `visualKey` string as Hero — slug is used to share one cover pick between preload and `<picture>`. */
 export function buildHeroVisualKey(pathname: string, artistSlug: string): string {
   return `${stripLangPrefix(pathname)}|${artistSlug.trim().toLowerCase()}`;
 }
@@ -421,6 +463,7 @@ export function invalidateArtistHeroHeaderImagesCache(artistSlug?: string): void
     headerImagesCache.clear();
     headerImagesInflight.clear();
     preloadedHeroCoverBySlug.clear();
+    heroCoverPickByArtist.clear();
     clearHeroCoverPreloadLinks();
     return;
   }
@@ -429,6 +472,7 @@ export function invalidateArtistHeroHeaderImagesCache(artistSlug?: string): void
   headerImagesCache.delete(slug);
   headerImagesInflight.delete(slug);
   preloadedHeroCoverBySlug.delete(slug);
+  heroCoverPickByArtist.delete(slug);
   clearHeroCoverPreloadLinks(slug);
 }
 
