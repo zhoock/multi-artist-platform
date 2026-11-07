@@ -6,7 +6,7 @@
  * Authorization: Bearer <token>
  * Content-Type: application/json
  * Body: {
- *   imageUrl: string (URL изображения, например https://.../hero-123-1920.jpg или image-set(...))
+ *   imageUrl: string (URL изображения, например https://.../hero-123-1920.jpg)
  * }
  */
 
@@ -87,8 +87,7 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
     // URL может быть:
     // 1. Proxy URL: /.netlify/functions/proxy-image?path=users%2F{userId}%2Fhero%2Fhero-123-1920.jpg
     // 2. Полный URL: https://.../users/.../hero/hero-123-1920.jpg
-    // 3. image-set() строка: image-set(url('.../hero-123-1920.jpg') ...)
-    // 4. Storage path: users/{userId}/hero/hero-123-1920.jpg
+    // 3. Storage path: users/{userId}/hero/hero-123-1920.jpg
     let fileName = '';
     let storagePath = '';
 
@@ -108,30 +107,10 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
         return createErrorResponse(400, 'Could not extract path from proxy-image URL');
       }
     } else if (body.imageUrl.includes('image-set')) {
-      // Извлекаем первый URL из image-set()
-      const urlMatch = body.imageUrl.match(/url\(['"]([^'"]+)['"]\)/);
-      if (urlMatch && urlMatch[1]) {
-        const url = urlMatch[1];
-        // Проверяем, это proxy URL или обычный URL
-        if (url.includes('proxy-image')) {
-          const pathMatch = url.match(/[?&]path=([^&]+)/);
-          if (pathMatch && pathMatch[1]) {
-            try {
-              storagePath = decodeURIComponent(pathMatch[1]);
-              fileName = storagePath.includes('/')
-                ? storagePath.split('/').pop() || ''
-                : storagePath;
-            } catch (e) {
-              return createErrorResponse(400, 'Invalid proxy-image URL in image-set');
-            }
-          }
-        } else {
-          // Извлекаем имя файла из URL
-          fileName = url.includes('/') ? url.split('/').pop() || '' : url;
-        }
-      } else {
-        return createErrorResponse(400, 'Invalid image-set() format');
-      }
+      return createErrorResponse(
+        400,
+        'image-set() is no longer supported; pass a canonical *-1920.jpg URL or storage path'
+      );
     } else if (body.imageUrl.startsWith('users/')) {
       // Это storage path напрямую
       storagePath = body.imageUrl;

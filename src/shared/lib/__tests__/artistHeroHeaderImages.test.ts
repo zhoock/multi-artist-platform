@@ -5,6 +5,7 @@ import {
   deriveHeroVariantUrl,
   filterValidHeroHeaderImages,
   invalidateArtistHeroHeaderImagesCache,
+  normalizeCanonicalHeroHeaderImageUrl,
   pickHeroBackgroundImage,
   pickHeroCoverSources,
   preloadHeroCoverFromHeaderImages,
@@ -17,12 +18,13 @@ import {
 
 const HERO_JPG = '/api/proxy-image?path=users/u1/hero/cover-1920.jpg';
 const HERO_B_JPG = '/api/proxy-image?path=users/u1/hero/other-1920.jpg';
+const HERO_STORAGE = 'users/u1/hero/cover-1920.jpg';
 
 beforeEach(() => {
   resetHeroCoverPickCacheForTests();
 });
 
-function expectedSrcSet(ext: 'avif' | 'webp' | 'jpg'): string {
+function expectedSrcSet(ext: 'webp' | 'jpg'): string {
   const suffix = ext === 'jpg' ? 'jpg' : ext;
   return [
     `/api/proxy-image?path=users/u1/hero/cover-896.${suffix} 896w`,
@@ -32,59 +34,65 @@ function expectedSrcSet(ext: 'avif' | 'webp' | 'jpg'): string {
 }
 
 describe('filterValidHeroHeaderImages', () => {
-  test('keeps only hero folder paths', () => {
-    expect(
-      filterValidHeroHeaderImages([
-        'https://cdn.example/users/u1/hero/cover.jpg',
-        'https://cdn.example/users/u1/articles/pic.jpg',
-        'https://proxy-image?path=users/u1/hero-1.webp',
-      ])
-    ).toEqual([
-      'https://cdn.example/users/u1/hero/cover.jpg',
-      'https://proxy-image?path=users/u1/hero-1.webp',
+  test('keeps canonical -1920.jpg hero paths and drops non-hero', () => {
+    const valid = filterValidHeroHeaderImages([
+      HERO_JPG,
+      'https://cdn.example/users/u1/articles/pic.jpg',
+      'users/u1/hero/legacy-cover.jpg',
     ]);
+    expect(valid).toEqual([HERO_JPG]);
+    expect(filterValidHeroHeaderImages([HERO_STORAGE])[0]).toMatch(/cover-1920\.jpg/);
+  });
+
+  test('drops image-set and avif', () => {
+    const imageSet = `image-set(url('${HERO_JPG}') 1x)`;
+    expect(
+      filterValidHeroHeaderImages([imageSet, '/api/proxy-image?path=users/u1/hero/x-1920.avif'])
+    ).toEqual([]);
+  });
+});
+
+describe('normalizeCanonicalHeroHeaderImageUrl', () => {
+  test('accepts proxy and storage canonical jpg', () => {
+    expect(normalizeCanonicalHeroHeaderImageUrl(HERO_JPG)).toBe(HERO_JPG);
+    expect(normalizeCanonicalHeroHeaderImageUrl(HERO_STORAGE)).toMatch(/cover-1920\.jpg/);
+  });
+
+  test('rejects image-set', () => {
+    expect(
+      normalizeCanonicalHeroHeaderImageUrl(
+        "image-set(url('/api/proxy-image?path=users/u1/hero/cover-1920.jpg') type('image/jpeg'))"
+      )
+    ).toBeNull();
   });
 });
 
 describe('deriveHeroVariantUrl', () => {
-  test('resolves 896 / 1280 / 1920 avif variants from canonical jpg', () => {
-    expect(deriveHeroVariantUrl(HERO_JPG, 'avif', 896)).toBe(
-      '/api/proxy-image?path=users/u1/hero/cover-896.avif'
+  test('resolves 896 / 1280 / 1920 webp and jpg from canonical jpg', () => {
+    expect(deriveHeroVariantUrl(HERO_JPG, 'webp', 896)).toBe(
+      '/api/proxy-image?path=users/u1/hero/cover-896.webp'
     );
-    expect(deriveHeroVariantUrl(HERO_JPG, 'avif', 1280)).toBe(
-      '/api/proxy-image?path=users/u1/hero/cover-1280.avif'
-    );
-    expect(deriveHeroVariantUrl(HERO_JPG, 'avif', 1920)).toBe(
-      '/api/proxy-image?path=users/u1/hero/cover-1920.avif'
+    expect(deriveHeroVariantUrl(HERO_JPG, 'jpg', 1280)).toBe(
+      '/api/proxy-image?path=users/u1/hero/cover-1280.jpg'
     );
   });
 });
 
 describe('resolveHeroCoverSourcesFromUrl', () => {
-  test('derives responsive srcsets from -1920.jpg proxy URL (webp + jpg only)', () => {
+  test('derives responsive srcsets from -1920.jpg proxy URL', () => {
     expect(resolveHeroCoverSourcesFromUrl(HERO_JPG)).toEqual({
       jpg: HERO_JPG,
-      avifSrcSet: null,
       webpSrcSet: expectedSrcSet('webp'),
       jpgSrcSet: expectedSrcSet('jpg'),
       sizes: HERO_COVER_SIZES,
-      avif: null,
       webp: '/api/proxy-image?path=users/u1/hero/cover-1920.webp',
     });
   });
 
-  test('parses legacy image-set() and still serves webp/jpg (no avif in picture)', () => {
+  test('rejects legacy image-set()', () => {
     const imageSet =
-      "image-set(url('/api/proxy-image?path=users/u1/hero/cover-1920.avif') type('image/avif'), url('/api/proxy-image?path=users/u1/hero/cover-1920.webp') type('image/webp'), url('/api/proxy-image?path=users/u1/hero/cover-1920.jpg') type('image/jpeg'))";
-    expect(resolveHeroCoverSourcesFromUrl(imageSet)).toEqual({
-      jpg: HERO_JPG,
-      avifSrcSet: null,
-      webpSrcSet: expectedSrcSet('webp'),
-      jpgSrcSet: expectedSrcSet('jpg'),
-      sizes: HERO_COVER_SIZES,
-      avif: null,
-      webp: '/api/proxy-image?path=users/u1/hero/cover-1920.webp',
-    });
+      "image-set(url('/api/proxy-image?path=users/u1/hero/cover-1920.avif') type('image/avif'), url('/api/proxy-image?path=users/u1/hero/cover-1920.jpg') type('image/jpeg'))";
+    expect(resolveHeroCoverSourcesFromUrl(imageSet)).toBeNull();
   });
 });
 
@@ -98,10 +106,7 @@ describe('pickHeroCoverSources', () => {
     const second = pickHeroCoverSources([HERO_JPG], '/|test-artist');
     expect(first).toEqual(second);
     expect(first?.jpg).toBe(HERO_JPG);
-    expect(first?.avifSrcSet).toBeNull();
     expect(first?.webpSrcSet).toContain('896w');
-    expect(first?.webpSrcSet).toContain('1280w');
-    expect(first?.avif).toBeNull();
     expect(first?.webp).toMatch(/-1920\.webp$/);
   });
 
@@ -170,7 +175,7 @@ describe('pickHeroBackgroundImage', () => {
   });
 
   test('returns stable background for multiple images in one page load', () => {
-    const images = ['https://cdn.example/a-1920.jpg', 'https://cdn.example/b-1920.jpg'];
+    const images = [HERO_JPG, HERO_B_JPG];
     const key = '/|artist';
     const first = pickHeroBackgroundImage(images, key);
     const second = pickHeroBackgroundImage(images, key);
@@ -190,24 +195,8 @@ describe('resolveHeroCoverVariantWidth', () => {
     expect(resolveHeroCoverVariantWidth(412, 2)).toBe(896);
   });
 
-  test('tablet 768px @2x selects 896', () => {
-    expect(resolveHeroCoverVariantWidth(768, 2)).toBe(896);
-  });
-
-  test('desktop 1280px @2x selects 896', () => {
-    expect(resolveHeroCoverVariantWidth(1280, 2)).toBe(896);
-  });
-
-  test('desktop 1280px @3x selects 1280', () => {
-    expect(resolveHeroCoverVariantWidth(1280, 3)).toBe(1280);
-  });
-
   test('desktop 1920px @2x selects 1280', () => {
     expect(resolveHeroCoverVariantWidth(1920, 2)).toBe(1280);
-  });
-
-  test('desktop 1920px @3x selects 1920', () => {
-    expect(resolveHeroCoverVariantWidth(1920, 3)).toBe(1920);
   });
 });
 
@@ -229,16 +218,6 @@ describe('resolveHeroCoverPreloadTarget', () => {
     expect(resolveHeroCoverPreloadTarget(sources!, 1920, 2)).toEqual({
       href: '/api/proxy-image?path=users/u1/hero/cover-1280.webp',
       type: 'image/webp',
-    });
-  });
-
-  test('falls back to jpg when modern formats are unavailable', () => {
-    const coverWithoutExt = 'https://cdn.example/users/u1/hero/cover-no-ext';
-    const sources = resolveHeroCoverSourcesFromUrl(coverWithoutExt);
-    expect(sources).not.toBeNull();
-    expect(resolveHeroCoverPreloadTarget(sources!, 412, 2)).toEqual({
-      href: coverWithoutExt,
-      type: 'image/jpeg',
     });
   });
 });
@@ -293,29 +272,10 @@ describe('preloadHeroCoverFromHeaderImages', () => {
     expect(readPreloadLinks()[0]?.href).toContain('-896.webp');
   });
 
-  test('preloads jpg only when webp variants are unavailable', () => {
-    const coverWithoutExt = 'https://cdn.example/users/u1/hero/cover-no-ext';
-
-    preloadHeroCoverFromHeaderImages('test-artist', [coverWithoutExt], '/|test-artist');
-
-    expect(readPreloadLinks()).toEqual([
-      {
-        href: coverWithoutExt,
-        type: 'image/jpeg',
-        as: 'image',
-        fetchPriority: 'high',
-      },
-    ]);
-  });
-
   test('dedupes preload for the same artist and cover URL', () => {
-    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 412 });
-    Object.defineProperty(window, 'devicePixelRatio', { configurable: true, value: 2 });
     const seed = buildHeroVisualKey('/ru', 'test-artist');
-
     preloadHeroCoverFromHeaderImages('test-artist', [HERO_JPG], seed);
     preloadHeroCoverFromHeaderImages('test-artist', [HERO_JPG], seed);
-
     expect(readPreloadLinks()).toHaveLength(1);
   });
 

@@ -1,25 +1,31 @@
 import { stripLangPrefix } from '@shared/lib/i18n/routeLang';
-import { normalizeProxyImageUrl } from '@shared/lib/proxyImageUrl';
+import {
+  buildProxyImageUrlFromStoragePath,
+  extractStoragePathFromProxyInput,
+  normalizeProxyImageUrl,
+} from '@shared/lib/proxyImageUrl';
 import { getCachedPublicArtistHeaderImages } from '@shared/lib/publicArtistsCache';
 import { fetchPublicArtistUserProfile } from '@shared/lib/publicArtistUserProfile';
 
+const CANONICAL_HERO_JPG_FILE = /-1920\.jpe?g$/i;
+
 export function filterValidHeroHeaderImages(images: string[] | null | undefined): string[] {
-  return (images || []).filter((url) => {
-    return (
-      url.includes('/hero/') ||
-      url.includes('/hero-') ||
-      (url.includes('proxy-image') && url.includes('hero')) ||
-      (url.includes('users/') && url.includes('/hero/'))
-    );
-  });
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const raw of images || []) {
+    const canonical = normalizeCanonicalHeroHeaderImageUrl(String(raw));
+    if (!canonical || seen.has(canonical)) continue;
+    seen.add(canonical);
+    out.push(canonical);
+  }
+  return out;
 }
 
 /** Matches HeroCoverImage sizes — derived from existing Hero CSS geometry. */
 export const HERO_COVER_SIZES = '(min-width: 1024px) 25vw, (min-width: 768px) 37vw, 100vw';
 
 /**
- * Logical hero image widths in Storage (`{baseName}-{width}.{webp|jpg}` for new uploads).
- * Legacy buckets may still contain `.avif` (not used by `<picture>`).
+ * Logical hero image widths in Storage (`{baseName}-{width}.{webp|jpg}`).
  * Must match `netlify/functions/lib/hero-variants.ts` / `generateHeroImageVariants`.
  */
 export const HERO_COVER_VARIANT_WIDTHS = [896, 1280, 1920] as const;
@@ -31,13 +37,11 @@ export type HeroCoverSources = {
   webpSrcSet: string | null;
   jpgSrcSet: string;
   sizes: string;
-  /** Largest WebP URL — effect deps / legacy callers. */
+  /** Largest WebP URL for effect deps. */
   webp: string | null;
-  /** @deprecated Legacy uploads only; never set for new hero images. */
-  avifSrcSet?: string | null;
-  /** @deprecated Legacy uploads only. */
-  avif?: string | null;
 };
+
+export type HeroVariantOutputFormat = 'webp' | 'jpg';
 
 function stripCssUrlWrapper(value: string): string {
   const trimmed = value.trim();
@@ -48,75 +52,107 @@ function stripCssUrlWrapper(value: string): string {
   return trimmed;
 }
 
-function extractHeroVariantPrefix(base: string): string | null {
-  if (!base) return null;
+/** Bucket-relative `users/.../hero/...` when present in proxy URL, storage path, or absolute URL. */
+export function resolveHeroStoragePath(input: string): string | null {
+  const trimmed = stripCssUrlWrapper(input.trim());
+  if (!trimmed) return null;
 
-  const sizedMatch = base.match(/^(.*)-(896|1280|1920)\.(avif|webp|jpe?g)$/i);
-  if (sizedMatch) {
-    return sizedMatch[1];
+  const fromProxy = extractStoragePathFromProxyInput(trimmed);
+  if (fromProxy?.includes('/hero/')) return fromProxy;
+
+  if (trimmed.startsWith('users/') && trimmed.includes('/hero/')) {
+    return trimmed.split('?')[0] ?? trimmed;
   }
 
-  const extMatch = base.match(/^(.*)\.(avif|webp|jpe?g)$/i);
-  if (extMatch) {
-    return extMatch[1];
-  }
-
-  return base;
+  const match = trimmed.match(/(users\/[^/]+\/hero\/[^?#]+)/i);
+  return match?.[1] ?? null;
 }
 
-function heroVariantExtension(targetExt: 'avif' | 'webp' | 'jpg'): string {
-  return targetExt === 'jpg' ? 'jpg' : targetExt;
+/**
+ * Canonical hero pointer for display/preload: proxy URL to `users/.../hero/*-1920.jpg`.
+ */
+export function normalizeCanonicalHeroHeaderImageUrl(raw: string): string | null {
+  const trimmed = raw.trim();
+  if (!trimmed || trimmed.includes('image-set') || /\.avif/i.test(trimmed)) {
+    return null;
+  }
+
+  const storagePath = resolveHeroStoragePath(trimmed);
+  if (!storagePath?.includes('/hero/')) {
+    return null;
+  }
+
+  const fileName = storagePath.split('/').pop() ?? '';
+  if (!CANONICAL_HERO_JPG_FILE.test(fileName)) {
+    return null;
+  }
+
+  if (
+    trimmed.includes('proxy-image') &&
+    extractStoragePathFromProxyInput(trimmed) === storagePath
+  ) {
+    return normalizeProxyImageUrl(trimmed);
+  }
+
+  if (trimmed.startsWith('users/')) {
+    return buildProxyImageUrlFromStoragePath(storagePath);
+  }
+
+  return buildProxyImageUrlFromStoragePath(storagePath);
+}
+
+function heroProxyUrlForStoragePath(canonicalJpgProxy: string, variantStoragePath: string): string {
+  const pathParam =
+    canonicalJpgProxy.includes('%2F') || canonicalJpgProxy.includes('%2f')
+      ? encodeURIComponent(variantStoragePath)
+      : variantStoragePath;
+  if (canonicalJpgProxy.includes('/api/proxy-image')) {
+    return `/api/proxy-image?path=${pathParam}`;
+  }
+  if (canonicalJpgProxy.includes('proxy-image')) {
+    return canonicalJpgProxy.replace(/([?&]path=)[^&]+/, `$1${pathParam}`);
+  }
+  return buildProxyImageUrlFromStoragePath(variantStoragePath);
 }
 
 /** Resolve a hero storage/proxy URL for a specific width + format. */
 export function deriveHeroVariantUrl(
   url: string,
-  targetExt: 'avif' | 'webp' | 'jpg',
+  targetExt: HeroVariantOutputFormat,
   width: HeroCoverVariantWidth = 1920
 ): string | null {
-  const base = stripCssUrlWrapper(url);
-  if (!base) return null;
+  const canonical = normalizeCanonicalHeroHeaderImageUrl(url);
+  if (!canonical) return null;
 
-  const prefix = extractHeroVariantPrefix(base);
+  const storagePath = resolveHeroStoragePath(canonical);
+  if (!storagePath?.includes('/hero/')) return null;
+
+  const segments = storagePath.split('/');
+  const fileName = segments.pop() ?? '';
+  const dir = segments.join('/');
+
+  const sizedMatch = fileName.match(/^(.*)-(896|1280|1920)\.(webp|jpe?g)$/i);
+  const extMatch = fileName.match(/^(.*)\.(webp|jpe?g)$/i);
+  const prefix = sizedMatch?.[1] ?? extMatch?.[1];
   if (!prefix) return null;
 
-  const sizedMatch = base.match(/^(.*)-(896|1280|1920)\.(avif|webp|jpe?g)$/i);
-  if (sizedMatch) {
-    return normalizeProxyImageUrl(`${prefix}-${width}.${heroVariantExtension(targetExt)}`);
-  }
-
-  const extMatch = base.match(/^(.*)\.(avif|webp|jpe?g)$/i);
-  if (!extMatch) {
-    return targetExt === 'jpg' ? base : null;
-  }
-
-  if (targetExt === 'jpg') return normalizeProxyImageUrl(`${prefix}.jpg`);
-  return normalizeProxyImageUrl(`${prefix}.${targetExt}`);
+  const ext = targetExt === 'jpg' ? 'jpg' : 'webp';
+  return heroProxyUrlForStoragePath(canonical, `${dir}/${prefix}-${width}.${ext}`);
 }
 
-function buildHeroSrcSet(canonicalJpg: string, targetExt: 'avif' | 'webp' | 'jpg'): string | null {
-  const base = stripCssUrlWrapper(canonicalJpg);
-  const prefix = extractHeroVariantPrefix(base);
-  if (!prefix) return null;
-
-  const hasSizedSuffix = /-(896|1280|1920)\.(avif|webp|jpe?g)$/i.test(base);
-  if (!hasSizedSuffix) {
-    const single = deriveHeroVariantUrl(canonicalJpg, targetExt);
-    return single ? `${single} 1920w` : null;
-  }
-
+function buildHeroSrcSet(canonicalJpg: string, targetExt: HeroVariantOutputFormat): string | null {
   return HERO_COVER_VARIANT_WIDTHS.map((width) => {
-    const url = deriveHeroVariantUrl(canonicalJpg, targetExt, width);
-    return url ? `${url} ${width}w` : null;
+    const variantUrl = deriveHeroVariantUrl(canonicalJpg, targetExt, width);
+    return variantUrl ? `${variantUrl} ${width}w` : null;
   })
     .filter((entry): entry is string => Boolean(entry))
     .join(', ');
 }
 
 function buildHeroCoverSources(canonicalJpg: string): HeroCoverSources {
-  const jpg = normalizeProxyImageUrl(stripCssUrlWrapper(canonicalJpg));
+  const jpg = normalizeCanonicalHeroHeaderImageUrl(canonicalJpg) ?? canonicalJpg;
   const webpSrcSet = buildHeroSrcSet(jpg, 'webp');
-  const jpgSrcSet = buildHeroSrcSet(jpg, 'jpg') ?? `${jpg} 1920w`;
+  const jpgSrcSet = buildHeroSrcSet(jpg, 'jpg') || `${jpg} 1920w`;
 
   return {
     jpg,
@@ -124,37 +160,14 @@ function buildHeroCoverSources(canonicalJpg: string): HeroCoverSources {
     jpgSrcSet,
     sizes: HERO_COVER_SIZES,
     webp: deriveHeroVariantUrl(jpg, 'webp', 1920),
-    avifSrcSet: null,
-    avif: null,
   };
 }
 
-function parseImageSetHeroSources(rawUrl: string): HeroCoverSources | null {
-  const avifMatch = rawUrl.match(/url\(["']([^"']+\.avif[^"']*)["']\)/i);
-  const webpMatch = rawUrl.match(/url\(["']([^"']+\.webp[^"']*)["']\)/i);
-  const jpgMatch = rawUrl.match(/url\(["']([^"']+\.jpe?g[^"']*)["']\)/i);
-
-  const jpg = jpgMatch?.[1] ? normalizeProxyImageUrl(jpgMatch[1]) : null;
-  if (!jpg) return null;
-
-  return buildHeroCoverSources(jpg);
-}
-
-/** Resolve AVIF → WebP → JPG sources for a single stored hero URL. */
+/** Build WebP + JPEG `<picture>` sources from a canonical `-1920.jpg` URL. */
 export function resolveHeroCoverSourcesFromUrl(rawUrl: string): HeroCoverSources | null {
-  if (!rawUrl?.trim()) return null;
-
-  if (rawUrl.includes('image-set')) {
-    return parseImageSetHeroSources(rawUrl);
-  }
-
-  const normalized = normalizeProxyImageUrl(stripCssUrlWrapper(rawUrl));
-  if (!normalized) return null;
-
-  const jpg = deriveHeroVariantUrl(normalized, 'jpg');
-  if (!jpg) return null;
-
-  return buildHeroCoverSources(jpg);
+  const canonical = normalizeCanonicalHeroHeaderImageUrl(rawUrl);
+  if (!canonical) return null;
+  return buildHeroCoverSources(canonical);
 }
 
 /**
@@ -333,7 +346,7 @@ export function resolveHeroCoverPreloadTarget(
 
 /**
  * Native preload for the single format the browser will pick from <picture>.
- * One typed <link rel="preload"> avoids duplicate AVIF+WebP or JPG+AVIF fetches.
+ * One typed <link rel="preload"> aligned with `<picture>` (WebP preferred, else JPEG).
  */
 export function preloadHeroCoverSources(sources: HeroCoverSources, artistSlug: string): void {
   if (typeof document === 'undefined') return;

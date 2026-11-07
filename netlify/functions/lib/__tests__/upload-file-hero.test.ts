@@ -175,14 +175,14 @@ describe('upload-file hero variants', () => {
   });
 
   test('returns 500 with code HERO_VARIANT_GENERATION_FAILED when sharp pipeline throws', async () => {
-    mockGenerateHero.mockRejectedValueOnce(new Error('avif encoder simulated'));
+    mockGenerateHero.mockRejectedValueOnce(new Error('webp encoder simulated'));
 
     const response = await handler(buildHeroUploadEvent(), {} as never);
     expect(response.statusCode).toBe(500);
     const body = JSON.parse(response.body);
     expect(body.success).toBe(false);
     expect(body.code).toBe('HERO_VARIANT_GENERATION_FAILED');
-    expect(String(body.details)).toContain('avif encoder simulated');
+    expect(String(body.details)).toContain('webp encoder simulated');
     expect(uploadedPaths).toHaveLength(0);
   });
 
