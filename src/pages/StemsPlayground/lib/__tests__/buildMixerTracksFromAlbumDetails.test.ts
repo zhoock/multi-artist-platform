@@ -77,6 +77,7 @@ describe('buildMixerTracksFromAlbumDetails', () => {
       name: 'Drums',
       category: 'drums',
       url: 'https://stem/s1',
+      assetKey: 'user-1:test-album:1:drums.wav',
     });
   });
 

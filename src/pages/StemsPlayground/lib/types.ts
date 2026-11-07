@@ -10,6 +10,8 @@ export type PlayableStem = {
   name: string;
   category: StemCategory;
   url: string;
+  /** Storage identity for client stem cache (artist:album:track:file). */
+  assetKey: string;
 };
 
 /** Трек альбома, у которого есть стемы (воспроизводимые или только для подписчиков). */

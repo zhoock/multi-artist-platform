@@ -28,7 +28,7 @@ describe('resolveMixerTrackDeepLinkOutcome', () => {
         id: 't2',
         title: 'Norwegian Wood',
         duration: 125,
-        stems: [{ id: 's1', name: 'Drums', category: 'drums', url: 'u1' }],
+        stems: [{ id: 's1', name: 'Drums', category: 'drums', url: 'u1', assetKey: 'k1' }],
       },
     ]);
     const openSpy = jest.fn(() => true);
@@ -72,13 +72,13 @@ describe('resolveMixerTrackDeepLinkOutcome', () => {
           id: 't1',
           title: 'A',
           duration: 1,
-          stems: [{ id: 's', name: 'S', category: 'drums', url: 'u' }],
+          stems: [{ id: 's', name: 'S', category: 'drums', url: 'u', assetKey: 'k' }],
         },
         {
           id: 't2',
           title: 'B',
           duration: 1,
-          stems: [{ id: 's2', name: 'S2', category: 'bass', url: 'u2' }],
+          stems: [{ id: 's2', name: 'S2', category: 'bass', url: 'u2', assetKey: 'k2' }],
         },
       ]),
       () => false

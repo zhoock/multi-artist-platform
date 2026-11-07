@@ -94,8 +94,20 @@ const baseTrack: MixerTrack = {
   title: 'Test track',
   duration: 120,
   stems: [
-    { id: 'stem-a', name: 'Vocals', category: 'vocal', url: 'https://example.com/a.wav' },
-    { id: 'stem-b', name: 'Drums', category: 'drums', url: 'https://example.com/b.wav' },
+    {
+      id: 'stem-a',
+      name: 'Vocals',
+      category: 'vocal',
+      url: 'https://example.com/a.wav',
+      assetKey: 'u:al:tr:a.wav',
+    },
+    {
+      id: 'stem-b',
+      name: 'Drums',
+      category: 'drums',
+      url: 'https://example.com/b.wav',
+      assetKey: 'u:al:tr:b.wav',
+    },
   ],
 };
 

@@ -12,7 +12,8 @@ import type { ReactNode } from 'react';
 import { Pause, Play } from 'lucide-react';
 import clsx from 'clsx';
 import { Waveform } from '@shared/ui/waveform';
-import { StemEngine, StemEnginePlayError } from '@audio/stemsEngine';
+import { StemEngine, StemEnginePlayError, type StemEngineStemMap } from '@audio/stemsEngine';
+import { logStemLoadDiagnostic } from '@audio/stemLoadDiagnostics';
 import { getAuthHeader } from '@shared/lib/auth';
 import {
   panelStateToSettings,
@@ -61,6 +62,16 @@ type MixerPlayerPanelProps = {
 
 type LoadStatus = 'loading' | 'ready' | 'error';
 
+function buildStemEngineMap(stems: MixerTrack['stems']): StemEngineStemMap {
+  const map: StemEngineStemMap = {};
+  for (const stem of stems) {
+    if (stem.url?.trim() && stem.assetKey?.trim()) {
+      map[stem.id] = { url: stem.url, assetKey: stem.assetKey };
+    }
+  }
+  return map;
+}
+
 function resolvePlayFeedbackMessage(error: unknown, labels: MixerPlayerPanelLabels): string {
   if (error instanceof StemEnginePlayError) {
     if (error.code === 'AUDIO_CONTEXT_BLOCKED') {
@@ -97,6 +108,7 @@ function MixerPlayerPanelInner(
   const mixRef = useRef<Record<string, StemMixState>>({});
   const initialMixRef = useRef<SavedMixSetting[] | undefined>(initialMix);
   const initialMixAppliedRef = useRef(false);
+  const applyMixRef = useRef<(settings: SavedMixSetting[]) => void>(() => {});
 
   isPlayingRef.current = isPlaying;
   mixRef.current = mix;
@@ -129,6 +141,12 @@ function MixerPlayerPanelInner(
     },
     [track.stems]
   );
+  applyMixRef.current = applyMix;
+
+  const stemLoadSignature = `${track.id}::${track.stems
+    .map((s) => `${s.id}:${s.assetKey}`)
+    .sort()
+    .join('|')}`;
 
   useImperativeHandle(
     ref,
@@ -139,16 +157,6 @@ function MixerPlayerPanelInner(
     [applyMix]
   );
 
-  const validStems = useMemo(() => {
-    const map: Record<string, string> = {};
-    track.stems.forEach((stem) => {
-      if (stem.url && stem.url.trim() !== '') {
-        map[stem.id] = stem.url;
-      }
-    });
-    return map;
-  }, [track]);
-
   const retryLoad = useCallback(() => {
     setIsPlaying(false);
     setPlayFeedback('');
@@ -157,8 +165,17 @@ function MixerPlayerPanelInner(
     setLoadGeneration((n) => n + 1);
   }, []);
 
+  const loadEffectGenerationRef = useRef(0);
+
   // Создаём движок при монтировании трека или Retry (компонент пересоздаётся по ключу track.id).
   useEffect(() => {
+    loadEffectGenerationRef.current += 1;
+    const effectGen = loadEffectGenerationRef.current;
+    logStemLoadDiagnostic('STEM_PANEL_LOAD_EFFECT', {
+      trackId: track.id,
+      reason: `effect #${effectGen} loadGeneration=${loadGeneration}`,
+    });
+
     setMix(
       Object.fromEntries(
         track.stems.map((stem) => [stem.id, { volume: 1, muted: false, soloed: false }])
@@ -169,7 +186,9 @@ function MixerPlayerPanelInner(
     setFailedStemIds(new Set());
     initialMixAppliedRef.current = false;
 
-    if (Object.keys(validStems).length === 0) {
+    const stemMap = buildStemEngineMap(track.stems);
+
+    if (Object.keys(stemMap).length === 0) {
       engineRef.current = null;
       setLoadStatus('error');
       setLoadProgress(0);
@@ -179,7 +198,7 @@ function MixerPlayerPanelInner(
     setLoadStatus('loading');
     setLoadProgress(0);
 
-    const engine = new StemEngine(validStems, undefined, { headers: getAuthHeader() });
+    const engine = new StemEngine(stemMap, undefined, { headers: getAuthHeader() });
     engineRef.current = engine;
 
     let disposed = false;
@@ -195,7 +214,7 @@ function MixerPlayerPanelInner(
 
         const preset = initialMixRef.current;
         if (preset && preset.length > 0 && !initialMixAppliedRef.current) {
-          applyMix(preset);
+          applyMixRef.current(preset);
           initialMixAppliedRef.current = true;
         }
       } catch (error) {
@@ -204,19 +223,25 @@ function MixerPlayerPanelInner(
           engineRef.current = null;
           engine.dispose();
           setLoadStatus('error');
-          setFailedStemIds(new Set(Object.keys(validStems)));
+          setFailedStemIds(new Set(Object.keys(stemMap)));
         }
       }
     })();
 
     return () => {
       disposed = true;
+      logStemLoadDiagnostic('STEM_PANEL_LOAD_CLEANUP', {
+        trackId: track.id,
+        reason: `effect #${effectGen} cleanup`,
+      });
       engine.dispose();
       if (engineRef.current === engine) {
         engineRef.current = null;
       }
     };
-  }, [track.id, validStems, track.stems, loadGeneration, applyMix]);
+    // track.stems read from latest render; stemLoadSignature gates redundant reloads.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally omit `track` reference
+  }, [stemLoadSignature, loadGeneration]);
 
   // RAF-цикл прогресса воспроизведения.
   useEffect(() => {

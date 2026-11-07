@@ -1,5 +1,6 @@
 import { describe, expect, test, jest, beforeEach, afterEach } from '@jest/globals';
 import { StemEngine, StemEnginePlayError } from '../stemsEngine';
+import { resetStemAudioCacheForTests } from '../stemAudioCache';
 
 class FakeGain {
   gain = { value: 1 };
@@ -48,6 +49,7 @@ describe('StemEngine mix controls', () => {
   let originalFetch: typeof global.fetch;
 
   beforeEach(() => {
+    resetStemAudioCacheForTests();
     originalFetch = global.fetch;
     global.fetch = jest.fn(async () => ({
       ok: true,
@@ -131,6 +133,7 @@ describe('StemEngine load failures', () => {
   let originalFetch: typeof global.fetch;
 
   beforeEach(() => {
+    resetStemAudioCacheForTests();
     originalFetch = global.fetch;
   });
 

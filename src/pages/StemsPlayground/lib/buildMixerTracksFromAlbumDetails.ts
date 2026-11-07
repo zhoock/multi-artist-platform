@@ -6,6 +6,7 @@ import { getUserAudioUrl } from '@shared/api/albums';
 import { optionalMediaSrc } from '@shared/lib/media/optionalMediaUrl';
 import { normalizeStemsVisibility } from '@shared/lib/stems/stemsVisibility';
 import { loadStems, getStemAudioUrl } from '@entities/stem';
+import { buildStemAssetCacheKey } from '@audio/stemAssetKey';
 import type { AlbumDetails } from '@entities/album/model/albumDetails';
 import type { MixerTrack, PlayableStem } from './types';
 
@@ -58,7 +59,13 @@ export async function buildMixerTracksFromAlbumDetails(
         accessTokenExpiresAt
       );
       if (url) {
-        stems.push({ id: meta.id, name: meta.name, category: meta.category, url });
+        stems.push({
+          id: meta.id,
+          name: meta.name,
+          category: meta.category,
+          url,
+          assetKey: buildStemAssetCacheKey(storageUserId, albumId, trackId, meta.file),
+        });
       }
     }
     if (stems.length === 0) continue;

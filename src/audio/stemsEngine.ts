@@ -1,11 +1,37 @@
 // src/audio/stemsEngine.ts
+import { logStemLoadDiagnostic, nextStemEngineInstanceId } from './stemLoadDiagnostics';
+import { getStemAudioBytes } from './stemAudioCache';
+import { parseStemAssetCacheKeyFromProxyUrl } from './stemAssetKey';
 
 /**
  * Движок воспроизведения стемов.
  * Стемы адресуются произвольными строковыми идентификаторами (id стема),
  * количество и набор не ограничены фиксированными ключами.
  */
-type StemMap = Record<string, string>;
+export type StemEngineStemInput = {
+  url: string;
+  assetKey: string;
+};
+
+export type StemEngineStemMap = Record<string, StemEngineStemInput | string>;
+
+function normalizeStemEntries(stems: StemEngineStemMap): [string, StemEngineStemInput][] {
+  return Object.entries(stems)
+    .map(([stemId, entry]) => {
+      if (typeof entry === 'string') {
+        const url = entry.trim();
+        if (!url) return null;
+        const assetKey = parseStemAssetCacheKeyFromProxyUrl(url) ?? `opaque:${url}`;
+        return [stemId, { url, assetKey }] as const;
+      }
+      const url = entry.url?.trim() ?? '';
+      const assetKey =
+        entry.assetKey?.trim() || parseStemAssetCacheKeyFromProxyUrl(url) || `opaque:${url}`;
+      if (!url) return null;
+      return [stemId, { url, assetKey }] as const;
+    })
+    .filter((row): row is [string, StemEngineStemInput] => row !== null);
+}
 
 export type StemLoadResult = {
   loadedStemIds: string[];
@@ -31,6 +57,7 @@ type Nodes = {
 };
 
 export class StemEngine {
+  readonly instanceId = nextStemEngineInstanceId();
   private ctx: AudioContext;
   private masterGain: GainNode;
   private nodes = new Map<string, Nodes>();
@@ -44,7 +71,7 @@ export class StemEngine {
   private soloSet = new Set<string>();
 
   constructor(
-    private stems: StemMap,
+    private stems: StemEngineStemMap,
     ctx?: AudioContext,
     private fetchOptions?: RequestInit
   ) {
@@ -56,6 +83,10 @@ export class StemEngine {
     this.masterGain = this.ctx.createGain();
     this.masterGain.gain.value = 1;
     this.masterGain.connect(this.ctx.destination);
+    logStemLoadDiagnostic('STEM_ENGINE_CREATED', {
+      audioElementId: this.instanceId,
+      reason: 'StemEngine constructor',
+    });
   }
 
   /** Разрешить аудио на iOS/мобилках (вызвать на первом клике пользователя) */
@@ -73,9 +104,7 @@ export class StemEngine {
 
   /** Предзагрузка и декодирование всех stem'ов; progress(0..1) — опциональный колбэк */
   async loadAll(progress?: (p: number) => void): Promise<StemLoadResult> {
-    const entries = Object.entries(this.stems).filter(
-      ([, url]) => url && typeof url === 'string' && url.trim() !== ''
-    ) as [string, string][];
+    const entries = normalizeStemEntries(this.stems);
 
     if (entries.length === 0) {
       console.warn('[StemEngine] Нет валидных стемов для загрузки');
@@ -93,27 +122,10 @@ export class StemEngine {
 
     // Используем Promise.allSettled вместо Promise.all, чтобы продолжать загрузку даже при ошибках
     const results = await Promise.allSettled(
-      entries.map(async ([kind, url]) => {
-        const resp = await fetch(url, { cache: 'force-cache', ...this.fetchOptions });
+      entries.map(async ([kind, { url, assetKey }]) => {
+        const buf = await getStemAudioBytes(assetKey, url, this.fetchOptions);
 
-        if (!resp.ok) {
-          throw new Error(`HTTP ${resp.status}: ${resp.statusText} для ${kind} (${url})`);
-        }
-
-        const contentType = resp.headers.get('content-type');
-        if (!contentType || !contentType.startsWith('audio/')) {
-          console.warn(
-            `[StemEngine] Неожиданный Content-Type для ${kind}: ${contentType}. URL: ${url}`
-          );
-        }
-
-        const buf = await resp.arrayBuffer();
-
-        if (buf.byteLength === 0) {
-          throw new Error(`Пустой буфер для ${kind} (${url})`);
-        }
-
-        const audio = await this.ctx.decodeAudioData(buf);
+        const audio = await this.ctx.decodeAudioData(buf.slice(0));
         const gain = this.ctx.createGain();
         gain.connect(this.masterGain);
         this.nodes.set(kind, { buffer: audio, source: null, gain });
@@ -295,6 +307,10 @@ export class StemEngine {
 
   /** Освобождение ресурсов */
   dispose() {
+    logStemLoadDiagnostic('STEM_ENGINE_DISPOSED', {
+      audioElementId: this.instanceId,
+      reason: 'StemEngine.dispose',
+    });
     this.stopInternal(true);
     try {
       this.masterGain.disconnect();
