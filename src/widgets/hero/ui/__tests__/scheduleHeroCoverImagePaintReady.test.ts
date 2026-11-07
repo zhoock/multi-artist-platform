@@ -75,6 +75,33 @@ describe('scheduleHeroCoverImagePaintReady', () => {
     expect(onReady).toHaveBeenCalledTimes(1);
   });
 
+  test('does not call callback after load error', async () => {
+    const decode = jest.fn<() => Promise<void>>().mockResolvedValue(undefined);
+    const img = {
+      complete: false,
+      naturalWidth: 0,
+      decode,
+      addEventListener: jest.fn((event: string, listener: EventListener) => {
+        if (event === 'error') {
+          queueMicrotask(() => {
+            (img as { complete: boolean }).complete = true;
+            listener(new Event('error'));
+          });
+        }
+      }),
+    } as unknown as HTMLImageElement;
+
+    const onReady = jest.fn();
+    scheduleHeroCoverImagePaintReady(img, onReady);
+
+    await new Promise<void>((resolve) => queueMicrotask(() => resolve()));
+    await Promise.resolve();
+    flushRaf(2);
+
+    expect(onReady).not.toHaveBeenCalled();
+    expect(decode).not.toHaveBeenCalled();
+  });
+
   test('cleanup prevents callback after unmount', async () => {
     const decode = jest.fn<() => Promise<void>>().mockResolvedValue(undefined);
     const img = {

@@ -229,6 +229,27 @@ export function pickHeroCoverSources(
   return resolveHeroCoverSourcesFromUrl(pickHeroHeaderImageUrl(headerImages, visualSeed));
 }
 
+/**
+ * Ordered hero URLs to try in `<picture>`: primary pick (preload-aligned) first, then the rest.
+ * Used when the primary image fails to load (e.g. removed from Storage).
+ */
+export function buildHeroCoverFallbackUrls(headerImages: string[], visualKey: string): string[] {
+  const valid = filterValidHeroHeaderImages(headerImages);
+  if (valid.length === 0) return [];
+  const primary = pickHeroHeaderImageUrl(valid, visualKey);
+  const ordered: string[] = [];
+  const seen = new Set<string>();
+  const push = (url: string) => {
+    const trimmed = url.trim();
+    if (!trimmed || seen.has(trimmed)) return;
+    seen.add(trimmed);
+    ordered.push(trimmed);
+  };
+  push(primary);
+  for (const url of valid) push(url);
+  return ordered;
+}
+
 /** CSS slot width implied by HERO_COVER_SIZES for a viewport. */
 export function resolveHeroCoverSlotWidth(viewportWidth: number): number {
   if (viewportWidth >= 1024) return viewportWidth * 0.25;

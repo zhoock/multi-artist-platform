@@ -12,7 +12,10 @@ import { useLocation, useNavigate, type Location } from 'react-router-dom';
 import { useLang } from '@app/providers/lang';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { useArtistPageBuilder } from '@shared/lib/hooks/useArtistPageBuilder';
-import { pickHeroCoverSources, buildHeroVisualKey } from '@shared/lib/artistHeroHeaderImages';
+import {
+  buildHeroVisualKey,
+  filterValidHeroHeaderImages,
+} from '@shared/lib/artistHeroHeaderImages';
 import { ensurePublicArtistsLoaded } from '@shared/lib/publicArtistsCache';
 import { shouldShowArtistPageBuilderBlock } from '@shared/lib/artistPageBuilder';
 import {
@@ -89,6 +92,7 @@ export function Hero() {
     userId: string;
   } | null>(null);
   const [heroCoverPaintReady, setHeroCoverPaintReady] = useState(false);
+  const [heroCoverVisible, setHeroCoverVisible] = useState(true);
   const [universeInitAllowed, setUniverseInitAllowed] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
@@ -175,20 +179,31 @@ export function Hero() {
   );
 
   const heroVisualKey = buildHeroVisualKey(heroPathname, heroPublicArtistSlug);
-  const heroCoverSources = useMemo(
-    () => pickHeroCoverSources(headerImages, heroVisualKey),
-    [headerImages, heroVisualKey]
+  const heroCoverCandidateCount = useMemo(
+    () => filterValidHeroHeaderImages(headerImages).length,
+    [headerImages]
   );
-  const showHeroCoverImage = Boolean(heroCoverSources) && !showHeroImageBuilder;
+  const showHeroCoverImage =
+    heroCoverCandidateCount > 0 && !showHeroImageBuilder && heroCoverVisible;
   const prefersReducedMotion = usePrefersReducedMotion();
 
   const handleHeroCoverReadyForPaint = useCallback(() => {
     setHeroCoverPaintReady(true);
   }, []);
 
+  const handleHeroCoverUnavailable = useCallback(() => {
+    setHeroCoverVisible(false);
+    setHeroCoverPaintReady(false);
+  }, []);
+
+  useEffect(() => {
+    setHeroCoverVisible(true);
+    setHeroCoverPaintReady(false);
+  }, [headerImages, heroVisualKey]);
+
   useEffect(() => {
     setHeroCoverPaintReady(false);
-  }, [heroCoverSources?.jpg, heroCoverSources?.webp, showHeroCoverImage]);
+  }, [heroVisualKey, headerImages, showHeroCoverImage]);
 
   /** Skeleton only while hero cover URL is unknown — not while other page surfaces load. */
   const showHeroLoadingShell = showArtistPageHeroPending;
@@ -437,8 +452,13 @@ export function Hero() {
 
   const heroBody = (
     <>
-      {showHeroCoverImage && heroCoverSources ? (
-        <HeroCoverImage sources={heroCoverSources} onReadyForPaint={handleHeroCoverReadyForPaint} />
+      {showHeroCoverImage ? (
+        <HeroCoverImage
+          headerImages={headerImages}
+          visualKey={heroVisualKey}
+          onReadyForPaint={handleHeroCoverReadyForPaint}
+          onCoverUnavailable={handleHeroCoverUnavailable}
+        />
       ) : null}
       {showPublishedHeroChrome && !prefersReducedMotion ? (
         <div ref={heroCanvasRef} className="hero__canvas" />

@@ -29,13 +29,52 @@ function clearArtistCardMediaContent(mediaEl: HTMLElement): void {
   }
 }
 
-function appendArtistCardMediaPlaceholder(mediaEl: HTMLElement): void {
+function appendArtistCardMediaPlaceholder(mediaEl: HTMLElement, title: string): void {
   if (mediaEl.querySelector('.universe3d-card__media-placeholder')) return;
   mediaEl.classList.add('universe3d-card__media--empty');
+  if (mediaEl instanceof HTMLAnchorElement) {
+    mediaEl.setAttribute('aria-label', title);
+  }
   const placeholder = document.createElement('div');
   placeholder.className = 'universe3d-card__media-placeholder';
   placeholder.innerHTML = ARTIST_MEDIA_PLACEHOLDER_ICON_SVG;
   mediaEl.appendChild(placeholder);
+}
+
+function prefersReducedCardMediaMotion(): boolean {
+  if (typeof window.matchMedia !== 'function') return false;
+  return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
+function hidePlaceholderWithFade(mediaEl: HTMLElement): void {
+  const placeholder = mediaEl.querySelector('.universe3d-card__media-placeholder');
+  if (!(placeholder instanceof HTMLElement)) {
+    mediaEl.classList.remove('universe3d-card__media--empty');
+    return;
+  }
+
+  let removed = false;
+  const removePlaceholder = () => {
+    if (removed) return;
+    removed = true;
+    placeholder.remove();
+  };
+
+  if (prefersReducedCardMediaMotion()) {
+    removePlaceholder();
+  } else {
+    placeholder.classList.add('universe3d-card__media-placeholder--hiding');
+    placeholder.addEventListener('transitionend', removePlaceholder, { once: true });
+    window.setTimeout(removePlaceholder, 500);
+  }
+
+  mediaEl.classList.remove('universe3d-card__media--empty');
+}
+
+function revealLoadedHeaderImage(mediaEl: HTMLElement, img: HTMLImageElement): void {
+  img.classList.remove('universe3d-card__media-image--pending');
+  img.classList.add('universe3d-card__media-image--loaded');
+  hidePlaceholderWithFade(mediaEl);
 }
 
 export function populateUniverse3dArtistCardMedia(
@@ -62,27 +101,31 @@ export function populateUniverse3dArtistCardMedia(
       nextIndex += 1;
       if (!resolved) continue;
 
+      appendArtistCardMediaPlaceholder(mediaEl, input.title);
+
       const img = document.createElement('img');
-      img.className = 'universe3d-card__media-image';
+      img.className = 'universe3d-card__media-image universe3d-card__media-image--pending';
       img.alt = input.title;
       img.loading = 'eager';
       img.decoding = 'async';
-      img.src = resolved;
       img.addEventListener('load', onLoad);
       img.addEventListener('error', onError);
       mediaEl.appendChild(img);
       activeImg = img;
+      img.src = resolved;
+
+      if (img.complete && img.naturalWidth > 0) {
+        onLoad();
+      }
       return;
     }
 
-    appendArtistCardMediaPlaceholder(mediaEl);
-    if (mediaEl instanceof HTMLAnchorElement) {
-      mediaEl.setAttribute('aria-label', input.title);
-    }
+    appendArtistCardMediaPlaceholder(mediaEl, input.title);
   };
 
   const onLoad = () => {
-    if (disposed) return;
+    if (disposed || !activeImg) return;
+    revealLoadedHeaderImage(mediaEl, activeImg);
     if (input.shouldApplyCallbacks && !input.shouldApplyCallbacks()) return;
     input.onImageLoaded?.();
   };
@@ -97,12 +140,10 @@ export function populateUniverse3dArtistCardMedia(
     sources = normalizeHeaderImageList(rawHeaderImages);
     nextIndex = 0;
     if (sources.length === 0) {
-      appendArtistCardMediaPlaceholder(mediaEl);
-      if (mediaEl instanceof HTMLAnchorElement) {
-        mediaEl.setAttribute('aria-label', input.title);
-      }
+      appendArtistCardMediaPlaceholder(mediaEl, input.title);
       return;
     }
+    appendArtistCardMediaPlaceholder(mediaEl, input.title);
     tryNextSource();
   };
 

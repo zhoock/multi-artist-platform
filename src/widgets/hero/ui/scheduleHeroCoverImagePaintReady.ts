@@ -31,6 +31,7 @@ export function scheduleHeroCoverImagePaintReady(
     }
 
     if (cancelled) return;
+    if (img.naturalWidth === 0) return;
 
     try {
       if (typeof img.decode === 'function') {
@@ -41,6 +42,7 @@ export function scheduleHeroCoverImagePaintReady(
     }
 
     if (cancelled) return;
+    if (img.naturalWidth === 0) return;
     notifyAfterPaintFrames();
   };
 

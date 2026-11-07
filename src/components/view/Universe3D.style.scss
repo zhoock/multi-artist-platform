@@ -55,6 +55,16 @@
   justify-content: center;
   width: 100%;
   height: 100%;
+  transition: opacity 0.35s ease;
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
+
+  &--hiding {
+    opacity: 0;
+    pointer-events: none;
+  }
 }
 
 .universe3d-card__media-icon {
@@ -69,6 +79,32 @@
   width: 100%;
   margin: 0;
   margin-block-end: 0;
+
+  &--pending {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    pointer-events: none;
+    object-fit: cover;
+    object-position: center;
+  }
+
+  &--loaded {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+    opacity: 1;
+    transition: opacity 0.35s ease;
+
+    @media (prefers-reduced-motion: reduce) {
+      transition: none;
+    }
+  }
 }
 
 @media (width < 768px) {

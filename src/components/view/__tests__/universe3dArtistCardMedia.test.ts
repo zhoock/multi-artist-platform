@@ -19,6 +19,11 @@ function triggerImageLoad(img: HTMLImageElement): void {
   img.dispatchEvent(new Event('load'));
 }
 
+function finishPlaceholderFade(mediaEl: HTMLElement): void {
+  const placeholder = mediaEl.querySelector('.universe3d-card__media-placeholder');
+  placeholder?.dispatchEvent(new Event('transitionend'));
+}
+
 function mountMedia(
   rawHeaderImages: string[],
   extra?: Partial<Parameters<typeof populateUniverse3dArtistCardMedia>[1]>
@@ -42,22 +47,52 @@ describe('populateUniverse3dArtistCardMedia', () => {
     expect(mediaEl.getAttribute('aria-label')).toBe('Test Artist');
   });
 
-  test('successful load — shows image', () => {
+  test('shows placeholder immediately when header URLs are present (before load completes)', () => {
+    const { mediaEl } = mountMedia(['https://cdn.example/hero.jpg']);
+
+    expect(mediaEl.querySelector('.universe3d-card__media-placeholder')).not.toBeNull();
+    expect(mediaEl.classList.contains('universe3d-card__media--empty')).toBe(true);
+
+    const img = mediaEl.querySelector('.universe3d-card__media-image') as HTMLImageElement;
+    expect(img).not.toBeNull();
+    expect(img.classList.contains('universe3d-card__media-image--pending')).toBe(true);
+    expect(img.classList.contains('universe3d-card__media-image--loaded')).toBe(false);
+  });
+
+  test('successful load — reveals image and removes placeholder', () => {
     const onImageLoaded = jest.fn();
     const { mediaEl } = mountMedia(['https://cdn.example/hero.jpg'], { onImageLoaded });
 
-    const img = mediaEl.querySelector('.universe3d-card__media-image');
-    expect(img).not.toBeNull();
-    expect(mediaEl.classList.contains('universe3d-card__media--empty')).toBe(false);
+    const img = mediaEl.querySelector('.universe3d-card__media-image') as HTMLImageElement;
+    triggerImageLoad(img);
+    finishPlaceholderFade(mediaEl);
 
-    triggerImageLoad(img as HTMLImageElement);
+    expect(img.classList.contains('universe3d-card__media-image--loaded')).toBe(true);
+    expect(img.classList.contains('universe3d-card__media-image--pending')).toBe(false);
+    expect(mediaEl.classList.contains('universe3d-card__media--empty')).toBe(false);
+    expect(mediaEl.querySelector('.universe3d-card__media-placeholder')).toBeNull();
     expect(onImageLoaded).toHaveBeenCalledTimes(1);
   });
 
-  test('unavailable image (404) — placeholder', () => {
+  test('slow load — placeholder stays visible until load', () => {
+    const { mediaEl } = mountMedia(['https://cdn.example/slow.jpg']);
+
+    expect(mediaEl.querySelector('.universe3d-card__media-placeholder')).not.toBeNull();
+    expect(mediaEl.classList.contains('universe3d-card__media--empty')).toBe(true);
+
+    const img = mediaEl.querySelector('.universe3d-card__media-image') as HTMLImageElement;
+    expect(img.classList.contains('universe3d-card__media-image--pending')).toBe(true);
+
+    triggerImageLoad(img);
+    finishPlaceholderFade(mediaEl);
+
+    expect(mediaEl.querySelector('.universe3d-card__media-placeholder')).toBeNull();
+    expect(img.classList.contains('universe3d-card__media-image--loaded')).toBe(true);
+  });
+
+  test('unavailable image (404) — placeholder remains', () => {
     const { mediaEl } = mountMedia(['https://cdn.example/missing.jpg']);
     const img = mediaEl.querySelector('.universe3d-card__media-image') as HTMLImageElement;
-    expect(img).not.toBeNull();
 
     triggerImageError(img);
 
@@ -72,31 +107,46 @@ describe('populateUniverse3dArtistCardMedia', () => {
       'https://cdn.example/ok.jpg',
     ]);
 
+    expect(mediaEl.querySelector('.universe3d-card__media-placeholder')).not.toBeNull();
+
     const first = mediaEl.querySelector('.universe3d-card__media-image') as HTMLImageElement;
     expect(first.src).toContain('missing.jpg');
-
     triggerImageError(first);
+
+    expect(mediaEl.querySelector('.universe3d-card__media-placeholder')).not.toBeNull();
 
     const second = mediaEl.querySelector('.universe3d-card__media-image') as HTMLImageElement;
     expect(second).not.toBeNull();
     expect(second.src).toContain('ok.jpg');
+    expect(second.classList.contains('universe3d-card__media-image--pending')).toBe(true);
+
+    triggerImageLoad(second);
+    finishPlaceholderFade(mediaEl);
+
+    expect(second.classList.contains('universe3d-card__media-image--loaded')).toBe(true);
+    expect(mediaEl.querySelector('.universe3d-card__media-placeholder')).toBeNull();
     expect(mediaEl.classList.contains('universe3d-card__media--empty')).toBe(false);
   });
 
-  test('all images unavailable — placeholder', () => {
+  test('all images unavailable — placeholder stays', () => {
     const { mediaEl } = mountMedia([
       'https://cdn.example/a-missing.jpg',
       'https://cdn.example/b-missing.jpg',
     ]);
 
+    expect(mediaEl.querySelector('.universe3d-card__media-placeholder')).not.toBeNull();
+
     let img = mediaEl.querySelector('.universe3d-card__media-image') as HTMLImageElement;
     triggerImageError(img);
+
+    expect(mediaEl.querySelector('.universe3d-card__media-placeholder')).not.toBeNull();
 
     img = mediaEl.querySelector('.universe3d-card__media-image') as HTMLImageElement;
     triggerImageError(img);
 
     expect(mediaEl.querySelector('.universe3d-card__media-image')).toBeNull();
     expect(mediaEl.querySelector('.universe3d-card__media-placeholder')).not.toBeNull();
+    expect(mediaEl.classList.contains('universe3d-card__media--empty')).toBe(true);
   });
 
   test('does not retry the same failed URL in a loop', () => {
@@ -118,9 +168,15 @@ describe('populateUniverse3dArtistCardMedia', () => {
 
     handle.setHeaderImageSources(['https://cdn.example/fresh.jpg']);
 
+    expect(mediaEl.querySelector('.universe3d-card__media-placeholder')).not.toBeNull();
     const good = mediaEl.querySelector('.universe3d-card__media-image') as HTMLImageElement;
     expect(good).not.toBeNull();
     expect(good.src).toContain('fresh.jpg');
+
+    triggerImageLoad(good);
+    finishPlaceholderFade(mediaEl);
+
+    expect(good.classList.contains('universe3d-card__media-image--loaded')).toBe(true);
     expect(mediaEl.querySelector('.universe3d-card__media-placeholder')).toBeNull();
     expect(mediaEl.classList.contains('universe3d-card__media--empty')).toBe(false);
   });

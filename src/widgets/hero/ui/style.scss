@@ -66,6 +66,10 @@
     max-width: none;
     pointer-events: none;
 
+    &--pending {
+      opacity: 0;
+    }
+
     /*
      * Legacy: background-size: contain; background-position: right calc($ms-1 * 2)
      * Contained painting — anchor top-right; vertical calc() aligns matching points

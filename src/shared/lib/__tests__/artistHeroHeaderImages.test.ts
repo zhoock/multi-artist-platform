@@ -1,6 +1,7 @@
 import { describe, expect, test, beforeEach, afterEach } from '@jest/globals';
 import {
   HERO_COVER_SIZES,
+  buildHeroCoverFallbackUrls,
   buildHeroVisualKey,
   deriveHeroVariantUrl,
   filterValidHeroHeaderImages,
@@ -93,6 +94,21 @@ describe('resolveHeroCoverSourcesFromUrl', () => {
     const imageSet =
       "image-set(url('/api/proxy-image?path=users/u1/hero/cover-1920.avif') type('image/avif'), url('/api/proxy-image?path=users/u1/hero/cover-1920.jpg') type('image/jpeg'))";
     expect(resolveHeroCoverSourcesFromUrl(imageSet)).toBeNull();
+  });
+});
+
+describe('buildHeroCoverFallbackUrls', () => {
+  test('returns empty list when no valid heroes', () => {
+    expect(buildHeroCoverFallbackUrls([], 'seed')).toEqual([]);
+  });
+
+  test('starts with primary pick then remaining images', () => {
+    const images = [HERO_JPG, HERO_B_JPG];
+    const key = buildHeroVisualKey('/en', 'test-artist');
+    const ordered = buildHeroCoverFallbackUrls(images, key);
+    expect(ordered.length).toBe(2);
+    expect(ordered[0]).toBe(pickHeroCoverSources(images, key)?.jpg);
+    expect(ordered).toEqual(expect.arrayContaining([HERO_JPG, HERO_B_JPG]));
   });
 });
 
