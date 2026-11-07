@@ -16,6 +16,7 @@ import { isUniverseSceneOverlayTarget } from '@shared/lib/universeSceneOverlay';
 import './Universe3D.style.scss';
 import { UNIVERSE_FOCUS_ARTIST_STORAGE_KEY } from './universe3dConstants';
 import type { SceneArtist } from './universe3dTypes';
+import { populateUniverse3dArtistCardMedia } from './universe3dArtistCardMedia';
 
 export { UNIVERSE_FOCUS_ARTIST_STORAGE_KEY } from './universe3dConstants';
 export type { SceneArtist } from './universe3dTypes';
@@ -166,9 +167,6 @@ function sampleCloudLabelPositionsWithMinSep(
   }
   return fallback;
 }
-
-const ARTIST_MEDIA_PLACEHOLDER_ICON_SVG =
-  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="universe3d-card__media-icon"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><path d="M16 3.128a4 4 0 0 1 0 7.744"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><circle cx="9" cy="7" r="4"/></svg>';
 
 const ARTIST_TITLE_CHEVRON_ICON_SVG =
   '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>';
@@ -1410,13 +1408,6 @@ export class Universe3D {
     });
   }
 
-  private appendArtistMediaPlaceholder(mediaEl: Element): void {
-    const placeholder = document.createElement('div');
-    placeholder.className = 'universe3d-card__media-placeholder';
-    placeholder.innerHTML = ARTIST_MEDIA_PLACEHOLDER_ICON_SVG;
-    mediaEl.appendChild(placeholder);
-  }
-
   private moveTo(
     x: number,
     y: number,
@@ -1490,8 +1481,7 @@ export class Universe3D {
     const genreCode = data.genreCode ?? 'other';
     const langKey = document.documentElement.lang?.toLowerCase().startsWith('ru') ? 'ru' : 'en';
     const label = data.genreLabel?.[langKey] ?? genreCode;
-    const coverUrl =
-      Array.isArray(data.headerImages) && data.headerImages.length > 0 ? data.headerImages[0] : '';
+    const headerImageSources = Array.isArray(data.headerImages) ? data.headerImages : [];
     const slug = typeof data.publicSlug === 'string' ? data.publicSlug.trim() : '';
 
     const card = document.createElement('div');
@@ -1544,26 +1534,17 @@ export class Universe3D {
     if (mediaEl instanceof HTMLAnchorElement && slug) {
       this.bindArtistProfileLink(mediaEl, slug);
     }
-    if (mediaEl) {
-      if (coverUrl) {
-        const img = document.createElement('img');
-        img.className = 'universe3d-card__media-image';
-        img.alt = title;
-        img.loading = 'eager';
-        img.decoding = 'async';
-        img.src = this.resolveHeaderImageUrl(coverUrl);
-        img.addEventListener('load', () => {
+    if (mediaEl instanceof HTMLElement) {
+      populateUniverse3dArtistCardMedia(mediaEl, {
+        title,
+        rawHeaderImages: headerImageSources,
+        resolveUrl: (raw) => this.resolveHeaderImageUrl(raw),
+        onImageLoaded: () => {
           if (this.activeCard !== card || !this.cardAnchorObject) return;
           this.layoutCardFromObject();
-        });
-        mediaEl.appendChild(img);
-      } else {
-        mediaEl.classList.add('universe3d-card__media--empty');
-        if (mediaEl instanceof HTMLAnchorElement) {
-          mediaEl.setAttribute('aria-label', title);
-        }
-        this.appendArtistMediaPlaceholder(mediaEl);
-      }
+        },
+        shouldApplyCallbacks: () => this.activeCard === card && !!this.cardAnchorObject,
+      });
     }
 
     const playButton = card.querySelector('.universe3d-card__play');
