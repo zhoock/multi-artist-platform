@@ -1,8 +1,17 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type Dispatch,
+  type SetStateAction,
+} from 'react';
 import {
   fetchArtistHeroHeaderImages,
   filterValidHeroHeaderImages,
   getCachedArtistHeroHeaderImages,
+  heroHeaderImagesSignature,
   invalidateArtistHeroHeaderImagesCache,
   preloadHeroCoverFromHeaderImages,
   setCachedArtistHeroHeaderImages,
@@ -27,18 +36,35 @@ function readInitialHeaderImages(artistSlug: string): string[] {
 
 function readInitialHeaderImagesReady(artistSlug: string): boolean {
   if (!artistSlug) return true;
-  return getCachedArtistHeroHeaderImages(artistSlug) !== null;
+  if (getCachedArtistHeroHeaderImages(artistSlug) !== null) return true;
+  const publicCached = getCachedPublicArtistHeaderImages(artistSlug);
+  return publicCached !== null && filterValidHeroHeaderImages(publicCached).length > 0;
+}
+
+function commitHeaderImages(
+  setHeaderImages: Dispatch<SetStateAction<string[]>>,
+  images: string[]
+): void {
+  const valid = filterValidHeroHeaderImages(images);
+  setHeaderImages((prev) => {
+    if (heroHeaderImagesSignature(prev) === heroHeaderImagesSignature(valid)) {
+      return prev;
+    }
+    return valid;
+  });
 }
 
 function applyPublicArtistHeaderImages(
   artistSlug: string,
-  setHeaderImages: (images: string[]) => void
+  setHeaderImages: Dispatch<SetStateAction<string[]>>,
+  setIsHeaderImagesReady: (ready: boolean) => void
 ): boolean {
   const publicCached = getCachedPublicArtistHeaderImages(artistSlug);
   if (!publicCached) return false;
   const valid = filterValidHeroHeaderImages(publicCached);
   if (valid.length === 0) return false;
-  setHeaderImages(valid);
+  commitHeaderImages(setHeaderImages, valid);
+  setIsHeaderImagesReady(true);
   preloadHeroCoverFromHeaderImages(artistSlug, valid);
   return true;
 }
@@ -54,26 +80,26 @@ export function useArtistHeroHeaderImages(artistSlug: string) {
   const loadImages = useCallback(
     async (options?: { keepReady?: boolean }) => {
       if (!normalizedSlug) {
-        setHeaderImages([]);
+        commitHeaderImages(setHeaderImages, []);
         setIsHeaderImagesReady(true);
         return;
       }
 
       const cached = getCachedArtistHeroHeaderImages(normalizedSlug);
       if (cached !== null) {
-        setHeaderImages(cached);
+        commitHeaderImages(setHeaderImages, cached);
         setIsHeaderImagesReady(true);
         return;
       }
 
-      applyPublicArtistHeaderImages(normalizedSlug, setHeaderImages);
+      applyPublicArtistHeaderImages(normalizedSlug, setHeaderImages, setIsHeaderImagesReady);
 
       void ensurePublicArtistsLoaded().then(() => {
-        applyPublicArtistHeaderImages(normalizedSlug, setHeaderImages);
+        applyPublicArtistHeaderImages(normalizedSlug, setHeaderImages, setIsHeaderImagesReady);
       });
 
       const images = await fetchArtistHeroHeaderImages(normalizedSlug);
-      setHeaderImages(images);
+      commitHeaderImages(setHeaderImages, images);
       setIsHeaderImagesReady(true);
     },
     [normalizedSlug]
@@ -93,7 +119,7 @@ export function useArtistHeroHeaderImages(artistSlug: string) {
       if (normalizedSlug) {
         setCachedArtistHeroHeaderImages(normalizedSlug, validImages);
       }
-      setHeaderImages(validImages);
+      commitHeaderImages(setHeaderImages, validImages);
       setIsHeaderImagesReady(true);
       skipArtistUpdatedReloadRef.current = true;
     };

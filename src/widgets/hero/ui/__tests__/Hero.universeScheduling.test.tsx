@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, jest, test } from '@jest/globals';
-import { waitFor } from '@testing-library/react';
+import { fireEvent, waitFor } from '@testing-library/react';
 import { Hero } from '../Hero';
 import { renderWithProviders } from '@shared/lib/test-utils';
 
@@ -53,9 +53,13 @@ jest.mock('@shared/lib/publicArtistsCache', () => ({
   ensurePublicArtistsLoaded: () => ensurePublicArtistsLoadedMock(),
 }));
 
+const Universe3DConstructorMock = jest.fn();
 const loadUniverse3DModuleMock = jest.fn(() =>
   Promise.resolve({
     Universe3D: class Universe3D {
+      constructor(...args: unknown[]) {
+        Universe3DConstructorMock(...args);
+      }
       destroy() {}
       isArtistCardTarget() {
         return false;
@@ -79,8 +83,10 @@ const artistAlbumCatalogState = {
 
 const HERO_JPG = '/api/proxy-image?path=users/u1/hero/cover-1920.jpg';
 
-describe('Hero Universe3D scheduling after cover paint', () => {
+describe('Hero Universe3D independent from cover', () => {
   beforeEach(() => {
+    jest.spyOn(Math, 'random').mockReturnValue(0);
+
     Object.defineProperty(window, 'matchMedia', {
       writable: true,
       configurable: true,
@@ -96,6 +102,7 @@ describe('Hero Universe3D scheduling after cover paint', () => {
     navigateMock.mockReset();
     ensurePublicArtistsLoadedMock.mockClear();
     loadUniverse3DModuleMock.mockClear();
+    Universe3DConstructorMock.mockClear();
 
     mockUseArtistPageBuilder.mockReturnValue({
       builderVisibility: { mode: 'hidden', canShowBlocks: false },
@@ -130,18 +137,9 @@ describe('Hero Universe3D scheduling after cover paint', () => {
       return 1;
     });
     jest.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => undefined);
-
-    if (typeof HTMLImageElement.prototype.decode !== 'function') {
-      Object.defineProperty(HTMLImageElement.prototype, 'decode', {
-        configurable: true,
-        value: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
-      });
-    } else {
-      jest.spyOn(HTMLImageElement.prototype, 'decode').mockResolvedValue(undefined);
-    }
   });
 
-  test('does not load Universe3D module before hero cover img completes load+decode paint chain', async () => {
+  test('starts Universe3D while hero cover img is still pending', async () => {
     renderWithProviders(<Hero />, {
       initialEntries: ['/?artist=beatles'],
       preloadedState: {
@@ -153,15 +151,80 @@ describe('Hero Universe3D scheduling after cover paint', () => {
 
     const img = document.querySelector('img.hero__cover-image') as HTMLImageElement | null;
     expect(img).toBeTruthy();
-
-    expect(loadUniverse3DModuleMock).not.toHaveBeenCalled();
-
-    Object.defineProperty(img!, 'complete', { configurable: true, value: true });
-    Object.defineProperty(img!, 'naturalWidth', { configurable: true, value: 1920 });
-    img!.dispatchEvent(new Event('load'));
+    expect(img?.classList.contains('hero__cover-image--pending')).toBe(true);
 
     await waitFor(() => {
-      expect(loadUniverse3DModuleMock).toHaveBeenCalled();
+      expect(Universe3DConstructorMock).toHaveBeenCalled();
     });
+    expect(loadUniverse3DModuleMock).toHaveBeenCalled();
+  });
+
+  test('loads module in parallel with cover attempt', async () => {
+    renderWithProviders(<Hero />, {
+      initialEntries: ['/?artist=beatles'],
+      preloadedState: {
+        lang: { current: 'en' },
+        currentArtist: { publicSlug: 'beatles' },
+        artistAlbumCatalog: artistAlbumCatalogState,
+      },
+    });
+
+    expect(loadUniverse3DModuleMock).toHaveBeenCalled();
+    await waitFor(() => expect(Universe3DConstructorMock).toHaveBeenCalled());
+  });
+
+  test('headerImages refresh does not re-init Universe3D for same artist', async () => {
+    const builder = {
+      builderVisibility: { mode: 'hidden', canShowBlocks: false },
+      isLoading: false,
+      isOwner: false,
+      ownerResolved: true,
+      ownerContentLoaded: true,
+      ownerStillNeedsOnboarding: false,
+      hasPublicReleases: true,
+      ownerHasPublicPageContent: true,
+      showOnboarding: false,
+      showOnboardingSkeleton: false,
+      showVisitorUnderConstruction: false,
+      showNotFound: false,
+      showPublished: true,
+      pageReady: true,
+      showArtistPageSkeleton: false,
+      showArtistPageSurfacePending: false,
+      showArtistPageHeroPending: false,
+      showArtistPageLayoutPending: false,
+      headerImages: [HERO_JPG],
+      isHeaderImagesReady: true,
+      albumDetailsReleaseGatePending: false,
+      catalogReleaseGatePending: false,
+      suppressPublishedArtistChrome: false,
+      monetizationEnabled: false,
+      paymentSurfaceReady: true,
+    };
+    mockUseArtistPageBuilder.mockImplementation(() => builder);
+
+    const { rerender } = renderWithProviders(<Hero />, {
+      initialEntries: ['/?artist=beatles'],
+      preloadedState: {
+        lang: { current: 'en' },
+        currentArtist: { publicSlug: 'beatles' },
+        artistAlbumCatalog: artistAlbumCatalogState,
+      },
+    });
+
+    await waitFor(() => {
+      expect(Universe3DConstructorMock).toHaveBeenCalledTimes(1);
+    });
+
+    builder.headerImages = [`${HERO_JPG}&v=2`];
+    mockUseArtistPageBuilder.mockImplementation(() => ({ ...builder }));
+    rerender(<Hero />);
+
+    fireEvent.load(document.querySelector('img.hero__cover-image')!);
+
+    await waitFor(() => {
+      expect(document.querySelector('.hero__canvas')).toBeTruthy();
+    });
+    expect(Universe3DConstructorMock).toHaveBeenCalledTimes(1);
   });
 });

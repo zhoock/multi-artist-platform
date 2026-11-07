@@ -200,11 +200,8 @@ describe('Hero Universe3D and prefers-reduced-motion', () => {
     expect(document.querySelector('img.hero__cover-image')).toBeTruthy();
   });
 
-  test('normal motion: existing lazy-load flow still loads Universe3D after cover paint', async () => {
+  test('normal motion: loads Universe3D on mount without waiting for cover paint', async () => {
     renderPublishedHero();
-    expect(loadUniverse3DModuleMock).not.toHaveBeenCalled();
-
-    completeHeroCoverPaint();
 
     await waitFor(() => {
       expect(loadUniverse3DModuleMock).toHaveBeenCalled();
@@ -228,6 +225,7 @@ describe('Hero Universe3D and prefers-reduced-motion', () => {
     await waitFor(() => {
       expect(universeDestroyMock).toHaveBeenCalled();
     });
-    expect(loadUniverse3DModuleMock).toHaveBeenCalledTimes(1);
+    expect(loadUniverse3DModuleMock.mock.calls.length).toBeGreaterThanOrEqual(1);
+    expect(Universe3DConstructorMock).toHaveBeenCalledTimes(1);
   });
 });

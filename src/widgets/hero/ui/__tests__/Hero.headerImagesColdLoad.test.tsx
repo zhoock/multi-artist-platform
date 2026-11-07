@@ -90,6 +90,23 @@ const artistAlbumCatalogState = {
 
 describe('Hero headerImages cold load', () => {
   beforeEach(() => {
+    Object.defineProperty(window, 'matchMedia', {
+      writable: true,
+      configurable: true,
+      value: jest.fn((query: string) => ({
+        matches: false,
+        media: query,
+        addEventListener: jest.fn(),
+        removeEventListener: jest.fn(),
+        dispatchEvent: jest.fn(),
+      })),
+    });
+    jest.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => {
+      queueMicrotask(() => cb(0));
+      return 1;
+    });
+    jest.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => undefined);
+
     navigateMock.mockReset();
   });
 
@@ -104,11 +121,11 @@ describe('Hero headerImages cold load', () => {
     });
 
     expect(screen.queryByLabelText(/loading artist page hero/i)).toBeNull();
-    expect(document.querySelector('section.hero')).toBeTruthy();
+    expect(document.querySelector('.hero')).toBeTruthy();
     expect(screen.getByRole('heading', { level: 1, name: 'Beatles' })).toBeTruthy();
 
     await waitFor(() => {
-      expect(document.querySelector('section.hero')).toBeTruthy();
+      expect(document.querySelector('.hero')).toBeTruthy();
     });
   });
 });

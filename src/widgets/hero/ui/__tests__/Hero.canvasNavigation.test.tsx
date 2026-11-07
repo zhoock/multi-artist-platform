@@ -2,7 +2,7 @@ import { describe, test, expect, jest, beforeEach } from '@jest/globals';
 import { screen, waitFor, fireEvent } from '@testing-library/react';
 import { Hero } from '../Hero';
 import { renderWithProviders } from '@shared/lib/test-utils';
-import { UNIVERSE_FOCUS_ARTIST_STORAGE_KEY, Universe3D } from '@/components/view/Universe3D';
+import { UNIVERSE_FOCUS_ARTIST_STORAGE_KEY } from '@/components/view/universe3dConstants';
 
 const navigateMock = jest.fn();
 const mockTryActivateArtistFromClick = jest.fn(() => false);
@@ -88,28 +88,45 @@ const artistAlbumCatalogState = {
   artistMissing: false,
 };
 
-jest.mock('@/components/view/Universe3D', () => {
-  const actual = jest.requireActual<typeof import('@/components/view/Universe3D')>(
-    '@/components/view/Universe3D'
-  );
-  return {
-    ...actual,
-    Universe3D: jest.fn(function Universe3DMock(
-      this: Record<string, unknown>,
-      container: HTMLElement
-    ) {
-      const canvas = document.createElement('canvas');
-      container.appendChild(canvas);
-      this.destroy = jest.fn();
-      this.tryActivateArtistFromClick = mockTryActivateArtistFromClick;
-      this.activatePrimaryArtist = mockActivatePrimaryArtist;
-      this.isArtistCardTarget = mockIsArtistCardTarget;
-    }),
-  };
+const Universe3DConstructorMock = jest.fn(function Universe3DMock(
+  this: Record<string, unknown>,
+  container: HTMLElement
+) {
+  const canvas = document.createElement('canvas');
+  container.appendChild(canvas);
+  this.destroy = jest.fn();
+  this.tryActivateArtistFromClick = mockTryActivateArtistFromClick;
+  this.activatePrimaryArtist = mockActivatePrimaryArtist;
+  this.isArtistCardTarget = mockIsArtistCardTarget;
 });
+
+jest.mock('@/components/view/loadUniverse3DModule', () => ({
+  loadUniverse3DModule: jest.fn(() =>
+    Promise.resolve({
+      Universe3D: Universe3DConstructorMock,
+    })
+  ),
+}));
 
 describe('Hero canvas navigation', () => {
   beforeEach(() => {
+    Object.defineProperty(window, 'matchMedia', {
+      writable: true,
+      configurable: true,
+      value: jest.fn((query: string) => ({
+        matches: false,
+        media: query,
+        addEventListener: jest.fn(),
+        removeEventListener: jest.fn(),
+        dispatchEvent: jest.fn(),
+      })),
+    });
+    jest.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => {
+      queueMicrotask(() => cb(0));
+      return 1;
+    });
+    jest.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => undefined);
+
     navigateMock.mockReset();
     mockTryActivateArtistFromClick.mockReset();
     mockTryActivateArtistFromClick.mockReturnValue(false);
@@ -118,7 +135,7 @@ describe('Hero canvas navigation', () => {
     mockIsArtistCardTarget.mockReset();
     mockIsArtistCardTarget.mockReturnValue(false);
     sessionStorage.clear();
-    jest.mocked(Universe3D).mockClear();
+    Universe3DConstructorMock.mockClear();
   });
 
   test('click hero section navigates home without activating artist card', async () => {
@@ -132,7 +149,7 @@ describe('Hero canvas navigation', () => {
     });
 
     await waitFor(() => {
-      expect(jest.mocked(Universe3D)).toHaveBeenCalled();
+      expect(Universe3DConstructorMock).toHaveBeenCalled();
     });
 
     const heroButton = screen.getByRole('button', { name: /Beatles, go to home page/i });
@@ -176,7 +193,7 @@ describe('Hero canvas navigation', () => {
     });
 
     await waitFor(() => {
-      expect(jest.mocked(Universe3D)).toHaveBeenCalled();
+      expect(Universe3DConstructorMock).toHaveBeenCalled();
     });
 
     const heroButton = screen.getByRole('button', { name: /Beatles, go to home page/i });

@@ -139,6 +139,7 @@ describe('useArtistHeroHeaderImages', () => {
 
     await waitFor(() => {
       expect(result.current.headerImages).toEqual([HERO_URL]);
+      expect(result.current.isHeaderImagesReady).toBe(true);
     });
 
     resolveProfile();

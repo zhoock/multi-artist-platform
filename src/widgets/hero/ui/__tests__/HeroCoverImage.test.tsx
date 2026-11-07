@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, jest, test } from '@jest/globals';
+import { afterEach, beforeEach, describe, expect, jest, test } from '@jest/globals';
 import { fireEvent, render, waitFor } from '@testing-library/react';
 import { HeroCoverImage } from '../HeroCoverImage';
 import {
@@ -19,6 +19,12 @@ function queryHeroCoverImg(): HTMLImageElement | null {
 
 beforeEach(() => {
   resetHeroCoverPickCacheForTests();
+  /** Primary URL in `buildHeroCoverFallbackUrls` is `headerImages[Math.floor(random * n)]`. */
+  jest.spyOn(Math, 'random').mockReturnValue(0);
+});
+
+afterEach(() => {
+  jest.restoreAllMocks();
 });
 
 describe('HeroCoverImage', () => {
@@ -61,6 +67,36 @@ describe('HeroCoverImage', () => {
 
     fireEvent.load(img!);
     expect(img?.classList.contains('hero__cover-image--pending')).toBe(false);
+  });
+
+  test('load error notifies parent while more fallbacks remain', () => {
+    const onCoverLoadError = jest.fn();
+    render(
+      <HeroCoverImage
+        headerImages={[HERO_JPG, HERO_B_JPG]}
+        visualKey={VISUAL_KEY}
+        onCoverLoadError={onCoverLoadError}
+      />
+    );
+
+    const first = queryHeroCoverImg()!;
+    expect(first.getAttribute('src')).toBe(HERO_JPG);
+    fireEvent.error(first);
+    expect(onCoverLoadError).toHaveBeenCalledTimes(1);
+    expect(queryHeroCoverImg()?.getAttribute('src')).toBe(HERO_B_JPG);
+  });
+
+  test('after first error fallback can still load and show cover', () => {
+    render(<HeroCoverImage headerImages={[HERO_JPG, HERO_B_JPG]} visualKey={VISUAL_KEY} />);
+
+    fireEvent.error(queryHeroCoverImg()!);
+    const second = queryHeroCoverImg();
+    expect(second?.getAttribute('src')).toBe(HERO_B_JPG);
+    expect(second?.classList.contains('hero__cover-image--pending')).toBe(true);
+
+    fireEvent.load(second!);
+    expect(second?.classList.contains('hero__cover-image--pending')).toBe(false);
+    expect(document.querySelector('.hero__cover-layer')).not.toBeNull();
   });
 
   test('first image fails — tries the next header image', () => {
@@ -123,5 +159,29 @@ describe('HeroCoverImage', () => {
   test('no valid header images — renders nothing', () => {
     const { container } = render(<HeroCoverImage headerImages={[]} visualKey={VISUAL_KEY} />);
     expect(container.firstChild).toBeNull();
+  });
+
+  test('equivalent proxy URL encoding does not return cover to pending after load', () => {
+    const encoded = '/api/proxy-image?path=users%2Fu1%2Fhero%2Fcover-1920.jpg';
+    const decoded = '/api/proxy-image?path=users/u1/hero/cover-1920.jpg';
+
+    const { rerender } = render(<HeroCoverImage headerImages={[encoded]} visualKey={VISUAL_KEY} />);
+    const img = queryHeroCoverImg()!;
+    fireEvent.load(img);
+    expect(img.classList.contains('hero__cover-image--pending')).toBe(false);
+
+    rerender(<HeroCoverImage headerImages={[decoded]} visualKey={VISUAL_KEY} />);
+    expect(queryHeroCoverImg()?.classList.contains('hero__cover-image--pending')).toBe(false);
+  });
+
+  test('visualKey change alone does not hide a loaded single-image cover', () => {
+    const keyA = buildHeroVisualKey('/en', 'test-artist');
+    const keyB = buildHeroVisualKey('/ru', 'test-artist');
+
+    const { rerender } = render(<HeroCoverImage headerImages={[HERO_JPG]} visualKey={keyA} />);
+    fireEvent.load(queryHeroCoverImg()!);
+
+    rerender(<HeroCoverImage headerImages={[HERO_JPG]} visualKey={keyB} />);
+    expect(queryHeroCoverImg()?.classList.contains('hero__cover-image--pending')).toBe(false);
   });
 });

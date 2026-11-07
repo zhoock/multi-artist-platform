@@ -180,10 +180,24 @@ function heroCoverPickIdentityKey(visualKey: string): string {
   return raw.trim().toLowerCase();
 }
 
-/** Sorted URL list fingerprint — changes when the set of hero photos changes. */
-function heroHeaderImagesSignature(headerImages: string[]): string {
-  if (headerImages.length === 0) return '';
-  return [...headerImages].sort().join('\n');
+/** Sorted canonical URL fingerprint — same set ⇒ same string (encoding-normalized). */
+export function heroHeaderImagesSignature(headerImages: string[]): string {
+  const valid = filterValidHeroHeaderImages(headerImages);
+  if (valid.length === 0) return '';
+  return [...valid].sort().join('\n');
+}
+
+/** Ordered storage paths for the current cover fallback list (primary + rest). */
+export function heroCoverFallbackStorageSignature(
+  headerImages: string[],
+  visualKey: string
+): string {
+  const urls = buildHeroCoverFallbackUrls(headerImages, visualKey);
+  if (urls.length === 0) return '';
+  return urls
+    .map((url) => resolveHeroStoragePath(url) ?? url.trim())
+    .filter(Boolean)
+    .join('\0');
 }
 
 type HeroCoverPickEntry = { sig: string; index: number };

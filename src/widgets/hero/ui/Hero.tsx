@@ -15,6 +15,7 @@ import { useArtistPageBuilder } from '@shared/lib/hooks/useArtistPageBuilder';
 import {
   buildHeroVisualKey,
   filterValidHeroHeaderImages,
+  heroHeaderImagesSignature,
 } from '@shared/lib/artistHeroHeaderImages';
 import { ensurePublicArtistsLoaded } from '@shared/lib/publicArtistsCache';
 import { shouldShowArtistPageBuilderBlock } from '@shared/lib/artistPageBuilder';
@@ -40,6 +41,8 @@ import { readStoredProfileDisplayName } from '@shared/lib/profileDisplayName';
 import { ArtistPageSkeletonHero } from '@pages/Home/ui/ArtistPageSkeleton';
 import { usePrefersReducedMotion } from '@shared/lib/motion/prefersReducedMotion';
 import { HeroCoverImage } from './HeroCoverImage';
+import { logHeroCanvasLifecycle } from './heroCanvasLifecycleDiagnostics';
+import { markHeroCanvasInit } from './heroCanvasInitDiagnostics';
 import './style.scss';
 
 const HERO_CLUSTER_PALETTE = [0x4d80ff, 0xff8a47, 0x53d8a2, 0xb086ff, 0xf2cd5d, 0x5ec9f5] as const;
@@ -51,39 +54,15 @@ type HeroUniverseHandle = {
   isArtistCardTarget: (target: Element) => boolean;
 };
 
-/**
- * Defer work until after the browser has painted the current frame (double rAF),
- * then optionally yield via requestIdleCallback so LCP can complete first.
- */
-function scheduleAfterHeroCoverPaint(onReady: () => void): () => void {
+/** One frame so `.hero__canvas` has layout dimensions before WebGL init. */
+function scheduleHeroUniverseInit(onReady: () => void): () => void {
   let cancelled = false;
-  let rafId1 = 0;
-  let rafId2 = 0;
-  let idleId: number | undefined;
-  let timeoutId: number | undefined;
-
-  const scheduleIdle = () => {
-    if (cancelled) return;
-    if (typeof requestIdleCallback !== 'undefined') {
-      idleId = requestIdleCallback(onReady, { timeout: 2500 });
-      return;
-    }
-    timeoutId = window.setTimeout(onReady, 150);
-  };
-
-  rafId1 = requestAnimationFrame(() => {
-    if (cancelled) return;
-    rafId2 = requestAnimationFrame(scheduleIdle);
+  const rafId = requestAnimationFrame(() => {
+    if (!cancelled) onReady();
   });
-
   return () => {
     cancelled = true;
-    cancelAnimationFrame(rafId1);
-    if (rafId2) cancelAnimationFrame(rafId2);
-    if (idleId !== undefined && typeof cancelIdleCallback !== 'undefined') {
-      cancelIdleCallback(idleId);
-    }
-    if (timeoutId !== undefined) window.clearTimeout(timeoutId);
+    cancelAnimationFrame(rafId);
   };
 }
 
@@ -91,23 +70,16 @@ export function Hero() {
   const [artistPageMeta, setArtistPageMeta] = useState<{
     userId: string;
   } | null>(null);
-  const [heroCoverPaintReady, setHeroCoverPaintReady] = useState(false);
   const [heroCoverVisible, setHeroCoverVisible] = useState(true);
-  const [universeInitAllowed, setUniverseInitAllowed] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const { lang } = useLang() as { lang: 'ru' | 'en' };
   const publicArtistSlug = useAppSelector(selectPublicArtistSlug);
   const heroCanvasRef = useRef<HTMLDivElement | null>(null);
   const universeRef = useRef<HeroUniverseHandle | null>(null);
+  const universeArtistSlugRef = useRef<string | null>(null);
   const { overlayOpen: dashboardOverlayOpen, surfaceLocation } = useDashboardModalShell();
   const isDashboardRoute = location.pathname.startsWith('/dashboard') && !dashboardOverlayOpen;
-  /**
-   * Пока открыт auth-оверлей (/auth*), URL в строке — `/auth?...`, но фактически модалка рендерится
-   * поверх underlying-страницы из `state.backgroundLocation`. Hero должен видеть эту underlying-страницу,
-   * иначе при каждом открытии/закрытии оверлея сбрасывается `headerImages`/`backgroundImage`
-   * и Hero мигает (fetch + re-pick случайного изображения).
-   */
   const authOverlayBackground = useMemo<Location | null>(() => {
     if (!isAuthOverlayPathname(location.pathname)) return null;
     const bg = (location.state as { backgroundLocation?: Location } | null)?.backgroundLocation;
@@ -117,7 +89,6 @@ export function Hero() {
     dashboardOverlayOpen && surfaceLocation?.pathname
       ? surfaceLocation.pathname
       : (authOverlayBackground?.pathname ?? location.pathname);
-  /** Пока открыт оверлей (dashboard или auth), URL в строке — /dashboard*|/auth*; для Hero используем query фоновой страницы. */
   const heroSearchString = useMemo(() => {
     if (dashboardOverlayOpen && surfaceLocation?.search !== undefined) {
       return surfaceLocation.search;
@@ -179,6 +150,10 @@ export function Hero() {
   );
 
   const heroVisualKey = buildHeroVisualKey(heroPathname, heroPublicArtistSlug);
+  const headerImagesSignature = useMemo(
+    () => heroHeaderImagesSignature(headerImages),
+    [headerImages]
+  );
   const heroCoverCandidateCount = useMemo(
     () => filterValidHeroHeaderImages(headerImages).length,
     [headerImages]
@@ -187,25 +162,15 @@ export function Hero() {
     heroCoverCandidateCount > 0 && !showHeroImageBuilder && heroCoverVisible;
   const prefersReducedMotion = usePrefersReducedMotion();
 
-  const handleHeroCoverReadyForPaint = useCallback(() => {
-    setHeroCoverPaintReady(true);
-  }, []);
-
   const handleHeroCoverUnavailable = useCallback(() => {
     setHeroCoverVisible(false);
-    setHeroCoverPaintReady(false);
+    markHeroCanvasInit('cover-unavailable');
   }, []);
 
   useEffect(() => {
     setHeroCoverVisible(true);
-    setHeroCoverPaintReady(false);
-  }, [headerImages, heroVisualKey]);
+  }, [headerImagesSignature]);
 
-  useEffect(() => {
-    setHeroCoverPaintReady(false);
-  }, [heroVisualKey, headerImages, showHeroCoverImage]);
-
-  /** Skeleton only while hero cover URL is unknown — not while other page surfaces load. */
   const showHeroLoadingShell = showArtistPageHeroPending;
 
   useEffect(() => {
@@ -232,7 +197,7 @@ export function Hero() {
     };
   }, [artistParamKey, hasArtistParam]);
 
-  // Пока грузим профиль в artist-режиме — пустой заголовок; иначе имя из API/хранилища либо пусто.
+  const artistAlbumCatalogState = useAppSelector((s) => s.artistAlbumCatalog);
   const catalogArtistMissing = useAppSelector(selectArtistAlbumCatalogArtistMissing);
   const isTitlePending =
     hasArtistParam && !catalogArtistMissing && isProfileLoading && !profileDisplayName.trim();
@@ -244,73 +209,72 @@ export function Hero() {
         (hasArtistParam ? readStoredProfileDisplayName() : '') ||
         defaultArtistName;
 
-  /** Latest profile/header for canvas fallback without re-running Universe3D effect. */
   const profileNameForCanvasRef = useRef(profileDisplayName);
   const headerImagesForCanvasRef = useRef(headerImages);
   profileNameForCanvasRef.current = profileDisplayName;
   headerImagesForCanvasRef.current = headerImages;
 
-  /** Locale for canvas link builders — read at click time, not at Universe3D init. */
   const langForCanvasRef = useRef(lang);
   langForCanvasRef.current = lang;
 
   const ui = useAppSelector((state) => selectUiDictionaryFirst(state, lang));
   const builderCopy = ui?.artistPageBuilder;
 
+  const showHeroUniverse =
+    hasArtistParam &&
+    !!artistParamKey &&
+    !hideHeroForArtistOnboarding &&
+    showPublishedHeroChrome &&
+    !prefersReducedMotion;
+
+  const heroLifecycleSnapshot = useMemo(
+    () => ({
+      headerImagesCount: headerImages.length,
+      isHeaderImagesReady,
+      showHeroCoverImage,
+      universeMountedFor: universeArtistSlugRef.current,
+      catalogStatus: artistAlbumCatalogState.status,
+    }),
+    [artistAlbumCatalogState.status, headerImages.length, isHeaderImagesReady, showHeroCoverImage]
+  );
+
   useEffect(() => {
-    if (
-      !hasArtistParam ||
-      !artistParamKey ||
-      hideHeroForArtistOnboarding ||
-      !showPublishedHeroChrome ||
-      prefersReducedMotion
-    ) {
-      setUniverseInitAllowed(false);
+    logHeroCanvasLifecycle('state', heroLifecycleSnapshot);
+  }, [heroLifecycleSnapshot]);
+
+  useEffect(() => {
+    if (artistAlbumCatalogState.status === 'succeeded') {
+      logHeroCanvasLifecycle('album-catalog-succeeded', heroLifecycleSnapshot);
+    }
+  }, [artistAlbumCatalogState.status, heroLifecycleSnapshot]);
+
+  useEffect(() => {
+    if (!showHeroUniverse) {
+      universeArtistSlugRef.current = null;
       return;
     }
 
-    if (showHeroCoverImage) {
-      if (!heroCoverPaintReady) {
-        setUniverseInitAllowed(false);
-        return;
-      }
-    } else if (!isHeaderImagesReady) {
-      setUniverseInitAllowed(false);
-      return;
-    }
-
-    return scheduleAfterHeroCoverPaint(() => {
-      setUniverseInitAllowed(true);
-    });
-  }, [
-    artistParamKey,
-    hasArtistParam,
-    heroCoverPaintReady,
-    hideHeroForArtistOnboarding,
-    isHeaderImagesReady,
-    showHeroCoverImage,
-    showPublishedHeroChrome,
-    prefersReducedMotion,
-  ]);
-
-  useEffect(() => {
-    if (
-      !universeInitAllowed ||
-      !hasArtistParam ||
-      !artistParamKey ||
-      hideHeroForArtistOnboarding ||
-      !showPublishedHeroChrome ||
-      prefersReducedMotion
-    )
-      return;
     const el = heroCanvasRef.current;
     if (!el) return;
-    if (el.childElementCount > 0) return;
+
+    if (universeArtistSlugRef.current === artistParamKey && el.childElementCount > 0) {
+      return;
+    }
+
+    if (universeArtistSlugRef.current !== artistParamKey && universeRef.current) {
+      universeRef.current.destroy();
+      universeRef.current = null;
+      el.replaceChildren();
+    }
+
+    markHeroCanvasInit('prefetch-module');
+    void loadUniverse3DModule().then(() => markHeroCanvasInit('prefetch-module-done'));
 
     let universe: HeroUniverseHandle | null = null;
     let cancelled = false;
 
     const run = async () => {
+      markHeroCanvasInit('init-start');
       let sceneArtist: SceneArtist | null = null;
       let allPublicArtists: SceneArtist[] = [];
 
@@ -365,6 +329,7 @@ export function Hero() {
       if (heroCanvasRef.current.childElementCount > 0) return;
 
       const { Universe3D } = await loadUniverse3DModule();
+      markHeroCanvasInit('module-loaded');
       if (cancelled || !heroCanvasRef.current) return;
       if (heroCanvasRef.current.childElementCount > 0) return;
 
@@ -375,25 +340,34 @@ export function Hero() {
         buildArtistProfileHref: (publicSlug) =>
           buildArtistPagePath(langForCanvasRef.current, publicSlug),
       });
+      markHeroCanvasInit('constructor-done');
+      const webglCanvas = heroCanvasRef.current.querySelector('canvas');
+      if (webglCanvas) {
+        markHeroCanvasInit('webgl-canvas-in-dom');
+      }
       universeRef.current = universe;
+      universeArtistSlugRef.current = artistParamKey;
+      markHeroCanvasInit('universe-mounted');
     };
 
-    void run();
+    const cancelSchedule = scheduleHeroUniverseInit(() => {
+      void run();
+    });
 
     return () => {
       cancelled = true;
-      universeRef.current = null;
-      universe?.destroy();
-      el.replaceChildren();
+      cancelSchedule();
     };
-  }, [
-    artistParamKey,
-    hasArtistParam,
-    hideHeroForArtistOnboarding,
-    showPublishedHeroChrome,
-    universeInitAllowed,
-    prefersReducedMotion,
-  ]);
+  }, [artistParamKey, showHeroUniverse]);
+
+  useEffect(() => {
+    if (showHeroUniverse) return;
+    const el = heroCanvasRef.current;
+    universeRef.current?.destroy();
+    universeRef.current = null;
+    universeArtistSlugRef.current = null;
+    el?.replaceChildren();
+  }, [showHeroUniverse]);
 
   if (hideHeroForArtistOnboarding) {
     return null;
@@ -456,7 +430,6 @@ export function Hero() {
         <HeroCoverImage
           headerImages={headerImages}
           visualKey={heroVisualKey}
-          onReadyForPaint={handleHeroCoverReadyForPaint}
           onCoverUnavailable={handleHeroCoverUnavailable}
         />
       ) : null}
