@@ -36,6 +36,7 @@ import {
   generateProfileAvatarVariants,
   extractBaseName,
   ARTICLE_COVER_CACHE_CONTROL,
+  HeroImageIntegrityError,
 } from './lib/image-processor';
 import {
   AVATAR_MAX_FILE_SIZE_BYTES,
@@ -210,19 +211,29 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
           inputBytes: fileBuffer.length,
         });
       } catch (heroGenErr) {
+        const integrity = heroGenErr instanceof HeroImageIntegrityError;
+        const code = integrity ? heroGenErr.code : 'HERO_VARIANT_GENERATION_FAILED';
+        const details = heroGenErr instanceof Error ? heroGenErr.message : String(heroGenErr);
+        const status = integrity && heroGenErr.code.startsWith('HERO_INPUT') ? 400 : 500;
         console.error('[upload-file] hero variant generation failed', {
           baseName,
           heroUserId,
           decodeTimeMs: decodeTime,
           inputBytes: fileBuffer.length,
           elapsedMs: Date.now() - heroFlowT0,
-          message: heroGenErr instanceof Error ? heroGenErr.message : String(heroGenErr),
+          code,
+          message: details,
           stack: heroGenErr instanceof Error ? heroGenErr.stack : undefined,
         });
-        return createErrorResponse(500, 'Hero image processing failed', undefined, {
-          code: 'HERO_VARIANT_GENERATION_FAILED',
-          details: heroGenErr instanceof Error ? heroGenErr.message : String(heroGenErr),
-        });
+        return createErrorResponse(
+          status,
+          integrity ? 'Hero image validation failed' : 'Hero image processing failed',
+          undefined,
+          {
+            code,
+            details,
+          }
+        );
       }
 
       // Удаляем старые варианты этого изображения (если есть)

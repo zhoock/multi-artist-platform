@@ -15,6 +15,8 @@ import {
   InlineEditDiscardDialog,
   getCloseDiscardConfirmLabels,
 } from '../../shared/EditableCardField';
+import { formatStorageUploadErrorForUi, StorageUploadError } from '@shared/api/storage';
+import { HeroClientImageError } from '@shared/lib/heroClientImageIntegrity';
 import './CoverImageCropModal.style.scss';
 
 interface CoverImageCropModalProps {
@@ -52,17 +54,12 @@ async function getCroppedImg(imageSrc: string, pixelCrop: Area, rotation = 0): P
   canvas.width = CROP_WIDTH;
   canvas.height = CROP_HEIGHT;
 
-  // Вычисляем масштаб для обрезки
-  const scaleX = image.naturalWidth / image.width;
-  const scaleY = image.naturalHeight / image.height;
+  // croppedAreaPixels from react-easy-crop are already in source (natural) pixel coordinates
+  const cropX = Math.round(pixelCrop.x);
+  const cropY = Math.round(pixelCrop.y);
+  const cropWidth = Math.round(pixelCrop.width);
+  const cropHeight = Math.round(pixelCrop.height);
 
-  // Координаты и размеры обрезки в исходных пикселях изображения
-  const cropX = pixelCrop.x * scaleX;
-  const cropY = pixelCrop.y * scaleY;
-  const cropWidth = pixelCrop.width * scaleX;
-  const cropHeight = pixelCrop.height * scaleY;
-
-  // Рисуем обрезанное изображение на canvas
   ctx.drawImage(image, cropX, cropY, cropWidth, cropHeight, 0, 0, CROP_WIDTH, CROP_HEIGHT);
 
   return new Promise((resolve, reject) => {
@@ -193,7 +190,9 @@ export function CoverImageCropModal({
         ui?.dashboard?.settingsModal?.messages?.coverUploadError ?? 'Ошибка сохранения обложки';
 
       // Более детальные сообщения об ошибках
-      if (err instanceof Error) {
+      if (err instanceof HeroClientImageError || err instanceof StorageUploadError) {
+        errorMessage = formatStorageUploadErrorForUi(err);
+      } else if (err instanceof Error) {
         if (
           err.message.includes('network') ||
           err.message.includes('fetch') ||
@@ -205,6 +204,8 @@ export function CoverImageCropModal({
         } else if (err.message.includes('Failed to upload') || err.message.includes('upload')) {
           errorMessage =
             ui?.dashboard?.settingsModal?.messages?.coverUploadError ?? 'Ошибка загрузки обложки';
+        } else {
+          errorMessage = err.message;
         }
       }
 
@@ -349,14 +350,14 @@ export function CoverImageCropModal({
           )}
 
           {isPreviewMode && previewBlob && (
-            <div className="cover-image-crop-modal__preview">
+            <div
+              className="cover-image-crop-modal__preview"
+              onContextMenu={(e) => e.preventDefault()}
+            >
               <img
                 src={URL.createObjectURL(previewBlob)}
                 alt="Preview"
                 draggable={false}
-                onContextMenu={(e) => e.preventDefault()}
-                onClick={(e) => e.preventDefault()}
-                onDragStart={(e) => e.preventDefault()}
                 style={{
                   width: '100%',
                   height: '100%',

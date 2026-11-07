@@ -79,6 +79,16 @@ export async function compressHeroJpegForNetlifyPayload(
   const maxChars = opts.maxJsonPayloadChars ?? HERO_UPLOAD_MAX_JSON_PAYLOAD_CHARS;
   const qualities = [0.88, 0.82, 0.76, 0.7, 0.64, 0.58, 0.52, 0.48, 0.44, 0.4];
 
+  const directB64 = await blobToBase64Pure(source);
+  const directJsonLen = estimateHeroUploadJsonPayloadChars(directB64, {
+    fileName: opts.fileName,
+    userId: opts.userId,
+    originalFileSize: source.size,
+  });
+  if (directJsonLen <= maxChars) {
+    return source;
+  }
+
   const sourceImg = await loadImageFromBlob(source);
   let width = sourceImg.naturalWidth;
   let height = sourceImg.naturalHeight;

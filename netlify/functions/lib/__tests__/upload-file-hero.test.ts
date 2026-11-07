@@ -1,5 +1,6 @@
-import { beforeEach, describe, expect, jest, test } from '@jest/globals';
+import { beforeAll, beforeEach, describe, expect, jest, test } from '@jest/globals';
 import type { HandlerEvent } from '@netlify/functions';
+import sharp from 'sharp';
 
 jest.mock('../db', () => ({
   query: jest.fn(),
@@ -30,7 +31,7 @@ jest.mock('../supabase', () => ({
   STORAGE_BUCKET_NAME: 'user-media',
 }));
 
-import { generateHeroImageVariants } from '../image-processor';
+import { generateHeroImageVariants, HeroImageIntegrityError } from '../image-processor';
 import { heroVariantFileNamesForBaseName } from '../hero-variants';
 import { createSupabaseAdminClient } from '../supabase';
 import { requireAuth } from '../api-helpers';
@@ -54,14 +55,27 @@ const mockCreateSupabase = createSupabaseAdminClient as jest.MockedFunction<
 
 const USER_ID = 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee';
 const BASE_NAME = 'hero-deadbeef';
-const TINY_IMAGE_BASE64 =
-  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+let HERO_SOURCE_BASE64 = '';
+
+beforeAll(async () => {
+  const buf = await sharp({
+    create: {
+      width: 2560,
+      height: 1522,
+      channels: 3,
+      background: { r: 64, g: 128, b: 200 },
+    },
+  })
+    .jpeg()
+    .toBuffer();
+  HERO_SOURCE_BASE64 = buf.toString('base64');
+});
 
 function buildHeroUploadEvent(): HandlerEvent {
   return {
     httpMethod: 'POST',
     body: JSON.stringify({
-      fileBase64: TINY_IMAGE_BASE64,
+      fileBase64: HERO_SOURCE_BASE64,
       fileName: `${BASE_NAME}.jpg`,
       category: 'hero',
       contentType: 'image/jpeg',
@@ -167,6 +181,18 @@ describe('upload-file hero variants', () => {
     expect(body.success).toBe(false);
     expect(body.code).toBe('HERO_VARIANT_GENERATION_FAILED');
     expect(String(body.details)).toContain('avif encoder simulated');
+    expect(uploadedPaths).toHaveLength(0);
+  });
+
+  test('returns 400 with integrity code when hero input is blank', async () => {
+    mockGenerateHero.mockRejectedValueOnce(
+      new HeroImageIntegrityError('HERO_INPUT_BLANK', 'Hero source image appears blank')
+    );
+
+    const response = await handler(buildHeroUploadEvent(), {} as never);
+    expect(response.statusCode).toBe(400);
+    const body = JSON.parse(response.body);
+    expect(body.code).toBe('HERO_INPUT_BLANK');
     expect(uploadedPaths).toHaveLength(0);
   });
 });

@@ -3,7 +3,16 @@
  */
 
 import sharp from 'sharp';
+
+sharp.concurrency(2);
 import { HERO_SHARP_QUALITY, HERO_VARIANT_FORMATS, HERO_VARIANT_WIDTHS } from './hero-variants';
+import {
+  assertDecodableHeroSource,
+  assertHeroVariantOutput,
+  HeroImageIntegrityError,
+} from './image-integrity';
+
+export { HeroImageIntegrityError };
 
 export interface ImageVariant {
   suffix: string; // например, "-448.jpg", "-896.webp" (новый формат без @2x и @3x)
@@ -79,8 +88,10 @@ export async function generateHeroImageVariants(
   imageBuffer: Buffer,
   baseName: string
 ): Promise<Record<string, Buffer>> {
-  // Hero: responsive widths for LCP (browser picks via srcset + sizes on the client).
-  // Spec: `hero-variants.ts` + `artistHeroHeaderImages.HERO_COVER_VARIANT_WIDTHS`.
+  const { width: originalWidth, height: originalHeight } =
+    await assertDecodableHeroSource(imageBuffer);
+  const aspectRatio = originalWidth / originalHeight;
+
   const variants: ImageVariant[] = HERO_VARIANT_WIDTHS.flatMap((width) =>
     HERO_VARIANT_FORMATS.map((fmt) => ({
       suffix: `-${width}.${fmt}`,
@@ -90,26 +101,23 @@ export async function generateHeroImageVariants(
     }))
   );
 
-  const results: Record<string, Buffer> = {};
+  const HERO_VARIANT_CONCURRENCY = 3;
 
-  // Получаем метаданные исходного изображения для сохранения пропорций
-  const metadata = await sharp(imageBuffer).metadata();
-  const originalWidth = metadata.width || 1;
-  const originalHeight = metadata.height || 1;
-  const aspectRatio = originalWidth / originalHeight;
-
-  // Генерируем каждый вариант
-  for (const variant of variants) {
+  const tasks = variants.map((variant) => async () => {
     const height = variant.height || Math.round(variant.width / aspectRatio);
 
-    let sharpInstance = sharp(imageBuffer).resize(variant.width, height, {
-      fit: 'cover', // обрезаем, чтобы заполнить размер
-      position: 'center',
-    });
+    let sharpInstance = sharp(imageBuffer, { failOn: 'error', sequentialRead: true })
+      .rotate()
+      .resize(variant.width, height, {
+        fit: 'cover',
+        position: 'center',
+      });
 
-    // Применяем формат и качество
     if (variant.format === 'avif') {
-      sharpInstance = sharpInstance.avif({ quality: variant.quality || 80 });
+      sharpInstance = sharpInstance.avif({
+        quality: variant.quality || 80,
+        effort: 4,
+      });
     } else if (variant.format === 'webp') {
       sharpInstance = sharpInstance.webp({ quality: variant.quality || 85 });
     } else if (variant.format === 'jpg') {
@@ -118,9 +126,30 @@ export async function generateHeroImageVariants(
 
     const buffer = await sharpInstance.toBuffer();
     const fileName = `${baseName}${variant.suffix}`;
-    results[fileName] = buffer;
+    await assertHeroVariantOutput(buffer, fileName, variant.width);
+    return [fileName, buffer] as const;
+  });
+
+  const entries = await runAsyncPool(tasks, HERO_VARIANT_CONCURRENCY);
+  return Object.fromEntries(entries);
+}
+
+async function runAsyncPool<T>(tasks: Array<() => Promise<T>>, concurrency: number): Promise<T[]> {
+  const results: T[] = new Array(tasks.length);
+  let nextIndex = 0;
+
+  async function worker(): Promise<void> {
+    while (true) {
+      const index = nextIndex;
+      nextIndex += 1;
+      if (index >= tasks.length) return;
+      results[index] = await tasks[index]!();
+    }
   }
 
+  await Promise.all(
+    Array.from({ length: Math.min(Math.max(1, concurrency), tasks.length) }, () => worker())
+  );
   return results;
 }
 

@@ -15,6 +15,9 @@ import { compressHeroJpegForNetlifyPayload } from '@shared/lib/heroUploadPayload
 import { getPublicStorageFileUrl } from '@shared/lib/storagePublicFileUrl';
 
 import type { GetFileUrlOptions, UploadFileOptions } from './storageTypes';
+import { StorageUploadError, formatStorageUploadErrorForUi } from './storageUploadError';
+
+export { StorageUploadError, formatStorageUploadErrorForUi };
 
 export type { GetFileUrlOptions, UploadFileOptions };
 export { sanitizeFileName };
@@ -161,6 +164,12 @@ export async function uploadFile(options: UploadFileOptions): Promise<string | n
         message: fetchErr instanceof Error ? fetchErr.message : String(fetchErr),
         name: fetchErr instanceof Error ? fetchErr.name : undefined,
       });
+      if (category === 'hero') {
+        throw new StorageUploadError(
+          fetchErr instanceof Error ? fetchErr.message : 'Network error during hero upload',
+          { code: 'HERO_UPLOAD_NETWORK', details: 'POST /api/upload-file failed' }
+        );
+      }
       return null;
     }
 
@@ -194,6 +203,17 @@ export async function uploadFile(options: UploadFileOptions): Promise<string | n
         requestPayloadJsonChars: payloadJsonChars,
         fileName,
       });
+      if (category === 'hero') {
+        const timeoutHint =
+          response.status === 504
+            ? 'Server timed out while generating image variants (try again after deploy with faster processing).'
+            : undefined;
+        throw new StorageUploadError(serverMessage || `HTTP ${response.status}`, {
+          code: errorData?.code ?? `HTTP_${response.status}`,
+          details: errorData?.details ?? timeoutHint,
+          httpStatus: response.status,
+        });
+      }
       return null;
     }
 
@@ -210,6 +230,12 @@ export async function uploadFile(options: UploadFileOptions): Promise<string | n
         bodyPreview: textPreview.slice(0, 500),
         fileName,
       });
+      if (category === 'hero') {
+        throw new StorageUploadError('Invalid JSON response from upload server', {
+          code: 'HERO_UPLOAD_BAD_RESPONSE',
+          details: parseErr instanceof Error ? parseErr.message : String(parseErr),
+        });
+      }
       return null;
     }
 
@@ -232,6 +258,11 @@ export async function uploadFile(options: UploadFileOptions): Promise<string | n
         serverError: result.error,
         fileName,
       });
+      if (category === 'hero') {
+        const serverErr =
+          typeof result.error === 'string' ? result.error : 'Upload rejected by server';
+        throw new StorageUploadError(serverErr, { code: 'HERO_UPLOAD_REJECTED' });
+      }
       return null;
     }
 
@@ -268,6 +299,12 @@ export async function uploadFile(options: UploadFileOptions): Promise<string | n
       message: error instanceof Error ? error.message : String(error),
       name: error instanceof Error ? error.name : undefined,
     });
+    if (error instanceof StorageUploadError) {
+      throw error;
+    }
+    if (options.category === 'hero' && error instanceof Error) {
+      throw new StorageUploadError(error.message, { code: 'HERO_UPLOAD_FAILED' });
+    }
     return null;
   }
 }

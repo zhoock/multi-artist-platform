@@ -10,7 +10,16 @@ import {
   extractStoragePathFromProxyInput,
   normalizeProxyImageUrl,
 } from '@shared/lib/proxyImageUrl';
-import { uploadFile, deleteHeroImage } from '@shared/api/storage';
+import {
+  uploadFile,
+  deleteHeroImage,
+  formatStorageUploadErrorForUi,
+  StorageUploadError,
+} from '@shared/api/storage';
+import {
+  assertHeroUploadBlobHasContent,
+  HeroClientImageError,
+} from '@shared/lib/heroClientImageIntegrity';
 import { getUser } from '@shared/lib/auth';
 import { uniqueUploadFileSuffix } from '@shared/lib/uniqueUploadFileSuffix';
 import './HeaderImagesUpload.style.scss';
@@ -217,6 +226,8 @@ export function HeaderImagesUpload({
 
       const fileName = `hero-${uniqueUploadFileSuffix()}.jpg`;
 
+      await assertHeroUploadBlobHasContent(croppedBlob);
+
       const url = await uploadFile({
         userId: user.id,
         category: 'hero',
@@ -232,7 +243,7 @@ export function HeaderImagesUpload({
           croppedBytes: croppedBlob.size,
           userId: user.id,
         });
-        throw new Error('Failed to upload image');
+        throw new StorageUploadError('Failed to upload image', { code: 'HERO_UPLOAD_NO_URL' });
       }
 
       // Держим в списке каноническое значение (storage path) — ровно то, что сохраняет API.
@@ -266,9 +277,15 @@ export function HeaderImagesUpload({
       setSelectedFile(null);
     } catch (err) {
       console.error('Error uploading header image:', err);
-      setError(
-        ui?.dashboard?.settingsModal?.messages?.coverUploadError ?? 'Ошибка загрузки изображения'
-      );
+      if (err instanceof HeroClientImageError || err instanceof StorageUploadError) {
+        setError(formatStorageUploadErrorForUi(err));
+      } else if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError(
+          ui?.dashboard?.settingsModal?.messages?.coverUploadError ?? 'Ошибка загрузки изображения'
+        );
+      }
     } finally {
       setIsUploading(false);
     }
