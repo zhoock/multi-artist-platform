@@ -11,6 +11,7 @@ import {
 } from '@shared/lib/i18n/resolveTranslationFallback';
 import type { AlbumDetails, TrackDetails } from '../model/albumDetails';
 import { dedupeMergedAlbumDetailsForDisplay } from './albumDetailSemanticKind';
+import { pruneEmptyAlbumDetailBlocksForPublicDisplay } from './albumDetailPublicVisibility';
 import { stripGenreDetailBlocks } from './resolveAlbumEditableDisplay';
 
 function readGenreCodesFromRelease(release: Record<string, unknown> | undefined): string[] {
@@ -90,10 +91,12 @@ export function resolveAlbumDetailsForDisplay(
       : album.description;
 
   const localeDetails = locale?.details?.length ? locale.details : album.details;
-  const details = injectGenreDetailIfNeeded(
-    dedupeMergedAlbumDetailsForDisplay(localeDetails ?? [], lang),
-    album.release,
-    lang
+  const details = pruneEmptyAlbumDetailBlocksForPublicDisplay(
+    injectGenreDetailIfNeeded(
+      dedupeMergedAlbumDetailsForDisplay(localeDetails ?? [], lang),
+      album.release,
+      lang
+    )
   );
 
   const artwork = locale?.artwork ?? album.artwork;

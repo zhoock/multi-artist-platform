@@ -2,6 +2,10 @@ import type { AlbumDetails } from '../../model/albumDetails';
 import { useLang } from '@app/providers/lang';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
+import {
+  hasPublicAlbumArtworkDesigner,
+  hasPublicAlbumArtworkPhotographer,
+} from '../../lib/albumDetailPublicVisibility';
 
 /**
  * Компонент отображает блок с информацией об обложке альбома.
@@ -11,15 +15,22 @@ export default function AlbumDetailsArtwork({ album }: { album: AlbumDetails }) 
   const ui = useAppSelector((state) => selectUiDictionaryFirst(state, lang));
 
   const art = album.artwork;
-  const photographer = art.photographer;
+  const photographer = art.photographer?.trim() ?? '';
   const photographerURL = art.photographerURL;
-  const designer = art.designer;
+  const designer = art.designer?.trim() ?? '';
   const designerURL = art.designerURL;
   const titles = ui?.titles ?? {};
 
+  const showPhotographer = hasPublicAlbumArtworkPhotographer(art);
+  const showDesigner = hasPublicAlbumArtworkDesigner(art);
+
+  if (!showPhotographer && !showDesigner) {
+    return null;
+  }
+
   return (
     <>
-      {photographer && (
+      {showPhotographer && (
         <>
           <h3>{titles.photo ?? 'Фото'}</h3>
           <div className="album-details__artwork-photographer">
@@ -39,21 +50,25 @@ export default function AlbumDetailsArtwork({ album }: { album: AlbumDetails }) 
         </>
       )}
 
-      <h3>{titles.design ?? 'Дизайн'}</h3>
-      <div className="album-details__artwork-designer">
-        {designerURL ? (
-          <a
-            className="album-details__link"
-            href={designerURL}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            {designer}
-          </a>
-        ) : (
-          designer
-        )}
-      </div>
+      {showDesigner && (
+        <>
+          <h3>{titles.design ?? 'Дизайн'}</h3>
+          <div className="album-details__artwork-designer">
+            {designerURL ? (
+              <a
+                className="album-details__link"
+                href={designerURL}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {designer}
+              </a>
+            ) : (
+              designer
+            )}
+          </div>
+        </>
+      )}
     </>
   );
 }

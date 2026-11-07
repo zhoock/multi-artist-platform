@@ -8,6 +8,10 @@ import type { AlbumDetails as AlbumDetailsData } from '../../model/albumDetails'
 import { useLang } from '@app/providers/lang';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
+import {
+  hasPublicAlbumArtworkCredits,
+  isAlbumDetailBlockPubliclyVisible,
+} from '../../lib/albumDetailPublicVisibility';
 import './style.scss';
 
 export type AlbumCopyrightReportLink = {
@@ -30,7 +34,13 @@ export default function AlbumDetails({ album, copyrightReport }: AlbumDetailsPro
   const titles = (ui?.titles as String | undefined) ?? {};
   const { music, release, albumCover } = titles;
 
-  const hasMetadataColumns = Boolean(music || release || albumCover);
+  const visibleMusicDetails = Array.isArray(album.details)
+    ? album.details.filter(isAlbumDetailBlockPubliclyVisible)
+    : [];
+  const hasMusicMetadata = visibleMusicDetails.length > 0;
+  const hasArtworkMetadata = hasPublicAlbumArtworkCredits(album.artwork);
+  const hasReleaseMetadata = Boolean(release);
+  const hasMetadataColumns = hasMusicMetadata || hasReleaseMetadata || hasArtworkMetadata;
   const showCopyrightReport = Boolean(copyrightReport);
 
   if (!hasMetadataColumns && !showCopyrightReport) {
@@ -42,23 +52,27 @@ export default function AlbumDetails({ album, copyrightReport }: AlbumDetailsPro
       {hasMetadataColumns && <hr />}
       {hasMetadataColumns && (
         <div className="wrapper album__wrapper">
-          <div className="item">
-            <div className="album-details__music">
-              {music && <h2>{music}</h2>}
-              <AlbumDetailsMusic album={album} />
+          {hasMusicMetadata && (
+            <div className="item">
+              <div className="album-details__music">
+                {music && <h2>{music}</h2>}
+                <AlbumDetailsMusic album={{ ...album, details: visibleMusicDetails }} />
+              </div>
             </div>
-          </div>
+          )}
           <div className="item item-release">
             <div className="album-details__released">
               {release && <h2>{release}</h2>}
               <AlbumDetailsRelease album={album} />
-              <hr />
+              {hasArtworkMetadata && <hr />}
             </div>
-            <div className="album-details__artwork">
-              {albumCover && <h2>{albumCover}</h2>}
-              <AlbumDetailsArtwork album={album} />
-              <hr />
-            </div>
+            {hasArtworkMetadata && (
+              <div className="album-details__artwork">
+                {albumCover && <h2>{albumCover}</h2>}
+                <AlbumDetailsArtwork album={album} />
+                <hr />
+              </div>
+            )}
           </div>
         </div>
       )}
