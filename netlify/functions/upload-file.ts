@@ -38,6 +38,7 @@ import {
   ARTICLE_COVER_CACHE_CONTROL,
   HeroImageIntegrityError,
 } from './lib/image-processor';
+import { EXPECTED_HERO_VARIANT_FILE_COUNT } from './lib/hero-variants';
 import {
   AVATAR_MAX_FILE_SIZE_BYTES,
   isProfileAvatarStorageObjectName,
@@ -202,10 +203,24 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
       try {
         const genT0 = Date.now();
         variants = await generateHeroImageVariants(fileBuffer, baseName);
+        const variantCount = Object.keys(variants).length;
+        if (variantCount !== EXPECTED_HERO_VARIANT_FILE_COUNT) {
+          return createErrorResponse(
+            500,
+            'Hero variant generation returned unexpected count',
+            undefined,
+            {
+              code: 'HERO_VARIANT_GENERATION_FAILED',
+              details: `Expected ${EXPECTED_HERO_VARIANT_FILE_COUNT} variants, got ${variantCount}`,
+            }
+          );
+        }
+
         console.info('[upload-file] hero variants generated', {
           baseName,
           heroUserId,
-          variantCount: Object.keys(variants).length,
+          variantCount,
+          expectedVariantCount: EXPECTED_HERO_VARIANT_FILE_COUNT,
           generateMs: Date.now() - genT0,
           decodeTimeMs: decodeTime,
           inputBytes: fileBuffer.length,
@@ -259,17 +274,17 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
       }
 
       const variantEntries = Object.entries(variants);
-      const expectedVariantCount = variantEntries.length;
+      const expectedVariantCount = EXPECTED_HERO_VARIANT_FILE_COUNT;
 
       const storageUploadT0 = Date.now();
+      const storageTiming = { webpUploadMs: 0, jpgUploadMs: 0 };
       const uploadResults = await Promise.all(
         variantEntries.map(async ([variantFileName, buffer]) => {
           const variantPath = getStoragePath(heroUserId, normalizedCategory, variantFileName);
-          const variantContentType = variantFileName.endsWith('.avif')
-            ? 'image/avif'
-            : variantFileName.endsWith('.webp')
-              ? 'image/webp'
-              : 'image/jpeg';
+          const variantContentType = variantFileName.endsWith('.webp')
+            ? 'image/webp'
+            : 'image/jpeg';
+          const uploadOneT0 = Date.now();
 
           const { error: variantError } = await supabase.storage
             .from(STORAGE_BUCKET_NAME)
@@ -278,6 +293,13 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
               upsert: true,
               cacheControl: '3600', // Кеш на 1 час
             });
+
+          const uploadOneMs = Date.now() - uploadOneT0;
+          if (variantFileName.endsWith('.webp')) {
+            storageTiming.webpUploadMs += uploadOneMs;
+          } else {
+            storageTiming.jpgUploadMs += uploadOneMs;
+          }
 
           if (variantError) {
             return {
@@ -341,6 +363,8 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
         heroUserId,
         expectedVariantCount,
         storageParallelUploadMs: Date.now() - storageUploadT0,
+        webpUploadMsSum: storageTiming.webpUploadMs,
+        jpgUploadMsSum: storageTiming.jpgUploadMs,
         totalHeroFlowMs: Date.now() - heroFlowT0,
       });
 

@@ -12,8 +12,8 @@ export const HERO_VARIANT_WIDTHS = [896, 1280, 1920] as const;
 
 export type HeroVariantWidth = (typeof HERO_VARIANT_WIDTHS)[number];
 
-/** One derived file per (width × format). */
-export const HERO_VARIANT_FORMATS = ['avif', 'webp', 'jpg'] as const;
+/** One derived file per (width × format). AVIF intentionally omitted (WebP + JPEG only). */
+export const HERO_VARIANT_FORMATS = ['webp', 'jpg'] as const;
 
 export type HeroVariantFormat = (typeof HERO_VARIANT_FORMATS)[number];
 
@@ -23,7 +23,6 @@ export const HERO_VARIANT_SUFFIXES: readonly string[] = HERO_VARIANT_WIDTHS.flat
 
 /** Sharp quality per format (matches previous inline values). */
 export const HERO_SHARP_QUALITY: Record<HeroVariantFormat, number> = {
-  avif: 80,
   webp: 85,
   jpg: 85,
 };

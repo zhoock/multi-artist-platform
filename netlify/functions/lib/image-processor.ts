@@ -102,9 +102,12 @@ export async function generateHeroImageVariants(
   );
 
   const HERO_VARIANT_CONCURRENCY = 3;
+  const encodeTiming = { webpEncodeMs: 0, jpgEncodeMs: 0 };
+  const genWallT0 = Date.now();
 
   const tasks = variants.map((variant) => async () => {
     const height = variant.height || Math.round(variant.width / aspectRatio);
+    const encodeT0 = Date.now();
 
     let sharpInstance = sharp(imageBuffer, { failOn: 'error', sequentialRead: true })
       .rotate()
@@ -113,25 +116,35 @@ export async function generateHeroImageVariants(
         position: 'center',
       });
 
-    if (variant.format === 'avif') {
-      sharpInstance = sharpInstance.avif({
-        quality: variant.quality || 80,
-        effort: 4,
-      });
-    } else if (variant.format === 'webp') {
+    if (variant.format === 'webp') {
       sharpInstance = sharpInstance.webp({ quality: variant.quality || 85 });
     } else if (variant.format === 'jpg') {
       sharpInstance = sharpInstance.jpeg({ quality: variant.quality || 85, mozjpeg: true });
     }
 
     const buffer = await sharpInstance.toBuffer();
+    const encodeMs = Date.now() - encodeT0;
+    if (variant.format === 'webp') {
+      encodeTiming.webpEncodeMs += encodeMs;
+    } else if (variant.format === 'jpg') {
+      encodeTiming.jpgEncodeMs += encodeMs;
+    }
+
     const fileName = `${baseName}${variant.suffix}`;
     await assertHeroVariantOutput(buffer, fileName, variant.width);
     return [fileName, buffer] as const;
   });
 
   const entries = await runAsyncPool(tasks, HERO_VARIANT_CONCURRENCY);
-  return Object.fromEntries(entries);
+  const results = Object.fromEntries(entries);
+  console.info('[generateHeroImageVariants] encode timing', {
+    baseName,
+    variantCount: Object.keys(results).length,
+    encodeWallMs: Date.now() - genWallT0,
+    webpEncodeMsSum: encodeTiming.webpEncodeMs,
+    jpgEncodeMsSum: encodeTiming.jpgEncodeMs,
+  });
+  return results;
 }
 
 async function runAsyncPool<T>(tasks: Array<() => Promise<T>>, concurrency: number): Promise<T[]> {

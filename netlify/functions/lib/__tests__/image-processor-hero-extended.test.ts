@@ -32,6 +32,7 @@ describe('generateHeroImageVariants — integrity and errors', () => {
       const stats = await sharp(buf).stats();
       expect(Math.max(...stats.channels.map((c) => c.max))).toBeGreaterThan(0);
       expect(name).toContain(baseName);
+      expect(name).not.toMatch(/\.avif$/);
     }
   });
 

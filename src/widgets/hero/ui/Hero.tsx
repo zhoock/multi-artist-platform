@@ -188,7 +188,7 @@ export function Hero() {
 
   useEffect(() => {
     setHeroCoverPaintReady(false);
-  }, [heroCoverSources?.avif, heroCoverSources?.jpg, heroCoverSources?.webp, showHeroCoverImage]);
+  }, [heroCoverSources?.jpg, heroCoverSources?.webp, showHeroCoverImage]);
 
   /** Skeleton only while hero cover URL is unknown — not while other page surfaces load. */
   const showHeroLoadingShell = showArtistPageHeroPending;

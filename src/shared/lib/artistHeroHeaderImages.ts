@@ -18,7 +18,8 @@ export function filterValidHeroHeaderImages(images: string[] | null | undefined)
 export const HERO_COVER_SIZES = '(min-width: 1024px) 25vw, (min-width: 768px) 37vw, 100vw';
 
 /**
- * Logical hero image widths in Storage (`{baseName}-{width}.{avif|webp|jpg}`).
+ * Logical hero image widths in Storage (`{baseName}-{width}.{webp|jpg}` for new uploads).
+ * Legacy buckets may still contain `.avif` (not used by `<picture>`).
  * Must match `netlify/functions/lib/hero-variants.ts` / `generateHeroImageVariants`.
  */
 export const HERO_COVER_VARIANT_WIDTHS = [896, 1280, 1920] as const;
@@ -27,13 +28,15 @@ export type HeroCoverVariantWidth = (typeof HERO_COVER_VARIANT_WIDTHS)[number];
 export type HeroCoverSources = {
   /** Largest JPG for <img src> fallback. */
   jpg: string;
-  avifSrcSet: string | null;
   webpSrcSet: string | null;
   jpgSrcSet: string;
   sizes: string;
-  /** Largest AVIF/WebP URLs — effect deps / legacy callers. */
-  avif: string | null;
+  /** Largest WebP URL — effect deps / legacy callers. */
   webp: string | null;
+  /** @deprecated Legacy uploads only; never set for new hero images. */
+  avifSrcSet?: string | null;
+  /** @deprecated Legacy uploads only. */
+  avif?: string | null;
 };
 
 function stripCssUrlWrapper(value: string): string {
@@ -112,18 +115,17 @@ function buildHeroSrcSet(canonicalJpg: string, targetExt: 'avif' | 'webp' | 'jpg
 
 function buildHeroCoverSources(canonicalJpg: string): HeroCoverSources {
   const jpg = normalizeProxyImageUrl(stripCssUrlWrapper(canonicalJpg));
-  const avifSrcSet = buildHeroSrcSet(jpg, 'avif');
   const webpSrcSet = buildHeroSrcSet(jpg, 'webp');
   const jpgSrcSet = buildHeroSrcSet(jpg, 'jpg') ?? `${jpg} 1920w`;
 
   return {
     jpg,
-    avifSrcSet,
     webpSrcSet,
     jpgSrcSet,
     sizes: HERO_COVER_SIZES,
-    avif: deriveHeroVariantUrl(jpg, 'avif', 1920),
     webp: deriveHeroVariantUrl(jpg, 'webp', 1920),
+    avifSrcSet: null,
+    avif: null,
   };
 }
 
@@ -257,7 +259,7 @@ export function pickHeroBackgroundImage(headerImages: string[], visualSeed: stri
 
 const headerImagesCache = new Map<string, string[]>();
 const headerImagesInflight = new Map<string, Promise<string[]>>();
-/** slug → primary preload href (avif, else webp, else jpg) */
+/** slug → primary preload href (webp, else jpg) */
 const preloadedHeroCoverBySlug = new Map<string, string>();
 
 const HERO_COVER_PRELOAD_ATTR = 'data-hero-cover-preload';
@@ -297,7 +299,7 @@ function appendHeroCoverPreloadLink(href: string, type: string, artistSlug: stri
 }
 
 /**
- * Same selection order as HeroCoverImage <picture>: AVIF → WebP → JPG,
+ * Same selection order as HeroCoverImage <picture>: WebP → JPG,
  * at the variant width the browser would pick for the current viewport.
  */
 export function resolveHeroCoverPreloadTarget(
@@ -315,11 +317,6 @@ export function resolveHeroCoverPreloadTarget(
     metrics.viewportWidth,
     metrics.devicePixelRatio
   );
-
-  const avif = deriveHeroVariantUrl(sources.jpg, 'avif', variantWidth);
-  if (avif) {
-    return { href: avif, type: 'image/avif' };
-  }
 
   const webp = deriveHeroVariantUrl(sources.jpg, 'webp', variantWidth);
   if (webp) {

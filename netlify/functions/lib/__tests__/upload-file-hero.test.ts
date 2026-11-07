@@ -92,8 +92,9 @@ function buildHeroUploadEvent(): HandlerEvent {
   } as HandlerEvent;
 }
 
-function nineVariantBuffers(): Record<string, Buffer> {
+function sixVariantBuffers(): Record<string, Buffer> {
   const keys = heroVariantFileNamesForBaseName(BASE_NAME);
+  expect(keys).toHaveLength(6);
   return Object.fromEntries(keys.map((k) => [k, Buffer.from(k)])) as Record<string, Buffer>;
 }
 
@@ -104,7 +105,7 @@ describe('upload-file hero variants', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockRequireAuth.mockReturnValue(USER_ID);
-    mockGenerateHero.mockResolvedValue(nineVariantBuffers());
+    mockGenerateHero.mockResolvedValue(sixVariantBuffers());
     uploadedPaths = [];
     removedPaths = [];
 
@@ -129,13 +130,14 @@ describe('upload-file hero variants', () => {
     } as never);
   });
 
-  test('returns 200 and main -1920.jpg path when all 9 variants upload', async () => {
+  test('returns 200 and main -1920.jpg path when all 6 variants upload', async () => {
     const response = await handler(buildHeroUploadEvent(), {} as never);
     expect(response.statusCode).toBe(200);
     const body = JSON.parse(response.body);
     expect(body.success).toBe(true);
     expect(body.data.url).toBe(`users/${USER_ID}/hero/${BASE_NAME}-1920.jpg`);
-    expect(uploadedPaths).toHaveLength(9);
+    expect(uploadedPaths).toHaveLength(6);
+    expect(uploadedPaths.some((p) => p.includes('.avif'))).toBe(false);
     expect(removedPaths).toHaveLength(0);
   });
 
@@ -167,7 +169,7 @@ describe('upload-file hero variants', () => {
     expect(body.success).toBe(false);
     expect(body.code).toBe('HERO_VARIANT_UPLOAD_INCOMPLETE');
     // Upload continues after first failure; rollback removes every object that was stored.
-    expect(uploadedPaths).toHaveLength(8);
+    expect(uploadedPaths).toHaveLength(5);
     expect(removedPaths.length).toBeGreaterThanOrEqual(1);
     expect(removedPaths[removedPaths.length - 1]).toEqual(uploadedPaths);
   });

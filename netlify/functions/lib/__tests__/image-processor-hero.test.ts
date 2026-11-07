@@ -17,14 +17,16 @@ describe('generateHeroImageVariants', () => {
       .toBuffer();
   }
 
-  test('generates 896 / 1280 / 1920 avif, webp, and jpg variants', async () => {
+  test('generates 896 / 1280 / 1920 webp and jpg variants (no avif)', async () => {
     const source = await createLandscapeSource();
     const baseName = 'hero-1769199944514-ztdiqdk';
     const variants = await generateHeroImageVariants(source, baseName);
 
     expect(Object.keys(variants).sort()).toEqual(heroVariantFileNamesForBaseName(baseName).sort());
+    expect(Object.keys(variants)).toHaveLength(6);
+    expect(variants[`${baseName}-896.avif`]).toBeUndefined();
 
-    const metadata896 = await sharp(variants[`${baseName}-896.avif`]).metadata();
+    const metadata896 = await sharp(variants[`${baseName}-896.webp`]).metadata();
     const metadata1280 = await sharp(variants[`${baseName}-1280.webp`]).metadata();
     const metadata1920 = await sharp(variants[`${baseName}-1920.jpg`]).metadata();
 

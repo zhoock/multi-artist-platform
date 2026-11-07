@@ -61,28 +61,28 @@ describe('deriveHeroVariantUrl', () => {
 });
 
 describe('resolveHeroCoverSourcesFromUrl', () => {
-  test('derives responsive srcsets from -1920.jpg proxy URL', () => {
+  test('derives responsive srcsets from -1920.jpg proxy URL (webp + jpg only)', () => {
     expect(resolveHeroCoverSourcesFromUrl(HERO_JPG)).toEqual({
       jpg: HERO_JPG,
-      avifSrcSet: expectedSrcSet('avif'),
+      avifSrcSet: null,
       webpSrcSet: expectedSrcSet('webp'),
       jpgSrcSet: expectedSrcSet('jpg'),
       sizes: HERO_COVER_SIZES,
-      avif: '/api/proxy-image?path=users/u1/hero/cover-1920.avif',
+      avif: null,
       webp: '/api/proxy-image?path=users/u1/hero/cover-1920.webp',
     });
   });
 
-  test('parses image-set() with avif/webp/jpg', () => {
+  test('parses legacy image-set() and still serves webp/jpg (no avif in picture)', () => {
     const imageSet =
       "image-set(url('/api/proxy-image?path=users/u1/hero/cover-1920.avif') type('image/avif'), url('/api/proxy-image?path=users/u1/hero/cover-1920.webp') type('image/webp'), url('/api/proxy-image?path=users/u1/hero/cover-1920.jpg') type('image/jpeg'))";
     expect(resolveHeroCoverSourcesFromUrl(imageSet)).toEqual({
       jpg: HERO_JPG,
-      avifSrcSet: expectedSrcSet('avif'),
+      avifSrcSet: null,
       webpSrcSet: expectedSrcSet('webp'),
       jpgSrcSet: expectedSrcSet('jpg'),
       sizes: HERO_COVER_SIZES,
-      avif: '/api/proxy-image?path=users/u1/hero/cover-1920.avif',
+      avif: null,
       webp: '/api/proxy-image?path=users/u1/hero/cover-1920.webp',
     });
   });
@@ -98,9 +98,11 @@ describe('pickHeroCoverSources', () => {
     const second = pickHeroCoverSources([HERO_JPG], '/|test-artist');
     expect(first).toEqual(second);
     expect(first?.jpg).toBe(HERO_JPG);
-    expect(first?.avifSrcSet).toContain('896w');
+    expect(first?.avifSrcSet).toBeNull();
+    expect(first?.webpSrcSet).toContain('896w');
     expect(first?.webpSrcSet).toContain('1280w');
-    expect(first?.avif).toMatch(/-1920\.avif$/);
+    expect(first?.avif).toBeNull();
+    expect(first?.webp).toMatch(/-1920\.webp$/);
   });
 
   test('multiple images: stable across calls in the same page load (same slug in visual key)', () => {
@@ -210,23 +212,23 @@ describe('resolveHeroCoverVariantWidth', () => {
 });
 
 describe('resolveHeroCoverPreloadTarget', () => {
-  test('mobile viewport preloads -896.avif', () => {
+  test('mobile viewport preloads -896.webp', () => {
     const sources = pickHeroCoverSources([HERO_JPG], 'seed');
     expect(sources).not.toBeNull();
 
     expect(resolveHeroCoverPreloadTarget(sources!, 412, 2)).toEqual({
-      href: '/api/proxy-image?path=users/u1/hero/cover-896.avif',
-      type: 'image/avif',
+      href: '/api/proxy-image?path=users/u1/hero/cover-896.webp',
+      type: 'image/webp',
     });
   });
 
-  test('desktop 1920px @2x preloads -1280.avif', () => {
+  test('desktop 1920px @2x preloads -1280.webp', () => {
     const sources = pickHeroCoverSources([HERO_JPG], 'seed');
     expect(sources).not.toBeNull();
 
     expect(resolveHeroCoverPreloadTarget(sources!, 1920, 2)).toEqual({
-      href: '/api/proxy-image?path=users/u1/hero/cover-1280.avif',
-      type: 'image/avif',
+      href: '/api/proxy-image?path=users/u1/hero/cover-1280.webp',
+      type: 'image/webp',
     });
   });
 
@@ -270,7 +272,7 @@ describe('preloadHeroCoverFromHeaderImages', () => {
     );
   }
 
-  test('preloads a single avif typed link matching mobile viewport variant', () => {
+  test('preloads a single webp typed link matching mobile viewport variant', () => {
     Object.defineProperty(window, 'innerWidth', { configurable: true, value: 412 });
     Object.defineProperty(window, 'devicePixelRatio', { configurable: true, value: 2 });
 
@@ -283,15 +285,15 @@ describe('preloadHeroCoverFromHeaderImages', () => {
     expect(readPreloadLinks()).toEqual([
       {
         href: preloadTarget?.href,
-        type: 'image/avif',
+        type: 'image/webp',
         as: 'image',
         fetchPriority: 'high',
       },
     ]);
-    expect(readPreloadLinks()[0]?.href).toContain('-896.avif');
+    expect(readPreloadLinks()[0]?.href).toContain('-896.webp');
   });
 
-  test('preloads jpg only when avif/webp are unavailable', () => {
+  test('preloads jpg only when webp variants are unavailable', () => {
     const coverWithoutExt = 'https://cdn.example/users/u1/hero/cover-no-ext';
 
     preloadHeroCoverFromHeaderImages('test-artist', [coverWithoutExt], '/|test-artist');
@@ -325,7 +327,7 @@ describe('preloadHeroCoverFromHeaderImages', () => {
 
     const links = readPreloadLinks();
     expect(links).toHaveLength(1);
-    expect(links[0]?.type).toBe('image/avif');
-    expect(links[0]?.href).toContain('-896.avif');
+    expect(links[0]?.type).toBe('image/webp');
+    expect(links[0]?.href).toContain('-896.webp');
   });
 });
