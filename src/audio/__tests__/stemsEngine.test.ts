@@ -1,6 +1,11 @@
 import { describe, expect, test, jest, beforeEach, afterEach } from '@jest/globals';
 import { StemEngine, StemEnginePlayError } from '../stemsEngine';
 import { resetStemAudioCacheForTests } from '../stemAudioCache';
+import {
+  createInMemoryStemAudioPersistStore,
+  resetStemAudioPersistStoreForTests,
+  setStemAudioPersistStoreForTests,
+} from '../stemAudioPersistStore';
 
 class FakeGain {
   gain = { value: 1 };
@@ -48,8 +53,13 @@ function newEngine(ctx: FakeAudioContext, stems: Record<string, string>) {
 describe('StemEngine mix controls', () => {
   let originalFetch: typeof global.fetch;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     resetStemAudioCacheForTests();
+    resetStemAudioPersistStoreForTests();
+    const persist = createInMemoryStemAudioPersistStore();
+    setStemAudioPersistStoreForTests(persist);
+    await persist.clear();
+
     originalFetch = global.fetch;
     global.fetch = jest.fn(async () => ({
       ok: true,
@@ -60,6 +70,7 @@ describe('StemEngine mix controls', () => {
 
   afterEach(() => {
     global.fetch = originalFetch;
+    resetStemAudioPersistStoreForTests();
     jest.restoreAllMocks();
   });
 
@@ -132,13 +143,19 @@ describe('StemEngine mix controls', () => {
 describe('StemEngine load failures', () => {
   let originalFetch: typeof global.fetch;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     resetStemAudioCacheForTests();
+    resetStemAudioPersistStoreForTests();
+    const persist = createInMemoryStemAudioPersistStore();
+    setStemAudioPersistStoreForTests(persist);
+    await persist.clear();
+
     originalFetch = global.fetch;
   });
 
   afterEach(() => {
     global.fetch = originalFetch;
+    resetStemAudioPersistStoreForTests();
     jest.restoreAllMocks();
   });
 

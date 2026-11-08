@@ -1,6 +1,11 @@
 import { afterEach, beforeEach, describe, expect, jest, test } from '@jest/globals';
 import { StemEngine } from '../stemsEngine';
 import { resetStemAudioCacheForTests } from '../stemAudioCache';
+import {
+  createInMemoryStemAudioPersistStore,
+  resetStemAudioPersistStoreForTests,
+  setStemAudioPersistStoreForTests,
+} from '../stemAudioPersistStore';
 
 class FakeAudioContext {
   currentTime = 0;
@@ -33,8 +38,13 @@ describe('StemEngine with stem audio cache', () => {
   let originalFetch: typeof global.fetch;
   let fetchMock: jest.MockedFunction<typeof fetch>;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     resetStemAudioCacheForTests();
+    resetStemAudioPersistStoreForTests();
+    const persist = createInMemoryStemAudioPersistStore();
+    setStemAudioPersistStoreForTests(persist);
+    await persist.clear();
+
     originalFetch = global.fetch;
     fetchMock = jest.fn(
       async () =>
@@ -50,6 +60,7 @@ describe('StemEngine with stem audio cache', () => {
   afterEach(() => {
     global.fetch = originalFetch;
     resetStemAudioCacheForTests();
+    resetStemAudioPersistStoreForTests();
   });
 
   test('StrictMode-style double loadAll issues one fetch per stem', async () => {

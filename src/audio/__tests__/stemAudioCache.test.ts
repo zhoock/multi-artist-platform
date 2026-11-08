@@ -4,6 +4,11 @@ import {
   resetStemAudioCacheForTests,
   getStemAudioCacheStats,
 } from '../stemAudioCache';
+import {
+  createInMemoryStemAudioPersistStore,
+  resetStemAudioPersistStoreForTests,
+  setStemAudioPersistStoreForTests,
+} from '../stemAudioPersistStore';
 
 const ASSET_A = 'artist:album:track:stem-a.mp3';
 const ASSET_B = 'artist:album:track:stem-b.mp3';
@@ -24,8 +29,13 @@ describe('stemAudioCache', () => {
   let originalFetch: typeof global.fetch;
   let fetchMock: jest.MockedFunction<typeof fetch>;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     resetStemAudioCacheForTests({ maxBytes: 50 * 1024 * 1024 });
+    resetStemAudioPersistStoreForTests();
+    const persist = createInMemoryStemAudioPersistStore();
+    setStemAudioPersistStoreForTests(persist);
+    await persist.clear();
+
     originalFetch = global.fetch;
     fetchMock = jest.fn(async () => defaultFetchResponse());
     global.fetch = fetchMock;
@@ -34,6 +44,7 @@ describe('stemAudioCache', () => {
   afterEach(() => {
     global.fetch = originalFetch;
     resetStemAudioCacheForTests();
+    resetStemAudioPersistStoreForTests();
   });
 
   test('Test A — first load: one network request per stem', async () => {
@@ -97,7 +108,7 @@ describe('stemAudioCache', () => {
     expect(fetchMock).toHaveBeenCalledTimes(0);
   });
 
-  test('Test K — eviction allows a new network fetch', async () => {
+  test('Test K — RAM eviction still serves from persist without network', async () => {
     resetStemAudioCacheForTests({ maxBytes: 4 });
     await getStemAudioBytes(ASSET_A, URL_A);
     expect(getStemAudioCacheStats().entries).toBe(1);
@@ -110,6 +121,6 @@ describe('stemAudioCache', () => {
 
     fetchMock.mockClear();
     await getStemAudioBytes(ASSET_A, URL_A);
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledTimes(0);
   });
 });

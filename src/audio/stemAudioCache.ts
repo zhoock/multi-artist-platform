@@ -1,3 +1,8 @@
+import {
+  clearStemAudioPersistStore,
+  readStemAudioPersist,
+  writeStemAudioPersist,
+} from './stemAudioPersistStore';
 import { logStemLoadDiagnostic, redactStemUrlForLog } from './stemLoadDiagnostics';
 
 /** LRU cap: stored compressed bytes (MP3), not decoded PCM. */
@@ -36,6 +41,7 @@ export function getStemAudioCacheStats(): StemAudioCacheStats {
 /** Dev console: `__stemAudioCache.clear()` / `.stats()` after import side-effect in dev builds. */
 export function clearStemAudioCache(): void {
   resetStemAudioCacheForTests();
+  void clearStemAudioPersistStore();
 }
 
 export function resetStemAudioCacheForTests(options?: { maxBytes?: number }): void {
@@ -95,7 +101,7 @@ function storeInCache(assetKey: string, bytes: ArrayBuffer): void {
   totalCachedBytes += byteLength;
 }
 
-async function fetchStemBytes(
+async function fetchStemBytesFromNetwork(
   assetKey: string,
   url: string,
   fetchOptions?: RequestInit
@@ -126,11 +132,28 @@ async function fetchStemBytes(
   }
 
   storeInCache(assetKey, buf);
+  await writeStemAudioPersist(assetKey, buf);
+
   logStemLoadDiagnostic('STEM_FETCH_DONE', {
     reason: `${assetKey} bytes=${buf.byteLength}`,
     urlForLog: redactStemUrlForLog(url),
   });
   return buf;
+}
+
+async function resolveStemBytes(
+  assetKey: string,
+  url: string,
+  fetchOptions?: RequestInit
+): Promise<ArrayBuffer> {
+  const persisted = await readStemAudioPersist(assetKey);
+  if (persisted && persisted.byteLength > 0) {
+    storeInCache(assetKey, persisted);
+    logStemLoadDiagnostic('STEM_PERSIST_HIT', { reason: assetKey });
+    return persisted;
+  }
+
+  return fetchStemBytesFromNetwork(assetKey, url, fetchOptions);
 }
 
 /**
@@ -158,7 +181,7 @@ export async function getStemAudioBytes(
     return pending.then((buf) => buf.slice(0));
   }
 
-  const work = fetchStemBytes(assetKey, url, fetchOptions).finally(() => {
+  const work = resolveStemBytes(assetKey, url, fetchOptions).finally(() => {
     inflight.delete(assetKey);
   });
   inflight.set(assetKey, work);

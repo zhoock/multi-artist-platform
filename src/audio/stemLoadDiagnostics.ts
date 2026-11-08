@@ -10,6 +10,7 @@ export type StemLoadDiagEvent =
   | 'STEM_CACHE_HIT'
   | 'STEM_CACHE_MISS'
   | 'STEM_CACHE_EVICT'
+  | 'STEM_PERSIST_HIT'
   | 'STEM_INFLIGHT_DEDUP'
   | 'STEM_FETCH_START'
   | 'STEM_FETCH_DONE'
