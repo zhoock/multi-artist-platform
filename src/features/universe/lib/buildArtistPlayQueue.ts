@@ -78,6 +78,7 @@ export function buildArtistPlayQueue(albums: AlbumDetails[]): ArtistPlayQueueRes
           cover: album.cover ?? null,
           userId: album.userId ?? null,
           fullName: null,
+          ...(album.playerBackground ? { playerBackground: album.playerBackground } : {}),
         },
       });
     }
@@ -121,6 +122,7 @@ export function appendAlbumsToArtistPlayQueue(
           cover: album.cover ?? null,
           userId: album.userId ?? null,
           fullName: null,
+          ...(album.playerBackground ? { playerBackground: album.playerBackground } : {}),
         },
       });
     }

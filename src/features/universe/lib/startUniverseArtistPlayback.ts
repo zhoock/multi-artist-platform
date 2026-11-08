@@ -96,6 +96,9 @@ export async function startUniverseArtistPlayback(
       artist: seedArtist,
       fullName: formatAlbumDisplayFullName(seedArtist, resolvedAlbum.title) || resolvedAlbum.title,
       cover: resolvedAlbum.cover ?? null,
+      ...(resolvedAlbum.playerBackground
+        ? { playerBackground: resolvedAlbum.playerBackground }
+        : {}),
     })
   );
   input.dispatch(playerActions.setSourceLocation(input.sourceLocation));

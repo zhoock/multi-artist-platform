@@ -59,6 +59,13 @@ import {
   fetchArtistDisplayNameForUserId,
 } from './lib/resolve-album-key';
 import { mergeTrackPayloads } from './lib/merge-track-payloads';
+import type { AlbumCoverPlayerBackground } from '../../src/shared/lib/imageColor/albumCoverPlayerBackground';
+import {
+  coerceAlbumCoverForDb,
+  coverImgBaseForStorageCleanup,
+  coverImgFromStorageField,
+  parseAlbumCoverField,
+} from '../../src/shared/lib/albumCoverStorage';
 
 interface AlbumRow {
   id: string;
@@ -70,7 +77,7 @@ interface AlbumRow {
   album: string;
   full_name: string;
   description: string;
-  cover: string; // Changed from Record<string, unknown> to string
+  cover: unknown;
   release: Record<string, unknown>;
   buttons: Record<string, unknown>;
   details: unknown[];
@@ -130,7 +137,8 @@ interface AlbumData {
   album: string;
   fullName: string;
   description: string;
-  cover: string; // Changed from Record<string, unknown> to string
+  cover: string;
+  playerBackground?: AlbumCoverPlayerBackground;
   release: Record<string, unknown>;
   buttons: Record<string, unknown>;
   details: unknown[];
@@ -374,7 +382,7 @@ interface CreateAlbumRequest {
   /** Единое название альбома (все языки). Допускается legacy: translations[lang].album. */
   album?: string;
   translations: Partial<Record<SupportedLang, AlbumLocalePayload>>;
-  cover?: string;
+  cover?: unknown;
   release?: Record<string, unknown>;
   buttons?: Record<string, unknown>;
   lang: SupportedLang;
@@ -387,7 +395,8 @@ interface UpdateAlbumRequest {
   album?: string;
   /** Частичное или полное обновление переводимых полей для lang. */
   translations?: Partial<Record<SupportedLang, Partial<AlbumLocalePayload>>>;
-  cover?: string;
+  /** Storage base name string (legacy) or `{ img, playerBackground }` after cover re-upload. */
+  cover?: unknown;
   release?: Record<string, unknown>;
   buttons?: Record<string, unknown>;
   lang: SupportedLang;
@@ -554,6 +563,19 @@ function mapAlbumToApiFormat(
     }
   }
 
+  const parsedCover = parseAlbumCoverField(album.cover);
+  if (album.cover != null && !parsedCover.img) {
+    console.warn('[albums.ts] cover missing img after parse', {
+      albumId: album.album_id,
+      lang: album.lang,
+      coverType: typeof album.cover,
+      coverPreview:
+        typeof album.cover === 'string'
+          ? album.cover.slice(0, 200)
+          : JSON.stringify(album.cover).slice(0, 200),
+    });
+  }
+
   return {
     userId: album.user_id || undefined,
     dbAlbumId: album.id,
@@ -562,7 +584,8 @@ function mapAlbumToApiFormat(
     album: album.album,
     fullName: album.full_name,
     description: album.description,
-    cover: album.cover, // Changed: now it's a string, no cast needed
+    cover: parsedCover.img,
+    ...(parsedCover.playerBackground ? { playerBackground: parsedCover.playerBackground } : {}),
     release: releaseStripped,
     photographer: coverCredits.photographer,
     photographerURL: coverCredits.photographerURL,
@@ -655,7 +678,7 @@ async function syncSharedAlbumMetadataAcrossLocales(
     releaseJson?: string;
     isPublic?: boolean;
     isPublished?: boolean;
-    cover?: string;
+    cover?: ReturnType<typeof coerceAlbumCoverForDb>;
     buttonsJson?: string;
   }
 ): Promise<void> {
@@ -684,7 +707,7 @@ async function syncSharedAlbumMetadataAcrossLocales(
     values.push(patch.isPublished);
   }
   if (patch.cover !== undefined) {
-    sets.push(`cover = $${i++}::text`);
+    sets.push(`cover = $${i++}::jsonb`);
     values.push(patch.cover);
   }
   if (patch.buttonsJson !== undefined) {
@@ -1158,8 +1181,8 @@ export const handler: Handler = async (
       const releaseForDb = stripReleaseCoverCredits(data.release || {});
 
       const postCoverBase =
-        data.cover !== undefined && data.cover !== null && String(data.cover).trim() !== ''
-          ? normalizeCoverBaseName(String(data.cover))
+        data.cover !== undefined && data.cover !== null
+          ? coverImgBaseForStorageCleanup(data.cover)
           : null;
       const previousCoverBasesForPost =
         postCoverBase != null ? await fetchDistinctCoverBasesFromDb(albumUserId, data.albumId) : [];
@@ -1169,7 +1192,7 @@ export const handler: Handler = async (
           user_id, album_id, artist, album, full_name, description,
           cover, release, buttons, details, lang, is_public, is_published,
           photographer, photographer_url, designer, designer_url
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
         ON CONFLICT (user_id, album_id, lang)
         DO UPDATE SET
           album = EXCLUDED.album,
@@ -1194,7 +1217,7 @@ export const handler: Handler = async (
           albumTitle,
           locale?.fullName ?? null,
           locale?.description ?? null,
-          data.cover || null,
+          data.cover !== undefined ? coerceAlbumCoverForDb(data.cover) : null,
           JSON.stringify(releaseForDb),
           JSON.stringify(data.buttons || {}),
           JSON.stringify(locale?.details ?? []),
@@ -1271,8 +1294,8 @@ export const handler: Handler = async (
         }
 
         const putCoverBase =
-          data.cover !== undefined && data.cover !== null && String(data.cover).trim() !== ''
-            ? normalizeCoverBaseName(String(data.cover))
+          data.cover !== undefined && data.cover !== null
+            ? coverImgBaseForStorageCleanup(data.cover)
             : null;
         const previousCoverBasesForPut =
           putCoverBase != null ? await fetchDistinctCoverBasesFromDb(userId, data.albumId) : [];
@@ -1363,8 +1386,8 @@ export const handler: Handler = async (
               const buttonsPayload =
                 data.buttons !== undefined ? data.buttons : (sibling.buttons ?? {});
               const coverVal =
-                data.cover !== undefined && data.cover !== null && data.cover !== ''
-                  ? data.cover
+                data.cover !== undefined && data.cover !== null
+                  ? coerceAlbumCoverForDb(data.cover)
                   : sibling.cover;
               const detailsPayload =
                 localePatch?.details !== undefined ? localePatch.details : (sibling.details ?? []);
@@ -1400,7 +1423,7 @@ export const handler: Handler = async (
                   user_id, album_id, artist, album, full_name, description,
                   cover, release, buttons, details, lang, is_public, is_published,
                   photographer, photographer_url, designer, designer_url
-                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9::jsonb, $10::jsonb, $11, $12, $13, $14, $15, $16, $17)
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8::jsonb, $9::jsonb, $10::jsonb, $11, $12, $13, $14, $15, $16, $17)
                 RETURNING *`,
                 [
                   userId,
@@ -1592,9 +1615,12 @@ export const handler: Handler = async (
             updateValues.push(lp.designerURL == null ? '' : String(lp.designerURL));
           }
         }
-        if (data.cover !== undefined && data.cover !== null && data.cover !== '') {
-          updateFields.push(`cover = $${paramIndex++}::text`);
-          updateValues.push(data.cover);
+        if (data.cover !== undefined && data.cover !== null) {
+          const coverForDb = coerceAlbumCoverForDb(data.cover);
+          if (coverForDb !== null) {
+            updateFields.push(`cover = $${paramIndex++}::jsonb`);
+            updateValues.push(coverForDb);
+          }
         }
         if (data.release !== undefined) {
           updateFields.push(`release = $${paramIndex++}::jsonb`);
@@ -1670,8 +1696,8 @@ export const handler: Handler = async (
         const syncPub =
           data.isPublic !== undefined && existingAlbum.is_published ? data.isPublic : undefined;
         const syncCover =
-          data.cover !== undefined && data.cover !== null && data.cover !== ''
-            ? String(data.cover)
+          data.cover !== undefined && data.cover !== null
+            ? (coerceAlbumCoverForDb(data.cover) ?? undefined)
             : undefined;
         const syncButtons = data.buttons !== undefined ? JSON.stringify(data.buttons) : undefined;
         if (

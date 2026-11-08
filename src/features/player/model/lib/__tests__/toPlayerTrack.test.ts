@@ -66,6 +66,33 @@ describe('toPlayerTrack', () => {
     ).toBeUndefined();
   });
 
+  test('queueAlbumMeta cover extracts img from new JSONB object', () => {
+    const thin = toPlayerTrack(
+      {
+        id: 't1',
+        title: 'Song',
+        duration: 1,
+        src: 'a.mp3',
+        queueAlbumMeta: {
+          albumId: 'rubber-soul',
+          album: 'Rubber Soul',
+          cover: {
+            img: 'album_cover_uuid_artist-Cover-rubber-soul.jpg',
+            playerBackground: {
+              primary: [190, 107, 37],
+              secondary: [26, 82, 77],
+            },
+          },
+          userId: 'user-1',
+        },
+      } as never,
+      'rubber-soul'
+    );
+
+    expect(thin?.queueAlbumMeta?.cover).toBe('album_cover_uuid_artist-Cover-rubber-soul');
+    expect(thin?.queueAlbumMeta?.playerBackground?.primary).toEqual([190, 107, 37]);
+  });
+
   test('toPlayerTracks drops invalid rows', () => {
     expect(
       toPlayerTracks([{ title: 'no-id', duration: 1, src: 'a.mp3' } as never, null, undefined])

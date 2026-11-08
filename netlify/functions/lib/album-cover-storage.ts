@@ -4,6 +4,7 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { coverImgFromStorageField } from '../../../src/shared/lib/albumCoverStorage';
 import { query } from './db';
 import { createSupabaseAdminClient, STORAGE_BUCKET_NAME } from './supabase';
 
@@ -45,18 +46,17 @@ export async function fetchDistinctCoverBasesFromDb(
   albumId: string
 ): Promise<string[]> {
   try {
-    const result = await query<{ cover: string | null }>(
+    const result = await query<{ cover: unknown }>(
       `SELECT DISTINCT cover FROM albums 
        WHERE user_id = $1 AND album_id = $2 
-         AND cover IS NOT NULL AND trim(cover) <> ''`,
+         AND cover IS NOT NULL`,
       [userId, albumId]
     );
     const bases = new Set<string>();
     for (const row of result.rows) {
-      if (row.cover) {
-        const b = normalizeCoverBaseName(row.cover);
-        if (b) bases.add(b);
-      }
+      if (row.cover == null) continue;
+      const b = coverImgFromStorageField(row.cover);
+      if (b) bases.add(normalizeCoverBaseName(b));
     }
     return [...bases];
   } catch (e) {

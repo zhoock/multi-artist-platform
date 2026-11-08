@@ -5,11 +5,6 @@ import { fireEvent, render, screen } from '@testing-library/react';
 
 import { MiniPlayer } from '../MiniPlayer';
 
-jest.mock('@shared/lib/hooks/useImageColor', () => ({
-  useImageColor: () => ({ current: null }),
-  clearImageColorCache: jest.fn(),
-}));
-
 jest.mock('@app/providers/lang', () => ({
   useLang: jest.fn(),
 }));

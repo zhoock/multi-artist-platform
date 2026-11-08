@@ -50,15 +50,6 @@ module.exports = {
           priority: 20,
           reuseExistingChunk: true,
         },
-        // colorthief — только при открытии full-screen player (useImageColor callback)
-        colorthief: {
-          test: /[\\/]node_modules[\\/]colorthief[\\/]/,
-          name: 'colorthief',
-          chunks: 'async',
-          priority: 50,
-          enforce: true,
-          reuseExistingChunk: true,
-        },
         // three.js — только async chunks (Universe3D / service scenes)
         three: {
           test: /[\\/]node_modules[\\/]three[\\/]/,

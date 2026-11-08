@@ -50,20 +50,20 @@ describe('syncPlayerAlbumMetaFromCurrentTrack', () => {
     store.dispatch(playerActions.setPlaylist(playlist));
     store.dispatch(playerActions.setCurrentTrackIndex(0));
 
-    expect(store.getState().player.albumMeta?.cover).toBe('cover-1.jpg');
+    expect(store.getState().player.albumMeta?.cover).toBe('cover-1');
     expect(store.getState().player.albumMeta?.artist).toBe('Artist');
     expect(store.getState().player.albumMeta?.publicSlug).toBe('artist-slug');
 
     store.dispatch(playerActions.nextTrack(playlist.length));
 
-    expect(store.getState().player.albumMeta?.cover).toBe('cover-2.jpg');
+    expect(store.getState().player.albumMeta?.cover).toBe('cover-2');
     expect(store.getState().player.albumMeta?.album).toBe('Second');
     expect(store.getState().player.albumMeta?.artist).toBe('Artist');
     expect(store.getState().player.albumMeta?.fullName).toBe('Artist — Second');
 
     store.dispatch(playerActions.prevTrack(playlist.length));
 
-    expect(store.getState().player.albumMeta?.cover).toBe('cover-1.jpg');
+    expect(store.getState().player.albumMeta?.cover).toBe('cover-1');
     expect(store.getState().player.albumMeta?.album).toBe('First');
   });
 

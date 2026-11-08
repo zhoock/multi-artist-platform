@@ -12,6 +12,7 @@ import { normalizeStemsVisibility } from '@shared/lib/stems/stemsVisibility';
 import type { TrackVisibility } from '@shared/lib/tracks/trackVisibility';
 import { normalizeTrackVisibility } from '@shared/lib/tracks/trackVisibility';
 
+import { coverImgFromStorageField } from '@shared/lib/albumCoverStorage';
 import { resolveAlbumEditableForDisplay } from './resolveAlbumEditableDisplay';
 
 export interface AlbumData {
@@ -156,7 +157,7 @@ export function transformEditableAlbumToAlbumData(
     title: source.album,
     artist: artistLabel,
     year: releaseDate ? releaseDate.getFullYear().toString() : '',
-    cover: source.cover,
+    cover: coverImgFromStorageField(source.cover),
     isPublic: source.isPublic,
     isPublished: source.isPublished,
     copyrightRestricted: source.copyrightRestricted,

@@ -188,6 +188,7 @@ const AlbumTracksComponent = ({
           artist: displayArtistLabel,
           fullName: fullNameMeta,
           cover: album.cover ?? null,
+          ...(album.playerBackground ? { playerBackground: album.playerBackground } : {}),
         })
       );
       dispatch(

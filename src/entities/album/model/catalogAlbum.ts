@@ -3,6 +3,8 @@
  * Not interchangeable with full `AlbumEditable` (no tracks/lyrics/details/buttons).
  */
 
+import { coverImgFromStorageField } from '@shared/lib/albumCoverStorage';
+
 export interface CatalogAlbum {
   albumId: string;
   /** Public album slug — same as albumId in current data model. */
@@ -53,7 +55,7 @@ export function normalizeCatalogAlbum(raw: unknown): CatalogAlbum | null {
     albumId,
     slug,
     title,
-    cover: typeof v.cover === 'string' ? v.cover : '',
+    cover: coverImgFromStorageField(v.cover),
     releaseDate: typeof v.releaseDate === 'string' ? v.releaseDate : '',
     trackCount: typeof v.trackCount === 'number' && !Number.isNaN(v.trackCount) ? v.trackCount : 0,
     duration: typeof v.duration === 'number' && !Number.isNaN(v.duration) ? v.duration : 0,

@@ -19,6 +19,7 @@ import { assertArtistVisibleToViewer } from './lib/artist-publication';
 import { PublicArtistResolverError, resolvePublicArtistUserId } from './lib/public-artist-resolver';
 import { viewerHasPremiumAccessToArtist } from './lib/entitlements';
 import { artistHasMonetizationEnabled } from './lib/artist-monetization';
+import { coverImgFromStorageField } from '../../src/shared/lib/albumCoverStorage';
 import { resolveEffectiveContentVisibility } from '../../src/shared/lib/payment/artistMonetization';
 import { normalizeTrackVisibility } from '../../src/shared/lib/tracks/trackVisibility';
 import { normalizeStemsVisibility } from '../../src/shared/lib/stems/stemsVisibility';
@@ -349,7 +350,7 @@ export const handler: Handler = async (
         albumId: albumKey,
         slug: albumKey,
         title,
-        cover: typeof shared.cover === 'string' ? shared.cover : '',
+        cover: coverImgFromStorageField(shared.cover),
         releaseDate: parseReleaseDate(shared.release),
         trackCount,
         duration,

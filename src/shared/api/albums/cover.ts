@@ -15,11 +15,14 @@ type ApiSuccess<T> = {
   data: T;
 };
 
+import type { AlbumCoverPlayerBackground } from '@shared/lib/imageColor/albumCoverPlayerBackground';
+
 export type UploadCoverDraftResponse =
   | ApiSuccess<{
       draftKey: string;
       url: string;
       storagePath: string;
+      playerBackground?: AlbumCoverPlayerBackground;
     }>
   | ApiError;
 

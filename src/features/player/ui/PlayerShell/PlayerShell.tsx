@@ -41,6 +41,10 @@ import {
   measureFixedElementBottomInset,
   setFixedBottomInset,
 } from '@shared/lib/layout';
+import {
+  playerAmbientBackgroundDependencyKey,
+  resolvePlayerAmbientBackgroundGradient,
+} from '@features/player/lib/playerAmbientBackground';
 
 const DEFAULT_BG = 'rgba(var(--extra-background-color-rgb) / 80%)';
 
@@ -50,15 +54,10 @@ const LazyAudioPlayer = lazy(() =>
   )
 );
 
-type AudioPlayerShellProps = {
-  albumMeta: PlayerAlbumMeta;
-  setBgColor: (color: string) => void;
-};
-
-function FullScreenAudioPlayer({ albumMeta, setBgColor }: AudioPlayerShellProps) {
+function FullScreenAudioPlayer({ albumMeta }: { albumMeta: PlayerAlbumMeta }) {
   return (
     <Suspense fallback={null}>
-      <LazyAudioPlayer albumMeta={albumMeta} setBgColor={setBgColor} />
+      <LazyAudioPlayer albumMeta={albumMeta} />
     </Suspense>
   );
 }
@@ -247,19 +246,11 @@ export const PlayerShell: React.FC = () => {
     stripOrphanPlayerHash();
   }, [stripOrphanPlayerHash, hasPlaylist, albumMeta?.albumId]);
 
-  // Сбрасываем цвет фона только при смене альбома (по albumId)
-  // Это нужно для начальной установки дефолтного цвета, который затем будет заменён
-  // цветами из обложки альбома через setBgColor из AudioPlayer
-  // Используем useRef для отслеживания предыдущего albumId, чтобы сбрасывать цвет только при реальной смене альбома
-  const prevAlbumIdRef = useRef<string | null>(null);
-  useEffect(() => {
-    const currentAlbumId = albumMeta?.albumId;
-    // Сбрасываем цвет только если альбом действительно изменился
-    if (currentAlbumId && prevAlbumIdRef.current !== currentAlbumId) {
-      prevAlbumIdRef.current = currentAlbumId;
-      setBgColor(DEFAULT_BG);
-    }
-  }, [albumMeta?.albumId]);
+  const playerBgKey = playerAmbientBackgroundDependencyKey(albumMeta?.playerBackground);
+  useLayoutEffect(() => {
+    const gradient = resolvePlayerAmbientBackgroundGradient(albumMeta);
+    setBgColor(gradient ?? DEFAULT_BG);
+  }, [albumMeta?.albumId, playerBgKey]);
 
   useEffect(() => {
     timeRef.current = time;
@@ -554,7 +545,7 @@ export const PlayerShell: React.FC = () => {
       {isFullScreen && canRenderPopup && albumMeta && (
         <Popup isActive bgColor={bgColor} onClose={handleClose}>
           <PopupHamburgerToggle isActive accessibleName={playerA11yLabels.closePlayer} />
-          <FullScreenAudioPlayer albumMeta={albumMeta} setBgColor={setBgColor} />
+          <FullScreenAudioPlayer albumMeta={albumMeta} />
         </Popup>
       )}
     </>

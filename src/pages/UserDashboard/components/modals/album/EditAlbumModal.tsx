@@ -29,6 +29,8 @@ import { getUserImageUrl } from '@shared/api/albums';
 import { DashboardLoadingState, DashboardSpinner } from '@shared/ui/dashboard';
 import { getAlbumStorageBaseName } from '@shared/lib/albumCoverUrl';
 import { uploadCoverDraft, commitCover } from '@shared/api/albums/cover';
+import type { AlbumCoverPlayerBackground } from '@shared/lib/imageColor/albumCoverPlayerBackground';
+import { buildAlbumCoverStorageValue } from '@shared/lib/albumCoverStorage';
 import type { AlbumEditable, detailsProps } from '@models';
 import { mergeSemanticSourceIntoLocaleDetails } from '@entities/album/lib/albumDetailSemanticKind';
 import { generateAlbumIdFromTitle } from '@shared/lib/album/generateAlbumIdFromTitle';
@@ -230,6 +232,7 @@ export function EditAlbumModal({
   const [coverDraftKey, setCoverDraftKey] = useState<string | null>(null);
   /** Staged cover committed to Storage — survives DB failure for retry without re-commit. */
   const committedCoverBaseNameRef = useRef<string | null>(null);
+  const committedCoverPlayerBackgroundRef = useRef<AlbumCoverPlayerBackground | null>(null);
 
   const [uploadProgress, setUploadProgress] = useState<number>(0);
   const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'uploaded' | 'error'>(
@@ -737,6 +740,7 @@ export function EditAlbumModal({
     setAlbumArtPreview(null);
     setCoverDraftKey(null);
     committedCoverBaseNameRef.current = null;
+    committedCoverPlayerBackgroundRef.current = null;
     setUploadProgress(0);
     setUploadStatus('idle');
     setUploadError(null);
@@ -823,6 +827,8 @@ export function EditAlbumModal({
       setUploadError(null);
       setCoverDraftKey(null);
       committedCoverBaseNameRef.current = null;
+      committedCoverPlayerBackgroundRef.current = null;
+      committedCoverPlayerBackgroundRef.current = null;
 
       // локальное превью (не течёт)
       setLocalPreview(file);
@@ -850,6 +856,12 @@ export function EditAlbumModal({
       );
 
       if (result.success && result.data) {
+        if (!result.data.playerBackground) {
+          setUploadStatus('error');
+          setUploadError('Не удалось вычислить палитру обложки. Попробуйте другое изображение.');
+          return;
+        }
+        committedCoverPlayerBackgroundRef.current = result.data.playerBackground;
         setCoverDraftKey(result.data.draftKey);
         setStep1InvalidFields((prev) => prev.filter((field) => field !== 'cover'));
 
@@ -864,7 +876,7 @@ export function EditAlbumModal({
         setUploadStatus('uploaded');
       } else if (!result.success) {
         setUploadStatus('error');
-        setUploadError(result.error || 'Failed to upload cover');
+        setUploadError(result.error || 'Не удалось загрузить обложку');
       }
     } catch (error) {
       console.error('Error uploading cover draft:', error);
@@ -2261,11 +2273,31 @@ export function EditAlbumModal({
     // Используем lang для сохранения
     const normalizedLang = lang;
 
-    let newCover: string | undefined;
+    let newCover: ReturnType<typeof buildAlbumCoverStorageValue> | undefined;
     const coverSavePlan = planAlbumCoverForSave(coverDraftKey, committedCoverBaseNameRef.current);
 
+    const coverPayloadFromStaged = (baseName: string) => {
+      const playerBackground = committedCoverPlayerBackgroundRef.current;
+      if (!playerBackground) {
+        throw new Error('Cover palette missing — re-upload the cover image');
+      }
+      return buildAlbumCoverStorageValue(baseName, playerBackground);
+    };
+
     if (coverSavePlan.action === 'useCommitted') {
-      newCover = coverSavePlan.baseName;
+      try {
+        newCover = coverPayloadFromStaged(coverSavePlan.baseName);
+      } catch (e) {
+        const message = e instanceof Error ? e.message : 'Cover palette missing';
+        setAlertModal({
+          isOpen: true,
+          title: 'Ошибка',
+          message,
+          variant: 'error',
+        });
+        setIsSaving(false);
+        return;
+      }
     } else if (coverSavePlan.action === 'commitDraft') {
       try {
         const commitResult = await commitCover(coverSavePlan.draftKey, finalAlbumId, {
@@ -2277,7 +2309,21 @@ export function EditAlbumModal({
         if (commitResult.success && commitResult.data) {
           const baseName = extractCommittedCoverBaseName(commitResult.data);
           if (baseName) {
-            newCover = baseName;
+            try {
+              newCover = coverPayloadFromStaged(baseName);
+            } catch (e) {
+              const message = e instanceof Error ? e.message : 'Cover palette missing';
+              setUploadStatus('error');
+              setUploadError(message);
+              setAlertModal({
+                isOpen: true,
+                title: 'Ошибка',
+                message: 'Палитра обложки утеряна. Загрузите обложку заново.',
+                variant: 'error',
+              });
+              setIsSaving(false);
+              return;
+            }
             committedCoverBaseNameRef.current = baseName;
             setCoverDraftKey(null);
           } else {
@@ -2412,6 +2458,7 @@ export function EditAlbumModal({
       }
 
       committedCoverBaseNameRef.current = null;
+      committedCoverPlayerBackgroundRef.current = null;
       setCoverDraftKey(null);
 
       if (method === 'PUT' && exists) {

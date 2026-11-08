@@ -4,25 +4,36 @@ import type {
   PlayerTrackQueueAlbumMeta,
 } from '@features/player/model/types/playerSchema';
 
+import {
+  normalizePlayerAlbumMeta,
+  normalizeQueueAlbumMeta,
+  resolvePlayerCoverImg,
+} from './normalizePlayerAlbumMeta';
+
 function mergeQueueAlbumMeta(
   base: PlayerAlbumMeta | null,
   embedded: PlayerTrackQueueAlbumMeta
 ): PlayerAlbumMeta {
-  const albumTitle = embedded.album ?? base?.album ?? null;
+  const queueMeta = normalizeQueueAlbumMeta(embedded);
+  const albumTitle = queueMeta.album ?? base?.album ?? null;
   const artist = base?.artist ?? null;
   const fullName =
-    embedded.fullName?.trim() ||
+    queueMeta.fullName?.trim() ||
     (artist && albumTitle ? `${artist} — ${albumTitle}` : base?.fullName?.trim() || albumTitle);
 
-  return {
-    albumId: embedded.albumId ?? base?.albumId ?? null,
-    userId: embedded.userId ?? base?.userId ?? null,
+  const embeddedImg = resolvePlayerCoverImg(queueMeta.cover);
+  const baseImg = resolvePlayerCoverImg(base?.cover);
+
+  return normalizePlayerAlbumMeta({
+    albumId: queueMeta.albumId ?? base?.albumId ?? null,
+    userId: queueMeta.userId ?? base?.userId ?? null,
     publicSlug: base?.publicSlug ?? null,
     artist,
     album: albumTitle,
     fullName: fullName || null,
-    cover: embedded.cover ?? base?.cover ?? null,
-  };
+    cover: embeddedImg ?? baseImg ?? null,
+    playerBackground: queueMeta.playerBackground ?? base?.playerBackground,
+  });
 }
 
 /**

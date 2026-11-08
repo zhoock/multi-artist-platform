@@ -13,6 +13,7 @@ import {
 } from '@features/player/model/types/playerSchema';
 import { toPlayerTracks } from '@features/player/model/lib/toPlayerTrack';
 import { syncPlayerAlbumMetaFromCurrentTrack } from '@features/player/model/lib/syncPlayerAlbumMetaFromCurrentTrack';
+import { normalizePlayerAlbumMeta } from '@features/player/model/lib/normalizePlayerAlbumMeta';
 import { normalizeTrackIdString } from '@shared/lib/tracks/normalizeTrackIdString';
 import { patchPlayerTrackListHasStems } from '@features/player/model/lib/patchPlayerTrackHasStems';
 
@@ -254,7 +255,7 @@ const playerSlice = createSlice({
      * Сохраняет минимальные данные об альбоме для отображения в UI (мини-плеер, полноэкранный плеер).
      */
     setAlbumMeta(state, action: PayloadAction<PlayerAlbumMeta | null>) {
-      state.albumMeta = action.payload;
+      state.albumMeta = action.payload ? normalizePlayerAlbumMeta(action.payload) : null;
     },
     /**
      * Запоминает маршрут, на котором пользователь открыл плеер.
@@ -485,7 +486,7 @@ const playerSlice = createSlice({
       state.currentTrackIndex = normalizedIndex;
       state.albumId = albumId;
       state.albumTitle = albumTitle;
-      state.albumMeta = albumMeta ?? null;
+      state.albumMeta = albumMeta ? normalizePlayerAlbumMeta(albumMeta) : null;
       state.sourceLocation = sourceLocation ?? null;
       state.volume = Math.max(0, Math.min(100, volume ?? state.volume));
       state.isPlaying = !!isPlaying;

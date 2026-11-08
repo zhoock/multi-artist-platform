@@ -5,6 +5,7 @@
 
 import type { PlayerState, PlayerTrack } from '@features/player/model/types/playerSchema';
 import { toPlayerTracks } from '@features/player/model/lib/toPlayerTrack';
+import { normalizePlayerAlbumMeta } from '@features/player/model/lib/normalizePlayerAlbumMeta';
 
 const STORAGE_KEY = 'playerState';
 
@@ -44,7 +45,7 @@ export function savePlayerState(state: PlayerState): void {
       currentTrackIndex: state.currentTrackIndex,
       volume: state.volume,
       isPlaying: state.isPlaying,
-      albumMeta: state.albumMeta ? { ...state.albumMeta } : null,
+      albumMeta: state.albumMeta ? normalizePlayerAlbumMeta({ ...state.albumMeta }) : null,
       sourceLocation: state.sourceLocation ? { ...state.sourceLocation } : null,
       playlist: safePlaylist,
       originalPlaylist: safeOriginalPlaylist,
@@ -91,8 +92,12 @@ export function loadPlayerState(): PersistedPlayerState | null {
       ? toPlayerTracks(parsed.originalPlaylist, albumId)
       : [];
 
+    const albumMeta =
+      parsed.albumMeta != null ? normalizePlayerAlbumMeta(parsed.albumMeta) : parsed.albumMeta;
+
     return {
       ...parsed,
+      albumMeta,
       playlist,
       originalPlaylist,
       shuffle: typeof parsed.shuffle === 'boolean' ? parsed.shuffle : false,

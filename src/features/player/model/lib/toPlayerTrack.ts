@@ -3,7 +3,10 @@ import type {
   PlayerTrack,
   PlayerTrackQueueAlbumMeta,
 } from '@features/player/model/types/playerSchema';
+import { parseAlbumCoverPlayerBackground } from '@shared/lib/imageColor/albumCoverPlayerBackground';
 import type { TrackLyricsBundle } from '@shared/lib/lyrics/types';
+import { parseAlbumCoverField } from '@shared/lib/albumCoverStorage';
+import { resolvePlayerCoverImg } from './normalizePlayerAlbumMeta';
 
 function readQueueAlbumMeta(value: unknown): PlayerTrackQueueAlbumMeta | undefined {
   if (!value || typeof value !== 'object') return undefined;
@@ -11,12 +14,17 @@ function readQueueAlbumMeta(value: unknown): PlayerTrackQueueAlbumMeta | undefin
   const albumId = typeof row.albumId === 'string' ? row.albumId.trim() : '';
   if (!albumId) return undefined;
 
+  const parsedCover = parseAlbumCoverField(row.cover);
+  const playerBackground =
+    parseAlbumCoverPlayerBackground(row.playerBackground) ?? parsedCover.playerBackground;
+
   return {
     albumId,
     album: typeof row.album === 'string' ? row.album : null,
     fullName: typeof row.fullName === 'string' ? row.fullName : null,
-    cover: typeof row.cover === 'string' ? row.cover : row.cover === null ? null : null,
+    cover: resolvePlayerCoverImg(row.cover),
     userId: typeof row.userId === 'string' ? row.userId : row.userId === null ? null : null,
+    ...(playerBackground ? { playerBackground } : {}),
   };
 }
 

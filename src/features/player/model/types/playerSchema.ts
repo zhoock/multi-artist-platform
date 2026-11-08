@@ -3,6 +3,7 @@
  */
 
 import type { TrackLyricsBundle } from '@shared/lib/lyrics/types';
+import type { AlbumCoverPlayerBackground } from '@shared/lib/imageColor/albumCoverPlayerBackground';
 
 // Состояние времени трека: текущая позиция и общая длительность
 export interface PlayerTimeState {
@@ -18,12 +19,13 @@ export interface PlayerAlbumMeta {
   artist: string | null;
   fullName: string | null;
   cover: string | null;
+  playerBackground?: AlbumCoverPlayerBackground;
 }
 
 /** Album UI fields carried on a queue row (multi-album Play artist). */
 export type PlayerTrackQueueAlbumMeta = Pick<
   PlayerAlbumMeta,
-  'albumId' | 'album' | 'fullName' | 'cover' | 'userId'
+  'albumId' | 'album' | 'fullName' | 'cover' | 'userId' | 'playerBackground'
 >;
 
 /**

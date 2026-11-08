@@ -3,7 +3,6 @@ import './album-card.scss';
 import { memo, useMemo } from 'react';
 import { getImageUrl } from '@shared/api/albums';
 import type { CoverProps } from 'models';
-import { useImageColor } from '@shared/lib/hooks/useImageColor';
 import {
   getAlbumCoverCacheVersion,
   getAlbumStorageBaseName,
@@ -120,15 +119,11 @@ function AlbumCover({
   size = DEFAULT_BASE_SIZE,
   densities,
   sizes,
-  onColorsExtracted,
   imageSource = 'proxy',
   loading = 'lazy',
   fetchPriority,
-}: CoverProps & {
-  onColorsExtracted?: (colors: { dominant: string; palette: string[] }) => void;
-}) {
+}: CoverProps) {
   const baseName = useMemo(() => getAlbumStorageBaseName(img), [img]);
-  const imgRef = useImageColor(baseName, onColorsExtracted);
   const effectiveBaseSize = size ?? DEFAULT_BASE_SIZE;
 
   const densitySteps = useMemo(() => {
@@ -209,7 +204,6 @@ function AlbumCover({
       <source srcSet={jpegSrcSet} sizes={resolvedSizes} type="image/jpeg" />
 
       <img
-        ref={imgRef}
         className="album-cover__image"
         loading={loading}
         {...(fetchPriority ? { fetchpriority: fetchPriority } : {})}
@@ -224,10 +218,6 @@ function AlbumCover({
 }
 
 export default memo(AlbumCover, (prevProps, nextProps) => {
-  const prevCallback = prevProps.onColorsExtracted;
-  const nextCallback = nextProps.onColorsExtracted;
-  const callbacksEqual = prevCallback === nextCallback || (!prevCallback && !nextCallback);
-
   return (
     prevProps.img === nextProps.img &&
     prevProps.userId === nextProps.userId &&
@@ -237,7 +227,6 @@ export default memo(AlbumCover, (prevProps, nextProps) => {
     prevProps.sizes === nextProps.sizes &&
     prevProps.imageSource === nextProps.imageSource &&
     prevProps.loading === nextProps.loading &&
-    prevProps.fetchPriority === nextProps.fetchPriority &&
-    callbacksEqual
+    prevProps.fetchPriority === nextProps.fetchPriority
   );
 });

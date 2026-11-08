@@ -3,11 +3,6 @@ import { render, screen } from '@testing-library/react';
 import { getAlbumCoverCacheVersion } from '@shared/lib/albumCoverUrl';
 import AlbumCover from '../AlbumCover';
 
-jest.mock('@shared/lib/hooks/useImageColor', () => ({
-  useImageColor: () => ({ current: null }),
-  clearImageColorCache: jest.fn(),
-}));
-
 const TEST_USER_ID = 'af97f741-8dae-410b-94a6-3f828f9140a4';
 const SUPABASE_URL = 'https://jhpvetvfnsklpwswadle.supabase.co';
 const COVER_KEY = 'smolyanoe-chuchelko-Cover-23-remastered';

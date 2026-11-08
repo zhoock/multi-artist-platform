@@ -6,11 +6,6 @@ import CatalogAlbumCover from '../CatalogAlbumCover';
 import { getAlbumCoverAdminVariantUrls } from '@shared/lib/albumCoverUrl';
 import { MiniPlayer } from '@features/player/ui/PlayerShell/MiniPlayer';
 
-jest.mock('@shared/lib/hooks/useImageColor', () => ({
-  useImageColor: () => ({ current: null }),
-  clearImageColorCache: jest.fn(),
-}));
-
 const TEST_USER_ID = 'af97f741-8dae-410b-94a6-3f828f9140a4';
 const SUPABASE_URL = 'https://jhpvetvfnsklpwswadle.supabase.co';
 const COVER_KEY = 'smolyanoe-chuchelko-Cover-23-remastered';

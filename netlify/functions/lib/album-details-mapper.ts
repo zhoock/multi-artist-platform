@@ -5,6 +5,8 @@
  */
 
 import type { TrackLyricsBundle } from '../../../src/shared/lib/lyrics/types';
+import type { AlbumCoverPlayerBackground } from '../../../src/shared/lib/imageColor/albumCoverPlayerBackground';
+import { parseAlbumCoverField } from '../../../src/shared/lib/albumCoverStorage';
 
 import type { detailsProps } from '../../../src/models';
 import { normalizeTrackVisibility } from '../../../src/shared/lib/tracks/trackVisibility';
@@ -76,6 +78,7 @@ export interface AlbumDetailsDto {
   slug: string;
   title: string;
   cover: string;
+  playerBackground?: AlbumCoverPlayerBackground;
   userId: string;
   dbAlbumId: string;
   description: string;
@@ -425,11 +428,14 @@ export function mapLocalesToAlbumDetails(
     pipelineAvailable: ctx.pipelineAvailable,
   });
 
+  const parsedCover = parseAlbumCoverField(shared.cover);
+
   return {
     albumId: shared.albumId,
     slug: shared.albumId,
     title,
-    cover: asString(shared.cover),
+    cover: parsedCover.img,
+    ...(parsedCover.playerBackground ? { playerBackground: parsedCover.playerBackground } : {}),
     userId,
     dbAlbumId: shared.dbAlbumId,
     description: textRoot.description,

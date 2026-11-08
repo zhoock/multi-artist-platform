@@ -5,6 +5,7 @@ import { normalizeTrackIdString } from '@shared/lib/tracks/normalizeTrackIdStrin
 import { normalizeStemsVisibility } from '@shared/lib/stems/stemsVisibility';
 import { normalizeTrackVisibility, type TrackVisibility } from '@shared/lib/tracks/trackVisibility';
 import type { RootState } from '@shared/model/appStore/types';
+import { coverImgFromStorageField } from '@shared/lib/albumCoverStorage';
 import { getToken } from '@shared/lib/auth';
 import { fetchWithAuthSession } from '@shared/lib/authFetch';
 import { buildApiUrl } from '@shared/lib/artistQuery';
@@ -181,7 +182,7 @@ export const fetchDashboardAlbums = createAsyncThunk<
             album.fullName ||
             (artistDisplayName ? `${artistDisplayName} — ${album.album}` : album.album),
           description: album.description || '',
-          cover: album.cover || '',
+          cover: coverImgFromStorageField(album.cover),
           release: album.release || {},
           buttons: album.buttons || {},
           details: Array.isArray(album.details) ? album.details : [],

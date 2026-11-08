@@ -16,12 +16,6 @@ import { useAppDispatch } from '@shared/lib/hooks/useAppDispatch';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { playerActions, playerSelectors } from '@features/player';
 import { audioController } from '@features/player/model/lib/audioController';
-import { clearImageColorCache } from '@shared/lib/hooks/useImageColor';
-import {
-  formatRgbTuple,
-  parseRgbString,
-  selectBackgroundColors,
-} from '@shared/lib/imageColor/selectBackgroundColors';
 import { useLang } from '@app/providers/lang';
 import {
   getPlayerA11yLabels,
@@ -71,11 +65,9 @@ import {
 
 export default function AudioPlayer({
   albumMeta,
-  setBgColor,
 }: {
   /** Минимальные данные альбома для UI (обложка, название, артист) — не AlbumEditable. */
   albumMeta: PlayerAlbumMeta;
-  setBgColor: (color: string) => void; // Функция для установки фонового цвета попапа (градиент из цветов обложки)
 }) {
   // Получаем функцию для диспатча действий
   const dispatch = useAppDispatch();
@@ -251,7 +243,6 @@ export default function AudioPlayer({
     isSeekingRef.current = isSeeking;
   }, [isSeeking]);
 
-  const bgColorSetForAlbumRef = useRef<string | null>(null); // флаг: установлен ли уже цвет фона для текущего альбома
   const prevTrackIdRef = useRef<string | number | null>(null); // предыдущий ID трека для отслеживания смены трека
   const inactivityTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null); // таймер для скрытия контролов после бездействия
   const playerContainerRef = useRef<HTMLDivElement | null>(null); // контейнер плеера для отслеживания активности
@@ -663,46 +654,6 @@ export default function AudioPlayer({
     [handleVolumeChange]
   );
 
-  /**
-   * Обработчик извлечения цветов из обложки альбома.
-   * dominant — выбранный primary, palette — исходная палитра ColorThief.
-   * Градиент строится через selectBackgroundColors (без фиксированных индексов).
-   */
-  const handleColorsExtracted = useCallback(
-    ({ palette }: { dominant: string; palette: string[] }) => {
-      if (bgColorSetForAlbumRef.current === albumId) {
-        return;
-      }
-
-      bgColorSetForAlbumRef.current = albumId;
-
-      const rgbPalette = palette.map(parseRgbString);
-      const { primary, secondary } = selectBackgroundColors(rgbPalette);
-      const gradientColor = `linear-gradient(var(--rotate, 132deg), ${formatRgbTuple(primary)}, ${formatRgbTuple(secondary)})`;
-      setBgColor(gradientColor);
-    },
-    [albumId, setBgColor]
-  );
-
-  /**
-   * Очищаем кеш изображений при смене альбома.
-   * Это нужно чтобы гарантировать переизвлечение цветов для нового альбома.
-   * ВАЖНО: НЕ очищаем кеш при размонтировании компонента, только при смене альбома.
-   */
-  useEffect(() => {
-    if (coverKey) {
-      clearImageColorCache(coverKey);
-    }
-    // Не делаем cleanup - кеш должен оставаться для следующего открытия попапа
-  }, [albumId, coverKey]);
-
-  /**
-   * Мемоизируем компонент обложки альбома.
-   * Это предотвращает ненужные ре-рендеры когда другие части компонента обновляются.
-   * Обложка пересоздаётся только если изменяются её пропсы (img, fullName, albumId, onColorsExtracted).
-   *
-   * Обложка пересоздаётся при смене альбома или режима lyrics (другой srcset).
-   */
   const memoizedAlbumCover = useMemo(
     () => (
       <AlbumCover
@@ -710,21 +661,12 @@ export default function AudioPlayer({
         img={coverKey}
         userId={albumMeta.userId ?? undefined}
         fullName={coverFullName}
-        onColorsExtracted={handleColorsExtracted}
+        imageSource="cdn"
         {...(showLyrics ? { size: 150, densities: [1, 2] as const, sizes: '150px' } : undefined)}
       />
     ),
-    [albumId, coverKey, albumMeta.userId, coverFullName, handleColorsExtracted, showLyrics]
+    [albumId, coverKey, albumMeta.userId, coverFullName, showLyrics]
   );
-
-  /**
-   * Сбрасываем флаг установки цвета фона когда меняется альбом.
-   * Это нужно чтобы цвета установились заново для нового альбома.
-   */
-  useEffect(() => {
-    // Сбрасываем флаг для нового альбома
-    bgColorSetForAlbumRef.current = null;
-  }, [albumId]);
 
   // Canonical TrackLyricsBundle from trackLyricsSlice only (playlist no longer carries lyrics)
   const { lyricsBundle, hasNonEmptyLyricsEntity }: UseLyricsContentResult = useLyricsContent({

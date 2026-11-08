@@ -4,6 +4,9 @@
  */
 
 import type { TrackLyricsBundle } from '@shared/lib/lyrics/types';
+import type { AlbumCoverPlayerBackground } from '@shared/lib/imageColor/albumCoverPlayerBackground';
+import { parseAlbumCoverPlayerBackground } from '@shared/lib/imageColor/albumCoverPlayerBackground';
+import { coverImgFromStorageField, parseAlbumCoverField } from '@shared/lib/albumCoverStorage';
 
 import type { detailsProps, AlbumEditable, TracksProps } from '@models';
 import type { TrackVisibility } from '@shared/lib/tracks/trackVisibility';
@@ -83,6 +86,8 @@ export interface AlbumDetails {
   slug: string;
   title: string;
   cover: string;
+  /** Precomputed at cover upload — full-player ambient gradient. */
+  playerBackground?: AlbumCoverPlayerBackground;
   userId: string;
   /** DB primary key — payment APIs. */
   dbAlbumId: string;
@@ -316,11 +321,16 @@ export function normalizeAlbumDetails(raw: unknown): AlbumDetails | null {
     if (!translations.en && !translations.ru) translations = undefined;
   }
 
+  const parsedCover = parseAlbumCoverField(v.cover);
+  const playerBackground =
+    parseAlbumCoverPlayerBackground(v.playerBackground) ?? parsedCover.playerBackground;
+
   return {
     albumId,
     slug: asString(v.slug).trim() || albumId,
     title: asString(v.title),
-    cover: asString(v.cover),
+    cover: coverImgFromStorageField(v.cover),
+    ...(playerBackground ? { playerBackground } : {}),
     userId: asString(v.userId),
     dbAlbumId: asString(v.dbAlbumId),
     description: asString(v.description),
@@ -423,7 +433,7 @@ export function mapAlbumEditableToAlbumDetails(album: AlbumEditable): AlbumDetai
     albumId: asString(album.albumId),
     slug: asString(album.albumId),
     title: asString(album.album),
-    cover: asString(album.cover),
+    cover: coverImgFromStorageField(album.cover),
     userId: asString(album.userId),
     dbAlbumId: asString(album.dbAlbumId),
     description: asString(album.description),

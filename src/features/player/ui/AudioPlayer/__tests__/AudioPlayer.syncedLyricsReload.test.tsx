@@ -42,10 +42,6 @@ jest.mock('@entities/album', () => ({
   AlbumCover: () => <div data-testid="album-cover" />,
 }));
 
-jest.mock('@shared/lib/hooks/useImageColor', () => ({
-  clearImageColorCache: jest.fn(),
-}));
-
 jest.mock('@features/player/model/lib/audioController', () => {
   const element = document.createElement('audio');
   return {
@@ -191,7 +187,7 @@ function renderHydratedPlayer() {
   return render(
     <MemoryRouter>
       <Provider store={store}>
-        <AudioPlayer albumMeta={albumMeta} setBgColor={jest.fn()} />
+        <AudioPlayer albumMeta={albumMeta} />
       </Provider>
     </MemoryRouter>
   );

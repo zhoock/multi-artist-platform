@@ -325,6 +325,35 @@ describe('artist-albums-catalog orchestration', () => {
     );
   });
 
+  it('maps cover img from JSONB { img, playerBackground } on album row', async () => {
+    const coverObject = {
+      img: 'album_cover_uuid_artist-Cover-rubber-soul',
+      playerBackground: {
+        primary: [1, 2, 3],
+        secondary: [4, 5, 6],
+      },
+    };
+    recordQueries({
+      rows: [
+        joinRow({ cover: coverObject as unknown as string }),
+        joinRow({
+          cover: coverObject as unknown as string,
+          track_id: 'track-1',
+          duration: 180,
+          visibility: 'public',
+          stems_visibility: 'public',
+          has_stems: true,
+        }),
+      ],
+    });
+
+    const response = await invoke(EVENT);
+    const catalog = parseCatalog(response);
+
+    expect(catalog).toHaveLength(1);
+    expect(catalog[0].cover).toBe('album_cover_uuid_artist-Cover-rubber-soul');
+  });
+
   it('returns an empty catalog for an artist with no albums', async () => {
     const calls = recordQueries({ rows: [] });
 
