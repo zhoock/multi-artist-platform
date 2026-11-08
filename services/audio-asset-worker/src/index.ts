@@ -3,8 +3,10 @@ import express from 'express';
 import { pipelineTrace } from './lib/pipelineTrace.js';
 import { checkFfmpegToolsAvailable, getFfmpegVersionLabel } from './processors/ffmpegTranscoder.js';
 import { processTrackJobWithRetry } from './processTrackJobRetry.js';
+import { processStemJob } from './processStemJob.js';
 import type { ProcessTrackJobPayload } from './pipeline/types.js';
 import { beginTrackProcessingJob, finishTrackProcessingJob } from './trackProcessingGate.js';
+import { beginStemProcessingJob, finishStemProcessingJob } from './stemProcessingGate.js';
 
 const app = express();
 app.use(express.json({ limit: '1mb' }));
@@ -94,6 +96,60 @@ app.post('/jobs/regenerate', async (req, res) => {
   }
 
   acceptTrackProcessingJob(res, payload, 'regenerate');
+});
+
+app.post('/jobs/process-stem', async (req, res) => {
+  if (!authorize(req)) {
+    res.status(401).json({ error: 'Unauthorized' });
+    return;
+  }
+
+  const body = req.body as {
+    userId?: string;
+    albumId?: string;
+    trackId?: string;
+    masterPath?: string;
+    masterFileName?: string;
+  };
+
+  const required = ['userId', 'albumId', 'trackId', 'masterPath', 'masterFileName'] as const;
+  for (const key of required) {
+    if (!body?.[key]) {
+      res.status(400).json({ error: `Missing required field: ${key}` });
+      return;
+    }
+  }
+
+  const tools = await getFfmpegToolsStatus();
+  if (!tools.ffmpeg || !tools.ffprobe) {
+    res.status(503).json({ error: ffmpegToolsErrorMessage(tools) });
+    return;
+  }
+
+  const masterPath = String(body.masterPath);
+  if (!beginStemProcessingJob(masterPath)) {
+    res.status(202).json({ accepted: true, duplicate: true });
+    return;
+  }
+
+  res.status(202).json({ accepted: true });
+
+  void processStemJob({
+    userId: String(body.userId),
+    albumId: String(body.albumId),
+    trackId: String(body.trackId),
+    masterPath,
+    masterFileName: String(body.masterFileName),
+  })
+    .catch((err) => {
+      console.error('[process-stem] Job failed:', {
+        masterPath,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    })
+    .finally(() => {
+      finishStemProcessingJob(masterPath);
+    });
 });
 
 function acceptTrackProcessingJob(

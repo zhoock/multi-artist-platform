@@ -28,6 +28,11 @@ import {
   parseJsonBody,
 } from './lib/api-helpers';
 import { getStorageErrorStatus } from './lib/error-utils';
+import {
+  STEMS_MANIFEST_FILE,
+  buildStemMasterStoragePath,
+  getStemStoragePath,
+} from './lib/stem-storage-path-shared';
 
 const STORAGE_BUCKET_NAME = 'user-media';
 
@@ -102,8 +107,10 @@ export const handler: Handler = async (
     // Используем UUID пользователя из токена
     const storageUserId = userId;
 
-    // Формируем путь в Storage: users/{userId}/audio/{albumId}/{trackId}/{fileName}
-    const storagePath = `users/${storageUserId}/audio/${albumId}/${trackId}/${fileName}`;
+    const storagePath =
+      fileName === STEMS_MANIFEST_FILE
+        ? getStemStoragePath(storageUserId, albumId, trackId, fileName)
+        : buildStemMasterStoragePath(storageUserId, albumId, trackId, fileName);
 
     // Создаём Supabase клиент с service role key
     const supabase = createSupabaseAdminClient();

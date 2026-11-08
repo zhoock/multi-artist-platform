@@ -68,7 +68,50 @@ describe('track-stems-cleanup', () => {
     expect(paths.sort()).toEqual(
       [`${folder}/stem-abc.wav`, `${folder}/stem-def.wav`, `${folder}/stems.json`].sort()
     );
-    expect(mockFetchStemManifestFromStorage).not.toHaveBeenCalled();
+    expect(mockFetchStemManifestFromStorage).toHaveBeenCalled();
+  });
+
+  test('collectTrackStemStoragePaths merges manifest entries with folder listing', async () => {
+    const folder = getStemsFolderPath(USER_ID, ALBUM_ID, TRACK_A);
+    mockCreateSupabaseAdminClient.mockReturnValue({
+      storage: {
+        from: () => ({
+          list: jest.fn(async (prefix: string) => {
+            if (prefix === folder) {
+              return {
+                data: [
+                  { name: 'stems.json', metadata: { size: 1 } },
+                  { name: 'stem-orphan.opus', metadata: { size: 1 } },
+                  { name: 'original', metadata: null },
+                ],
+                error: null,
+              };
+            }
+            if (prefix === `${folder}/original`) {
+              return {
+                data: [{ name: 'stem-leftover.wav', metadata: { size: 1 } }],
+                error: null,
+              };
+            }
+            return { data: [], error: null };
+          }),
+        }),
+      },
+    } as never);
+    mockFetchStemManifestFromStorage.mockResolvedValue([
+      { id: 's1', name: 'Bass', category: 'bass', file: 'stem-live.opus' },
+    ]);
+
+    const paths = await collectTrackStemStoragePaths(USER_ID, ALBUM_ID, TRACK_A);
+
+    expect(paths.sort()).toEqual(
+      [
+        `${folder}/stems.json`,
+        `${folder}/stem-orphan.opus`,
+        `${folder}/stem-live.opus`,
+        `${folder}/original/stem-leftover.wav`,
+      ].sort()
+    );
   });
 
   test('collectTrackStemStoragePaths falls back to manifest when folder list is empty', async () => {
@@ -123,8 +166,8 @@ describe('track-stems-cleanup', () => {
     const pathsA = await collectTrackStemStoragePaths(USER_ID, ALBUM_ID, TRACK_A);
     const pathsB = await collectTrackStemStoragePaths(USER_ID, ALBUM_ID, TRACK_B);
 
-    expect(pathsA).toEqual([`${folderA}/stem-a.wav`]);
-    expect(pathsB).toEqual([`${folderB}/stem-b.wav`]);
+    expect(pathsA).toEqual([`${folderA}/stem-a.wav`, `${folderA}/stems.json`]);
+    expect(pathsB).toEqual([`${folderB}/stem-b.wav`, `${folderB}/stems.json`]);
   });
 
   test('re-upload: new trackId uses a different stem folder (no reuse of old stems)', () => {

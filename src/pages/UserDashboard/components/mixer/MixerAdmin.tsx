@@ -507,13 +507,13 @@ export function MixerAdmin({
       category: StemCategory,
       file: File
     ) => {
-      const { fileName } = await uploadStemAudio(storageAlbumId, trackId, file);
+      const { fileName, size } = await uploadStemAudio(storageAlbumId, trackId, file);
       const newStem: StemMeta = {
         id: uniqueUploadFileSuffix(),
         name,
         category,
         file: fileName,
-        size: file.size,
+        size,
         originalFileName: file.name,
       };
       const key = stemKey(storageAlbumId, trackId);
@@ -553,13 +553,11 @@ export function MixerAdmin({
       const key = stemKey(storageAlbumId, trackId);
       setBusy(storageAlbumId, trackId, stem.id, true);
       try {
-        const { fileName } = await uploadStemAudio(storageAlbumId, trackId, file);
+        const { fileName, size } = await uploadStemAudio(storageAlbumId, trackId, file);
         await runTrackMutationRef.current(key, async () => {
           const previous = readTrackStemsSnapshot(key);
           const next = previous.map((s) =>
-            s.id === stem.id
-              ? { ...s, file: fileName, size: file.size, originalFileName: file.name }
-              : s
+            s.id === stem.id ? { ...s, file: fileName, size, originalFileName: file.name } : s
           );
           stageTrackStemsForPersist(key, next);
           try {

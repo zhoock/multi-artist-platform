@@ -2,26 +2,18 @@
 import { fetchWithAuthSession } from '@shared/lib/authFetch';
 import { getAuthHeader } from '@shared/lib/auth';
 import { uniqueUploadFileSuffix } from '@shared/lib/uniqueUploadFileSuffix';
+import {
+  buildStemPlaybackFileName,
+  getStemStoragePath,
+  getStemsFolderPath,
+} from '@shared/lib/stems/stemStoragePaths';
 import { STEMS_MANIFEST_VERSION, type StemMeta, type StemsManifest } from '../model/types';
 import type { StemsVisibility } from '@shared/lib/stems/stemsVisibility';
 
 const MANIFEST_FILE = 'stems.json';
 const MANIFEST_MIME = 'application/json';
 
-/** Путь к папке с аудио стемами трека в bucket. */
-export function getStemsFolderPath(userId: string, albumId: string, trackId: string): string {
-  return `users/${userId}/audio/${albumId}/${trackId}`;
-}
-
-/** Полный путь к конкретному файлу стема. */
-export function getStemStoragePath(
-  userId: string,
-  albumId: string,
-  trackId: string,
-  fileName: string
-): string {
-  return `${getStemsFolderPath(userId, albumId, trackId)}/${fileName}`;
-}
+export { getStemStoragePath, getStemsFolderPath };
 
 export type LoadStemsResult = {
   stems: StemMeta[];
@@ -120,17 +112,43 @@ async function putToSignedUrl(
   }
 }
 
-/** Загрузить аудиофайл стема. Возвращает имя файла в Storage. */
+/** Загрузить master, прогнать через тот же opus/128k pipeline, вернуть playback-файл в Storage. */
 export async function uploadStemAudio(
   albumId: string,
   trackId: string,
   file: File
-): Promise<{ fileName: string }> {
+): Promise<{ fileName: string; size: number }> {
   const fileExt = file.name.split('.').pop() || 'wav';
-  const fileName = `stem-${uniqueUploadFileSuffix()}.${fileExt}`;
-  const { signedUrl } = await getSignedUploadUrl(albumId, trackId, fileName);
+  const masterFileName = `stem-${uniqueUploadFileSuffix()}.${fileExt}`;
+  const { signedUrl } = await getSignedUploadUrl(albumId, trackId, masterFileName);
   await putToSignedUrl(signedUrl, file, file.type || 'audio/wav');
-  return { fileName };
+
+  const token = await getAuthToken();
+  const processResponse = await fetchWithAuthSession('/api/stems/process', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ albumId, trackId, masterFileName }),
+  });
+
+  if (!processResponse.ok) {
+    const errorData = await processResponse.json().catch(() => ({}));
+    throw new Error(
+      (errorData as { error?: string }).error || 'Не удалось обработать загруженный stem'
+    );
+  }
+
+  const payload = (await processResponse.json()) as {
+    success?: boolean;
+    data?: { fileName: string; fileSize: number };
+  };
+
+  const playbackFileName = payload.data?.fileName ?? buildStemPlaybackFileName(masterFileName);
+  const size = typeof payload.data?.fileSize === 'number' ? payload.data.fileSize : 0;
+
+  return { fileName: playbackFileName, size };
 }
 
 /** Синхронизирует tracks.has_stems после записи манифеста (CatalogAlbum / Mixer). */
@@ -163,13 +181,24 @@ export async function saveStemsManifest(
   trackId: string,
   stems: StemMeta[]
 ): Promise<void> {
+  const hasStems = stems.length > 0;
+  if (!hasStems) {
+    await syncTrackHasStems(albumId, trackId, false);
+    const { syncTrackHasStemsInPlayer } = await import(
+      '@features/player/model/lib/syncTrackHasStemsInPlayer'
+    );
+    syncTrackHasStemsInPlayer({ albumId, trackId, hasStems: false });
+    const { notifyPublicSurfaceChanged } = await import('@shared/lib/publicSurfaceSync');
+    notifyPublicSurfaceChanged({ type: 'stemsChanged', albumId });
+    return;
+  }
+
   const manifest: StemsManifest = { version: STEMS_MANIFEST_VERSION, stems };
   const file = new File([JSON.stringify(manifest, null, 2)], MANIFEST_FILE, {
     type: MANIFEST_MIME,
   });
   const { signedUrl } = await getSignedUploadUrl(albumId, trackId, MANIFEST_FILE);
   await putToSignedUrl(signedUrl, file, MANIFEST_MIME);
-  const hasStems = stems.length > 0;
   await syncTrackHasStems(albumId, trackId, hasStems);
   const { syncTrackHasStemsInPlayer } = await import(
     '@features/player/model/lib/syncTrackHasStemsInPlayer'

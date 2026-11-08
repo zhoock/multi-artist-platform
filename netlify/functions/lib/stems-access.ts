@@ -195,17 +195,19 @@ export async function downloadStemFileFromStorage(
   const buffer = Buffer.from(await data.arrayBuffer());
   const ext = fileName.split('.').pop()?.toLowerCase() ?? '';
   const contentType =
-    ext === 'mp3'
-      ? 'audio/mpeg'
-      : ext === 'wav'
-        ? 'audio/wav'
-        : ext === 'ogg'
-          ? 'audio/ogg'
-          : ext === 'flac'
-            ? 'audio/flac'
-            : ext === 'm4a' || ext === 'aac'
-              ? 'audio/mp4'
-              : 'application/octet-stream';
+    ext === 'opus'
+      ? 'audio/opus'
+      : ext === 'mp3'
+        ? 'audio/mpeg'
+        : ext === 'wav'
+          ? 'audio/wav'
+          : ext === 'ogg'
+            ? 'audio/ogg'
+            : ext === 'flac'
+              ? 'audio/flac'
+              : ext === 'm4a' || ext === 'aac'
+                ? 'audio/mp4'
+                : 'application/octet-stream';
 
   return { buffer, contentType };
 }

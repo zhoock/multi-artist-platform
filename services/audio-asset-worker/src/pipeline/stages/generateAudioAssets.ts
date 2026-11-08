@@ -7,8 +7,12 @@ import {
   buildDerivedStoragePath,
   replaceStorageFileExtension,
 } from '../../../../../src/shared/lib/tracks/trackStoragePaths.js';
-import { runFfmpeg, runFfprobe } from '../../processors/ffmpegTranscoder.js';
+import { runFfprobe } from '../../processors/ffmpegTranscoder.js';
 import { generateWaveformPeaksJsonFile } from '../../processors/waveformPeaksFromAudio.js';
+import {
+  contentTypeForPipelineExtension,
+  transcodeLocalFileToPipelineOutput,
+} from '../transcodePipelineOutput.js';
 import {
   pipelineTrace,
   pipelineTraceWarn,
@@ -125,18 +129,18 @@ async function processFfmpegOutput(
 
   try {
     pipelineTrace('running ffmpeg', { input: ctx.masterLocalPath, output: localOut }, trace);
-    const ffmpegOutputArgs = ['-vn', ...(output.ffmpegArgs ?? [])];
-    await runFfmpeg(ctx.masterLocalPath, localOut, ffmpegOutputArgs);
-
-    pipelineTrace('running ffprobe on derived file', { localOut }, trace);
-    const probe = await runFfprobe(localOut);
+    const probe = await transcodeLocalFileToPipelineOutput(ctx.masterLocalPath, localOut, output);
 
     pipelineTrace(
       'uploading to storage',
-      { storagePath, contentType: contentTypeForExtension(output.extension) },
+      { storagePath, contentType: contentTypeForPipelineExtension(output.extension) },
       trace
     );
-    await ctx.storage.uploadFile(storagePath, localOut, contentTypeForExtension(output.extension));
+    await ctx.storage.uploadFile(
+      storagePath,
+      localOut,
+      contentTypeForPipelineExtension(output.extension)
+    );
 
     const generatorVersion = GENERATOR_VERSIONS[output.generator] ?? 1;
     ctx.completedAssets.push({
@@ -202,10 +206,14 @@ async function processWaveformOutput(
 
     pipelineTrace(
       'generate-waveform uploading to storage',
-      { storagePath, contentType: contentTypeForExtension(output.extension) },
+      { storagePath, contentType: contentTypeForPipelineExtension(output.extension) },
       trace
     );
-    await ctx.storage.uploadFile(storagePath, localOut, contentTypeForExtension(output.extension));
+    await ctx.storage.uploadFile(
+      storagePath,
+      localOut,
+      contentTypeForPipelineExtension(output.extension)
+    );
 
     const generatorVersion = GENERATOR_VERSIONS[output.generator] ?? 1;
     const metadata = {
@@ -231,23 +239,5 @@ async function processWaveformOutput(
       trace
     );
     await ctx.db.markAssetFailed(ctx.trackDbId, output, message);
-  }
-}
-
-function contentTypeForExtension(ext: string): string {
-  switch (ext.toLowerCase()) {
-    case 'opus':
-      return 'audio/opus';
-    case 'm4a':
-    case 'aac':
-      return 'audio/mp4';
-    case 'mp3':
-      return 'audio/mpeg';
-    case 'json':
-      return 'application/json';
-    case 'webp':
-      return 'image/webp';
-    default:
-      return 'application/octet-stream';
   }
 }

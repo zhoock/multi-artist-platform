@@ -32,13 +32,31 @@ export async function listStemFilesInTrackFolder(
 
   const out: string[] = [];
   for (const item of data) {
-    if (item.metadata === null) continue;
+    if (item.metadata === null) {
+      if (item.name === 'original') {
+        const originalPrefix = `${folder}/original`;
+        const { data: originals, error: originalError } = await supabase.storage
+          .from(STORAGE_BUCKET_NAME)
+          .list(originalPrefix, { limit: 1000 });
+        if (!originalError && originals?.length) {
+          for (const originalFile of originals) {
+            if (originalFile.metadata !== null) {
+              out.push(`${originalPrefix}/${originalFile.name}`);
+            }
+          }
+        }
+      }
+      continue;
+    }
     out.push(`${folder}/${item.name}`);
   }
   return out;
 }
 
-/** Paths under user-media for this track's stem folder (manifest + audio files). */
+/**
+ * All stem-related objects under users/.../audio/{albumId}/{trackId}/ (not track master/derived).
+ * Merges Storage listing + manifest so orphans and stale manifests are included.
+ */
 export async function collectTrackStemStoragePaths(
   userId: string,
   albumId: string,
@@ -47,17 +65,16 @@ export async function collectTrackStemStoragePaths(
   const folder = getStemsFolderPath(userId, albumId, logicalTrackId);
   const paths = new Set<string>(await listStemFilesInTrackFolder(userId, albumId, logicalTrackId));
 
-  if (paths.size === 0) {
-    const stems = await fetchStemManifestFromStorage(userId, albumId, logicalTrackId);
-    for (const stem of stems) {
-      paths.add(getStemStoragePath(userId, albumId, logicalTrackId, stem.file));
-    }
-    if (stems.length > 0) {
-      paths.add(`${folder}/${STEMS_MANIFEST_FILE}`);
-    }
+  const stems = await fetchStemManifestFromStorage(userId, albumId, logicalTrackId);
+  for (const stem of stems) {
+    paths.add(getStemStoragePath(userId, albumId, logicalTrackId, stem.file));
   }
 
-  return [...paths];
+  if (stems.length > 0 || paths.size > 0) {
+    paths.add(`${folder}/${STEMS_MANIFEST_FILE}`);
+  }
+
+  return [...paths].filter((p) => p.startsWith(`${folder}/`));
 }
 
 export async function removeTrackStemStorage(

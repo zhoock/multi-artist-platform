@@ -11,6 +11,11 @@ describe('assertOwnedStemStoragePath', () => {
     expect(assertOwnedStemStoragePath(path, OWNER_ID)).toBe(path);
   });
 
+  test('allows owner to delete own stem master in original/', () => {
+    const path = `users/${OWNER_ID}/audio/my-album/track-1/original/stem-abc.wav`;
+    expect(assertOwnedStemStoragePath(path, OWNER_ID)).toBe(path);
+  });
+
   test('allows owner to delete own manifest', () => {
     const path = `users/${OWNER_ID}/audio/my-album/track-1/stems.json`;
     expect(assertOwnedStemStoragePath(path, OWNER_ID)).toBe(path);

@@ -18,7 +18,47 @@ function firstExisting(candidates: Array<string | undefined>): string | null {
   return null;
 }
 
+/** Netlify Dev on macOS emulates Lambda but must use host ffmpeg/ffprobe (Linux bundle does not exec). */
+export function isLocalNetlifyDevFfmpegRuntime(): boolean {
+  return process.env.NETLIFY_DEV === 'true' && process.platform === 'darwin';
+}
+
+/** Production/deployed Lambda — bundled Linux ffmpeg/ffprobe from included_files. */
+export function isLambdaFfmpegBundleRuntime(): boolean {
+  if (!process.env.LAMBDA_TASK_ROOT?.trim()) {
+    return false;
+  }
+  if (isLocalNetlifyDevFfmpegRuntime()) {
+    return false;
+  }
+  return true;
+}
+
+/**
+ * Local netlify dev / macOS host: use ffmpeg/ffprobe on PATH.
+ * Avoids pointing at ffprobe-static's Linux ELF binary (spawn fails on macOS with exec format error).
+ */
+function configureLocalFfmpegTools(): { ffmpeg: string; ffprobe: string } {
+  const explicitFfmpeg = process.env.FFMPEG_PATH?.trim();
+  const explicitFfprobe = process.env.FFPROBE_PATH?.trim();
+
+  if (explicitFfmpeg && existsSync(explicitFfmpeg)) {
+    const ffprobe = explicitFfprobe && existsSync(explicitFfprobe) ? explicitFfprobe : 'ffprobe';
+    process.env.FFMPEG_PATH = explicitFfmpeg;
+    process.env.FFPROBE_PATH = ffprobe;
+    return { ffmpeg: explicitFfmpeg, ffprobe };
+  }
+
+  delete process.env.FFMPEG_PATH;
+  delete process.env.FFPROBE_PATH;
+  return { ffmpeg: 'ffmpeg', ffprobe: 'ffprobe' };
+}
+
 export function configureBundledFfmpeg(): { ffmpeg: string | null; ffprobe: string | null } {
+  if (!isLambdaFfmpegBundleRuntime()) {
+    return configureLocalFfmpegTools();
+  }
+
   const roots = [process.env.LAMBDA_TASK_ROOT, process.cwd()].filter((root): root is string =>
     Boolean(root)
   );

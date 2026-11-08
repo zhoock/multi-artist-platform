@@ -108,6 +108,12 @@
   force = true
 
 [[redirects]]
+  from = "/api/stems/process*"
+  to = "/.netlify/functions/process-stem"
+  status = 200
+  force = true
+
+[[redirects]]
   from = "/api/stems/delete*"
   to = "/.netlify/functions/delete-stem"
   status = 200
@@ -411,6 +417,13 @@
 # ffprobe-static also ships macOS/Windows builds; bundling those exceeds the
 # Netlify function size limit.
 [functions."process-track-assets-background"]
+  included_files = [
+    "node_modules/ffmpeg-static/ffmpeg",
+    "node_modules/ffprobe-static/bin/linux/x64/ffprobe",
+  ]
+
+[functions."process-stem"]
+  timeout = 900
   included_files = [
     "node_modules/ffmpeg-static/ffmpeg",
     "node_modules/ffprobe-static/bin/linux/x64/ffprobe",

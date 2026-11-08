@@ -41,6 +41,17 @@ export function createPipelineStorage(): PipelineStorage {
       }
       pipelineTrace('storage.upload completed', { storagePath });
     },
+
+    async removeFile(storagePath) {
+      pipelineTrace('storage.remove start', { storagePath });
+      const { error } = await supabase.storage
+        .from(BUCKET)
+        .remove([storagePath.replace(/^\/+/, '')]);
+      if (error) {
+        throw new Error(`Remove failed for ${storagePath}: ${error.message}`);
+      }
+      pipelineTrace('storage.remove completed', { storagePath });
+    },
   };
 }
 

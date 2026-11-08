@@ -63,6 +63,11 @@ export const handler: Handler = async (
       return createErrorResponse(404, 'Track not found');
     }
 
+    if (!hasStems) {
+      const { removeTrackStemStorage } = await import('./lib/track-stems-cleanup');
+      await removeTrackStemStorage(userId, albumId, trackId);
+    }
+
     return createSuccessResponse({ hasStems, updated: n });
   } catch (e) {
     console.error('[update-track-has-stems]', e);

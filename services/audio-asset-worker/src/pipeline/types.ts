@@ -59,6 +59,7 @@ export interface PipelineDb {
 export interface PipelineStorage {
   downloadToFile(storagePath: string, localPath: string): Promise<void>;
   uploadFile(storagePath: string, localPath: string, contentType: string): Promise<void>;
+  removeFile(storagePath: string): Promise<void>;
 }
 
 export interface PipelineStage {
