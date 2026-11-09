@@ -24,7 +24,7 @@ import { PublicArtistResolverError } from './public-artist-resolver';
 export const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
   'Content-Type': 'application/json',
   // Предотвращаем кэширование ответов API
   'Cache-Control': 'no-store, max-age=0',

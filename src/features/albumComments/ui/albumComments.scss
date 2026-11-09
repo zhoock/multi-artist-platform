@@ -1,0 +1,547 @@
+@use '../../../scss/abstracts/mixins' as *;
+
+.album-comments-actions-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ms-01);
+  margin-block: var(--ms-0) var(--ms-1);
+  padding-block: var(--ms-01);
+  min-inline-size: 0;
+
+  &__share {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+    margin-inline-start: auto;
+
+    // `.share-list` по умолчанию — 3 колонки; скрытые соцкнопки всё равно оставляют пустые треки.
+    .share-list {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      grid-template-columns: min-content;
+    }
+
+    .share-list:has(.share-list__item.show) {
+      grid-template-columns: repeat(3, min-content);
+    }
+  }
+}
+
+.album-comments-teaser {
+  display: inline-flex;
+  margin: 0;
+  padding: 0;
+  color: var(--link-color-hover, #ffffff);
+  text-align: start;
+  background: transparent;
+  border: 0;
+  align-items: center;
+  gap: var(--ms-01);
+  flex: 0 1 auto;
+  min-inline-size: 0;
+  cursor: pointer;
+  appearance: none;
+  user-select: none;
+
+  &--loading {
+    opacity: 0.7;
+  }
+
+  &__trigger {
+    flex-shrink: 0;
+    pointer-events: none;
+  }
+
+  &:hover .album-comments-teaser__trigger,
+  &:focus-visible .album-comments-teaser__trigger {
+    color: var(--link-color-hover, #ffffff);
+    background-color: var(--link-button-background-color-hover, #998238);
+
+    @media (hover: none) and (pointer: coarse) {
+      color: var(--link-button-color, #dddddd);
+      background-color: var(--link-button-background-color, #373633);
+    }
+  }
+
+  &:focus-visible {
+    outline: none;
+  }
+
+  &:focus-visible .album-comments-teaser__trigger {
+    outline: 2px solid var(--accent-color, #998238);
+    outline-offset: 2px;
+  }
+
+  &__count,
+  &__empty {
+    flex-shrink: 0;
+    line-height: 1;
+  }
+
+  &__count {
+    font-variant-numeric: tabular-nums;
+  }
+
+  &__empty {
+    min-inline-size: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.album-comments__avatar {
+  position: relative;
+  display: inline-flex;
+  background: rgb(255 255 255 / 8%);
+  border-radius: 50%;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  inline-size: 2rem;
+  block-size: 2rem;
+  min-inline-size: 2rem;
+  min-block-size: 2rem;
+  aspect-ratio: 1;
+  overflow: hidden;
+
+  &--sm {
+    inline-size: 1.5rem;
+    block-size: 1.5rem;
+    min-inline-size: 1.5rem;
+    min-block-size: 1.5rem;
+    font-size: 0.7rem;
+  }
+
+  // Перебиваем глобальные `img { max-inline-size: 100%; block-size: auto }` из _base.scss.
+  img {
+    position: absolute;
+    inset: 0;
+    display: block;
+    inline-size: 100%;
+    block-size: 100%;
+    max-inline-size: none;
+    max-block-size: none;
+    margin: 0;
+    object-fit: cover;
+    object-position: center;
+    vertical-align: top;
+  }
+}
+
+.album-comments__avatar-initial {
+  font-weight: var(--bold, 700);
+  opacity: 0.85;
+}
+
+// Fullscreen comments — same Popup shell as `.player` (stretch dialog, no centered card).
+.album-comments-fullscreen {
+  --album-comments-content-max: 42rem;
+
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  inline-size: 100%;
+  block-size: 100dvb;
+  min-block-size: 100dvb;
+  max-block-size: 100dvb;
+  margin: 0;
+  color: var(--link-color-hover, #ffffff);
+  background: var(--main-background-color, #20201d);
+  border-radius: 0;
+
+  &__column {
+    inline-size: 100%;
+    max-inline-size: var(--album-comments-content-max);
+    min-inline-size: 0;
+    margin-inline: auto;
+    padding-inline: var(--ms-1);
+    box-sizing: border-box;
+  }
+
+  &__header {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: var(--ms-01);
+    padding-block: var(--ms-0);
+    padding-block-start: max(var(--ms-0), env(safe-area-inset-top, 0px));
+    padding-inline: max(var(--ms-1), env(safe-area-inset-left, 0px))
+      max(var(--ms-1), env(safe-area-inset-right, 0px));
+    border-block-end: 1px solid var(--hr-color, #3d3c3a);
+    background: var(--main-background-color, #20201d);
+  }
+
+  &__header-main {
+    display: flex;
+    flex: 1 1 auto;
+    justify-content: center;
+    min-inline-size: 0;
+  }
+
+  &__title {
+    margin: 0;
+    font-size: var(--ms-0);
+    font-weight: var(--bold, 700);
+  }
+
+  &__count {
+    margin-inline-start: 0.35em;
+    color: var(--time-color, #9b9b9a);
+    font-weight: 400;
+  }
+
+  &__close {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0;
+    padding: var(--ms-01);
+    color: var(--link-color-hover, #ffffff);
+    background: transparent;
+    border: 0;
+    border-radius: var(--ms-01);
+    cursor: pointer;
+    appearance: none;
+
+    &:focus-visible {
+      outline: 2px solid var(--accent-color, #998238);
+      outline-offset: 2px;
+    }
+  }
+
+  &__body {
+    flex: 1 1 0;
+    min-block-size: 0;
+    overflow: hidden auto;
+    padding-block: var(--ms-01);
+
+    @extend %hide-scrollbar;
+  }
+
+  &__footer {
+    flex-shrink: 0;
+    padding-block: var(--ms-01);
+    padding-block-end: max(var(--ms-0), env(safe-area-inset-bottom, 0px));
+    border-block-start: 1px solid var(--hr-color, #3d3c3a);
+    background: var(--main-background-color, #20201d);
+  }
+
+  &__loading,
+  &__error,
+  &__empty {
+    padding: var(--ms-2) var(--ms-01);
+    color: var(--time-color, #9b9b9a);
+    text-align: center;
+  }
+
+  &__empty-title {
+    margin-block-end: var(--ms-01);
+    color: var(--link-color-hover, #ffffff);
+    font-weight: var(--bold, 700);
+  }
+
+  &__more {
+    display: block;
+    margin: var(--ms-01) auto;
+    color: var(--accent-color, #998238);
+
+    @include button-variant($margin: 0, $padding: var(--ms-01));
+  }
+
+  &__thread + &__thread {
+    border-block-start: 1px solid var(--hr-color, #3d3c3a);
+    padding-block-start: var(--ms-01);
+    margin-block-start: var(--ms-01);
+  }
+}
+
+.album-comments__item {
+  position: relative;
+
+  &--reply {
+    margin-block-start: var(--ms-01);
+    padding-inline-start: var(--ms-0);
+  }
+}
+
+.album-comments__reply-rail {
+  position: absolute;
+  inset-inline-start: 0.55rem;
+  inset-block: 0.25rem auto;
+  inline-size: 2px;
+  block-size: calc(100% - 0.5rem);
+  background: var(--hr-color, #3d3c3a);
+}
+
+.album-comments__item-main {
+  display: flex;
+  gap: var(--ms-01);
+  align-items: flex-start;
+}
+
+.album-comments__item-body {
+  flex: 1 1 auto;
+  min-inline-size: 0;
+}
+
+.album-comments__item-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--ms-01);
+}
+
+.album-comments__item-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.92rem;
+}
+
+.album-comments__author {
+  font-weight: var(--bold, 700);
+}
+
+.album-comments__artist-badge {
+  display: inline-flex;
+  padding: 0.05rem 0.45rem;
+  color: var(--dark-greenish-yellow, #c1a258);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  border: 1px solid rgb(var(--dark-greenish-yellow-rgb, 193 162 88) / 45%);
+  border-radius: 999px;
+}
+
+.album-comments__dot,
+.album-comments__time {
+  color: var(--time-color, #9b9b9a);
+}
+
+.album-comments__text {
+  margin-block: var(--ms-01) 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.album-comments__edited,
+.album-comments__deleted-text {
+  margin-block-start: 0.25rem;
+  color: var(--time-color, #9b9b9a);
+  font-size: 0.85rem;
+}
+
+.album-comments__actions {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  margin-block-start: var(--ms-01);
+}
+
+.album-comments__like {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin: 0;
+  padding: 0;
+  color: var(--time-color, #9b9b9a);
+  font: inherit;
+  line-height: 1;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  cursor: pointer;
+  appearance: none;
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--accent-color, #998238);
+    outline-offset: 2px;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    &:hover:not(:disabled) {
+      color: var(--link-color-hover, #ffffff);
+      background: transparent;
+    }
+  }
+
+  &--active {
+    color: var(--accent-color, #998238);
+  }
+
+  &-icon {
+    flex-shrink: 0;
+    inline-size: 1.3125rem;
+    block-size: 1.3125rem;
+  }
+
+  &-count {
+    font-size: 0.875rem;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+  }
+}
+
+.album-comments__reply {
+  margin: 0;
+  margin-inline-start: 1.625rem;
+  padding: 0;
+  color: var(--time-color, #9b9b9a);
+  font-size: 0.875rem;
+  line-height: 1;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  cursor: pointer;
+  appearance: none;
+
+  &:focus-visible {
+    outline: 2px solid var(--accent-color, #998238);
+    outline-offset: 2px;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    &:hover {
+      color: var(--link-color-hover, #ffffff);
+      background: transparent;
+    }
+  }
+}
+
+.album-comments__text-btn,
+.album-comments__primary-btn {
+  color: var(--time-color, #9b9b9a);
+
+  @include button-variant($margin: 0, $padding: 0);
+}
+
+.album-comments__primary-btn {
+  color: var(--accent-color, #998238);
+}
+
+.album-comments__menu {
+  position: relative;
+}
+
+.album-comments__menu-trigger {
+  color: var(--time-color, #9b9b9a);
+
+  @include button-variant($margin: 0, $padding: 0.15rem);
+}
+
+.album-comments__menu-panel {
+  position: absolute;
+  inset-inline-end: 0;
+  inset-block-start: 100%;
+  z-index: 2;
+  min-inline-size: 9rem;
+  padding: 0.25rem;
+  background: var(--graphite-green, #2a2926);
+  border: 1px solid var(--hr-color, #3d3c3a);
+  border-radius: var(--ms-01);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 35%);
+}
+
+.album-comments__menu-item {
+  display: block;
+  padding: 0.45rem 0.6rem;
+  color: var(--link-color-hover, #ffffff);
+  text-align: start;
+  background: transparent;
+  border: 0;
+  border-radius: calc(var(--ms-01) * 0.5);
+  inline-size: 100%;
+  cursor: pointer;
+
+  &--destructive {
+    color: var(--soft-red, #d17a6d);
+  }
+
+  &:hover {
+    background: rgb(255 255 255 / 6%);
+  }
+}
+
+.album-comments__composer {
+  display: flex;
+  gap: var(--ms-01);
+  align-items: flex-start;
+
+  &--compact {
+    margin-block-start: var(--ms-01);
+  }
+}
+
+.album-comments__composer-field {
+  flex: 1 1 auto;
+  min-inline-size: 0;
+}
+
+.album-comments__composer-input {
+  padding: var(--ms-01);
+  color: var(--link-color-hover, #ffffff);
+  font: inherit;
+  background: rgb(255 255 255 / 4%);
+  border: 1px solid var(--hr-color, #3d3c3a);
+  border-radius: var(--ms-01);
+  inline-size: 100%;
+  min-block-size: 3rem;
+  resize: vertical;
+
+  &:focus-visible {
+    outline: 2px solid var(--accent-color, #998238);
+    outline-offset: 1px;
+  }
+}
+
+.album-comments__composer-meta {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--ms-01);
+  margin-block-start: 0.35rem;
+}
+
+.album-comments__composer-count {
+  color: var(--time-color, #9b9b9a);
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.album-comments__composer-send {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 2rem;
+  block-size: 2rem;
+  color: var(--main-background-color, #20201d);
+  background: var(--accent-color, #998238);
+  border: 0;
+  border-radius: 50%;
+
+  &:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+}
+
+.album-comments__inline-reply {
+  margin-block-start: var(--ms-01);
+}
+
+.album-comments__edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--ms-01);
+  margin-block-start: 0.35rem;
+}

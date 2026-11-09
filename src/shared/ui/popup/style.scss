@@ -64,12 +64,31 @@ dialog:not(.toast-viewport-layer, .toast-top-layer) {
         .add-artist-to-archive-modal__card,
         .delete-account-modal,
         .verify-email-modal,
-        .auth-page
+        .auth-page,
+        .player,
+        .audience-analytics-fullscreen,
+        .album-comments-fullscreen
       )
     ) {
     display: flex;
     align-items: center;
     justify-content: center;
+  }
+
+  &.popup[open]:has(.album-comments-fullscreen) {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: stretch;
+    padding: 0;
+    overflow: hidden;
+
+    > .album-comments-fullscreen {
+      flex: 1 1 auto;
+      align-self: stretch;
+      inline-size: 100%;
+      min-block-size: 100dvb;
+    }
   }
 
   // Размеры контента 600px × 680px применяем ТОЛЬКО для попапов внутри дашборда
@@ -80,6 +99,7 @@ dialog:not(.toast-viewport-layer, .toast-top-layer) {
         .user-dashboard,
         .edit-album-modal,
         .audience-analytics-fullscreen,
+        .album-comments-fullscreen,
         .player,
         .alert-modal,
         .confirmation-modal,
@@ -118,6 +138,7 @@ dialog:not(.toast-viewport-layer, .toast-top-layer) {
         .sync-lyrics-modal,
         .edit-album-modal,
         .audience-analytics-fullscreen,
+        .album-comments-fullscreen,
         .subscription-plan-modal__card,
         .add-artist-to-archive-modal__card,
         .add-stem-modal,

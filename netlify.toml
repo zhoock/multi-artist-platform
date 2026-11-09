@@ -344,6 +344,13 @@
   status = 200
   force = true
 
+# Album page comments
+[[redirects]]
+  from = "/api/album-comments*"
+  to = "/.netlify/functions/album-comments"
+  status = 200
+  force = true
+
 # Saved mixes: delete
 [[redirects]]
   from = "/api/delete-saved-mix*"

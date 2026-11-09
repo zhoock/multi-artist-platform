@@ -346,6 +346,34 @@ export interface IInterface {
     decline: string;
     privacyLink: string;
   };
+  /** Комментарии на публичной странице альбома */
+  albumComments?: {
+    teaserLeaveComment: string;
+    teaserNoComments: string;
+    teaserCount: string;
+    teaserOpenAria: string;
+    modalTitle: string;
+    modalCount: string;
+    emptyTitle: string;
+    emptyHint: string;
+    loadError: string;
+    retry: string;
+    showMore: string;
+    reportThanks: string;
+    composerPlaceholder: string;
+    artistBadge: string;
+    reply: string;
+    cancel: string;
+    edited: string;
+    deleted: string;
+    like: string;
+    menu: string;
+    edit: string;
+    delete: string;
+    report: string;
+    save: string;
+    replyPlaceholder: string;
+  };
   /** Публичная форма жалобы на нарушение авторских прав */
   copyrightReport?: {
     pageTitle: string;

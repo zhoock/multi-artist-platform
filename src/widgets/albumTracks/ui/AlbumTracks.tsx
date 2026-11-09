@@ -33,6 +33,7 @@ import {
   resolveFirstPlayableIndex,
 } from '@shared/lib/tracks/trackPlayback';
 import { AlbumTracksEmptyState } from './AlbumTracksEmptyState';
+import { AlbumCommentsSection } from '@features/albumComments';
 import './style.scss';
 
 /** Сигнатура для React.memo — иначе при смене visibility/playbackLocked без смены albumId список не обновлялся. */
@@ -74,10 +75,12 @@ const AlbumTracksComponent = ({
   album,
   isOwner = false,
   ownerDashboardAlbumId,
+  shareUrl,
 }: {
   album: AlbumDetails;
   isOwner?: boolean;
   ownerDashboardAlbumId?: string | null;
+  shareUrl?: string;
 }) => {
   const dispatch = useAppDispatch();
   const store = useStore<RootState>();
@@ -327,13 +330,23 @@ const AlbumTracksComponent = ({
           onSelectTrack={handleTrackSelect}
           store={store}
         />
-      ) : (
+      ) : null}
+
+      {hasTracks && artistSlugFromUrl && album.albumId && shareUrl ? (
+        <AlbumCommentsSection
+          albumId={album.albumId}
+          artistSlug={artistSlugFromUrl}
+          shareUrl={shareUrl}
+        />
+      ) : null}
+
+      {!hasTracks ? (
         <AlbumTracksEmptyState
           ui={ui}
           isOwner={isOwner}
           ownerDashboardAlbumId={ownerDashboardAlbumId ?? album.albumId}
         />
-      )}
+      ) : null}
     </>
   );
 };
@@ -342,6 +355,7 @@ export default React.memo(AlbumTracksComponent, (prevProps, nextProps) => {
   return (
     albumTracksMemoSignature(prevProps.album) === albumTracksMemoSignature(nextProps.album) &&
     prevProps.isOwner === nextProps.isOwner &&
-    prevProps.ownerDashboardAlbumId === nextProps.ownerDashboardAlbumId
+    prevProps.ownerDashboardAlbumId === nextProps.ownerDashboardAlbumId &&
+    prevProps.shareUrl === nextProps.shareUrl
   );
 });

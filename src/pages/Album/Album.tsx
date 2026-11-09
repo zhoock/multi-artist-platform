@@ -57,6 +57,7 @@ import {
   buildPublicAlbumPagePath,
 } from '@shared/lib/seo/publicPagePaths';
 import { ContextNav } from '@shared/ui/contextNav';
+import { normalizeTrackVisibility } from '@shared/lib/tracks/trackVisibility';
 import '@entities/album/ui/album-layout.scss';
 
 function AlbumUnavailableSurface({ children }: { children: ReactNode }) {
@@ -248,6 +249,10 @@ export default function Album() {
   const seoTitle = formatAlbumDisplayFullName(siteArtistName, album.title);
   const seoDesc = album.description;
   const canonical = buildPublicSiteUrl(buildPublicAlbumPagePath(lang, albumId, artistSlug));
+  const albumHasPageTracks = (album.tracks ?? []).some(
+    (track) => normalizeTrackVisibility(track.visibility) !== 'hidden'
+  );
+  const shareInCommentsBar = Boolean(artistSlug && album.albumId && albumHasPageTracks);
   const hreflang = buildPublicPageHreflangUrls((routeLang) =>
     buildPublicAlbumPagePath(routeLang, albumId, artistSlug)
   );
@@ -314,12 +319,15 @@ export default function Album() {
             album={album}
             isOwner={isAlbumOwner}
             ownerDashboardAlbumId={album.albumId ?? albumId}
+            shareUrl={canonical}
           />
         </div>
 
-        <div className="item item-type-a album__share">
-          <Share url={canonical} />
-        </div>
+        {!shareInCommentsBar ? (
+          <div className="item item-type-a album__share">
+            <Share url={canonical} />
+          </div>
+        ) : null}
 
         {showPurchaseSection === true && (
           <div className="item">
