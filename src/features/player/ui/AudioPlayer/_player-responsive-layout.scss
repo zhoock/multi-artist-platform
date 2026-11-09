@@ -1,0 +1,81 @@
+@use '../../../../scss/abstracts/mixins' as *;
+
+// Short viewport height only (no width / container queries).
+// `500px` — same as lyrics/dashboard/archive fullscreen shells.
+// `768px` — tablet gate from `$tablets` (`width >= 768px`), reused for short landscape viewports.
+@mixin player-compact-horizontal-viewport {
+  @media (height < 500px) {
+    @content;
+  }
+
+  @media (orientation: landscape) and (height <= 768px) {
+    @content;
+  }
+}
+
+.player {
+  overflow: hidden;
+  min-block-size: 0;
+  max-block-size: 100%;
+
+  &__transport-column {
+    display: contents;
+  }
+
+  &:not(.player--lyrics-visible) {
+    @include player-compact-horizontal-viewport {
+      box-sizing: border-box;
+      align-content: center;
+      gap: var(--ms-0) var(--ms-2);
+      padding-block: max(env(safe-area-inset-top, 0px), var(--ms-01))
+        max(env(safe-area-inset-bottom, 0px), var(--ms-01));
+      padding-inline: max(env(safe-area-inset-left, 0px), var(--ms-0))
+        max(env(safe-area-inset-right, 0px), var(--ms-0));
+      grid-template: 'player-cover player-transport' minmax(0, 1fr) / minmax(0, 1fr) minmax(0, 1fr);
+
+      .player__cover-wrapper {
+        grid-area: player-cover;
+        place-self: center center;
+        max-block-size: 100%;
+        min-block-size: 0;
+      }
+
+      .player__transport-column {
+        display: flex;
+        grid-area: player-transport;
+        flex-direction: column;
+        align-self: stretch;
+        justify-content: center;
+        gap: var(--ms-1);
+        padding-inline-start: var(--ms-0);
+        inline-size: 100%;
+        min-inline-size: 0;
+        max-block-size: 100%;
+        min-block-size: 0;
+        text-align: center;
+      }
+
+      .player__track-info {
+        max-inline-size: 100%;
+        text-align: center;
+      }
+
+      .player__progress-container {
+        flex-shrink: 0;
+        inline-size: 100%;
+        max-inline-size: 100%;
+        min-inline-size: 0;
+        padding-block-end: var(--ms-01);
+      }
+
+      .player__controls,
+      .player__volume-control,
+      .player__secondary-controls {
+        flex-shrink: 0;
+        inline-size: 100%;
+        max-inline-size: 100%;
+        min-inline-size: 0;
+      }
+    }
+  }
+}

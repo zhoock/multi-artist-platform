@@ -91,28 +91,36 @@ dialog:not(.toast-viewport-layer, .toast-top-layer) {
     }
   }
 
-  // Full Player on phones: beat UA shrink-to-fit + `local-modal { margin: auto }`.
+  // Full Player: dialog is the viewport shell — not a scroll container (desktop + mobile).
   &.popup[open]:has(.player) {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: stretch;
+    box-sizing: border-box;
+    padding: 0;
+    overflow: hidden;
+    overflow-x: clip;
+    overscroll-behavior: none;
+
+    > .player {
+      flex: 1 1 auto;
+      min-block-size: 0;
+      max-block-size: 100%;
+      block-size: 100%;
+    }
+
+    // Phones: beat UA shrink-to-fit + `local-modal { margin: auto }`.
     @media (width < 768px) {
       position: fixed;
-      display: flex;
-      flex-direction: column;
-      align-items: stretch;
-      justify-content: stretch;
-      box-sizing: border-box;
       margin: 0;
-      padding: 0;
       inline-size: 100%;
       max-inline-size: 100%;
       block-size: 100dvb;
       min-block-size: 100dvb;
       max-block-size: 100dvb;
-      overflow: hidden;
-      overflow-x: clip;
-      overscroll-behavior-x: none;
 
       > .player {
-        flex: 1 1 auto;
         align-self: stretch;
         inline-size: 100%;
         max-inline-size: none;
@@ -213,10 +221,8 @@ dialog:not(.toast-viewport-layer, .toast-top-layer) {
     --rotate: 132deg;
 
     backdrop-filter: blur(20px);
-
-    @media (width < 768px) {
-      overflow-x: clip;
-    }
+    overflow-x: clip;
+    overscroll-behavior: none;
 
     .popup__gradient {
       position: absolute;

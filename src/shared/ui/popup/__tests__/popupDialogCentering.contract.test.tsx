@@ -44,6 +44,8 @@ describe('popup dialog centering contract', () => {
     const popupStyles = readFileSync('src/shared/ui/popup/style.scss', 'utf8');
 
     expect(popupStyles).toMatch(/popup\[open\]:has\(\.player\)/);
+    expect(popupStyles).toMatch(/popup\[open\]:has\(\.player\)[\s\S]*overflow:\s*hidden/);
+    expect(popupStyles).toMatch(/overscroll-behavior:\s*none/);
     expect(popupStyles).toMatch(/@media \(width < 768px\)[\s\S]*margin:\s*0/);
     expect(popupStyles).toMatch(/>\s*\.player[\s\S]*inline-size:\s*100%/);
   });

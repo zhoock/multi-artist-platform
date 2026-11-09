@@ -1,6 +1,7 @@
 // src/features/player/ui/AudioPlayer/style.scss
 // Импортируем общий файл с зависимостями
 @use '../../../../scss/abstracts/mixins' as *;
+@use 'player-responsive-layout' as *;
 
 .player {
   --player-progress-row-size: auto;

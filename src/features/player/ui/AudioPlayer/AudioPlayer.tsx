@@ -73,7 +73,6 @@ export default function AudioPlayer({
   const dispatch = useAppDispatch();
   const location = useEffectiveLocation();
   const isFullScreenPlayer = location.hash === '#player';
-  const [isLandscapeBlocked, setIsLandscapeBlocked] = useState(false);
 
   // Получаем все данные о плеере из Redux стейта через селекторы
   const isPlaying = useAppSelector(playerSelectors.selectIsPlaying); // играет ли трек
@@ -151,42 +150,6 @@ export default function AudioPlayer({
   const [lyricsOpacityMode, setLyricsOpacityMode] = useState<
     'normal' | 'user-scrolling' | 'seeking'
   >('normal');
-
-  useEffect(() => {
-    if (typeof window === 'undefined') {
-      return;
-    }
-
-    if (!isFullScreenPlayer) {
-      setIsLandscapeBlocked(false);
-      return;
-    }
-
-    const isTouchDevice = () =>
-      window.matchMedia ? window.matchMedia('(hover: none) and (pointer: coarse)').matches : false;
-
-    const updateOrientationState = () => {
-      if (!isFullScreenPlayer) {
-        setIsLandscapeBlocked(false);
-        return;
-      }
-
-      const { innerWidth: width, innerHeight: height } = window;
-      const isLandscape = width > height;
-
-      setIsLandscapeBlocked(isLandscape && isTouchDevice());
-    };
-
-    updateOrientationState();
-
-    window.addEventListener('resize', updateOrientationState);
-    window.addEventListener('orientationchange', updateOrientationState);
-
-    return () => {
-      window.removeEventListener('resize', updateOrientationState);
-      window.removeEventListener('orientationchange', updateOrientationState);
-    };
-  }, [isFullScreenPlayer]);
 
   useEffect(() => {
     trackDebug('init', {
@@ -966,7 +929,6 @@ export default function AudioPlayer({
     'player',
     showLyrics ? 'player--lyrics-visible' : '',
     !controlsVisible ? 'player--controls-hidden' : '',
-    isLandscapeBlocked ? 'player--orientation-blocked' : '',
     !shouldShowVolumeControl ? 'player--no-volume' : '',
   ]
     .filter(Boolean)
@@ -1063,36 +1025,6 @@ export default function AudioPlayer({
 
   return (
     <div ref={playerContainerRef} className={playerClassName}>
-      {isLandscapeBlocked && (
-        <div className="player__orientation-lock" role="alert" aria-live="assertive">
-          <div className="player__orientation-lock-content">
-            <svg
-              className="player__orientation-lock-icon"
-              width="72"
-              height="72"
-              viewBox="0 0 64 64"
-              role="img"
-              aria-hidden="true"
-              focusable="false"
-            >
-              <g
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="4"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M32 10a22 22 0 1 0 22 22" />
-                <path d="M54 10h-12" />
-                <path d="M54 10v12" />
-              </g>
-            </svg>
-            <p className="player__orientation-lock-message">
-              Поверните устройство в портретный режим, чтобы продолжить прослушивание.
-            </p>
-          </div>
-        </div>
-      )}
       {/* Обложка альбома и информация о треке */}
       <div className={coverWrapperClassName}>
         <div className={coverClassName.trim()} {...coverInteractiveProps}>
@@ -1293,236 +1225,238 @@ export default function AudioPlayer({
           </div>
         )}
 
-      {/* Прогресс воспроизведения: слайдер и время */}
-      <div
-        className={`player__progress-container ${!controlsVisible ? 'player__progress-container--hidden' : ''}`}
-      >
-        <div className="player__progress-bar">
-          <input
-            ref={progressInputRef}
-            className="player__progress-range"
-            type="range"
-            value={progress}
-            min="0"
-            max="100"
-            aria-label="Позиция трека"
-            onChange={handleProgressChange}
-            onInput={handleProgressChange} // onInput срабатывает раньше onChange и мгновенно
-            onMouseUp={handleSeekEnd} // для десктопа
-            onTouchEnd={handleSeekEnd} // для мобильных
-            onMouseDown={resetInactivityTimer} // Сбрасываем таймер при начале взаимодействия
-            onTouchStart={resetInactivityTimer} // Сбрасываем таймер при начале взаимодействия
-            onPointerDown={(event) => {
-              resetInactivityTimer();
-              progressPointerHandlers.onPointerDown(event);
-            }}
-            onPointerMove={progressPointerHandlers.onPointerMove}
-            onPointerUp={progressPointerHandlers.onPointerUp}
-            onPointerCancel={progressPointerHandlers.onPointerCancel}
-          />
-        </div>
-        {/* Время: текущее и оставшееся */}
-        {/* ВАЖНО: используем один контейнер для обоих значений */}
-        {/* Обновление через innerHTML гарантирует абсолютную атомарность - оба значения обновляются за одну операцию */}
-        <div ref={timeDisplayRef} className="player__time-container"></div>
-      </div>
-
-      {/* Кнопки управления: предыдущий трек, play/pause, следующий трек */}
-      <div className={`player__controls ${!controlsVisible ? 'player__controls--hidden' : ''}`}>
-        <button
-          type="button"
-          className="player__transport-button"
-          aria-label={playerA11yLabels.previousTrack}
-          onMouseDown={(e) => {
-            e.preventDefault(); // Предотвращаем focus и клик при удержании
-            handleRewindStart('backward');
-            resetInactivityTimer();
-          }}
-          onMouseUp={() => handleRewindEnd('backward', prevTrack)}
-          onMouseLeave={() => handleRewindEnd('backward', prevTrack)}
-          onTouchStart={(e) => {
-            e.preventDefault(); // Предотвращаем клик при touch
-            handleRewindStart('backward');
-            resetInactivityTimer();
-          }}
-          onTouchEnd={(e) => {
-            e.preventDefault(); // Предотвращаем двойной вызов
-            handleRewindEnd('backward', prevTrack);
-          }}
-          onClick={(e) => {
-            // ПРОСТАЯ ЛОГИКА: Если перемотка работает (флаг блокировки установлен) - блокируем клик
-            // Проверяем ДО вызова handleRewindClick
-            if (isRewindingActive()) {
-              e.preventDefault();
-              e.stopPropagation();
-              return;
-            }
-            // Если перемотка НЕ работает - переключаем трек
-            handleRewindClick('backward', prevTrack);
-          }}
-        >
-          <SkipBack
-            {...playerTransportIconProps(PLAYER_TRANSPORT_ICON_SIZE, {
-              className: 'player__transport-icon player__transport-icon--back',
-            })}
-            aria-hidden
-          />
-        </button>
-        <button
-          type="button"
-          className="player__transport-button player__transport-button--play"
-          aria-label={isPlaying ? playerA11yLabels.pause : playerA11yLabels.play}
-          onClick={() => {
-            togglePlayPause();
-            resetInactivityTimer();
-          }}
-        >
-          {isPlaying ? (
-            <Pause
-              {...playerTransportIconProps(PLAYER_TRANSPORT_PLAY_ICON_SIZE, {
-                className: 'player__transport-icon',
-              })}
-              aria-hidden
-            />
-          ) : (
-            <Play
-              {...playerTransportIconProps(PLAYER_TRANSPORT_PLAY_ICON_SIZE, {
-                className: 'player__transport-icon player__transport-icon--play',
-              })}
-              aria-hidden
-            />
-          )}
-        </button>
-        <button
-          type="button"
-          className="player__transport-button"
-          aria-label={playerA11yLabels.nextTrack}
-          onMouseDown={(e) => {
-            e.preventDefault(); // Предотвращаем focus и клик при удержании
-            handleRewindStart('forward');
-            resetInactivityTimer();
-          }}
-          onMouseUp={() => handleRewindEnd('forward', nextTrack)}
-          onMouseLeave={() => handleRewindEnd('forward', nextTrack)}
-          onTouchStart={(e) => {
-            e.preventDefault(); // Предотвращаем клик при touch
-            handleRewindStart('forward');
-            resetInactivityTimer();
-          }}
-          onTouchEnd={(e) => {
-            e.preventDefault(); // Предотвращаем двойной вызов
-            handleRewindEnd('forward', nextTrack);
-          }}
-          onClick={(e) => {
-            // ПРОСТАЯ ЛОГИКА: Если перемотка работает (флаг блокировки установлен) - блокируем клик
-            // Проверяем ДО вызова handleRewindClick
-            if (isRewindingActive()) {
-              e.preventDefault();
-              e.stopPropagation();
-              return;
-            }
-            // Если перемотка НЕ работает - переключаем трек
-            handleRewindClick('forward', nextTrack);
-          }}
-        >
-          <SkipForward
-            {...playerTransportIconProps(PLAYER_TRANSPORT_ICON_SIZE, {
-              className: 'player__transport-icon player__transport-icon--forward',
-            })}
-            aria-hidden
-          />
-        </button>
-      </div>
-
-      {/* Контрол громкости (скрыт на мобильных устройствах) */}
-      {shouldShowVolumeControl ? (
+      <div className="player__transport-column">
+        {/* Прогресс воспроизведения: слайдер и время */}
         <div
-          className={`player__volume-control ${!controlsVisible ? 'player__volume-control--hidden' : ''}`}
+          className={`player__progress-container ${!controlsVisible ? 'player__progress-container--hidden' : ''}`}
         >
-          <span className="player__volume-icon" aria-hidden>
-            <Volume {...playerIconProps(PLAYER_VOLUME_ICON_SIZE)} />
-          </span>
-          <input
-            className="player__volume-range"
-            type="range"
-            value={volume}
-            min="0"
-            max="100"
-            aria-label="Громкость"
-            onChange={handleVolumeChange}
-            onInput={handleVolumeChange}
-            onPointerDown={volumePointerHandlers.onPointerDown}
-            onPointerMove={volumePointerHandlers.onPointerMove}
-            onPointerUp={volumePointerHandlers.onPointerUp}
-            onPointerCancel={volumePointerHandlers.onPointerCancel}
-          />
-          <span className="player__volume-icon" aria-hidden>
-            <Volume2 {...playerIconProps(PLAYER_VOLUME_ICON_SIZE)} />
-          </span>
+          <div className="player__progress-bar">
+            <input
+              ref={progressInputRef}
+              className="player__progress-range"
+              type="range"
+              value={progress}
+              min="0"
+              max="100"
+              aria-label="Позиция трека"
+              onChange={handleProgressChange}
+              onInput={handleProgressChange} // onInput срабатывает раньше onChange и мгновенно
+              onMouseUp={handleSeekEnd} // для десктопа
+              onTouchEnd={handleSeekEnd} // для мобильных
+              onMouseDown={resetInactivityTimer} // Сбрасываем таймер при начале взаимодействия
+              onTouchStart={resetInactivityTimer} // Сбрасываем таймер при начале взаимодействия
+              onPointerDown={(event) => {
+                resetInactivityTimer();
+                progressPointerHandlers.onPointerDown(event);
+              }}
+              onPointerMove={progressPointerHandlers.onPointerMove}
+              onPointerUp={progressPointerHandlers.onPointerUp}
+              onPointerCancel={progressPointerHandlers.onPointerCancel}
+            />
+          </div>
+          {/* Время: текущее и оставшееся */}
+          {/* ВАЖНО: используем один контейнер для обоих значений */}
+          {/* Обновление через innerHTML гарантирует абсолютную атомарность - оба значения обновляются за одну операцию */}
+          <div ref={timeDisplayRef} className="player__time-container"></div>
         </div>
-      ) : null}
 
-      {/* Контрол переключения текста и режимов воспроизведения */}
-      <div
-        className={`player__secondary-controls ${!controlsVisible ? 'player__secondary-controls--hidden' : ''}`}
-      >
-        {/* Кнопка перемешивания треков */}
-        <button
-          type="button"
-          onClick={() => {
-            toggleShuffle();
-            resetInactivityTimer();
-          }}
-          className={`player__control-button ${shuffle ? 'player__control-button--active' : ''}`}
-          aria-label={shuffle ? 'Выключить перемешивание' : 'Включить перемешивание'}
-          aria-pressed={shuffle}
-        >
-          <span className="player__control-button-icon" aria-hidden>
-            <Shuffle {...playerIconProps(PLAYER_SECONDARY_ICON_SIZE)} />
-          </span>
-        </button>
-
-        {/* Кнопка зацикливания треков (три состояния: none → all → one → none) */}
-        <button
-          type="button"
-          onClick={() => {
-            toggleRepeat();
-            resetInactivityTimer();
-          }}
-          className={`player__control-button ${repeat !== 'none' ? 'player__control-button--active' : ''}`}
-          aria-label={
-            repeat === 'none'
-              ? 'Включить зацикливание плейлиста'
-              : repeat === 'all'
-                ? 'Зациклить один трек'
-                : 'Выключить зацикливание'
-          }
-        >
-          <span className="player__control-button-icon" aria-hidden>
-            {repeat === 'one' ? (
-              <Repeat1 {...playerIconProps(PLAYER_SECONDARY_ICON_SIZE)} />
+        {/* Кнопки управления: предыдущий трек, play/pause, следующий трек */}
+        <div className={`player__controls ${!controlsVisible ? 'player__controls--hidden' : ''}`}>
+          <button
+            type="button"
+            className="player__transport-button"
+            aria-label={playerA11yLabels.previousTrack}
+            onMouseDown={(e) => {
+              e.preventDefault(); // Предотвращаем focus и клик при удержании
+              handleRewindStart('backward');
+              resetInactivityTimer();
+            }}
+            onMouseUp={() => handleRewindEnd('backward', prevTrack)}
+            onMouseLeave={() => handleRewindEnd('backward', prevTrack)}
+            onTouchStart={(e) => {
+              e.preventDefault(); // Предотвращаем клик при touch
+              handleRewindStart('backward');
+              resetInactivityTimer();
+            }}
+            onTouchEnd={(e) => {
+              e.preventDefault(); // Предотвращаем двойной вызов
+              handleRewindEnd('backward', prevTrack);
+            }}
+            onClick={(e) => {
+              // ПРОСТАЯ ЛОГИКА: Если перемотка работает (флаг блокировки установлен) - блокируем клик
+              // Проверяем ДО вызова handleRewindClick
+              if (isRewindingActive()) {
+                e.preventDefault();
+                e.stopPropagation();
+                return;
+              }
+              // Если перемотка НЕ работает - переключаем трек
+              handleRewindClick('backward', prevTrack);
+            }}
+          >
+            <SkipBack
+              {...playerTransportIconProps(PLAYER_TRANSPORT_ICON_SIZE, {
+                className: 'player__transport-icon player__transport-icon--back',
+              })}
+              aria-hidden
+            />
+          </button>
+          <button
+            type="button"
+            className="player__transport-button player__transport-button--play"
+            aria-label={isPlaying ? playerA11yLabels.pause : playerA11yLabels.play}
+            onClick={() => {
+              togglePlayPause();
+              resetInactivityTimer();
+            }}
+          >
+            {isPlaying ? (
+              <Pause
+                {...playerTransportIconProps(PLAYER_TRANSPORT_PLAY_ICON_SIZE, {
+                  className: 'player__transport-icon',
+                })}
+                aria-hidden
+              />
             ) : (
-              <Repeat {...playerIconProps(PLAYER_SECONDARY_ICON_SIZE)} />
+              <Play
+                {...playerTransportIconProps(PLAYER_TRANSPORT_PLAY_ICON_SIZE, {
+                  className: 'player__transport-icon player__transport-icon--play',
+                })}
+                aria-hidden
+              />
             )}
-          </span>
-        </button>
+          </button>
+          <button
+            type="button"
+            className="player__transport-button"
+            aria-label={playerA11yLabels.nextTrack}
+            onMouseDown={(e) => {
+              e.preventDefault(); // Предотвращаем focus и клик при удержании
+              handleRewindStart('forward');
+              resetInactivityTimer();
+            }}
+            onMouseUp={() => handleRewindEnd('forward', nextTrack)}
+            onMouseLeave={() => handleRewindEnd('forward', nextTrack)}
+            onTouchStart={(e) => {
+              e.preventDefault(); // Предотвращаем клик при touch
+              handleRewindStart('forward');
+              resetInactivityTimer();
+            }}
+            onTouchEnd={(e) => {
+              e.preventDefault(); // Предотвращаем двойной вызов
+              handleRewindEnd('forward', nextTrack);
+            }}
+            onClick={(e) => {
+              // ПРОСТАЯ ЛОГИКА: Если перемотка работает (флаг блокировки установлен) - блокируем клик
+              // Проверяем ДО вызова handleRewindClick
+              if (isRewindingActive()) {
+                e.preventDefault();
+                e.stopPropagation();
+                return;
+              }
+              // Если перемотка НЕ работает - переключаем трек
+              handleRewindClick('forward', nextTrack);
+            }}
+          >
+            <SkipForward
+              {...playerTransportIconProps(PLAYER_TRANSPORT_ICON_SIZE, {
+                className: 'player__transport-icon player__transport-icon--forward',
+              })}
+              aria-hidden
+            />
+          </button>
+        </div>
 
-        {/* Кнопка переключения текста */}
-        <button
-          type="button"
-          onClick={() => {
-            toggleLyrics();
-            resetInactivityTimer();
-          }}
-          disabled={!hasTextToShow}
-          className={`player__lyrics-toggle ${showLyrics ? 'player__lyrics-toggle--active' : ''}`}
-          aria-label={showLyrics ? 'Скрыть текст' : 'Показать текст'}
-          aria-disabled={!hasTextToShow}
+        {/* Контрол громкости (скрыт на мобильных устройствах) */}
+        {shouldShowVolumeControl ? (
+          <div
+            className={`player__volume-control ${!controlsVisible ? 'player__volume-control--hidden' : ''}`}
+          >
+            <span className="player__volume-icon" aria-hidden>
+              <Volume {...playerIconProps(PLAYER_VOLUME_ICON_SIZE)} />
+            </span>
+            <input
+              className="player__volume-range"
+              type="range"
+              value={volume}
+              min="0"
+              max="100"
+              aria-label="Громкость"
+              onChange={handleVolumeChange}
+              onInput={handleVolumeChange}
+              onPointerDown={volumePointerHandlers.onPointerDown}
+              onPointerMove={volumePointerHandlers.onPointerMove}
+              onPointerUp={volumePointerHandlers.onPointerUp}
+              onPointerCancel={volumePointerHandlers.onPointerCancel}
+            />
+            <span className="player__volume-icon" aria-hidden>
+              <Volume2 {...playerIconProps(PLAYER_VOLUME_ICON_SIZE)} />
+            </span>
+          </div>
+        ) : null}
+
+        {/* Контрол переключения текста и режимов воспроизведения */}
+        <div
+          className={`player__secondary-controls ${!controlsVisible ? 'player__secondary-controls--hidden' : ''}`}
         >
-          <span className="player__lyrics-toggle-icon" aria-hidden>
-            <MessageSquareQuote {...playerIconProps(PLAYER_SECONDARY_ICON_SIZE)} />
-          </span>
-        </button>
+          {/* Кнопка перемешивания треков */}
+          <button
+            type="button"
+            onClick={() => {
+              toggleShuffle();
+              resetInactivityTimer();
+            }}
+            className={`player__control-button ${shuffle ? 'player__control-button--active' : ''}`}
+            aria-label={shuffle ? 'Выключить перемешивание' : 'Включить перемешивание'}
+            aria-pressed={shuffle}
+          >
+            <span className="player__control-button-icon" aria-hidden>
+              <Shuffle {...playerIconProps(PLAYER_SECONDARY_ICON_SIZE)} />
+            </span>
+          </button>
+
+          {/* Кнопка зацикливания треков (три состояния: none → all → one → none) */}
+          <button
+            type="button"
+            onClick={() => {
+              toggleRepeat();
+              resetInactivityTimer();
+            }}
+            className={`player__control-button ${repeat !== 'none' ? 'player__control-button--active' : ''}`}
+            aria-label={
+              repeat === 'none'
+                ? 'Включить зацикливание плейлиста'
+                : repeat === 'all'
+                  ? 'Зациклить один трек'
+                  : 'Выключить зацикливание'
+            }
+          >
+            <span className="player__control-button-icon" aria-hidden>
+              {repeat === 'one' ? (
+                <Repeat1 {...playerIconProps(PLAYER_SECONDARY_ICON_SIZE)} />
+              ) : (
+                <Repeat {...playerIconProps(PLAYER_SECONDARY_ICON_SIZE)} />
+              )}
+            </span>
+          </button>
+
+          {/* Кнопка переключения текста */}
+          <button
+            type="button"
+            onClick={() => {
+              toggleLyrics();
+              resetInactivityTimer();
+            }}
+            disabled={!hasTextToShow}
+            className={`player__lyrics-toggle ${showLyrics ? 'player__lyrics-toggle--active' : ''}`}
+            aria-label={showLyrics ? 'Скрыть текст' : 'Показать текст'}
+            aria-disabled={!hasTextToShow}
+          >
+            <span className="player__lyrics-toggle-icon" aria-hidden>
+              <MessageSquareQuote {...playerIconProps(PLAYER_SECONDARY_ICON_SIZE)} />
+            </span>
+          </button>
+        </div>
       </div>
     </div>
   );
