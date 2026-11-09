@@ -22,6 +22,7 @@ import {
   isTrackPlaybackBlocked,
 } from '@shared/lib/tracks/trackPlayback';
 import { artistPlayTrace } from '@features/universe/lib/artistPlayTrace';
+import { syncHomeArtistCardPlayButtonFromPlayer } from '@features/universe/lib/homeArtistCardPlayButtonSync';
 import {
   beginQualifiedPlaySession,
   onQualifiedPlayPause,
@@ -172,6 +173,21 @@ playerListenerMiddleware.startListening({
   actionCreator: playerActions.pause,
   effect: () => {
     audioController.pause();
+  },
+});
+
+/** Keep Universe artist-card Play/Pause in sync with Redux (imperative DOM). */
+playerListenerMiddleware.startListening({
+  matcher: isAnyOf(
+    playerActions.play,
+    playerActions.pause,
+    playerActions.toggle,
+    playerActions.setCurrentTrackIndex,
+    playerActions.nextTrack,
+    playerActions.prevTrack
+  ),
+  effect: () => {
+    syncHomeArtistCardPlayButtonFromPlayer();
   },
 });
 

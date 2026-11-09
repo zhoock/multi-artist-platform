@@ -26,6 +26,8 @@ import { artistPlayTrace, artistPlayTraceStart } from '@features/universe/lib/ar
 import { runArtistCardPlayAction } from '@features/universe/lib/runArtistCardPlayAction';
 import { resolveHomeArtistCardPlayLabels } from '@features/universe/lib/homeArtistPlayStartingLabels';
 import { playerActions, playerSelectors } from '@features/player';
+import { buildArtistCardPlayPlayerSnapshot } from '@features/universe/lib/buildArtistCardPlayPlayerSnapshot';
+import { setHomeArtistCardPlayButtonSync } from '@features/universe/lib/homeArtistCardPlayButtonSync';
 import { prepareUniverseData } from '@features/universe/model/prepareUniverseData';
 import { fetchWithAuthSession } from '@shared/lib/authFetch';
 import { fetchPublicProfileForDisplay } from '@shared/lib/profileDisplayName';
@@ -90,22 +92,10 @@ export function HomePage() {
   const [artistPlayStartingSlug, setArtistPlayStartingSlug] = useState<string | null>(null);
   artistPlayStartingSlugRef.current = artistPlayStartingSlug;
   const isPlayerPlaying = useAppSelector(playerSelectors.selectIsPlaying);
-  const playerArtistSlug = useAppSelector(
-    (state) => state.player.albumMeta?.publicSlug?.trim() ?? null
+  const readArtistCardPlaySnapshot = useCallback(
+    () => buildArtistCardPlayPlayerSnapshot(artistPlayStartingSlugRef.current),
+    []
   );
-  const hasPlayerQueue = useAppSelector((state) => state.player.playlist.length > 0);
-  const playerCardPlaySnapshotRef = useRef({
-    startingArtistSlug: null as string | null,
-    activeArtistSlug: null as string | null,
-    isPlaying: false,
-    hasActiveQueue: false,
-  });
-  playerCardPlaySnapshotRef.current = {
-    startingArtistSlug: artistPlayStartingSlug,
-    activeArtistSlug: playerArtistSlug,
-    isPlaying: isPlayerPlaying,
-    hasActiveQueue: hasPlayerQueue,
-  };
   /** Read at interaction time so Universe3D init does not rerun on locale-only changes. */
   const langForUniverseRef = useRef(lang);
   const locationForUniverseRef = useRef(location);
@@ -320,7 +310,7 @@ export function HomePage() {
           buildArtistPagePath(langForUniverseRef.current, publicSlug),
         onArtistCardOpenChange: (open) => onArtistCardOpenChangeRef.current(open),
         artistCardPlayLabels,
-        getArtistCardPlaySnapshot: () => playerCardPlaySnapshotRef.current,
+        getArtistCardPlaySnapshot: readArtistCardPlaySnapshot,
         onPlayArtist: (artist) => {
           const slug = artist?.publicSlug;
           if (slug) {
@@ -329,7 +319,7 @@ export function HomePage() {
           }
           return runArtistCardPlayAction({
             publicSlug: slug,
-            readPlayerSnapshot: () => playerCardPlaySnapshotRef.current,
+            readPlayerSnapshot: readArtistCardPlaySnapshot,
             getInflight: () => artistPlayInflightRef.current,
             setInflight: (promise) => {
               artistPlayInflightRef.current = promise;
@@ -397,8 +387,15 @@ export function HomePage() {
   }, [dispatch, hasArtistParam, navigate, prefersReducedMotion, useMocks, universeRefreshToken]);
 
   useEffect(() => {
+    setHomeArtistCardPlayButtonSync(() => {
+      universeRef.current?.syncArtistCardPlayButtonState();
+    });
+    return () => setHomeArtistCardPlayButtonSync(null);
+  }, []);
+
+  useEffect(() => {
     universeRef.current?.syncArtistCardPlayButtonState();
-  }, [artistPlayStartingSlug, isPlayerPlaying, playerArtistSlug, hasPlayerQueue]);
+  }, [artistPlayStartingSlug]);
 
   useEffect(() => {
     if (artistPlayStartingSlug && isPlayerPlaying) {

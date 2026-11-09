@@ -43,6 +43,11 @@ jest.mock('@shared/lib/analytics', () => ({
   gaEvent: jest.fn(),
 }));
 
+const mockSyncHomeArtistCardPlayButtonFromPlayer = jest.fn();
+jest.mock('@features/universe/lib/homeArtistCardPlayButtonSync', () => ({
+  syncHomeArtistCardPlayButtonFromPlayer: () => mockSyncHomeArtistCardPlayButtonFromPlayer(),
+}));
+
 import { audioController } from '@features/player/model/lib/audioController';
 import { gaEvent } from '@shared/lib/analytics';
 
@@ -172,12 +177,26 @@ describe('playerListeners middleware', () => {
   });
 
   describe('pause action listener', () => {
+    beforeEach(() => {
+      mockSyncHomeArtistCardPlayButtonFromPlayer.mockClear();
+    });
+
     test('должен вызвать audioController.pause() при действии pause', () => {
       const store = createTestStore();
 
       store.dispatch(playerActions.pause());
 
       expect(mockAudioController.pause).toHaveBeenCalledTimes(1);
+    });
+
+    test('синхронизирует кнопку Play/Pause на карточке артиста при pause', () => {
+      const store = createTestStore({
+        player: { ...initialPlayerState, isPlaying: true },
+      });
+
+      store.dispatch(playerActions.pause());
+
+      expect(mockSyncHomeArtistCardPlayButtonFromPlayer).toHaveBeenCalledTimes(1);
     });
 
     test('должен обработать множественные вызовы pause', () => {
