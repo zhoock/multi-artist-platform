@@ -302,7 +302,10 @@ describe('artist audience authorization', () => {
   });
 });
 
-function mockAudienceStatsQueries(cityRows: Array<{ city: string; code: string; plays: number }>) {
+function mockAudienceStatsQueries(
+  cityRows: Array<{ city: string; code: string; plays: number }>,
+  options?: { topTrackAlbumCover?: unknown }
+) {
   mockedPremium.mockResolvedValue(false);
   mockedQuery.mockImplementation(async (sql: unknown) => {
     const s = String(sql);
@@ -329,9 +332,20 @@ function mockAudienceStatsQueries(cityRows: Array<{ city: string; code: string; 
       return fakeQueryResult([]);
     }
     if (s.includes('ranked_tracks')) {
-      return fakeQueryResult([{ count: '0' }]);
+      return fakeQueryResult([{ count: options?.topTrackAlbumCover != null ? '1' : '0' }]);
     }
     if (s.includes('FROM qualified_track_plays q') && s.includes('INNER JOIN tracks')) {
+      if (options?.topTrackAlbumCover != null) {
+        return fakeQueryResult([
+          {
+            track_uuid: TRACK_UUID,
+            title: 'Top track',
+            plays: '3',
+            album_cover: options.topTrackAlbumCover,
+            album_user_id: ARTIST,
+          },
+        ]);
+      }
       return fakeQueryResult([]);
     }
     if (s.includes('grouped_cities')) {
@@ -349,6 +363,42 @@ function mockAudienceStatsQueries(cityRows: Array<{ city: string; code: string; 
     return fakeQueryResult([]);
   });
 }
+
+describe('getArtistAudienceStats top tracks album cover', () => {
+  beforeEach(() => {
+    mockedQuery.mockReset();
+  });
+
+  test('maps JSONB album cover object to img (no string trim on object)', async () => {
+    const img = 'album_cover_uuid_artist-Cover-rubber-soul';
+    mockAudienceStatsQueries([], {
+      topTrackAlbumCover: {
+        img,
+        playerBackground: { primary: [190, 107, 37], secondary: [26, 82, 77] },
+      },
+    });
+
+    const stats = await getArtistAudienceStats(ARTIST, '30d', {
+      tracksLimit: 5,
+      supportersLimit: 1,
+    });
+
+    expect(stats.topTracks).toHaveLength(1);
+    expect(stats.topTracks[0].albumCover).toBe(img);
+  });
+
+  test('maps legacy plain string album cover via coverImgFromStorageField', async () => {
+    const legacy = 'album_cover_legacy-base-name';
+    mockAudienceStatsQueries([], { topTrackAlbumCover: legacy });
+
+    const stats = await getArtistAudienceStats(ARTIST, '30d', {
+      tracksLimit: 5,
+      supportersLimit: 1,
+    });
+
+    expect(stats.topTracks[0].albumCover).toBe(legacy);
+  });
+});
 
 describe('getArtistAudienceStats top cities', () => {
   beforeEach(() => {

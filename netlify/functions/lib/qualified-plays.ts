@@ -2,6 +2,7 @@
  * Qualified listen registration and audience metrics (artist dashboard).
  */
 
+import { coverImgFromStorageField } from '../../../src/shared/lib/albumCoverStorage';
 import { normalizeAccountType } from './account-type';
 import { artistHasPublicPageContent } from './artist-publication';
 import { getArtistAudienceRevenue, type AudienceRevenue } from './artist-audience-revenue';
@@ -393,7 +394,7 @@ export async function getArtistAudienceStats(
       track_uuid: string;
       title: string;
       plays: string;
-      album_cover: string | null;
+      album_cover: unknown | null;
       album_user_id: string | null;
     }>(
       `SELECT t.id::text AS track_uuid,
@@ -498,7 +499,7 @@ export async function getArtistAudienceStats(
     trackId: row.track_uuid,
     title: row.title,
     plays: Number(row.plays ?? 0),
-    albumCover: row.album_cover?.trim() || null,
+    albumCover: coverImgFromStorageField(row.album_cover) || null,
     albumUserId: row.album_user_id?.trim() || null,
   }));
 
