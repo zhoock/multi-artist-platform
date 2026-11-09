@@ -1,4 +1,5 @@
-import { Play } from 'lucide-react';
+import { Lock, Play } from 'lucide-react';
+import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 import {
   ALBUM_PLAY_BUTTON_ICON_SIZE,
   playerTransportIconProps,
@@ -273,6 +274,13 @@ const AlbumTracksComponent = ({
   );
 
   const playText = ui?.buttons?.playButton ?? 'Play';
+  const hasPlayableTrack = useMemo(
+    () => resolveFirstPlayableIndex(albumPageTracks, 0) !== -1,
+    [albumPageTracks]
+  );
+  const albumGetAccessText =
+    ui?.buttons?.albumPlayGetAccess ?? (lang === 'ru' ? 'Получить доступ' : 'Get access');
+  const albumPlayButtonLabel = hasPlayableTrack ? playText : albumGetAccessText;
   const hasTracks = albumPageTracks.length > 0;
 
   return (
@@ -304,6 +312,13 @@ const AlbumTracksComponent = ({
               });
               const firstPlayable = resolveFirstPlayableIndex(albumPageTracks, 0);
               if (firstPlayable === -1) {
+                void requestAccess({
+                  artistUserId: album.userId,
+                  artistSlug: artistSlugFromUrl,
+                  onAccessGranted: () => {
+                    void openPlayer(0, { openFullScreen: false });
+                  },
+                });
                 return;
               }
               void openPlayer(firstPlayable, {
@@ -312,13 +327,22 @@ const AlbumTracksComponent = ({
             }}
           >
             <span className="album-play__icon" aria-hidden>
-              <Play
-                {...playerTransportIconProps(ALBUM_PLAY_BUTTON_ICON_SIZE, {
-                  className: 'album-play__icon-svg album-play__icon-svg--play',
-                })}
-              />
+              {hasPlayableTrack ? (
+                <Play
+                  {...playerTransportIconProps(ALBUM_PLAY_BUTTON_ICON_SIZE, {
+                    className: 'album-play__icon-svg album-play__icon-svg--play',
+                  })}
+                />
+              ) : (
+                <Lock
+                  {...dashboardActionIconProps({
+                    size: ALBUM_PLAY_BUTTON_ICON_SIZE,
+                    className: 'album-play__icon-svg',
+                  })}
+                />
+              )}
             </span>
-            {playText}
+            {albumPlayButtonLabel}
           </button>
         </div>
       ) : null}

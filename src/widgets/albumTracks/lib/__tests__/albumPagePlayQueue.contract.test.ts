@@ -35,4 +35,14 @@ describe('album page play queue contract', () => {
     expect(playlist[playableIndex]?.id).toBe('track-b');
     expect(playlist).toHaveLength(2);
   });
+
+  test('play album when every track is playback-blocked yields no playable index', () => {
+    const lockedTracks = rawTracks.map((track) => ({
+      ...track,
+      visibility: 'subscribers_only' as const,
+      src: '',
+    }));
+    expect(lockedTracks.every(isTrackPlaybackBlocked)).toBe(true);
+    expect(resolveFirstPlayableIndex(lockedTracks, 0)).toBe(-1);
+  });
 });
