@@ -8,9 +8,11 @@
 }
 
 .universe3d-card {
+  container-type: inline-size;
+  container-name: universe3d-card;
   position: absolute;
   width: min(calc(17.778 * var(--ms-0)), calc(100vw - 2 * var(--ms-0)));
-  min-height: calc(20 * var(--ms-0));
+  min-height: 0;
   pointer-events: auto;
   background: linear-gradient(
     180deg,
@@ -115,26 +117,50 @@
 }
 
 .universe3d-card__body {
-  padding: var(--ms-01) var(--ms-0) var(--ms-02);
+  padding: var(--ms-01) var(--ms-0) var(--ms-0);
 }
 
 .universe3d-card__title {
   display: inline-flex;
+  justify-content: flex-start;
   gap: 0.35em;
   align-items: center;
-  width: fit-content;
   max-width: 100%;
   line-height: 1;
   font-family: var(--base-accent-font);
+  text-decoration: none;
 
   @include adjust-font-size-to($ms-1, 0);
+  @include link-colors(--link-color, --link-color-hover);
 }
 
 .universe3d-card__title-text {
-  display: block;
-  text-decoration: none;
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
-  @include link-colors(--link-color, --link-color-hover);
+// Narrow card: wrap title up to 2 lines (no Play in this row).
+@container universe3d-card (max-width: 21.5rem) {
+  .universe3d-card__title {
+    display: flex;
+    max-width: 100%;
+  }
+
+  .universe3d-card__title-text {
+    max-width: calc(100% - 1.35em);
+    display: -webkit-box;
+    line-height: 1.12;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: normal;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+  }
 }
 
 .universe3d-card__title-chevron {
@@ -143,11 +169,8 @@
   align-items: center;
   justify-content: center;
   color: currentcolor;
-  text-decoration: none;
   transform: translateY(calc(0.07em + 2px)) translateX(0);
   animation: universe3d-card-title-chevron-sway 2.8s ease-in-out infinite;
-
-  @include link-colors(--link-color, --link-color-hover);
 
   @media (prefers-reduced-motion: reduce) {
     animation: none;
@@ -160,11 +183,21 @@
   }
 }
 
-.universe3d-card__chips {
-  margin-top: var(--ms-01);
+.universe3d-card__chips-row {
   display: flex;
+  gap: var(--ms-01);
+  align-items: center;
+  justify-content: space-between;
+  margin-top: var(--ms-01);
+  min-width: 0;
+}
+
+.universe3d-card__chips {
+  display: flex;
+  flex: 1 1 auto;
   flex-wrap: wrap;
   gap: var(--ms-01);
+  min-width: 0;
 }
 
 .universe3d-card__chip {
@@ -177,29 +210,64 @@
   border-radius: 999px;
 }
 
-.universe3d-card__footer {
-  margin-top: var(--ms-01);
-  padding: var(--ms-0);
-  border-top: 1px solid color-mix(in srgb, var(--hr-color, #3b3e48) 70%, transparent);
+.universe3d-card__play-glyph {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  line-height: 0;
+  pointer-events: none;
+
+  svg {
+    display: block;
+    flex-shrink: 0;
+  }
+}
+
+.universe3d-card__play-glyph-svg {
+  display: block;
+  color: currentcolor;
+
+  &--play {
+    transform: translateX(2px);
+
+    @media (prefers-reduced-motion: reduce) {
+      transform: none;
+    }
+  }
 }
 
 .universe3d-card__play {
-  width: 100%;
+  --universe3d-card-play-size: 48px;
 
-  @include button-variant($margin: 0);
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: var(--universe3d-card-play-size);
+  height: var(--universe3d-card-play-size);
+  line-height: 0;
+
+  @include button-variant($margin: 0, $padding: 0, $border: 0, $border-radius: 50%);
 
   &.universe3d-card__play--starting {
     cursor: wait;
     opacity: 0.92;
+    pointer-events: none;
+  }
+
+  &.universe3d-card__play--starting .universe3d-card__play-glyph {
+    visibility: hidden;
   }
 
   &.universe3d-card__play--starting::before {
     content: '';
-    display: inline-block;
-    width: 0.85em;
-    height: 0.85em;
-    margin-right: 0.45em;
-    vertical-align: -0.1em;
+    position: absolute;
+    inset: 0;
+    width: 1.35rem;
+    height: 1.35rem;
+    margin: auto;
     border: 2px solid color-mix(in srgb, currentcolor 35%, transparent);
     border-top-color: currentcolor;
     border-radius: 50%;

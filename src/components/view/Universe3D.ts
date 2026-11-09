@@ -1494,33 +1494,32 @@ export class Universe3D {
       ${slug ? '<a class="universe3d-card__media"></a>' : '<div class="universe3d-card__media" aria-hidden="true"></div>'}
       <div class="universe3d-card__body">
         <div class="universe3d-card__title"></div>
-        <div class="universe3d-card__chips"></div>
-      </div>
-      <div class="universe3d-card__footer">
-        <button class="universe3d-card__play" type="button">Play</button>
+        <div class="universe3d-card__chips-row">
+          <div class="universe3d-card__chips"></div>
+          <button class="universe3d-card__play" type="button"></button>
+        </div>
       </div>
     `;
 
     const titleSlot = card.querySelector('.universe3d-card__title');
     if (titleSlot) {
       if (slug) {
-        const titleWrap = document.createElement('span');
-        titleWrap.className = 'universe3d-card__title';
+        const titleLink = document.createElement('a');
+        titleLink.className = 'universe3d-card__title';
 
-        const nameLink = document.createElement('a');
-        nameLink.className = 'universe3d-card__title-text';
-        nameLink.textContent = title;
-        this.bindArtistProfileLink(nameLink, slug);
-        titleWrap.appendChild(nameLink);
+        const nameEl = document.createElement('span');
+        nameEl.className = 'universe3d-card__title-text';
+        nameEl.textContent = title;
+        titleLink.appendChild(nameEl);
 
-        const chevronLink = document.createElement('a');
-        chevronLink.className = 'universe3d-card__title-chevron';
-        chevronLink.setAttribute('aria-hidden', 'true');
-        chevronLink.innerHTML = ARTIST_TITLE_CHEVRON_ICON_SVG;
-        this.bindArtistProfileLink(chevronLink, slug);
-        titleWrap.appendChild(chevronLink);
+        const chevronEl = document.createElement('span');
+        chevronEl.className = 'universe3d-card__title-chevron';
+        chevronEl.setAttribute('aria-hidden', 'true');
+        chevronEl.innerHTML = ARTIST_TITLE_CHEVRON_ICON_SVG;
+        titleLink.appendChild(chevronEl);
 
-        titleSlot.replaceWith(titleWrap);
+        this.bindArtistProfileLink(titleLink, slug);
+        titleSlot.replaceWith(titleLink);
       } else {
         titleSlot.textContent = title;
       }
@@ -1549,7 +1548,6 @@ export class Universe3D {
 
     const playButton = card.querySelector('.universe3d-card__play');
     if (playButton instanceof HTMLButtonElement) {
-      playButton.textContent = this.artistCardPlayLabels.play;
       this.syncArtistCardPlayButtonStateForCard(card);
 
       playButton.addEventListener('click', async (e) => {
@@ -1577,11 +1575,10 @@ export class Universe3D {
         }
 
         try {
-          const started = await this.onPlayArtist(data as SceneArtist);
-          if (!started) {
-            this.syncArtistCardPlayButtonStateForCard(card);
-          }
+          await this.onPlayArtist(data as SceneArtist);
         } catch {
+          // fall through to resync
+        } finally {
           this.syncArtistCardPlayButtonStateForCard(card);
         }
       });

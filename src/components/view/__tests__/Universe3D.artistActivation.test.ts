@@ -355,7 +355,7 @@ describe('Universe3D artist activation', () => {
       universe.activatePrimaryArtist();
       universe.syncArtistCardPlayButtonState();
       const playButton = container.querySelector('.universe3d-card__play') as HTMLButtonElement;
-      expect(playButton.textContent).toBe('Pause');
+      expect(playButton.getAttribute('aria-label')).toBe('Pause');
       expect(playButton.dataset.playPhase).toBe('pause');
 
       universe.destroy();

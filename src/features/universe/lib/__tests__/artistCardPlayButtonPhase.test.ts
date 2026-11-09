@@ -23,6 +23,17 @@ describe('resolveArtistCardPlayButtonPhase', () => {
     ).toBe('starting');
   });
 
+  test('pause wins over stale starting slug while same artist is playing', () => {
+    expect(
+      resolveArtistCardPlayButtonPhase({
+        cardArtistSlug: 'artist-a',
+        ...base,
+        startingArtistSlug: 'artist-a',
+        isPlaying: true,
+      })
+    ).toBe('pause');
+  });
+
   test('pause when same artist is playing', () => {
     expect(
       resolveArtistCardPlayButtonPhase({

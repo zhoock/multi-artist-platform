@@ -1,5 +1,10 @@
 import type { ArtistCardPlayButtonPhase } from '@features/universe/lib/artistCardPlayButtonPhase';
 
+import {
+  universe3dArtistCardPauseIconMarkup,
+  universe3dArtistCardPlayIconMarkup,
+} from './universe3dArtistCardPlayButtonIcons';
+
 export type Universe3dArtistCardPlayLabels = {
   play: string;
   starting: string;
@@ -11,6 +16,23 @@ export const DEFAULT_UNIVERSE3D_ARTIST_CARD_PLAY_LABELS: Universe3dArtistCardPla
   starting: 'Loading…',
   pause: 'Pause',
 };
+
+function ensureUniverse3dCardPlayGlyph(button: HTMLButtonElement): HTMLElement {
+  let glyph = button.querySelector('.universe3d-card__play-glyph');
+  if (!(glyph instanceof HTMLElement)) {
+    button.replaceChildren();
+    glyph = document.createElement('span');
+    glyph.className = 'universe3d-card__play-glyph';
+    glyph.setAttribute('aria-hidden', 'true');
+    button.appendChild(glyph);
+  }
+  return glyph;
+}
+
+function setUniverse3dCardPlayGlyphMarkup(button: HTMLButtonElement, markup: string): void {
+  const glyph = ensureUniverse3dCardPlayGlyph(button);
+  glyph.innerHTML = markup;
+}
 
 export function applyUniverse3dCardPlayButtonState(
   button: HTMLButtonElement,
@@ -24,21 +46,24 @@ export function applyUniverse3dCardPlayButtonState(
   if (phase === 'starting') {
     button.disabled = true;
     button.setAttribute('aria-busy', 'true');
+    button.setAttribute('aria-label', labels.starting);
     button.dataset.playStarting = '1';
     button.classList.add('universe3d-card__play--starting');
-    button.textContent = labels.starting;
+    setUniverse3dCardPlayGlyphMarkup(button, universe3dArtistCardPlayIconMarkup());
     button.dataset.playPhase = 'starting';
     return;
   }
 
   button.disabled = false;
   if (phase === 'pause') {
-    button.textContent = labels.pause;
+    button.setAttribute('aria-label', labels.pause);
+    setUniverse3dCardPlayGlyphMarkup(button, universe3dArtistCardPauseIconMarkup());
     button.dataset.playPhase = 'pause';
     return;
   }
 
-  button.textContent = labels.play;
+  button.setAttribute('aria-label', labels.play);
+  setUniverse3dCardPlayGlyphMarkup(button, universe3dArtistCardPlayIconMarkup());
   button.dataset.playPhase = 'play';
 }
 

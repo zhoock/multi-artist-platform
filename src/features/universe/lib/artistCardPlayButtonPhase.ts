@@ -15,12 +15,13 @@ export function resolveArtistCardPlayButtonPhase(
   const slug = input.cardArtistSlug.trim();
   if (!slug) return 'play';
 
-  if (input.startingArtistSlug?.trim() === slug) {
-    return 'starting';
-  }
-
+  // Playing state wins over stale "starting" slug (Redux can update before Home clears starting slug).
   if (input.hasActiveQueue && input.activeArtistSlug?.trim() === slug && input.isPlaying) {
     return 'pause';
+  }
+
+  if (input.startingArtistSlug?.trim() === slug) {
+    return 'starting';
   }
 
   return 'play';
