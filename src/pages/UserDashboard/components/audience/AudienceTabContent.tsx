@@ -8,6 +8,8 @@ import {
   TriangleAlert as TriangleAlertIcon,
   ShoppingBag as ShoppingBagIcon,
   HeartHandshake as HeartHandshakeIcon,
+  MapPin as MapPinIcon,
+  Music as MusicIcon,
 } from 'lucide-react';
 
 import type { IInterface } from '@models';
@@ -274,6 +276,24 @@ type MetricCardProps = {
   locale: string;
   valueUnavailable?: boolean;
 };
+
+const AUDIENCE_LIST_EMPTY_ICON_SIZE = 44;
+
+type AudienceListEmptyStateProps = {
+  icon: React.ReactNode;
+  label: string;
+};
+
+function AudienceListEmptyState({ icon, label }: AudienceListEmptyStateProps) {
+  return (
+    <div className="audience-tab__list-empty audience-tab__list-empty--illustrated">
+      <span className="audience-tab__list-empty-icon" aria-hidden>
+        {icon}
+      </span>
+      <p className="audience-tab__list-empty-label">{label}</p>
+    </div>
+  );
+}
 
 function MetricCard({ icon, label, hint, value, locale, valueUnavailable }: MetricCardProps) {
   const displayValue = valueUnavailable ? '—' : formatMetricValue(value, locale);
@@ -580,7 +600,17 @@ export function AudienceTabContent({ active, ui }: AudienceTabContentProps) {
           <div className="audience-tab__list-body">
             {compactTracks.length === 0 ? (
               showEmptyStateCopy ? (
-                <p className="audience-tab__list-empty">{listNoDataLabel}</p>
+                <AudienceListEmptyState
+                  icon={
+                    <MusicIcon
+                      {...dashboardActionIconProps({
+                        size: AUDIENCE_LIST_EMPTY_ICON_SIZE,
+                        strokeWidth: 1.5,
+                      })}
+                    />
+                  }
+                  label={listNoDataLabel}
+                />
               ) : null
             ) : (
               <ol className="audience-tab__rank-list">
@@ -633,7 +663,17 @@ export function AudienceTabContent({ active, ui }: AudienceTabContentProps) {
           <div className="audience-tab__list-body">
             {compactSupporters.length === 0 ? (
               showEmptyStateCopy ? (
-                <p className="audience-tab__list-empty">{listNoDataLabel}</p>
+                <AudienceListEmptyState
+                  icon={
+                    <UsersIcon
+                      {...dashboardActionIconProps({
+                        size: AUDIENCE_LIST_EMPTY_ICON_SIZE,
+                        strokeWidth: 1.5,
+                      })}
+                    />
+                  }
+                  label={listNoDataLabel}
+                />
               ) : null
             ) : (
               <ul className="audience-tab__supporters">
@@ -672,7 +712,17 @@ export function AudienceTabContent({ active, ui }: AudienceTabContentProps) {
         <div className="audience-tab__list-body">
           {compactCities.length === 0 ? (
             showEmptyStateCopy ? (
-              <p className="audience-tab__list-empty">{citiesEmptyLabel}</p>
+              <AudienceListEmptyState
+                icon={
+                  <MapPinIcon
+                    {...dashboardActionIconProps({
+                      size: AUDIENCE_LIST_EMPTY_ICON_SIZE,
+                      strokeWidth: 1.5,
+                    })}
+                  />
+                }
+                label={citiesEmptyLabel}
+              />
             ) : null
           ) : (
             <ol className="audience-tab__rank-list">
