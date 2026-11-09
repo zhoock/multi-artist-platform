@@ -5,7 +5,6 @@ import {
   Play as PlayIcon,
   Users as UsersIcon,
   Heart as HeartIcon,
-  ChevronDown as ChevronDownIcon,
   TriangleAlert as TriangleAlertIcon,
   ShoppingBag as ShoppingBagIcon,
   HeartHandshake as HeartHandshakeIcon,
@@ -46,6 +45,7 @@ import {
   isArtistAudienceFetchStale,
 } from './artistAudienceFetchGeneration';
 import { useArtistAudienceLiveRefresh } from './useArtistAudienceLiveRefresh';
+import { SettingsSelect } from '../modals/settings/SettingsSelect';
 
 import './AudienceTab.scss';
 import './AudienceAnalyticsListModal.scss';
@@ -368,6 +368,15 @@ export function AudienceTabContent({ active, ui }: AudienceTabContentProps) {
     [period]
   );
 
+  const periodOptions = useMemo(
+    () =>
+      AUDIENCE_PERIOD_OPTIONS.map((option) => ({
+        value: option,
+        label: formatPeriodLabel(option, ui),
+      })),
+    [ui]
+  );
+
   const loadStats = useCallback(
     async (options?: { silent?: boolean }) => {
       const silent = options?.silent === true;
@@ -458,22 +467,16 @@ export function AudienceTabContent({ active, ui }: AudienceTabContentProps) {
   return (
     <div className={rootClassName}>
       <div className="audience-tab__toolbar">
-        <label className="audience-tab__period-select">
-          <span className="audience-tab__period-select-label">{copy?.periodLabel ?? 'Period'}</span>
-          <select
+        <div className="audience-tab__period-select">
+          <SettingsSelect
+            id="audience-period-select"
             className="audience-tab__period-select-control"
             value={period}
-            onChange={(event) => setPeriod(event.target.value as AudiencePeriod)}
-            aria-label={copy?.periodLabel ?? 'Period'}
-          >
-            {AUDIENCE_PERIOD_OPTIONS.map((option) => (
-              <option key={option} value={option}>
-                {formatPeriodLabel(option, ui)}
-              </option>
-            ))}
-          </select>
-          <ChevronDownIcon className="audience-tab__period-select-chevron" aria-hidden />
-        </label>
+            options={periodOptions}
+            onChange={(value) => setPeriod(value as AudiencePeriod)}
+            ariaLabel={copy?.periodLabel ?? 'Period'}
+          />
+        </div>
       </div>
 
       {hasLoadError ? (

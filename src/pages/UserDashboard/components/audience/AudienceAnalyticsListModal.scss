@@ -27,6 +27,7 @@ dialog {
     &__table {
       width: 100%;
       border-collapse: collapse;
+      table-layout: fixed;
     }
 
     &__thead {
@@ -52,16 +53,19 @@ dialog {
       }
 
       &--cover {
-        width: 44px;
+        box-sizing: border-box;
+        width: calc(44px + 0.75rem);
         padding-right: 0.75rem;
       }
 
       &--track {
         width: auto;
+        max-width: 0;
       }
 
       &--city {
         width: auto;
+        max-width: 0;
       }
 
       &--country {
@@ -97,7 +101,8 @@ dialog {
       }
 
       &--cover {
-        width: 44px;
+        box-sizing: border-box;
+        width: calc(44px + 0.75rem);
         padding-right: 0.75rem;
       }
 

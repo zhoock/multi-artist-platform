@@ -15,6 +15,8 @@ type SettingsSelectProps = {
   onChange: (value: string) => void;
   disabled?: boolean;
   className?: string;
+  /** Visible label for screen readers when the control has no external `<label htmlFor>`. */
+  ariaLabel?: string;
   onKeyDown?: (event: React.KeyboardEvent<HTMLDivElement>) => void;
 };
 
@@ -25,6 +27,7 @@ export function SettingsSelect({
   onChange,
   disabled = false,
   className,
+  ariaLabel,
   onKeyDown,
 }: SettingsSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
@@ -140,6 +143,7 @@ export function SettingsSelect({
         aria-haspopup="listbox"
         aria-expanded={isOpen}
         aria-disabled={disabled}
+        aria-label={ariaLabel}
         onKeyDown={handleTriggerKeyDown}
       >
         <span

@@ -91,6 +91,10 @@ describe('AudienceTabContent load states', () => {
       expect(fetchArtistAudienceMock).toHaveBeenCalledTimes(1);
     });
 
+    expect(fetchArtistAudienceMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({ period: '30d' })
+    );
+
     const metricsRegion = document.querySelector('.audience-tab__metrics');
     expect(metricsRegion).not.toBeNull();
 
@@ -103,6 +107,30 @@ describe('AudienceTabContent load states', () => {
 
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     expect(screen.queryByText('Could not load audience statistics.')).not.toBeInTheDocument();
+  });
+
+  it('reloads statistics when the period select changes', async () => {
+    fetchArtistAudienceMock.mockResolvedValue(successPayload);
+
+    renderWithProviders(<AudienceTabContent active ui={null} />);
+
+    await waitFor(() => {
+      expect(fetchArtistAudienceMock).toHaveBeenCalledTimes(1);
+    });
+
+    expect(screen.queryByRole('combobox')).toBeNull();
+
+    const periodSelect = screen.getByRole('button', { name: /period/i });
+    fireEvent.click(periodSelect);
+    fireEvent.click(screen.getByRole('option', { name: 'Last 7 days' }));
+
+    await waitFor(() => {
+      expect(fetchArtistAudienceMock).toHaveBeenCalledTimes(2);
+    });
+
+    expect(fetchArtistAudienceMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({ period: '7d' })
+    );
   });
 
   it('applies silent live refresh without returning to the loading shell', async () => {
