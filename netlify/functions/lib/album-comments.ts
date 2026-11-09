@@ -25,6 +25,7 @@ export interface CommentAuthorDto {
   displayName: string;
   avatarPath: string | null;
   isArtist: boolean;
+  publicSlug: string | null;
 }
 
 export interface AlbumCommentDto {
@@ -71,6 +72,7 @@ interface CommentRow {
   username: string | null;
   profile_avatar_path: string | null;
   account_type: string | null;
+  public_slug: string | null;
 }
 
 function rowToIso(value: Date | string | null | undefined): string {
@@ -167,6 +169,7 @@ function mapRowToDto(
       displayName: resolveCommentDisplayName(row),
       avatarPath: row.profile_avatar_path?.trim() || null,
       isArtist: isArtistAccountType(row.account_type),
+      publicSlug: row.public_slug?.trim() || null,
     },
     likeCount,
     likedByViewer,
@@ -282,7 +285,8 @@ export async function listAlbumCommentsPage(input: {
             u.site_name,
             u.username,
             u.profile_avatar_path,
-            u.account_type
+            u.account_type,
+            u.public_slug
      FROM album_comments c
      INNER JOIN users u ON u.id = c.user_id
      WHERE ${rootWhere}
@@ -318,7 +322,8 @@ export async function listAlbumCommentsPage(input: {
               u.site_name,
               u.username,
               u.profile_avatar_path,
-              u.account_type
+              u.account_type,
+              u.public_slug
        FROM album_comments c
        INNER JOIN users u ON u.id = c.user_id
        WHERE c.parent_id = ANY($1::uuid[])
@@ -370,7 +375,8 @@ export async function getCommentById(commentId: string): Promise<CommentRow | nu
             u.site_name,
             u.username,
             u.profile_avatar_path,
-            u.account_type
+            u.account_type,
+            u.public_slug
      FROM album_comments c
      INNER JOIN users u ON u.id = c.user_id
      WHERE c.id = $1::uuid

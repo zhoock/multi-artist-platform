@@ -11,6 +11,7 @@ export type AlbumCommentDto = {
     displayName: string;
     avatarPath: string | null;
     isArtist: boolean;
+    publicSlug: string | null;
   };
   likeCount: number;
   likedByViewer: boolean;

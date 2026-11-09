@@ -1,7 +1,10 @@
 import { useMemo, useState } from 'react';
 import clsx from 'clsx';
 import { Heart as HeartIcon } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import type { AlbumCommentDto } from '@shared/api/albumComments';
+import type { RouteLang } from '@shared/lib/i18n/routeLang';
+import { buildArtistPagePath } from '@shared/lib/seo/publicPagePaths';
 import { formatCommentRelativeTime } from '../lib/formatCommentRelativeTime';
 import { MAX_ALBUM_COMMENT_CHARS, isSubmittableCommentBody } from '../lib/commentBody';
 import { AlbumCommentAvatar } from './AlbumCommentAvatar';
@@ -116,6 +119,20 @@ export function AlbumCommentRow({
 
   const isReplyingHere = replyingToId === comment.id;
 
+  const artistPagePath = useMemo(() => {
+    if (!comment.author.isArtist) return null;
+    const slug = comment.author.publicSlug?.trim();
+    if (!slug) return null;
+    return buildArtistPagePath(lang as RouteLang, slug);
+  }, [comment.author.isArtist, comment.author.publicSlug, lang]);
+
+  const avatar = (
+    <AlbumCommentAvatar
+      avatarPath={comment.author.avatarPath}
+      displayName={comment.author.displayName}
+    />
+  );
+
   return (
     <article
       className={clsx(
@@ -126,14 +143,23 @@ export function AlbumCommentRow({
     >
       {isReply ? <span className="album-comments__reply-rail" aria-hidden /> : null}
       <div className="album-comments__item-main">
-        <AlbumCommentAvatar
-          avatarPath={comment.author.avatarPath}
-          displayName={comment.author.displayName}
-        />
+        {artistPagePath ? (
+          <Link to={artistPagePath} className="album-comments__avatar-link">
+            {avatar}
+          </Link>
+        ) : (
+          avatar
+        )}
         <div className="album-comments__item-body">
           <header className="album-comments__item-header">
             <div className="album-comments__item-meta">
-              <span className="album-comments__author">{comment.author.displayName}</span>
+              {artistPagePath ? (
+                <Link to={artistPagePath} className="album-comments__author-link">
+                  {comment.author.displayName}
+                </Link>
+              ) : (
+                <span className="album-comments__author">{comment.author.displayName}</span>
+              )}
               {comment.author.isArtist ? (
                 <span className="album-comments__artist-badge">{labels.artistBadge}</span>
               ) : null}
