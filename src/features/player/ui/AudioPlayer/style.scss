@@ -28,6 +28,38 @@
     gap: var(--ms-1);
   }
 
+  @media (width < 768px) {
+    inline-size: 100%;
+    max-inline-size: 100%;
+    min-inline-size: 0;
+    margin: 0;
+    box-sizing: border-box;
+    overflow-x: clip;
+    padding-block: max(var(--ms-3), env(safe-area-inset-top, 0px))
+      max(var(--ms-1), env(safe-area-inset-bottom, 0px));
+    padding-inline: max(var(--ms-1), env(safe-area-inset-left, 0px))
+      max(var(--ms-1), env(safe-area-inset-right, 0px));
+
+    img {
+      inline-size: min(100%, 425px);
+      max-inline-size: 100%;
+    }
+
+    &__cover-wrapper,
+    &__progress-container,
+    &__controls,
+    &__secondary-controls,
+    &__volume-control {
+      inline-size: 100%;
+      max-inline-size: 100%;
+      min-inline-size: 0;
+    }
+
+    &__track-info {
+      max-inline-size: min(100%, 425px);
+    }
+  }
+
   h2 {
     margin: 0;
     color: var(--white, #ffffff);

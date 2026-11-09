@@ -37,6 +37,15 @@ describe('popup dialog centering contract', () => {
 
     expect(inFlowRule).not.toBeNull();
     expect(inFlowRule?.[1]).toContain('.popup__focus-sentinel');
+    expect(inFlowRule?.[1]).toContain('.popup__gradient');
+  });
+
+  test('full player dialog stretches on mobile viewport', () => {
+    const popupStyles = readFileSync('src/shared/ui/popup/style.scss', 'utf8');
+
+    expect(popupStyles).toMatch(/popup\[open\]:has\(\.player\)/);
+    expect(popupStyles).toMatch(/@media \(width < 768px\)[\s\S]*margin:\s*0/);
+    expect(popupStyles).toMatch(/>\s*\.player[\s\S]*inline-size:\s*100%/);
   });
 
   test('dashboard popup child sizing does not stretch the focus sentinel', () => {

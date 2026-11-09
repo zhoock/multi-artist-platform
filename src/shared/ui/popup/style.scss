@@ -91,6 +91,39 @@ dialog:not(.toast-viewport-layer, .toast-top-layer) {
     }
   }
 
+  // Full Player on phones: beat UA shrink-to-fit + `local-modal { margin: auto }`.
+  &.popup[open]:has(.player) {
+    @media (width < 768px) {
+      position: fixed;
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      justify-content: stretch;
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      inline-size: 100%;
+      max-inline-size: 100%;
+      block-size: 100dvb;
+      min-block-size: 100dvb;
+      max-block-size: 100dvb;
+      overflow: hidden;
+      overflow-x: clip;
+      overscroll-behavior-x: none;
+
+      > .player {
+        flex: 1 1 auto;
+        align-self: stretch;
+        inline-size: 100%;
+        max-inline-size: none;
+        min-inline-size: 0;
+        margin: 0;
+        block-size: 100dvb;
+        min-block-size: 100dvb;
+      }
+    }
+  }
+
   // Размеры контента 600px × 680px применяем ТОЛЬКО для попапов внутри дашборда
   // Используем селектор, который проверяет наличие .user-dashboard в body
   body:has(.user-dashboard)
@@ -181,6 +214,10 @@ dialog:not(.toast-viewport-layer, .toast-top-layer) {
 
     backdrop-filter: blur(20px);
 
+    @media (width < 768px) {
+      overflow-x: clip;
+    }
+
     .popup__gradient {
       position: absolute;
       z-index: -1;
@@ -191,6 +228,12 @@ dialog:not(.toast-viewport-layer, .toast-top-layer) {
       inset-block-start: calc(var(--card-height) / 6);
       overflow: visible;
       pointer-events: none;
+
+      @media (width < 768px) {
+        inset: 0;
+        overflow: hidden;
+        contain: paint;
+      }
 
       &-inner {
         inline-size: 100%;
