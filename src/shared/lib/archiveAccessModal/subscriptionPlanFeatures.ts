@@ -16,6 +16,37 @@ export type SubscriptionPlanFeature = {
   Icon: LucideIcon;
 };
 
+const SUBSCRIPTION_PLAN_BENEFIT_UI_KEYS = {
+  tracks: 'subscriptionPlanBenefitTracks',
+  articles: 'subscriptionPlanBenefitArticles',
+  stems: 'subscriptionPlanBenefitStems',
+  downloads: 'subscriptionPlanBenefitDownloads',
+} as const satisfies Record<SubscriptionPlanFeatureKey, string>;
+
+const SUBSCRIPTION_PLAN_BENEFIT_FALLBACKS: Record<
+  SubscriptionPlanFeatureKey,
+  { en: string; ru: string }
+> = {
+  tracks: { en: 'Unlocked tracks', ru: 'Открытые треки' },
+  articles: { en: 'Unlocked articles', ru: 'Открытые статьи' },
+  stems: { en: 'Access to stems', ru: 'Доступ к стемам' },
+  downloads: { en: 'Album downloads', ru: 'Скачивание альбомов' },
+};
+
+function getSubscriptionPlanBenefitLabel(
+  key: SubscriptionPlanFeatureKey,
+  lang: 'en' | 'ru',
+  ui: ReturnType<typeof selectUiDictionaryFirst> | null
+): string {
+  const uiKey = SUBSCRIPTION_PLAN_BENEFIT_UI_KEYS[key];
+  const titles = ui?.titles as Record<string, string | undefined> | undefined;
+  const fromUi = titles?.[uiKey];
+  if (typeof fromUi === 'string' && fromUi.trim()) {
+    return fromUi;
+  }
+  return SUBSCRIPTION_PLAN_BENEFIT_FALLBACKS[key][lang];
+}
+
 export function getSubscriptionPlanFeatures(
   lang: 'en' | 'ru',
   ui: ReturnType<typeof selectUiDictionaryFirst> | null
@@ -23,30 +54,22 @@ export function getSubscriptionPlanFeatures(
   return [
     {
       key: 'tracks',
-      label:
-        ui?.titles?.archiveAccessFeatureTracks ??
-        (lang === 'en' ? 'Locked tracks' : 'Закрытые треки'),
+      label: getSubscriptionPlanBenefitLabel('tracks', lang, ui),
       Icon: MusicIcon,
     },
     {
       key: 'articles',
-      label:
-        ui?.titles?.archiveAccessFeatureArticles ??
-        (lang === 'en' ? 'Locked articles' : 'Закрытые статьи'),
+      label: getSubscriptionPlanBenefitLabel('articles', lang, ui),
       Icon: FileTextIcon,
     },
     {
       key: 'stems',
-      label:
-        ui?.titles?.archiveAccessFeatureStems ??
-        (lang === 'en' ? 'Locked stems' : 'Закрытые стемы'),
+      label: getSubscriptionPlanBenefitLabel('stems', lang, ui),
       Icon: SlidersHorizontalIcon,
     },
     {
       key: 'downloads',
-      label:
-        ui?.titles?.archiveAccessFeatureDownloads ??
-        (lang === 'en' ? 'Album downloads' : 'Скачивание альбомов'),
+      label: getSubscriptionPlanBenefitLabel('downloads', lang, ui),
       Icon: DownloadIcon,
     },
   ];

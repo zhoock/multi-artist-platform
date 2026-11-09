@@ -9,23 +9,17 @@ type Props = {
 };
 
 export function SubscriptionPricingPurposeDisclosure({ lang, ui }: Props) {
-  const t = ui?.titles;
+  const t = ui?.titles as Record<string, string | undefined> | undefined;
 
-  const copy = useMemo(
-    () => ({
-      lead:
-        t?.subscriptionPricingPurposeLead ??
-        (lang === 'en'
-          ? 'Subscription gives access to premium features of the selected plan:'
-          : 'Подписка предоставляет доступ к премиум-функциям выбранного тарифа:'),
-      rest:
-        t?.subscriptionPricingPurposeRest ??
-        (lang === 'en'
-          ? 'closed tracks, articles, materials, and album downloads.'
-          : 'закрытым трекам, статьям, материалам и скачиванию альбомов.'),
-    }),
-    [lang, t]
-  );
+  const copy = useMemo(() => {
+    const fromUi = t?.subscriptionPricingPurpose?.trim();
+    if (fromUi) {
+      return fromUi;
+    }
+    return lang === 'en'
+      ? 'Subscription unlocks tracks, articles, stems, and album downloads for artists in your collection.'
+      : 'Подписка открывает доступ к трекам, статьям, стемам и скачиванию альбомов выбранных артистов.';
+  }, [lang, t]);
 
   return (
     <p className="subscription-plan-modal__pricing-purpose">
@@ -36,8 +30,7 @@ export function SubscriptionPricingPurposeDisclosure({ lang, ui }: Props) {
         aria-hidden
       />
       <span className="subscription-plan-modal__pricing-purpose-text">
-        <span className="subscription-plan-modal__pricing-purpose-lead">{copy.lead}</span>{' '}
-        <span className="subscription-plan-modal__pricing-purpose-rest">{copy.rest}</span>
+        <span className="subscription-plan-modal__pricing-purpose-lead">{copy}</span>
       </span>
     </p>
   );

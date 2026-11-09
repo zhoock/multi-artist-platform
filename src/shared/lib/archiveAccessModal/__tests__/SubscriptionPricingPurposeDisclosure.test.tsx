@@ -13,13 +13,35 @@ describe('SubscriptionPricingPurposeDisclosure', () => {
     render(<SubscriptionPricingPurposeDisclosure lang="ru" ui={null} />);
 
     expect(
-      screen.getByText('Подписка предоставляет доступ к премиум-функциям выбранного тарифа:')
-    ).toBeTruthy();
-    expect(
-      screen.getByText('закрытым трекам, статьям, материалам и скачиванию альбомов.')
+      screen.getByText(
+        'Подписка открывает доступ к трекам, статьям, стемам и скачиванию альбомов выбранных артистов.'
+      )
     ).toBeTruthy();
     expect(document.querySelector('.subscription-plan-modal__pricing-purpose')).toBeTruthy();
     expect(document.querySelector('.subscription-plan-modal__pricing-purpose-lead')).toBeTruthy();
-    expect(document.querySelector('.subscription-plan-modal__pricing-purpose-rest')).toBeTruthy();
+    expect(document.querySelector('.subscription-plan-modal__pricing-purpose-rest')).toBeNull();
+  });
+
+  test('ignores legacy subscriptionPricingPurposeLead/Rest copy', () => {
+    render(
+      <SubscriptionPricingPurposeDisclosure
+        lang="ru"
+        ui={
+          {
+            titles: {
+              subscriptionPricingPurposeLead: 'Подписка предоставляет доступ к премиум-функциям:',
+              subscriptionPricingPurposeRest: 'закрытым трекам, статьям, материалам и скачиванию.',
+            },
+          } as never
+        }
+      />
+    );
+
+    expect(screen.queryByText(/закрытым трекам/)).toBeNull();
+    expect(
+      screen.getByText(
+        'Подписка открывает доступ к трекам, статьям, стемам и скачиванию альбомов выбранных артистов.'
+      )
+    ).toBeTruthy();
   });
 });

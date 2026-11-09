@@ -27,7 +27,6 @@ describe('SubscriptionPlanCard', () => {
         currentPlanSlug={null}
         isPremium={false}
         lang="en"
-        ui={null}
         loadingPlan={null}
         onSelect={jest.fn()}
       />
@@ -38,10 +37,7 @@ describe('SubscriptionPlanCard', () => {
     expect(screen.getByText(String(PLAN_CATALOG.collector.slotsLimit))).toBeTruthy();
     expect(screen.getByText('artists')).toBeTruthy();
     expect(screen.getByText('/ month')).toBeTruthy();
-    expect(screen.getByText('Locked tracks')).toBeTruthy();
-    expect(screen.getByText('Locked articles')).toBeTruthy();
-    expect(screen.getByText('Locked stems')).toBeTruthy();
-    expect(screen.getByText('Album downloads')).toBeTruthy();
+    expect(screen.queryByText('Unlocked tracks')).toBeNull();
     expect(screen.getByRole('button', { name: 'Choose Collector' })).toBeTruthy();
   });
 
@@ -52,7 +48,6 @@ describe('SubscriptionPlanCard', () => {
         currentPlanSlug="explorer"
         isPremium
         lang="en"
-        ui={null}
         loadingPlan={null}
         onSelect={jest.fn()}
       />
@@ -73,7 +68,6 @@ describe('SubscriptionPlanCard', () => {
         currentPlanSlug="explorer"
         isPremium={false}
         lang="en"
-        ui={null}
         loadingPlan={null}
         onSelect={onSelect}
       />
@@ -91,7 +85,6 @@ describe('SubscriptionPlanCard', () => {
         currentPlanSlug={null}
         isPremium={false}
         lang="en"
-        ui={null}
         loadingPlan={null}
         onSelect={jest.fn()}
       />
@@ -101,44 +94,20 @@ describe('SubscriptionPlanCard', () => {
     expect(document.querySelector('.subscription-plan-modal__plan-badge')).toBeNull();
   });
 
-  test('shows the same subscription benefits on every plan card', () => {
-    const onSelect = jest.fn();
+  test('does not render subscription benefits inside plan cards', () => {
     renderWithProviders(
-      <>
-        <SubscriptionPlanCard
-          planSlug="explorer"
-          currentPlanSlug={null}
-          isPremium={false}
-          lang="en"
-          ui={null}
-          loadingPlan={null}
-          onSelect={onSelect}
-        />
-        <SubscriptionPlanCard
-          planSlug="collector"
-          currentPlanSlug={null}
-          isPremium={false}
-          lang="en"
-          ui={null}
-          loadingPlan={null}
-          onSelect={onSelect}
-        />
-        <SubscriptionPlanCard
-          planSlug="archivist"
-          currentPlanSlug={null}
-          isPremium={false}
-          lang="en"
-          ui={null}
-          loadingPlan={null}
-          onSelect={onSelect}
-        />
-      </>
+      <SubscriptionPlanCard
+        planSlug="explorer"
+        currentPlanSlug={null}
+        isPremium={false}
+        lang="en"
+        loadingPlan={null}
+        onSelect={jest.fn()}
+      />
     );
 
-    expect(screen.getAllByText('Locked tracks')).toHaveLength(3);
-    expect(screen.getAllByText('Locked articles')).toHaveLength(3);
-    expect(screen.getAllByText('Locked stems')).toHaveLength(3);
-    expect(screen.getAllByText('Album downloads')).toHaveLength(3);
+    expect(document.querySelector('.subscription-plan-modal__plan-features')).toBeNull();
+    expect(screen.queryByText('Unlocked tracks')).toBeNull();
   });
 
   test('shows switch action for upgrade path', () => {
@@ -149,7 +118,6 @@ describe('SubscriptionPlanCard', () => {
         currentPlanSlug="explorer"
         isPremium
         lang="en"
-        ui={null}
         loadingPlan={null}
         onSelect={onSelect}
       />
@@ -168,7 +136,6 @@ describe('SubscriptionPlanCard', () => {
         scheduledTargetPlanSlug="explorer"
         isPremium
         lang="ru"
-        ui={null}
         loadingPlan={null}
         onSelect={onSelect}
       />
@@ -185,7 +152,6 @@ describe('SubscriptionPlanCard', () => {
         currentPlanSlug={null}
         isPremium={false}
         lang="ru"
-        ui={null}
         loadingPlan={null}
         onSelect={jest.fn()}
       />

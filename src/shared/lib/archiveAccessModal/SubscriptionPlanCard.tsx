@@ -1,6 +1,5 @@
 import clsx from 'clsx';
 
-import type { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 import {
   formatPlanArtistLimitParts,
   formatPlanPricePeriod,
@@ -12,7 +11,6 @@ import {
   type SubscriptionPlanSlug,
 } from '@shared/lib/payment/subscriptionPlans';
 import { DashboardButton, DashboardCard } from '@shared/ui/dashboard';
-import { getSubscriptionPlanFeatures } from './subscriptionPlanFeatures';
 
 type Props = {
   planSlug: SubscriptionPlanSlug;
@@ -20,7 +18,6 @@ type Props = {
   scheduledTargetPlanSlug?: SubscriptionPlanSlug | null;
   isPremium: boolean;
   lang: 'en' | 'ru';
-  ui: ReturnType<typeof selectUiDictionaryFirst>;
   loadingPlan: SubscriptionPlanSlug | null;
   onSelect: (planSlug: SubscriptionPlanSlug) => void;
 };
@@ -31,7 +28,6 @@ export function SubscriptionPlanCard({
   scheduledTargetPlanSlug = null,
   isPremium,
   lang,
-  ui,
   loadingPlan,
   onSelect,
 }: Props) {
@@ -53,7 +49,6 @@ export function SubscriptionPlanCard({
   const isButtonDisabled = Boolean(loadingPlan) || disabled;
   const buttonVariant = scheduledTargetPlanSlug ? variant : disabled ? 'outline' : 'primary';
 
-  const features = getSubscriptionPlanFeatures(lang, ui);
   const redirectingLabel = lang === 'en' ? 'Redirecting…' : 'Переход к оплате…';
 
   return (
@@ -104,20 +99,6 @@ export function SubscriptionPlanCard({
       >
         {isLoading ? redirectingLabel : label}
       </DashboardButton>
-
-      <ul className="subscription-plan-modal__plan-features">
-        {features.map(({ key, label, Icon }) => (
-          <li key={key} className="subscription-plan-modal__plan-feature">
-            <Icon
-              className="subscription-plan-modal__plan-feature-icon"
-              size={16}
-              strokeWidth={1.75}
-              aria-hidden
-            />
-            <span>{label}</span>
-          </li>
-        ))}
-      </ul>
     </DashboardCard>
   );
 }

@@ -829,10 +829,9 @@ describe('ArchiveAccessModalView pricing autopayment disclosure', () => {
     await openModal();
 
     expect(
-      screen.getByText(/Subscription gives access to premium features of the selected plan:/)
-    ).toBeTruthy();
-    expect(
-      screen.getByText(/closed tracks, articles, materials, and album downloads\./)
+      screen.getByText(
+        /Subscription unlocks tracks, articles, stems, and album downloads for artists in your collection\./
+      )
     ).toBeTruthy();
     expect(screen.getByRole('note')).toBeTruthy();
     expect(
@@ -869,7 +868,9 @@ describe('ArchiveAccessModalView pricing autopayment disclosure', () => {
     await openModal();
 
     expect(
-      screen.getByText(/Subscription gives access to premium features of the selected plan:/)
+      screen.getByText(
+        /Subscription unlocks tracks, articles, stems, and album downloads for artists in your collection\./
+      )
     ).toBeTruthy();
     expect(screen.queryByRole('note')).toBeNull();
     expect(screen.queryByText(/Auto-renewal: when you pay for the selected plan/i)).toBeNull();

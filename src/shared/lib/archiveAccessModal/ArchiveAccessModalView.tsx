@@ -28,6 +28,7 @@ import { LocalModal } from '@shared/ui/localModal';
 import { AlertModal } from '@shared/ui/alertModal';
 import { ScheduleDowngradeConfirmModal } from '@pages/UserDashboard/components/archive/billingModals';
 
+import { SubscriptionPlanBenefits } from './SubscriptionPlanBenefits';
 import { SubscriptionPlanCard } from './SubscriptionPlanCard';
 import { SubscriptionPricingAutopaymentDisclosure } from './SubscriptionPricingAutopaymentDisclosure';
 import { SubscriptionPricingPurposeDisclosure } from './SubscriptionPricingPurposeDisclosure';
@@ -347,6 +348,8 @@ export function ArchiveAccessModalView({ dialogRef, onClose }: Props) {
               />
             ) : null}
 
+            <SubscriptionPlanBenefits lang={lang} ui={ui} />
+
             <div className="subscription-plan-modal__plans" role="list">
               {SUBSCRIPTION_PLAN_SLUGS.map((planSlug) => (
                 <SubscriptionPlanCard
@@ -356,7 +359,6 @@ export function ArchiveAccessModalView({ dialogRef, onClose }: Props) {
                   scheduledTargetPlanSlug={scheduledPlanChange?.targetPlanSlug ?? null}
                   isPremium={hasActivePremium}
                   lang={lang}
-                  ui={ui}
                   loadingPlan={
                     loadingPlan ??
                     (scheduleLoading && scheduledPlanChange
