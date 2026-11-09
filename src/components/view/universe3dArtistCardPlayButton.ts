@@ -18,14 +18,16 @@ export const DEFAULT_UNIVERSE3D_ARTIST_CARD_PLAY_LABELS: Universe3dArtistCardPla
 };
 
 function ensureUniverse3dCardPlayGlyph(button: HTMLButtonElement): HTMLElement {
-  let glyph = button.querySelector('.universe3d-card__play-glyph');
-  if (!(glyph instanceof HTMLElement)) {
-    button.replaceChildren();
-    glyph = document.createElement('span');
-    glyph.className = 'universe3d-card__play-glyph';
-    glyph.setAttribute('aria-hidden', 'true');
-    button.appendChild(glyph);
+  const existing = button.querySelector('.universe3d-card__play-glyph');
+  if (existing instanceof HTMLElement) {
+    return existing;
   }
+
+  button.replaceChildren();
+  const glyph = document.createElement('span');
+  glyph.className = 'universe3d-card__play-glyph';
+  glyph.setAttribute('aria-hidden', 'true');
+  button.appendChild(glyph);
   return glyph;
 }
 
