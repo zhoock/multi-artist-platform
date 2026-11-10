@@ -59,6 +59,14 @@ function smoothstep(t: number): number {
   return x * x * (3 - 2 * x);
 }
 
+/** Matches Universe3D mobile breakpoint (viewport width < 768px). */
+function isClusterLabelMobileViewport(): boolean {
+  if (typeof window === 'undefined') {
+    return false;
+  }
+  return window.innerWidth < 768;
+}
+
 export function computeClusterLabelDepthOpacity(
   distance: number,
   isNearest: boolean,
@@ -110,7 +118,7 @@ export function drawNebulaClusterLabelOnCanvas(
   for (const layer of CLUSTER_LABEL_FOG_LAYERS) {
     ctx.save();
     const hasFilter = typeof ctx.filter === 'string';
-    if (hasFilter) {
+    if (hasFilter && !isClusterLabelMobileViewport()) {
       ctx.filter = `blur(${layer.blurPx}px)`;
     }
     ctx.globalAlpha = layer.alpha;
