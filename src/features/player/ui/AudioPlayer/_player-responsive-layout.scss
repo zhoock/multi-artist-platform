@@ -27,32 +27,7 @@
   }
 }
 
-@mixin player-compact-lyrics-cover-metadata {
-  .player__cover-wrapper--lyrics {
-    display: flex;
-    grid-area: player-cover;
-    flex-direction: column;
-    align-items: flex-start;
-    align-self: start;
-    justify-content: flex-start;
-    gap: var(--ms-01);
-    inline-size: 100%;
-    min-inline-size: 0;
-    max-inline-size: 100%;
-    block-size: auto;
-    min-block-size: 0;
-    max-block-size: none;
-    overflow: visible;
-    text-align: start;
-  }
-
-  .player__track-info {
-    flex-shrink: 0;
-    align-items: flex-start;
-    max-inline-size: 100%;
-    text-align: start;
-  }
-
+@mixin player-compact-lyrics-cover-size {
   .player__cover {
     display: block;
     flex-shrink: 0;
@@ -79,6 +54,69 @@
       object-fit: cover;
     }
   }
+}
+
+// Wide two-column shell: cover and metadata on one row (same idea as tall lyrics mode).
+@mixin player-compact-lyrics-cover-metadata-inline {
+  .player__cover-wrapper--lyrics {
+    display: flex;
+    grid-area: player-cover;
+    flex-direction: row;
+    align-items: center;
+    align-self: start;
+    justify-content: flex-start;
+    gap: var(--ms-1);
+    inline-size: 100%;
+    min-inline-size: 0;
+    max-inline-size: 100%;
+    block-size: auto;
+    min-block-size: 0;
+    max-block-size: none;
+    overflow: visible;
+    text-align: start;
+  }
+
+  .player__track-info {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    align-items: flex-start;
+    min-inline-size: 0;
+    max-inline-size: 100%;
+    text-align: start;
+  }
+
+  @include player-compact-lyrics-cover-size;
+}
+
+// Narrow portrait shell: cover above metadata.
+@mixin player-compact-lyrics-cover-metadata-stack {
+  .player__cover-wrapper--lyrics {
+    display: flex;
+    grid-area: player-cover;
+    flex-direction: column;
+    align-items: flex-start;
+    align-self: start;
+    justify-content: flex-start;
+    gap: var(--ms-01);
+    inline-size: 100%;
+    min-inline-size: 0;
+    max-inline-size: 100%;
+    block-size: auto;
+    min-block-size: 0;
+    max-block-size: none;
+    overflow: visible;
+    text-align: start;
+  }
+
+  .player__track-info {
+    flex-shrink: 0;
+    align-items: flex-start;
+    max-inline-size: 100%;
+    text-align: start;
+  }
+
+  @include player-compact-lyrics-cover-size;
 }
 
 @mixin player-compact-transport-column {
@@ -222,7 +260,7 @@
         transition: none;
       }
 
-      @include player-compact-lyrics-cover-metadata;
+      @include player-compact-lyrics-cover-metadata-inline;
 
       .player__synced-lyrics {
         align-self: stretch;
@@ -321,7 +359,7 @@
         display: contents;
       }
 
-      @include player-compact-lyrics-cover-metadata;
+      @include player-compact-lyrics-cover-metadata-stack;
 
       .player__synced-lyrics {
         align-self: stretch;
