@@ -22,8 +22,14 @@ import {
   CLUSTER_LABEL_SPRITE_HEIGHT_FR,
   computeClusterLabelDepthOpacity,
   computeClusterLabelDepthTint,
+  computeHeroGenreLabelPlacementBounds,
   drawNebulaClusterLabelOnCanvas,
+  estimateHeroClusterLabelScreenSizePx,
+  getHeroGenreLabelSafePaddingPx,
+  measureClusterLabelTextExtentsForText,
+  pickRandomHeroGenreLabelCenterPx,
 } from './universe3dClusterLabelCanvas';
+import { measureHeroCoverPhotoLeftInCanvasPx } from '@shared/lib/heroGenreLabelPlacementZone';
 
 export { UNIVERSE_FOCUS_ARTIST_STORAGE_KEY } from './universe3dConstants';
 export type { SceneArtist } from './universe3dTypes';
@@ -199,6 +205,7 @@ type ClusterConfig = {
 type ClusterLabelRef = {
   sprite: THREE.Sprite;
   center: THREE.Vector3;
+  labelText?: string;
 };
 
 export class Universe3D {
@@ -276,6 +283,10 @@ export class Universe3D {
   /** True if two-finger pinch occurred in this gesture. */
   private touchHadPinch = false;
   private heroTime = 0;
+  private heroCoverLayoutListener: HTMLImageElement | null = null;
+  private onHeroCoverLayout = () => {
+    this.layoutHeroClusterLabels();
+  };
 
   private tempVec3 = new THREE.Vector3();
   /** Lerp(1.3, 0.5, smooth) from distance to nearest cloud; mouse/touch read between frames. */
@@ -376,7 +387,7 @@ export class Universe3D {
 
     if (focusSlug) {
       this.pendingFocusSlug = focusSlug;
-    } else if (biggestCluster) {
+    } else if (biggestCluster && !this.isHeroPreview) {
       const targetGroup = this.cloudGroups.find(
         (group) => group.position.distanceTo(biggestCluster!.center) < 0.001
       );
@@ -397,12 +408,14 @@ export class Universe3D {
       return {
         sprite,
         center: cluster.center.clone(),
+        labelText,
       };
     });
 
     if (this.isHeroPreview) {
       const heroCloudScale = 1.8;
       this.cloudGroups.forEach((group) => group.scale.multiplyScalar(heroCloudScale));
+      this.layoutHeroClusterLabels();
     }
 
     if (options?.disableCameraControls !== true) {
@@ -564,6 +577,15 @@ export class Universe3D {
     const getZ = () => (this.isHeroPreview ? 0 : (Math.random() - 0.5) * depthRange);
 
     return genreCodes.map((genreCode, index) => {
+      if (this.isHeroPreview) {
+        return {
+          genreCode,
+          center: new THREE.Vector3(0, 0, 0),
+          color: new THREE.Color(externalColor ?? palette[index % palette.length]),
+          artists: grouped.get(genreCode) ?? [],
+        };
+      }
+
       const angle = (index / count) * Math.PI * 2;
 
       return {
@@ -573,6 +595,72 @@ export class Universe3D {
         artists: grouped.get(genreCode) ?? [],
       };
     });
+  }
+
+  /**
+   * Hero profile: pick a random layer position, clamped so genre text (incl. fog) stays inside hero.
+   */
+  private layoutHeroClusterLabels(): void {
+    if (!this.isHeroPreview || !this.useContainerSize) return;
+
+    this.ensureHeroCoverLayoutListener();
+
+    const canvasEl = this.renderer.domElement;
+    const viewW = Math.max(1, canvasEl.clientWidth);
+    const viewH = Math.max(1, canvasEl.clientHeight);
+    const safePadding = getHeroGenreLabelSafePaddingPx(viewW);
+    const photoAreaLeftPx = measureHeroCoverPhotoLeftInCanvasPx(canvasEl);
+
+    for (const labelRef of this.clusterLabels) {
+      const text = labelRef.labelText ?? '';
+      const extents = measureClusterLabelTextExtentsForText(text);
+      const camDist = this.camera.position.distanceTo(labelRef.sprite.position);
+      const screen = estimateHeroClusterLabelScreenSizePx({
+        textExtents: extents,
+        viewportHeightPx: viewH,
+        cameraFovDeg: this.camera.fov,
+        cameraDistance: camDist,
+      });
+
+      const bounds = computeHeroGenreLabelPlacementBounds({
+        heroWidth: viewW,
+        heroHeight: viewH,
+        labelWidth: screen.width,
+        labelHeight: screen.height,
+        safePadding,
+        photoAreaLeftPx,
+      });
+      const target = pickRandomHeroGenreLabelCenterPx(bounds);
+
+      const world = this.heroLayerPixelToWorld(target.x, target.y, labelRef.center.z);
+      labelRef.sprite.position.set(world.x, world.y, world.z);
+      labelRef.center.copy(labelRef.sprite.position);
+    }
+  }
+
+  private ensureHeroCoverLayoutListener(): void {
+    if (this.heroCoverLayoutListener) return;
+    const hero = this.containerEl.closest('.hero');
+    if (!(hero instanceof HTMLElement)) return;
+    const img = hero.querySelector('.hero__cover-image');
+    if (!(img instanceof HTMLImageElement)) return;
+    this.heroCoverLayoutListener = img;
+    img.addEventListener('load', this.onHeroCoverLayout);
+  }
+
+  /** Map a point in the hero WebGL layer (px) to world space on the cluster Z plane. */
+  private heroLayerPixelToWorld(px: number, py: number, planeZ: number): THREE.Vector3 {
+    const el = this.renderer.domElement;
+    const w = Math.max(1, el.clientWidth);
+    const h = Math.max(1, el.clientHeight);
+    const ndcX = (px / w) * 2 - 1;
+    const ndcY = -(py / h) * 2 + 1;
+    const rayTarget = new THREE.Vector3(ndcX, ndcY, 0.5).unproject(this.camera);
+    const cam = this.camera.position;
+    const dir = rayTarget.sub(cam).normalize();
+    const dz = dir.z;
+    const t = Math.abs(dz) > 1e-6 ? (planeZ - cam.z) / dz : 0;
+    return cam.clone().add(dir.multiplyScalar(t));
   }
 
   private createClusterLabel(text: string, color: THREE.Color): THREE.Sprite {
@@ -2349,6 +2437,9 @@ export class Universe3D {
       this.renderer.setSize(window.innerWidth, window.innerHeight);
     }
     this.camera.updateProjectionMatrix();
+    if (this.isHeroPreview) {
+      this.layoutHeroClusterLabels();
+    }
     if (this.activeCard && this.cardAnchorObject) {
       this.layoutCardFromObject();
     }
@@ -2356,6 +2447,8 @@ export class Universe3D {
 
   destroy() {
     if (this.animationId) cancelAnimationFrame(this.animationId);
+    this.heroCoverLayoutListener?.removeEventListener('load', this.onHeroCoverLayout);
+    this.heroCoverLayoutListener = null;
     this.resizeObserver?.disconnect();
     this.resizeObserver = null;
     window.removeEventListener('resize', this.onResize);
