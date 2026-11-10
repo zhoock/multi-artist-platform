@@ -17,6 +17,13 @@ import './Universe3D.style.scss';
 import { UNIVERSE_FOCUS_ARTIST_STORAGE_KEY } from './universe3dConstants';
 import type { SceneArtist } from './universe3dTypes';
 import { populateUniverse3dArtistCardMedia } from './universe3dArtistCardMedia';
+import {
+  CLUSTER_LABEL_CANVAS,
+  CLUSTER_LABEL_SPRITE_HEIGHT_FR,
+  computeClusterLabelDepthOpacity,
+  computeClusterLabelDepthTint,
+  drawNebulaClusterLabelOnCanvas,
+} from './universe3dClusterLabelCanvas';
 
 export { UNIVERSE_FOCUS_ARTIST_STORAGE_KEY } from './universe3dConstants';
 export type { SceneArtist } from './universe3dTypes';
@@ -571,31 +578,22 @@ export class Universe3D {
   private createClusterLabel(text: string, color: THREE.Color): THREE.Sprite {
     const canvas = document.createElement('canvas');
     const dpr = window.devicePixelRatio || 1;
+    const { width, height } = CLUSTER_LABEL_CANVAS;
 
-    canvas.width = 512 * dpr;
-    canvas.height = 128 * dpr;
+    canvas.width = width * dpr;
+    canvas.height = height * dpr;
 
-    canvas.style.width = '512px';
-    canvas.style.height = '128px';
+    canvas.style.width = `${width}px`;
+    canvas.style.height = `${height}px`;
 
     const ctx = canvas.getContext('2d')!;
     ctx.scale(dpr, dpr);
-    ctx.clearRect(0, 0, 512, 128);
 
-    const r = Math.floor(color.r * 255);
-    const g = Math.floor(color.g * 255);
-    const b = Math.floor(color.b * 255);
-
-    ctx.font = '700 48px Arial';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-
-    ctx.fillStyle = `rgba(${r}, ${g}, ${b}, 0.75)`;
-
-    ctx.shadowColor = `rgba(${r}, ${g}, ${b}, 0.6)`;
-    ctx.shadowBlur = 6;
-
-    ctx.fillText(text, 256, 64);
+    drawNebulaClusterLabelOnCanvas(ctx, text, {
+      r: Math.floor(color.r * 255),
+      g: Math.floor(color.g * 255),
+      b: Math.floor(color.b * 255),
+    });
 
     const texture = new THREE.CanvasTexture(canvas);
     texture.minFilter = THREE.LinearFilter;
@@ -607,10 +605,11 @@ export class Universe3D {
       transparent: true,
       opacity: 0,
       depthTest: false,
+      depthWrite: false,
     });
 
     const sprite = new THREE.Sprite(material);
-    sprite.scale.set(3.5, 1.0, 1);
+    sprite.scale.set(3.5, 3.5 * CLUSTER_LABEL_SPRITE_HEIGHT_FR, 1);
 
     return sprite;
   }
@@ -2290,20 +2289,27 @@ export class Universe3D {
       }
     });
 
-    this.clusterLabels.forEach(({ sprite, center }) => {
-      const distance = this.camera.position.distanceTo(center);
-      const fadeStart = 5;
-      const fadeEnd = 3;
-      const t = THREE.MathUtils.clamp((fadeStart - distance) / (fadeStart - fadeEnd), 0, 1);
+    const clusterLabelDistances = this.clusterLabels.map(({ center }) =>
+      this.camera.position.distanceTo(center)
+    );
+    const nearestClusterDistance =
+      clusterLabelDistances.length > 0 ? Math.min(...clusterLabelDistances) : Infinity;
+
+    this.clusterLabels.forEach(({ sprite, center }, index) => {
+      const distance = clusterLabelDistances[index]!;
+      const isNearest = distance <= nearestClusterDistance + 1e-4;
       const material = sprite.material as THREE.SpriteMaterial;
-      material.opacity = t;
-      sprite.visible = t > 0.01;
+      const opacity = computeClusterLabelDepthOpacity(distance, isNearest);
+      material.opacity = opacity;
+      const tint = computeClusterLabelDepthTint(distance, isNearest);
+      material.color.setScalar(tint);
+      sprite.visible = opacity > 0.01;
 
       const minScale = 2.5;
       const maxScale = 6;
       const scaleT = THREE.MathUtils.clamp((6 - distance) / 4, 0, 1);
       const scale = minScale + (maxScale - minScale) * scaleT;
-      sprite.scale.set(scale, scale * 0.25, 1);
+      sprite.scale.set(scale, scale * CLUSTER_LABEL_SPRITE_HEIGHT_FR, 1);
     });
 
     if (this.isHeroPreview) {
