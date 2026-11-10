@@ -21,8 +21,10 @@ describe('player responsive layout contract', () => {
   test('uses separate compact rules for non-lyrics and lyrics modes', () => {
     expect(layoutScss).toMatch(/:not\(\.player--lyrics-visible\)/);
     expect(layoutScss).toMatch(/&\.player--lyrics-visible/);
-    expect(layoutScss).toMatch(/player-compact-lyrics-viewport/);
-    expect(layoutScss).toMatch(/height <= 900px/);
+    expect(layoutScss).toMatch(/player-compact-lyrics-wide-shell/);
+    expect(layoutScss).toMatch(/player-compact-lyrics-portrait-shell/);
+    expect(layoutScss).toMatch(/height <= 900px\) and \(#\{\$tablets\}\)/);
+    expect(layoutScss).toMatch(/height <= 900px\) and \(not \(#\{\$tablets\}\)\)/);
     expect(layoutScss).toMatch(/player--controls-hidden/);
     expect(layoutScss).toMatch(/grid-template-columns:\s*minmax\(0,\s*1fr\)\s*0fr/);
   });
@@ -32,5 +34,11 @@ describe('player responsive layout contract', () => {
     expect(source).toContain('player__transport-column');
     expect(source).not.toContain('player__layout-divider');
     expect(source).not.toContain('isLandscapeBlocked');
+  });
+
+  test('keeps tall lyrics grid vertical and defers short viewports to responsive shell', () => {
+    const playerStyles = readFileSync('src/features/player/ui/AudioPlayer/style.scss', 'utf8');
+    expect(playerStyles).toMatch(/\.player--lyrics-visible[\s\S]*@media \(height > 900px\)/);
+    expect(playerStyles).toMatch(/&\.player--lyrics-visible[\s\S]*@media \(height > 900px\)/);
   });
 });

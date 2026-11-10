@@ -13,11 +13,71 @@
   }
 }
 
-// Lyrics mode stacks cover + metadata + lyrics + controls vertically; switch to two columns
-// when height would squeeze the lyrics scroll area (tuned for ~900px and below).
-@mixin player-compact-lyrics-viewport {
-  @media (height <= 900px) {
+// Two columns only at tablet+ width (`$tablets` → `width >= 768px` in project tokens).
+@mixin player-compact-lyrics-wide-shell {
+  @media (height <= 900px) and (#{$tablets}) {
     @content;
+  }
+}
+
+// Narrow portrait: single column, lyrics use full inline size (`not ($tablets)`).
+@mixin player-compact-lyrics-portrait-shell {
+  @media (height <= 900px) and (not (#{$tablets})) {
+    @content;
+  }
+}
+
+@mixin player-compact-lyrics-cover-metadata {
+  .player__cover-wrapper--lyrics {
+    display: flex;
+    grid-area: player-cover;
+    flex-direction: column;
+    align-items: flex-start;
+    align-self: start;
+    justify-content: flex-start;
+    gap: var(--ms-01);
+    inline-size: 100%;
+    min-inline-size: 0;
+    max-inline-size: 100%;
+    block-size: auto;
+    min-block-size: 0;
+    max-block-size: none;
+    overflow: visible;
+    text-align: start;
+  }
+
+  .player__track-info {
+    flex-shrink: 0;
+    align-items: flex-start;
+    max-inline-size: 100%;
+    text-align: start;
+  }
+
+  .player__cover {
+    display: block;
+    flex-shrink: 0;
+    inline-size: 112px;
+    block-size: 112px;
+    max-inline-size: 112px;
+    max-block-size: 112px;
+    margin: 0;
+
+    &--playing,
+    &--paused {
+      scale: 1;
+    }
+
+    .album-cover,
+    .album-cover__image,
+    img {
+      display: block;
+      inline-size: 100%;
+      block-size: 100%;
+      max-inline-size: 100%;
+      max-block-size: 100%;
+      margin: 0;
+      object-fit: cover;
+    }
   }
 }
 
@@ -27,7 +87,7 @@
     grid-area: player-transport;
     flex-direction: column;
     place-self: stretch start;
-    justify-content: center;
+    justify-content: safe center;
     gap: var(--ms-1);
     padding-inline: var(--ms-0) var(--ms-2);
     margin-inline-end: var(--ms-0);
@@ -36,6 +96,7 @@
     min-inline-size: 0;
     max-block-size: 100%;
     min-block-size: 0;
+    overflow: clip visible;
     text-align: center;
   }
 
@@ -45,6 +106,7 @@
     max-inline-size: 100%;
     min-inline-size: 0;
     padding-block-end: var(--ms-01);
+    min-block-size: calc(8px + 1.2em + var(--ms-0));
   }
 
   .player__controls,
@@ -139,7 +201,8 @@
   }
 
   &.player--lyrics-visible {
-    @include player-compact-lyrics-viewport {
+    // Wide + short: lyrics left, transport right (desktop low height, mobile landscape).
+    @include player-compact-lyrics-wide-shell {
       box-sizing: border-box;
       align-content: stretch;
       align-items: stretch;
@@ -159,57 +222,7 @@
         transition: none;
       }
 
-      .player__cover-wrapper--lyrics {
-        display: flex;
-        grid-area: player-cover;
-        flex-direction: column;
-        align-items: flex-start;
-        align-self: start;
-        justify-content: flex-start;
-        gap: var(--ms-01);
-        inline-size: 100%;
-        min-inline-size: 0;
-        max-inline-size: 100%;
-        block-size: auto;
-        min-block-size: 0;
-        max-block-size: none;
-        overflow: visible;
-        text-align: start;
-      }
-
-      .player__track-info {
-        flex-shrink: 0;
-        align-items: flex-start;
-        max-inline-size: 100%;
-        text-align: start;
-      }
-
-      .player__cover {
-        display: block;
-        flex-shrink: 0;
-        inline-size: 112px;
-        block-size: 112px;
-        max-inline-size: 112px;
-        max-block-size: 112px;
-        margin: 0;
-
-        &--playing,
-        &--paused {
-          scale: 1;
-        }
-
-        .album-cover,
-        .album-cover__image,
-        img {
-          display: block;
-          inline-size: 100%;
-          block-size: 100%;
-          max-inline-size: 100%;
-          max-block-size: 100%;
-          margin: 0;
-          object-fit: cover;
-        }
-      }
+      @include player-compact-lyrics-cover-metadata;
 
       .player__synced-lyrics {
         align-self: stretch;
@@ -229,14 +242,19 @@
       @include player-compact-transport-column;
 
       .player__transport-column {
-        // Clip while the grid track width changes so squashed controls never paint outside.
-        overflow: hidden;
         opacity: 1;
         visibility: visible;
+        padding-block-end: max(env(safe-area-inset-bottom, 0px), var(--ms-01));
         transition: opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 
         @media (prefers-reduced-motion: reduce) {
           transition: none;
+        }
+      }
+
+      @media (height <= 520px) {
+        .player__transport-column {
+          gap: var(--ms-0);
         }
       }
 
@@ -256,15 +274,6 @@
         grid-template-columns: minmax(0, 1fr) 0fr;
         gap: var(--ms-0) 0;
 
-        // Collapse the control column immediately; lyrics expansion can follow in the same frame.
-        transition:
-          grid-template-columns 0s linear,
-          gap 0s linear;
-
-        @media (prefers-reduced-motion: reduce) {
-          transition: none;
-        }
-
         .player__transport-column {
           visibility: hidden;
           overflow: hidden;
@@ -272,11 +281,71 @@
           min-inline-size: 0;
           max-inline-size: 0;
           padding-inline: 0;
+          padding-block: 0;
           margin-inline-end: 0;
           opacity: 0;
           pointer-events: none;
           transition: none;
         }
+      }
+    }
+
+    // Narrow portrait + short height: single column, full-width lyrics.
+    @include player-compact-lyrics-portrait-shell {
+      box-sizing: border-box;
+      align-content: stretch;
+      align-items: stretch;
+      gap: var(--ms-0);
+      padding-block: max(env(safe-area-inset-top, 0px), var(--ms-01))
+        max(env(safe-area-inset-bottom, 0px), var(--ms-01));
+      padding-inline: max(env(safe-area-inset-left, 0px), var(--ms-1))
+        max(env(safe-area-inset-right, 0px), var(--ms-1));
+      grid-template:
+        'player-cover' auto
+        'player-lyrics' minmax(0, 1fr)
+        'player-progress' auto
+        'player-controls' auto
+        'player-volume' auto
+        'player-secondary' auto / minmax(0, 1fr);
+
+      &.player--no-volume {
+        grid-template:
+          'player-cover' auto
+          'player-lyrics' minmax(0, 1fr)
+          'player-progress' auto
+          'player-controls' auto
+          'player-secondary' auto / minmax(0, 1fr);
+      }
+
+      .player__transport-column {
+        display: contents;
+      }
+
+      @include player-compact-lyrics-cover-metadata;
+
+      .player__synced-lyrics {
+        align-self: stretch;
+        inline-size: 100%;
+        max-inline-size: 100%;
+        min-inline-size: 0;
+        block-size: 100%;
+        min-block-size: 0;
+        padding-block-start: var(--ms-0);
+      }
+
+      .player__progress-container {
+        overflow: visible;
+        min-block-size: calc(8px + 1.2em + var(--ms-0));
+      }
+
+      .player__cover-wrapper,
+      .player__progress-container,
+      .player__controls,
+      .player__volume-control,
+      .player__secondary-controls {
+        inline-size: 100%;
+        max-inline-size: 100%;
+        min-inline-size: 0;
       }
     }
   }

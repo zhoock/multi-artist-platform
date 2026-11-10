@@ -136,12 +136,14 @@
       'player-secondary' minmax(0, var(--player-secondary-row-height)) / 1fr;
 
     &.player--lyrics-visible {
-      grid-template:
-        'player-cover' auto
-        'player-lyrics' minmax(0, 1fr)
-        'player-progress' minmax(0, var(--player-progress-row-size))
-        'player-controls' minmax(0, var(--player-controls-row-size))
-        'player-secondary' minmax(0, var(--player-secondary-row-height)) / 1fr;
+      @media (height > 900px) {
+        grid-template:
+          'player-cover' auto
+          'player-lyrics' minmax(0, 1fr)
+          'player-progress' minmax(0, var(--player-progress-row-size))
+          'player-controls' minmax(0, var(--player-controls-row-size))
+          'player-secondary' minmax(0, var(--player-secondary-row-height)) / 1fr;
+      }
     }
   }
 
@@ -900,20 +902,24 @@
 
 // Когда текст виден - меняем вёрстку: обложка и информация о треке рядом
 .player--lyrics-visible {
-  grid-template:
-    'player-cover' auto
-    'player-lyrics' minmax(0, 1fr)
-    'player-progress' minmax(0, var(--player-progress-row-size))
-    'player-controls' minmax(0, var(--player-controls-row-size))
-    'player-volume' minmax(0, var(--player-volume-row-size))
-    'player-secondary' minmax(0, var(--player-secondary-row-height)) / 1fr;
+  @media (height > 900px) {
+    grid-template:
+      'player-cover' auto
+      'player-lyrics' minmax(0, 1fr)
+      'player-progress' minmax(0, var(--player-progress-row-size))
+      'player-controls' minmax(0, var(--player-controls-row-size))
+      'player-volume' minmax(0, var(--player-volume-row-size))
+      'player-secondary' minmax(0, var(--player-secondary-row-height)) / 1fr;
+  }
 
   // Контейнер для обложки и информации о треке (flex row)
   .player__cover-wrapper--lyrics {
-    display: flex;
-    align-items: center;
-    gap: var(--ms-1);
-    justify-content: center;
+    @media (height > 900px) {
+      display: flex;
+      align-items: center;
+      gap: var(--ms-1);
+      justify-content: center;
+    }
   }
 
   .player__cover {
