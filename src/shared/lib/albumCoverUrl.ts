@@ -1,4 +1,5 @@
 import { getAlbumCoverPublicUrl } from '@shared/lib/albumCoverPublicUrl';
+import { coverImgFromStorageField } from '@shared/lib/albumCoverStorage';
 
 /** Суффиксы вариантов в Storage (совпадают с commit-cover / image-processor). */
 const STORAGE_VARIANT_SUFFIX_RE = /(?:-64|-128|-448|-896|-1344)$/;
@@ -26,7 +27,7 @@ export function pickAlbumCoverStorageWidth(targetPx: number, format: 'webp' | 'j
  * Стабильный cache-bust key для URL обложки.
  * При замене обложки commit создаёт новый `album_cover_{uuid}_…` baseName — ключ меняется автоматически.
  */
-export function getAlbumCoverCacheVersion(cover: string): string {
+export function getAlbumCoverCacheVersion(cover: unknown): string {
   return getAlbumStorageBaseName(cover);
 }
 
@@ -34,9 +35,32 @@ export function getAlbumCoverCacheVersion(cover: string): string {
  * Базовое имя файла обложки в `users/{userId}/albums/` без расширения и без суффикса размера.
  * Нужно, если в БД оказалось полное имя варианта (`…-448.webp`) или лишний `-128` в конце.
  */
-export function getAlbumStorageBaseName(cover: string): string {
-  const withoutExt = cover.replace(/\.(jpg|jpeg|png|webp)$/i, '');
+function stripAlbumCoverStorageSuffixes(fileName: string): string {
+  const withoutExt = fileName.replace(/\.(jpg|jpeg|png|webp)$/i, '');
   return withoutExt.replace(STORAGE_VARIANT_SUFFIX_RE, '');
+}
+
+/**
+ * Базовое имя обложки в Storage. Принимает legacy string, JSONB `{ img }`, JSON-строку или null.
+ */
+export function getAlbumStorageBaseName(cover: unknown): string {
+  if (cover == null) {
+    return '';
+  }
+  if (typeof cover === 'object') {
+    return coverImgFromStorageField(cover);
+  }
+  if (typeof cover !== 'string') {
+    return '';
+  }
+  const trimmed = cover.trim();
+  if (!trimmed) {
+    return '';
+  }
+  if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+    return coverImgFromStorageField(trimmed);
+  }
+  return stripAlbumCoverStorageSuffixes(trimmed);
 }
 
 /**
@@ -45,7 +69,7 @@ export function getAlbumStorageBaseName(cover: string): string {
  * Fallback: `-64.jpg`, `-448.jpg`, если `-128` недоступен.
  */
 export function getAlbumCoverAdminVariantUrls(
-  cover: string,
+  cover: unknown,
   userId: string | undefined
 ): {
   webp: string | null;
@@ -63,6 +87,14 @@ export function getAlbumCoverAdminVariantUrls(
   }
 
   const base = getAlbumStorageBaseName(cover);
+  if (!base) {
+    return {
+      webp: null,
+      jpg: null,
+      pipelineJpg64: null,
+      pipelineJpg448: null,
+    };
+  }
 
   return {
     webp: getAlbumCoverPublicUrl(userId, `${base}${ADMIN_THUMB}.webp`),

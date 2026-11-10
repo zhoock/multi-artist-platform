@@ -9,6 +9,7 @@ import {
   resolveAlbumSlug,
   fetchTracksForResolvedAlbum,
 } from './resolve-album-key';
+import { coverImgFromStorageField } from '../../../src/shared/lib/albumCoverStorage';
 
 export { revokePurchaseForUser } from './purchase-access';
 
@@ -84,7 +85,7 @@ async function mapPurchaseRows(rows: PurchaseRow[]): Promise<PurchaseDto[]> {
         albumUserId: album.userId,
         artistDisplayName: album.artistDisplayName,
         album: album.album,
-        cover: album.cover || null,
+        cover: coverImgFromStorageField(album.cover) || null,
         purchasedAt: purchaseRow.purchased_at.toISOString(),
         downloadCount: purchaseRow.download_count,
         tracks,

@@ -1,6 +1,7 @@
 import {
   ALBUM_COVER_PUBLIC_JPG_WIDTHS,
   ALBUM_COVER_PUBLIC_WEBP_WIDTHS,
+  getAlbumCoverAdminVariantUrls,
   getAlbumCoverCacheVersion,
   getAlbumStorageBaseName,
   pickAlbumCoverStorageWidth,
@@ -35,6 +36,65 @@ describe('pickAlbumCoverStorageWidth', () => {
 
   it('webp ladder includes -1344', () => {
     expect(ALBUM_COVER_PUBLIC_WEBP_WIDTHS).toEqual([128, 448, 896, 1344]);
+  });
+});
+
+const COVER_BASE = 'album_cover_uuid_artist-Cover-album';
+
+describe('getAlbumStorageBaseName', () => {
+  it('handles string cover (legacy)', () => {
+    expect(getAlbumStorageBaseName(COVER_BASE)).toBe(COVER_BASE);
+    expect(getAlbumStorageBaseName(`${COVER_BASE}-128.webp`)).toBe(COVER_BASE);
+  });
+
+  it('handles object cover without throwing', () => {
+    expect(
+      getAlbumStorageBaseName({
+        img: `${COVER_BASE}-448.webp`,
+      })
+    ).toBe(COVER_BASE);
+  });
+
+  it('returns empty string for null and undefined', () => {
+    expect(getAlbumStorageBaseName(null)).toBe('');
+    expect(getAlbumStorageBaseName(undefined)).toBe('');
+  });
+});
+
+describe('getAlbumCoverAdminVariantUrls', () => {
+  const USER_ID = 'af97f741-8dae-410b-94a6-3f828f9140a4';
+  const originalEnv = process.env;
+
+  beforeEach(() => {
+    process.env = {
+      ...originalEnv,
+      VITE_SUPABASE_URL: 'https://jhpvetvfnsklpwswadle.supabase.co',
+    };
+  });
+
+  afterEach(() => {
+    process.env = originalEnv;
+  });
+
+  it('builds admin URLs for string cover', () => {
+    const urls = getAlbumCoverAdminVariantUrls(COVER_BASE, USER_ID);
+    expect(urls.webp).toContain(`${COVER_BASE}-128.webp`);
+    expect(urls.jpg).toContain(`${COVER_BASE}-128.jpg`);
+  });
+
+  it('handles object cover without throwing', () => {
+    expect(() => getAlbumCoverAdminVariantUrls({ img: COVER_BASE }, USER_ID)).not.toThrow();
+    const urls = getAlbumCoverAdminVariantUrls({ img: COVER_BASE }, USER_ID);
+    expect(urls.webp).toContain(`${COVER_BASE}-128.webp`);
+  });
+
+  it('returns null URLs when cover is empty', () => {
+    expect(getAlbumCoverAdminVariantUrls(null, USER_ID)).toEqual({
+      webp: null,
+      jpg: null,
+      pipelineJpg64: null,
+      pipelineJpg448: null,
+    });
   });
 });
 

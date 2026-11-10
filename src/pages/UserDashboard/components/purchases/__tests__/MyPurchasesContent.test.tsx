@@ -1,4 +1,4 @@
-import { describe, expect, it, jest, beforeEach } from '@jest/globals';
+import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
 import React from 'react';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 
@@ -6,7 +6,23 @@ import { renderWithProviders } from '@shared/lib/test-utils';
 import { ToastProvider } from '@shared/lib/toast/ToastProvider';
 import { resetToastStoreForTests } from '@shared/lib/toast/toastStore';
 import type { Purchase } from '@shared/api/purchases';
+import type { AlbumCoverImageProps } from '@entities/album';
 import { MyPurchasesContent } from '../MyPurchasesContent';
+
+const albumCoverImagePropsSpy = jest.fn<(props: AlbumCoverImageProps) => void>();
+
+jest.mock('@entities/album/ui/AlbumCoverImage', () => {
+  const actual = jest.requireActual(
+    '@entities/album/ui/AlbumCoverImage'
+  ) as typeof import('@entities/album/ui/AlbumCoverImage');
+  return {
+    ...actual,
+    AlbumCoverImage: (props: AlbumCoverImageProps) => {
+      albumCoverImagePropsSpy(props);
+      return actual.AlbumCoverImage(props);
+    },
+  };
+});
 
 const getMyPurchasesMock = jest.fn<() => Promise<Purchase[]>>();
 const revokePurchaseMock = jest.fn<(purchaseId: string) => Promise<void>>();
@@ -40,13 +56,17 @@ function renderMyPurchases(ui: React.ReactElement) {
   };
 }
 
+const PURCHASE_ALBUM_USER_ID = 'af97f741-8dae-410b-94a6-3f828f9140a4';
+const COVER_IMG_BASE = 'album_cover_uuid_artist-Cover-my-purchase';
+
 const samplePurchase: Purchase = {
   id: 'purchase-1',
   orderId: 'order-1',
   albumId: 'album-1',
+  albumUserId: PURCHASE_ALBUM_USER_ID,
   artistDisplayName: 'Test Artist',
   album: 'Test Album',
-  cover: 'cover.jpg',
+  cover: `${COVER_IMG_BASE}-128.webp`,
   purchasedAt: '2026-01-15T12:00:00.000Z',
   downloadCount: 3,
   tracks: [
@@ -56,13 +76,24 @@ const samplePurchase: Purchase = {
 };
 
 describe('MyPurchasesContent', () => {
+  const originalEnv = process.env;
+
   beforeEach(() => {
     getMyPurchasesMock.mockReset();
     revokePurchaseMock.mockReset();
     downloadOwnedAlbumZipByAuthMock.mockReset();
     downloadOwnedAlbumZipByAuthMock.mockResolvedValue(undefined);
+    albumCoverImagePropsSpy.mockReset();
+    process.env = {
+      ...originalEnv,
+      VITE_SUPABASE_URL: 'https://jhpvetvfnsklpwswadle.supabase.co',
+    };
     sessionStorage.clear();
     resetToastStoreForTests();
+  });
+
+  afterEach(() => {
+    process.env = originalEnv;
   });
 
   it('does not fetch purchases while the tab is inactive', async () => {
@@ -235,6 +266,83 @@ describe('MyPurchasesContent', () => {
     });
 
     expect(screen.getByText('Album removed from purchases')).toBeTruthy();
+  });
+
+  describe('album cover formats (regression)', () => {
+    let consoleErrorSpy: jest.SpiedFunction<typeof console.error>;
+
+    const objectCover = {
+      img: COVER_IMG_BASE,
+      playerBackground: {
+        primary: [10, 20, 30] as [number, number, number],
+        secondary: [40, 50, 60] as [number, number, number],
+      },
+    };
+
+    const objectCoverPurchase = {
+      ...samplePurchase,
+      id: 'purchase-jsonb-cover',
+      cover: objectCover,
+    } as unknown as Purchase;
+
+    const stringCoverPurchase: Purchase = {
+      ...samplePurchase,
+      id: 'purchase-string-cover',
+      cover: `${COVER_IMG_BASE}-128.webp`,
+    };
+
+    beforeEach(() => {
+      consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+      consoleErrorSpy.mockRestore();
+    });
+
+    function expectNoCoverReplaceRuntimeError() {
+      const replaceMessages = consoleErrorSpy.mock.calls
+        .map((call) => String(call[0] ?? ''))
+        .filter((msg) => /cover\.replace is not a function/i.test(msg));
+      expect(replaceMessages).toEqual([]);
+    }
+
+    it('renders with object-shaped cover from API without throwing', async () => {
+      getMyPurchasesMock.mockResolvedValue([objectCoverPurchase]);
+
+      const { container } = renderMyPurchases(<MyPurchasesContent active />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Test Artist — Test Album')).toBeTruthy();
+      });
+
+      expect(container.querySelector('.my-purchases__cover')).toBeTruthy();
+      expect(container.querySelector('.my-purchases__cover-image')).toBeTruthy();
+      expect(albumCoverImagePropsSpy).toHaveBeenCalled();
+      expect(albumCoverImagePropsSpy.mock.calls.at(-1)?.[0]).toMatchObject({
+        cover: objectCover,
+        userId: PURCHASE_ALBUM_USER_ID,
+        contextAlbumId: 'album-1',
+      });
+      expectNoCoverReplaceRuntimeError();
+    });
+
+    it('still renders with string-shaped cover', async () => {
+      getMyPurchasesMock.mockResolvedValue([stringCoverPurchase]);
+
+      const { container } = renderMyPurchases(<MyPurchasesContent active />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Test Artist — Test Album')).toBeTruthy();
+      });
+
+      expect(container.querySelector('.my-purchases__cover-image')).toBeTruthy();
+      expect(albumCoverImagePropsSpy).toHaveBeenCalled();
+      expect(albumCoverImagePropsSpy.mock.calls.at(-1)?.[0]).toMatchObject({
+        cover: `${COVER_IMG_BASE}-128.webp`,
+        userId: PURCHASE_ALBUM_USER_ID,
+      });
+      expectNoCoverReplaceRuntimeError();
+    });
   });
 
   it('does not show success toast when remove fails', async () => {

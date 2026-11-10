@@ -9,7 +9,8 @@ const PLACEHOLDER = '/images/album-placeholder.png';
 type ThumbnailStep = number;
 
 export type AlbumCoverImageProps = {
-  cover: string;
+  /** Legacy img base name, JSONB `{ img }`, or JSON string from Postgres. */
+  cover: unknown;
   userId: string | undefined;
   alt: string;
   className?: string;
@@ -77,7 +78,7 @@ export function AlbumCoverImage({
 }
 
 type AlbumCoverImageResolvedProps = {
-  cover: string;
+  cover: unknown;
   webp: string | null;
   jpg: string | null;
   pipelineJpg64: string | null;
