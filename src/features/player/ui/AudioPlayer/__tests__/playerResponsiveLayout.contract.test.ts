@@ -18,8 +18,13 @@ describe('player responsive layout contract', () => {
     expect(layoutScss).not.toMatch(/--player-/);
   });
 
-  test('keeps lyrics mode on vertical layout only', () => {
+  test('uses separate compact rules for non-lyrics and lyrics modes', () => {
     expect(layoutScss).toMatch(/:not\(\.player--lyrics-visible\)/);
+    expect(layoutScss).toMatch(/&\.player--lyrics-visible/);
+    expect(layoutScss).toMatch(/player-compact-lyrics-viewport/);
+    expect(layoutScss).toMatch(/height <= 900px/);
+    expect(layoutScss).toMatch(/player--controls-hidden/);
+    expect(layoutScss).toMatch(/grid-template-columns:\s*minmax\(0,\s*1fr\)\s*0fr/);
   });
 
   test('AudioPlayer uses transport wrapper without removed layout divider', () => {

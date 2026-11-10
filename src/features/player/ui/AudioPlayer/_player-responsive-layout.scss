@@ -13,6 +13,50 @@
   }
 }
 
+// Lyrics mode stacks cover + metadata + lyrics + controls vertically; switch to two columns
+// when height would squeeze the lyrics scroll area (tuned for ~900px and below).
+@mixin player-compact-lyrics-viewport {
+  @media (height <= 900px) {
+    @content;
+  }
+}
+
+@mixin player-compact-transport-column {
+  .player__transport-column {
+    display: flex;
+    grid-area: player-transport;
+    flex-direction: column;
+    place-self: stretch start;
+    justify-content: center;
+    gap: var(--ms-1);
+    padding-inline: var(--ms-0) var(--ms-2);
+    margin-inline-end: var(--ms-0);
+    inline-size: min(100%, calc(100% - var(--ms-1)));
+    max-inline-size: calc(100% - var(--ms-1));
+    min-inline-size: 0;
+    max-block-size: 100%;
+    min-block-size: 0;
+    text-align: center;
+  }
+
+  .player__progress-container {
+    flex-shrink: 0;
+    inline-size: 100%;
+    max-inline-size: 100%;
+    min-inline-size: 0;
+    padding-block-end: var(--ms-01);
+  }
+
+  .player__controls,
+  .player__volume-control,
+  .player__secondary-controls {
+    flex-shrink: 0;
+    inline-size: 100%;
+    max-inline-size: 100%;
+    min-inline-size: 0;
+  }
+}
+
 .player {
   overflow: hidden;
   min-block-size: 0;
@@ -90,38 +134,149 @@
         }
       }
 
-      .player__transport-column {
+      @include player-compact-transport-column;
+    }
+  }
+
+  &.player--lyrics-visible {
+    @include player-compact-lyrics-viewport {
+      box-sizing: border-box;
+      align-content: stretch;
+      align-items: stretch;
+      gap: var(--ms-0) var(--ms-2);
+      padding-block: max(env(safe-area-inset-top, 0px), var(--ms-01))
+        max(env(safe-area-inset-bottom, 0px), var(--ms-01));
+      padding-inline: max(env(safe-area-inset-left, 0px), var(--ms-0))
+        max(env(safe-area-inset-right, 0px), var(--ms-0));
+      grid-template:
+        'player-cover player-transport' auto
+        'player-lyrics player-transport' minmax(0, 1fr) / minmax(0, 1fr) minmax(0, 1fr);
+      transition:
+        grid-template-columns 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+        gap 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+
+      @media (prefers-reduced-motion: reduce) {
+        transition: none;
+      }
+
+      .player__cover-wrapper--lyrics {
         display: flex;
-        grid-area: player-transport;
+        grid-area: player-cover;
         flex-direction: column;
-        place-self: stretch start;
-        justify-content: center;
-        gap: var(--ms-1);
-        padding-inline: var(--ms-0) var(--ms-2);
-        margin-inline-end: var(--ms-0);
-        inline-size: min(100%, calc(100% - var(--ms-1)));
-        max-inline-size: calc(100% - var(--ms-1));
-        min-inline-size: 0;
-        max-block-size: 100%;
-        min-block-size: 0;
-        text-align: center;
-      }
-
-      .player__progress-container {
-        flex-shrink: 0;
+        align-items: flex-start;
+        align-self: start;
+        justify-content: flex-start;
+        gap: var(--ms-01);
         inline-size: 100%;
-        max-inline-size: 100%;
         min-inline-size: 0;
-        padding-block-end: var(--ms-01);
+        max-inline-size: 100%;
+        block-size: auto;
+        min-block-size: 0;
+        max-block-size: none;
+        overflow: visible;
+        text-align: start;
       }
 
+      .player__track-info {
+        flex-shrink: 0;
+        align-items: flex-start;
+        max-inline-size: 100%;
+        text-align: start;
+      }
+
+      .player__cover {
+        display: block;
+        flex-shrink: 0;
+        inline-size: 112px;
+        block-size: 112px;
+        max-inline-size: 112px;
+        max-block-size: 112px;
+        margin: 0;
+
+        &--playing,
+        &--paused {
+          scale: 1;
+        }
+
+        .album-cover,
+        .album-cover__image,
+        img {
+          display: block;
+          inline-size: 100%;
+          block-size: 100%;
+          max-inline-size: 100%;
+          max-block-size: 100%;
+          margin: 0;
+          object-fit: cover;
+        }
+      }
+
+      .player__synced-lyrics {
+        align-self: stretch;
+        block-size: 100%;
+        min-block-size: 0;
+        padding-block-start: var(--ms-0);
+
+        @supports (padding-bottom: env(safe-area-inset-bottom)) {
+          padding-block-end: max(env(safe-area-inset-bottom, 0px), var(--ms-0));
+        }
+
+        @supports not (padding-bottom: env(safe-area-inset-bottom)) {
+          padding-block-end: var(--ms-0);
+        }
+      }
+
+      @include player-compact-transport-column;
+
+      .player__transport-column {
+        // Clip while the grid track width changes so squashed controls never paint outside.
+        overflow: hidden;
+        opacity: 1;
+        visibility: visible;
+        transition: opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+
+        @media (prefers-reduced-motion: reduce) {
+          transition: none;
+        }
+      }
+
+      // Keep clip on control rows only — progress timing is absolutely positioned and
+      // extends below the in-flow progress bar; overflow: hidden here clips it away.
       .player__controls,
       .player__volume-control,
       .player__secondary-controls {
-        flex-shrink: 0;
-        inline-size: 100%;
-        max-inline-size: 100%;
-        min-inline-size: 0;
+        overflow: hidden;
+      }
+
+      .player__progress-container {
+        overflow: visible;
+      }
+
+      &.player--controls-hidden {
+        grid-template-columns: minmax(0, 1fr) 0fr;
+        gap: var(--ms-0) 0;
+
+        // Collapse the control column immediately; lyrics expansion can follow in the same frame.
+        transition:
+          grid-template-columns 0s linear,
+          gap 0s linear;
+
+        @media (prefers-reduced-motion: reduce) {
+          transition: none;
+        }
+
+        .player__transport-column {
+          visibility: hidden;
+          overflow: hidden;
+          inline-size: 0;
+          min-inline-size: 0;
+          max-inline-size: 0;
+          padding-inline: 0;
+          margin-inline-end: 0;
+          opacity: 0;
+          pointer-events: none;
+          transition: none;
+        }
       }
     }
   }
