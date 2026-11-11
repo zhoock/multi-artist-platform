@@ -771,6 +771,11 @@ dialog {
         outline: 2px solid var(--dark-greenish-yellow);
         outline-offset: 2px;
         border-radius: var(--ms-01);
+
+        // Image: selection ring только на фото; caption — отдельное поле вне рамки.
+        &.edit-article-v2__block-wrapper--image {
+          outline: none;
+        }
       }
 
       &:hover .edit-article-v2__drag-handle,
@@ -904,7 +909,13 @@ dialog {
         }
       }
 
-      &--image,
+      &--image {
+        padding-block: 0;
+
+        // outline/offset рамки выделения на .edit-article-v2__image-container не должны обрезаться.
+        overflow: visible;
+      }
+
       &--carousel {
         padding-block: 0;
       }
@@ -918,7 +929,7 @@ dialog {
 
     &__image-container {
       position: relative;
-      overflow: hidden;
+      overflow: visible;
       width: fit-content;
       max-width: 100%;
       margin-bottom: var(--ms-01);
@@ -932,6 +943,11 @@ dialog {
         .edit-article-v2__image-convert-to-carousel {
           @include edit-article-image-controls-visible;
         }
+      }
+
+      &--controls-visible {
+        outline: 2px solid var(--dark-greenish-yellow);
+        outline-offset: 2px;
       }
     }
 
@@ -1028,6 +1044,19 @@ dialog {
       &:focus {
         outline: none;
         border-color: var(--dark-greenish-yellow);
+      }
+    }
+
+    &__block--image .edit-article-v2__image-caption {
+      background: transparent;
+      border: none;
+      border-radius: 0;
+      margin-top: calc(var(--ms-01) - 5px);
+
+      &:focus {
+        outline: none;
+        border: none;
+        box-shadow: none;
       }
     }
 

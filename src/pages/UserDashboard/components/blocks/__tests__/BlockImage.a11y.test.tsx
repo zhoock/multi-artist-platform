@@ -76,10 +76,54 @@ describe('BlockImage image container keyboard selection', () => {
     expect(onSelect).not.toHaveBeenCalled();
   });
 
+  test('does not render trash remove control on selected image', () => {
+    renderWithImage({ isSelected: true });
+    expect(screen.queryByRole('button', { name: 'Удалить изображение' })).toBeNull();
+    expect(document.querySelector('.edit-article-v2__image-remove')).toBeNull();
+  });
+
   test('click on nested carousel button does not call onSelect', () => {
     renderWithImage({ isSelected: true });
     const convertButton = screen.getByRole('button', { name: 'Создать карусель' });
     fireEvent.click(convertButton);
     expect(onSelect).not.toHaveBeenCalled();
+  });
+
+  test('when selected, click on image focuses caption input at end of text', () => {
+    const view = render(
+      <BlockImage
+        imageKey="article-img.jpg"
+        caption="Existing caption"
+        onChange={jest.fn()}
+        onSelect={onSelect}
+        isSelected
+      />
+    );
+    const container = view.container.querySelector('.edit-article-v2__image-container');
+    if (!container) throw new Error('Expected image container');
+
+    fireEvent.click(container);
+    const caption = screen.getByLabelText('Подпись к изображению (необязательно)');
+    expect(caption).toHaveFocus();
+    expect((caption as HTMLInputElement).selectionStart).toBe('Existing caption'.length);
+  });
+
+  test('becomes selected with image: caption input receives focus', () => {
+    const { rerender } = render(
+      <BlockImage
+        imageKey="article-img.jpg"
+        onChange={jest.fn()}
+        onSelect={onSelect}
+        isSelected={false}
+      />
+    );
+
+    rerender(
+      <BlockImage imageKey="article-img.jpg" onChange={jest.fn()} onSelect={onSelect} isSelected />
+    );
+
+    const caption = screen.getByLabelText('Подпись к изображению (необязательно)');
+    expect(caption).toHaveFocus();
+    expect((caption as HTMLInputElement).selectionStart).toBe(0);
   });
 });

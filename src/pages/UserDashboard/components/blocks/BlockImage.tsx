@@ -1,7 +1,7 @@
 // src/pages/UserDashboard/components/blocks/BlockImage.tsx
 import clsx from 'clsx';
 import { Plus as PlusIcon } from 'lucide-react';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { getUserImageUrl } from '@shared/api/albums';
 import { getUser } from '@shared/lib/auth';
 import { EditArticleMediaUploadSpinner } from '../modals/article/EditArticleMediaUploadSpinner';
@@ -38,9 +38,23 @@ export function BlockImage({
   onUploadFailed,
 }: BlockImageProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const captionInputRef = useRef<HTMLInputElement>(null);
   const [localUpload, setLocalUpload] = useState<BlockImagePendingUpload | null>(null);
   const localPreviewRef = useRef<string | null>(null);
   const captionValue = caption ?? '';
+
+  const focusCaptionInput = useCallback(() => {
+    const input = captionInputRef.current;
+    if (!input) return;
+    input.focus();
+    const caret = input.value.length;
+    input.setSelectionRange(caret, caret);
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!isSelected || !imageKey) return;
+    focusCaptionInput();
+  }, [imageKey, isSelected, focusCaptionInput]);
 
   const clearLocalUpload = () => {
     if (localPreviewRef.current) {
@@ -82,6 +96,7 @@ export function BlockImage({
       const uploadedKey = await uploadArticleBlockImage(file);
       if (uploadedKey) {
         onChange(uploadedKey, captionValue || undefined);
+        onSelect?.();
         clearLocalUpload();
       } else {
         onUploadFailed?.();
@@ -135,6 +150,9 @@ export function BlockImage({
   const handleImageClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     handleImageSelect();
+    if (imageKey && isSelected) {
+      focusCaptionInput();
+    }
   };
 
   const handleImageContainerKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
@@ -143,6 +161,9 @@ export function BlockImage({
     e.preventDefault();
     e.stopPropagation();
     handleImageSelect();
+    if (imageKey && isSelected) {
+      focusCaptionInput();
+    }
   };
 
   const uploadStatusLabel =
@@ -234,6 +255,7 @@ export function BlockImage({
       )}
       {isSelected && imageKey && (
         <input
+          ref={captionInputRef}
           type="text"
           className="edit-article-v2__image-caption"
           value={captionValue}

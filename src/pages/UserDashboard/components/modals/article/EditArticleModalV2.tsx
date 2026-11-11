@@ -1338,7 +1338,16 @@ export function EditArticleModalV2({
           (activeElement as HTMLElement).isContentEditable);
 
       if (isTextField && inContent) {
-        return;
+        const isImageCaption =
+          activeElement instanceof HTMLInputElement &&
+          activeElement.classList.contains('edit-article-v2__image-caption');
+        const allowImageBlockDeleteKeys =
+          isImageCaption &&
+          selectedBlockId &&
+          (event.key === 'Delete' || event.key === 'Backspace');
+        if (!allowImageBlockDeleteKeys) {
+          return;
+        }
       }
 
       if (selectedBlockId && (event.key === 'Delete' || event.key === 'Backspace')) {
