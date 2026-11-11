@@ -54,6 +54,7 @@ export interface AlbumFormData {
   releaseDate: string;
   upcEan: string;
   albumArt: File | null;
+  backCoverArt: File | null;
   description: string;
   allowDownloadSale: 'no' | 'yes' | 'preorder';
   regularPrice: string;

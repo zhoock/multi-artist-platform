@@ -96,12 +96,15 @@ async function fileToBase64(file: File): Promise<string> {
 /**
  * Загружает обложку альбома в черновики
  */
+export type AlbumCoverSide = 'front' | 'back';
+
 export async function uploadCoverDraft(
   file: File,
   albumId?: string,
   artist?: string,
   album?: string,
-  onProgress?: (progress: number) => void
+  onProgress?: (progress: number) => void,
+  coverSide: AlbumCoverSide = 'front'
 ): Promise<UploadCoverDraftResponse> {
   try {
     const token = getToken();
@@ -128,6 +131,7 @@ export async function uploadCoverDraft(
         contentType: file.type || 'image/jpeg',
         originalFileSize: file.size,
         originalFileName: file.name,
+        coverSide,
       }),
     });
 
@@ -157,7 +161,8 @@ export async function uploadCoverDraft(
 export async function commitCover(
   draftKey: string,
   albumId: string,
-  meta: CommitMeta
+  meta: CommitMeta,
+  coverSide: AlbumCoverSide = 'front'
 ): Promise<CommitCoverResponse> {
   try {
     const token = getToken();
@@ -168,7 +173,7 @@ export async function commitCover(
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({ draftKey, albumId, ...meta }),
+      body: JSON.stringify({ draftKey, albumId, ...meta, coverSide }),
     });
 
     const json: unknown = await response.json().catch(() => null);

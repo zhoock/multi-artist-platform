@@ -585,6 +585,7 @@ function mapAlbumToApiFormat(
     fullName: album.full_name,
     description: album.description,
     cover: parsedCover.img,
+    ...(parsedCover.backImg ? { backCover: parsedCover.backImg } : {}),
     ...(parsedCover.playerBackground ? { playerBackground: parsedCover.playerBackground } : {}),
     release: releaseStripped,
     photographer: coverCredits.photographer,

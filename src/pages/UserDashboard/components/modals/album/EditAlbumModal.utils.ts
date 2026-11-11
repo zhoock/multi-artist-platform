@@ -697,6 +697,7 @@ export const makeEmptyForm = (): AlbumFormData => ({
   releaseDate: '',
   upcEan: '',
   albumArt: null,
+  backCoverArt: null,
   description: '',
   allowDownloadSale: 'no',
   regularPrice: '9.99',
@@ -764,6 +765,12 @@ export type AlbumCoverStep1State = {
   coverDraftKey: string | null;
   /** Staged cover already committed to Storage — retry DB save without re-commit. */
   committedCoverBaseName?: string | null;
+};
+
+export type AlbumBackCoverStep1State = {
+  backCoverPreview: string | null;
+  backCoverDraftKey: string | null;
+  committedBackCoverBaseName?: string | null;
 };
 
 export function hasAlbumCoverForStep1(
@@ -1071,7 +1078,9 @@ export const transformFormDataToAlbumFormat = (
 export type AlbumDiscardAuxState = {
   tagInput: string;
   coverDraftKey: string | null;
+  backCoverDraftKey: string | null;
   uploadStatus: 'idle' | 'uploading' | 'uploaded' | 'error';
+  backCoverUploadStatus: 'idle' | 'uploading' | 'uploaded' | 'error';
   bandMemberName: string;
   bandMemberRole: string;
   bandMemberURL: string;
@@ -1109,7 +1118,9 @@ export function makeEmptyDiscardAuxBaseline(): AlbumDiscardAuxState {
   return {
     tagInput: '',
     coverDraftKey: null,
+    backCoverDraftKey: null,
     uploadStatus: 'idle',
+    backCoverUploadStatus: 'idle',
     bandMemberName: '',
     bandMemberRole: '',
     bandMemberURL: '',
@@ -1149,12 +1160,13 @@ export function buildAlbumDiscardFingerprint(
   currentStep: number,
   aux: AlbumDiscardAuxState
 ): string {
-  const { albumArt, ...rest } = formData;
+  const { albumArt, backCoverArt, ...rest } = formData;
   return JSON.stringify({
     step: currentStep,
     form: {
       ...rest,
       albumArtPresence: albumArt instanceof File ? '__NEW_FILE__' : null,
+      backCoverArtPresence: backCoverArt instanceof File ? '__NEW_FILE__' : null,
     },
     aux,
   });

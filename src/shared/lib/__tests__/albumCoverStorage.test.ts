@@ -39,4 +39,13 @@ describe('albumCoverStorage', () => {
     const value = buildAlbumCoverStorageValue('my-cover-448.webp', BG);
     expect(value.img).toBe('my-cover');
   });
+
+  test('reads backImg from jsonb object', () => {
+    const raw = {
+      img: 'album_cover_front',
+      playerBackground: BG,
+      backImg: 'album_cover_back',
+    };
+    expect(parseAlbumCoverField(raw).backImg).toBe('album_cover_back');
+  });
 });

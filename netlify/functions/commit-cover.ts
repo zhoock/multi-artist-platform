@@ -38,12 +38,19 @@ import { createSupabaseAdminClient, STORAGE_BUCKET_NAME } from './lib/supabase';
 
 const COVER_VARIANT_CACHE_CONTROL = '31536000, immutable';
 
+type AlbumCoverSide = 'front' | 'back';
+
 interface CommitCoverRequest {
   draftKey: string;
   albumId: string;
   artist?: string;
   album?: string;
   lang?: 'ru' | 'en';
+  coverSide?: AlbumCoverSide;
+}
+
+function isBackCoverVariantFileName(fileName: string): boolean {
+  return fileName.includes('Back-Cover') || fileName.includes('-back-cover');
 }
 
 export const handler: Handler = async (event: HandlerEvent, context: HandlerContext) => {
@@ -69,7 +76,8 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
 
     const body = parseJsonBody<Partial<CommitCoverRequest>>(event.body, {});
 
-    const { draftKey, albumId } = body;
+    const { draftKey, albumId, coverSide: coverSideRaw } = body;
+    const coverSide: AlbumCoverSide = coverSideRaw === 'back' ? 'back' : 'front';
 
     if (!draftKey || !albumId) {
       return createErrorResponse(400, 'Missing required fields: draftKey, albumId');
@@ -105,7 +113,11 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
       return createErrorResponse(404, 'Draft files not found');
     }
 
-    const coverFiles = draftFiles.filter((f) => f.name.toLowerCase().includes('cover'));
+    const coverFiles = draftFiles.filter((f) => {
+      if (!f.name.toLowerCase().includes('cover')) return false;
+      const isBack = isBackCoverVariantFileName(f.name);
+      return coverSide === 'back' ? isBack : !isBack;
+    });
 
     if (coverFiles.length === 0) {
       console.error('No cover files found in draft folder:', draftFolder);

@@ -91,6 +91,10 @@ export interface AlbumEditable {
   description: string;
   /** Обложка альбома (имя файла без расширения и суффикса размера) */
   cover?: string;
+  /** Обратная сторона обложки (storage base name). Пока только для админки. */
+  backCover?: string;
+  /** Палитра лицевой обложки для плеера (из JSONB `cover` или API). */
+  playerBackground?: import('@shared/lib/imageColor/albumCoverPlayerBackground').AlbumCoverPlayerBackground;
 
   /** Альбом опубликован (одноразовое действие; синхронизируется по всем lang в БД). */
   isPublished?: boolean;
@@ -1354,6 +1358,10 @@ export interface IInterface {
         releaseDate: string;
         upcEan: string;
         albumArt: string;
+        frontCover?: string;
+        backCover?: string;
+        coverRequired?: string;
+        coverOptional?: string;
         description: string;
         allowDownloadSale: string;
         regularPrice: string;

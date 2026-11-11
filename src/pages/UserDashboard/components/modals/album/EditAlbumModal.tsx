@@ -28,9 +28,14 @@ import { readStoredProfileDisplayName } from '@shared/lib/profileDisplayName';
 import { getUserImageUrl } from '@shared/api/albums';
 import { DashboardLoadingState, DashboardSpinner } from '@shared/ui/dashboard';
 import { getAlbumStorageBaseName } from '@shared/lib/albumCoverUrl';
-import { uploadCoverDraft, commitCover } from '@shared/api/albums/cover';
+import { uploadCoverDraft, commitCover, type AlbumCoverSide } from '@shared/api/albums/cover';
 import type { AlbumCoverPlayerBackground } from '@shared/lib/imageColor/albumCoverPlayerBackground';
-import { buildAlbumCoverStorageValue } from '@shared/lib/albumCoverStorage';
+import {
+  buildAlbumCoverStorageValue,
+  mergeAlbumCoverPayloadForSave,
+  parseAlbumCoverField,
+} from '@shared/lib/albumCoverStorage';
+import { EditAlbumModalCoverSlot } from './EditAlbumModalCoverSlot';
 import type { AlbumEditable, detailsProps } from '@models';
 import { mergeSemanticSourceIntoLocaleDetails } from '@entities/album/lib/albumDetailSemanticKind';
 import { generateAlbumIdFromTitle } from '@shared/lib/album/generateAlbumIdFromTitle';
@@ -170,6 +175,7 @@ export function EditAlbumModal({
   const showPreorderDate = hasYooKassa && formData.allowDownloadSale === 'preorder';
 
   const [dragActive, setDragActive] = useState(false);
+  const [backCoverDragActive, setBackCoverDragActive] = useState(false);
   const [genreDropdownOpen, setGenreDropdownOpen] = useState(false);
   const [tagInput, setTagInput] = useState('');
   const [tagError, setTagError] = useState('');
@@ -234,11 +240,21 @@ export function EditAlbumModal({
   const committedCoverBaseNameRef = useRef<string | null>(null);
   const committedCoverPlayerBackgroundRef = useRef<AlbumCoverPlayerBackground | null>(null);
 
+  const [backCoverPreview, setBackCoverPreview] = useState<string | null>(null);
+  const [backCoverDraftKey, setBackCoverDraftKey] = useState<string | null>(null);
+  const committedBackCoverBaseNameRef = useRef<string | null>(null);
+
   const [uploadProgress, setUploadProgress] = useState<number>(0);
   const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'uploaded' | 'error'>(
     'idle'
   );
   const [uploadError, setUploadError] = useState<string | null>(null);
+
+  const [backCoverUploadProgress, setBackCoverUploadProgress] = useState<number>(0);
+  const [backCoverUploadStatus, setBackCoverUploadStatus] = useState<
+    'idle' | 'uploading' | 'uploaded' | 'error'
+  >('idle');
+  const [backCoverUploadError, setBackCoverUploadError] = useState<string | null>(null);
   const [alertModal, setAlertModal] = useState<{
     isOpen: boolean;
     title?: string;
@@ -260,14 +276,34 @@ export function EditAlbumModal({
 
   // ========= FIX: objectURL lifecycle =========
   const localPreviewUrlRef = useRef<string | null>(null);
+  const backLocalPreviewUrlRef = useRef<string | null>(null);
 
-  const setLocalPreview = (file: File) => {
-    if (localPreviewUrlRef.current) {
-      URL.revokeObjectURL(localPreviewUrlRef.current);
+  const setLocalPreview = (file: File, side: AlbumCoverSide) => {
+    const ref = side === 'back' ? backLocalPreviewUrlRef : localPreviewUrlRef;
+    const setPreview = side === 'back' ? setBackCoverPreview : setAlbumArtPreview;
+    if (ref.current) {
+      URL.revokeObjectURL(ref.current);
     }
     const url = URL.createObjectURL(file);
-    localPreviewUrlRef.current = url;
-    setAlbumArtPreview(url);
+    ref.current = url;
+    setPreview(url);
+  };
+
+  const setAlbumCoverPreviewFromBaseName = (
+    baseName: string,
+    storageUserId: string,
+    side: AlbumCoverSide
+  ) => {
+    const stripExt = (s: string) => s.replace(/\.(webp|jpg|jpeg|png)$/i, '');
+    const base = getAlbumStorageBaseName(stripExt(baseName));
+    const coverUrl = getUserImageUrl(`${base}-448`, 'albums', '.webp', false, storageUserId);
+    if (!coverUrl) return;
+    const withCache = `${coverUrl}${coverUrl.includes('?') ? '&' : '?'}v=${Date.now()}`;
+    if (side === 'back') {
+      setBackCoverPreview(withCache);
+    } else {
+      setAlbumArtPreview(withCache);
+    }
   };
 
   useEffect(() => {
@@ -275,6 +311,10 @@ export function EditAlbumModal({
       if (localPreviewUrlRef.current) {
         URL.revokeObjectURL(localPreviewUrlRef.current);
         localPreviewUrlRef.current = null;
+      }
+      if (backLocalPreviewUrlRef.current) {
+        URL.revokeObjectURL(backLocalPreviewUrlRef.current);
+        backLocalPreviewUrlRef.current = null;
       }
     };
   }, []);
@@ -685,21 +725,17 @@ export function EditAlbumModal({
           ? (album as any).cover.img
           : null;
 
-    if (coverName) {
-      const stripExt = (s: string) => s.replace(/\.(webp|jpg|jpeg|png)$/i, '');
-      const base = getAlbumStorageBaseName(stripExt(coverName));
-      const storageUserId = album.userId ?? getUser()?.id ?? null;
-      if (!storageUserId) {
-        console.error('[BUG] album.userId missing', {
-          albumId: album.albumId,
-          context: 'editAlbumModalCoverPreview',
-        });
-      } else {
-        const coverUrl = getUserImageUrl(`${base}-448`, 'albums', '.webp', false, storageUserId);
-        if (coverUrl) {
-          setAlbumArtPreview(`${coverUrl}${coverUrl.includes('?') ? '&' : '?'}v=${Date.now()}`);
-        }
-      }
+    const storageUserId = album.userId ?? getUser()?.id ?? null;
+    if (coverName && storageUserId) {
+      setAlbumCoverPreviewFromBaseName(coverName, storageUserId, 'front');
+    } else if (coverName && !storageUserId) {
+      console.error('[BUG] album.userId missing', {
+        albumId: album.albumId,
+        context: 'editAlbumModalCoverPreview',
+      });
+    }
+    if (album.backCover && storageUserId) {
+      setAlbumCoverPreviewFromBaseName(album.backCover, storageUserId, 'back');
     }
     // ВАЖНО: Инициализация происходит только один раз
   }, [isOpen, albumId, lang, albumsFromStore]);
@@ -745,6 +781,14 @@ export function EditAlbumModal({
     setUploadStatus('idle');
     setUploadError(null);
 
+    setBackCoverPreview(null);
+    setBackCoverDraftKey(null);
+    committedBackCoverBaseNameRef.current = null;
+    setBackCoverUploadProgress(0);
+    setBackCoverUploadStatus('idle');
+    setBackCoverUploadError(null);
+    setBackCoverDragActive(false);
+
     setDragActive(false);
     setGenreDropdownOpen(false);
     setTagInput('');
@@ -786,63 +830,75 @@ export function EditAlbumModal({
       URL.revokeObjectURL(localPreviewUrlRef.current);
       localPreviewUrlRef.current = null;
     }
+    if (backLocalPreviewUrlRef.current) {
+      URL.revokeObjectURL(backLocalPreviewUrlRef.current);
+      backLocalPreviewUrlRef.current = null;
+    }
   }, [isOpen]);
 
-  const handleDrag = (e: React.DragEvent) => {
+  const handleCoverDrag = (side: AlbumCoverSide) => (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (e.type === 'dragenter' || e.type === 'dragover') setDragActive(true);
-    if (e.type === 'dragleave') setDragActive(false);
+    const setActive = side === 'back' ? setBackCoverDragActive : setDragActive;
+    if (e.type === 'dragenter' || e.type === 'dragover') setActive(true);
+    if (e.type === 'dragleave') setActive(false);
   };
 
-  const handleDrop = async (e: React.DragEvent) => {
+  const handleCoverDrop = (side: AlbumCoverSide) => async (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    setDragActive(false);
+    if (side === 'back') setBackCoverDragActive(false);
+    else setDragActive(false);
 
     const file = e.dataTransfer.files?.[0];
-    if (file) await handleFileUpload(file);
+    if (file) await handleCoverFileUpload(side, file);
   };
 
-  const handleFileInput = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) await handleFileUpload(file);
-  };
+  const handleCoverFileInput =
+    (side: AlbumCoverSide) => async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (file) await handleCoverFileUpload(side, file);
+    };
 
-  const handleFileUpload = async (file: File | null) => {
+  const handleCoverFileUpload = async (side: AlbumCoverSide, file: File | null) => {
     if (!file) return;
 
-    // Защита от двойного вызова
-    if (uploadStatus === 'uploading') {
+    const isBack = side === 'back';
+    const currentStatus = isBack ? backCoverUploadStatus : uploadStatus;
+    if (currentStatus === 'uploading') {
       return;
     }
 
+    const setProgress = isBack ? setBackCoverUploadProgress : setUploadProgress;
+    const setStatus = isBack ? setBackCoverUploadStatus : setUploadStatus;
+    const setError = isBack ? setBackCoverUploadError : setUploadError;
+    const setDraftKey = isBack ? setBackCoverDraftKey : setCoverDraftKey;
+    const previewUrlRef = isBack ? backLocalPreviewUrlRef : localPreviewUrlRef;
+    const setPreview = isBack ? setBackCoverPreview : setAlbumArtPreview;
+
     try {
-      // сохраняем в форме (если где-то ещё используется)
-      handleInputChange('albumArt', file);
+      handleInputChange(isBack ? 'backCoverArt' : 'albumArt', file);
 
-      // сброс
-      setUploadProgress(0);
-      setUploadStatus('uploading');
-      setUploadError(null);
-      setCoverDraftKey(null);
-      committedCoverBaseNameRef.current = null;
-      committedCoverPlayerBackgroundRef.current = null;
-      committedCoverPlayerBackgroundRef.current = null;
+      setProgress(0);
+      setStatus('uploading');
+      setError(null);
+      setDraftKey(null);
+      if (isBack) {
+        committedBackCoverBaseNameRef.current = null;
+      } else {
+        committedCoverBaseNameRef.current = null;
+        committedCoverPlayerBackgroundRef.current = null;
+      }
 
-      // локальное превью (не течёт)
-      setLocalPreview(file);
+      setLocalPreview(file, side);
 
       const albumData = albumId
         ? albumsFromStore.find((a: AlbumEditable) => a.albumId === albumId)
         : null;
-
-      // Получаем оригинальный альбом для fallback значений
       const originalAlbum = albumId
         ? albumsFromStore.find((a: AlbumEditable) => a.albumId === albumId)
         : null;
 
-      // Подготавливаем параметры для uploadCoverDraft (имя — из профиля site_name, не albums.artist)
       const uploadArtist = getProfileArtistName().trim();
       const uploadAlbum = formData.title || albumData?.album || originalAlbum?.album || '';
       const uploadAlbumId = albumId || undefined;
@@ -852,36 +908,41 @@ export function EditAlbumModal({
         uploadAlbumId,
         uploadArtist || undefined,
         uploadAlbum || undefined,
-        (progress) => setUploadProgress(progress)
+        (progress) => setProgress(progress),
+        side
       );
 
       if (result.success && result.data) {
-        if (!result.data.playerBackground) {
-          setUploadStatus('error');
-          setUploadError('Не удалось вычислить палитру обложки. Попробуйте другое изображение.');
-          return;
+        if (!isBack) {
+          if (!result.data.playerBackground) {
+            setStatus('error');
+            setError('Не удалось вычислить палитру обложки. Попробуйте другое изображение.');
+            return;
+          }
+          committedCoverPlayerBackgroundRef.current = result.data.playerBackground;
         }
-        committedCoverPlayerBackgroundRef.current = result.data.playerBackground;
-        setCoverDraftKey(result.data.draftKey);
-        setStep1InvalidFields((prev) => prev.filter((field) => field !== 'cover'));
 
-        // освобождаем objectURL
-        if (localPreviewUrlRef.current) {
-          URL.revokeObjectURL(localPreviewUrlRef.current);
-          localPreviewUrlRef.current = null;
+        setDraftKey(result.data.draftKey);
+        if (!isBack) {
+          setStep1InvalidFields((prev) => prev.filter((field) => field !== 'cover'));
+        }
+
+        if (previewUrlRef.current) {
+          URL.revokeObjectURL(previewUrlRef.current);
+          previewUrlRef.current = null;
         }
 
         const url = result.data.url;
-        setAlbumArtPreview(`${url}${url.includes('?') ? '&' : '?'}v=${Date.now()}`);
-        setUploadStatus('uploaded');
+        setPreview(`${url}${url.includes('?') ? '&' : '?'}v=${Date.now()}`);
+        setStatus('uploaded');
       } else if (!result.success) {
-        setUploadStatus('error');
-        setUploadError(result.error || 'Не удалось загрузить обложку');
+        setStatus('error');
+        setError(result.error || 'Не удалось загрузить обложку');
       }
     } catch (error) {
       console.error('Error uploading cover draft:', error);
-      setUploadStatus('error');
-      setUploadError(error instanceof Error ? error.message : 'Unknown error');
+      setStatus('error');
+      setError(error instanceof Error ? error.message : 'Unknown error');
     }
   };
 
@@ -2273,8 +2334,13 @@ export function EditAlbumModal({
     // Используем lang для сохранения
     const normalizedLang = lang;
 
-    let newCover: ReturnType<typeof buildAlbumCoverStorageValue> | undefined;
+    let newFront: ReturnType<typeof buildAlbumCoverStorageValue> | undefined;
+    let newBackBaseName: string | undefined;
     const coverSavePlan = planAlbumCoverForSave(coverDraftKey, committedCoverBaseNameRef.current);
+    const backCoverSavePlan = planAlbumCoverForSave(
+      backCoverDraftKey,
+      committedBackCoverBaseNameRef.current
+    );
 
     const coverPayloadFromStaged = (baseName: string) => {
       const playerBackground = committedCoverPlayerBackgroundRef.current;
@@ -2286,7 +2352,7 @@ export function EditAlbumModal({
 
     if (coverSavePlan.action === 'useCommitted') {
       try {
-        newCover = coverPayloadFromStaged(coverSavePlan.baseName);
+        newFront = coverPayloadFromStaged(coverSavePlan.baseName);
       } catch (e) {
         const message = e instanceof Error ? e.message : 'Cover palette missing';
         setAlertModal({
@@ -2300,17 +2366,22 @@ export function EditAlbumModal({
       }
     } else if (coverSavePlan.action === 'commitDraft') {
       try {
-        const commitResult = await commitCover(coverSavePlan.draftKey, finalAlbumId, {
-          artist: effectiveArtistName,
-          album: formData.title || originalAlbum?.album || '',
-          lang: normalizedLang,
-        });
+        const commitResult = await commitCover(
+          coverSavePlan.draftKey,
+          finalAlbumId,
+          {
+            artist: effectiveArtistName,
+            album: formData.title || originalAlbum?.album || '',
+            lang: normalizedLang,
+          },
+          'front'
+        );
 
         if (commitResult.success && commitResult.data) {
           const baseName = extractCommittedCoverBaseName(commitResult.data);
           if (baseName) {
             try {
-              newCover = coverPayloadFromStaged(baseName);
+              newFront = coverPayloadFromStaged(baseName);
             } catch (e) {
               const message = e instanceof Error ? e.message : 'Cover palette missing';
               setUploadStatus('error');
@@ -2359,6 +2430,74 @@ export function EditAlbumModal({
         return;
       }
     }
+
+    if (backCoverSavePlan.action === 'useCommitted') {
+      newBackBaseName = backCoverSavePlan.baseName;
+    } else if (backCoverSavePlan.action === 'commitDraft') {
+      try {
+        const commitResult = await commitCover(
+          backCoverSavePlan.draftKey,
+          finalAlbumId,
+          {
+            artist: effectiveArtistName,
+            album: formData.title || originalAlbum?.album || '',
+            lang: normalizedLang,
+          },
+          'back'
+        );
+
+        if (commitResult.success && commitResult.data) {
+          const baseName = extractCommittedCoverBaseName(commitResult.data);
+          if (baseName) {
+            newBackBaseName = baseName;
+            committedBackCoverBaseNameRef.current = baseName;
+            setBackCoverDraftKey(null);
+          } else {
+            console.warn('⚠️ [EditAlbumModal] Back cover commit succeeded but baseName not found');
+          }
+        } else {
+          const errorMessage = !commitResult.success ? commitResult.error : 'Unknown error';
+          setBackCoverUploadStatus('error');
+          setBackCoverUploadError(errorMessage || 'Failed to commit back cover');
+          setAlertModal({
+            isOpen: true,
+            title: 'Ошибка',
+            message:
+              'Не удалось сохранить обратную сторону обложки. Повторите загрузку и попробуйте снова.',
+            variant: 'error',
+          });
+          setIsSaving(false);
+          return;
+        }
+      } catch (e) {
+        const errorMessage = e instanceof Error ? e.message : 'Unknown error';
+        setBackCoverUploadStatus('error');
+        setBackCoverUploadError(errorMessage);
+        setAlertModal({
+          isOpen: true,
+          title: 'Ошибка',
+          message: 'Ошибка при сохранении обратной стороны обложки. Попробуйте еще раз.',
+          variant: 'error',
+        });
+        setIsSaving(false);
+        return;
+      }
+    }
+
+    const priorCover = parseAlbumCoverField({
+      img: originalAlbum?.cover ?? '',
+      playerBackground: originalAlbum?.playerBackground,
+      backImg: originalAlbum?.backCover,
+    });
+
+    const mergedCoverPayload =
+      newFront || newBackBaseName
+        ? mergeAlbumCoverPayloadForSave({
+            prior: priorCover,
+            front: newFront ?? null,
+            backBaseName: newBackBaseName ?? null,
+          })
+        : undefined;
 
     // База для id в transformFormDataToAlbumFormat — details текущей локали в БД (согласованные id).
     // При новом альбоме originalAlbum нет → [].
@@ -2420,7 +2559,7 @@ export function EditAlbumModal({
       // Полный объект кнопок из формы — иначе merge со старым `buttons` не удаляет снятые ссылки.
       buttons,
       lang: normalizedLang,
-      ...(newCover ? { cover: newCover } : {}),
+      ...(mergedCoverPayload ? { cover: mergedCoverPayload } : {}),
     };
 
     try {
@@ -2588,7 +2727,9 @@ export function EditAlbumModal({
   const snapshotDiscardAux = (): AlbumDiscardAuxState => ({
     tagInput,
     coverDraftKey,
+    backCoverDraftKey,
     uploadStatus,
+    backCoverUploadStatus,
     bandMemberName,
     bandMemberRole,
     bandMemberURL,
@@ -2785,90 +2926,47 @@ export function EditAlbumModal({
               {ui?.dashboard?.editAlbumModal?.fieldLabels?.albumArt ?? 'Album art'}
             </label>
 
-            <input
-              type="file"
-              id="album-art-input"
-              accept="image/*"
-              className="edit-album-modal__file-input"
-              onChange={handleFileInput}
-            />
-
-            {albumArtPreview ? (
-              <div className="edit-album-modal__art-wrap">
-                <div className="edit-album-modal__art-preview">
-                  <img
-                    src={albumArtPreview}
-                    alt="Album art preview"
-                    className="edit-album-modal__art-image"
-                  />
-                </div>
-
-                <div className="edit-album-modal__art-actions">
-                  <div className="edit-album-modal__art-buttons">
-                    <label htmlFor="album-art-input" className="edit-album-modal__art-button">
-                      {ui?.dashboard?.editAlbumModal?.buttons?.replace ?? 'Replace'}
-                    </label>
-                  </div>
-
-                  {formData.albumArt && formData.albumArt instanceof File && (
-                    <div className="edit-album-modal__art-meta">
-                      {formData.albumArt.type || 'Image'} • {formatFileSize(formData.albumArt.size)}
-                    </div>
-                  )}
-
-                  {uploadStatus === 'uploading' && (
-                    <div className="edit-album-modal__art-status" aria-busy="true">
-                      <DashboardSpinner className="edit-album-modal__art-status-spinner" />
-                      <div className="edit-album-modal__art-progress">
-                        <div
-                          className="edit-album-modal__art-progress-bar"
-                          style={{ width: `${uploadProgress}%` }}
-                        />
-                      </div>
-                    </div>
-                  )}
-
-                  {uploadStatus === 'uploaded' && (
-                    <div className="edit-album-modal__art-status">
-                      <span className="edit-album-modal__art-status-text edit-album-modal__art-status-text--success">
-                        {ui?.dashboard?.editAlbumModal?.status?.uploaded ?? 'Uploaded (draft)'}
-                      </span>
-                    </div>
-                  )}
-
-                  {uploadStatus === 'error' && uploadError && (
-                    <div className="edit-album-modal__art-status">
-                      <span className="edit-album-modal__art-status-text edit-album-modal__art-status-text--error">
-                        {ui?.dashboard?.editAlbumModal?.status?.error ?? 'Error'}: {uploadError}
-                      </span>
-                    </div>
-                  )}
-
-                  {!coverDraftKey && albumArtPreview && uploadStatus === 'idle' && (
-                    <div className="edit-album-modal__art-status">
-                      <span className="edit-album-modal__art-status-text">
-                        {ui?.dashboard?.editAlbumModal?.status?.publishedCover ?? 'Published cover'}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            ) : (
-              <div
-                className={`edit-album-modal__dropzone ${dragActive ? 'edit-album-modal__dropzone--active' : ''}${step1HasErr('cover') ? ' edit-album-modal__dropzone--invalid' : ''}`}
-                onDragEnter={handleDrag}
-                onDragLeave={handleDrag}
-                onDragOver={handleDrag}
-                onDrop={handleDrop}
-              >
-                <div className="edit-album-modal__dropzone-text">
-                  {ui?.dashboard?.editAlbumModal?.placeholders?.dragImageHere ?? 'Drag image here'}
-                </div>
-                <label htmlFor="album-art-input" className="edit-album-modal__file-label">
-                  {ui?.dashboard?.editAlbumModal?.placeholders?.chooseFile ?? 'Choose file'}
-                </label>
-              </div>
-            )}
+            <div className="edit-album-modal__art-grid">
+              <EditAlbumModalCoverSlot
+                inputId="album-art-input-front"
+                title={ui?.dashboard?.editAlbumModal?.fieldLabels?.frontCover ?? 'Front cover'}
+                requirementLabel={
+                  ui?.dashboard?.editAlbumModal?.fieldLabels?.coverRequired ?? 'Required'
+                }
+                preview={albumArtPreview}
+                coverDraftKey={coverDraftKey}
+                uploadProgress={uploadProgress}
+                uploadStatus={uploadStatus}
+                uploadError={uploadError}
+                dragActive={dragActive}
+                showInvalid={step1HasErr('cover')}
+                fileMeta={formData.albumArt}
+                formatFileSize={formatFileSize}
+                ui={ui ?? undefined}
+                onDrag={handleCoverDrag('front')}
+                onDrop={handleCoverDrop('front')}
+                onFileInput={handleCoverFileInput('front')}
+              />
+              <EditAlbumModalCoverSlot
+                inputId="album-art-input-back"
+                title={ui?.dashboard?.editAlbumModal?.fieldLabels?.backCover ?? 'Back cover'}
+                requirementLabel={
+                  ui?.dashboard?.editAlbumModal?.fieldLabels?.coverOptional ?? 'Optional'
+                }
+                preview={backCoverPreview}
+                coverDraftKey={backCoverDraftKey}
+                uploadProgress={backCoverUploadProgress}
+                uploadStatus={backCoverUploadStatus}
+                uploadError={backCoverUploadError}
+                dragActive={backCoverDragActive}
+                fileMeta={formData.backCoverArt}
+                formatFileSize={formatFileSize}
+                ui={ui ?? undefined}
+                onDrag={handleCoverDrag('back')}
+                onDrop={handleCoverDrop('back')}
+                onFileInput={handleCoverFileInput('back')}
+              />
+            </div>
             {step1HasErr('cover') ? (
               <p className="edit-album-modal__field-error" role="alert">
                 {step1ValUi?.requiredCover ?? 'Upload album cover art'}

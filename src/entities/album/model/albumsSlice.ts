@@ -1,11 +1,16 @@
 import { createAsyncThunk, createSlice, type PayloadAction } from '@reduxjs/toolkit';
 
 import type { AlbumEditable, IAlbumTranslations, IAlbumTrackTranslations } from '@models';
+import {
+  backImgFromStorageField,
+  coverImgFromStorageField,
+  parseAlbumCoverField,
+} from '@shared/lib/albumCoverStorage';
+import { parseAlbumCoverPlayerBackground } from '@shared/lib/imageColor/albumCoverPlayerBackground';
 import { normalizeTrackIdString } from '@shared/lib/tracks/normalizeTrackIdString';
 import { normalizeStemsVisibility } from '@shared/lib/stems/stemsVisibility';
 import { normalizeTrackVisibility, type TrackVisibility } from '@shared/lib/tracks/trackVisibility';
 import type { RootState } from '@shared/model/appStore/types';
-import { coverImgFromStorageField } from '@shared/lib/albumCoverStorage';
 import { getToken } from '@shared/lib/auth';
 import { fetchWithAuthSession } from '@shared/lib/authFetch';
 import { buildApiUrl } from '@shared/lib/artistQuery';
@@ -172,6 +177,14 @@ export const fetchDashboardAlbums = createAsyncThunk<
 
         const rawAlbum = album as Record<string, unknown>;
         const artistDisplayName = readArtistDisplayNameFromApi(album);
+        const parsedCover = parseAlbumCoverField(album.cover);
+        const backCoverFromApi =
+          typeof rawAlbum.backCover === 'string' ? rawAlbum.backCover.trim() : '';
+        const backCover =
+          backCoverFromApi || parsedCover.backImg || backImgFromStorageField(album.cover);
+        const playerBackground =
+          parseAlbumCoverPlayerBackground(rawAlbum.playerBackground) ??
+          parsedCover.playerBackground;
         return {
           userId: album.userId,
           dbAlbumId: typeof rawAlbum.dbAlbumId === 'string' ? rawAlbum.dbAlbumId : undefined,
@@ -182,7 +195,9 @@ export const fetchDashboardAlbums = createAsyncThunk<
             album.fullName ||
             (artistDisplayName ? `${artistDisplayName} — ${album.album}` : album.album),
           description: album.description || '',
-          cover: coverImgFromStorageField(album.cover),
+          cover: parsedCover.img || coverImgFromStorageField(album.cover),
+          ...(backCover ? { backCover } : {}),
+          ...(playerBackground ? { playerBackground } : {}),
           release: album.release || {},
           buttons: album.buttons || {},
           details: Array.isArray(album.details) ? album.details : [],

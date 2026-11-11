@@ -69,6 +69,8 @@ function createSupabaseAdminClient() {
   }
 }
 
+type AlbumCoverSide = 'front' | 'back';
+
 interface UploadCoverDraftRequest {
   fileBase64: string;
   albumId?: string; // ID альбома, если редактируем существующий
@@ -77,6 +79,15 @@ interface UploadCoverDraftRequest {
   contentType?: string;
   originalFileSize?: number;
   originalFileName?: string;
+  coverSide?: AlbumCoverSide;
+}
+
+function parseCoverSide(value: unknown): AlbumCoverSide {
+  return value === 'back' ? 'back' : 'front';
+}
+
+function isBackCoverVariantFileName(fileName: string): boolean {
+  return fileName.includes('Back-Cover');
 }
 
 interface UploadCoverDraftResponse {
@@ -94,12 +105,14 @@ interface UploadCoverDraftResponse {
  * Формат: userId/albums/{albumId}/draft-cover или userId/albums/new/draft-cover
  * ВАЖНО: путь должен совпадать с тем, куда загружаются файлы (drafts/${draftKey}/...)
  */
-function generateDraftKey(userId: string, albumId?: string): string {
-  if (albumId) {
-    return `${userId}/albums/${albumId}/draft-cover`;
-  }
-  // Для новых альбомов используем "new" чтобы путь совпадал с upload (drafts/${userId}/albums/new/...)
-  return `${userId}/albums/new/draft-cover`;
+function generateDraftKey(
+  userId: string,
+  albumId: string | undefined,
+  side: AlbumCoverSide
+): string {
+  const folder = albumId ?? 'new';
+  const draftKind = side === 'back' ? 'draft-cover-back' : 'draft-cover';
+  return `${userId}/albums/${folder}/${draftKind}`;
 }
 
 /**
@@ -135,7 +148,16 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
     // Парсим JSON body
     const body = parseJsonBody<Partial<UploadCoverDraftRequest>>(event.body, {});
 
-    const { fileBase64, albumId, artist, album, contentType, originalFileSize } = body;
+    const {
+      fileBase64,
+      albumId,
+      artist,
+      album,
+      contentType,
+      originalFileSize,
+      coverSide: coverSideRaw,
+    } = body;
+    const coverSide = parseCoverSide(coverSideRaw);
 
     // Логируем входящие данные для диагностики
 
@@ -156,7 +178,7 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
     const originalBuffer = Buffer.from(fileBase64, 'base64');
 
     // Генерируем уникальный ключ для черновика
-    const draftKey = generateDraftKey(userId, albumId);
+    const draftKey = generateDraftKey(userId, albumId, coverSide);
 
     // Формируем базовое имя файла в формате: Groupe-Cover-Album-Name
     // Преобразуем в формат для файлов: латиница, дефисы вместо пробелов, убираем спецсимволы
@@ -223,15 +245,16 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
     // — иначе тот же human-readable base → те же пути в Storage и битый/устаревший кэш.
     const coverKey = `album_cover_${randomUUID()}`;
 
+    const coverMid = coverSide === 'back' ? 'Back-Cover' : 'Cover';
     let baseName: string;
     if (artist && album) {
       const groupeFormatted = formatForFileName(artist);
       const albumFormatted = formatForFileName(album);
-      baseName = `${coverKey}_${groupeFormatted}-Cover-${albumFormatted}`;
+      baseName = `${coverKey}_${groupeFormatted}-${coverMid}-${albumFormatted}`;
     } else if (albumId) {
-      baseName = `${coverKey}_${albumId}-cover`;
+      baseName = `${coverKey}_${albumId}-${coverSide === 'back' ? 'back-cover' : 'cover'}`;
     } else {
-      baseName = `${coverKey}_new-album`;
+      baseName = `${coverKey}_new-album${coverSide === 'back' ? '-back' : ''}`;
     }
 
     // Генерируем все варианты изображения
@@ -288,7 +311,11 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
 
     if (existingDrafts && existingDrafts.length > 0) {
       const oldDrafts = existingDrafts
-        .filter((f) => f.name.includes('cover'))
+        .filter((f) => {
+          if (!f.name.toLowerCase().includes('cover')) return false;
+          const isBack = isBackCoverVariantFileName(f.name);
+          return coverSide === 'back' ? isBack : !isBack;
+        })
         .map((f) => `${draftFolder}/${f.name}`);
 
       if (oldDrafts.length > 0) {
