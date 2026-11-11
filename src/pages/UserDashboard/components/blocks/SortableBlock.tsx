@@ -24,6 +24,7 @@ import { BlockQuote } from './BlockQuote';
 import { BlockList } from './BlockList';
 import { BlockDivider } from './BlockDivider';
 import { BlockImage } from './BlockImage';
+import type { BlockImagePendingUpload } from './blockImageUpload';
 import { BlockCarousel } from './BlockCarousel';
 import { useEditArticleVkPlusMenu } from '../../lib/useEditArticleVkPlusMenu';
 
@@ -57,6 +58,9 @@ interface SortableBlockProps {
   onVkPlusSelect?: (type: string) => void;
   onVkPlusClose?: () => void;
   onEditCarousel?: (blockId: string) => void;
+  blockImagePendingUploads?: Record<string, BlockImagePendingUpload>;
+  onBlockImageUploadingChange?: (blockId: string, uploading: boolean) => void;
+  onBlockImageUploadFailed?: () => void;
   autoFocusCaret?: boolean;
   onAutoFocusCaret?: () => void;
 }
@@ -90,6 +94,9 @@ export function SortableBlock({
   onVkPlusSelect,
   onVkPlusClose,
   onEditCarousel,
+  blockImagePendingUploads,
+  onBlockImageUploadingChange,
+  onBlockImageUploadFailed,
   autoFocusCaret,
   onAutoFocusCaret,
 }: SortableBlockProps) {
@@ -198,6 +205,7 @@ export function SortableBlock({
           <BlockImage
             imageKey={block.imageKey}
             caption={block.caption}
+            pendingUpload={blockImagePendingUploads?.[block.id] ?? null}
             onChange={(imageKey, caption) =>
               onUpdate(block.id, { imageKey, caption } as Partial<Block>)
             }
@@ -207,6 +215,8 @@ export function SortableBlock({
             onSelect={() => onSelect?.(block.id)}
             onConvertToCarousel={() => onConvertToCarousel?.(block.id)}
             onEnter={(atEnd) => onEnter(block.id, atEnd)}
+            onUploadingChange={(uploading) => onBlockImageUploadingChange?.(block.id, uploading)}
+            onUploadFailed={onBlockImageUploadFailed}
           />
         );
       case 'carousel':

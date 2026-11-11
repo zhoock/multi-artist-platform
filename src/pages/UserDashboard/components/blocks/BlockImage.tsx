@@ -1,14 +1,17 @@
 // src/pages/UserDashboard/components/blocks/BlockImage.tsx
 import clsx from 'clsx';
 import { Plus as PlusIcon } from 'lucide-react';
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { getUserImageUrl } from '@shared/api/albums';
 import { getUser } from '@shared/lib/auth';
+import { EditArticleMediaUploadSpinner } from '../modals/article/EditArticleMediaUploadSpinner';
+import type { BlockImagePendingUpload } from './blockImageUpload';
 import { uploadArticleBlockImage } from './uploadArticleBlockImage';
 
 interface BlockImageProps {
   imageKey?: string;
   caption?: string;
+  pendingUpload?: BlockImagePendingUpload | null;
   onChange: (imageKey: string, caption?: string) => void;
   onFocus?: () => void;
   onBlur?: () => void;
@@ -16,11 +19,14 @@ interface BlockImageProps {
   onSelect?: () => void;
   onConvertToCarousel?: () => void;
   onEnter?: (atEnd: boolean) => void;
+  onUploadingChange?: (uploading: boolean) => void;
+  onUploadFailed?: () => void;
 }
 
 export function BlockImage({
   imageKey,
   caption,
+  pendingUpload,
   onChange,
   onFocus,
   onBlur,
@@ -28,25 +34,65 @@ export function BlockImage({
   onSelect,
   onConvertToCarousel,
   onEnter,
+  onUploadingChange,
+  onUploadFailed,
 }: BlockImageProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [isUploading, setIsUploading] = useState(false);
+  const [localUpload, setLocalUpload] = useState<BlockImagePendingUpload | null>(null);
+  const localPreviewRef = useRef<string | null>(null);
   const captionValue = caption ?? '';
+
+  const clearLocalUpload = () => {
+    if (localPreviewRef.current) {
+      URL.revokeObjectURL(localPreviewRef.current);
+      localPreviewRef.current = null;
+    }
+    setLocalUpload(null);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (localPreviewRef.current) {
+        URL.revokeObjectURL(localPreviewRef.current);
+      }
+    };
+  }, []);
+
+  const activePendingUpload = pendingUpload ?? localUpload;
+  const isUploading = activePendingUpload?.status === 'uploading' && !imageKey;
+  const uploadPreviewUrl = activePendingUpload?.previewUrl ?? null;
+
+  useEffect(() => {
+    onUploadingChange?.(
+      Boolean(pendingUpload?.status === 'uploading' || localUpload?.status === 'uploading')
+    );
+  }, [pendingUpload?.status, localUpload?.status, onUploadingChange]);
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    setIsUploading(true);
+    clearLocalUpload();
+    const previewUrl = URL.createObjectURL(file);
+    localPreviewRef.current = previewUrl;
+    setLocalUpload({ status: 'uploading', previewUrl });
+    onUploadingChange?.(true);
+
     try {
       const uploadedKey = await uploadArticleBlockImage(file);
       if (uploadedKey) {
         onChange(uploadedKey, captionValue || undefined);
+        clearLocalUpload();
+      } else {
+        onUploadFailed?.();
+        clearLocalUpload();
       }
     } catch (error) {
       console.error('Error uploading image:', error);
+      onUploadFailed?.();
+      clearLocalUpload();
     } finally {
-      setIsUploading(false);
+      onUploadingChange?.(false);
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
@@ -99,6 +145,11 @@ export function BlockImage({
     handleImageSelect();
   };
 
+  const uploadStatusLabel =
+    activePendingUpload?.status === 'error'
+      ? 'Ошибка загрузки изображения'
+      : 'Загрузка изображения';
+
   /* eslint-disable jsx-a11y/no-static-element-interactions, jsx-a11y/no-noninteractive-tabindex -- editor block focus shell; image selection is on inner container */
   return (
     <div
@@ -139,20 +190,44 @@ export function BlockImage({
             <div className="edit-article-v2__media-caption-display">{captionValue.trim()}</div>
           ) : null}
         </div>
+      ) : isUploading || activePendingUpload?.status === 'error' ? (
+        <div className="edit-article-v2__media-figure">
+          <div
+            className={clsx(
+              'edit-article-v2__image-container',
+              'edit-article-v2__image-container--uploading'
+            )}
+            aria-busy={isUploading}
+            aria-label={uploadStatusLabel}
+          >
+            {uploadPreviewUrl ? (
+              <img src={uploadPreviewUrl} alt="" />
+            ) : (
+              <div className="edit-article-v2__image-upload-slot" aria-hidden />
+            )}
+            {isUploading ? (
+              <div className="edit-article-v2__image-upload-overlay" aria-live="polite">
+                <EditArticleMediaUploadSpinner />
+              </div>
+            ) : null}
+            {activePendingUpload?.status === 'error' && activePendingUpload.errorMessage ? (
+              <p className="edit-article-v2__image-upload-error">
+                {activePendingUpload.errorMessage}
+              </p>
+            ) : null}
+          </div>
+        </div>
       ) : (
         <div
           className="edit-article-v2__image-empty"
           role="button"
           tabIndex={0}
-          aria-label={isUploading ? 'Загрузка изображения' : 'Загрузить изображение'}
-          aria-busy={isUploading}
-          onClick={() => !isUploading && fileInputRef.current?.click()}
+          aria-label="Загрузить изображение"
+          onClick={() => fileInputRef.current?.click()}
           onKeyDown={(e) => {
             if (e.key === 'Enter' || e.key === ' ') {
               e.preventDefault();
-              if (!isUploading) {
-                fileInputRef.current?.click();
-              }
+              fileInputRef.current?.click();
             }
           }}
         />
@@ -175,6 +250,7 @@ export function BlockImage({
         accept="image/*"
         style={{ display: 'none' }}
         onChange={handleFileSelect}
+        disabled={Boolean(pendingUpload?.status === 'uploading')}
       />
     </div>
   );

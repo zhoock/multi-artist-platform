@@ -948,6 +948,46 @@ dialog {
       cursor: default;
     }
 
+    &__image-upload-slot {
+      display: block;
+      width: min(100%, 24rem);
+      min-height: 10rem;
+      background: var(--dashboard-card-bg);
+      border: 1px dashed var(--dashboard-input-border);
+      border-radius: var(--ms-01);
+    }
+
+    &__image-container--uploading {
+      pointer-events: none;
+      cursor: default;
+    }
+
+    &__image-upload-overlay {
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgb(var(--black-rgb) / 45%);
+      border-radius: inherit;
+    }
+
+    &__image-upload-error {
+      position: absolute;
+      inset-inline: var(--ms-01);
+      bottom: var(--ms-01);
+      z-index: 2;
+      margin: 0;
+      padding: var(--ms-02) var(--ms-01);
+      color: var(--soft-red);
+      font-size: var(--dashboard-helper-font-size);
+      line-height: 1.35;
+      text-align: center;
+      background: rgb(var(--black-rgb) / 65%);
+      border-radius: var(--ms-02);
+    }
+
     &__image-convert-to-carousel {
       position: absolute;
       top: var(--ms-01);

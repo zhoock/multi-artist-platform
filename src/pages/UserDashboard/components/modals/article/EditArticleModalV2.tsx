@@ -88,6 +88,7 @@ import type {
   RichPasteMultilineDetail,
 } from '@shared/ui/RichTextBlockEditor';
 import { SortableBlock } from '../../blocks/SortableBlock';
+import type { BlockImagePendingUpload } from '../../blocks/blockImageUpload';
 import { uploadArticleBlockImage } from '../../blocks/uploadArticleBlockImage';
 import type { FormatType } from '../../blocks/BlockParagraph';
 import { SlashMenu } from '../../blocks/SlashMenu';
@@ -146,6 +147,7 @@ const LANG_TEXTS = {
     savingDraftProgress: 'Сохранение черновика...',
     noChangesHint: 'Нет изменений для сохранения',
     savingError: 'Ошибка при сохранении',
+    imageUploadError: 'Не удалось загрузить изображение',
     addBlock: 'Добавить блок',
     close: 'Закрыть',
     undo: 'Отменить',
@@ -170,6 +172,7 @@ const LANG_TEXTS = {
     savingDraftProgress: 'Saving draft...',
     noChangesHint: 'No changes to save',
     savingError: 'Error saving article',
+    imageUploadError: 'Could not upload image',
     addBlock: 'Add Block',
     close: 'Close',
     undo: 'Undo',
@@ -282,6 +285,39 @@ export function EditArticleModalV2({
   const articleTitleInputRef = useRef<HTMLTextAreaElement>(null);
   const imageUploadBlockIdRef = useRef<string | null>(null);
   const imageUploadInputRef = useRef<HTMLInputElement>(null);
+  const [blockImagePendingUploads, setBlockImagePendingUploads] = useState<
+    Record<string, BlockImagePendingUpload>
+  >({});
+  const imageBlockUploadBusyRef = useRef(new Set<string>());
+  const [hasBlockImageUploadInProgress, setHasBlockImageUploadInProgress] = useState(false);
+
+  const syncBlockImageUploadBusy = useCallback(() => {
+    setHasBlockImageUploadInProgress(imageBlockUploadBusyRef.current.size > 0);
+  }, []);
+
+  const setBlockImageUploadBusy = useCallback(
+    (blockId: string, busy: boolean) => {
+      if (busy) {
+        imageBlockUploadBusyRef.current.add(blockId);
+      } else {
+        imageBlockUploadBusyRef.current.delete(blockId);
+      }
+      syncBlockImageUploadBusy();
+    },
+    [syncBlockImageUploadBusy]
+  );
+
+  const clearBlockImagePendingUpload = useCallback((blockId: string, previewUrl?: string) => {
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+    }
+    setBlockImagePendingUploads((prev) => {
+      if (!prev[blockId]) return prev;
+      const next = { ...prev };
+      delete next[blockId];
+      return next;
+    });
+  }, []);
 
   // Обработка Escape для скрытия VK-плюса
   useEffect(() => {
@@ -627,11 +663,21 @@ export function EditArticleModalV2({
     onClose();
   }, [hasChanges, handleCancel, onClose]);
 
-  const isArticleSaveBusy = saveStatus === 'saving' || isPublishing || isSavingDraft;
+  const isArticleSaveBusy =
+    saveStatus === 'saving' || isPublishing || isSavingDraft || hasBlockImageUploadInProgress;
   const isCancelDisabled = isArticleSaveBusy || langSwitchDiscardOpen;
   const isSaveDraftDisabled =
-    isPublishing || saveStatus === 'saving' || isSavingDraft || !hasChanges;
-  const isPublishDisabled = isPublishing || saveStatus === 'saving' || isSavingDraft || !hasChanges;
+    isPublishing ||
+    saveStatus === 'saving' ||
+    isSavingDraft ||
+    hasBlockImageUploadInProgress ||
+    !hasChanges;
+  const isPublishDisabled =
+    isPublishing ||
+    saveStatus === 'saving' ||
+    isSavingDraft ||
+    hasBlockImageUploadInProgress ||
+    !hasChanges;
   const noChangesActionHint = !hasChanges && !isArticleSaveBusy ? texts.noChangesHint : undefined;
 
   const popupRequestCloseRef = useRef<(() => void) | null>(null);
@@ -1470,17 +1516,49 @@ export function EditArticleModalV2({
 
       if (!blockId || !file) return;
 
+      const previewUrl = URL.createObjectURL(file);
+      setBlockImagePendingUploads((prev) => ({
+        ...prev,
+        [blockId]: { status: 'uploading', previewUrl },
+      }));
+      setBlockImageUploadBusy(blockId, true);
+
       try {
         const imageKey = await uploadArticleBlockImage(file);
         if (imageKey) {
           updateBlock(blockId, { imageKey } as Partial<Block>);
+          clearBlockImagePendingUpload(blockId, previewUrl);
+        } else {
+          showEditorToast({ kind: 'error', message: texts.imageUploadError });
+          clearBlockImagePendingUpload(blockId, previewUrl);
         }
       } catch (error) {
         console.error('Error uploading image:', error);
+        showEditorToast({ kind: 'error', message: texts.imageUploadError });
+        clearBlockImagePendingUpload(blockId, previewUrl);
+      } finally {
+        setBlockImageUploadBusy(blockId, false);
       }
     },
-    [updateBlock]
+    [
+      clearBlockImagePendingUpload,
+      setBlockImageUploadBusy,
+      showEditorToast,
+      texts.imageUploadError,
+      updateBlock,
+    ]
   );
+
+  const handleBlockImageUploadingChange = useCallback(
+    (blockId: string, uploading: boolean) => {
+      setBlockImageUploadBusy(blockId, uploading);
+    },
+    [setBlockImageUploadBusy]
+  );
+
+  const handleBlockImageUploadFailed = useCallback(() => {
+    showEditorToast({ kind: 'error', message: texts.imageUploadError });
+  }, [showEditorToast, texts.imageUploadError]);
 
   // Обработчики для блоков
   const handleBlockEnter = useCallback(
@@ -2622,6 +2700,9 @@ export function EditArticleModalV2({
                                   });
                                 }
                               }}
+                              blockImagePendingUploads={blockImagePendingUploads}
+                              onBlockImageUploadingChange={handleBlockImageUploadingChange}
+                              onBlockImageUploadFailed={handleBlockImageUploadFailed}
                               autoFocusCaret={autofocusParagraphBlockId === block.id}
                               onAutoFocusCaret={() => setAutofocusParagraphBlockId(null)}
                             />

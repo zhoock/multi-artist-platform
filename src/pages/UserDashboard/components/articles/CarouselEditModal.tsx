@@ -3,7 +3,7 @@ import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react'
 import { Plus as PlusIcon, X as XIcon } from 'lucide-react';
 import { getUserImageUrl } from '@shared/api/albums';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
-import { DashboardSpinner } from '@shared/ui/dashboard';
+import { EditArticleMediaUploadSpinner } from '../modals/article/EditArticleMediaUploadSpinner';
 import { optionalMediaSrc } from '@shared/lib/media/optionalMediaUrl';
 import { ArticleCoverPlaceholder } from '@entities/article';
 import { uploadFile } from '@shared/api/storage';
@@ -40,6 +40,7 @@ export function CarouselEditModal({
     lang === 'ru' ? `Слайд карусели ${index + 1}` : `Carousel slide ${index + 1}`;
   const [imageKeys, setImageKeys] = useState<string[]>(initialImageKeys);
   const [isUploading, setIsUploading] = useState(false);
+  const [pendingUploads, setPendingUploads] = useState<{ id: string; previewUrl: string }[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -71,11 +72,20 @@ export function CarouselEditModal({
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
 
+    const queued = files.map((file) => ({
+      id: uniqueUploadFileSuffix(),
+      file,
+      previewUrl: URL.createObjectURL(file),
+    }));
+    setPendingUploads((prev) => [
+      ...prev,
+      ...queued.map(({ id, previewUrl }) => ({ id, previewUrl })),
+    ]);
     setIsUploading(true);
     try {
       const newImageKeys: string[] = [];
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
+      for (const item of queued) {
+        const file = item.file;
         const fileExtension = file.name.split('.').pop() || 'jpg';
         const baseFileName = file.name.replace(/\.[^/.]+$/, '');
         const rawFileName = `article_${uniqueUploadFileSuffix()}_${baseFileName}.${fileExtension}`;
@@ -88,13 +98,22 @@ export function CarouselEditModal({
           userId: mediaOwnerUserId,
         });
 
+        URL.revokeObjectURL(item.previewUrl);
+        setPendingUploads((prev) => prev.filter((p) => p.id !== item.id));
+
         if (url) {
           newImageKeys.push(imageKey);
         }
       }
-      setImageKeys([...imageKeys, ...newImageKeys]);
+      if (newImageKeys.length > 0) {
+        setImageKeys((prev) => [...prev, ...newImageKeys]);
+      }
     } catch (error) {
       console.error('Error uploading images:', error);
+      queued.forEach((item) => {
+        URL.revokeObjectURL(item.previewUrl);
+      });
+      setPendingUploads((prev) => prev.filter((p) => !queued.some((q) => q.id === p.id)));
     } finally {
       setIsUploading(false);
       if (fileInputRef.current) {
@@ -136,6 +155,19 @@ export function CarouselEditModal({
 
             <div className="edit-article-v2__carousel-edit-content">
               <div className="edit-article-v2__carousel-edit-thumbnails">
+                {pendingUploads.map((pending) => (
+                  <div
+                    key={`pending-${pending.id}`}
+                    className="edit-article-v2__carousel-edit-thumbnail edit-article-v2__carousel-edit-thumbnail--uploading"
+                    aria-busy="true"
+                    aria-label="Загрузка изображения"
+                  >
+                    <img src={pending.previewUrl} alt="" />
+                    <div className="edit-article-v2__carousel-edit-thumbnail-overlay">
+                      <EditArticleMediaUploadSpinner />
+                    </div>
+                  </div>
+                ))}
                 {imageKeys.map((imageKey, index) => {
                   const thumbUrl = optionalMediaSrc(
                     getUserImageUrl(imageKey, 'articles', '.jpg', undefined, mediaOwnerUserId),
@@ -168,7 +200,7 @@ export function CarouselEditModal({
                   aria-label={isUploading ? 'Загрузка изображений' : 'Добавить изображения'}
                 >
                   {isUploading ? (
-                    <DashboardSpinner className="edit-article-v2__carousel-edit-add-spinner" />
+                    <EditArticleMediaUploadSpinner />
                   ) : (
                     <PlusIcon {...dashboardActionIconProps({ size: 20 })} />
                   )}
