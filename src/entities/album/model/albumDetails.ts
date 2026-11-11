@@ -86,6 +86,8 @@ export interface AlbumDetails {
   slug: string;
   title: string;
   cover: string;
+  /** Optional album back cover base name (single `.webp` in Storage). */
+  backCover?: string;
   /** Precomputed at cover upload — full-player ambient gradient. */
   playerBackground?: AlbumCoverPlayerBackground;
   userId: string;
@@ -324,12 +326,15 @@ export function normalizeAlbumDetails(raw: unknown): AlbumDetails | null {
   const parsedCover = parseAlbumCoverField(v.cover);
   const playerBackground =
     parseAlbumCoverPlayerBackground(v.playerBackground) ?? parsedCover.playerBackground;
+  const backCoverFromApi = typeof v.backCover === 'string' ? v.backCover.trim() : '';
+  const backCover = backCoverFromApi || parsedCover.backImg;
 
   return {
     albumId,
     slug: asString(v.slug).trim() || albumId,
     title: asString(v.title),
     cover: coverImgFromStorageField(v.cover),
+    ...(backCover ? { backCover } : {}),
     ...(playerBackground ? { playerBackground } : {}),
     userId: asString(v.userId),
     dbAlbumId: asString(v.dbAlbumId),
@@ -434,6 +439,7 @@ export function mapAlbumEditableToAlbumDetails(album: AlbumEditable): AlbumDetai
     slug: asString(album.albumId),
     title: asString(album.album),
     cover: coverImgFromStorageField(album.cover),
+    ...(album.backCover?.trim() ? { backCover: album.backCover.trim() } : {}),
     userId: asString(album.userId),
     dbAlbumId: asString(album.dbAlbumId),
     description: asString(album.description),

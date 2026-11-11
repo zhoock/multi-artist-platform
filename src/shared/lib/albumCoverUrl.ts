@@ -31,6 +31,13 @@ export function getAlbumCoverCacheVersion(cover: unknown): string {
   return getAlbumStorageBaseName(cover);
 }
 
+/** Single back-cover object in Storage: `users/{userId}/albums/{base}.webp` */
+export function getAlbumBackCoverPublicUrl(userId: string, backCover: string): string | null {
+  const base = getAlbumStorageBaseName(backCover);
+  if (!userId.trim() || !base) return null;
+  return getAlbumCoverPublicUrl({ userId, fileNameOrCoverKey: base, suffix: '.webp' });
+}
+
 /**
  * Базовое имя файла обложки в `users/{userId}/albums/` без расширения и без суффикса размера.
  * Нужно, если в БД оказалось полное имя варианта (`…-448.webp`) или лишний `-128` в конце.

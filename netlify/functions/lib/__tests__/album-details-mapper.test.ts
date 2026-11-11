@@ -56,6 +56,31 @@ function locale(
 }
 
 describe('album-details-mapper', () => {
+  test('maps optional backCover from cover JSONB backImg', () => {
+    const dto = mapLocalesToAlbumDetails(
+      [
+        locale({
+          lang: 'en',
+          cover: {
+            img: 'album_cover_front',
+            playerBackground: {
+              primary: [1, 2, 3],
+              secondary: [4, 5, 6],
+            },
+            backImg: 'album_cover_back',
+          },
+        }),
+      ],
+      {
+        hasPremiumAccess: false,
+        monetizationEnabled: false,
+      }
+    );
+
+    expect(dto?.cover).toBe('album_cover_front');
+    expect(dto?.backCover).toBe('album_cover_back');
+  });
+
   test('merges locales and maps purchase / artwork / serviceButtons', () => {
     const dto = mapLocalesToAlbumDetails(
       [

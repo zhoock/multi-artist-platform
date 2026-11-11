@@ -1,7 +1,9 @@
 import {
+  backImgBaseForStorageCleanup,
   coverImgFromStorageField,
   parseAlbumCoverField,
   buildAlbumCoverStorageValue,
+  mergeAlbumCoverPayloadForSave,
 } from '../albumCoverStorage';
 
 const BG = {
@@ -47,5 +49,24 @@ describe('albumCoverStorage', () => {
       backImg: 'album_cover_back',
     };
     expect(parseAlbumCoverField(raw).backImg).toBe('album_cover_back');
+  });
+
+  test('backImgBaseForStorageCleanup normalizes variant suffix', () => {
+    const raw = {
+      img: 'front',
+      playerBackground: BG,
+      backImg: 'album_back-448.webp',
+    };
+    expect(backImgBaseForStorageCleanup(raw)).toBe('album_back');
+  });
+
+  test('album without backImg leaves merge undefined when nothing changes', () => {
+    expect(
+      mergeAlbumCoverPayloadForSave({
+        prior: { img: 'front-only', playerBackground: BG },
+        front: null,
+        backBaseName: null,
+      })
+    ).toBeUndefined();
   });
 });

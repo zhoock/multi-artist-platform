@@ -35,7 +35,7 @@ import {
   parseJsonBody,
 } from './lib/api-helpers';
 import sharp from 'sharp';
-import { generateImageVariants } from './lib/image-processor';
+import { generateAlbumBackCoverWebp, generateImageVariants } from './lib/image-processor';
 import {
   CoverPaletteExtractionError,
   extractCoverPlayerBackgroundFromBuffer,
@@ -87,7 +87,11 @@ function parseCoverSide(value: unknown): AlbumCoverSide {
 }
 
 function isBackCoverVariantFileName(fileName: string): boolean {
-  return fileName.includes('Back-Cover');
+  return (
+    fileName.includes('Back-Cover') ||
+    fileName.includes('-back-cover') ||
+    /-back\.webp$/i.test(fileName)
+  );
 }
 
 interface UploadCoverDraftResponse {
@@ -257,48 +261,54 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
       baseName = `${coverKey}_new-album${coverSide === 'back' ? '-back' : ''}`;
     }
 
-    // Генерируем все варианты изображения
-    const variants = await generateImageVariants(originalBuffer, baseName);
+    let playerBackground:
+      | Awaited<ReturnType<typeof extractCoverPlayerBackgroundFromBuffer>>
+      | undefined;
+    const variants =
+      coverSide === 'back'
+        ? await generateAlbumBackCoverWebp(originalBuffer, baseName)
+        : await generateImageVariants(originalBuffer, baseName);
 
-    const analysisFileName = Object.keys(variants).find((name) => name.endsWith('-448.jpg'));
-    const analysisBuffer = analysisFileName ? variants[analysisFileName] : undefined;
+    if (coverSide === 'front') {
+      const analysisFileName = Object.keys(variants).find((name) => name.endsWith('-448.jpg'));
+      const analysisBuffer = analysisFileName ? variants[analysisFileName] : undefined;
 
-    if (!analysisFileName || analysisBuffer == null) {
-      console.error('[upload-cover-draft] missing -448.jpg variant for palette', {
-        variantKeys: Object.keys(variants),
-      });
-      return createErrorResponse(
-        500,
-        'Cover processing failed: missing -448.jpg variant for palette extraction'
-      );
-    }
+      if (!analysisFileName || analysisBuffer == null) {
+        console.error('[upload-cover-draft] missing -448.jpg variant for palette', {
+          variantKeys: Object.keys(variants),
+        });
+        return createErrorResponse(
+          500,
+          'Cover processing failed: missing -448.jpg variant for palette extraction'
+        );
+      }
 
-    const analysisMeta = await sharp(analysisBuffer)
-      .metadata()
-      .catch(() => null);
-    console.info('[upload-cover-draft] palette input', {
-      analysisFileName,
-      byteLength: analysisBuffer.length,
-      format: analysisMeta?.format,
-      width: analysisMeta?.width,
-      height: analysisMeta?.height,
-    });
-
-    let playerBackground;
-    try {
-      playerBackground = await extractCoverPlayerBackgroundFromBuffer(analysisBuffer);
-    } catch (error) {
-      const step = error instanceof CoverPaletteExtractionError ? error.step : 'unknown';
-      const message = error instanceof Error ? error.message : String(error);
-      console.error('[upload-cover-draft] palette extraction failed', {
-        step,
-        message,
-        stack: error instanceof Error ? error.stack : undefined,
-        cause: error instanceof CoverPaletteExtractionError ? error.causeDetail : undefined,
+      const analysisMeta = await sharp(analysisBuffer)
+        .metadata()
+        .catch(() => null);
+      console.info('[upload-cover-draft] palette input', {
         analysisFileName,
         byteLength: analysisBuffer.length,
+        format: analysisMeta?.format,
+        width: analysisMeta?.width,
+        height: analysisMeta?.height,
       });
-      return createErrorResponse(500, `Cover palette extraction failed (${step}): ${message}`);
+
+      try {
+        playerBackground = await extractCoverPlayerBackgroundFromBuffer(analysisBuffer);
+      } catch (error) {
+        const step = error instanceof CoverPaletteExtractionError ? error.step : 'unknown';
+        const message = error instanceof Error ? error.message : String(error);
+        console.error('[upload-cover-draft] palette extraction failed', {
+          step,
+          message,
+          stack: error instanceof Error ? error.stack : undefined,
+          cause: error instanceof CoverPaletteExtractionError ? error.causeDetail : undefined,
+          analysisFileName,
+          byteLength: analysisBuffer.length,
+        });
+        return createErrorResponse(500, `Cover palette extraction failed (${step}): ${message}`);
+      }
     }
 
     // Удаляем старые черновики для этого альбома (включая новые альбомы)
@@ -358,8 +368,7 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
       }
     }
 
-    // Используем базовый вариант для превью (448.webp)
-    const previewFileName = `${baseName}-448.webp`;
+    const previewFileName = coverSide === 'back' ? `${baseName}.webp` : `${baseName}-448.webp`;
     const previewPath = `drafts/${userId}/albums/${albumId || 'new'}/${previewFileName}`;
     const { data: urlData } = supabase.storage.from(STORAGE_BUCKET_NAME).getPublicUrl(previewPath);
 
@@ -369,7 +378,7 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
         url: urlData.publicUrl,
         storagePath: previewPath,
         variants: uploadedFiles,
-        playerBackground,
+        ...(playerBackground ? { playerBackground } : {}),
       },
       200
     );

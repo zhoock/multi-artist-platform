@@ -128,9 +128,12 @@ export function mergeAlbumCoverPayloadForSave(opts: {
   prior?: ParsedAlbumCoverField;
   front?: AlbumCoverStorageValue | null;
   backBaseName?: string | null;
+  /** Remove optional back cover from JSONB (does not touch Storage — server cleans up after DB save). */
+  clearBackImg?: boolean;
 }): AlbumCoverDbValue | undefined {
-  const hasBackUpdate = opts.backBaseName != null && opts.backBaseName.trim() !== '';
-  if (!opts.front && !hasBackUpdate) {
+  const hasBackReplace = opts.backBaseName != null && opts.backBaseName.trim() !== '';
+  const hasBackClear = opts.clearBackImg === true;
+  if (!opts.front && !hasBackReplace && !hasBackClear) {
     return undefined;
   }
 
@@ -140,9 +143,10 @@ export function mergeAlbumCoverPayloadForSave(opts: {
 
   const playerBackground = opts.front?.playerBackground ?? prior.playerBackground;
   const backFromFront = opts.front?.backImg;
-  const backImg =
-    opts.backBaseName != null && opts.backBaseName.trim() !== ''
-      ? normalizeCoverImg(opts.backBaseName)
+  const backImg = hasBackClear
+    ? undefined
+    : hasBackReplace
+      ? normalizeCoverImg(opts.backBaseName!)
       : (backFromFront ?? prior.backImg);
 
   if (playerBackground) {
@@ -184,4 +188,9 @@ export function coerceAlbumCoverForDb(cover: unknown): AlbumCoverDbValue | null 
 export function coverImgBaseForStorageCleanup(cover: unknown): string | null {
   const parsed = parseAlbumCoverField(cover);
   return parsed.img || null;
+}
+
+export function backImgBaseForStorageCleanup(cover: unknown): string | null {
+  const parsed = parseAlbumCoverField(cover);
+  return parsed.backImg?.trim() ? normalizeCoverImg(parsed.backImg) : null;
 }

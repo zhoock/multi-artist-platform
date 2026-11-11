@@ -78,6 +78,7 @@ export interface AlbumDetailsDto {
   slug: string;
   title: string;
   cover: string;
+  backCover?: string;
   playerBackground?: AlbumCoverPlayerBackground;
   userId: string;
   dbAlbumId: string;
@@ -435,6 +436,7 @@ export function mapLocalesToAlbumDetails(
     slug: shared.albumId,
     title,
     cover: parsedCover.img,
+    ...(parsedCover.backImg ? { backCover: parsedCover.backImg } : {}),
     ...(parsedCover.playerBackground ? { playerBackground: parsedCover.playerBackground } : {}),
     userId,
     dbAlbumId: shared.dbAlbumId,

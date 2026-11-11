@@ -7,7 +7,7 @@ import { Helmet } from 'react-helmet-async';
 import { noindexRobotsMetaElement } from '@shared/lib/seo/noindexRobotsMeta';
 
 import {
-  AlbumCover,
+  AlbumPageCover,
   AlbumDetails,
   fetchAlbumDetailsPage,
   mapAlbumEditableToAlbumDetails,
@@ -304,8 +304,9 @@ export default function Album() {
         />
 
         <div className="item item-type-a">
-          <AlbumCover
+          <AlbumPageCover
             img={album.cover || ''}
+            backCover={album.backCover}
             userId={album.userId}
             fullName={formatAlbumDisplayFullName(siteArtistName, album.title)}
             imageSource="cdn"

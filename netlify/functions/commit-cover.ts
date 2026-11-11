@@ -212,7 +212,8 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
       );
     }
 
-    const previewFileName = `${finalBaseName}-448.webp`;
+    const previewFileName =
+      coverSide === 'back' ? `${finalBaseName}.webp` : `${finalBaseName}-448.webp`;
     const previewPath = `users/${userId}/albums/${previewFileName}`;
     const { data: urlData } = supabase.storage.from(STORAGE_BUCKET_NAME).getPublicUrl(previewPath);
 

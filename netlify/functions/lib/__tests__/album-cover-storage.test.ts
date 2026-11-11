@@ -15,7 +15,9 @@ jest.mock('../supabase', () => ({
 
 import { createSupabaseAdminClient } from '../supabase';
 import {
+  buildBackCoverStoragePath,
   buildCoverVariantStoragePaths,
+  cleanupSupersededAlbumBackCoverBestEffort,
   cleanupSupersededAlbumCoversBestEffort,
   normalizeCoverBaseName,
 } from '../album-cover-storage';
@@ -83,6 +85,32 @@ describe('album-cover-storage cleanup', () => {
 
     expect(removed.some((p) => p.includes(OLD_BASE))).toBe(true);
     expect(removed.some((p) => p.includes(NEW_BASE))).toBe(false);
+  });
+
+  test('buildBackCoverStoragePath is single .webp without size suffix', () => {
+    const path = buildBackCoverStoragePath(USER_ID, `${OLD_BASE}-448.webp`);
+    expect(path).toBe(`users/${USER_ID}/albums/${OLD_BASE}.webp`);
+  });
+
+  test('removes superseded back cover .webp after DB points to new base', async () => {
+    const removed: string[] = [];
+    const OLD_BACK = 'album_cover_uuid_artist-Back-Cover-album';
+    const NEW_BACK = 'album_cover_uuid2_artist-Back-Cover-album';
+    const supabase = {
+      storage: {
+        from: jest.fn(() => ({
+          remove: jest.fn(async (paths: string[]) => {
+            removed.push(...paths);
+            return { error: null };
+          }),
+        })),
+      },
+    };
+    mockedCreateSupabaseAdminClient.mockReturnValue(supabase as never);
+
+    await cleanupSupersededAlbumBackCoverBestEffort(USER_ID, OLD_BACK, NEW_BACK);
+
+    expect(removed).toEqual([`users/${USER_ID}/albums/${OLD_BACK}.webp`]);
   });
 
   test('skips cleanup when new base matches old base', async () => {

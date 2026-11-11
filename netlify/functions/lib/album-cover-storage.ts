@@ -4,7 +4,10 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { coverImgFromStorageField } from '../../../src/shared/lib/albumCoverStorage';
+import {
+  backImgBaseForStorageCleanup,
+  coverImgFromStorageField,
+} from '../../../src/shared/lib/albumCoverStorage';
 import { query } from './db';
 import { createSupabaseAdminClient, STORAGE_BUCKET_NAME } from './supabase';
 
@@ -87,6 +90,53 @@ export async function removeCoverVariantsByBaseName(
  * Best-effort removal of superseded cover bases after DB points at `newCoverBase`.
  * Failures are logged only — they must not fail the album save response.
  */
+/** Single live back-cover object: `users/{userId}/albums/{base}.webp` (no size suffix). */
+export function buildBackCoverStoragePath(userId: string, baseName: string): string {
+  const base = normalizeCoverBaseName(baseName);
+  if (!base) return '';
+  return `users/${userId}/albums/${base}.webp`;
+}
+
+/**
+ * Removes superseded back cover after DB save (single `.webp` file). Non-fatal on failure.
+ */
+export async function cleanupSupersededAlbumBackCoverBestEffort(
+  userId: string,
+  previousBackBase: string | null | undefined,
+  newBackBase: string | null | undefined
+): Promise<void> {
+  const prev = previousBackBase ? normalizeCoverBaseName(previousBackBase) : '';
+  const next = newBackBase ? normalizeCoverBaseName(newBackBase) : '';
+  if (!prev || prev === next) return;
+
+  const supabase = createSupabaseAdminClient();
+  if (!supabase) {
+    console.warn('[album-cover-storage] Supabase admin client missing; skipped back cover cleanup');
+    return;
+  }
+
+  const path = buildBackCoverStoragePath(userId, prev);
+  if (!path) return;
+
+  try {
+    const { error } = await supabase.storage.from(STORAGE_BUCKET_NAME).remove([path]);
+    if (error) throw error;
+    console.log('[album-cover-storage] Removed superseded album back cover:', {
+      userId,
+      oldBase: prev,
+      newBase: next || null,
+    });
+  } catch (cleanupErr) {
+    console.warn('[album-cover-storage] Superseded back cover cleanup failed (non-fatal):', {
+      userId,
+      oldBase: prev,
+      error: cleanupErr instanceof Error ? cleanupErr.message : String(cleanupErr),
+    });
+  }
+}
+
+export { backImgBaseForStorageCleanup };
+
 export async function cleanupSupersededAlbumCoversBestEffort(
   userId: string,
   previousCoverBases: string[],

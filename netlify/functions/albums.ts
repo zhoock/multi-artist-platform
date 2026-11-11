@@ -37,6 +37,7 @@ import {
 } from './lib/track-storage-cleanup';
 import { collectTrackStemStoragePaths } from './lib/track-stems-cleanup';
 import {
+  cleanupSupersededAlbumBackCoverBestEffort,
   cleanupSupersededAlbumCoversBestEffort,
   fetchDistinctCoverBasesFromDb,
   normalizeCoverBaseName,
@@ -59,8 +60,10 @@ import {
   fetchArtistDisplayNameForUserId,
 } from './lib/resolve-album-key';
 import { mergeTrackPayloads } from './lib/merge-track-payloads';
+import { pickMergedAlbumBackCover } from './lib/pick-merged-album-back-cover';
 import type { AlbumCoverPlayerBackground } from '../../src/shared/lib/imageColor/albumCoverPlayerBackground';
 import {
+  backImgBaseForStorageCleanup,
   coerceAlbumCoverForDb,
   coverImgBaseForStorageCleanup,
   coverImgFromStorageField,
@@ -138,6 +141,8 @@ interface AlbumData {
   fullName: string;
   description: string;
   cover: string;
+  /** Storage base name for optional back cover (from JSONB `cover.backImg`). */
+  backCover?: string;
   playerBackground?: AlbumCoverPlayerBackground;
   release: Record<string, unknown>;
   buttons: Record<string, unknown>;
@@ -847,6 +852,8 @@ function mergeAlbumDataPayloads(payloads: AlbumData[]): AlbumData {
     }
   }
   const tracks = mergeTrackPayloads(sortedForTracks);
+  const backCover = pickMergedAlbumBackCover(payloads);
+  const playerBackground = shared.playerBackground;
   return {
     userId: shared.userId,
     dbAlbumId: shared.dbAlbumId,
@@ -856,6 +863,8 @@ function mergeAlbumDataPayloads(payloads: AlbumData[]): AlbumData {
     fullName: textRoot.fullName,
     description: textRoot.description,
     cover: shared.cover,
+    ...(backCover ? { backCover } : {}),
+    ...(playerBackground ? { playerBackground } : {}),
     release: shared.release,
     buttons: shared.buttons,
     details: textRoot.details,
@@ -1824,6 +1833,12 @@ export const handler: Handler = async (
             previousCoverBasesForPut,
             putCoverBase
           );
+        }
+
+        if (data.cover !== undefined && existingAlbum) {
+          const previousBackBase = backImgBaseForStorageCleanup(existingAlbum.cover);
+          const newBackBase = backImgBaseForStorageCleanup(data.cover);
+          await cleanupSupersededAlbumBackCoverBestEffort(userId, previousBackBase, newBackBase);
         }
 
         return {

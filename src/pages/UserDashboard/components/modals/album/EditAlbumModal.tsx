@@ -100,6 +100,7 @@ import {
   buildRecordingEntryFromEditFields,
   planAlbumCoverForSave,
   extractCommittedCoverBaseName,
+  resolveAlbumBackCoverForEdit,
 } from './EditAlbumModal.utils';
 import type { AlbumDiscardAuxState } from './EditAlbumModal.utils';
 import { recordingEntryEditHasChanges } from './recordingEntryEditHasChanges';
@@ -243,6 +244,8 @@ export function EditAlbumModal({
   const [backCoverPreview, setBackCoverPreview] = useState<string | null>(null);
   const [backCoverDraftKey, setBackCoverDraftKey] = useState<string | null>(null);
   const committedBackCoverBaseNameRef = useRef<string | null>(null);
+  /** User cleared back cover in UI — persisted on save via `clearBackImg`. */
+  const backCoverClearPendingRef = useRef(false);
 
   const [uploadProgress, setUploadProgress] = useState<number>(0);
   const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'uploaded' | 'error'>(
@@ -296,7 +299,10 @@ export function EditAlbumModal({
   ) => {
     const stripExt = (s: string) => s.replace(/\.(webp|jpg|jpeg|png)$/i, '');
     const base = getAlbumStorageBaseName(stripExt(baseName));
-    const coverUrl = getUserImageUrl(`${base}-448`, 'albums', '.webp', false, storageUserId);
+    const coverUrl =
+      side === 'back'
+        ? getUserImageUrl(base, 'albums', '.webp', false, storageUserId)
+        : getUserImageUrl(`${base}-448`, 'albums', '.webp', false, storageUserId);
     if (!coverUrl) return;
     const withCache = `${coverUrl}${coverUrl.includes('?') ? '&' : '?'}v=${Date.now()}`;
     if (side === 'back') {
@@ -734,8 +740,9 @@ export function EditAlbumModal({
         context: 'editAlbumModalCoverPreview',
       });
     }
-    if (album.backCover && storageUserId) {
-      setAlbumCoverPreviewFromBaseName(album.backCover, storageUserId, 'back');
+    const backCoverBase = resolveAlbumBackCoverForEdit(album);
+    if (backCoverBase && storageUserId) {
+      setAlbumCoverPreviewFromBaseName(backCoverBase, storageUserId, 'back');
     }
     // ВАЖНО: Инициализация происходит только один раз
   }, [isOpen, albumId, lang, albumsFromStore]);
@@ -784,6 +791,7 @@ export function EditAlbumModal({
     setBackCoverPreview(null);
     setBackCoverDraftKey(null);
     committedBackCoverBaseNameRef.current = null;
+    backCoverClearPendingRef.current = false;
     setBackCoverUploadProgress(0);
     setBackCoverUploadStatus('idle');
     setBackCoverUploadError(null);
@@ -885,6 +893,7 @@ export function EditAlbumModal({
       setDraftKey(null);
       if (isBack) {
         committedBackCoverBaseNameRef.current = null;
+        backCoverClearPendingRef.current = false;
       } else {
         committedCoverBaseNameRef.current = null;
         committedCoverPlayerBackgroundRef.current = null;
@@ -944,6 +953,22 @@ export function EditAlbumModal({
       setStatus('error');
       setError(error instanceof Error ? error.message : 'Unknown error');
     }
+  };
+
+  const handleRemoveBackCover = () => {
+    if (backCoverUploadStatus === 'uploading') return;
+    backCoverClearPendingRef.current = true;
+    committedBackCoverBaseNameRef.current = null;
+    setBackCoverDraftKey(null);
+    setBackCoverUploadStatus('idle');
+    setBackCoverUploadError(null);
+    setBackCoverUploadProgress(0);
+    handleInputChange('backCoverArt', null);
+    if (backLocalPreviewUrlRef.current) {
+      URL.revokeObjectURL(backLocalPreviewUrlRef.current);
+      backLocalPreviewUrlRef.current = null;
+    }
+    setBackCoverPreview(null);
   };
 
   const formatFileSize = (bytes: number): string => {
@@ -2490,12 +2515,14 @@ export function EditAlbumModal({
       backImg: originalAlbum?.backCover,
     });
 
+    const clearBackCover = backCoverClearPendingRef.current && !newBackBaseName;
     const mergedCoverPayload =
-      newFront || newBackBaseName
+      newFront || newBackBaseName || clearBackCover
         ? mergeAlbumCoverPayloadForSave({
             prior: priorCover,
             front: newFront ?? null,
             backBaseName: newBackBaseName ?? null,
+            ...(clearBackCover ? { clearBackImg: true } : {}),
           })
         : undefined;
 
@@ -2598,7 +2625,10 @@ export function EditAlbumModal({
 
       committedCoverBaseNameRef.current = null;
       committedCoverPlayerBackgroundRef.current = null;
+      committedBackCoverBaseNameRef.current = null;
+      backCoverClearPendingRef.current = false;
       setCoverDraftKey(null);
+      setBackCoverDraftKey(null);
 
       if (method === 'PUT' && exists) {
         const otherLang: SupportedLang = normalizedLang === 'en' ? 'ru' : 'en';
@@ -2965,6 +2995,8 @@ export function EditAlbumModal({
                 onDrag={handleCoverDrag('back')}
                 onDrop={handleCoverDrop('back')}
                 onFileInput={handleCoverFileInput('back')}
+                onRemove={backCoverPreview ? handleRemoveBackCover : undefined}
+                removeLabel={ui?.dashboard?.removeImage ?? 'Remove image'}
               />
             </div>
             {step1HasErr('cover') ? (

@@ -155,6 +155,31 @@ describe('albumsSlice', () => {
       expect(selectDashboardAlbumsStatus(store.getState())).toBe('idle');
     });
 
+    test('сохраняет backCover из GET /api/albums в dashboard state', async () => {
+      const store = createTestStore();
+      setupDashboardFetchContext(store);
+      mockFetch.mockResolvedValueOnce(
+        mockSuccessResponse([
+          {
+            ...mockAlbum,
+            cover: 'front-base',
+            backCover: 'back-base',
+          },
+        ])
+      );
+
+      await (store.dispatch as AppDispatch)(
+        fetchDashboardAlbums({ force: true, ownerDashboard: true })
+      );
+
+      expect(selectDashboardAlbumById(store.getState(), 'album-1')).toEqual(
+        expect.objectContaining({
+          cover: 'front-base',
+          backCover: 'back-base',
+        })
+      );
+    });
+
     test('загружает AlbumEditable в dashboard при ownerDashboard', async () => {
       const store = createTestStore();
       setupDashboardFetchContext(store);

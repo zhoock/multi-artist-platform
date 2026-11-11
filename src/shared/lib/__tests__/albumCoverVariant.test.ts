@@ -1,6 +1,7 @@
 import {
   ALBUM_COVER_PUBLIC_JPG_WIDTHS,
   ALBUM_COVER_PUBLIC_WEBP_WIDTHS,
+  getAlbumBackCoverPublicUrl,
   getAlbumCoverAdminVariantUrls,
   getAlbumCoverCacheVersion,
   getAlbumStorageBaseName,
@@ -95,6 +96,21 @@ describe('getAlbumCoverAdminVariantUrls', () => {
       pipelineJpg64: null,
       pipelineJpg448: null,
     });
+  });
+});
+
+describe('getAlbumBackCoverPublicUrl', () => {
+  const USER_ID = 'af97f741-8dae-410b-94a6-3f828f9140a4';
+
+  beforeEach(() => {
+    process.env.VITE_SUPABASE_URL = 'https://jhpvetvfnsklpwswadle.supabase.co';
+  });
+
+  it('points at single .webp object without size suffix', () => {
+    const url = getAlbumBackCoverPublicUrl(USER_ID, 'album_cover_uuid_artist-Back-Cover-album');
+    expect(url).toContain(`/users/${USER_ID}/albums/`);
+    expect(url).toContain('album_cover_uuid_artist-Back-Cover-album.webp');
+    expect(url).not.toContain('-448');
   });
 });
 

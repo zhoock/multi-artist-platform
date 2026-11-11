@@ -17,3 +17,78 @@
     aspect-ratio: 1 / 1;
   }
 }
+
+.album {
+  .album-page-cover {
+    position: relative;
+    display: block;
+    inline-size: 100%;
+
+    // Same block metrics as a lone AlbumCover (picture + img aspect-ratio + img margin).
+    &__sizer {
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    .album-cover-flip {
+      position: absolute;
+      inset-block-start: 0;
+      inset-inline: 0;
+      inline-size: 100%;
+      block-size: 0;
+      padding-block-end: 100%;
+      perspective: 1600px;
+      perspective-origin: center center;
+
+      &__inner {
+        position: absolute;
+        inset: 0;
+        display: block;
+        transform-style: preserve-3d;
+        transform-origin: center center;
+        transition: transform 200ms ease;
+      }
+
+      @media (hover: hover) and (pointer: fine) {
+        &:hover .album-cover-flip__inner {
+          transform: rotateY(180deg);
+        }
+      }
+
+      &__face {
+        position: absolute;
+        display: block;
+        inset: 0;
+        inline-size: 100%;
+        block-size: 100%;
+        backface-visibility: hidden;
+
+        &--front {
+          transform: rotateY(0deg);
+        }
+
+        &--back {
+          transform: rotateY(180deg);
+        }
+
+        .album-cover__image {
+          margin-block-end: 0;
+        }
+
+        .album-cover {
+          display: block;
+          inline-size: 100%;
+          block-size: 100%;
+        }
+
+        .album-cover__image--flip-back {
+          inline-size: 100%;
+          block-size: 100%;
+          aspect-ratio: unset;
+          object-fit: contain;
+          object-position: center;
+        }
+      }
+    }
+  }
+}

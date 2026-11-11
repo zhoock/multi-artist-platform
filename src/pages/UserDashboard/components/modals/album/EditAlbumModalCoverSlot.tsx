@@ -23,6 +23,8 @@ export type EditAlbumModalCoverSlotProps = {
   onDrag: (e: React.DragEvent) => void;
   onDrop: (e: React.DragEvent) => void;
   onFileInput: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onRemove?: () => void;
+  removeLabel?: string;
 };
 
 const uploadIconProps = dashboardActionIconProps({ size: 28 });
@@ -44,6 +46,8 @@ export function EditAlbumModalCoverSlot({
   onDrag,
   onDrop,
   onFileInput,
+  onRemove,
+  removeLabel,
 }: EditAlbumModalCoverSlotProps) {
   const chooseFileLabel = ui?.dashboard?.editAlbumModal?.placeholders?.chooseFile ?? 'Choose file';
   const replaceLabel = ui?.dashboard?.editAlbumModal?.buttons?.replace ?? 'Replace';
@@ -103,6 +107,15 @@ export function EditAlbumModalCoverSlot({
                   <PencilIcon {...dashboardActionIconProps({ size: 14 })} aria-hidden />
                   <span className="edit-album-modal__art-button-text">{replaceLabel}</span>
                 </label>
+                {onRemove ? (
+                  <button
+                    type="button"
+                    className="edit-album-modal__art-button edit-album-modal__art-button--text"
+                    onClick={onRemove}
+                  >
+                    {removeLabel ?? 'Remove'}
+                  </button>
+                ) : null}
               </div>
             </div>
           </div>

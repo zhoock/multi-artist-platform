@@ -19,6 +19,7 @@ import {
   extractContentItemId,
   generateAlbumDetailListItemId,
 } from '@entities/album/lib/albumDetailListItemId';
+import { backImgFromStorageField } from '@shared/lib/albumCoverStorage';
 
 export const EMPTY_BAND_MEMBER: BandMember = {
   id: '',
@@ -793,6 +794,16 @@ export type AlbumCoverSavePlan =
  * Decide whether to commit a draft, reuse a staged committed cover, or skip cover changes.
  * Mirrors article editor `uploadedPendingKeyRef` — DB failure retries skip Storage commit.
  */
+/** Back cover base for edit UI — same sources as Redux normalize (API `backCover` or JSONB `backImg`). */
+export function resolveAlbumBackCoverForEdit(
+  album: Pick<{ backCover?: string; cover?: unknown }, 'backCover' | 'cover'>
+): string | undefined {
+  const fromApi = typeof album.backCover === 'string' ? album.backCover.trim() : '';
+  if (fromApi) return fromApi;
+  const fromCover = backImgFromStorageField(album.cover);
+  return fromCover || undefined;
+}
+
 export function planAlbumCoverForSave(
   coverDraftKey: string | null,
   committedCoverBaseName: string | null

@@ -7,6 +7,7 @@ import {
   getAlbumStep1InvalidFields,
   hasAlbumCoverForStep1,
   makeEmptyForm,
+  resolveAlbumBackCoverForEdit,
 } from '../EditAlbumModal.utils';
 import { mergeAlbumCoverPayloadForSave } from '@shared/lib/albumCoverStorage';
 
@@ -69,6 +70,29 @@ describe('album step 1 cover requirements', () => {
   });
 });
 
+describe('resolveAlbumBackCoverForEdit (hydration)', () => {
+  test('API backCover field restores back slot after reload', () => {
+    expect(
+      resolveAlbumBackCoverForEdit({
+        cover: 'front-only',
+        backCover: 'back-base',
+      })
+    ).toBe('back-base');
+  });
+
+  test('falls back to cover.backImg when API omits top-level backCover', () => {
+    expect(
+      resolveAlbumBackCoverForEdit({
+        cover: { img: 'front', playerBackground: BG, backImg: 'legacy-back' },
+      })
+    ).toBe('legacy-back');
+  });
+
+  test('no back when neither source present', () => {
+    expect(resolveAlbumBackCoverForEdit({ cover: 'front-only' })).toBeUndefined();
+  });
+});
+
 describe('mergeAlbumCoverPayloadForSave', () => {
   test('6 — existing album without back: no cover patch when nothing changed', () => {
     const merged = mergeAlbumCoverPayloadForSave({
@@ -112,5 +136,28 @@ describe('mergeAlbumCoverPayloadForSave', () => {
       backBaseName: null,
     });
     expect(merged).toEqual({ img: 'new-front', playerBackground: BG });
+  });
+
+  test('10 — clear back removes backImg but keeps front', () => {
+    const merged = mergeAlbumCoverPayloadForSave({
+      prior: { img: 'front-base', playerBackground: BG, backImg: 'old-back' },
+      front: null,
+      backBaseName: null,
+      clearBackImg: true,
+    });
+    expect(merged).toEqual({ img: 'front-base', playerBackground: BG });
+  });
+
+  test('11 — replace back updates backImg without touching front img', () => {
+    const merged = mergeAlbumCoverPayloadForSave({
+      prior: { img: 'front-base', playerBackground: BG, backImg: 'old-back' },
+      front: null,
+      backBaseName: 'new-back',
+    });
+    expect(merged).toEqual({
+      img: 'front-base',
+      playerBackground: BG,
+      backImg: 'new-back',
+    });
   });
 });

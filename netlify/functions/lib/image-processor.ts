@@ -248,6 +248,34 @@ export async function generateProfileAvatarVariants(
   return results;
 }
 
+/** Primary album cover width (same as `-448` front derivative). */
+export const ALBUM_COVER_PRIMARY_WIDTH = 448;
+
+/**
+ * Album back cover: single optimized WebP at primary width (no JPG, no size ladder).
+ */
+export async function generateAlbumBackCoverWebp(
+  imageBuffer: Buffer,
+  baseName: string
+): Promise<Record<string, Buffer>> {
+  const metadata = await sharp(imageBuffer).metadata();
+  const originalWidth = metadata.width || 1;
+  const originalHeight = metadata.height || 1;
+  const aspectRatio = originalWidth / originalHeight;
+  const width = ALBUM_COVER_PRIMARY_WIDTH;
+  const height = Math.round(width / aspectRatio);
+
+  const buffer = await sharp(imageBuffer)
+    .resize(width, height, {
+      fit: 'cover',
+      position: 'center',
+    })
+    .webp({ quality: 85 })
+    .toBuffer();
+
+  return { [`${baseName}.webp`]: buffer };
+}
+
 /**
  * Получает базовое имя файла из полного пути или простого имени файла
  * @param pathOrFileName - полный путь в Storage (например "users/{userId}/albums/23-cover.webp") или простое имя файла (например "hero-123.jpg")
