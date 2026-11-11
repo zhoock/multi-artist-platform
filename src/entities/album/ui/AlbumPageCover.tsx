@@ -1,4 +1,4 @@
-import { memo, useMemo } from 'react';
+import { memo, useCallback, useMemo, useState } from 'react';
 import type { CoverProps } from 'models';
 import { getAlbumBackCoverPublicUrl, getAlbumCoverCacheVersion } from '@shared/lib/albumCoverUrl';
 import AlbumCover from './AlbumCover';
@@ -7,8 +7,17 @@ export type AlbumPageCoverProps = CoverProps & {
   backCover?: string;
 };
 
+const TOUCH_FLIP_MEDIA_QUERY = '(hover: none) and (pointer: coarse)';
+
 function AlbumPageCover({ backCover, ...coverProps }: AlbumPageCoverProps) {
   const hasBackCover = Boolean(backCover?.trim());
+  const [touchFlipped, setTouchFlipped] = useState(false);
+
+  const handleCoverTap = useCallback(() => {
+    if (typeof window === 'undefined') return;
+    if (!window.matchMedia(TOUCH_FLIP_MEDIA_QUERY).matches) return;
+    setTouchFlipped((flipped) => !flipped);
+  }, []);
 
   const backSrc = useMemo(() => {
     if (!hasBackCover || !coverProps.userId || !backCover) return null;
@@ -28,7 +37,11 @@ function AlbumPageCover({ backCover, ...coverProps }: AlbumPageCoverProps) {
       <div className="album-page-cover__sizer" aria-hidden="true">
         <AlbumCover {...coverProps} />
       </div>
-      <div className="album-cover-flip">
+      {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- coarse-pointer tap flip; desktop uses hover only */}
+      <div
+        className={touchFlipped ? 'album-cover-flip album-cover-flip--flipped' : 'album-cover-flip'}
+        onClick={handleCoverTap}
+      >
         <div className="album-cover-flip__inner">
           <div className="album-cover-flip__face album-cover-flip__face--front">
             <AlbumCover {...coverProps} />

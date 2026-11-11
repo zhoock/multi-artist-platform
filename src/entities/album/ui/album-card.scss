@@ -55,6 +55,12 @@
         }
       }
 
+      @media (hover: none) and (pointer: coarse) {
+        &--flipped .album-cover-flip__inner {
+          transform: rotateY(180deg);
+        }
+      }
+
       &__face {
         position: absolute;
         display: block;
