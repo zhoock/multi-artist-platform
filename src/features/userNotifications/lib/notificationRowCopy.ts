@@ -4,6 +4,7 @@ import { formatAlbumNotificationBody } from './formatAlbumNotificationBody';
 
 export type UserNotificationRowCopy = {
   commentTitle: string;
+  commentReplyTitle: string;
   commentBodyTemplate: string;
   likeTitle: string;
   likeBodyTemplate: string;
@@ -17,7 +18,9 @@ export function notificationRowTitle(
   copy: UserNotificationRowCopy
 ): string {
   if (notification.type === 'collection_add') return copy.collectionAddTitle;
-  return notification.type === 'comment_like' ? copy.likeTitle : copy.commentTitle;
+  if (notification.type === 'comment_like') return copy.likeTitle;
+  if (notification.type === 'comment_reply') return copy.commentReplyTitle;
+  return copy.commentTitle;
 }
 
 export function notificationRowBody(

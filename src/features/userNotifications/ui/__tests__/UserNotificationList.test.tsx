@@ -6,7 +6,10 @@ import { UserNotificationList, type UserNotificationRowCopy } from '../../index'
 
 const rowCopy: UserNotificationRowCopy = {
   commentTitle: 'New comment',
-  commentLikeTitle: 'Comment liked',
+  commentReplyTitle: 'Reply to your comment',
+  commentBodyTemplate: 'On album «{{title}}»',
+  likeTitle: 'New like',
+  likeBodyTemplate: 'Someone liked your comment on «{{title}}»',
   collectionAddTitle: 'Collection',
   collectionAddBody: 'Another listener added you to their collection',
   collectionAddByArtistBody: '{{name}} added you to their collection',
@@ -24,6 +27,110 @@ const collectionAddBase: UserNotificationItem = {
   isRead: false,
   createdAt: new Date().toISOString(),
 };
+
+describe('UserNotificationList row icons', () => {
+  const baseComment = {
+    commentId: 'c1',
+    albumId: 'a1',
+    artistSlug: 'beatles',
+    albumTitle: 'Rubber Soul',
+    actorUserId: 'u1',
+    actorDisplayName: null,
+    isRead: true,
+    createdAt: new Date().toISOString(),
+  } satisfies Omit<UserNotificationItem, 'id' | 'type'>;
+
+  test('comment uses MessageCircle icon', () => {
+    const { container } = render(
+      <UserNotificationList
+        items={[{ id: 'n1', type: 'comment', ...baseComment }]}
+        lang="en"
+        copy={rowCopy}
+        onItemClick={jest.fn()}
+      />
+    );
+    expect(container.querySelector('.lucide-message-circle')).toBeInTheDocument();
+    expect(container.querySelector('.lucide-corner-up-left')).toBeNull();
+    expect(container.querySelector('.lucide-heart')).toBeNull();
+  });
+
+  test('comment_reply uses CornerUpLeft icon', () => {
+    const { container } = render(
+      <UserNotificationList
+        items={[{ id: 'n2', type: 'comment_reply', ...baseComment }]}
+        lang="en"
+        copy={rowCopy}
+        onItemClick={jest.fn()}
+      />
+    );
+    expect(container.querySelector('.lucide-corner-up-left')).toBeInTheDocument();
+    expect(container.querySelector('.lucide-message-circle')).toBeNull();
+  });
+
+  test('comment_like uses Heart icon', () => {
+    const { container } = render(
+      <UserNotificationList
+        items={[{ id: 'n3', type: 'comment_like', ...baseComment }]}
+        lang="en"
+        copy={rowCopy}
+        onItemClick={jest.fn()}
+      />
+    );
+    expect(container.querySelector('.lucide-heart')).toBeInTheDocument();
+    expect(container.querySelector('.lucide-message-circle')).toBeNull();
+  });
+});
+
+describe('UserNotificationList unread row icons', () => {
+  test('unread non-avatar rows use icon slot without read modifier (accent via CSS)', () => {
+    const unreadLike: UserNotificationItem = {
+      id: 'n-like',
+      type: 'comment_like',
+      commentId: 'c1',
+      albumId: 'a1',
+      artistSlug: 'beatles',
+      albumTitle: 'Rubber Soul',
+      actorUserId: null,
+      actorDisplayName: null,
+      isRead: false,
+      createdAt: new Date().toISOString(),
+    };
+    const { container } = render(
+      <UserNotificationList items={[unreadLike]} lang="en" copy={rowCopy} onItemClick={jest.fn()} />
+    );
+
+    const row = container.querySelector('.user-notification-list__row');
+    const icon = container.querySelector('.user-notification-list__row-icon');
+    expect(row).not.toHaveClass('user-notification-list__row--read');
+    expect(icon).not.toHaveClass('user-notification-list__row-icon--avatar');
+  });
+
+  test('read rows keep read modifier on row', () => {
+    render(
+      <UserNotificationList
+        items={[
+          {
+            id: 'n-comment',
+            type: 'comment',
+            commentId: 'c1',
+            albumId: 'a1',
+            artistSlug: 'beatles',
+            albumTitle: 'Rubber Soul',
+            actorUserId: 'u1',
+            actorDisplayName: 'Fan',
+            isRead: true,
+            createdAt: new Date().toISOString(),
+          },
+        ]}
+        lang="en"
+        copy={rowCopy}
+        onItemClick={jest.fn()}
+      />
+    );
+
+    expect(document.querySelector('.user-notification-list__row--read')).toBeInTheDocument();
+  });
+});
 
 describe('UserNotificationList collection_add avatar', () => {
   test('public artist actor uses shared AlbumCommentAvatar with image URL', () => {

@@ -40,6 +40,7 @@
   &:hover,
   &:focus-visible {
     background: rgb(255 255 255 / 4%);
+    border-radius: 8px;
     outline: none;
   }
 }
@@ -68,6 +69,11 @@
       min-block-size: 0;
     }
   }
+}
+
+.user-notification-list__row:not(.user-notification-list__row--read)
+  .user-notification-list__row-icon:not(.user-notification-list__row-icon--avatar) {
+  color: var(--accent-color);
 }
 
 .user-notification-list__row-main {

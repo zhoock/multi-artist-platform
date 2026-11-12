@@ -17,6 +17,7 @@
         "empty": "No notifications",
         "pageEmpty": "No notifications",
         "newCommentTitle": "New comment",
+        "newCommentReplyTitle": "Reply to your comment",
         "toAlbum": "On album «{{title}}»",
         "newLikeTitle": "New like",
         "likedYourCommentOnAlbum": "Someone liked your comment on «{{title}}»",

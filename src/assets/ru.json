@@ -17,6 +17,7 @@
         "empty": "Нет уведомлений",
         "pageEmpty": "Нет уведомлений",
         "newCommentTitle": "Новый комментарий",
+        "newCommentReplyTitle": "Ответ на ваш комментарий",
         "toAlbum": "К альбому «{{title}}»",
         "newLikeTitle": "Новый лайк",
         "likedYourCommentOnAlbum": "Кто-то поставил лайк вашему комментарию в «{{title}}»",

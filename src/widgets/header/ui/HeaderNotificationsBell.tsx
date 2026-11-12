@@ -125,6 +125,7 @@ function HeaderNotificationsBellComponent({
   const emptyCopy = copy?.pageEmpty ?? copy?.empty ?? 'No notifications';
   const listCopy: UserNotificationRowCopy = {
     commentTitle: copy?.newCommentTitle ?? 'New comment',
+    commentReplyTitle: copy?.newCommentReplyTitle ?? 'Reply to your comment',
     commentBodyTemplate: copy?.toAlbum ?? 'On album «{{title}}»',
     likeTitle: copy?.newLikeTitle ?? 'New like',
     likeBodyTemplate: copy?.likedYourCommentOnAlbum ?? 'Someone liked your comment on «{{title}}»',

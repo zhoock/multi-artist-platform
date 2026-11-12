@@ -1,5 +1,6 @@
 import clsx from 'clsx';
 import {
+  CornerUpLeft as CornerUpLeftIcon,
   Heart as HeartIcon,
   HeartHandshake as HeartHandshakeIcon,
   MessageCircle as MessageCircleIcon,
@@ -70,6 +71,8 @@ export function UserNotificationList({
                       <HeartHandshakeIcon size={18} strokeWidth={2} />
                     ) : n.type === 'comment_like' ? (
                       <HeartIcon size={18} strokeWidth={2} />
+                    ) : n.type === 'comment_reply' ? (
+                      <CornerUpLeftIcon size={18} strokeWidth={2} />
                     ) : (
                       <MessageCircleIcon size={18} strokeWidth={2} />
                     )}

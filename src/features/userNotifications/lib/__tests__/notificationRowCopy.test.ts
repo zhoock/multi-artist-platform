@@ -7,6 +7,7 @@ import type { UserNotificationItem } from '@shared/lib/userNotificationsApi';
 
 const copy: UserNotificationRowCopy = {
   commentTitle: 'New comment',
+  commentReplyTitle: 'Reply to your comment',
   commentBodyTemplate: 'On album «{{title}}»',
   likeTitle: 'New like',
   likeBodyTemplate: 'Someone liked your comment on «{{title}}»',
@@ -28,6 +29,11 @@ const base: UserNotificationItem = {
 };
 
 describe('notificationRowCopy', () => {
+  test('comment_reply uses reply title', () => {
+    const item = { ...base, type: 'comment_reply' as const };
+    expect(notificationRowTitle(item, copy)).toBe('Reply to your comment');
+  });
+
   test('comment_like uses like strings', () => {
     const item = { ...base, type: 'comment_like' as const };
     expect(notificationRowTitle(item, copy)).toBe('New like');

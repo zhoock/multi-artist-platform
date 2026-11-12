@@ -6,7 +6,7 @@ import type { AlbumCommentContext } from './album-comments';
 import { isArtistAccountType } from './account-type';
 import { query } from './db';
 
-export type UserNotificationType = 'comment' | 'comment_like' | 'collection_add';
+export type UserNotificationType = 'comment' | 'comment_reply' | 'comment_like' | 'collection_add';
 
 export const USER_NOTIFICATIONS_DROPDOWN_LIMIT = 10;
 export const USER_NOTIFICATIONS_PAGE_LIMIT = 25;
@@ -197,14 +197,17 @@ export async function insertCommentUserNotification(input: {
   if (!recipientId) return;
 
   const albumTitle = await loadAlbumTitle(input.ctx.artistUserId, input.ctx.albumId);
+  const notifType: UserNotificationType =
+    input.parentCommentAuthorUserId != null ? 'comment_reply' : 'comment';
 
   await query(
     `INSERT INTO user_notifications (
        recipient_user_id, type, comment_id, album_id, artist_slug, album_title, actor_user_id
      )
-     VALUES ($1::uuid, 'comment', $2::uuid, $3, $4, $5, $6::uuid)`,
+     VALUES ($1::uuid, $2, $3::uuid, $4, $5, $6, $7::uuid)`,
     [
       recipientId,
+      notifType,
       input.commentId,
       input.ctx.albumId,
       input.ctx.artistSlug,
