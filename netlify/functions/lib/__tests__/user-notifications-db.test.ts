@@ -96,19 +96,71 @@ describe('user-notifications-db', () => {
       mockQuery.mockReset();
     });
 
-    test('inserts anonymous collection_add for artist recipient', async () => {
-      mockQuery.mockResolvedValueOnce({ rows: [] });
-      await insertCollectionAddUserNotification({ artistUserId: 'artist-1' });
-      expect(mockQuery).toHaveBeenCalledWith(
-        expect.stringContaining("'collection_add'"),
-        ['artist-1'],
-        0
-      );
+    test('inserts listener collection_add without public actor snapshot', async () => {
+      mockQuery
+        .mockResolvedValueOnce({
+          rows: [
+            {
+              account_type: 'listener',
+              public_slug: null,
+              site_name: null,
+              name: 'Listener',
+              profile_avatar_path: null,
+            },
+          ],
+        })
+        .mockResolvedValueOnce({ rows: [] });
+
+      await insertCollectionAddUserNotification({
+        artistUserId: 'artist-1',
+        actorUserId: 'listener-1',
+      });
+
+      expect(mockQuery).toHaveBeenCalledTimes(2);
+      expect(mockQuery.mock.calls[1][0]).toContain("'collection_add'");
+      expect(mockQuery.mock.calls[1][1]).toEqual(['artist-1', '', '', '', 'listener-1']);
+    });
+
+    test('inserts artist actor snapshot when actor is artist with public slug', async () => {
+      mockQuery
+        .mockResolvedValueOnce({
+          rows: [
+            {
+              account_type: 'artist',
+              public_slug: 'artem-k',
+              site_name: 'Artem K.',
+              name: 'Artem',
+              profile_avatar_path: 'users/a1/profile/profile-abcd-128.webp',
+            },
+          ],
+        })
+        .mockResolvedValueOnce({ rows: [] });
+
+      await insertCollectionAddUserNotification({
+        artistUserId: 'artist-1',
+        actorUserId: 'artist-actor-1',
+      });
+
+      expect(mockQuery.mock.calls[1][1]).toEqual([
+        'artist-1',
+        'users/a1/profile/profile-abcd-128.webp',
+        'artem-k',
+        'Artem K.',
+        'artist-actor-1',
+      ]);
+    });
+
+    test('skips self add', async () => {
+      await insertCollectionAddUserNotification({
+        artistUserId: 'same',
+        actorUserId: 'same',
+      });
+      expect(mockQuery).not.toHaveBeenCalled();
     });
   });
 
   describe('mapUserNotificationRow', () => {
-    test('collection_add hides listener and album fields', () => {
+    test('collection_add from listener hides actor identity in API DTO', () => {
       const dto = mapUserNotificationRow({
         id: 'n1',
         type: 'collection_add',
@@ -116,13 +168,32 @@ describe('user-notifications-db', () => {
         album_id: '',
         artist_slug: '',
         album_title: '',
-        actor_user_id: null,
+        actor_user_id: 'listener-1',
         is_read: false,
         created_at: new Date('2026-01-01T12:00:00Z'),
       });
       expect(dto.actorUserId).toBeNull();
-      expect(dto.albumId).toBeNull();
+      expect(dto.artistSlug).toBeNull();
+      expect(dto.actorDisplayName).toBeNull();
       expect(dto.type).toBe('collection_add');
+    });
+
+    test('collection_add from artist exposes public actor snapshot only', () => {
+      const dto = mapUserNotificationRow({
+        id: 'n2',
+        type: 'collection_add',
+        comment_id: null,
+        album_id: 'users/a1/profile/profile-abcd-128.webp',
+        artist_slug: 'artem-k',
+        album_title: 'Artem K.',
+        actor_user_id: 'artist-actor-1',
+        is_read: false,
+        created_at: new Date('2026-01-01T12:00:00Z'),
+      });
+      expect(dto.artistSlug).toBe('artem-k');
+      expect(dto.actorDisplayName).toBe('Artem K.');
+      expect(dto.actorAvatarPath).toBe('users/a1/profile/profile-abcd-128.webp');
+      expect(dto.actorUserId).toBeNull();
     });
   });
 

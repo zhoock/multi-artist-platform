@@ -3,6 +3,7 @@
  */
 
 import type { AlbumCommentContext } from './album-comments';
+import { isArtistAccountType } from './account-type';
 import { query } from './db';
 
 export type UserNotificationType = 'comment' | 'comment_like' | 'collection_add';
@@ -117,18 +118,67 @@ export async function insertCommentLikeUserNotification(input: {
   );
 }
 
-/** Anonymous artist alert: listener added artist to active collection (no actor stored). */
+type CollectionAddActorRow = {
+  account_type: string;
+  public_slug: string | null;
+  site_name: string | null;
+  name: string | null;
+  profile_avatar_path: string | null;
+};
+
+async function loadCollectionAddActor(actorUserId: string): Promise<CollectionAddActorRow | null> {
+  const result = await query<CollectionAddActorRow>(
+    `SELECT account_type,
+            NULLIF(TRIM(public_slug), '') AS public_slug,
+            site_name,
+            name,
+            profile_avatar_path
+     FROM users
+     WHERE id = $1::uuid
+     LIMIT 1`,
+    [actorUserId],
+    0
+  );
+  return result.rows[0] ?? null;
+}
+
+function resolveCollectionAddActorPublicSnapshot(actor: CollectionAddActorRow): {
+  artistSlug: string;
+  actorDisplayName: string;
+  actorAvatarPath: string;
+} {
+  const publicSlug = actor.public_slug?.trim() || '';
+  if (!isArtistAccountType(actor.account_type) || !publicSlug) {
+    return { artistSlug: '', actorDisplayName: '', actorAvatarPath: '' };
+  }
+  const actorDisplayName = actor.site_name?.trim() || actor.name?.trim() || publicSlug;
+  const actorAvatarPath = actor.profile_avatar_path?.trim() || '';
+  return { artistSlug: publicSlug, actorDisplayName, actorAvatarPath };
+}
+
+/**
+ * Artist alert when someone adds them to an active collection.
+ * Stores actor_user_id always; denormalizes public actor fields only when actor is artist at insert time.
+ */
 export async function insertCollectionAddUserNotification(input: {
   artistUserId: string;
+  actorUserId: string;
 }): Promise<void> {
-  if (!input.artistUserId?.trim()) return;
+  if (!input.artistUserId?.trim() || !input.actorUserId?.trim()) return;
+  if (input.artistUserId === input.actorUserId) return;
+
+  const actor = await loadCollectionAddActor(input.actorUserId);
+  if (!actor) return;
+
+  const { artistSlug, actorDisplayName, actorAvatarPath } =
+    resolveCollectionAddActorPublicSnapshot(actor);
 
   await query(
     `INSERT INTO user_notifications (
        recipient_user_id, type, comment_id, album_id, artist_slug, album_title, actor_user_id
      )
-     VALUES ($1::uuid, 'collection_add', NULL, '', '', '', NULL)`,
-    [input.artistUserId],
+     VALUES ($1::uuid, 'collection_add', NULL, $2, $3, $4, $5::uuid)`,
+    [input.artistUserId, actorAvatarPath, artistSlug, actorDisplayName, input.actorUserId],
     0
   );
 }
@@ -177,16 +227,38 @@ export interface UserNotificationRow {
   created_at: Date;
 }
 
+function isCollectionAddPublicActorRow(r: UserNotificationRow): boolean {
+  return r.type === 'collection_add' && Boolean(r.artist_slug?.trim());
+}
+
 export function mapUserNotificationRow(r: UserNotificationRow) {
-  const anonymous = r.type === 'collection_add';
+  if (r.type === 'collection_add') {
+    const publicActor = isCollectionAddPublicActorRow(r);
+    return {
+      id: r.id,
+      type: r.type,
+      commentId: null,
+      albumId: null,
+      artistSlug: publicActor ? r.artist_slug : null,
+      albumTitle: null,
+      actorUserId: null,
+      actorDisplayName: publicActor ? r.album_title?.trim() || null : null,
+      actorAvatarPath: publicActor ? r.album_id?.trim() || null : null,
+      isRead: r.is_read,
+      createdAt: r.created_at instanceof Date ? r.created_at.toISOString() : String(r.created_at),
+    };
+  }
+
   return {
     id: r.id,
     type: r.type,
     commentId: r.comment_id ?? null,
-    albumId: anonymous ? null : r.album_id,
-    artistSlug: anonymous ? null : r.artist_slug,
-    albumTitle: anonymous ? null : r.album_title,
-    actorUserId: anonymous ? null : (r.actor_user_id ?? null),
+    albumId: r.album_id,
+    artistSlug: r.artist_slug,
+    albumTitle: r.album_title,
+    actorUserId: r.actor_user_id ?? null,
+    actorDisplayName: null,
+    actorAvatarPath: null,
     isRead: r.is_read,
     createdAt: r.created_at instanceof Date ? r.created_at.toISOString() : String(r.created_at),
   };

@@ -529,6 +529,7 @@ export interface IInterface {
       likedYourCommentOnAlbum?: string;
       newCollectionAddTitle?: string;
       newCollectionAddBody?: string;
+      newCollectionAddByArtistBody?: string;
       viewAll?: string;
       loadMore?: string;
       loadError?: string;

@@ -1,7 +1,9 @@
 import { useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { resolveAlbumCommentNotificationPath } from '@features/albumComments';
+import { isCollectionAddPublicActor } from './collectionAddNotification';
 import type { RouteLang } from '@shared/lib/i18n/routeLang';
+import { buildArtistPagePath } from '@shared/lib/seo/publicPagePaths';
 import {
   patchUserNotificationRead,
   type UserNotificationItem,
@@ -25,7 +27,11 @@ export function useNotificationNavigation(lang: RouteLang) {
       }
       if (notification.type === 'collection_add') {
         options?.beforeNavigate?.();
-        navigate('/dashboard/audience?focus=supporters');
+        if (isCollectionAddPublicActor(notification)) {
+          navigate(buildArtistPagePath(lang, notification.artistSlug!.trim()));
+        } else {
+          navigate('/dashboard/audience?focus=supporters');
+        }
         return;
       }
 

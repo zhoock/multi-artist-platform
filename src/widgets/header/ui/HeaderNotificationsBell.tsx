@@ -131,6 +131,8 @@ function HeaderNotificationsBellComponent({
     collectionAddTitle: copy?.newCollectionAddTitle ?? 'Collection',
     collectionAddBody:
       copy?.newCollectionAddBody ?? 'Another listener added you to their collection',
+    collectionAddByArtistBody:
+      copy?.newCollectionAddByArtistBody ?? '{{name}} added you to their collection',
   };
   const viewAllLabel = copy?.viewAll ?? 'View all notifications →';
 

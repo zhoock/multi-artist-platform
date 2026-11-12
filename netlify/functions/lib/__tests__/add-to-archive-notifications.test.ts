@@ -88,7 +88,10 @@ describe('add-to-archive notifications', () => {
 
     const res = await handler(postEvent({ artistUserId: ARTIST }), {} as never);
     expect(res.statusCode).toBe(200);
-    expect(mockInsertNotif).toHaveBeenCalledWith({ artistUserId: ARTIST });
+    expect(mockInsertNotif).toHaveBeenCalledWith({
+      artistUserId: ARTIST,
+      actorUserId: LISTENER,
+    });
   });
 
   it('does not notify when artist was already active in collection', async () => {

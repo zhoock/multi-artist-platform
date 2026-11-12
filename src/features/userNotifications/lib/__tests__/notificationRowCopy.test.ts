@@ -12,6 +12,7 @@ const copy: UserNotificationRowCopy = {
   likeBodyTemplate: 'Someone liked your comment on «{{title}}»',
   collectionAddTitle: 'Collection',
   collectionAddBody: 'Another listener added you to their collection',
+  collectionAddByArtistBody: '{{name}} added you to their collection',
 };
 
 const base: UserNotificationItem = {
@@ -33,7 +34,7 @@ describe('notificationRowCopy', () => {
     expect(notificationRowBody(item, copy)).toBe('Someone liked your comment on «Rubber Soul»');
   });
 
-  test('collection_add uses collection strings', () => {
+  test('collection_add from listener uses anonymous collection body', () => {
     const item = {
       ...base,
       type: 'collection_add' as const,
@@ -45,5 +46,19 @@ describe('notificationRowCopy', () => {
     };
     expect(notificationRowTitle(item, copy)).toBe('Collection');
     expect(notificationRowBody(item, copy)).toBe('Another listener added you to their collection');
+  });
+
+  test('collection_add from artist uses artist body with name', () => {
+    const item = {
+      ...base,
+      type: 'collection_add' as const,
+      commentId: null,
+      albumId: null,
+      artistSlug: 'artem-k',
+      albumTitle: null,
+      actorUserId: null,
+      actorDisplayName: 'Artem K.',
+    };
+    expect(notificationRowBody(item, copy)).toBe('Artem K. added you to their collection');
   });
 });

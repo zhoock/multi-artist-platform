@@ -22,6 +22,7 @@
         "likedYourCommentOnAlbum": "Кто-то поставил лайк вашему комментарию в «{{title}}»",
         "newCollectionAddTitle": "Коллекция",
         "newCollectionAddBody": "Ещё один слушатель добавил вас в коллекцию",
+        "newCollectionAddByArtistBody": "{{name}} добавил вас в коллекцию",
         "viewAll": "Все уведомления →",
         "loadMore": "Показать ещё",
         "loadError": "Не удалось загрузить уведомления."

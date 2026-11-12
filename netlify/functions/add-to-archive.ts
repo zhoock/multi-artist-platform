@@ -68,7 +68,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
 
     if (!wasAlreadyActive) {
       try {
-        await insertCollectionAddUserNotification({ artistUserId });
+        await insertCollectionAddUserNotification({ artistUserId, actorUserId: userId });
       } catch (notifyErr) {
         console.error('add-to-archive: collection_add notification insert failed', notifyErr);
       }

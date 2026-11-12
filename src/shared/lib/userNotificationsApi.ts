@@ -13,6 +13,9 @@ export type UserNotificationItem = {
   artistSlug: string | null;
   albumTitle: string | null;
   actorUserId: string | null;
+  /** Set for collection_add when the actor was a public artist at notification insert time. */
+  actorDisplayName?: string | null;
+  actorAvatarPath?: string | null;
   isRead: boolean;
   createdAt: string;
 };

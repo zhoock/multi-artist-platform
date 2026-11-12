@@ -43,7 +43,7 @@ describe('useNotificationNavigation', () => {
     expect(navigateMock).toHaveBeenCalledWith('/en/albums/23?artist=beatles&comment=c1');
   });
 
-  test('collection_add navigates to audience supporters section', async () => {
+  test('collection_add from listener navigates to audience supporters section', async () => {
     const { result } = renderHook(() => useNotificationNavigation('en'));
 
     await act(async () => {
@@ -61,5 +61,26 @@ describe('useNotificationNavigation', () => {
     });
 
     expect(navigateMock).toHaveBeenCalledWith('/dashboard/audience?focus=supporters');
+  });
+
+  test('collection_add from artist navigates to public artist page', async () => {
+    const { result } = renderHook(() => useNotificationNavigation('ru'));
+
+    await act(async () => {
+      await result.current.openNotification({
+        id: 'n3',
+        type: 'collection_add',
+        commentId: null,
+        albumId: null,
+        artistSlug: 'artem-k',
+        albumTitle: null,
+        actorDisplayName: 'Artem K.',
+        actorUserId: null,
+        isRead: true,
+        createdAt: new Date().toISOString(),
+      });
+    });
+
+    expect(navigateMock).toHaveBeenCalledWith('/ru?artist=artem-k');
   });
 });
