@@ -16,6 +16,8 @@ export type AlbumCommentComposerProps = {
   imageUrl?: string | null;
   displayName: string;
   compact?: boolean;
+  onCancel?: () => void;
+  cancelLabel?: string;
 };
 
 export function AlbumCommentComposer({
@@ -30,6 +32,8 @@ export function AlbumCommentComposer({
   imageUrl,
   displayName,
   compact = false,
+  onCancel,
+  cancelLabel,
 }: AlbumCommentComposerProps) {
   const textareaId = useId();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -66,18 +70,29 @@ export function AlbumCommentComposer({
           }}
         />
         <div className="album-comments__composer-meta">
-          <span className="album-comments__composer-count" aria-live="polite">
-            {value.length} / {MAX_ALBUM_COMMENT_CHARS}
-          </span>
-          <button
-            type="button"
-            className="album-comments__composer-send"
-            disabled={!canSubmit}
-            aria-label={placeholder}
-            onClick={onSubmit}
-          >
-            <SendIcon size={18} strokeWidth={1.75} />
-          </button>
+          {onCancel && cancelLabel ? (
+            <button
+              type="button"
+              className="album-comments__text-action album-comments__text-action--muted"
+              onClick={onCancel}
+            >
+              {cancelLabel}
+            </button>
+          ) : null}
+          <div className="album-comments__composer-meta-trailing">
+            <span className="album-comments__composer-count" aria-live="polite">
+              {value.length} / {MAX_ALBUM_COMMENT_CHARS}
+            </span>
+            <button
+              type="button"
+              className="album-comments__composer-send"
+              disabled={!canSubmit}
+              aria-label={placeholder}
+              onClick={onSubmit}
+            >
+              <SendIcon size={18} strokeWidth={1.75} />
+            </button>
+          </div>
         </div>
       </div>
     </div>

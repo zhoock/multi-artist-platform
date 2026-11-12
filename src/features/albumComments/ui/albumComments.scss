@@ -349,9 +349,12 @@
 
 .album-comments__artist-badge {
   display: inline-flex;
-  padding: 0.05rem 0.45rem;
+  align-items: center;
+  padding-block: calc(var(--ms-02) / 3);
+  padding-inline: var(--ms-02);
   color: var(--dark-greenish-yellow, #c1a258);
   font-size: 0.72rem;
+  line-height: 1.15;
   text-transform: uppercase;
   letter-spacing: 0.03em;
   border: 1px solid rgb(var(--dark-greenish-yellow-rgb, 193 162 88) / 45%);
@@ -469,6 +472,55 @@
   color: var(--accent-color, #998238);
 }
 
+.album-comments__text-action {
+  margin: 0;
+  padding: 0;
+  font: inherit;
+  font-size: 0.875rem;
+  line-height: 1;
+  text-decoration: none;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  cursor: pointer;
+  appearance: none;
+
+  &:focus-visible {
+    outline: 2px solid var(--accent-color, #998238);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  &:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  &--muted {
+    color: var(--time-color, #9b9b9a);
+
+    @media (hover: hover) and (pointer: fine) {
+      &:hover:not(:disabled) {
+        color: var(--link-color-hover, #ffffff);
+        text-decoration: underline;
+        text-underline-offset: 0.15em;
+      }
+    }
+  }
+
+  &--accent {
+    color: var(--accent-color, #998238);
+
+    @media (hover: hover) and (pointer: fine) {
+      &:hover:not(:disabled) {
+        color: var(--dark-greenish-yellow, #c1a258);
+        text-decoration: underline;
+        text-underline-offset: 0.15em;
+      }
+    }
+  }
+}
+
 .album-comments__menu {
   position: relative;
   flex: 0 0 auto;
@@ -574,9 +626,15 @@
 .album-comments__composer-meta {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
   gap: var(--ms-01);
   margin-block-start: 0.35rem;
+}
+
+.album-comments__composer-meta-trailing {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ms-01);
+  margin-inline-start: auto;
 }
 
 .album-comments__composer-count {
@@ -606,9 +664,39 @@
   margin-block-start: var(--ms-01);
 }
 
+.album-comments__edit {
+  margin-block: var(--ms-01) 0;
+  min-inline-size: 0;
+  max-inline-size: 100%;
+}
+
+.album-comments__edit-input {
+  display: block;
+  box-sizing: border-box;
+  inline-size: 100%;
+  max-inline-size: 100%;
+  margin: 0;
+  padding: var(--ms-01);
+  color: var(--link-color-hover, #ffffff);
+  font: inherit;
+  line-height: inherit;
+  background: rgb(255 255 255 / 4%);
+  border: 1px solid var(--hr-color, #3d3c3a);
+  border-radius: var(--ms-01);
+  min-block-size: 0;
+  resize: vertical;
+
+  &:focus-visible {
+    outline: 2px solid var(--accent-color, #998238);
+    outline-offset: 1px;
+  }
+}
+
 .album-comments__edit-actions {
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   justify-content: flex-end;
-  gap: var(--ms-01);
-  margin-block-start: 0.35rem;
+  gap: var(--ms-0);
+  margin-block-start: var(--ms-01);
 }

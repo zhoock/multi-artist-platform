@@ -170,7 +170,9 @@ export function AlbumCommentRow({
                 {formatCommentRelativeTime(comment.createdAt, lang)}
               </time>
             </div>
-            <AlbumCommentMenu items={menuItems} onSelect={handleMenu} menuLabel={labels.menu} />
+            {!editing ? (
+              <AlbumCommentMenu items={menuItems} onSelect={handleMenu} menuLabel={labels.menu} />
+            ) : null}
           </header>
 
           {isDeleted ? (
@@ -178,8 +180,8 @@ export function AlbumCommentRow({
           ) : editing ? (
             <div className="album-comments__edit">
               <textarea
-                className="album-comments__composer-input"
-                rows={3}
+                className="album-comments__edit-input"
+                rows={2}
                 value={editDraft}
                 maxLength={MAX_ALBUM_COMMENT_CHARS}
                 onChange={(event) => setEditDraft(event.target.value)}
@@ -187,7 +189,7 @@ export function AlbumCommentRow({
               <div className="album-comments__edit-actions">
                 <button
                   type="button"
-                  className="album-comments__text-btn"
+                  className="album-comments__text-action album-comments__text-action--muted"
                   onClick={() => {
                     setEditing(false);
                     setEditDraft(comment.body);
@@ -197,7 +199,7 @@ export function AlbumCommentRow({
                 </button>
                 <button
                   type="button"
-                  className="album-comments__primary-btn"
+                  className="album-comments__text-action album-comments__text-action--accent"
                   disabled={!isSubmittableCommentBody(editDraft)}
                   onClick={() => {
                     void onEdit(comment.id, editDraft).then(() => setEditing(false));
@@ -264,13 +266,12 @@ export function AlbumCommentRow({
                 avatarPath={viewerAvatarPath}
                 imageUrl={viewerAvatarUrl}
                 displayName={viewerDisplayName}
+                cancelLabel={labels.cancel}
+                onCancel={onCancelReply}
                 onSubmit={() => {
                   void onSubmitReply(comment.id, replyDraft).then(() => setReplyDraft(''));
                 }}
               />
-              <button type="button" className="album-comments__text-btn" onClick={onCancelReply}>
-                {labels.cancel}
-              </button>
             </div>
           ) : null}
 

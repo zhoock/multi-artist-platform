@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import type { AlbumCommentDto } from '@shared/api/albumComments';
 import { buildArtistPagePath } from '@shared/lib/seo/publicPagePaths';
@@ -134,5 +134,47 @@ describe('AlbumCommentRow — artist author links', () => {
     expect(screen.getByText('Artist')).toBeInTheDocument();
     const links = screen.getAllByRole('link');
     expect(links).toHaveLength(2);
+  });
+});
+
+describe('AlbumCommentRow — inline edit', () => {
+  function renderOwnComment() {
+    return render(
+      <MemoryRouter>
+        <AlbumCommentRow
+          comment={makeComment()}
+          lang="en"
+          labels={rowLabels}
+          viewerUserId="u-1"
+          artistUserId="album-owner"
+          replyingToId={null}
+          onRequestReply={() => undefined}
+          onCancelReply={() => undefined}
+          onSubmitReply={noopAsync}
+          onToggleLike={() => undefined}
+          onEdit={noopAsync}
+          onDelete={noopAsync}
+          onReport={noopAsync}
+          viewerAvatarPath={null}
+          viewerDisplayName="Viewer"
+          requireAuthForAction={() => true}
+        />
+      </MemoryRouter>
+    );
+  }
+
+  test('hides context menu while editing and restores it after cancel', () => {
+    renderOwnComment();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Menu' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Edit' }));
+
+    expect(screen.queryByRole('button', { name: 'Menu' })).not.toBeInTheDocument();
+    expect(screen.getByRole('textbox')).toHaveClass('album-comments__edit-input');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    expect(screen.getByRole('button', { name: 'Menu' })).toBeInTheDocument();
+    expect(screen.getByText('Great album')).toBeInTheDocument();
   });
 });
