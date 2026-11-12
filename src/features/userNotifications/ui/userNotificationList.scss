@@ -61,18 +61,13 @@
     background: rgb(255 255 255 / 8%);
     border-radius: 50%;
 
-    img {
+    .user-notification-list__row-actor-avatar {
       inline-size: 100%;
       block-size: 100%;
-      object-fit: cover;
+      min-inline-size: 0;
+      min-block-size: 0;
     }
   }
-}
-
-.user-notification-list__row-icon-initial {
-  font-size: 0.875rem;
-  font-weight: var(--medium, 500);
-  line-height: 1;
 }
 
 .user-notification-list__row-main {

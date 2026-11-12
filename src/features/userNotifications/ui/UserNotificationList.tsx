@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { formatNotificationRelativeTime } from '@shared/lib/formatNotificationRelativeTime';
 import type { UserNotificationItem } from '@shared/lib/userNotificationsApi';
-import { profileAvatarPathToDisplayUrl } from '@shared/lib/profileAvatar';
+import { AlbumCommentAvatar } from '@features/albumComments/ui/AlbumCommentAvatar';
 import { isCollectionAddPublicActor } from '../lib/collectionAddNotification';
 import {
   notificationRowBody,
@@ -42,13 +42,6 @@ export function UserNotificationList({
         <ul className="user-notification-list">
           {items.map((n) => {
             const collectionActor = isCollectionAddPublicActor(n);
-            const actorAvatarUrl = collectionActor
-              ? profileAvatarPathToDisplayUrl(n.actorAvatarPath)
-              : '';
-            const actorInitial =
-              collectionActor && n.actorDisplayName
-                ? n.actorDisplayName.trim().slice(0, 1).toUpperCase()
-                : '';
 
             return (
               <li key={n.id}>
@@ -68,13 +61,11 @@ export function UserNotificationList({
                     aria-hidden
                   >
                     {collectionActor ? (
-                      actorAvatarUrl ? (
-                        <img src={actorAvatarUrl} alt="" loading="lazy" decoding="async" />
-                      ) : (
-                        <span className="user-notification-list__row-icon-initial">
-                          {actorInitial}
-                        </span>
-                      )
+                      <AlbumCommentAvatar
+                        avatarPath={n.actorAvatarPath}
+                        displayName={n.actorDisplayName ?? ''}
+                        className="user-notification-list__row-actor-avatar"
+                      />
                     ) : n.type === 'collection_add' ? (
                       <HeartHandshakeIcon size={18} strokeWidth={2} />
                     ) : n.type === 'comment_like' ? (
