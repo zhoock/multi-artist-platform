@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 import { useLang } from '@app/providers/lang';
@@ -17,6 +17,11 @@ function albumCommentsTeaserFallbacks(lang: SupportedLang) {
         countTemplate: '{count}',
       };
 }
+import {
+  ALBUM_COMMENT_DEEP_LINK_QUERY_PARAM,
+  readAlbumCommentIdFromSearchParams,
+} from '@shared/lib/albumCommentDeepLink';
+import { useEffectiveSearchParams } from '@shared/lib/hooks/useEffectiveLocation';
 import { fetchAlbumCommentsSummary, type AlbumCommentsSummaryDto } from '@shared/api/albumComments';
 import { Share } from '@features/share';
 import '@features/share/ui/style.scss';
@@ -35,11 +40,18 @@ export function AlbumCommentsSection({ albumId, artistSlug, shareUrl }: AlbumCom
   const { lang } = useLang();
   const ui = useAppSelector((state) => selectUiDictionaryFirst(state, lang));
   const copy = ui?.albumComments;
+  const [searchParams, setSearchParams] = useEffectiveSearchParams();
 
   const [summary, setSummary] = useState<AlbumCommentsSummaryDto | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [artistUserId, setArtistUserId] = useState<string | null>(null);
+  const autoOpenedForDeepLinkRef = useRef<string | null>(null);
+
+  const deepLinkCommentId = useMemo(
+    () => readAlbumCommentIdFromSearchParams(searchParams),
+    [searchParams]
+  );
 
   const labels = useMemo(() => {
     const fallback = albumCommentsTeaserFallbacks(lang);
@@ -106,9 +118,30 @@ export function AlbumCommentsSection({ albumId, artistSlug, shareUrl }: AlbumCom
     void loadSummary();
   }, [loadSummary]);
 
+  useEffect(() => {
+    if (!deepLinkCommentId) {
+      autoOpenedForDeepLinkRef.current = null;
+      return;
+    }
+    if (autoOpenedForDeepLinkRef.current === deepLinkCommentId) return;
+    autoOpenedForDeepLinkRef.current = deepLinkCommentId;
+    setModalOpen(true);
+  }, [deepLinkCommentId]);
+
   const handleSummaryChange = useCallback((next: AlbumCommentsSummaryDto) => {
     setSummary(next);
   }, []);
+
+  const handleDeepLinkConsumed = useCallback(() => {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete(ALBUM_COMMENT_DEEP_LINK_QUERY_PARAM);
+        return next;
+      },
+      { replace: true }
+    );
+  }, [setSearchParams]);
 
   return (
     <>
@@ -135,6 +168,8 @@ export function AlbumCommentsSection({ albumId, artistSlug, shareUrl }: AlbumCom
         summary={summary}
         onSummaryChange={handleSummaryChange}
         artistUserId={artistUserId}
+        deepLinkCommentId={deepLinkCommentId}
+        onDeepLinkConsumed={handleDeepLinkConsumed}
       />
     </>
   );

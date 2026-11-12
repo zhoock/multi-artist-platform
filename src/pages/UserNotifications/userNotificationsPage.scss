@@ -1,0 +1,48 @@
+@use '../../scss/abstracts/mixins' as *;
+
+.user-notifications-page {
+  min-block-size: 60vh;
+  padding-block: var(--ms-1);
+
+  &__wrapper {
+    max-inline-size: 36rem;
+  }
+
+  &__title {
+    margin: 0 0 var(--ms-0);
+    color: var(--white, #ffffff);
+    font-family: var(--base-accent-font);
+    font-size: var(--ms-0);
+    font-weight: var(--semibold, 600);
+    line-height: 1.2;
+    letter-spacing: normal;
+    text-transform: none;
+  }
+
+  &__more {
+    @include dashboard-ui-font-family;
+
+    display: block;
+    width: 100%;
+    margin-block-start: var(--ms-01);
+    padding: var(--ms-01);
+    color: var(--links-header-color, #dddddd);
+    font-size: 0.875rem;
+    text-align: center;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    appearance: none;
+
+    &:disabled {
+      opacity: 0.6;
+      cursor: default;
+    }
+
+    &:hover:not(:disabled),
+    &:focus-visible:not(:disabled) {
+      color: var(--links-header-color-hover, #ffffff);
+      outline: none;
+    }
+  }
+}

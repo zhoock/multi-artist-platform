@@ -10,6 +10,18 @@
       "signIn": "Sign in",
       "goToHome": "Home",
       "openProfile": "My profile",
+      "notifications": {
+        "bellAriaLabel": "Notifications",
+        "title": "Notifications",
+        "pageTitle": "Notifications",
+        "empty": "No notifications",
+        "pageEmpty": "No notifications",
+        "newCommentTitle": "New comment",
+        "toAlbum": "On album «{{title}}»",
+        "viewAll": "View all notifications →",
+        "loadMore": "Show more",
+        "loadError": "Failed to load notifications."
+      },
       "avatarMenu": {
         "dashboard": "Dashboard",
         "myArtistPage": "My Artist Page",

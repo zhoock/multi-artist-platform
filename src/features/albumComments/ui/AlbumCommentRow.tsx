@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom';
 import type { AlbumCommentDto } from '@shared/api/albumComments';
 import type { RouteLang } from '@shared/lib/i18n/routeLang';
 import { buildArtistPagePath } from '@shared/lib/seo/publicPagePaths';
+import { albumCommentDomId } from '@shared/lib/albumCommentDeepLink';
 import { formatCommentRelativeTime } from '../lib/formatCommentRelativeTime';
 import { MAX_ALBUM_COMMENT_CHARS, isSubmittableCommentBody } from '../lib/commentBody';
 import { AlbumCommentAvatar } from './AlbumCommentAvatar';
@@ -51,6 +52,7 @@ type AlbumCommentRowProps = {
   requireAuthForAction: () => boolean;
   repliesThreadExpanded?: boolean;
   onToggleRepliesThread?: () => void;
+  highlighted?: boolean;
   children?: React.ReactNode;
 };
 
@@ -77,6 +79,7 @@ export function AlbumCommentRow({
   requireAuthForAction,
   repliesThreadExpanded = true,
   onToggleRepliesThread,
+  highlighted = false,
   children,
 }: AlbumCommentRowProps) {
   const isDeleted = Boolean(comment.deletedAt);
@@ -143,10 +146,12 @@ export function AlbumCommentRow({
 
   return (
     <article
+      id={albumCommentDomId(comment.id)}
       className={clsx(
         'album-comments__item',
         isReply && 'album-comments__item--reply',
-        isDeleted && 'album-comments__item--deleted'
+        isDeleted && 'album-comments__item--deleted',
+        highlighted && 'album-comments__item--highlight'
       )}
     >
       {isReply ? <span className="album-comments__reply-rail" aria-hidden /> : null}

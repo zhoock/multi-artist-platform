@@ -5,6 +5,7 @@ import {
   buildArtistMixerTrackPath,
   buildLocalizedPublicPathWithArtist,
   buildPublicAlbumPagePath,
+  buildPublicAlbumPagePathWithComment,
   buildPublicArticlePagePath,
   buildSharedMixPagePath,
 } from '../seo/publicPagePaths';
@@ -25,6 +26,14 @@ describe('publicPagePaths — localized semantic builders', () => {
     expect(buildPublicAlbumPagePath('en', 'debut', 'my-band')).toBe(
       '/en/albums/debut?artist=my-band'
     );
+    expect(
+      buildPublicAlbumPagePathWithComment(
+        'en',
+        'debut',
+        'my-band',
+        'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11'
+      )
+    ).toBe('/en/albums/debut?artist=my-band&comment=a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11');
     expect(buildPublicArticlePagePath('ru', 'post-1', 'my-band')).toBe(
       '/ru/articles/post-1?artist=my-band'
     );

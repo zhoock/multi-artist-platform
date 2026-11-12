@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useMemo, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Popup, PopupCloseButton } from '@shared/ui/popup';
 import { ModalCloseIcon } from '@shared/ui/icons/ModalCloseIcon';
@@ -22,6 +22,7 @@ import {
 } from '@shared/api/albumComments';
 import { readStoredProfileDisplayName } from '@shared/lib/profileDisplayName';
 import { useAvatar } from '@shared/lib/hooks/useAvatar';
+import { albumCommentDomId, findCommentInTree } from '@shared/lib/albumCommentDeepLink';
 import {
   appendReplyComment,
   appendRootComment,
@@ -45,6 +46,8 @@ export type AlbumCommentsModalLabels = {
   commentsCount: (count: number) => string;
 };
 
+const ALBUM_COMMENT_DEEP_LINK_HIGHLIGHT_MS = 2600;
+
 type AlbumCommentsModalProps = {
   isOpen: boolean;
   onClose: () => void;
@@ -54,6 +57,8 @@ type AlbumCommentsModalProps = {
   summary: AlbumCommentsSummaryDto | null;
   onSummaryChange: (summary: AlbumCommentsSummaryDto) => void;
   artistUserId: string | null;
+  deepLinkCommentId?: string | null;
+  onDeepLinkConsumed?: () => void;
 };
 
 export function AlbumCommentsModal({
@@ -65,6 +70,8 @@ export function AlbumCommentsModal({
   summary,
   onSummaryChange,
   artistUserId,
+  deepLinkCommentId = null,
+  onDeepLinkConsumed,
 }: AlbumCommentsModalProps) {
   const titleId = useId();
   const { lang } = useLang();
@@ -89,6 +96,10 @@ export function AlbumCommentsModal({
   const [likePendingId, setLikePendingId] = useState<string | null>(null);
   const [resolvedArtistUserId, setResolvedArtistUserId] = useState<string | null>(artistUserId);
   const [collapsedReplyRoots, setCollapsedReplyRoots] = useState<Set<string>>(() => new Set());
+  const [highlightedCommentId, setHighlightedCommentId] = useState<string | null>(null);
+  const deepLinkResolvedRef = useRef<string | null>(null);
+  const deepLinkFinishedRef = useRef(false);
+  const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const isRepliesThreadExpanded = useCallback(
     (rootId: string) => !collapsedReplyRoots.has(rootId),
@@ -139,11 +150,117 @@ export function AlbumCommentsModal({
     [albumId, artistSlug, labels.loadError]
   );
 
+  const focusCommentInView = useCallback((commentId: string) => {
+    const focus = () => {
+      document.getElementById(albumCommentDomId(commentId))?.scrollIntoView({
+        block: 'center',
+        behavior: 'smooth',
+      });
+    };
+    requestAnimationFrame(() => requestAnimationFrame(focus));
+  }, []);
+
+  const applyCommentDeepLinkTarget = useCallback(
+    (commentId: string, loaded: AlbumCommentDto[]) => {
+      const located = findCommentInTree(loaded, commentId);
+      if (!located) return false;
+      if (located.isReply) {
+        setCollapsedReplyRoots((prev) => {
+          const next = new Set(prev);
+          next.delete(located.rootId);
+          return next;
+        });
+      }
+      setHighlightedCommentId(commentId);
+      if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current);
+      highlightTimerRef.current = setTimeout(() => {
+        setHighlightedCommentId(null);
+        highlightTimerRef.current = null;
+      }, ALBUM_COMMENT_DEEP_LINK_HIGHLIGHT_MS);
+
+      const scrollToTarget = () => focusCommentInView(commentId);
+      if (located.isReply) {
+        requestAnimationFrame(() => requestAnimationFrame(scrollToTarget));
+      } else {
+        scrollToTarget();
+      }
+      return true;
+    },
+    [focusCommentInView]
+  );
+
+  const resolveCommentDeepLink = useCallback(
+    async (targetCommentId: string) => {
+      setLoadState('loading');
+      try {
+        let cursor: string | null = null;
+        let accumulated: AlbumCommentDto[] = [];
+        let pageNextCursor: string | null = null;
+        let pageArtistUserId = '';
+
+        for (;;) {
+          const page = await fetchAlbumCommentsPage({
+            albumId,
+            artistSlug,
+            cursor,
+          });
+          pageArtistUserId = page.artistUserId;
+          pageNextCursor = page.nextCursor;
+          accumulated = cursor ? [...accumulated, ...page.comments] : page.comments;
+          setResolvedArtistUserId(page.artistUserId);
+          setNextCursor(page.nextCursor);
+          setComments(accumulated);
+
+          if (findCommentInTree(accumulated, targetCommentId)) {
+            break;
+          }
+          if (!page.nextCursor) break;
+          cursor = page.nextCursor;
+        }
+
+        setComments(accumulated);
+        setNextCursor(pageNextCursor);
+        if (pageArtistUserId) setResolvedArtistUserId(pageArtistUserId);
+        setLoadState('ready');
+        applyCommentDeepLinkTarget(targetCommentId, accumulated);
+      } catch {
+        setLoadState('error');
+      }
+    },
+    [albumId, applyCommentDeepLinkTarget, artistSlug]
+  );
+
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen) {
+      deepLinkResolvedRef.current = null;
+      deepLinkFinishedRef.current = false;
+      return;
+    }
+    const target = deepLinkCommentId?.trim() ?? '';
+    if (target) {
+      if (deepLinkResolvedRef.current === target) return;
+      deepLinkResolvedRef.current = target;
+      void resolveCommentDeepLink(target).finally(() => {
+        deepLinkFinishedRef.current = true;
+        onDeepLinkConsumed?.();
+      });
+      return;
+    }
+    if (deepLinkFinishedRef.current) {
+      deepLinkFinishedRef.current = false;
+      return;
+    }
+    deepLinkResolvedRef.current = null;
     setCollapsedReplyRoots(new Set());
     void loadPage(null, false);
-  }, [isOpen, loadPage]);
+  }, [isOpen, deepLinkCommentId, loadPage, onDeepLinkConsumed, resolveCommentDeepLink]);
+
+  useEffect(
+    () => () => {
+      if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current);
+    },
+    []
+  );
 
   const bumpSummaryAfterNewComment = useCallback(
     (authorUserId: string) => {
@@ -316,6 +433,7 @@ export function AlbumCommentsModal({
                       comment={root}
                       lang={lang}
                       labels={labels.row}
+                      highlighted={highlightedCommentId === root.id}
                       viewerUserId={viewer?.id ?? null}
                       artistUserId={artistId}
                       replyingToId={replyingToId}
@@ -343,6 +461,7 @@ export function AlbumCommentsModal({
                               lang={lang}
                               labels={labels.row}
                               isReply
+                              highlighted={highlightedCommentId === reply.id}
                               viewerUserId={viewer?.id ?? null}
                               artistUserId={artistId}
                               replyingToId={replyingToId}

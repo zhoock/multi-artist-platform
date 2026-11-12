@@ -124,6 +124,7 @@ const AdminCopyrightClaimsList = lazy(() => import('@pages/Admin/AdminCopyrightC
 const AdminCopyrightClaimDetail = lazy(() => import('@pages/Admin/AdminCopyrightClaimDetail'));
 const AdminNotificationsPage = lazy(() => import('@pages/Admin/AdminNotificationsPage'));
 const CopyrightReportPage = lazy(() => import('@pages/CopyrightReport/CopyrightReportPage'));
+const UserNotificationsPage = lazy(() => import('@pages/UserNotifications'));
 
 /** Lazy-route fallback after chrome is on screen. First bootstrap uses InitialAppLoader. */
 const PageLoader = PageRouteLoader;
@@ -373,6 +374,7 @@ function Layout() {
     '/stems/mix/:mixId',
     '/dashboard',
     '/dashboard/:tab',
+    '/notifications',
     '/admin',
     '/admin/copyright',
     '/admin/copyright/claims',
@@ -526,6 +528,14 @@ function Layout() {
         }
       />
       <Route
+        path="/notifications"
+        element={
+          <Suspense fallback={<PageLoader />}>
+            <UserNotificationsPage />
+          </Suspense>
+        }
+      />
+      <Route
         path="/auth"
         element={
           <Suspense fallback={<PageLoader />}>
@@ -595,6 +605,7 @@ function Layout() {
         <Route path="stems" element={stemsPageElement} />
         <Route path="stems/mix/:mixId" element={stemsPageElement} />
         <Route path="dashboard/*" element={<UnprefixedRedirect />} />
+        <Route path="notifications" element={<UnprefixedRedirect />} />
         <Route path="auth/*" element={<UnprefixedRedirect />} />
         <Route path="pay/*" element={<UnprefixedRedirect />} />
         <Route path="email-verified" element={<UnprefixedRedirect />} />

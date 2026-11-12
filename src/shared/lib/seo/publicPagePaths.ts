@@ -1,5 +1,6 @@
 import type { RouteLang } from '../i18n/routeLang';
 import { buildLocalizedPublicPath } from '../i18n/routeLang/buildLocalizedPublicPath';
+import { ALBUM_COMMENT_DEEP_LINK_QUERY_PARAM } from '../albumCommentDeepLink';
 import { withPublicArtistQuery } from '../publicArtistQueryLink';
 
 /** Localized public path, optionally preserving `?artist=` context. */
@@ -57,6 +58,24 @@ export function buildPublicAlbumPagePath(
   artistSlug: string
 ): string {
   return buildLocalizedPublicPath(lang, publicAlbumPathSegment(albumId, artistSlug));
+}
+
+/** Album page with `?comment=<uuid>` deep-link to a specific comment (preserves `?artist=`). */
+export function buildPublicAlbumPagePathWithComment(
+  lang: RouteLang,
+  albumId: string,
+  artistSlug: string,
+  commentId: string
+): string {
+  const base = buildPublicAlbumPagePath(lang, albumId, artistSlug);
+  const comment = commentId.trim();
+  if (!comment) return base;
+  const qIdx = base.indexOf('?');
+  const pathOnly = qIdx === -1 ? base : base.slice(0, qIdx);
+  const params = new URLSearchParams(qIdx === -1 ? '' : base.slice(qIdx + 1));
+  params.set(ALBUM_COMMENT_DEEP_LINK_QUERY_PARAM, comment);
+  const q = params.toString();
+  return q ? `${pathOnly}?${q}` : pathOnly;
 }
 
 /** Public article detail: `/{lang}/articles/:articleId?artist=<slug>`. */

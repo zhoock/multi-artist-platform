@@ -517,6 +517,18 @@ export interface IInterface {
     signIn: string;
     goToHome?: string;
     openProfile: string;
+    notifications?: {
+      bellAriaLabel: string;
+      title: string;
+      pageTitle?: string;
+      empty: string;
+      pageEmpty?: string;
+      newCommentTitle: string;
+      toAlbum: string;
+      viewAll?: string;
+      loadMore?: string;
+      loadError?: string;
+    };
     avatarMenu?: {
       dashboard: string;
       myArtistPage?: string;

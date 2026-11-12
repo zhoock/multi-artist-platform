@@ -261,23 +261,60 @@
 
 .album-comments__item {
   position: relative;
+  isolation: isolate;
+  box-sizing: border-box;
+  max-inline-size: 100%;
+  border-radius: 13px;
+  padding-block: 12px;
+  padding-inline: 14px;
+  background-color: transparent;
+
+  &::before {
+    position: absolute;
+    z-index: 0;
+    background: rgb(var(--dark-greenish-yellow-rgb) / 18%);
+    border-radius: inherit;
+    transition: opacity 0.55s ease;
+    content: '';
+    inset: 0;
+    opacity: 0;
+    pointer-events: none;
+  }
 
   &--reply {
     margin-block-start: var(--ms-01);
-    padding-inline-start: var(--ms-0);
+    padding-inline-start: calc(14px + var(--ms-0));
+  }
+
+  &--highlight::before {
+    opacity: 1;
+    transition: opacity 0.28s ease;
+  }
+
+  @media (width <= 30rem) {
+    border-radius: 12px;
+    padding-block: 10px;
+    padding-inline: 12px;
+
+    &--reply {
+      padding-inline-start: calc(12px + var(--ms-0));
+    }
   }
 }
 
 .album-comments__reply-rail {
   position: absolute;
+  z-index: 1;
+  background: var(--hr-color, #3d3c3a);
   inset-inline-start: 0.55rem;
   inset-block: 0.25rem auto;
   inline-size: 2px;
   block-size: calc(100% - 0.5rem);
-  background: var(--hr-color, #3d3c3a);
 }
 
 .album-comments__item-main {
+  position: relative;
+  z-index: 1;
   display: flex;
   gap: var(--ms-01);
   align-items: flex-start;
@@ -364,6 +401,13 @@
 .album-comments__dot,
 .album-comments__time {
   color: var(--time-color, #9b9b9a);
+  font-size: 0.875rem;
+  font-weight: var(--regular, 400);
+  line-height: 1;
+}
+
+.album-comments__time {
+  white-space: nowrap;
 }
 
 .album-comments__text {

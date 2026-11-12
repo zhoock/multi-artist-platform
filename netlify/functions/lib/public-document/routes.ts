@@ -26,6 +26,7 @@ const PAYMENT_PATHS = new Set([
 const INTERNAL_PREFIXES = [
   '/admin',
   '/dashboard',
+  '/notifications',
   '/auth',
   '/email-verified',
   '/email-verification-expired',

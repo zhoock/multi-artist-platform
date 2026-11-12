@@ -156,6 +156,12 @@
   status = 200
   force = true
 
+[[redirects]]
+  from = "/api/user/notifications*"
+  to = "/.netlify/functions/user-notifications/:splat"
+  status = 200
+  force = true
+
 # Admin (platform)
 [[redirects]]
   from = "/api/admin/*"
@@ -419,6 +425,9 @@
 
 [functions."scheduled-subscription-renewals"]
   schedule = "*/1 * * * *"
+
+[functions."scheduled-user-notifications-cleanup"]
+  schedule = "0 4 * * *"
 
 # In-site audio processor. Include only the Linux binaries Lambda can execute.
 # ffprobe-static also ships macOS/Windows builds; bundling those exceeds the

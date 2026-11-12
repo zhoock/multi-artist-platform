@@ -14,6 +14,7 @@ import type { SupportedLang } from '@shared/model/lang';
 import { Hamburger } from '@shared/ui/hamburger';
 import { House as HouseIcon } from 'lucide-react';
 import { ProfileAvatarMenu } from './ProfileAvatarMenu';
+import { HeaderNotificationsBell } from './HeaderNotificationsBell';
 import { buildLocalizedPublicPath, withLangPrefix } from '@shared/lib/i18n/routeLang';
 import './style.scss';
 
@@ -52,6 +53,7 @@ const HeaderComponent = ({
     ? { pathname: localizedHomePath, search: '', hash: '', state: null, key: 'default' }
     : location;
   const [langOpen, setLangOpen] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
   const langRef = useRef<HTMLDivElement>(null);
 
   // Закрываем меню языка при клике вне
@@ -127,12 +129,24 @@ const HeaderComponent = ({
         <div className="header__trailing">
           <Navigation />
           {isAuthed ? (
-            <ProfileAvatarMenu
-              closeWhenLangMenuOpen={langOpen}
-              onOpenChange={(open) => {
-                if (open) setLangOpen(false);
-              }}
-            />
+            <>
+              <HeaderNotificationsBell
+                closeWhenSiblingMenuOpen={langOpen}
+                onOpenChange={(open) => {
+                  setNotifOpen(open);
+                  if (open) setLangOpen(false);
+                }}
+              />
+              <ProfileAvatarMenu
+                closeWhenLangMenuOpen={langOpen || notifOpen}
+                onOpenChange={(open) => {
+                  if (open) {
+                    setLangOpen(false);
+                    setNotifOpen(false);
+                  }
+                }}
+              />
+            </>
           ) : (
             <Link
               className="header__sign-in"

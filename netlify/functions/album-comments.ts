@@ -24,6 +24,7 @@ import {
 import {
   createAlbumComment,
   getAlbumCommentsSummary,
+  getCommentById,
   listAlbumCommentsPage,
   normalizeCommentBody,
   reportAlbumComment,
@@ -32,6 +33,7 @@ import {
   toggleAlbumCommentLike,
   updateAlbumComment,
 } from './lib/album-comments';
+import { insertCommentUserNotification } from './lib/user-notifications-db';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -133,11 +135,17 @@ export const handler: Handler = async (event) => {
       }
 
       let parentId: string | null = null;
+      let parentCommentAuthorUserId: string | null = null;
       if (body.parentId != null && body.parentId !== '') {
         if (typeof body.parentId !== 'string' || !UUID_RE.test(body.parentId.trim())) {
           return createErrorResponse(400, 'Invalid parentId');
         }
         parentId = body.parentId.trim();
+        const parentRow = await getCommentById(parentId);
+        if (!parentRow || parentRow.deleted_at) {
+          return createErrorResponse(404, 'Parent comment not found');
+        }
+        parentCommentAuthorUserId = parentRow.user_id;
       }
 
       const created = await createAlbumComment({
@@ -150,6 +158,18 @@ export const handler: Handler = async (event) => {
       if ('error' in created) {
         return createErrorResponse(created.status, created.error);
       }
+
+      try {
+        await insertCommentUserNotification({
+          ctx,
+          commentId: created.comment.id,
+          actorUserId: userId,
+          parentCommentAuthorUserId,
+        });
+      } catch (notifyErr) {
+        console.error('album-comments: user notification insert failed', notifyErr);
+      }
+
       return createSuccessResponse({ comment: created.comment }, 201);
     }
 
