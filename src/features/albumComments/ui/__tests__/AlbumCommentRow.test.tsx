@@ -101,6 +101,157 @@ function makeNestedReply(id: string, body: string): AlbumCommentDto {
   });
 }
 
+describe('AlbumCommentRow — Reply control', () => {
+  test('root comment shows Reply', () => {
+    renderRow(makeComment(), { isReply: false });
+    expect(screen.getByRole('button', { name: 'Reply' })).toBeInTheDocument();
+  });
+
+  test('own root comment shows Reply', () => {
+    render(
+      <MemoryRouter>
+        <AlbumCommentRow
+          comment={makeComment({ author: { ...makeComment().author, userId: 'viewer-1' } })}
+          lang="en"
+          labels={rowLabels}
+          viewerUserId="viewer-1"
+          artistUserId="album-owner"
+          replyingToId={null}
+          onRequestReply={() => undefined}
+          onCancelReply={() => undefined}
+          onSubmitReply={noopAsync}
+          onToggleLike={() => undefined}
+          onEdit={noopAsync}
+          onDelete={noopAsync}
+          onReport={noopAsync}
+          viewerAvatarPath={null}
+          viewerDisplayName="Viewer"
+          requireAuthForAction={() => true}
+        />
+      </MemoryRouter>
+    );
+    expect(screen.getByRole('button', { name: 'Reply' })).toBeInTheDocument();
+  });
+
+  test('nested reply shows Reply', () => {
+    renderRow(makeNestedReply('r-1', 'Nested body'), { isReply: true });
+    expect(screen.getByRole('button', { name: 'Reply' })).toBeInTheDocument();
+  });
+
+  test('nested reply by another user shows Reply', () => {
+    render(
+      <MemoryRouter>
+        <AlbumCommentRow
+          comment={makeNestedReply('r-1', 'From Beatles')}
+          lang="en"
+          labels={rowLabels}
+          isReply
+          viewerUserId="viewer-smolyanoe"
+          artistUserId="album-owner"
+          replyingToId={null}
+          onRequestReply={() => undefined}
+          onCancelReply={() => undefined}
+          onSubmitReply={noopAsync}
+          onToggleLike={() => undefined}
+          onEdit={noopAsync}
+          onDelete={noopAsync}
+          onReport={noopAsync}
+          viewerAvatarPath={null}
+          viewerDisplayName="Listener"
+          requireAuthForAction={() => true}
+        />
+      </MemoryRouter>
+    );
+    expect(screen.getByRole('button', { name: 'Reply' })).toBeInTheDocument();
+  });
+
+  test('artist nested reply shows Reply for another viewer', () => {
+    renderRow(
+      makeComment({
+        id: 'reply-artist',
+        parentId: 'c-1',
+        body: 'Artist reply',
+        author: {
+          userId: 'u-beatles',
+          displayName: 'Beatles',
+          avatarPath: null,
+          isArtist: true,
+          publicSlug: 'beatles',
+        },
+      }),
+      { isReply: true }
+    );
+    expect(screen.getByRole('button', { name: 'Reply' })).toBeInTheDocument();
+  });
+
+  test('deleted comment hides Reply', () => {
+    renderRow(
+      makeComment({
+        deletedAt: new Date().toISOString(),
+        body: 'gone',
+      })
+    );
+    expect(screen.queryByRole('button', { name: 'Reply' })).not.toBeInTheDocument();
+  });
+
+  test('editing hides Reply', () => {
+    render(
+      <MemoryRouter>
+        <AlbumCommentRow
+          comment={makeComment()}
+          lang="en"
+          labels={rowLabels}
+          viewerUserId="u-1"
+          artistUserId="album-owner"
+          replyingToId={null}
+          onRequestReply={() => undefined}
+          onCancelReply={() => undefined}
+          onSubmitReply={noopAsync}
+          onToggleLike={() => undefined}
+          onEdit={noopAsync}
+          onDelete={noopAsync}
+          onReport={noopAsync}
+          viewerAvatarPath={null}
+          viewerDisplayName="Viewer"
+          requireAuthForAction={() => true}
+        />
+      </MemoryRouter>
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Menu' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Edit' }));
+    expect(screen.queryByRole('button', { name: 'Reply' })).not.toBeInTheDocument();
+  });
+
+  test('clicking Reply on nested reply invokes onRequestReply with reply id', () => {
+    const onRequestReply = jest.fn();
+    render(
+      <MemoryRouter>
+        <AlbumCommentRow
+          comment={makeNestedReply('nested-99', 'Nested')}
+          lang="en"
+          labels={rowLabels}
+          isReply
+          viewerUserId="viewer-1"
+          artistUserId="album-owner"
+          replyingToId={null}
+          onRequestReply={onRequestReply}
+          onCancelReply={() => undefined}
+          onSubmitReply={noopAsync}
+          onToggleLike={() => undefined}
+          onEdit={noopAsync}
+          onDelete={noopAsync}
+          onReport={noopAsync}
+          viewerAvatarPath={null}
+          viewerDisplayName="Viewer"
+          requireAuthForAction={() => true}
+        />
+      </MemoryRouter>
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Reply' }));
+    expect(onRequestReply).toHaveBeenCalledWith('nested-99');
+  });
+});
+
 describe('AlbumCommentRow — like control', () => {
   test('hides Like for own comment when viewer is author', () => {
     render(

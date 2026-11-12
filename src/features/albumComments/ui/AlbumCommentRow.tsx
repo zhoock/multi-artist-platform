@@ -257,18 +257,16 @@ export function AlbumCommentRow({
                   <span className="album-comments__like-count">{comment.likeCount}</span>
                 </button>
               ) : null}
-              {!isReply ? (
-                <button
-                  type="button"
-                  className="album-comments__reply"
-                  onClick={() => {
-                    if (!requireAuthForAction()) return;
-                    onRequestReply(comment.id);
-                  }}
-                >
-                  {labels.reply}
-                </button>
-              ) : null}
+              <button
+                type="button"
+                className="album-comments__reply"
+                onClick={() => {
+                  if (!requireAuthForAction()) return;
+                  onRequestReply(comment.id);
+                }}
+              >
+                {labels.reply}
+              </button>
               {showRepliesToggle ? (
                 <button
                   type="button"
