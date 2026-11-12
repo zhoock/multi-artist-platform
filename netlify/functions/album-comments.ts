@@ -33,7 +33,10 @@ import {
   toggleAlbumCommentLike,
   updateAlbumComment,
 } from './lib/album-comments';
-import { insertCommentUserNotification } from './lib/user-notifications-db';
+import {
+  insertCommentLikeUserNotification,
+  insertCommentUserNotification,
+} from './lib/user-notifications-db';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -185,7 +188,26 @@ export const handler: Handler = async (event) => {
       if ('error' in result) {
         return createErrorResponse(result.status, result.error);
       }
-      return createSuccessResponse(result);
+
+      if (result.createdLike) {
+        try {
+          const likedComment = await getCommentById(route.commentId);
+          if (likedComment && !likedComment.deleted_at) {
+            await insertCommentLikeUserNotification({
+              commentId: route.commentId,
+              recipientUserId: likedComment.user_id,
+              actorUserId: userId,
+              artistUserId: likedComment.artist_user_id,
+              albumId: likedComment.album_id,
+            });
+          }
+        } catch (notifyErr) {
+          console.error('album-comments: comment_like notification insert failed', notifyErr);
+        }
+      }
+
+      const { createdLike: _createdLike, ...payload } = result;
+      return createSuccessResponse(payload);
     }
 
     if (route.kind === 'comment' && route.action === 'report' && event.httpMethod === 'POST') {

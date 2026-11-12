@@ -5,7 +5,7 @@
 import type { AlbumCommentContext } from './album-comments';
 import { query } from './db';
 
-export type UserNotificationType = 'comment';
+export type UserNotificationType = 'comment' | 'comment_like';
 
 export const USER_NOTIFICATIONS_DROPDOWN_LIMIT = 10;
 export const USER_NOTIFICATIONS_PAGE_LIMIT = 25;
@@ -67,6 +67,54 @@ async function loadAlbumTitle(artistUserId: string, albumId: string): Promise<st
     0
   );
   return result.rows[0]?.title?.trim() || albumId;
+}
+
+async function loadArtistPublicSlug(artistUserId: string): Promise<string> {
+  const result = await query<{ public_slug: string | null }>(
+    `SELECT NULLIF(TRIM(public_slug), '') AS public_slug FROM users WHERE id = $1::uuid LIMIT 1`,
+    [artistUserId],
+    0
+  );
+  return result.rows[0]?.public_slug?.trim() || '';
+}
+
+export async function insertCommentLikeUserNotification(input: {
+  commentId: string;
+  recipientUserId: string;
+  actorUserId: string;
+  artistUserId: string;
+  albumId: string;
+}): Promise<void> {
+  if (!input.recipientUserId || input.recipientUserId === input.actorUserId) return;
+
+  const [albumTitle, artistSlug] = await Promise.all([
+    loadAlbumTitle(input.artistUserId, input.albumId),
+    loadArtistPublicSlug(input.artistUserId),
+  ]);
+  if (!artistSlug) return;
+
+  await query(
+    `INSERT INTO user_notifications (
+       recipient_user_id, type, comment_id, album_id, artist_slug, album_title, actor_user_id
+     )
+     SELECT $1::uuid, 'comment_like', $2::uuid, $3, $4, $5, $6::uuid
+     WHERE NOT EXISTS (
+       SELECT 1 FROM user_notifications
+       WHERE recipient_user_id = $1::uuid
+         AND comment_id = $2::uuid
+         AND actor_user_id = $6::uuid
+         AND type = 'comment_like'
+     )`,
+    [
+      input.recipientUserId,
+      input.commentId,
+      input.albumId,
+      artistSlug,
+      albumTitle,
+      input.actorUserId,
+    ],
+    0
+  );
 }
 
 export async function insertCommentUserNotification(input: {

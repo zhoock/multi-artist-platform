@@ -3,6 +3,7 @@ import {
   USER_NOTIFICATIONS_PAGE_LIMIT,
   USER_NOTIFICATIONS_RETENTION_DAYS,
   clampUserNotificationsLimit,
+  insertCommentLikeUserNotification,
   listUserNotificationsPage,
   purgeUserNotificationsOlderThanDays,
   resolveCommentNotificationRecipient,
@@ -85,6 +86,41 @@ describe('user-notifications-db', () => {
         ['u1', USER_NOTIFICATIONS_PAGE_LIMIT + 1],
         0
       );
+    });
+  });
+
+  describe('insertCommentLikeUserNotification', () => {
+    beforeEach(() => {
+      mockQuery.mockReset();
+    });
+
+    test('skips self recipient', async () => {
+      await insertCommentLikeUserNotification({
+        commentId: 'c1',
+        recipientUserId: 'u1',
+        actorUserId: 'u1',
+        artistUserId: 'a1',
+        albumId: 'album-1',
+      });
+      expect(mockQuery).not.toHaveBeenCalled();
+    });
+
+    test('inserts comment_like with dedupe guard', async () => {
+      mockQuery
+        .mockResolvedValueOnce({ rows: [{ title: 'Rubber Soul' }] })
+        .mockResolvedValueOnce({ rows: [{ public_slug: 'beatles' }] })
+        .mockResolvedValueOnce({ rows: [] });
+
+      await insertCommentLikeUserNotification({
+        commentId: 'c1',
+        recipientUserId: 'author-1',
+        actorUserId: 'liker-1',
+        artistUserId: 'artist-1',
+        albumId: 'rubber-soul',
+      });
+
+      expect(mockQuery).toHaveBeenCalledTimes(3);
+      expect(mockQuery.mock.calls[2][0]).toContain("type = 'comment_like'");
     });
   });
 

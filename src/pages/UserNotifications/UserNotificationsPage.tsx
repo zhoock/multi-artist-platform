@@ -13,6 +13,7 @@ import {
   USER_NOTIFICATIONS_PAGE_LIMIT,
   UserNotificationList,
   useNotificationNavigation,
+  type UserNotificationRowCopy,
 } from '@features/userNotifications';
 import { noindexRobotsMetaElement } from '@shared/lib/seo/noindexRobotsMeta';
 import '@features/userNotifications/ui/userNotificationList.scss';
@@ -32,8 +33,12 @@ export default function UserNotificationsPage() {
   const [error, setError] = useState(false);
 
   const pageTitle = copy?.pageTitle ?? copy?.title ?? 'Notifications';
-  const rowTitle = copy?.newCommentTitle ?? 'New comment';
-  const bodyTemplate = copy?.toAlbum ?? 'On album «{{title}}»';
+  const listCopy: UserNotificationRowCopy = {
+    commentTitle: copy?.newCommentTitle ?? 'New comment',
+    commentBodyTemplate: copy?.toAlbum ?? 'On album «{{title}}»',
+    likeTitle: copy?.newLikeTitle ?? 'New like',
+    likeBodyTemplate: copy?.likedYourCommentOnAlbum ?? 'Someone liked your comment on «{{title}}»',
+  };
   const emptyLabel = copy?.pageEmpty ?? 'No notifications';
   const loadMoreLabel = copy?.loadMore ?? 'Show more';
 
@@ -96,8 +101,7 @@ export default function UserNotificationsPage() {
               <UserNotificationList
                 items={items}
                 lang={lang}
-                rowTitle={rowTitle}
-                bodyTemplate={bodyTemplate}
+                copy={listCopy}
                 emptyLabel={items.length === 0 ? emptyLabel : undefined}
                 onItemClick={handleItemClick}
               />

@@ -18,6 +18,8 @@
         "pageEmpty": "No notifications",
         "newCommentTitle": "New comment",
         "toAlbum": "On album «{{title}}»",
+        "newLikeTitle": "New like",
+        "likedYourCommentOnAlbum": "Someone liked your comment on «{{title}}»",
         "viewAll": "View all notifications →",
         "loadMore": "Show more",
         "loadError": "Failed to load notifications."

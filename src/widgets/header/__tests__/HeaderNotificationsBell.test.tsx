@@ -2,10 +2,14 @@
 import { describe, test, expect, jest, beforeEach } from '@jest/globals';
 import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { renderWithProviders } from '@shared/lib/test-utils';
+import type {
+  fetchUserNotifications,
+  patchUserNotificationRead,
+} from '@shared/lib/userNotificationsApi';
 import { HeaderNotificationsBell } from '../ui/HeaderNotificationsBell';
 
-const fetchUserNotificationsMock = jest.fn();
-const patchUserNotificationReadMock = jest.fn();
+const fetchUserNotificationsMock = jest.fn<typeof fetchUserNotifications>();
+const patchUserNotificationReadMock = jest.fn<typeof patchUserNotificationRead>();
 const navigateMock = jest.fn();
 
 jest.mock('@shared/lib/auth', () => ({
@@ -14,8 +18,9 @@ jest.mock('@shared/lib/auth', () => ({
 }));
 
 jest.mock('@shared/lib/userNotificationsApi', () => ({
-  fetchUserNotifications: (...args: unknown[]) => fetchUserNotificationsMock(...args),
-  patchUserNotificationRead: (...args: unknown[]) => patchUserNotificationReadMock(...args),
+  fetchUserNotifications: (options?: { limit?: number; cursor?: string }) =>
+    fetchUserNotificationsMock(options),
+  patchUserNotificationRead: (id: string) => patchUserNotificationReadMock(id),
 }));
 
 jest.mock('react-router-dom', () => {

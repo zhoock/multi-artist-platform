@@ -525,6 +525,8 @@ export interface IInterface {
       pageEmpty?: string;
       newCommentTitle: string;
       toAlbum: string;
+      newLikeTitle?: string;
+      likedYourCommentOnAlbum?: string;
       viewAll?: string;
       loadMore?: string;
       loadError?: string;

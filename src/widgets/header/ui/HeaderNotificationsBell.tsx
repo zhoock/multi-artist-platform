@@ -13,6 +13,7 @@ import {
   USER_NOTIFICATIONS_DROPDOWN_LIMIT,
   UserNotificationList,
   useNotificationNavigation,
+  type UserNotificationRowCopy,
 } from '@features/userNotifications';
 import './headerNotifications.scss';
 import '@features/userNotifications/ui/userNotificationList.scss';
@@ -111,8 +112,12 @@ function HeaderNotificationsBellComponent({
   const bellLabel = copy?.bellAriaLabel ?? 'Notifications';
   const panelTitle = copy?.title ?? 'Notifications';
   const emptyCopy = copy?.pageEmpty ?? copy?.empty ?? 'No notifications';
-  const rowTitle = copy?.newCommentTitle ?? 'New comment';
-  const bodyTemplate = copy?.toAlbum ?? 'On album «{{title}}»';
+  const listCopy: UserNotificationRowCopy = {
+    commentTitle: copy?.newCommentTitle ?? 'New comment',
+    commentBodyTemplate: copy?.toAlbum ?? 'On album «{{title}}»',
+    likeTitle: copy?.newLikeTitle ?? 'New like',
+    likeBodyTemplate: copy?.likedYourCommentOnAlbum ?? 'Someone liked your comment on «{{title}}»',
+  };
   const viewAllLabel = copy?.viewAll ?? 'View all notifications →';
 
   const showEmpty = !loading && notifications.length === 0;
@@ -150,8 +155,7 @@ function HeaderNotificationsBellComponent({
             <UserNotificationList
               items={notifications}
               lang={lang}
-              rowTitle={rowTitle}
-              bodyTemplate={bodyTemplate}
+              copy={listCopy}
               onItemClick={handleRowClick}
               footer={
                 hasMoreNotifications ? (

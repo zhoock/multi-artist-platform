@@ -18,6 +18,8 @@
         "pageEmpty": "Нет уведомлений",
         "newCommentTitle": "Новый комментарий",
         "toAlbum": "К альбому «{{title}}»",
+        "newLikeTitle": "Новый лайк",
+        "likedYourCommentOnAlbum": "Кто-то поставил лайк вашему комментарию в «{{title}}»",
         "viewAll": "Все уведомления →",
         "loadMore": "Показать ещё",
         "loadError": "Не удалось загрузить уведомления."

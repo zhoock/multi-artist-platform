@@ -1,15 +1,18 @@
 import clsx from 'clsx';
-import { MessageCircle as MessageCircleIcon } from 'lucide-react';
+import { Heart as HeartIcon, MessageCircle as MessageCircleIcon } from 'lucide-react';
 import { formatNotificationRelativeTime } from '@shared/lib/formatNotificationRelativeTime';
 import type { UserNotificationItem } from '@shared/lib/userNotificationsApi';
-import { formatAlbumNotificationBody } from '../lib/formatAlbumNotificationBody';
+import {
+  notificationRowBody,
+  notificationRowTitle,
+  type UserNotificationRowCopy,
+} from '../lib/notificationRowCopy';
 import './userNotificationList.scss';
 
 type UserNotificationListProps = {
   items: UserNotificationItem[];
   lang: string;
-  rowTitle: string;
-  bodyTemplate: string;
+  copy: UserNotificationRowCopy;
   emptyLabel?: string;
   onItemClick: (item: UserNotificationItem) => void;
   footer?: React.ReactNode;
@@ -18,8 +21,7 @@ type UserNotificationListProps = {
 export function UserNotificationList({
   items,
   lang,
-  rowTitle,
-  bodyTemplate,
+  copy,
   emptyLabel,
   onItemClick,
   footer,
@@ -43,12 +45,18 @@ export function UserNotificationList({
                 onClick={() => onItemClick(n)}
               >
                 <span className="user-notification-list__row-icon" aria-hidden>
-                  <MessageCircleIcon size={18} strokeWidth={2} />
+                  {n.type === 'comment_like' ? (
+                    <HeartIcon size={18} strokeWidth={2} />
+                  ) : (
+                    <MessageCircleIcon size={18} strokeWidth={2} />
+                  )}
                 </span>
                 <span className="user-notification-list__row-main">
-                  <span className="user-notification-list__row-title">{rowTitle}</span>
+                  <span className="user-notification-list__row-title">
+                    {notificationRowTitle(n, copy)}
+                  </span>
                   <span className="user-notification-list__row-body">
-                    {formatAlbumNotificationBody(n, bodyTemplate)}
+                    {notificationRowBody(n, copy)}
                   </span>
                 </span>
                 <span className="user-notification-list__row-meta">

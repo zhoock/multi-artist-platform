@@ -3,7 +3,7 @@ import { getToken } from './auth';
 export const USER_NOTIFICATIONS_API_DROPDOWN_LIMIT = 10;
 export const USER_NOTIFICATIONS_API_PAGE_LIMIT = 25;
 
-export type UserNotificationType = 'comment';
+export type UserNotificationType = 'comment' | 'comment_like';
 
 export type UserNotificationItem = {
   id: string;

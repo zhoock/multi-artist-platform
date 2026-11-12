@@ -101,6 +101,63 @@ function makeNestedReply(id: string, body: string): AlbumCommentDto {
   });
 }
 
+describe('AlbumCommentRow — like control', () => {
+  test('hides Like for own comment when viewer is author', () => {
+    render(
+      <MemoryRouter>
+        <AlbumCommentRow
+          comment={makeComment({ author: { ...makeComment().author, userId: 'viewer-1' } })}
+          lang="en"
+          labels={rowLabels}
+          viewerUserId="viewer-1"
+          artistUserId="album-owner"
+          replyingToId={null}
+          onRequestReply={() => undefined}
+          onCancelReply={() => undefined}
+          onSubmitReply={noopAsync}
+          onToggleLike={() => undefined}
+          onEdit={noopAsync}
+          onDelete={noopAsync}
+          onReport={noopAsync}
+          viewerAvatarPath={null}
+          viewerDisplayName="Viewer"
+          requireAuthForAction={() => true}
+        />
+      </MemoryRouter>
+    );
+
+    expect(screen.queryByRole('button', { name: 'Like' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Reply' })).toBeInTheDocument();
+  });
+
+  test('shows Like for another user comment', () => {
+    render(
+      <MemoryRouter>
+        <AlbumCommentRow
+          comment={makeComment()}
+          lang="en"
+          labels={rowLabels}
+          viewerUserId="another-user"
+          artistUserId="album-owner"
+          replyingToId={null}
+          onRequestReply={() => undefined}
+          onCancelReply={() => undefined}
+          onSubmitReply={noopAsync}
+          onToggleLike={() => undefined}
+          onEdit={noopAsync}
+          onDelete={noopAsync}
+          onReport={noopAsync}
+          viewerAvatarPath={null}
+          viewerDisplayName="Viewer"
+          requireAuthForAction={() => true}
+        />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByRole('button', { name: 'Like' })).toBeInTheDocument();
+  });
+});
+
 describe('AlbumCommentRow — artist author links', () => {
   test('artist root comment: avatar and name link to public artist profile', () => {
     renderRow(makeComment(), {});

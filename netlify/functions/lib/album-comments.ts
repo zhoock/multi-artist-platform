@@ -497,9 +497,11 @@ export async function toggleAlbumCommentLike(input: {
   commentId: string;
   userId: string;
   viewerUserId: string;
-}): Promise<{ liked: boolean; likeCount: number } | { error: string; status: number }> {
+}): Promise<
+  { liked: boolean; likeCount: number; createdLike: boolean } | { error: string; status: number }
+> {
   const existing = await getCommentById(input.commentId);
-  if (!existing) {
+  if (!existing || existing.deleted_at) {
     return { error: 'Comment not found', status: 404 };
   }
 
@@ -513,6 +515,8 @@ export async function toggleAlbumCommentLike(input: {
   );
   const currentlyLiked = likedResult.rows[0]?.exists === true;
 
+  let createdLike = false;
+
   if (currentlyLiked) {
     await query(
       `DELETE FROM album_comment_likes WHERE comment_id = $1::uuid AND user_id = $2::uuid`,
@@ -520,12 +524,17 @@ export async function toggleAlbumCommentLike(input: {
       0
     );
   } else {
-    await query(
+    if (existing.user_id === input.userId) {
+      return { error: 'Cannot like your own comment', status: 400 };
+    }
+    const insert = await query<{ comment_id: string }>(
       `INSERT INTO album_comment_likes (comment_id, user_id) VALUES ($1::uuid, $2::uuid)
-       ON CONFLICT DO NOTHING`,
+       ON CONFLICT DO NOTHING
+       RETURNING comment_id::text AS comment_id`,
       [input.commentId, input.userId],
       0
     );
+    createdLike = insert.rows.length > 0;
   }
 
   const countResult = await query<{ cnt: string }>(
@@ -535,7 +544,7 @@ export async function toggleAlbumCommentLike(input: {
   );
   const likeCount = Number.parseInt(countResult.rows[0]?.cnt ?? '0', 10) || 0;
 
-  return { liked: !currentlyLiked, likeCount };
+  return { liked: !currentlyLiked, likeCount, createdLike };
 }
 
 export async function reportAlbumComment(input: {

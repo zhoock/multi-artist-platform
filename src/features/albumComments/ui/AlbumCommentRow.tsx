@@ -129,6 +129,8 @@ export function AlbumCommentRow({
   const isReplyingHere = replyingToId === comment.id;
   const replyCount = comment.replies.length;
   const showRepliesToggle = !isReply && replyCount > 0 && onToggleRepliesThread != null;
+  const showLikeControl =
+    !isDeleted && !editing && (viewerUserId == null || comment.author.userId !== viewerUserId);
 
   const artistPagePath = useMemo(() => {
     if (!comment.author.isArtist) return null;
@@ -231,28 +233,30 @@ export function AlbumCommentRow({
 
           {!isDeleted && !editing ? (
             <div className="album-comments__actions">
-              <button
-                type="button"
-                className={clsx(
-                  'album-comments__like',
-                  comment.likedByViewer && 'album-comments__like--active'
-                )}
-                disabled={likePending}
-                onClick={() => {
-                  if (!requireAuthForAction()) return;
-                  onToggleLike(comment.id);
-                }}
-                aria-pressed={comment.likedByViewer}
-                aria-label={labels.like}
-              >
-                <HeartIcon
-                  className="album-comments__like-icon"
-                  size={21}
-                  strokeWidth={1.65}
-                  fill={comment.likedByViewer ? 'currentColor' : 'none'}
-                />
-                <span className="album-comments__like-count">{comment.likeCount}</span>
-              </button>
+              {showLikeControl ? (
+                <button
+                  type="button"
+                  className={clsx(
+                    'album-comments__like',
+                    comment.likedByViewer && 'album-comments__like--active'
+                  )}
+                  disabled={likePending}
+                  onClick={() => {
+                    if (!requireAuthForAction()) return;
+                    onToggleLike(comment.id);
+                  }}
+                  aria-pressed={comment.likedByViewer}
+                  aria-label={labels.like}
+                >
+                  <HeartIcon
+                    className="album-comments__like-icon"
+                    size={21}
+                    strokeWidth={1.65}
+                    fill={comment.likedByViewer ? 'currentColor' : 'none'}
+                  />
+                  <span className="album-comments__like-count">{comment.likeCount}</span>
+                </button>
+              ) : null}
               {!isReply ? (
                 <button
                   type="button"
