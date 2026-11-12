@@ -377,6 +377,10 @@ export interface IInterface {
     report: string;
     save: string;
     replyPlaceholder: string;
+    showRepliesOne: string;
+    showRepliesFew: string;
+    showRepliesMany: string;
+    hideReplies: string;
   };
   /** Публичная форма жалобы на нарушение авторских прав */
   copyrightReport?: {

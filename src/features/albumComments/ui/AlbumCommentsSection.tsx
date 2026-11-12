@@ -20,6 +20,7 @@ function albumCommentsTeaserFallbacks(lang: SupportedLang) {
 import { fetchAlbumCommentsSummary, type AlbumCommentsSummaryDto } from '@shared/api/albumComments';
 import { Share } from '@features/share';
 import '@features/share/ui/style.scss';
+import { pluralizeReplyCount } from '../lib/pluralizeReplyCount';
 import { AlbumCommentsTeaser } from './AlbumCommentsTeaser';
 import { AlbumCommentsModal, type AlbumCommentsModalLabels } from './AlbumCommentsModal';
 import './albumComments.scss';
@@ -76,9 +77,16 @@ export function AlbumCommentsSection({ albumId, artistSlug, shareUrl }: AlbumCom
         save: copy?.save ?? 'Save',
         replyPlaceholder: (name: string) =>
           (copy?.replyPlaceholder ?? 'Reply to {name}…').replace('{name}', name),
+        showReplies: (count: number) =>
+          pluralizeReplyCount(count, lang, {
+            one: copy?.showRepliesOne ?? 'Show {count} reply',
+            few: copy?.showRepliesFew ?? 'Show {count} replies',
+            many: copy?.showRepliesMany ?? 'Show {count} replies',
+          }),
+        hideReplies: copy?.hideReplies ?? 'Hide replies',
       },
     }),
-    [copy]
+    [copy, lang]
   );
 
   const loadSummary = useCallback(async () => {

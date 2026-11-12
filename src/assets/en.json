@@ -379,7 +379,11 @@
       "delete": "Delete",
       "report": "Report",
       "save": "Save",
-      "replyPlaceholder": "Reply to {name}…"
+      "replyPlaceholder": "Reply to {name}…",
+      "showRepliesOne": "Show {count} reply",
+      "showRepliesFew": "Show {count} replies",
+      "showRepliesMany": "Show {count} replies",
+      "hideReplies": "Hide replies"
     },
     "copyrightReport": {
       "pageTitle": "Report copyright infringement",

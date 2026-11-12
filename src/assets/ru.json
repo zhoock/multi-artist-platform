@@ -379,7 +379,11 @@
       "delete": "Удалить",
       "report": "Пожаловаться",
       "save": "Сохранить",
-      "replyPlaceholder": "Ответить {name}…"
+      "replyPlaceholder": "Ответить {name}…",
+      "showRepliesOne": "Показать {count} ответ",
+      "showRepliesFew": "Показать {count} ответа",
+      "showRepliesMany": "Показать {count} ответов",
+      "hideReplies": "Скрыть ответы"
     },
     "copyrightReport": {
       "pageTitle": "Сообщить о нарушении авторских прав",

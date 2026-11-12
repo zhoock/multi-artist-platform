@@ -381,8 +381,9 @@
 
 .album-comments__actions {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 0;
+  gap: 0.35rem 1.625rem;
   margin-block-start: var(--ms-01);
 }
 
@@ -437,7 +438,6 @@
 
 .album-comments__reply {
   margin: 0;
-  margin-inline-start: 1.625rem;
   padding: 0;
   color: var(--time-color, #9b9b9a);
   font-size: 0.875rem;

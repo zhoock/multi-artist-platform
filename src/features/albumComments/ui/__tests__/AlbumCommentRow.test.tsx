@@ -1,4 +1,5 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { useState } from 'react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import type { AlbumCommentDto } from '@shared/api/albumComments';
 import { buildArtistPagePath } from '@shared/lib/seo/publicPagePaths';
@@ -17,6 +18,8 @@ const rowLabels: AlbumCommentRowLabels = {
   report: 'Report',
   save: 'Save',
   replyPlaceholder: (name) => `Reply to ${name}`,
+  showReplies: (count) => `Show ${count} replies`,
+  hideReplies: 'Hide replies',
 };
 
 function makeComment(overrides: Partial<AlbumCommentDto> = {}): AlbumCommentDto {
@@ -44,7 +47,15 @@ function makeComment(overrides: Partial<AlbumCommentDto> = {}): AlbumCommentDto 
 
 const noopAsync = async () => undefined;
 
-function renderRow(comment: AlbumCommentDto, isReply = false) {
+type RenderRowOptions = {
+  isReply?: boolean;
+  repliesThreadExpanded?: boolean;
+  onToggleRepliesThread?: () => void;
+  children?: React.ReactNode;
+};
+
+function renderRow(comment: AlbumCommentDto, options: RenderRowOptions = {}) {
+  const { isReply = false, repliesThreadExpanded, onToggleRepliesThread, children } = options;
   return render(
     <MemoryRouter>
       <AlbumCommentRow
@@ -65,14 +76,34 @@ function renderRow(comment: AlbumCommentDto, isReply = false) {
         viewerAvatarPath={null}
         viewerDisplayName="Viewer"
         requireAuthForAction={() => false}
-      />
+        repliesThreadExpanded={repliesThreadExpanded}
+        onToggleRepliesThread={onToggleRepliesThread}
+      >
+        {children}
+      </AlbumCommentRow>
     </MemoryRouter>
   );
 }
 
+function makeNestedReply(id: string, body: string): AlbumCommentDto {
+  return makeComment({
+    id,
+    parentId: 'c-1',
+    body,
+    author: {
+      userId: `u-${id}`,
+      displayName: `User ${id}`,
+      avatarPath: null,
+      isArtist: false,
+      publicSlug: null,
+    },
+    replies: [],
+  });
+}
+
 describe('AlbumCommentRow — artist author links', () => {
   test('artist root comment: avatar and name link to public artist profile', () => {
-    renderRow(makeComment());
+    renderRow(makeComment(), {});
 
     const expectedPath = buildArtistPagePath('en', 'beatles');
     const nameLink = document.querySelector('.album-comments__author-link');
@@ -114,7 +145,7 @@ describe('AlbumCommentRow — artist author links', () => {
           publicSlug: 'stones',
         },
       }),
-      true
+      { isReply: true }
     );
 
     const expectedPath = buildArtistPagePath('en', 'stones');
@@ -176,5 +207,172 @@ describe('AlbumCommentRow — inline edit', () => {
 
     expect(screen.getByRole('button', { name: 'Menu' })).toBeInTheDocument();
     expect(screen.getByText('Great album')).toBeInTheDocument();
+  });
+});
+
+describe('AlbumCommentRow — replies thread toggle', () => {
+  function ReplyHarness({
+    root,
+    initialExpanded = true,
+  }: {
+    root: AlbumCommentDto;
+    initialExpanded?: boolean;
+  }) {
+    const [expanded, setExpanded] = useState(initialExpanded);
+    return (
+      <MemoryRouter>
+        <AlbumCommentRow
+          comment={root}
+          lang="en"
+          labels={rowLabels}
+          viewerUserId={null}
+          artistUserId="album-owner"
+          replyingToId={null}
+          onRequestReply={() => undefined}
+          onCancelReply={() => undefined}
+          onSubmitReply={noopAsync}
+          onToggleLike={() => undefined}
+          onEdit={noopAsync}
+          onDelete={noopAsync}
+          onReport={noopAsync}
+          viewerAvatarPath={null}
+          viewerDisplayName="Viewer"
+          requireAuthForAction={() => false}
+          repliesThreadExpanded={expanded}
+          onToggleRepliesThread={() => setExpanded((v) => !v)}
+        >
+          {expanded
+            ? root.replies.map((reply) => (
+                <p key={reply.id} data-testid={`reply-${reply.id}`}>
+                  {reply.body}
+                </p>
+              ))
+            : null}
+        </AlbumCommentRow>
+      </MemoryRouter>
+    );
+  }
+
+  test('root comment without replies: no toggle control', () => {
+    renderRow(makeComment());
+    expect(screen.queryByRole('button', { name: /Show \d+ replies/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Hide replies' })).not.toBeInTheDocument();
+  });
+
+  test('root with replies: expanded by default and nested content visible', () => {
+    const root = makeComment({
+      replies: [makeNestedReply('r-1', 'First reply'), makeNestedReply('r-2', 'Second reply')],
+    });
+    render(<ReplyHarness root={root} />);
+
+    expect(screen.getByRole('button', { name: 'Hide replies' })).toHaveAttribute(
+      'aria-expanded',
+      'true'
+    );
+    expect(screen.getByTestId('reply-r-1')).toBeInTheDocument();
+    expect(screen.getByTestId('reply-r-2')).toBeInTheDocument();
+  });
+
+  test('Hide replies collapses nested content', () => {
+    const root = makeComment({
+      replies: [makeNestedReply('r-1', 'First reply'), makeNestedReply('r-2', 'Second reply')],
+    });
+    render(<ReplyHarness root={root} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Hide replies' }));
+
+    expect(screen.queryByTestId('reply-r-1')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Show 2 replies' })).toHaveAttribute(
+      'aria-expanded',
+      'false'
+    );
+  });
+
+  test('Show N replies expands again and shows Hide replies', () => {
+    const root = makeComment({
+      replies: [makeNestedReply('r-1', 'First reply')],
+    });
+    render(<ReplyHarness root={root} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Hide replies' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Show 1 replies' }));
+
+    expect(screen.getByTestId('reply-r-1')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Hide replies' })).toBeInTheDocument();
+  });
+
+  test('collapsed state is independent per root comment', () => {
+    const rootA = makeComment({
+      id: 'root-a',
+      body: 'Root A',
+      replies: [makeNestedReply('a-1', 'Reply A')],
+    });
+    const rootB = makeComment({
+      id: 'root-b',
+      body: 'Root B',
+      author: {
+        userId: 'u-b',
+        displayName: 'Root B author',
+        avatarPath: null,
+        isArtist: false,
+        publicSlug: null,
+      },
+      replies: [makeNestedReply('b-1', 'Reply B')],
+    });
+
+    function TwoRootsHarness() {
+      const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+      const toggle = (id: string) => {
+        setCollapsed((prev) => {
+          const next = new Set(prev);
+          if (next.has(id)) next.delete(id);
+          else next.add(id);
+          return next;
+        });
+      };
+      return (
+        <MemoryRouter>
+          {[rootA, rootB].map((root) => {
+            const expanded = !collapsed.has(root.id);
+            return (
+              <AlbumCommentRow
+                key={root.id}
+                comment={root}
+                lang="en"
+                labels={rowLabels}
+                viewerUserId={null}
+                artistUserId="album-owner"
+                replyingToId={null}
+                onRequestReply={() => undefined}
+                onCancelReply={() => undefined}
+                onSubmitReply={noopAsync}
+                onToggleLike={() => undefined}
+                onEdit={noopAsync}
+                onDelete={noopAsync}
+                onReport={noopAsync}
+                viewerAvatarPath={null}
+                viewerDisplayName="Viewer"
+                requireAuthForAction={() => false}
+                repliesThreadExpanded={expanded}
+                onToggleRepliesThread={() => toggle(root.id)}
+              >
+                {expanded ? <p data-testid={`nested-${root.id}`}>{root.replies[0]?.body}</p> : null}
+              </AlbumCommentRow>
+            );
+          })}
+        </MemoryRouter>
+      );
+    }
+
+    render(<TwoRootsHarness />);
+
+    const rows = screen.getAllByRole('article');
+    expect(rows).toHaveLength(2);
+    fireEvent.click(within(rows[0]).getByRole('button', { name: 'Hide replies' }));
+
+    expect(screen.queryByTestId('nested-root-a')).not.toBeInTheDocument();
+    expect(screen.getByTestId('nested-root-b')).toBeInTheDocument();
+    expect(within(rows[0]).getByRole('button', { name: 'Show 1 replies' })).toBeInTheDocument();
+    expect(within(rows[1]).getByRole('button', { name: 'Hide replies' })).toBeInTheDocument();
   });
 });

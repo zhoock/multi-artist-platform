@@ -24,6 +24,8 @@ export type AlbumCommentRowLabels = {
   report: string;
   save: string;
   replyPlaceholder: (name: string) => string;
+  showReplies: (count: number) => string;
+  hideReplies: string;
 };
 
 type AlbumCommentRowProps = {
@@ -47,6 +49,8 @@ type AlbumCommentRowProps = {
   viewerAvatarUrl?: string | null;
   viewerDisplayName: string;
   requireAuthForAction: () => boolean;
+  repliesThreadExpanded?: boolean;
+  onToggleRepliesThread?: () => void;
   children?: React.ReactNode;
 };
 
@@ -71,6 +75,8 @@ export function AlbumCommentRow({
   viewerAvatarUrl,
   viewerDisplayName,
   requireAuthForAction,
+  repliesThreadExpanded = true,
+  onToggleRepliesThread,
   children,
 }: AlbumCommentRowProps) {
   const isDeleted = Boolean(comment.deletedAt);
@@ -118,6 +124,8 @@ export function AlbumCommentRow({
   };
 
   const isReplyingHere = replyingToId === comment.id;
+  const replyCount = comment.replies.length;
+  const showRepliesToggle = !isReply && replyCount > 0 && onToggleRepliesThread != null;
 
   const artistPagePath = useMemo(() => {
     if (!comment.author.isArtist) return null;
@@ -250,6 +258,16 @@ export function AlbumCommentRow({
                   }}
                 >
                   {labels.reply}
+                </button>
+              ) : null}
+              {showRepliesToggle ? (
+                <button
+                  type="button"
+                  className="album-comments__text-action album-comments__text-action--accent album-comments__replies-toggle"
+                  aria-expanded={repliesThreadExpanded}
+                  onClick={onToggleRepliesThread}
+                >
+                  {repliesThreadExpanded ? labels.hideReplies : labels.showReplies(replyCount)}
                 </button>
               ) : null}
             </div>

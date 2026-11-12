@@ -88,6 +88,21 @@ export function AlbumCommentsModal({
   const [replySending, setReplySending] = useState(false);
   const [likePendingId, setLikePendingId] = useState<string | null>(null);
   const [resolvedArtistUserId, setResolvedArtistUserId] = useState<string | null>(artistUserId);
+  const [collapsedReplyRoots, setCollapsedReplyRoots] = useState<Set<string>>(() => new Set());
+
+  const isRepliesThreadExpanded = useCallback(
+    (rootId: string) => !collapsedReplyRoots.has(rootId),
+    [collapsedReplyRoots]
+  );
+
+  const toggleRepliesThread = useCallback((rootId: string) => {
+    setCollapsedReplyRoots((prev) => {
+      const next = new Set(prev);
+      if (next.has(rootId)) next.delete(rootId);
+      else next.add(rootId);
+      return next;
+    });
+  }, []);
 
   const totalCount = summary?.totalCount ?? 0;
 
@@ -126,6 +141,7 @@ export function AlbumCommentsModal({
 
   useEffect(() => {
     if (!isOpen) return;
+    setCollapsedReplyRoots(new Set());
     void loadPage(null, false);
   }, [isOpen, loadPage]);
 
@@ -316,32 +332,36 @@ export function AlbumCommentsModal({
                       viewerAvatarUrl={avatarSrc}
                       viewerDisplayName={viewerDisplayName}
                       requireAuthForAction={requireAuthForAction}
+                      repliesThreadExpanded={isRepliesThreadExpanded(root.id)}
+                      onToggleRepliesThread={() => toggleRepliesThread(root.id)}
                     >
-                      {root.replies.map((reply) => (
-                        <AlbumCommentRow
-                          key={reply.id}
-                          comment={reply}
-                          lang={lang}
-                          labels={labels.row}
-                          isReply
-                          viewerUserId={viewer?.id ?? null}
-                          artistUserId={artistId}
-                          replyingToId={replyingToId}
-                          onRequestReply={setReplyingToId}
-                          onCancelReply={() => setReplyingToId(null)}
-                          onSubmitReply={handleSubmitReply}
-                          onToggleLike={handleToggleLike}
-                          onEdit={handleEdit}
-                          onDelete={handleDelete}
-                          onReport={handleReport}
-                          replySending={replySending}
-                          likePending={likePendingId === reply.id}
-                          viewerAvatarPath={null}
-                          viewerAvatarUrl={avatarSrc}
-                          viewerDisplayName={viewerDisplayName}
-                          requireAuthForAction={requireAuthForAction}
-                        />
-                      ))}
+                      {isRepliesThreadExpanded(root.id)
+                        ? root.replies.map((reply) => (
+                            <AlbumCommentRow
+                              key={reply.id}
+                              comment={reply}
+                              lang={lang}
+                              labels={labels.row}
+                              isReply
+                              viewerUserId={viewer?.id ?? null}
+                              artistUserId={artistId}
+                              replyingToId={replyingToId}
+                              onRequestReply={setReplyingToId}
+                              onCancelReply={() => setReplyingToId(null)}
+                              onSubmitReply={handleSubmitReply}
+                              onToggleLike={handleToggleLike}
+                              onEdit={handleEdit}
+                              onDelete={handleDelete}
+                              onReport={handleReport}
+                              replySending={replySending}
+                              likePending={likePendingId === reply.id}
+                              viewerAvatarPath={null}
+                              viewerAvatarUrl={avatarSrc}
+                              viewerDisplayName={viewerDisplayName}
+                              requireAuthForAction={requireAuthForAction}
+                            />
+                          ))
+                        : null}
                     </AlbumCommentRow>
                   </section>
                 ))}
