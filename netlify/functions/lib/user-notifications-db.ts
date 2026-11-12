@@ -5,7 +5,7 @@
 import type { AlbumCommentContext } from './album-comments';
 import { query } from './db';
 
-export type UserNotificationType = 'comment' | 'comment_like';
+export type UserNotificationType = 'comment' | 'comment_like' | 'collection_add';
 
 export const USER_NOTIFICATIONS_DROPDOWN_LIMIT = 10;
 export const USER_NOTIFICATIONS_PAGE_LIMIT = 25;
@@ -117,6 +117,22 @@ export async function insertCommentLikeUserNotification(input: {
   );
 }
 
+/** Anonymous artist alert: listener added artist to active collection (no actor stored). */
+export async function insertCollectionAddUserNotification(input: {
+  artistUserId: string;
+}): Promise<void> {
+  if (!input.artistUserId?.trim()) return;
+
+  await query(
+    `INSERT INTO user_notifications (
+       recipient_user_id, type, comment_id, album_id, artist_slug, album_title, actor_user_id
+     )
+     VALUES ($1::uuid, 'collection_add', NULL, '', '', '', NULL)`,
+    [input.artistUserId],
+    0
+  );
+}
+
 export async function insertCommentUserNotification(input: {
   ctx: AlbumCommentContext;
   commentId: string;
@@ -152,24 +168,25 @@ export async function insertCommentUserNotification(input: {
 export interface UserNotificationRow {
   id: string;
   type: UserNotificationType;
-  comment_id: string;
+  comment_id: string | null;
   album_id: string;
   artist_slug: string;
   album_title: string;
-  actor_user_id: string;
+  actor_user_id: string | null;
   is_read: boolean;
   created_at: Date;
 }
 
 export function mapUserNotificationRow(r: UserNotificationRow) {
+  const anonymous = r.type === 'collection_add';
   return {
     id: r.id,
     type: r.type,
-    commentId: r.comment_id,
-    albumId: r.album_id,
-    artistSlug: r.artist_slug,
-    albumTitle: r.album_title,
-    actorUserId: r.actor_user_id,
+    commentId: r.comment_id ?? null,
+    albumId: anonymous ? null : r.album_id,
+    artistSlug: anonymous ? null : r.artist_slug,
+    albumTitle: anonymous ? null : r.album_title,
+    actorUserId: anonymous ? null : (r.actor_user_id ?? null),
     isRead: r.is_read,
     createdAt: r.created_at instanceof Date ? r.created_at.toISOString() : String(r.created_at),
   };

@@ -23,11 +23,17 @@ export function useNotificationNavigation(lang: RouteLang) {
           /* navigation still proceeds */
         }
       }
+      if (notification.type === 'collection_add') {
+        options?.beforeNavigate?.();
+        navigate('/dashboard/audience?focus=supporters');
+        return;
+      }
+
       const path = resolveAlbumCommentNotificationPath(lang, {
         kind: 'album',
-        albumId: notification.albumId,
-        artistSlug: notification.artistSlug,
-        commentId: notification.commentId,
+        albumId: notification.albumId ?? '',
+        artistSlug: notification.artistSlug ?? '',
+        commentId: notification.commentId ?? '',
       });
       options?.beforeNavigate?.();
       navigate(path);

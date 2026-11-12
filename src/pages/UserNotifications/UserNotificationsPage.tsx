@@ -38,6 +38,9 @@ export default function UserNotificationsPage() {
     commentBodyTemplate: copy?.toAlbum ?? 'On album «{{title}}»',
     likeTitle: copy?.newLikeTitle ?? 'New like',
     likeBodyTemplate: copy?.likedYourCommentOnAlbum ?? 'Someone liked your comment on «{{title}}»',
+    collectionAddTitle: copy?.newCollectionAddTitle ?? 'Collection',
+    collectionAddBody:
+      copy?.newCollectionAddBody ?? 'Another listener added you to their collection',
   };
   const emptyLabel = copy?.pageEmpty ?? 'No notifications';
   const loadMoreLabel = copy?.loadMore ?? 'Show more';

@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import clsx from 'clsx';
 import {
   Headphones as HeadphonesIcon,
@@ -371,6 +372,7 @@ export function AudienceTabContent({ active, ui }: AudienceTabContentProps) {
   const lang = uiLang as SupportedLang;
   const copy = ui?.dashboard?.audience;
   const intlLocale = toAudienceIntlLocale(lang);
+  const [searchParams, setSearchParams] = useSearchParams();
   const [period, setPeriod] = useState<AudiencePeriod>(DEFAULT_AUDIENCE_PERIOD);
   const [loadState, setLoadState] = useState<LoadState>({ kind: 'idle' });
   const [tracksModalOpen, setTracksModalOpen] = useState(false);
@@ -396,6 +398,16 @@ export function AudienceTabContent({ active, ui }: AudienceTabContentProps) {
       })),
     [ui]
   );
+
+  useEffect(() => {
+    if (!active || searchParams.get('focus') !== 'supporters') return;
+    document
+      .getElementById('audience-collection-supporters')
+      ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    const next = new URLSearchParams(searchParams);
+    next.delete('focus');
+    setSearchParams(next, { replace: true });
+  }, [active, searchParams, setSearchParams]);
 
   const loadStats = useCallback(
     async (options?: { silent?: boolean }) => {
@@ -638,7 +650,10 @@ export function AudienceTabContent({ active, ui }: AudienceTabContentProps) {
           </div>
         </DashboardCard>
 
-        <DashboardCard className="audience-tab__list-card audience-tab__list-card--supporters">
+        <DashboardCard
+          id="audience-collection-supporters"
+          className="audience-tab__list-card audience-tab__list-card--supporters"
+        >
           <div className="audience-tab__panel-header audience-tab__panel-header--split">
             <h3 className="audience-tab__panel-title">
               <span>{copy?.supportersTitle ?? 'Supporters'}</span>

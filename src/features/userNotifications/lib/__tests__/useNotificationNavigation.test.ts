@@ -42,4 +42,24 @@ describe('useNotificationNavigation', () => {
     expect(patchMock).toHaveBeenCalledWith('n1');
     expect(navigateMock).toHaveBeenCalledWith('/en/albums/23?artist=beatles&comment=c1');
   });
+
+  test('collection_add navigates to audience supporters section', async () => {
+    const { result } = renderHook(() => useNotificationNavigation('en'));
+
+    await act(async () => {
+      await result.current.openNotification({
+        id: 'n2',
+        type: 'collection_add',
+        commentId: null,
+        albumId: null,
+        artistSlug: null,
+        albumTitle: null,
+        actorUserId: null,
+        isRead: true,
+        createdAt: new Date().toISOString(),
+      });
+    });
+
+    expect(navigateMock).toHaveBeenCalledWith('/dashboard/audience?focus=supporters');
+  });
 });

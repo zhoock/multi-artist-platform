@@ -3,16 +3,16 @@ import { getToken } from './auth';
 export const USER_NOTIFICATIONS_API_DROPDOWN_LIMIT = 10;
 export const USER_NOTIFICATIONS_API_PAGE_LIMIT = 25;
 
-export type UserNotificationType = 'comment' | 'comment_like';
+export type UserNotificationType = 'comment' | 'comment_like' | 'collection_add';
 
 export type UserNotificationItem = {
   id: string;
   type: UserNotificationType;
-  commentId: string;
-  albumId: string;
-  artistSlug: string;
-  albumTitle: string;
-  actorUserId: string;
+  commentId: string | null;
+  albumId: string | null;
+  artistSlug: string | null;
+  albumTitle: string | null;
+  actorUserId: string | null;
   isRead: boolean;
   createdAt: string;
 };

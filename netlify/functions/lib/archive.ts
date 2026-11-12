@@ -325,6 +325,15 @@ export async function activateArtistsInArchive(
   return r.rowCount ?? 0;
 }
 
+/** True when the user already has this artist active in collection (idempotent add skips notify). */
+export async function isArtistActiveInUserArchive(
+  userId: string,
+  artistUserId: string
+): Promise<boolean> {
+  const row = await getArchiveRow(userId, artistUserId);
+  return row != null && row.is_active !== false;
+}
+
 async function getArchiveRow(userId: string, artistUserId: string): Promise<UserArchiveRow | null> {
   const r = await query<UserArchiveRow>(
     `SELECT id, user_id, artist_user_id, created_at, updated_at, is_active, locked_until

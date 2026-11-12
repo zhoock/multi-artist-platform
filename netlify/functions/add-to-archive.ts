@@ -9,7 +9,9 @@ import {
   ArchiveSlotsLimitError,
   ArchiveSubscriptionRequiredError,
   getArchiveStatusForArtist,
+  isArtistActiveInUserArchive,
 } from './lib/archive';
+import { insertCollectionAddUserNotification } from './lib/user-notifications-db';
 import {
   createErrorResponse,
   createOptionsResponse,
@@ -60,8 +62,17 @@ export const handler: Handler = async (event: HandlerEvent) => {
   }
 
   try {
+    const wasAlreadyActive = await isArtistActiveInUserArchive(userId, artistUserId);
     const entry = await addArtistToArchive(userId, artistUserId);
     const status = await getArchiveStatusForArtist(userId, artistUserId);
+
+    if (!wasAlreadyActive) {
+      try {
+        await insertCollectionAddUserNotification({ artistUserId });
+      } catch (notifyErr) {
+        console.error('add-to-archive: collection_add notification insert failed', notifyErr);
+      }
+    }
 
     return createSuccessResponse({
       entry: {

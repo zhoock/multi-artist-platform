@@ -3,8 +3,10 @@ import {
   USER_NOTIFICATIONS_PAGE_LIMIT,
   USER_NOTIFICATIONS_RETENTION_DAYS,
   clampUserNotificationsLimit,
+  insertCollectionAddUserNotification,
   insertCommentLikeUserNotification,
   listUserNotificationsPage,
+  mapUserNotificationRow,
   purgeUserNotificationsOlderThanDays,
   resolveCommentNotificationRecipient,
 } from '../user-notifications-db';
@@ -86,6 +88,41 @@ describe('user-notifications-db', () => {
         ['u1', USER_NOTIFICATIONS_PAGE_LIMIT + 1],
         0
       );
+    });
+  });
+
+  describe('insertCollectionAddUserNotification', () => {
+    beforeEach(() => {
+      mockQuery.mockReset();
+    });
+
+    test('inserts anonymous collection_add for artist recipient', async () => {
+      mockQuery.mockResolvedValueOnce({ rows: [] });
+      await insertCollectionAddUserNotification({ artistUserId: 'artist-1' });
+      expect(mockQuery).toHaveBeenCalledWith(
+        expect.stringContaining("'collection_add'"),
+        ['artist-1'],
+        0
+      );
+    });
+  });
+
+  describe('mapUserNotificationRow', () => {
+    test('collection_add hides listener and album fields', () => {
+      const dto = mapUserNotificationRow({
+        id: 'n1',
+        type: 'collection_add',
+        comment_id: null,
+        album_id: '',
+        artist_slug: '',
+        album_title: '',
+        actor_user_id: null,
+        is_read: false,
+        created_at: new Date('2026-01-01T12:00:00Z'),
+      });
+      expect(dto.actorUserId).toBeNull();
+      expect(dto.albumId).toBeNull();
+      expect(dto.type).toBe('collection_add');
     });
   });
 

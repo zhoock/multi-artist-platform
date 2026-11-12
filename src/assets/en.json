@@ -20,6 +20,8 @@
         "toAlbum": "On album «{{title}}»",
         "newLikeTitle": "New like",
         "likedYourCommentOnAlbum": "Someone liked your comment on «{{title}}»",
+        "newCollectionAddTitle": "Collection",
+        "newCollectionAddBody": "Another listener added you to their collection",
         "viewAll": "View all notifications →",
         "loadMore": "Show more",
         "loadError": "Failed to load notifications."

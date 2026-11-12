@@ -1,5 +1,9 @@
 import clsx from 'clsx';
-import { Heart as HeartIcon, MessageCircle as MessageCircleIcon } from 'lucide-react';
+import {
+  Heart as HeartIcon,
+  HeartHandshake as HeartHandshakeIcon,
+  MessageCircle as MessageCircleIcon,
+} from 'lucide-react';
 import { formatNotificationRelativeTime } from '@shared/lib/formatNotificationRelativeTime';
 import type { UserNotificationItem } from '@shared/lib/userNotificationsApi';
 import {
@@ -45,7 +49,9 @@ export function UserNotificationList({
                 onClick={() => onItemClick(n)}
               >
                 <span className="user-notification-list__row-icon" aria-hidden>
-                  {n.type === 'comment_like' ? (
+                  {n.type === 'collection_add' ? (
+                    <HeartHandshakeIcon size={18} strokeWidth={2} />
+                  ) : n.type === 'comment_like' ? (
                     <HeartIcon size={18} strokeWidth={2} />
                   ) : (
                     <MessageCircleIcon size={18} strokeWidth={2} />

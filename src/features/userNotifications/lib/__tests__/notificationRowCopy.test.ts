@@ -10,6 +10,8 @@ const copy: UserNotificationRowCopy = {
   commentBodyTemplate: 'On album «{{title}}»',
   likeTitle: 'New like',
   likeBodyTemplate: 'Someone liked your comment on «{{title}}»',
+  collectionAddTitle: 'Collection',
+  collectionAddBody: 'Another listener added you to their collection',
 };
 
 const base: UserNotificationItem = {
@@ -29,5 +31,19 @@ describe('notificationRowCopy', () => {
     const item = { ...base, type: 'comment_like' as const };
     expect(notificationRowTitle(item, copy)).toBe('New like');
     expect(notificationRowBody(item, copy)).toBe('Someone liked your comment on «Rubber Soul»');
+  });
+
+  test('collection_add uses collection strings', () => {
+    const item = {
+      ...base,
+      type: 'collection_add' as const,
+      commentId: null,
+      albumId: null,
+      artistSlug: null,
+      albumTitle: null,
+      actorUserId: null,
+    };
+    expect(notificationRowTitle(item, copy)).toBe('Collection');
+    expect(notificationRowBody(item, copy)).toBe('Another listener added you to their collection');
   });
 });
