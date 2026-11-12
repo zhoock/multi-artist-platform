@@ -20,6 +20,14 @@
     color: var(--links-header-color-hover, #ffffff);
   }
 
+  &[aria-expanded='true'] {
+    color: var(--links-header-color-active, var(--dark-greenish-yellow, #998238));
+
+    &:hover {
+      color: var(--links-header-color-active, var(--dark-greenish-yellow, #998238));
+    }
+  }
+
   &:focus-visible {
     outline: 2px solid var(--links-header-color, currentcolor);
     outline-offset: 2px;
