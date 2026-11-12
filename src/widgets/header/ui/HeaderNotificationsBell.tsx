@@ -18,6 +18,7 @@ import {
   useUserNotificationsLiveRefresh,
   type UserNotificationRowCopy,
 } from '@features/userNotifications';
+import { markUnreadListenerCollectionAddsAsRead } from '@features/userNotifications/lib/markUnreadListenerCollectionAddsAsRead';
 import './headerNotifications.scss';
 import '@features/userNotifications/ui/userNotificationList.scss';
 
@@ -51,24 +52,38 @@ function HeaderNotificationsBellComponent({
     [onOpenChange]
   );
 
-  const refresh = useCallback(async (options?: { silent?: boolean }) => {
-    if (!isAuthenticated()) return;
-    if (!options?.silent) setLoading(true);
-    try {
-      const data = await fetchUserNotifications({ limit: USER_NOTIFICATIONS_DROPDOWN_LIMIT });
-      setNotifications(data.notifications);
-      setUnreadCount(data.unreadCount);
-      setHasMoreNotifications(Boolean(data.nextCursor));
-    } catch {
-      if (!options?.silent) {
-        setNotifications([]);
-        setUnreadCount(0);
-        setHasMoreNotifications(false);
+  const refresh = useCallback(
+    async (options?: { silent?: boolean; autoMarkListenerCollectionAdds?: boolean }) => {
+      if (!isAuthenticated()) return;
+      if (!options?.silent) setLoading(true);
+      try {
+        const data = await fetchUserNotifications({ limit: USER_NOTIFICATIONS_DROPDOWN_LIMIT });
+        let notifications = data.notifications;
+        let unreadCount = data.unreadCount;
+
+        if (options?.autoMarkListenerCollectionAdds) {
+          const marked = await markUnreadListenerCollectionAddsAsRead(notifications);
+          notifications = marked.notifications;
+          if (marked.unreadCount !== null) {
+            unreadCount = marked.unreadCount;
+          }
+        }
+
+        setNotifications(notifications);
+        setUnreadCount(unreadCount);
+        setHasMoreNotifications(Boolean(data.nextCursor));
+      } catch {
+        if (!options?.silent) {
+          setNotifications([]);
+          setUnreadCount(0);
+          setHasMoreNotifications(false);
+        }
+      } finally {
+        if (!options?.silent) setLoading(false);
       }
-    } finally {
-      if (!options?.silent) setLoading(false);
-    }
-  }, []);
+    },
+    []
+  );
 
   useEffect(() => {
     if (!isAuthenticated()) return;
@@ -96,7 +111,7 @@ function HeaderNotificationsBellComponent({
 
   useEffect(() => {
     if (!open) return;
-    void refresh();
+    void refresh({ autoMarkListenerCollectionAdds: true });
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') updateOpen(false);
     };

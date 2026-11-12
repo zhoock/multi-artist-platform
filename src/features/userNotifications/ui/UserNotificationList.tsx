@@ -8,7 +8,10 @@ import {
 import { formatNotificationRelativeTime } from '@shared/lib/formatNotificationRelativeTime';
 import type { UserNotificationItem } from '@shared/lib/userNotificationsApi';
 import { AlbumCommentAvatar } from '@features/albumComments/ui/AlbumCommentAvatar';
-import { isCollectionAddPublicActor } from '../lib/collectionAddNotification';
+import {
+  isCollectionAddPublicActor,
+  isListenerCollectionAddNotification,
+} from '../lib/collectionAddNotification';
 import {
   notificationRowBody,
   notificationRowTitle,
@@ -43,57 +46,65 @@ export function UserNotificationList({
         <ul className="user-notification-list">
           {items.map((n) => {
             const collectionActor = isCollectionAddPublicActor(n);
+            const staticListenerCollectionAdd = isListenerCollectionAddNotification(n);
+            const rowClassName = clsx(
+              'user-notification-list__row',
+              n.isRead && 'user-notification-list__row--read',
+              staticListenerCollectionAdd && 'user-notification-list__row--static'
+            );
+            const rowContent = (
+              <>
+                <span
+                  className={clsx(
+                    'user-notification-list__row-icon',
+                    collectionActor && 'user-notification-list__row-icon--avatar'
+                  )}
+                  aria-hidden
+                >
+                  {collectionActor ? (
+                    <AlbumCommentAvatar
+                      avatarPath={n.actorAvatarPath}
+                      displayName={n.actorDisplayName ?? ''}
+                      className="user-notification-list__row-actor-avatar"
+                    />
+                  ) : n.type === 'collection_add' ? (
+                    <HeartHandshakeIcon size={18} strokeWidth={2} />
+                  ) : n.type === 'comment_like' ? (
+                    <HeartIcon size={18} strokeWidth={2} />
+                  ) : n.type === 'comment_reply' ? (
+                    <CornerUpLeftIcon size={18} strokeWidth={2} />
+                  ) : (
+                    <MessageCircleIcon size={18} strokeWidth={2} />
+                  )}
+                </span>
+                <span className="user-notification-list__row-main">
+                  <span className="user-notification-list__row-title">
+                    {notificationRowTitle(n, copy)}
+                  </span>
+                  <span className="user-notification-list__row-body">
+                    {notificationRowBody(n, copy)}
+                  </span>
+                </span>
+                <span className="user-notification-list__row-meta">
+                  <time dateTime={n.createdAt}>
+                    {formatNotificationRelativeTime(n.createdAt, lang)}
+                  </time>
+                  {!n.isRead ? (
+                    <span className="user-notification-list__row-dot" aria-hidden />
+                  ) : null}
+                </span>
+              </>
+            );
 
             return (
               <li key={n.id}>
-                <button
-                  type="button"
-                  className={clsx(
-                    'user-notification-list__row',
-                    n.isRead && 'user-notification-list__row--read'
-                  )}
-                  onClick={() => onItemClick(n)}
-                >
-                  <span
-                    className={clsx(
-                      'user-notification-list__row-icon',
-                      collectionActor && 'user-notification-list__row-icon--avatar'
-                    )}
-                    aria-hidden
-                  >
-                    {collectionActor ? (
-                      <AlbumCommentAvatar
-                        avatarPath={n.actorAvatarPath}
-                        displayName={n.actorDisplayName ?? ''}
-                        className="user-notification-list__row-actor-avatar"
-                      />
-                    ) : n.type === 'collection_add' ? (
-                      <HeartHandshakeIcon size={18} strokeWidth={2} />
-                    ) : n.type === 'comment_like' ? (
-                      <HeartIcon size={18} strokeWidth={2} />
-                    ) : n.type === 'comment_reply' ? (
-                      <CornerUpLeftIcon size={18} strokeWidth={2} />
-                    ) : (
-                      <MessageCircleIcon size={18} strokeWidth={2} />
-                    )}
-                  </span>
-                  <span className="user-notification-list__row-main">
-                    <span className="user-notification-list__row-title">
-                      {notificationRowTitle(n, copy)}
-                    </span>
-                    <span className="user-notification-list__row-body">
-                      {notificationRowBody(n, copy)}
-                    </span>
-                  </span>
-                  <span className="user-notification-list__row-meta">
-                    <time dateTime={n.createdAt}>
-                      {formatNotificationRelativeTime(n.createdAt, lang)}
-                    </time>
-                    {!n.isRead ? (
-                      <span className="user-notification-list__row-dot" aria-hidden />
-                    ) : null}
-                  </span>
-                </button>
+                {staticListenerCollectionAdd ? (
+                  <div className={rowClassName}>{rowContent}</div>
+                ) : (
+                  <button type="button" className={rowClassName} onClick={() => onItemClick(n)}>
+                    {rowContent}
+                  </button>
+                )}
               </li>
             );
           })}

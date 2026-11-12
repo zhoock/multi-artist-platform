@@ -1,7 +1,10 @@
 import { useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { resolveAlbumCommentNotificationPath } from '@features/albumComments';
-import { isCollectionAddPublicActor } from './collectionAddNotification';
+import {
+  isCollectionAddPublicActor,
+  isListenerCollectionAddNotification,
+} from './collectionAddNotification';
 import type { RouteLang } from '@shared/lib/i18n/routeLang';
 import { buildArtistPagePath } from '@shared/lib/seo/publicPagePaths';
 import {
@@ -17,6 +20,9 @@ export function useNotificationNavigation(lang: RouteLang) {
       notification: UserNotificationItem,
       options?: { onUnreadCount?: (count: number) => void; beforeNavigate?: () => void }
     ) => {
+      if (isListenerCollectionAddNotification(notification)) {
+        return;
+      }
       if (!notification.isRead) {
         try {
           const { unreadCount } = await patchUserNotificationRead(notification.id);
@@ -25,13 +31,9 @@ export function useNotificationNavigation(lang: RouteLang) {
           /* navigation still proceeds */
         }
       }
-      if (notification.type === 'collection_add') {
+      if (notification.type === 'collection_add' && isCollectionAddPublicActor(notification)) {
         options?.beforeNavigate?.();
-        if (isCollectionAddPublicActor(notification)) {
-          navigate(buildArtistPagePath(lang, notification.artistSlug!.trim()));
-        } else {
-          navigate('/dashboard/audience?focus=supporters');
-        }
+        navigate(buildArtistPagePath(lang, notification.artistSlug!.trim()));
         return;
       }
 

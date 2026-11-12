@@ -7,6 +7,10 @@ export function isCollectionAddPublicActor(notification: UserNotificationItem): 
   );
 }
 
+export function isListenerCollectionAddNotification(notification: UserNotificationItem): boolean {
+  return notification.type === 'collection_add' && !isCollectionAddPublicActor(notification);
+}
+
 export function formatCollectionAddNotificationBody(
   notification: UserNotificationItem,
   listenerBody: string,

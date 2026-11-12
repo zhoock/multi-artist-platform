@@ -170,6 +170,52 @@ describe('HeaderNotificationsBell', () => {
     expect(screen.queryByText('On album «Album 6»')).not.toBeInTheDocument();
   });
 
+  test('marks unread listener collection_add as read when dropdown opens', async () => {
+    fetchUserNotificationsMock.mockResolvedValue({
+      unreadCount: 2,
+      nextCursor: null,
+      notifications: [
+        {
+          id: 'n-collection-listener',
+          type: 'collection_add',
+          commentId: null,
+          albumId: null,
+          artistSlug: null,
+          albumTitle: null,
+          actorUserId: null,
+          isRead: false,
+          createdAt: new Date().toISOString(),
+        },
+        {
+          id: 'n-comment',
+          type: 'comment',
+          commentId: 'c1',
+          albumId: '23',
+          artistSlug: 'my-artist',
+          albumTitle: '23',
+          actorUserId: 'a1',
+          isRead: false,
+          createdAt: new Date().toISOString(),
+        },
+      ],
+    });
+    patchUserNotificationReadMock.mockResolvedValue({ unreadCount: 1 });
+
+    renderWithProviders(<HeaderNotificationsBell />, {
+      preloadedState: { lang: { current: 'en' } },
+    });
+
+    await openDropdown();
+
+    await waitFor(() => {
+      expect(patchUserNotificationReadMock).toHaveBeenCalledWith('n-collection-listener');
+      const rows = document.querySelectorAll('.user-notification-list__row');
+      expect(rows[0]).toHaveClass('user-notification-list__row--read');
+      expect(rows[1]).not.toHaveClass('user-notification-list__row--read');
+    });
+    expect(patchUserNotificationReadMock).toHaveBeenCalledTimes(1);
+  });
+
   test('shows bell dot when unread and navigates on row click', async () => {
     fetchUserNotificationsMock.mockResolvedValue({
       unreadCount: 1,

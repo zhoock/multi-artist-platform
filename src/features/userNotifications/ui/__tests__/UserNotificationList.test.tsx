@@ -201,7 +201,7 @@ describe('UserNotificationList collection_add avatar', () => {
     expect(screen.getByText('Another listener added you to their collection')).toBeInTheDocument();
   });
 
-  test('row click still works for collection_add', () => {
+  test('artist collection_add row click invokes onItemClick', () => {
     const onItemClick = jest.fn();
     const item = { ...collectionAddBase, actorAvatarPath: null };
 
@@ -211,5 +211,22 @@ describe('UserNotificationList collection_add avatar', () => {
 
     fireEvent.click(screen.getByRole('button'));
     expect(onItemClick).toHaveBeenCalledWith(item);
+  });
+
+  test('listener collection_add row is not clickable', () => {
+    const onItemClick = jest.fn();
+    const item = {
+      ...collectionAddBase,
+      artistSlug: null,
+      actorDisplayName: null,
+      actorAvatarPath: null,
+    };
+
+    render(
+      <UserNotificationList items={[item]} lang="en" copy={rowCopy} onItemClick={onItemClick} />
+    );
+
+    expect(screen.queryByRole('button')).toBeNull();
+    expect(document.querySelector('.user-notification-list__row--static')).toBeInTheDocument();
   });
 });

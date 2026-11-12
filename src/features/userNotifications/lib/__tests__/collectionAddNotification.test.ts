@@ -1,6 +1,7 @@
 import {
   formatCollectionAddNotificationBody,
   isCollectionAddPublicActor,
+  isListenerCollectionAddNotification,
 } from '../collectionAddNotification';
 import type { UserNotificationItem } from '@shared/lib/userNotificationsApi';
 
@@ -19,6 +20,7 @@ const base: UserNotificationItem = {
 describe('collectionAddNotification', () => {
   test('isCollectionAddPublicActor is false for anonymous listener add', () => {
     expect(isCollectionAddPublicActor(base)).toBe(false);
+    expect(isListenerCollectionAddNotification(base)).toBe(true);
   });
 
   test('isCollectionAddPublicActor is true when slug and display name are present', () => {

@@ -43,7 +43,7 @@ describe('useNotificationNavigation', () => {
     expect(navigateMock).toHaveBeenCalledWith('/en/albums/23?artist=beatles&comment=c1');
   });
 
-  test('collection_add from listener navigates to audience supporters section', async () => {
+  test('collection_add from listener does not navigate or mark read', async () => {
     const { result } = renderHook(() => useNotificationNavigation('en'));
 
     await act(async () => {
@@ -55,12 +55,13 @@ describe('useNotificationNavigation', () => {
         artistSlug: null,
         albumTitle: null,
         actorUserId: null,
-        isRead: true,
+        isRead: false,
         createdAt: new Date().toISOString(),
       });
     });
 
-    expect(navigateMock).toHaveBeenCalledWith('/dashboard/audience?focus=supporters');
+    expect(patchMock).not.toHaveBeenCalled();
+    expect(navigateMock).not.toHaveBeenCalled();
   });
 
   test('collection_add from artist navigates to public artist page', async () => {
