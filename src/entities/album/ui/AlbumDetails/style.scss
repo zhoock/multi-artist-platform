@@ -36,12 +36,8 @@
   }
 
   &__copyright {
-    text-align: right;
+    margin-block-start: var(--ms-01);
     padding-block-end: var(--ms-2);
-
-    &--after-metadata {
-      margin-block-start: var(--ms-1);
-    }
   }
 
   &__copyright-link {

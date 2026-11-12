@@ -56,7 +56,10 @@ export default function AlbumDetails({ album, copyrightReport }: AlbumDetailsPro
             <div className="item">
               <div className="album-details__music">
                 {music && <h2>{music}</h2>}
-                <AlbumDetailsMusic album={{ ...album, details: visibleMusicDetails }} />
+                <AlbumDetailsMusic
+                  album={{ ...album, details: visibleMusicDetails }}
+                  copyrightReport={copyrightReport}
+                />
               </div>
             </div>
           )}
@@ -76,17 +79,17 @@ export default function AlbumDetails({ album, copyrightReport }: AlbumDetailsPro
           </div>
         </div>
       )}
-      {copyrightReport && (
+      {copyrightReport && !hasMusicMetadata ? (
         <div className="wrapper album__wrapper">
-          <div
-            className={`item album-details__copyright${hasMetadataColumns ? ' album-details__copyright--after-metadata' : ''}`}
-          >
-            <Link className="album-details__copyright-link" to={copyrightReport.to}>
-              {copyrightReport.label}
-            </Link>
+          <div className="item">
+            <div className="album-details__copyright">
+              <Link className="album-details__copyright-link" to={copyrightReport.to}>
+                {copyrightReport.label}
+              </Link>
+            </div>
           </div>
         </div>
-      )}
+      ) : null}
     </section>
   );
 }

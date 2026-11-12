@@ -1,13 +1,22 @@
+import { Fragment } from 'react';
+import { Link } from 'react-router-dom';
 import { useLang } from '@app/providers/lang';
 import { formatDateToDisplay } from '@pages/UserDashboard/components/modals/album/EditAlbumModal.utils';
 import type { detailsProps } from '@models';
+import { classifyAlbumDetailSemanticKind } from '../../lib/albumDetailSemanticKind';
 import { filterAlbumDetailContentForPublicDisplay } from '../../lib/albumDetailPublicVisibility';
 import type { AlbumDetails } from '../../model/albumDetails';
+import type { AlbumCopyrightReportLink } from './AlbumDetails';
 
 /**
  * Компонент отображает блок с участниками и местами записи альбома.
  */
-export default function AlbumDetailsMusic({ album }: { album: AlbumDetails }) {
+type AlbumDetailsMusicProps = {
+  album: AlbumDetails;
+  copyrightReport?: AlbumCopyrightReportLink;
+};
+
+export default function AlbumDetailsMusic({ album, copyrightReport }: AlbumDetailsMusicProps) {
   const { lang } = useLang() as { lang: 'en' | 'ru' };
 
   function Block({ title, content }: detailsProps) {
@@ -241,7 +250,37 @@ export default function AlbumDetailsMusic({ album }: { album: AlbumDetails }) {
     );
   }
 
-  return Array.isArray(album?.details)
-    ? album.details.map((d, index) => <Block {...d} key={`album-detail-${d.id}-${index}`} />)
-    : null;
+  if (!Array.isArray(album?.details)) return null;
+
+  let copyrightPlaced = false;
+
+  const copyrightLink = copyrightReport ? (
+    <div className="album-details__copyright">
+      <Link className="album-details__copyright-link" to={copyrightReport.to}>
+        {copyrightReport.label}
+      </Link>
+    </div>
+  ) : null;
+
+  const blocks = album.details.map((d, index) => {
+    const isProducing =
+      classifyAlbumDetailSemanticKind(d.title) === 'producing' &&
+      filterAlbumDetailContentForPublicDisplay(d.content).length > 0;
+    const showCopyrightHere = Boolean(copyrightReport && isProducing && !copyrightPlaced);
+    if (showCopyrightHere) copyrightPlaced = true;
+
+    return (
+      <Fragment key={`album-detail-${d.id}-${index}`}>
+        <Block {...d} />
+        {showCopyrightHere ? copyrightLink : null}
+      </Fragment>
+    );
+  });
+
+  return (
+    <>
+      {blocks}
+      {copyrightReport && !copyrightPlaced ? copyrightLink : null}
+    </>
+  );
 }
