@@ -275,6 +275,7 @@ export function UniverseFloatingSearch({
           <div
             id={`${listId}-panel`}
             className={[
+              'scene-chrome-menu',
               'universe-search__dropdown',
               'universe-search__dropdown--open',
               showNoResults ? 'universe-search__dropdown--empty' : '',
@@ -296,8 +297,9 @@ export function UniverseFloatingSearch({
                       role="option"
                       aria-selected={index === activeIndex}
                       className={[
+                        'scene-chrome-menu__item',
                         'universe-search__option',
-                        index === activeIndex ? 'universe-search__option--active' : '',
+                        index === activeIndex ? 'scene-chrome-menu__item--active' : '',
                       ]
                         .filter(Boolean)
                         .join(' ')}

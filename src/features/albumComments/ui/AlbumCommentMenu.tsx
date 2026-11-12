@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import clsx from 'clsx';
 import { MoreHorizontal as MoreHorizontalIcon } from 'lucide-react';
 
 export type AlbumCommentMenuItem = {
@@ -48,11 +49,10 @@ export function AlbumCommentMenu({ items, onSelect, menuLabel }: AlbumCommentMen
               key={item.id}
               type="button"
               role="menuitem"
-              className={
-                item.destructive
-                  ? 'album-comments__menu-item album-comments__menu-item--destructive'
-                  : 'album-comments__menu-item'
-              }
+              className={clsx(
+                'album-comments__menu-item',
+                item.destructive && 'album-comments__menu-item--destructive'
+              )}
               onClick={() => {
                 setOpen(false);
                 onSelect(item.id);

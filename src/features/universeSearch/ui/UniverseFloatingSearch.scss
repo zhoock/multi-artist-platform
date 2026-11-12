@@ -1,5 +1,6 @@
 @use '../../../scss/abstracts/mixins' as *;
 @use '../../../shared/ui/emptyState/style';
+@use '../../../shared/ui/sceneChromeMenu/sceneChromeMenu';
 
 .universe-search {
   position: absolute;
@@ -139,16 +140,6 @@
   &__dropdown {
     position: absolute;
     z-index: 30;
-    display: flex;
-    flex-direction: column;
-    gap: var(--ms-02);
-    margin: 0;
-    padding: var(--ms-01);
-    background: var(--scene-chrome-bg, rgb(var(--charcoal-rgb) / 88%));
-    border: var(--scene-chrome-border-width, 1px) solid
-      var(--scene-chrome-border-color, rgb(var(--dark-greenish-yellow-rgb) / 42%));
-    border-radius: var(--ms-0);
-    box-shadow: 0 8px 32px rgb(0 0 0 / 45%);
     transition:
       opacity 200ms ease,
       transform 200ms ease;
@@ -157,8 +148,6 @@
     inset-inline: 0;
     max-block-size: min(calc(var(--ms-0) * 16), 42dvb);
     overflow: hidden auto;
-    list-style: none;
-    backdrop-filter: var(--scene-chrome-backdrop, blur(16px) saturate(130%));
     opacity: 0;
     pointer-events: none;
 
@@ -191,31 +180,6 @@
 
     .empty-state__description {
       color: rgb(var(--white-rgb) / 55%);
-    }
-  }
-
-  &__option {
-    display: flex;
-    gap: var(--ms-01);
-    align-items: center;
-    margin: 0;
-    padding: var(--ms-01) var(--ms-0);
-    border-radius: var(--ms-02);
-    cursor: pointer;
-    transition:
-      color 0.2s ease,
-      background-color 0.2s ease;
-
-    &:hover {
-      background: rgb(var(--white-rgb) / 6%);
-    }
-
-    &--active {
-      background: rgb(var(--white-rgb) / 10%);
-
-      &:hover {
-        background: rgb(var(--white-rgb) / 10%);
-      }
     }
   }
 

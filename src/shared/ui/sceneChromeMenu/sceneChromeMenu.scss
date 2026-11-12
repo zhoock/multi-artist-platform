@@ -1,0 +1,54 @@
+// Shared scene-chrome dropdown shell (universe search results, comment action menu, …).
+
+.scene-chrome-menu {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ms-02);
+  margin: 0;
+  padding: var(--ms-01);
+  list-style: none;
+  background: var(--scene-chrome-bg, rgb(var(--charcoal-rgb) / 88%));
+  border: var(--scene-chrome-border-width, 1px) solid
+    var(--scene-chrome-border-color, rgb(var(--dark-greenish-yellow-rgb) / 42%));
+  border-radius: var(--ms-0);
+  box-shadow: 0 8px 32px rgb(0 0 0 / 45%);
+  backdrop-filter: var(--scene-chrome-backdrop, blur(16px) saturate(130%));
+
+  &__item {
+    display: flex;
+    width: 100%;
+    margin: 0;
+    padding: var(--ms-01) var(--ms-0);
+    color: var(--link-color-hover, var(--white, #ffffff));
+    font: inherit;
+    text-align: start;
+    background: transparent;
+    border: none;
+    border-radius: var(--ms-02);
+    transition:
+      color 0.2s ease,
+      background-color 0.2s ease;
+    align-items: center;
+    gap: var(--ms-01);
+    cursor: pointer;
+    appearance: none;
+    white-space: nowrap;
+
+    &:hover {
+      background: rgb(var(--white-rgb) / 6%);
+    }
+
+    &--destructive {
+      color: var(--soft-red, #d17a6d);
+    }
+
+    &--active {
+      background: rgb(var(--white-rgb) / 10%);
+
+      &:hover {
+        background: rgb(var(--white-rgb) / 10%);
+      }
+    }
+  }
+}

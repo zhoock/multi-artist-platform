@@ -471,12 +471,26 @@
 
 .album-comments__menu {
   position: relative;
+  flex: 0 0 auto;
+  flex-shrink: 0;
 }
 
 .album-comments__menu-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  inline-size: 1.75rem;
+  block-size: 1.75rem;
+  min-inline-size: 1.75rem;
+  min-block-size: 1.75rem;
+  aspect-ratio: 1 / 1;
+  padding: 0;
   color: var(--time-color, #9b9b9a);
 
-  @include button-variant($margin: 0, $padding: 0.15rem);
+  @include button-variant($margin: 0, $padding: 0, $border-radius: 50%);
 }
 
 .album-comments__menu-panel {
@@ -484,31 +498,43 @@
   inset-inline-end: 0;
   inset-block-start: 100%;
   z-index: 2;
-  min-inline-size: 9rem;
+  display: inline-grid;
+  grid-auto-flow: row;
+  justify-items: stretch;
+  box-sizing: border-box;
+  inline-size: max-content;
+  width: max-content;
+  max-inline-size: max-content;
   padding: 0.25rem;
   background: var(--graphite-green, #2a2926);
   border: 1px solid var(--hr-color, #3d3c3a);
   border-radius: var(--ms-01);
   box-shadow: 0 8px 24px rgb(0 0 0 / 35%);
-}
 
-.album-comments__menu-item {
-  display: block;
-  padding: 0.45rem 0.6rem;
-  color: var(--link-color-hover, #ffffff);
-  text-align: start;
-  background: transparent;
-  border: 0;
-  border-radius: calc(var(--ms-01) * 0.5);
-  inline-size: 100%;
-  cursor: pointer;
+  .album-comments__menu-item {
+    display: block;
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0.45rem;
+    color: var(--link-color-hover, #ffffff);
+    font-size: var(--dashboard-font-size);
+    font-weight: inherit;
+    line-height: 1.2;
+    text-align: start;
+    white-space: nowrap;
+    background: transparent;
+    border: 0;
+    border-radius: calc(var(--ms-01) * 0.5);
+    cursor: pointer;
+    appearance: none;
 
-  &--destructive {
-    color: var(--soft-red, #d17a6d);
-  }
+    &--destructive {
+      color: var(--soft-red, #d17a6d);
+    }
 
-  &:hover {
-    background: rgb(255 255 255 / 6%);
+    &:hover {
+      background: rgb(255 255 255 / 6%);
+    }
   }
 }
 
