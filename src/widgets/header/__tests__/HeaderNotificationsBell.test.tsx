@@ -23,6 +23,14 @@ jest.mock('@shared/lib/userNotificationsApi', () => ({
   patchUserNotificationRead: (id: string) => patchUserNotificationReadMock(id),
 }));
 
+const useUserNotificationsLiveRefreshMock = jest.fn();
+
+jest.mock('@features/userNotifications/lib/useUserNotificationsLiveRefresh', () => ({
+  useUserNotificationsLiveRefresh: (opts: unknown) => useUserNotificationsLiveRefreshMock(opts),
+  USER_NOTIFICATIONS_LIVE_POLL_MS: 4_000,
+  USER_NOTIFICATIONS_UNREAD_POLL_MS: 20_000,
+}));
+
 jest.mock('react-router-dom', () => {
   const actual = jest.requireActual('react-router-dom') as object;
   return {
@@ -59,12 +67,37 @@ async function openDropdown() {
 describe('HeaderNotificationsBell', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    useUserNotificationsLiveRefreshMock.mockClear();
     fetchUserNotificationsMock.mockResolvedValue({
       unreadCount: 0,
       nextCursor: null,
       notifications: [],
     });
     patchUserNotificationReadMock.mockResolvedValue({ unreadCount: 0 });
+  });
+
+  test('enables live refresh with faster poll while dropdown is open', async () => {
+    renderWithProviders(<HeaderNotificationsBell />, {
+      preloadedState: { lang: { current: 'en' } },
+    });
+
+    await waitFor(() => {
+      expect(useUserNotificationsLiveRefreshMock).toHaveBeenCalled();
+    });
+
+    const closedArgs = useUserNotificationsLiveRefreshMock.mock.calls.at(-1)?.[0] as {
+      enabled: boolean;
+      pollIntervalMs: number;
+    };
+    expect(closedArgs.enabled).toBe(true);
+    expect(closedArgs.pollIntervalMs).toBe(20_000);
+
+    await openDropdown();
+
+    const openArgs = useUserNotificationsLiveRefreshMock.mock.calls.at(-1)?.[0] as {
+      pollIntervalMs: number;
+    };
+    expect(openArgs.pollIntervalMs).toBe(4_000);
   });
 
   test('fetches at most 5 notifications for dropdown', async () => {

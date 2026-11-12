@@ -11,6 +11,7 @@ import {
 } from '@shared/lib/userNotificationsApi';
 import {
   USER_NOTIFICATIONS_PAGE_LIMIT,
+  useUserNotificationsLiveRefresh,
   UserNotificationList,
   useNotificationNavigation,
   type UserNotificationRowCopy,
@@ -45,26 +46,32 @@ export default function UserNotificationsPage() {
   const emptyLabel = copy?.pageEmpty ?? 'No notifications';
   const loadMoreLabel = copy?.loadMore ?? 'Show more';
 
-  const loadPage = useCallback(async (cursor?: string | null, append = false) => {
-    if (!isAuthenticated()) return;
-    if (!append) setLoading(true);
-    else setLoadingMore(true);
-    setError(false);
-    try {
-      const data = await fetchUserNotifications({
-        limit: USER_NOTIFICATIONS_PAGE_LIMIT,
-        cursor: cursor ?? undefined,
-      });
-      setItems((prev) => (append ? [...prev, ...data.notifications] : data.notifications));
-      setNextCursor(data.nextCursor);
-    } catch {
-      setError(true);
-      if (!append) setItems([]);
-    } finally {
-      setLoading(false);
-      setLoadingMore(false);
-    }
-  }, []);
+  const loadPage = useCallback(
+    async (cursor?: string | null, append = false, options?: { silent?: boolean }) => {
+      if (!isAuthenticated()) return;
+      const silent = options?.silent === true;
+      if (!append && !silent) setLoading(true);
+      else if (append) setLoadingMore(true);
+      if (!silent) setError(false);
+      try {
+        const data = await fetchUserNotifications({
+          limit: USER_NOTIFICATIONS_PAGE_LIMIT,
+          cursor: cursor ?? undefined,
+        });
+        setItems((prev) => (append ? [...prev, ...data.notifications] : data.notifications));
+        setNextCursor(data.nextCursor);
+      } catch {
+        if (!silent) {
+          setError(true);
+          if (!append) setItems([]);
+        }
+      } finally {
+        if (!append && !silent) setLoading(false);
+        else if (append) setLoadingMore(false);
+      }
+    },
+    []
+  );
 
   useEffect(() => {
     if (!isAuthenticated()) {
@@ -74,6 +81,11 @@ export default function UserNotificationsPage() {
     }
     void loadPage(null, false);
   }, [lang, loadPage, navigate]);
+
+  useUserNotificationsLiveRefresh({
+    enabled: isAuthenticated(),
+    onRefresh: () => loadPage(null, false, { silent: true }),
+  });
 
   const handleItemClick = (n: UserNotificationItem) => {
     void openNotification(n, {

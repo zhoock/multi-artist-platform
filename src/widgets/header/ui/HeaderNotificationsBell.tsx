@@ -11,8 +11,11 @@ import {
 } from '@shared/lib/userNotificationsApi';
 import {
   USER_NOTIFICATIONS_DROPDOWN_LIMIT,
+  USER_NOTIFICATIONS_LIVE_POLL_MS,
+  USER_NOTIFICATIONS_UNREAD_POLL_MS,
   UserNotificationList,
   useNotificationNavigation,
+  useUserNotificationsLiveRefresh,
   type UserNotificationRowCopy,
 } from '@features/userNotifications';
 import './headerNotifications.scss';
@@ -48,20 +51,22 @@ function HeaderNotificationsBellComponent({
     [onOpenChange]
   );
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (options?: { silent?: boolean }) => {
     if (!isAuthenticated()) return;
-    setLoading(true);
+    if (!options?.silent) setLoading(true);
     try {
       const data = await fetchUserNotifications({ limit: USER_NOTIFICATIONS_DROPDOWN_LIMIT });
       setNotifications(data.notifications);
       setUnreadCount(data.unreadCount);
       setHasMoreNotifications(Boolean(data.nextCursor));
     } catch {
-      setNotifications([]);
-      setUnreadCount(0);
-      setHasMoreNotifications(false);
+      if (!options?.silent) {
+        setNotifications([]);
+        setUnreadCount(0);
+        setHasMoreNotifications(false);
+      }
     } finally {
-      setLoading(false);
+      if (!options?.silent) setLoading(false);
     }
   }, []);
 
@@ -69,6 +74,12 @@ function HeaderNotificationsBellComponent({
     if (!isAuthenticated()) return;
     void refresh();
   }, [refresh]);
+
+  useUserNotificationsLiveRefresh({
+    enabled: isAuthenticated(),
+    pollIntervalMs: open ? USER_NOTIFICATIONS_LIVE_POLL_MS : USER_NOTIFICATIONS_UNREAD_POLL_MS,
+    onRefresh: () => refresh({ silent: true }),
+  });
 
   useEffect(() => {
     if (closeWhenSiblingMenuOpen) updateOpen(false);
