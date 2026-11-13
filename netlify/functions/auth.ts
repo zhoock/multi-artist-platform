@@ -69,6 +69,7 @@ import {
 import { validatePassword } from './lib/password-policy';
 import { normalizeAccountType, type AccountType } from './lib/account-type';
 import { jwtRoleFromDbUser } from './lib/platform-admin';
+import { CURRENT_USER_AGREEMENT_VERSION, parseUserAgreementAccepted } from './lib/user-agreement';
 
 interface UserRow extends VerificationUserRow {
   password_hash: string;
@@ -82,6 +83,7 @@ interface RegisterRequest {
   siteName?: string;
   accountType?: AccountType | string;
   preferredLanguage?: string;
+  userAgreementAccepted?: boolean;
 }
 
 interface SlugRow {
@@ -770,6 +772,15 @@ export const handler: Handler = async (
         });
       }
 
+      if (!parseUserAgreementAccepted(data)) {
+        return createErrorResponse(
+          400,
+          'You must accept the User Agreement to register',
+          CORS_HEADERS,
+          { code: 'USER_AGREEMENT_REQUIRED' }
+        );
+      }
+
       const accountType = normalizeAccountType(data.accountType);
       const isArtist = accountType === 'artist';
       const displayName = (data.siteName || data.name || '').trim();
@@ -812,9 +823,10 @@ export const handler: Handler = async (
           result = await query<UserRow>(
             `INSERT INTO users (
                email, name, username, site_name, public_slug, password_hash,
-               is_active, is_email_verified, genre_code, preferred_language, account_type
+               is_active, is_email_verified, genre_code, preferred_language, account_type,
+               user_agreement_version, user_agreement_accepted_at
              )
-             VALUES ($1, $2, $3, $4, $5, $6, true, false, $7, $8, $9)
+             VALUES ($1, $2, $3, $4, $5, $6, true, false, $7, $8, $9, $10, NOW())
              RETURNING id, email, name, role, is_admin, account_type, is_email_verified, preferred_language`,
             [
               normalizedEmail,
@@ -826,6 +838,7 @@ export const handler: Handler = async (
               'other',
               preferredLanguage,
               accountType,
+              CURRENT_USER_AGREEMENT_VERSION,
             ],
             0
           );

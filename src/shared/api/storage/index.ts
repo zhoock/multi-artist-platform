@@ -127,6 +127,10 @@ export async function uploadFile(options: UploadFileOptions): Promise<string | n
       payload.previousImageKey = String(previousImageKey).trim();
     }
 
+    if (options.publishProfileAvatar === false) {
+      payload.publishProfileAvatar = false;
+    }
+
     const jsonBody = JSON.stringify(payload);
     const payloadJsonChars = jsonBody.length;
     const payloadSizeMB = payloadJsonChars / (1024 * 1024);

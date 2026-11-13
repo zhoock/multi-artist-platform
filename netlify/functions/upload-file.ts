@@ -43,6 +43,7 @@ import {
   AVATAR_MAX_FILE_SIZE_BYTES,
   isProfileAvatarStorageObjectName,
 } from '../../src/shared/lib/avatarUpload';
+import { query } from './lib/db';
 import { setProfileAvatarPathForUser } from './lib/profile-avatar-path';
 
 const ALLOWED_CATEGORIES: readonly ImageCategory[] = [
@@ -73,6 +74,8 @@ interface UploadFileRequest {
   originalFileName?: string; // Имя оригинального файла для логирования
   /** Ключ предыдущей обложки в БД — удалить все объекты Storage с этим baseName (другой суффикс, чем у новой загрузки) */
   previousImageKey?: string;
+  /** When false, variants are stored but `profile_avatar_path` is not updated (no public exposure). */
+  publishProfileAvatar?: boolean;
 }
 
 interface UploadFileResponse {
@@ -496,6 +499,7 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
 
     if (isProfileAvatarUpload) {
       const profileUserId = targetUserId;
+      const publishProfileAvatar = body.publishProfileAvatar !== false;
       const uploadId = randomBytes(8).toString('hex');
       const baseName = `profile-${uploadId}`;
 
@@ -571,11 +575,13 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
 
       const canonicalPath = getStoragePath(profileUserId, 'profile', canonicalFileName);
 
-      try {
-        await setProfileAvatarPathForUser(profileUserId, canonicalPath);
-      } catch (dbError) {
-        console.error('[upload-file] failed to persist profile_avatar_path:', dbError);
-        return createErrorResponse(500, 'Avatar uploaded but profile path could not be saved.');
+      if (publishProfileAvatar) {
+        try {
+          await setProfileAvatarPathForUser(profileUserId, canonicalPath);
+        } catch (dbError) {
+          console.error('[upload-file] failed to persist profile_avatar_path:', dbError);
+          return createErrorResponse(500, 'Avatar uploaded but profile path could not be saved.');
+        }
       }
 
       return createSuccessResponse(

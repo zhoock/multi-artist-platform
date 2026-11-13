@@ -9,6 +9,8 @@ export interface UploadFileOptions {
   upsert?: boolean;
   /** При замене обложки статьи — ключ предыдущего файла в БД (имя в Storage), чтобы удалить старые объекты с другим baseName */
   previousImageKey?: string;
+  /** When false, avatar variants upload without updating public profile path. */
+  publishProfileAvatar?: boolean;
 }
 
 export interface GetFileUrlOptions {

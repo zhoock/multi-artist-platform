@@ -1,3 +1,4 @@
+import type { PoolClient } from 'pg';
 import { isProfileAvatarStorageObjectName } from '../../../src/shared/lib/avatarUpload';
 import { pickCanonicalProfileAvatarPathFromFiles } from '../../../src/shared/lib/profileAvatar/pickCanonicalProfileAvatarPath';
 import { query } from './db';
@@ -37,6 +38,18 @@ export async function setProfileAvatarPathForUser(
     [storagePath.trim(), userId],
     0
   );
+}
+
+export async function setProfileAvatarPathForUserWithClient(
+  client: PoolClient,
+  userId: string,
+  storagePath: string
+): Promise<void> {
+  assertProfileAvatarStoragePathForUser(userId, storagePath);
+  await client.query(`UPDATE users SET profile_avatar_path = $1 WHERE id = $2::uuid`, [
+    storagePath.trim(),
+    userId,
+  ]);
 }
 
 export async function clearProfileAvatarPathForUser(userId: string): Promise<void> {

@@ -933,6 +933,11 @@
       "albumStatusHidden": "Hidden",
       "albumStatusHiddenHint": "The album is published but hidden from visitors.",
       "albumStatusTemporarilyHidden": "Temporarily hidden",
+      "rightsAcknowledgment": {
+        "label": "I confirm that I have the necessary rights and permissions for this content.",
+        "userAgreementLink": "User agreement",
+        "requiredError": "Confirm your rights to publish this content."
+      },
       "albumPublishHintNeedsTracks": "Upload at least one track to publish this album.",
       "albumPublishHintNeedsCover": "Upload album cover art to publish this album.",
       "albumPublishHintNeedsFields": "Complete all required album fields to publish.",

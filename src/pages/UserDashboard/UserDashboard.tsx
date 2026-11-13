@@ -1285,7 +1285,11 @@ function UserDashboard() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ albumId, trackId, visibility }),
+        body: JSON.stringify({
+          albumId,
+          trackId,
+          visibility,
+        }),
       });
 
       if (!response.ok) {

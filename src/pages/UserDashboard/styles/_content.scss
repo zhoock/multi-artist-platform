@@ -336,28 +336,37 @@ dialog {
       margin-block-end: 0;
     }
 
-    &__album-footer-actions {
+    &__album-publish-footer {
       display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      gap: var(--ms-0);
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0.65rem;
       margin-top: var(--ms-01);
       padding-top: var(--ms-01);
       border-top: 1px solid var(--dashboard-divider);
+      min-width: 0;
+
+      @include breakpoint(tablet) {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--ms-0);
+      }
     }
 
-    &__album-footer-actions-right {
-      display: flex;
-      align-items: flex-start;
-      gap: var(--ms-0);
-      margin-inline-start: auto;
-    }
-
-    &__publish-album-wrap {
+    &__album-publish-actions {
       display: flex;
       flex-direction: column;
-      align-items: flex-end;
+      align-items: stretch;
       gap: 0.25rem;
+      flex-shrink: 0;
+      min-width: 0;
+      width: 100%;
+
+      @include breakpoint(tablet) {
+        align-items: flex-end;
+        width: auto;
+      }
     }
 
     &__publish-album-button {
@@ -365,10 +374,15 @@ dialog {
       align-items: center;
       justify-content: center;
       gap: var(--ms-01);
-      width: auto;
+      width: 100%;
       height: auto;
+      box-sizing: border-box;
 
       @include dashboard-btn-primary($margin: 0, $padding: var(--ms-01) var(--ms-1));
+
+      @include breakpoint(tablet) {
+        width: auto;
+      }
 
       &:disabled {
         opacity: 0.45;

@@ -1,5 +1,7 @@
 import { useState, FormEvent, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { register } from '@shared/lib/auth';
+import { buildLocalizedPublicPath } from '@shared/lib/i18n/routeLang';
 import type { AccountType } from '@shared/lib/accountType';
 import { useLang } from '@app/providers/lang';
 import { useFocusOnOpen } from '@shared/lib/hooks/useFocusOnOpen';
@@ -55,6 +57,9 @@ export function RegisterForm({
           requiredConfirmPassword: 'Confirm your password',
           passwordsMismatch: 'Passwords do not match',
           passwordMinLength: 'Password must be at least 8 characters long.',
+          userAgreementAcceptPrefix: 'I accept the',
+          userAgreementLink: 'User Agreement',
+          userAgreementRequired: 'You must accept the User Agreement to register.',
           strength: {
             veryWeak: 'Very weak',
             weak: 'Weak',
@@ -84,6 +89,9 @@ export function RegisterForm({
           requiredConfirmPassword: 'Подтвердите пароль',
           passwordsMismatch: 'Пароли не совпадают',
           passwordMinLength: 'Пароль должен содержать минимум 8 символов.',
+          userAgreementAcceptPrefix: 'Я принимаю',
+          userAgreementLink: 'Пользовательское соглашение',
+          userAgreementRequired: 'Чтобы зарегистрироваться, примите Пользовательское соглашение.',
           strength: {
             veryWeak: 'Очень слабый',
             weak: 'Слабый',
@@ -114,7 +122,9 @@ export function RegisterForm({
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<RegisterField, string>>>({});
   const [loading, setLoading] = useState(false);
+  const [userAgreementAccepted, setUserAgreementAccepted] = useState(false);
   const nameInputRef = useFocusOnOpen<HTMLInputElement>(true);
+  const userAgreementHref = buildLocalizedPublicPath(lang, '/user-agreement');
 
   const clearFieldError = (field: RegisterField) => {
     setFieldErrors((prev) => {
@@ -146,6 +156,10 @@ export function RegisterForm({
     } else if (password && confirmPassword !== password) {
       nextErrors.confirmPassword = copy.passwordsMismatch;
     }
+    if (!userAgreementAccepted) {
+      setError(copy.userAgreementRequired);
+      return;
+    }
 
     setFieldErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) {
@@ -159,6 +173,7 @@ export function RegisterForm({
         preferredLanguage: lang,
         accountType,
         name: name.trim(),
+        userAgreementAccepted: true,
       });
 
       if (result.success) {
@@ -302,7 +317,42 @@ export function RegisterForm({
         ) : null}
       </div>
 
-      <button type="submit" className="auth-form__submit" disabled={loading}>
+      <div className="auth-form__field auth-form__field--checkbox">
+        <label className="auth-form__checkbox-label" htmlFor="register-user-agreement">
+          <input
+            id="register-user-agreement"
+            name="user-agreement"
+            type="checkbox"
+            className="auth-form__checkbox"
+            checked={userAgreementAccepted}
+            onChange={(e) => {
+              setUserAgreementAccepted(e.target.checked);
+              if (e.target.checked) {
+                setError(null);
+              }
+            }}
+            disabled={loading}
+          />
+          <span>
+            {copy.userAgreementAcceptPrefix}{' '}
+            <Link
+              to={userAgreementHref}
+              className="auth-form__link"
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {copy.userAgreementLink}
+            </Link>
+          </span>
+        </label>
+      </div>
+
+      <button
+        type="submit"
+        className="auth-form__submit"
+        disabled={loading || !userAgreementAccepted}
+      >
         {loading ? copy.submitting : copy.submit}
       </button>
 

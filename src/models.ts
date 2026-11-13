@@ -832,6 +832,11 @@ export interface IInterface {
     albumPublishHintTracksProcessing?: string;
     albumPublishHintTracksFailed?: string;
     albumPublishHintReady?: string;
+    rightsAcknowledgment?: {
+      label: string;
+      userAgreementLink: string;
+      requiredError: string;
+    };
     publishAlbumFailed?: string;
     logout: string;
     dangerZone?: string;

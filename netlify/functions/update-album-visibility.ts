@@ -74,8 +74,11 @@ export const handler: Handler = async (
   const isPublic = visibility === 'public';
 
   try {
-    const check = await query<{ is_published: boolean }>(
-      `SELECT is_published FROM albums
+    const check = await query<{
+      is_published: boolean;
+    }>(
+      `SELECT is_published
+       FROM albums
        WHERE user_id = $1::uuid AND album_id = $2
        LIMIT 1`,
       [userId, albumId]
@@ -128,7 +131,7 @@ export const handler: Handler = async (
       headers: HEADERS,
       body: JSON.stringify({
         success: false,
-        message: e instanceof Error ? e.message : 'Server error',
+        message: e instanceof Error ? e.message : 'Internal error',
       }),
     };
   }

@@ -1,0 +1,158 @@
+{
+  "title": "USER AGREEMENT",
+  "subtitle": "terms of use of the music platform",
+  "meta": {
+    "versionLabel": "Version:",
+    "version": "2",
+    "effectiveDateLabel": "Effective date:",
+    "effectiveDate": "November 13, 2026",
+    "websiteLabel": "Website:",
+    "website": "Site Name"
+  },
+  "intro": "This User Agreement (the Agreement) governs use of the music platform Site Name (the Platform, the Site). By registering, uploading materials, or using dashboard features, you confirm that you have read and accept the Agreement. This edition is version 2; it takes effect on November 13, 2026.",
+  "sections": [
+    {
+      "title": "1. Definitions",
+      "paragraphs": [
+        "Platform — the online service that enables publication and consumption of music and other content, subscriptions, digital purchases, and other features described on the Site.",
+        "User — a legally capable person who has registered on the Site or uses its features.",
+        "User Content — materials the user uploads, publishes, or makes available through the Site, including albums, tracks, stems, lyrics, articles, images, cover art, profile materials, and other files.",
+        "Artist — a user who publishes materials on the Site in their own name or on behalf of a band.",
+        "Listener — a user who consumes content on the Site without publishing their own materials (unless the account type provides otherwise).",
+        "Publication — a user action or its technical result whereby material becomes available to other users or visitors as provided by visibility settings. Uploading a file without corresponding publication does not constitute public placement."
+      ]
+    },
+    {
+      "title": "2. User Content",
+      "paragraphs": [
+        "2.1. The user independently decides what materials to upload and publish on the Site and is responsible for their content and lawful publication.",
+        "2.2. By publishing User Content, the user confirms that: (1) they are the rights holder or have all necessary rights and permissions; (2) publication does not infringe third-party rights; (3) they have obtained all necessary consents from authors, performers, co-authors, and other rights holders; (4) the rights granted to the Platform are sufficient for operation of the relevant services.",
+        "2.3. A musical work, performance, and phonogram may be separate intellectual-property objects whose rights may belong to different persons. The user must take this into account when uploading and publishing materials.",
+        "2.4. The Platform does not become the author, performer, or rights holder of User Content solely because it provides the technical ability to upload and publish such content.",
+        "2.5. By accepting this Agreement at registration, the user represents that they have all necessary rights, permissions, and consents to upload and use any User Content on the Platform, that such use does not infringe third-party rights, and that the user is responsible for any infringement arising from content they publish.",
+        "2.6. These warranties apply to all User Content, including music, phonograms, performances, lyrics, articles, images, cover art, avatars, header images, stems, and other materials.",
+        "2.7. By publishing User Content, the user grants the Platform a non-exclusive right to use such content as necessary to operate the Platform, including storage, technical processing, reproduction, display, streaming, and making content available to users according to Site features.",
+        "2.8. Merely uploading a file to Site storage or the dashboard does not mean it has been published. Publication occurs when the material is made available through Site features (for example, publishing an album, changing track, stem, or article visibility, or saving profile images for public display)."
+      ]
+    },
+    {
+      "title": "3. Accepting the Agreement",
+      "paragraphs": [
+        "3.1. The user accepts this Agreement during registration by checking the designated box in the registration form.",
+        "3.2. The Platform records acceptance: user identifier, Agreement version, and date/time of acceptance. This information is stored on server-side infrastructure and may be used to evidence the user's consent, handle claims and disputes, and for other purposes required by the laws of the Russian Federation.",
+        "3.3. After accepting the Agreement, the user may upload and publish User Content without a separate legal rights confirmation for each publication, provided they comply with this Agreement."
+      ]
+    },
+    {
+      "title": "4. License to the Platform",
+      "paragraphs": [
+        "4.1. By publishing User Content, the user grants the Platform a non-exclusive, royalty-free license for as long as the material remains on the Site, as necessary for operation of the Platform.",
+        "4.2. The license covers technically necessary acts: storage; reproduction; making content available; streaming; technical encoding; compression; format conversion; creation of technical copies; displaying covers, images, titles, and artist names; and other technical acts objectively necessary to provide the relevant Site features.",
+        "4.3. No exclusive rights to User Content are transferred to the Platform."
+      ]
+    },
+    {
+      "title": "5. Copyright and Related Rights. Moderation",
+      "paragraphs": [
+        "5.1. The user must not publish materials that infringe copyright and related rights, other third-party rights, or requirements of the laws of the Russian Federation.",
+        "5.2. The Platform may moderate, restrict access to, or remove materials where grounds exist under this Agreement and applicable law."
+      ]
+    },
+    {
+      "title": "6. Copyright Infringement Complaints",
+      "paragraphs": [
+        "6.1. The procedure for submitting claims about alleged copyright and related-rights infringement is defined on the Site's dedicated intellectual-property infringement reporting page (including at /copyright/report in the Site URL structure).",
+        "6.2. The Platform reviews received claims within a reasonable time based on the claim and available information. Review is aimed at proper response and does not mean the Platform independently and finally determines that infringement has occurred.",
+        "6.3. When reviewing a claim, the Platform may request documents and/or information from the user who uploaded the disputed material confirming necessary rights and permissions, including information about prior rights confirmation for that material.",
+        "6.4. The Platform may temporarily restrict access to disputed material, remove it, or take other necessary measures in accordance with the laws of the Russian Federation and this Agreement, within the limits of information-intermediary status."
+      ]
+    },
+    {
+      "title": "7. Removal and Blocking of Content",
+      "paragraphs": [
+        "7.1. The Platform may restrict access to or remove User Content, including if: a rights-holder complaint is received; there are grounds to believe the material violates the law; the Agreement is breached; there is a security risk; prohibited content is identified; or continued publication is technically or legally impossible.",
+        "7.2. The Platform may temporarily restrict access to material while reviewing an infringement claim or obtaining necessary explanations and documents from the user.",
+        "7.3. The user may stop publishing materials through dashboard features where available on the Site."
+      ]
+    },
+    {
+      "title": "8. Information Intermediary and Platform Liability",
+      "paragraphs": [
+        "8.1. The Platform may act as an information intermediary with respect to User Content to the extent provided by the laws of the Russian Federation.",
+        "8.2. The Platform does not conduct prior legal review of all User Content and does not guarantee that it meets the interests or expectations of third parties.",
+        "8.3. The Platform shall not be liable for User Content solely because it provides the technical ability to upload and publish such content, except where otherwise required by the laws of the Russian Federation.",
+        "8.4. Nothing in this Agreement waives Platform liability where such liability is expressly established by the laws of the Russian Federation."
+      ]
+    },
+    {
+      "title": "9. Premium Subscription",
+      "paragraphs": [
+        "9.1. Premium subscription provides access to features and content as described on the Site. Plan terms, duration, and renewal are shown in the Site interface.",
+        "9.2. Subscription purchase is available to signed-in users subject to Site requirements (including email verification where applicable)."
+      ]
+    },
+    {
+      "title": "10. Downloads and Digital Content",
+      "paragraphs": [
+        "10.1. Purchase of digital content on the Site is also governed by the Public Offer. The buyer receives personal-use rights within the limits stated on the Site and in the offer.",
+        "10.2. The user may not distribute, resell, or otherwise use purchased digital content in violation of the rights holder's rights."
+      ]
+    },
+    {
+      "title": "11. Marketplace and Physical Goods",
+      "paragraphs": [
+        "11.1. Where a physical product is sold directly by an artist through Site features, the artist is the seller and is independently responsible for the product, its description, price, delivery, returns, consumer-protection compliance, and applicable tax obligations.",
+        "11.2. The Platform may provide technical infrastructure to list offers without assuming seller obligations unless the Site expressly states otherwise."
+      ]
+    },
+    {
+      "title": "12. Payments",
+      "paragraphs": [
+        "12.1. Payments for digital goods, subscriptions, and other services are processed through payment providers available on the Site. Payment details may be entered on the payment provider's side.",
+        "12.2. Specific payment transactions may additionally be governed by the Public Offer and payment providers' terms."
+      ]
+    },
+    {
+      "title": "13. Personal Data",
+      "paragraphs": [
+        "13.1. Personal data is processed in accordance with the Privacy Policy published on the Site.",
+        "13.2. Certain features may require consent to personal-data processing in forms provided on the Site.",
+        "13.3. Rights-confirmation records (Section 3) are processed to the extent necessary for the purposes stated in this Agreement and the Privacy Policy."
+      ]
+    },
+    {
+      "title": "14. User Liability",
+      "paragraphs": [
+        "14.1. The user is liable for User Content, dashboard actions, and consequences of infringing third-party rights, this Agreement, or the laws of the Russian Federation.",
+        "14.2. The user shall compensate the Platform for documented losses caused by breach of the Agreement within the limits established by the laws of the Russian Federation."
+      ]
+    },
+    {
+      "title": "15. Retention of Agreement Acceptance Records",
+      "paragraphs": [
+        "15.1. The Platform may retain information about User Agreement acceptance and related actions for as long as necessary to: operate the service; maintain security; protect the Platform's rights; handle claims; resolve disputes; and comply with applicable law.",
+        "15.2. After the necessary period, information may be deleted or anonymized if further retention is not required for those purposes and is not contrary to the laws of the Russian Federation."
+      ]
+    },
+    {
+      "title": "16. Changes to the Agreement",
+      "paragraphs": [
+        "16.1. The Platform may amend the Agreement. A new version takes effect on the date stated upon publication unless a different date is specified in the text.",
+        "16.2. If the Agreement changes materially, the Platform may require the user to accept the new version on next sign-in or registration, if required by Site features or applicable law.",
+        "16.3. Continued use of the Site after a new version takes effect constitutes acceptance unless applicable law provides otherwise."
+      ]
+    },
+    {
+      "title": "17. Contact",
+      "paragraphs": [
+        "For questions about the Agreement and use of the Site, contact support at {{supportEmail}} (hours: 10:00–19:00 Moscow time)."
+      ]
+    }
+  ],
+  "contactInfo": {
+    "emailLabel": "Support email:",
+    "email": "{{supportEmail}}",
+    "hoursLabel": "Support hours:",
+    "hours": "10:00–19:00 MSK"
+  }
+}

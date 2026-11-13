@@ -492,7 +492,6 @@ export const handler: Handler = async (
       updateFields.push(`updated_at = NOW()`);
       updateValues.push(userId);
 
-      // Обновляем указанные поля
       await query(
         `UPDATE users 
          SET ${updateFields.join(', ')}

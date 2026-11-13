@@ -189,7 +189,7 @@ export const handler: Handler = async (
     // Проверяем, что альбом существует и принадлежит пользователю
     // Ищем по album_id (строка) и lang, так как альбомы уникальны по (user_id, album_id, lang)
     const albumResult = await query<{ id: string; user_id: string | null; album_id: string }>(
-      'SELECT id, user_id, album_id FROM albums WHERE album_id = $1 AND lang = $2 AND user_id = $3',
+      'SELECT id, user_id, album_id, is_published FROM albums WHERE album_id = $1 AND lang = $2 AND user_id = $3',
       [albumId, lang, userId]
     );
 

@@ -1,5 +1,5 @@
 // src/pages/UserDashboard/components/mixer/StemAccessControl.tsx
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import clsx from 'clsx';
 import type { IInterface } from '@models';
 import { useLang } from '@app/providers/lang';
@@ -120,8 +120,8 @@ export function StemAccessControl({
         closeMenu();
         return;
       }
-      void onVisibilityChange(albumId, trackId, v);
       closeMenu();
+      void onVisibilityChange(albumId, trackId, v);
     },
     [albumId, trackId, rawStemsVisibility, onVisibilityChange, closeMenu]
   );

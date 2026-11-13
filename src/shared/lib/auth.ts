@@ -309,6 +309,7 @@ export async function register(
     name?: string;
     /** @deprecated Use `name` */
     artistName?: string;
+    userAgreementAccepted?: boolean;
   }
 ): Promise<AuthResponse> {
   try {
@@ -330,6 +331,7 @@ export async function register(
             }
           : {}),
         preferredLanguage: options?.preferredLanguage ?? getLang(),
+        userAgreementAccepted: options?.userAgreementAccepted === true,
       }),
     });
 

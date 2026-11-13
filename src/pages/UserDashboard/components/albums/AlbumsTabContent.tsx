@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import clsx from 'clsx';
 import { Pencil as PencilIcon, Trash2 as Trash2Icon } from 'lucide-react';
 import {
@@ -652,57 +652,55 @@ export function AlbumsTabContent({
                   ) : null}
 
                   {showPublishControls ? (
-                    <div className="user-dashboard__album-footer-actions">
-                      <div className="user-dashboard__album-footer-actions-right">
-                        <div className="user-dashboard__publish-album-wrap">
-                          <button
-                            type="button"
-                            className="user-dashboard__publish-album-button"
-                            disabled={!canPublishAlbum || isPublishingAlbum}
-                            title={
-                              isPublishingAlbum
-                                ? (ui?.dashboard?.editAlbumModal?.buttons?.saving ?? 'Saving...')
-                                : (ui?.dashboard?.editAlbumModal?.buttons?.publishAlbum ??
-                                  'Publish album')
+                    <div className="user-dashboard__album-publish-footer">
+                      <div className="user-dashboard__album-publish-actions">
+                        <button
+                          type="button"
+                          className="user-dashboard__publish-album-button"
+                          disabled={!canPublishAlbum || isPublishingAlbum}
+                          title={
+                            isPublishingAlbum
+                              ? (ui?.dashboard?.editAlbumModal?.buttons?.saving ?? 'Saving...')
+                              : (ui?.dashboard?.editAlbumModal?.buttons?.publishAlbum ??
+                                'Publish album')
+                          }
+                          aria-label={
+                            isPublishingAlbum
+                              ? (ui?.dashboard?.editAlbumModal?.buttons?.saving ?? 'Saving...')
+                              : (ui?.dashboard?.editAlbumModal?.buttons?.publishAlbum ??
+                                'Publish album')
+                          }
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (!canPublishAlbum || isPublishingAlbum) {
+                              return;
                             }
-                            aria-label={
-                              isPublishingAlbum
-                                ? (ui?.dashboard?.editAlbumModal?.buttons?.saving ?? 'Saving...')
-                                : (ui?.dashboard?.editAlbumModal?.buttons?.publishAlbum ??
-                                  'Publish album')
-                            }
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (!canPublishAlbum || isPublishingAlbum) {
-                                return;
-                              }
-                              void onPublishAlbum(album.id);
-                            }}
-                          >
-                            {isPublishingAlbum ? (
-                              (ui?.dashboard?.editAlbumModal?.buttons?.saving ?? 'Saving...')
-                            ) : (
-                              <>
-                                {!canPublishAlbum ? <SubscriberContentLockIcon size={18} /> : null}
-                                {ui?.dashboard?.editAlbumModal?.buttons?.publishAlbum ??
-                                  'Publish album'}
-                              </>
-                            )}
-                          </button>
-                          {!canPublishAlbum && publishHintKey !== 'ready' ? (
-                            <p className="user-dashboard__publish-album-hint">
-                              {publishHintKey === 'cover'
-                                ? publishHintCopy.cover
-                                : publishHintKey === 'tracks'
-                                  ? publishHintCopy.tracks
-                                  : publishHintKey === 'processing'
-                                    ? publishHintCopy.processing
-                                    : publishHintKey === 'processingFailed'
-                                      ? publishHintCopy.processingFailed
-                                      : publishHintCopy.fields}
-                            </p>
-                          ) : null}
-                        </div>
+                            void onPublishAlbum(album.id);
+                          }}
+                        >
+                          {isPublishingAlbum ? (
+                            (ui?.dashboard?.editAlbumModal?.buttons?.saving ?? 'Saving...')
+                          ) : (
+                            <>
+                              {!canPublishAlbum ? <SubscriberContentLockIcon size={18} /> : null}
+                              {ui?.dashboard?.editAlbumModal?.buttons?.publishAlbum ??
+                                'Publish album'}
+                            </>
+                          )}
+                        </button>
+                        {!canPublishAlbum && publishHintKey !== 'ready' ? (
+                          <p className="user-dashboard__publish-album-hint">
+                            {publishHintKey === 'cover'
+                              ? publishHintCopy.cover
+                              : publishHintKey === 'tracks'
+                                ? publishHintCopy.tracks
+                                : publishHintKey === 'processing'
+                                  ? publishHintCopy.processing
+                                  : publishHintKey === 'processingFailed'
+                                    ? publishHintCopy.processingFailed
+                                    : publishHintCopy.fields}
+                          </p>
+                        ) : null}
                       </div>
                     </div>
                   ) : null}

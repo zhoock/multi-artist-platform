@@ -13,9 +13,14 @@ jest.mock('../api-helpers', () => {
   };
 });
 
+const mockClientQuery = jest.fn();
+
 jest.mock('../db', () => ({
   query: jest.fn(),
-  getClient: jest.fn(),
+  getClient: jest.fn(async () => ({
+    query: mockClientQuery,
+    release: jest.fn(),
+  })),
   isMissingRelationError: jest.fn(() => false),
 }));
 
@@ -139,6 +144,16 @@ beforeEach(() => {
   jest.clearAllMocks();
   mockedTracksTableHasPipelineColumns.mockResolvedValue(true);
   mockedTrackAssetsTableExists.mockResolvedValue(true);
+  mockClientQuery.mockImplementation(async (sql: string) => {
+    const normalized = String(sql).replace(/\s+/g, ' ').trim();
+    if (normalized === 'BEGIN' || normalized === 'COMMIT' || normalized === 'ROLLBACK') {
+      return { rows: [] } as never;
+    }
+    if (normalized.includes('UPDATE albums') && normalized.includes('is_published')) {
+      return { rowCount: 1, rows: [] } as never;
+    }
+    return { rows: [] } as never;
+  });
 });
 
 describe('PUT /api/albums publish readiness', () => {
@@ -255,6 +270,10 @@ describe('PUT /api/albums publish readiness', () => {
         return { rows: [] } as never;
       }
 
+      if (normalized.includes('UPDATE albums') && normalized.includes('is_published')) {
+        return { rowCount: 1, rows: [] } as never;
+      }
+
       return { rows: [] } as never;
     });
 
@@ -266,7 +285,7 @@ describe('PUT /api/albums publish readiness', () => {
     expect(payload.message).toBe('Album published successfully');
 
     const publishUpdate = mockedQuery.mock.calls.find(
-      ([sql]) => String(sql).includes('UPDATE albums SET') && String(sql).includes('is_published')
+      ([sql]) => String(sql).includes('UPDATE albums') && String(sql).includes('is_published')
     );
     expect(publishUpdate).toBeDefined();
   });

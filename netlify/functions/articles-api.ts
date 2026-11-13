@@ -8,7 +8,7 @@
  */
 
 import type { Handler, HandlerEvent } from '@netlify/functions';
-import { query } from './lib/db';
+import { query, getClient } from './lib/db';
 import {
   CORS_HEADERS,
   createOptionsResponse,
@@ -45,7 +45,6 @@ import {
 import { viewerHasPremiumAccessToArtist } from './lib/entitlements';
 import { artistHasMonetizationEnabled } from './lib/artist-monetization';
 import { applyPublicArticleAccessPolicy } from './lib/public-article-access';
-
 interface ArticleRow {
   id: string;
   user_id: string;

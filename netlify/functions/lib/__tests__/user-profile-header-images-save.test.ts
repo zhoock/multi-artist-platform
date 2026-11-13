@@ -1,8 +1,14 @@
 import { beforeEach, describe, expect, jest, test } from '@jest/globals';
 import type { HandlerEvent } from '@netlify/functions';
 
+const mockClientQuery = jest.fn();
+
 jest.mock('../db', () => ({
   query: jest.fn(),
+  getClient: jest.fn(async () => ({
+    query: mockClientQuery,
+    release: jest.fn(),
+  })),
 }));
 
 // Inlined rather than referencing OWNER_ID: jest.mock factories are hoisted above const bindings.
@@ -41,7 +47,9 @@ function makeSaveEvent(body: Record<string, unknown>): HandlerEvent {
 
 /** The `header_images` JSONB parameter handed to the UPDATE, parsed back to an array. */
 function savedHeaderImages(): unknown {
-  const update = mockQuery.mock.calls.find(([sql]) => String(sql).includes('UPDATE users'));
+  const update =
+    mockQuery.mock.calls.find(([sql]) => String(sql).includes('UPDATE users')) ??
+    mockClientQuery.mock.calls.find(([sql]) => String(sql).includes('UPDATE users'));
   expect(update).toBeDefined();
 
   const sql = String(update![0]);
@@ -54,14 +62,48 @@ function savedHeaderImages(): unknown {
   return JSON.parse(String(values[Number(match![1]) - 1]));
 }
 
+function mockHeaderRightsSelect(existing: string[] = []) {
+  mockQuery.mockImplementation(async (sql: string) => {
+    const normalized = String(sql).replace(/\s+/g, ' ').trim();
+    if (normalized.includes('header_images') && normalized.includes('SELECT')) {
+      return {
+        rowCount: 1,
+        rows: [{ header_images: existing, header_image_rights_epoch: existing.length > 0 ? 1 : 0 }],
+      } as never;
+    }
+    if (normalized.includes('UPDATE users')) {
+      return { rowCount: 1, rows: [] } as never;
+    }
+    return { rowCount: 1, rows: [] } as never;
+  });
+}
+
+function mockHeaderRightsTransaction() {
+  mockClientQuery.mockImplementation(async (sql: string) => {
+    const normalized = sql.replace(/\s+/g, ' ').trim();
+    if (normalized === 'BEGIN' || normalized === 'COMMIT' || normalized === 'ROLLBACK') {
+      return { rowCount: 0, rows: [] };
+    }
+    if (normalized.includes('UPDATE users') || normalized.includes('INSERT INTO content_rights')) {
+      return { rowCount: 1, rows: [] };
+    }
+    return { rowCount: 1, rows: [] };
+  });
+}
+
 describe('POST /api/user-profile — headerImages save layer', () => {
   beforeEach(() => {
     mockQuery.mockReset();
-    mockQuery.mockResolvedValue({ rows: [] } as never);
+    mockClientQuery.mockReset();
+    mockHeaderRightsSelect([]);
+    mockHeaderRightsTransaction();
   });
 
   test('persists a canonical relative hero path unchanged', async () => {
-    const response = await handler(makeSaveEvent({ headerImages: [HERO_PATH] }), {} as never);
+    const response = await handler(
+      makeSaveEvent({ headerImages: [HERO_PATH], rightsAcknowledged: true }),
+      {} as never
+    );
 
     expect(response?.statusCode).toBe(200);
     expect(savedHeaderImages()).toEqual([HERO_PATH]);
@@ -70,7 +112,10 @@ describe('POST /api/user-profile — headerImages save layer', () => {
   test('persists a localhost dev proxy URL as a relative storage path', async () => {
     const localhostUrl = `http://localhost:8080/.netlify/functions/proxy-image?path=${ENCODED_HERO_PATH}`;
 
-    const response = await handler(makeSaveEvent({ headerImages: [localhostUrl] }), {} as never);
+    const response = await handler(
+      makeSaveEvent({ headerImages: [localhostUrl], rightsAcknowledged: true }),
+      {} as never
+    );
 
     expect(response?.statusCode).toBe(200);
     expect(savedHeaderImages()).toEqual([HERO_PATH]);
@@ -79,7 +124,10 @@ describe('POST /api/user-profile — headerImages save layer', () => {
   test('persists a production absolute proxy URL as a relative storage path', async () => {
     const prodUrl = `https://multi-artist-platform.netlify.app/api/proxy-image?path=${ENCODED_HERO_PATH}`;
 
-    const response = await handler(makeSaveEvent({ headerImages: [prodUrl] }), {} as never);
+    const response = await handler(
+      makeSaveEvent({ headerImages: [prodUrl], rightsAcknowledged: true }),
+      {} as never
+    );
 
     expect(response?.statusCode).toBe(200);
     expect(savedHeaderImages()).toEqual([HERO_PATH]);
@@ -93,6 +141,7 @@ describe('POST /api/user-profile — headerImages save layer', () => {
           `/api/proxy-image?path=${ENCODED_HERO_PATH}`,
           HERO_PATH,
         ],
+        rightsAcknowledged: true,
       }),
       {} as never
     );
@@ -171,5 +220,11 @@ describe('POST /api/user-profile — headerImages save layer', () => {
 
     const update = mockQuery.mock.calls.find(([sql]) => String(sql).includes('UPDATE users'));
     expect(String(update?.[0])).not.toContain('header_images');
+  });
+
+  test('saves public header images without separate rights acknowledgment', async () => {
+    const nextPath = `users/${OWNER_ID}/hero/hero-new-1920.jpg`;
+    const response = await handler(makeSaveEvent({ headerImages: [nextPath] }), {} as never);
+    expect(response?.statusCode).toBe(200);
   });
 });

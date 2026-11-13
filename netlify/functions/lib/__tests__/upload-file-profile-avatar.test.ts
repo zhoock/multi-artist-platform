@@ -1,8 +1,14 @@
 import { beforeEach, describe, expect, jest, test } from '@jest/globals';
 import type { HandlerEvent } from '@netlify/functions';
 
+const mockClientQuery = jest.fn();
+
 jest.mock('../db', () => ({
   query: jest.fn(),
+  getClient: jest.fn(async () => ({
+    query: mockClientQuery,
+    release: jest.fn(),
+  })),
 }));
 
 jest.mock('crypto', () => ({
@@ -42,6 +48,7 @@ jest.mock('../supabase', () => ({
 
 import { requireAuth } from '../api-helpers';
 import { generateProfileAvatarVariants } from '../image-processor';
+import { query } from '../db';
 import { setProfileAvatarPathForUser } from '../profile-avatar-path';
 import { createSupabaseAdminClient } from '../supabase';
 import { handler } from '../../upload-file';
@@ -50,6 +57,7 @@ const mockRequireAuth = requireAuth as jest.MockedFunction<typeof requireAuth>;
 const mockGenerateVariants = generateProfileAvatarVariants as jest.MockedFunction<
   typeof generateProfileAvatarVariants
 >;
+const mockQuery = query as jest.MockedFunction<typeof query>;
 const mockSetPath = setProfileAvatarPathForUser as jest.MockedFunction<
   typeof setProfileAvatarPathForUser
 >;
@@ -62,7 +70,7 @@ const USER_ID = 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee';
 const BASE_NAME = 'profile-deadbeef';
 const CANONICAL = `${BASE_NAME}-128.webp`;
 
-function buildProfileUploadEvent(): HandlerEvent {
+function buildProfileUploadEvent(overrides: Record<string, unknown> = {}): HandlerEvent {
   const tinyPngBase64 =
     'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
   return {
@@ -72,6 +80,7 @@ function buildProfileUploadEvent(): HandlerEvent {
       fileName: 'profile.png',
       category: 'profile',
       contentType: 'image/png',
+      ...overrides,
     }),
     headers: { authorization: 'Bearer test-token' },
     path: '/api/upload-file',
@@ -142,5 +151,17 @@ describe('upload-file profile avatar canonical -128.webp', () => {
     const body = JSON.parse(response.body);
     expect(body.success).toBe(true);
     expect(body.data.storagePath).toBe(`users/${USER_ID}/profile/${CANONICAL}`);
+  });
+
+  test('storage-only upload does not update profile_avatar_path', async () => {
+    mockSupabaseUpload([]);
+
+    const response = await handler(
+      buildProfileUploadEvent({ publishProfileAvatar: false }),
+      {} as never
+    );
+
+    expect(response.statusCode).toBe(200);
+    expect(mockSetPath).not.toHaveBeenCalled();
   });
 });

@@ -933,6 +933,11 @@
       "albumStatusHidden": "Скрыт",
       "albumStatusHiddenHint": "Альбом опубликован, но скрыт от посетителей.",
       "albumStatusTemporarilyHidden": "Временно скрыт",
+      "rightsAcknowledgment": {
+        "label": "Я подтверждаю наличие необходимых прав и разрешений на этот контент.",
+        "userAgreementLink": "Пользовательское соглашение",
+        "requiredError": "Подтвердите права на контент, чтобы опубликовать."
+      },
       "albumPublishHintNeedsTracks": "Загрузите хотя бы один трек для публикации альбома.",
       "albumPublishHintNeedsCover": "Загрузите обложку альбома для публикации.",
       "albumPublishHintNeedsFields": "Заполните все обязательные поля альбома для публикации.",

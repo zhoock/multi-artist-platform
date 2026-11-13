@@ -408,6 +408,7 @@ interface UpdateAlbumRequest {
   isPublic?: boolean;
   /** Одноразовая публикация черновика: is_published=true, is_public=true. */
   publish?: boolean;
+  /** Явное подтверждение прав на контент (boolean true). */
   /** Старый album_id при смене slug (вместе с albumId = новый). */
   previousAlbumId?: string;
 }
@@ -1552,10 +1553,12 @@ export const handler: Handler = async (
             return createErrorResponse(400, 'Album is not ready to publish.');
           }
 
-          await syncSharedAlbumMetadataAcrossLocales(userId, data.albumId, {
-            isPublished: true,
-            isPublic: true,
-          });
+          await query(
+            `UPDATE albums
+             SET is_published = true, is_public = true, updated_at = CURRENT_TIMESTAMP
+             WHERE user_id = $1::uuid AND album_id = $2`,
+            [userId, data.albumId]
+          );
 
           const reloadedAfterPublish = await queryAlbumRowByPk(existingAlbum.id);
           if (reloadedAfterPublish) {

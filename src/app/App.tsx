@@ -102,6 +102,7 @@ const HelpArticlePage = lazy(() =>
 );
 const OfferPage = lazy(() => import('@pages/Offer'));
 const PrivacyPage = lazy(() => import('@pages/Privacy'));
+const UserAgreementPage = lazy(() => import('@pages/UserAgreement'));
 const UserDashboard = lazy(() => import('@pages/UserDashboard/UserDashboard'));
 const AuthPage = lazy(() => import('@features/auth/ui/AuthPage'));
 const PaymentSuccess = lazy(() => import('@pages/PaymentSuccess/PaymentSuccess'));
@@ -185,6 +186,12 @@ const offerPageElement = (
 const privacyPageElement = (
   <Suspense fallback={<PageLoader />}>
     <PrivacyPage />
+  </Suspense>
+);
+
+const userAgreementPageElement = (
+  <Suspense fallback={<PageLoader />}>
+    <UserAgreementPage />
   </Suspense>
 );
 
@@ -370,6 +377,7 @@ function Layout() {
     '/help/:categorySlug/:articleSlug',
     '/offer',
     '/privacy',
+    '/user-agreement',
     '/stems',
     '/stems/mix/:mixId',
     '/dashboard',
@@ -466,7 +474,11 @@ function Layout() {
   const isMinimalLayoutRoute = isMinimalLayoutPathname(location.pathname);
   const isOfferRoute = matchPath({ path: '/offer', end: true }, pathnameWithoutLang);
   const isPrivacyRoute = matchPath({ path: '/privacy', end: true }, pathnameWithoutLang);
-  const isLegalDocumentRoute = isOfferRoute || isPrivacyRoute;
+  const isUserAgreementRoute = matchPath(
+    { path: '/user-agreement', end: true },
+    pathnameWithoutLang
+  );
+  const isLegalDocumentRoute = isOfferRoute || isPrivacyRoute || isUserAgreementRoute;
   const isHelpRoute = isHelpLoaderPath(location.pathname);
   const pageOwnsHreflang = routeHasPageLevelHreflang(activePathnameWithoutLang, hasArtistParam);
   const showArtistHeroBanner = routeShowsArtistHeroBanner(activePathnameWithoutLang);
@@ -597,6 +609,7 @@ function Layout() {
         <Route path="articles/:articleId" element={articlePageElement} />
         <Route path="offer" element={offerPageElement} />
         <Route path="privacy" element={privacyPageElement} />
+        <Route path="user-agreement" element={userAgreementPageElement} />
         <Route path="help" element={helpLayoutElement}>
           <Route index element={helpHomePageElement} />
           <Route path=":categorySlug/:articleSlug" element={helpArticlePageElement} />
