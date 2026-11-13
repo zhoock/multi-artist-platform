@@ -14,6 +14,8 @@ const copy: UserNotificationRowCopy = {
   collectionAddTitle: 'Collection',
   collectionAddBody: 'Another listener added you to their collection',
   collectionAddByArtistBody: '{{name}} added you to their collection',
+  albumPurchaseTitle: 'Album purchase',
+  albumPurchaseBody: 'Your album “{{title}}” was purchased',
 };
 
 const base: UserNotificationItem = {
@@ -52,6 +54,26 @@ describe('notificationRowCopy', () => {
     };
     expect(notificationRowTitle(item, copy)).toBe('Collection');
     expect(notificationRowBody(item, copy)).toBe('Another listener added you to their collection');
+  });
+
+  test('album_purchase RU/EN body template with album title', () => {
+    const enItem: UserNotificationItem = {
+      ...base,
+      type: 'album_purchase',
+      commentId: null,
+      actorUserId: null,
+      albumTitle: 'Rubber Soul',
+    };
+    expect(notificationRowTitle(enItem, copy)).toBe('Album purchase');
+    expect(notificationRowBody(enItem, copy)).toBe('Your album “Rubber Soul” was purchased');
+
+    const ruCopy: UserNotificationRowCopy = {
+      ...copy,
+      albumPurchaseTitle: 'Покупка альбома',
+      albumPurchaseBody: 'Ваш альбом «{{title}}» был куплен',
+    };
+    expect(notificationRowTitle(enItem, ruCopy)).toBe('Покупка альбома');
+    expect(notificationRowBody(enItem, ruCopy)).toBe('Ваш альбом «Rubber Soul» был куплен');
   });
 
   test('collection_add from artist uses artist body with name', () => {

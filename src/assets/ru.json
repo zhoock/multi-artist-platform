@@ -24,6 +24,8 @@
         "newCollectionAddTitle": "Коллекция",
         "newCollectionAddBody": "Ещё один слушатель добавил вас в коллекцию",
         "newCollectionAddByArtistBody": "{{name}} добавил вас в коллекцию",
+        "newAlbumPurchaseTitle": "Покупка альбома",
+        "newAlbumPurchaseBody": "Ваш альбом «{{title}}» был куплен",
         "viewAll": "Все уведомления →",
         "loadMore": "Показать ещё",
         "loadError": "Не удалось загрузить уведомления."

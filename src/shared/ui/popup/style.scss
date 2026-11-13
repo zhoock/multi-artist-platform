@@ -75,6 +75,15 @@ dialog:not(.toast-viewport-layer, .toast-top-layer) {
     justify-content: center;
   }
 
+  &.popup[open]:has(.album-checkout-modal) {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    padding: var(--ms-0);
+    overflow: hidden;
+  }
+
   &.popup[open]:has(.album-comments-fullscreen) {
     display: flex;
     flex-direction: column;

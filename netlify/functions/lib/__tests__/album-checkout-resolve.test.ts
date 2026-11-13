@@ -16,6 +16,10 @@ jest.mock('../fulfill-album-purchase', () => ({
   sendAlbumPurchaseConfirmationEmail: jest.fn(),
 }));
 
+jest.mock('../album-purchase-notification', () => ({
+  notifyArtistAlbumPurchaseOnFulfillment: jest.fn(async () => {}),
+}));
+
 import { query, withTransaction } from '../db';
 import {
   findSucceededPaymentForOrder,

@@ -11,12 +11,15 @@ export type UserNotificationRowCopy = {
   collectionAddTitle: string;
   collectionAddBody: string;
   collectionAddByArtistBody: string;
+  albumPurchaseTitle: string;
+  albumPurchaseBody: string;
 };
 
 export function notificationRowTitle(
   notification: UserNotificationItem,
   copy: UserNotificationRowCopy
 ): string {
+  if (notification.type === 'album_purchase') return copy.albumPurchaseTitle;
   if (notification.type === 'collection_add') return copy.collectionAddTitle;
   if (notification.type === 'comment_like') return copy.likeTitle;
   if (notification.type === 'comment_reply') return copy.commentReplyTitle;
@@ -33,6 +36,9 @@ export function notificationRowBody(
       copy.collectionAddBody,
       copy.collectionAddByArtistBody
     );
+  }
+  if (notification.type === 'album_purchase') {
+    return formatAlbumNotificationBody(notification, copy.albumPurchaseBody);
   }
   const template =
     notification.type === 'comment_like' ? copy.likeBodyTemplate : copy.commentBodyTemplate;

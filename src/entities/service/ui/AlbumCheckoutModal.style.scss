@@ -9,6 +9,15 @@ $album-checkout-modal-gap: var(--ms-0);
 .album-checkout-modal {
   @include dashboard-modal.dashboard-modal-shell($padding: 20px);
 
+  // Popup dialog already centers content (flex + 100dvb). Forcing 100vh on this
+  // shell made the card taller than the scrollport and clipped the hero/header.
+  box-sizing: border-box;
+  inline-size: 100%;
+  max-block-size: 100%;
+  min-block-size: 0;
+  min-height: auto;
+  flex: 0 1 auto;
+
   &__container {
     display: flex;
     flex-direction: column;

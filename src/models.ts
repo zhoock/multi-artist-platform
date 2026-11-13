@@ -531,6 +531,8 @@ export interface IInterface {
       newCollectionAddTitle?: string;
       newCollectionAddBody?: string;
       newCollectionAddByArtistBody?: string;
+      newAlbumPurchaseTitle?: string;
+      newAlbumPurchaseBody?: string;
       viewAll?: string;
       loadMore?: string;
       loadError?: string;

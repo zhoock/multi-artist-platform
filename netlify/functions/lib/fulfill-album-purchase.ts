@@ -9,6 +9,7 @@ import { query, withTransaction } from './db';
 import { sendPurchaseEmail } from './email';
 import { resolveAlbumByKey, resolveAlbumSlug } from './resolve-album-key';
 import { resolveUserIdForCustomerEmail } from './purchases';
+import { notifyArtistAlbumPurchaseOnFulfillment } from './album-purchase-notification';
 
 export class AlbumFulfillmentError extends Error {
   constructor(
@@ -272,6 +273,8 @@ export async function applyAlbumPaymentSucceededFulfillment(
     );
   }
 
+  await notifyArtistAlbumPurchaseOnFulfillment(input.orderId);
+
   return fulfillment;
 }
 
@@ -307,6 +310,8 @@ export async function recoverAlbumPurchaseForPaidOrder(
       order.buyer_display_name
     );
   }
+
+  await notifyArtistAlbumPurchaseOnFulfillment(orderId);
 
   return fulfillment;
 }

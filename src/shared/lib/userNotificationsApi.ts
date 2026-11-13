@@ -3,7 +3,12 @@ import { getToken } from './auth';
 export const USER_NOTIFICATIONS_API_DROPDOWN_LIMIT = 10;
 export const USER_NOTIFICATIONS_API_PAGE_LIMIT = 25;
 
-export type UserNotificationType = 'comment' | 'comment_reply' | 'comment_like' | 'collection_add';
+export type UserNotificationType =
+  | 'comment'
+  | 'comment_reply'
+  | 'comment_like'
+  | 'collection_add'
+  | 'album_purchase';
 
 export type UserNotificationItem = {
   id: string;
@@ -16,6 +21,10 @@ export type UserNotificationItem = {
   /** Set for collection_add when the actor was a public artist at notification insert time. */
   actorDisplayName?: string | null;
   actorAvatarPath?: string | null;
+  /** album_purchase cover storage value for CDN URL resolution. */
+  albumCoverPath?: string | null;
+  /** album_purchase album owner (recipient) user id — for cover CDN path only. */
+  albumCoverOwnerUserId?: string | null;
   isRead: boolean;
   createdAt: string;
 };

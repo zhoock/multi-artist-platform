@@ -118,6 +118,8 @@ const PopupComponent = ({
       }
 
       dialog.showModal();
+      dialog.scrollTop = 0;
+      dialog.scrollLeft = 0;
       promoteToastLayers();
       if (autoFocusFirstElement) {
         // Neutral sentinel keeps focus out of header Close while preserving dialog focus trap.

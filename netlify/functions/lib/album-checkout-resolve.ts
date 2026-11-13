@@ -12,6 +12,7 @@ import {
   fulfillPaidOrderPurchaseInTransaction,
   sendAlbumPurchaseConfirmationEmail,
 } from './fulfill-album-purchase';
+import { notifyArtistAlbumPurchaseOnFulfillment } from './album-purchase-notification';
 import {
   normalizeCheckoutCustomerEmail,
   pendingOrderAdvisoryLockKey,
@@ -228,6 +229,7 @@ export async function resolveAlbumCheckoutOrder(
           orderMeta.buyer_display_name
         );
       }
+      await notifyArtistAlbumPurchaseOnFulfillment(resolved.orderId);
     }
 
     return resolved;

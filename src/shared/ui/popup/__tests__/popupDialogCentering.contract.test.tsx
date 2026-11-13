@@ -50,6 +50,28 @@ describe('popup dialog centering contract', () => {
     expect(popupStyles).toMatch(/>\s*\.player[\s\S]*inline-size:\s*100%/);
   });
 
+  test('Popup clears dialog scroll offsets when opening', () => {
+    const popupSource = readFileSync('src/shared/ui/popup/Popup.tsx', 'utf8');
+
+    expect(popupSource).toMatch(/dialog\.showModal\(\);\s*\n\s*dialog\.scrollTop = 0;/);
+    expect(popupSource).toMatch(/dialog\.scrollLeft = 0;/);
+  });
+
+  test('public local-modal dialog does not override UA modal positioning', () => {
+    const localModal = readFileSync('src/shared/ui/localModal/localModal.scss', 'utf8');
+
+    const block = localModal.match(/dialog\.popup\.local-modal\s*\{([^}]+)\}/s)?.[1] ?? '';
+
+    expect(block).not.toMatch(/^\s*position:\s*(relative|fixed)\s*;/m);
+  });
+
+  test('album checkout dialog uses non-scrolling centered shell', () => {
+    const popupStyles = readFileSync('src/shared/ui/popup/style.scss', 'utf8');
+
+    expect(popupStyles).toMatch(/popup\[open\]:has\(\.album-checkout-modal\)/);
+    expect(popupStyles).toMatch(/align-items:\s*center/);
+  });
+
   test('dashboard popup child sizing does not stretch the focus sentinel', () => {
     const popupStyles = readFileSync('src/shared/ui/popup/style.scss', 'utf8');
     const childSizing = popupStyles.match(/>\s*\*:not\(\s*([\s\S]*?)\)\s*\{/);

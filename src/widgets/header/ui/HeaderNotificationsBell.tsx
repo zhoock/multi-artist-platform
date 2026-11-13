@@ -149,6 +149,8 @@ function HeaderNotificationsBellComponent({
       copy?.newCollectionAddBody ?? 'Another listener added you to their collection',
     collectionAddByArtistBody:
       copy?.newCollectionAddByArtistBody ?? '{{name}} added you to their collection',
+    albumPurchaseTitle: copy?.newAlbumPurchaseTitle ?? 'Album purchase',
+    albumPurchaseBody: copy?.newAlbumPurchaseBody ?? 'Your album “{{title}}” was purchased',
   };
   const viewAllLabel = copy?.viewAll ?? 'View all notifications →';
 

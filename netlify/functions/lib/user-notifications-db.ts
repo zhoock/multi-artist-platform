@@ -6,7 +6,12 @@ import type { AlbumCommentContext } from './album-comments';
 import { isArtistAccountType } from './account-type';
 import { query } from './db';
 
-export type UserNotificationType = 'comment' | 'comment_reply' | 'comment_like' | 'collection_add';
+export type UserNotificationType =
+  | 'comment'
+  | 'comment_reply'
+  | 'comment_like'
+  | 'collection_add'
+  | 'album_purchase';
 
 export const USER_NOTIFICATIONS_DROPDOWN_LIMIT = 10;
 export const USER_NOTIFICATIONS_PAGE_LIMIT = 25;
@@ -160,6 +165,39 @@ function resolveCollectionAddActorPublicSnapshot(actor: CollectionAddActorRow): 
  * Artist alert when someone adds them to an active collection.
  * Stores actor_user_id always; denormalizes public actor fields only when actor is artist at insert time.
  */
+/**
+ * Artist alert when someone purchases their album (buyer identity hidden in API).
+ * Idempotent per order via purchase_order_id dedupe guard.
+ */
+export async function insertAlbumPurchaseUserNotification(input: {
+  orderId: string;
+  artistUserId: string;
+  albumSlug: string;
+  artistSlug: string;
+  albumTitle: string;
+  albumCoverPath?: string | null;
+}): Promise<void> {
+  if (!input.orderId?.trim() || !input.artistUserId?.trim()) return;
+  if (!input.albumSlug?.trim() || !input.artistSlug?.trim()) return;
+
+  const albumTitle = input.albumTitle?.trim() || input.albumSlug.trim() || input.albumSlug;
+  const coverPath = input.albumCoverPath?.trim() || '';
+
+  await query(
+    `INSERT INTO user_notifications (
+       recipient_user_id, type, comment_id, album_id, artist_slug, album_title,
+       actor_user_id, purchase_order_id, album_cover_path
+     )
+     SELECT $1::uuid, 'album_purchase', NULL, $2, $3, $4, NULL, $5::uuid, $6
+     WHERE NOT EXISTS (
+       SELECT 1 FROM user_notifications
+       WHERE type = 'album_purchase' AND purchase_order_id = $5::uuid
+     )`,
+    [input.artistUserId, input.albumSlug, input.artistSlug, albumTitle, input.orderId, coverPath],
+    0
+  );
+}
+
 export async function insertCollectionAddUserNotification(input: {
   artistUserId: string;
   actorUserId: string;
@@ -226,6 +264,9 @@ export interface UserNotificationRow {
   artist_slug: string;
   album_title: string;
   actor_user_id: string | null;
+  purchase_order_id?: string | null;
+  album_cover_path?: string | null;
+  recipient_user_id?: string | null;
   is_read: boolean;
   created_at: Date;
 }
@@ -235,6 +276,24 @@ function isCollectionAddPublicActorRow(r: UserNotificationRow): boolean {
 }
 
 export function mapUserNotificationRow(r: UserNotificationRow) {
+  if (r.type === 'album_purchase') {
+    return {
+      id: r.id,
+      type: r.type,
+      commentId: null,
+      albumId: r.album_id,
+      artistSlug: r.artist_slug,
+      albumTitle: r.album_title,
+      actorUserId: null,
+      actorDisplayName: null,
+      actorAvatarPath: null,
+      albumCoverPath: r.album_cover_path?.trim() || null,
+      albumCoverOwnerUserId: r.recipient_user_id?.trim() || null,
+      isRead: r.is_read,
+      createdAt: r.created_at instanceof Date ? r.created_at.toISOString() : String(r.created_at),
+    };
+  }
+
   if (r.type === 'collection_add') {
     const publicActor = isCollectionAddPublicActorRow(r);
     return {
@@ -305,6 +364,9 @@ export async function listUserNotificationsPage(input: {
             artist_slug,
             album_title,
             actor_user_id::text AS actor_user_id,
+            purchase_order_id::text AS purchase_order_id,
+            album_cover_path,
+            recipient_user_id::text AS recipient_user_id,
             is_read,
             created_at
      FROM user_notifications

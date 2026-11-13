@@ -16,6 +16,15 @@ jest.mock('@features/albumComments', () => ({
   resolveAlbumCommentNotificationPath: () => '/en/albums/23?artist=beatles&comment=c1',
 }));
 
+jest.mock('@shared/lib/seo/publicPagePaths', () => {
+  const actual = jest.requireActual('@shared/lib/seo/publicPagePaths');
+  return {
+    ...actual,
+    buildPublicAlbumPagePath: (lang: string, albumId: string, artistSlug: string) =>
+      `/${lang}/albums/${albumId}?artist=${artistSlug}`,
+  };
+});
+
 describe('useNotificationNavigation', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -62,6 +71,29 @@ describe('useNotificationNavigation', () => {
 
     expect(patchMock).not.toHaveBeenCalled();
     expect(navigateMock).not.toHaveBeenCalled();
+  });
+
+  test('album_purchase navigates to public album page and marks read', async () => {
+    const { result } = renderHook(() => useNotificationNavigation('en'));
+
+    await act(async () => {
+      await result.current.openNotification({
+        id: 'n-purchase',
+        type: 'album_purchase',
+        commentId: null,
+        albumId: 'rubber-soul',
+        artistSlug: 'beatles',
+        albumTitle: 'Rubber Soul',
+        albumCoverPath: 'cover',
+        albumCoverOwnerUserId: 'artist-1',
+        actorUserId: null,
+        isRead: false,
+        createdAt: new Date().toISOString(),
+      });
+    });
+
+    expect(patchMock).toHaveBeenCalledWith('n-purchase');
+    expect(navigateMock).toHaveBeenCalledWith('/en/albums/rubber-soul?artist=beatles');
   });
 
   test('collection_add from artist navigates to public artist page', async () => {

@@ -45,6 +45,8 @@ export default function UserNotificationsPage() {
       copy?.newCollectionAddBody ?? 'Another listener added you to their collection',
     collectionAddByArtistBody:
       copy?.newCollectionAddByArtistBody ?? '{{name}} added you to their collection',
+    albumPurchaseTitle: copy?.newAlbumPurchaseTitle ?? 'Album purchase',
+    albumPurchaseBody: copy?.newAlbumPurchaseBody ?? 'Your album “{{title}}” was purchased',
   };
   const emptyLabel = copy?.pageEmpty ?? 'No notifications';
   const loadMoreLabel = copy?.loadMore ?? 'Show more';

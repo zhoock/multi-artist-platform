@@ -4,6 +4,7 @@ import {
   Heart as HeartIcon,
   HeartHandshake as HeartHandshakeIcon,
   MessageCircle as MessageCircleIcon,
+  ShoppingBag as ShoppingBagIcon,
 } from 'lucide-react';
 import { formatNotificationRelativeTime } from '@shared/lib/formatNotificationRelativeTime';
 import type { UserNotificationItem } from '@shared/lib/userNotificationsApi';
@@ -17,6 +18,7 @@ import {
   notificationRowTitle,
   type UserNotificationRowCopy,
 } from '../lib/notificationRowCopy';
+import { resolveAlbumPurchaseNotificationCoverUrl } from '../lib/albumPurchaseNotificationCover';
 import './userNotificationList.scss';
 
 type UserNotificationListProps = {
@@ -47,6 +49,10 @@ export function UserNotificationList({
           {items.map((n) => {
             const collectionActor = isCollectionAddPublicActor(n);
             const staticListenerCollectionAdd = isListenerCollectionAddNotification(n);
+            const albumPurchaseCoverUrl =
+              n.type === 'album_purchase' ? resolveAlbumPurchaseNotificationCoverUrl(n) : null;
+            const albumPurchaseCover =
+              n.type === 'album_purchase' && (albumPurchaseCoverUrl || n.albumTitle);
             const rowClassName = clsx(
               'user-notification-list__row',
               n.isRead && 'user-notification-list__row--read',
@@ -57,11 +63,18 @@ export function UserNotificationList({
                 <span
                   className={clsx(
                     'user-notification-list__row-icon',
-                    collectionActor && 'user-notification-list__row-icon--avatar'
+                    (collectionActor || albumPurchaseCover) &&
+                      'user-notification-list__row-icon--avatar'
                   )}
                   aria-hidden
                 >
-                  {collectionActor ? (
+                  {albumPurchaseCover ? (
+                    <AlbumCommentAvatar
+                      imageUrl={albumPurchaseCoverUrl}
+                      displayName={n.albumTitle ?? ''}
+                      className="user-notification-list__row-actor-avatar"
+                    />
+                  ) : collectionActor ? (
                     <AlbumCommentAvatar
                       avatarPath={n.actorAvatarPath}
                       displayName={n.actorDisplayName ?? ''}
@@ -73,6 +86,8 @@ export function UserNotificationList({
                     <HeartIcon size={18} strokeWidth={2} />
                   ) : n.type === 'comment_reply' ? (
                     <CornerUpLeftIcon size={18} strokeWidth={2} />
+                  ) : n.type === 'album_purchase' ? (
+                    <ShoppingBagIcon size={18} strokeWidth={2} />
                   ) : (
                     <MessageCircleIcon size={18} strokeWidth={2} />
                   )}

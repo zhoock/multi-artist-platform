@@ -6,7 +6,7 @@ import {
   isListenerCollectionAddNotification,
 } from './collectionAddNotification';
 import type { RouteLang } from '@shared/lib/i18n/routeLang';
-import { buildArtistPagePath } from '@shared/lib/seo/publicPagePaths';
+import { buildArtistPagePath, buildPublicAlbumPagePath } from '@shared/lib/seo/publicPagePaths';
 import {
   patchUserNotificationRead,
   type UserNotificationItem,
@@ -35,6 +35,16 @@ export function useNotificationNavigation(lang: RouteLang) {
         options?.beforeNavigate?.();
         navigate(buildArtistPagePath(lang, notification.artistSlug!.trim()));
         return;
+      }
+
+      if (notification.type === 'album_purchase') {
+        const albumId = notification.albumId?.trim() ?? '';
+        const artistSlug = notification.artistSlug?.trim() ?? '';
+        if (albumId && artistSlug) {
+          options?.beforeNavigate?.();
+          navigate(buildPublicAlbumPagePath(lang, albumId, artistSlug));
+          return;
+        }
       }
 
       const path = resolveAlbumCommentNotificationPath(lang, {

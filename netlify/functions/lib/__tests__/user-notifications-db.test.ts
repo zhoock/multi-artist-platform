@@ -4,6 +4,7 @@ import {
   USER_NOTIFICATIONS_RETENTION_DAYS,
   clampUserNotificationsLimit,
   insertCollectionAddUserNotification,
+  insertAlbumPurchaseUserNotification,
   insertCommentLikeUserNotification,
   listUserNotificationsPage,
   mapUserNotificationRow,
@@ -88,6 +89,66 @@ describe('user-notifications-db', () => {
         ['u1', USER_NOTIFICATIONS_PAGE_LIMIT + 1],
         0
       );
+    });
+  });
+
+  describe('insertAlbumPurchaseUserNotification', () => {
+    beforeEach(() => {
+      mockQuery.mockReset();
+    });
+
+    test('inserts album_purchase without actor identity', async () => {
+      mockQuery.mockResolvedValueOnce({ rows: [] });
+
+      await insertAlbumPurchaseUserNotification({
+        orderId: 'order-1',
+        artistUserId: 'artist-1',
+        albumSlug: 'rubber-soul',
+        artistSlug: 'beatles',
+        albumTitle: 'Rubber Soul',
+        albumCoverPath: 'cover-key',
+      });
+
+      expect(mockQuery).toHaveBeenCalledWith(
+        expect.stringContaining("'album_purchase'"),
+        ['artist-1', 'rubber-soul', 'beatles', 'Rubber Soul', 'order-1', 'cover-key'],
+        0
+      );
+    });
+
+    test('dedupe guard references purchase_order_id', async () => {
+      mockQuery.mockResolvedValueOnce({ rows: [] });
+      await insertAlbumPurchaseUserNotification({
+        orderId: 'order-2',
+        artistUserId: 'artist-1',
+        albumSlug: 'a1',
+        artistSlug: 'slug',
+        albumTitle: 'Title',
+      });
+      expect(mockQuery.mock.calls[0][0]).toContain('purchase_order_id = $5::uuid');
+    });
+  });
+
+  describe('mapUserNotificationRow album_purchase', () => {
+    test('hides buyer and exposes album cover metadata', () => {
+      const dto = mapUserNotificationRow({
+        id: 'n1',
+        type: 'album_purchase',
+        comment_id: null,
+        album_id: 'rubber-soul',
+        artist_slug: 'beatles',
+        album_title: 'Rubber Soul',
+        actor_user_id: null,
+        album_cover_path: 'cover-key',
+        recipient_user_id: 'artist-1',
+        is_read: false,
+        created_at: new Date('2026-01-01T12:00:00Z'),
+      });
+      expect(dto.type).toBe('album_purchase');
+      expect(dto.actorUserId).toBeNull();
+      expect(dto.albumCoverPath).toBe('cover-key');
+      expect(dto.albumCoverOwnerUserId).toBe('artist-1');
+      expect(dto.albumTitle).toBe('Rubber Soul');
     });
   });
 

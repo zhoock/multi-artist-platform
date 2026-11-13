@@ -13,6 +13,8 @@ const rowCopy: UserNotificationRowCopy = {
   collectionAddTitle: 'Collection',
   collectionAddBody: 'Another listener added you to their collection',
   collectionAddByArtistBody: '{{name}} added you to their collection',
+  albumPurchaseTitle: 'Album purchase',
+  albumPurchaseBody: 'Your album “{{title}}” was purchased',
 };
 
 const collectionAddBase: UserNotificationItem = {
@@ -129,6 +131,37 @@ describe('UserNotificationList unread row icons', () => {
     );
 
     expect(document.querySelector('.user-notification-list__row--read')).toBeInTheDocument();
+  });
+});
+
+describe('UserNotificationList album_purchase', () => {
+  test('shows album cover avatar and purchase copy', () => {
+    render(
+      <UserNotificationList
+        items={[
+          {
+            id: 'n-purchase',
+            type: 'album_purchase',
+            commentId: null,
+            albumId: 'rubber-soul',
+            artistSlug: 'beatles',
+            albumTitle: 'Rubber Soul',
+            albumCoverPath: 'rubber-cover',
+            albumCoverOwnerUserId: 'artist-uuid',
+            actorUserId: null,
+            isRead: false,
+            createdAt: new Date().toISOString(),
+          },
+        ]}
+        lang="en"
+        copy={rowCopy}
+        onItemClick={jest.fn()}
+      />
+    );
+
+    expect(screen.getByText('Album purchase')).toBeInTheDocument();
+    expect(screen.getByText('Your album “Rubber Soul” was purchased')).toBeInTheDocument();
+    expect(document.querySelector('.user-notification-list__row-icon--avatar')).toBeInTheDocument();
   });
 });
 
