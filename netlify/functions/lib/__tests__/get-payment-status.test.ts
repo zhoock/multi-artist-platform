@@ -183,6 +183,31 @@ describe('get-payment-status authorization', () => {
     expect(response.statusCode).toBe(200);
   });
 
+  it('normalizes JSONB album.cover to a string for PaymentSuccess', async () => {
+    mockAuthorizedOrderLookup();
+    resolveAlbumByKeyMock.mockResolvedValue({
+      album: 'Rubber Soul',
+      artistDisplayName: 'Beatles',
+      cover: {
+        img: 'album_cover_c5382f6e-9b9b-488f-87d2-19754372636f_beatles-Cover-rubber-soul',
+        backImg: 'album_cover_82a77dbf-ffbf-46e3-8830-e798d350c5e6_beatles-Back-Cover-rubber-soul',
+      },
+      userId: 'seller-1',
+    });
+
+    const response = await handler(buildEvent(tokenQuery(ORDER_A)), {} as never, {} as never);
+    const body = JSON.parse(response.body);
+
+    expect(response.statusCode).toBe(200);
+    expect(body.album).toEqual({
+      title: 'Rubber Soul',
+      artistDisplayName: 'Beatles',
+      cover: 'album_cover_c5382f6e-9b9b-488f-87d2-19754372636f_beatles-Cover-rubber-soul',
+      userId: 'seller-1',
+    });
+    expect(typeof body.album.cover).toBe('string');
+  });
+
   it('unauthorized response does not leak payment metadata', async () => {
     const response = await handler(buildEvent({ orderId: ORDER_A }), {} as never, {} as never);
     const body = JSON.parse(response.body);

@@ -43,6 +43,7 @@ import {
   createOrderStatusAccessDeniedResponse,
   verifyOrderStatusAccess,
 } from './lib/order-status-access';
+import { coverImgFromStorageField } from '../../src/shared/lib/albumCoverStorage';
 import { resolveAlbumByKey } from './lib/resolve-album-key';
 import dns from 'node:dns';
 import {
@@ -163,7 +164,7 @@ async function resolvePurchasedAlbumForResponse(
     return {
       title: album.album,
       artistDisplayName: album.artistDisplayName,
-      cover: album.cover,
+      cover: coverImgFromStorageField(album.cover) || null,
       userId: album.userId,
     };
   } catch (error) {
