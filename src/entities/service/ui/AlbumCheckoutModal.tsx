@@ -18,7 +18,7 @@
  *   тот же контракт, что и раньше, чтобы не ломать `PaymentSuccess` и webhook.
  */
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Check as CheckIcon } from 'lucide-react';
 import { Link, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import type { AlbumDetails } from '@entities/album/model/albumDetails';
@@ -45,6 +45,7 @@ import { getAlbumPrice } from '../lib/getAlbumPrice';
 import { useAlbumOwnedByViewer } from '../lib/useAlbumOwnedByViewer';
 import { resolveCheckoutBuyerIdentity } from '../lib/resolveCheckoutBuyerIdentity';
 import { applyAlbumCheckoutCreatePaymentResult } from '../lib/applyAlbumCheckoutCreatePaymentResult';
+import { releaseAlbumCheckoutTopLayerDialog } from '../lib/releaseAlbumCheckoutTopLayerDialog';
 import './AlbumCheckoutModal.style.scss';
 
 interface AlbumCheckoutModalProps {
@@ -213,10 +214,12 @@ export function AlbumCheckoutModal({ isOpen, album, onClose }: AlbumCheckoutModa
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [serverConfirmedOwned, setServerConfirmedOwned] = useState(false);
-  const isSubmittingRef = useRef(false);
   const showOwned = isOwned || serverConfirmedOwned;
 
-  isSubmittingRef.current = isSubmitting;
+  const releaseUiBeforePaymentRedirect = useCallback(() => {
+    onClose();
+    releaseAlbumCheckoutTopLayerDialog();
+  }, [onClose]);
 
   // При каждом открытии — пре-заполнение из auth-сессии и сброс ошибок.
   useEffect(() => {
@@ -229,22 +232,6 @@ export function AlbumCheckoutModal({ isOpen, album, onClose }: AlbumCheckoutModa
     setIsSubmitting(false);
     setIsDownloading(false);
     setServerConfirmedOwned(false);
-  }, [isOpen]);
-
-  // Safari/back: bfcache can restore the modal with `isSubmitting` still true after YooKassa.
-  useEffect(() => {
-    if (!isOpen) {
-      return;
-    }
-
-    const onPageShow = (event: PageTransitionEvent) => {
-      if (event.persisted && isSubmittingRef.current) {
-        setIsSubmitting(false);
-      }
-    };
-
-    window.addEventListener('pageshow', onPageShow);
-    return () => window.removeEventListener('pageshow', onPageShow);
   }, [isOpen]);
 
   if (!album) {
@@ -313,6 +300,7 @@ export function AlbumCheckoutModal({ isOpen, album, onClose }: AlbumCheckoutModa
       const redirectOutcome = applyAlbumCheckoutCreatePaymentResult(result, {
         returnTo,
         genericError: labels.paymentErrorGeneric,
+        releaseUiBeforeNavigate: releaseUiBeforePaymentRedirect,
       });
 
       if (redirectOutcome.kind === 'error') {

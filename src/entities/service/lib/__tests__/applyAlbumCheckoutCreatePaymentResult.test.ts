@@ -10,6 +10,28 @@ describe('applyAlbumCheckoutCreatePaymentResult', () => {
     navigateMock = jest.fn();
   });
 
+  test('calls releaseUiBeforeNavigate before navigate', () => {
+    const releaseMock = jest.fn();
+    applyAlbumCheckoutCreatePaymentResult(
+      {
+        success: true,
+        confirmationUrl: 'https://yoomoney.ru/checkout/payments/v2/contract',
+      },
+      {
+        returnTo: '/ru/albums/rubber-soul',
+        genericError,
+        navigate: navigateMock,
+        releaseUiBeforeNavigate: releaseMock,
+      }
+    );
+
+    expect(releaseMock).toHaveBeenCalledTimes(1);
+    expect(navigateMock).toHaveBeenCalledTimes(1);
+    expect(releaseMock.mock.invocationCallOrder[0]).toBeLessThan(
+      navigateMock.mock.invocationCallOrder[0] ?? 0
+    );
+  });
+
   test('redirects to HTTPS confirmation URL', () => {
     const outcome = applyAlbumCheckoutCreatePaymentResult(
       {

@@ -21,4 +21,11 @@ describe('AlbumCheckoutModal layout contract', () => {
       /popup\[open\]:has\(\.album-checkout-modal\)[\s\S]*overflow:\s*hidden/
     );
   });
+
+  test('modal closes top-layer dialog before YooKassa redirect', () => {
+    const modalSource = readFileSync('src/entities/service/ui/AlbumCheckoutModal.tsx', 'utf8');
+
+    expect(modalSource).toMatch(/releaseUiBeforeNavigate:\s*releaseUiBeforePaymentRedirect/);
+    expect(modalSource).toMatch(/releaseAlbumCheckoutTopLayerDialog/);
+  });
 });

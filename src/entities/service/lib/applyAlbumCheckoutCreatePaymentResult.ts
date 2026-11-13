@@ -34,11 +34,16 @@ function readCheckoutStatusToken(
   return undefined;
 }
 
-function redirectTo(url: string, navigate: (target: string) => void): AlbumCheckoutRedirectOutcome {
+function redirectTo(
+  url: string,
+  navigate: (target: string) => void,
+  releaseUiBeforeNavigate?: () => void
+): AlbumCheckoutRedirectOutcome {
   if (typeof window === 'undefined' && navigate === defaultCheckoutNavigate) {
     return { kind: 'error', message: 'Checkout redirect is only available in the browser' };
   }
   try {
+    releaseUiBeforeNavigate?.();
     navigate(url);
     return { kind: 'redirect' };
   } catch (error) {
@@ -50,7 +55,7 @@ function redirectTo(url: string, navigate: (target: string) => void): AlbumCheck
 }
 
 function defaultCheckoutNavigate(target: string): void {
-  window.location.assign(target);
+  window.location.href = target;
 }
 
 /**
@@ -63,9 +68,11 @@ export function applyAlbumCheckoutCreatePaymentResult(
     returnTo: string;
     genericError: string;
     navigate?: (target: string) => void;
+    releaseUiBeforeNavigate?: () => void;
   }
 ): AlbumCheckoutRedirectOutcome {
   const navigate = context.navigate ?? defaultCheckoutNavigate;
+  const releaseUi = context.releaseUiBeforeNavigate;
   const checkoutToken = readCheckoutStatusToken(result);
 
   if (result.devPaymentCompleted || result.fulfillmentRecovered) {
@@ -88,15 +95,19 @@ export function applyAlbumCheckoutCreatePaymentResult(
           return `${parsed.pathname}${parsed.search}`;
         })(),
       });
-      return redirectTo(statusUrl, navigate);
+      return redirectTo(statusUrl, navigate, releaseUi);
     }
 
-    return redirectTo(buildAlbumPaymentSuccessUrl(result.orderId, checkoutToken), navigate);
+    return redirectTo(
+      buildAlbumPaymentSuccessUrl(result.orderId, checkoutToken),
+      navigate,
+      releaseUi
+    );
   }
 
   const confirmationUrl = resolveHttpsCheckoutUrl(result.confirmationUrl);
   if (confirmationUrl) {
-    return redirectTo(confirmationUrl, navigate);
+    return redirectTo(confirmationUrl, navigate, releaseUi);
   }
 
   return { kind: 'error', message: context.genericError };

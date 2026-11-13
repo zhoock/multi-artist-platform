@@ -197,7 +197,10 @@ describe('AlbumCheckoutModal', () => {
         success: true,
         confirmationUrl: 'https://yoomoney.ru/checkout/payments/v2/contract',
       }),
-      expect.objectContaining({ genericError: expect.any(String) })
+      expect.objectContaining({
+        genericError: expect.any(String),
+        releaseUiBeforeNavigate: expect.any(Function),
+      })
     );
   });
 
