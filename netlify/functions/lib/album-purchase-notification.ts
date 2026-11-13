@@ -2,6 +2,7 @@
  * Artist in-app notification after successful album purchase fulfillment.
  */
 
+import { coverImgFromStorageField } from '../../../src/shared/lib/albumCoverStorage';
 import { resolveAlbumByKey } from './resolve-album-key';
 import { resolveUserIdForCustomerEmail } from './purchases';
 import { query } from './db';
@@ -41,7 +42,7 @@ export async function notifyArtistAlbumPurchaseOnFulfillment(orderId: string): P
       albumSlug: album.albumSlug,
       artistSlug: album.artistPublicSlug ?? '',
       albumTitle: album.album,
-      albumCoverPath: album.cover ?? '',
+      albumCoverPath: coverImgFromStorageField(album.cover) || '',
     });
   } catch (error) {
     console.error('[album-purchase-notification] insert failed', {

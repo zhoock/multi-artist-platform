@@ -2,6 +2,8 @@
  * Собирает публичный URL объекта в Supabase Storage по пути в bucket.
  * Использует SUPABASE_URL / VITE_SUPABASE_URL из окружения функции (на Netlify всегда есть SUPABASE_URL).
  */
+import { coverImgFromStorageField } from '../../../src/shared/lib/albumCoverStorage';
+
 const STORAGE_BUCKET = 'user-media';
 
 const IMAGE_EXT_PATTERN = /\.(jpg|jpeg|png|webp|gif|avif)$/i;
@@ -141,13 +143,35 @@ export function resolveAlbumCoverPublicUrl(
  * to a relative URL — the email is read off-site so absolute is mandatory.
  */
 export function buildAlbumCoverEmailUrl(
-  cover: string | null | undefined,
+  cover: unknown,
   albumUserId: string | null | undefined
 ): string | null {
   if (cover == null) {
     return null;
   }
-  const raw = String(cover).trim();
+
+  let raw: string;
+  if (typeof cover === 'string') {
+    const trimmed = cover.trim();
+    if (
+      trimmed.startsWith('http://') ||
+      trimmed.startsWith('https://') ||
+      trimmed.startsWith('data:') ||
+      trimmed.startsWith('blob:') ||
+      trimmed.startsWith('users/') ||
+      trimmed.startsWith('/images/')
+    ) {
+      raw = trimmed;
+    } else if (trimmed.startsWith('{')) {
+      raw = coverImgFromStorageField(trimmed).trim();
+    } else if (IMAGE_EXT_PATTERN.test(trimmed) || COVER_SIZE_SUFFIX_PATTERN.test(trimmed)) {
+      raw = trimmed;
+    } else {
+      raw = (coverImgFromStorageField(trimmed) || trimmed).trim();
+    }
+  } else {
+    raw = coverImgFromStorageField(cover).trim();
+  }
   if (!raw) {
     return null;
   }

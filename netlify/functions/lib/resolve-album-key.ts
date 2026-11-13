@@ -2,6 +2,7 @@
  * Resolve album by frontend key: albums.id (UUID) or albums.album_id (slug).
  */
 
+import { coverImgFromStorageField } from '../../../src/shared/lib/albumCoverStorage';
 import { query } from './db';
 
 export function isAlbumUuid(value: string): boolean {
@@ -27,6 +28,7 @@ export interface ResolvedAlbum {
   artistPublicSlug: string | null;
   album: string;
   lang: string;
+  /** Front cover storage base name (normalized from albums.cover JSONB). */
   cover: string | null;
   userId: string | null;
 }
@@ -38,7 +40,7 @@ type AlbumRow = {
   artist_public_slug: string | null;
   album: string;
   lang: string;
-  cover: string | null;
+  cover: unknown;
   user_id: string | null;
 };
 
@@ -58,7 +60,7 @@ function mapAlbumRow(row: AlbumRow): ResolvedAlbum {
     artistPublicSlug: row.artist_public_slug?.trim() || null,
     album: row.album,
     lang: row.lang,
-    cover: row.cover,
+    cover: coverImgFromStorageField(row.cover) || null,
     userId: row.user_id,
   };
 }

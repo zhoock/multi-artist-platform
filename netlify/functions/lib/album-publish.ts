@@ -5,10 +5,11 @@ import {
   type TrackPublishReadinessInput,
 } from '../../../src/shared/lib/tracks/trackPublishReadiness';
 import { trackAssetsTableExists, tracksTableHasPipelineColumns } from './track-pipeline-schema';
+import { coverImgFromStorageField } from '../../../src/shared/lib/albumCoverStorage';
 
 type AlbumPublishCheckRow = {
   album: string | null;
-  cover: string | null;
+  cover: unknown;
   description: string | null;
   release: Record<string, unknown> | null;
   is_published: boolean;
@@ -124,7 +125,7 @@ export async function loadAlbumPublishTrackContext(
 export function isAlbumMetadataReadyToPublish(album: AlbumPublishCheckRow): boolean {
   if (album.is_published) return false;
   if (!album.album?.trim()) return false;
-  if (!album.cover?.trim()) return false;
+  if (!coverImgFromStorageField(album.cover)) return false;
   if (!album.description?.trim()) return false;
 
   const release = (album.release ?? {}) as Record<string, unknown>;

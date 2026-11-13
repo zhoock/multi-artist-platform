@@ -133,4 +133,22 @@ describe('buildAlbumCoverEmailUrl', () => {
       'https://project.supabase.co/storage/v1/object/public/user-media/users/uid/albums/Cover%20With%20Spaces-448.webp'
     );
   });
+
+  it('normalizes JSONB cover object instead of producing [object Object]', () => {
+    expect(
+      buildAlbumCoverEmailUrl(
+        {
+          img: 'Beatles-Rubber-Soul',
+          backImg: 'Beatles-Rubber-Soul-Back',
+        },
+        'uid-123'
+      )
+    ).toBe(
+      'https://project.supabase.co/storage/v1/object/public/user-media/users/uid-123/albums/Beatles-Rubber-Soul-448.webp'
+    );
+  });
+
+  it('returns null for JSONB cover with empty img', () => {
+    expect(buildAlbumCoverEmailUrl({ img: '', backImg: 'x' }, 'uid-123')).toBeNull();
+  });
 });

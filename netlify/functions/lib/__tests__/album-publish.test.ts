@@ -116,6 +116,72 @@ describe('isAlbumRowReadyToPublish', () => {
     expect(isAlbumRowReadyToPublish(draftAlbum, trackContext)).toBe(true);
   });
 
+  test('accepts JSONB cover object without throwing', () => {
+    const trackContext = {
+      pipelineAvailable: true,
+      assetsByTrackId: new Map([
+        [
+          't1',
+          [
+            {
+              type: 'stream',
+              format: 'opus',
+              variant: '128k',
+              status: 'ready',
+              path: readyStreamRow.path,
+            },
+          ],
+        ],
+      ]),
+      tracks: [
+        {
+          trackId: 't1',
+          visibility: 'public',
+          stemsVisibility: 'public',
+          processingStatus: 'ready' as const,
+          src: '',
+        },
+      ],
+    };
+
+    const draftWithJsonbCover = {
+      ...draftAlbum,
+      cover: {
+        img: 'cover-base',
+        backImg: 'back-cover-base',
+      },
+    };
+
+    expect(() => isAlbumRowReadyToPublish(draftWithJsonbCover, trackContext)).not.toThrow();
+    expect(isAlbumRowReadyToPublish(draftWithJsonbCover, trackContext)).toBe(true);
+  });
+
+  test('rejects JSONB cover when img is missing', () => {
+    const trackContext = {
+      pipelineAvailable: false,
+      assetsByTrackId: new Map(),
+      tracks: [
+        {
+          trackId: 't1',
+          visibility: 'public',
+          stemsVisibility: 'public',
+          processingStatus: null,
+          src: 'users/u1/track.mp3',
+        },
+      ],
+    };
+
+    expect(
+      isAlbumRowReadyToPublish(
+        {
+          ...draftAlbum,
+          cover: { backImg: 'back-only' },
+        },
+        trackContext
+      )
+    ).toBe(false);
+  });
+
   test('accepts legacy album without pipeline when src is set', () => {
     const trackContext = {
       pipelineAvailable: false,

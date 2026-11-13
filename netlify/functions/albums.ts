@@ -2121,9 +2121,6 @@ export const handler: Handler = async (
         }
 
         const albumIds = findAlbumsResult.rows.map((row) => row.id);
-        const coversToDelete = findAlbumsResult.rows
-          .map((row) => row.cover)
-          .filter((cover): cover is string => !!cover);
 
         // Удаляем все треки альбома (для всех языковых версий)
         if (albumIds.length > 0) {
@@ -2151,7 +2148,14 @@ export const handler: Handler = async (
         // Собираем все уникальные обложки из всех удаленных записей
         const uniqueCovers = Array.from(
           new Set(
-            deleteResult.rows.map((row) => row.cover).filter((cover): cover is string => !!cover)
+            deleteResult.rows.flatMap((row) => {
+              const bases: string[] = [];
+              const front = coverImgBaseForStorageCleanup(row.cover);
+              if (front) bases.push(front);
+              const back = backImgBaseForStorageCleanup(row.cover);
+              if (back) bases.push(back);
+              return bases;
+            })
           )
         );
 

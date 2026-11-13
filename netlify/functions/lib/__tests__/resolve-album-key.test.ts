@@ -1,5 +1,6 @@
 import {
   fetchArtistDisplayNameForUserId,
+  resolveAlbumByKey,
   resolveArtistDisplayNameFromParts,
 } from '../resolve-album-key';
 
@@ -39,6 +40,36 @@ describe('resolveArtistDisplayNameFromParts', () => {
 
   it('returns empty string when nothing is available', () => {
     expect(resolveArtistDisplayNameFromParts({})).toBe('');
+  });
+});
+
+describe('resolveAlbumByKey cover normalization', () => {
+  beforeEach(() => {
+    mockedQuery.mockReset();
+  });
+
+  it('normalizes JSONB { img, backImg } to front storage base name', async () => {
+    mockedQuery.mockResolvedValueOnce({
+      rows: [
+        {
+          id: 'album-pk',
+          album_slug: 'rubber-soul',
+          artist_display_name: 'Beatles',
+          artist_public_slug: 'beatles',
+          album: 'Rubber Soul',
+          lang: 'en',
+          cover: {
+            img: 'album_cover_uuid_beatles-Cover-rubber-soul',
+            backImg: 'album_cover_uuid_beatles-Back-Cover-rubber-soul',
+          },
+          user_id: 'artist-1',
+        },
+      ],
+    } as never);
+
+    const album = await resolveAlbumByKey('rubber-soul');
+    expect(album?.cover).toBe('album_cover_uuid_beatles-Cover-rubber-soul');
+    expect(typeof album?.cover).toBe('string');
   });
 });
 

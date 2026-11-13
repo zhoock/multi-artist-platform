@@ -31,6 +31,41 @@ describe('notifyArtistAlbumPurchaseOnFulfillment', () => {
     jest.clearAllMocks();
   });
 
+  test('creates notification with normalized cover from JSONB object', async () => {
+    mockQuery.mockResolvedValueOnce({
+      rows: [
+        {
+          id: 'order-1',
+          album_id: 'rubber-soul',
+          customer_email: 'buyer@example.com',
+          status: 'paid',
+        },
+      ],
+    });
+    mockResolveAlbum.mockResolvedValueOnce({
+      userId: 'artist-1',
+      albumSlug: 'rubber-soul',
+      artistPublicSlug: 'beatles',
+      album: 'Rubber Soul',
+      cover: {
+        img: 'album_cover_uuid_beatles-Cover-rubber-soul',
+        backImg: 'album_cover_uuid_beatles-Back-Cover-rubber-soul',
+      },
+    });
+    mockResolveBuyer.mockResolvedValueOnce('buyer-1');
+
+    await expect(notifyArtistAlbumPurchaseOnFulfillment('order-1')).resolves.toBeUndefined();
+
+    expect(mockInsert).toHaveBeenCalledWith({
+      orderId: 'order-1',
+      artistUserId: 'artist-1',
+      albumSlug: 'rubber-soul',
+      artistSlug: 'beatles',
+      albumTitle: 'Rubber Soul',
+      albumCoverPath: 'album_cover_uuid_beatles-Cover-rubber-soul',
+    });
+  });
+
   test('creates notification for paid order with album owner as recipient', async () => {
     mockQuery.mockResolvedValueOnce({
       rows: [

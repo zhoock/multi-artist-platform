@@ -1,5 +1,6 @@
 import {
   backImgBaseForStorageCleanup,
+  coverImgBaseForStorageCleanup,
   coverImgFromStorageField,
   parseAlbumCoverField,
   buildAlbumCoverStorageValue,
@@ -49,6 +50,15 @@ describe('albumCoverStorage', () => {
       backImg: 'album_cover_back',
     };
     expect(parseAlbumCoverField(raw).backImg).toBe('album_cover_back');
+  });
+
+  test('delete cleanup collects front and back base names from JSONB', () => {
+    const raw = {
+      img: 'album_cover_front',
+      backImg: 'album_cover_back',
+    };
+    expect(coverImgBaseForStorageCleanup(raw)).toBe('album_cover_front');
+    expect(backImgBaseForStorageCleanup(raw)).toBe('album_cover_back');
   });
 
   test('backImgBaseForStorageCleanup normalizes variant suffix', () => {
