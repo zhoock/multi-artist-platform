@@ -64,6 +64,7 @@ let mockUser: {
 } | null = null;
 jest.mock('@shared/lib/auth', () => ({
   getUser: () => mockUser,
+  getAuthSessionUserSnapshot: () => mockUser,
   isAuthenticated: () => mockUser !== null,
   subscribeAuthSession: () => () => {},
   getAuthSessionIdentityKey: () => (mockUser ? `user:${mockUser.id}` : ''),
@@ -80,6 +81,12 @@ jest.mock('@shared/lib/hooks/useSiteArtistDisplayName', () => ({
 jest.mock('@entities/album/ui/AlbumCover', () => ({
   __esModule: true,
   default: () => null,
+}));
+
+const applyAlbumCheckoutCreatePaymentResultMock = jest.fn();
+jest.mock('../../lib/applyAlbumCheckoutCreatePaymentResult', () => ({
+  applyAlbumCheckoutCreatePaymentResult: (...args: unknown[]) =>
+    applyAlbumCheckoutCreatePaymentResultMock(...args),
 }));
 
 import { AlbumCheckoutModal } from '../AlbumCheckoutModal';
@@ -123,6 +130,7 @@ function fillValidForm() {
 
 beforeEach(() => {
   createPaymentMock.mockReset();
+  applyAlbumCheckoutCreatePaymentResultMock.mockReset();
   downloadOwnedAlbumZipByAuthMock.mockReset();
   invalidateMyPurchasesCacheMock.mockReset();
   ownershipState.isOwned = false;
@@ -156,9 +164,12 @@ describe('AlbumCheckoutModal', () => {
 
   test('valid submit calls createPayment with album + customer details', async () => {
     mockUser = { id: 'u1', email: 'fan@example.com', name: '' };
-    // Никогда не резолвим — чтобы тест не пытался выполнить редирект на
-    // confirmationUrl и не нарваться на jsdom location-восстановление.
-    createPaymentMock.mockImplementation(() => new Promise(() => {}));
+    createPaymentMock.mockResolvedValueOnce({
+      success: true,
+      confirmationUrl: 'https://yoomoney.ru/checkout/payments/v2/contract',
+      orderId: 'order-1',
+    });
+    applyAlbumCheckoutCreatePaymentResultMock.mockReturnValue({ kind: 'redirect' });
 
     renderWithProviders(<AlbumCheckoutModal isOpen album={testAlbum} onClose={() => {}} />);
 
@@ -180,6 +191,59 @@ describe('AlbumCheckoutModal', () => {
     expect(payload).not.toHaveProperty('description');
     expect(typeof payload.returnUrl).toBe('string');
     expect(payload.returnUrl).toContain('/pay/status?returnTo=');
+
+    expect(applyAlbumCheckoutCreatePaymentResultMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        success: true,
+        confirmationUrl: 'https://yoomoney.ru/checkout/payments/v2/contract',
+      }),
+      expect.objectContaining({ genericError: expect.any(String) })
+    );
+  });
+
+  test('successful createPayment redirects via checkout helper and keeps loading UI', async () => {
+    mockUser = { id: 'u1', email: 'fan@example.com', name: '' };
+    createPaymentMock.mockResolvedValueOnce({
+      success: true,
+      confirmationUrl: 'https://yoomoney.ru/checkout/payments/v2/contract',
+      orderId: 'order-1',
+    });
+    applyAlbumCheckoutCreatePaymentResultMock.mockReturnValue({ kind: 'redirect' });
+
+    renderWithProviders(<AlbumCheckoutModal isOpen album={testAlbum} onClose={() => {}} />);
+
+    fillValidForm();
+    fireEvent.click(screen.getByRole('button', { name: /continue to payment|перейти к оплате/i }));
+
+    await waitFor(() => {
+      expect(applyAlbumCheckoutCreatePaymentResultMock).toHaveBeenCalledTimes(1);
+    });
+
+    expect(screen.getByRole('button', { name: /processing|обработка/i })).toBeInTheDocument();
+  });
+
+  test('missing checkout URL from createPayment surfaces error and re-enables submit', async () => {
+    mockUser = { id: 'u1', email: 'fan@example.com', name: '' };
+    createPaymentMock.mockResolvedValueOnce({
+      success: true,
+      orderId: 'order-1',
+    });
+    applyAlbumCheckoutCreatePaymentResultMock.mockReturnValue({
+      kind: 'error',
+      message: 'Не удалось создать платёж. Попробуйте ещё раз.',
+    });
+
+    renderWithProviders(<AlbumCheckoutModal isOpen album={testAlbum} onClose={() => {}} />);
+
+    fillValidForm();
+    fireEvent.click(screen.getByRole('button', { name: /continue to payment|перейти к оплате/i }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent('Не удалось создать платёж');
+    });
+    expect(
+      screen.getByRole('button', { name: /continue to payment|перейти к оплате/i })
+    ).not.toBeDisabled();
   });
 
   test('surfaces createPayment error and stays on form', async () => {

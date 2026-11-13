@@ -832,13 +832,18 @@ export const handler: Handler = async (
               const existingPaymentData: YooKassaPaymentResponse =
                 await existingPaymentResponse.json();
 
-              if (isReusableAlbumCheckoutPayment(existingPaymentData, orderAmount)) {
+              const reusableConfirmationUrl =
+                existingPaymentData.confirmation?.confirmation_url?.trim() ?? '';
+              if (
+                isReusableAlbumCheckoutPayment(existingPaymentData, orderAmount) &&
+                reusableConfirmationUrl.startsWith('https://')
+              ) {
                 return albumCheckoutSuccessResponse(
                   headers,
                   orderId,
                   {
                     paymentId: existingPaymentData.id,
-                    confirmationUrl: existingPaymentData.confirmation?.confirmation_url || '',
+                    confirmationUrl: reusableConfirmationUrl,
                     message: 'Using existing pending payment',
                   },
                   checkoutStatusToken
@@ -1033,13 +1038,30 @@ export const handler: Handler = async (
       // Не прерываем процесс, платеж уже создан в ЮKassa
     }
 
-    // Возвращаем URL для подтверждения платежа
+    const confirmationUrl = paymentData.confirmation?.confirmation_url?.trim() ?? '';
+    if (!confirmationUrl.startsWith('https://')) {
+      console.error('❌ YooKassa payment created without HTTPS confirmation URL:', {
+        paymentId: paymentData.id,
+        orderId,
+        status: paymentData.status,
+      });
+      return {
+        statusCode: 502,
+        headers,
+        body: JSON.stringify({
+          success: false,
+          error: 'Payment provider did not return a checkout URL',
+          message: 'YooKassa response missing confirmation_url',
+        } as CreatePaymentResponse),
+      };
+    }
+
     return albumCheckoutSuccessResponse(
       headers,
       orderId,
       {
         paymentId: paymentData.id,
-        confirmationUrl: paymentData.confirmation?.confirmation_url || '',
+        confirmationUrl,
       },
       checkoutStatusToken
     );

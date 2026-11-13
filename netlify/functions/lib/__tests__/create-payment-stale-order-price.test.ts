@@ -258,6 +258,62 @@ describe('create-payment stale pending order price', () => {
     );
   });
 
+  it('creates a new payment when reusable pending payment has no confirmation URL', async () => {
+    setupExistingOrderFlow({
+      storedOrderAmount: '100.00',
+      currentAlbumPrice: 100,
+      stalePaymentOutcome: 'reusable',
+      yookassaPaymentAmount: '100.00',
+    });
+
+    const fetchMock = global.fetch as jest.Mock;
+    fetchMock.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.includes(`/payments/${PAYMENT_ID}`) && (!init || init.method === 'GET')) {
+        return {
+          ok: true,
+          json: async () => ({
+            id: PAYMENT_ID,
+            status: 'pending',
+            amount: { value: '100.00', currency: 'RUB' },
+            confirmation: {},
+          }),
+        } as Response;
+      }
+      if (url.includes('/payments') && init?.method === 'POST') {
+        const body = JSON.parse(String(init.body));
+        return {
+          ok: true,
+          json: async () => ({
+            id: 'new-payment-id',
+            status: 'pending',
+            amount: body.amount,
+            confirmation: { confirmation_url: 'https://yookassa.test/new-pay' },
+          }),
+        } as Response;
+      }
+      throw new Error(`Unexpected fetch: ${url} ${init?.method ?? 'GET'}`);
+    });
+
+    const response = await createPaymentHandler(
+      buildEvent({
+        albumId: ALBUM_SLUG,
+        customerEmail: CUSTOMER_EMAIL,
+        orderId: ORDER_ID,
+      }),
+      {} as never,
+      {} as never
+    );
+    const body = JSON.parse(response.body);
+
+    expect(body.confirmationUrl).toBe('https://yookassa.test/new-pay');
+    expect(body.paymentId).toBe('new-payment-id');
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining('/payments'),
+      expect.objectContaining({ method: 'POST' })
+    );
+  });
+
   it('reuses existing payment when price unchanged and amount matches', async () => {
     setupExistingOrderFlow({
       storedOrderAmount: '100.00',

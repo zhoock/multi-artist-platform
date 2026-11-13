@@ -18,7 +18,7 @@
  *   тот же контракт, что и раньше, чтобы не ломать `PaymentSuccess` и webhook.
  */
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Check as CheckIcon } from 'lucide-react';
 import { Link, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import type { AlbumDetails } from '@entities/album/model/albumDetails';
@@ -36,20 +36,15 @@ import { formatAlbumDisplayFullName } from '@shared/lib/profileDisplayName';
 import { useSiteArtistDisplayName } from '@shared/lib/hooks/useSiteArtistDisplayName';
 import { beginAlbumCheckoutAuthIntent } from '@shared/lib/authIntent';
 import { readReturnPathFromLocation } from '@shared/lib/authReturnUrl';
-import {
-  buildAlbumPaymentDevStatusUrl,
-  buildAlbumPaymentStatusReturnUrl,
-  buildAlbumPaymentSuccessUrl,
-  buildAuthPath,
-} from '@shared/lib/internalAppUrls';
+import { buildAlbumPaymentStatusReturnUrl, buildAuthPath } from '@shared/lib/internalAppUrls';
 import { buildLocalizedPublicPath } from '@shared/lib/i18n/routeLang/buildLocalizedPublicPath';
-import { logDevPaymentAlbumRedirect } from '@shared/lib/payment/devPaymentMode';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
 import { ModalCloseIcon } from '@shared/ui/icons/ModalCloseIcon';
 import { DashboardButton } from '@shared/ui/dashboard';
 import { getAlbumPrice } from '../lib/getAlbumPrice';
 import { useAlbumOwnedByViewer } from '../lib/useAlbumOwnedByViewer';
 import { resolveCheckoutBuyerIdentity } from '../lib/resolveCheckoutBuyerIdentity';
+import { applyAlbumCheckoutCreatePaymentResult } from '../lib/applyAlbumCheckoutCreatePaymentResult';
 import './AlbumCheckoutModal.style.scss';
 
 interface AlbumCheckoutModalProps {
@@ -218,7 +213,10 @@ export function AlbumCheckoutModal({ isOpen, album, onClose }: AlbumCheckoutModa
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [serverConfirmedOwned, setServerConfirmedOwned] = useState(false);
+  const isSubmittingRef = useRef(false);
   const showOwned = isOwned || serverConfirmedOwned;
+
+  isSubmittingRef.current = isSubmitting;
 
   // При каждом открытии — пре-заполнение из auth-сессии и сброс ошибок.
   useEffect(() => {
@@ -231,6 +229,22 @@ export function AlbumCheckoutModal({ isOpen, album, onClose }: AlbumCheckoutModa
     setIsSubmitting(false);
     setIsDownloading(false);
     setServerConfirmedOwned(false);
+  }, [isOpen]);
+
+  // Safari/back: bfcache can restore the modal with `isSubmitting` still true after YooKassa.
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    const onPageShow = (event: PageTransitionEvent) => {
+      if (event.persisted && isSubmittingRef.current) {
+        setIsSubmitting(false);
+      }
+    };
+
+    window.addEventListener('pageshow', onPageShow);
+    return () => window.removeEventListener('pageshow', onPageShow);
   }, [isOpen]);
 
   if (!album) {
@@ -296,61 +310,15 @@ export function AlbumCheckoutModal({ isOpen, album, onClose }: AlbumCheckoutModa
         return;
       }
 
-      if (result.devPaymentCompleted || result.fulfillmentRecovered) {
-        if (result.orderId && typeof window !== 'undefined') {
-          const checkoutToken =
-            result.statusToken && result.statusTokenExpiresAt != null
-              ? {
-                  statusToken: result.statusToken,
-                  statusTokenExpiresAt: result.statusTokenExpiresAt,
-                }
-              : undefined;
+      const redirectOutcome = applyAlbumCheckoutCreatePaymentResult(result, {
+        returnTo,
+        genericError: labels.paymentErrorGeneric,
+      });
 
-          if (result.devPaymentCompleted) {
-            const statusUrl = buildAlbumPaymentDevStatusUrl({
-              orderId: result.orderId,
-              returnTo,
-              statusToken: result.statusToken,
-              statusTokenExpiresAt: result.statusTokenExpiresAt,
-            });
-            logDevPaymentAlbumRedirect({
-              orderId: result.orderId,
-              paymentId: result.paymentId,
-              redirectUrl: (() => {
-                const parsed = new URL(statusUrl);
-                return `${parsed.pathname}${parsed.search}`;
-              })(),
-            });
-            window.location.href = statusUrl;
-            return;
-          }
-
-          window.location.href = buildAlbumPaymentSuccessUrl(result.orderId, checkoutToken);
-        }
-        return;
+      if (redirectOutcome.kind === 'error') {
+        setPaymentError(redirectOutcome.message);
+        setIsSubmitting(false);
       }
-
-      if (result.confirmationUrl) {
-        if (typeof window !== 'undefined') {
-          window.location.href = result.confirmationUrl;
-        }
-        return;
-      }
-
-      if (result.orderId && typeof window !== 'undefined') {
-        const checkoutToken =
-          result.statusToken && result.statusTokenExpiresAt != null
-            ? {
-                statusToken: result.statusToken,
-                statusTokenExpiresAt: result.statusTokenExpiresAt,
-              }
-            : undefined;
-        window.location.href = buildAlbumPaymentSuccessUrl(result.orderId, checkoutToken);
-        return;
-      }
-
-      setPaymentError(labels.paymentErrorGeneric);
-      setIsSubmitting(false);
     } catch (error) {
       console.error('Album checkout failed:', error);
       setPaymentError(error instanceof Error ? error.message : labels.paymentErrorGeneric);
