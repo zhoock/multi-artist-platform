@@ -53,15 +53,19 @@ function makeNotification(i: number) {
   };
 }
 
-function viewAllLink() {
-  return screen.queryByRole('link', { name: /view all notifications/i });
+function viewAllButton() {
+  return screen.queryByRole('button', { name: /view all notifications/i });
+}
+
+function notificationsBellButton() {
+  return screen.getByRole('button', { name: /^notifications$/i });
 }
 
 async function openDropdown() {
   await waitFor(() => {
-    expect(screen.getByLabelText(/notifications/i)).toBeInTheDocument();
+    expect(notificationsBellButton()).toBeInTheDocument();
   });
-  fireEvent.click(screen.getByLabelText(/notifications/i));
+  fireEvent.click(notificationsBellButton());
 }
 
 describe('HeaderNotificationsBell', () => {
@@ -85,19 +89,19 @@ describe('HeaderNotificationsBell', () => {
       expect(useUserNotificationsLiveRefreshMock).toHaveBeenCalled();
     });
 
-    const closedArgs = useUserNotificationsLiveRefreshMock.mock.calls.at(-1)?.[0] as {
-      enabled: boolean;
-      pollIntervalMs: number;
-    };
-    expect(closedArgs.enabled).toBe(true);
-    expect(closedArgs.pollIntervalMs).toBe(20_000);
+    const bellPollArgs = () =>
+      useUserNotificationsLiveRefreshMock.mock.calls
+        .map((call) => call[0] as { enabled?: boolean; pollIntervalMs?: number })
+        .filter((args) => typeof args.pollIntervalMs === 'number');
+
+    const closedArgs = bellPollArgs().at(-1);
+    expect(closedArgs?.enabled).toBe(true);
+    expect(closedArgs?.pollIntervalMs).toBe(20_000);
 
     await openDropdown();
 
-    const openArgs = useUserNotificationsLiveRefreshMock.mock.calls.at(-1)?.[0] as {
-      pollIntervalMs: number;
-    };
-    expect(openArgs.pollIntervalMs).toBe(4_000);
+    const openArgs = bellPollArgs().at(-1);
+    expect(openArgs?.pollIntervalMs).toBe(4_000);
   });
 
   test('fetches at most 5 notifications for dropdown', async () => {
@@ -132,7 +136,7 @@ describe('HeaderNotificationsBell', () => {
     if (count > 0) {
       expect(document.querySelectorAll('.user-notification-list__row')).toHaveLength(count);
     }
-    expect(viewAllLink()).not.toBeInTheDocument();
+    expect(viewAllButton()).not.toBeInTheDocument();
   });
 
   test('shows View all when user has more than 5 notifications (nextCursor)', async () => {
@@ -149,7 +153,12 @@ describe('HeaderNotificationsBell', () => {
     await openDropdown();
 
     expect(document.querySelectorAll('.user-notification-list__row')).toHaveLength(5);
-    expect(viewAllLink()).toHaveAttribute('href', '/notifications');
+    expect(viewAllButton()).toBeInTheDocument();
+    fireEvent.click(viewAllButton()!);
+    await waitFor(() => {
+      expect(document.querySelector('dialog.popup.local-modal[open]')).toBeInTheDocument();
+      expect(document.querySelector('.album-comments-fullscreen__title')).toBeInTheDocument();
+    });
   });
 
   test('shows only 5 rows when 10+ notifications exist', async () => {
@@ -166,7 +175,7 @@ describe('HeaderNotificationsBell', () => {
     await openDropdown();
 
     expect(document.querySelectorAll('.user-notification-list__row')).toHaveLength(5);
-    expect(viewAllLink()).toBeInTheDocument();
+    expect(viewAllButton()).toBeInTheDocument();
     expect(screen.queryByText('On album «Album 6»')).not.toBeInTheDocument();
   });
 
@@ -240,12 +249,12 @@ describe('HeaderNotificationsBell', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByLabelText(/notifications/i)).toBeInTheDocument();
+      expect(notificationsBellButton()).toBeInTheDocument();
     });
 
     expect(document.querySelector('.header__notifications-bell-dot')).toBeTruthy();
 
-    fireEvent.click(screen.getByLabelText(/notifications/i));
+    fireEvent.click(notificationsBellButton());
 
     const row = await screen.findByText('On album «23»');
     fireEvent.click(row);

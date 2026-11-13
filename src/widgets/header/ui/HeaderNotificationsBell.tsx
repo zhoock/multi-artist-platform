@@ -1,5 +1,4 @@
 import { memo, useCallback, useEffect, useId, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { Bell as BellIcon } from 'lucide-react';
 import { useLang } from '@app/providers/lang';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
@@ -14,9 +13,10 @@ import {
   USER_NOTIFICATIONS_LIVE_POLL_MS,
   USER_NOTIFICATIONS_UNREAD_POLL_MS,
   UserNotificationList,
+  UserNotificationsAllModal,
+  headerNotificationsToRowCopy,
   useNotificationNavigation,
   useUserNotificationsLiveRefresh,
-  type UserNotificationRowCopy,
 } from '@features/userNotifications';
 import { markUnreadListenerCollectionAddsAsRead } from '@features/userNotifications/lib/markUnreadListenerCollectionAddsAsRead';
 import './headerNotifications.scss';
@@ -43,6 +43,7 @@ function HeaderNotificationsBellComponent({
   const [notifications, setNotifications] = useState<UserNotificationItem[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [hasMoreNotifications, setHasMoreNotifications] = useState(false);
+  const [allModalOpen, setAllModalOpen] = useState(false);
 
   const updateOpen = useCallback(
     (next: boolean) => {
@@ -92,7 +93,8 @@ function HeaderNotificationsBellComponent({
 
   useUserNotificationsLiveRefresh({
     enabled: isAuthenticated(),
-    pollIntervalMs: open ? USER_NOTIFICATIONS_LIVE_POLL_MS : USER_NOTIFICATIONS_UNREAD_POLL_MS,
+    pollIntervalMs:
+      open || allModalOpen ? USER_NOTIFICATIONS_LIVE_POLL_MS : USER_NOTIFICATIONS_UNREAD_POLL_MS,
     onRefresh: () => refresh({ silent: true }),
   });
 
@@ -138,20 +140,7 @@ function HeaderNotificationsBellComponent({
   const bellLabel = copy?.bellAriaLabel ?? 'Notifications';
   const panelTitle = copy?.title ?? 'Notifications';
   const emptyCopy = copy?.pageEmpty ?? copy?.empty ?? 'No notifications';
-  const listCopy: UserNotificationRowCopy = {
-    commentTitle: copy?.newCommentTitle ?? 'New comment',
-    commentReplyTitle: copy?.newCommentReplyTitle ?? 'Reply to your comment',
-    commentBodyTemplate: copy?.toAlbum ?? 'On album «{{title}}»',
-    likeTitle: copy?.newLikeTitle ?? 'New like',
-    likeBodyTemplate: copy?.likedYourCommentOnAlbum ?? 'Someone liked your comment on «{{title}}»',
-    collectionAddTitle: copy?.newCollectionAddTitle ?? 'Collection',
-    collectionAddBody:
-      copy?.newCollectionAddBody ?? 'Another listener added you to their collection',
-    collectionAddByArtistBody:
-      copy?.newCollectionAddByArtistBody ?? '{{name}} added you to their collection',
-    albumPurchaseTitle: copy?.newAlbumPurchaseTitle ?? 'Album purchase',
-    albumPurchaseBody: copy?.newAlbumPurchaseBody ?? 'Your album “{{title}}” was purchased',
-  };
+  const listCopy = headerNotificationsToRowCopy(copy);
   const viewAllLabel = copy?.viewAll ?? 'View all notifications →';
 
   const showEmpty = !loading && notifications.length === 0;
@@ -193,19 +182,29 @@ function HeaderNotificationsBellComponent({
               onItemClick={handleRowClick}
               footer={
                 hasMoreNotifications ? (
-                  <Link
-                    to="/notifications"
+                  <button
+                    type="button"
                     className="user-notification-list__view-all"
-                    onClick={() => updateOpen(false)}
+                    onClick={() => {
+                      updateOpen(false);
+                      setAllModalOpen(true);
+                    }}
                   >
                     {viewAllLabel}
-                  </Link>
+                  </button>
                 ) : undefined
               }
             />
           ) : null}
         </div>
       ) : null}
+      <UserNotificationsAllModal
+        isOpen={allModalOpen}
+        onClose={() => setAllModalOpen(false)}
+        lang={lang}
+        notificationsCopy={copy}
+        onUnreadCount={setUnreadCount}
+      />
     </div>
   );
 }

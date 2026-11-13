@@ -15,6 +15,37 @@ export type UserNotificationRowCopy = {
   albumPurchaseBody: string;
 };
 
+/** Maps `ui.header.notifications` dictionary slice to list row copy. */
+export function headerNotificationsToRowCopy(
+  copy?: {
+    newCommentTitle?: string;
+    newCommentReplyTitle?: string;
+    toAlbum?: string;
+    newLikeTitle?: string;
+    likedYourCommentOnAlbum?: string;
+    newCollectionAddTitle?: string;
+    newCollectionAddBody?: string;
+    newCollectionAddByArtistBody?: string;
+    newAlbumPurchaseTitle?: string;
+    newAlbumPurchaseBody?: string;
+  } | null
+): UserNotificationRowCopy {
+  return {
+    commentTitle: copy?.newCommentTitle ?? 'New comment',
+    commentReplyTitle: copy?.newCommentReplyTitle ?? 'Reply to your comment',
+    commentBodyTemplate: copy?.toAlbum ?? 'On album «{{title}}»',
+    likeTitle: copy?.newLikeTitle ?? 'New like',
+    likeBodyTemplate: copy?.likedYourCommentOnAlbum ?? 'Someone liked your comment on «{{title}}»',
+    collectionAddTitle: copy?.newCollectionAddTitle ?? 'Collection',
+    collectionAddBody:
+      copy?.newCollectionAddBody ?? 'Another listener added you to their collection',
+    collectionAddByArtistBody:
+      copy?.newCollectionAddByArtistBody ?? '{{name}} added you to their collection',
+    albumPurchaseTitle: copy?.newAlbumPurchaseTitle ?? 'Album purchase',
+    albumPurchaseBody: copy?.newAlbumPurchaseBody ?? 'Your album “{{title}}” was purchased',
+  };
+}
+
 export function notificationRowTitle(
   notification: UserNotificationItem,
   copy: UserNotificationRowCopy

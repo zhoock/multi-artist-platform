@@ -18,31 +18,4 @@
     letter-spacing: normal;
     text-transform: none;
   }
-
-  &__more {
-    @include dashboard-ui-font-family;
-
-    display: block;
-    width: 100%;
-    margin-block-start: var(--ms-01);
-    padding: var(--ms-01);
-    color: var(--links-header-color, #dddddd);
-    font-size: 0.875rem;
-    text-align: center;
-    background: transparent;
-    border: none;
-    cursor: pointer;
-    appearance: none;
-
-    &:disabled {
-      opacity: 0.6;
-      cursor: default;
-    }
-
-    &:hover:not(:disabled),
-    &:focus-visible:not(:disabled) {
-      color: var(--links-header-color-hover, #ffffff);
-      outline: none;
-    }
-  }
 }
