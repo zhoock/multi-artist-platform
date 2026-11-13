@@ -189,6 +189,20 @@ describe('admin-copyright-claims', () => {
     expect(res.statusCode).toBe(400);
   });
 
+  it('PATCH temporarilyHideAlbum from new is rejected', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [{ id: CLAIM_ID, status: 'new', admin_note: null }] });
+
+    const res = await handler(
+      baseEvent({
+        httpMethod: 'PATCH',
+        body: JSON.stringify({ action: 'temporarilyHideAlbum' }),
+      }),
+      {} as never
+    );
+    expect(res.statusCode).toBe(400);
+    expect(JSON.parse(res.body as string).code).toBe('INVALID_ACTION_FOR_STATUS');
+  });
+
   it('non-admin gets 403 when authenticated', async () => {
     mockRequireAdmin.mockResolvedValue(null);
     mockGetUserId.mockReturnValue('listener-id');

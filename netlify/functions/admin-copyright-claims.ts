@@ -468,6 +468,20 @@ async function handlePatch(event: HandlerEvent, path: string, adminId: string) {
         return createErrorResponse(400, 'Claim is closed', CORS_HEADERS, { code: 'CLAIM_CLOSED' });
       }
 
+      if (actionNorm === CLAIM_PATCH_ACTIONS.temporarilyHideAlbum) {
+        if (fromStatus !== 'under_review') {
+          return createErrorResponse(400, 'Invalid claim status for this action', CORS_HEADERS, {
+            code: 'INVALID_ACTION_FOR_STATUS',
+          });
+        }
+      } else if (actionNorm === CLAIM_PATCH_ACTIONS.restoreAlbumPublication) {
+        if (fromStatus !== 'under_review') {
+          return createErrorResponse(400, 'Invalid claim status for this action', CORS_HEADERS, {
+            code: 'INVALID_ACTION_FOR_STATUS',
+          });
+        }
+      }
+
       const claimRow = await loadClaimDetailRow(id);
       if (!claimRow) {
         return createErrorResponse(404, 'Not found', CORS_HEADERS);
@@ -483,11 +497,6 @@ async function handlePatch(event: HandlerEvent, path: string, adminId: string) {
       }
 
       if (actionNorm === CLAIM_PATCH_ACTIONS.temporarilyHideAlbum) {
-        if (fromStatus !== 'new' && fromStatus !== 'under_review') {
-          return createErrorResponse(400, 'Invalid claim status for this action', CORS_HEADERS, {
-            code: 'INVALID_ACTION_FOR_STATUS',
-          });
-        }
         const hide = await applyCopyrightAlbumTemporaryHide(
           albumTarget.albumSlugId,
           albumTarget.userId
@@ -519,11 +528,6 @@ async function handlePatch(event: HandlerEvent, path: string, adminId: string) {
       }
 
       if (actionNorm === CLAIM_PATCH_ACTIONS.restoreAlbumPublication) {
-        if (fromStatus !== 'under_review') {
-          return createErrorResponse(400, 'Invalid claim status for this action', CORS_HEADERS, {
-            code: 'INVALID_ACTION_FOR_STATUS',
-          });
-        }
         const restore = await restoreCopyrightAlbumAfterReview(
           albumTarget.albumSlugId,
           albumTarget.userId

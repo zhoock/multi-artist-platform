@@ -13,6 +13,9 @@ export const AUTH_VERIFICATION_IP_WINDOW_SECONDS = 3600;
 
 const AUTH_VERIFICATION_BUCKET = 'auth_verification';
 
+/** Public copyright claim submissions per IP per hour. */
+export const COPYRIGHT_CLAIM_SUBMIT_IP_LIMIT = 10;
+
 /** Password-reset request endpoint: small limit to thwart enumeration / spam. */
 export const PASSWORD_RESET_REQUEST_IP_LIMIT = 5;
 /** Password-reset consume endpoint: higher because legitimate users may retype mistypes. */

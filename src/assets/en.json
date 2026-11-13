@@ -468,7 +468,7 @@
       "temporarilyHideAlbum": "Temporarily hide album",
       "restoreAlbumPublication": "Restore album publication",
       "albumRestrictedHint": "This album is temporarily hidden from the public catalog due to a copyright review.",
-      "resolveClaim": "Resolve claim",
+      "resolveClaim": "Complete review",
       "rejectClaim": "Reject claim",
       "actionError": "Could not update claim. Try again.",
       "internalNoteTitle": "Internal note",

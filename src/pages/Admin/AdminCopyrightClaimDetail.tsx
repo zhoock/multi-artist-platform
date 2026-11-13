@@ -214,14 +214,6 @@ export default function AdminCopyrightClaimDetailPage() {
                 </button>
                 <button
                   type="button"
-                  className="admin-claim-detail__btn"
-                  disabled={busy}
-                  onClick={() => void applyPatch({ action: 'temporarilyHideAlbum' })}
-                >
-                  {copy?.temporarilyHideAlbum ?? 'Temporarily hide album'}
-                </button>
-                <button
-                  type="button"
                   className="admin-claim-detail__btn admin-claim-detail__btn--secondary"
                   disabled={busy}
                   onClick={() => void applyPatch({ status: 'rejected' })}
@@ -251,6 +243,14 @@ export default function AdminCopyrightClaimDetailPage() {
                     {copy?.restoreAlbumPublication ?? 'Restore album publication'}
                   </button>
                 )}
+                <button
+                  type="button"
+                  className="admin-claim-detail__btn"
+                  disabled={busy}
+                  onClick={() => void applyPatch({ status: 'resolved' })}
+                >
+                  {copy?.resolveClaim ?? 'Complete review'}
+                </button>
                 <button
                   type="button"
                   className="admin-claim-detail__btn admin-claim-detail__btn--secondary"

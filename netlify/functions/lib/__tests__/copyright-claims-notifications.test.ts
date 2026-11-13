@@ -8,6 +8,7 @@ import { query } from '../db';
 import { insertCopyrightAuditEntry } from '../copyright-claims-admin';
 import { insertCopyrightClaimAdminNotification } from '../admin-notifications-db';
 import * as copyrightLib from '../copyright-claims';
+import { enforceIpRateLimit } from '../ip-rate-limit';
 
 jest.mock('../db', () => ({
   query: jest.fn(),
@@ -19,6 +20,11 @@ jest.mock('../copyright-claims-admin', () => ({
 
 jest.mock('../admin-notifications-db', () => ({
   insertCopyrightClaimAdminNotification: jest.fn(),
+}));
+
+jest.mock('../ip-rate-limit', () => ({
+  enforceIpRateLimit: jest.fn(),
+  COPYRIGHT_CLAIM_SUBMIT_IP_LIMIT: 10,
 }));
 
 jest.mock('../copyright-claims', () => {
@@ -40,6 +46,7 @@ const mockNotify = insertCopyrightClaimAdminNotification as jest.MockedFunction<
 const mockResolveAlbum = copyrightLib.resolveAlbumForCopyrightReport as jest.MockedFunction<
   typeof copyrightLib.resolveAlbumForCopyrightReport
 >;
+const mockEnforceIpRateLimit = enforceIpRateLimit as jest.MockedFunction<typeof enforceIpRateLimit>;
 
 function postEvent(body: Record<string, unknown>): HandlerEvent {
   return {
@@ -65,6 +72,7 @@ const validBody = {
 describe('copyright-claims admin notifications', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockEnforceIpRateLimit.mockResolvedValue(null);
     mockResolveAlbum.mockResolvedValue({
       album_id: 'album-slug',
       album_title: '23 (Remastered)',
@@ -86,6 +94,24 @@ describe('copyright-claims admin notifications', () => {
       claimId,
       payload: { contentTitle: '23 (Remastered)' },
     });
+  });
+
+  it('POST returns 429 when IP rate limit exceeded', async () => {
+    mockEnforceIpRateLimit.mockResolvedValueOnce({
+      statusCode: 429,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        success: false,
+        code: 'RATE_LIMIT_EXCEEDED',
+        error: 'Too many requests. Please try again later.',
+        retryAfterSeconds: 60,
+      }),
+    });
+
+    const res = await handler(postEvent(validBody), {} as never);
+    expect(res.statusCode).toBe(429);
+    expect(JSON.parse(res.body as string).code).toBe('RATE_LIMIT_EXCEEDED');
+    expect(mockQuery).not.toHaveBeenCalled();
   });
 
   it('notification failure still returns success for claim', async () => {

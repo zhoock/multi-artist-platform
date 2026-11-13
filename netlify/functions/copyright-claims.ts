@@ -28,6 +28,7 @@ import {
 } from './lib/copyright-claims';
 import { insertCopyrightAuditEntry } from './lib/copyright-claims-admin';
 import { insertCopyrightClaimAdminNotification } from './lib/admin-notifications-db';
+import { COPYRIGHT_CLAIM_SUBMIT_IP_LIMIT, enforceIpRateLimit } from './lib/ip-rate-limit';
 
 const ALLOWED_BODY_KEYS = new Set([
   'contentType',
@@ -122,6 +123,14 @@ export const handler: Handler = async (event) => {
 
   if (event.httpMethod !== 'POST') {
     return createErrorResponse(405, 'Method not allowed', CORS_HEADERS);
+  }
+
+  const rateLimited = await enforceIpRateLimit(event, {
+    bucketKey: 'copyright_claim_submit',
+    limit: COPYRIGHT_CLAIM_SUBMIT_IP_LIMIT,
+  });
+  if (rateLimited) {
+    return rateLimited;
   }
 
   const rawBody = event.body ?? '';
