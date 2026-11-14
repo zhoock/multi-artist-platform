@@ -29,6 +29,26 @@ import {
 import { insertCopyrightAuditEntry } from './lib/copyright-claims-admin';
 import { insertCopyrightClaimAdminNotification } from './lib/admin-notifications-db';
 import { COPYRIGHT_CLAIM_SUBMIT_IP_LIMIT, enforceIpRateLimit } from './lib/ip-rate-limit';
+import { resolveAlbumCoverPublicUrl } from './lib/storage-public-url';
+import { coverImgFromStorageField } from '../../src/shared/lib/albumCoverStorage';
+import {
+  generateCopyrightClaimUploadToken,
+  hashCopyrightClaimUploadToken,
+  COPYRIGHT_CLAIM_UPLOAD_TOKEN_TTL_MS,
+} from './lib/copyright-claim-attachments';
+import {
+  handleCopyrightClaimAttachmentRoute,
+  normalizeCopyrightClaimsPath,
+} from './lib/copyright-claim-attachment-routes';
+
+function resolveCopyrightReportCoverUrl(input: {
+  album_cover: string | null;
+  album_user_id: string | null;
+}): string | null {
+  const coverKey = coverImgFromStorageField(input.album_cover);
+  if (!coverKey) return null;
+  return resolveAlbumCoverPublicUrl(coverKey, input.album_user_id);
+}
 
 const ALLOWED_BODY_KEYS = new Set([
   'contentType',
@@ -67,10 +87,17 @@ export const handler: Handler = async (event) => {
     return createOptionsResponse();
   }
 
-  const path = (event.path || '').replace(/\/\.netlify\/functions\/copyright-claims/g, '');
+  const normalizedPath = normalizeCopyrightClaimsPath(event);
+
+  const attachmentResponse = await handleCopyrightClaimAttachmentRoute(event, normalizedPath);
+  if (attachmentResponse) {
+    return attachmentResponse;
+  }
+
   const isContext =
     event.httpMethod === 'GET' &&
-    ((path || '').includes('/context') ||
+    (normalizedPath === '/context' ||
+      normalizedPath.startsWith('/context/') ||
       Boolean(
         event.queryStringParameters?.contentType || event.queryStringParameters?.content_type
       ));
@@ -99,6 +126,7 @@ export const handler: Handler = async (event) => {
           title: row.album_title,
           artistName: row.artist_display,
           artistSlug: row.artist_slug,
+          coverImageUrl: resolveCopyrightReportCoverUrl(row),
         });
       }
 
@@ -115,6 +143,7 @@ export const handler: Handler = async (event) => {
         albumId: row.album_id,
         albumTitle: row.album_title,
         trackSlug: row.track_slug,
+        coverImageUrl: resolveCopyrightReportCoverUrl(row),
       });
     } catch (error) {
       return handleError(error, 'copyright-claims-context', 'Failed to load content');
@@ -123,6 +152,10 @@ export const handler: Handler = async (event) => {
 
   if (event.httpMethod !== 'POST') {
     return createErrorResponse(405, 'Method not allowed', CORS_HEADERS);
+  }
+
+  if (normalizedPath !== '/' && normalizedPath !== '') {
+    return createErrorResponse(404, 'Not found', CORS_HEADERS, { code: 'NOT_FOUND' });
   }
 
   const rateLimited = await enforceIpRateLimit(event, {
@@ -214,12 +247,26 @@ export const handler: Handler = async (event) => {
       contentTitleForNotify = row.track_title || contentId;
     }
 
+    const uploadToken = generateCopyrightClaimUploadToken();
+    const uploadTokenHash = hashCopyrightClaimUploadToken(uploadToken);
+    const uploadExpiresAt = new Date(Date.now() + COPYRIGHT_CLAIM_UPLOAD_TOKEN_TTL_MS);
+
     const insertResult = await query<{ id: string }>(
       `INSERT INTO copyright_claims (
-         content_type, content_id, claimant_name, claimant_email, claimant_type, description, status
-       ) VALUES ($1, $2, $3, LOWER(TRIM($4)), $5, $6, 'new')
+         content_type, content_id, claimant_name, claimant_email, claimant_type, description, status,
+         attachment_upload_token_hash, attachment_upload_expires_at
+       ) VALUES ($1, $2, $3, LOWER(TRIM($4)), $5, $6, 'new', $7, $8)
        RETURNING id`,
-      [contentType, contentId, claimantName, claimantEmail, claimantType, description],
+      [
+        contentType,
+        contentId,
+        claimantName,
+        claimantEmail,
+        claimantType,
+        description,
+        uploadTokenHash,
+        uploadExpiresAt.toISOString(),
+      ],
       0
     );
 
@@ -242,11 +289,10 @@ export const handler: Handler = async (event) => {
       }
     }
 
-    return {
-      statusCode: 200,
-      headers: CORS_HEADERS,
-      body: JSON.stringify({ success: true }),
-    };
+    return createSuccessResponse({
+      claimId: newId ?? null,
+      uploadToken,
+    });
   } catch (error) {
     return handleError(error, 'copyright-claims', 'Failed to submit report');
   }

@@ -33,6 +33,11 @@ import {
   restoreCopyrightAlbumAfterReview,
   resolveTargetAlbumForCopyrightClaim,
 } from './lib/copyright-claims-album-hide';
+import {
+  createCopyrightClaimAttachmentSignedDownloadUrl,
+  fetchCopyrightClaimAttachmentRow,
+  listCopyrightClaimAttachments,
+} from './lib/copyright-claim-attachments';
 
 interface ClaimListRow {
   id: string;
@@ -245,7 +250,9 @@ async function respondClaimDetail(id: string) {
       row.created_at instanceof Date ? row.created_at.toISOString() : String(row.created_at),
     adminUserId: row.admin_user_id,
   }));
-  return createSuccessResponse({ claim: mapClaimDetail(r), activity });
+  const attachmentRows = await listCopyrightClaimAttachments(id);
+  const attachments = attachmentRows.map(mapAttachmentMeta);
+  return createSuccessResponse({ claim: mapClaimDetail(r), attachments, activity });
 }
 
 const CLAIM_PATCH_ACTIONS = {
@@ -304,8 +311,47 @@ export const handler: Handler = async (event) => {
   return createErrorResponse(405, 'Method not allowed', CORS_HEADERS);
 };
 
+async function handleAttachmentDownload(claimId: string, attachmentId: string) {
+  const row = await fetchCopyrightClaimAttachmentRow(claimId, attachmentId);
+  if (!row) {
+    return createErrorResponse(404, 'Not found', CORS_HEADERS);
+  }
+  try {
+    const downloadUrl = await createCopyrightClaimAttachmentSignedDownloadUrl(row.storage_path);
+    return createSuccessResponse({
+      downloadUrl,
+      fileName: row.original_filename,
+      mimeType: row.mime_type,
+    });
+  } catch {
+    return createErrorResponse(500, 'Failed to create download URL', CORS_HEADERS);
+  }
+}
+
+function mapAttachmentMeta(row: Awaited<ReturnType<typeof listCopyrightClaimAttachments>>[number]) {
+  return {
+    id: row.id,
+    fileName: row.original_filename,
+    mimeType: row.mime_type,
+    sizeBytes: Number(row.size_bytes),
+    createdAt:
+      row.created_at instanceof Date ? row.created_at.toISOString() : String(row.created_at),
+    uploadedAt:
+      row.uploaded_at instanceof Date
+        ? row.uploaded_at.toISOString()
+        : row.uploaded_at
+          ? String(row.uploaded_at)
+          : null,
+  };
+}
+
 async function handleGet(event: HandlerEvent, path: string) {
   try {
+    const attachmentDownload = path.match(/^\/([^/]+)\/attachments\/([^/]+)\/download\/?$/i);
+    if (attachmentDownload) {
+      return handleAttachmentDownload(attachmentDownload[1], attachmentDownload[2]);
+    }
+
     if (path === '/' || path === '') {
       const filter = parseListStatusFilter(event);
       if (filter === null) {
@@ -369,8 +415,12 @@ async function handleGet(event: HandlerEvent, path: string) {
       adminUserId: row.admin_user_id,
     }));
 
+    const attachmentRows = await listCopyrightClaimAttachments(id);
+    const attachments = attachmentRows.map(mapAttachmentMeta);
+
     return createSuccessResponse({
       claim: mapClaimDetail(r),
+      attachments,
       activity,
     });
   } catch (error) {

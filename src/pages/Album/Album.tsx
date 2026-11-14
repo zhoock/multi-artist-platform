@@ -1,6 +1,6 @@
 // src/pages/Album/Album.tsx
 
-import { useEffect, useMemo, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 
@@ -58,6 +58,14 @@ import {
 } from '@shared/lib/seo/publicPagePaths';
 import { ContextNav } from '@shared/ui/contextNav';
 import { normalizeTrackVisibility } from '@shared/lib/tracks/trackVisibility';
+import { useEffectiveSearchParams } from '@shared/lib/hooks/useEffectiveLocation';
+import {
+  CopyrightReportModal,
+  parseCopyrightReportRequestFromSearchParams,
+  readCopyrightReportOpenFromSearchParams,
+  stripCopyrightReportOpenParams,
+  type CopyrightReportRequest,
+} from '@features/copyrightReport';
 import '@entities/album/ui/album-layout.scss';
 
 function AlbumUnavailableSurface({ children }: { children: ReactNode }) {
@@ -85,7 +93,9 @@ export default function Album() {
     artistSlug: artistParam,
   });
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useEffectiveSearchParams();
   const { albumId = '' } = useParams<{ albumId: string }>();
+  const [copyrightReportOpen, setCopyrightReportOpen] = useState(false);
   const albumDetailsStatus = useAppSelector(selectAlbumDetailsStatus);
   const albumDetailsErrorCode = useAppSelector(selectAlbumDetailsErrorCode);
   const albumDetailsState = useAppSelector(selectAlbumDetailsState);
@@ -171,6 +181,51 @@ export default function Album() {
     window.scrollTo({ top: 0 });
   }, [albumId]);
 
+  const inArtistPublicContext = Boolean(artistParam?.trim());
+
+  const albumCoverImageUrlForReport = useMemo(
+    () =>
+      album?.userId && album.cover
+        ? getAlbumCoverPublicUrl({
+            userId: album.userId,
+            fileNameOrCoverKey: album.cover,
+            suffix: '-448.webp',
+          })
+        : null,
+    [album?.cover, album?.userId]
+  );
+
+  const copyrightReportRequest = useMemo((): CopyrightReportRequest | null => {
+    if (!inArtistPublicContext || !album?.albumId || !artistSlug) return null;
+
+    const fromUrl = parseCopyrightReportRequestFromSearchParams(searchParams);
+    if (fromUrl) {
+      return { ...fromUrl, coverImageUrl: albumCoverImageUrlForReport };
+    }
+
+    return {
+      contentType: 'album',
+      contentId: album.albumId,
+      artistSlug,
+      coverImageUrl: albumCoverImageUrlForReport,
+    };
+  }, [
+    album?.albumId,
+    albumCoverImageUrlForReport,
+    artistSlug,
+    inArtistPublicContext,
+    searchParams,
+  ]);
+
+  useEffect(() => {
+    if (!readCopyrightReportOpenFromSearchParams(searchParams)) return;
+    if (!copyrightReportRequest) return;
+    setCopyrightReportOpen(true);
+    setSearchParams((prev) => stripCopyrightReportOpenParams(new URLSearchParams(prev)), {
+      replace: true,
+    });
+  }, [copyrightReportRequest, searchParams, setSearchParams]);
+
   if (hideArtistPageAfterOwnDelete || hideDeletedAlbumPage) {
     return null;
   }
@@ -230,7 +285,6 @@ export default function Album() {
   }
 
   const isAlbumOwner = isAlbumViewerOwner(album, viewer?.id);
-  const inArtistPublicContext = Boolean(artistParam?.trim());
   if (!album.visibility.isPublished && !isAlbumOwner) {
     return (
       <AlbumUnavailableSurface>
@@ -348,13 +402,17 @@ export default function Album() {
         copyrightReport={
           inArtistPublicContext && album.albumId
             ? {
-                to: `/copyright/report?contentType=album&contentId=${encodeURIComponent(
-                  album.albumId
-                )}&artistSlug=${encodeURIComponent(artistSlug)}`,
                 label: ui?.copyrightReport?.albumLink ?? 'Report copyright infringement',
+                onClick: () => setCopyrightReportOpen(true),
               }
             : undefined
         }
+      />
+
+      <CopyrightReportModal
+        isOpen={copyrightReportOpen}
+        onClose={() => setCopyrightReportOpen(false)}
+        request={copyrightReportOpen ? copyrightReportRequest : null}
       />
     </section>
   );

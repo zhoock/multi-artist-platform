@@ -24,6 +24,8 @@ export interface AlbumClaimContextRow {
   album_title: string;
   artist_slug: string;
   artist_display: string;
+  album_user_id: string | null;
+  album_cover: string | null;
 }
 
 export interface TrackClaimContextRow {
@@ -34,6 +36,8 @@ export interface TrackClaimContextRow {
   album_title: string;
   artist_slug: string;
   artist_display: string;
+  album_user_id: string | null;
+  album_cover: string | null;
 }
 
 export async function resolveAlbumForCopyrightReport(input: {
@@ -47,9 +51,11 @@ export async function resolveAlbumForCopyrightReport(input: {
   const result = await query<AlbumClaimContextRow>(
     `SELECT DISTINCT ON (a.album_id)
        a.album_id,
-       COALESCE(NULLIF(TRIM(a.full_name), ''), a.album) AS album_title,
+       a.album AS album_title,
        u.public_slug AS artist_slug,
-       COALESCE(NULLIF(TRIM(u.site_name), ''), u.name, '') AS artist_display
+       COALESCE(NULLIF(TRIM(u.site_name), ''), u.name, '') AS artist_display,
+       a.user_id::text AS album_user_id,
+       COALESCE(a.cover #>> '{}', a.cover::text) AS album_cover
      FROM albums a
      INNER JOIN users u ON u.id = a.user_id
      WHERE a.album_id = $1
@@ -81,9 +87,11 @@ export async function resolveTrackForCopyrightReport(input: {
        t.title AS track_title,
        t.track_id AS track_slug,
        a.album_id,
-       COALESCE(NULLIF(TRIM(a.full_name), ''), a.album) AS album_title,
+       a.album AS album_title,
        u.public_slug AS artist_slug,
-       COALESCE(NULLIF(TRIM(u.site_name), ''), u.name, '') AS artist_display
+       COALESCE(NULLIF(TRIM(u.site_name), ''), u.name, '') AS artist_display,
+       a.user_id::text AS album_user_id,
+       COALESCE(a.cover #>> '{}', a.cover::text) AS album_cover
      FROM tracks t
      INNER JOIN albums a ON a.id = t.album_id
      INNER JOIN users u ON u.id = a.user_id

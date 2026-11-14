@@ -1,5 +1,4 @@
 import { Fragment } from 'react';
-import { Link } from 'react-router-dom';
 import { useLang } from '@app/providers/lang';
 import { formatDateToDisplay } from '@pages/UserDashboard/components/modals/album/EditAlbumModal.utils';
 import type { detailsProps } from '@models';
@@ -256,9 +255,13 @@ export default function AlbumDetailsMusic({ album, copyrightReport }: AlbumDetai
 
   const copyrightLink = copyrightReport ? (
     <div className="album-details__copyright">
-      <Link className="album-details__copyright-link" to={copyrightReport.to}>
+      <button
+        type="button"
+        className="album-details__copyright-link"
+        onClick={copyrightReport.onClick}
+      >
         {copyrightReport.label}
-      </Link>
+      </button>
     </div>
   ) : null;
 

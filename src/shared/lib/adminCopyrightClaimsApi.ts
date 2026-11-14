@@ -21,6 +21,15 @@ export type AdminCopyrightClaimSummary = {
   status: CopyrightClaimAdminStatus;
 };
 
+export type AdminCopyrightClaimAttachment = {
+  id: string;
+  fileName: string;
+  mimeType: string;
+  sizeBytes: number;
+  createdAt: string;
+  uploadedAt: string | null;
+};
+
 export type AdminCopyrightClaimDetail = {
   id: string;
   contentType: string;
@@ -81,6 +90,7 @@ export async function fetchAdminCopyrightClaimsList(params?: {
 
 export async function fetchAdminCopyrightClaim(id: string): Promise<{
   claim: AdminCopyrightClaimDetail;
+  attachments: AdminCopyrightClaimAttachment[];
   activity: AdminCopyrightClaimActivity[];
 }> {
   const token = getToken();
@@ -92,14 +102,44 @@ export async function fetchAdminCopyrightClaim(id: string): Promise<{
   });
   const json = (await res.json()) as {
     success?: boolean;
-    data?: { claim?: AdminCopyrightClaimDetail; activity?: AdminCopyrightClaimActivity[] };
+    data?: {
+      claim?: AdminCopyrightClaimDetail;
+      attachments?: AdminCopyrightClaimAttachment[];
+      activity?: AdminCopyrightClaimActivity[];
+    };
   };
   if (!res.ok || !json.success || !json.data?.claim) {
     throw new Error('Failed to load');
   }
   return {
     claim: json.data.claim,
+    attachments: json.data.attachments ?? [],
     activity: json.data.activity ?? [],
+  };
+}
+
+export async function fetchAdminCopyrightClaimAttachmentDownloadUrl(
+  claimId: string,
+  attachmentId: string
+): Promise<{ downloadUrl: string; fileName: string }> {
+  const token = getToken();
+  if (!token) {
+    throw new Error('Unauthorized');
+  }
+  const res = await fetch(
+    `/api/admin/copyright-claims/${encodeURIComponent(claimId)}/attachments/${encodeURIComponent(attachmentId)}/download`,
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  const json = (await res.json()) as {
+    success?: boolean;
+    data?: { downloadUrl?: string; fileName?: string };
+  };
+  if (!res.ok || !json.success || !json.data?.downloadUrl) {
+    throw new Error('Failed to load download URL');
+  }
+  return {
+    downloadUrl: json.data.downloadUrl,
+    fileName: json.data.fileName ?? 'attachment',
   };
 }
 
@@ -110,7 +150,11 @@ export async function patchAdminCopyrightClaim(
     adminNote?: string;
     action?: AdminCopyrightClaimPatchAction;
   }
-): Promise<{ claim: AdminCopyrightClaimDetail; activity: AdminCopyrightClaimActivity[] }> {
+): Promise<{
+  claim: AdminCopyrightClaimDetail;
+  attachments: AdminCopyrightClaimAttachment[];
+  activity: AdminCopyrightClaimActivity[];
+}> {
   const token = getToken();
   if (!token) {
     throw new Error('Unauthorized');
@@ -127,12 +171,20 @@ export async function patchAdminCopyrightClaim(
   });
   const json = (await res.json()) as {
     success?: boolean;
-    data?: { claim?: AdminCopyrightClaimDetail; activity?: AdminCopyrightClaimActivity[] };
+    data?: {
+      claim?: AdminCopyrightClaimDetail;
+      attachments?: AdminCopyrightClaimAttachment[];
+      activity?: AdminCopyrightClaimActivity[];
+    };
     error?: string;
   };
   if (!res.ok || !json.success || !json.data?.claim) {
     const msg = typeof json.error === 'string' ? json.error : 'Failed to update';
     throw new Error(msg);
   }
-  return { claim: json.data.claim, activity: json.data.activity ?? [] };
+  return {
+    claim: json.data.claim,
+    attachments: json.data.attachments ?? [],
+    activity: json.data.activity ?? [],
+  };
 }

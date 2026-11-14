@@ -89,6 +89,13 @@ describe('copyright-claims admin notifications', () => {
 
     const res = await handler(postEvent(validBody), {} as never);
     expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body as string) as {
+      success?: boolean;
+      data?: { claimId?: string; uploadToken?: string };
+    };
+    expect(body.success).toBe(true);
+    expect(body.data?.claimId).toBe(claimId);
+    expect(body.data?.uploadToken).toBeTruthy();
 
     expect(mockNotify).toHaveBeenCalledWith({
       claimId,

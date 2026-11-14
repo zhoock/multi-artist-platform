@@ -41,8 +41,16 @@
   }
 
   &__copyright-link {
+    margin: 0;
+    padding: 0;
     color: var(--time-color, var(--quiet-gray, #828282));
+    font: inherit;
     font-size: 0.8125rem;
+    text-align: start;
+    background: none;
+    border: 0;
+    cursor: pointer;
+    appearance: none;
     text-decoration: underline;
     text-underline-offset: 0.15em;
     text-decoration-thickness: 1px;

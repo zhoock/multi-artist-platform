@@ -2,11 +2,9 @@
 
 import { beforeEach, describe, expect, jest, test } from '@jest/globals';
 import { fireEvent, screen, waitFor } from '@testing-library/react';
-import { Route, Routes } from 'react-router-dom';
 
 import { renderWithProviders } from '@shared/lib/test-utils';
-
-import CopyrightReportPage from '../CopyrightReportPage';
+import { CopyrightReportModal } from '@features/copyrightReport';
 import { MIN_COPYRIGHT_CLAIM_DESCRIPTION_CHARS } from '@shared/lib/copyright/copyrightClaimDescriptionRules';
 
 jest.mock('@app/providers/lang', () => ({
@@ -45,27 +43,28 @@ function setupFetchContextOk() {
   return mockFetch;
 }
 
-function renderReportPage() {
+function renderModal() {
   return renderWithProviders(
-    <Routes>
-      <Route path="/copyright/report" element={<CopyrightReportPage />} />
-    </Routes>,
-    {
-      initialEntries: [
-        '/copyright/report?contentType=album&contentId=test-album&artistSlug=test-artist',
-      ],
-    }
+    <CopyrightReportModal
+      isOpen
+      onClose={() => undefined}
+      request={{
+        contentType: 'album',
+        contentId: 'test-album',
+        artistSlug: 'test-artist',
+      }}
+    />
   );
 }
 
-describe('CopyrightReportPage submit enablement', () => {
+describe('CopyrightReportModal submit enablement', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     setupFetchContextOk();
   });
 
   test('submit disabled when description shorter than minimum, enabled at minimum length', async () => {
-    renderReportPage();
+    renderModal();
 
     await waitFor(() => {
       expect(screen.getByRole('textbox', { name: /name \/ organization/i })).toBeInTheDocument();
@@ -77,7 +76,7 @@ describe('CopyrightReportPage submit enablement', () => {
     fireEvent.change(screen.getByRole('textbox', { name: /email/i }), {
       target: { value: 'jane@example.com' },
     });
-    fireEvent.change(screen.getByRole('textbox', { name: /description/i }), {
+    fireEvent.change(screen.getByRole('textbox', { name: /describe the infringement/i }), {
       target: { value: 'x'.repeat(MIN_COPYRIGHT_CLAIM_DESCRIPTION_CHARS - 1) },
     });
     fireEvent.click(screen.getByRole('checkbox'));
@@ -85,7 +84,7 @@ describe('CopyrightReportPage submit enablement', () => {
     const submit = screen.getByRole('button', { name: /Submit report/i });
     expect(submit).toBeDisabled();
 
-    fireEvent.change(screen.getByRole('textbox', { name: /description/i }), {
+    fireEvent.change(screen.getByRole('textbox', { name: /describe the infringement/i }), {
       target: { value: 'x'.repeat(MIN_COPYRIGHT_CLAIM_DESCRIPTION_CHARS) },
     });
 

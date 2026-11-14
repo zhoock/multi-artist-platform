@@ -8,8 +8,10 @@ import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 import { buildPublicAlbumPagePath } from '@shared/lib/seo/publicPagePaths';
 import {
   fetchAdminCopyrightClaim,
+  fetchAdminCopyrightClaimAttachmentDownloadUrl,
   patchAdminCopyrightClaim,
   type AdminCopyrightClaimActivity,
+  type AdminCopyrightClaimAttachment,
   type AdminCopyrightClaimDetail as AdminCopyrightClaimDetailRow,
   type AdminCopyrightClaimPatchAction,
   type CopyrightClaimAdminStatus,
@@ -74,6 +76,7 @@ export default function AdminCopyrightClaimDetailPage() {
   const ui = useAppSelector((state) => selectUiDictionaryFirst(state, lang));
   const copy = ui?.adminCopyrightClaims;
   const [claim, setClaim] = useState<AdminCopyrightClaimDetailRow | null>(null);
+  const [attachments, setAttachments] = useState<AdminCopyrightClaimAttachment[]>([]);
   const [activity, setActivity] = useState<AdminCopyrightClaimActivity[]>([]);
   const [noteDraft, setNoteDraft] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -87,11 +90,13 @@ export default function AdminCopyrightClaimDetailPage() {
     try {
       const data = await fetchAdminCopyrightClaim(id);
       setClaim(data.claim);
+      setAttachments(data.attachments);
       setActivity(data.activity);
       setNoteDraft(data.claim.adminNote ?? '');
     } catch {
       setError(copy?.notFound ?? 'Not found.');
       setClaim(null);
+      setAttachments([]);
       setActivity([]);
     }
   }, [id, copy?.notFound]);
@@ -111,6 +116,7 @@ export default function AdminCopyrightClaimDetailPage() {
     try {
       const data = await patchAdminCopyrightClaim(id, body);
       setClaim(data.claim);
+      setAttachments(data.attachments);
       setActivity(data.activity);
       setNoteDraft(data.claim.adminNote ?? '');
     } catch (e) {
@@ -299,6 +305,40 @@ export default function AdminCopyrightClaimDetailPage() {
 
           <h2 className="admin-claim-detail__h2">{copy?.descriptionLabel ?? 'Description'}</h2>
           <pre className="admin-claim-detail__desc">{claim.description}</pre>
+
+          {attachments.length > 0 ? (
+            <>
+              <h2 className="admin-claim-detail__h2">
+                {copy?.attachmentsSection ?? 'Supporting documents'}
+              </h2>
+              <ul className="admin-claim-detail__attachments">
+                {attachments.map((att) => (
+                  <li key={att.id}>
+                    <button
+                      type="button"
+                      className="admin-claim-detail__attachment-link"
+                      onClick={() => {
+                        void (async () => {
+                          try {
+                            const { downloadUrl } =
+                              await fetchAdminCopyrightClaimAttachmentDownloadUrl(claim.id, att.id);
+                            window.open(downloadUrl, '_blank', 'noopener,noreferrer');
+                          } catch {
+                            setActionError(copy?.actionError ?? 'Could not download file.');
+                          }
+                        })();
+                      }}
+                    >
+                      {att.fileName}
+                    </button>
+                    <span className="admin-claim-detail__muted">
+                      {att.mimeType} · {Math.round(att.sizeBytes / 1024)} KB
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </>
+          ) : null}
 
           <dl className="admin-claim-detail__block">
             <dt>{copy?.submittedLabel ?? 'Submitted'}</dt>

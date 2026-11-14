@@ -1,5 +1,3 @@
-import { Link } from 'react-router-dom';
-
 import AlbumDetailsRelease from './AlbumDetailsRelease';
 import AlbumDetailsArtwork from './AlbumDetailsArtwork';
 import AlbumDetailsMusic from './AlbumDetailsMusic';
@@ -15,8 +13,8 @@ import {
 import './style.scss';
 
 export type AlbumCopyrightReportLink = {
-  to: string;
   label: string;
+  onClick: () => void;
 };
 
 type AlbumDetailsProps = {
@@ -83,9 +81,13 @@ export default function AlbumDetails({ album, copyrightReport }: AlbumDetailsPro
         <div className="wrapper album__wrapper">
           <div className="item">
             <div className="album-details__copyright">
-              <Link className="album-details__copyright-link" to={copyrightReport.to}>
+              <button
+                type="button"
+                className="album-details__copyright-link"
+                onClick={copyrightReport.onClick}
+              >
                 {copyrightReport.label}
-              </Link>
+              </button>
             </div>
           </div>
         </div>

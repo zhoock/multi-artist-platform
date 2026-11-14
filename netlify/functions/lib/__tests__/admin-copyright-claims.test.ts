@@ -6,10 +6,25 @@ import type { HandlerEvent } from '@netlify/functions';
 import { handler } from '../../admin-copyright-claims';
 import { query } from '../db';
 import { getUserIdFromEvent, requireAdmin } from '../api-helpers';
+import {
+  createCopyrightClaimAttachmentSignedDownloadUrl,
+  fetchCopyrightClaimAttachmentRow,
+  listCopyrightClaimAttachments,
+} from '../copyright-claim-attachments';
 
 jest.mock('../db', () => ({
   query: jest.fn(),
 }));
+
+jest.mock('../copyright-claim-attachments', () => {
+  const actual = jest.requireActual('../copyright-claim-attachments') as object;
+  return {
+    ...actual,
+    listCopyrightClaimAttachments: jest.fn(async () => []),
+    fetchCopyrightClaimAttachmentRow: jest.fn(async () => null),
+    createCopyrightClaimAttachmentSignedDownloadUrl: jest.fn(),
+  };
+});
 
 jest.mock('../api-helpers', () => {
   const actual = jest.requireActual('../api-helpers') as typeof import('../api-helpers');
@@ -26,6 +41,17 @@ const ADMIN_ID = 'b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a22';
 const mockQuery = query as jest.MockedFunction<typeof query>;
 const mockRequireAdmin = requireAdmin as jest.MockedFunction<typeof requireAdmin>;
 const mockGetUserId = getUserIdFromEvent as jest.MockedFunction<typeof getUserIdFromEvent>;
+const mockListAttachments = listCopyrightClaimAttachments as jest.MockedFunction<
+  typeof listCopyrightClaimAttachments
+>;
+const mockFetchAttachmentRow = fetchCopyrightClaimAttachmentRow as jest.MockedFunction<
+  typeof fetchCopyrightClaimAttachmentRow
+>;
+const mockSignedDownload = createCopyrightClaimAttachmentSignedDownloadUrl as jest.MockedFunction<
+  typeof createCopyrightClaimAttachmentSignedDownloadUrl
+>;
+
+const ATTACHMENT_ID = 'c2eebc99-9c0b-4ef8-bb6d-6bb9bd380a33';
 
 function baseEvent(overrides: Partial<HandlerEvent> = {}): HandlerEvent {
   return {
@@ -55,6 +81,7 @@ const detailRow = (status: string, admin_note: string | null) => ({
   artist_slug: 'artist',
   album_slug: 'album-slug',
   track_slug: null,
+  album_copyright_restricted: false,
 });
 
 describe('admin-copyright-claims', () => {
@@ -259,5 +286,72 @@ describe('admin-copyright-claims', () => {
     const res = await handler(baseEvent({ httpMethod: 'GET' }), {} as never);
     expect(res.statusCode).toBe(403);
     expect(mockQuery).not.toHaveBeenCalled();
+  });
+
+  it('GET claim detail returns uploaded attachments', async () => {
+    mockListAttachments.mockResolvedValueOnce([
+      {
+        id: ATTACHMENT_ID,
+        original_filename: 'proof.pdf',
+        mime_type: 'application/pdf',
+        size_bytes: '4096',
+        upload_status: 'uploaded',
+        created_at: new Date('2026-11-06T10:05:00.000Z'),
+        uploaded_at: new Date('2026-11-06T10:06:00.000Z'),
+      },
+    ]);
+
+    mockQuery
+      .mockResolvedValueOnce({ rows: [detailRow('new', null)] })
+      .mockResolvedValueOnce({ rows: [] });
+
+    const res = await handler(baseEvent({ httpMethod: 'GET' }), {} as never);
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body as string);
+    expect(body.success).toBe(true);
+    expect(body.data.attachments).toEqual([
+      expect.objectContaining({
+        id: ATTACHMENT_ID,
+        fileName: 'proof.pdf',
+        mimeType: 'application/pdf',
+        sizeBytes: 4096,
+      }),
+    ]);
+    expect(mockListAttachments).toHaveBeenCalledWith(CLAIM_ID);
+  });
+
+  it('GET attachment download returns signed URL for uploaded file', async () => {
+    mockFetchAttachmentRow.mockResolvedValueOnce({
+      storage_path: 'copyright-claims/x/y/evidence.pdf',
+      mime_type: 'application/pdf',
+      original_filename: 'proof.pdf',
+    });
+    mockSignedDownload.mockResolvedValueOnce('https://signed.example/download');
+
+    const res = await handler(
+      baseEvent({
+        httpMethod: 'GET',
+        path: `/.netlify/functions/admin-copyright-claims/${CLAIM_ID}/attachments/${ATTACHMENT_ID}/download`,
+      }),
+      {} as never
+    );
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body as string);
+    expect(body.data.downloadUrl).toBe('https://signed.example/download');
+    expect(body.data.fileName).toBe('proof.pdf');
+    expect(mockFetchAttachmentRow).toHaveBeenCalledWith(CLAIM_ID, ATTACHMENT_ID);
+  });
+
+  it('GET attachment download returns 404 when attachment not uploaded', async () => {
+    mockFetchAttachmentRow.mockResolvedValueOnce(null);
+
+    const res = await handler(
+      baseEvent({
+        httpMethod: 'GET',
+        path: `/.netlify/functions/admin-copyright-claims/${CLAIM_ID}/attachments/${ATTACHMENT_ID}/download`,
+      }),
+      {} as never
+    );
+    expect(res.statusCode).toBe(404);
   });
 });

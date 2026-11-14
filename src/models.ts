@@ -385,10 +385,12 @@ export interface IInterface {
   /** Публичная форма жалобы на нарушение авторских прав */
   copyrightReport?: {
     pageTitle: string;
+    intro: string;
     albumLink: string;
     contentLabel: string;
     contentTypeAlbum: string;
     contentTypeTrack: string;
+    openContent: string;
     nameLabel: string;
     emailLabel: string;
     roleLegend: string;
@@ -401,13 +403,29 @@ export interface IInterface {
     descriptionMinHint: string;
     /** When non-empty but below minimum; use {{count}} for characters still needed */
     descriptionTooShortHint: string;
+    descriptionTooLongHint: string;
+    /** Character counter; {{current}} and {{max}} */
+    descriptionCounter: string;
+    attachmentsLabel: string;
+    attachmentsDropHint: string;
+    attachmentsTypesHint: string;
+    attachmentsRemove: string;
+    attachmentsErrorType: string;
+    attachmentsErrorSize: string;
+    attachmentsErrorDuplicate: string;
+    attachmentsUploadingLead: string;
+    attachmentsUploadingProgress: string;
+    attachmentsUploadError: string;
+    attachmentsUploadRetry: string;
     confirmLabel: string;
     submit: string;
     submitting: string;
     cancel: string;
+    close: string;
     loading: string;
     successTitle: string;
     successBody: string;
+    successClose: string;
     backToAlbum: string;
     errors: {
       missingParams: string;
@@ -441,6 +459,7 @@ export interface IInterface {
     emailLabel: string;
     typeLabel: string;
     descriptionLabel: string;
+    attachmentsSection: string;
     submittedLabel: string;
     backToList: string;
     notFound: string;

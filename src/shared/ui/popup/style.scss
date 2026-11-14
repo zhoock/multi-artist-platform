@@ -67,7 +67,8 @@ dialog:not(.toast-viewport-layer, .toast-top-layer) {
         .auth-page,
         .player,
         .audience-analytics-fullscreen,
-        .album-comments-fullscreen
+        .album-comments-fullscreen,
+        .copyright-report-fullscreen
       )
     ) {
     display: flex;
@@ -84,7 +85,8 @@ dialog:not(.toast-viewport-layer, .toast-top-layer) {
     overflow: hidden;
   }
 
-  &.popup[open]:has(.album-comments-fullscreen) {
+  &.popup[open]:has(.album-comments-fullscreen),
+  &.popup[open]:has(.copyright-report-fullscreen) {
     display: flex;
     flex-direction: column;
     align-items: stretch;
@@ -92,7 +94,8 @@ dialog:not(.toast-viewport-layer, .toast-top-layer) {
     padding: 0;
     overflow: hidden;
 
-    > .album-comments-fullscreen {
+    > .album-comments-fullscreen,
+    > .copyright-report-fullscreen {
       flex: 1 1 auto;
       align-self: stretch;
       inline-size: 100%;
@@ -150,6 +153,7 @@ dialog:not(.toast-viewport-layer, .toast-top-layer) {
         .edit-album-modal,
         .audience-analytics-fullscreen,
         .album-comments-fullscreen,
+        .copyright-report-fullscreen,
         .player,
         .alert-modal,
         .confirmation-modal,
@@ -189,6 +193,7 @@ dialog:not(.toast-viewport-layer, .toast-top-layer) {
         .edit-album-modal,
         .audience-analytics-fullscreen,
         .album-comments-fullscreen,
+        .copyright-report-fullscreen,
         .subscription-plan-modal__card,
         .add-artist-to-archive-modal__card,
         .add-stem-modal,
