@@ -4,14 +4,20 @@ import { beforeEach, describe, expect, jest, test } from '@jest/globals';
 import { fireEvent, screen, waitFor } from '@testing-library/react';
 
 import { renderWithProviders } from '@shared/lib/test-utils';
+import type {
+  fetchAdminCopyrightClaim,
+  fetchAdminCopyrightClaimAttachmentDownloadUrl,
+  patchAdminCopyrightClaim,
+  AdminCopyrightClaimDetail,
+} from '@shared/lib/adminCopyrightClaimsApi';
 import AdminCopyrightClaimDetailPage from '../AdminCopyrightClaimDetail';
 
 const CLAIM_ID = 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11';
 const ATTACHMENT_ID = 'c2eebc99-9c0b-4ef8-bb6d-6bb9bd380a33';
 
-const mockFetchClaim = jest.fn();
-const mockFetchDownload = jest.fn();
-const mockPatch = jest.fn();
+const mockFetchClaim = jest.fn<typeof fetchAdminCopyrightClaim>();
+const mockFetchDownload = jest.fn<typeof fetchAdminCopyrightClaimAttachmentDownloadUrl>();
+const mockPatch = jest.fn<typeof patchAdminCopyrightClaim>();
 
 jest.mock('react-router-dom', () => {
   const actual = jest.requireActual('react-router-dom') as object;
@@ -22,16 +28,18 @@ jest.mock('react-router-dom', () => {
 });
 
 jest.mock('@shared/lib/adminCopyrightClaimsApi', () => ({
-  fetchAdminCopyrightClaim: (...args: unknown[]) => mockFetchClaim(...args),
-  fetchAdminCopyrightClaimAttachmentDownloadUrl: (...args: unknown[]) => mockFetchDownload(...args),
-  patchAdminCopyrightClaim: (...args: unknown[]) => mockPatch(...args),
+  fetchAdminCopyrightClaim: (id: string) => mockFetchClaim(id),
+  fetchAdminCopyrightClaimAttachmentDownloadUrl: (claimId: string, attachmentId: string) =>
+    mockFetchDownload(claimId, attachmentId),
+  patchAdminCopyrightClaim: (id: string, body: Parameters<typeof patchAdminCopyrightClaim>[1]) =>
+    mockPatch(id, body),
 }));
 
 jest.mock('@app/providers/lang', () => ({
   useLang: () => ({ lang: 'en' }),
 }));
 
-const baseClaim = {
+const baseClaim: AdminCopyrightClaimDetail = {
   id: CLAIM_ID,
   contentType: 'album',
   contentId: 'album-slug',
@@ -41,7 +49,7 @@ const baseClaim = {
   claimantEmail: 'jane@example.com',
   claimantType: 'other',
   description: 'Infringement details here',
-  status: 'new' as const,
+  status: 'new',
   adminNote: '',
   createdAt: '2026-11-06T10:00:00.000Z',
   artistSlug: 'artist',
