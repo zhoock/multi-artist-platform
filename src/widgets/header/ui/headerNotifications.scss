@@ -48,11 +48,11 @@
 .header__notifications-panel {
   @include dashboard-ui-font-family;
 
-  position: absolute;
+  position: fixed;
   z-index: 120;
-  inset-block-start: calc(100% + var(--ms-01));
-  inset-inline-end: 0;
-  inline-size: min(100vw - var(--ms-2), 22rem);
+  inset-block-start: calc(var(--ms-1) * 2 + var(--ms-01));
+  inset-inline: var(--ms-1);
+  inline-size: auto;
   padding: var(--ms-01);
   letter-spacing: normal;
   text-transform: none;
@@ -61,6 +61,13 @@
   border-radius: var(--ms-0);
   box-shadow: 0 8px 32px rgb(0 0 0 / 45%);
   backdrop-filter: blur(12px);
+
+  @include breakpoint(tablet) {
+    position: absolute;
+    inset-block-start: calc(100% + var(--ms-01));
+    inset-inline: auto 0;
+    inline-size: min(100vw - var(--ms-2), 22rem);
+  }
 }
 
 .header__notifications-panel-title {

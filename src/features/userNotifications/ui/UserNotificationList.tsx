@@ -63,8 +63,8 @@ export function UserNotificationList({
                 <span
                   className={clsx(
                     'user-notification-list__row-icon',
-                    (collectionActor || albumPurchaseCover) &&
-                      'user-notification-list__row-icon--avatar'
+                    collectionActor && 'user-notification-list__row-icon--avatar',
+                    albumPurchaseCover && 'user-notification-list__row-icon--album-cover'
                   )}
                   aria-hidden
                 >

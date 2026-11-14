@@ -79,6 +79,20 @@
       min-block-size: 0;
     }
   }
+
+  &--album-cover {
+    overflow: hidden;
+    padding: 0;
+
+    .user-notification-list__row-actor-avatar {
+      inline-size: 100%;
+      block-size: 100%;
+      min-inline-size: 0;
+      min-block-size: 0;
+      background: transparent;
+      border-radius: 0;
+    }
+  }
 }
 
 .user-notification-list__row:not(.user-notification-list__row--read)
@@ -136,7 +150,8 @@
 }
 
 .user-notification-list__footer {
-  padding: var(--ms-01);
+  padding-block: 0;
+  padding-inline: var(--ms-01);
   border-block-start: 1px solid rgb(255 255 255 / 8%);
   text-align: center;
 }
@@ -146,7 +161,8 @@
   align-items: center;
   justify-content: center;
   width: 100%;
-  padding: var(--ms-01);
+  padding-block: var(--ms-02);
+  padding-inline: var(--ms-01);
   color: var(--links-header-color, #dddddd);
   font-family: inherit;
   font-size: 0.8125rem;

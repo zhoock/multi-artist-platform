@@ -161,7 +161,10 @@ describe('UserNotificationList album_purchase', () => {
 
     expect(screen.getByText('Album purchase')).toBeInTheDocument();
     expect(screen.getByText('Your album “Rubber Soul” was purchased')).toBeInTheDocument();
-    expect(document.querySelector('.user-notification-list__row-icon--avatar')).toBeInTheDocument();
+    expect(
+      document.querySelector('.user-notification-list__row-icon--album-cover')
+    ).toBeInTheDocument();
+    expect(document.querySelector('.user-notification-list__row-icon--avatar')).toBeNull();
   });
 });
 
