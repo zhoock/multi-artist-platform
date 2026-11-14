@@ -1,6 +1,7 @@
-import { useEffect, useRef, type LegacyRef, type ReactNode, type RefObject } from 'react';
+import { useEffect, useRef, useState, type LegacyRef, type ReactNode, type RefObject } from 'react';
 import clsx from 'clsx';
 
+import { useBodyScrollLock } from '@shared/lib/hooks/useBodyScrollLock';
 import { promoteToastLayers } from '@shared/lib/toast/useToastLayerDialog';
 import '@shared/ui/popup/style.scss';
 import './localModal.scss';
@@ -32,6 +33,31 @@ export function LocalModal({
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
 
+  const [dialogOpenFromNative, setDialogOpenFromNative] = useState(false);
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+
+    const syncOpen = () => setDialogOpenFromNative(dialog.open);
+
+    dialog.addEventListener('close', syncOpen);
+    dialog.addEventListener('toggle', syncOpen);
+    syncOpen();
+
+    const observer = new MutationObserver(syncOpen);
+    observer.observe(dialog, { attributes: true, attributeFilter: ['open'] });
+
+    return () => {
+      dialog.removeEventListener('close', syncOpen);
+      dialog.removeEventListener('toggle', syncOpen);
+      observer.disconnect();
+    };
+  }, [dialogRef]);
+
+  const scrollLockActive = isOpen !== undefined ? isOpen : dialogOpenFromNative;
+  useBodyScrollLock(scrollLockActive);
+
   useEffect(() => {
     const dialog = dialogRef.current;
     if (!dialog) return;
@@ -57,6 +83,7 @@ export function LocalModal({
     } else if (!isOpen && dialog.open) {
       dialog.close();
     }
+    setDialogOpenFromNative(dialog.open);
   }, [dialogRef, isOpen]);
 
   return (

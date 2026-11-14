@@ -3,6 +3,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, type RefObject } from 'r
 import clsx from 'clsx';
 import type { PopupProps } from 'models';
 import { promoteToastLayers } from '@shared/lib/toast/useToastLayerDialog';
+import { useBodyScrollLock } from '@shared/lib/hooks/useBodyScrollLock';
 import { PopupContext } from './PopupContext';
 import './style.scss';
 import '../localModal/localModal.scss';
@@ -41,6 +42,9 @@ const PopupComponent = ({
   onCloseRef.current = onClose;
   /** Skip onClose when parent sets isActive=false (not user dismiss). */
   const closingProgrammaticallyRef = useRef(false);
+
+  // iOS Safari ignores overflow:hidden on body; fixed-body lock preserves scroll position.
+  useBodyScrollLock(isActive);
 
   const restoreFocus = useCallback(() => {
     const target = previouslyFocusedRef.current;

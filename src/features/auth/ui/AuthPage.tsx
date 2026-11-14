@@ -35,7 +35,6 @@ import {
   shouldLeaveDeletedArtistPage,
 } from '@shared/lib/accountDeletedSession';
 import { useAuthSessionUser } from '@shared/lib/hooks/useAuthSessionUser';
-import { useBodyScrollLock } from '@shared/lib/hooks/useBodyScrollLock';
 import { Popup, PopupCloseButton } from '@shared/ui/popup';
 import { ModalCloseIcon } from '@shared/ui/icons/ModalCloseIcon';
 import { NoindexHelmet } from '@shared/lib/seo/noindexRobotsMeta';
@@ -92,8 +91,8 @@ function resolveSessionExpiredBannerMessage(
  * Закрытие: × / backdrop / Escape → dialog.close() → `onClose` → `handleCloseAuth`
  * (overlay → явный переход в backgroundLocation; standalone → /).
  *
- * Body scroll lock (`useBodyScrollLock`) дополняет dialog: iOS Safari игнорирует
- * overflow:hidden на body, поэтому фиксируем scroll отдельно пока открыт auth-form.
+ * Body scroll lock — в shared `Popup` (`useBodyScrollLock`): iOS Safari игнорирует
+ * overflow:hidden на body.
  *
  * После успешного login/register пользователь сразу попадает на postAuthPath
  * (album page, checkout resume, /, …). Никакого onboarding-модала "выберите
@@ -240,11 +239,6 @@ export function AuthPage() {
     }
     navigate('/', { replace: true });
   }, [navigate, overlayBackground]);
-
-  // iOS Safari: дополнение к native dialog scroll lock (см. useBodyScrollLock).
-  // Лочим только пока auth-form на экране; при переходе на VerifyEmailModal
-  // auth Popup размонтируется, verify Popup подхватит dialog top layer.
-  useBodyScrollLock(showAuthForm);
 
   if (isHidden) {
     return null;

@@ -3,7 +3,6 @@ import { useCallback, useMemo, type RefObject } from 'react';
 import { useLang } from '@app/providers/lang';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
-import { useBodyScrollLock } from '@shared/lib/hooks/useBodyScrollLock';
 import { LocalModal } from '@shared/ui/localModal';
 import { ModalCloseIcon } from '@shared/ui/icons/ModalCloseIcon';
 import { platformDisplayName } from '@shared/constants/platformBranding';
@@ -98,8 +97,6 @@ function FeatureIcon({ name }: { name: 'follow' | 'purchase' | 'read' | 'archive
 export function ListenerWelcomeModal({ dialogRef, open, onDismiss }: ListenerWelcomeModalProps) {
   const { lang } = useLang();
   const ui = useAppSelector((state) => selectUiDictionaryFirst(state, lang));
-
-  useBodyScrollLock(open);
 
   const copy = useMemo(() => {
     const welcome = ui?.listenerWelcome;

@@ -4,6 +4,10 @@ import React from 'react';
 import { afterEach, beforeEach, describe, expect, jest, test } from '@jest/globals';
 import { act, render, screen } from '@testing-library/react';
 
+import {
+  __getBodyScrollLockCountForTests,
+  __resetBodyScrollLockForTests,
+} from '@shared/lib/hooks/useBodyScrollLock';
 import { Popup, PopupCloseButton } from '@shared/ui/popup';
 
 function renderPopup(
@@ -25,13 +29,47 @@ function renderPopup(
   );
 }
 
+describe('Popup body scroll lock', () => {
+  beforeEach(() => {
+    __resetBodyScrollLockForTests();
+    Object.defineProperty(window, 'scrollY', { value: 200, configurable: true, writable: true });
+  });
+
+  afterEach(() => {
+    __resetBodyScrollLockForTests();
+  });
+
+  test('locks underlying document while active and restores on close', () => {
+    const { rerender } = render(
+      <Popup isActive onClose={() => undefined}>
+        <p>Modal</p>
+      </Popup>
+    );
+
+    expect(document.body.style.position).toBe('fixed');
+    expect(document.body.style.top).toBe('-200px');
+    expect(__getBodyScrollLockCountForTests()).toBe(1);
+
+    rerender(
+      <Popup isActive={false} onClose={() => undefined}>
+        <p>Modal</p>
+      </Popup>
+    );
+
+    expect(document.body.style.position).toBe('');
+    expect(__getBodyScrollLockCountForTests()).toBe(0);
+  });
+});
+
 describe('Popup initial focus', () => {
   beforeEach(() => {
     jest.useFakeTimers();
+    __resetBodyScrollLockForTests();
   });
 
   afterEach(() => {
     jest.useRealTimers();
+    __resetBodyScrollLockForTests();
   });
 
   test('focuses neutral sentinel by default instead of the close button', () => {
