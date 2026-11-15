@@ -1,25 +1,25 @@
 @use '../../../scss/abstracts/mixins' as *;
 
-// Text reader variant: title and body share one centered content column (no header-only inset / flex offset).
+// Text reader: same header metrics as Comments; title column spans full row so it aligns with body.
 .album-comments-fullscreen.public-fullscreen-text {
   .album-comments-fullscreen__header {
-    position: relative;
-    display: flex;
+    display: grid;
+    grid-template-columns: 1fr auto;
     align-items: center;
-    padding-inline: 0;
   }
 
-  .album-comments-fullscreen__column {
-    padding-inline: max(var(--ms-1), env(safe-area-inset-left, 0px))
-      max(var(--ms-1), env(safe-area-inset-right, 0px));
+  .album-comments-fullscreen__header-main {
+    grid-column: 1 / -1;
+    grid-row: 1;
+    display: flex;
+    justify-content: flex-start;
+    min-inline-size: 0;
+    inline-size: 100%;
   }
 
   .album-comments-fullscreen__close {
-    position: absolute;
-    inset-inline-end: max(var(--ms-1), env(safe-area-inset-right, 0px));
-    top: 50%;
-    z-index: 1;
-    transform: translateY(-50%);
+    grid-column: 2;
+    grid-row: 1;
   }
 }
 

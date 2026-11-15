@@ -29,6 +29,13 @@ export function PublicFullscreenTextModal({
     <Popup isActive={isOpen} onClose={onClose} publicBackdrop aria-labelledby={titleId}>
       <div className="album-comments-fullscreen public-fullscreen-text">
         <header className="album-comments-fullscreen__header">
+          <div className="album-comments-fullscreen__header-main">
+            <div className="album-comments-fullscreen__column">
+              <h2 id={titleId} className="album-comments-fullscreen__title">
+                {title}
+              </h2>
+            </div>
+          </div>
           <PopupCloseButton
             type="button"
             className="album-comments-fullscreen__close"
@@ -36,11 +43,6 @@ export function PublicFullscreenTextModal({
           >
             <ModalCloseIcon />
           </PopupCloseButton>
-          <div className="album-comments-fullscreen__column">
-            <h2 id={titleId} className="album-comments-fullscreen__title">
-              {title}
-            </h2>
-          </div>
         </header>
 
         <div className="album-comments-fullscreen__body">

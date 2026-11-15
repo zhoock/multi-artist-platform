@@ -2,6 +2,7 @@ import { describe, test, expect, jest, afterEach } from '@jest/globals';
 import { screen, fireEvent } from '@testing-library/react';
 import { AlbumPageDescription } from '../AlbumPageDescription';
 import { renderWithProviders } from '@shared/lib/test-utils';
+import type { UiDictionaryState } from '@shared/model/uiDictionary';
 
 jest.mock('@shared/ui/publicFullscreenText', () => ({
   PublicFullscreenTextModal: ({
@@ -25,19 +26,20 @@ jest.mock('@shared/ui/publicFullscreenText', () => ({
     ) : null,
 }));
 
-const uiState = {
+const uiState: UiDictionaryState = {
   ru: {
-    status: 'succeeded' as const,
+    status: 'succeeded',
     error: null,
     data: [
       {
+        menu: {},
         buttons: { show: 'MORE' },
         titles: { aboutAlbumModalTitle: 'Об альбоме {albumTitle}' },
       },
     ],
     lastUpdated: Date.now(),
   },
-  en: { status: 'idle' as const, error: null, data: [], lastUpdated: null },
+  en: { status: 'idle', error: null, data: [], lastUpdated: null },
 };
 
 describe('AlbumPageDescription', () => {
