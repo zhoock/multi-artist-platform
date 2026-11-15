@@ -211,17 +211,19 @@ export function TrackList({ tracks, album, store, onSelectTrack }: TrackListProp
             <span className="tracks__title">
               <span className="tracks__title-text">{track.title}</span>
             </span>
-            {playbackLocked ? (
-              <span className="tracks__duration-lock" aria-hidden>
-                <LockIcon
-                  {...dashboardActionIconProps({
-                    size: 14,
-                    className: 'tracks__lock-icon',
-                  })}
-                />
-              </span>
-            ) : null}
-            <span className="tracks__duration">{formatDuration(track.duration)}</span>
+            <span className="tracks__meta">
+              {playbackLocked ? (
+                <span className="tracks__duration-lock" aria-hidden>
+                  <LockIcon
+                    {...dashboardActionIconProps({
+                      size: 14,
+                      className: 'tracks__lock-icon',
+                    })}
+                  />
+                </span>
+              ) : null}
+              <span className="tracks__duration">{formatDuration(track.duration)}</span>
+            </span>
           </button>
         );
       })}

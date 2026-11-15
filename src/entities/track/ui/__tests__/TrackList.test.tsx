@@ -82,6 +82,7 @@ describe('TrackList locked track row', () => {
 
     expect(lockedRow.classList.contains('tracks__btn--locked')).toBe(true);
     expect(lockedRow.querySelector('.tracks__symbol-index')?.textContent).toBe('2');
+    expect(lockedRow.querySelector('.tracks__meta')).toBeTruthy();
     expect(lockedRow.querySelector('.tracks__duration-lock')).toBeTruthy();
     expect(lockedRow.querySelector('.tracks__title-text')?.textContent).toBe('Locked track');
     expect(lockedRow.querySelector('.tracks__duration')?.textContent).toBe('3:32');

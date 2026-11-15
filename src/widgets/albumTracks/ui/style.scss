@@ -98,13 +98,16 @@
       );
 
       @media (width < 768px) {
-        align-items: flex-start;
+        display: grid;
+        grid-template-columns: var(--ms-0) minmax(0, 1fr) auto;
+        align-items: start;
+        column-gap: var(--ms-01);
         overflow: visible;
         white-space: normal;
         text-overflow: clip;
 
         .tracks__symbol {
-          align-self: flex-start;
+          align-self: start;
         }
 
         .tracks__title {
@@ -116,6 +119,10 @@
           text-overflow: unset;
           white-space: normal;
           overflow-wrap: anywhere;
+        }
+
+        .tracks__meta {
+          align-self: center;
         }
 
         &.tracks__btn--playing {
@@ -239,6 +246,13 @@
         opacity: 0.72;
       }
 
+      .tracks__meta {
+        display: inline-flex;
+        flex: 0 0 auto;
+        align-items: center;
+        gap: var(--ms-01);
+      }
+
       .tracks__duration-lock {
         display: inline-flex;
         flex: 0 0 auto;
@@ -338,6 +352,7 @@
         .tracks__symbol,
         .tracks__title,
         .tracks__title-text,
+        .tracks__meta,
         .tracks__duration {
           position: relative;
           z-index: 1;
