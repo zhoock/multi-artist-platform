@@ -21,6 +21,22 @@
     grid-column: 2;
     grid-row: 1;
   }
+
+  // Header has extra padding-inline vs body; on narrow screens the title column shifts left of body text.
+  @media (width < 768px) {
+    .album-comments-fullscreen__header {
+      padding-inline: 0;
+    }
+
+    .album-comments-fullscreen__column {
+      padding-inline: max(var(--ms-1), env(safe-area-inset-left, 0px))
+        max(var(--ms-1), env(safe-area-inset-right, 0px));
+    }
+
+    .album-comments-fullscreen__close {
+      margin-inline-end: max(var(--ms-1), env(safe-area-inset-right, 0px));
+    }
+  }
 }
 
 .public-fullscreen-text__body {
