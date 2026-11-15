@@ -863,7 +863,6 @@ export function getAlbumStep1InvalidFields(
   const out: AlbumStep1InvalidField[] = [];
   if (!formData.title?.trim()) out.push('title');
   if (!formData.releaseDate?.trim()) out.push('releaseDate');
-  if (!formData.upcEan?.trim()) out.push('upcEan');
   if (!formData.description?.trim()) out.push('description');
   if (opts?.cover && !hasAlbumCoverForStep1(formData, opts.cover)) out.push('cover');
   if (saleMode !== 'no' && !isAlbumRegularPriceInputValid(formData.regularPrice)) {

@@ -68,6 +68,14 @@ describe('album step 1 cover requirements', () => {
     });
     expect(invalid).not.toContain('cover');
   });
+
+  test('empty UPC / EAN does not block step 1', () => {
+    const form = { ...baseForm(), upcEan: '' };
+    const invalid = getAlbumStep1InvalidFields(form, {
+      cover: { albumArtPreview: 'front', coverDraftKey: null },
+    });
+    expect(invalid).not.toContain('upcEan');
+  });
 });
 
 describe('resolveAlbumBackCoverForEdit (hydration)', () => {

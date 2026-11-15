@@ -275,6 +275,7 @@
     "titles": {
       "albums": "альбомы",
       "theBand": "о группе",
+      "aboutAlbumModalTitle": "Об альбоме {albumTitle}",
       "music": "музыка",
       "release": "релиз",
       "albumCover": "обложка альбома",
@@ -1328,7 +1329,7 @@
           "artistGroupName": "Исполнитель / Название группы",
           "albumTitle": "Название альбома",
           "releaseDate": "Дата релиза",
-          "upcEan": "UPC / EAN",
+          "upcEan": "UPC / EAN (необязательно)",
           "albumArt": "Обложка альбома",
           "frontCover": "Лицевая сторона",
           "backCover": "Обратная сторона",

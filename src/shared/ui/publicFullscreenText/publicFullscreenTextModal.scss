@@ -1,0 +1,38 @@
+@use '../../../scss/abstracts/mixins' as *;
+
+// Text reader variant: title and body share one centered content column (no header-only inset / flex offset).
+.album-comments-fullscreen.public-fullscreen-text {
+  .album-comments-fullscreen__header {
+    position: relative;
+    display: flex;
+    align-items: center;
+    padding-inline: 0;
+  }
+
+  .album-comments-fullscreen__column {
+    padding-inline: max(var(--ms-1), env(safe-area-inset-left, 0px))
+      max(var(--ms-1), env(safe-area-inset-right, 0px));
+  }
+
+  .album-comments-fullscreen__close {
+    position: absolute;
+    inset-inline-end: max(var(--ms-1), env(safe-area-inset-right, 0px));
+    top: 50%;
+    z-index: 1;
+    transform: translateY(-50%);
+  }
+}
+
+.public-fullscreen-text__body {
+  color: var(--text-color, #dddddd);
+  font-size: clamp(1rem, 0.915rem + 0.35vw, 1.125rem);
+  line-height: 1.55;
+
+  p {
+    margin-block: 0;
+  }
+
+  p + p {
+    margin-block-start: calc(var(--ms-2) * 0.45);
+  }
+}

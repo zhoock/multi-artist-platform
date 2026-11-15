@@ -2921,31 +2921,21 @@ export function EditAlbumModal({
 
           <div className="edit-album-modal__field" data-step1-field="upcEan">
             <label htmlFor="upc-ean" className="edit-album-modal__label">
-              {ui?.dashboard?.editAlbumModal?.fieldLabels?.upcEan ?? 'UPC / EAN'}
+              {ui?.dashboard?.editAlbumModal?.fieldLabels?.upcEan ?? 'UPC / EAN (optional)'}
             </label>
             <input
               id="upc-ean"
               name="upc-ean"
               type="text"
               autoComplete="off"
-              className={`edit-album-modal__input${step1HasErr('upcEan') ? ' edit-album-modal__input--invalid' : ''}`}
+              className="edit-album-modal__input"
               placeholder={ui?.dashboard?.editAlbumModal?.placeholders?.upcEan ?? 'UPC / EAN'}
-              required
-              aria-invalid={step1HasErr('upcEan')}
-              aria-describedby={step1HasErr('upcEan') ? 'upc-ean-error' : undefined}
               value={formData.upcEan ?? ''}
               onChange={(e) => {
                 const v = e.target.value;
                 setFormData((s) => ({ ...s, upcEan: v }));
-                if (step1HasErr('upcEan'))
-                  setStep1InvalidFields((p) => p.filter((x) => x !== 'upcEan'));
               }}
             />
-            {step1HasErr('upcEan') ? (
-              <p id="upc-ean-error" className="edit-album-modal__field-error" role="alert">
-                {step1ValUi?.requiredUpcEan}
-              </p>
-            ) : null}
           </div>
 
           <div

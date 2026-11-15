@@ -275,6 +275,7 @@
     "titles": {
       "albums": "albums",
       "theBand": "about the",
+      "aboutAlbumModalTitle": "About {albumTitle}",
       "music": "music",
       "release": "release",
       "albumCover": "album cover",
@@ -1328,7 +1329,7 @@
           "artistGroupName": "Artist / Group name",
           "albumTitle": "Album title",
           "releaseDate": "Release date",
-          "upcEan": "UPC / EAN",
+          "upcEan": "UPC / EAN (optional)",
           "albumArt": "Album art",
           "frontCover": "Front cover",
           "backCover": "Back cover",

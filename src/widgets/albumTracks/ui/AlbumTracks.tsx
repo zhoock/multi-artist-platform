@@ -34,12 +34,13 @@ import {
   resolveFirstPlayableIndex,
 } from '@shared/lib/tracks/trackPlayback';
 import { AlbumTracksEmptyState } from './AlbumTracksEmptyState';
+import { AlbumPageDescription } from './AlbumPageDescription';
 import { AlbumCommentsSection } from '@features/albumComments';
 import './style.scss';
 
 /** Сигнатура для React.memo — иначе при смене visibility/playbackLocked без смены albumId список не обновлялся. */
 function albumTracksMemoSignature(album: AlbumDetails): string {
-  const head = `${album.albumId}\0${album.title}\0${String((album.cover ?? '').length)}`;
+  const head = `${album.albumId}\0${album.title}\0${String((album.cover ?? '').length)}\0${album.description ?? ''}`;
   const tail = (album.tracks ?? [])
     .map(
       (t) =>
@@ -355,6 +356,8 @@ const AlbumTracksComponent = ({
           store={store}
         />
       ) : null}
+
+      <AlbumPageDescription description={album.description ?? ''} albumTitle={album.title} />
 
       {hasTracks && artistSlugFromUrl && album.albumId && shareUrl ? (
         <AlbumCommentsSection

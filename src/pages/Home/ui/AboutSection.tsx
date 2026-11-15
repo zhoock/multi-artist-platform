@@ -3,8 +3,8 @@ import {
   useEffectiveLocation,
   useEffectiveSearchParams,
 } from '@shared/lib/hooks/useEffectiveLocation';
-import { Popup, PopupHamburgerToggle } from '@shared/ui/popup';
 import { Text } from '@shared/ui/text';
+import { PublicFullscreenTextModal } from '@shared/ui/publicFullscreenText';
 import { useLang } from '@app/providers/lang';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
 import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
@@ -173,27 +173,16 @@ export function AboutSection({ isAboutModalOpen, onOpen, onClose }: AboutSection
           </button>
         )}
 
-        <Popup isActive={isAboutModalOpen} onClose={onClose} aria-labelledby="about-popup-title">
-          <div className={aboutStyles.aboutPopup}>
-            <div className={aboutStyles.aboutPopupHeader}>
-              <h3 id="about-popup-title">
-                {title} {bandDisplayLabel}
-              </h3>
-              <PopupHamburgerToggle
-                isActive={isAboutModalOpen}
-                className={aboutStyles.aboutPopupHamburger}
-              />
-            </div>
-
-            <div className={aboutStyles.aboutPopupInner}>
-              {theBand.map((paragraph, index) => (
-                <Text key={index} className={aboutStyles.aboutText}>
-                  {paragraph}
-                </Text>
-              ))}
-            </div>
-          </div>
-        </Popup>
+        <PublicFullscreenTextModal
+          isOpen={isAboutModalOpen}
+          onClose={onClose}
+          title={`${title} ${bandDisplayLabel}`.trim()}
+          closeAriaLabel={ui?.albumComments?.cancel ?? 'Close'}
+        >
+          {theBand.map((paragraph, index) => (
+            <Text key={index}>{paragraph}</Text>
+          ))}
+        </PublicFullscreenTextModal>
       </div>
     </section>
   );
