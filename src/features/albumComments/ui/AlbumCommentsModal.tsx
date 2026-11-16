@@ -26,12 +26,13 @@ import { albumCommentDomId, findCommentInTree } from '@shared/lib/albumCommentDe
 import {
   appendReplyComment,
   appendRootComment,
+  findAlbumCommentById,
   findCommentRootId,
   replaceCommentInTree,
   updateCommentInTree,
 } from '../lib/updateCommentTree';
 import { applyCommentDeleteToForest, pruneCommentForest } from '../lib/commentTreePrune';
-import { collectMentionTargets } from '../lib/commentMentions';
+import { buildReplyDraftWithMention, collectMentionTargets } from '../lib/commentMentions';
 import { AlbumCommentComposer } from './AlbumCommentComposer';
 import { AlbumCommentRow, type AlbumCommentRowLabels } from './AlbumCommentRow';
 import './albumComments.scss';
@@ -46,6 +47,7 @@ export type AlbumCommentsModalLabels = {
   reportThanks: string;
   row: AlbumCommentRowLabels;
   composerPlaceholder: string;
+  replyingTo: (name: string) => string;
   commentsCount: (count: number) => string;
 };
 
@@ -107,7 +109,6 @@ export function AlbumCommentsModal({
   const deepLinkResolvedRef = useRef<string | null>(null);
   const deepLinkFinishedRef = useRef(false);
   const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
   const isRepliesThreadExpanded = useCallback(
     (rootId: string) => !collapsedReplyRoots.has(rootId),
     [collapsedReplyRoots]
@@ -267,6 +268,8 @@ export function AlbumCommentsModal({
     if (!isOpen) {
       deepLinkResolvedRef.current = null;
       deepLinkFinishedRef.current = false;
+      setReplyingToId(null);
+      setComposerValue('');
       return;
     }
     const target = deepLinkCommentId?.trim() ?? '';
@@ -349,6 +352,7 @@ export function AlbumCommentsModal({
       const rootId = findCommentRootId(commentsRef.current, parentId) ?? reply.parentId ?? parentId;
       setComments((prev) => pruneCommentForest(appendReplyComment(prev, rootId, reply)));
       setReplyingToId(null);
+      setComposerValue('');
       if (viewer?.id) bumpSummaryAfterNewComment(viewer.id);
     } catch {
       toast.show({ variant: 'error', title: labels.loadError, layer: 'top' });
@@ -437,6 +441,23 @@ export function AlbumCommentsModal({
 
   const artistId = resolvedArtistUserId ?? artistUserId ?? '';
 
+  const replyingToComment = useMemo(() => {
+    if (!replyingToId) return null;
+    return findAlbumCommentById(comments, replyingToId);
+  }, [comments, replyingToId]);
+
+  useEffect(() => {
+    if (!replyingToId) return;
+    const target = findAlbumCommentById(commentsRef.current, replyingToId);
+    if (!target) return;
+    setComposerValue(buildReplyDraftWithMention(target.author.displayName));
+  }, [replyingToId]);
+
+  const handleCancelReply = useCallback(() => {
+    setReplyingToId(null);
+    setComposerValue('');
+  }, []);
+
   const renderReplyNodes = (replies: AlbumCommentDto[]): ReactNode =>
     replies.map((reply) => (
       <AlbumCommentRow
@@ -449,18 +470,11 @@ export function AlbumCommentsModal({
         highlighted={highlightedCommentId === reply.id}
         viewerUserId={viewer?.id ?? null}
         artistUserId={artistId}
-        replyingToId={replyingToId}
         onRequestReply={setReplyingToId}
-        onCancelReply={() => setReplyingToId(null)}
-        onSubmitReply={handleSubmitReply}
         onToggleLike={handleToggleLike}
         onEdit={handleEdit}
         onDelete={handleDelete}
         onReport={handleReport}
-        replySending={replySending}
-        viewerAvatarPath={null}
-        viewerAvatarUrl={avatarSrc}
-        viewerDisplayName={viewerDisplayName}
         requireAuthForAction={requireAuthForAction}
       >
         {reply.replies.length > 0 ? renderReplyNodes(reply.replies) : null}
@@ -526,18 +540,11 @@ export function AlbumCommentsModal({
                       highlighted={highlightedCommentId === root.id}
                       viewerUserId={viewer?.id ?? null}
                       artistUserId={artistId}
-                      replyingToId={replyingToId}
                       onRequestReply={setReplyingToId}
-                      onCancelReply={() => setReplyingToId(null)}
-                      onSubmitReply={handleSubmitReply}
                       onToggleLike={handleToggleLike}
                       onEdit={handleEdit}
                       onDelete={handleDelete}
                       onReport={handleReport}
-                      replySending={replySending}
-                      viewerAvatarPath={null}
-                      viewerAvatarUrl={avatarSrc}
-                      viewerDisplayName={viewerDisplayName}
                       requireAuthForAction={requireAuthForAction}
                       repliesThreadExpanded={isRepliesThreadExpanded(root.id)}
                       onToggleRepliesThread={() => toggleRepliesThread(root.id)}
@@ -568,16 +575,32 @@ export function AlbumCommentsModal({
             <AlbumCommentComposer
               value={composerValue}
               onChange={setComposerValue}
-              sending={sendingRoot}
-              placeholder={labels.composerPlaceholder}
+              sending={replyingToId ? replySending : sendingRoot}
+              placeholder={
+                replyingToComment
+                  ? labels.row.replyPlaceholder(replyingToComment.author.displayName)
+                  : labels.composerPlaceholder
+              }
               imageUrl={avatarSrc}
               avatarPath={null}
               displayName={viewerDisplayName}
+              replyBannerLabel={
+                replyingToComment
+                  ? labels.replyingTo(replyingToComment.author.displayName)
+                  : undefined
+              }
+              onDismissReply={replyingToId ? handleCancelReply : undefined}
+              cancelLabel={labels.row.cancel}
+              focusRequestKey={replyingToId}
               onFocus={() => {
                 if (!isAuthenticated()) requireAuthForAction();
               }}
               onSubmit={() => {
                 if (!requireAuthForAction()) return;
+                if (replyingToId) {
+                  void handleSubmitReply(replyingToId, composerValue);
+                  return;
+                }
                 void handleCreateRoot();
               }}
             />

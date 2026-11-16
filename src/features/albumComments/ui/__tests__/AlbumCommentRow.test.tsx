@@ -66,16 +66,11 @@ function renderRow(comment: AlbumCommentDto, options: RenderRowOptions = {}) {
         isReply={isReply}
         viewerUserId={null}
         artistUserId="album-owner"
-        replyingToId={null}
         onRequestReply={() => undefined}
-        onCancelReply={() => undefined}
-        onSubmitReply={noopAsync}
         onToggleLike={() => undefined}
         onEdit={noopAsync}
         onDelete={noopAsync}
         onReport={noopAsync}
-        viewerAvatarPath={null}
-        viewerDisplayName="Viewer"
         requireAuthForAction={() => false}
         repliesThreadExpanded={repliesThreadExpanded}
         onToggleRepliesThread={onToggleRepliesThread}
@@ -118,16 +113,11 @@ describe('AlbumCommentRow — Reply control', () => {
           labels={rowLabels}
           viewerUserId="viewer-1"
           artistUserId="album-owner"
-          replyingToId={null}
           onRequestReply={() => undefined}
-          onCancelReply={() => undefined}
-          onSubmitReply={noopAsync}
           onToggleLike={() => undefined}
           onEdit={noopAsync}
           onDelete={noopAsync}
           onReport={noopAsync}
-          viewerAvatarPath={null}
-          viewerDisplayName="Viewer"
           requireAuthForAction={() => true}
         />
       </MemoryRouter>
@@ -145,16 +135,11 @@ describe('AlbumCommentRow — Reply control', () => {
           isReply
           viewerUserId="u-r-own"
           artistUserId="album-owner"
-          replyingToId={null}
           onRequestReply={() => undefined}
-          onCancelReply={() => undefined}
-          onSubmitReply={noopAsync}
           onToggleLike={() => undefined}
           onEdit={noopAsync}
           onDelete={noopAsync}
           onReport={noopAsync}
-          viewerAvatarPath={null}
-          viewerDisplayName="Viewer"
           requireAuthForAction={() => true}
         />
       </MemoryRouter>
@@ -177,16 +162,11 @@ describe('AlbumCommentRow — Reply control', () => {
           isReply
           viewerUserId="viewer-smolyanoe"
           artistUserId="album-owner"
-          replyingToId={null}
           onRequestReply={() => undefined}
-          onCancelReply={() => undefined}
-          onSubmitReply={noopAsync}
           onToggleLike={() => undefined}
           onEdit={noopAsync}
           onDelete={noopAsync}
           onReport={noopAsync}
-          viewerAvatarPath={null}
-          viewerDisplayName="Listener"
           requireAuthForAction={() => true}
         />
       </MemoryRouter>
@@ -237,16 +217,11 @@ describe('AlbumCommentRow — Reply control', () => {
           labels={rowLabels}
           viewerUserId="u-1"
           artistUserId="album-owner"
-          replyingToId={null}
           onRequestReply={() => undefined}
-          onCancelReply={() => undefined}
-          onSubmitReply={noopAsync}
           onToggleLike={() => undefined}
           onEdit={noopAsync}
           onDelete={noopAsync}
           onReport={noopAsync}
-          viewerAvatarPath={null}
-          viewerDisplayName="Viewer"
           requireAuthForAction={() => true}
         />
       </MemoryRouter>
@@ -256,31 +231,9 @@ describe('AlbumCommentRow — Reply control', () => {
     expect(screen.queryByRole('button', { name: 'Reply' })).not.toBeInTheDocument();
   });
 
-  test('does not show reply composer on own comment even when replyingToId matches', () => {
-    render(
-      <MemoryRouter>
-        <AlbumCommentRow
-          comment={makeComment({ author: { ...makeComment().author, userId: 'viewer-1' } })}
-          lang="en"
-          labels={rowLabels}
-          viewerUserId="viewer-1"
-          artistUserId="album-owner"
-          replyingToId="c-1"
-          onRequestReply={() => undefined}
-          onCancelReply={() => undefined}
-          onSubmitReply={noopAsync}
-          onToggleLike={() => undefined}
-          onEdit={noopAsync}
-          onDelete={noopAsync}
-          onReport={noopAsync}
-          viewerAvatarPath={null}
-          viewerDisplayName="Viewer"
-          requireAuthForAction={() => true}
-        />
-      </MemoryRouter>
-    );
-
-    expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+  test('never renders reply composer in the row', () => {
+    renderRow(makeNestedReply('nested-99', 'Nested'), { isReply: true });
+    expect(document.querySelector('.album-comments__composer-input')).toBeNull();
   });
 
   test('clicking Reply on nested reply invokes onRequestReply with reply id', () => {
@@ -294,50 +247,17 @@ describe('AlbumCommentRow — Reply control', () => {
           isReply
           viewerUserId="viewer-1"
           artistUserId="album-owner"
-          replyingToId={null}
           onRequestReply={onRequestReply}
-          onCancelReply={() => undefined}
-          onSubmitReply={noopAsync}
           onToggleLike={() => undefined}
           onEdit={noopAsync}
           onDelete={noopAsync}
           onReport={noopAsync}
-          viewerAvatarPath={null}
-          viewerDisplayName="Viewer"
           requireAuthForAction={() => true}
         />
       </MemoryRouter>
     );
     fireEvent.click(screen.getByRole('button', { name: 'Reply' }));
     expect(onRequestReply).toHaveBeenCalledWith('nested-99');
-  });
-
-  test('opening reply composer on another users comment prefills @mention', () => {
-    render(
-      <MemoryRouter>
-        <AlbumCommentRow
-          comment={makeNestedReply('nested-99', '@user_nested-99 Earlier')}
-          lang="en"
-          labels={rowLabels}
-          isReply
-          viewerUserId="viewer-1"
-          artistUserId="album-owner"
-          replyingToId="nested-99"
-          onRequestReply={() => undefined}
-          onCancelReply={() => undefined}
-          onSubmitReply={noopAsync}
-          onToggleLike={() => undefined}
-          onEdit={noopAsync}
-          onDelete={noopAsync}
-          onReport={noopAsync}
-          viewerAvatarPath={null}
-          viewerDisplayName="Viewer"
-          requireAuthForAction={() => true}
-        />
-      </MemoryRouter>
-    );
-
-    expect(screen.getByRole('textbox')).toHaveValue('@User nested-99 ');
   });
 
   test('renders @mention with highlight class', () => {
@@ -360,16 +280,11 @@ describe('AlbumCommentRow — like control', () => {
           labels={rowLabels}
           viewerUserId={viewerUserId}
           artistUserId="album-owner"
-          replyingToId={null}
           onRequestReply={() => undefined}
-          onCancelReply={() => undefined}
-          onSubmitReply={noopAsync}
           onToggleLike={onToggleLike}
           onEdit={noopAsync}
           onDelete={noopAsync}
           onReport={noopAsync}
-          viewerAvatarPath={null}
-          viewerDisplayName="Viewer"
           requireAuthForAction={() => true}
         />
       </MemoryRouter>
@@ -558,16 +473,11 @@ describe('AlbumCommentRow — inline edit', () => {
           labels={rowLabels}
           viewerUserId="u-1"
           artistUserId="album-owner"
-          replyingToId={null}
           onRequestReply={() => undefined}
-          onCancelReply={() => undefined}
-          onSubmitReply={noopAsync}
           onToggleLike={() => undefined}
           onEdit={noopAsync}
           onDelete={noopAsync}
           onReport={noopAsync}
-          viewerAvatarPath={null}
-          viewerDisplayName="Viewer"
           requireAuthForAction={() => true}
         />
       </MemoryRouter>
@@ -607,16 +517,11 @@ describe('AlbumCommentRow — replies thread toggle', () => {
           labels={rowLabels}
           viewerUserId={null}
           artistUserId="album-owner"
-          replyingToId={null}
           onRequestReply={() => undefined}
-          onCancelReply={() => undefined}
-          onSubmitReply={noopAsync}
           onToggleLike={() => undefined}
           onEdit={noopAsync}
           onDelete={noopAsync}
           onReport={noopAsync}
-          viewerAvatarPath={null}
-          viewerDisplayName="Viewer"
           requireAuthForAction={() => false}
           repliesThreadExpanded={expanded}
           onToggleRepliesThread={() => setExpanded((v) => !v)}
@@ -723,16 +628,11 @@ describe('AlbumCommentRow — replies thread toggle', () => {
                 labels={rowLabels}
                 viewerUserId={null}
                 artistUserId="album-owner"
-                replyingToId={null}
                 onRequestReply={() => undefined}
-                onCancelReply={() => undefined}
-                onSubmitReply={noopAsync}
                 onToggleLike={() => undefined}
                 onEdit={noopAsync}
                 onDelete={noopAsync}
                 onReport={noopAsync}
-                viewerAvatarPath={null}
-                viewerDisplayName="Viewer"
                 requireAuthForAction={() => false}
                 repliesThreadExpanded={expanded}
                 onToggleRepliesThread={() => toggle(root.id)}

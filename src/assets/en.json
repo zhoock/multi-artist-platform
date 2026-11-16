@@ -401,6 +401,7 @@
       "report": "Report",
       "save": "Save",
       "replyPlaceholder": "Reply to {name}…",
+      "replyingTo": "Replying to {name}",
       "showRepliesOne": "Show {count} reply",
       "showRepliesFew": "Show {count} replies",
       "showRepliesMany": "Show {count} replies",

@@ -693,27 +693,68 @@ a.album-comments__mention-link {
   --album-comments-composer-single-line-block: calc(
     var(--album-comments-composer-line) * 1em + 2 * var(--ms-01)
   );
+  --album-comments-composer-reply-banner-block: calc(0.82rem * 1.25);
+  --album-comments-composer-send-inset: calc(var(--ms-01) * 0.65);
+  --album-comments-composer-send-size: 2rem;
 
   display: flex;
   gap: var(--ms-01);
   align-items: flex-start;
 
   > .album-comments__avatar {
-    margin-block-start: calc((var(--album-comments-composer-single-line-block) - 2rem) / 2);
+    flex-shrink: 0;
+    margin-block-start: 0;
+  }
+
+  &:has(.album-comments__composer-reply-banner) > .album-comments__avatar {
+    margin-block-start: calc(var(--album-comments-composer-reply-banner-block) + 0.35rem);
   }
 
   &--compact {
     margin-block-start: var(--ms-01);
-
-    > .album-comments__avatar {
-      margin-block-start: calc((var(--album-comments-composer-single-line-block) - 1.5rem) / 2);
-    }
   }
 }
 
 .album-comments__composer-field {
   flex: 1 1 auto;
   min-inline-size: 0;
+}
+
+.album-comments__composer-reply-banner {
+  display: flex;
+  align-items: center;
+  gap: var(--ms-01);
+  margin-block-end: 0.35rem;
+  min-inline-size: 0;
+}
+
+.album-comments__composer-reply-banner-label {
+  flex: 1 1 auto;
+  min-inline-size: 0;
+  overflow: hidden;
+  color: var(--time-color, #9b9b9a);
+  font-size: 0.82rem;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.album-comments__composer-reply-dismiss {
+  display: inline-flex;
+  flex-shrink: 0;
+  margin: 0;
+  padding: 0.2rem;
+  color: var(--time-color, #9b9b9a);
+  background: transparent;
+  border: 0;
+  border-radius: var(--ms-01);
+  cursor: pointer;
+  appearance: none;
+
+  &:focus-visible {
+    outline: 2px solid var(--accent-color, #998238);
+    outline-offset: 1px;
+  }
 }
 
 .album-comments__composer-input-wrap {
@@ -742,7 +783,8 @@ a.album-comments__mention-link {
   overflow: hidden;
 
   &--with-send {
-    padding-inline-end: calc(2rem + var(--ms-01) * 1.25);
+    padding-inline-end: calc(var(--album-comments-composer-send-size) + var(--ms-01) * 1.25);
+    padding-block-end: calc(var(--album-comments-composer-send-size) + var(--ms-01) * 0.35);
   }
 
   &:focus-visible {
@@ -775,17 +817,14 @@ a.album-comments__mention-link {
   background: var(--accent-color, #998238);
   border: 0;
   border-radius: 50%;
-  transition:
-    opacity 0.15s ease,
-    transform 0.15s ease;
-  transform: translateY(-50%);
-  inset-inline-end: calc(var(--ms-01) * 0.65);
-  inset-block-start: 50%;
+  transition: opacity 0.15s ease;
+  inset-inline-end: var(--album-comments-composer-send-inset);
+  inset-block: auto var(--album-comments-composer-send-inset);
   flex-shrink: 0;
   align-items: center;
   justify-content: center;
-  inline-size: 2rem;
-  block-size: 2rem;
+  inline-size: var(--album-comments-composer-send-size);
+  block-size: var(--album-comments-composer-send-size);
   cursor: pointer;
   appearance: none;
 
@@ -798,10 +837,6 @@ a.album-comments__mention-link {
     outline: 2px solid var(--accent-color, #998238);
     outline-offset: 2px;
   }
-}
-
-.album-comments__inline-reply {
-  margin-block-start: var(--ms-01);
 }
 
 .album-comments__edit {

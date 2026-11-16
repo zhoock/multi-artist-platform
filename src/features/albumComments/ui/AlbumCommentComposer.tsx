@@ -1,7 +1,8 @@
 import { useCallback, useId, useLayoutEffect, useRef } from 'react';
 import clsx from 'clsx';
-import { ArrowUp as SendIcon } from 'lucide-react';
+import { ArrowUp as SendIcon, X as DismissIcon } from 'lucide-react';
 import { MAX_ALBUM_COMMENT_CHARS, isSubmittableCommentBody } from '../lib/commentBody';
+import { ALBUM_COMMENTS_MOBILE_MQ } from '../lib/albumCommentsViewport';
 import { AlbumCommentAvatar } from './AlbumCommentAvatar';
 
 export type AlbumCommentComposerProps = {
@@ -18,6 +19,11 @@ export type AlbumCommentComposerProps = {
   compact?: boolean;
   onCancel?: () => void;
   cancelLabel?: string;
+  /** Secondary header shown above the field in reply mode. */
+  replyBannerLabel?: string;
+  onDismissReply?: () => void;
+  /** When changed, focuses textarea and places caret at end (after @mention). */
+  focusRequestKey?: string | null;
 };
 
 function syncComposerTextareaHeight(textarea: HTMLTextAreaElement) {
@@ -45,6 +51,9 @@ export function AlbumCommentComposer({
   compact = false,
   onCancel,
   cancelLabel,
+  replyBannerLabel,
+  onDismissReply,
+  focusRequestKey,
 }: AlbumCommentComposerProps) {
   const textareaId = useId();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -61,6 +70,15 @@ export function AlbumCommentComposer({
     syncHeight();
   }, [value, syncHeight]);
 
+  useLayoutEffect(() => {
+    if (!focusRequestKey) return;
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    textarea.focus();
+    const end = textarea.value.length;
+    textarea.setSelectionRange(end, end);
+  }, [focusRequestKey]);
+
   return (
     <div
       className={clsx('album-comments__composer', compact && 'album-comments__composer--compact')}
@@ -72,6 +90,19 @@ export function AlbumCommentComposer({
         size={compact ? 'sm' : 'md'}
       />
       <div className="album-comments__composer-field">
+        {replyBannerLabel && onDismissReply ? (
+          <div className="album-comments__composer-reply-banner">
+            <span className="album-comments__composer-reply-banner-label">{replyBannerLabel}</span>
+            <button
+              type="button"
+              className="album-comments__composer-reply-dismiss"
+              aria-label={cancelLabel ?? replyBannerLabel}
+              onClick={onDismissReply}
+            >
+              <DismissIcon size={16} strokeWidth={2} aria-hidden />
+            </button>
+          </div>
+        ) : null}
         <div className="album-comments__composer-input-wrap">
           <textarea
             id={textareaId}
@@ -90,7 +121,7 @@ export function AlbumCommentComposer({
               onFocus?.();
               if (
                 typeof window !== 'undefined' &&
-                window.matchMedia('(max-width: 47.99rem)').matches
+                window.matchMedia(ALBUM_COMMENTS_MOBILE_MQ).matches
               ) {
                 window.setTimeout(() => {
                   event.currentTarget.scrollIntoView({ block: 'nearest', inline: 'nearest' });

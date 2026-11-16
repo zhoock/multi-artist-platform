@@ -377,6 +377,7 @@ export interface IInterface {
     report: string;
     save: string;
     replyPlaceholder: string;
+    replyingTo: string;
     showRepliesOne: string;
     showRepliesFew: string;
     showRepliesMany: string;

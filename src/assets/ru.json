@@ -401,6 +401,7 @@
       "report": "Пожаловаться",
       "save": "Сохранить",
       "replyPlaceholder": "Ответить {name}…",
+      "replyingTo": "Ответ {name}",
       "showRepliesOne": "Показать {count} ответ",
       "showRepliesFew": "Показать {count} ответа",
       "showRepliesMany": "Показать {count} ответов",

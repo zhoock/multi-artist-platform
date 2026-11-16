@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import clsx from 'clsx';
 import { Heart as HeartIcon } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -9,9 +9,8 @@ import { albumCommentDomId } from '@shared/lib/albumCommentDeepLink';
 import { formatCommentRelativeTime } from '../lib/formatCommentRelativeTime';
 import { MAX_ALBUM_COMMENT_CHARS, isSubmittableCommentBody } from '../lib/commentBody';
 import { AlbumCommentAvatar } from './AlbumCommentAvatar';
-import { buildReplyDraftWithMention, type MentionTarget } from '../lib/commentMentions';
+import { type MentionTarget } from '../lib/commentMentions';
 import { AlbumCommentBody } from './AlbumCommentBody';
-import { AlbumCommentComposer } from './AlbumCommentComposer';
 import { AlbumCommentMenu, type AlbumCommentMenuItem } from './AlbumCommentMenu';
 
 export type AlbumCommentRowLabels = {
@@ -38,18 +37,11 @@ type AlbumCommentRowProps = {
   isReply?: boolean;
   viewerUserId: string | null;
   artistUserId: string;
-  replyingToId: string | null;
   onRequestReply: (commentId: string) => void;
-  onCancelReply: () => void;
-  onSubmitReply: (parentId: string, body: string) => Promise<void>;
   onToggleLike: (commentId: string) => void;
   onEdit: (commentId: string, body: string) => Promise<void>;
   onDelete: (commentId: string) => void;
   onReport: (commentId: string) => Promise<void>;
-  replySending?: boolean;
-  viewerAvatarPath: string | null;
-  viewerAvatarUrl?: string | null;
-  viewerDisplayName: string;
   requireAuthForAction: () => boolean;
   repliesThreadExpanded?: boolean;
   onToggleRepliesThread?: () => void;
@@ -65,18 +57,11 @@ export function AlbumCommentRow({
   isReply = false,
   viewerUserId,
   artistUserId,
-  replyingToId,
   onRequestReply,
-  onCancelReply,
-  onSubmitReply,
   onToggleLike,
   onEdit,
   onDelete,
   onReport,
-  replySending = false,
-  viewerAvatarPath,
-  viewerAvatarUrl,
-  viewerDisplayName,
   requireAuthForAction,
   repliesThreadExpanded = true,
   onToggleRepliesThread,
@@ -87,7 +72,6 @@ export function AlbumCommentRow({
   const isDeleted = Boolean(comment.deletedAt);
   const [editing, setEditing] = useState(false);
   const [editDraft, setEditDraft] = useState(comment.body);
-  const [replyDraft, setReplyDraft] = useState('');
 
   const menuItems: AlbumCommentMenuItem[] = useMemo(() => {
     if (isDeleted || !viewerUserId) return [];
@@ -128,16 +112,7 @@ export function AlbumCommentRow({
     }
   };
 
-  const isReplyingHere = replyingToId === comment.id;
   const replyCount = countThreadReplies(comment.replies);
-
-  useEffect(() => {
-    if (isReplyingHere) {
-      setReplyDraft(buildReplyDraftWithMention(comment.author.displayName));
-    } else {
-      setReplyDraft('');
-    }
-  }, [comment.author.displayName, isReplyingHere]);
   const showRepliesToggle = !isReply && replyCount > 0 && onToggleRepliesThread != null;
   const isOwnComment = viewerUserId != null && comment.author.userId === viewerUserId;
   const canLike = !isOwnComment;
@@ -312,26 +287,6 @@ export function AlbumCommentRow({
                   {repliesThreadExpanded ? labels.hideReplies : labels.showReplies(replyCount)}
                 </button>
               ) : null}
-            </div>
-          ) : null}
-
-          {isReplyingHere && canReply ? (
-            <div className="album-comments__inline-reply">
-              <AlbumCommentComposer
-                value={replyDraft}
-                onChange={setReplyDraft}
-                compact
-                sending={replySending}
-                placeholder={labels.replyPlaceholder(comment.author.displayName)}
-                avatarPath={viewerAvatarPath}
-                imageUrl={viewerAvatarUrl}
-                displayName={viewerDisplayName}
-                cancelLabel={labels.cancel}
-                onCancel={onCancelReply}
-                onSubmit={() => {
-                  void onSubmitReply(comment.id, replyDraft).then(() => setReplyDraft(''));
-                }}
-              />
             </div>
           ) : null}
 

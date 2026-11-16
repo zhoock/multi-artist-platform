@@ -57,3 +57,28 @@ function commentExistsInReplies(replies: AlbumCommentDto[], commentId: string): 
   }
   return false;
 }
+
+function findCommentInReplies(
+  replies: AlbumCommentDto[],
+  commentId: string
+): AlbumCommentDto | null {
+  for (const reply of replies) {
+    if (reply.id === commentId) return reply;
+    const nested = findCommentInReplies(reply.replies, commentId);
+    if (nested) return nested;
+  }
+  return null;
+}
+
+export function findAlbumCommentById(
+  comments: AlbumCommentDto[],
+  commentId: string
+): AlbumCommentDto | null {
+  const id = commentId.trim();
+  for (const root of comments) {
+    if (root.id === id) return root;
+    const inReplies = findCommentInReplies(root.replies, id);
+    if (inReplies) return inReplies;
+  }
+  return null;
+}

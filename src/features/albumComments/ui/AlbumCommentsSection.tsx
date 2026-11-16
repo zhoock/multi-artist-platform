@@ -73,6 +73,8 @@ export function AlbumCommentsSection({ albumId, artistSlug, shareUrl }: AlbumCom
       showMore: copy?.showMore ?? 'Show more',
       reportThanks: copy?.reportThanks ?? 'Thanks. Your report was received.',
       composerPlaceholder: copy?.composerPlaceholder ?? 'Leave a comment…',
+      replyingTo: (name: string) =>
+        (copy?.replyingTo ?? 'Replying to {name}').replace('{name}', name),
       commentsCount: (count: number) =>
         (copy?.modalCount ?? '{count}').replace('{count}', String(count)),
       row: {
