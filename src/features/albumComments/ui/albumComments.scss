@@ -161,11 +161,12 @@
     box-sizing: border-box;
   }
 
+  // Same header grid as `public-fullscreen-text` (About): title aligns with body gutter, not a centered card.
   &__header {
-    display: flex;
+    display: grid;
+    grid-template-columns: 1fr auto;
     flex-shrink: 0;
     align-items: center;
-    gap: var(--ms-01);
     padding-block: var(--ms-0);
     padding-block-start: max(var(--ms-0), env(safe-area-inset-top, 0px));
     padding-inline: max(var(--ms-1), env(safe-area-inset-left, 0px))
@@ -175,10 +176,12 @@
   }
 
   &__header-main {
+    grid-column: 1 / -1;
+    grid-row: 1;
     display: flex;
-    flex: 1 1 auto;
-    justify-content: center;
+    justify-content: flex-start;
     min-inline-size: 0;
+    inline-size: 100%;
   }
 
   &__title {
@@ -194,6 +197,8 @@
   }
 
   &__close {
+    grid-column: 2;
+    grid-row: 1;
     flex-shrink: 0;
     display: inline-flex;
     align-items: center;
@@ -257,6 +262,22 @@
     padding-block-start: var(--ms-01);
     margin-block-start: var(--ms-01);
   }
+
+  // Single horizontal gutter via `__column`, not header + column (narrow viewports).
+  @media (width < 768px) {
+    &__header {
+      padding-inline: 0;
+    }
+
+    &__close {
+      margin-inline-end: max(var(--ms-1), env(safe-area-inset-right, 0px));
+    }
+
+    &__column {
+      padding-inline: max(var(--ms-1), env(safe-area-inset-left, 0px))
+        max(var(--ms-1), env(safe-area-inset-right, 0px));
+    }
+  }
 }
 
 .album-comments__item {
@@ -283,7 +304,6 @@
 
   &--reply {
     margin-block-start: var(--ms-01);
-    padding-inline-start: calc(14px + var(--ms-0));
   }
 
   &--highlight::before {
@@ -295,21 +315,16 @@
     border-radius: 12px;
     padding-block: 10px;
     padding-inline: 12px;
-
-    &--reply {
-      padding-inline-start: calc(12px + var(--ms-0));
-    }
   }
 }
 
-.album-comments__reply-rail {
-  position: absolute;
-  z-index: 1;
-  background: var(--hr-color, #3d3c3a);
-  inset-inline-start: 0.55rem;
-  inset-block: 0.25rem auto;
-  inline-size: 2px;
-  block-size: calc(100% - 0.5rem);
+// Fullscreen list rows: no card padding inside the centered column gutter.
+.album-comments-fullscreen .album-comments__item:not(.album-comments__item--reply) {
+  padding-inline: 0;
+}
+
+.album-comments-fullscreen .album-comments__item--reply {
+  padding-inline: 0;
 }
 
 .album-comments__item-main {
@@ -416,6 +431,11 @@
   overflow-wrap: anywhere;
 }
 
+.album-comments__mention {
+  color: var(--accent-color, #998238);
+  font-weight: var(--bold, 700);
+}
+
 .album-comments__edited,
 .album-comments__deleted-text {
   margin-block-start: 0.25rem;
@@ -465,6 +485,11 @@
 
   &--active {
     color: var(--accent-color, #998238);
+  }
+
+  &--own:not(&--active) {
+    color: var(--time-color, #9b9b9a);
+    cursor: default;
   }
 
   &-icon {
@@ -636,12 +661,26 @@
 }
 
 .album-comments__composer {
+  --album-comments-composer-line: 1.5;
+  --album-comments-composer-lines-max: 4;
+  --album-comments-composer-single-line-block: calc(
+    var(--album-comments-composer-line) * 1em + 2 * var(--ms-01)
+  );
+
   display: flex;
   gap: var(--ms-01);
   align-items: flex-start;
 
+  > .album-comments__avatar {
+    margin-block-start: calc((var(--album-comments-composer-single-line-block) - 2rem) / 2);
+  }
+
   &--compact {
     margin-block-start: var(--ms-01);
+
+    > .album-comments__avatar {
+      margin-block-start: calc((var(--album-comments-composer-single-line-block) - 1.5rem) / 2);
+    }
   }
 }
 
@@ -650,16 +689,34 @@
   min-inline-size: 0;
 }
 
+.album-comments__composer-input-wrap {
+  position: relative;
+  inline-size: 100%;
+}
+
 .album-comments__composer-input {
+  display: block;
+  margin: 0;
   padding: var(--ms-01);
   color: var(--link-color-hover, #ffffff);
   font: inherit;
+  line-height: var(--album-comments-composer-line);
   background: rgb(255 255 255 / 4%);
   border: 1px solid var(--hr-color, #3d3c3a);
   border-radius: var(--ms-01);
+  box-sizing: border-box;
   inline-size: 100%;
-  min-block-size: 3rem;
-  resize: vertical;
+  min-block-size: var(--album-comments-composer-single-line-block);
+  max-block-size: calc(
+    var(--album-comments-composer-line) * 1em * var(--album-comments-composer-lines-max) + 2 *
+      var(--ms-01)
+  );
+  resize: none;
+  overflow: hidden;
+
+  &--with-send {
+    padding-inline-end: calc(2rem + var(--ms-01) * 1.25);
+  }
 
   &:focus-visible {
     outline: 2px solid var(--accent-color, #998238);
@@ -674,33 +731,45 @@
   margin-block-start: 0.35rem;
 }
 
-.album-comments__composer-meta-trailing {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--ms-01);
-  margin-inline-start: auto;
-}
-
 .album-comments__composer-count {
+  margin-inline-start: auto;
   color: var(--time-color, #9b9b9a);
   font-size: 0.82rem;
   font-variant-numeric: tabular-nums;
 }
 
 .album-comments__composer-send {
+  position: absolute;
+  z-index: 1;
   display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  inline-size: 2rem;
-  block-size: 2rem;
+  margin: 0;
+  padding: 0;
   color: var(--main-background-color, #20201d);
   background: var(--accent-color, #998238);
   border: 0;
   border-radius: 50%;
+  transition:
+    opacity 0.15s ease,
+    transform 0.15s ease;
+  transform: translateY(-50%);
+  inset-inline-end: calc(var(--ms-01) * 0.65);
+  inset-block-start: 50%;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  inline-size: 2rem;
+  block-size: 2rem;
+  cursor: pointer;
+  appearance: none;
 
   &:disabled {
     opacity: 0.45;
     cursor: not-allowed;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--accent-color, #998238);
+    outline-offset: 2px;
   }
 }
 

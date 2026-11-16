@@ -15,3 +15,14 @@ export function resolveCommentDisplayName(row: {
 }): string {
   return row.site_name?.trim() || row.name?.trim() || row.username?.trim() || 'Listener';
 }
+
+/** Public handle for @mentions (Instagram-style). */
+export function resolveCommentMentionUsername(row: {
+  username: string | null;
+  public_slug: string | null;
+}): string | null {
+  const fromSlug = row.public_slug?.trim();
+  if (fromSlug) return fromSlug;
+  const fromUsername = row.username?.trim();
+  return fromUsername || null;
+}

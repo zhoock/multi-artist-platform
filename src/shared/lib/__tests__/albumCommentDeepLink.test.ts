@@ -20,6 +20,7 @@ function makeRoot(id: string, replies: AlbumCommentDto[] = []): AlbumCommentDto 
     author: {
       userId: 'u',
       displayName: 'U',
+      username: null,
       avatarPath: null,
       isArtist: false,
       publicSlug: null,

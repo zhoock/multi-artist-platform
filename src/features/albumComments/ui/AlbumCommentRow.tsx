@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import clsx from 'clsx';
 import { Heart as HeartIcon } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -9,6 +9,8 @@ import { albumCommentDomId } from '@shared/lib/albumCommentDeepLink';
 import { formatCommentRelativeTime } from '../lib/formatCommentRelativeTime';
 import { MAX_ALBUM_COMMENT_CHARS, isSubmittableCommentBody } from '../lib/commentBody';
 import { AlbumCommentAvatar } from './AlbumCommentAvatar';
+import { buildReplyDraftWithMention } from '../lib/commentMentions';
+import { AlbumCommentBody } from './AlbumCommentBody';
 import { AlbumCommentComposer } from './AlbumCommentComposer';
 import { AlbumCommentMenu, type AlbumCommentMenuItem } from './AlbumCommentMenu';
 
@@ -128,9 +130,21 @@ export function AlbumCommentRow({
 
   const isReplyingHere = replyingToId === comment.id;
   const replyCount = comment.replies.length;
+
+  useEffect(() => {
+    if (isReplyingHere) {
+      setReplyDraft(buildReplyDraftWithMention(comment.author.username));
+    } else {
+      setReplyDraft('');
+    }
+  }, [comment.author.username, isReplyingHere]);
   const showRepliesToggle = !isReply && replyCount > 0 && onToggleRepliesThread != null;
-  const showLikeControl =
-    !isDeleted && !editing && (viewerUserId == null || comment.author.userId !== viewerUserId);
+  const isOwnComment = viewerUserId != null && comment.author.userId === viewerUserId;
+  const canLike = !isOwnComment;
+  const canReply = !isOwnComment;
+  const showLikedState = canLike && comment.likedByViewer;
+  const showLikeControl = !isDeleted && !editing;
+  const showLikeCount = isOwnComment || comment.likeCount > 0;
 
   const artistPagePath = useMemo(() => {
     if (!comment.author.isArtist) return null;
@@ -156,7 +170,6 @@ export function AlbumCommentRow({
         highlighted && 'album-comments__item--highlight'
       )}
     >
-      {isReply ? <span className="album-comments__reply-rail" aria-hidden /> : null}
       <div className="album-comments__item-main">
         {artistPagePath ? (
           <Link to={artistPagePath} className="album-comments__avatar-link">
@@ -226,7 +239,7 @@ export function AlbumCommentRow({
             </div>
           ) : (
             <>
-              <p className="album-comments__text">{comment.body}</p>
+              <AlbumCommentBody body={comment.body} />
               {comment.isEdited ? <p className="album-comments__edited">{labels.edited}</p> : null}
             </>
           )}
@@ -238,35 +251,41 @@ export function AlbumCommentRow({
                   type="button"
                   className={clsx(
                     'album-comments__like',
-                    comment.likedByViewer && 'album-comments__like--active'
+                    showLikedState && 'album-comments__like--active',
+                    isOwnComment && 'album-comments__like--own'
                   )}
-                  disabled={likePending}
+                  disabled={likePending || isOwnComment}
                   onClick={() => {
+                    if (!canLike) return;
                     if (!requireAuthForAction()) return;
                     onToggleLike(comment.id);
                   }}
-                  aria-pressed={comment.likedByViewer}
+                  aria-pressed={showLikedState}
                   aria-label={labels.like}
                 >
                   <HeartIcon
                     className="album-comments__like-icon"
                     size={21}
                     strokeWidth={1.65}
-                    fill={comment.likedByViewer ? 'currentColor' : 'none'}
+                    fill={showLikedState ? 'currentColor' : 'none'}
                   />
-                  <span className="album-comments__like-count">{comment.likeCount}</span>
+                  {showLikeCount ? (
+                    <span className="album-comments__like-count">{comment.likeCount}</span>
+                  ) : null}
                 </button>
               ) : null}
-              <button
-                type="button"
-                className="album-comments__reply"
-                onClick={() => {
-                  if (!requireAuthForAction()) return;
-                  onRequestReply(comment.id);
-                }}
-              >
-                {labels.reply}
-              </button>
+              {canReply ? (
+                <button
+                  type="button"
+                  className="album-comments__reply"
+                  onClick={() => {
+                    if (!requireAuthForAction()) return;
+                    onRequestReply(comment.id);
+                  }}
+                >
+                  {labels.reply}
+                </button>
+              ) : null}
               {showRepliesToggle ? (
                 <button
                   type="button"
@@ -280,7 +299,7 @@ export function AlbumCommentRow({
             </div>
           ) : null}
 
-          {isReplyingHere ? (
+          {isReplyingHere && canReply ? (
             <div className="album-comments__inline-reply">
               <AlbumCommentComposer
                 value={replyDraft}

@@ -2,6 +2,7 @@ import {
   MAX_COMMENT_BODY_CHARS,
   normalizeCommentBody,
   resolveCommentDisplayName,
+  resolveCommentMentionUsername,
 } from '../album-comment-text';
 import { isArtistAccountType } from '../account-type';
 
@@ -32,6 +33,26 @@ describe('album-comments lib', () => {
 
     test('listener account has no artist badge', () => {
       expect(isArtistAccountType('listener')).toBe(false);
+    });
+  });
+
+  describe('resolveCommentMentionUsername', () => {
+    test('prefers public_slug over account username', () => {
+      expect(
+        resolveCommentMentionUsername({
+          public_slug: 'beatles',
+          username: 'user_123',
+        })
+      ).toBe('beatles');
+    });
+
+    test('falls back to account username', () => {
+      expect(
+        resolveCommentMentionUsername({
+          public_slug: null,
+          username: 'listener42',
+        })
+      ).toBe('listener42');
     });
   });
 

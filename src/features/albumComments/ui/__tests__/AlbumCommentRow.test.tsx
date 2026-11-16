@@ -34,6 +34,7 @@ function makeComment(overrides: Partial<AlbumCommentDto> = {}): AlbumCommentDto 
     author: {
       userId: 'u-1',
       displayName: 'Beatles',
+      username: 'beatles',
       avatarPath: null,
       isArtist: true,
       publicSlug: 'beatles',
@@ -93,6 +94,7 @@ function makeNestedReply(id: string, body: string): AlbumCommentDto {
     author: {
       userId: `u-${id}`,
       displayName: `User ${id}`,
+      username: `user_${id}`,
       avatarPath: null,
       isArtist: false,
       publicSlug: null,
@@ -107,7 +109,7 @@ describe('AlbumCommentRow — Reply control', () => {
     expect(screen.getByRole('button', { name: 'Reply' })).toBeInTheDocument();
   });
 
-  test('own root comment shows Reply', () => {
+  test('own root comment hides Reply', () => {
     render(
       <MemoryRouter>
         <AlbumCommentRow
@@ -130,10 +132,37 @@ describe('AlbumCommentRow — Reply control', () => {
         />
       </MemoryRouter>
     );
-    expect(screen.getByRole('button', { name: 'Reply' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Reply' })).not.toBeInTheDocument();
   });
 
-  test('nested reply shows Reply', () => {
+  test('own nested reply hides Reply', () => {
+    render(
+      <MemoryRouter>
+        <AlbumCommentRow
+          comment={makeNestedReply('r-own', 'My reply')}
+          lang="en"
+          labels={rowLabels}
+          isReply
+          viewerUserId="u-r-own"
+          artistUserId="album-owner"
+          replyingToId={null}
+          onRequestReply={() => undefined}
+          onCancelReply={() => undefined}
+          onSubmitReply={noopAsync}
+          onToggleLike={() => undefined}
+          onEdit={noopAsync}
+          onDelete={noopAsync}
+          onReport={noopAsync}
+          viewerAvatarPath={null}
+          viewerDisplayName="Viewer"
+          requireAuthForAction={() => true}
+        />
+      </MemoryRouter>
+    );
+    expect(screen.queryByRole('button', { name: 'Reply' })).not.toBeInTheDocument();
+  });
+
+  test('nested reply shows Reply when viewer is not author', () => {
     renderRow(makeNestedReply('r-1', 'Nested body'), { isReply: true });
     expect(screen.getByRole('button', { name: 'Reply' })).toBeInTheDocument();
   });
@@ -174,6 +203,7 @@ describe('AlbumCommentRow — Reply control', () => {
         author: {
           userId: 'u-beatles',
           displayName: 'Beatles',
+          username: 'beatles',
           avatarPath: null,
           isArtist: true,
           publicSlug: 'beatles',
@@ -222,6 +252,33 @@ describe('AlbumCommentRow — Reply control', () => {
     expect(screen.queryByRole('button', { name: 'Reply' })).not.toBeInTheDocument();
   });
 
+  test('does not show reply composer on own comment even when replyingToId matches', () => {
+    render(
+      <MemoryRouter>
+        <AlbumCommentRow
+          comment={makeComment({ author: { ...makeComment().author, userId: 'viewer-1' } })}
+          lang="en"
+          labels={rowLabels}
+          viewerUserId="viewer-1"
+          artistUserId="album-owner"
+          replyingToId="c-1"
+          onRequestReply={() => undefined}
+          onCancelReply={() => undefined}
+          onSubmitReply={noopAsync}
+          onToggleLike={() => undefined}
+          onEdit={noopAsync}
+          onDelete={noopAsync}
+          onReport={noopAsync}
+          viewerAvatarPath={null}
+          viewerDisplayName="Viewer"
+          requireAuthForAction={() => true}
+        />
+      </MemoryRouter>
+    );
+
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+  });
+
   test('clicking Reply on nested reply invokes onRequestReply with reply id', () => {
     const onRequestReply = jest.fn();
     render(
@@ -250,23 +307,60 @@ describe('AlbumCommentRow — Reply control', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Reply' }));
     expect(onRequestReply).toHaveBeenCalledWith('nested-99');
   });
+
+  test('opening reply composer on another users comment prefills @mention', () => {
+    render(
+      <MemoryRouter>
+        <AlbumCommentRow
+          comment={makeNestedReply('nested-99', '@user_nested-99 Earlier')}
+          lang="en"
+          labels={rowLabels}
+          isReply
+          viewerUserId="viewer-1"
+          artistUserId="album-owner"
+          replyingToId="nested-99"
+          onRequestReply={() => undefined}
+          onCancelReply={() => undefined}
+          onSubmitReply={noopAsync}
+          onToggleLike={() => undefined}
+          onEdit={noopAsync}
+          onDelete={noopAsync}
+          onReport={noopAsync}
+          viewerAvatarPath={null}
+          viewerDisplayName="Viewer"
+          requireAuthForAction={() => true}
+        />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByRole('textbox')).toHaveValue('@user_nested-99 ');
+  });
+
+  test('renders @mention with highlight class', () => {
+    renderRow(makeComment({ body: '@beatles Sounds great' }));
+    expect(document.querySelector('.album-comments__mention')).toHaveTextContent('@beatles');
+  });
 });
 
 describe('AlbumCommentRow — like control', () => {
-  test('hides Like for own comment when viewer is author', () => {
+  function renderLikeRow(
+    comment: AlbumCommentDto,
+    options: { viewerUserId?: string | null; onToggleLike?: (id: string) => void } = {}
+  ) {
+    const { viewerUserId = 'viewer-1', onToggleLike = jest.fn() } = options;
     render(
       <MemoryRouter>
         <AlbumCommentRow
-          comment={makeComment({ author: { ...makeComment().author, userId: 'viewer-1' } })}
+          comment={comment}
           lang="en"
           labels={rowLabels}
-          viewerUserId="viewer-1"
+          viewerUserId={viewerUserId}
           artistUserId="album-owner"
           replyingToId={null}
           onRequestReply={() => undefined}
           onCancelReply={() => undefined}
           onSubmitReply={noopAsync}
-          onToggleLike={() => undefined}
+          onToggleLike={onToggleLike}
           onEdit={noopAsync}
           onDelete={noopAsync}
           onReport={noopAsync}
@@ -276,36 +370,108 @@ describe('AlbumCommentRow — like control', () => {
         />
       </MemoryRouter>
     );
+    return { onToggleLike };
+  }
 
-    expect(screen.queryByRole('button', { name: 'Like' })).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Reply' })).toBeInTheDocument();
+  test('shows disabled Like with count 0 on own comment', () => {
+    renderLikeRow(
+      makeComment({
+        likeCount: 0,
+        likedByViewer: false,
+        author: { ...makeComment().author, userId: 'viewer-1' },
+      })
+    );
+
+    const like = screen.getByRole('button', { name: 'Like' });
+    expect(like).toBeDisabled();
+    expect(like).toHaveAttribute('aria-pressed', 'false');
+    expect(within(like).getByText('0')).toBeInTheDocument();
+    expect(like).not.toHaveClass('album-comments__like--active');
+  });
+
+  test('shows disabled Like with count on own comment and ignores likedByViewer', () => {
+    renderLikeRow(
+      makeComment({
+        likeCount: 5,
+        likedByViewer: true,
+        author: { ...makeComment().author, userId: 'viewer-1' },
+      })
+    );
+
+    const like = screen.getByRole('button', { name: 'Like' });
+    expect(like).toBeDisabled();
+    expect(within(like).getByText('5')).toBeInTheDocument();
+    expect(like).not.toHaveClass('album-comments__like--active');
+    expect(like).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  test('does not toggle like when author clicks own comment', () => {
+    const onToggleLike = jest.fn();
+    renderLikeRow(
+      makeComment({
+        author: { ...makeComment().author, userId: 'viewer-1' },
+      }),
+      { onToggleLike }
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Like' }));
+    expect(onToggleLike).not.toHaveBeenCalled();
   });
 
   test('shows Like for another user comment', () => {
-    render(
-      <MemoryRouter>
-        <AlbumCommentRow
-          comment={makeComment()}
-          lang="en"
-          labels={rowLabels}
-          viewerUserId="another-user"
-          artistUserId="album-owner"
-          replyingToId={null}
-          onRequestReply={() => undefined}
-          onCancelReply={() => undefined}
-          onSubmitReply={noopAsync}
-          onToggleLike={() => undefined}
-          onEdit={noopAsync}
-          onDelete={noopAsync}
-          onReport={noopAsync}
-          viewerAvatarPath={null}
-          viewerDisplayName="Viewer"
-          requireAuthForAction={() => true}
-        />
-      </MemoryRouter>
+    renderLikeRow(makeComment({ likeCount: 0, likedByViewer: false }), {
+      viewerUserId: 'another-user',
+    });
+
+    const like = screen.getByRole('button', { name: 'Like' });
+    expect(like).toBeEnabled();
+    expect(like).not.toBeDisabled();
+    expect(within(like).queryByText('0')).not.toBeInTheDocument();
+  });
+
+  test('another user can toggle like on someone else comment', () => {
+    const onToggleLike = jest.fn();
+    renderLikeRow(
+      makeComment({
+        likeCount: 2,
+        likedByViewer: false,
+        author: { ...makeComment().author, userId: 'other' },
+      }),
+      { viewerUserId: 'another-user', onToggleLike }
     );
 
-    expect(screen.getByRole('button', { name: 'Like' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Like' }));
+    expect(onToggleLike).toHaveBeenCalledWith('c-1');
+  });
+
+  test('shows active like state for viewer who liked another users comment', () => {
+    renderLikeRow(
+      makeComment({
+        likeCount: 3,
+        likedByViewer: true,
+        author: { ...makeComment().author, userId: 'other' },
+      }),
+      { viewerUserId: 'another-user' }
+    );
+
+    const like = screen.getByRole('button', { name: 'Like' });
+    expect(like).toHaveClass('album-comments__like--active');
+    expect(like).toHaveAttribute('aria-pressed', 'true');
+    expect(within(like).getByText('3')).toBeInTheDocument();
+  });
+
+  test('author sees updated like count from other users', () => {
+    renderLikeRow(
+      makeComment({
+        likeCount: 6,
+        likedByViewer: false,
+        author: { ...makeComment().author, userId: 'viewer-1' },
+      })
+    );
+
+    const like = screen.getByRole('button', { name: 'Like' });
+    expect(like).toBeDisabled();
+    expect(within(like).getByText('6')).toBeInTheDocument();
   });
 });
 
@@ -328,6 +494,7 @@ describe('AlbumCommentRow — artist author links', () => {
         author: {
           userId: 'u-2',
           displayName: 'User_4F7D',
+          username: 'user_4f7d',
           avatarPath: null,
           isArtist: false,
           publicSlug: null,
@@ -348,6 +515,7 @@ describe('AlbumCommentRow — artist author links', () => {
         author: {
           userId: 'u-3',
           displayName: 'Stones',
+          username: 'stones',
           avatarPath: null,
           isArtist: true,
           publicSlug: 'stones',
@@ -521,6 +689,7 @@ describe('AlbumCommentRow — replies thread toggle', () => {
       author: {
         userId: 'u-b',
         displayName: 'Root B author',
+        username: 'root_b',
         avatarPath: null,
         isArtist: false,
         publicSlug: null,

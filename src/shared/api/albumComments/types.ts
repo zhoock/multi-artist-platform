@@ -9,6 +9,8 @@ export type AlbumCommentDto = {
   author: {
     userId: string;
     displayName: string;
+    /** Public handle for @mentions (public slug or account username). */
+    username: string | null;
     avatarPath: string | null;
     isArtist: boolean;
     publicSlug: string | null;

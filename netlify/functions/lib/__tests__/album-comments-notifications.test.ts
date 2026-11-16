@@ -83,6 +83,7 @@ describe('album-comments user notifications', () => {
         author: {
           userId: 'listener-user-id',
           displayName: 'Listener',
+          username: 'listener',
           avatarPath: null,
           isArtist: false,
           publicSlug: null,

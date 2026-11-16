@@ -9,9 +9,15 @@ import {
   MAX_COMMENT_BODY_CHARS,
   normalizeCommentBody,
   resolveCommentDisplayName,
+  resolveCommentMentionUsername,
 } from './album-comment-text';
 
-export { MAX_COMMENT_BODY_CHARS, normalizeCommentBody, resolveCommentDisplayName };
+export {
+  MAX_COMMENT_BODY_CHARS,
+  normalizeCommentBody,
+  resolveCommentDisplayName,
+  resolveCommentMentionUsername,
+};
 export const ROOT_COMMENTS_PAGE_SIZE = 20;
 
 export interface AlbumCommentContext {
@@ -23,6 +29,8 @@ export interface AlbumCommentContext {
 export interface CommentAuthorDto {
   userId: string;
   displayName: string;
+  /** Handle for @mentions in reply text (public slug or username). */
+  username: string | null;
   avatarPath: string | null;
   isArtist: boolean;
   publicSlug: string | null;
@@ -167,6 +175,7 @@ function mapRowToDto(
     author: {
       userId: row.user_id,
       displayName: resolveCommentDisplayName(row),
+      username: resolveCommentMentionUsername(row),
       avatarPath: row.profile_avatar_path?.trim() || null,
       isArtist: isArtistAccountType(row.account_type),
       publicSlug: row.public_slug?.trim() || null,
