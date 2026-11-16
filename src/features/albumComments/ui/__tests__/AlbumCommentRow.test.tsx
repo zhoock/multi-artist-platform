@@ -214,14 +214,18 @@ describe('AlbumCommentRow — Reply control', () => {
     expect(screen.getByRole('button', { name: 'Reply' })).toBeInTheDocument();
   });
 
-  test('deleted comment hides Reply', () => {
+  test('deleted placeholder hides author, menu, and actions', () => {
     renderRow(
       makeComment({
         deletedAt: new Date().toISOString(),
         body: 'gone',
       })
     );
+    expect(screen.getByText('Deleted')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Reply' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Menu' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Like' })).not.toBeInTheDocument();
+    expect(document.querySelector('.album-comments__item--deleted-placeholder')).toBeTruthy();
   });
 
   test('editing hides Reply', () => {
@@ -333,7 +337,7 @@ describe('AlbumCommentRow — Reply control', () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByRole('textbox')).toHaveValue('@user_nested-99 ');
+    expect(screen.getByRole('textbox')).toHaveValue('@User nested-99 ');
   });
 
   test('renders @mention with highlight class', () => {

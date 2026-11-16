@@ -11,6 +11,7 @@ import {
   resolveCommentDisplayName,
   resolveCommentMentionUsername,
 } from './album-comment-text';
+import { buildNestedCommentTree, pruneCommentForest } from './album-comment-tree';
 
 export {
   MAX_COMMENT_BODY_CHARS,
@@ -315,56 +316,76 @@ export async function listAlbumCommentsPage(input: {
   }
 
   const rootIds = pageRoots.map((r) => r.id);
-  let replyRows: CommentRow[] = [];
+  let descendantRows: CommentRow[] = [];
   if (rootIds.length > 0) {
-    const replies = await query<CommentRow>(
-      `SELECT c.id::text AS id,
-              c.artist_user_id::text AS artist_user_id,
-              c.album_id,
-              c.user_id::text AS user_id,
-              c.parent_id::text AS parent_id,
-              c.body,
-              c.created_at,
-              c.updated_at,
-              c.deleted_at,
+    const descendants = await query<CommentRow>(
+      `WITH RECURSIVE thread AS (
+         SELECT c.id,
+                c.artist_user_id,
+                c.album_id,
+                c.user_id,
+                c.parent_id,
+                c.body,
+                c.created_at,
+                c.updated_at,
+                c.deleted_at
+         FROM album_comments c
+         WHERE c.parent_id = ANY($1::uuid[])
+         UNION ALL
+         SELECT c.id,
+                c.artist_user_id,
+                c.album_id,
+                c.user_id,
+                c.parent_id,
+                c.body,
+                c.created_at,
+                c.updated_at,
+                c.deleted_at
+         FROM album_comments c
+         INNER JOIN thread t ON c.parent_id = t.id
+       )
+       SELECT t.id::text AS id,
+              t.artist_user_id::text AS artist_user_id,
+              t.album_id,
+              t.user_id::text AS user_id,
+              t.parent_id::text AS parent_id,
+              t.body,
+              t.created_at,
+              t.updated_at,
+              t.deleted_at,
               u.name,
               u.site_name,
               u.username,
               u.profile_avatar_path,
               u.account_type,
               u.public_slug
-       FROM album_comments c
-       INNER JOIN users u ON u.id = c.user_id
-       WHERE c.parent_id = ANY($1::uuid[])
-       ORDER BY c.created_at ASC, c.id ASC`,
+       FROM thread t
+       INNER JOIN users u ON u.id = t.user_id
+       ORDER BY t.created_at ASC, t.id ASC`,
       [rootIds],
       0
     );
-    replyRows = replies.rows;
+    descendantRows = descendants.rows;
   }
 
-  const allIds = [...rootIds, ...replyRows.map((r) => r.id)];
+  const allIds = [...rootIds, ...descendantRows.map((r) => r.id)];
   const [likeCounts, viewerLikes] = await Promise.all([
     fetchLikeCounts(allIds),
     fetchViewerLikes(allIds, input.viewerUserId),
   ]);
 
-  const repliesByParent = new Map<string, AlbumCommentDto[]>();
-  for (const row of replyRows) {
-    const parentKey = row.parent_id ?? '';
-    const dto: AlbumCommentDto = {
-      ...mapRowToDto(row, likeCounts.get(row.id) ?? 0, viewerLikes.has(row.id)),
-      replies: [],
-    };
-    const list = repliesByParent.get(parentKey) ?? [];
-    list.push(dto);
-    repliesByParent.set(parentKey, list);
-  }
-
-  const comments: AlbumCommentDto[] = pageRoots.map((row) => ({
+  const rootDtos: AlbumCommentDto[] = pageRoots.map((row) => ({
     ...mapRowToDto(row, likeCounts.get(row.id) ?? 0, viewerLikes.has(row.id)),
-    replies: repliesByParent.get(row.id) ?? [],
+    replies: [],
   }));
+
+  const descendantDtos: AlbumCommentDto[] = descendantRows.map((row) => ({
+    ...mapRowToDto(row, likeCounts.get(row.id) ?? 0, viewerLikes.has(row.id)),
+    replies: [],
+  }));
+
+  const nested = buildNestedCommentTree(rootDtos, descendantDtos);
+  const comments = pruneCommentForest(nested);
 
   return { comments, nextCursor, totalRootCount };
 }

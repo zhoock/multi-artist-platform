@@ -9,7 +9,7 @@ import { albumCommentDomId } from '@shared/lib/albumCommentDeepLink';
 import { formatCommentRelativeTime } from '../lib/formatCommentRelativeTime';
 import { MAX_ALBUM_COMMENT_CHARS, isSubmittableCommentBody } from '../lib/commentBody';
 import { AlbumCommentAvatar } from './AlbumCommentAvatar';
-import { buildReplyDraftWithMention } from '../lib/commentMentions';
+import { buildReplyDraftWithMention, type MentionTarget } from '../lib/commentMentions';
 import { AlbumCommentBody } from './AlbumCommentBody';
 import { AlbumCommentComposer } from './AlbumCommentComposer';
 import { AlbumCommentMenu, type AlbumCommentMenuItem } from './AlbumCommentMenu';
@@ -44,10 +44,9 @@ type AlbumCommentRowProps = {
   onSubmitReply: (parentId: string, body: string) => Promise<void>;
   onToggleLike: (commentId: string) => void;
   onEdit: (commentId: string, body: string) => Promise<void>;
-  onDelete: (commentId: string) => Promise<void>;
+  onDelete: (commentId: string) => void;
   onReport: (commentId: string) => Promise<void>;
   replySending?: boolean;
-  likePending?: boolean;
   viewerAvatarPath: string | null;
   viewerAvatarUrl?: string | null;
   viewerDisplayName: string;
@@ -55,6 +54,7 @@ type AlbumCommentRowProps = {
   repliesThreadExpanded?: boolean;
   onToggleRepliesThread?: () => void;
   highlighted?: boolean;
+  mentionTargets?: MentionTarget[];
   children?: React.ReactNode;
 };
 
@@ -74,7 +74,6 @@ export function AlbumCommentRow({
   onDelete,
   onReport,
   replySending = false,
-  likePending = false,
   viewerAvatarPath,
   viewerAvatarUrl,
   viewerDisplayName,
@@ -82,6 +81,7 @@ export function AlbumCommentRow({
   repliesThreadExpanded = true,
   onToggleRepliesThread,
   highlighted = false,
+  mentionTargets = [],
   children,
 }: AlbumCommentRowProps) {
   const isDeleted = Boolean(comment.deletedAt);
@@ -129,15 +129,15 @@ export function AlbumCommentRow({
   };
 
   const isReplyingHere = replyingToId === comment.id;
-  const replyCount = comment.replies.length;
+  const replyCount = countThreadReplies(comment.replies);
 
   useEffect(() => {
     if (isReplyingHere) {
-      setReplyDraft(buildReplyDraftWithMention(comment.author.username));
+      setReplyDraft(buildReplyDraftWithMention(comment.author.displayName));
     } else {
       setReplyDraft('');
     }
-  }, [comment.author.username, isReplyingHere]);
+  }, [comment.author.displayName, isReplyingHere]);
   const showRepliesToggle = !isReply && replyCount > 0 && onToggleRepliesThread != null;
   const isOwnComment = viewerUserId != null && comment.author.userId === viewerUserId;
   const canLike = !isOwnComment;
@@ -160,13 +160,29 @@ export function AlbumCommentRow({
     />
   );
 
+  if (isDeleted) {
+    return (
+      <article
+        id={albumCommentDomId(comment.id)}
+        className={clsx(
+          'album-comments__item',
+          'album-comments__item--deleted-placeholder',
+          isReply && 'album-comments__item--reply',
+          highlighted && 'album-comments__item--highlight'
+        )}
+      >
+        <p className="album-comments__deleted-text">{labels.deleted}</p>
+        {children}
+      </article>
+    );
+  }
+
   return (
     <article
       id={albumCommentDomId(comment.id)}
       className={clsx(
         'album-comments__item',
         isReply && 'album-comments__item--reply',
-        isDeleted && 'album-comments__item--deleted',
         highlighted && 'album-comments__item--highlight'
       )}
     >
@@ -191,9 +207,11 @@ export function AlbumCommentRow({
               {comment.author.isArtist ? (
                 <span className="album-comments__artist-badge">{labels.artistBadge}</span>
               ) : null}
-              <span className="album-comments__dot" aria-hidden>
-                ·
-              </span>
+              {!comment.author.isArtist ? (
+                <span className="album-comments__dot" aria-hidden>
+                  ·
+                </span>
+              ) : null}
               <time className="album-comments__time" dateTime={comment.createdAt}>
                 {formatCommentRelativeTime(comment.createdAt, lang)}
               </time>
@@ -203,9 +221,7 @@ export function AlbumCommentRow({
             ) : null}
           </header>
 
-          {isDeleted ? (
-            <p className="album-comments__deleted-text">{labels.deleted}</p>
-          ) : editing ? (
+          {editing ? (
             <div className="album-comments__edit">
               <textarea
                 className="album-comments__edit-input"
@@ -239,7 +255,7 @@ export function AlbumCommentRow({
             </div>
           ) : (
             <>
-              <AlbumCommentBody body={comment.body} />
+              <AlbumCommentBody body={comment.body} lang={lang} mentionTargets={mentionTargets} />
               {comment.isEdited ? <p className="album-comments__edited">{labels.edited}</p> : null}
             </>
           )}
@@ -254,7 +270,7 @@ export function AlbumCommentRow({
                     showLikedState && 'album-comments__like--active',
                     isOwnComment && 'album-comments__like--own'
                   )}
-                  disabled={likePending || isOwnComment}
+                  disabled={isOwnComment}
                   onClick={() => {
                     if (!canLike) return;
                     if (!requireAuthForAction()) return;
@@ -324,4 +340,8 @@ export function AlbumCommentRow({
       </div>
     </article>
   );
+}
+
+function countThreadReplies(replies: AlbumCommentDto['replies']): number {
+  return replies.reduce((sum, reply) => sum + 1 + countThreadReplies(reply.replies), 0);
 }

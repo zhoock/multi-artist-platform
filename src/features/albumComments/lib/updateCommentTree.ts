@@ -1,30 +1,15 @@
 import type { AlbumCommentDto } from '@shared/api/albumComments';
-
-export function mapComments(
-  comments: AlbumCommentDto[],
-  mapper: (c: AlbumCommentDto) => AlbumCommentDto
-): AlbumCommentDto[] {
-  return comments.map((root) => {
-    const next = mapper(root);
-    return {
-      ...next,
-      replies: next.replies.map((r) => mapper(r)),
-    };
-  });
-}
+import { mapCommentTreeDeep } from './commentTreePrune';
 
 export function updateCommentInTree(
   comments: AlbumCommentDto[],
   commentId: string,
   patch: Partial<AlbumCommentDto> | ((current: AlbumCommentDto) => AlbumCommentDto)
 ): AlbumCommentDto[] {
-  const apply = (c: AlbumCommentDto): AlbumCommentDto => {
-    if (c.id === commentId) {
-      return typeof patch === 'function' ? patch(c) : { ...c, ...patch };
-    }
-    return c;
-  };
-  return mapComments(comments, apply);
+  return mapCommentTreeDeep(comments, (c) => {
+    if (c.id !== commentId) return c;
+    return typeof patch === 'function' ? patch(c) : { ...c, ...patch };
+  });
 }
 
 export function appendRootComment(
@@ -52,14 +37,23 @@ export function replaceCommentInTree(
   comments: AlbumCommentDto[],
   updated: AlbumCommentDto
 ): AlbumCommentDto[] {
-  if (!updated.parentId) {
-    return comments.map((c) => (c.id === updated.id ? { ...updated, replies: c.replies } : c));
+  return mapCommentTreeDeep(comments, (c) =>
+    c.id === updated.id ? { ...updated, replies: c.replies } : c
+  );
+}
+
+export function findCommentRootId(comments: AlbumCommentDto[], commentId: string): string | null {
+  for (const root of comments) {
+    if (root.id === commentId) return root.id;
+    if (commentExistsInReplies(root.replies, commentId)) return root.id;
   }
-  return comments.map((root) => {
-    if (root.id !== updated.parentId) return root;
-    return {
-      ...root,
-      replies: root.replies.map((r) => (r.id === updated.id ? updated : r)),
-    };
-  });
+  return null;
+}
+
+function commentExistsInReplies(replies: AlbumCommentDto[], commentId: string): boolean {
+  for (const reply of replies) {
+    if (reply.id === commentId) return true;
+    if (commentExistsInReplies(reply.replies, commentId)) return true;
+  }
+  return false;
 }

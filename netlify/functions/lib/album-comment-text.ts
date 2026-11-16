@@ -13,7 +13,18 @@ export function resolveCommentDisplayName(row: {
   name: string | null;
   username: string | null;
 }): string {
-  return row.site_name?.trim() || row.name?.trim() || row.username?.trim() || 'Listener';
+  const site = row.site_name?.trim() || '';
+  const name = row.name?.trim() || '';
+  if (site && name) {
+    if (site === name) return site;
+    const siteLower = site.toLowerCase();
+    const nameLower = name.toLowerCase();
+    if (siteLower.includes(nameLower) || nameLower.includes(siteLower)) {
+      return site.length >= name.length ? site : name;
+    }
+    return `${site} ${name}`;
+  }
+  return site || name || row.username?.trim() || 'Listener';
 }
 
 /** Public handle for @mentions (Instagram-style). */

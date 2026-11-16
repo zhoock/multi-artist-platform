@@ -57,14 +57,14 @@ describe('album-comments lib', () => {
   });
 
   describe('resolveCommentDisplayName', () => {
-    test('prefers site_name then name then username', () => {
+    test('combines site_name and name when both are distinct', () => {
       expect(
         resolveCommentDisplayName({
           site_name: ' Band ',
           name: 'Person',
           username: 'slug',
         })
-      ).toBe('Band');
+      ).toBe('Band Person');
 
       expect(
         resolveCommentDisplayName({

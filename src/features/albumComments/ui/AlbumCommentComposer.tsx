@@ -1,6 +1,6 @@
 import { useCallback, useId, useLayoutEffect, useRef } from 'react';
 import clsx from 'clsx';
-import { SendHorizonal as SendIcon } from 'lucide-react';
+import { ArrowUp as SendIcon } from 'lucide-react';
 import { MAX_ALBUM_COMMENT_CHARS, isSubmittableCommentBody } from '../lib/commentBody';
 import { AlbumCommentAvatar } from './AlbumCommentAvatar';
 

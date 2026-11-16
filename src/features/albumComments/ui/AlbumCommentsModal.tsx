@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Popup, PopupCloseButton } from '@shared/ui/popup';
 import { ModalCloseIcon } from '@shared/ui/icons/ModalCloseIcon';
@@ -26,9 +26,12 @@ import { albumCommentDomId, findCommentInTree } from '@shared/lib/albumCommentDe
 import {
   appendReplyComment,
   appendRootComment,
+  findCommentRootId,
   replaceCommentInTree,
   updateCommentInTree,
 } from '../lib/updateCommentTree';
+import { applyCommentDeleteToForest, pruneCommentForest } from '../lib/commentTreePrune';
+import { collectMentionTargets } from '../lib/commentMentions';
 import { AlbumCommentComposer } from './AlbumCommentComposer';
 import { AlbumCommentRow, type AlbumCommentRowLabels } from './AlbumCommentRow';
 import './albumComments.scss';
@@ -93,7 +96,11 @@ export function AlbumCommentsModal({
   const [sendingRoot, setSendingRoot] = useState(false);
   const [replyingToId, setReplyingToId] = useState<string | null>(null);
   const [replySending, setReplySending] = useState(false);
-  const [likePendingId, setLikePendingId] = useState<string | null>(null);
+  const commentsLoadGenerationRef = useRef(0);
+  const likeRequestGenerationRef = useRef(new Map<string, number>());
+  const likeApiChainRef = useRef(new Map<string, Promise<void>>());
+  const commentsRef = useRef(comments);
+  commentsRef.current = comments;
   const [resolvedArtistUserId, setResolvedArtistUserId] = useState<string | null>(artistUserId);
   const [collapsedReplyRoots, setCollapsedReplyRoots] = useState<Set<string>>(() => new Set());
   const [highlightedCommentId, setHighlightedCommentId] = useState<string | null>(null);
@@ -116,6 +123,7 @@ export function AlbumCommentsModal({
   }, []);
 
   const totalCount = summary?.totalCount ?? 0;
+  const mentionTargets = useMemo(() => collectMentionTargets(comments), [comments]);
 
   const requireAuthForAction = useCallback((): boolean => {
     if (isAuthenticated()) return true;
@@ -128,6 +136,9 @@ export function AlbumCommentsModal({
 
   const loadPage = useCallback(
     async (cursor?: string | null, append = false) => {
+      const loadGeneration = append
+        ? commentsLoadGenerationRef.current
+        : ++commentsLoadGenerationRef.current;
       if (!append) setLoadState('loading');
       else setLoadingMore(true);
       try {
@@ -136,15 +147,27 @@ export function AlbumCommentsModal({
           artistSlug,
           cursor,
         });
+        if (!append && loadGeneration !== commentsLoadGenerationRef.current) {
+          return;
+        }
         setResolvedArtistUserId(page.artistUserId);
         setNextCursor(page.nextCursor);
-        setComments((prev) => (append ? [...prev, ...page.comments] : page.comments));
+        setComments((prev) =>
+          append
+            ? pruneCommentForest([...prev, ...page.comments])
+            : pruneCommentForest(page.comments)
+        );
         setLoadState('ready');
       } catch {
+        if (!append && loadGeneration !== commentsLoadGenerationRef.current) {
+          return;
+        }
         if (!append) setLoadState('error');
         else toast.show({ variant: 'error', title: labels.loadError, layer: 'top' });
       } finally {
-        setLoadingMore(false);
+        if (append || loadGeneration === commentsLoadGenerationRef.current) {
+          setLoadingMore(false);
+        }
       }
     },
     [albumId, artistSlug, labels.loadError]
@@ -191,6 +214,7 @@ export function AlbumCommentsModal({
 
   const resolveCommentDeepLink = useCallback(
     async (targetCommentId: string) => {
+      const loadGeneration = ++commentsLoadGenerationRef.current;
       setLoadState('loading');
       try {
         let cursor: string | null = null;
@@ -204,26 +228,35 @@ export function AlbumCommentsModal({
             artistSlug,
             cursor,
           });
+          if (loadGeneration !== commentsLoadGenerationRef.current) {
+            return;
+          }
           pageArtistUserId = page.artistUserId;
           pageNextCursor = page.nextCursor;
           accumulated = cursor ? [...accumulated, ...page.comments] : page.comments;
           setResolvedArtistUserId(page.artistUserId);
           setNextCursor(page.nextCursor);
-          setComments(accumulated);
+          setComments(pruneCommentForest(accumulated));
 
-          if (findCommentInTree(accumulated, targetCommentId)) {
+          if (findCommentInTree(pruneCommentForest(accumulated), targetCommentId)) {
             break;
           }
           if (!page.nextCursor) break;
           cursor = page.nextCursor;
         }
 
-        setComments(accumulated);
+        if (loadGeneration !== commentsLoadGenerationRef.current) {
+          return;
+        }
+        setComments(pruneCommentForest(accumulated));
         setNextCursor(pageNextCursor);
         if (pageArtistUserId) setResolvedArtistUserId(pageArtistUserId);
         setLoadState('ready');
-        applyCommentDeepLinkTarget(targetCommentId, accumulated);
+        applyCommentDeepLinkTarget(targetCommentId, pruneCommentForest(accumulated));
       } catch {
+        if (loadGeneration !== commentsLoadGenerationRef.current) {
+          return;
+        }
         setLoadState('error');
       }
     },
@@ -313,8 +346,8 @@ export function AlbumCommentsModal({
         body,
         parentId,
       });
-      const rootId = reply.parentId ?? parentId;
-      setComments((prev) => appendReplyComment(prev, rootId, reply));
+      const rootId = findCommentRootId(commentsRef.current, parentId) ?? reply.parentId ?? parentId;
+      setComments((prev) => pruneCommentForest(appendReplyComment(prev, rootId, reply)));
       setReplyingToId(null);
       if (viewer?.id) bumpSummaryAfterNewComment(viewer.id);
     } catch {
@@ -324,47 +357,73 @@ export function AlbumCommentsModal({
     }
   };
 
-  const handleToggleLike = async (commentId: string) => {
-    const snapshot = comments;
-    setComments((prev) =>
-      updateCommentInTree(prev, commentId, (c) => ({
-        ...c,
-        likedByViewer: !c.likedByViewer,
-        likeCount: c.likedByViewer ? Math.max(0, c.likeCount - 1) : c.likeCount + 1,
-      }))
-    );
-    setLikePendingId(commentId);
-    try {
-      const result = await toggleAlbumCommentLike(commentId);
+  const handleToggleLike = useCallback(
+    (commentId: string) => {
+      const snapshot = commentsRef.current;
+      const requestGeneration = (likeRequestGenerationRef.current.get(commentId) ?? 0) + 1;
+      likeRequestGenerationRef.current.set(commentId, requestGeneration);
+
       setComments((prev) =>
-        updateCommentInTree(prev, commentId, {
-          likedByViewer: result.liked,
-          likeCount: result.likeCount,
-        })
+        updateCommentInTree(prev, commentId, (c) => ({
+          ...c,
+          likedByViewer: !c.likedByViewer,
+          likeCount: c.likedByViewer ? Math.max(0, c.likeCount - 1) : c.likeCount + 1,
+        }))
       );
-    } catch {
-      setComments(snapshot);
-      toast.show({ variant: 'error', title: labels.loadError, layer: 'top' });
-    } finally {
-      setLikePendingId(null);
-    }
-  };
+
+      const syncLikeFromApi = async () => {
+        try {
+          const result = await toggleAlbumCommentLike(commentId);
+          if (likeRequestGenerationRef.current.get(commentId) !== requestGeneration) return;
+          setComments((prev) =>
+            updateCommentInTree(prev, commentId, {
+              likedByViewer: result.liked,
+              likeCount: result.likeCount,
+            })
+          );
+        } catch {
+          if (likeRequestGenerationRef.current.get(commentId) !== requestGeneration) return;
+          setComments(snapshot);
+          toast.show({ variant: 'error', title: labels.loadError, layer: 'top' });
+        }
+      };
+
+      const previous = likeApiChainRef.current.get(commentId) ?? Promise.resolve();
+      const next = previous.then(syncLikeFromApi, syncLikeFromApi);
+      likeApiChainRef.current.set(commentId, next);
+    },
+    [labels.loadError]
+  );
 
   const handleEdit = async (commentId: string, body: string) => {
     const updated = await updateAlbumComment({ commentId, body });
     setComments((prev) => replaceCommentInTree(prev, updated));
   };
 
-  const handleDelete = async (commentId: string) => {
-    const updated = await deleteAlbumComment(commentId);
-    setComments((prev) => replaceCommentInTree(prev, updated));
-    if (summary) {
-      onSummaryChange({
-        ...summary,
-        totalCount: Math.max(0, summary.totalCount - (updated.deletedAt ? 1 : 0)),
-      });
-    }
-  };
+  const handleDelete = useCallback(
+    (commentId: string) => {
+      const snapshot = commentsRef.current;
+      const deletedAt = new Date().toISOString();
+
+      setComments((prev) => applyCommentDeleteToForest(prev, commentId, deletedAt));
+
+      void (async () => {
+        try {
+          await deleteAlbumComment(commentId);
+          if (summary) {
+            onSummaryChange({
+              ...summary,
+              totalCount: Math.max(0, summary.totalCount - 1),
+            });
+          }
+        } catch {
+          setComments(snapshot);
+          toast.show({ variant: 'error', title: labels.loadError, layer: 'top' });
+        }
+      })();
+    },
+    [labels.loadError, onSummaryChange, summary]
+  );
 
   const handleReport = async (commentId: string) => {
     try {
@@ -377,6 +436,36 @@ export function AlbumCommentsModal({
   };
 
   const artistId = resolvedArtistUserId ?? artistUserId ?? '';
+
+  const renderReplyNodes = (replies: AlbumCommentDto[]): ReactNode =>
+    replies.map((reply) => (
+      <AlbumCommentRow
+        key={reply.id}
+        comment={reply}
+        lang={lang}
+        labels={labels.row}
+        mentionTargets={mentionTargets}
+        isReply
+        highlighted={highlightedCommentId === reply.id}
+        viewerUserId={viewer?.id ?? null}
+        artistUserId={artistId}
+        replyingToId={replyingToId}
+        onRequestReply={setReplyingToId}
+        onCancelReply={() => setReplyingToId(null)}
+        onSubmitReply={handleSubmitReply}
+        onToggleLike={handleToggleLike}
+        onEdit={handleEdit}
+        onDelete={handleDelete}
+        onReport={handleReport}
+        replySending={replySending}
+        viewerAvatarPath={null}
+        viewerAvatarUrl={avatarSrc}
+        viewerDisplayName={viewerDisplayName}
+        requireAuthForAction={requireAuthForAction}
+      >
+        {reply.replies.length > 0 ? renderReplyNodes(reply.replies) : null}
+      </AlbumCommentRow>
+    ));
 
   return (
     <Popup isActive={isOpen} onClose={onClose} publicBackdrop aria-labelledby={titleId}>
@@ -433,6 +522,7 @@ export function AlbumCommentsModal({
                       comment={root}
                       lang={lang}
                       labels={labels.row}
+                      mentionTargets={mentionTargets}
                       highlighted={highlightedCommentId === root.id}
                       viewerUserId={viewer?.id ?? null}
                       artistUserId={artistId}
@@ -445,7 +535,6 @@ export function AlbumCommentsModal({
                       onDelete={handleDelete}
                       onReport={handleReport}
                       replySending={replySending}
-                      likePending={likePendingId === root.id}
                       viewerAvatarPath={null}
                       viewerAvatarUrl={avatarSrc}
                       viewerDisplayName={viewerDisplayName}
@@ -453,33 +542,8 @@ export function AlbumCommentsModal({
                       repliesThreadExpanded={isRepliesThreadExpanded(root.id)}
                       onToggleRepliesThread={() => toggleRepliesThread(root.id)}
                     >
-                      {isRepliesThreadExpanded(root.id)
-                        ? root.replies.map((reply) => (
-                            <AlbumCommentRow
-                              key={reply.id}
-                              comment={reply}
-                              lang={lang}
-                              labels={labels.row}
-                              isReply
-                              highlighted={highlightedCommentId === reply.id}
-                              viewerUserId={viewer?.id ?? null}
-                              artistUserId={artistId}
-                              replyingToId={replyingToId}
-                              onRequestReply={setReplyingToId}
-                              onCancelReply={() => setReplyingToId(null)}
-                              onSubmitReply={handleSubmitReply}
-                              onToggleLike={handleToggleLike}
-                              onEdit={handleEdit}
-                              onDelete={handleDelete}
-                              onReport={handleReport}
-                              replySending={replySending}
-                              likePending={likePendingId === reply.id}
-                              viewerAvatarPath={null}
-                              viewerAvatarUrl={avatarSrc}
-                              viewerDisplayName={viewerDisplayName}
-                              requireAuthForAction={requireAuthForAction}
-                            />
-                          ))
+                      {isRepliesThreadExpanded(root.id) || Boolean(root.deletedAt)
+                        ? renderReplyNodes(root.replies)
                         : null}
                     </AlbumCommentRow>
                   </section>

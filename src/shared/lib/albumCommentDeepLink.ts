@@ -24,6 +24,14 @@ export type LocatedAlbumComment = {
   isReply: boolean;
 };
 
+function findInReplies(replies: AlbumCommentDto[], id: string): boolean {
+  for (const reply of replies) {
+    if (reply.id === id) return true;
+    if (findInReplies(reply.replies, id)) return true;
+  }
+  return false;
+}
+
 export function findCommentInTree(
   comments: AlbumCommentDto[],
   commentId: string
@@ -31,9 +39,7 @@ export function findCommentInTree(
   const id = commentId.trim();
   for (const root of comments) {
     if (root.id === id) return { rootId: root.id, isReply: false };
-    for (const reply of root.replies) {
-      if (reply.id === id) return { rootId: root.id, isReply: true };
-    }
+    if (findInReplies(root.replies, id)) return { rootId: root.id, isReply: true };
   }
   return null;
 }
