@@ -530,6 +530,17 @@ export interface IInterface {
     articles: { title: string; text: string; cta: string };
     about: { title: string; text: string; cta: string };
     social: { title: string; text?: string; cta: string };
+    managerContacts?: { title: string; text: string; cta: string };
+  };
+  artistContactManager?: {
+    linkLabel: string;
+    title: string;
+    description: string;
+    telegram: string;
+    email: string;
+    emailCopied: string;
+    openTelegram: string;
+    copyEmail: string;
   };
   /** Кнопка входа/регистрации в шапке; ссылка в кабинет по аватару */
   header?: {
@@ -727,6 +738,18 @@ export interface IInterface {
         facebook: string;
         youtube: string;
         vk: string;
+      };
+    };
+    managerContacts?: {
+      title: string;
+      hint: string;
+      fields: {
+        email: string;
+        telegram: string;
+      };
+      placeholders: {
+        email: string;
+        telegram: string;
       };
     };
     paymentSettings?: {

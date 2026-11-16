@@ -442,6 +442,7 @@ function UserDashboard() {
 
   const [isUpgradeToArtistModalOpen, setIsUpgradeToArtistModalOpen] = useState(false);
   const [scrollSettingsToHeaderImages, setScrollSettingsToHeaderImages] = useState(false);
+  const [scrollSettingsToManagerContacts, setScrollSettingsToManagerContacts] = useState(false);
   const [collectionContentReady, setCollectionContentReady] = useState(false);
   const handleCollectionContentReady = useCallback(() => {
     setCollectionContentReady(true);
@@ -809,6 +810,11 @@ function UserDashboard() {
 
     if (intent?.scrollToHeaderImages && !isListener) {
       setScrollSettingsToHeaderImages(true);
+      consumed = true;
+    }
+
+    if (intent?.scrollToManagerContacts && !isListener) {
+      setScrollSettingsToManagerContacts(true);
       consumed = true;
     }
 
@@ -2951,6 +2957,10 @@ function UserDashboard() {
                                   scrollToHeaderImages={scrollSettingsToHeaderImages}
                                   onScrollToHeaderImagesHandled={() =>
                                     setScrollSettingsToHeaderImages(false)
+                                  }
+                                  scrollToManagerContacts={scrollSettingsToManagerContacts}
+                                  onScrollToManagerContactsHandled={() =>
+                                    setScrollSettingsToManagerContacts(false)
                                   }
                                   userName={user?.name ?? undefined}
                                   userEmail={user?.email}

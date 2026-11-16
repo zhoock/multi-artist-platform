@@ -2,9 +2,31 @@ import { describe, test, expect, jest, beforeEach } from '@jest/globals';
 import { screen, waitFor, act } from '@testing-library/react';
 import { AboutSection } from '../AboutSection';
 import { renderWithProviders } from '@shared/lib/test-utils';
+import type { ArtistPageBuilderVisibility } from '@shared/lib/artistPageBuilder';
 
 const loadTheBandFromDatabase =
   jest.fn<(lang: string, options?: Record<string, unknown>) => Promise<string[] | null>>();
+
+const fetchPublicArtistUserProfile = jest.fn<
+  () => Promise<{
+    managerTelegramUrl: string | null;
+    managerEmail: string | null;
+  } | null>
+>();
+
+type ArtistPageBuilderMockReturn = {
+  builderVisibility: ArtistPageBuilderVisibility;
+  isOwner: boolean;
+  monetizationEnabled: boolean;
+  showArtistPageSkeleton: boolean;
+};
+
+const useArtistPageBuilderMock = jest.fn<() => ArtistPageBuilderMockReturn>(() => ({
+  builderVisibility: { canShowBlocks: false, mode: 'hidden' },
+  isOwner: false,
+  monetizationEnabled: false,
+  showArtistPageSkeleton: false,
+}));
 
 jest.mock('@entities/user/lib', () => ({
   loadTheBandFromDatabase: (lang: string, options?: Record<string, unknown>) =>
@@ -13,16 +35,16 @@ jest.mock('@entities/user/lib', () => ({
   loadHeaderImagesFromDatabase: jest.fn(async () => []),
 }));
 
+jest.mock('@shared/lib/publicArtistUserProfile', () => ({
+  fetchPublicArtistUserProfile: () => fetchPublicArtistUserProfile(),
+}));
+
 jest.mock('@shared/lib/hooks/useSiteArtistDisplayName', () => ({
   useSiteArtistDisplayName: () => ({ displayLabel: 'Test Artist', isLoading: false }),
 }));
 
 jest.mock('@shared/lib/hooks/useArtistPageBuilder', () => ({
-  useArtistPageBuilder: () => ({
-    builderVisibility: false,
-    monetizationEnabled: false,
-    showArtistPageSkeleton: false,
-  }),
+  useArtistPageBuilder: () => useArtistPageBuilderMock(),
 }));
 
 const uiDictionaryState = {
@@ -62,6 +84,18 @@ function renderAboutSection() {
 describe('AboutSection integration tests', () => {
   beforeEach(() => {
     loadTheBandFromDatabase.mockReset();
+    fetchPublicArtistUserProfile.mockReset();
+    useArtistPageBuilderMock.mockReset();
+    useArtistPageBuilderMock.mockReturnValue({
+      builderVisibility: { canShowBlocks: false, mode: 'hidden' },
+      isOwner: false,
+      monetizationEnabled: false,
+      showArtistPageSkeleton: false,
+    });
+    fetchPublicArtistUserProfile.mockResolvedValue({
+      managerTelegramUrl: null,
+      managerEmail: null,
+    });
   });
 
   test('не рендерит секцию на странице артиста без заполненного описания', async () => {
@@ -168,6 +202,61 @@ describe('AboutSection integration tests', () => {
     });
 
     expect(onOpen).toHaveBeenCalledTimes(1);
+  });
+
+  test('не показывает «Связаться с менеджером» посетителю без контактов', async () => {
+    loadTheBandFromDatabase.mockResolvedValue(['Описание группы']);
+
+    renderAboutSection();
+
+    await waitFor(() => {
+      expect(document.getElementById('about')).toBeInTheDocument();
+    });
+
+    expect(
+      screen.queryByRole('button', { name: /связаться с менеджером/i })
+    ).not.toBeInTheDocument();
+  });
+
+  test('показывает ссылку «Связаться с менеджером» и открывает fullscreen popup', async () => {
+    loadTheBandFromDatabase.mockResolvedValue(['Описание группы']);
+    fetchPublicArtistUserProfile.mockResolvedValue({
+      managerTelegramUrl: null,
+      managerEmail: 'manager@test.com',
+    });
+
+    renderAboutSection();
+
+    await waitFor(() => {
+      expect(document.getElementById('about')).toBeInTheDocument();
+    });
+
+    const contactTrigger = screen.getByRole('button', { name: /связаться с менеджером/i });
+    await act(async () => {
+      contactTrigger.click();
+    });
+
+    expect(screen.getByRole('heading', { name: /связаться с менеджером/i })).toBeInTheDocument();
+    expect(document.querySelector('.artist-contact-manager')).toBeInTheDocument();
+  });
+
+  test('показывает конструктор контактов владельцу без заполненных полей', async () => {
+    loadTheBandFromDatabase.mockResolvedValue(['Описание группы']);
+    useArtistPageBuilderMock.mockReturnValue({
+      builderVisibility: { canShowBlocks: true, mode: 'active' },
+      isOwner: true,
+      monetizationEnabled: false,
+      showArtistPageSkeleton: false,
+    });
+
+    renderAboutSection();
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /set up manager contacts/i })).toBeInTheDocument();
+    });
+    expect(
+      screen.queryByRole('button', { name: /^связаться с менеджером$/i })
+    ).not.toBeInTheDocument();
   });
 
   test('показывает описание на RU-странице, если текст сохранён только на EN', async () => {

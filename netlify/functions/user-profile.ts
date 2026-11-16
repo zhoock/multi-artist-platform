@@ -27,6 +27,11 @@ import {
   syncTheBandOnSave,
 } from '../../src/shared/lib/theBand';
 import { reconcileProfileAvatarPathForUser } from './lib/profile-avatar-path';
+import {
+  mergeSocialLinksJsonForSave,
+  parseManagerEmailFromSocialLinks,
+} from '../../src/shared/lib/managerContactsFromSocialLinks';
+import { parseTelegramFromSocialLinks } from '../../src/shared/lib/parseTelegramFromSocialLinks';
 
 type SocialPlatform = 'instagram' | 'facebook' | 'youtube' | 'vk';
 
@@ -90,6 +95,10 @@ interface GetUserProfileResponse {
     /** Canonical genre for catalog / clustering (`users.genre_code`). */
     genreCode?: string;
     socialLinks?: SocialLinks;
+    /** Optional Telegram manager contact URL (`social_links.telegram`). */
+    managerTelegramUrl?: string | null;
+    /** Optional manager email (`social_links.managerEmail`). */
+    managerEmail?: string | null;
     /** Canonical Storage path for account Profile Avatar (`users/.../profile/...-128.webp`). */
     profileAvatarPath?: string | null;
   };
@@ -103,7 +112,10 @@ interface SaveUserProfileRequest {
   siteName?: string;
   publicSlug?: string;
   genreCode?: string;
-  socialLinks?: SocialLinks;
+  socialLinks?: SocialLinks & {
+    managerEmail?: string;
+    telegram?: string;
+  };
 }
 
 interface SaveUserProfileResponse {
@@ -241,6 +253,8 @@ export const handler: Handler = async (
       const genreCode =
         typeof rawGenre === 'string' && rawGenre.trim() ? rawGenre.trim().toLowerCase() : 'other';
       const socialLinks = parseSocialLinks(user.social_links);
+      const managerTelegramUrl = parseTelegramFromSocialLinks(user.social_links);
+      const managerEmail = parseManagerEmailFromSocialLinks(user.social_links);
 
       const viewerUserId = getUserIdFromEvent(event);
       const isOwnProfile = Boolean(viewerUserId) && viewerUserId === (user.id ?? targetUserId);
@@ -262,6 +276,8 @@ export const handler: Handler = async (
         siteName,
         genreCode,
         socialLinks,
+        managerTelegramUrl,
+        managerEmail,
       };
 
       if (isOwnProfile) {
@@ -472,10 +488,29 @@ export const handler: Handler = async (
         updateValues.push(JSON.stringify(headerImages));
       }
 
-      const normalizedSocialLinks = normalizeSocialLinksForSave(data.socialLinks);
-      if (normalizedSocialLinks !== null) {
+      if (data.socialLinks !== undefined) {
+        let existingSocialLinks: unknown = null;
+
+        try {
+          const currentResult = await query<{ social_links: unknown }>(
+            `SELECT social_links FROM users WHERE id = $1 AND is_active = true`,
+            [userId],
+            0
+          );
+
+          if (currentResult.rows.length > 0) {
+            existingSocialLinks = currentResult.rows[0].social_links;
+          }
+        } catch (error) {
+          console.warn('⚠️ Ошибка загрузки текущих social_links:', error);
+        }
+
+        const mergedSocialLinks = mergeSocialLinksJsonForSave(
+          existingSocialLinks,
+          data.socialLinks
+        );
         updateFields.push(`social_links = $${paramIndex++}::jsonb`);
-        updateValues.push(JSON.stringify(normalizedSocialLinks));
+        updateValues.push(JSON.stringify(mergedSocialLinks));
       }
 
       if (updateFields.length === 0) {

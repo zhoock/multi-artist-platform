@@ -66,11 +66,6 @@ $builder-block-glow-hover: rgb(255 255 255 / 7%);
     border-radius: var(--ms-01);
   }
 
-  &--section.artist-page-builder-block--compact {
-    padding: var(--ms-1) var(--ms-01);
-    min-block-size: 5.5rem;
-  }
-
   &--static {
     cursor: default;
     pointer-events: none;
@@ -198,5 +193,34 @@ $builder-block-glow-hover: rgb(255 255 255 / 7%);
     transition:
       color 0.2s ease,
       transform 0.2s ease;
+  }
+
+  &--section.artist-page-builder-block--compact {
+    gap: var(--ms-01);
+    padding: var(--ms-01) var(--ms-01) calc(var(--ms-01) + 1.25rem);
+    min-block-size: 0;
+
+    .artist-page-builder-block__main {
+      gap: var(--ms-01);
+    }
+
+    .artist-page-builder-block__text {
+      gap: 0.2em;
+    }
+
+    .artist-page-builder-block__title {
+      font-size: clamp(0.9375rem, 1.8vw, 1rem);
+      line-height: 1.3;
+    }
+
+    .artist-page-builder-block__description {
+      font-size: clamp(0.8125rem, 1.6vw, 0.875rem);
+      line-height: 1.4;
+    }
+
+    .artist-page-builder-block__icon svg {
+      inline-size: 1.125rem;
+      block-size: 1.125rem;
+    }
   }
 }

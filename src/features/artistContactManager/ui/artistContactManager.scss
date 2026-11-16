@@ -1,0 +1,129 @@
+@use '../../../scss/abstracts/mixins' as *;
+
+.album-comments-fullscreen.artist-contact-manager {
+  .album-comments-fullscreen__header {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    min-block-size: auto;
+    padding-block: var(--ms-01);
+  }
+
+  .album-comments-fullscreen__header-main {
+    display: none;
+  }
+
+  .album-comments-fullscreen__body {
+    padding-block-start: var(--ms-01);
+  }
+}
+
+.artist-contact-manager {
+  &__content {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ms-1);
+    padding-block: var(--ms-0) var(--ms-2);
+  }
+
+  &__intro {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 0;
+    inline-size: 100%;
+  }
+
+  &__icon-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-block-end: var(--ms-0);
+    color: var(--accent-color, #998238);
+  }
+
+  &__icon {
+    display: block;
+    color: inherit;
+  }
+
+  &__title {
+    margin: 0 0 var(--ms-01);
+    color: var(--link-color-hover, #ffffff);
+    font-size: clamp(1.25rem, 1.1rem + 0.5vw, 1.5rem);
+    font-weight: var(--bold, 700);
+    line-height: 1.25;
+  }
+
+  &__description {
+    margin: 0;
+    max-inline-size: 22rem;
+    color: var(--time-color, #9b9b9a);
+    font-size: clamp(0.95rem, 0.9rem + 0.25vw, 1.05rem);
+    line-height: 1.45;
+  }
+
+  &__channels {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ms-01);
+    inline-size: 100%;
+  }
+
+  &__channel {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: var(--ms-0);
+    margin: 0;
+    padding-block: calc(var(--ms-01) + 0.35rem);
+    padding-inline: var(--ms-0);
+    min-block-size: 3.75rem;
+    color: inherit;
+    font: inherit;
+    text-align: start;
+    text-decoration: none;
+    background: transparent;
+    border: 1px solid var(--hr-color, #3d3c3a);
+    border-radius: var(--ms-01);
+    cursor: pointer;
+    appearance: none;
+    inline-size: 100%;
+    box-sizing: border-box;
+
+    &:focus-visible {
+      outline: 2px solid var(--accent-color, #998238);
+      outline-offset: 2px;
+    }
+
+    @media (hover: hover) and (pointer: fine) {
+      &:hover {
+        border-color: rgb(var(--dark-greenish-yellow-rgb, 153 130 56) / 45%);
+      }
+    }
+  }
+
+  &__channel-icon {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    color: var(--link-color-hover, #ffffff);
+  }
+
+  &__channel-value {
+    min-inline-size: 0;
+    color: var(--link-color-hover, #ffffff);
+    font-size: clamp(1.0625rem, 1rem + 0.4vw, 1.25rem);
+    font-weight: var(--regular, 400);
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+  }
+
+  &__channel-trailing {
+    display: block;
+    flex-shrink: 0;
+    color: var(--link-color-hover, #ffffff);
+  }
+}

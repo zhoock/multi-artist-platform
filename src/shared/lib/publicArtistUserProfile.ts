@@ -12,6 +12,8 @@ export type PublicArtistUserProfileData = {
   siteName: string | null;
   genreCode: string | null;
   socialLinks: SocialLinks;
+  managerTelegramUrl: string | null;
+  managerEmail: string | null;
 };
 
 type PublicArtistProfileFetchOptions = {
@@ -29,6 +31,8 @@ type PublicArtistProfileResponse = {
     siteName?: string | null;
     genreCode?: string;
     socialLinks?: SocialLinks;
+    managerTelegramUrl?: string | null;
+    managerEmail?: string | null;
   };
 };
 
@@ -101,6 +105,8 @@ export function setCachedPublicArtistUserProfileHeaderImages(
     siteName: null,
     genreCode: null,
     socialLinks: {},
+    managerTelegramUrl: null,
+    managerEmail: null,
   };
 
   for (const lang of ['ru', 'en'] as const) {
@@ -127,6 +133,14 @@ function mapProfileResponse(
     siteName: result.data.siteName?.trim() || null,
     genreCode: result.data.genreCode?.trim() || null,
     socialLinks: result.data.socialLinks ?? {},
+    managerTelegramUrl:
+      typeof result.data.managerTelegramUrl === 'string' && result.data.managerTelegramUrl.trim()
+        ? result.data.managerTelegramUrl.trim()
+        : null,
+    managerEmail:
+      typeof result.data.managerEmail === 'string' && result.data.managerEmail.trim()
+        ? result.data.managerEmail.trim()
+        : null,
   };
 }
 

@@ -28,10 +28,13 @@ import { HeaderImagesUpload } from '../upload/HeaderImagesUpload';
 import { ChangePasswordModal } from './ChangePasswordModal';
 import { useSettingsPage, type UseSettingsPageOptions } from './useSettingsPage';
 import { SocialLinksContent } from '../social/SocialLinksContent';
+import { ManagerContactsContent } from '../managerContacts/ManagerContactsContent';
 import { getDashboardRowFlashProps, useDashboardRowFlash } from '../../lib/dashboardRowStateFlash';
+import { SETTINGS_MANAGER_CONTACTS_SECTION_ID } from '@shared/constants/settingsManagerContactsSection';
 import './SettingsPageContent.style.scss';
 
 const SETTINGS_HEADER_IMAGES_FLASH_ID = 'settings-header-images-section';
+const MANAGER_CONTACTS_SCROLL_FLASH_DELAY_MS = 650;
 const HEADER_IMAGES_SCROLL_FLASH_DELAY_MS = 650;
 const ABOUT_BAND_MAX_LENGTH = 1000;
 
@@ -56,6 +59,8 @@ export type SettingsPageContentProps = {
   enabled: boolean;
   scrollToHeaderImages?: boolean;
   onScrollToHeaderImagesHandled?: () => void;
+  scrollToManagerContacts?: boolean;
+  onScrollToManagerContactsHandled?: () => void;
   userName?: string;
   userEmail?: string;
   emailVerified: boolean;
@@ -86,6 +91,8 @@ export function SettingsPageContent({
   enabled,
   scrollToHeaderImages = false,
   onScrollToHeaderImagesHandled,
+  scrollToManagerContacts = false,
+  onScrollToManagerContactsHandled,
   userName,
   userEmail,
   emailVerified,
@@ -116,7 +123,9 @@ export function SettingsPageContent({
   const [verificationEmailError, setVerificationEmailError] = useState<string | null>(null);
   const [headerImagesUploading, setHeaderImagesUploading] = useState(false);
   const headerImagesSectionRef = useRef<HTMLDivElement>(null);
+  const managerContactsSectionRef = useRef<HTMLDivElement>(null);
   const [socialLinksPinned, setSocialLinksPinned] = useState(false);
+  const [managerContactsPinned, setManagerContactsPinned] = useState(false);
   const { flashes: headerImagesSectionFlashes, flashRow: flashHeaderImagesSection } =
     useDashboardRowFlash();
   const emailVerificationCopy = useEmailVerificationCopy();
@@ -161,8 +170,21 @@ export function SettingsPageContent({
 
   useEffect(() => {
     if (!onMountPinChange) return;
-    onMountPinChange(hasUnsavedChanges || headerImagesUploading || isBusy || socialLinksPinned);
-  }, [hasUnsavedChanges, headerImagesUploading, isBusy, onMountPinChange, socialLinksPinned]);
+    onMountPinChange(
+      hasUnsavedChanges ||
+        headerImagesUploading ||
+        isBusy ||
+        socialLinksPinned ||
+        managerContactsPinned
+    );
+  }, [
+    hasUnsavedChanges,
+    headerImagesUploading,
+    isBusy,
+    managerContactsPinned,
+    onMountPinChange,
+    socialLinksPinned,
+  ]);
 
   useLayoutEffect(() => {
     if (!scrollToHeaderImages || !enabled || isListener) return;
@@ -187,6 +209,35 @@ export function SettingsPageContent({
     isLoadingHeaderImages,
     onScrollToHeaderImagesHandled,
     scrollToHeaderImages,
+  ]);
+
+  useLayoutEffect(() => {
+    if (!scrollToManagerContacts || !enabled || isListener) return;
+    if (!hasLoadedOnce) return;
+
+    const section =
+      managerContactsSectionRef.current ??
+      document.getElementById(SETTINGS_MANAGER_CONTACTS_SECTION_ID);
+    if (!section) {
+      onScrollToManagerContactsHandled?.();
+      return;
+    }
+
+    onScrollToManagerContactsHandled?.();
+
+    requestAnimationFrame(() => {
+      scrollDashboardSectionIntoView(section);
+      window.setTimeout(() => {
+        flashHeaderImagesSection(SETTINGS_MANAGER_CONTACTS_SECTION_ID, 'subscribers_only');
+      }, MANAGER_CONTACTS_SCROLL_FLASH_DELAY_MS);
+    });
+  }, [
+    enabled,
+    flashHeaderImagesSection,
+    hasLoadedOnce,
+    isListener,
+    onScrollToManagerContactsHandled,
+    scrollToManagerContacts,
   ]);
 
   const headerImagesSectionFlash = getDashboardRowFlashProps(
@@ -427,6 +478,14 @@ export function SettingsPageContent({
             <SocialLinksContent
               active={enabled}
               onMountPinChange={setSocialLinksPinned}
+              onNotAuthorized={onNotAuthorized}
+              onSaveError={onSaveError}
+            />
+
+            <ManagerContactsContent
+              active={enabled}
+              sectionRef={managerContactsSectionRef}
+              onMountPinChange={setManagerContactsPinned}
               onNotAuthorized={onNotAuthorized}
               onSaveError={onSaveError}
             />

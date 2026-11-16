@@ -596,6 +596,18 @@
           "vk": "https://vk.com/username"
         }
       },
+      "managerContacts": {
+        "title": "Контакты менеджера",
+        "hint": "Эти контакты отображаются в блоке «Связаться с менеджером» на публичной странице артиста.",
+        "fields": {
+          "email": "Email менеджера",
+          "telegram": "Telegram менеджера"
+        },
+        "placeholders": {
+          "email": "manager@example.com",
+          "telegram": "https://t.me/username"
+        }
+      },
       "paymentSettings": {
         "loading": "Загрузка...",
         "errorLabel": "Ошибка:",
@@ -1544,7 +1556,22 @@
       "social": {
         "title": "Добавьте соцсети",
         "cta": "Добавить социальные сети"
+      },
+      "managerContacts": {
+        "title": "Контакты менеджера для аудитории",
+        "text": "Добавьте Telegram и email, чтобы по вопросам концертов и прессы с вами могли связаться.",
+        "cta": "Настроить контакты менеджера →"
       }
+    },
+    "artistContactManager": {
+      "linkLabel": "Связаться с менеджером",
+      "title": "Связаться с менеджером",
+      "description": "По вопросам концертов, сотрудничества, прессы и другим предложениям.",
+      "telegram": "Telegram",
+      "email": "Email",
+      "emailCopied": "Email скопирован",
+      "openTelegram": "Открыть Telegram",
+      "copyEmail": "Скопировать email"
     }
   }
 ]

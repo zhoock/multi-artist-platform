@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   useEffectiveLocation,
   useEffectiveSearchParams,
@@ -17,7 +17,14 @@ import {
   artistPageBuilderSectionIconProps,
   useArtistPageBuilderNav,
 } from '@shared/ui/artistPageBuilder';
-import { User as UserIcon } from 'lucide-react';
+import { ChevronRight as ChevronRightIcon, Mail as MailIcon, User as UserIcon } from 'lucide-react';
+import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
+import { fetchPublicArtistUserProfile } from '@shared/lib/publicArtistUserProfile';
+import { hasPublicManagerContacts } from '@shared/lib/managerContactsFromSocialLinks';
+import {
+  ArtistContactManagerModal,
+  type ArtistContactManagerModalLabels,
+} from '@features/artistContactManager';
 import aboutStyles from './AboutSection.module.scss';
 
 type AboutSectionProps = {
@@ -40,7 +47,7 @@ export function AboutSection({ isAboutModalOpen, onOpen, onClose }: AboutSection
   const ui = useAppSelector((state) => selectUiDictionaryFirst(state, lang));
   const artistSlug = searchParams.get('artist')?.trim() ?? '';
   const isArtistPage = artistSlug.length > 0;
-  const { builderVisibility } = useArtistPageBuilder(artistSlug);
+  const { builderVisibility, isOwner } = useArtistPageBuilder(artistSlug);
   const { openDashboard } = useArtistPageBuilderNav();
 
   const { displayLabel: bandDisplayLabel } = useSiteArtistDisplayName(lang, {
@@ -50,6 +57,10 @@ export function AboutSection({ isAboutModalOpen, onOpen, onClose }: AboutSection
   const [theBandFromDb, setTheBandFromDb] = useState<string[] | null>(null);
   const [isLoadingTheBand, setIsLoadingTheBand] = useState(true);
   const [theBandRefreshToken, setTheBandRefreshToken] = useState(0);
+  const [isContactManagerModalOpen, setIsContactManagerModalOpen] = useState(false);
+  const [managerTelegramUrl, setManagerTelegramUrl] = useState<string | null>(null);
+  const [managerEmail, setManagerEmail] = useState<string | null>(null);
+  const [managerContactsResolved, setManagerContactsResolved] = useState(false);
 
   const title = ui?.titles?.theBand ?? '';
 
@@ -62,17 +73,16 @@ export function AboutSection({ isAboutModalOpen, onOpen, onClose }: AboutSection
     return () => window.removeEventListener('artist:updated', handleArtistUpdated);
   }, []);
 
-  // Identity change (artist / lang): cold start — clear so we never flash another artist's bio.
   useEffect(() => {
     setTheBandFromDb(null);
     setIsLoadingTheBand(true);
+    setManagerTelegramUrl(null);
+    setManagerEmail(null);
+    setManagerContactsResolved(false);
   }, [lang, isArtistPage, artistSlug]);
 
   useEffect(() => {
     let cancelled = false;
-
-    // Soft refresh (`artist:updated`): keep last-good `theBandFromDb` until the new payload arrives.
-    // Loading/clear is owned by the identity effect above (artist / lang change only).
 
     (async () => {
       try {
@@ -99,23 +109,137 @@ export function AboutSection({ isAboutModalOpen, onOpen, onClose }: AboutSection
     };
   }, [lang, location.search, isArtistPage, artistSlug, theBandRefreshToken]);
 
+  useEffect(() => {
+    if (!isArtistPage || !artistSlug) {
+      setManagerTelegramUrl(null);
+      setManagerEmail(null);
+      setManagerContactsResolved(true);
+      return;
+    }
+
+    let cancelled = false;
+    setManagerContactsResolved(false);
+
+    void fetchPublicArtistUserProfile(artistSlug, { lang })
+      .then((profile) => {
+        if (!cancelled) {
+          setManagerTelegramUrl(profile?.managerTelegramUrl ?? null);
+          setManagerEmail(profile?.managerEmail ?? null);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setManagerContactsResolved(true);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [artistSlug, isArtistPage, lang, theBandRefreshToken]);
+
   const theBand = (theBandFromDb || []).filter(
     (paragraph) => typeof paragraph === 'string' && paragraph.trim().length > 0
   );
   const previewParagraph = theBand[0];
   const showLabel = ui?.buttons?.show ?? '';
 
-  if (isArtistPage && isLoadingTheBand) {
-    return null;
-  }
+  const hasManagerContacts = hasPublicManagerContacts({
+    managerEmail,
+    managerTelegramUrl,
+  });
+
+  const showContactBuilder =
+    managerContactsResolved &&
+    isArtistPage &&
+    isOwner &&
+    shouldShowArtistPageBuilderBlock(builderVisibility, !hasManagerContacts);
+
+  const showContactPublic = managerContactsResolved && isArtistPage && hasManagerContacts;
+
+  const contactManagerLabels: ArtistContactManagerModalLabels = useMemo(
+    () => ({
+      title: ui?.artistContactManager?.title ?? 'Связаться с менеджером',
+      description:
+        ui?.artistContactManager?.description ??
+        'По вопросам концертов, сотрудничества, прессы и другим предложениям.',
+      telegram: ui?.artistContactManager?.telegram ?? 'Telegram',
+      email: ui?.artistContactManager?.email ?? 'Email',
+      close: ui?.albumComments?.cancel ?? ui?.buttons?.cancel ?? 'Close',
+      emailCopied: ui?.artistContactManager?.emailCopied ?? 'Email скопирован',
+      openTelegram: ui?.artistContactManager?.openTelegram ?? 'Открыть Telegram',
+      copyEmail: ui?.artistContactManager?.copyEmail ?? 'Скопировать email',
+    }),
+    [ui]
+  );
+
+  const contactManagerLinkLabel = ui?.artistContactManager?.linkLabel ?? 'Связаться с менеджером';
 
   const showAboutBuilder =
     isArtistPage &&
     shouldShowArtistPageBuilderBlock(builderVisibility, !hasFilledBandParagraphs(theBand));
 
-  if (!hasFilledBandParagraphs(theBand) && !showAboutBuilder) {
+  const showSection =
+    hasFilledBandParagraphs(theBand) || showAboutBuilder || showContactPublic || showContactBuilder;
+
+  if (isArtistPage && (isLoadingTheBand || !managerContactsResolved)) {
     return null;
   }
+
+  if (!showSection) {
+    return null;
+  }
+
+  const managerContactBlock = showContactPublic ? (
+    <>
+      <button
+        type="button"
+        className={aboutStyles.aboutContactTrigger}
+        onClick={() => setIsContactManagerModalOpen(true)}
+        aria-haspopup="dialog"
+        aria-expanded={isContactManagerModalOpen}
+      >
+        <MailIcon
+          className={aboutStyles.aboutContactIcon}
+          {...dashboardActionIconProps({ size: 20 })}
+        />
+        <span className={aboutStyles.aboutContactLabel}>
+          {contactManagerLinkLabel}
+          <ChevronRightIcon
+            className={aboutStyles.aboutContactChevron}
+            strokeWidth={2}
+            aria-hidden
+          />
+        </span>
+      </button>
+      <ArtistContactManagerModal
+        isOpen={isContactManagerModalOpen}
+        onClose={() => setIsContactManagerModalOpen(false)}
+        telegramUrl={managerTelegramUrl}
+        managerEmail={managerEmail}
+        labels={contactManagerLabels}
+      />
+    </>
+  ) : showContactBuilder ? (
+    <div className={aboutStyles.aboutManagerBuilder}>
+      <ArtistPageBuilderBlock
+        layout="section"
+        className="artist-page-builder-block--compact"
+        icon={
+          <MailIcon {...dashboardActionIconProps({ size: 18, strokeWidth: 1.5 })} aria-hidden />
+        }
+        title={
+          ui?.artistPageBuilder?.managerContacts?.title ?? 'Add manager contacts for your audience'
+        }
+        description={
+          ui?.artistPageBuilder?.managerContacts?.text ??
+          'Add Telegram and email so listeners can reach your manager for concerts and press.'
+        }
+        actionLabel={ui?.artistPageBuilder?.managerContacts?.cta ?? 'Set up manager contacts →'}
+        onAction={() => openDashboard('settings', { scrollToManagerContacts: true })}
+      />
+    </div>
+  ) : null;
 
   if (showAboutBuilder) {
     return (
@@ -139,6 +263,7 @@ export function AboutSection({ isAboutModalOpen, onOpen, onClose }: AboutSection
             actionLabel={ui?.artistPageBuilder?.about?.cta ?? 'Add description'}
             onAction={() => openDashboard('settings')}
           />
+          {managerContactBlock}
         </div>
       </section>
     );
@@ -155,7 +280,7 @@ export function AboutSection({ isAboutModalOpen, onOpen, onClose }: AboutSection
           {title} {bandDisplayLabel}
         </h2>
 
-        {previewParagraph && (
+        {previewParagraph ? (
           <button
             type="button"
             className={aboutStyles.aboutPreviewTrigger}
@@ -171,7 +296,9 @@ export function AboutSection({ isAboutModalOpen, onOpen, onClose }: AboutSection
               {showLabel}
             </span>
           </button>
-        )}
+        ) : null}
+
+        {managerContactBlock}
 
         <PublicFullscreenTextModal
           isOpen={isAboutModalOpen}

@@ -6,6 +6,8 @@ export type DashboardOpenIntent = {
   openNewArticleModal?: boolean;
   /** Artist page builder: «Загрузить обложку» → settings Header Images. */
   scrollToHeaderImages?: boolean;
+  /** Artist page builder: «Настроить контакты менеджера» → settings Manager Contacts. */
+  scrollToManagerContacts?: boolean;
 };
 
 /** Survives refresh while email verification blocks upload resume. */

@@ -596,6 +596,18 @@
           "vk": "https://vk.com/username"
         }
       },
+      "managerContacts": {
+        "title": "Manager Contacts",
+        "hint": "These contacts appear in “Contact manager” on your public artist page.",
+        "fields": {
+          "email": "Manager Email",
+          "telegram": "Manager Telegram"
+        },
+        "placeholders": {
+          "email": "manager@example.com",
+          "telegram": "https://t.me/username"
+        }
+      },
       "paymentSettings": {
         "loading": "Loading...",
         "errorLabel": "Error:",
@@ -1544,7 +1556,22 @@
       "social": {
         "title": "Add social media",
         "cta": "Add social networks"
+      },
+      "managerContacts": {
+        "title": "Manager contacts for your audience",
+        "text": "Add Telegram and email so listeners can reach your manager for concerts and press.",
+        "cta": "Set up manager contacts →"
       }
+    },
+    "artistContactManager": {
+      "linkLabel": "Contact manager",
+      "title": "Contact manager",
+      "description": "For concerts, collaborations, press, and other inquiries.",
+      "telegram": "Telegram",
+      "email": "Email",
+      "emailCopied": "Email copied",
+      "openTelegram": "Open Telegram",
+      "copyEmail": "Copy email"
     }
   }
 ]
