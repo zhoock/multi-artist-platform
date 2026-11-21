@@ -25,6 +25,17 @@ import {
   resolveLyricsSyncState,
 } from '@shared/lib/lyrics';
 import {
+  applyImportedLyricsTimingsToEditor,
+  buildLyricsTimingDownloadFilename,
+  canExportSyncedLyricTimings,
+  collectEditorLyricLineTexts,
+  LyricsTimingImportError,
+  lyricsTimingImportErrorCopy,
+  parseLyricsTimingFileJson,
+  serializeLyricsTimingFile,
+  triggerLyricsTimingFileDownload,
+} from '@shared/lib/lyrics/lyricsTimingFile';
+import {
   areSyncEditorSnapshotsEqual,
   cloneSyncEditorSnapshot,
   type SyncEditorSnapshot,
@@ -36,7 +47,7 @@ import {
   saveTrackLyricsSyncApi,
 } from '@entities/lyrics';
 import { getUserAudioUrl } from '@shared/api/albums';
-import { Pause, Play, Trash2 } from 'lucide-react';
+import { Download, MoreHorizontal, Pause, Play, Trash2, Upload } from 'lucide-react';
 import { ModalCloseIcon } from '@shared/ui/icons/ModalCloseIcon';
 import {
   LYRICS_MODAL_TRANSPORT_ICON_SIZE,
@@ -224,6 +235,11 @@ export function SyncLyricsModal({
 
   const canRemoveSync = hasPersistedSync || hasEditorTimings;
 
+  const canDownloadTimings = useMemo(
+    () => canExportSyncedLyricTimings(syncedLines, trackAuthorship),
+    [syncedLines, trackAuthorship]
+  );
+
   const audioPlaybackUrl = useMemo(() => {
     if (!trackSrc?.trim()) return null;
     return getUserAudioUrl(trackSrc, undefined, mediaOwnerUserId);
@@ -236,6 +252,11 @@ export function SyncLyricsModal({
     variant?: 'success' | 'error' | 'warning' | 'info';
   } | null>(null);
   const [removeSyncConfirmOpen, setRemoveSyncConfirmOpen] = useState(false);
+  const [moreMenuOpen, setMoreMenuOpen] = useState(false);
+
+  const moreMenuButtonRef = useRef<HTMLButtonElement>(null);
+  const moreMenuRef = useRef<HTMLDivElement>(null);
+  const timingsFileInputRef = useRef<HTMLInputElement>(null);
 
   /**
    * ✅ СИНХРОННЫЙ СБРОС ДО PAINT
@@ -245,6 +266,7 @@ export function SyncLyricsModal({
   useLayoutEffect(() => {
     if (!isOpen) {
       setRemoveSyncConfirmOpen(false);
+      setMoreMenuOpen(false);
       return;
     }
 
@@ -600,6 +622,91 @@ export function SyncLyricsModal({
     clearAllLocalTimings();
   }, [hasPersistedSync, clearAllLocalTimings]);
 
+  useEffect(() => {
+    if (!moreMenuOpen) return;
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setMoreMenuOpen(false);
+      }
+    };
+
+    const onPointerDown = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (moreMenuRef.current?.contains(target)) return;
+      if (moreMenuButtonRef.current?.contains(target)) return;
+      setMoreMenuOpen(false);
+    };
+
+    document.addEventListener('keydown', onKeyDown);
+    document.addEventListener('mousedown', onPointerDown);
+    return () => {
+      document.removeEventListener('keydown', onKeyDown);
+      document.removeEventListener('mousedown', onPointerDown);
+    };
+  }, [moreMenuOpen]);
+
+  const closeMoreMenu = useCallback(() => {
+    setMoreMenuOpen(false);
+  }, []);
+
+  const handleDownloadTimings = useCallback(() => {
+    if (!canDownloadTimings) return;
+    closeMoreMenu();
+    const payload = serializeLyricsTimingFile(trackTitle, syncedLines, trackAuthorship);
+    const filename = buildLyricsTimingDownloadFilename(trackTitle);
+    triggerLyricsTimingFileDownload(filename, payload);
+  }, [canDownloadTimings, closeMoreMenu, syncedLines, trackAuthorship, trackTitle]);
+
+  const handlePickTimingsFile = useCallback(() => {
+    closeMoreMenu();
+    timingsFileInputRef.current?.click();
+  }, [closeMoreMenu]);
+
+  const handleRemoveSyncFromMenu = useCallback(() => {
+    closeMoreMenu();
+    handleRemoveSyncClick();
+  }, [closeMoreMenu, handleRemoveSyncClick]);
+
+  const handleTimingsFileChange = useCallback(
+    async (event: ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+      event.target.value = '';
+      if (!file) return;
+
+      try {
+        const raw = await file.text();
+        const expectedTexts = collectEditorLyricLineTexts(syncedLines, trackAuthorship);
+        const imported = parseLyricsTimingFileJson(raw, expectedTexts);
+        const nextLines = applyImportedLyricsTimingsToEditor(
+          syncedLines,
+          trackAuthorship,
+          imported
+        );
+        setSyncedLines(nextLines);
+        toast.show({
+          variant: 'success',
+          title:
+            ui?.dashboard?.lyricsTimingsLoadedToast ??
+            (lang === 'ru' ? 'Тайминги загружены' : 'Timings loaded'),
+          duration: LYRICS_SYNC_REMOVED_TOAST_DURATION_MS,
+        });
+      } catch (error) {
+        const copy =
+          error instanceof LyricsTimingImportError
+            ? lyricsTimingImportErrorCopy(error.code, lang)
+            : lyricsTimingImportErrorCopy('invalid-json', lang);
+        setAlertModal({
+          isOpen: true,
+          title: copy.title,
+          message: copy.message,
+          variant: 'error',
+        });
+      }
+    },
+    [lang, syncedLines, trackAuthorship, ui]
+  );
+
   const togglePlayPause = useCallback(() => {
     if (!audioRef.current) return;
 
@@ -675,16 +782,85 @@ export function SyncLyricsModal({
               <h2 className="sync-lyrics-modal__title">
                 {ui?.dashboard?.syncLyricsTitle ?? 'Sync lyrics'}
               </h2>
-              <button
-                type="button"
-                className="sync-lyrics-modal__close"
-                onClick={handleRequestClose}
-                disabled={isSaving || isRemovingSync}
-                aria-label="Закрыть"
-              >
-                <ModalCloseIcon />
-              </button>
+              <div className="sync-lyrics-modal__header-trailing">
+                <div className="sync-lyrics-modal__more-wrap">
+                  <button
+                    ref={moreMenuButtonRef}
+                    type="button"
+                    className="sync-lyrics-modal__more-button"
+                    onClick={() => setMoreMenuOpen((open) => !open)}
+                    disabled={isSaving || isRemovingSync || isLoading}
+                    aria-haspopup="menu"
+                    aria-expanded={moreMenuOpen}
+                    aria-label={ui?.dashboard?.syncLyricsMoreMenu ?? 'More actions'}
+                  >
+                    <MoreHorizontal {...dashboardActionIconProps()} aria-hidden />
+                  </button>
+                  {moreMenuOpen ? (
+                    <div
+                      ref={moreMenuRef}
+                      className="sync-lyrics-modal__more-menu"
+                      role="menu"
+                      aria-label={ui?.dashboard?.syncLyricsMoreMenu ?? 'More actions'}
+                    >
+                      <button
+                        type="button"
+                        role="menuitem"
+                        className="sync-lyrics-modal__more-menu-item"
+                        onClick={handleDownloadTimings}
+                        disabled={!canDownloadTimings}
+                      >
+                        <Download {...dashboardActionIconProps({ size: 16 })} aria-hidden />
+                        <span>{ui?.dashboard?.downloadLyricsTimings ?? 'Download timings'}</span>
+                      </button>
+                      <button
+                        type="button"
+                        role="menuitem"
+                        className="sync-lyrics-modal__more-menu-item"
+                        onClick={handlePickTimingsFile}
+                        disabled={isSaving || isRemovingSync}
+                      >
+                        <Upload {...dashboardActionIconProps({ size: 16 })} aria-hidden />
+                        <span>{ui?.dashboard?.uploadLyricsTimings ?? 'Upload timings'}</span>
+                      </button>
+                      <div
+                        className="sync-lyrics-modal__more-menu-separator"
+                        role="separator"
+                        aria-hidden
+                      />
+                      <button
+                        type="button"
+                        role="menuitem"
+                        className="sync-lyrics-modal__more-menu-item sync-lyrics-modal__more-menu-item--destructive"
+                        onClick={handleRemoveSyncFromMenu}
+                        disabled={!canRemoveSync || isSaving || isRemovingSync}
+                      >
+                        <Trash2 {...dashboardActionIconProps({ size: 16 })} aria-hidden />
+                        <span>{ui?.dashboard?.removeSyncLyrics ?? 'Remove synchronization'}</span>
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
+                <button
+                  type="button"
+                  className="sync-lyrics-modal__close"
+                  onClick={handleRequestClose}
+                  disabled={isSaving || isRemovingSync}
+                  aria-label={ui?.dashboard?.close ?? 'Close'}
+                >
+                  <ModalCloseIcon />
+                </button>
+              </div>
             </div>
+            <input
+              ref={timingsFileInputRef}
+              type="file"
+              accept=".json,application/json"
+              className="sync-lyrics-modal__timings-file-input"
+              tabIndex={-1}
+              aria-hidden
+              onChange={(e) => void handleTimingsFileChange(e)}
+            />
 
             <div className="sync-lyrics-modal__divider"></div>
 
@@ -859,46 +1035,29 @@ export function SyncLyricsModal({
                   <div className="sync-lyrics-modal__actions-bar">
                     <button
                       type="button"
-                      className="sync-lyrics-modal__button sync-lyrics-modal__button--danger"
-                      onClick={handleRemoveSyncClick}
-                      disabled={!canRemoveSync || isSaving || isRemovingSync}
+                      className="sync-lyrics-modal__button sync-lyrics-modal__button--cancel"
+                      onClick={cancelAndClose}
+                      disabled={isSaving || isRemovingSync}
                     >
-                      <Trash2
-                        {...dashboardActionIconProps({ size: 16 })}
-                        className="sync-lyrics-modal__button-icon"
-                        aria-hidden
-                      />
-                      {ui?.dashboard?.removeSyncLyrics ?? 'Remove synchronization'}
+                      {ui?.dashboard?.cancel ?? 'Cancel'}
                     </button>
-
-                    <div className="sync-lyrics-modal__actions-main">
-                      <button
-                        type="button"
-                        className="sync-lyrics-modal__button sync-lyrics-modal__button--cancel"
-                        onClick={cancelAndClose}
-                        disabled={isSaving || isRemovingSync}
-                      >
-                        {ui?.dashboard?.cancel ?? 'Cancel'}
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={handleSave}
-                        disabled={!hasChanges || isSaving || isRemovingSync}
-                        className={`sync-lyrics-modal__button sync-lyrics-modal__button--primary${
-                          isSaving ? ' sync-lyrics-modal__button--primary-loading' : ''
-                        }`}
-                      >
-                        {isSaving ? (
-                          <>
-                            <span className="sync-lyrics-modal__button-spinner" aria-hidden />
-                            {ui?.dashboard?.saving ?? 'Saving...'}
-                          </>
-                        ) : (
-                          (ui?.dashboard?.save ?? 'Save')
-                        )}
-                      </button>
-                    </div>
+                    <button
+                      type="button"
+                      onClick={handleSave}
+                      disabled={!hasChanges || isSaving || isRemovingSync}
+                      className={`sync-lyrics-modal__button sync-lyrics-modal__button--primary${
+                        isSaving ? ' sync-lyrics-modal__button--primary-loading' : ''
+                      }`}
+                    >
+                      {isSaving ? (
+                        <>
+                          <span className="sync-lyrics-modal__button-spinner" aria-hidden />
+                          {ui?.dashboard?.saving ?? 'Saving...'}
+                        </>
+                      ) : (
+                        (ui?.dashboard?.save ?? 'Save')
+                      )}
+                    </button>
                   </div>
                 </div>
               </>

@@ -455,7 +455,7 @@ export function SortableTrackItem({
                 </DashboardButton>
                 <DashboardButton
                   variant="icon"
-                  destructive
+                  className="user-dashboard__expanded-track-action-delete"
                   onClick={(e) => {
                     e.stopPropagation();
                     handleDelete(e);

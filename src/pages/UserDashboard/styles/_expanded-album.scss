@@ -254,6 +254,36 @@ dialog {
       flex-shrink: 0;
     }
 
+    // Icon-only delete: red glyph brightens on hover — no destructive tile (unlike outline destructive).
+    &__expanded-track-action-delete.dashboard-button--icon {
+      color: var(--dashboard-btn-destructive-text);
+      filter: none;
+      background: transparent;
+      border-color: transparent;
+
+      @media (hover: hover) and (pointer: fine) {
+        &:hover:not(:disabled) {
+          color: var(--dashboard-btn-destructive-text);
+          filter: brightness(1.28);
+          background: transparent;
+          border-color: transparent;
+        }
+      }
+
+      &:focus-visible {
+        background: transparent;
+        border-color: transparent;
+      }
+
+      &:active:not(:disabled) {
+        color: var(--dashboard-btn-destructive-text);
+        filter: none;
+        background: transparent;
+        border-color: transparent;
+        opacity: 0.7;
+      }
+    }
+
     @media not ($tablets) {
       &__expanded-track-toolbar {
         display: flex;

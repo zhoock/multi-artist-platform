@@ -955,6 +955,10 @@ export interface IInterface {
     syncLyricsTitle?: string;
     removeSyncLyrics?: string;
     removeSyncLyricsConfirm?: string;
+    downloadLyricsTimings?: string;
+    uploadLyricsTimings?: string;
+    lyricsTimingsLoadedToast?: string;
+    syncLyricsMoreMenu?: string;
     /** Per-line trash control in sync editor — clears start/end times only */
     clearLineTimings?: string;
     lyricsSyncSavedToast?: string;

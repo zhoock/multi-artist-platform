@@ -138,18 +138,23 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: calc(var(--ms-1) * 1.5);
-  height: calc(var(--ms-1) * 1.5);
+  box-sizing: border-box;
+  width: 36px;
+  height: 36px;
   padding: 0;
-  color: var(--dashboard-text-primary);
+  color: var(--dashboard-text-secondary);
   font-size: $font-size;
   font-weight: 300;
   line-height: 1;
   background: transparent;
-  border: none;
+  border: 1px solid transparent;
   border-radius: var(--ms-02);
   cursor: pointer;
-  transition: all 0.2s;
+  filter: none;
+  transition:
+    color 0.2s ease,
+    background-color 0.2s ease,
+    filter 0.2s ease;
 
   @if $flex-shrink {
     flex-shrink: $flex-shrink;
@@ -160,9 +165,10 @@
     letter-spacing: normal !important;
   }
 
-  &:hover {
+  &:hover:not(:disabled) {
     color: var(--dashboard-text-primary);
     background: var(--dashboard-hover-bg);
+    filter: brightness(1.22);
   }
 
   @if $active-opacity {
