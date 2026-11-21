@@ -1,5 +1,4 @@
 import React, { useCallback, useMemo } from 'react';
-import clsx from 'clsx';
 import type { IInterface, DashboardTrackVisibilityLabels } from '@models';
 import type { SupportedLang } from '@shared/model/lang';
 import type { TrackVisibility } from '@shared/lib/tracks/trackVisibility';
@@ -7,6 +6,7 @@ import { TrackVisibilityIcon } from '@shared/ui/icons/TrackVisibilityIcon';
 import { resolveEffectiveContentVisibility } from '@shared/lib/payment/artistMonetization';
 import { useArtistMonetization } from '@shared/lib/payment/ArtistMonetizationContext';
 import { buildArticleVisibilityMenuOptions } from './articleVisibilityOptions';
+import { DashboardVisibilityMenuItem } from '../../lib/DashboardVisibilityMenuItem';
 import {
   DashboardAccessMenuPortal,
   resolveDashboardAccessMenuPortalFromElement,
@@ -102,30 +102,14 @@ export function ArticleAccessControl({
         menuStyle={menuStyle}
       >
         {menuOptions.map((opt) => (
-          <button
+          <DashboardVisibilityMenuItem
             key={opt.value}
-            type="button"
-            role="menuitem"
-            className={clsx('user-dashboard__track-access-menu-item', {
-              'user-dashboard__track-access-menu-item--active': opt.value === displayVisibility,
-            })}
-            onClick={() => void pickVisibility(opt.value)}
-          >
-            <span className="user-dashboard__track-access-menu-item-icon" aria-hidden>
-              <TrackVisibilityIcon visibility={opt.value} size={18} />
-            </span>
-            <span className="user-dashboard__track-access-menu-item-text">
-              <span className="user-dashboard__track-access-menu-item-title">{opt.label}</span>
-              <span className="user-dashboard__track-access-menu-item-desc">{opt.description}</span>
-            </span>
-            {opt.value === displayVisibility ? (
-              <span className="user-dashboard__track-access-menu-check" aria-hidden>
-                ✓
-              </span>
-            ) : (
-              <span className="user-dashboard__track-access-menu-check-spacer" aria-hidden />
-            )}
-          </button>
+            visibility={opt.value}
+            label={opt.label}
+            description={opt.description}
+            selected={opt.value === displayVisibility}
+            onSelect={() => void pickVisibility(opt.value)}
+          />
         ))}
       </DashboardAccessMenuPortal>
     </>

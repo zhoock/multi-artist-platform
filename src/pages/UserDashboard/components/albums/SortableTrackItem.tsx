@@ -29,6 +29,7 @@ import {
   resolveDashboardAccessMenuPortalFromElement,
   useDashboardAccessMenu,
 } from '../../lib/useDashboardAccessMenu';
+import { DashboardVisibilityMenuItem } from '../../lib/DashboardVisibilityMenuItem';
 import { DashboardExpandChevron } from '../../lib/dashboardExpandChevron';
 import { TrackLyricsPanel } from './TrackLyricsPanel';
 import { TrackProcessingStatus } from './TrackProcessingStatus';
@@ -490,26 +491,14 @@ export function SortableTrackItem({
         menuStyle={menuStyle}
       >
         {trackVisibilityMenuOptions.map((opt) => (
-          <button
+          <DashboardVisibilityMenuItem
             key={opt.value}
-            type="button"
-            role="menuitem"
-            className={clsx('user-dashboard__track-access-menu-item', {
-              'user-dashboard__track-access-menu-item--active': opt.value === trackVisibility,
-            })}
-            onClick={() => void pickVisibility(opt.value)}
-          >
-            <span className="user-dashboard__track-access-menu-item-icon" aria-hidden>
-              <TrackVisibilityIcon visibility={opt.value} size={18} />
-            </span>
-            <span className="user-dashboard__track-access-menu-item-text">
-              <span className="user-dashboard__track-access-menu-item-title">{opt.label}</span>
-              <span className="user-dashboard__track-access-menu-item-desc">{opt.description}</span>
-            </span>
-            {opt.value === trackVisibility ? (
-              <span className="user-dashboard__track-access-menu-state-dot" aria-hidden />
-            ) : null}
-          </button>
+            visibility={opt.value}
+            label={opt.label}
+            description={opt.description}
+            selected={opt.value === trackVisibility}
+            onSelect={() => void pickVisibility(opt.value)}
+          />
         ))}
       </DashboardAccessMenuPortal>
     </>

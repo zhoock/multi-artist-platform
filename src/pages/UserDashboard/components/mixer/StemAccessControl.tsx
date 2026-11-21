@@ -1,6 +1,5 @@
 // src/pages/UserDashboard/components/mixer/StemAccessControl.tsx
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import clsx from 'clsx';
+import React, { useCallback, useMemo } from 'react';
 import type { IInterface } from '@models';
 import { useLang } from '@app/providers/lang';
 import {
@@ -19,6 +18,7 @@ import {
   resolveDashboardAccessMenuPortalFromElement,
   useDashboardAccessMenu,
 } from '../../lib/useDashboardAccessMenu';
+import { DashboardVisibilityMenuItem } from '../../lib/DashboardVisibilityMenuItem';
 
 type StemAccessControlProps = {
   albumId: string;
@@ -149,33 +149,15 @@ export function StemAccessControl({
         menuStyle={menuStyle}
       >
         {menuOptions.map((opt) => (
-          <button
+          <DashboardVisibilityMenuItem
             key={opt.value}
-            type="button"
-            role="menuitem"
-            className={clsx('user-dashboard__track-access-menu-item', {
-              'user-dashboard__track-access-menu-item--active': opt.value === stemsVisibility,
-            })}
-            onClick={(e) => {
-              e.stopPropagation();
-              pickVisibility(opt.value);
-            }}
-          >
-            <span className="user-dashboard__track-access-menu-item-icon" aria-hidden>
-              <TrackVisibilityIcon visibility={opt.value} size={18} />
-            </span>
-            <span className="user-dashboard__track-access-menu-item-text">
-              <span className="user-dashboard__track-access-menu-item-title">{opt.label}</span>
-              <span className="user-dashboard__track-access-menu-item-desc">{opt.description}</span>
-            </span>
-            {opt.value === stemsVisibility ? (
-              <span className="user-dashboard__track-access-menu-check" aria-hidden>
-                ✓
-              </span>
-            ) : (
-              <span className="user-dashboard__track-access-menu-check-spacer" aria-hidden />
-            )}
-          </button>
+            visibility={opt.value}
+            label={opt.label}
+            description={opt.description}
+            selected={opt.value === stemsVisibility}
+            onClick={(e) => e.stopPropagation()}
+            onSelect={() => pickVisibility(opt.value)}
+          />
         ))}
       </DashboardAccessMenuPortal>
     </>
