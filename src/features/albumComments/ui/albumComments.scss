@@ -1,4 +1,5 @@
 @use '../../../scss/abstracts/mixins' as *;
+@use '../../../scss/components/modal' as dashboard-modal;
 
 .album-comments-actions-bar {
   display: flex;
@@ -199,23 +200,9 @@
   &__close {
     grid-column: 2;
     grid-row: 1;
-    flex-shrink: 0;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    margin: 0;
-    padding: var(--ms-01);
-    color: var(--link-color-hover, #ffffff);
-    background: transparent;
-    border: 0;
-    border-radius: var(--ms-01);
-    cursor: pointer;
     appearance: none;
 
-    &:focus-visible {
-      outline: 2px solid var(--accent-color, #998238);
-      outline-offset: 2px;
-    }
+    @include dashboard-modal.dashboard-settings-modal-close;
   }
 
   &__body {

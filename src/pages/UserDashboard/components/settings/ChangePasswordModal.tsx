@@ -9,7 +9,7 @@ import { fetchWithAuthSession } from '@shared/lib/authFetch';
 import { DashboardButton } from '@shared/ui/dashboard';
 import '@shared/ui/dashboard-save/dashboard-save.scss';
 import { dashboardActionIconProps } from '@shared/ui/icons/dashboardActionIcon';
-import { ModalCloseIcon } from '@shared/ui/icons/ModalCloseIcon';
+import { ModalCloseButton } from '@shared/ui/modal';
 import { isPasswordLongEnough } from '@shared/lib/auth/passwordPolicy';
 import './ChangePasswordModal.style.scss';
 
@@ -155,15 +155,12 @@ export function ChangePasswordModal({ isOpen, onClose }: ChangePasswordModalProp
             <h2 className="change-password-modal__title">
               {ui?.dashboard?.settingsModal?.buttons?.changePassword ?? 'Change password'}
             </h2>
-            <button
-              type="button"
+            <ModalCloseButton
               className="change-password-modal__close"
               onClick={onClose}
               disabled={isChangingPassword}
               aria-label={ui?.dashboard?.close ?? 'Close'}
-            >
-              <ModalCloseIcon />
-            </button>
+            />
           </div>
 
           <div className="change-password-modal__body">

@@ -55,12 +55,7 @@ dialog {
     }
 
     &__close {
-      @include dashboard-modal-close(
-        $font-size: var(--dashboard-heading-font-size),
-        $focus-visible: true,
-        $reset-text: true,
-        $flex-shrink: 0
-      );
+      @include dashboard-settings-modal-close;
     }
 
     &__preview-button {

@@ -1,3 +1,5 @@
+@use '../../../scss/components/modal' as dashboard-modal;
+
 .premium-success-modal {
   max-width: calc(100vw - 1.5rem);
 
@@ -17,24 +19,8 @@
     position: absolute;
     top: var(--ms-01);
     right: var(--ms-01);
-    display: flex;
-    width: 2rem;
-    height: 2rem;
-    margin: 0;
-    padding: 0;
-    color: #ffffff;
-    font-size: 1.35rem;
-    line-height: 1;
-    background: rgb(255 255 255 / 8%);
-    border: 1px solid rgb(255 255 255 / 12%);
-    border-radius: 50%;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
 
-    &:hover {
-      background: rgb(255 255 255 / 14%);
-    }
+    @include dashboard-modal.dashboard-settings-modal-close;
   }
 
   &__icon-wrap {

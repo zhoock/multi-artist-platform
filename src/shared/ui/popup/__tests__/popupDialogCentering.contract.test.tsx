@@ -40,6 +40,18 @@ describe('popup dialog centering contract', () => {
     expect(inFlowRule?.[1]).toContain('.popup__gradient');
   });
 
+  test('fullscreen player uses dashboard modal close control in legacy hamburger slot', () => {
+    const shellStyles = readFileSync('src/features/player/ui/PlayerShell/style.scss', 'utf8');
+    const playerShell = readFileSync('src/features/player/ui/PlayerShell/PlayerShell.tsx', 'utf8');
+
+    expect(playerShell).toMatch(/ModalCloseButton/);
+    expect(playerShell).not.toMatch(/PopupHamburgerToggle/);
+    expect(shellStyles).toMatch(/player-fullscreen__close/);
+    expect(shellStyles).toMatch(/dashboard-settings-modal-close/);
+    expect(shellStyles).toMatch(/inset-block-start: 9px/);
+    expect(shellStyles).toMatch(/inset-inline-end: 29px/);
+  });
+
   test('full player dialog stretches on mobile viewport', () => {
     const popupStyles = readFileSync('src/shared/ui/popup/style.scss', 'utf8');
 

@@ -1,5 +1,6 @@
 @use '../../../scss/abstracts/mixins' as *;
 @use '../../../scss/components/fullscreen-loading' as fs-loading;
+@use '../../../scss/components/modal' as dashboard-modal;
 
 .copyright-report-fullscreen {
   --copyright-report-content-max: 42rem;
@@ -63,22 +64,9 @@
     top: max(var(--ms-0), env(safe-area-inset-top, 0px));
     right: max(var(--ms-1), env(safe-area-inset-right, 0px));
     z-index: 1;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    margin: 0;
-    padding: var(--ms-01);
-    color: var(--link-color-hover, #ffffff);
-    background: transparent;
-    border: 0;
-    border-radius: var(--ms-01);
-    cursor: pointer;
     appearance: none;
 
-    &:focus-visible {
-      outline: 2px solid var(--accent-color, #998238);
-      outline-offset: 2px;
-    }
+    @include dashboard-modal.dashboard-settings-modal-close;
   }
 
   &__body {

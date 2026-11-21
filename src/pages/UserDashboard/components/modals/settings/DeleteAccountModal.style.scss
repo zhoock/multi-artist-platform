@@ -54,11 +54,7 @@
   }
 
   &__close {
-    @include dashboard-modal.dashboard-modal-close(
-      $focus-visible: true,
-      $reset-text: true,
-      $flex-shrink: 0
-    );
+    @include dashboard-modal.dashboard-settings-modal-close;
   }
 
   &__form {

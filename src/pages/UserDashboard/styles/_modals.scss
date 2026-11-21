@@ -20,11 +20,7 @@ dialog {
       }
 
       &__close {
-        @include dashboard-modal-close(
-          $font-size: var(--dashboard-heading-font-size),
-          $focus-visible: true,
-          $disabled: false
-        );
+        @include dashboard-settings-modal-close;
       }
 
       &__title {

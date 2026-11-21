@@ -1,4 +1,5 @@
 @use '../../../scss/abstracts/mixins' as *;
+@use '../../../scss/components/modal' as dashboard-modal;
 
 .listener-welcome-modal {
   max-width: calc(100vw - 1.5rem);
@@ -18,25 +19,8 @@
     position: absolute;
     top: var(--ms-01);
     right: var(--ms-01);
-    display: flex;
-    width: 2rem;
-    height: 2rem;
-    margin: 0;
-    padding: 0;
-    color: rgb(255 255 255 / 72%);
-    font-size: 1.35rem;
-    line-height: 1;
-    background: transparent;
-    border: none;
-    border-radius: 50%;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
 
-    &:hover {
-      color: #ffffff;
-      background: rgb(255 255 255 / 8%);
-    }
+    @include dashboard-modal.dashboard-settings-modal-close;
   }
 
   &__title {

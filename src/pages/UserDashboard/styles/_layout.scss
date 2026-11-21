@@ -22,12 +22,7 @@ dialog {
     &__close {
       flex-shrink: 0;
 
-      @include dashboard-modal-close(
-        $font-size: var(--dashboard-heading-font-size),
-        $focus-visible: true,
-        $reset-text: true,
-        $flex-shrink: 0
-      );
+      @include dashboard-settings-modal-close;
     }
 
     &__title {

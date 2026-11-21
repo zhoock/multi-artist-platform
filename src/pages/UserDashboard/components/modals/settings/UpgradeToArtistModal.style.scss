@@ -1,4 +1,5 @@
 @use '../../../../../scss/abstracts/mixins' as *;
+@use '../../../../../scss/components/modal' as *;
 
 .upgrade-to-artist-modal {
   display: flex;
@@ -40,22 +41,7 @@
   }
 
   &__close {
-    padding: 0;
-    color: var(--dashboard-text-secondary);
-    font-size: 1.5rem;
-    line-height: 1;
-    background: none;
-    border: none;
-    cursor: pointer;
-
-    &:hover {
-      color: var(--dashboard-text-primary);
-    }
-
-    &:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
+    @include dashboard-settings-modal-close;
   }
 
   &__error {

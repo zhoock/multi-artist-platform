@@ -71,7 +71,7 @@
     }
 
     &__close {
-      @include dashboard-modal-close($focus-visible: true, $reset-text: true, $flex-shrink: 0);
+      @include dashboard-settings-modal-close;
     }
 
     &__divider {

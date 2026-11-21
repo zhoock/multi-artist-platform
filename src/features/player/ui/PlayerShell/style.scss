@@ -1,5 +1,6 @@
 // src/features/player/ui/PlayerShell/style.scss
 @use '../../../../scss/abstracts/mixins' as *;
+@use '../../../../scss/components/modal' as *;
 
 .mini-player {
   position: fixed;
@@ -339,4 +340,15 @@
     margin-inline: var(--ms-01);
     background: rgb(255 255 255 / 8%);
   }
+}
+
+// Fullscreen player (#player): same slot as legacy PopupHamburgerToggle (fixed top-right).
+dialog.popup[open]:has(.player) > .player-fullscreen__close {
+  position: fixed;
+  z-index: 1500;
+  inset-block-start: 9px;
+  inset-inline-end: 29px;
+  appearance: none;
+
+  @include dashboard-settings-modal-close;
 }

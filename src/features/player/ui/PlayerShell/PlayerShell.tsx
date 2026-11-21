@@ -21,7 +21,9 @@ import {
   formatAlbumDisplayFullName,
   readStoredProfileDisplayName,
 } from '@shared/lib/profileDisplayName';
-import { Popup, PopupHamburgerToggle } from '@shared/ui/popup';
+import { Popup } from '@shared/ui/popup';
+import { ModalCloseButton } from '@shared/ui/modal';
+import './style.scss';
 import { playerActions } from '@features/player/model/slice/playerSlice';
 import * as playerSelectors from '@features/player/model/selectors/playerSelectors';
 import { audioController } from '@features/player/model/lib/audioController';
@@ -789,7 +791,11 @@ export const PlayerShell: React.FC = () => {
 
       {isFullScreen && canRenderPopup && albumMeta && (
         <Popup isActive bgColor={bgColor} onClose={handleClose}>
-          <PopupHamburgerToggle isActive accessibleName={playerA11yLabels.closePlayer} />
+          <ModalCloseButton
+            popupClose
+            className="player-fullscreen__close"
+            aria-label={playerA11yLabels.closePlayer}
+          />
           <FullScreenAudioPlayer albumMeta={albumMeta} />
         </Popup>
       )}

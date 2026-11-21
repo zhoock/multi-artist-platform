@@ -36,7 +36,7 @@
     margin: 0;
     box-sizing: border-box;
     overflow-x: clip;
-    padding-block: max(var(--ms-3), env(safe-area-inset-top, 0px))
+    padding-block: max(calc(var(--ms-3) - var(--ms-01)), env(safe-area-inset-top, 0px))
       max(var(--ms-1), env(safe-area-inset-bottom, 0px));
     padding-inline: max(var(--ms-1), env(safe-area-inset-left, 0px))
       max(var(--ms-1), env(safe-area-inset-right, 0px));

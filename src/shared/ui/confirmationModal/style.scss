@@ -48,38 +48,7 @@
   }
 
   &__close {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: calc(var(--ms-1) * 1.5);
-    height: calc(var(--ms-1) * 1.5);
-    padding: 0;
-    color: var(--dashboard-text-primary);
-    font-size: var(--ms-1);
-    font-weight: 300;
-    line-height: 1;
-    background: transparent;
-    border: none;
-    border-radius: var(--ms-02);
-    cursor: pointer;
-    transition: all 0.2s;
-    text-transform: none !important;
-    letter-spacing: normal !important;
-    flex-shrink: 0;
-
-    &:hover {
-      color: var(--dashboard-text-primary);
-      background: var(--dashboard-hover-bg);
-    }
-
-    &:focus {
-      outline: none;
-    }
-
-    &:focus-visible {
-      outline: 2px solid var(--dark-greenish-yellow);
-      outline-offset: 2px;
-    }
+    @include dashboard-modal.dashboard-settings-modal-close;
   }
 
   &__message {
