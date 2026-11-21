@@ -183,6 +183,14 @@
     justify-content: flex-start;
     min-inline-size: 0;
     inline-size: 100%;
+
+    // Full-row grid cell sits under the close control in column 2; without this,
+    // the title shell captures pointer/touch before the later sibling close button.
+    pointer-events: none;
+
+    > * {
+      pointer-events: auto;
+    }
   }
 
   &__title {
@@ -200,6 +208,9 @@
   &__close {
     grid-column: 2;
     grid-row: 1;
+    position: relative;
+    z-index: 1;
+    pointer-events: auto;
     appearance: none;
 
     @include dashboard-modal.dashboard-settings-modal-close;

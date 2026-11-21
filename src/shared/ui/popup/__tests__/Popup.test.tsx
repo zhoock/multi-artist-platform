@@ -46,8 +46,7 @@ describe('Popup body scroll lock', () => {
       </Popup>
     );
 
-    expect(document.body.style.position).toBe('fixed');
-    expect(document.body.style.top).toBe('-200px');
+    expect(document.body.style.overflow).toBe('hidden');
     expect(__getBodyScrollLockCountForTests()).toBe(1);
 
     rerender(
@@ -56,7 +55,7 @@ describe('Popup body scroll lock', () => {
       </Popup>
     );
 
-    expect(document.body.style.position).toBe('');
+    expect(document.body.style.overflow).toBe('');
     expect(__getBodyScrollLockCountForTests()).toBe(0);
   });
 });
