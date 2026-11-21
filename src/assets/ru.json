@@ -518,7 +518,14 @@
       "pause": "Пауза",
       "nextTrack": "Следующий трек",
       "openFullPlayer": "Открыть полноэкранный плеер",
-      "closePlayer": "Закрыть плеер"
+      "closePlayer": "Закрыть плеер",
+      "contextMenu": {
+        "goToAlbum": "Перейти к альбому",
+        "goToArtist": "Перейти к артисту",
+        "addToCollection": "Добавить в коллекцию",
+        "hideMiniPlayer": "Скрыть мини-плеер",
+        "menuLabel": "Действия мини-плеера"
+      }
     },
     "stems": {
       "pageTitle": "Миксер",

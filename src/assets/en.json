@@ -518,7 +518,14 @@
       "pause": "Pause",
       "nextTrack": "Next track",
       "openFullPlayer": "Open full player",
-      "closePlayer": "Close player"
+      "closePlayer": "Close player",
+      "contextMenu": {
+        "goToAlbum": "Go to album",
+        "goToArtist": "Go to artist",
+        "addToCollection": "Add to collection",
+        "hideMiniPlayer": "Hide mini player",
+        "menuLabel": "Mini player actions"
+      }
     },
     "stems": {
       "pageTitle": "Mixer",

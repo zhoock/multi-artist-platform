@@ -136,6 +136,38 @@ describe('MiniPlayer accessibility', () => {
     );
   });
 
+  test('long press on mini-player opens context menu without expanding', () => {
+    jest.useFakeTimers();
+    mockUseLang.mockReturnValue({ lang: 'en', setLang: jest.fn() });
+    const onExpand = jest.fn();
+    const onOpenContextMenu = jest.fn();
+
+    render(
+      <MiniPlayer
+        title="Track"
+        isPlaying={false}
+        onToggle={jest.fn()}
+        onExpand={onExpand}
+        forwardHandlers={noopForwardHandlers}
+        onOpenContextMenu={onOpenContextMenu}
+      />
+    );
+
+    const root = document.querySelector('.mini-player');
+    expect(root).toBeTruthy();
+    fireEvent.touchStart(root!, { target: root });
+    jest.advanceTimersByTime(500);
+    expect(onOpenContextMenu).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open full player' }));
+    expect(onExpand).not.toHaveBeenCalled();
+
+    fireEvent.contextMenu(root!);
+    expect(onOpenContextMenu).toHaveBeenCalledTimes(2);
+
+    jest.useRealTimers();
+  });
+
   test('play/pause label follows playing state', () => {
     mockUseLang.mockReturnValue({ lang: 'en', setLang: jest.fn() });
 

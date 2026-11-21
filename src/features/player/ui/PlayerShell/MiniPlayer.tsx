@@ -1,5 +1,5 @@
 // src/features/player/ui/PlayerShell/MiniPlayer.tsx
-import React, { useMemo } from 'react';
+import React, { useCallback, useMemo, useRef } from 'react';
 import clsx from 'clsx';
 import { Pause, Play, SkipForward, SlidersHorizontal } from 'lucide-react';
 import AlbumCover from '@entities/album/ui/AlbumCover';
@@ -43,7 +43,10 @@ interface MiniPlayerProps {
   showMixerButton?: boolean;
   onOpenMixer?: () => void;
   openMixerLabel?: string;
+  onOpenContextMenu?: () => void;
 }
+
+const MINI_PLAYER_CONTEXT_MENU_LONG_PRESS_MS = 500;
 
 export const MiniPlayer: React.FC<MiniPlayerProps> = ({
   title,
@@ -58,7 +61,65 @@ export const MiniPlayer: React.FC<MiniPlayerProps> = ({
   showMixerButton = false,
   onOpenMixer,
   openMixerLabel,
+  onOpenContextMenu,
 }) => {
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const suppressExpandClickRef = useRef(false);
+
+  const clearLongPressTimer = useCallback(() => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  }, []);
+
+  const isOutsideTransportControls = useCallback((target: EventTarget | null) => {
+    if (!(target instanceof Element)) return false;
+    return target.closest('.mini-player__controls') === null;
+  }, []);
+
+  const openContextMenuFromGesture = useCallback(() => {
+    if (!onOpenContextMenu) return;
+    suppressExpandClickRef.current = true;
+    onOpenContextMenu();
+    window.setTimeout(() => {
+      suppressExpandClickRef.current = false;
+    }, 400);
+  }, [onOpenContextMenu]);
+
+  const handleContextMenu = useCallback(
+    (event: React.MouseEvent<HTMLDivElement>) => {
+      if (!onOpenContextMenu) return;
+      event.preventDefault();
+      event.stopPropagation();
+      openContextMenuFromGesture();
+    },
+    [onOpenContextMenu, openContextMenuFromGesture]
+  );
+
+  const handleTouchStart = useCallback(
+    (event: React.TouchEvent<HTMLDivElement>) => {
+      if (!onOpenContextMenu || !isOutsideTransportControls(event.target)) return;
+      clearLongPressTimer();
+      longPressTimerRef.current = setTimeout(() => {
+        longPressTimerRef.current = null;
+        openContextMenuFromGesture();
+      }, MINI_PLAYER_CONTEXT_MENU_LONG_PRESS_MS);
+    },
+    [clearLongPressTimer, isOutsideTransportControls, onOpenContextMenu, openContextMenuFromGesture]
+  );
+
+  const handleTouchEnd = useCallback(() => {
+    clearLongPressTimer();
+  }, [clearLongPressTimer]);
+
+  const handleExpand = useCallback(() => {
+    if (suppressExpandClickRef.current) {
+      suppressExpandClickRef.current = false;
+      return;
+    }
+    onExpand();
+  }, [onExpand]);
   const { lang } = useLang();
   const ui = useAppSelector((state) => selectPlayerUiForA11y(state, lang));
   const labels = useMemo(() => getPlayerA11yLabels(lang, ui), [lang, ui]);
@@ -78,7 +139,16 @@ export const MiniPlayer: React.FC<MiniPlayerProps> = ({
   }, [showMobileStack, artistLabel, trackLabel, title]);
 
   return (
-    <div ref={containerRef} className="mini-player" {...{ [UNIVERSE_SCENE_OVERLAY_ATTR]: '' }}>
+    <div
+      ref={containerRef}
+      className="mini-player"
+      onContextMenu={handleContextMenu}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+      onTouchCancel={handleTouchEnd}
+      onTouchMove={handleTouchEnd}
+      {...{ [UNIVERSE_SCENE_OVERLAY_ATTR]: '' }}
+    >
       {showMixerButton && onOpenMixer ? (
         <button
           type="button"
@@ -100,7 +170,7 @@ export const MiniPlayer: React.FC<MiniPlayerProps> = ({
         type="button"
         className="mini-player__expand"
         aria-label={labels.openFullPlayer}
-        onClick={onExpand}
+        onClick={handleExpand}
       >
         <div className="mini-player__cover">
           {cover ? (

@@ -502,6 +502,13 @@ export interface IInterface {
     openFullPlayer: string;
     closePlayer: string;
     openMixer?: string;
+    contextMenu?: {
+      goToAlbum?: string;
+      goToArtist?: string;
+      addToCollection?: string;
+      hideMiniPlayer?: string;
+      menuLabel?: string;
+    };
   };
   artistOnboarding?: {
     welcomeGreeting: string;

@@ -26,6 +26,8 @@ import { playerActions } from '@features/player/model/slice/playerSlice';
 import * as playerSelectors from '@features/player/model/selectors/playerSelectors';
 import { audioController } from '@features/player/model/lib/audioController';
 import { MiniPlayer } from './MiniPlayer';
+import { MiniPlayerContextMenu } from './MiniPlayerContextMenu';
+import type { MiniPlayerContextMenuAnchor } from '@features/player/lib/miniPlayerContextMenuPosition';
 import type { PlayerAlbumMeta } from '@features/player/model/types/playerSchema';
 import type { RootState } from '@shared/model/appStore/types';
 import { buildArtistMixerTrackPath } from '@shared/lib/seo/publicPagePaths';
@@ -36,6 +38,22 @@ import {
   getPlayerA11yLabels,
   selectPlayerUiForA11y,
 } from '@features/player/lib/getPlayerA11yLabels';
+import { getMiniPlayerContextMenuLabels } from '@features/player/lib/miniPlayerContextMenuLabels';
+import { readMiniPlayerContextMenuAnchor } from '@features/player/lib/miniPlayerContextMenuPosition';
+import { useSyncMiniPlayerContextMenuAnchor } from '@features/player/lib/useSyncMiniPlayerContextMenuAnchor';
+import { usePlayerContentLinks } from '@features/player/lib/usePlayerContentLinks';
+import { teardownPlaybackAfterAuthEnd } from '@features/artistArchive/lib/teardownPlaybackAfterAuthEnd';
+import { useArtistArchiveStatus } from '@features/artistArchive/lib/useArtistArchiveStatus';
+import {
+  dispatchArchiveArtistAdded,
+  refreshPremiumContentForArchiveChange,
+} from '@features/artistArchive/lib/refreshPremiumContent';
+import { CollectionFullModal } from '@features/artistArchive/ui/CollectionFullModal';
+import { useArchiveAccessModal } from '@shared/lib/archiveAccessModal';
+import { useArtistPageAccess } from '@shared/lib/hooks/useArtistPageAccess';
+import { useArtistPageBuilderNav } from '@shared/ui/artistPageBuilder/useArtistPageBuilderNav';
+import { ArchiveApiError } from '@shared/api/archive';
+import { UNIVERSE_FOCUS_ARTIST_STORAGE_KEY } from '@/components/view/universe3dConstants';
 import {
   clearFixedBottomInset,
   measureFixedElementBottomInset,
@@ -77,9 +95,17 @@ export const PlayerShell: React.FC = () => {
   const { lang } = useLang();
   const ui = useAppSelector((state) => selectPlayerUiForA11y(state, lang));
   const playerA11yLabels = useMemo(() => getPlayerA11yLabels(lang, ui), [lang, ui]);
+  const contextMenuLabels = useMemo(() => getMiniPlayerContextMenuLabels(lang, ui), [lang, ui]);
   const { overlayOpen: dashboardOverlayOpen } = useDashboardModalShell();
 
   const albumMeta = useAppSelector(playerSelectors.selectAlbumMeta);
+  const {
+    artistSlugForProfileLink,
+    albumPagePath,
+    artistPagePath,
+    albumTitle: linkAlbumTitle,
+    artistTitle: linkArtistTitle,
+  } = usePlayerContentLinks(albumMeta, albumMeta?.albumId ?? null);
   const playlist = useAppSelector(playerSelectors.selectPlaylist);
   const currentTrack = useAppSelector(playerSelectors.selectCurrentTrack);
   const isPlaying = useAppSelector(playerSelectors.selectIsPlaying);
@@ -140,6 +166,25 @@ export const PlayerShell: React.FC = () => {
   const shouldRenderMini = hasPlaylist && !!albumMeta && !!currentTrack && !isFullScreen;
 
   const miniPlayerRef = useRef<HTMLDivElement | null>(null);
+  const [contextMenuOpen, setContextMenuOpen] = useState(false);
+  const [contextMenuAnchor, setContextMenuAnchor] = useState<MiniPlayerContextMenuAnchor | null>(
+    null
+  );
+  const [archiveFullOpen, setArchiveFullOpen] = useState(false);
+
+  const artistSlugForMonetization = albumMeta?.publicSlug?.trim() ?? '';
+  const { monetizationEnabled } = useArtistPageAccess(artistSlugForMonetization);
+  const artistUserIdForArchive = albumMeta?.userId?.trim() || null;
+  const {
+    buttonState: archiveButtonState,
+    addToArchive,
+    activateInArchive,
+  } = useArtistArchiveStatus(monetizationEnabled ? artistUserIdForArchive : null);
+  const { open: openArchiveAccessModal } = useArchiveAccessModal();
+  const { openDashboard } = useArtistPageBuilderNav();
+
+  const showAddToCollectionMenuItem =
+    monetizationEnabled && archiveButtonState !== 'hidden' && Boolean(artistUserIdForArchive);
   const rewindIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pressStartTimeRef = useRef<number | null>(null);
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -482,6 +527,174 @@ export const PlayerShell: React.FC = () => {
     );
   }, [lang, mixerTarget, navigate]);
 
+  const closeContextMenu = useCallback(() => {
+    setContextMenuOpen(false);
+    setContextMenuAnchor(null);
+  }, []);
+
+  const syncContextMenuAnchor = useCallback((anchor: MiniPlayerContextMenuAnchor) => {
+    setContextMenuAnchor(anchor);
+  }, []);
+
+  const handleOpenContextMenu = useCallback(() => {
+    const node = miniPlayerRef.current;
+    if (!node) return;
+    setContextMenuAnchor(readMiniPlayerContextMenuAnchor(node));
+    setContextMenuOpen(true);
+  }, []);
+
+  useSyncMiniPlayerContextMenuAnchor(miniPlayerRef, contextMenuOpen, syncContextMenuAnchor);
+
+  useEffect(() => {
+    if (!contextMenuOpen) return undefined;
+
+    const onPointerDown = (event: MouseEvent) => {
+      const target = event.target;
+      if (!(target instanceof Element)) {
+        closeContextMenu();
+        return;
+      }
+      if (target.closest('.mini-player-context-menu') || target.closest('.mini-player')) {
+        return;
+      }
+      closeContextMenu();
+    };
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        closeContextMenu();
+      }
+    };
+
+    document.addEventListener('mousedown', onPointerDown);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [closeContextMenu, contextMenuOpen]);
+
+  const handleContextMenuGoToAlbum = useCallback(() => {
+    if (!albumPagePath) return;
+    const { pathname, search } = new URL(albumPagePath, 'http://local');
+    dispatch(playerActions.setSourceLocation({ pathname, search: search || undefined }));
+    navigate({ pathname, search: search || undefined });
+    closeContextMenu();
+  }, [albumPagePath, closeContextMenu, dispatch, navigate]);
+
+  const handleContextMenuGoToArtist = useCallback(() => {
+    const slug = artistSlugForProfileLink;
+    if (!slug || !artistPagePath) return;
+    sessionStorage.setItem(UNIVERSE_FOCUS_ARTIST_STORAGE_KEY, slug);
+    const { pathname, search } = new URL(artistPagePath, 'http://local');
+    dispatch(playerActions.setSourceLocation({ pathname, search: search || undefined }));
+    navigate({ pathname, search: search || undefined });
+    closeContextMenu();
+  }, [artistPagePath, artistSlugForProfileLink, closeContextMenu, dispatch, navigate]);
+
+  const handleContextMenuAddToCollection = useCallback(async () => {
+    const artistUserId = artistUserIdForArchive;
+    if (!artistUserId) return;
+
+    if (archiveButtonState === 'subscription_inactive' || archiveButtonState === 'not_premium') {
+      openArchiveAccessModal({
+        artistUserId,
+        artistSlug: artistSlugForProfileLink ?? undefined,
+      });
+      closeContextMenu();
+      return;
+    }
+
+    if (archiveButtonState === 'in_collection_active') {
+      openDashboard('collection');
+      closeContextMenu();
+      return;
+    }
+
+    if (archiveButtonState === 'in_collection_inactive') {
+      try {
+        await activateInArchive();
+        refreshPremiumContentForArchiveChange(dispatch, artistSlugForProfileLink ?? undefined);
+      } catch (err) {
+        if (
+          err instanceof ArchiveApiError &&
+          (err.code === 'ARCHIVE_SLOTS_LIMIT' || err.code === 'ARCHIVE_ACTIVATION_LIMIT')
+        ) {
+          setArchiveFullOpen(true);
+        }
+      } finally {
+        closeContextMenu();
+      }
+      return;
+    }
+
+    if (archiveButtonState === 'archive_full') {
+      setArchiveFullOpen(true);
+      closeContextMenu();
+      return;
+    }
+
+    if (archiveButtonState !== 'can_add') {
+      closeContextMenu();
+      return;
+    }
+
+    try {
+      await addToArchive();
+      dispatchArchiveArtistAdded(artistUserId, artistSlugForProfileLink ?? undefined);
+      refreshPremiumContentForArchiveChange(dispatch, artistSlugForProfileLink ?? undefined);
+    } catch (err) {
+      if (err instanceof ArchiveApiError && err.code === 'ARCHIVE_SLOTS_LIMIT') {
+        setArchiveFullOpen(true);
+      }
+    } finally {
+      closeContextMenu();
+    }
+  }, [
+    activateInArchive,
+    addToArchive,
+    archiveButtonState,
+    artistSlugForProfileLink,
+    artistUserIdForArchive,
+    closeContextMenu,
+    dispatch,
+    openArchiveAccessModal,
+    openDashboard,
+  ]);
+
+  const handleHideMiniPlayer = useCallback(() => {
+    closeContextMenu();
+    if (location.hash === '#player') {
+      if (sourceLocation) {
+        navigate(
+          {
+            pathname: sourceLocation.pathname,
+            search: sourceLocation.search,
+          },
+          { replace: true }
+        );
+      } else {
+        navigate(
+          {
+            pathname: location.pathname,
+            search: location.search || undefined,
+            hash: '',
+          },
+          { replace: true }
+        );
+      }
+    }
+    teardownPlaybackAfterAuthEnd(dispatch);
+  }, [
+    closeContextMenu,
+    dispatch,
+    location.hash,
+    location.pathname,
+    location.search,
+    navigate,
+    sourceLocation,
+  ]);
+
   const handleClose = useCallback(() => {
     // Используем sourceLocation для возврата на исходную страницу
     // Если sourceLocation установлен, возвращаемся на него
@@ -526,20 +739,52 @@ export const PlayerShell: React.FC = () => {
   return (
     <>
       {shouldRenderMini && currentTrack && (
-        <MiniPlayer
-          title={currentTrack.title}
-          artist={albumMeta.artist}
-          cover={albumMeta.cover}
-          userId={albumMeta.userId ?? undefined}
-          isPlaying={isPlaying}
-          onToggle={handleToggle}
-          onExpand={handleExpand}
-          forwardHandlers={forwardHandlers}
-          containerRef={miniPlayerRef}
-          showMixerButton={Boolean(mixerTarget)}
-          onOpenMixer={handleOpenMixer}
-          openMixerLabel={playerA11yLabels.openMixer}
-        />
+        <>
+          <MiniPlayer
+            title={currentTrack.title}
+            artist={albumMeta.artist}
+            cover={albumMeta.cover}
+            userId={albumMeta.userId ?? undefined}
+            isPlaying={isPlaying}
+            onToggle={handleToggle}
+            onExpand={handleExpand}
+            forwardHandlers={forwardHandlers}
+            containerRef={miniPlayerRef}
+            showMixerButton={Boolean(mixerTarget)}
+            onOpenMixer={handleOpenMixer}
+            openMixerLabel={playerA11yLabels.openMixer}
+            onOpenContextMenu={handleOpenContextMenu}
+          />
+          <MiniPlayerContextMenu
+            open={contextMenuOpen}
+            anchor={contextMenuAnchor}
+            labels={contextMenuLabels}
+            albumTitle={linkAlbumTitle}
+            artistTitle={linkArtistTitle}
+            showAddToCollection={showAddToCollectionMenuItem}
+            canGoToAlbum={Boolean(albumPagePath)}
+            canGoToArtist={Boolean(artistPagePath)}
+            onGoToAlbum={handleContextMenuGoToAlbum}
+            onGoToArtist={handleContextMenuGoToArtist}
+            onAddToCollection={handleContextMenuAddToCollection}
+            onHideMiniPlayer={handleHideMiniPlayer}
+          />
+          <CollectionFullModal
+            isOpen={archiveFullOpen}
+            onClose={() => setArchiveFullOpen(false)}
+            onUpgradePlan={() => {
+              setArchiveFullOpen(false);
+              openArchiveAccessModal({
+                artistUserId: artistUserIdForArchive ?? undefined,
+                artistSlug: artistSlugForProfileLink ?? undefined,
+              });
+            }}
+            onManageCollection={() => {
+              setArchiveFullOpen(false);
+              openDashboard('collection');
+            }}
+          />
+        </>
       )}
 
       {isFullScreen && canRenderPopup && albumMeta && (
