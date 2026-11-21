@@ -38,6 +38,8 @@ import { usePlayerControls } from './hooks/usePlayerControls';
 import { useTimeDisplay } from './hooks/useTimeDisplay';
 import { useTrackNavigation } from './hooks/useTrackNavigation';
 import { usePlayerToggles } from './hooks/usePlayerToggles';
+import { usePlayerHeaderReady } from './hooks/usePlayerHeaderReady';
+import { PlayerHeaderSkeleton } from './PlayerHeaderSkeleton';
 import { UNIVERSE_FOCUS_ARTIST_STORAGE_KEY } from '@/components/view/universe3dConstants';
 import { siteArtistUiLabel } from '@shared/lib/profileDisplayName';
 import { buildArtistPagePath, buildPublicAlbumPagePath } from '@shared/lib/seo/publicPagePaths';
@@ -617,6 +619,9 @@ export default function AudioPlayer({
     [handleVolumeChange]
   );
 
+  const albumCoverLoading = isFullScreenPlayer && !showLyrics ? 'eager' : 'lazy';
+  const albumCoverFetchPriority = isFullScreenPlayer && !showLyrics ? ('high' as const) : undefined;
+
   const memoizedAlbumCover = useMemo(
     () => (
       <AlbumCover
@@ -625,10 +630,20 @@ export default function AudioPlayer({
         userId={albumMeta.userId ?? undefined}
         fullName={coverFullName}
         imageSource="cdn"
+        loading={albumCoverLoading}
+        fetchPriority={albumCoverFetchPriority}
         {...(showLyrics ? { size: 150, densities: [1, 2] as const, sizes: '150px' } : undefined)}
       />
     ),
-    [albumId, coverKey, albumMeta.userId, coverFullName, showLyrics]
+    [
+      albumId,
+      coverKey,
+      albumMeta.userId,
+      coverFullName,
+      showLyrics,
+      albumCoverLoading,
+      albumCoverFetchPriority,
+    ]
   );
 
   // Canonical TrackLyricsBundle from trackLyricsSlice only (playlist no longer carries lyrics)
@@ -925,28 +940,6 @@ export default function AudioPlayer({
 
   const shouldShowVolumeControl = !isCoarsePointerDevice;
 
-  const playerClassName = [
-    'player',
-    showLyrics ? 'player--lyrics-visible' : '',
-    !controlsVisible ? 'player--controls-hidden' : '',
-    !shouldShowVolumeControl ? 'player--no-volume' : '',
-  ]
-    .filter(Boolean)
-    .join(' ');
-
-  const shouldRenderSyncedLyrics = showLyrics && !!(syncedLyrics && syncedLyrics.length > 0);
-
-  // Если есть шанс, что у трека есть синхра — предпочитаем skeleton, а не plain
-  // ✅ ВАЖНО: не используем hasSyncedLyricsHint, если загрузка завершена и синхры нет
-  // (иначе на проде будет показываться скелетон вместо plain текста)
-  const shouldPreferSynced =
-    hasSyncedLyricsAvailable || (isLoadingSyncedLyrics && hasSyncedLyricsHint);
-
-  const shouldRenderSkeleton = showLyrics && !shouldRenderSyncedLyrics && shouldPreferSynced;
-
-  const shouldRenderPlainLyrics =
-    showLyrics && !shouldRenderSyncedLyrics && !shouldPreferSynced && !!plainLyricsContent;
-
   /** Slug for public profile link: album meta (e.g. Home/Universe3D) or `?artist=` on current URL (album pages). */
   const artistSlugForProfileLink = useMemo(() => {
     const fromMeta = albumMeta.publicSlug?.trim();
@@ -975,6 +968,39 @@ export default function AudioPlayer({
   }, [artistSlugForProfileLink, lang]);
 
   const artistDisplayLabel = siteArtistUiLabel(albumMeta.artist ?? '', 'Unknown Artist');
+
+  const { isHeaderReady, setCoverContainer } = usePlayerHeaderReady({
+    enabled: isFullScreenPlayer,
+    coverKey,
+    trackTitle: currentTrack?.title,
+    albumTitle,
+    artistLabel: artistDisplayLabel,
+  });
+
+  const showHeaderSkeleton = isFullScreenPlayer && !isHeaderReady;
+
+  const playerClassName = [
+    'player',
+    showLyrics ? 'player--lyrics-visible' : '',
+    !controlsVisible ? 'player--controls-hidden' : '',
+    !shouldShowVolumeControl ? 'player--no-volume' : '',
+    showHeaderSkeleton ? 'player--header-loading' : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
+
+  const shouldRenderSyncedLyrics = showLyrics && !!(syncedLyrics && syncedLyrics.length > 0);
+
+  // Если есть шанс, что у трека есть синхра — предпочитаем skeleton, а не plain
+  // ✅ ВАЖНО: не используем hasSyncedLyricsHint, если загрузка завершена и синхры нет
+  // (иначе на проде будет показываться скелетон вместо plain текста)
+  const shouldPreferSynced =
+    hasSyncedLyricsAvailable || (isLoadingSyncedLyrics && hasSyncedLyricsHint);
+
+  const shouldRenderSkeleton = showLyrics && !shouldRenderSyncedLyrics && shouldPreferSynced;
+
+  const shouldRenderPlainLyrics =
+    showLyrics && !shouldRenderSyncedLyrics && !shouldPreferSynced && !!plainLyricsContent;
 
   const handleAlbumLinkClick = useCallback(
     (event: React.MouseEvent<HTMLAnchorElement>) => {
@@ -1026,33 +1052,51 @@ export default function AudioPlayer({
   return (
     <div ref={playerContainerRef} className={playerClassName}>
       {/* Обложка альбома и информация о треке */}
-      <div className={coverWrapperClassName}>
-        <div className={coverClassName.trim()} {...coverInteractiveProps}>
-          {memoizedAlbumCover}
+      {showHeaderSkeleton ? (
+        <PlayerHeaderSkeleton idPrefix="player-active" />
+      ) : (
+        <div className={coverWrapperClassName}>
+          <div ref={setCoverContainer} className={coverClassName.trim()} {...coverInteractiveProps}>
+            {memoizedAlbumCover}
+          </div>
+          <div className="player__track-info">
+            <h2>{currentTrack?.title || 'Unknown Track'}</h2>
+            {albumPagePath ? (
+              <Link
+                to={albumPagePath}
+                className="player__album-link"
+                onClick={handleAlbumLinkClick}
+              >
+                {albumTitle || 'Unknown Album'}
+              </Link>
+            ) : (
+              <p className="player__album-name">{albumTitle || 'Unknown Album'}</p>
+            )}
+            {artistPagePath ? (
+              <Link
+                to={artistPagePath}
+                className="player__artist-link"
+                onClick={handleArtistLinkClick}
+                onAuxClick={handleArtistLinkAuxClick}
+              >
+                {artistDisplayLabel}
+              </Link>
+            ) : (
+              <p className="player__artist-name">{artistDisplayLabel}</p>
+            )}
+          </div>
         </div>
-        <div className="player__track-info">
-          <h2>{currentTrack?.title || 'Unknown Track'}</h2>
-          {albumPagePath ? (
-            <Link to={albumPagePath} className="player__album-link" onClick={handleAlbumLinkClick}>
-              {albumTitle || 'Unknown Album'}
-            </Link>
-          ) : (
-            <p className="player__album-name">{albumTitle || 'Unknown Album'}</p>
-          )}
-          {artistPagePath ? (
-            <Link
-              to={artistPagePath}
-              className="player__artist-link"
-              onClick={handleArtistLinkClick}
-              onAuxClick={handleArtistLinkAuxClick}
-            >
-              {artistDisplayLabel}
-            </Link>
-          ) : (
-            <p className="player__artist-name">{artistDisplayLabel}</p>
-          )}
+      )}
+      {showHeaderSkeleton ? (
+        <div
+          className={`${coverWrapperClassName} player__cover-wrapper--preload`}
+          aria-hidden="true"
+        >
+          <div ref={setCoverContainer} className={coverClassName.trim()}>
+            {memoizedAlbumCover}
+          </div>
         </div>
-      </div>
+      ) : null}
 
       {/* Текст песни */}
       {showLyrics &&

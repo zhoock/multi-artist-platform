@@ -27,6 +27,7 @@ import './style.scss';
 import { playerActions } from '@features/player/model/slice/playerSlice';
 import * as playerSelectors from '@features/player/model/selectors/playerSelectors';
 import { audioController } from '@features/player/model/lib/audioController';
+import { FullScreenPlayerSkeleton } from '@features/player/ui/AudioPlayer/FullScreenPlayerSkeleton';
 import { MiniPlayer } from './MiniPlayer';
 import { MiniPlayerContextMenu } from './MiniPlayerContextMenu';
 import type { MiniPlayerContextMenuAnchor } from '@features/player/lib/miniPlayerContextMenuPosition';
@@ -76,7 +77,7 @@ const LazyAudioPlayer = lazy(() =>
 
 function FullScreenAudioPlayer({ albumMeta }: { albumMeta: PlayerAlbumMeta }) {
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<FullScreenPlayerSkeleton />}>
       <LazyAudioPlayer albumMeta={albumMeta} />
     </Suspense>
   );

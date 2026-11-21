@@ -598,6 +598,64 @@
       background: none;
     }
   }
+
+  &__cover-wrapper--preload {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+    pointer-events: none;
+  }
+
+  &__cover-skeleton {
+    display: block;
+    inline-size: min(100vi, 425px);
+    max-inline-size: 100%;
+    aspect-ratio: 1 / 1;
+    margin-inline: auto;
+    border-radius: var(--ms-01);
+    box-shadow:
+      rgb(0 0 0 / 25%) 0 30px 60px -12px,
+      rgb(0 0 0 / 30%) 0 18px 36px -18px;
+  }
+
+  &__track-info--skeleton {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.4em;
+    inline-size: 100%;
+    max-inline-size: min(90vi, 425px);
+  }
+
+  &__track-info-skeleton-line {
+    block-size: 1.2em;
+    border-radius: var(--ms-01);
+
+    &--title {
+      inline-size: min(78%, 320px);
+      block-size: clamp(1rem, 0.6859rem + 1.5866vw, 1.618rem);
+      max-block-size: 1.25em;
+      margin-block-end: 0.1em;
+    }
+
+    &--album {
+      inline-size: min(62%, 240px);
+      block-size: 1.15em;
+      opacity: 0.9;
+    }
+
+    &--artist {
+      inline-size: min(48%, 180px);
+      block-size: 1em;
+      opacity: 0.75;
+    }
+  }
 }
 
 /* Быстрый оверсут + мягкое оседание */
@@ -1177,5 +1235,114 @@
 
   50% {
     transform: scale(1.15);
+  }
+}
+
+.player--skeleton-shell {
+  .player__skeleton-surface {
+    opacity: 0.42;
+  }
+
+  .player__skeleton-time {
+    block-size: 0.85em;
+    inline-size: 2.75em;
+    border-radius: var(--ms-01);
+
+    &--current {
+      inset-inline-start: 0;
+    }
+
+    &--remaining {
+      inset-inline-end: 0;
+    }
+  }
+
+  .player__skeleton-progress-range {
+    display: block;
+    inline-size: 100%;
+    block-size: 8px;
+    border-radius: var(--ms-02);
+  }
+
+  .player__transport-button--skeleton {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    inline-size: var(--ms-3);
+    block-size: var(--ms-3);
+    pointer-events: none;
+    background: transparent;
+    border-radius: 50%;
+  }
+
+  .player__skeleton-transport-glyph {
+    display: block;
+    border-radius: var(--ms-01);
+
+    &--skip {
+      inline-size: 36px;
+      block-size: 36px;
+    }
+
+    &--play {
+      inline-size: 48px;
+      block-size: 48px;
+      border-radius: 50%;
+    }
+  }
+
+  .player__volume-control--skeleton {
+    pointer-events: none;
+  }
+
+  .player__skeleton-volume-glyph {
+    display: block;
+    inline-size: 22px;
+    block-size: 22px;
+    border-radius: 50%;
+  }
+
+  .player__skeleton-volume-range {
+    flex: 1;
+    min-inline-size: 0;
+    block-size: 8px;
+    border-radius: var(--ms-02);
+  }
+
+  .player__control-button--skeleton,
+  .player__lyrics-toggle--skeleton {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0;
+    padding: 0;
+    pointer-events: none;
+    background: none;
+    border: none;
+  }
+
+  .player__skeleton-secondary-glyph {
+    display: block;
+    inline-size: 28px;
+    block-size: 28px;
+    border-radius: var(--ms-01);
+  }
+}
+
+.player--header-loading {
+  .player__cover--paused {
+    scale: 0.8;
+    animation: none;
+  }
+}
+
+.player:not(.player--lyrics-visible) {
+  @include player-compact-horizontal-viewport {
+    .player__cover-skeleton {
+      inline-size: 100%;
+      max-inline-size: 100%;
+      max-block-size: min(52%, 100%);
+      aspect-ratio: 1 / 1;
+    }
   }
 }
