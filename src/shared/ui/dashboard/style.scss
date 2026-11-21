@@ -194,12 +194,13 @@
 
     &.dashboard-button--destructive {
       color: var(--dashboard-btn-destructive-text);
+      border-color: transparent;
 
       @media (hover: hover) and (pointer: fine) {
         &:hover:not(:disabled) {
           color: var(--dashboard-btn-destructive-text);
           background: var(--dashboard-btn-destructive-hover-bg);
-          border-color: var(--dashboard-btn-destructive-border);
+          border-color: transparent;
         }
       }
     }

@@ -507,12 +507,8 @@ export function SortableTrackItem({
               <span className="user-dashboard__track-access-menu-item-desc">{opt.description}</span>
             </span>
             {opt.value === trackVisibility ? (
-              <span className="user-dashboard__track-access-menu-check" aria-hidden>
-                ✓
-              </span>
-            ) : (
-              <span className="user-dashboard__track-access-menu-check-spacer" aria-hidden />
-            )}
+              <span className="user-dashboard__track-access-menu-state-dot" aria-hidden />
+            ) : null}
           </button>
         ))}
       </DashboardAccessMenuPortal>

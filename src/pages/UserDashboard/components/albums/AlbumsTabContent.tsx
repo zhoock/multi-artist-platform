@@ -480,7 +480,7 @@ export function AlbumsTabContent({
                     </DashboardButton>
                     <DashboardButton
                       variant="icon"
-                      destructive
+                      className="user-dashboard__expanded-track-action-delete"
                       onClick={(e) => {
                         e.stopPropagation();
                         onDeleteAlbum(album.id);

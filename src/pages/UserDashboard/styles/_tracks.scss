@@ -361,6 +361,16 @@ dialog {
       line-height: 1.2;
     }
 
+    &__track-access-menu-state-dot {
+      flex-shrink: 0;
+      align-self: center;
+      margin-inline: var(--ms-01) var(--ms-02);
+      inline-size: 7px;
+      block-size: 7px;
+      border-radius: 50%;
+      background: var(--dark-greenish-yellow, #c9a227);
+    }
+
     &__track-access-menu-check-spacer {
       flex-shrink: 0;
       inline-size: 1rem;
