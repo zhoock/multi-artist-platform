@@ -71,6 +71,7 @@ import {
   EmailVerificationRefreshController,
 } from '@shared/lib/emailVerification';
 import { ArtistPageAccessProvider } from '@shared/lib/hooks/ArtistPageAccessProvider';
+import { useArtistPageAccess } from '@shared/lib/hooks/useArtistPageAccess';
 import { LangLayout } from '@app/layouts/LangLayout';
 import { MinimalLayout } from '@app/layouts/MinimalLayout';
 import { isMinimalLayoutPathname } from '@app/layouts/minimalLayoutRoutes';
@@ -138,13 +139,21 @@ function NotFoundRoute() {
   );
 }
 
-/** Suspense для lazy Home: на artist hub — нейтральный public-скелетон. */
+/** Suspense для lazy Home: на artist hub — скелетон, пока thin catalog не готов в access. */
 function HomeRouteSuspenseFallback() {
   const [searchParams] = useEffectiveSearchParams();
-  if (searchParams.get('artist')?.trim()) {
-    return <ArtistPageSkeleton part="main" />;
+  const artist = searchParams.get('artist')?.trim() ?? '';
+  const access = useArtistPageAccess(artist);
+
+  if (!artist) {
+    return <InitialAppLoader />;
   }
-  return <InitialAppLoader />;
+
+  if (access.albumsSurfaceReady) {
+    return null;
+  }
+
+  return <ArtistPageSkeleton part="main" />;
 }
 
 const homePageElement = (

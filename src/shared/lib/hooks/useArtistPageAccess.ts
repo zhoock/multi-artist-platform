@@ -729,7 +729,6 @@ export function useArtistPageAccessState(
    */
   const albumsSurfaceReady =
     isArtistPublishedSurface &&
-    ownerResolved &&
     (!isOwner || ownerContentLoaded) &&
     !albumsBlockPageReady &&
     thinCatalogHasPublicReleases;
