@@ -15,7 +15,17 @@ jest.mock('@shared/lib/hooks/useAppSelector', () => ({
   useAppSelector: (selector: (state: unknown) => unknown) =>
     selector({
       uiDictionary: {
-        entries: [{ dashboard: { cancel: 'Cancel', save: 'Save', editLyrics: 'Edit Lyrics' } }],
+        entries: [
+          {
+            dashboard: {
+              cancel: 'Cancel',
+              save: 'Save',
+              editLyrics: 'Edit Lyrics',
+              addLyrics: 'Add Lyrics',
+              insertLyricsHere: 'Insert lyrics here…',
+            },
+          },
+        ],
       },
     }),
 }));
@@ -89,5 +99,36 @@ describe('EditLyricsModal cancel semantics', () => {
 
     expect(onSave).toHaveBeenCalledWith('Draft lyrics', undefined);
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  test('create mode uses add title, track subtitle, placeholder, and requires lyrics body', async () => {
+    const onSave = jest.fn(async () => undefined);
+    const onClose = jest.fn();
+
+    render(
+      <EditLyricsModal
+        isOpen
+        mode="create"
+        trackTitle="My Track"
+        initialLyrics=""
+        onSave={onSave}
+        onClose={onClose}
+      />
+    );
+
+    expect(screen.getByRole('heading', { name: 'Add Lyrics' })).toBeTruthy();
+    expect(screen.getByText('My Track')).toBeTruthy();
+    expect(screen.getByPlaceholderText('Insert lyrics here…')).toBeTruthy();
+
+    expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
+
+    const [textarea] = screen.getAllByRole('textbox');
+    await userEvent.type(textarea, 'New lyrics');
+
+    await act(async () => {
+      await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+    });
+
+    expect(onSave).toHaveBeenCalledWith('New lyrics', undefined);
   });
 });

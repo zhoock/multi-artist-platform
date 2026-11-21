@@ -27,8 +27,13 @@ function areEditLyricsDraftsEqual(left: EditLyricsDraft, right: EditLyricsDraft)
   );
 }
 
+export type EditLyricsModalMode = 'create' | 'edit';
+
 interface EditLyricsModalProps {
   isOpen: boolean;
+  mode?: EditLyricsModalMode;
+  /** Shown under the title in create mode */
+  trackTitle?: string;
   initialLyrics: string;
   initialAuthorship?: string;
   onClose: () => void;
@@ -37,11 +42,14 @@ interface EditLyricsModalProps {
 
 export function EditLyricsModal({
   isOpen,
+  mode = 'edit',
+  trackTitle,
   initialLyrics,
   initialAuthorship,
   onClose,
   onSave,
 }: EditLyricsModalProps) {
+  const isCreate = mode === 'create';
   const { lang } = useLang();
   const ui = useAppSelector((state) => selectUiDictionaryFirst(state, lang));
   const { isSaving, withSaving } = useDashboardSaveLock();
@@ -83,7 +91,10 @@ export function EditLyricsModal({
     closeDialog();
   }, [closeDialog, discardDraft, isSaving]);
 
+  const canSave = isCreate ? draft.lyrics.trim().length > 0 : hasChanges;
+
   const handleSave = () => {
+    if (isCreate && !draft.lyrics.trim()) return;
     void withSaving(async () => {
       try {
         const authorship = draft.authorship.trim();
@@ -113,9 +124,16 @@ export function EditLyricsModal({
           aria-busy={isSaving}
         >
           <div className="edit-lyrics-modal__header">
-            <h2 className="edit-lyrics-modal__title">
-              {ui?.dashboard?.editLyrics ?? 'Edit Lyrics'}
-            </h2>
+            <div className="edit-lyrics-modal__header-main">
+              <h2 className="edit-lyrics-modal__title">
+                {isCreate
+                  ? (ui?.dashboard?.addLyrics ?? 'Add Lyrics')
+                  : (ui?.dashboard?.editLyrics ?? 'Edit Lyrics')}
+              </h2>
+              {isCreate && trackTitle ? (
+                <p className="edit-lyrics-modal__subtitle">{trackTitle}</p>
+              ) : null}
+            </div>
             <button
               type="button"
               className="edit-lyrics-modal__close"
@@ -133,6 +151,9 @@ export function EditLyricsModal({
             <div className="edit-lyrics-modal__content-column">
               <textarea
                 className="edit-lyrics-modal__textarea"
+                placeholder={
+                  isCreate ? (ui?.dashboard?.insertLyricsHere ?? 'Insert lyrics here…') : undefined
+                }
                 value={draft.lyrics}
                 onChange={(e) => setDraft({ ...draft, lyrics: e.target.value })}
               />
@@ -205,7 +226,7 @@ export function EditLyricsModal({
                   isSaving ? ' edit-lyrics-modal__button--primary-loading' : ''
                 }`}
                 onClick={handleSave}
-                disabled={isSaving || !hasChanges}
+                disabled={isSaving || !canSave}
               >
                 {isSaving ? (
                   <>

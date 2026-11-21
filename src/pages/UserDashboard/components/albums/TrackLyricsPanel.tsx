@@ -16,6 +16,7 @@ import {
   renderLyricsActionIcon,
   type LyricsAction,
 } from './trackLyricsHelpers';
+import { useLyricsSyncIconAttentionPulse } from '../../lib/lyricsSyncIconAttention';
 
 type TrackLyricsPanelProps = {
   track: TrackData;
@@ -44,6 +45,7 @@ export function TrackLyricsPanel({
   const lyrics = useAppSelector((state) =>
     resolveTrackLyricsBundle(state, albumId, track.id, track.lyrics)
   );
+  const syncIconAttentionPulse = useLyricsSyncIconAttentionPulse(albumId, track.id, lyrics.state);
   const isEmpty = lyrics.state === 'empty';
 
   const emptyTitle = lang !== 'ru' ? 'No lyrics yet' : 'Текста пока нет';
@@ -114,7 +116,13 @@ export function TrackLyricsPanel({
                   aria-label={actionLabel}
                   title={actionLabel}
                 >
-                  {renderLyricsActionIcon(action)}
+                  {action === 'sync' && syncIconAttentionPulse ? (
+                    <span className="albums-tab__track-lyrics-sync-icon-attention" aria-hidden>
+                      {renderLyricsActionIcon(action)}
+                    </span>
+                  ) : (
+                    renderLyricsActionIcon(action)
+                  )}
                 </DashboardButton>
               );
             })}

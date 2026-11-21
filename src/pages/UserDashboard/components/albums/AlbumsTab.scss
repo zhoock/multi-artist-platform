@@ -106,4 +106,44 @@
     gap: var(--ms-02);
     flex-shrink: 0;
   }
+
+  &__track-lyrics-sync-icon-attention {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--dark-greenish-yellow);
+    animation: albums-tab-track-lyrics-sync-icon-attention 1.1s linear infinite;
+  }
+}
+
+// Turn-signal: hold ON ~550ms, instant OFF, hold OFF ~550ms, instant ON (no fade between).
+@keyframes albums-tab-track-lyrics-sync-icon-attention {
+  0%,
+  49.99% {
+    opacity: 1;
+    filter: brightness(1) drop-shadow(0 0 3px rgb(var(--dark-greenish-yellow-rgb) / 90%))
+      drop-shadow(0 0 7px rgb(var(--dark-greenish-yellow-rgb) / 58%))
+      drop-shadow(0 0 12px rgb(var(--dark-greenish-yellow-rgb) / 35%));
+  }
+
+  50%,
+  99.99% {
+    opacity: 0.34;
+    filter: brightness(0.72);
+  }
+
+  100% {
+    opacity: 1;
+    filter: brightness(1) drop-shadow(0 0 3px rgb(var(--dark-greenish-yellow-rgb) / 90%))
+      drop-shadow(0 0 7px rgb(var(--dark-greenish-yellow-rgb) / 58%))
+      drop-shadow(0 0 12px rgb(var(--dark-greenish-yellow-rgb) / 35%));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .albums-tab__track-lyrics-sync-icon-attention {
+    animation: none;
+    opacity: 1;
+    filter: none;
+  }
 }
