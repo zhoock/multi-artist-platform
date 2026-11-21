@@ -43,7 +43,7 @@ jest.mock('@shared/lib/authFetch', () => ({
               blockKind: 'image',
               blockId: IMAGE_BLOCK_ID,
               img: 'photo.jpg',
-              caption: '',
+              caption: 'ab',
             },
           ],
         },
@@ -102,7 +102,7 @@ function renderEditor() {
   );
 }
 
-describe('EditArticleModalV2 — delete selected image block while caption focused', () => {
+describe('EditArticleModalV2 — image block Delete/Backspace vs caption', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
@@ -130,15 +130,60 @@ describe('EditArticleModalV2 — delete selected image block while caption focus
       return input as HTMLInputElement;
     });
 
-    expect(document.activeElement).toBe(caption);
-    return caption;
+    return { caption, imageContainer };
   }
 
+  it('Backspace in caption removes text without deleting the image block', async () => {
+    const { caption } = await selectImageAndFocusCaption();
+    expect(caption.value).toBe('ab');
+
+    fireEvent.keyDown(caption, { key: 'Backspace', code: 'Backspace' });
+    fireEvent.change(caption, { target: { value: 'a' } });
+
+    expect(document.querySelector(`[data-block-id="${IMAGE_BLOCK_ID}"]`)).toBeTruthy();
+    expect(caption.value).toBe('a');
+  });
+
+  it('deleting last caption character does not remove image block on that keypress', async () => {
+    const { caption } = await selectImageAndFocusCaption();
+    fireEvent.change(caption, { target: { value: 'a' } });
+
+    fireEvent.keyDown(caption, { key: 'Backspace', code: 'Backspace' });
+    fireEvent.change(caption, { target: { value: '' } });
+
+    expect(caption.value).toBe('');
+    expect(document.querySelector(`[data-block-id="${IMAGE_BLOCK_ID}"]`)).toBeTruthy();
+  });
+
   it.each(['Delete', 'Backspace'] as const)(
-    'select image → caption focused → %s removes image block',
+    'empty caption focused → %s removes image block',
     async (key) => {
-      const caption = await selectImageAndFocusCaption();
+      const { caption } = await selectImageAndFocusCaption();
+      fireEvent.change(caption, { target: { value: '' } });
+      expect(caption.value).toBe('');
+
       fireEvent.keyDown(caption, { key, code: key });
+
+      await waitFor(() => {
+        expect(document.querySelector(`[data-block-id="${IMAGE_BLOCK_ID}"]`)).toBeNull();
+      });
+    }
+  );
+
+  it.each(['Delete', 'Backspace'] as const)(
+    'image block shell focused (not caption) → %s removes image block',
+    async (key) => {
+      const { imageContainer } = await selectImageAndFocusCaption();
+
+      const blockShell = document.querySelector(
+        `[data-block-id="${IMAGE_BLOCK_ID}"] .edit-article-v2__block--image`
+      ) as HTMLDivElement | null;
+      if (!blockShell) throw new Error('Expected image block shell');
+
+      imageContainer.focus();
+      blockShell.focus();
+
+      fireEvent.keyDown(blockShell, { key, code: key });
 
       await waitFor(() => {
         expect(document.querySelector(`[data-block-id="${IMAGE_BLOCK_ID}"]`)).toBeNull();

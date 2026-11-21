@@ -222,6 +222,25 @@ function isArticleContentTarget(element: Element | null): boolean {
   return element.closest('.edit-article-v2__content-column') !== null;
 }
 
+function isMediaCaptionInput(element: Element | null): element is HTMLInputElement {
+  return (
+    element instanceof HTMLInputElement &&
+    element.classList.contains('edit-article-v2__image-caption')
+  );
+}
+
+/** Пустая подпись image/carousel + Delete/Backspace → удаление всего медиа-блока. */
+function shouldDeleteMediaBlockFromEmptyCaption(
+  event: KeyboardEvent,
+  activeElement: Element | null,
+  selectedBlockId: string | null
+): activeElement is HTMLInputElement {
+  if (event.key !== 'Delete' && event.key !== 'Backspace') return false;
+  if (!selectedBlockId || !isMediaCaptionInput(activeElement)) return false;
+  if (activeElement.value.length > 0) return false;
+  return activeElement.closest(`[data-block-id="${selectedBlockId}"]`) !== null;
+}
+
 /** Cmd+A: select article body from anywhere in the editor (header/footer included). */
 function shouldHandleArticleSelectAll(activeElement: Element | null): boolean {
   if (activeElement?.closest('.carousel-edit-modal, [role="alertdialog"]')) {
@@ -1338,16 +1357,19 @@ export function EditArticleModalV2({
           (activeElement as HTMLElement).isContentEditable);
 
       if (isTextField && inContent) {
-        const isImageCaption =
-          activeElement instanceof HTMLInputElement &&
-          activeElement.classList.contains('edit-article-v2__image-caption');
-        const allowImageBlockDeleteKeys =
-          isImageCaption &&
-          selectedBlockId &&
-          (event.key === 'Delete' || event.key === 'Backspace');
-        if (!allowImageBlockDeleteKeys) {
-          return;
+        if (shouldDeleteMediaBlockFromEmptyCaption(event, activeElement, selectedBlockId)) {
+          const selectedBlock = blocks.find((b) => b.id === selectedBlockId);
+          if (
+            selectedBlock &&
+            (selectedBlock.type === 'image' || selectedBlock.type === 'carousel')
+          ) {
+            event.preventDefault();
+            event.stopPropagation();
+            deleteBlock(selectedBlock.id);
+            setSelectedBlockId(null);
+          }
         }
+        return;
       }
 
       if (selectedBlockId && (event.key === 'Delete' || event.key === 'Backspace')) {

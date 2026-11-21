@@ -772,8 +772,9 @@ dialog {
         outline-offset: 2px;
         border-radius: var(--ms-01);
 
-        // Image: selection ring только на фото; caption — отдельное поле вне рамки.
-        &.edit-article-v2__block-wrapper--image {
+        // Image / carousel: selection ring только на фото; caption — отдельное поле вне рамки.
+        &.edit-article-v2__block-wrapper--image,
+        &.edit-article-v2__block-wrapper--carousel {
           outline: none;
         }
       }
@@ -918,6 +919,9 @@ dialog {
 
       &--carousel {
         padding-block: 0;
+
+        // outline/offset рамки выделения на .edit-article-v2__carousel-image-wrapper не должны обрезаться.
+        overflow: visible;
       }
     }
 
@@ -1047,7 +1051,8 @@ dialog {
       }
     }
 
-    &__block--image .edit-article-v2__image-caption {
+    &__block--image .edit-article-v2__image-caption,
+    &__block--carousel .edit-article-v2__image-caption {
       background: transparent;
       border: none;
       border-radius: 0;
@@ -1093,6 +1098,11 @@ dialog {
       &:hover > .edit-article-v2__carousel-overlay {
         opacity: 1;
         pointer-events: auto;
+      }
+
+      &--selected {
+        outline: 2px solid var(--dark-greenish-yellow);
+        outline-offset: 2px;
       }
     }
 
