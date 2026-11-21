@@ -1,0 +1,35 @@
+@use '../../../../../scss/abstracts/mixins' as *;
+@use '../../../../../features/player/ui/AudioPlayer/player-transport-control' as player-transport;
+
+/// Compact play/pause control in lyrics fullscreen modals — same visual language as `.player__controls`.
+@mixin lyrics-modal-player-transport-button {
+  &__play-button {
+    @include player-transport.player-transport-control-button(
+      $size: calc(var(--ms-1) * 2),
+      $color: var(--dashboard-text-primary)
+    );
+
+    &:focus {
+      outline: none;
+    }
+
+    &:focus-visible {
+      @include dashboard-focus-ring;
+    }
+  }
+
+  &__player {
+    .player__transport-icon {
+      @include player-transport.player-transport-control-icon;
+    }
+
+    // Compact control (~2×ms-1): fullscreen's 3px nudge reads as off-center; match mini-player (2px + filled play).
+    .player__transport-icon--play {
+      transform: translateX(2px);
+
+      @media (prefers-reduced-motion: reduce) {
+        transform: none !important;
+      }
+    }
+  }
+}

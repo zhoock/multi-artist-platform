@@ -2,6 +2,7 @@
 // Импортируем общий файл с зависимостями
 @use '../../../../scss/abstracts/mixins' as *;
 @use 'player-responsive-layout' as *;
+@use 'player-transport-control' as player-transport;
 
 .player {
   --player-progress-row-size: auto;
@@ -183,69 +184,11 @@
 
     button,
     .player__transport-button {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: var(--ms-3);
-      height: var(--ms-3);
-
-      @include button-variant(
-        $color: var(--white, #ffffff),
-        $hover-color: var(--white, #ffffff),
-        $background: transparent,
-        $hover-background: rgb(255 255 255 / 8%),
-        $margin: 0,
-        $padding: 0,
-        $border-radius: 50%,
-        $font-size: var(--ms-2)
-      );
-
-      &:active {
-        background-color: rgb(255 255 255 / 10%);
-        scale: 0.85;
-      }
-
-      @media (hover: hover) and (pointer: fine) {
-        &:hover {
-          scale: 1.05;
-        }
-
-        &:active {
-          scale: 0.9;
-        }
-      }
-
-      @media (prefers-reduced-motion: reduce) {
-        transition: none;
-        scale: unset;
-
-        &:hover,
-        &:active {
-          scale: unset;
-        }
-      }
+      @include player-transport.player-transport-control-button;
     }
 
     .player__transport-icon {
-      display: block;
-      flex-shrink: 0;
-      color: currentcolor;
-
-      &--play {
-        transform: translateX(3px);
-      }
-
-      &--back {
-        transform: translateX(-3px);
-      }
-
-      &--forward {
-        transform: translateX(3px);
-      }
-
-      @media (prefers-reduced-motion: reduce) {
-        transform: none !important;
-      }
+      @include player-transport.player-transport-control-icon;
     }
   }
 

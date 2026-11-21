@@ -20,6 +20,7 @@ import { Pause, Play } from 'lucide-react';
 import { ModalCloseIcon } from '@shared/ui/icons/ModalCloseIcon';
 import {
   LYRICS_MODAL_TRANSPORT_ICON_SIZE,
+  playerFilledPlayIconProps,
   playerTransportIconProps,
 } from '@shared/ui/icons/playerActionIcon';
 import './PreviewLyricsModal.style.scss';
@@ -253,17 +254,21 @@ export function PreviewLyricsModal({
               <div className="preview-lyrics-modal__player">
                 <button
                   type="button"
-                  className="preview-lyrics-modal__play-button"
+                  className="player__transport-button player__transport-button--play preview-lyrics-modal__play-button"
                   onClick={togglePlay}
                   aria-label={isPlaying ? 'Pause' : 'Play'}
                   disabled={!audioPlaybackUrl}
                 >
                   {isPlaying ? (
-                    <Pause {...playerTransportIconProps(LYRICS_MODAL_TRANSPORT_ICON_SIZE)} />
+                    <Pause
+                      {...playerTransportIconProps(LYRICS_MODAL_TRANSPORT_ICON_SIZE, {
+                        className: 'player__transport-icon',
+                      })}
+                    />
                   ) : (
                     <Play
-                      {...playerTransportIconProps(LYRICS_MODAL_TRANSPORT_ICON_SIZE, {
-                        className: 'preview-lyrics-modal__play-icon',
+                      {...playerFilledPlayIconProps(LYRICS_MODAL_TRANSPORT_ICON_SIZE, {
+                        className: 'player__transport-icon player__transport-icon--play',
                       })}
                     />
                   )}

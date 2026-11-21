@@ -1,6 +1,7 @@
 @use '../../../../../scss/abstracts/mixins' as *;
 @use '../../../../../scss/components/modal' as *;
 @use 'lyrics-fullscreen-surface' as lyrics-fs;
+@use 'lyrics-modal-player-transport' as lyrics-modal-transport;
 @include lyrics-fs.lyrics-fullscreen-dialog('preview-lyrics-modal');
 
 dialog {
@@ -8,39 +9,7 @@ dialog {
   @include lyrics-fs.lyrics-fullscreen-shell('preview-lyrics-modal');
 
   .preview-lyrics-modal {
-    &__play-button {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: calc(var(--ms-1) * 2);
-      height: calc(var(--ms-1) * 2);
-      padding: 0;
-      color: var(--dashboard-text-primary);
-      line-height: 0;
-      background: transparent;
-      border: 1px solid var(--dashboard-card-border);
-      border-radius: 50%;
-      cursor: pointer;
-      transition: all 0.2s;
-      flex-shrink: 0;
-
-      &:focus {
-        outline: none;
-      }
-
-      &:focus-visible {
-        @include dashboard-focus-ring;
-      }
-
-      &:hover {
-        background: var(--dashboard-hover-bg);
-        border-color: var(--dark-greenish-yellow);
-      }
-    }
-
-    &__play-icon {
-      transform: translateX(2px);
-    }
+    @include lyrics-modal-transport.lyrics-modal-player-transport-button;
 
     &__time {
       color: var(--dashboard-text-primary);

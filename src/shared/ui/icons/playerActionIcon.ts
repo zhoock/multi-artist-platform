@@ -8,7 +8,10 @@ export const PLAYER_MINI_ICON_SIZE = 32;
 export const TRACK_LIST_PLAY_ICON_SIZE = 16;
 export const TRACK_LIST_PAUSE_ICON_SIZE = 17;
 export const ALBUM_PLAY_BUTTON_ICON_SIZE = 19;
-export const LYRICS_MODAL_TRANSPORT_ICON_SIZE = 24;
+/** Same play/pause fill ratio as fullscreen transport: `PLAYER_TRANSPORT_PLAY_ICON_SIZE` on `ms-3`, modal control on `2 * ms-1`. */
+export const LYRICS_MODAL_TRANSPORT_ICON_SIZE = Math.round(
+  (PLAYER_TRANSPORT_PLAY_ICON_SIZE * 2 * 29.124) / 76.244
+);
 export const MIXER_WAVE_PLAY_ICON_SIZE = 22;
 export const MIXER_TRANSPORT_PLAY_ICON_SIZE = 25;
 export const PLAYER_ICON_STROKE_WIDTH = 2;

@@ -51,6 +51,7 @@ import { Download, MoreHorizontal, Pause, Play, Trash2, Upload } from 'lucide-re
 import { ModalCloseIcon } from '@shared/ui/icons/ModalCloseIcon';
 import {
   LYRICS_MODAL_TRANSPORT_ICON_SIZE,
+  playerFilledPlayIconProps,
   playerTransportIconProps,
 } from '@shared/ui/icons/playerActionIcon';
 import { DashboardLoadingState } from '@shared/ui/dashboard';
@@ -870,16 +871,20 @@ export function SyncLyricsModal({
                   <button
                     type="button"
                     onClick={togglePlayPause}
-                    className="sync-lyrics-modal__play-button"
+                    className="player__transport-button player__transport-button--play sync-lyrics-modal__play-button"
                     aria-label={isPlaying ? 'Пауза' : 'Воспроизведение'}
                     disabled={!audioPlaybackUrl}
                   >
                     {isPlaying ? (
-                      <Pause {...playerTransportIconProps(LYRICS_MODAL_TRANSPORT_ICON_SIZE)} />
+                      <Pause
+                        {...playerTransportIconProps(LYRICS_MODAL_TRANSPORT_ICON_SIZE, {
+                          className: 'player__transport-icon',
+                        })}
+                      />
                     ) : (
                       <Play
-                        {...playerTransportIconProps(LYRICS_MODAL_TRANSPORT_ICON_SIZE, {
-                          className: 'sync-lyrics-modal__play-icon',
+                        {...playerFilledPlayIconProps(LYRICS_MODAL_TRANSPORT_ICON_SIZE, {
+                          className: 'player__transport-icon player__transport-icon--play',
                         })}
                       />
                     )}
