@@ -36,7 +36,6 @@ const PopupComponent = ({
 }: PopupProps) => {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const focusSentinelRef = useRef<HTMLDivElement>(null);
-  const previouslyFocusedRef = useRef<HTMLElement | null>(null);
   const initialFocusTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
@@ -45,16 +44,6 @@ const PopupComponent = ({
 
   // iOS Safari ignores overflow:hidden on body; fixed-body lock preserves scroll position.
   useBodyScrollLock(isActive);
-
-  const restoreFocus = useCallback(() => {
-    const target = previouslyFocusedRef.current;
-    if (!target?.isConnected) return;
-
-    queueMicrotask(() => {
-      if (!target.isConnected) return;
-      focusWithoutVisibleRing(target);
-    });
-  }, []);
 
   const clearInitialFocusTimeout = useCallback(() => {
     if (initialFocusTimeoutRef.current === null) return;
@@ -112,15 +101,6 @@ const PopupComponent = ({
     if (!dialog) return;
 
     if (isActive && !dialog.open) {
-      const activeElement = document.activeElement;
-      if (
-        activeElement instanceof HTMLElement &&
-        activeElement !== document.body &&
-        !dialog.contains(activeElement)
-      ) {
-        previouslyFocusedRef.current = activeElement;
-      }
-
       dialog.showModal();
       dialog.scrollTop = 0;
       dialog.scrollLeft = 0;
@@ -144,15 +124,8 @@ const PopupComponent = ({
       clearInitialFocusTimeout();
       closingProgrammaticallyRef.current = true;
       dialog.close();
-      restoreFocus();
     }
-  }, [
-    isActive,
-    autoFocusFirstElement,
-    initialFocusSelector,
-    clearInitialFocusTimeout,
-    restoreFocus,
-  ]);
+  }, [isActive, autoFocusFirstElement, initialFocusSelector, clearInitialFocusTimeout]);
 
   useEffect(() => () => clearInitialFocusTimeout(), [clearInitialFocusTimeout]);
 
@@ -169,7 +142,6 @@ const PopupComponent = ({
       if (!skipOnClose) {
         onCloseRef.current?.();
       }
-      restoreFocus();
     };
 
     dialog.addEventListener('close', handleClose);
@@ -177,7 +149,7 @@ const PopupComponent = ({
     return () => {
       dialog.removeEventListener('close', handleClose);
     };
-  }, [restoreFocus, clearInitialFocusTimeout]);
+  }, [clearInitialFocusTimeout]);
 
   // popup__gradient рендерится только для плеера (когда передан bgColor)
   const shouldRenderGradient = !!bgColor;
