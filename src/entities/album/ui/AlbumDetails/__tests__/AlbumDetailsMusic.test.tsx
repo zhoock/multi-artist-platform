@@ -55,6 +55,16 @@ describe('AlbumDetails optional metadata visibility', () => {
     expect(screen.queryByRole('heading', { level: 3, name: 'Мастеринг' })).toBeNull();
   });
 
+  test('renders band members and producing roles after em dash in lowercase on the public page', () => {
+    const { container } = renderAlbumDetails([
+      { id: 7, title: 'Исполнители', content: ['Макс Горелов — Вокал, ритм-гитара, фронтмен.'] },
+      { id: 2, title: 'Продюсирование', content: [{ text: ['Макс Горелов', 'Фронтмен'] }] },
+    ]);
+
+    expect(container).toHaveTextContent('Макс Горелов — вокал, ритм-гитара, фронтмен.');
+    expect(container).toHaveTextContent('Макс Горелов — фронтмен.');
+  });
+
   test('hides empty artwork designer header but keeps release block', () => {
     renderWithProviders(
       <AlbumDetails

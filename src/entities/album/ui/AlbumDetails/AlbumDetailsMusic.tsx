@@ -4,6 +4,10 @@ import { formatDateToDisplay } from '@pages/UserDashboard/components/modals/albu
 import type { detailsProps } from '@models';
 import { classifyAlbumDetailSemanticKind } from '../../lib/albumDetailSemanticKind';
 import { filterAlbumDetailContentForPublicDisplay } from '../../lib/albumDetailPublicVisibility';
+import {
+  formatPublicCreditLineAfterEmDash,
+  formatPublicCreditRoleFragment,
+} from '../../lib/formatPublicAlbumCreditRole';
 import type { AlbumDetails } from '../../model/albumDetails';
 import type { AlbumCopyrightReportLink } from './AlbumDetails';
 
@@ -21,6 +25,13 @@ export default function AlbumDetailsMusic({ album, copyrightReport }: AlbumDetai
   function Block({ title, content }: detailsProps) {
     const items = filterAlbumDetailContentForPublicDisplay(content);
     if (items.length === 0) return null;
+
+    const detailKind = classifyAlbumDetailSemanticKind(title);
+    const formatCreditRoleForPublic = detailKind === 'bandMembers' || detailKind === 'producing';
+    const formatCreditLine = (text: string) =>
+      formatCreditRoleForPublic ? formatPublicCreditLineAfterEmDash(text) : text;
+    const formatRoleFragment = (role: string) =>
+      formatCreditRoleForPublic ? formatPublicCreditRoleFragment(role) : role;
 
     // Определяем, является ли это блоком Genre/Жанр
     const isGenre =
@@ -168,8 +179,7 @@ export default function AlbumDetailsMusic({ album, copyrightReport }: AlbumDetai
         // Строки
         if (typeof item === 'string') {
           const text = item.trim();
-          // Добавляем точку в конце для всех блоков
-          const finalText = ensurePeriod(text);
+          const finalText = ensurePeriod(formatCreditLine(text));
           return finalText ? <li key={i}>{finalText}</li> : null;
         }
 
@@ -178,7 +188,7 @@ export default function AlbumDetailsMusic({ album, copyrightReport }: AlbumDetai
         if (typeof item === 'object' && item !== null && 'text' in item) {
           const textItem = item as { text: string | string[]; link?: string };
           if (typeof textItem.text === 'string' && textItem.text.trim()) {
-            const finalText = ensurePeriod(textItem.text.trim());
+            const finalText = ensurePeriod(formatCreditLine(textItem.text.trim()));
             return finalText ? <li key={i}>{finalText}</li> : null;
           }
 
@@ -187,7 +197,7 @@ export default function AlbumDetailsMusic({ album, copyrightReport }: AlbumDetai
           // Новый формат producing: ["Имя", "роль"]
           if (parts.length === 2) {
             const name = (parts[0] || '').trim();
-            const role = ensurePeriod((parts[1] || '').trim());
+            const role = ensurePeriod(formatRoleFragment((parts[1] || '').trim()));
             if (!name && !role) return null;
 
             if (textItem.link && textItem.link.trim()) {
@@ -213,7 +223,7 @@ export default function AlbumDetailsMusic({ album, copyrightReport }: AlbumDetai
           if (parts.length >= 3 && textItem.link && textItem.link.trim()) {
             const textBefore = parts[0] || '';
             const linkedText = parts[1] || '';
-            const textAfter = ensurePeriod(parts[2] || '');
+            const textAfter = ensurePeriod(formatCreditLine(parts[2] || ''));
 
             return (
               <li key={i}>
