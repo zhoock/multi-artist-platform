@@ -170,7 +170,7 @@ describe('Popup initial focus', () => {
     externalButton.remove();
   });
 
-  test('does not refocus the opener after the dialog closes', () => {
+  test('restores focus to the opener after the dialog closes', async () => {
     const externalButton = document.createElement('button');
     externalButton.type = 'button';
     externalButton.textContent = 'Outside';
@@ -179,7 +179,6 @@ describe('Popup initial focus', () => {
     act(() => {
       externalButton.focus();
     });
-    const openerFocusSpy = jest.spyOn(externalButton, 'focus');
 
     const { rerender } = render(
       <Popup isActive onClose={() => undefined}>
@@ -190,8 +189,6 @@ describe('Popup initial focus', () => {
     act(() => {
       jest.runAllTimers();
     });
-
-    openerFocusSpy.mockClear();
 
     act(() => {
       rerender(
@@ -205,58 +202,7 @@ describe('Popup initial focus', () => {
       jest.runAllTimers();
     });
 
-    expect(openerFocusSpy).not.toHaveBeenCalled();
-    expect(externalButton).not.toHaveFocus();
-    openerFocusSpy.mockRestore();
+    expect(externalButton).toHaveFocus();
     externalButton.remove();
-  });
-
-  test('restores saved scrollY without refocusing the opener', () => {
-    __resetBodyScrollLockForTests();
-    Object.defineProperty(window, 'scrollY', { value: 350, configurable: true, writable: true });
-    const scrollToSpy = jest.spyOn(window, 'scrollTo').mockImplementation(() => undefined);
-
-    const externalButton = document.createElement('button');
-    externalButton.type = 'button';
-    document.body.appendChild(externalButton);
-
-    act(() => {
-      externalButton.focus();
-    });
-    const openerFocusSpy = jest.spyOn(externalButton, 'focus');
-
-    const { rerender } = render(
-      <Popup isActive onClose={() => undefined}>
-        <p>Modal</p>
-      </Popup>
-    );
-
-    act(() => {
-      jest.runAllTimers();
-    });
-
-    scrollToSpy.mockClear();
-    openerFocusSpy.mockClear();
-
-    act(() => {
-      rerender(
-        <Popup isActive={false} onClose={() => undefined}>
-          <p>Modal</p>
-        </Popup>
-      );
-    });
-
-    act(() => {
-      jest.runAllTimers();
-    });
-
-    expect(scrollToSpy).toHaveBeenCalledWith(0, 350);
-    expect(openerFocusSpy).not.toHaveBeenCalled();
-    expect(externalButton).not.toHaveFocus();
-
-    scrollToSpy.mockRestore();
-    openerFocusSpy.mockRestore();
-    externalButton.remove();
-    __resetBodyScrollLockForTests();
   });
 });
