@@ -78,7 +78,7 @@
     display: flex;
     flex-direction: column;
     gap: $ms-02;
-    margin-block-end: $ms-1;
+    margin-block-end: calc(var(--ms-1) - var(--ms-02));
   }
 
   &__about-line {
@@ -91,7 +91,7 @@
   }
 
   &__about {
-    padding-block-end: $ms-1;
+    padding-block: $ms-1 calc(var(--ms-1) - var(--ms-02));
   }
 
   .albums__list {

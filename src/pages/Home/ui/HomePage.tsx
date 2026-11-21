@@ -38,6 +38,7 @@ import { isAuthenticated } from '@shared/lib/auth';
 import { ProfileAvatarMenu } from '@widgets/header';
 import { UniverseFloatingSearch } from '@features/universeSearch';
 import { AboutSection } from './AboutSection';
+import { ArtistContactManagerSection } from './ArtistContactManagerSection';
 import { AlbumsSection } from './AlbumsSection';
 import { ArticlesSection } from './ArticlesSection';
 import { ArtistOnboarding } from './ArtistOnboarding';
@@ -468,6 +469,8 @@ export function HomePage() {
     const fullPageReady = artistPageAccess.pageReady && shouldRevealFullPage;
     /** Albums grid owns the LCP cover — it must not wait for the remaining surfaces. */
     const showAlbums = fullPageReady || artistPageAccess.albumsSurfaceReady;
+    /** Intro loads in the same window as albums so it can settle above the grid without remounting it. */
+    const showAboutSurface = fullPageReady || showAlbums;
 
     // Slot order stays fixed so the albums grid is not remounted when the page completes.
     // The skeleton never coexists with the albums grid: mounting the grid ahead of a still
@@ -476,19 +479,17 @@ export function HomePage() {
       <>
         {artistSeoHelmet}
         {fullPageReady ? <ArtistPageBuilderPaymentBar /> : null}
-        {showAlbums ? <AlbumsSection isOwner={artistPageAccess.isOwner} /> : null}
-        {fullPageReady ? (
-          <>
-            <ArticlesSection />
-            <AboutSection
-              isAboutModalOpen={isAboutModalOpen}
-              onOpen={() => setIsAboutModalOpen(true)}
-              onClose={() => setIsAboutModalOpen(false)}
-            />
-          </>
-        ) : !showAlbums ? (
-          <ArtistPageSkeletonMain />
+        {showAboutSurface ? (
+          <AboutSection
+            isAboutModalOpen={isAboutModalOpen}
+            onOpen={() => setIsAboutModalOpen(true)}
+            onClose={() => setIsAboutModalOpen(false)}
+          />
         ) : null}
+        {showAlbums ? <AlbumsSection isOwner={artistPageAccess.isOwner} /> : null}
+        {fullPageReady ? <ArticlesSection /> : null}
+        {fullPageReady ? <ArtistContactManagerSection /> : null}
+        {!fullPageReady && !showAlbums ? <ArtistPageSkeletonMain /> : null}
       </>
     );
   }

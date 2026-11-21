@@ -33,6 +33,20 @@ type ArtistPageSkeletonMainProps = {
 export function ArtistPageSkeletonMain({ withAlbums = true }: ArtistPageSkeletonMainProps = {}) {
   return (
     <div className="artist-page-skeleton__main" aria-busy="true" aria-label="Loading artist page">
+      <section
+        id="about"
+        className="about main-background artist-page-skeleton__about"
+        aria-hidden="true"
+      >
+        <div className="wrapper">
+          <div className="artist-page-skeleton__about-lines">
+            <div className="skeleton skeleton--text artist-page-skeleton__about-line" />
+            <div className="skeleton skeleton--text artist-page-skeleton__about-line" />
+            <div className="skeleton skeleton--text artist-page-skeleton__about-line artist-page-skeleton__about-line--short" />
+          </div>
+        </div>
+      </section>
+
       {withAlbums ? (
         <section id="albums" className="albums main-background" aria-hidden="true">
           <div className="wrapper">
@@ -46,21 +60,6 @@ export function ArtistPageSkeletonMain({ withAlbums = true }: ArtistPageSkeleton
         <div className="wrapper articles__wrapper">
           <div className="skeleton artist-page-skeleton__section-heading" />
           <ArticlesSkeleton count={3} />
-        </div>
-      </section>
-
-      <section
-        id="about"
-        className="about main-background artist-page-skeleton__about"
-        aria-hidden="true"
-      >
-        <div className="wrapper">
-          <div className="skeleton artist-page-skeleton__section-heading" />
-          <div className="artist-page-skeleton__about-lines">
-            <div className="skeleton skeleton--text artist-page-skeleton__about-line" />
-            <div className="skeleton skeleton--text artist-page-skeleton__about-line" />
-            <div className="skeleton skeleton--text artist-page-skeleton__about-line artist-page-skeleton__about-line--short" />
-          </div>
         </div>
       </section>
     </div>

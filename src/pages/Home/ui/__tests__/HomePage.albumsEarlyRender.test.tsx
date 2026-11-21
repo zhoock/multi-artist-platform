@@ -186,15 +186,26 @@ describe('HomePage — ранний рендер AlbumsSection (LCP обложк
     expect(skeletonWrapper()).not.toBeInTheDocument();
   });
 
-  test('articles / about / payment gates не блокируют альбомы', () => {
+  test('articles / payment gates не блокируют альбомы; about монтируется раньше grid', () => {
     artistPageBuilderStub.albumsSurfaceReady = true;
 
     renderArtistHome();
 
     expect(screen.getByTestId('albums-section')).toBeInTheDocument();
+    expect(screen.getByTestId('about-section')).toBeInTheDocument();
     expect(screen.queryByTestId('articles-section')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('about-section')).not.toBeInTheDocument();
     expect(screen.queryByTestId('payment-bar')).not.toBeInTheDocument();
+  });
+
+  test('about в DOM идёт перед albums', () => {
+    artistPageBuilderStub.albumsSurfaceReady = true;
+    artistPageBuilderStub.pageReady = true;
+
+    renderArtistHome();
+
+    const about = screen.getByTestId('about-section');
+    const albums = screen.getByTestId('albums-section');
+    expect(about.compareDocumentPosition(albums) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   test('без готового каталога альбомы остаются скелетоном', () => {

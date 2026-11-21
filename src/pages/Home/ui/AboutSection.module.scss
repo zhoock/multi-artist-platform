@@ -4,7 +4,7 @@
 @use '../../../scss/abstracts/mixins' as *;
 
 .about {
-  padding-block-end: $ms-1;
+  padding-block: $ms-1 calc(var(--ms-1) - var(--ms-02));
 
   &__text {
     margin-block: 0 var(--ms-2);
@@ -69,62 +69,5 @@
 
     // Reserve space for the «ЕЩЁ» / «Show more» overlay so copy is not clipped at the edges.
     padding-inline-end: max(4.5ch, 2.75rem);
-  }
-
-  &__contact-trigger {
-    display: flex;
-    align-items: center;
-    gap: var(--ms-01);
-    margin-block: var(--ms-1) 0;
-    padding-block-end: var(--ms-1);
-    padding-inline: 0;
-    color: var(--link-color-hover, #ffffff);
-    font: inherit;
-    font-size: clamp(1rem, 0.915rem + 0.35vw, 1.125rem);
-    line-height: 1.55;
-    text-align: start;
-    background: transparent;
-    border: none;
-    border-radius: 0;
-    cursor: pointer;
-    inline-size: 100%;
-
-    &:focus-visible {
-      outline: 2px solid var(--accent-color, #998238);
-      outline-offset: 2px;
-    }
-
-    @media (hover: hover) and (pointer: fine) {
-      &:hover {
-        color: var(--link-color-hover, #ffffff);
-      }
-    }
-  }
-
-  &__contact-icon {
-    flex-shrink: 0;
-    color: var(--accent-color, #998238);
-  }
-
-  &__contact-label {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.35em;
-    min-inline-size: 0;
-    line-height: 1;
-  }
-
-  &__contact-chevron {
-    flex-shrink: 0;
-    display: block;
-    inline-size: 0.9em;
-    block-size: 0.9em;
-    color: var(--accent-color, #998238);
-    stroke: currentcolor;
-  }
-
-  &__manager-builder {
-    margin-block: var(--ms-1) 0;
-    inline-size: 100%;
   }
 }

@@ -7,13 +7,6 @@ import type { ArtistPageBuilderVisibility } from '@shared/lib/artistPageBuilder'
 const loadTheBandFromDatabase =
   jest.fn<(lang: string, options?: Record<string, unknown>) => Promise<string[] | null>>();
 
-const fetchPublicArtistUserProfile = jest.fn<
-  () => Promise<{
-    managerTelegramUrl: string | null;
-    managerEmail: string | null;
-  } | null>
->();
-
 type ArtistPageBuilderMockReturn = {
   builderVisibility: ArtistPageBuilderVisibility;
   isOwner: boolean;
@@ -33,10 +26,6 @@ jest.mock('@entities/user/lib', () => ({
     loadTheBandFromDatabase(lang, options),
   loadSocialLinksFromDatabase: jest.fn(async () => ({})),
   loadHeaderImagesFromDatabase: jest.fn(async () => []),
-}));
-
-jest.mock('@shared/lib/publicArtistUserProfile', () => ({
-  fetchPublicArtistUserProfile: () => fetchPublicArtistUserProfile(),
 }));
 
 jest.mock('@shared/lib/hooks/useSiteArtistDisplayName', () => ({
@@ -84,17 +73,12 @@ function renderAboutSection() {
 describe('AboutSection integration tests', () => {
   beforeEach(() => {
     loadTheBandFromDatabase.mockReset();
-    fetchPublicArtistUserProfile.mockReset();
     useArtistPageBuilderMock.mockReset();
     useArtistPageBuilderMock.mockReturnValue({
       builderVisibility: { canShowBlocks: false, mode: 'hidden' },
       isOwner: false,
       monetizationEnabled: false,
       showArtistPageSkeleton: false,
-    });
-    fetchPublicArtistUserProfile.mockResolvedValue({
-      managerTelegramUrl: null,
-      managerEmail: null,
     });
   });
 
@@ -202,61 +186,6 @@ describe('AboutSection integration tests', () => {
     });
 
     expect(onOpen).toHaveBeenCalledTimes(1);
-  });
-
-  test('не показывает «Связаться с менеджером» посетителю без контактов', async () => {
-    loadTheBandFromDatabase.mockResolvedValue(['Описание группы']);
-
-    renderAboutSection();
-
-    await waitFor(() => {
-      expect(document.getElementById('about')).toBeInTheDocument();
-    });
-
-    expect(
-      screen.queryByRole('button', { name: /связаться с менеджером/i })
-    ).not.toBeInTheDocument();
-  });
-
-  test('показывает ссылку «Связаться с менеджером» и открывает fullscreen popup', async () => {
-    loadTheBandFromDatabase.mockResolvedValue(['Описание группы']);
-    fetchPublicArtistUserProfile.mockResolvedValue({
-      managerTelegramUrl: null,
-      managerEmail: 'manager@test.com',
-    });
-
-    renderAboutSection();
-
-    await waitFor(() => {
-      expect(document.getElementById('about')).toBeInTheDocument();
-    });
-
-    const contactTrigger = screen.getByRole('button', { name: /связаться с менеджером/i });
-    await act(async () => {
-      contactTrigger.click();
-    });
-
-    expect(screen.getByRole('heading', { name: /связаться с менеджером/i })).toBeInTheDocument();
-    expect(document.querySelector('.artist-contact-manager')).toBeInTheDocument();
-  });
-
-  test('показывает конструктор контактов владельцу без заполненных полей', async () => {
-    loadTheBandFromDatabase.mockResolvedValue(['Описание группы']);
-    useArtistPageBuilderMock.mockReturnValue({
-      builderVisibility: { canShowBlocks: true, mode: 'active' },
-      isOwner: true,
-      monetizationEnabled: false,
-      showArtistPageSkeleton: false,
-    });
-
-    renderAboutSection();
-
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: /set up manager contacts/i })).toBeInTheDocument();
-    });
-    expect(
-      screen.queryByRole('button', { name: /^связаться с менеджером$/i })
-    ).not.toBeInTheDocument();
   });
 
   test('показывает описание на RU-странице, если текст сохранён только на EN', async () => {

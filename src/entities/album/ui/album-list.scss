@@ -7,3 +7,8 @@
     @include list('.albums');
   }
 }
+
+// Public artist hub: `#albums` on Home only (catalog uses `all-albums`).
+section.albums .albums__list {
+  margin-block-end: calc(var(--ms-1) - var(--ms-02));
+}
