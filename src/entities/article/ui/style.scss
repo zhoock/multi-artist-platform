@@ -25,7 +25,7 @@
     width: fit-content;
     max-width: 100%;
     margin-inline: auto;
-    margin-block: var(--ms-3) 0;
+    margin-block: var(--ms-2) 0;
 
     img {
       display: block;
@@ -37,7 +37,7 @@
 
   &__media-caption {
     width: 100%;
-    margin: var(--ms-01) 0 var(--ms-2);
+    margin: var(--ms-01) 0 var(--ms-1);
     color: var(--text-secondary, var(--dashboard-text-secondary, #9a9a9a));
     font-size: var(--ms-0);
     line-height: 1.5;
@@ -478,7 +478,7 @@
   /* Цитата — вставка в стиле музыкальных журналов */
   .article__quote {
     position: relative;
-    margin-block: var(--ms-2);
+    margin-block: var(--ms-1);
     margin-inline: 0;
     padding-block: var(--ms-1);
     padding-inline: var(--ms-2);
@@ -512,10 +512,60 @@
   }
 }
 
-// ArticlePage (`.article > .wrapper`): subtitle h4 → content; ~35% less than `--ms-1`.
-.article > .wrapper h4:not([class]) {
-  margin-block-end: calc(var(--ms-1) * 0.65);
+/* stylelint-disable no-descending-specificity -- ArticlePage wrapper rhythm follows shared `.article` rules */
+// Public ArticlePage: tighter vertical rhythm (~10–20%), design tokens only; not catalog `.articles`.
+.article > .wrapper {
+  > time {
+    margin-block-end: var(--ms-01);
+  }
+
+  > h2 {
+    margin-block-end: var(--ms-0);
+  }
+
+  h4:not([class]) {
+    margin-block-end: var(--ms-01);
+  }
+
+  h3:not([class]) {
+    margin-block: var(--ms-1) var(--ms-01);
+
+    &:first-of-type {
+      margin-block-start: 0;
+    }
+
+    + h4:not([class]) {
+      margin-block-start: 0;
+    }
+  }
+
+  p {
+    margin-block-end: var(--ms-0);
+  }
+
+  ul {
+    margin-block-end: var(--ms-0);
+  }
+
+  .uncollapse {
+    margin-block-start: var(--ms-0);
+
+    img {
+      margin-block-end: 0;
+    }
+  }
+
+  // media block → next section: compact gap without tightening in-section caption → h4.
+  .article__media-figure + h3:not([class]),
+  .uncollapse + h3:not([class]) {
+    margin-block-start: var(--ms-0);
+  }
+
+  .article__media-figure:has(+ h3:not([class])) .article__media-caption {
+    margin-block-end: var(--ms-0);
+  }
 }
+/* stylelint-enable no-descending-specificity */
 
 @keyframes skeleton-shimmer {
   0% {

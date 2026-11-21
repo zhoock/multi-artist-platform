@@ -4,27 +4,27 @@
 .article-skeleton {
   display: flex;
   flex-direction: column;
-  gap: var(--ms-1);
+  gap: var(--ms-0);
 
   &__date {
     margin-bottom: var(--ms-01);
   }
 
   &__title {
-    margin-bottom: var(--ms-1);
+    margin-bottom: var(--ms-0);
   }
 
   &__content {
     display: flex;
     flex-direction: column;
-    gap: var(--ms-1);
+    gap: var(--ms-0);
   }
 
   &__top {
     display: flex;
     flex-direction: column;
     gap: var(--ms-01);
-    margin-block-end: var(--ms-1);
+    margin-block-end: var(--ms-0);
   }
 }
 
