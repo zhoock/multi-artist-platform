@@ -8,6 +8,7 @@ const navigateMock = jest.fn();
 const mockTryActivateArtistFromClick = jest.fn(() => false);
 const mockActivatePrimaryArtist = jest.fn(() => false);
 const mockIsArtistCardTarget = jest.fn(() => false);
+const mockSetHeroNavigateHover = jest.fn();
 
 jest.mock('react-router-dom', () => {
   const actual = jest.requireActual<typeof import('react-router-dom')>('react-router-dom');
@@ -98,6 +99,7 @@ const Universe3DConstructorMock = jest.fn(function Universe3DMock(
   this.tryActivateArtistFromClick = mockTryActivateArtistFromClick;
   this.activatePrimaryArtist = mockActivatePrimaryArtist;
   this.isArtistCardTarget = mockIsArtistCardTarget;
+  this.setHeroNavigateHover = mockSetHeroNavigateHover;
 });
 
 jest.mock('@/components/view/loadUniverse3DModule', () => ({
@@ -134,6 +136,7 @@ describe('Hero canvas navigation', () => {
     mockActivatePrimaryArtist.mockReturnValue(false);
     mockIsArtistCardTarget.mockReset();
     mockIsArtistCardTarget.mockReturnValue(false);
+    mockSetHeroNavigateHover.mockReset();
     sessionStorage.clear();
     Universe3DConstructorMock.mockClear();
   });
@@ -180,6 +183,31 @@ describe('Hero canvas navigation', () => {
 
     expect(navigateMock).toHaveBeenCalledWith('/en');
     expect(sessionStorage.getItem(UNIVERSE_FOCUS_ARTIST_STORAGE_KEY)).toBe('beatles');
+  });
+
+  test('pointer hover on hero drives universe navigate hover', async () => {
+    renderWithProviders(<Hero />, {
+      initialEntries: ['/?artist=beatles'],
+      preloadedState: {
+        lang: { current: 'en' },
+        currentArtist: { publicSlug: 'beatles' },
+        artistAlbumCatalog: artistAlbumCatalogState,
+      },
+    });
+
+    await waitFor(() => {
+      expect(Universe3DConstructorMock).toHaveBeenCalled();
+    });
+
+    const heroButton = screen.getByRole('button', { name: /Beatles, go to home page/i });
+    fireEvent.mouseEnter(heroButton, { clientX: 120, clientY: 80 });
+    expect(mockSetHeroNavigateHover).toHaveBeenCalledWith(true, 120, 80);
+
+    fireEvent.mouseMove(heroButton, { clientX: 200, clientY: 90 });
+    expect(mockSetHeroNavigateHover).toHaveBeenCalledWith(true, 200, 90);
+
+    fireEvent.mouseLeave(heroButton);
+    expect(mockSetHeroNavigateHover).toHaveBeenLastCalledWith(false, undefined, undefined);
   });
 
   test('keyboard activation navigates home without opening artist card', async () => {

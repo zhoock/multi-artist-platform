@@ -534,5 +534,34 @@ describe('Universe3D artist activation', () => {
       universe.destroy();
       container.remove();
     });
+
+    test('setHeroNavigateHover updates hero hover target and pointer ndc', () => {
+      const { container, universe } = createUniverse({ isHeroPreview: true });
+
+      const internals = universe as unknown as {
+        heroNavigateHoverTarget: number;
+        heroNavigatePointerNdc: { x: number; y: number };
+      };
+
+      universe.setHeroNavigateHover(true, 600, 200);
+      expect(internals.heroNavigateHoverTarget).toBe(1);
+      expect(internals.heroNavigatePointerNdc.x).toBeCloseTo(0.5, 2);
+      expect(internals.heroNavigatePointerNdc.y).toBeCloseTo(0, 2);
+
+      universe.setHeroNavigateHover(false);
+      expect(internals.heroNavigateHoverTarget).toBe(0);
+
+      universe.destroy();
+      container.remove();
+    });
+
+    test('setHeroNavigateHover is no-op on main universe', () => {
+      const { container, universe } = createUniverse({ isHeroPreview: false });
+      const internals = universe as unknown as { heroNavigateHoverTarget: number };
+      universe.setHeroNavigateHover(true, 100, 100);
+      expect(internals.heroNavigateHoverTarget).toBe(0);
+      universe.destroy();
+      container.remove();
+    });
   });
 });

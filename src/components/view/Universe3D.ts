@@ -14,7 +14,19 @@ import {
 } from '@features/universe/lib/artistCardPlayButtonPhase';
 import { isUniverseSceneOverlayTarget } from '@shared/lib/universeSceneOverlay';
 import './Universe3D.style.scss';
-import { UNIVERSE_FOCUS_ARTIST_STORAGE_KEY } from './universe3dConstants';
+import {
+  HERO_PREVIEW_CAMERA_Z,
+  HERO_PREVIEW_HOVER_BREATH_AMP,
+  HERO_PREVIEW_HOVER_FORWARD_Z_PULL,
+  HERO_PREVIEW_HOVER_PARALLAX_X,
+  HERO_PREVIEW_HOVER_PARALLAX_Y,
+  HERO_PREVIEW_HOVER_SHADER_TIME_BOOST,
+  HERO_PREVIEW_HOVER_TIME_STEP,
+  HERO_PREVIEW_IDLE_BREATH_AMP,
+  HERO_PREVIEW_IDLE_TIME_STEP,
+  HERO_PREVIEW_NAVIGATE_HOVER_LERP,
+  UNIVERSE_FOCUS_ARTIST_STORAGE_KEY,
+} from './universe3dConstants';
 import type { SceneArtist } from './universe3dTypes';
 import { populateUniverse3dArtistCardMedia } from './universe3dArtistCardMedia';
 import {
@@ -283,6 +295,10 @@ export class Universe3D {
   /** True if two-finger pinch occurred in this gesture. */
   private touchHadPinch = false;
   private heroTime = 0;
+  private heroRestCameraZ = HERO_PREVIEW_CAMERA_Z;
+  private heroNavigateHoverTarget = 0;
+  private heroNavigateHoverProgress = 0;
+  private heroNavigatePointerNdc = new THREE.Vector2(0, 0);
   private heroCoverLayoutListener: HTMLImageElement | null = null;
   private onHeroCoverLayout = () => {
     this.layoutHeroClusterLabels();
@@ -331,8 +347,9 @@ export class Universe3D {
     this.camera.position.set(0, 0, 2);
 
     if (options?.isHeroPreview) {
-      this.camera.position.z = 0.92;
-      this.targetZ = 0.92;
+      this.heroRestCameraZ = HERO_PREVIEW_CAMERA_Z;
+      this.camera.position.z = HERO_PREVIEW_CAMERA_Z;
+      this.targetZ = HERO_PREVIEW_CAMERA_Z;
     }
 
     this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
@@ -499,6 +516,17 @@ export class Universe3D {
 
   isArtistCardTarget(target: EventTarget | null): boolean {
     return !!(this.activeCard && target instanceof Node && this.activeCard.contains(target));
+  }
+
+  /** Artist-page Hero: amplify idle nebula motion while the navigate-home region is hovered. */
+  setHeroNavigateHover(active: boolean, clientX?: number, clientY?: number): void {
+    if (!this.isHeroPreview) return;
+    this.heroNavigateHoverTarget = active ? 1 : 0;
+    if (!active || clientX === undefined || clientY === undefined) return;
+    const rect = this.containerEl.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) return;
+    this.heroNavigatePointerNdc.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+    this.heroNavigatePointerNdc.y = -((clientY - rect.top) / rect.height) * 2 + 1;
   }
 
   /** Cinematic in-scene navigation from search (fly-to + active node + card). */
@@ -2132,8 +2160,20 @@ export class Universe3D {
 
     const t = this.clock.getElapsedTime();
     if (this.isHeroPreview) {
-      this.heroTime += 0.01;
+      this.heroNavigateHoverProgress +=
+        (this.heroNavigateHoverTarget - this.heroNavigateHoverProgress) *
+        HERO_PREVIEW_NAVIGATE_HOVER_LERP;
+      const heroHover = this.heroNavigateHoverProgress;
+      this.heroTime += THREE.MathUtils.lerp(
+        HERO_PREVIEW_IDLE_TIME_STEP,
+        HERO_PREVIEW_HOVER_TIME_STEP,
+        heroHover
+      );
     }
+
+    const heroShaderTimeBoost = this.isHeroPreview
+      ? this.heroNavigateHoverProgress * HERO_PREVIEW_HOVER_SHADER_TIME_BOOST
+      : 0;
 
     // обновление шейдеров облака
     this.cloudGroups.forEach((cloud) => {
@@ -2143,7 +2183,7 @@ export class Universe3D {
         if (!material || Array.isArray(material)) return;
         const shaderMaterial = material as THREE.ShaderMaterial;
         if (shaderMaterial.uniforms?.u_time) {
-          shaderMaterial.uniforms.u_time.value = t + i * 5;
+          shaderMaterial.uniforms.u_time.value = t + i * 5 + heroShaderTimeBoost;
         }
       });
     });
@@ -2240,6 +2280,13 @@ export class Universe3D {
       const EPS = 0.00001;
       if (Math.abs(this.panVelocityX) < EPS) this.panVelocityX = 0;
       if (Math.abs(this.panVelocityY) < EPS) this.panVelocityY = 0;
+    }
+
+    if (this.isHeroPreview) {
+      const hp = this.heroNavigateHoverProgress;
+      this.targetZ = this.heroRestCameraZ - hp * HERO_PREVIEW_HOVER_FORWARD_Z_PULL;
+      this.targetX = this.heroNavigatePointerNdc.x * HERO_PREVIEW_HOVER_PARALLAX_X * hp;
+      this.targetY = this.heroNavigatePointerNdc.y * HERO_PREVIEW_HOVER_PARALLAX_Y * hp;
     }
 
     const targetPosition = this.tempVec3.set(this.targetX, this.targetY, this.targetZ);
@@ -2401,10 +2448,15 @@ export class Universe3D {
     });
 
     if (this.isHeroPreview) {
+      const breathAmp = THREE.MathUtils.lerp(
+        HERO_PREVIEW_IDLE_BREATH_AMP,
+        HERO_PREVIEW_HOVER_BREATH_AMP,
+        this.heroNavigateHoverProgress
+      );
       this.scene.traverse((obj) => {
         if (obj.userData?.isHeroCloud) {
           const baseScale = 1.8;
-          const breath = 1 + Math.sin(this.heroTime) * 0.04;
+          const breath = 1 + Math.sin(this.heroTime) * breathAmp;
           obj.scale.setScalar(baseScale * breath);
         }
       });

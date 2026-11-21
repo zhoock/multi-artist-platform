@@ -52,6 +52,7 @@ const defaultArtistName = '';
 type HeroUniverseHandle = {
   destroy: () => void;
   isArtistCardTarget: (target: Element) => boolean;
+  setHeroNavigateHover: (active: boolean, clientX?: number, clientY?: number) => void;
 };
 
 /** One frame so `.hero__canvas` has layout dimensions before WebGL init. */
@@ -417,6 +418,22 @@ export function Hero() {
     handleNavigateHome();
   };
 
+  const syncHeroNavigateHover = (active: boolean, clientX?: number, clientY?: number) => {
+    universeRef.current?.setHeroNavigateHover(active, clientX, clientY);
+  };
+
+  const handleHeroNavigatePointerEnter = (event: MouseEvent<HTMLElement>) => {
+    syncHeroNavigateHover(true, event.clientX, event.clientY);
+  };
+
+  const handleHeroNavigatePointerMove = (event: MouseEvent<HTMLElement>) => {
+    syncHeroNavigateHover(true, event.clientX, event.clientY);
+  };
+
+  const handleHeroNavigatePointerLeave = () => {
+    syncHeroNavigateHover(false);
+  };
+
   const heroNavigateAriaLabel =
     displayName.trim().length > 0
       ? lang === 'ru'
@@ -475,6 +492,9 @@ export function Hero() {
         aria-label={heroNavigateAriaLabel}
         onClick={handleHeroNavigateClick}
         onKeyDown={handleHeroNavigateKeyDown}
+        onMouseEnter={showHeroUniverse ? handleHeroNavigatePointerEnter : undefined}
+        onMouseMove={showHeroUniverse ? handleHeroNavigatePointerMove : undefined}
+        onMouseLeave={showHeroUniverse ? handleHeroNavigatePointerLeave : undefined}
       >
         {heroBody}
       </div>
