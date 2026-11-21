@@ -56,7 +56,8 @@
       min-inline-size: 0;
     }
 
-    &__track-info {
+    &__track-info,
+    &__track-info--skeleton {
       max-inline-size: min(100%, 425px);
     }
   }
@@ -617,7 +618,7 @@
     inline-size: min(100vi, 425px);
     max-inline-size: 100%;
     aspect-ratio: 1 / 1;
-    margin-inline: auto;
+    margin: 0;
     border-radius: var(--ms-01);
     box-shadow:
       rgb(0 0 0 / 25%) 0 30px 60px -12px,
@@ -630,7 +631,13 @@
     align-items: center;
     gap: 0.4em;
     inline-size: 100%;
+    min-width: 0;
     max-inline-size: min(90vi, 425px);
+    text-align: center;
+
+    @media (width < 768px) {
+      max-inline-size: min(100%, 425px);
+    }
   }
 
   &__track-info-skeleton-line {
@@ -1333,6 +1340,41 @@
   .player__cover--paused {
     scale: 0.8;
     animation: none;
+  }
+
+  // Mobile header shell: definite cover width (no % on empty skeleton — unlike intrinsic img).
+  // Same horizontal inset tokens as `.player` padding on narrow viewports.
+  @media (width < 768px) {
+    --player-header-cover-size: min(
+      425px,
+      calc(
+        100dvi - max(var(--ms-1), env(safe-area-inset-left, 0px)) - max(
+            var(--ms-1),
+            env(safe-area-inset-right, 0px)
+          )
+      )
+    );
+
+    .player__cover-wrapper {
+      justify-items: center;
+    }
+
+    .player__cover--paused {
+      display: flex;
+      justify-content: center;
+      inline-size: 100%;
+    }
+
+    .player__cover-skeleton {
+      flex: 0 0 auto;
+      inline-size: var(--player-header-cover-size);
+      max-inline-size: var(--player-header-cover-size);
+    }
+
+    .player__track-info--skeleton {
+      inline-size: var(--player-header-cover-size);
+      max-inline-size: var(--player-header-cover-size);
+    }
   }
 }
 
