@@ -21,7 +21,8 @@
     border: none;
     border-radius: 0;
     cursor: pointer;
-    inline-size: 100%;
+    inline-size: fit-content;
+    max-inline-size: 100%;
 
     &:focus-visible {
       outline: 2px solid var(--accent-color, #998238);
