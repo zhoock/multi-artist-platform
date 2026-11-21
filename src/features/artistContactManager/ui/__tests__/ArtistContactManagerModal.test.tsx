@@ -1,5 +1,5 @@
 import { describe, test, expect, jest, beforeEach } from '@jest/globals';
-import { act, screen } from '@testing-library/react';
+import { act, screen, fireEvent } from '@testing-library/react';
 import { ArtistContactManagerModal } from '../ArtistContactManagerModal';
 import { renderWithProviders } from '@shared/lib/test-utils';
 
@@ -13,15 +13,30 @@ jest.mock('@shared/lib/toast/toastApi', () => ({
 
 jest.mock('@shared/ui/popup', () => {
   const actual = jest.requireActual<typeof import('@shared/ui/popup')>('@shared/ui/popup');
+  const { PopupContext } = jest.requireActual<typeof import('@shared/ui/popup/PopupContext')>(
+    '@shared/ui/popup/PopupContext'
+  );
   return {
     ...actual,
-    Popup: ({ children, isActive }: { children: React.ReactNode; isActive: boolean }) =>
-      isActive ? <div data-testid="popup-shell">{children}</div> : null,
-    PopupCloseButton: ({ children, ...props }: { children: React.ReactNode }) => (
-      <button type="button" {...props}>
-        {children}
-      </button>
-    ),
+    Popup: ({
+      children,
+      isActive,
+      onClose,
+    }: {
+      children: React.ReactNode;
+      isActive: boolean;
+      onClose?: () => void;
+    }) =>
+      isActive ? (
+        <PopupContext.Provider
+          value={{
+            requestClose: () => onClose?.(),
+            isCloseBlocked: false,
+          }}
+        >
+          <div data-testid="popup-shell">{children}</div>
+        </PopupContext.Provider>
+      ) : null,
   };
 });
 
@@ -76,6 +91,30 @@ describe('ArtistContactManagerModal', () => {
     expect(link).toHaveAttribute('href', 'https://t.me/manager');
     expect(screen.getByText('@manager')).toBeInTheDocument();
     expect(screen.queryByText(labels.telegram)).not.toBeInTheDocument();
+  });
+
+  test('PopupCloseButton closes via dialog (center and edge of hit target)', async () => {
+    const onClose = jest.fn();
+    renderWithProviders(
+      <ArtistContactManagerModal
+        isOpen
+        onClose={onClose}
+        telegramUrl={null}
+        managerEmail={TEST_MANAGER_EMAIL}
+        labels={labels}
+      />
+    );
+
+    const close = screen.getByRole('button', { name: labels.close });
+    expect(close.closest('.album-comments-fullscreen__header')).not.toBeNull();
+
+    fireEvent.click(close);
+    expect(onClose).toHaveBeenCalledTimes(1);
+
+    onClose.mockClear();
+    const { left, top, width, height } = close.getBoundingClientRect();
+    fireEvent.click(close, { clientX: left + width * 0.12, clientY: top + height * 0.88 });
+    expect(onClose).toHaveBeenCalledTimes(1);
   });
 
   test('copies manager email to clipboard', async () => {

@@ -60,7 +60,6 @@ export function ArtistContactManagerModal({
     <Popup isActive={isOpen} onClose={onClose} publicBackdrop aria-labelledby={titleId}>
       <div className="album-comments-fullscreen artist-contact-manager">
         <header className="album-comments-fullscreen__header">
-          <div className="album-comments-fullscreen__header-main" aria-hidden />
           <PopupCloseButton
             type="button"
             className="album-comments-fullscreen__close"

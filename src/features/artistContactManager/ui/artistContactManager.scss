@@ -1,16 +1,20 @@
 @use '../../../scss/abstracts/mixins' as *;
 
 .album-comments-fullscreen.artist-contact-manager {
+  // No title row — flex end-align close (no full-width __header-main hit layer over the control).
   .album-comments-fullscreen__header {
     display: flex;
     justify-content: flex-end;
     align-items: center;
     min-block-size: auto;
     padding-block: var(--ms-01);
+    padding-block-start: max(var(--ms-01), env(safe-area-inset-top, 0px));
   }
 
-  .album-comments-fullscreen__header-main {
-    display: none;
+  .album-comments-fullscreen__close {
+    position: relative;
+    z-index: 1;
+    flex-shrink: 0;
   }
 
   .album-comments-fullscreen__body {

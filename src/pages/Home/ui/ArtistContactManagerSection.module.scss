@@ -3,14 +3,14 @@
 @use '../../../scss/abstracts/mixins' as *;
 
 .section {
-  padding-block: $ms-1 $ms-1;
+  padding-block: $ms-01 $ms-2;
 
   &__contact-trigger {
     display: flex;
     align-items: center;
     gap: var(--ms-01);
     margin: 0;
-    padding-block-end: var(--ms-1);
+    padding-block-end: 0;
     padding-inline: 0;
     color: var(--link-color-hover, #ffffff);
     font: inherit;
@@ -60,4 +60,26 @@
   &__manager-builder {
     inline-size: 100%;
   }
+}
+
+/*
+ * Artist hub: neither contact nor the preceding section should grow with main flex
+ * (#root … last-of-type { flex: 1 }) — otherwise articles stretch and contact sits on the footer.
+ */
+:global(#root main > section#contact-manager.main-background) {
+  flex: 0 0 auto;
+}
+
+:global(#root main > section#articles:has(+ section#contact-manager.main-background)) {
+  flex: 0 0 auto;
+}
+
+/* After articles: list already has margin-bottom $ms-1 — match albums→next gap (ms-1 − ms-02). */
+:global(#root main > section#articles + section#contact-manager.main-background) {
+  padding-block-start: 0;
+  margin-block-start: calc(-1 * (var(--ms-1) - var(--ms-02)));
+}
+
+:global(#root main > section#albums + section#contact-manager.main-background) {
+  padding-block-start: 0;
 }

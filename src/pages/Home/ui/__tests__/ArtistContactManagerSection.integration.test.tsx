@@ -1,8 +1,10 @@
 import { describe, test, expect, jest, beforeEach } from '@jest/globals';
 import { screen, waitFor, act } from '@testing-library/react';
+import type { IInterface } from '@models';
 import { ArtistContactManagerSection } from '../ArtistContactManagerSection';
 import { renderWithProviders } from '@shared/lib/test-utils';
 import type { ArtistPageBuilderVisibility } from '@shared/lib/artistPageBuilder';
+import type { UiDictionaryState } from '@shared/model/uiDictionary/types';
 
 const fetchPublicArtistUserProfile = jest.fn<
   () => Promise<{
@@ -33,23 +35,31 @@ jest.mock('@shared/lib/hooks/useArtistPageBuilder', () => ({
   useArtistPageBuilder: () => useArtistPageBuilderMock(),
 }));
 
-const uiDictionaryState = {
+const ruUiDictionary: IInterface = {
+  menu: {},
+  buttons: {},
+  titles: {},
+  artistContactManager: {
+    linkLabel: 'Связаться с менеджером',
+    title: 'Связаться с менеджером',
+    description: 'По вопросам концертов, сотрудничества, прессы и других предложений.',
+    telegram: 'Telegram',
+    email: 'Email',
+    emailCopied: 'Email скопирован',
+    openTelegram: 'Открыть Telegram',
+    copyEmail: 'Скопировать email',
+  },
+};
+
+const uiDictionaryState: UiDictionaryState = {
   ru: {
-    status: 'succeeded' as const,
+    status: 'succeeded',
     error: null,
-    data: [
-      {
-        menu: {},
-        artistContactManager: {
-          linkLabel: 'Связаться с менеджером',
-          title: 'Связаться с менеджером',
-        },
-      },
-    ],
+    data: [ruUiDictionary],
     lastUpdated: Date.now(),
   },
   en: {
-    status: 'idle' as const,
+    status: 'idle',
     error: null,
     data: [],
     lastUpdated: null,
