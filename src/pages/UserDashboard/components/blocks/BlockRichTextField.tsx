@@ -22,6 +22,7 @@ export interface BlockRichTextFieldProps {
   onFormat?: (type: FormatType, url?: string) => void;
   onRichEnter?: (detail: RichEnterDetail) => void;
   onRichBackspace?: (detail: RichBackspaceDetail) => void;
+  onRichDeleteAtEnd?: () => void;
   onRichPasteMultiline?: (detail: RichPasteMultilineDetail) => void;
   placeholder?: string;
   blockId?: string;
@@ -38,6 +39,7 @@ export function BlockRichTextField({
   onFormat,
   onRichEnter,
   onRichBackspace,
+  onRichDeleteAtEnd,
   onRichPasteMultiline,
   placeholder,
   blockId,
@@ -121,6 +123,15 @@ export function BlockRichTextField({
           onBackspace?.(false, true);
         }, 0);
       }
+    } else if (e.key === 'Delete') {
+      const textarea = e.currentTarget;
+      const isAtEnd =
+        textarea.selectionStart === textarea.value.length &&
+        textarea.selectionStart === textarea.selectionEnd;
+      if (isAtEnd) {
+        e.preventDefault();
+        onRichDeleteAtEnd?.();
+      }
     }
   };
 
@@ -143,6 +154,7 @@ export function BlockRichTextField({
         onKeyDown={markdownDebug ? handleKeyDown : undefined}
         onRichEnter={onRichEnter}
         onRichBackspace={onRichBackspace}
+        onRichDeleteAtEnd={onRichDeleteAtEnd}
         onRichPasteMultiline={onRichPasteMultiline}
         onBlockFormat={onFormat}
         onFocus={onFocus}

@@ -105,12 +105,13 @@ export type RichTextBlockEditorProps = {
   placeholder?: string;
   rows?: number;
   onFocus?: () => void;
-  onBlur?: (event: FocusEvent<HTMLTextAreaElement>) => void;
+  onBlur?: (event: FocusEvent<HTMLElement>) => void;
   onKeyDown?: (event: KeyboardEvent<HTMLTextAreaElement>) => void;
   onPaste?: (event: ClipboardEvent<HTMLTextAreaElement>) => void;
   onTextareaChange?: (markdown: string, event: ChangeEvent<HTMLTextAreaElement>) => void;
   onRichEnter?: (detail: RichEnterDetail) => void;
   onRichBackspace?: (detail: RichBackspaceDetail) => void;
+  onRichDeleteAtEnd?: () => void;
   onRichPasteMultiline?: (detail: RichPasteMultilineDetail) => void;
   onBlockFormat?: (type: RichBlockFormatType) => void;
   /** После mount — фокус и каретка в начале (rich/textarea). */
@@ -184,6 +185,7 @@ export function RichTextBlockEditor({
   onTextareaChange,
   onRichEnter,
   onRichBackspace,
+  onRichDeleteAtEnd,
   onRichPasteMultiline,
   onBlockFormat,
   autoFocusCaret = false,
@@ -208,6 +210,8 @@ export function RichTextBlockEditor({
   onRichEnterRef.current = onRichEnter;
   const onRichBackspaceRef = useRef(onRichBackspace);
   onRichBackspaceRef.current = onRichBackspace;
+  const onRichDeleteAtEndRef = useRef(onRichDeleteAtEnd);
+  onRichDeleteAtEndRef.current = onRichDeleteAtEnd;
   const onRichPasteMultilineRef = useRef(onRichPasteMultiline);
   onRichPasteMultilineRef.current = onRichPasteMultiline;
 
@@ -531,6 +535,14 @@ export function RichTextBlockEditor({
 
       if (inputType.startsWith('delete')) {
         event.preventDefault();
+        if (inputType === 'deleteContentForward') {
+          const selection = getSelectionOffsets(root);
+          const plainLen = richTextToPlainText(model).length;
+          if (selection && selection.from >= plainLen && selection.to >= plainLen) {
+            onRichDeleteAtEndRef.current?.();
+            return;
+          }
+        }
         const range = resolveDeleteRange(root, event, model, inputType);
         if (!range) return;
 
@@ -847,11 +859,13 @@ export function RichTextBlockEditor({
             role="textbox"
             aria-multiline="true"
             onFocus={onFocus}
+            onBlur={onBlur}
             onCompositionStart={handleCompositionStart}
             onCompositionEnd={handleCompositionEnd}
           />
 
           {richToolbar && (
+            // eslint-disable-next-line jsx-a11y/no-static-element-interactions -- toolbar uses onMouseDown to preserve text selection
             <div
               ref={toolbarRef}
               className="rich-text-block-editor__toolbar"
@@ -864,6 +878,7 @@ export function RichTextBlockEditor({
               {linkEditing ? (
                 <div className="rich-text-block-editor__toolbar-link">
                   <input
+                    // eslint-disable-next-line jsx-a11y/no-autofocus -- focus link URL field when link toolbar opens
                     autoFocus
                     type="text"
                     className="rich-text-block-editor__toolbar-link-input"

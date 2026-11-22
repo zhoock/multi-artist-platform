@@ -51,6 +51,7 @@ interface SortableBlockProps {
   onPaste?: (blockId: string, text: string, files: File[]) => void;
   onRichEnter?: (blockId: string, detail: RichEnterDetail) => void;
   onRichBackspace?: (blockId: string, detail: RichBackspaceDetail) => void;
+  onDeleteAtEnd?: (blockId: string) => void;
   onRichPasteMultiline?: (blockId: string, detail: RichPasteMultilineDetail) => void;
   onListConvertToParagraph?: (blockId: string, content: RichText) => void;
   onListInsertParagraphAfter?: (blockId: string) => void;
@@ -87,6 +88,7 @@ export function SortableBlock({
   onPaste,
   onRichEnter,
   onRichBackspace,
+  onDeleteAtEnd,
   onRichPasteMultiline,
   onListConvertToParagraph,
   onListInsertParagraphAfter,
@@ -127,6 +129,7 @@ export function SortableBlock({
             onPaste={(text, files) => onPaste?.(block.id, text, files)}
             onRichEnter={(detail) => onRichEnter?.(block.id, detail)}
             onRichBackspace={(detail) => onRichBackspace?.(block.id, detail)}
+            onRichDeleteAtEnd={() => onDeleteAtEnd?.(block.id)}
             onRichPasteMultiline={(detail) => onRichPasteMultiline?.(block.id, detail)}
             autoFocusCaret={autoFocusCaret}
             onAutoFocusCaret={onAutoFocusCaret}
@@ -145,6 +148,7 @@ export function SortableBlock({
             onFormat={(type, url) => onFormat?.(block.id, type, url)}
             onRichEnter={(detail) => onRichEnter?.(block.id, detail)}
             onRichBackspace={(detail) => onRichBackspace?.(block.id, detail)}
+            onRichDeleteAtEnd={() => onDeleteAtEnd?.(block.id)}
             onRichPasteMultiline={(detail) => onRichPasteMultiline?.(block.id, detail)}
           />
         );
@@ -161,6 +165,7 @@ export function SortableBlock({
             onFormat={(type, url) => onFormat?.(block.id, type, url)}
             onRichEnter={(detail) => onRichEnter?.(block.id, detail)}
             onRichBackspace={(detail) => onRichBackspace?.(block.id, detail)}
+            onRichDeleteAtEnd={() => onDeleteAtEnd?.(block.id)}
             onRichPasteMultiline={(detail) => onRichPasteMultiline?.(block.id, detail)}
           />
         );
@@ -177,6 +182,7 @@ export function SortableBlock({
             onFormat={(type, url) => onFormat?.(block.id, type, url)}
             onRichEnter={(detail) => onRichEnter?.(block.id, detail)}
             onRichBackspace={(detail) => onRichBackspace?.(block.id, detail)}
+            onRichDeleteAtEnd={() => onDeleteAtEnd?.(block.id)}
             onRichPasteMultiline={(detail) => onRichPasteMultiline?.(block.id, detail)}
           />
         );
@@ -198,6 +204,7 @@ export function SortableBlock({
             onFocus={() => onFocus(block.id)}
             onBlur={onBlur}
             onEnter={() => onEnter(block.id, true)}
+            onRemove={() => onDelete(block.id)}
           />
         );
       case 'image':

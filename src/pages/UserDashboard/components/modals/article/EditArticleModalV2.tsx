@@ -115,6 +115,8 @@ type PendingFocus = {
   /** true — position в plain-offset (rich mode); false — markdown-offset (textarea) */
   plainCaret?: boolean;
   selectionTo?: number;
+  /** Восстановить DOM focus на image/carousel/divider (undo/redo). */
+  focusNonText?: boolean;
 };
 
 interface EditArticleModalV2Props {
@@ -229,6 +231,102 @@ function isMediaCaptionInput(element: Element | null): element is HTMLInputEleme
   );
 }
 
+function isArticleRichTextEditorActive(element: Element | null): element is HTMLElement {
+  return (
+    element instanceof HTMLElement &&
+    element.isContentEditable &&
+    element.closest('[data-testid="rich-text-block-editor-rich"]') !== null
+  );
+}
+
+/** Image/carousel selected, но каретка ещё в соседнем rich-text → второй Delete/Backspace удаляет медиа. */
+function shouldDeleteSelectedMediaFromAdjacentRichText(
+  event: KeyboardEvent,
+  activeElement: Element | null,
+  selectedBlockId: string | null
+): boolean {
+  if (event.key !== 'Delete' && event.key !== 'Backspace') return false;
+  if (!selectedBlockId || !isArticleRichTextEditorActive(activeElement)) return false;
+  const editorBlockId = activeElement.closest('[data-block-id]')?.getAttribute('data-block-id');
+  return editorBlockId != null && editorBlockId !== selectedBlockId;
+}
+
+function getDividerBlockIdFromActiveElement(activeElement: Element | null): string | null {
+  if (!activeElement) return null;
+  const wrapper = activeElement.closest('.edit-article-v2__block-wrapper--divider');
+  if (!wrapper) return null;
+  return wrapper.getAttribute('data-block-id');
+}
+
+function isMergeableTextBlock(
+  block: Block | null | undefined
+): block is Extract<Block, { type: 'paragraph' | 'title' | 'subtitle' | 'quote' }> {
+  return (
+    block?.type === 'paragraph' ||
+    block?.type === 'title' ||
+    block?.type === 'subtitle' ||
+    block?.type === 'quote'
+  );
+}
+
+function isKeyboardNavigableNonTextBlock(
+  block: Block | null | undefined
+): block is Extract<Block, { type: 'image' | 'carousel' | 'divider' }> {
+  return block?.type === 'image' || block?.type === 'carousel' || block?.type === 'divider';
+}
+
+function focusNonTextBlockDom(blockId: string, blockType: Block['type']): void {
+  const active = document.activeElement;
+  if (
+    active instanceof HTMLElement &&
+    active.isContentEditable &&
+    active.closest('.edit-article-v2__content-column')
+  ) {
+    active.blur();
+  }
+
+  if (blockType === 'divider') {
+    const divider = document.querySelector(
+      `[data-block-id="${blockId}"] .edit-article-v2__block--divider`
+    ) as HTMLElement | null;
+    divider?.focus({ preventScroll: true });
+    return;
+  }
+
+  if (blockType === 'image' || blockType === 'carousel') {
+    const caption = document.querySelector(
+      `[data-block-id="${blockId}"] .edit-article-v2__image-caption`
+    ) as HTMLInputElement | null;
+    const focusTarget =
+      caption ??
+      (document.querySelector(
+        `[data-block-id="${blockId}"] .edit-article-v2__image-container, [data-block-id="${blockId}"] .edit-article-v2__carousel-image-wrapper`
+      ) as HTMLElement | null);
+    focusTarget?.focus({ preventScroll: true });
+    if (caption) {
+      const caret = caption.value.length;
+      caption.setSelectionRange(caret, caret);
+    }
+  }
+}
+
+function getDeleteFocusAfterMediaBlock(
+  blocks: Block[],
+  mediaBlockId: string
+): { blockId: string; position: 'end'; plainCaret: true } | undefined {
+  const index = blocks.findIndex((b) => b.id === mediaBlockId);
+  if (index <= 0) return undefined;
+
+  for (let i = index - 1; i >= 0; i--) {
+    const candidate = blocks[i];
+    if (isMergeableTextBlock(candidate)) {
+      return { blockId: candidate.id, position: 'end', plainCaret: true };
+    }
+  }
+
+  return undefined;
+}
+
 /** Пустая подпись image/carousel + Delete/Backspace → удаление всего медиа-блока. */
 function shouldDeleteMediaBlockFromEmptyCaption(
   event: KeyboardEvent,
@@ -337,20 +435,6 @@ export function EditArticleModalV2({
       return next;
     });
   }, []);
-
-  // Обработка Escape для скрытия VK-плюса
-  useEffect(() => {
-    const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && vkInserter) {
-        setVkInserter(null);
-      }
-    };
-
-    if (vkInserter) {
-      document.addEventListener('keydown', handleEscape);
-      return () => document.removeEventListener('keydown', handleEscape);
-    }
-  }, [vkInserter]);
 
   // Sensors для drag-and-drop
   const sensors = useSensors(
@@ -1019,9 +1103,34 @@ export function EditArticleModalV2({
     setMeta({ ...snapshot.meta });
     setSelectedBlockId(snapshot.selectedBlockId);
 
+    if (snapshot.selectedBlockId) {
+      const selectedBlock = snapshot.blocks.find((b) => b.id === snapshot.selectedBlockId);
+      if (selectedBlock && isKeyboardNavigableNonTextBlock(selectedBlock)) {
+        setFocusBlockId(snapshot.selectedBlockId);
+        pendingFocusRef.current = {
+          blockId: snapshot.selectedBlockId,
+          position: 'start',
+          focusNonText: true,
+        };
+        return;
+      }
+    }
+
     if (snapshot.selection) {
       const { blockId, from, to } = snapshot.selection;
       const listBlockId = blockId.includes(':') ? blockId.split(':')[0] : blockId;
+      const selectedInSnapshot = snapshot.blocks.find((b) => b.id === listBlockId);
+      if (selectedInSnapshot && isKeyboardNavigableNonTextBlock(selectedInSnapshot)) {
+        setSelectedBlockId(listBlockId);
+        setFocusBlockId(listBlockId);
+        pendingFocusRef.current = {
+          blockId: listBlockId,
+          position: 'start',
+          focusNonText: true,
+        };
+        return;
+      }
+
       setFocusBlockId(listBlockId);
       pendingFocusRef.current = {
         blockId,
@@ -1365,10 +1474,34 @@ export function EditArticleModalV2({
           ) {
             event.preventDefault();
             event.stopPropagation();
-            deleteBlock(selectedBlock.id);
+            deleteBlock(selectedBlock.id, getDeleteFocusAfterMediaBlock(blocks, selectedBlock.id));
             setSelectedBlockId(null);
           }
+          return;
         }
+
+        if (shouldDeleteSelectedMediaFromAdjacentRichText(event, activeElement, selectedBlockId)) {
+          const selectedBlock = blocks.find((b) => b.id === selectedBlockId);
+          if (
+            selectedBlock &&
+            (selectedBlock.type === 'image' || selectedBlock.type === 'carousel')
+          ) {
+            event.preventDefault();
+            event.stopPropagation();
+            deleteBlock(selectedBlock.id, getDeleteFocusAfterMediaBlock(blocks, selectedBlock.id));
+            setSelectedBlockId(null);
+          }
+          return;
+        }
+
+        return;
+      }
+
+      const focusedDividerBlockId = getDividerBlockIdFromActiveElement(activeElement);
+      if (focusedDividerBlockId && (event.key === 'Delete' || event.key === 'Backspace')) {
+        event.preventDefault();
+        event.stopPropagation();
+        deleteBlock(focusedDividerBlockId);
         return;
       }
 
@@ -1379,7 +1512,7 @@ export function EditArticleModalV2({
           (selectedBlock.type === 'image' || selectedBlock.type === 'carousel')
         ) {
           event.preventDefault();
-          deleteBlock(selectedBlockId);
+          deleteBlock(selectedBlockId, getDeleteFocusAfterMediaBlock(blocks, selectedBlockId));
           setSelectedBlockId(null);
         }
       }
@@ -1435,19 +1568,31 @@ export function EditArticleModalV2({
 
   // Установка фокуса после удаления блока (useLayoutEffect выполняется синхронно после обновления DOM)
   useLayoutEffect(() => {
-    if (pendingFocusRef.current) {
-      const { blockId, position, plainCaret, selectionTo } = pendingFocusRef.current;
-      pendingFocusRef.current = null;
+    if (!pendingFocusRef.current) return;
 
+    if (pendingFocusRef.current.focusNonText) {
+      const { blockId } = pendingFocusRef.current;
+      pendingFocusRef.current = null;
+      const block = blocks.find((b) => b.id === blockId);
       requestAnimationFrame(() => {
-        setFocusBlockId(blockId.includes(':') ? blockId.split(':')[0] : blockId);
-        if (selectionTo !== undefined && plainCaret) {
-          restoreEditorSelection(blockId, position as number, selectionTo);
-        } else {
-          restoreEditorCaret(blockId, position, plainCaret ?? false);
+        if (block && isKeyboardNavigableNonTextBlock(block)) {
+          focusNonTextBlockDom(blockId, block.type);
         }
       });
+      return;
     }
+
+    const { blockId, position, plainCaret, selectionTo } = pendingFocusRef.current;
+    pendingFocusRef.current = null;
+
+    requestAnimationFrame(() => {
+      setFocusBlockId(blockId.includes(':') ? blockId.split(':')[0] : blockId);
+      if (selectionTo !== undefined && plainCaret) {
+        restoreEditorSelection(blockId, position as number, selectionTo);
+      } else {
+        restoreEditorCaret(blockId, position, plainCaret ?? false);
+      }
+    });
   }, [blocks]);
 
   // Снятие выделения при клике вне блока
@@ -1591,6 +1736,57 @@ export function EditArticleModalV2({
     showEditorToast({ kind: 'error', message: texts.imageUploadError });
   }, [showEditorToast, texts.imageUploadError]);
 
+  const isEphemeralParagraphBlock = useCallback(
+    (block: Block | undefined): block is Extract<Block, { type: 'paragraph' }> => {
+      if (!block || block.type !== 'paragraph') return false;
+      if (!isRichTextEmpty(block.content)) return false;
+      return vkInserter?.afterBlockId === block.id;
+    },
+    [vkInserter]
+  );
+
+  const removeEphemeralParagraph = useCallback(
+    (paragraphId: string) => {
+      const paragraph = blocks.find((b) => b.id === paragraphId);
+      if (!isEphemeralParagraphBlock(paragraph)) return;
+
+      saveSnapshot();
+      setBlocks((prev) => {
+        const filtered = prev.filter((b) => b.id !== paragraphId);
+        if (filtered.length === 0) {
+          return prev;
+        }
+        return filtered;
+      });
+      setVkInserter(null);
+    },
+    [blocks, isEphemeralParagraphBlock, saveSnapshot]
+  );
+
+  const focusEphemeralParagraph = useCallback((paragraphId: string, plainCaret: boolean) => {
+    setSelectedBlockId(null);
+    setFocusBlockId(paragraphId);
+    pendingFocusRef.current = {
+      blockId: paragraphId,
+      position: 'start',
+      plainCaret,
+    };
+  }, []);
+
+  // Escape снимает временный paragraph после media (если он пустой)
+  useEffect(() => {
+    if (!vkInserter) return undefined;
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        removeEphemeralParagraph(vkInserter.afterBlockId);
+      }
+    };
+
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [vkInserter, removeEphemeralParagraph]);
+
   // Обработчики для блоков
   const handleBlockEnter = useCallback(
     (
@@ -1604,6 +1800,12 @@ export function EditArticleModalV2({
       const block = blocks[blockIndex];
 
       if (atEnd) {
+        const nextBlock = blocks[blockIndex + 1];
+        if (isEphemeralParagraphBlock(nextBlock)) {
+          focusEphemeralParagraph(nextBlock.id, !!richOptions);
+          return;
+        }
+
         saveSnapshot();
 
         const newBlock = createBlock('paragraph');
@@ -1614,12 +1816,7 @@ export function EditArticleModalV2({
         });
 
         setVkInserter({ afterBlockId: newBlock.id });
-
-        pendingFocusRef.current = {
-          blockId: newBlock.id,
-          position: 'start',
-          plainCaret: !!richOptions,
-        };
+        focusEphemeralParagraph(newBlock.id, !!richOptions);
       } else if (
         block.type === 'paragraph' ||
         block.type === 'title' ||
@@ -1663,7 +1860,61 @@ export function EditArticleModalV2({
         };
       }
     },
-    [blocks, createBlock, updateBlock, saveSnapshot]
+    [
+      blocks,
+      createBlock,
+      focusEphemeralParagraph,
+      isEphemeralParagraphBlock,
+      updateBlock,
+      saveSnapshot,
+    ]
+  );
+
+  const focusKeyboardNavigableNonTextBlock = useCallback(
+    (blockId: string) => {
+      const block = blocks.find((b) => b.id === blockId);
+      if (!block || !isKeyboardNavigableNonTextBlock(block)) return;
+
+      if (block.type === 'divider') {
+        setSelectedBlockId(null);
+        setFocusBlockId(blockId);
+        requestAnimationFrame(() => {
+          focusNonTextBlockDom(blockId, block.type);
+        });
+        return;
+      }
+
+      setSelectedBlockId(blockId);
+      setFocusBlockId(blockId);
+      requestAnimationFrame(() => {
+        focusNonTextBlockDom(blockId, block.type);
+      });
+    },
+    [blocks]
+  );
+
+  const handleBlockDeleteAtEnd = useCallback(
+    (blockId: string) => {
+      const blockIndex = blocks.findIndex((b) => b.id === blockId);
+      if (blockIndex === -1) return;
+
+      const currentBlock = blocks[blockIndex];
+      if (!isMergeableTextBlock(currentBlock)) return;
+
+      const nextBlock = blockIndex < blocks.length - 1 ? blocks[blockIndex + 1] : null;
+      const prevBlock = blockIndex > 0 ? blocks[blockIndex - 1] : null;
+      const isEmpty = isRichTextEmpty(currentBlock.content);
+
+      if (nextBlock && isKeyboardNavigableNonTextBlock(nextBlock)) {
+        focusKeyboardNavigableNonTextBlock(nextBlock.id);
+        return;
+      }
+
+      if (isEmpty && prevBlock && isKeyboardNavigableNonTextBlock(prevBlock)) {
+        focusKeyboardNavigableNonTextBlock(prevBlock.id);
+      }
+    },
+    [blocks, focusKeyboardNavigableNonTextBlock]
   );
 
   const handleBlockBackspace = useCallback(
@@ -1672,6 +1923,17 @@ export function EditArticleModalV2({
       if (blockIndex === -1) return;
 
       const currentBlock = blocks[blockIndex];
+      const prevBlock = blockIndex > 0 ? blocks[blockIndex - 1] : null;
+
+      if (
+        isMergeableTextBlock(currentBlock) &&
+        prevBlock &&
+        isKeyboardNavigableNonTextBlock(prevBlock) &&
+        (atStart || isEmpty)
+      ) {
+        focusKeyboardNavigableNonTextBlock(prevBlock.id);
+        return;
+      }
 
       // Если блок пустой
       if (isEmpty) {
@@ -1687,15 +1949,9 @@ export function EditArticleModalV2({
         // Выбираем цель: сначала prev, если нет — next, если нет — пусть deleteBlock сам создаст paragraph
         const target = prev ?? next;
 
-        if (
-          target &&
-          (target.type === 'paragraph' ||
-            target.type === 'title' ||
-            target.type === 'subtitle' ||
-            target.type === 'quote')
-        ) {
+        if (isMergeableTextBlock(target)) {
           deleteBlock(blockId, { blockId: target.id, position: 'end' });
-        } else {
+        } else if (!prev || !isKeyboardNavigableNonTextBlock(prev)) {
           deleteBlock(blockId); // fallback на авто-логику
         }
         return;
@@ -1703,19 +1959,8 @@ export function EditArticleModalV2({
 
       // Если курсор в начале блока и есть предыдущий блок
       if (atStart && blockIndex > 0) {
-        const prevBlock = blocks[blockIndex - 1];
-
         // Сливаем только совместимые текстовые блоки
-        if (
-          (currentBlock.type === 'paragraph' ||
-            currentBlock.type === 'title' ||
-            currentBlock.type === 'subtitle' ||
-            currentBlock.type === 'quote') &&
-          (prevBlock.type === 'paragraph' ||
-            prevBlock.type === 'title' ||
-            prevBlock.type === 'subtitle' ||
-            prevBlock.type === 'quote')
-        ) {
+        if (isMergeableTextBlock(currentBlock) && isMergeableTextBlock(prevBlock)) {
           const merged = normalizeRichText([...prevBlock.content, ...currentBlock.content]);
           const mergeCaret = plainCaret
             ? richTextToPlainText(prevBlock.content).length
@@ -1731,7 +1976,7 @@ export function EditArticleModalV2({
         }
       }
     },
-    [blocks, deleteBlock, updateBlock]
+    [blocks, deleteBlock, focusKeyboardNavigableNonTextBlock, updateBlock]
   );
 
   const handleRichBlockEnter = useCallback(
@@ -2619,17 +2864,6 @@ export function EditArticleModalV2({
                               onDelete={deleteBlock}
                               onFocus={() => {
                                 setFocusBlockId(block.id);
-                                // Если блок пустой и vkInserter не установлен, устанавливаем его
-                                const isBlockEmpty =
-                                  ((block.type === 'paragraph' ||
-                                    block.type === 'title' ||
-                                    block.type === 'subtitle' ||
-                                    block.type === 'quote') &&
-                                    isRichTextEmpty(block.content)) ||
-                                  (block.type === 'list' && isListBlockEmpty(block.items));
-                                if (isBlockEmpty && vkInserter?.afterBlockId !== block.id) {
-                                  setVkInserter({ afterBlockId: block.id });
-                                }
                               }}
                               onBlur={() => {
                                 // Используем setTimeout, чтобы проверить, куда перешел фокус
@@ -2671,6 +2905,21 @@ export function EditArticleModalV2({
 
                                   // Если фокус не на плюсе, не на textarea этого блока, не в том же блоке
                                   // и не перешел на другой блок редактора, скрываем плюс
+                                  const isEphemeralEmptyParagraph =
+                                    vkInserter?.afterBlockId === block.id &&
+                                    isEphemeralParagraphBlock(block);
+
+                                  if (
+                                    isEphemeralEmptyParagraph &&
+                                    !isClickingOnVkPlus &&
+                                    !isFocusOnBlockTextarea &&
+                                    !isFocusOnBlockRichEditor &&
+                                    !isFocusInSameBlock
+                                  ) {
+                                    removeEphemeralParagraph(block.id);
+                                    return;
+                                  }
+
                                   if (
                                     !isClickingOnVkPlus &&
                                     !isFocusOnBlockTextarea &&
@@ -2679,7 +2928,6 @@ export function EditArticleModalV2({
                                     !isFocusOnAnotherBlock
                                   ) {
                                     setFocusBlockId(null);
-                                    // Скрываем плюс при потере фокуса, если блок не пустой
                                     if (vkInserter?.afterBlockId === block.id) {
                                       const isBlockEmpty =
                                         (block.type === 'paragraph' ||
@@ -2710,6 +2958,7 @@ export function EditArticleModalV2({
                               onPaste={handlePaste}
                               onRichEnter={handleRichBlockEnter}
                               onRichBackspace={handleRichBlockBackspace}
+                              onDeleteAtEnd={handleBlockDeleteAtEnd}
                               onRichPasteMultiline={handleRichPasteMultiline}
                               onListConvertToParagraph={handleListConvertToParagraph}
                               onListInsertParagraphAfter={handleListInsertParagraphAfter}

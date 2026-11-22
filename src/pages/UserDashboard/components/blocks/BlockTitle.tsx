@@ -18,6 +18,7 @@ interface BlockTitleProps {
   onFormat?: (type: FormatType, url?: string) => void;
   onRichEnter?: (detail: RichEnterDetail) => void;
   onRichBackspace?: (detail: RichBackspaceDetail) => void;
+  onRichDeleteAtEnd?: () => void;
   onRichPasteMultiline?: (detail: RichPasteMultilineDetail) => void;
   placeholder?: string;
   blockId?: string;

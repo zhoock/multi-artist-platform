@@ -83,7 +83,7 @@ export function restoreEditorCaret(
   if (position === 'end') {
     const rich = queryRichRoot(blockId);
     if (rich) {
-      const length = rich.innerText.length;
+      const length = (rich.innerText ?? rich.textContent ?? '').length;
       return restoreEditorSelection(blockId, length, length);
     }
     const textarea = queryTextarea(blockId);

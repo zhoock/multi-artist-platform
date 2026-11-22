@@ -43,6 +43,7 @@ interface BlockParagraphProps {
   onPaste?: (text: string, files: File[]) => void;
   onRichEnter?: (detail: RichEnterDetail) => void;
   onRichBackspace?: (detail: RichBackspaceDetail) => void;
+  onRichDeleteAtEnd?: () => void;
   onRichPasteMultiline?: (detail: RichPasteMultilineDetail) => void;
   placeholder?: string;
   blockId?: string;
@@ -62,6 +63,7 @@ export function BlockParagraph({
   onPaste,
   onRichEnter,
   onRichBackspace,
+  onRichDeleteAtEnd,
   onRichPasteMultiline,
   placeholder = '',
   blockId,
@@ -133,6 +135,15 @@ export function BlockParagraph({
         setTimeout(() => {
           onBackspace?.(false, true);
         }, 0);
+      }
+    } else if (e.key === 'Delete') {
+      const textarea = e.currentTarget;
+      const isAtEnd =
+        textarea.selectionStart === textarea.value.length &&
+        textarea.selectionStart === textarea.selectionEnd;
+      if (isAtEnd) {
+        e.preventDefault();
+        onRichDeleteAtEnd?.();
       }
     }
   };
@@ -268,6 +279,7 @@ export function BlockParagraph({
           onPaste={markdownDebug ? handlePaste : undefined}
           onRichEnter={onRichEnter}
           onRichBackspace={onRichBackspace}
+          onRichDeleteAtEnd={onRichDeleteAtEnd}
           onRichPasteMultiline={onRichPasteMultiline}
           onBlockFormat={onFormat}
           onFocus={onFocus}
@@ -581,6 +593,7 @@ export function FormatMenu({
   };
 
   return (
+    // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- format menu blocks editor blur; actions are on child buttons
     <div
       ref={menuRef}
       className={`edit-article-v2__format-menu${
