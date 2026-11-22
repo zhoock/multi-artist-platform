@@ -199,8 +199,14 @@ function discardOverlays() {
 async function waitForDiscardDialog() {
   await waitFor(() => {
     expect(discardOverlays()).toHaveLength(1);
-    expect(screen.getByRole('button', { name: 'Stay' })).toBeTruthy();
+    expect(document.querySelector('.edit-album-modal__inline-discard-stay')).toBeTruthy();
   });
+}
+
+function discardStayButton() {
+  return document.querySelector(
+    '.edit-album-modal__inline-discard-stay'
+  ) as HTMLButtonElement | null;
 }
 
 describe('EditArticleModalV2 — Footer Cancel uses close confirmation', () => {
@@ -252,6 +258,9 @@ describe('EditArticleModalV2 — Footer Cancel uses close confirmation', () => {
     fireEvent.click(footerCancelButton());
     await waitForDiscardDialog();
 
+    const overlay = document.querySelector('.edit-album-modal__inline-discard-overlay');
+    expect(overlay?.closest('.edit-article-v2__container')).toBeTruthy();
+
     expect(screen.getByRole('textbox', { name: 'Article Title' })).toHaveValue(DIRTY_TITLE);
     expect(screen.getByTestId('guard-active')).toHaveTextContent('true');
   });
@@ -264,7 +273,7 @@ describe('EditArticleModalV2 — Footer Cancel uses close confirmation', () => {
 
     fireEvent.click(footerCancelButton());
     await waitForDiscardDialog();
-    fireEvent.click(screen.getByRole('button', { name: 'Stay' }));
+    fireEvent.click(discardStayButton()!);
 
     await waitFor(() => {
       expect(discardOverlays()).toHaveLength(0);
@@ -378,7 +387,7 @@ describe('EditArticleModalV2 — Footer Cancel uses close confirmation', () => {
 
     fireEvent.click(footerCancelButton());
     await waitForDiscardDialog();
-    fireEvent.click(screen.getByRole('button', { name: 'Stay' }));
+    fireEvent.click(discardStayButton()!);
 
     await waitFor(() => {
       expect(discardOverlays()).toHaveLength(0);

@@ -3050,6 +3050,24 @@ export function EditArticleModalV2({
                   )}
                 </button>
               </div>
+
+              <InlineEditDiscardDialog
+                open={articleCloseGuard.discardDialogOpen}
+                labels={getCloseDiscardConfirmLabels(ui ?? undefined)}
+                titleId={articleCloseGuard.discardTitleDomId}
+                onStay={articleCloseGuard.dismissDiscardDialog}
+                onDiscard={() => {
+                  articleCloseGuard.dismissDiscardDialog();
+                  finalizeArticleModalClose();
+                }}
+              />
+              <InlineEditDiscardDialog
+                open={langSwitchDiscardOpen}
+                labels={getCloseDiscardConfirmLabels(ui ?? undefined)}
+                titleId="article-editor-lang-switch-discard-title"
+                onStay={dismissLangSwitchDiscard}
+                onDiscard={confirmLangSwitchDiscard}
+              />
             </div>
 
             {/* Модал редактирования карусели */}
@@ -3081,23 +3099,6 @@ export function EditArticleModalV2({
             )}
           </div>
         )}
-        <InlineEditDiscardDialog
-          open={articleCloseGuard.discardDialogOpen}
-          labels={getCloseDiscardConfirmLabels(ui ?? undefined)}
-          titleId={articleCloseGuard.discardTitleDomId}
-          onStay={articleCloseGuard.dismissDiscardDialog}
-          onDiscard={() => {
-            articleCloseGuard.dismissDiscardDialog();
-            finalizeArticleModalClose();
-          }}
-        />
-        <InlineEditDiscardDialog
-          open={langSwitchDiscardOpen}
-          labels={getCloseDiscardConfirmLabels(ui ?? undefined)}
-          titleId="article-editor-lang-switch-discard-title"
-          onStay={dismissLangSwitchDiscard}
-          onDiscard={confirmLangSwitchDiscard}
-        />
         <input
           ref={imageUploadInputRef}
           type="file"

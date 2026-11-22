@@ -108,17 +108,26 @@
   @include dashboard-btn-ghost($margin: 0);
 }
 
-// Подтверждение «Discard changes?» поверх модалки редактирования альбома
+// Подтверждение «Discard changes?» поверх модалки редактирования альбома.
+// `position: fixed` inside native `<dialog showModal()>` is sized to the dialog box, not the
+// viewport — explicit viewport units keep the dimmer full-screen (editor footer included).
 .edit-album-modal__inline-discard-overlay {
   position: fixed;
-  inset: 0;
   z-index: 10050;
   display: flex;
   align-items: center;
   justify-content: center;
+  box-sizing: border-box;
+  margin: 0;
   padding: var(--ms-0);
   background: rgb(0 0 0 / 55%);
   backdrop-filter: blur(4px);
+  inset: 0;
+  inline-size: 100vw;
+  block-size: 100dvb;
+  min-block-size: 100dvb;
+  max-inline-size: none;
+  max-block-size: none;
 }
 
 .edit-album-modal__inline-discard-backdrop {
