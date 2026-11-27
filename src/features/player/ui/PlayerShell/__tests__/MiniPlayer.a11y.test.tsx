@@ -136,8 +136,7 @@ describe('MiniPlayer accessibility', () => {
     );
   });
 
-  test('long press on mini-player opens context menu without expanding', () => {
-    jest.useFakeTimers();
+  test('more actions button opens context menu; root context menu is disabled', () => {
     mockUseLang.mockReturnValue({ lang: 'en', setLang: jest.fn() });
     const onExpand = jest.fn();
     const onOpenContextMenu = jest.fn();
@@ -155,17 +154,20 @@ describe('MiniPlayer accessibility', () => {
 
     const root = document.querySelector('.mini-player');
     expect(root).toBeTruthy();
-    fireEvent.touchStart(root!, { target: root });
-    jest.advanceTimersByTime(500);
-    expect(onOpenContextMenu).toHaveBeenCalledTimes(1);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Open full player' }));
-    expect(onExpand).not.toHaveBeenCalled();
+    const menuButton = screen.getByRole('button', { name: 'Mini player actions' });
+    fireEvent.click(menuButton);
+    expect(onOpenContextMenu).toHaveBeenCalledTimes(1);
+    expect(menuButton.getAttribute('aria-expanded')).toBe('false');
+
+    fireEvent.click(menuButton);
+    expect(onOpenContextMenu).toHaveBeenCalledTimes(2);
 
     fireEvent.contextMenu(root!);
     expect(onOpenContextMenu).toHaveBeenCalledTimes(2);
 
-    jest.useRealTimers();
+    fireEvent.click(screen.getByRole('button', { name: 'Open full player' }));
+    expect(onExpand).toHaveBeenCalledTimes(1);
   });
 
   test('play/pause label follows playing state', () => {

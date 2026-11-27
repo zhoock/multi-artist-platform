@@ -169,6 +169,7 @@ export const PlayerShell: React.FC = () => {
   const shouldRenderMini = hasPlaylist && !!albumMeta && !!currentTrack && !isFullScreen;
 
   const miniPlayerRef = useRef<HTMLDivElement | null>(null);
+  const contextMenuButtonRef = useRef<HTMLButtonElement | null>(null);
   const [contextMenuOpen, setContextMenuOpen] = useState(false);
   const [contextMenuAnchor, setContextMenuAnchor] = useState<MiniPlayerContextMenuAnchor | null>(
     null
@@ -539,14 +540,18 @@ export const PlayerShell: React.FC = () => {
     setContextMenuAnchor(anchor);
   }, []);
 
-  const handleOpenContextMenu = useCallback(() => {
-    const node = miniPlayerRef.current;
+  const handleToggleContextMenu = useCallback(() => {
+    if (contextMenuOpen) {
+      closeContextMenu();
+      return;
+    }
+    const node = contextMenuButtonRef.current;
     if (!node) return;
     setContextMenuAnchor(readMiniPlayerContextMenuAnchor(node));
     setContextMenuOpen(true);
-  }, []);
+  }, [closeContextMenu, contextMenuOpen]);
 
-  useSyncMiniPlayerContextMenuAnchor(miniPlayerRef, contextMenuOpen, syncContextMenuAnchor);
+  useSyncMiniPlayerContextMenuAnchor(contextMenuButtonRef, contextMenuOpen, syncContextMenuAnchor);
 
   useEffect(() => {
     if (!contextMenuOpen) return undefined;
@@ -557,7 +562,14 @@ export const PlayerShell: React.FC = () => {
         closeContextMenu();
         return;
       }
-      if (target.closest('.mini-player-context-menu') || target.closest('.mini-player')) {
+      if (target.closest('.mini-player-context-menu')) {
+        return;
+      }
+      const trigger = contextMenuButtonRef.current;
+      if (trigger && (target === trigger || trigger.contains(target))) {
+        return;
+      }
+      if (target.closest('.mini-player')) {
         return;
       }
       closeContextMenu();
@@ -753,10 +765,12 @@ export const PlayerShell: React.FC = () => {
             onExpand={handleExpand}
             forwardHandlers={forwardHandlers}
             containerRef={miniPlayerRef}
+            contextMenuButtonRef={contextMenuButtonRef}
             showMixerButton={Boolean(mixerTarget)}
             onOpenMixer={handleOpenMixer}
             openMixerLabel={playerA11yLabels.openMixer}
-            onOpenContextMenu={handleOpenContextMenu}
+            onOpenContextMenu={handleToggleContextMenu}
+            contextMenuOpen={contextMenuOpen}
           />
           <MiniPlayerContextMenu
             open={contextMenuOpen}

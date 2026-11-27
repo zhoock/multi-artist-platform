@@ -5,11 +5,9 @@ import {
   type MiniPlayerContextMenuAnchor,
 } from './miniPlayerContextMenuPosition';
 
-/**
- * Keeps context-menu anchor in sync with the live mini-player box while the menu is open.
- */
+/** Keeps context-menu anchor in sync with its trigger while the menu is open. */
 export function useSyncMiniPlayerContextMenuAnchor(
-  miniPlayerRef: RefObject<HTMLElement | null>,
+  anchorRef: RefObject<HTMLElement | null>,
   isOpen: boolean,
   onAnchorChange: (anchor: MiniPlayerContextMenuAnchor) => void
 ): void {
@@ -18,13 +16,13 @@ export function useSyncMiniPlayerContextMenuAnchor(
       return undefined;
     }
 
-    const node = miniPlayerRef.current;
+    const node = anchorRef.current;
     if (!node) {
       return undefined;
     }
 
     const sync = () => {
-      const current = miniPlayerRef.current;
+      const current = anchorRef.current;
       if (!current?.isConnected) {
         return;
       }
@@ -46,5 +44,5 @@ export function useSyncMiniPlayerContextMenuAnchor(
       window.visualViewport?.removeEventListener('resize', sync);
       window.visualViewport?.removeEventListener('scroll', sync);
     };
-  }, [isOpen, miniPlayerRef, onAnchorChange]);
+  }, [isOpen, anchorRef, onAnchorChange]);
 }

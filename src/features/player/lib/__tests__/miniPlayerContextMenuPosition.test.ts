@@ -3,6 +3,7 @@ import { describe, expect, test } from '@jest/globals';
 import {
   buildMiniPlayerContextMenuStyle,
   clampMiniPlayerContextMenuLeft,
+  MINI_PLAYER_CONTEXT_MENU_GAP_PX,
 } from '../miniPlayerContextMenuPosition';
 
 describe('miniPlayerContextMenuPosition', () => {
@@ -12,22 +13,25 @@ describe('miniPlayerContextMenuPosition', () => {
     expect(clampMiniPlayerContextMenuLeft(100, 200, 500, 8)).toBe(100);
   });
 
-  test('buildMiniPlayerContextMenuStyle tracks mini-player top edge', () => {
+  test('buildMiniPlayerContextMenuStyle places menu above trigger with gap', () => {
     const style = buildMiniPlayerContextMenuStyle(
-      { left: 120, top: 640, bottom: 712, width: 280 },
+      { left: 200, top: 640, bottom: 688, width: 48 },
       { width: 240, height: 220 },
-      { width: 1024, height: 800 }
+      { width: 1024, height: 800 },
+      { placement: 'above', gap: MINI_PLAYER_CONTEXT_MENU_GAP_PX }
     );
-    expect(style.left).toBe(120);
-    expect(style.bottom).toBe('calc(100vh - 640px + var(--ms-01, 8px))');
-    expect(style.minWidth).toBe(280);
+    expect(style.left).toBe(104);
+    expect(style.bottom).toBe(`calc(100vh - 640px + ${MINI_PLAYER_CONTEXT_MENU_GAP_PX}px)`);
+    expect(style.top).toBe('auto');
+    expect(style).not.toHaveProperty('minWidth');
   });
 
   test('buildMiniPlayerContextMenuStyle shifts left when menu would overflow', () => {
     const style = buildMiniPlayerContextMenuStyle(
-      { left: 900, top: 640, bottom: 712, width: 200 },
+      { left: 900, top: 640, bottom: 688, width: 48 },
       { width: 280, height: 220 },
-      { width: 1024, height: 800 }
+      { width: 1024, height: 800 },
+      { placement: 'above', gap: MINI_PLAYER_CONTEXT_MENU_GAP_PX }
     );
     expect(style.left).toBe(736);
   });

@@ -6,6 +6,7 @@ import { Disc3, EyeOff, ListPlus, User } from 'lucide-react';
 import type { MiniPlayerContextMenuLabels } from '@features/player/lib/miniPlayerContextMenuLabels';
 import {
   buildMiniPlayerContextMenuStyle,
+  MINI_PLAYER_CONTEXT_MENU_GAP_PX,
   type MiniPlayerContextMenuAnchor,
 } from '@features/player/lib/miniPlayerContextMenuPosition';
 
@@ -62,7 +63,8 @@ export const MiniPlayerContextMenu: React.FC<MiniPlayerContextMenuProps> = ({
         buildMiniPlayerContextMenuStyle(
           anchor,
           { width: menuRect.width, height: menuRect.height },
-          { width: window.innerWidth, height: window.innerHeight }
+          { width: window.innerWidth, height: window.innerHeight },
+          { placement: 'above', gap: MINI_PLAYER_CONTEXT_MENU_GAP_PX }
         )
       );
     };
@@ -109,7 +111,8 @@ export const MiniPlayerContextMenu: React.FC<MiniPlayerContextMenuProps> = ({
           buildMiniPlayerContextMenuStyle(
             anchor,
             { width: 0, height: 0 },
-            { width: window.innerWidth, height: window.innerHeight }
+            { width: window.innerWidth, height: window.innerHeight },
+            { placement: 'above', gap: MINI_PLAYER_CONTEXT_MENU_GAP_PX }
           )),
       }}
       {...{ [UNIVERSE_SCENE_OVERLAY_ATTR]: '' }}

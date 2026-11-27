@@ -7,7 +7,10 @@ export type MiniPlayerContextMenuAnchor = {
   width: number;
 };
 
-const VIEWPORT_EDGE_PADDING_PX = 8;
+export const MINI_PLAYER_CONTEXT_MENU_GAP_PX = 8;
+const VIEWPORT_EDGE_PADDING_PX = MINI_PLAYER_CONTEXT_MENU_GAP_PX;
+
+export type MiniPlayerContextMenuPlacement = 'above' | 'auto';
 
 export function readMiniPlayerContextMenuAnchor(node: HTMLElement): MiniPlayerContextMenuAnchor {
   const rect = node.getBoundingClientRect();
@@ -37,24 +40,34 @@ export function buildMiniPlayerContextMenuStyle(
   menuSize: { width: number; height: number },
   viewport = typeof window !== 'undefined'
     ? { width: window.innerWidth, height: window.innerHeight }
-    : { width: 0, height: 0 }
+    : { width: 0, height: 0 },
+  options: { placement?: MiniPlayerContextMenuPlacement; gap?: number } = {}
 ): CSSProperties {
-  const gap = VIEWPORT_EDGE_PADDING_PX;
-  const minWidth = Math.min(anchor.width, 320);
-  const widthForClamp = Math.max(menuSize.width, minWidth);
-  const left = clampMiniPlayerContextMenuLeft(anchor.left, widthForClamp, viewport.width);
+  const gap = options.gap ?? VIEWPORT_EDGE_PADDING_PX;
+  const placement = options.placement ?? 'auto';
+  const menuWidth = Math.max(menuSize.width, 0);
+  const preferredLeft =
+    menuWidth > 0 ? anchor.left + anchor.width / 2 - menuWidth / 2 : anchor.left;
+  const left = clampMiniPlayerContextMenuLeft(
+    preferredLeft,
+    menuWidth,
+    viewport.width,
+    VIEWPORT_EDGE_PADDING_PX
+  );
 
   const spaceAbove = anchor.top - gap;
   const spaceBelow = viewport.height - anchor.bottom - gap;
   const preferAbove =
-    menuSize.height <= 0 || spaceAbove >= menuSize.height || spaceAbove >= spaceBelow;
+    placement === 'above' ||
+    menuSize.height <= 0 ||
+    spaceAbove >= menuSize.height ||
+    spaceAbove >= spaceBelow;
 
   if (preferAbove) {
     return {
       left,
-      bottom: `calc(100vh - ${anchor.top}px + var(--ms-01, 8px))`,
+      bottom: `calc(100vh - ${anchor.top}px + ${gap}px)`,
       top: 'auto',
-      minWidth,
     };
   }
 
@@ -62,6 +75,5 @@ export function buildMiniPlayerContextMenuStyle(
     left,
     top: anchor.bottom + gap,
     bottom: 'auto',
-    minWidth,
   };
 }

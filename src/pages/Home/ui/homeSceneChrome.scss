@@ -49,23 +49,37 @@
   font-size: 0.875rem;
   line-height: 1;
   text-decoration: none;
-  background: var(--scene-chrome-bg);
-  border: var(--scene-chrome-border-width) solid var(--scene-chrome-border-color);
+  background: rgb(var(--extra-background-color-rgb) / 80%);
+  border: 1px solid rgb(255 255 255 / 12%);
   border-radius: 999px;
-  backdrop-filter: var(--scene-chrome-backdrop);
+  backdrop-filter: blur(20px) saturate(0.8%);
   cursor: pointer;
   transition: var(--scene-chrome-transition);
   appearance: none;
 
   &:hover {
-    border-color: var(--scene-chrome-border-color-hover);
-    background: var(--scene-chrome-bg-hover);
+    border-color: rgb(255 255 255 / 12%);
+    background: rgb(var(--extra-background-color-rgb) / 80%);
   }
 
   &:focus-visible {
     outline: none;
-    border-color: var(--scene-chrome-border-color-focus);
-    background: var(--scene-chrome-bg-focus);
+    border-color: rgb(255 255 255 / 12%);
+    background: rgb(var(--extra-background-color-rgb) / 80%);
+  }
+}
+
+.home-scene .universe-search__field {
+  background: rgb(var(--extra-background-color-rgb) / 80%);
+  border: 1px solid rgb(255 255 255 / 12%);
+  backdrop-filter: blur(20px) saturate(0.8%);
+
+  &:hover,
+  &:focus-within,
+  &:focus-visible {
+    border-color: rgb(255 255 255 / 12%);
+    background: rgb(var(--extra-background-color-rgb) / 80%);
+    outline: none;
   }
 }
 

@@ -8,23 +8,23 @@
   bottom: var(--ms-02);
   z-index: 20000;
   margin-inline: auto;
-  inline-size: min(94vi, 1000px);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--ms-01);
-  padding: var(--ms-01);
+  gap: var(--ms-0, 12px);
+  padding-block: var(--ms-01);
+  padding-inline: var(--ms-0, 12px);
   color: var(--mini-player-text, var(--black, #000000));
-  background: rgb(var(--mini-player-background, var(--white-color-rgb, 255 255 255)) / 88%);
-  border-radius: var(--ms-0);
-  backdrop-filter: blur(18px);
+  background: rgb(var(--extra-background-color-rgb) / 80%);
+  border-radius: 999px;
+  backdrop-filter: blur(20px) saturate(0.8%);
   box-shadow:
     rgb(0 0 0 / 18%) 0 8px 20px -12px,
     rgb(0 0 0 / 22%) 0 -4px 16px -12px;
+  inline-size: min(94vi, 25.125rem);
 
-  @include breakpoint(mobileonly) {
-    padding-inline: var(--ms-0, 12px);
-    gap: var(--ms-0, 12px);
+  @include breakpoint(tablet) {
+    inline-size: min(94vi, 1000px);
   }
 
   &::after {
@@ -42,11 +42,6 @@
     block-size: 40px;
     padding: 0;
     flex-shrink: 0;
-
-    @include breakpoint(tablet) {
-      inline-size: 64px;
-      block-size: 64px;
-    }
 
     img {
       inline-size: 100%;
@@ -77,11 +72,6 @@
       $padding: 0,
       $border-radius: var(--ms-02)
     );
-
-    @include breakpoint(tablet) {
-      inline-size: 48px;
-      block-size: 48px;
-    }
   }
 
   &__mixer-icon {
@@ -99,7 +89,7 @@
     flex: 1;
     margin: 0;
     min-width: 0;
-    font-size: clamp(0.85rem, 0.7rem + 0.4vw, 1rem);
+    font-size: 0.85rem;
   }
 
   &__title-line {
@@ -116,10 +106,6 @@
 
   &__title:has(.mini-player__title-stack) .mini-player__title-line--compact {
     display: none;
-
-    @include breakpoint(tablet) {
-      display: block;
-    }
   }
 
   &__title-stack {
@@ -128,10 +114,6 @@
     gap: 0;
     line-height: 1.2;
     min-width: 0;
-
-    @include breakpoint(tablet) {
-      display: none;
-    }
   }
 
   &__title-line--track {
@@ -142,7 +124,7 @@
     display: flex;
     flex: 1;
     align-items: center;
-    gap: var(--ms-01);
+    gap: var(--ms-0, 12px);
     min-width: 0;
     margin: 0;
     padding: 0;
@@ -153,10 +135,6 @@
     border: none;
     border-radius: var(--ms-02);
     cursor: pointer;
-
-    @include breakpoint(mobileonly) {
-      gap: var(--ms-0, 12px);
-    }
 
     &:focus-visible {
       outline: 2px solid var(--dark-greenish-yellow, #c8b06d);
