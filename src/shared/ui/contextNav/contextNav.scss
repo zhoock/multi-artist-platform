@@ -17,16 +17,9 @@
     display: inline-flex;
     align-items: center;
     gap: 0.2em;
-    color: var(--link-color, #998238);
     text-decoration: none;
-    transition: opacity 160ms ease;
 
-    @media (hover: hover) and (pointer: fine) {
-      &:hover {
-        color: var(--link-color, #998238);
-        opacity: 0.72;
-      }
-    }
+    @include public-muted-icon-control-tones($with-background-transition: true);
 
     &:focus-visible {
       outline: 1px solid var(--link-color, #998238);
@@ -36,20 +29,32 @@
   }
 
   &__back--section {
+    position: relative;
+    isolation: isolate;
     text-transform: capitalize;
+
+    @include public-muted-icon-control-pseudo-hover-surface;
   }
 
   &__chevron {
     flex-shrink: 0;
     inline-size: 0.85em;
     block-size: 0.85em;
-    opacity: 0.7;
     color: currentcolor;
     stroke: currentcolor;
   }
 
   &__back--icon-only {
     gap: 0;
+    justify-content: center;
+    box-sizing: border-box;
+    inline-size: var(--ms-2);
+    block-size: var(--ms-2);
+    min-block-size: var(--ms-2);
+    border-radius: 50%;
+    background-color: transparent;
+
+    @include public-muted-icon-control-hover-bg-on-self;
 
     .context-nav__chevron {
       inline-size: 1.5em;

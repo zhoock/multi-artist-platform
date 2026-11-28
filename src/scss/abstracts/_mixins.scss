@@ -505,6 +505,96 @@ $desktops: 'width >= 1024px';
   }
 }
 
+// Public icon links (album share, comments teaser, context nav): muted glyph; primary on hover.
+// Geometry (circle on self, ::before pill) stays in each component.
+
+@mixin public-muted-icon-control-hover-background {
+  background-color: var(--link-button-background-color, #373633);
+
+  @media (hover: none) and (pointer: coarse) {
+    background-color: transparent;
+  }
+}
+
+@mixin public-muted-icon-control-tones(
+  $with-background-transition: false,
+  $with-focus-visible: false
+) {
+  color: var(--dashboard-text-secondary);
+
+  @if $with-background-transition {
+    transition:
+      color 0.2s ease,
+      background-color 0.2s ease;
+  } @else {
+    transition: color 0.2s ease;
+  }
+
+  @if $with-focus-visible {
+    &:hover,
+    &:focus-visible {
+      color: var(--dashboard-text-primary);
+
+      @media (hover: none) and (pointer: coarse) {
+        color: var(--dashboard-text-secondary);
+      }
+    }
+  } @else {
+    &:hover {
+      color: var(--dashboard-text-primary);
+
+      @media (hover: none) and (pointer: coarse) {
+        color: var(--dashboard-text-secondary);
+      }
+    }
+  }
+}
+
+@mixin public-muted-icon-control-hover-bg-on-self {
+  &:hover {
+    @include public-muted-icon-control-hover-background;
+  }
+}
+
+@mixin public-muted-icon-control-pseudo-hover-surface(
+  $border-radius: var(--public-btn-radius),
+  $hover-inset: calc(-1 * var(--ms-01)),
+  $with-focus-visible: true
+) {
+  &::before {
+    content: '';
+    position: absolute;
+    z-index: -1;
+    border-radius: $border-radius;
+    background-color: transparent;
+    inset: 0;
+    transition: background-color 0.2s ease;
+  }
+
+  @if $with-focus-visible {
+    &:hover::before,
+    &:focus-visible::before {
+      inset: $hover-inset;
+
+      @include public-muted-icon-control-hover-background;
+
+      @media (hover: none) and (pointer: coarse) {
+        inset: 0;
+      }
+    }
+  } @else {
+    &:hover::before {
+      inset: $hover-inset;
+
+      @include public-muted-icon-control-hover-background;
+
+      @media (hover: none) and (pointer: coarse) {
+        inset: 0;
+      }
+    }
+  }
+}
+
 // https://designmodo.com/vertical-rhythm/
 
 // Функция для настройки размера шрифта с учетом базовой линии

@@ -51,21 +51,10 @@
 
   // Share (comments bar + standalone): icon tone like modal close; gray pill on hover / open.
   .share-list__link {
-    color: var(--dashboard-text-secondary);
     background-color: transparent;
-    transition:
-      color 0.2s ease,
-      background-color 0.2s ease;
 
-    &:hover {
-      color: var(--dashboard-text-primary);
-      background-color: var(--link-button-background-color, #373633);
-
-      @media (hover: none) and (pointer: coarse) {
-        color: var(--dashboard-text-secondary);
-        background-color: transparent;
-      }
-    }
+    @include public-muted-icon-control-tones($with-background-transition: true);
+    @include public-muted-icon-control-hover-bg-on-self;
 
     &.active {
       color: var(--dashboard-text-primary);

@@ -41,7 +41,6 @@
   display: inline-flex;
   margin: 0;
   padding: 0;
-  color: var(--dashboard-text-secondary);
   background: transparent;
   border: 0;
   align-items: center;
@@ -51,37 +50,9 @@
   cursor: pointer;
   appearance: none;
   user-select: none;
-  transition: color 0.2s ease;
 
-  &::before {
-    content: '';
-    position: absolute;
-    z-index: -1;
-    border-radius: var(--public-btn-radius);
-    background-color: transparent;
-    inset: 0;
-    transition: background-color 0.2s ease;
-  }
-
-  &:hover,
-  &:focus-visible {
-    color: var(--dashboard-text-primary);
-
-    @media (hover: none) and (pointer: coarse) {
-      color: var(--dashboard-text-secondary);
-    }
-  }
-
-  &:hover::before,
-  &:focus-visible::before {
-    inset: calc(-1 * var(--ms-01));
-    background-color: var(--link-button-background-color, #373633);
-
-    @media (hover: none) and (pointer: coarse) {
-      inset: 0;
-      background-color: transparent;
-    }
-  }
+  @include public-muted-icon-control-tones($with-focus-visible: true);
+  @include public-muted-icon-control-pseudo-hover-surface;
 
   &--loading {
     opacity: 0.7;
@@ -681,10 +652,21 @@ a.album-comments__mention-link {
   min-inline-size: 1.75rem;
   min-block-size: 1.75rem;
   aspect-ratio: 1 / 1;
+  margin: 0;
   padding: 0;
-  color: var(--time-color, #9b9b9a);
+  background-color: transparent;
+  border: 0;
+  border-radius: 50%;
+  cursor: pointer;
+  appearance: none;
+  user-select: none;
 
-  @include button-variant($margin: 0, $padding: 0, $border-radius: 50%);
+  @include public-muted-icon-control-tones($with-background-transition: true);
+  @include public-muted-icon-control-hover-bg-on-self;
+
+  &:active {
+    scale: 0.98;
+  }
 }
 
 .album-comments__menu-panel {
