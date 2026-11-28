@@ -3,6 +3,10 @@
 @use '../../../../scss/components/modal' as *;
 
 .mini-player {
+  --mini-player-transport-size: 48px;
+  --mini-player-cover-size: 40px;
+  --mini-player-chrome-inline: var(--ms-0, 12px);
+
   position: fixed;
   inset-inline: 0;
   bottom: var(--ms-02);
@@ -13,7 +17,7 @@
   justify-content: space-between;
   gap: var(--ms-0, 12px);
   padding-block: var(--ms-01);
-  padding-inline: var(--ms-0, 12px);
+  padding-inline: var(--mini-player-chrome-inline);
   color: var(--mini-player-text, var(--black, #000000));
   background: rgb(var(--extra-background-color-rgb) / 80%);
   border-radius: 999px;
@@ -21,7 +25,7 @@
   box-shadow:
     rgb(0 0 0 / 18%) 0 8px 20px -12px,
     rgb(0 0 0 / 22%) 0 -4px 16px -12px;
-  inline-size: min(94vi, 25.125rem);
+  inline-size: 94vi;
 
   @include breakpoint(tablet) {
     inline-size: min(94vi, 1000px);
@@ -38,8 +42,8 @@
 
   &__cover {
     position: relative;
-    inline-size: 40px;
-    block-size: 40px;
+    inline-size: var(--mini-player-cover-size);
+    block-size: var(--mini-player-cover-size);
     padding: 0;
     flex-shrink: 0;
 
@@ -86,10 +90,12 @@
   }
 
   &__title {
-    display: block;
+    display: flex;
+    align-items: center;
     flex: 1;
     margin: 0;
     min-width: 0;
+    block-size: var(--mini-player-cover-size);
     font-size: 0.85rem;
   }
 
@@ -112,9 +118,14 @@
   &__title-stack {
     display: flex;
     flex-direction: column;
+    justify-content: center;
     gap: 0;
-    line-height: 1.2;
+    line-height: 1.15;
     min-width: 0;
+  }
+
+  &__title-line--artist {
+    font-weight: var(--semibold, 600);
   }
 
   &__title-line--track {
@@ -122,10 +133,12 @@
   }
 
   &__title-viewport {
-    display: block;
+    display: flex;
+    align-items: center;
     overflow: hidden;
     inline-size: 100%;
     min-inline-size: 0;
+    block-size: 100%;
 
     &--marquee {
       mask-image: linear-gradient(
@@ -139,9 +152,11 @@
   }
 
   &__title-marquee {
-    display: block;
+    display: flex;
+    align-items: center;
     inline-size: 100%;
     min-inline-size: 0;
+    block-size: 100%;
 
     &--active {
       inline-size: 100%;
@@ -155,14 +170,16 @@
   }
 
   &__title-marquee-track {
-    display: block;
+    display: flex;
+    align-items: center;
     inline-size: 100%;
     min-inline-size: 0;
+    block-size: 100%;
 
     &--active {
       display: inline-flex;
       flex-direction: row;
-      align-items: flex-start;
+      align-items: center;
       gap: var(--mini-player-title-marquee-gap, var(--ms-0));
       inline-size: max-content;
       max-inline-size: none;
@@ -182,8 +199,10 @@
     display: inline-flex;
     flex: 0 0 auto;
     flex-direction: column;
+    justify-content: center;
     gap: 0;
-    line-height: 1.2;
+    line-height: 1.15;
+    block-size: var(--mini-player-cover-size);
     min-inline-size: max-content;
   }
 
@@ -210,8 +229,8 @@
   }
 
   &__control {
-    inline-size: 48px;
-    block-size: 48px;
+    inline-size: var(--mini-player-transport-size);
+    block-size: var(--mini-player-transport-size);
 
     @include button-variant(
       $color: var(--mini-player-button, var(--mini-player-text, var(--black, #000000))),
@@ -289,6 +308,51 @@
         font-family: inherit;
         line-height: 1;
         transform: translateY(-1px);
+      }
+    }
+  }
+
+  @media (width < 768px) {
+    --mini-player-transport-size: 40px;
+    --mini-player-cover-size: 36px;
+
+    gap: var(--ms-01);
+    padding-block: var(--ms-02);
+
+    &__cover {
+      inline-size: var(--mini-player-cover-size);
+      block-size: var(--mini-player-cover-size);
+    }
+
+    &__mixer {
+      inline-size: 36px;
+      block-size: 36px;
+    }
+
+    &__mixer-icon {
+      inline-size: 24px;
+      block-size: 24px;
+    }
+
+    &__expand {
+      gap: var(--ms-01);
+    }
+
+    &__title {
+      font-size: 0.8rem;
+    }
+
+    &__controls {
+      gap: var(--ms-02);
+    }
+
+    &__control {
+      inline-size: 40px;
+      block-size: 40px;
+
+      &-icon {
+        inline-size: 24px;
+        block-size: 24px;
       }
     }
   }
@@ -396,6 +460,19 @@ dialog.popup[open]:has(.player) > .player-fullscreen__close {
   appearance: none;
 
   @include dashboard-settings-modal-close;
+
+  color: var(--white, #ffffff);
+  border-radius: 50%;
+
+  &:hover:not(:disabled) {
+    color: var(--white, #ffffff);
+    background: rgb(255 255 255 / 18%);
+    filter: none;
+  }
+
+  &:active:not(:disabled) {
+    background: rgb(255 255 255 / 10%);
+  }
 }
 
 @keyframes mini-player-title-marquee-loop {
