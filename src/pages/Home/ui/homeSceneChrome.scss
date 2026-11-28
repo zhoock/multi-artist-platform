@@ -14,11 +14,28 @@
   --scene-chrome-bg-focus: rgb(var(--charcoal-rgb) / 82%);
   --scene-chrome-backdrop: blur(14px) saturate(120%);
   --scene-chrome-transition: border-color 220ms ease, background 220ms ease;
+
+  // Reserve trailing chrome width for search (matches `.home-scene__sign-in` footprint + auth icons).
+  --scene-chrome-sign-in-padding-inline: 1rem;
+
+  // Label reserve at sign-in font-size (0.875rem); covers "Sign in" / comparable locales.
+  --scene-chrome-sign-in-label-inline-size: 2.75rem;
+  --scene-chrome-sign-in-inline-size: calc(
+    2 * var(--scene-chrome-sign-in-padding-inline) + var(--scene-chrome-sign-in-label-inline-size)
+  );
+  --scene-chrome-auth-actions-inline-size: calc(
+    var(--scene-chrome-size) + var(--ms-1) + var(--scene-chrome-size)
+  );
+  --scene-chrome-actions-inline-size: var(--scene-chrome-sign-in-inline-size);
   --scene-chrome-search-inline-end: calc(
-    var(--scene-chrome-offset-inline) + var(--scene-chrome-size) + var(--ms-0)
+    var(--scene-chrome-offset-inline) + var(--scene-chrome-actions-inline-size) + var(--ms-0)
   );
 
   background: var(--black, #000000);
+
+  &--chrome-authenticated {
+    --scene-chrome-actions-inline-size: var(--scene-chrome-auth-actions-inline-size);
+  }
 
   @include breakpoint(desktops) {
     --scene-chrome-offset-block: 1.5rem;

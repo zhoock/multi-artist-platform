@@ -499,7 +499,9 @@ export function HomePage() {
   return (
     <section
       aria-label="Cloud scene"
-      className="home-scene"
+      className={['home-scene', isAuthenticated() ? 'home-scene--chrome-authenticated' : null]
+        .filter(Boolean)
+        .join(' ')}
       style={{ width: '100%', height: '100%', minHeight: 0, position: 'relative' }}
     >
       <UniverseFloatingSearch
