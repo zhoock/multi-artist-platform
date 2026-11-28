@@ -172,22 +172,34 @@
     height: 40.25px;
     margin: 0;
     padding: 0;
+    color: var(--links-header-color, #dddddd);
+    background: transparent;
     border: 0;
     border-radius: 50%;
     align-items: center;
     justify-content: center;
     box-sizing: border-box;
     font-weight: bold;
-    background-color: transparent;
     cursor: pointer;
     appearance: none;
     user-select: none;
 
-    @include public-muted-icon-control-tones($with-background-transition: true);
-    @include public-muted-icon-control-hover-bg-on-self;
+    &:hover {
+      color: var(--links-header-color-hover, #ffffff);
+    }
 
-    &:active {
-      scale: 0.98;
+    &[aria-expanded='true'] {
+      color: var(--links-header-color-active, var(--dark-greenish-yellow, #998238));
+
+      &:hover {
+        color: var(--links-header-color-active, var(--dark-greenish-yellow, #998238));
+      }
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--links-header-color, currentcolor);
+      outline-offset: 2px;
+      border-radius: var(--public-btn-radius);
     }
   }
 

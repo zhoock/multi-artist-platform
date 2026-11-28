@@ -2,6 +2,7 @@
 import { memo } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import clsx from 'clsx';
+import { SlidersHorizontal as SlidersHorizontalIcon } from 'lucide-react';
 import { NavigationProps } from '@models';
 import { useLang } from '@app/providers/lang';
 import { useAppSelector } from '@shared/lib/hooks/useAppSelector';
@@ -49,12 +50,19 @@ const NavigationComponent = ({ onToggle }: NavigationProps) => {
             <NavLink
               to={to}
               title={label ?? undefined}
+              aria-label={label ?? undefined}
               onClick={onToggle}
               className={({ isActive, isPending }) =>
                 clsx('header__link', { active: isActive, pending: isPending })
               }
             >
-              {label}
+              <SlidersHorizontalIcon
+                className="header__link-icon"
+                size={22}
+                strokeWidth={2}
+                aria-hidden
+              />
+              {label ? <span className="header__link-label">{label}</span> : null}
             </NavLink>
           </li>
         ))}
