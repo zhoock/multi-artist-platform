@@ -17,9 +17,10 @@
     &-type-a {
       grid-column: span 2;
 
+      // Cover column width: same vw caps as AlbumCover default `sizes` (60vw / 40vw) and catalog row (~360px).
       &:has(.album-cover, .skeleton--album-cover) {
-        inline-size: min(100%, 448px);
-        max-inline-size: 448px;
+        inline-size: min(100%, 60vw, 360px);
+        max-inline-size: min(100%, 60vw, 360px);
         margin-inline: auto;
         justify-self: center;
         min-inline-size: 0;

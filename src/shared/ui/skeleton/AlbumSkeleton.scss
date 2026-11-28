@@ -84,8 +84,8 @@
 
   .album-skeleton__cover-block {
     position: relative;
-    inline-size: min(100%, 448px);
-    max-inline-size: 448px;
+    inline-size: min(100%, 60vw, 360px);
+    max-inline-size: min(100%, 60vw, 360px);
     margin-inline: auto;
   }
 
