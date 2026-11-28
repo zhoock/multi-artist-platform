@@ -29,7 +29,7 @@ export function AlbumCommentsTeaser({
       onClick={onOpen}
       aria-label={labels.openComments}
     >
-      <span className="share-list__link album-comments-teaser__trigger" aria-hidden>
+      <span className="album-comments-teaser__icon" aria-hidden>
         <MessageCircleIcon size={18} strokeWidth={2.5} aria-hidden />
       </span>
       {hasComments ? (

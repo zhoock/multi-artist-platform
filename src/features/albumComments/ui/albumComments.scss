@@ -27,58 +27,77 @@
     .share-list:has(.share-list__item.show) {
       grid-template-columns: repeat(3, min-content);
     }
+
+    // Main Share toggle — same block-size as comments pill (`.share-list__link` defaults).
+    .share-list__item:first-child > .share-list__link {
+      box-sizing: border-box;
+    }
   }
 }
 
 .album-comments-teaser {
+  position: relative;
+  isolation: isolate;
   display: inline-flex;
   margin: 0;
   padding: 0;
   color: var(--link-color-hover, #ffffff);
-  text-align: start;
   background: transparent;
   border: 0;
   align-items: center;
-  gap: var(--ms-01);
+  gap: var(--ms-02);
   flex: 0 1 auto;
   min-inline-size: 0;
   cursor: pointer;
   appearance: none;
   user-select: none;
 
-  &--loading {
-    opacity: 0.7;
+  &::before {
+    content: '';
+    position: absolute;
+    z-index: -1;
+    border-radius: var(--public-btn-radius);
+    background-color: transparent;
+    inset: 0;
+    transition: background-color 0.2s ease;
   }
 
-  &__trigger {
-    flex-shrink: 0;
-    pointer-events: none;
-  }
-
-  &:hover .album-comments-teaser__trigger,
-  &:focus-visible .album-comments-teaser__trigger {
-    color: var(--link-color-hover, #ffffff);
-    background-color: var(--link-button-background-color-hover, #998238);
+  &:hover::before,
+  &:focus-visible::before {
+    inset: calc(-1 * var(--ms-01));
+    background-color: var(--link-button-background-color, #373633);
 
     @media (hover: none) and (pointer: coarse) {
-      color: var(--link-button-color, #dddddd);
-      background-color: var(--link-button-background-color, #373633);
+      inset: 0;
+      background-color: transparent;
     }
+  }
+
+  &--loading {
+    opacity: 0.7;
   }
 
   &:focus-visible {
     outline: none;
   }
 
-  &:focus-visible .album-comments-teaser__trigger {
-    outline: 2px solid var(--accent-color, #998238);
-    outline-offset: 2px;
+  &__icon {
+    display: inline-flex;
+    color: inherit;
+    line-height: 0;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+
+    svg {
+      display: block;
+    }
   }
 
   &__count,
   &__empty {
     flex-shrink: 0;
-    line-height: 1;
+    line-height: var(--ms-0);
   }
 
   &__count {
@@ -90,6 +109,25 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  .album-comments-actions-bar & {
+    box-sizing: border-box;
+    block-size: var(--ms-2);
+    min-block-size: var(--ms-2);
+    inline-size: auto;
+    width: auto;
+    max-inline-size: none;
+    aspect-ratio: auto;
+    min-inline-size: max(calc(var(--ms-2) + var(--ms-0)), max-content);
+    flex: 0 0 auto;
+    padding-inline: var(--ms-01);
+    border-radius: var(--public-btn-radius);
+
+    &:hover::before,
+    &:focus-visible::before {
+      inset: 0;
+    }
   }
 }
 
@@ -196,7 +234,7 @@
   &__title {
     margin: 0;
     font-size: var(--ms-0);
-    font-weight: var(--bold, 700);
+    font-weight: var(--light, 300);
   }
 
   &__count {
@@ -244,7 +282,7 @@
   &__empty-title {
     margin-block-end: var(--ms-01);
     color: var(--link-color-hover, #ffffff);
-    font-weight: var(--bold, 700);
+    font-weight: var(--light, 300);
   }
 
   &__more {

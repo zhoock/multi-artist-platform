@@ -48,4 +48,24 @@
   .album-cover__image {
     margin-block-end: var(--ms-0);
   }
+
+  // Share (comments bar + standalone): no default circle; gray on hover / when menu open.
+  .share-list__link {
+    background-color: transparent;
+
+    &:hover {
+      color: var(--link-color-hover, #ffffff);
+      background-color: var(--link-button-background-color, #373633);
+
+      @media (hover: none) and (pointer: coarse) {
+        color: inherit;
+        background-color: transparent;
+      }
+    }
+
+    &.active {
+      color: var(--link-color-hover, #ffffff);
+      background-color: var(--link-button-background-color, #373633);
+    }
+  }
 }
