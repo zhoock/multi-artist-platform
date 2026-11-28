@@ -17,13 +17,18 @@
     &-type-a {
       grid-column: span 2;
 
-      // Cover column width: same vw caps as AlbumCover default `sizes` (60vw / 40vw) and catalog row (~360px).
       &:has(.album-cover, .skeleton--album-cover) {
-        inline-size: min(100%, 60vw, 360px);
-        max-inline-size: min(100%, 60vw, 360px);
+        // Mobile: match Play via --album-page-primary-width (see .album).
+        inline-size: var(--album-page-primary-width);
+        max-inline-size: var(--album-page-primary-width);
         margin-inline: auto;
         justify-self: center;
         min-inline-size: 0;
+
+        @include breakpoint(tablet) {
+          inline-size: min(100%, 60vw, 360px);
+          max-inline-size: min(100%, 60vw, 360px);
+        }
       }
     }
   }
@@ -37,6 +42,9 @@
 
 // Album detail page: global `img { margin-block-end: $ms-1 }` adds space under the cover.
 .album {
+  // Mobile-only hero stack width (cover + Play); unused from tablet breakpoint up.
+  --album-page-primary-width: min(100%, 280px);
+
   .album-cover__image {
     margin-block-end: var(--ms-0);
   }

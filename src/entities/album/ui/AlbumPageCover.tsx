@@ -9,6 +9,10 @@ export type AlbumPageCoverProps = CoverProps & {
 
 const TOUCH_FLIP_MEDIA_QUERY = '(hover: none) and (pointer: coarse)';
 
+/** Mobile: 280px (matches `.album { --album-page-primary-width }`). Tablet+: same as AlbumCover defaults. */
+const ALBUM_PAGE_COVER_SIZES =
+  '(max-width: 767px) 280px, (max-width: 1024px) min(40vw, 448px), 448px';
+
 function AlbumPageCover({ backCover, ...coverProps }: AlbumPageCoverProps) {
   const hasBackCover = Boolean(backCover?.trim());
   const [touchFlipped, setTouchFlipped] = useState(false);
@@ -27,15 +31,17 @@ function AlbumPageCover({ backCover, ...coverProps }: AlbumPageCoverProps) {
     return `${url}${url.includes('?') ? '&' : '?'}v=${encodeURIComponent(cacheBust)}`;
   }, [backCover, coverProps.userId, hasBackCover]);
 
+  const coverPropsWithSizes = { ...coverProps, sizes: coverProps.sizes ?? ALBUM_PAGE_COVER_SIZES };
+
   if (!hasBackCover || !backSrc) {
-    return <AlbumCover {...coverProps} />;
+    return <AlbumCover {...coverPropsWithSizes} />;
   }
 
   return (
     <div className="album-page-cover">
       {/* In-flow size reference: same DOM/CSS as plain AlbumCover (picture + .album-cover__image). */}
       <div className="album-page-cover__sizer" aria-hidden="true">
-        <AlbumCover {...coverProps} />
+        <AlbumCover {...coverPropsWithSizes} />
       </div>
       {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- coarse-pointer tap flip; desktop uses hover only */}
       <div
@@ -44,7 +50,7 @@ function AlbumPageCover({ backCover, ...coverProps }: AlbumPageCoverProps) {
       >
         <div className="album-cover-flip__inner">
           <div className="album-cover-flip__face album-cover-flip__face--front">
-            <AlbumCover {...coverProps} />
+            <AlbumCover {...coverPropsWithSizes} />
           </div>
           <div className="album-cover-flip__face album-cover-flip__face--back" aria-hidden="true">
             <img

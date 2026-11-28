@@ -34,12 +34,16 @@
       align-items: center;
       justify-content: center;
       gap: 7px;
-      inline-size: min(100%, 280px);
+      inline-size: var(--album-page-primary-width, min(100%, 280px));
 
       @include button-variant(
         $color: var(--button-color-hover),
         $background: var(--button-background-color-hover)
       );
+
+      @include breakpoint(tablet) {
+        inline-size: min(100%, 280px);
+      }
 
       .album-play__icon {
         display: inline-flex;

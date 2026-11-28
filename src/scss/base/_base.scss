@@ -236,13 +236,11 @@ body {
 
   h3 {
     // letter-spacing: 2.5px;
-    font-weight: var(--regular, 400);
+    font-weight: var(--light, 300);
 
     @include adjust-font-size-to($ms-0, 0.382, 18px);
 
     @include breakpoint(tablet) {
-      font-weight: var(--light, 300);
-
       @include adjust-font-size-to($ms-1, 0.382);
     }
 
