@@ -38,8 +38,11 @@ import {
   drawNebulaClusterLabelOnCanvas,
   estimateHeroClusterLabelScreenSizePx,
   getHeroGenreLabelSafePaddingPx,
+  heroGenreLabelCenterPxFromNorm,
+  heroGenreLabelPlacementNormFromCenter,
   measureClusterLabelTextExtentsForText,
   pickRandomHeroGenreLabelCenterPx,
+  type HeroGenreLabelPlacementNorm,
 } from './universe3dClusterLabelCanvas';
 import { measureHeroCoverPhotoLeftInCanvasPx } from '@shared/lib/heroGenreLabelPlacementZone';
 
@@ -300,6 +303,8 @@ export class Universe3D {
   private heroNavigateHoverProgress = 0;
   private heroNavigatePointerNdc = new THREE.Vector2(0, 0);
   private heroCoverLayoutListener: HTMLImageElement | null = null;
+  /** Hero genre label placement in 0–1 box coords; picked once, reused on resize. */
+  private heroGenreLabelPlacementNorms: HeroGenreLabelPlacementNorm[] = [];
   private onHeroCoverLayout = () => {
     this.layoutHeroClusterLabels();
   };
@@ -639,7 +644,7 @@ export class Universe3D {
     const safePadding = getHeroGenreLabelSafePaddingPx(viewW);
     const photoAreaLeftPx = measureHeroCoverPhotoLeftInCanvasPx(canvasEl);
 
-    for (const labelRef of this.clusterLabels) {
+    this.clusterLabels.forEach((labelRef, index) => {
       const text = labelRef.labelText ?? '';
       const extents = measureClusterLabelTextExtentsForText(text);
       const camDist = this.camera.position.distanceTo(labelRef.sprite.position);
@@ -658,12 +663,19 @@ export class Universe3D {
         safePadding,
         photoAreaLeftPx,
       });
-      const target = pickRandomHeroGenreLabelCenterPx(bounds);
+
+      let norm = this.heroGenreLabelPlacementNorms[index];
+      if (!norm) {
+        const picked = pickRandomHeroGenreLabelCenterPx(bounds);
+        norm = heroGenreLabelPlacementNormFromCenter(bounds, picked);
+        this.heroGenreLabelPlacementNorms[index] = norm;
+      }
+      const target = heroGenreLabelCenterPxFromNorm(bounds, norm);
 
       const world = this.heroLayerPixelToWorld(target.x, target.y, labelRef.center.z);
       labelRef.sprite.position.set(world.x, world.y, world.z);
       labelRef.center.copy(labelRef.sprite.position);
-    }
+    });
   }
 
   private ensureHeroCoverLayoutListener(): void {

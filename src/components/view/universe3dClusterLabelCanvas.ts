@@ -210,6 +210,32 @@ export function pickRandomHeroGenreLabelCenterPx(bounds: {
   return { x, y };
 }
 
+export type HeroGenreLabelPlacementNorm = { u: number; v: number };
+
+/** Stores where the label sat inside the placement box (0–1); stable across viewport resizes. */
+export function heroGenreLabelPlacementNormFromCenter(
+  bounds: HeroGenreLabelPlacementBounds,
+  center: { x: number; y: number }
+): HeroGenreLabelPlacementNorm {
+  const { minX, maxX, minY, maxY } = bounds;
+  const u = maxX > minX + 1e-6 ? (center.x - minX) / (maxX - minX) : 0.5;
+  const v = maxY > minY + 1e-6 ? (center.y - minY) / (maxY - minY) : 0.5;
+  return { u: clampScalar(u, 0, 1), v: clampScalar(v, 0, 1) };
+}
+
+/** Reprojects a stored norm into pixel space after bounds change (e.g. resize). */
+export function heroGenreLabelCenterPxFromNorm(
+  bounds: HeroGenreLabelPlacementBounds,
+  norm: HeroGenreLabelPlacementNorm
+): { x: number; y: number } {
+  const { minX, maxX, minY, maxY } = bounds;
+  const u = clampScalar(norm.u, 0, 1);
+  const v = clampScalar(norm.v, 0, 1);
+  const x = maxX > minX + 1e-6 ? minX + u * (maxX - minX) : (minX + maxX) / 2;
+  const y = maxY > minY + 1e-6 ? minY + v * (maxY - minY) : (minY + maxY) / 2;
+  return { x, y };
+}
+
 export function estimateHeroClusterLabelScreenSizePx(options: {
   textExtents: ClusterLabelTextExtents;
   viewportHeightPx: number;

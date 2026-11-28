@@ -10,6 +10,8 @@ import {
   drawNebulaClusterLabelOnCanvas,
   estimateHeroClusterLabelScreenSizePx,
   getHeroGenreLabelSafePaddingPx,
+  heroGenreLabelCenterPxFromNorm,
+  heroGenreLabelPlacementNormFromCenter,
   measureClusterLabelTextExtents,
   HERO_GENRE_LABEL_SAFE_PADDING,
 } from '../universe3dClusterLabelCanvas';
@@ -238,5 +240,31 @@ describe('universe3dClusterLabelCanvas', () => {
     });
     expect(long.maxX).toBeLessThan(short.maxX);
     expect(long.maxX + 380 / 2).toBeLessThanOrEqual(photoLeft - pad);
+  });
+
+  test('heroGenreLabelPlacementNorm survives viewport resize (same relative spot)', () => {
+    const pad = 32;
+    const label = { width: 200, height: 56 };
+    const narrow = computeHeroGenreLabelPlacementBounds({
+      heroWidth: 600,
+      heroHeight: 280,
+      labelWidth: label.width,
+      labelHeight: label.height,
+      safePadding: pad,
+    });
+    const center = { x: 180, y: 140 };
+    const norm = heroGenreLabelPlacementNormFromCenter(narrow, center);
+
+    const wide = computeHeroGenreLabelPlacementBounds({
+      heroWidth: 1200,
+      heroHeight: 320,
+      labelWidth: label.width,
+      labelHeight: label.height,
+      safePadding: pad,
+    });
+    const reprojected = heroGenreLabelCenterPxFromNorm(wide, norm);
+
+    expect(reprojected.x).toBeCloseTo(wide.minX + norm.u * (wide.maxX - wide.minX), 5);
+    expect(reprojected.y).toBeCloseTo(wide.minY + norm.v * (wide.maxY - wide.minY), 5);
   });
 });
