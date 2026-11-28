@@ -41,7 +41,7 @@
   display: inline-flex;
   margin: 0;
   padding: 0;
-  color: var(--link-color-hover, #ffffff);
+  color: var(--dashboard-text-secondary);
   background: transparent;
   border: 0;
   align-items: center;
@@ -51,6 +51,7 @@
   cursor: pointer;
   appearance: none;
   user-select: none;
+  transition: color 0.2s ease;
 
   &::before {
     content: '';
@@ -60,6 +61,15 @@
     background-color: transparent;
     inset: 0;
     transition: background-color 0.2s ease;
+  }
+
+  &:hover,
+  &:focus-visible {
+    color: var(--dashboard-text-primary);
+
+    @media (hover: none) and (pointer: coarse) {
+      color: var(--dashboard-text-secondary);
+    }
   }
 
   &:hover::before,

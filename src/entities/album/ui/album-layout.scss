@@ -49,22 +49,26 @@
     margin-block-end: var(--ms-0);
   }
 
-  // Share (comments bar + standalone): no default circle; gray on hover / when menu open.
+  // Share (comments bar + standalone): icon tone like modal close; gray pill on hover / open.
   .share-list__link {
+    color: var(--dashboard-text-secondary);
     background-color: transparent;
+    transition:
+      color 0.2s ease,
+      background-color 0.2s ease;
 
     &:hover {
-      color: var(--link-color-hover, #ffffff);
+      color: var(--dashboard-text-primary);
       background-color: var(--link-button-background-color, #373633);
 
       @media (hover: none) and (pointer: coarse) {
-        color: inherit;
+        color: var(--dashboard-text-secondary);
         background-color: transparent;
       }
     }
 
     &.active {
-      color: var(--link-color-hover, #ffffff);
+      color: var(--dashboard-text-primary);
       background-color: var(--link-button-background-color, #373633);
     }
   }
