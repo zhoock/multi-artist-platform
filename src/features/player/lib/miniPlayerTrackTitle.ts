@@ -2,7 +2,7 @@ const ARTIST_TITLE_SEPARATORS = [' — ', ' – ', ' - '] as const;
 
 /**
  * When the queue row title already includes the artist prefix (e.g. "Beatles - Song"),
- * drop it for the mobile mini-player second line where the artist is shown above.
+ * drop it for the mini-player track line when the artist is shown on a separate line.
  */
 export function stripRedundantArtistPrefixFromTrackTitle(artist: string, title: string): string {
   const artistTrimmed = artist.trim();

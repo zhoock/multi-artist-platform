@@ -35,7 +35,7 @@ import { buildArtistPagePath } from '@shared/lib/seo/publicPagePaths';
 import { clearPremiumCheckoutAuthIntent } from '@shared/lib/authIntent';
 import { appendReturnTo } from '@shared/lib/authReturnUrl';
 import { isAuthenticated } from '@shared/lib/auth';
-import { ProfileAvatarMenu } from '@widgets/header';
+import { HeaderNotificationsBell, ProfileAvatarMenu } from '@widgets/header';
 import { UniverseFloatingSearch } from '@features/universeSearch';
 import { AboutSection } from './AboutSection';
 import { ArtistContactManagerSection } from './ArtistContactManagerSection';
@@ -102,6 +102,8 @@ export function HomePage() {
   const locationForUniverseRef = useRef(location);
   langForUniverseRef.current = lang;
   locationForUniverseRef.current = location;
+  const [homeChromeNotifOpen, setHomeChromeNotifOpen] = useState(false);
+  const [homeChromeProfileOpen, setHomeChromeProfileOpen] = useState(false);
   const [isAboutModalOpen, setIsAboutModalOpen] = useState(false);
   /** Defer heavy artist-page mount until after Hero paint (LCP experiment). */
   const [shouldRevealFullPage, setShouldRevealFullPage] = useState(false);
@@ -507,7 +509,22 @@ export function HomePage() {
       />
       <div className="home-scene__actions" {...{ [UNIVERSE_SCENE_OVERLAY_ATTR]: '' }}>
         {isAuthenticated() ? (
-          <ProfileAvatarMenu />
+          <>
+            <HeaderNotificationsBell
+              closeWhenSiblingMenuOpen={homeChromeProfileOpen}
+              onOpenChange={(open) => {
+                setHomeChromeNotifOpen(open);
+                if (open) setHomeChromeProfileOpen(false);
+              }}
+            />
+            <ProfileAvatarMenu
+              closeWhenLangMenuOpen={homeChromeNotifOpen}
+              onOpenChange={(open) => {
+                setHomeChromeProfileOpen(open);
+                if (open) setHomeChromeNotifOpen(false);
+              }}
+            />
+          </>
         ) : (
           <button
             type="button"

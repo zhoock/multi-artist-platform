@@ -9,6 +9,8 @@ import { playerReducer, playerActions } from '@features/player/model/slice/playe
 import { playerListenerMiddleware } from '@features/player/model/middleware/playerListeners';
 import { langReducer } from '@shared/model/lang/langSlice';
 import { popupReducer } from '@features/popupToggle/model/slice/popupSlice';
+import { uiDictionaryReducer } from '@shared/model/uiDictionary';
+import type { UiDictionaryState } from '@shared/model/uiDictionary/types';
 import type { PlayerState, PlayerTrack } from '@features/player/model/types/playerSchema';
 import { resetPlayerSessionBootstrapForTests } from '@features/player/model/lib/bootstrapPlayerSession';
 
@@ -46,8 +48,12 @@ jest.mock('../loadAudioPlayerModule', () => ({
 }));
 
 jest.mock('../MiniPlayer', () => ({
-  MiniPlayer: ({ showMixerButton }: { showMixerButton?: boolean }) => (
-    <div data-testid="mini-player" data-mixer={String(Boolean(showMixerButton))} />
+  MiniPlayer: () => <div data-testid="mini-player" />,
+}));
+
+jest.mock('../MiniPlayerContextMenu', () => ({
+  MiniPlayerContextMenu: ({ showOpenMixer }: { showOpenMixer?: boolean }) => (
+    <div data-testid="mini-player-context-menu" data-mixer={String(Boolean(showOpenMixer))} />
   ),
 }));
 
@@ -70,6 +76,26 @@ jest.mock('@shared/lib/hooks/useSiteArtistDisplayName', () => ({
 jest.mock('@shared/lib/profileDisplayName', () => ({
   formatAlbumDisplayFullName: (artist: string, album: string) => `${artist} — ${album}`,
   readStoredProfileDisplayName: () => '',
+}));
+
+jest.mock('@shared/lib/hooks/useArtistPageAccess', () => ({
+  useArtistPageAccess: () => ({ monetizationEnabled: false }),
+}));
+
+jest.mock('@features/artistArchive/lib/useArtistArchiveStatus', () => ({
+  useArtistArchiveStatus: () => ({
+    buttonState: 'hidden',
+    addToArchive: jest.fn(),
+    activateInArchive: jest.fn(),
+  }),
+}));
+
+jest.mock('@shared/lib/archiveAccessModal', () => ({
+  useArchiveAccessModal: () => ({ open: jest.fn() }),
+}));
+
+jest.mock('@shared/ui/artistPageBuilder/useArtistPageBuilderNav', () => ({
+  useArtistPageBuilderNav: () => ({ openDashboard: jest.fn() }),
 }));
 
 function track(partial: Partial<PlayerTrack> & Pick<PlayerTrack, 'id' | 'title'>): PlayerTrack {
@@ -112,16 +138,26 @@ function createStore(playlist: PlayerTrack[], currentTrackIndex: number) {
     controlsVisible: true,
   };
 
+  const emptyUiEntry = {
+    status: 'idle' as const,
+    error: null,
+    data: [],
+    lastUpdated: null,
+  };
+  const uiDictionary: UiDictionaryState = { en: emptyUiEntry, ru: emptyUiEntry };
+
   return configureStore({
     reducer: {
       player: playerReducer,
       lang: langReducer,
       popup: popupReducer,
+      uiDictionary: uiDictionaryReducer,
     },
     preloadedState: {
       player,
       lang: { current: 'en' as const },
       popup: { isOpen: false },
+      uiDictionary,
     },
     middleware: (getDefaultMiddleware: any) =>
       getDefaultMiddleware().prepend(playerListenerMiddleware.middleware),
@@ -140,7 +176,7 @@ function renderShell(playlist: PlayerTrack[], currentTrackIndex: number) {
   return { store, ...view };
 }
 
-describe('PlayerShell mini-player mixer icon', () => {
+describe('PlayerShell mini-player mixer menu item', () => {
   beforeEach(() => {
     resetPlayerSessionBootstrapForTests();
 
@@ -162,7 +198,9 @@ describe('PlayerShell mini-player mixer icon', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByTestId('mini-player').getAttribute('data-mixer')).toBe('true');
+      expect(screen.getByTestId('mini-player-context-menu').getAttribute('data-mixer')).toBe(
+        'true'
+      );
     });
   });
 
@@ -170,7 +208,9 @@ describe('PlayerShell mini-player mixer icon', () => {
     const { store } = renderShell([track({ id: 't1', title: 'With stems', hasStems: true })], 0);
 
     await waitFor(() => {
-      expect(screen.getByTestId('mini-player').getAttribute('data-mixer')).toBe('true');
+      expect(screen.getByTestId('mini-player-context-menu').getAttribute('data-mixer')).toBe(
+        'true'
+      );
     });
 
     store.dispatch(
@@ -182,7 +222,9 @@ describe('PlayerShell mini-player mixer icon', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByTestId('mini-player').getAttribute('data-mixer')).toBe('false');
+      expect(screen.getByTestId('mini-player-context-menu').getAttribute('data-mixer')).toBe(
+        'false'
+      );
     });
   });
 
@@ -196,7 +238,9 @@ describe('PlayerShell mini-player mixer icon', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByTestId('mini-player').getAttribute('data-mixer')).toBe('true');
+      expect(screen.getByTestId('mini-player-context-menu').getAttribute('data-mixer')).toBe(
+        'true'
+      );
     });
 
     store.dispatch(
@@ -208,7 +252,9 @@ describe('PlayerShell mini-player mixer icon', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByTestId('mini-player').getAttribute('data-mixer')).toBe('true');
+      expect(screen.getByTestId('mini-player-context-menu').getAttribute('data-mixer')).toBe(
+        'true'
+      );
     });
   });
 
@@ -232,7 +278,9 @@ describe('PlayerShell mini-player mixer icon', () => {
     store.dispatch(playerActions.setCurrentTrackIndex(1));
 
     await waitFor(() => {
-      expect(screen.getByTestId('mini-player').getAttribute('data-mixer')).toBe('false');
+      expect(screen.getByTestId('mini-player-context-menu').getAttribute('data-mixer')).toBe(
+        'false'
+      );
     });
   });
 });

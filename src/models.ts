@@ -505,6 +505,7 @@ export interface IInterface {
     contextMenu?: {
       goToAlbum?: string;
       goToArtist?: string;
+      openMixer?: string;
       addToCollection?: string;
       hideMiniPlayer?: string;
       menuLabel?: string;

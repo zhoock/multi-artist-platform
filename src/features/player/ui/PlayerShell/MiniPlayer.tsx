@@ -1,12 +1,11 @@
 // src/features/player/ui/PlayerShell/MiniPlayer.tsx
 import React, { useCallback, useMemo } from 'react';
 import clsx from 'clsx';
-import { MoreHorizontal, Pause, Play, SkipForward, SlidersHorizontal } from 'lucide-react';
+import { MoreHorizontal, Pause, Play, SkipForward } from 'lucide-react';
 import AlbumCover from '@entities/album/ui/AlbumCover';
 import {
   playerFilledPlayIconProps,
   playerTransportIconProps,
-  playerIconProps,
   PLAYER_MINI_ICON_SIZE,
 } from '@shared/ui/icons/playerActionIcon';
 import { UNIVERSE_SCENE_OVERLAY_ATTR } from '@shared/lib/universeSceneOverlay';
@@ -43,9 +42,6 @@ interface MiniPlayerProps {
   forwardHandlers: ForwardHandlers;
   containerRef?: React.Ref<HTMLDivElement>;
   contextMenuButtonRef?: React.Ref<HTMLButtonElement>;
-  showMixerButton?: boolean;
-  onOpenMixer?: () => void;
-  openMixerLabel?: string;
   onOpenContextMenu?: () => void;
   contextMenuOpen?: boolean;
 }
@@ -61,9 +57,6 @@ export const MiniPlayer: React.FC<MiniPlayerProps> = ({
   forwardHandlers,
   containerRef,
   contextMenuButtonRef,
-  showMixerButton = false,
-  onOpenMixer,
-  openMixerLabel,
   onOpenContextMenu,
   contextMenuOpen = false,
 }) => {
@@ -96,23 +89,6 @@ export const MiniPlayer: React.FC<MiniPlayerProps> = ({
 
   return (
     <div ref={containerRef} className="mini-player" {...{ [UNIVERSE_SCENE_OVERLAY_ATTR]: '' }}>
-      {showMixerButton && onOpenMixer ? (
-        <button
-          type="button"
-          className="mini-player__mixer"
-          aria-label={openMixerLabel ?? labels.openMixer}
-          onClick={(event) => {
-            event.stopPropagation();
-            onOpenMixer();
-          }}
-        >
-          <SlidersHorizontal
-            {...playerIconProps(PLAYER_MINI_ICON_SIZE, {
-              className: 'mini-player__mixer-icon',
-            })}
-          />
-        </button>
-      ) : null}
       <button
         type="button"
         className="mini-player__expand"

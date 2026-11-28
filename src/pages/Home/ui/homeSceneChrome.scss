@@ -29,9 +29,10 @@
   inset-block-start: var(--scene-chrome-offset-block);
   inset-inline-end: var(--scene-chrome-offset-inline);
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: var(--ms-01);
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--ms-1);
   pointer-events: none;
 
   > * {

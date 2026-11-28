@@ -62,27 +62,6 @@
     }
   }
 
-  &__mixer {
-    inline-size: 40px;
-    block-size: 40px;
-    flex-shrink: 0;
-
-    @include button-variant(
-      $color: var(--mini-player-button, var(--mini-player-text, var(--black, #000000))),
-      $background: transparent,
-      $hover-color: var(--mini-player-button, var(--mini-player-text, var(--black, #000000))),
-      $hover-background: rgb(255 255 255 / 18%),
-      $margin: 0,
-      $padding: 0,
-      $border-radius: 50%
-    );
-  }
-
-  &__mixer-icon {
-    display: block;
-    margin-inline: auto;
-  }
-
   &__controls {
     display: flex;
     align-items: center;
@@ -324,16 +303,6 @@
       block-size: var(--mini-player-cover-size);
     }
 
-    &__mixer {
-      inline-size: 36px;
-      block-size: 36px;
-    }
-
-    &__mixer-icon {
-      inline-size: 24px;
-      block-size: 24px;
-    }
-
     &__expand {
       gap: var(--ms-01);
     }
@@ -388,7 +357,7 @@
     text-align: start;
     background: transparent;
     border: none;
-    border-radius: var(--public-btn-radius);
+    border-radius: var(--ms-02);
     transition:
       color 0.2s ease,
       background-color 0.2s ease;

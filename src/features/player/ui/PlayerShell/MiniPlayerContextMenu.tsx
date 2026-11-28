@@ -1,7 +1,7 @@
 import React, { useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import clsx from 'clsx';
-import { Disc3, EyeOff, ListPlus, User } from 'lucide-react';
+import { Disc3, EyeOff, ListPlus, SlidersHorizontal, User } from 'lucide-react';
 
 import type { MiniPlayerContextMenuLabels } from '@features/player/lib/miniPlayerContextMenuLabels';
 import {
@@ -20,8 +20,11 @@ type MiniPlayerContextMenuProps = {
   albumTitle: string;
   artistTitle: string;
   showAddToCollection: boolean;
+  showOpenMixer: boolean;
+  trackTitle: string;
   onGoToAlbum: () => void;
   onGoToArtist: () => void;
+  onOpenMixer: () => void;
   onAddToCollection: () => void;
   onHideMiniPlayer: () => void;
   canGoToAlbum: boolean;
@@ -39,8 +42,11 @@ export const MiniPlayerContextMenu: React.FC<MiniPlayerContextMenuProps> = ({
   albumTitle,
   artistTitle,
   showAddToCollection,
+  showOpenMixer,
+  trackTitle,
   onGoToAlbum,
   onGoToArtist,
+  onOpenMixer,
   onAddToCollection,
   onHideMiniPlayer,
   canGoToAlbum,
@@ -88,6 +94,8 @@ export const MiniPlayerContextMenu: React.FC<MiniPlayerContextMenuProps> = ({
     open,
     anchor,
     showAddToCollection,
+    showOpenMixer,
+    trackTitle,
     albumTitle,
     artistTitle,
     labels,
@@ -152,6 +160,27 @@ export const MiniPlayerContextMenu: React.FC<MiniPlayerContextMenuProps> = ({
           ) : null}
         </span>
       </button>
+      {showOpenMixer ? (
+        <button
+          type="button"
+          role="menuitem"
+          className="mini-player-context-menu__item"
+          onClick={onOpenMixer}
+        >
+          <SlidersHorizontal
+            className="mini-player-context-menu__icon"
+            size={18}
+            strokeWidth={1.75}
+            aria-hidden
+          />
+          <span className="mini-player-context-menu__text">
+            <span className="mini-player-context-menu__title">{labels.openMixer}</span>
+            {trackTitle ? (
+              <span className="mini-player-context-menu__subtitle">{trackTitle}</span>
+            ) : null}
+          </span>
+        </button>
+      ) : null}
       {showAddToCollection ? (
         <>
           <MenuSeparator />

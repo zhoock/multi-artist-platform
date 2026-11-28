@@ -71,30 +71,6 @@ describe('MiniPlayer accessibility', () => {
     expect(onExpand).toHaveBeenCalledTimes(1);
   });
 
-  test('mixer button calls handler without expanding full player', () => {
-    mockUseLang.mockReturnValue({ lang: 'en', setLang: jest.fn() });
-    const onOpenMixer = jest.fn();
-    const onExpand = jest.fn();
-
-    render(
-      <MiniPlayer
-        title="Track title"
-        isPlaying={false}
-        onToggle={jest.fn()}
-        onExpand={onExpand}
-        forwardHandlers={noopForwardHandlers}
-        showMixerButton
-        onOpenMixer={onOpenMixer}
-        openMixerLabel="Open mixer for this track"
-      />
-    );
-
-    fireEvent.click(screen.getByRole('button', { name: 'Open mixer for this track' }));
-    expect(onOpenMixer).toHaveBeenCalledTimes(1);
-    expect(onExpand).not.toHaveBeenCalled();
-    expect(screen.queryByRole('button', { name: 'Open mixer for this track' })).toBeTruthy();
-  });
-
   test('transport buttons keep accessible names in Russian', () => {
     mockUseLang.mockReturnValue({ lang: 'ru', setLang: jest.fn() });
 

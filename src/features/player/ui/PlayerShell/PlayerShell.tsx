@@ -42,6 +42,7 @@ import {
   selectPlayerUiForA11y,
 } from '@features/player/lib/getPlayerA11yLabels';
 import { getMiniPlayerContextMenuLabels } from '@features/player/lib/miniPlayerContextMenuLabels';
+import { stripRedundantArtistPrefixFromTrackTitle } from '@features/player/lib/miniPlayerTrackTitle';
 import { readMiniPlayerContextMenuAnchor } from '@features/player/lib/miniPlayerContextMenuPosition';
 import { useSyncMiniPlayerContextMenuAnchor } from '@features/player/lib/useSyncMiniPlayerContextMenuAnchor';
 import { usePlayerContentLinks } from '@features/player/lib/usePlayerContentLinks';
@@ -589,6 +590,19 @@ export const PlayerShell: React.FC = () => {
     };
   }, [closeContextMenu, contextMenuOpen]);
 
+  const contextMenuTrackTitle = useMemo(() => {
+    if (!currentTrack) return '';
+    const artistLabel = albumMeta?.artist?.trim() ?? '';
+    const raw = currentTrack.title.trim();
+    if (!artistLabel) return raw;
+    return stripRedundantArtistPrefixFromTrackTitle(artistLabel, raw);
+  }, [albumMeta?.artist, currentTrack]);
+
+  const handleContextMenuOpenMixer = useCallback(() => {
+    handleOpenMixer();
+    closeContextMenu();
+  }, [closeContextMenu, handleOpenMixer]);
+
   const handleContextMenuGoToAlbum = useCallback(() => {
     if (!albumPagePath) return;
     const { pathname, search } = new URL(albumPagePath, 'http://local');
@@ -766,9 +780,6 @@ export const PlayerShell: React.FC = () => {
             forwardHandlers={forwardHandlers}
             containerRef={miniPlayerRef}
             contextMenuButtonRef={contextMenuButtonRef}
-            showMixerButton={Boolean(mixerTarget)}
-            onOpenMixer={handleOpenMixer}
-            openMixerLabel={playerA11yLabels.openMixer}
             onOpenContextMenu={handleToggleContextMenu}
             contextMenuOpen={contextMenuOpen}
           />
@@ -779,10 +790,13 @@ export const PlayerShell: React.FC = () => {
             albumTitle={linkAlbumTitle}
             artistTitle={linkArtistTitle}
             showAddToCollection={showAddToCollectionMenuItem}
+            showOpenMixer={Boolean(mixerTarget)}
+            trackTitle={contextMenuTrackTitle}
             canGoToAlbum={Boolean(albumPagePath)}
             canGoToArtist={Boolean(artistPagePath)}
             onGoToAlbum={handleContextMenuGoToAlbum}
             onGoToArtist={handleContextMenuGoToArtist}
+            onOpenMixer={handleContextMenuOpenMixer}
             onAddToCollection={handleContextMenuAddToCollection}
             onHideMiniPlayer={handleHideMiniPlayer}
           />
