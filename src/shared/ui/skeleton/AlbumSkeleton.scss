@@ -1,70 +1,8 @@
 @use './skeleton' as *;
 
-// ============================================================================
-// AlbumSkeleton - стили
-// ============================================================================
-
 .skeleton {
   &--album-cover {
     aspect-ratio: 1 / 1;
-  }
-
-  &--album-title {
-    block-size: 1em;
-    inline-size: min(8rem, 70%);
-  }
-
-  &--album-artist {
-    block-size: 1em;
-    inline-size: min(14rem, 80%);
-  }
-
-  &--play-button-horizontal {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 7px;
-    inline-size: min(100%, 280px);
-    block-size: 51.38px;
-    background: linear-gradient(
-      90deg,
-      rgb(var(--skeleton-play-button-rgb, 153 130 56) / 80%) 0%,
-      rgb(var(--skeleton-play-button-rgb, 153 130 56) / 100%) 50%,
-      rgb(var(--skeleton-play-button-rgb, 153 130 56) / 80%) 100%
-    );
-    background-size: 200% 100%;
-    border-radius: var(--ms-01);
-    animation: skeleton-shimmer 1.5s ease-in-out infinite;
-    padding-inline: var(--ms-0);
-    margin-block: var(--ms-1);
-  }
-
-  &--play-icon {
-    position: relative;
-    inline-size: 1em;
-    block-size: 1em;
-    flex-shrink: 0;
-    animation: none;
-    background: transparent;
-
-    &::after {
-      content: '';
-      position: absolute;
-      inset: 50%;
-      transform: translate(-40%, -50%);
-      inline-size: 0;
-      block-size: 0;
-      border-inline-start: 10px solid white;
-      border-block-start: 7px solid transparent;
-      border-block-end: 7px solid transparent;
-    }
-  }
-
-  &--play-label {
-    inline-size: 4.5rem;
-    block-size: 1em;
-    background: rgb(var(--skeleton-progress-rgb, 255 255 255) / 30%);
-    border-radius: var(--ms-01);
   }
 
   &--context-nav {
@@ -72,110 +10,89 @@
     inline-size: 6.5rem;
     border-radius: var(--ms-02);
   }
-}
 
-// ============================================================================
-// AlbumSkeleton - основные стили
-// ============================================================================
-.album .album__wrapper.album-skeleton {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-
-  .album-skeleton__cover-block {
-    position: relative;
-    inline-size: min(100%, 60vw, 360px);
-    max-inline-size: min(100%, 60vw, 360px);
-    margin-inline: auto;
+  &--album-play-icon {
+    display: block;
+    background: rgb(var(--skeleton-progress-rgb, 255 255 255) / 35%);
+    border-radius: var(--ms-02);
+    inline-size: 1em;
+    block-size: 1em;
+    animation: none;
   }
 
+  &--album-play-label {
+    display: inline-block;
+    inline-size: 4.5rem;
+    block-size: 1em;
+    vertical-align: middle;
+  }
+
+  &--album-description-line {
+    block-size: 1em;
+    inline-size: 100%;
+    margin-block-end: var(--ms-02);
+
+    &:last-child {
+      margin-block-end: 0;
+    }
+
+    &--short {
+      inline-size: 72%;
+    }
+  }
+}
+
+// Skeleton uses the same grid + albumTracks blocks as the loaded album page.
+.album .album__wrapper.album-skeleton {
   .skeleton--album-cover {
     display: block;
     inline-size: 100%;
-    margin-block-end: var(--ms-1);
-
-    @media (width < 768px) {
-      margin-block-end: var(--ms-0);
-    }
+    margin-block-end: var(--ms-0);
   }
 
-  .share-list {
-    display: grid;
-    grid-template-columns: repeat(3, min-content);
-    gap: var(--ms-01);
-
-    &__item {
-      display: block;
-
-      &:not(:first-child) {
-        display: none;
-      }
-    }
-
-    &__link.skeleton {
-      inline-size: var(--ms-2);
-      block-size: var(--ms-2);
-      border-radius: 50%;
-    }
+  // h2/h3 reserve the same block metrics as loaded content; bars are painted in a non-layout overlay.
+  .album-skeleton__headings-slot {
+    position: relative;
   }
 
-  .album-title,
-  .album-artist {
+  .album-skeleton__headings-slot .album-title,
+  .album-skeleton__headings-slot .album-artist {
+    color: transparent;
+    user-select: none;
+  }
+
+  .album-skeleton__heading-bars {
+    position: absolute;
+    inset: 0;
     display: flex;
-    justify-content: center;
+    flex-direction: column;
     align-items: center;
-    margin-block: 0;
-    text-align: center;
-  }
-
-  @media (width < 768px) {
-    // albumTracks tightens title/artist on mobile; 1em skeleton bars overlap if those margins apply.
-    .album-title {
-      margin-block-end: var(--ms-01);
-    }
-
-    .album-artist {
-      margin-block-start: 0;
-    }
-  }
-
-  @media (width >= 768px) {
-    // Shorthand margin-block: 0 above wins over albumTracks; restore vertical rhythm on desktop.
-    .album-title {
-      margin-block-end: var(--ms-01);
-    }
-
-    .album-artist {
-      margin-block-start: 0;
-    }
-
-    .item-type-a:not(.album-skeleton__cover-block, .album__share) {
-      inline-size: min(100%, 448px);
-      max-inline-size: 448px;
-      margin-inline: auto;
-    }
-  }
-
-  .wrapper-album-play {
-    display: flex;
     justify-content: center;
+    gap: var(--ms-02);
+    pointer-events: none;
+  }
+
+  .album-skeleton__heading-bar {
+    flex-shrink: 0;
+    block-size: var(--ms-01);
+    border-radius: var(--ms-02);
+
+    &--title {
+      inline-size: min(8rem, 70%);
+    }
+
+    &--artist {
+      inline-size: min(6rem, 55%);
+    }
+  }
+
+  .wrapper-album-play .album-play {
+    pointer-events: none;
   }
 
   .tracks {
-    display: grid;
-    margin-block-end: var(--ms-1);
-
     .tracks__btn {
-      display: flex;
-      align-items: center;
-      gap: var(--ms-01);
-      block-size: 52.38px;
-      background: var(--main-background-color, #20201d);
-      border-block-start: 1px solid var(--hr-color, #3d3c3a);
-
-      &:last-child {
-        border-block-end: 1px solid var(--hr-color, #3d3c3a);
-      }
+      pointer-events: none;
 
       .skeleton {
         animation-delay: calc(var(--skeleton-index, 0) * 0.1s);
@@ -194,7 +111,7 @@
     }
 
     .tracks__duration {
-      inline-size: 60px;
+      inline-size: 2.75rem;
       block-size: 1em;
     }
   }

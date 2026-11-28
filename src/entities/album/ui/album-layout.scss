@@ -38,8 +38,6 @@
 // Album detail page: global `img { margin-block-end: $ms-1 }` adds space under the cover.
 .album {
   .album-cover__image {
-    @media (width < 768px) {
-      margin-block-end: var(--ms-0);
-    }
+    margin-block-end: var(--ms-0);
   }
 }

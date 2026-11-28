@@ -13,7 +13,7 @@ describe('AlbumSkeleton', () => {
       root.querySelector('.album-artist'),
       root.querySelector('.wrapper-album-play'),
       root.querySelector('.tracks'),
-      root.querySelector('.album__share'),
+      root.querySelector('.album-page-description'),
     ];
 
     expect(positions.every(Boolean)).toBe(true);
@@ -25,14 +25,14 @@ describe('AlbumSkeleton', () => {
     }
   });
 
-  it('keeps cover, title and artist as compact placeholders', () => {
+  it('keeps cover, headings, play control and description placeholders', () => {
     const { container } = render(<AlbumSkeleton />);
 
     expect(container.querySelector('.album__wrapper.album-skeleton')).toBeTruthy();
     expect(container.querySelector('.skeleton--album-cover')).toBeTruthy();
-    expect(container.querySelector('.skeleton--album-title')).toBeTruthy();
-    expect(container.querySelector('.skeleton--album-artist')).toBeTruthy();
-    expect(container.querySelector('.skeleton--play-label')).toBeTruthy();
-    expect(container.querySelector('.skeleton--play-progress')).toBeNull();
+    expect(container.querySelector('.album-title')).toBeTruthy();
+    expect(container.querySelector('.album-artist')).toBeTruthy();
+    expect(container.querySelector('.skeleton--album-play-label')).toBeTruthy();
+    expect(container.querySelector('.skeleton--album-description-line')).toBeTruthy();
   });
 });
