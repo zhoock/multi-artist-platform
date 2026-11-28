@@ -7,6 +7,7 @@ import { selectUiDictionaryFirst } from '@shared/model/uiDictionary';
 import aboutStyles from '@pages/Home/ui/AboutSection.module.scss';
 
 const PREVIEW_LINE_CLAMP = 3;
+const DESCRIPTION_TEXT_CLASS = 'album-page-description__text';
 
 type AlbumPageDescriptionProps = {
   description: string;
@@ -45,7 +46,7 @@ export function AlbumPageDescription({ description, albumTitle }: AlbumPageDescr
     <div className="album-page-description">
       <p
         ref={measureRef}
-        className={`${aboutStyles.aboutText} album-page-description__measure`}
+        className={`${DESCRIPTION_TEXT_CLASS} album-page-description__measure`}
         aria-hidden="true"
       >
         {trimmed}
@@ -60,7 +61,7 @@ export function AlbumPageDescription({ description, albumTitle }: AlbumPageDescr
             aria-haspopup="dialog"
             aria-expanded={isModalOpen}
           >
-            <Text className={`${aboutStyles.aboutText} ${aboutStyles.aboutTextPreview}`}>
+            <Text className={`${DESCRIPTION_TEXT_CLASS} ${aboutStyles.aboutTextPreview}`}>
               {trimmed}
             </Text>
             <span className={aboutStyles.aboutPreviewFade} aria-hidden="true" />
@@ -75,11 +76,11 @@ export function AlbumPageDescription({ description, albumTitle }: AlbumPageDescr
             title={popupTitle}
             closeAriaLabel={closeAriaLabel}
           >
-            <Text>{trimmed}</Text>
+            <Text className={DESCRIPTION_TEXT_CLASS}>{trimmed}</Text>
           </PublicFullscreenTextModal>
         </>
       ) : (
-        <Text className={aboutStyles.aboutText}>{trimmed}</Text>
+        <Text className={DESCRIPTION_TEXT_CLASS}>{trimmed}</Text>
       )}
     </div>
   );

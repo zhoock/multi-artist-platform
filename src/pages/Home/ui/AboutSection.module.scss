@@ -9,7 +9,7 @@
   &__text {
     margin-block: 0 var(--ms-2);
     color: var(--text-color, #dddddd);
-    font-size: clamp(1rem, 0.915rem + 0.35vw, 1.125rem);
+    font-size: var(--ms-0);
     line-height: 1.55;
 
     &:last-of-type {
@@ -52,11 +52,11 @@
   &__preview-more {
     position: absolute;
     color: var(--text-color, #dddddd);
-    font-size: clamp(1rem, 0.915rem + 0.35vw, 1.125rem);
+    font-size: calc((var(--ms-0) + var(--ms-01)) / 2);
     line-height: 1.55;
     inset-block-end: 0;
     inset-inline-end: 0;
-    font-weight: 700;
+    font-weight: var(--bold, 700);
     pointer-events: none;
   }
 

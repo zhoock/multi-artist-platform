@@ -49,7 +49,7 @@
 
 .public-fullscreen-text__body {
   color: var(--text-color, #dddddd);
-  font-size: clamp(1rem, 0.915rem + 0.35vw, 1.125rem);
+  font-size: var(--ms-0);
   line-height: 1.55;
 
   p {
