@@ -69,20 +69,6 @@
   }
 }
 
-.home-scene .universe-search__field {
-  background: rgb(var(--extra-background-color-rgb) / 80%);
-  border: 1px solid rgb(255 255 255 / 12%);
-  backdrop-filter: blur(20px) saturate(0.8%);
-
-  &:hover,
-  &:focus-within,
-  &:focus-visible {
-    border-color: rgb(255 255 255 / 12%);
-    background: rgb(var(--extra-background-color-rgb) / 80%);
-    outline: none;
-  }
-}
-
 .home-scene .header__profile {
   inline-size: var(--scene-chrome-size);
   block-size: var(--scene-chrome-size);

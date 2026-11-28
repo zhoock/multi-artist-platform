@@ -51,7 +51,7 @@ describe('UniverseFloatingSearch combobox semantics', () => {
       />
     );
 
-    await user.click(screen.getByRole('button', { name: 'Search' }));
+    await user.click(screen.getByRole('button', { name: 'Search artists...' }));
 
     const combobox = screen.getByRole('combobox');
     expect(combobox).toHaveAttribute('aria-autocomplete', 'list');

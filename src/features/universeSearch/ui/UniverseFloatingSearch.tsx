@@ -159,8 +159,6 @@ export function UniverseFloatingSearch({
     searchCopy?.artistsPlaceholder ?? (lang === 'ru' ? 'Поиск артистов...' : 'Search artists...');
   const clearSearchLabel =
     searchCopy?.clearSearch ?? (lang === 'ru' ? 'Очистить поиск' : 'Clear search');
-  const collapsedSearchLabel = lang === 'ru' ? 'Поиск' : 'Search';
-
   const handleInputKeyDown = (event: ReactKeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'Escape') {
       event.preventDefault();
@@ -203,7 +201,9 @@ export function UniverseFloatingSearch({
           .join(' ')}
       >
         <div
-          className="universe-search__field"
+          className={['universe-search__field', expanded ? 'universe-search__field--active' : '']
+            .filter(Boolean)
+            .join(' ')}
           onClick={!expanded ? focusSearch : undefined}
           onKeyDown={
             !expanded
@@ -217,7 +217,7 @@ export function UniverseFloatingSearch({
           }
           role={!expanded ? 'button' : undefined}
           tabIndex={!expanded ? 0 : undefined}
-          aria-label={!expanded ? collapsedSearchLabel : undefined}
+          aria-label={!expanded ? artistsPlaceholder : undefined}
         >
           <SearchIcon
             {...dashboardActionIconProps({
@@ -228,7 +228,7 @@ export function UniverseFloatingSearch({
 
           {!expanded ? (
             <span className="universe-search__collapsed-label" aria-hidden>
-              {collapsedSearchLabel}
+              {artistsPlaceholder}
             </span>
           ) : (
             <input

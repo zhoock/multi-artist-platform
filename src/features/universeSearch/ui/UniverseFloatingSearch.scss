@@ -50,28 +50,20 @@
     min-block-size: var(--scene-chrome-size, 2.75rem);
     padding-inline: 1rem;
     color: var(--white);
-    background: var(--scene-chrome-bg, rgb(var(--charcoal-rgb) / 72%));
-    border: var(--scene-chrome-border-width, 1px) solid
-      var(--scene-chrome-border-color, rgb(var(--dark-greenish-yellow-rgb) / 42%));
+    background: transparent;
+    border: 1px solid transparent;
     border-radius: 999px;
-    backdrop-filter: var(--scene-chrome-backdrop, blur(14px) saturate(120%));
-    transition: var(--scene-chrome-transition, border-color 220ms ease, background 220ms ease);
+    outline: none;
+    transition:
+      border-color 220ms ease,
+      background 220ms ease,
+      backdrop-filter 220ms ease;
 
-    &:hover {
-      border-color: var(
-        --scene-chrome-border-color-hover,
-        rgb(var(--dark-greenish-yellow-rgb) / 55%)
-      );
-      background: var(--scene-chrome-bg-hover, rgb(var(--charcoal-rgb) / 78%));
-    }
-
-    &:focus-within,
-    &:focus-visible {
-      border-color: var(
-        --scene-chrome-border-color-focus,
-        rgb(var(--dark-greenish-yellow-rgb) / 65%)
-      );
-      background: var(--scene-chrome-bg-focus, rgb(var(--charcoal-rgb) / 82%));
+    &:hover,
+    &--active {
+      background: var(--scene-glass-surface-bg);
+      border-color: var(--scene-glass-surface-border);
+      backdrop-filter: var(--scene-glass-surface-backdrop);
       outline: none;
     }
   }
@@ -80,7 +72,6 @@
     flex-shrink: 0;
     inline-size: 1rem;
     block-size: 1rem;
-    opacity: 0.85;
   }
 
   &__input {
@@ -100,7 +91,7 @@
   }
 
   &__collapsed-label {
-    color: rgb(var(--white-rgb) / 72%);
+    color: var(--white);
     font-size: 0.875rem;
     flex: 1 1 auto;
     cursor: text;
@@ -159,6 +150,12 @@
 
     &--empty {
       padding: 0;
+    }
+
+    &.scene-chrome-menu {
+      background: var(--scene-glass-surface-bg);
+      border: 1px solid var(--scene-glass-surface-border);
+      backdrop-filter: var(--scene-glass-surface-backdrop);
     }
   }
 

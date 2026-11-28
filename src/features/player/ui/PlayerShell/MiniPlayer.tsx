@@ -19,6 +19,7 @@ import {
 import { getMiniPlayerContextMenuLabels } from '@features/player/lib/miniPlayerContextMenuLabels';
 import { stripRedundantArtistPrefixFromTrackTitle } from '@features/player/lib/miniPlayerTrackTitle';
 
+import { MiniPlayerScrollingTitle } from './MiniPlayerScrollingTitle';
 import './style.scss';
 
 interface ForwardHandlers {
@@ -134,19 +135,13 @@ export const MiniPlayer: React.FC<MiniPlayerProps> = ({
           )}
         </div>
 
-        <span className="mini-player__title" title={hoverTitle}>
-          <span className="mini-player__title-line mini-player__title-line--compact">{title}</span>
-          {showTitleStack ? (
-            <span className="mini-player__title-stack">
-              <span className="mini-player__title-line mini-player__title-line--artist">
-                {artistLabel}
-              </span>
-              <span className="mini-player__title-line mini-player__title-line--track">
-                {trackLabel}
-              </span>
-            </span>
-          ) : null}
-        </span>
+        <MiniPlayerScrollingTitle
+          hoverTitle={hoverTitle}
+          showTitleStack={showTitleStack}
+          artistLabel={artistLabel}
+          trackLabel={trackLabel}
+          compactTitle={title}
+        />
       </button>
 
       <div className="mini-player__controls" aria-label="Управление воспроизведением">
