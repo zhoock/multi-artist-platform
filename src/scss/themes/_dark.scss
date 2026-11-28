@@ -44,6 +44,8 @@ html.theme-dark {
   --button-color-hover: var(--white);
   --button-background-color-hover: var(--dark-greenish-yellow);
   --button-disabled-background: var(--warm-concrete);
+  --public-btn-radius-pill: 999px;
+  --public-btn-radius: var(--public-btn-radius-pill);
   --social-networks-background-color: var(--graphite-green);
   --accent-color: var(--dark-greenish-yellow);
   --error-color: var(--pink-terracotta);

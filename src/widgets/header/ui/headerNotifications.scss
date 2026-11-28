@@ -31,7 +31,7 @@
   &:focus-visible {
     outline: 2px solid var(--links-header-color, currentcolor);
     outline-offset: 2px;
-    border-radius: 4px;
+    border-radius: var(--public-btn-radius);
   }
 }
 
@@ -131,7 +131,7 @@
   color: var(--links-header-color, #dddddd);
   background: rgb(255 255 255 / 6%);
   border: 1px solid rgb(255 255 255 / 10%);
-  border-radius: var(--ms-01);
+  border-radius: var(--public-btn-radius);
 }
 
 .header__notifications-row-main {

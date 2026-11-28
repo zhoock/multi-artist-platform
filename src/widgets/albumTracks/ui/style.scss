@@ -77,6 +77,9 @@
   }
 
   .tracks {
+    // List-row highlight on hover/focus — not public CTA pill radius.
+    --album-track-row-hover-radius: var(--ms-01);
+
     display: grid;
     margin-block-end: var(--ms-1);
 
@@ -272,7 +275,7 @@
         &:enabled:focus-visible:not(.tracks__btn--locked) {
           color: var(--button-color-hover, #373633);
           background: var(--button-background-color-hover, #998238);
-          border-radius: var(--ms-01);
+          border-radius: var(--album-track-row-hover-radius);
           border-block-start-color: var(--button-background-color-hover, #998238);
           border-block-end-color: var(--button-background-color-hover, #998238);
 
@@ -373,8 +376,14 @@
         }
 
         @media (hover: hover) and (pointer: fine) {
-          &:hover,
-          &:focus-visible {
+          &:enabled:hover:not(.tracks__btn--locked),
+          &:enabled:focus-visible:not(.tracks__btn--locked) {
+            color: var(--link-color-hover, #ffffff);
+            background: var(--main-background-color, #20201d);
+            border-radius: var(--album-track-row-hover-radius);
+            border-block-start-color: var(--hr-color, #3d3c3a);
+            border-block-end-color: var(--hr-color, #3d3c3a);
+
             &::before {
               background: rgb(255 255 255 / 18%);
             }

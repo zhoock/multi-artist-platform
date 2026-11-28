@@ -282,7 +282,7 @@
     text-align: center;
     background: var(--dashboard-card-bg);
     border: 2px dashed var(--dashboard-card-border);
-    border-radius: var(--ms-02);
+    border-radius: var(--public-btn-radius);
     transition:
       border-color 0.2s ease,
       background-color 0.2s ease;
@@ -359,7 +359,7 @@
     &:focus-visible {
       outline: 2px solid var(--dark-greenish-yellow);
       outline-offset: 2px;
-      border-radius: var(--ms-02);
+      border-radius: var(--public-btn-radius);
     }
   }
 

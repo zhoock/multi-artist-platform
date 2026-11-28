@@ -5,4 +5,8 @@
   --scene-glass-surface-bg: rgb(var(--extra-background-color-rgb) / 80%);
   --scene-glass-surface-border: rgb(255 255 255 / 12%);
   --scene-glass-surface-backdrop: blur(20px) saturate(0.8%);
+
+  // Public-site buttons: full pill shape (mini-player bar principle); dashboard uses --dashboard-btn-radius.
+  --public-btn-radius-pill: 999px;
+  --public-btn-radius: var(--public-btn-radius-pill);
 }

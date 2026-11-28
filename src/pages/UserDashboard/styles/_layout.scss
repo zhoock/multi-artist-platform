@@ -6,6 +6,10 @@
 
 dialog {
   .user-dashboard {
+    // Shared public-site components (e.g. EmptyState) must keep dashboard control radii.
+    --public-btn-radius: var(--ms-02);
+    --dashboard-btn-radius: var(--ms-01);
+
     // Header
     &__header {
       display: flex;

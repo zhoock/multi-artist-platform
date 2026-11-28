@@ -203,7 +203,7 @@
       padding: 0.38rem 0.85rem;
       font-size: 0.8125rem;
       border: 1px solid rgb(var(--dark-greenish-yellow-rgb) / 55%);
-      border-radius: 8px;
+      border-radius: var(--public-btn-radius);
       transition:
         color 0.2s ease,
         border-color 0.2s ease,

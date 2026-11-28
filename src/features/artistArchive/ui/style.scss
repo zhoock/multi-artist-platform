@@ -25,7 +25,7 @@
     line-height: 1.2;
     background: transparent;
     border: 1px solid var(--accent-color, var(--dark-greenish-yellow, #998238));
-    border-radius: var(--ms-01);
+    border-radius: var(--public-btn-radius);
     transition:
       background-color 0.15s ease,
       border-color 0.15s ease,
@@ -100,7 +100,7 @@
     line-height: 1;
     background: rgb(255 60 60 / 15%);
     border: 1px solid rgb(255 100 100 / 60%);
-    border-radius: var(--ms-01);
+    border-radius: var(--public-btn-radius);
     inline-size: 1.25rem;
     block-size: 1.25rem;
     font-weight: 700;

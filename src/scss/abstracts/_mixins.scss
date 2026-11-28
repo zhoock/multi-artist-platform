@@ -23,7 +23,7 @@ $ms-4: 123.363px; // 6.854rem;
   $margin: var(--ms-1) 0,
   $padding: var(--ms-01) var(--ms-0),
   $border: 0,
-  $border-radius: var(--ms-01),
+  $border-radius: var(--public-btn-radius, var(--ms-01)),
   $disabled-background: var(--button-disabled-background, #9b9b9a),
   $font-size: var(--ms-0)
 ) {
@@ -627,6 +627,8 @@ $desktops: 'width >= 1024px';
   --button-background-color: var(--icy-mist);
   --button-background-color-hover: var(--mango-sorbet);
   --button-disabled-background: var(--warm-concrete);
+  --public-btn-radius-pill: 999px;
+  --public-btn-radius: var(--public-btn-radius-pill);
   --social-networks-background-color: var(--charcoal);
   --accent-color: var(--mango-sorbet);
   --error-color: var(--pink-terracotta);

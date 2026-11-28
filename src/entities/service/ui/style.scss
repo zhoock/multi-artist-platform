@@ -2,6 +2,9 @@
 @use '../../../scss/abstracts/mixins' as *;
 
 .service-buttons {
+  // External aggregator tiles (Stream + Purchase storefronts); Buy Album keeps --public-btn-radius.
+  --service-aggregator-tile-radius: var(--ms-01);
+
   &__list {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
@@ -21,7 +24,7 @@
     text-align: inherit;
     background: var(--link-button-background-color, #373633);
     border: none;
-    border-radius: var(--ms-01);
+    border-radius: var(--public-btn-radius);
     place-items: center;
     min-block-size: var(--ms-3);
     cursor: pointer;
@@ -60,7 +63,7 @@
       color: var(--link-button-color, #dddddd);
       background: var(--link-button-background-color, #373633);
       border: none;
-      border-radius: var(--ms-01);
+      border-radius: var(--public-btn-radius);
 
       &.service-buttons__link--downloading {
         position: relative;
@@ -191,6 +194,13 @@
     transition:
       inline-size 0.2s ease,
       width 0.2s ease;
+  }
+
+  &__list--stream,
+  &__list--purchase {
+    .service-buttons__link:not(.service-buttons__link--download) {
+      border-radius: var(--service-aggregator-tile-radius);
+    }
   }
 }
 

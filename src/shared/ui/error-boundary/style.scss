@@ -77,7 +77,7 @@
   color: var(--text-color, #ffffff);
   font-size: 1rem;
   border: 2px solid var(--primary-color, #ffffff);
-  border-radius: 4px;
+  border-radius: var(--public-btn-radius);
   transition: all 0.2s ease;
   font-weight: 500;
   background-color: transparent;

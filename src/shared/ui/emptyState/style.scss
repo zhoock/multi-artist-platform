@@ -161,7 +161,7 @@
     font: inherit;
     font-size: var(--dashboard-font-size, 0.9375rem);
     line-height: 1.2;
-    border-radius: var(--ms-02);
+    border-radius: var(--public-btn-radius, var(--ms-02));
     cursor: pointer;
     transition:
       background-color 0.15s ease,

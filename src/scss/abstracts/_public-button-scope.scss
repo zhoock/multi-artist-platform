@@ -1,0 +1,23 @@
+// Maps public surfaces that reuse `dashboard-btn-*` / `DashboardButton` to public corner radii.
+// Dashboard shell resets `--public-btn-radius` and keeps `--dashboard-btn-radius` from theme.
+
+dialog.popup:not(:has(.user-dashboard)),
+.consent-banner,
+.copyright-report-fullscreen,
+.collection-full-modal,
+.album-checkout-modal,
+.auth-page,
+.stems-page,
+.payment-success,
+.subscription-payment-success,
+.listener-welcome-modal,
+.premium-success-modal,
+.email-verified,
+.reset-password-page {
+  --dashboard-btn-radius: var(--public-btn-radius);
+}
+
+// Stems: local controls outside the dashboard-btn token chain.
+.stems-page .dashboard-button:not(.dashboard-button--icon) {
+  border-radius: var(--public-btn-radius);
+}

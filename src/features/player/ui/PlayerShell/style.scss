@@ -70,7 +70,7 @@
       $hover-background: rgb(255 255 255 / 18%),
       $margin: 0,
       $padding: 0,
-      $border-radius: var(--ms-02)
+      $border-radius: 50%
     );
   }
 
@@ -200,7 +200,7 @@
     text-align: start;
     background: transparent;
     border: none;
-    border-radius: var(--ms-02);
+    border-radius: var(--public-btn-radius);
     cursor: pointer;
 
     &:focus-visible {
@@ -324,7 +324,7 @@
     text-align: start;
     background: transparent;
     border: none;
-    border-radius: var(--ms-02);
+    border-radius: var(--public-btn-radius);
     transition:
       color 0.2s ease,
       background-color 0.2s ease;

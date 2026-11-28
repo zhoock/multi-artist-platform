@@ -125,7 +125,7 @@
     font-weight: 600;
     background: transparent;
     border: 1px solid var(--dark-greenish-yellow, #c8b06d);
-    border-radius: var(--ms-01);
+    border-radius: var(--public-btn-radius);
     cursor: pointer;
     white-space: nowrap;
 
@@ -167,7 +167,7 @@
     font-weight: 700;
     background: var(--button-background-color-hover, #998238);
     border: none;
-    border-radius: var(--ms-01);
+    border-radius: var(--public-btn-radius);
     cursor: pointer;
 
     &:hover {
@@ -182,7 +182,7 @@
     font-size: var(--ms-01);
     background: rgb(255 255 255 / 6%);
     border: 1px solid rgb(255 255 255 / 12%);
-    border-radius: var(--ms-01);
+    border-radius: var(--public-btn-radius);
     cursor: pointer;
 
     &:hover {

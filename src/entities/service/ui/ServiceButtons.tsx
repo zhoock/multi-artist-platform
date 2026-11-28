@@ -236,7 +236,7 @@ function ServiceButtonsContent({
         <>
           <h3>{labels.purchase}</h3>
           <ul
-            className="service-buttons__list"
+            className="service-buttons__list service-buttons__list--purchase"
             aria-label="Блок со ссылками на платные музыкальные агрегаторы"
           >
             {showDownloadButton && ownershipLoading && (
@@ -357,7 +357,7 @@ function ServiceButtonsContent({
         <>
           <h3>{labels.stream}</h3>
           <ul
-            className="service-buttons__list"
+            className="service-buttons__list service-buttons__list--stream"
             aria-label="Блок со ссылками на бесплатные музыкальные агрегаторы"
           >
             <GetButton
