@@ -6,16 +6,14 @@
   position: absolute;
   z-index: 25;
   inset-block-start: var(--scene-chrome-offset-block, var(--ms-0));
-  inset-inline-start: var(--scene-chrome-offset-inline, var(--ms-0));
-  max-inline-size: calc(
-    100% - var(--scene-chrome-offset-inline, var(--ms-0)) - var(
-        --scene-chrome-offset-inline,
-        var(--ms-0)
-      ) - var(--scene-chrome-size, 2.75rem) - var(--ms-0)
-  );
+  inset-inline: var(--scene-chrome-offset-inline, var(--ms-0)) var(--scene-chrome-search-inline-end);
+
+  // Trailing inset gives a definite width; shrink-to-fit + % max-width let the shell exceed the viewport on focus (iOS).
+  min-inline-size: 0;
   pointer-events: none;
 
   @include breakpoint(desktops) {
+    inset-inline-end: auto;
     max-inline-size: none;
   }
 
@@ -32,7 +30,7 @@
     }
 
     &--expanded {
-      max-inline-size: 26.25rem;
+      max-inline-size: min(26.25rem, 100%);
 
       @include breakpoint(desktops) {
         inline-size: 20rem;
